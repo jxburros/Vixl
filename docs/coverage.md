@@ -2,7 +2,7 @@
 
 Vixl is a headless application designed for autonomous AI agents; humans can use the same interfaces.
 
-This is a working first implementation spanning the six roadmap stages in the supplied [specification](product-spec.md). It is not a claim of production maturity or complete GIMP parity. Version 0.8.0 adds workspace file tools, typed AI tools, inline operation schemas, bounded previews, compact edit summaries, and cached service sessions on top of Windows installation and automatic updates; the design tools below extend that scope.
+This is a working implementation spanning the six roadmap stages in the supplied [specification](product-spec.md), plus the agent, design, color, layout and animation tools listed below. It is not a claim of production maturity or complete GIMP parity. The table records the release in which each area arrived; the [changelog](../CHANGELOG.md) has release-by-release detail.
 
 | Specification area | Implemented |
 | --- | --- |
@@ -21,7 +21,7 @@ This is a working first implementation spanning the six roadmap stages in the su
 
 ## Explicit boundaries
 
-- **AI needs a real configured service.** Vision segmentation and background removal require a mask-producing HTTP/ComfyUI provider. OpenAI provides multimodal description/detection/OCR and planning, not a native segmentation implementation here. Live provider calls were not exercised in the development environment. Mocked adapter tests validate request/response behavior, not model quality.
+- **AI needs a real configured service.** Vision segmentation and background removal require a mask-producing HTTP/ComfyUI provider. OpenAI provides multimodal description/detection/OCR and planning, not a native segmentation implementation here. The provider adapters have been used against real services with good results. The automated suite stays offline: mocked adapter tests pin request/response contracts, while output quality, quotas and model availability remain properties of each configured service.
 - **The core is Python**, not Rust. A Windows executable bundles the Python runtime. No C ABI, Rust core, or optimized tile/GPU renderer is supplied.
 - **RGBA8/sRGB-style pixel processing.** No ICC-managed workflow, CMYK prepress, high-bit-depth editing, RAW development, or embedded camera metadata preservation. Input orientation is normalized. AVIF availability depends on Pillow's codecs.
 - **Raster-oriented output with procedural shapes.** Shapes retain geometry, groups and clipping remain editable, and pathfinder retains shape snapshots. Single-contour M/L/H/V/Q/C/Z Bézier paths and SVG export of supported logo geometry, groups, gradients, pixel grids and shaped Unicode outlines and common native SVG effects/styles are implemented; strict SVG export can reject embedded raster content; unsupported appearances embed raster images with fallback metadata. Arbitrary SVG import, arcs/multiple path contours, skew/perspective/matrix transforms, brushes, pressure input, full animation timelines, and PSD/XCF compatibility are not implemented. See [design tools](design-tools.md) for group raster-scaling and shape-combination semantics.

@@ -5,7 +5,7 @@ import hmac
 from pathlib import Path
 from threading import RLock
 
-from filelock import FileLock
+from .fileio import file_lock
 
 from .assets import add_encoded
 from .errors import VixlError, require
@@ -102,7 +102,7 @@ class Session:
         with self._mutex:
             resolved = self.resolve(path)
             require(resolved.is_file(), f"Document does not exist: {path}", "not_found", field="path")
-            with FileLock(str(resolved) + ".lock", timeout=10, is_singleton=True):
+            with file_lock(str(resolved)):
                 stamp = self.stamp(resolved)
                 project = Project.load(resolved, limits=self.limits)
                 self._remember(resolved, project, stamp)
@@ -113,7 +113,7 @@ class Session:
             resolved = self.resolve(path)
             require(resolved.suffix.lower() == ".vixl", "Document path must end in .vixl", field="path")
             require(resolved.parent.is_dir(), "Destination directory must exist", field="path")
-            with FileLock(str(resolved) + ".lock", timeout=10, is_singleton=True):
+            with file_lock(str(resolved)):
                 require(not resolved.exists(), "Destination already exists; open it instead", field="path")
                 project = Project(width, height, background, limits=self.limits)
                 project.save(resolved)
@@ -155,7 +155,7 @@ class Session:
             else:
                 require(self.path is not None, "Create or open a document first", "no_project")
                 path = self.path
-            with FileLock(str(path) + ".lock", timeout=10, is_singleton=True):
+            with file_lock(str(path)):
                 entry = self.documents.get(path)
                 try:
                     stamp = self.stamp(path)

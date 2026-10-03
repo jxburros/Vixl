@@ -9,7 +9,7 @@ import shlex
 import sys
 import tempfile
 
-from filelock import FileLock
+from .fileio import file_lock
 
 from . import __version__
 from .assets import read_bounded
@@ -320,7 +320,7 @@ def dispatch(argv):
         a = p.parse_args(args)
         serve(path, a.host, a.port, os.environ.get(a.token_env), limits)
         return None, options.json
-    with FileLock(str(path) + ".lock", timeout=10, is_singleton=True):
+    with file_lock(str(path)):
         project = Project.load(path, limits=limits, allow_linked=options.allow_linked)
         result, changed = project_command(project, cmd, args, detail=options.detail)
         if changed:

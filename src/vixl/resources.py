@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 import tempfile
 
-from filelock import FileLock
+from .fileio import file_lock
 
 from .assets import read_bounded
 from .design import named
@@ -183,7 +183,7 @@ def register(kind, name, value):
     validate(kind, value)
     path = resource_path()
     path.parent.mkdir(parents=True, exist_ok=True)
-    with FileLock(str(path) + ".lock"):
+    with file_lock(str(path)):
         data = json.loads(read_bounded(path, 1024 * 1024)) if path.exists() else {}
         data.setdefault(kind, {})[name] = value
         payload = json.dumps(data, ensure_ascii=False).encode()

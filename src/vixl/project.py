@@ -482,14 +482,14 @@ class Project:
         }
 
     def save(self, path=None):
-        from filelock import FileLock
+        from .fileio import file_lock
         from .fileio import temporary
 
         require(path or self.path, "Provide a .vixl project path")
         path = Path(path or self.path).resolve()
         require(path.suffix == ".vixl", "Project filenames must end in .vixl")
         path.parent.mkdir(parents=True, exist_ok=True)
-        with FileLock(str(path) + ".lock", timeout=10, is_singleton=True):
+        with file_lock(str(path)):
             if self.path == path and self._revision and path.exists():
                 require(
                     self._revision == hashlib.sha256(path.read_bytes()).hexdigest(),

@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 import tempfile
 
-from filelock import FileLock
+from .fileio import file_lock
 
 from .assets import read_bounded
 from .commands import Parser
@@ -52,7 +52,7 @@ def save_provider(name, value):
     named(name)
     path = config_path()
     path.parent.mkdir(parents=True, exist_ok=True)
-    with FileLock(str(path) + ".lock"):
+    with file_lock(str(path)):
         config = load_config()
         config.setdefault("providers", {})[name] = value
         payload = json.dumps(config, ensure_ascii=False).encode()
@@ -199,6 +199,12 @@ def route(capability, name=None, model=None):
     failures = []
     for candidate in order:
         if name and candidate != name:
+            continue
+        saved = candidates.get(candidate, {}).get("models")
+        if isinstance(saved, list) and not any(
+            capability in m.get("capabilities", []) and (not model or m.get("id") == model) for m in saved
+        ):
+            # A saved catalog already rules this provider out; don't require its SDK to say so.
             continue
         try:
             backend = provider(candidate)

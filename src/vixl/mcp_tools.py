@@ -14,7 +14,7 @@ import os
 from types import SimpleNamespace
 from typing import Annotated, Literal
 
-from filelock import FileLock
+from .fileio import file_lock
 from PIL import Image as PILImage
 from pydantic import Field, WithJsonSchema
 
@@ -183,7 +183,7 @@ def export_file(session, path, overwrite=False, document=None, **options):
             field="path",
         )
         require(destination.parent.is_dir(), "Destination directory must exist", field="path")
-        with FileLock(str(destination) + ".lock", timeout=10, is_singleton=True):
+        with file_lock(str(destination)):
             require(
                 overwrite or not destination.exists(),
                 "Destination already exists; set overwrite=true",
@@ -331,7 +331,7 @@ def build_server(session, *, schema="full", planner=False):
                 destination.suffix.lower() == ".vixl" and destination.parent.is_dir(),
                 "Use a .vixl path in an existing workspace directory",
             )
-            with FileLock(str(destination) + ".lock", timeout=10, is_singleton=True):
+            with file_lock(str(destination)):
                 require(not destination.exists(), "Destination already exists")
                 project = create_template(name, variables, limits=session.limits)
                 project.save(destination)
