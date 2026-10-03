@@ -17,6 +17,9 @@ def check_state(project, state):
     c = state["canvas"]
     project.limits.size(c["width"], c["height"])
     require(c["color_mode"] == "rgba8", "Only RGBA8 documents are supported", "invalid_project")
+    from .sizes import validate_canvas
+
+    validate_canvas(c)
     color(resolve_color(c["background"], state))
     require(isinstance(state.get("design_guidance", {}), dict), "Invalid design guidance")
     from .resources import validate
@@ -61,6 +64,7 @@ def check_state(project, state):
                 "pathfinder",
                 "symbol",
                 "pixel",
+                "paint",
             ),
             "Invalid layer type",
             "invalid_project",
@@ -81,6 +85,10 @@ def check_state(project, state):
             from .pixel import validate_pixel
 
             validate_pixel(layer, state)
+        if layer["type"] == "paint":
+            from .brushes import validate_paint
+
+            validate_paint(layer, state)
         if layer["type"] == "text":
             require(isinstance(layer["text"], str) and len(layer["text"]) <= 100000, "Invalid text")
             finite(layer["size"], "font size", 1, 4096)
@@ -93,9 +101,19 @@ def check_state(project, state):
             if effect.get("selection"):
                 require(effect["selection"] in project.assets, "Missing effect selection", "missing_asset")
     validate_design(project, state)
+    from .brushes import validate_brushes
+
+    require(isinstance(state.get("brushes", {}), dict), "Invalid brush library")
+    validate_brushes(state)
     from .animation import validate_animation
 
     validate_animation(project, state)
+    from .timeline import validate_timeline
+
+    validate_timeline(project, state)
+    from .layouts import validate_layout_record
+
+    validate_layout_record(state)
     require(not (ids & names), "Layer names cannot collide with IDs", "invalid_project")
     require(
         state["active_layer"] is None or state["active_layer"] in ids,

@@ -2,6 +2,7 @@ import asyncio
 import base64
 import io
 import json
+import re
 
 from PIL import Image
 import numpy as np
@@ -155,7 +156,8 @@ def test_slim_schema_mode_and_schema_lookup(tmp_path):
     assert "vixl_ai_plan" not in full
     assert "vixl_ai_plan" in asyncio.run(sizes(mcp_server(workspace=tmp_path, planner=True)))
     for tool in full.values():
-        assert '"title"' not in json.dumps(tool.inputSchema)
+        # No pydantic-generated titles (string annotations); a content field named "title" is fine.
+        assert not re.search(r'"title": "', json.dumps(tool.inputSchema))
     _, text, _ = call(mcp_server(workspace=tmp_path, schema="slim"), "vixl_operation_schema", {"types": ["shape", "rect_angle"]})
     result = json.loads(text)
     assert "rectangle" in result["shape"]["properties"]["shape"]["enum"]

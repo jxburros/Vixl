@@ -57,6 +57,11 @@ def compile_command(tokens):
     pixel = compile_pixel(cmd, args)
     if pixel is not None:
         return pixel
+    from .feature_cli import compile_feature
+
+    feature = compile_feature(cmd, args)
+    if feature is not None:
+        return feature
     from .design_cli import compile_design
 
     design = compile_design(cmd, args)
@@ -216,12 +221,26 @@ def compile_command(tokens):
         require(constraints, "Provide at least one constraint")
         return {**op, "target": data["target"], "constraints": constraints}
     elif cmd == "canvas":
-        require(args, "Use canvas resize SIZE, preset NAME, or background COLOR")
+        require(args, "Use canvas resize SIZE, size NAME, preset NAME, dpi N, or background COLOR")
         if args[0] == "resize":
             require(len(args) == 2, "Use canvas resize SIZE")
             w, h = dimensions(args[1])
             return {**op, "width": w, "height": h}
-        require(len(args) == 2 and args[0] in ("preset", "background"), "Invalid canvas command")
+        if args[0] in ("size", "preset"):
+            p.add_argument("action")
+            p.add_argument("size")
+            p.add_argument("--dpi", type=float)
+            p.add_argument("--landscape", dest="orientation", action="store_const", const="landscape")
+            p.add_argument("--portrait", dest="orientation", action="store_const", const="portrait")
+            p.add_argument("--bleed", nargs="?", const=True, type=float)
+            p.add_argument("--background")
+            data = vars(p.parse_args(args))
+            data.pop("action")
+            return {**op, **{k: v for k, v in data.items() if v is not None}}
+        if args[0] == "dpi":
+            require(len(args) == 2, "Use canvas dpi N")
+            return {**op, "dpi": float(args[1])}
+        require(len(args) == 2 and args[0] == "background", "Invalid canvas command")
         return {**op, args[0]: args[1]}
     elif cmd == "select":
         p.add_argument("shape", choices=["rect", "ellipse", "all", "none", "invert", "alpha", "color"])

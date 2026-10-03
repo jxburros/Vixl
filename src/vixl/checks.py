@@ -13,6 +13,7 @@ from .errors import require
 from .model import finite
 
 CHECKS = ("bounds", "overlap", "contrast", "safe_area", "legibility")
+OPTIONAL_CHECKS = ("print", "color_vision")
 PERCENT = re.compile(r"^(-?\d+(?:\.\d+)?)%$")
 
 
@@ -69,14 +70,16 @@ def check_design(
     artboard=None,
     comp=None,
     variables=None,
+    ink_limit=300,
+    min_ppi=200,
 ):
     """Return ``{"passed", "errors", "warnings", "issues", "checked"}`` for the rendered design."""
     from .design_render import artboard_project
     from .render import layer_canvas_surface, resolve_layout, resolved_layers
 
     checks = list(checks or CHECKS)
-    unknown = sorted(set(checks) - set(CHECKS))
-    require(not unknown, f"Unknown check(s) {unknown}; available: {', '.join(CHECKS)}", field="checks")
+    unknown = sorted(set(checks) - set(CHECKS + OPTIONAL_CHECKS))
+    require(not unknown, f"Unknown check(s) {unknown}; available: {', '.join(CHECKS + OPTIONAL_CHECKS)}", field="checks")
     candidate = artboard_project(project.clone(), artboard, comp, variables)
     c = candidate.state["canvas"]
     width, height = c["width"], c["height"]
@@ -270,6 +273,11 @@ def check_design(
                     thumbnail_size=round(effective, 2),
                 )
 
+    if "print" in checks:
+        _print_checks(candidate, c, resolved, local_bounds, bounds, layers, content, texts, text_scales, issue, ink_limit, min_ppi)
+    if "color_vision" in checks and texts:
+        _color_vision(candidate, resolved, bounds, texts, min_contrast, text_scales, issue)
+
     errors = sum(1 for x in issues if x["severity"] == "error")
     return {
         "passed": errors == 0,
@@ -278,6 +286,125 @@ def check_design(
         "issues": issues,
         "checked": {"checks": checks, "layers": len(content), "text_layers": len(texts)},
     }
+
+
+def _print_checks(candidate, c, resolved, local_bounds, bounds, layers, content, texts, text_scales, issue, ink_limit, min_ppi):
+    """Prepress problems: ink coverage, image resolution, tiny type, bleed and live area."""
+    from . import colors
+
+    finite(ink_limit, "ink_limit", 100, 400)
+    finite(min_ppi, "min_ppi", 36, 2400)
+    width, height = c["width"], c["height"]
+    dpi = c.get("dpi")
+    if not dpi:
+        issue("print", "warning", "Canvas has no dpi; create it from a print size (vixl new letter) or set canvas dpi. Assuming 300.")
+        dpi = 300
+    image = candidate.render()
+    coverage = colors.ink_coverage(colors.cmyk_image(image))
+    over = coverage["values"] > ink_limit + 0.5
+    if over.any():
+        ys, xs = np.nonzero(over)
+        issue(
+            "print",
+            "warning",
+            f"Ink coverage reaches {coverage['max']:.0f}% (limit {ink_limit:g}%) on {over.mean():.1%} of the page; "
+            "use a lighter rich black or export with ink_limit",
+            [],
+            ink_max=coverage["max"],
+            region=[int(xs.min()), int(ys.min()), int(xs.max() - xs.min() + 1), int(ys.max() - ys.min() + 1)],
+        )
+    for item in layers:
+        layer = resolved[item["id"]]
+        if layer["type"] not in ("raster", "frame") or layer.get("linked"):
+            continue
+        try:
+            source = candidate.image(layer["asset"])
+        except Exception:
+            continue
+        sw, sh = (layer["crop"][2] - layer["crop"][0], layer["crop"][3] - layer["crop"][1]) if layer.get("crop") else source.size
+        _, _, w, h = bounds[item["id"]]
+        ppi = dpi * min(sw / max(w, 1), sh / max(h, 1))
+        if ppi < min_ppi:
+            issue(
+                "print",
+                "error" if ppi < min_ppi / 2 else "warning",
+                f"{item['name']!r} prints at about {ppi:.0f} ppi (aim for {min_ppi:g}+); use a larger image or place it smaller",
+                [item],
+                effective_ppi=round(ppi),
+            )
+    for item in texts:
+        points = resolved[item["id"]].get("size", 0) * text_scales[item["id"]] * 72 / dpi
+        if points < 6:
+            issue("print", "warning", f"{item['name']!r} is {points:.1f} pt; most print needs 6 pt or more", [item], points=round(points, 2))
+    bleed, safe = c.get("bleed", 0), c.get("safe", 0)
+    if safe or bleed:
+        inset = bleed + safe
+        live = (inset, inset, width - 2 * inset, height - 2 * inset)
+        for item in texts:
+            if not _contains(live, bounds[item["id"]]):
+                issue("print", "error", f"{item['name']!r} is outside the live area ({inset}px from the edge) and may be trimmed", [item], live_area=list(live))
+    if bleed:
+        for item in layers:
+            x, y, w, h = bounds[item["id"]]
+            edges = []
+            for name, edge, trim, outer in (
+                ("left", x, bleed, 0),
+                ("top", y, bleed, 0),
+                ("right", x + w, width - bleed, width),
+                ("bottom", y + h, height - bleed, height),
+            ):
+                if abs(edge - trim) <= 2 and edge != outer:
+                    edges.append(name)
+            if edges:
+                issue(
+                    "print",
+                    "warning",
+                    f"{item['name']!r} stops at the trim on the {', '.join(edges)} edge; extend it into the {bleed}px bleed",
+                    [item],
+                )
+
+
+def _color_vision(candidate, resolved, bounds, texts, min_contrast, text_scales, issue):
+    """Text whose contrast holds for typical vision but collapses for a color-vision deficiency."""
+    from PIL import Image
+
+    from . import colors
+    from .design import resolve_color
+    from .render import color as rgba
+
+    hidden = candidate.clone()
+    ids = {item["id"] for item in texts}
+    for layer in hidden.state["layers"]:
+        if layer["id"] in ids:
+            layer["visible"] = False
+    backdrop = np.asarray(hidden.render().convert("RGB"))
+    for item in texts[:64]:
+        layer = resolved[item["id"]]
+        x, y, w, h = bounds[item["id"]]
+        crop = backdrop[max(0, y): max(0, y + h), max(0, x): max(0, x + w)]
+        if crop.size == 0:
+            continue
+        background = tuple(np.median(crop.reshape(-1, 3), axis=0) / 255)
+        foreground = tuple(v / 255 for v in rgba(resolve_color(layer.get("color", "black"), candidate.state))[:3])
+        large = layer.get("size", 0) * text_scales[item["id"]] >= 24
+        threshold = min_contrast or (3.0 if large else 4.5)
+        normal = colors.contrast_ratio(foreground, background)
+        pair = Image.new("RGB", (2, 1))
+        pair.putdata([tuple(round(v * 255) for v in foreground), tuple(round(v * 255) for v in background)])
+        for kind in ("protanopia", "deuteranopia", "tritanopia"):
+            seen = colors.simulate_vision(pair, kind).convert("RGB")
+            a, b = (tuple(v / 255 for v in seen.getpixel((i, 0))) for i in (0, 1))
+            ratio = colors.contrast_ratio(a, b)
+            if ratio < threshold <= normal or ratio < normal * 0.6 and ratio < threshold * 1.2:
+                issue(
+                    "color_vision",
+                    "error" if ratio < threshold else "warning",
+                    f"{item['name']!r} contrast drops from {normal:.2f}:1 to {ratio:.2f}:1 with {kind}; "
+                    "differ in lightness, not just hue",
+                    [item],
+                    vision=kind,
+                    contrast=round(ratio, 2),
+                )
 
 
 def compare(project, before="previous", after="head", *, max_width=1024, max_height=1024, mode="side-by-side"):

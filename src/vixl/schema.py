@@ -174,7 +174,19 @@ def _operation_schema():
         },
         ["constraints"],
     )
-    add("canvas", {"width": POSITIVE_INT, "height": POSITIVE_INT, "background": S, "preset": S})
+    add(
+        "canvas",
+        {
+            "width": POSITIVE_INT,
+            "height": POSITIVE_INT,
+            "background": S,
+            "size": S,
+            "preset": S,
+            "dpi": {"type": "number", "minimum": 36, "maximum": 2400},
+            "orientation": enum("portrait", "landscape"),
+            "bleed": {"type": ["boolean", "number"]},
+        },
+    )
     add(
         "select",
         {
@@ -236,6 +248,20 @@ def _operation_schema():
     from .pixel_schema import schemas as pixel_schemas
 
     pixel_schemas(add)
+    from .brushes import schemas as brush_schemas
+
+    brush_schemas(add)
+    from .timeline import schemas as timeline_schemas
+
+    timeline_schemas(add)
+    from .layouts import schemas as layout_schemas
+
+    layout_schemas(add)
+    add(
+        "palette-generate",
+        {"name": S, "color": S, "scheme": S, "count": {"type": "integer", "minimum": 2, "maximum": 12}},
+        ["name", "color"],
+    )
     return {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "title": "Vixl operation batch",

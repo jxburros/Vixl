@@ -43,7 +43,7 @@ def union_bounds(bounds):
 
 def execute_design(project, op):
     from .operations import append_layer, execute
-    from .render import resolve_layout, CANVAS_PRESETS, color
+    from .render import resolve_layout, color
 
     kind = op["type"]
     state = project.state
@@ -159,7 +159,8 @@ def execute_design(project, op):
         require(layer["type"] == "text", "Styles require a text layer")
         layer[category + "_style"] = op["name"]
     elif kind == "swatch":
-        color(op["color"])
+        # Swatches may build on other swatches (lighten(@brand, 10%)); cycles fail the depth limit.
+        color(resolve_color(op["color"], state))
         state.setdefault("swatches", {})[named(op["name"])] = op["color"]
     elif kind == "artboard":
         name = named(op["name"])
@@ -170,8 +171,10 @@ def execute_design(project, op):
         else:
             board = deepcopy(boards.get(name, state["canvas"]))
             if "preset" in op:
-                require(op["preset"] in CANVAS_PRESETS, "Unknown canvas preset")
-                board["width"], board["height"] = CANVAS_PRESETS[op["preset"]]
+                from .sizes import resolve as resolve_size
+
+                info = resolve_size(op["preset"])
+                board["width"], board["height"] = info["width"], info["height"]
             board.update(
                 {k: deepcopy(op[k]) for k in ("width", "height", "background", "variables") if k in op}
             )
@@ -358,9 +361,15 @@ def resolve_color(value, state, variables=None):
     from .render import substitute
 
     value = substitute(value, {**state["variables"], **(variables or {})})
-    if value.startswith("@"):
+    if value.startswith("@") and "(" not in value:
         require(value[1:] in state.get("swatches", {}), f"Unknown swatch: {value}")
-        return state["swatches"][value[1:]]
+        value = state["swatches"][value[1:]]
+    if "@" in value:
+        from .colors import resolve_expression
+
+        # Swatches can be used inside expressions (mix(@brand, white, 20%)) and can refer
+        # to other swatches, so a palette retints from one definition.
+        value = resolve_expression(value, state.get("swatches", {}))
     return value
 
 
@@ -471,7 +480,7 @@ def validate_design(project, state):
         )
     for name, value in state.get("swatches", {}).items():
         named(name)
-        color(value)
+        color(resolve_color(value, state))
     for category in ("character", "paragraph"):
         for name, value in state.get(category + "_styles", {}).items():
             named(name)

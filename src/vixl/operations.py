@@ -4,6 +4,9 @@ from .design_schema import TYPES as DESIGN_TYPES
 from .pixel import PIXEL_TYPES
 from .animation import ANIMATION_TYPES
 from .resources import RESOURCE_TYPES
+from .brushes import BRUSH_TYPES
+from .timeline import TIMELINE_TYPES
+from .layouts import LAYOUT_TYPES
 
 from copy import deepcopy
 import hashlib
@@ -19,13 +22,13 @@ from .model import finite, new_layer, uid
 from .render import (
     BLENDS,
     EFFECTS,
-    CANVAS_PRESETS,
     color,
     layer_image,
     resolve_layout,
     text_metrics,
 )
 
+COLOR_TYPES = ("palette-generate",)
 ALIASES = {
     "set_opacity": "opacity",
     "set_blend": "blend",
@@ -36,7 +39,7 @@ ALIASES = {
     "make_selection": "select",
 }
 
-OPERATION_TYPES = list(DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_TYPES) + [
+OPERATION_TYPES = list(DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_TYPES + BRUSH_TYPES + TIMELINE_TYPES + LAYOUT_TYPES + COLOR_TYPES) + [
     "add",
     "solid",
     "gradient",
@@ -231,6 +234,28 @@ def execute(project, op):
 
         execute_animation(project, op)
         return
+    if kind in BRUSH_TYPES:
+        from .brushes import execute_brush
+
+        execute_brush(project, op)
+        return
+    if kind in TIMELINE_TYPES:
+        from .timeline import execute_timeline
+
+        execute_timeline(project, op)
+        return
+    if kind in LAYOUT_TYPES:
+        from .layouts import execute_layout
+
+        execute_layout(project, op)
+        return
+    if kind == "palette-generate":
+        from .colors import generate_swatches
+        from .design import resolve_color as resolve
+
+        resolved = {**op, "color": resolve(op["color"], project.state)}
+        project.state.setdefault("swatches", {}).update(generate_swatches(resolved))
+        return
     from .design import execute_design, resolve_color
 
     if kind in DESIGN_TYPES:
@@ -304,17 +329,29 @@ def execute(project, op):
         return
     if kind == "canvas":
         c = project.state["canvas"]
-        w, h = (
-            CANVAS_PRESETS[op["preset"]]
-            if op.get("preset") in CANVAS_PRESETS
-            else (op.get("width", c["width"]), op.get("height", c["height"]))
-        )
-        if "preset" in op:
-            require(op["preset"] in CANVAS_PRESETS, "Unknown canvas preset")
-        project.limits.size(w, h)
-        background = op.get("background", c["background"])
-        color(resolve_color(background, project.state))
-        c.update(width=w, height=h, background=background)
+        if "size" in op or "preset" in op:
+            from .sizes import apply_size
+
+            require(not ("width" in op or "height" in op), "Use either a named size or width/height")
+            apply_size(project, op)
+            w, h = c["width"], c["height"]
+        else:
+            require(not any(k in op for k in ("orientation", "bleed")), "orientation and bleed need a named size")
+            w, h = op.get("width", c["width"]), op.get("height", c["height"])
+            project.limits.size(w, h)
+            background = op.get("background", c["background"])
+            color(resolve_color(background, project.state))
+            if (w, h) != (c["width"], c["height"]):
+                # A custom size no longer matches the named size's trim, bleed and safe area.
+                for key in ("size", "bleed", "safe", "physical"):
+                    c.pop(key, None)
+                from .sizes import replace_generated_guides
+
+                replace_generated_guides(project.state, {})
+            c.update(width=w, height=h, background=background)
+        if "dpi" in op:
+            finite(op["dpi"], "dpi", 36, 2400)
+            c["dpi"] = op["dpi"]
         if project.state["selection"]:
             old = selection_image(project)
             mask = Image.new("L", (w, h))
@@ -352,6 +389,9 @@ def execute(project, op):
                 board["targets"] = [ident for ident in board["targets"] if ident not in removed]
         if project.state["active_layer"] in removed:
             project.state["active_layer"] = layers[-1]["id"] if layers else None
+        from .timeline import prune_targets
+
+        prune_targets(project.state, removed)
     elif kind == "rename":
         layer["name"] = unique_name(project, op["name"])
     elif kind == "duplicate":

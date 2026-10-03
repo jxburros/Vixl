@@ -99,14 +99,22 @@ def scaled_project(project, s):
     return candidate
 
 
-def render_preview(project, max_width, max_height, *, variables=None, artboard=None, comp=None, region=None):
+def render_preview(
+    project, max_width, max_height, *, variables=None, artboard=None, comp=None, region=None, time=None, proof=False, simulate=None
+):
     """Render at roughly the preview size. ``region`` [x, y, w, h] (document pixels) zooms in;
-    zoomed regions may be enlarged up to 8x so small details stay legible."""
+    zoomed regions may be enlarged up to 8x so small details stay legible. ``time`` previews a
+    timeline frame; ``proof`` soft-proofs CMYK; ``simulate`` previews color-vision deficiency."""
     from PIL import Image
 
     from .design_render import artboard_project
     from .errors import require
 
+    if time is not None:
+        from .timeline import default_timeline, parse_time, project_at
+
+        timeline = project.state.get("timeline") or default_timeline()
+        project = project_at(project, parse_time(time, timeline["duration"], timeline.get("markers")))
     candidate = artboard_project(project, artboard, comp, variables)
     c = candidate.state["canvas"]
     if region is not None:
@@ -131,7 +139,14 @@ def render_preview(project, max_width, max_height, *, variables=None, artboard=N
     target = (max(1, min(max_width, round(w * fit))), max(1, min(max_height, round(h * fit))))
     if region is not None and fit > 1:
         target = (max(1, round(w * min(fit, 8))), max(1, round(h * min(fit, 8))))
-        return image.resize(target, Image.Resampling.LANCZOS)
-    if image.size != target and (image.width > target[0] or image.height > target[1]):
         image = image.resize(target, Image.Resampling.LANCZOS)
+    elif image.size != target and (image.width > target[0] or image.height > target[1]):
+        image = image.resize(target, Image.Resampling.LANCZOS)
+    if proof or simulate:
+        from . import colors
+
+        if simulate:
+            image = colors.simulate_vision(image, simulate)
+        if proof:
+            image = colors.proof_image(image, ink_limit=None if proof is True else proof / 100)
     return image

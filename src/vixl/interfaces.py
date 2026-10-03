@@ -108,14 +108,21 @@ class Session:
                 self._remember(resolved, project, stamp)
             return self.summary(project)
 
-    def create(self, path, width, height, background="transparent"):
+    def create(self, path, width=None, height=None, background="transparent", *, size=None, dpi=None, orientation=None, bleed=False):
         with self._mutex:
             resolved = self.resolve(path)
             require(resolved.suffix.lower() == ".vixl", "Document path must end in .vixl", field="path")
             require(resolved.parent.is_dir(), "Destination directory must exist", field="path")
+            require((size is None) != (width is None or height is None), "Provide width and height, or a named size", field="size")
             with file_lock(str(resolved)):
                 require(not resolved.exists(), "Destination already exists; open it instead", field="path")
-                project = Project(width, height, background, limits=self.limits)
+                if size is not None:
+                    project = Project.sized(size, background, limits=self.limits, dpi=dpi, orientation=orientation, bleed=bleed)
+                else:
+                    require(not (orientation or bleed), "orientation and bleed need a named size", field="size")
+                    project = Project(width, height, background, limits=self.limits)
+                    if dpi:
+                        project.apply({"type": "canvas", "dpi": dpi})
                 project.save(resolved)
                 self._remember(resolved, project, self.stamp(resolved))
             return self.summary(project)

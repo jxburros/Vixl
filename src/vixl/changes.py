@@ -20,9 +20,20 @@ def compact_changes(before, after):
         "symbols",
         "design_guidance",
         "fonts",
+        "brushes",
     ):
         if before.get(key) != after.get(key):
             changes[key] = after.get(key)
+    if before.get("layout") != after.get("layout") and after.get("layout"):
+        changes["layout"] = {k: v for k, v in after["layout"].items() if k != "layers"}
+    if before.get("timeline") != after.get("timeline"):
+        timeline = after.get("timeline") or {}
+        changes["timeline"] = {
+            "duration": timeline.get("duration"),
+            "fps": timeline.get("fps"),
+            "tracks": [f"{t['target']}.{t['property']} ({len(t['keys'])} keys)" for t in timeline.get("tracks", [])],
+            **({"markers": timeline["markers"]} if timeline.get("markers") else {}),
+        }
     if before.get("animation") != after.get("animation"):
         previous = {f["name"]: f for f in before.get("animation", {}).get("frames", [])}
         current = {f["name"]: f for f in after.get("animation", {}).get("frames", [])}
@@ -47,6 +58,10 @@ def compact_changes(before, after):
                 for key in [*new[ident], *(k for k in old[ident] if k not in new[ident])]
                 if old[ident].get(key) != new[ident].get(key)
             }
+            if "strokes" in delta:
+                # Stroke points can be long; report counts and the newest stroke's brush.
+                strokes = delta.pop("strokes") or []
+                delta["strokes"] = {"count": len(strokes), **({"last": _stroke(strokes[-1])} if strokes else {})}
             if delta:
                 layers[ident] = delta
     if layers:
@@ -55,6 +70,16 @@ def compact_changes(before, after):
     if [ident for ident in new if ident in old] != survivors:
         changes["layer_order"] = list(new)
     return changes
+
+
+def _stroke(stroke):
+    return {
+        "brush": stroke["brush"],
+        "points": len(stroke["points"]),
+        "size": stroke["size"],
+        "color": stroke.get("color", "black"),
+        **({"mode": stroke["mode"]} if stroke.get("mode", "paint") != "paint" else {}),
+    }
 
 
 def _brief(layer):
@@ -68,6 +93,8 @@ def _brief(layer):
         result["size"] = layer.get("size")
     if layer["type"] == "shape":
         result["shape"] = layer.get("shape")
+    if layer["type"] == "paint":
+        result["strokes"] = len(layer.get("strokes", []))
     for key in ("color", "fill"):
         if key in layer:
             result[key] = layer[key]
@@ -103,7 +130,12 @@ def summarize(project, target=None):
         return {"id": ident, **_brief(layer)}
     canvas = state["canvas"]
     result = {
-        "canvas": {"width": canvas["width"], "height": canvas["height"], "background": canvas["background"]},
+        "canvas": {
+            "width": canvas["width"],
+            "height": canvas["height"],
+            "background": canvas["background"],
+            **{k: canvas[k] for k in ("size", "dpi", "bleed", "safe") if k in canvas},
+        },
         "active_layer": state["active_layer"],
         "head": state["head"],
         "layers": [{"id": layer["id"], **_brief(layer)} for layer in state["layers"]],
@@ -116,6 +148,11 @@ def summarize(project, target=None):
             result[key] = sorted(state[key])
     if state.get("selection"):
         result["selection"] = True
+    if state.get("timeline", {}).get("tracks"):
+        timeline = state["timeline"]
+        result["timeline"] = {"duration": timeline["duration"], "fps": timeline["fps"], "tracks": len(timeline["tracks"])}
+    if state.get("brushes"):
+        result["brushes"] = sorted(state["brushes"])
     if state.get("animation", {}).get("frames"):
         result["animation_frames"] = [frame["name"] for frame in state["animation"]["frames"]]
     if state["transaction"]:

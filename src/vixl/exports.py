@@ -2,6 +2,7 @@
 
 import csv
 import io
+import json
 from pathlib import Path
 
 from .assets import add_encoded, read_bounded
@@ -82,3 +83,68 @@ def render_data(project, csv_path, directory, *, variables=None, **options):
             with path.open("xb") as stream:
                 stream.write((Path(staging) / f"{i}.png").read_bytes())
     return [{"row": i + 1, "output": str(path)} for i, path in enumerate(destinations)]
+
+
+ICON_SETS = {
+    "web": [
+        ("favicon-16x16.png", 16),
+        ("favicon-32x32.png", 32),
+        ("favicon-48x48.png", 48),
+        ("apple-touch-icon.png", 180),
+        ("android-chrome-192x192.png", 192),
+        ("android-chrome-512x512.png", 512),
+    ],
+    "apple": [(f"apple-icon-{size}.png", size) for size in (20, 29, 40, 58, 60, 76, 80, 87, 120, 152, 167, 180, 1024)],
+    "android": [
+        ("mipmap-mdpi.png", 48),
+        ("mipmap-hdpi.png", 72),
+        ("mipmap-xhdpi.png", 96),
+        ("mipmap-xxhdpi.png", 144),
+        ("mipmap-xxxhdpi.png", 192),
+        ("play-store-512.png", 512),
+    ],
+    "windows": [(f"windows-tile-{size}.png", size) for size in (44, 71, 150, 310)],
+}
+
+
+def export_icons(project, directory, *, icon_set="web", sampling="smooth"):
+    """Render once, then write a standard icon set (PNG sizes, ICO and a web manifest)."""
+    from PIL import Image
+
+    require(icon_set in (*ICON_SETS, "all"), "Icon set must be web, apple, android, windows or all")
+    require(sampling in ("smooth", "nearest"), "Sampling must be smooth or nearest")
+    entries = [item for name in (ICON_SETS if icon_set == "all" else [icon_set]) for item in ICON_SETS[name]]
+    root = Path(directory)
+    extras = ["favicon.ico", "site.webmanifest"] if icon_set in ("web", "all") else []
+    if icon_set == "windows":
+        extras = ["favicon.ico"]
+    names = [name for name, _ in entries] + extras
+    require(not any((root / name).exists() for name in names), "Icon output already exists; choose an empty folder")
+    image = project.render()
+    side = max(image.size)
+    square = Image.new("RGBA", (side, side))
+    square.alpha_composite(image, ((side - image.width) // 2, (side - image.height) // 2))
+    resample = Image.Resampling.NEAREST if sampling == "nearest" else Image.Resampling.LANCZOS
+    files = {}
+    for name, size in entries:
+        stream = io.BytesIO()
+        square.resize((size, size), resample).save(stream, format="PNG")
+        files[name] = stream.getvalue()
+    if "favicon.ico" in extras:
+        stream = io.BytesIO()
+        sizes = [(s, s) for s in (16, 24, 32, 48, 64, 128, 256) if s <= side]
+        square.resize((min(side, 256), min(side, 256)), resample).save(stream, format="ICO", sizes=sizes or [(16, 16)])
+        files["favicon.ico"] = stream.getvalue()
+    if "site.webmanifest" in extras:
+        manifest = {
+            "icons": [
+                {"src": "/android-chrome-192x192.png", "sizes": "192x192", "type": "image/png"},
+                {"src": "/android-chrome-512x512.png", "sizes": "512x512", "type": "image/png"},
+            ]
+        }
+        files["site.webmanifest"] = json.dumps(manifest, indent=2).encode()
+    root.mkdir(parents=True, exist_ok=True)
+    for name, data in files.items():
+        with (root / name).open("xb") as stream:
+            stream.write(data)
+    return {"directory": str(root), "files": sorted(files), "source_size": side}
