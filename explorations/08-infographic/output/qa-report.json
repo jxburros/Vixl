@@ -1,0 +1,4289 @@
+{
+  "world": {
+    "kpi_cards": {
+      "axis": "horizontal",
+      "scope": "lyr_ec2cc2756c334f00",
+      "gaps": [
+        {
+          "from": "lyr_2087399128d84b3f",
+          "from_name": "kpi0",
+          "to": "lyr_8ad62e46dbf643d7",
+          "to_name": "kpi1",
+          "pixels": 32,
+          "overlap": false,
+          "cross_axis_overlap": 236
+        },
+        {
+          "from": "lyr_8ad62e46dbf643d7",
+          "from_name": "kpi1",
+          "to": "lyr_a7dcd9b89519412a",
+          "to_name": "kpi2",
+          "pixels": 32,
+          "overlap": false,
+          "cross_axis_overlap": 236
+        }
+      ],
+      "minimum": 32,
+      "maximum": 32,
+      "spread": 0,
+      "mean": 32.0,
+      "tolerance": 1,
+      "expected": 32,
+      "equal": true,
+      "matches_expected": true,
+      "passed": true,
+      "intent": "expected-gap",
+      "bounds_basis": "geometry; excludes shadows and glows"
+    },
+    "bars": {
+      "axis": "vertical",
+      "scope": "lyr_dc448a5e6b7c49f9",
+      "gaps": [
+        {
+          "from": "lyr_6e770a7c48ce4a76",
+          "from_name": "a-bar0",
+          "to": "lyr_f79d8fbaa3924450",
+          "to_name": "a-bar1",
+          "pixels": 18,
+          "overlap": false,
+          "cross_axis_overlap": 867
+        },
+        {
+          "from": "lyr_f79d8fbaa3924450",
+          "from_name": "a-bar1",
+          "to": "lyr_44f165b5ec3549ec",
+          "to_name": "a-bar2",
+          "pixels": 18,
+          "overlap": false,
+          "cross_axis_overlap": 850
+        },
+        {
+          "from": "lyr_44f165b5ec3549ec",
+          "from_name": "a-bar2",
+          "to": "lyr_30a8341866e64218",
+          "to_name": "a-bar3",
+          "pixels": 18,
+          "overlap": false,
+          "cross_axis_overlap": 822
+        },
+        {
+          "from": "lyr_30a8341866e64218",
+          "from_name": "a-bar3",
+          "to": "lyr_3ddddf8561804535",
+          "to_name": "a-bar4",
+          "pixels": 18,
+          "overlap": false,
+          "cross_axis_overlap": 697
+        },
+        {
+          "from": "lyr_3ddddf8561804535",
+          "from_name": "a-bar4",
+          "to": "lyr_ac97f0c077d44a58",
+          "to_name": "a-bar5",
+          "pixels": 18,
+          "overlap": false,
+          "cross_axis_overlap": 548
+        },
+        {
+          "from": "lyr_ac97f0c077d44a58",
+          "from_name": "a-bar5",
+          "to": "lyr_887184a3ac3b4681",
+          "to_name": "a-bar6",
+          "pixels": 18,
+          "overlap": false,
+          "cross_axis_overlap": 535
+        },
+        {
+          "from": "lyr_887184a3ac3b4681",
+          "from_name": "a-bar6",
+          "to": "lyr_5550569bce914303",
+          "to_name": "a-bar7",
+          "pixels": 18,
+          "overlap": false,
+          "cross_axis_overlap": 487
+        },
+        {
+          "from": "lyr_5550569bce914303",
+          "from_name": "a-bar7",
+          "to": "lyr_002ed0d1f8d343bf",
+          "to_name": "a-bar8",
+          "pixels": 18,
+          "overlap": false,
+          "cross_axis_overlap": 354
+        },
+        {
+          "from": "lyr_002ed0d1f8d343bf",
+          "from_name": "a-bar8",
+          "to": "lyr_a28195da1249406f",
+          "to_name": "a-bar9",
+          "pixels": 18,
+          "overlap": false,
+          "cross_axis_overlap": 252
+        },
+        {
+          "from": "lyr_a28195da1249406f",
+          "from_name": "a-bar9",
+          "to": "lyr_be4bad3106764f0e",
+          "to_name": "a-bar10",
+          "pixels": 18,
+          "overlap": false,
+          "cross_axis_overlap": 245
+        },
+        {
+          "from": "lyr_be4bad3106764f0e",
+          "from_name": "a-bar10",
+          "to": "lyr_af0dbf7002684266",
+          "to_name": "a-bar11",
+          "pixels": 18,
+          "overlap": false,
+          "cross_axis_overlap": 234
+        }
+      ],
+      "minimum": 18,
+      "maximum": 18,
+      "spread": 0,
+      "mean": 18.0,
+      "tolerance": 0,
+      "expected": 18,
+      "equal": true,
+      "matches_expected": true,
+      "passed": true,
+      "intent": "expected-gap",
+      "bounds_basis": "geometry; excludes shadows and glows"
+    },
+    "donut_legend": {
+      "axis": "vertical",
+      "scope": "lyr_af93c1b25dcc4b52",
+      "gaps": [
+        {
+          "from": "lyr_c49461f9859a408a",
+          "from_name": "c-lg0",
+          "to": "lyr_30b57c0604f148b7",
+          "to_name": "c-lg1",
+          "pixels": 18,
+          "overlap": false,
+          "cross_axis_overlap": 83
+        },
+        {
+          "from": "lyr_30b57c0604f148b7",
+          "from_name": "c-lg1",
+          "to": "lyr_a8c95da927df4bd2",
+          "to_name": "c-lg2",
+          "pixels": 18,
+          "overlap": false,
+          "cross_axis_overlap": 83
+        },
+        {
+          "from": "lyr_a8c95da927df4bd2",
+          "from_name": "c-lg2",
+          "to": "lyr_bc40ab35a1244cab",
+          "to_name": "c-lg3",
+          "pixels": 18,
+          "overlap": false,
+          "cross_axis_overlap": 93
+        },
+        {
+          "from": "lyr_bc40ab35a1244cab",
+          "from_name": "c-lg3",
+          "to": "lyr_a9300dea05f54771",
+          "to_name": "c-lg4",
+          "pixels": 18,
+          "overlap": false,
+          "cross_axis_overlap": 90
+        },
+        {
+          "from": "lyr_a9300dea05f54771",
+          "from_name": "c-lg4",
+          "to": "lyr_2c1701dd28df4279",
+          "to_name": "c-lg5",
+          "pixels": 18,
+          "overlap": false,
+          "cross_axis_overlap": 90
+        }
+      ],
+      "minimum": 18,
+      "maximum": 18,
+      "spread": 0,
+      "mean": 18.0,
+      "tolerance": 0,
+      "expected": 18,
+      "equal": true,
+      "matches_expected": true,
+      "passed": true,
+      "intent": "expected-gap",
+      "bounds_basis": "geometry; excludes shadows and glows"
+    },
+    "axis_labels": {
+      "axis": "horizontal",
+      "scope": "canvas",
+      "gaps": [
+        {
+          "from": "lyr_161999da25ef4501",
+          "from_name": "b-x0",
+          "to": "lyr_9687e64d39454311",
+          "to_name": "b-x1",
+          "pixels": 81,
+          "overlap": false,
+          "cross_axis_overlap": 12
+        },
+        {
+          "from": "lyr_9687e64d39454311",
+          "from_name": "b-x1",
+          "to": "lyr_a120c90a208b4ccf",
+          "to_name": "b-x2",
+          "pixels": 82,
+          "overlap": false,
+          "cross_axis_overlap": 12
+        },
+        {
+          "from": "lyr_a120c90a208b4ccf",
+          "from_name": "b-x2",
+          "to": "lyr_cd0f19291a7c47b2",
+          "to_name": "b-x3",
+          "pixels": 81,
+          "overlap": false,
+          "cross_axis_overlap": 12
+        },
+        {
+          "from": "lyr_cd0f19291a7c47b2",
+          "from_name": "b-x3",
+          "to": "lyr_cf3252e4e5e44a10",
+          "to_name": "b-x4",
+          "pixels": 82,
+          "overlap": false,
+          "cross_axis_overlap": 12
+        },
+        {
+          "from": "lyr_cf3252e4e5e44a10",
+          "from_name": "b-x4",
+          "to": "lyr_3c3e91d690a141c0",
+          "to_name": "b-x5",
+          "pixels": 81,
+          "overlap": false,
+          "cross_axis_overlap": 12
+        },
+        {
+          "from": "lyr_3c3e91d690a141c0",
+          "from_name": "b-x5",
+          "to": "lyr_f75e2762fa4549a6",
+          "to_name": "b-x6",
+          "pixels": 81,
+          "overlap": false,
+          "cross_axis_overlap": 12
+        },
+        {
+          "from": "lyr_f75e2762fa4549a6",
+          "from_name": "b-x6",
+          "to": "lyr_ba8dc98f8e6c4805",
+          "to_name": "b-x7",
+          "pixels": 82,
+          "overlap": false,
+          "cross_axis_overlap": 12
+        },
+        {
+          "from": "lyr_ba8dc98f8e6c4805",
+          "from_name": "b-x7",
+          "to": "lyr_460a136810ce4e59",
+          "to_name": "b-x8",
+          "pixels": 81,
+          "overlap": false,
+          "cross_axis_overlap": 12
+        },
+        {
+          "from": "lyr_460a136810ce4e59",
+          "from_name": "b-x8",
+          "to": "lyr_68b78371a88d4911",
+          "to_name": "b-x9",
+          "pixels": 82,
+          "overlap": false,
+          "cross_axis_overlap": 12
+        },
+        {
+          "from": "lyr_68b78371a88d4911",
+          "from_name": "b-x9",
+          "to": "lyr_35bbb596e34e40be",
+          "to_name": "b-x10",
+          "pixels": 81,
+          "overlap": false,
+          "cross_axis_overlap": 12
+        }
+      ],
+      "minimum": 81,
+      "maximum": 82,
+      "spread": 1,
+      "mean": 81.4,
+      "tolerance": 12,
+      "expected": null,
+      "equal": true,
+      "matches_expected": null,
+      "passed": true,
+      "intent": "equal-gaps",
+      "bounds_basis": "geometry; excludes shadows and glows"
+    },
+    "section_c_heads": {
+      "axis": "horizontal",
+      "scope": "canvas",
+      "gaps": [
+        {
+          "from": "lyr_45b0d33c798a458f",
+          "from_name": "c-title",
+          "to": "lyr_00903470f1954a00",
+          "to_name": "d-title",
+          "pixels": 306,
+          "overlap": false,
+          "cross_axis_overlap": 48
+        }
+      ],
+      "minimum": 306,
+      "maximum": 306,
+      "spread": 0,
+      "mean": 306.0,
+      "tolerance": 1,
+      "expected": null,
+      "equal": null,
+      "matches_expected": null,
+      "passed": true,
+      "intent": "equal-gaps",
+      "bounds_basis": "geometry; excludes shadows and glows"
+    },
+    "validate": {
+      "valid": false,
+      "checks": [
+        {
+          "rule": "RGBA8 document",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.night-band.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.sun.bounds within canvas",
+          "passed": false,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.ray.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.rays.bounds within canvas",
+          "passed": false,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.eyebrow.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "eyebrow font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.title.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "title font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.deck.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "deck font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.kpi0-card.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.kpi0-bar.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.kpi0-num.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "kpi0-num font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.kpi0-cap.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "kpi0-cap font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.kpi0.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.kpi1-card.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.kpi1-bar.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.kpi1-num.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "kpi1-num font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.kpi1-cap.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "kpi1-cap font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.kpi1.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.kpi2-card.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.kpi2-bar.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.kpi2-num.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "kpi2-num font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.kpi2-cap.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "kpi2-cap font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.kpi2.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.kpis.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-rule.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-num.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-num font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-title.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-title font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-sub.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-sub font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.lg-a-bar.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.lg-a-bar-t.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "lg-a-bar-t font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.lg-a-tick.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.lg-a-tick-t.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "lg-a-tick-t font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.legend-a.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-frame.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-grid.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-bar0.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-bar1.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-bar2.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-bar3.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-bar4.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-bar5.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-bar6.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-bar7.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-bar8.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-bar9.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-bar10.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-bar11.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-plot.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-tick0.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-tick1.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-tick2.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-tick3.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-tick4.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-tick5.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-tick6.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-tick7.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-tick8.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-tick9.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-tick10.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-tick11.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-ticks.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-name0.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-name0 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-val0.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-val0 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-name1.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-name1 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-val1.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-val1 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-name2.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-name2 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-val2.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-val2 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-name3.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-name3 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-val3.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-val3 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-name4.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-name4 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-val4.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-val4 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-name5.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-name5 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-val5.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-val5 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-name6.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-name6 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-val6.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-val6 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-name7.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-name7 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-val7.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-val7 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-name8.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-name8 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-val8.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-val8 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-name9.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-name9 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-val9.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-val9 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-name10.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-name10 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-val10.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-val10 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-name11.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-name11 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-val11.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-val11 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-ax0.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-ax0 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-ax1.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-ax1 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-ax2.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-ax2 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-ax3.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-ax3 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-ax4.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-ax4 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-ref.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-ref-t.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-ref-t font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.b-rule.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.b-num.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "b-num font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.b-title.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "b-title font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.b-sub.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "b-sub font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.b-grid.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.b-base.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.b-yl0.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "b-yl0 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.b-yl1.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "b-yl1 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.b-yl2.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "b-yl2 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.b-yl3.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "b-yl3 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.b-yl4.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "b-yl4 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.b-x0.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "b-x0 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.b-x1.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "b-x1 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.b-x2.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "b-x2 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.b-x3.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "b-x3 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.b-x4.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "b-x4 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.b-x5.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "b-x5 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.b-x6.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "b-x6 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.b-x7.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "b-x7 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.b-x8.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "b-x8 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.b-x9.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "b-x9 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.b-x10.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "b-x10 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.b-area.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.b-area2.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.b-line.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.b-line2.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.b-plot.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.b-end.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.b-end-v.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "b-end-v font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.b-end-t.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "b-end-t font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.b-end2.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.b-end2-v.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "b-end2-v font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.b-end2-t.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "b-end2-t font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.b-n0-dot.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.b-n0-lead.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.b-n0-t.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "b-n0-t font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.b-n1-dot.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.b-n1-lead.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.b-n1-t.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "b-n1-t font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.c-rule.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.c-num.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "c-num font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.c-title.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "c-title font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.c-sub.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "c-sub font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.d-rule.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.d-num.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "d-num font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.d-title.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "d-title font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.d-sub.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "d-sub font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.c-seg0.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.c-seg1.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.c-seg2.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.c-seg3.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.c-seg4.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.c-seg5.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.c-donut.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.c-center.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "c-center font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.c-center-t.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "c-center-t font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.c-lg0-sw.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.c-lg0-l.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "c-lg0-l font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.c-lg0-v.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "c-lg0-v font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.c-lg0.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.c-lg1-sw.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.c-lg1-l.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "c-lg1-l font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.c-lg1-v.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "c-lg1-v font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.c-lg1.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.c-lg2-sw.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.c-lg2-l.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "c-lg2-l font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.c-lg2-v.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "c-lg2-v font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.c-lg2.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.c-lg3-sw.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.c-lg3-l.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "c-lg3-l font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.c-lg3-v.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "c-lg3-v font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.c-lg3.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.c-lg4-sw.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.c-lg4-l.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "c-lg4-l font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.c-lg4-v.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "c-lg4-v font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.c-lg4.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.c-lg5-sw.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.c-lg5-l.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "c-lg5-l font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.c-lg5-v.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "c-lg5-v font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.c-lg5.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.c-legend.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.donut-block.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.d-r0-0.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.d-r0-9.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.d-r1-0.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.d-r1-9.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.d-r2-0.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.d-r3-0.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.d-r3-3.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.d-r3-5.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.d-r4-0.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.d-r4-4.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.d-r5-0.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.d-r6-0.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.d-r7-0.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.d-r8-0.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.d-r9-0.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.d-grid.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.d-note.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "d-note font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.f-rule.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.f-note.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "f-note font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.f-method.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "f-method font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.f-brand.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "f-brand font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.f-palette.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "f-palette font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.s-eyebrow.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "s-eyebrow font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.s-title.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "s-title font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.s-foot.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "s-foot font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "canvas.width == 1600",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "canvas.height == 4310",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "text.f-note.font-size >= 14",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.kpis.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-plot.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.b-plot.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.donut-block.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.d-grid.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.f-palette.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.legend-a.exists",
+          "passed": true,
+          "severity": "error"
+        }
+      ]
+    },
+    "validate_excluding_bleed": true,
+    "font_size_style_mismatch": {
+      "style_size": 150,
+      "layer_size": 48,
+      "assert text.title.font-size >= 120": false
+    },
+    "check": {
+      "passed": true,
+      "errors": 0,
+      "warnings": 7,
+      "issues": [
+        {
+          "check": "bounds",
+          "severity": "warning",
+          "layers": [
+            "sun"
+          ],
+          "message": "'sun' is cut off by the canvas edge",
+          "bounds": [
+            980,
+            -260,
+            760,
+            760
+          ]
+        },
+        {
+          "check": "bounds",
+          "severity": "warning",
+          "layers": [
+            "ray"
+          ],
+          "message": "'ray' is cut off by the canvas edge",
+          "bounds": [
+            960,
+            -240,
+            800,
+            744
+          ]
+        },
+        {
+          "check": "bounds",
+          "severity": "warning",
+          "layers": [
+            "rays"
+          ],
+          "message": "'rays' is cut off by the canvas edge",
+          "bounds": [
+            960,
+            -240,
+            800,
+            744
+          ]
+        },
+        {
+          "check": "safe_area",
+          "severity": "warning",
+          "layers": [
+            "night-band"
+          ],
+          "message": "'night-band' extends outside the safe area",
+          "bounds": [
+            0,
+            0,
+            1600,
+            1080
+          ],
+          "safe_area": [
+            64,
+            64,
+            1472,
+            4182
+          ]
+        },
+        {
+          "check": "safe_area",
+          "severity": "warning",
+          "layers": [
+            "sun"
+          ],
+          "message": "'sun' extends outside the safe area",
+          "bounds": [
+            980,
+            -260,
+            760,
+            760
+          ],
+          "safe_area": [
+            64,
+            64,
+            1472,
+            4182
+          ]
+        },
+        {
+          "check": "safe_area",
+          "severity": "warning",
+          "layers": [
+            "ray"
+          ],
+          "message": "'ray' extends outside the safe area",
+          "bounds": [
+            960,
+            -240,
+            800,
+            744
+          ],
+          "safe_area": [
+            64,
+            64,
+            1472,
+            4182
+          ]
+        },
+        {
+          "check": "safe_area",
+          "severity": "warning",
+          "layers": [
+            "rays"
+          ],
+          "message": "'rays' extends outside the safe area",
+          "bounds": [
+            960,
+            -240,
+            800,
+            744
+          ],
+          "safe_area": [
+            64,
+            64,
+            1472,
+            4182
+          ]
+        }
+      ],
+      "checked": {
+        "checks": [
+          "bounds",
+          "overlap",
+          "safe_area",
+          "legibility",
+          "color_vision"
+        ],
+        "layers": 195,
+        "text_layers": 94
+      }
+    },
+    "check_contrast": {
+      "passed": true,
+      "errors": 0,
+      "warnings": 0,
+      "issues": [],
+      "checked": {
+        "checks": [
+          "contrast"
+        ],
+        "layers": 12,
+        "text_layers": 12
+      }
+    },
+    "check_social": {
+      "passed": true,
+      "errors": 0,
+      "warnings": 0,
+      "issues": [],
+      "checked": {
+        "checks": [
+          "bounds",
+          "overlap",
+          "color_vision"
+        ],
+        "layers": 38,
+        "text_layers": 17
+      }
+    },
+    "timings": {
+      "check_without_contrast": 6.3,
+      "contrast_subset": 141.2,
+      "check_social": 2.0
+    },
+    "spacing_social": {
+      "axis": "vertical",
+      "scope": "canvas",
+      "gaps": [
+        {
+          "from": "lyr_5d0e82f5791f44df",
+          "from_name": "s-eyebrow",
+          "to": "lyr_cc4e20d264e84c43",
+          "to_name": "s-title",
+          "pixels": 18,
+          "overlap": false,
+          "cross_axis_overlap": 393
+        }
+      ],
+      "minimum": 18,
+      "maximum": 18,
+      "spread": 0,
+      "mean": 18.0,
+      "tolerance": 1,
+      "expected": null,
+      "equal": null,
+      "matches_expected": null,
+      "passed": true,
+      "intent": "equal-gaps",
+      "bounds_basis": "geometry; excludes shadows and glows"
+    }
+  },
+  "europe": {
+    "kpi_cards": {
+      "axis": "horizontal",
+      "scope": "lyr_c3424d3ddd89443b",
+      "gaps": [
+        {
+          "from": "lyr_bfb5be9ad9104c3a",
+          "from_name": "kpi0",
+          "to": "lyr_21d732d46eb44e7b",
+          "to_name": "kpi1",
+          "pixels": 32,
+          "overlap": false,
+          "cross_axis_overlap": 236
+        },
+        {
+          "from": "lyr_21d732d46eb44e7b",
+          "from_name": "kpi1",
+          "to": "lyr_92fd29053ca9455c",
+          "to_name": "kpi2",
+          "pixels": 32,
+          "overlap": false,
+          "cross_axis_overlap": 236
+        }
+      ],
+      "minimum": 32,
+      "maximum": 32,
+      "spread": 0,
+      "mean": 32.0,
+      "tolerance": 1,
+      "expected": 32,
+      "equal": true,
+      "matches_expected": true,
+      "passed": true,
+      "intent": "expected-gap",
+      "bounds_basis": "geometry; excludes shadows and glows"
+    },
+    "bars": {
+      "axis": "vertical",
+      "scope": "lyr_c8b622df33dc4fd7",
+      "gaps": [
+        {
+          "from": "lyr_0d95a09a01d048d5",
+          "from_name": "a-bar0",
+          "to": "lyr_2c44f4344eb3478e",
+          "to_name": "a-bar1",
+          "pixels": 18,
+          "overlap": false,
+          "cross_axis_overlap": 822
+        },
+        {
+          "from": "lyr_2c44f4344eb3478e",
+          "from_name": "a-bar1",
+          "to": "lyr_9d291b53f24f4f7a",
+          "to_name": "a-bar2",
+          "pixels": 18,
+          "overlap": false,
+          "cross_axis_overlap": 792
+        },
+        {
+          "from": "lyr_9d291b53f24f4f7a",
+          "from_name": "a-bar2",
+          "to": "lyr_220dfd93047844ce",
+          "to_name": "a-bar3",
+          "pixels": 18,
+          "overlap": false,
+          "cross_axis_overlap": 708
+        },
+        {
+          "from": "lyr_220dfd93047844ce",
+          "from_name": "a-bar3",
+          "to": "lyr_2a7939b78dbd4463",
+          "to_name": "a-bar4",
+          "pixels": 18,
+          "overlap": false,
+          "cross_axis_overlap": 697
+        },
+        {
+          "from": "lyr_2a7939b78dbd4463",
+          "from_name": "a-bar4",
+          "to": "lyr_6081a9f24a2f4650",
+          "to_name": "a-bar5",
+          "pixels": 18,
+          "overlap": false,
+          "cross_axis_overlap": 548
+        },
+        {
+          "from": "lyr_6081a9f24a2f4650",
+          "from_name": "a-bar5",
+          "to": "lyr_4b659eee7eb242fd",
+          "to_name": "a-bar6",
+          "pixels": 18,
+          "overlap": false,
+          "cross_axis_overlap": 535
+        },
+        {
+          "from": "lyr_4b659eee7eb242fd",
+          "from_name": "a-bar6",
+          "to": "lyr_3fb16f5b9e5a459a",
+          "to_name": "a-bar7",
+          "pixels": 18,
+          "overlap": false,
+          "cross_axis_overlap": 484
+        },
+        {
+          "from": "lyr_3fb16f5b9e5a459a",
+          "from_name": "a-bar7",
+          "to": "lyr_3ffa7d7814404dd0",
+          "to_name": "a-bar8",
+          "pixels": 18,
+          "overlap": false,
+          "cross_axis_overlap": 432
+        },
+        {
+          "from": "lyr_3ffa7d7814404dd0",
+          "from_name": "a-bar8",
+          "to": "lyr_73e3cf650b9b4a00",
+          "to_name": "a-bar9",
+          "pixels": 18,
+          "overlap": false,
+          "cross_axis_overlap": 289
+        },
+        {
+          "from": "lyr_73e3cf650b9b4a00",
+          "from_name": "a-bar9",
+          "to": "lyr_af3ae1d8fc084055",
+          "to_name": "a-bar10",
+          "pixels": 18,
+          "overlap": false,
+          "cross_axis_overlap": 281
+        }
+      ],
+      "minimum": 18,
+      "maximum": 18,
+      "spread": 0,
+      "mean": 18.0,
+      "tolerance": 0,
+      "expected": 18,
+      "equal": true,
+      "matches_expected": true,
+      "passed": true,
+      "intent": "expected-gap",
+      "bounds_basis": "geometry; excludes shadows and glows"
+    },
+    "donut_legend": {
+      "axis": "vertical",
+      "scope": "lyr_64fdc65b5167459a",
+      "gaps": [
+        {
+          "from": "lyr_6a13a804c6bb45f8",
+          "from_name": "c-lg0",
+          "to": "lyr_7fd38cb2fafa44b1",
+          "to_name": "c-lg1",
+          "pixels": 18,
+          "overlap": false,
+          "cross_axis_overlap": 92
+        },
+        {
+          "from": "lyr_7fd38cb2fafa44b1",
+          "from_name": "c-lg1",
+          "to": "lyr_acfdc9a949c14686",
+          "to_name": "c-lg2",
+          "pixels": 18,
+          "overlap": false,
+          "cross_axis_overlap": 91
+        },
+        {
+          "from": "lyr_acfdc9a949c14686",
+          "from_name": "c-lg2",
+          "to": "lyr_6b98c7a81e04434c",
+          "to_name": "c-lg3",
+          "pixels": 18,
+          "overlap": false,
+          "cross_axis_overlap": 91
+        },
+        {
+          "from": "lyr_6b98c7a81e04434c",
+          "from_name": "c-lg3",
+          "to": "lyr_1af7b9c790774031",
+          "to_name": "c-lg4",
+          "pixels": 18,
+          "overlap": false,
+          "cross_axis_overlap": 94
+        },
+        {
+          "from": "lyr_1af7b9c790774031",
+          "from_name": "c-lg4",
+          "to": "lyr_521ce378b1464c8a",
+          "to_name": "c-lg5",
+          "pixels": 18,
+          "overlap": false,
+          "cross_axis_overlap": 94
+        }
+      ],
+      "minimum": 18,
+      "maximum": 18,
+      "spread": 0,
+      "mean": 18.0,
+      "tolerance": 0,
+      "expected": 18,
+      "equal": true,
+      "matches_expected": true,
+      "passed": true,
+      "intent": "expected-gap",
+      "bounds_basis": "geometry; excludes shadows and glows"
+    },
+    "axis_labels": {
+      "axis": "horizontal",
+      "scope": "canvas",
+      "gaps": [
+        {
+          "from": "lyr_ed1143df7cfb4c02",
+          "from_name": "b-x0",
+          "to": "lyr_ac35de655d5c43ea",
+          "to_name": "b-x1",
+          "pixels": 81,
+          "overlap": false,
+          "cross_axis_overlap": 12
+        },
+        {
+          "from": "lyr_ac35de655d5c43ea",
+          "from_name": "b-x1",
+          "to": "lyr_01c15f8b79be4456",
+          "to_name": "b-x2",
+          "pixels": 82,
+          "overlap": false,
+          "cross_axis_overlap": 12
+        },
+        {
+          "from": "lyr_01c15f8b79be4456",
+          "from_name": "b-x2",
+          "to": "lyr_5d608d8343f24d00",
+          "to_name": "b-x3",
+          "pixels": 81,
+          "overlap": false,
+          "cross_axis_overlap": 12
+        },
+        {
+          "from": "lyr_5d608d8343f24d00",
+          "from_name": "b-x3",
+          "to": "lyr_b4f38912d3c44239",
+          "to_name": "b-x4",
+          "pixels": 82,
+          "overlap": false,
+          "cross_axis_overlap": 12
+        },
+        {
+          "from": "lyr_b4f38912d3c44239",
+          "from_name": "b-x4",
+          "to": "lyr_38d3dc9c8d9e4d5f",
+          "to_name": "b-x5",
+          "pixels": 81,
+          "overlap": false,
+          "cross_axis_overlap": 12
+        },
+        {
+          "from": "lyr_38d3dc9c8d9e4d5f",
+          "from_name": "b-x5",
+          "to": "lyr_f10d1b5392de4375",
+          "to_name": "b-x6",
+          "pixels": 81,
+          "overlap": false,
+          "cross_axis_overlap": 12
+        },
+        {
+          "from": "lyr_f10d1b5392de4375",
+          "from_name": "b-x6",
+          "to": "lyr_0b4f7d5b641c43ce",
+          "to_name": "b-x7",
+          "pixels": 82,
+          "overlap": false,
+          "cross_axis_overlap": 12
+        },
+        {
+          "from": "lyr_0b4f7d5b641c43ce",
+          "from_name": "b-x7",
+          "to": "lyr_2d612d3ae6034bc2",
+          "to_name": "b-x8",
+          "pixels": 81,
+          "overlap": false,
+          "cross_axis_overlap": 12
+        },
+        {
+          "from": "lyr_2d612d3ae6034bc2",
+          "from_name": "b-x8",
+          "to": "lyr_8c6c63e40bc74b3f",
+          "to_name": "b-x9",
+          "pixels": 82,
+          "overlap": false,
+          "cross_axis_overlap": 12
+        },
+        {
+          "from": "lyr_8c6c63e40bc74b3f",
+          "from_name": "b-x9",
+          "to": "lyr_7afdb82807d84eb4",
+          "to_name": "b-x10",
+          "pixels": 81,
+          "overlap": false,
+          "cross_axis_overlap": 12
+        }
+      ],
+      "minimum": 81,
+      "maximum": 82,
+      "spread": 1,
+      "mean": 81.4,
+      "tolerance": 12,
+      "expected": null,
+      "equal": true,
+      "matches_expected": null,
+      "passed": true,
+      "intent": "equal-gaps",
+      "bounds_basis": "geometry; excludes shadows and glows"
+    },
+    "section_c_heads": {
+      "axis": "horizontal",
+      "scope": "canvas",
+      "gaps": [
+        {
+          "from": "lyr_1158ec0586cf42c2",
+          "from_name": "c-title",
+          "to": "lyr_512fec9fcdf040f5",
+          "to_name": "d-title",
+          "pixels": 306,
+          "overlap": false,
+          "cross_axis_overlap": 48
+        }
+      ],
+      "minimum": 306,
+      "maximum": 306,
+      "spread": 0,
+      "mean": 306.0,
+      "tolerance": 1,
+      "expected": null,
+      "equal": null,
+      "matches_expected": null,
+      "passed": true,
+      "intent": "equal-gaps",
+      "bounds_basis": "geometry; excludes shadows and glows"
+    },
+    "validate": {
+      "valid": false,
+      "checks": [
+        {
+          "rule": "RGBA8 document",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.night-band.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.sun.bounds within canvas",
+          "passed": false,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.ray.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.rays.bounds within canvas",
+          "passed": false,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.eyebrow.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "eyebrow font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.title.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "title font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.deck.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "deck font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.kpi0-card.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.kpi0-bar.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.kpi0-num.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "kpi0-num font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.kpi0-cap.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "kpi0-cap font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.kpi0.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.kpi1-card.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.kpi1-bar.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.kpi1-num.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "kpi1-num font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.kpi1-cap.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "kpi1-cap font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.kpi1.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.kpi2-card.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.kpi2-bar.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.kpi2-num.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "kpi2-num font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.kpi2-cap.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "kpi2-cap font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.kpi2.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.kpis.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-rule.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-num.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-num font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-title.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-title font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-sub.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-sub font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.lg-a-bar.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.lg-a-bar-t.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "lg-a-bar-t font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.lg-a-tick.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.lg-a-tick-t.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "lg-a-tick-t font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.legend-a.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-frame.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-grid.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-bar0.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-bar1.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-bar2.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-bar3.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-bar4.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-bar5.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-bar6.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-bar7.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-bar8.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-bar9.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-bar10.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-plot.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-tick0.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-tick1.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-tick2.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-tick3.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-tick4.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-tick5.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-tick6.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-tick7.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-tick8.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-tick9.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-tick10.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-ticks.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-name0.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-name0 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-val0.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-val0 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-name1.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-name1 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-val1.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-val1 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-name2.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-name2 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-val2.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-val2 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-name3.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-name3 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-val3.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-val3 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-name4.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-name4 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-val4.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-val4 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-name5.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-name5 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-val5.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-val5 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-name6.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-name6 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-val6.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-val6 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-name7.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-name7 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-val7.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-val7 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-name8.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-name8 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-val8.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-val8 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-name9.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-name9 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-val9.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-val9 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-name10.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-name10 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-val10.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-val10 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-ax0.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-ax0 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-ax1.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-ax1 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-ax2.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-ax2 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-ax3.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-ax3 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-ax4.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-ax4 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.a-ref.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-ref-t.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "a-ref-t font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.b-rule.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.b-num.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "b-num font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.b-title.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "b-title font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.b-sub.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "b-sub font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.b-grid.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.b-base.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.b-yl0.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "b-yl0 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.b-yl1.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "b-yl1 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.b-yl2.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "b-yl2 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.b-yl3.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "b-yl3 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.b-yl4.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "b-yl4 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.b-x0.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "b-x0 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.b-x1.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "b-x1 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.b-x2.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "b-x2 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.b-x3.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "b-x3 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.b-x4.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "b-x4 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.b-x5.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "b-x5 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.b-x6.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "b-x6 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.b-x7.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "b-x7 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.b-x8.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "b-x8 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.b-x9.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "b-x9 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.b-x10.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "b-x10 font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.b-area.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.b-area2.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.b-line.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.b-line2.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.b-plot.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.b-end.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.b-end-v.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "b-end-v font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.b-end-t.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "b-end-t font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.b-end2.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.b-end2-v.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "b-end2-v font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.b-end2-t.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "b-end2-t font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.b-n0-dot.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.b-n0-lead.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.b-n0-t.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "b-n0-t font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.b-n1-dot.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.b-n1-lead.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.b-n1-t.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "b-n1-t font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.c-rule.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.c-num.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "c-num font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.c-title.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "c-title font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.c-sub.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "c-sub font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.d-rule.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.d-num.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "d-num font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.d-title.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "d-title font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.d-sub.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "d-sub font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.c-seg0.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.c-seg1.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.c-seg2.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.c-seg3.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.c-seg4.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.c-seg5.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.c-donut.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.c-center.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "c-center font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.c-center-t.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "c-center-t font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.c-lg0-sw.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.c-lg0-l.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "c-lg0-l font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.c-lg0-v.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "c-lg0-v font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.c-lg0.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.c-lg1-sw.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.c-lg1-l.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "c-lg1-l font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.c-lg1-v.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "c-lg1-v font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.c-lg1.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.c-lg2-sw.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.c-lg2-l.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "c-lg2-l font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.c-lg2-v.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "c-lg2-v font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.c-lg2.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.c-lg3-sw.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.c-lg3-l.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "c-lg3-l font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.c-lg3-v.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "c-lg3-v font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.c-lg3.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.c-lg4-sw.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.c-lg4-l.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "c-lg4-l font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.c-lg4-v.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "c-lg4-v font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.c-lg4.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.c-lg5-sw.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.c-lg5-l.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "c-lg5-l font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.c-lg5-v.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "c-lg5-v font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.c-lg5.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.c-legend.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.donut-block.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.d-r0-0.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.d-r1-0.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.d-r2-0.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.d-r3-0.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.d-r4-0.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.d-r4-3.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.d-r4-7.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.d-r5-0.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.d-r6-0.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.d-r6-9.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.d-r7-0.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.d-r8-0.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.d-r9-0.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.d-grid.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.d-note.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "d-note font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.f-rule.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.f-note.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "f-note font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.f-method.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "f-method font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.f-brand.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "f-brand font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.f-palette.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "f-palette font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.s-eyebrow.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "s-eyebrow font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.s-title.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "s-title font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "layer.s-foot.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "s-foot font size >= 24",
+          "passed": true,
+          "severity": "warning"
+        },
+        {
+          "rule": "canvas.width == 1600",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "canvas.height == 4258",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "text.f-note.font-size >= 14",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.kpis.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.a-plot.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.b-plot.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.donut-block.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.d-grid.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.f-palette.bounds within canvas",
+          "passed": true,
+          "severity": "error"
+        },
+        {
+          "rule": "layer.legend-a.exists",
+          "passed": true,
+          "severity": "error"
+        }
+      ]
+    },
+    "validate_excluding_bleed": true,
+    "font_size_style_mismatch": {
+      "style_size": 150,
+      "layer_size": 48,
+      "assert text.title.font-size >= 120": false
+    },
+    "check": {
+      "passed": true,
+      "errors": 0,
+      "warnings": 8,
+      "issues": [
+        {
+          "check": "bounds",
+          "severity": "warning",
+          "layers": [
+            "sun"
+          ],
+          "message": "'sun' is cut off by the canvas edge",
+          "bounds": [
+            980,
+            -260,
+            760,
+            760
+          ]
+        },
+        {
+          "check": "bounds",
+          "severity": "warning",
+          "layers": [
+            "ray"
+          ],
+          "message": "'ray' is cut off by the canvas edge",
+          "bounds": [
+            960,
+            -240,
+            800,
+            744
+          ]
+        },
+        {
+          "check": "bounds",
+          "severity": "warning",
+          "layers": [
+            "rays"
+          ],
+          "message": "'rays' is cut off by the canvas edge",
+          "bounds": [
+            960,
+            -240,
+            800,
+            744
+          ]
+        },
+        {
+          "check": "overlap",
+          "severity": "warning",
+          "layers": [
+            "a-val8",
+            "a-ref"
+          ],
+          "message": "'a-val8' and 'a-ref' overlap by 27 px (8.0% of the smaller layer)",
+          "region": [
+            915,
+            1796,
+            6,
+            14
+          ]
+        },
+        {
+          "check": "safe_area",
+          "severity": "warning",
+          "layers": [
+            "night-band"
+          ],
+          "message": "'night-band' extends outside the safe area",
+          "bounds": [
+            0,
+            0,
+            1600,
+            1080
+          ],
+          "safe_area": [
+            64,
+            64,
+            1472,
+            4130
+          ]
+        },
+        {
+          "check": "safe_area",
+          "severity": "warning",
+          "layers": [
+            "sun"
+          ],
+          "message": "'sun' extends outside the safe area",
+          "bounds": [
+            980,
+            -260,
+            760,
+            760
+          ],
+          "safe_area": [
+            64,
+            64,
+            1472,
+            4130
+          ]
+        },
+        {
+          "check": "safe_area",
+          "severity": "warning",
+          "layers": [
+            "ray"
+          ],
+          "message": "'ray' extends outside the safe area",
+          "bounds": [
+            960,
+            -240,
+            800,
+            744
+          ],
+          "safe_area": [
+            64,
+            64,
+            1472,
+            4130
+          ]
+        },
+        {
+          "check": "safe_area",
+          "severity": "warning",
+          "layers": [
+            "rays"
+          ],
+          "message": "'rays' extends outside the safe area",
+          "bounds": [
+            960,
+            -240,
+            800,
+            744
+          ],
+          "safe_area": [
+            64,
+            64,
+            1472,
+            4130
+          ]
+        }
+      ],
+      "checked": {
+        "checks": [
+          "bounds",
+          "overlap",
+          "safe_area",
+          "legibility",
+          "color_vision"
+        ],
+        "layers": 189,
+        "text_layers": 92
+      }
+    },
+    "check_contrast": {
+      "passed": true,
+      "errors": 0,
+      "warnings": 0,
+      "issues": [],
+      "checked": {
+        "checks": [
+          "contrast"
+        ],
+        "layers": 12,
+        "text_layers": 12
+      }
+    },
+    "check_social": {
+      "passed": true,
+      "errors": 0,
+      "warnings": 0,
+      "issues": [],
+      "checked": {
+        "checks": [
+          "bounds",
+          "overlap",
+          "color_vision"
+        ],
+        "layers": 38,
+        "text_layers": 17
+      }
+    },
+    "timings": {
+      "check_without_contrast": 6.2,
+      "contrast_subset": 137.2,
+      "check_social": 1.3
+    },
+    "spacing_social": {
+      "axis": "vertical",
+      "scope": "canvas",
+      "gaps": [
+        {
+          "from": "lyr_472a358e2f7d4a2a",
+          "from_name": "s-eyebrow",
+          "to": "lyr_5850fab2a2c04750",
+          "to_name": "s-title",
+          "pixels": 18,
+          "overlap": false,
+          "cross_axis_overlap": 412
+        }
+      ],
+      "minimum": 18,
+      "maximum": 18,
+      "spread": 0,
+      "mean": 18.0,
+      "tolerance": 1,
+      "expected": null,
+      "equal": null,
+      "matches_expected": null,
+      "passed": true,
+      "intent": "equal-gaps",
+      "bounds_basis": "geometry; excludes shadows and glows"
+    }
+  },
+  "exports": {
+    "svg_strict": {
+      "error": "svg_raster_required",
+      "message": "SVG requires raster content; see fallback details",
+      "fallbacks": [
+        {
+          "layer": "ray",
+          "reason": "repeat is not exported as vectors",
+          "effects": [],
+          "styles": []
+        },
+        {
+          "layer": "a-grid",
+          "reason": "repeat is not exported as vectors",
+          "effects": [],
+          "styles": []
+        },
+        {
+          "layer": "b-grid",
+          "reason": "repeat is not exported as vectors",
+          "effects": [],
+          "styles": []
+        },
+        {
+          "layer": "d-r0-0",
+          "reason": "repeat is not exported as vectors",
+          "effects": [],
+          "styles": []
+        },
+        {
+          "layer": "d-r1-0",
+          "reason": "repeat is not exported as vectors",
+          "effects": [],
+          "styles": []
+        },
+        {
+          "layer": "d-r2-0",
+          "reason": "repeat is not exported as vectors",
+          "effects": [],
+          "styles": []
+        },
+        {
+          "layer": "d-r3-0",
+          "reason": "repeat is not exported as vectors",
+          "effects": [],
+          "styles": []
+        },
+        {
+          "layer": "d-r3-3",
+          "reason": "repeat is not exported as vectors",
+          "effects": [],
+          "styles": []
+        },
+        {
+          "layer": "d-r3-5",
+          "reason": "repeat is not exported as vectors",
+          "effects": [],
+          "styles": []
+        },
+        {
+          "layer": "d-r4-0",
+          "reason": "repeat is not exported as vectors",
+          "effects": [],
+          "styles": []
+        },
+        {
+          "layer": "d-r4-4",
+          "reason": "repeat is not exported as vectors",
+          "effects": [],
+          "styles": []
+        },
+        {
+          "layer": "d-r5-0",
+          "reason": "repeat is not exported as vectors",
+          "effects": [],
+          "styles": []
+        },
+        {
+          "layer": "d-r6-0",
+          "reason": "repeat is not exported as vectors",
+          "effects": [],
+          "styles": []
+        },
+        {
+          "layer": "d-r7-0",
+          "reason": "repeat is not exported as vectors",
+          "effects": [],
+          "styles": []
+        },
+        {
+          "layer": "d-r8-0",
+          "reason": "repeat is not exported as vectors",
+          "effects": [],
+          "styles": []
+        },
+        {
+          "layer": "d-r9-0",
+          "reason": "repeat is not exported as vectors",
+          "effects": [],
+          "styles": []
+        }
+      ]
+    },
+    "svg_strict_expanded": "ok",
+    "layer_count": {
+      "repeat": 198,
+      "expanded": 330
+    }
+  },
+  "series_separation": {
+    "normal": [
+      57.5,
+      "nuclear",
+      "fossil"
+    ],
+    "deuteranopia": [
+      37.3,
+      "nuclear",
+      "fossil"
+    ],
+    "protanopia": [
+      51.5,
+      "hydro",
+      "nuclear"
+    ],
+    "tritanopia": [
+      42.2,
+      "solar",
+      "nuclear"
+    ]
+  },
+  "cli": {
+    "validate": {
+      "exit": 1,
+      "passed": false
+    },
+    "spacing_bars": {
+      "exit": 0,
+      "passed": true
+    },
+    "spacing_kpis": {
+      "exit": 0,
+      "passed": true
+    }
+  }
+}
