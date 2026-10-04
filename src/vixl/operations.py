@@ -25,6 +25,7 @@ from .render import (
     EFFECTS,
     color,
     layer_image,
+    resolve_font,
     resolve_layout,
     text_metrics,
 )
@@ -81,6 +82,14 @@ OPERATION_TYPES = list(DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_T
     "preset-save",
     "preset-apply",
 ]
+
+
+def embed_font_file(project, layer):
+    if layer["font"] not in project.assets and Path(layer["font"]).is_file():
+        data = read_bounded(layer["font"], project.limits.max_asset_bytes)
+        name = f"fonts/{hashlib.sha256(data).hexdigest()}.ttf"
+        project.assets[name] = data
+        layer["font"] = name
 
 
 def effect_valid(effect):
@@ -308,10 +317,11 @@ def execute(project, op):
             layer["direction"] = op.get("direction", "vertical")
             layer.update({k: deepcopy(op[k]) for k in ("stops", "angle") if k in op})
         else:
+            font, role = resolve_font(project, op.get("font"))
             layer.update(
                 {
                     "text": op["text"],
-                    "font": project.state.get("fonts", {}).get(op.get("font"), op.get("font", "DejaVuSans.ttf")),
+                    "font": font,
                     "size": op.get("size", 48),
                     "color": op.get("color", "white"),
                     "align": op.get("align", "left"),
@@ -319,11 +329,9 @@ def execute(project, op):
                     "auto_size": True,
                 }
             )
-            if Path(layer["font"]).is_file():
-                data = read_bounded(layer["font"], project.limits.max_asset_bytes)
-                name = f"fonts/{hashlib.sha256(data).hexdigest()}.ttf"
-                project.assets[name] = data
-                layer["font"] = name
+            if role:
+                layer["font_role"] = role
+            embed_font_file(project, layer)
             layer["width"], layer["height"], _ = text_metrics(project, layer)
             color(resolve_color(layer["color"], project.state))
         layer["x"] = finite(op.get("x", 0), "x") if op.get("x") != "center" else (c["width"] - layer["width"]) / 2
@@ -429,6 +437,12 @@ def execute(project, op):
         for key in ("text", "size", "color", "align", "spacing", "stroke_width", "stroke_color"):
             if key in op:
                 layer[key] = op[key]
+        if "font" in op:
+            layer["font"], role = resolve_font(project, op["font"])
+            layer.pop("font_role", None)
+            if role:
+                layer["font_role"] = role
+            embed_font_file(project, layer)
         require(layer["align"] in ("left", "center", "right"), "Invalid text alignment")
         finite(layer.get("spacing", 4), "spacing", 0, 1000)
         finite(layer.get("stroke_width", 0), "stroke_width", 0, 100)

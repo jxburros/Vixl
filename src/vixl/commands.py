@@ -44,7 +44,7 @@ def normalize(tokens):
     if tokens[0] == "text":
         if len(tokens) > 1 and tokens[1] == "add":
             tokens.pop(1)
-        else:
+        elif tokens[1:2] not in (["-h"], ["--help"]):
             tokens[0] = "text-set"
     return tokens
 
@@ -71,7 +71,11 @@ def compile_command(tokens):
     design = compile_design(cmd, args)
     if design is not None:
         return design
-    p = Parser(prog=f"vixl {cmd}")
+    p = Parser(
+        prog="vixl text add" if cmd == "text" else f"vixl {cmd}",
+        epilog="Edit existing text with: vixl text [TARGET] --text ... --font ... (same as vixl text-set)"
+        if cmd == "text" else None,
+    )
     op = {"type": cmd}
     if cmd == "add":
         p.add_argument("path")
@@ -82,7 +86,7 @@ def compile_command(tokens):
     elif cmd in ("solid", "gradient", "text"):
         if cmd == "text":
             p.add_argument("text")
-            p.add_argument("--font")
+            p.add_argument("--font", help="registered font name, heading, body, or a font file")
             p.add_argument("--size", type=int)
             p.add_argument("--align", choices=["left", "center", "right"])
             p.add_argument("--spacing", type=int)
@@ -105,6 +109,7 @@ def compile_command(tokens):
         p.add_argument("target", nargs="?")
         for key in ("text", "color", "align", "stroke-color"):
             p.add_argument(f"--{key}")
+        p.add_argument("--font", help="registered font name, heading, body, or a font file")
         for key in ("size", "spacing", "stroke-width"):
             p.add_argument(f"--{key}", type=int)
     elif cmd in (

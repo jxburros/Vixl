@@ -65,7 +65,7 @@ def check_design(
     targets=None,
     safe_area=None,
     avoid=None,
-    thumbnail_width=320,
+    thumbnail_width=None,
     min_thumbnail_text=10,
     min_contrast=None,
     artboard=None,
@@ -255,7 +255,21 @@ def check_design(
                         zone=[round(v, 2) for v in box],
                     )
 
-    if "legibility" in checks:
+    physical = c.get("physical") and c.get("dpi")
+    if "legibility" in checks and physical and thumbnail_width is None:
+        # Print is read at full size, not as a thumbnail: judge the printed point size.
+        for item in texts:
+            points = resolved[item["id"]].get("size", 0) * text_scales[item["id"]] * 72 / c["dpi"]
+            if points < 6:
+                issue(
+                    "legibility",
+                    "warning",
+                    f"{item['name']!r} prints at {points:.1f} pt; most print needs 6 pt or more",
+                    [item],
+                    points=round(points, 2),
+                )
+    elif "legibility" in checks:
+        thumbnail_width = 320 if thumbnail_width is None else thumbnail_width
         finite(thumbnail_width, "thumbnail_width", 16, 16384)
         scale = thumbnail_width / width
         for item in texts:

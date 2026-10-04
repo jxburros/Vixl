@@ -81,7 +81,7 @@ def _operation_schema():
             "y": COORD,
         },
     )
-    add("palette-apply", {"name": S, "prefix": S}, ["name"])
+    add("palette-apply", {"name": S, "prefix": S, "roles": B}, ["name"])
     add("template-apply", {"name": S, "variables": {"type": "object"}, "seed": {"type": ["integer", "string"]}}, ["name"])
     add("guidance", {"name": S, "text": S, "style": S, "delete": B}, ["name"])
     add("font-register", {"name": S, "asset": S, "role": S}, ["name"])
@@ -103,7 +103,7 @@ def _operation_schema():
         },
         ["text"],
     )
-    add("text-set", {**text, "stroke_width": {"type": "integer", "minimum": 0}, "stroke_color": S})
+    add("text-set", {**text, "font": S, "stroke_width": {"type": "integer", "minimum": 0}, "stroke_color": S})
     for kind in (
         "remove",
         "hide",

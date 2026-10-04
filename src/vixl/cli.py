@@ -147,6 +147,7 @@ def output_options(args, command):
     p.add_argument("--artboard")
     p.add_argument("--comp")
     p.add_argument("--data")
+    p.add_argument("--no-check", action="store_true", help="skip the per-row design check with --data")
     p.add_argument("--sampling", choices=["smooth", "nearest"], default="smooth")
     p.add_argument("--svg-policy", choices=["appearance", "strict"], default="appearance")
     p.add_argument("--color-space", "--colorspace", choices=["rgb", "cmyk"], default="rgb")
@@ -477,7 +478,9 @@ def project_command(project, cmd, args, *, detail="compact"):
             from .ai import ai_command
 
             return ai_command(project, "ai", ["describe"])
-        require(len(args) <= 1, "Expected optional layer")
+        if args[:1] == ["--target"] or (args and args[0].startswith("--target=")):
+            args = args[1:] if args[0] == "--target" else [args[0].split("=", 1)[1]]  # MCP spelling
+        require(len(args) <= 1, f"Usage: vixl {cmd} [LAYER] (or --target LAYER)")
         return project.inspect(args[0] if args else None), False
     if cmd == "layers":
         return project.inspect()["layers"], False
@@ -534,6 +537,7 @@ def project_command(project, cmd, args, *, detail="compact"):
                 sampling=a.sampling,
                 scale=float(a.scale.rstrip("x")),
                 profile=a.profile,
+                check=not a.no_check,
             ), False
         data = project.export(
             None if destination == "-" else destination,
@@ -590,7 +594,7 @@ def project_command(project, cmd, args, *, detail="compact"):
         p.add_argument(
             "--avoid", nargs=4, action="append", metavar=("X", "Y", "W", "H"), help="Reserved zone"
         )
-        p.add_argument("--thumbnail-width", type=int, default=320)
+        p.add_argument("--thumbnail-width", type=int, help="judge text at this thumbnail width (default 320; print sizes judge printed points instead)")
         p.add_argument("--min-thumbnail-text", type=float, default=10)
         p.add_argument("--min-contrast", type=float)
         for key in ("artboard", "comp"):

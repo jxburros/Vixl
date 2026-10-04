@@ -629,7 +629,7 @@ def build_server(session, *, schema="full", planner=False):
             list[list[float | str]] | None,
             Field(description="Reserved zones [x, y, w, h] (pixels or %) that content must not touch"),
         ] = None,
-        thumbnail_width: Annotated[int, Field(ge=16, le=16384)] = 320,
+        thumbnail_width: Annotated[int | None, Field(ge=16, le=16384)] = None,
         min_thumbnail_text: Annotated[float, Field(gt=0, le=200)] = 10,
         min_contrast: Annotated[float | None, Field(ge=1, le=21)] = None,
         ink_limit: Annotated[float, Field(ge=100, le=400, description="print check: total ink limit %")] = 300,

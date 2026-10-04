@@ -100,9 +100,42 @@ def font_for(project, layer):
             str(Path(__file__).parent / "data" / font) if font == "DejaVuSans.ttf" else font, size
         )
     except OSError as exc:
-        raise VixlError(
-            "missing_font", f"Font {font!r} not found; use DejaVuSans.ttf or import a font file"
-        ) from exc
+        raise missing_font(project, layer.get("font", font)) from exc
+
+
+def missing_font(project, name):
+    fonts = sorted(project.state.get("fonts", {}))
+    typography = project.state.get("typography") or {}
+    roles = [role for role in ("heading", "body") if role in typography]
+    known = ", ".join([*roles, *fonts]) if roles or fonts else "none yet"
+    return VixlError(
+        "missing_font",
+        f"Font {name!r} not found. Registered fonts: {known}. Install one with "
+        "vixl font install FAMILY --weight N or vixl font pair NAME, or import a font file; "
+        "DejaVuSans.ttf is the proofing fallback.",
+        field="font",
+        allowed=[*roles, *fonts, "DejaVuSans.ttf"],
+    )
+
+
+def resolve_font(project, name):
+    """A text layer's stored font and role for a requested font name, role or file."""
+    if name is None:
+        return "DejaVuSans.ttf", None
+    typography = project.state.get("typography") or {}
+    fonts = project.state.get("fonts", {})
+    role = None
+    if name in ("heading", "body"):
+        # A role uses the proofing fallback until the document typography sets it.
+        role, name = name, typography.get(name, "DejaVuSans.ttf")
+    font = fonts.get(name, name)
+    if font in project.assets or font == "DejaVuSans.ttf" or Path(font).is_file():
+        return font, role
+    try:
+        ImageFont.truetype(font, 12)
+    except OSError as exc:
+        raise missing_font(project, name) from exc
+    return font, role
 
 
 def text_metrics(project, layer, variables=None):

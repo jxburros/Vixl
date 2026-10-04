@@ -344,6 +344,9 @@ class Builder:
 # Color roles
 
 
+ROLES = ("background", "surface", "ink", "muted", "accent", "accent-text", "on-accent")
+
+
 def assign_roles(op, rng):
     """Background/surface/ink/muted/accent/on-accent from a palette with checked contrast."""
     from .colors import contrast_ratio, hex_of, mix, parse, relative_luminance, srgb_to_oklab, to_polar
@@ -753,26 +756,57 @@ def _product_card(b):
 
 def _event_poster(b):
     b.background()
-    y = b.T
-    _, _, _, h = b.text("headline", b.get("title"), b.L, y, b.cw, name="headline", align="left", max_height=b.ch * 0.38)
-    y += h + b.unit * 4
-    date = b.get("label")
-    if date:
-        bw = b.cw * (0.5 if b.orientation != "tall" else 0.8)
-        b.rect("date-block", b.L, y, bw, 1, "@accent")
-        block = b.ops[-1]
-        # Size the block to the text as placed (heavy type may shrink to fit), not the nominal size.
-        _, _, _, th = b.text("title", date, b.L + b.unit * 3, y + b.unit * 3, bw - b.unit * 6, name="date", color="@on-accent", align="left")
-        block["height"] = round(th + b.unit * 6)
-        y += th + b.unit * 10
-    details = [line for line in str(b.get("body")).split("\n") if line.strip()]
-    for index, line in enumerate(details[:6]):
-        _, _, _, h = b.text("lead", line, b.L, y, b.cw, name=f"detail-{index + 1}", align="left", color="@ink" if index == 0 else "@muted")
-        y += h + b.unit * 2
+    bottom = b.B - (b.sizes["body"] * 3.2 if b.get("cta") or b.get("caption") else 0)
+    ops, created = len(b.ops), len(b.created)
+    # Grow the type on large formats until the content fills the page, keeping the last fit.
+    for grow in (1.0, 1.25, 1.5, 1.8, 2.2):
+        del b.ops[ops:], b.created[created:]
+        y = _event_details(b, grow)
+        if y > bottom or y > b.T + b.ch * 0.6:
+            if y > bottom and grow > 1:
+                del b.ops[ops:], b.created[created:]
+                y = _event_details(b, previous)
+            break
+        previous = grow
+    spare = bottom - y - b.unit * 4
+    if spare > b.ch * 0.15:
+        # Headline at the top, the facts at the foot: move the date and details down together.
+        heading = next(i for i in range(ops, len(b.ops)) if b.ops[i].get("name") == b.name("headline"))
+        for op in b.ops[heading + 1:]:
+            if "y" in op:
+                op["y"] = round(op["y"] + spare)
+        y += spare
     if b.get("cta"):
         b.button(b.get("cta"), b.L, max(y + b.unit * 4, b.B - b.sizes["body"] * 2.4), align="left")
     if b.get("caption"):
         b.text("caption", b.get("caption"), b.L, b.B - b.sizes["caption"] * 1.3, b.cw, name="caption", color="@muted", align="right")
+
+
+def _event_details(b, grow):
+    def role(name, cap=None):
+        return name if grow == 1 else round(b.sizes[name] * min(grow, cap or grow))
+
+    y = b.T
+    _, _, _, h = b.text(role("headline"), b.get("title"), b.L, y, b.cw, name="headline", align="left", max_height=b.ch * 0.38, display=True)
+    y += h + b.unit * 4 * grow
+    date = b.get("label")
+    if date:
+        pad = b.unit * 3 * min(grow, 1.5)
+        bw = b.cw * (0.5 if b.orientation != "tall" else 0.8)
+        # The block widens to hold the date on one line rather than wrapping it.
+        size = round(b.sizes["title"] * grow)
+        bw = min(b.cw, max(bw, b.measure(date, size, None, round(size * 0.1), "left", b.display_font)[0] + pad * 2 + size * 0.3))
+        b.rect("date-block", b.L, y, bw, 1, "@accent")
+        block = b.ops[-1]
+        # Size the block to the text as placed (heavy type may shrink to fit), not the nominal size.
+        _, _, _, th = b.text(role("title"), date, b.L + pad, y + pad, bw - pad * 2, name="date", color="@on-accent", align="left", display=True)
+        block["height"] = round(th + pad * 2)
+        y += th + pad * 2 + b.unit * 4 * grow
+    details = [line for line in str(b.get("body")).split("\n") if line.strip()]
+    for index, line in enumerate(details[:6]):
+        _, _, _, h = b.text(role("lead", 1.5), line, b.L, y, b.cw, name=f"detail-{index + 1}", align="left", color="@ink" if index == 0 else "@muted")
+        y += h + b.unit * 2 * min(grow, 1.5)
+    return y
 
 
 def _banner(b):
@@ -1452,7 +1486,7 @@ def _build(project, layout, op, seed, fit):
     state = project.state
     builder = Builder(project, layout, deepcopy(op), seed, fit)
     # Swatches and a type scale first, so every created layer references them.
-    for role in ("background", "surface", "ink", "muted", "accent", "accent-text", "on-accent"):
+    for role in ROLES:
         execute(project, {"type": "swatch", "name": role, "color": builder.colors[role]})
     execute(project, {"type": "type-scale", "base": round(builder.base, 2), "ratio": builder.ratio})
     layout["build"](builder)
