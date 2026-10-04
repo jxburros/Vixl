@@ -626,11 +626,11 @@ def serve(path, host="127.0.0.1", port=8765, token=None, limits=None):
     uvicorn.run(create_app(path, token=token, limits=limits), host=host, port=port)
 
 
-def mcp_server(path=None, limits=None, *, workspace=None, schema="full", planner=False):
+def mcp_server(path=None, limits=None, *, workspace=None, schema="full", planner=False, tools="all"):
     try:
         from .mcp_tools import build_server
         import mcp.server.fastmcp  # noqa: F401
     except ImportError as exc:
         raise VixlError("missing_dependency", "Install vixl-engine[mcp]") from exc
 
-    return build_server(Session(path, limits, workspace=workspace), schema=schema, planner=planner)
+    return build_server(Session(path, limits, workspace=workspace), schema=schema, planner=planner, tools=tools)

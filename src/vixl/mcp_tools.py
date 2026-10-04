@@ -280,18 +280,37 @@ def typed_ai(session, command, words=(), document=None, **options):
         return result
 
 
-def build_server(session, *, schema="full", planner=False):
+# Tools both split servers need: the AI server addresses layers by name and checks its results.
+SHARED_TOOLS = {"vixl_workspace_list", "vixl_document_open", "vixl_document_inspect", "vixl_render_preview"}
+AI_INSTRUCTIONS = (
+    "Provider-backed AI editing for Vixl documents in the configured workspace: generate, inpaint, extend, "
+    "upscale, remove objects or backgrounds, select subjects/objects, and describe/detect/OCR. Each tool takes "
+    "document= (a .vixl path in the workspace) or uses the document opened with vixl_document_open. Results are "
+    "saved at once, so the main Vixl server sees them on its next call. Find layers with vixl_document_inspect and "
+    "check results with vixl_render_preview. Every tool needs a configured provider (vixl_models_list); if none "
+    "is configured, say so instead of retrying."
+)
+
+
+def is_ai_tool(name):
+    return name.startswith("vixl_ai_") or name == "vixl_models_list"
+
+
+def build_server(session, *, schema="full", planner=False, tools="all"):
     """Create the FastMCP server. ``schema='slim'`` advertises only operation type names (fetch
     fields with vixl_operation_schema); ``planner`` exposes the provider-backed planning tool,
-    which is redundant when the calling agent plans its own operations."""
+    which is redundant when the calling agent plans its own operations. ``tools`` selects a split:
+    ``core`` (editing, rendering, export and catalogs), ``ai`` (provider-backed tools plus the
+    shared document tools), or ``all``."""
     from mcp.server.fastmcp import FastMCP, Image
     from mcp.server.fastmcp.exceptions import ToolError
 
     require(schema in ("full", "slim"), "schema must be full or slim")
+    require(tools in ("all", "core", "ai"), "tools must be all, core or ai")
     Operation = Annotated[dict, WithJsonSchema(service_operation_schema(slim=schema == "slim"))]
     server = FastMCP(
-        "Vixl",
-        instructions=(
+        "Vixl AI" if tools == "ai" else "Vixl",
+        instructions=AI_INSTRUCTIONS if tools == "ai" else (
             "Edit layered image documents in the configured workspace. Typical loop: vixl_document_create/open → "
             "vixl_operations_apply (atomic batches; dry_run to test) → vixl_check (overlap, contrast, safe area, "
             "thumbnail legibility) → vixl_render_preview (region= to zoom) → vixl_export_file. Use layer IDs or "
@@ -303,9 +322,16 @@ def build_server(session, *, schema="full", planner=False):
             "vixl_fonts → vixl_font_pair (the bundled font is a proofing fallback), and when a brief leaves the "
             "look open, vixl_roll a few directions and compare previews. Paint with brushes (vixl_brushes_list), animate "
             "with keyframes (keyframe/animate/animate-preset → vixl_timeline_preview → vixl_export_timeline), and "
-            "export print-ready CMYK PDF/TIFF/JPEG with vixl_export_file. AI tools need a configured provider."
+            "export print-ready CMYK PDF/TIFF/JPEG with vixl_export_file. "
+            + ("AI tools need a configured provider." if tools == "all" else
+               "Provider-backed AI tools are served separately by vixl mcp --tools ai.")
         ),
     )
+
+    def selected(name):
+        if tools == "all" or name in SHARED_TOOLS:
+            return True
+        return is_ai_tool(name) == (tools == "ai")
 
     def tool(fn):
         """Register a tool returning minified JSON, with structured errors."""
@@ -323,7 +349,8 @@ def build_server(session, *, schema="full", planner=False):
         wrapper.__annotations__ = {**fn.__annotations__}
         if wrapper.__annotations__.get("return") is dict:
             wrapper.__annotations__["return"] = str
-        server.tool(structured_output=False)(wrapper)
+        if selected(fn.__name__):
+            server.tool(structured_output=False)(wrapper)
         return wrapper
 
     @tool

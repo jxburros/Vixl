@@ -273,3 +273,34 @@ def test_workspace_export_profile_with_filename_format(tmp_path):
     with Image.open(tmp_path / "social.png") as image:
         assert image.format == result["format"] == "PNG"
         assert image.size == (1080, 720)
+
+
+def test_mcp_splits_into_core_and_ai_servers(tmp_path, monkeypatch):
+    import vixl.ai
+    from vixl.mcp_tools import SHARED_TOOLS, build_server
+
+    backend = FakeProvider()
+    monkeypatch.setattr(vixl.ai, "provider", lambda _: backend)
+
+    async def names(server):
+        return {t.name for t in await server.list_tools()}
+
+    everything = asyncio.run(names(mcp_server(workspace=tmp_path)))
+    core = asyncio.run(names(mcp_server(workspace=tmp_path, tools="core")))
+    ai = asyncio.run(names(mcp_server(workspace=tmp_path, tools="ai")))
+    assert core | ai == everything and core & ai == SHARED_TOOLS
+    assert "vixl_operations_apply" in core and not any(n.startswith("vixl_ai_") for n in core)
+    assert {"vixl_ai_generate", "vixl_models_list"} <= ai and "vixl_operations_apply" not in ai
+    with pytest.raises(VixlError):
+        mcp_server(workspace=tmp_path, tools="both")
+
+    # Separate processes share documents through the workspace: AI edits reach the core server.
+    core_session, ai_session = Session(workspace=tmp_path), Session(workspace=tmp_path)
+    core_server = build_server(core_session, tools="core")
+    ai_server = build_server(ai_session, tools="ai")
+    asyncio.run(core_server.call_tool("vixl_document_create", {"path": "a.vixl", "width": 16, "height": 16}))
+    asyncio.run(ai_server.call_tool("vixl_ai_generate", {"prompt": "a sun", "name": "sun", "document": "a.vixl"}))
+    assert [layer["name"] for layer in core_session.inspect()["layers"]] == ["sun"]
+    asyncio.run(core_server.call_tool("vixl_operations_apply", {"operations": [{"type": "hide", "target": "sun"}]}))
+    ai_session.open("a.vixl")
+    assert not ai_session.inspect()["layers"][0]["visible"]

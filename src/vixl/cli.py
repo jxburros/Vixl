@@ -83,7 +83,7 @@ AI:        ask PROMPT [--apply], generate --prompt TEXT --provider NAME,
            detect objects|faces, ocr, ai describe|info|regenerate|background-remove|upscale|extend,
            select object LABEL --provider NAME, ai remove|content-aware-fill|select-subject
 Updates:   update [--check | --rollback], updates [on | off | status]
-Services:  serve [--host 127.0.0.1] [--port 8765], mcp [--workspace DIR] [--schema slim] [--planner]
+Services:  serve [--host 127.0.0.1] [--port 8765], mcp [--workspace DIR] [--tools core|ai] [--schema slim] [--planner]
 
 Options: --project/-p FILE, --json, --allow-linked, --plugins, --max-pixels N, --detail compact|full, --version
 Use vixl commands --json for a complete inventory; vixl COMMAND --help works without a document. See docs/commands.md.
@@ -392,10 +392,16 @@ def dispatch(argv):
             help="slim advertises operation names only; fields come from vixl_operation_schema",
         )
         p.add_argument("--planner", action="store_true", help="Expose the provider-backed vixl_ai_plan tool")
+        p.add_argument(
+            "--tools",
+            choices=["all", "core", "ai"],
+            default=os.environ.get("VIXL_MCP_TOOLS", "all"),
+            help="core: editing, rendering and export; ai: provider-backed tools; run both as separate servers",
+        )
         a = p.parse_args(args)
         # Explicit workspaces can start empty. Existing --project configurations still work.
         path = current_path(options.project) if options.project or not a.workspace else None
-        mcp_server(path, limits, workspace=a.workspace, schema=a.schema, planner=a.planner).run()
+        mcp_server(path, limits, workspace=a.workspace, schema=a.schema, planner=a.planner, tools=a.tools).run()
         return None, options.json
     if "--help" in args or "-h" in args:
         return command_help(cmd, args), options.json
