@@ -61,7 +61,7 @@ assert updater.read_state(root)["previous"] == old
 identity = subprocess.check_output(["whoami", "/user", "/fo", "csv", "/nh"], text=True)
 sid = next(csv.reader(identity.strip().splitlines()))[1]
 lock = root / ".update.lock"
-subprocess.run(["icacls", str(lock), "/deny", f"*{sid}:(RW)"], check=True, capture_output=True)
+subprocess.run(["icacls", str(lock), "/deny", f"*{sid}:(GW)"], check=True, capture_output=True)
 try:
     before = updater.read_state(root)
     for arguments in (["--version"], ["--help"], ["--runtime-info", "--json"], ["commands", "--json"]):
