@@ -1,0 +1,21 @@
+{
+  "description": "Offline reference acceptance baseline. Every listed brief must pass; this is not a measured Claude performance baseline.",
+  "required_passes": [
+    "copy-between-documents",
+    "equal-spacing",
+    "fix-layout",
+    "font-pairing",
+    "layout-filled",
+    "photo-caption",
+    "print-cmyk",
+    "restore-deleted",
+    "roll-applied",
+    "story-list",
+    "svg-logo-import",
+    "template-creation",
+    "timeline-motion",
+    "variable-variants",
+    "workflow-checked-edit",
+    "youtube-thumbnail"
+  ]
+}

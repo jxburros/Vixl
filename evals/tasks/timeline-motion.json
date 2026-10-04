@@ -1,0 +1,88 @@
+{
+  "prompt": "Create design.vixl at 200x100 with a red 20x20 ellipse named ball at x=0,y=40. Animate x from 0 to 180 linearly over a one-second timeline at 10 fps. Export start.png at 0ms, end.png at 1000ms, and motion.gif.",
+  "document": "design.vixl",
+  "checks": [
+    {
+      "type": "state_field",
+      "field": [
+        "timeline",
+        "duration"
+      ],
+      "equals": 1000
+    },
+    {
+      "type": "files_differ",
+      "paths": [
+        "start.png",
+        "end.png"
+      ]
+    },
+    {
+      "type": "file",
+      "path": "motion.gif",
+      "image_size": [
+        200,
+        100
+      ]
+    }
+  ],
+  "reference": [
+    {
+      "tool": "vixl_document_create",
+      "arguments": {
+        "path": "design.vixl",
+        "width": 200,
+        "height": 100
+      }
+    },
+    {
+      "tool": "vixl_operations_apply",
+      "arguments": {
+        "operations": [
+          {
+            "type": "shape",
+            "shape": "ellipse",
+            "name": "ball",
+            "width": 20,
+            "height": 20,
+            "y": 40,
+            "fill": "red"
+          },
+          {
+            "type": "timeline-set",
+            "duration": "1s",
+            "fps": 10
+          },
+          {
+            "type": "animate",
+            "target": "ball",
+            "property": "x",
+            "from": 0,
+            "to": 180,
+            "easing": "linear"
+          }
+        ]
+      }
+    },
+    {
+      "tool": "vixl_export_file",
+      "arguments": {
+        "path": "start.png",
+        "time": 0
+      }
+    },
+    {
+      "tool": "vixl_export_file",
+      "arguments": {
+        "path": "end.png",
+        "time": 1000
+      }
+    },
+    {
+      "tool": "vixl_export_timeline",
+      "arguments": {
+        "path": "motion.gif"
+      }
+    }
+  ]
+}

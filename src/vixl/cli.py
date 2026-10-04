@@ -62,7 +62,7 @@ Resources: commands, shapes, sizes [--category print], palette list|show|add|app
 Type:      fonts [--category serif] [--mood M], font show FAMILY, font pairings [--mood M] [--for poster],
            font pairing NAME, font principles, font install FAMILY [--weight 700] [--role heading|body], font pair NAME|random,
            font use NAME --role heading|body, font list|import
-Dice:      roll [--for poster] [--mood M] [--size NAME] [--seed N|random] [--lock palette=sage]
+Dice:      roll [--apply] [--set title=…] [--for poster] [--mood M] [--size NAME] [--seed N|random] [--lock palette=sage]
 Color:     color [info] COLOR…, color convert COLOR --to oklch|cmyk|…, color harmony COLOR --scheme triadic,
            color scale COLOR, color mix A B, color contrast FG BG, color names QUERY,
            palette-generate NAME COLOR [--scheme scale|triadic|…], type-scale --base 16 --ratio golden
@@ -83,7 +83,9 @@ AI:        ask PROMPT [--apply], generate --prompt TEXT --provider NAME,
            detect objects|faces, ocr, ai describe|info|regenerate|background-remove|upscale|extend,
            select object LABEL --provider NAME, ai remove|content-aware-fill|select-subject
 Updates:   update [--check | --rollback], updates [on | off | status]
-Services:  serve [--host 127.0.0.1] [--port 8765], mcp [--workspace DIR] [--tools core|ai] [--schema slim] [--planner]
+Services:  serve | view [--host 127.0.0.1] [--port 8765], notes list|add|resolve
+           mcp [--workspace DIR] [--http] [--tools core|ai] [--schema slim] [--planner]
+Import:    import FILE.svg | FILE.pdf [--page 1] [--dpi 144]
 
 Options: --project/-p FILE, --json, --allow-linked, --plugins, --max-pixels N, --detail compact|full, --version
 Use vixl commands --json for a complete inventory; vixl COMMAND --help works without a document. See docs/commands.md.
@@ -240,12 +242,12 @@ def dispatch(argv):
                     | {"filter"}
                     | {"workflow"}
                     | set(
-                        "new open save status inspect describe layers effects manifest dependencies reproduce schema check batch convert render export export-screens export-animation spacing pixels animation info sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert validate preset ai ask generate detect ocr serve mcp update updates commands shapes palette template guidance font fonts roll providers models color sizes layout layouts brushes easings timeline export-timeline timeline-sheet export-icons".split()
+                        "new open save status inspect describe layers effects manifest dependencies reproduce schema check batch convert render export export-screens export-animation spacing pixels animation info sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert validate preset ai ask generate detect ocr serve view notes import mcp update updates commands shapes palette template guidance font fonts roll providers models color sizes layout layouts brushes easings timeline export-timeline timeline-sheet export-icons".split()
                     )
                 )
             }
         ), options.json
-    if cmd in ("fonts", "roll") or (cmd == "font" and args and args[0] in ("show", "pairings", "pairing", "principles")):
+    if (cmd == "fonts" or (cmd == "roll" and "--apply" not in args)) or (cmd == "font" and args and args[0] in ("show", "pairings", "pairing", "principles")):
         from .resource_cli import font_standalone
 
         return font_standalone(cmd, args), options.json
@@ -398,15 +400,24 @@ def dispatch(argv):
             default=os.environ.get("VIXL_MCP_TOOLS", "all"),
             help="core: editing, rendering and export; ai: provider-backed tools; run both as separate servers",
         )
+        p.add_argument("--http", action="store_true", help="Serve Streamable HTTP at /mcp")
+        p.add_argument("--host", default="127.0.0.1")
+        p.add_argument("--port", type=int, default=8766)
+        p.add_argument("--token-env", default="VIXL_API_TOKEN")
         a = p.parse_args(args)
         # Explicit workspaces can start empty. Existing --project configurations still work.
         path = current_path(options.project) if options.project or not a.workspace else None
-        mcp_server(path, limits, workspace=a.workspace, schema=a.schema, planner=a.planner, tools=a.tools).run()
+        server = mcp_server(path, limits, workspace=a.workspace, schema=a.schema, planner=a.planner, tools=a.tools)
+        if a.http:
+            from .interfaces import serve_mcp
+            serve_mcp(server, a.host, a.port, os.environ.get(a.token_env))
+        else:
+            server.run()
         return None, options.json
     if "--help" in args or "-h" in args:
         return command_help(cmd, args), options.json
     path = current_path(options.project)
-    if cmd == "serve":
+    if cmd in ("serve", "view"):
         from .interfaces import serve
 
         p = Parser(prog="vixl serve")
@@ -414,7 +425,7 @@ def dispatch(argv):
         p.add_argument("--port", type=int, default=8765)
         p.add_argument("--token-env", default="VIXL_API_TOKEN")
         a = p.parse_args(args)
-        serve(path, a.host, a.port, os.environ.get(a.token_env), limits)
+        serve(path, a.host, a.port, os.environ.get(a.token_env), limits, open_browser=cmd == "view")
         return None, options.json
     with file_lock(str(path)):
         project = Project.load(path, limits=limits, allow_linked=options.allow_linked)
@@ -455,7 +466,8 @@ def command_help(cmd, args):
         "serve": "serve [--host HOST] [--port PORT] [--token-env ENV]",
         "preset": "preset save|apply|show NAME [--set KEY=VALUE]",
         "fonts": "fonts [--category serif] [--role heading] [--mood elegant] [--query TEXT]",
-        "roll": "roll [--for poster] [--mood playful] [--size NAME|WxH] [--seed N|random] [--lock palette=sage]",
+        "view": "view [--host HOST] [--port PORT] [--token-env ENV] (serve and open live review)",
+        "roll": "roll [--apply] [--set title=TEXT] [--for poster] [--mood playful] [--size NAME|WxH] [--seed N|random] [--lock palette=sage]",
         "layout": "layout list | show NAME | apply NAME [--seed N|random] [--set title=TEXT] [--unfilled blank|omit] [--palette NAME] "
         "[--mode light|dark] [--type-scale golden] [--density airy|balanced|dense] [--align left|center|right] "
         "[--accent rule|bar|dot|block|outline|none] [--prefix P] [--replace]",
@@ -470,6 +482,26 @@ def command_help(cmd, args):
 def project_command(project, cmd, args, *, detail="compact"):
     from .validation import assert_rule, dependencies, validate
 
+    if cmd == "roll":
+        from .resource_cli import font_standalone
+        return font_standalone(cmd, args, project), "--apply" in args
+    if cmd == "import":
+        from .imports import import_document
+        p = Parser(prog="vixl import")
+        p.add_argument("path")
+        p.add_argument("--name", default="import")
+        p.add_argument("--page", type=int, default=1)
+        p.add_argument("--dpi", type=int, default=144)
+        a = p.parse_args(args)
+        return import_document(project, read_bounded(a.path, project.limits.max_asset_bytes),
+                               Path(a.path).suffix.lstrip("."), a.name, a.page, a.dpi), True
+    if cmd == "notes":
+        from .review import notes
+        p = Parser(prog="vixl notes")
+        p.add_argument("action", choices=["list", "add", "resolve"], default="list", nargs="?")
+        p.add_argument("value", nargs="?")
+        a = p.parse_args(args)
+        return notes(project.path, a.action, text=a.value, note_id=a.value), False
     if cmd in ("palette", "template", "guidance", "font"):
         from .resource_cli import project_command as resource_command
 

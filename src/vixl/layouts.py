@@ -759,6 +759,7 @@ def _event_poster(b):
     bottom = b.B - (b.sizes["body"] * 3.2 if b.get("cta") or b.get("caption") else 0)
     ops, created = len(b.ops), len(b.created)
     # Grow the type on large formats until the content fills the page, keeping the last fit.
+    previous = 1.0
     for grow in (1.0, 1.25, 1.5, 1.8, 2.2):
         del b.ops[ops:], b.created[created:]
         y = _event_details(b, grow)

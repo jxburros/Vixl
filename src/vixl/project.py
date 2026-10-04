@@ -273,8 +273,14 @@ class Project:
         before = candidate.inspect()
         for index, operation in enumerate(operations):
             try:
+                if operation["type"] in ("layout-apply", "template-apply"):
+                    from .brand import prepare
+                    operation = prepare(candidate, operation)
                 resolved, centered = resolve_geometry(candidate, operation)
                 execute(candidate, deepcopy(resolved))
+                if operation["type"] in ("layout-apply", "template-apply"):
+                    from .brand import finish
+                    finish(candidate)
                 apply_centering(candidate, centered, operation)
             except VixlError as exc:
                 raise located(exc, index, operation, len(operations)) from exc
@@ -302,6 +308,9 @@ class Project:
                 candidate._record(operations)
             self.__dict__.update(candidate.__dict__)
         result = {"success": True, "dry_run": dry_run, "operations": len(operations), "changes": changes}
+        if any(op["type"] == "layout-apply" for op in operations):
+            result["layout"] = deepcopy(candidate.state.get("layout", {}))
+            result["unfilled_slots"] = list(dict.fromkeys(b["slot"] for b in result["layout"].get("blanks", [])))
         if notes:
             result["normalized"] = notes
         return result

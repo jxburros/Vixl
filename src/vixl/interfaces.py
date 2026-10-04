@@ -89,6 +89,7 @@ class Session:
         return (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns)
 
     def _remember(self, path, project, stamp):
+        project._workspace = self.workspace
         self.documents.pop(path, None)
         self.documents[path] = _Document(path, project, stamp)
         while len(self.documents) > self.MAX_OPEN:
@@ -177,6 +178,7 @@ class Session:
                             break
                         del self.documents[oldest]
                     project = entry.project
+                    project._workspace = self.workspace
                     revision = project._revision
                     yield project
                     if write:
@@ -287,12 +289,12 @@ def create_app(path, *, token=None, limits=None):
 
     @app.middleware("http")
     async def guard(request: Request, call_next):
-        if token and not hmac.compare_digest(request.headers.get("authorization", ""), "Bearer " + token):
+        if request.url.path != "/view" and token and not hmac.compare_digest(request.headers.get("authorization", ""), "Bearer " + token):
             return JSONResponse({"error": "unauthorized"}, status_code=401)
         origin = request.headers.get("origin")
         if origin and origin != str(request.base_url).rstrip("/"):
             return JSONResponse({"error": "cross_origin_forbidden"}, status_code=403)
-        maximum = session.limits.max_asset_bytes if request.url.path in ("/assets", "/fonts") else 1024 * 1024
+        maximum = session.limits.max_asset_bytes if request.url.path in ("/assets", "/fonts", "/import") else 1024 * 1024
         if request.url.path == "/fonts":
             maximum = min(maximum, 16 * 1024 * 1024)
         body = bytearray()
@@ -306,6 +308,34 @@ def create_app(path, *, token=None, limits=None):
     @app.exception_handler(VixlError)
     async def vixl_error(request: Request, exc: VixlError):
         return JSONResponse(exc.as_dict(), status_code=403 if exc.code == "forbidden" else 400)
+
+    @app.get("/view")
+    def viewer():
+        from fastapi.responses import HTMLResponse
+        return HTMLResponse((Path(__file__).parent / "data" / "view.html").read_text(encoding="utf-8"),
+                            headers={"Cache-Control": "no-store", "X-Frame-Options": "DENY"})
+
+    @app.get("/review")
+    def review():
+        from .review import notes
+        with session.project() as project:
+            return {"head": project.head, "layers": project.inspect()["layers"],
+                    "history": session.history()["nodes"], **notes(session.path)}
+
+    @app.get("/notes")
+    def review_notes():
+        from .review import notes
+        return notes(session.path)
+
+    @app.post("/notes")
+    def add_note(body: dict):
+        from .review import notes
+        return notes(session.path, "add", text=body.get("text"))
+
+    @app.post("/notes/{note_id}/resolve")
+    def resolve_note(note_id: str):
+        from .review import notes
+        return notes(session.path, "resolve", note_id=note_id)
 
     @app.get("/schema")
     def schema():
@@ -431,9 +461,10 @@ def create_app(path, *, token=None, limits=None):
 
     @app.get("/roll")
     def design_roll(purpose: str | None = None, mood: str | None = None, seed: int | None = None):
-        from .typefaces import roll
+        from .typefaces import roll_document
 
-        return roll(seed, purpose=purpose, mood=mood)
+        with session.project() as project:
+            return roll_document(project, seed=seed, purpose=purpose, mood=mood)
 
     @app.get("/brushes")
     def brush_catalog():
@@ -613,6 +644,16 @@ def create_app(path, *, token=None, limits=None):
     def history_action(action: str, body: dict):
         return session.history(action, body.get("ref"), body.get("count", 1))
 
+    @app.post("/import")
+    async def import_document(request: Request, format: str, name: str = "import", page: int = 1, dpi: int = 144):
+        from .imports import import_document as execute_import
+        from starlette.concurrency import run_in_threadpool
+        data = await request.body()
+        def apply_import():
+            with session.project(write=True) as project:
+                return execute_import(project, data, format, name, page, dpi)
+        return await run_in_threadpool(apply_import)
+
     @app.post("/assets")
     async def assets(request: Request, name: str = "image"):
         from starlette.concurrency import run_in_threadpool
@@ -626,7 +667,7 @@ def create_app(path, *, token=None, limits=None):
     return app
 
 
-def serve(path, host="127.0.0.1", port=8765, token=None, limits=None):
+def serve(path, host="127.0.0.1", port=8765, token=None, limits=None, *, open_browser=False):
     require(
         host in ("127.0.0.1", "localhost", "::1") or token,
         "Non-loopback serving requires VIXL_API_TOKEN",
@@ -636,7 +677,22 @@ def serve(path, host="127.0.0.1", port=8765, token=None, limits=None):
         import uvicorn
     except ImportError as exc:
         raise VixlError("missing_dependency", "Install vixl-engine[server]") from exc
-    uvicorn.run(create_app(path, token=token, limits=limits), host=host, port=port)
+    app = create_app(path, token=token, limits=limits)
+    if open_browser:
+        import asyncio
+        import webbrowser
+
+        class ViewerServer(uvicorn.Server):
+            async def startup(self, sockets=None):
+                await super().startup(sockets=sockets)
+                if self.started:
+                    local_host = "127.0.0.1" if host == "0.0.0.0" else "::1" if host == "::" else host
+                    address = f"[{local_host}]" if ":" in local_host else local_host
+                    await asyncio.to_thread(webbrowser.open, f"http://{address}:{port}/view")
+
+        ViewerServer(uvicorn.Config(app, host=host, port=port)).run()
+    else:
+        uvicorn.run(app, host=host, port=port)
 
 
 def mcp_server(path=None, limits=None, *, workspace=None, schema="full", planner=False, tools="all"):
@@ -647,3 +703,35 @@ def mcp_server(path=None, limits=None, *, workspace=None, schema="full", planner
         raise VixlError("missing_dependency", "Install vixl-engine[mcp]") from exc
 
     return build_server(Session(path, limits, workspace=workspace), schema=schema, planner=planner, tools=tools)
+
+
+def mcp_http_app(server, *, token=None):
+    """SDK Streamable HTTP with the REST bearer-token and same-origin policy."""
+    from starlette.middleware.base import BaseHTTPMiddleware
+    from starlette.middleware.trustedhost import TrustedHostMiddleware
+    from starlette.responses import JSONResponse
+    from mcp.server.transport_security import TransportSecuritySettings
+
+    # Our guard handles both public, token-protected hosts and loopback DNS rebinding.
+    server.settings.transport_security = TransportSecuritySettings(enable_dns_rebinding_protection=False)
+    app = server.streamable_http_app()
+
+    async def guard(request, call_next):
+        if token and not hmac.compare_digest(request.headers.get("authorization", ""), "Bearer " + token):
+            return JSONResponse({"error": "unauthorized"}, status_code=401)
+        origin = request.headers.get("origin")
+        if origin and origin != str(request.base_url).rstrip("/"):
+            return JSONResponse({"error": "cross_origin_forbidden"}, status_code=403)
+        return await call_next(request)
+
+    app.add_middleware(BaseHTTPMiddleware, dispatch=guard)
+    if not token:
+        app.add_middleware(TrustedHostMiddleware, allowed_hosts=["localhost", "127.0.0.1", "[::1]", "testserver"])
+    return app
+
+
+def serve_mcp(server, host="127.0.0.1", port=8766, token=None):
+    require(host in ("127.0.0.1", "localhost", "::1") or token,
+            "Non-loopback serving requires VIXL_API_TOKEN", "authentication_required")
+    import uvicorn
+    uvicorn.run(mcp_http_app(server, token=token), host=host, port=port)

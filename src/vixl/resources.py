@@ -365,10 +365,11 @@ def execute_resource(project, op):
             project.state["template"] = record
 
 
-def create_template(name, variables=None, *, limits=None):
+def create_template(name, variables=None, *, limits=None, workspace=None):
     from .project import Project
 
     item = get("templates", name)
     p = Project(item["width"], item["height"], item.get("background", "transparent"), limits=limits)
+    p._workspace = workspace
     p.apply({"type": "template-apply", "name": name, "variables": variables or {}}, detail="compact")
     return p

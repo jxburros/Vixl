@@ -1,0 +1,5 @@
+{
+  "name": "vixl",
+  "owner": {"name": "Vixl contributors"},
+  "plugins": [{"name": "vixl", "source": "./", "description": "Editable graphics with Vixl MCP and its design skill"}]
+}

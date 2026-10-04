@@ -362,3 +362,46 @@ def pair_fonts(project, pairing=None, *, seed=None, mood=None, best_for=None, cl
     if rolled is not None:
         result["seed"] = rolled
     return result
+
+
+def roll_document(project=None, *, workspace=None, seed=None, purpose=None, mood=None, canvas=None,
+                  locks=None, apply=False, slots=None):
+    """Choose brand defaults and optionally commit the whole direction in one undo step."""
+    from .brand import for_project, load
+    kit = for_project(project) if project else load(workspace)
+    choices = dict(locks or {})
+    if kit.get("pairing"):
+        choices.setdefault("pairing", kit["pairing"])
+    if kit.get("palette"):
+        palette = list(kit["palette"].values())
+        choices.setdefault("palette", palette if len(palette) > 1 else palette + ["#ffffff"])
+    if project and canvas is None:
+        c = project.state["canvas"]
+        canvas = (c["width"], c["height"])
+    result = roll(seed, purpose=purpose, mood=mood, canvas=canvas, locks=choices)
+    if kit.get("palette") and not (locks or {}).get("palette"):
+        result["operation"]["colors"] = kit["palette"]
+    embedded_pair = bool(kit.get("fonts")) and "pairing" not in (locks or {})
+    if embedded_pair:
+        result["brand_fonts"] = {role: spec["name"] for role, spec in kit["fonts"].items()}
+        result["pairing"] = None
+        result["direction"]["pairing"] = "workspace-brand"
+    if apply:
+        require(project is not None, "roll --apply needs a document")
+        from .layouts import CONTENT_KEYS
+        require(isinstance(slots or {}, dict) and set(slots or {}) <= set(CONTENT_KEYS), "slots must contain layout content fields")
+        candidate = project.clone()
+        own_transaction = candidate.transaction is None
+        if own_transaction:
+            candidate.begin()
+        operation = {**result["operation"], **(slots or {})}
+        if not embedded_pair:
+            pair_fonts(candidate, result["direction"]["pairing"])
+            operation.update(font=candidate.state["typography"]["body"],
+                             display_font=candidate.state["typography"]["heading"])
+        applied = candidate.apply(operation, detail="compact")
+        if own_transaction:
+            candidate.commit()
+        project.__dict__.update(candidate.__dict__)
+        result["applied"] = applied
+    return result

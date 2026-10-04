@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width" />
+  <title>Vixl review</title
+  ><style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      background: #14161b;
+      color: #eee;
+      font: 16px system-ui;
+    }
+    header {
+      padding: 16px 24px;
+      border-bottom: 1px solid #40434b;
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+    h1 {
+      font-size: 20px;
+      margin: 0;
+    }
+    main {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 320px;
+      gap: 24px;
+      padding: 24px;
+    }
+    img {
+      max-width: 100%;
+      max-height: 85vh;
+      object-fit: contain;
+    }
+    aside {
+      overflow: auto;
+    }
+    h2 {
+      font-size: 16px;
+    }
+    ul {
+      padding-left: 20px;
+    }
+    li {
+      margin: 8px 0;
+      overflow-wrap: anywhere;
+    }
+    input,
+    textarea,
+    button {
+      font: inherit;
+      padding: 8px;
+      background: #272b34;
+      color: white;
+      border: 1px solid #666;
+      border-radius: 6px;
+    }
+    textarea {
+      width: 100%;
+    }
+    button {
+      cursor: pointer;
+    }
+    #status {
+      color: #bbb;
+      font-size: 14px;
+    }
+    @media (max-width: 700px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+      header {
+        flex-wrap: wrap;
+      }
+    }
+  </style>
+  <header>
+    <h1>Vixl review</h1>
+    <input
+      id="token"
+      type="password"
+      placeholder="Access token (if required)"
+      aria-label="Access token"
+    /><button id="connect">Connect</button
+    ><span id="status" role="status">Connecting…</span>
+  </header>
+  <main>
+    <section><img id="preview" alt="Current document render" /></section>
+    <aside>
+      <h2>Layers</h2>
+      <ul id="layers"></ul>
+      <h2>History</h2>
+      <ul id="history"></ul>
+      <h2>Review notes</h2>
+      <ul id="notes"></ul>
+      <form id="form">
+        <textarea
+          id="note"
+          maxlength="4000"
+          required
+          aria-label="Review note"
+          placeholder="Leave feedback for the agent"
+        ></textarea
+        ><button>Leave note</button>
+      </form>
+    </aside>
+  </main>
+  <script>
+    let token = "",
+      head = null,
+      imageURL = null,
+      busy = false;
+    const $ = (id) => document.getElementById(id);
+    async function api(path, options = {}) {
+      const r = await fetch(path, {
+        ...options,
+        cache: "no-store",
+        headers: {
+          Authorization: "Bearer " + token,
+          "Content-Type": "application/json",
+          ...options.headers,
+        },
+      });
+      if (!r.ok)
+        throw Error(
+          r.status === 401
+            ? "Enter the access token to connect."
+            : "Request failed: " + r.status,
+        );
+      return r;
+    }
+    function list(id, values) {
+      $(id).replaceChildren(
+        ...values.map((value) => {
+          const li = document.createElement("li");
+          li.textContent = value;
+          return li;
+        }),
+      );
+    }
+    async function refresh() {
+      if (busy) return;
+      busy = true;
+      try {
+        const doc = await (await api("/review")).json();
+        if (head !== doc.head) {
+          const blob = await (await api("/render")).blob();
+          const old = imageURL;
+          imageURL = URL.createObjectURL(blob);
+          $("preview").src = imageURL;
+          if (old) URL.revokeObjectURL(old);
+          head = doc.head;
+        }
+        list(
+          "layers",
+          doc.layers.map((l) => l.name + " · " + l.type),
+        );
+        list(
+          "history",
+          doc.history.slice(-12).map((h) => h.label || h.id),
+        );
+        list(
+          "notes",
+          doc.notes.map((n) => (n.resolved ? "✓ " : "") + n.text),
+        );
+        $("status").textContent = "Live · updates every second";
+      } catch (e) {
+        $("status").textContent = e.message;
+      } finally {
+        busy = false;
+      }
+    }
+    $("connect").onclick = () => {
+      token = $("token").value;
+      $("token").value = "";
+      head = null;
+      refresh();
+    };
+    $("form").onsubmit = async (e) => {
+      e.preventDefault();
+      try {
+        await api("/notes", {
+          method: "POST",
+          body: JSON.stringify({ text: $("note").value }),
+        });
+        $("note").value = "";
+        refresh();
+      } catch (e) {
+        $("status").textContent = e.message;
+      }
+    };
+    refresh();
+    setInterval(refresh, 1000);
+  </script>
+</html>

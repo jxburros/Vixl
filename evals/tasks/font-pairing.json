@@ -1,0 +1,64 @@
+{
+  "prompt": "Create design.vixl at 800x800. Install the source-serif-sans font pairing and use hero-statement with title Editorial. Omit other unfilled slots. The workspace font cache provides offline fixtures.",
+  "document": "design.vixl",
+  "checks": [
+    {
+      "type": "state_field",
+      "field": [
+        "typography",
+        "heading"
+      ],
+      "equals": "source-serif-4-600"
+    },
+    {
+      "type": "state_field",
+      "field": [
+        "typography",
+        "body"
+      ],
+      "equals": "source-sans-3-400"
+    },
+    {
+      "type": "layer",
+      "name": "title",
+      "match": {
+        "name": "headline",
+        "text_contains": "Editorial"
+      }
+    }
+  ],
+  "reference": [
+    {
+      "tool": "vixl_document_create",
+      "arguments": {
+        "path": "design.vixl",
+        "width": 800,
+        "height": 800
+      }
+    },
+    {
+      "tool": "vixl_font_pair",
+      "arguments": {
+        "pairing": "source-serif-sans"
+      }
+    },
+    {
+      "tool": "vixl_operations_apply",
+      "arguments": {
+        "operations": [
+          {
+            "type": "layout-apply",
+            "name": "hero-statement",
+            "title": "Editorial",
+            "unfilled": "omit"
+          }
+        ]
+      }
+    }
+  ],
+  "setup": {
+    "font_pairings": [
+      "source-serif-sans"
+    ]
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "prompt": "Create design.vixl at 800x800 using hero-statement, seed 4, title Launch, subtitle A new beginning, CTA Learn more. Omit other unfilled slots. Keep it editable with no remaining blanks.",
+  "document": "design.vixl",
+  "checks": [
+    {
+      "type": "state_field",
+      "field": [
+        "layout",
+        "name"
+      ],
+      "equals": "hero-statement"
+    },
+    {
+      "type": "layer",
+      "name": "title",
+      "match": {
+        "name": "headline",
+        "text_contains": "Launch"
+      }
+    },
+    {
+      "type": "design",
+      "options": {
+        "checks": [
+          "blanks"
+        ]
+      }
+    }
+  ],
+  "reference": [
+    {
+      "tool": "vixl_document_create",
+      "arguments": {
+        "path": "design.vixl",
+        "width": 800,
+        "height": 800
+      }
+    },
+    {
+      "tool": "vixl_operations_apply",
+      "arguments": {
+        "operations": [
+          {
+            "type": "layout-apply",
+            "name": "hero-statement",
+            "seed": 4,
+            "title": "Launch",
+            "subtitle": "A new beginning",
+            "cta": "Learn more",
+            "unfilled": "omit"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -61,7 +61,7 @@ def _seed(value):
     return value if value == "random" else int(value)
 
 
-def font_standalone(cmd, args):
+def font_standalone(cmd, args, project=None):
     """Catalog, pairing and roll commands that need no document."""
     from . import typefaces
 
@@ -81,6 +81,8 @@ def font_standalone(cmd, args):
         p.add_argument("--mood")
         p.add_argument("--size", help="Named size or WxH, so the layout suits the canvas")
         p.add_argument("--seed", type=_seed, help="Integer or 'random' (default)")
+        p.add_argument("--apply", action="store_true", help="Apply the direction and fonts to the current document")
+        p.add_argument("--set", action="append", help="Fill a layout slot: title=…")
         p.add_argument("--lock", action="append", help="Keep a choice: layout=…, pairing=…, palette=…, mode=…")
         a = p.parse_args(args)
         canvas = None
@@ -93,7 +95,7 @@ def font_standalone(cmd, args):
         locks = pairs(a.lock)
         if "layout_seed" in locks:
             locks["layout_seed"] = int(locks["layout_seed"])
-        return typefaces.roll(a.seed, purpose=a.purpose, mood=a.mood, canvas=canvas, locks=locks)
+        return typefaces.roll_document(project, seed=a.seed, purpose=a.purpose, mood=a.mood, canvas=canvas, locks=locks, apply=a.apply, slots=pairs(a.set))
     p = Parser(prog="vixl font")
     p.add_argument("action", choices=FONT_STANDALONE)
     p.add_argument("family", nargs="?")

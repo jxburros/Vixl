@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+## 0.15.0
+
+- Cross-platform agent distribution: base-package MCP dependency, PyPI Trusted Publishing workflow,
+  Claude Code plugin/marketplace and Claude Desktop MCPB build artifacts with the complete skill.
+- Streamable HTTP MCP with the REST bearer-token policy and loopback protection; stdio remains available.
+- Live `view` page for renders, layers, history and persistent review notes shared with CLI/MCP agents.
+- Workspace `brand.json` defaults for layouts, templates and rolls, embedded fonts/logos, and brand checks.
+- `roll --apply` applies fonts and a layout atomically; layout results expose unfilled slots directly.
+- Editable SVG shape/path import, compound-path rendering, and optional raster PDF page import.
+- Sixteen offline agent briefs, stored acceptance baseline, weekly full/slim live comparisons when configured,
+  and a documented core/slim setup that reduces tool schema context by approximately 46%.
+
 ## 0.14.0
 
 - **Character animation and sharper motion.** A new `pivot` operation (`vixl pivot arm 0.5 0.05`,

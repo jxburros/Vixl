@@ -32,7 +32,7 @@ python -m pip install -e '.[server]'
 vixl -p poster.vixl serve
 ```
 
-Default binding is `127.0.0.1:8765`. OpenAPI is at `/docs`. To bind beyond loopback, configure a bearer token with `VIXL_API_TOKEN` and use `--host 0.0.0.0`; use TLS at a reverse proxy. `--token-env NAME` selects a different environment variable. A configured token protects every route, including docs. Without a token, host-header validation restricts requests to loopback names. This is a local single-user service, not a multi-tenant hosted product.
+Default binding is `127.0.0.1:8765`. OpenAPI is at `/docs`. To bind beyond loopback, configure a bearer token with `VIXL_API_TOKEN` and use `--host 0.0.0.0`; use TLS at a reverse proxy. `--token-env NAME` selects a different environment variable. A configured token protects all document APIs, including docs; `/view` serves a public empty HTML shell. Without a token, host-header validation restricts requests to loopback names. This is a local single-user service, not a multi-tenant hosted product.
 
 | Route | Request / result |
 | --- | --- |
@@ -60,13 +60,13 @@ REST sessions fix the project path when launched. Operation `path`, `linked`, an
 
 ## MCP
 
-The Windows installer includes MCP. For source installs, install `.[mcp]`. Give Vixl an existing workspace directory that contains the images/documents the model should edit:
+The Windows installer includes MCP. The Python base package includes MCP. Give Vixl an existing workspace directory that contains the images/documents the model should edit:
 
 ```powershell
 vixl mcp --workspace "C:\Users\jeffr\Pictures\Vixl"
 ```
 
-The workspace can start without any `.vixl` documents. MCP runs over stdio using the official SDK; stdout contains protocol messages only. Configure your client to start it (escape Windows backslashes in JSON):
+The workspace can start without any `.vixl` documents. MCP defaults to stdio using the official SDK; stdout contains protocol messages only. Configure your client to start it (escape Windows backslashes in JSON):
 
 ```json
 {
@@ -81,11 +81,19 @@ The workspace can start without any `.vixl` documents. MCP runs over stdio using
 
 If the client cannot find `vixl` on PATH, use the absolute executable path, normally `C:\Users\jeffr\AppData\Local\Programs\Vixl\bin\vixl.exe` for the Windows installer. Restart the client after installing/updating or changing its configuration. On macOS/Linux, use your installed `vixl` executable and a workspace such as `/home/you/Pictures/Vixl`.
 
+### Recommended starting configuration
+
+Start with `--tools core --schema slim`. The offline suite passes all 16 tasks with these flags.
+The schema costs approximately 6,898 tokens (JSON characters ÷ 4), versus 12,789 for full/all,
+a 46% reduction. This measures tool context, not model performance; defaults remain full/all
+until the scheduled live-agent comparison provides evidence to change them. With slim schemas,
+call `vixl_operation_schema` for the fields of unfamiliar operations.
+
 ### Two servers: core and AI
 
 `vixl mcp` can serve its tools as two servers, so an agent loads only the tools it uses:
 
-- `--tools core`: documents, operations, rendering, checks, export, sizes, layouts, fonts, color, brushes, animation and workflows (40 tools).
+- `--tools core`: documents, operations, rendering, checks, export, sizes, layouts, fonts, color, brushes, animation and workflows (42 tools).
 - `--tools ai`: the provider-backed tools (`vixl_ai_*`, `vixl_models_list`) plus `vixl_workspace_list`, `vixl_document_open`, `vixl_document_inspect` and `vixl_render_preview`, so the AI server can find layers and check its results (15 tools).
 
 ```json
@@ -203,3 +211,53 @@ All new editing features are ordinary operations, so `vixl_operations_apply`, `P
 REST adds `GET /sizes?category=`, `GET /layouts`, `GET /brushes`, `POST /color` (`{"action", "colors", "to"?, "scheme"?, "count"?, "amount"?, "space"?}`), `GET /timeline`, `GET /timeline/frame?time=1.5s` (PNG), and `POST /timeline/export` (`{"format", "fps", "scale", "start", "end", "background", "columns", "quality"}`; returns bytes). `POST /export` accepts `color_space`, `icc_profile_base64`, `intent`, `black_generation`, `ink_limit`, `proof`, `simulate`, `dpi`, `icon_sizes` and `time`, and formats `PDF` and `ICO`. `POST /preview` accepts `time`, `proof` and `simulate`.
 
 Python: `Project.sized("letter", bleed=True)`, `project.export("flyer.pdf", color_space="cmyk", icc_profile=bytes)`, `vixl.colors` (parse, describe, harmony, scale, mix, contrast_ratio, simulate_vision, cmyk_image), `vixl.sizes` (resolve, catalog), `vixl.layouts.catalog()`, `vixl.brushes.catalog()`, `vixl.timeline` (project_at, render_at, contact_sheet, export_timeline) and `vixl.exports.export_icons`.
+
+### Streamable HTTP and live review
+
+```bash
+# MCP over HTTP, for clients supporting a static Authorization header:
+vixl mcp --workspace . --http --port 8766 --tools core --schema slim
+# For a remote bind, set VIXL_API_TOKEN, then add --host 0.0.0.0.
+# Connect to https://YOUR-HOST/mcp through your TLS reverse proxy.
+
+# Serve a fixed document and open its live viewer:
+vixl -p poster.vixl view
+# Or run `serve` and open http://127.0.0.1:8765/view yourself.
+vixl -p poster.vixl notes list
+vixl -p poster.vixl notes resolve NOTE_ID
+```
+
+HTTP MCP uses the official SDK's Streamable HTTP transport. Stdio remains the default.
+HTTP and REST use `Authorization: Bearer TOKEN`, with `VIXL_API_TOKEN` (or `--token-env`)
+and reject remote binds without it. Use a TLS reverse proxy for remote access. OAuth discovery
+is not implemented: clients that require OAuth, including some hosted connector setups, need
+an OAuth-capable gateway. A shared server has one active-document selection; concurrent
+agents should pass `document` explicitly on every document tool. Access covers the entire
+configured workspace and any locally configured provider accounts.
+
+The viewer polls once per second, showing the current PNG, layers, history, and review notes.
+Only its empty HTML shell is public; document APIs require the token when configured. Enter
+that token in the viewer; it is kept in memory, never placed in a URL or browser storage.
+Notes persist in `DOCUMENT.vixl.notes.json`, separately from undo history. Agents read/add/resolve
+them with `vixl_review_notes`; CLI users use `notes list|add|resolve`. REST provides `GET /review`,
+`GET /notes`, `POST /notes` (`{"text":"..."}`), and `POST /notes/{id}/resolve`.
+
+### Import existing artwork
+
+```bash
+vixl -p poster.vixl import logo.svg
+# Optional PDF dependency: pip install 'vixl-engine[pdf]'
+vixl -p poster.vixl import flyer.pdf --page 1 --dpi 144 --name reference
+```
+
+MCP: `vixl_import_document(format="svg", path="logo.svg")`, or `data_base64` instead of `path`.
+REST: `POST /import?format=svg` with raw bytes. PDF additionally accepts a one-based `page` and
+`dpi` (36–600); it imports a raster reference layer, not editable PDF text or paths.
+
+SVG imports create editable path layers with solid fills, strokes, translations, scales,
+rotations, matrix transforms, and compound nonzero-winding paths (including holes). Arc and
+shorthand path commands are converted to editable Bézier geometry. UTF-8 SVG files are limited
+to 4 MiB and existing document resource limits. Unsupported features fail before changing the
+document: text, images, gradients, CSS classes, clipping, filters, evenodd fills, rounded rectangles,
+group opacity and nonuniformly transformed strokes. Convert those features to plain paths first.
+Imports never fetch external resources. The original SVG element IDs become layer names.

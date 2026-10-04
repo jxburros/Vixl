@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "vixl": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "https://github.com/jxburros/Vixl/archive/refs/tags/v0.15.0.tar.gz",
+        "vixl",
+        "mcp",
+        "--workspace",
+        ".",
+        "--tools",
+        "core",
+        "--schema",
+        "slim"
+      ]
+    }
+  }
+}

@@ -106,8 +106,8 @@ To publish a stable release:
 3. Tag the reviewed commit with its exact version and push the tag:
 
    ```bash
-   git tag v0.14.0 <reviewed-commit>
-   git push origin v0.14.0
+   git tag v0.15.0 <reviewed-commit>
+   git push origin v0.15.0
    ```
 
 4. The tag workflow re-runs tests, checks tag/package-version consistency, builds the distributions, and creates a **draft** GitHub release. It uploads every artifact before publishing it as the latest stable release. No release becomes visible to the updater while files are still being uploaded.
@@ -123,3 +123,42 @@ Release assets:
 - Python wheel and source distribution — optional pip/developer installs.
 
 An update trusts HTTPS and access control of the official GitHub repository. The manifest and artifact have the same trust root; checksums detect corruption or mismatched downloads but do not defend against compromise of the repository's release permissions. A separate signed-manifest trust system and Authenticode signing are future hardening options.
+
+## Python and agent bundles
+
+`.github/workflows/pypi.yml` builds and tests wheels/source distributions and agent bundles.
+Tagged releases publish `vixl-engine` using PyPI Trusted Publishing. Before the first release,
+configure a PyPI pending/trusted publisher with owner `jxburros`, repository `Vixl`, workflow
+`pypi.yml`, and environment `pypi`; create that GitHub environment with the desired protections.
+No PyPI password belongs in the repository. A manual workflow run builds artifacts without
+publishing. A version tag must match `src/vixl/__init__.py`; use a new version for a new release.
+Publication is an external release step, not something a source checkout can guarantee.
+
+After the first successful PyPI release:
+
+```bash
+uvx --from vixl-engine vixl mcp --workspace . --tools core --schema slim
+pip install 'vixl-engine[server,pdf]'
+```
+
+MCP is included in the base package. REST/view and PDF import remain optional extras.
+
+Build the Claude packages with `python distribution/package_extensions.py`. The release workflow
+attaches `vixl.mcpb` and `vixl-claude-code.zip` alongside Python and Windows artifacts. Both include
+the skill and all its reference files. Both require [uv](https://docs.astral.sh/uv/getting-started/installation/).
+Both bundles install from the versioned GitHub source archive, so they work independently of
+PyPI publisher setup. Their tag must exist before installation.
+Open the `.mcpb` in Claude Desktop and select the workspace folder. Desktop loads the MCP server
+instructions; the included skill files are reference material, not an automatically installed Desktop skill.
+
+For Claude Code, this repository is also a plugin marketplace:
+
+```text
+/plugin marketplace add jxburros/Vixl
+/plugin install vixl@vixl
+```
+
+For local development, `claude --plugin-dir /absolute/path/to/Vixl` loads the same skill and MCP
+configuration. The server operates in the client's current directory. The `.mcp.json` config uses
+a versioned GitHub source URL; when testing unpublished code, replace that URL with
+`--from /absolute/path/to/Vixl` in a local copy of the config.
