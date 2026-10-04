@@ -42,8 +42,8 @@ Measure:   info, sample X Y, histogram [--region X Y W H], info --target TEXT,
 Pixels:    pixel-art, pixel-draw, pixel-palette, pixels [LAYER],
            frame-save NAME [--duration MS], frame-apply NAME, frame-delete NAME,
            animation, animation-set --loop N --order FRAME FRAME,
-           export-animation --out FILE --format gif|apng|sheet [--scale N]
-Editing:   move, resize, scale, rotate, flip, crop, opacity, blend, align,
+           export-animation --out FILE --format gif|apng|sheet [--scale N] [--sampling nearest|smooth] [--colors N]
+Editing:   move, resize, scale, rotate, pivot, flip, crop, opacity, blend, align,
            select-layer, select, mask, filter, effect, rasterize
 Effects:   brightness, contrast, saturation, hue, exposure, gamma, temperature,
            tint, shadows, highlights, blur, sharpen, grayscale, invert,
@@ -71,7 +71,7 @@ Paint:     brushes, paint-layer [--name N], paint [LAYER] --brush ink --points J
 Motion:    timeline, timeline set --duration 3s --fps 30 [--loop N], keyframe LAYER PROP TIME VALUE,
            animate LAYER PROP --to V [--from V] [--start T] [--duration T] [--easing E],
            animate-preset LAYER PRESET [--start T] [--duration T], marker NAME TIME, easings,
-           export-timeline --out FILE.gif|.webp|.png|.zip|.mp4 [--fps N] [--scale N],
+           export-timeline --out FILE.gif|.webp|.png|.zip|.mp4 [--fps N] [--scale N] [--colors N],
            timeline-sheet --out FILE [--count 8], render --time 1.5s --out FILE
 Output:    export FILE [--quality N] [--scale 2x] [--profile NAME] [--dpi N]
            [--cmyk [--icc PROFILE.icc] [--ink-limit 300]] [--proof] [--simulate deuteranopia],
@@ -629,10 +629,13 @@ def project_command(project, cmd, args, *, detail="compact"):
         p = Parser(prog="vixl export-animation")
         p.add_argument("--out", required=True)
         p.add_argument("--format", choices=["gif", "apng", "sheet"])
-        p.add_argument("--scale", type=int, default=1)
+        p.add_argument("--scale", type=float, default=1, help="Integer 1–32 with nearest sampling; 0.05–32 with smooth")
+        p.add_argument("--sampling", choices=["nearest", "smooth"], default="nearest")
+        p.add_argument("--colors", type=int, default=256, help="GIF palette size 2–256")
         p.add_argument("--columns", type=int)
         a = p.parse_args(args)
-        return project.export_animation(a.out, format=a.format, scale=a.scale, columns=a.columns), False
+        scale = int(a.scale) if a.scale.is_integer() else a.scale
+        return project.export_animation(a.out, format=a.format, scale=scale, columns=a.columns, sampling=a.sampling, colors=a.colors), False
     if cmd == "export-screens":
         from .exports import export_screens
 

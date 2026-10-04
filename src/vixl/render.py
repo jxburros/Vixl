@@ -161,12 +161,36 @@ def text_metrics(project, layer, variables=None):
     return max(1, math.ceil(box[2] - box[0])), max(1, math.ceil(box[3] - box[1])), box
 
 
-def transformed_size(layer):
-    w, h = layer["width"], layer["height"]
+def rest_size(layer):
     if layer.get("repeat"):
         from .design_render import repeat_bounds
 
-        w, h = repeat_bounds(layer)
+        return repeat_bounds(layer)
+    return layer["width"], layer["height"]
+
+
+def pivot_delta(layer):
+    """Drawn-bounds origin minus stored x/y. Zero unless a ``pivot`` is set: then x/y place the
+    unrotated box and rotation turns it about the pivot, which stays fixed on the canvas."""
+    pivot = layer.get("pivot")
+    if pivot is None:
+        return 0.0, 0.0
+    rw, rh = rest_size(layer)
+    tw, th = transformed_size(layer)
+    vx, vy = (pivot[0] - 0.5) * rw, (pivot[1] - 0.5) * rh
+    angle = math.radians(layer.get("rotation", 0) % 360)
+    co, si = math.cos(angle), math.sin(angle)
+    return (rw - tw) / 2 + vx - (vx * co - vy * si), (rh - th) / 2 + vy - (vx * si + vy * co)
+
+
+def stored_origin(layer, bounds):
+    """The x/y that draws ``layer`` with its bounds' top-left at ``bounds[:2]``."""
+    dx, dy = pivot_delta(layer)
+    return bounds[0] - dx, bounds[1] - dy
+
+
+def transformed_size(layer):
+    w, h = rest_size(layer)
     if layer.get("rotation", 0) % 360:
         # Pillow determines the exact expanded pixel bounds, without allocating the source raster.
         angle = math.radians(layer["rotation"] % 360)
@@ -196,6 +220,7 @@ def resolved_layers(project, variables=None):
                 "width",
                 "height",
                 "rotation",
+                "pivot",
                 "flip_x",
                 "flip_y",
                 "opacity",
@@ -207,7 +232,7 @@ def resolved_layers(project, variables=None):
             ):
                 if key in layer:
                     instance[key] = layer[key]
-                elif key in ("parent", "clip"):
+                elif key in ("parent", "clip", "pivot"):
                     instance.pop(key, None)
             instance["effects"] += layer["effects"]
             instance["styles"] = {**instance.get("styles", {}), **layer.get("styles", {})}
@@ -283,6 +308,10 @@ def resolve_layout(project, variables=None, layers=None):
         w, h = transformed_size(layer)
         project.limits.size(w, h)
         x, y = layer["x"], layer["y"]
+        dx, dy = pivot_delta(layer)
+        if layer.get("pivot") is not None:
+            # Constraints place a pivoted layer's unrotated box.
+            w, h = rest_size(layer)
         for anchor, expression in layer.get("constraints", {}).items():
             if isinstance(expression, str) and expression.startswith("canvas.") and layer.get("parent"):
                 parent = index[layer["parent"]]
@@ -306,7 +335,7 @@ def resolve_layout(project, variables=None, layers=None):
                 y = val - h / 2
             else:
                 raise VixlError("invalid_constraint", f"Unknown anchor: {anchor}")
-        bounds[ident] = (round(x), round(y), w, h)
+        bounds[ident] = (round(x + dx), round(y + dy), *transformed_size(layer))
         visiting.remove(ident)
         return bounds[ident]
 

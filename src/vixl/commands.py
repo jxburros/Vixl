@@ -198,6 +198,27 @@ def compile_command(tokens):
             # Opacity 1–100 is read as a percentage by the shared normalizer.
             data[key] = values[0] if cmd in ("flip", "blend") else float(values[0])
         return {**op, **{k: v for k, v in data.items() if v is not None}}
+    elif cmd == "pivot":
+        p.description = "Set the point a layer rotates and scales about: X Y fractions of its box (0 0 top-left, 0.5 0.5 center), --px for pixels from its top-left, or an anchor such as top-left."
+        p.add_argument("values", nargs="*", metavar="[LAYER] X Y | [LAYER] ANCHOR")
+        p.add_argument("--px", action="store_true", help="X Y are pixels from the layer box's top-left")
+        p.add_argument("--clear", action="store_true", help="Remove the pivot (rotate/scale about the center again)")
+        data = vars(p.parse_args(args))
+        values = data.pop("values")
+        from .operations import PIVOT_ANCHORS
+
+        if data.pop("clear"):
+            require(len(values) <= 1, "Use pivot [LAYER] --clear")
+            return {**op, "clear": True, **({"target": values[0]} if values else {})}
+        if values and values[-1] in PIVOT_ANCHORS:
+            require(len(values) <= 2, "Use pivot [LAYER] ANCHOR")
+            return {**op, "value": values[-1], **({"target": values[0]} if len(values) == 2 else {})}
+        require(len(values) in (2, 3), "Use pivot [LAYER] X Y, pivot [LAYER] ANCHOR or pivot [LAYER] --clear")
+        try:
+            point = [float(values[-2]), float(values[-1])]
+        except ValueError:
+            raise VixlError("usage_error", "Pivot X and Y must be numbers") from None
+        return {**op, "value": point, **({"units": "px"} if data["px"] else {}), **({"target": values[0]} if len(values) == 3 else {})}
     elif cmd == "crop":
         p.add_argument("target")
         for key in ("x", "y", "width", "height"):

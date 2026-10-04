@@ -98,7 +98,8 @@ vixl reorder logo --above portrait       # or --below
 vixl move portrait 100 200 ; vixl move portrait --x 100 ; vixl move portrait 20 0 --relative   # mv = move
 vixl scale portrait 80%                  # or 0.8
 vixl resize portrait 800x600 ; vixl resize portrait --width 800
-vixl rotate portrait 15                  # clockwise degrees
+vixl rotate portrait 15                  # clockwise degrees about the pivot (default: center)
+vixl pivot arm 0.5 0.05                  # fractions of the box; pivot arm top | pivot arm 8 2 --px | pivot arm --clear
 vixl flip portrait horizontal|vertical
 vixl crop portrait 0 0 300 400           # X Y W H in the source raster
 vixl opacity portrait 0.75               # or 75 (1–100 = percent)
@@ -209,7 +210,8 @@ vixl export out.png|.jpg|.webp|.tiff|.avif [--quality 90] [--scale 2x] [--profil
 vixl render [F.vixl] --out preview.png [--set title=Hello]      # same options; never persists overrides
 vixl render --data rows.csv --out campaign_dir                  # one PNG per CSV row: 0001.png …
 vixl export-screens --out screens --scales 1 2 [--artboards square story]   # NAME@2x.png
-vixl export-animation --out sprite.gif --format gif|apng|sheet [--scale 8] [--columns 3]
+vixl export-animation --out sprite.gif --format gif|apng|sheet [--scale 8] [--columns 3] [--colors 64] \
+     [--sampling nearest|smooth]          # smooth: any scale (0.5, 1.5 …) re-rendered crisply
 vixl export - --format PNG > preview.png                        # to stdout
 cat photo.png | vixl convert --grayscale [--format PNG] > gray.png
 vixl compare REF_A REF_B --out comparison.png                   # side-by-side history states
@@ -299,10 +301,12 @@ vixl -p art.vixl paint-clear paint --last 1
 vixl -p promo.vixl timeline set --duration 3s --fps 30
 vixl -p promo.vixl animate-preset headline slide-in-up --duration 0.8s
 vixl -p promo.vixl animate logo rotation --to 360 --duration 3s --easing linear
+vixl -p promo.vixl animate arm-left,arm-right rotation --from -20 --to 20 --duration 0.5s   # shared timing
 vixl -p promo.vixl keyframe badge opacity 1.5s 0.4 --easing ease-out
 vixl -p promo.vixl timeline ; vixl -p promo.vixl timeline-sheet --out motion.png
 vixl -p promo.vixl render --time 1.5s --out frame.png
 vixl -p promo.vixl export-timeline --out promo.gif --scale 0.5      # .png .webp .zip .mp4 .webm, --format sheet
+vixl -p promo.vixl export-timeline --out banner.gif --colors 64 --fps 12   # smaller GIF; --scale 2 renders crisp @2x
 ```
 
 Times: ms, `1.5s`, `250ms`, `50%`, or a marker (`vixl marker reveal 1.2s`).

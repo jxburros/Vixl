@@ -9,6 +9,8 @@ inputs are fixed-size canvas rasters (effect selections) fall back to a full ren
 from copy import copy, deepcopy
 import re
 
+from .constants import ARTISTIC_DEFAULTS
+
 CONSTRAINT = re.compile(r"^(.+\.(?:left|right|top|bottom|center-x|center-y))([+-]\d+(?:\.\d+)?)?$")
 
 
@@ -53,8 +55,14 @@ def _scale_layer(layer, s):
             if key in settings:
                 settings[key] = settings[key] * s
     for effect in layer.get("effects", []):
-        if effect.get("name") in ("blur", "gaussian-blur"):
+        name = effect.get("name")
+        if name in ("blur", "gaussian-blur"):
             effect["amount"] = effect.get("amount", 0) * s
+        elif name in ("pixelate", "halftone", "crosshatch"):
+            effect["amount"] = max(1, round(effect.get("amount", ARTISTIC_DEFAULTS[name]) * s))
+        elif name in ("ripple", "wave", "glass"):
+            effect["amount"] = effect.get("amount", ARTISTIC_DEFAULTS[name]) * s
+            effect["radius"] = effect.get("radius", 12 if name == "glass" else 32) * s
     constraints = layer.get("constraints", {})
     for anchor, expression in list(constraints.items()):
         if isinstance(expression, (int, float)):
@@ -77,7 +85,7 @@ def supported(state):
 
 
 def scaled_project(project, s):
-    """Return a render-only copy of ``project`` scaled by ``s`` (< 1), or None if unsupported."""
+    """Return a render-only copy of ``project`` scaled by ``s``, or None if unsupported."""
     if not supported(project.state):
         return None
     candidate = copy(project)

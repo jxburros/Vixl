@@ -97,7 +97,7 @@ def service_operation_schema(slim=False):
     # or a smaller targets limit). Variant-specific constraints remain in oneOf.
     common = {}
     for key, values in definitions.items():
-        if key == "type" or len(values) < 2:
+        if len(values) < 2:
             continue
         for value in values:
             if "enum" in value and all(isinstance(v, str) for v in value["enum"]):
@@ -800,11 +800,15 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
 
     @tool
     def vixl_animation_preview(
-        name: str, scale: Annotated[int, Field(ge=1, le=8)] = 1, document: Document = None
+        name: str,
+        scale: Annotated[float, Field(ge=0.05, le=8)] = 1,
+        sampling: Literal["nearest", "smooth"] = "nearest",
+        document: Document = None,
     ) -> Image:
-        """Preview a saved frame with crisp integer scaling (default: native pixel size)."""
+        """Preview a saved frame (default: native size). Nearest needs an integer scale and keeps pixel art
+        crisp; smooth re-renders at any scale (use it to shrink large frames)."""
         with session.project(document=document) as project:
-            image = project.render_frame(name, scale)
+            image = project.render_frame(name, int(scale) if float(scale).is_integer() else scale, sampling)
             stream = BytesIO()
             image.save(stream, format="PNG")
             require(len(stream.getvalue()) <= 4_194_304, "Frame preview exceeds 4 MiB; use a smaller scale")
@@ -814,15 +818,25 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
     def vixl_export_animation(
         path: str,
         format: Literal["gif", "apng", "sheet"] = "gif",
-        scale: Annotated[int, Field(ge=1, le=32)] = 1,
+        scale: Annotated[float, Field(ge=0.05, le=32)] = 1,
+        sampling: Literal["nearest", "smooth"] = "nearest",
+        colors: Annotated[int, Field(ge=2, le=256)] = 256,
         columns: Positive | None = None,
         document: Document = None,
     ) -> dict:
         """Write saved frames as GIF, APNG or PNG sprite sheet plus JSON timing metadata in the workspace.
-        Never overwrites files. Scaling uses nearest-neighbor sampling; sheets preserve every named frame."""
+        Never overwrites files. sampling="nearest" (integer scale 1–32) keeps pixel art crisp; "smooth"
+        re-renders at any scale 0.05–32 for illustrations. colors caps the GIF palette; sheets keep every frame."""
         with session.project(document=document) as project:
             destination = session.resolve(path)
-            result = project.export_animation(destination, format=format, scale=scale, columns=columns)
+            result = project.export_animation(
+                destination,
+                format=format,
+                scale=int(scale) if float(scale).is_integer() else scale,
+                sampling=sampling,
+                colors=colors,
+                columns=columns,
+            )
             result["output"] = session.relative(destination)
             if "metadata" in result:
                 result["metadata"] = session.relative(destination.with_suffix(".json"))
@@ -1006,17 +1020,20 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         path: str,
         format: Literal["gif", "apng", "webp", "sheet", "frames", "mp4", "webm"] | None = None,
         fps: Annotated[float | None, Field(ge=1, le=60)] = None,
-        scale: Annotated[float, Field(ge=0.05, le=4)] = 1.0,
+        scale: Annotated[float, Field(ge=0.05, le=16)] = 1.0,
         start: float | str | None = None,
         end: float | str | None = None,
         background: str | None = None,
         columns: Positive | None = None,
         quality: Annotated[int, Field(ge=1, le=100)] = 90,
+        colors: Annotated[int, Field(ge=2, le=256)] = 256,
         overwrite: bool = False,
         document: Document = None,
     ) -> dict:
         """Write the keyframe timeline as GIF, APNG, animated WebP, sprite sheet (+JSON), PNG-sequence ZIP,
-        or MP4/WebM (needs ffmpeg). Format follows the extension; scale previews large canvases cheaply."""
+        or MP4/WebM (needs ffmpeg). Format follows the extension. Frames render crisply at scale (0.05–16,
+        within the pixel budget). colors (GIF palette 2–256) plus lower fps/scale shrink GIFs; results report
+        bytes and warn above 1 MB."""
         from .timeline import export_timeline
 
         with session.project(document=document) as project:
@@ -1032,6 +1049,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
                 background=background,
                 columns=columns,
                 quality=quality,
+                colors=colors,
                 overwrite=overwrite,
             )
             result["output"] = session.relative(destination)
