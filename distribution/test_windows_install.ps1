@@ -39,7 +39,12 @@ try {
         $InstalledPath = $env:PATH
         $env:PATH = $SessionPath
         try {
-            if ((Test-PathEntry $SessionPath $AliasDir) -and ((Get-Command vixl).Source -ne $Alias)) { throw 'Old session did not resolve the alias' }
+            # Another vixl (here the runner's pip install) may come earlier on that PATH; the
+            # alias must still be found there.
+            $Found = @(Get-Command vixl -All -CommandType Application -ErrorAction SilentlyContinue | ForEach-Object { $_.Source })
+            if ((Test-PathEntry $SessionPath $AliasDir) -and -not ($Found -contains $Alias)) {
+                throw "Old session did not find the alias; it found: $($Found -join ', ')"
+            }
             if ((& $Alias --version).Trim() -ne $Version) { throw 'Alias launched the wrong installation' }
             $AliasStatus = (& $Alias updates status --json | ConvertFrom-Json)
             if ($LASTEXITCODE -ne 0 -or -not $AliasStatus) { throw 'Alias could not read the installation state' }
