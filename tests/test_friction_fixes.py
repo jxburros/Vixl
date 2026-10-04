@@ -98,12 +98,33 @@ def test_render_data_reports_per_row_checks(tmp_path):
     assert "check" not in p.render_data(data, tmp_path / "out2", check=False)[1]
 
 
-def test_icon_sets_warn_when_enlarging_the_design(tmp_path):
+def test_icon_sets_rerender_vectors_and_warn_when_enlarging_images(tmp_path):
+    from PIL import Image
+
     p = Project.sized("favicon")
-    p.apply({"type": "shape", "shape": "ellipse", "width": 400, "height": 400, "fill": "teal"})
+    p.apply({"type": "shape", "shape": "ellipse", "width": 400, "height": 400, "x": 56, "y": 56, "fill": "teal"})
     result = export_icons(p, tmp_path / "icons", icon_set="all")
-    assert "1024px" in result["warnings"][0]
-    assert "warnings" not in export_icons(p, tmp_path / "web", icon_set="web")
+    assert "warnings" not in result
+    large = Image.open(tmp_path / "icons" / "apple-icon-1024.png").convert("RGBA")
+    edge = [large.getpixel((x, 512))[3] for x in range(0, 1024)]
+    assert sum(0 < a < 255 for a in edge) <= 4  # crisp; enlarging the 512px render leaves ~12
+    photo = tmp_path / "photo.png"
+    Image.new("RGB", (64, 64), "red").save(photo)
+    p.apply({"type": "add", "path": str(photo), "name": "photo"})
+    assert "1024px" in export_icons(p, tmp_path / "again", icon_set="all")["warnings"][0]
+
+
+def test_export_scale_rerenders_instead_of_enlarging_pixels():
+    import io
+
+    from PIL import Image
+
+    p = Project(100, 100, background="white")
+    p.apply({"type": "shape", "shape": "ellipse", "width": 80, "height": 80, "x": 10, "y": 10, "fill": "black"})
+    big = Image.open(io.BytesIO(p.export(format="PNG", scale=4))).convert("L")
+    assert big.size == (400, 400)
+    row = [big.getpixel((x, 200)) for x in range(400)]
+    assert sum(0 < v < 255 for v in row) <= 6
 
 
 def test_cli_inspect_target_and_text_help(tmp_path, monkeypatch, capsys):

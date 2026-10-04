@@ -810,7 +810,18 @@ def export(
     require(svg_policy == "appearance", "Strict SVG policy requires SVG output")
     if format:
         format = {"JPG": "JPEG", "TIF": "TIFF"}.get(format.upper(), format.upper())
-    image = render(project, variables, artboard, comp)
+    image = None
+    if scale > 1 and sampling != "nearest" and not (artboard or comp or settings.get("size")):
+        # Enlarge by re-rendering a scaled copy, so text, shapes and vectors stay crisp.
+        from .proxy import scaled_project
+
+        project.limits.size(round(project.state["canvas"]["width"] * scale), round(project.state["canvas"]["height"] * scale))
+        proxy = scaled_project(project, scale)
+        if proxy is not None:
+            image = render(proxy, variables)
+            scale = 1
+    if image is None:
+        image = render(project, variables, artboard, comp)
     size = settings.pop("size", None)
     if size:
         image = ImageOps.contain(image, size, resample)

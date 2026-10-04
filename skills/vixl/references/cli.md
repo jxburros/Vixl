@@ -208,7 +208,7 @@ and failing `validate`/`assert` exit nonzero with details (`--json` shows every 
 vixl export out.png|.jpg|.webp|.tiff|.avif [--quality 90] [--scale 2x] [--profile instagram|discord|print] \
      [--format PNG] [--background white] [--sampling nearest] [--set var=value] [--artboard NAME] [--comp NAME]
 vixl render [F.vixl] --out preview.png [--set title=Hello]      # same options; never persists overrides
-vixl render --data rows.csv --out campaign_dir                  # one PNG per CSV row: 0001.png …
+vixl render --data rows.csv --out campaign_dir [--no-check]     # one PNG per CSV row: 0001.png …; rows with design problems carry a "check" report
 vixl export-screens --out screens --scales 1 2 [--artboards square story]   # NAME@2x.png
 vixl export-animation --out sprite.gif --format gif|apng|sheet [--scale 8] [--columns 3] [--colors 64] \
      [--sampling nearest|smooth]          # smooth: any scale (0.5, 1.5 …) re-rendered crisply
@@ -219,6 +219,8 @@ vixl compare REF_A REF_B --out comparison.png                   # side-by-side h
 
 `export-screens` requires at least one artboard; `export-animation` requires saved frames.
 `render --data`, `export-screens` and `export-animation` never overwrite existing outputs.
+`export --scale` above 1 re-renders text, shapes and vectors at the larger size (images resample);
+`--sampling nearest` enlarges pixels instead. `inspect` takes `LAYER` or `--target LAYER`.
 Profiles *contain* (never crop/stretch): `instagram` 1080² JPEG, `discord` 512² PNG, `print` TIFF @300 DPI.
 JPEG flattens transparency onto `--background` (white).
 
@@ -275,7 +277,7 @@ vixl ai remove --as removed ; vixl ai content-aware-fill --prompt '…' ; vixl a
 
 ```bash
 vixl -p F.vixl serve [--host 127.0.0.1] [--port 8765] [--token-env VIXL_API_TOKEN]
-vixl mcp --workspace DIR                 # MCP over stdio
+vixl mcp --workspace DIR [--tools core|ai]   # MCP over stdio; core + ai run as two servers (default all)
 vixl update --check | vixl update | vixl update --rollback ; vixl updates status|on|off   # Windows installer only
 ```
 

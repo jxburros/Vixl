@@ -45,7 +45,7 @@ def test_operation_schema_is_in_tools_list(tmp_path):
         assert tools["vixl_ai_generate"].inputSchema["properties"]["seed"]["type"] == "integer"
         # Design, pixel/animation, brush, timeline, layout and color operations extend the catalog; shared
         # constraints and runtime-validated names keep the inline schema bounded (slim mode is smaller still).
-        assert len(json.dumps(schema)) < 25000
+        assert len(json.dumps(schema)) < 24000
 
     asyncio.run(run())
 

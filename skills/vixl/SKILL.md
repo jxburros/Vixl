@@ -186,6 +186,9 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
   name/ID, or `guide:NAME`, plus `.left/.right/.top/.bottom/.center-x/.center-y` and `+N`/`-N`.
 - **Effects capture the selection that exists when they are added.** Clear it
   (`{"type":"select","shape":"none"}`) before adding whole-layer effects.
+- **Palettes and fonts recolor/re-font by role:** `palette-apply` sets `@background`/`@ink`/`@accent`…,
+  and `font pair` updates text whose `font` is `heading`/`body` (templates use roles). Literal colors
+  and named fonts stay as they are.
 - **Text auto-sizes** to its rendered bounds; an explicit `resize` turns that off, editing text turns it back on.
   For wrapping use `text-layout` with `width`/`height` (optionally `fit: true`).
 - **Variables:** `${name}` works in text, colors, gradient fills and image-asset IDs. Undefined
@@ -193,6 +196,9 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
 - **Through MCP/REST, operation `path`, `linked` and `font` fields are rejected.** Import files with
   `vixl_import_image(path=…)` or, when you only have the bytes, `vixl_import_image(data_base64=…)`
   (MCP) or `POST /assets` (REST); reuse already-embedded images via `asset` IDs.
+- **MCP may run as two servers:** `vixl` (`--tools core`) for editing and export, `vixl-ai`
+  (`--tools ai`) for provider-backed `vixl_ai_*` tools. They share the workspace; edits made in one are
+  seen by the other on its next call.
 - **Several documents can be open over MCP.** Pass `document="other.vixl"` to any tool to address one
   without changing the active document.
 - **MCP paths are relative to the server's `--workspace`**, must stay inside it, and subdirectories
@@ -204,6 +210,9 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
   offline fallback; if no provider is configured, say so instead of retrying.
 - **Small accent text uses `@accent-text`**, not `@accent` (fills and large type only need 3:1; small
   text needs 4.5:1). Layouts already do this.
+- **Character rigs:** set each limb's `pivot` at its joint (`{"type":"pivot","target":"arm","value":"top"}`)
+  before animating `rotation`; group parts that move together; give several parts the same keys with
+  `targets`. Keep GIFs small with `colors` and a lower `fps`.
 - **Animate with `translate-x/y` and `scale`** so constrained layouts keep working; the saved document
   is the frame at rest, and `time=` previews or exports a moment.
 - **CMYK is an export setting** (`color_space="cmyk"` for PDF/TIFF/JPEG). Pass the printer's ICC profile

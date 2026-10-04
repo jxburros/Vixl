@@ -120,6 +120,10 @@ ICON_SETS = {
 }
 
 
+def has_raster(project):
+    return any(layer["type"] in ("raster", "frame") for layer in project.state["layers"])
+
+
 def export_icons(project, directory, *, icon_set="web", sampling="smooth"):
     """Render once, then write a standard icon set (PNG sizes, ICO and a web manifest)."""
     from PIL import Image
@@ -133,15 +137,25 @@ def export_icons(project, directory, *, icon_set="web", sampling="smooth"):
         extras = ["favicon.ico"]
     names = [name for name, _ in entries] + extras
     require(not any((root / name).exists() for name in names), "Icon output already exists; choose an empty folder")
-    image = project.render()
-    side = max(image.size)
-    square = Image.new("RGBA", (side, side))
-    square.alpha_composite(image, ((side - image.width) // 2, (side - image.height) // 2))
+    def squared(image):
+        side = max(image.size)
+        square = Image.new("RGBA", (side, side))
+        square.alpha_composite(image, ((side - image.width) // 2, (side - image.height) // 2))
+        return square
+
+    square = squared(project.render())
+    side = square.width
     resample = Image.Resampling.NEAREST if sampling == "nearest" else Image.Resampling.LANCZOS
+    largest = max(size for _, size in entries)
+    if largest > side and sampling == "smooth":
+        # Large icons re-render the design at their size instead of enlarging pixels.
+        from .timeline import render_scaled
+
+        large = squared(render_scaled(project, largest / side))
     files = {}
     for name, size in entries:
         stream = io.BytesIO()
-        square.resize((size, size), resample).save(stream, format="PNG")
+        (large if size > side and sampling == "smooth" else square).resize((size, size), resample).save(stream, format="PNG")
         files[name] = stream.getvalue()
     if "favicon.ico" in extras:
         stream = io.BytesIO()
@@ -162,9 +176,9 @@ def export_icons(project, directory, *, icon_set="web", sampling="smooth"):
             stream.write(data)
     result = {"directory": str(root), "files": sorted(files), "source_size": side}
     upscaled = sorted({size for _, size in entries if size > side})
-    if upscaled:
+    if upscaled and (sampling == "nearest" or has_raster(project)):
         result["warnings"] = [
-            f"{', '.join(f'{s}px' for s in upscaled)} icons are enlarged from the {side}px design and may look soft; "
+            f"{', '.join(f'{s}px' for s in upscaled)} icons enlarge the {side}px design's images and may look soft; "
             "design on a 1024px canvas (vixl new app-icon) for crisp large icons"
         ]
     return result

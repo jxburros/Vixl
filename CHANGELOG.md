@@ -2,6 +2,37 @@
 
 ## Unreleased
 
+- **Character animation and sharper motion.** A new `pivot` operation (`vixl pivot arm 0.5 0.05`,
+  anchor names, `--px`, `--clear`) makes rotation and scale turn about a joint that stays fixed in
+  renders, timeline frames, layout bounds and SVG; animated rotation no longer drifts; group
+  `translate`/`rotation`/`scale` keyframes carry their children; `animate`, `animate-preset` and
+  `keyframe` accept `targets` (CLI `a,b`). `export-timeline --scale` (now up to 16) renders frames at
+  full resolution instead of enlarging them, and `export --scale` and large icon-set sizes re-render
+  text, shapes and vectors the same way. `export-animation` gains `--sampling smooth|nearest` with
+  fractional smooth scales, and frame animation works at any canvas size within the pixel budget (the
+  256×256 cap is gone). GIFs are much smaller with no visual change (frame differencing for opaque
+  animations), accept `--colors 2–256`, and the export result warns above 1 MB; a 728×90 4 s banner
+  went from 929 KB to 190 KB (76 KB at 64 colors). New REST `POST /animation/export`.
+- **MCP as two servers.** `vixl mcp --tools core` serves editing, rendering, checks, export and the
+  catalogs; `--tools ai` serves the provider-backed tools plus workspace/open/inspect/preview. Both
+  share the workspace and see each other's saved edits. The default (`all`) is unchanged.
+- **Windows: `vixl` works in already-open sessions.** The installer also places the launcher in
+  `%LOCALAPPDATA%\Microsoft\WindowsApps` (already on the user PATH of running programs) when that
+  folder is on PATH, never over another program's `vixl.exe`, and removes it on uninstall. The copy
+  finds the installation through `VIXL_HOME`, the installer's `HKCU\Software\Vixl\InstallRoot`
+  record, or `%LOCALAPPDATA%\Programs\Vixl`. The agent skill tells agents to check the standard
+  install locations and `python -m vixl` before asking where Vixl is, and the MCP docs now give the
+  correct install path.
+- **Palettes, fonts and templates.** `palette apply` also sets the role swatches (`@background`,
+  `@ink`, `@accent` …), recoloring layouts and templates (`roles: false` adds only numbered swatches).
+  Templates roll their colors into role swatches and give text `heading`/`body` font roles, so
+  `font pair` re-fonts them. `text`/`text-set` accept `font` as a registered name, role or file, and
+  `missing_font` lists the registered fonts.
+- **Checks and layouts.** On print sizes, legibility is judged in printed points (below 6 pt) instead
+  of at thumbnail width. `event-poster` grows its type on large formats, keeps the date on one line
+  and sets the facts at the foot. `render --data` checks every row and attaches a `check` report to
+  outputs with problems (`--no-check` skips it). Icon sets warn when they enlarge embedded images.
+  `vixl text --help` shows `text add` usage, and `inspect` accepts `--target`.
 - **Fixes from a ten-design hands-on pass.** Stroked polygons, stars and closed paths now join
   their first vertex instead of leaving a notch. `text-set` keeps a `text-layout` box, so changing
   the color, size or copy of wrapped text no longer collapses it to one long line. SVG export now
