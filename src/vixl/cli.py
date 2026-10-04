@@ -183,7 +183,7 @@ def print_options(a, limits):
 
 
 def dispatch(argv):
-    global_parser = Parser(add_help=False)
+    global_parser = Parser(add_help=False, allow_abbrev=False)
     global_parser.add_argument("--project", "-p")
     global_parser.add_argument("--json", action="store_true")
     global_parser.add_argument("--allow-linked", action="store_true")
@@ -191,7 +191,11 @@ def dispatch(argv):
     global_parser.add_argument("--max-pixels", type=int, default=40_000_000)
     global_parser.add_argument("--detail", choices=["compact", "full"], default="compact")
     global_parser.add_argument("--version", action="store_true")
+    global_parser.add_argument("--runtime-info", action="store_true")
     options, tokens = global_parser.parse_known_args(argv)
+    if options.runtime_info:
+        return {"version": __version__, "python": sys.executable, "module": __file__,
+                "managed_root": os.environ.get("VIXL_MANAGED_ROOT")}, options.json
     if options.version:
         return __version__, options.json
     if not tokens:
@@ -242,7 +246,7 @@ def dispatch(argv):
                     | {"filter"}
                     | {"workflow"}
                     | set(
-                        "new open save status inspect describe layers effects manifest dependencies reproduce schema check batch convert render export export-screens export-animation spacing pixels animation info sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert validate preset ai ask generate detect ocr serve view notes import mcp update updates commands shapes palette template guidance font fonts roll providers models color sizes layout layouts brushes easings timeline export-timeline timeline-sheet export-icons".split()
+                        "new session open save status inspect describe layers effects manifest dependencies reproduce schema check batch convert render export export-screens export-animation spacing pixels animation info sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert validate preset ai ask generate detect ocr serve view notes import mcp update updates commands shapes palette template guidance font fonts roll providers models color sizes layout layouts brushes easings timeline export-timeline timeline-sheet export-icons".split()
                     )
                 )
             }
@@ -304,6 +308,7 @@ def dispatch(argv):
     if cmd == "new":
         p = Parser(prog="vixl new", description="SIZE is WIDTHxHEIGHT or a named size (vixl sizes)")
         p.add_argument("size")
+        p.add_argument("--overwrite", action="store_true", help="Replace an existing document explicitly")
         p.add_argument("--background", default="transparent")
         p.add_argument("--out", "-o", default=options.project or "untitled.vixl")
         p.add_argument("--dpi", type=float)
@@ -312,7 +317,8 @@ def dispatch(argv):
         orientation.add_argument("--portrait", dest="orientation", action="store_const", const="portrait")
         p.add_argument("--bleed", nargs="?", const=True, type=float, help="Add standard bleed, or an amount in the size's unit")
         a = p.parse_args(args)
-        require(not Path(a.out).exists(), "Project already exists; choose another filename")
+        require(not Path(a.out).exists() or a.overwrite, "Project already exists; use --overwrite to replace it")
+        require(not Path(a.out).is_dir(), "Output must be a file")
         named_size = not re.fullmatch(r"\d+[x×]\d+", a.size)
         require(named_size or not (a.orientation or a.bleed), "orientation and bleed need a named size")
         if named_size:
@@ -430,6 +436,11 @@ def dispatch(argv):
     with file_lock(str(path)):
         project = Project.load(path, limits=limits, allow_linked=options.allow_linked)
         project._workspace = Path.cwd()
+        if cmd == "session":
+            require(not args, "Use session --project FILE; send NDJSON requests on stdin")
+            from .session import run
+            run(project, detail=options.detail)
+            return None, options.json
         result, changed = project_command(project, cmd, args, detail=options.detail)
         if changed:
             project.save()
@@ -446,6 +457,7 @@ def command_help(cmd, args):
         "save": "save [FILE]",
         "inspect": "inspect [LAYER]",
         "status": "status",
+        "session": "session --project FILE (NDJSON operations or command argv requests on stdin)",
         "describe": "describe [image]",
         "layers": "layers",
         "effects": "effects [LAYER]",
@@ -469,8 +481,8 @@ def command_help(cmd, args):
         "fonts": "fonts [--category serif] [--role heading] [--mood elegant] [--query TEXT]",
         "view": "view [--host HOST] [--port PORT] [--token-env ENV] (serve and open live review)",
         "roll": "roll [--apply] [--set title=TEXT] [--for poster] [--mood playful] [--size NAME|WxH] [--seed N|random] [--lock palette=sage]",
-        "layout": "layout list | show NAME | apply NAME [--seed N|random] [--set title=TEXT] [--unfilled blank|omit] [--palette NAME] "
-        "[--mode light|dark] [--type-scale golden] [--density airy|balanced|dense] [--align left|center|right] "
+        "layout": "layout list | show NAME | preview NAME | apply NAME [--seed N|random] [--set title=TEXT] [--unfilled blank|omit] [--palette NAME] "
+        "[--mode inherit|light|dark] [--predictable] [--type-scale golden] [--density airy|balanced|dense] [--align left|center|right] "
         "[--accent rule|bar|dot|block|outline|none] [--prefix P] [--replace]",
         "timeline": "timeline (inspect) | timeline set [--duration 3s] [--fps 30] [--loop N] [--clear]",
     }
@@ -625,7 +637,7 @@ def project_command(project, cmd, args, *, detail="compact"):
         p.add_argument(
             "--checks",
             nargs="+",
-            choices=["bounds", "overlap", "contrast", "safe_area", "legibility", "print", "color_vision"],
+            choices=["bounds", "overlap", "contrast", "safe_area", "legibility", "print", "color_vision", "content", "fonts", "blanks", "brand"],
         )
         p.add_argument("--ink-limit", type=float, default=300)
         p.add_argument("--min-ppi", type=float, default=200)
@@ -890,3 +902,4 @@ def main(argv=None):
 
 if __name__ == "__main__":
     sys.exit(main())
+

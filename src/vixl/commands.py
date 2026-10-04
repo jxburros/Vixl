@@ -52,6 +52,14 @@ def normalize(tokens):
 def compile_command(tokens):
     tokens = normalize(shlex.split(tokens, comments=True) if isinstance(tokens, str) else tokens)
     cmd, args = tokens[0], tokens[1:]
+    from .authoring import compile_command as compile_authoring
+    authoring = compile_authoring(cmd, args)
+    if authoring is not None:
+        return authoring
+    from .authoring import compile_command as compile_authoring
+    authoring = compile_authoring(cmd, args)
+    if authoring is not None:
+        return authoring
     from .automation import compile_command as compile_automation
     automation = compile_automation(cmd, args)
     if automation is not None:
@@ -92,6 +100,8 @@ def compile_command(tokens):
             group.add_argument("--points", type=json.loads, help="JSON freehand points")
             p.add_argument("--closed", action="store_true")
             p.add_argument("--no-smooth", dest="smooth", action="store_false")
+            p.add_argument("--tension", type=float)
+            p.add_argument("--corners", type=json.loads)
             p.add_argument("--stroke-width", type=float)
         else:
             p.add_argument("resource")
@@ -408,3 +418,4 @@ def compile_script(path):
         except (VixlError, ValueError) as exc:
             raise VixlError("script_error", f"{path}:{line_no}: {exc}") from exc
     return ops
+

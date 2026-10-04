@@ -109,6 +109,11 @@ class Builder:
         typography = project.state.get("typography") or {}
         self.font = op.get("font") or typography.get("body")
         self.display_font = op.get("display_font") or typography.get("heading") or self.font
+        from .render import resolve_font
+        if self.font and self.font not in project.state.get("fonts", {}):
+            self.font = resolve_font(project, self.font)[0]
+        if self.display_font and self.display_font not in project.state.get("fonts", {}):
+            self.display_font = resolve_font(project, self.display_font)[0]
 
     # -- helpers ---------------------------------------------------------------------------
 
@@ -1325,7 +1330,7 @@ def catalog():
             "display_font": "Registered heading font; defaults to the document typography heading, else font",
             "palette": "Palette name or list of colors (roles are assigned with contrast checks)",
             "colors": "Override roles: background, surface, ink, muted, accent, accent-text, on-accent",
-            "mode": "light or dark",
+            "mode": "inherit (default), light or dark",
             "type_scale": "Ratio name (" + ", ".join(RATIOS) + ") or number",
             "density": "airy, balanced or dense (margins and scale)",
             "align": "left, center or right where the layout allows",
@@ -1364,6 +1369,17 @@ def execute_layout(project, op):
                 settings["color"] = op["color"]
             execute(project, {"type": "style-define", "name": f"{prefix}{role}", "kind": "character", "settings": settings})
         return
+    op = deepcopy(op)
+    if op.get("mode", "inherit") == "inherit":
+        from .render import color
+        rgba = color(state["canvas"].get("background", "transparent"))
+        if rgba[3]:
+            op["mode"] = "dark" if sum(v * w for v, w in zip(rgba[:3], (0.2126, 0.7152, 0.0722))) < 128 else "light"
+        else:
+            op.pop("mode", None)
+    if op.get("predictable"):
+        for key, value in {"align": "left", "density": "balanced", "type_scale": "perfect-fourth", "accent": "rule"}.items():
+            op.setdefault(key, value)
     name = op["name"]
     if name not in LAYOUTS:
         import difflib
@@ -1560,8 +1576,10 @@ def schemas(add):
             "uppercase_labels": B,
             "prefix": S,
             "replace": B,
+            "predictable": B,
             **{key: S for key in CONTENT_KEYS},
         },
         ["name"],
     )
     add("type-scale", {"base": N, "ratio": {"type": ["string", "number"]}, "prefix": S, "color": S})
+

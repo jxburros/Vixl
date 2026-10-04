@@ -51,13 +51,13 @@ def environment():
 
 
 def key_for(project, layer=None, bounds=None):
-    from .text import font_data
+    from .text import font_data, font_digest
     from .render import EFFECTS
 
     layers = [layer] if layer else project.state["layers"]
     if any(x.get("linked") or any(e["name"] not in EFFECTS for e in x.get("effects", [])) for x in layers):
         return None
-    fonts = [hashlib.sha256(font_data(project, x)).hexdigest() for x in layers if x["type"] == "text"]
+    fonts = [font_digest(font_data(project, x)) for x in layers if x["type"] == "text"]
     if layer:
         state = [layer, bounds, project.state.get("brushes", {}), fonts]
     else:
@@ -139,3 +139,4 @@ class RenderCache:
 def enable(project, directory):
     project._disk_cache = RenderCache(directory)
     return project
+

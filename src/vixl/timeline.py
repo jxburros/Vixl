@@ -803,7 +803,10 @@ def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=No
     w, h = max(1, round(c["width"] * scale)), max(1, round(c["height"] * scale))
     if format in ("gif", "apng", "webp", "sheet"):
         require(w * h * len(times) <= project.limits.max_pixels * 4, "Animation exceeds the in-memory pixel budget; lower fps, scale or duration, or export frames/mp4", "resource_limit")
-    duration_ms = round(1000 / fps)
+    quantum = 10 if format == "gif" else 1
+    boundaries = [round((t - first) / quantum) * quantum for t in times] + [round((last - first) / quantum) * quantum]
+    durations = [b - a for a, b in zip(boundaries, boundaries[1:])]
+    require(all(d >= quantum for d in durations), "Frame rate exceeds the animation format timing resolution; lower fps")
     loop = timeline.get("loop", 0)
     frames = _frames(project, times, scale, preview, cancelled, progress)
     if background is not None:
@@ -828,7 +831,7 @@ def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=No
                 buffer = io.BytesIO()
                 image.save(buffer, format="PNG")
                 archive.writestr(f"frame_{i:05d}.png", buffer.getvalue())
-            archive.writestr("timing.json", json.dumps({"fps": fps, "frame_ms": 1000 / fps, "frames": len(times), "width": w, "height": h}))
+            archive.writestr("timing.json", json.dumps({"fps": fps, "frame_ms": 1000 / fps, "frames": len(times), "width": w, "height": h, "durations": durations}))
     elif format == "sheet":
         columns = columns or math.ceil(math.sqrt(len(times)))
         require(isinstance(columns, int) and 1 <= columns <= len(times), "Invalid sprite-sheet column count")
@@ -839,16 +842,16 @@ def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=No
         for i, image in enumerate(frames):
             x, y = i % columns * w, i // columns * h
             sheet.paste(image, (x, y))
-            metadata["frames"].append({"time": round(times[i]), "duration": duration_ms, "x": x, "y": y, "width": w, "height": h})
+            metadata["frames"].append({"time": round(times[i]), "duration": durations[i], "x": x, "y": y, "width": w, "height": h})
         sheet.save(stream, format="PNG")
     else:
         images = list(frames)
         if format == "gif":
-            stream.write(gif_bytes(images, duration_ms, loop, colors))
+            stream.write(gif_bytes(images, durations, loop, colors))
         elif format == "apng":
-            images[0].save(stream, format="PNG", save_all=True, append_images=images[1:], duration=duration_ms, loop=loop + 1 if loop else 0, disposal=0, blend=0)
+            images[0].save(stream, format="PNG", save_all=True, append_images=images[1:], duration=durations, loop=loop + 1 if loop else 0, disposal=0, blend=0)
         else:
-            images[0].save(stream, format="WEBP", save_all=True, append_images=images[1:], duration=duration_ms, loop=loop, quality=quality, method=4)
+            images[0].save(stream, format="WEBP", save_all=True, append_images=images[1:], duration=durations, loop=loop, quality=quality, method=4)
     data = stream.getvalue()
     mode = "wb" if overwrite else "xb"
     with path.open(mode) as output:
@@ -861,7 +864,9 @@ def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=No
         "format": format,
         "frames": len(times),
         "fps": fps,
-        "duration": round(len(times) * 1000 / fps),
+        "duration": sum(durations),
+        "frame_durations": durations,
+        "requested_duration": round(last - first),
         "size": [w, h],
         "bytes": len(data),
         **({"metadata": str(destinations[1])} if metadata is not None else {}),
@@ -915,3 +920,4 @@ def schemas(add):
     add("animate", {"property": S, "from": value, "to": value, "start": time, "end": time, "duration": time, "easing": S, "targets": targets}, ["property", "to"])
     add("animate-preset", {"preset": S, "start": time, "duration": time, "easing": S, "distance": N, "amount": N, "fade": B, "to": S, "targets": targets}, ["preset"])
     add("marker", {"name": S, "time": time, "delete": B}, ["name"], anyOf=[{"required": ["time"]}, {"required": ["delete"]}])
+

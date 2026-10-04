@@ -129,7 +129,13 @@ def resolve_font(project, name):
         # A role uses the proofing fallback until the document typography sets it.
         role, name = name, typography.get(name, "DejaVuSans.ttf")
     font = fonts.get(name, name)
-    if font in project.assets or font == "DejaVuSans.ttf" or Path(font).is_file():
+    if font not in project.assets and Path(font).is_file():
+        from .assets import read_bounded
+        import hashlib
+        data = read_bounded(font, project.limits.max_asset_bytes)
+        font = f"fonts/{hashlib.sha256(data).hexdigest()}.ttf"
+        project.assets[font] = data
+    if font in project.assets or font == "DejaVuSans.ttf":
         return font, role
     try:
         ImageFont.truetype(font, 12)
@@ -435,7 +441,8 @@ def layer_image(project, layer, bounds):
     dependencies = [layer, bounds]
     if layer["type"] == "text":
         from .text import font_data
-        dependencies.append(hashlib.sha256(font_data(project, layer)).hexdigest())
+        data = font_data(project, layer)
+        dependencies.append([hashlib.sha256(f).hexdigest() for f in (data if isinstance(data, tuple) else (data,))])
     elif layer["type"] == "paint":
         dependencies.append(project.state.get("brushes", {}))
     key = hashlib.sha256(json.dumps(dependencies, sort_keys=True).encode()).hexdigest()
@@ -911,3 +918,4 @@ def export(
     if path:
         Path(path).write_bytes(data)
     return data
+

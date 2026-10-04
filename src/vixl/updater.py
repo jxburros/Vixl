@@ -453,9 +453,20 @@ def rollback(root):
 
 def prepare_launch(root, allow_updates=True):
     """Activate only validated pending versions; never treat editing errors as failed updates."""
+    if not allow_updates:
+        state = read_state(root)
+        exe = executable(root, state["current"])
+        try:
+            exists = stat.S_ISREG(exe.stat().st_mode)
+        except FileNotFoundError:
+            exists = False
+        except OSError as exc:
+            raise UpdateError(f"Cannot access the active Vixl runtime at {exe}: {exc}. Use vixl updates status to inspect the installation or run the installer to repair Vixl.") from exc
+        require(exists, f"Active runtime is missing at {exe}; run the installer to repair Vixl")
+        return exe, False
     with locked(root):
         state = read_state(root)
-        pending = state.get("pending") if allow_updates else None
+        pending = state.get("pending")
         if pending:
             try:
                 probe(root, pending)
@@ -504,3 +515,4 @@ def background(root):
                 atomic_json(Path(root) / "install.json", state)
         except Exception:
             pass
+

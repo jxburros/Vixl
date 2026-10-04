@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.17.0
+
+- Seeded editable rose, leaf, petal, and blob paths; path fitting; adjustable pen tension and corner anchors.
+- Paint coordinate-space guidance and resolved stroke diagnostics; content QA warns about completely invisible layers.
+- Consistent font-file handling for layouts and text. Automatic bundled glyph fallback, explicit document fallback stacks, and missing-glyph QA use the same PNG/SVG shaping pipeline.
+- Layouts inherit the document's light/dark mode, with predictable defaults and a non-mutating preview command.
+- Explicit `new --overwrite`, persistent NDJSON CLI sessions with atomic requests, runtime diagnostics, and export progress on stderr.
+- Decoration roles and explicit overlap allowances make composition intent available to QA.
+- Repeated vector primitives remain vectors in SVG. Unsupported repeated groups retain explicit raster fallback.
+- Distributed GIF/WebP/APNG frame durations preserve requested timing; export reports include encoded durations.
+- Version/help/no-update launches avoid installation write locks and pending activation.
+- Fully verified version changes merged to main can publish releases; publication remains gated by Linux tests, Windows tests, bundled runtime, installer, and installation checks.
+
 ## Unreleased
 
 ## 0.16.0
@@ -228,3 +241,4 @@ Vixl's main users are AI agents; this release targets long agent sessions, fewer
 ## 0.6.0
 
 - Initial programmable image engine with editable projects, CLI/shell, automation, AI provider adapters, REST, and MCP.
+

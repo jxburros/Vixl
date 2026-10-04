@@ -439,9 +439,9 @@ def test_denied_pending_runtime_launches_current_without_previous_version(
     monkeypatch.setattr(subprocess, "run", denied_run)
     calls = []
     monkeypatch.setattr(subprocess, "call", lambda argv, **kw: calls.append(argv) or 0)
-    monkeypatch.setattr(sys, "argv", ["vixl", "--version"])
+    monkeypatch.setattr(sys, "argv", ["vixl", "status"])
     assert launcher.main() == 0
-    assert calls == [[str(u.executable(install, "0.7.0")), "--version"]]
+    assert calls == [[str(u.executable(install, "0.7.0")), "status"]]
     state = u.read_state(install)
     assert state["current"] == "0.7.0" and state["previous"] is None
     assert state["pending"] is None and state["rejected"] == "0.8.0"
@@ -604,3 +604,4 @@ def test_launcher_alias_copy_runs_installed_engine_and_respawns_itself(install, 
     assert background == [str(alias), "--vixl-background-update"]
     # The respawned alias copy finds the same root from the environment it is given.
     assert launcher.resolve_root(alias, options["env"]) == install.resolve()
+

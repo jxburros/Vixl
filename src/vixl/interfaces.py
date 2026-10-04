@@ -24,12 +24,12 @@ def service_check(operation):
 
     kind = operation.get("type")
     require(
-        not any(k in operation for k in ("linked", "font"))
+        not any(k in operation for k in ("linked", "font", "display_font"))
         and ("path" not in operation or (kind in ("text-layout", "shape") or (kind == "select" and operation.get("shape") == "path"))),
         "Filesystem fields (path, linked, font) are unavailable through services; "
         "import images with vixl_import_image and reference the returned asset",
         "forbidden",
-        field=next((k for k in ("path", "linked", "font") if k in operation), None),
+        field=next((k for k in ("path", "linked", "font", "display_font") if k in operation), None),
     )
     require(kind in set(OPERATION_TYPES) | set(EFFECTS), "Unsupported service operation", field="type")
     if kind == "effect":
@@ -737,3 +737,4 @@ def serve_mcp(server, host="127.0.0.1", port=8766, token=None):
             "Non-loopback serving requires VIXL_API_TOKEN", "authentication_required")
     import uvicorn
     uvicorn.run(mcp_http_app(server, token=token), host=host, port=port)
+

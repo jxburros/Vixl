@@ -162,3 +162,15 @@ For local development, `claude --plugin-dir /absolute/path/to/Vixl` loads the sa
 configuration. The server operates in the client's current directory. The `.mcp.json` config uses
 a versioned GitHub source URL; when testing unpublished code, replace that URL with
 `--from /absolute/path/to/Vixl` in a local copy of the config.
+
+
+
+## Verified version changes on main
+
+A version change in `src/vixl/__init__.py`, with a matching changelog section, can be merged
+through a tested pull request. The release workflow runs on main and builds the same Linux
+Python distributions, MCP/Claude extensions, Windows runtime, launcher, and installer as a
+tagged release. It creates the version tag at the tested main commit, uploads every asset to
+a draft, then publishes. An already published version is skipped; a failed draft upload can
+be resumed. Tag-triggered releases remain supported, and tag/package version agreement is
+checked. Publishing requires successful Linux tests, Windows tests, and installation checks.

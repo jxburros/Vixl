@@ -86,11 +86,13 @@ class Exporter:
 
     def transform(self, layer, bounds):
         x, y, w, h = bounds
+        from .render import rest_size
+        rw, rh = rest_size(layer)
         # SVG's y axis points down, like Vixl. Positive angles are clockwise.
         return (
             f"translate({x + w / 2} {y + h / 2}) rotate({layer['rotation']}) "
             f"scale({-1 if layer['flip_x'] else 1} {-1 if layer['flip_y'] else 1}) "
-            f"translate({-layer['width'] / 2} {-layer['height'] / 2})"
+            f"translate({-rw / 2} {-rh / 2})"
         )
 
     def attrs(self, layer):
@@ -265,6 +267,18 @@ class Exporter:
         return True
 
     def geometry(self, parent, layer):
+        if layer.get("repeat"):
+            from .design_render import repeat_items, repeat_bounds
+            if layer["type"] == "group" or styles(layer):
+                return False
+            rw, rh = repeat_bounds(layer)
+            parent = node(parent, "svg", width=rw, height=rh, viewBox=f"0 0 {rw} {rh}", overflow="hidden")
+            for item, x, y in repeat_items(layer):
+                w, h = item["width"], item["height"]
+                group = node(parent, "svg", x=x, y=y, width=w, height=h, viewBox=f"0 0 {w} {h}", overflow="hidden")
+                if not self.geometry(group, item):
+                    return False
+            return True
         kind = layer["type"]
         if kind in ("shape", "solid"):
             self.shape(parent, layer)
@@ -335,7 +349,7 @@ class Exporter:
         b = self.bounds[layer["id"]]
         simple = (
             not (layer.get("mask") and layer["mask"].get("enabled", True))
-            and not any(layer.get(k) for k in ("repeat", "lookup"))
+            and not layer.get("lookup")
             and supported(layer)
             and vector_overlay(layer, self.project.state)
         )
