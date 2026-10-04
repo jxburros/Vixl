@@ -24,6 +24,20 @@ Key properties to rely on:
   `validation_failed`, `resource_limit`, `spacing_mismatch`…). Nothing fails silently — except
   the one gotcha listed below.
 
+## Creative and collaborative studio
+
+Read [studio workflows](references/studio.md) for wand/lasso selections, pen handles and
+freehand paths, strict/custom palettes and rendered-pixel palette tests, modular containers,
+saved shapes, shared project groups, plugin packs, SVG appearance import and HTML export.
+Use `vixl_workflow_schema` to discover the consolidated resource/test/effect/group/branch APIs.
+For small tool context use `--tools compact --schema slim` (12 tools).
+
+For each new brief, inspect starter suites with resource-list/get and create a custom suite
+for its actual requirements. Run it after edits and before export. Freeze allowed colors in
+palette regression rules; choose antialias tolerances before checking, not to hide violations.
+Use container-reflow after changing copy, then check container-layout. Fork one document per
+agent, edit independently, preview branch-merge, resolve conflicts explicitly, then merge.
+
 ## New in 0.13
 
 The production extension adds `vixl_workflow_schema` and `vixl_workflow` (CLI:

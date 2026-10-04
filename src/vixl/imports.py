@@ -274,11 +274,18 @@ def length(value):
     return number
 
 
-def import_document(project, data, format, name="import", page=1, dpi=144):
+def import_document(project, data, format, name="import", page=1, dpi=144, svg_mode="editable"):
     require(len(data) <= project.limits.max_asset_bytes, "Import exceeds byte limit", "resource_limit")
     if format.lower() == "svg":
+        require(svg_mode in ("editable", "appearance", "auto"), "SVG mode must be editable, appearance or auto")
+        if svg_mode == "appearance":
+            return svg_appearance(project, data, name)
         try:
             return project.apply(svg_operations(data, project, name), detail="compact")
+        except VixlError as exc:
+            if svg_mode == "auto" and exc.code == "unsupported_svg":
+                return svg_appearance(project, data, name)
+            raise
         except (ValueError, TypeError, KeyError) as exc:
             raise VixlError("invalid_svg", f"Malformed SVG: {exc}") from exc
     require(format.lower() == "pdf", "Import format must be svg or pdf")
@@ -317,3 +324,80 @@ def import_document(project, data, format, name="import", page=1, dpi=144):
         "dpi": dpi,
         "warnings": ["PDF page imported as a raster layer; use SVG for editable vector geometry."],
     }
+
+
+def svg_appearance(project, data, name):
+    """Render self-contained static SVG through resvg; preserve source for future editing."""
+    import base64
+    import hashlib
+    import io
+    import resvg_py
+    from PIL import Image
+    from .assets import add_image, decode
+
+    require(len(data) <= min(project.limits.max_asset_bytes, 4 * 1024 * 1024), "SVG exceeds byte limit", "resource_limit")
+    try:
+        text = data.decode("utf-8-sig")
+        require("\x00" not in text and "<!DOCTYPE" not in text.upper() and "<!ENTITY" not in text.upper(),
+                "SVG entities and declarations are unsupported", "unsupported_svg")
+        root = ET.fromstring(text)
+    except (UnicodeError, ET.ParseError) as exc:
+        raise VixlError("invalid_svg", "Expected UTF-8 SVG XML") from exc
+    require(root.tag in ("svg", "{http://www.w3.org/2000/svg}svg"), "Expected SVG root")
+    pending, count = [(root, 0)], 0
+    while pending:
+        node, depth = pending.pop()
+        count += 1
+        require(depth <= 64 and count <= 10000, "SVG structure exceeds limits", "resource_limit")
+        pending.extend((child, depth + 1) for child in node)
+        tag = node.tag.rsplit("}", 1)[-1]
+        require(tag not in ("script", "foreignObject", "animate", "animateMotion", "animateTransform", "set"),
+                f"Active SVG element {tag} is unsupported", "unsupported_svg")
+        for key, value in node.attrib.items():
+            local = key.rsplit("}", 1)[-1]
+            require(not local.lower().startswith("on") and local != "base", "Active SVG attributes are unsupported", "unsupported_svg")
+            if local == "href":
+                if value.startswith("data:image/"):
+                    require(tag == "image" and re.match(r"data:image/(png|jpeg|webp);base64,", value), "Embed images as PNG/JPEG/WebP", "unsupported_svg")
+                    try:
+                        raw = base64.b64decode(value.split(",", 1)[1], validate=True)
+                    except ValueError as exc:
+                        raise VixlError("invalid_svg", "Invalid embedded image") from exc
+                    decode(raw, project.limits)
+                else:
+                    require(value.startswith("#"), "SVG references must be internal or embedded raster images", "unsupported_svg")
+        css = " ".join(node.attrib.values()) + " " + (node.text or "")
+        require("@import" not in css.lower() and "\\" not in css, "External or escaped CSS is unsupported", "unsupported_svg")
+        for url in re.findall(r"url\s*\((.*?)\)", css, re.I | re.S):
+            require(url.strip(" \t\r\n\"'").startswith("#"), "SVG URLs must reference internal IDs", "unsupported_svg")
+    box = numbers(root.get("viewBox", "0 0 300 150"))
+    require(len(box) == 4 and box[2] > 0 and box[3] > 0, "Invalid viewBox")
+    def dimension(value, fallback):
+        if value is None or value.endswith("%"):
+            return math.ceil(fallback)
+        match = re.fullmatch(r"(" + NUMBER + r")(px|pt|pc|in|cm|mm)?", value.strip())
+        require(match, "Unsupported SVG dimensions")
+        return math.ceil(float(match[1]) * {None: 1, "px": 1, "pt": 96 / 72, "pc": 16, "in": 96, "cm": 96 / 2.54, "mm": 96 / 25.4}[match[2]])
+    width, height = dimension(root.get("width"), box[2]), dimension(root.get("height"), box[3])
+    project.limits.size(width, height)
+    root.set("width", str(width))
+    root.set("height", str(height))
+    if root.tag == "svg":
+        root.set("xmlns", "http://www.w3.org/2000/svg")
+    from pathlib import Path
+    try:
+        encoded = resvg_py.svg_to_bytes(svg_string=ET.tostring(root, encoding="unicode"),
+                    width=width, height=height, skip_system_fonts=True,
+                    font_files=[str(Path(__file__).parent / "data" / "DejaVuSans.ttf")])
+        image = Image.open(io.BytesIO(encoded)).convert("RGBA")
+    except Exception as exc:
+        raise VixlError("invalid_svg", f"Cannot render SVG: {exc}") from exc
+    candidate = project.clone()
+    source = "sources/" + hashlib.sha256(data).hexdigest() + ".svg"
+    candidate.assets[source] = data
+    asset = add_image(candidate, image)
+    result = candidate.apply({"type": "add", "asset": asset, "name": name,
+        "provenance": {"kind": "svg-appearance", "source": source}}, detail="compact")
+    project.__dict__.update(candidate.__dict__)
+    return {**result, "source": source, "mode": "appearance", "warnings": [
+        "SVG imported as a rendered layer with original source embedded. Geometry is not individually editable; static resvg SVG features only."]}

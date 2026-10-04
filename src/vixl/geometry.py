@@ -22,39 +22,30 @@ EXTRA_SHAPES = (*SHORTCUTS, "pentagon", "hexagon", "octagon", "capsule", "path")
 
 
 def parse_path(path):
+    """Normalize the complete SVG path language, including arcs and smooth commands."""
+    from fontTools.pens.recordingPen import RecordingPen
+    from fontTools.svgLib.path import parse_path as parse_svg
+    from .errors import VixlError
+
     require(isinstance(path, str) and 0 < len(path) <= 32768, "Path must contain 1–32768 characters")
-    tokens = re.findall(r"[MLHVQCZmlhvqcz]|[-+]?(?:\d*\.\d+|\d+\.?\d*)(?:[eE][-+]?\d+)?", path)
-    remainder = re.sub(r"[MLHVQCZmlhvqcz]|[-+]?(?:\d*\.\d+|\d+\.?\d*)(?:[eE][-+]?\d+)?|[\s,]", "", path)
-    require(not remainder and tokens and tokens[0].upper() == "M", "Use SVG path commands M L H V Q C Z")
-    commands, i, current, start = [], 0, (0, 0), (0, 0)
-    while i < len(tokens):
-        command = tokens[i]
-        require(command.isalpha(), "Repeat the command before every coordinate set")
-        i += 1
-        count = {"M": 2, "L": 2, "H": 1, "V": 1, "Q": 4, "C": 6, "Z": 0}[command.upper()]
-        require(i + count <= len(tokens), "Incomplete path command")
-        values = tokens[i : i + count]
-        require(all(not v.isalpha() for v in values), "Incomplete path coordinates")
-        values = list(map(float, values))
+    require(re.match(r"\s*[Mm]", path) is not None, "Path must start with M")
+    require(not re.sub(r"[MmLlHhVvCcSsQqTtAaZz]|[-+]?(?:\d*\.\d+|\d+\.?\d*)(?:[eE][-+]?\d+)?|[\s,]", "", path),
+            "Invalid SVG path syntax")
+    pen = RecordingPen()
+    try:
+        parse_svg(path, pen)
+    except (ValueError, IndexError, AssertionError, TypeError) as exc:
+        raise VixlError("invalid_path", f"Invalid SVG path: {exc}") from exc
+    require(len(pen.value) <= 1024, "Path supports at most 1024 commands", "resource_limit")
+    commands = []
+    for command, points in pen.value:
+        if command == "endPath":
+            continue
+        letter = {"moveTo": "M", "lineTo": "L", "curveTo": "C", "qCurveTo": "Q", "closePath": "Z"}[command]
+        values = [v for point in points for v in point]
         require(all(math.isfinite(v) and abs(v) <= 1e6 for v in values), "Path coordinates exceed limits")
-        i += count
-        upper = command.upper()
-        if command.islower():
-            values = [
-                v + current[(1 if upper == "V" else 0) if count == 1 else j % 2] for j, v in enumerate(values)
-            ]
-        if upper == "H":
-            upper, values = "L", [values[0], current[1]]
-        if upper == "V":
-            upper, values = "L", [current[0], values[0]]
-        if upper == "Z":
-            current = start
-        else:
-            current = tuple(values[-2:])
-            if upper == "M":
-                start = current
-        commands.append((upper, values))
-        require(len(commands) <= 1024, "Path supports at most 1024 commands", "resource_limit")
+        commands.append((letter, values))
+    require(commands, "Path has no geometry")
     return commands
 
 

@@ -793,9 +793,9 @@ def export(
         require(profile in EXPORT_PROFILES, f"Unknown export profile: {profile}")
         settings = deepcopy(EXPORT_PROFILES[profile])
     requested_format = (
-        format or settings.get("format") or ("SVG" if path and Path(path).suffix.lower() == ".svg" else "")
+        format or settings.get("format") or (Path(path).suffix[1:] if path and Path(path).suffix.lower() in (".svg", ".html", ".htm") else "")
     ).upper()
-    if requested_format == "SVG":
+    if requested_format in ("SVG", "HTML", "HTM"):
         require(not profile, "SVG export does not use raster export profiles")
         require(
             color_space == "rgb" and not (proof or simulate or icc_profile),
@@ -803,6 +803,9 @@ def export(
         )
         from .svg import export_svg
 
+        if requested_format in ("HTML", "HTM"):
+            from .html_export import export_html
+            export_svg = export_html
         data = export_svg(project, scale=scale, variables=variables, artboard=artboard, comp=comp, svg_policy=svg_policy)
         if path:
             Path(path).write_bytes(data)

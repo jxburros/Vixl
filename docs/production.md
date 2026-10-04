@@ -55,6 +55,8 @@ Rules:
 
 | Kind | Fields and meaning |
 | --- | --- |
+| `palette` | `colors` or `palette`, `tolerance`, `max_fraction`, `alpha_min`, optional `region`; rendered-pixel adherence |
+| `container` | optional `target`; audits template container bounds, padding, flow/grid and item limits |
 | `assert` | `expression`: existing bounded assertion language |
 | `design` | `options`: arguments for `Project.check`, including targets, safe area and contrast |
 | `property` | `target` (or `canvas`), `field`, `expected`, optional numeric `tolerance` |
@@ -310,3 +312,5 @@ The Vixl video job request uses `source_asset` with an optional source `.vixl` d
 for image-to-video conditioning. Remote cancellation is not part of this contract.
 Tests use a fake gateway; live inference needs a configured service and is not exercised
 by the offline suite. Providers can vary in timing, output quality and consistency.
+
+See [the studio guide](studio.md) for starter suites, saved effects, modular containers, project groups, plugins and agent branch/merge actions.

@@ -25,7 +25,7 @@ def service_check(operation):
     kind = operation.get("type")
     require(
         not any(k in operation for k in ("linked", "font"))
-        and ("path" not in operation or kind in ("text-layout", "shape")),
+        and ("path" not in operation or (kind in ("text-layout", "shape") or (kind == "select" and operation.get("shape") == "path"))),
         "Filesystem fields (path, linked, font) are unavailable through services; "
         "import images with vixl_import_image and reference the returned asset",
         "forbidden",
@@ -352,7 +352,8 @@ def create_app(path, *, token=None, limits=None):
     def workflow(action: str, body: dict):
         from .workflows import dispatch
         # REST remains scoped to its active project. Other document/library/job I/O is MCP/CLI only.
-        require(action in ("check", "act", "plan", "film-plan"),
+        from .studio import REST_ACTIONS
+        require(action in {"check", "act", "plan", "film-plan"} | REST_ACTIONS,
                 "This workflow needs a workspace CLI/MCP session", "forbidden")
         return dispatch(session, action, body)
 
@@ -405,6 +406,7 @@ def create_app(path, *, token=None, limits=None):
             "JPEG": "image/jpeg",
             "JPG": "image/jpeg",
             "SVG": "image/svg+xml",
+            "HTML": "text/html",
             "WEBP": "image/webp",
             "TIFF": "image/tiff",
             "AVIF": "image/avif",
@@ -645,13 +647,13 @@ def create_app(path, *, token=None, limits=None):
         return session.history(action, body.get("ref"), body.get("count", 1))
 
     @app.post("/import")
-    async def import_document(request: Request, format: str, name: str = "import", page: int = 1, dpi: int = 144):
+    async def import_document(request: Request, format: str, name: str = "import", page: int = 1, dpi: int = 144, svg_mode: str = "editable"):
         from .imports import import_document as execute_import
         from starlette.concurrency import run_in_threadpool
         data = await request.body()
         def apply_import():
             with session.project(write=True) as project:
-                return execute_import(project, data, format, name, page, dpi)
+                return execute_import(project, data, format, name, page, dpi, svg_mode)
         return await run_in_threadpool(apply_import)
 
     @app.post("/assets")

@@ -6,6 +6,9 @@ import os
 from pathlib import Path
 import tempfile
 
+from .effect_workflows import WORKFLOWS, SUITES
+from .containers import builtins as container_builtins
+
 from .fileio import file_lock
 
 from .assets import read_bounded
@@ -130,23 +133,32 @@ TEMPLATES["logo"] = template(
     "Transparent geometric logo starter.",
 )
 TEMPLATES["logo"]["roll"] = {"accent": "accent"}
-BUILTINS = {"palettes": PALETTES, "templates": TEMPLATES, "guidance": GUIDANCE}
+CONTAINERS, MODULAR_TEMPLATES = container_builtins()
+TEMPLATES.update(MODULAR_TEMPLATES)
+BUILTINS = {"palettes": PALETTES, "templates": TEMPLATES, "guidance": GUIDANCE,
+            "containers": CONTAINERS, "shapes": {}, "suites": SUITES, "workflows": WORKFLOWS}
 
 
-def resource_path():
+def resource_path(workspace=None):
+    if workspace is not None:
+        root = Path(workspace).resolve()
+        path = (root / ".vixl-resources.json").resolve()
+        require(path.is_relative_to(root), "Resource path escapes workspace", "forbidden")
+        return path
     return Path(os.environ.get("VIXL_RESOURCES", "~/.config/vixl/resources.json")).expanduser()
 
 
-def catalog(kind):
+def catalog(kind, *, workspace=None):
     require(kind in BUILTINS, "Unknown resource category")
-    path = resource_path()
+    path = resource_path(workspace)
     user = json.loads(read_bounded(path, 1024 * 1024)) if path.exists() else {}
     require(isinstance(user, dict) and isinstance(user.get(kind, {}), dict), "Invalid resource library")
-    return deepcopy({**BUILTINS[kind], **user.get(kind, {})})
+    inherited = catalog(kind) if workspace is not None else BUILTINS[kind]
+    return deepcopy({**inherited, **user.get(kind, {})})
 
 
-def get(kind, name):
-    items = catalog(kind)
+def get(kind, name, *, workspace=None):
+    items = catalog(kind, workspace=workspace)
     require(name in items, f"Unknown {kind} resource: {name}")
     value = items[name]
     validate(kind, value)
@@ -161,6 +173,20 @@ def validate(kind, value):
         require(isinstance(value, list) and 2 <= len(value) <= 256, "Palette needs 2–256 colors")
         for c in value:
             color(c)
+    elif kind == "containers":
+        from .containers import validate as validate_container
+        validate_container(value)
+    elif kind == "shapes":
+        from .interfaces import service_check
+        require(isinstance(value, dict) and value.get("type") in ("shape", "pen"), "Saved shapes need a shape or pen operation")
+        service_check(validate_operation(value))
+        require(not value.get("target"), "Saved shapes cannot target an existing layer")
+    elif kind == "suites":
+        from .assurance import validate_suite
+        validate_suite(value)
+    elif kind == "workflows":
+        from .effect_workflows import validate as validate_workflow
+        validate_workflow(value)
     elif kind == "guidance":
         require(isinstance(value, str) and 0 < len(value) <= 100000, "Guidance needs 1–100000 characters")
     elif kind == "templates":
@@ -194,14 +220,16 @@ def validate(kind, value):
             )
 
 
-def register(kind, name, value):
+def register(kind, name, value, *, workspace=None):
     require(kind in BUILTINS, "Unknown resource category")
     named(name)
     validate(kind, value)
-    path = resource_path()
+    path = resource_path(workspace)
     path.parent.mkdir(parents=True, exist_ok=True)
     with file_lock(str(path)):
         data = json.loads(read_bounded(path, 1024 * 1024)) if path.exists() else {}
+        require(not any(name in plugin.get("resources", {}).get(kind, []) for plugin in data.get("_plugins", {}).values()),
+                "Resource belongs to a plugin; update the pack or save under another name")
         data.setdefault(kind, {})[name] = value
         payload = json.dumps(data, ensure_ascii=False).encode()
         require(len(payload) <= 1024 * 1024, "Resource library exceeds limit", "resource_limit")
@@ -230,15 +258,20 @@ def substitute(value, variables):
     return value
 
 
-RESOURCE_TYPES = ("palette-apply", "template-apply", "guidance", "font-register")
+RESOURCE_TYPES = ("palette-define", "palette-apply", "template-apply", "guidance", "font-register")
 
 
 def execute_resource(project, op):
     kind, name = op["type"], named(op["name"])
-    if kind == "palette-apply":
+    if kind == "palette-define":
+        validate("palettes", op["colors"])
+        project.state.setdefault("palettes", {})[name] = deepcopy(op["colors"])
+    elif kind == "palette-apply":
         if op.get("prefix"):
             named(op["prefix"])
-        colors = get("palettes", name)
+        colors = project.state.get("palettes", {}).get(name) or get("palettes", name, workspace=getattr(project, "_workspace", None))
+        project.state.setdefault("palettes", {})[name] = deepcopy(colors)
+        project.state["active_palette"] = name
         swatches = project.state.setdefault("swatches", {})
         swatches.update({f"{op.get('prefix', name)}-{i + 1}": c for i, c in enumerate(colors)})
         if op.get("roles", True):
@@ -252,7 +285,7 @@ def execute_resource(project, op):
             mode = "light"
             if "background" in swatches:
                 mode = "dark" if relative_luminance(parse(swatches["background"])[:3]) < 0.2 else "light"
-            roles = assign_roles({"palette": name, "mode": mode}, random.Random(name))
+            roles = assign_roles({"palette": colors, "mode": mode, "policy": op.get("policy", "strict")}, random.Random(name))
             swatches.update({role: roles[role] for role in ROLES})
     elif kind == "guidance":
         key = op.get("style", "overall")
@@ -288,7 +321,7 @@ def execute_resource(project, op):
         from .operations import execute
         from .schema import validate_operation
 
-        item = get("templates", name)
+        item = get("templates", name, workspace=getattr(project, "_workspace", None))
         supplied = op.get("variables", {})
         values = {**item.get("defaults", {}), **supplied}
         before = {layer["id"] for layer in project.state["layers"]}
@@ -368,7 +401,7 @@ def execute_resource(project, op):
 def create_template(name, variables=None, *, limits=None, workspace=None):
     from .project import Project
 
-    item = get("templates", name)
+    item = get("templates", name, workspace=workspace)
     p = Project(item["width"], item["height"], item.get("background", "transparent"), limits=limits)
     p._workspace = workspace
     p.apply({"type": "template-apply", "name": name, "variables": variables or {}}, detail="compact")

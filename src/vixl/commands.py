@@ -77,6 +77,37 @@ def compile_command(tokens):
         if cmd == "text" else None,
     )
     op = {"type": cmd}
+    if cmd in ("pen", "container-place", "container-swap", "container-reflow", "shape-place", "palette-define"):
+        import json
+        if cmd == "palette-define":
+            p.add_argument("name")
+            p.add_argument("colors", type=json.loads, help='JSON colors, e.g. ["black", "white"]')
+        elif cmd == "container-reflow":
+            p.add_argument("target")
+        elif cmd == "pen":
+            p.add_argument("--name")
+            p.add_argument("--target")
+            group = p.add_mutually_exclusive_group(required=True)
+            group.add_argument("--nodes", type=json.loads, help="JSON anchors with point, in and out control handles")
+            group.add_argument("--points", type=json.loads, help="JSON freehand points")
+            p.add_argument("--closed", action="store_true")
+            p.add_argument("--no-smooth", dest="smooth", action="store_false")
+            p.add_argument("--stroke-width", type=float)
+        else:
+            p.add_argument("resource")
+            p.add_argument("--target", required=cmd == "container-swap")
+            p.add_argument("--name", required=cmd != "container-swap")
+            if cmd != "shape-place":
+                p.add_argument("--variables", type=json.loads)
+        if cmd in ("pen", "shape-place"):
+            p.add_argument("--width", type=int)
+            p.add_argument("--height", type=int)
+            p.add_argument("--fill")
+            p.add_argument("--stroke")
+        if cmd in ("pen", "shape-place", "container-place"):
+            p.add_argument("--x", type=float)
+            p.add_argument("--y", type=float)
+        return {"type": cmd, **{k: v for k, v in vars(p.parse_args(args)).items() if v is not None}}
     if cmd == "add":
         p.add_argument("path")
         p.add_argument("--name")
@@ -273,8 +304,9 @@ def compile_command(tokens):
         require(len(args) == 2 and args[0] == "background", "Invalid canvas command")
         return {**op, args[0]: args[1]}
     elif cmd == "select":
-        p.add_argument("shape", choices=["rect", "ellipse", "all", "none", "invert", "alpha", "color"])
+        p.add_argument("shape", choices=["rect", "ellipse", "all", "none", "invert", "alpha", "color", "wand", "lasso", "path"])
         p.add_argument("values", nargs="*")
+        p.add_argument("--global", dest="contiguous", action="store_false", default=None)
         p.add_argument("--tolerance", type=float)
         p.add_argument("--feather", type=float)
         p.add_argument("--mode", choices=["replace", "add", "subtract", "intersect"])
@@ -283,6 +315,13 @@ def compile_command(tokens):
         if data["shape"] in ("rect", "ellipse"):
             require(len(values) == 4, "Selection requires X Y WIDTH HEIGHT")
             data.update(zip(("x", "y", "width", "height"), map(int, values)))
+        elif data["shape"] == "wand":
+            require(len(values) == 2, "Wand needs X Y")
+            data.update(zip(("x", "y"), map(int, values)))
+        elif data["shape"] in ("lasso", "path"):
+            import json
+            require(len(values) == 1, "Provide a quoted JSON point list or SVG path")
+            data["points" if data["shape"] == "lasso" else "path"] = json.loads(values[0]) if data["shape"] == "lasso" else values[0]
         elif data["shape"] in ("alpha", "color"):
             require(len(values) == 1, "Selection requires layer or color")
             data["target" if data["shape"] == "alpha" else "color"] = values[0]
@@ -361,7 +400,7 @@ def compile_script(path):
         try:
             operation = compile_command(tokens)
             for field in ("path", "font"):
-                if field in operation and not (field == "path" and operation["type"] == "text-layout"):
+                if field in operation and not (field == "path" and operation["type"] in ("text-layout", "shape", "select")):
                     candidate = Path(path).resolve().parent / operation[field]
                     if field == "path" or candidate.is_file():
                         operation[field] = str(candidate)

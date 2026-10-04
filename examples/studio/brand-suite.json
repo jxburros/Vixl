@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "description": "Example strict brand contract: customize colors and thresholds for the brief.",
+  "rules": [
+    {"id": "brand-pixels", "kind": "palette", "colors": ["#003049", "#006d77", "#83c5be", "#edf6f9", "#ffddd2"], "tolerance": 8, "max_fraction": 0.01},
+    {"id": "finished-copy", "kind": "design", "options": {"checks": ["blanks"]}},
+    {"id": "composition", "kind": "design", "options": {"checks": ["bounds"]}}
+  ]
+}
