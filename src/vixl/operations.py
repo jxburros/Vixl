@@ -433,8 +433,11 @@ def execute(project, op):
         finite(layer.get("spacing", 4), "spacing", 0, 1000)
         finite(layer.get("stroke_width", 0), "stroke_width", 0, 100)
         color(resolve_color(layer["color"], project.state))
-        layer["width"], layer["height"], _ = text_metrics(project, layer)
-        layer["auto_size"] = True
+        box = layer.get("text_layout") or {}
+        if "width" not in box and "height" not in box:
+            # A text-layout box keeps its wrapping dimensions; plain text re-fits its content.
+            layer["width"], layer["height"], _ = text_metrics(project, layer)
+            layer["auto_size"] = True
     elif kind == "move":
         bounds = resolve_layout(project)[layer["id"]]
         for i, axis in enumerate(("x", "y")):

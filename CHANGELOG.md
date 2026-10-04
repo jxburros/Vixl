@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Fixes from a ten-design hands-on pass.** Stroked polygons, stars and closed paths now join
+  their first vertex instead of leaving a notch. `text-set` keeps a `text-layout` box, so changing
+  the color, size or copy of wrapped text no longer collapses it to one long line. SVG export now
+  names the cause of a `repeat`, lookup-table or raster-mask fallback instead of reporting a
+  generic "unsupported vector appearance".
+
 - **Fill-in-the-blank layouts and templates.** Layouts and built-in templates no longer render
   invented sample copy. Unfilled slots appear as visible `[Label]` placeholders recorded in
   `state.blanks`, and the new default `blanks` check reports them as errors. `unfilled: "omit"`
