@@ -60,6 +60,24 @@ class Project:
         self._verified = set()
         self._record([], "Create document")
 
+    @classmethod
+    def sized(cls, size, background="transparent", *, limits=None, dpi=None, orientation=None, bleed=False):
+        """Create a document from a named size (``letter``, ``instagram-portrait``, ``favicon`` …),
+        recording its dpi, bleed, safe area and trim/safe guides in the first revision."""
+        from .operations import execute
+        from .sizes import resolve
+        from .validation import check_state
+
+        info = resolve(size, dpi=dpi, orientation=orientation, bleed=bleed)
+        project = cls(info["width"], info["height"], background, limits=limits)
+        op = {"type": "canvas", "size": info["size"], "orientation": orientation, "dpi": dpi, "bleed": bleed}
+        execute(project, {k: v for k, v in op.items() if v not in (None, False)})
+        check_state(project, project.state)
+        project.nodes, project.head, project._head_state, project.branches = {}, None, None, {}
+        project._verified = set()
+        project._record([], f"Create {info['size']} document")
+        return project
+
     def layer(self, target=None):
         target = target or self.state["active_layer"]
         for layer in self.state["layers"]:
@@ -482,14 +500,14 @@ class Project:
         }
 
     def save(self, path=None):
-        from filelock import FileLock
+        from .fileio import file_lock
         from .fileio import temporary
 
         require(path or self.path, "Provide a .vixl project path")
         path = Path(path or self.path).resolve()
         require(path.suffix == ".vixl", "Project filenames must end in .vixl")
         path.parent.mkdir(parents=True, exist_ok=True)
-        with FileLock(str(path) + ".lock", timeout=10, is_singleton=True):
+        with file_lock(str(path)):
             if self.path == path and self._revision and path.exists():
                 require(
                     self._revision == hashlib.sha256(path.read_bytes()).hexdigest(),

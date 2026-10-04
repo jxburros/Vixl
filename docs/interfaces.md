@@ -90,16 +90,20 @@ Vixl is designed to be driven mainly by agents. The intended loop is: create or 
 | Tool | Purpose |
 | --- | --- |
 | `vixl_workspace_list(directory, offset, limit)` | Discover workspace paths and the open documents |
-| `vixl_document_create(path, width, height, background)` | Create and activate a new `.vixl`; refuses overwrites |
+| `vixl_document_create(path, width?, height?, background, size?, dpi?, orientation?, bleed?)` | Create and activate a new `.vixl` from pixels or a named size; refuses overwrites |
 | `vixl_document_open(path)` / `vixl_document_close(document)` | Activate an existing document / drop one from the session; edits are already saved |
 | `vixl_document_inspect(target?, detail)` | `compact` (default): canvas plus one line per layer with resolved `[x, y, w, h]` bounds; `full`: every stored field |
 | `vixl_import_image(path? \| data_base64?, name)` | Embed a workspace file or base64/data-URL bytes as a layer; returns id, size, bounds |
 | `vixl_operations_apply(operations, dry_run, detail)` | Atomic edits; schemas are included directly in tools/list (or on demand in slim mode) |
 | `vixl_operation_schema(types)` | Exact JSON Schema for named operation types |
-| `vixl_check(checks, targets, safe_area, avoid, thumbnail_width, ...)` | Design problems: bounds, text overlap, WCAG contrast, safe area/reserved zones, thumbnail legibility |
-| `vixl_render_preview(variables, max_width, max_height, max_bytes, region)` | Fast preview-resolution PNG; `region` zooms in (up to 8×) |
+| `vixl_check(checks, targets, safe_area, avoid, thumbnail_width, ..., ink_limit, min_ppi)` | Design problems: bounds, text overlap, WCAG contrast, safe area/reserved zones, thumbnail legibility; opt-in `print` and `color_vision` |
+| `vixl_render_preview(variables, max_width, max_height, max_bytes, region, time, proof, simulate)` | Fast preview-resolution PNG; `region` zooms in (up to 8×); `time` shows a timeline frame; `proof` soft-proofs CMYK; `simulate` shows color-vision deficiency |
 | `vixl_render_compare(before, after, mode)` | Side-by-side or red-highlight diff of two revisions (`previous`, `head~N`, branch, checkpoint, ID) plus the changed region |
-| `vixl_export_file(path, quality, scale, profile, variables, background, overwrite)` | Save full-resolution PNG/JPEG/WEBP/TIFF/AVIF; return only file metadata |
+| `vixl_export_file(path, quality, scale, profile, variables, background, overwrite, color_space, icc_profile, intent, black_generation, ink_limit, proof, simulate, dpi, icon_sizes, time)` | Save full-resolution PNG/JPEG/WEBP/TIFF/AVIF/SVG/PDF/ICO, CMYK for print; return only file metadata |
+| `vixl_sizes_list`, `vixl_layouts_list`, `vixl_brushes_list` | Named sizes, principled layouts, brushes (no document needed) |
+| `vixl_color(action, colors, …)` | Color info, conversion, harmonies, scales, mixing, contrast and name search |
+| `vixl_timeline_inspect`, `vixl_timeline_preview(time \| count)`, `vixl_export_timeline(path, format, fps, scale, …)` | Keyframe timelines: inspect, preview a frame or contact sheet, export GIF/APNG/WebP/sheet/PNG ZIP/MP4/WebM |
+| `vixl_export_icons(directory, icon_set)` | Standard icon sets (web favicons and manifest, Apple, Android, Windows) |
 | `vixl_measure`, `vixl_measure_spacing`, `vixl_validate` | Samples, channel statistics, contrast; spacing intent; assertions and profiles |
 | `vixl_history(action, ref, count, offset, limit)` | Undo/redo/transactions/branches/checkpoints; newest-first summaries |
 
@@ -167,3 +171,11 @@ Enable plugins explicitly with `vixl --plugins ...` or `vixl.plugins.enable_plug
 MCP adds `vixl_resources_list`, `vixl_resource_get`, `vixl_resource_add`, `vixl_template_create`, `vixl_import_font`, `vixl_text_add`, and `vixl_models_list`. Resource discovery needs no open document. Font paths and document destinations remain workspace scoped. `vixl_export_file` accepts `.svg`; `vixl_text_add` permits registered font names while generic service operations continue to reject filesystem font paths.
 
 REST adds GET `/resources/{kind}`, GET/POST `/resources/{kind}/{name}` (POST body `{"value":...}`), POST `/fonts?name=brand` with raw TTF/OTF bytes (16 MiB maximum), and POST `/export` with options such as `{"format":"SVG"}`. Export returns bytes and accepts no destination path. Python exposes the matching `vixl.resources` and `vixl.fonts` helpers. [Detailed examples and boundaries](agent-resources.md).
+
+## Sizes, layouts, color, brushes and timelines (0.13)
+
+All new editing features are ordinary operations, so `vixl_operations_apply`, `POST /operations`, `Project.apply` and scripts use them directly. MCP adds the discovery, timeline and icon tools listed above; `vixl_render_preview` and `vixl_export_file` gain `time`, `proof`, `simulate` and print options. `icc_profile` is a workspace path in MCP.
+
+REST adds `GET /sizes?category=`, `GET /layouts`, `GET /brushes`, `POST /color` (`{"action", "colors", "to"?, "scheme"?, "count"?, "amount"?, "space"?}`), `GET /timeline`, `GET /timeline/frame?time=1.5s` (PNG), and `POST /timeline/export` (`{"format", "fps", "scale", "start", "end", "background", "columns", "quality"}`; returns bytes). `POST /export` accepts `color_space`, `icc_profile_base64`, `intent`, `black_generation`, `ink_limit`, `proof`, `simulate`, `dpi`, `icon_sizes` and `time`, and formats `PDF` and `ICO`. `POST /preview` accepts `time`, `proof` and `simulate`.
+
+Python: `Project.sized("letter", bleed=True)`, `project.export("flyer.pdf", color_space="cmyk", icc_profile=bytes)`, `vixl.colors` (parse, describe, harmony, scale, mix, contrast_ratio, simulate_vision, cmyk_image), `vixl.sizes` (resolve, catalog), `vixl.layouts.catalog()`, `vixl.brushes.catalog()`, `vixl.timeline` (project_at, render_at, contact_sheet, export_timeline) and `vixl.exports.export_icons`.

@@ -41,7 +41,7 @@ Common operation fields:
 | effect-set / enable / disable / remove | target, effect ID or 1-based index; amount etc. for set |
 | variable | name, value; or delete: true |
 | preset-save / preset-apply | name, target; overrides for apply |
-| canvas | width, height, background or preset |
+| canvas | width, height, background; or `size`/`preset` (named size) with orientation, bleed, dpi; or dpi alone |
 
 History transitions and project lifecycle use explicit methods / commands, not editing operations. Provider results are recorded as `ai-result` / `ai-mask` audit events; those audit events are not public operation types. History snapshots and embedded assets reproduce their pixels without recontacting a provider.
 
@@ -60,3 +60,24 @@ History is state-based (deltas plus periodic snapshots), not a replay engine. Un
 ## Reusable design data (0.11)
 
 New shared operations are `palette-apply` (`name`, optional `prefix`), `template-apply` (`name`, optional `variables`), `guidance` (`name`, optional `text`, `style`, `delete`), and `font-register` (`name`, imported font `asset`). Guidance and registered font references are embedded in the document state and participate in undo/history. Template operations use the normal validation boundary and execute atomically. `shape` accepts the expanded catalog and `shape:"path"` with a bounded single-contour SVG command string in `path`. See [resource and path semantics](agent-resources.md).
+
+## Sizes, layouts, color, brushes and timelines (0.13)
+
+| Operation | Fields |
+| --- | --- |
+| canvas | `size` or `preset` (named size), `orientation` (portrait/landscape), `bleed` (true or amount in the size's unit), `dpi`, `background`; or `width`/`height`; or `dpi` alone |
+| layout-apply | `name`; content `title`, `subtitle`, `body`, `label`, `cta`, `caption`, `items`, `image` (asset ID); `seed`, `palette` (name or colors), `colors` (role overrides), `mode`, `type_scale`, `base_size`, `density`, `align`, `accent`, `mark`, `font`, `display_font`, `transparent`, `uppercase_labels`, `prefix`, `replace` |
+| type-scale | `base` (px), `ratio` (name or number), `prefix`, `color` — defines character styles caption … display |
+| palette-generate | `name`, `color`, `scheme` (`scale` or a harmony), `count` |
+| paint-layer | `name`, `width`, `height`, `x`, `y` |
+| paint | `target` (paint layer; omitted → active paint layer or a new one), `brush`, `points` [[x, y(, pressure)]] or `path` (SVG), `pressure`, `space`, `size`, `color`, `opacity`, `mode` (paint/erase), `seed`, `settings` (brush overrides) |
+| paint-clear | `target`, `last` (N strokes; omitted → all) |
+| brush-define | `name`, `base` (built-in brush), `settings`, `description` |
+| timeline-set | `duration`, `fps`, `loop`, `clear` |
+| keyframe | `target` (layer or `canvas`), `property`, `time`, `value`, `easing` |
+| keyframe-remove | `target`, optional `property`, `time` |
+| animate | `target`, `property`, `to`, optional `from`, `start`, `end` or `duration`, `easing` |
+| animate-preset | `target`, `preset`, `start`, `duration`, `easing`, `amount`, `distance`, `fade`, `to` |
+| marker | `name`, `time` or `delete` |
+
+New document state: `canvas.size`, `canvas.dpi`, `canvas.physical`, `canvas.bleed` and `canvas.safe` (pixels) with generated `trim-*`/`safe-*` guides; `layout` (the last applied layout's choices and layer IDs); `brushes` (custom brush definitions); paint layers (`type: "paint"`, `surface`, `strokes`); and `timeline` (`duration`, `fps`, `loop`, `markers`, `tracks` of `{target, property, keys}`). All participate in history and validation like other state. Color fields accept the [color language](color-and-print.md).

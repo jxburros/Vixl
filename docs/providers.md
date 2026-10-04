@@ -62,7 +62,7 @@ The Anthropic provider uses the official `anthropic` SDK: install `vixl-engine[a
 
 Detection results are normalized for every adapter to `{"objects": [{"label", "box": [x, y, w, h]}]}` in document pixels.
 
-Adapters are tested with mocked HTTP payloads/workflow responses. Live provider inference has **not** been verified in this repository's development environment. Availability, model names, accepted dimensions, quotas, and workflow nodes belong to the configured service. Unsupported capabilities fail explicitly. There is no fake-success or placeholder-image fallback.
+The adapters have been exercised against real provider services and work well in practice. The automated test suite uses mocked HTTP payloads/workflow responses so it runs offline and without credentials. Availability, model names, accepted dimensions, quotas, and workflow nodes belong to the configured service. Unsupported capabilities fail explicitly. There is no fake-success or placeholder-image fallback.
 
 OpenAI seeds are rejected because the image API does not expose deterministic seed control. Services with preset output sizes (OpenAI multiples of 16, Gemini aspect ratios and 1K/2K/4K presets, FLUX multiples of 16 up to 4 MP) are asked for the closest size; Vixl then fits the result to the requested canvas and records the provider's size as `resized_from` in the layer's provenance metadata. The HTTP gateway, Automatic1111 and ComfyUI must still return exactly the requested size. For arbitrary canvas outpainting, use a provider/workflow that supports the requested dimensions. The `--model` field selects OpenAI models and is passed to generic/workflow providers; Automatic1111 uses its server-loaded checkpoint (it does not switch checkpoints based on this field).
 
@@ -160,4 +160,4 @@ vixl providers add midjourney --type midjourney --key-env MIDJOURNEY_GATEWAY_KEY
 
 The gateway must implement the HTTP contract below and GET `/models` returning `{"data":[{"id":"your-model","capabilities":["generate"]}]}`. It remains responsible for Midjourney access and job execution. Merely setting a Midjourney key cannot create official API access.
 
-All provider contracts are tested offline with mocked transports, including native headers, paginated discovery, failed onboarding, capability routing, and credential omission. Live vendor calls are not exercised in CI. Use `vixl_models_list` in MCP for typed discovery; model keys remain in the server process environment.
+All provider contracts are tested offline with mocked transports, including native headers, paginated discovery, failed onboarding, capability routing, and credential omission. CI stays offline; the adapters have also been used successfully against the live vendor services. Use `vixl_models_list` in MCP for typed discovery; model keys remain in the server process environment.

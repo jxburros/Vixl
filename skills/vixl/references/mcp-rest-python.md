@@ -71,6 +71,24 @@ Assertion grammar: `canvas.width == 1920`, `layer.NAME.exists`, `layer.NAME.boun
 Edits use `vixl_operations_apply` with `pixel-art`, `pixel-draw`, `pixel-palette`, `frame-save`,
 `frame-apply`, `frame-delete`, `animation-set`.
 
+### Sizes, layouts, color, timelines and icons (0.13)
+
+| Tool | Parameters | Notes |
+| --- | --- | --- |
+| `vixl_document_create` | `path`, `width`+`height` **or** `size`, `background`, `dpi`, `orientation`, `bleed` | Named sizes: `vixl_sizes_list(category, search)` |
+| `vixl_layouts_list` | — | Layout names, principles, content keys and options (apply with `layout-apply`) |
+| `vixl_brushes_list` | — | Brushes and settings (paint with the `paint` operation) |
+| `vixl_color` | **`action`** `info\|convert\|harmony\|scale\|mix\|contrast\|names`, **`colors`**, `to`, `scheme`, `count`, `amount`, `space` | Color language tools |
+| `vixl_timeline_inspect` | — | Duration, fps, frames, markers, tracks |
+| `vixl_timeline_preview` | `time` **or** `count=8`, `columns`, `max_width=1600` | One frame or a labelled contact sheet |
+| `vixl_export_timeline` | **`path`** (.gif/.png/.webp/.zip/.mp4/.webm), `format` (`sheet`), `fps`, `scale`, `start`, `end`, `background`, `columns`, `quality`, `overwrite` | Never overwrites unless asked |
+| `vixl_export_icons` | **`directory`**, `icon_set` `web\|apple\|android\|windows\|all`, `sampling` | favicon.ico, PNG sizes, site.webmanifest |
+
+`vixl_render_preview` also takes `time`, `proof`, `simulate`; `vixl_export_file` also takes `.pdf`/`.ico`
+paths, `color_space="cmyk"`, `icc_profile` (workspace path), `intent`, `black_generation`, `ink_limit`,
+`proof`, `simulate`, `dpi`, `icon_sizes`, `time`; `vixl_check` also takes `checks=["print","color_vision"]`,
+`ink_limit`, `min_ppi`.
+
 ### AI tools (need configured providers; see ai.md)
 
 | Tool | Parameters |
@@ -130,6 +148,11 @@ Non-loopback hosts require a bearer token from `VIXL_API_TOKEN` (or `--token-env
 | `GET /history` · `POST /history/{action}` | `{"ref":…,"count":1}` | History graph / new head |
 | `POST /assets?name=photo` | raw image bytes | New layer |
 | `POST /ai/{command}` | `{"args":["--prompt","forest","--provider","local"]}` | CLI-style AI call |
+| `POST /export` | `{"format":"PDF","color_space":"cmyk","ink_limit":300}`, `ICO`+`icon_sizes`, `icc_profile_base64`, `proof`, `simulate`, `dpi`, `time` | File bytes |
+| `GET /sizes?category=` · `GET /layouts` · `GET /brushes` | | Catalogs |
+| `POST /color` | `{"action":"harmony","colors":["#2563eb"],"scheme":"triadic"}` | Color tools |
+| `GET /timeline` · `GET /timeline/frame?time=1.5s` | | Tracks · PNG frame |
+| `POST /timeline/export` | `{"format":"gif","fps":15,"scale":0.5}` | Animation bytes |
 
 Errors: HTTP 400 with `{"error":CODE,"message":…}` (403 for `forbidden`, 413 for oversized bodies).
 `path`/`linked`/`font` operation fields are rejected, as with MCP.

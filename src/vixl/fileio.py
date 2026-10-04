@@ -1,5 +1,6 @@
 """Atomic file publication that honors the user's umask and keeps existing permissions."""
 
+from contextlib import contextmanager, suppress
 import os
 from pathlib import Path
 import stat
@@ -27,3 +28,23 @@ def temporary(directory, suffix=".tmp", like=None):
         except OSError:
             pass
     return fd, str(path)
+
+
+@contextmanager
+def file_lock(path, timeout=10):
+    """Hold the advisory ``PATH.lock`` used by every Vixl writer, removing the file afterwards.
+
+    Windows filelock already deletes the file on release. On POSIX the outermost holder unlinks
+    it while still holding the lock; filelock 3.21+ waiters notice the unlinked inode and retry
+    on a fresh file, so no empty ``.lock`` files are left beside projects.
+    """
+    from filelock import FileLock
+
+    lock = FileLock(str(path) + ".lock", timeout=timeout, is_singleton=True)
+    with lock:
+        try:
+            yield lock
+        finally:
+            if os.name != "nt" and lock.lock_counter == 1:
+                with suppress(OSError):
+                    os.unlink(lock.lock_file)

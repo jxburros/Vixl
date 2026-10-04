@@ -5,7 +5,7 @@ import hmac
 from pathlib import Path
 from threading import RLock
 
-from filelock import FileLock
+from .fileio import file_lock
 
 from .assets import add_encoded
 from .errors import VixlError, require
@@ -102,20 +102,27 @@ class Session:
         with self._mutex:
             resolved = self.resolve(path)
             require(resolved.is_file(), f"Document does not exist: {path}", "not_found", field="path")
-            with FileLock(str(resolved) + ".lock", timeout=10, is_singleton=True):
+            with file_lock(str(resolved)):
                 stamp = self.stamp(resolved)
                 project = Project.load(resolved, limits=self.limits)
                 self._remember(resolved, project, stamp)
             return self.summary(project)
 
-    def create(self, path, width, height, background="transparent"):
+    def create(self, path, width=None, height=None, background="transparent", *, size=None, dpi=None, orientation=None, bleed=False):
         with self._mutex:
             resolved = self.resolve(path)
             require(resolved.suffix.lower() == ".vixl", "Document path must end in .vixl", field="path")
             require(resolved.parent.is_dir(), "Destination directory must exist", field="path")
-            with FileLock(str(resolved) + ".lock", timeout=10, is_singleton=True):
+            require((size is None) != (width is None or height is None), "Provide width and height, or a named size", field="size")
+            with file_lock(str(resolved)):
                 require(not resolved.exists(), "Destination already exists; open it instead", field="path")
-                project = Project(width, height, background, limits=self.limits)
+                if size is not None:
+                    project = Project.sized(size, background, limits=self.limits, dpi=dpi, orientation=orientation, bleed=bleed)
+                else:
+                    require(not (orientation or bleed), "orientation and bleed need a named size", field="size")
+                    project = Project(width, height, background, limits=self.limits)
+                    if dpi:
+                        project.apply({"type": "canvas", "dpi": dpi})
                 project.save(resolved)
                 self._remember(resolved, project, self.stamp(resolved))
             return self.summary(project)
@@ -155,7 +162,7 @@ class Session:
             else:
                 require(self.path is not None, "Create or open a document first", "no_project")
                 path = self.path
-            with FileLock(str(path) + ".lock", timeout=10, is_singleton=True):
+            with file_lock(str(path)):
                 entry = self.documents.get(path)
                 try:
                     stamp = self.stamp(path)
@@ -337,6 +344,16 @@ def create_app(path, *, token=None, limits=None):
             "sampling",
             "profile",
             "svg_policy",
+            "color_space",
+            "icc_profile_base64",
+            "intent",
+            "black_generation",
+            "ink_limit",
+            "proof",
+            "simulate",
+            "dpi",
+            "icon_sizes",
+            "time",
         }
         require(set(body) <= allowed, "Unknown export option")
         fmt = body.get("format", "PNG").upper()
@@ -348,10 +365,81 @@ def create_app(path, *, token=None, limits=None):
             "WEBP": "image/webp",
             "TIFF": "image/tiff",
             "AVIF": "image/avif",
+            "PDF": "application/pdf",
+            "ICO": "image/x-icon",
         }
         require(fmt in media, "Unsupported export format")
+        body = dict(body)
+        if "icc_profile_base64" in body:
+            from .mcp_tools import decode_upload
+
+            body["icc_profile"] = decode_upload(body.pop("icc_profile_base64"), 16 * 1024 * 1024)
         with session.project() as project:
             return Response(project.export(**body), media_type=media[fmt])
+
+    @app.get("/sizes")
+    def size_catalog(category: str | None = None, search: str | None = None):
+        from .sizes import catalog
+
+        return catalog(category, search)
+
+    @app.get("/layouts")
+    def layout_catalog():
+        from .layouts import catalog
+
+        return catalog()
+
+    @app.get("/brushes")
+    def brush_catalog():
+        from .brushes import catalog
+
+        return catalog()
+
+    @app.post("/color")
+    def color_tools(body: dict):
+        from .feature_cli import color_command
+
+        action = body.get("action", "info")
+        colors = body.get("colors", [])
+        require(isinstance(colors, list) and 0 < len(colors) <= 16, "colors must be a list of 1–16 values")
+        args = [action, *map(str, colors)]
+        for key in ("to", "scheme", "count", "amount", "space"):
+            if key in body:
+                args += ["--" + key, str(body[key])]
+        result = color_command(args)
+        return result if isinstance(result, dict) else {"results": result}
+
+    @app.get("/timeline")
+    def timeline():
+        from .timeline import inspect_timeline
+
+        with session.project() as p:
+            return inspect_timeline(p)
+
+    @app.get("/timeline/frame")
+    def timeline_frame(time: str = "0", max_width: int = 1024, max_height: int = 1024):
+        from .mcp_tools import preview
+
+        value = float(time) if time.replace(".", "", 1).isdigit() else time
+        return Response(preview(session, None, max_width, max_height, 4_194_304, time=value), media_type="image/png")
+
+    @app.post("/timeline/export")
+    def timeline_export(body: dict):
+        import tempfile
+
+        from .timeline import export_timeline
+
+        allowed = {"format", "fps", "scale", "start", "end", "background", "columns", "quality"}
+        require(set(body) <= allowed, f"Timeline export accepts {sorted(allowed)}", field="body")
+        fmt = body.get("format", "gif")
+        suffix = {"gif": ".gif", "apng": ".png", "webp": ".webp", "sheet": ".png", "frames": ".zip", "mp4": ".mp4", "webm": ".webm"}
+        require(fmt in suffix, "Unsupported timeline format", field="format")
+        media = {"gif": "image/gif", "apng": "image/apng", "webp": "image/webp", "sheet": "image/png", "frames": "application/zip", "mp4": "video/mp4", "webm": "video/webm"}
+        with tempfile.TemporaryDirectory(prefix="vixl-timeline-") as staging:
+            path = Path(staging) / ("animation" + suffix[fmt])
+            with session.project() as p:
+                export_timeline(p, path, **body)
+            return Response(path.read_bytes(), media_type=media[fmt])
 
     @app.post("/fonts")
     async def fonts(request: Request, name: str):
@@ -408,7 +496,7 @@ def create_app(path, *, token=None, limits=None):
         from .mcp_tools import preview
 
         options = fixed(body)
-        allowed = {"variables", "max_width", "max_height", "max_bytes", "artboard", "comp", "region"}
+        allowed = {"variables", "max_width", "max_height", "max_bytes", "artboard", "comp", "region", "time", "proof", "simulate"}
         require(not set(options) - allowed, f"Preview accepts {sorted(allowed)}", field="body")
         return Response(preview(session, **options), media_type="image/png")
 

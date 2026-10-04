@@ -14,7 +14,7 @@ import os
 from types import SimpleNamespace
 from typing import Annotated, Literal
 
-from filelock import FileLock
+from .fileio import file_lock
 from PIL import Image as PILImage
 from pydantic import Field, WithJsonSchema
 
@@ -24,8 +24,9 @@ from .schema import operation_schema
 
 COORDINATE_NOTE = (
     "x/y accept pixels, 'center' or a percentage like '50%'; width/height accept pixels or '25%' "
-    "(of the canvas, or of the parent group for grouped layers). Colors accept CSS names, #hex, "
-    "rgb()/rgba() and hsl(). Common aliases (rect, circle, font_size, fill, camelCase keys, "
+    "(of the canvas, or of the parent group for grouped layers). Colors accept CSS and xkcd names, #hex, "
+    "rgb()/hsl()/hwb()/lab()/lch()/oklab()/oklch()/cmyk()/kelvin()/color(display-p3 …)/color-mix(), @swatch "
+    "references and modifiers such as lighten(@brand, 10%) or mix(@a, @b, 30%). Common aliases (rect, circle, font_size, fill, camelCase keys, "
     "opacity 0–100) are accepted and reported under 'normalized'."
 )
 
@@ -154,6 +155,9 @@ def preview(
     comp=None,
     region=None,
     document=None,
+    time=None,
+    proof=False,
+    simulate=None,
 ):
     from .proxy import render_preview
 
@@ -166,7 +170,16 @@ def preview(
             c = project.state["canvas"]
             region = [round(v) for v in _box(region, c["width"], c["height"], "region")]
         image = render_preview(
-            project, max_width, max_height, variables=variables, artboard=artboard, comp=comp, region=region
+            project,
+            max_width,
+            max_height,
+            variables=variables,
+            artboard=artboard,
+            comp=comp,
+            region=region,
+            time=time,
+            proof=proof,
+            simulate=simulate,
         )
         return encode_png(image, max_bytes)
 
@@ -178,18 +191,18 @@ def export_file(session, path, overwrite=False, document=None, **options):
         destination = session.resolve(path)
         require(
             destination.suffix.lower()
-            in (".png", ".jpg", ".jpeg", ".webp", ".tif", ".tiff", ".avif", ".svg"),
-            "Choose a PNG, JPEG, WEBP, TIFF, AVIF or SVG filename",
+            in (".png", ".jpg", ".jpeg", ".webp", ".tif", ".tiff", ".avif", ".svg", ".pdf", ".ico"),
+            "Choose a PNG, JPEG, WEBP, TIFF, AVIF, SVG, PDF or ICO filename",
             field="path",
         )
         require(destination.parent.is_dir(), "Destination directory must exist", field="path")
-        with FileLock(str(destination) + ".lock", timeout=10, is_singleton=True):
+        with file_lock(str(destination)):
             require(
                 overwrite or not destination.exists(),
                 "Destination already exists; set overwrite=true",
                 field="path",
             )
-            fmt = {".jpg": "JPEG", ".jpeg": "JPEG", ".tif": "TIFF", ".tiff": "TIFF"}.get(
+            fmt = {".jpg": "JPEG", ".jpeg": "JPEG", ".tif": "TIFF", ".tiff": "TIFF", ".pdf": "PDF", ".ico": "ICO"}.get(
                 destination.suffix.lower(), destination.suffix[1:].upper()
             )
             with session.project(document=document) as project:
@@ -273,8 +286,11 @@ def build_server(session, *, schema="full", planner=False):
             "thumbnail legibility) → vixl_render_preview (region= to zoom) → vixl_export_file. Use layer IDs or "
             "names from results. " + COORDINATE_NOTE + " Errors are JSON with error, message, field, "
             "operation_index and suggestions. Paths are relative to the workspace; imports accept a path or "
-            "base64 bytes. Several documents can be open: pass document= to address one. AI tools need a "
-            "configured provider."
+            "base64 bytes. Several documents can be open: pass document= to address one. Start from a named size "
+            "(vixl_sizes_list) and, when given open-ended briefs, a principled layout (vixl_layouts_list → "
+            "layout-apply) instead of improvising; then refine. Paint with brushes (vixl_brushes_list), animate "
+            "with keyframes (keyframe/animate/animate-preset → vixl_timeline_preview → vixl_export_timeline), and "
+            "export print-ready CMYK PDF/TIFF/JPEG with vixl_export_file. AI tools need a configured provider."
         ),
     )
 
@@ -331,7 +347,7 @@ def build_server(session, *, schema="full", planner=False):
                 destination.suffix.lower() == ".vixl" and destination.parent.is_dir(),
                 "Use a .vixl path in an existing workspace directory",
             )
-            with FileLock(str(destination) + ".lock", timeout=10, is_singleton=True):
+            with file_lock(str(destination)):
                 require(not destination.exists(), "Destination already exists")
                 project = create_template(name, variables, limits=session.limits)
                 project.save(destination)
@@ -417,10 +433,21 @@ def build_server(session, *, schema="full", planner=False):
 
     @tool
     def vixl_document_create(
-        path: str, width: Positive, height: Positive, background: str = "transparent"
+        path: str,
+        width: Positive | None = None,
+        height: Positive | None = None,
+        background: str = "transparent",
+        size: Annotated[
+            str | None,
+            Field(description="Named size instead of width/height: letter, a4, business-card, instagram-portrait, story, youtube-thumbnail, favicon, logo-horizontal … (vixl_sizes_list)"),
+        ] = None,
+        dpi: Annotated[float | None, Field(ge=36, le=2400)] = None,
+        orientation: Literal["portrait", "landscape"] | None = None,
+        bleed: Annotated[bool | float, Field(description="Print sizes: true adds standard bleed")] = False,
     ) -> dict:
-        """Create and activate a new .vixl file. Never overwrites an existing file."""
-        return session.create(path, width, height, background)
+        """Create and activate a new .vixl file from width/height or a named size (print sizes record dpi,
+        bleed, safe area and trim/safe guides). Never overwrites an existing file."""
+        return session.create(path, width, height, background, size=size, dpi=dpi, orientation=orientation, bleed=bleed)
 
     @tool
     def vixl_document_open(path: str) -> dict:
@@ -504,13 +531,30 @@ def build_server(session, *, schema="full", planner=False):
         ] = None,
         artboard: str | None = None,
         comp: str | None = None,
+        time: Annotated[
+            float | str | None, Field(description="Timeline frame: ms, '1.5s', '50%' or a marker name")
+        ] = None,
+        proof: Annotated[bool, Field(description="Soft-proof the CMYK print separation")] = False,
+        simulate: Literal["protanopia", "deuteranopia", "tritanopia", "achromatopsia"] | None = None,
         document: Document = None,
     ) -> Image:
         """Return an aspect-preserving PNG capped in dimensions and bytes, rendered at preview resolution.
-        region zooms into part of the canvas and may enlarge it up to 8x for detail checks."""
+        region zooms into part of the canvas and may enlarge it up to 8x for detail checks. time previews
+        an animation frame; proof shows print (CMYK) color; simulate checks color-blind legibility."""
         return Image(
             data=preview(
-                session, variables, max_width, max_height, max_bytes, artboard, comp, region, document
+                session,
+                variables,
+                max_width,
+                max_height,
+                max_bytes,
+                artboard,
+                comp,
+                region,
+                document,
+                time=time,
+                proof=proof,
+                simulate=simulate,
             ),
             format="png",
         )
@@ -537,7 +581,8 @@ def build_server(session, *, schema="full", planner=False):
 
     @tool
     def vixl_check(
-        checks: list[Literal["bounds", "overlap", "contrast", "safe_area", "legibility"]] | None = None,
+        checks: list[Literal["bounds", "overlap", "contrast", "safe_area", "legibility", "print", "color_vision"]]
+        | None = None,
         targets: list[str] | None = None,
         safe_area: Annotated[
             float | str | dict | None,
@@ -550,13 +595,17 @@ def build_server(session, *, schema="full", planner=False):
         thumbnail_width: Annotated[int, Field(ge=16, le=16384)] = 320,
         min_thumbnail_text: Annotated[float, Field(gt=0, le=200)] = 10,
         min_contrast: Annotated[float | None, Field(ge=1, le=21)] = None,
+        ink_limit: Annotated[float, Field(ge=100, le=400, description="print check: total ink limit %")] = 300,
+        min_ppi: Annotated[float, Field(ge=36, le=2400, description="print check: lowest image resolution")] = 200,
         artboard: str | None = None,
         comp: str | None = None,
         document: Document = None,
     ) -> dict:
         """Find design problems without looking: content cut off by the canvas, overlapping text, low WCAG
         text contrast (4.5:1, or 3:1 for 24px+), content outside a safe area or inside reserved zones, and
-        text too small at thumbnail width. Reports only problems."""
+        text too small at thumbnail width. print (opt-in) checks ink coverage, low-resolution images, tiny
+        type in points and backgrounds that stop short of the bleed; color_vision (opt-in) finds text whose
+        contrast collapses for color-blind readers. Reports only problems."""
         return session.check(
             document=document,
             checks=checks,
@@ -566,6 +615,8 @@ def build_server(session, *, schema="full", planner=False):
             thumbnail_width=thumbnail_width,
             min_thumbnail_text=min_thumbnail_text,
             min_contrast=min_contrast,
+            ink_limit=ink_limit,
+            min_ppi=min_ppi,
             artboard=artboard,
             comp=comp,
         )
@@ -599,11 +650,24 @@ def build_server(session, *, schema="full", planner=False):
         svg_policy: Literal["appearance", "strict"] = "appearance",
         artboard: str | None = None,
         comp: str | None = None,
+        color_space: Literal["rgb", "cmyk"] = "rgb",
+        icc_profile: Annotated[str | None, Field(description="Workspace path of a CMYK .icc/.icm profile")] = None,
+        intent: Literal["perceptual", "relative", "saturation", "absolute"] = "relative",
+        black_generation: Annotated[float, Field(ge=0, le=1)] = 1.0,
+        ink_limit: Annotated[float | None, Field(ge=100, le=400, description="Total ink limit, percent")] = None,
+        proof: bool = False,
+        simulate: Literal["protanopia", "deuteranopia", "tritanopia", "achromatopsia"] | None = None,
+        dpi: Annotated[float | None, Field(ge=36, le=2400)] = None,
+        icon_sizes: list[int] | None = None,
+        time: float | str | None = None,
         document: Document = None,
     ) -> dict:
-        """Export to a workspace file, format from extension (PNG/JPEG/WEBP/TIFF/AVIF/SVG), full size by
-        default. SVG policy strict rejects any embedded raster fallback, with layer/effect details.
+        """Export to a workspace file, format from extension (PNG/JPEG/WEBP/TIFF/AVIF/SVG/PDF/ICO), full
+        size by default. color_space=cmyk separates JPEG/TIFF/PDF for print (with an ICC profile for press
+        accuracy, else device-naive GCR with black_generation and ink_limit); dpi defaults to the canvas
+        dpi. SVG policy strict rejects any embedded raster fallback. time exports one timeline frame.
         Returns file metadata, never image bytes."""
+        profile_bytes = read_bounded(session.resolve(icc_profile), 16 * 1024 * 1024) if icc_profile else None
         return export_file(
             session,
             path,
@@ -618,6 +682,16 @@ def build_server(session, *, schema="full", planner=False):
             svg_policy=svg_policy,
             artboard=artboard,
             comp=comp,
+            color_space=color_space,
+            icc_profile=profile_bytes,
+            intent=intent,
+            black_generation=black_generation,
+            ink_limit=ink_limit,
+            proof=proof,
+            simulate=simulate,
+            dpi=dpi,
+            icon_sizes=icon_sizes,
+            time=time,
         )
 
     @tool
@@ -688,6 +762,147 @@ def build_server(session, *, schema="full", planner=False):
             result["output"] = session.relative(destination)
             if "metadata" in result:
                 result["metadata"] = session.relative(destination.with_suffix(".json"))
+            return result
+
+    @tool
+    def vixl_sizes_list(
+        category: str | None = None, search: str | None = None
+    ) -> dict:
+        """Named document sizes: print (letter, a4, business-card, posters, in/mm with dpi, bleed and safe
+        area), social, web, ads, email, video, slides, screens, app-store, icons, logos and game. Use a name
+        with vixl_document_create(size=...) or the canvas operation's size field."""
+        from .sizes import catalog
+
+        return catalog(category, search)
+
+    @tool
+    def vixl_color(
+        action: Literal["info", "convert", "harmony", "scale", "mix", "contrast", "names"],
+        colors: Annotated[list[str], Field(min_length=1, max_length=16)],
+        to: Literal["hex", "rgb", "hsl", "hsv", "hwb", "cmyk", "lab", "lch", "oklab", "oklch", "css"] | None = None,
+        scheme: str = "complementary",
+        count: int | None = None,
+        amount: Annotated[float, Field(ge=0, le=1)] = 0.5,
+        space: str = "oklab",
+    ) -> dict:
+        """Color language tools. info: every representation (hex, rgb, hsl, oklch, lab, cmyk), nearest names,
+        WCAG contrast vs white/black. convert: one space. harmony: complementary, analogous, triadic,
+        split-complementary, tetradic, square, monochromatic, tints, shades, tones. scale: 50–950 ramp. mix:
+        two colors. contrast: WCAG ratio and AA/AAA. names: search about 1,040 color names. Any value accepts
+        names, hex, rgb/hsl/hwb/lab/lch/oklab/oklch/cmyk/kelvin()/color(display-p3 …)/color-mix() and
+        modifiers such as lighten(navy, 20%)."""
+        from .feature_cli import color_command
+
+        args = [action, *colors]
+        if to:
+            args += ["--to", to]
+        if count:
+            args += ["--count", str(count)]
+        args += ["--scheme", scheme, "--amount", str(amount), "--space", space]
+        result = color_command(args)
+        return result if isinstance(result, dict) else {"results": result}
+
+    @tool
+    def vixl_layouts_list() -> dict:
+        """Principled layout scaffolds (hero-statement, editorial-grid, rule-of-thirds, golden-section,
+        z-pattern, logo-horizontal, app-icon, story-vertical …) with the principles each encodes. Apply with
+        operation {type: layout-apply, name, title, subtitle, body, label, cta, caption, items, image, seed,
+        palette, mode, type_scale, density, align, accent}. Layouts adapt to the canvas and vary by seed,
+        producing editable layers, role swatches (@background @ink @accent …), a type scale and guides."""
+        from .layouts import catalog
+
+        return catalog()
+
+    @tool
+    def vixl_brushes_list() -> dict:
+        """Built-in brushes (round, soft-round, airbrush, pencil, ink, fineliner, brush-pen, marker,
+        highlighter, calligraphy, chalk, charcoal, crayon, watercolor, dry-brush, spray, splatter) and their
+        settings. Paint with operation {type: paint, brush, points: [[x, y, pressure?], …] | path: 'M… C…',
+        size, color}; strokes stay editable on paint layers."""
+        from .brushes import catalog
+
+        return catalog()
+
+    @tool
+    def vixl_timeline_inspect(document: Document = None) -> dict:
+        """Timeline duration, fps, frame count, markers and each track's keyframes (time, value, easing)."""
+        from .timeline import inspect_timeline
+
+        with session.project(document=document) as project:
+            return inspect_timeline(project)
+
+    @tool
+    def vixl_timeline_preview(
+        time: Annotated[float | str | None, Field(description="One frame: ms, '1.5s', '50%' or marker")] = None,
+        count: Annotated[int, Field(ge=2, le=48, description="Frames in the contact sheet when time is omitted")] = 8,
+        columns: Annotated[int | None, Field(ge=1, le=12)] = None,
+        max_width: Annotated[int, Field(ge=64, le=4096)] = 1600,
+        document: Document = None,
+    ) -> Image:
+        """Check motion without exporting: one frame at time, or a labelled contact sheet of evenly
+        spaced frames."""
+        from .timeline import contact_sheet
+
+        with session.project(document=document) as project:
+            if time is not None:
+                data = preview(session, None, max_width, max_width, 2_097_152, None, None, None, document, time=time)
+                return Image(data=data, format="png")
+            sheet = contact_sheet(project, count, columns, max_width)
+        return Image(data=encode_png(sheet, 4_194_304), format="png")
+
+    @tool
+    def vixl_export_timeline(
+        path: str,
+        format: Literal["gif", "apng", "webp", "sheet", "frames", "mp4", "webm"] | None = None,
+        fps: Annotated[float | None, Field(ge=1, le=60)] = None,
+        scale: Annotated[float, Field(ge=0.05, le=4)] = 1.0,
+        start: float | str | None = None,
+        end: float | str | None = None,
+        background: str | None = None,
+        columns: Positive | None = None,
+        quality: Annotated[int, Field(ge=1, le=100)] = 90,
+        overwrite: bool = False,
+        document: Document = None,
+    ) -> dict:
+        """Write the keyframe timeline as GIF, APNG, animated WebP, sprite sheet (+JSON), PNG-sequence ZIP,
+        or MP4/WebM (needs ffmpeg). Format follows the extension; scale previews large canvases cheaply."""
+        from .timeline import export_timeline
+
+        with session.project(document=document) as project:
+            destination = session.resolve(path)
+            result = export_timeline(
+                project,
+                destination,
+                format=format,
+                fps=int(fps) if fps and float(fps).is_integer() else fps,
+                scale=scale,
+                start=start,
+                end=end,
+                background=background,
+                columns=columns,
+                quality=quality,
+                overwrite=overwrite,
+            )
+            result["output"] = session.relative(destination)
+            if "metadata" in result:
+                result["metadata"] = session.relative(destination.with_suffix(".json"))
+            return result
+
+    @tool
+    def vixl_export_icons(
+        directory: str,
+        icon_set: Literal["web", "apple", "android", "windows", "all"] = "web",
+        sampling: Literal["smooth", "nearest"] = "smooth",
+        document: Document = None,
+    ) -> dict:
+        """Render once and write a standard icon set into a workspace folder: web (favicon.ico, 16/32/48,
+        apple-touch-icon, android-chrome 192/512, site.webmanifest), apple, android, windows or all."""
+        from .exports import export_icons
+
+        with session.project(document=document) as project:
+            destination = session.resolve(directory)
+            result = export_icons(project, destination, icon_set=icon_set, sampling=sampling)
+            result["directory"] = session.relative(destination)
             return result
 
     @tool

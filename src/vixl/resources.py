@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 import tempfile
 
-from filelock import FileLock
+from .fileio import file_lock
 
 from .assets import read_bounded
 from .design import named
@@ -53,6 +53,14 @@ GUIDANCE = {
     "playful": "Use energetic accents and rounded forms while preserving hierarchy, contrast, and consistent spacing.",
     "logo": "Start on a transparent canvas. Use simple silhouettes, test small sizes and monochrome, and export SVG when scalable geometry is needed.",
     "pixel-art": "Use an intentional limited palette, integer positions and crisp nearest-neighbor exports. Keep sprite timing and silhouettes readable.",
+    "typography": "Use one or two typefaces and a modular type scale (type-scale). Keep body lines 45–75 characters, line height about 1.4 for body and 1.1 for headlines, and create hierarchy with size and weight before color. Align text to a shared edge.",
+    "color": "Assign roles before picking hues: background, surface, ink, muted, accent. Keep body text at 4.5:1 or better, large text and graphics at 3:1, and use the accent sparingly for the one thing that matters. Check designs with color-vision simulation; never rely on hue alone.",
+    "layout": "Start from a grid or a proportional system (thirds, golden section, modular columns). Give each piece of content one job, group related items by proximity, align to edges, keep consistent margins on a spacing unit, and leave space empty on purpose.",
+    "accessibility": "Meet WCAG contrast (4.5:1 text, 3:1 large text and UI), keep text at legible sizes for the delivery medium, never encode meaning only in color, and keep important content inside safe areas.",
+    "print": "Design at the final physical size and resolution (300 dpi for most print). Extend backgrounds into the bleed, keep text inside the safe (live) area, keep total ink coverage under about 300%, avoid type below 6 pt, and export CMYK with the printer's ICC profile when one is provided.",
+    "icon": "Build on a square grid with a central keyline area, use one recognizable silhouette, test at 16–32 px and in monochrome, avoid fine detail and text, and export every required size from one master.",
+    "motion": "Animate to explain, not decorate. Use 150–500 ms for interface-scale moves and up to about 1 s for entrances, ease out when entering and ease in when leaving, stagger related elements, and keep a still frame that reads on its own.",
+    "brush": "Choose the brush for the medium: ink or fineliner for line art, marker for bold strokes, watercolor or airbrush for soft washes, chalk, charcoal or crayon for texture. Vary pressure and taper for life, and keep strokes on their own paint layers so they stay editable.",
 }
 
 
@@ -183,7 +191,7 @@ def register(kind, name, value):
     validate(kind, value)
     path = resource_path()
     path.parent.mkdir(parents=True, exist_ok=True)
-    with FileLock(str(path) + ".lock"):
+    with file_lock(str(path)):
         data = json.loads(read_bounded(path, 1024 * 1024)) if path.exists() else {}
         data.setdefault(kind, {})[name] = value
         payload = json.dumps(data, ensure_ascii=False).encode()

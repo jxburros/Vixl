@@ -196,3 +196,48 @@ Use `palette list|show|add|apply`, `template list|show|add|new|apply`, `guidance
 `check` inspects visible group descendants, including nested text. Selecting a group includes its descendants; selecting a child checks that child. Bounds and safe areas use canvas coordinates, overlap uses rendered coverage, and thumbnail legibility accounts for ancestor scaling. Contrast compares grouped text with its backdrop through ancestor transforms and opacity. Hidden or fully transparent ancestors exclude their children. Repeated groups emit a coverage warning because geometry checks assess the base instance; visually inspect the repeated copies. Unmeasurable text produces a warning; `passed` means no errors, so also inspect `warnings` and `issues` and visually review the result.
 
 Saved SVG exports report `svg.vector_only` and `svg.raster_fallbacks` in the CLI result so embedded bitmaps are visible without opening the SVG metadata. Use `export logo.svg --svg-policy strict` to reject all embedded raster content. Exporting to `-` still writes only SVG bytes. Supported grouped shapes and outlined text remain vectors; unsupported appearances may rasterize in the default appearance policy.
+
+## Sizes, layouts, color, print, brushes and timelines (0.13)
+
+```bash
+vixl sizes [--category print|stationery|social|icons|logos|…] [--search TEXT]
+vixl sizes show NAME [--dpi N] [--landscape|--portrait] [--bleed]
+vixl new NAME [--dpi N] [--landscape|--portrait] [--bleed [AMOUNT]] [-o FILE]   # e.g. new letter --bleed
+vixl canvas size NAME [--dpi N] [--landscape] [--bleed] | canvas dpi N
+
+vixl layout list | layout show NAME
+vixl layout apply NAME [--seed N] [--set title=…] [--set subtitle=…] [--set body=…] [--set label=…]
+    [--set cta=…] [--set caption=…] [--set items=…] [--set image=ASSET] [--palette NAME|JSON] [--colors JSON]
+    [--mode light|dark] [--type-scale NAME|RATIO] [--base-size PX] [--density airy|balanced|dense]
+    [--align left|center|right] [--accent rule|bar|dot|block|outline|none] [--font F] [--display-font F]
+    [--transparent] [--prefix P] [--replace]
+vixl type-scale [--base PX] [--ratio golden|perfect-fourth|…|1.3] [--prefix P] [--color C]
+
+vixl color [info] COLOR… [--ink-limit 300] | color convert COLOR --to hex|rgb|hsl|hsv|hwb|cmyk|lab|lch|oklab|oklch|css
+vixl color harmony COLOR --scheme complementary|analogous|triadic|split-complementary|tetradic|square|monochromatic|tints|shades|tones [--count N]
+vixl color scale COLOR | color mix A B [--amount 0.5] [--space oklab] | color contrast FG BG | color names QUERY
+vixl palette-generate NAME COLOR [--scheme scale|HARMONY] [--count N]
+
+vixl export FILE.pdf|.tif|.jpg --cmyk [--icc PROFILE.icc] [--intent perceptual|relative|saturation|absolute]
+    [--black-generation 0–1] [--ink-limit 100–400] [--dpi N]
+vixl export FILE --proof [--icc PROFILE.icc] | --simulate protanopia|deuteranopia|tritanopia|achromatopsia
+vixl export FILE.ico [--icon-sizes 16 32 48] | export-icons --out DIR [--set web|apple|android|windows|all]
+vixl check --checks print color_vision [--ink-limit 300] [--min-ppi 200]
+
+vixl brushes | brush-define NAME --base BRUSH [--settings JSON] [--description TEXT]
+vixl paint-layer [--name N] [--width W] [--height H] [--x X] [--y Y]
+vixl paint [LAYER] --brush NAME (--points JSON | --path SVG) [--pressure JSON] [--size N] [--color C]
+    [--opacity 0–1] [--erase] [--seed N] [--space canvas|layer] [--settings JSON]
+vixl paint-clear [LAYER] [--last N]
+
+vixl easings | timeline | timeline set [--duration T] [--fps N] [--loop N] [--clear]
+vixl keyframe LAYER|canvas PROPERTY TIME VALUE [--easing E] | keyframe-remove LAYER [--property P] [--time T]
+vixl animate LAYER PROPERTY --to V [--from V] [--start T] [--end T | --duration T] [--easing E]
+vixl animate-preset LAYER|canvas PRESET [--start T] [--duration T] [--easing E] [--amount N] [--distance N] [--to C] [--no-fade]
+vixl marker NAME TIME | marker NAME --delete
+vixl render --time T --out FILE | timeline-sheet --out FILE [--count 8] [--columns N] [--times T…]
+vixl export-timeline --out FILE.gif|.png|.webp|.zip|.mp4|.webm [--format sheet] [--fps N] [--scale F]
+    [--start T] [--end T] [--background C] [--columns N] [--quality N] [--overwrite]
+```
+
+Times are milliseconds or `1.5s`, `250ms`, `50%` or a marker name. Details: [sizes and layouts](sizes-and-layouts.md), [color and print](color-and-print.md), [brushes and animation](brushes-and-animation.md).

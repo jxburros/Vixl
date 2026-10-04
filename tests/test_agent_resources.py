@@ -348,6 +348,7 @@ def test_capability_routing_selects_available_provider_and_explicit_model(monkey
 
 
 def test_native_adapter_planning_and_gemini_image(monkeypatch):
+    pytest.importorskip("anthropic", reason="Install vixl-engine[anthropic] to test the native Anthropic adapter")
     monkeypatch.setenv("TEST_KEY", "secret")
     a = make_provider(
         "a", {"type": "anthropic", "url": "https://example.test/v1", "key_env": "TEST_KEY", "model": "claude"}

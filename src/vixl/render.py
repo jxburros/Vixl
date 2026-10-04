@@ -57,9 +57,20 @@ def color(value):
     try:
         return ImageColor.getcolor(value, "RGBA")
     except (ValueError, TypeError) as exc:
+        if isinstance(value, str):
+            # The full color language: lab/lch/oklab/oklch, color(display-p3 …), cmyk(),
+            # kelvin(), color-mix(), lighten()/mix()/alpha() modifiers and xkcd names.
+            from .colors import to_rgba8
+
+            try:
+                return to_rgba8(value)
+            except VixlError as detailed:
+                if "Invalid color syntax" not in str(detailed):
+                    raise
         raise VixlError(
             "invalid_color",
-            f"Invalid color {value!r}; use a CSS name, #rrggbb[aa], rgb()/rgba() or hsl()",
+            f"Invalid color {value!r}; use a name, #hex, rgb(), hsl(), oklch(), lab(), cmyk(), "
+            "color(display-p3 …), color-mix() or a function such as lighten(@swatch, 10%)",
             requested=value,
         ) from exc
 
@@ -377,6 +388,10 @@ def layer_image(project, layer, bounds):
         from .pixel import pixel_image
 
         image = pixel_image(project, layer)
+    elif kind == "paint":
+        from .brushes import paint_image
+
+        image = paint_image(project, layer)
     elif kind == "raster":
         if linked:
             require(
@@ -656,8 +671,29 @@ def export(
     comp=None,
     sampling="smooth",
     svg_policy="appearance",
+    color_space="rgb",
+    icc_profile=None,
+    intent="relative",
+    black_generation=1.0,
+    ink_limit=None,
+    proof=False,
+    simulate=None,
+    dpi=None,
+    icon_sizes=None,
+    time=None,
 ):
+    """Render and encode. ``color_space='cmyk'`` separates JPEG/TIFF/PDF output (ICC profile
+    bytes in ``icc_profile`` for press-accurate separation, else device-naive GCR with
+    ``black_generation`` 0–1 and ``ink_limit`` in percent). ``proof`` soft-proofs RGB output
+    through that separation; ``simulate`` previews a color-vision deficiency."""
     require(sampling in ("smooth", "nearest"), "Sampling must be smooth or nearest")
+    require(color_space in ("rgb", "cmyk"), "Color space must be rgb or cmyk")
+    if time is not None:
+        # A single timeline frame: the document with every animated property applied at ``time``.
+        from .timeline import default_timeline, parse_time, project_at
+
+        timeline = project.state.get("timeline") or default_timeline()
+        project = project_at(project, parse_time(time, timeline["duration"], timeline.get("markers")))
     require(svg_policy in ("appearance", "strict"), "SVG policy must be appearance or strict")
     resample = Image.Resampling.NEAREST if sampling == "nearest" else Image.Resampling.LANCZOS
     require(path is None or Path(path).suffix.lower() != ".vixl", "Cannot export over a Vixl project")
@@ -672,6 +708,10 @@ def export(
     ).upper()
     if requested_format == "SVG":
         require(not profile, "SVG export does not use raster export profiles")
+        require(
+            color_space == "rgb" and not (proof or simulate or icc_profile),
+            "SVG export is RGB; use PDF, TIFF or JPEG for CMYK and proofing",
+        )
         from .svg import export_svg
 
         data = export_svg(project, scale=scale, variables=variables, artboard=artboard, comp=comp, svg_policy=svg_policy)
@@ -702,17 +742,63 @@ def export(
                 ".tiff": "TIFF",
                 ".png": "PNG",
                 ".avif": "AVIF",
+                ".pdf": "PDF",
+                ".ico": "ICO",
             }.get(Path(path).suffix.lower())
             if path
             else "PNG"
         )
     )
-    require(fmt in ("PNG", "JPEG", "WEBP", "TIFF", "AVIF"), "Specify a supported export format")
-    if fmt == "JPEG":
+    require(fmt in ("PNG", "JPEG", "WEBP", "TIFF", "AVIF", "PDF", "ICO"), "Specify a supported export format")
+    from . import colors
+
+    cms = None
+    if icc_profile is not None:
+        cms = colors.load_profile(icc_profile)
+    require(ink_limit is None or 100 <= ink_limit <= 400, "Ink limit must be 100–400%")
+    separation = dict(
+        profile=cms,
+        intent=intent,
+        black=finite(black_generation, "black_generation", 0, 1),
+        ink_limit=None if ink_limit is None else ink_limit / 100,
+        background=background,
+    )
+    if simulate:
+        image = colors.simulate_vision(image, simulate)
+    if proof:
+        image = colors.proof_image(image, **separation)
+    canvas_dpi = project.state["canvas"].get("dpi")
+    if dpi is not None:
+        finite(dpi, "dpi", 36, 2400)
+    effective_dpi = dpi or (canvas_dpi * scale if canvas_dpi else None)
+    if effective_dpi and "dpi" not in settings:
+        settings["dpi"] = (round(effective_dpi, 3), round(effective_dpi, 3))
+    if color_space == "cmyk":
+        require(fmt in ("JPEG", "TIFF", "PDF"), "CMYK export supports JPEG, TIFF and PDF")
+        require(not proof, "Choose either a CMYK separation or an RGB soft proof")
+        image = colors.cmyk_image(image, **separation)
+        if cms is not None:
+            settings["icc_profile"] = cms.tobytes()
+    elif icc_profile is not None:
+        require(proof, "An ICC profile needs color_space='cmyk' or proof=True")
+    if fmt in ("JPEG", "PDF") and image.mode == "RGBA":
         base = Image.new("RGBA", image.size, color(background))
         base.alpha_composite(image)
         image = base.convert("RGB")
-    settings.setdefault("quality", int(quality))
+    if fmt == "PDF":
+        settings["resolution"] = settings.pop("dpi", (72, 72))[0]
+        settings.pop("quality", None)
+    if fmt == "ICO":
+        sizes = icon_sizes or [16, 24, 32, 48, 64, 128, 256]
+        require(
+            isinstance(sizes, list) and 0 < len(sizes) <= 16 and all(isinstance(s, int) and 8 <= s <= 256 for s in sizes),
+            "ICO sizes must be 1–16 integers from 8 to 256",
+        )
+        require(abs(image.width - image.height) <= 1, "ICO export needs a square canvas (try the favicon size)")
+        settings = {"sizes": [(s, s) for s in sorted(set(sizes))]}
+    else:
+        require(icon_sizes is None, "icon_sizes applies to ICO export")
+        settings.setdefault("quality", int(quality))
     stream = io.BytesIO()
     try:
         image.save(stream, format=fmt, **settings)

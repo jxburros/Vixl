@@ -167,3 +167,62 @@ MCP: `vixl_render_compare(before="warm", after="cool")` returns both side by sid
 ```
 
 Redefining `brand` or `Heading` later updates every linked layer; editing `logo` updates instances.
+
+## Open brief → structured design (layouts)
+
+```text
+vixl_document_create(path="talk.vixl", size="slide")
+vixl_layouts_list()                                              # pick by medium and intent
+vixl_operations_apply(operations=[{"type":"layout-apply","name":"slide-title",
+  "title":"Designing for agents","subtitle":"Jordan Lee · Product Design","caption":"Conf 2026","seed":2}])
+vixl_check() ; vixl_render_preview()
+# Not right? Try another seed or pin choices, replacing the previous layout:
+vixl_operations_apply(operations=[{"type":"layout-apply","name":"slide-title","replace":true,"seed":9,
+  "title":"Designing for agents","subtitle":"Jordan Lee · Product Design","mode":"dark","type_scale":"golden"}])
+# Retint everything by editing one role swatch:
+vixl_operations_apply(operations=[{"type":"swatch","name":"accent","color":"oklch(0.68 0.17 35)"}])
+```
+
+## Print-ready flyer
+
+```bash
+vixl new letter --bleed -o flyer.vixl
+vixl -p flyer.vixl layout apply event-poster --set title='Summer Night Market' --set label='Sat · June 21' \
+  --set body=$'6 pm – 11 pm\nRiverside Park\nFree entry' --set cta='RSVP' --palette sunset --seed 5
+vixl -p flyer.vixl check --checks bounds overlap contrast print
+vixl -p flyer.vixl export flyer-proof.png --proof --scale 0.25
+vixl -p flyer.vixl export flyer.pdf --cmyk --ink-limit 300        # add --icc PRINTER.icc when supplied
+```
+
+## Logo and icon set
+
+```bash
+vixl new logo-horizontal -o logo.vixl
+vixl -p logo.vixl layout apply logo-horizontal --set title='Harbor' --set subtitle='Coffee roasters' --seed 2
+vixl -p logo.vixl export logo.svg --svg-policy strict
+vixl new favicon -o icon.vixl
+vixl -p icon.vixl layout apply app-icon --set title='Harbor' --palette ocean
+vixl -p icon.vixl export-icons --out icons --set all
+```
+
+## Hand-drawn accent
+
+```text
+vixl_operations_apply(operations=[
+  {"type":"paint-layer","name":"marks"},
+  {"type":"paint","target":"marks","brush":"marker","points":[[120,610],[420,600],[700,615]],"size":26,"color":"alpha(@accent, 0.7)"},
+  {"type":"paint","target":"marks","brush":"brush-pen","path":"M760 540 C820 470 900 520 860 600","size":10,"color":"@ink"}])
+```
+
+## Animated social post
+
+```text
+vixl_operations_apply(operations=[
+  {"type":"timeline-set","duration":"3s","fps":24},
+  {"type":"animate-preset","target":"label","preset":"fade-in","duration":"0.4s"},
+  {"type":"animate-preset","target":"headline","preset":"slide-in-up","start":"0.2s","duration":"0.7s"},
+  {"type":"animate-preset","target":"cta","preset":"pop-in","start":"0.9s","duration":"0.5s"},
+  {"type":"animate-preset","target":"cta","preset":"pulse","start":"2s","duration":"0.6s"}])
+vixl_timeline_preview(count=8)
+vixl_export_timeline(path="post.mp4")          # needs ffmpeg; otherwise post.webp or post.gif
+```

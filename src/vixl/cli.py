@@ -5,11 +5,12 @@ import glob
 import json
 import os
 from pathlib import Path
+import re
 import shlex
 import sys
 import tempfile
 
-from filelock import FileLock
+from .fileio import file_lock
 
 from . import __version__
 from .assets import read_bounded
@@ -22,7 +23,8 @@ HELP = """Vixl — headless design engine for autonomous AI agents
 Usage: vixl [--project FILE] [--json] COMMAND ...
        vixl                         Interactive editing shell
 
-Documents: new SIZE [-o FILE] [--background COLOR], open FILE, save [FILE]
+Documents: new SIZE|NAME [-o FILE] [--background COLOR] [--dpi N] [--landscape] [--bleed],
+           open FILE, save [FILE]   (NAME: letter, a4, business-card, instagram-portrait, favicon …)
 Inspect:   status, inspect [LAYER], describe, layers, effects [LAYER], manifest,
            dependencies, reproduce --check, schema
 Layers:    add FILE --name NAME, solid --color COLOR, gradient --start A --end B,
@@ -36,6 +38,7 @@ Measure:   info, sample X Y, histogram [--region X Y W H], info --target TEXT,
            spacing --targets A B C --axis vertical [--expected N] [--tolerance N] [--check],
            spacing --around BODY --before HEADER --after FOOTER,
            check [--safe-area 5%] [--avoid X Y W H] [--thumbnail-width 320] [--strict]
+           check --checks print color_vision [--ink-limit 300] [--min-ppi 200]
 Pixels:    pixel-art, pixel-draw, pixel-palette, pixels [LAYER],
            frame-save NAME [--duration MS], frame-apply NAME, frame-delete NAME,
            animation, animation-set --loop N --order FRAME FRAME,
@@ -45,16 +48,29 @@ Editing:   move, resize, scale, rotate, flip, crop, opacity, blend, align,
 Effects:   brightness, contrast, saturation, hue, exposure, gamma, temperature,
            tint, shadows, highlights, blur, sharpen, grayscale, invert,
            posterize, threshold, noise, grain, vignette, auto-tone, auto-color, auto-contrast
-Layout:    canvas resize SIZE, canvas preset NAME, constrain, unconstrain,
+Layout:    canvas resize SIZE, canvas size NAME [--landscape] [--bleed], canvas dpi N, constrain, unconstrain,
            variable set NAME VALUE
 History:   undo [N], redo [N], history, checkpoint NAME, branch NAME,
            checkout REF, branches, compare REF REF --out FILE
 Automate:  apply FILE|- [--dry-run], run SCRIPT, batch GLOB --run SCRIPT --output DIR,
            each layer --name PATTERN -- COMMAND, preset save|apply|show NAME,
            transaction begin|commit|rollback, assert RULE, validate [PROFILE]
-Resources: commands, shapes, palette list|show|add|apply, template list|show|add|new|apply,
+Resources: commands, shapes, sizes [--category print], palette list|show|add|apply,
+           template list|show|add|new|apply, layout list|show|apply NAME [--seed N] [--set title=…],
            guidance list|show|add|apply|import|remove, font list|import, providers, models
-Output:    export FILE [--quality N] [--scale 2x] [--profile NAME],
+Color:     color [info] COLOR…, color convert COLOR --to oklch|cmyk|…, color harmony COLOR --scheme triadic,
+           color scale COLOR, color mix A B, color contrast FG BG, color names QUERY,
+           palette-generate NAME COLOR [--scheme scale|triadic|…], type-scale --base 16 --ratio golden
+Paint:     brushes, paint-layer [--name N], paint [LAYER] --brush ink --points JSON | --path SVG
+           [--size N] [--color C] [--erase], paint-clear [LAYER] [--last N], brush-define NAME --base B
+Motion:    timeline, timeline set --duration 3s --fps 30 [--loop N], keyframe LAYER PROP TIME VALUE,
+           animate LAYER PROP --to V [--from V] [--start T] [--duration T] [--easing E],
+           animate-preset LAYER PRESET [--start T] [--duration T], marker NAME TIME, easings,
+           export-timeline --out FILE.gif|.webp|.png|.zip|.mp4 [--fps N] [--scale N],
+           timeline-sheet --out FILE [--count 8], render --time 1.5s --out FILE
+Output:    export FILE [--quality N] [--scale 2x] [--profile NAME] [--dpi N]
+           [--cmyk [--icc PROFILE.icc] [--ink-limit 300]] [--proof] [--simulate deuteranopia],
+           export FILE.pdf | FILE.ico [--icon-sizes 16 32 48], export-icons --out DIR [--set web|apple|android|all],
            render [PROJECT] --out FILE [--set NAME=VALUE] [--artboard NAME] [--comp NAME],
            render --data rows.csv --out DIR, export-screens --out DIR --scales 1 2,
            convert --grayscale
@@ -120,7 +136,7 @@ def output_options(args, command):
     p.add_argument("--quality", type=int, default=90)
     p.add_argument("--scale", default="1")
     p.add_argument("--profile")
-    p.add_argument("--format", choices=["PNG", "JPEG", "WEBP", "TIFF", "AVIF", "SVG", "JPG"])
+    p.add_argument("--format", choices=["PNG", "JPEG", "WEBP", "TIFF", "AVIF", "SVG", "JPG", "PDF", "ICO"])
     p.add_argument("--background", default="white")
     p.add_argument("--set", action="append")
     p.add_argument("--artboard")
@@ -128,7 +144,34 @@ def output_options(args, command):
     p.add_argument("--data")
     p.add_argument("--sampling", choices=["smooth", "nearest"], default="smooth")
     p.add_argument("--svg-policy", choices=["appearance", "strict"], default="appearance")
+    p.add_argument("--color-space", "--colorspace", choices=["rgb", "cmyk"], default="rgb")
+    p.add_argument("--cmyk", dest="color_space", action="store_const", const="cmyk")
+    p.add_argument("--icc", "--icc-profile", dest="icc", help="CMYK ICC profile for separation or proofing")
+    p.add_argument("--intent", choices=["perceptual", "relative", "saturation", "absolute"], default="relative")
+    p.add_argument("--black-generation", type=float, default=1.0)
+    p.add_argument("--ink-limit", type=float, help="Total area coverage limit in percent, e.g. 300")
+    p.add_argument("--proof", action="store_true", help="Soft-proof the CMYK separation as RGB")
+    p.add_argument("--simulate", choices=["protanopia", "deuteranopia", "tritanopia", "achromatopsia"])
+    p.add_argument("--dpi", type=float)
+    p.add_argument("--icon-sizes", type=int, nargs="+")
+    p.add_argument("--time", help="Render a timeline frame: ms, 1.5s, 50%% or a marker")
     return p.parse_args(args)
+
+
+def print_options(a, limits):
+    """Shared CMYK/proof/vision/dpi export arguments from parsed output options."""
+    return {
+        "color_space": a.color_space,
+        "icc_profile": read_bounded(a.icc, limits.max_asset_bytes) if a.icc else None,
+        "intent": a.intent,
+        "black_generation": a.black_generation,
+        "ink_limit": a.ink_limit,
+        "proof": a.proof,
+        "simulate": a.simulate,
+        "dpi": a.dpi,
+        "icon_sizes": a.icon_sizes,
+        "time": (float(a.time) if a.time.replace(".", "", 1).isdigit() else a.time) if a.time else None,
+    }
 
 
 def dispatch(argv):
@@ -187,11 +230,25 @@ def dispatch(argv):
                     | set(EFFECTS)
                     | {"filter"}
                     | set(
-                        "new open save status inspect describe layers effects manifest dependencies reproduce schema check batch convert render export export-screens export-animation spacing pixels animation info sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert validate preset ai ask generate detect ocr serve mcp update updates commands shapes palette template guidance font providers models".split()
+                        "new open save status inspect describe layers effects manifest dependencies reproduce schema check batch convert render export export-screens export-animation spacing pixels animation info sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert validate preset ai ask generate detect ocr serve mcp update updates commands shapes palette template guidance font providers models color sizes layout layouts brushes easings timeline export-timeline timeline-sheet export-icons".split()
                     )
                 )
             }
         ), options.json
+    if cmd in ("color", "colors", "sizes", "layouts", "brushes", "easings") or (
+        cmd == "layout" and (not args or args[0] in ("list", "show"))
+    ):
+        from .feature_cli import standalone as feature_standalone
+
+        if cmd == "layout":
+            from .layouts import catalog
+
+            items = catalog()
+            if len(args) == 2:
+                require(args[1] in items["layouts"], f"Unknown layout {args[1]!r}; see vixl layout list")
+                return {"name": args[1], **items["layouts"][args[1]], "options": items["options"]}, options.json
+            return items, options.json
+        return feature_standalone(cmd, args), options.json
     if cmd in ("palette", "template", "guidance"):
         from .resource_cli import standalone
 
@@ -227,13 +284,30 @@ def dispatch(argv):
         except updater.UpdateError as exc:
             raise VixlError("update_error", str(exc)) from exc
     if cmd == "new":
-        p = Parser(prog="vixl new")
+        p = Parser(prog="vixl new", description="SIZE is WIDTHxHEIGHT or a named size (vixl sizes)")
         p.add_argument("size")
         p.add_argument("--background", default="transparent")
         p.add_argument("--out", "-o", default=options.project or "untitled.vixl")
+        p.add_argument("--dpi", type=float)
+        orientation = p.add_mutually_exclusive_group()
+        orientation.add_argument("--landscape", dest="orientation", action="store_const", const="landscape")
+        orientation.add_argument("--portrait", dest="orientation", action="store_const", const="portrait")
+        p.add_argument("--bleed", nargs="?", const=True, type=float, help="Add standard bleed, or an amount in the size's unit")
         a = p.parse_args(args)
         require(not Path(a.out).exists(), "Project already exists; choose another filename")
-        project = Project(*dimensions(a.size), a.background, limits=limits)
+        named_size = not re.fullmatch(r"\d+[x×]\d+", a.size)
+        require(named_size or not (a.orientation or a.bleed), "orientation and bleed need a named size")
+        if named_size:
+            project = Project.sized(
+                a.size, a.background, limits=limits, dpi=a.dpi, orientation=a.orientation, bleed=a.bleed or False
+            )
+        else:
+            project = Project(*dimensions(a.size), a.background, limits=limits)
+            if a.dpi:
+                require(36 <= a.dpi <= 2400, "dpi must be 36–2400")
+                project.state["canvas"]["dpi"] = a.dpi
+                project.nodes, project.head, project._head_state, project.branches = {}, None, None, {}
+                project._record([], "Create document")
         project.save(a.out)
         remember(a.out)
         return (
@@ -320,7 +394,7 @@ def dispatch(argv):
         a = p.parse_args(args)
         serve(path, a.host, a.port, os.environ.get(a.token_env), limits)
         return None, options.json
-    with FileLock(str(path) + ".lock", timeout=10, is_singleton=True):
+    with file_lock(str(path)):
         project = Project.load(path, limits=limits, allow_linked=options.allow_linked)
         result, changed = project_command(project, cmd, args, detail=options.detail)
         if changed:
@@ -358,6 +432,10 @@ def command_help(cmd, args):
         "each": "each layer [--name PATTERN] [--type TYPE] -- COMMAND",
         "serve": "serve [--host HOST] [--port PORT] [--token-env ENV]",
         "preset": "preset save|apply|show NAME [--set KEY=VALUE]",
+        "layout": "layout list | show NAME | apply NAME [--seed N] [--set title=TEXT] [--palette NAME] "
+        "[--mode light|dark] [--type-scale golden] [--density airy|balanced|dense] [--align left|center|right] "
+        "[--accent rule|bar|dot|block|outline|none] [--prefix P] [--replace]",
+        "timeline": "timeline (inspect) | timeline set [--duration 3s] [--fps 30] [--loop N] [--clear]",
     }
     if cmd in manual:
         return "Usage: vixl " + manual[cmd]
@@ -372,6 +450,11 @@ def project_command(project, cmd, args, *, detail="compact"):
         from .resource_cli import project_command as resource_command
 
         return resource_command(project, cmd, args)
+    from .feature_cli import project_feature
+
+    feature = project_feature(project, cmd, args)
+    if feature is not None:
+        return feature
     if cmd in ("inspect", "status", "describe"):
         if cmd == "describe" and args == ["image"]:
             from .ai import ai_command
@@ -447,6 +530,7 @@ def project_command(project, cmd, args, *, detail="compact"):
             comp=a.comp,
             sampling=a.sampling,
             svg_policy=a.svg_policy,
+            **print_options(a, project.limits),
         )
         if destination == "-":
             sys.stdout.buffer.write(data)
@@ -478,8 +562,12 @@ def project_command(project, cmd, args, *, detail="compact"):
     if cmd == "check":
         p = Parser(prog="vixl check")
         p.add_argument(
-            "--checks", nargs="+", choices=["bounds", "overlap", "contrast", "safe_area", "legibility"]
+            "--checks",
+            nargs="+",
+            choices=["bounds", "overlap", "contrast", "safe_area", "legibility", "print", "color_vision"],
         )
+        p.add_argument("--ink-limit", type=float, default=300)
+        p.add_argument("--min-ppi", type=float, default=200)
         p.add_argument("--targets", nargs="+")
         p.add_argument("--safe-area", help="Inset from every edge: pixels or a percentage such as 5%%")
         p.add_argument(

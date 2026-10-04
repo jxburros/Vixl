@@ -1,6 +1,6 @@
 ---
 name: vixl
-description: Create and edit layered, editable images with Vixl (the `vixl` CLI, its MCP server, REST API, or Python API). Use whenever a task involves making or changing a poster, social graphic, thumbnail, banner, photo edit, template, CSV-driven image variants, pixel-art sprite or GIF/sprite-sheet animation, or checking an image's layout, spacing, contrast or dimensions — and whenever `vixl_*` MCP tools, `.vixl` files, `.vixlscript` files, or the `vixl` command are available or mentioned. Covers every operation type, CLI command, MCP tool, REST route, AI-provider feature, and the verify-by-preview loop.
+description: Create and edit layered, editable images with Vixl (the `vixl` CLI, its MCP server, REST API, or Python API). Use whenever a task involves making or changing a poster, flyer, letterhead, business card, social graphic, thumbnail, banner, logo, icon or favicon set, photo edit, template, CSV-driven image variants, brush painting, pixel-art sprite, keyframe animation (GIF/WebP/MP4), print-ready CMYK PDF, color palette, or checking an image's layout, spacing, contrast, print readiness or dimensions — and whenever `vixl_*` MCP tools, `.vixl` files, `.vixlscript` files, or the `vixl` command are available or mentioned. Covers named sizes, principled layouts, the color language, every operation type, CLI command, MCP tool, REST route, AI-provider feature, and the verify-by-preview loop.
 ---
 
 # Vixl for agents
@@ -23,6 +23,17 @@ Key properties to rely on:
 - **Errors are structured and fail loudly** (`layer_not_found`, `invalid_operation`,
   `validation_failed`, `resource_limit`, `spacing_mismatch`…). Nothing fails silently — except
   the one gotcha listed below.
+
+## New in 0.13
+
+- **Named sizes** — `vixl_document_create(size="letter", bleed=true)` / `vixl new business-card --bleed`; 150 print, social, web, ad, video, slide, icon and logo sizes with dpi, bleed, safe area and guides.
+- **Layouts** — 33 principled, seed-varied layouts (`layout-apply`) that adapt to the canvas and set up contrast-checked color roles, a type scale and grids. Use them when a brief gives you free rein.
+- **Color language** — `oklch()`, `lab()`, `cmyk()`, `color(display-p3 …)`, `kelvin()`, `color-mix()`, `lighten(@brand, 10%)` … everywhere; `vixl_color` for harmonies, scales and contrast; `palette-generate`.
+- **Print** — CMYK PDF/TIFF/JPEG (ICC profile or GCR + ink limit), PDF, ICO, icon sets, dpi, soft proofs, color-blindness simulation, `print` and `color_vision` checks.
+- **Brushes** — editable paint layers with 17 brushes (`paint`, `paint-layer`, `brush-define`).
+- **Timelines** — keyframes, easing, presets and markers on any layer property; preview a frame or a contact sheet; export GIF/APNG/WebP/sheet/PNG frames/MP4.
+
+See [design-system.md](references/design-system.md) (sizes, layouts, color, print) and [brushes-timeline.md](references/brushes-timeline.md).
 
 ## New in 0.11
 
@@ -51,6 +62,10 @@ Set `VIXL_NO_UPDATE=1` in automation so the Windows auto-updater never runs mid-
 
 ## 2. The core loop (do this every time)
 
+0. **Start right** — for a new piece, create it from a named size (`size="instagram-portrait"`,
+   `"letter"` with `bleed`, `"favicon"`, `"logo-horizontal"` …) rather than guessed pixels. If the brief
+   is open-ended, apply a fitting layout (`layout-apply`) and refine it instead of improvising a
+   composition from scratch; vary `seed` to explore alternatives.
 1. **Orient** — inspect before editing. MCP: `vixl_document_inspect()` returns a compact summary
    (one line per layer with `bounds`; `detail="full"` for every field, `target=` for one layer).
    CLI: `vixl -p F.vixl inspect --json` / `vixl layers`. Note canvas size, layer names/IDs and
@@ -93,6 +108,18 @@ vixl_operations_apply(operations=[
 vixl_check(safe_area="5%")                              # overlap, contrast, bounds, legibility
 vixl_render_preview()
 vixl_export_file(path="poster.png")
+```
+
+**MCP, from a brief** ("make a launch post for our spring collection")
+
+```text
+vixl_document_create(path="spring.vixl", size="instagram-portrait")
+vixl_operations_apply(operations=[{"type":"layout-apply","name":"split-screen","title":"Spring collection",
+  "subtitle":"New colors, same perfect fit.","label":"Just landed","cta":"Shop now","palette":"spring","seed":11}])
+vixl_import_image(path="photos/hero.jpg", name="hero")       # returns {"asset": "assets/…", …}
+vixl_operations_apply(operations=[{"type":"replace-contents","target":"image","asset":"assets/…"},
+  {"type":"remove","target":"hero"}])                         # the photo now fills the layout's frame
+vixl_check() ; vixl_render_preview() ; vixl_export_file(path="spring.png")
 ```
 
 **CLI** (quote `#` colors; every edit autosaves)
@@ -151,17 +178,25 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
 - **Pixel art:** export with `--sampling nearest` (`sampling:"nearest"` in MCP) or it will be smoothed.
 - **AI features need a configured provider** (`~/.config/vixl/providers.json`). There is no
   offline fallback; if no provider is configured, say so instead of retrying.
+- **Small accent text uses `@accent-text`**, not `@accent` (fills and large type only need 3:1; small
+  text needs 4.5:1). Layouts already do this.
+- **Animate with `translate-x/y` and `scale`** so constrained layouts keep working; the saved document
+  is the frame at rest, and `time=` previews or exports a moment.
+- **CMYK is an export setting** (`color_space="cmyk"` for PDF/TIFF/JPEG). Pass the printer's ICC profile
+  when exact separations matter; without one Vixl uses a GCR approximation with an optional ink limit.
 - **Limits:** 40 MP per canvas/layer, 16 384 px per side, 512 layers, 256 effects/layer,
   1 000 operations per batch. History keeps 2 000 revisions; older unreferenced ones are squashed
-  automatically, so long sessions never lock. Animation frames ≤ 256×256, ≤ 256 frames.
-- **Not supported** (don't promise them): arbitrary SVG import, path arcs/multiple contours, brushes, skew/perspective, CMYK/ICC,
-  RAW, PSD/XCF import, full animation timelines, GUI.
+  automatically, so long sessions never lock. Pixel-art frames ≤ 256×256, ≤ 256 frames; timelines
+  ≤ 10 min, 60 fps, 3 600 frames; 4 096 strokes per paint layer.
+- **Not supported** (don't promise them): arbitrary SVG import, path arcs/multiple contours,
+  skew/perspective, CMYK *editing* or spot colors, live tablet input, audio, RAW, PSD/XCF import, GUI.
 
 ## 5. Feature map (where to look)
 
 | Need | Operations / commands |
 | --- | --- |
-| New layers | `add` (image), `solid`, `gradient` (linear/angled/radial, multi-stop), `text`, `shape`, `frame` (image box with fill/fit), `pixel-art`, `adjustment`, `symbol-instance` |
+| Start | named sizes (`canvas` `size`, `vixl new NAME`, `vixl_document_create(size=)`), `layout-apply`, `type-scale`, `palette-generate`, `guidance` |
+| New layers | `add` (image), `solid`, `gradient` (linear/angled/radial, multi-stop), `text`, `shape`, `frame` (image box with fill/fit), `pixel-art`, `paint-layer`, `adjustment`, `symbol-instance` |
 | Transform | `move`, `resize`, `scale`, `rotate`, `flip`, `crop`, `opacity`, `blend`, `hide`/`show` |
 | Stacking | `raise`, `lower`, `top`, `bottom`, `reorder` (`above`/`below`), `group`/`ungroup`, `clip` |
 | Layout | `align` (to canvas/selection/layer), `distribute`, `constrain`/`unconstrain`, `guide`, `grid`, `canvas` (resize/preset), `artboard` |
@@ -170,9 +205,12 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
 | Typography | `text`, `text-set`, `text-layout` (box, fit, warp, path), `style-define`/`style-apply`, `swatch` |
 | Decoration | `layer-style` (drop-shadow, stroke, outer-glow, color-overlay, gradient-overlay), `repeat`, `repeat-blend`, `pathfinder` |
 | Templates | `variable`, `replace-contents`, `comp-save`/`comp-apply`, CSV `render --data`, `export-screens` |
-| Pixel art & animation | `pixel-art`, `pixel-draw`, `pixel-palette`, `frame-save/apply/delete`, `animation-set`, `export-animation` |
+| Painting | `paint` (17 brushes, points or SVG path, pressure, erase), `paint-clear`, `brush-define` |
+| Motion | `timeline-set`, `keyframe`, `keyframe-remove`, `animate`, `animate-preset`, `marker`; `vixl_timeline_preview`, `vixl_export_timeline` |
+| Pixel art & sprite frames | `pixel-art`, `pixel-draw`, `pixel-palette`, `frame-save/apply/delete`, `animation-set`, `export-animation` |
+| Color & print | color language in every color field, `vixl_color`, CMYK/PDF/ICO export, `vixl_export_icons`, proof/simulate previews, `print`/`color_vision` checks |
 | History | undo/redo, checkpoint, branch, checkout, compare, transactions |
-| QA | check (bounds/overlap/contrast/safe area/legibility), inspect, measure (sample/histogram/contrast), spacing, validate/assert, render preview (zoomable), compare revisions |
+| QA | check (bounds/overlap/contrast/safe area/legibility; opt-in print, color_vision), inspect, measure (sample/histogram/contrast), spacing, validate/assert, render preview (zoomable, time, proof, simulate), compare revisions |
 | AI (provider) | generate/inpaint/img2img, extend (outpaint), upscale, regenerate, background-remove, select object/subject, remove, content-aware-fill, describe/detect/OCR, natural-language plan |
 
 When unsure of a field, get the authoritative schema: MCP embeds it in `vixl_operations_apply`'s
