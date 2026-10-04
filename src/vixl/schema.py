@@ -82,9 +82,9 @@ def _operation_schema():
         },
     )
     add("palette-apply", {"name": S, "prefix": S}, ["name"])
-    add("template-apply", {"name": S, "variables": {"type": "object"}}, ["name"])
+    add("template-apply", {"name": S, "variables": {"type": "object"}, "seed": {"type": ["integer", "string"]}}, ["name"])
     add("guidance", {"name": S, "text": S, "style": S, "delete": B}, ["name"])
-    add("font-register", {"name": S, "asset": S}, ["name", "asset"])
+    add("font-register", {"name": S, "asset": S, "role": S}, ["name"])
     text = {
         "text": S,
         "size": POSITIVE_INT,

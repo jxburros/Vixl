@@ -20,6 +20,8 @@ def compact_changes(before, after):
         "symbols",
         "design_guidance",
         "fonts",
+        "typography",
+        "template",
         "brushes",
     ):
         if before.get(key) != after.get(key):

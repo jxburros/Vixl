@@ -123,6 +123,6 @@ def test_check_command_reports_and_strict_mode_fails(tmp_path):
     ok(tmp_path, "new", "400x200", "--background", "white", "-o", "card.vixl")
     ok(tmp_path, "text", "add", "Faint", "--name", "faint", "--size", "20", "--color", "#f4f4f4", "--x", "10", "--y", "10")
     report = ok(tmp_path, "--json", "check", "--safe-area", "10%", "--avoid", "80%", "0", "20%", "20%")
-    assert {issue["check"] for issue in report["issues"]} == {"contrast", "safe_area"}
+    assert {issue["check"] for issue in report["issues"]} == {"contrast", "safe_area", "fonts"}
     strict = cli(tmp_path, "--json", "check", "--checks", "contrast", "--strict")
     assert strict.returncode != 0 and json.loads(strict.stderr)["error"] == "design_check_failed"

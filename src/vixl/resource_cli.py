@@ -49,19 +49,95 @@ def standalone(cmd, args, limits):
         from .cli import remember
 
         remember(a.out)
-        return {"created": a.out, "template": a.name, "layers": len(p.state["layers"])}, False
+        record = {k: v for k, v in p.state.get("template", {}).items() if k != "name"}
+        return {"created": a.out, "template": a.name, "layers": len(p.state["layers"]), **record}, False
     return None, True
+
+
+FONT_STANDALONE = ("show", "pairings", "pairing", "principles")
+
+
+def _seed(value):
+    return value if value == "random" else int(value)
+
+
+def font_standalone(cmd, args):
+    """Catalog, pairing and roll commands that need no document."""
+    from . import typefaces
+
+    if cmd == "fonts":
+        p = Parser(prog="vixl fonts")
+        p.add_argument("--category", help="sans-serif, serif, monospace, display, handwriting or a classification")
+        p.add_argument("--role", help="display, heading, text, ui, caption, code or accent")
+        p.add_argument("--mood")
+        p.add_argument("--query")
+        a = p.parse_args(args)
+        return typefaces.list_fonts(a.category, a.role, a.mood, a.query)
+    if cmd == "roll":
+        from .sizes import resolve
+
+        p = Parser(prog="vixl roll")
+        p.add_argument("--for", dest="purpose", help="What it is for: poster, social, slides, logos …")
+        p.add_argument("--mood")
+        p.add_argument("--size", help="Named size or WxH, so the layout suits the canvas")
+        p.add_argument("--seed", type=_seed, help="Integer or 'random' (default)")
+        p.add_argument("--lock", action="append", help="Keep a choice: layout=…, pairing=…, palette=…, mode=…")
+        a = p.parse_args(args)
+        canvas = None
+        if a.size:
+            if "x" in a.size and a.size.replace("x", "").isdigit():
+                canvas = tuple(int(v) for v in a.size.split("x"))
+            else:
+                size = resolve(a.size)
+                canvas = (size["width"], size["height"])
+        locks = pairs(a.lock)
+        if "layout_seed" in locks:
+            locks["layout_seed"] = int(locks["layout_seed"])
+        return typefaces.roll(a.seed, purpose=a.purpose, mood=a.mood, canvas=canvas, locks=locks)
+    p = Parser(prog="vixl font")
+    p.add_argument("action", choices=FONT_STANDALONE)
+    p.add_argument("family", nargs="?")
+    p.add_argument("--mood")
+    p.add_argument("--for", dest="purpose")
+    p.add_argument("--family", dest="with_family")
+    p.add_argument("--relationship", choices=["contrast", "superfamily", "concord"])
+    a = p.parse_args(args)
+    if a.action == "show":
+        require(a.family, "Use font show FAMILY")
+        return typefaces.show_font(a.family)
+    if a.action == "principles":
+        return {"principles": typefaces.principles()}
+    if a.action == "pairing":
+        require(a.family, "Use font pairing NAME")
+        return typefaces.get_pairing(a.family)
+    return typefaces.list_pairings(a.mood, a.purpose, a.with_family, a.relationship)
 
 
 def project_command(project, cmd, args):
     if cmd == "font":
         p = Parser(prog="vixl font")
-        p.add_argument("action", choices=["list", "import"])
-        p.add_argument("source", nargs="?")
+        p.add_argument("action", choices=["list", "import", "install", "pair", "use"])
+        p.add_argument("source", nargs="?", help="File/HTTPS URL (import), family (install), pairing or 'random' (pair), font name (use)")
         p.add_argument("--name")
+        p.add_argument("--weight", type=int, default=400)
+        p.add_argument("--italic", action="store_true")
+        p.add_argument("--role", choices=["heading", "body"])
+        p.add_argument("--seed", type=_seed)
+        p.add_argument("--mood")
+        p.add_argument("--for", dest="purpose")
         a = p.parse_args(args)
         if a.action == "list":
-            return project.state.get("fonts", {}), False
+            return {"fonts": project.state.get("fonts", {}), "typography": project.state.get("typography", {})}, False
+        from . import typefaces
+
+        if a.action == "install":
+            require(a.source, "Use font install FAMILY [--weight 700] [--italic] [--role heading|body]")
+            return typefaces.install_font(project, a.source, a.weight, a.italic, a.name, a.role), True
+        if a.action == "pair":
+            return typefaces.pair_fonts(project, a.source, seed=a.seed, mood=a.mood, best_for=a.purpose), True
+        if a.action == "use":
+            require(a.source and a.role, "Use font use NAME --role heading|body")
+            return project.apply({"type": "font-register", "name": a.source, "role": a.role}, detail="compact"), True
         require(a.source and a.name, "Use font import FILE_OR_HTTPS_URL --name NAME")
         from .fonts import import_font
 

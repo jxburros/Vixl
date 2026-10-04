@@ -402,6 +402,39 @@ def create_app(path, *, token=None, limits=None):
 
         return catalog()
 
+    @app.get("/typefaces")
+    def typeface_catalog(category: str | None = None, role: str | None = None, mood: str | None = None):
+        from .typefaces import list_fonts
+
+        return list_fonts(category, role, mood)
+
+    @app.get("/typefaces/pairings")
+    def typeface_pairings(mood: str | None = None, best_for: str | None = None, family: str | None = None):
+        from .typefaces import list_pairings
+
+        return list_pairings(mood, best_for, family)
+
+    @app.post("/typefaces/pair")
+    def typeface_pair(body: dict):
+        from .typefaces import pair_fonts
+
+        with session.project(write=True) as project:
+            return pair_fonts(project, body.get("pairing", "random"), seed=body.get("seed"), mood=body.get("mood"), best_for=body.get("best_for"))
+
+    @app.post("/typefaces/install")
+    def typeface_install(body: dict):
+        from .typefaces import install_font
+
+        require(isinstance(body.get("family"), str), "family is required", field="family")
+        with session.project(write=True) as project:
+            return install_font(project, body["family"], body.get("weight", 400), body.get("italic", False), body.get("name"), body.get("role"))
+
+    @app.get("/roll")
+    def design_roll(purpose: str | None = None, mood: str | None = None, seed: int | None = None):
+        from .typefaces import roll
+
+        return roll(seed, purpose=purpose, mood=mood)
+
     @app.get("/brushes")
     def brush_catalog():
         from .brushes import catalog

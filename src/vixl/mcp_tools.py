@@ -299,7 +299,9 @@ def build_server(session, *, schema="full", planner=False):
             "operation_index and suggestions. Paths are relative to the workspace; imports accept a path or "
             "base64 bytes. Several documents can be open: pass document= to address one. Start from a named size "
             "(vixl_sizes_list) and, when given open-ended briefs, a principled layout (vixl_layouts_list → "
-            "layout-apply) instead of improvising; then refine. Paint with brushes (vixl_brushes_list), animate "
+            "layout-apply, filling every slot it lists) instead of improvising; then refine. Choose type with "
+            "vixl_fonts → vixl_font_pair (the bundled font is a proofing fallback), and when a brief leaves the "
+            "look open, vixl_roll a few directions and compare previews. Paint with brushes (vixl_brushes_list), animate "
             "with keyframes (keyframe/animate/animate-preset → vixl_timeline_preview → vixl_export_timeline), and "
             "export print-ready CMYK PDF/TIFF/JPEG with vixl_export_file. AI tools need a configured provider."
         ),
@@ -383,7 +385,10 @@ def build_server(session, *, schema="full", planner=False):
                 require(not destination.exists(), "Destination already exists")
                 project = create_template(name, variables, limits=session.limits)
                 project.save(destination)
-                return session.open(destination)
+                result = session.open(destination)
+                if isinstance(result, dict) and project.state.get("template"):
+                    result["template"] = project.state["template"]
+                return result
 
     @tool
     def vixl_import_font(path: str, name: str, document: Document = None) -> dict:
@@ -835,15 +840,102 @@ def build_server(session, *, schema="full", planner=False):
         return result if isinstance(result, dict) else {"results": result}
 
     @tool
-    def vixl_layouts_list() -> dict:
+    def vixl_layouts_list(name: str | None = None) -> dict:
         """Principled layout scaffolds (hero-statement, editorial-grid, rule-of-thirds, golden-section,
-        z-pattern, logo-horizontal, app-icon, story-vertical …) with the principles each encodes. Apply with
-        operation {type: layout-apply, name, title, subtitle, body, label, cta, caption, items, image, seed,
-        palette, mode, type_scale, density, align, accent}. Layouts adapt to the canvas and vary by seed,
-        producing editable layers, role swatches (@background @ink @accent …), a type scale and guides."""
-        from .layouts import catalog
+        z-pattern, logo-horizontal, app-icon, story-vertical …) with the principles each encodes and the
+        slots each one needs. Apply with operation {type: layout-apply, name, <slots>, seed (int or
+        'random'), palette, mode, type_scale, density, align, accent, unfilled}. Fill every slot: unfilled
+        slots render as [Label] blanks that vixl_check rejects, and a slot the layout does not use is an
+        error. Unspecified choices are rolled from the seed. Layouts produce editable layers, role swatches
+        (@background @ink @accent …), a type scale and guides, and use the document typography. Pass name
+        for one layout's principles and each slot's meaning."""
+        from .layouts import LAYOUTS, catalog, describe
 
+        if name:
+            require(name in LAYOUTS, f"Unknown layout {name!r}", field="name")
+            return {"name": name, **describe(name), "options": catalog()["options"]}
         return catalog()
+
+    @tool
+    def vixl_fonts(
+        view: Literal["fonts", "font", "pairings", "pairing", "principles"] = "pairings",
+        family: str | None = None,
+        pairing: str | None = None,
+        category: str | None = None,
+        role: str | None = None,
+        mood: str | None = None,
+        best_for: str | None = None,
+    ) -> dict:
+        """Researched typeface catalog (open-licensed Google Fonts with classification, x-height, contrast,
+        mood and roles), curated heading/body pairings with the reason each works, and the pairing
+        principles guide. view=font needs family; view=pairing needs pairing (why it works). Nothing is downloaded; install with vixl_font_pair or
+        vixl_font_install. The bundled fallback font is for proofing only."""
+        from . import typefaces
+
+        if view == "fonts":
+            return typefaces.list_fonts(category, role, mood)
+        if view == "font":
+            require(family, "view=font needs family", field="family")
+            return typefaces.show_font(family)
+        if view == "principles":
+            return {"principles": typefaces.principles()}
+        if view == "pairing":
+            require(pairing, "view=pairing needs pairing", field="pairing")
+            return typefaces.get_pairing(pairing)
+        return typefaces.list_pairings(mood, best_for, family)
+
+    @tool
+    def vixl_font_pair(
+        pairing: str = "random",
+        seed: int | None = None,
+        mood: str | None = None,
+        best_for: str | None = None,
+        document: Document = None,
+    ) -> dict:
+        """Download (or reuse from cache), embed and register a curated pairing's heading and body fonts and
+        make them the document typography that layouts use by default. pairing='random' rolls one among
+        those matching mood/best_for (seed reproduces it)."""
+        from .typefaces import pair_fonts
+
+        with session.project(write=True, document=document) as project:
+            return pair_fonts(project, pairing, seed=seed, mood=mood, best_for=best_for)
+
+    @tool
+    def vixl_font_install(
+        family: str,
+        weight: Annotated[int, Field(ge=100, le=900)] = 400,
+        italic: bool = False,
+        name: str | None = None,
+        role: Literal["heading", "body"] | None = None,
+        document: Document = None,
+    ) -> dict:
+        """Download one style of any Google Fonts family, embed and register it (default name
+        family-weight); role makes it the document's heading or body font."""
+        from .typefaces import install_font
+
+        with session.project(write=True, document=document) as project:
+            return install_font(project, family, weight, italic, name, role)
+
+    @tool
+    def vixl_roll(
+        purpose: str | None = None,
+        mood: str | None = None,
+        seed: int | None = None,
+        locks: dict | None = None,
+        document: Document = None,
+    ) -> dict:
+        """Roll a coherent design direction when the brief is thin: a font pairing, a mood-consistent
+        palette, a layout suited to the purpose and canvas, mode, type scale, density and accent, plus a
+        ready layout-apply operation. Roll several times, compare previews, keep a direction by its seed;
+        locks fix any choice (e.g. {palette: sage})."""
+        from .typefaces import roll
+
+        canvas = None
+        if document or session.path:
+            with session.project(document=document) as project:
+                c = project.state["canvas"]
+                canvas = (c["width"], c["height"])
+        return roll(seed, purpose=purpose, mood=mood, canvas=canvas, locks=locks)
 
     @tool
     def vixl_brushes_list() -> dict:

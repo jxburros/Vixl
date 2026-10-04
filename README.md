@@ -51,7 +51,7 @@ python -m pip install -e ".[server,mcp]"
 vixl --help
 ```
 
-The core install is `pip install -e .`; REST and MCP are optional extras. A default DejaVu Sans font is bundled, with its license, so basic text works without system fonts.
+The core install is `pip install -e .`; REST and MCP are optional extras. A DejaVu Sans fallback font is bundled, with its license, so text renders without system fonts. It is for proofing only: choose real typefaces from the curated catalog and pairings (`vixl font pairings`, `vixl font pair NAME|random`), which download on request and embed in the document.
 
 ## Discover resources and start from a template
 
@@ -60,15 +60,18 @@ vixl commands --json
 vixl shapes --json
 vixl export --help
 vixl palette list
-vixl template new social-square -o campaign.vixl --set title='New launch'
+vixl roll --for social --size instagram-post          # a seeded direction: pairing, palette, layout
+vixl template new social-square -o campaign.vixl --set title='New launch' --set subtitle='Out today'
 vixl guidance apply minimal --style minimal
 vixl palette apply ocean
+vixl font pairings --mood editorial
+vixl font pair source-serif-sans                         # or: vixl font pair random
 vixl font import Brand-Regular.ttf --name brand
 vixl text add 'Brand headline' --font brand --name headline --size 64
 vixl export campaign.svg
 ```
 
-Discovery and command help work before opening a document. CLI editing responses are compact by default; use `--detail full` for snapshots. For sustained autonomous work, use a persistent MCP/REST session or atomic `apply` batches. The [resource guide](docs/agent-resources.md) covers 32 palettes, built-in and custom templates, overall/style guidance, HTTPS font imports, shape shortcuts and editable Bézier paths.
+Discovery and command help work before opening a document. CLI editing responses are compact by default; use `--detail full` for snapshots. For sustained autonomous work, use a persistent MCP/REST session or atomic `apply` batches. The [resource guide](docs/agent-resources.md) covers 32 palettes, built-in and custom templates (fill-in-the-blank), overall/style guidance, the typeface catalog and pairings ([typography](docs/typography.md)), HTTPS font imports, shape shortcuts and editable Bézier paths.
 
 ## A first document
 
