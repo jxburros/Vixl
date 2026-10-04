@@ -112,7 +112,7 @@ To publish a stable release:
 
 4. The tag workflow re-runs tests, checks tag/package-version consistency, builds the distributions, and creates a **draft** GitHub release. It uploads every artifact before publishing it as the latest stable release. No release becomes visible to the updater while files are still being uploaded.
 
-The workflow uses GitHub's built-in token with `contents: write` only in the publish job. No personal token, external package registry, or certificate secret is required. If publication fails after draft creation, inspect that draft and the workflow logs; do not mutate assets of an already published version. Publish a new version for fixes. Release tags and assets are treated as immutable by convention.
+The workflow uses GitHub's built-in token with `contents: write` and `actions: write` only in the publish job. The latter starts Python publication after a release from main. No personal token or certificate secret is required. If publication fails after draft creation, inspect that draft and the workflow logs; do not mutate assets of an already published version. Publish a new version for fixes. Release tags and assets are treated as immutable by convention.
 
 Release assets:
 
@@ -130,8 +130,9 @@ An update trusts HTTPS and access control of the official GitHub repository. The
 Tagged releases publish `vixl-engine` using PyPI Trusted Publishing. Before the first release,
 configure a PyPI pending/trusted publisher with owner `jxburros`, repository `Vixl`, workflow
 `pypi.yml`, and environment `pypi`; create that GitHub environment with the desired protections.
-No PyPI password belongs in the repository. A manual workflow run builds artifacts without
-publishing. A version tag must match `src/vixl/__init__.py`; use a new version for a new release.
+No PyPI password belongs in the repository. A manual workflow run on a branch only builds
+artifacts; a manual run on a version tag also publishes. A version tag must match
+`src/vixl/__init__.py`; use a new version for a new release.
 Publication is an external release step, not something a source checkout can guarantee.
 
 After the first successful PyPI release:
@@ -174,3 +175,23 @@ tagged release. It creates the version tag at the tested main commit, uploads ev
 a draft, then publishes. An already published version is skipped; a failed draft upload can
 be resumed. Tag-triggered releases remain supported, and tag/package version agreement is
 checked. Publishing requires successful Linux tests, Windows tests, and installation checks.
+
+After publishing a new GitHub release from main, the workflow explicitly starts
+`pypi.yml` on the released tag. GitHub does not trigger tag-push workflows for tags
+created using `GITHUB_TOKEN`; `workflow_dispatch` provides the handoff. Python
+publication remains in its existing `pypi` environment with Trusted Publishing.
+Tag pushes by maintainers continue to trigger Python publication directly.
+
+If the handoff fails after GitHub publication, or an older release is missing from
+PyPI, start the Python workflow on that existing tag:
+
+```bash
+gh workflow run pypi.yml --repo jxburros/Vixl --ref v0.17.0
+```
+
+Check the **Publish Python and agent bundles** run and the package version on PyPI
+before considering the release complete. Already published GitHub releases are
+skipped without another handoff. Python publication runs for the same ref are
+serialized, and the updated Python workflow skips existing distribution files on
+retry rather than trying to replace them. Older tags use the workflow saved at
+that tag, so inspect an older run before retrying a partially published version.
