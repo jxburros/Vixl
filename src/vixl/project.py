@@ -469,6 +469,23 @@ class Project:
 
         return check_design(self, **options)
 
+    def check_suite(self, suite, **options):
+        from .assurance import run_suite
+        return run_suite(self, suite, **options)
+
+    def act(self, operations, *, suites=None, dry_run=False, check=None):
+        """Apply and measure one candidate. Failed contracts leave the document unchanged."""
+        candidate = self.clone()
+        result = candidate.apply(operations, detail="compact", check=check)
+        require(candidate.state.get("suites", {}) == self.state.get("suites", {}),
+                "Checked actions cannot rewrite suites; edit contracts explicitly with apply")
+        reports = {name: candidate.check_suite(name) for name in (suites or [])}
+        accepted = all(report["passed"] for report in reports.values())
+        if accepted and not dry_run:
+            self.__dict__.update(candidate.__dict__)
+        return {**result, "success": accepted, "dry_run": dry_run, "committed": accepted and not dry_run,
+                "checks": reports, "bounds": {x["name"]: x["resolved_bounds"] for x in candidate.inspect()["layers"]}}
+
     def measure(self, **options):
         from .measure import measure
 

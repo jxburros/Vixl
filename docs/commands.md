@@ -1,5 +1,11 @@
 # Command reference
 
+Checked automation and production: `workflow schema` lists the actions accepted by
+`workflow ACTION --request FILE --workspace DIR`. See [production](production.md) for
+check suites, recipes, matrices, libraries, jobs and films. New editing commands include
+`suite-set`, `suite-capture`, `role-set`, `motion-define`, `motion-apply`, `action-define`,
+`action-apply`, `fit-text`, `arrange-grid`, `adapt-layout` and `recipe-set`; each has `--help`.
+
 Vixl is a headless application designed for autonomous AI agents; humans can use the same interfaces.
 
 See [spacing checks and pixel animation](pixel-animation-spacing.md) for the 0.9.0 tools and API examples.

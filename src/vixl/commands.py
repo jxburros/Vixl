@@ -52,6 +52,10 @@ def normalize(tokens):
 def compile_command(tokens):
     tokens = normalize(shlex.split(tokens, comments=True) if isinstance(tokens, str) else tokens)
     cmd, args = tokens[0], tokens[1:]
+    from .automation import compile_command as compile_automation
+    automation = compile_automation(cmd, args)
+    if automation is not None:
+        return automation
     from .pixel_schema import compile_pixel
 
     pixel = compile_pixel(cmd, args)

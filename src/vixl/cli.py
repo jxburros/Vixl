@@ -53,6 +53,7 @@ Layout:    canvas resize SIZE, canvas size NAME [--landscape] [--bleed], canvas 
 History:   undo [N], redo [N], history, checkpoint NAME, branch NAME,
            checkout REF, branches, compare REF REF --out FILE
 Automate:  apply FILE|- [--dry-run], run SCRIPT, batch GLOB --run SCRIPT --output DIR,
+           workflow ACTION --request FILE [--workspace DIR] (workflow schema lists actions),
            each layer --name PATTERN -- COMMAND, preset save|apply|show NAME,
            transaction begin|commit|rollback, assert RULE, validate [PROFILE]
 Resources: commands, shapes, sizes [--category print], palette list|show|add|apply,
@@ -201,6 +202,9 @@ def dispatch(argv):
     limits = Limits(max_pixels=options.max_pixels)
     tokens = normalize(tokens) if tokens[0] != "text" else tokens
     cmd, args = tokens[0], tokens[1:]
+    if cmd == "workflow":
+        from .workflows import cli
+        return cli(args, options, limits), options.json
     if cmd in ("open", "schema") and any(arg in ("--help", "-h") for arg in args):
         return command_help(cmd, args), options.json
     if cmd in ("commands", "shapes"):
@@ -229,6 +233,7 @@ def dispatch(argv):
                     )
                     | set(EFFECTS)
                     | {"filter"}
+                    | {"workflow"}
                     | set(
                         "new open save status inspect describe layers effects manifest dependencies reproduce schema check batch convert render export export-screens export-animation spacing pixels animation info sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert validate preset ai ask generate detect ocr serve mcp update updates commands shapes palette template guidance font providers models color sizes layout layouts brushes easings timeline export-timeline timeline-sheet export-icons".split()
                     )
@@ -807,6 +812,9 @@ def main(argv=None):
     try:
         result, machine = dispatch(argv)
         emit(result, machine)
+        if "workflow" in argv and isinstance(result, dict):
+            if result.get("passed") is False or result.get("success") is False or result.get("status") in ("failed", "needs_review", "cancelled"):
+                return 1
         return 0
     except (VixlError, OSError, ValueError, TimeoutError) as exc:
         payload = (

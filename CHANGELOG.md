@@ -1,5 +1,27 @@
 # Changelog
 
+## Unreleased
+
+- Add persistent design check suites with structural/pixel baselines, explicit time coverage,
+  measured failures and needs-review outcomes. Checked actions commit only when suites pass;
+  reusable repairs cannot modify their contracts.
+- Add typed template metadata, portable document recipes with example validation, named
+  actions, minimum-size text fitting, grid arrangement, explicit vertical reflow, semantic
+  layer roles and staggered/relative motion recipes.
+- Add bounded variant matrices, draft/final production, per-output checks/repairs,
+  contact sheets, checksum-verified resume and selective rebuilding.
+- Add versioned editable component libraries and optional persistent layer/frame caching
+  with font/runtime invalidation and corrupt-cache fallback.
+- Add durable background production/image/video/film jobs with frozen inputs, worker locks,
+  cooperative cancellation and recovery without blindly repeating external inference.
+- Add shot sequences for stills, document timelines and video clips, camera movement,
+  crossfades, captions, explicit audio mixing and staged ZIP/MP4/WebM exports. Generated
+  video uses an opt-in HTTP job gateway; live service calls are not part of offline tests.
+- Expose production through `vixl workflow`, Python and workspace MCP, with fixed-project
+  REST checks/actions/planning. Keep the inline MCP operation schema below its existing
+  size budget by hoisting shared constraints and moving field prose to schema discovery.
+- Add an offline production example and [workflow reference](docs/production.md).
+
 ## 0.13.0
 - **Color language.** Every color field accepts CSS Color 4/5 notations (`lab()`, `lch()`, `oklab()`, `oklch()`, `hwb()`, `color(display-p3|rec2020|srgb-linear|xyz …)`, `color-mix()`), `cmyk()`/`device-cmyk()`, `gray()`, `kelvin()`, 148 CSS and 938 public-domain (CC0) xkcd survey color names, and modifiers (`lighten`, `darken`, `saturate`, `desaturate`, `mix`, `tint`, `shade`, `tone`, `alpha`, `rotate`, `complement`, `invert`, `grayscale`, `readable`). Swatches work inside expressions and may build on other swatches. Out-of-gamut colors are mapped by OKLCH chroma reduction.
 - **Color tools.** `vixl color` / `vixl_color` / `POST /color` describe, convert, harmonize (10 schemes), build 50–950 scales, mix and check WCAG contrast; `palette-generate` stores scales and harmonies as swatches.

@@ -7,6 +7,8 @@ __pycache__/
 dist/
 build/
 .vixl-session.json
+.vixl-jobs/
+.vixl-cache/
 *.vixl.lock
 *.vixl
 !examples/after-hours.vixl

@@ -68,6 +68,10 @@ def service_operation_schema(slim=False):
             props["action"]["enum"].remove("import")
         if kind == "effect":
             props["name"] = {"type": "string", "enum": sorted(EFFECTS)}
+        # Detailed field prose remains available through vixl_operation_schema.
+        # Avoid repeating it in every tools/list response as the operation catalog grows.
+        for constraint in props.values():
+            constraint.pop("description", None)
         # Coordinates/sizes also accept "center" and "N%" (see the tool description). A short,
         # uniform spelling lets these hoist into one shared definition below.
         for key in ("x", "y"):
@@ -89,18 +93,25 @@ def service_operation_schema(slim=False):
     for variant in variants:
         for key, value in variant["properties"].items():
             definitions.setdefault(key, []).append(value)
-    common = {
-        key: values[0]
-        for key, values in definitions.items()
-        if key != "type" and len(values) > 1 and all(value == values[0] for value in values)
-    }
+    # Hoist the common part even when one operation narrows a field (e.g. name enums
+    # or a smaller targets limit). Variant-specific constraints remain in oneOf.
+    common = {}
+    for key, values in definitions.items():
+        if key == "type" or len(values) < 2:
+            continue
+        for value in values:
+            if "enum" in value and all(isinstance(v, str) for v in value["enum"]):
+                value.setdefault("type", "string")
+        shared = {k: v for k, v in values[0].items() if all(other.get(k) == v for other in values)}
+        if shared:
+            common[key] = shared
     for variant in variants:
         variant.pop("type", None)
         variant["required"].remove("type")
         if not variant["required"]:
             variant.pop("required")
         for key in common.keys() & variant["properties"].keys():
-            variant["properties"][key] = {}
+            variant["properties"][key] = {k: v for k, v in variant["properties"][key].items() if k not in common[key]}
     return {"type": "object", "required": ["type"], "properties": common, "oneOf": variants}
 
 
@@ -319,6 +330,27 @@ def build_server(session, *, schema="full", planner=False):
         from .resources import catalog
 
         return {"kind": kind, "names": sorted(catalog(kind))}
+
+    @tool
+    def vixl_workflow_schema() -> dict:
+        """Discover production actions and request fields. Read docs/production.md for recipe/job contracts."""
+        from .workflows import describe
+        return describe()
+
+    @tool
+    def vixl_workflow(
+        action: Literal["check", "act", "capture", "plan", "run", "preview", "library-save", "library-search",
+                        "library-open", "library-place", "submit", "status", "cancel", "resume", "work", "start",
+                        "film-plan", "film-export"],
+        request: dict, document: Document = None,
+    ) -> dict:
+        """Run checks, reusable actions, draft/final production, libraries or durable jobs. Paths stay in workspace.
+
+        Long jobs: submit with start=true, then status. AI jobs require an explicit configured provider.
+        Repairs preserve test suites. Unknown/unmeasurable checks report needs_review.
+        """
+        from .workflows import dispatch
+        return dispatch(session, action, request, document)
 
     @tool
     def vixl_resource_get(kind: Literal["palettes", "templates", "guidance"], name: str) -> dict:

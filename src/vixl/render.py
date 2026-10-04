@@ -370,11 +370,25 @@ def apply_effect(image, effect):
 
 
 def layer_image(project, layer, bounds):
-    key = hashlib.sha256(json.dumps([layer, bounds], sort_keys=True).encode()).hexdigest()
+    dependencies = [layer, bounds]
+    if layer["type"] == "text":
+        from .text import font_data
+        dependencies.append(hashlib.sha256(font_data(project, layer)).hexdigest())
+    elif layer["type"] == "paint":
+        dependencies.append(project.state.get("brushes", {}))
+    key = hashlib.sha256(json.dumps(dependencies, sort_keys=True).encode()).hexdigest()
     linked = layer.get("linked")
     cacheable = not linked and not layer.get("lookup") and layer["type"] not in ("group", "pathfinder")
     if cacheable and key in project._cache:
         return project._cache[key].copy()
+    disk = getattr(project, "_disk_cache", None)
+    disk_key = None
+    if disk and cacheable and layer["type"] != "symbol":
+        from .render_cache import key_for
+        disk_key = key_for(project, layer, bounds)
+        cached = disk.get(disk_key, project.limits)
+        if cached is not None:
+            return cached
     kind = layer["type"]
     if layer.get("repeat"):
         from .design_render import repeat_image
@@ -430,6 +444,8 @@ def layer_image(project, layer, bounds):
         ):
             project._cache.pop(next(iter(project._cache)))
         project._cache[key] = image.copy()
+    if disk:
+        disk.put(disk_key, image)
     return image
 
 
@@ -652,9 +668,20 @@ def render(project, variables=None, artboard=None, comp=None):
     candidate = artboard_project(project, artboard, comp, variables)
     from .design import resolve_color
 
-    return render_layers(
+    disk = getattr(project, "_disk_cache", None)
+    key = None
+    if disk:
+        from .render_cache import key_for
+        key = key_for(candidate)
+        cached = disk.get(key, project.limits)
+        if cached is not None:
+            return cached
+    image = render_layers(
         candidate, background=resolve_color(candidate.state["canvas"]["background"], candidate.state)
     )
+    if disk:
+        disk.put(key, image)
+    return image
 
 
 def export(

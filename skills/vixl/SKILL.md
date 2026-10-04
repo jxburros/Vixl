@@ -26,6 +26,16 @@ Key properties to rely on:
 
 ## New in 0.13
 
+The production extension adds `vixl_workflow_schema` and `vixl_workflow` (CLI:
+`vixl workflow`). Use them for saved design suites, typed recipes, checked actions,
+variation matrices, reusable motion, draft/final renders, component libraries, durable
+jobs and shot-based films. Read [production workflows](references/production.md)
+for the schemas and limits. View the initial design; use saved suites on routine edits
+and inspect failed/uncertain checks and material visual changes. A clean check report
+certifies only its explicit rules and time coverage. Never weaken a suite as a repair.
+Use submit/start/status for long jobs. An uncertain external generation request must
+not be blindly repeated; preserve its remote job identity.
+
 - **Named sizes** — `vixl_document_create(size="letter", bleed=true)` / `vixl new business-card --bleed`; 150 print, social, web, ad, video, slide, icon and logo sizes with dpi, bleed, safe area and guides.
 - **Layouts** — 33 principled, seed-varied layouts (`layout-apply`) that adapt to the canvas and set up contrast-checked color roles, a type scale and grids. Use them when a brief gives you free rein.
 - **Color language** — `oklch()`, `lab()`, `cmyk()`, `color(display-p3 …)`, `kelvin()`, `color-mix()`, `lighten(@brand, 10%)` … everywhere; `vixl_color` for harmonies, scales and contrast; `palette-generate`.
