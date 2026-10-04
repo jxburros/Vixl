@@ -344,6 +344,16 @@ def create_app(path, *, token=None, limits=None):
             "sampling",
             "profile",
             "svg_policy",
+            "color_space",
+            "icc_profile_base64",
+            "intent",
+            "black_generation",
+            "ink_limit",
+            "proof",
+            "simulate",
+            "dpi",
+            "icon_sizes",
+            "time",
         }
         require(set(body) <= allowed, "Unknown export option")
         fmt = body.get("format", "PNG").upper()
@@ -355,10 +365,81 @@ def create_app(path, *, token=None, limits=None):
             "WEBP": "image/webp",
             "TIFF": "image/tiff",
             "AVIF": "image/avif",
+            "PDF": "application/pdf",
+            "ICO": "image/x-icon",
         }
         require(fmt in media, "Unsupported export format")
+        body = dict(body)
+        if "icc_profile_base64" in body:
+            from .mcp_tools import decode_upload
+
+            body["icc_profile"] = decode_upload(body.pop("icc_profile_base64"), 16 * 1024 * 1024)
         with session.project() as project:
             return Response(project.export(**body), media_type=media[fmt])
+
+    @app.get("/sizes")
+    def size_catalog(category: str | None = None, search: str | None = None):
+        from .sizes import catalog
+
+        return catalog(category, search)
+
+    @app.get("/layouts")
+    def layout_catalog():
+        from .layouts import catalog
+
+        return catalog()
+
+    @app.get("/brushes")
+    def brush_catalog():
+        from .brushes import catalog
+
+        return catalog()
+
+    @app.post("/color")
+    def color_tools(body: dict):
+        from .feature_cli import color_command
+
+        action = body.get("action", "info")
+        colors = body.get("colors", [])
+        require(isinstance(colors, list) and 0 < len(colors) <= 16, "colors must be a list of 1–16 values")
+        args = [action, *map(str, colors)]
+        for key in ("to", "scheme", "count", "amount", "space"):
+            if key in body:
+                args += ["--" + key, str(body[key])]
+        result = color_command(args)
+        return result if isinstance(result, dict) else {"results": result}
+
+    @app.get("/timeline")
+    def timeline():
+        from .timeline import inspect_timeline
+
+        with session.project() as p:
+            return inspect_timeline(p)
+
+    @app.get("/timeline/frame")
+    def timeline_frame(time: str = "0", max_width: int = 1024, max_height: int = 1024):
+        from .mcp_tools import preview
+
+        value = float(time) if time.replace(".", "", 1).isdigit() else time
+        return Response(preview(session, None, max_width, max_height, 4_194_304, time=value), media_type="image/png")
+
+    @app.post("/timeline/export")
+    def timeline_export(body: dict):
+        import tempfile
+
+        from .timeline import export_timeline
+
+        allowed = {"format", "fps", "scale", "start", "end", "background", "columns", "quality"}
+        require(set(body) <= allowed, f"Timeline export accepts {sorted(allowed)}", field="body")
+        fmt = body.get("format", "gif")
+        suffix = {"gif": ".gif", "apng": ".png", "webp": ".webp", "sheet": ".png", "frames": ".zip", "mp4": ".mp4", "webm": ".webm"}
+        require(fmt in suffix, "Unsupported timeline format", field="format")
+        media = {"gif": "image/gif", "apng": "image/apng", "webp": "image/webp", "sheet": "image/png", "frames": "application/zip", "mp4": "video/mp4", "webm": "video/webm"}
+        with tempfile.TemporaryDirectory(prefix="vixl-timeline-") as staging:
+            path = Path(staging) / ("animation" + suffix[fmt])
+            with session.project() as p:
+                export_timeline(p, path, **body)
+            return Response(path.read_bytes(), media_type=media[fmt])
 
     @app.post("/fonts")
     async def fonts(request: Request, name: str):
@@ -415,7 +496,7 @@ def create_app(path, *, token=None, limits=None):
         from .mcp_tools import preview
 
         options = fixed(body)
-        allowed = {"variables", "max_width", "max_height", "max_bytes", "artboard", "comp", "region"}
+        allowed = {"variables", "max_width", "max_height", "max_bytes", "artboard", "comp", "region", "time", "proof", "simulate"}
         require(not set(options) - allowed, f"Preview accepts {sorted(allowed)}", field="body")
         return Response(preview(session, **options), media_type="image/png")
 

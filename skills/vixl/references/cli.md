@@ -247,3 +247,33 @@ vixl -p F.vixl serve [--host 127.0.0.1] [--port 8765] [--token-env VIXL_API_TOKE
 vixl mcp --workspace DIR                 # MCP over stdio
 vixl update --check | vixl update | vixl update --rollback ; vixl updates status|on|off   # Windows installer only
 ```
+
+## Sizes, layouts, color, print, brushes and motion (0.13)
+
+```bash
+vixl sizes --category print                         # also: social stationery icons logos ads email video slides …
+vixl new letter --bleed -o flyer.vixl               # named size; --landscape, --dpi 150
+vixl canvas size instagram-story                    # resize to a named size; canvas dpi 300
+vixl layout list ; vixl layout show editorial-grid
+vixl -p flyer.vixl layout apply editorial-grid --set title='Annual report' --set body='…' --palette slate --seed 3
+vixl -p flyer.vixl type-scale --base 18 --ratio golden
+vixl color 'oklch(0.6 0.15 250)' ; vixl color harmony tomato --scheme triadic ; vixl color contrast white '#2563eb'
+vixl -p flyer.vixl palette-generate brand '#2563eb'          # @brand-50 … @brand-950
+vixl -p flyer.vixl export flyer.pdf --cmyk [--icc press.icc] [--ink-limit 300]
+vixl -p flyer.vixl export proof.png --proof --simulate deuteranopia
+vixl -p flyer.vixl check --checks print color_vision
+vixl -p icon.vixl export favicon.ico --icon-sizes 16 32 48 ; vixl -p icon.vixl export-icons --out icons --set all
+vixl brushes
+vixl -p art.vixl paint --brush ink --points '[[40,300],[200,220,0.5],[380,310]]' --size 8 --color '#222'
+vixl -p art.vixl paint --brush watercolor --path 'M50 500 C200 380 400 620 600 480' --size 60 --color tomato
+vixl -p art.vixl paint-clear paint --last 1
+vixl -p promo.vixl timeline set --duration 3s --fps 30
+vixl -p promo.vixl animate-preset headline slide-in-up --duration 0.8s
+vixl -p promo.vixl animate logo rotation --to 360 --duration 3s --easing linear
+vixl -p promo.vixl keyframe badge opacity 1.5s 0.4 --easing ease-out
+vixl -p promo.vixl timeline ; vixl -p promo.vixl timeline-sheet --out motion.png
+vixl -p promo.vixl render --time 1.5s --out frame.png
+vixl -p promo.vixl export-timeline --out promo.gif --scale 0.5      # .png .webp .zip .mp4 .webm, --format sheet
+```
+
+Times: ms, `1.5s`, `250ms`, `50%`, or a marker (`vixl marker reveal 1.2s`).

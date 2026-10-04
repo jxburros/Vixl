@@ -101,6 +101,49 @@ vixl undo
 
 Selections affect newly added effects and can become layer masks. Images, fonts imported from files, and grayscale masks are embedded; source imagery is not overwritten.
 
+## Sizes, layouts, color, print, brushes and motion
+
+Start from a named size instead of guessing pixels. Print sizes carry physical units, dpi, bleed and a safe area; 150 sizes cover paper, stationery, posters, social, web, ads, email, video, slides, app stores, icons and logos.
+
+```bash
+vixl sizes --category stationery
+vixl new letter --bleed -o flyer.vixl          # 8.5 × 11 in at 300 dpi with ⅛ in bleed and trim/safe guides
+vixl new favicon -o icon.vixl                  # 512 px icon master
+```
+
+Layouts give models structure without making every design look the same. Each of 33 layouts encodes a principle (single focal point, modular grid, rule of thirds, golden section, Z-pattern, asymmetric balance, logo lockups, app-icon keylines …), adapts to the canvas, and uses a seed to vary palette roles, type scale, margins, alignment and accents. Contrast is checked as roles are assigned.
+
+```bash
+vixl layout list
+vixl layout apply event-poster --set title='Night Market' --set label='Sat · June 21' \
+  --set body=$'6 pm – 11 pm\nRiverside Park' --palette sunset --seed 4
+vixl check
+```
+
+Colors use a full color language: names (CSS plus 938 public-domain survey names), hex, `rgb()`, `hsl()`, `hwb()`, `lab()`, `lch()`, `oklab()`, `oklch()`, `color(display-p3 …)`, `cmyk()`, `kelvin()`, `color-mix()`, and modifiers such as `lighten(@brand, 10%)` or `mix(@a, @b, 30%)`. Print output separates to CMYK (with your printer's ICC profile, or device-naive GCR with an ink limit), and PDF, ICO and icon sets are supported.
+
+```bash
+vixl color '#2563eb'                           # every representation, names and contrast
+vixl color harmony '#2563eb' --scheme split-complementary
+vixl palette-generate brand '#2563eb'          # @brand-50 … @brand-950
+vixl export flyer.pdf --cmyk --icc printer.icc
+vixl export proof.png --proof --simulate deuteranopia
+vixl check --checks print color_vision
+vixl export-icons --out icons --set all
+```
+
+Paint with 17 editable brushes (ink, pencil, marker, calligraphy, chalk, charcoal, watercolor, dry-brush, spray …) and animate any layer with keyframe timelines, easing, presets and markers.
+
+```bash
+vixl paint --brush watercolor --path 'M80 900 C300 760 700 1040 1000 880' --size 70 --color '@accent'
+vixl animate-preset headline slide-in-up --duration 0.8s
+vixl animate logo rotation --to 360 --duration 3s --easing linear
+vixl timeline-sheet --out motion.png
+vixl export-timeline --out promo.webp         # GIF, APNG, WebP, sprite sheet, PNG ZIP, MP4/WebM (ffmpeg)
+```
+
+See [sizes and layouts](docs/sizes-and-layouts.md), [color and print](docs/color-and-print.md) and [brushes and animation](docs/brushes-and-animation.md).
+
 ## Design tools
 
 Groups and clipping masks, editable shapes, layer styles, linked text styles and swatches,
@@ -214,7 +257,8 @@ For agents, MCP offers:
 - **A safe workspace**: create/open several documents, import images by path or base64, export files; no code execution and no access outside the workspace.
 - **Forgiving input**: common spellings (`rect`, `font_size`, `opacity: 50`, `"50%"`, `"center"`, CSS `rgba()`) are normalized and reported.
 - **Actionable errors**: JSON with the failing operation index, field, allowed values and suggestions.
-- **Self-checks**: `vixl_check` finds cut-off content, overlapping text, low contrast, safe-area violations and text too small at thumbnail size; previews render fast at preview resolution and can zoom; `vixl_render_compare` shows what changed between revisions.
+- **Self-checks**: `vixl_check` finds cut-off content, overlapping text, low contrast, safe-area violations and text too small at thumbnail size, plus opt-in print (ink, resolution, bleed, live area) and color-vision checks; previews render fast at preview resolution, can zoom, show a timeline frame, soft-proof print or simulate color blindness; `vixl_render_compare` shows what changed between revisions.
+- **Design starting points**: `vixl_sizes_list`, `vixl_layouts_list`, `vixl_color`, `vixl_brushes_list`, timeline preview/export and icon-set export tools.
 - **Small responses**: minified JSON, compact diffs and an optional slim schema (`vixl mcp --schema slim`).
 - **Long sessions**: delta history keeps every edit fast and old revisions are squashed instead of blocking edits.
 
@@ -249,6 +293,9 @@ python -m pip wheel . --no-deps --wheel-dir dist
 ```
 
 - [Agent skill for AI agents](skills/vixl/SKILL.md)
+- [Named sizes and principled layouts](docs/sizes-and-layouts.md)
+- [Color language, CMYK and print output](docs/color-and-print.md)
+- [Brushes and animation timelines](docs/brushes-and-animation.md)
 - [Spacing checks, pixel art and animation](docs/pixel-animation-spacing.md)
 - [Design tools and template production](docs/design-tools.md)
 - [Command reference](docs/commands.md)
@@ -259,4 +306,4 @@ python -m pip wheel . --no-deps --wheel-dir dist
 - [Specification coverage and known limitations](docs/coverage.md)
 - [Agent evaluation suite](evals/README.md)
 
-Vixl processes raster images in RGBA8 and retains procedural shapes and supported Bézier paths. SVG preserves supported geometry, groups, gradients, pixel grids, shaped Unicode text and common effects/styles. `--svg-policy strict` rejects embedded raster content with layer/effect details. [19 local artistic filters](docs/artistic-filters.md) include sepia, ink blot, sketch, halftone, paint-like treatments and distortions; no AI is required. Unsupported appearances use documented raster fallbacks; PNG preserves transparency and JPG flattens it against a chosen background. CMYK, RAW development, arbitrary SVG import, brushes, full animation timelines, desktop GUI/TUI, and GIMP/Photoshop project compatibility are outside this implementation. AI adapter contracts are tested offline; live providers require your own service, model, workflow, and credentials.
+Vixl processes raster images in RGBA8 and retains procedural shapes and supported Bézier paths. SVG preserves supported geometry, groups, gradients, pixel grids, shaped Unicode text and common effects/styles. `--svg-policy strict` rejects embedded raster content with layer/effect details. [19 local artistic filters](docs/artistic-filters.md) include sepia, ink blot, sketch, halftone, paint-like treatments and distortions; no AI is required. Unsupported appearances use documented raster fallbacks; PNG preserves transparency and JPG flattens it against a chosen background. Documents edit in RGBA8 sRGB and export CMYK for print. CMYK editing, spot colors, RAW development, arbitrary SVG import, desktop GUI/TUI, and GIMP/Photoshop project compatibility are outside this implementation. The AI provider adapters have been used successfully with real services; the test suite checks their contracts offline, and live use requires your own service, model, workflow and credentials.

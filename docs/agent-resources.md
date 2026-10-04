@@ -123,3 +123,7 @@ Python can use `vixl.resources.catalog/get/register/create_template` and `vixl.f
 ```
 
 MCP exposes `vixl_resources_list`, `vixl_resource_get`, `vixl_resource_add`, `vixl_template_create`, `vixl_import_font`, `vixl_text_add`, and `vixl_models_list`. Font file paths and template destinations stay inside the server workspace. Use `vixl_text_add(font="brand", ...)` for a registered font; generic service operations continue to reject arbitrary filesystem font paths. REST adds GET/POST `/resources/{kind}/{name}`, GET `/resources/{kind}`, POST `/fonts?name=brand` with raw font bytes, and POST `/export` with JSON options such as `{"format":"SVG"}`. REST font uploads are limited to 16 MiB.
+
+## Sizes, layouts and principle guidance (0.13)
+
+Named sizes (`vixl sizes`, `vixl_sizes_list`) and principled layouts (`vixl layout list`, `vixl_layouts_list`, operation `layout-apply`) extend these resources. Templates reproduce a fixed design. Layouts build a structured, seed-varied design for the actual canvas, with contrast-checked color roles and a modular type scale. Built-in guidance adds `typography`, `color`, `layout`, `accessibility`, `print`, `icon`, `motion` and `brush`. See [sizes and layouts](sizes-and-layouts.md) and [color and print](color-and-print.md).

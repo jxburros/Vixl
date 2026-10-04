@@ -788,7 +788,7 @@ def build_server(session, *, schema="full", planner=False):
         """Color language tools. info: every representation (hex, rgb, hsl, oklch, lab, cmyk), nearest names,
         WCAG contrast vs white/black. convert: one space. harmony: complementary, analogous, triadic,
         split-complementary, tetradic, square, monochromatic, tints, shades, tones. scale: 50–950 ramp. mix:
-        two colors. contrast: WCAG ratio and AA/AAA. names: search 1,100+ color names. Any value accepts
+        two colors. contrast: WCAG ratio and AA/AAA. names: search about 1,040 color names. Any value accepts
         names, hex, rgb/hsl/hwb/lab/lch/oklab/oklch/cmyk/kelvin()/color(display-p3 …)/color-mix() and
         modifiers such as lighten(navy, 20%)."""
         from .feature_cli import color_command

@@ -255,3 +255,34 @@ def test_mcp_tools_cover_new_features(tmp_path):
             assert "watercolor" in brushes["brushes"]
 
     asyncio.run(run())
+
+
+def test_rest_endpoints_for_new_features(tmp_path):
+    from fastapi.testclient import TestClient
+
+    from vixl.interfaces import create_app
+
+    path = tmp_path / "doc.vixl"
+    project = Project.sized("favicon")
+    project.apply(
+        [
+            {"type": "layout-apply", "name": "app-icon", "title": "Vixl", "seed": 2},
+            {"type": "animate-preset", "target": "glyph", "preset": "spin", "duration": "0.5s"},
+            {"type": "timeline-set", "duration": "0.5s", "fps": 4},
+        ]
+    )
+    project.save(path)
+    client = TestClient(create_app(path))
+    assert client.get("/sizes", params={"category": "logos"}).json()["sizes"]
+    assert "emblem" in client.get("/layouts").json()["layouts"]
+    assert "ink" in client.get("/brushes").json()["brushes"]
+    assert client.post("/color", json={"action": "contrast", "colors": ["white", "black"]}).json()["ratio"] == 21
+    assert client.get("/timeline").json()["frames"] == 2
+    assert client.get("/timeline/frame", params={"time": "0.25s", "max_width": 64}).headers["content-type"] == "image/png"
+    gif = client.post("/timeline/export", json={"format": "gif", "scale": 0.1})
+    assert gif.content.startswith(b"GIF")
+    ico = client.post("/export", json={"format": "ICO", "icon_sizes": [16, 32]})
+    assert ico.headers["content-type"] == "image/x-icon"
+    pdf = client.post("/export", json={"format": "PDF", "color_space": "cmyk"})
+    assert pdf.content.startswith(b"%PDF")
+    assert client.post("/preview", json={"time": 100, "simulate": "tritanopia", "max_width": 64}).status_code == 200

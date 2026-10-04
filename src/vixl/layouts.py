@@ -41,7 +41,7 @@ PALETTE_POOL = (
 class Builder:
     """Collects operations for one layout and carries the chosen system (grid, type, color)."""
 
-    def __init__(self, project, layout, op, seed):
+    def __init__(self, project, layout, op, seed, fit=1.0):
         from .colors import contrast_ratio, parse
 
         self.project, self.layout, self.op, self.seed = project, layout, op, seed
@@ -82,7 +82,7 @@ class Builder:
             base = points * self.dpi / 72
         else:
             base = max(short * 0.026, 10)
-        base = op.get("base_size", base)
+        base = op.get("base_size", base * fit)
         require(isinstance(base, (int, float)) and 4 <= base <= 1000, "base_size must be 4–1000 pixels")
         self.base = base
         self.sizes = {role: max(6, round(base * self.ratio**step)) for role, step in ROLE_STEPS.items()}
@@ -679,7 +679,9 @@ def _diagonal_band(b):
     _, _, _, h = b.text("headline", b.get("title"), b.L, b.T + b.ch * 0.05, width, name="headline", align="left", max_height=b.ch * 0.32)
     if b.get("subtitle"):
         sw = b.W * 0.8
-        b.text("subhead", b.get("subtitle"), (b.W - sw) / 2, b.H * 0.52 - b.sizes["subhead"] * 0.7, sw, name="subtitle", color="@on-accent", align="center", max_height=band_h * 0.6)
+        _, _, _, sh = b.text("subhead", b.get("subtitle"), (b.W - sw) / 2, b.H * 0.52, sw, name="subtitle", color="@on-accent", align="center", max_height=band_h * 0.6)
+        # Center the text block on the band so both rotate about the same point.
+        next(op for op in reversed(b.ops) if op.get("name") == b.name("subtitle") and op["type"] == "text")["y"] = round(b.H * 0.52 - sh / 2)
         b.rotate("subtitle", angle)
     entries = [("body", b.get("body"), "body"), ("button", b.get("cta"), "cta")]
     height = b.stack_height(entries, b.cw * 0.6)
@@ -963,7 +965,8 @@ def _thumbnail_bold(b):
     x = b.L if left else image_w + b.m * 0.5
     size = round(b.H * 0.2)
     words = b.get("title")
-    _, _, w, h = b.text(size, words, x, b.T, width, name="headline", align="left", max_height=b.ch * 0.78, display=True, line=0.02)
+    reserve = b.sizes["subhead"] * 2.4 if b.get("label") else 0
+    _, _, w, h = b.text(size, words, x, b.T, width, name="headline", align="left", max_height=max(b.unit * 4, b.ch * 0.78 - reserve), display=True, line=0.02)
     if b.accent in ("block", "bar", "rule"):
         b.rect("highlight", x - b.unit, b.T + h + b.unit * 2, width * 0.6, max(4, round(size * 0.18)), "@accent")
     if b.get("label"):
@@ -1068,8 +1071,9 @@ def _bento_grid(b):
     b.rect("tile-hero", *hero, "@accent", radius=radius)
     b.text("headline", b.get("title"), hero[0] + pad, hero[1] + pad, hero[2] - 2 * pad, name="headline", color="@on-accent", align="left", max_height=hero[3] - 2 * pad)
     b.rect("tile-stat", *stat, "@surface", radius=radius)
-    b.text("title", b.get("label"), stat[0] + pad, stat[1] + pad, stat[2] - 2 * pad, name="stat", color="@accent-text", align="left", max_height=stat[3] * 0.5)
-    b.text("caption", b.get("caption"), stat[0] + pad, stat[1] + stat[3] - pad - b.sizes["caption"] * 2.6, stat[2] - 2 * pad, name="stat-label", color="@muted", align="left")
+    _, sy, _, sh = b.text("title", b.get("label"), stat[0] + pad, stat[1] + pad, stat[2] - 2 * pad, name="stat", color="@accent-text", align="left", max_height=stat[3] * 0.5)
+    label_y = max(sy + sh + b.unit, stat[1] + stat[3] - pad - b.sizes["caption"] * 2.6)
+    b.text("caption", b.get("caption"), stat[0] + pad, label_y, stat[2] - 2 * pad, name="stat-label", color="@muted", align="left", max_height=stat[1] + stat[3] - label_y)
     b.image("image", *image)
     b.rect("tile-info", *info, "@surface", radius=radius)
     b.stack([("body", b.get("subtitle") or b.get("body"), "body")], info[0] + pad, info[1] + pad, info[2] - 2 * pad, align="left")
@@ -1149,9 +1153,7 @@ def _seed(op, canvas):
 
 
 def execute_layout(project, op):
-    from .normalize import apply_centering, resolve_geometry
     from .operations import execute
-    from .schema import validate_operation
 
     state = project.state
     if op["type"] == "type-scale":
@@ -1181,23 +1183,20 @@ def execute_layout(project, op):
             if any(layer["id"] == ident for layer in state["layers"]):
                 execute(project, {"type": "remove", "target": ident})
     seed = _seed(op, state["canvas"])
-    builder = Builder(project, layout, deepcopy(op), seed)
-    # Swatches and a type scale first, so every created layer references them.
-    for role in ("background", "surface", "ink", "muted", "accent", "accent-text", "on-accent"):
-        execute(project, {"type": "swatch", "name": role, "color": builder.colors[role]})
-    execute(project, {"type": "type-scale", "base": round(builder.base, 2), "ratio": builder.ratio})
-    layout["build"](builder)
-    existing = {layer["name"] for layer in state["layers"]}
-    clashes = sorted(set(builder.created) & existing)
-    require(not clashes, f"Layer names already exist ({', '.join(clashes[:5])}); pass prefix or replace=true", "name_conflict")
-    remaining = getattr(project, "_resource_budget", project.limits.max_operations) - len(builder.ops) + 1
-    require(remaining >= 0, "Layout exceeds the operation limit", "resource_limit")
-    project._resource_budget = remaining
-    for operation in builder.ops:
-        operation = validate_operation(operation)
-        resolved, centered = resolve_geometry(project, operation)
-        execute(project, resolved)
-        apply_centering(project, centered, operation)
+    snapshot = project.clone()
+    fit = 1.0
+    for attempt in range(6):
+        # Build on a copy; if text would leave the canvas, rebuild with a smaller type scale so the
+        # same composition fits small formats (business cards, banners) instead of overflowing.
+        trial = snapshot.clone()
+        trial._resource_budget = getattr(project, "_resource_budget", project.limits.max_operations)
+        builder = _build(trial, layout, op, seed, fit)
+        if "base_size" in op or attempt == 5 or not _overflows(trial, builder):
+            break
+        fit *= 0.84
+    project.state, project.assets = trial.state, trial.assets
+    project._resource_budget = trial._resource_budget
+    state = project.state
     created = [layer["id"] for layer in state["layers"] if layer["name"] in set(builder.created)]
     state["layout"] = {
         "name": name,
@@ -1214,6 +1213,51 @@ def execute_layout(project, op):
         "principles": layout["principles"],
         "layers": created,
     }
+    if fit < 1:
+        state["layout"]["notes"] = [
+            f"Type was reduced to {fit:.0%} of the medium's scale to fit this canvas; "
+            "shorten the copy or choose a larger size or a layout made for this format."
+        ]
+
+
+def _build(project, layout, op, seed, fit):
+    from .normalize import apply_centering, resolve_geometry
+    from .operations import execute
+    from .schema import validate_operation
+
+    state = project.state
+    builder = Builder(project, layout, deepcopy(op), seed, fit)
+    # Swatches and a type scale first, so every created layer references them.
+    for role in ("background", "surface", "ink", "muted", "accent", "accent-text", "on-accent"):
+        execute(project, {"type": "swatch", "name": role, "color": builder.colors[role]})
+    execute(project, {"type": "type-scale", "base": round(builder.base, 2), "ratio": builder.ratio})
+    layout["build"](builder)
+    existing = {layer["name"] for layer in state["layers"]}
+    clashes = sorted(set(builder.created) & existing)
+    require(not clashes, f"Layer names already exist ({', '.join(clashes[:5])}); pass prefix or replace=true", "name_conflict")
+    remaining = project._resource_budget - len(builder.ops) + 1
+    require(remaining >= 0, "Layout exceeds the operation limit", "resource_limit")
+    project._resource_budget = remaining
+    for operation in builder.ops:
+        operation = validate_operation(operation)
+        resolved, centered = resolve_geometry(project, operation)
+        execute(project, resolved)
+        apply_centering(project, centered, operation)
+    return builder
+
+
+def _overflows(project, builder):
+    from .render import resolve_layout
+
+    c = project.state["canvas"]
+    names = set(builder.created)
+    bounds = resolve_layout(project)
+    for layer in project.state["layers"]:
+        if layer["name"] in names and layer["type"] == "text":
+            x, y, w, h = bounds[layer["id"]]
+            if x < -1 or y < -1 or x + w > c["width"] + 1 or y + h > c["height"] + 1:
+                return True
+    return False
 
 
 def validate_layout_record(state):

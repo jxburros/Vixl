@@ -164,6 +164,30 @@ deletes it. One style per kind; all accept `enabled` (bool) and `opacity` (0–1
 | `frame-delete` | **`name`** | |
 | `animation-set` | `order` (frame names), `loop` (extra repeats; 0 = infinite) | |
 
+## Sizes, layouts and color (0.13)
+
+| type | fields | notes |
+| --- | --- | --- |
+| `canvas` | **`size`** (or `preset`), `orientation`, `bleed` (true/amount), `dpi`, `background` — or `width`/`height` — or `dpi` | Named sizes record dpi/bleed/safe and `trim-*`/`safe-*` guides. |
+| `layout-apply` | **`name`**, `title`, `subtitle`, `body`, `label`, `cta`, `caption`, `items`, `image` (asset), `seed`, `palette`, `colors`, `mode`, `type_scale`, `base_size`, `density`, `align`, `accent`, `mark`, `font`, `display_font`, `transparent`, `uppercase_labels`, `prefix`, `replace` | Creates layers, role swatches, type scale and grid. See design-system.md. |
+| `type-scale` | `base` (px, default 16), `ratio` (name or 1.05–2), `prefix`, `color` | Character styles caption/body/lead/subhead/title/headline/display. |
+| `palette-generate` | **`name`**, **`color`**, `scheme` (`scale` default or a harmony), `count` | Swatches `NAME-50…950` or `NAME-1…n`. |
+
+## Painting and timelines (0.13)
+
+| type | fields | notes |
+| --- | --- | --- |
+| `paint-layer` | `name`, `width`, `height`, `x`, `y` | Empty paint layer (canvas-sized by default). |
+| `paint` | `target`, `brush`, **`points`** or **`path`**, `pressure`, `space`, `size`, `color`, `opacity`, `mode` (`paint`/`erase`), `seed`, `settings` | Adds one editable stroke. No target → active paint layer or a new `paint` layer. |
+| `paint-clear` | `target`, `last` | Remove the last N (or all) strokes. |
+| `brush-define` | **`name`**, `base`, `settings`, `description` | Custom brush in the document. |
+| `timeline-set` | `duration`, `fps` (1–60), `loop` (0 = forever), `clear` | |
+| `keyframe` | `target` (layer or `canvas`), **`property`**, **`time`**, **`value`**, `easing` | Replaces a key at the same time. |
+| `keyframe-remove` | `target`, `property`, `time` | Track or single key. |
+| `animate` | `target`, **`property`**, **`to`**, `from`, `start`, `end`/`duration`, `easing` | Two keys; `from` defaults to the current value. |
+| `animate-preset` | `target`, **`preset`**, `start`, `duration`, `easing`, `amount`, `distance`, `fade`, `to` | fade/slide/pop/zoom/spin/pulse/shake/bounce/float/blink/typewriter/color-shift. |
+| `marker` | **`name`**, `time` or `delete` | Named times usable wherever a time is accepted. |
+
 ## Legacy aliases (avoid in new code)
 
 `operation`→`type`, `layer`→`target`; `set_opacity`, `set_blend`, `add_layer`, `remove_layer`,
