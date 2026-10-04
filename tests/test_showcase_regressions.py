@@ -214,3 +214,14 @@ def test_runtime_install_lock_failure_is_bounded_and_keeps_source(tmp_path, monk
     with pytest.raises(updater.UpdateError, match="current version is kept"):
         updater.install_runtime(stage, tmp_path / "runtime")
     assert stage.is_dir() and len(calls) < 10
+
+
+def test_session_help_is_json_and_does_not_end_session(tmp_path):
+    from vixl.session import run
+    p = Project(32, 32)
+    p.save(tmp_path / "help.vixl")
+    out = io.StringIO()
+    run(p, io.StringIO('{"command":["shape","--help"]}\n{"command":["layers"]}\n'), out)
+    responses = [json.loads(line) for line in out.getvalue().splitlines()]
+    assert len(responses) == 2 and all(r["success"] for r in responses)
+    assert "--fill" in responses[0]["result"]["help"]

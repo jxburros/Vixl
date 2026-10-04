@@ -1,6 +1,8 @@
 """Bounded NDJSON editing session: one load, atomic requests, durable saves."""
 
 import json
+import io
+from contextlib import redirect_stdout
 import sys
 
 from .errors import VixlError, require
@@ -31,7 +33,13 @@ def run(project, source=None, sink=None, detail="compact"):
                 require(command[0] not in ("save", "transaction", "serve", "view", "mcp", "session"), "Command is unavailable inside a session")
                 require("-" not in command[1:], "stdin/stdout file streams are unavailable inside a session; use operation requests or file paths")
                 require("dry_run" not in request, "dry_run applies to operation requests")
-                result, changed = project_command(candidate, command[0], command[1:], detail=detail)
+                captured = io.StringIO()
+                with redirect_stdout(captured):
+                    try:
+                        result, changed = project_command(candidate, command[0], command[1:], detail=detail)
+                    except SystemExit as exc:
+                        require(exc.code in (0, None), "Command exited unsuccessfully", "usage_error")
+                        result, changed = {"help": captured.getvalue()}, False
             if changed:
                 candidate.save()
                 project.__dict__.update(candidate.__dict__)
