@@ -1,0 +1,866 @@
+{
+  "mark": {
+    "passed": true,
+    "errors": 0,
+    "warnings": 0,
+    "issues": [],
+    "checked": {
+      "checks": [
+        "bounds",
+        "overlap",
+        "contrast",
+        "safe_area",
+        "legibility",
+        "blanks",
+        "fonts",
+        "brand"
+      ],
+      "layers": 2,
+      "text_layers": 0
+    }
+  },
+  "logo@horizontal": {
+    "passed": true,
+    "errors": 0,
+    "warnings": 1,
+    "issues": [
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "h-tag"
+        ],
+        "message": "'h-tag' is 8.4 px tall at 320 px wide; aim for at least 10 px (font size 50+)",
+        "thumbnail_size": 8.4
+      }
+    ],
+    "checked": {
+      "checks": [
+        "bounds",
+        "overlap",
+        "contrast",
+        "safe_area",
+        "legibility",
+        "blanks",
+        "fonts",
+        "brand"
+      ],
+      "layers": 5,
+      "text_layers": 2
+    }
+  },
+  "logo@stacked": {
+    "passed": true,
+    "errors": 0,
+    "warnings": 0,
+    "issues": [],
+    "checked": {
+      "checks": [
+        "bounds",
+        "overlap",
+        "contrast",
+        "safe_area",
+        "legibility",
+        "blanks",
+        "fonts",
+        "brand"
+      ],
+      "layers": 5,
+      "text_layers": 2
+    }
+  },
+  "card-front": {
+    "passed": true,
+    "errors": 0,
+    "warnings": 0,
+    "issues": [],
+    "checked": {
+      "checks": [
+        "bounds",
+        "overlap",
+        "contrast",
+        "safe_area",
+        "legibility",
+        "blanks",
+        "fonts",
+        "brand"
+      ],
+      "layers": 11,
+      "text_layers": 4
+    }
+  },
+  "card-back": {
+    "passed": true,
+    "errors": 0,
+    "warnings": 18,
+    "issues": [
+      {
+        "check": "bounds",
+        "severity": "warning",
+        "layers": [
+          "bean-0"
+        ],
+        "message": "'bean-0' is cut off by the canvas edge",
+        "bounds": [
+          -30,
+          -40,
+          71,
+          76
+        ]
+      },
+      {
+        "check": "bounds",
+        "severity": "warning",
+        "layers": [
+          "bean-1"
+        ],
+        "message": "'bean-1' is cut off by the canvas edge",
+        "bounds": [
+          116,
+          -43,
+          73,
+          77
+        ]
+      },
+      {
+        "check": "bounds",
+        "severity": "warning",
+        "layers": [
+          "bean-2"
+        ],
+        "message": "'bean-2' is cut off by the canvas edge",
+        "bounds": [
+          249,
+          -41,
+          61,
+          72
+        ]
+      },
+      {
+        "check": "bounds",
+        "severity": "warning",
+        "layers": [
+          "bean-3"
+        ],
+        "message": "'bean-3' is cut off by the canvas edge",
+        "bounds": [
+          386,
+          -43,
+          77,
+          75
+        ]
+      },
+      {
+        "check": "bounds",
+        "severity": "warning",
+        "layers": [
+          "bean-4"
+        ],
+        "message": "'bean-4' is cut off by the canvas edge",
+        "bounds": [
+          510,
+          -43,
+          73,
+          77
+        ]
+      },
+      {
+        "check": "bounds",
+        "severity": "warning",
+        "layers": [
+          "bean-5"
+        ],
+        "message": "'bean-5' is cut off by the canvas edge",
+        "bounds": [
+          653,
+          -31,
+          73,
+          77
+        ]
+      },
+      {
+        "check": "bounds",
+        "severity": "warning",
+        "layers": [
+          "bean-6"
+        ],
+        "message": "'bean-6' is cut off by the canvas edge",
+        "bounds": [
+          783,
+          -42,
+          77,
+          75
+        ]
+      },
+      {
+        "check": "bounds",
+        "severity": "warning",
+        "layers": [
+          "bean-7"
+        ],
+        "message": "'bean-7' is cut off by the canvas edge",
+        "bounds": [
+          925,
+          -43,
+          77,
+          75
+        ]
+      },
+      {
+        "check": "bounds",
+        "severity": "warning",
+        "layers": [
+          "bean-8"
+        ],
+        "message": "'bean-8' is cut off by the canvas edge",
+        "bounds": [
+          1051,
+          -37,
+          77,
+          75
+        ]
+      },
+      {
+        "check": "bounds",
+        "severity": "warning",
+        "layers": [
+          "bean-13"
+        ],
+        "message": "'bean-13' is cut off by the canvas edge",
+        "bounds": [
+          -22,
+          213,
+          77,
+          75
+        ]
+      },
+      {
+        "check": "bounds",
+        "severity": "warning",
+        "layers": [
+          "bean-16"
+        ],
+        "message": "'bean-16' is cut off by the canvas edge",
+        "bounds": [
+          1067,
+          214,
+          73,
+          77
+        ]
+      },
+      {
+        "check": "bounds",
+        "severity": "warning",
+        "layers": [
+          "bean-21"
+        ],
+        "message": "'bean-21' is cut off by the canvas edge",
+        "bounds": [
+          -26,
+          477,
+          71,
+          76
+        ]
+      },
+      {
+        "check": "bounds",
+        "severity": "warning",
+        "layers": [
+          "bean-24"
+        ],
+        "message": "'bean-24' is cut off by the canvas edge",
+        "bounds": [
+          1056,
+          472,
+          71,
+          76
+        ]
+      },
+      {
+        "check": "bounds",
+        "severity": "warning",
+        "layers": [
+          "bean-25"
+        ],
+        "message": "'bean-25' is cut off by the canvas edge",
+        "bounds": [
+          45,
+          604,
+          71,
+          76
+        ]
+      },
+      {
+        "check": "bounds",
+        "severity": "warning",
+        "layers": [
+          "bean-26"
+        ],
+        "message": "'bean-26' is cut off by the canvas edge",
+        "bounds": [
+          175,
+          608,
+          64,
+          74
+        ]
+      },
+      {
+        "check": "bounds",
+        "severity": "warning",
+        "layers": [
+          "bean-28"
+        ],
+        "message": "'bean-28' is cut off by the canvas edge",
+        "bounds": [
+          440,
+          603,
+          64,
+          74
+        ]
+      },
+      {
+        "check": "bounds",
+        "severity": "warning",
+        "layers": [
+          "bean-29"
+        ],
+        "message": "'bean-29' is cut off by the canvas edge",
+        "bounds": [
+          572,
+          611,
+          77,
+          75
+        ]
+      },
+      {
+        "check": "bounds",
+        "severity": "warning",
+        "layers": [
+          "bean-32"
+        ],
+        "message": "'bean-32' is cut off by the canvas edge",
+        "bounds": [
+          997,
+          607,
+          77,
+          75
+        ]
+      }
+    ],
+    "checked": {
+      "checks": [
+        "bounds",
+        "overlap",
+        "contrast",
+        "safe_area",
+        "legibility",
+        "blanks",
+        "fonts",
+        "brand"
+      ],
+      "layers": 38,
+      "text_layers": 2
+    }
+  },
+  "app-icon": {
+    "passed": true,
+    "errors": 0,
+    "warnings": 0,
+    "issues": [],
+    "checked": {
+      "checks": [
+        "bounds",
+        "overlap",
+        "contrast",
+        "safe_area",
+        "legibility",
+        "blanks",
+        "fonts",
+        "brand"
+      ],
+      "layers": 2,
+      "text_layers": 0
+    }
+  },
+  "favicon": {
+    "passed": true,
+    "errors": 0,
+    "warnings": 0,
+    "issues": [],
+    "checked": {
+      "checks": [
+        "bounds",
+        "overlap",
+        "contrast",
+        "safe_area",
+        "legibility",
+        "blanks",
+        "fonts",
+        "brand"
+      ],
+      "layers": 1,
+      "text_layers": 0
+    }
+  },
+  "brand-board": {
+    "passed": true,
+    "errors": 0,
+    "warnings": 46,
+    "issues": [
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "footer"
+        ],
+        "message": "'footer' is 3.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "thumbnail_size": 3.33
+      },
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "hdr-left"
+        ],
+        "message": "'hdr-left' is 3.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "thumbnail_size": 3.33
+      },
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "hdr-right"
+        ],
+        "message": "'hdr-right' is 3.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "thumbnail_size": 3.33
+      },
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "lbl-primary"
+        ],
+        "message": "'lbl-primary' is 2.7 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "thumbnail_size": 2.67
+      },
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "lbl-reversed"
+        ],
+        "message": "'lbl-reversed' is 2.7 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "thumbnail_size": 2.67
+      },
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "bh-tag"
+        ],
+        "message": "'bh-tag' is 4.7 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "thumbnail_size": 4.67
+      },
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "bs-tag"
+        ],
+        "message": "'bs-tag' is 3.0 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "thumbnail_size": 3.0
+      },
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "lbl-palette"
+        ],
+        "message": "'lbl-palette' is 2.7 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "thumbnail_size": 2.67
+      },
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "chip-roast-role"
+        ],
+        "message": "'chip-roast-role' is 2.2 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "thumbnail_size": 2.17
+      },
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "chip-roast-name"
+        ],
+        "message": "'chip-roast-name' is 5.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "thumbnail_size": 5.33
+      },
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "chip-roast-hex"
+        ],
+        "message": "'chip-roast-hex' is 3.2 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "thumbnail_size": 3.17
+      },
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "chip-crema-role"
+        ],
+        "message": "'chip-crema-role' is 2.2 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "thumbnail_size": 2.17
+      },
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "chip-crema-name"
+        ],
+        "message": "'chip-crema-name' is 5.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "thumbnail_size": 5.33
+      },
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "chip-crema-hex"
+        ],
+        "message": "'chip-crema-hex' is 3.2 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "thumbnail_size": 3.17
+      },
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "chip-ember-role"
+        ],
+        "message": "'chip-ember-role' is 2.2 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "thumbnail_size": 2.17
+      },
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "chip-ember-name"
+        ],
+        "message": "'chip-ember-name' is 5.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "thumbnail_size": 5.33
+      },
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "chip-ember-hex"
+        ],
+        "message": "'chip-ember-hex' is 3.2 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "thumbnail_size": 3.17
+      },
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "chip-ember-deep-role"
+        ],
+        "message": "'chip-ember-deep-role' is 2.2 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "thumbnail_size": 2.17
+      },
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "chip-ember-deep-name"
+        ],
+        "message": "'chip-ember-deep-name' is 5.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "thumbnail_size": 5.33
+      },
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "chip-ember-deep-hex"
+        ],
+        "message": "'chip-ember-deep-hex' is 3.2 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "thumbnail_size": 3.17
+      },
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "chip-kettle-role"
+        ],
+        "message": "'chip-kettle-role' is 2.2 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "thumbnail_size": 2.17
+      },
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "chip-kettle-name"
+        ],
+        "message": "'chip-kettle-name' is 5.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "thumbnail_size": 5.33
+      },
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "chip-kettle-hex"
+        ],
+        "message": "'chip-kettle-hex' is 3.2 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "thumbnail_size": 3.17
+      },
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "chip-oat-role"
+        ],
+        "message": "'chip-oat-role' is 2.2 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "thumbnail_size": 2.17
+      },
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "chip-oat-name"
+        ],
+        "message": "'chip-oat-name' is 5.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "thumbnail_size": 5.33
+      },
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "chip-oat-hex"
+        ],
+        "message": "'chip-oat-hex' is 3.2 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "thumbnail_size": 3.17
+      },
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "scale-50-lbl"
+        ],
+        "message": "'scale-50-lbl' is 2.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "thumbnail_size": 2.33
+      },
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "scale-100-lbl"
+        ],
+        "message": "'scale-100-lbl' is 2.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "thumbnail_size": 2.33
+      },
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "scale-200-lbl"
+        ],
+        "message": "'scale-200-lbl' is 2.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "thumbnail_size": 2.33
+      },
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "scale-300-lbl"
+        ],
+        "message": "'scale-300-lbl' is 2.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "thumbnail_size": 2.33
+      },
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "scale-400-lbl"
+        ],
+        "message": "'scale-400-lbl' is 2.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "thumbnail_size": 2.33
+      },
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "scale-500-lbl"
+        ],
+        "message": "'scale-500-lbl' is 2.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "thumbnail_size": 2.33
+      },
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "scale-600-lbl"
+        ],
+        "message": "'scale-600-lbl' is 2.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "thumbnail_size": 2.33
+      },
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "scale-700-lbl"
+        ],
+        "message": "'scale-700-lbl' is 2.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "thumbnail_size": 2.33
+      },
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "scale-800-lbl"
+        ],
+        "message": "'scale-800-lbl' is 2.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "thumbnail_size": 2.33
+      },
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "scale-900-lbl"
+        ],
+        "message": "'scale-900-lbl' is 2.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "thumbnail_size": 2.33
+      },
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "scale-950-lbl"
+        ],
+        "message": "'scale-950-lbl' is 2.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "thumbnail_size": 2.33
+      },
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "lbl-type"
+        ],
+        "message": "'lbl-type' is 2.7 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "thumbnail_size": 2.67
+      },
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "spec-head-name"
+        ],
+        "message": "'spec-head-name' is 6.7 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "thumbnail_size": 6.67
+      },
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "spec-head-use"
+        ],
+        "message": "'spec-head-use' is 4.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "thumbnail_size": 4.33
+      },
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "spec-body-name"
+        ],
+        "message": "'spec-body-name' is 3.0 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "thumbnail_size": 3.0
+      },
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "spec-body"
+        ],
+        "message": "'spec-body' is 3.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "thumbnail_size": 3.33
+      },
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "lbl-apps"
+        ],
+        "message": "'lbl-apps' is 2.7 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "thumbnail_size": 2.67
+      },
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "fav-caption"
+        ],
+        "message": "'fav-caption' is 2.2 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "thumbnail_size": 2.17
+      },
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "cap-cards"
+        ],
+        "message": "'cap-cards' is 2.5 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "thumbnail_size": 2.5
+      },
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "cap-icon"
+        ],
+        "message": "'cap-icon' is 2.5 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "thumbnail_size": 2.5
+      }
+    ],
+    "checked": {
+      "checks": [
+        "bounds",
+        "overlap",
+        "contrast",
+        "safe_area",
+        "legibility",
+        "blanks",
+        "fonts",
+        "brand"
+      ],
+      "layers": 82,
+      "text_layers": 49
+    }
+  },
+  "card-front/print": {
+    "passed": true,
+    "errors": 0,
+    "warnings": 0,
+    "issues": [],
+    "checked": {
+      "checks": [
+        "print"
+      ],
+      "layers": 11,
+      "text_layers": 4
+    }
+  },
+  "card-back/print": {
+    "passed": true,
+    "errors": 0,
+    "warnings": 0,
+    "issues": [],
+    "checked": {
+      "checks": [
+        "print"
+      ],
+      "layers": 38,
+      "text_layers": 2
+    }
+  }
+}
