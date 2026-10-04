@@ -25,7 +25,7 @@ The authoritative schema is always `vixl schema` / `GET /schema` / `vixl://opera
 | `add` | **`path`** *or* **`asset`**, `name`, `x`, `y`, `linked` | `path` is CLI/Python only (MCP: use `vixl_import_image`). `asset` = an embedded ID like `assets/<sha256>.png`. `linked` keeps an external reference (needs `--allow-linked`). |
 | `solid` | `name`, `width`, `height`, `color`, `x`, `y` | Defaults to canvas size. |
 | `gradient` | `name`, `width`, `height`, `start`, `end`, `direction`, `stops`, `angle`, `x`, `y` | `direction`: `vertical` (default), `horizontal`, `angled` (`angle` 0°=left→right, 90°=top→bottom), `radial`. `stops`: 2–64 `{"offset":0..1,"color":…}` strictly increasing. |
-| `text` | **`text`**, `name`, `size`, `color`, `align` (`left`/`center`/`right`), `spacing` (line spacing px), `font`, `x`, `y` | `x`/`y` may be `"center"` or `"N%"`. `font` (file path) is CLI/Python only; default font DejaVu Sans is bundled. Multiline via `\n`. |
+| `text` | **`text`**, `name`, `size`, `color`, `align` (`left`/`center`/`right`), `spacing` (line spacing px), `font`, `x`, `y` | `x`/`y` may be `"center"` or `"N%"`. `font`: a registered name, `heading`/`body` (follows the document typography), or a file path (CLI/Python only); default font DejaVu Sans is the proofing fallback. Multiline via `\n`. |
 | `shape` | **`shape`**, `name`, `width`, `height`, `x`, `y`, `fill`, `stroke`, `stroke_width`, `radius`, `sides`, `inner_radius` | `shape`: `rectangle`, `rounded-rectangle` (`radius`), `ellipse`, `polygon` (`sides`), `star` (`sides`, `inner_radius` 0.01–1), `line`. Procedural, redrawn crisply on resize. |
 | `frame` | `name`, `width`, `height`, `x`, `y`, `path` *or* `asset`, `fit` (`fill`/`fit`) | Image placed in a fixed box; `fill` crops, `fit` letterboxes. |
 | `pixel-art` | `name`, `width`, `height`, `x`, `y`, `palette`, `background`, **or** `rows` | Character-grid sprite (1–256 per side). See *Pixel art* below. |
@@ -59,7 +59,7 @@ The authoritative schema is always `vixl schema` / `GET /schema` / `vixl://opera
 | `crop` | `target`, **`x`, `y`, `width`, `height`** | In the original embedded raster's coordinates. |
 | `opacity` | `target`, **`value`** | 0–1. |
 | `blend` | `target`, **`value`** | `normal`, `multiply`, `screen`, `overlay`, `darken`, `lighten`, `difference`, `add`, `subtract`. |
-| `text-set` | `target`, `text`, `size`, `color`, `align`, `spacing`, `stroke_width`, `stroke_color` | Edit an existing text layer. |
+| `text-set` | `target`, `text`, `size`, `color`, `align`, `spacing`, `stroke_width`, `stroke_color`, `font` | Edit an existing text layer; keeps a `text-layout` box. `font`: registered name, `heading`/`body` role, or a file (CLI/Python). |
 | `text-layout` | `target`, `width`, `height`, `fit`, `warp`, `amount`, `path` | Box wrapping; `fit: true` shrinks font to fit; `warp`: `none`/`arc`/`flag`/`bulge` with `amount` −1..1; `path`: polyline `[[x,y],…]` in local px. Replaces previous layout. |
 | `layer-style` | `target`, **`name`**, `settings`, `remove` | See *Layer styles*. |
 | `replace-contents` | `target`, `path` *or* `asset` *or* `variable`, `fit` | Swap image, keep ID/box/effects/mask/styles. |

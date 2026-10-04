@@ -28,7 +28,7 @@ vixl palette add brand brand-colors.json
 vixl palette apply brand --prefix company
 ```
 
-Custom palette files are JSON arrays of 2–256 color strings, for example `["#123456", "#abcdef"]`. Applying creates editable named swatches (`ocean-1` through `ocean-5`); it does not recolor existing layers. Refer to swatches with `@NAME`.
+Custom palette files are JSON arrays of 2–256 color strings, for example `["#123456", "#abcdef"]`. Applying creates editable named swatches (`ocean-1` through `ocean-5`) and sets the contrast-checked role swatches (`@background`, `@surface`, `@ink`, `@muted`, `@accent`, `@accent-text`, `@on-accent`), keeping the document's light or dark mode. Layers that use role swatches, which includes every layout and built-in template, recolor at once; layers with literal colors keep them. Pass `"roles": false` (operation) to add only the numbered swatches. Refer to swatches with `@NAME`.
 
 ## Templates
 

@@ -101,7 +101,7 @@ If found, prepend its folder to PATH for this session — see
    canonical spelling it reports and use that next time.
 5. **Check without looking:** `vixl_check` / `vixl check` reports content cut off by the canvas,
    overlapping text, low WCAG contrast, safe-area or reserved-zone violations (`safe_area="5%"`,
-   `avoid=[[x,y,w,h]]`) and text too small at thumbnail width. It lists only problems.
+   `avoid=[[x,y,w,h]]`) and text too small at thumbnail width (on print sizes: below 6 pt). It lists only problems.
 6. **Look at the result.** MCP: `vixl_render_preview()` returns an image (≤1024 px, ≤1 MiB by
    default; `region=[x,y,w,h]` zooms in). `vixl_render_compare()` shows previous vs current.
    CLI: `vixl render --out /tmp/preview.png` then view the file. Never declare a visual
