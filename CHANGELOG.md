@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.14.0
+
 - **Character animation and sharper motion.** A new `pivot` operation (`vixl pivot arm 0.5 0.05`,
   anchor names, `--px`, `--clear`) makes rotation and scale turn about a joint that stays fixed in
   renders, timeline frames, layout bounds and SVG; animated rotation no longer drifts; group

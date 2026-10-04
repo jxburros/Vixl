@@ -2,6 +2,8 @@
 
 **A headless image-document engine designed for autonomous AI agents.**
 
+Current release: **0.14.0**. See the [changelog](CHANGELOG.md) for release notes.
+
 Vixl is built for AI agents to create, inspect, edit, measure, and export designs autonomously through MCP, structured operations, Python, REST, or the CLI. Humans can use the same interfaces. It needs no graphical display.
 
 Vixl keeps images editable: layers, text, masks, effects, constraints, variables, and creative history live in a portable `.vixl` document. CLI commands, Python, REST, MCP, and AI plans all use one structured operation engine.
