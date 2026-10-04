@@ -43,9 +43,9 @@ def test_operation_schema_is_in_tools_list(tmp_path):
         assert "vixl_ai" not in tools
         assert "args" not in tools["vixl_ai_generate"].inputSchema["properties"]
         assert tools["vixl_ai_generate"].inputSchema["properties"]["seed"]["type"] == "integer"
-        # Design, pixel/animation, brush, timeline, layout, pen/container and color operations extend the catalog; shared
+        # Design, pixel/animation, brush, timeline, layout, pen/container, organic/intent and color operations extend the catalog; shared
         # constraints and runtime-validated names keep the inline schema bounded (slim mode is smaller still).
-        assert len(json.dumps(schema)) < 26000
+        assert len(json.dumps(schema)) < 28000
 
     asyncio.run(run())
 
@@ -304,3 +304,4 @@ def test_mcp_splits_into_core_and_ai_servers(tmp_path, monkeypatch):
     asyncio.run(core_server.call_tool("vixl_operations_apply", {"operations": [{"type": "hide", "target": "sun"}]}))
     ai_session.open("a.vixl")
     assert not ai_session.inspect()["layers"][0]["visible"]
+

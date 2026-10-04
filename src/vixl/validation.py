@@ -35,6 +35,9 @@ def check_state(project, state):
     for key, asset in state.get("fonts", {}).items():
         named(key)
         require(asset in project.assets and asset.startswith("fonts/"), "Missing registered font")
+    fallbacks = state.get("font_fallbacks", [])
+    require(isinstance(fallbacks, list) and len(fallbacks) <= 16, "Invalid font fallback list", "invalid_project")
+    require(all(isinstance(f, str) and (f in project.assets or f == "DejaVuSans.ttf") for f in fallbacks), "Fallback fonts must be embedded or bundled", "invalid_project")
     layers = state["layers"]
     require(
         isinstance(layers, list) and len(layers) <= project.limits.max_layers,
@@ -52,6 +55,9 @@ def check_state(project, state):
             "Duplicate layer identifier",
             "invalid_project",
         )
+        require(layer.get("role", "content") in ("content", "decoration", "background"), "Invalid layer role", "invalid_project")
+        allowed = layer.get("allow_overlap", [])
+        require(isinstance(allowed, list) and len(allowed) <= 512 and all(isinstance(x, str) for x in allowed), "Invalid overlap intent", "invalid_project")
         ids.add(layer["id"])
         names.add(layer["name"])
         require(
@@ -275,3 +281,4 @@ def validate(project, profile=None, rules=None):
     for rule in rules or []:
         add(rule, assert_rule(project, rule))
     return {"valid": all(x["passed"] or x["severity"] == "warning" for x in checks), "checks": checks}
+

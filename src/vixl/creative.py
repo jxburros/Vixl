@@ -27,6 +27,8 @@ def schemas(add):
             "points": {"type": "array", "items": point, "minItems": 2, "maxItems": 512},
             "closed": B,
             "smooth": B,
+            "tension": {"type": "number", "minimum": 0, "maximum": 1},
+            "corners": {"type": "array", "items": {"type": "integer", "minimum": 0}, "maxItems": 512},
             "fill": S,
             "stroke": S,
             "stroke_width": N,
@@ -57,7 +59,9 @@ def pen_path(op):
             for i, node in enumerate(nodes):
                 prev = pts[(i - 1) % len(pts)] if closed or i else pts[i]
                 nxt = pts[(i + 1) % len(pts)] if closed or i < len(pts) - 1 else pts[i]
-                tangent = [(b - a) / 6 for a, b in zip(prev, nxt)]
+                if i in op.get("corners", []):
+                    continue
+                tangent = [(b - a) * op.get("tension", 1) / 6 for a, b in zip(prev, nxt)]
                 node["in"] = [v - t for v, t in zip(node["point"], tangent)]
                 node["out"] = [v + t for v, t in zip(node["point"], tangent)]
 
@@ -142,3 +146,4 @@ def selection(project, op):
     mask = Image.fromarray(matches.astype(np.uint8)).copy()
     ImageDraw.floodfill(mask, (x, y), 2, thresh=0)
     return Image.fromarray((np.asarray(mask) == 2).astype(np.uint8) * 255)
+

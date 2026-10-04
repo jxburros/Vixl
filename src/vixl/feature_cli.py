@@ -145,7 +145,8 @@ def compile_feature(cmd, args):
         p.add_argument("--unfilled", choices=["blank", "omit"], help="Show unfilled slots as [Label] blanks (default) or leave them out")
         p.add_argument("--palette")
         p.add_argument("--colors", type=json.loads)
-        p.add_argument("--mode", choices=["light", "dark"])
+        p.add_argument("--mode", choices=["inherit", "light", "dark"])
+        p.add_argument("--predictable", action="store_true", default=None)
         p.add_argument("--type-scale")
         p.add_argument("--base-size", type=float)
         p.add_argument("--density", choices=["airy", "balanced", "dense"])
@@ -195,7 +196,7 @@ def compile_feature(cmd, args):
         p.add_argument("--opacity", type=float)
         p.add_argument("--erase", dest="mode", action="store_const", const="erase")
         p.add_argument("--seed", type=int)
-        p.add_argument("--space", choices=["canvas", "layer"])
+        p.add_argument("--space", choices=["canvas", "layer"], help="canvas (default): document pixels; layer: local stroke surface pixels")
         p.add_argument("--settings", type=json.loads, help="Brush overrides as JSON, e.g. '{\"hardness\": 0.3}'")
         data = vars(p.parse_args(args))
         return {"type": "paint", **{k: v for k, v in data.items() if v is not None}}
@@ -276,6 +277,9 @@ def project_feature(project, cmd, args):
 
         require(not args, "Use timeline to inspect, or timeline set --duration 3s --fps 30")
         return inspect_timeline(project), False
+    if cmd == "layout" and args and args[0] == "preview":
+        op = compile_feature("layout", ["apply", *args[1:]])
+        return project.apply(op, dry_run=True, detail="compact"), False
     if cmd == "layout" and (not args or args[0] in ("list", "show")):
         from .layouts import LAYOUTS, catalog
 
@@ -301,6 +305,7 @@ def project_feature(project, cmd, args):
         p.add_argument("--quality", type=int, default=90)
         p.add_argument("--colors", type=int, default=256, help="GIF palette size 2–256 (fewer colors = smaller file)")
         p.add_argument("--overwrite", action="store_true")
+        p.add_argument("--progress", action="store_true", help="Write frame progress to stderr")
         a = p.parse_args(args)
         fps = int(a.fps) if a.fps and a.fps.is_integer() else a.fps
         return export_timeline(
@@ -316,6 +321,7 @@ def project_feature(project, cmd, args):
             quality=a.quality,
             colors=a.colors,
             overwrite=a.overwrite,
+            progress=(lambda event: print(json.dumps({"progress": event}), file=__import__("sys").stderr, flush=True)) if a.progress else None,
         ), False
     if cmd == "timeline-sheet":
         from pathlib import Path
@@ -342,3 +348,4 @@ def project_feature(project, cmd, args):
         a = p.parse_args(args)
         return export_icons(project, a.out, icon_set=a.icon_set, sampling=a.sampling), False
     return None
+

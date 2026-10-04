@@ -311,6 +311,16 @@ class Project:
         if any(op["type"] == "layout-apply" for op in operations):
             result["layout"] = deepcopy(candidate.state.get("layout", {}))
             result["unfilled_slots"] = list(dict.fromkeys(b["slot"] for b in result["layout"].get("blanks", [])))
+        if any(op["type"] == "paint" for op in operations):
+            from .brushes import stroke_diagnostics
+            from .render import layer_image, resolve_layout
+            bounds = resolve_layout(candidate)
+            painted = [layer for layer in candidate.state["layers"] if layer["type"] == "paint" and layer.get("strokes")]
+            result["paint"] = [{"layer": layer["name"], "strokes": stroke_diagnostics(layer),
+                                "visible_pixels": layer_image(candidate, layer, bounds[layer["id"]]).getchannel("A").getbbox() is not None}
+                               for layer in painted]
+            if any(not item["visible_pixels"] for item in result["paint"]):
+                result["warnings"] = ["Paint has no visible pixels; check --space canvas versus --space layer and resolved bounds."]
         if notes:
             result["normalized"] = notes
         return result
@@ -658,3 +668,4 @@ class Project:
                 return project
         except (KeyError, TypeError, ValueError, RecursionError, zipfile.BadZipFile) as exc:
             raise VixlError("invalid_project", f"Malformed Vixl archive: {exc}") from exc
+

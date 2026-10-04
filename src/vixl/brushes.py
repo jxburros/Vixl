@@ -508,3 +508,20 @@ def catalog():
         "notes": "Points are canvas pixels [x, y] or [x, y, pressure]. Use path for SVG curves. "
         "Strokes stay editable; paint-clear removes the last N strokes.",
     }
+
+
+
+def stroke_diagnostics(layer, project=None):
+    """Resolved local centerline bounds, separate from actual rendered coverage."""
+    result = []
+    for index, stroke in enumerate(layer.get("strokes", [])):
+        points = stroke["points"]
+        xs, ys = [p[0] for p in points], [p[1] for p in points]
+        bounds = [min(xs), min(ys), max(xs) - min(xs), max(ys) - min(ys)]
+        result.append({"index": index, "space": "layer", "bounds": bounds,
+                       "surface": list(layer["surface"])})
+        if project is not None:
+            settings = brush_settings(project.state, stroke["brush"], stroke.get("settings"))
+            w, h = layer["surface"]
+            result[-1]["intersects_surface"] = bool(np.any(stroke_alpha(stroke, settings, (h, w)) > 0))
+    return result

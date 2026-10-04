@@ -228,10 +228,10 @@ def render_variant(project, spec, variant, directory, prior=None, cancelled=lamb
     if not all(r["passed"] for r in checks.values()):
         return {**variant, "status": "needs_review", "checks": checks, "repairs": repairs}
     settings = plan({k: v for k, v in spec.items() if k not in ("rows", "matrix", "artboards")})
-    from .text import font_data
+    from .text import font_data, font_digest
 
     fonts = [
-        hashlib.sha256(font_data(candidate, layer)).hexdigest()
+        font_digest(font_data(candidate, layer))
         for layer in candidate.state["layers"]
         if layer["type"] == "text"
     ]
@@ -463,3 +463,4 @@ class Library:
         result = candidate.apply({"type": "add", "name": name, "asset": asset}, detail="compact")
         project.__dict__.update(candidate.__dict__)
         return {**result, "source_component": ident, "asset": asset}
+

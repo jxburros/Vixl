@@ -267,6 +267,8 @@ def _operation_schema():
     automation_schemas(add)
     from .creative import schemas as creative_schemas
     creative_schemas(add)
+    from .authoring import schemas as authoring_schemas
+    authoring_schemas(add)
     from .containers import schemas as container_schemas
     container_schemas(add)
     add(
@@ -384,3 +386,4 @@ def schema_error(error, operation, allowed):
     else:
         message = f"{field + ': ' if field else ''}{error.message}"
     return VixlError("invalid_operation", message, **details)
+

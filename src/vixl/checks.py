@@ -12,7 +12,7 @@ import numpy as np
 from .errors import require
 from .model import finite
 
-CHECKS = ("bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "fonts", "brand")
+CHECKS = ("bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "fonts", "brand", "content")
 FALLBACK_FONT = "DejaVuSans.ttf"
 OPTIONAL_CHECKS = ("print", "color_vision")
 PERCENT = re.compile(r"^(-?\d+(?:\.\d+)?)%$")
@@ -175,10 +175,47 @@ def check_design(
             alphas[item["id"]] = np.asarray(tile.getchannel("A").crop(box)) > 32
         return alphas[item["id"]]
 
+    if "content" in checks:
+        from .render import layer_image
+        from .brushes import stroke_diagnostics
+        for item in layers:
+            if item["type"] == "group" or (item["type"] == "paint" and not item.get("strokes")):
+                continue
+            if item["type"] == "text" and not item.get("text", "").strip():
+                continue
+            if item["type"] == "paint":
+                strokes = stroke_diagnostics(item, candidate)
+                for stroke in strokes:
+                    if not stroke["intersects_surface"]:
+                        issue("content", "warning", f"{item['name']!r} stroke {stroke['index']} has no coverage on its paint surface; check coordinates, pressure, and brush settings", [item], stroke=stroke)
+            image = layer_image(candidate, item, local_bounds[item["id"]])
+            if image.getchannel("A").getbbox() is None:
+                issue("content", "warning", f"{item['name']!r} has no visible pixels", [item],
+                      **({"strokes": stroke_diagnostics(item)} if item["type"] == "paint" else {}))
+
+    if "fonts" in checks:
+        from .text import glyph_coverage
+        from .render import substitute
+        for item in layers:
+            if item["type"] != "text":
+                continue
+            report = glyph_coverage(candidate, {**item, "text": substitute(item["text"], candidate.state["variables"])})
+            if report["missing"]:
+                issue("fonts", "error", f"{item['name']!r} has unsupported glyphs; import a font and use font-fallbacks", [item], **report)
+            elif report["fallback"]:
+                issue("fonts", "warning", f"{item['name']!r} uses fallback glyphs", [item], **report)
+
+    def role(item):
+        return next((x["role"] for x in (item, *ancestors(item)) if x.get("role")), "content")
+
     if "overlap" in checks:
         drawable = [item for item in content if item["type"] != "group"]
         for i, first in enumerate(drawable):
             for second in drawable[i + 1 :]:
+                if second["id"] in first.get("allow_overlap", []) or first["id"] in second.get("allow_overlap", []):
+                    continue
+                if (role(first) == "decoration" and not is_text(first)) or (role(second) == "decoration" and not is_text(second)):
+                    continue
                 a, b = bounds[first["id"]], bounds[second["id"]]
                 if not _intersects(a, b):
                     continue

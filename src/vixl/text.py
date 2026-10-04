@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 import io
 import math
+import unicodedata
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
@@ -30,6 +31,7 @@ class Glyph:
     x: float
     y: float
     advance: float
+    data: bytes = b""
 
 
 @dataclass
@@ -42,6 +44,7 @@ class Plan:
 
 @lru_cache(maxsize=16)
 def face(data):
+    data = data[0] if isinstance(data, tuple) else data
     outline = TTFont(io.BytesIO(data))
     if not any(table in outline for table in ("glyf", "CFF ", "CFF2")) or any(
         table in outline for table in ("COLR", "CBDT", "sbix", "SVG ")
@@ -54,7 +57,7 @@ def face(data):
     return outline, font
 
 
-def font_data(project, layer):
+def primary_font_data(project, layer):
     from .render import font_for
 
     name = project.state.get("fonts", {}).get(layer.get("font"), layer.get("font"))
@@ -63,6 +66,55 @@ def font_data(project, layer):
     font = font_for(project, layer)
     path = font.path
     return path.getvalue() if hasattr(path, "getvalue") else Path(path).read_bytes()
+
+
+@lru_cache(maxsize=32)
+def coverage(data):
+    return frozenset(TTFont(io.BytesIO(data)).getBestCmap() or {})
+
+
+def visible_char(char):
+    return not char.isspace() and unicodedata.category(char) not in ("Cf", "Cc") and not (0xFE00 <= ord(char) <= 0xFE0F)
+
+
+def font_data(project, layer):
+    primary = primary_font_data(project, layer)
+    from .render import substitute
+    text = substitute(layer.get("text", ""), project.state["variables"])
+    if all(not visible_char(c) or ord(c) in coverage(primary) for c in text):
+        return primary
+    fonts = [primary]
+    for name in [*project.state.get("font_fallbacks", []), "DejaVuSans.ttf"]:
+        fallback = primary_font_data(project, {**layer, "font": name})
+        if fallback not in fonts:
+            fonts.append(fallback)
+    return tuple(fonts)
+
+
+def glyph_coverage(project, layer):
+    data = font_data(project, layer)
+    fonts = data if isinstance(data, tuple) else (data,)
+    chars = sorted({c for c in layer.get("text", "") if visible_char(c)})
+    return {"missing": [c for c in chars if not any(ord(c) in coverage(f) for f in fonts)],
+            "fallback": [c for c in chars if ord(c) not in coverage(fonts[0]) and any(ord(c) in coverage(f) for f in fonts[1:])]}
+
+
+def font_runs(fonts, content):
+    # Keep combining marks, selectors and joiner sequences with their base glyph.
+    clusters = []
+    for char in content:
+        if clusters and (unicodedata.combining(char) or char == "\u200d" or clusters[-1].endswith("\u200d") or 0xFE00 <= ord(char) <= 0xFE0F):
+            clusters[-1] += char
+        else:
+            clusters.append(char)
+    result = []
+    for cluster in clusters:
+        font = next((f for f in fonts if all(not visible_char(c) or ord(c) in coverage(f) for c in cluster)), fonts[0])
+        if result and result[-1][0] == font:
+            result[-1] = (font, result[-1][1] + cluster)
+        else:
+            result.append((font, cluster))
+    return result
 
 
 def runs(text):
@@ -109,26 +161,25 @@ def runs(text):
 
 
 def shape(data, text, size):
-    outline, font = face(data)
-    names, factor = outline.getGlyphOrder(), size / font.face.upem
+    fonts = data if isinstance(data, tuple) else (data,)
     glyphs, cursor = [], 0.0
     for (level, tag), content in runs(text):
-        buffer = hb.Buffer()
-        buffer.add_str(content)
-        buffer.direction = "rtl" if level % 2 else "ltr"
-        buffer.script = tag
-        buffer.guess_segment_properties()
-        hb.shape(font, buffer)
-        for info, pos in zip(buffer.glyph_infos, buffer.glyph_positions):
-            glyphs.append(
-                Glyph(
-                    names[info.codepoint],
-                    cursor + pos.x_offset * factor,
-                    -pos.y_offset * factor,
-                    pos.x_advance * factor,
-                )
-            )
-            cursor += pos.x_advance * factor
+        segments = font_runs(fonts, content)
+        if level % 2:
+            segments.reverse()
+        for font_data, segment in segments:
+            outline, font = face(font_data)
+            names, factor = outline.getGlyphOrder(), size / font.face.upem
+            buffer = hb.Buffer()
+            buffer.add_str(segment)
+            buffer.direction = "rtl" if level % 2 else "ltr"
+            buffer.script = tag
+            buffer.guess_segment_properties()
+            hb.shape(font, buffer)
+            for info, pos in zip(buffer.glyph_infos, buffer.glyph_positions):
+                glyphs.append(Glyph(names[info.codepoint], cursor + pos.x_offset * factor,
+                                    -pos.y_offset * factor, pos.x_advance * factor, font_data))
+                cursor += pos.x_advance * factor
     return glyphs, cursor
 
 
@@ -193,7 +244,8 @@ def measure(data, text, size, spacing=4, align="left", width=None):
     for i, (glyphs, advance) in enumerate(shaped):
         offset = (widest - advance) / 2 if align == "center" else widest - advance if align == "right" else 0
         for glyph in glyphs:
-            path, box = glyph_outline(data, glyph.name)
+            factor = size / face(glyph.data)[0]["head"].unitsPerEm
+            path, box = glyph_outline(glyph.data, glyph.name)
             if path:
                 x, y = glyph.x + offset, glyph.y + ascent + i * line_height
                 paths.append((path, (factor, 0, 0, -factor, x, y)))
@@ -253,7 +305,8 @@ def path_layout(data, text, size, points):
             if center <= offset + length:
                 t = (center - offset) / length
                 dx, dy = (b[0] - a[0]) / length, (b[1] - a[1]) / length
-                path, _ = glyph_outline(data, glyph.name)
+                factor = size / face(glyph.data)[0]["head"].unitsPerEm
+                path, _ = glyph_outline(glyph.data, glyph.name)
                 x, y = a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1])
                 result.append(
                     (
@@ -377,3 +430,10 @@ def render_text(project, layer):
     return Image.open(
         io.BytesIO(resvg_py.svg_to_bytes(svg_string=ET.tostring(root, encoding="unicode")))
     ).convert("RGBA")
+
+
+
+def font_digest(data):
+    import hashlib
+    fonts = data if isinstance(data, tuple) else (data,)
+    return hashlib.sha256(b"".join(hashlib.sha256(f).digest() for f in fonts)).hexdigest()

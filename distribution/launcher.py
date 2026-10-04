@@ -81,7 +81,8 @@ def main():
             return 0
         # Update controls inspect the currently installed state without switching it underneath the command.
         controls = any(x in ("update", "updates") for x in args)
-        allow = os.environ.get("VIXL_NO_UPDATE") != "1" and not controls
+        read_only = any(arg in ("--version", "--help", "-h", "--runtime-info") for arg in args) or control_args[:1] == ["help"]
+        allow = os.environ.get("VIXL_NO_UPDATE") != "1" and not controls and not read_only
         exe, due = updater.prepare_launch(root, allow_updates=allow)
         env = updater.child_environment(root)
         if due:
@@ -117,3 +118,4 @@ def main():
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

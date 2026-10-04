@@ -2,7 +2,7 @@
 
 **A headless image-document engine designed for autonomous AI agents.**
 
-Current release: **0.16.0**. See the [changelog](CHANGELOG.md) for release notes.
+Current release: **0.17.0**. See the [changelog](CHANGELOG.md) for release notes.
 
 Vixl is built for AI agents to create, inspect, edit, measure, and export designs autonomously through MCP, structured operations, Python, REST, or the CLI. Humans can use the same interfaces. It needs no graphical display.
 
@@ -14,12 +14,14 @@ This initial implementation covers the specification's core editor and automatio
 
 [Download the editable example](examples/after-hours.vixl), or rebuild it with `python examples/build_poster.py`.
 
+See [authoring and CLI improvements](docs/authoring.md) for organic paths, font fallback, layout previews, paint diagnostics, and persistent sessions.
+
 ## Agent quick start
 
 Install the tagged release directly on any supported platform with uv:
 
 ```bash
-uvx --from https://github.com/jxburros/Vixl/archive/refs/tags/v0.16.0.tar.gz vixl mcp --workspace . --tools core --schema slim
+uvx --from https://github.com/jxburros/Vixl/archive/refs/tags/v0.17.0.tar.gz vixl mcp --workspace . --tools core --schema slim
 ```
 
 After PyPI publishing is configured, `--from vixl-engine` is also available.
@@ -376,3 +378,4 @@ python -m pip wheel . --no-deps --wheel-dir dist
 - [Agent evaluation suite](evals/README.md)
 
 Vixl processes raster images in RGBA8 and retains procedural shapes and supported Bézier paths. SVG preserves supported geometry, groups, gradients, pixel grids, shaped Unicode text and common effects/styles. `--svg-policy strict` rejects embedded raster content with layer/effect details. [19 local artistic filters](docs/artistic-filters.md) include sepia, ink blot, sketch, halftone, paint-like treatments and distortions; no AI is required. Unsupported appearances use documented raster fallbacks; PNG preserves transparency and JPG flattens it against a chosen background. Documents edit in RGBA8 sRGB and export CMYK for print. CMYK editing, spot colors, RAW development, active/browser-specific SVG content, desktop GUI/TUI, and GIMP/Photoshop project compatibility are outside this implementation. The AI provider adapters have been used successfully with real services; the test suite checks their contracts offline, and live use requires your own service, model, workflow and credentials.
+

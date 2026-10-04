@@ -278,7 +278,7 @@ def test_stroked_closed_shapes_join_their_start_vertex(shape):
     assert pixels[24:34, 98:102].max() < 64
 
 
-def test_svg_fallback_names_repeat_as_reason():
+def test_svg_repeat_primitives_preserve_vectors():
     p = Project(200, 200)
     p.apply(
         [
@@ -286,11 +286,9 @@ def test_svg_fallback_names_repeat_as_reason():
             {"type": "repeat", "target": "stripe", "count": 3, "dy": 20},
         ]
     )
-    metadata = ET.fromstring(p.export(format="SVG")).find("{http://www.w3.org/2000/svg}metadata")
-    fallbacks = json.loads(metadata.text)["vixl"]["raster_fallbacks"]
-    assert fallbacks[0]["layer"] == "stripe"
-    assert fallbacks[0]["reason"] == "repeat is not exported as vectors"
-
+    root = ET.fromstring(p.export(format="SVG"))
+    assert not root.findall(".//{*}image")
+    assert len(root.findall(".//{*}rect")) >= 3
 
 def test_text_set_keeps_text_layout_box():
     p = Project(600, 300)
@@ -305,3 +303,4 @@ def test_text_set_keeps_text_layout_box():
     assert (layer["width"], layer["height"], layer["auto_size"]) == (300, 250, False)
     p.apply({"type": "text-set", "target": "q", "text": "short"})
     assert (p.layer("q")["width"], p.layer("q")["height"]) == (300, 250)
+

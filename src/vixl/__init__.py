@@ -1,6 +1,6 @@
 """Public Python API. All interfaces share Project.apply and Project.render."""
 
-__version__ = "0.16.0"
+__version__ = "0.17.0"
 
 from .errors import VixlError  # noqa: E402
 
@@ -14,3 +14,4 @@ def __getattr__(name):
         globals()[name] = Project
         return Project
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
