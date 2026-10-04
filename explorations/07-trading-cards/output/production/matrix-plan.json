@@ -1,0 +1,417 @@
+{
+  "version": 1,
+  "count": 24,
+  "kind": "image",
+  "format": "webp",
+  "quality": "draft",
+  "variants": [
+    {
+      "id": "0001",
+      "values": {
+        "name": "Ember Warden",
+        "element": "Ember",
+        "element_color": "#ff6b35",
+        "element_dark": "#2a0905",
+        "element_light": "#ffd166",
+        "art": "assets/58accd4f49886551b9ee1b3845ab31bd52bf7a2e99b3b67bac14778f53b40a85.jpg",
+        "kind": "Spirit — Warden",
+        "ability_name": "Ward",
+        "ability": "Other Ember spirits you control get +1 DEF.",
+        "flavor": "Every ember shrine keeps one awake.",
+        "edition": "First Edition"
+      },
+      "artboard": "common"
+    },
+    {
+      "id": "0002",
+      "values": {
+        "name": "Ember Warden",
+        "element": "Ember",
+        "element_color": "#ff6b35",
+        "element_dark": "#2a0905",
+        "element_light": "#ffd166",
+        "art": "assets/58accd4f49886551b9ee1b3845ab31bd52bf7a2e99b3b67bac14778f53b40a85.jpg",
+        "kind": "Spirit — Warden",
+        "ability_name": "Ward",
+        "ability": "Other Ember spirits you control get +1 DEF.",
+        "flavor": "Every ember shrine keeps one awake.",
+        "edition": "First Edition"
+      },
+      "artboard": "rare"
+    },
+    {
+      "id": "0003",
+      "values": {
+        "name": "Ember Warden",
+        "element": "Ember",
+        "element_color": "#ff6b35",
+        "element_dark": "#2a0905",
+        "element_light": "#ffd166",
+        "art": "assets/58accd4f49886551b9ee1b3845ab31bd52bf7a2e99b3b67bac14778f53b40a85.jpg",
+        "kind": "Spirit — Warden",
+        "ability_name": "Ward",
+        "ability": "Other Ember spirits you control get +1 DEF.",
+        "flavor": "Every ember shrine keeps one awake.",
+        "edition": "First Edition"
+      },
+      "artboard": "epic"
+    },
+    {
+      "id": "0004",
+      "values": {
+        "name": "Ember Warden",
+        "element": "Ember",
+        "element_color": "#ff6b35",
+        "element_dark": "#2a0905",
+        "element_light": "#ffd166",
+        "art": "assets/58accd4f49886551b9ee1b3845ab31bd52bf7a2e99b3b67bac14778f53b40a85.jpg",
+        "kind": "Spirit — Warden",
+        "ability_name": "Ward",
+        "ability": "Other Ember spirits you control get +1 DEF.",
+        "flavor": "Every ember shrine keeps one awake.",
+        "edition": "First Edition"
+      },
+      "artboard": "legendary"
+    },
+    {
+      "id": "0005",
+      "values": {
+        "name": "Ember Warden",
+        "element": "Ember",
+        "element_color": "#ff6b35",
+        "element_dark": "#2a0905",
+        "element_light": "#ffd166",
+        "art": "assets/58accd4f49886551b9ee1b3845ab31bd52bf7a2e99b3b67bac14778f53b40a85.jpg",
+        "kind": "Spirit — Warden",
+        "ability_name": "Ward",
+        "ability": "Other Ember spirits you control get +1 DEF.",
+        "flavor": "Every ember shrine keeps one awake.",
+        "edition": "Unlimited"
+      },
+      "artboard": "common"
+    },
+    {
+      "id": "0006",
+      "values": {
+        "name": "Ember Warden",
+        "element": "Ember",
+        "element_color": "#ff6b35",
+        "element_dark": "#2a0905",
+        "element_light": "#ffd166",
+        "art": "assets/58accd4f49886551b9ee1b3845ab31bd52bf7a2e99b3b67bac14778f53b40a85.jpg",
+        "kind": "Spirit — Warden",
+        "ability_name": "Ward",
+        "ability": "Other Ember spirits you control get +1 DEF.",
+        "flavor": "Every ember shrine keeps one awake.",
+        "edition": "Unlimited"
+      },
+      "artboard": "rare"
+    },
+    {
+      "id": "0007",
+      "values": {
+        "name": "Ember Warden",
+        "element": "Ember",
+        "element_color": "#ff6b35",
+        "element_dark": "#2a0905",
+        "element_light": "#ffd166",
+        "art": "assets/58accd4f49886551b9ee1b3845ab31bd52bf7a2e99b3b67bac14778f53b40a85.jpg",
+        "kind": "Spirit — Warden",
+        "ability_name": "Ward",
+        "ability": "Other Ember spirits you control get +1 DEF.",
+        "flavor": "Every ember shrine keeps one awake.",
+        "edition": "Unlimited"
+      },
+      "artboard": "epic"
+    },
+    {
+      "id": "0008",
+      "values": {
+        "name": "Ember Warden",
+        "element": "Ember",
+        "element_color": "#ff6b35",
+        "element_dark": "#2a0905",
+        "element_light": "#ffd166",
+        "art": "assets/58accd4f49886551b9ee1b3845ab31bd52bf7a2e99b3b67bac14778f53b40a85.jpg",
+        "kind": "Spirit — Warden",
+        "ability_name": "Ward",
+        "ability": "Other Ember spirits you control get +1 DEF.",
+        "flavor": "Every ember shrine keeps one awake.",
+        "edition": "Unlimited"
+      },
+      "artboard": "legendary"
+    },
+    {
+      "id": "0009",
+      "values": {
+        "name": "Tide Warden",
+        "element": "Tide",
+        "element_color": "#2ec4ff",
+        "element_dark": "#03182b",
+        "element_light": "#c9f6ff",
+        "art": "assets/361adb2f1934f093e62bba3620d23c151984becd3aabceb9177ec876ad6fe1dd.jpg",
+        "kind": "Spirit — Warden",
+        "ability_name": "Ward",
+        "ability": "Other Tide spirits you control get +1 DEF.",
+        "flavor": "Every tide shrine keeps one awake.",
+        "edition": "First Edition"
+      },
+      "artboard": "common"
+    },
+    {
+      "id": "0010",
+      "values": {
+        "name": "Tide Warden",
+        "element": "Tide",
+        "element_color": "#2ec4ff",
+        "element_dark": "#03182b",
+        "element_light": "#c9f6ff",
+        "art": "assets/361adb2f1934f093e62bba3620d23c151984becd3aabceb9177ec876ad6fe1dd.jpg",
+        "kind": "Spirit — Warden",
+        "ability_name": "Ward",
+        "ability": "Other Tide spirits you control get +1 DEF.",
+        "flavor": "Every tide shrine keeps one awake.",
+        "edition": "First Edition"
+      },
+      "artboard": "rare"
+    },
+    {
+      "id": "0011",
+      "values": {
+        "name": "Tide Warden",
+        "element": "Tide",
+        "element_color": "#2ec4ff",
+        "element_dark": "#03182b",
+        "element_light": "#c9f6ff",
+        "art": "assets/361adb2f1934f093e62bba3620d23c151984becd3aabceb9177ec876ad6fe1dd.jpg",
+        "kind": "Spirit — Warden",
+        "ability_name": "Ward",
+        "ability": "Other Tide spirits you control get +1 DEF.",
+        "flavor": "Every tide shrine keeps one awake.",
+        "edition": "First Edition"
+      },
+      "artboard": "epic"
+    },
+    {
+      "id": "0012",
+      "values": {
+        "name": "Tide Warden",
+        "element": "Tide",
+        "element_color": "#2ec4ff",
+        "element_dark": "#03182b",
+        "element_light": "#c9f6ff",
+        "art": "assets/361adb2f1934f093e62bba3620d23c151984becd3aabceb9177ec876ad6fe1dd.jpg",
+        "kind": "Spirit — Warden",
+        "ability_name": "Ward",
+        "ability": "Other Tide spirits you control get +1 DEF.",
+        "flavor": "Every tide shrine keeps one awake.",
+        "edition": "First Edition"
+      },
+      "artboard": "legendary"
+    },
+    {
+      "id": "0013",
+      "values": {
+        "name": "Tide Warden",
+        "element": "Tide",
+        "element_color": "#2ec4ff",
+        "element_dark": "#03182b",
+        "element_light": "#c9f6ff",
+        "art": "assets/361adb2f1934f093e62bba3620d23c151984becd3aabceb9177ec876ad6fe1dd.jpg",
+        "kind": "Spirit — Warden",
+        "ability_name": "Ward",
+        "ability": "Other Tide spirits you control get +1 DEF.",
+        "flavor": "Every tide shrine keeps one awake.",
+        "edition": "Unlimited"
+      },
+      "artboard": "common"
+    },
+    {
+      "id": "0014",
+      "values": {
+        "name": "Tide Warden",
+        "element": "Tide",
+        "element_color": "#2ec4ff",
+        "element_dark": "#03182b",
+        "element_light": "#c9f6ff",
+        "art": "assets/361adb2f1934f093e62bba3620d23c151984becd3aabceb9177ec876ad6fe1dd.jpg",
+        "kind": "Spirit — Warden",
+        "ability_name": "Ward",
+        "ability": "Other Tide spirits you control get +1 DEF.",
+        "flavor": "Every tide shrine keeps one awake.",
+        "edition": "Unlimited"
+      },
+      "artboard": "rare"
+    },
+    {
+      "id": "0015",
+      "values": {
+        "name": "Tide Warden",
+        "element": "Tide",
+        "element_color": "#2ec4ff",
+        "element_dark": "#03182b",
+        "element_light": "#c9f6ff",
+        "art": "assets/361adb2f1934f093e62bba3620d23c151984becd3aabceb9177ec876ad6fe1dd.jpg",
+        "kind": "Spirit — Warden",
+        "ability_name": "Ward",
+        "ability": "Other Tide spirits you control get +1 DEF.",
+        "flavor": "Every tide shrine keeps one awake.",
+        "edition": "Unlimited"
+      },
+      "artboard": "epic"
+    },
+    {
+      "id": "0016",
+      "values": {
+        "name": "Tide Warden",
+        "element": "Tide",
+        "element_color": "#2ec4ff",
+        "element_dark": "#03182b",
+        "element_light": "#c9f6ff",
+        "art": "assets/361adb2f1934f093e62bba3620d23c151984becd3aabceb9177ec876ad6fe1dd.jpg",
+        "kind": "Spirit — Warden",
+        "ability_name": "Ward",
+        "ability": "Other Tide spirits you control get +1 DEF.",
+        "flavor": "Every tide shrine keeps one awake.",
+        "edition": "Unlimited"
+      },
+      "artboard": "legendary"
+    },
+    {
+      "id": "0017",
+      "values": {
+        "name": "Storm Warden",
+        "element": "Storm",
+        "element_color": "#b388ff",
+        "element_dark": "#130a2e",
+        "element_light": "#f1e6ff",
+        "art": "assets/ea8639166deac9e193def32f5ef09362796211bb87b22094e6fd2bf1d9772944.jpg",
+        "kind": "Spirit — Warden",
+        "ability_name": "Ward",
+        "ability": "Other Storm spirits you control get +1 DEF.",
+        "flavor": "Every storm shrine keeps one awake.",
+        "edition": "First Edition"
+      },
+      "artboard": "common"
+    },
+    {
+      "id": "0018",
+      "values": {
+        "name": "Storm Warden",
+        "element": "Storm",
+        "element_color": "#b388ff",
+        "element_dark": "#130a2e",
+        "element_light": "#f1e6ff",
+        "art": "assets/ea8639166deac9e193def32f5ef09362796211bb87b22094e6fd2bf1d9772944.jpg",
+        "kind": "Spirit — Warden",
+        "ability_name": "Ward",
+        "ability": "Other Storm spirits you control get +1 DEF.",
+        "flavor": "Every storm shrine keeps one awake.",
+        "edition": "First Edition"
+      },
+      "artboard": "rare"
+    },
+    {
+      "id": "0019",
+      "values": {
+        "name": "Storm Warden",
+        "element": "Storm",
+        "element_color": "#b388ff",
+        "element_dark": "#130a2e",
+        "element_light": "#f1e6ff",
+        "art": "assets/ea8639166deac9e193def32f5ef09362796211bb87b22094e6fd2bf1d9772944.jpg",
+        "kind": "Spirit — Warden",
+        "ability_name": "Ward",
+        "ability": "Other Storm spirits you control get +1 DEF.",
+        "flavor": "Every storm shrine keeps one awake.",
+        "edition": "First Edition"
+      },
+      "artboard": "epic"
+    },
+    {
+      "id": "0020",
+      "values": {
+        "name": "Storm Warden",
+        "element": "Storm",
+        "element_color": "#b388ff",
+        "element_dark": "#130a2e",
+        "element_light": "#f1e6ff",
+        "art": "assets/ea8639166deac9e193def32f5ef09362796211bb87b22094e6fd2bf1d9772944.jpg",
+        "kind": "Spirit — Warden",
+        "ability_name": "Ward",
+        "ability": "Other Storm spirits you control get +1 DEF.",
+        "flavor": "Every storm shrine keeps one awake.",
+        "edition": "First Edition"
+      },
+      "artboard": "legendary"
+    },
+    {
+      "id": "0021",
+      "values": {
+        "name": "Storm Warden",
+        "element": "Storm",
+        "element_color": "#b388ff",
+        "element_dark": "#130a2e",
+        "element_light": "#f1e6ff",
+        "art": "assets/ea8639166deac9e193def32f5ef09362796211bb87b22094e6fd2bf1d9772944.jpg",
+        "kind": "Spirit — Warden",
+        "ability_name": "Ward",
+        "ability": "Other Storm spirits you control get +1 DEF.",
+        "flavor": "Every storm shrine keeps one awake.",
+        "edition": "Unlimited"
+      },
+      "artboard": "common"
+    },
+    {
+      "id": "0022",
+      "values": {
+        "name": "Storm Warden",
+        "element": "Storm",
+        "element_color": "#b388ff",
+        "element_dark": "#130a2e",
+        "element_light": "#f1e6ff",
+        "art": "assets/ea8639166deac9e193def32f5ef09362796211bb87b22094e6fd2bf1d9772944.jpg",
+        "kind": "Spirit — Warden",
+        "ability_name": "Ward",
+        "ability": "Other Storm spirits you control get +1 DEF.",
+        "flavor": "Every storm shrine keeps one awake.",
+        "edition": "Unlimited"
+      },
+      "artboard": "rare"
+    },
+    {
+      "id": "0023",
+      "values": {
+        "name": "Storm Warden",
+        "element": "Storm",
+        "element_color": "#b388ff",
+        "element_dark": "#130a2e",
+        "element_light": "#f1e6ff",
+        "art": "assets/ea8639166deac9e193def32f5ef09362796211bb87b22094e6fd2bf1d9772944.jpg",
+        "kind": "Spirit — Warden",
+        "ability_name": "Ward",
+        "ability": "Other Storm spirits you control get +1 DEF.",
+        "flavor": "Every storm shrine keeps one awake.",
+        "edition": "Unlimited"
+      },
+      "artboard": "epic"
+    },
+    {
+      "id": "0024",
+      "values": {
+        "name": "Storm Warden",
+        "element": "Storm",
+        "element_color": "#b388ff",
+        "element_dark": "#130a2e",
+        "element_light": "#f1e6ff",
+        "art": "assets/ea8639166deac9e193def32f5ef09362796211bb87b22094e6fd2bf1d9772944.jpg",
+        "kind": "Spirit — Warden",
+        "ability_name": "Ward",
+        "ability": "Other Storm spirits you control get +1 DEF.",
+        "flavor": "Every storm shrine keeps one awake.",
+        "edition": "Unlimited"
+      },
+      "artboard": "legendary"
+    }
+  ]
+}

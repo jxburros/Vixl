@@ -1,0 +1,4617 @@
+{
+  "version": 1,
+  "quality": "draft",
+  "count": 24,
+  "status": "completed",
+  "results": [
+    {
+      "id": "0001",
+      "values": {
+        "name": "Ember Warden",
+        "element": "Ember",
+        "element_color": "#ff6b35",
+        "element_dark": "#2a0905",
+        "element_light": "#ffd166",
+        "art": "assets/58accd4f49886551b9ee1b3845ab31bd52bf7a2e99b3b67bac14778f53b40a85.jpg",
+        "kind": "Spirit \u2014 Warden",
+        "ability_name": "Ward",
+        "ability": "Other Ember spirits you control get +1 DEF.",
+        "flavor": "Every ember shrine keeps one awake.",
+        "edition": "First Edition"
+      },
+      "artboard": "common",
+      "status": "completed",
+      "output": "0001-dc386b8efc84da69.webp",
+      "fingerprint": "dc386b8efc84da696d59a1946fdf0f11f83ade3d59d8ed6f3d0c43fe725c624c",
+      "sha256": "2b2370e787ec3ccb4141fa5e75a2230d45fc5315b7b868247e2eb696b0944b93",
+      "checks": {
+        "card-qa": {
+          "version": 1,
+          "suite_hash": "9320037720cef443af5bb808a24b4fe36691803ac6cecaf08ec9c68e3b0f4076",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "name-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 50,
+              "fits": true
+            },
+            {
+              "id": "ability-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 27,
+              "fits": true
+            },
+            {
+              "id": "flavor-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 24,
+              "fits": true
+            },
+            {
+              "id": "trim-width",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 750,
+              "actual": 750
+            },
+            {
+              "id": "trim-height",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 1050,
+              "actual": 1050
+            },
+            {
+              "id": "name-font",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf",
+              "actual": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf"
+            },
+            {
+              "id": "name-to-art",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 14,
+              "actual": 14
+            },
+            {
+              "id": "art-to-type",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 18,
+              "actual": 18
+            },
+            {
+              "id": "rules-box-palette",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "palette": null,
+              "colors": [
+                "#f4ead2",
+                "#14100c",
+                "#5b4a36",
+                "#a99a80"
+              ],
+              "pixels_checked": 114448,
+              "outside_pixels": 201,
+              "outside_fraction": 0.0017562561163148329,
+              "max_fraction": 0.04,
+              "tolerance": 40,
+              "maximum_distance": 61,
+              "examples": [
+                "#f8b895",
+                "#766f62",
+                "#cac1ad"
+              ],
+              "metric": "maximum RGB channel distance (0\u2013255); alpha below alpha_min excluded"
+            },
+            {
+              "id": "art-inside",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "layer.art.bounds within canvas"
+            },
+            {
+              "id": "name-contrast",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "contrast",
+                  "bounds"
+                ],
+                "layers": 2,
+                "text_layers": 2
+              }
+            }
+          ]
+        },
+        "no-placeholders": {
+          "version": 1,
+          "suite_hash": "c11e6e04e7ce3e236e94ed5e168d2cbe2e943185bc97f04b99a0d53dc1cd64db",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "copy",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "blanks"
+                ],
+                "layers": 26,
+                "text_layers": 13
+              }
+            }
+          ]
+        }
+      },
+      "repairs": [],
+      "cache": {
+        "hits": 52,
+        "misses": 47
+      }
+    },
+    {
+      "id": "0002",
+      "values": {
+        "name": "Ember Warden",
+        "element": "Ember",
+        "element_color": "#ff6b35",
+        "element_dark": "#2a0905",
+        "element_light": "#ffd166",
+        "art": "assets/58accd4f49886551b9ee1b3845ab31bd52bf7a2e99b3b67bac14778f53b40a85.jpg",
+        "kind": "Spirit \u2014 Warden",
+        "ability_name": "Ward",
+        "ability": "Other Ember spirits you control get +1 DEF.",
+        "flavor": "Every ember shrine keeps one awake.",
+        "edition": "First Edition"
+      },
+      "artboard": "rare",
+      "status": "completed",
+      "output": "0002-99a29f9754e3dc2a.webp",
+      "fingerprint": "99a29f9754e3dc2ae75d0e89306f2b2f6aabbbd1c79a7983d1149766daa5c0dd",
+      "sha256": "ece413aca45e234ff205ebe5b4f271fa8ab8dc930e0fd1c024bada69856fb1e6",
+      "checks": {
+        "card-qa": {
+          "version": 1,
+          "suite_hash": "9320037720cef443af5bb808a24b4fe36691803ac6cecaf08ec9c68e3b0f4076",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "name-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 50,
+              "fits": true
+            },
+            {
+              "id": "ability-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 27,
+              "fits": true
+            },
+            {
+              "id": "flavor-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 24,
+              "fits": true
+            },
+            {
+              "id": "trim-width",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 750,
+              "actual": 750
+            },
+            {
+              "id": "trim-height",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 1050,
+              "actual": 1050
+            },
+            {
+              "id": "name-font",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf",
+              "actual": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf"
+            },
+            {
+              "id": "name-to-art",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 14,
+              "actual": 14
+            },
+            {
+              "id": "art-to-type",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 18,
+              "actual": 18
+            },
+            {
+              "id": "rules-box-palette",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "palette": null,
+              "colors": [
+                "#f4ead2",
+                "#14100c",
+                "#5b4a36",
+                "#a99a80"
+              ],
+              "pixels_checked": 114448,
+              "outside_pixels": 201,
+              "outside_fraction": 0.0017562561163148329,
+              "max_fraction": 0.04,
+              "tolerance": 40,
+              "maximum_distance": 61,
+              "examples": [
+                "#f8b895",
+                "#766f62",
+                "#cac1ad"
+              ],
+              "metric": "maximum RGB channel distance (0\u2013255); alpha below alpha_min excluded"
+            },
+            {
+              "id": "art-inside",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "layer.art.bounds within canvas"
+            },
+            {
+              "id": "name-contrast",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "contrast",
+                  "bounds"
+                ],
+                "layers": 2,
+                "text_layers": 2
+              }
+            }
+          ]
+        },
+        "no-placeholders": {
+          "version": 1,
+          "suite_hash": "c11e6e04e7ce3e236e94ed5e168d2cbe2e943185bc97f04b99a0d53dc1cd64db",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "copy",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "blanks"
+                ],
+                "layers": 26,
+                "text_layers": 13
+              }
+            }
+          ]
+        }
+      },
+      "repairs": [],
+      "cache": {
+        "hits": 48,
+        "misses": 36
+      }
+    },
+    {
+      "id": "0003",
+      "values": {
+        "name": "Ember Warden",
+        "element": "Ember",
+        "element_color": "#ff6b35",
+        "element_dark": "#2a0905",
+        "element_light": "#ffd166",
+        "art": "assets/58accd4f49886551b9ee1b3845ab31bd52bf7a2e99b3b67bac14778f53b40a85.jpg",
+        "kind": "Spirit \u2014 Warden",
+        "ability_name": "Ward",
+        "ability": "Other Ember spirits you control get +1 DEF.",
+        "flavor": "Every ember shrine keeps one awake.",
+        "edition": "First Edition"
+      },
+      "artboard": "epic",
+      "status": "completed",
+      "output": "0003-0b1ab3b6ff5bc571.webp",
+      "fingerprint": "0b1ab3b6ff5bc5710ff24f4f0b56b3c2f5f0295ce9dd3d178e6330cb93c66421",
+      "sha256": "78cdb8caaf459af7f09e36dfaaea5883f21fa1b1cb725cf10e6196920bbf0d43",
+      "checks": {
+        "card-qa": {
+          "version": 1,
+          "suite_hash": "9320037720cef443af5bb808a24b4fe36691803ac6cecaf08ec9c68e3b0f4076",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "name-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 50,
+              "fits": true
+            },
+            {
+              "id": "ability-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 27,
+              "fits": true
+            },
+            {
+              "id": "flavor-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 24,
+              "fits": true
+            },
+            {
+              "id": "trim-width",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 750,
+              "actual": 750
+            },
+            {
+              "id": "trim-height",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 1050,
+              "actual": 1050
+            },
+            {
+              "id": "name-font",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf",
+              "actual": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf"
+            },
+            {
+              "id": "name-to-art",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 14,
+              "actual": 14
+            },
+            {
+              "id": "art-to-type",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 18,
+              "actual": 18
+            },
+            {
+              "id": "rules-box-palette",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "palette": null,
+              "colors": [
+                "#f4ead2",
+                "#14100c",
+                "#5b4a36",
+                "#a99a80"
+              ],
+              "pixels_checked": 114448,
+              "outside_pixels": 201,
+              "outside_fraction": 0.0017562561163148329,
+              "max_fraction": 0.04,
+              "tolerance": 40,
+              "maximum_distance": 61,
+              "examples": [
+                "#f8b895",
+                "#766f62",
+                "#cac1ad"
+              ],
+              "metric": "maximum RGB channel distance (0\u2013255); alpha below alpha_min excluded"
+            },
+            {
+              "id": "art-inside",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "layer.art.bounds within canvas"
+            },
+            {
+              "id": "name-contrast",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "contrast",
+                  "bounds"
+                ],
+                "layers": 2,
+                "text_layers": 2
+              }
+            }
+          ]
+        },
+        "no-placeholders": {
+          "version": 1,
+          "suite_hash": "c11e6e04e7ce3e236e94ed5e168d2cbe2e943185bc97f04b99a0d53dc1cd64db",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "copy",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "blanks"
+                ],
+                "layers": 26,
+                "text_layers": 13
+              }
+            }
+          ]
+        }
+      },
+      "repairs": [],
+      "cache": {
+        "hits": 94,
+        "misses": 10
+      }
+    },
+    {
+      "id": "0004",
+      "values": {
+        "name": "Ember Warden",
+        "element": "Ember",
+        "element_color": "#ff6b35",
+        "element_dark": "#2a0905",
+        "element_light": "#ffd166",
+        "art": "assets/58accd4f49886551b9ee1b3845ab31bd52bf7a2e99b3b67bac14778f53b40a85.jpg",
+        "kind": "Spirit \u2014 Warden",
+        "ability_name": "Ward",
+        "ability": "Other Ember spirits you control get +1 DEF.",
+        "flavor": "Every ember shrine keeps one awake.",
+        "edition": "First Edition"
+      },
+      "artboard": "legendary",
+      "status": "completed",
+      "output": "0004-243bcd18e948aa00.webp",
+      "fingerprint": "243bcd18e948aa00df94afcd0d6060a619510b7757c7951e5908861269b20364",
+      "sha256": "3022f06c072d519a1a86dccf75e2a0aba50a5e4ed3e149a44a81f19eb2605116",
+      "checks": {
+        "card-qa": {
+          "version": 1,
+          "suite_hash": "9320037720cef443af5bb808a24b4fe36691803ac6cecaf08ec9c68e3b0f4076",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "name-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 50,
+              "fits": true
+            },
+            {
+              "id": "ability-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 27,
+              "fits": true
+            },
+            {
+              "id": "flavor-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 24,
+              "fits": true
+            },
+            {
+              "id": "trim-width",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 750,
+              "actual": 750
+            },
+            {
+              "id": "trim-height",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 1050,
+              "actual": 1050
+            },
+            {
+              "id": "name-font",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf",
+              "actual": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf"
+            },
+            {
+              "id": "name-to-art",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 14,
+              "actual": 14
+            },
+            {
+              "id": "art-to-type",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 18,
+              "actual": 18
+            },
+            {
+              "id": "rules-box-palette",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "palette": null,
+              "colors": [
+                "#f4ead2",
+                "#14100c",
+                "#5b4a36",
+                "#a99a80"
+              ],
+              "pixels_checked": 114448,
+              "outside_pixels": 201,
+              "outside_fraction": 0.0017562561163148329,
+              "max_fraction": 0.04,
+              "tolerance": 40,
+              "maximum_distance": 61,
+              "examples": [
+                "#f8b895",
+                "#766f62",
+                "#cac1ad"
+              ],
+              "metric": "maximum RGB channel distance (0\u2013255); alpha below alpha_min excluded"
+            },
+            {
+              "id": "art-inside",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "layer.art.bounds within canvas"
+            },
+            {
+              "id": "name-contrast",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "contrast",
+                  "bounds"
+                ],
+                "layers": 2,
+                "text_layers": 2
+              }
+            }
+          ]
+        },
+        "no-placeholders": {
+          "version": 1,
+          "suite_hash": "c11e6e04e7ce3e236e94ed5e168d2cbe2e943185bc97f04b99a0d53dc1cd64db",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "copy",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "blanks"
+                ],
+                "layers": 26,
+                "text_layers": 13
+              }
+            }
+          ]
+        }
+      },
+      "repairs": [],
+      "cache": {
+        "hits": 94,
+        "misses": 10
+      }
+    },
+    {
+      "id": "0005",
+      "values": {
+        "name": "Ember Warden",
+        "element": "Ember",
+        "element_color": "#ff6b35",
+        "element_dark": "#2a0905",
+        "element_light": "#ffd166",
+        "art": "assets/58accd4f49886551b9ee1b3845ab31bd52bf7a2e99b3b67bac14778f53b40a85.jpg",
+        "kind": "Spirit \u2014 Warden",
+        "ability_name": "Ward",
+        "ability": "Other Ember spirits you control get +1 DEF.",
+        "flavor": "Every ember shrine keeps one awake.",
+        "edition": "Unlimited"
+      },
+      "artboard": "common",
+      "status": "completed",
+      "output": "0005-36961d5effb138d5.webp",
+      "fingerprint": "36961d5effb138d5d60042f7914b92b22fde03b6b42ef9de4cfbd671742eb539",
+      "sha256": "07982aa99e7429ea63fa5f784c984983859eb76cbe4eb584a6d423fb53d1d159",
+      "checks": {
+        "card-qa": {
+          "version": 1,
+          "suite_hash": "9320037720cef443af5bb808a24b4fe36691803ac6cecaf08ec9c68e3b0f4076",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "name-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 50,
+              "fits": true
+            },
+            {
+              "id": "ability-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 27,
+              "fits": true
+            },
+            {
+              "id": "flavor-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 24,
+              "fits": true
+            },
+            {
+              "id": "trim-width",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 750,
+              "actual": 750
+            },
+            {
+              "id": "trim-height",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 1050,
+              "actual": 1050
+            },
+            {
+              "id": "name-font",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf",
+              "actual": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf"
+            },
+            {
+              "id": "name-to-art",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 14,
+              "actual": 14
+            },
+            {
+              "id": "art-to-type",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 18,
+              "actual": 18
+            },
+            {
+              "id": "rules-box-palette",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "palette": null,
+              "colors": [
+                "#f4ead2",
+                "#14100c",
+                "#5b4a36",
+                "#a99a80"
+              ],
+              "pixels_checked": 114448,
+              "outside_pixels": 201,
+              "outside_fraction": 0.0017562561163148329,
+              "max_fraction": 0.04,
+              "tolerance": 40,
+              "maximum_distance": 61,
+              "examples": [
+                "#f8b895",
+                "#766f62",
+                "#cac1ad"
+              ],
+              "metric": "maximum RGB channel distance (0\u2013255); alpha below alpha_min excluded"
+            },
+            {
+              "id": "art-inside",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "layer.art.bounds within canvas"
+            },
+            {
+              "id": "name-contrast",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "contrast",
+                  "bounds"
+                ],
+                "layers": 2,
+                "text_layers": 2
+              }
+            }
+          ]
+        },
+        "no-placeholders": {
+          "version": 1,
+          "suite_hash": "c11e6e04e7ce3e236e94ed5e168d2cbe2e943185bc97f04b99a0d53dc1cd64db",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "copy",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "blanks"
+                ],
+                "layers": 26,
+                "text_layers": 13
+              }
+            }
+          ]
+        }
+      },
+      "repairs": [],
+      "cache": {
+        "hits": 100,
+        "misses": 8
+      }
+    },
+    {
+      "id": "0006",
+      "values": {
+        "name": "Ember Warden",
+        "element": "Ember",
+        "element_color": "#ff6b35",
+        "element_dark": "#2a0905",
+        "element_light": "#ffd166",
+        "art": "assets/58accd4f49886551b9ee1b3845ab31bd52bf7a2e99b3b67bac14778f53b40a85.jpg",
+        "kind": "Spirit \u2014 Warden",
+        "ability_name": "Ward",
+        "ability": "Other Ember spirits you control get +1 DEF.",
+        "flavor": "Every ember shrine keeps one awake.",
+        "edition": "Unlimited"
+      },
+      "artboard": "rare",
+      "status": "completed",
+      "output": "0006-cd73714f74d0c3bc.webp",
+      "fingerprint": "cd73714f74d0c3bc33344773f80f64d8646cf6e3f2f762581726d3f46c745872",
+      "sha256": "66064b1649a83ee34dc635bf95f500b06a4f7297b3bc84067d7c7d4938f69d18",
+      "checks": {
+        "card-qa": {
+          "version": 1,
+          "suite_hash": "9320037720cef443af5bb808a24b4fe36691803ac6cecaf08ec9c68e3b0f4076",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "name-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 50,
+              "fits": true
+            },
+            {
+              "id": "ability-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 27,
+              "fits": true
+            },
+            {
+              "id": "flavor-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 24,
+              "fits": true
+            },
+            {
+              "id": "trim-width",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 750,
+              "actual": 750
+            },
+            {
+              "id": "trim-height",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 1050,
+              "actual": 1050
+            },
+            {
+              "id": "name-font",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf",
+              "actual": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf"
+            },
+            {
+              "id": "name-to-art",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 14,
+              "actual": 14
+            },
+            {
+              "id": "art-to-type",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 18,
+              "actual": 18
+            },
+            {
+              "id": "rules-box-palette",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "palette": null,
+              "colors": [
+                "#f4ead2",
+                "#14100c",
+                "#5b4a36",
+                "#a99a80"
+              ],
+              "pixels_checked": 114448,
+              "outside_pixels": 201,
+              "outside_fraction": 0.0017562561163148329,
+              "max_fraction": 0.04,
+              "tolerance": 40,
+              "maximum_distance": 61,
+              "examples": [
+                "#f8b895",
+                "#766f62",
+                "#cac1ad"
+              ],
+              "metric": "maximum RGB channel distance (0\u2013255); alpha below alpha_min excluded"
+            },
+            {
+              "id": "art-inside",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "layer.art.bounds within canvas"
+            },
+            {
+              "id": "name-contrast",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "contrast",
+                  "bounds"
+                ],
+                "layers": 2,
+                "text_layers": 2
+              }
+            }
+          ]
+        },
+        "no-placeholders": {
+          "version": 1,
+          "suite_hash": "c11e6e04e7ce3e236e94ed5e168d2cbe2e943185bc97f04b99a0d53dc1cd64db",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "copy",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "blanks"
+                ],
+                "layers": 26,
+                "text_layers": 13
+              }
+            }
+          ]
+        }
+      },
+      "repairs": [],
+      "cache": {
+        "hits": 102,
+        "misses": 6
+      }
+    },
+    {
+      "id": "0007",
+      "values": {
+        "name": "Ember Warden",
+        "element": "Ember",
+        "element_color": "#ff6b35",
+        "element_dark": "#2a0905",
+        "element_light": "#ffd166",
+        "art": "assets/58accd4f49886551b9ee1b3845ab31bd52bf7a2e99b3b67bac14778f53b40a85.jpg",
+        "kind": "Spirit \u2014 Warden",
+        "ability_name": "Ward",
+        "ability": "Other Ember spirits you control get +1 DEF.",
+        "flavor": "Every ember shrine keeps one awake.",
+        "edition": "Unlimited"
+      },
+      "artboard": "epic",
+      "status": "completed",
+      "output": "0007-b11cc92b58eff574.webp",
+      "fingerprint": "b11cc92b58eff57411978935b0148872dc452f8c56c2d8a2f248f436e5957b54",
+      "sha256": "3a3c3503d5aeec6ab849cc7112b2edbe0da7a28fadd2747aada9537538c2432b",
+      "checks": {
+        "card-qa": {
+          "version": 1,
+          "suite_hash": "9320037720cef443af5bb808a24b4fe36691803ac6cecaf08ec9c68e3b0f4076",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "name-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 50,
+              "fits": true
+            },
+            {
+              "id": "ability-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 27,
+              "fits": true
+            },
+            {
+              "id": "flavor-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 24,
+              "fits": true
+            },
+            {
+              "id": "trim-width",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 750,
+              "actual": 750
+            },
+            {
+              "id": "trim-height",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 1050,
+              "actual": 1050
+            },
+            {
+              "id": "name-font",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf",
+              "actual": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf"
+            },
+            {
+              "id": "name-to-art",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 14,
+              "actual": 14
+            },
+            {
+              "id": "art-to-type",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 18,
+              "actual": 18
+            },
+            {
+              "id": "rules-box-palette",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "palette": null,
+              "colors": [
+                "#f4ead2",
+                "#14100c",
+                "#5b4a36",
+                "#a99a80"
+              ],
+              "pixels_checked": 114448,
+              "outside_pixels": 201,
+              "outside_fraction": 0.0017562561163148329,
+              "max_fraction": 0.04,
+              "tolerance": 40,
+              "maximum_distance": 61,
+              "examples": [
+                "#f8b895",
+                "#766f62",
+                "#cac1ad"
+              ],
+              "metric": "maximum RGB channel distance (0\u2013255); alpha below alpha_min excluded"
+            },
+            {
+              "id": "art-inside",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "layer.art.bounds within canvas"
+            },
+            {
+              "id": "name-contrast",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "contrast",
+                  "bounds"
+                ],
+                "layers": 2,
+                "text_layers": 2
+              }
+            }
+          ]
+        },
+        "no-placeholders": {
+          "version": 1,
+          "suite_hash": "c11e6e04e7ce3e236e94ed5e168d2cbe2e943185bc97f04b99a0d53dc1cd64db",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "copy",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "blanks"
+                ],
+                "layers": 26,
+                "text_layers": 13
+              }
+            }
+          ]
+        }
+      },
+      "repairs": [],
+      "cache": {
+        "hits": 102,
+        "misses": 6
+      }
+    },
+    {
+      "id": "0008",
+      "values": {
+        "name": "Ember Warden",
+        "element": "Ember",
+        "element_color": "#ff6b35",
+        "element_dark": "#2a0905",
+        "element_light": "#ffd166",
+        "art": "assets/58accd4f49886551b9ee1b3845ab31bd52bf7a2e99b3b67bac14778f53b40a85.jpg",
+        "kind": "Spirit \u2014 Warden",
+        "ability_name": "Ward",
+        "ability": "Other Ember spirits you control get +1 DEF.",
+        "flavor": "Every ember shrine keeps one awake.",
+        "edition": "Unlimited"
+      },
+      "artboard": "legendary",
+      "status": "completed",
+      "output": "0008-834a93046cf2efa8.webp",
+      "fingerprint": "834a93046cf2efa84e948e50df7ad0549714ca9cceefd762a0125b7f8335bc03",
+      "sha256": "54ab3d93ee7a4590ef8560d699613fbeb0dde772e3797a228e2ecd84b63aadc9",
+      "checks": {
+        "card-qa": {
+          "version": 1,
+          "suite_hash": "9320037720cef443af5bb808a24b4fe36691803ac6cecaf08ec9c68e3b0f4076",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "name-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 50,
+              "fits": true
+            },
+            {
+              "id": "ability-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 27,
+              "fits": true
+            },
+            {
+              "id": "flavor-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 24,
+              "fits": true
+            },
+            {
+              "id": "trim-width",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 750,
+              "actual": 750
+            },
+            {
+              "id": "trim-height",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 1050,
+              "actual": 1050
+            },
+            {
+              "id": "name-font",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf",
+              "actual": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf"
+            },
+            {
+              "id": "name-to-art",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 14,
+              "actual": 14
+            },
+            {
+              "id": "art-to-type",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 18,
+              "actual": 18
+            },
+            {
+              "id": "rules-box-palette",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "palette": null,
+              "colors": [
+                "#f4ead2",
+                "#14100c",
+                "#5b4a36",
+                "#a99a80"
+              ],
+              "pixels_checked": 114448,
+              "outside_pixels": 201,
+              "outside_fraction": 0.0017562561163148329,
+              "max_fraction": 0.04,
+              "tolerance": 40,
+              "maximum_distance": 61,
+              "examples": [
+                "#f8b895",
+                "#766f62",
+                "#cac1ad"
+              ],
+              "metric": "maximum RGB channel distance (0\u2013255); alpha below alpha_min excluded"
+            },
+            {
+              "id": "art-inside",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "layer.art.bounds within canvas"
+            },
+            {
+              "id": "name-contrast",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "contrast",
+                  "bounds"
+                ],
+                "layers": 2,
+                "text_layers": 2
+              }
+            }
+          ]
+        },
+        "no-placeholders": {
+          "version": 1,
+          "suite_hash": "c11e6e04e7ce3e236e94ed5e168d2cbe2e943185bc97f04b99a0d53dc1cd64db",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "copy",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "blanks"
+                ],
+                "layers": 26,
+                "text_layers": 13
+              }
+            }
+          ]
+        }
+      },
+      "repairs": [],
+      "cache": {
+        "hits": 102,
+        "misses": 6
+      }
+    },
+    {
+      "id": "0009",
+      "values": {
+        "name": "Tide Warden",
+        "element": "Tide",
+        "element_color": "#2ec4ff",
+        "element_dark": "#03182b",
+        "element_light": "#c9f6ff",
+        "art": "assets/361adb2f1934f093e62bba3620d23c151984becd3aabceb9177ec876ad6fe1dd.jpg",
+        "kind": "Spirit \u2014 Warden",
+        "ability_name": "Ward",
+        "ability": "Other Tide spirits you control get +1 DEF.",
+        "flavor": "Every tide shrine keeps one awake.",
+        "edition": "First Edition"
+      },
+      "artboard": "common",
+      "status": "completed",
+      "output": "0009-c0b1e47525aa9170.webp",
+      "fingerprint": "c0b1e47525aa917099307c1b0c2b433df9996b7703e6c0ab0be94faf11803f59",
+      "sha256": "23222ff32f05a9f84d31d10a77f8bbaabfdfa744830fb167dc3f8b29113be691",
+      "checks": {
+        "card-qa": {
+          "version": 1,
+          "suite_hash": "9320037720cef443af5bb808a24b4fe36691803ac6cecaf08ec9c68e3b0f4076",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "name-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 50,
+              "fits": true
+            },
+            {
+              "id": "ability-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 27,
+              "fits": true
+            },
+            {
+              "id": "flavor-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 24,
+              "fits": true
+            },
+            {
+              "id": "trim-width",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 750,
+              "actual": 750
+            },
+            {
+              "id": "trim-height",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 1050,
+              "actual": 1050
+            },
+            {
+              "id": "name-font",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf",
+              "actual": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf"
+            },
+            {
+              "id": "name-to-art",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 14,
+              "actual": 14
+            },
+            {
+              "id": "art-to-type",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 18,
+              "actual": 18
+            },
+            {
+              "id": "rules-box-palette",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "palette": null,
+              "colors": [
+                "#f4ead2",
+                "#14100c",
+                "#5b4a36",
+                "#a99a80"
+              ],
+              "pixels_checked": 114448,
+              "outside_pixels": 195,
+              "outside_fraction": 0.0017038305606039423,
+              "max_fraction": 0.04,
+              "tolerance": 40,
+              "maximum_distance": 78,
+              "examples": [
+                "#a6dbe4",
+                "#cac1ad",
+                "#777063",
+                "#766f62"
+              ],
+              "metric": "maximum RGB channel distance (0\u2013255); alpha below alpha_min excluded"
+            },
+            {
+              "id": "art-inside",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "layer.art.bounds within canvas"
+            },
+            {
+              "id": "name-contrast",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "contrast",
+                  "bounds"
+                ],
+                "layers": 2,
+                "text_layers": 2
+              }
+            }
+          ]
+        },
+        "no-placeholders": {
+          "version": 1,
+          "suite_hash": "c11e6e04e7ce3e236e94ed5e168d2cbe2e943185bc97f04b99a0d53dc1cd64db",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "copy",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "blanks"
+                ],
+                "layers": 26,
+                "text_layers": 13
+              }
+            }
+          ]
+        }
+      },
+      "repairs": [],
+      "cache": {
+        "hits": 53,
+        "misses": 37
+      }
+    },
+    {
+      "id": "0010",
+      "values": {
+        "name": "Tide Warden",
+        "element": "Tide",
+        "element_color": "#2ec4ff",
+        "element_dark": "#03182b",
+        "element_light": "#c9f6ff",
+        "art": "assets/361adb2f1934f093e62bba3620d23c151984becd3aabceb9177ec876ad6fe1dd.jpg",
+        "kind": "Spirit \u2014 Warden",
+        "ability_name": "Ward",
+        "ability": "Other Tide spirits you control get +1 DEF.",
+        "flavor": "Every tide shrine keeps one awake.",
+        "edition": "First Edition"
+      },
+      "artboard": "rare",
+      "status": "completed",
+      "output": "0010-ff69857ef0e35f0c.webp",
+      "fingerprint": "ff69857ef0e35f0cada20e7e60f840bd0590cefe6041f0fcfa29687618222766",
+      "sha256": "d61f6384698576c495cb60dc07dbbc5d36384658472a71cb84642d79d991056e",
+      "checks": {
+        "card-qa": {
+          "version": 1,
+          "suite_hash": "9320037720cef443af5bb808a24b4fe36691803ac6cecaf08ec9c68e3b0f4076",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "name-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 50,
+              "fits": true
+            },
+            {
+              "id": "ability-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 27,
+              "fits": true
+            },
+            {
+              "id": "flavor-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 24,
+              "fits": true
+            },
+            {
+              "id": "trim-width",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 750,
+              "actual": 750
+            },
+            {
+              "id": "trim-height",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 1050,
+              "actual": 1050
+            },
+            {
+              "id": "name-font",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf",
+              "actual": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf"
+            },
+            {
+              "id": "name-to-art",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 14,
+              "actual": 14
+            },
+            {
+              "id": "art-to-type",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 18,
+              "actual": 18
+            },
+            {
+              "id": "rules-box-palette",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "palette": null,
+              "colors": [
+                "#f4ead2",
+                "#14100c",
+                "#5b4a36",
+                "#a99a80"
+              ],
+              "pixels_checked": 114448,
+              "outside_pixels": 195,
+              "outside_fraction": 0.0017038305606039423,
+              "max_fraction": 0.04,
+              "tolerance": 40,
+              "maximum_distance": 78,
+              "examples": [
+                "#a6dbe4",
+                "#cac1ad",
+                "#777063",
+                "#766f62"
+              ],
+              "metric": "maximum RGB channel distance (0\u2013255); alpha below alpha_min excluded"
+            },
+            {
+              "id": "art-inside",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "layer.art.bounds within canvas"
+            },
+            {
+              "id": "name-contrast",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "contrast",
+                  "bounds"
+                ],
+                "layers": 2,
+                "text_layers": 2
+              }
+            }
+          ]
+        },
+        "no-placeholders": {
+          "version": 1,
+          "suite_hash": "c11e6e04e7ce3e236e94ed5e168d2cbe2e943185bc97f04b99a0d53dc1cd64db",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "copy",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "blanks"
+                ],
+                "layers": 26,
+                "text_layers": 13
+              }
+            }
+          ]
+        }
+      },
+      "repairs": [],
+      "cache": {
+        "hits": 59,
+        "misses": 31
+      }
+    },
+    {
+      "id": "0011",
+      "values": {
+        "name": "Tide Warden",
+        "element": "Tide",
+        "element_color": "#2ec4ff",
+        "element_dark": "#03182b",
+        "element_light": "#c9f6ff",
+        "art": "assets/361adb2f1934f093e62bba3620d23c151984becd3aabceb9177ec876ad6fe1dd.jpg",
+        "kind": "Spirit \u2014 Warden",
+        "ability_name": "Ward",
+        "ability": "Other Tide spirits you control get +1 DEF.",
+        "flavor": "Every tide shrine keeps one awake.",
+        "edition": "First Edition"
+      },
+      "artboard": "epic",
+      "status": "completed",
+      "output": "0011-265171023761735c.webp",
+      "fingerprint": "265171023761735c224b2b9f7c5b2190851660c84f768fa812273da60dc39a52",
+      "sha256": "4d0a854770dbeb59ff04e747a89ccf91a6ecc4db8aaef2186054ff5943b684bd",
+      "checks": {
+        "card-qa": {
+          "version": 1,
+          "suite_hash": "9320037720cef443af5bb808a24b4fe36691803ac6cecaf08ec9c68e3b0f4076",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "name-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 50,
+              "fits": true
+            },
+            {
+              "id": "ability-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 27,
+              "fits": true
+            },
+            {
+              "id": "flavor-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 24,
+              "fits": true
+            },
+            {
+              "id": "trim-width",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 750,
+              "actual": 750
+            },
+            {
+              "id": "trim-height",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 1050,
+              "actual": 1050
+            },
+            {
+              "id": "name-font",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf",
+              "actual": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf"
+            },
+            {
+              "id": "name-to-art",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 14,
+              "actual": 14
+            },
+            {
+              "id": "art-to-type",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 18,
+              "actual": 18
+            },
+            {
+              "id": "rules-box-palette",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "palette": null,
+              "colors": [
+                "#f4ead2",
+                "#14100c",
+                "#5b4a36",
+                "#a99a80"
+              ],
+              "pixels_checked": 114448,
+              "outside_pixels": 195,
+              "outside_fraction": 0.0017038305606039423,
+              "max_fraction": 0.04,
+              "tolerance": 40,
+              "maximum_distance": 78,
+              "examples": [
+                "#a6dbe4",
+                "#cac1ad",
+                "#777063",
+                "#766f62"
+              ],
+              "metric": "maximum RGB channel distance (0\u2013255); alpha below alpha_min excluded"
+            },
+            {
+              "id": "art-inside",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "layer.art.bounds within canvas"
+            },
+            {
+              "id": "name-contrast",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "contrast",
+                  "bounds"
+                ],
+                "layers": 2,
+                "text_layers": 2
+              }
+            }
+          ]
+        },
+        "no-placeholders": {
+          "version": 1,
+          "suite_hash": "c11e6e04e7ce3e236e94ed5e168d2cbe2e943185bc97f04b99a0d53dc1cd64db",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "copy",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "blanks"
+                ],
+                "layers": 26,
+                "text_layers": 13
+              }
+            }
+          ]
+        }
+      },
+      "repairs": [],
+      "cache": {
+        "hits": 98,
+        "misses": 8
+      }
+    },
+    {
+      "id": "0012",
+      "values": {
+        "name": "Tide Warden",
+        "element": "Tide",
+        "element_color": "#2ec4ff",
+        "element_dark": "#03182b",
+        "element_light": "#c9f6ff",
+        "art": "assets/361adb2f1934f093e62bba3620d23c151984becd3aabceb9177ec876ad6fe1dd.jpg",
+        "kind": "Spirit \u2014 Warden",
+        "ability_name": "Ward",
+        "ability": "Other Tide spirits you control get +1 DEF.",
+        "flavor": "Every tide shrine keeps one awake.",
+        "edition": "First Edition"
+      },
+      "artboard": "legendary",
+      "status": "completed",
+      "output": "0012-5eb6a329f3b9ec2e.webp",
+      "fingerprint": "5eb6a329f3b9ec2eabc23538ef92f1a900d0dd783695322a1beea1e36389a19f",
+      "sha256": "e04eb986b4c0293623f3d8a5ecd489d14a99e1ba801f8cfc58c267a3363e4e56",
+      "checks": {
+        "card-qa": {
+          "version": 1,
+          "suite_hash": "9320037720cef443af5bb808a24b4fe36691803ac6cecaf08ec9c68e3b0f4076",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "name-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 50,
+              "fits": true
+            },
+            {
+              "id": "ability-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 27,
+              "fits": true
+            },
+            {
+              "id": "flavor-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 24,
+              "fits": true
+            },
+            {
+              "id": "trim-width",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 750,
+              "actual": 750
+            },
+            {
+              "id": "trim-height",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 1050,
+              "actual": 1050
+            },
+            {
+              "id": "name-font",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf",
+              "actual": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf"
+            },
+            {
+              "id": "name-to-art",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 14,
+              "actual": 14
+            },
+            {
+              "id": "art-to-type",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 18,
+              "actual": 18
+            },
+            {
+              "id": "rules-box-palette",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "palette": null,
+              "colors": [
+                "#f4ead2",
+                "#14100c",
+                "#5b4a36",
+                "#a99a80"
+              ],
+              "pixels_checked": 114448,
+              "outside_pixels": 195,
+              "outside_fraction": 0.0017038305606039423,
+              "max_fraction": 0.04,
+              "tolerance": 40,
+              "maximum_distance": 78,
+              "examples": [
+                "#a6dbe4",
+                "#cac1ad",
+                "#777063",
+                "#766f62"
+              ],
+              "metric": "maximum RGB channel distance (0\u2013255); alpha below alpha_min excluded"
+            },
+            {
+              "id": "art-inside",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "layer.art.bounds within canvas"
+            },
+            {
+              "id": "name-contrast",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "contrast",
+                  "bounds"
+                ],
+                "layers": 2,
+                "text_layers": 2
+              }
+            }
+          ]
+        },
+        "no-placeholders": {
+          "version": 1,
+          "suite_hash": "c11e6e04e7ce3e236e94ed5e168d2cbe2e943185bc97f04b99a0d53dc1cd64db",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "copy",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "blanks"
+                ],
+                "layers": 26,
+                "text_layers": 13
+              }
+            }
+          ]
+        }
+      },
+      "repairs": [],
+      "cache": {
+        "hits": 98,
+        "misses": 8
+      }
+    },
+    {
+      "id": "0013",
+      "values": {
+        "name": "Tide Warden",
+        "element": "Tide",
+        "element_color": "#2ec4ff",
+        "element_dark": "#03182b",
+        "element_light": "#c9f6ff",
+        "art": "assets/361adb2f1934f093e62bba3620d23c151984becd3aabceb9177ec876ad6fe1dd.jpg",
+        "kind": "Spirit \u2014 Warden",
+        "ability_name": "Ward",
+        "ability": "Other Tide spirits you control get +1 DEF.",
+        "flavor": "Every tide shrine keeps one awake.",
+        "edition": "Unlimited"
+      },
+      "artboard": "common",
+      "status": "completed",
+      "output": "0013-fd62358d341da467.webp",
+      "fingerprint": "fd62358d341da4670c1a86427c98e68d3bf054dc41300450393470f4cb7063b7",
+      "sha256": "a88b8e04a588f5f176f377d667bea93d363b6d904fa8d7d6ab7ed571a8b860aa",
+      "checks": {
+        "card-qa": {
+          "version": 1,
+          "suite_hash": "9320037720cef443af5bb808a24b4fe36691803ac6cecaf08ec9c68e3b0f4076",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "name-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 50,
+              "fits": true
+            },
+            {
+              "id": "ability-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 27,
+              "fits": true
+            },
+            {
+              "id": "flavor-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 24,
+              "fits": true
+            },
+            {
+              "id": "trim-width",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 750,
+              "actual": 750
+            },
+            {
+              "id": "trim-height",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 1050,
+              "actual": 1050
+            },
+            {
+              "id": "name-font",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf",
+              "actual": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf"
+            },
+            {
+              "id": "name-to-art",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 14,
+              "actual": 14
+            },
+            {
+              "id": "art-to-type",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 18,
+              "actual": 18
+            },
+            {
+              "id": "rules-box-palette",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "palette": null,
+              "colors": [
+                "#f4ead2",
+                "#14100c",
+                "#5b4a36",
+                "#a99a80"
+              ],
+              "pixels_checked": 114448,
+              "outside_pixels": 195,
+              "outside_fraction": 0.0017038305606039423,
+              "max_fraction": 0.04,
+              "tolerance": 40,
+              "maximum_distance": 78,
+              "examples": [
+                "#a6dbe4",
+                "#cac1ad",
+                "#777063",
+                "#766f62"
+              ],
+              "metric": "maximum RGB channel distance (0\u2013255); alpha below alpha_min excluded"
+            },
+            {
+              "id": "art-inside",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "layer.art.bounds within canvas"
+            },
+            {
+              "id": "name-contrast",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "contrast",
+                  "bounds"
+                ],
+                "layers": 2,
+                "text_layers": 2
+              }
+            }
+          ]
+        },
+        "no-placeholders": {
+          "version": 1,
+          "suite_hash": "c11e6e04e7ce3e236e94ed5e168d2cbe2e943185bc97f04b99a0d53dc1cd64db",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "copy",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "blanks"
+                ],
+                "layers": 26,
+                "text_layers": 13
+              }
+            }
+          ]
+        }
+      },
+      "repairs": [],
+      "cache": {
+        "hits": 102,
+        "misses": 6
+      }
+    },
+    {
+      "id": "0014",
+      "values": {
+        "name": "Tide Warden",
+        "element": "Tide",
+        "element_color": "#2ec4ff",
+        "element_dark": "#03182b",
+        "element_light": "#c9f6ff",
+        "art": "assets/361adb2f1934f093e62bba3620d23c151984becd3aabceb9177ec876ad6fe1dd.jpg",
+        "kind": "Spirit \u2014 Warden",
+        "ability_name": "Ward",
+        "ability": "Other Tide spirits you control get +1 DEF.",
+        "flavor": "Every tide shrine keeps one awake.",
+        "edition": "Unlimited"
+      },
+      "artboard": "rare",
+      "status": "completed",
+      "output": "0014-5a879e85c7727e97.webp",
+      "fingerprint": "5a879e85c7727e97eae7302392d3b431a8019433ab95d0cb32aedfe872e403ac",
+      "sha256": "bb4375b3f3ccc71c1f567d3a6901f127795f305320cbf382ead228d110fcdd3b",
+      "checks": {
+        "card-qa": {
+          "version": 1,
+          "suite_hash": "9320037720cef443af5bb808a24b4fe36691803ac6cecaf08ec9c68e3b0f4076",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "name-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 50,
+              "fits": true
+            },
+            {
+              "id": "ability-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 27,
+              "fits": true
+            },
+            {
+              "id": "flavor-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 24,
+              "fits": true
+            },
+            {
+              "id": "trim-width",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 750,
+              "actual": 750
+            },
+            {
+              "id": "trim-height",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 1050,
+              "actual": 1050
+            },
+            {
+              "id": "name-font",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf",
+              "actual": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf"
+            },
+            {
+              "id": "name-to-art",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 14,
+              "actual": 14
+            },
+            {
+              "id": "art-to-type",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 18,
+              "actual": 18
+            },
+            {
+              "id": "rules-box-palette",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "palette": null,
+              "colors": [
+                "#f4ead2",
+                "#14100c",
+                "#5b4a36",
+                "#a99a80"
+              ],
+              "pixels_checked": 114448,
+              "outside_pixels": 195,
+              "outside_fraction": 0.0017038305606039423,
+              "max_fraction": 0.04,
+              "tolerance": 40,
+              "maximum_distance": 78,
+              "examples": [
+                "#a6dbe4",
+                "#cac1ad",
+                "#777063",
+                "#766f62"
+              ],
+              "metric": "maximum RGB channel distance (0\u2013255); alpha below alpha_min excluded"
+            },
+            {
+              "id": "art-inside",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "layer.art.bounds within canvas"
+            },
+            {
+              "id": "name-contrast",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "contrast",
+                  "bounds"
+                ],
+                "layers": 2,
+                "text_layers": 2
+              }
+            }
+          ]
+        },
+        "no-placeholders": {
+          "version": 1,
+          "suite_hash": "c11e6e04e7ce3e236e94ed5e168d2cbe2e943185bc97f04b99a0d53dc1cd64db",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "copy",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "blanks"
+                ],
+                "layers": 26,
+                "text_layers": 13
+              }
+            }
+          ]
+        }
+      },
+      "repairs": [],
+      "cache": {
+        "hits": 102,
+        "misses": 6
+      }
+    },
+    {
+      "id": "0015",
+      "values": {
+        "name": "Tide Warden",
+        "element": "Tide",
+        "element_color": "#2ec4ff",
+        "element_dark": "#03182b",
+        "element_light": "#c9f6ff",
+        "art": "assets/361adb2f1934f093e62bba3620d23c151984becd3aabceb9177ec876ad6fe1dd.jpg",
+        "kind": "Spirit \u2014 Warden",
+        "ability_name": "Ward",
+        "ability": "Other Tide spirits you control get +1 DEF.",
+        "flavor": "Every tide shrine keeps one awake.",
+        "edition": "Unlimited"
+      },
+      "artboard": "epic",
+      "status": "completed",
+      "output": "0015-23617917e9c56d3d.webp",
+      "fingerprint": "23617917e9c56d3d16066ae97760b70cd6d8fe9113fdbcd933fd1aeabf784359",
+      "sha256": "7332fa587e402f848e1924fb5823383b2242597bdabf63aa85dca8332ac28a48",
+      "checks": {
+        "card-qa": {
+          "version": 1,
+          "suite_hash": "9320037720cef443af5bb808a24b4fe36691803ac6cecaf08ec9c68e3b0f4076",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "name-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 50,
+              "fits": true
+            },
+            {
+              "id": "ability-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 27,
+              "fits": true
+            },
+            {
+              "id": "flavor-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 24,
+              "fits": true
+            },
+            {
+              "id": "trim-width",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 750,
+              "actual": 750
+            },
+            {
+              "id": "trim-height",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 1050,
+              "actual": 1050
+            },
+            {
+              "id": "name-font",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf",
+              "actual": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf"
+            },
+            {
+              "id": "name-to-art",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 14,
+              "actual": 14
+            },
+            {
+              "id": "art-to-type",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 18,
+              "actual": 18
+            },
+            {
+              "id": "rules-box-palette",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "palette": null,
+              "colors": [
+                "#f4ead2",
+                "#14100c",
+                "#5b4a36",
+                "#a99a80"
+              ],
+              "pixels_checked": 114448,
+              "outside_pixels": 195,
+              "outside_fraction": 0.0017038305606039423,
+              "max_fraction": 0.04,
+              "tolerance": 40,
+              "maximum_distance": 78,
+              "examples": [
+                "#a6dbe4",
+                "#cac1ad",
+                "#777063",
+                "#766f62"
+              ],
+              "metric": "maximum RGB channel distance (0\u2013255); alpha below alpha_min excluded"
+            },
+            {
+              "id": "art-inside",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "layer.art.bounds within canvas"
+            },
+            {
+              "id": "name-contrast",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "contrast",
+                  "bounds"
+                ],
+                "layers": 2,
+                "text_layers": 2
+              }
+            }
+          ]
+        },
+        "no-placeholders": {
+          "version": 1,
+          "suite_hash": "c11e6e04e7ce3e236e94ed5e168d2cbe2e943185bc97f04b99a0d53dc1cd64db",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "copy",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "blanks"
+                ],
+                "layers": 26,
+                "text_layers": 13
+              }
+            }
+          ]
+        }
+      },
+      "repairs": [],
+      "cache": {
+        "hits": 102,
+        "misses": 6
+      }
+    },
+    {
+      "id": "0016",
+      "values": {
+        "name": "Tide Warden",
+        "element": "Tide",
+        "element_color": "#2ec4ff",
+        "element_dark": "#03182b",
+        "element_light": "#c9f6ff",
+        "art": "assets/361adb2f1934f093e62bba3620d23c151984becd3aabceb9177ec876ad6fe1dd.jpg",
+        "kind": "Spirit \u2014 Warden",
+        "ability_name": "Ward",
+        "ability": "Other Tide spirits you control get +1 DEF.",
+        "flavor": "Every tide shrine keeps one awake.",
+        "edition": "Unlimited"
+      },
+      "artboard": "legendary",
+      "status": "completed",
+      "output": "0016-ea640412c6967f2f.webp",
+      "fingerprint": "ea640412c6967f2f536b127b3a5eefc8b0a48fa6a60ed4c38266ce7146f6be31",
+      "sha256": "3cc0a3457c866c9b1883a1dc32df3f9624927f20cfb073281cd949f5fbb9b2d6",
+      "checks": {
+        "card-qa": {
+          "version": 1,
+          "suite_hash": "9320037720cef443af5bb808a24b4fe36691803ac6cecaf08ec9c68e3b0f4076",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "name-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 50,
+              "fits": true
+            },
+            {
+              "id": "ability-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 27,
+              "fits": true
+            },
+            {
+              "id": "flavor-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 24,
+              "fits": true
+            },
+            {
+              "id": "trim-width",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 750,
+              "actual": 750
+            },
+            {
+              "id": "trim-height",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 1050,
+              "actual": 1050
+            },
+            {
+              "id": "name-font",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf",
+              "actual": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf"
+            },
+            {
+              "id": "name-to-art",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 14,
+              "actual": 14
+            },
+            {
+              "id": "art-to-type",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 18,
+              "actual": 18
+            },
+            {
+              "id": "rules-box-palette",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "palette": null,
+              "colors": [
+                "#f4ead2",
+                "#14100c",
+                "#5b4a36",
+                "#a99a80"
+              ],
+              "pixels_checked": 114448,
+              "outside_pixels": 195,
+              "outside_fraction": 0.0017038305606039423,
+              "max_fraction": 0.04,
+              "tolerance": 40,
+              "maximum_distance": 78,
+              "examples": [
+                "#a6dbe4",
+                "#cac1ad",
+                "#777063",
+                "#766f62"
+              ],
+              "metric": "maximum RGB channel distance (0\u2013255); alpha below alpha_min excluded"
+            },
+            {
+              "id": "art-inside",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "layer.art.bounds within canvas"
+            },
+            {
+              "id": "name-contrast",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "contrast",
+                  "bounds"
+                ],
+                "layers": 2,
+                "text_layers": 2
+              }
+            }
+          ]
+        },
+        "no-placeholders": {
+          "version": 1,
+          "suite_hash": "c11e6e04e7ce3e236e94ed5e168d2cbe2e943185bc97f04b99a0d53dc1cd64db",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "copy",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "blanks"
+                ],
+                "layers": 26,
+                "text_layers": 13
+              }
+            }
+          ]
+        }
+      },
+      "repairs": [],
+      "cache": {
+        "hits": 102,
+        "misses": 6
+      }
+    },
+    {
+      "id": "0017",
+      "values": {
+        "name": "Storm Warden",
+        "element": "Storm",
+        "element_color": "#b388ff",
+        "element_dark": "#130a2e",
+        "element_light": "#f1e6ff",
+        "art": "assets/ea8639166deac9e193def32f5ef09362796211bb87b22094e6fd2bf1d9772944.jpg",
+        "kind": "Spirit \u2014 Warden",
+        "ability_name": "Ward",
+        "ability": "Other Storm spirits you control get +1 DEF.",
+        "flavor": "Every storm shrine keeps one awake.",
+        "edition": "First Edition"
+      },
+      "artboard": "common",
+      "status": "completed",
+      "output": "0017-31c4eeea9fa7658f.webp",
+      "fingerprint": "31c4eeea9fa7658f1502206aaceec61b577ee155eab09a33e074ab6d1c77d21d",
+      "sha256": "3d0db502415318e3345b93011e9ae08e270f6e8262a23e0eca1e7ca6f16ae441",
+      "checks": {
+        "card-qa": {
+          "version": 1,
+          "suite_hash": "9320037720cef443af5bb808a24b4fe36691803ac6cecaf08ec9c68e3b0f4076",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "name-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 50,
+              "fits": true
+            },
+            {
+              "id": "ability-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 27,
+              "fits": true
+            },
+            {
+              "id": "flavor-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 24,
+              "fits": true
+            },
+            {
+              "id": "trim-width",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 750,
+              "actual": 750
+            },
+            {
+              "id": "trim-height",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 1050,
+              "actual": 1050
+            },
+            {
+              "id": "name-font",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf",
+              "actual": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf"
+            },
+            {
+              "id": "name-to-art",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 14,
+              "actual": 14
+            },
+            {
+              "id": "art-to-type",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 18,
+              "actual": 18
+            },
+            {
+              "id": "rules-box-palette",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "palette": null,
+              "colors": [
+                "#f4ead2",
+                "#14100c",
+                "#5b4a36",
+                "#a99a80"
+              ],
+              "pixels_checked": 114448,
+              "outside_pixels": 197,
+              "outside_fraction": 0.001721305745840906,
+              "max_fraction": 0.04,
+              "tolerance": 40,
+              "maximum_distance": 45,
+              "examples": [
+                "#766f62",
+                "#cac1ad"
+              ],
+              "metric": "maximum RGB channel distance (0\u2013255); alpha below alpha_min excluded"
+            },
+            {
+              "id": "art-inside",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "layer.art.bounds within canvas"
+            },
+            {
+              "id": "name-contrast",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "contrast",
+                  "bounds"
+                ],
+                "layers": 2,
+                "text_layers": 2
+              }
+            }
+          ]
+        },
+        "no-placeholders": {
+          "version": 1,
+          "suite_hash": "c11e6e04e7ce3e236e94ed5e168d2cbe2e943185bc97f04b99a0d53dc1cd64db",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "copy",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "blanks"
+                ],
+                "layers": 26,
+                "text_layers": 13
+              }
+            }
+          ]
+        }
+      },
+      "repairs": [],
+      "cache": {
+        "hits": 56,
+        "misses": 21
+      }
+    },
+    {
+      "id": "0018",
+      "values": {
+        "name": "Storm Warden",
+        "element": "Storm",
+        "element_color": "#b388ff",
+        "element_dark": "#130a2e",
+        "element_light": "#f1e6ff",
+        "art": "assets/ea8639166deac9e193def32f5ef09362796211bb87b22094e6fd2bf1d9772944.jpg",
+        "kind": "Spirit \u2014 Warden",
+        "ability_name": "Ward",
+        "ability": "Other Storm spirits you control get +1 DEF.",
+        "flavor": "Every storm shrine keeps one awake.",
+        "edition": "First Edition"
+      },
+      "artboard": "rare",
+      "status": "completed",
+      "output": "0018-d2ca11fa9675fda5.webp",
+      "fingerprint": "d2ca11fa9675fda5798edb1b234af614759e34eba4ca11475db086b9f0bf7b48",
+      "sha256": "c0468c632cd9662281ae62c82e494dfed3e36cd294931b02bcf1f4852c27bb23",
+      "checks": {
+        "card-qa": {
+          "version": 1,
+          "suite_hash": "9320037720cef443af5bb808a24b4fe36691803ac6cecaf08ec9c68e3b0f4076",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "name-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 50,
+              "fits": true
+            },
+            {
+              "id": "ability-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 27,
+              "fits": true
+            },
+            {
+              "id": "flavor-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 24,
+              "fits": true
+            },
+            {
+              "id": "trim-width",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 750,
+              "actual": 750
+            },
+            {
+              "id": "trim-height",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 1050,
+              "actual": 1050
+            },
+            {
+              "id": "name-font",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf",
+              "actual": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf"
+            },
+            {
+              "id": "name-to-art",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 14,
+              "actual": 14
+            },
+            {
+              "id": "art-to-type",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 18,
+              "actual": 18
+            },
+            {
+              "id": "rules-box-palette",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "palette": null,
+              "colors": [
+                "#f4ead2",
+                "#14100c",
+                "#5b4a36",
+                "#a99a80"
+              ],
+              "pixels_checked": 114448,
+              "outside_pixels": 197,
+              "outside_fraction": 0.001721305745840906,
+              "max_fraction": 0.04,
+              "tolerance": 40,
+              "maximum_distance": 45,
+              "examples": [
+                "#766f62",
+                "#cac1ad"
+              ],
+              "metric": "maximum RGB channel distance (0\u2013255); alpha below alpha_min excluded"
+            },
+            {
+              "id": "art-inside",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "layer.art.bounds within canvas"
+            },
+            {
+              "id": "name-contrast",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "contrast",
+                  "bounds"
+                ],
+                "layers": 2,
+                "text_layers": 2
+              }
+            }
+          ]
+        },
+        "no-placeholders": {
+          "version": 1,
+          "suite_hash": "c11e6e04e7ce3e236e94ed5e168d2cbe2e943185bc97f04b99a0d53dc1cd64db",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "copy",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "blanks"
+                ],
+                "layers": 26,
+                "text_layers": 13
+              }
+            }
+          ]
+        }
+      },
+      "repairs": [],
+      "cache": {
+        "hits": 42,
+        "misses": 41
+      }
+    },
+    {
+      "id": "0019",
+      "values": {
+        "name": "Storm Warden",
+        "element": "Storm",
+        "element_color": "#b388ff",
+        "element_dark": "#130a2e",
+        "element_light": "#f1e6ff",
+        "art": "assets/ea8639166deac9e193def32f5ef09362796211bb87b22094e6fd2bf1d9772944.jpg",
+        "kind": "Spirit \u2014 Warden",
+        "ability_name": "Ward",
+        "ability": "Other Storm spirits you control get +1 DEF.",
+        "flavor": "Every storm shrine keeps one awake.",
+        "edition": "First Edition"
+      },
+      "artboard": "epic",
+      "status": "completed",
+      "output": "0019-aaecc82e426d332a.webp",
+      "fingerprint": "aaecc82e426d332aac3cfe82304808fe7a508436e70107331831be1ee0a0cd6d",
+      "sha256": "88165927886e05a1c8fab35a486bfcce0871bdb8ac2ccbe036b3ce64c3b3bfb0",
+      "checks": {
+        "card-qa": {
+          "version": 1,
+          "suite_hash": "9320037720cef443af5bb808a24b4fe36691803ac6cecaf08ec9c68e3b0f4076",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "name-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 50,
+              "fits": true
+            },
+            {
+              "id": "ability-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 27,
+              "fits": true
+            },
+            {
+              "id": "flavor-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 24,
+              "fits": true
+            },
+            {
+              "id": "trim-width",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 750,
+              "actual": 750
+            },
+            {
+              "id": "trim-height",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 1050,
+              "actual": 1050
+            },
+            {
+              "id": "name-font",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf",
+              "actual": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf"
+            },
+            {
+              "id": "name-to-art",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 14,
+              "actual": 14
+            },
+            {
+              "id": "art-to-type",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 18,
+              "actual": 18
+            },
+            {
+              "id": "rules-box-palette",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "palette": null,
+              "colors": [
+                "#f4ead2",
+                "#14100c",
+                "#5b4a36",
+                "#a99a80"
+              ],
+              "pixels_checked": 114448,
+              "outside_pixels": 197,
+              "outside_fraction": 0.001721305745840906,
+              "max_fraction": 0.04,
+              "tolerance": 40,
+              "maximum_distance": 45,
+              "examples": [
+                "#766f62",
+                "#cac1ad"
+              ],
+              "metric": "maximum RGB channel distance (0\u2013255); alpha below alpha_min excluded"
+            },
+            {
+              "id": "art-inside",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "layer.art.bounds within canvas"
+            },
+            {
+              "id": "name-contrast",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "contrast",
+                  "bounds"
+                ],
+                "layers": 2,
+                "text_layers": 2
+              }
+            }
+          ]
+        },
+        "no-placeholders": {
+          "version": 1,
+          "suite_hash": "c11e6e04e7ce3e236e94ed5e168d2cbe2e943185bc97f04b99a0d53dc1cd64db",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "copy",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "blanks"
+                ],
+                "layers": 26,
+                "text_layers": 13
+              }
+            }
+          ]
+        }
+      },
+      "repairs": [],
+      "cache": {
+        "hits": 98,
+        "misses": 8
+      }
+    },
+    {
+      "id": "0020",
+      "values": {
+        "name": "Storm Warden",
+        "element": "Storm",
+        "element_color": "#b388ff",
+        "element_dark": "#130a2e",
+        "element_light": "#f1e6ff",
+        "art": "assets/ea8639166deac9e193def32f5ef09362796211bb87b22094e6fd2bf1d9772944.jpg",
+        "kind": "Spirit \u2014 Warden",
+        "ability_name": "Ward",
+        "ability": "Other Storm spirits you control get +1 DEF.",
+        "flavor": "Every storm shrine keeps one awake.",
+        "edition": "First Edition"
+      },
+      "artboard": "legendary",
+      "status": "completed",
+      "output": "0020-7dc6d5e7115b9729.webp",
+      "fingerprint": "7dc6d5e7115b9729b74921a277d2ae6b5d507e1c1e563c66fedc7099e80c29cc",
+      "sha256": "342773267b225e90b1ba1a0391cf28783d262491983a4d8f3f8ff43168ea1fff",
+      "checks": {
+        "card-qa": {
+          "version": 1,
+          "suite_hash": "9320037720cef443af5bb808a24b4fe36691803ac6cecaf08ec9c68e3b0f4076",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "name-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 50,
+              "fits": true
+            },
+            {
+              "id": "ability-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 27,
+              "fits": true
+            },
+            {
+              "id": "flavor-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 24,
+              "fits": true
+            },
+            {
+              "id": "trim-width",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 750,
+              "actual": 750
+            },
+            {
+              "id": "trim-height",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 1050,
+              "actual": 1050
+            },
+            {
+              "id": "name-font",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf",
+              "actual": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf"
+            },
+            {
+              "id": "name-to-art",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 14,
+              "actual": 14
+            },
+            {
+              "id": "art-to-type",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 18,
+              "actual": 18
+            },
+            {
+              "id": "rules-box-palette",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "palette": null,
+              "colors": [
+                "#f4ead2",
+                "#14100c",
+                "#5b4a36",
+                "#a99a80"
+              ],
+              "pixels_checked": 114448,
+              "outside_pixels": 197,
+              "outside_fraction": 0.001721305745840906,
+              "max_fraction": 0.04,
+              "tolerance": 40,
+              "maximum_distance": 45,
+              "examples": [
+                "#766f62",
+                "#cac1ad"
+              ],
+              "metric": "maximum RGB channel distance (0\u2013255); alpha below alpha_min excluded"
+            },
+            {
+              "id": "art-inside",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "layer.art.bounds within canvas"
+            },
+            {
+              "id": "name-contrast",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "contrast",
+                  "bounds"
+                ],
+                "layers": 2,
+                "text_layers": 2
+              }
+            }
+          ]
+        },
+        "no-placeholders": {
+          "version": 1,
+          "suite_hash": "c11e6e04e7ce3e236e94ed5e168d2cbe2e943185bc97f04b99a0d53dc1cd64db",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "copy",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "blanks"
+                ],
+                "layers": 26,
+                "text_layers": 13
+              }
+            }
+          ]
+        }
+      },
+      "repairs": [],
+      "cache": {
+        "hits": 98,
+        "misses": 8
+      }
+    },
+    {
+      "id": "0021",
+      "values": {
+        "name": "Storm Warden",
+        "element": "Storm",
+        "element_color": "#b388ff",
+        "element_dark": "#130a2e",
+        "element_light": "#f1e6ff",
+        "art": "assets/ea8639166deac9e193def32f5ef09362796211bb87b22094e6fd2bf1d9772944.jpg",
+        "kind": "Spirit \u2014 Warden",
+        "ability_name": "Ward",
+        "ability": "Other Storm spirits you control get +1 DEF.",
+        "flavor": "Every storm shrine keeps one awake.",
+        "edition": "Unlimited"
+      },
+      "artboard": "common",
+      "status": "completed",
+      "output": "0021-ca3ac5fdff00590e.webp",
+      "fingerprint": "ca3ac5fdff00590ebe7b4cd021140e0b06fc2a98ea12eb91549d82cb35fe99c9",
+      "sha256": "a2c43486eb43ec1e85295af7a80eced8c48617b7dfff8cf49eae3a2c1d6867c4",
+      "checks": {
+        "card-qa": {
+          "version": 1,
+          "suite_hash": "9320037720cef443af5bb808a24b4fe36691803ac6cecaf08ec9c68e3b0f4076",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "name-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 50,
+              "fits": true
+            },
+            {
+              "id": "ability-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 27,
+              "fits": true
+            },
+            {
+              "id": "flavor-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 24,
+              "fits": true
+            },
+            {
+              "id": "trim-width",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 750,
+              "actual": 750
+            },
+            {
+              "id": "trim-height",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 1050,
+              "actual": 1050
+            },
+            {
+              "id": "name-font",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf",
+              "actual": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf"
+            },
+            {
+              "id": "name-to-art",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 14,
+              "actual": 14
+            },
+            {
+              "id": "art-to-type",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 18,
+              "actual": 18
+            },
+            {
+              "id": "rules-box-palette",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "palette": null,
+              "colors": [
+                "#f4ead2",
+                "#14100c",
+                "#5b4a36",
+                "#a99a80"
+              ],
+              "pixels_checked": 114448,
+              "outside_pixels": 197,
+              "outside_fraction": 0.001721305745840906,
+              "max_fraction": 0.04,
+              "tolerance": 40,
+              "maximum_distance": 45,
+              "examples": [
+                "#766f62",
+                "#cac1ad"
+              ],
+              "metric": "maximum RGB channel distance (0\u2013255); alpha below alpha_min excluded"
+            },
+            {
+              "id": "art-inside",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "layer.art.bounds within canvas"
+            },
+            {
+              "id": "name-contrast",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "contrast",
+                  "bounds"
+                ],
+                "layers": 2,
+                "text_layers": 2
+              }
+            }
+          ]
+        },
+        "no-placeholders": {
+          "version": 1,
+          "suite_hash": "c11e6e04e7ce3e236e94ed5e168d2cbe2e943185bc97f04b99a0d53dc1cd64db",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "copy",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "blanks"
+                ],
+                "layers": 26,
+                "text_layers": 13
+              }
+            }
+          ]
+        }
+      },
+      "repairs": [],
+      "cache": {
+        "hits": 102,
+        "misses": 6
+      }
+    },
+    {
+      "id": "0022",
+      "values": {
+        "name": "Storm Warden",
+        "element": "Storm",
+        "element_color": "#b388ff",
+        "element_dark": "#130a2e",
+        "element_light": "#f1e6ff",
+        "art": "assets/ea8639166deac9e193def32f5ef09362796211bb87b22094e6fd2bf1d9772944.jpg",
+        "kind": "Spirit \u2014 Warden",
+        "ability_name": "Ward",
+        "ability": "Other Storm spirits you control get +1 DEF.",
+        "flavor": "Every storm shrine keeps one awake.",
+        "edition": "Unlimited"
+      },
+      "artboard": "rare",
+      "status": "completed",
+      "output": "0022-68291fcbf3a10076.webp",
+      "fingerprint": "68291fcbf3a1007684400666b22307c3993a175c94bfbf3f46567fdd42bd00d1",
+      "sha256": "f3e00a5c877abd1bbd52a4297672626fcb74c9b3ab48be3110d7ed8ec54cb7e6",
+      "checks": {
+        "card-qa": {
+          "version": 1,
+          "suite_hash": "9320037720cef443af5bb808a24b4fe36691803ac6cecaf08ec9c68e3b0f4076",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "name-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 50,
+              "fits": true
+            },
+            {
+              "id": "ability-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 27,
+              "fits": true
+            },
+            {
+              "id": "flavor-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 24,
+              "fits": true
+            },
+            {
+              "id": "trim-width",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 750,
+              "actual": 750
+            },
+            {
+              "id": "trim-height",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 1050,
+              "actual": 1050
+            },
+            {
+              "id": "name-font",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf",
+              "actual": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf"
+            },
+            {
+              "id": "name-to-art",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 14,
+              "actual": 14
+            },
+            {
+              "id": "art-to-type",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 18,
+              "actual": 18
+            },
+            {
+              "id": "rules-box-palette",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "palette": null,
+              "colors": [
+                "#f4ead2",
+                "#14100c",
+                "#5b4a36",
+                "#a99a80"
+              ],
+              "pixels_checked": 114448,
+              "outside_pixels": 197,
+              "outside_fraction": 0.001721305745840906,
+              "max_fraction": 0.04,
+              "tolerance": 40,
+              "maximum_distance": 45,
+              "examples": [
+                "#766f62",
+                "#cac1ad"
+              ],
+              "metric": "maximum RGB channel distance (0\u2013255); alpha below alpha_min excluded"
+            },
+            {
+              "id": "art-inside",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "layer.art.bounds within canvas"
+            },
+            {
+              "id": "name-contrast",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "contrast",
+                  "bounds"
+                ],
+                "layers": 2,
+                "text_layers": 2
+              }
+            }
+          ]
+        },
+        "no-placeholders": {
+          "version": 1,
+          "suite_hash": "c11e6e04e7ce3e236e94ed5e168d2cbe2e943185bc97f04b99a0d53dc1cd64db",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "copy",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "blanks"
+                ],
+                "layers": 26,
+                "text_layers": 13
+              }
+            }
+          ]
+        }
+      },
+      "repairs": [],
+      "cache": {
+        "hits": 102,
+        "misses": 6
+      }
+    },
+    {
+      "id": "0023",
+      "values": {
+        "name": "Storm Warden",
+        "element": "Storm",
+        "element_color": "#b388ff",
+        "element_dark": "#130a2e",
+        "element_light": "#f1e6ff",
+        "art": "assets/ea8639166deac9e193def32f5ef09362796211bb87b22094e6fd2bf1d9772944.jpg",
+        "kind": "Spirit \u2014 Warden",
+        "ability_name": "Ward",
+        "ability": "Other Storm spirits you control get +1 DEF.",
+        "flavor": "Every storm shrine keeps one awake.",
+        "edition": "Unlimited"
+      },
+      "artboard": "epic",
+      "status": "completed",
+      "output": "0023-fda819f764073326.webp",
+      "fingerprint": "fda819f7640733266b4b58dfc4c04644642cb379efa53cc051d35d61798770a2",
+      "sha256": "017658166ce5a107bc16390372b0b061c60b05103b58e6a17ca92c898e1ccc89",
+      "checks": {
+        "card-qa": {
+          "version": 1,
+          "suite_hash": "9320037720cef443af5bb808a24b4fe36691803ac6cecaf08ec9c68e3b0f4076",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "name-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 50,
+              "fits": true
+            },
+            {
+              "id": "ability-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 27,
+              "fits": true
+            },
+            {
+              "id": "flavor-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 24,
+              "fits": true
+            },
+            {
+              "id": "trim-width",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 750,
+              "actual": 750
+            },
+            {
+              "id": "trim-height",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 1050,
+              "actual": 1050
+            },
+            {
+              "id": "name-font",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf",
+              "actual": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf"
+            },
+            {
+              "id": "name-to-art",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 14,
+              "actual": 14
+            },
+            {
+              "id": "art-to-type",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 18,
+              "actual": 18
+            },
+            {
+              "id": "rules-box-palette",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "palette": null,
+              "colors": [
+                "#f4ead2",
+                "#14100c",
+                "#5b4a36",
+                "#a99a80"
+              ],
+              "pixels_checked": 114448,
+              "outside_pixels": 197,
+              "outside_fraction": 0.001721305745840906,
+              "max_fraction": 0.04,
+              "tolerance": 40,
+              "maximum_distance": 45,
+              "examples": [
+                "#766f62",
+                "#cac1ad"
+              ],
+              "metric": "maximum RGB channel distance (0\u2013255); alpha below alpha_min excluded"
+            },
+            {
+              "id": "art-inside",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "layer.art.bounds within canvas"
+            },
+            {
+              "id": "name-contrast",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "contrast",
+                  "bounds"
+                ],
+                "layers": 2,
+                "text_layers": 2
+              }
+            }
+          ]
+        },
+        "no-placeholders": {
+          "version": 1,
+          "suite_hash": "c11e6e04e7ce3e236e94ed5e168d2cbe2e943185bc97f04b99a0d53dc1cd64db",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "copy",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "blanks"
+                ],
+                "layers": 26,
+                "text_layers": 13
+              }
+            }
+          ]
+        }
+      },
+      "repairs": [],
+      "cache": {
+        "hits": 102,
+        "misses": 6
+      }
+    },
+    {
+      "id": "0024",
+      "values": {
+        "name": "Storm Warden",
+        "element": "Storm",
+        "element_color": "#b388ff",
+        "element_dark": "#130a2e",
+        "element_light": "#f1e6ff",
+        "art": "assets/ea8639166deac9e193def32f5ef09362796211bb87b22094e6fd2bf1d9772944.jpg",
+        "kind": "Spirit \u2014 Warden",
+        "ability_name": "Ward",
+        "ability": "Other Storm spirits you control get +1 DEF.",
+        "flavor": "Every storm shrine keeps one awake.",
+        "edition": "Unlimited"
+      },
+      "artboard": "legendary",
+      "status": "completed",
+      "output": "0024-14ed0a5f4177d761.webp",
+      "fingerprint": "14ed0a5f4177d7618ed5bd6cc2d26c29cdd6719caf635aa2a3033c54edf87554",
+      "sha256": "78a3997dab2498923037781d78a92646aeb4ff21aea3eacd9e3f0c4f57a3838e",
+      "checks": {
+        "card-qa": {
+          "version": 1,
+          "suite_hash": "9320037720cef443af5bb808a24b4fe36691803ac6cecaf08ec9c68e3b0f4076",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "name-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 50,
+              "fits": true
+            },
+            {
+              "id": "ability-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 27,
+              "fits": true
+            },
+            {
+              "id": "flavor-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 24,
+              "fits": true
+            },
+            {
+              "id": "trim-width",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 750,
+              "actual": 750
+            },
+            {
+              "id": "trim-height",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 1050,
+              "actual": 1050
+            },
+            {
+              "id": "name-font",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf",
+              "actual": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf"
+            },
+            {
+              "id": "name-to-art",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 14,
+              "actual": 14
+            },
+            {
+              "id": "art-to-type",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 18,
+              "actual": 18
+            },
+            {
+              "id": "rules-box-palette",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "palette": null,
+              "colors": [
+                "#f4ead2",
+                "#14100c",
+                "#5b4a36",
+                "#a99a80"
+              ],
+              "pixels_checked": 114448,
+              "outside_pixels": 197,
+              "outside_fraction": 0.001721305745840906,
+              "max_fraction": 0.04,
+              "tolerance": 40,
+              "maximum_distance": 45,
+              "examples": [
+                "#766f62",
+                "#cac1ad"
+              ],
+              "metric": "maximum RGB channel distance (0\u2013255); alpha below alpha_min excluded"
+            },
+            {
+              "id": "art-inside",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "layer.art.bounds within canvas"
+            },
+            {
+              "id": "name-contrast",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "contrast",
+                  "bounds"
+                ],
+                "layers": 2,
+                "text_layers": 2
+              }
+            }
+          ]
+        },
+        "no-placeholders": {
+          "version": 1,
+          "suite_hash": "c11e6e04e7ce3e236e94ed5e168d2cbe2e943185bc97f04b99a0d53dc1cd64db",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "copy",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "blanks"
+                ],
+                "layers": 26,
+                "text_layers": 13
+              }
+            }
+          ]
+        }
+      },
+      "repairs": [],
+      "cache": {
+        "hits": 102,
+        "misses": 6
+      }
+    }
+  ],
+  "contact_sheet": "contact-sheet.png"
+}

@@ -1,0 +1,98 @@
+[
+  {
+    "row": 1,
+    "output": "/home/user/Vixl/explorations/07-trading-cards/output/set/standard/0001.png"
+  },
+  {
+    "row": 2,
+    "output": "/home/user/Vixl/explorations/07-trading-cards/output/set/standard/0002.png"
+  },
+  {
+    "row": 3,
+    "output": "/home/user/Vixl/explorations/07-trading-cards/output/set/standard/0003.png"
+  },
+  {
+    "row": 4,
+    "output": "/home/user/Vixl/explorations/07-trading-cards/output/set/standard/0004.png"
+  },
+  {
+    "row": 5,
+    "output": "/home/user/Vixl/explorations/07-trading-cards/output/set/standard/0005.png"
+  },
+  {
+    "row": 6,
+    "output": "/home/user/Vixl/explorations/07-trading-cards/output/set/standard/0006.png"
+  },
+  {
+    "row": 7,
+    "output": "/home/user/Vixl/explorations/07-trading-cards/output/set/standard/0007.png"
+  },
+  {
+    "row": 8,
+    "output": "/home/user/Vixl/explorations/07-trading-cards/output/set/standard/0008.png"
+  },
+  {
+    "row": 9,
+    "output": "/home/user/Vixl/explorations/07-trading-cards/output/set/standard/0009.png",
+    "check": {
+      "passed": false,
+      "errors": 1,
+      "warnings": 0,
+      "issues": [
+        {
+          "check": "contrast",
+          "severity": "error",
+          "layers": [
+            "spd-value"
+          ],
+          "message": "'spd-value' contrast is 1.73:1 for most glyph pixels (minimum 1.73:1); needs 3:1",
+          "contrast": 1.73,
+          "required": 3.0
+        }
+      ]
+    }
+  },
+  {
+    "row": 10,
+    "output": "/home/user/Vixl/explorations/07-trading-cards/output/set/standard/0010.png"
+  },
+  {
+    "row": 11,
+    "output": "/home/user/Vixl/explorations/07-trading-cards/output/set/standard/0011.png"
+  },
+  {
+    "row": 12,
+    "output": "/home/user/Vixl/explorations/07-trading-cards/output/set/standard/0012.png",
+    "check": {
+      "passed": false,
+      "errors": 2,
+      "warnings": 0,
+      "issues": [
+        {
+          "check": "contrast",
+          "severity": "error",
+          "layers": [
+            "atk-value"
+          ],
+          "message": "'atk-value' contrast is 2.59:1 for most glyph pixels (minimum 2.59:1); needs 3:1",
+          "contrast": 2.593,
+          "required": 3.0
+        },
+        {
+          "check": "contrast",
+          "severity": "error",
+          "layers": [
+            "def-value"
+          ],
+          "message": "'def-value' contrast is 2.59:1 for most glyph pixels (minimum 2.59:1); needs 3:1",
+          "contrast": 2.593,
+          "required": 3.0
+        }
+      ]
+    }
+  },
+  {
+    "row": 13,
+    "output": "/home/user/Vixl/explorations/07-trading-cards/output/set/standard/0013.png"
+  }
+]
