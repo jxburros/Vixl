@@ -1,0 +1,147 @@
+{
+ "1.4s": {
+  "passed": true,
+  "errors": 0,
+  "warnings": 2,
+  "issues": [
+   {
+    "check": "overlap",
+    "severity": "warning",
+    "layers": [
+     "spark-3",
+     "word-2"
+    ],
+    "message": "'spark-3' and 'word-2' overlap by 21 px (30.4% of the smaller layer)",
+    "region": [
+     880,
+     746,
+     9,
+     9
+    ]
+   },
+   {
+    "check": "overlap",
+    "severity": "warning",
+    "layers": [
+     "spark-4",
+     "word-1"
+    ],
+    "message": "'spark-4' and 'word-1' overlap by 45 px (100.0% of the smaller layer)",
+    "region": [
+     70,
+     511,
+     7,
+     7
+    ]
+   }
+  ],
+  "checked": {
+   "checks": [
+    "contrast",
+    "overlap",
+    "bounds"
+   ],
+   "layers": 17,
+   "text_layers": 6
+  }
+ },
+ "3.6s": {
+  "passed": false,
+  "errors": 1,
+  "warnings": 2,
+  "issues": [
+   {
+    "check": "bounds",
+    "severity": "warning",
+    "layers": [
+     "glow"
+    ],
+    "message": "'glow' is cut off by the canvas edge",
+    "bounds": [
+     60,
+     -100,
+     960,
+     960
+    ]
+   },
+   {
+    "check": "bounds",
+    "severity": "warning",
+    "layers": [
+     "ticks"
+    ],
+    "message": "'ticks' is cut off by the canvas edge",
+    "bounds": [
+     134,
+     -26,
+     813,
+     813
+    ]
+   },
+   {
+    "check": "contrast",
+    "severity": "error",
+    "layers": [
+     "badge-label"
+    ],
+    "message": "'badge-label' contrast is 1.46:1 for most glyph pixels (minimum 1.42:1); needs 3:1",
+    "contrast": 1.458,
+    "required": 3.0
+   }
+  ],
+  "checked": {
+   "checks": [
+    "contrast",
+    "overlap",
+    "bounds"
+   ],
+   "layers": 23,
+   "text_layers": 7
+  }
+ },
+ "7.5s": {
+  "passed": true,
+  "errors": 0,
+  "warnings": 2,
+  "issues": [
+   {
+    "check": "bounds",
+    "severity": "warning",
+    "layers": [
+     "glow"
+    ],
+    "message": "'glow' is cut off by the canvas edge",
+    "bounds": [
+     60,
+     -100,
+     960,
+     960
+    ]
+   },
+   {
+    "check": "overlap",
+    "severity": "warning",
+    "layers": [
+     "ring",
+     "badge-label"
+    ],
+    "message": "'ring' and 'badge-label' overlap by 72 px (11.3% of the smaller layer)",
+    "region": [
+     747,
+     180,
+     73,
+     32
+    ]
+   }
+  ],
+  "checked": {
+   "checks": [
+    "contrast",
+    "overlap",
+    "bounds"
+   ],
+   "layers": 35,
+   "text_layers": 12
+  }
+ }
+}

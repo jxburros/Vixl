@@ -1,0 +1,443 @@
+{
+  "passed": false,
+  "errors": 11,
+  "warnings": 22,
+  "issues": [
+    {
+      "check": "bounds",
+      "severity": "warning",
+      "layers": [
+        "glow"
+      ],
+      "message": "'glow' is cut off by the canvas edge",
+      "bounds": [
+        60,
+        -100,
+        960,
+        960
+      ]
+    },
+    {
+      "check": "overlap",
+      "severity": "warning",
+      "layers": [
+        "glow",
+        "word-2"
+      ],
+      "message": "'glow' and 'word-2' overlap by 4940 px (7.4% of the smaller layer)",
+      "region": [
+        66,
+        652,
+        954,
+        135
+      ]
+    },
+    {
+      "check": "overlap",
+      "severity": "warning",
+      "layers": [
+        "ticks",
+        "kicker"
+      ],
+      "message": "'ticks' and 'kicker' overlap by 65 px (2.4% of the smaller layer)",
+      "region": [
+        210,
+        236,
+        289,
+        19
+      ]
+    },
+    {
+      "check": "overlap",
+      "severity": "warning",
+      "layers": [
+        "ticks",
+        "word-0"
+      ],
+      "message": "'ticks' and 'word-0' overlap by 783 px (6.2% of the smaller layer)",
+      "region": [
+        210,
+        300,
+        493,
+        135
+      ]
+    },
+    {
+      "check": "overlap",
+      "severity": "warning",
+      "layers": [
+        "ticks",
+        "word-1"
+      ],
+      "message": "'ticks' and 'word-1' overlap by 685 px (5.4% of the smaller layer)",
+      "region": [
+        210,
+        476,
+        477,
+        135
+      ]
+    },
+    {
+      "check": "overlap",
+      "severity": "warning",
+      "layers": [
+        "ticks",
+        "word-2"
+      ],
+      "message": "'ticks' and 'word-2' overlap by 1120 px (8.8% of the smaller layer)",
+      "region": [
+        210,
+        652,
+        660,
+        58
+      ]
+    },
+    {
+      "check": "overlap",
+      "severity": "warning",
+      "layers": [
+        "ring",
+        "kicker"
+      ],
+      "message": "'ring' and 'kicker' overlap by 518 px (19.2% of the smaller layer)",
+      "region": [
+        260,
+        236,
+        239,
+        19
+      ]
+    },
+    {
+      "check": "overlap",
+      "severity": "warning",
+      "layers": [
+        "ring",
+        "word-0"
+      ],
+      "message": "'ring' and 'word-0' overlap by 3064 px (7.0% of the smaller layer)",
+      "region": [
+        260,
+        300,
+        443,
+        135
+      ]
+    },
+    {
+      "check": "overlap",
+      "severity": "warning",
+      "layers": [
+        "ring",
+        "word-1"
+      ],
+      "message": "'ring' and 'word-1' overlap by 7626 px (17.9% of the smaller layer)",
+      "region": [
+        260,
+        476,
+        427,
+        135
+      ]
+    },
+    {
+      "check": "overlap",
+      "severity": "warning",
+      "layers": [
+        "ring",
+        "badge-label"
+      ],
+      "message": "'ring' and 'badge-label' overlap by 42 px (7.3% of the smaller layer)",
+      "region": [
+        748,
+        186,
+        72,
+        19
+      ]
+    },
+    {
+      "check": "overlap",
+      "severity": "warning",
+      "layers": [
+        "spark-3",
+        "word-2"
+      ],
+      "message": "'spark-3' and 'word-2' overlap by 21 px (30.4% of the smaller layer)",
+      "region": [
+        880,
+        760,
+        9,
+        9
+      ]
+    },
+    {
+      "check": "overlap",
+      "severity": "warning",
+      "layers": [
+        "spark-4",
+        "word-1"
+      ],
+      "message": "'spark-4' and 'word-1' overlap by 45 px (100.0% of the smaller layer)",
+      "region": [
+        70,
+        520,
+        7,
+        7
+      ]
+    },
+    {
+      "check": "overlap",
+      "severity": "error",
+      "layers": [
+        "word-0",
+        "letter-H"
+      ],
+      "message": "'word-0' and 'letter-H' overlap by 2258 px (36.6% of the smaller layer)",
+      "region": [
+        337,
+        326,
+        104,
+        103
+      ]
+    },
+    {
+      "check": "overlap",
+      "severity": "error",
+      "layers": [
+        "word-0",
+        "letter-A"
+      ],
+      "message": "'word-0' and 'letter-A' overlap by 2238 px (38.1% of the smaller layer)",
+      "region": [
+        441,
+        326,
+        109,
+        103
+      ]
+    },
+    {
+      "check": "overlap",
+      "severity": "error",
+      "layers": [
+        "word-0",
+        "letter-L"
+      ],
+      "message": "'word-0' and 'letter-L' overlap by 2638 px (76.3% of the smaller layer)",
+      "region": [
+        552,
+        326,
+        69,
+        103
+      ]
+    },
+    {
+      "check": "overlap",
+      "severity": "error",
+      "layers": [
+        "word-0",
+        "letter-O"
+      ],
+      "message": "'word-0' and 'letter-O' overlap by 1857 px (29.8% of the smaller layer)",
+      "region": [
+        631,
+        326,
+        72,
+        108
+      ]
+    },
+    {
+      "check": "overlap",
+      "severity": "error",
+      "layers": [
+        "word-2",
+        "tagline"
+      ],
+      "message": "'word-2' and 'tagline' overlap by 2710 px (49.2% of the smaller layer)",
+      "region": [
+        270,
+        706,
+        541,
+        42
+      ]
+    },
+    {
+      "check": "overlap",
+      "severity": "warning",
+      "layers": [
+        "word-2",
+        "chip-bg-0"
+      ],
+      "message": "'word-2' and 'chip-bg-0' overlap by 226 px (19.5% of the smaller layer)",
+      "region": [
+        252,
+        778,
+        242,
+        9
+      ]
+    },
+    {
+      "check": "overlap",
+      "severity": "warning",
+      "layers": [
+        "word-2",
+        "chip-bg-1"
+      ],
+      "message": "'word-2' and 'chip-bg-1' overlap by 168 px (19.3% of the smaller layer)",
+      "region": [
+        512,
+        778,
+        170,
+        9
+      ]
+    },
+    {
+      "check": "overlap",
+      "severity": "warning",
+      "layers": [
+        "word-2",
+        "chip-bg-2"
+      ],
+      "message": "'word-2' and 'chip-bg-2' overlap by 187 px (26.7% of the smaller layer)",
+      "region": [
+        700,
+        778,
+        127,
+        9
+      ]
+    },
+    {
+      "check": "contrast",
+      "severity": "error",
+      "layers": [
+        "kicker"
+      ],
+      "message": "'kicker' contrast is 1.84:1 for most glyph pixels (minimum 1.03:1); needs 3:1",
+      "contrast": 1.84,
+      "required": 3.0
+    },
+    {
+      "check": "contrast",
+      "severity": "error",
+      "layers": [
+        "letter-H"
+      ],
+      "message": "'letter-H' contrast is 1.00:1 for most glyph pixels (minimum 1.00:1); needs 3:1",
+      "contrast": 1.0,
+      "required": 3.0
+    },
+    {
+      "check": "contrast",
+      "severity": "error",
+      "layers": [
+        "letter-A"
+      ],
+      "message": "'letter-A' contrast is 1.00:1 for most glyph pixels (minimum 1.00:1); needs 3:1",
+      "contrast": 1.0,
+      "required": 3.0
+    },
+    {
+      "check": "contrast",
+      "severity": "error",
+      "layers": [
+        "letter-L"
+      ],
+      "message": "'letter-L' contrast is 1.00:1 for most glyph pixels (minimum 1.00:1); needs 3:1",
+      "contrast": 1.0,
+      "required": 3.0
+    },
+    {
+      "check": "contrast",
+      "severity": "error",
+      "layers": [
+        "letter-O"
+      ],
+      "message": "'letter-O' contrast is 1.04:1 for most glyph pixels (minimum 1.04:1); needs 3:1",
+      "contrast": 1.044,
+      "required": 3.0
+    },
+    {
+      "check": "contrast",
+      "severity": "error",
+      "layers": [
+        "tagline"
+      ],
+      "message": "'tagline' contrast is 2.51:1 for most glyph pixels (minimum 2.51:1); needs 3:1",
+      "contrast": 2.509,
+      "required": 3.0
+    },
+    {
+      "check": "legibility",
+      "severity": "warning",
+      "layers": [
+        "brandmark"
+      ],
+      "message": "'brandmark' is 6.5 px tall at 320 px wide; aim for at least 10 px (font size 34+)",
+      "thumbnail_size": 6.52
+    },
+    {
+      "check": "legibility",
+      "severity": "warning",
+      "layers": [
+        "timecode"
+      ],
+      "message": "'timecode' is 6.5 px tall at 320 px wide; aim for at least 10 px (font size 34+)",
+      "thumbnail_size": 6.52
+    },
+    {
+      "check": "legibility",
+      "severity": "warning",
+      "layers": [
+        "kicker"
+      ],
+      "message": "'kicker' is 7.7 px tall at 320 px wide; aim for at least 10 px (font size 34+)",
+      "thumbnail_size": 7.7
+    },
+    {
+      "check": "legibility",
+      "severity": "warning",
+      "layers": [
+        "badge-label"
+      ],
+      "message": "'badge-label' is 7.7 px tall at 320 px wide; aim for at least 10 px (font size 34+)",
+      "thumbnail_size": 7.7
+    },
+    {
+      "check": "legibility",
+      "severity": "warning",
+      "layers": [
+        "chip-label-0"
+      ],
+      "message": "'chip-label-0' is 7.1 px tall at 320 px wide; aim for at least 10 px (font size 34+)",
+      "thumbnail_size": 7.11
+    },
+    {
+      "check": "legibility",
+      "severity": "warning",
+      "layers": [
+        "chip-label-1"
+      ],
+      "message": "'chip-label-1' is 7.1 px tall at 320 px wide; aim for at least 10 px (font size 34+)",
+      "thumbnail_size": 7.11
+    },
+    {
+      "check": "legibility",
+      "severity": "warning",
+      "layers": [
+        "chip-label-2"
+      ],
+      "message": "'chip-label-2' is 7.1 px tall at 320 px wide; aim for at least 10 px (font size 34+)",
+      "thumbnail_size": 7.11
+    }
+  ],
+  "checked": {
+    "checks": [
+      "bounds",
+      "overlap",
+      "contrast",
+      "safe_area",
+      "legibility",
+      "blanks",
+      "fonts",
+      "brand"
+    ],
+    "layers": 40,
+    "text_layers": 16
+  }
+}

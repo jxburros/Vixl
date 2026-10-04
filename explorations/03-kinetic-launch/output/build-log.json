@@ -1,0 +1,91 @@
+{
+ "steps": [
+  {
+   "step": "scaffold",
+   "operations": 17,
+   "normalized": []
+  },
+  {
+   "step": "sparks",
+   "operations": 8,
+   "normalized": []
+  },
+  {
+   "step": "chrome",
+   "operations": 6,
+   "normalized": []
+  },
+  {
+   "step": "scene A",
+   "operations": 6,
+   "normalized": []
+  },
+  {
+   "step": "measure",
+   "operations": 4,
+   "normalized": []
+  },
+  {
+   "step": "measure cleanup",
+   "operations": 4,
+   "normalized": []
+  },
+  {
+   "step": "scene B",
+   "operations": 14,
+   "normalized": []
+  },
+  {
+   "step": "tagline",
+   "operations": 2,
+   "normalized": []
+  },
+  {
+   "step": "chip labels",
+   "operations": 3,
+   "normalized": []
+  },
+  {
+   "step": "chips",
+   "operations": 15,
+   "normalized": []
+  },
+  {
+   "step": "cta",
+   "operations": 4,
+   "normalized": []
+  },
+  {
+   "step": "finish",
+   "operations": 1,
+   "normalized": []
+  },
+  {
+   "step": "timeline + markers",
+   "operations": 8,
+   "normalized": []
+  },
+  {
+   "step": "motion recipes",
+   "operations": 14,
+   "normalized": []
+  },
+  {
+   "step": "timeline tracks",
+   "operations": 81,
+   "normalized": []
+  },
+  {
+   "step": "suite",
+   "operations": 1,
+   "normalized": []
+  }
+ ],
+ "sizes": {
+  "halo-launch.mp4": 645647,
+  "halo-launch.gif": 897179,
+  "halo-launch.webp": 759336,
+  "halo-reveal-apng.png": 1027649,
+  "halo-sprites.png": 446405
+ }
+}
