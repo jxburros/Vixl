@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "branch": "copy-agent",
+  "source": "ig-portrait.vixl",
+  "base": ".vixl-branches/copy-agent.base.vixl",
+  "base_hash": "e2a0dbabe509ffca253aa7922769fce5687f27b580412f313bd2e2ba39ca04a8",
+  "output": "copy-agent.vixl",
+  "author": "copy-agent",
+  "status": "merged",
+  "head": "rev_3de35761d2f44b54"
+}

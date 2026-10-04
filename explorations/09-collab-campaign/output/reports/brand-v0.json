@@ -1,0 +1,15 @@
+{
+  "name": "Loop Bike Share",
+  "minimum_contrast": 4.5,
+  "required_elements": [
+    "logo"
+  ],
+  "logos": [
+    {
+      "name": "logo",
+      "data_base64": "<32752 base64 chars>",
+      "x": 40,
+      "y": 40
+    }
+  ]
+}

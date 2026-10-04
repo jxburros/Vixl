@@ -1,0 +1,44 @@
+{
+  "ig-portrait": {
+    "loop-accessible": "passed",
+    "loop-delivery": "passed",
+    "loop-legible": "passed",
+    "no-placeholders": "passed"
+  },
+  "ig-story": {
+    "loop-accessible": "passed",
+    "loop-delivery": "passed",
+    "loop-legible": "passed",
+    "no-placeholders": "passed"
+  },
+  "yt-thumb": {
+    "loop-accessible": "passed",
+    "loop-delivery": "passed",
+    "loop-legible": "passed",
+    "no-placeholders": "passed"
+  },
+  "yt-banner": {
+    "loop-accessible": "passed",
+    "loop-delivery": "passed",
+    "loop-legible": "passed",
+    "no-placeholders": "passed"
+  },
+  "leaderboard": {
+    "loop-accessible": "passed",
+    "loop-delivery": "passed",
+    "loop-legible": "passed",
+    "no-placeholders": "passed"
+  },
+  "med-rect": {
+    "loop-accessible": "passed",
+    "loop-delivery": "passed",
+    "loop-legible": "passed",
+    "no-placeholders": "passed"
+  },
+  "flyer": {
+    "loop-accessible": "passed",
+    "loop-delivery": "passed",
+    "loop-legible": "passed",
+    "no-placeholders": "passed"
+  }
+}

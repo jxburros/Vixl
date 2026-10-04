@@ -1,0 +1,180 @@
+{
+  "tweak": {
+    "stat_size": 300,
+    "check_passed": false,
+    "issues": [
+      "'stat' is cut off by the canvas edge",
+      "'stat' and 'stat-caption' overlap by 1155 px (68.0% of the smaller layer)",
+      "'stat-caption' contrast is 2.07:1 for most glyph pixels (minimum 1.01:1); needs 4.5:1"
+    ]
+  },
+  "after_undo": 132,
+  "after_redo": 300,
+  "after_second_undo": 132,
+  "night_check": {
+    "passed": true,
+    "errors": []
+  },
+  "back_on_main_check_passed": true,
+  "branches": {
+    "main": "rev_3e2ae828364e4aa4",
+    "night-edition": "rev_41ae4472849b41ef"
+  },
+  "checkpoints": {
+    "layout-approved": "rev_e9f306b0d3e6432f",
+    "group-published": "rev_3e2ae828364e4aa4",
+    "night-v1": "rev_41ae4472849b41ef"
+  },
+  "current_branch": "main",
+  "revisions": 19,
+  "nodes": [
+    {
+      "id": "rev_8f78fab946874054",
+      "label": "Create instagram-portrait document",
+      "ops": []
+    },
+    {
+      "id": "rev_96eb42fa8bc741fe",
+      "label": null,
+      "ops": [
+        "add"
+      ]
+    },
+    {
+      "id": "rev_baa22c4bc789470d",
+      "label": "Transaction",
+      "ops": [
+        "font-register",
+        "font-register",
+        "layout-apply"
+      ]
+    },
+    {
+      "id": "rev_c56ed54f70274090",
+      "label": null,
+      "ops": [
+        "remove"
+      ]
+    },
+    {
+      "id": "rev_e9f306b0d3e6432f",
+      "label": null,
+      "ops": [
+        "resize",
+        "move",
+        "text",
+        "text"
+      ]
+    },
+    {
+      "id": "rev_3a58a443dedd46ac",
+      "label": null,
+      "ops": [
+        "text-set"
+      ]
+    },
+    {
+      "id": "rev_3de35761d2f44b54",
+      "label": "Merge copy-agent by copy-agent",
+      "ops": []
+    },
+    {
+      "id": "rev_8d82cbcd2763460d",
+      "label": null,
+      "ops": [
+        "text-set"
+      ]
+    },
+    {
+      "id": "rev_bd66b249498143ef",
+      "label": "Merge design-agent by design-agent",
+      "ops": []
+    },
+    {
+      "id": "rev_cffbe2e9185840e6",
+      "label": null,
+      "ops": [
+        "text-set",
+        "move",
+        "move",
+        "resize"
+      ]
+    },
+    {
+      "id": "rev_30f9672577f34127",
+      "label": null,
+      "ops": [
+        "suite-set"
+      ]
+    },
+    {
+      "id": "rev_72541e1f71ae4852",
+      "label": null,
+      "ops": [
+        "suite-set"
+      ]
+    },
+    {
+      "id": "rev_6d6d2e5d55664250",
+      "label": null,
+      "ops": [
+        "suite-set"
+      ]
+    },
+    {
+      "id": "rev_d9d8d3b62fa34d38",
+      "label": null,
+      "ops": [
+        "suite-set",
+        "variable",
+        "variable"
+      ]
+    },
+    {
+      "id": "rev_2c67c4143f524f03",
+      "label": null,
+      "ops": [
+        "action-define"
+      ]
+    },
+    {
+      "id": "rev_1882adf1e3bd416b",
+      "label": null,
+      "ops": [
+        "variable",
+        "text-set"
+      ]
+    },
+    {
+      "id": "rev_3e2ae828364e4aa4",
+      "label": null,
+      "ops": [
+        "variable",
+        "variable",
+        "swatch",
+        "swatch",
+        "action-apply"
+      ]
+    },
+    {
+      "id": "rev_cfa0538fad854b3a",
+      "label": null,
+      "ops": [
+        "text-set"
+      ]
+    },
+    {
+      "id": "rev_41ae4472849b41ef",
+      "label": null,
+      "ops": [
+        "swatch",
+        "swatch",
+        "swatch",
+        "swatch",
+        "swatch",
+        "swatch",
+        "swatch"
+      ]
+    }
+  ]
+}

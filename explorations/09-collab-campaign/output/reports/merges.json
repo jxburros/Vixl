@@ -1,0 +1,130 @@
+{
+  "copy-agent.preview": {
+    "branch": "copy-agent",
+    "source_head": "rev_3a58a443dedd46ac",
+    "branch_head": "rev_ffe7e0a1a8c74e45",
+    "conflicts": [
+      {
+        "path": "/layers/lyr_df7015b3b3bf496c/text",
+        "base": "LAUNCHING JUNE 1",
+        "ours": "LAUNCHING SATURDAY JUNE 1",
+        "theirs": "LAUNCHING JUNE 1 · RIVERSIDE",
+        "deleted": {
+          "base": false,
+          "ours": false,
+          "theirs": false
+        }
+      }
+    ],
+    "can_merge": false,
+    "success": false,
+    "dry_run": true
+  },
+  "copy-agent.resolved-preview": {
+    "branch": "copy-agent",
+    "source_head": "rev_3a58a443dedd46ac",
+    "branch_head": "rev_ffe7e0a1a8c74e45",
+    "conflicts": [],
+    "can_merge": true,
+    "success": true,
+    "dry_run": true
+  },
+  "copy-agent.merge": {
+    "branch": "copy-agent",
+    "source_head": "rev_3a58a443dedd46ac",
+    "branch_head": "rev_ffe7e0a1a8c74e45",
+    "conflicts": [],
+    "can_merge": true,
+    "success": true,
+    "dry_run": false,
+    "head": "rev_3de35761d2f44b54"
+  },
+  "design-agent.preview": {
+    "branch": "design-agent",
+    "source_head": "rev_3de35761d2f44b54",
+    "branch_head": "rev_4dbf2db249924f56",
+    "conflicts": [
+      {
+        "path": "/layers/lyr_11e4722039ea4571/text",
+        "base": "Get the app",
+        "ours": "Download Loop",
+        "theirs": "GET THE APP",
+        "deleted": {
+          "base": false,
+          "ours": false,
+          "theirs": false
+        }
+      },
+      {
+        "path": "/layers/lyr_11e4722039ea4571/width",
+        "base": 152,
+        "ours": 204,
+        "theirs": 179,
+        "deleted": {
+          "base": false,
+          "ours": false,
+          "theirs": false
+        }
+      },
+      {
+        "path": "/layers/lyr_dda8aaab1d25454a/text",
+        "base": "Ride the Loop",
+        "ours": "Your city, on a Loop",
+        "theirs": "RIDE THE LOOP",
+        "deleted": {
+          "base": false,
+          "ours": false,
+          "theirs": false
+        }
+      }
+    ],
+    "can_merge": false,
+    "success": false,
+    "dry_run": true
+  },
+  "design-agent.stale": {
+    "error": "stale_revision",
+    "message": "Source changed since merge review"
+  },
+  "design-agent.merge": {
+    "branch": "design-agent",
+    "source_head": "rev_8d82cbcd2763460d",
+    "branch_head": "rev_4dbf2db249924f56",
+    "conflicts": [],
+    "can_merge": true,
+    "success": true,
+    "dry_run": false,
+    "head": "rev_bd66b249498143ef"
+  },
+  "design-agent.resolutions": {
+    "/layers/lyr_11e4722039ea4571/text": "ours",
+    "/layers/lyr_11e4722039ea4571/width": "ours",
+    "/layers/lyr_dda8aaab1d25454a/text": "ours"
+  },
+  "branches": {
+    "branches": [
+      {
+        "version": 1,
+        "branch": "copy-agent",
+        "source": "ig-portrait.vixl",
+        "base": ".vixl-branches/copy-agent.base.vixl",
+        "base_hash": "e2a0dbabe509ffca253aa7922769fce5687f27b580412f313bd2e2ba39ca04a8",
+        "output": "copy-agent.vixl",
+        "author": "copy-agent",
+        "status": "merged",
+        "head": "rev_3de35761d2f44b54"
+      },
+      {
+        "version": 1,
+        "branch": "design-agent",
+        "source": "ig-portrait.vixl",
+        "base": ".vixl-branches/design-agent.base.vixl",
+        "base_hash": "e2a0dbabe509ffca253aa7922769fce5687f27b580412f313bd2e2ba39ca04a8",
+        "output": "design-agent.vixl",
+        "author": "design-agent",
+        "status": "merged",
+        "head": "rev_bd66b249498143ef"
+      }
+    ]
+  }
+}

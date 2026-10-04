@@ -1,0 +1,153 @@
+{
+  "after_merge_check": {
+    "passed": false,
+    "issues": [
+      {
+        "check": "overlap",
+        "severity": "warning",
+        "layers": [
+          "cta-button",
+          "cta"
+        ],
+        "message": "'cta-button' and 'cta' overlap by 1264 px (88.6% of the smaller layer)",
+        "region": [
+          113,
+          1175,
+          183,
+          29
+        ]
+      },
+      {
+        "check": "contrast",
+        "severity": "error",
+        "layers": [
+          "cta"
+        ],
+        "message": "'cta' contrast is 1.52:1 for most glyph pixels (minimum 1.18:1); needs 4.5:1",
+        "contrast": 1.516,
+        "required": 4.5
+      },
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "label"
+        ],
+        "message": "'label' is 6.2 px tall at 320 px wide; aim for at least 10 px (font size 34+)",
+        "thumbnail_size": 6.22
+      },
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "body"
+        ],
+        "message": "'body' is 8.3 px tall at 320 px wide; aim for at least 10 px (font size 34+)",
+        "thumbnail_size": 8.3
+      },
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "cta"
+        ],
+        "message": "'cta' is 8.3 px tall at 320 px wide; aim for at least 10 px (font size 34+)",
+        "thumbnail_size": 8.3
+      },
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "stat-caption"
+        ],
+        "message": "'stat-caption' is 7.7 px tall at 320 px wide; aim for at least 10 px (font size 34+)",
+        "thumbnail_size": 7.7
+      }
+    ]
+  },
+  "notes_opened": {
+    "notes": [
+      {
+        "id": "bc8ad455aba34dbb87f26b97531dc70b",
+        "text": "Merged headline 'Your city, on a Loop' now runs into the 400 stat — move the stat down/right.",
+        "resolved": false,
+        "created": "2026-10-04T18:00:32.148862+00:00"
+      },
+      {
+        "id": "9df1dfa1b4ac43618b0046c0d04732f3",
+        "text": "CTA 'Download Loop' is wider than its button (check: cta contrast error where it spills). Resize the button.",
+        "resolved": false,
+        "created": "2026-10-04T18:00:32.621461+00:00"
+      },
+      {
+        "id": "7513bc4fcbf34b208ba7e80833d49d37",
+        "text": "Stat caption reads well; keep '1 city'.",
+        "resolved": false,
+        "created": "2026-10-04T18:00:33.111631+00:00"
+      }
+    ]
+  },
+  "after_fix_check": {
+    "passed": true,
+    "issues": [
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "label"
+        ],
+        "message": "'label' is 6.2 px tall at 320 px wide; aim for at least 10 px (font size 34+)",
+        "thumbnail_size": 6.22
+      },
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "body"
+        ],
+        "message": "'body' is 8.3 px tall at 320 px wide; aim for at least 10 px (font size 34+)",
+        "thumbnail_size": 8.3
+      },
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "cta"
+        ],
+        "message": "'cta' is 8.3 px tall at 320 px wide; aim for at least 10 px (font size 34+)",
+        "thumbnail_size": 8.3
+      },
+      {
+        "check": "legibility",
+        "severity": "warning",
+        "layers": [
+          "stat-caption"
+        ],
+        "message": "'stat-caption' is 7.7 px tall at 320 px wide; aim for at least 10 px (font size 34+)",
+        "thumbnail_size": 7.7
+      }
+    ]
+  },
+  "notes_final": {
+    "notes": [
+      {
+        "id": "bc8ad455aba34dbb87f26b97531dc70b",
+        "text": "Merged headline 'Your city, on a Loop' now runs into the 400 stat — move the stat down/right.",
+        "resolved": true,
+        "created": "2026-10-04T18:00:32.148862+00:00"
+      },
+      {
+        "id": "9df1dfa1b4ac43618b0046c0d04732f3",
+        "text": "CTA 'Download Loop' is wider than its button (check: cta contrast error where it spills). Resize the button.",
+        "resolved": true,
+        "created": "2026-10-04T18:00:32.621461+00:00"
+      },
+      {
+        "id": "7513bc4fcbf34b208ba7e80833d49d37",
+        "text": "Stat caption reads well; keep '1 city'.",
+        "resolved": false,
+        "created": "2026-10-04T18:00:33.111631+00:00"
+      }
+    ]
+  }
+}

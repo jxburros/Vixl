@@ -1,0 +1,11 @@
+{
+  "request": [
+    "logo",
+    "label",
+    "headline",
+    "subtitle",
+    "cta-group",
+    "caption"
+  ],
+  "result": "{\"error\": \"layout_overflow\", \"message\": \"Targets cannot fit within canvas\", \"operation_index\": 0, \"operation_type\": \"adapt-layout\"}"
+}

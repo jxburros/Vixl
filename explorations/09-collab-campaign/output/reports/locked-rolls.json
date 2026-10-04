@@ -1,0 +1,118 @@
+[
+  {
+    "seed": 101,
+    "doc": "locked-101.vixl",
+    "png": "locked-101.png",
+    "layout": "golden-section",
+    "pairing": "poppins-lora",
+    "palette": "ocean",
+    "mode": "light",
+    "type_scale": "perfect-fourth",
+    "density": "balanced",
+    "accent": "rule",
+    "layout_seed": 1239194420,
+    "slots": [
+      "cta",
+      "image",
+      "label",
+      "subtitle",
+      "title"
+    ],
+    "swatches": {
+      "background": "#edf6f9",
+      "surface": "#dbe7ec",
+      "ink": "#003049",
+      "muted": "#406075",
+      "accent": "#006d77",
+      "accent-text": "#006d77",
+      "on-accent": "#ffffff"
+    }
+  },
+  {
+    "seed": 202,
+    "doc": "locked-202.vixl",
+    "png": "locked-202.png",
+    "layout": "rule-of-thirds",
+    "pairing": "poppins-lora",
+    "palette": "ocean",
+    "mode": "light",
+    "type_scale": "perfect-fifth",
+    "density": "airy",
+    "accent": "bar",
+    "layout_seed": 2906405793,
+    "slots": [
+      "cta",
+      "image",
+      "label",
+      "subtitle",
+      "title"
+    ],
+    "swatches": {
+      "background": "#edf6f9",
+      "surface": "#dbe7ec",
+      "ink": "#003049",
+      "muted": "#406075",
+      "accent": "#006d77",
+      "accent-text": "#006d77",
+      "on-accent": "#ffffff"
+    }
+  },
+  {
+    "seed": 303,
+    "doc": "locked-303.vixl",
+    "png": "locked-303.png",
+    "layout": "bento-grid",
+    "pairing": "poppins-lora",
+    "palette": "ocean",
+    "mode": "light",
+    "type_scale": "major-third",
+    "density": "airy",
+    "accent": "outline",
+    "layout_seed": 1710596761,
+    "slots": [
+      "caption",
+      "cta",
+      "image",
+      "label",
+      "subtitle",
+      "title"
+    ],
+    "swatches": {
+      "background": "#edf6f9",
+      "surface": "#dbe7ec",
+      "ink": "#003049",
+      "muted": "#406075",
+      "accent": "#006d77",
+      "accent-text": "#006d77",
+      "on-accent": "#ffffff"
+    }
+  },
+  {
+    "seed": 404,
+    "doc": "locked-404.vixl",
+    "png": "locked-404.png",
+    "layout": "big-number",
+    "pairing": "poppins-lora",
+    "palette": "ocean",
+    "mode": "light",
+    "type_scale": "minor-third",
+    "density": "dense",
+    "accent": "rule",
+    "layout_seed": 409008257,
+    "slots": [
+      "body",
+      "label",
+      "subtitle",
+      "title"
+    ],
+    "swatches": {
+      "background": "#edf6f9",
+      "surface": "#dbe7ec",
+      "ink": "#003049",
+      "muted": "#406075",
+      "accent": "#006d77",
+      "accent-text": "#006d77",
+      "on-accent": "#ffffff"
+    }
+  }
+]
