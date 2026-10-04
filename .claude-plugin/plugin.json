@@ -1,0 +1,11 @@
+{
+  "name": "vixl",
+  "description": "Editable graphics, brand kits and human review with the Vixl engine.",
+  "author": {
+    "name": "Vixl contributors"
+  },
+  "homepage": "https://github.com/jxburros/Vixl",
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "version": "0.15.0"
+}

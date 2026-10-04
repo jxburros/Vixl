@@ -1,0 +1,54 @@
+{
+  "prompt": "Create design.vixl from the social-square template with title Spring and subtitle Out Friday, then export preview.png at full size.",
+  "document": "design.vixl",
+  "checks": [
+    {
+      "type": "canvas",
+      "width": 1080,
+      "height": 1080
+    },
+    {
+      "type": "layer",
+      "name": "title",
+      "match": {
+        "name": "title",
+        "text_contains": "Spring"
+      }
+    },
+    {
+      "type": "layer",
+      "name": "subtitle",
+      "match": {
+        "name": "subtitle",
+        "text_contains": "Out Friday"
+      }
+    },
+    {
+      "type": "file",
+      "path": "preview.png",
+      "image_size": [
+        1080,
+        1080
+      ]
+    }
+  ],
+  "reference": [
+    {
+      "tool": "vixl_template_create",
+      "arguments": {
+        "path": "design.vixl",
+        "name": "social-square",
+        "variables": {
+          "title": "Spring",
+          "subtitle": "Out Friday"
+        }
+      }
+    },
+    {
+      "tool": "vixl_export_file",
+      "arguments": {
+        "path": "preview.png"
+      }
+    }
+  ]
+}

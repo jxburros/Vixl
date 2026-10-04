@@ -1,0 +1,53 @@
+{
+  "prompt": "Create design.vixl at 300x300, set 300 dpi and add a full canvas teal solid layer named background. Export print.tiff in CMYK.",
+  "document": "design.vixl",
+  "checks": [
+    {
+      "type": "state_field",
+      "field": [
+        "canvas",
+        "dpi"
+      ],
+      "equals": 300
+    },
+    {
+      "type": "file",
+      "path": "print.tiff",
+      "image_size": [
+        300,
+        300
+      ],
+      "image_mode": "CMYK"
+    }
+  ],
+  "reference": [
+    {
+      "tool": "vixl_document_create",
+      "arguments": {
+        "path": "design.vixl",
+        "width": 300,
+        "height": 300,
+        "dpi": 300
+      }
+    },
+    {
+      "tool": "vixl_operations_apply",
+      "arguments": {
+        "operations": [
+          {
+            "type": "solid",
+            "name": "background",
+            "color": "teal"
+          }
+        ]
+      }
+    },
+    {
+      "tool": "vixl_export_file",
+      "arguments": {
+        "path": "print.tiff",
+        "color_space": "cmyk"
+      }
+    }
+  ]
+}

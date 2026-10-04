@@ -2,7 +2,7 @@
 
 **A headless image-document engine designed for autonomous AI agents.**
 
-Current release: **0.14.0**. See the [changelog](CHANGELOG.md) for release notes.
+Current release: **0.15.0**. See the [changelog](CHANGELOG.md) for release notes.
 
 Vixl is built for AI agents to create, inspect, edit, measure, and export designs autonomously through MCP, structured operations, Python, REST, or the CLI. Humans can use the same interfaces. It needs no graphical display.
 
@@ -13,6 +13,24 @@ This initial implementation covers the specification's core editor and automatio
 ![A poster generated entirely by Vixl](docs/example-poster.png)
 
 [Download the editable example](examples/after-hours.vixl), or rebuild it with `python examples/build_poster.py`.
+
+## Agent quick start
+
+Install the tagged release directly on any supported platform with uv:
+
+```bash
+uvx --from https://github.com/jxburros/Vixl/archive/refs/tags/v0.15.0.tar.gz vixl mcp --workspace . --tools core --schema slim
+```
+
+After PyPI publishing is configured, `--from vixl-engine` is also available.
+For an unpublished checkout, use `uvx --from . vixl mcp --workspace . --tools core --schema slim`.
+MCP is part of the base package. [Release setup and agent bundles](docs/releases.md#python-and-agent-bundles)
+explain the external PyPI setup and Claude plugin/extension installation.
+
+Use `vixl mcp --http` for Streamable HTTP, `vixl -p poster.vixl view` for live human review,
+and [workspace brand.json](docs/brands.md) for reusable colors, fonts and embedded logos.
+`vixl -p poster.vixl import logo.svg` creates editable vector paths; PDF page import is also available.
+See [interfaces](docs/interfaces.md#streamable-http-and-live-review) for setup and import limits.
 
 ## Install on Windows
 
@@ -53,7 +71,7 @@ python -m pip install -e ".[server,mcp]"
 vixl --help
 ```
 
-The core install is `pip install -e .`; REST and MCP are optional extras. A DejaVu Sans fallback font is bundled, with its license, so text renders without system fonts. It is for proofing only: choose real typefaces from the curated catalog and pairings (`vixl font pairings`, `vixl font pair NAME|random`), which download on request and embed in the document.
+The core install is `pip install -e .`; MCP is included; REST/view and PDF import are optional extras. A DejaVu Sans fallback font is bundled, with its license, so text renders without system fonts. It is for proofing only: choose real typefaces from the curated catalog and pairings (`vixl font pairings`, `vixl font pair NAME|random`), which download on request and embed in the document.
 
 ## Discover resources and start from a template
 

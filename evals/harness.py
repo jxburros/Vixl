@@ -11,6 +11,8 @@ Agents:
 """
 
 import asyncio
+import os
+from unittest.mock import patch
 from copy import deepcopy
 import json
 from pathlib import Path
@@ -44,6 +46,20 @@ def prepare_workspace(task, workspace):
     """Create the task's starting files: generated images and pre-built documents."""
     from vixl import Project
 
+    for name, content in task.get("setup", {}).get("files", {}).items():
+        destination = (workspace / name).resolve()
+        if not destination.is_relative_to(workspace.resolve()):
+            raise ValueError("Eval fixture path escapes workspace")
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_text(content, encoding="utf-8")
+    for pairing in task.get("setup", {}).get("font_pairings", []):
+        from vixl.typefaces import get_pairing, slug
+        from vixl import fonts
+        cache = workspace / ".font-cache"
+        cache.mkdir(exist_ok=True)
+        fixture = (Path(fonts.__file__).parent / "data" / "DejaVuSans.ttf").read_bytes()
+        for spec in (get_pairing(pairing)[role] for role in ("heading", "body")):
+            (cache / f"{slug(spec['family'])}-{spec['weight']}.ttf").write_bytes(fixture)
     for spec in task.get("setup", {}).get("images", []):
         image = Image.new("RGB", (spec["width"], spec["height"]), spec.get("color", "gray"))
         if spec.get("gradient"):
@@ -104,6 +120,8 @@ def grade(task, workspace):
                     with Image.open(path) as image:
                         detail = list(image.size)
                         passed = detail == check["image_size"]
+                        if check.get("image_mode"):
+                            passed = passed and image.mode == check["image_mode"]
             elif kind == "files_differ":
                 first, second = (workspace / path for path in check["paths"])
                 passed = first.is_file() and second.is_file() and first.read_bytes() != second.read_bytes()
@@ -111,7 +129,12 @@ def grade(task, workspace):
                 project = document(check.get("document", task.get("document")))
                 state = project.inspect()
                 layers = state["layers"]
-                if kind == "canvas":
+                if kind == "state_field":
+                    detail = state
+                    for key in check["field"]:
+                        detail = detail[key]
+                    passed = detail == check["equals"]
+                elif kind == "canvas":
                     detail = [state["canvas"]["width"], state["canvas"]["height"]]
                     passed = detail == [check["width"], check["height"]]
                 elif kind == "layer":
@@ -164,10 +187,11 @@ def grade(task, workspace):
 class Tools:
     """Synchronous wrapper around an in-process Vixl MCP server."""
 
-    def __init__(self, workspace, schema="full"):
+    def __init__(self, workspace, schema="full", tools="all"):
         from vixl.interfaces import mcp_server
 
-        self.server = mcp_server(workspace=workspace, schema=schema)
+        self.server = mcp_server(workspace=workspace, schema=schema, tools=tools)
+        self.font_cache = Path(workspace) / ".font-cache"
         self.loop = asyncio.new_event_loop()
         self.calls = 0
         self.errors = 0
@@ -181,7 +205,9 @@ class Tools:
         """Return (is_error, blocks) where blocks are Anthropic-style text/image content blocks."""
         self.calls += 1
         try:
-            result = self.loop.run_until_complete(self.server.call_tool(name, arguments))
+            environment = {"VIXL_FONT_CACHE": str(self.font_cache)} if self.font_cache.is_dir() else {}
+            with patch.dict(os.environ, environment):
+                result = self.loop.run_until_complete(self.server.call_tool(name, arguments))
         except Exception as exc:  # ToolError and validation failures become error results
             self.errors += 1
             text = str(exc)
@@ -287,11 +313,11 @@ def _text(blocks):
 # --- running ---------------------------------------------------------------------------------------
 
 
-def run_task(task, agent, schema="full", keep=None):
+def run_task(task, agent, schema="full", keep=None, tool_set="all"):
     with tempfile.TemporaryDirectory(prefix=f"vixl-eval-{task['id']}-") as directory:
         workspace = Path(directory)
         prepare_workspace(task, workspace)
-        tools = Tools(workspace, schema=schema)
+        tools = Tools(workspace, schema=schema, tools=tool_set)
         started = time.monotonic()
         error = None
         try:
@@ -360,6 +386,6 @@ def markdown(results, summary, meta):
     return "\n".join(lines) + "\n"
 
 
-def run(tasks, agent, schema="full", keep=None):
-    results = [run_task(deepcopy(task), agent, schema, keep) for task in tasks]
+def run(tasks, agent, schema="full", keep=None, tool_set="all"):
+    results = [run_task(deepcopy(task), agent, schema, keep, tool_set) for task in tasks]
     return results, summarize(results)

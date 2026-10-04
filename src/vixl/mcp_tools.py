@@ -410,7 +410,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
             )
             with file_lock(str(destination)):
                 require(not destination.exists(), "Destination already exists")
-                project = create_template(name, variables, limits=session.limits)
+                project = create_template(name, variables, limits=session.limits, workspace=session.workspace)
                 project.save(destination)
                 result = session.open(destination)
                 if isinstance(result, dict) and project.state.get("template"):
@@ -645,7 +645,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
 
     @tool
     def vixl_check(
-        checks: list[Literal["bounds", "overlap", "contrast", "safe_area", "legibility", "print", "color_vision"]]
+        checks: list[Literal["bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "fonts", "brand", "print", "color_vision"]]
         | None = None,
         targets: list[str] | None = None,
         safe_area: Annotated[
@@ -684,6 +684,27 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
             artboard=artboard,
             comp=comp,
         )
+
+    @tool
+    def vixl_import_document(format: Literal["svg", "pdf"], path: str | None = None,
+                            data_base64: str | None = None, name: str = "import", page: int = 1,
+                            dpi: int = 144, document: Document = None) -> dict:
+        """Import SVG as editable shape/path layers, or a PDF page as a raster layer.
+        SVG accepts solid fills, strokes and transforms; unsupported features fail atomically."""
+        from .imports import import_document
+        require((path is None) != (data_base64 is None), "Provide exactly one of path or data_base64")
+        limit = session.limits.max_asset_bytes
+        data = read_bounded(session.resolve(path), limit) if path else decode_upload(data_base64, limit)
+        with session.project(write=True, document=document) as project:
+            return import_document(project, data, format, name, page, dpi)
+
+    @tool
+    def vixl_review_notes(action: Literal["list", "add", "resolve"] = "list", text: str | None = None,
+                          note_id: str | None = None, document: Document = None) -> dict:
+        """Read human feedback left in vixl view; add a note or resolve one by ID."""
+        from .review import notes
+        with session.project(document=document) as project:
+            return notes(project.path, action, text=text, note_id=note_id)
 
     @tool
     def vixl_import_image(
@@ -963,20 +984,19 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         mood: str | None = None,
         seed: int | None = None,
         locks: dict | None = None,
+        apply: bool = False,
+        slots: dict | None = None,
         document: Document = None,
     ) -> dict:
-        """Roll a coherent design direction when the brief is thin: a font pairing, a mood-consistent
-        palette, a layout suited to the purpose and canvas, mode, type scale, density and accent, plus a
-        ready layout-apply operation. Roll several times, compare previews, keep a direction by its seed;
-        locks fix any choice (e.g. {palette: sage})."""
-        from .typefaces import roll
-
-        canvas = None
-        if document or session.path:
-            with session.project(document=document) as project:
-                c = project.state["canvas"]
-                canvas = (c["width"], c["height"])
-        return roll(seed, purpose=purpose, mood=mood, canvas=canvas, locks=locks)
+        """Roll a coherent direction honoring workspace brand.json. apply=true installs fonts and
+        applies the layout in one undo step; slots fills its content (e.g. {title: Launch}).
+        locks fixes choices such as palette or layout. Missing slots are returned immediately."""
+        from .typefaces import roll_document
+        if document or session.path or apply:
+            with session.project(write=apply, document=document) as project:
+                return roll_document(project, seed=seed, purpose=purpose, mood=mood, locks=locks,
+                                     apply=apply, slots=slots)
+        return roll_document(workspace=session.workspace, seed=seed, purpose=purpose, mood=mood, locks=locks)
 
     @tool
     def vixl_brushes_list() -> dict:

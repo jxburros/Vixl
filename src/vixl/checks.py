@@ -12,7 +12,7 @@ import numpy as np
 from .errors import require
 from .model import finite
 
-CHECKS = ("bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "fonts")
+CHECKS = ("bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "fonts", "brand")
 FALLBACK_FONT = "DejaVuSans.ttf"
 OPTIONAL_CHECKS = ("print", "color_vision")
 PERCENT = re.compile(r"^(-?\d+(?:\.\d+)?)%$")
@@ -78,6 +78,10 @@ def check_design(
     from .design_render import artboard_project
     from .render import layer_canvas_surface, resolve_layout, resolved_layers
 
+    from .brand import for_project
+    brand = for_project(project)
+    if brand and "minimum_contrast" in brand:
+        min_contrast = max(min_contrast or 0, brand["minimum_contrast"])
     checks = list(checks or CHECKS)
     unknown = sorted(set(checks) - set(CHECKS + OPTIONAL_CHECKS))
     require(not unknown, f"Unknown check(s) {unknown}; available: {', '.join(CHECKS + OPTIONAL_CHECKS)}", field="checks")
@@ -322,6 +326,10 @@ def check_design(
         _print_checks(candidate, c, resolved, local_bounds, bounds, layers, content, texts, text_scales, issue, ink_limit, min_ppi)
     if "color_vision" in checks and texts:
         _color_vision(candidate, resolved, bounds, texts, min_contrast, text_scales, issue)
+
+    if brand and "brand" in checks:
+        from .brand import check as check_brand
+        check_brand(candidate, brand, issue)
 
     errors = sum(1 for x in issues if x["severity"] == "error")
     return {

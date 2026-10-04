@@ -42,6 +42,23 @@ def shape_image(project, layer):
     from .render import color
 
     w, h = layer["width"], layer["height"]
+    if layer["shape"] == "path":
+        # SVG's nonzero winding preserves holes in compound imported logo paths.
+        import io
+        import xml.etree.ElementTree as ET
+        import resvg_py
+        from .geometry import shape_path
+        path, view = shape_path(layer)
+        root = ET.Element("svg", xmlns="http://www.w3.org/2000/svg", width=str(w), height=str(h),
+                          viewBox=f"0 0 {view[0]} {view[1]}", preserveAspectRatio="none")
+        from .colors import parse, hex_of
+        attrs = {"d": path, "stroke-width": str(layer.get("stroke_width", 1))}
+        for field in ("fill", "stroke"):
+            rgba = parse(resolve_color(layer.get(field, "white" if field == "fill" else "transparent"), project.state))
+            attrs[field] = hex_of((*rgba[:3], 1))
+            attrs[field + "-opacity"] = str(rgba[3])
+        ET.SubElement(root, "path", attrs)
+        return Image.open(io.BytesIO(resvg_py.svg_to_bytes(svg_string=ET.tostring(root, encoding="unicode")))).convert("RGBA")
     # Supersample within the resource budget; geometry is re-evaluated at every size.
     factor = min(
         4,

@@ -47,8 +47,6 @@ def parse_path(path):
             upper, values = "L", [values[0], current[1]]
         if upper == "V":
             upper, values = "L", [current[0], values[0]]
-        if upper == "M":
-            require(not commands, "Use a single contour per path layer")
         if upper == "Z":
             current = start
         else:

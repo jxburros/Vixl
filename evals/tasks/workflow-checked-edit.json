@@ -1,0 +1,100 @@
+{
+  "prompt": "Create design.vixl at 160x100. Add a 20x20 red rectangle named logo at x=10,y=10. Save a suite named quality asserting layer.logo.bounds within canvas. Use vixl_workflow act with that suite to move logo to x=80, then export preview.png using workflow preview at final quality.",
+  "document": "design.vixl",
+  "checks": [
+    {
+      "type": "layer_field",
+      "layer": "logo",
+      "field": "x",
+      "equals": 80
+    },
+    {
+      "type": "state_field",
+      "field": [
+        "suites",
+        "quality",
+        "rules",
+        0,
+        "expression"
+      ],
+      "equals": "layer.logo.bounds within canvas"
+    },
+    {
+      "type": "file",
+      "path": "preview.png",
+      "image_size": [
+        160,
+        100
+      ]
+    }
+  ],
+  "reference": [
+    {
+      "tool": "vixl_document_create",
+      "arguments": {
+        "path": "design.vixl",
+        "width": 160,
+        "height": 100
+      }
+    },
+    {
+      "tool": "vixl_operations_apply",
+      "arguments": {
+        "operations": [
+          {
+            "type": "shape",
+            "shape": "rectangle",
+            "name": "logo",
+            "width": 20,
+            "height": 20,
+            "x": 10,
+            "y": 10,
+            "fill": "red"
+          },
+          {
+            "type": "suite-set",
+            "name": "quality",
+            "suite": {
+              "version": 1,
+              "rules": [
+                {
+                  "id": "logo",
+                  "kind": "assert",
+                  "expression": "layer.logo.bounds within canvas"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "tool": "vixl_workflow",
+      "arguments": {
+        "action": "act",
+        "request": {
+          "operations": [
+            {
+              "type": "move",
+              "target": "logo",
+              "x": 80
+            }
+          ],
+          "suites": [
+            "quality"
+          ]
+        }
+      }
+    },
+    {
+      "tool": "vixl_workflow",
+      "arguments": {
+        "action": "preview",
+        "request": {
+          "output": "preview.png",
+          "quality": "final"
+        }
+      }
+    }
+  ]
+}

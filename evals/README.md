@@ -62,3 +62,39 @@ or message, which is a product bug.
 Write the brief the way a person would, keep checks objective (geometry, text, files, design
 checks — not taste), include a reference solution, and run `pytest tests/test_eval_harness.py`:
 it verifies that the reference passes and that an idle agent fails.
+
+## Stored baseline and weekly comparison
+
+There are 16 briefs: the original eight plus layouts, font pairing, applied rolls, templates,
+CMYK export, timelines, checked workflow edits, and editable SVG imports. Font tasks populate
+an isolated temporary font cache with the bundled DejaVu font under the requested pairing's
+cache names. This tests pairing installation/registration and agent tool usage offline, not the
+appearance or availability of Google Fonts. Live runs use the same fixtures for comparability.
+
+```bash
+python -m evals.run --schema full --tools core --baseline evals/baseline.json
+python -m evals.run --schema slim --tools core --baseline evals/baseline.json
+```
+
+`baseline.json` stores required task passes, derived from working reference solutions. A missing
+or failed baseline task fails the run. It is an acceptance baseline, not a fabricated measurement
+of Claude success rate. `state_field` checks inspect nested persisted document fields; `file`
+checks can also require an image mode (for example CMYK).
+
+The Agent eval workflow runs every Monday at 15:00 UTC, checking the offline baseline and then
+running full/core and slim/core live evaluations if `ANTHROPIC_API_KEY` is configured. Missing
+credentials are reported explicitly; no live score is claimed. Results and traces are retained
+as workflow artifacts. Set `model`/`effort` with a manual run to compare a specific model.
+
+Current deterministic tool-context measurements (compact JSON characters divided by four):
+
+| Schema / tool set | Tools | Estimated schema tokens |
+| --- | ---: | ---: |
+| full / all | 53 | 12,789 |
+| full / core | 42 | 11,644 |
+| slim / all | 53 | 8,043 |
+| slim / core | 42 | 6,898 |
+
+Both schema modes pass all 16 reference tasks. Recommend `--tools core --schema slim` for new
+setups, while keeping the existing full/all default until live model results justify a change.
+Reference replay cannot measure whether a model discovers the right operation fields.

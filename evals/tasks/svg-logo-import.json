@@ -1,0 +1,67 @@
+{
+  "prompt": "Create design.vixl at 100x100. Import logo.svg as editable geometry, move the shape named mark to x=5, and export logo.svg.png.",
+  "document": "design.vixl",
+  "checks": [
+    {
+      "type": "layer",
+      "match": {
+        "name": "mark",
+        "type": "shape"
+      }
+    },
+    {
+      "type": "layer_field",
+      "layer": "mark",
+      "field": "x",
+      "equals": 5
+    },
+    {
+      "type": "file",
+      "path": "logo.svg.png",
+      "image_size": [
+        100,
+        100
+      ]
+    }
+  ],
+  "reference": [
+    {
+      "tool": "vixl_document_create",
+      "arguments": {
+        "path": "design.vixl",
+        "width": 100,
+        "height": 100
+      }
+    },
+    {
+      "tool": "vixl_import_document",
+      "arguments": {
+        "format": "svg",
+        "path": "logo.svg"
+      }
+    },
+    {
+      "tool": "vixl_operations_apply",
+      "arguments": {
+        "operations": [
+          {
+            "type": "move",
+            "target": "mark",
+            "x": 5
+          }
+        ]
+      }
+    },
+    {
+      "tool": "vixl_export_file",
+      "arguments": {
+        "path": "logo.svg.png"
+      }
+    }
+  ],
+  "setup": {
+    "files": {
+      "logo.svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\"><path id=\"mark\" fill=\"red\" d=\"M10 10L90 10L90 90L10 90Z M30 30L30 70L70 70L70 30Z\"/></svg>"
+    }
+  }
+}
