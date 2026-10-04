@@ -54,7 +54,8 @@ The authoritative schema is always `vixl schema` / `GET /schema` / `vixl://opera
 | `move` | `target`, `x`, `y`, `relative` | Absolute move clears constraints; `relative: true` adds offsets. |
 | `resize` | `target`, `width`, `height` | One dimension keeps aspect ratio; two stretch. Turns off text auto-size. |
 | `scale` | `target`, **`value`** | Factor (0.8 = 80 %). |
-| `rotate` | `target`, **`value`** | Degrees clockwise; bounds expand. |
+| `rotate` | `target`, **`value`** | Degrees clockwise about the layer's pivot (default: center); bounds expand. |
+| `pivot` | `target`, **`value`** (`[x, y]` fractions of the unrotated box, or `top-left`…`bottom-right`/`center`), `units` (`fraction`/`px`), or `clear` | Point that rotation and scale turn about; stays fixed on the canvas (stills, timeline, SVG). Keeps the drawn pose. A pivoted layer's stored `x`/`y` is its unrotated box. |
 | `flip` | `target`, **`direction`** | `horizontal` / `vertical`. |
 | `crop` | `target`, **`x`, `y`, `width`, `height`** | In the original embedded raster's coordinates. |
 | `opacity` | `target`, **`value`** | 0–1. |
@@ -159,7 +160,7 @@ deletes it. One style per kind; all accept `enabled` (bool) and `opacity` (0–1
 | `pixel-art` | `name`, `width`, `height`, `palette`, `background`, `x`, `y` — **or** `rows` (+`palette`) | `rows`: list of equal-length strings, one char per pixel. `palette`: `{"symbol":"color"}` (1–94 printable ASCII symbols). Default palette `.`=transparent, `#`=black. |
 | `pixel-draw` | `target`, **`x`**, **`y`**, **`color`** (palette symbol), `tool`, `x2`, `y2`, `width`, `height` | `tool`: `pixel` (default), `line` (to `x2`,`y2`), `rect` (`width`×`height` filled), `fill` (4-way flood). Native grid coordinates. |
 | `pixel-palette` | `target`, **`colors`** | Recolor symbols everywhere. |
-| `frame-save` | **`name`**, `duration` (10–60 000 ms, multiple of 10; default 100) | Snapshot the current scene as an animation frame (canvas ≤256×256). |
+| `frame-save` | **`name`**, `duration` (10–60 000 ms, multiple of 10; default 100) | Snapshot the current scene as an animation frame (any canvas size; frames × canvas pixels ≤ pixel budget). |
 | `frame-apply` | **`name`** | Restore a frame for editing. |
 | `frame-delete` | **`name`** | |
 | `animation-set` | `order` (frame names), `loop` (extra repeats; 0 = infinite) | |
@@ -182,10 +183,10 @@ deletes it. One style per kind; all accept `enabled` (bool) and `opacity` (0–1
 | `paint-clear` | `target`, `last` | Remove the last N (or all) strokes. |
 | `brush-define` | **`name`**, `base`, `settings`, `description` | Custom brush in the document. |
 | `timeline-set` | `duration`, `fps` (1–60), `loop` (0 = forever), `clear` | |
-| `keyframe` | `target` (layer or `canvas`), **`property`**, **`time`**, **`value`**, `easing` | Replaces a key at the same time. |
+| `keyframe` | `target` (layer or `canvas`) or `targets` (list), **`property`**, **`time`**, **`value`**, `easing` | Replaces a key at the same time. |
 | `keyframe-remove` | `target`, `property`, `time` | Track or single key. |
-| `animate` | `target`, **`property`**, **`to`**, `from`, `start`, `end`/`duration`, `easing` | Two keys; `from` defaults to the current value. |
-| `animate-preset` | `target`, **`preset`**, `start`, `duration`, `easing`, `amount`, `distance`, `fade`, `to` | fade/slide/pop/zoom/spin/pulse/shake/bounce/float/blink/typewriter/color-shift. |
+| `animate` | `target` or `targets`, **`property`**, **`to`**, `from`, `start`, `end`/`duration`, `easing` | Two keys; `from` defaults to the current value. `targets` gives several parts the same keys. |
+| `animate-preset` | `target` or `targets`, **`preset`**, `start`, `duration`, `easing`, `amount`, `distance`, `fade`, `to` | fade/slide/pop/zoom/spin/pulse/shake/bounce/float/blink/typewriter/color-shift. |
 | `marker` | **`name`**, `time` or `delete` | Named times usable wherever a time is accepted. |
 
 ## Legacy aliases (avoid in new code)

@@ -43,7 +43,7 @@ def union_bounds(bounds):
 
 def execute_design(project, op):
     from .operations import append_layer, execute
-    from .render import resolve_layout, color
+    from .render import resolve_layout, color, stored_origin
 
     kind = op["type"]
     state = project.state
@@ -77,7 +77,8 @@ def execute_design(project, op):
         state["layers"].insert(position, group)
         for child in children:
             b = bounds[child["id"]]
-            child.update(parent=group["id"], x=b[0] - x, y=b[1] - y, constraints={})
+            child.update(parent=group["id"], constraints={})
+            child["x"], child["y"] = stored_origin(child, (b[0] - x, b[1] - y))
         group["content_width"], group["content_height"] = w, h
     elif kind == "ungroup":
         group = project.layer(op.get("target"))
@@ -104,7 +105,8 @@ def execute_design(project, op):
         for child in children:
             require(child.get("clip") != group["id"], "Cannot ungroup referenced clipping base")
             local = all_bounds[child["id"]]
-            child.update(parent=group.get("parent"), x=local[0] + b[0], y=local[1] + b[1], constraints={})
+            child.update(parent=group.get("parent"), constraints={})
+            child["x"], child["y"] = stored_origin(child, (local[0] + b[0], local[1] + b[1]))
             state["layers"].remove(child)
         index = state["layers"].index(group)
         state["layers"][index : index + 1] = children
@@ -144,8 +146,10 @@ def execute_design(project, op):
         pos = first[axis]
         for layer in layers:
             b = bounds[layer["id"]]
-            layer.update(x=b[0], y=b[1], constraints={})
-            layer["x" if axis == 0 else "y"] = pos
+            origin = [b[0], b[1]]
+            origin[axis] = pos
+            layer["x"], layer["y"] = stored_origin(layer, origin)
+            layer["constraints"] = {}
             pos += b[axis + 2] + gap
     elif kind == "style-define":
         category = op.get("kind", "character")
@@ -311,6 +315,7 @@ def execute_design(project, op):
         operands = deepcopy(children)
         for layer in operands:
             b = bounds[layer["id"]]
+            layer.pop("pivot", None)
             layer.update(x=b[0] - x, y=b[1] - y, constraints={})
         append_layer(
             project,

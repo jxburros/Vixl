@@ -259,8 +259,14 @@ def static_value(project, target, prop):
     if prop in ("translate-x", "translate-y"):
         return 0.0
     if prop in ("x", "y"):
-        from .render import resolve_layout
+        from .render import resolve_layout, pivot_delta
 
+        if layer.get("pivot") is not None:
+            # A pivoted layer's x/y is its unrotated box, which rotation does not move.
+            if not layer["constraints"]:
+                return layer[prop]
+            bounds = resolve_layout(project)[layer["id"]]
+            return bounds[0 if prop == "x" else 1] - pivot_delta(layer)[0 if prop == "x" else 1]
         return resolve_layout(project)[layer["id"]][0 if prop == "x" else 1]
     if prop == "fill" and "fill" not in layer and "color" in layer:
         prop = "color"
@@ -320,6 +326,15 @@ def execute_timeline(project, op):
                 if track["keys"]:
                     kept.append(track)
         timeline["tracks"] = kept
+        return
+    if "targets" in op:
+        # One call, shared timing: the same keys land on every listed part.
+        require(kind in ("keyframe", "animate", "animate-preset"), f"{kind} takes a single target")
+        require("target" not in op, "Pass target or targets, not both")
+        targets = op["targets"]
+        require(isinstance(targets, list) and 1 <= len(targets) <= 256, "targets must list 1–256 layers")
+        for target in targets:
+            execute_timeline(project, {**{k: v for k, v in op.items() if k != "targets"}, "target": target})
         return
     target_ref = op.get("target") or project.state["active_layer"]
     require(target_ref, "Pass target (a layer or 'canvas')")
@@ -529,30 +544,61 @@ def project_at(project, time):
             layer["opacity"] = min(max(value, 0.0), 1.0)
         elif prop == "rotation":
             layer["rotation"] = value % 360
+            geometry.setdefault(target, {})["rotation"] = value
         else:
             layer[prop] = value
     for layer in state["layers"]:
         if layer["type"] == "text" and layer.get("auto_size", True):
             layer["width"], layer["height"], _ = text_metrics(candidate, layer)
     if geometry:
+        from .render import pivot_delta, rest_size, transformed_size
+
         bounds = resolve_layout(candidate)
+        rest = {}
+        spinning = [ident for ident, v in geometry.items() if "rotation" in v and layers[ident].get("pivot") is None]
+        if spinning:
+            # Bounds at the document's own rotation (other animated geometry applied) give the
+            # center a rotating layer turns about.
+            original = {layer["id"]: layer.get("rotation", 0) for layer in project.state["layers"]}
+            frame = {ident: layers[ident]["rotation"] for ident in spinning}
+            for ident in spinning:
+                layers[ident]["rotation"] = original[ident]
+            rest = resolve_layout(candidate)
+            for ident in spinning:
+                layers[ident]["rotation"] = frame[ident]
         for ident, values in geometry.items():
             layer = layers[ident]
             x, y, w, h = bounds[ident]
-            if "x" in values:
-                x = values["x"]
-            if "y" in values:
-                y = values["y"]
             sx = values.get("scale", 1) * values.get("scale-x", 1)
             sy = values.get("scale", 1) * values.get("scale-y", 1)
-            if sx != 1 or sy != 1:
-                # Scale about the layer's center; rotation keeps its own expanded bounds.
-                base_w, base_h = layer["width"], layer["height"]
-                new_w, new_h = max(1, int(round(base_w * sx))), max(1, int(round(base_h * sy)))
-                cx, cy = x + w / 2, y + h / 2
-                layer.update(width=new_w, height=new_h, auto_size=False)
-                from .render import transformed_size
-
+            if layer.get("pivot") is not None:
+                # x/y place the unrotated box; rotation and scale keep the pivot point fixed.
+                if layer.get("constraints"):
+                    dx, dy = pivot_delta(layer)
+                    x, y = x - dx, y - dy
+                else:
+                    x, y = layer["x"], layer["y"]
+                x, y = values.get("x", x), values.get("y", y)
+                if sx != 1 or sy != 1:
+                    (rw, rh), (px, py) = rest_size(layer), layer["pivot"]
+                    anchor = x + px * rw, y + py * rh
+                    layer.update(width=max(1, int(round(layer["width"] * sx))), height=max(1, int(round(layer["height"] * sy))), auto_size=False)
+                    rw, rh = rest_size(layer)
+                    x, y = anchor[0] - px * rw, anchor[1] - py * rh
+            else:
+                # Scale and animated rotation keep the layer's center (the document pose's center
+                # while rotating, so spins do not drift as the expanded bounds grow).
+                if "rotation" in values and ident in rest:
+                    rx, ry, rw, rh = rest[ident]
+                    cx, cy = rx + rw / 2, ry + rh / 2
+                else:
+                    cx, cy = x + w / 2, y + h / 2
+                if "x" in values:
+                    cx = values["x"] + w / 2
+                if "y" in values:
+                    cy = values["y"] + h / 2
+                if sx != 1 or sy != 1:
+                    layer.update(width=max(1, int(round(layer["width"] * sx))), height=max(1, int(round(layer["height"] * sy))), auto_size=False)
                 tw, th = transformed_size(layer)
                 x, y = cx - tw / 2, cy - th / 2
             # Animated geometry freezes this layer's constraints for the frame; layers anchored
@@ -568,6 +614,23 @@ def render_at(project, time, **options):
     from .render import render
 
     return render(project_at(project, time), **options)
+
+
+def render_scaled(project, scale, sampling="smooth"):
+    """Render at ``scale`` × canvas size. Smooth sampling re-renders a geometrically scaled copy so
+    vectors, text and shapes stay crisp; raster content and unsupported features resample with
+    LANCZOS, and nearest sampling enlarges the canvas-size render pixel by pixel."""
+    from .proxy import scaled_project
+    from .render import render
+
+    c = project.state["canvas"]
+    size = (max(1, round(c["width"] * scale)), max(1, round(c["height"] * scale)))
+    project.limits.size(*size)
+    proxy = scaled_project(project, scale) if scale != 1 and sampling == "smooth" else None
+    image = render(proxy if proxy is not None else project)
+    if image.size != size:
+        image = image.resize(size, Image.Resampling.NEAREST if sampling == "nearest" else Image.Resampling.LANCZOS)
+    return image
 
 
 def frame_times(project, fps=None, start=0, end=None):
@@ -708,15 +771,17 @@ def _frames(project, times, scale, preview=False, cancelled=None, progress=None)
             from .proxy import render_preview
             image = render_preview(project, *size, time=time)
         else:
-            image = render_at(project, time)
+            image = render_scaled(project_at(project, time), scale)
         if progress:
             progress({"done": index + 1, "total": len(times)})
         yield image if image.size == size else image.resize(size, Image.Resampling.LANCZOS)
 
 
-def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=None, end=None, background=None, columns=None, quality=90, overwrite=False, preview=False, cancelled=None, progress=None):
-    """Write the timeline as an animation, sheet or frame sequence. Never clobbers by default."""
-    from .animation import gif_frame
+def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=None, end=None, background=None, columns=None, quality=90, colors=256, overwrite=False, preview=False, cancelled=None, progress=None):
+    """Write the timeline as an animation, sheet or frame sequence. Never clobbers by default.
+    Frames render at the target resolution (``scale`` 0.05–16, bounded by the pixel budget);
+    ``colors`` (2–256) caps the GIF palette."""
+    from .animation import check_colors, gif_bytes, size_warnings
 
     path = Path(path)
     suffix = path.suffix.lower()
@@ -724,7 +789,9 @@ def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=No
     require(format in FORMATS, f"Timeline format must be one of {', '.join(FORMATS)}")
     expected = {"gif": (".gif",), "apng": (".png", ".apng"), "webp": (".webp",), "sheet": (".png",), "frames": (".zip",), "mp4": (".mp4",), "webm": (".webm",)}[format]
     require(suffix in expected, f"Use a {' or '.join(expected)} filename for {format}")
-    finite(scale, "scale", 0.05, 4)
+    finite(scale, "scale", 0.05, 16)
+    require(colors == 256 or format == "gif", "colors applies to GIF export", field="colors")
+    check_colors(colors)
     timeline = project.state.get("timeline") or default_timeline()
     markers = timeline.get("markers", {})
     first = parse_time(start, timeline["duration"], markers) if start is not None else 0
@@ -777,8 +844,7 @@ def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=No
     else:
         images = list(frames)
         if format == "gif":
-            images = [gif_frame(image) for image in images]
-            images[0].save(stream, format="GIF", save_all=True, append_images=images[1:], duration=duration_ms, loop=loop, disposal=2, transparency=0, optimize=False)
+            stream.write(gif_bytes(images, duration_ms, loop, colors))
         elif format == "apng":
             images[0].save(stream, format="PNG", save_all=True, append_images=images[1:], duration=duration_ms, loop=loop + 1 if loop else 0, disposal=0, blend=0)
         else:
@@ -799,6 +865,7 @@ def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=No
         "size": [w, h],
         "bytes": len(data),
         **({"metadata": str(destinations[1])} if metadata is not None else {}),
+        **({"warnings": warnings} if (warnings := size_warnings(format, data)) else {}),
     }
 
 
@@ -842,8 +909,9 @@ def schemas(add):
     time = {"type": ["number", "string"]}  # ms, "1.5s", "500ms", "50%" or a marker name
     value = {"type": ["number", "string", "boolean"]}
     add("timeline-set", {"duration": time, "fps": {"type": "number", "minimum": 1, "maximum": 60}, "loop": {"type": "integer", "minimum": 0, "maximum": 65535}, "clear": B})
-    add("keyframe", {"property": S, "time": time, "value": value, "easing": S}, ["property", "time", "value"])
+    targets = {"type": "array", "items": S, "minItems": 1, "uniqueItems": True}
+    add("keyframe", {"property": S, "time": time, "value": value, "easing": S, "targets": targets}, ["property", "time", "value"])
     add("keyframe-remove", {"property": S, "time": time})
-    add("animate", {"property": S, "from": value, "to": value, "start": time, "end": time, "duration": time, "easing": S}, ["property", "to"])
-    add("animate-preset", {"preset": S, "start": time, "duration": time, "easing": S, "distance": N, "amount": N, "fade": B, "to": S}, ["preset"])
+    add("animate", {"property": S, "from": value, "to": value, "start": time, "end": time, "duration": time, "easing": S, "targets": targets}, ["property", "to"])
+    add("animate-preset", {"preset": S, "start": time, "duration": time, "easing": S, "distance": N, "amount": N, "fade": B, "to": S, "targets": targets}, ["preset"])
     add("marker", {"name": S, "time": time, "delete": B}, ["name"], anyOf=[{"required": ["time"]}, {"required": ["delete"]}])

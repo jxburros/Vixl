@@ -208,7 +208,7 @@ def compile_feature(cmd, args):
         p.add_argument("--description")
         p.add_argument("--settings", type=json.loads)
     elif cmd == "keyframe":
-        p.add_argument("target")
+        p.add_argument("target", help="Layer, or several comma-separated layers (arm-left,arm-right) that share the same keys")
         p.add_argument("property")
         p.add_argument("time", type=_time)
         p.add_argument("value", type=_value)
@@ -218,7 +218,7 @@ def compile_feature(cmd, args):
         p.add_argument("--property")
         p.add_argument("--time", type=_time)
     elif cmd == "animate":
-        p.add_argument("target")
+        p.add_argument("target", help="Layer, or several comma-separated layers (arm-left,arm-right) that share the same keys")
         p.add_argument("property")
         p.add_argument("--from", dest="from_", type=_value)
         p.add_argument("--to", type=_value, required=True)
@@ -229,9 +229,9 @@ def compile_feature(cmd, args):
         if data.get("from_") is not None:
             data["from"] = data.pop("from_")
         data.pop("from_", None)
-        return {"type": cmd, **{k: v for k, v in data.items() if v is not None}}
+        return _targets({"type": cmd, **{k: v for k, v in data.items() if v is not None}})
     elif cmd == "animate-preset":
-        p.add_argument("target")
+        p.add_argument("target", help="Layer, or several comma-separated layers (arm-left,arm-right) that share the same keys")
         p.add_argument("preset")
         for key in ("start", "duration"):
             p.add_argument("--" + key, type=_time)
@@ -259,7 +259,14 @@ def compile_feature(cmd, args):
         if ratio and ratio.replace(".", "", 1).isdigit():
             data["ratio"] = float(ratio)
         return {"type": cmd, **{k: v for k, v in data.items() if v is not None}}
-    return {"type": cmd, **{k: v for k, v in vars(p.parse_args(args)).items() if v is not None}}
+    op = {"type": cmd, **{k: v for k, v in vars(p.parse_args(args)).items() if v is not None}}
+    return _targets(op) if cmd in ("keyframe", "animate-preset") else op
+
+
+def _targets(op):
+    if "," in op.get("target", ""):
+        op["targets"] = [name.strip() for name in op.pop("target").split(",") if name.strip()]
+    return op
 
 
 def project_feature(project, cmd, args):
@@ -292,6 +299,7 @@ def project_feature(project, cmd, args):
         p.add_argument("--background")
         p.add_argument("--columns", type=int)
         p.add_argument("--quality", type=int, default=90)
+        p.add_argument("--colors", type=int, default=256, help="GIF palette size 2–256 (fewer colors = smaller file)")
         p.add_argument("--overwrite", action="store_true")
         a = p.parse_args(args)
         fps = int(a.fps) if a.fps and a.fps.is_integer() else a.fps
@@ -306,6 +314,7 @@ def project_feature(project, cmd, args):
             background=a.background,
             columns=a.columns,
             quality=a.quality,
+            colors=a.colors,
             overwrite=a.overwrite,
         ), False
     if cmd == "timeline-sheet":

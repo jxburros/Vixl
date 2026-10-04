@@ -327,7 +327,7 @@ def apply_centering(project, centered, operation):
     """Center the created (or moved) layer within its canvas or parent group."""
     if not centered:
         return
-    from .render import resolve_layout
+    from .render import resolve_layout, stored_origin
 
     layer = project.layer(operation.get("target") if operation.get("type") == "move" else None)
     bounds = resolve_layout(project)[layer["id"]]
@@ -336,9 +336,11 @@ def apply_centering(project, centered, operation):
         width, height = parent["content_width"], parent["content_height"]
     else:
         width, height = project.state["canvas"]["width"], project.state["canvas"]["height"]
+    origin = [(width - bounds[2]) / 2 if centered.get("x") else bounds[0], (height - bounds[3]) / 2 if centered.get("y") else bounds[1]]
+    x, y = stored_origin(layer, origin)
     if centered.get("x"):
-        layer["x"] = (width - bounds[2]) / 2
+        layer["x"] = x
     if centered.get("y"):
-        layer["y"] = (height - bounds[3]) / 2
+        layer["y"] = y
     if operation.get("type") == "move":
         layer["constraints"] = {}

@@ -127,6 +127,8 @@ def _operation_schema():
     )
     add("scale", {"value": {"type": "number", "exclusiveMinimum": 0}}, ["value"])
     add("rotate", {"value": N}, ["value"])
+    # value: [x, y] fractions of the unrotated box (0.5, 0.5 = center) or an anchor such as "top-left".
+    add("pivot", {"value": {"type": ["array", "string"], "items": N}, "units": enum("fraction", "px"), "clear": B})
     add("opacity", {"value": {"type": "number", "minimum": 0, "maximum": 1}}, ["value"])
     add("blend", {"value": enum(*BLENDS)}, ["value"])
     add("flip", {"direction": enum("horizontal", "vertical")}, ["direction"])
