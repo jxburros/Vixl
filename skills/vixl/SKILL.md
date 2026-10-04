@@ -72,6 +72,14 @@ Check availability first: `vixl --version` (CLI) or call `vixl_workspace_list` (
 source with `pip install -e ".[server,mcp]"` (Python ≥ 3.11); Windows users use the installer.
 Set `VIXL_NO_UPDATE=1` in automation so the Windows auto-updater never runs mid-task.
 
+**`vixl` not found? Look before asking the user.** A session started before installation keeps
+its old PATH. Try, in order: `%LOCALAPPDATA%\Programs\Vixl\bin\vixl.exe` (Git Bash:
+`"$LOCALAPPDATA/Programs/Vixl/bin/vixl.exe" --version`; PowerShell:
+`& "$env:LOCALAPPDATA\Programs\Vixl\bin\vixl.exe" --version`), the alias
+`%LOCALAPPDATA%\Microsoft\WindowsApps\vixl.exe`, then `python -m vixl --version` (pip installs).
+If found, prepend its folder to PATH for this session — see
+[references/cli.md](references/cli.md#finding-vixl).
+
 ## 2. The core loop (do this every time)
 
 0. **Start right** — for a new piece, create it from a named size (`size="instagram-portrait"`,

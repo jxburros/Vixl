@@ -6,16 +6,17 @@ Vixl is a headless application designed for autonomous AI agents; humans can use
 
 1. Open [the latest GitHub release](https://github.com/jxburros/Vixl/releases/latest).
 2. Download the file named **Vixl-Setup-VERSION-windows-x64.exe** and run it.
-3. Close every window of your terminal application and reopen it. Restart VS Code too if you use its integrated terminal.
-4. Run `vixl --version` and `vixl --help` from any directory.
+3. Run `vixl --version` and `vixl --help` from any directory. If `vixl` is not found, close every window of your terminal application and reopen it (restart VS Code too if you use its integrated terminal), or see [Using the current terminal](#using-the-current-terminal).
 
-Python and the engine dependencies are bundled. The installer requires no administrator privileges. It installs to `%LOCALAPPDATA%\Programs\Vixl` and prepends its `bin` directory to your **user** PATH, preserving the other entries. It supplies a Start menu shortcut and a normal Windows uninstaller. Windows x64 is the current installer target; macOS/Linux users can continue using the Python package. WSL is a separate Linux environment, not the Windows installation.
+Python and the engine dependencies are bundled. The installer requires no administrator privileges. It installs to `%LOCALAPPDATA%\Programs\Vixl` and prepends its `bin` directory to your **user** PATH, preserving the other entries. That PATH entry is the primary mechanism, but processes that were already running keep their old environment.
+
+So that existing terminals and AI agents (for example an agent spawned by a desktop app that was open during installation) can run `vixl` at once, the installer also copies the launcher to `%LOCALAPPDATA%\Microsoft\WindowsApps\vixl.exe`. Windows 10/11 puts that folder on the user PATH by default, so running processes already search it. The copy is made only when the folder exists and is on PATH, and never over another program's `vixl.exe`: an existing file there is replaced only if it is byte-identical to the launcher of the Vixl installation being upgraded. The uninstaller removes the copy only if it still matches the installed launcher. The copy is an `.exe` (not a `.cmd` shim) because Git Bash does not find commands by `.cmd` extension. It locates the installation through `VIXL_HOME` if set, then the installer's `HKCU\Software\Vixl\InstallRoot` record, then `%LOCALAPPDATA%\Programs\Vixl`. It supplies a Start menu shortcut and a normal Windows uninstaller. Windows x64 is the current installer target; macOS/Linux users can continue using the Python package. WSL is a separate Linux environment, not the Windows installation.
 
 The first installer is not Authenticode-signed: a Windows publisher/SmartScreen warning may appear. The repository currently has no signing certificate configured. Download from the official repository's Releases page. `SHA256SUMS.txt` is provided for artifact verification; checksums do not constitute an independent publisher signature.
 
 ### Using the current terminal
 
-An installer cannot change the environment of its parent terminal or agent process. To use the managed installation immediately in an existing PowerShell session, prepend only its launcher directory, preserving session-specific PATH entries:
+An installer cannot change the environment of its parent terminal or agent process. In most existing sessions `vixl` still works at once through the `WindowsApps` copy described above; `Get-Command vixl -All` (PowerShell) or `which -a vixl` (Git Bash) shows which copy runs. If `vixl` is still not found (for example because `WindowsApps` is not on that session's PATH), run `%LOCALAPPDATA%\Programs\Vixl\bin\vixl.exe` directly, or prepend only its launcher directory, preserving session-specific PATH entries:
 
 ```powershell
 $VixlBin = Join-Path $env:LOCALAPPDATA 'Programs\Vixl\bin'
@@ -25,7 +26,7 @@ vixl --version
 vixl updates status --json
 ```
 
-For a custom install location, substitute its `bin` directory. To avoid any PATH ambiguity, use `& "$VixlBin\vixl.exe" --version` or `& "$VixlBin\vixl.exe" update`. In Command Prompt, use `set "PATH=%LOCALAPPDATA%\Programs\Vixl\bin;%PATH%"`.
+For a custom install location, substitute its `bin` directory. To avoid any PATH ambiguity, use `& "$VixlBin\vixl.exe" --version` or `& "$VixlBin\vixl.exe" update`. In Command Prompt, use `set "PATH=%LOCALAPPDATA%\Programs\Vixl\bin;%PATH%"`. In Git Bash, use `export PATH="$(cygpath -u "$LOCALAPPDATA")/Programs/Vixl/bin:$PATH"`.
 
 Check the version from the exact executable your agent invokes before using documented options. A pip install and the Windows managed install are separate: updating one does not update the other. Documentation on `main` may describe features newer than the latest published installer; use documentation at your installed release tag or install the matching published release. Grouped SVG vectors/plain outlined text require 0.11.1+, and shaped Unicode text plus `--svg-policy strict` require 0.12.0+.
 
