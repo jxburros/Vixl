@@ -22,6 +22,27 @@ The implementation uses Python, Pillow, and NumPy to cover the complete editing/
 
 ## Persistence and concurrency
 
+Production extensions: `assurance.py` owns saved, read-only design contracts;
+`automation.py` compiles bounded actions and role-based motion to canonical operations;
+`production.py` handles typed recipe snapshots, variant plans, manifests and component
+libraries. `render_cache.py` supplies an optional persistent, bounded PNG cache keyed
+by render inputs, font bytes and runtime versions. `film.py` assembles bounded shot
+sequences; `jobs.py` persists workspace jobs and frozen inputs, with per-job worker
+locks and cooperative cancellation. `workflows.py` is the shared CLI/MCP dispatcher;
+REST exposes its fixed-project subset. See [production](production.md).
+
+New document fields (`suites`, `roles`, `motions`, `actions`, `recipe`) are optional,
+validated on load and committed through existing history. Older archives need no
+migration. Job, recipe, suite, library and production manifests carry their own v1
+contracts. Raw provider credentials never enter these records. Scripts still cannot
+execute shell/Python; reusable actions cannot rewrite check suites or recurse.
+
+Parallel production uses independent document candidates, bounded worker counts and
+staged output publication. It does not make concurrent edits to a shared project.
+Recovery never assumes a timed-out external generation request was cancelled. Pollable
+video gateways use durable IDs/client keys; uncertain synchronous image generation
+requires review. Workers need restarting after process/machine termination.
+
 A successful CLI editing command autosaves via a same-directory temporary file, `fsync`, and atomic replace. An advisory project lock serializes CLI and service read-modify-write cycles. Direct Python saves use an optimistic archive hash check to reject stale writes. A loader hashes the exact archive bytes it parses, preventing a concurrent replacement from being mistaken for the same revision.
 
 History is a DAG of revisions. Each revision stores a structural delta from its parent, with a full snapshot every 32 revisions on a chain, so memory and file size grow with what changed rather than with document size × edits. Historical states are reconstructed, then validated, when a revision is restored. When `max_history` (2,000) is reached, the oldest revisions not referenced by the head, a branch, a checkpoint or the redo stack are squashed (their children become snapshots), so editing never stops. Font assets are ZIP-compressed; already-compressed images remain stored without recompression. Assets are content-addressed and shared; assets no remaining revision references are dropped on save. Open transactions preserve provisional state across commands, then commit as one history entry or restore the previous state. Transactions provide rollback, not isolation from other clients. Use separate projects or a single coordinating client for simultaneous independent editing.

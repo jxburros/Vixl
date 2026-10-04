@@ -698,16 +698,23 @@ def contact_sheet(project, count=8, columns=None, max_width=1600, times=None):
     return sheet
 
 
-def _frames(project, times, scale):
+def _frames(project, times, scale, preview=False, cancelled=None, progress=None):
     c = project.state["canvas"]
     size = (max(1, round(c["width"] * scale)), max(1, round(c["height"] * scale)))
     project.limits.size(*size)
-    for time in times:
-        image = render_at(project, time)
+    for index, time in enumerate(times):
+        require(not cancelled or not cancelled(), "Timeline cancelled", "cancelled")
+        if preview:
+            from .proxy import render_preview
+            image = render_preview(project, *size, time=time)
+        else:
+            image = render_at(project, time)
+        if progress:
+            progress({"done": index + 1, "total": len(times)})
         yield image if image.size == size else image.resize(size, Image.Resampling.LANCZOS)
 
 
-def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=None, end=None, background=None, columns=None, quality=90, overwrite=False):
+def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=None, end=None, background=None, columns=None, quality=90, overwrite=False, preview=False, cancelled=None, progress=None):
     """Write the timeline as an animation, sheet or frame sequence. Never clobbers by default."""
     from .animation import gif_frame
 
@@ -731,7 +738,7 @@ def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=No
         require(w * h * len(times) <= project.limits.max_pixels * 4, "Animation exceeds the in-memory pixel budget; lower fps, scale or duration, or export frames/mp4", "resource_limit")
     duration_ms = round(1000 / fps)
     loop = timeline.get("loop", 0)
-    frames = _frames(project, times, scale)
+    frames = _frames(project, times, scale, preview, cancelled, progress)
     if background is not None:
         from .render import color
 
@@ -823,10 +830,10 @@ def _video(path, frames, fps, format, quality, overwrite, count, size):
             process.kill()
             raise
         require(code == 0, f"ffmpeg failed: {error.strip()[:500]}", "codec_error")
-        data = staged.read_bytes()
-    with path.open("wb" if overwrite else "xb") as output:
-        output.write(data)
-    return {"output": str(path), "format": format, "frames": count, "fps": fps, "duration": round(count * 1000 / fps), "size": [w, h], "bytes": len(data)}
+        from .production import publish_file
+        byte_count = staged.stat().st_size
+        publish_file(path, staged, replace=overwrite)
+    return {"output": str(path), "format": format, "frames": count, "fps": fps, "duration": round(count * 1000 / fps), "size": [w, h], "bytes": byte_count}
 
 
 def schemas(add):

@@ -26,6 +26,11 @@ def compact_changes(before, after):
             changes[key] = after.get(key)
     if before.get("layout") != after.get("layout") and after.get("layout"):
         changes["layout"] = {k: v for k, v in after["layout"].items() if k != "layers"}
+    for key in ("suites", "roles", "motions", "actions"):
+        if before.get(key) != after.get(key):
+            changes[key] = {"names": sorted(after.get(key, {}))}
+    if before.get("recipe") != after.get("recipe"):
+        changes["recipe"] = {"inputs": sorted(after.get("recipe", {}).get("inputs", {}))}
     if before.get("timeline") != after.get("timeline"):
         timeline = after.get("timeline") or {}
         changes["timeline"] = {

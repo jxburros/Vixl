@@ -7,6 +7,7 @@ from .resources import RESOURCE_TYPES
 from .brushes import BRUSH_TYPES
 from .timeline import TIMELINE_TYPES
 from .layouts import LAYOUT_TYPES
+from .automation import TYPES as AUTOMATION_TYPES
 
 from copy import deepcopy
 import hashlib
@@ -39,7 +40,7 @@ ALIASES = {
     "make_selection": "select",
 }
 
-OPERATION_TYPES = list(DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_TYPES + BRUSH_TYPES + TIMELINE_TYPES + LAYOUT_TYPES + COLOR_TYPES) + [
+OPERATION_TYPES = list(DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_TYPES + BRUSH_TYPES + TIMELINE_TYPES + LAYOUT_TYPES + COLOR_TYPES + AUTOMATION_TYPES) + [
     "add",
     "solid",
     "gradient",
@@ -219,6 +220,10 @@ def execute(project, op):
     kind = ALIASES.get(kind, kind)
     require(isinstance(kind, str), "Operation requires a type")
     target = op.get("target", op.get("layer"))
+    if kind in AUTOMATION_TYPES:
+        from .automation import execute as execute_automation
+        execute_automation(project, op)
+        return
     if kind in RESOURCE_TYPES:
         from .resources import execute_resource
 

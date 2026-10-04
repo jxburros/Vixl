@@ -1,5 +1,11 @@
 # AI providers
 
+Queued image generation and opt-in generated video use the [production job API](production.md#durable-jobs).
+Video requires an explicitly configured HTTP gateway with `capabilities:["video"]` and
+the [video job contract](production.md#generated-video-gateway), including durable job IDs
+and client-key recovery. It is separate from the image adapters listed below. Existing
+provider keys remain environment-variable references; no credentials are saved in jobs.
+
 Vixl is a headless application designed for autonomous AI agents; humans can use the same interfaces.
 
 Vixl contains adapters, not model weights. Configure only providers you trust; generation can incur your provider's charges. AI inference is called only for an explicit AI command. Provider onboarding and explicit model discovery query catalogs without requesting inference. Provider URL/key configuration is local; it is not loaded from `.vixl` documents.

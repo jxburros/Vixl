@@ -173,6 +173,10 @@ def validate(kind, value):
         Limits().size(value["width"], value["height"])
         color(value.get("background", "transparent"))
         require(isinstance(value.get("defaults", {}), dict), "Template defaults must be an object")
+        from .automation import validate_inputs, validate_state as validate_automation
+        validate_automation(value)
+        if "inputs" in value:
+            validate_inputs(value["inputs"], value.get("defaults", {}))
         ops = value.get("operations")
         require(isinstance(ops, list) and 0 < len(ops) <= 1000, "Template needs 1–1000 operations")
         for op in ops:
@@ -255,6 +259,10 @@ def execute_resource(project, op):
 
         item = get("templates", name)
         values = {**item.get("defaults", {}), **op.get("variables", {})}
+        if "inputs" in item:
+            from .automation import validate_inputs
+            values = validate_inputs(item["inputs"], values)
+            project.state["variables"].update(values)
         expanded = substitute(item["operations"], values)
         remaining = getattr(project, "_resource_budget", project.limits.max_operations) - len(expanded) + 1
         require(remaining >= 0, "Expanded templates exceed the operation limit", "resource_limit")
@@ -266,6 +274,14 @@ def execute_resource(project, op):
             resolved, centered = resolve_geometry(project, operation)
             execute(project, resolved)
             apply_centering(project, centered, operation)
+        for key, kind, field in (("suites", "suite-set", "suite"), ("motions", "motion-define", "motion"),
+                                 ("actions", "action-define", "action")):
+            for resource_name, resource in item.get(key, {}).items():
+                execute(project, {"type": kind, "name": resource_name, field: resource})
+        for role, targets in item.get("roles", {}).items():
+            execute(project, {"type": "role-set", "name": role, "targets": targets})
+        if "recipe" in item:
+            execute(project, {"type": "recipe-set", "recipe": item["recipe"]})
 
 
 def create_template(name, variables=None, *, limits=None):

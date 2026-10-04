@@ -186,6 +186,30 @@ documents CLI/Python/REST/MCP workflows, crisp scaling, GIF/APNG and game sprite
 
 ## Automation and creative history
 
+### Checked production workflows
+
+Attach named design test suites, capture typed document recipes, and produce families
+of images or animations with per-output checks, bounded repairs, contact sheets and
+resume support. Role-based motion recipes and higher-level text fitting/grid/reflow
+operations reduce repetitive agent calls. Draft/final workflows preserve existing AI
+assets; a persistent render cache reuses unchanged layers and frames across sessions.
+
+```bash
+vixl workflow schema
+vixl -p campaign.vixl workflow check --request checks.json --workspace .
+vixl -p campaign.vixl workflow run --request production.json --workspace .
+python examples/build_production_demo.py --output examples/output/production
+```
+
+Versioned component libraries and durable background jobs support reuse and recovery.
+A scene/shot assembler combines documents, stills and video clips with camera motion,
+crossfades, captions and audio. Generated video uses an explicitly configured HTTP
+gateway with persistent remote job IDs. MP4/WebM and audio need ffmpeg; ordinary image
+production and PNG-frame film ZIPs work offline.
+
+See [production workflows](docs/production.md) for complete request examples, coverage
+semantics, CLI/Python/MCP/REST support and explicit limits.
+
 ```bash
 vixl variable set title 'Night Shift'
 vixl text add '${title}' --name heading --size 80

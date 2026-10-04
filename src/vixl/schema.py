@@ -257,6 +257,8 @@ def _operation_schema():
     from .layouts import schemas as layout_schemas
 
     layout_schemas(add)
+    from .automation import schemas as automation_schemas
+    automation_schemas(add)
     add(
         "palette-generate",
         {"name": S, "color": S, "scheme": S, "count": {"type": "integer", "minimum": 2, "maximum": 12}},

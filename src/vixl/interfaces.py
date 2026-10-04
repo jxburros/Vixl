@@ -313,6 +313,19 @@ def create_app(path, *, token=None, limits=None):
 
         return operation_schema()
 
+    @app.get("/workflow/schema")
+    def workflow_schema():
+        from .workflows import describe
+        return describe()
+
+    @app.post("/workflow/{action}")
+    def workflow(action: str, body: dict):
+        from .workflows import dispatch
+        # REST remains scoped to its active project. Other document/library/job I/O is MCP/CLI only.
+        require(action in ("check", "act", "plan", "film-plan"),
+                "This workflow needs a workspace CLI/MCP session", "forbidden")
+        return dispatch(session, action, body)
+
     @app.get("/resources/{kind}")
     def resources_list(kind: str):
         from .resources import catalog
