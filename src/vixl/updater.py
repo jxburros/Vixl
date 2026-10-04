@@ -343,6 +343,22 @@ def extract_bundle(archive, destination):
         raise UpdateError("Update archive could not be safely extracted") from exc
 
 
+def install_runtime(stage, destination):
+    """Allow short Windows scanner/probe locks to clear before the atomic move."""
+    delays = (0.1, 0.2, 0.4, 0.8, 1.6, 2.0)
+    for attempt in range(len(delays) + 1):
+        try:
+            os.replace(stage, destination)
+            return
+        except OSError as exc:
+            if getattr(exc, "winerror", None) not in (5, 32, 33) or attempt == len(delays):
+                raise UpdateError(
+                    f"Cannot install the verified runtime at {destination}: {exc}. "
+                    "The current version is kept; retry vixl update after the file lock clears."
+                ) from exc
+            time.sleep(delays[attempt])
+
+
 def update(root, check_only=False, automatic=False):
     """Download/check outside the short state lock; serialize downloads separately."""
     root = Path(root)
@@ -383,7 +399,7 @@ def update(root, check_only=False, automatic=False):
                     probe(root, target)
                 else:
                     target_dir.parent.mkdir(parents=True, exist_ok=True)
-                    os.replace(stage, target_dir)
+                    install_runtime(stage, target_dir)
                 if automatic:
                     state.update(pending=target, last_error=None, rejected=None)
                 else:

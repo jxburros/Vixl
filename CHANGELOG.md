@@ -11,6 +11,7 @@
 - Repeated vector primitives remain vectors in SVG. Unsupported repeated groups retain explicit raster fallback.
 - Distributed GIF/WebP/APNG frame durations preserve requested timing; export reports include encoded durations.
 - Version/help/no-update launches avoid installation write locks and pending activation.
+- Runtime installation retries transient Windows scanner/probe file locks with a bounded wait and keeps the active version on failure.
 - Fully verified version changes merged to main can publish releases; publication remains gated by Linux tests, Windows tests, bundled runtime, installer, and installation checks.
 
 ## Unreleased

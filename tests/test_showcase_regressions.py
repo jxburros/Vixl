@@ -176,3 +176,41 @@ def test_fallback_operation_cannot_import_arbitrary_paths():
     p = Project(20, 20)
     with pytest.raises(VixlError):
         p.apply({"type": "font-fallbacks", "fonts": ["private.ttf"]})
+
+
+def test_runtime_install_retries_transient_windows_file_lock(tmp_path, monkeypatch):
+    from vixl import updater
+    stage, destination = tmp_path / "stage", tmp_path / "runtime"
+    stage.mkdir()
+    (stage / "engine").write_bytes(b"verified")
+    replace = updater.os.replace
+    calls, waits = [], []
+    def busy_once(source, target):
+        calls.append((source, target))
+        if len(calls) == 1:
+            exc = PermissionError("scanner is holding the probe executable")
+            exc.winerror = 5
+            raise exc
+        replace(source, target)
+    monkeypatch.setattr(updater.os, "replace", busy_once)
+    monkeypatch.setattr(updater.time, "sleep", waits.append)
+    updater.install_runtime(stage, destination)
+    assert len(calls) == 2 and waits
+    assert (destination / "engine").read_bytes() == b"verified"
+
+
+def test_runtime_install_lock_failure_is_bounded_and_keeps_source(tmp_path, monkeypatch):
+    from vixl import updater
+    stage = tmp_path / "stage"
+    stage.mkdir()
+    calls = []
+    def always_busy(*args):
+        calls.append(args)
+        exc = PermissionError("still locked")
+        exc.winerror = 32
+        raise exc
+    monkeypatch.setattr(updater.os, "replace", always_busy)
+    monkeypatch.setattr(updater.time, "sleep", lambda _: None)
+    with pytest.raises(updater.UpdateError, match="current version is kept"):
+        updater.install_runtime(stage, tmp_path / "runtime")
+    assert stage.is_dir() and len(calls) < 10

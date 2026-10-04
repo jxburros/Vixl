@@ -58,6 +58,19 @@ assert result.returncode == 0, result.stderr
 assert result.stdout.strip() == __version__
 assert updater.read_state(root)["current"] == __version__
 assert updater.read_state(root)["previous"] == old
+identity = subprocess.check_output(["whoami", "/user", "/fo", "csv", "/nh"], text=True)
+sid = next(csv.reader(identity.strip().splitlines()))[1]
+lock = root / ".update.lock"
+subprocess.run(["icacls", str(lock), "/deny", f"*{sid}:(RW)"], check=True, capture_output=True)
+try:
+    before = updater.read_state(root)
+    for arguments in (["--version"], ["--help"], ["--runtime-info", "--json"], ["commands", "--json"]):
+        result = subprocess.run([str(launcher), *arguments], capture_output=True, text=True, env=env, timeout=90)
+        assert result.returncode == 0, result.stderr
+        assert updater.read_state(root) == before
+finally:
+    subprocess.run(["icacls", str(lock), "/remove:d", f"*{sid}"], check=True, capture_output=True)
+
 env.pop("VIXL_NO_UPDATE")
 # A corrupted candidate must never prevent the known-good version from running.
 broken = "999.0.0"
@@ -68,6 +81,14 @@ state.update(pending=broken, last_check=time.time())
 updater.atomic_json(root / "install.json", state)
 result = subprocess.run([str(launcher), "--version"], capture_output=True, text=True, env=env, timeout=90)
 assert result.returncode == 0 and result.stdout.strip() == __version__, result.stderr
+assert updater.read_state(root)["pending"] == broken
+for arguments in (["--help"], ["--runtime-info", "--json"]):
+    result = subprocess.run([str(launcher), *arguments], capture_output=True, text=True, env=env, timeout=90)
+    assert result.returncode == 0, result.stderr
+    assert updater.read_state(root)["pending"] == broken
+# Ordinary commands perform pending activation/rejection; read-only diagnostics do not.
+result = subprocess.run([str(launcher), "commands", "--json"], capture_output=True, text=True, env=env, timeout=90)
+assert result.returncode == 0 and "organic-shape" in json.loads(result.stdout)["commands"], result.stderr
 state = updater.read_state(root)
 assert state["current"] == __version__ and state["pending"] is None and state["rejected"] == broken
 # Reproduce access denied using a real Windows file ACL, including the user's
@@ -76,8 +97,6 @@ denied = "999.0.1"
 blocked = updater.executable(root, denied)
 blocked.parent.mkdir()
 blocked.write_bytes(b"inaccessible candidate")
-identity = subprocess.check_output(["whoami", "/user", "/fo", "csv", "/nh"], text=True)
-sid = next(csv.reader(identity.strip().splitlines()))[1]
 subprocess.run(["icacls", str(blocked), "/deny", f"*{sid}:(RX)"], check=True, capture_output=True)
 try:
     state = updater.read_state(root)
@@ -86,6 +105,9 @@ try:
     result = subprocess.run([str(launcher), "--version"], capture_output=True, text=True, env=env, timeout=90)
     assert result.returncode == 0 and result.stdout.strip() == __version__, result.stderr
     assert "Traceback" not in result.stderr
+    assert updater.read_state(root)["pending"] == denied
+    result = subprocess.run([str(launcher), "commands", "--json"], capture_output=True, text=True, env=env, timeout=90)
+    assert result.returncode == 0, result.stderr
     state = updater.read_state(root)
     assert state["current"] == __version__ and state["previous"] is None
     assert state["pending"] is None and state["rejected"] == denied
