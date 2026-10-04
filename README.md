@@ -65,7 +65,7 @@ vixl template new social-square -o campaign.vixl --set title='New launch' --set 
 vixl guidance apply minimal --style minimal
 vixl palette apply ocean
 vixl font pairings --mood editorial
-vixl font pair editorial-classic                        # or: vixl font pair random
+vixl font pair source-serif-sans                         # or: vixl font pair random
 vixl font import Brand-Regular.ttf --name brand
 vixl text add 'Brand headline' --font brand --name headline --size 64
 vixl export campaign.svg

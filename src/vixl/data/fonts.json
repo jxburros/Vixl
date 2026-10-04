@@ -1,0 +1,3657 @@
+[
+ {
+  "family": "Inter",
+  "category": "sans-serif",
+  "classification": "neo-grotesque",
+  "weights": [
+   100,
+   200,
+   300,
+   400,
+   500,
+   600,
+   700,
+   800,
+   900
+  ],
+  "italic": true,
+  "roles": [
+   "heading",
+   "text",
+   "ui",
+   "caption"
+  ],
+  "x_height": "large",
+  "width": "normal",
+  "contrast": "low",
+  "era": "contemporary (2016)",
+  "mood": [
+   "neutral",
+   "clean",
+   "modern",
+   "precise",
+   "technical"
+  ],
+  "best_for": [
+   "ui",
+   "dashboards",
+   "saas",
+   "docs"
+  ],
+  "avoid": "Generic to the point of anonymity; pair with something with character when brand voice matters.",
+  "notes": "Rasmus Andersson's screen-first neo-grotesque with a tall x-height, tabular figures and many OpenType features; a de facto UI standard."
+ },
+ {
+  "family": "Inter Tight",
+  "category": "sans-serif",
+  "classification": "neo-grotesque",
+  "weights": [
+   100,
+   200,
+   300,
+   400,
+   500,
+   600,
+   700,
+   800,
+   900
+  ],
+  "italic": true,
+  "roles": [
+   "display",
+   "heading"
+  ],
+  "x_height": "large",
+  "width": "normal",
+  "contrast": "low",
+  "era": "contemporary (2022)",
+  "mood": [
+   "crisp",
+   "modern",
+   "confident",
+   "neutral"
+  ],
+  "best_for": [
+   "headlines",
+   "landing pages",
+   "ui headings"
+  ],
+  "avoid": "Tight spacing is tuned for large sizes; do not use for body text.",
+  "notes": "Inter with reduced letter-spacing for display sizes; the natural heading partner for Inter body."
+ },
+ {
+  "family": "Roboto",
+  "category": "sans-serif",
+  "classification": "neo-grotesque",
+  "weights": [
+   100,
+   200,
+   300,
+   400,
+   500,
+   600,
+   700,
+   800,
+   900
+  ],
+  "italic": true,
+  "roles": [
+   "heading",
+   "text",
+   "ui",
+   "caption"
+  ],
+  "x_height": "large",
+  "width": "normal",
+  "contrast": "low",
+  "era": "2010s (Android, 2011)",
+  "mood": [
+   "neutral",
+   "friendly",
+   "mechanical",
+   "familiar"
+  ],
+  "best_for": [
+   "ui",
+   "android",
+   "apps",
+   "dashboards"
+  ],
+  "avoid": "Strongly reads as 'Google/Android default'; can feel generic in branding.",
+  "notes": "Christian Robertson's dual-natured grotesque (mechanical skeleton, open curves); Material Design's baseline typeface."
+ },
+ {
+  "family": "Geist",
+  "category": "sans-serif",
+  "classification": "neo-grotesque",
+  "weights": [
+   100,
+   200,
+   300,
+   400,
+   500,
+   600,
+   700,
+   800,
+   900
+  ],
+  "italic": true,
+  "roles": [
+   "heading",
+   "text",
+   "ui"
+  ],
+  "x_height": "large",
+  "width": "normal",
+  "contrast": "low",
+  "era": "contemporary (2023)",
+  "mood": [
+   "minimal",
+   "technical",
+   "precise",
+   "modern",
+   "cool"
+  ],
+  "best_for": [
+   "developer tools",
+   "saas",
+   "ui",
+   "docs"
+  ],
+  "avoid": "Strongly associated with Vercel's developer aesthetic; cool rather than warm.",
+  "notes": "Vercel's Swiss-influenced sans designed alongside Geist Mono for developer interfaces."
+ },
+ {
+  "family": "Instrument Sans",
+  "category": "sans-serif",
+  "classification": "neo-grotesque",
+  "weights": [
+   400,
+   500,
+   600,
+   700
+  ],
+  "italic": true,
+  "roles": [
+   "heading",
+   "text",
+   "ui"
+  ],
+  "x_height": "large",
+  "width": "normal",
+  "contrast": "low",
+  "era": "contemporary (2023)",
+  "mood": [
+   "precise",
+   "modern",
+   "balanced",
+   "clean"
+  ],
+  "best_for": [
+   "branding",
+   "ui",
+   "editorial sans"
+  ],
+  "avoid": "Only 400-700 weights; no light/black for dramatic weight contrast.",
+  "notes": "Neo-grotesque with subtle grotesque quirks, companion in spirit to Instrument Serif."
+ },
+ {
+  "family": "Manrope",
+  "category": "sans-serif",
+  "classification": "neo-grotesque",
+  "weights": [
+   200,
+   300,
+   400,
+   500,
+   600,
+   700,
+   800
+  ],
+  "italic": false,
+  "roles": [
+   "heading",
+   "text",
+   "ui"
+  ],
+  "x_height": "large",
+  "width": "normal",
+  "contrast": "low",
+  "era": "contemporary (2018)",
+  "mood": [
+   "modern",
+   "technical",
+   "clean",
+   "semi-geometric"
+  ],
+  "best_for": [
+   "fintech",
+   "saas",
+   "ui"
+  ],
+  "avoid": "No italics; 200-800 only.",
+  "notes": "Open-source 'modern sans' mixing grotesque and geometric traits, popular in fintech UI."
+ },
+ {
+  "family": "Public Sans",
+  "category": "sans-serif",
+  "classification": "grotesque",
+  "weights": [
+   100,
+   200,
+   300,
+   400,
+   500,
+   600,
+   700,
+   800,
+   900
+  ],
+  "italic": true,
+  "roles": [
+   "text",
+   "ui",
+   "heading"
+  ],
+  "x_height": "large",
+  "width": "normal",
+  "contrast": "low",
+  "era": "contemporary (2019, USWDS)",
+  "mood": [
+   "neutral",
+   "civic",
+   "trustworthy",
+   "plain"
+  ],
+  "best_for": [
+   "government",
+   "forms",
+   "accessibility",
+   "docs"
+  ],
+  "avoid": "Deliberately neutral; adds no personality.",
+  "notes": "Strong, neutral sans for the U.S. Web Design System, derived from Libre Franklin."
+ },
+ {
+  "family": "Libre Franklin",
+  "category": "sans-serif",
+  "classification": "grotesque",
+  "weights": [
+   100,
+   200,
+   300,
+   400,
+   500,
+   600,
+   700,
+   800,
+   900
+  ],
+  "italic": true,
+  "roles": [
+   "heading",
+   "text",
+   "ui"
+  ],
+  "x_height": "large",
+  "width": "normal",
+  "contrast": "low",
+  "era": "1900s American gothic revival",
+  "mood": [
+   "sturdy",
+   "journalistic",
+   "confident",
+   "american"
+  ],
+  "best_for": [
+   "news",
+   "editorial",
+   "headlines"
+  ],
+  "avoid": "Heavy weights get dense; open up tracking for all-caps.",
+  "notes": "Impallari's open-source interpretation of Morris Fuller Benton's Franklin Gothic (1902)."
+ },
+ {
+  "family": "Work Sans",
+  "category": "sans-serif",
+  "classification": "grotesque",
+  "weights": [
+   100,
+   200,
+   300,
+   400,
+   500,
+   600,
+   700,
+   800,
+   900
+  ],
+  "italic": true,
+  "roles": [
+   "heading",
+   "text",
+   "ui"
+  ],
+  "x_height": "large",
+  "width": "wide",
+  "contrast": "low",
+  "era": "early grotesque revival (contemporary)",
+  "mood": [
+   "friendly",
+   "casual",
+   "modern",
+   "open"
+  ],
+  "best_for": [
+   "websites",
+   "marketing",
+   "ui"
+  ],
+  "avoid": "Thin/hairline weights only work very large; mid weights for text.",
+  "notes": "Wei Huang's grotesque based loosely on early grotesques, optimized for screen at 14-48px."
+ },
+ {
+  "family": "Archivo",
+  "category": "sans-serif",
+  "classification": "grotesque",
+  "weights": [
+   100,
+   200,
+   300,
+   400,
+   500,
+   600,
+   700,
+   800,
+   900
+  ],
+  "italic": true,
+  "roles": [
+   "heading",
+   "text",
+   "ui"
+  ],
+  "x_height": "large",
+  "width": "normal",
+  "contrast": "low",
+  "era": "19th-c grotesque revival (contemporary)",
+  "mood": [
+   "sturdy",
+   "industrial",
+   "practical",
+   "no-nonsense"
+  ],
+  "best_for": [
+   "data",
+   "news",
+   "ui"
+  ],
+  "avoid": "Can feel heavy in bold body text.",
+  "notes": "Omnibus-Type's grotesque designed for high-performance typography, including width variants."
+ },
+ {
+  "family": "Schibsted Grotesk",
+  "category": "sans-serif",
+  "classification": "grotesque",
+  "weights": [
+   400,
+   500,
+   600,
+   700,
+   800,
+   900
+  ],
+  "italic": true,
+  "roles": [
+   "heading",
+   "text",
+   "ui"
+  ],
+  "x_height": "large",
+  "width": "normal",
+  "contrast": "low",
+  "era": "contemporary news grotesque",
+  "mood": [
+   "journalistic",
+   "sturdy",
+   "direct",
+   "nordic"
+  ],
+  "best_for": [
+   "news",
+   "editorial",
+   "media"
+  ],
+  "avoid": "No weights below 400.",
+  "notes": "Grotesque made for Scandinavian media group Schibsted, tuned for news reading."
+ },
+ {
+  "family": "Space Grotesk",
+  "category": "sans-serif",
+  "classification": "grotesque",
+  "weights": [
+   300,
+   400,
+   500,
+   600,
+   700
+  ],
+  "italic": false,
+  "roles": [
+   "display",
+   "heading",
+   "ui"
+  ],
+  "x_height": "medium",
+  "width": "normal",
+  "contrast": "low",
+  "era": "contemporary (2018, from Space Mono)",
+  "mood": [
+   "techy",
+   "quirky",
+   "futuristic",
+   "geeky"
+  ],
+  "best_for": [
+   "tech branding",
+   "crypto",
+   "portfolio"
+  ],
+  "avoid": "Quirky details distract in long body text; no italics.",
+  "notes": "Florian Karsten's proportional derivative of Colophon's Space Mono, keeping its idiosyncratic details."
+ },
+ {
+  "family": "Bricolage Grotesque",
+  "category": "sans-serif",
+  "classification": "grotesque",
+  "weights": [
+   200,
+   300,
+   400,
+   500,
+   600,
+   700,
+   800
+  ],
+  "italic": false,
+  "roles": [
+   "display",
+   "heading"
+  ],
+  "x_height": "large",
+  "width": "normal",
+  "contrast": "low",
+  "era": "contemporary (2023)",
+  "mood": [
+   "expressive",
+   "playful",
+   "bold",
+   "french",
+   "eccentric"
+  ],
+  "best_for": [
+   "posters",
+   "branding",
+   "landing pages"
+  ],
+  "avoid": "Ink traps and quirks are for display; keep to headings. No italics.",
+  "notes": "Mathieu Triay's expressive grotesque with optical-size and width axes and pronounced ink traps."
+ },
+ {
+  "family": "Barlow",
+  "category": "sans-serif",
+  "classification": "grotesque",
+  "weights": [
+   100,
+   200,
+   300,
+   400,
+   500,
+   600,
+   700,
+   800,
+   900
+  ],
+  "italic": true,
+  "roles": [
+   "heading",
+   "text",
+   "ui"
+  ],
+  "x_height": "medium",
+  "width": "normal",
+  "contrast": "low",
+  "era": "contemporary (California signage)",
+  "mood": [
+   "rounded",
+   "californian",
+   "practical",
+   "calm"
+  ],
+  "best_for": [
+   "ui",
+   "transport",
+   "signage-style"
+  ],
+  "avoid": "Slightly rounded and low-contrast; can feel soft in data-heavy contexts.",
+  "notes": "Jeremy Tribby's slightly rounded grotesk inspired by California license plates and highway signs."
+ },
+ {
+  "family": "Barlow Condensed",
+  "category": "sans-serif",
+  "classification": "grotesque",
+  "weights": [
+   100,
+   200,
+   300,
+   400,
+   500,
+   600,
+   700,
+   800,
+   900
+  ],
+  "italic": true,
+  "roles": [
+   "display",
+   "heading",
+   "ui"
+  ],
+  "x_height": "medium",
+  "width": "condensed",
+  "contrast": "low",
+  "era": "contemporary (California signage)",
+  "mood": [
+   "compact",
+   "sporty",
+   "practical",
+   "signage"
+  ],
+  "best_for": [
+   "dashboards",
+   "sports",
+   "labels"
+  ],
+  "avoid": "Not for paragraphs.",
+  "notes": "Condensed width of Barlow, effective for tight headings and labels."
+ },
+ {
+  "family": "IBM Plex Sans",
+  "category": "sans-serif",
+  "classification": "grotesque",
+  "weights": [
+   100,
+   200,
+   300,
+   400,
+   500,
+   600,
+   700
+  ],
+  "italic": true,
+  "roles": [
+   "heading",
+   "text",
+   "ui",
+   "caption"
+  ],
+  "x_height": "large",
+  "width": "normal",
+  "contrast": "low",
+  "era": "contemporary (2017, IBM)",
+  "mood": [
+   "engineered",
+   "corporate",
+   "rational",
+   "human"
+  ],
+  "best_for": [
+   "enterprise",
+   "docs",
+   "dashboards"
+  ],
+  "avoid": "Strong IBM association; tops out at 700.",
+  "notes": "Mike Abbink/Bold Monday grotesque with humanist touches; part of the IBM Plex superfamily with Serif and Mono."
+ },
+ {
+  "family": "Montserrat",
+  "category": "sans-serif",
+  "classification": "geometric",
+  "weights": [
+   100,
+   200,
+   300,
+   400,
+   500,
+   600,
+   700,
+   800,
+   900
+  ],
+  "italic": true,
+  "roles": [
+   "display",
+   "heading",
+   "ui"
+  ],
+  "x_height": "large",
+  "width": "wide",
+  "contrast": "low",
+  "era": "contemporary (Buenos Aires signage)",
+  "mood": [
+   "bold",
+   "urban",
+   "confident",
+   "modern"
+  ],
+  "best_for": [
+   "headlines",
+   "branding",
+   "posters"
+  ],
+  "avoid": "Wide and over-used; tiring as body text.",
+  "notes": "Julieta Ulanovsky's geometric sans inspired by old posters and signs in the Montserrat neighborhood of Buenos Aires."
+ },
+ {
+  "family": "Poppins",
+  "category": "sans-serif",
+  "classification": "geometric",
+  "weights": [
+   100,
+   200,
+   300,
+   400,
+   500,
+   600,
+   700,
+   800,
+   900
+  ],
+  "italic": true,
+  "roles": [
+   "display",
+   "heading",
+   "ui"
+  ],
+  "x_height": "large",
+  "width": "wide",
+  "contrast": "low",
+  "era": "contemporary (2014)",
+  "mood": [
+   "friendly",
+   "round",
+   "modern",
+   "clean"
+  ],
+  "best_for": [
+   "startups",
+   "apps",
+   "marketing"
+  ],
+  "avoid": "Circular 'o's make long text spotty; very common.",
+  "notes": "Indian Type Foundry's geometric sans with Latin and Devanagari support."
+ },
+ {
+  "family": "Jost",
+  "category": "sans-serif",
+  "classification": "geometric",
+  "weights": [
+   100,
+   200,
+   300,
+   400,
+   500,
+   600,
+   700,
+   800,
+   900
+  ],
+  "italic": true,
+  "roles": [
+   "display",
+   "heading",
+   "text"
+  ],
+  "x_height": "small",
+  "width": "normal",
+  "contrast": "low",
+  "era": "1920s geometric (Futura-inspired)",
+  "mood": [
+   "elegant",
+   "modernist",
+   "bauhaus",
+   "clean"
+  ],
+  "best_for": [
+   "fashion",
+   "architecture",
+   "editorial"
+  ],
+  "avoid": "Small x-height; set body 1-2px larger than usual.",
+  "notes": "Indestructible Type's Futura-inspired geometric sans with variable weight."
+ },
+ {
+  "family": "Lexend",
+  "category": "sans-serif",
+  "classification": "geometric",
+  "weights": [
+   100,
+   200,
+   300,
+   400,
+   500,
+   600,
+   700,
+   800,
+   900
+  ],
+  "italic": false,
+  "roles": [
+   "heading",
+   "text",
+   "ui"
+  ],
+  "x_height": "large",
+  "width": "wide",
+  "contrast": "low",
+  "era": "contemporary (2019, readability research)",
+  "mood": [
+   "readable",
+   "open",
+   "friendly",
+   "calm"
+  ],
+  "best_for": [
+   "education",
+   "accessibility",
+   "reading"
+  ],
+  "avoid": "Wide spacing wastes space in dense UI; no italics.",
+  "notes": "Bonnie Shaver-Troup & Thomas Jockin's family designed to reduce visual stress and improve reading proficiency."
+ },
+ {
+  "family": "Plus Jakarta Sans",
+  "category": "sans-serif",
+  "classification": "geometric",
+  "weights": [
+   200,
+   300,
+   400,
+   500,
+   600,
+   700,
+   800
+  ],
+  "italic": true,
+  "roles": [
+   "heading",
+   "text",
+   "ui"
+  ],
+  "x_height": "large",
+  "width": "normal",
+  "contrast": "low",
+  "era": "contemporary (2020)",
+  "mood": [
+   "modern",
+   "friendly",
+   "clean",
+   "urban"
+  ],
+  "best_for": [
+   "saas",
+   "startups",
+   "ui"
+  ],
+  "avoid": "Popular and therefore recognisable as 'startup default'.",
+  "notes": "Tokotype's geometric sans for Jakarta's city branding, with a tall x-height for screens."
+ },
+ {
+  "family": "DM Sans",
+  "category": "sans-serif",
+  "classification": "geometric",
+  "weights": [
+   100,
+   200,
+   300,
+   400,
+   500,
+   600,
+   700,
+   800,
+   900
+  ],
+  "italic": true,
+  "roles": [
+   "heading",
+   "text",
+   "ui"
+  ],
+  "x_height": "large",
+  "width": "normal",
+  "contrast": "low",
+  "era": "contemporary (2019)",
+  "mood": [
+   "clean",
+   "friendly",
+   "modern",
+   "minimal"
+  ],
+  "best_for": [
+   "ui",
+   "startups",
+   "product sites"
+  ],
+  "avoid": "Low-contrast geometric; small text can blur.",
+  "notes": "Colophon's low-contrast geometric sans for smaller text sizes, derived from Poppins; companion to DM Serif and DM Mono."
+ },
+ {
+  "family": "Figtree",
+  "category": "sans-serif",
+  "classification": "geometric",
+  "weights": [
+   300,
+   400,
+   500,
+   600,
+   700,
+   800,
+   900
+  ],
+  "italic": true,
+  "roles": [
+   "heading",
+   "text",
+   "ui"
+  ],
+  "x_height": "large",
+  "width": "normal",
+  "contrast": "low",
+  "era": "contemporary (2022)",
+  "mood": [
+   "friendly",
+   "clean",
+   "approachable",
+   "light"
+  ],
+  "best_for": [
+   "ui",
+   "apps",
+   "marketing"
+  ],
+  "avoid": "No 100/200 weights.",
+  "notes": "Erik Kennedy's clean geometric sans built to be friendly yet crisp in UI."
+ },
+ {
+  "family": "Raleway",
+  "category": "sans-serif",
+  "classification": "geometric",
+  "weights": [
+   100,
+   200,
+   300,
+   400,
+   500,
+   600,
+   700,
+   800,
+   900
+  ],
+  "italic": true,
+  "roles": [
+   "display",
+   "heading"
+  ],
+  "x_height": "medium",
+  "width": "normal",
+  "contrast": "low",
+  "era": "contemporary (2010)",
+  "mood": [
+   "elegant",
+   "airy",
+   "stylish",
+   "light"
+  ],
+  "best_for": [
+   "fashion",
+   "boutique",
+   "headings"
+  ],
+  "avoid": "Old-style figures by default look odd in UI/numbers; thin weights fragile.",
+  "notes": "Elegant neo-grotesque/geometric display sans, originally a single thin weight, expanded to nine."
+ },
+ {
+  "family": "Josefin Sans",
+  "category": "sans-serif",
+  "classification": "geometric",
+  "weights": [
+   100,
+   200,
+   300,
+   400,
+   500,
+   600,
+   700
+  ],
+  "italic": true,
+  "roles": [
+   "display",
+   "heading"
+  ],
+  "x_height": "small",
+  "width": "normal",
+  "contrast": "low",
+  "era": "1920s geometric vintage",
+  "mood": [
+   "vintage",
+   "elegant",
+   "art-deco",
+   "airy"
+  ],
+  "best_for": [
+   "boutique",
+   "weddings",
+   "retro branding"
+  ],
+  "avoid": "Very small x-height; avoid for body text.",
+  "notes": "Santiago Orozco's geometric, vintage sans inspired by Swedish 1920s/Futura-era designs."
+ },
+ {
+  "family": "League Spartan",
+  "category": "sans-serif",
+  "classification": "geometric",
+  "weights": [
+   100,
+   200,
+   300,
+   400,
+   500,
+   600,
+   700,
+   800,
+   900
+  ],
+  "italic": false,
+  "roles": [
+   "display",
+   "heading"
+  ],
+  "x_height": "medium",
+  "width": "normal",
+  "contrast": "low",
+  "era": "1920s geometric revival",
+  "mood": [
+   "bold",
+   "assertive",
+   "modernist",
+   "punchy"
+  ],
+  "best_for": [
+   "posters",
+   "headlines",
+   "branding"
+  ],
+  "avoid": "No italics; heavy weights only shine large.",
+  "notes": "The League of Moveable Type's revival of Futura-like geometric forms (Spartan)."
+ },
+ {
+  "family": "Rubik",
+  "category": "sans-serif",
+  "classification": "rounded grotesque",
+  "weights": [
+   300,
+   400,
+   500,
+   600,
+   700,
+   800,
+   900
+  ],
+  "italic": true,
+  "roles": [
+   "heading",
+   "text",
+   "ui"
+  ],
+  "x_height": "large",
+  "width": "normal",
+  "contrast": "low",
+  "era": "contemporary (2015)",
+  "mood": [
+   "friendly",
+   "soft",
+   "playful",
+   "modern"
+  ],
+  "best_for": [
+   "apps",
+   "kids",
+   "friendly brands"
+  ],
+  "avoid": "Rounded corners read casual; not for formal contexts.",
+  "notes": "Hubert & Fischer's sans with slightly rounded corners, originally for Google's Chrome Cube Lab."
+ },
+ {
+  "family": "Nunito",
+  "category": "sans-serif",
+  "classification": "rounded",
+  "weights": [
+   200,
+   300,
+   400,
+   500,
+   600,
+   700,
+   800,
+   900
+  ],
+  "italic": true,
+  "roles": [
+   "heading",
+   "text",
+   "ui"
+  ],
+  "x_height": "large",
+  "width": "normal",
+  "contrast": "low",
+  "era": "contemporary",
+  "mood": [
+   "friendly",
+   "soft",
+   "warm",
+   "playful"
+  ],
+  "best_for": [
+   "kids",
+   "education",
+   "friendly apps"
+  ],
+  "avoid": "Rounded terminals feel childish in serious contexts.",
+  "notes": "Vernon Adams' well-balanced sans with rounded terminals."
+ },
+ {
+  "family": "Syne",
+  "category": "display",
+  "classification": "geometric (expressive width)",
+  "weights": [
+   400,
+   500,
+   600,
+   700,
+   800
+  ],
+  "italic": false,
+  "roles": [
+   "display",
+   "heading"
+  ],
+  "x_height": "large",
+  "width": "wide",
+  "contrast": "low",
+  "era": "contemporary (2017, art center)",
+  "mood": [
+   "avant-garde",
+   "artsy",
+   "experimental",
+   "bold"
+  ],
+  "best_for": [
+   "art",
+   "galleries",
+   "posters"
+  ],
+  "avoid": "Weight changes width drastically; display only. No italics.",
+  "notes": "Designed for Paris art center Synesthésies; its heavy weights become very wide."
+ },
+ {
+  "family": "Unbounded",
+  "category": "display",
+  "classification": "geometric (extended)",
+  "weights": [
+   200,
+   300,
+   400,
+   500,
+   600,
+   700,
+   800,
+   900
+  ],
+  "italic": false,
+  "roles": [
+   "display",
+   "heading"
+  ],
+  "x_height": "large",
+  "width": "wide",
+  "contrast": "low",
+  "era": "contemporary (2022)",
+  "mood": [
+   "loud",
+   "futuristic",
+   "web3",
+   "playful"
+  ],
+  "best_for": [
+   "posters",
+   "web3",
+   "hero headlines"
+  ],
+  "avoid": "Very wide; never for body text.",
+  "notes": "NaN's extended display sans with rounded geometric forms, originally made for a web3 project."
+ },
+ {
+  "family": "Open Sans",
+  "category": "sans-serif",
+  "classification": "humanist",
+  "weights": [
+   300,
+   400,
+   500,
+   600,
+   700,
+   800
+  ],
+  "italic": true,
+  "roles": [
+   "text",
+   "ui",
+   "caption"
+  ],
+  "x_height": "large",
+  "width": "normal",
+  "contrast": "low",
+  "era": "2010s (2011)",
+  "mood": [
+   "neutral",
+   "friendly",
+   "legible",
+   "open"
+  ],
+  "best_for": [
+   "body text",
+   "ui",
+   "documents"
+  ],
+  "avoid": "Ubiquitous; neutral to the point of blandness.",
+  "notes": "Steve Matteson's humanist sans with upright stress and open forms, optimized for print, web and mobile."
+ },
+ {
+  "family": "Lato",
+  "category": "sans-serif",
+  "classification": "humanist",
+  "weights": [
+   100,
+   300,
+   400,
+   700,
+   900
+  ],
+  "italic": true,
+  "roles": [
+   "heading",
+   "text",
+   "ui"
+  ],
+  "x_height": "medium",
+  "width": "normal",
+  "contrast": "low",
+  "era": "2010s (2010)",
+  "mood": [
+   "warm",
+   "stable",
+   "serious",
+   "friendly"
+  ],
+  "best_for": [
+   "corporate",
+   "web",
+   "body text"
+  ],
+  "avoid": "Weights jump 100/300/400/700/900 only.",
+  "notes": "Łukasz Dziedzic's semi-rounded sans meant to feel 'transparent' in body text and warm at large sizes."
+ },
+ {
+  "family": "Source Sans 3",
+  "category": "sans-serif",
+  "classification": "humanist",
+  "weights": [
+   200,
+   300,
+   400,
+   500,
+   600,
+   700,
+   800,
+   900
+  ],
+  "italic": true,
+  "roles": [
+   "heading",
+   "text",
+   "ui",
+   "caption"
+  ],
+  "x_height": "large",
+  "width": "normal",
+  "contrast": "low",
+  "era": "contemporary (2012, American gothic influence)",
+  "mood": [
+   "clear",
+   "neutral",
+   "friendly",
+   "professional"
+  ],
+  "best_for": [
+   "ui",
+   "docs",
+   "long-form"
+  ],
+  "avoid": "Fairly neutral; pair with a characterful heading for brand.",
+  "notes": "Paul D. Hunt's first Adobe open-source family, influenced by Franklin/News Gothic; companion to Source Serif and Source Code."
+ },
+ {
+  "family": "Fira Sans",
+  "category": "sans-serif",
+  "classification": "humanist",
+  "weights": [
+   100,
+   200,
+   300,
+   400,
+   500,
+   600,
+   700,
+   800,
+   900
+  ],
+  "italic": true,
+  "roles": [
+   "heading",
+   "text",
+   "ui",
+   "caption"
+  ],
+  "x_height": "large",
+  "width": "normal",
+  "contrast": "low",
+  "era": "contemporary (2013, Firefox OS)",
+  "mood": [
+   "clear",
+   "technical",
+   "warm",
+   "legible"
+  ],
+  "best_for": [
+   "ui",
+   "docs",
+   "mobile"
+  ],
+  "avoid": "Slightly narrow; small text can look busy in heavy weights.",
+  "notes": "Erik Spiekermann/Carrois family for Mozilla's Firefox OS, rooted in FF Meta."
+ },
+ {
+  "family": "PT Sans",
+  "category": "sans-serif",
+  "classification": "humanist",
+  "weights": [
+   400,
+   700
+  ],
+  "italic": true,
+  "roles": [
+   "text",
+   "ui",
+   "caption"
+  ],
+  "x_height": "large",
+  "width": "normal",
+  "contrast": "low",
+  "era": "2009 (Russian public type)",
+  "mood": [
+   "practical",
+   "neutral",
+   "friendly",
+   "civic"
+  ],
+  "best_for": [
+   "documents",
+   "multilingual cyrillic",
+   "ui"
+  ],
+  "avoid": "Only 400/700.",
+  "notes": "ParaType's humanist sans for the Public Types of the Russian Federation project, pairs with PT Serif."
+ },
+ {
+  "family": "Alegreya Sans",
+  "category": "sans-serif",
+  "classification": "humanist",
+  "weights": [
+   100,
+   300,
+   400,
+   500,
+   700,
+   800,
+   900
+  ],
+  "italic": true,
+  "roles": [
+   "heading",
+   "text",
+   "ui",
+   "caption"
+  ],
+  "x_height": "medium",
+  "width": "normal",
+  "contrast": "low",
+  "era": "contemporary (2013, calligraphic)",
+  "mood": [
+   "literary",
+   "warm",
+   "calligraphic",
+   "lively"
+  ],
+  "best_for": [
+   "books",
+   "editorial",
+   "literary sites"
+  ],
+  "avoid": "Somewhat narrow and small x-height; lightens on screen.",
+  "notes": "Juan Pablo del Peral's humanist sans with calligraphic roots; companion to Alegreya serif."
+ },
+ {
+  "family": "Atkinson Hyperlegible Next",
+  "category": "sans-serif",
+  "classification": "humanist (hyperlegible)",
+  "weights": [
+   200,
+   300,
+   400,
+   500,
+   600,
+   700,
+   800
+  ],
+  "italic": true,
+  "roles": [
+   "text",
+   "ui",
+   "caption"
+  ],
+  "x_height": "large",
+  "width": "normal",
+  "contrast": "low",
+  "era": "contemporary (Braille Institute 2019; Next 2025)",
+  "mood": [
+   "accessible",
+   "clear",
+   "friendly",
+   "distinctive"
+  ],
+  "best_for": [
+   "accessibility",
+   "signage",
+   "low-vision"
+  ],
+  "avoid": "Exaggerated letter differentiation reads idiosyncratic in luxury contexts.",
+  "notes": "Braille Institute's typeface focused on letterform distinction for low-vision readers; Next adds weights."
+ },
+ {
+  "family": "Karla",
+  "category": "sans-serif",
+  "classification": "grotesque (quirky)",
+  "weights": [
+   200,
+   300,
+   400,
+   500,
+   600,
+   700,
+   800
+  ],
+  "italic": true,
+  "roles": [
+   "text",
+   "ui",
+   "heading"
+  ],
+  "x_height": "large",
+  "width": "normal",
+  "contrast": "low",
+  "era": "contemporary (2012)",
+  "mood": [
+   "quirky",
+   "friendly",
+   "casual",
+   "indie"
+  ],
+  "best_for": [
+   "blogs",
+   "portfolios",
+   "ui"
+  ],
+  "avoid": "Irregular spacing reads informal.",
+  "notes": "Jonny Pinhorn's grotesque sans with quirky, slightly irregular details."
+ },
+ {
+  "family": "Source Serif 4",
+  "category": "serif",
+  "classification": "transitional",
+  "weights": [
+   200,
+   300,
+   400,
+   500,
+   600,
+   700,
+   800,
+   900
+  ],
+  "italic": true,
+  "roles": [
+   "display",
+   "heading",
+   "text"
+  ],
+  "x_height": "medium",
+  "width": "normal",
+  "contrast": "medium",
+  "era": "18th-c transitional (Fournier-inspired, 2014+)",
+  "mood": [
+   "literary",
+   "calm",
+   "authoritative",
+   "modern"
+  ],
+  "best_for": [
+   "editorial",
+   "long-form",
+   "docs"
+  ],
+  "avoid": "Has an opsz axis; at very large sizes prefer display optical size if available.",
+  "notes": "Frank Grießhammer's transitional serif inspired by Pierre-Simon Fournier; companion to Source Sans."
+ },
+ {
+  "family": "Libre Baskerville",
+  "category": "serif",
+  "classification": "transitional",
+  "weights": [
+   400,
+   500,
+   600,
+   700
+  ],
+  "italic": true,
+  "roles": [
+   "heading",
+   "text"
+  ],
+  "x_height": "large",
+  "width": "normal",
+  "contrast": "medium",
+  "era": "18th-c transitional (Baskerville)",
+  "mood": [
+   "classic",
+   "literary",
+   "refined",
+   "trustworthy"
+  ],
+  "best_for": [
+   "body text on web",
+   "books",
+   "law"
+  ],
+  "avoid": "Wide and large; feels heavy at large body sizes.",
+  "notes": "Impallari's web-optimized Baskerville based on the 1941 ATF specimen, with taller x-height and wider counters."
+ },
+ {
+  "family": "Merriweather",
+  "category": "serif",
+  "classification": "transitional (screen)",
+  "weights": [
+   300,
+   400,
+   500,
+   600,
+   700,
+   800,
+   900
+  ],
+  "italic": true,
+  "roles": [
+   "heading",
+   "text"
+  ],
+  "x_height": "large",
+  "width": "normal",
+  "contrast": "low",
+  "era": "contemporary (2010, screen serif)",
+  "mood": [
+   "sturdy",
+   "readable",
+   "warm",
+   "dependable"
+  ],
+  "best_for": [
+   "long-form web",
+   "news",
+   "blogs"
+  ],
+  "avoid": "Dark and wide; heavy in large headings.",
+  "notes": "Eben Sorkin's serif designed for pleasant reading on screens, slightly condensed with sturdy serifs."
+ },
+ {
+  "family": "PT Serif",
+  "category": "serif",
+  "classification": "transitional",
+  "weights": [
+   400,
+   700
+  ],
+  "italic": true,
+  "roles": [
+   "heading",
+   "text"
+  ],
+  "x_height": "medium",
+  "width": "normal",
+  "contrast": "medium",
+  "era": "2010 (Russian public type)",
+  "mood": [
+   "practical",
+   "neutral",
+   "classic",
+   "civic"
+  ],
+  "best_for": [
+   "documents",
+   "multilingual cyrillic",
+   "news"
+  ],
+  "avoid": "Only 400/700.",
+  "notes": "ParaType's transitional serif companion to PT Sans."
+ },
+ {
+  "family": "Noto Serif",
+  "category": "serif",
+  "classification": "transitional",
+  "weights": [
+   100,
+   200,
+   300,
+   400,
+   500,
+   600,
+   700,
+   800,
+   900
+  ],
+  "italic": true,
+  "roles": [
+   "heading",
+   "text"
+  ],
+  "x_height": "large",
+  "width": "normal",
+  "contrast": "medium",
+  "era": "contemporary (Noto project)",
+  "mood": [
+   "neutral",
+   "global",
+   "dependable",
+   "plain"
+  ],
+  "best_for": [
+   "multilingual",
+   "docs",
+   "long-form"
+  ],
+  "avoid": "Neutral; brings little personality.",
+  "notes": "Google's Noto serif covering Latin, Greek and Cyrillic, with separate Noto Serif families for many other scripts."
+ },
+ {
+  "family": "IBM Plex Serif",
+  "category": "serif",
+  "classification": "transitional (contemporary)",
+  "weights": [
+   100,
+   200,
+   300,
+   400,
+   500,
+   600,
+   700
+  ],
+  "italic": true,
+  "roles": [
+   "heading",
+   "text"
+  ],
+  "x_height": "medium",
+  "width": "normal",
+  "contrast": "low",
+  "era": "contemporary (2017, IBM)",
+  "mood": [
+   "engineered",
+   "rational",
+   "sturdy",
+   "corporate"
+  ],
+  "best_for": [
+   "enterprise docs",
+   "reports",
+   "tech editorial"
+  ],
+  "avoid": "Max weight 700.",
+  "notes": "Plex's serif, a hybrid of Plex Sans's structure with traditional serifs; designed to mix with Plex Sans/Mono."
+ },
+ {
+  "family": "Newsreader",
+  "category": "serif",
+  "classification": "transitional",
+  "weights": [
+   200,
+   300,
+   400,
+   500,
+   600,
+   700,
+   800
+  ],
+  "italic": true,
+  "roles": [
+   "display",
+   "heading",
+   "text"
+  ],
+  "x_height": "medium",
+  "width": "normal",
+  "contrast": "medium",
+  "era": "contemporary (2020, Production Type)",
+  "mood": [
+   "journalistic",
+   "authoritative",
+   "literary",
+   "refined"
+  ],
+  "best_for": [
+   "news",
+   "editorial",
+   "long-form"
+  ],
+  "avoid": "Display opsz has high contrast; let opsz track size.",
+  "notes": "Production Type's serif for on-screen news reading, with an optical size axis."
+ },
+ {
+  "family": "Literata",
+  "category": "serif",
+  "classification": "transitional (contemporary)",
+  "weights": [
+   200,
+   300,
+   400,
+   500,
+   600,
+   700,
+   800,
+   900
+  ],
+  "italic": true,
+  "roles": [
+   "heading",
+   "text"
+  ],
+  "x_height": "medium",
+  "width": "normal",
+  "contrast": "medium",
+  "era": "contemporary (2015, Google Play Books)",
+  "mood": [
+   "bookish",
+   "calm",
+   "literary",
+   "warm"
+  ],
+  "best_for": [
+   "e-books",
+   "long-form",
+   "reading apps"
+  ],
+  "avoid": "Designed for reading; its display sizes are less dramatic.",
+  "notes": "TypeTogether's serif for Google Play Books, with an optical size axis."
+ },
+ {
+  "family": "Lora",
+  "category": "serif",
+  "classification": "contemporary calligraphic",
+  "weights": [
+   400,
+   500,
+   600,
+   700
+  ],
+  "italic": true,
+  "roles": [
+   "heading",
+   "text"
+  ],
+  "x_height": "medium",
+  "width": "normal",
+  "contrast": "medium",
+  "era": "contemporary (2011)",
+  "mood": [
+   "warm",
+   "literary",
+   "calligraphic",
+   "gentle"
+  ],
+  "best_for": [
+   "blogs",
+   "storytelling",
+   "books"
+  ],
+  "avoid": "Brushed curves can look busy in UI labels.",
+  "notes": "Cyreal's well-balanced contemporary serif with roots in calligraphy, good for body text."
+ },
+ {
+  "family": "Spectral",
+  "category": "serif",
+  "classification": "old-style (contemporary)",
+  "weights": [
+   200,
+   300,
+   400,
+   500,
+   600,
+   700,
+   800
+  ],
+  "italic": true,
+  "roles": [
+   "heading",
+   "text"
+  ],
+  "x_height": "small",
+  "width": "normal",
+  "contrast": "medium",
+  "era": "contemporary (2017, Production Type)",
+  "mood": [
+   "elegant",
+   "literary",
+   "quiet",
+   "refined"
+  ],
+  "best_for": [
+   "long-form",
+   "literary",
+   "screen reading"
+  ],
+  "avoid": "Small x-height and light color; set larger.",
+  "notes": "Production Type's screen-first serif designed for Google Docs, elegant and light."
+ },
+ {
+  "family": "Crimson Pro",
+  "category": "serif",
+  "classification": "garalde (old-style)",
+  "weights": [
+   200,
+   300,
+   400,
+   500,
+   600,
+   700,
+   800,
+   900
+  ],
+  "italic": true,
+  "roles": [
+   "heading",
+   "text"
+  ],
+  "x_height": "small",
+  "width": "normal",
+  "contrast": "medium",
+  "era": "Renaissance old-style (contemporary revision)",
+  "mood": [
+   "bookish",
+   "classic",
+   "scholarly",
+   "calm"
+  ],
+  "best_for": [
+   "books",
+   "academic",
+   "long-form"
+  ],
+  "avoid": "Small x-height; increase size on screen.",
+  "notes": "Jacques Le Bailly's revision of Crimson Text, inspired by old-style book faces."
+ },
+ {
+  "family": "EB Garamond",
+  "category": "serif",
+  "classification": "garalde (old-style)",
+  "weights": [
+   400,
+   500,
+   600,
+   700,
+   800
+  ],
+  "italic": true,
+  "roles": [
+   "heading",
+   "text"
+  ],
+  "x_height": "small",
+  "width": "normal",
+  "contrast": "medium",
+  "era": "16th-c garalde (Garamond/Egenolff-Berner 1592)",
+  "mood": [
+   "classic",
+   "scholarly",
+   "elegant",
+   "timeless"
+  ],
+  "best_for": [
+   "books",
+   "academic",
+   "literary"
+  ],
+  "avoid": "Small x-height: weak at small screen sizes and in UI.",
+  "notes": "Georg Duffner's revival of Garamond from the 1592 Egenolff-Berner specimen."
+ },
+ {
+  "family": "Cormorant Garamond",
+  "category": "serif",
+  "classification": "garalde (display)",
+  "weights": [
+   300,
+   400,
+   500,
+   600,
+   700
+  ],
+  "italic": true,
+  "roles": [
+   "display",
+   "heading"
+  ],
+  "x_height": "small",
+  "width": "normal",
+  "contrast": "high",
+  "era": "16th-c garalde (display interpretation)",
+  "mood": [
+   "luxurious",
+   "elegant",
+   "delicate",
+   "refined"
+  ],
+  "best_for": [
+   "fashion",
+   "luxury",
+   "wedding",
+   "headlines"
+  ],
+  "avoid": "Display-oriented; hairlines vanish at text sizes and on low-dpi screens.",
+  "notes": "Christian Thalmann's display Garamond with very small x-height and sharp, high-contrast detail."
+ },
+ {
+  "family": "Cardo",
+  "category": "serif",
+  "classification": "old-style (humanist)",
+  "weights": [
+   400,
+   700
+  ],
+  "italic": true,
+  "roles": [
+   "text"
+  ],
+  "x_height": "small",
+  "width": "normal",
+  "contrast": "medium",
+  "era": "Renaissance (Bembo-inspired)",
+  "mood": [
+   "scholarly",
+   "classic",
+   "bookish",
+   "antique"
+  ],
+  "best_for": [
+   "academic",
+   "classics",
+   "multilingual scholarship"
+  ],
+  "avoid": "Italic only at 400; small x-height.",
+  "notes": "David Perry's scholarly old-style serif with extensive Greek/Hebrew/medievalist character coverage."
+ },
+ {
+  "family": "Vollkorn",
+  "category": "serif",
+  "classification": "old-style (contemporary)",
+  "weights": [
+   400,
+   500,
+   600,
+   700,
+   800,
+   900
+  ],
+  "italic": true,
+  "roles": [
+   "heading",
+   "text"
+  ],
+  "x_height": "medium",
+  "width": "normal",
+  "contrast": "medium",
+  "era": "contemporary (2005, old-style)",
+  "mood": [
+   "sturdy",
+   "warm",
+   "rustic",
+   "bookish"
+  ],
+  "best_for": [
+   "books",
+   "long-form",
+   "literary"
+  ],
+  "avoid": "Dark in heavy weights.",
+  "notes": "Friedrich Althausen's 'bread-and-butter' sturdy old-style serif for body text."
+ },
+ {
+  "family": "Alegreya",
+  "category": "serif",
+  "classification": "old-style (calligraphic)",
+  "weights": [
+   400,
+   500,
+   600,
+   700,
+   800,
+   900
+  ],
+  "italic": true,
+  "roles": [
+   "heading",
+   "text"
+  ],
+  "x_height": "small",
+  "width": "normal",
+  "contrast": "medium",
+  "era": "contemporary (2011, calligraphic)",
+  "mood": [
+   "literary",
+   "lively",
+   "calligraphic",
+   "warm"
+  ],
+  "best_for": [
+   "books",
+   "literature",
+   "poetry"
+  ],
+  "avoid": "Dynamic rhythm can look busy at small UI sizes.",
+  "notes": "Juan Pablo del Peral's dynamic, calligraphic serif for literature; companion to Alegreya Sans."
+ },
+ {
+  "family": "Libre Caslon Text",
+  "category": "serif",
+  "classification": "garalde (old-style)",
+  "weights": [
+   400,
+   700
+  ],
+  "italic": true,
+  "roles": [
+   "text"
+  ],
+  "x_height": "medium",
+  "width": "normal",
+  "contrast": "medium",
+  "era": "18th-c English old-style (Caslon)",
+  "mood": [
+   "classic",
+   "american",
+   "traditional",
+   "bookish"
+  ],
+  "best_for": [
+   "books",
+   "editorial",
+   "heritage"
+  ],
+  "avoid": "Italic exists only at 400.",
+  "notes": "Impallari's Caslon revival optimized for web body text."
+ },
+ {
+  "family": "Playfair Display",
+  "category": "serif",
+  "classification": "transitional/didone",
+  "weights": [
+   400,
+   500,
+   600,
+   700,
+   800,
+   900
+  ],
+  "italic": true,
+  "roles": [
+   "display",
+   "heading"
+  ],
+  "x_height": "large",
+  "width": "normal",
+  "contrast": "high",
+  "era": "late-18th-c transitional/didone",
+  "mood": [
+   "elegant",
+   "luxurious",
+   "editorial",
+   "dramatic"
+  ],
+  "best_for": [
+   "fashion",
+   "editorial headlines",
+   "luxury"
+  ],
+  "avoid": "High contrast hairlines break down below ~20px; very over-used with Montserrat/Lato.",
+  "notes": "Claus Eggers Sørensen's display face in the tradition of Baskerville and the didones, with large x-height."
+ },
+ {
+  "family": "Bodoni Moda",
+  "category": "serif",
+  "classification": "didone",
+  "weights": [
+   400,
+   500,
+   600,
+   700,
+   800,
+   900
+  ],
+  "italic": true,
+  "roles": [
+   "display",
+   "heading"
+  ],
+  "x_height": "small",
+  "width": "normal",
+  "contrast": "high",
+  "era": "late-18th-c didone (Bodoni)",
+  "mood": [
+   "luxurious",
+   "fashion",
+   "dramatic",
+   "sharp"
+  ],
+  "best_for": [
+   "fashion",
+   "luxury",
+   "magazine covers"
+  ],
+  "avoid": "Hairlines vanish at small sizes; display only.",
+  "notes": "Owen Earl's Bodoni with optical sizes, after Giambattista Bodoni's modern faces."
+ },
+ {
+  "family": "Libre Bodoni",
+  "category": "serif",
+  "classification": "didone",
+  "weights": [
+   400,
+   500,
+   600,
+   700
+  ],
+  "italic": true,
+  "roles": [
+   "heading",
+   "text"
+  ],
+  "x_height": "medium",
+  "width": "normal",
+  "contrast": "high",
+  "era": "late-18th-c didone (Morris Fuller Benton ATF)",
+  "mood": [
+   "classic",
+   "refined",
+   "formal",
+   "editorial"
+  ],
+  "best_for": [
+   "editorial",
+   "invitations",
+   "book titles"
+  ],
+  "avoid": "Didone body text is fatiguing at length.",
+  "notes": "Impallari's Bodoni revival based on Morris Fuller Benton's ATF version, tuned for text."
+ },
+ {
+  "family": "DM Serif Display",
+  "category": "serif",
+  "classification": "didone (display)",
+  "weights": [
+   400
+  ],
+  "italic": true,
+  "roles": [
+   "display",
+   "heading"
+  ],
+  "x_height": "large",
+  "width": "normal",
+  "contrast": "high",
+  "era": "contemporary (2019, Colophon)",
+  "mood": [
+   "elegant",
+   "bold",
+   "editorial",
+   "contemporary"
+  ],
+  "best_for": [
+   "headlines",
+   "editorial",
+   "branding"
+  ],
+  "avoid": "Single weight; display only.",
+  "notes": "Colophon's high-contrast display serif adapted from Source Serif; companion to DM Sans."
+ },
+ {
+  "family": "DM Serif Text",
+  "category": "serif",
+  "classification": "transitional (text)",
+  "weights": [
+   400
+  ],
+  "italic": true,
+  "roles": [
+   "heading",
+   "text"
+  ],
+  "x_height": "large",
+  "width": "normal",
+  "contrast": "medium",
+  "era": "contemporary (2019, Colophon)",
+  "mood": [
+   "elegant",
+   "warm",
+   "editorial"
+  ],
+  "best_for": [
+   "subheads",
+   "short text",
+   "editorial"
+  ],
+  "avoid": "Single weight (400).",
+  "notes": "Lower-contrast text companion to DM Serif Display."
+ },
+ {
+  "family": "Abril Fatface",
+  "category": "display",
+  "classification": "didone (fat face)",
+  "weights": [
+   400
+  ],
+  "italic": false,
+  "roles": [
+   "display"
+  ],
+  "x_height": "large",
+  "width": "normal",
+  "contrast": "high",
+  "era": "19th-c fat face",
+  "mood": [
+   "dramatic",
+   "bold",
+   "editorial",
+   "retro"
+  ],
+  "best_for": [
+   "posters",
+   "magazine headlines"
+  ],
+  "avoid": "Display only; single weight; no lowercase subtlety at small sizes.",
+  "notes": "TypeTogether's heavy fat-face display serif, inspired by 19th-century British and French advertising."
+ },
+ {
+  "family": "Old Standard TT",
+  "category": "serif",
+  "classification": "modern (scotch/didone)",
+  "weights": [
+   400,
+   700
+  ],
+  "italic": true,
+  "roles": [
+   "heading",
+   "text"
+  ],
+  "x_height": "small",
+  "width": "normal",
+  "contrast": "high",
+  "era": "late-19th-c modern",
+  "mood": [
+   "academic",
+   "victorian",
+   "formal",
+   "antique"
+  ],
+  "best_for": [
+   "academic",
+   "historical",
+   "scholarly"
+  ],
+  "avoid": "Italic only at 400; hairlines thin on screens.",
+  "notes": "Alexey Kryukov's reproduction of a late-19th/early-20th-century 'modern' typeface used in scientific publications."
+ },
+ {
+  "family": "Fraunces",
+  "category": "serif",
+  "classification": "soft old-style (display)",
+  "weights": [
+   100,
+   200,
+   300,
+   400,
+   500,
+   600,
+   700,
+   800,
+   900
+  ],
+  "italic": true,
+  "roles": [
+   "display",
+   "heading",
+   "text"
+  ],
+  "x_height": "medium",
+  "width": "normal",
+  "contrast": "medium",
+  "era": "1970s 'wonky' old-style (Windsor/Cooper inspired)",
+  "mood": [
+   "warm",
+   "quirky",
+   "retro",
+   "friendly",
+   "expressive"
+  ],
+  "best_for": [
+   "food",
+   "retro branding",
+   "editorial heads"
+  ],
+  "avoid": "Wonky/soft axes are loud; keep text use restrained.",
+  "notes": "Undercase Type's 'Old Style soft' display face inspired by Windsor, Souvenir and Cooper, with opsz, softness and wonk axes."
+ },
+ {
+  "family": "Instrument Serif",
+  "category": "serif",
+  "classification": "transitional (condensed display)",
+  "weights": [
+   400
+  ],
+  "italic": true,
+  "roles": [
+   "display",
+   "heading"
+  ],
+  "x_height": "medium",
+  "width": "condensed",
+  "contrast": "high",
+  "era": "contemporary (2023)",
+  "mood": [
+   "elegant",
+   "editorial",
+   "condensed",
+   "modern"
+  ],
+  "best_for": [
+   "headlines",
+   "editorial",
+   "branding"
+  ],
+  "avoid": "Single weight; condensed display only.",
+  "notes": "Condensed display serif with a contemporary editorial feel, companion to Instrument Sans."
+ },
+ {
+  "family": "Young Serif",
+  "category": "serif",
+  "classification": "old-style (heavy display)",
+  "weights": [
+   400
+  ],
+  "italic": false,
+  "roles": [
+   "display",
+   "heading"
+  ],
+  "x_height": "large",
+  "width": "normal",
+  "contrast": "medium",
+  "era": "early 20th-c heavy old-style",
+  "mood": [
+   "warm",
+   "retro",
+   "friendly",
+   "bold"
+  ],
+  "best_for": [
+   "food",
+   "packaging",
+   "retro"
+  ],
+  "avoid": "Single weight; no italics.",
+  "notes": "Bastien Sozeau's heavy, single-weight old-style display serif with warm, retro character."
+ },
+ {
+  "family": "Roboto Slab",
+  "category": "serif",
+  "classification": "slab (neo-grotesque skeleton)",
+  "weights": [
+   100,
+   200,
+   300,
+   400,
+   500,
+   600,
+   700,
+   800,
+   900
+  ],
+  "italic": false,
+  "roles": [
+   "heading",
+   "text",
+   "ui"
+  ],
+  "x_height": "large",
+  "width": "normal",
+  "contrast": "low",
+  "era": "contemporary (2013)",
+  "mood": [
+   "sturdy",
+   "friendly",
+   "modern",
+   "dependable"
+  ],
+  "best_for": [
+   "blogs",
+   "news",
+   "ui"
+  ],
+  "avoid": "No italics.",
+  "notes": "Christian Robertson's slab serif built on Roboto's skeleton; Roboto superfamily member."
+ },
+ {
+  "family": "Zilla Slab",
+  "category": "serif",
+  "classification": "slab",
+  "weights": [
+   300,
+   400,
+   500,
+   600,
+   700
+  ],
+  "italic": true,
+  "roles": [
+   "heading",
+   "text"
+  ],
+  "x_height": "medium",
+  "width": "normal",
+  "contrast": "low",
+  "era": "contemporary (2017, Mozilla)",
+  "mood": [
+   "smart",
+   "contemporary",
+   "journalistic",
+   "quirky"
+  ],
+  "best_for": [
+   "tech editorial",
+   "branding",
+   "blogs"
+  ],
+  "avoid": "Bold weights are idiosyncratic.",
+  "notes": "Typotheque's slab for Mozilla's brand, based on Tisa."
+ },
+ {
+  "family": "Arvo",
+  "category": "serif",
+  "classification": "slab (geometric)",
+  "weights": [
+   400,
+   700
+  ],
+  "italic": true,
+  "roles": [
+   "heading",
+   "text"
+  ],
+  "x_height": "large",
+  "width": "normal",
+  "contrast": "low",
+  "era": "contemporary (2010)",
+  "mood": [
+   "sturdy",
+   "geometric",
+   "retro",
+   "confident"
+  ],
+  "best_for": [
+   "headlines",
+   "retro branding"
+  ],
+  "avoid": "Only 400/700.",
+  "notes": "Anton Koovit's geometric slab serif."
+ },
+ {
+  "family": "Bitter",
+  "category": "serif",
+  "classification": "slab",
+  "weights": [
+   100,
+   200,
+   300,
+   400,
+   500,
+   600,
+   700,
+   800,
+   900
+  ],
+  "italic": true,
+  "roles": [
+   "heading",
+   "text"
+  ],
+  "x_height": "large",
+  "width": "normal",
+  "contrast": "low",
+  "era": "contemporary (2011, screen slab)",
+  "mood": [
+   "sturdy",
+   "readable",
+   "contemporary",
+   "warm"
+  ],
+  "best_for": [
+   "long-form screen",
+   "blogs",
+   "e-readers"
+  ],
+  "avoid": "Slab rhythm is dark in heavy weights.",
+  "notes": "Huerta Tipográfica's slab designed for comfortable screen reading."
+ },
+ {
+  "family": "Alfa Slab One",
+  "category": "display",
+  "classification": "slab (fat)",
+  "weights": [
+   400
+  ],
+  "italic": false,
+  "roles": [
+   "display"
+  ],
+  "x_height": "large",
+  "width": "wide",
+  "contrast": "low",
+  "era": "19th-c fat Egyptian",
+  "mood": [
+   "heavy",
+   "loud",
+   "retro",
+   "western"
+  ],
+  "best_for": [
+   "posters",
+   "packaging",
+   "headlines"
+  ],
+  "avoid": "Display only; single weight.",
+  "notes": "Heavy contemporary slab by JM Solé inspired by 19th-century fat Egyptians."
+ },
+ {
+  "family": "Cinzel",
+  "category": "display",
+  "classification": "glyphic (inscriptional caps)",
+  "weights": [
+   400,
+   500,
+   600,
+   700,
+   800,
+   900
+  ],
+  "italic": false,
+  "roles": [
+   "display",
+   "heading"
+  ],
+  "x_height": "medium",
+  "width": "wide",
+  "contrast": "medium",
+  "era": "classical Roman inscriptional (Trajan)",
+  "mood": [
+   "classical",
+   "monumental",
+   "formal",
+   "epic"
+  ],
+  "best_for": [
+   "titles",
+   "film/game titles",
+   "luxury"
+  ],
+  "avoid": "All-caps design (lowercase = small caps); never for body. x_height reflects small-cap height.",
+  "notes": "Natanael Gama's face inspired by first-century Roman inscriptions."
+ },
+ {
+  "family": "Marcellus",
+  "category": "serif",
+  "classification": "glyphic (flared)",
+  "weights": [
+   400
+  ],
+  "italic": false,
+  "roles": [
+   "display",
+   "heading"
+  ],
+  "x_height": "medium",
+  "width": "normal",
+  "contrast": "medium",
+  "era": "classical Roman (Trajan, flared)",
+  "mood": [
+   "classical",
+   "calm",
+   "elegant",
+   "dignified"
+  ],
+  "best_for": [
+   "spa",
+   "luxury",
+   "cultural institutions"
+  ],
+  "avoid": "Single weight.",
+  "notes": "Brian Bonislawsky's flared serif inspired by classic Roman inscription letterforms."
+ },
+ {
+  "family": "JetBrains Mono",
+  "category": "monospace",
+  "classification": "monospace (sans)",
+  "weights": [
+   100,
+   200,
+   300,
+   400,
+   500,
+   600,
+   700,
+   800
+  ],
+  "italic": true,
+  "roles": [
+   "code",
+   "ui"
+  ],
+  "x_height": "large",
+  "width": "normal",
+  "contrast": "low",
+  "era": "contemporary (2020)",
+  "mood": [
+   "technical",
+   "clean",
+   "developer",
+   "modern"
+  ],
+  "best_for": [
+   "code",
+   "terminal",
+   "dev tools"
+  ],
+  "avoid": "Monospace for prose is tiring.",
+  "notes": "JetBrains' monospace with increased x-height and coding ligatures."
+ },
+ {
+  "family": "Fira Code",
+  "category": "monospace",
+  "classification": "monospace (sans)",
+  "weights": [
+   300,
+   400,
+   500,
+   600,
+   700
+  ],
+  "italic": false,
+  "roles": [
+   "code"
+  ],
+  "x_height": "large",
+  "width": "normal",
+  "contrast": "low",
+  "era": "contemporary (2014, from Fira Mono)",
+  "mood": [
+   "technical",
+   "developer",
+   "clean"
+  ],
+  "best_for": [
+   "code",
+   "terminal"
+  ],
+  "avoid": "No italics; ligatures may confuse readers of code samples.",
+  "notes": "Nikita Prokopov's Fira Mono extension with programming ligatures."
+ },
+ {
+  "family": "Source Code Pro",
+  "category": "monospace",
+  "classification": "monospace (sans)",
+  "weights": [
+   200,
+   300,
+   400,
+   500,
+   600,
+   700,
+   800,
+   900
+  ],
+  "italic": true,
+  "roles": [
+   "code",
+   "ui"
+  ],
+  "x_height": "medium",
+  "width": "normal",
+  "contrast": "low",
+  "era": "contemporary (2012)",
+  "mood": [
+   "clean",
+   "technical",
+   "neutral"
+  ],
+  "best_for": [
+   "code",
+   "docs",
+   "Source superfamily"
+  ],
+  "avoid": "Neutral.",
+  "notes": "Paul D. Hunt's monospaced companion to Source Sans."
+ },
+ {
+  "family": "Roboto Mono",
+  "category": "monospace",
+  "classification": "monospace (sans)",
+  "weights": [
+   100,
+   200,
+   300,
+   400,
+   500,
+   600,
+   700
+  ],
+  "italic": true,
+  "roles": [
+   "code",
+   "ui"
+  ],
+  "x_height": "large",
+  "width": "normal",
+  "contrast": "low",
+  "era": "contemporary (2015)",
+  "mood": [
+   "technical",
+   "neutral",
+   "mechanical"
+  ],
+  "best_for": [
+   "code",
+   "data",
+   "Roboto superfamily"
+  ],
+  "avoid": "Max 700.",
+  "notes": "Monospaced addition to the Roboto family."
+ },
+ {
+  "family": "IBM Plex Mono",
+  "category": "monospace",
+  "classification": "monospace (sans)",
+  "weights": [
+   100,
+   200,
+   300,
+   400,
+   500,
+   600,
+   700
+  ],
+  "italic": true,
+  "roles": [
+   "code",
+   "ui",
+   "caption",
+   "accent"
+  ],
+  "x_height": "medium",
+  "width": "normal",
+  "contrast": "low",
+  "era": "contemporary (2017, IBM)",
+  "mood": [
+   "engineered",
+   "technical",
+   "characterful",
+   "rational"
+  ],
+  "best_for": [
+   "code",
+   "tech editorial",
+   "labels"
+  ],
+  "avoid": "Max 700.",
+  "notes": "IBM Plex's monospace with distinctive italics; works as an accent face in editorial tech designs."
+ },
+ {
+  "family": "Space Mono",
+  "category": "monospace",
+  "classification": "monospace (geometric grotesque)",
+  "weights": [
+   400,
+   700
+  ],
+  "italic": true,
+  "roles": [
+   "display",
+   "heading",
+   "code",
+   "accent"
+  ],
+  "x_height": "medium",
+  "width": "normal",
+  "contrast": "low",
+  "era": "contemporary (2016, retro-futurist)",
+  "mood": [
+   "retro-futurist",
+   "geeky",
+   "quirky",
+   "editorial"
+  ],
+  "best_for": [
+   "tech branding",
+   "posters",
+   "accent text"
+  ],
+  "avoid": "Only 400/700; quirky for long code.",
+  "notes": "Colophon's geometric monospace for Google Design, inspired by 1960s-70s display grotesques."
+ },
+ {
+  "family": "DM Mono",
+  "category": "monospace",
+  "classification": "monospace (sans)",
+  "weights": [
+   300,
+   400,
+   500
+  ],
+  "italic": true,
+  "roles": [
+   "code",
+   "caption",
+   "accent"
+  ],
+  "x_height": "medium",
+  "width": "normal",
+  "contrast": "low",
+  "era": "contemporary (2020, Colophon)",
+  "mood": [
+   "clean",
+   "minimal",
+   "friendly"
+  ],
+  "best_for": [
+   "labels",
+   "code snippets",
+   "DM family"
+  ],
+  "avoid": "Only 300-500.",
+  "notes": "Colophon's monospace companion to DM Sans."
+ },
+ {
+  "family": "Geist Mono",
+  "category": "monospace",
+  "classification": "monospace (sans)",
+  "weights": [
+   100,
+   200,
+   300,
+   400,
+   500,
+   600,
+   700,
+   800,
+   900
+  ],
+  "italic": true,
+  "roles": [
+   "code",
+   "ui",
+   "accent"
+  ],
+  "x_height": "large",
+  "width": "normal",
+  "contrast": "low",
+  "era": "contemporary (2023)",
+  "mood": [
+   "minimal",
+   "technical",
+   "precise",
+   "cool"
+  ],
+  "best_for": [
+   "code",
+   "dev tools",
+   "labels"
+  ],
+  "avoid": "Strong Vercel association.",
+  "notes": "Vercel's monospace companion to Geist."
+ },
+ {
+  "family": "Bebas Neue",
+  "category": "display",
+  "classification": "condensed grotesque (caps)",
+  "weights": [
+   400
+  ],
+  "italic": false,
+  "roles": [
+   "display",
+   "heading"
+  ],
+  "x_height": "medium",
+  "width": "condensed",
+  "contrast": "low",
+  "era": "contemporary (2010)",
+  "mood": [
+   "bold",
+   "loud",
+   "poster",
+   "modern"
+  ],
+  "best_for": [
+   "posters",
+   "hero headlines",
+   "sports"
+  ],
+  "avoid": "Uppercase only; single weight; never for body. x_height not meaningful.",
+  "notes": "Ryoichi Tsunekawa's all-caps condensed display sans."
+ },
+ {
+  "family": "Oswald",
+  "category": "sans-serif",
+  "classification": "condensed grotesque (gothic)",
+  "weights": [
+   200,
+   300,
+   400,
+   500,
+   600,
+   700
+  ],
+  "italic": false,
+  "roles": [
+   "display",
+   "heading",
+   "ui"
+  ],
+  "x_height": "large",
+  "width": "condensed",
+  "contrast": "low",
+  "era": "early 20th-c American gothic (Alternate Gothic)",
+  "mood": [
+   "bold",
+   "urgent",
+   "newsy",
+   "sporty"
+  ],
+  "best_for": [
+   "headlines",
+   "posters",
+   "sports"
+  ],
+  "avoid": "No italics; body text unreadable at length.",
+  "notes": "Vernon Adams' reworking of 'Alternate Gothic' style condensed sans."
+ },
+ {
+  "family": "Anton",
+  "category": "sans-serif",
+  "classification": "condensed grotesque (impact)",
+  "weights": [
+   400
+  ],
+  "italic": false,
+  "roles": [
+   "display"
+  ],
+  "x_height": "large",
+  "width": "condensed",
+  "contrast": "low",
+  "era": "early 20th-c condensed grotesque",
+  "mood": [
+   "loud",
+   "impactful",
+   "urgent",
+   "heavy"
+  ],
+  "best_for": [
+   "posters",
+   "thumbnails",
+   "headlines"
+  ],
+  "avoid": "Single heavy weight; display only.",
+  "notes": "Vernon Adams' heavy condensed display grotesque."
+ },
+ {
+  "family": "Archivo Black",
+  "category": "sans-serif",
+  "classification": "grotesque (black)",
+  "weights": [
+   400
+  ],
+  "italic": false,
+  "roles": [
+   "display",
+   "heading"
+  ],
+  "x_height": "large",
+  "width": "wide",
+  "contrast": "low",
+  "era": "19th-c grotesque revival",
+  "mood": [
+   "heavy",
+   "bold",
+   "loud",
+   "sturdy"
+  ],
+  "best_for": [
+   "posters",
+   "headlines",
+   "branding"
+  ],
+  "avoid": "Single weight; display only.",
+  "notes": "Black weight of the Archivo family for headlines."
+ },
+ {
+  "family": "League Gothic",
+  "category": "sans-serif",
+  "classification": "condensed grotesque (gothic)",
+  "weights": [
+   400
+  ],
+  "italic": false,
+  "roles": [
+   "display",
+   "heading"
+  ],
+  "x_height": "large",
+  "width": "condensed",
+  "contrast": "low",
+  "era": "1903 American gothic (Alternate Gothic No.1)",
+  "mood": [
+   "vintage",
+   "newsy",
+   "tall",
+   "bold"
+  ],
+  "best_for": [
+   "posters",
+   "headlines",
+   "retro"
+  ],
+  "avoid": "No italics; single weight via API (400).",
+  "notes": "The League of Moveable Type's revival of Morris Fuller Benton's Alternate Gothic No.1."
+ },
+ {
+  "family": "Big Shoulders Display",
+  "category": "display",
+  "classification": "condensed grotesque",
+  "weights": [
+   100,
+   200,
+   300,
+   400,
+   500,
+   600,
+   700,
+   800,
+   900
+  ],
+  "italic": false,
+  "roles": [
+   "display",
+   "heading"
+  ],
+  "x_height": "large",
+  "width": "condensed",
+  "contrast": "low",
+  "era": "contemporary (Chicago, 2019)",
+  "mood": [
+   "industrial",
+   "urban",
+   "bold",
+   "civic"
+  ],
+  "best_for": [
+   "posters",
+   "events",
+   "signage"
+  ],
+  "avoid": "Display only; no italics.",
+  "notes": "Patric King's condensed sans inspired by Chicago's industrial signage."
+ },
+ {
+  "family": "Shrikhand",
+  "category": "display",
+  "classification": "display (fat italic)",
+  "weights": [
+   400
+  ],
+  "italic": false,
+  "roles": [
+   "display"
+  ],
+  "x_height": "medium",
+  "width": "normal",
+  "contrast": "medium",
+  "era": "contemporary (Gujarati-inspired, 2016)",
+  "mood": [
+   "playful",
+   "retro",
+   "bold",
+   "juicy"
+  ],
+  "best_for": [
+   "food",
+   "packaging",
+   "posters"
+  ],
+  "avoid": "Single weight; display only.",
+  "notes": "Jonny Pinhorn's heavy display face with an inherent italic flavor and Gujarati support."
+ },
+ {
+  "family": "Bungee",
+  "category": "display",
+  "classification": "display (vertical signage)",
+  "weights": [
+   400
+  ],
+  "italic": false,
+  "roles": [
+   "display"
+  ],
+  "x_height": "large",
+  "width": "wide",
+  "contrast": "low",
+  "era": "contemporary (urban signage)",
+  "mood": [
+   "urban",
+   "loud",
+   "playful",
+   "signage"
+  ],
+  "best_for": [
+   "posters",
+   "games",
+   "street"
+  ],
+  "avoid": "All caps, single weight; display only.",
+  "notes": "David Jonathan Ross's family celebrating urban vertical signage."
+ },
+ {
+  "family": "Monoton",
+  "category": "display",
+  "classification": "decorative (inline)",
+  "weights": [
+   400
+  ],
+  "italic": false,
+  "roles": [
+   "display",
+   "accent"
+  ],
+  "x_height": "large",
+  "width": "wide",
+  "contrast": "low",
+  "era": "1930s-50s neon/art-deco",
+  "mood": [
+   "retro",
+   "neon",
+   "art-deco",
+   "nightlife"
+  ],
+  "best_for": [
+   "posters",
+   "bars",
+   "retro"
+  ],
+  "avoid": "Only works very large; caps only.",
+  "notes": "Vernon Adams' multi-line 'neon' display face in the tradition of 1930s-50s decorative types."
+ },
+ {
+  "family": "Press Start 2P",
+  "category": "display",
+  "classification": "pixel (bitmap)",
+  "weights": [
+   400
+  ],
+  "italic": false,
+  "roles": [
+   "display",
+   "accent"
+  ],
+  "x_height": "large",
+  "width": "wide",
+  "contrast": "low",
+  "era": "1980s 8-bit arcade",
+  "mood": [
+   "retro",
+   "gamer",
+   "8-bit",
+   "playful"
+  ],
+  "best_for": [
+   "games",
+   "retro tech",
+   "pixel art"
+  ],
+  "avoid": "Unreadable for text; renders best at multiples of 8px.",
+  "notes": "CodeMan38's font based on 1980s Namco arcade game typography."
+ },
+ {
+  "family": "Fredoka",
+  "category": "sans-serif",
+  "classification": "rounded (display)",
+  "weights": [
+   300,
+   400,
+   500,
+   600,
+   700
+  ],
+  "italic": false,
+  "roles": [
+   "display",
+   "heading"
+  ],
+  "x_height": "large",
+  "width": "normal",
+  "contrast": "low",
+  "era": "contemporary",
+  "mood": [
+   "playful",
+   "bubbly",
+   "friendly",
+   "childlike"
+  ],
+  "best_for": [
+   "kids",
+   "games",
+   "friendly brands"
+  ],
+  "avoid": "No italics; childish in serious contexts.",
+  "notes": "Milena Brandão's rounded display sans."
+ },
+ {
+  "family": "Caveat",
+  "category": "handwriting",
+  "classification": "handwriting (casual marker)",
+  "weights": [
+   400,
+   500,
+   600,
+   700
+  ],
+  "italic": false,
+  "roles": [
+   "accent",
+   "heading"
+  ],
+  "x_height": "medium",
+  "width": "condensed",
+  "contrast": "low",
+  "era": "contemporary handwriting",
+  "mood": [
+   "casual",
+   "personal",
+   "friendly",
+   "informal"
+  ],
+  "best_for": [
+   "notes",
+   "annotations",
+   "friendly accents"
+  ],
+  "avoid": "Never for body text or UI.",
+  "notes": "Impallari's handwriting face based on quick, casual pen writing."
+ },
+ {
+  "family": "Dancing Script",
+  "category": "handwriting",
+  "classification": "script (casual)",
+  "weights": [
+   400,
+   500,
+   600,
+   700
+  ],
+  "italic": false,
+  "roles": [
+   "accent",
+   "heading"
+  ],
+  "x_height": "small",
+  "width": "normal",
+  "contrast": "medium",
+  "era": "contemporary (1950s-inspired)",
+  "mood": [
+   "lively",
+   "romantic",
+   "casual",
+   "bouncy"
+  ],
+  "best_for": [
+   "invitations",
+   "cafes",
+   "accents"
+  ],
+  "avoid": "Never all caps; not for body.",
+  "notes": "Impallari's lively casual script with bouncing letters."
+ },
+ {
+  "family": "Pacifico",
+  "category": "handwriting",
+  "classification": "script (brush, surf)",
+  "weights": [
+   400
+  ],
+  "italic": false,
+  "roles": [
+   "display",
+   "accent"
+  ],
+  "x_height": "medium",
+  "width": "normal",
+  "contrast": "low",
+  "era": "1950s American surf culture",
+  "mood": [
+   "fun",
+   "retro",
+   "beachy",
+   "casual"
+  ],
+  "best_for": [
+   "logos",
+   "cafes",
+   "summer"
+  ],
+  "avoid": "Heavily over-used; display only; never all caps.",
+  "notes": "Vernon Adams' brush script inspired by 1950s American surf culture."
+ },
+ {
+  "family": "Great Vibes",
+  "category": "handwriting",
+  "classification": "script (formal)",
+  "weights": [
+   400
+  ],
+  "italic": false,
+  "roles": [
+   "accent",
+   "display"
+  ],
+  "x_height": "small",
+  "width": "normal",
+  "contrast": "high",
+  "era": "contemporary formal copperplate-style",
+  "mood": [
+   "elegant",
+   "romantic",
+   "formal",
+   "luxurious"
+  ],
+  "best_for": [
+   "wedding",
+   "invitations",
+   "luxury accents"
+  ],
+  "avoid": "Illegible small or in all caps; one or two words only.",
+  "notes": "TypeSETit's flowing formal script with connecting strokes."
+ },
+ {
+  "family": "Permanent Marker",
+  "category": "handwriting",
+  "classification": "handwriting (marker)",
+  "weights": [
+   400
+  ],
+  "italic": false,
+  "roles": [
+   "display",
+   "accent"
+  ],
+  "x_height": "medium",
+  "width": "normal",
+  "contrast": "low",
+  "era": "contemporary (felt marker)",
+  "mood": [
+   "bold",
+   "raw",
+   "grungy",
+   "energetic"
+  ],
+  "best_for": [
+   "posters",
+   "youth",
+   "DIY"
+  ],
+  "avoid": "Caps-like forms; display only.",
+  "notes": "Font Diner's face imitating a felt-tip permanent marker."
+ },
+ {
+  "family": "UnifrakturMaguntia",
+  "category": "display",
+  "classification": "blackletter (fraktur)",
+  "weights": [
+   400
+  ],
+  "italic": false,
+  "roles": [
+   "display",
+   "accent"
+  ],
+  "x_height": "medium",
+  "width": "normal",
+  "contrast": "high",
+  "era": "18th-c German fraktur",
+  "mood": [
+   "gothic",
+   "medieval",
+   "traditional",
+   "ornate"
+  ],
+  "best_for": [
+   "mastheads",
+   "certificates",
+   "beer labels"
+  ],
+  "avoid": "Hard to read; never body text or all caps.",
+  "notes": "J. 'Mach' Wust's Unicode-compliant fraktur derived from Peter Wiegel's Berthold Mainzer Fraktur."
+ },
+ {
+  "family": "Grenze Gotisch",
+  "category": "display",
+  "classification": "blackletter (hybrid)",
+  "weights": [
+   100,
+   200,
+   300,
+   400,
+   500,
+   600,
+   700,
+   800,
+   900
+  ],
+  "italic": false,
+  "roles": [
+   "display",
+   "heading"
+  ],
+  "x_height": "medium",
+  "width": "normal",
+  "contrast": "medium",
+  "era": "contemporary blackletter hybrid",
+  "mood": [
+   "gothic",
+   "historic",
+   "dramatic",
+   "bold"
+  ],
+  "best_for": [
+   "fantasy",
+   "events",
+   "headlines"
+  ],
+  "avoid": "Display only.",
+  "notes": "Omnibus-Type's hybrid between blackletter and roman with nine weights."
+ },
+ {
+  "family": "Noto Sans",
+  "category": "sans-serif",
+  "classification": "humanist",
+  "weights": [
+   100,
+   200,
+   300,
+   400,
+   500,
+   600,
+   700,
+   800,
+   900
+  ],
+  "italic": true,
+  "roles": [
+   "heading",
+   "text",
+   "ui",
+   "caption"
+  ],
+  "x_height": "large",
+  "width": "normal",
+  "contrast": "low",
+  "era": "contemporary (Noto project, 2012+)",
+  "mood": [
+   "neutral",
+   "global",
+   "dependable",
+   "clear"
+  ],
+  "best_for": [
+   "multilingual",
+   "ui",
+   "docs"
+  ],
+  "avoid": "Neutral; for non-Latin scripts load the script-specific Noto family.",
+  "notes": "Google's 'no tofu' sans (Open Sans-derived Latin) with script siblings covering 1000+ languages."
+ },
+ {
+  "family": "Noto Sans JP",
+  "category": "sans-serif",
+  "classification": "gothic (Japanese sans)",
+  "weights": [
+   100,
+   200,
+   300,
+   400,
+   500,
+   600,
+   700,
+   800,
+   900
+  ],
+  "italic": false,
+  "roles": [
+   "heading",
+   "text",
+   "ui"
+  ],
+  "x_height": "large",
+  "width": "normal",
+  "contrast": "low",
+  "era": "contemporary (Source Han Sans)",
+  "mood": [
+   "neutral",
+   "clear",
+   "global"
+  ],
+  "best_for": [
+   "japanese",
+   "cjk ui"
+  ],
+  "avoid": "Large file sizes; Latin glyphs are plain.",
+  "notes": "Japanese sans from the Adobe/Google Source Han Sans / Noto Sans CJK project."
+ },
+ {
+  "family": "Noto Sans SC",
+  "category": "sans-serif",
+  "classification": "hei (Chinese sans)",
+  "weights": [
+   100,
+   200,
+   300,
+   400,
+   500,
+   600,
+   700,
+   800,
+   900
+  ],
+  "italic": false,
+  "roles": [
+   "heading",
+   "text",
+   "ui"
+  ],
+  "x_height": "large",
+  "width": "normal",
+  "contrast": "low",
+  "era": "contemporary (Source Han Sans)",
+  "mood": [
+   "neutral",
+   "clear",
+   "global"
+  ],
+  "best_for": [
+   "simplified chinese",
+   "cjk ui"
+  ],
+  "avoid": "Large file sizes.",
+  "notes": "Simplified Chinese member of Noto Sans CJK."
+ },
+ {
+  "family": "Noto Sans Arabic",
+  "category": "sans-serif",
+  "classification": "kufi-influenced sans (Arabic)",
+  "weights": [
+   100,
+   200,
+   300,
+   400,
+   500,
+   600,
+   700,
+   800,
+   900
+  ],
+  "italic": false,
+  "roles": [
+   "heading",
+   "text",
+   "ui"
+  ],
+  "x_height": "medium",
+  "width": "normal",
+  "contrast": "low",
+  "era": "contemporary (Noto)",
+  "mood": [
+   "neutral",
+   "clear",
+   "modern"
+  ],
+  "best_for": [
+   "arabic ui",
+   "rtl"
+  ],
+  "avoid": "For traditional text, Noto Naskh Arabic reads more conventionally.",
+  "notes": "Noto's unmodulated Arabic sans for UI and headings."
+ },
+ {
+  "family": "Noto Sans Devanagari",
+  "category": "sans-serif",
+  "classification": "devanagari sans",
+  "weights": [
+   100,
+   200,
+   300,
+   400,
+   500,
+   600,
+   700,
+   800,
+   900
+  ],
+  "italic": false,
+  "roles": [
+   "heading",
+   "text",
+   "ui"
+  ],
+  "x_height": "large",
+  "width": "normal",
+  "contrast": "low",
+  "era": "contemporary (Noto)",
+  "mood": [
+   "neutral",
+   "clear",
+   "modern"
+  ],
+  "best_for": [
+   "hindi/marathi/nepali",
+   "indic ui"
+  ],
+  "avoid": "Pair with Noto Sans for Latin.",
+  "notes": "Noto's Devanagari sans, harmonized with Noto Sans."
+ },
+ {
+  "family": "Noto Serif JP",
+  "category": "serif",
+  "classification": "mincho (Japanese serif)",
+  "weights": [
+   200,
+   300,
+   400,
+   500,
+   600,
+   700,
+   800,
+   900
+  ],
+  "italic": false,
+  "roles": [
+   "heading",
+   "text"
+  ],
+  "x_height": "large",
+  "width": "normal",
+  "contrast": "medium",
+  "era": "contemporary (Source Han Serif)",
+  "mood": [
+   "literary",
+   "traditional",
+   "refined"
+  ],
+  "best_for": [
+   "japanese editorial",
+   "literary"
+  ],
+  "avoid": "Large file sizes; no 100 weight.",
+  "notes": "Japanese mincho from the Source Han Serif / Noto Serif CJK project."
+ }
+]

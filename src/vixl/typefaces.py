@@ -297,7 +297,10 @@ def fetch_font(family, weight=400, italic=False, *, client=None):
         css = _get(client, url).decode("utf-8", "replace")
         sources = re.findall(r"url\((https://[^)]+)\)\s*format\('(?:truetype|opentype)'\)", css)
         require(sources, f"No TrueType source for {family} {weight}{' italic' if italic else ''}", "font_download_failed")
-        require(urlparse(sources[0]).hostname == FONT_HOST, "Unexpected font host", "font_download_failed")
+        source = urlparse(sources[0])
+        # Names outside the Google Fonts library can still answer with a /l/ "kit" URL; only /s/ is a family.
+        require(source.hostname == FONT_HOST and source.path.startswith("/s/"),
+                f"Google Fonts has no family named {family!r}", "unknown_font")
         data = _get(client, sources[0])
     except httpx.HTTPError as exc:
         raise VixlError("font_download_failed", f"Font download failed ({type(exc).__name__}); check network access") from exc

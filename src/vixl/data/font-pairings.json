@@ -1,0 +1,1499 @@
+[
+ {
+  "name": "source-serif-sans",
+  "heading": {
+   "family": "Source Serif 4",
+   "weight": 600
+  },
+  "body": {
+   "family": "Source Sans 3",
+   "weight": 400
+  },
+  "relationship": "superfamily",
+  "mood": [
+   "academic",
+   "calm",
+   "editorial"
+  ],
+  "best_for": [
+   "documentation",
+   "reports",
+   "long-form"
+  ],
+  "why": "Adobe designed Source Serif as a companion to Source Sans, so proportions and color agree while the 18th-c transitional serif adds a clear heading/body distinction.",
+  "caution": "Both are restrained; add color or scale contrast so the page does not feel flat.",
+  "source": "https://www.typewolf.com/source-serif-pro"
+ },
+ {
+  "name": "ibm-plex-serif-sans",
+  "heading": {
+   "family": "IBM Plex Serif",
+   "weight": 600
+  },
+  "body": {
+   "family": "IBM Plex Sans",
+   "weight": 400
+  },
+  "relationship": "superfamily",
+  "mood": [
+   "corporate",
+   "rational",
+   "academic"
+  ],
+  "best_for": [
+   "enterprise reports",
+   "whitepapers",
+   "tech editorial"
+  ],
+  "why": "Plex Serif and Plex Sans share one skeleton and x-height, so swapping roles never disturbs rhythm; serif headings add authority over a neutral grotesque body.",
+  "caution": "Max weight is 700; do not expect a black weight for posters.",
+  "source": "https://fonts.google.com/knowledge/choosing_type/pairing_typefaces_within_a_family_superfamily"
+ },
+ {
+  "name": "ibm-plex-mono-sans",
+  "heading": {
+   "family": "IBM Plex Mono",
+   "weight": 600
+  },
+  "body": {
+   "family": "IBM Plex Sans",
+   "weight": 400
+  },
+  "relationship": "superfamily",
+  "mood": [
+   "tech",
+   "engineered",
+   "minimal"
+  ],
+  "best_for": [
+   "developer docs",
+   "product pages",
+   "dashboards"
+  ],
+  "why": "Monospaced headings signal 'code/engineering' while Plex Sans keeps body copy readable; same-family metrics keep them aligned.",
+  "caution": "Keep mono headings short; long mono lines get wide and slow to read.",
+  "source": "https://fonts.google.com/knowledge/choosing_type/pairing_typefaces_within_a_family_superfamily"
+ },
+ {
+  "name": "noto-serif-sans-global",
+  "heading": {
+   "family": "Noto Serif",
+   "weight": 700
+  },
+  "body": {
+   "family": "Noto Sans",
+   "weight": 400
+  },
+  "relationship": "superfamily",
+  "mood": [
+   "neutral",
+   "global",
+   "corporate"
+  ],
+  "best_for": [
+   "multilingual products",
+   "documentation",
+   "international brands"
+  ],
+  "why": "Noto is designed for harmonised coverage of most of the world's scripts, so this pairing survives translation without fallback-font mismatches.",
+  "caution": "Load the script-specific Noto family (e.g. Noto Sans JP) for non-Latin text; the base families do not contain CJK/Arabic/Indic.",
+  "source": "https://fonts.google.com/knowledge/choosing_type/pairing_typefaces_within_a_family_superfamily"
+ },
+ {
+  "name": "noto-serif-jp-sans-jp",
+  "heading": {
+   "family": "Noto Serif JP",
+   "weight": 700
+  },
+  "body": {
+   "family": "Noto Sans JP",
+   "weight": 400
+  },
+  "relationship": "superfamily",
+  "mood": [
+   "refined",
+   "editorial",
+   "global"
+  ],
+  "best_for": [
+   "japanese editorial",
+   "bilingual sites"
+  ],
+  "why": "Mincho headings over gothic body is a conventional Japanese editorial contrast, and both come from the matched Source Han/Noto CJK project.",
+  "caution": "CJK fonts are large downloads; subset or limit weights.",
+  "source": "https://fonts.google.com/knowledge/choosing_type/pairing_typefaces_within_a_family_superfamily"
+ },
+ {
+  "name": "noto-sans-arabic-single",
+  "heading": {
+   "family": "Noto Sans Arabic",
+   "weight": 700
+  },
+  "body": {
+   "family": "Noto Sans Arabic",
+   "weight": 400
+  },
+  "relationship": "superfamily",
+  "mood": [
+   "neutral",
+   "modern",
+   "global"
+  ],
+  "best_for": [
+   "arabic ui",
+   "rtl apps"
+  ],
+  "why": "A single family with weight contrast keeps Arabic UI consistent; Noto Sans Arabic is harmonised with Noto Sans for mixed Latin text.",
+  "caution": "For traditional long-form Arabic, Noto Naskh Arabic reads more conventionally than this unmodulated sans.",
+  "source": "https://fonts.google.com/knowledge/choosing_type/pairing_typefaces_within_a_family_superfamily"
+ },
+ {
+  "name": "roboto-slab-roboto",
+  "heading": {
+   "family": "Roboto Slab",
+   "weight": 700
+  },
+  "body": {
+   "family": "Roboto",
+   "weight": 400
+  },
+  "relationship": "superfamily",
+  "mood": [
+   "friendly",
+   "sturdy",
+   "corporate"
+  ],
+  "best_for": [
+   "blogs",
+   "apps",
+   "news"
+  ],
+  "why": "Roboto Slab is built on Roboto's skeleton, so slab headings add texture while sharing x-height and width with the body.",
+  "caution": "Roboto Slab has no italics; use Roboto Italic for emphasis.",
+  "source": "https://fonts.google.com/knowledge/choosing_type/pairing_typefaces_within_a_family_superfamily"
+ },
+ {
+  "name": "roboto-material",
+  "heading": {
+   "family": "Roboto",
+   "weight": 500
+  },
+  "body": {
+   "family": "Roboto",
+   "weight": 400
+  },
+  "relationship": "superfamily",
+  "mood": [
+   "neutral",
+   "friendly",
+   "minimal"
+  ],
+  "best_for": [
+   "android apps",
+   "material ui",
+   "dashboards"
+  ],
+  "why": "Material Design's baseline type scale uses Roboto alone and differentiates display/headline/title/body/label roles by size and weight.",
+  "caution": "Reads as default Android; add brand character elsewhere (color, a display face).",
+  "source": "https://m3.material.io/styles/typography/applying-type"
+ },
+ {
+  "name": "inter-single-ui",
+  "heading": {
+   "family": "Inter",
+   "weight": 700
+  },
+  "body": {
+   "family": "Inter",
+   "weight": 400
+  },
+  "relationship": "superfamily",
+  "mood": [
+   "minimal",
+   "neutral",
+   "tech"
+  ],
+  "best_for": [
+   "saas ui",
+   "dashboards",
+   "product docs"
+  ],
+  "why": "One neo-grotesque family with strong weight contrast (700 vs 400) gives clear hierarchy with zero pairing risk; Inter's tall x-height holds up at small UI sizes.",
+  "caution": "Use size and weight contrast generously or hierarchy collapses.",
+  "source": "https://practicaltypography.com/mixing-fonts.html"
+ },
+ {
+  "name": "inter-tight-inter",
+  "heading": {
+   "family": "Inter Tight",
+   "weight": 800
+  },
+  "body": {
+   "family": "Inter",
+   "weight": 400
+  },
+  "relationship": "superfamily",
+  "mood": [
+   "modern",
+   "crisp",
+   "minimal"
+  ],
+  "best_for": [
+   "landing pages",
+   "marketing",
+   "product"
+  ],
+  "why": "Inter Tight is Inter respaced for display, so big headlines get tight, confident spacing while body stays in normally spaced Inter.",
+  "caution": "Do not use Inter Tight for paragraphs; its spacing is for large sizes.",
+  "source": "principle-derived"
+ },
+ {
+  "name": "geist-dev",
+  "heading": {
+   "family": "Geist Mono",
+   "weight": 600
+  },
+  "body": {
+   "family": "Geist",
+   "weight": 400
+  },
+  "relationship": "superfamily",
+  "mood": [
+   "tech",
+   "minimal",
+   "cool"
+  ],
+  "best_for": [
+   "developer tools",
+   "api docs",
+   "changelogs"
+  ],
+  "why": "Geist and Geist Mono were drawn together; mono headings give an engineering voice and the proportional Geist body stays readable.",
+  "caution": "Strongly associated with Vercel's aesthetic.",
+  "source": "principle-derived"
+ },
+ {
+  "name": "dm-serif-dm-sans",
+  "heading": {
+   "family": "DM Serif Display",
+   "weight": 400
+  },
+  "body": {
+   "family": "DM Sans",
+   "weight": 400
+  },
+  "relationship": "superfamily",
+  "mood": [
+   "editorial",
+   "elegant",
+   "modern"
+  ],
+  "best_for": [
+   "magazine sites",
+   "portfolios",
+   "brand sites"
+  ],
+  "why": "Colophon's DM family pairs a high-contrast display serif with a low-contrast geometric sans of matching x-height; contrast of classification within one design system.",
+  "caution": "DM Serif Display has a single weight; never set it below ~24px.",
+  "source": "https://fonts.google.com/knowledge/choosing_type/pairing_typefaces_within_a_family_superfamily"
+ },
+ {
+  "name": "alegreya-sans-alegreya",
+  "heading": {
+   "family": "Alegreya Sans",
+   "weight": 800
+  },
+  "body": {
+   "family": "Alegreya",
+   "weight": 400
+  },
+  "relationship": "superfamily",
+  "mood": [
+   "literary",
+   "warm",
+   "academic"
+  ],
+  "best_for": [
+   "books",
+   "literary magazines",
+   "poetry"
+  ],
+  "why": "Both share Juan Pablo del Peral's calligraphic skeleton, so the humanist sans heading and dynamic serif body feel like one voice.",
+  "caution": "Alegreya's small x-height needs a slightly larger body size on screen.",
+  "source": "https://www.typewolf.com/alegreya-sans"
+ },
+ {
+  "name": "space-mono-space-grotesk",
+  "heading": {
+   "family": "Space Mono",
+   "weight": 700
+  },
+  "body": {
+   "family": "Space Grotesk",
+   "weight": 400
+  },
+  "relationship": "superfamily",
+  "mood": [
+   "tech",
+   "retro",
+   "quirky"
+  ],
+  "best_for": [
+   "tech branding",
+   "portfolios",
+   "crypto"
+  ],
+  "why": "Space Grotesk is the proportional derivative of Space Mono; they share quirky details, and Typewolf shows them used together.",
+  "caution": "Space Grotesk's quirks are distracting in long text; keep body passages short.",
+  "source": "https://www.typewolf.com/space-mono"
+ },
+ {
+  "name": "libre-franklin-libre-baskerville",
+  "heading": {
+   "family": "Libre Franklin",
+   "weight": 800
+  },
+  "body": {
+   "family": "Libre Baskerville",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "editorial",
+   "classic",
+   "corporate"
+  ],
+  "best_for": [
+   "news",
+   "nonprofits",
+   "editorial sites"
+  ],
+  "why": "A heavy American gothic over a transitional serif is the classic newspaper contrast; both have large x-heights so they sit together comfortably.",
+  "caution": "Libre Baskerville is wide; keep body at 16-18px with moderate measure.",
+  "source": "https://www.typewolf.com/libre-franklin"
+ },
+ {
+  "name": "playfair-lato",
+  "heading": {
+   "family": "Playfair Display",
+   "weight": 700
+  },
+  "body": {
+   "family": "Lato",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "elegant",
+   "editorial",
+   "luxury"
+  ],
+  "best_for": [
+   "lifestyle blogs",
+   "boutique brands",
+   "menus"
+  ],
+  "why": "High-contrast didone-style headings against a warm, low-contrast humanist sans maximizes classification contrast while both stay legible.",
+  "caution": "Very common pairing; Playfair's hairlines break down below ~20px.",
+  "source": "https://www.typewolf.com/playfair-display"
+ },
+ {
+  "name": "work-sans-bitter",
+  "heading": {
+   "family": "Work Sans",
+   "weight": 700
+  },
+  "body": {
+   "family": "Bitter",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "friendly",
+   "sturdy",
+   "warm"
+  ],
+  "best_for": [
+   "blogs",
+   "community sites",
+   "education"
+  ],
+  "why": "A grotesque heading over a screen-optimized slab body: different classifications, similar large x-heights and low contrast, so they read as one texture.",
+  "caution": "Bitter is dark; increase leading slightly (1.6) for long text.",
+  "source": "https://fontpair.co/"
+ },
+ {
+  "name": "montserrat-open-sans",
+  "heading": {
+   "family": "Montserrat",
+   "weight": 700
+  },
+  "body": {
+   "family": "Open Sans",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "corporate",
+   "clean",
+   "friendly"
+  ],
+  "best_for": [
+   "corporate sites",
+   "startups",
+   "presentations"
+  ],
+  "why": "Two sans serifs can pair when their construction differs: geometric Montserrat headings with humanist Open Sans body (font-matrix principle).",
+  "caution": "Both are extremely common; the result is safe but generic.",
+  "source": "https://fonts.google.com/knowledge/choosing_type/pairing_typefaces_based_on_their_construction_using_the_font_matrix"
+ },
+ {
+  "name": "oswald-source-sans",
+  "heading": {
+   "family": "Oswald",
+   "weight": 600
+  },
+  "body": {
+   "family": "Source Sans 3",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "bold",
+   "newsy",
+   "sporty"
+  ],
+  "best_for": [
+   "sports",
+   "news",
+   "event sites"
+  ],
+  "why": "A condensed gothic display face gives punchy headlines in little width; a neutral humanist body keeps paragraphs readable.",
+  "caution": "Oswald is uppercase-friendly but tiring in lowercase paragraphs; headings only.",
+  "source": "principle-derived"
+ },
+ {
+  "name": "schibsted-newsreader",
+  "heading": {
+   "family": "Schibsted Grotesk",
+   "weight": 800
+  },
+  "body": {
+   "family": "Newsreader",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "editorial",
+   "journalistic",
+   "authoritative"
+  ],
+  "best_for": [
+   "news",
+   "long-form journalism",
+   "newsletters"
+  ],
+  "why": "Both were made for news reading; the heavy grotesque headline over an optical-size transitional body mirrors newspaper hierarchy.",
+  "caution": "Let Newsreader's opsz follow size; display opsz at text size looks spindly.",
+  "source": "principle-derived"
+ },
+ {
+  "name": "literata-single-reading",
+  "heading": {
+   "family": "Literata",
+   "weight": 700
+  },
+  "body": {
+   "family": "Literata",
+   "weight": 400
+  },
+  "relationship": "superfamily",
+  "mood": [
+   "bookish",
+   "calm",
+   "literary"
+  ],
+  "best_for": [
+   "e-books",
+   "reading apps",
+   "long-form"
+  ],
+  "why": "Literata was designed for long-form reading (Google Play Books); one serif with weight contrast keeps a quiet, bookish page.",
+  "caution": "Low heading contrast; use size (≥1.5x) for hierarchy.",
+  "source": "https://practicaltypography.com/mixing-fonts.html"
+ },
+ {
+  "name": "fraunces-work-sans",
+  "heading": {
+   "family": "Fraunces",
+   "weight": 700
+  },
+  "body": {
+   "family": "Work Sans",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "warm",
+   "retro",
+   "playful"
+  ],
+  "best_for": [
+   "food",
+   "lifestyle brands",
+   "packaging sites"
+  ],
+  "why": "Fraunces' soft 1970s old-style headings bring warmth; Work Sans's plain grotesque body stops the page from becoming costume.",
+  "caution": "Avoid Fraunces' extreme WONK/SOFT settings in anything but the largest headings.",
+  "source": "principle-derived"
+ },
+ {
+  "name": "young-serif-rubik",
+  "heading": {
+   "family": "Young Serif",
+   "weight": 400
+  },
+  "body": {
+   "family": "Rubik",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "warm",
+   "retro",
+   "friendly"
+  ],
+  "best_for": [
+   "cafes",
+   "food packaging",
+   "local business"
+  ],
+  "why": "A heavy old-style display serif with a softly rounded sans body shares a friendly, rounded tone while contrasting in classification.",
+  "caution": "Young Serif has a single weight; keep it to headlines.",
+  "source": "principle-derived"
+ },
+ {
+  "name": "eb-garamond-single",
+  "heading": {
+   "family": "EB Garamond",
+   "weight": 600
+  },
+  "body": {
+   "family": "EB Garamond",
+   "weight": 400
+  },
+  "relationship": "superfamily",
+  "mood": [
+   "academic",
+   "classic",
+   "literary"
+  ],
+  "best_for": [
+   "academic papers",
+   "books",
+   "poetry"
+  ],
+  "why": "A single Garamond with weight, small caps and italics gives a classic book page; Butterick notes one font with varied styles is often enough.",
+  "caution": "Small x-height: set body ≥18px on screen and avoid for UI.",
+  "source": "https://practicaltypography.com/mixing-fonts.html"
+ },
+ {
+  "name": "cormorant-jost",
+  "heading": {
+   "family": "Cormorant Garamond",
+   "weight": 600
+  },
+  "body": {
+   "family": "Jost",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "luxury",
+   "elegant",
+   "minimal"
+  ],
+  "best_for": [
+   "fashion",
+   "jewelry",
+   "high-end hospitality"
+  ],
+  "why": "Both have small x-heights and refined proportions, so a delicate high-contrast Garamond heading sits naturally over Futura-like geometric body text.",
+  "caution": "Cormorant is display-oriented; never use it below ~24px.",
+  "source": "principle-derived"
+ },
+ {
+  "name": "bodoni-moda-inter",
+  "heading": {
+   "family": "Bodoni Moda",
+   "weight": 700
+  },
+  "body": {
+   "family": "Inter",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "luxury",
+   "fashion",
+   "modern"
+  ],
+  "best_for": [
+   "fashion e-commerce",
+   "magazine covers",
+   "beauty"
+  ],
+  "why": "Maximum stroke-contrast didone headlines against a zero-contrast neo-grotesque body: the fashion-magazine formula of drama plus neutrality.",
+  "caution": "Bodoni hairlines vanish at small sizes and on low-res thumbnails.",
+  "source": "principle-derived"
+ },
+ {
+  "name": "cinzel-eb-garamond",
+  "heading": {
+   "family": "Cinzel",
+   "weight": 600
+  },
+  "body": {
+   "family": "EB Garamond",
+   "weight": 400
+  },
+  "relationship": "concord",
+  "mood": [
+   "classical",
+   "epic",
+   "formal"
+  ],
+  "best_for": [
+   "book covers",
+   "fantasy games",
+   "cultural events"
+  ],
+  "why": "Roman inscriptional capitals and a Renaissance garalde share classical roots, so the pair feels historically coherent.",
+  "caution": "Cinzel is caps-only; keep headings short and letter-spaced.",
+  "source": "principle-derived"
+ },
+ {
+  "name": "marcellus-lato",
+  "heading": {
+   "family": "Marcellus",
+   "weight": 400
+  },
+  "body": {
+   "family": "Lato",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "luxury",
+   "calm",
+   "warm"
+  ],
+  "best_for": [
+   "spa",
+   "wellness",
+   "boutique hotels"
+  ],
+  "why": "A flared glyphic serif heading carries calm classicism; Lato's warm humanist body matches its gentle, low-key tone.",
+  "caution": "Marcellus is a single weight; rely on size for hierarchy.",
+  "source": "principle-derived"
+ },
+ {
+  "name": "bebas-neue-inter",
+  "heading": {
+   "family": "Bebas Neue",
+   "weight": 400
+  },
+  "body": {
+   "family": "Inter",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "bold-poster",
+   "modern",
+   "loud"
+  ],
+  "best_for": [
+   "event posters",
+   "hero banners",
+   "sports"
+  ],
+  "why": "Tall all-caps condensed headlines pack impact into little width; a neutral neo-grotesque body stays out of the way.",
+  "caution": "Bebas is uppercase only; never use it for sentences or body copy.",
+  "source": "principle-derived"
+ },
+ {
+  "name": "anton-roboto-thumbnail",
+  "heading": {
+   "family": "Anton",
+   "weight": 400
+  },
+  "body": {
+   "family": "Roboto",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "bold-poster",
+   "loud",
+   "urgent"
+  ],
+  "best_for": [
+   "thumbnails",
+   "social graphics",
+   "sale banners"
+  ],
+  "why": "Heavy condensed headlines stay legible when images are shrunk to thumbnails; Roboto supporting text is plain and readable.",
+  "caution": "Anton has one weight; avoid lowercase sentences longer than a few words.",
+  "source": "principle-derived"
+ },
+ {
+  "name": "archivo-black-archivo",
+  "heading": {
+   "family": "Archivo Black",
+   "weight": 400
+  },
+  "body": {
+   "family": "Archivo",
+   "weight": 400
+  },
+  "relationship": "superfamily",
+  "mood": [
+   "bold-poster",
+   "brutalist",
+   "industrial"
+  ],
+  "best_for": [
+   "posters",
+   "campaign sites",
+   "data journalism"
+  ],
+  "why": "Archivo Black is the heavy display member of Archivo, giving strong weight contrast within one grotesque design.",
+  "caution": "Archivo Black is wide; give headlines generous width.",
+  "source": "https://fonts.google.com/knowledge/choosing_type/pairing_typefaces_within_a_family_superfamily"
+ },
+ {
+  "name": "space-mono-single-brutalist",
+  "heading": {
+   "family": "Space Mono",
+   "weight": 700
+  },
+  "body": {
+   "family": "Space Mono",
+   "weight": 400
+  },
+  "relationship": "superfamily",
+  "mood": [
+   "brutalist",
+   "retro",
+   "raw"
+  ],
+  "best_for": [
+   "portfolios",
+   "zines",
+   "experimental sites"
+  ],
+  "why": "Monospace throughout deliberately exposes structure, a brutalist web convention; weight is the only hierarchy cue.",
+  "caution": "Keep body passages short and line length ≤ 70ch; mono text is slow to read.",
+  "source": "principle-derived"
+ },
+ {
+  "name": "unbounded-manrope",
+  "heading": {
+   "family": "Unbounded",
+   "weight": 700
+  },
+  "body": {
+   "family": "Manrope",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "futuristic",
+   "loud",
+   "tech"
+  ],
+  "best_for": [
+   "web3",
+   "fintech launches",
+   "event sites"
+  ],
+  "why": "An extended display sans makes loud headlines; Manrope's compact semi-geometric body balances the width.",
+  "caution": "Unbounded is very wide; limit headings to a few words.",
+  "source": "principle-derived"
+ },
+ {
+  "name": "league-gothic-libre-baskerville",
+  "heading": {
+   "family": "League Gothic",
+   "weight": 400
+  },
+  "body": {
+   "family": "Libre Baskerville",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "retro",
+   "editorial",
+   "newsy"
+  ],
+  "best_for": [
+   "vintage-styled editorial",
+   "posters",
+   "menus"
+  ],
+  "why": "A 1903 American condensed gothic over an 18th-c transitional serif recreates early 20th-century newspaper typography.",
+  "caution": "League Gothic has one weight; set it large and in caps or title case.",
+  "source": "principle-derived"
+ },
+ {
+  "name": "alfa-slab-source-sans",
+  "heading": {
+   "family": "Alfa Slab One",
+   "weight": 400
+  },
+  "body": {
+   "family": "Source Sans 3",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "retro",
+   "bold-poster",
+   "western"
+  ],
+  "best_for": [
+   "packaging",
+   "event posters",
+   "bbq/craft brands"
+  ],
+  "why": "A fat Egyptian display slab carries a 19th-c poster voice; a neutral humanist sans keeps supporting copy calm.",
+  "caution": "Do not pair with another slab; one heavy voice per page.",
+  "source": "principle-derived"
+ },
+ {
+  "name": "abril-fatface-pt-sans",
+  "heading": {
+   "family": "Abril Fatface",
+   "weight": 400
+  },
+  "body": {
+   "family": "PT Sans",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "editorial",
+   "retro",
+   "dramatic"
+  ],
+  "best_for": [
+   "magazine headlines",
+   "blogs",
+   "posters"
+  ],
+  "why": "A heavy fat-face didone delivers drama; PT Sans's humanist body is sturdy and neutral for reading.",
+  "caution": "Abril is display-only; never below ~28px.",
+  "source": "principle-derived"
+ },
+ {
+  "name": "shrikhand-nunito",
+  "heading": {
+   "family": "Shrikhand",
+   "weight": 400
+  },
+  "body": {
+   "family": "Nunito",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "playful",
+   "retro",
+   "warm"
+  ],
+  "best_for": [
+   "food",
+   "ice cream/candy brands",
+   "kids events"
+  ],
+  "why": "A heavy, bouncy display face gives personality; Nunito's rounded terminals echo its softness in readable body text.",
+  "caution": "Both are informal; avoid for serious or financial content.",
+  "source": "principle-derived"
+ },
+ {
+  "name": "fredoka-nunito",
+  "heading": {
+   "family": "Fredoka",
+   "weight": 600
+  },
+  "body": {
+   "family": "Nunito",
+   "weight": 400
+  },
+  "relationship": "concord",
+  "mood": [
+   "playful",
+   "friendly",
+   "soft"
+  ],
+  "best_for": [
+   "kids apps",
+   "games",
+   "education"
+  ],
+  "why": "Two rounded sans serifs with similar large x-heights; concord pairing where the display face is just bubblier.",
+  "caution": "Concord pairs need clear weight/size contrast or they look like a mistake.",
+  "source": "principle-derived"
+ },
+ {
+  "name": "rubik-karla",
+  "heading": {
+   "family": "Rubik",
+   "weight": 700
+  },
+  "body": {
+   "family": "Karla",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "friendly",
+   "casual",
+   "indie"
+  ],
+  "best_for": [
+   "startups",
+   "community apps",
+   "blogs"
+  ],
+  "why": "Rubik's softly rounded grotesque headings and Karla's quirky grotesque body share a casual, approachable tone with distinct textures.",
+  "caution": "Two sans serifs: keep heading weight ≥700 so the roles are clear.",
+  "source": "principle-derived"
+ },
+ {
+  "name": "poppins-lora",
+  "heading": {
+   "family": "Poppins",
+   "weight": 600
+  },
+  "body": {
+   "family": "Lora",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "friendly",
+   "warm",
+   "modern"
+  ],
+  "best_for": [
+   "lifestyle blogs",
+   "small business",
+   "course sites"
+  ],
+  "why": "Geometric sans headings over a calligraphic contemporary serif body: clean modern headings, warm readable text.",
+  "caution": "Poppins' large x-height dwarfs Lora at equal sizes; keep headings clearly larger.",
+  "source": "principle-derived"
+ },
+ {
+  "name": "plus-jakarta-single",
+  "heading": {
+   "family": "Plus Jakarta Sans",
+   "weight": 800
+  },
+  "body": {
+   "family": "Plus Jakarta Sans",
+   "weight": 400
+  },
+  "relationship": "superfamily",
+  "mood": [
+   "modern",
+   "friendly",
+   "minimal"
+  ],
+  "best_for": [
+   "saas",
+   "startups",
+   "product marketing"
+  ],
+  "why": "A single geometric sans with strong weight contrast gives a contemporary product voice without pairing risk.",
+  "caution": "Widely used by startups; add brand distinction via color or imagery.",
+  "source": "https://practicaltypography.com/mixing-fonts.html"
+ },
+ {
+  "name": "lexend-atkinson",
+  "heading": {
+   "family": "Lexend",
+   "weight": 600
+  },
+  "body": {
+   "family": "Atkinson Hyperlegible Next",
+   "weight": 400
+  },
+  "relationship": "concord",
+  "mood": [
+   "friendly",
+   "accessible",
+   "calm"
+  ],
+  "best_for": [
+   "education",
+   "public services",
+   "accessibility-first apps"
+  ],
+  "why": "Both families were designed around reading research and letter differentiation; large x-heights and open forms keep everything legible.",
+  "caution": "Lexend is wide; watch heading line breaks in narrow layouts.",
+  "source": "principle-derived"
+ },
+ {
+  "name": "merriweather-source-sans-civic",
+  "heading": {
+   "family": "Merriweather",
+   "weight": 700
+  },
+  "body": {
+   "family": "Source Sans 3",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "civic",
+   "trustworthy",
+   "academic"
+  ],
+  "best_for": [
+   "government",
+   "nonprofits",
+   "public information"
+  ],
+  "why": "These are the U.S. Web Design System's default serif and sans tokens; a sturdy screen serif heading over a clear humanist sans body.",
+  "caution": "Merriweather is optically large; scale it down relative to the sans.",
+  "source": "https://designsystem.digital.gov/design-tokens/typesetting/font-family/"
+ },
+ {
+  "name": "public-sans-single",
+  "heading": {
+   "family": "Public Sans",
+   "weight": 700
+  },
+  "body": {
+   "family": "Public Sans",
+   "weight": 400
+  },
+  "relationship": "superfamily",
+  "mood": [
+   "civic",
+   "neutral",
+   "corporate"
+  ],
+  "best_for": [
+   "forms",
+   "government services",
+   "internal tools"
+  ],
+  "why": "Public Sans is built for neutral, accessible interfaces; one family with weight contrast keeps forms calm and consistent.",
+  "caution": "Neutral to the point of anonymity; fine for services, weak for brand.",
+  "source": "https://designsystem.digital.gov/design-tokens/typesetting/font-family/"
+ },
+ {
+  "name": "lora-source-sans",
+  "heading": {
+   "family": "Lora",
+   "weight": 700
+  },
+  "body": {
+   "family": "Source Sans 3",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "warm",
+   "literary",
+   "friendly"
+  ],
+  "best_for": [
+   "storytelling",
+   "nonprofits",
+   "blogs"
+  ],
+  "why": "Calligraphic serif headings add warmth; a clean humanist sans body keeps reading easy on screens.",
+  "caution": "Lora's italics are quite cursive; use sparingly for emphasis.",
+  "source": "principle-derived"
+ },
+ {
+  "name": "zilla-slab-fira-sans",
+  "heading": {
+   "family": "Zilla Slab",
+   "weight": 700
+  },
+  "body": {
+   "family": "Fira Sans",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "tech",
+   "smart",
+   "editorial"
+  ],
+  "best_for": [
+   "tech blogs",
+   "open-source projects",
+   "developer marketing"
+  ],
+  "why": "A contemporary slab headline over a humanist sans body: slab serifs add editorial personality, Fira Sans keeps it technical and clear.",
+  "caution": "Zilla Slab bold is idiosyncratic; avoid it for long subheads.",
+  "source": "principle-derived"
+ },
+ {
+  "name": "instrument-serif-sans",
+  "heading": {
+   "family": "Instrument Serif",
+   "weight": 400
+  },
+  "body": {
+   "family": "Instrument Sans",
+   "weight": 400
+  },
+  "relationship": "superfamily",
+  "mood": [
+   "editorial",
+   "elegant",
+   "modern"
+  ],
+  "best_for": [
+   "agency sites",
+   "portfolios",
+   "editorial brands"
+  ],
+  "why": "A condensed high-contrast display serif with its sibling neo-grotesque: a contemporary editorial pairing from one design house.",
+  "caution": "Instrument Serif has one weight; use it only at display sizes.",
+  "source": "principle-derived"
+ },
+ {
+  "name": "josefin-sans-crimson-pro",
+  "heading": {
+   "family": "Josefin Sans",
+   "weight": 600
+  },
+  "body": {
+   "family": "Crimson Pro",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "vintage",
+   "elegant",
+   "warm"
+  ],
+  "best_for": [
+   "boutiques",
+   "weddings",
+   "craft brands"
+  ],
+  "why": "Both have small x-heights and refined proportions; a 1920s-flavored geometric heading over an old-style book serif reads vintage and elegant.",
+  "caution": "Small x-heights: raise body size to 18px+.",
+  "source": "principle-derived"
+ },
+ {
+  "name": "league-spartan-libre-baskerville",
+  "heading": {
+   "family": "League Spartan",
+   "weight": 800
+  },
+  "body": {
+   "family": "Libre Baskerville",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "classic",
+   "bold-poster",
+   "editorial"
+  ],
+  "best_for": [
+   "museums",
+   "architecture",
+   "cultural editorial"
+  ],
+  "why": "Echoes the classic Futura + Baskerville pairing: geometric 20th-c sans headings over an 18th-c transitional serif body.",
+  "caution": "League Spartan's black weights are very heavy; use 700-800 for headlines.",
+  "source": "https://madegooddesigns.com/baskerville-font-pairing/"
+ },
+ {
+  "name": "syne-dm-sans",
+  "heading": {
+   "family": "Syne",
+   "weight": 800
+  },
+  "body": {
+   "family": "DM Sans",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "avant-garde",
+   "artsy",
+   "bold-poster"
+  ],
+  "best_for": [
+   "galleries",
+   "art events",
+   "creative studios"
+  ],
+  "why": "Syne's heavy, widened display weights are deliberately eccentric; a clean geometric body sans keeps information readable.",
+  "caution": "Syne's width changes with weight; test heading line breaks.",
+  "source": "principle-derived"
+ },
+ {
+  "name": "big-shoulders-barlow",
+  "heading": {
+   "family": "Big Shoulders Display",
+   "weight": 800
+  },
+  "body": {
+   "family": "Barlow",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "industrial",
+   "sporty",
+   "bold-poster"
+  ],
+  "best_for": [
+   "sports",
+   "festivals",
+   "transit/civic"
+  ],
+  "why": "Both draw on signage traditions (Chicago and California); the condensed display headline and the plain grotesk body feel related but distinct.",
+  "caution": "Big Shoulders Display is for large sizes only.",
+  "source": "principle-derived"
+ },
+ {
+  "name": "barlow-condensed-barlow",
+  "heading": {
+   "family": "Barlow Condensed",
+   "weight": 600
+  },
+  "body": {
+   "family": "Barlow",
+   "weight": 400
+  },
+  "relationship": "superfamily",
+  "mood": [
+   "practical",
+   "industrial",
+   "minimal"
+  ],
+  "best_for": [
+   "dashboards",
+   "data-dense ui",
+   "sports stats"
+  ],
+  "why": "Width contrast within one family: condensed headings save horizontal space while sharing Barlow's details with the body.",
+  "caution": "Condensed widths are not for body text.",
+  "source": "https://fonts.google.com/knowledge/choosing_type/pairing_typefaces_within_a_family_superfamily"
+ },
+ {
+  "name": "bricolage-figtree",
+  "heading": {
+   "family": "Bricolage Grotesque",
+   "weight": 800
+  },
+  "body": {
+   "family": "Figtree",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "playful",
+   "expressive",
+   "modern"
+  ],
+  "best_for": [
+   "brand sites",
+   "creative startups",
+   "landing pages"
+  ],
+  "why": "An expressive, ink-trapped grotesque headline gives personality; Figtree's clean geometric body is calm and friendly.",
+  "caution": "Two sans serifs: lean on Bricolage's heavy weights to separate roles.",
+  "source": "principle-derived"
+ },
+ {
+  "name": "great-vibes-eb-garamond",
+  "heading": {
+   "family": "Great Vibes",
+   "weight": 400
+  },
+  "body": {
+   "family": "EB Garamond",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "romantic",
+   "luxury",
+   "formal"
+  ],
+  "best_for": [
+   "wedding invitations",
+   "certificates",
+   "event programs"
+  ],
+  "why": "A formal script for one or two words of heading/accent over a classical Garamond body keeps the romance while the text stays readable.",
+  "caution": "Never set Great Vibes in all caps or for more than a short line.",
+  "source": "principle-derived"
+ },
+ {
+  "name": "pacifico-lato",
+  "heading": {
+   "family": "Pacifico",
+   "weight": 400
+  },
+  "body": {
+   "family": "Lato",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "playful",
+   "retro",
+   "warm"
+  ],
+  "best_for": [
+   "cafes",
+   "summer events",
+   "casual brands"
+  ],
+  "why": "A brush script supplies a single loud personality; Lato's warm neutral sans carries everything else.",
+  "caution": "Pacifico is over-used; restrict to a logo or one headline.",
+  "source": "principle-derived"
+ },
+ {
+  "name": "caveat-karla",
+  "heading": {
+   "family": "Caveat",
+   "weight": 700
+  },
+  "body": {
+   "family": "Karla",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "friendly",
+   "casual",
+   "personal"
+  ],
+  "best_for": [
+   "notes",
+   "personal blogs",
+   "annotations"
+  ],
+  "why": "Handwriting headings or annotations add a personal touch; Karla's quirky grotesque body matches the informal tone.",
+  "caution": "Never use Caveat for body text, buttons or UI labels.",
+  "source": "principle-derived"
+ },
+ {
+  "name": "unifraktur-libre-caslon",
+  "heading": {
+   "family": "UnifrakturMaguntia",
+   "weight": 400
+  },
+  "body": {
+   "family": "Libre Caslon Text",
+   "weight": 400
+  },
+  "relationship": "concord",
+  "mood": [
+   "heritage",
+   "gothic",
+   "traditional"
+  ],
+  "best_for": [
+   "mastheads",
+   "certificates",
+   "breweries"
+  ],
+  "why": "A fraktur masthead over a Caslon body evokes traditional newspapers and printed heritage, where blackletter titles met old-style text.",
+  "caution": "Blackletter only for a few words; never all caps.",
+  "source": "principle-derived"
+ },
+ {
+  "name": "press-start-space-mono",
+  "heading": {
+   "family": "Press Start 2P",
+   "weight": 400
+  },
+  "body": {
+   "family": "Space Mono",
+   "weight": 400
+  },
+  "relationship": "concord",
+  "mood": [
+   "retro",
+   "gamer",
+   "playful"
+  ],
+  "best_for": [
+   "game sites",
+   "pixel-art projects",
+   "hackathons"
+  ],
+  "why": "Pixel display headlines and a retro-futurist monospace body share a computer-native aesthetic.",
+  "caution": "Press Start 2P is unreadable small; set at multiples of 8px and ≥16px.",
+  "source": "principle-derived"
+ },
+ {
+  "name": "jetbrains-mono-inter-docs",
+  "heading": {
+   "family": "JetBrains Mono",
+   "weight": 700
+  },
+  "body": {
+   "family": "Inter",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "tech",
+   "minimal",
+   "precise"
+  ],
+  "best_for": [
+   "developer docs",
+   "cli tools",
+   "api references"
+  ],
+  "why": "Mono headings set a developer tone and double as the code face; both have tall x-heights and low contrast, so they align visually.",
+  "caution": "Use the mono for headings and code only, not paragraphs.",
+  "source": "principle-derived"
+ },
+ {
+  "name": "old-standard-single-academic",
+  "heading": {
+   "family": "Old Standard TT",
+   "weight": 700
+  },
+  "body": {
+   "family": "Old Standard TT",
+   "weight": 400
+  },
+  "relationship": "superfamily",
+  "mood": [
+   "academic",
+   "victorian",
+   "formal"
+  ],
+  "best_for": [
+   "scholarly publications",
+   "historical societies"
+  ],
+  "why": "Reproduces a late-19th-c 'modern' used in scientific publishing; one family keeps a coherent period page.",
+  "caution": "Italic exists only at 400 and hairlines are thin on screens; set body ≥18px.",
+  "source": "principle-derived"
+ }
+]

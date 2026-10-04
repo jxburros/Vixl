@@ -45,7 +45,7 @@ not be blindly repeated; preserve its remote job identity.
 - **Brushes** — editable paint layers with 17 brushes (`paint`, `paint-layer`, `brush-define`).
 - **Timelines** — keyframes, easing, presets and markers on any layer property; preview a frame or a contact sheet; export GIF/APNG/WebP/sheet/PNG frames/MP4.
 
-See [design-system.md](references/design-system.md) (sizes, layouts, color, print) and [brushes-timeline.md](references/brushes-timeline.md).
+See [design-system.md](references/design-system.md) (sizes, layouts, color, print), [typography.md](references/typography.md) (catalog, pairings, installs, rolls) and [brushes-timeline.md](references/brushes-timeline.md).
 
 ## New in 0.11
 

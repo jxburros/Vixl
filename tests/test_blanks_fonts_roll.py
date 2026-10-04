@@ -175,7 +175,6 @@ def test_font_filters_and_show():
 
 
 def fake_google(requests):
-    from io import BytesIO
     from pathlib import Path
 
     font = (Path(typefaces.__file__).parent / "data" / "DejaVuSans.ttf").read_bytes()

@@ -759,9 +759,11 @@ def _event_poster(b):
     date = b.get("label")
     if date:
         bw = b.cw * (0.5 if b.orientation != "tall" else 0.8)
-        _, th = b.measure(date, b.sizes["title"], bw - b.unit * 6, round(b.sizes["title"] * 0.1))
-        b.rect("date-block", b.L, y, bw, th + b.unit * 6, "@accent")
-        b.text("title", date, b.L + b.unit * 3, y + b.unit * 3, bw - b.unit * 6, name="date", color="@on-accent", align="left")
+        b.rect("date-block", b.L, y, bw, 1, "@accent")
+        block = b.ops[-1]
+        # Size the block to the text as placed (heavy type may shrink to fit), not the nominal size.
+        _, _, _, th = b.text("title", date, b.L + b.unit * 3, y + b.unit * 3, bw - b.unit * 6, name="date", color="@on-accent", align="left")
+        block["height"] = round(th + b.unit * 6)
         y += th + b.unit * 10
     details = [line for line in str(b.get("body")).split("\n") if line.strip()]
     for index, line in enumerate(details[:6]):
