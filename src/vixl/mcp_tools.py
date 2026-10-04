@@ -97,7 +97,7 @@ def service_operation_schema(slim=False):
     # or a smaller targets limit). Variant-specific constraints remain in oneOf.
     common = {}
     for key, values in definitions.items():
-        if key == "type" or len(values) < 2:
+        if len(values) < 2:
             continue
         for value in values:
             if "enum" in value and all(isinstance(v, str) for v in value["enum"]):
@@ -280,18 +280,37 @@ def typed_ai(session, command, words=(), document=None, **options):
         return result
 
 
-def build_server(session, *, schema="full", planner=False):
+# Tools both split servers need: the AI server addresses layers by name and checks its results.
+SHARED_TOOLS = {"vixl_workspace_list", "vixl_document_open", "vixl_document_inspect", "vixl_render_preview"}
+AI_INSTRUCTIONS = (
+    "Provider-backed AI editing for Vixl documents in the configured workspace: generate, inpaint, extend, "
+    "upscale, remove objects or backgrounds, select subjects/objects, and describe/detect/OCR. Each tool takes "
+    "document= (a .vixl path in the workspace) or uses the document opened with vixl_document_open. Results are "
+    "saved at once, so the main Vixl server sees them on its next call. Find layers with vixl_document_inspect and "
+    "check results with vixl_render_preview. Every tool needs a configured provider (vixl_models_list); if none "
+    "is configured, say so instead of retrying."
+)
+
+
+def is_ai_tool(name):
+    return name.startswith("vixl_ai_") or name == "vixl_models_list"
+
+
+def build_server(session, *, schema="full", planner=False, tools="all"):
     """Create the FastMCP server. ``schema='slim'`` advertises only operation type names (fetch
     fields with vixl_operation_schema); ``planner`` exposes the provider-backed planning tool,
-    which is redundant when the calling agent plans its own operations."""
+    which is redundant when the calling agent plans its own operations. ``tools`` selects a split:
+    ``core`` (editing, rendering, export and catalogs), ``ai`` (provider-backed tools plus the
+    shared document tools), or ``all``."""
     from mcp.server.fastmcp import FastMCP, Image
     from mcp.server.fastmcp.exceptions import ToolError
 
     require(schema in ("full", "slim"), "schema must be full or slim")
+    require(tools in ("all", "core", "ai"), "tools must be all, core or ai")
     Operation = Annotated[dict, WithJsonSchema(service_operation_schema(slim=schema == "slim"))]
     server = FastMCP(
-        "Vixl",
-        instructions=(
+        "Vixl AI" if tools == "ai" else "Vixl",
+        instructions=AI_INSTRUCTIONS if tools == "ai" else (
             "Edit layered image documents in the configured workspace. Typical loop: vixl_document_create/open → "
             "vixl_operations_apply (atomic batches; dry_run to test) → vixl_check (overlap, contrast, safe area, "
             "thumbnail legibility) → vixl_render_preview (region= to zoom) → vixl_export_file. Use layer IDs or "
@@ -303,9 +322,16 @@ def build_server(session, *, schema="full", planner=False):
             "vixl_fonts → vixl_font_pair (the bundled font is a proofing fallback), and when a brief leaves the "
             "look open, vixl_roll a few directions and compare previews. Paint with brushes (vixl_brushes_list), animate "
             "with keyframes (keyframe/animate/animate-preset → vixl_timeline_preview → vixl_export_timeline), and "
-            "export print-ready CMYK PDF/TIFF/JPEG with vixl_export_file. AI tools need a configured provider."
+            "export print-ready CMYK PDF/TIFF/JPEG with vixl_export_file. "
+            + ("AI tools need a configured provider." if tools == "all" else
+               "Provider-backed AI tools are served separately by vixl mcp --tools ai.")
         ),
     )
+
+    def selected(name):
+        if tools == "all" or name in SHARED_TOOLS:
+            return True
+        return is_ai_tool(name) == (tools == "ai")
 
     def tool(fn):
         """Register a tool returning minified JSON, with structured errors."""
@@ -323,7 +349,8 @@ def build_server(session, *, schema="full", planner=False):
         wrapper.__annotations__ = {**fn.__annotations__}
         if wrapper.__annotations__.get("return") is dict:
             wrapper.__annotations__["return"] = str
-        server.tool(structured_output=False)(wrapper)
+        if selected(fn.__name__):
+            server.tool(structured_output=False)(wrapper)
         return wrapper
 
     @tool
@@ -629,7 +656,7 @@ def build_server(session, *, schema="full", planner=False):
             list[list[float | str]] | None,
             Field(description="Reserved zones [x, y, w, h] (pixels or %) that content must not touch"),
         ] = None,
-        thumbnail_width: Annotated[int, Field(ge=16, le=16384)] = 320,
+        thumbnail_width: Annotated[int | None, Field(ge=16, le=16384)] = None,
         min_thumbnail_text: Annotated[float, Field(gt=0, le=200)] = 10,
         min_contrast: Annotated[float | None, Field(ge=1, le=21)] = None,
         ink_limit: Annotated[float, Field(ge=100, le=400, description="print check: total ink limit %")] = 300,
@@ -773,11 +800,15 @@ def build_server(session, *, schema="full", planner=False):
 
     @tool
     def vixl_animation_preview(
-        name: str, scale: Annotated[int, Field(ge=1, le=8)] = 1, document: Document = None
+        name: str,
+        scale: Annotated[float, Field(ge=0.05, le=8)] = 1,
+        sampling: Literal["nearest", "smooth"] = "nearest",
+        document: Document = None,
     ) -> Image:
-        """Preview a saved frame with crisp integer scaling (default: native pixel size)."""
+        """Preview a saved frame (default: native size). Nearest needs an integer scale and keeps pixel art
+        crisp; smooth re-renders at any scale (use it to shrink large frames)."""
         with session.project(document=document) as project:
-            image = project.render_frame(name, scale)
+            image = project.render_frame(name, int(scale) if float(scale).is_integer() else scale, sampling)
             stream = BytesIO()
             image.save(stream, format="PNG")
             require(len(stream.getvalue()) <= 4_194_304, "Frame preview exceeds 4 MiB; use a smaller scale")
@@ -787,15 +818,25 @@ def build_server(session, *, schema="full", planner=False):
     def vixl_export_animation(
         path: str,
         format: Literal["gif", "apng", "sheet"] = "gif",
-        scale: Annotated[int, Field(ge=1, le=32)] = 1,
+        scale: Annotated[float, Field(ge=0.05, le=32)] = 1,
+        sampling: Literal["nearest", "smooth"] = "nearest",
+        colors: Annotated[int, Field(ge=2, le=256)] = 256,
         columns: Positive | None = None,
         document: Document = None,
     ) -> dict:
         """Write saved frames as GIF, APNG or PNG sprite sheet plus JSON timing metadata in the workspace.
-        Never overwrites files. Scaling uses nearest-neighbor sampling; sheets preserve every named frame."""
+        Never overwrites files. sampling="nearest" (integer scale 1–32) keeps pixel art crisp; "smooth"
+        re-renders at any scale 0.05–32 for illustrations. colors caps the GIF palette; sheets keep every frame."""
         with session.project(document=document) as project:
             destination = session.resolve(path)
-            result = project.export_animation(destination, format=format, scale=scale, columns=columns)
+            result = project.export_animation(
+                destination,
+                format=format,
+                scale=int(scale) if float(scale).is_integer() else scale,
+                sampling=sampling,
+                colors=colors,
+                columns=columns,
+            )
             result["output"] = session.relative(destination)
             if "metadata" in result:
                 result["metadata"] = session.relative(destination.with_suffix(".json"))
@@ -979,17 +1020,20 @@ def build_server(session, *, schema="full", planner=False):
         path: str,
         format: Literal["gif", "apng", "webp", "sheet", "frames", "mp4", "webm"] | None = None,
         fps: Annotated[float | None, Field(ge=1, le=60)] = None,
-        scale: Annotated[float, Field(ge=0.05, le=4)] = 1.0,
+        scale: Annotated[float, Field(ge=0.05, le=16)] = 1.0,
         start: float | str | None = None,
         end: float | str | None = None,
         background: str | None = None,
         columns: Positive | None = None,
         quality: Annotated[int, Field(ge=1, le=100)] = 90,
+        colors: Annotated[int, Field(ge=2, le=256)] = 256,
         overwrite: bool = False,
         document: Document = None,
     ) -> dict:
         """Write the keyframe timeline as GIF, APNG, animated WebP, sprite sheet (+JSON), PNG-sequence ZIP,
-        or MP4/WebM (needs ffmpeg). Format follows the extension; scale previews large canvases cheaply."""
+        or MP4/WebM (needs ffmpeg). Format follows the extension. Frames render crisply at scale (0.05–16,
+        within the pixel budget). colors (GIF palette 2–256) plus lower fps/scale shrink GIFs; results report
+        bytes and warn above 1 MB."""
         from .timeline import export_timeline
 
         with session.project(document=document) as project:
@@ -1005,6 +1049,7 @@ def build_server(session, *, schema="full", planner=False):
                 background=background,
                 columns=columns,
                 quality=quality,
+                colors=colors,
                 overwrite=overwrite,
             )
             result["output"] = session.relative(destination)

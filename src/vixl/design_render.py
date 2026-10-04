@@ -83,7 +83,10 @@ def shape_image(project, layer):
             if len(points) >= 3:
                 draw.polygon(points, fill=fill)
             if width and stroke[3] and len(points) >= 2:
-                draw.line(points, fill=stroke, width=width, joint="curve")
+                # PIL joins only interior vertices; repeat the first segment so a
+                # closed contour's start vertex is joined instead of capped flat.
+                closed = len(points) >= 4 and points[0] == points[-1]
+                draw.line(points + points[1:2] if closed else points, fill=stroke, width=width, joint="curve")
     return image.resize((w, h), Image.Resampling.LANCZOS)
 
 

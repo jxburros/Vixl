@@ -42,8 +42,8 @@ Measure:   info, sample X Y, histogram [--region X Y W H], info --target TEXT,
 Pixels:    pixel-art, pixel-draw, pixel-palette, pixels [LAYER],
            frame-save NAME [--duration MS], frame-apply NAME, frame-delete NAME,
            animation, animation-set --loop N --order FRAME FRAME,
-           export-animation --out FILE --format gif|apng|sheet [--scale N]
-Editing:   move, resize, scale, rotate, flip, crop, opacity, blend, align,
+           export-animation --out FILE --format gif|apng|sheet [--scale N] [--sampling nearest|smooth] [--colors N]
+Editing:   move, resize, scale, rotate, pivot, flip, crop, opacity, blend, align,
            select-layer, select, mask, filter, effect, rasterize
 Effects:   brightness, contrast, saturation, hue, exposure, gamma, temperature,
            tint, shadows, highlights, blur, sharpen, grayscale, invert,
@@ -71,7 +71,7 @@ Paint:     brushes, paint-layer [--name N], paint [LAYER] --brush ink --points J
 Motion:    timeline, timeline set --duration 3s --fps 30 [--loop N], keyframe LAYER PROP TIME VALUE,
            animate LAYER PROP --to V [--from V] [--start T] [--duration T] [--easing E],
            animate-preset LAYER PRESET [--start T] [--duration T], marker NAME TIME, easings,
-           export-timeline --out FILE.gif|.webp|.png|.zip|.mp4 [--fps N] [--scale N],
+           export-timeline --out FILE.gif|.webp|.png|.zip|.mp4 [--fps N] [--scale N] [--colors N],
            timeline-sheet --out FILE [--count 8], render --time 1.5s --out FILE
 Output:    export FILE [--quality N] [--scale 2x] [--profile NAME] [--dpi N]
            [--cmyk [--icc PROFILE.icc] [--ink-limit 300]] [--proof] [--simulate deuteranopia],
@@ -83,7 +83,7 @@ AI:        ask PROMPT [--apply], generate --prompt TEXT --provider NAME,
            detect objects|faces, ocr, ai describe|info|regenerate|background-remove|upscale|extend,
            select object LABEL --provider NAME, ai remove|content-aware-fill|select-subject
 Updates:   update [--check | --rollback], updates [on | off | status]
-Services:  serve [--host 127.0.0.1] [--port 8765], mcp [--workspace DIR] [--schema slim] [--planner]
+Services:  serve [--host 127.0.0.1] [--port 8765], mcp [--workspace DIR] [--tools core|ai] [--schema slim] [--planner]
 
 Options: --project/-p FILE, --json, --allow-linked, --plugins, --max-pixels N, --detail compact|full, --version
 Use vixl commands --json for a complete inventory; vixl COMMAND --help works without a document. See docs/commands.md.
@@ -147,6 +147,7 @@ def output_options(args, command):
     p.add_argument("--artboard")
     p.add_argument("--comp")
     p.add_argument("--data")
+    p.add_argument("--no-check", action="store_true", help="skip the per-row design check with --data")
     p.add_argument("--sampling", choices=["smooth", "nearest"], default="smooth")
     p.add_argument("--svg-policy", choices=["appearance", "strict"], default="appearance")
     p.add_argument("--color-space", "--colorspace", choices=["rgb", "cmyk"], default="rgb")
@@ -391,10 +392,16 @@ def dispatch(argv):
             help="slim advertises operation names only; fields come from vixl_operation_schema",
         )
         p.add_argument("--planner", action="store_true", help="Expose the provider-backed vixl_ai_plan tool")
+        p.add_argument(
+            "--tools",
+            choices=["all", "core", "ai"],
+            default=os.environ.get("VIXL_MCP_TOOLS", "all"),
+            help="core: editing, rendering and export; ai: provider-backed tools; run both as separate servers",
+        )
         a = p.parse_args(args)
         # Explicit workspaces can start empty. Existing --project configurations still work.
         path = current_path(options.project) if options.project or not a.workspace else None
-        mcp_server(path, limits, workspace=a.workspace, schema=a.schema, planner=a.planner).run()
+        mcp_server(path, limits, workspace=a.workspace, schema=a.schema, planner=a.planner, tools=a.tools).run()
         return None, options.json
     if "--help" in args or "-h" in args:
         return command_help(cmd, args), options.json
@@ -477,7 +484,9 @@ def project_command(project, cmd, args, *, detail="compact"):
             from .ai import ai_command
 
             return ai_command(project, "ai", ["describe"])
-        require(len(args) <= 1, "Expected optional layer")
+        if args[:1] == ["--target"] or (args and args[0].startswith("--target=")):
+            args = args[1:] if args[0] == "--target" else [args[0].split("=", 1)[1]]  # MCP spelling
+        require(len(args) <= 1, f"Usage: vixl {cmd} [LAYER] (or --target LAYER)")
         return project.inspect(args[0] if args else None), False
     if cmd == "layers":
         return project.inspect()["layers"], False
@@ -534,6 +543,7 @@ def project_command(project, cmd, args, *, detail="compact"):
                 sampling=a.sampling,
                 scale=float(a.scale.rstrip("x")),
                 profile=a.profile,
+                check=not a.no_check,
             ), False
         data = project.export(
             None if destination == "-" else destination,
@@ -590,7 +600,7 @@ def project_command(project, cmd, args, *, detail="compact"):
         p.add_argument(
             "--avoid", nargs=4, action="append", metavar=("X", "Y", "W", "H"), help="Reserved zone"
         )
-        p.add_argument("--thumbnail-width", type=int, default=320)
+        p.add_argument("--thumbnail-width", type=int, help="judge text at this thumbnail width (default 320; print sizes judge printed points instead)")
         p.add_argument("--min-thumbnail-text", type=float, default=10)
         p.add_argument("--min-contrast", type=float)
         for key in ("artboard", "comp"):
@@ -619,10 +629,13 @@ def project_command(project, cmd, args, *, detail="compact"):
         p = Parser(prog="vixl export-animation")
         p.add_argument("--out", required=True)
         p.add_argument("--format", choices=["gif", "apng", "sheet"])
-        p.add_argument("--scale", type=int, default=1)
+        p.add_argument("--scale", type=float, default=1, help="Integer 1–32 with nearest sampling; 0.05–32 with smooth")
+        p.add_argument("--sampling", choices=["nearest", "smooth"], default="nearest")
+        p.add_argument("--colors", type=int, default=256, help="GIF palette size 2–256")
         p.add_argument("--columns", type=int)
         a = p.parse_args(args)
-        return project.export_animation(a.out, format=a.format, scale=a.scale, columns=a.columns), False
+        scale = int(a.scale) if a.scale.is_integer() else a.scale
+        return project.export_animation(a.out, format=a.format, scale=scale, columns=a.columns, sampling=a.sampling, colors=a.colors), False
     if cmd == "export-screens":
         from .exports import export_screens
 

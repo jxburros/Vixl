@@ -239,9 +239,21 @@ def execute_resource(project, op):
         if op.get("prefix"):
             named(op["prefix"])
         colors = get("palettes", name)
-        project.state.setdefault("swatches", {}).update(
-            {f"{op.get('prefix', name)}-{i + 1}": c for i, c in enumerate(colors)}
-        )
+        swatches = project.state.setdefault("swatches", {})
+        swatches.update({f"{op.get('prefix', name)}-{i + 1}": c for i, c in enumerate(colors)})
+        if op.get("roles", True):
+            # Role swatches recolor every layer that references them (layouts, templates, @accent …).
+            import random
+
+            from .colors import parse, relative_luminance
+            from .layouts import ROLES, assign_roles
+
+            # Keep the document's light or dark mode.
+            mode = "light"
+            if "background" in swatches:
+                mode = "dark" if relative_luminance(parse(swatches["background"])[:3]) < 0.2 else "light"
+            roles = assign_roles({"palette": name, "mode": mode}, random.Random(name))
+            swatches.update({role: roles[role] for role in ROLES})
     elif kind == "guidance":
         key = op.get("style", "overall")
         named(key)
@@ -265,6 +277,13 @@ def execute_resource(project, op):
             require(role in ("heading", "body"), "role must be heading or body", field="role")
             require(name in project.state.get("fonts", {}), f"Font {name!r} is not registered; install or import it first")
             project.state.setdefault("typography", {})[role] = name
+            from .render import text_metrics
+
+            for layer in project.state["layers"]:
+                if layer["type"] == "text" and layer.get("font_role") == role:
+                    layer["font"] = project.state["fonts"][name]
+                    if layer.get("auto_size", True):
+                        layer["width"], layer["height"], _ = text_metrics(project, layer)
     else:
         from .operations import execute
         from .schema import validate_operation
@@ -291,14 +310,24 @@ def execute_resource(project, op):
                 seed = zlib.crc32(json.dumps([name, supplied], sort_keys=True, default=str).encode())
             require(isinstance(seed, int) and 0 <= seed < 2**32, "seed must be a nonnegative 32-bit integer or 'random'", field="seed")
             roles = assign_roles({}, random.Random(seed))
-            rolled = {var: roles[role] for var, role in missing.items()}
+            # Rolled colors become role swatches (existing ones are kept), so palette apply can
+            # recolor the template later.
+            swatches = project.state.setdefault("swatches", {})
+            for role in set(missing.values()):
+                swatches.setdefault(role, roles[role])
+            rolled = {var: swatches[role] for var, role in missing.items()}
             rolled["palette"] = roles["_palette"]
-            values.update({var: roles[role] for var, role in missing.items()})
+            values.update({var: f"@{role}" for var, role in missing.items()})
         if "inputs" in item:
             from .automation import validate_inputs
             values = validate_inputs(item["inputs"], values)
             project.state["variables"].update(values)
         expanded = substitute(item["operations"], values)
+        # Template text follows the document typography: the largest text is the heading.
+        texts = [o for o in expanded if o.get("type") == "text" and "font" not in o]
+        largest = max((o.get("size", 48) for o in texts), default=None)
+        for operation in texts:
+            operation["font"] = "heading" if operation.get("size", 48) == largest else "body"
         remaining = getattr(project, "_resource_budget", project.limits.max_operations) - len(expanded) + 1
         require(remaining >= 0, "Expanded templates exceed the operation limit", "resource_limit")
         project._resource_budget = remaining

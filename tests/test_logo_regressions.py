@@ -254,3 +254,54 @@ def test_version_and_global_help_do_not_import_image_engine():
         "assert 'numpy' not in sys.modules; assert 'vixl.project' not in sys.modules"
     )
     subprocess.run([sys.executable, "-c", code], check=True, capture_output=True, timeout=20)
+
+
+@pytest.mark.parametrize("shape", ["polygon", "star"])
+def test_stroked_closed_shapes_join_their_start_vertex(shape):
+    p = Project(200, 200, background="white")
+    p.apply(
+        {
+            "type": "shape",
+            "shape": shape,
+            "sides": 3 if shape == "polygon" else 5,
+            "width": 160,
+            "height": 160,
+            "x": 20,
+            "y": 20,
+            "fill": "transparent",
+            "stroke": "black",
+            "stroke_width": 20,
+        }
+    )
+    pixels = np.asarray(p.render().convert("L"))
+    # The first vertex sits at the top centre; a capped (unjoined) stroke leaves a notch there.
+    assert pixels[24:34, 98:102].max() < 64
+
+
+def test_svg_fallback_names_repeat_as_reason():
+    p = Project(200, 200)
+    p.apply(
+        [
+            {"type": "shape", "shape": "rectangle", "name": "stripe", "width": 100, "height": 10, "fill": "red"},
+            {"type": "repeat", "target": "stripe", "count": 3, "dy": 20},
+        ]
+    )
+    metadata = ET.fromstring(p.export(format="SVG")).find("{http://www.w3.org/2000/svg}metadata")
+    fallbacks = json.loads(metadata.text)["vixl"]["raster_fallbacks"]
+    assert fallbacks[0]["layer"] == "stripe"
+    assert fallbacks[0]["reason"] == "repeat is not exported as vectors"
+
+
+def test_text_set_keeps_text_layout_box():
+    p = Project(600, 300)
+    p.apply(
+        [
+            {"type": "text", "name": "q", "text": "one two three four five six seven eight", "size": 40},
+            {"type": "text-layout", "target": "q", "width": 300, "height": 250},
+            {"type": "text-set", "target": "q", "color": "red"},
+        ]
+    )
+    layer = p.layer("q")
+    assert (layer["width"], layer["height"], layer["auto_size"]) == (300, 250, False)
+    p.apply({"type": "text-set", "target": "q", "text": "short"})
+    assert (p.layer("q")["width"], p.layer("q")["height"]) == (300, 250)

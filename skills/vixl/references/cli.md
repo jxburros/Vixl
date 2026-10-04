@@ -23,6 +23,35 @@ Agent conventions:
 - Every editing command below compiles to a canonical operation (see `operations.md`), so
   `vixl apply ops.json` can replace any sequence of them atomically.
 
+## Finding vixl
+
+If `vixl --version` fails with "command not found", check the standard locations before asking
+the user where Vixl is:
+
+| Install | Location | Check |
+| --- | --- | --- |
+| Windows installer | `%LOCALAPPDATA%\Programs\Vixl\bin\vixl.exe` | Git Bash: `"$LOCALAPPDATA/Programs/Vixl/bin/vixl.exe" --version`; PowerShell: `& "$env:LOCALAPPDATA\Programs\Vixl\bin\vixl.exe" --version`; cmd: `"%LOCALAPPDATA%\Programs\Vixl\bin\vixl.exe" --version` |
+| Windows installer alias | `%LOCALAPPDATA%\Microsoft\WindowsApps\vixl.exe` | Same launcher; that folder is on PATH by default on Windows 10/11, so terminals opened before installation usually find `vixl` through it |
+| pip / source | the Python environment | `python -m vixl --version` (use `python -m vixl` wherever this page says `vixl`) |
+
+The installer adds `%LOCALAPPDATA%\Programs\Vixl\bin` to the user PATH, but processes that were
+already running (a desktop app and the terminals or agents it spawns) keep their old PATH until
+restarted. Prepend the folder for the current session instead:
+
+```bash
+# Git Bash (PATH uses /c/... form there, so convert the C:\ path with cygpath)
+export PATH="$(cygpath -u "$LOCALAPPDATA")/Programs/Vixl/bin:$PATH"
+```
+
+```powershell
+$env:Path = "$env:LOCALAPPDATA\Programs\Vixl\bin;$env:Path"   # PowerShell
+```
+
+```bat
+rem cmd
+set "PATH=%LOCALAPPDATA%\Programs\Vixl\bin;%PATH%"
+```
+
 ## Documents and inspection
 
 | Command | Effect |
@@ -69,7 +98,8 @@ vixl reorder logo --above portrait       # or --below
 vixl move portrait 100 200 ; vixl move portrait --x 100 ; vixl move portrait 20 0 --relative   # mv = move
 vixl scale portrait 80%                  # or 0.8
 vixl resize portrait 800x600 ; vixl resize portrait --width 800
-vixl rotate portrait 15                  # clockwise degrees
+vixl rotate portrait 15                  # clockwise degrees about the pivot (default: center)
+vixl pivot arm 0.5 0.05                  # fractions of the box; pivot arm top | pivot arm 8 2 --px | pivot arm --clear
 vixl flip portrait horizontal|vertical
 vixl crop portrait 0 0 300 400           # X Y W H in the source raster
 vixl opacity portrait 0.75               # or 75 (1–100 = percent)
@@ -178,9 +208,10 @@ and failing `validate`/`assert` exit nonzero with details (`--json` shows every 
 vixl export out.png|.jpg|.webp|.tiff|.avif [--quality 90] [--scale 2x] [--profile instagram|discord|print] \
      [--format PNG] [--background white] [--sampling nearest] [--set var=value] [--artboard NAME] [--comp NAME]
 vixl render [F.vixl] --out preview.png [--set title=Hello]      # same options; never persists overrides
-vixl render --data rows.csv --out campaign_dir                  # one PNG per CSV row: 0001.png …
+vixl render --data rows.csv --out campaign_dir [--no-check]     # one PNG per CSV row: 0001.png …; rows with design problems carry a "check" report
 vixl export-screens --out screens --scales 1 2 [--artboards square story]   # NAME@2x.png
-vixl export-animation --out sprite.gif --format gif|apng|sheet [--scale 8] [--columns 3]
+vixl export-animation --out sprite.gif --format gif|apng|sheet [--scale 8] [--columns 3] [--colors 64] \
+     [--sampling nearest|smooth]          # smooth: any scale (0.5, 1.5 …) re-rendered crisply
 vixl export - --format PNG > preview.png                        # to stdout
 cat photo.png | vixl convert --grayscale [--format PNG] > gray.png
 vixl compare REF_A REF_B --out comparison.png                   # side-by-side history states
@@ -188,6 +219,8 @@ vixl compare REF_A REF_B --out comparison.png                   # side-by-side h
 
 `export-screens` requires at least one artboard; `export-animation` requires saved frames.
 `render --data`, `export-screens` and `export-animation` never overwrite existing outputs.
+`export --scale` above 1 re-renders text, shapes and vectors at the larger size (images resample);
+`--sampling nearest` enlarges pixels instead. `inspect` takes `LAYER` or `--target LAYER`.
 Profiles *contain* (never crop/stretch): `instagram` 1080² JPEG, `discord` 512² PNG, `print` TIFF @300 DPI.
 JPEG flattens transparency onto `--background` (white).
 
@@ -244,7 +277,7 @@ vixl ai remove --as removed ; vixl ai content-aware-fill --prompt '…' ; vixl a
 
 ```bash
 vixl -p F.vixl serve [--host 127.0.0.1] [--port 8765] [--token-env VIXL_API_TOKEN]
-vixl mcp --workspace DIR                 # MCP over stdio
+vixl mcp --workspace DIR [--tools core|ai]   # MCP over stdio; core + ai run as two servers (default all)
 vixl update --check | vixl update | vixl update --rollback ; vixl updates status|on|off   # Windows installer only
 ```
 
@@ -270,10 +303,12 @@ vixl -p art.vixl paint-clear paint --last 1
 vixl -p promo.vixl timeline set --duration 3s --fps 30
 vixl -p promo.vixl animate-preset headline slide-in-up --duration 0.8s
 vixl -p promo.vixl animate logo rotation --to 360 --duration 3s --easing linear
+vixl -p promo.vixl animate arm-left,arm-right rotation --from -20 --to 20 --duration 0.5s   # shared timing
 vixl -p promo.vixl keyframe badge opacity 1.5s 0.4 --easing ease-out
 vixl -p promo.vixl timeline ; vixl -p promo.vixl timeline-sheet --out motion.png
 vixl -p promo.vixl render --time 1.5s --out frame.png
 vixl -p promo.vixl export-timeline --out promo.gif --scale 0.5      # .png .webp .zip .mp4 .webm, --format sheet
+vixl -p promo.vixl export-timeline --out banner.gif --colors 64 --fps 12   # smaller GIF; --scale 2 renders crisp @2x
 ```
 
 Times: ms, `1.5s`, `250ms`, `50%`, or a marker (`vixl marker reveal 1.2s`).

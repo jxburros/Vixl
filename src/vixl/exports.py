@@ -38,7 +38,7 @@ def export_screens(project, directory, *, scales=(1, 2), boards=None, **options)
     return [{"artboard": name, "scale": scale, "output": str(path)} for name, scale, path in jobs]
 
 
-def render_data(project, csv_path, directory, *, variables=None, **options):
+def render_data(project, csv_path, directory, *, variables=None, check=True, **options):
     content = read_bounded(csv_path, 8 * 1024 * 1024).decode("utf-8-sig")
     reader = csv.DictReader(io.StringIO(content, newline=""), strict=True)
     headers = reader.fieldnames
@@ -65,6 +65,7 @@ def render_data(project, csv_path, directory, *, variables=None, **options):
     }
     import tempfile
 
+    checks = []
     with tempfile.TemporaryDirectory(prefix="vixl-data-") as staging:
         for i, row in enumerate(rows):
             candidate = project.clone()
@@ -78,11 +79,23 @@ def render_data(project, csv_path, directory, *, variables=None, **options):
                         candidate, read_bounded(path, candidate.limits.max_asset_bytes)
                     )
             candidate.export(Path(staging) / f"{i}.png", variables=values, format="PNG", **options)
+            if check:
+                # Each row can break the design differently (long copy, clashing colors).
+                from .checks import check_design
+
+                report = check_design(
+                    candidate, variables=values, artboard=options.get("artboard"), comp=options.get("comp")
+                )
+                checks.append({k: report[k] for k in ("passed", "errors", "warnings", "issues")} if report["issues"] else None)
         root.mkdir(parents=True, exist_ok=True)
         for i, path in enumerate(destinations):
             with path.open("xb") as stream:
                 stream.write((Path(staging) / f"{i}.png").read_bytes())
-    return [{"row": i + 1, "output": str(path)} for i, path in enumerate(destinations)]
+    results = [{"row": i + 1, "output": str(path)} for i, path in enumerate(destinations)]
+    for result, report in zip(results, checks):
+        if report:
+            result["check"] = report
+    return results
 
 
 ICON_SETS = {
@@ -107,6 +120,10 @@ ICON_SETS = {
 }
 
 
+def has_raster(project):
+    return any(layer["type"] in ("raster", "frame") for layer in project.state["layers"])
+
+
 def export_icons(project, directory, *, icon_set="web", sampling="smooth"):
     """Render once, then write a standard icon set (PNG sizes, ICO and a web manifest)."""
     from PIL import Image
@@ -120,15 +137,25 @@ def export_icons(project, directory, *, icon_set="web", sampling="smooth"):
         extras = ["favicon.ico"]
     names = [name for name, _ in entries] + extras
     require(not any((root / name).exists() for name in names), "Icon output already exists; choose an empty folder")
-    image = project.render()
-    side = max(image.size)
-    square = Image.new("RGBA", (side, side))
-    square.alpha_composite(image, ((side - image.width) // 2, (side - image.height) // 2))
+    def squared(image):
+        side = max(image.size)
+        square = Image.new("RGBA", (side, side))
+        square.alpha_composite(image, ((side - image.width) // 2, (side - image.height) // 2))
+        return square
+
+    square = squared(project.render())
+    side = square.width
     resample = Image.Resampling.NEAREST if sampling == "nearest" else Image.Resampling.LANCZOS
+    largest = max(size for _, size in entries)
+    if largest > side and sampling == "smooth":
+        # Large icons re-render the design at their size instead of enlarging pixels.
+        from .timeline import render_scaled
+
+        large = squared(render_scaled(project, largest / side))
     files = {}
     for name, size in entries:
         stream = io.BytesIO()
-        square.resize((size, size), resample).save(stream, format="PNG")
+        (large if size > side and sampling == "smooth" else square).resize((size, size), resample).save(stream, format="PNG")
         files[name] = stream.getvalue()
     if "favicon.ico" in extras:
         stream = io.BytesIO()
@@ -147,4 +174,11 @@ def export_icons(project, directory, *, icon_set="web", sampling="smooth"):
     for name, data in files.items():
         with (root / name).open("xb") as stream:
             stream.write(data)
-    return {"directory": str(root), "files": sorted(files), "source_size": side}
+    result = {"directory": str(root), "files": sorted(files), "source_size": side}
+    upscaled = sorted({size for _, size in entries if size > side})
+    if upscaled and (sampling == "nearest" or has_raster(project)):
+        result["warnings"] = [
+            f"{', '.join(f'{s}px' for s in upscaled)} icons enlarge the {side}px design's images and may look soft; "
+            "design on a 1024px canvas (vixl new app-icon) for crisp large icons"
+        ]
+    return result

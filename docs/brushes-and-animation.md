@@ -39,7 +39,7 @@ vixl brush-define soft-ink --base ink --settings '{"hardness": 0.4, "taper": [0.
 
 A timeline animates ordinary document layers over time. Each track targets one property of one layer (or the canvas background) and holds keyframes `{time, value, easing}`. The easing on a key shapes the segment that starts at that key. Rendering a time copies the document, applies the interpolated values and renders it normally, so every layer type, effect, style, mask and constraint is animatable. The pixel-art frame snapshots (`frame-save` …) remain available for sprite work.
 
-Animatable properties: `x`, `y`, `translate-x`, `translate-y`, `opacity`, `rotation`, `scale`, `scale-x`, `scale-y` (about the layer center), `width`, `height`, `size` (font size), `spacing`, colors `color`, `fill`, `start`, `end`, `stroke_color`, `stroke` (mixed in OKLab), `text` and `visible` (stepped), `effect:ID` (an effect's amount; also `effect:1` for the first effect), and the canvas `background` (`target: "canvas"`). Animating position or scale freezes that layer's constraints for the frame; layers anchored to it still follow.
+Animatable properties: `x`, `y`, `translate-x`, `translate-y`, `opacity`, `rotation`, `scale`, `scale-x`, `scale-y` (about the layer's pivot, by default its center), `width`, `height`, `size` (font size), `spacing`, colors `color`, `fill`, `start`, `end`, `stroke_color`, `stroke` (mixed in OKLab), `text` and `visible` (stepped), `effect:ID` (an effect's amount; also `effect:1` for the first effect), and the canvas `background` (`target: "canvas"`). Animating position, rotation or scale freezes that layer's constraints for the frame; layers anchored to it still follow. An animated rotation keeps the center of the layer's document pose, so spins do not drift as the rotated bounds grow.
 
 Times are milliseconds or strings: `"1.5s"`, `"250ms"`, `"50%"` of the duration, or a marker name.
 
@@ -71,8 +71,43 @@ vixl export-timeline --out sheet.png --format sheet --columns 6
 {"type": "marker", "name": "reveal", "time": "50%"}
 ```
 
+`targets: ["arm-left", "arm-right"]` on `animate`, `animate-preset` or `keyframe` (CLI: `arm-left,arm-right`) applies the same keys to every listed layer in one call.
+
 `animate` without `from` starts from the current animated (or static) value; it sets keys at `start` and `end` (or `start + duration`). The timeline duration grows to fit new keys. Removing a layer removes its tracks.
+
+### Characters: pivots and groups
+
+Rotation and scale turn about a layer's **pivot**, given as fractions of its own unrotated box (`[0.5, 0.5]` is the center, `[0.5, 0]` the top middle). Set it with the `pivot` operation: `value: [x, y]`, `value` plus `units: "px"` for pixels from the box's top-left, an anchor name (`top-left`, `top`, `top-right`, `left`, `center`, `right`, `bottom-left`, `bottom`, `bottom-right`), or `clear: true`. Setting or clearing a pivot keeps the drawn pose; afterwards rotating keeps the pivot point fixed on the canvas, in still renders, timeline frames, layout bounds and SVG.
+
+On a pivoted layer the stored `x`/`y` (and `x`/`y` keyframes) are the top-left of the unrotated box, which rotation does not move; `move`, `align` and `distribute` still place the drawn bounds. Layers without a pivot keep the original behavior (stored `x`/`y` are the rotated bounds' top-left).
+
+Build a character as one layer per part, set each limb's pivot at its joint, and group the parts: a group's `translate-x/y`, `rotation` and `scale` move, turn and scale all its children together about the group's pivot.
+
+```bash
+vixl pivot arm 0.5 0.05              # shoulder: top middle of the arm
+vixl pivot leg top                   # anchor names work too; --px for pixels, --clear to reset
+vixl group kid body head arm leg
+vixl pivot kid bottom
+vixl animate arm rotation --from -20 --to 40 --duration 0.5s --easing ease-in-out-sine
+vixl animate kid,shadow translate-x --to 120 --duration 2s    # shared timing for several parts
+```
+
+```json
+{"type": "pivot", "target": "arm", "value": [0.5, 0.05]}
+{"type": "animate", "targets": ["arm-left", "arm-right"], "property": "rotation", "from": -15, "to": 15, "duration": "0.6s"}
+```
+
+### Export
+
+Frames render at the target resolution: `scale` (0.05–16) re-renders vectors, text and shapes crisply instead of enlarging a bitmap; raster images resample with LANCZOS and effects driven by a fixed-size selection fall back to an enlarged render. Each frame must fit the pixel budget (`--max-pixels`).
+
+GIF size: results report `bytes`, and a GIF over 1 MB adds a `warnings` entry. Fully opaque animations are stored as frame differences (identical decoded frames, often 3–5× smaller); `colors` (2–256, default 256) shares one reduced palette across frames, and lower `fps` or `scale` shrink further. A 728×90, 4 s, 20 fps banner went from 0.93 MB to 190 KB at default settings, 76 KB with `--colors 64`, and 41 KB with `--colors 32 --fps 10`. For strict ad limits prefer WebP or MP4 when the network accepts them.
+
+```bash
+vixl export-timeline --out banner.gif --colors 64 --fps 12
+vixl export-timeline --out hero@2x.webp --scale 2
+```
 
 Exports: GIF, APNG and animated WebP hold frames in memory, bounded by four times the pixel budget (use `scale`, `fps` or `start`/`end` to shorten). PNG-sequence ZIPs (with `timing.json`) and MP4/WebM stream frames; MP4/WebM need `ffmpeg` on PATH. Limits: 10 minutes, 60 fps, 3 600 frames, 1 024 tracks, 2 048 keys per track.
 
-MCP: `vixl_timeline_inspect`, `vixl_timeline_preview(time=… | count=8)`, `vixl_export_timeline`, and `time=` on `vixl_render_preview`/`vixl_export_file`. REST: `GET /timeline`, `GET /timeline/frame?time=1.5s`, `POST /timeline/export`.
+MCP: `vixl_timeline_inspect`, `vixl_timeline_preview(time=… | count=8)`, `vixl_export_timeline(scale=, colors=)`, and `time=` on `vixl_render_preview`/`vixl_export_file`. REST: `GET /timeline`, `GET /timeline/frame?time=1.5s`, `POST /timeline/export` (body fields as the CLI flags, including `colors`). Python: `vixl.timeline.export_timeline(project, path, scale=2, colors=64)`.

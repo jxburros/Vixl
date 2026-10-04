@@ -42,6 +42,8 @@ vixl font list                         # registered fonts and the document typog
 
 Installs fetch one static TTF per style from the Google Fonts CSS API (`fonts.gstatic.com`, HTTPS only, bounded size). Any Google Fonts family works, not only catalog entries. Files are validated and cached in `~/.cache/vixl/fonts` (set `VIXL_FONT_CACHE` to move it), then embedded in the document and registered as `family-weight` (for example `dm-serif-display-400`). A saved `.vixl` file therefore renders anywhere without the network. `font pair` and `--role` set `state.typography`, and layouts use it for headings and body unless you pass `font`/`display_font`. The structured operation is `{"type": "font-register", "name": "dm-sans-400", "role": "body"}`.
 
+Text can also follow a role: `text`/`text-set` accept `font: "heading"` or `"body"` (CLI `--font heading`), and built-in templates give their largest text the heading role and the rest body. Changing a role (`font pair`, `font install --role`, `font use --role`) re-fonts every text layer with that role; before any typography is set they use the proofing fallback. `text-set` also accepts a registered font name to change one layer's face. An unknown font fails with `missing_font`, listing the registered fonts and roles.
+
 MCP: `vixl_fonts` (views `fonts`, `font`, `pairings`, `pairing`, `principles`), `vixl_font_pair`, `vixl_font_install`. REST: `GET /typefaces`, `GET /typefaces/pairings`, `POST /typefaces/pair`, `POST /typefaces/install`.
 
 ## Rolling a direction

@@ -100,9 +100,42 @@ def font_for(project, layer):
             str(Path(__file__).parent / "data" / font) if font == "DejaVuSans.ttf" else font, size
         )
     except OSError as exc:
-        raise VixlError(
-            "missing_font", f"Font {font!r} not found; use DejaVuSans.ttf or import a font file"
-        ) from exc
+        raise missing_font(project, layer.get("font", font)) from exc
+
+
+def missing_font(project, name):
+    fonts = sorted(project.state.get("fonts", {}))
+    typography = project.state.get("typography") or {}
+    roles = [role for role in ("heading", "body") if role in typography]
+    known = ", ".join([*roles, *fonts]) if roles or fonts else "none yet"
+    return VixlError(
+        "missing_font",
+        f"Font {name!r} not found. Registered fonts: {known}. Install one with "
+        "vixl font install FAMILY --weight N or vixl font pair NAME, or import a font file; "
+        "DejaVuSans.ttf is the proofing fallback.",
+        field="font",
+        allowed=[*roles, *fonts, "DejaVuSans.ttf"],
+    )
+
+
+def resolve_font(project, name):
+    """A text layer's stored font and role for a requested font name, role or file."""
+    if name is None:
+        return "DejaVuSans.ttf", None
+    typography = project.state.get("typography") or {}
+    fonts = project.state.get("fonts", {})
+    role = None
+    if name in ("heading", "body"):
+        # A role uses the proofing fallback until the document typography sets it.
+        role, name = name, typography.get(name, "DejaVuSans.ttf")
+    font = fonts.get(name, name)
+    if font in project.assets or font == "DejaVuSans.ttf" or Path(font).is_file():
+        return font, role
+    try:
+        ImageFont.truetype(font, 12)
+    except OSError as exc:
+        raise missing_font(project, name) from exc
+    return font, role
 
 
 def text_metrics(project, layer, variables=None):
@@ -128,12 +161,36 @@ def text_metrics(project, layer, variables=None):
     return max(1, math.ceil(box[2] - box[0])), max(1, math.ceil(box[3] - box[1])), box
 
 
-def transformed_size(layer):
-    w, h = layer["width"], layer["height"]
+def rest_size(layer):
     if layer.get("repeat"):
         from .design_render import repeat_bounds
 
-        w, h = repeat_bounds(layer)
+        return repeat_bounds(layer)
+    return layer["width"], layer["height"]
+
+
+def pivot_delta(layer):
+    """Drawn-bounds origin minus stored x/y. Zero unless a ``pivot`` is set: then x/y place the
+    unrotated box and rotation turns it about the pivot, which stays fixed on the canvas."""
+    pivot = layer.get("pivot")
+    if pivot is None:
+        return 0.0, 0.0
+    rw, rh = rest_size(layer)
+    tw, th = transformed_size(layer)
+    vx, vy = (pivot[0] - 0.5) * rw, (pivot[1] - 0.5) * rh
+    angle = math.radians(layer.get("rotation", 0) % 360)
+    co, si = math.cos(angle), math.sin(angle)
+    return (rw - tw) / 2 + vx - (vx * co - vy * si), (rh - th) / 2 + vy - (vx * si + vy * co)
+
+
+def stored_origin(layer, bounds):
+    """The x/y that draws ``layer`` with its bounds' top-left at ``bounds[:2]``."""
+    dx, dy = pivot_delta(layer)
+    return bounds[0] - dx, bounds[1] - dy
+
+
+def transformed_size(layer):
+    w, h = rest_size(layer)
     if layer.get("rotation", 0) % 360:
         # Pillow determines the exact expanded pixel bounds, without allocating the source raster.
         angle = math.radians(layer["rotation"] % 360)
@@ -163,6 +220,7 @@ def resolved_layers(project, variables=None):
                 "width",
                 "height",
                 "rotation",
+                "pivot",
                 "flip_x",
                 "flip_y",
                 "opacity",
@@ -174,7 +232,7 @@ def resolved_layers(project, variables=None):
             ):
                 if key in layer:
                     instance[key] = layer[key]
-                elif key in ("parent", "clip"):
+                elif key in ("parent", "clip", "pivot"):
                     instance.pop(key, None)
             instance["effects"] += layer["effects"]
             instance["styles"] = {**instance.get("styles", {}), **layer.get("styles", {})}
@@ -250,6 +308,10 @@ def resolve_layout(project, variables=None, layers=None):
         w, h = transformed_size(layer)
         project.limits.size(w, h)
         x, y = layer["x"], layer["y"]
+        dx, dy = pivot_delta(layer)
+        if layer.get("pivot") is not None:
+            # Constraints place a pivoted layer's unrotated box.
+            w, h = rest_size(layer)
         for anchor, expression in layer.get("constraints", {}).items():
             if isinstance(expression, str) and expression.startswith("canvas.") and layer.get("parent"):
                 parent = index[layer["parent"]]
@@ -273,7 +335,7 @@ def resolve_layout(project, variables=None, layers=None):
                 y = val - h / 2
             else:
                 raise VixlError("invalid_constraint", f"Unknown anchor: {anchor}")
-        bounds[ident] = (round(x), round(y), w, h)
+        bounds[ident] = (round(x + dx), round(y + dy), *transformed_size(layer))
         visiting.remove(ident)
         return bounds[ident]
 
@@ -748,7 +810,18 @@ def export(
     require(svg_policy == "appearance", "Strict SVG policy requires SVG output")
     if format:
         format = {"JPG": "JPEG", "TIF": "TIFF"}.get(format.upper(), format.upper())
-    image = render(project, variables, artboard, comp)
+    image = None
+    if scale > 1 and sampling != "nearest" and not (artboard or comp or settings.get("size")):
+        # Enlarge by re-rendering a scaled copy, so text, shapes and vectors stay crisp.
+        from .proxy import scaled_project
+
+        project.limits.size(round(project.state["canvas"]["width"] * scale), round(project.state["canvas"]["height"] * scale))
+        proxy = scaled_project(project, scale)
+        if proxy is not None:
+            image = render(proxy, variables)
+            scale = 1
+    if image is None:
+        image = render(project, variables, artboard, comp)
     size = settings.pop("size", None)
     if size:
         image = ImageOps.contain(image, size, resample)

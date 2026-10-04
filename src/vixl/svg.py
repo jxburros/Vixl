@@ -49,6 +49,16 @@ def vector_overlay(layer, state):
     return native_styles(layer, state)
 
 
+def fallback_reason(layer):
+    if layer.get("repeat"):
+        return "repeat is not exported as vectors"
+    if layer.get("lookup"):
+        return "lookup tables are not exported as vectors"
+    if layer.get("mask") and layer["mask"].get("enabled", True):
+        return "raster masks are not exported as vectors"
+    return "unsupported vector appearance"
+
+
 class Exporter:
     def __init__(self, project, root):
         self.project, self.root = project, root
@@ -422,7 +432,7 @@ class Exporter:
             self.fallbacks.append(
                 {
                     "layer": layer["name"],
-                    "reason": self.text_reasons.get(layer["id"], "unsupported vector appearance"),
+                    "reason": self.text_reasons.get(layer["id"], fallback_reason(layer)),
                     "effects": [
                         e["name"]
                         for e in layer.get("effects", [])

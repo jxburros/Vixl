@@ -25,7 +25,7 @@ The authoritative schema is always `vixl schema` / `GET /schema` / `vixl://opera
 | `add` | **`path`** *or* **`asset`**, `name`, `x`, `y`, `linked` | `path` is CLI/Python only (MCP: use `vixl_import_image`). `asset` = an embedded ID like `assets/<sha256>.png`. `linked` keeps an external reference (needs `--allow-linked`). |
 | `solid` | `name`, `width`, `height`, `color`, `x`, `y` | Defaults to canvas size. |
 | `gradient` | `name`, `width`, `height`, `start`, `end`, `direction`, `stops`, `angle`, `x`, `y` | `direction`: `vertical` (default), `horizontal`, `angled` (`angle` 0°=left→right, 90°=top→bottom), `radial`. `stops`: 2–64 `{"offset":0..1,"color":…}` strictly increasing. |
-| `text` | **`text`**, `name`, `size`, `color`, `align` (`left`/`center`/`right`), `spacing` (line spacing px), `font`, `x`, `y` | `x`/`y` may be `"center"` or `"N%"`. `font` (file path) is CLI/Python only; default font DejaVu Sans is bundled. Multiline via `\n`. |
+| `text` | **`text`**, `name`, `size`, `color`, `align` (`left`/`center`/`right`), `spacing` (line spacing px), `font`, `x`, `y` | `x`/`y` may be `"center"` or `"N%"`. `font`: a registered name, `heading`/`body` (follows the document typography), or a file path (CLI/Python only); default font DejaVu Sans is the proofing fallback. Multiline via `\n`. |
 | `shape` | **`shape`**, `name`, `width`, `height`, `x`, `y`, `fill`, `stroke`, `stroke_width`, `radius`, `sides`, `inner_radius` | `shape`: `rectangle`, `rounded-rectangle` (`radius`), `ellipse`, `polygon` (`sides`), `star` (`sides`, `inner_radius` 0.01–1), `line`. Procedural, redrawn crisply on resize. |
 | `frame` | `name`, `width`, `height`, `x`, `y`, `path` *or* `asset`, `fit` (`fill`/`fit`) | Image placed in a fixed box; `fill` crops, `fit` letterboxes. |
 | `pixel-art` | `name`, `width`, `height`, `x`, `y`, `palette`, `background`, **or** `rows` | Character-grid sprite (1–256 per side). See *Pixel art* below. |
@@ -54,12 +54,13 @@ The authoritative schema is always `vixl schema` / `GET /schema` / `vixl://opera
 | `move` | `target`, `x`, `y`, `relative` | Absolute move clears constraints; `relative: true` adds offsets. |
 | `resize` | `target`, `width`, `height` | One dimension keeps aspect ratio; two stretch. Turns off text auto-size. |
 | `scale` | `target`, **`value`** | Factor (0.8 = 80 %). |
-| `rotate` | `target`, **`value`** | Degrees clockwise; bounds expand. |
+| `rotate` | `target`, **`value`** | Degrees clockwise about the layer's pivot (default: center); bounds expand. |
+| `pivot` | `target`, **`value`** (`[x, y]` fractions of the unrotated box, or `top-left`…`bottom-right`/`center`), `units` (`fraction`/`px`), or `clear` | Point that rotation and scale turn about; stays fixed on the canvas (stills, timeline, SVG). Keeps the drawn pose. A pivoted layer's stored `x`/`y` is its unrotated box. |
 | `flip` | `target`, **`direction`** | `horizontal` / `vertical`. |
 | `crop` | `target`, **`x`, `y`, `width`, `height`** | In the original embedded raster's coordinates. |
 | `opacity` | `target`, **`value`** | 0–1. |
 | `blend` | `target`, **`value`** | `normal`, `multiply`, `screen`, `overlay`, `darken`, `lighten`, `difference`, `add`, `subtract`. |
-| `text-set` | `target`, `text`, `size`, `color`, `align`, `spacing`, `stroke_width`, `stroke_color` | Edit an existing text layer. |
+| `text-set` | `target`, `text`, `size`, `color`, `align`, `spacing`, `stroke_width`, `stroke_color`, `font` | Edit an existing text layer; keeps a `text-layout` box. `font`: registered name, `heading`/`body` role, or a file (CLI/Python). |
 | `text-layout` | `target`, `width`, `height`, `fit`, `warp`, `amount`, `path` | Box wrapping; `fit: true` shrinks font to fit; `warp`: `none`/`arc`/`flag`/`bulge` with `amount` −1..1; `path`: polyline `[[x,y],…]` in local px. Replaces previous layout. |
 | `layer-style` | `target`, **`name`**, `settings`, `remove` | See *Layer styles*. |
 | `replace-contents` | `target`, `path` *or* `asset` *or* `variable`, `fit` | Swap image, keep ID/box/effects/mask/styles. |
@@ -159,7 +160,7 @@ deletes it. One style per kind; all accept `enabled` (bool) and `opacity` (0–1
 | `pixel-art` | `name`, `width`, `height`, `palette`, `background`, `x`, `y` — **or** `rows` (+`palette`) | `rows`: list of equal-length strings, one char per pixel. `palette`: `{"symbol":"color"}` (1–94 printable ASCII symbols). Default palette `.`=transparent, `#`=black. |
 | `pixel-draw` | `target`, **`x`**, **`y`**, **`color`** (palette symbol), `tool`, `x2`, `y2`, `width`, `height` | `tool`: `pixel` (default), `line` (to `x2`,`y2`), `rect` (`width`×`height` filled), `fill` (4-way flood). Native grid coordinates. |
 | `pixel-palette` | `target`, **`colors`** | Recolor symbols everywhere. |
-| `frame-save` | **`name`**, `duration` (10–60 000 ms, multiple of 10; default 100) | Snapshot the current scene as an animation frame (canvas ≤256×256). |
+| `frame-save` | **`name`**, `duration` (10–60 000 ms, multiple of 10; default 100) | Snapshot the current scene as an animation frame (any canvas size; frames × canvas pixels ≤ pixel budget). |
 | `frame-apply` | **`name`** | Restore a frame for editing. |
 | `frame-delete` | **`name`** | |
 | `animation-set` | `order` (frame names), `loop` (extra repeats; 0 = infinite) | |
@@ -182,10 +183,10 @@ deletes it. One style per kind; all accept `enabled` (bool) and `opacity` (0–1
 | `paint-clear` | `target`, `last` | Remove the last N (or all) strokes. |
 | `brush-define` | **`name`**, `base`, `settings`, `description` | Custom brush in the document. |
 | `timeline-set` | `duration`, `fps` (1–60), `loop` (0 = forever), `clear` | |
-| `keyframe` | `target` (layer or `canvas`), **`property`**, **`time`**, **`value`**, `easing` | Replaces a key at the same time. |
+| `keyframe` | `target` (layer or `canvas`) or `targets` (list), **`property`**, **`time`**, **`value`**, `easing` | Replaces a key at the same time. |
 | `keyframe-remove` | `target`, `property`, `time` | Track or single key. |
-| `animate` | `target`, **`property`**, **`to`**, `from`, `start`, `end`/`duration`, `easing` | Two keys; `from` defaults to the current value. |
-| `animate-preset` | `target`, **`preset`**, `start`, `duration`, `easing`, `amount`, `distance`, `fade`, `to` | fade/slide/pop/zoom/spin/pulse/shake/bounce/float/blink/typewriter/color-shift. |
+| `animate` | `target` or `targets`, **`property`**, **`to`**, `from`, `start`, `end`/`duration`, `easing` | Two keys; `from` defaults to the current value. `targets` gives several parts the same keys. |
+| `animate-preset` | `target` or `targets`, **`preset`**, `start`, `duration`, `easing`, `amount`, `distance`, `fade`, `to` | fade/slide/pop/zoom/spin/pulse/shake/bounce/float/blink/typewriter/color-shift. |
 | `marker` | **`name`**, `time` or `delete` | Named times usable wherever a time is accepted. |
 
 ## Legacy aliases (avoid in new code)

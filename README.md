@@ -14,14 +14,14 @@ This initial implementation covers the specification's core editor and automatio
 
 ## Install on Windows
 
-Download **Vixl-Setup-VERSION-windows-x64.exe** from [GitHub Releases](https://github.com/jxburros/Vixl/releases/latest) and run it. The installer bundles Python and the REST/MCP dependencies, installs for your Windows account without administrator access, and adds `vixl` to your user PATH. Completely close and reopen your terminal application after installation:
+Download **Vixl-Setup-VERSION-windows-x64.exe** from [GitHub Releases](https://github.com/jxburros/Vixl/releases/latest) and run it. The installer bundles Python and the REST/MCP dependencies, installs for your Windows account without administrator access, and adds `vixl` to your user PATH. It also places a copy of the `vixl` launcher in `%LOCALAPPDATA%\Microsoft\WindowsApps`, a folder Windows 10/11 already includes in the user PATH, so terminals and AI agents that were open before installation usually find `vixl` without restarting. The user PATH entry remains the primary mechanism; if `vixl` is not found, completely close and reopen your terminal application:
 
 ```text
 vixl --version
 vixl --help
 ```
 
-If your current terminal cannot find `vixl`, see the [same-session PATH repair and version checks](docs/releases.md#using-the-current-terminal). Repository documentation describes the source version; use `vixl --version` to confirm which installed runtime is executing.
+If your current terminal still cannot find `vixl`, run `%LOCALAPPDATA%\Programs\Vixl\bin\vixl.exe` directly or see the [same-session PATH repair and version checks](docs/releases.md#using-the-current-terminal). Repository documentation describes the source version; use `vixl --version` to confirm which installed runtime is executing.
 
 Automatic updates are on by default. When you launch Vixl, it checks GitHub at most once a day in the background. A verified update is staged alongside the current version and activated on a subsequent launch. Existing editing sessions continue using their original runtime. Project files and AI credentials are not part of the installation.
 
@@ -141,8 +141,11 @@ Paint with 17 editable brushes (ink, pencil, marker, calligraphy, chalk, charcoa
 vixl paint --brush watercolor --path 'M80 900 C300 760 700 1040 1000 880' --size 70 --color '@accent'
 vixl animate-preset headline slide-in-up --duration 0.8s
 vixl animate logo rotation --to 360 --duration 3s --easing linear
+vixl pivot arm-left top                         # rotate limbs about their joints
+vixl animate arm-left,arm-right rotation --to 30 --duration 0.5s
 vixl timeline-sheet --out motion.png
 vixl export-timeline --out promo.webp         # GIF, APNG, WebP, sprite sheet, PNG ZIP, MP4/WebM (ffmpeg)
+vixl export-timeline --out banner.gif --fps 12 --colors 64   # small GIFs; --scale 2 renders at full resolution
 ```
 
 See [sizes and layouts](docs/sizes-and-layouts.md), [color and print](docs/color-and-print.md) and [brushes and animation](docs/brushes-and-animation.md).
@@ -277,6 +280,8 @@ AI plans are validated and previewed by default. Generation provenance, model, r
 ```bash
 vixl --project poster.vixl serve  # local REST API, http://127.0.0.1:8765/docs
 vixl mcp --workspace .          # MCP over stdio; create/open documents with tools
+vixl mcp --workspace . --tools core   # or split: editing/export here …
+vixl mcp --workspace . --tools ai     # … and provider-backed AI tools in a second server
 ```
 
 For agents, MCP offers:
@@ -284,9 +289,9 @@ For agents, MCP offers:
 - **A safe workspace**: create/open several documents, import images by path or base64, export files; no code execution and no access outside the workspace.
 - **Forgiving input**: common spellings (`rect`, `font_size`, `opacity: 50`, `"50%"`, `"center"`, CSS `rgba()`) are normalized and reported.
 - **Actionable errors**: JSON with the failing operation index, field, allowed values and suggestions.
-- **Self-checks**: `vixl_check` finds cut-off content, overlapping text, low contrast, safe-area violations and text too small at thumbnail size, plus opt-in print (ink, resolution, bleed, live area) and color-vision checks; previews render fast at preview resolution, can zoom, show a timeline frame, soft-proof print or simulate color blindness; `vixl_render_compare` shows what changed between revisions.
+- **Self-checks**: `vixl_check` finds cut-off content, overlapping text, low contrast, safe-area violations and text too small at thumbnail size (or below 6 pt on print sizes), plus opt-in print (ink, resolution, bleed, live area) and color-vision checks; previews render fast at preview resolution, can zoom, show a timeline frame, soft-proof print or simulate color blindness; `vixl_render_compare` shows what changed between revisions.
 - **Design starting points**: `vixl_sizes_list`, `vixl_layouts_list`, `vixl_color`, `vixl_brushes_list`, timeline preview/export and icon-set export tools.
-- **Small responses**: minified JSON, compact diffs and an optional slim schema (`vixl mcp --schema slim`).
+- **Small responses**: minified JSON, compact diffs, an optional slim schema (`vixl mcp --schema slim`), and a core/AI split into two servers (`--tools core|ai`) so agents load only the tools they use.
 - **Long sessions**: delta history keeps every edit fast and old revisions are squashed instead of blocking edits.
 
 The [agent eval suite](evals/README.md) measures how well a model completes real design briefs with these tools. REST stays scoped to one project. See [interface setup](docs/interfaces.md), including MCP client configuration and authenticated REST access.

@@ -40,6 +40,7 @@ vixl_export_timeline(path="sprites.png", format="sheet", columns=6)
 ```
 
 - Properties: `x`, `y`, `translate-x`, `translate-y`, `opacity`, `rotation`, `scale`, `scale-x`, `scale-y`, `width`, `height`, `size`, `spacing`, `color`, `fill`, `start`, `end`, `stroke_color`, `stroke`, `text`, `visible`, `effect:ID` (or `effect:1`), and canvas `background` (`target: "canvas"`).
+- Characters: one layer per part, `{"type":"pivot","target":"arm","value":[0.5,0.05]}` at each joint (or `"top"`, or `units:"px"`), then rotate/animate `rotation` — the joint stays fixed. Group parts (`group`) and animate the group's `translate-x/y`, `rotation`, `scale` to move the whole figure about its pivot. `targets:["arm-l","arm-r"]` on `animate`/`animate-preset`/`keyframe` gives several parts the same keys.
 - Prefer `translate-x/y` and `scale` for motion: they offset/scale from the layer's laid-out position, so constrained layouts keep working. Absolute `x`/`y` keys pin the position.
 - Time: ms number, `"1.5s"`, `"250ms"`, `"50%"`, or a marker name. A key's `easing` shapes the segment *after* it. Default for `animate` is `ease-in-out`.
 - Easings: `linear`, `hold`, `ease`, `ease-in`, `ease-out`, `ease-in-out`, `ease-{in,out,in-out}-{sine,quad,cubic,quart,expo,back}`, `bounce-in`, `bounce-out`, `elastic-out`, `spring`, `cubic-bezier(a,b,c,d)`, `steps(n)`.
@@ -48,3 +49,6 @@ vixl_export_timeline(path="sprites.png", format="sheet", columns=6)
 - The document itself is the frame at rest: rendering without `time` shows untouched layers. Use `time=` on previews/exports to see a moment.
 - Motion craft: entrances 300–800 ms with ease-out, exits faster with ease-in, stagger related items by 80–150 ms, keep a strong final frame. Check with the contact sheet.
 - In-memory formats (GIF/APNG/WebP/sheet) are bounded; use `scale`, lower `fps` or `start`/`end`, or export `frames`/MP4 for long, large animations.
+- `scale` (0.05–16) renders frames at the target size, so `scale=2` is crisp, not upscaled.
+- GIF size: results include `bytes` and a `warnings` entry above 1 MB. `colors=64` (2–256) plus lower `fps` shrink GIFs a lot (728×90, 4 s banner: 190 KB default → 41 KB with `colors=32, fps=10`); prefer WebP/MP4 where accepted.
+- Frame snapshots (`frame-save`, `vixl_export_animation`) work at any canvas size within the pixel budget; `sampling="smooth"` allows scales like 0.5 or 1.5 for illustrated (non-pixel-art) frames.

@@ -25,11 +25,17 @@ from .render import (
     EFFECTS,
     color,
     layer_image,
+    resolve_font,
     resolve_layout,
     text_metrics,
 )
 
 COLOR_TYPES = ("palette-generate",)
+PIVOT_ANCHORS = {
+    "top-left": [0, 0], "top": [0.5, 0], "top-right": [1, 0],
+    "left": [0, 0.5], "center": [0.5, 0.5], "right": [1, 0.5],
+    "bottom-left": [0, 1], "bottom": [0.5, 1], "bottom-right": [1, 1],
+}
 ALIASES = {
     "set_opacity": "opacity",
     "set_blend": "blend",
@@ -53,6 +59,7 @@ OPERATION_TYPES = list(DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_T
     "resize",
     "scale",
     "rotate",
+    "pivot",
     "flip",
     "crop",
     "opacity",
@@ -81,6 +88,14 @@ OPERATION_TYPES = list(DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_T
     "preset-save",
     "preset-apply",
 ]
+
+
+def embed_font_file(project, layer):
+    if layer["font"] not in project.assets and Path(layer["font"]).is_file():
+        data = read_bounded(layer["font"], project.limits.max_asset_bytes)
+        name = f"fonts/{hashlib.sha256(data).hexdigest()}.ttf"
+        project.assets[name] = data
+        layer["font"] = name
 
 
 def effect_valid(effect):
@@ -308,10 +323,11 @@ def execute(project, op):
             layer["direction"] = op.get("direction", "vertical")
             layer.update({k: deepcopy(op[k]) for k in ("stops", "angle") if k in op})
         else:
+            font, role = resolve_font(project, op.get("font"))
             layer.update(
                 {
                     "text": op["text"],
-                    "font": project.state.get("fonts", {}).get(op.get("font"), op.get("font", "DejaVuSans.ttf")),
+                    "font": font,
                     "size": op.get("size", 48),
                     "color": op.get("color", "white"),
                     "align": op.get("align", "left"),
@@ -319,11 +335,9 @@ def execute(project, op):
                     "auto_size": True,
                 }
             )
-            if Path(layer["font"]).is_file():
-                data = read_bounded(layer["font"], project.limits.max_asset_bytes)
-                name = f"fonts/{hashlib.sha256(data).hexdigest()}.ttf"
-                project.assets[name] = data
-                layer["font"] = name
+            if role:
+                layer["font_role"] = role
+            embed_font_file(project, layer)
             layer["width"], layer["height"], _ = text_metrics(project, layer)
             color(resolve_color(layer["color"], project.state))
         layer["x"] = finite(op.get("x", 0), "x") if op.get("x") != "center" else (c["width"] - layer["width"]) / 2
@@ -429,17 +443,30 @@ def execute(project, op):
         for key in ("text", "size", "color", "align", "spacing", "stroke_width", "stroke_color"):
             if key in op:
                 layer[key] = op[key]
+        if "font" in op:
+            layer["font"], role = resolve_font(project, op["font"])
+            layer.pop("font_role", None)
+            if role:
+                layer["font_role"] = role
+            embed_font_file(project, layer)
         require(layer["align"] in ("left", "center", "right"), "Invalid text alignment")
         finite(layer.get("spacing", 4), "spacing", 0, 1000)
         finite(layer.get("stroke_width", 0), "stroke_width", 0, 100)
         color(resolve_color(layer["color"], project.state))
-        layer["width"], layer["height"], _ = text_metrics(project, layer)
-        layer["auto_size"] = True
+        box = layer.get("text_layout") or {}
+        if "width" not in box and "height" not in box:
+            # A text-layout box keeps its wrapping dimensions; plain text re-fits its content.
+            layer["width"], layer["height"], _ = text_metrics(project, layer)
+            layer["auto_size"] = True
     elif kind == "move":
+        from .render import stored_origin
+
         bounds = resolve_layout(project)[layer["id"]]
+        origin = list(bounds[:2])
         for i, axis in enumerate(("x", "y")):
             if axis in op:
-                layer[axis] = finite(op[axis], axis) + (bounds[i] if op.get("relative") else 0)
+                origin[i] = finite(op[axis], axis) + (bounds[i] if op.get("relative") else 0)
+        layer["x"], layer["y"] = stored_origin(layer, origin)
         layer["constraints"] = {}
     elif kind in ("resize", "scale"):
         w, h = layer["width"], layer["height"]
@@ -454,6 +481,27 @@ def execute(project, op):
         layer.update(width=w, height=h, auto_size=False)
     elif kind == "rotate":
         layer["rotation"] = finite(op["value"], "angle") % 360
+    elif kind == "pivot":
+        from .render import rest_size, stored_origin
+
+        bounds = resolve_layout(project)[layer["id"]]
+        if op.get("clear"):
+            layer.pop("pivot", None)
+        else:
+            require("value" in op, "Pass value: [x, y] or an anchor such as 'top-left'", field="value")
+            value = op["value"]
+            if isinstance(value, str):
+                require(value in PIVOT_ANCHORS, f"Unknown pivot anchor {value!r}; use {', '.join(PIVOT_ANCHORS)}", field="value")
+                value = PIVOT_ANCHORS[value]
+            else:
+                require(isinstance(value, list) and len(value) == 2, "Pivot value must be [x, y]", field="value")
+                if op.get("units") == "px":
+                    rw, rh = rest_size(layer)
+                    value = [finite(value[0], "pivot x") / rw, finite(value[1], "pivot y") / rh]
+            layer["pivot"] = [finite(value[0], "pivot x", -10, 10), finite(value[1], "pivot y", -10, 10)]
+        if not layer["constraints"]:
+            # Keep the drawn pose; only the origin of later rotation and scaling moves.
+            layer["x"], layer["y"] = stored_origin(layer, bounds)
     elif kind == "flip":
         require(op["direction"] in ("horizontal", "vertical"), "Flip must be horizontal or vertical")
         key = "flip_x" if op["direction"] == "horizontal" else "flip_y"
@@ -501,6 +549,7 @@ def execute(project, op):
         layers.insert(dest, layer)
     elif kind == "align":
         from .design import selected, union_bounds
+        from .render import stored_origin
 
         targets = selected(project, op.get("targets", [layer["id"]]))
         layout = resolve_layout(project)
@@ -532,7 +581,8 @@ def execute(project, op):
                 x = bx + (bw - w) / 2
             if alignment in ("center", "center-y"):
                 y = by + (bh - h) / 2
-            item.update(x=x, y=y, constraints={})
+            item.update(constraints={})
+            item["x"], item["y"] = stored_origin(item, (x, y))
     elif kind == "constrain":
         constraints = op["constraints"]
         require(isinstance(constraints, dict), "Constraints must be an object")
@@ -552,8 +602,11 @@ def execute(project, op):
         for axes in (("left", "right", "center-x"), ("top", "bottom", "center-y")):
             require(sum(x in layer["constraints"] for x in axes) <= 1, "Use one constraint per axis")
     elif kind == "unconstrain":
+        from .render import stored_origin
+
         b = resolve_layout(project)[layer["id"]]
-        layer.update(x=b[0], y=b[1], constraints={})
+        layer["x"], layer["y"] = stored_origin(layer, b)
+        layer["constraints"] = {}
     elif kind == "mask":
         action = op.get("action", "create")
         b = resolve_layout(project)[layer["id"]]

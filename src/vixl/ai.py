@@ -18,7 +18,7 @@ from PIL import Image, ImageOps
 from .assets import add_image, decode, png_bytes, read_bounded
 from .commands import Parser, dimensions
 from .errors import VixlError, require
-from .render import resolve_layout
+from .render import resolve_layout, stored_origin
 
 MAX_RESPONSE = 64 * 1024 * 1024
 VISION_PROMPTS = {
@@ -1121,7 +1121,8 @@ def ai_execute(project, cmd, a):
         candidate.state["selection"] = None
         for layer in candidate.state["layers"]:
             b = bounds[layer["id"]]
-            layer.update(x=b[0] + left, y=b[1] + top, constraints={})
+            layer.update(constraints={})
+            layer["x"], layer["y"] = stored_origin(layer, (b[0] + left, b[1] + top))
             for effect in layer["effects"]:
                 if effect.get("selection"):
                     shifted = Image.new("L", (w, h))

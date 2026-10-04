@@ -475,7 +475,7 @@ def create_app(path, *, token=None, limits=None):
 
         from .timeline import export_timeline
 
-        allowed = {"format", "fps", "scale", "start", "end", "background", "columns", "quality"}
+        allowed = {"format", "fps", "scale", "start", "end", "background", "columns", "quality", "colors"}
         require(set(body) <= allowed, f"Timeline export accepts {sorted(allowed)}", field="body")
         fmt = body.get("format", "gif")
         suffix = {"gif": ".gif", "apng": ".png", "webp": ".webp", "sheet": ".png", "frames": ".zip", "mp4": ".mp4", "webm": ".webm"}
@@ -575,14 +575,27 @@ def create_app(path, *, token=None, limits=None):
             return p.inspect_animation()
 
     @app.get("/animation/frame/{name}")
-    def animation_frame(name: str, scale: int = 1):
+    def animation_frame(name: str, scale: float = 1, sampling: str = "nearest"):
         import io
 
         with session.project() as p:
-            image = p.render_frame(name, scale)
+            image = p.render_frame(name, int(scale) if float(scale).is_integer() else scale, sampling)
             stream = io.BytesIO()
             image.save(stream, format="PNG")
             return Response(stream.getvalue(), media_type="image/png")
+
+    @app.post("/animation/export")
+    def animation_export(body: dict):
+        from .animation import animation_bytes
+
+        allowed = {"format", "scale", "sampling", "colors", "columns"}
+        require(set(body) <= allowed, f"Animation export accepts {sorted(allowed)}", field="body")
+        if isinstance(body.get("scale"), float) and body["scale"].is_integer():
+            body["scale"] = int(body["scale"])
+        fmt = body.get("format", "gif")
+        with session.project() as p:
+            data, _ = animation_bytes(p, **body)
+        return Response(data, media_type={"gif": "image/gif", "apng": "image/apng"}.get(fmt, "image/png"))
 
     @app.post("/measure")
     def measure(body: dict):
@@ -626,11 +639,11 @@ def serve(path, host="127.0.0.1", port=8765, token=None, limits=None):
     uvicorn.run(create_app(path, token=token, limits=limits), host=host, port=port)
 
 
-def mcp_server(path=None, limits=None, *, workspace=None, schema="full", planner=False):
+def mcp_server(path=None, limits=None, *, workspace=None, schema="full", planner=False, tools="all"):
     try:
         from .mcp_tools import build_server
         import mcp.server.fastmcp  # noqa: F401
     except ImportError as exc:
         raise VixlError("missing_dependency", "Install vixl-engine[mcp]") from exc
 
-    return build_server(Session(path, limits, workspace=workspace), schema=schema, planner=planner)
+    return build_server(Session(path, limits, workspace=workspace), schema=schema, planner=planner, tools=tools)

@@ -523,3 +523,84 @@ def test_denied_active_runtime_reports_actionable_error_without_traceback(
     assert str(active) in result["message"] and "updates status" in result["message"]
     assert "Traceback" not in output.err
     assert u.read_state(install) == before
+
+
+def load_launcher(monkeypatch, name="vixl_launcher_root_test"):
+    import importlib.util
+    import sys
+
+    path = Path(__file__).resolve().parents[1] / "distribution" / "launcher.py"
+    monkeypatch.setitem(sys.modules, "updater", u)
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+@pytest.fixture
+def alias(tmp_path):
+    folder = tmp_path / "LocalAppData" / "Microsoft" / "WindowsApps"
+    folder.mkdir(parents=True)
+    exe = folder / "vixl.exe"
+    exe.write_bytes(b"launcher")
+    return exe
+
+
+def test_launcher_root_is_beside_bin_for_normal_install(install, monkeypatch, tmp_path):
+    launcher = load_launcher(monkeypatch)
+    other = tmp_path / "elsewhere"
+    env = {"VIXL_HOME": str(other), "LOCALAPPDATA": str(tmp_path)}
+    # install.json beside bin wins over every fallback, including an explicit VIXL_HOME.
+    assert launcher.resolve_root(install / "bin" / "vixl.exe", env, lambda: str(other)) == install.resolve()
+    # A fresh install has versions\ before --vixl-install writes install.json.
+    (install / "install.json").unlink()
+    assert launcher.resolve_root(install / "bin" / "vixl.exe", env) == install.resolve()
+
+
+def test_launcher_alias_root_fallback_order(install, monkeypatch, alias, tmp_path):
+    launcher = load_launcher(monkeypatch)
+    local = str(alias.parents[2])
+    explicit = tmp_path / "explicit"
+    assert launcher.resolve_root(alias, {"VIXL_HOME": str(explicit), "LOCALAPPDATA": local}) == explicit
+    assert launcher.resolve_root(alias, {"VIXL_MANAGED_ROOT": str(install), "LOCALAPPDATA": local}) == install
+    # The installer's registry record is used when it names a real installation.
+    assert launcher.resolve_root(alias, {"LOCALAPPDATA": local}, lambda: str(install)) == install
+    default = Path(local) / "Programs" / "Vixl"
+    assert launcher.resolve_root(alias, {"LOCALAPPDATA": local}, lambda: str(tmp_path / "gone")) == default
+    assert launcher.resolve_root(alias, {"LOCALAPPDATA": local}, lambda: None) == default
+    assert launcher.resolve_root(alias, {}) == alias.resolve().parent.parent
+
+
+def test_registry_root_lookup_never_raises(monkeypatch):
+    launcher = load_launcher(monkeypatch)
+    value = launcher.registry_install_root()
+    assert value is None or isinstance(value, str)
+
+
+def test_launcher_alias_copy_runs_installed_engine_and_respawns_itself(install, monkeypatch, alias):
+    import sys
+
+    launcher = load_launcher(monkeypatch)
+    monkeypatch.delenv("VIXL_MANAGED_ROOT")
+    monkeypatch.delenv("VIXL_HOME", raising=False)
+    monkeypatch.setenv("LOCALAPPDATA", str(alias.parents[2]))
+    monkeypatch.setattr(launcher, "registry_install_root", lambda: str(install))
+    monkeypatch.setattr(sys, "executable", str(alias))
+    monkeypatch.setattr(sys, "argv", ["vixl", "--version"])
+    monkeypatch.setattr(
+        u, "prepare_launch", lambda root, allow_updates=True: (u.executable(root, "0.7.0"), True)
+    )
+    calls = []
+    monkeypatch.setattr(subprocess, "call", lambda cmd, env: calls.append((cmd, env)) or 0)
+    spawned = []
+    monkeypatch.setattr(subprocess, "DETACHED_PROCESS", 0, raising=False)
+    monkeypatch.setattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0, raising=False)
+    monkeypatch.setattr(subprocess, "Popen", lambda cmd, **kw: spawned.append((cmd, kw)))
+    assert launcher.main() == 0
+    ((cmd, env),) = calls
+    assert cmd == [str(install.resolve() / "versions" / "0.7.0" / "vixl-engine.exe"), "--version"]
+    assert env["VIXL_MANAGED_ROOT"] == str(install.resolve())
+    ((background, options),) = spawned
+    assert background == [str(alias), "--vixl-background-update"]
+    # The respawned alias copy finds the same root from the environment it is given.
+    assert launcher.resolve_root(alias, options["env"]) == install.resolve()

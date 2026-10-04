@@ -72,6 +72,11 @@ def check_state(project, state):
         project.limits.size(layer["width"], layer["height"])
         for axis in ("x", "y", "rotation"):
             finite(layer[axis], axis, -1e9, 1e9)
+        if "pivot" in layer:
+            pivot = layer["pivot"]
+            require(isinstance(pivot, list) and len(pivot) == 2, "Pivot must be [x, y] fractions of the layer box")
+            for value in pivot:
+                finite(value, "pivot", -10, 10)
         finite(layer["opacity"], "opacity", 0, 1)
         require(layer["blend"] in BLENDS, "Invalid blend mode")
         require(isinstance(layer["visible"], bool), "Visibility must be boolean")

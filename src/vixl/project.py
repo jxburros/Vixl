@@ -454,10 +454,10 @@ class Project:
 
         return inspect_animation(self)
 
-    def render_frame(self, name, scale=1):
+    def render_frame(self, name, scale=1, sampling="nearest"):
         from .animation import render_frame
 
-        return render_frame(self, name, scale)
+        return render_frame(self, name, scale, sampling)
 
     def export_animation(self, path, **options):
         from .animation import export_animation

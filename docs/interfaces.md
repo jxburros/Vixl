@@ -79,7 +79,31 @@ The workspace can start without any `.vixl` documents. MCP runs over stdio using
 }
 ```
 
-If the client cannot find `vixl` on PATH, use the absolute executable path, normally `C:\Users\jeffr\AppData\Local\Vixl\bin\vixl.exe` for the Windows installer. Restart the client after installing/updating or changing its configuration. On macOS/Linux, use your installed `vixl` executable and a workspace such as `/home/you/Pictures/Vixl`.
+If the client cannot find `vixl` on PATH, use the absolute executable path, normally `C:\Users\jeffr\AppData\Local\Programs\Vixl\bin\vixl.exe` for the Windows installer. Restart the client after installing/updating or changing its configuration. On macOS/Linux, use your installed `vixl` executable and a workspace such as `/home/you/Pictures/Vixl`.
+
+### Two servers: core and AI
+
+`vixl mcp` can serve its tools as two servers, so an agent loads only the tools it uses:
+
+- `--tools core`: documents, operations, rendering, checks, export, sizes, layouts, fonts, color, brushes, animation and workflows (40 tools).
+- `--tools ai`: the provider-backed tools (`vixl_ai_*`, `vixl_models_list`) plus `vixl_workspace_list`, `vixl_document_open`, `vixl_document_inspect` and `vixl_render_preview`, so the AI server can find layers and check its results (15 tools).
+
+```json
+{
+  "mcpServers": {
+    "vixl": {
+      "command": "vixl",
+      "args": ["mcp", "--workspace", "C:\\Users\\jeffr\\Pictures\\Vixl", "--tools", "core"]
+    },
+    "vixl-ai": {
+      "command": "vixl",
+      "args": ["mcp", "--workspace", "C:\\Users\\jeffr\\Pictures\\Vixl", "--tools", "ai"]
+    }
+  }
+}
+```
+
+Give both the same workspace. Every edit is saved immediately and each server reloads a document that changed on disk (writes are serialized with file locks), so an image generated through `vixl-ai` appears in `vixl` on its next call. AI tools take `document=` or use the document opened with `vixl_document_open`. Leave out `vixl-ai` when no AI provider is configured. The default, `--tools all` (or `VIXL_MCP_TOOLS`), keeps serving every tool from one server, so existing configurations are unchanged.
 
 Existing `vixl --project /absolute/path/poster.vixl mcp` configurations still work: they open that document and use its parent directory as the workspace. You can also pass `--workspace` explicitly; the starting project must be within it.
 
