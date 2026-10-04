@@ -8,6 +8,8 @@ from .brushes import BRUSH_TYPES
 from .timeline import TIMELINE_TYPES
 from .layouts import LAYOUT_TYPES
 from .automation import TYPES as AUTOMATION_TYPES
+from .creative import TYPES as CREATIVE_TYPES
+from .containers import TYPES as CONTAINER_TYPES
 
 from copy import deepcopy
 import hashlib
@@ -46,7 +48,7 @@ ALIASES = {
     "make_selection": "select",
 }
 
-OPERATION_TYPES = list(DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_TYPES + BRUSH_TYPES + TIMELINE_TYPES + LAYOUT_TYPES + COLOR_TYPES + AUTOMATION_TYPES) + [
+OPERATION_TYPES = list(DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_TYPES + BRUSH_TYPES + TIMELINE_TYPES + LAYOUT_TYPES + COLOR_TYPES + AUTOMATION_TYPES + CREATIVE_TYPES + CONTAINER_TYPES) + [
     "add",
     "solid",
     "gradient",
@@ -207,6 +209,9 @@ def _select(project, op):
         target = np.array(color(op["color"])[:3])
         tolerance = finite(op.get("tolerance", 15), "tolerance", 0, 255)
         mask = Image.fromarray(np.uint8(np.max(np.abs(rgb - target), axis=2) <= tolerance) * 255)
+    elif shape in ("wand", "lasso", "path"):
+        from .creative import selection
+        mask = selection(project, op)
     elif shape == "asset":
         mask = project.image(op["asset"], "L")
         require(mask.size == size, "Selection mask must match canvas size")
@@ -235,6 +240,12 @@ def execute(project, op):
     kind = ALIASES.get(kind, kind)
     require(isinstance(kind, str), "Operation requires a type")
     target = op.get("target", op.get("layer"))
+    if kind in CONTAINER_TYPES:
+        from .containers import execute as execute_container
+        return execute_container(project, op)
+    if kind in CREATIVE_TYPES:
+        from .creative import execute as execute_creative
+        return execute_creative(project, op)
     if kind in AUTOMATION_TYPES:
         from .automation import execute as execute_automation
         execute_automation(project, op)

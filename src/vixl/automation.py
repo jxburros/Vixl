@@ -421,8 +421,13 @@ def compile_command(cmd, args):
         parser.add_argument("--speed", type=float)
         parser.add_argument("--start")
     if cmd in ("suite-set", "motion-define", "action-define", "recipe-set"):
-        parser.add_argument("--settings", type=json.loads, required=True)
+        source = parser.add_mutually_exclusive_group(required=True)
+        source.add_argument("--settings", type=json.loads)
+        source.add_argument("--file", help="Read reusable settings from a JSON file")
     values = {k: v for k, v in vars(parser.parse_args(args)).items() if v is not None}
+    if "file" in values:
+        from .assets import read_bounded
+        values["settings"] = json.loads(read_bounded(values.pop("file"), 1024 * 1024))
     if "settings" in values:
         field = {
             "suite-set": "suite",

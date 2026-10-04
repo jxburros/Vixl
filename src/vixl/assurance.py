@@ -15,6 +15,8 @@ def digest(value):
 
 
 RULE_FIELDS = {
+    "container": {"target"},
+    "palette": {"palette", "colors", "tolerance", "max_fraction", "alpha_min", "region"},
     "assert": {"expression"},
     "design": {"options"},
     "property": {"target", "field", "expected", "tolerance"},
@@ -117,6 +119,14 @@ def rule_result(project, rule):
     from .render import resolved_layers, resolve_layout
 
     kind = rule["kind"]
+    if kind == "container":
+        from .containers import measure
+        report = measure(project, rule.get("target"))
+        return report["passed"], report
+    if kind == "palette":
+        from .palette_checks import measure
+        report = measure(project, **{k: v for k, v in rule.items() if k not in ("kind", "id", "severity")})
+        return report["passed"], report
     if kind == "assert":
         from .validation import assert_rule
 

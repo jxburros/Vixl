@@ -57,7 +57,7 @@ def service_operation_schema(slim=False):
         if kind in EFFECTS:
             continue  # All effects use the canonical {type: effect, name: ...} form.
         for field in ("path", "linked", "font"):
-            if kind not in ("text-layout", "shape") or field != "path":
+            if kind not in ("text-layout", "shape", "select") or field != "path":
                 props.pop(field, None)
         if kind in ("add", "frame"):
             variant.pop("anyOf")
@@ -202,8 +202,8 @@ def export_file(session, path, overwrite=False, document=None, **options):
         destination = session.resolve(path)
         require(
             destination.suffix.lower()
-            in (".png", ".jpg", ".jpeg", ".webp", ".tif", ".tiff", ".avif", ".svg", ".pdf", ".ico"),
-            "Choose a PNG, JPEG, WEBP, TIFF, AVIF, SVG, PDF or ICO filename",
+            in (".png", ".jpg", ".jpeg", ".webp", ".tif", ".tiff", ".avif", ".svg", ".pdf", ".ico", ".html", ".htm"),
+            "Choose a PNG, JPEG, WEBP, TIFF, AVIF, SVG, PDF, ICO or HTML filename",
             field="path",
         )
         require(destination.parent.is_dir(), "Destination directory must exist", field="path")
@@ -306,7 +306,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
     from mcp.server.fastmcp.exceptions import ToolError
 
     require(schema in ("full", "slim"), "schema must be full or slim")
-    require(tools in ("all", "core", "ai"), "tools must be all, core or ai")
+    require(tools in ("all", "core", "ai", "compact"), "tools must be all, core, ai or compact")
     Operation = Annotated[dict, WithJsonSchema(service_operation_schema(slim=schema == "slim"))]
     server = FastMCP(
         "Vixl AI" if tools == "ai" else "Vixl",
@@ -329,6 +329,9 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
     )
 
     def selected(name):
+        if tools == "compact":
+            return name in SHARED_TOOLS | {"vixl_document_create", "vixl_operations_apply", "vixl_operation_schema",
+                "vixl_workflow", "vixl_workflow_schema", "vixl_export_file", "vixl_import_image", "vixl_import_document"}
         if tools == "all" or name in SHARED_TOOLS:
             return True
         return is_ai_tool(name) == (tools == "ai")
@@ -368,12 +371,12 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
 
     @tool
     def vixl_workflow(
-        action: Literal["check", "act", "capture", "plan", "run", "preview", "library-save", "library-search",
-                        "library-open", "library-place", "submit", "status", "cancel", "resume", "work", "start",
-                        "film-plan", "film-export"],
+        action: str,
         request: dict, document: Document = None,
     ) -> dict:
-        """Run checks, reusable actions, draft/final production, libraries or durable jobs. Paths stay in workspace.
+        """Unified workflows: resources, palettes, saved shapes, suites, effects, plugin packs, project groups,
+        branch/merge collaboration, production, libraries and jobs. Discover action fields with vixl_workflow_schema.
+        Paths stay in workspace. Branch merge and group apply default to dry_run=true.
 
         Long jobs: submit with start=true, then status. AI jobs require an explicit configured provider.
         Repairs preserve test suites. Unknown/unmeasurable checks report needs_review.
@@ -572,7 +575,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
                 continue
             variant = deepcopy(variants[canonical])
             for field in ("path", "linked", "font"):
-                if canonical != "text-layout":
+                if field != "path" or canonical not in ("text-layout", "shape", "select"):
                     variant["properties"].pop(field, None)
             if canonical == "effect":
                 variant["properties"]["name"] = {"enum": sorted(EFFECTS)}
@@ -688,15 +691,15 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
     @tool
     def vixl_import_document(format: Literal["svg", "pdf"], path: str | None = None,
                             data_base64: str | None = None, name: str = "import", page: int = 1,
-                            dpi: int = 144, document: Document = None) -> dict:
-        """Import SVG as editable shape/path layers, or a PDF page as a raster layer.
-        SVG accepts solid fills, strokes and transforms; unsupported features fail atomically."""
+                            dpi: int = 144, document: Document = None, svg_mode: Literal["editable", "appearance", "auto"] = "editable") -> dict:
+        """Import editable SVG paths, or use svg_mode=appearance/auto for complex static SVG
+        rendered with its original source retained. PDF imports one raster page. External/active SVG is rejected."""
         from .imports import import_document
         require((path is None) != (data_base64 is None), "Provide exactly one of path or data_base64")
         limit = session.limits.max_asset_bytes
         data = read_bounded(session.resolve(path), limit) if path else decode_upload(data_base64, limit)
         with session.project(write=True, document=document) as project:
-            return import_document(project, data, format, name, page, dpi)
+            return import_document(project, data, format, name, page, dpi, svg_mode)
 
     @tool
     def vixl_review_notes(action: Literal["list", "add", "resolve"] = "list", text: str | None = None,

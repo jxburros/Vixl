@@ -81,7 +81,8 @@ def _operation_schema():
             "y": COORD,
         },
     )
-    add("palette-apply", {"name": S, "prefix": S, "roles": B}, ["name"])
+    add("palette-define", {"name": S, "colors": {"type": "array", "items": S, "minItems": 2, "maxItems": 256}}, ["name", "colors"])
+    add("palette-apply", {"name": S, "prefix": S, "roles": B, "policy": enum("strict", "accessible")}, ["name"])
     add("template-apply", {"name": S, "variables": {"type": "object"}, "seed": {"type": ["integer", "string"]}}, ["name"])
     add("guidance", {"name": S, "text": S, "style": S, "delete": B}, ["name"])
     add("font-register", {"name": S, "asset": S, "role": S}, ["name"])
@@ -192,13 +193,16 @@ def _operation_schema():
     add(
         "select",
         {
-            "shape": enum("all", "none", "invert", "rect", "ellipse", "color", "alpha", "asset"),
+            "shape": enum("all", "none", "invert", "rect", "ellipse", "color", "alpha", "asset", "wand", "lasso", "path"),
             "x": COORD,
             "y": COORD,
             "width": SIZE,
             "height": SIZE,
             "color": S,
             "tolerance": N,
+            "contiguous": B,
+            "points": {"type": "array", "minItems": 3, "maxItems": 4096, "items": {"type": "array", "items": N, "minItems": 2, "maxItems": 2}},
+            "path": S,
             "feather": N,
             "mode": enum("replace", "add", "subtract", "intersect"),
             "asset": S,
@@ -261,6 +265,10 @@ def _operation_schema():
     layout_schemas(add)
     from .automation import schemas as automation_schemas
     automation_schemas(add)
+    from .creative import schemas as creative_schemas
+    creative_schemas(add)
+    from .containers import schemas as container_schemas
+    container_schemas(add)
     add(
         "palette-generate",
         {"name": S, "color": S, "scheme": S, "count": {"type": "integer", "minimum": 2, "maximum": 12}},

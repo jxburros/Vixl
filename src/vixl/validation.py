@@ -24,6 +24,10 @@ def check_state(project, state):
     require(isinstance(state.get("design_guidance", {}), dict), "Invalid design guidance")
     from .resources import validate
     from .design import named
+    require(isinstance(state.get("palettes", {}), dict), "Invalid palette registry")
+    for name, colors in state.get("palettes", {}).items():
+        named(name)
+        validate("palettes", colors)
     for key, text in state.get("design_guidance", {}).items():
         named(key)
         validate("guidance", text)

@@ -21,7 +21,7 @@ SNAPSHOT_INTERVAL = 32
 FORMAT_VERSION = 2
 DECODED_BUDGET = 256 * 1024 * 1024
 NODE_KEYS = {"id", "parent", "operations", "label", "state", "delta", "squashed"}
-ASSET_REFERENCE = re.compile(rb"(?:assets|masks|fonts)/[0-9a-f]{64}\.[a-z0-9]{2,5}")
+ASSET_REFERENCE = re.compile(rb"(?:assets|masks|fonts|sources)/[0-9a-f]{64}\.[a-z0-9]{2,5}")
 
 
 def located(error, index, operation, count):
@@ -603,7 +603,7 @@ class Project:
                         n == "project.json"
                         or (
                             len(n.split("/")) == 2
-                            and n.split("/")[0] in ("assets", "masks", "fonts")
+                            and n.split("/")[0] in ("assets", "masks", "fonts", "sources")
                             and n.split("/")[1] not in ("", ".", "..")
                             and "\\" not in n
                         )
@@ -639,7 +639,11 @@ class Project:
                         "Asset checksum mismatch",
                         "invalid_project",
                     )
-                    if name.startswith("fonts/"):
+                    if name.startswith("sources/"):
+                        require(name.endswith(".svg") and len(data) <= min(limits.max_asset_bytes, 4 * 1024 * 1024),
+                                "Invalid embedded SVG source", "invalid_project")
+                        # Inert provenance only: never render or execute source while opening an archive.
+                    elif name.startswith("fonts/"):
                         from PIL import ImageFont
 
                         ImageFont.truetype(io.BytesIO(data), 12)

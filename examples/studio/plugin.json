@@ -1,0 +1,15 @@
+{
+  "api_version": 1,
+  "name": "paper",
+  "version": "1.0.0",
+  "description": "An offline resource pack; no executable code.",
+  "resources": {
+    "palettes": {"paper-ink": ["#212529", "#fff8dc", "#d4af37"]},
+    "shapes": {"paper-ribbon": {"type": "shape", "shape": "path", "width": 120, "height": 60, "path": "M0 0L120 0L100 30L120 60L0 60L20 30Z", "fill": "#d4af37"}},
+    "workflows": {"paper-lift": {"description": "Outline and shadow for a lifted paper edge.", "defaults": {"target": "artwork"}, "operations": [
+      {"type": "layer-style", "target": "${target}", "name": "stroke", "settings": {"color": "#fff8dc", "width": 2}},
+      {"type": "layer-style", "target": "${target}", "name": "drop-shadow", "settings": {"color": "#212529", "blur": 5, "dx": 3, "dy": 6, "opacity": 0.4}}
+    ]}},
+    "suites": {"paper-palette": {"rules": [{"id": "paper-pixels", "kind": "palette", "colors": ["#212529", "#fff8dc", "#d4af37"], "tolerance": 8, "max_fraction": 0.02}]}}
+  }
+}

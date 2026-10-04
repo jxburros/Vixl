@@ -30,7 +30,7 @@ Inspect:   status, inspect [LAYER], describe, layers, effects [LAYER], manifest,
 Layers:    add FILE --name NAME, solid --color COLOR, gradient --start A --end B,
            text add TEXT --name NAME --size N, text NAME --text TEXT,
            remove, rename, duplicate, hide, show, raise, lower, top, bottom, reorder
-Design:    shape, group, ungroup, clip, layer-style, distribute, style-define,
+Design:    pen, shape, shape-place, container-place, container-swap, container-reflow, group, ungroup, clip, layer-style, distribute, style-define,
            style-apply, swatch, artboard, frame, replace-contents, repeat, repeat-blend,
            adjustment, lut, lookup, comp-save, comp-apply, text-layout, guide, grid,
            pathfinder, symbol, symbol-instance
@@ -44,7 +44,7 @@ Pixels:    pixel-art, pixel-draw, pixel-palette, pixels [LAYER],
            animation, animation-set --loop N --order FRAME FRAME,
            export-animation --out FILE --format gif|apng|sheet [--scale N] [--sampling nearest|smooth] [--colors N]
 Editing:   move, resize, scale, rotate, pivot, flip, crop, opacity, blend, align,
-           select-layer, select, mask, filter, effect, rasterize
+           select-layer, select wand|lasso|path|rect|ellipse|color, mask, filter, effect, rasterize
 Effects:   brightness, contrast, saturation, hue, exposure, gamma, temperature,
            tint, shadows, highlights, blur, sharpen, grayscale, invert,
            posterize, threshold, noise, grain, vignette, auto-tone, auto-color, auto-contrast
@@ -75,7 +75,7 @@ Motion:    timeline, timeline set --duration 3s --fps 30 [--loop N], keyframe LA
            timeline-sheet --out FILE [--count 8], render --time 1.5s --out FILE
 Output:    export FILE [--quality N] [--scale 2x] [--profile NAME] [--dpi N]
            [--cmyk [--icc PROFILE.icc] [--ink-limit 300]] [--proof] [--simulate deuteranopia],
-           export FILE.pdf | FILE.ico [--icon-sizes 16 32 48], export-icons --out DIR [--set web|apple|android|all],
+           export FILE.html | FILE.pdf | FILE.ico [--icon-sizes 16 32 48], export-icons --out DIR [--set web|apple|android|all],
            render [PROJECT] --out FILE [--set NAME=VALUE] [--artboard NAME] [--comp NAME],
            render --data rows.csv --out DIR, export-screens --out DIR --scales 1 2,
            convert --grayscale
@@ -84,8 +84,8 @@ AI:        ask PROMPT [--apply], generate --prompt TEXT --provider NAME,
            select object LABEL --provider NAME, ai remove|content-aware-fill|select-subject
 Updates:   update [--check | --rollback], updates [on | off | status]
 Services:  serve | view [--host 127.0.0.1] [--port 8765], notes list|add|resolve
-           mcp [--workspace DIR] [--http] [--tools core|ai] [--schema slim] [--planner]
-Import:    import FILE.svg | FILE.pdf [--page 1] [--dpi 144]
+           mcp [--workspace DIR] [--http] [--tools core|ai|compact] [--schema slim] [--planner]
+Import:    import FILE.svg [--svg-mode editable|appearance|auto] | FILE.pdf [--page 1] [--dpi 144]
 
 Options: --project/-p FILE, --json, --allow-linked, --plugins, --max-pixels N, --detail compact|full, --version
 Use vixl commands --json for a complete inventory; vixl COMMAND --help works without a document. See docs/commands.md.
@@ -143,7 +143,7 @@ def output_options(args, command):
     p.add_argument("--quality", type=int, default=90)
     p.add_argument("--scale", default="1")
     p.add_argument("--profile")
-    p.add_argument("--format", choices=["PNG", "JPEG", "WEBP", "TIFF", "AVIF", "SVG", "JPG", "PDF", "ICO"])
+    p.add_argument("--format", choices=["PNG", "JPEG", "WEBP", "TIFF", "AVIF", "SVG", "JPG", "PDF", "ICO", "HTML"])
     p.add_argument("--background", default="white")
     p.add_argument("--set", action="append")
     p.add_argument("--artboard")
@@ -396,9 +396,9 @@ def dispatch(argv):
         p.add_argument("--planner", action="store_true", help="Expose the provider-backed vixl_ai_plan tool")
         p.add_argument(
             "--tools",
-            choices=["all", "core", "ai"],
+            choices=["all", "core", "ai", "compact"],
             default=os.environ.get("VIXL_MCP_TOOLS", "all"),
-            help="core: editing, rendering and export; ai: provider-backed tools; run both as separate servers",
+            help="core: all editing tools; compact: 12 document/workflow tools; ai: provider-backed tools",
         )
         p.add_argument("--http", action="store_true", help="Serve Streamable HTTP at /mcp")
         p.add_argument("--host", default="127.0.0.1")
@@ -429,6 +429,7 @@ def dispatch(argv):
         return None, options.json
     with file_lock(str(path)):
         project = Project.load(path, limits=limits, allow_linked=options.allow_linked)
+        project._workspace = Path.cwd()
         result, changed = project_command(project, cmd, args, detail=options.detail)
         if changed:
             project.save()
@@ -490,11 +491,12 @@ def project_command(project, cmd, args, *, detail="compact"):
         p = Parser(prog="vixl import")
         p.add_argument("path")
         p.add_argument("--name", default="import")
+        p.add_argument("--svg-mode", choices=["editable", "appearance", "auto"], default="editable")
         p.add_argument("--page", type=int, default=1)
         p.add_argument("--dpi", type=int, default=144)
         a = p.parse_args(args)
         return import_document(project, read_bounded(a.path, project.limits.max_asset_bytes),
-                               Path(a.path).suffix.lstrip("."), a.name, a.page, a.dpi), True
+                               Path(a.path).suffix.lstrip("."), a.name, a.page, a.dpi, a.svg_mode), True
     if cmd == "notes":
         from .review import notes
         p = Parser(prog="vixl notes")

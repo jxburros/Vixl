@@ -363,6 +363,17 @@ def assign_roles(op, rng):
     require(mode in ("light", "dark"), "mode must be light or dark")
     background = by_light[-1] if mode == "light" else by_light[0]
     ink = by_light[0] if mode == "light" else by_light[-1]
+    if op.get("policy") == "strict":
+        candidates = [c for c in parsed if c not in (background, ink)] or [ink]
+        accent = max(candidates, key=lambda c: to_polar(srgb_to_oklab(c[:3]))[1])
+        def contrast(c):
+            return contrast_ratio(c[:3], background[:3])
+        readable = [c for c in parsed if contrast(c) >= 4.5] or [ink]
+        roles = {"background": background, "surface": background, "ink": ink,
+                 "muted": min(readable, key=contrast), "accent": accent,
+                 "accent-text": accent if contrast(accent) >= 4.5 else ink,
+                 "on-accent": max(parsed, key=lambda c: contrast_ratio(c[:3], accent[:3]))}
+        return {**{k: hex_of(v) for k, v in roles.items()}, "_palette": palette if isinstance(palette, str) else "custom", "_mode": mode}
     white, black = (1.0, 1.0, 1.0, 1.0), (0.0, 0.0, 0.0, 1.0)
     if mode == "light" and relative_luminance(background[:3]) < 0.6:
         background = mix(background, white, 0.82)

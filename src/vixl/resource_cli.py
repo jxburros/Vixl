@@ -44,7 +44,7 @@ def standalone(cmd, args, limits):
     if cmd == "template" and a.action == "new":
         require(a.out, "Use template new NAME -o FILE")
         require(not Path(a.out).exists(), "Project already exists")
-        p = resources.create_template(a.name, pairs(a.set), limits=limits)
+        p = resources.create_template(a.name, pairs(a.set), limits=limits, workspace=Path.cwd())
         p.save(a.out)
         from .cli import remember
 

@@ -93,7 +93,7 @@ vixl shape heart --name mark --width 180 --height 180 --fill '#e76f51'
 vixl shape path --name curve --width 200 --height 100 --fill '#2563eb' --path 'M0 0 C0 100 200 100 200 0 L200 100 L0 100 Z'
 ```
 
-Paths retain a single editable contour with SVG `M L H V Q C Z` commands, including lowercase relative commands. Repeat the command before each coordinate set. Coordinates are in the layer's initial width/height; resizing scales that coordinate system. Arcs, shorthand commands, multiple contours and arbitrary SVG import are not supported. Raster previews sample curves with bounded antialiasing; SVG retains exact Bézier commands.
+Paths retain editable SVG geometry, including relative/repeated coordinates, arcs, smooth Bézier commands and multiple contours. Coordinates are in the layer's initial width/height; resizing scales that coordinate system. Pen handles and interpolated freehand paths, selection lassos and static SVG appearance import are described in the [studio guide](studio.md).
 
 Positions refer to the top-left of the transformed bounding box. Rotation expands that box, so align/constrain after rotating, or inspect `resolved_bounds` before positioning. For clean logo joins, use a single path or a deliberate pathfinder union/subtraction rather than overlapping rotated bars by guesswork.
 
@@ -129,3 +129,7 @@ MCP exposes `vixl_resources_list`, `vixl_resource_get`, `vixl_resource_add`, `vi
 ## Sizes, layouts and principle guidance (0.13)
 
 Named sizes (`vixl sizes`, `vixl_sizes_list`) and principled layouts (`vixl layout list`, `vixl_layouts_list`, operation `layout-apply`) extend these resources. Templates reproduce a fixed design. Layouts build a structured, seed-varied design for the actual canvas, with contrast-checked color roles and a modular type scale. Built-in guidance adds `typography`, `color`, `layout`, `accessibility`, `print`, `icon`, `motion` and `brush`. See [sizes and layouts](sizes-and-layouts.md) and [color and print](color-and-print.md).
+
+## Workspace studio resources
+
+The [studio guide](studio.md) adds eight modular templates, reusable shapes and containers, saved suites/effect workflows, strict palette tests, plugin packs and agent branch/merge collaboration. Workflow resource-list/get/save share one workspace catalog; palette-apply now defaults to strict roles (use policy accessible for derived contrast colors).

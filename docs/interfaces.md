@@ -196,7 +196,7 @@ my_provider = "my_package:Provider"
 
 A filter receives `(rgba_image_copy, effect_dict)` and returns a same-size Pillow RGBA image. Provider classes accept `(provider_name, configuration)` and expose `invoke(capability, request) -> dict`; see the HTTP gateway contract for request/result shapes. The provider instance exposes `.name`.
 
-Enable plugins explicitly with `vixl --plugins ...` or `vixl.plugins.enable_plugins()` in Python. Plugins are trusted Python code with the user's process privileges; they are **not sandboxed**. No plugin is imported from a project archive. Codec, layout, validator, and asset-source entry-point categories remain future work; built-in Pillow codecs and the current validator/layout engine cover those functions today.
+Enable plugins explicitly with `vixl --plugins ...` or `vixl.plugins.enable_plugins()` in Python. Plugins are trusted Python code with the user's process privileges; they are **not sandboxed**. No plugin is imported from a project archive. Trusted operation producers and declarative resource packs are described in [studio.md](studio.md). Codec, layout, validator, and asset-source entry-point categories remain future work; built-in Pillow codecs and the current validator/layout engine cover those functions today.
 
 ## New agent resources (0.11)
 
@@ -259,5 +259,9 @@ rotations, matrix transforms, and compound nonzero-winding paths (including hole
 shorthand path commands are converted to editable Bézier geometry. UTF-8 SVG files are limited
 to 4 MiB and existing document resource limits. Unsupported features fail before changing the
 document: text, images, gradients, CSS classes, clipping, filters, evenodd fills, rounded rectangles,
-group opacity and nonuniformly transformed strokes. Convert those features to plain paths first.
+group opacity and nonuniformly transformed strokes. This is the default `svg_mode="editable"`. Use `svg_mode="appearance"` to render supported self-contained static SVG while retaining the source, or `"auto"` to try editable then appearance. See [studio.md](studio.md) for support and input restrictions.
 Imports never fetch external resources. The original SVG element IDs become layer names.
+
+### Consolidated studio workflows
+
+`vixl mcp --tools compact --schema slim` exposes 12 document/operation/workflow/preview/import/export tools. Workflow actions include resource-list/get/save, shape-save, suite-use, palette-check, effect-run, group-list/define/show/apply/recover, branch-list/fork/status/merge and plugin-list/install/remove. REST allows the resource/test/effect actions while retaining fixed-project scope. `vixl_export_file` and REST export support HTML. Full contracts and examples: [studio.md](studio.md).

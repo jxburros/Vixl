@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## 0.16.0
+
+- Local contiguous/global wand, polygon/path lasso, pen handles/freehand curves and full SVG path syntax.
+- Portable custom palettes, strict role assignment and full-resolution palette compliance rules.
+- Eight modular templates, interchangeable fixed-size containers with rules/reflow/tests, and reusable saved shapes.
+- Seven starter design suites, custom suite scaffolding, five saved multi-tool effects and an offline studio tour.
+- Workspace project groups with checked bulk edits and durable rollback recovery; independent agent branches with field-level three-way merges and explicit conflicts.
+- Versioned declarative plugin packs with namespaces, dependency/cycle validation, atomic upgrades/removal; opt-in trusted Python operation extensions.
+- Static SVG appearance/auto import with original-source retention, and standalone responsive HTML export.
+- Consolidated workflow actions and a 12-tool compact MCP profile; existing profiles/tools remain available.
+
 ## 0.15.0
 
 - Cross-platform agent distribution: base-package MCP dependency, PyPI Trusted Publishing workflow,

@@ -1,9 +1,10 @@
 """One workspace-scoped production API shared by CLI, REST and MCP."""
 
 from pathlib import Path
+from .studio import ACTIONS as STUDIO_ACTIONS
 
 from .automation import bounded_object
-from .errors import require
+from .errors import require, VixlError
 
 ACTIONS = {
     "check": ({"suite", "mode", "variables", "artboard"}, {"suite"}),
@@ -27,6 +28,8 @@ ACTIONS = {
 }
 
 
+ACTIONS.update(STUDIO_ACTIONS)
+
 def describe():
     return {
         "version": 1,
@@ -42,6 +45,15 @@ def dispatch(session, action, request, document=None):
     allowed, required = ACTIONS[action]
     bounded_object(request, allowed, "Unknown workflow request field")
     require(required <= request.keys(), "Missing workflow fields", required=sorted(required))
+    for field in ("dry_run", "replace"):
+        if field in request:
+            require(type(request[field]) is bool, f"{field} must be boolean")
+    if action in STUDIO_ACTIONS:
+        from .studio import dispatch as studio_dispatch
+        try:
+            return studio_dispatch(session, action, request, document)
+        except (KeyError, TypeError, ValueError, OverflowError) as exc:
+            raise VixlError("invalid_request", f"Invalid {action} request: {exc}") from exc
     if action == "plan":
         return plan(request["spec"])
     if action.startswith("film-"):

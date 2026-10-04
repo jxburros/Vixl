@@ -70,7 +70,7 @@ def test_editable_bezier_path_resize_roundtrip_and_atomic_rejection(tmp_path):
     assert b"C0 100 100 100 100 0" in svg and b'viewBox="0 0 100 100"' in svg
     before = deepcopy(p.state)
     with pytest.raises(VixlError):
-        p.apply({"type": "shape", "shape": "path", "path": "M0 0 A40 40 0 0 0 100 100"})
+        p.apply({"type": "shape", "shape": "path", "path": "M0 0 A40 40 0 0 0"})
     assert p.state == before
 
 
