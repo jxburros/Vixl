@@ -1,0 +1,23 @@
+{
+  "width": 192,
+  "height": 48,
+  "loop": 0,
+  "frames": [
+    {
+      "name": "a",
+      "duration": 300,
+      "x": 0,
+      "y": 0,
+      "width": 96,
+      "height": 48
+    },
+    {
+      "name": "b",
+      "duration": 300,
+      "x": 96,
+      "y": 0,
+      "width": 96,
+      "height": 48
+    }
+  ]
+}

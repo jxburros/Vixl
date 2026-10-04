@@ -1,0 +1,87 @@
+{
+  "width": 720,
+  "height": 288,
+  "loop": 0,
+  "frames": [
+    {
+      "name": "idle-1",
+      "duration": 400,
+      "x": 0,
+      "y": 0,
+      "width": 144,
+      "height": 144
+    },
+    {
+      "name": "idle-2",
+      "duration": 400,
+      "x": 144,
+      "y": 0,
+      "width": 144,
+      "height": 144
+    },
+    {
+      "name": "walk-1",
+      "duration": 140,
+      "x": 288,
+      "y": 0,
+      "width": 144,
+      "height": 144
+    },
+    {
+      "name": "walk-2",
+      "duration": 140,
+      "x": 432,
+      "y": 0,
+      "width": 144,
+      "height": 144
+    },
+    {
+      "name": "walk-3",
+      "duration": 140,
+      "x": 576,
+      "y": 0,
+      "width": 144,
+      "height": 144
+    },
+    {
+      "name": "walk-4",
+      "duration": 140,
+      "x": 0,
+      "y": 144,
+      "width": 144,
+      "height": 144
+    },
+    {
+      "name": "attack-1",
+      "duration": 120,
+      "x": 144,
+      "y": 144,
+      "width": 144,
+      "height": 144
+    },
+    {
+      "name": "attack-2",
+      "duration": 60,
+      "x": 288,
+      "y": 144,
+      "width": 144,
+      "height": 144
+    },
+    {
+      "name": "attack-3",
+      "duration": 200,
+      "x": 432,
+      "y": 144,
+      "width": 144,
+      "height": 144
+    },
+    {
+      "name": "attack-4",
+      "duration": 200,
+      "x": 576,
+      "y": 144,
+      "width": 144,
+      "height": 144
+    }
+  ]
+}
