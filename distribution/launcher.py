@@ -8,15 +8,56 @@ import sys
 
 import updater
 
+REGISTRY_KEY = r"Software\Vixl"  # Written by the installer: InstallRoot = {app}
+
+
+def is_install_root(path):
+    return (Path(path) / "install.json").is_file() or (Path(path) / "versions").is_dir()
+
+
+def registry_install_root():
+    """The installer-recorded root, or None. Never raises."""
+    try:
+        import winreg
+
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, REGISTRY_KEY) as key:
+            value, _ = winreg.QueryValueEx(key, "InstallRoot")
+        return str(value) if value else None
+    except (ImportError, OSError, ValueError):
+        return None
+
+
+def resolve_root(executable, environ, registry=None):
+    r"""Find the managed installation this launcher copy belongs to.
+
+    The normal copy lives at <root>\bin\vixl.exe. The installer may also place a copy
+    in %LOCALAPPDATA%\Microsoft\WindowsApps (on PATH for already-running processes);
+    that copy finds the root through VIXL_HOME, the root a parent launcher passed to
+    its children, the installer's registry record, then the default per-user folder.
+    """
+    beside = Path(executable).resolve().parent.parent
+    if is_install_root(beside):
+        return beside
+    for name in ("VIXL_HOME", "VIXL_MANAGED_ROOT"):
+        if environ.get(name):
+            return Path(environ[name])
+    recorded = registry() if registry else None
+    if recorded and is_install_root(recorded):
+        return Path(recorded)
+    if environ.get("LOCALAPPDATA"):
+        return Path(environ["LOCALAPPDATA"]) / "Programs" / "Vixl"
+    return beside
+
 
 def main():
-    root = Path(sys.executable).resolve().parent.parent
     args = sys.argv[1:]
     try:
         if args[:1] == ["--vixl-install"]:
+            # The installer always runs <root>\bin\vixl.exe, before install.json exists.
             updater.require(len(args) == 2, "Installer requires a version")
-            updater.initialize(root, args[1])
+            updater.initialize(Path(sys.executable).resolve().parent.parent, args[1])
             return 0
+        root = resolve_root(sys.executable, os.environ, registry_install_root)
         if args == ["--vixl-background-update"]:
             updater.background(root)
             return 0

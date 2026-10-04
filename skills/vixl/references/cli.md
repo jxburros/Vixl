@@ -23,6 +23,35 @@ Agent conventions:
 - Every editing command below compiles to a canonical operation (see `operations.md`), so
   `vixl apply ops.json` can replace any sequence of them atomically.
 
+## Finding vixl
+
+If `vixl --version` fails with "command not found", check the standard locations before asking
+the user where Vixl is:
+
+| Install | Location | Check |
+| --- | --- | --- |
+| Windows installer | `%LOCALAPPDATA%\Programs\Vixl\bin\vixl.exe` | Git Bash: `"$LOCALAPPDATA/Programs/Vixl/bin/vixl.exe" --version`; PowerShell: `& "$env:LOCALAPPDATA\Programs\Vixl\bin\vixl.exe" --version`; cmd: `"%LOCALAPPDATA%\Programs\Vixl\bin\vixl.exe" --version` |
+| Windows installer alias | `%LOCALAPPDATA%\Microsoft\WindowsApps\vixl.exe` | Same launcher; that folder is on PATH by default on Windows 10/11, so terminals opened before installation usually find `vixl` through it |
+| pip / source | the Python environment | `python -m vixl --version` (use `python -m vixl` wherever this page says `vixl`) |
+
+The installer adds `%LOCALAPPDATA%\Programs\Vixl\bin` to the user PATH, but processes that were
+already running (a desktop app and the terminals or agents it spawns) keep their old PATH until
+restarted. Prepend the folder for the current session instead:
+
+```bash
+# Git Bash (PATH uses /c/... form there, so convert the C:\ path with cygpath)
+export PATH="$(cygpath -u "$LOCALAPPDATA")/Programs/Vixl/bin:$PATH"
+```
+
+```powershell
+$env:Path = "$env:LOCALAPPDATA\Programs\Vixl\bin;$env:Path"   # PowerShell
+```
+
+```bat
+rem cmd
+set "PATH=%LOCALAPPDATA%\Programs\Vixl\bin;%PATH%"
+```
+
 ## Documents and inspection
 
 | Command | Effect |
