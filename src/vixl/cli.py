@@ -57,8 +57,12 @@ Automate:  apply FILE|- [--dry-run], run SCRIPT, batch GLOB --run SCRIPT --outpu
            each layer --name PATTERN -- COMMAND, preset save|apply|show NAME,
            transaction begin|commit|rollback, assert RULE, validate [PROFILE]
 Resources: commands, shapes, sizes [--category print], palette list|show|add|apply,
-           template list|show|add|new|apply, layout list|show|apply NAME [--seed N] [--set title=…],
-           guidance list|show|add|apply|import|remove, font list|import, providers, models
+           template list|show|add|new|apply, layout list|show|apply NAME [--seed N|random] [--set title=…],
+           guidance list|show|add|apply|import|remove, providers, models
+Type:      fonts [--category serif] [--mood M], font show FAMILY, font pairings [--mood M] [--for poster],
+           font pairing NAME, font principles, font install FAMILY [--weight 700] [--role heading|body], font pair NAME|random,
+           font use NAME --role heading|body, font list|import
+Dice:      roll [--for poster] [--mood M] [--size NAME] [--seed N|random] [--lock palette=sage]
 Color:     color [info] COLOR…, color convert COLOR --to oklch|cmyk|…, color harmony COLOR --scheme triadic,
            color scale COLOR, color mix A B, color contrast FG BG, color names QUERY,
            palette-generate NAME COLOR [--scheme scale|triadic|…], type-scale --base 16 --ratio golden
@@ -235,11 +239,15 @@ def dispatch(argv):
                     | {"filter"}
                     | {"workflow"}
                     | set(
-                        "new open save status inspect describe layers effects manifest dependencies reproduce schema check batch convert render export export-screens export-animation spacing pixels animation info sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert validate preset ai ask generate detect ocr serve mcp update updates commands shapes palette template guidance font providers models color sizes layout layouts brushes easings timeline export-timeline timeline-sheet export-icons".split()
+                        "new open save status inspect describe layers effects manifest dependencies reproduce schema check batch convert render export export-screens export-animation spacing pixels animation info sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert validate preset ai ask generate detect ocr serve mcp update updates commands shapes palette template guidance font fonts roll providers models color sizes layout layouts brushes easings timeline export-timeline timeline-sheet export-icons".split()
                     )
                 )
             }
         ), options.json
+    if cmd in ("fonts", "roll") or (cmd == "font" and args and args[0] in ("show", "pairings", "pairing", "principles")):
+        from .resource_cli import font_standalone
+
+        return font_standalone(cmd, args), options.json
     if cmd in ("color", "colors", "sizes", "layouts", "brushes", "easings") or (
         cmd == "layout" and (not args or args[0] in ("list", "show"))
     ):
@@ -251,7 +259,9 @@ def dispatch(argv):
             items = catalog()
             if len(args) == 2:
                 require(args[1] in items["layouts"], f"Unknown layout {args[1]!r}; see vixl layout list")
-                return {"name": args[1], **items["layouts"][args[1]], "options": items["options"]}, options.json
+                from .layouts import describe
+
+                return {"name": args[1], **describe(args[1]), "options": items["options"]}, options.json
             return items, options.json
         return feature_standalone(cmd, args), options.json
     if cmd in ("palette", "template", "guidance"):
@@ -437,7 +447,9 @@ def command_help(cmd, args):
         "each": "each layer [--name PATTERN] [--type TYPE] -- COMMAND",
         "serve": "serve [--host HOST] [--port PORT] [--token-env ENV]",
         "preset": "preset save|apply|show NAME [--set KEY=VALUE]",
-        "layout": "layout list | show NAME | apply NAME [--seed N] [--set title=TEXT] [--palette NAME] "
+        "fonts": "fonts [--category serif] [--role heading] [--mood elegant] [--query TEXT]",
+        "roll": "roll [--for poster] [--mood playful] [--size NAME|WxH] [--seed N|random] [--lock palette=sage]",
+        "layout": "layout list | show NAME | apply NAME [--seed N|random] [--set title=TEXT] [--unfilled blank|omit] [--palette NAME] "
         "[--mode light|dark] [--type-scale golden] [--density airy|balanced|dense] [--align left|center|right] "
         "[--accent rule|bar|dot|block|outline|none] [--prefix P] [--replace]",
         "timeline": "timeline (inspect) | timeline set [--duration 3s] [--fps 30] [--loop N] [--clear]",

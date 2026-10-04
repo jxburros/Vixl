@@ -37,7 +37,7 @@ Built-in templates: `social-square`, `story`, `thumbnail`, `poster`, `business-c
 ```bash
 vixl template show social-square
 vixl template new social-square -o campaign.vixl --set title='New launch' --set subtitle='Available today'
-vixl template new logo -o logo.vixl --set accent='#e76f51'
+vixl template new logo -o logo.vixl --set accent='#e76f51'   # or omit accent to roll one
 vixl template add my-card card-template.json
 vixl template apply my-card --set title='Next variant'
 ```
@@ -55,6 +55,8 @@ vixl template apply my-card --set title='Next variant'
   ]
 }
 ```
+
+Templates fix structure, not content or look. Built-in templates have no sample copy: an unsupplied `title` or `subtitle` renders as a `[Headline]`/`[Subheading]` blank that `check` reports as an error. Unsupplied colors are rolled from a seeded palette with checked contrast (`template-apply` accepts `seed`, an integer or `"random"`; the default derives from the template and variables). The result reports `rolled`, `seed` and `blanks`. Custom templates can do the same with `"blanks": {"title": "[Headline]"}` and `"roll": {"accent": "accent"}`, which map variables to placeholder text or to a color role (`background`, `surface`, `ink`, `muted`, `accent`, `accent-text`, `on-accent`).
 
 Parameters can replace strings or whole typed values. Templates contain bounded canonical operations, not scripts or executable code. They cannot load files, import fonts, or recursively invoke templates. Import image/font assets explicitly first. The user library is stored in `~/.config/vixl/resources.json`; set `VIXL_RESOURCES` to isolate it in automation.
 

@@ -37,7 +37,9 @@ Use submit/start/status for long jobs. An uncertain external generation request 
 not be blindly repeated; preserve its remote job identity.
 
 - **Named sizes** — `vixl_document_create(size="letter", bleed=true)` / `vixl new business-card --bleed`; 150 print, social, web, ad, video, slide, icon and logo sizes with dpi, bleed, safe area and guides.
-- **Layouts** — 33 principled, seed-varied layouts (`layout-apply`) that adapt to the canvas and set up contrast-checked color roles, a type scale and grids. Use them when a brief gives you free rein.
+- **Layouts** — 33 principled, seed-varied layouts (`layout-apply`) that adapt to the canvas and set up contrast-checked color roles, a type scale and grids. Use them when a brief gives you free rein. They are fill-in-the-blank forms: `vixl layout show NAME` / `vixl_layouts_list` lists each layout's slots and what each needs. Fill them all; an unfilled slot renders as a `[Label]` blank that `check` reports as an error, and a slot the layout doesn't use is rejected rather than silently dropped. Templates work the same way.
+- **Typefaces** — the bundled font is a proofing fallback (`check` warns about it). Pick real type from a researched catalog of open-licensed families and curated heading/body pairings: `vixl font pairings --mood editorial` / `vixl_fonts`, then `vixl font pair NAME|random` / `vixl_font_pair` downloads, embeds and sets them as the document typography that layouts use. `vixl font principles` explains how to combine fonts.
+- **Dice** — when the brief is thin, roll instead of defaulting: `vixl roll --for poster` / `vixl_roll` picks a pairing, a mood-consistent palette, a layout and its parameters from one seed; layouts and templates accept `seed: "random"`. Roll a few, preview, keep the seed you like, and `--lock` choices you want fixed.
 - **Color language** — `oklch()`, `lab()`, `cmyk()`, `color(display-p3 …)`, `kelvin()`, `color-mix()`, `lighten(@brand, 10%)` … everywhere; `vixl_color` for harmonies, scales and contrast; `palette-generate`.
 - **Print** — CMYK PDF/TIFF/JPEG (ICC profile or GCR + ink limit), PDF, ICO, icon sets, dpi, soft proofs, color-blindness simulation, `print` and `color_vision` checks.
 - **Brushes** — editable paint layers with 17 brushes (`paint`, `paint-layer`, `brush-define`).
@@ -75,7 +77,10 @@ Set `VIXL_NO_UPDATE=1` in automation so the Windows auto-updater never runs mid-
 0. **Start right** — for a new piece, create it from a named size (`size="instagram-portrait"`,
    `"letter"` with `bleed`, `"favicon"`, `"logo-horizontal"` …) rather than guessed pixels. If the brief
    is open-ended, apply a fitting layout (`layout-apply`) and refine it instead of improvising a
-   composition from scratch; vary `seed` to explore alternatives.
+   composition from scratch. Choose a font pairing first (`font pair`), fill every slot the layout
+   lists with real copy, and when the brief leaves the look open, roll (`roll`, `seed: "random"`) a few
+   times and compare previews. To fill blanks after a first pass, re-apply with the copy,
+   `replace: true` and the reported `seed` so the composition stays the same.
 1. **Orient** — inspect before editing. MCP: `vixl_document_inspect()` returns a compact summary
    (one line per layer with `bounds`; `detail="full"` for every field, `target=` for one layer).
    CLI: `vixl -p F.vixl inspect --json` / `vixl layers`. Note canvas size, layer names/IDs and
@@ -124,12 +129,13 @@ vixl_export_file(path="poster.png")
 
 ```text
 vixl_document_create(path="spring.vixl", size="instagram-portrait")
+vixl_font_pair(pairing="random", mood="friendly")             # heading + body fonts become the document typography
 vixl_operations_apply(operations=[{"type":"layout-apply","name":"split-screen","title":"Spring collection",
   "subtitle":"New colors, same perfect fit.","label":"Just landed","cta":"Shop now","palette":"spring","seed":11}])
 vixl_import_image(path="photos/hero.jpg", name="hero")       # returns {"asset": "assets/…", …}
 vixl_operations_apply(operations=[{"type":"replace-contents","target":"image","asset":"assets/…"},
   {"type":"remove","target":"hero"}])                         # the photo now fills the layout's frame
-vixl_check() ; vixl_render_preview() ; vixl_export_file(path="spring.png")
+vixl_check() ; vixl_render_preview() ; vixl_export_file(path="spring.png")   # check fails while blanks remain
 ```
 
 **CLI** (quote `#` colors; every edit autosaves)

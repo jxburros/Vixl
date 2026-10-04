@@ -140,8 +140,9 @@ def compile_feature(cmd, args):
     if cmd == "layout":
         p.add_argument("action", choices=["apply"])
         p.add_argument("name")
-        p.add_argument("--seed", type=int)
-        p.add_argument("--set", action="append", help="Content: title=…, subtitle=…, body=…, label=…, cta=…, caption=…, items=…, image=ASSET")
+        p.add_argument("--seed", type=lambda v: v if v == "random" else int(v), help="Integer or 'random'")
+        p.add_argument("--set", action="append", help="Fill a slot: title=…, label=…, image=ASSET (vixl layout show NAME lists the slots)")
+        p.add_argument("--unfilled", choices=["blank", "omit"], help="Show unfilled slots as [Label] blanks (default) or leave them out")
         p.add_argument("--palette")
         p.add_argument("--colors", type=json.loads)
         p.add_argument("--mode", choices=["light", "dark"])
@@ -273,7 +274,9 @@ def project_feature(project, cmd, args):
 
         if len(args) == 2:
             require(args[1] in LAYOUTS, f"Unknown layout {args[1]!r}")
-            item = catalog()["layouts"][args[1]]
+            from .layouts import describe
+
+            item = describe(args[1])
             return {"name": args[1], **item, "last_applied": project.state.get("layout")}, False
         return catalog(), False
     if cmd == "export-timeline":

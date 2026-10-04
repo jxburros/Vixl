@@ -12,7 +12,8 @@ import numpy as np
 from .errors import require
 from .model import finite
 
-CHECKS = ("bounds", "overlap", "contrast", "safe_area", "legibility")
+CHECKS = ("bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "fonts")
+FALLBACK_FONT = "DejaVuSans.ttf"
 OPTIONAL_CHECKS = ("print", "color_vision")
 PERCENT = re.compile(r"^(-?\d+(?:\.\d+)?)%$")
 
@@ -272,6 +273,36 @@ def check_design(
                     [item],
                     thumbnail_size=round(effective, 2),
                 )
+
+    if "blanks" in checks:
+        registry = candidate.state.get("blanks", {})
+        for item in layers:
+            entry = registry.get(item["id"])
+            if not entry:
+                continue
+            layer = resolved[item["id"]]
+            unfilled = layer.get("text") == entry["text"] if "text" in entry else layer.get("asset") == entry.get("asset")
+            if unfilled:
+                issue(
+                    "blanks",
+                    "error",
+                    f"{item['name']!r} is an unfilled {entry['slot']!r} blank ({entry['hint']}); supply the copy "
+                    "or remove the layer",
+                    [item],
+                    slot=entry["slot"],
+                )
+
+    if "fonts" in checks:
+        fallback = [item for item in texts if resolved[item["id"]].get("font", FALLBACK_FONT) == FALLBACK_FONT]
+        if fallback:
+            names = ", ".join(repr(x["name"]) for x in fallback[:5]) + (" …" if len(fallback) > 5 else "")
+            issue(
+                "fonts",
+                "warning",
+                f"{len(fallback)} text layer(s) use the bundled fallback font, which is for proofing only ({names}). "
+                "Choose typefaces: vixl font pairings / font pair, or font install.",
+                fallback,
+            )
 
     if "print" in checks:
         _print_checks(candidate, c, resolved, local_bounds, bounds, layers, content, texts, text_scales, issue, ink_limit, min_ppi)

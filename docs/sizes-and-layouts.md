@@ -41,7 +41,7 @@ Fixed templates make every adopter look alike. A layout is a composition system 
 - **Spacing** — margins from the density (`airy`, `balanced`, `dense`), never inside the safe area, and gaps on a spacing unit.
 - **Composition** — alignment, focal placement, split proportions, accent device (`rule`, `bar`, `dot`, `block`, `outline`, `none`) and button shape.
 
-Seeds are deterministic. Without one, the seed comes from the content and canvas, so different copy gives a different but stable variation. The applied choices are recorded in `state.layout` (and reported in the change summary), so you can re-roll with another `seed` or pin any choice explicitly.
+Seeds are deterministic. Without one, the seed comes from the content and canvas, so different copy gives a different but stable variation. The applied choices are recorded in `state.layout` (and reported in the change summary), so you can re-roll with another `seed` (or `"random"`) or pin any choice explicitly.
 
 | Layout | Principles | Best for |
 | --- | --- | --- |
@@ -83,7 +83,19 @@ vixl layout apply hero-statement --set title='Spring collection' --set subtitle=
 vixl check
 ```
 
-Content keys are `title`, `subtitle`, `body`, `label`, `cta`, `caption`, `items` (newline-separated lines; `Name | Price` rows for price lists, `Heading: text` for F-pattern) and `image` (an embedded asset ID). Without an image, layouts place an editable placeholder frame; swap it with `replace-contents`. `prefix` namespaces layer names, `replace: true` removes the previous layout's layers, `transparent: true` skips the background, and `font`/`display_font` use registered fonts.
+### Slots: fill in the blanks
+
+Each layout is a form. `vixl layout show NAME` (or `vixl_layouts_list`) lists its slots, with a label and a hint for what each one means in that layout. In `event-poster`, for example, `label` is the date and `body` is one detail per line. Slot keys are `title`, `subtitle`, `body`, `label`, `cta`, `caption`, `items` (newline-separated; `Name | Price` rows for price lists, `Heading: text` for F-pattern) and `image` (an embedded asset ID).
+
+- **Unfilled slots are blanks, not sample copy.** A slot the composition needs renders as a visible `[Label]` placeholder (`[Date]`, `[Time]`, `[Action]`) and is recorded in `state.blanks` and in the layout's `blanks` list. `check` reports every unfilled blank as an error, so placeholder text can never ship silently. An image slot without an asset draws a placeholder frame that is also a blank until you pass `image` or use `replace-contents`. Pass `unfilled: "omit"` to leave unfilled slots out instead.
+- **Unused slots are errors.** Copy for a slot the layout does not read on this canvas, such as `subtitle` on `event-poster`, fails with `unused_slot` and lists the slots it does use, instead of being dropped.
+- **Fill blanks by re-applying.** Re-apply with the copy, `replace: true` and the `seed` the first pass reported. The composition stays the same and type is sized for the real copy. Editing a blank layer's text directly also clears it.
+
+`prefix` namespaces layer names, `replace: true` removes the previous layout's layers, `transparent: true` skips the background, and `font`/`display_font` use registered fonts. Without them, layouts use the document typography set by `font pair`, or the proofing fallback font, which `check` flags.
+
+### Rolling the dice
+
+`seed` accepts `"random"`. Choices you do not make (palette, mode, type scale, density, alignment, accent) are rolled from the seed and listed in the layout record's `rolled`. When most of them were rolled, the result says so and suggests exploring: apply with `seed: "random"` a few times, preview, and keep the seed you like. `vixl roll` (`vixl_roll`) rolls a whole direction at once: a font pairing, a palette whose mood fits it, a layout suited to the purpose and canvas, and its parameters, returned as a ready `layout-apply` operation. Use `--lock` to keep any choice fixed while re-rolling the rest.
 
 Standalone design-system pieces:
 

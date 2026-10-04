@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+- **Fill-in-the-blank layouts and templates.** Layouts and built-in templates no longer render
+  invented sample copy. Unfilled slots appear as visible `[Label]` placeholders recorded in
+  `state.blanks`, and the new default `blanks` check reports them as errors. `unfilled: "omit"`
+  leaves them out instead. Copy for a slot a layout doesn't use now fails with `unused_slot` and
+  lists the slots it does use, instead of being silently dropped. `layout show` / `vixl_layouts_list`
+  describe each layout's slots. Built-in templates roll their colors from a seeded palette unless
+  colors are supplied; custom templates can declare `blanks` and `roll`.
+- **Typefaces.** A researched catalog of open-licensed Google Fonts families (classification,
+  weights, x-height, width, contrast, era, mood, roles, misuse cautions), curated heading/body
+  pairings with the reasoning behind each, and a pairing-principles guide (`vixl fonts`,
+  `font show`, `font pairings`, `font principles`, MCP `vixl_fonts`, REST `/typefaces`).
+  `font install FAMILY --weight N` and `font pair NAME|random` download on request, cache per user,
+  embed and register fonts, and set the document typography (`font-register` gains `role`) that
+  layouts use by default. The bundled font is now a proofing fallback, and a new default `fonts`
+  check warns when text uses it.
+- **Dice.** `vixl roll` / `vixl_roll` / `GET /roll` rolls a coherent direction from one seed: a
+  pairing, a mood-consistent palette, a layout suited to the purpose and canvas, and its parameters,
+  returned as a ready `layout-apply` operation. Choices can be locked. Layouts and templates accept
+  `seed: "random"`, record which choices were rolled, and suggest exploring when parameters were thin.
+
 - Add persistent design check suites with structural/pixel baselines, explicit time coverage,
   measured failures and needs-review outcomes. Checked actions commit only when suites pass;
   reusable repairs cannot modify their contracts.

@@ -12,6 +12,8 @@ and grid guides, so an agent can keep refining instead of starting from a fixed 
 from copy import deepcopy
 import math
 import random
+import re
+import secrets
 import zlib
 
 from PIL import Image, ImageDraw
@@ -94,11 +96,19 @@ class Builder:
         require(self.align in ("left", "center", "right"), "align must be left, center or right")
         self.accent = op.get("accent") or self.rng.choice(layout.get("accents", ACCENTS))
         require(self.accent in ACCENTS, f"accent must be one of {', '.join(ACCENTS)}")
-        content = dict(layout.get("defaults", {}))
-        content.update({k: op[k] for k in CONTENT_KEYS if k in op})
-        self.content = content
-        self.font = op.get("font")
-        self.display_font = op.get("display_font", self.font)
+        # Content is fill-in-the-blank: only what the caller supplied is real copy. A slot the
+        # design needs but nobody filled renders as a visible "[Label]" placeholder and is
+        # recorded as a blank, so it can never ship silently as invented sample text.
+        self.content = {k: op[k] for k in CONTENT_KEYS if k in op}
+        self.slots = slot_spec(layout)
+        self.unfilled = op.get("unfilled", "blank")
+        require(self.unfilled in ("blank", "omit"), "unfilled must be blank or omit")
+        self.read = set()
+        self.placeholders = {}
+        self.image_blanks = []
+        typography = project.state.get("typography") or {}
+        self.font = op.get("font") or typography.get("body")
+        self.display_font = op.get("display_font") or typography.get("heading") or self.font
 
     # -- helpers ---------------------------------------------------------------------------
 
@@ -106,8 +116,15 @@ class Builder:
         return f"{self.prefix}{base}"
 
     def get(self, key, default=""):
-        value = self.content.get(key, default)
-        return value if value is not None else default
+        self.read.add(key)
+        if key in self.content:
+            value = self.content[key]
+            return value if value is not None else default
+        slot = self.slots.get(key)
+        if key != "image" and slot and slot["blank"] and self.unfilled == "blank":
+            self.placeholders[key] = slot["placeholder"]
+            return slot["placeholder"]
+        return default
 
     def add(self, op):
         self.ops.append(op)
@@ -216,6 +233,7 @@ class Builder:
         if asset:
             self.project.image(asset)
         else:
+            self.image_blanks.append(layer)
             scale = min(1, 800 / max(w, h))
             pw, ph = max(2, round(w * scale)), max(2, round(h * scale))
             top = rgba(resolve_color(self.colors["surface"], self.project.state))
@@ -690,7 +708,7 @@ def _diagonal_band(b):
 
 def _typographic_poster(b):
     b.background()
-    words = b.get("title").split()
+    words = b.get("title").replace("[", "").replace("]", "").split()
     hero = (words[0] if words else "TYPE").upper()
     rest = " ".join(words[1:])
     entries = [("caption", b.label_text(), "label"), ("headline", rest, "headline"), ("body", b.get("subtitle"), "subtitle"), ("caption", b.get("caption"), "caption")]
@@ -782,7 +800,7 @@ def _letterhead(b):
     y = b.T
     mark = b.sizes["title"] * 1.4
     b.rect("logo-mark", b.L, y, mark, mark, "@accent", shape=b.rng.choice(["ellipse", "rounded-rectangle", "hexagon"]), radius=round(mark * 0.2))
-    initials = "".join(word[0] for word in b.get("title").split()[:2]).upper()
+    initials = initials_of(b.get("title"))
     if initials:
         b.text(round(mark * 0.42), initials, b.L, y + mark * 0.27, mark, name="logo-initials", color="@on-accent", align="center", display=True)
     b.text("title", b.get("title"), b.L + mark + b.unit * 3, y + mark * 0.12, b.cw * 0.5, name="name", align="left", max_height=mark)
@@ -845,7 +863,7 @@ def _slide_content(b):
 def _mark(b, size, x, y):
     shape = b.op.get("mark") or b.rng.choice(["ellipse", "rounded-rectangle", "hexagon", "diamond", "shield", "octagon"])
     b.rect("mark", x, y, size, size, "@accent", shape=shape, radius=round(size * 0.24))
-    initials = b.get("label") or "".join(word[0] for word in b.get("title").split()[:2]).upper()
+    initials = b.get("label") or initials_of(b.get("title"))
     if initials:
         glyph = round(size * (0.5 if len(initials) == 1 else 0.38))
         # Shields and diamonds carry visual weight low/centered; nudge the optical center.
@@ -929,7 +947,7 @@ def _emblem(b):
     b.add({"type": "text", "name": layer, "text": name, "size": size, "color": "@on-accent", "x": round(x), "y": round(y), **({"font": b.display_font} if b.display_font else {})})
     b.add({"type": "text-layout", "target": layer, "width": round(d), "height": round(d), "path": points})
     b.created.append(layer)
-    initials = b.get("label") or "".join(word[0] for word in b.get("title").split()[:2]).upper()
+    initials = b.get("label") or initials_of(b.get("title"))
     b.glyphs(round(d * (0.26 if len(initials) == 1 else 0.19)), initials, b.W / 2, b.H / 2 - d * 0.02, "initials")
     if b.get("subtitle"):
         b.glyphs(max(6, round(d * 0.04)), b.get("subtitle").upper(), b.W / 2, y + d * 0.66, "tagline")
@@ -948,7 +966,7 @@ def _app_icon(b):
     b.rect("icon-background", 0, 0, b.W, b.H, "@accent", radius=radius)
     b.add({"type": "layer-style", "target": b.name("icon-background"), "name": "gradient-overlay", "settings": {"start": "lighten(@accent, 8%)", "end": "darken(@accent, 12%)", "direction": "vertical"}})
     keyline = s * 0.62
-    glyph = b.get("label") or (b.get("title")[:1].upper() if b.get("title") else "")
+    glyph = b.get("label") or initials_of(b.get("title"))[:1]
     if glyph:
         size = round(keyline * (0.82 if len(glyph) == 1 else 0.5))
         b.glyphs(size, glyph, b.W / 2, b.H / 2, "glyph")
@@ -1081,8 +1099,108 @@ def _bento_grid(b):
         b.button(b.get("cta"), info[0] + info[2] - pad, info[1] + info[3] - pad - b.sizes["body"] * 2.3, align="right")
 
 
-def _layout(fn, description, principles, best_for, defaults, **extra):
-    return {"build": fn, "description": description, "principles": principles, "best_for": best_for, "defaults": defaults, **extra}
+def _layout(fn, description, principles, best_for, examples, **extra):
+    """``examples`` show the kind and length of copy each slot expects; they are never rendered."""
+    return {"build": fn, "description": description, "principles": principles, "best_for": best_for, "examples": examples, **extra}
+
+
+def initials_of(text):
+    """Up to two initials from real words, ignoring placeholder brackets and punctuation."""
+    return "".join(word[0] for word in re.findall(r"[^\W_]+", str(text))[:2]).upper()
+
+
+SLOT_TEXT = {
+    "title": ("Headline", "The main message in a few strong words"),
+    "subtitle": ("Subheading", "One line that supports or explains the headline"),
+    "body": ("Body", "Supporting copy: a sentence or short paragraph"),
+    "label": ("Kicker", "A short eyebrow label set above the headline"),
+    "cta": ("Action", "A two- or three-word call to action, shown as a button"),
+    "caption": ("Caption", "A small supporting note"),
+    "items": ("Items", "One item per line"),
+    "image": ("Image", "An embedded image asset id; without one a placeholder frame is drawn"),
+}
+# Layout-specific meaning for slots: (label, hint[, placeholder]). Placeholders keep the shape
+# the layout parses (one detail per line, "item | price") so the blank composition is honest.
+SLOT_OVERRIDES = {
+    "event-poster": {"title": ("Event name", "What the event is called"), "label": ("Date", "The key fact, usually day and date"), "body": ("Details", "One detail per line: time, place, extras", "[Time]\n[Place]\n[Detail]"), "cta": ("Action", "What to do, e.g. RSVP"), "caption": ("Link", "Website, handle or contact")},
+    "big-number": {"title": ("Number", "The statistic itself, short (e.g. a percentage)"), "label": ("Metric", "What the number measures"), "subtitle": ("Context", "A sentence that gives the number meaning"), "body": ("Source", "Where the number comes from")},
+    "quote-card": {"title": ("Quote", "The quotation, without quote marks"), "subtitle": ("Attribution", "Who said it, and their role")},
+    "framed": {"label": ("Document type", "e.g. what the certificate or invitation is"), "title": ("Name", "Recipient or honoree"), "subtitle": ("Reason", "Why it is presented"), "body": ("Date line", "When or where"), "caption": ("Signature line", "Who signs, and the date")},
+    "product-card": {"label": ("Badge", "A short tag such as New or Sale"), "title": ("Product name", "The product's name"), "body": ("Benefit", "One or two lines on the benefit"), "caption": ("Price", "The price, formatted for the market")},
+    "letterhead": {"title": ("Organization", "The organization's name"), "subtitle": ("Contact", "Contact details separated by |"), "caption": ("Address", "Footer address line"), "body": ("Letter body", "Optional body text")},
+    "business-card": {"title": ("Name", "The person's name"), "subtitle": ("Role", "Job title"), "body": ("Contact", "Contact details separated by |")},
+    "slide-title": {"title": ("Presentation title", "The talk or deck title"), "subtitle": ("Subtitle", "Subtitle or speaker"), "caption": ("Footer", "Organization · date")},
+    "slide-content": {"title": ("Slide heading", "One idea per slide"), "items": ("Points", "One point per line, parallel in form", "[Point]\n[Point]\n[Point]"), "caption": ("Slide number", "Footer or slide number")},
+    "logo-horizontal": {"title": ("Brand name", "The name as it should read"), "subtitle": ("Tagline", "Optional short tagline")},
+    "logo-stacked": {"title": ("Brand name", "The name as it should read"), "subtitle": ("Tagline", "Optional short tagline")},
+    "emblem": {"title": ("Brand name", "Runs around the badge"), "subtitle": ("Tagline", "A short line such as a founding year"), "label": ("Initials", "Optional override for the center initials")},
+    "monogram": {"title": ("Brand name", "Initials are taken from it"), "label": ("Initials", "Optional override for the initials")},
+    "app-icon": {"title": ("App name", "The glyph is taken from it"), "label": ("Glyph", "Optional override for the icon glyph")},
+    "thumbnail-bold": {"title": ("Few huge words", "Two to four words that read at thumbnail size"), "label": ("Badge", "A short tag")},
+    "price-list": {"title": ("Menu title", "The list's title"), "subtitle": ("Subheading", "A short description"), "items": ("Items", "One per line as: item | price", "[Item] | [Price]\n[Item] | [Price]\n[Item] | [Price]")},
+    "f-pattern": {"items": ("Points", "One per line as: heading: explanation", "[Point]: [Explanation]\n[Point]: [Explanation]\n[Point]: [Explanation]")},
+    "bento-grid": {"label": ("Stat", "A short figure for the stat tile"), "caption": ("Stat label", "What the stat measures"), "subtitle": ("Supporting copy", "Copy for the info tile")},
+    "typographic-poster": {"title": ("Headline", "The first word is set huge as the image; the rest reads as the headline", "[Word] [rest of headline]"), "label": ("Issue", "Volume, issue or series label"), "caption": ("Date and place", "When and where")},
+    "photo-caption": {"label": ("Category", "A short category label")},
+    "z-pattern": {"caption": ("Note", "A small note such as a deadline")},
+    "editorial-grid": {"caption": ("Image caption", "Describes the image")},
+    "diagonal-band": {"subtitle": ("Band text", "The offer or line set on the band")},
+}
+IMAGE_LAYOUTS = {"bento-grid", "editorial-grid", "golden-section", "photo-caption", "product-card", "rule-of-thirds", "slide-content", "split-screen", "story-vertical", "thumbnail-bold"}
+OPTIONAL_SLOTS = {"emblem": {"label"}, "monogram": {"label"}, "app-icon": {"label"}, "letterhead": {"body"}, "logo-horizontal": {"subtitle"}, "logo-stacked": {"subtitle"}}
+
+# Every slot each builder can read (some only on certain canvases); used for discovery only —
+# apply-time validation uses the slots a build actually read.
+OPTIONAL_READS = {
+    "app-icon": ('label', 'title'),
+    "asymmetric-balance": ('caption', 'cta', 'label', 'subtitle', 'title'),
+    "banner": ('cta', 'subtitle', 'title', 'label'),
+    "bento-grid": ('body', 'caption', 'cta', 'image', 'label', 'subtitle', 'title'),
+    "big-number": ('body', 'label', 'subtitle', 'title'),
+    "business-card": ('body', 'subtitle', 'title'),
+    "centered-axis": ('cta', 'label', 'subtitle', 'title'),
+    "diagonal-band": ('body', 'cta', 'subtitle', 'title'),
+    "editorial-grid": ('body', 'caption', 'image', 'label', 'subtitle', 'title'),
+    "emblem": ('label', 'subtitle', 'title'),
+    "event-poster": ('body', 'caption', 'cta', 'label', 'title'),
+    "f-pattern": ('body', 'items', 'title'),
+    "framed": ('body', 'caption', 'label', 'subtitle', 'title'),
+    "golden-section": ('body', 'cta', 'image', 'label', 'subtitle', 'title'),
+    "hero-statement": ('caption', 'cta', 'label', 'subtitle', 'title'),
+    "letterhead": ('body', 'caption', 'subtitle', 'title'),
+    "logo-horizontal": ('subtitle', 'title', 'label'),
+    "logo-stacked": ('subtitle', 'title', 'label'),
+    "minimal-mark": ('subtitle', 'title'),
+    "monogram": ('label', 'title'),
+    "photo-caption": ('image', 'label', 'subtitle', 'title'),
+    "price-list": ('body', 'items', 'subtitle', 'title'),
+    "product-card": ('body', 'caption', 'cta', 'image', 'label', 'subtitle', 'title'),
+    "quote-card": ('subtitle', 'title'),
+    "rule-of-thirds": ('cta', 'image', 'label', 'subtitle', 'title'),
+    "slide-content": ('body', 'caption', 'image', 'items', 'title'),
+    "slide-title": ('caption', 'label', 'subtitle', 'title'),
+    "split-screen": ('body', 'cta', 'image', 'label', 'subtitle', 'title'),
+    "story-vertical": ('cta', 'image', 'label', 'subtitle', 'title'),
+    "thumbnail-bold": ('image', 'label', 'title'),
+    "typographic-poster": ('caption', 'label', 'subtitle', 'title'),
+    "z-pattern": ('body', 'caption', 'cta', 'label', 'subtitle', 'title'),
+}
+
+
+def slot_spec(layout):
+    """Slot → label, hint, placeholder and whether an unfilled slot is shown as a blank."""
+    name = next((key for key, value in LAYOUTS.items() if value is layout), None)
+    overrides = SLOT_OVERRIDES.get(name, {})
+    examples = layout["examples"]
+    keys = [k for k in CONTENT_KEYS if k in examples or k in overrides or (k == "image" and name in IMAGE_LAYOUTS)]
+    spec = {}
+    for key in keys:
+        label, hint, *placeholder = overrides.get(key, SLOT_TEXT[key])
+        blank = key not in OPTIONAL_SLOTS.get(name, ()) and (key == "image" or bool(examples.get(key)))
+        spec[key] = {"label": label, "hint": hint, "placeholder": placeholder[0] if placeholder else f"[{label}]", "blank": blank}
+        if examples.get(key):
+            spec[key]["example"] = examples[key]
+    return spec
 
 
 COPY = {"label": "New season", "title": "Make the main point in a few strong words", "subtitle": "One supporting sentence that explains why it matters.", "cta": "Learn more"}
@@ -1122,14 +1240,41 @@ LAYOUTS = {
 }
 
 
+def describe(name):
+    """Full form for one layout: each slot's label, hint, example and whether it becomes a blank."""
+    item = LAYOUTS[name]
+    spec = slot_spec(item)
+    extra = sorted(set(OPTIONAL_READS.get(name, ())) - set(spec))
+    return {
+        "description": item["description"],
+        "principles": item["principles"],
+        "best_for": item["best_for"],
+        "slots": {
+            k: {"label": v["label"], "hint": v["hint"], "blank_if_unfilled": v["blank"], **({"example": v["example"]} if "example" in v else {})}
+            for k, v in spec.items()
+        },
+        **({"also_accepts": extra} if extra else {}),
+    }
+
+
 def catalog():
     return {
         "layouts": {
-            name: {"description": item["description"], "principles": item["principles"], "best_for": item["best_for"], "content": sorted(item["defaults"])}
+            name: {
+                "description": item["description"],
+                "best_for": item["best_for"],
+                "slots": {k: v["label"] for k, v in slot_spec(item).items()},
+            }
             for name, item in LAYOUTS.items()
         },
+        "detail": "vixl layout show NAME (vixl_layouts_list name=…) gives principles and each slot's meaning",
         "options": {
-            "seed": "Integer; omitted seeds derive from the content, so different copy varies the design",
+            "seed": "Integer or 'random'; omitted seeds derive from the content, so different copy varies the design. "
+            "Unspecified palette, mode, type scale, density, alignment and accent are rolled from the seed",
+            "unfilled": "blank (default): unfilled slots render as visible [Label] placeholders recorded as blanks that "
+            "check reports as errors; omit: leave unfilled slots out",
+            "font": "Registered body font; defaults to the document typography (font pair), else the proofing fallback",
+            "display_font": "Registered heading font; defaults to the document typography heading, else font",
             "palette": "Palette name or list of colors (roles are assigned with contrast checks)",
             "colors": "Override roles: background, surface, ink, muted, accent, accent-text, on-accent",
             "mode": "light or dark",
@@ -1137,7 +1282,7 @@ def catalog():
             "density": "airy, balanced or dense (margins and scale)",
             "align": "left, center or right where the layout allows",
             "accent": ", ".join(ACCENTS),
-            "content": ", ".join(CONTENT_KEYS),
+            "content": "Slots differ per layout; see slots. Supplying a slot the layout does not use is an error",
             "prefix": "Prefix for created layer names",
             "replace": "Remove layers created by the previous layout first",
         },
@@ -1145,8 +1290,10 @@ def catalog():
 
 
 def _seed(op, canvas):
+    if op.get("seed") == "random":
+        return secrets.randbelow(2**32)
     if "seed" in op:
-        require(isinstance(op["seed"], int) and 0 <= op["seed"] < 2**32, "seed must be a nonnegative 32-bit integer")
+        require(isinstance(op["seed"], int) and 0 <= op["seed"] < 2**32, "seed must be a nonnegative 32-bit integer or 'random'")
         return op["seed"]
     text = "|".join(str(op.get(k, "")) for k in ("name", *CONTENT_KEYS)) + f"|{canvas['width']}x{canvas['height']}"
     return zlib.crc32(text.encode())
@@ -1182,6 +1329,7 @@ def execute_layout(project, op):
         for ident in doomed:
             if any(layer["id"] == ident for layer in state["layers"]):
                 execute(project, {"type": "remove", "target": ident})
+            state.get("blanks", {}).pop(ident, None)
     seed = _seed(op, state["canvas"])
     snapshot = project.clone()
     fit = 1.0
@@ -1194,10 +1342,36 @@ def execute_layout(project, op):
         if "base_size" in op or attempt == 5 or not _overflows(trial, builder):
             break
         fit *= 0.84
+    supplied = [k for k in CONTENT_KEYS if k in op]
+    unused = [k for k in supplied if k not in builder.read]
+    if unused:
+        used = [k for k in CONTENT_KEYS if k in builder.read]
+        raise VixlError(
+            "unused_slot",
+            f"Layout {name!r} does not use {', '.join(map(repr, unused))} on this canvas, so that copy would be "
+            f"silently dropped. It uses: {', '.join(used)}. Move the copy into one of those slots or choose "
+            "another layout (vixl layout show NAME lists each slot's meaning).",
+            field=unused[0],
+            suggestions=used,
+        )
     project.state, project.assets = trial.state, trial.assets
     project._resource_budget = trial._resource_budget
     state = project.state
     created = [layer["id"] for layer in state["layers"] if layer["name"] in set(builder.created)]
+    blanks = _record_blanks(state, builder, name, created)
+    rolled = [
+        key
+        for key, value, option in (
+            ("palette", builder.colors["_palette"], "palette"),
+            ("mode", builder.colors["_mode"], "mode"),
+            ("type_scale", builder.ratio_name, "type_scale"),
+            ("density", builder.density, "density"),
+            ("align", builder.align, "align"),
+            ("accent", builder.accent, "accent"),
+        )
+        if option not in op and not (option == "palette" and "colors" in op and len(op["colors"]) >= 3)
+    ]
+    fonts = {"heading": builder.display_font, "body": builder.font} if builder.font or builder.display_font else None
     state["layout"] = {
         "name": name,
         "seed": seed,
@@ -1211,13 +1385,61 @@ def execute_layout(project, op):
         "accent": builder.accent,
         "contrast": builder.contrast,
         "principles": layout["principles"],
+        "fonts": fonts or "fallback",
+        "rolled": rolled,
         "layers": created,
     }
+    notes = []
+    if blanks:
+        notes.append(
+            f"Fill the blank slots ({', '.join(dict.fromkeys(b['slot'] for b in blanks))}; see blanks for what each needs), "
+            f"then re-apply with the copy, replace=true and seed={seed} to keep this composition. "
+            "check reports unfilled blanks as errors; unfilled='omit' leaves optional copy out instead."
+        )
+        state["layout"]["blanks"] = blanks
+    if not fonts:
+        notes.append(
+            "No fonts were chosen, so text uses the bundled fallback font, which is for proofing only. Choose a "
+            "pairing (vixl font pairings, or vixl font pair random) or pass font/display_font."
+        )
+    if len(rolled) >= 4:
+        notes.append(
+            f"Few design parameters were given, so seed {seed} chose {', '.join(sorted(rolled))}. Treat this as one "
+            "roll of the dice: try seed='random' (or vixl roll) a few times, compare previews, and keep the seed you like."
+        )
     if fit < 1:
-        state["layout"]["notes"] = [
+        notes.append(
             f"Type was reduced to {fit:.0%} of the medium's scale to fit this canvas; "
             "shorten the copy or choose a larger size or a layout made for this format."
-        ]
+        )
+    if notes:
+        state["layout"]["notes"] = notes
+
+
+def _record_blanks(state, builder, layout_name, created):
+    """Register placeholder layers in ``state['blanks']`` so checks can refuse to ship them."""
+    registry = state.setdefault("blanks", {})
+    by_name = {layer["name"]: layer for layer in state["layers"] if layer["id"] in set(created)}
+    # Layouts split some slots (one detail per line, "item | price"), so match each bracketed token.
+    markers = {slot: {t.lower() for t in re.findall(r"\[[^\]]+\]", placeholder)} for slot, placeholder in builder.placeholders.items()}
+    found = []
+    for layer in by_name.values():
+        if layer["type"] != "text":
+            continue
+        text = layer["text"].lower()
+        bare = re.sub(r"[\[\]]", "", text).strip()
+        for slot, lines in markers.items():
+            if any(token in text or bare == token[1:-1] for token in lines):
+                spec = builder.slots[slot]
+                registry[layer["id"]] = {"slot": slot, "text": layer["text"], "hint": spec["hint"], "source": f"layout:{layout_name}"}
+                found.append({"slot": slot, "layer": layer["name"], "hint": spec["hint"]})
+                break
+    for name in builder.image_blanks:
+        layer = by_name.get(name)
+        if layer:
+            registry[layer["id"]] = {"slot": "image", "asset": layer["asset"], "hint": SLOT_TEXT["image"][1], "source": f"layout:{layout_name}"}
+            found.append({"slot": "image", "layer": name, "hint": "pass image=ASSET_ID"})
+    return found
 
 
 def _build(project, layout, op, seed, fit):
@@ -1275,15 +1497,14 @@ def schemas(add):
         "layout-apply",
         {
             "name": S,
-            "seed": {"type": "integer", "minimum": 0},
+            "seed": {"type": ["integer", "string"]},
+            "unfilled": S,
             "palette": {"type": ["string", "array"]},
             "colors": {"type": "object"},
-            "mode": {"enum": ["light", "dark"]},
+            # Choice fields are validated (with the allowed values) when the layout is built.
+            **{key: S for key in ("mode", "density", "align", "accent")},
             "type_scale": {"type": ["string", "number"]},
             "base_size": N,
-            "density": {"enum": list(DENSITY_MARGIN)},
-            "align": {"enum": ["left", "center", "right"]},
-            "accent": {"enum": list(ACCENTS)},
             "mark": S,
             "font": S,
             "display_font": S,

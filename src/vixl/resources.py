@@ -108,12 +108,10 @@ for name, w, h in (
         ],
         f"Editable {name.replace('-', ' ')} with headline and subtitle.",
     )
-    TEMPLATES[name]["defaults"] = {
-        "background": "#101828",
-        "foreground": "#f9fafb",
-        "title": "Your title",
-        "subtitle": "Your subtitle",
-    }
+    # Copy is fill-in-the-blank and colors are rolled from a seeded palette unless supplied:
+    # the template fixes structure, not the content or the look.
+    TEMPLATES[name]["blanks"] = {"title": "[Headline]", "subtitle": "[Subheading]"}
+    TEMPLATES[name]["roll"] = {"background": "background", "foreground": "ink"}
 TEMPLATES["logo"] = template(
     512,
     512,
@@ -131,7 +129,7 @@ TEMPLATES["logo"] = template(
     ],
     "Transparent geometric logo starter.",
 )
-TEMPLATES["logo"]["defaults"] = {"accent": "#2563eb"}
+TEMPLATES["logo"]["roll"] = {"accent": "accent"}
 BUILTINS = {"palettes": PALETTES, "templates": TEMPLATES, "guidance": GUIDANCE}
 
 
@@ -177,10 +175,17 @@ def validate(kind, value):
         validate_automation(value)
         if "inputs" in value:
             validate_inputs(value["inputs"], value.get("defaults", {}))
+        blanks, roll = value.get("blanks", {}), value.get("roll", {})
+        require(isinstance(blanks, dict) and all(isinstance(v, str) and v for v in blanks.values()),
+                "Template blanks map variables to placeholder text")
+        roles = ("background", "surface", "ink", "muted", "accent", "accent-text", "on-accent")
+        require(isinstance(roll, dict) and all(v in roles for v in roll.values()),
+                f"Template roll maps variables to color roles: {', '.join(roles)}")
+        sample = {**{k: "#000000" for k in roll}, **blanks, **value.get("defaults", {})}
         ops = value.get("operations")
         require(isinstance(ops, list) and 0 < len(ops) <= 1000, "Template needs 1–1000 operations")
         for op in ops:
-            validate_operation(substitute(op, value.get("defaults", {})))
+            validate_operation(substitute(op, sample))
             require(
                 op["type"] not in ("template-apply", "font-register")
                 and not any(k in op for k in ("font", "linked"))
@@ -249,16 +254,46 @@ def execute_resource(project, op):
     elif kind == "font-register":
         from .fonts import validate_font
 
-        asset = op["asset"]
-        require(asset in project.assets and asset.startswith("fonts/"), "Import a font asset first")
-        validate_font(project.assets[asset])
-        project.state.setdefault("fonts", {})[name] = asset
+        role = op.get("role")
+        require(op.get("asset") or role, "font-register needs an asset, a role, or both")
+        if op.get("asset"):
+            asset = op["asset"]
+            require(asset in project.assets and asset.startswith("fonts/"), "Import a font asset first")
+            validate_font(project.assets[asset])
+            project.state.setdefault("fonts", {})[name] = asset
+        if role:
+            require(role in ("heading", "body"), "role must be heading or body", field="role")
+            require(name in project.state.get("fonts", {}), f"Font {name!r} is not registered; install or import it first")
+            project.state.setdefault("typography", {})[role] = name
     else:
         from .operations import execute
         from .schema import validate_operation
 
         item = get("templates", name)
-        values = {**item.get("defaults", {}), **op.get("variables", {})}
+        supplied = op.get("variables", {})
+        values = {**item.get("defaults", {}), **supplied}
+        before = {layer["id"] for layer in project.state["layers"]}
+        blanks = {k: v for k, v in item.get("blanks", {}).items() if k not in values}
+        values.update(blanks)
+        rolled, seed = {}, None
+        missing = {var: role for var, role in item.get("roll", {}).items() if var not in values}
+        if missing:
+            import random
+            import secrets
+            import zlib
+
+            from .layouts import assign_roles
+
+            seed = op.get("seed")
+            if seed == "random":
+                seed = secrets.randbelow(2**32)
+            elif seed is None:
+                seed = zlib.crc32(json.dumps([name, supplied], sort_keys=True, default=str).encode())
+            require(isinstance(seed, int) and 0 <= seed < 2**32, "seed must be a nonnegative 32-bit integer or 'random'", field="seed")
+            roles = assign_roles({}, random.Random(seed))
+            rolled = {var: roles[role] for var, role in missing.items()}
+            rolled["palette"] = roles["_palette"]
+            values.update({var: roles[role] for var, role in missing.items()})
         if "inputs" in item:
             from .automation import validate_inputs
             values = validate_inputs(item["inputs"], values)
@@ -282,6 +317,23 @@ def execute_resource(project, op):
             execute(project, {"type": "role-set", "name": role, "targets": targets})
         if "recipe" in item:
             execute(project, {"type": "recipe-set", "recipe": item["recipe"]})
+        registry = project.state.setdefault("blanks", {})
+        found = []
+        for layer in project.state["layers"]:
+            if layer["id"] in before or layer["type"] != "text":
+                continue
+            slot = next((var for var, text in blanks.items() if text in layer["text"]), None)
+            if slot:
+                registry[layer["id"]] = {"slot": slot, "text": layer["text"], "hint": f"template variable {slot!r}", "source": f"template:{name}"}
+                found.append({"slot": slot, "layer": layer["name"]})
+        if found or rolled:
+            record = {"name": name}
+            if rolled:
+                record.update(seed=seed, rolled=rolled)
+            if found:
+                record["blanks"] = found
+                record["note"] = "Fill the blanks: pass them as template variables, or edit the layers' text."
+            project.state["template"] = record
 
 
 def create_template(name, variables=None, *, limits=None):
