@@ -312,7 +312,7 @@ def create_app(path, *, token=None, limits=None):
     @app.get("/view")
     def viewer():
         from fastapi.responses import HTMLResponse
-        return HTMLResponse((Path(__file__).parent / "data" / "view.html").read_text(),
+        return HTMLResponse((Path(__file__).parent / "data" / "view.html").read_text(encoding="utf-8"),
                             headers={"Cache-Control": "no-store", "X-Frame-Options": "DENY"})
 
     @app.get("/review")

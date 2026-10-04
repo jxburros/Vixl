@@ -137,7 +137,8 @@ def test_viewer_refresh_and_notes_are_shared_with_mcp(tmp_path):
     path = tmp_path / "design.vixl"
     Project(100, 100).save(path)
     with TestClient(create_app(path, token="secret")) as client:
-        assert client.get("/view").status_code == 200
+        viewer = client.get("/view")
+        assert viewer.status_code == 200 and "Connecting…" in viewer.text
         assert client.get("/review").status_code == 401
         client.headers["Authorization"] = "Bearer secret"
         head = client.get("/review").json()["head"]
