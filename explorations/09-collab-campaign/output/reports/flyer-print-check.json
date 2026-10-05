@@ -1,0 +1,24 @@
+{
+  "passed": true,
+  "errors": 0,
+  "warnings": 1,
+  "issues": [
+    {
+      "check": "print",
+      "severity": "warning",
+      "layers": [
+        "hero"
+      ],
+      "message": "'hero' prints at about 152 ppi (aim for 200+); use a larger image or place it smaller",
+      "effective_ppi": 152
+    }
+  ],
+  "checked": {
+    "checks": [
+      "print",
+      "safe_area"
+    ],
+    "layers": 11,
+    "text_layers": 7
+  }
+}

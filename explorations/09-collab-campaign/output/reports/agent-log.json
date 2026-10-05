@@ -1,0 +1,245 @@
+[
+  {
+    "agent": "illustration-agent",
+    "what": "drew hero-illustration.vixl and logo-badge.vixl with shapes and pen paths"
+  },
+  {
+    "agent": "art-director",
+    "what": "wrote brand.json v0: contrast floor 4.5, required logo, no palette/pairing yet"
+  },
+  {
+    "agent": "art-director",
+    "what": "roll seed 11: thumbnail-bold / poppins-lora / ocean / dark"
+  },
+  {
+    "agent": "art-director",
+    "what": "roll seed 23: big-number / young-serif-rubik / autumn / dark"
+  },
+  {
+    "agent": "art-director",
+    "what": "roll seed 42: centered-axis / lora-source-sans / autumn / dark"
+  },
+  {
+    "agent": "art-director",
+    "what": "roll seed 57: quote-card / roboto-slab-roboto / sunset / dark"
+  },
+  {
+    "agent": "art-director",
+    "what": "roll seed 64: centered-axis / poppins-lora / rose / dark"
+  },
+  {
+    "agent": "art-director",
+    "what": "roll seed 88: golden-section / rubik-karla / pastel / light"
+  },
+  {
+    "agent": "art-director",
+    "what": "picked seed 11; re-rolling compositions with --lock pairing=poppins-lora --lock palette=ocean --lock mode=light"
+  },
+  {
+    "agent": "art-director",
+    "what": "locked re-roll 101: golden-section / perfect-fourth / rule"
+  },
+  {
+    "agent": "art-director",
+    "what": "locked re-roll 202: rule-of-thirds / perfect-fifth / bar"
+  },
+  {
+    "agent": "art-director",
+    "what": "locked re-roll 303: bento-grid / major-third / outline"
+  },
+  {
+    "agent": "art-director",
+    "what": "locked re-roll 404: big-number / minor-third / rule"
+  },
+  {
+    "agent": "art-director",
+    "what": "wrote brand.json v1: ocean/light roles from locked roll 101 + poppins-lora",
+    "palette": {
+      "background": "#edf6f9",
+      "surface": "#dbe7ec",
+      "ink": "#003049",
+      "muted": "#406075",
+      "accent": "#006d77",
+      "accent-text": "#006d77",
+      "on-accent": "#ffffff"
+    }
+  },
+  {
+    "agent": "layout-agent",
+    "what": "ig-portrait.vixl: instagram-portrait + golden-section, slots ['cta', 'image', 'label', 'subtitle', 'title']"
+  },
+  {
+    "agent": "layout-agent",
+    "what": "ig-story.vixl: instagram-story + story-vertical, slots ['cta', 'image', 'label', 'subtitle', 'title']"
+  },
+  {
+    "agent": "layout-agent",
+    "what": "yt-thumb.vixl: youtube-thumbnail + thumbnail-bold, slots ['image', 'label', 'title']"
+  },
+  {
+    "agent": "layout-agent",
+    "what": "yt-banner.vixl: youtube-banner + banner, slots ['cta', 'subtitle', 'title']"
+  },
+  {
+    "agent": "layout-agent",
+    "what": "leaderboard.vixl: leaderboard + banner, slots ['cta', 'subtitle', 'title']"
+  },
+  {
+    "agent": "layout-agent",
+    "what": "med-rect.vixl: medium-rectangle + hero-statement, slots ['caption', 'cta', 'label', 'subtitle', 'title']"
+  },
+  {
+    "agent": "layout-agent",
+    "what": "flyer.vixl: letter + event-poster, slots ['body', 'caption', 'cta', 'label', 'title']"
+  },
+  {
+    "agent": "layout-agent",
+    "what": "polished ig-portrait.vixl (4 ops)"
+  },
+  {
+    "agent": "layout-agent",
+    "what": "polished ig-story.vixl (2 ops)"
+  },
+  {
+    "agent": "layout-agent",
+    "what": "polished yt-thumb.vixl (5 ops)"
+  },
+  {
+    "agent": "layout-agent",
+    "what": "polished yt-banner.vixl (12 ops)"
+  },
+  {
+    "agent": "layout-agent",
+    "what": "polished leaderboard.vixl (4 ops)"
+  },
+  {
+    "agent": "layout-agent",
+    "what": "adapt-layout on the untouched med-rect stack",
+    "refused": "{\"error\": \"layout_overflow\", \"message\": \"Targets cannot fit within canvas\", \"operation_index\": 0, \"operation_type\": \"adapt-layout\"}"
+  },
+  {
+    "agent": "layout-agent",
+    "what": "polished med-rect.vixl (13 ops)"
+  },
+  {
+    "agent": "layout-agent",
+    "what": "polished flyer.vixl (4 ops)"
+  },
+  {
+    "agent": "layout-agent",
+    "what": "added artboards large-leaderboard + billboard to leaderboard.vixl"
+  },
+  {
+    "agent": "art-director",
+    "what": "checkpoint layout-approved on the master"
+  },
+  {
+    "agent": "copy-agent",
+    "what": "forked ig-portrait.vixl -> copy-agent.vixl"
+  },
+  {
+    "agent": "design-agent",
+    "what": "forked ig-portrait.vixl -> design-agent.vixl"
+  },
+  {
+    "agent": "copy-agent",
+    "what": "rewrote headline, kicker, body and CTA"
+  },
+  {
+    "agent": "design-agent",
+    "what": "uppercased + recoloured headline, moved logo, CTA shadow and CTA caps"
+  },
+  {
+    "agent": "art-director",
+    "what": "edited the master kicker after the forks (creates a 3-way conflict)"
+  },
+  {
+    "agent": "art-director",
+    "what": "preview copy-agent merge: 1 conflict(s)",
+    "paths": [
+      "/layers/lyr_df7015b3b3bf496c/text"
+    ]
+  },
+  {
+    "agent": "art-director",
+    "what": "merged copy-agent",
+    "resolutions": {
+      "/layers/lyr_df7015b3b3bf496c/text": "theirs"
+    }
+  },
+  {
+    "agent": "art-director",
+    "what": "preview design-agent merge: 3 conflict(s)",
+    "paths": [
+      "/layers/lyr_11e4722039ea4571/text",
+      "/layers/lyr_11e4722039ea4571/width",
+      "/layers/lyr_dda8aaab1d25454a/text"
+    ]
+  },
+  {
+    "agent": "art-director",
+    "what": "stale expected_head rejected: stale_revision"
+  },
+  {
+    "agent": "art-director",
+    "what": "merged design-agent",
+    "resolutions": {
+      "/layers/lyr_11e4722039ea4571/text": "ours",
+      "/layers/lyr_11e4722039ea4571/width": "ours",
+      "/layers/lyr_dda8aaab1d25454a/text": "ours"
+    }
+  },
+  {
+    "agent": "art-director",
+    "what": "review: master check after merge passed=False, added 3 notes"
+  },
+  {
+    "agent": "layout-agent",
+    "what": "fixed review notes; master check passed=True; resolved 2/3 notes"
+  },
+  {
+    "agent": "producer",
+    "what": "saved workspace suites loop-accessible + loop-delivery",
+    "starters": []
+  },
+  {
+    "agent": "producer",
+    "what": "attached 4 suites to every size; headline bound to ${headline}/${headline_caps}"
+  },
+  {
+    "agent": "producer",
+    "what": "group-apply 'pale accent' blocked by flyer.vixl: check_failed"
+  },
+  {
+    "agent": "producer",
+    "what": "group-apply 'long headline' blocked by None: text_overflow"
+  },
+  {
+    "agent": "art-director",
+    "what": "brand.json v2: accent + accent-text -> #B83512 (rust)"
+  },
+  {
+    "agent": "producer",
+    "what": "group-apply 'final' blocked by flyer.vixl: check_failed"
+  },
+  {
+    "agent": "producer",
+    "what": "redefined flyer fit-headline box to 2004px so the headline clears the logo"
+  },
+  {
+    "agent": "producer",
+    "what": "group-apply 'final, flyer refit': published to 7 documents"
+  },
+  {
+    "agent": "producer",
+    "what": "undo/redo: stat 300 -> 132 -> 300 -> 132"
+  },
+  {
+    "agent": "producer",
+    "what": "history: 19 revisions, branches ['main', 'night-edition'], checkpoints ['group-published', 'layout-approved', 'night-v1']"
+  },
+  {
+    "agent": "producer",
+    "what": "exported 9 finals; all 4 suites passed on all 7 sizes"
+  }
+]

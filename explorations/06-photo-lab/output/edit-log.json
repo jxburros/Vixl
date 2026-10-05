@@ -1,0 +1,855 @@
+[
+ {
+  "step": "import raw frame",
+  "operations": [
+   "add",
+   "resize",
+   "align"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "crop / flip / straighten",
+  "operations": [
+   "crop",
+   "flip",
+   "rotate",
+   "resize",
+   "align"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "select sky: rect minus colour, feather 14",
+  "operations": [
+   "select",
+   "select",
+   "select"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "select sun: ellipse, feather 60",
+  "operations": [
+   "select"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "select sea: lasso minus ellipse",
+  "operations": [
+   "select",
+   "select"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "select land: wand + wand, x 2-subpath path",
+  "operations": [
+   "select",
+   "select",
+   "select"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "select lamp: global wand x rect",
+  "operations": [
+   "select",
+   "select"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "select figure: path x colour",
+  "operations": [
+   "select",
+   "select"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "select none",
+  "operations": [
+   "select"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "global tone stack",
+  "operations": [
+   "select",
+   "auto-tone",
+   "auto-contrast",
+   "levels",
+   "curves",
+   "exposure",
+   "shadows",
+   "highlights",
+   "temperature",
+   "tint",
+   "saturation",
+   "sharpen"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "effect-disable auto-tone (index 1)",
+  "operations": [
+   "effect-disable"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "effect-set temperature 500→700",
+  "operations": [
+   "effect-set"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "effect-disable sharpen (index 11)",
+  "operations": [
+   "effect-disable"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "effect-enable sharpen",
+  "operations": [
+   "effect-enable"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "reorder experiment: auto-contrast to end",
+  "operations": [
+   "effect-remove",
+   "auto-contrast"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "undo reorder experiment",
+  "operations": [
+   "undo"
+  ]
+ },
+ {
+  "step": "preset-save coastal-base (global stack)",
+  "operations": [
+   "preset-save"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "reselect sky: rect minus colour, feather 14",
+  "operations": [
+   "select"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "sky: graduated filter",
+  "operations": [
+   "highlights",
+   "saturation",
+   "curves"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "reselect sun: ellipse, feather 60",
+  "operations": [
+   "select"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "sun: warm bloom",
+  "operations": [
+   "exposure",
+   "temperature"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "reselect sea: lasso minus ellipse",
+  "operations": [
+   "select"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "sea: cool & deepen",
+  "operations": [
+   "temperature",
+   "contrast",
+   "exposure"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "reselect land: wand + wand, x 2-subpath path",
+  "operations": [
+   "select"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "land: lift blacks",
+  "operations": [
+   "shadows",
+   "saturation"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "reselect lamp: global wand x rect",
+  "operations": [
+   "select"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "lamp: brighten",
+  "operations": [
+   "exposure"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "reselect figure: path x colour",
+  "operations": [
+   "select"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "subject cut-out + rim light",
+  "operations": [
+   "duplicate",
+   "mask",
+   "layer-style"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "halo: alpha → invert → intersect ellipse",
+  "operations": [
+   "select",
+   "select",
+   "select",
+   "exposure",
+   "temperature",
+   "select"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "golden-hour gradient masked to sky",
+  "operations": [
+   "gradient",
+   "blend",
+   "opacity",
+   "select",
+   "select",
+   "mask",
+   "select",
+   "reorder"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "mask disable",
+  "operations": [
+   "mask"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "mask enable",
+  "operations": [
+   "mask"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "teal-orange LUT on adjustment layer",
+  "operations": [
+   "lut",
+   "adjustment",
+   "lookup"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "film-finish adjustment layer",
+  "operations": [
+   "adjustment"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "bad edit: posterize 2 bits",
+  "operations": [
+   "posterize"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "undo → redo → undo the posterize",
+  "operations": [
+   "undo",
+   "redo",
+   "undo"
+  ]
+ },
+ {
+  "step": "mono branch",
+  "operations": [
+   "adjustment",
+   "reorder"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "lake: import",
+  "operations": [
+   "add"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "lake: preset-apply coastal-base",
+  "operations": [
+   "select",
+   "preset-apply"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "map: base",
+  "operations": [
+   "add"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "map: overlay 0",
+  "operations": [
+   "solid",
+   "hide"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "map: overlay 1",
+  "operations": [
+   "solid",
+   "hide"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "map: overlay 2",
+  "operations": [
+   "solid",
+   "hide"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "map: overlay 3",
+  "operations": [
+   "solid",
+   "hide"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "map: overlay 4",
+  "operations": [
+   "solid",
+   "hide"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "map: overlay 5",
+  "operations": [
+   "solid",
+   "hide"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "map: select sky: rect minus colour, feather 14",
+  "operations": [
+   "select",
+   "select",
+   "select",
+   "mask"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "map: select sun: ellipse, feather 60",
+  "operations": [
+   "select",
+   "mask"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "map: select sea: lasso minus ellipse",
+  "operations": [
+   "select",
+   "select",
+   "mask"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "map: select land: wand + wand, x 2-subpath path",
+  "operations": [
+   "select",
+   "select",
+   "select",
+   "mask"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "map: select lamp: global wand x rect",
+  "operations": [
+   "select",
+   "select",
+   "mask"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "map: select figure: path x colour",
+  "operations": [
+   "select",
+   "select",
+   "mask"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "map: legend",
+  "operations": [
+   "select",
+   "canvas",
+   "grayscale",
+   "brightness",
+   "show",
+   "opacity",
+   "shape",
+   "text",
+   "show",
+   "opacity",
+   "shape",
+   "text",
+   "show",
+   "opacity",
+   "shape",
+   "text",
+   "show",
+   "opacity",
+   "shape",
+   "text",
+   "show",
+   "opacity",
+   "shape",
+   "text",
+   "show",
+   "opacity",
+   "shape",
+   "text",
+   "text",
+   "layer-style"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "diptych",
+  "operations": [
+   "add",
+   "resize",
+   "move",
+   "add",
+   "resize",
+   "move",
+   "text",
+   "text",
+   "text",
+   "text",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "shape",
+   "text",
+   "text",
+   "text"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "sheet: tiles",
+  "operations": [
+   "remove",
+   "select",
+   "text",
+   "text",
+   "add",
+   "resize",
+   "move",
+   "effect:sepia",
+   "text",
+   "text",
+   "add",
+   "resize",
+   "move",
+   "effect:duotone",
+   "text",
+   "text",
+   "add",
+   "resize",
+   "move",
+   "effect:solarize",
+   "text",
+   "text",
+   "add",
+   "resize",
+   "move",
+   "effect:pixelate",
+   "text",
+   "text",
+   "add",
+   "resize",
+   "move",
+   "effect:halftone",
+   "text",
+   "text",
+   "add",
+   "resize",
+   "move",
+   "effect:crosshatch",
+   "text",
+   "text",
+   "add",
+   "resize",
+   "move",
+   "effect:ink-blot",
+   "text",
+   "text",
+   "add",
+   "resize",
+   "move",
+   "effect:stamp",
+   "text",
+   "text",
+   "add",
+   "resize",
+   "move",
+   "effect:photocopy",
+   "text",
+   "text",
+   "add",
+   "resize",
+   "move",
+   "effect:pencil-sketch",
+   "text",
+   "text",
+   "add",
+   "resize",
+   "move",
+   "effect:charcoal",
+   "text",
+   "text",
+   "add",
+   "resize",
+   "move",
+   "effect:find-edges",
+   "text",
+   "text",
+   "add",
+   "resize",
+   "move",
+   "effect:emboss",
+   "text",
+   "text",
+   "add",
+   "resize",
+   "move",
+   "effect:oil-paint",
+   "text",
+   "text",
+   "add",
+   "resize",
+   "move",
+   "effect:watercolor",
+   "text",
+   "text",
+   "add",
+   "resize",
+   "move",
+   "effect:swirl",
+   "text",
+   "text",
+   "add",
+   "resize",
+   "move",
+   "effect:ripple",
+   "text",
+   "text",
+   "add",
+   "resize",
+   "move",
+   "effect:wave",
+   "text",
+   "text",
+   "add",
+   "resize",
+   "move",
+   "effect:glass",
+   "text",
+   "text",
+   "add",
+   "resize",
+   "move",
+   "text",
+   "text",
+   "add",
+   "resize",
+   "move",
+   "text",
+   "text",
+   "add",
+   "resize",
+   "move",
+   "text",
+   "text",
+   "add",
+   "resize",
+   "move",
+   "text",
+   "text",
+   "add",
+   "resize",
+   "move",
+   "text",
+   "text"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "sheet: neon-sign cut-out",
+  "operations": [
+   "duplicate",
+   "mask",
+   "brightness",
+   "text-set"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "sheet: cut-paper cut-out",
+  "operations": [
+   "duplicate",
+   "mask",
+   "brightness",
+   "text-set"
+  ],
+  "normalized": null
+ },
+ {
+  "step": "workflow effect-run neon-sign",
+  "operations": [
+   "effect-run"
+  ],
+  "result_keys": [
+   "changes",
+   "dry_run",
+   "operations",
+   "success"
+  ]
+ },
+ {
+  "step": "workflow effect-run vintage-print",
+  "operations": [
+   "effect-run"
+  ],
+  "result_keys": [
+   "changes",
+   "dry_run",
+   "operations",
+   "success"
+  ]
+ },
+ {
+  "step": "workflow effect-run comic-poster",
+  "operations": [
+   "effect-run"
+  ],
+  "result_keys": [
+   "changes",
+   "dry_run",
+   "operations",
+   "success"
+  ]
+ },
+ {
+  "step": "workflow effect-run cut-paper",
+  "operations": [
+   "effect-run"
+  ],
+  "result_keys": [
+   "changes",
+   "dry_run",
+   "operations",
+   "success"
+  ]
+ },
+ {
+  "step": "workflow effect-run ink-illustration",
+  "operations": [
+   "effect-run"
+  ],
+  "result_keys": [
+   "changes",
+   "dry_run",
+   "operations",
+   "success"
+  ]
+ }
+]

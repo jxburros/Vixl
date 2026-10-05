@@ -1,0 +1,15 @@
+{
+  "passed": true,
+  "errors": 0,
+  "warnings": 0,
+  "issues": [],
+  "checked": {
+    "checks": [
+      "print",
+      "bounds",
+      "safe_area"
+    ],
+    "layers": 19,
+    "text_layers": 1
+  }
+}

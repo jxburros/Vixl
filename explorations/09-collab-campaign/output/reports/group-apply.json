@@ -1,0 +1,147 @@
+{
+  "group": {
+    "version": 1,
+    "name": "loop-launch",
+    "documents": [
+      "ig-portrait.vixl",
+      "ig-story.vixl",
+      "yt-thumb.vixl",
+      "yt-banner.vixl",
+      "leaderboard.vixl",
+      "med-rect.vixl",
+      "flyer.vixl"
+    ],
+    "shared": {
+      "variables": {
+        "headline": "Your city, on a Loop",
+        "headline_caps": "YOUR CITY, ON A LOOP"
+      },
+      "swatches": {
+        "accent": "#B83512",
+        "accent-text": "#B83512"
+      }
+    },
+    "recovery_required": false
+  },
+  "attempts": [
+    {
+      "attempt": "pale accent",
+      "shared": {
+        "variables": {
+          "headline": "Your city, on a Loop",
+          "headline_caps": "YOUR CITY, ON A LOOP"
+        },
+        "swatches": {
+          "accent": "#7FC8D0",
+          "accent-text": "#7FC8D0"
+        }
+      },
+      "published": false,
+      "error": "check_failed",
+      "message": "Group checks failed; no documents saved",
+      "blocked_by": "flyer.vixl",
+      "failed_suites": [
+        {
+          "suite": "loop-accessible",
+          "status": "failed",
+          "failures": [
+            {
+              "id": "contrast",
+              "status": "failed",
+              "issues": [
+                "'date' contrast is 1.90:1 for most glyph pixels (minimum 1.90:1); needs 4.5:1",
+                "'cta' contrast is 1.90:1 for most glyph pixels (minimum 1.90:1); needs 4.5:1"
+              ]
+            }
+          ]
+        },
+        {
+          "suite": "loop-delivery",
+          "status": "needs_review",
+          "failures": [
+            {
+              "id": "design",
+              "status": "needs_review",
+              "issues": [
+                "fill is outside the brand palette",
+                "fill is outside the brand palette"
+              ]
+            },
+            {
+              "id": "logo-clear",
+              "status": "needs_review",
+              "issues": [
+                "'headline' and 'logo' overlap by 24799 px (34.8% of the smaller layer)"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "attempt": "long headline",
+      "shared": {
+        "variables": {
+          "headline": "Your whole city, ten minutes away, on a Loop",
+          "headline_caps": "YOUR WHOLE CITY, TEN MINUTES AWAY"
+        },
+        "swatches": {
+          "accent": "#B83512",
+          "accent-text": "#B83512"
+        }
+      },
+      "published": false,
+      "error": "text_overflow",
+      "message": "operations[4] (action-apply): Text cannot fit at the minimum size",
+      "blocked_by": null,
+      "failed_suites": []
+    },
+    {
+      "attempt": "final",
+      "shared": {
+        "variables": {
+          "headline": "Your city, on a Loop",
+          "headline_caps": "YOUR CITY, ON A LOOP"
+        },
+        "swatches": {
+          "accent": "#B83512",
+          "accent-text": "#B83512"
+        }
+      },
+      "published": false,
+      "error": "check_failed",
+      "message": "Group checks failed; no documents saved",
+      "blocked_by": "flyer.vixl",
+      "failed_suites": [
+        {
+          "suite": "loop-delivery",
+          "status": "needs_review",
+          "failures": [
+            {
+              "id": "logo-clear",
+              "status": "needs_review",
+              "issues": [
+                "'headline' and 'logo' overlap by 24799 px (34.8% of the smaller layer)"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "attempt": "final, flyer refit",
+      "shared": {
+        "variables": {
+          "headline": "Your city, on a Loop",
+          "headline_caps": "YOUR CITY, ON A LOOP"
+        },
+        "swatches": {
+          "accent": "#B83512",
+          "accent-text": "#B83512"
+        }
+      },
+      "published": true,
+      "documents": []
+    }
+  ]
+}

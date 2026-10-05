@@ -1,0 +1,248 @@
+{
+  "logo/horizontal/brand-colors": {
+    "version": 1,
+    "suite_hash": "bdb9e4b3b5def4d60d2aeaf8cfc3e409162cd5e5e5b70098a3aaa89351bf947a",
+    "passed": true,
+    "status": "passed",
+    "errors": 0,
+    "needs_review": 0,
+    "coverage": {
+      "mode": "still",
+      "times": [
+        null
+      ]
+    },
+    "results": [
+      {
+        "id": "logo-uses-only-brand-colours",
+        "status": "passed",
+        "severity": "error",
+        "time": null,
+        "passed": true,
+        "palette": "morrow",
+        "colors": [
+          "#3B2418",
+          "#F3E9DA",
+          "#D9642B",
+          "#8C3500",
+          "#004443",
+          "#CBBEAF"
+        ],
+        "pixels_checked": 186129,
+        "outside_pixels": 2613,
+        "outside_fraction": 0.014038650613284335,
+        "max_fraction": 0.03,
+        "tolerance": 8,
+        "maximum_distance": 41,
+        "examples": [
+          "#843f23",
+          "#8b4921",
+          "#834120",
+          "#814120",
+          "#7e3f20",
+          "#763c1f",
+          "#6f3a1e",
+          "#6e381e"
+        ],
+        "metric": "maximum RGB channel distance (0\u2013255); alpha below alpha_min excluded"
+      }
+    ]
+  },
+  "logo/horizontal/brand-colors-frozen": {
+    "version": 1,
+    "suite_hash": "3fa9dab11b5729a75f03674c62b6d6d76a02c98e25130f1c25a9661abc6de0e0",
+    "passed": true,
+    "status": "passed",
+    "errors": 0,
+    "needs_review": 0,
+    "coverage": {
+      "mode": "still",
+      "times": [
+        null
+      ]
+    },
+    "results": [
+      {
+        "id": "logo-pixels-frozen",
+        "status": "passed",
+        "severity": "error",
+        "time": null,
+        "passed": true,
+        "palette": null,
+        "colors": [
+          "#3B2418",
+          "#D9642B"
+        ],
+        "pixels_checked": 186129,
+        "outside_pixels": 2613,
+        "outside_fraction": 0.014038650613284335,
+        "max_fraction": 0.03,
+        "tolerance": 8,
+        "maximum_distance": 79,
+        "examples": [
+          "#843f23",
+          "#8b4921",
+          "#834120",
+          "#814120",
+          "#7e3f20",
+          "#763c1f",
+          "#6f3a1e",
+          "#6e381e"
+        ],
+        "metric": "maximum RGB channel distance (0\u2013255); alpha below alpha_min excluded"
+      }
+    ]
+  },
+  "logo/stacked/brand-colors": {
+    "version": 1,
+    "suite_hash": "bdb9e4b3b5def4d60d2aeaf8cfc3e409162cd5e5e5b70098a3aaa89351bf947a",
+    "passed": true,
+    "status": "passed",
+    "errors": 0,
+    "needs_review": 0,
+    "coverage": {
+      "mode": "still",
+      "times": [
+        null
+      ]
+    },
+    "results": [
+      {
+        "id": "logo-uses-only-brand-colours",
+        "status": "passed",
+        "severity": "error",
+        "time": null,
+        "passed": true,
+        "palette": "morrow",
+        "colors": [
+          "#3B2418",
+          "#F3E9DA",
+          "#D9642B",
+          "#8C3500",
+          "#004443",
+          "#CBBEAF"
+        ],
+        "pixels_checked": 276454,
+        "outside_pixels": 3472,
+        "outside_fraction": 0.01255905141542535,
+        "max_fraction": 0.03,
+        "tolerance": 8,
+        "maximum_distance": 40,
+        "examples": [
+          "#924921",
+          "#8b4522",
+          "#834120",
+          "#814020",
+          "#7e3f20",
+          "#7d3e20",
+          "#6e391e",
+          "#6d381e"
+        ],
+        "metric": "maximum RGB channel distance (0\u2013255); alpha below alpha_min excluded"
+      }
+    ]
+  },
+  "logo/stacked/brand-colors-frozen": {
+    "version": 1,
+    "suite_hash": "3fa9dab11b5729a75f03674c62b6d6d76a02c98e25130f1c25a9661abc6de0e0",
+    "passed": true,
+    "status": "passed",
+    "errors": 0,
+    "needs_review": 0,
+    "coverage": {
+      "mode": "still",
+      "times": [
+        null
+      ]
+    },
+    "results": [
+      {
+        "id": "logo-pixels-frozen",
+        "status": "passed",
+        "severity": "error",
+        "time": null,
+        "passed": true,
+        "palette": null,
+        "colors": [
+          "#3B2418",
+          "#D9642B"
+        ],
+        "pixels_checked": 276454,
+        "outside_pixels": 3472,
+        "outside_fraction": 0.01255905141542535,
+        "max_fraction": 0.03,
+        "tolerance": 8,
+        "maximum_distance": 79,
+        "examples": [
+          "#924921",
+          "#8b4522",
+          "#834120",
+          "#814020",
+          "#7e3f20",
+          "#7d3e20",
+          "#6e391e",
+          "#6d381e"
+        ],
+        "metric": "maximum RGB channel distance (0\u2013255); alpha below alpha_min excluded"
+      }
+    ]
+  },
+  "mark/palette-check": {
+    "passed": true,
+    "palette": "morrow",
+    "colors": [
+      "#3B2418",
+      "#F3E9DA",
+      "#D9642B",
+      "#8C3500",
+      "#004443",
+      "#CBBEAF"
+    ],
+    "pixels_checked": 181716,
+    "outside_pixels": 2856,
+    "outside_fraction": 0.015716832860067358,
+    "max_fraction": 0.03,
+    "tolerance": 8,
+    "maximum_distance": 40,
+    "examples": [
+      "#924921",
+      "#8b4522",
+      "#81401f",
+      "#824121",
+      "#7e3f20",
+      "#793d20",
+      "#6f391f",
+      "#6d381e"
+    ],
+    "metric": "maximum RGB channel distance (0\u2013255); alpha below alpha_min excluded"
+  },
+  "card-front/palette-check": {
+    "passed": true,
+    "palette": "morrow",
+    "colors": [
+      "#3B2418",
+      "#F3E9DA",
+      "#D9642B",
+      "#8C3500",
+      "#004443",
+      "#CBBEAF"
+    ],
+    "pixels_checked": 761176,
+    "outside_pixels": 8019,
+    "outside_fraction": 0.010535014241121634,
+    "max_fraction": 0.03,
+    "tolerance": 8,
+    "maximum_distance": 75,
+    "examples": [
+      "#e8ddce",
+      "#aea092",
+      "#756256",
+      "#473025",
+      "#806f61",
+      "#523e30",
+      "#ae9f91",
+      "#513c30"
+    ],
+    "metric": "maximum RGB channel distance (0\u2013255); alpha below alpha_min excluded"
+  }
+}

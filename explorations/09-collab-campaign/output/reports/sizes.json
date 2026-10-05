@@ -1,0 +1,117 @@
+{
+  "ig-portrait": {
+    "doc": "ig-portrait.vixl",
+    "size": "instagram-portrait",
+    "layout": "golden-section",
+    "slots": [
+      "cta",
+      "image",
+      "label",
+      "subtitle",
+      "title"
+    ],
+    "dropped": [
+      "body",
+      "caption",
+      "items"
+    ]
+  },
+  "ig-story": {
+    "doc": "ig-story.vixl",
+    "size": "instagram-story",
+    "layout": "story-vertical",
+    "slots": [
+      "cta",
+      "image",
+      "label",
+      "subtitle",
+      "title"
+    ],
+    "dropped": [
+      "body",
+      "caption",
+      "items"
+    ]
+  },
+  "yt-thumb": {
+    "doc": "yt-thumb.vixl",
+    "size": "youtube-thumbnail",
+    "layout": "thumbnail-bold",
+    "slots": [
+      "image",
+      "label",
+      "title"
+    ],
+    "dropped": [
+      "subtitle",
+      "cta",
+      "body",
+      "caption",
+      "items"
+    ]
+  },
+  "yt-banner": {
+    "doc": "yt-banner.vixl",
+    "size": "youtube-banner",
+    "layout": "banner",
+    "slots": [
+      "cta",
+      "subtitle",
+      "title"
+    ],
+    "dropped": [
+      "label",
+      "body",
+      "caption",
+      "items"
+    ]
+  },
+  "leaderboard": {
+    "doc": "leaderboard.vixl",
+    "size": "leaderboard",
+    "layout": "banner",
+    "slots": [
+      "cta",
+      "subtitle",
+      "title"
+    ],
+    "dropped": [
+      "label",
+      "body",
+      "caption",
+      "items"
+    ]
+  },
+  "med-rect": {
+    "doc": "med-rect.vixl",
+    "size": "medium-rectangle",
+    "layout": "hero-statement",
+    "slots": [
+      "caption",
+      "cta",
+      "label",
+      "subtitle",
+      "title"
+    ],
+    "dropped": [
+      "body",
+      "items"
+    ]
+  },
+  "flyer": {
+    "doc": "flyer.vixl",
+    "size": "letter",
+    "layout": "event-poster",
+    "slots": [
+      "body",
+      "caption",
+      "cta",
+      "label",
+      "title"
+    ],
+    "dropped": [
+      "subtitle",
+      "items"
+    ]
+  }
+}

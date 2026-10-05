@@ -1,0 +1,148 @@
+[
+  {
+    "row": 1,
+    "name": "Cinderwisp",
+    "status": "completed",
+    "repairs": [],
+    "problems": [],
+    "placeholder_lint": [],
+    "output": "0001-4f56b3b1b19b0245.webp"
+  },
+  {
+    "row": 2,
+    "name": "Tidecaller Maru",
+    "status": "completed",
+    "repairs": [],
+    "problems": [],
+    "placeholder_lint": [],
+    "output": "0002-8e64d533f50c6992.webp"
+  },
+  {
+    "row": 3,
+    "name": "Mossback Elder",
+    "status": "completed",
+    "repairs": [],
+    "problems": [],
+    "placeholder_lint": [],
+    "output": "0003-82b6e72abe15ca36.webp"
+  },
+  {
+    "row": 4,
+    "name": "Galvanir",
+    "status": "completed",
+    "repairs": [],
+    "problems": [],
+    "placeholder_lint": [],
+    "output": "0004-de33d9ad0bdedbf6.webp"
+  },
+  {
+    "row": 5,
+    "name": "Nyxshade",
+    "status": "completed",
+    "repairs": [],
+    "problems": [],
+    "placeholder_lint": [],
+    "output": "0005-6aa955bde3abc4c7.webp"
+  },
+  {
+    "row": 6,
+    "name": "Archsovereign Pyrrhaxion, the Unquenchable Ember of the Ninth Caldera",
+    "status": "failed",
+    "repairs": [],
+    "problems": [
+      "error: text_overflow: Text cannot fit at the minimum size"
+    ],
+    "placeholder_lint": [],
+    "output": null
+  },
+  {
+    "row": 7,
+    "name": "Ætherwyrm Ölsén",
+    "status": "completed",
+    "repairs": [],
+    "problems": [],
+    "placeholder_lint": [],
+    "output": "0007-9ebdf89b4f91b457.webp"
+  },
+  {
+    "row": 8,
+    "name": "Lantern Moth",
+    "status": "needs_review",
+    "repairs": [
+      "fit-name",
+      "fit-rules"
+    ],
+    "problems": [
+      "card-qa/flavor-fits: failed {\"actual_size\": 14, \"fits\": true}"
+    ],
+    "placeholder_lint": [],
+    "output": null
+  },
+  {
+    "row": 9,
+    "name": "光の狐 Hikari-no-Kitsune ✨",
+    "status": "completed",
+    "repairs": [
+      "fit-name"
+    ],
+    "problems": [],
+    "placeholder_lint": [],
+    "output": "0009-8dbb471cef60b63d.webp",
+    "render_data_check": [
+      "contrast/error: 'spd-value' contrast is 1.73:1 for most glyph pixels (minimum 1.73:1); needs 3:1"
+    ]
+  },
+  {
+    "row": 10,
+    "name": "Grimward Sentinel",
+    "status": "needs_review",
+    "repairs": [
+      "fit-name",
+      "fit-rules"
+    ],
+    "problems": [
+      "card-qa/ability-fits: failed {\"actual_size\": 18, \"fits\": true}"
+    ],
+    "placeholder_lint": [],
+    "output": null
+  },
+  {
+    "row": 11,
+    "name": "[CARD NAME]",
+    "status": "completed",
+    "repairs": [],
+    "problems": [],
+    "placeholder_lint": [
+      "ability",
+      "ability_name",
+      "flavor",
+      "kind",
+      "name"
+    ],
+    "output": "0011-f73164e8d67d0326.webp"
+  },
+  {
+    "row": 12,
+    "name": "Seraphel, Dawn’s Last Light",
+    "status": "completed",
+    "repairs": [
+      "fit-name"
+    ],
+    "problems": [],
+    "placeholder_lint": [],
+    "output": "0012-c42f378c86e75db9.webp",
+    "render_data_check": [
+      "contrast/error: 'atk-value' contrast is 2.59:1 for most glyph pixels (minimum 2.59:1); needs 3:1",
+      "contrast/error: 'def-value' contrast is 2.59:1 for most glyph pixels (minimum 2.59:1); needs 3:1"
+    ]
+  },
+  {
+    "row": 13,
+    "name": "Riftling",
+    "status": "completed",
+    "repairs": [],
+    "problems": [],
+    "placeholder_lint": [],
+    "output": "0013-3aac106d53aad2d0.webp"
+  }
+]

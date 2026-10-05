@@ -1,0 +1,303 @@
+{
+  "font_pair": {
+    "pairing": "syne-dm-sans",
+    "heading": {
+      "name": "syne-800",
+      "family": "Syne",
+      "weight": 800,
+      "italic": false,
+      "role": "heading"
+    },
+    "body": {
+      "name": "dm-sans-400",
+      "family": "DM Sans",
+      "weight": 400,
+      "italic": false,
+      "role": "body"
+    },
+    "why": "Syne's heavy, widened display weights are deliberately eccentric; a clean geometric body sans keeps information readable.",
+    "caution": "Syne's width changes with weight; test heading line breaks.",
+    "typography": {
+      "heading": "syne-800",
+      "body": "dm-sans-400"
+    },
+    "note": "Layouts now use these fonts by default; pass font/display_font to override."
+  },
+  "font_install": {
+    "name": "dm-sans-700",
+    "family": "DM Sans",
+    "weight": 700,
+    "italic": false
+  },
+  "apply_normalized": null,
+  "check_print_colorvision": {
+    "passed": true,
+    "errors": 0,
+    "warnings": 9,
+    "issues": [
+      {
+        "check": "bounds",
+        "severity": "warning",
+        "layers": [
+          "haze"
+        ],
+        "message": "'haze' is cut off by the canvas edge",
+        "bounds": [
+          -6,
+          355,
+          1700,
+          1700
+        ]
+      },
+      {
+        "check": "bounds",
+        "severity": "warning",
+        "layers": [
+          "peak-far-l"
+        ],
+        "message": "'peak-far-l' is cut off by the canvas edge",
+        "bounds": [
+          -180,
+          1130,
+          900,
+          380
+        ]
+      },
+      {
+        "check": "bounds",
+        "severity": "warning",
+        "layers": [
+          "peak-far-r"
+        ],
+        "message": "'peak-far-r' is cut off by the canvas edge",
+        "bounds": [
+          980,
+          1070,
+          1000,
+          440
+        ]
+      },
+      {
+        "check": "bounds",
+        "severity": "warning",
+        "layers": [
+          "peak-near-r"
+        ],
+        "message": "'peak-near-r' is cut off by the canvas edge",
+        "bounds": [
+          1180,
+          1290,
+          620,
+          220
+        ]
+      },
+      {
+        "check": "bounds",
+        "severity": "warning",
+        "layers": [
+          "mountains"
+        ],
+        "message": "'mountains' is cut off by the canvas edge",
+        "bounds": [
+          -180,
+          1070,
+          2160,
+          440
+        ]
+      },
+      {
+        "check": "overlap",
+        "severity": "warning",
+        "layers": [
+          "sun",
+          "badge-text"
+        ],
+        "message": "'sun' and 'badge-text' overlap by 1848 px (23.9% of the smaller layer)",
+        "region": [
+          1268,
+          1325,
+          76,
+          149
+        ]
+      },
+      {
+        "check": "overlap",
+        "severity": "warning",
+        "layers": [
+          "sun",
+          "headliners"
+        ],
+        "message": "'sun' and 'headliners' overlap by 35417 px (68.7% of the smaller layer)",
+        "region": [
+          344,
+          1711,
+          1000,
+          132
+        ]
+      },
+      {
+        "check": "overlap",
+        "severity": "warning",
+        "layers": [
+          "slice",
+          "badge-text"
+        ],
+        "message": "'slice' and 'badge-text' overlap by 1212 px (15.6% of the smaller layer)",
+        "region": [
+          1268,
+          1325,
+          96,
+          149
+        ]
+      },
+      {
+        "check": "overlap",
+        "severity": "warning",
+        "layers": [
+          "sparkle-2",
+          "subtitle"
+        ],
+        "message": "'sparkle-2' and 'subtitle' overlap by 549 px (100.0% of the smaller layer)",
+        "region": [
+          1240,
+          470,
+          60,
+          60
+        ]
+      }
+    ],
+    "checked": {
+      "checks": [
+        "bounds",
+        "overlap",
+        "safe_area",
+        "legibility",
+        "print",
+        "color_vision"
+      ],
+      "layers": 47,
+      "text_layers": 13
+    }
+  },
+  "check_contrast_small_text": {
+    "passed": true,
+    "errors": 0,
+    "warnings": 0,
+    "issues": [],
+    "checked": {
+      "checks": [
+        "contrast"
+      ],
+      "layers": 5,
+      "text_layers": 5
+    }
+  },
+  "icc_profile": "default_cmyk.icc",
+  "export_png": {
+    "output": "/home/user/Vixl/explorations/01-print-concert-poster/output/poster-rgb.png",
+    "bytes": 2489001
+  },
+  "export_pdf": {
+    "output": "/home/user/Vixl/explorations/01-print-concert-poster/output/poster-cmyk.pdf",
+    "bytes": 2360524
+  },
+  "export_jpg": {
+    "output": "/home/user/Vixl/explorations/01-print-concert-poster/output/poster-cmyk-swop.jpg",
+    "bytes": 2575287
+  },
+  "export_svg": {
+    "output": "/home/user/Vixl/explorations/01-print-concert-poster/output/poster.svg",
+    "bytes": 297331,
+    "svg": {
+      "vector_only": false,
+      "raster_fallbacks": [
+        {
+          "layer": "slice",
+          "reason": "repeat is not exported as vectors",
+          "effects": [],
+          "styles": []
+        },
+        {
+          "layer": "rung",
+          "reason": "repeat is not exported as vectors",
+          "effects": [],
+          "styles": []
+        }
+      ]
+    }
+  },
+  "export_svg_full_comp": {
+    "output": "/home/user/Vixl/explorations/01-print-concert-poster/.work/poster-fullcomp.svg",
+    "bytes": 10854369,
+    "svg": {
+      "vector_only": false,
+      "raster_fallbacks": [
+        {
+          "layer": "haze",
+          "reason": "backdrop-dependent blend or adjustment requires document rasterization",
+          "effects": []
+        },
+        {
+          "layer": "sun-slices",
+          "reason": "backdrop-dependent blend or adjustment requires document rasterization",
+          "effects": []
+        },
+        {
+          "layer": "grid",
+          "reason": "backdrop-dependent blend or adjustment requires document rasterization",
+          "effects": []
+        },
+        {
+          "layer": "vignette",
+          "reason": "backdrop-dependent blend or adjustment requires document rasterization",
+          "effects": [
+            "vignette"
+          ]
+        },
+        {
+          "layer": "grain",
+          "reason": "backdrop-dependent blend or adjustment requires document rasterization",
+          "effects": [
+            "grain"
+          ]
+        }
+      ]
+    }
+  },
+  "cmyk_jpeg": {
+    "mode": "CMYK",
+    "size": [
+      1688,
+      2588
+    ],
+    "dpi": [
+      150,
+      150
+    ],
+    "max_total_ink_pct": 340.4,
+    "p99_total_ink_pct": 302.7
+  },
+  "pdf": {
+    "header": "%PDF-1.4",
+    "DeviceCMYK": true,
+    "DCTDecode": true,
+    "MediaBox": "/MediaBox [ 0 0 810.24 1242.24 ]\n/Conten"
+  },
+  "svg": {
+    "bytes": 297331,
+    "image_elements": 2,
+    "path_elements": 486
+  },
+  "proof_vs_rgb": {
+    "gcr_ink_limit_300": {
+      "mean_abs_rgb": 0.0,
+      "max_abs_rgb": 0,
+      "pct_pixels_changed_gt8": 0.0
+    },
+    "swop_icc_perceptual": {
+      "mean_abs_rgb": 13.32,
+      "max_abs_rgb": 70,
+      "pct_pixels_changed_gt8": 91.3
+    }
+  }
+}

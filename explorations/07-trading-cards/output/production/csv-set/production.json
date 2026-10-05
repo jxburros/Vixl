@@ -1,0 +1,2446 @@
+{
+  "version": 1,
+  "quality": "final",
+  "count": 13,
+  "status": "needs_review",
+  "results": [
+    {
+      "id": "0001",
+      "values": {
+        "name": "Cinderwisp",
+        "cost": "1",
+        "element": "Ember",
+        "element_color": "#ff6b35",
+        "element_dark": "#2a0905",
+        "element_light": "#ffd166",
+        "kind": "Spirit \u2014 Wisp",
+        "rarity": "Common",
+        "rarity_color": "#c9d1d9",
+        "rarity_pips": "\u25c6",
+        "ability_name": "Kindle",
+        "ability": "When Cinderwisp enters play, give another Ember spirit +1 ATK until end of turn.",
+        "flavor": "\u201cFollow the small light,\u201d the old guides said. Few asked where it led.",
+        "atk": "2",
+        "def": "1",
+        "spd": "4",
+        "set_no": "001",
+        "edition": "First Edition",
+        "art": "assets/8204f96e1f55c05d16f2a45c79a4c26a36145c5b693b9cf79075f08d1154e109.jpg"
+      },
+      "artboard": null,
+      "status": "completed",
+      "output": "0001-4f56b3b1b19b0245.webp",
+      "fingerprint": "4f56b3b1b19b024567e2458f90c9a8ace5c2c94aebd0c2bda3ef8d1e5d53d90a",
+      "sha256": "3819985712f4430409b4b9cef5495f4576d030d19d51edd680aa981e06b66490",
+      "checks": {
+        "card-qa": {
+          "version": 1,
+          "suite_hash": "9320037720cef443af5bb808a24b4fe36691803ac6cecaf08ec9c68e3b0f4076",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "name-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 50,
+              "fits": true
+            },
+            {
+              "id": "ability-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 27,
+              "fits": true
+            },
+            {
+              "id": "flavor-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 24,
+              "fits": true
+            },
+            {
+              "id": "trim-width",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 750,
+              "actual": 750
+            },
+            {
+              "id": "trim-height",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 1050,
+              "actual": 1050
+            },
+            {
+              "id": "name-font",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf",
+              "actual": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf"
+            },
+            {
+              "id": "name-to-art",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 14,
+              "actual": 14
+            },
+            {
+              "id": "art-to-type",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 18,
+              "actual": 18
+            },
+            {
+              "id": "rules-box-palette",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "palette": null,
+              "colors": [
+                "#f4ead2",
+                "#14100c",
+                "#5b4a36",
+                "#a99a80"
+              ],
+              "pixels_checked": 114448,
+              "outside_pixels": 375,
+              "outside_fraction": 0.0032765972319306583,
+              "max_fraction": 0.04,
+              "tolerance": 40,
+              "maximum_distance": 61,
+              "examples": [
+                "#f8b895",
+                "#cac1ad",
+                "#777063",
+                "#766f62"
+              ],
+              "metric": "maximum RGB channel distance (0\u2013255); alpha below alpha_min excluded"
+            },
+            {
+              "id": "art-inside",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "layer.art.bounds within canvas"
+            },
+            {
+              "id": "name-contrast",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "contrast",
+                  "bounds"
+                ],
+                "layers": 2,
+                "text_layers": 2
+              }
+            }
+          ]
+        },
+        "no-placeholders": {
+          "version": 1,
+          "suite_hash": "c11e6e04e7ce3e236e94ed5e168d2cbe2e943185bc97f04b99a0d53dc1cd64db",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "copy",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "blanks"
+                ],
+                "layers": 26,
+                "text_layers": 13
+              }
+            }
+          ]
+        }
+      },
+      "repairs": [],
+      "cache": {
+        "hits": 40,
+        "misses": 34
+      }
+    },
+    {
+      "id": "0002",
+      "values": {
+        "name": "Tidecaller Maru",
+        "cost": "3",
+        "element": "Tide",
+        "element_color": "#2ec4ff",
+        "element_dark": "#03182b",
+        "element_light": "#c9f6ff",
+        "kind": "Spirit \u2014 Herald",
+        "rarity": "Rare",
+        "rarity_color": "#4cc9f0",
+        "rarity_pips": "\u25c6\u25c6",
+        "ability_name": "Undertow",
+        "ability": "Return target spirit with SPD 2 or less to its owner\u2019s hand.",
+        "flavor": "The harbor bells ring twice before she rises.",
+        "atk": "2",
+        "def": "4",
+        "spd": "3",
+        "set_no": "002",
+        "edition": "First Edition",
+        "art": "assets/20f0e79db33d1dedbc4828868c4fb689b7265f623df858943d2f1631cf5b4cc3.jpg"
+      },
+      "artboard": null,
+      "status": "completed",
+      "output": "0002-8e64d533f50c6992.webp",
+      "fingerprint": "8e64d533f50c6992e3748459cb0a801da06c8d0c830903d679885c95e8e5757a",
+      "sha256": "6fe5d295cb52a38b5576b4193a956fb20f036421aed9e98382cd5030fe9cb61e",
+      "checks": {
+        "card-qa": {
+          "version": 1,
+          "suite_hash": "9320037720cef443af5bb808a24b4fe36691803ac6cecaf08ec9c68e3b0f4076",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "name-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 50,
+              "fits": true
+            },
+            {
+              "id": "ability-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 27,
+              "fits": true
+            },
+            {
+              "id": "flavor-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 24,
+              "fits": true
+            },
+            {
+              "id": "trim-width",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 750,
+              "actual": 750
+            },
+            {
+              "id": "trim-height",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 1050,
+              "actual": 1050
+            },
+            {
+              "id": "name-font",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf",
+              "actual": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf"
+            },
+            {
+              "id": "name-to-art",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 14,
+              "actual": 14
+            },
+            {
+              "id": "art-to-type",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 18,
+              "actual": 18
+            },
+            {
+              "id": "rules-box-palette",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "palette": null,
+              "colors": [
+                "#f4ead2",
+                "#14100c",
+                "#5b4a36",
+                "#a99a80"
+              ],
+              "pixels_checked": 114448,
+              "outside_pixels": 270,
+              "outside_fraction": 0.0023591500069900743,
+              "max_fraction": 0.04,
+              "tolerance": 40,
+              "maximum_distance": 78,
+              "examples": [
+                "#a6dbe4",
+                "#777063",
+                "#cac1ad",
+                "#766f62"
+              ],
+              "metric": "maximum RGB channel distance (0\u2013255); alpha below alpha_min excluded"
+            },
+            {
+              "id": "art-inside",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "layer.art.bounds within canvas"
+            },
+            {
+              "id": "name-contrast",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "contrast",
+                  "bounds"
+                ],
+                "layers": 2,
+                "text_layers": 2
+              }
+            }
+          ]
+        },
+        "no-placeholders": {
+          "version": 1,
+          "suite_hash": "c11e6e04e7ce3e236e94ed5e168d2cbe2e943185bc97f04b99a0d53dc1cd64db",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "copy",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "blanks"
+                ],
+                "layers": 26,
+                "text_layers": 13
+              }
+            }
+          ]
+        }
+      },
+      "repairs": [],
+      "cache": {
+        "hits": 39,
+        "misses": 31
+      }
+    },
+    {
+      "id": "0003",
+      "values": {
+        "name": "Mossback Elder",
+        "cost": "4",
+        "element": "Grove",
+        "element_color": "#6fd08c",
+        "element_dark": "#071f10",
+        "element_light": "#e6ffd9",
+        "kind": "Spirit \u2014 Ancient",
+        "rarity": "Common",
+        "rarity_color": "#c9d1d9",
+        "rarity_pips": "\u25c6",
+        "ability_name": "Deep Roots",
+        "ability": "Mossback Elder can\u2019t be moved by effects your opponents control.",
+        "flavor": "It has been asleep since the forest was a single seed.",
+        "atk": "3",
+        "def": "6",
+        "spd": "1",
+        "set_no": "003",
+        "edition": "First Edition",
+        "art": "assets/7fa1e907b5798edf6d270367f9de459e6d95fe577de15b0134b9ee21b448561c.jpg"
+      },
+      "artboard": null,
+      "status": "completed",
+      "output": "0003-82b6e72abe15ca36.webp",
+      "fingerprint": "82b6e72abe15ca365974457ab3a8bdddc79b069d34b797c581035d80c7388853",
+      "sha256": "83257d5228276153225ed1474dae25d388e9371271a2a8f3f47e300eab8ec277",
+      "checks": {
+        "card-qa": {
+          "version": 1,
+          "suite_hash": "9320037720cef443af5bb808a24b4fe36691803ac6cecaf08ec9c68e3b0f4076",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "name-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 50,
+              "fits": true
+            },
+            {
+              "id": "ability-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 27,
+              "fits": true
+            },
+            {
+              "id": "flavor-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 24,
+              "fits": true
+            },
+            {
+              "id": "trim-width",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 750,
+              "actual": 750
+            },
+            {
+              "id": "trim-height",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 1050,
+              "actual": 1050
+            },
+            {
+              "id": "name-font",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf",
+              "actual": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf"
+            },
+            {
+              "id": "name-to-art",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 14,
+              "actual": 14
+            },
+            {
+              "id": "art-to-type",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 18,
+              "actual": 18
+            },
+            {
+              "id": "rules-box-palette",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "palette": null,
+              "colors": [
+                "#f4ead2",
+                "#14100c",
+                "#5b4a36",
+                "#a99a80"
+              ],
+              "pixels_checked": 114448,
+              "outside_pixels": 323,
+              "outside_fraction": 0.002822242415769607,
+              "max_fraction": 0.04,
+              "tolerance": 40,
+              "maximum_distance": 52,
+              "examples": [
+                "#c0e0b6",
+                "#cac1ad",
+                "#766f62",
+                "#777063"
+              ],
+              "metric": "maximum RGB channel distance (0\u2013255); alpha below alpha_min excluded"
+            },
+            {
+              "id": "art-inside",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "layer.art.bounds within canvas"
+            },
+            {
+              "id": "name-contrast",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "contrast",
+                  "bounds"
+                ],
+                "layers": 2,
+                "text_layers": 2
+              }
+            }
+          ]
+        },
+        "no-placeholders": {
+          "version": 1,
+          "suite_hash": "c11e6e04e7ce3e236e94ed5e168d2cbe2e943185bc97f04b99a0d53dc1cd64db",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "copy",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "blanks"
+                ],
+                "layers": 26,
+                "text_layers": 13
+              }
+            }
+          ]
+        }
+      },
+      "repairs": [],
+      "cache": {
+        "hits": 41,
+        "misses": 31
+      }
+    },
+    {
+      "id": "0004",
+      "values": {
+        "name": "Galvanir",
+        "cost": "5",
+        "element": "Storm",
+        "element_color": "#b388ff",
+        "element_dark": "#130a2e",
+        "element_light": "#f1e6ff",
+        "kind": "Spirit \u2014 Thunderwing",
+        "rarity": "Epic",
+        "rarity_color": "#c77dff",
+        "rarity_pips": "\u25c6\u25c6\u25c6",
+        "ability_name": "Chain Spark",
+        "ability": "Deal 2 damage to each enemy spirit. If one is destroyed this way, repeat once.",
+        "flavor": "Count the seconds between the flash and the roar. Then stop counting.",
+        "atk": "6",
+        "def": "3",
+        "spd": "6",
+        "set_no": "004",
+        "edition": "First Edition",
+        "art": "assets/b4454a7cd1dddf424b1c08445b2e3cb84d1b38f2e7a506980a108a0b1b23e730.jpg"
+      },
+      "artboard": null,
+      "status": "completed",
+      "output": "0004-de33d9ad0bdedbf6.webp",
+      "fingerprint": "de33d9ad0bdedbf6438c1265bc3a30ac6247a4004abb8b3de607ee3cc5fd4917",
+      "sha256": "cd9060047910d943bebf565f092dc81372de85c0ca2d2ed0d1daaa3fdf1c404e",
+      "checks": {
+        "card-qa": {
+          "version": 1,
+          "suite_hash": "9320037720cef443af5bb808a24b4fe36691803ac6cecaf08ec9c68e3b0f4076",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "name-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 50,
+              "fits": true
+            },
+            {
+              "id": "ability-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 27,
+              "fits": true
+            },
+            {
+              "id": "flavor-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 24,
+              "fits": true
+            },
+            {
+              "id": "trim-width",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 750,
+              "actual": 750
+            },
+            {
+              "id": "trim-height",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 1050,
+              "actual": 1050
+            },
+            {
+              "id": "name-font",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf",
+              "actual": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf"
+            },
+            {
+              "id": "name-to-art",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 14,
+              "actual": 14
+            },
+            {
+              "id": "art-to-type",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 18,
+              "actual": 18
+            },
+            {
+              "id": "rules-box-palette",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "palette": null,
+              "colors": [
+                "#f4ead2",
+                "#14100c",
+                "#5b4a36",
+                "#a99a80"
+              ],
+              "pixels_checked": 114448,
+              "outside_pixels": 395,
+              "outside_fraction": 0.0034513490843002936,
+              "max_fraction": 0.04,
+              "tolerance": 40,
+              "maximum_distance": 45,
+              "examples": [
+                "#766f62",
+                "#cac1ad",
+                "#777063"
+              ],
+              "metric": "maximum RGB channel distance (0\u2013255); alpha below alpha_min excluded"
+            },
+            {
+              "id": "art-inside",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "layer.art.bounds within canvas"
+            },
+            {
+              "id": "name-contrast",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "contrast",
+                  "bounds"
+                ],
+                "layers": 2,
+                "text_layers": 2
+              }
+            }
+          ]
+        },
+        "no-placeholders": {
+          "version": 1,
+          "suite_hash": "c11e6e04e7ce3e236e94ed5e168d2cbe2e943185bc97f04b99a0d53dc1cd64db",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "copy",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "blanks"
+                ],
+                "layers": 26,
+                "text_layers": 13
+              }
+            }
+          ]
+        }
+      },
+      "repairs": [],
+      "cache": {
+        "hits": 40,
+        "misses": 32
+      }
+    },
+    {
+      "id": "0005",
+      "values": {
+        "name": "Nyxshade",
+        "cost": "3",
+        "element": "Void",
+        "element_color": "#ff4fa3",
+        "element_dark": "#1a0412",
+        "element_light": "#ffd6ec",
+        "kind": "Spirit \u2014 Lurker",
+        "rarity": "Rare",
+        "rarity_color": "#4cc9f0",
+        "rarity_pips": "\u25c6\u25c6",
+        "ability_name": "Eclipse",
+        "ability": "Nyxshade can\u2019t be targeted while you control another Void spirit.",
+        "flavor": "Where the lantern fails, she is already waiting.",
+        "atk": "4",
+        "def": "2",
+        "spd": "5",
+        "set_no": "005",
+        "edition": "First Edition",
+        "art": "assets/2b12cf07bcabb47b2caa488ce5a7d45650b52fac1bd963daa4af1acd729f3626.jpg"
+      },
+      "artboard": null,
+      "status": "completed",
+      "output": "0005-6aa955bde3abc4c7.webp",
+      "fingerprint": "6aa955bde3abc4c7ab8014dc2ec018b492dba0a4446aa8b149278b5173c9f029",
+      "sha256": "a6c9fef512c93a7de0ab02eae55da011c6ed852a12699f0fcad14041897185f3",
+      "checks": {
+        "card-qa": {
+          "version": 1,
+          "suite_hash": "9320037720cef443af5bb808a24b4fe36691803ac6cecaf08ec9c68e3b0f4076",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "name-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 50,
+              "fits": true
+            },
+            {
+              "id": "ability-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 27,
+              "fits": true
+            },
+            {
+              "id": "flavor-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 24,
+              "fits": true
+            },
+            {
+              "id": "trim-width",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 750,
+              "actual": 750
+            },
+            {
+              "id": "trim-height",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 1050,
+              "actual": 1050
+            },
+            {
+              "id": "name-font",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf",
+              "actual": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf"
+            },
+            {
+              "id": "name-to-art",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 14,
+              "actual": 14
+            },
+            {
+              "id": "art-to-type",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 18,
+              "actual": 18
+            },
+            {
+              "id": "rules-box-palette",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "palette": null,
+              "colors": [
+                "#f4ead2",
+                "#14100c",
+                "#5b4a36",
+                "#a99a80"
+              ],
+              "pixels_checked": 114448,
+              "outside_pixels": 341,
+              "outside_fraction": 0.0029795190829022787,
+              "max_fraction": 0.04,
+              "tolerance": 40,
+              "maximum_distance": 61,
+              "examples": [
+                "#f8adc0",
+                "#cac1ad",
+                "#777063"
+              ],
+              "metric": "maximum RGB channel distance (0\u2013255); alpha below alpha_min excluded"
+            },
+            {
+              "id": "art-inside",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "layer.art.bounds within canvas"
+            },
+            {
+              "id": "name-contrast",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "contrast",
+                  "bounds"
+                ],
+                "layers": 2,
+                "text_layers": 2
+              }
+            }
+          ]
+        },
+        "no-placeholders": {
+          "version": 1,
+          "suite_hash": "c11e6e04e7ce3e236e94ed5e168d2cbe2e943185bc97f04b99a0d53dc1cd64db",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "copy",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "blanks"
+                ],
+                "layers": 26,
+                "text_layers": 13
+              }
+            }
+          ]
+        }
+      },
+      "repairs": [],
+      "cache": {
+        "hits": 42,
+        "misses": 30
+      }
+    },
+    {
+      "id": "0006",
+      "values": {
+        "name": "Archsovereign Pyrrhaxion, the Unquenchable Ember of the Ninth Caldera",
+        "cost": "9",
+        "element": "Ember",
+        "element_color": "#ff6b35",
+        "element_dark": "#2a0905",
+        "element_light": "#ffd166",
+        "kind": "Spirit \u2014 Primordial",
+        "rarity": "Legendary",
+        "rarity_color": "#ffc94a",
+        "rarity_pips": "\u25c6\u25c6\u25c6\u25c6",
+        "ability_name": "Unending Pyre",
+        "ability": "At the start of each turn, deal 1 damage to every other spirit. Pyrrhaxion heals 1 for each spirit damaged.",
+        "flavor": "Nine calderas. Nine kings. One fire that never learned to die.",
+        "atk": "9",
+        "def": "8",
+        "spd": "4",
+        "set_no": "006",
+        "edition": "First Edition",
+        "art": "assets/1ed399983a0e3e744fe0dc02a8b442fd855a1f872811025c9328926299d14dc8.jpg"
+      },
+      "artboard": null,
+      "status": "failed",
+      "error": {
+        "error": "text_overflow",
+        "message": "Text cannot fit at the minimum size",
+        "target": "lyr_41d67290382a4005",
+        "minimum": 22,
+        "operation_index": 0,
+        "operation_type": "action-apply"
+      }
+    },
+    {
+      "id": "0007",
+      "values": {
+        "name": "\u00c6therwyrm \u00d6ls\u00e9n",
+        "cost": "4",
+        "element": "Storm",
+        "element_color": "#b388ff",
+        "element_dark": "#130a2e",
+        "element_light": "#f1e6ff",
+        "kind": "Spirit \u2014 Wyrm",
+        "rarity": "Rare",
+        "rarity_color": "#4cc9f0",
+        "rarity_pips": "\u25c6\u25c6",
+        "ability_name": "Fj\u00f6rd Gale",
+        "ability": "Push each enemy spirit with DEF 3 or less to the back row.",
+        "flavor": "\u201cSk\u00e5l to the wind,\u201d \u00f8ne sailor laughed \u2014 and the wind answered.",
+        "atk": "5",
+        "def": "3",
+        "spd": "4",
+        "set_no": "007",
+        "edition": "First Edition",
+        "art": "assets/be776c6881f3d589b87ae6d4d85492aa6a13e59fdae4f60861e64387b3028433.jpg"
+      },
+      "artboard": null,
+      "status": "completed",
+      "output": "0007-9ebdf89b4f91b457.webp",
+      "fingerprint": "9ebdf89b4f91b45755638c4b1f32ebf6cdec2b3298a62c0af8c2c63ad92f2019",
+      "sha256": "337b6acf6ef8d4a9613dbfac3880c5c77e7d6b6230907bec0b17b5744c8d925a",
+      "checks": {
+        "card-qa": {
+          "version": 1,
+          "suite_hash": "9320037720cef443af5bb808a24b4fe36691803ac6cecaf08ec9c68e3b0f4076",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "name-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 50,
+              "fits": true
+            },
+            {
+              "id": "ability-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 27,
+              "fits": true
+            },
+            {
+              "id": "flavor-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 24,
+              "fits": true
+            },
+            {
+              "id": "trim-width",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 750,
+              "actual": 750
+            },
+            {
+              "id": "trim-height",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 1050,
+              "actual": 1050
+            },
+            {
+              "id": "name-font",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf",
+              "actual": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf"
+            },
+            {
+              "id": "name-to-art",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 14,
+              "actual": 14
+            },
+            {
+              "id": "art-to-type",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 18,
+              "actual": 18
+            },
+            {
+              "id": "rules-box-palette",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "palette": null,
+              "colors": [
+                "#f4ead2",
+                "#14100c",
+                "#5b4a36",
+                "#a99a80"
+              ],
+              "pixels_checked": 114448,
+              "outside_pixels": 273,
+              "outside_fraction": 0.0023853627848455196,
+              "max_fraction": 0.04,
+              "tolerance": 40,
+              "maximum_distance": 45,
+              "examples": [
+                "#cac1ad",
+                "#777063",
+                "#766f62"
+              ],
+              "metric": "maximum RGB channel distance (0\u2013255); alpha below alpha_min excluded"
+            },
+            {
+              "id": "art-inside",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "layer.art.bounds within canvas"
+            },
+            {
+              "id": "name-contrast",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "contrast",
+                  "bounds"
+                ],
+                "layers": 2,
+                "text_layers": 2
+              }
+            }
+          ]
+        },
+        "no-placeholders": {
+          "version": 1,
+          "suite_hash": "c11e6e04e7ce3e236e94ed5e168d2cbe2e943185bc97f04b99a0d53dc1cd64db",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "copy",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "blanks"
+                ],
+                "layers": 26,
+                "text_layers": 13
+              }
+            }
+          ]
+        }
+      },
+      "repairs": [],
+      "cache": {
+        "hits": 55,
+        "misses": 15
+      }
+    },
+    {
+      "id": "0008",
+      "values": {
+        "name": "Lantern Moth",
+        "cost": "2",
+        "element": "Grove",
+        "element_color": "#6fd08c",
+        "element_dark": "#071f10",
+        "element_light": "#e6ffd9",
+        "kind": "Spirit \u2014 Swarm",
+        "rarity": "Common",
+        "rarity_color": "#c9d1d9",
+        "rarity_pips": "\u25c6",
+        "ability_name": "Glimmer",
+        "ability": "When Lantern Moth is destroyed, draw a card.",
+        "flavor": "They gather at dusk in the hollows of the old wood, a thousand small lamps that drift and dim and brighten again, and the villagers say each one is a promise somebody forgot to keep, still circling the place where it was made, still waiting to be remembered, still burning, patiently, against the coming dark of a winter that has not yet arrived.",
+        "atk": "1",
+        "def": "2",
+        "spd": "5",
+        "set_no": "008",
+        "edition": "First Edition",
+        "art": "assets/56bb4f66ae481502f13ec89141214bb64ae67cc1193c018a077be23f8176fc59.jpg"
+      },
+      "artboard": null,
+      "status": "needs_review",
+      "checks": {
+        "card-qa": {
+          "version": 1,
+          "suite_hash": "9320037720cef443af5bb808a24b4fe36691803ac6cecaf08ec9c68e3b0f4076",
+          "passed": false,
+          "status": "failed",
+          "errors": 1,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "name-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 50,
+              "fits": true
+            },
+            {
+              "id": "ability-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 27,
+              "fits": true
+            },
+            {
+              "id": "flavor-fits",
+              "status": "failed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 14,
+              "fits": true
+            },
+            {
+              "id": "trim-width",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 750,
+              "actual": 750
+            },
+            {
+              "id": "trim-height",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 1050,
+              "actual": 1050
+            },
+            {
+              "id": "name-font",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf",
+              "actual": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf"
+            },
+            {
+              "id": "name-to-art",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 14,
+              "actual": 14
+            },
+            {
+              "id": "art-to-type",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 18,
+              "actual": 18
+            },
+            {
+              "id": "rules-box-palette",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "palette": null,
+              "colors": [
+                "#f4ead2",
+                "#14100c",
+                "#5b4a36",
+                "#a99a80"
+              ],
+              "pixels_checked": 114448,
+              "outside_pixels": 230,
+              "outside_fraction": 0.0020096463022508037,
+              "max_fraction": 0.04,
+              "tolerance": 40,
+              "maximum_distance": 52,
+              "examples": [
+                "#c0e0b6",
+                "#cac1ad",
+                "#777063"
+              ],
+              "metric": "maximum RGB channel distance (0\u2013255); alpha below alpha_min excluded"
+            },
+            {
+              "id": "art-inside",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "layer.art.bounds within canvas"
+            },
+            {
+              "id": "name-contrast",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "contrast",
+                  "bounds"
+                ],
+                "layers": 2,
+                "text_layers": 2
+              }
+            }
+          ]
+        },
+        "no-placeholders": {
+          "version": 1,
+          "suite_hash": "c11e6e04e7ce3e236e94ed5e168d2cbe2e943185bc97f04b99a0d53dc1cd64db",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "copy",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "blanks"
+                ],
+                "layers": 26,
+                "text_layers": 13
+              }
+            }
+          ]
+        }
+      },
+      "repairs": [
+        "fit-name",
+        "fit-rules"
+      ]
+    },
+    {
+      "id": "0009",
+      "values": {
+        "name": "\u5149\u306e\u72d0 Hikari-no-Kitsune \u2728",
+        "cost": "6",
+        "element": "Tide",
+        "element_color": "#2ec4ff",
+        "element_dark": "#03182b",
+        "element_light": "#c9f6ff",
+        "kind": "Spirit \u2014 Kitsune",
+        "rarity": "Epic",
+        "rarity_color": "#c77dff",
+        "rarity_pips": "\u25c6\u25c6\u25c6",
+        "ability_name": "Ninefold Mirage",
+        "ability": "Create two 1/1 Mirage tokens. They copy Hikari\u2019s ability text.",
+        "flavor": "\u300c\u5149\u3092\u8ffd\u3046\u8005\u306f\u3001\u5f71\u306b\u8ff7\u3046\u300d \u2014 old proverb",
+        "atk": "5",
+        "def": "4",
+        "spd": "7",
+        "set_no": "009",
+        "edition": "First Edition",
+        "art": "assets/1960965b23a05696ee09966d16492ce478966a1236d5b1a06787756dcaff5bd3.jpg"
+      },
+      "artboard": null,
+      "status": "completed",
+      "output": "0009-8dbb471cef60b63d.webp",
+      "fingerprint": "8dbb471cef60b63da472b2d83a7b9989f4170d546c636a6e9b72e39e706f0762",
+      "sha256": "1a3ac3bd936d4c102d1cea9b82d5149151e3eb039653df677abfe3712ea532cd",
+      "checks": {
+        "card-qa": {
+          "version": 1,
+          "suite_hash": "9320037720cef443af5bb808a24b4fe36691803ac6cecaf08ec9c68e3b0f4076",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "name-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 41,
+              "fits": true
+            },
+            {
+              "id": "ability-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 27,
+              "fits": true
+            },
+            {
+              "id": "flavor-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 24,
+              "fits": true
+            },
+            {
+              "id": "trim-width",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 750,
+              "actual": 750
+            },
+            {
+              "id": "trim-height",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 1050,
+              "actual": 1050
+            },
+            {
+              "id": "name-font",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf",
+              "actual": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf"
+            },
+            {
+              "id": "name-to-art",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 14,
+              "actual": 14
+            },
+            {
+              "id": "art-to-type",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 18,
+              "actual": 18
+            },
+            {
+              "id": "rules-box-palette",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "palette": null,
+              "colors": [
+                "#f4ead2",
+                "#14100c",
+                "#5b4a36",
+                "#a99a80"
+              ],
+              "pixels_checked": 114448,
+              "outside_pixels": 359,
+              "outside_fraction": 0.0031367957500349503,
+              "max_fraction": 0.04,
+              "tolerance": 40,
+              "maximum_distance": 78,
+              "examples": [
+                "#a6dbe4",
+                "#cac1ad",
+                "#777063",
+                "#766f62"
+              ],
+              "metric": "maximum RGB channel distance (0\u2013255); alpha below alpha_min excluded"
+            },
+            {
+              "id": "art-inside",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "layer.art.bounds within canvas"
+            },
+            {
+              "id": "name-contrast",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "contrast",
+                  "bounds"
+                ],
+                "layers": 2,
+                "text_layers": 2
+              }
+            }
+          ]
+        },
+        "no-placeholders": {
+          "version": 1,
+          "suite_hash": "c11e6e04e7ce3e236e94ed5e168d2cbe2e943185bc97f04b99a0d53dc1cd64db",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "copy",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "blanks"
+                ],
+                "layers": 26,
+                "text_layers": 13
+              }
+            }
+          ]
+        }
+      },
+      "repairs": [
+        "fit-name"
+      ],
+      "cache": {
+        "hits": 103,
+        "misses": 23
+      }
+    },
+    {
+      "id": "0010",
+      "values": {
+        "name": "Grimward Sentinel",
+        "cost": "6",
+        "element": "Void",
+        "element_color": "#ff4fa3",
+        "element_dark": "#1a0412",
+        "element_light": "#ffd6ec",
+        "kind": "Spirit \u2014 Warden",
+        "rarity": "Epic",
+        "rarity_color": "#c77dff",
+        "rarity_pips": "\u25c6\u25c6\u25c6",
+        "ability_name": "Oath of the Threshold",
+        "ability": "Enemy spirits can\u2019t attack you unless their controller pays 2 for each. Whenever an enemy spirit attacks another player, Grimward Sentinel gets +1 DEF permanently and you may return a destroyed Void spirit from your discard pile to your hand. This ability can\u2019t be copied, negated or moved.",
+        "flavor": "It has never once opened the gate.",
+        "atk": "3",
+        "def": "9",
+        "spd": "1",
+        "set_no": "010",
+        "edition": "First Edition",
+        "art": "assets/a6348e80fa47c363d6cce6be9067ca0b299d16e0b347276fc5bca630599d38de.jpg"
+      },
+      "artboard": null,
+      "status": "needs_review",
+      "checks": {
+        "card-qa": {
+          "version": 1,
+          "suite_hash": "9320037720cef443af5bb808a24b4fe36691803ac6cecaf08ec9c68e3b0f4076",
+          "passed": false,
+          "status": "failed",
+          "errors": 1,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "name-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 49,
+              "fits": true
+            },
+            {
+              "id": "ability-fits",
+              "status": "failed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 18,
+              "fits": true
+            },
+            {
+              "id": "flavor-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 24,
+              "fits": true
+            },
+            {
+              "id": "trim-width",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 750,
+              "actual": 750
+            },
+            {
+              "id": "trim-height",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 1050,
+              "actual": 1050
+            },
+            {
+              "id": "name-font",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf",
+              "actual": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf"
+            },
+            {
+              "id": "name-to-art",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 14,
+              "actual": 14
+            },
+            {
+              "id": "art-to-type",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 18,
+              "actual": 18
+            },
+            {
+              "id": "rules-box-palette",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "palette": null,
+              "colors": [
+                "#f4ead2",
+                "#14100c",
+                "#5b4a36",
+                "#a99a80"
+              ],
+              "pixels_checked": 114448,
+              "outside_pixels": 951,
+              "outside_fraction": 0.00830945058017615,
+              "max_fraction": 0.04,
+              "tolerance": 40,
+              "maximum_distance": 61,
+              "examples": [
+                "#f8adc0",
+                "#cac1ad",
+                "#766f62",
+                "#777063"
+              ],
+              "metric": "maximum RGB channel distance (0\u2013255); alpha below alpha_min excluded"
+            },
+            {
+              "id": "art-inside",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "layer.art.bounds within canvas"
+            },
+            {
+              "id": "name-contrast",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "contrast",
+                  "bounds"
+                ],
+                "layers": 2,
+                "text_layers": 2
+              }
+            }
+          ]
+        },
+        "no-placeholders": {
+          "version": 1,
+          "suite_hash": "c11e6e04e7ce3e236e94ed5e168d2cbe2e943185bc97f04b99a0d53dc1cd64db",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "copy",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "blanks"
+                ],
+                "layers": 26,
+                "text_layers": 13
+              }
+            }
+          ]
+        }
+      },
+      "repairs": [
+        "fit-name",
+        "fit-rules"
+      ]
+    },
+    {
+      "id": "0011",
+      "values": {
+        "name": "[CARD NAME]",
+        "cost": "0",
+        "element": "Storm",
+        "element_color": "#b388ff",
+        "element_dark": "#130a2e",
+        "element_light": "#f1e6ff",
+        "kind": "Spirit \u2014 TBD",
+        "rarity": "Common",
+        "rarity_color": "#c9d1d9",
+        "rarity_pips": "\u25c6",
+        "ability_name": "TBD",
+        "ability": "Lorem ipsum dolor sit amet.",
+        "flavor": "TODO: flavor text",
+        "atk": "0",
+        "def": "0",
+        "spd": "0",
+        "set_no": "011",
+        "edition": "First Edition",
+        "art": "assets/c8f2a9e47007a9c6834f250f13eb6689b9cc527b374fd1a8e5ac9630f76d47f4.jpg"
+      },
+      "artboard": null,
+      "status": "completed",
+      "output": "0011-f73164e8d67d0326.webp",
+      "fingerprint": "f73164e8d67d032649d0920998feead5a5f1200766b724907be1b48aeee2c56b",
+      "sha256": "09daeb406c94d775e004e5b004a6cc6b653797576f01633bcf3335e7e8d04c14",
+      "checks": {
+        "card-qa": {
+          "version": 1,
+          "suite_hash": "9320037720cef443af5bb808a24b4fe36691803ac6cecaf08ec9c68e3b0f4076",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "name-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 50,
+              "fits": true
+            },
+            {
+              "id": "ability-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 27,
+              "fits": true
+            },
+            {
+              "id": "flavor-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 24,
+              "fits": true
+            },
+            {
+              "id": "trim-width",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 750,
+              "actual": 750
+            },
+            {
+              "id": "trim-height",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 1050,
+              "actual": 1050
+            },
+            {
+              "id": "name-font",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf",
+              "actual": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf"
+            },
+            {
+              "id": "name-to-art",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 14,
+              "actual": 14
+            },
+            {
+              "id": "art-to-type",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 18,
+              "actual": 18
+            },
+            {
+              "id": "rules-box-palette",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "palette": null,
+              "colors": [
+                "#f4ead2",
+                "#14100c",
+                "#5b4a36",
+                "#a99a80"
+              ],
+              "pixels_checked": 114448,
+              "outside_pixels": 128,
+              "outside_fraction": 0.0011184118551656648,
+              "max_fraction": 0.04,
+              "tolerance": 40,
+              "maximum_distance": 45,
+              "examples": [
+                "#777063",
+                "#766f62",
+                "#cac1ad"
+              ],
+              "metric": "maximum RGB channel distance (0\u2013255); alpha below alpha_min excluded"
+            },
+            {
+              "id": "art-inside",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "layer.art.bounds within canvas"
+            },
+            {
+              "id": "name-contrast",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "contrast",
+                  "bounds"
+                ],
+                "layers": 2,
+                "text_layers": 2
+              }
+            }
+          ]
+        },
+        "no-placeholders": {
+          "version": 1,
+          "suite_hash": "c11e6e04e7ce3e236e94ed5e168d2cbe2e943185bc97f04b99a0d53dc1cd64db",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "copy",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "blanks"
+                ],
+                "layers": 26,
+                "text_layers": 13
+              }
+            }
+          ]
+        }
+      },
+      "repairs": [],
+      "cache": {
+        "hits": 50,
+        "misses": 18
+      }
+    },
+    {
+      "id": "0012",
+      "values": {
+        "name": "Seraphel, Dawn\u2019s Last Light",
+        "cost": "8",
+        "element": "Ember",
+        "element_color": "#ff6b35",
+        "element_dark": "#2a0905",
+        "element_light": "#ffd166",
+        "kind": "Spirit \u2014 Seraph",
+        "rarity": "Legendary",
+        "rarity_color": "#ffc94a",
+        "rarity_pips": "\u25c6\u25c6\u25c6\u25c6",
+        "ability_name": "Daybreak",
+        "ability": "When Seraphel enters play, restore every friendly spirit to full DEF and give them +2 SPD.",
+        "flavor": "The sky remembers her color long after she has gone.",
+        "atk": "7",
+        "def": "7",
+        "spd": "6",
+        "set_no": "012",
+        "edition": "First Edition",
+        "art": "assets/ec745e44076f5c322348a6722b0d964d311ce843f80228eba527012a614661ca.jpg"
+      },
+      "artboard": null,
+      "status": "completed",
+      "output": "0012-c42f378c86e75db9.webp",
+      "fingerprint": "c42f378c86e75db9725a7717a07615d183d7bf0c99dd7df7f6b66f6bd6130198",
+      "sha256": "bf4477a977b55ca71b6da464ba475c8374b6c3c665bebb79e6ad54fb419dcee1",
+      "checks": {
+        "card-qa": {
+          "version": 1,
+          "suite_hash": "9320037720cef443af5bb808a24b4fe36691803ac6cecaf08ec9c68e3b0f4076",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "name-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 34,
+              "fits": true
+            },
+            {
+              "id": "ability-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 27,
+              "fits": true
+            },
+            {
+              "id": "flavor-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 24,
+              "fits": true
+            },
+            {
+              "id": "trim-width",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 750,
+              "actual": 750
+            },
+            {
+              "id": "trim-height",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 1050,
+              "actual": 1050
+            },
+            {
+              "id": "name-font",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf",
+              "actual": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf"
+            },
+            {
+              "id": "name-to-art",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 14,
+              "actual": 14
+            },
+            {
+              "id": "art-to-type",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 18,
+              "actual": 18
+            },
+            {
+              "id": "rules-box-palette",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "palette": null,
+              "colors": [
+                "#f4ead2",
+                "#14100c",
+                "#5b4a36",
+                "#a99a80"
+              ],
+              "pixels_checked": 114448,
+              "outside_pixels": 378,
+              "outside_fraction": 0.0033028100097861036,
+              "max_fraction": 0.04,
+              "tolerance": 40,
+              "maximum_distance": 61,
+              "examples": [
+                "#f8b895",
+                "#cac1ad",
+                "#777063",
+                "#766f62"
+              ],
+              "metric": "maximum RGB channel distance (0\u2013255); alpha below alpha_min excluded"
+            },
+            {
+              "id": "art-inside",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "layer.art.bounds within canvas"
+            },
+            {
+              "id": "name-contrast",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "contrast",
+                  "bounds"
+                ],
+                "layers": 2,
+                "text_layers": 2
+              }
+            }
+          ]
+        },
+        "no-placeholders": {
+          "version": 1,
+          "suite_hash": "c11e6e04e7ce3e236e94ed5e168d2cbe2e943185bc97f04b99a0d53dc1cd64db",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "copy",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "blanks"
+                ],
+                "layers": 26,
+                "text_layers": 13
+              }
+            }
+          ]
+        }
+      },
+      "repairs": [
+        "fit-name"
+      ],
+      "cache": {
+        "hits": 107,
+        "misses": 23
+      }
+    },
+    {
+      "id": "0013",
+      "values": {
+        "name": "Riftling",
+        "cost": "1",
+        "element": "Void",
+        "element_color": "#ff4fa3",
+        "element_dark": "#1a0412",
+        "element_light": "#ffd6ec",
+        "kind": "Spirit \u2014 Imp",
+        "rarity": "Common",
+        "rarity_color": "#c9d1d9",
+        "rarity_pips": "\u25c6",
+        "ability_name": "Blink",
+        "ability": "Riftling can swap places with an adjacent friendly spirit once per turn.",
+        "flavor": "Here. There. Behind you.",
+        "atk": "1",
+        "def": "1",
+        "spd": "6",
+        "set_no": "013",
+        "edition": "First Edition",
+        "art": "assets/65b965a724774a853b7d74d0902481eea0f9173e7c105523732359e9a5ae0bf7.jpg"
+      },
+      "artboard": null,
+      "status": "completed",
+      "output": "0013-3aac106d53aad2d0.webp",
+      "fingerprint": "3aac106d53aad2d03744176e4a9f8a8ff5df802d5febe8b3281eb2b047a6f745",
+      "sha256": "42271d9a496bb2ac53cef67d0942844d1a8f7756def3215ad64c01ccda62f335",
+      "checks": {
+        "card-qa": {
+          "version": 1,
+          "suite_hash": "9320037720cef443af5bb808a24b4fe36691803ac6cecaf08ec9c68e3b0f4076",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "name-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 50,
+              "fits": true
+            },
+            {
+              "id": "ability-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 27,
+              "fits": true
+            },
+            {
+              "id": "flavor-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 24,
+              "fits": true
+            },
+            {
+              "id": "trim-width",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 750,
+              "actual": 750
+            },
+            {
+              "id": "trim-height",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 1050,
+              "actual": 1050
+            },
+            {
+              "id": "name-font",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf",
+              "actual": "fonts/2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0.ttf"
+            },
+            {
+              "id": "name-to-art",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 14,
+              "actual": 14
+            },
+            {
+              "id": "art-to-type",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 18,
+              "actual": 18
+            },
+            {
+              "id": "rules-box-palette",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "palette": null,
+              "colors": [
+                "#f4ead2",
+                "#14100c",
+                "#5b4a36",
+                "#a99a80"
+              ],
+              "pixels_checked": 114448,
+              "outside_pixels": 355,
+              "outside_fraction": 0.0031018453795610234,
+              "max_fraction": 0.04,
+              "tolerance": 40,
+              "maximum_distance": 61,
+              "examples": [
+                "#f8adc0",
+                "#cac1ad",
+                "#777063",
+                "#766f62"
+              ],
+              "metric": "maximum RGB channel distance (0\u2013255); alpha below alpha_min excluded"
+            },
+            {
+              "id": "art-inside",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": "layer.art.bounds within canvas"
+            },
+            {
+              "id": "name-contrast",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "contrast",
+                  "bounds"
+                ],
+                "layers": 2,
+                "text_layers": 2
+              }
+            }
+          ]
+        },
+        "no-placeholders": {
+          "version": 1,
+          "suite_hash": "c11e6e04e7ce3e236e94ed5e168d2cbe2e943185bc97f04b99a0d53dc1cd64db",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "copy",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "blanks"
+                ],
+                "layers": 26,
+                "text_layers": 13
+              }
+            }
+          ]
+        }
+      },
+      "repairs": [],
+      "cache": {
+        "hits": 56,
+        "misses": 14
+      }
+    }
+  ],
+  "contact_sheet": "contact-sheet.png"
+}

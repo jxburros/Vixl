@@ -1,0 +1,158 @@
+[
+  {
+    "seed": 11,
+    "doc": "roll-11.vixl",
+    "png": "roll-11.png",
+    "layout": "thumbnail-bold",
+    "pairing": "poppins-lora",
+    "palette": "ocean",
+    "mode": "dark",
+    "type_scale": "golden",
+    "density": "airy",
+    "accent": "bar",
+    "layout_seed": 799609893,
+    "slots": [
+      "image",
+      "label",
+      "title"
+    ],
+    "rejected_by_canvas": [
+      "subtitle",
+      "cta",
+      "body",
+      "caption",
+      "items"
+    ],
+    "unfilled": []
+  },
+  {
+    "seed": 23,
+    "doc": "roll-23.vixl",
+    "png": "roll-23.png",
+    "layout": "big-number",
+    "pairing": "young-serif-rubik",
+    "palette": "autumn",
+    "mode": "dark",
+    "type_scale": "perfect-fourth",
+    "density": "balanced",
+    "accent": "block",
+    "layout_seed": 2276710670,
+    "slots": [
+      "body",
+      "label",
+      "subtitle",
+      "title"
+    ],
+    "rejected_by_canvas": [
+      "cta",
+      "caption",
+      "items",
+      "image"
+    ],
+    "unfilled": []
+  },
+  {
+    "seed": 42,
+    "doc": "roll-42.vixl",
+    "png": "roll-42.png",
+    "layout": "centered-axis",
+    "pairing": "lora-source-sans",
+    "palette": "autumn",
+    "mode": "dark",
+    "type_scale": "perfect-fourth",
+    "density": "airy",
+    "accent": "bar",
+    "layout_seed": 2342331444,
+    "slots": [
+      "cta",
+      "label",
+      "subtitle",
+      "title"
+    ],
+    "rejected_by_canvas": [
+      "body",
+      "caption",
+      "items",
+      "image"
+    ],
+    "unfilled": []
+  },
+  {
+    "seed": 57,
+    "doc": "roll-57.vixl",
+    "png": "roll-57.png",
+    "layout": "quote-card",
+    "pairing": "roboto-slab-roboto",
+    "palette": "sunset",
+    "mode": "dark",
+    "type_scale": "minor-third",
+    "density": "airy",
+    "accent": "outline",
+    "layout_seed": 2050244493,
+    "slots": [
+      "subtitle",
+      "title"
+    ],
+    "rejected_by_canvas": [
+      "label",
+      "cta",
+      "body",
+      "caption",
+      "items",
+      "image"
+    ],
+    "unfilled": []
+  },
+  {
+    "seed": 64,
+    "doc": "roll-64.vixl",
+    "png": "roll-64.png",
+    "layout": "centered-axis",
+    "pairing": "poppins-lora",
+    "palette": "rose",
+    "mode": "dark",
+    "type_scale": "perfect-fifth",
+    "density": "dense",
+    "accent": "none",
+    "layout_seed": 72377168,
+    "slots": [
+      "cta",
+      "label",
+      "subtitle",
+      "title"
+    ],
+    "rejected_by_canvas": [
+      "body",
+      "caption",
+      "items",
+      "image"
+    ],
+    "unfilled": []
+  },
+  {
+    "seed": 88,
+    "doc": "roll-88.vixl",
+    "png": "roll-88.png",
+    "layout": "golden-section",
+    "pairing": "rubik-karla",
+    "palette": "pastel",
+    "mode": "light",
+    "type_scale": "minor-third",
+    "density": "dense",
+    "accent": "none",
+    "layout_seed": 1992776711,
+    "slots": [
+      "cta",
+      "image",
+      "label",
+      "subtitle",
+      "title"
+    ],
+    "rejected_by_canvas": [
+      "body",
+      "caption",
+      "items"
+    ],
+    "unfilled": []
+  }
+]

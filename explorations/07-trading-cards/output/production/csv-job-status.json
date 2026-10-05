@@ -1,0 +1,169 @@
+{
+  "submitted": {
+    "version": 1,
+    "id": "e1de3a2fec9e466b84a30a78868c20e0",
+    "created": 1791137513.1546373,
+    "status": "queued",
+    "progress": {
+      "done": 0
+    },
+    "attempts": 0,
+    "limits": {
+      "max_pixels": 40000000,
+      "max_dimension": 16384,
+      "max_layers": 512,
+      "max_asset_bytes": 67108864,
+      "max_project_bytes": 268435456,
+      "max_operations": 1000,
+      "max_history": 2000
+    },
+    "updated": 1791137513.1547115,
+    "worker": {
+      "worker_pid": 31160,
+      "workspace": "/home/user/Vixl/explorations/07-trading-cards/output"
+    }
+  },
+  "trace": [
+    {
+      "status": "queued",
+      "progress": {
+        "done": 0
+      },
+      "attempts": 0
+    },
+    {
+      "status": "running",
+      "progress": {
+        "done": 0
+      },
+      "attempts": 1
+    },
+    {
+      "status": "running",
+      "progress": {
+        "done": 1,
+        "total": 13
+      },
+      "attempts": 1
+    },
+    {
+      "status": "running",
+      "progress": {
+        "done": 2,
+        "total": 13
+      },
+      "attempts": 1
+    },
+    {
+      "status": "running",
+      "progress": {
+        "done": 3,
+        "total": 13
+      },
+      "attempts": 1
+    },
+    {
+      "status": "running",
+      "progress": {
+        "done": 4,
+        "total": 13
+      },
+      "attempts": 1
+    },
+    {
+      "status": "running",
+      "progress": {
+        "done": 5,
+        "total": 13
+      },
+      "attempts": 1
+    },
+    {
+      "status": "running",
+      "progress": {
+        "done": 6,
+        "total": 13
+      },
+      "attempts": 1
+    },
+    {
+      "status": "running",
+      "progress": {
+        "done": 7,
+        "total": 13
+      },
+      "attempts": 1
+    },
+    {
+      "status": "running",
+      "progress": {
+        "done": 8,
+        "total": 13
+      },
+      "attempts": 1
+    },
+    {
+      "status": "running",
+      "progress": {
+        "done": 9,
+        "total": 13
+      },
+      "attempts": 1
+    },
+    {
+      "status": "running",
+      "progress": {
+        "done": 10,
+        "total": 13
+      },
+      "attempts": 1
+    },
+    {
+      "status": "running",
+      "progress": {
+        "done": 11,
+        "total": 13
+      },
+      "attempts": 1
+    },
+    {
+      "status": "running",
+      "progress": {
+        "done": 12,
+        "total": 13
+      },
+      "attempts": 1
+    },
+    {
+      "status": "needs_review",
+      "progress": {
+        "done": 13,
+        "total": 13
+      },
+      "attempts": 1
+    }
+  ],
+  "crashed_first_pass": [],
+  "resumed": false,
+  "final": {
+    "version": 1,
+    "id": "e1de3a2fec9e466b84a30a78868c20e0",
+    "created": 1791137513.1546373,
+    "status": "needs_review",
+    "progress": {
+      "done": 13,
+      "total": 13
+    },
+    "attempts": 1,
+    "limits": {
+      "max_pixels": 40000000,
+      "max_dimension": 16384,
+      "max_layers": 512,
+      "max_asset_bytes": 67108864,
+      "max_project_bytes": 268435456,
+      "max_operations": 1000,
+      "max_history": 2000
+    },
+    "updated": 1791137594.0939953
+  }
+}

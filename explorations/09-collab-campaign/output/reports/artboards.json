@@ -1,0 +1,106 @@
+[
+  {
+    "board": "large-leaderboard",
+    "png": "artboard-large-leaderboard.png",
+    "check": {
+      "passed": true,
+      "errors": 0,
+      "warnings": 3,
+      "issues": [
+        {
+          "check": "legibility",
+          "severity": "warning",
+          "layers": [
+            "headline"
+          ],
+          "message": "'headline' is 6.6 px tall at 320 px wide; aim for at least 10 px (font size 30+)",
+          "thumbnail_size": 6.6
+        },
+        {
+          "check": "legibility",
+          "severity": "warning",
+          "layers": [
+            "subtitle"
+          ],
+          "message": "'subtitle' is 3.3 px tall at 320 px wide; aim for at least 10 px (font size 30+)",
+          "thumbnail_size": 3.3
+        },
+        {
+          "check": "legibility",
+          "severity": "warning",
+          "layers": [
+            "cta"
+          ],
+          "message": "'cta' is 3.3 px tall at 320 px wide; aim for at least 10 px (font size 30+)",
+          "thumbnail_size": 3.3
+        }
+      ],
+      "checked": {
+        "checks": [
+          "bounds",
+          "overlap",
+          "contrast",
+          "safe_area",
+          "legibility",
+          "blanks",
+          "fonts",
+          "brand"
+        ],
+        "layers": 6,
+        "text_layers": 3
+      }
+    }
+  },
+  {
+    "board": "billboard",
+    "png": "artboard-billboard.png",
+    "check": {
+      "passed": true,
+      "errors": 0,
+      "warnings": 3,
+      "issues": [
+        {
+          "check": "legibility",
+          "severity": "warning",
+          "layers": [
+            "headline"
+          ],
+          "message": "'headline' is 6.6 px tall at 320 px wide; aim for at least 10 px (font size 30+)",
+          "thumbnail_size": 6.6
+        },
+        {
+          "check": "legibility",
+          "severity": "warning",
+          "layers": [
+            "subtitle"
+          ],
+          "message": "'subtitle' is 3.3 px tall at 320 px wide; aim for at least 10 px (font size 30+)",
+          "thumbnail_size": 3.3
+        },
+        {
+          "check": "legibility",
+          "severity": "warning",
+          "layers": [
+            "cta"
+          ],
+          "message": "'cta' is 3.3 px tall at 320 px wide; aim for at least 10 px (font size 30+)",
+          "thumbnail_size": 3.3
+        }
+      ],
+      "checked": {
+        "checks": [
+          "bounds",
+          "overlap",
+          "contrast",
+          "safe_area",
+          "legibility",
+          "blanks",
+          "fonts",
+          "brand"
+        ],
+        "layers": 6,
+        "text_layers": 3
+      }
+    }
+  }
+]

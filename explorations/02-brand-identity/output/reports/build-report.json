@@ -1,0 +1,76 @@
+{
+  "shape-save": {
+    "registered": "morrow-bean",
+    "kind": "shapes"
+  },
+  "card-back-shape-place": 67,
+  "export-icons": {
+    "directory": "/home/user/Vixl/explorations/02-brand-identity/output/icons/set",
+    "files": [
+      "android-chrome-192x192.png",
+      "android-chrome-512x512.png",
+      "apple-icon-1024.png",
+      "apple-icon-120.png",
+      "apple-icon-152.png",
+      "apple-icon-167.png",
+      "apple-icon-180.png",
+      "apple-icon-20.png",
+      "apple-icon-29.png",
+      "apple-icon-40.png",
+      "apple-icon-58.png",
+      "apple-icon-60.png",
+      "apple-icon-76.png",
+      "apple-icon-80.png",
+      "apple-icon-87.png",
+      "apple-touch-icon.png",
+      "favicon-16x16.png",
+      "favicon-32x32.png",
+      "favicon-48x48.png",
+      "favicon.ico",
+      "mipmap-hdpi.png",
+      "mipmap-mdpi.png",
+      "mipmap-xhdpi.png",
+      "mipmap-xxhdpi.png",
+      "mipmap-xxxhdpi.png",
+      "play-store-512.png",
+      "site.webmanifest",
+      "windows-tile-150.png",
+      "windows-tile-310.png",
+      "windows-tile-44.png",
+      "windows-tile-71.png"
+    ],
+    "source_size": 1024
+  },
+  "cli-card-check": {
+    "passed": true,
+    "errors": 0,
+    "warnings": 0,
+    "issues": [],
+    "checked": {
+      "checks": [
+        "print",
+        "color_vision"
+      ],
+      "layers": 11,
+      "text_layers": 4
+    }
+  },
+  "qa": {
+    "logo/horizontal/brand-colors": "passed",
+    "logo/horizontal/brand-colors-frozen": "passed",
+    "logo/stacked/brand-colors": "passed",
+    "logo/stacked/brand-colors-frozen": "passed",
+    "mark/palette-check": true,
+    "card-front/palette-check": true,
+    "check:mark": true,
+    "check:logo@horizontal": true,
+    "check:logo@stacked": true,
+    "check:card-front": true,
+    "check:card-back": true,
+    "check:app-icon": true,
+    "check:favicon": true,
+    "check:brand-board": true,
+    "check:card-front/print": true,
+    "check:card-back/print": true
+  }
+}

@@ -1,0 +1,82 @@
+{
+  "passed": false,
+  "errors": 1,
+  "warnings": 5,
+  "issues": [
+    {
+      "check": "overlap",
+      "severity": "warning",
+      "layers": [
+        "cta-button",
+        "cta"
+      ],
+      "message": "'cta-button' and 'cta' overlap by 1264 px (88.6% of the smaller layer)",
+      "region": [
+        113,
+        1175,
+        183,
+        29
+      ]
+    },
+    {
+      "check": "contrast",
+      "severity": "error",
+      "layers": [
+        "cta"
+      ],
+      "message": "'cta' contrast is 1.52:1 for most glyph pixels (minimum 1.18:1); needs 4.5:1",
+      "contrast": 1.516,
+      "required": 4.5
+    },
+    {
+      "check": "legibility",
+      "severity": "warning",
+      "layers": [
+        "label"
+      ],
+      "message": "'label' is 6.2 px tall at 320 px wide; aim for at least 10 px (font size 34+)",
+      "thumbnail_size": 6.22
+    },
+    {
+      "check": "legibility",
+      "severity": "warning",
+      "layers": [
+        "body"
+      ],
+      "message": "'body' is 8.3 px tall at 320 px wide; aim for at least 10 px (font size 34+)",
+      "thumbnail_size": 8.3
+    },
+    {
+      "check": "legibility",
+      "severity": "warning",
+      "layers": [
+        "cta"
+      ],
+      "message": "'cta' is 8.3 px tall at 320 px wide; aim for at least 10 px (font size 34+)",
+      "thumbnail_size": 8.3
+    },
+    {
+      "check": "legibility",
+      "severity": "warning",
+      "layers": [
+        "stat-caption"
+      ],
+      "message": "'stat-caption' is 7.7 px tall at 320 px wide; aim for at least 10 px (font size 34+)",
+      "thumbnail_size": 7.7
+    }
+  ],
+  "checked": {
+    "checks": [
+      "bounds",
+      "overlap",
+      "contrast",
+      "safe_area",
+      "legibility",
+      "blanks",
+      "fonts",
+      "brand"
+    ],
+    "layers": 10,
+    "text_layers": 6
+  }
+}

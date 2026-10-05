@@ -1,0 +1,81 @@
+{
+ "version": 1,
+ "suite_hash": "9c2a4cfa000f508719c03e8ac934fe84df82d1a9e8fcc333cb6f4bfdc21b0321",
+ "passed": true,
+ "status": "passed",
+ "errors": 0,
+ "needs_review": 0,
+ "coverage": {
+  "mode": "times",
+  "times": [
+   7200,
+   7900
+  ]
+ },
+ "results": [
+  {
+   "id": "cta-inside",
+   "status": "passed",
+   "severity": "error",
+   "time": 7200,
+   "expected": "layer.cta-pill.bounds within canvas"
+  },
+  {
+   "id": "badge-inside",
+   "status": "passed",
+   "severity": "error",
+   "time": 7200,
+   "expected": "layer.badge.bounds within canvas"
+  },
+  {
+   "id": "end-contrast",
+   "status": "passed",
+   "severity": "error",
+   "time": 7200,
+   "passed": true,
+   "errors": 0,
+   "warnings": 0,
+   "issues": [],
+   "checked": {
+    "checks": [
+     "contrast",
+     "safe_area"
+    ],
+    "layers": 5,
+    "text_layers": 5
+   }
+  },
+  {
+   "id": "cta-inside",
+   "status": "passed",
+   "severity": "error",
+   "time": 7900,
+   "expected": "layer.cta-pill.bounds within canvas"
+  },
+  {
+   "id": "badge-inside",
+   "status": "passed",
+   "severity": "error",
+   "time": 7900,
+   "expected": "layer.badge.bounds within canvas"
+  },
+  {
+   "id": "end-contrast",
+   "status": "passed",
+   "severity": "error",
+   "time": 7900,
+   "passed": true,
+   "errors": 0,
+   "warnings": 0,
+   "issues": [],
+   "checked": {
+    "checks": [
+     "contrast",
+     "safe_area"
+    ],
+    "layers": 5,
+    "text_layers": 5
+   }
+  }
+ ]
+}

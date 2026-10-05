@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "branch": "design-agent",
+  "source": "ig-portrait.vixl",
+  "base": ".vixl-branches/design-agent.base.vixl",
+  "base_hash": "e2a0dbabe509ffca253aa7922769fce5687f27b580412f313bd2e2ba39ca04a8",
+  "output": "design-agent.vixl",
+  "author": "design-agent",
+  "status": "merged",
+  "head": "rev_bd66b249498143ef"
+}

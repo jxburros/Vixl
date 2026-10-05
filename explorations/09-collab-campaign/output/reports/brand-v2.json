@@ -1,0 +1,25 @@
+{
+  "name": "Loop Bike Share",
+  "minimum_contrast": 4.5,
+  "required_elements": [
+    "logo"
+  ],
+  "logos": [
+    {
+      "name": "logo",
+      "data_base64": "<32752 base64 chars>",
+      "x": 40,
+      "y": 40
+    }
+  ],
+  "palette": {
+    "background": "#edf6f9",
+    "surface": "#dbe7ec",
+    "ink": "#003049",
+    "muted": "#406075",
+    "accent": "#B83512",
+    "accent-text": "#B83512",
+    "on-accent": "#ffffff"
+  },
+  "pairing": "poppins-lora"
+}

@@ -1,0 +1,350 @@
+{
+ "selection_coverage_pct": {
+  "sky: rect minus colour, feather 14": 57.72,
+  "sun: ellipse, feather 60": 8.37,
+  "sea: lasso minus ellipse": 27.97,
+  "land: wand + wand, x 2-subpath path": 10.88,
+  "lamp: global wand x rect": 0.03,
+  "figure: path x colour": 0.58
+ },
+ "auto_tone_effect": {
+  "with": {
+   "mean_rgb": [
+    114.8,
+    66.8,
+    119.5
+   ],
+   "luma_mean": 80.8,
+   "p2": 0,
+   "p50": 75,
+   "p98": 251,
+   "clipped_black_pct": 2.17,
+   "clipped_white_pct": 0.09,
+   "rg_balance": -4.7
+  },
+  "disabled": {
+   "mean_rgb": [
+    115.0,
+    70.5,
+    60.4
+   ],
+   "luma_mean": 79.2,
+   "p2": 0,
+   "p50": 60,
+   "p98": 252,
+   "clipped_black_pct": 2.86,
+   "clipped_white_pct": 0.12,
+   "rg_balance": 54.6
+  }
+ },
+ "sharpen_toggle_mean_abs_diff": 0.617,
+ "reorder_auto_contrast_last": {
+  "luma_mean_first": 79.9,
+  "luma_mean_last": 67.1,
+  "p2_first": 0,
+  "p2_last": 0
+ },
+ "golden_hour_mask": {
+  "sea_luma_with_mask": 30.9,
+  "sea_luma_mask_disabled": 34.0,
+  "sky_luma_with_mask": 56.7
+ },
+ "compare_toned_vs_local_diff": {
+  "before": "rev_a07aa98c8f644a54",
+  "after": "rev_1d7bcd4e1d554681",
+  "changed_fraction": 0.7863,
+  "changed_region": [
+   0,
+   0,
+   1200,
+   800
+  ]
+ },
+ "compare_original_vs_graded": {
+  "before": "rev_3f651ddb0e8b493c",
+  "after": "rev_1d9e1925487e498a",
+  "changed_fraction": 0.9646,
+  "changed_region": [
+   0,
+   0,
+   1200,
+   800
+  ]
+ },
+ "compare_graded_vs_mono": {
+  "before": "rev_1d9e1925487e498a",
+  "after": "rev_c57aa2f81a944227",
+  "changed_fraction": 0.6877,
+  "changed_region": [
+   0,
+   0,
+   1200,
+   800
+  ]
+ },
+ "cli_histogram_sky_after_keys": [
+  "average",
+  "height",
+  "histogram",
+  "region",
+  "visible_pixels",
+  "width"
+ ],
+ "regions": {
+  "full": {
+   "region": null,
+   "before": {
+    "mean_rgb": [
+     62.0,
+     41.9,
+     49.5
+    ],
+    "luma_mean": 46.7,
+    "p2": 4,
+    "p50": 40,
+    "p98": 180,
+    "clipped_black_pct": 0.08,
+    "clipped_white_pct": 0.0,
+    "rg_balance": 12.4
+   },
+   "after": {
+    "mean_rgb": [
+     105.8,
+     72.7,
+     64.0
+    ],
+    "luma_mean": 79.1,
+    "p2": 10,
+    "p50": 58,
+    "p98": 252,
+    "clipped_black_pct": 0.65,
+    "clipped_white_pct": 1.23,
+    "rg_balance": 41.7
+   }
+  },
+  "sky": {
+   "region": [
+    0,
+    0,
+    1200,
+    300
+   ],
+   "before": {
+    "mean_rgb": [
+     60.2,
+     36.7,
+     68.5
+    ],
+    "luma_mean": 44.0,
+    "p2": 15,
+    "p50": 56,
+    "p98": 134,
+    "clipped_black_pct": 0.0,
+    "clipped_white_pct": 0.0,
+    "rg_balance": -8.3
+   },
+   "after": {
+    "mean_rgb": [
+     95.9,
+     50.9,
+     82.0
+    ],
+    "luma_mean": 62.7,
+    "p2": 20,
+    "p50": 67,
+    "p98": 221,
+    "clipped_black_pct": 0.0,
+    "clipped_white_pct": 0.09,
+    "rg_balance": 13.9
+   }
+  },
+  "horizon": {
+   "region": [
+    0,
+    380,
+    1200,
+    100
+   ],
+   "before": {
+    "mean_rgb": [
+     139.3,
+     113.2,
+     62.8
+    ],
+    "luma_mean": 115.1,
+    "p2": 3,
+    "p50": 104,
+    "p98": 190,
+    "clipped_black_pct": 0.19,
+    "clipped_white_pct": 0.0,
+    "rg_balance": 76.5
+   },
+   "after": {
+    "mean_rgb": [
+     188.8,
+     163.6,
+     60.7
+    ],
+    "luma_mean": 161.5,
+    "p2": 28,
+    "p50": 144,
+    "p98": 255,
+    "clipped_black_pct": 0.0,
+    "clipped_white_pct": 5.47,
+    "rg_balance": 128.2
+   }
+  },
+  "sea": {
+   "region": [
+    560,
+    520,
+    600,
+    260
+   ],
+   "before": {
+    "mean_rgb": [
+     34.4,
+     25.3,
+     34.4
+    ],
+    "luma_mean": 27.9,
+    "p2": 10,
+    "p50": 31,
+    "p98": 64,
+    "clipped_black_pct": 0.0,
+    "clipped_white_pct": 0.0,
+    "rg_balance": 0.0
+   },
+   "after": {
+    "mean_rgb": [
+     35.9,
+     39.7,
+     56.8
+    ],
+    "luma_mean": 40.1,
+    "p2": 0,
+    "p50": 46,
+    "p98": 91,
+    "clipped_black_pct": 2.28,
+    "clipped_white_pct": 0.0,
+    "rg_balance": -20.9
+   }
+  },
+  "sun": {
+   "region": [
+    330,
+    375,
+    80,
+    80
+   ],
+   "before": {
+    "mean_rgb": [
+     178.8,
+     176.3,
+     117.9
+    ],
+    "luma_mean": 172.6,
+    "p2": 71,
+    "p50": 176,
+    "p98": 198,
+    "clipped_black_pct": 0.0,
+    "clipped_white_pct": 0.0,
+    "rg_balance": 60.9
+   },
+   "after": {
+    "mean_rgb": [
+     253.2,
+     250.0,
+     155.0
+    ],
+    "luma_mean": 243.8,
+    "p2": 70,
+    "p50": 250,
+    "p98": 255,
+    "clipped_black_pct": 0.0,
+    "clipped_white_pct": 25.48,
+    "rg_balance": 98.3
+   }
+  }
+ },
+ "preset_transfer": {
+  "compare": {
+   "before": "rev_26f913b003514a47",
+   "after": "rev_e9b6644741c643d4",
+   "changed_fraction": 0.9999,
+   "changed_region": [
+    0,
+    0,
+    1200,
+    800
+   ]
+  },
+  "before": {
+   "mean_rgb": [
+    32.5,
+    39.6,
+    69.6
+   ],
+   "luma_mean": 40.3,
+   "p2": 8,
+   "p50": 43,
+   "p98": 96,
+   "clipped_black_pct": 0.0,
+   "clipped_white_pct": 0.0,
+   "rg_balance": -37.1
+  },
+  "after": {
+   "mean_rgb": [
+    103.1,
+    107.6,
+    155.5
+   ],
+   "luma_mean": 110.1,
+   "p2": 20,
+   "p50": 117,
+   "p98": 223,
+   "clipped_black_pct": 0.01,
+   "clipped_white_pct": 0.01,
+   "rg_balance": -52.4
+  }
+ },
+ "selection_map_max_diff": {
+  "sky: rect minus colour, feather 14": 0,
+  "sun: ellipse, feather 60": 0,
+  "sea: lasso minus ellipse": 0,
+  "land: wand + wand, x 2-subpath path": 0,
+  "lamp: global wand x rect": 0,
+  "figure: path x colour": 0
+ },
+ "workflow_resource_vintage_print": {
+  "kind": "workflows",
+  "name": "vintage-print",
+  "value": {
+   "description": "Sepia toning, deterministic grain and a vignette for an aged print.",
+   "defaults": {
+    "target": "artwork"
+   },
+   "operations": [
+    {
+     "type": "effect",
+     "target": "${target}",
+     "name": "sepia",
+     "amount": 70
+    },
+    {
+     "type": "effect",
+     "target": "${target}",
+     "name": "grain",
+     "amount": 0.06,
+     "seed": 7
+    },
+    {
+     "type": "effect",
+     "target": "${target}",
+     "name": "vignette",
+     "amount": 0.35
+    }
+   ]
+  }
+ }
+}
