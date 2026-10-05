@@ -1,0 +1,1 @@
+Create post.vixl at 1080x1350. Import photo.jpg, scale it to exactly 1080 px wide (keep its aspect ratio) and place it at the top. Below the photo add a dark caption bar filling the rest of the canvas, with white text 'Summer Sale – 40% off' at font size 64 or more centered horizontally in the bar. Make sure vixl_check reports no errors, then export post.jpg.

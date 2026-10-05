@@ -1,0 +1,1 @@
+Create banner.vixl at 1200x628 with a white background. Set a document variable named city to 'Paris' and add a large dark text layer named headline whose text is 'Hello, ${city}!' so it follows the variable. Export banner-paris.png with the stored value, and banner-tokyo.png with city set to Tokyo only for that export (the stored variable must stay Paris).

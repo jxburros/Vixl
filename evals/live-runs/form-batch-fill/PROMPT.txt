@@ -1,0 +1,1 @@
+form.vixl is a badge form. attendees.csv has one row per attendee. Fill the form once for every attendee into a single PDF named badges.pdf (one page per attendee). Skip any attendee whose row cannot be used, and tell me which row was skipped and why.
