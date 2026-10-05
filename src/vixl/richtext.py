@@ -850,6 +850,7 @@ def execute(project, op):
     if whole:
         # No range and nothing that needs spans: this is a layer-level change, which text-set makes
         # without turning the layer into rich text (where text-set could no longer recolour it).
+        validate_style(whole, project.state)
         apply(project, {"type": "text-set", "target": layer["id"], **whole})
         note(project, f"text-style on {layer['name']!r} had no match, start/end or paragraphs, so it set the layer's "
                       f"{', '.join(whole)} as text-set does; give a range to style part of the text")

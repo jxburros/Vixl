@@ -126,6 +126,8 @@ def test_text_style_without_a_range_on_plain_text_acts_as_text_set():
     layer = p.layer("t")
     assert layer["color"] == "#444444" and layer["size"] == 36 and "rich" not in layer
     assert any("text-style on 't'" in note and "text-set" in note for note in result["normalized"])
+    with pytest.raises(VixlError):  # the same size limits as styled text
+        p.apply({"type": "text-style", "target": "t", "size": 0})
     # With a range, or with anything that needs spans, it still makes rich text.
     p.apply({"type": "text-style", "target": "t", "match": "ell", "color": "#f00"})
     assert p.layer("t")["rich"]["spans"][1] == {"text": "ell", "color": "#f00"}

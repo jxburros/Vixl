@@ -16,7 +16,7 @@ from .notices import warn
 from .richtext import active, normalize_spans
 
 WORDS = re.compile(r"\s+|\w+|[^\w\s]")
-MAX_CELLS = 4_000_000  # old × new tokens one line may compare before its words are replaced wholesale
+MAX_CELLS = 4_000_000  # old × new lines (or words) compared before the whole block is replaced instead
 OVERRIDES = ("color", "size", "font")
 
 
@@ -47,9 +47,12 @@ def _split(rich):
 def _pair_lines(old, new):
     """One ``(old line, template, paired)`` per new line, and the old lines that have no successor.
     A paired line keeps its own styles; a template only lends its paragraph settings and style."""
-    matcher = difflib.SequenceMatcher(None, old, new, autojunk=False)
+    if len(old) * len(new) > MAX_CELLS:
+        codes = [("replace", 0, len(old), 0, len(new))]
+    else:
+        codes = difflib.SequenceMatcher(None, old, new, autojunk=False).get_opcodes()
     plan, removed = [], []
-    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+    for tag, i1, i2, j1, j2 in codes:
         if tag == "equal":
             plan += [(i1 + k, i1 + k, True) for k in range(j2 - j1)]
         elif tag == "replace":
@@ -72,11 +75,11 @@ def _carry_line(old_chars, new_line, lost):
     for word in old_words:
         starts.append(starts[-1] + len(word))
     if len(old_words) * len(new_words) > MAX_CELLS:
-        matcher_codes = [("replace", 0, len(old_words), 0, len(new_words))]
+        codes = [("replace", 0, len(old_words), 0, len(new_words))]
     else:
-        matcher_codes = difflib.SequenceMatcher(None, old_words, new_words, autojunk=False).get_opcodes()
+        codes = difflib.SequenceMatcher(None, old_words, new_words, autojunk=False).get_opcodes()
     out = []
-    for tag, i1, i2, j1, j2 in matcher_codes:
+    for tag, i1, i2, j1, j2 in codes:
         fresh = "".join(new_words[j1:j2])
         if tag == "equal":
             out += old_chars[starts[i1]:starts[i2]]
