@@ -40,6 +40,7 @@ vixl_export_timeline(path="sprites.png", format="sheet", columns=6)
 ```
 
 - Properties: `x`, `y`, `translate-x`, `translate-y`, `opacity`, `rotation`, `scale`, `scale-x`, `scale-y`, `width`, `height`, `size`, `spacing`, `color`, `fill`, `start`, `end`, `stroke_color`, `stroke`, `text`, `visible`, `effect:ID` (or `effect:1`), and canvas `background` (`target: "canvas"`).
+- Mirroring: `scale`, `scale-x`, `scale-y` accept negative values (`-1` mirrors that axis about the pivot, center by default). Animate `scale-x` from `1` to `-1` to swing a layer over (a beam that sweeps back and forth, a card flip); it is edge-on at 0. Works in stills, GIF/WebP/MP4 and SVG. Static: `{"type":"scale","target":"beam","x":-1}`.
 - Characters: one layer per part, `{"type":"pivot","target":"arm","value":[0.5,0.05]}` at each joint (or `"top"`, or `units:"px"`), then rotate/animate `rotation` — the joint stays fixed. Group parts (`group`, nested for limbs) and animate the group's `translate-x/y`, `rotation`, `scale` to move the whole figure about its pivot; groups do not clip, so swinging limbs stay visible. `targets:["arm-l","arm-r"]` on `animate`/`animate-preset`/`keyframe` gives several parts the same keys.
 - Prefer `translate-x/y` and `scale` for motion: they offset/scale from the layer's laid-out position, so constrained layouts keep working. Absolute `x`/`y` keys pin the position.
 - Time: ms number, `"1.5s"`, `"250ms"`, `"50%"`, or a marker name. A key's `easing` shapes the segment *after* it. Default for `animate` is `ease-in-out`.

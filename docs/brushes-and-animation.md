@@ -39,7 +39,18 @@ vixl brush-define soft-ink --base ink --settings '{"hardness": 0.4, "taper": [0.
 
 A timeline animates ordinary document layers over time. Each track targets one property of one layer (or the canvas background) and holds keyframes `{time, value, easing}`. The easing on a key shapes the segment that starts at that key. Rendering a time copies the document, applies the interpolated values and renders it normally, so every layer type, effect, style, mask and constraint is animatable. The pixel-art frame snapshots (`frame-save` …) remain available for sprite work.
 
-Animatable properties: `x`, `y`, `translate-x`, `translate-y`, `opacity`, `rotation`, `scale`, `scale-x`, `scale-y` (about the layer's pivot, by default its center), `width`, `height`, `size` (font size), `spacing`, colors `color`, `fill`, `start`, `end`, `stroke_color`, `stroke` (mixed in OKLab), `text` and `visible` (stepped), `effect:ID` (an effect's amount; also `effect:1` for the first effect), and the canvas `background` (`target: "canvas"`). Animating position, rotation or scale freezes that layer's constraints for the frame; layers anchored to it still follow. An animated rotation keeps the center of the layer's document pose, so spins do not drift as the rotated bounds grow.
+Animatable properties: `x`, `y`, `translate-x`, `translate-y`, `opacity`, `rotation`, `scale`, `scale-x`, `scale-y` (about the layer's pivot, by default its center; negative values mirror, see below), `width`, `height`, `size` (font size), `spacing`, colors `color`, `fill`, `start`, `end`, `stroke_color`, `stroke` (mixed in OKLab), `text` and `visible` (stepped), `effect:ID` (an effect's amount; also `effect:1` for the first effect), and the canvas `background` (`target: "canvas"`). Animating position, rotation or scale freezes that layer's constraints for the frame; layers anchored to it still follow. An animated rotation keeps the center of the layer's document pose, so spins do not drift as the rotated bounds grow.
+
+**Mirroring and flips.** `scale`, `scale-x` and `scale-y` accept negative values (down to -100000). A negative factor sizes the layer by its absolute value and mirrors it on that axis, about the pivot (the center without one), on top of any flip the layer already has (`flip`, or a negative static `scale`): `-1` on a flipped layer flips it back. Animating `scale-x` from `1` to `-1` swings a layer over like a turning card: it narrows to nothing (nothing is drawn at exactly 0), then widens mirrored. On a pivoted layer the pivot is a point of the artwork, so it moves to the other side of the box while staying fixed on the canvas; later rotation still turns about it. Stills, timeline frames, GIF/WebP/MP4 exports, SVG, PDF and PowerPoint all see the same flipped layer. PDF form fields cannot be mirrored.
+
+```json
+{"type": "pivot", "target": "beam", "value": "left"}
+{"type": "keyframe", "target": "beam", "property": "scale-x", "time": 0, "value": 1, "easing": "ease-in-out-sine"}
+{"type": "keyframe", "target": "beam", "property": "scale-x", "time": "1.4s", "value": -1}
+{"type": "scale", "target": "beam", "x": -1}
+```
+
+The static `scale` operation takes `value` (both axes) or per-axis `x` and `y`; negative factors mirror (`scale x: -1` is `flip horizontal`, `value: -1` flips both axes) and sizes are 0.001–100. CLI: `vixl scale beam --x -1`, `vixl scale beam -0.5`, `vixl keyframe beam scale-x 1.4s -1`.
 
 Times are milliseconds or strings: `"1.5s"`, `"250ms"`, `"50%"` of the duration, or a marker name.
 

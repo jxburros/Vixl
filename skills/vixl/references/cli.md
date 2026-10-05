@@ -101,6 +101,7 @@ vixl resize portrait 800x600 ; vixl resize portrait --width 800
 vixl rotate portrait 15                  # clockwise degrees about the pivot (default: center)
 vixl pivot arm 0.5 0.05                  # fractions of the box; pivot arm top | pivot arm 8 2 --px | pivot arm --clear
 vixl flip portrait horizontal|vertical
+vixl scale beam --x -1                   # negative factors mirror (--x/--y per axis, or a bare -1 for both)
 vixl crop portrait 0 0 300 400           # X Y W H in the source raster
 vixl opacity portrait 0.75               # or 75 (1–100 = percent)
 vixl blend portrait multiply             # normal multiply screen overlay darken lighten difference add subtract

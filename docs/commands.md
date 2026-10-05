@@ -67,6 +67,7 @@ vixl move portrait 100 200
 vixl move portrait --x 100 --y 200
 vixl move x +20
 vixl scale portrait 80%
+vixl scale portrait --x -1              # negative factors mirror: --x/--y per axis, -1 both
 vixl resize portrait 800x600
 vixl resize portrait --width 800
 vixl rotate portrait 15
@@ -77,7 +78,7 @@ vixl blend portrait multiply
 vixl align logo top-right --margin 40
 ```
 
-`layer` is an optional namespace. `rm` aliases remove and `mv` aliases move. Rotation is clockwise, expands the layer bounds, and anchors the expanded bounding box at its x/y position. Crop coordinates refer to the original embedded raster. Resize with one dimension preserves aspect ratio; with two, it stretches. Numeric scale values are factors; `80%` is `0.8`. The CLI accepts opacity `75` as 75%; canonical JSON always requires 0–1.
+`layer` is an optional namespace. `rm` aliases remove and `mv` aliases move. Rotation is clockwise, expands the layer bounds, and anchors the expanded bounding box at its x/y position. Crop coordinates refer to the original embedded raster. Resize with one dimension preserves aspect ratio; with two, it stretches. Numeric scale values are factors; `80%` is `0.8`; a negative factor (`-1`, or `--x -1` for one axis) mirrors the layer as `flip` does and scales by its size. The CLI accepts opacity `75` as 75%; canonical JSON always requires 0–1.
 
 Alignment supports center, center-x/y, left/right/top/bottom and corner pairs. Absolute moves and alignment clear constraints. `move x +20` and `--relative` add offsets.
 

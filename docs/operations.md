@@ -31,7 +31,7 @@ Common operation fields:
 | solid / gradient | name, width, height, color **or** start/end/direction |
 | text | text, name, font, size, color, align, spacing, x/y |
 | text-set | target; text, size, color, align, spacing, stroke_width/stroke_color |
-| move / resize / scale | target; x/y/relative **or** width/height **or** value factor |
+| move / resize / scale | target; x/y/relative **or** width/height **or** `value` factor (or per-axis `x`/`y`; negative factors mirror) |
 | rotate / opacity / blend | target, value |
 | align | target, alignment, margin |
 | constrain | target, constraints object |

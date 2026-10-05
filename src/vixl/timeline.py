@@ -29,6 +29,7 @@ TIMELINE_TYPES = ("timeline-set", "keyframe", "keyframe-remove", "animate", "ani
 NUMERIC = ("x", "y", "translate-x", "translate-y", "opacity", "rotation", "scale", "scale-x", "scale-y", "width", "height", "size", "spacing")
 COLORS = ("color", "fill", "start", "end", "stroke_color", "stroke", "background")
 STEPPED = ("text", "visible")
+MIRRORING = ("scale", "scale-x", "scale-y")
 MAX_DURATION = 600_000
 MAX_FRAMES = 3600
 # MP4/WebM stream one frame at a time into ffmpeg, so only the 10-minute duration bounds them.
@@ -205,8 +206,10 @@ def _check_value(project, prop, value):
         finite(value, prop, -1e6, 1e6)
         if prop == "opacity":
             finite(value, "opacity", 0, 1)
-        if prop in ("width", "height", "size", "scale", "scale-x", "scale-y"):
+        if prop in ("width", "height", "size"):
             finite(value, prop, 0, 1e5)
+        if prop in MIRRORING:
+            finite(value, prop, -1e5, 1e5)  # A negative scale mirrors the layer on that axis.
     elif kind == "color":
         from .design import resolve_color
         from .render import color
@@ -217,6 +220,13 @@ def _check_value(project, prop, value):
         require(isinstance(value, str) and len(value) <= 100000, "text keyframes need a string")
     else:
         require(isinstance(value, bool), "visible keyframes need true or false")
+
+
+def _check_mirror(layer, prop, value):
+    """Negative scale mirrors a layer; PDF form fields are upright rectangles and cannot flip."""
+    if prop in MIRRORING and isinstance(value, (int, float)) and value < 0:
+        require(layer["type"] != "field", f"{prop} cannot be negative on field {layer['name']!r}: PDF form fields cannot be mirrored",
+                field="value")
 
 
 def _track(timeline, target, prop, create=True):
@@ -362,6 +372,8 @@ def execute_timeline(project, op):
         prop = op["property"]
         _check_value(project, prop, op["value"])
         static_value(project, target, prop)
+        if target != "canvas":
+            _check_mirror(project.layer(target), prop, op["value"])
         _set_key(_track(timeline, target, prop), parse_time(op["time"], duration, markers), op["value"], op.get("easing"), written)
     elif kind == "animate":
         prop = op["property"]
@@ -374,6 +386,8 @@ def execute_timeline(project, op):
         begin = op["from"] if "from" in op else _value_at(project, timeline, target, prop, start)
         _check_value(project, prop, begin)
         _check_value(project, prop, op["to"])
+        if prop in MIRRORING and target != "canvas":
+            _check_mirror(project.layer(target), prop, min(begin, op["to"]))
         track = _track(timeline, target, prop)
         _set_key(track, start, begin, op.get("easing", "ease-in-out"), written)
         _set_key(track, end, op["to"], None, written)
@@ -604,10 +618,17 @@ def project_at(project, time):
             x, y, w, h = bounds[ident]
             sx = values.get("scale", 1) * values.get("scale-x", 1)
             sy = values.get("scale", 1) * values.get("scale-y", 1)
-            if round(layer["width"] * abs(sx)) < 1 or round(layer["height"] * abs(sy)) < 1:
+            # A negative scale mirrors the layer about its pivot (its center without one), on top
+            # of any flip the document already has, so animating through zero swings it over.
+            flip_x, flip_y = sx < 0, sy < 0
+            sx, sy = abs(sx), abs(sy)
+            resized = sx != 1 or sy != 1
+            if round(layer["width"] * sx) < 1 or round(layer["height"] * sy) < 1:
                 # Scaled to nothing (a wipe or pop that starts at 0): draw nothing this frame,
                 # instead of the 1 px sliver the smallest box would leave.
                 layer["opacity"] = 0
+            layer["flip_x"] = bool(layer.get("flip_x")) != flip_x
+            layer["flip_y"] = bool(layer.get("flip_y")) != flip_y
             if layer.get("pivot") is not None:
                 # x/y place the unrotated box; rotation and scale keep the pivot point fixed.
                 if layer.get("constraints"):
@@ -616,10 +637,15 @@ def project_at(project, time):
                 else:
                     x, y = layer["x"], layer["y"]
                 x, y = values.get("x", x), values.get("y", y)
-                if sx != 1 or sy != 1:
+                if resized or flip_x or flip_y:
                     (rw, rh), (px, py) = rest_size(layer), layer["pivot"]
                     anchor = x + px * rw, y + py * rh
-                    layer.update(width=max(1, int(round(layer["width"] * sx))), height=max(1, int(round(layer["height"] * sy))), auto_size=False)
+                    if resized:
+                        layer.update(width=max(1, int(round(layer["width"] * sx))), height=max(1, int(round(layer["height"] * sy))), auto_size=False)
+                    # The pivot is a point of the artwork, so mirroring moves it to the other side
+                    # of the box while it stays fixed on the canvas.
+                    px, py = (1 - px if flip_x else px), (1 - py if flip_y else py)
+                    layer["pivot"] = [px, py]
                     rw, rh = rest_size(layer)
                     x, y = anchor[0] - px * rw, anchor[1] - py * rh
             else:
@@ -634,7 +660,7 @@ def project_at(project, time):
                     cx = values["x"] + w / 2
                 if "y" in values:
                     cy = values["y"] + h / 2
-                if sx != 1 or sy != 1:
+                if resized:
                     layer.update(width=max(1, int(round(layer["width"] * sx))), height=max(1, int(round(layer["height"] * sy))), auto_size=False)
                 tw, th = transformed_size(layer)
                 x, y = cx - tw / 2, cy - th / 2
@@ -734,6 +760,8 @@ def validate_timeline(project, state):
             require(isinstance(key["time"], int) and 0 <= key["time"] <= MAX_DURATION, "Invalid keyframe time")
             times.append(key["time"])
             _check_value(candidate, prop, key["value"])
+            if target != "canvas":
+                _check_mirror(ids[target], prop, key["value"])
             if "easing" in key:
                 easing_function(key["easing"])
         require(times == sorted(set(times)), "Keyframes must have increasing, unique times")
@@ -982,14 +1010,17 @@ def schemas(add):
 
     time = {"type": ["number", "string"]}  # ms, "1.5s", "500ms", "50%" or a marker name
     value = {"type": ["number", "string", "boolean"]}
+    prop = {"type": "string", "description": "Animatable property: " + ", ".join(NUMERIC + COLORS + STEPPED) + ", or effect:ID. "
+            "scale, scale-x and scale-y accept negative values: -1 mirrors the layer on that axis, so animating "
+            "scale-x from 1 to -1 swings it over about its pivot (center by default)."}
     extend = {"type": "boolean", "description": "Default true: a key past the timeline end lengthens the duration, and the result's "
               "warnings say so (timeline duration changed 8000 -> 8400 ms). False keeps the duration; the key stays past the end, "
               "shaping the last frames, and is not played."}
     add("timeline-set", {"duration": time, "fps": {"type": "number", "minimum": 1, "maximum": 60}, "loop": {"type": "integer", "minimum": 0, "maximum": 65535}, "clear": B})
     targets = {"type": "array", "items": S, "minItems": 1, "uniqueItems": True}
-    add("keyframe", {"property": S, "time": time, "value": value, "easing": S, "targets": targets, "extend": extend}, ["property", "time", "value"])
+    add("keyframe", {"property": prop, "time": time, "value": value, "easing": S, "targets": targets, "extend": extend}, ["property", "time", "value"])
     add("keyframe-remove", {"property": S, "time": time})
-    add("animate", {"property": S, "from": value, "to": value, "start": time, "end": time, "duration": time, "easing": S, "targets": targets, "extend": extend}, ["property", "to"])
+    add("animate", {"property": prop, "from": value, "to": value, "start": time, "end": time, "duration": time, "easing": S, "targets": targets, "extend": extend}, ["property", "to"])
     add("animate-preset", {"preset": S, "start": time, "duration": time, "easing": S, "distance": N, "amount": N, "fade": B, "to": S, "targets": targets, "extend": extend}, ["preset"])
     add("marker", {"name": S, "time": time, "delete": B}, ["name"], anyOf=[{"required": ["time"]}, {"required": ["delete"]}])
 

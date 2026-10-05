@@ -213,9 +213,11 @@ def compile_command(tokens):
         p.add_argument("values", nargs="*")
         p.add_argument("--width", type=int)
         p.add_argument("--height", type=int)
+        p.add_argument("--x", type=float, help="scale: horizontal factor; negative mirrors (scale beam --x -1)")
+        p.add_argument("--y", type=float, help="scale: vertical factor; negative mirrors")
         data = vars(p.parse_args(args))
         values = data.pop("values")
-        if values and not re.fullmatch(r"\d+(?:\.\d+)?%|\d+[x×]\d+|\d+(?:\.\d+)?", values[0]):
+        if values and not re.fullmatch(r"-?\d+(?:\.\d+)?%|\d+[x×]\d+|-?\d+(?:\.\d+)?", values[0]):
             data["target"] = values.pop(0)
         if values:
             require(len(values) in (1, 2), "Invalid resize arguments")
@@ -226,6 +228,8 @@ def compile_command(tokens):
             else:
                 data["value"] = float(values[0].rstrip("%")) / (100 if values[0].endswith("%") else 1)
                 op["type"] = "scale"
+        if data.get("x") is not None or data.get("y") is not None:
+            op["type"] = "scale"
         if data.get("width") is not None or data.get("height") is not None:
             op["type"] = "resize"
         return {**op, **{k: v for k, v in data.items() if v is not None}}
