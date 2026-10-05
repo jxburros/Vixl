@@ -205,7 +205,7 @@ CLI `--detail full`) includes complete before/after layer snapshots.
 
 | type | key fields | reference |
 | --- | --- | --- |
-| `organic` | `preset` or `parts`, `params`, `colors`, `seed`, `name`, `target` (regrow) | [organic shapes](drawing-shapes-guides.md#organic-shapes) |
+| `organic` | `preset` or `parts`, `params`, `colors`, `fill`, `stroke`, `stroke_width`, `seed`, `name`, `target` (regrow) | [organic shapes](drawing-shapes-guides.md#organic-shapes) |
 | `guide` / `grid` | `guide`: `kind` (`axis`, `line`, `ray`, `segment`, `point`, `circle`, `path`) and its geometry; `grid`: `kind` (`columns`, `baseline`, `thirds`, `golden`, `armature`, `golden-spiral`, `polar`, `isometric`, `triangular`, `hex`, `oblique`, `perspective`), `region`, `delete` | [guides](drawing-shapes-guides.md#guides-grids-and-placement) |
 | `place` / `snap` | `targets`, `guide`, `at`/`start`/`end`/`spacing`/`with`, `anchor`, `orient`; `snap`: `tolerance` | [guides](drawing-shapes-guides.md#guides-grids-and-placement) |
 | `rich-text` / `text-style` | `markdown` or `spans`, `paragraphs`; `text-style`: `match`/`start`/`end`, character styles, `paragraphs` settings | [documents](documents.md#rich-text) |

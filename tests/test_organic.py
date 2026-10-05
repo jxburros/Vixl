@@ -168,3 +168,66 @@ def test_contours_keep_holes_and_close():
     areas = sorted(trace.area(loop) for loop in loops)
     assert len(loops) == 2 and areas[0] < 0 < areas[1]
     assert abs(areas[1] - np.pi * 50 ** 2) / (np.pi * 50 ** 2) < 0.02
+
+
+FLAT = ("transparent", "none")
+
+
+@pytest.mark.parametrize("preset", sorted(PRESETS))
+def test_stroke_and_fill_follow_the_operation_for_every_preset(preset):
+    """Preset line colors, extra outputs (chambers, veins, barbs) included, follow stroke; fills follow fill."""
+    p = Project(160, 160, "white")
+    p.apply([{"type": "organic", "preset": preset, "name": "it", "width": 140, "height": 140,
+              "stroke": "#14263b", "fill": "#a8d5c8"}])
+    shapes = [layer for layer in p.state["layers"] if layer["type"] == "shape"]
+    assert shapes
+    assert {layer["stroke"] for layer in shapes} == {"#14263b"}
+    assert {layer["fill"] for layer in shapes} <= {"#a8d5c8", *FLAT}
+    assert p.layer("it")["organic"]["stroke"] == "#14263b" and p.layer("it")["organic"]["fill"] == "#a8d5c8"
+
+
+def test_preset_line_colors_follow_stroke_when_creating_and_regrowing():
+    """Issue 62: the shell kept its brown chamber lines at creation and ignored a later stroke."""
+    p = Project(300, 300, "white")
+    p.apply([{"type": "organic", "preset": "shell", "name": "plain", "seed": 4, "width": 200}])
+    assert {p.layer("plain/shell")["stroke"], p.layer("plain/shell-chambers")["stroke"]} == {"#8a5a3b", "#9b6b47"}
+    p.apply([{"type": "organic", "preset": "shell", "name": "navy", "seed": 4, "width": 200, "stroke": "#14263b"}])
+    p.apply([{"type": "organic", "target": "plain", "stroke": "#14263b"}])
+    for name in ("plain", "navy"):
+        assert {p.layer(f"{name}/shell")["stroke"], p.layer(f"{name}/shell-chambers")["stroke"]} == {"#14263b"}
+    # Creating with a stroke and regrowing to it give the same drawing and styling.
+    assert p.layer("plain/shell")["path"] == p.layer("navy/shell")["path"]
+    # Fills and widths were not touched by a stroke-only regrow.
+    assert p.layer("plain/shell")["fill"] == "#f1dcc0" and p.layer("plain/shell-chambers")["stroke_width"] == 1.2
+    # A new seed alone keeps the stroke; a later stroke or width replaces it on every output.
+    p.apply([{"type": "organic", "target": "plain", "seed": 5}])
+    assert p.layer("plain/shell-chambers")["stroke"] == "#14263b"
+    p.apply([{"type": "organic", "target": "plain", "stroke": "#e2725b", "stroke_width": 3}])
+    for label in ("shell", "shell-chambers"):
+        assert (p.layer(f"plain/{label}")["stroke"], p.layer(f"plain/{label}")["stroke_width"]) == ("#e2725b", 3)
+
+
+def test_single_path_regrowth_applies_stroke_width_and_fill():
+    p = Project(200, 200, "white")
+    p.apply([{"type": "organic", "name": "blob", "parts": [{"name": "body", "generator": "blob"}], "seed": 1, "width": 160}])
+    assert p.layer("blob")["stroke"] == "transparent"
+    p.apply([{"type": "organic", "target": "blob", "stroke": "#14263b", "stroke_width": 4, "fill": "#a8d5c8"}])
+    layer = p.layer("blob")
+    assert (layer["stroke"], layer["stroke_width"], layer["fill"]) == ("#14263b", 4, "#a8d5c8")
+    # A user edit survives a seed-only regrow, and colors outranks fill for the parts it names.
+    layer["fill"] = "#123456"
+    p.apply([{"type": "organic", "target": "blob", "seed": 2}])
+    assert p.layer("blob")["fill"] == "#123456"
+    p.apply([{"type": "organic", "target": "blob", "fill": "#ffffff", "colors": {"body": "#000000"}}])
+    assert p.layer("blob")["fill"] == "#000000"
+
+
+def test_fill_leaves_line_only_parts_unfilled_and_colors_win():
+    p = Project(200, 200, "white")
+    p.apply([{"type": "organic", "preset": "flower", "name": "f", "seed": 2, "width": 160, "fill": "#e2725b",
+              "colors": {"center": "#f2a541"}}])
+    assert p.layer("f/petals")["fill"] == "#e2725b" and p.layer("f/center")["fill"] == "#f2a541"
+    p.apply([{"type": "organic", "preset": "fern", "name": "fn", "seed": 2, "width": 160, "fill": "#e2725b"}])
+    assert p.layer("fn")["fill"] == "transparent"
+    with pytest.raises(VixlError):
+        p.apply([{"type": "organic", "preset": "flower", "fill": "not-a-color"}])

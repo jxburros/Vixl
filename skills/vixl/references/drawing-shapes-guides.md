@@ -32,8 +32,11 @@ Full reference: `docs/drawing.md`.
 For living things (flowers, trees, leaves, shells, creatures, coral, markings) use `organic`
 rather than hand-placing ellipses: `{"type": "organic", "preset": "sunflower", "name": "bloom",
 "seed": 7}`. `vixl organics` / workflow `organic-catalog` lists 18 generators, 19 rules and 32
-presets; `parts` compose your own. Regrow with a new `seed` and the same `target`. Full
-reference: `docs/organic.md`.
+presets; `parts` compose your own. Regrow with a new `seed` and the same `target`. To keep a
+form inside a brand palette pass `fill` (every filled part), `stroke` and `stroke_width` (every
+line, extra outputs such as shell chambers and leaf veins included); `colors` names single
+parts and wins over `fill`. A regrow with `stroke`/`fill` restyles the same way as creating
+with them. Full reference: `docs/organic.md`.
 
 ## Guides, grids and placement
 

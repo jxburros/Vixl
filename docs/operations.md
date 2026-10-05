@@ -86,7 +86,7 @@ New document state: `canvas.size`, `canvas.dpi`, `canvas.physical`, `canvas.blee
 
 | Operation | Fields |
 | --- | --- |
-| organic | `preset` or `parts`, `params`, `colors`, `seed`, `naturalness`, `name`, `x`, `y`, `width`, `height`, `target` (regrow) — [organic shapes](organic.md) |
+| organic | `preset` or `parts`, `params`, `colors`, `fill`, `stroke`, `stroke_width`, `seed`, `naturalness`, `name`, `x`, `y`, `width`, `height`, `target` (regrow) — [organic shapes](organic.md) |
 | guide | `name`, `kind` (`axis`, `line`, `ray`, `segment`, `point`, `circle`, `path`) and its geometry, `delete` — [guides](guides.md) |
 | grid | `name`, `kind` (`columns`, `baseline`, `thirds`, `golden`, `armature`, `golden-spiral`, `polar`, `isometric`, `triangular`, `hex`, `oblique`, `perspective`), kind settings, `region`, `delete` |
 | place / snap | `targets`, `guide`, `at`, `start`/`end`, `spacing`, `with`, `index`, `anchor`, `orient`, `rotate`, `offset`; `snap`: `tolerance` |
