@@ -35,6 +35,19 @@ def _scale_layer(layer, s):
     if "stroke_width" in layer:
         value = layer["stroke_width"] * s
         layer["stroke_width"] = round(value) if layer.get("type") == "text" else value
+    rich = layer.get("rich")
+    if rich:
+        for span in rich["spans"]:
+            for key in ("size", "tracking"):
+                if key in span:
+                    span[key] = span[key] * s
+        for key in ("paragraph_spacing", "list_indent"):
+            if key in rich:
+                rich[key] = rich[key] * s
+        for item in rich.get("paragraphs", []):
+            for key in ("space_before", "space_after", "indent"):
+                if key in item:
+                    item[key] = item[key] * s
     layout = layer.get("text_layout")
     if layout:
         for key in ("width", "height"):

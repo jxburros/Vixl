@@ -56,6 +56,10 @@ def compile_command(tokens):
     authoring = compile_authoring(cmd, args)
     if authoring is not None:
         return authoring
+    from .richtext import compile_command as compile_rich
+    rich = compile_rich(cmd, args)
+    if rich is not None:
+        return rich
     from .guides import compile_command as compile_guides
     guided = compile_guides(cmd, args)
     if guided is not None:

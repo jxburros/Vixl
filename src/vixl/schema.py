@@ -275,6 +275,8 @@ def _operation_schema():
     organic_schemas(add)
     from .guides import schemas as guide_schemas
     guide_schemas(add)
+    from .richtext import schemas as rich_schemas
+    rich_schemas(add)
     add(
         "palette-generate",
         {"name": S, "color": S, "scheme": S, "count": {"type": "integer", "minimum": 2, "maximum": 12}},

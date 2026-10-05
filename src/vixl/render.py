@@ -148,6 +148,12 @@ def resolve_font(project, name):
 def text_metrics(project, layer, variables=None):
     text = substitute(layer["text"], variables or project.state["variables"])
     require(len(text) <= 100000, "Text exceeds length limit", "resource_limit")
+    from .richtext import active
+
+    if active(layer):
+        from .richtext import measure as measure_rich
+
+        return measure_rich(project, layer, variables)
     from .text import measure, font_data, UnsupportedText
 
     try:

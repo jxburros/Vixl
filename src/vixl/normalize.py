@@ -37,6 +37,12 @@ TYPE_ALIASES = {
     "make-selection": "select",
     "style": "layer-style",
     "add-shape": "shape",
+    "rich": "rich-text",
+    "markdown": "rich-text",
+    "text-rich": "rich-text",
+    "text-span": "text-style",
+    "style-text": "text-style",
+    "span": "text-style",
 }
 SHAPE_TYPES = {
     "rect": ("rectangle", {}),

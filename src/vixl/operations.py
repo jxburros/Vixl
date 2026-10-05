@@ -13,6 +13,7 @@ from .creative import TYPES as CREATIVE_TYPES
 from .containers import TYPES as CONTAINER_TYPES
 from .organic import TYPES as ORGANIC_TYPES
 from .guides import TYPES as GUIDE_TYPES
+from .richtext import TYPES as RICH_TYPES
 
 from copy import deepcopy
 import hashlib
@@ -53,7 +54,7 @@ ALIASES = {
     "make_selection": "select",
 }
 
-OPERATION_TYPES = list(DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_TYPES + BRUSH_TYPES + TIMELINE_TYPES + LAYOUT_TYPES + COLOR_TYPES + AUTOMATION_TYPES + CREATIVE_TYPES + CONTAINER_TYPES + AUTHORING_TYPES + ORGANIC_TYPES + GUIDE_TYPES) + [
+OPERATION_TYPES = list(DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_TYPES + BRUSH_TYPES + TIMELINE_TYPES + LAYOUT_TYPES + COLOR_TYPES + AUTOMATION_TYPES + CREATIVE_TYPES + CONTAINER_TYPES + AUTHORING_TYPES + ORGANIC_TYPES + GUIDE_TYPES + RICH_TYPES) + [
     "add",
     "solid",
     "gradient",
@@ -255,6 +256,9 @@ def execute(project, op):
     kind = ALIASES.get(kind, kind)
     require(isinstance(kind, str), "Operation requires a type")
     target = op.get("target", op.get("layer"))
+    if kind in RICH_TYPES:
+        from .richtext import execute as execute_rich
+        return execute_rich(project, op)
     if kind in GUIDE_TYPES:
         from .guides import execute as execute_guides
         return execute_guides(project, op)
@@ -475,6 +479,9 @@ def execute(project, op):
             project.state["active_layer"] = duplicate["id"]
     elif kind == "text-set":
         require(layer["type"] == "text", "Layer is not editable text")
+        if "text" in op and layer.get("rich") and op["text"] != layer["text"]:
+            # New plain text replaces the styled spans; restyle it with text-style or rich-text.
+            layer.pop("rich")
         for key in ("text", "size", "color", "align", "spacing", "stroke_width", "stroke_color"):
             if key in op:
                 layer[key] = op[key]

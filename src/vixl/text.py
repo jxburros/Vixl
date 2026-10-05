@@ -34,6 +34,7 @@ class Glyph:
     y: float
     advance: float
     data: bytes = b""
+    text: str = ""  # The characters this glyph starts (its HarfBuzz cluster), for text extraction.
 
 
 @dataclass
@@ -189,9 +190,15 @@ def shape(data, text, size):
             buffer.script = tag
             buffer.guess_segment_properties()
             hb.shape(font, buffer)
+            starts = sorted({info.cluster for info in buffer.glyph_infos})
+            ends = dict(zip(starts, starts[1:] + [len(segment)]))
+            seen = set()
             for info, pos in zip(buffer.glyph_infos, buffer.glyph_positions):
+                first = info.cluster not in seen
+                seen.add(info.cluster)
                 glyphs.append(Glyph(names[info.codepoint], cursor + pos.x_offset * factor,
-                                    -pos.y_offset * factor, pos.x_advance * factor, font_data))
+                                    -pos.y_offset * factor, pos.x_advance * factor, font_data,
+                                    segment[info.cluster:ends[info.cluster]] if first else ""))
                 cursor += pos.x_advance * factor
     return glyphs, cursor
 

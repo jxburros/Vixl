@@ -117,6 +117,12 @@ def shape_image(project, layer):
 
 def text_image(project, layer):
     from .text import render_text, UnsupportedText
+    from .richtext import active
+
+    if active(layer):
+        from .richtext import render as render_rich
+
+        return render_rich(project, layer)
 
     try:
         return render_text(project, layer)

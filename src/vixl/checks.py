@@ -85,6 +85,14 @@ def boxed_text_overflow(project, layer):
     settings = layer.get("text_layout") or {}
     if layer["type"] != "text" or "width" not in settings or settings.get("fit") or settings.get("path"):
         return None
+    from .richtext import active
+
+    if active(layer):
+        from .richtext import layout as rich_layout
+
+        result = rich_layout(project, layer)
+        need = (math.ceil(result.box[2]), math.ceil(result.box[3]))
+        return need if need[0] > layer["width"] + 1 or need[1] > layer["height"] + 1 else None
     if settings.get("warp", "none") != "none":
         return None
     text = substitute(layer["text"], project.state.get("variables", {}))

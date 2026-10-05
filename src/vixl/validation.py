@@ -112,6 +112,10 @@ def check_state(project, state):
         if layer["type"] == "text":
             require(isinstance(layer["text"], str) and len(layer["text"]) <= 100000, "Invalid text")
             finite(layer["size"], "font size", 1, 4096)
+            if "rich" in layer:
+                from .richtext import validate_rich
+
+                validate_rich(layer["rich"], state, layer["text"])
         mask = layer["mask"]
         if mask:
             require(mask["asset"] in project.assets, "Missing mask asset", "missing_asset")

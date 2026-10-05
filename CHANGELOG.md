@@ -20,6 +20,11 @@
 - **`guides` and `alignment` checks** report anchors a few pixels off a guide (with the fixing move), rotations a few degrees off a guide's angle, and sibling layers almost aligned or almost parallel. Previews draw guides (`render_preview(guides=True)`, MCP `guides`, CLI `render --show-guides`); `vixl guides` lists them. Constraints read point and circle guides and horizontal/vertical lines.
 - `checks.canvas_projection` is the shared canvas-space projection of layer bounds (design checks, guide checks and form export use it).
 
+### Rich text
+
+- **Rich text in one text box** ([docs](docs/rich-text.md)): `rich-text` creates or replaces content from Markdown (bold, italic, underline, strike, highlight, super/subscript, `[text]{color=… size=… font=…}`, headings, nested bullet and numbered lists) or explicit spans and paragraph settings; `text-style` styles a matched word, a character range or whole paragraphs of any text layer. Paragraphs carry list type and level, alignment including justify, spacing before and after, indent and line height; wrapped list lines hang under their text. Bold and italic use installed variants (`inter-700`, `inter-400-italic`, or `font_variants`) and are synthesized otherwise. Fit-to-box shrinks every size together. The same shaped layout draws PNG and vector SVG (and feeds PDF and PPTX export).
+- Shaped glyphs record the characters they come from (ligatures included), for text extraction.
+
 ### Fixes from the explorations
 
 Fixes for the problems found while building the ten projects in `explorations/`.
