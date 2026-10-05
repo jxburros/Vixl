@@ -122,8 +122,15 @@ slides) that opens in PowerPoint, Keynote, Google Slides and LibreOffice:
 - Slide size: canvases with a `dpi` keep their physical size; screen canvases become 7.5 inches
   tall (PowerPoint's standard height), so 1920×1080 is the usual 13.33 × 7.5 in 16:9 slide. The
   PDF of the same deck has the same page size; `dpi` overrides both (see [PDF](#pdf)).
-- Fonts are referenced by family name and listed under `fonts` in the result: install the same
-  fonts wherever the deck is presented (PowerPoint substitutes missing ones).
+- **Fonts are referenced by family name, not embedded.** PowerPoint embeds fonts as Embedded
+  OpenType parts (`ppt/fonts/*.fntdata`); only PowerPoint itself can confirm such a part is
+  acceptable, and a malformed one makes it offer to repair the file, so Vixl does not write them.
+  The result lists every family under `fonts` and, for each one that is not a font every Office
+  installation has (Arial, Calibri, Times New Roman …), a `warnings` entry and the family under
+  `fonts_not_embedded`: install those fonts wherever the deck is opened or presented (PowerPoint,
+  Keynote and Google Slides otherwise substitute another font and the layout shifts), or share the
+  PDF, which embeds its fonts. In PowerPoint, *File → Options → Save → Embed fonts in the file*
+  embeds them once they are installed.
 
 ## Deck checks
 

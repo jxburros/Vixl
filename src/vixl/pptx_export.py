@@ -7,8 +7,9 @@ paragraph alignment and spacing, and bullets or numbering; plain groups become g
 PowerPoint cannot draw the same way (effects, styles, masks, clipping, blend modes, paint and pixel
 art) become pictures of exactly what Vixl renders, listed under ``raster_fallbacks``; image layers
 are pictures anyway.
-Master-page layers are drawn on every slide that uses them. Fonts are referenced by family name;
-the report lists them so they can be installed where the deck is presented.
+Master-page layers are drawn on every slide that uses them. Fonts are referenced by family name and
+are not embedded (see ``Exporter.font_warnings``); the report lists them, and warns about each one
+that is not a font every Office installation has, so they can be installed where the deck is shown.
 """
 
 import io
@@ -25,6 +26,9 @@ NS = ('xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" '
 REL = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
 DOC_REL = "http://schemas.openxmlformats.org/package/2006/relationships"
 XML = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
+# Families PowerPoint, Keynote and Google Slides all have, so a deck using only these needs no warning.
+COMMON_FONTS = frozenset({"Arial", "Calibri", "Calibri Light", "Cambria", "Consolas", "Courier New", "Georgia", "Helvetica",
+                          "Impact", "Segoe UI", "Tahoma", "Times New Roman", "Trebuchet MS", "Verdana"})
 TRANSITIONS = {"fade": "<p:fade/>", "push": '<p:push dir="u"/>', "wipe": "<p:wipe/>", "cover": "<p:cover/>",
                "split": "<p:split/>", "zoom": "<p:zoom/>"}
 
@@ -452,6 +456,19 @@ class Exporter:
         self.fonts_used.add(self._families[key])
         return self._families[key]
 
+    def font_warnings(self):
+        """(families, warnings) for the fonts a deck needs that its viewers may not have.
+
+        PowerPoint embeds fonts as Embedded OpenType parts (``ppt/fonts/*.fntdata`` listed in
+        ``p:embeddedFontLst``). Vixl does not write them: only PowerPoint itself accepts or rejects
+        such a part (python-pptx and the free converters neither read nor validate it), and a
+        malformed one makes PowerPoint offer to repair the file. A missing font is substituted,
+        which moves text, so each one is named."""
+        families = sorted(self.fonts_used - COMMON_FONTS)
+        return families, [
+            f"Font {family!r} is not embedded in the PPTX (Vixl cannot embed fonts in PowerPoint files): install it "
+            "wherever the deck is opened, or share the PDF, which embeds its fonts" for family in families]
+
     def _registered(self, font):
         from .richtext import _registered_name
 
@@ -548,6 +565,9 @@ def export_pptx(project, path=None, *, pages=None, dpi=None, report=None):
                       fonts=sorted(exporter.fonts_used),
                       raster_fallbacks={str(i): s.fallbacks for i, (_, s) in enumerate(slides, 1) if s.fallbacks},
                       notes=sum(1 for n in notes if n))
+        families, warnings = exporter.font_warnings()
+        if warnings:
+            report.update(fonts_not_embedded=families, warnings=warnings)
     if path:
         Path(path).write_bytes(data)
     return data
