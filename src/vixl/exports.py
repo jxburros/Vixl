@@ -38,8 +38,13 @@ def export_screens(project, directory, *, scales=(1, 2), boards=None, **options)
     return [{"artboard": name, "scale": scale, "output": str(path)} for name, scale, path in jobs]
 
 
-def render_data(project, csv_path, directory, *, variables=None, check=True, **options):
-    content = read_bounded(csv_path, 8 * 1024 * 1024).decode("utf-8-sig")
+def read_csv(csv_path, limit=10000):
+    """(headers, rows) of a data CSV: UTF-8 with an optional byte-order mark, unique non-empty
+    headers, at most ``limit`` rows and 8 MiB. Shared by ``render --data`` and form filling."""
+    try:
+        content = read_bounded(csv_path, 8 * 1024 * 1024).decode("utf-8-sig")
+    except UnicodeDecodeError as exc:
+        raise VixlError("invalid_data", "CSV files must be UTF-8") from exc
     reader = csv.DictReader(io.StringIO(content, newline=""), strict=True)
     headers = reader.fieldnames
     require(
@@ -48,7 +53,7 @@ def render_data(project, csv_path, directory, *, variables=None, check=True, **o
     rows = []
     try:
         for row in reader:
-            require(len(rows) < 10000, "Data sets support at most 10000 rows", "resource_limit")
+            require(len(rows) < limit, f"Data sets support at most {limit} rows", "resource_limit")
             require(
                 None not in row and all(v is not None for v in row.values()),
                 "CSV row has wrong number of fields",
@@ -57,6 +62,11 @@ def render_data(project, csv_path, directory, *, variables=None, check=True, **o
     except csv.Error as exc:
         raise VixlError("invalid_data", str(exc)) from exc
     require(rows, "CSV contains no data rows")
+    return headers, rows
+
+
+def render_data(project, csv_path, directory, *, variables=None, check=True, **options):
+    _, rows = read_csv(csv_path)
     root = Path(directory)
     destinations = [root / f"{i + 1:04d}.png" for i in range(len(rows))]
     require(not any(p.exists() for p in destinations), "Data output exists; use an empty directory")

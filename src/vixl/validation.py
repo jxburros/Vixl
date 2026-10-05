@@ -80,6 +80,7 @@ def check_state(project, state):
                 "symbol",
                 "pixel",
                 "paint",
+                "field",
             ),
             "Invalid layer type",
             "invalid_project",
@@ -109,6 +110,10 @@ def check_state(project, state):
             from .brushes import validate_paint
 
             validate_paint(layer, state)
+        if layer["type"] == "field":
+            from .forms import validate_field
+
+            validate_field(layer, state)
         if layer["type"] == "text":
             require(isinstance(layer["text"], str) and len(layer["text"]) <= 100000, "Invalid text")
             finite(layer["size"], "font size", 1, 4096)
@@ -125,6 +130,9 @@ def check_state(project, state):
             if effect.get("selection"):
                 require(effect["selection"] in project.assets, "Missing effect selection", "missing_asset")
     validate_design(project, state)
+    from .forms import validate_form
+
+    validate_form(project, state)
     from .brushes import validate_brushes
 
     require(isinstance(state.get("brushes", {}), dict), "Invalid brush library")

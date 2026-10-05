@@ -60,6 +60,10 @@ def compile_command(tokens):
     rich = compile_rich(cmd, args)
     if rich is not None:
         return rich
+    from .forms import compile_command as compile_forms
+    form = compile_forms(cmd, args)
+    if form is not None:
+        return form
     from .pages import compile_command as compile_pages
     paged = compile_pages(cmd, args)
     if paged is not None:

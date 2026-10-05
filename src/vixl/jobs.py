@@ -61,8 +61,9 @@ class Queue:
         )
         payload = deepcopy(payload)
         kind = payload.get("kind")
-        require(kind in ("production", "film", "generate", "video", "lyric-video"), "Unknown job kind")
-        fields = {"spec"} if kind in ("production", "film") else {"request"} if kind == "lyric-video" else {"provider", "request"}
+        require(kind in ("production", "film", "generate", "video", "lyric-video", "form-fill"), "Unknown job kind")
+        fields = ({"spec"} if kind in ("production", "film") else {"request"} if kind in ("lyric-video", "form-fill")
+                  else {"provider", "request"})
         require(fields <= payload.keys(), "Missing job fields", required=sorted(fields))
         require(isinstance(payload.get("output"), str), "Job needs an output path")
         output = self.resolve(payload["output"])
@@ -101,6 +102,17 @@ class Queue:
             require(isinstance(payload["request"].get("build"), str), "Lyric video jobs need a build path")
             require(not self.resolve(payload["request"]["build"]).exists(), "Lyric video build already exists")
             lyric_plan(payload["request"], self.workspace, self.limits)
+        if kind == "form-fill":
+            request = payload["request"]
+            require(isinstance(request, dict), "Form fill job request must be an object")
+            bounded_object(request, {"data", "name", "format", "mode", "skip_invalid", "check", "unknown", "dpi",
+                                     "retain_inputs"}, "Unknown form fill request field")
+            require(isinstance(request.get("data"), str), "Form fill jobs need a data CSV")
+            require(output.suffix.lower() in (".pdf", ".zip"), "Form fill job output is a combined .pdf or a .zip of files")
+            require(isinstance(payload.get("source"), str), "Form fill jobs need the source form document")
+            from .forms import read_rows
+
+            read_rows(self.resolve(request["data"]))
         if kind == "generate":
             require(output.suffix == ".vixl", "Generated image jobs save an editable .vixl document")
             bounded_object(
@@ -126,8 +138,16 @@ class Queue:
             source.save(folder / "source.vixl")
             payload["source"] = str((folder / "source.vixl").relative_to(self.workspace))
         require(
-            kind not in ("production", "generate") or payload.get("source"), "Job needs a source document"
+            kind not in ("production", "generate", "form-fill") or payload.get("source"), "Job needs a source document"
         )
+        if kind == "form-fill":
+            # Freeze the data (personal data: deleted when the job ends unless retain_inputs).
+            from .assets import read_bounded
+
+            source = self.resolve(payload["request"]["data"])
+            destination = folder / "input-data.csv"
+            write_bytes(destination, read_bounded(source, 8 * 1024 * 1024))
+            payload["request"]["data"] = str(destination.relative_to(self.workspace))
         if kind == "lyric-video":
             # Freeze the song, lyrics and template; the worker builds and renders from these copies.
             from .assets import read_bounded
@@ -172,6 +192,47 @@ class Queue:
 
     def cancelled(self, ident):
         return (self.directory / (ident + ".cancel")).exists()
+
+    def form_fill_step(self, job, limits, progress):
+        """Fill a frozen form from frozen rows into one combined PDF or a ZIP of files, then
+        delete the data copy (unless ``retain_inputs``)."""
+        import shutil
+        import tempfile
+        import zipfile
+
+        from .forms import fill_data
+        from .project import Project
+
+        payload, ident = job["payload"], job["id"]
+        request = payload["request"]
+        data = self.resolve(request["data"])
+        checkpoint = self.checkpoint_path(job)
+        try:
+            if not checkpoint.exists():
+                project = Project.load(self.resolve(payload["source"]), limits=limits)
+                options = {k: request[k] for k in ("mode", "skip_invalid", "check", "unknown", "dpi") if k in request}
+                if checkpoint.suffix == ".pdf":
+                    report = fill_data(project, data, combine=checkpoint, cancelled=lambda: self.cancelled(ident), **options)
+                else:
+                    staging = Path(tempfile.mkdtemp(prefix="vixl-form-job-"))
+                    try:
+                        report = fill_data(project, data, staging / "out", name=request.get("name", "{row}"),
+                                           format=request.get("format", "pdf"), cancelled=lambda: self.cancelled(ident),
+                                           progress=progress, **options)
+                        with zipfile.ZipFile(checkpoint, "w", zipfile.ZIP_DEFLATED) as archive:
+                            for item in report.get("outputs", []):
+                                name = Path(item["output"]).name
+                                info = zipfile.ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0))
+                                archive.writestr(info, Path(item["output"]).read_bytes())
+                                item["output"] = name
+                    finally:
+                        shutil.rmtree(staging, ignore_errors=True)
+                report.pop("output", None)
+                job["result"] = report
+            self.publish_checkpoint(job)
+        finally:
+            if not request.get("retain_inputs") and (job["status"] in ("completed", "cancelled") or self.cancelled(ident)):
+                data.unlink(missing_ok=True)
 
     def checkpoint_path(self, job):
         suffix = ".vixl" if job["payload"]["kind"] == "generate" else Path(job["payload"]["output"]).suffix
@@ -371,6 +432,8 @@ class Queue:
                             progress=progress,
                         )
                         job.update(result=result, status=result["status"])
+                    elif kind == "form-fill":
+                        self.form_fill_step(job, limits, progress)
                     elif kind == "lyric-video":
                         from .lyrics import export as lyric_export
 

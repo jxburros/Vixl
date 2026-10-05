@@ -540,18 +540,21 @@ def page_views(project, pages=None):
 
 
 def export_pdf(project, path=None, *, pages=None, content="vector", dpi=None, background="white", color_space="rgb",
-               jpeg_quality=None, title=None, lang=None, annotations=None, separation=None, report=None):
+               jpeg_quality=None, title=None, lang=None, annotations=None, acroform=None, fillable=False, separation=None,
+               report=None, views=None):
     """Write a PDF with one page per document page. Returns the bytes (and writes ``path``).
 
-    ``annotations(view, page_index, builder) -> [annotation refs]`` lets form export add
-    widgets; ``report`` (a dict) receives raster fallbacks per page."""
+    ``views`` [(label, page view)] replaces the document's pages (combined form fills).
+    ``annotations(view, page_index, builder) -> [annotation refs]`` and ``acroform(writer) ->
+    dict`` let form export add fields; with ``fillable`` the page artwork leaves field values to
+    the widgets. ``report`` (a dict) receives raster fallbacks per page."""
     require(content in ("vector", "raster"), "pdf content must be vector or raster", field="content")
     require(color_space in ("rgb", "cmyk"), "Color space must be rgb or cmyk")
     require(color_space == "rgb" or content == "raster", "CMYK PDF pages are raster; use content raster", field="content")
     canvas = project.state["canvas"]
     dpi = finite(dpi or canvas.get("dpi") or 72, "dpi", 36, 2400)
     k = 72 / dpi
-    views = page_views(project, pages)
+    views = views if views is not None else page_views(project, pages)
     stream = io.BytesIO()
     writer = Writer(stream)
     fonts = Fonts()
@@ -566,6 +569,7 @@ def export_pdf(project, path=None, *, pages=None, content="vector", dpi=None, ba
         c = view.state["canvas"]
         width, height = c["width"] * k, c["height"] * k
         builder = PageBuilder(project, view, writer, fonts, images)
+        builder.k, builder.fillable = k, fillable
         builder.ops.append(f"{_fmt(k)} 0 0 {_fmt(-k)} 0 {_fmt(height)} cm")
         if content == "raster":
             image = render(view)
@@ -614,8 +618,7 @@ def export_pdf(project, path=None, *, pages=None, content="vector", dpi=None, ba
             page["TrimBox"] = [round(bleed * k, 4), round(bleed * k, 4), round(width - bleed * k, 4), round(height - bleed * k, 4)]
             page["BleedBox"] = [0, 0, round(width, 4), round(height, 4)]
         if annots:
-            page["Annots"] = annots
-            page["Tabs"] = Name("S")
+            page["Annots"] = annots  # in tab order
         extra = getattr(builder, "page_extra", None)
         if extra:
             page.update(extra)
@@ -635,7 +638,6 @@ def export_pdf(project, path=None, *, pages=None, content="vector", dpi=None, ba
         catalog["ViewerPreferences"] = {"DisplayDocTitle": True}
     if lang:
         catalog["Lang"] = Text(lang)
-    acroform = getattr(project, "_acroform", None)
     if acroform is not None:
         catalog["AcroForm"] = acroform(writer)
     root = writer.add(catalog)

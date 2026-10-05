@@ -91,6 +91,9 @@ def _matches(layer, match):
         elif key == "type":
             if layer.get("type") not in (expected if isinstance(expected, list) else [expected]):
                 return False
+        elif key in ("field_key", "field_kind"):
+            if (layer.get("field") or {}).get(key[6:]) != expected:
+                return False
         elif layer.get(key) != expected:
             return False
     return True
@@ -125,6 +128,15 @@ def grade(task, workspace):
             elif kind == "files_differ":
                 first, second = (workspace / path for path in check["paths"])
                 passed = first.is_file() and second.is_file() and first.read_bytes() != second.read_bytes()
+            elif kind == "pdf_fields":
+                import pypdf
+
+                reader = pypdf.PdfReader(workspace / check["path"])
+                fields = sorted(reader.get_fields() or {})
+                detail = {"pages": len(reader.pages), "fields": fields}
+                passed = set(check.get("includes", [])) <= set(fields) and (
+                    "pages" not in check or len(reader.pages) == check["pages"]) and (
+                    "max_fields" not in check or len(fields) <= check["max_fields"])
             else:
                 project = document(check.get("document", task.get("document")))
                 state = project.inspect()

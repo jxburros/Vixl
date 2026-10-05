@@ -353,7 +353,7 @@ def create_app(path, *, token=None, limits=None):
         from .workflows import dispatch
         # REST remains scoped to its active project. Other document/library/job I/O is MCP/CLI only.
         from .studio import REST_ACTIONS
-        require(action in {"check", "act", "plan", "film-plan", "lyric-video-plan", "organic-catalog"} | REST_ACTIONS,
+        require(action in {"check", "act", "plan", "film-plan", "lyric-video-plan", "organic-catalog", "form-fill"} | REST_ACTIONS,
                 "This workflow needs a workspace CLI/MCP session", "forbidden")
         return dispatch(session, action, body)
 
@@ -401,6 +401,9 @@ def create_app(path, *, token=None, limits=None):
             "page",
             "pages",
             "pdf_content",
+            "fillable",
+            "values",
+            "fill_mode",
         }
         require(set(body) <= allowed, "Unknown export option")
         fmt = body.get("format", "PNG").upper()
@@ -580,7 +583,7 @@ def create_app(path, *, token=None, limits=None):
 
         options = fixed(body)
         allowed = {"variables", "max_width", "max_height", "max_bytes", "artboard", "comp", "region", "time", "proof", "simulate",
-                   "guides", "page"}
+                   "guides", "page", "values", "show_fields"}
         require(not set(options) - allowed, f"Preview accepts {sorted(allowed)}", field="body")
         return Response(preview(session, **options), media_type="image/png")
 

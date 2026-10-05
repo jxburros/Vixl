@@ -145,8 +145,18 @@ def resolve_font(project, name):
     return font, role
 
 
+def document_variables(project):
+    """The document's variables, plus each form field's current value under its key."""
+    from .forms import current_values, has_fields
+
+    if not has_fields(project):
+        return project.state.get("variables", {})
+    fields = current_values(project)
+    return {**{key: display for key, (_, display) in fields.items()}, **project.state.get("variables", {})}
+
+
 def text_metrics(project, layer, variables=None):
-    text = substitute(layer["text"], variables or project.state["variables"])
+    text = substitute(layer["text"], variables or document_variables(project))
     require(len(text) <= 100000, "Text exceeds length limit", "resource_limit")
     from .richtext import active
 
@@ -217,8 +227,11 @@ def transformed_size(layer):
 
 def resolved_layers(project, variables=None):
     from .design import resolve_color
+    from .forms import current_values, has_fields
 
-    variables = {**project.state["variables"], **(variables or {})}
+    fields = current_values(project) if has_fields(project) else {}
+    # Each field's current value (its default, or a filled value) is also a ${key} variable.
+    variables = {**document_variables(project), **(variables or {})}
     # Paint strokes can hold hundreds of thousands of points and are only read while rendering
     # and laying out, so the resolved copies share them instead of copying them each time.
     layers = [
@@ -280,6 +293,8 @@ def resolved_layers(project, variables=None):
                 blend[key] = resolve_color(blend[key], project.state, variables)
         if layer["type"] == "text" and layer.get("auto_size", True):
             layer["width"], layer["height"], _ = text_metrics(project, layer, variables)
+        if layer["type"] == "field":
+            layer["value"] = list(fields.get(layer["field"]["key"], (None, "")))
         project.limits.size(layer["width"], layer["height"])
     return layers
 
@@ -680,6 +695,10 @@ def layer_ink(project, layer, bounds):
         image = text_image(project, layer)
     elif kind == "solid":
         image = Image.new("RGBA", (layer["width"], layer["height"]), color(layer["fill"]))
+    elif kind == "field":
+        from .forms import field_image
+
+        image = field_image(project, layer)
     elif kind == "gradient":
         from .design_render import gradient_image
 
@@ -1118,6 +1137,9 @@ def export(
     pages=None,
     pdf_content=None,
     report=None,
+    fillable=False,
+    values=None,
+    fill_mode="flatten",
 ):
     """Render and encode. ``color_space='cmyk'`` separates JPEG/TIFF/PDF output (ICC profile
     bytes in ``icc_profile`` for press-accurate separation, else device-naive GCR with
@@ -1138,6 +1160,32 @@ def export(
     if isinstance(page, str) and page.isdigit():
         page = int(page)
     suffix = Path(path).suffix.lower() if path else ""
+    require(fill_mode in ("flatten", "editable"), "fill_mode must be flatten or editable", field="fill_mode")
+    if fillable or fill_mode == "editable":
+        # A fillable PDF: Vixl's artwork with AcroForm fields on top (prefilled with ``values``).
+        require((format or "").upper() == "PDF" or suffix == ".pdf" or (not format and not suffix),
+                "Fillable forms export as PDF", field="fillable")
+        require(color_space == "rgb", "Fillable PDFs are RGB; export CMYK without fillable", field="color_space")
+        require(page is None or not pages, "Pass page or pages, not both")
+        from .pdf_forms import export_fillable
+
+        return export_fillable(project, path, pages=pages or ([page] if page is not None else None), values=values,
+                               dpi=dpi, content=pdf_content or "vector", background=background, report=report)
+    if variables:
+        from .forms import all_fields, has_fields
+
+        if has_fields(project):
+            keys = {layer["field"]["key"] for _, layer in all_fields(project)} & set(variables)
+            require(not keys, f"{', '.join(sorted(keys))} name form fields; pass field values in values, not variables",
+                    field="variables")
+    if values:
+        # Flattened filling: the values are drawn into a throwaway copy that never touches the
+        # document or the persistent render cache.
+        from .forms import with_values
+
+        project = with_values(project, values)
+        if (format or "").upper() == "PDF" or suffix == ".pdf":
+            pdf_content = pdf_content or "vector"
     if (format or "").upper() == "PPTX" or suffix == ".pptx":
         from .pptx_export import export_pptx
 

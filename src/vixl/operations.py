@@ -15,6 +15,7 @@ from .organic import TYPES as ORGANIC_TYPES
 from .guides import TYPES as GUIDE_TYPES
 from .richtext import TYPES as RICH_TYPES
 from .pages import TYPES as PAGE_TYPES
+from .forms import TYPES as FORM_TYPES
 
 from copy import deepcopy
 import hashlib
@@ -55,7 +56,7 @@ ALIASES = {
     "make_selection": "select",
 }
 
-OPERATION_TYPES = list(DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_TYPES + BRUSH_TYPES + TIMELINE_TYPES + LAYOUT_TYPES + COLOR_TYPES + AUTOMATION_TYPES + CREATIVE_TYPES + CONTAINER_TYPES + AUTHORING_TYPES + ORGANIC_TYPES + GUIDE_TYPES + RICH_TYPES + PAGE_TYPES) + [
+OPERATION_TYPES = list(DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_TYPES + BRUSH_TYPES + TIMELINE_TYPES + LAYOUT_TYPES + COLOR_TYPES + AUTOMATION_TYPES + CREATIVE_TYPES + CONTAINER_TYPES + AUTHORING_TYPES + ORGANIC_TYPES + GUIDE_TYPES + RICH_TYPES + PAGE_TYPES + FORM_TYPES) + [
     "add",
     "solid",
     "gradient",
@@ -260,6 +261,9 @@ def execute(project, op):
     if kind in PAGE_TYPES:
         from .pages import execute as execute_pages
         return execute_pages(project, op)
+    if kind in FORM_TYPES:
+        from .forms import execute as execute_forms
+        return execute_forms(project, op)
     if kind in RICH_TYPES:
         from .richtext import execute as execute_rich
         return execute_rich(project, op)
@@ -443,6 +447,8 @@ def execute(project, op):
         for item in layers:
             if item.get("clip") in removed:
                 item.pop("clip")
+            if item["type"] == "field" and item["field"].get("label_layer") in removed:
+                item["field"].pop("label_layer")  # the form check reports the missing label
         project.state["symbols"] = {
             k: v for k, v in project.state.get("symbols", {}).items() if v not in removed
         }
@@ -460,6 +466,10 @@ def execute(project, op):
         duplicate = deepcopy(layer)
         duplicate["id"] = uid("lyr")
         duplicate["name"] = op["name"] if "name" in op else default_name(project, layer["name"] + " copy")
+        if duplicate["type"] == "field":
+            from .forms import fresh_key
+
+            fresh_key(project, duplicate)
         append_layer(project, duplicate)
         if layer["type"] == "group":
             from .design import descendants
@@ -479,6 +489,12 @@ def execute(project, op):
                         for old, new in mapping.items():
                             expression = expression.replace(old + ".", new + ".")
                         item["constraints"][anchor] = expression
+                if item["type"] == "field":
+                    from .forms import fresh_key
+
+                    fresh_key(project, item)
+                    if item["field"].get("label_layer") in mapping:
+                        item["field"]["label_layer"] = mapping[item["field"]["label_layer"]]
                 append_layer(project, item)
             project.state["active_layer"] = duplicate["id"]
     elif kind == "text-set":
@@ -525,6 +541,9 @@ def execute(project, op):
             h = op.get("height", max(1, round(h * w / layer["width"])))
         project.limits.size(w, h)
         layer.update(width=w, height=h, auto_size=False)
+    elif kind in ("rotate", "pivot", "flip") and layer["type"] == "field":
+        raise VixlError("invalid_operation", f"{kind} does not apply to fields: PDF form fields are upright rectangles",
+                        field="target")
     elif kind == "rotate":
         layer["rotation"] = finite(op["value"], "angle") % 360
     elif kind == "pivot":

@@ -307,6 +307,10 @@ class Exporter:
             )
         elif kind == "pathfinder":
             return self.pathfinder(parent, layer)
+        elif kind == "field":
+            from .forms import svg_field
+
+            return svg_field(self, parent, layer)
         elif kind == "pixel":
             rows = layer["pixels"]
             group = node(

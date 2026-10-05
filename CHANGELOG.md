@@ -33,6 +33,14 @@
 - **Deck checks** (`check --checks deck`): the design checks on every page (repeated findings merged) plus title placement across pages, a consistent type scale, words per page, minimum projected type size in points, missing speaker notes and empty pages.
 - `render --page N` / `--page all` (a labelled contact sheet, also `vixl_render_preview(page="all")`), `export x.png --pages all` (numbered files for carousels), `--pages 1-3,intro` for PDF and PPTX, and `vixl pages`. MCP `vixl_export_file`, `vixl_check` and `vixl_render_preview` and the REST export and preview routes take `page`/`pages`.
 
+### Forms
+
+- **Fillable forms** ([docs](docs/forms.md)): `field` layers (text, multiline, number, date, checkbox, radio, dropdown, signature) with keys, accessible labels, required/read-only flags, defaults, formats, options, comb cells, overflow rules and a drawn appearance; `field-set` and `form` (tab order, title, language). Fields render in PNG, SVG, PDF and previews with their current values, and `render --show-fields` / `show_fields` outlines them with keys and tab numbers.
+- **Fillable PDF export** (`export form.pdf --fillable`, `fillable=True`): AcroForm text, button, choice and signature fields over the vector page artwork, with generated appearances (no `NeedAppearances`), `/TU` names, `/DA` Helvetica entry, reading or explicit tab order, title and language — no actions, hex strings only, byte-identical output, multi-page forms.
+- **Filling**: `form fill --set …` or `--data rows.csv` (one file per row with name templates, or `--combine` into one PDF), `vixl.forms.fill` / `fill_data`, MCP `vixl_export_file(values=…, fill_mode=…)`, the `form-fill` workflow action and durable job. Every row is validated first (`missing_required`, `unknown_key`, `invalid_option`, `invalid_number`, `invalid_date`, `too_long`, `invalid_format`, `overflow`), with `--dry-run` and `--skip-invalid`; editable mode prefills a fillable PDF. Filled values never reach the document, its history, the render cache or error messages, and jobs delete their copy of the data. Field values are `${key}` variables in text layers.
+- **`form` checks** (a default check): names, overlaps, rotation, page and trim bounds, tab order, encodable defaults, box and mark sizes, non-text contrast, layers above fields, and `--sample worst|rows.csv` overflow checks. `inspect`, `field list` and MCP inspect summarize fields with their rectangles in points.
+- Agent evaluations `form-registration` and `form-batch-fill`, with a `pdf_fields` grading check; `pypdf` and `python-pptx` join the dev dependencies for tests.
+
 ### Fixes from the explorations
 
 Fixes for the problems found while building the ten projects in `explorations/`.

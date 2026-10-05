@@ -1,0 +1,97 @@
+{
+  "prompt": "form.vixl is a badge form. attendees.csv has one row per attendee. Fill the form once for every attendee into a single PDF named badges.pdf (one page per attendee). Skip any attendee whose row cannot be used, and tell me which row was skipped and why.",
+  "document": "form.vixl",
+  "setup": {
+    "documents": [
+      {
+        "path": "form.vixl",
+        "width": 2550,
+        "height": 3300,
+        "background": "white",
+        "batches": [
+          [
+            {
+              "type": "canvas",
+              "size": "letter"
+            }
+          ],
+          [
+            {
+              "type": "text",
+              "name": "title",
+              "text": "Badge",
+              "x": 225,
+              "y": 225,
+              "size": 96,
+              "color": "#111111"
+            },
+            {
+              "type": "field",
+              "name": "full_name",
+              "kind": "text",
+              "label": "Full name",
+              "required": true,
+              "x": 225,
+              "y": 500,
+              "width": 2100,
+              "height": 125,
+              "size": 42
+            },
+            {
+              "type": "field",
+              "name": "company",
+              "kind": "text",
+              "label": "Company",
+              "x": 225,
+              "y": 700,
+              "width": 2100,
+              "height": 125,
+              "size": 42
+            }
+          ]
+        ]
+      }
+    ],
+    "files": {
+      "attendees.csv": "full_name,company\nAda Lovelace,Analytical Engines\n,Nameless Inc\nGrace Hopper,US Navy\n"
+    }
+  },
+  "checks": [
+    {
+      "type": "pdf_fields",
+      "name": "one flattened page per valid row",
+      "path": "badges.pdf",
+      "pages": 2,
+      "max_fields": 0
+    }
+  ],
+  "reference": [
+    {
+      "tool": "vixl_document_open",
+      "arguments": {
+        "path": "form.vixl"
+      }
+    },
+    {
+      "tool": "vixl_workflow",
+      "arguments": {
+        "action": "form-fill",
+        "request": {
+          "data": "attendees.csv",
+          "dry_run": true
+        }
+      }
+    },
+    {
+      "tool": "vixl_workflow",
+      "arguments": {
+        "action": "form-fill",
+        "request": {
+          "data": "attendees.csv",
+          "combine": "badges.pdf",
+          "skip_invalid": true
+        }
+      }
+    }
+  ]
+}

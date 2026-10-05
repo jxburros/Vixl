@@ -427,6 +427,7 @@ def page_project(project, page=None):
         return project
     record = find_page(state, page) if page is not None else (active_page(state) or state["pages"][0])
     view = copy(project)
+    view._document = getattr(project, "_document", None) or project
     view.state = {key: deepcopy(value) for key, value in state.items() if key not in SCOPED and key != "pages"}
     view.state["pages"] = state["pages"]  # shared read-only; numbering and counts read it
     content = deepcopy(page_content(project, record))

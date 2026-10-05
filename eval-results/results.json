@@ -1,0 +1,156 @@
+{
+  "meta": {
+    "agent": "reference",
+    "model": null,
+    "effort": null,
+    "schema": "full",
+    "tools": "all"
+  },
+  "summary": {
+    "tasks": 2,
+    "passed": 2,
+    "success_rate": 1.0,
+    "mean_round_trips": 3.5,
+    "mean_tool_calls": 3.5,
+    "tool_error_rate": 0.0,
+    "mean_tool_result_tokens": 387,
+    "total_input_tokens": 0,
+    "total_output_tokens": 0
+  },
+  "results": [
+    {
+      "task": "form-batch-fill",
+      "agent": "reference",
+      "passed": true,
+      "checks": [
+        {
+          "check": "one flattened page per valid row",
+          "passed": true,
+          "detail": {
+            "pages": 2,
+            "fields": []
+          }
+        }
+      ],
+      "round_trips": 3,
+      "tool_calls": 3,
+      "tool_errors": 0,
+      "tool_result_tokens_estimate": 158,
+      "usage": {},
+      "seconds": 0.34,
+      "error": null,
+      "stop_reason": null,
+      "final": null,
+      "trace": [
+        {
+          "tool": "vixl_document_open",
+          "error": false,
+          "output": "{\"path\":\"form.vixl\",\"canvas\":{\"width\":2550,\"height\":3300,\"background\":\"white\",\"color_mode\":\"rgba8\",\"size\":\"letter\",\"dpi\":300,\"physical\":{\"width\":8.5,\"height\":11,\"unit\":\"in\",\"bleed\":0},\"safe\":38},\"layer_count\":3,\"head\":\"rev_dfd69d9579984657\"}"
+        },
+        {
+          "tool": "vixl_workflow",
+          "error": false,
+          "output": "{\"rows\":3,\"valid\":2,\"invalid\":[2],\"errors\":[{\"row\":2,\"key\":\"full_name\",\"code\":\"missing_required\",\"message\":\"Row 2, full_name: This required field is empty\"}],\"warnings\":[],\"dry_run\":true}"
+        },
+        {
+          "tool": "vixl_workflow",
+          "error": false,
+          "output": "{\"rows\":3,\"valid\":2,\"invalid\":[2],\"errors\":[{\"row\":2,\"key\":\"full_name\",\"code\":\"missing_required\",\"message\":\"Row 2, full_name: This required field is empty\"}],\"warnings\":[],\"output\":\"badges.pdf\",\"bytes\":7415}"
+        }
+      ]
+    },
+    {
+      "task": "form-registration",
+      "agent": "reference",
+      "passed": true,
+      "checks": [
+        {
+          "check": "full name field",
+          "passed": true,
+          "detail": [
+            "full_name"
+          ]
+        },
+        {
+          "check": "email field",
+          "passed": true,
+          "detail": [
+            "email"
+          ]
+        },
+        {
+          "check": "plan radio group",
+          "passed": true,
+          "detail": [
+            "plan-annual",
+            "plan-monthly"
+          ]
+        },
+        {
+          "check": "newsletter checkbox",
+          "passed": true,
+          "detail": [
+            "newsletter"
+          ]
+        },
+        {
+          "check": "signature box",
+          "passed": true,
+          "detail": [
+            "signature"
+          ]
+        },
+        {
+          "check": "form checks pass",
+          "passed": true,
+          "detail": []
+        },
+        {
+          "check": "fillable export",
+          "passed": true,
+          "detail": {
+            "pages": 1,
+            "fields": [
+              "email",
+              "full_name",
+              "newsletter",
+              "plan",
+              "signature"
+            ]
+          }
+        }
+      ],
+      "round_trips": 4,
+      "tool_calls": 4,
+      "tool_errors": 0,
+      "tool_result_tokens_estimate": 616,
+      "usage": {},
+      "seconds": 4.7,
+      "error": null,
+      "stop_reason": null,
+      "final": null,
+      "trace": [
+        {
+          "tool": "vixl_document_create",
+          "error": false,
+          "output": "{\"path\":\"registration.vixl\",\"canvas\":{\"width\":2550,\"height\":3300,\"background\":\"white\",\"color_mode\":\"rgba8\",\"size\":\"letter\",\"dpi\":300,\"physical\":{\"width\":8.5,\"height\":11,\"unit\":\"in\",\"bleed\":0},\"safe\":38},\"layer_count\":0,\"head\":\"rev_d27bd6c2dd12428a\"}"
+        },
+        {
+          "tool": "vixl_operations_apply",
+          "error": false,
+          "output": "{\"success\":true,\"dry_run\":false,\"operations\":14,\"changes\":{\"active_layer\":\"lyr_f2ce90056f6a4c5b\",\"layers\":{\"lyr_43e7454888d84d8e\":{\"added\":true,\"name\":\"title\",\"type\":\"text\",\"bounds\":[225,225,850,93],\"text\":\"Event registration\",\"size\":96,\"color\":\"#111111\"},\"lyr_986b26d10e674e6c\":{\"added\":true,\"name\":\"name-label\",\"type\":\"text\",\"bounds\":[225,500,201,33],\"text\":\"Full name\",\"size\":42,\"color\":\"#333333\"},\"lyr_bc6dff85128e4184\":{\"added\":true,\"name\":\"full_name\",\"type\":\"field\",\"bounds\":[225,560,2100,125],"
+        },
+        {
+          "tool": "vixl_check",
+          "error": false,
+          "output": "{\"passed\":true,\"errors\":0,\"warnings\":0,\"issues\":[],\"checked\":{\"checks\":[\"form\"],\"layers\":14,\"text_layers\":8}}"
+        },
+        {
+          "tool": "vixl_export_file",
+          "error": false,
+          "output": "{\"path\":\"registration.pdf\",\"format\":\"PDF\",\"bytes\":11261,\"pages\":1,\"raster_fallbacks\":{},\"fonts\":1}"
+        }
+      ]
+    }
+  ]
+}

@@ -124,7 +124,7 @@ def scaled_project(project, s):
 
 def render_preview(
     project, max_width, max_height, *, variables=None, artboard=None, comp=None, region=None, time=None, proof=False, simulate=None,
-    guides=None, page=None,
+    guides=None, page=None, values=None, show_fields=False,
 ):
     """Render at roughly the preview size. ``region`` [x, y, w, h] (document pixels) zooms in;
     zoomed regions may be enlarged up to 8x so small details stay legible. ``time`` previews a
@@ -147,6 +147,10 @@ def render_preview(
         return sheet
     if isinstance(page, str) and page.isdigit():
         page = int(page)
+    if values:
+        from .forms import with_values
+
+        project = with_values(project, values, complete=False)
     project = view_page(project, page)
     if time is not None:
         from .timeline import default_timeline, parse_time, project_at
@@ -192,4 +196,9 @@ def render_preview(
 
         image = image.convert("RGBA")
         draw_overlay(image, candidate, image.width / w, (x, y), None if guides is True else list(guides))
+    if show_fields:
+        from .forms import draw_overlay as draw_fields
+
+        image = image.convert("RGBA")
+        draw_fields(image, candidate, image.width / w, (x, y))
     return image

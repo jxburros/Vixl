@@ -223,8 +223,11 @@ def _postscript_name(font):
 
 def _write_font(writer, entry):
     import io
+    import logging
 
     from fontTools import subset
+
+    logging.getLogger("fontTools.subset").setLevel(logging.WARNING)  # it reports every table at INFO
     from fontTools.ttLib import TTFont
 
     data = entry["data"]

@@ -336,10 +336,10 @@ def _metrics(data):
 def styled_spans(project, layer, variables=None):
     """Spans with every style resolved against the layer: font value, size, color and flags."""
     from .design import resolve_color
-    from .render import color, substitute
+    from .render import color, document_variables, substitute
 
     rich = layer["rich"]
-    variables = {**project.state.get("variables", {}), **(variables or {})}
+    variables = {**document_variables(project), **(variables or {})}
     base_font = layer.get("font", "DejaVuSans.ttf")
     result = []
     for span in rich["spans"]:

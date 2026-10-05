@@ -276,6 +276,13 @@ def _targets(op):
 
 def project_feature(project, cmd, args):
     """Document commands that inspect or export (no edit). Returns (result, changed) or None."""
+    if cmd == "field" and args[:1] == ["list"]:
+        from .forms import form_settings, summary
+
+        require(len(args) == 1, "Use field list")
+        return {"fields": summary(project), "form": form_settings(project.state)}, False
+    if cmd == "form" and args[:1] == ["fill"]:
+        return form_fill(project, args[1:]), False
     if cmd == "timeline" and (not args or args[0] != "set"):
         from .timeline import inspect_timeline
 
@@ -363,3 +370,38 @@ def project_feature(project, cmd, args):
         return export_icons(project, a.out, icon_set=a.icon_set, sampling=a.sampling), False
     return None
 
+
+def form_fill(project, args):
+    """``vixl form fill``: fill the form from --set values or a --data CSV (nothing is saved)."""
+    from .forms import fill, fill_data
+
+    p = Parser(prog="vixl form fill")
+    p.add_argument("--set", action="append", help="KEY=VALUE (repeat)")
+    p.add_argument("--data", help="CSV with one row per filled copy")
+    p.add_argument("--out", help="Output file (with --set) or directory (with --data)")
+    p.add_argument("--combine", help="With --data: one PDF with a page per row")
+    p.add_argument("--name", default="{row}", help="With --data --out DIR: file names from {column} and {row}")
+    p.add_argument("--format", help="With --data: pdf (default), png, jpeg, webp, tiff or svg")
+    p.add_argument("--mode", choices=["flatten", "editable"], default="flatten")
+    p.add_argument("--skip-invalid", action="store_true")
+    p.add_argument("--dry-run", action="store_true")
+    p.add_argument("--check", choices=["design"])
+    p.add_argument("--unknown", choices=["error", "ignore"], default="error", help="Input keys that name no field or variable")
+    p.add_argument("--dpi", type=float)
+    a = p.parse_args(args)
+    if a.data:
+        require(not a.set, "Use --set or --data, not both")
+        return fill_data(project, a.data, a.out, combine=a.combine, name=a.name, format=a.format or "pdf", mode=a.mode,
+                         skip_invalid=a.skip_invalid, dry_run=a.dry_run, check=a.check, unknown=a.unknown, dpi=a.dpi)
+    values = {}
+    for item in a.set or []:
+        require("=" in item, "--set takes KEY=VALUE", field="set")
+        key, value = item.split("=", 1)
+        values[key] = value
+    if a.dry_run:
+        from .forms import check_values
+
+        _, _, errors = check_values(project, values, unknown=a.unknown)
+        return {"dry_run": True, "valid": not errors, "errors": errors}
+    require(a.out, "form fill --set … needs --out FILE")
+    return fill(project, values, a.out, format=a.format, mode=a.mode, unknown=a.unknown, dpi=a.dpi)

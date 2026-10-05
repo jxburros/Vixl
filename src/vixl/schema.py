@@ -279,6 +279,8 @@ def _operation_schema():
     rich_schemas(add)
     from .pages import schemas as page_schemas
     page_schemas(add)
+    from .forms import schemas as form_schemas
+    form_schemas(add)
     add(
         "palette-generate",
         {"name": S, "color": S, "scheme": S, "count": {"type": "integer", "minimum": 2, "maximum": 12}},

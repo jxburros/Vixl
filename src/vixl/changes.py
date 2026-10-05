@@ -26,6 +26,7 @@ def compact_changes(before, after):
         "typography",
         "template",
         "brushes",
+        "form",
     ):
         if before.get(key) != after.get(key):
             changes[key] = after.get(key)
@@ -175,6 +176,11 @@ def summarize(project, target=None):
         result["brushes"] = sorted(state["brushes"])
     if state.get("animation", {}).get("frames"):
         result["animation_frames"] = [frame["name"] for frame in state["animation"]["frames"]]
+    if state.get("fields"):
+        result["fields"] = [{k: v for k, v in item.items() if k in ("key", "kind", "required", "tab", "rect_pt", "page", "option")}
+                            for item in state["fields"]]
+    if state.get("form"):
+        result["form"] = state["form"]
     if state["transaction"]:
         result["transaction"] = True
     return result

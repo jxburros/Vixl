@@ -1,0 +1,246 @@
+{
+  "prompt": "Create registration.vixl as a US letter page with a white background. Build an event registration form: a heading, then fields with visible labels for full name (key full_name, required), email (key email, required, email format), a membership plan question (radio buttons sharing the key plan, options annual and monthly), a newsletter checkbox (key newsletter) and a signature box (key signature). Make sure the form checks pass, then export registration.pdf as a fillable PDF.",
+  "document": "registration.vixl",
+  "checks": [
+    {
+      "type": "layer",
+      "name": "full name field",
+      "match": {
+        "type": "field",
+        "field_key": "full_name",
+        "field_kind": "text"
+      }
+    },
+    {
+      "type": "layer",
+      "name": "email field",
+      "match": {
+        "type": "field",
+        "field_key": "email"
+      }
+    },
+    {
+      "type": "layer",
+      "name": "plan radio group",
+      "match": {
+        "type": "field",
+        "field_key": "plan",
+        "field_kind": "radio"
+      },
+      "min": 2
+    },
+    {
+      "type": "layer",
+      "name": "newsletter checkbox",
+      "match": {
+        "type": "field",
+        "field_key": "newsletter",
+        "field_kind": "checkbox"
+      }
+    },
+    {
+      "type": "layer",
+      "name": "signature box",
+      "match": {
+        "type": "field",
+        "field_key": "signature",
+        "field_kind": "signature"
+      }
+    },
+    {
+      "type": "design",
+      "name": "form checks pass",
+      "options": {
+        "checks": [
+          "form"
+        ]
+      }
+    },
+    {
+      "type": "pdf_fields",
+      "name": "fillable export",
+      "path": "registration.pdf",
+      "includes": [
+        "email",
+        "full_name",
+        "newsletter",
+        "plan",
+        "signature"
+      ]
+    }
+  ],
+  "reference": [
+    {
+      "tool": "vixl_document_create",
+      "arguments": {
+        "path": "registration.vixl",
+        "size": "letter",
+        "background": "white"
+      }
+    },
+    {
+      "tool": "vixl_operations_apply",
+      "arguments": {
+        "operations": [
+          {
+            "type": "text",
+            "name": "title",
+            "text": "Event registration",
+            "x": 225,
+            "y": 225,
+            "size": 96,
+            "color": "#111111"
+          },
+          {
+            "type": "text",
+            "name": "name-label",
+            "text": "Full name",
+            "x": 225,
+            "y": 500,
+            "size": 42,
+            "color": "#333333"
+          },
+          {
+            "type": "field",
+            "name": "full_name",
+            "kind": "text",
+            "label_layer": "name-label",
+            "required": true,
+            "x": 225,
+            "y": 560,
+            "width": 2100,
+            "height": 125,
+            "size": 42
+          },
+          {
+            "type": "text",
+            "name": "email-label",
+            "text": "Email",
+            "x": 225,
+            "y": 760,
+            "size": 42,
+            "color": "#333333"
+          },
+          {
+            "type": "field",
+            "name": "email",
+            "kind": "text",
+            "format": "email",
+            "label_layer": "email-label",
+            "required": true,
+            "x": 225,
+            "y": 820,
+            "width": 2100,
+            "height": 125,
+            "size": 42
+          },
+          {
+            "type": "text",
+            "name": "plan-label",
+            "text": "Membership plan",
+            "x": 225,
+            "y": 1020,
+            "size": 42,
+            "color": "#333333"
+          },
+          {
+            "type": "field",
+            "name": "plan-annual",
+            "key": "plan",
+            "kind": "radio",
+            "option": "annual",
+            "label": "Annual",
+            "group_label": "Membership plan",
+            "x": 225,
+            "y": 1100,
+            "width": 60,
+            "height": 60
+          },
+          {
+            "type": "text",
+            "name": "annual-label",
+            "text": "Annual",
+            "x": 310,
+            "y": 1102,
+            "size": 42,
+            "color": "#333333"
+          },
+          {
+            "type": "field",
+            "name": "plan-monthly",
+            "key": "plan",
+            "kind": "radio",
+            "option": "monthly",
+            "label": "Monthly",
+            "x": 225,
+            "y": 1200,
+            "width": 60,
+            "height": 60
+          },
+          {
+            "type": "text",
+            "name": "monthly-label",
+            "text": "Monthly",
+            "x": 310,
+            "y": 1202,
+            "size": 42,
+            "color": "#333333"
+          },
+          {
+            "type": "field",
+            "name": "newsletter",
+            "kind": "checkbox",
+            "label": "Send me the newsletter",
+            "x": 225,
+            "y": 1400,
+            "width": 60,
+            "height": 60
+          },
+          {
+            "type": "text",
+            "name": "newsletter-label",
+            "text": "Send me the newsletter",
+            "x": 310,
+            "y": 1402,
+            "size": 42,
+            "color": "#333333"
+          },
+          {
+            "type": "text",
+            "name": "signature-label",
+            "text": "Signature",
+            "x": 225,
+            "y": 2800,
+            "size": 42,
+            "color": "#333333"
+          },
+          {
+            "type": "field",
+            "name": "signature",
+            "kind": "signature",
+            "label_layer": "signature-label",
+            "x": 225,
+            "y": 2880,
+            "width": 1200,
+            "height": 160
+          }
+        ]
+      }
+    },
+    {
+      "tool": "vixl_check",
+      "arguments": {
+        "checks": [
+          "form"
+        ]
+      }
+    },
+    {
+      "tool": "vixl_export_file",
+      "arguments": {
+        "path": "registration.pdf",
+        "fillable": true
+      }
+    }
+  ]
+}

@@ -174,6 +174,12 @@ class Project:
         if target:
             ident = self.layer(target)["id"]
             return next(x for x in state["layers"] if x["id"] == ident)
+        from .forms import has_fields
+
+        if has_fields(self):
+            from .forms import summary as field_summary
+
+            state["fields"] = field_summary(self)
         return {
             **state,
             "version": __version__,

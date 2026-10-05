@@ -12,7 +12,7 @@ import numpy as np
 from .errors import require
 from .model import finite
 
-CHECKS = ("bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "fonts", "brand", "content")
+CHECKS = ("bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "fonts", "brand", "content", "form")
 FALLBACK_FONT = "DejaVuSans.ttf"
 OPTIONAL_CHECKS = ("print", "color_vision", "guides", "alignment")
 PERCENT = re.compile(r"^(-?\d+(?:\.\d+)?)%$")
@@ -67,10 +67,10 @@ def glyph_reports(project, layers):
     """``(layer, {"missing", "fallback"})`` for resolved text layers whose characters need a
     fallback font or that no available font covers. Text is read with the project's variables."""
     from .text import glyph_coverage
-    from .render import substitute
+    from .render import document_variables, substitute
 
     for item in layers:
-        report = glyph_coverage(project, {**item, "text": substitute(item["text"], project.state["variables"])})
+        report = glyph_coverage(project, {**item, "text": substitute(item["text"], document_variables(project))})
         if report["missing"] or report["fallback"]:
             yield item, report
 
@@ -80,7 +80,7 @@ def boxed_text_overflow(project, layer):
     more than the box (they are cut off), else None. Fitted, warped and path text are skipped:
     fit shrinks to the box, and warps and paths are laid out differently."""
     from .text import measure, font_data, UnsupportedText
-    from .render import substitute
+    from .render import document_variables, substitute
 
     settings = layer.get("text_layout") or {}
     if layer["type"] != "text" or "width" not in settings or settings.get("fit") or settings.get("path"):
@@ -95,7 +95,7 @@ def boxed_text_overflow(project, layer):
         return need if need[0] > layer["width"] + 1 or need[1] > layer["height"] + 1 else None
     if settings.get("warp", "none") != "none":
         return None
-    text = substitute(layer["text"], project.state.get("variables", {}))
+    text = substitute(layer["text"], document_variables(project))
     try:
         _, box = measure(font_data(project, layer), text, layer["size"], layer.get("spacing", 4),
                          layer.get("align", "left"), layer["width"])
@@ -178,11 +178,13 @@ def check_design(
     min_ppi=200,
     page=None,
     deck=None,
+    sample=None,
 ):
     """Return ``{"passed", "errors", "warnings", "issues", "checked"}`` for the rendered design.
     In a multi-page document ``page`` picks the page (default: the active page); the ``deck``
     check family reviews every page and the deck as a whole (``deck`` holds its settings:
-    ``min_font``, ``max_words``, ``pages``, ``include_hidden``)."""
+    ``min_font``, ``max_words``, ``pages``, ``include_hidden``). ``sample`` (``"worst"`` or a CSV
+    path) fills the form's fields to find values that overflow their boxes."""
     from .design_render import artboard_project
     from .render import layer_canvas_surface, resolve_layout, resolved_layers
 
@@ -494,6 +496,11 @@ def check_design(
     if brand and "brand" in checks:
         from .brand import check as check_brand
         check_brand(candidate, brand, issue)
+
+    if "form" in checks:
+        from .forms import check_form
+
+        check_form(candidate, resolved, local_bounds, projection, layers, issue, sample=sample)
 
     errors = sum(1 for x in issues if x["severity"] == "error")
     return {

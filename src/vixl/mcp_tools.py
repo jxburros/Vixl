@@ -171,6 +171,8 @@ def preview(
     simulate=None,
     guides=None,
     page=None,
+    values=None,
+    show_fields=False,
 ):
     from .proxy import render_preview
 
@@ -195,6 +197,8 @@ def preview(
             simulate=simulate,
             guides=guides,
             page=page,
+            values=values,
+            show_fields=show_fields,
         )
         return encode_png(image, max_bytes)
 
@@ -327,7 +331,9 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
             "vixl_fonts → vixl_font_pair (the bundled font is a proofing fallback), and when a brief leaves the "
             "look open, vixl_roll a few directions and compare previews. Paint with brushes (vixl_brushes_list), animate "
             "with keyframes (keyframe/animate/animate-preset → vixl_timeline_preview → vixl_export_timeline), and "
-            "export print-ready CMYK PDF/TIFF/JPEG with vixl_export_file. "
+            "export print-ready CMYK PDF/TIFF/JPEG with vixl_export_file. Slides and carousels are pages (page "
+            "operation; preview page='all'; export .pdf or .pptx); forms are field layers (field operation; check "
+            "form; export_file fillable=true, or values= to fill). "
             + ("AI tools need a configured provider." if tools == "all" else
                "Provider-backed AI tools are served separately by vixl mcp --tools ai.")
         ),
@@ -610,6 +616,8 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         simulate: Literal["protanopia", "deuteranopia", "tritanopia", "achromatopsia"] | None = None,
         guides: Annotated[bool | list[str] | None, Field(description="Draw guides over the preview: true for all, or guide/grid names")] = None,
         page: Annotated[int | str | None, Field(description="Page number or name; 'all' shows every page on one sheet")] = None,
+        values: Annotated[dict | None, Field(description="Form field values to show, by field key")] = None,
+        show_fields: Annotated[bool, Field(description="Outline form fields with their keys and tab order")] = False,
         document: Document = None,
     ) -> Image:
         """Return an aspect-preserving PNG capped in dimensions and bytes, rendered at preview resolution.
@@ -631,6 +639,8 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
                 simulate=simulate,
                 guides=guides,
                 page=page,
+                values=values,
+                show_fields=show_fields,
             ),
             format="png",
         )
@@ -658,7 +668,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
     @tool
     def vixl_check(
         checks: list[Literal["bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "fonts", "brand", "print", "color_vision", "guides", "alignment",
-                             "deck", "title_position", "type_scale", "words", "min_font", "notes", "empty"]]
+                             "deck", "title_position", "type_scale", "words", "min_font", "notes", "empty", "form"]]
         | None = None,
         targets: list[str] | None = None,
         safe_area: Annotated[
@@ -678,6 +688,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         comp: str | None = None,
         page: Annotated[int | str | None, Field(description="Page to check (default: the active page)")] = None,
         deck: Annotated[dict | None, Field(description="deck checks: {min_font (pt), max_words, pages, include_hidden}")] = None,
+        sample: Annotated[str | None, Field(description="form checks: 'worst' (worst-case values) or a workspace CSV of rows")] = None,
         document: Document = None,
     ) -> dict:
         """Find design problems without looking: content cut off by the canvas, overlapping text, low WCAG
@@ -685,7 +696,8 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         text too small at thumbnail width. print (opt-in) checks ink coverage, low-resolution images, tiny
         type in points and backgrounds that stop short of the bleed; color_vision (opt-in) finds text whose
         contrast collapses for color-blind readers; deck checks every page plus title placement, type
-        scale, words per page, projected type size and speaker notes. Reports only problems."""
+        scale, words per page, projected type size and speaker notes; form checks fields (names, overlap, tab
+        order, sizes, contrast) and with sample finds values that overflow. Reports only problems."""
         return session.check(
             document=document,
             checks=checks,
@@ -701,6 +713,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
             comp=comp,
             page=page,
             deck=deck,
+            sample=sample if sample in (None, "worst") else str(session.resolve(sample)),
         )
 
     @tool
@@ -766,6 +779,9 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         page: Annotated[int | str | None, Field(description="One page of a multi-page document")] = None,
         pages: Annotated[list[int | str] | str | None, Field(description="PDF/PPTX pages: [1, 3] or '1-3,intro'")] = None,
         pdf_content: Literal["vector", "raster"] | None = None,
+        fillable: Annotated[bool, Field(description="PDF with fillable form fields")] = False,
+        values: Annotated[dict | None, Field(description="Form field values by key: a filled copy (nothing is saved)")] = None,
+        fill_mode: Literal["flatten", "editable"] = "flatten",
         document: Document = None,
     ) -> dict:
         """Export to a workspace file, format from extension (PNG/JPEG/WEBP/TIFF/AVIF/SVG/PDF/ICO/PPTX), full
@@ -773,7 +789,8 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         accuracy, else device-naive GCR with black_generation and ink_limit); dpi defaults to the canvas
         dpi. SVG policy strict rejects any embedded raster fallback. time exports one timeline frame. A
         multi-page document exports every shown page to PDF (vector text) or PowerPoint (editable slides
-        with speaker notes). Returns file metadata, never image bytes."""
+        with speaker notes). fillable writes PDF form fields; values fills them (flatten draws them into the
+        artwork, editable prefills a fillable PDF). Returns file metadata, never image bytes."""
         profile_bytes = read_bounded(session.resolve(icc_profile), 16 * 1024 * 1024) if icc_profile else None
         return export_file(
             session,
@@ -802,6 +819,9 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
             page=page,
             pages=pages,
             pdf_content=pdf_content,
+            fillable=fillable,
+            values=values,
+            fill_mode=fill_mode,
         )
 
     @tool

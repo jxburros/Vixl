@@ -43,6 +43,10 @@ Pages:     page add NAME [--master M] [--after P] [--duplicate P] [--notes TEXT]
            page set P [--rename N] [--notes TEXT] [--hidden] [--transition fade], master add NAME [--from P], pages,
            render --page 2 | --page all (contact sheet), export deck.pdf|deck.pptx [--pages 1-3,5] [--pdf-content raster],
            check --checks deck [--min-font 18] [--max-words 60]; any operation accepts "page": P
+Forms:     field add KEY --kind text|multiline|number|date|checkbox|radio|dropdown|signature --label TEXT [--required] …,
+           field set LAYER …, field list, form settings [--tab-order reading|explicit] [--title T] [--lang en-US],
+           check --checks form [--sample worst|rows.csv], render --out F --show-fields [--set KEY=VALUE],
+           export form.pdf --fillable, form fill --set KEY=VALUE --out filled.pdf | --data rows.csv (--out DIR | --combine all.pdf)
 Measure:   info, sample X Y, histogram [--region X Y W H], info --target TEXT,
            spacing --targets A B C --axis vertical [--expected N] [--tolerance N] [--check],
            spacing --around BODY --before HEADER --after FOOTER,
@@ -185,6 +189,10 @@ def output_options(args, command):
     p.add_argument("--pages", help="PDF/PowerPoint pages: numbers, ranges and names, e.g. 1-3,5,intro")
     p.add_argument("--pdf-content", choices=["vector", "raster"], help="PDF pages as vector text and shapes, or images")
     p.add_argument("--columns", type=int, help="Contact sheet columns with --page all")
+    p.add_argument("--fillable", action="store_true", help="PDF with fillable form fields")
+    p.add_argument("--fill-mode", choices=["flatten", "editable"], default="flatten",
+                   help="With field values in --set: draw them into the artwork, or prefill a fillable PDF")
+    p.add_argument("--show-fields", action="store_true", help="Outline form fields with their keys and tab order")
     return p.parse_args(args)
 
 
@@ -619,6 +627,37 @@ def project_command(project, cmd, args, *, detail="compact"):
                 check=not a.no_check,
             ), False
         page = int(a.page) if a.page and a.page.isdigit() else a.page
+        from .forms import split_values
+
+        values, variables = split_values(project, pairs(a.set))
+        if values or a.show_fields:
+            from .forms import with_values
+
+            project = (with_values(project, values, complete=False) if values and not (a.fillable or a.fill_mode == "editable")
+                       else project)
+        if a.show_fields or a.show_guides:
+            require(destination != "-", "--show-fields and --show-guides write a file")
+            image = project.render(variables, artboard=a.artboard, comp=a.comp, page=page).convert("RGBA")
+            if a.show_guides:
+                from .guides import draw_overlay
+
+                draw_overlay(image, project)
+            if a.show_fields:
+                from .forms import draw_overlay as draw_fields
+                from .render import view_page
+
+                draw_fields(image, view_page(project, page))
+            fmt = (a.format or Path(destination).suffix.lstrip(".") or "PNG").upper()
+            require(fmt in ("PNG", "JPG", "JPEG", "WEBP"), "Overlays render PNG, JPEG or WebP")
+            image.convert("RGB" if fmt in ("JPG", "JPEG") else "RGBA").save(destination, format="JPEG" if fmt == "JPG" else fmt)
+            result = {"output": destination}
+            if a.show_guides:
+                result["guides"] = len(project.state.get("guides", {}))
+            if a.show_fields:
+                from .forms import all_fields
+
+                result["fields"] = len(all_fields(project))
+            return result, False
         if page == "all":
             from .deck import contact_sheet
 
@@ -628,16 +667,6 @@ def project_command(project, cmd, args, *, detail="compact"):
             sheet = contact_sheet(project, width=round(480 * float(a.scale.rstrip("x"))), columns=a.columns)
             sheet.convert("RGB" if fmt in ("JPG", "JPEG") else "RGBA").save(destination, format="JPEG" if fmt == "JPG" else fmt)
             return {"output": destination, "pages": len(project.state["pages"]), "size": list(sheet.size)}, False
-        if a.show_guides:
-            from .guides import draw_overlay
-
-            require(destination != "-", "--show-guides writes a file")
-            image = project.render(pairs(a.set), artboard=a.artboard, comp=a.comp, page=page).convert("RGBA")
-            draw_overlay(image, project)
-            fmt = (a.format or Path(destination).suffix.lstrip(".") or "PNG").upper()
-            require(fmt in ("PNG", "JPG", "JPEG", "WEBP"), "--show-guides renders PNG, JPEG or WebP")
-            image.convert("RGB" if fmt in ("JPG", "JPEG") else "RGBA").save(destination, format="JPEG" if fmt == "JPG" else fmt)
-            return {"output": destination, "guides": len(project.state.get("guides", {}))}, False
         from .pages import parse_pages
 
         fmt = (a.format or Path(destination).suffix.lstrip(".")).upper()
@@ -654,7 +683,7 @@ def project_command(project, cmd, args, *, detail="compact"):
             for number, record in enumerate(records, 1):
                 path = target.with_name(f"{target.stem}-{number:02d}{target.suffix}")
                 project.export(path, quality=a.quality, scale=float(a.scale.rstrip("x")), profile=a.profile,
-                               variables=pairs(a.set), format=a.format, background=a.background, sampling=a.sampling,
+                               variables=variables, format=a.format, background=a.background, sampling=a.sampling,
                                svg_policy=a.svg_policy, page=record["id"], **print_options(a, project.limits))
                 outputs.append({"page": record["name"], "output": str(path)})
             return {"outputs": outputs}, False
@@ -664,7 +693,7 @@ def project_command(project, cmd, args, *, detail="compact"):
             quality=a.quality,
             scale=float(a.scale.rstrip("x")),
             profile=a.profile,
-            variables=pairs(a.set),
+            variables=variables,
             format=a.format,
             background=a.background,
             artboard=a.artboard,
@@ -672,6 +701,9 @@ def project_command(project, cmd, args, *, detail="compact"):
             sampling=a.sampling,
             svg_policy=a.svg_policy,
             page=page,
+            fillable=a.fillable,
+            fill_mode=a.fill_mode,
+            values=values if (a.fillable or a.fill_mode == "editable") else None,
             pages=None if a.pages == "all" else parse_pages(a.pages),
             pdf_content=a.pdf_content,
             report=report,
@@ -710,13 +742,14 @@ def project_command(project, cmd, args, *, detail="compact"):
             "--checks",
             nargs="+",
             choices=["bounds", "overlap", "contrast", "safe_area", "legibility", "print", "color_vision", "content", "fonts", "blanks", "brand", "guides", "alignment",
-                     "deck", "title_position", "type_scale", "words", "min_font", "notes", "empty"],
+                     "deck", "title_position", "type_scale", "words", "min_font", "notes", "empty", "form"],
         )
         p.add_argument("--page", help="Check one page of a multi-page document (default: the active page)")
         p.add_argument("--pages", help="deck checks: the pages to check, e.g. 1-3,5 (default: every shown page)")
         p.add_argument("--min-font", type=float, help="deck checks: smallest projected text in points (default 18)")
         p.add_argument("--max-words", type=int, help="deck checks: most words on one page (default 60)")
         p.add_argument("--include-hidden", action="store_true", help="deck checks: include hidden pages")
+        p.add_argument("--sample", help="form checks: fill the fields with worst-case values (worst) or each row of a CSV")
         p.add_argument("--ink-limit", type=float, default=300)
         p.add_argument("--min-ppi", type=float, default=200)
         p.add_argument("--targets", nargs="+")
