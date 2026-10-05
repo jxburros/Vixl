@@ -1,8 +1,13 @@
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/brand/digital-shift/SVG/horizontal-reverse.svg">
+  <img src="assets/brand/digital-shift/SVG/horizontal-color.svg" alt="Vixl" width="320">
+</picture>
+
 # Vixl
 
 **A headless image-document engine designed for autonomous AI agents.**
 
-Current release: **0.17.0**. See the [changelog](CHANGELOG.md) for release notes.
+Current release: **0.18.0**. See the [changelog](CHANGELOG.md) for release notes. The [Digital Shift logo kit](assets/brand/digital-shift/START-HERE.md) includes usage guidance, icons, vectors, and editable masters.
 
 Vixl is built for AI agents to create, inspect, edit, measure, and export designs autonomously through MCP, structured operations, Python, REST, or the CLI. Humans can use the same interfaces. It needs no graphical display.
 
@@ -21,7 +26,7 @@ See [authoring and CLI improvements](docs/authoring.md) for organic paths, font 
 Install the tagged release directly on any supported platform with uv:
 
 ```bash
-uvx --from https://github.com/jxburros/Vixl/archive/refs/tags/v0.17.0.tar.gz vixl mcp --workspace . --tools core --schema slim
+uvx --from https://github.com/jxburros/Vixl/archive/refs/tags/v0.18.0.tar.gz vixl mcp --workspace . --tools core --schema slim
 ```
 
 After PyPI publishing is configured, `--from vixl-engine` is also available.

@@ -27,6 +27,8 @@ ChangesEnvironment=yes
 CloseApplications=no
 RestartApplications=no
 UninstallDisplayName=Vixl
+SetupIconFile={#SourceRoot}\distribution\windows\vixl.ico
+UninstallDisplayIcon={app}\bin\vixl.exe
 
 [Files]
 Source: "{#SourceRoot}\dist\launcher\vixl.exe"; DestDir: "{app}\bin"; Flags: ignoreversion

@@ -1,6 +1,12 @@
 # Changelog
 
-## Unreleased
+## 0.18.0
+
+### Digital Shift identity
+
+- Preserve the complete Digital Shift logo kit, including usage guidance, SVG/PNG/PDF artwork, icons and editable Vixl masters.
+- Apply light/dark README logos, a branded browser review header and favicon, and the app icon to the Windows launcher, runtime, installer and Claude Desktop bundle.
+- Synchronize the package, plugin and versioned MCP source URL at 0.18.0. This release also includes the previously unreleased features below.
 
 ### Lyric videos
 

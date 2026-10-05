@@ -16,6 +16,7 @@ def build(output=None):
         "manifest_version": "0.3",
         "name": "vixl",
         "display_name": "Vixl",
+        "icon": "icon.png",
         "version": __version__,
         "description": "Editable design documents with live review and workspace brands.",
         "author": {"name": "Vixl contributors"},
@@ -50,6 +51,7 @@ def build(output=None):
         "compatibility": {"platforms": ["darwin", "win32", "linux"]},
     }
     with zipfile.ZipFile(output / "vixl.mcpb", "w", zipfile.ZIP_DEFLATED) as archive:
+        archive.write(ROOT / "assets/brand/digital-shift/Icons/app-icon-dark.png", "icon.png")
         archive.writestr("manifest.json", json.dumps(manifest, indent=2) + "\n")
         archive.writestr("server.py", "from vixl.cli import main\nmain()\n")
         for path in sorted((ROOT / "skills/vixl").rglob("*")):

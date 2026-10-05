@@ -312,8 +312,15 @@ def create_app(path, *, token=None, limits=None):
     @app.get("/view")
     def viewer():
         from fastapi.responses import HTMLResponse
-        return HTMLResponse((Path(__file__).parent / "data" / "view.html").read_text(encoding="utf-8"),
-                            headers={"Cache-Control": "no-store", "X-Frame-Options": "DENY"})
+        import base64
+
+        data = Path(__file__).parent / "data"
+        html = (data / "view.html").read_text(encoding="utf-8")
+        for placeholder, filename in (("__VIXL_FAVICON__", "favicon-dark.svg"),
+                                      ("__VIXL_LOGO__", "horizontal-reverse.svg")):
+            encoded = base64.b64encode((data / "brand" / filename).read_bytes()).decode("ascii")
+            html = html.replace(placeholder, "data:image/svg+xml;base64," + encoded)
+        return HTMLResponse(html, headers={"Cache-Control": "no-store", "X-Frame-Options": "DENY"})
 
     @app.get("/review")
     def review():
