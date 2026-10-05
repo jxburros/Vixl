@@ -94,16 +94,64 @@ def form_settings(state):
 
 
 def schemas(add):
-    # Every setting is validated in full at run time (validate_field), so the schema names them
-    # without repeating their types: the operation catalog agents read stays small.
-    names = ("key", "label", "label_layer", "group_label", "required", "read_only", "default", "max_length", "comb",
-             "format", "options", "editable", "option", "on_value", "tab", "overflow", "min_size", "font", "size",
-             "color", "align", "padding", "appearance")
-    settings = {"kind": {"enum": list(KINDS)}, **{name: {} for name in names}}
-    add("field", {"name": {"type": "string"}, **settings, "x": {}, "y": {}, "width": {}, "height": {}}, ["kind"])
-    add("field-set", {"target": {"type": "string"}, **settings}, ["target"])
-    add("form", {"tab_order": {"enum": ["reading", "explicit"]}, "entry_font": {"enum": ["standard", "embed"]},
-                 "title": {}, "lang": {}}, [])
+    # Types and prose for every setting, so agents can build forms from vixl_operation_schema alone.
+    # Cross-field rules (which kinds take which settings) are checked at run time (validate_field);
+    # tools/list strips the descriptions to keep the inline catalog small.
+    from .schema import COORD, SIZE
+
+    S, INT, B, N = {"type": "string"}, {"type": "integer"}, {"type": "boolean"}, {"type": "number"}
+
+    def d(schema, text):
+        return {**schema, "description": text}
+
+    def nullable(schema):
+        # field-set and form clear a setting given null.
+        schema = deepcopy(schema)
+        if "anyOf" in schema:
+            schema["anyOf"].append({"type": "null"})
+        else:
+            schema["type"] = [schema["type"], "null"] if isinstance(schema["type"], str) else [*schema["type"], "null"]
+            if "enum" in schema:
+                schema["enum"] = [*schema["enum"], None]
+        return schema
+
+    settings = {
+        "kind": d({"type": "string", "enum": list(KINDS)}, "Field kind."),
+        "key": d(S, "Data key used by fills and CSV columns: 1–64 letters, digits, _ or - (default: from name)."),
+        "label": d(S, f"Accessible name, up to {MAX_LABEL} characters (label or label_layer is required)."),
+        "label_layer": d(S, "ID or name of a text layer whose text names the field."),
+        "group_label": d(S, "Radio only: accessible name of the radio group."),
+        "required": d(B, "The value must be filled (not for signature)."),
+        "read_only": d(B, "Locked in the fillable PDF."),
+        "default": d({"type": ["string", "number", "boolean"]}, "Initial value (checkbox: true/false)."),
+        "max_length": d(INT, f"Text/number only: maximum characters, 1–{MAX_VALUE}."),
+        "comb": d(B, "Text with max_length only: one box per character."),
+        "format": d({"anyOf": [{"type": "string", "enum": ["email", "digits"]}, {"type": "object"}]},
+                    "Text: 'email' or 'digits'; number: {decimals, min, max}; date: {display: 'DD/MM/YYYY'}."),
+        "options": d({"type": "array", "items": {"type": ["string", "object"]}},
+                     f"Dropdown only: 1–{MAX_OPTIONS} choices as strings or {{value, label}}."),
+        "editable": d(B, "Dropdown only: allow typed values outside options."),
+        "option": d(S, "Radio only: this button's export value (radios sharing a key form a group)."),
+        "on_value": d(S, "Checkbox only: export value when checked (default 'Yes')."),
+        "tab": d(INT, "Position 1–10000 in the explicit tab order."),
+        "overflow": d({"type": "string", "enum": list(OVERFLOW)}, "Text kinds: what a too-long value does."),
+        "min_size": d(N, "Smallest font size shrink may use."),
+        "font": d(S, "Value font: a font role (body, heading) or family."),
+        "size": d(N, "Value font size in pixels."),
+        "color": d(S, "Value text color."),
+        "align": d({"type": "string", "enum": ["left", "center", "right"]}, "Value alignment."),
+        "padding": d(N, "Inner padding in pixels."),
+        "appearance": d({"type": "object"}, "Box look: {style: box|underline|none, fill, stroke, stroke_width, "
+                        "radius, mark: check|cross|dot, mark_color}. fill/stroke/… may also be given top-level."),
+    }
+    add("field", {"name": d(S, "Layer name."), **settings, "x": COORD, "y": COORD, "width": SIZE, "height": SIZE},
+        ["kind"])
+    add("field-set", {"target": d(S, "Field layer ID or name."), "kind": settings["kind"],
+                      **{k: nullable(v) for k, v in settings.items() if k != "kind"}}, ["target"])
+    add("form", {k: nullable(v) for k, v in {
+        "tab_order": d({"type": "string", "enum": ["reading", "explicit"]}, "Tab order: reading or by tab."),
+        "entry_font": d({"type": "string", "enum": ["standard", "embed"]}, "Font viewers use for typed entries."),
+        "title": d(S, "PDF document title."), "lang": d(S, "Document language tag such as 'en-GB'.")}.items()}, [])
 
 
 def normalize(op, note):

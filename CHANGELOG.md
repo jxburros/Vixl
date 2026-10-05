@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- `form-fill` accepts `combine: true` (writes `<data>-filled.pdf` beside the CSV, or to `output` when it is a `.pdf`) and rejects wrongly typed fields with a structured error naming the field, the expected type and example values, instead of a raw Python error.
+- `vixl_workflow_schema` reports each action's field `properties` (types, enums, descriptions; fully for `form-fill`), and the `field`, `field-set` and `form` operations' schemas give every setting a type and description.
+
 ## 0.18.0
 
 ### Digital Shift identity

@@ -400,3 +400,88 @@ def test_form_fill_job_deletes_its_data(tmp_path):
     assert done["status"] == "completed", done
     assert sorted(zipfile.ZipFile(tmp_path / "filled.zip").namelist()) == ["Ada.png", "Grace.png"]
     assert not frozen.exists(), "the job's copy of the data is deleted"
+
+
+def test_form_fill_combine_true_and_typed_errors(tmp_path):
+    from vixl.interfaces import Session
+    from vixl.workflows import dispatch as workflow
+
+    form(tmp_path / "form.vixl")
+    (tmp_path / "rows.csv").write_text("full_name,email\nAda,a@b.c\nGrace,g@h.i\n")
+    session = Session(tmp_path / "form.vixl")
+    # combine: true picks <data>-filled.pdf next to the CSV, or the output when it is a .pdf.
+    report = workflow(session, "form-fill", {"data": "rows.csv", "combine": True})
+    assert report["output"] == "rows-filled.pdf" and (tmp_path / "rows-filled.pdf").read_bytes().startswith(b"%PDF")
+    report = workflow(session, "form-fill", {"data": "rows.csv", "combine": True, "output": "all.pdf"})
+    assert report["output"] == "all.pdf"
+    for request, field in (({"data": "rows.csv", "combine": 1}, "combine"),
+                           ({"data": "rows.csv", "combine": ["a.pdf"]}, "combine"),
+                           ({"data": "rows.csv", "combine": True, "output": "dir"}, "combine"),
+                           ({"data": 5, "output": "out"}, "data"),
+                           ({"data": "rows.csv", "output": "out", "mode": "fast"}, "mode"),
+                           ({"values": {"full_name": "Ada"}, "combine": "x.pdf"}, "combine")):
+        with pytest.raises(VixlError) as caught:
+            workflow(session, "form-fill", request)
+        error = caught.value.as_dict()
+        assert error["error"] in ("invalid_request", "invalid_operation") and error["field"] == field
+        assert error["suggestions"], request
+    with pytest.raises(VixlError) as caught:
+        workflow(session, "form-fill", {"data": "rows.csv", "combine": 1})
+    assert "string or boolean" in str(caught.value) and caught.value.details["expected"]["type"] == ["string", "boolean"]
+    assert workflow(session, "form-fill", {"data": "rows.csv", "output": "pngs", "format": "PNG"})["valid"] == 2
+
+
+def test_form_fill_combine_true_over_mcp(tmp_path):
+    import asyncio
+    import json
+
+    from vixl.interfaces import Session
+    from vixl.mcp_tools import build_server
+
+    form(tmp_path / "form.vixl")
+    (tmp_path / "rows.csv").write_text("full_name,email\nAda,a@b.c\n")
+    server = build_server(Session(workspace=tmp_path))
+
+    async def call(name, **arguments):
+        result = await server.call_tool(name, arguments)
+        content = result[0] if isinstance(result, tuple) else result
+        return json.loads(content[0].text)
+
+    report = asyncio.run(call("vixl_workflow", action="form-fill", document="form.vixl",
+                              request={"data": "rows.csv", "combine": True}))
+    assert report["output"] == "rows-filled.pdf"
+    with pytest.raises(Exception) as caught:
+        asyncio.run(call("vixl_workflow", action="form-fill", document="form.vixl",
+                         request={"data": "rows.csv", "combine": 3}))
+    error = json.loads(str(caught.value).split("Error executing tool vixl_workflow: ")[-1])
+    assert error["error"] == "invalid_request" and error["field"] == "combine" and error["suggestions"]
+    schema = asyncio.run(call("vixl_workflow_schema"))["actions"]["form-fill"]["properties"]
+    assert schema["combine"]["type"] == ["string", "boolean"] and schema["data"]["type"] == "string"
+    assert set(schema) == set(asyncio.run(call("vixl_workflow_schema"))["actions"]["form-fill"]["fields"])
+    field = asyncio.run(call("vixl_operation_schema", types=["field"]))["field"]["properties"]
+    for name in ("kind", "key", "label", "required", "max_length", "options", "format", "default", "size"):
+        assert field[name].get("type") or field[name].get("anyOf"), name
+        assert field[name]["description"], name
+
+
+def test_field_operation_schema_types_validate():
+    import jsonschema
+
+    from vixl.schema import operation_schema
+
+    variants = {v["properties"]["type"]["const"]: v
+                for v in operation_schema()["properties"]["operations"]["items"]["oneOf"]}
+    valid = [
+        {"type": "field", "kind": "dropdown", "label": "Size", "options": ["S", {"value": "L", "label": "Large"}],
+         "required": True, "x": "center", "width": "25%"},
+        {"type": "field", "kind": "number", "label": "Age", "format": {"decimals": 0, "min": 0}, "max_length": 3},
+        {"type": "field-set", "target": "age", "label": None, "required": False, "format": None},
+        {"type": "form", "tab_order": "explicit", "title": None},
+    ]
+    for op in valid:
+        jsonschema.validate(op, variants[op["type"]])
+    for op in ({"type": "field", "kind": "text", "required": "yes"}, {"type": "field", "kind": "text", "max_length": "9"},
+               {"type": "field", "kind": "bogus"}, {"type": "field-set", "target": "a", "kind": None},
+               {"type": "form", "tab_order": "random"}):
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(op, variants[op["type"]])
