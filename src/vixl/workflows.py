@@ -26,6 +26,7 @@ ACTIONS = {
     "start": ({"workers"}, set()),
     "film-plan": ({"spec"}, {"spec"}),
     "film-export": ({"spec", "output"}, {"spec", "output"}),
+    "organic-catalog": (set(), set()),
     "lyric-video-plan": (LYRIC_FIELDS, {"audio", "lyrics", "template"}),
     "lyric-video-build": (LYRIC_FIELDS, {"audio", "lyrics", "template", "build"}),
     "lyric-video-export": (LYRIC_FIELDS, {"audio", "lyrics", "template", "build", "output"}),
@@ -60,6 +61,10 @@ def dispatch(session, action, request, document=None):
             raise VixlError("invalid_request", f"Invalid {action} request: {exc}") from exc
     if action == "plan":
         return plan(request["spec"])
+    if action == "organic-catalog":
+        from .organic import catalog
+
+        return catalog()
     if action.startswith("lyric-video-"):
         from . import lyrics
 

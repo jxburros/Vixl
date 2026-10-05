@@ -11,6 +11,7 @@ from .automation import TYPES as AUTOMATION_TYPES
 from .authoring import TYPES as AUTHORING_TYPES
 from .creative import TYPES as CREATIVE_TYPES
 from .containers import TYPES as CONTAINER_TYPES
+from .organic import TYPES as ORGANIC_TYPES
 
 from copy import deepcopy
 import hashlib
@@ -51,7 +52,7 @@ ALIASES = {
     "make_selection": "select",
 }
 
-OPERATION_TYPES = list(DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_TYPES + BRUSH_TYPES + TIMELINE_TYPES + LAYOUT_TYPES + COLOR_TYPES + AUTOMATION_TYPES + CREATIVE_TYPES + CONTAINER_TYPES + AUTHORING_TYPES) + [
+OPERATION_TYPES = list(DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_TYPES + BRUSH_TYPES + TIMELINE_TYPES + LAYOUT_TYPES + COLOR_TYPES + AUTOMATION_TYPES + CREATIVE_TYPES + CONTAINER_TYPES + AUTHORING_TYPES + ORGANIC_TYPES) + [
     "add",
     "solid",
     "gradient",
@@ -253,6 +254,9 @@ def execute(project, op):
     kind = ALIASES.get(kind, kind)
     require(isinstance(kind, str), "Operation requires a type")
     target = op.get("target", op.get("layer"))
+    if kind in ORGANIC_TYPES:
+        from .organic import execute as execute_organic
+        return execute_organic(project, op)
     if kind in AUTHORING_TYPES:
         from .authoring import execute as execute_authoring
         return execute_authoring(project, op)

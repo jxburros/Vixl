@@ -56,10 +56,10 @@ def compile_command(tokens):
     authoring = compile_authoring(cmd, args)
     if authoring is not None:
         return authoring
-    from .authoring import compile_command as compile_authoring
-    authoring = compile_authoring(cmd, args)
-    if authoring is not None:
-        return authoring
+    from .organic import compile_command as compile_organic
+    organic = compile_organic(cmd, args)
+    if organic is not None:
+        return organic
     from .automation import compile_command as compile_automation
     automation = compile_automation(cmd, args)
     if automation is not None:

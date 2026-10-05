@@ -53,6 +53,9 @@ def shape_image(project, layer):
                           viewBox=f"0 0 {view[0]} {view[1]}", preserveAspectRatio="none")
         from .colors import parse, hex_of
         attrs = {"d": path, "stroke-width": str(layer.get("stroke_width", 1))}
+        if layer.get("line_cap"):
+            attrs["stroke-linecap"] = layer["line_cap"]
+            attrs["stroke-linejoin"] = "round" if layer["line_cap"] == "round" else "miter"
         for field in ("fill", "stroke"):
             rgba = parse(resolve_color(layer.get(field, "white" if field == "fill" else "transparent"), project.state))
             attrs[field] = hex_of((*rgba[:3], 1))

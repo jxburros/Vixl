@@ -30,6 +30,8 @@ Inspect:   status, inspect [LAYER], describe, layers, effects [LAYER], manifest,
 Layers:    add FILE --name NAME, solid --color COLOR, gradient --start A --end B,
            text add TEXT --name NAME --size N, text NAME --text TEXT,
            remove, rename, duplicate, hide, show, raise, lower, top, bottom, reorder
+Organic:   organics (presets, generators, rules), organic PRESET [--set petals=8] [--color petals=#fff] [--seed N],
+           organic --parts JSON, organic --target NAME --seed N (regrow)
 Design:    pen, shape, shape-place, container-place, container-swap, container-reflow, group, ungroup, clip, layer-style, distribute, style-define,
            style-apply, swatch, artboard, frame, replace-contents, repeat, repeat-blend,
            adjustment, lut, lookup, comp-save, comp-apply, text-layout, guide, grid,
@@ -254,7 +256,7 @@ def dispatch(argv):
                     | {"filter"}
                     | {"workflow"}
                     | set(
-                        "new session open save status inspect describe layers effects manifest dependencies reproduce schema check batch convert render export export-screens export-animation spacing pixels animation info sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert validate preset ai ask generate detect ocr serve view notes import mcp update updates commands shapes palette template guidance font fonts roll providers models color sizes layout layouts brushes easings timeline export-timeline timeline-sheet export-icons".split()
+                        "new session open save status inspect describe layers effects manifest dependencies reproduce schema check batch convert render export export-screens export-animation spacing pixels animation info sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert validate preset ai ask generate detect ocr serve view notes import mcp update updates commands shapes palette template guidance font fonts roll providers models color sizes layout layouts brushes organics easings timeline export-timeline timeline-sheet export-icons".split()
                     )
                 )
             }
@@ -266,7 +268,7 @@ def dispatch(argv):
         from .resource_cli import font_standalone
 
         return font_standalone(cmd, args), options.json
-    if cmd in ("color", "colors", "sizes", "layouts", "brushes", "easings") or (
+    if cmd in ("color", "colors", "sizes", "layouts", "brushes", "easings", "organics") or (
         cmd == "layout" and (not args or args[0] in ("list", "show"))
     ):
         from .feature_cli import standalone as feature_standalone

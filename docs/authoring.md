@@ -14,6 +14,9 @@ vixl path-fit rose --padding 12
 vixl export --out flowers.svg
 ```
 
+For whole organisms (flowers, trees, ferns, creatures, shells, coral, animal markings) built from
+composable generators and growth rules, use [`organic`](organic.md).
+
 Kinds: `rose`, `leaf`, `petal`, `blob`. `--variation 0..1` controls irregularity;
 `--lobes 3..32` controls blob lobes or rose petals. Paths can be edited with `pen --target`.
 For freehand points, `pen --tension 0..1` controls smoothing and `--corners '[0,3]'`

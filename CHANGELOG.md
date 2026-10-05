@@ -8,6 +8,11 @@
 - **MP4/WebM have no 3,600-frame cap.** Streamed video is bounded only by the 10-minute duration; buffered formats (GIF, APNG, WebP, sheets, PNG sequences, film ZIPs) keep the cap. Frames are piped to ffmpeg as raw pixels instead of PNG, film frames whose animated state is unchanged reuse the previous render, and keyframe tracks hold up to 8,192 keys with binary-search sampling.
 - `vixl.film.audio_duration` reads an audio file's length with ffprobe. Design checks skip empty text layers instead of warning that they cannot be measured.
 
+### Organic shapes
+
+- **`organic`** ([docs](docs/organic.md)): living forms as ordered parts, each a **generator** (superformula, blob, leaf with margins and venation, petal, log/Archimedean spiral, Raup shell, tapered tentacle with curl, wave and elbow joints, Honda/Leonardo branching, L-systems, Vogel phyllotaxis, relaxed Voronoi cells, Gray–Scott reaction–diffusion, scales, segmented bodies, feather, ellipse/egg/teardrop, growth rings, any SVG path) followed by composable **rules** (radial symmetry with alternating whorls and fans, mirroring with fluctuating asymmetry, placement along a spine or at another part's anchors, Poisson-disc scatter, golden-angle and grid placement, noise, D'Arcy Thompson warps, jitter, smoothing, clipping, size gradients, and pixel-space smooth union, paint-order occlusion and intersection). 32 presets (flower, sunflower, rose, tree, pine, fern, vine, starfish, jellyfish, octopus, shell, snail, caterpillar, mushroom, feather, coral, cactus, giraffe, spots …) take parameters and per-part colors. Results are vector path layers that regrow in place with a new seed. `vixl organics` and the `organic-catalog` workflow action list everything.
+- Path layers accept up to 8,192 commands and 256 KiB, and `line_cap` (round caps and joins for organic strokes).
+
 ### Fixes from the explorations
 
 Fixes for the problems found while building the ten projects in `explorations/`.

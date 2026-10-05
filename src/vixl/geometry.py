@@ -27,7 +27,7 @@ def parse_path(path):
     from fontTools.svgLib.path import parse_path as parse_svg
     from .errors import VixlError
 
-    require(isinstance(path, str) and 0 < len(path) <= 32768, "Path must contain 1–32768 characters")
+    require(isinstance(path, str) and 0 < len(path) <= 262144, "Path must contain 1–262144 characters", "resource_limit")
     require(re.match(r"\s*[Mm]", path) is not None, "Path must start with M")
     require(not re.sub(r"[MmLlHhVvCcSsQqTtAaZz]|[-+]?(?:\d*\.\d+|\d+\.?\d*)(?:[eE][-+]?\d+)?|[\s,]", "", path),
             "Invalid SVG path syntax")
@@ -36,7 +36,8 @@ def parse_path(path):
         parse_svg(path, pen)
     except (ValueError, IndexError, AssertionError, TypeError) as exc:
         raise VixlError("invalid_path", f"Invalid SVG path: {exc}") from exc
-    require(len(pen.value) <= 1024, "Path supports at most 1024 commands", "resource_limit")
+    require(sum(1 for command, _ in pen.value if command != "endPath") <= 8192,
+            "Path supports at most 8192 commands", "resource_limit")
     commands = []
     for command, points in pen.value:
         if command == "endPath":

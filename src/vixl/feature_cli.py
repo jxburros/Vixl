@@ -10,7 +10,7 @@ import json
 from .commands import Parser, pairs
 from .errors import require
 
-STANDALONE = ("color", "colors", "sizes", "layouts", "brushes", "easings")
+STANDALONE = ("color", "colors", "sizes", "layouts", "brushes", "easings", "organics")
 EDITING = (
     "paint-layer",
     "paint",
@@ -71,6 +71,10 @@ def standalone(cmd, args):
         return catalog()
     if cmd == "brushes":
         from .brushes import catalog
+
+        return catalog()
+    if cmd == "organics":
+        from .organic import catalog
 
         return catalog()
     from .timeline import EASINGS, PRESETS

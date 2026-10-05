@@ -9,7 +9,7 @@ import pytest
 
 from vixl import Project
 from vixl.errors import VixlError
-from vixl.lyrics import background_for, build, parse_lrc, plan, timing, validate_template
+from vixl.lyrics import background_for, build, parse_lrc, timing, validate_template
 
 needs_ffmpeg = pytest.mark.skipif(not (shutil.which("ffmpeg") and shutil.which("ffprobe")), reason="ffmpeg not installed")
 

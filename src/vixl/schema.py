@@ -271,6 +271,8 @@ def _operation_schema():
     authoring_schemas(add)
     from .containers import schemas as container_schemas
     container_schemas(add)
+    from .organic import schemas as organic_schemas
+    organic_schemas(add)
     add(
         "palette-generate",
         {"name": S, "color": S, "scheme": S, "count": {"type": "integer", "minimum": 2, "maximum": 12}},

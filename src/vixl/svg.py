@@ -139,6 +139,9 @@ class Exporter:
                 viewBox=f"0 0 {view[0]} {view[1]}",
                 preserveAspectRatio="none",
             )
+            if layer.get("line_cap"):
+                attrs.update(stroke_linecap=layer["line_cap"],
+                             stroke_linejoin="round" if layer["line_cap"] == "round" else "miter")
             node(nested, "path", d=path, **attrs)
 
     def text(self, parent, layer):

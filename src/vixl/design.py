@@ -555,6 +555,11 @@ def validate_design(project, state):
                 project.limits.size(*layer.get("path_view", [layer["width"], layer["height"]]))
             finite(layer.get("radius", 0), "radius", 0, 16384)
             finite(layer.get("stroke_width", 1), "stroke width", 0, 1024)
+            require(layer.get("line_cap", "butt") in ("butt", "round", "square"), "line_cap must be butt, round or square")
+            if "organic" in layer:
+                import json
+                require(isinstance(layer["organic"], dict) and len(json.dumps(layer["organic"])) <= 131072,
+                        "Invalid organic recipe", "invalid_project")
             sides = layer.get("sides", 5)
             require(isinstance(sides, int) and 3 <= sides <= 128, "Polygons/stars require 3–128 sides")
             finite(layer.get("inner_radius", 0.5), "inner radius", 0.01, 1)
@@ -566,6 +571,10 @@ def validate_design(project, state):
             require(layer["symbol"] in state.get("symbols", {}), "Missing symbol master")
         if kind in ("group", "pathfinder"):
             project.limits.size(layer["content_width"], layer["content_height"])
+        if kind == "group" and "organic" in layer:
+            import json
+            require(isinstance(layer["organic"], dict) and len(json.dumps(layer["organic"])) <= 131072,
+                    "Invalid organic recipe", "invalid_project")
         if kind == "pathfinder":
             require(layer["mode"] in ("union", "subtract", "intersect"), "Invalid pathfinder mode")
             require(1 <= len(layer["operands"]) <= project.limits.max_layers, "Invalid pathfinder operands")
