@@ -238,6 +238,7 @@ def render_variant(project, spec, variant, directory, prior=None, cancelled=lamb
     if not all(r["passed"] for r in checks.values()):
         return {**variant, "status": "needs_review", "checks": checks, "repairs": repairs}
     settings = plan({k: v for k, v in spec.items() if k not in ("rows", "matrix", "artboards")})
+    from .links import fingerprint as link_fingerprint
     from .text import font_data, font_digest
 
     fonts = [
@@ -254,6 +255,7 @@ def render_variant(project, spec, variant, directory, prior=None, cancelled=lamb
             settings["quality"],
             spec.get("fps"),
             fonts,
+            link_fingerprint(candidate),
         ]
     )
     filename = variant["id"] + "-" + fingerprint[:16] + "." + settings["format"]

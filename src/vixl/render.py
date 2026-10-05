@@ -642,7 +642,7 @@ def layer_ink(project, layer, bounds):
         dependencies.append(project.state.get("brushes", {}))
     key = hashlib.sha256(json.dumps(dependencies, sort_keys=True).encode()).hexdigest()
     linked = layer.get("linked")
-    cacheable = not linked and not layer.get("lookup") and layer["type"] not in ("group", "pathfinder")
+    cacheable = not linked and not layer.get("lookup") and layer["type"] not in ("group", "pathfinder", "link")
     cache = project._cache = project._cache if isinstance(project._cache, LayerCache) else LayerCache()
     if cacheable:
         cached = cache.image(key)
@@ -699,6 +699,10 @@ def layer_ink(project, layer, bounds):
         from .forms import field_image
 
         image = field_image(project, layer)
+    elif kind == "link":
+        from .links import link_image
+
+        image = link_image(project, layer)
     elif kind == "gradient":
         from .design_render import gradient_image
 

@@ -124,6 +124,7 @@ FIELD_ALIASES = {
     "canvas": {"color": "background", "fill": "background"},
     "variable": {"key": "name"},
     "align": {"align": "alignment", "position": "alignment", "relativeTo": "relative_to"},
+    "link": {"path": "source", "file": "source", "src": "source", "document": "source", "doc": "source"},
 }
 FIELD_ALIASES["text-set"] = FIELD_ALIASES["text"]
 GEOMETRY_TYPES = {
@@ -140,8 +141,9 @@ GEOMETRY_TYPES = {
     "text-layout",
     "pen",
     "field",
+    "link",
 }
-CENTER_TYPES = {"solid", "gradient", "shape", "add", "frame", "symbol-instance", "move", "field"}
+CENTER_TYPES = {"solid", "gradient", "shape", "add", "frame", "symbol-instance", "move", "field", "link"}
 
 
 def _snake(key):

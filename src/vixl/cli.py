@@ -50,6 +50,8 @@ Forms:     field add KEY --kind text|multiline|number|date|checkbox|radio|dropdo
 Drawings:  drawing import sketch.jpg --name house [--settings '{"ink": "original"}'], drawing clean|vectorize|straighten|smooth house,
            drawing fill house --points '[[x, y, "#fc0"]]', drawing stroke house --points '[[x, y], …]', drawing restyle house,
            drawing report house, drawing compare house --out c.png, check --checks drawing, ai drawing-color house --prompt TEXT
+Linked:    link FILE.vixl [--name N] [--width W] [--fit fill|fit|stretch] [--position top-left] [--crop X,Y,W,H] [--artboard A] [--page P]
+           [--set NAME=VALUE], link-set LAYER …, link-refresh [LAYER], link-embed LAYER, links (each link: ok, stale or missing)
 Measure:   info, sample X Y, histogram [--region X Y W H], info --target TEXT,
            spacing --targets A B C --axis vertical [--expected N] [--tolerance N] [--check],
            spacing --around BODY --before HEADER --after FOOTER,
@@ -281,7 +283,7 @@ def dispatch(argv):
                     | {"filter"}
                     | {"workflow"}
                     | set(
-                        "new session open save status inspect describe layers effects manifest dependencies reproduce schema check batch convert render export export-screens export-animation spacing pixels animation info sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert validate preset ai ask generate detect ocr serve view notes import mcp update updates commands shapes palette template guidance font fonts roll providers models color sizes layout layouts brushes organics easings timeline export-timeline timeline-sheet export-icons pages guides".split()
+                        "new session open save status inspect describe layers effects manifest dependencies reproduce schema check batch convert render export export-screens export-animation spacing pixels animation info sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert validate preset ai ask generate detect ocr serve view notes import mcp update updates commands shapes palette template guidance font fonts roll providers models color sizes layout layouts brushes organics easings timeline export-timeline timeline-sheet export-icons pages guides links".split()
                     )
                 )
             }

@@ -55,7 +55,8 @@ def key_for(project, layer=None, bounds=None):
     from .render import EFFECTS
 
     layers = [layer] if layer else project.state["layers"]
-    if any(x.get("linked") or any(e["name"] not in EFFECTS for e in x.get("effects", [])) for x in layers):
+    if any(x.get("linked") or x["type"] == "link" or any(e["name"] not in EFFECTS for e in x.get("effects", []))
+           for x in layers):
         return None
     fonts = [font_digest(font_data(project, x)) for x in layers if x["type"] == "text"]
     if layer:

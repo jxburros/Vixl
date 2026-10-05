@@ -5,6 +5,7 @@ from .studio import ACTIONS as STUDIO_ACTIONS
 
 from .automation import bounded_object
 from .errors import require, VixlError
+from .links import ACTIONS as LINK_ACTIONS
 from .lyrics import REQUEST_FIELDS as LYRIC_FIELDS
 
 ACTIONS = {
@@ -38,6 +39,7 @@ ACTIONS = {
 
 
 ACTIONS.update(STUDIO_ACTIONS)
+ACTIONS.update(LINK_ACTIONS)
 FILL_FORMATS = ("pdf", "png", "jpeg", "jpg", "webp", "tiff", "svg")
 
 PATH = {"type": "string", "description": "Workspace-relative path."}
@@ -108,6 +110,10 @@ def dispatch(session, action, request, document=None):
     for field in ("dry_run", "replace"):
         if field in request:
             require(type(request[field]) is bool, f"{field} must be boolean")
+    if action in LINK_ACTIONS:
+        from .links import dispatch as links_dispatch
+
+        return links_dispatch(session, request, document)
     if action in STUDIO_ACTIONS:
         from .studio import dispatch as studio_dispatch
         try:

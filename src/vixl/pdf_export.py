@@ -18,6 +18,7 @@ import numpy as np
 
 from .errors import require
 from .model import finite
+from .links import pdf_link
 from .pdf_writer import FontSet, Name, Text, Writer, image_xobject
 
 VECTOR_LEAVES = ("solid", "shape", "gradient", "text")
@@ -209,6 +210,10 @@ class PageBuilder:
                                                                  layer["height"] / layer["content_height"])
                 self.draw(layers, bounds, layer["id"], inner)
                 continue
+            if reason == "linked document":
+                reason = pdf_link(self, layer, b, matrix)
+                if reason is None:
+                    continue
             if reason is None:
                 try:
                     self.leaf(layer, b, matrix)
@@ -256,7 +261,7 @@ class PageBuilder:
             return None
         if layer["type"] not in VECTOR_LEAVES:
             return {"raster": "image", "frame": "image", "paint": "brush strokes", "pixel": "pixel art",
-                    "pathfinder": "pathfinder"}.get(layer["type"], layer["type"])
+                    "pathfinder": "pathfinder", "link": "linked document"}.get(layer["type"], layer["type"])
         return None
 
     def leaf(self, layer, bounds, matrix):

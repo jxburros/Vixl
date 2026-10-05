@@ -360,7 +360,7 @@ def create_app(path, *, token=None, limits=None):
         from .workflows import dispatch
         # REST remains scoped to its active project. Other document/library/job I/O is MCP/CLI only.
         from .studio import REST_ACTIONS
-        require(action in {"check", "act", "plan", "film-plan", "lyric-video-plan", "organic-catalog", "form-fill", "drawing-report"} | REST_ACTIONS,
+        require(action in {"check", "act", "plan", "film-plan", "lyric-video-plan", "organic-catalog", "form-fill", "drawing-report", "links"} | REST_ACTIONS,
                 "This workflow needs a workspace CLI/MCP session", "forbidden")
         return dispatch(session, action, body)
 

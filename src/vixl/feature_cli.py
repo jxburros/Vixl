@@ -284,6 +284,11 @@ def project_feature(project, cmd, args):
         return {"fields": summary(project), "form": form_settings(project.state)}, False
     if cmd == "form" and args[:1] == ["fill"]:
         return form_fill(project, args[1:]), False
+    if cmd == "links":
+        from .links import report
+
+        require(not args, "Use links to list the linked documents and their state (link-refresh updates them)")
+        return report(project), False
     if cmd == "drawing" and args[:1] in (["report"], ["compare"]):
         from .drawing import compare, report
 
