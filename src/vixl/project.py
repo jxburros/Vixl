@@ -1,10 +1,12 @@
 """Portable project storage, atomic operation batches and a persistent history DAG."""
 
+from collections import OrderedDict
 from copy import copy, deepcopy
 import difflib
 import hashlib
 import io
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -15,6 +17,7 @@ from .assets import decode, read_bounded
 from .errors import VixlError, require
 from .history import diff, patch
 from .model import Limits, new_state, uid
+from .render import LayerCache
 
 # Every Nth revision on a chain stores a full snapshot; the others store a delta from the parent.
 SNAPSHOT_INTERVAL = 32
@@ -22,6 +25,19 @@ FORMAT_VERSION = 2
 DECODED_BUDGET = 256 * 1024 * 1024
 NODE_KEYS = {"id", "parent", "operations", "label", "state", "delta", "squashed"}
 ASSET_REFERENCE = re.compile(rb"(?:assets|masks|fonts|sources)/[0-9a-f]{64}\.[a-z0-9]{2,5}")
+
+
+def swatch_user(error, operations, index):
+    """For an unknown-swatch error, the first operation that uses the swatch: colors resolve when
+    a later operation (or the final state check) reads them, not where the reference was written."""
+    match = re.match(r"Unknown swatch: @([\w-]+)$", str(error))
+    if not match or "operation_index" in error.details:
+        return index
+    pattern = re.compile("@" + re.escape(match[1]) + r"(?![\w-])")
+    for position, operation in enumerate(operations[: len(operations) if index is None else index + 1]):
+        if pattern.search(json.dumps(operation, ensure_ascii=False, default=str)):
+            return position
+    return index
 
 
 def located(error, index, operation, count):
@@ -54,7 +70,8 @@ class Project:
         self.path = None
         self.allow_linked = False
         self._revision = None
-        self._cache = {}
+        self._cache = LayerCache()
+        self._paint_cache = OrderedDict()  # Painted stroke prefixes, shared by clones (brushes.py).
         self._decoded = {}
         self._head_state = None
         self._verified = set()
@@ -135,12 +152,20 @@ class Project:
         return clone
 
     def inspect(self, target=None):
-        from .render import resolve_layout
+        from .render import child_index, extent, resolve_layout, resolved_layers
 
         state = deepcopy(self.state)
-        resolved = resolve_layout(self)
+        layers = resolved_layers(self)
+        resolved = resolve_layout(self, layers=layers)
+        children, memo = child_index(layers), {}
         for layer in state["layers"]:
-            layer["resolved_bounds"] = resolved[layer["id"]]
+            box = layer["resolved_bounds"] = resolved[layer["id"]]
+            left, top, right, bottom = extent(layer, resolved, children, memo)
+            left, top = math.floor(left + 1e-6), math.floor(top + 1e-6)
+            drawn = (left, top, math.ceil(right - 1e-6) - left, math.ceil(bottom - 1e-6) - top)
+            if drawn != tuple(box):
+                # Blur, styles and group children that reach past the box still draw.
+                layer["drawn_bounds"] = drawn
         if target:
             ident = self.layer(target)["id"]
             return next(x for x in state["layers"] if x["id"] == ident)
@@ -251,9 +276,12 @@ class Project:
 
         if isinstance(operations, dict):
             operations = operations.get("operations", [operations])
+        require(isinstance(operations, list) and operations, "Expected a nonempty list of operations")
         require(
-            isinstance(operations, list) and 0 < len(operations) <= self.limits.max_operations,
-            "Expected a nonempty, bounded list of operations",
+            len(operations) <= self.limits.max_operations,
+            f"A batch holds at most {self.limits.max_operations} operations, got {len(operations)}; split it "
+            "into several apply calls",
+            "resource_limit",
         )
         from .schema import validate_operation
         from .normalize import apply_centering, resolve_geometry
@@ -283,13 +311,20 @@ class Project:
                     finish(candidate)
                 apply_centering(candidate, centered, operation)
             except VixlError as exc:
-                raise located(exc, index, operation, len(operations)) from exc
+                index = swatch_user(exc, operations, index)
+                raise located(exc, index, operations[index], len(operations)) from exc
             except (KeyError, TypeError, ValueError, OverflowError) as exc:
                 error = VixlError("invalid_operation", f"Malformed operation: {exc}")
                 raise located(error, index, operation, len(operations)) from exc
         from .validation import check_state
 
-        check_state(candidate, candidate.state)
+        try:
+            check_state(candidate, candidate.state)
+        except VixlError as exc:
+            index = swatch_user(exc, operations, None)
+            if index is not None:
+                raise located(exc, index, operations[index], len(operations)) from exc
+            raise
         candidate.__dict__.pop("_resource_budget", None)
         after = candidate.inspect()  # Also resolves constraints, rejecting cycles atomically.
         changes = {

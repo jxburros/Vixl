@@ -571,6 +571,10 @@ def project_at(project, time):
             x, y, w, h = bounds[ident]
             sx = values.get("scale", 1) * values.get("scale-x", 1)
             sy = values.get("scale", 1) * values.get("scale-y", 1)
+            if round(layer["width"] * abs(sx)) < 1 or round(layer["height"] * abs(sy)) < 1:
+                # Scaled to nothing (a wipe or pop that starts at 0): draw nothing this frame,
+                # instead of the 1 px sliver the smallest box would leave.
+                layer["opacity"] = 0
             if layer.get("pivot") is not None:
                 # x/y place the unrotated box; rotation and scale keep the pivot point fixed.
                 if layer.get("constraints"):
@@ -734,9 +738,22 @@ def inspect_timeline(project):
 FORMATS = ("gif", "apng", "webp", "sheet", "frames", "mp4", "webm")
 
 
+def cached(project):
+    """A render copy of a saved document that keeps unchanged layers and frames in the bounded
+    per-user render cache, so brush-heavy frames are not repainted on every export."""
+    if getattr(project, "_disk_cache", None) is not None or not getattr(project, "path", None):
+        return project
+    from copy import copy
+    from .render_cache import enable, user_cache_dir
+
+    return enable(copy(project), user_cache_dir())
+
+
 def contact_sheet(project, count=8, columns=None, max_width=1600, times=None):
     """A grid of evenly spaced frames, labelled by time, for checking motion at a glance."""
     from PIL import ImageDraw
+
+    project = cached(project)
 
     timeline = project.state.get("timeline") or default_timeline()
     if times is None:
@@ -783,6 +800,7 @@ def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=No
     ``colors`` (2–256) caps the GIF palette."""
     from .animation import check_colors, gif_bytes, size_warnings
 
+    project = cached(project)
     path = Path(path)
     suffix = path.suffix.lower()
     format = format or {".gif": "gif", ".png": "apng", ".apng": "apng", ".webp": "webp", ".zip": "frames", ".mp4": "mp4", ".webm": "webm"}.get(suffix)

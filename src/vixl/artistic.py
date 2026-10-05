@@ -25,6 +25,27 @@ def edge_filter(image, kernel):
     return padded.filter(kernel).crop((1, 1, image.width + 1, image.height + 1))
 
 
+def mode_colors(rgb, radius):
+    """Each pixel takes the color of a nearby pixel with the most common brightness in its
+    (2r+1)² window, nearest first. A mode filter run on each channel separately can combine red
+    from one group of pixels with green from another, painting colors that are not in the image."""
+    size = 2 * radius + 1
+    key = np.asarray(ImageOps.grayscale(rgb).filter(ImageFilter.ModeFilter(size)))
+    gray = np.pad(np.asarray(ImageOps.grayscale(rgb)), radius, mode="edge")
+    colors = np.pad(np.asarray(rgb), ((radius, radius), (radius, radius), (0, 0)), mode="edge")
+    h, w = key.shape
+    result = np.asarray(rgb).copy()
+    found = np.zeros((h, w), bool)
+    offsets = sorted(((dy, dx) for dy in range(-radius, radius + 1) for dx in range(-radius, radius + 1)),
+                     key=lambda o: (o[0] ** 2 + o[1] ** 2, o))
+    for dy, dx in offsets:
+        window = (slice(radius + dy, radius + dy + h), slice(radius + dx, radius + dx + w))
+        match = ~found & (gray[window] == key)
+        result[match] = colors[window][match]
+        found |= match
+    return Image.fromarray(result)
+
+
 def remap(image, coordinates):
     """Bilinear spatial filters, chunked and premultiplied to protect alpha edges."""
     source = np.asarray(image)
@@ -172,8 +193,7 @@ def artistic_filter(image, effect):
         changed = edge_filter(rgb, ImageFilter.FIND_EDGES if name == "find-edges" else ImageFilter.EMBOSS)
         result = blend(rgb, changed, amount)
     elif name == "oil-paint":
-        size = 2 * int(amount) + 1
-        result = ImageOps.posterize(rgb.filter(ImageFilter.ModeFilter(size)), 5)
+        result = ImageOps.posterize(mode_colors(rgb, int(amount)), 5)
     elif name == "watercolor":
         changed = ImageOps.posterize(
             rgb.filter(ImageFilter.MedianFilter(5)).filter(ImageFilter.SMOOTH_MORE), 4

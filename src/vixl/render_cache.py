@@ -136,6 +136,12 @@ class RenderCache:
                 os.unlink(temp)
 
 
+def user_cache_dir():
+    """The per-user persistent render cache (``VIXL_RENDER_CACHE`` overrides it). Keys are
+    content-addressed and include the engine fingerprint, so documents can share it safely."""
+    return Path(os.environ.get("VIXL_RENDER_CACHE", "~/.cache/vixl/render")).expanduser()
+
+
 def enable(project, directory):
     project._disk_cache = RenderCache(directory)
     return project

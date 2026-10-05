@@ -14,8 +14,8 @@ HTML and PDF (RGB and CMYK).
 > **The data is illustrative.** "Renewable share of electricity by country/region, 2015–2025"
 > numbers were invented to look plausible for a layout exploration. Do not cite them.
 
-Run from the repository root (needs network once for Google Fonts; full run takes ~8 min, mostly
-the contrast check):
+Run from the repository root (needs network once for Google Fonts; full run took ~8 min, mostly
+the contrast check; about 25 s with the fixes in the [changelog](../../CHANGELOG.md)):
 
 ```bash
 python explorations/08-infographic/build.py           # everything
@@ -55,10 +55,12 @@ Files in `output/`: `infographic-{world,europe}.vixl` (editable), `infographic-{
 
 - Spacing: KPI cards 32/32 px, 12 bar gaps all exactly 18 px, legend rows 18 px, social eyebrow→title 18 px — all pass (tolerance 0–1).
 - `check`: 0 errors; 7 warnings, all from the intentional sun/rays bleed and the full-bleed header band. Contrast on 12 representative text layers passes. `color_vision` passes (text only, see findings). The social artboard passes clean.
-- `validate`: all custom rules pass; overall `valid: false` only because of the bleeding decorations (see findings).
+- `validate`: all custom rules pass. The committed report shows overall `valid: false` only because of the bleeding decorations (finding 4). `build.py` now marks the sun and rays as decoration, so a rebuild with the fixed engine reports `valid: true`, with the bleed as warnings.
 - Chart-colour separation (min RGB distance between donut swatches): normal 57.5 (nuclear/fossil), deuteranopia 37.3 (nuclear/fossil), protanopia 51.5, tritanopia 42.2. Nuclear vs fossil is the weakest pair under deuteranopia — visible in the simulation; direct labels and the legend values carry the meaning.
 
 ## Findings
+
+> **Status:** Bug 1 (artboard `x`/`y` ignored) is fixed, and so is finding 4: `build.py` now marks the sun and rays as decoration, and `validate` grades decorative layers that bleed off the edge as warnings, so both datasets validate. Finding 3 is fixed too: contrast on all text now takes seconds. Bug 2 is fixed as well: font-size assertions and `validate`'s size warnings use the linked character style's size. Rough edges 5, 8, 9 and 11 are fixed: `validate --rules` takes inline assertions (and repeats), both constraint errors name the layers or anchors involved, and a pen without `width`/`height` gets a box that holds its whole stroke, so the manual padding in `build.py` is no longer needed. A pen given an explicit box still clips its stroke at that box. See the Unreleased section of the [changelog](../../CHANGELOG.md).
 
 **Bugs**
 

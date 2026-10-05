@@ -28,6 +28,8 @@ from .render import (
     EFFECTS,
     color,
     layer_image,
+    layer_ink,
+    ink_origin,
     resolve_font,
     resolve_layout,
     text_metrics,
@@ -165,6 +167,16 @@ def unique_name(project, proposed):
         f"Layer name already exists: {proposed}",
     )
     return proposed
+
+
+def default_name(project, base):
+    """A free name for a layer the operation left unnamed: ``base``, then ``base 2``, ``base 3``…
+    Explicit names must still be unique."""
+    taken = {x["name"] for x in project.state["layers"]} | {x["id"] for x in project.state["layers"]}
+    name, index = base, 2
+    while name in taken:
+        name, index = f"{base} {index}", index + 1
+    return name
 
 
 def append_layer(project, layer):
@@ -311,7 +323,7 @@ def execute(project, op):
                 "checksum": hashlib.sha256(data).hexdigest(),
             }
         layer = new_layer(
-            op.get("name", Path(op.get("path", "image")).stem),
+            op["name"] if "name" in op else default_name(project, Path(op.get("path", "image")).stem),
             "raster",
             *image.size,
             asset=asset,
@@ -327,7 +339,7 @@ def execute(project, op):
     if kind in ("solid", "gradient", "text"):
         c = project.state["canvas"]
         w, h = op.get("width", c["width"]), op.get("height", c["height"])
-        layer = new_layer(op.get("name", kind), kind, w, h)
+        layer = new_layer(op["name"] if "name" in op else default_name(project, kind), kind, w, h)
         if kind == "solid":
             color(resolve_color(op.get("color", "white"), project.state))
             layer["fill"] = op.get("color", "white")
@@ -431,7 +443,7 @@ def execute(project, op):
     elif kind == "duplicate":
         duplicate = deepcopy(layer)
         duplicate["id"] = uid("lyr")
-        duplicate["name"] = op.get("name", layer["name"] + " copy")
+        duplicate["name"] = op["name"] if "name" in op else default_name(project, layer["name"] + " copy")
         append_layer(project, duplicate)
         if layer["type"] == "group":
             from .design import descendants
@@ -512,7 +524,15 @@ def execute(project, op):
                 require(isinstance(value, list) and len(value) == 2, "Pivot value must be [x, y]", field="value")
                 if op.get("units") == "px":
                     rw, rh = rest_size(layer)
-                    value = [finite(value[0], "pivot x") / rw, finite(value[1], "pivot y") / rh]
+                    for axis, v, size in (("x", value[0], rw), ("y", value[1], rh)):
+                        finite(v, f"pivot {axis}")
+                        require(
+                            abs(v) <= 10 * size,
+                            f"pivot {axis} of {v:g} px is more than 10 box sizes from the layer's corner "
+                            f"(at most ±{10 * size:g} px for this {rw}×{rh} layer)",
+                            field="value",
+                        )
+                    value = [value[0] / rw, value[1] / rh]
             layer["pivot"] = [finite(value[0], "pivot x", -10, 10), finite(value[1], "pivot y", -10, 10)]
         if not layer["constraints"]:
             # Keep the drawn pose; only the origin of later rotation and scaling moves.
@@ -615,7 +635,12 @@ def execute(project, op):
                     expression = project.layer(match[1])["id"] + "." + match[2] + (match[3] or "")
             layer["constraints"][anchor] = expression
         for axes in (("left", "right", "center-x"), ("top", "bottom", "center-y")):
-            require(sum(x in layer["constraints"] for x in axes) <= 1, "Use one constraint per axis")
+            present = [x for x in axes if x in layer["constraints"]]
+            require(
+                len(present) <= 1,
+                f"Use one constraint per axis: {layer['name']!r} would have both {' and '.join(present)}; "
+                "unconstrain it first to switch anchors",
+            )
     elif kind == "unconstrain":
         from .render import stored_origin
 
@@ -694,14 +719,16 @@ def execute(project, op):
             "Remove layer styles/clipping before rasterizing",
         )
         b = resolve_layout(project)[layer["id"]]
-        image = layer_image(project, layer, b)
+        # Bake everything the layer draws, including blur and group children past its box.
+        image = layer_ink(project, layer, b)
+        x, y = ink_origin(image, b)
         layer.update(
             type="raster",
             asset=add_image(project, image),
             width=image.width,
             height=image.height,
-            x=b[0],
-            y=b[1],
+            x=x,
+            y=y,
             rotation=0,
             flip_x=False,
             flip_y=False,

@@ -20,10 +20,13 @@ def validate_pixel(layer, state):
     require(isinstance(rows, list) and 1 <= len(rows) <= MAX_GRID, "Pixel grid height must be 1–256")
     require(all(isinstance(row, str) for row in rows), "Pixel rows must be strings")
     width = len(rows[0])
-    require(
-        1 <= width <= MAX_GRID and all(len(row) == width for row in rows),
-        "Pixel rows need equal widths of 1–256",
-    )
+    require(1 <= width <= MAX_GRID, f"Pixel rows need equal widths of 1–256; row 0 has {width} characters")
+    for index, row in enumerate(rows):
+        require(
+            len(row) == width,
+            f"Pixel rows need equal widths of 1–256; row {index} (counting from 0) has {len(row)} characters "
+            f"but row 0 has {width}",
+        )
     require(isinstance(palette, dict) and 1 <= len(palette) <= 94, "Palette needs 1–94 symbols")
     for symbol, value in palette.items():
         require(
@@ -59,7 +62,7 @@ def inspect_pixels(project, target=None):
 
 
 def execute_pixel(project, op):
-    from .operations import append_layer
+    from .operations import append_layer, default_name
 
     if op["type"] == "pixel-art":
         rows = op.get("rows")
@@ -77,7 +80,7 @@ def execute_pixel(project, op):
             )
         require(isinstance(rows, list) and rows and isinstance(rows[0], str), "Provide pixel rows")
         layer = new_layer(
-            op.get("name", "sprite"),
+            op["name"] if "name" in op else default_name(project, "sprite"),
             "pixel",
             len(rows[0]),
             len(rows),

@@ -257,6 +257,10 @@ class Poster:
         rays = self.repeat("ray", 40, dy=19)
         self.op(type="group", name="rays", targets=rays)
         self.op(type="clip", target="rays", base="sun")
+        # The sun and rays bleed off the top on purpose; marking them decorative tells check and
+        # validate that this is intent, not a layout error.
+        for name in ("sun", "rays"):
+            self.op(type="layer-intent", target=name, role="decoration")
 
         self.text("eyebrow", "${eyebrow}", "caption", color="@solar", font="dm-mono-500")
         self.op(type="constrain", target="eyebrow", constraints={"left": "guide:g-x1-start.left", "top": "canvas.top+104"})
@@ -646,11 +650,9 @@ def qa(p, slug, n_rows, report, height):
     ]
     from vixl.validation import validate
 
+    # validate() also adds a bounds rule for every layer; the decorative sun/rays that bleed off
+    # the top are graded as warnings because they are marked decorative (see header()).
     r["validate"] = validate(p, rules=rules)
-    # validate() also adds a bounds rule for EVERY layer; the decorative sun/rays bleed off the top on purpose.
-    bleed = {"layer.sun.bounds within canvas", "layer.rays.bounds within canvas"}
-    r["validate_excluding_bleed"] = all(c["passed"] or c["severity"] == "warning" or c["rule"] in bleed
-                                        for c in r["validate"]["checks"])
     # Documented mismatch: font-size assertions read the layer's own size, not its linked character style.
     r["font_size_style_mismatch"] = {
         "style_size": p.state["character_styles"]["poster-title"]["size"],
@@ -681,7 +683,6 @@ def qa(p, slug, n_rows, report, height):
     summary = {
         "spacing": {k: r[k]["passed"] for k in ("kpi_cards", "bars", "donut_legend", "axis_labels")},
         "validate": r["validate"]["valid"],
-        "validate_excluding_bleed": r["validate_excluding_bleed"],
         "failed_rules": [c["rule"] for c in r["validate"]["checks"] if not c["passed"]],
         "check": {"passed": r["check"]["passed"], "errors": r["check"]["errors"], "warnings": r["check"]["warnings"]},
         "contrast": {"passed": r["check_contrast"]["passed"], "errors": r["check_contrast"]["errors"]},

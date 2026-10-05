@@ -45,6 +45,11 @@ def _box(value, width, height, name):
     return x, y, w, h
 
 
+def where(region):
+    x, y, w, h = region
+    return f"x {x}–{x + w - 1}, y {y}–{y + h - 1}"
+
+
 def _intersects(a, b):
     return a[0] < b[0] + b[2] and b[0] < a[0] + a[2] and a[1] < b[1] + b[3] and b[1] < a[1] + a[3]
 
@@ -56,6 +61,61 @@ def _contains(outer, inner):
         and outer[0] + outer[2] >= inner[0] + inner[2]
         and outer[1] + outer[3] >= inner[1] + inner[3]
     )
+
+
+def glyph_reports(project, layers):
+    """``(layer, {"missing", "fallback"})`` for resolved text layers whose characters need a
+    fallback font or that no available font covers. Text is read with the project's variables."""
+    from .text import glyph_coverage
+    from .render import substitute
+
+    for item in layers:
+        report = glyph_coverage(project, {**item, "text": substitute(item["text"], project.state["variables"])})
+        if report["missing"] or report["fallback"]:
+            yield item, report
+
+
+def boxed_text_overflow(project, layer):
+    """For text set in a text-layout box, the (width, height) its wrapped lines need when that is
+    more than the box (they are cut off), else None. Fitted, warped and path text are skipped:
+    fit shrinks to the box, and warps and paths are laid out differently."""
+    from .text import measure, font_data, UnsupportedText
+    from .render import substitute
+
+    settings = layer.get("text_layout") or {}
+    if layer["type"] != "text" or "width" not in settings or settings.get("fit") or settings.get("path"):
+        return None
+    if settings.get("warp", "none") != "none":
+        return None
+    text = substitute(layer["text"], project.state.get("variables", {}))
+    try:
+        _, box = measure(font_data(project, layer), text, layer["size"], layer.get("spacing", 4),
+                         layer.get("align", "left"), layer["width"])
+    except UnsupportedText:
+        return None
+    stroke = 2 * layer.get("stroke_width", 0)
+    need = (math.ceil(box[2] - box[0] + stroke), math.ceil(box[3] - box[1] + stroke))
+    # A pixel of slack keeps antialiased glyph edges from counting as clipping.
+    return need if need[0] > layer["width"] + 1 or need[1] > layer["height"] + 1 else None
+
+
+def missing_glyphs(project):
+    """Visible text layers with characters that no available font covers (they draw as tofu)."""
+    from .render import resolved_layers
+
+    layers = resolved_layers(project)
+    index = {item["id"]: item for item in layers}
+
+    def shown(item):
+        while item:
+            if not item["visible"] or item["opacity"] <= 0:
+                return False
+            item = index.get(item.get("parent"))
+        return True
+
+    text = [item for item in layers if item["type"] == "text" and shown(item)]
+    return [{"layer": item["name"], "missing": report["missing"]}
+            for item, report in glyph_reports(project, text) if report["missing"]]
 
 
 def check_design(
@@ -158,12 +218,14 @@ def check_design(
             elif x < 0 or y < 0 or x + w > width or y + h > height:
                 severity = "error" if is_text(item) else "warning"
                 issue("bounds", severity, f"{item['name']!r} is cut off by the canvas edge", [item], bounds=[x, y, w, h])
-            if item.get("parent"):
-                parent = resolved[item["parent"]]
-                box = (0, 0, parent["content_width"], parent["content_height"])
-                if not _contains(box, local_bounds[item["id"]]):
-                    issue("bounds", "error" if is_text(item) else "warning",
-                          f"{item['name']!r} is clipped by group {parent['name']!r}", [item])
+        for item in content:
+            needed = boxed_text_overflow(candidate, resolved[item["id"]])
+            if needed:
+                layer = resolved[item["id"]]
+                issue("bounds", "error",
+                      f"{item['name']!r} does not fit its {layer['width']}×{layer['height']} text box at "
+                      f"{layer['size']} px and is cut off (it needs {needed[0]}×{needed[1]}); enlarge the box "
+                      "with text-layout or shrink the text with fit-text", [item], needs=list(needed))
 
     alphas = {}
 
@@ -193,17 +255,14 @@ def check_design(
                 issue("content", "warning", f"{item['name']!r} has no visible pixels", [item],
                       **({"strokes": stroke_diagnostics(item)} if item["type"] == "paint" else {}))
 
-    if "fonts" in checks:
-        from .text import glyph_coverage
-        from .render import substitute
-        for item in layers:
-            if item["type"] != "text":
-                continue
-            report = glyph_coverage(candidate, {**item, "text": substitute(item["text"], candidate.state["variables"])})
-            if report["missing"]:
-                issue("fonts", "error", f"{item['name']!r} has unsupported glyphs; import a font and use font-fallbacks", [item], **report)
-            elif report["fallback"]:
-                issue("fonts", "warning", f"{item['name']!r} uses fallback glyphs", [item], **report)
+    # Characters no font can draw render as empty boxes (tofu), so they are reported by every
+    # check run, whichever checks were selected; fallback-font warnings belong to "fonts".
+    for item, report in glyph_reports(candidate, [item for item in layers if item["type"] == "text"]):
+        if report["missing"]:
+            issue("fonts", "error", f"{item['name']!r} has characters no font can draw ({''.join(report['missing'][:12])}); "
+                  "they render as empty boxes. Import a font that covers them and add it with font-fallbacks", [item], **report)
+        elif report["fallback"] and "fonts" in checks:
+            issue("fonts", "warning", f"{item['name']!r} uses fallback glyphs", [item], **report)
 
     def role(item):
         return next((x["role"] for x in (item, *ancestors(item)) if x.get("role")), "content")
@@ -249,25 +308,39 @@ def check_design(
 
     texts = [item for item in content if is_text(item)]
     if "contrast" in checks:
-        from .measure import measure
+        from .measure import measure, top_level_contrast
 
+        # Top-level text is measured from one shared render; grouped text renders its own.
+        top = [item["id"] for item in texts if not item.get("parent")]
+        try:
+            measured = top_level_contrast(candidate, top) if top else {}
+        except Exception:  # noqa: BLE001 - measure each layer separately and report its own failure.
+            measured = {}
         for item in texts:
             try:
-                result = measure(candidate, target=item["id"])["contrast"]
+                result = measured.get(item["id"]) or measure(candidate, target=item["id"])["contrast"]
+                if isinstance(result, Exception):
+                    raise result
             except Exception as exc:  # A text layer without visible pixels has no contrast.
                 issue("contrast", "warning", f"Could not measure {item['name']!r}: {exc}", [item])
                 continue
             large = resolved[item["id"]].get("size", 0) * text_scales[item["id"]] >= 24
             threshold = min_contrast or (3.0 if large else 4.5)
-            if result["p10"] < threshold:
+            # Outlined text reads through its outline when the fill blends into the backdrop.
+            outline = result.get("outline")
+            if result["p10"] < threshold and not (outline and outline["p10"] >= threshold):
                 issue(
                     "contrast",
                     "error",
-                    f"{item['name']!r} contrast is {result['p10']:.2f}:1 for most glyph pixels "
-                    f"(minimum {result['minimum']:.2f}:1); needs {threshold:g}:1",
+                    f"{item['name']!r} contrast is {result['p10']:.2f}:1 or lower for a tenth of its glyph pixels "
+                    f"(minimum {result['minimum']:.2f}:1, weakest at {where(result['weakest_region'])})"
+                    + (f" and {outline['p10']:.2f}:1 for its outline" if outline else "")
+                    + f"; needs {threshold:g}:1",
                     [item],
+                    region=result["weakest_region"],
                     contrast=result["p10"],
                     required=threshold,
+                    **({"outline_contrast": outline["p10"]} if outline else {}),
                 )
 
     if "safe_area" in checks and (safe_area is not None or avoid):

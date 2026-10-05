@@ -126,6 +126,7 @@ GEOMETRY_TYPES = {
     "resize",
     "select",
     "text-layout",
+    "pen",
 }
 CENTER_TYPES = {"solid", "gradient", "shape", "add", "frame", "symbol-instance", "move"}
 
@@ -312,7 +313,8 @@ def resolve_geometry(project, op):
         value = result.get(key)
         if not isinstance(value, str):
             continue
-        if value == "center" and key in ("x", "y") and kind in CENTER_TYPES:
+        creates_pen = kind == "pen" and not op.get("target")
+        if value == "center" and key in ("x", "y") and (kind in CENTER_TYPES or creates_pen):
             centered[key] = True
             result[key] = 0
             continue

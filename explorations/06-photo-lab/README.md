@@ -14,7 +14,7 @@ and uses checkpoints, undo/redo, a branch and revision comparison. The last outp
 contact sheet of all 19 artistic filters plus the 5 effect workflows, and before/after numbers
 from Vixl's own `measure()`.
 
-Run from the repo root: `python explorations/06-photo-lab/build.py` (≈2 min). It wipes and
+Run from the repo root: `python explorations/06-photo-lab/build.py` (≈2 min when it was built; about 35 s with the fixes in the [changelog](../../CHANGELOG.md)). It wipes and
 recreates `output/` and sets `VIXL_RESOURCES` and `VIXL_FONT_CACHE` inside this folder.
 
 ## Before / after
@@ -122,6 +122,8 @@ JPEG renders above, `before.jpg`, `after.jpg`, `after-mono.jpg`, `metrics.json` 
 - All 19 artistic filters. Google Fonts via `typefaces.install_font` (DM Serif Display, Space Grotesk, JetBrains Mono)
 
 ## Findings
+
+> **Status:** Finding 6 is fixed: characters that no font can draw are an error in every `check`, every suite and `validate`. The other findings are still open. See the Unreleased section of the [changelog](../../CHANGELOG.md).
 
 **Rough edges and surprises (verified in this build):**
 

@@ -5,7 +5,7 @@ This project is one editable 750×1050 px card template (2.5×3.5 in at 300 dpi)
 Run it from the repository root:
 
 ```bash
-python explorations/07-trading-cards/build.py     # ~15 min on an idle 4-core box, ~35 min under load
+python explorations/07-trading-cards/build.py     # was ~15 min idle (~35 min under load); ~2.5 min with the changelog fixes
 ```
 
 | Template (standard comp) | Holo comp, long name (row 6) | Holo comp, CJK + emoji name (row 9) |
@@ -68,9 +68,11 @@ From `output/qa-report.json`. Checked production uses the recipe with static tex
 | 12 | Seraphel, Dawn's Last Light | completed (after `fit-name`) | Fits at a smaller size, above the minimum. |
 | others | | completed | |
 
-The built-in per-row check of `render --data` (contrast, overlap, legibility and so on) flagged none of the real problems above. Because the CSV render uses `fit:true`, long text is silently shrunk to fit. It instead reported contrast "errors" on the white stat digits of rows 9 and 12, which look like a false positive (see Findings).
+The built-in per-row check of `render --data` (contrast, overlap, legibility and so on) flagged none of the real problems above. Because the CSV render uses `fit:true`, long text is silently shrunk to fit. It instead reported contrast "errors" on the white stat digits of rows 9 and 12, which looked like a false positive but are real: each is a "7" touching the pill outline (see Findings).
 
 ## Findings
+
+> **Status:** Bugs 1 (variable-driven swatches) and 2 (the `workers: 2` font-cache race) are fixed, as are silent missing glyphs and the slow design check: a rebuild flags row 9's CJK and emoji characters and leaves that card off the print sheet. Bug 3 is fixed: a recipe input's default only fills a variable that the document and the artboard leave unset, so explicit row values beat artboard values, which beat input defaults. Finding 4 turned out not to be a false positive: the top bar of Cinzel's "7" runs along row 931, the antialiased inner edge of the pill's 3 px orange outline, so more than a tenth of its pixels are white on orange (2.59:1). The "4" touches it only at its apex. Every flagged stat in rows 9 and 12 is a 7 too. The template places the digits 3 px too high. The check was right but said "for most glyph pixels"; it now says "for a tenth of its glyph pixels" and gives the region (`weakest at x 590–609, y 931–931`). The committed creature art also has a silent clip of the kind found in 02: the wing feather tips rise above their pen box and are cut flat. Vixl now rejects pen points outside an explicit box, so `art.py` sizes the box to the wing. See the Unreleased section of the [changelog](../../CHANGELOG.md).
 
 ### Bugs (with repro)
 

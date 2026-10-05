@@ -2,7 +2,8 @@
 
 Put `brand.json` in the MCP workspace root. CLI/Python document edits look beside the document;
 commands without a document, including template creation and standalone roll, use the current
-directory. Use `create_template(..., workspace=...)` in Python to select it explicitly.
+directory. With `-p DOC` or a current session document, `roll` previews read that document's canvas
+and brand, so a preview picks the same direction as `roll --apply`. Use `create_template(..., workspace=...)` in Python to select it explicitly.
 The file is read on each operation/check, so a policy change takes effect without a restart.
 
 ```json

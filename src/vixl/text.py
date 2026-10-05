@@ -4,8 +4,10 @@ from dataclasses import dataclass
 from functools import lru_cache
 import io
 import math
+import re
 import unicodedata
 from pathlib import Path
+import threading
 import xml.etree.ElementTree as ET
 
 from bidi import algorithm as bidi
@@ -42,8 +44,19 @@ class Plan:
     box: tuple
 
 
-@lru_cache(maxsize=16)
+_local = threading.local()
+
+
 def face(data):
+    """The parsed font and HarfBuzz font for ``data``. fontTools loads tables lazily and is not
+    thread-safe, so each thread (production and job workers render in parallel) keeps its own."""
+    loader = getattr(_local, "face", None)
+    if loader is None:
+        loader = _local.face = lru_cache(maxsize=16)(_face)
+    return loader(data)
+
+
+def _face(data):
     data = data[0] if isinstance(data, tuple) else data
     outline = TTFont(io.BytesIO(data))
     if not any(table in outline for table in ("glyf", "CFF ", "CFF2")) or any(
@@ -232,7 +245,10 @@ def lines(data, text, size, width=None):
     return result
 
 
+@lru_cache(maxsize=1024)
 def measure(data, text, size, spacing=4, align="left", width=None):
+    """Glyph paths and ink box of shaped text. Cached: every render and check re-measures each
+    text layer (auto-sized boxes, constraints), usually with the same font, text and size."""
     finite(size, "font size", 1, 4096)
     outline = face(data)[0]
     factor = size / outline["head"].unitsPerEm
@@ -262,6 +278,23 @@ def measure(data, text, size, spacing=4, align="left", width=None):
     return paths, box
 
 
+def fit_ceiling(data, text, size, width):
+    """The largest size up to ``size`` at which every word fits on a line of ``width``, so fitting
+    shrinks a long word instead of breaking it across lines. Advances scale linearly with size;
+    a word too wide even at size 1 leaves the ceiling at 1 and is broken as before."""
+    words = {word for paragraph in text.expandtabs(4).split("\n") for word in paragraph.split(" ") if word}
+    if not words:
+        return size
+    longest = max(words, key=lambda word: shape(data, word, 1)[1])
+    advance = shape(data, longest, 1)[1]
+    if advance <= 0 or advance * size <= width:
+        return size
+    ceiling = max(1, min(size, int(width / advance)))
+    while ceiling > 1 and shape(data, longest, ceiling)[1] > width:
+        ceiling -= 1
+    return ceiling
+
+
 def plan(project, layer):
     require(len(layer["text"]) <= 100000, "Text exceeds length limit", "resource_limit")
     data = font_data(project, layer)
@@ -270,7 +303,7 @@ def plan(project, layer):
     width = layer["width"] if "width" in settings else None
     stroke = layer.get("stroke_width", 0)
     if settings.get("fit") and width:
-        low, high = 1, size
+        low, high = 1, fit_ceiling(data, layer["text"], size, width - 2 * stroke)
         while low < high:
             middle = (low + high + 1) // 2
             _, box = measure(data, layer["text"], middle, spacing, align, width)
@@ -290,7 +323,26 @@ def plan(project, layer):
         positioned = path_layout(data, layer["text"], size, settings["path"])
     if settings.get("warp", "none") != "none":
         positioned = warped(positioned, target_w, target_h, settings)
+        # A warp moves glyphs by a fraction of the box height, which can push them past the
+        # top (flag, arc) or bottom of the box; move the warped line back inside it.
+        ys = [float(y) for path, _ in positioned for y in WARPED_Y.findall(path)]
+        if ys:
+            dy = fit_span(min(ys) - stroke, max(ys) + stroke, target_h)
+            positioned = [(path, (1, 0, 0, 1, 0, dy)) for path, _ in positioned]
     return Plan(target_w, target_h, positioned, box)
+
+
+WARPED_Y = re.compile(r"[ML]-?[\d.]+,(-?[\d.]+)")
+
+
+def fit_span(top, bottom, height):
+    """The vertical shift that brings [top, bottom] inside [0, height] with the least movement.
+    Content taller than the box keeps its top visible."""
+    if top < 0:
+        return -top
+    if bottom > height:
+        return -min(top, bottom - height)
+    return 0
 
 
 def path_layout(data, text, size, points):

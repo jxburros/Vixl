@@ -81,7 +81,7 @@ Rotation and scale turn about a layer's **pivot**, given as fractions of its own
 
 On a pivoted layer the stored `x`/`y` (and `x`/`y` keyframes) are the top-left of the unrotated box, which rotation does not move; `move`, `align` and `distribute` still place the drawn bounds. Layers without a pivot keep the original behavior (stored `x`/`y` are the rotated bounds' top-left).
 
-Build a character as one layer per part, set each limb's pivot at its joint, and group the parts: a group's `translate-x/y`, `rotation` and `scale` move, turn and scale all its children together about the group's pivot.
+Build a character as one layer per part, set each limb's pivot at its joint, and group the parts: a group's `translate-x/y`, `rotation` and `scale` move, turn and scale all its children together about the group's pivot. Nest groups for limbs (a forearm group inside an arm group); groups do not clip, so a limb that swings past its parent group's box stays visible.
 
 ```bash
 vixl pivot arm 0.5 0.05              # shoulder: top middle of the arm

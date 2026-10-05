@@ -18,7 +18,7 @@ Contact sheet (16 evenly spaced frames): [`output/contact-sheet.jpg`](output/con
 Sheet at named markers: [`output/contact-markers.jpg`](output/contact-markers.jpg).
 
 Rebuild from the repo root: `python explorations/03-kinetic-launch/build.py` (about 12 minutes on a
-shared machine, mostly frame rendering; `QUICK=1` skips the animation exports).
+shared machine when it was built, mostly frame rendering; about 2 minutes with the fixes in the [changelog](../../CHANGELOG.md); `QUICK=1` skips the animation exports).
 
 ## Outputs
 
@@ -80,6 +80,8 @@ The whole `output/` folder is about 4.9 MB.
   `.vixl`.
 
 ## Findings
+
+> **Status:** Bugs 1 (blur clipped to the layer box), 2 (stroke wider than its box crashing the renderer) and 3 (a 1-pixel sliver at scale 0) are fixed: a layer scaled below one pixel on either axis draws nothing. Rough edge 4 is fixed too: a `units:"px"` pivot that is too far away is reported in pixels, with the allowed range. Rough edges 5 and 6 are still open. See the Unreleased section of the [changelog](../../CHANGELOG.md).
 
 ### Bugs
 

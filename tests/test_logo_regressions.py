@@ -94,7 +94,8 @@ def test_group_resize_opacity_clipping_and_wordmark_stay_vector():
         ]
     )
     image, root = svg_image(p)
-    assert root.findall(".//{*}clipPath") and root.findall(".//{*}path")
+    # Groups do not clip their children, in SVG as in raster rendering.
+    assert not root.findall(".//{*}clipPath") and root.findall(".//{*}path")
     assert not root.findall(".//{*}image")
     # Test the wordmark separately because the group's 50% alpha is thresholded.
     a, b = p.render().crop((100, 260, 400, 340)), image.crop((100, 260, 400, 340))

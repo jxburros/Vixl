@@ -56,6 +56,11 @@ def check_state(project, state):
             "invalid_project",
         )
         require(layer.get("role", "content") in ("content", "decoration", "background"), "Invalid layer role", "invalid_project")
+        if "pen_origin" in layer:
+            origin = layer["pen_origin"]
+            require(isinstance(origin, list) and len(origin) == 2, "Invalid pen origin", "invalid_project")
+            for value in origin:
+                finite(value, "pen origin", -1e6, 1e6)
         allowed = layer.get("allow_overlap", [])
         require(isinstance(allowed, list) and len(allowed) <= 512 and all(isinstance(x, str) for x in allowed), "Invalid overlap intent", "invalid_project")
         ids.add(layer["id"])
@@ -208,6 +213,12 @@ def dependencies(project):
     return result
 
 
+def font_size(project, layer):
+    """The size text renders at: a linked character style's size takes precedence."""
+    style = project.state.get("character_styles", {}).get(layer.get("character_style") or "", {})
+    return style.get("size", layer["size"])
+
+
 def assert_rule(project, rule):
     bounds = resolve_layout(project)
     c = project.state["canvas"]
@@ -238,7 +249,7 @@ def assert_rule(project, rule):
             return False
         if namespace == "text" and layer["type"] != "text":
             return False
-        actual = layer["size" if field == "font-size" else field]
+        actual = font_size(project, layer) if field == "font-size" else layer[field]
     return {
         "==": operator.eq,
         "!=": operator.ne,
@@ -269,13 +280,33 @@ def validate(project, profile=None, rules=None):
         if profile.startswith("instagram"):
             add("PNG export under 8 MB", len(project.export(format="PNG")) <= 8 * 1024 * 1024)
     add("RGBA8 document", c["color_mode"] == "rgba8")
+    bounds = resolve_layout(project)
+    index = {layer["id"]: layer for layer in project.state["layers"]}
+
+    def decoration(layer):
+        while layer is not None:
+            if layer.get("role"):
+                return layer["role"] == "decoration"
+            layer = index.get(layer.get("parent"))
+        return False
+
     for layer in project.state["layers"]:
-        add(
-            f"layer.{layer['name']}.bounds within canvas",
-            assert_rule(project, f"layer.{layer['id']}.bounds within canvas"),
+        x, y, w, h = bounds[layer["id"]]
+        inside = x >= 0 and y >= 0 and x + w <= c["width"] and y + h <= c["height"]
+        # Decorative artwork (layer-intent --role decoration) may bleed off the edge on purpose;
+        # that is a warning unless it is text or entirely off the canvas.
+        bleeds = (
+            decoration(layer)
+            and layer["type"] != "text"
+            and x < c["width"] and y < c["height"] and x + w > 0 and y + h > 0
         )
+        add(f"layer.{layer['name']}.bounds within canvas", inside, "warning" if bleeds else "error")
         if layer["type"] == "text":
-            add(f"{layer['name']} font size >= 24", layer["size"] >= 24, "warning")
+            add(f"{layer['name']} font size >= 24", font_size(project, layer) >= 24, "warning")
+    from .checks import missing_glyphs
+
+    for item in missing_glyphs(project):
+        add(f"{item['layer']} has drawable glyphs (missing {''.join(item['missing'][:12])})", False)
     for item in dependencies(project)["linked"]:
         add(f"Linked asset exists: {item['path']}", item["exists"])
     for rule in rules or []:

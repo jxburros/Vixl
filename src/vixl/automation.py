@@ -150,13 +150,20 @@ def validate_state(state):
         validate_recipe(state["recipe"])
 
 
-def text_fits(project, layer, size, width, height):
+def text_fits(project, layer, size, width, height, wrap=True):
+    """Whether the text set at ``size`` fits ``width`` × ``height``; ``wrap=False`` measures it as
+    unwrapped lines, the way text without a text-layout box is drawn."""
     from .text import measure, font_data
     from .render import substitute
 
     text = substitute(layer["text"], project.state.get("variables", {}))
     _, box = measure(
-        font_data(project, layer), text, size, layer.get("spacing", 4), layer.get("align", "left"), width
+        font_data(project, layer),
+        text,
+        size,
+        layer.get("spacing", 4),
+        layer.get("align", "left"),
+        width if wrap else None,
     )
     stroke = layer.get("stroke_width", 0) * 2
     return box[2] - box[0] + stroke <= width and box[3] - box[1] + stroke <= height

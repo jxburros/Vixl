@@ -10,7 +10,7 @@ from .assets import png_bytes
 from .design import resolve_color
 from .design_render import artboard_project
 from .geometry import shape_path
-from .render import color, layer_image, render, resolved_layers, resolve_layout
+from .render import color, effect_margin, ink_origin, layer_image, layer_ink, render, resolved_layers, resolve_layout
 from .errors import VixlError
 from .svg_effects import supported, native_styles, effect_filter, style_filter
 
@@ -273,7 +273,7 @@ class Exporter:
                 return False
             rw, rh = repeat_bounds(layer)
             parent = node(parent, "svg", width=rw, height=rh, viewBox=f"0 0 {rw} {rh}", overflow="hidden")
-            for item, x, y in repeat_items(layer):
+            for item, x, y in repeat_items(layer, self.project.state):
                 w, h = item["width"], item["height"]
                 group = node(parent, "svg", x=x, y=y, width=w, height=h, viewBox=f"0 0 {w} {h}", overflow="hidden")
                 if not self.geometry(group, item):
@@ -313,16 +313,9 @@ class Exporter:
                         node(group, "rect", x=x, y=y, width=end - x, height=1, fill=fill, fill_opacity=alpha)
                     x = end
         elif kind == "group":
+            # Groups do not clip their children, matching raster rendering.
             cw, ch = layer["content_width"], layer["content_height"]
-            ident = self.ident("group-clip")
-            clip = node(self.defs, "clipPath", id=ident)
-            node(clip, "rect", width=cw, height=ch)
-            group = node(
-                parent,
-                "g",
-                transform=f"scale({layer['width'] / cw} {layer['height'] / ch})",
-                clip_path=f"url(#{ident})",
-            )
+            group = node(parent, "g", transform=f"scale({layer['width'] / cw} {layer['height'] / ch})")
             for child in self.children.get(layer["id"], []):
                 self.layer(group, child)
         else:
@@ -368,7 +361,9 @@ class Exporter:
                         effect["_mean"] = (
                             round(ImageStat.Stat(ImageOps.grayscale(image.convert("RGB"))).mean[0]) / 255
                         )
-                wrapper = node(group, "g", filter=effect_filter(self, effects, b))
+                mx, my = effect_margin(layer)
+                region = (b[0] - mx, b[1] - my, b[2] + 2 * mx, b[3] + 2 * my)
+                wrapper = node(group, "g", filter=effect_filter(self, effects, region))
                 group.remove(geometry)
                 wrapper.append(geometry)
                 geometry = wrapper
@@ -442,7 +437,8 @@ class Exporter:
                 )
                 bitmap(parent, layer_surface(self.project, layer, self.bounds, size, self.index))
             else:
-                bitmap(parent, layer_image(self.project, layer, b), b[0], b[1])
+                image = layer_ink(self.project, layer, b)
+                bitmap(parent, image, *ink_origin(image, b))
             self.fallbacks.append(
                 {
                     "layer": layer["name"],

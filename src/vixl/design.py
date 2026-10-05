@@ -42,7 +42,7 @@ def union_bounds(bounds):
 
 
 def execute_design(project, op):
-    from .operations import append_layer, execute
+    from .operations import append_layer, default_name, execute
     from .render import resolve_layout, color, stored_origin
 
     kind = op["type"]
@@ -57,7 +57,7 @@ def execute_design(project, op):
         append_layer(
             project,
             new_layer(
-                op.get("name", "shape"),
+                op["name"] if "name" in op else default_name(project, "shape"),
                 "shape",
                 op.get("width", c["width"]),
                 op.get("height", c["height"]),
@@ -182,6 +182,11 @@ def execute_design(project, op):
             board.update(
                 {k: deepcopy(op[k]) for k in ("width", "height", "background", "variables") if k in op}
             )
+            for key in ("x", "y"):
+                if key in op:
+                    # x/y make the board a viewport onto that region of the document canvas.
+                    board[key] = finite(op[key], key, -1e6, 1e6)
+                    board.setdefault("y" if key == "x" else "x", 0)
             if "targets" in op:
                 board["targets"] = [project.layer(t)["id"] for t in op["targets"]]
             project.limits.size(board["width"], board["height"])
@@ -231,7 +236,7 @@ def execute_design(project, op):
         append_layer(
             project,
             new_layer(
-                op.get("name", "adjustment"),
+                op["name"] if "name" in op else default_name(project, "adjustment"),
                 "adjustment",
                 c["width"],
                 c["height"],
@@ -365,16 +370,26 @@ def execute_design(project, op):
 def resolve_color(value, state, variables=None):
     from .render import substitute
 
-    value = substitute(value, {**state["variables"], **(variables or {})})
-    if value.startswith("@") and "(" not in value:
-        require(value[1:] in state.get("swatches", {}), f"Unknown swatch: {value}")
-        value = state["swatches"][value[1:]]
-    if "@" in value:
-        from .colors import resolve_expression
+    from .colors import MAX_DEPTH, resolve_expression
 
-        # Swatches can be used inside expressions (mix(@brand, white, 20%)) and can refer
-        # to other swatches, so a palette retints from one definition.
-        value = resolve_expression(value, state.get("swatches", {}))
+    variables = {**state["variables"], **(variables or {})}
+    swatches = state.get("swatches", {})
+    # A swatch may be defined from a variable (${brand}) and a variable may name a swatch, so
+    # expand both until neither is left.
+    for _ in range(MAX_DEPTH):
+        value = substitute(value, variables)
+        if "@" not in value:
+            break
+        if value.startswith("@") and "(" not in value:
+            require(value[1:] in swatches, f"Unknown swatch: {value}")
+            value = swatches[value[1:]]
+        else:
+            # Swatches can be used inside expressions (mix(@brand, white, 20%)) and can refer
+            # to other swatches, so a palette retints from one definition.
+            value = resolve_expression(value, swatches)
+    else:
+        value = substitute(value, variables)
+        require("@" not in value, "Swatch references are nested too deeply", "invalid_color")
     return value
 
 
@@ -495,6 +510,9 @@ def validate_design(project, state):
         project.limits.size(board["width"], board["height"])
         color(resolve_color(board["background"], state, board.get("variables")))
         require(isinstance(board.get("variables", {}), dict), "Invalid artboard variables")
+        for key in ("x", "y"):
+            if key in board:
+                finite(board[key], "artboard " + key, -1e6, 1e6)
         require(all(t in index for t in board.get("targets", [])), "Artboard references missing layers")
     for name, guide in state.get("guides", {}).items():
         named(name)
@@ -583,10 +601,10 @@ def validate_design(project, state):
             )
             for key, value in r.get("end", {}).items():
                 if key in ("fill", "color"):
-                    color(value)
+                    color(resolve_color(value, state))
                 else:
                     finite(value, key, 1, 16384)
-            for item, _, _ in repeat_items(layer):
+            for item, _, _ in repeat_items(layer, state):
                 project.limits.size(item["width"], item["height"])
             project.limits.size(*repeat_bounds(layer))
         if kind == "adjustment":
@@ -630,7 +648,10 @@ def validate_design(project, state):
                 )
                 if match and match[1] in index:
                     require(
-                        index[match[1]].get("parent") == parent, "Constraints must reference sibling layers"
+                        index[match[1]].get("parent") == parent,
+                        f"Constraints must reference sibling layers: {layer['name']!r} is constrained to "
+                        f"{index[match[1]]['name']!r}, which is in a different group; unconstrain "
+                        f"{layer['name']!r} or keep both layers in the same group",
                     )
 
     # Validate each dependency once; shared clipping bases must not cause exponential traversal.

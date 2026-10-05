@@ -973,20 +973,33 @@ def cmyk_image(image, *, profile=None, intent="relative", black=1.0, ink_limit=N
     from PIL import Image, ImageCms
 
     rgb = flatten(image, background)
+    require(ink_limit is None or 1 <= ink_limit <= 4, "Ink limit must be 100–400%")
     if profile is not None:
         transform = ImageCms.buildTransform(ImageCms.createProfile("sRGB"), profile, "RGB", "CMYK", _intent(intent))
-        return ImageCms.applyTransform(rgb, transform)
+        separated = ImageCms.applyTransform(rgb, transform)
+        if ink_limit is None:
+            return separated
+        # The profile decides black generation; the requested ink limit still caps the total.
+        a = np.asarray(separated, dtype=np.float32) / 255
+        cmy, k = limit_ink(a[:, :, :3], a[:, :, 3:], ink_limit), a[:, :, 3:]
+        return Image.fromarray(np.uint8(np.clip(np.concatenate((cmy, k), axis=2), 0, 1) * 255 + 0.5), "CMYK")
     require(0 <= black <= 1, "Black generation must be 0–1")
-    require(ink_limit is None or 1 <= ink_limit <= 4, "Ink limit must be 100–400%")
     a = np.asarray(rgb, dtype=np.float32) / 255
     cmy = 1 - a
     k = cmy.min(axis=2, keepdims=True) * black
     cmy = np.where(k < 1 - 1e-6, (cmy - k) / np.maximum(1 - k, 1e-6), 0)
     if ink_limit is not None:
-        total = cmy.sum(axis=2, keepdims=True)
-        room = np.maximum(ink_limit - k, 0)
-        cmy = np.where(total + k > ink_limit, cmy * room / np.maximum(total, 1e-6), cmy)
+        cmy = limit_ink(cmy, k, ink_limit)
     return Image.fromarray(np.uint8(np.clip(np.concatenate((cmy, k), axis=2), 0, 1) * 255 + 0.5), "CMYK")
+
+
+def limit_ink(cmy, k, ink_limit):
+    """Scale C, M and Y down where C + M + Y + K exceeds ``ink_limit`` (3.0 for 300%), keeping K."""
+    import numpy as np
+
+    total = cmy.sum(axis=2, keepdims=True)
+    room = np.maximum(ink_limit - k, 0)
+    return np.where(total + k > ink_limit, cmy * room / np.maximum(total, 1e-6), cmy)
 
 
 def cmyk_to_rgb_image(cmyk, profile=None, intent="relative"):

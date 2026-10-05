@@ -21,7 +21,9 @@ GIF_WARN_BYTES = 1024 * 1024
 def frame_project(project, frame):
     candidate = copy(project)
     candidate.state = deepcopy(frame["state"])
-    candidate._cache = {}
+    from .render import LayerCache
+
+    candidate._cache = LayerCache()
     return candidate
 
 

@@ -71,8 +71,13 @@ def shape_image(project, layer):
     stroke = color(resolve_color(layer.get("stroke", "transparent"), project.state))
     width = round(layer.get("stroke_width", 1) * factor)
     pad = width / 2 if stroke[3] else 0
-    box = (pad, pad, w * factor - 1 - pad, h * factor - 1 - pad)
     shape = layer["shape"]
+    if pad and shape != "line" and 2 * pad >= min(w, h) * factor - 1:
+        # The stroke inset leaves no room inside a box narrower than the stroke (a small shape, or
+        # one animated toward scale 0). The visible ring shrinks to nothing as the box approaches
+        # this size, so draw nothing rather than inverting the box.
+        return Image.new("RGBA", (w, h))
+    box = (pad, pad, w * factor - 1 - pad, h * factor - 1 - pad)
     if shape in ("rectangle", "rounded-rectangle", "ellipse", "capsule"):
         fn = {
             "rectangle": draw.rectangle,
@@ -159,10 +164,13 @@ def legacy_text_image(project, layer):
             distance += advance
         return image
 
+    broken = [False]
+
     def wrapped(size):
         working["size"] = size
         font = font_for(project, working)
         lines = []
+        broken[0] = False
         for paragraph in layer["text"].split("\n"):
             line = ""
             # Split at whitespace where possible, and hard-wrap oversized words.
@@ -178,6 +186,7 @@ def legacy_text_image(project, layer):
                     if line and font.getlength(line + char) > w:
                         lines.append(line)
                         line = ""
+                        broken[0] = True
                     line += char
             lines.append(line)
         working["text"] = "\n".join(lines)
@@ -189,7 +198,8 @@ def legacy_text_image(project, layer):
             while low < high:
                 mid = (low + high + 1) // 2
                 tw, th, _ = wrapped(mid)
-                if tw <= w and th <= h:
+                # Shrink a long word rather than breaking it across lines.
+                if tw <= w and th <= h and not broken[0]:
                     low = mid
                 else:
                     high = mid - 1
@@ -216,8 +226,12 @@ def legacy_text_image(project, layer):
     )
     warp = settings.get("warp", "none")
     if warp != "none":
+        from .text import fit_span
+
         source = image
-        image = Image.new("RGBA", source.size)
+        # Warp onto a tile with room above and below, then keep the box-sized window that holds
+        # the warped line (as the outlined path does), instead of cutting off lifted glyphs.
+        image = Image.new("RGBA", (source.width, source.height * 3))
         amount = settings.get("amount", 0.2)
         for x in range(source.width):
             t = 2 * x / max(1, source.width - 1) - 1
@@ -230,7 +244,10 @@ def legacy_text_image(project, layer):
                 y = round(
                     amount * source.height * ((t * t - 0.5) if warp == "arc" else math.sin(t * math.pi))
                 )
-            image.alpha_composite(strip, (x, y))
+            image.alpha_composite(strip, (x, y + source.height))
+        drawn = image.getchannel("A").getbbox()
+        dy = fit_span(drawn[1] - source.height, drawn[3] - source.height, source.height) if drawn else 0
+        image = image.crop((0, source.height - dy, source.width, 2 * source.height - dy))
     return image
 
 
@@ -358,12 +375,31 @@ def styled_image(project, image, styles):
     return result
 
 
+def viewport(project, x, y, variables=None):
+    """Make (x, y) of the document canvas the origin: lay the top-level layers out at the
+    document size, then fix them (and the guides) at their positions relative to that point."""
+    from .render import resolve_layout, resolved_layers, stored_origin
+
+    layers = resolved_layers(project, variables)
+    bounds = resolve_layout(project, layers=layers)
+    resolved = {item["id"]: item for item in layers}
+    for layer in project.state["layers"]:
+        if not layer.get("parent"):
+            b = bounds[layer["id"]]
+            layer["x"], layer["y"] = stored_origin(resolved[layer["id"]], (b[0] - x, b[1] - y))
+            layer["constraints"] = {}
+    for guide in project.state.get("guides", {}).values():
+        guide["position"] -= x if guide["axis"] == "x" else y
+
+
 def artboard_project(project, name=None, comp=None, variables=None):
     if not name and not comp and not variables:
         return project
     candidate = copy(project)
     candidate.state = deepcopy(project.state)
-    candidate._cache = {}
+    from .render import LayerCache
+
+    candidate._cache = LayerCache()
     if comp:
         from .design import execute_design
 
@@ -371,8 +407,10 @@ def artboard_project(project, name=None, comp=None, variables=None):
     if name:
         require(name in candidate.state.get("artboards", {}), f"Unknown artboard: {name}")
         board = candidate.state["artboards"][name]
-        candidate.state["canvas"].update({k: board[k] for k in ("width", "height", "background")})
         candidate.state["variables"].update(board.get("variables", {}))
+        if "x" in board or "y" in board:
+            viewport(candidate, board.get("x", 0), board.get("y", 0), variables)
+        candidate.state["canvas"].update({k: board[k] for k in ("width", "height", "background")})
         if "targets" in board:
             allowed = set(board["targets"])
             for layer in candidate.state["layers"]:
@@ -386,9 +424,15 @@ def artboard_project(project, name=None, comp=None, variables=None):
     return candidate
 
 
-def repeat_items(layer):
+def repeat_items(layer, state=None, colors=True):
+    """Each repeated copy and its offset. ``state`` resolves @swatch and ${variable} colors in the
+    layer and its blend endpoint; ``colors=False`` skips the color interpolation (sizes only)."""
     settings = layer["repeat"]
     count = settings["count"]
+
+    def literal(value):
+        return resolve_color(value, state) if state is not None else value
+
     for i in range(count):
         item = deepcopy(layer)
         item.pop("repeat")
@@ -400,16 +444,16 @@ def repeat_items(layer):
             t = i / max(1, count - 1)
             if key in ("width", "height"):
                 item[key] = round(layer[key] * (1 - t) + end * t)
-            elif key in ("fill", "color"):
+            elif key in ("fill", "color") and colors:
                 from .render import color
 
-                a, b = color(layer.get(key, "white")), color(end)
+                a, b = color(literal(layer.get(key, "white"))), color(literal(end))
                 item[key] = "#" + "".join(f"{round(x * (1 - t) + y * t):02x}" for x, y in zip(a, b))
         yield item, round(i * settings.get("dx", 0)), round(i * settings.get("dy", 0))
 
 
 def repeat_bounds(layer):
-    items = list(repeat_items(layer))
+    items = list(repeat_items(layer, colors=False))
     return max(x + item["width"] for item, x, y in items), max(y + item["height"] for item, x, y in items)
 
 
@@ -419,7 +463,7 @@ def repeat_image(project, layer):
     size = repeat_bounds(layer)
     project.limits.size(*size)
     image = Image.new("RGBA", size)
-    for item, x, y in repeat_items(layer):
+    for item, x, y in repeat_items(layer, project.state):
         project.limits.size(item["width"], item["height"])
         tile = layer_image(project, item, (0, 0, item["width"], item["height"]))
         image.alpha_composite(tile, (x, y))

@@ -127,6 +127,14 @@ def current_path(explicit=None):
         raise VixlError("no_project", "No current project. Use vixl new SIZE -o FILE or vixl open FILE.")
 
 
+def has_document(explicit=None):
+    """Whether a command has a document to read: ``-p`` or a session's existing current file."""
+    try:
+        return current_path(explicit).is_file()
+    except VixlError:
+        return False
+
+
 def read_json(path):
     text = sys.stdin.read(1024 * 1024 + 1) if path == "-" else read_bounded(path, 1024 * 1024).decode()
     require(len(text) <= 1024 * 1024, "JSON input exceeds limit", "resource_limit")
@@ -251,7 +259,10 @@ def dispatch(argv):
                 )
             }
         ), options.json
-    if (cmd == "fonts" or (cmd == "roll" and "--apply" not in args)) or (cmd == "font" and args and args[0] in ("show", "pairings", "pairing", "principles")):
+    # A roll preview reads the document --apply would use (its canvas and brand), so both pick
+    # the same direction; without a document it rolls standalone.
+    standalone_roll = cmd == "roll" and "--apply" not in args and not has_document(options.project)
+    if cmd == "fonts" or standalone_roll or (cmd == "font" and args and args[0] in ("show", "pairings", "pairing", "principles")):
         from .resource_cli import font_standalone
 
         return font_standalone(cmd, args), options.json
@@ -789,9 +800,20 @@ def project_command(project, cmd, args, *, detail="compact"):
     if cmd == "validate":
         p = Parser(prog="vixl validate")
         p.add_argument("profile", nargs="?")
-        p.add_argument("--rules")
+        p.add_argument(
+            "--rules",
+            action="append",
+            help="A JSON file holding a list of rules, or one rule such as 'text.title.font-size >= 120' (repeatable)",
+        )
         a = p.parse_args(args)
-        result = validate(project, a.profile, read_json(a.rules) if a.rules else None)
+        rules = None
+        for value in a.rules or []:
+            # A value naming a .json file (or an existing file) is a rules file; anything else is one rule.
+            inline = not value.endswith(".json") and not Path(value).is_file()
+            loaded = [value] if inline else read_json(value)
+            require(isinstance(loaded, list), "A rules file must hold a JSON list of rules")
+            rules = (rules or []) + loaded
+        result = validate(project, a.profile, rules)
         if not result["valid"]:
             raise VixlError("validation_failed", "Project validation failed", **result)
         return result, False

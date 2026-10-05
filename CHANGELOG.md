@@ -1,5 +1,36 @@
 # Changelog
 
+## Unreleased
+
+Fixes for the problems found while building the ten projects in `explorations/`.
+
+- **Groups no longer clip their members.** A member that is resized, moved or rotated past the group's box (a sprite scaled up, an animated limb in a nested rig) still draws, and scales, flips and turns with the group in PNG and SVG. The box itself is unchanged for layout; `inspect` reports `drawn_bounds` for anything drawn past it. Scaling a group of pixel layers stays nearest-neighbor.
+- **Blur spreads past the layer's box**, so a blurred shape keeps its outline instead of becoming a soft rectangle; at the canvas edge the layer's edge pixels continue, so full-bleed photos do not fade. A later size- or position-dependent effect (wave, noise, vignette, contrast, artistic filters) keeps its stack within the box, unchanged. SVG filter regions and `rasterize` include the spread.
+- A stroke wider than its shape no longer crashes rendering with a raw Pillow error; the visible ring shrinks to nothing as the box approaches the stroke width.
+- `@swatch` colors work in `repeat`/`repeat-blend` fills and endpoints, and swatches defined from variables (`"${brand}"`) resolve everywhere, including per-row render variables.
+- `text-layout fit` shrinks until the longest word fits on a line instead of breaking it ("SOLSTI / CE"). The `text-fit` suite rule measures auto-sized text as drawn, so it no longer always fails.
+- Artboard `x`/`y` are kept: such a board is a viewport onto that region of the document canvas.
+- Characters no font can draw are a `fonts` error in every `check` (whichever checks are selected), an automatic `missing-glyphs` failure in every suite (so production and gated group edits catch them) and a `validate` failure.
+- Text shaping keeps per-thread font objects, fixing production runs with `workers: 2` that failed with `TTLibError`. Unexpected production errors record their message.
+- `validate` grades decorative layers (`layer-intent --role decoration`) that bleed off the edge as warnings.
+- Warped text (`flag`, `arc`) is moved back inside its text box instead of losing the tops of lifted letters, in outlines, SVG and the raster fallback.
+- `text.NAME.font-size` assertions and `validate`'s size warnings use a linked character style's size.
+- `vixl -p DOC roll` previews read the document's canvas and brand (as does a session's current document), so they pick the same direction as `roll --apply`.
+- `--ink-limit` applies after ICC separation too, instead of being silently ignored with `--icc`.
+- Contrast checks credit outlines: text with a `stroke` style at least 3 px wide (and 2% of its font size) passes when its outline contrasts with the backdrop, and `measure --target` reports the outline's contrast.
+- The `bounds` check reports boxed text (a `text-layout` width and height) that no longer fits its box, such as after `text-set` raises the size, with the size it needs.
+- `oil-paint` takes the mode of a luminance key and copies that pixel's color, so thin dark strokes no longer get green, magenta or blue fringes.
+- A layer scaled below one pixel on either axis (a `scale`/`scale-x` key of 0) draws nothing instead of a 1-pixel sliver.
+- A recipe input's default only fills a variable the document and artboard leave unset: row values beat artboard variables, which beat input defaults.
+- `pen` without `width`/`height` fits its layer box to the path, its stroke (including mitred corners) and its handles instead of spanning the canvas; node coordinates stay canvas positions, `x`/`y` offset them, `x:"center"` centers the box, and editing by `target` keeps the frame. A box smaller than the nodes is rejected instead of clipping them.
+- Contrast issues say what share of the glyph pixels fail and where (`weakest_region`, also in `measure --target`), instead of "for most glyph pixels".
+- Clearer errors: ragged pixel rows name the row and both widths; constraint errors name the layers or the conflicting anchors; the batch-size error gives the limit; a `units:"px"` pivot that is too far is reported in pixels; an undefined swatch is reported at the operation that uses it.
+- `vixl validate --rules` also takes a single assertion and can repeat. Unnamed layers are numbered (`shape`, `shape 2`) instead of failing on the second one.
+- **Faster checks.** Top-level text is contrast-checked from one shared render instead of three renders per layer; nested group renders reuse the document's resolved layout; text measurement is cached; styles and blends are computed over the layer's region instead of the whole canvas; the in-memory layer cache is least-recently-used and sized for real documents. The 01 poster's full `check` went from more than 10 minutes to about 17 s with identical results.
+- **Faster painting.** Strokes rasterize over their own footprint, a layer's painted strokes are cached so adding strokes renders only the new ones, a paint operation validates only its new stroke, and layout no longer copies every stroke. 400 strokes in one batch: 9.8 s to 1.6 s; one more stroke on a 3,000-stroke layer: 10.7 s to 0.3 s. Output is pixel-identical.
+- **Faster timelines.** Cached layer images are keyed by size rather than position, so layers that only move are not redrawn each frame, and timeline exports and contact sheets of saved documents use the persistent render cache (per user: `~/.cache/vixl/render`, or `VIXL_RENDER_CACHE`). A brush-heavy test went from 3.9 s to 0.7 s per frame (0.2 s when exported again).
+- The ten exploration builds, which took up to 14 minutes, now finish in 13 s to about 4 minutes.
+
 ## 0.17.0
 
 - Seeded editable rose, leaf, petal, and blob paths; path fitting; adjustable pen tension and corner anchors.
@@ -13,8 +44,6 @@
 - Version/help/no-update launches avoid installation write locks and pending activation.
 - Runtime installation retries transient Windows scanner/probe file locks with a bounded wait and keeps the active version on failure.
 - Fully verified version changes merged to main can publish releases; publication remains gated by Linux tests, Windows tests, bundled runtime, installer, and installation checks.
-
-## Unreleased
 
 ## 0.16.0
 
