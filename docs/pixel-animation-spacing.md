@@ -1,5 +1,7 @@
 # Spacing checks and pixel animation (0.9.0)
 
+[Documentation home](README.md) · [Getting started](getting-started.md) · [Visual gallery](gallery.md)
+
 Vixl is a headless application designed for autonomous AI agents; humans can use the same interfaces.
 
 ## Check the spacing you intended

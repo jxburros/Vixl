@@ -1,5 +1,7 @@
 # Creative tools and collaborative projects
 
+[Documentation home](README.md) · [Getting started](getting-started.md) · [Visual gallery](gallery.md)
+
 All editing uses the existing atomic operation engine. Workspace resources, design tests,
 effects, plugin packs, project groups and agent branches use **one workflow dispatcher**:
 

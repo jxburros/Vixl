@@ -1,5 +1,7 @@
 # AI providers
 
+[Documentation home](README.md) · [Getting started](getting-started.md) · [Visual gallery](gallery.md)
+
 Queued image generation and opt-in generated video use the [production job API](production.md#durable-jobs).
 Video requires an explicitly configured HTTP gateway with `capabilities:["video"]` and
 the [video job contract](production.md#generated-video-gateway), including durable job IDs

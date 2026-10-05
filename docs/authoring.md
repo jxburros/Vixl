@@ -1,5 +1,7 @@
 # Authoring and CLI improvements in 0.17
 
+[Documentation home](README.md) · [Getting started](getting-started.md) · [Visual gallery](gallery.md)
+
 ## Organic geometry
 
 Organic helpers create ordinary editable SVG path layers. Seeds make variation reproducible;

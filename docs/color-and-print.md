@@ -1,5 +1,7 @@
 # Color language and print output
 
+[Documentation home](README.md) · [Getting started](getting-started.md) · [Visual gallery](gallery.md)
+
 Vixl documents are RGBA8 sRGB. Every color field accepts a rich color language that resolves to sRGB, and print output is separated to CMYK when you export. This keeps editing simple and predictable while still producing press-ready files.
 
 ## Writing colors

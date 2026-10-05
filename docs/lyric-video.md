@@ -1,5 +1,7 @@
 # Lyric videos
 
+[Documentation home](README.md) · [Getting started](getting-started.md) · [Visual gallery](gallery.md)
+
 The `lyric-video` workflow turns three files into an MP4 or WebM with the lyrics in sync:
 
 - a song (any format ffmpeg reads: MP3, WAV, FLAC, M4A, OGG);

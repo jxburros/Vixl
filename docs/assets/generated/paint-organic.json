@@ -1,0 +1,76 @@
+{
+  "operations": [
+    {
+      "type": "text",
+      "name": "heading",
+      "text": "Paint and procedural forms",
+      "x": 48,
+      "y": 32,
+      "size": 38,
+      "color": "#18283b"
+    },
+    {
+      "type": "text",
+      "name": "subtitle",
+      "text": "Editable strokes and a seeded organic shape; no image provider.",
+      "x": 48,
+      "y": 88,
+      "size": 20,
+      "color": "#4d6175"
+    },
+    {
+      "type": "paint-layer",
+      "name": "watercolor"
+    },
+    {
+      "type": "paint",
+      "target": "watercolor",
+      "brush": "watercolor",
+      "path": "M70 245 C220 130 350 370 540 240",
+      "size": 54,
+      "color": "#235cdb",
+      "seed": 7
+    },
+    {
+      "type": "paint-layer",
+      "name": "ink"
+    },
+    {
+      "type": "paint",
+      "target": "ink",
+      "brush": "ink",
+      "path": "M70 355 C230 230 350 470 540 350",
+      "size": 8,
+      "color": "#18283b",
+      "seed": 7
+    },
+    {
+      "type": "organic",
+      "preset": "sunflower",
+      "name": "bloom",
+      "x": 700,
+      "y": 165,
+      "width": 260,
+      "height": 280,
+      "seed": 7
+    },
+    {
+      "type": "text",
+      "name": "paint-label",
+      "text": "Watercolor + ink",
+      "x": 70,
+      "y": 477,
+      "size": 24,
+      "color": "#18283b"
+    },
+    {
+      "type": "text",
+      "name": "organic-label",
+      "text": "Seeded sunflower",
+      "x": 700,
+      "y": 477,
+      "size": 24,
+      "color": "#18283b"
+    }
+  ]
+}

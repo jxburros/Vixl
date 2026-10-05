@@ -12,6 +12,7 @@ build/
 *.vixl.lock
 *.vixl
 !examples/after-hours.vixl
+!docs/assets/generated/*.vixl
 !assets/brand/digital-shift/Editable-Vixl/*.vixl
 .env
 

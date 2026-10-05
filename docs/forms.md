@@ -1,5 +1,13 @@
 # Forms
 
+![Registration form generated from real field layers](assets/generated/registration.png)
+
+Start with the [forms and decks tutorial](tutorials/forms-and-decks.md), or try the
+[editable master](assets/generated/registration.vixl) and
+[fillable PDF](assets/generated/registration.pdf). This reference explains all field settings.
+
+[Documentation home](README.md) · [Getting started](getting-started.md) · [Visual gallery](gallery.md)
+
 A form is a page with named places where someone writes. In Vixl those places are **field
 layers**: they move, align, group and check like any other layer, and one document produces both
 the blank **fillable PDF** (fill it in Acrobat, a browser, Preview or a phone) and any number of

@@ -1,5 +1,7 @@
 # Checked production workflows
 
+[Documentation home](README.md) · [Getting started](getting-started.md) · [Visual gallery](gallery.md)
+
 Vixl can save a design's requirements, turn an editable document into a typed recipe,
 produce variations, reuse render work, and assemble films. These are local, headless
 features: no GUI or model is needed for checks, templates, motion or rendering.

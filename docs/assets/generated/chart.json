@@ -1,0 +1,191 @@
+{
+  "operations": [
+    {
+      "type": "text",
+      "name": "heading",
+      "text": "Make a chart from ordinary layers",
+      "x": 48,
+      "y": 32,
+      "size": 38,
+      "color": "#18283b"
+    },
+    {
+      "type": "text",
+      "name": "subtitle",
+      "text": "Illustrative data: completed tasks, not measured Vixl performance.",
+      "x": 48,
+      "y": 88,
+      "size": 20,
+      "color": "#4d6175"
+    },
+    {
+      "type": "text",
+      "name": "category-0",
+      "text": "Draft",
+      "x": 48,
+      "y": 172,
+      "size": 24,
+      "color": "#18283b"
+    },
+    {
+      "type": "shape",
+      "shape": "rounded-rectangle",
+      "name": "track-0",
+      "x": 210,
+      "y": 160,
+      "width": 720,
+      "height": 48,
+      "fill": "#e4e7e7",
+      "radius": 6
+    },
+    {
+      "type": "shape",
+      "shape": "rounded-rectangle",
+      "name": "bar-0",
+      "x": 210,
+      "y": 160,
+      "width": 216,
+      "height": 48,
+      "fill": "#235cdb",
+      "radius": 6
+    },
+    {
+      "type": "text",
+      "name": "value-0",
+      "text": "24",
+      "x": 958,
+      "y": 168,
+      "size": 26,
+      "color": "#18283b"
+    },
+    {
+      "type": "text",
+      "name": "category-1",
+      "text": "Review",
+      "x": 48,
+      "y": 260,
+      "size": 24,
+      "color": "#18283b"
+    },
+    {
+      "type": "shape",
+      "shape": "rounded-rectangle",
+      "name": "track-1",
+      "x": 210,
+      "y": 248,
+      "width": 720,
+      "height": 48,
+      "fill": "#e4e7e7",
+      "radius": 6
+    },
+    {
+      "type": "shape",
+      "shape": "rounded-rectangle",
+      "name": "bar-1",
+      "x": 210,
+      "y": 248,
+      "width": 342,
+      "height": 48,
+      "fill": "#235cdb",
+      "radius": 6
+    },
+    {
+      "type": "text",
+      "name": "value-1",
+      "text": "38",
+      "x": 958,
+      "y": 256,
+      "size": 26,
+      "color": "#18283b"
+    },
+    {
+      "type": "text",
+      "name": "category-2",
+      "text": "Refine",
+      "x": 48,
+      "y": 348,
+      "size": 24,
+      "color": "#18283b"
+    },
+    {
+      "type": "shape",
+      "shape": "rounded-rectangle",
+      "name": "track-2",
+      "x": 210,
+      "y": 336,
+      "width": 720,
+      "height": 48,
+      "fill": "#e4e7e7",
+      "radius": 6
+    },
+    {
+      "type": "shape",
+      "shape": "rounded-rectangle",
+      "name": "bar-2",
+      "x": 210,
+      "y": 336,
+      "width": 468,
+      "height": 48,
+      "fill": "#235cdb",
+      "radius": 6
+    },
+    {
+      "type": "text",
+      "name": "value-2",
+      "text": "52",
+      "x": 958,
+      "y": 344,
+      "size": 26,
+      "color": "#18283b"
+    },
+    {
+      "type": "text",
+      "name": "category-3",
+      "text": "Deliver",
+      "x": 48,
+      "y": 436,
+      "size": 24,
+      "color": "#18283b"
+    },
+    {
+      "type": "shape",
+      "shape": "rounded-rectangle",
+      "name": "track-3",
+      "x": 210,
+      "y": 424,
+      "width": 720,
+      "height": 48,
+      "fill": "#e4e7e7",
+      "radius": 6
+    },
+    {
+      "type": "shape",
+      "shape": "rounded-rectangle",
+      "name": "bar-3",
+      "x": 210,
+      "y": 424,
+      "width": 612,
+      "height": 48,
+      "fill": "#087f78",
+      "radius": 6
+    },
+    {
+      "type": "text",
+      "name": "value-3",
+      "text": "68",
+      "x": 958,
+      "y": 432,
+      "size": 26,
+      "color": "#18283b"
+    },
+    {
+      "type": "text",
+      "name": "chart-note",
+      "text": "Scale: 9 px per task \u00b7 Baseline: 0 \u00b7 Bar widths are data \u00d7 scale",
+      "x": 48,
+      "y": 535,
+      "size": 20,
+      "color": "#4d6175"
+    }
+  ]
+}

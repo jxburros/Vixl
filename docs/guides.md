@@ -1,5 +1,7 @@
 # Guides, grids and placement
 
+[Documentation home](README.md) · [Getting started](getting-started.md) · [Visual gallery](gallery.md)
+
 Guides are named document metadata that are never painted into output. They give an agent
 something exact to place against, and something to check against when it cannot see the
 result. Besides vertical and horizontal guides, a guide can be an angled line, a ray, a segment,
