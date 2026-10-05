@@ -56,6 +56,10 @@ def compile_command(tokens):
     authoring = compile_authoring(cmd, args)
     if authoring is not None:
         return authoring
+    from .guides import compile_command as compile_guides
+    guided = compile_guides(cmd, args)
+    if guided is not None:
+        return guided
     from .organic import compile_command as compile_organic
     organic = compile_organic(cmd, args)
     if organic is not None:

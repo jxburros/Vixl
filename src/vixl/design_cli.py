@@ -89,14 +89,35 @@ def compile_design(cmd, args):
         p.add_argument("--path", type=json.loads)
     elif cmd == "guide":
         p.add_argument("name")
-        p.add_argument("axis", choices=["x", "y"])
-        p.add_argument("position", type=float)
-    elif cmd == "grid":
-        p.add_argument("name")
-        for key in ("columns", "rows"):
-            p.add_argument("--" + key, type=int)
-        for key in ("margin", "gutter"):
+        p.add_argument("axis", nargs="?", choices=["x", "y"])
+        p.add_argument("position", nargs="?", type=float)
+        p.add_argument("--kind", choices=["axis", "line", "ray", "segment", "point", "circle", "path"])
+        for key in ("x", "y", "angle", "radius"):
             p.add_argument("--" + key, type=float)
+        p.add_argument("--points", type=json.loads, help="JSON [[x1, y1], [x2, y2]] for a segment, or a line through two points")
+        p.add_argument("--d", help="SVG path for a path guide")
+        p.add_argument("--delete", action="store_true", default=None)
+    elif cmd == "grid":
+        from .guides import GRID_KINDS
+
+        p.add_argument("name")
+        p.add_argument("--kind", choices=list(GRID_KINDS))
+        for key in ("columns", "spokes", "rays", "points"):
+            p.add_argument("--" + key, type=int)
+        p.add_argument("--rows", type=int)
+        p.add_argument("--rings", type=json.loads, help="A count or a JSON list of radii (polar)")
+        for key in ("margin", "gutter", "spacing", "offset", "x", "y", "radius", "angle", "turns", "horizon"):
+            p.add_argument("--" + key, type=float)
+        p.add_argument("--angles", type=float, nargs="+")
+        p.add_argument("--spacings", type=float, nargs="+")
+        p.add_argument("--region", type=float, nargs=4, metavar=("X", "Y", "W", "H"))
+        p.add_argument("--corner", choices=["bottom-right", "bottom-left", "top-right", "top-left"])
+        p.add_argument("--vanishing", type=json.loads, help="JSON [[x, y], …] vanishing points (perspective)")
+        p.add_argument("--delete", action="store_true", default=None)
+        data = {k: v for k, v in vars(p.parse_args(args)).items() if v is not None}
+        if "region" in data:
+            data["region"] = list(data["region"])
+        return {"type": cmd, **data}
     elif cmd == "symbol":
         p.add_argument("target")
         p.add_argument("name")

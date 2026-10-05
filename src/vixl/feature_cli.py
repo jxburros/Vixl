@@ -24,7 +24,7 @@ EDITING = (
     "palette-generate",
     "type-scale",
 )
-DOCUMENT = ("timeline", "export-timeline", "timeline-sheet", "export-icons", "layout")
+DOCUMENT = ("timeline", "export-timeline", "timeline-sheet", "export-icons", "layout", "guides")
 
 
 def _value(text):
@@ -342,6 +342,11 @@ def project_feature(project, cmd, args):
         sheet = contact_sheet(project, a.count, a.columns, times=a.times)
         sheet.save(a.out, format="PNG")
         return {"output": a.out, "size": list(sheet.size)}, False
+    if cmd == "guides":
+        from .guides import describe
+
+        require(not args, "Use guides to list guides and grids")
+        return describe(project), False
     if cmd == "export-icons":
         from .exports import export_icons
 

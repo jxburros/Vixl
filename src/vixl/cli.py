@@ -34,8 +34,11 @@ Organic:   organics (presets, generators, rules), organic PRESET [--set petals=8
            organic --parts JSON, organic --target NAME --seed N (regrow)
 Design:    pen, shape, shape-place, container-place, container-swap, container-reflow, group, ungroup, clip, layer-style, distribute, style-define,
            style-apply, swatch, artboard, frame, replace-contents, repeat, repeat-blend,
-           adjustment, lut, lookup, comp-save, comp-apply, text-layout, guide, grid,
-           pathfinder, symbol, symbol-instance
+           adjustment, lut, lookup, comp-save, comp-apply, text-layout, pathfinder, symbol, symbol-instance
+Guides:    guide NAME x|y POS | guide NAME --kind line|ray|segment|point|circle|path …, guides,
+           grid NAME [--kind columns|baseline|thirds|golden|armature|golden-spiral|polar|isometric|triangular|hex|oblique|perspective],
+           place LAYER… --guide NAME [--at F | --start F --end F | --spacing PX | --with GUIDE] [--orient tangent],
+           snap LAYER… [--tolerance 8], check --checks guides alignment, render --out F --show-guides
 Measure:   info, sample X Y, histogram [--region X Y W H], info --target TEXT,
            spacing --targets A B C --axis vertical [--expected N] [--tolerance N] [--check],
            spacing --around BODY --before HEADER --after FOOTER,
@@ -173,6 +176,7 @@ def output_options(args, command):
     p.add_argument("--dpi", type=float)
     p.add_argument("--icon-sizes", type=int, nargs="+")
     p.add_argument("--time", help="Render a timeline frame: ms, 1.5s, 50%% or a marker")
+    p.add_argument("--show-guides", action="store_true", help="Draw the document's guides over a raster render")
     return p.parse_args(args)
 
 
@@ -604,6 +608,16 @@ def project_command(project, cmd, args, *, detail="compact"):
                 profile=a.profile,
                 check=not a.no_check,
             ), False
+        if a.show_guides:
+            from .guides import draw_overlay
+
+            require(destination != "-", "--show-guides writes a file")
+            image = project.render(pairs(a.set), artboard=a.artboard, comp=a.comp).convert("RGBA")
+            draw_overlay(image, project)
+            fmt = (a.format or Path(destination).suffix.lstrip(".") or "PNG").upper()
+            require(fmt in ("PNG", "JPG", "JPEG", "WEBP"), "--show-guides renders PNG, JPEG or WebP")
+            image.convert("RGB" if fmt in ("JPG", "JPEG") else "RGBA").save(destination, format="JPEG" if fmt == "JPG" else fmt)
+            return {"output": destination, "guides": len(project.state.get("guides", {}))}, False
         data = project.export(
             None if destination == "-" else destination,
             quality=a.quality,
@@ -650,7 +664,7 @@ def project_command(project, cmd, args, *, detail="compact"):
         p.add_argument(
             "--checks",
             nargs="+",
-            choices=["bounds", "overlap", "contrast", "safe_area", "legibility", "print", "color_vision", "content", "fonts", "blanks", "brand"],
+            choices=["bounds", "overlap", "contrast", "safe_area", "legibility", "print", "color_vision", "content", "fonts", "blanks", "brand", "guides", "alignment"],
         )
         p.add_argument("--ink-limit", type=float, default=300)
         p.add_argument("--min-ppi", type=float, default=200)

@@ -14,7 +14,7 @@ from .model import finite
 
 CHECKS = ("bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "fonts", "brand", "content")
 FALLBACK_FONT = "DejaVuSans.ttf"
-OPTIONAL_CHECKS = ("print", "color_vision")
+OPTIONAL_CHECKS = ("print", "color_vision", "guides", "alignment")
 PERCENT = re.compile(r"^(-?\d+(?:\.\d+)?)%$")
 
 
@@ -118,6 +118,41 @@ def missing_glyphs(project):
             for item, report in glyph_reports(project, text) if report["missing"]]
 
 
+def group_matrix(item, resolved, local_bounds):
+    """The 3×3 matrix taking ``item``'s local (parent group) coordinates to canvas coordinates,
+    through each ancestor's centred scale, flips and rotation, as the renderer draws them."""
+    matrix = np.eye(3)
+    parent = resolved.get(item.get("parent"))
+    while parent is not None:
+        x, y, w, h = local_bounds[parent["id"]]
+        angle = math.radians(parent["rotation"])
+        co, si = math.cos(angle), math.sin(angle)
+        sx = parent["width"] / parent["content_width"] * (-1 if parent["flip_x"] else 1)
+        sy = parent["height"] / parent["content_height"] * (-1 if parent["flip_y"] else 1)
+        transform = np.array([[co * sx, -si * sy, 0], [si * sx, co * sy, 0], [0, 0, 1]])
+        center = transform @ [parent["content_width"] / 2, parent["content_height"] / 2, 1]
+        transform[:2, 2] = [x + w / 2 - center[0], y + h / 2 - center[1]]
+        matrix = transform @ matrix
+        parent = resolved.get(parent.get("parent"))
+    return matrix
+
+
+def canvas_projection(resolved, local_bounds):
+    """Canvas-space integer bounds, text scale factors and group matrices for every layer.
+    Shared by the design checks, guide checks and fillable form export, so they agree."""
+    bounds, scales, matrices = {}, {}, {}
+    for item in resolved.values():
+        matrix = group_matrix(item, resolved, local_bounds)
+        x, y, w, h = local_bounds[item["id"]]
+        corners = matrix @ np.array([[x, x + w, x, x + w], [y, y, y + h, y + h], [1, 1, 1, 1]])
+        left, top = np.floor(corners[:2].min(axis=1) + 1e-8).astype(int)
+        right, bottom = np.ceil(corners[:2].max(axis=1) - 1e-8).astype(int)
+        bounds[item["id"]] = tuple(map(int, (left, top, right - left, bottom - top)))
+        scales[item["id"]] = float(np.linalg.norm(matrix[:2, 1]))
+        matrices[item["id"]] = matrix
+    return {"bounds": bounds, "scales": scales, "matrices": matrices}
+
+
 def check_design(
     project,
     *,
@@ -159,27 +194,10 @@ def check_design(
     def visible(item):
         return all(x["visible"] and x["opacity"] > 0 for x in (item, *ancestors(item)))
 
-    # Layout bounds are local to the immediate group. Project their corners
-    # through the same centered scale/flip/rotation used by the renderer.
-    bounds, text_scales = {}, {}
-    for item in resolved.values():
-        matrix = np.eye(3)
-        for parent in ancestors(item):
-            x, y, w, h = local_bounds[parent["id"]]
-            angle = math.radians(parent["rotation"])
-            co, si = math.cos(angle), math.sin(angle)
-            sx = parent["width"] / parent["content_width"] * (-1 if parent["flip_x"] else 1)
-            sy = parent["height"] / parent["content_height"] * (-1 if parent["flip_y"] else 1)
-            transform = np.array([[co * sx, -si * sy, 0], [si * sx, co * sy, 0], [0, 0, 1]])
-            center = transform @ [parent["content_width"] / 2, parent["content_height"] / 2, 1]
-            transform[:2, 2] = [x + w / 2 - center[0], y + h / 2 - center[1]]
-            matrix = transform @ matrix
-        x, y, w, h = local_bounds[item["id"]]
-        corners = matrix @ np.array([[x, x + w, x, x + w], [y, y, y + h, y + h], [1, 1, 1, 1]])
-        left, top = np.floor(corners[:2].min(axis=1) + 1e-8).astype(int)
-        right, bottom = np.ceil(corners[:2].max(axis=1) - 1e-8).astype(int)
-        bounds[item["id"]] = tuple(map(int, (left, top, right - left, bottom - top)))
-        text_scales[item["id"]] = float(np.linalg.norm(matrix[:2, 1]))
+    # Layout bounds are local to the immediate group; project them onto the canvas.
+    projection = canvas_projection(resolved, local_bounds)
+    bounds = projection["bounds"]
+    text_scales = projection["scales"]
     layers = [
         item
         for item in resolved.values()
@@ -437,6 +455,14 @@ def check_design(
         _print_checks(candidate, c, resolved, local_bounds, bounds, layers, content, texts, text_scales, issue, ink_limit, min_ppi)
     if "color_vision" in checks and texts:
         _color_vision(candidate, resolved, bounds, texts, min_contrast, text_scales, issue)
+
+    if "guides" in checks or "alignment" in checks:
+        from .guides import check_alignment, check_guides
+
+        if "guides" in checks:
+            check_guides(candidate, resolved, local_bounds, projection, content, issue)
+        if "alignment" in checks:
+            check_alignment(candidate, resolved, local_bounds, projection, content, issue)
 
     if brand and "brand" in checks:
         from .brand import check as check_brand

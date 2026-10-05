@@ -94,8 +94,10 @@ def scaled_project(project, s):
     canvas["width"], canvas["height"] = _size(canvas["width"], s), _size(canvas["height"], s)
     for layer in state["layers"]:
         _scale_layer(layer, s)
+    from .guides import transform_guide
+
     for guide in state.get("guides", {}).values():
-        guide["position"] = guide["position"] * s
+        transform_guide(guide, s)
     for style in state.get("character_styles", {}).values():
         for key in ("size", "stroke_width"):
             if key in style:
@@ -108,7 +110,8 @@ def scaled_project(project, s):
 
 
 def render_preview(
-    project, max_width, max_height, *, variables=None, artboard=None, comp=None, region=None, time=None, proof=False, simulate=None
+    project, max_width, max_height, *, variables=None, artboard=None, comp=None, region=None, time=None, proof=False, simulate=None,
+    guides=None,
 ):
     """Render at roughly the preview size. ``region`` [x, y, w, h] (document pixels) zooms in;
     zoomed regions may be enlarged up to 8x so small details stay legible. ``time`` previews a
@@ -157,4 +160,9 @@ def render_preview(
             image = colors.simulate_vision(image, simulate)
         if proof:
             image = colors.proof_image(image, ink_limit=None if proof is True else proof / 100)
+    if guides:
+        from .guides import draw_overlay
+
+        image = image.convert("RGBA")
+        draw_overlay(image, candidate, image.width / w, (x, y), None if guides is True else list(guides))
     return image

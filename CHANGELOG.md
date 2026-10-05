@@ -13,6 +13,13 @@
 - **`organic`** ([docs](docs/organic.md)): living forms as ordered parts, each a **generator** (superformula, blob, leaf with margins and venation, petal, log/Archimedean spiral, Raup shell, tapered tentacle with curl, wave and elbow joints, Honda/Leonardo branching, L-systems, Vogel phyllotaxis, relaxed Voronoi cells, Gray–Scott reaction–diffusion, scales, segmented bodies, feather, ellipse/egg/teardrop, growth rings, any SVG path) followed by composable **rules** (radial symmetry with alternating whorls and fans, mirroring with fluctuating asymmetry, placement along a spine or at another part's anchors, Poisson-disc scatter, golden-angle and grid placement, noise, D'Arcy Thompson warps, jitter, smoothing, clipping, size gradients, and pixel-space smooth union, paint-order occlusion and intersection). 32 presets (flower, sunflower, rose, tree, pine, fern, vine, starfish, jellyfish, octopus, shell, snail, caterpillar, mushroom, feather, coral, cactus, giraffe, spots …) take parameters and per-part colors. Results are vector path layers that regrow in place with a new seed. `vixl organics` and the `organic-catalog` workflow action list everything.
 - Path layers accept up to 8,192 commands and 256 KiB, and `line_cap` (round caps and joins for organic strokes).
 
+### Guides, grids and placement
+
+- **Guides beyond right angles** ([docs](docs/guides.md)): guides can be angled `line`s, `ray`s, `segment`s, `point`s, `circle`s and curved `path`s. `grid --kind` generates baseline, thirds, golden-section, harmonic-armature, golden-spiral, polar, isometric, triangular, hex, oblique and 1–3 point perspective systems (each also takes a `region`); grids and guides can be deleted.
+- **`place`** puts layers on any guide: at a fraction along it, spread evenly or at a fixed spacing, at intersections of two guides, with an anchor of the layer on the guide, turned to the tangent or normal. It works inside scaled and rotated groups. **`snap`** moves near misses onto guides, points and intersections and straightens near-miss angles.
+- **`guides` and `alignment` checks** report anchors a few pixels off a guide (with the fixing move), rotations a few degrees off a guide's angle, and sibling layers almost aligned or almost parallel. Previews draw guides (`render_preview(guides=True)`, MCP `guides`, CLI `render --show-guides`); `vixl guides` lists them. Constraints read point and circle guides and horizontal/vertical lines.
+- `checks.canvas_projection` is the shared canvas-space projection of layer bounds (design checks, guide checks and form export use it).
+
 ### Fixes from the explorations
 
 Fixes for the problems found while building the ten projects in `explorations/`.

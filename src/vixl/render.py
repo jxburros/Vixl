@@ -296,12 +296,9 @@ def resolve_layout(project, variables=None, layers=None):
         if ref.startswith("guide:"):
             guide = project.state.get("guides", {}).get(ref[6:])
             require(guide is not None, f"Unknown guide: {ref}")
-            require(
-                anchor
-                in (("left", "right", "center-x") if guide["axis"] == "x" else ("top", "bottom", "center-y")),
-                "Guide axis does not match constraint",
-            )
-            return guide["position"] + float(offset or 0)
+            from .guides import resolve_constraint
+
+            return resolve_constraint(guide, anchor, ref) + float(offset or 0)
         b = bounds["canvas"] if ref == "canvas" else solve(ref)
         x, y, w, h = b
         return {

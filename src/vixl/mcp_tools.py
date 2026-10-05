@@ -169,6 +169,7 @@ def preview(
     time=None,
     proof=False,
     simulate=None,
+    guides=None,
 ):
     from .proxy import render_preview
 
@@ -191,6 +192,7 @@ def preview(
             time=time,
             proof=proof,
             simulate=simulate,
+            guides=guides,
         )
         return encode_png(image, max_bytes)
 
@@ -603,6 +605,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         ] = None,
         proof: Annotated[bool, Field(description="Soft-proof the CMYK print separation")] = False,
         simulate: Literal["protanopia", "deuteranopia", "tritanopia", "achromatopsia"] | None = None,
+        guides: Annotated[bool | list[str] | None, Field(description="Draw guides over the preview: true for all, or guide/grid names")] = None,
         document: Document = None,
     ) -> Image:
         """Return an aspect-preserving PNG capped in dimensions and bytes, rendered at preview resolution.
@@ -622,6 +625,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
                 time=time,
                 proof=proof,
                 simulate=simulate,
+                guides=guides,
             ),
             format="png",
         )
@@ -648,7 +652,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
 
     @tool
     def vixl_check(
-        checks: list[Literal["bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "fonts", "brand", "print", "color_vision"]]
+        checks: list[Literal["bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "fonts", "brand", "print", "color_vision", "guides", "alignment"]]
         | None = None,
         targets: list[str] | None = None,
         safe_area: Annotated[

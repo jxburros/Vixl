@@ -120,9 +120,24 @@ def schemas(add):
             },
         },
     )
-    add("guide", {"name": S, "axis": enum("x", "y"), "position": N}, ["name", "axis", "position"])
+    point = {"type": "array", "items": N, "minItems": 2, "maxItems": 2}
+    add("guide", {"name": S, "axis": enum("x", "y"), "position": N,
+                  "kind": enum("axis", "line", "ray", "segment", "point", "circle", "path"),
+                  "x": N, "y": N, "angle": N, "radius": N, "d": S, "delete": B,
+                  "points": {"type": "array", "items": point, "minItems": 2, "maxItems": 2}}, ["name"])
+    from .guides import GRID_KINDS
+
     add(
-        "grid", {"name": S, "columns": POSITIVE_INT, "rows": POSITIVE_INT, "margin": N, "gutter": N}, ["name"]
+        "grid",
+        {"name": S, "kind": enum(*GRID_KINDS), "columns": POSITIVE_INT, "rows": {"anyOf": [POSITIVE_INT, {"type": "array", "items": N}]},
+         "margin": N, "gutter": N, "spacing": N, "offset": N, "region": {"type": "array", "items": N, "minItems": 4, "maxItems": 4},
+         "x": N, "y": N, "radius": N, "rings": {"anyOf": [{"type": "integer", "minimum": 0}, {"type": "array", "items": N}]},
+         "spokes": {"type": "integer", "minimum": 0}, "angle": N, "angles": {"type": "array", "items": N},
+         "spacings": {"type": "array", "items": N}, "turns": N, "corner": S, "horizon": N,
+         "points": {"type": "integer", "minimum": 1, "maximum": 3},
+         "vanishing": {"type": "array", "items": point, "minItems": 1, "maxItems": 3},
+         "rays": {"type": "integer", "minimum": 2}, "delete": B},
+        ["name"],
     )
     add(
         "pathfinder",

@@ -391,8 +391,10 @@ def viewport(project, x, y, variables=None):
             b = bounds[layer["id"]]
             layer["x"], layer["y"] = stored_origin(resolved[layer["id"]], (b[0] - x, b[1] - y))
             layer["constraints"] = {}
+    from .guides import transform_guide
+
     for guide in project.state.get("guides", {}).values():
-        guide["position"] -= x if guide["axis"] == "x" else y
+        transform_guide(guide, 1.0, x, y)
 
 
 def artboard_project(project, name=None, comp=None, variables=None):
