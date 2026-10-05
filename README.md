@@ -211,6 +211,25 @@ vixl info --target title
 adjustment layers, automatic corrections, LUTs, comps, text layout, guides, pathfinder,
 symbols, provider-backed editing tools, and their precise limits.
 
+## Decks, forms, drawings and more
+
+```bash
+vixl page add results --master std --notes 'Revenue up 42%'   # slides with masters and speaker notes
+vixl rich-text 'Revenue grew **42%**\n- Faster *checkout*' --name body --size 44 --width 900
+vixl export deck.pptx                                          # editable PowerPoint; deck.pdf is vector
+vixl field add email --kind text --label Email --required      # fillable form fields
+vixl export form.pdf --fillable                                # and form fill --data rows.csv --combine all.pdf
+vixl drawing import sketch.jpg --name house                    # build on a hand drawing …
+vixl drawing straighten house                                  # … keeping its lines (drawing report)
+vixl organic sunflower --name bloom --seed 7                   # composable organic forms
+vixl grid dial --kind polar --rings 3 --spokes 12              # guides beyond right angles; place, snap
+vixl workflow lyric-video-export --request request.json --workspace .   # LRC + audio → MP4
+```
+
+[Slides and pages](docs/slides.md) · [forms](docs/forms.md) · [hand drawings](docs/drawing.md) ·
+[rich text](docs/rich-text.md) · [organic shapes](docs/organic.md) · [guides and grids](docs/guides.md) ·
+[lyric videos](docs/lyric-video.md)
+
 ## Spacing checks, pixel art and animation
 
 ```bash

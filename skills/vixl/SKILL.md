@@ -1,6 +1,6 @@
 ---
 name: vixl
-description: Create and edit layered, editable images with Vixl (the `vixl` CLI, its MCP server, REST API, or Python API). Use whenever a task involves making or changing a poster, flyer, letterhead, business card, social graphic, thumbnail, banner, logo, icon or favicon set, photo edit, template, CSV-driven image variants, brush painting, pixel-art sprite, keyframe animation (GIF/WebP/MP4), print-ready CMYK PDF, color palette, or checking an image's layout, spacing, contrast, print readiness or dimensions — and whenever `vixl_*` MCP tools, `.vixl` files, `.vixlscript` files, or the `vixl` command are available or mentioned. Covers named sizes, principled layouts, the color language, every operation type, CLI command, MCP tool, REST route, AI-provider feature, and the verify-by-preview loop.
+description: Create and edit layered, editable images with Vixl (the `vixl` CLI, its MCP server, REST API, or Python API). Use whenever a task involves making or changing a poster, flyer, letterhead, business card, social graphic, thumbnail, banner, logo, icon or favicon set, photo edit, template, CSV-driven image variants, brush painting, pixel-art sprite, keyframe animation (GIF/WebP/MP4), print-ready CMYK PDF, slide deck or PowerPoint, carousel, fillable PDF form or form filling from CSV, lyric video, cleaning up and building on a hand drawing, organic shapes (plants, creatures), rich text, guides and grids, color palette, or checking an image's layout, spacing, contrast, print readiness or dimensions — and whenever `vixl_*` MCP tools, `.vixl` files, `.vixlscript` files, or the `vixl` command are available or mentioned. Covers named sizes, principled layouts, the color language, every operation type, CLI command, MCP tool, REST route, AI-provider feature, and the verify-by-preview loop.
 ---
 
 # Vixl for agents
@@ -37,6 +37,24 @@ for its actual requirements. Run it after edits and before export. Freeze allowe
 palette regression rules; choose antialias tolerances before checking, not to hide violations.
 Use container-reflow after changing copy, then check container-layout. Fork one document per
 agent, edit independently, preview branch-merge, resolve conflicts explicitly, then merge.
+
+## New since 0.17
+
+- **Slides and decks** — `page`/`master` operations, speaker notes, `vixl_render_preview(page="all")`,
+  `vixl_check(checks=["deck"])`, export `.pdf` (vector, selectable text) or `.pptx` (editable).
+- **Forms** — `field` layers, `export_file(fillable=true)`, filling with `values` or the
+  `form-fill` workflow, `check form` with `sample="worst"`.
+- **Hand drawings** — `drawing` import/clean/vectorize/straighten/fill/stroke; keep the person's
+  lines and measure it with `drawing-report` (`preserved`) and `drawing-compare`.
+- **Rich text** — `rich-text` (Markdown) and `text-style` for mixed styles and lists in one box.
+- **Organic shapes** — `organic` presets and composable generators for living things.
+- **Guides beyond right angles** — angled/curved guides, compositional and perspective grids,
+  `place`, `snap`, `guides`/`alignment` checks.
+- **Lyric videos** — `lyric-video-plan/build/export` workflow actions (song + LRC + template).
+
+Read [documents](references/documents.md) (rich text, pages, forms) and
+[drawing, shapes and guides](references/drawing-shapes-guides.md); lyric videos and form-fill jobs
+are in [production](references/production.md).
 
 ## New in 0.13
 

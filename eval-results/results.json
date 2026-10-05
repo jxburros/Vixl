@@ -7,17 +7,256 @@
     "tools": "all"
   },
   "summary": {
-    "tasks": 2,
-    "passed": 2,
+    "tasks": 18,
+    "passed": 18,
     "success_rate": 1.0,
-    "mean_round_trips": 3.5,
-    "mean_tool_calls": 3.5,
+    "mean_round_trips": 3.44,
+    "mean_tool_calls": 3.44,
     "tool_error_rate": 0.0,
-    "mean_tool_result_tokens": 387,
+    "mean_tool_result_tokens": 359,
     "total_input_tokens": 0,
     "total_output_tokens": 0
   },
   "results": [
+    {
+      "task": "copy-between-documents",
+      "agent": "reference",
+      "passed": true,
+      "checks": [
+        {
+          "check": "text copied",
+          "passed": true,
+          "detail": [
+            "placeholder"
+          ]
+        },
+        {
+          "check": "source unchanged",
+          "passed": true,
+          "detail": [
+            "headline"
+          ]
+        }
+      ],
+      "round_trips": 4,
+      "tool_calls": 4,
+      "tool_errors": 0,
+      "tool_result_tokens_estimate": 149,
+      "usage": {},
+      "seconds": 0.02,
+      "error": null,
+      "stop_reason": null,
+      "final": null,
+      "trace": [
+        {
+          "tool": "vixl_document_open",
+          "error": false,
+          "output": "{\"path\":\"a.vixl\",\"canvas\":{\"width\":600,\"height\":300,\"background\":\"white\",\"color_mode\":\"rgba8\"},\"layer_count\":1,\"head\":\"rev_122b18cf1f9c4007\"}"
+        },
+        {
+          "tool": "vixl_document_inspect",
+          "error": false,
+          "output": "{\"id\":\"lyr_a216813ea5d746db\",\"name\":\"headline\",\"type\":\"text\",\"bounds\":[20,20,404,39],\"text\":\"Northern Lights Tour\",\"size\":40,\"color\":\"black\"}"
+        },
+        {
+          "tool": "vixl_document_open",
+          "error": false,
+          "output": "{\"path\":\"b.vixl\",\"canvas\":{\"width\":600,\"height\":300,\"background\":\"white\",\"color_mode\":\"rgba8\"},\"layer_count\":1,\"head\":\"rev_4ad64c8b290c4108\"}"
+        },
+        {
+          "tool": "vixl_operations_apply",
+          "error": false,
+          "output": "{\"success\":true,\"dry_run\":false,\"operations\":1,\"changes\":{\"layers\":{\"lyr_7d6da13e9d8145d5\":{\"width\":404,\"height\":39,\"text\":\"Northern Lights Tour\",\"bounds\":[20,120,404,39]}}}}"
+        }
+      ]
+    },
+    {
+      "task": "equal-spacing",
+      "agent": "reference",
+      "passed": true,
+      "checks": [
+        {
+          "check": "canvas",
+          "passed": true,
+          "detail": [
+            1080,
+            1080
+          ]
+        },
+        {
+          "check": "60 px gaps",
+          "passed": true,
+          "detail": [
+            60,
+            60
+          ]
+        },
+        {
+          "check": "row group",
+          "passed": true,
+          "detail": [
+            "row"
+          ]
+        },
+        {
+          "check": "row centered",
+          "passed": true,
+          "detail": [
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "round_trips": 3,
+      "tool_calls": 3,
+      "tool_errors": 0,
+      "tool_result_tokens_estimate": 344,
+      "usage": {},
+      "seconds": 0.01,
+      "error": null,
+      "stop_reason": null,
+      "final": null,
+      "trace": [
+        {
+          "tool": "vixl_document_create",
+          "error": false,
+          "output": "{\"path\":\"card.vixl\",\"canvas\":{\"width\":1080,\"height\":1080,\"background\":\"white\",\"color_mode\":\"rgba8\"},\"layer_count\":0,\"head\":\"rev_be6d6c5501024fb1\"}"
+        },
+        {
+          "tool": "vixl_operations_apply",
+          "error": false,
+          "output": "{\"success\":true,\"dry_run\":false,\"operations\":4,\"changes\":{\"active_layer\":\"lyr_e9df03db06854e08\",\"layers\":{\"lyr_0208030600e643ab\":{\"added\":true,\"name\":\"sq1\",\"type\":\"shape\",\"bounds\":[0,0,200,200],\"shape\":\"rectangle\",\"fill\":\"red\",\"parent\":\"lyr_e9df03db06854e08\"},\"lyr_df98cf2303744e6e\":{\"added\":true,\"name\":\"sq2\",\"type\":\"shape\",\"bounds\":[260,0,200,200],\"shape\":\"rectangle\",\"fill\":\"green\",\"parent\":\"lyr_e9df03db06854e08\"},\"lyr_e7b0c3c3f4404f61\":{\"added\":true,\"name\":\"sq3\",\"type\":\"shape\",\"bounds\":[520,0,2"
+        },
+        {
+          "tool": "vixl_measure_spacing",
+          "error": false,
+          "output": "{\"axis\":\"horizontal\",\"scope\":\"lyr_e9df03db06854e08\",\"gaps\":[{\"from\":\"lyr_0208030600e643ab\",\"from_name\":\"sq1\",\"to\":\"lyr_df98cf2303744e6e\",\"to_name\":\"sq2\",\"pixels\":60,\"overlap\":false,\"cross_axis_overlap\":200},{\"from\":\"lyr_df98cf2303744e6e\",\"from_name\":\"sq2\",\"to\":\"lyr_e7b0c3c3f4404f61\",\"to_name\":\"sq3\",\"pixels\":60,\"overlap\":false,\"cross_axis_overlap\":200}],\"minimum\":60,\"maximum\":60,\"spread\":0,\"mean\":60.0,\"tolerance\":1,\"expected\":60.0,\"equal\":true,\"matches_expected\":true,\"passed\":true,\"intent\":\"expec"
+        }
+      ]
+    },
+    {
+      "task": "fix-layout",
+      "agent": "reference",
+      "passed": true,
+      "checks": [
+        {
+          "check": "no design errors",
+          "passed": true,
+          "detail": []
+        },
+        {
+          "check": "title kept",
+          "passed": true,
+          "detail": [
+            "title"
+          ]
+        },
+        {
+          "check": "subtitle kept",
+          "passed": true,
+          "detail": [
+            "subtitle"
+          ]
+        },
+        {
+          "check": "footer kept",
+          "passed": true,
+          "detail": [
+            "footer"
+          ]
+        },
+        {
+          "check": "no extra text",
+          "passed": true,
+          "detail": [
+            "title",
+            "subtitle",
+            "footer"
+          ]
+        }
+      ],
+      "round_trips": 4,
+      "tool_calls": 4,
+      "tool_errors": 0,
+      "tool_result_tokens_estimate": 498,
+      "usage": {},
+      "seconds": 0.34,
+      "error": null,
+      "stop_reason": null,
+      "final": null,
+      "trace": [
+        {
+          "tool": "vixl_document_open",
+          "error": false,
+          "output": "{\"path\":\"poster.vixl\",\"canvas\":{\"width\":1080,\"height\":1350,\"background\":\"white\",\"color_mode\":\"rgba8\"},\"layer_count\":3,\"head\":\"rev_341a0f838109493e\"}"
+        },
+        {
+          "tool": "vixl_check",
+          "error": false,
+          "output": "{\"passed\":false,\"errors\":3,\"warnings\":2,\"issues\":[{\"check\":\"bounds\",\"severity\":\"error\",\"layers\":[\"footer\"],\"message\":\"'footer' is cut off by the canvas edge\",\"bounds\":[900,1320,254,49]},{\"check\":\"overlap\",\"severity\":\"error\",\"layers\":[\"title\",\"subtitle\"],\"message\":\"'title' and 'subtitle' overlap by 421 px (4.6% of the smaller layer)\",\"region\":[90,270,690,16]},{\"check\":\"contrast\",\"severity\":\"error\",\"layers\":[\"subtitle\"],\"message\":\"'subtitle' contrast is 1.36:1 or lower for a tenth of its glyph pix"
+        },
+        {
+          "tool": "vixl_operations_apply",
+          "error": false,
+          "output": "{\"success\":true,\"dry_run\":false,\"operations\":3,\"changes\":{\"layers\":{\"lyr_ea88eb872f704e80\":{\"y\":360.0,\"color\":\"#555555\",\"bounds\":[90,360,690,47]},\"lyr_24b0c74f94de43dd\":{\"x\":80.0,\"y\":1200.0,\"bounds\":[80,1200,254,49]}}}}"
+        },
+        {
+          "tool": "vixl_check",
+          "error": false,
+          "output": "{\"passed\":true,\"errors\":0,\"warnings\":1,\"issues\":[{\"check\":\"fonts\",\"severity\":\"warning\",\"layers\":[\"title\",\"subtitle\",\"footer\"],\"message\":\"3 text layer(s) use the bundled fallback font, which is for proofing only ('title', 'subtitle', 'footer'). Choose typefaces: vixl font pairings / font pair, or font install.\"}],\"checked\":{\"checks\":[\"bounds\",\"overlap\",\"contrast\",\"safe_area\",\"legibility\",\"blanks\",\"fonts\",\"brand\",\"content\",\"form\"],\"layers\":3,\"text_layers\":3}}"
+        }
+      ]
+    },
+    {
+      "task": "font-pairing",
+      "agent": "reference",
+      "passed": true,
+      "checks": [
+        {
+          "check": "state_field",
+          "passed": true,
+          "detail": "source-serif-4-600"
+        },
+        {
+          "check": "state_field",
+          "passed": true,
+          "detail": "source-sans-3-400"
+        },
+        {
+          "check": "title",
+          "passed": true,
+          "detail": [
+            "headline"
+          ]
+        }
+      ],
+      "round_trips": 3,
+      "tool_calls": 3,
+      "tool_errors": 0,
+      "tool_result_tokens_estimate": 782,
+      "usage": {},
+      "seconds": 0.09,
+      "error": null,
+      "stop_reason": null,
+      "final": null,
+      "trace": [
+        {
+          "tool": "vixl_document_create",
+          "error": false,
+          "output": "{\"path\":\"design.vixl\",\"canvas\":{\"width\":800,\"height\":800,\"background\":\"transparent\",\"color_mode\":\"rgba8\"},\"layer_count\":0,\"head\":\"rev_2f50a4e810fa45b5\"}"
+        },
+        {
+          "tool": "vixl_font_pair",
+          "error": false,
+          "output": "{\"pairing\":\"source-serif-sans\",\"heading\":{\"name\":\"source-serif-4-600\",\"family\":\"Source Serif 4\",\"weight\":600,\"italic\":false,\"role\":\"heading\"},\"body\":{\"name\":\"source-sans-3-400\",\"family\":\"Source Sans 3\",\"weight\":400,\"italic\":false,\"role\":\"body\"},\"why\":\"Adobe designed Source Serif as a companion to Source Sans, so proportions and color agree while the 18th-c transitional serif adds a clear heading/body distinction.\",\"caution\":\"Both are restrained; add color or scale contrast so the page does not f"
+        },
+        {
+          "tool": "vixl_operations_apply",
+          "error": false,
+          "output": "{\"success\":true,\"dry_run\":false,\"operations\":1,\"changes\":{\"active_layer\":\"lyr_73bb4e931928415b\",\"swatches\":{\"background\":\"#240046\",\"surface\":\"#37155a\",\"ink\":\"#e0aaff\",\"muted\":\"#b989da\",\"accent\":\"#9d4edd\",\"accent-text\":\"#b783e9\",\"on-accent\":\"#ffffff\"},\"character_styles\":{\"caption\":{\"size\":13},\"body\":{\"size\":21},\"lead\":{\"size\":34},\"subhead\":{\"size\":54},\"title\":{\"size\":88},\"headline\":{\"size\":143},\"display\":{\"size\":231}},\"layout\":{\"name\":\"hero-statement\",\"seed\":3878997961,\"palette\":\"lavender\",\"mode\""
+        }
+      ]
+    },
     {
       "task": "form-batch-fill",
       "agent": "reference",
@@ -37,7 +276,7 @@
       "tool_errors": 0,
       "tool_result_tokens_estimate": 158,
       "usage": {},
-      "seconds": 0.34,
+      "seconds": 0.39,
       "error": null,
       "stop_reason": null,
       "final": null,
@@ -45,7 +284,7 @@
         {
           "tool": "vixl_document_open",
           "error": false,
-          "output": "{\"path\":\"form.vixl\",\"canvas\":{\"width\":2550,\"height\":3300,\"background\":\"white\",\"color_mode\":\"rgba8\",\"size\":\"letter\",\"dpi\":300,\"physical\":{\"width\":8.5,\"height\":11,\"unit\":\"in\",\"bleed\":0},\"safe\":38},\"layer_count\":3,\"head\":\"rev_dfd69d9579984657\"}"
+          "output": "{\"path\":\"form.vixl\",\"canvas\":{\"width\":2550,\"height\":3300,\"background\":\"white\",\"color_mode\":\"rgba8\",\"size\":\"letter\",\"dpi\":300,\"physical\":{\"width\":8.5,\"height\":11,\"unit\":\"in\",\"bleed\":0},\"safe\":38},\"layer_count\":3,\"head\":\"rev_dd12760583cb470d\"}"
         },
         {
           "tool": "vixl_workflow",
@@ -125,7 +364,7 @@
       "tool_errors": 0,
       "tool_result_tokens_estimate": 616,
       "usage": {},
-      "seconds": 4.7,
+      "seconds": 4.69,
       "error": null,
       "stop_reason": null,
       "final": null,
@@ -133,12 +372,12 @@
         {
           "tool": "vixl_document_create",
           "error": false,
-          "output": "{\"path\":\"registration.vixl\",\"canvas\":{\"width\":2550,\"height\":3300,\"background\":\"white\",\"color_mode\":\"rgba8\",\"size\":\"letter\",\"dpi\":300,\"physical\":{\"width\":8.5,\"height\":11,\"unit\":\"in\",\"bleed\":0},\"safe\":38},\"layer_count\":0,\"head\":\"rev_d27bd6c2dd12428a\"}"
+          "output": "{\"path\":\"registration.vixl\",\"canvas\":{\"width\":2550,\"height\":3300,\"background\":\"white\",\"color_mode\":\"rgba8\",\"size\":\"letter\",\"dpi\":300,\"physical\":{\"width\":8.5,\"height\":11,\"unit\":\"in\",\"bleed\":0},\"safe\":38},\"layer_count\":0,\"head\":\"rev_b0555cbc0a5c4065\"}"
         },
         {
           "tool": "vixl_operations_apply",
           "error": false,
-          "output": "{\"success\":true,\"dry_run\":false,\"operations\":14,\"changes\":{\"active_layer\":\"lyr_f2ce90056f6a4c5b\",\"layers\":{\"lyr_43e7454888d84d8e\":{\"added\":true,\"name\":\"title\",\"type\":\"text\",\"bounds\":[225,225,850,93],\"text\":\"Event registration\",\"size\":96,\"color\":\"#111111\"},\"lyr_986b26d10e674e6c\":{\"added\":true,\"name\":\"name-label\",\"type\":\"text\",\"bounds\":[225,500,201,33],\"text\":\"Full name\",\"size\":42,\"color\":\"#333333\"},\"lyr_bc6dff85128e4184\":{\"added\":true,\"name\":\"full_name\",\"type\":\"field\",\"bounds\":[225,560,2100,125],"
+          "output": "{\"success\":true,\"dry_run\":false,\"operations\":14,\"changes\":{\"active_layer\":\"lyr_47f6c6b86c2a47e3\",\"layers\":{\"lyr_ac8a8ab7539d4fc7\":{\"added\":true,\"name\":\"title\",\"type\":\"text\",\"bounds\":[225,225,850,93],\"text\":\"Event registration\",\"size\":96,\"color\":\"#111111\"},\"lyr_4c985032e95e469f\":{\"added\":true,\"name\":\"name-label\",\"type\":\"text\",\"bounds\":[225,500,201,33],\"text\":\"Full name\",\"size\":42,\"color\":\"#333333\"},\"lyr_1dfc787085784736\":{\"added\":true,\"name\":\"full_name\",\"type\":\"field\",\"bounds\":[225,560,2100,125],"
         },
         {
           "tool": "vixl_check",
@@ -149,6 +388,751 @@
           "tool": "vixl_export_file",
           "error": false,
           "output": "{\"path\":\"registration.pdf\",\"format\":\"PDF\",\"bytes\":11261,\"pages\":1,\"raster_fallbacks\":{},\"fonts\":1}"
+        }
+      ]
+    },
+    {
+      "task": "layout-filled",
+      "agent": "reference",
+      "passed": true,
+      "checks": [
+        {
+          "check": "state_field",
+          "passed": true,
+          "detail": "hero-statement"
+        },
+        {
+          "check": "title",
+          "passed": true,
+          "detail": [
+            "headline"
+          ]
+        },
+        {
+          "check": "design",
+          "passed": true,
+          "detail": []
+        }
+      ],
+      "round_trips": 2,
+      "tool_calls": 2,
+      "tool_errors": 0,
+      "tool_result_tokens_estimate": 807,
+      "usage": {},
+      "seconds": 0.05,
+      "error": null,
+      "stop_reason": null,
+      "final": null,
+      "trace": [
+        {
+          "tool": "vixl_document_create",
+          "error": false,
+          "output": "{\"path\":\"design.vixl\",\"canvas\":{\"width\":800,\"height\":800,\"background\":\"transparent\",\"color_mode\":\"rgba8\"},\"layer_count\":0,\"head\":\"rev_6e1c8bbe985f4ddc\"}"
+        },
+        {
+          "tool": "vixl_operations_apply",
+          "error": false,
+          "output": "{\"success\":true,\"dry_run\":false,\"operations\":1,\"changes\":{\"active_layer\":\"lyr_f6b41fe4291f4b6f\",\"swatches\":{\"background\":\"#132a13\",\"surface\":\"#2a3f21\",\"ink\":\"#ecf39e\",\"muted\":\"#adb875\",\"accent\":\"#6d8f54\",\"accent-text\":\"#94ad82\",\"on-accent\":\"#000000\"},\"character_styles\":{\"caption\":{\"size\":14},\"body\":{\"size\":21},\"lead\":{\"size\":31},\"subhead\":{\"size\":47},\"title\":{\"size\":70},\"headline\":{\"size\":105},\"display\":{\"size\":158}},\"layout\":{\"name\":\"hero-statement\",\"seed\":4,\"palette\":\"forest\",\"mode\":\"dark\",\"ty"
+        }
+      ]
+    },
+    {
+      "task": "photo-caption",
+      "agent": "reference",
+      "passed": true,
+      "checks": [
+        {
+          "check": "canvas",
+          "passed": true,
+          "detail": [
+            1080,
+            1350
+          ]
+        },
+        {
+          "check": "photo at full width",
+          "passed": true,
+          "detail": [
+            "photo"
+          ]
+        },
+        {
+          "check": "caption",
+          "passed": true,
+          "detail": [
+            "caption"
+          ]
+        },
+        {
+          "check": "caption centered horizontally",
+          "passed": true,
+          "detail": [
+            0.5,
+            330.0
+          ]
+        },
+        {
+          "check": "no design errors",
+          "passed": true,
+          "detail": []
+        },
+        {
+          "check": "file",
+          "passed": true,
+          "detail": [
+            1080,
+            1350
+          ]
+        }
+      ],
+      "round_trips": 5,
+      "tool_calls": 5,
+      "tool_errors": 0,
+      "tool_result_tokens_estimate": 315,
+      "usage": {},
+      "seconds": 0.36,
+      "error": null,
+      "stop_reason": null,
+      "final": null,
+      "trace": [
+        {
+          "tool": "vixl_document_create",
+          "error": false,
+          "output": "{\"path\":\"post.vixl\",\"canvas\":{\"width\":1080,\"height\":1350,\"background\":\"white\",\"color_mode\":\"rgba8\"},\"layer_count\":0,\"head\":\"rev_7fca72651d16446f\"}"
+        },
+        {
+          "tool": "vixl_import_image",
+          "error": false,
+          "output": "{\"id\":\"lyr_02fcef37a75349ad\",\"name\":\"photo\",\"width\":1600,\"height\":1000,\"bounds\":[0,0,1600,1000],\"asset\":\"assets/b988185a7c48b60008c033a246c920d6060b97ee0c669c3c4f19dda56cdc4fbb.jpg\"}"
+        },
+        {
+          "tool": "vixl_operations_apply",
+          "error": false,
+          "output": "{\"success\":true,\"dry_run\":false,\"operations\":4,\"changes\":{\"active_layer\":\"lyr_ad9bd44b04c04527\",\"layers\":{\"lyr_02fcef37a75349ad\":{\"width\":1080,\"height\":675,\"auto_size\":false,\"bounds\":[0,0,1080,675]},\"lyr_ecced9a1a5d34ba9\":{\"added\":true,\"name\":\"bar\",\"type\":\"solid\",\"bounds\":[0,675,1080,675],\"fill\":\"#111111\"},\"lyr_ad9bd44b04c04527\":{\"added\":true,\"name\":\"caption\",\"type\":\"text\",\"bounds\":[168,980,745,50],\"text\":\"Summer Sale \u2013 40% off\",\"size\":64,\"color\":\"white\"}}}}"
+        },
+        {
+          "tool": "vixl_check",
+          "error": false,
+          "output": "{\"passed\":true,\"errors\":0,\"warnings\":1,\"issues\":[{\"check\":\"fonts\",\"severity\":\"warning\",\"layers\":[\"caption\"],\"message\":\"1 text layer(s) use the bundled fallback font, which is for proofing only ('caption'). Choose typefaces: vixl font pairings / font pair, or font install.\"}],\"checked\":{\"checks\":[\"bounds\",\"overlap\",\"contrast\",\"safe_area\",\"legibility\",\"blanks\",\"fonts\",\"brand\",\"content\",\"form\"],\"layers\":3,\"text_layers\":1}}"
+        },
+        {
+          "tool": "vixl_export_file",
+          "error": false,
+          "output": "{\"path\":\"post.jpg\",\"format\":\"JPEG\",\"bytes\":54670}"
+        }
+      ]
+    },
+    {
+      "task": "print-cmyk",
+      "agent": "reference",
+      "passed": true,
+      "checks": [
+        {
+          "check": "state_field",
+          "passed": true,
+          "detail": 300.0
+        },
+        {
+          "check": "file",
+          "passed": true,
+          "detail": [
+            300,
+            300
+          ]
+        }
+      ],
+      "round_trips": 3,
+      "tool_calls": 3,
+      "tool_errors": 0,
+      "tool_result_tokens_estimate": 108,
+      "usage": {},
+      "seconds": 0.05,
+      "error": null,
+      "stop_reason": null,
+      "final": null,
+      "trace": [
+        {
+          "tool": "vixl_document_create",
+          "error": false,
+          "output": "{\"path\":\"design.vixl\",\"canvas\":{\"width\":300,\"height\":300,\"background\":\"transparent\",\"color_mode\":\"rgba8\",\"dpi\":300.0},\"layer_count\":0,\"head\":\"rev_a7e0b44fa69049b4\"}"
+        },
+        {
+          "tool": "vixl_operations_apply",
+          "error": false,
+          "output": "{\"success\":true,\"dry_run\":false,\"operations\":1,\"changes\":{\"active_layer\":\"lyr_dee64bab98e243e4\",\"layers\":{\"lyr_dee64bab98e243e4\":{\"added\":true,\"name\":\"background\",\"type\":\"solid\",\"bounds\":[0,0,300,300],\"fill\":\"teal\"}}}}"
+        },
+        {
+          "tool": "vixl_export_file",
+          "error": false,
+          "output": "{\"path\":\"print.tiff\",\"format\":\"TIFF\",\"bytes\":360194}"
+        }
+      ]
+    },
+    {
+      "task": "restore-deleted",
+      "agent": "reference",
+      "passed": true,
+      "checks": [
+        {
+          "check": "logo restored",
+          "passed": true,
+          "detail": [
+            "logo"
+          ]
+        },
+        {
+          "check": "note kept",
+          "passed": true,
+          "detail": [
+            "note"
+          ]
+        },
+        {
+          "check": "title moved down 20 px",
+          "passed": true,
+          "detail": 70.0
+        }
+      ],
+      "round_trips": 3,
+      "tool_calls": 3,
+      "tool_errors": 0,
+      "tool_result_tokens_estimate": 94,
+      "usage": {},
+      "seconds": 0.1,
+      "error": null,
+      "stop_reason": null,
+      "final": null,
+      "trace": [
+        {
+          "tool": "vixl_document_open",
+          "error": false,
+          "output": "{\"path\":\"deck.vixl\",\"canvas\":{\"width\":800,\"height\":600,\"background\":\"white\",\"color_mode\":\"rgba8\"},\"layer_count\":2,\"head\":\"rev_bf352f687d9e4af9\"}"
+        },
+        {
+          "tool": "vixl_history",
+          "error": false,
+          "output": "{\"head\":\"rev_901a1d15b02945bb\",\"branch\":\"main\",\"branches\":{\"main\":\"rev_901a1d15b02945bb\"},\"checkpoints\":{}}"
+        },
+        {
+          "tool": "vixl_operations_apply",
+          "error": false,
+          "output": "{\"success\":true,\"dry_run\":false,\"operations\":1,\"changes\":{\"layers\":{\"lyr_699278f7512847f7\":{\"y\":70.0,\"bounds\":[40,70,411,47]}}}}"
+        }
+      ]
+    },
+    {
+      "task": "roll-applied",
+      "agent": "reference",
+      "passed": true,
+      "checks": [
+        {
+          "check": "state_field",
+          "passed": true,
+          "detail": "hero-statement"
+        },
+        {
+          "check": "state_field",
+          "passed": true,
+          "detail": "ocean"
+        },
+        {
+          "check": "state_field",
+          "passed": true,
+          "detail": "source-serif-4-600"
+        },
+        {
+          "check": "title",
+          "passed": true,
+          "detail": [
+            "headline"
+          ]
+        }
+      ],
+      "round_trips": 2,
+      "tool_calls": 2,
+      "tool_errors": 0,
+      "tool_result_tokens_estimate": 1125,
+      "usage": {},
+      "seconds": 0.08,
+      "error": null,
+      "stop_reason": null,
+      "final": null,
+      "trace": [
+        {
+          "tool": "vixl_document_create",
+          "error": false,
+          "output": "{\"path\":\"design.vixl\",\"canvas\":{\"width\":800,\"height\":800,\"background\":\"transparent\",\"color_mode\":\"rgba8\"},\"layer_count\":0,\"head\":\"rev_e35d914d06f9425f\"}"
+        },
+        {
+          "tool": "vixl_roll",
+          "error": false,
+          "output": "{\"seed\":12,\"direction\":{\"layout\":\"hero-statement\",\"pairing\":\"source-serif-sans\",\"palette\":\"ocean\",\"mode\":\"dark\",\"type_scale\":\"golden\",\"density\":\"dense\",\"accent\":\"dot\",\"layout_seed\":612463845},\"pairing\":{\"name\":\"source-serif-sans\",\"heading\":{\"family\":\"Source Serif 4\",\"weight\":600},\"body\":{\"family\":\"Source Sans 3\",\"weight\":400},\"relationship\":\"superfamily\",\"mood\":[\"academic\",\"calm\",\"editorial\"],\"best_for\":[\"documentation\",\"reports\",\"long-form\"],\"why\":\"Adobe designed Source Serif as a companion to "
+        }
+      ]
+    },
+    {
+      "task": "story-list",
+      "agent": "reference",
+      "passed": true,
+      "checks": [
+        {
+          "check": "canvas",
+          "passed": true,
+          "detail": [
+            1080,
+            1920
+          ]
+        },
+        {
+          "check": "gradient background",
+          "passed": true,
+          "detail": [
+            "background"
+          ]
+        },
+        {
+          "check": "three large items",
+          "passed": true,
+          "detail": [
+            "item1",
+            "item2",
+            "item3"
+          ]
+        },
+        {
+          "check": "equal gaps",
+          "passed": true,
+          "detail": [
+            134,
+            134
+          ]
+        },
+        {
+          "check": "left edge",
+          "passed": true,
+          "detail": 120.0
+        },
+        {
+          "check": "no design errors",
+          "passed": true,
+          "detail": []
+        }
+      ],
+      "round_trips": 3,
+      "tool_calls": 3,
+      "tool_errors": 0,
+      "tool_result_tokens_estimate": 305,
+      "usage": {},
+      "seconds": 1.52,
+      "error": null,
+      "stop_reason": null,
+      "final": null,
+      "trace": [
+        {
+          "tool": "vixl_document_create",
+          "error": false,
+          "output": "{\"path\":\"story.vixl\",\"canvas\":{\"width\":1080,\"height\":1920,\"background\":\"transparent\",\"color_mode\":\"rgba8\"},\"layer_count\":0,\"head\":\"rev_d3dbb0a0a1384160\"}"
+        },
+        {
+          "tool": "vixl_operations_apply",
+          "error": false,
+          "output": "{\"success\":true,\"dry_run\":false,\"operations\":5,\"changes\":{\"active_layer\":\"lyr_d70040ba005440a9\",\"layers\":{\"lyr_d693297c08764c65\":{\"added\":true,\"name\":\"background\",\"type\":\"gradient\",\"bounds\":[0,0,1080,1920]},\"lyr_cbc4ac511b80405e\":{\"added\":true,\"name\":\"item1\",\"type\":\"text\",\"bounds\":[120,600,224,86],\"text\":\"Plan\",\"size\":110,\"color\":\"white\"},\"lyr_2ce209c6e12d4bb8\":{\"added\":true,\"name\":\"item2\",\"type\":\"text\",\"bounds\":[120,820,266,86],\"text\":\"Build\",\"size\":110,\"color\":\"white\"},\"lyr_d70040ba005440a9\":{"
+        },
+        {
+          "tool": "vixl_check",
+          "error": false,
+          "output": "{\"passed\":true,\"errors\":0,\"warnings\":1,\"issues\":[{\"check\":\"fonts\",\"severity\":\"warning\",\"layers\":[\"item1\",\"item2\",\"item3\"],\"message\":\"3 text layer(s) use the bundled fallback font, which is for proofing only ('item1', 'item2', 'item3'). Choose typefaces: vixl font pairings / font pair, or font install.\"}],\"checked\":{\"checks\":[\"bounds\",\"overlap\",\"contrast\",\"safe_area\",\"legibility\",\"blanks\",\"fonts\",\"brand\",\"content\",\"form\"],\"layers\":3,\"text_layers\":3}}"
+        }
+      ]
+    },
+    {
+      "task": "svg-logo-import",
+      "agent": "reference",
+      "passed": true,
+      "checks": [
+        {
+          "check": "layer",
+          "passed": true,
+          "detail": [
+            "mark"
+          ]
+        },
+        {
+          "check": "layer_field",
+          "passed": true,
+          "detail": 5.0
+        },
+        {
+          "check": "file",
+          "passed": true,
+          "detail": [
+            100,
+            100
+          ]
+        }
+      ],
+      "round_trips": 4,
+      "tool_calls": 4,
+      "tool_errors": 0,
+      "tool_result_tokens_estimate": 139,
+      "usage": {},
+      "seconds": 0.09,
+      "error": null,
+      "stop_reason": null,
+      "final": null,
+      "trace": [
+        {
+          "tool": "vixl_document_create",
+          "error": false,
+          "output": "{\"path\":\"design.vixl\",\"canvas\":{\"width\":100,\"height\":100,\"background\":\"transparent\",\"color_mode\":\"rgba8\"},\"layer_count\":0,\"head\":\"rev_689b19f1b5ff48c0\"}"
+        },
+        {
+          "tool": "vixl_import_document",
+          "error": false,
+          "output": "{\"success\":true,\"dry_run\":false,\"operations\":1,\"changes\":{\"active_layer\":\"lyr_72aed97557a0454f\",\"layers\":{\"lyr_72aed97557a0454f\":{\"added\":true,\"name\":\"mark\",\"type\":\"shape\",\"bounds\":[10,10,80,80],\"shape\":\"path\",\"fill\":\"#ff0000\"}}}}"
+        },
+        {
+          "tool": "vixl_operations_apply",
+          "error": false,
+          "output": "{\"success\":true,\"dry_run\":false,\"operations\":1,\"changes\":{\"layers\":{\"lyr_72aed97557a0454f\":{\"x\":5.0,\"bounds\":[5,10,80,80]}}}}"
+        },
+        {
+          "tool": "vixl_export_file",
+          "error": false,
+          "output": "{\"path\":\"logo.svg.png\",\"format\":\"PNG\",\"bytes\":308}"
+        }
+      ]
+    },
+    {
+      "task": "template-creation",
+      "agent": "reference",
+      "passed": true,
+      "checks": [
+        {
+          "check": "canvas",
+          "passed": true,
+          "detail": [
+            1080,
+            1080
+          ]
+        },
+        {
+          "check": "title",
+          "passed": true,
+          "detail": [
+            "title"
+          ]
+        },
+        {
+          "check": "subtitle",
+          "passed": true,
+          "detail": [
+            "subtitle"
+          ]
+        },
+        {
+          "check": "file",
+          "passed": true,
+          "detail": [
+            1080,
+            1080
+          ]
+        }
+      ],
+      "round_trips": 2,
+      "tool_calls": 2,
+      "tool_errors": 0,
+      "tool_result_tokens_estimate": 83,
+      "usage": {},
+      "seconds": 0.12,
+      "error": null,
+      "stop_reason": null,
+      "final": null,
+      "trace": [
+        {
+          "tool": "vixl_template_create",
+          "error": false,
+          "output": "{\"path\":\"design.vixl\",\"canvas\":{\"width\":1080,\"height\":1080,\"background\":\"transparent\",\"color_mode\":\"rgba8\"},\"layer_count\":3,\"head\":\"rev_615056f4fb1946b3\",\"template\":{\"name\":\"social-square\",\"seed\":2359327413,\"rolled\":{\"background\":\"#fff8e7\",\"foreground\":\"#2b2118\",\"palette\":\"coffee\"}}}"
+        },
+        {
+          "tool": "vixl_export_file",
+          "error": false,
+          "output": "{\"path\":\"preview.png\",\"format\":\"PNG\",\"bytes\":14978}"
+        }
+      ]
+    },
+    {
+      "task": "timeline-motion",
+      "agent": "reference",
+      "passed": true,
+      "checks": [
+        {
+          "check": "state_field",
+          "passed": true,
+          "detail": 1000
+        },
+        {
+          "check": "files_differ",
+          "passed": true,
+          "detail": null
+        },
+        {
+          "check": "file",
+          "passed": true,
+          "detail": [
+            200,
+            100
+          ]
+        }
+      ],
+      "round_trips": 5,
+      "tool_calls": 5,
+      "tool_errors": 0,
+      "tool_result_tokens_estimate": 186,
+      "usage": {},
+      "seconds": 0.22,
+      "error": null,
+      "stop_reason": null,
+      "final": null,
+      "trace": [
+        {
+          "tool": "vixl_document_create",
+          "error": false,
+          "output": "{\"path\":\"design.vixl\",\"canvas\":{\"width\":200,\"height\":100,\"background\":\"transparent\",\"color_mode\":\"rgba8\"},\"layer_count\":0,\"head\":\"rev_d0318032ed1f428d\"}"
+        },
+        {
+          "tool": "vixl_operations_apply",
+          "error": false,
+          "output": "{\"success\":true,\"dry_run\":false,\"operations\":3,\"changes\":{\"active_layer\":\"lyr_84cfedda5df44a8b\",\"timeline\":{\"duration\":1000,\"fps\":10,\"tracks\":[\"lyr_84cfedda5df44a8b.x (2 keys)\"]},\"layers\":{\"lyr_84cfedda5df44a8b\":{\"added\":true,\"name\":\"ball\",\"type\":\"shape\",\"bounds\":[0,40,20,20],\"shape\":\"ellipse\",\"fill\":\"red\"}}}}"
+        },
+        {
+          "tool": "vixl_export_file",
+          "error": false,
+          "output": "{\"path\":\"start.png\",\"format\":\"PNG\",\"bytes\":436}"
+        },
+        {
+          "tool": "vixl_export_file",
+          "error": false,
+          "output": "{\"path\":\"end.png\",\"format\":\"PNG\",\"bytes\":426}"
+        },
+        {
+          "tool": "vixl_export_timeline",
+          "error": false,
+          "output": "{\"output\":\"motion.gif\",\"format\":\"gif\",\"frames\":10,\"fps\":10,\"duration\":1000,\"frame_durations\":[100,100,100,100,100,100,100,100,100,100],\"requested_duration\":1000,\"size\":[200,100],\"bytes\":1243}"
+        }
+      ]
+    },
+    {
+      "task": "variable-variants",
+      "agent": "reference",
+      "passed": true,
+      "checks": [
+        {
+          "check": "templated headline",
+          "passed": true,
+          "detail": [
+            "headline"
+          ]
+        },
+        {
+          "check": "stored value kept",
+          "passed": true,
+          "detail": "Paris"
+        },
+        {
+          "check": "file",
+          "passed": true,
+          "detail": [
+            1200,
+            628
+          ]
+        },
+        {
+          "check": "file",
+          "passed": true,
+          "detail": [
+            1200,
+            628
+          ]
+        },
+        {
+          "check": "variants differ",
+          "passed": true,
+          "detail": null
+        }
+      ],
+      "round_trips": 4,
+      "tool_calls": 4,
+      "tool_errors": 0,
+      "tool_result_tokens_estimate": 136,
+      "usage": {},
+      "seconds": 0.09,
+      "error": null,
+      "stop_reason": null,
+      "final": null,
+      "trace": [
+        {
+          "tool": "vixl_document_create",
+          "error": false,
+          "output": "{\"path\":\"banner.vixl\",\"canvas\":{\"width\":1200,\"height\":628,\"background\":\"white\",\"color_mode\":\"rgba8\"},\"layer_count\":0,\"head\":\"rev_377af08a86f946ca\"}"
+        },
+        {
+          "tool": "vixl_operations_apply",
+          "error": false,
+          "output": "{\"success\":true,\"dry_run\":false,\"operations\":2,\"changes\":{\"variables\":{\"city\":\"Paris\"},\"active_layer\":\"lyr_d22fcc5ffef145a8\",\"layers\":{\"lyr_d22fcc5ffef145a8\":{\"added\":true,\"name\":\"headline\",\"type\":\"text\",\"bounds\":[319,272,562,85],\"text\":\"Hello, ${city}!\",\"size\":96,\"color\":\"#1d1d1f\"}}}}"
+        },
+        {
+          "tool": "vixl_export_file",
+          "error": false,
+          "output": "{\"path\":\"banner-paris.png\",\"format\":\"PNG\",\"bytes\":10549}"
+        },
+        {
+          "tool": "vixl_export_file",
+          "error": false,
+          "output": "{\"path\":\"banner-tokyo.png\",\"format\":\"PNG\",\"bytes\":11107}"
+        }
+      ]
+    },
+    {
+      "task": "workflow-checked-edit",
+      "agent": "reference",
+      "passed": true,
+      "checks": [
+        {
+          "check": "layer_field",
+          "passed": true,
+          "detail": 80.0
+        },
+        {
+          "check": "state_field",
+          "passed": true,
+          "detail": "layer.logo.bounds within canvas"
+        },
+        {
+          "check": "file",
+          "passed": true,
+          "detail": [
+            160,
+            100
+          ]
+        }
+      ],
+      "round_trips": 4,
+      "tool_calls": 4,
+      "tool_errors": 0,
+      "tool_result_tokens_estimate": 252,
+      "usage": {},
+      "seconds": 0.02,
+      "error": null,
+      "stop_reason": null,
+      "final": null,
+      "trace": [
+        {
+          "tool": "vixl_document_create",
+          "error": false,
+          "output": "{\"path\":\"design.vixl\",\"canvas\":{\"width\":160,\"height\":100,\"background\":\"transparent\",\"color_mode\":\"rgba8\"},\"layer_count\":0,\"head\":\"rev_dbfd2349d90840a9\"}"
+        },
+        {
+          "tool": "vixl_operations_apply",
+          "error": false,
+          "output": "{\"success\":true,\"dry_run\":false,\"operations\":2,\"changes\":{\"active_layer\":\"lyr_508c93607c234587\",\"suites\":{\"names\":[\"quality\"]},\"layers\":{\"lyr_508c93607c234587\":{\"added\":true,\"name\":\"logo\",\"type\":\"shape\",\"bounds\":[10,10,20,20],\"shape\":\"rectangle\",\"fill\":\"red\"}}}}"
+        },
+        {
+          "tool": "vixl_workflow",
+          "error": false,
+          "output": "{\"success\":true,\"dry_run\":false,\"operations\":1,\"changes\":{\"layers\":{\"lyr_508c93607c234587\":{\"x\":80.0,\"bounds\":[80,10,20,20]}}},\"committed\":true,\"checks\":{\"quality\":{\"version\":1,\"suite_hash\":\"daf1c9e46930d4f864a072c9a7306d78149d5611d5bef46cceb3be3852e4db33\",\"passed\":true,\"status\":\"passed\",\"errors\":0,\"needs_review\":0,\"coverage\":{\"mode\":\"still\",\"times\":[null]},\"results\":[{\"id\":\"logo\",\"status\":\"passed\",\"severity\":\"error\",\"time\":null,\"expected\":\"layer.logo.bounds within canvas\"}]}},\"bounds\":{\"logo\":["
+        },
+        {
+          "tool": "vixl_workflow",
+          "error": false,
+          "output": "{\"output\":\"preview.png\",\"quality\":\"final\",\"size\":[160,100],\"generation_calls\":0}"
+        }
+      ]
+    },
+    {
+      "task": "youtube-thumbnail",
+      "agent": "reference",
+      "passed": true,
+      "checks": [
+        {
+          "check": "canvas",
+          "passed": true,
+          "detail": [
+            1280,
+            720
+          ]
+        },
+        {
+          "check": "headline",
+          "passed": true,
+          "detail": [
+            "headline"
+          ]
+        },
+        {
+          "check": "subtitle",
+          "passed": true,
+          "detail": [
+            "subtitle"
+          ]
+        },
+        {
+          "check": "badge label",
+          "passed": true,
+          "detail": [
+            "badge-label"
+          ]
+        },
+        {
+          "check": "badge shape",
+          "passed": true,
+          "detail": [
+            "badge"
+          ]
+        },
+        {
+          "check": "safe area, timestamp zone, contrast, legibility",
+          "passed": true,
+          "detail": []
+        },
+        {
+          "check": "file",
+          "passed": true,
+          "detail": [
+            1280,
+            720
+          ]
+        }
+      ],
+      "round_trips": 4,
+      "tool_calls": 4,
+      "tool_errors": 0,
+      "tool_result_tokens_estimate": 366,
+      "usage": {},
+      "seconds": 0.25,
+      "error": null,
+      "stop_reason": null,
+      "final": null,
+      "trace": [
+        {
+          "tool": "vixl_document_create",
+          "error": false,
+          "output": "{\"path\":\"thumbnail.vixl\",\"canvas\":{\"width\":1280,\"height\":720,\"background\":\"#101820\",\"color_mode\":\"rgba8\"},\"layer_count\":0,\"head\":\"rev_7205cb1a09b54147\"}"
+        },
+        {
+          "tool": "vixl_operations_apply",
+          "error": false,
+          "output": "{\"success\":true,\"dry_run\":false,\"operations\":5,\"changes\":{\"active_layer\":\"lyr_f7c1c66a56574d1c\",\"layers\":{\"lyr_e53e916009bd4b2f\":{\"added\":true,\"name\":\"headline\",\"type\":\"text\",\"bounds\":[64,260,807,84],\"text\":\"HOW I BUILT IT\",\"size\":110,\"color\":\"white\"},\"lyr_4cca3c0984174265\":{\"added\":true,\"name\":\"subtitle\",\"type\":\"text\",\"bounds\":[64,400,455,44],\"text\":\"Built in 48 hours\",\"size\":56,\"color\":\"#ffb347\"},\"lyr_9dafb5faa0464732\":{\"added\":true,\"name\":\"badge\",\"type\":\"shape\",\"bounds\":[1020,60,180,80],\"shap"
+        },
+        {
+          "tool": "vixl_check",
+          "error": false,
+          "output": "{\"passed\":true,\"errors\":0,\"warnings\":1,\"issues\":[{\"check\":\"fonts\",\"severity\":\"warning\",\"layers\":[\"headline\",\"subtitle\",\"badge-label\"],\"message\":\"3 text layer(s) use the bundled fallback font, which is for proofing only ('headline', 'subtitle', 'badge-label'). Choose typefaces: vixl font pairings / font pair, or font install.\"}],\"checked\":{\"checks\":[\"bounds\",\"overlap\",\"contrast\",\"safe_area\",\"legibility\",\"blanks\",\"fonts\",\"brand\",\"content\",\"form\"],\"layers\":4,\"text_layers\":3}}"
+        },
+        {
+          "tool": "vixl_export_file",
+          "error": false,
+          "output": "{\"path\":\"thumbnail.png\",\"format\":\"PNG\",\"bytes\":19848}"
         }
       ]
     }
