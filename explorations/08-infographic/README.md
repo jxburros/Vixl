@@ -60,7 +60,7 @@ Files in `output/`: `infographic-{world,europe}.vixl` (editable), `infographic-{
 
 ## Findings
 
-> **Status:** Bug 1 (artboard `x`/`y` ignored) is fixed, and so is finding 4: `build.py` now marks the sun and rays as decoration, and `validate` grades decorative layers that bleed off the edge as warnings, so both datasets validate. Finding 3 is fixed too: contrast on all text now takes seconds. Bug 2 (font-size assertions and linked styles) is still open. See the Unreleased section of the [changelog](../../CHANGELOG.md).
+> **Status:** Bug 1 (artboard `x`/`y` ignored) is fixed, and so is finding 4: `build.py` now marks the sun and rays as decoration, and `validate` grades decorative layers that bleed off the edge as warnings, so both datasets validate. Finding 3 is fixed too: contrast on all text now takes seconds. Bug 2 is fixed as well: font-size assertions and `validate`'s size warnings use the linked character style's size. See the Unreleased section of the [changelog](../../CHANGELOG.md).
 
 **Bugs**
 

@@ -64,7 +64,7 @@ Export formats:
 | Soft proof (how print will look) | `vixl export proof.png --proof [--icc PROFILE.icc]` |
 | Explicit resolution metadata | `--dpi 300` (defaults to the canvas dpi × scale) |
 
-Without a profile, CMYK uses a predictable device-naive separation with gray-component replacement: `--black-generation` (0–1, default 1, full GCR) and `--ink-limit` (total area coverage in percent) control it. With `--icc`, LittleCMS converts sRGB to the profile's CMYK with the chosen rendering intent (`perceptual`, `relative`, `saturation`, `absolute`) and embeds the profile. Vixl does not bundle press profiles; use the one your printer supplies. Alpha is flattened onto `--background` (white by default).
+Without a profile, CMYK uses a predictable device-naive separation with gray-component replacement: `--black-generation` (0–1, default 1, full GCR) and `--ink-limit` (total area coverage in percent) control it. With `--icc`, LittleCMS converts sRGB to the profile's CMYK with the chosen rendering intent (`perceptual`, `relative`, `saturation`, `absolute`) and embeds the profile; the profile decides black generation, and `--ink-limit`, when given, still caps total coverage by reducing C, M and Y. Vixl does not bundle press profiles; use the one your printer supplies. Alpha is flattened onto `--background` (white by default).
 
 `vixl check --checks print` reports:
 

@@ -413,3 +413,105 @@ def test_blur_spreads_only_before_per_pixel_effects():
     for later in ("wave", "vignette", "contrast", "grain", "oil-paint"):
         assert effect_margin(layer("blur", later)) == (0, 0)
     assert effect_margin({"effects": [{"name": "blur", "amount": 4, "enabled": False}]}) == (0, 0)
+
+
+# Remaining findings: warps, assertions, roll previews, ink limits, outlined text ---------------
+
+
+@pytest.mark.parametrize("renderer", ["outlines", "raster"])
+@pytest.mark.parametrize("warp, amount", [("flag", 0.16), ("arc", 0.3), ("arc", -0.3)])
+def test_warped_text_stays_inside_its_box(renderer, warp, amount):
+    from vixl.design_render import legacy_text_image
+    from vixl.render import resolved_layers
+    from vixl.text import render_text
+
+    draw = render_text if renderer == "outlines" else legacy_text_image
+
+    def ink(warp, amount):
+        p = Project(900, 360, "white")
+        p.apply([{"type": "text", "name": "t", "text": "SIGNAL", "size": 140, "color": "black"},
+                 {"type": "text-layout", "target": "t", "width": 800, "height": 300, "warp": warp, "amount": amount}])
+        layer = next(item for item in resolved_layers(p) if item["name"] == "t")
+        return np.asarray(draw(p, layer).getchannel("A"), dtype=float) / 255
+
+    flat, warped = ink("none", 0), ink(warp, amount)
+    # Flag and arc move each column of glyphs up or down; none of the ink is cut off.
+    assert warped.sum() / flat.sum() > 0.98
+    rows = (warped > 0.5).any(axis=1).nonzero()[0]
+    assert rows.min() <= 2  # Top-aligned like unwarped text, not pushed down needlessly.
+
+
+def test_font_size_assertions_use_linked_styles():
+    from vixl.validation import assert_rule, validate
+
+    p = Project(600, 300, "white")
+    p.apply([
+        {"type": "text", "name": "title", "text": "Title", "size": 48, "color": "black"},
+        {"type": "style-define", "name": "big", "settings": {"size": 150}},
+        {"type": "style-apply", "target": "title", "name": "big"},
+        {"type": "text", "name": "small", "text": "x", "size": 48, "color": "black", "y": 200},
+        {"type": "style-define", "name": "tiny", "settings": {"size": 12}},
+        {"type": "style-apply", "target": "small", "name": "tiny"},
+    ])
+    assert assert_rule(p, "text.title.font-size >= 120")
+    assert assert_rule(p, "text.small.font-size < 20")
+    warnings = {c["rule"]: c["passed"] for c in validate(p)["checks"] if "font size" in c["rule"]}
+    assert warnings == {"title font size >= 24": True, "small font size >= 24": False}
+
+
+def test_roll_preview_matches_apply(tmp_path, monkeypatch):
+    from vixl.cli import dispatch
+
+    monkeypatch.chdir(tmp_path)
+    Project.sized("instagram-portrait").save("doc.vixl")
+    before = (tmp_path / "doc.vixl").read_bytes()
+    for seed in ("42", "7", "99"):
+        args = ["roll", "--for", "social", "--mood", "friendly", "--seed", seed]
+        preview, _ = dispatch(["-p", "doc.vixl", *args])
+        assert (tmp_path / "doc.vixl").read_bytes() == before  # A preview leaves the document alone.
+        (tmp_path / "copy.vixl").write_bytes(before)
+        applied, _ = dispatch(["-p", "copy.vixl", *args, "--apply"])
+        assert preview["direction"]["layout"] == applied["direction"]["layout"], seed
+    # Without a document, a roll still works standalone.
+    (tmp_path / ".vixl-session.json").unlink(missing_ok=True)
+    assert dispatch(["roll", "--seed", "42"])[0]["direction"]["layout"]
+
+
+def test_ink_limit_applies_with_an_icc_profile():
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).parent))
+    from icc_helper import cmyk_profile
+
+    p = Project(64, 64, "#1a0530")
+
+    def coverage(**options):
+        data = p.export(format="TIFF", color_space="cmyk", icc_profile=cmyk_profile(), **options)
+        return (np.asarray(Image.open(io.BytesIO(data)), dtype=float).sum(axis=2) / 255 * 100).max()
+
+    unlimited = coverage()
+    assert unlimited > 205
+    assert coverage(ink_limit=200) <= 200.5
+    assert coverage(ink_limit=400) == unlimited
+
+
+def test_outlined_text_passes_contrast_through_its_outline():
+    from vixl.measure import measure
+
+    p = Project(1000, 260, "#2a1050")
+    p.apply([
+        {"type": "text", "name": "plain", "text": "SIGNAL", "size": 120, "color": "#120830", "x": 20, "y": 10},
+        {"type": "text", "name": "outlined", "text": "SIGNAL", "size": 120, "color": "#120830", "x": 20, "y": 130},
+        {"type": "layer-style", "target": "outlined", "name": "stroke", "settings": {"color": "#ffd23f", "width": 5}},
+        {"type": "text", "name": "hairline", "text": "SIGNAL", "size": 120, "color": "#120830", "x": 500, "y": 130},
+        {"type": "layer-style", "target": "hairline", "name": "stroke", "settings": {"color": "#ffd23f", "width": 2}},
+    ])
+    outlined = measure(p, target="outlined", histogram="none")["contrast"]
+    assert outlined["p10"] < 1.5 and outlined["outline"]["p10"] > 10
+    assert "outline" not in measure(p, target="hairline", histogram="none")["contrast"]
+    flagged = {layer for issue in p.check(checks=["contrast"])["issues"] for layer in issue["layers"]}
+    assert flagged == {"plain", "hairline"}
+    # An outline that blends in as well does not rescue the text, and the message says so.
+    p.apply({"type": "layer-style", "target": "outlined", "name": "stroke", "settings": {"color": "#2a1050", "width": 5}})
+    issue = next(i for i in p.check(checks=["contrast"])["issues"] if i["layers"] == ["outlined"])
+    assert "for its outline" in issue["message"] and issue["outline_contrast"] < 1.5

@@ -289,15 +289,20 @@ def check_design(
                 continue
             large = resolved[item["id"]].get("size", 0) * text_scales[item["id"]] >= 24
             threshold = min_contrast or (3.0 if large else 4.5)
-            if result["p10"] < threshold:
+            # Outlined text reads through its outline when the fill blends into the backdrop.
+            outline = result.get("outline")
+            if result["p10"] < threshold and not (outline and outline["p10"] >= threshold):
                 issue(
                     "contrast",
                     "error",
                     f"{item['name']!r} contrast is {result['p10']:.2f}:1 for most glyph pixels "
-                    f"(minimum {result['minimum']:.2f}:1); needs {threshold:g}:1",
+                    f"(minimum {result['minimum']:.2f}:1)"
+                    + (f" and {outline['p10']:.2f}:1 for its outline" if outline else "")
+                    + f"; needs {threshold:g}:1",
                     [item],
                     contrast=result["p10"],
                     required=threshold,
+                    **({"outline_contrast": outline["p10"]} if outline else {}),
                 )
 
     if "safe_area" in checks and (safe_area is not None or avoid):

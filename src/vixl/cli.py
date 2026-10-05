@@ -127,6 +127,14 @@ def current_path(explicit=None):
         raise VixlError("no_project", "No current project. Use vixl new SIZE -o FILE or vixl open FILE.")
 
 
+def has_document(explicit=None):
+    """Whether a command has a document to read: ``-p`` or a session's existing current file."""
+    try:
+        return current_path(explicit).is_file()
+    except VixlError:
+        return False
+
+
 def read_json(path):
     text = sys.stdin.read(1024 * 1024 + 1) if path == "-" else read_bounded(path, 1024 * 1024).decode()
     require(len(text) <= 1024 * 1024, "JSON input exceeds limit", "resource_limit")
@@ -251,7 +259,10 @@ def dispatch(argv):
                 )
             }
         ), options.json
-    if (cmd == "fonts" or (cmd == "roll" and "--apply" not in args)) or (cmd == "font" and args and args[0] in ("show", "pairings", "pairing", "principles")):
+    # A roll preview reads the document --apply would use (its canvas and brand), so both pick
+    # the same direction; without a document it rolls standalone.
+    standalone_roll = cmd == "roll" and "--apply" not in args and not has_document(options.project)
+    if cmd == "fonts" or standalone_roll or (cmd == "font" and args and args[0] in ("show", "pairings", "pairing", "principles")):
         from .resource_cli import font_standalone
 
         return font_standalone(cmd, args), options.json

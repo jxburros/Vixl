@@ -226,8 +226,12 @@ def legacy_text_image(project, layer):
     )
     warp = settings.get("warp", "none")
     if warp != "none":
+        from .text import fit_span
+
         source = image
-        image = Image.new("RGBA", source.size)
+        # Warp onto a tile with room above and below, then keep the box-sized window that holds
+        # the warped line (as the outlined path does), instead of cutting off lifted glyphs.
+        image = Image.new("RGBA", (source.width, source.height * 3))
         amount = settings.get("amount", 0.2)
         for x in range(source.width):
             t = 2 * x / max(1, source.width - 1) - 1
@@ -240,7 +244,10 @@ def legacy_text_image(project, layer):
                 y = round(
                     amount * source.height * ((t * t - 0.5) if warp == "arc" else math.sin(t * math.pi))
                 )
-            image.alpha_composite(strip, (x, y))
+            image.alpha_composite(strip, (x, y + source.height))
+        drawn = image.getchannel("A").getbbox()
+        dy = fit_span(drawn[1] - source.height, drawn[3] - source.height, source.height) if drawn else 0
+        image = image.crop((0, source.height - dy, source.width, 2 * source.height - dy))
     return image
 
 

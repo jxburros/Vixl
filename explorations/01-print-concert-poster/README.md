@@ -71,7 +71,7 @@ On a busy shared machine the build took about 10 minutes, most of it in `check -
 
 ## Findings
 
-> **Status:** Bugs 1 (`@swatch` in repeats) and 3 (`fit` breaking a word) are fixed, and the full `check` on this poster now takes about 17 s instead of more than 10 minutes. Bug 2 (warped text clipped at the top) and the `--ink-limit`/`--icc` interaction are still open. See the Unreleased section of the [changelog](../../CHANGELOG.md).
+> **Status:** Bugs 1–3 are fixed: `@swatch` works in repeats, `fit` shrinks a word instead of breaking it, and warped text is moved back inside its box instead of losing its top (the transparent-stroke workaround is no longer needed). `--ink-limit` now applies with `--icc` as well. The full `check` on this poster takes seconds instead of more than 10 minutes and passes: the outlined SIGNAL headline, whose dark fill blends into the sky, is read through its yellow outline. See the Unreleased section of the [changelog](../../CHANGELOG.md).
 
 ### Bugs
 

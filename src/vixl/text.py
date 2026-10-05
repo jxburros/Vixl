@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 import io
 import math
+import re
 import unicodedata
 from pathlib import Path
 import threading
@@ -322,7 +323,26 @@ def plan(project, layer):
         positioned = path_layout(data, layer["text"], size, settings["path"])
     if settings.get("warp", "none") != "none":
         positioned = warped(positioned, target_w, target_h, settings)
+        # A warp moves glyphs by a fraction of the box height, which can push them past the
+        # top (flag, arc) or bottom of the box; move the warped line back inside it.
+        ys = [float(y) for path, _ in positioned for y in WARPED_Y.findall(path)]
+        if ys:
+            dy = fit_span(min(ys) - stroke, max(ys) + stroke, target_h)
+            positioned = [(path, (1, 0, 0, 1, 0, dy)) for path, _ in positioned]
     return Plan(target_w, target_h, positioned, box)
+
+
+WARPED_Y = re.compile(r"[ML]-?[\d.]+,(-?[\d.]+)")
+
+
+def fit_span(top, bottom, height):
+    """The vertical shift that brings [top, bottom] inside [0, height] with the least movement.
+    Content taller than the box keeps its top visible."""
+    if top < 0:
+        return -top
+    if bottom > height:
+        return -min(top, bottom - height)
+    return 0
 
 
 def path_layout(data, text, size, points):

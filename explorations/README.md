@@ -39,12 +39,13 @@ Each project README has repro details. These are the issues that showed up most 
 - **Text fitting is unreliable.**
   - **Fixed:** `fit:true` broke a word mid-word ("SOLSTI / CE") instead of shrinking it (01).
   - **Fixed:** `text-fit` rules always failed on auto-sized text (09).
-  - Still open: warped text is clipped at the top of its box (01).
+  - **Fixed:** warped text was clipped at the top of its box (01).
 - **Fixed: artboard `x`/`y` are accepted but ignored** (08). An artboard with `x`/`y` is now a viewport onto that region of the canvas.
-- **Assertions read the wrong value.** `text.*.font-size` assertions ignore linked styles (08). Still open.
-- **`roll` previews and applies different directions.** Without `--size`, the preview and `--apply` pick different layouts (09). Still open.
+- **Fixed: assertions read the wrong value.** `text.*.font-size` assertions ignored linked styles (08).
+- **Fixed: `roll` previews and applies different directions.** Without `--size`, the preview and `--apply` picked different layouts (09).
 - **Fixed: production with `workers:2` races** on the shared font cache (07).
-- **`--ink-limit` is silently ignored** when an ICC profile is given (01). Still open.
+- **Fixed: `--ink-limit` is silently ignored** when an ICC profile is given (01).
+- **Fixed: outlined text fails the contrast check.** The 01 SIGNAL headline (dark fill, yellow `stroke` style) was flagged at 1.13:1; outlined text now passes when its outline contrasts with the backdrop.
 - **Fixed: missing glyphs pass every check.** Tofu boxes went unreported (06, 07). They are now an error in every `check`, every suite and `validate`.
 
 ### Performance

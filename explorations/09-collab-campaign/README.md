@@ -135,7 +135,7 @@ No documents were written by any blocked attempt.
 
 ## Findings
 
-> **Status:** Bug 1 (`text-fit` always failing on auto-sized text) is fixed. Bugs 2 and 3 are still open. See the Unreleased section of the [changelog](../../CHANGELOG.md).
+> **Status:** Bugs 1 (`text-fit` always failing on auto-sized text) and 2 (`roll` previews ignoring the document) are fixed. Bug 3 is still open. See the Unreleased section of the [changelog](../../CHANGELOG.md).
 
 ### Bugs
 
