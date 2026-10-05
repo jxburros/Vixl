@@ -503,9 +503,11 @@ def execute(project, op):
             project.state["active_layer"] = duplicate["id"]
     elif kind == "text-set":
         require(layer["type"] == "text", "Layer is not editable text")
+        dropped = []
         if "text" in op and layer.get("rich") and op["text"] != layer["text"]:
-            # New plain text replaces the styled spans; restyle it with text-style or rich-text.
-            layer.pop("rich")
+            from .richedit import replace_text
+
+            dropped = replace_text(layer, op["text"])  # keeps list, alignment and span formatting that still apply
         for key in ("text", "size", "color", "align", "spacing", "stroke_width", "stroke_color"):
             if key in op:
                 layer[key] = op[key]
@@ -519,6 +521,10 @@ def execute(project, op):
         finite(layer.get("spacing", 4), "spacing", 0, 1000)
         finite(layer.get("stroke_width", 0), "stroke_width", 0, 100)
         color(resolve_color(layer["color"], project.state))
+        if layer.get("rich"):
+            from .richedit import override_warnings, report
+
+            report(project, layer, dropped, override_warnings(layer, op))
         box = layer.get("text_layout") or {}
         if "width" not in box and "height" not in box:
             # A text-layout box keeps its wrapping dimensions; plain text re-fits its content.

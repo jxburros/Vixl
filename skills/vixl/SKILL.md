@@ -46,7 +46,8 @@ agent, edit independently, preview branch-merge, resolve conflicts explicitly, t
   `form-fill` workflow, `check form` with `sample="worst"`.
 - **Hand drawings** — `drawing` import/clean/vectorize/straighten/fill/stroke; keep the person's
   lines and measure it with `drawing-report` (`preserved`) and `drawing-compare`.
-- **Rich text** — `rich-text` (Markdown) and `text-style` for mixed styles and lists in one box.
+- **Rich text** — `rich-text` (Markdown) and `text-style` for mixed styles and lists in one box. `text-set` changes the
+  whole layer (text, color, size, font) and keeps bullets and span styles that still apply; read the result's `warnings`.
 - **Organic shapes** — `organic` presets and composable generators for living things.
 - **Guides beyond right angles** — angled/curved guides, compositional and perspective grids,
   `place`, `snap`, `guides`/`alignment` checks.

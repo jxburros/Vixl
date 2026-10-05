@@ -109,7 +109,22 @@ def _operation_schema():
         },
         ["text"],
     )
-    add("text-set", {**text, "font": FONT, "stroke_width": {"type": "integer", "minimum": 0}, "stroke_color": S})
+    add(
+        "text-set",
+        {
+            **text,
+            "text": {**S, "description": "New plain text for the whole layer. On rich text, lines and words are matched so "
+                     "lists, spacing and span styles carry over where they still apply (the result's warnings list what "
+                     "was dropped); use rich-text to rebuild formatted content."},
+            "color": {**S, "description": "Layer text color. Spans of rich text that set their own color keep it; "
+                      "use text-style to recolor those."},
+            "font": FONT,
+            "stroke_width": {"type": "integer", "minimum": 0},
+            "stroke_color": S,
+        },
+        description="Change a whole text layer: content, color, size, font, alignment, spacing or stroke. To style only "
+        "part of the text (a phrase, a character range, a paragraph, bold/italic/tracking) use text-style.",
+    )
     for kind in (
         "remove",
         "hide",
@@ -378,6 +393,9 @@ def schema_error(error, operation, allowed):
         message = f"Unknown field(s) {', '.join(map(repr, extras))}{where}. Allowed: {', '.join(sorted(known))}"
         if hints:
             message += f". Did you mean {', '.join(hints)}?"
+        from .richtext import field_hint
+
+        message += field_hint(kind, extras)
         details.update(field=field or extras[0], allowed=sorted(known), suggestions={k: v[0] for k, v in suggestions.items() if v})
     elif validator == "enum":
         options = error.validator_value

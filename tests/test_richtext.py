@@ -80,13 +80,14 @@ def test_text_style_ranges_paragraphs_and_clearing():
     assert error.value.details["field"] == "match"
 
 
-def test_text_set_keeps_styles_for_base_changes_and_drops_them_for_new_text():
+def test_text_set_keeps_styles_for_base_changes_and_carries_them_into_new_text():
     p = Project(300, 100)
     p.apply([{"type": "rich-text", "name": "t", "markdown": "keep **this**"},
              {"type": "text-set", "target": "t", "color": "blue", "size": 30}])
     assert p.layer("t")["rich"]
     p.apply([{"type": "text-set", "target": "t", "text": "fresh words"}])
-    assert "rich" not in p.layer("t")
+    # New words take the style of the words they replace (tests/test_text_set_formatting.py has more).
+    assert p.layer("t")["rich"]["spans"] == [{"text": "fresh "}, {"text": "words", "bold": True}]
 
 
 def test_rendering_draws_styles():

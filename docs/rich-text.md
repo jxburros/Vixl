@@ -82,15 +82,26 @@ that overflows a box without `fit`.
 
 ## Editing
 
-`text-style` styles part of a text layer (plain text layers become rich the first time):
+Which operation to use: **`text-set` changes the whole layer** (its text, color, size, font,
+alignment, spacing, stroke) and **`text-style` styles parts of it** (a phrase, a character range,
+paragraphs). `text-style` styles part of a text layer (plain text layers become rich the first time):
 
 - `match` with `occurrence` (a number, or `all`, the default), or `start`/`end` character offsets;
-  without either, the whole text.
+  without either, the whole text. On a plain layer, a `text-style` with no range that only sets
+  `color`, `size` or `font` acts as `text-set` (no spans are made; the result's `normalized` says so).
 - Character styles as above; `false` or `normal` removes one; `clear: true` removes them all.
 - Paragraph settings for `paragraphs` (a list of indices, or `all`).
 
-`rich-text --target` replaces a layer's content. `text-set --text` with new text replaces the
-styled spans with plain text; restyle it afterwards. Variables (`${name}`) work inside spans. A
-timeline that keyframes `text` draws those frames as plain text.
+Passing one operation the other's fields fails with a message that names the right operation.
+
+`rich-text --target` replaces a layer's content and formatting. `text-set --text` on a rich layer
+keeps what still applies: lines are matched, so bullets, numbering, alignment and spacing stay with
+their line (a new line continues the list above it), and words are matched, so unchanged words keep
+their styles while new words take the style of the words they replace or follow. The result's
+`warnings` names what could not carry over (the style of a deleted phrase, the settings of a
+deleted line) and whether spans keep their own color, size or font after `text-set --color`,
+`--size` or `--font` (they override the layer; use `text-style` without a range to restyle all of
+the text). Variables (`${name}`) work inside spans and keep the span's formatting, including page
+numbers (`${page}`) on a master. A timeline that keyframes `text` draws those frames as plain text.
 
 Warped text (`text-layout --warp`) and text on a path draw plain text only.

@@ -70,6 +70,7 @@ def service_operation_schema(slim=False):
             props["name"] = {"type": "string", "enum": sorted(EFFECTS)}
         # Detailed field prose remains available through vixl_operation_schema.
         # Avoid repeating it in every tools/list response as the operation catalog grows.
+        variant.pop("description", None)
         for constraint in props.values():
             constraint.pop("description", None)
         if kind in ("field-set", "form"):
@@ -565,7 +566,9 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         fields by layer ID, and new layers as name/type/bounds; full adds before/after snapshots.
         dry_run validates and previews the changes without saving. Omit target to use the active layer.
         font (text, text-set, rich-text spans, layout-apply, fields) takes a registered font name or a role
-        (heading, body), as vixl_text_add does; install fonts first with vixl_font_pair or vixl_font_install."""
+        (heading, body), as vixl_text_add does; install fonts first with vixl_font_pair or vixl_font_install.
+        text-set changes a whole text layer (content, color, size, font; rich-text formatting is kept where it
+        still applies); text-style styles a phrase, character range or paragraphs inside it."""
         return session.apply(operations, dry_run, detail, document)
 
     @tool

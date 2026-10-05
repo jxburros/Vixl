@@ -30,7 +30,7 @@ Common operation fields:
 | add | path **or** embedded asset; name, x, y, linked |
 | solid / gradient | name, width, height, color **or** start/end/direction |
 | text | text, name, font, size, color, align, spacing, x/y |
-| text-set | target; text, size, color, align, spacing, stroke_width/stroke_color |
+| text-set | target; text, size, color, align, spacing, stroke_width/stroke_color, font — the whole layer; on rich text keeps formatting that still applies and reports what it drops under `warnings` ([rich text](rich-text.md#editing)) |
 | move / resize / scale | target; x/y/relative **or** width/height **or** value factor |
 | rotate / opacity / blend | target, value |
 | align | target, alignment, margin |
@@ -91,7 +91,7 @@ New document state: `canvas.size`, `canvas.dpi`, `canvas.physical`, `canvas.blee
 | grid | `name`, `kind` (`columns`, `baseline`, `thirds`, `golden`, `armature`, `golden-spiral`, `polar`, `isometric`, `triangular`, `hex`, `oblique`, `perspective`), kind settings, `region`, `delete` |
 | place / snap | `targets`, `guide`, `at`, `start`/`end`, `spacing`, `with`, `index`, `anchor`, `orient`, `rotate`, `offset`; `snap`: `tolerance` |
 | rich-text | `markdown` or `spans` + `paragraphs`, `name`/`target`, `font`, `size`, `color`, `align`, `width`, `height`, `fit`, `line_height`, `paragraph_spacing`, `list_indent`, `x`, `y` — [rich text](rich-text.md) |
-| text-style | `target`, `match`/`occurrence` or `start`/`end`, character styles, `clear`, `paragraphs` with paragraph settings |
+| text-style | `target`, `match`/`occurrence` or `start`/`end`, character styles, `clear`, `paragraphs` with paragraph settings — parts of a text layer; use `text-set` for the whole layer's text, color, size or font |
 | page | `action` (`add`, `select`, `remove`, `move`, `set`), `page`/`name`, `after`/`before`/`index`, `duplicate`, `master`, `notes`, `background`, `variables`, `hidden`, `transition`, `rename`, `select` — [pages](slides.md) |
 | master | `action` (`add`, `select`, `remove`, `set`), `name`, `from`, `background`, `rename` |
 | field / field-set | `kind`, `name`/`target`, `key`, `label`, `label_layer`, `group_label`, `required`, `read_only`, `default`, `max_length`, `comb`, `format`, `options`, `editable`, `option`, `on_value`, `tab`, `overflow`, `min_size`, `font`, `size`, `color`, `align`, `padding`, `appearance`, `x`, `y`, `width`, `height` — [forms](forms.md) |

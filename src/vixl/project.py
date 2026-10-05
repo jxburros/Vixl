@@ -309,6 +309,9 @@ class Project:
         operations = validated
         candidate = self.clone()
         candidate._resource_budget = self.limits.max_operations - len(operations)
+        from . import notices
+
+        notices.start(candidate)
         before = candidate.inspect()
         for index, operation in enumerate(operations):
             try:
@@ -342,6 +345,7 @@ class Project:
                 raise located(exc, index, operations[index], len(operations)) from exc
             raise
         candidate.__dict__.pop("_resource_budget", None)
+        warned, interpreted = notices.finish(candidate)
         after = candidate.inspect()  # Also resolves constraints, rejecting cycles atomically.
         changes = {
             key: {"before": before.get(key), "after": after.get(key)}
@@ -372,8 +376,10 @@ class Project:
                                for layer in painted]
             if any(not item["visible_pixels"] for item in result["paint"]):
                 result["warnings"] = ["Paint has no visible pixels; check --space canvas versus --space layer and resolved bounds."]
-        if notes:
-            result["normalized"] = notes
+        if warned:
+            result["warnings"] = [*result.get("warnings", []), *warned]
+        if notes or interpreted:
+            result["normalized"] = [*notes, *interpreted]
         return result
 
     def undo(self, count=1):

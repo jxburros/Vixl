@@ -12,7 +12,9 @@ bullet or numbered lists. Write Markdown, then restyle parts:
 ```
 
 Bold/italic use installed variants (`font install Inter --weight 700`) or are synthesized.
-`text-set --text` replaces styled text with plain text. Full syntax: `docs/rich-text.md`.
+`text-set` changes the whole layer (text, color, size, font); `text-style` styles parts of it. `text-set --text`
+on a rich layer keeps bullets, spacing and span styles where the structure still applies and lists what it
+dropped under `warnings`; `rich-text --target` rebuilds formatted content. Full syntax: `docs/rich-text.md`.
 
 ## Pages, masters and decks
 
