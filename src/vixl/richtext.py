@@ -679,6 +679,39 @@ def active(layer):
     return bool(rich) and plain(rich) == layer.get("text")
 
 
+def fonts_used(layer, fallback="DejaVuSans.ttf"):
+    """The stored font of each run of visible text a text layer draws: the layer font for plain
+    text, and for rich text each span's own font (``font`` on the span) or else the layer font."""
+    base = layer.get("font", fallback)
+    if not active(layer):
+        return [base]
+    used = [span.get("font", base) for span in layer["rich"]["spans"] if span["text"].strip()]
+    return used or [base]
+
+
+def glyph_coverage(project, layer):
+    """``text.glyph_coverage`` for rich text: each span is checked against its own font, then the
+    document and bundled fallbacks, the way it is drawn."""
+    from .text import glyph_coverage as span_coverage
+
+    missing, fallback = set(), set()
+    for span in styled_spans(project, layer):
+        report = span_coverage(project, {"font": span["font"], "text": span["text"]})
+        missing.update(report["missing"])
+        fallback.update(report["fallback"])
+    return {"missing": sorted(missing), "fallback": sorted(fallback - missing)}
+
+
+def fill_variables(rich, variables):
+    """Fill ``${variable}`` references inside the spans of a resolved layer's rich record. The
+    resolver substitutes the layer text the same way, so the record keeps matching it (``active``)
+    and each substituted value inherits the formatting of the span it sits in."""
+    from .render import substitute
+
+    for span in rich["spans"]:
+        span["text"] = substitute(span["text"], variables)
+
+
 # ---------------------------------------------------------------------------------------------
 # Operations
 

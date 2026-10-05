@@ -275,6 +275,10 @@ def resolved_layers(project, variables=None):
         for key in ("text", "asset"):
             if key in layer:
                 layer[key] = substitute(layer[key], variables)
+        if layer["type"] == "text" and layer.get("rich"):
+            from .richtext import fill_variables
+
+            fill_variables(layer["rich"], variables)  # keeps the record matching the substituted text
         if layer.get("asset_variable"):
             name = layer["asset_variable"]
             require(name in variables, f"Undefined image variable: {name}", "missing_variable")

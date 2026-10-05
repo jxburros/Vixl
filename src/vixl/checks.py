@@ -68,9 +68,11 @@ def glyph_reports(project, layers):
     fallback font or that no available font covers. Text is read with the project's variables."""
     from .text import glyph_coverage
     from .render import document_variables, substitute
+    from .richtext import active, glyph_coverage as rich_coverage
 
     for item in layers:
-        report = glyph_coverage(project, {**item, "text": substitute(item["text"], document_variables(project))})
+        view = {**item, "text": substitute(item["text"], document_variables(project))}
+        report = (rich_coverage if active(view) else glyph_coverage)(project, view)
         if report["missing"] or report["fallback"]:
             yield item, report
 
@@ -469,7 +471,10 @@ def check_design(
                 )
 
     if "fonts" in checks:
-        fallback = [item for item in texts if resolved[item["id"]].get("font", FALLBACK_FONT) == FALLBACK_FONT]
+        from .richtext import fonts_used
+
+        # The font each run of text is drawn in, so rich text with a font on every span is not flagged.
+        fallback = [item for item in texts if FALLBACK_FONT in fonts_used(resolved[item["id"]], FALLBACK_FONT)]
         if fallback:
             names = ", ".join(repr(x["name"]) for x in fallback[:5]) + (" …" if len(fallback) > 5 else "")
             issue(
