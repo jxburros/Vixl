@@ -13,7 +13,7 @@ The final document holds **3,723 strokes on 26 paint layers**. 3,072 of them are
 other 651 are copies made when the mountain layers are duplicated for the reflections. All of it stays
 editable in `output/painting.vixl`.
 
-Run from the repo root: `python explorations/05-generative-painting/build.py` (about 13 minutes).
+Run from the repo root: `python explorations/05-generative-painting/build.py` (about 13 minutes when it was built; about 4 minutes with the fixes in the [changelog](../../CHANGELOG.md)).
 
 ![The finished painting](output/painting.jpg)
 
@@ -68,6 +68,8 @@ Outputs: `painting.jpg`, `painting.vixl` (editable, 333 KB), `brush-specimens.pn
   `export_timeline` to a contact sheet, GIF (`colors=64`, `fps=10`) and MP4 (ffmpeg).
 
 ## Findings
+
+> **Status:** Real problems 1–4 are fixed: painting is linear in strokes (a paint operation validates only its new stroke, layout no longer copies strokes, and adding strokes renders only the new ones), strokes rasterize over their own footprint, the in-memory cache is least-recently-used and sized for documents like this one, and moving layers reuse their cached image between timeline frames. The branch-per-layer and plate workarounds in `build.py` are no longer needed for speed. Problem 5 (`oil-paint` fringes) is still open. See the Unreleased section of the [changelog](../../CHANGELOG.md).
 
 Timings come from the final run on a shared 4-core container, with other agents' builds running
 (load average 1–3). An earlier run under load ~8 took 731 s for the same cold render.

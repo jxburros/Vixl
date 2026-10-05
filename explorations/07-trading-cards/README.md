@@ -5,7 +5,7 @@ This project is one editable 750×1050 px card template (2.5×3.5 in at 300 dpi)
 Run it from the repository root:
 
 ```bash
-python explorations/07-trading-cards/build.py     # ~15 min on an idle 4-core box, ~35 min under load
+python explorations/07-trading-cards/build.py     # was ~15 min idle (~35 min under load); ~2.5 min with the changelog fixes
 ```
 
 | Template (standard comp) | Holo comp, long name (row 6) | Holo comp, CJK + emoji name (row 9) |
@@ -71,6 +71,8 @@ From `output/qa-report.json`. Checked production uses the recipe with static tex
 The built-in per-row check of `render --data` (contrast, overlap, legibility and so on) flagged none of the real problems above. Because the CSV render uses `fit:true`, long text is silently shrunk to fit. It instead reported contrast "errors" on the white stat digits of rows 9 and 12, which look like a false positive (see Findings).
 
 ## Findings
+
+> **Status:** Bugs 1 (variable-driven swatches) and 2 (the `workers: 2` font-cache race) are fixed, as are silent missing glyphs and the slow design check: a rebuild flags row 9's CJK and emoji characters and leaves that card off the print sheet. Bugs 3 and 4 are still open. See the Unreleased section of the [changelog](../../CHANGELOG.md).
 
 ### Bugs (with repro)
 

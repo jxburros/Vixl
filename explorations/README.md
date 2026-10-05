@@ -17,38 +17,46 @@ Ten complex projects built with Vixl 0.16.0, each designed to stretch a differen
 | 09 | [Loop collaborative campaign](09-collab-campaign/) | brand.json, rolls, layouts across 7 sizes, adapt-layout, branch fork/merge with conflict resolution, group-apply gated by suites |
 | 10 | [Pip the robot film](10-character-film/) | Nested rig with pivots, walk/wave/jump, parallax, painted texture, film-plan with camera, crossfades, captions and audio to MP4 |
 
+## Caveats on the outputs
+
+- **The poster is at 150 dpi.** 01 builds at 150 dpi to keep the committed files small. For press resolution, set `DPI = 300` at the top of its `build.py`; every coordinate scales with the canvas.
+- **The infographic's data is invented.** 08's renewable-share figures were made up to exercise the layout, and its README says so. Don't cite them.
+- **The infographic's committed QA report shows `validate` as invalid.** The only failures are the decorative sun and rays, which bleed off the top edge on purpose. `build.py` now marks them as decoration, which `validate` grades as a warning, so a rebuild reports both datasets valid.
+- **Build times.** When the projects were built, the longest builds took 8 to 14 minutes, mostly in the design check. With the fixes, rebuilding all ten (two at a time on a 4-core container) took 13 s (02) to about 4 minutes (05); every other build finished in about 2¼ minutes or less.
+- **The committed outputs predate the fixes.** They were built with Vixl 0.16.0, using the workarounds each README describes. All ten rebuild with the current engine and give the same designs. The differences are 0.17.0's own changes (repeats stay vectors in SVG, animation frame timing), a few pixels the old renderer clipped at group edges, and card 009, which the 07 checks now hold back for missing glyphs.
+
 ## Cross-project findings
 
-Each project README has repro details. These are the issues that showed up most often or matter most.
+Each project README has repro details. These are the issues that showed up most often or matter most. Items marked **Fixed** are fixed in the Unreleased section of the [changelog](../CHANGELOG.md); the projects' committed outputs were built before the fixes, with the workarounds their READMEs describe.
 
 ### Bugs
-- **Group bounds are frozen.** A group keeps the bounds it had when created, so resized or rotated children get clipped (04, 10). Group `scale` also smooths pixel art (04).
-- **Effects are clipped to the layer box.** A blurred shape renders as a soft rectangle (03, 10).
-- **Stroke wider than its box crashes rendering.** A stroke wider than a small shape's box raises a raw PIL `ValueError` at render time, even though apply succeeded (03).
-- **Swatch references break in some paths.**
-  - `repeat`/`repeat-blend` reject an `@swatch` fill (01).
-  - A swatch whose value is `${var}` makes every later `@swatch` use fail (07).
+- **Fixed: group bounds are frozen.** A group kept the bounds it had when created, so resized or rotated children got clipped (04, 10). Groups no longer clip their members, and `inspect` reports `drawn_bounds` for anything drawn past the box. Group `scale` no longer smooths pixel art (04).
+- **Fixed: effects are clipped to the layer box.** A blurred shape rendered as a soft rectangle (03, 10). Blur now spreads past the box.
+- **Fixed: stroke wider than its box crashes rendering.** A stroke wider than a small shape's box raised a raw PIL `ValueError` at render time, even though apply succeeded (03).
+- **Fixed: swatch references break in some paths.**
+  - `repeat`/`repeat-blend` rejected an `@swatch` fill (01).
+  - A swatch whose value is `${var}` made every later `@swatch` use fail (07).
 - **Text fitting is unreliable.**
-  - `fit:true` broke a word mid-word ("SOLSTI / CE") instead of shrinking it (01).
-  - `text-fit` rules always fail on auto-sized text (09).
-  - Warped text is clipped at the top of its box (01).
-- **Artboard `x`/`y` are accepted but ignored** (08).
-- **Assertions read the wrong value.** `text.*.font-size` assertions ignore linked styles (08).
-- **`roll` previews and applies different directions.** Without `--size`, the preview and `--apply` pick different layouts (09).
-- **Production with `workers:2` races** on the shared font cache (07).
-- **`--ink-limit` is silently ignored** when an ICC profile is given (01).
-- **Missing glyphs pass every check.** Tofu boxes go unreported (06, 07).
+  - **Fixed:** `fit:true` broke a word mid-word ("SOLSTI / CE") instead of shrinking it (01).
+  - **Fixed:** `text-fit` rules always failed on auto-sized text (09).
+  - Still open: warped text is clipped at the top of its box (01).
+- **Fixed: artboard `x`/`y` are accepted but ignored** (08). An artboard with `x`/`y` is now a viewport onto that region of the canvas.
+- **Assertions read the wrong value.** `text.*.font-size` assertions ignore linked styles (08). Still open.
+- **`roll` previews and applies different directions.** Without `--size`, the preview and `--apply` pick different layouts (09). Still open.
+- **Fixed: production with `workers:2` races** on the shared font cache (07).
+- **`--ink-limit` is silently ignored** when an ICC profile is given (01). Still open.
+- **Fixed: missing glyphs pass every check.** Tofu boxes went unreported (06, 07). They are now an error in every `check`, every suite and `validate`.
 
 ### Performance
-- **The contrast check is the bottleneck.** It re-renders the whole document per text layer, at 12–137 s per layer on large posters (01, 02, 07, 08).
-- **Painting slows quadratically** as strokes are added to a layer (05).
-- **Timeline export skips the persistent render cache.** Brush-heavy frames take about 14 s each without the cache and under 1 s with it (05, 10).
+- **Fixed: the contrast check is the bottleneck.** It re-rendered the whole document per text layer, at 12–137 s per layer on large posters (01, 02, 07, 08). Top-level text is now measured from one shared render, with identical results, and nested renders, text measurement, styles and the layer cache are much cheaper. The full `check` on the 01 poster takes about 17 s instead of more than 10 minutes.
+- **Fixed: painting slows quadratically** as strokes are added to a layer (05). A batch now costs time in proportion to its strokes (400 strokes: 9.8 s to 1.6 s), adding one stroke to a 3,000-stroke layer takes about 0.3 s instead of 10.7 s, and renders are pixel-identical.
+- **Fixed: timeline export skips the persistent render cache.** Brush-heavy frames took about 14 s each without the cache and under 1 s with it (05, 10). Layers that only move are no longer redrawn per frame, and timeline exports of saved documents use the persistent cache.
 
 ### Rough edges
 - **No effect reorder operation** (06).
 - **`lookup` isn't a real effect.** It can't be disabled, reordered or limited to a selection (06).
 - **CMYK PDFs are single raster pages** with no TrimBox or BleedBox (01, 02).
-- **Repeats and blend modes force raster fallbacks in SVG** (01, 08).
+- **Blend modes force raster fallbacks in SVG** (01). Repeats of vector shapes did too in 0.16.0 (01, 08), but export as vectors since 0.17.0.
 - **`color_vision` checks only text,** not chart fills (08).
 - **`animation-set` can't export a subset of frames** (04).
 - **Film captions have no font field,** and film camera zoom softens the image (10).

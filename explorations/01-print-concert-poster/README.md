@@ -10,7 +10,7 @@ A poster for a made-up three-night desert music festival, built entirely with Vi
 
 Run it from the repo root with `python explorations/01-print-concert-poster/build.py`. It needs network access for Google Fonts and the ICC profile.
 
-On a busy shared machine the build takes about 10 minutes. Most of that is `check --checks contrast` (see Findings). `QUICK=1` stops after the document and writes a preview to `.work/quick.png`. `FULL_CHECK=1` contrast-checks every text layer instead of the five smallest, which takes about 30 to 40 minutes.
+On a busy shared machine the build took about 10 minutes, most of it in `check --checks contrast` (see Findings); with the fixes in the [changelog](../../CHANGELOG.md) it takes about 2 minutes. `QUICK=1` stops after the document and writes a preview to `.work/quick.png`. `FULL_CHECK=1` contrast-checks every text layer instead of the five smallest; that took 30 to 40 minutes and now adds well under a minute.
 
 ## Outputs (`output/`, about 10.8 MB)
 
@@ -70,6 +70,8 @@ On a busy shared machine the build takes about 10 minutes. Most of that is `chec
 - **History.** `checkpoint("poster-v1")`.
 
 ## Findings
+
+> **Status:** Bugs 1 (`@swatch` in repeats) and 3 (`fit` breaking a word) are fixed, and the full `check` on this poster now takes about 17 s instead of more than 10 minutes. Bug 2 (warped text clipped at the top) and the `--ink-limit`/`--icc` interaction are still open. See the Unreleased section of the [changelog](../../CHANGELOG.md).
 
 ### Bugs
 

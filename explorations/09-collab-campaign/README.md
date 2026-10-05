@@ -17,7 +17,7 @@ publishes. The run finishes with checkpoints, undo/redo, an in-document "night e
 revision compares, the final exports and an overview sheet.
 
 ```bash
-python explorations/09-collab-campaign/build.py   # from the repo root, ~3 min, rewrites output/
+python explorations/09-collab-campaign/build.py   # from the repo root, ~3 min when built (~1.5 min with the changelog fixes), rewrites output/
 ```
 
 ## Results
@@ -134,6 +134,8 @@ No documents were written by any blocked attempt.
 - Composite contact sheets and the overview sheet built as Vixl documents (`frame`, `font pair`)
 
 ## Findings
+
+> **Status:** Bug 1 (`text-fit` always failing on auto-sized text) is fixed. Bugs 2 and 3 are still open. See the Unreleased section of the [changelog](../../CHANGELOG.md).
 
 ### Bugs
 

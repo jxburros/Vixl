@@ -13,7 +13,7 @@ in whole pixels. A title screen mixes dithered pixel art with Press Start 2P and
 integer upscale.
 
 Rebuild from the repo root: `python explorations/04-pixel-rpg/build.py` (it wipes and recreates
-`output/`; ~2 min CPU, mostly the timeline export).
+`output/`; ~2 min CPU when it was built, mostly the timeline export; about 25 s with the fixes in the [changelog](../../CHANGELOG.md)).
 
 ## Title screen and HUD
 
@@ -72,6 +72,8 @@ Variants (one rig, recolored with `pixel-palette`):
 - `Project.clone()`, `inspect_pixels()` to copy tile rows between documents, `inspect_animation()`.
 
 ## Findings
+
+> **Status:** Bugs 1 (group `scale` smoothing pixel art) and 2 (a resized child clipped to its group's old box) are fixed: groups no longer clip, so the `ungroup`/`group` workaround in `scale_pixel_group()` is no longer needed. Bugs 3 and 4 are still open. See the Unreleased section of the [changelog](../../CHANGELOG.md).
 
 **Bugs and real rough edges**
 

@@ -11,8 +11,8 @@ The logo is then checked against the brand palette with a saved suite and with `
 
 ![Brand board](output/board/brand-board.png)
 
-Run from the repo root: `python explorations/02-brand-identity/build.py`. A full run takes about 7–8 minutes, almost
-all of it spent in `check()` on the brand board; `QUICK=1` skips that check and finishes in about 30 s. Everything
+Run from the repo root: `python explorations/02-brand-identity/build.py`. A full run took about 7–8 minutes, almost
+all of it spent in `check()` on the brand board; with the fixes in the [changelog](../../CHANGELOG.md) the whole run takes about 15 s. `QUICK=1` skips that check. Everything
 is written to `output/`:
 
 | Path | What |
@@ -46,6 +46,8 @@ is written to `output/`:
   - CLI `vixl --json check --checks print color_vision --strict`.
 
 ## Findings
+
+> **Status:** Finding 3 is fixed: `check()` on the brand board takes seconds, and the whole build about 20 s. The other findings are still open. See the Unreleased section of the [changelog](../../CHANGELOG.md).
 
 Bugs and rough edges, with repros:
 

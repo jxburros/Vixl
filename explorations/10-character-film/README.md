@@ -15,7 +15,7 @@ the production `film-plan` / `film-export` workflow to cut an establishing shot,
 soft-focus wave close-up into an MP4. The film has camera moves, crossfades, captions and a
 synthesized sine-wave score with footstep ticks.
 
-Run from the repo root (takes about 9–12 minutes, mostly the film render):
+Run from the repo root (took about 9–12 minutes, mostly the film render; about 2 minutes with the fixes in the [changelog](../../CHANGELOG.md)):
 
 ```bash
 python explorations/10-character-film/build.py            # everything
@@ -77,6 +77,8 @@ The editable shot documents and the score are in `output/work/` (`walk.vixl`, `e
 - The persistent render cache (`vixl.render_cache.enable`).
 
 ## Findings
+
+> **Status:** Bugs 1 (nested rigs cropping moving limbs), 2 (effects clipped to the layer box) and 3 (timeline export repainting strokes every frame) are fixed. The transparent "reach" squares and the oversized blur backdrop in `build.py` are no longer needed. See the Unreleased section of the [changelog](../../CHANGELOG.md).
 
 **Bugs and rough edges (reproduced)**
 
