@@ -60,6 +60,10 @@ def compile_command(tokens):
     rich = compile_rich(cmd, args)
     if rich is not None:
         return rich
+    from .pages import compile_command as compile_pages
+    paged = compile_pages(cmd, args)
+    if paged is not None:
+        return paged
     from .guides import compile_command as compile_guides
     guided = compile_guides(cmd, args)
     if guided is not None:

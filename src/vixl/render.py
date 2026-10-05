@@ -1055,9 +1055,22 @@ def trim_overflow(image, content, ax, ay):
     return image.crop((ax - reach_x, ay - reach_y, ax + content[0] + reach_x, ay + content[1] + reach_y))
 
 
-def render(project, variables=None, artboard=None, comp=None):
+def view_page(project, page=None):
+    """The document as one page draws it (master layers underneath, page variables), or the
+    document itself when it has no pages."""
+    if project.state.get("pages") and not getattr(project, "_page_view", False):
+        from .pages import page_project
+
+        view = page_project(project, page)
+        view._page_view = True
+        return view
+    return project
+
+
+def render(project, variables=None, artboard=None, comp=None, page=None):
     from .design_render import artboard_project
 
+    project = view_page(project, page)
     candidate = artboard_project(project, artboard, comp, variables)
     from .design import resolve_color
 
@@ -1101,6 +1114,10 @@ def export(
     dpi=None,
     icon_sizes=None,
     time=None,
+    page=None,
+    pages=None,
+    pdf_content=None,
+    report=None,
 ):
     """Render and encode. ``color_space='cmyk'`` separates JPEG/TIFF/PDF output (ICC profile
     bytes in ``icc_profile`` for press-accurate separation, else device-naive GCR with
@@ -1115,6 +1132,35 @@ def export(
         timeline = project.state.get("timeline") or default_timeline()
         project = project_at(project, parse_time(time, timeline["duration"], timeline.get("markers")))
     require(svg_policy in ("appearance", "strict"), "SVG policy must be appearance or strict")
+    from .pages import parse_pages
+
+    pages = parse_pages(pages)
+    if isinstance(page, str) and page.isdigit():
+        page = int(page)
+    suffix = Path(path).suffix.lower() if path else ""
+    if (format or "").upper() == "PPTX" or suffix == ".pptx":
+        from .pptx_export import export_pptx
+
+        return export_pptx(project, path, pages=pages, report=report)
+    wants_pdf = (format or "").upper() == "PDF" or suffix == ".pdf"
+    paged = bool(project.state.get("pages"))
+    if wants_pdf and (paged or pdf_content or pages) and not (profile or artboard or comp or proof or simulate):
+        # Multi-page documents and explicit vector/raster requests use Vixl's own PDF writer.
+        require(page is None or not pages, "Pass page or pages, not both")
+        from .pdf_export import export_pdf
+
+        separation = None
+        if color_space == "cmyk":
+            from . import colors
+
+            separation = dict(profile=colors.load_profile(icc_profile) if icc_profile is not None else None,
+                              intent=intent, black=finite(black_generation, "black_generation", 0, 1),
+                              ink_limit=None if ink_limit is None else ink_limit / 100, background=background)
+        content = pdf_content or ("raster" if color_space == "cmyk" else "vector")
+        return export_pdf(project, path, pages=pages or ([page] if page is not None else None), content=content,
+                          dpi=dpi, background=background, color_space=color_space, separation=separation, report=report)
+    if page is not None or paged:
+        project = view_page(project, page)
     resample = Image.Resampling.NEAREST if sampling == "nearest" else Image.Resampling.LANCZOS
     require(path is None or Path(path).suffix.lower() != ".vixl", "Cannot export over a Vixl project")
     finite(scale, "scale", 0.01, 16)

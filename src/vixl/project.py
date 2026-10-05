@@ -154,7 +154,12 @@ class Project:
     def inspect(self, target=None):
         from .render import child_index, extent, resolve_layout, resolved_layers
 
-        state = deepcopy(self.state)
+        state = {key: deepcopy(value) for key, value in self.state.items() if key not in ("pages", "masters")}
+        if self.state.get("pages"):
+            from .pages import summary
+
+            info = summary(self)
+            state["pages"], state["masters"] = info["pages"], info["masters"]
         layers = resolved_layers(self)
         resolved = resolve_layout(self, layers=layers)
         children, memo = child_index(layers), {}
@@ -301,6 +306,11 @@ class Project:
         before = candidate.inspect()
         for index, operation in enumerate(operations):
             try:
+                if "page" in operation and operation["type"] != "page":
+                    from .pages import select
+
+                    select(candidate.state, page=operation["page"])
+                    operation = {k: v for k, v in operation.items() if k != "page"}
                 if operation["type"] in ("layout-apply", "template-apply"):
                     from .brand import prepare
                     operation = prepare(candidate, operation)
@@ -483,10 +493,10 @@ class Project:
         self.state = self.transaction["state"]
         self.transaction = None
 
-    def render(self, variables=None, *, artboard=None, comp=None):
+    def render(self, variables=None, *, artboard=None, comp=None, page=None):
         from .render import render
 
-        return render(self, variables, artboard, comp)
+        return render(self, variables, artboard, comp, page=page)
 
     def export(self, path=None, **options):
         from .render import export

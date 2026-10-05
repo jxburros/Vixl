@@ -320,7 +320,7 @@ class Layout:
     glyphs: list = field(default_factory=list)
     rects: list = field(default_factory=list)  # (x, y, w, h, rgba, kind)
     box: tuple = (0, 0, 0, 0)
-    lines: list = field(default_factory=list)  # [(top, baseline, height)] for inspection and PPTX
+    lines: list = field(default_factory=list)  # [(top, baseline, height, paragraph, descent)] for PPTX
     size_scale: float = 1.0
 
 
@@ -510,7 +510,7 @@ def layout(project, layer, *, width=None, scale=1.0, variables=None):
                 "marker": marker if number == 0 else None, "left": left, "text_left": text_left,
                 "align": para.get("align", layer.get("align", "left")), "limit": limit,
                 "last": number == len(lines) - 1, "before": before if number == 0 else 0.0,
-                "after": after if number == len(lines) - 1 else 0.0,
+                "after": after if number == len(lines) - 1 else 0.0, "paragraph": index,
             })
 
     # Pass 2: the container width (the box, or the widest line for auto-sized text).
@@ -553,11 +553,11 @@ def layout(project, layer, *, width=None, scale=1.0, variables=None):
             if style["highlight"]:
                 result.rects.append((cursor, baseline - token["ascent"], advance, token["ascent"] - token["descent"],
                                      style["highlight"], "highlight"))
-            if not token["space"]:
-                for glyph in token["glyphs"]:
-                    result.glyphs.append(Placed(glyph.data, glyph.name, cursor + glyph.x, baseline + shift + glyph.y,
-                                                token["size"], style["color"], glyph.text, style["fake_bold"],
-                                                style["fake_italic"]))
+            # Space glyphs draw nothing, but PDF text extraction reads them as word breaks.
+            for glyph in token["glyphs"]:
+                result.glyphs.append(Placed(glyph.data, glyph.name, cursor + glyph.x, baseline + shift + glyph.y,
+                                            token["size"], style["color"], glyph.text, style["fake_bold"],
+                                            style["fake_italic"]))
             thickness = max(1.0, token["size"] * 0.06)
             if style["underline"]:
                 result.rects.append((cursor, baseline + token["size"] * 0.12, advance, thickness, style["color"], "underline"))
@@ -565,7 +565,7 @@ def layout(project, layer, *, width=None, scale=1.0, variables=None):
                 result.rects.append((cursor, baseline - token["size"] * 0.3, advance, thickness, style["color"], "strike"))
             cursor += advance
         widest = max(widest, cursor + stroke)
-        result.lines.append((y, baseline, height))
+        result.lines.append((y, baseline, height, row["paragraph"], row["descent"]))
         y += height + spacing + row["after"]
     y -= spacing if rows else 0
     result.width = int(width) if width is not None else max(1, math.ceil(widest))

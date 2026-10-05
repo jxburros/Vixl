@@ -39,6 +39,10 @@ Guides:    guide NAME x|y POS | guide NAME --kind line|ray|segment|point|circle|
            grid NAME [--kind columns|baseline|thirds|golden|armature|golden-spiral|polar|isometric|triangular|hex|oblique|perspective],
            place LAYER… --guide NAME [--at F | --start F --end F | --spacing PX | --with GUIDE] [--orient tangent],
            snap LAYER… [--tolerance 8], check --checks guides alignment, render --out F --show-guides
+Pages:     page add NAME [--master M] [--after P] [--duplicate P] [--notes TEXT], page select|remove P, page move P --index N,
+           page set P [--rename N] [--notes TEXT] [--hidden] [--transition fade], master add NAME [--from P], pages,
+           render --page 2 | --page all (contact sheet), export deck.pdf|deck.pptx [--pages 1-3,5] [--pdf-content raster],
+           check --checks deck [--min-font 18] [--max-words 60]; any operation accepts "page": P
 Measure:   info, sample X Y, histogram [--region X Y W H], info --target TEXT,
            spacing --targets A B C --axis vertical [--expected N] [--tolerance N] [--check],
            spacing --around BODY --before HEADER --after FOOTER,
@@ -156,7 +160,7 @@ def output_options(args, command):
     p.add_argument("--quality", type=int, default=90)
     p.add_argument("--scale", default="1")
     p.add_argument("--profile")
-    p.add_argument("--format", choices=["PNG", "JPEG", "WEBP", "TIFF", "AVIF", "SVG", "JPG", "PDF", "ICO", "HTML"])
+    p.add_argument("--format", choices=["PNG", "JPEG", "WEBP", "TIFF", "AVIF", "SVG", "JPG", "PDF", "ICO", "HTML", "PPTX"])
     p.add_argument("--background", default="white")
     p.add_argument("--set", action="append")
     p.add_argument("--artboard")
@@ -177,6 +181,10 @@ def output_options(args, command):
     p.add_argument("--icon-sizes", type=int, nargs="+")
     p.add_argument("--time", help="Render a timeline frame: ms, 1.5s, 50%% or a marker")
     p.add_argument("--show-guides", action="store_true", help="Draw the document's guides over a raster render")
+    p.add_argument("--page", help="Page name or number of a multi-page document; 'all' renders a contact sheet")
+    p.add_argument("--pages", help="PDF/PowerPoint pages: numbers, ranges and names, e.g. 1-3,5,intro")
+    p.add_argument("--pdf-content", choices=["vector", "raster"], help="PDF pages as vector text and shapes, or images")
+    p.add_argument("--columns", type=int, help="Contact sheet columns with --page all")
     return p.parse_args(args)
 
 
@@ -260,7 +268,7 @@ def dispatch(argv):
                     | {"filter"}
                     | {"workflow"}
                     | set(
-                        "new session open save status inspect describe layers effects manifest dependencies reproduce schema check batch convert render export export-screens export-animation spacing pixels animation info sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert validate preset ai ask generate detect ocr serve view notes import mcp update updates commands shapes palette template guidance font fonts roll providers models color sizes layout layouts brushes organics easings timeline export-timeline timeline-sheet export-icons".split()
+                        "new session open save status inspect describe layers effects manifest dependencies reproduce schema check batch convert render export export-screens export-animation spacing pixels animation info sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert validate preset ai ask generate detect ocr serve view notes import mcp update updates commands shapes palette template guidance font fonts roll providers models color sizes layout layouts brushes organics easings timeline export-timeline timeline-sheet export-icons pages guides".split()
                     )
                 )
             }
@@ -502,6 +510,8 @@ def command_help(cmd, args):
         "[--mode inherit|light|dark] [--predictable] [--type-scale golden] [--density airy|balanced|dense] [--align left|center|right] "
         "[--accent rule|bar|dot|block|outline|none] [--prefix P] [--replace]",
         "timeline": "timeline (inspect) | timeline set [--duration 3s] [--fps 30] [--loop N] [--clear]",
+        "pages": "pages (list pages and masters of a multi-page document)",
+        "guides": "guides (list guides and grids)",
     }
     if cmd in manual:
         return "Usage: vixl " + manual[cmd]
@@ -608,16 +618,47 @@ def project_command(project, cmd, args, *, detail="compact"):
                 profile=a.profile,
                 check=not a.no_check,
             ), False
+        page = int(a.page) if a.page and a.page.isdigit() else a.page
+        if page == "all":
+            from .deck import contact_sheet
+
+            require(destination != "-", "--page all writes a file")
+            fmt = (a.format or Path(destination).suffix.lstrip(".") or "PNG").upper()
+            require(fmt in ("PNG", "JPG", "JPEG", "WEBP"), "--page all renders a PNG, JPEG or WebP contact sheet")
+            sheet = contact_sheet(project, width=round(480 * float(a.scale.rstrip("x"))), columns=a.columns)
+            sheet.convert("RGB" if fmt in ("JPG", "JPEG") else "RGBA").save(destination, format="JPEG" if fmt == "JPG" else fmt)
+            return {"output": destination, "pages": len(project.state["pages"]), "size": list(sheet.size)}, False
         if a.show_guides:
             from .guides import draw_overlay
 
             require(destination != "-", "--show-guides writes a file")
-            image = project.render(pairs(a.set), artboard=a.artboard, comp=a.comp).convert("RGBA")
+            image = project.render(pairs(a.set), artboard=a.artboard, comp=a.comp, page=page).convert("RGBA")
             draw_overlay(image, project)
             fmt = (a.format or Path(destination).suffix.lstrip(".") or "PNG").upper()
             require(fmt in ("PNG", "JPG", "JPEG", "WEBP"), "--show-guides renders PNG, JPEG or WebP")
             image.convert("RGB" if fmt in ("JPG", "JPEG") else "RGBA").save(destination, format="JPEG" if fmt == "JPG" else fmt)
             return {"output": destination, "guides": len(project.state.get("guides", {}))}, False
+        from .pages import parse_pages
+
+        fmt = (a.format or Path(destination).suffix.lstrip(".")).upper()
+        if a.pages and fmt not in ("PDF", "PPTX"):
+            # Raster and SVG pages export as numbered files: carousel.png → carousel-01.png …
+            from .pages import find_page, page_list
+
+            require(destination != "-" and project.state.get("pages"), "--pages with an image format writes one "
+                    "numbered file per page of a multi-page document", field="pages")
+            records = (page_list(project, include_hidden=False) if a.pages == "all" else
+                       [find_page(project.state, ref, "pages") for ref in parse_pages(a.pages)])
+            target = Path(destination)
+            outputs = []
+            for number, record in enumerate(records, 1):
+                path = target.with_name(f"{target.stem}-{number:02d}{target.suffix}")
+                project.export(path, quality=a.quality, scale=float(a.scale.rstrip("x")), profile=a.profile,
+                               variables=pairs(a.set), format=a.format, background=a.background, sampling=a.sampling,
+                               svg_policy=a.svg_policy, page=record["id"], **print_options(a, project.limits))
+                outputs.append({"page": record["name"], "output": str(path)})
+            return {"outputs": outputs}, False
+        report = {}
         data = project.export(
             None if destination == "-" else destination,
             quality=a.quality,
@@ -630,12 +671,16 @@ def project_command(project, cmd, args, *, detail="compact"):
             comp=a.comp,
             sampling=a.sampling,
             svg_policy=a.svg_policy,
+            page=page,
+            pages=None if a.pages == "all" else parse_pages(a.pages),
+            pdf_content=a.pdf_content,
+            report=report,
             **print_options(a, project.limits),
         )
         if destination == "-":
             sys.stdout.buffer.write(data)
             return None, False
-        result = {"output": destination, "bytes": len(data)}
+        result = {"output": destination, "bytes": len(data), **report}
         if (a.format or Path(destination).suffix.lstrip(".")).upper() == "SVG":
             import xml.etree.ElementTree as ET
 
@@ -664,8 +709,14 @@ def project_command(project, cmd, args, *, detail="compact"):
         p.add_argument(
             "--checks",
             nargs="+",
-            choices=["bounds", "overlap", "contrast", "safe_area", "legibility", "print", "color_vision", "content", "fonts", "blanks", "brand", "guides", "alignment"],
+            choices=["bounds", "overlap", "contrast", "safe_area", "legibility", "print", "color_vision", "content", "fonts", "blanks", "brand", "guides", "alignment",
+                     "deck", "title_position", "type_scale", "words", "min_font", "notes", "empty"],
         )
+        p.add_argument("--page", help="Check one page of a multi-page document (default: the active page)")
+        p.add_argument("--pages", help="deck checks: the pages to check, e.g. 1-3,5 (default: every shown page)")
+        p.add_argument("--min-font", type=float, help="deck checks: smallest projected text in points (default 18)")
+        p.add_argument("--max-words", type=int, help="deck checks: most words on one page (default 60)")
+        p.add_argument("--include-hidden", action="store_true", help="deck checks: include hidden pages")
         p.add_argument("--ink-limit", type=float, default=300)
         p.add_argument("--min-ppi", type=float, default=200)
         p.add_argument("--targets", nargs="+")
@@ -681,6 +732,13 @@ def project_command(project, cmd, args, *, detail="compact"):
         p.add_argument("--strict", action="store_true", help="Exit with an error when any check fails")
         options = vars(p.parse_args(args))
         strict = options.pop("strict")
+        from .pages import parse_pages
+
+        deck = {"pages": parse_pages(options.pop("pages")), "min_font": options.pop("min_font"),
+                "max_words": options.pop("max_words"), "include_hidden": options.pop("include_hidden") or None}
+        options["deck"] = {k: v for k, v in deck.items() if v is not None} or None
+        if options["page"] and options["page"].isdigit():
+            options["page"] = int(options["page"])
 
         def number(value):
             return value if value.endswith("%") else float(value)

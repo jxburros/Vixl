@@ -124,7 +124,7 @@ def scaled_project(project, s):
 
 def render_preview(
     project, max_width, max_height, *, variables=None, artboard=None, comp=None, region=None, time=None, proof=False, simulate=None,
-    guides=None,
+    guides=None, page=None,
 ):
     """Render at roughly the preview size. ``region`` [x, y, w, h] (document pixels) zooms in;
     zoomed regions may be enlarged up to 8x so small details stay legible. ``time`` previews a
@@ -134,6 +134,20 @@ def render_preview(
     from .design_render import artboard_project
     from .errors import require
 
+    from .render import view_page
+
+    if page == "all":
+        from .deck import contact_sheet
+
+        count = len(project.state.get("pages") or [])
+        columns = max(1, min(4, count))
+        tile = max(64, min(800, (max_width - 16 * (columns + 1)) // columns))
+        sheet = contact_sheet(project, width=tile, columns=columns)
+        sheet.thumbnail((max_width, max_height), Image.Resampling.LANCZOS)
+        return sheet
+    if isinstance(page, str) and page.isdigit():
+        page = int(page)
+    project = view_page(project, page)
     if time is not None:
         from .timeline import default_timeline, parse_time, project_at
 

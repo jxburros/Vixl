@@ -176,8 +176,13 @@ def check_design(
     variables=None,
     ink_limit=300,
     min_ppi=200,
+    page=None,
+    deck=None,
 ):
-    """Return ``{"passed", "errors", "warnings", "issues", "checked"}`` for the rendered design."""
+    """Return ``{"passed", "errors", "warnings", "issues", "checked"}`` for the rendered design.
+    In a multi-page document ``page`` picks the page (default: the active page); the ``deck``
+    check family reviews every page and the deck as a whole (``deck`` holds its settings:
+    ``min_font``, ``max_words``, ``pages``, ``include_hidden``)."""
     from .design_render import artboard_project
     from .render import layer_canvas_surface, resolve_layout, resolved_layers
 
@@ -186,6 +191,20 @@ def check_design(
     if brand and "minimum_contrast" in brand:
         min_contrast = max(min_contrast or 0, brand["minimum_contrast"])
     checks = list(checks or CHECKS)
+    from .deck import DECK_CHECKS
+
+    if "deck" in checks or set(checks) & set(DECK_CHECKS):
+        from .deck import check_deck
+
+        rest = [c for c in checks if c != "deck"]
+        if "deck" in checks:
+            # "deck" means every deck check, with the named design checks (default: the deck set).
+            rest = [c for c in rest if c not in DECK_CHECKS]
+            rest = rest + list(DECK_CHECKS) if rest else None
+        return check_deck(project, checks=rest, safe_area=safe_area, min_contrast=min_contrast, **(deck or {}))
+    from .render import view_page
+
+    project = view_page(project, page)
     unknown = sorted(set(checks) - set(CHECKS + OPTIONAL_CHECKS))
     require(not unknown, f"Unknown check(s) {unknown}; available: {', '.join(CHECKS + OPTIONAL_CHECKS)}", field="checks")
     candidate = artboard_project(project.clone(), artboard, comp, variables)

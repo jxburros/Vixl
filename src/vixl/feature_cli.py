@@ -24,7 +24,7 @@ EDITING = (
     "palette-generate",
     "type-scale",
 )
-DOCUMENT = ("timeline", "export-timeline", "timeline-sheet", "export-icons", "layout", "guides")
+DOCUMENT = ("timeline", "export-timeline", "timeline-sheet", "export-icons", "layout", "guides", "pages")
 
 
 def _value(text):
@@ -342,6 +342,11 @@ def project_feature(project, cmd, args):
         sheet = contact_sheet(project, a.count, a.columns, times=a.times)
         sheet.save(a.out, format="PNG")
         return {"output": a.out, "size": list(sheet.size)}, False
+    if cmd == "pages":
+        from .pages import summary
+
+        require(not args, "Use pages to list pages and masters")
+        return summary(project) or {"pages": [], "note": "Single-page document; add pages with page add"}, False
     if cmd == "guides":
         from .guides import describe
 

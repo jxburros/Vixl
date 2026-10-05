@@ -140,6 +140,9 @@ def check_state(project, state):
     validate_layout_record(state)
     from .automation import validate_state
     validate_state(state)
+    from .pages import validate_pages
+
+    validate_pages(project, state)
     require(not (ids & names), "Layer names cannot collide with IDs", "invalid_project")
     require(
         state["active_layer"] is None or state["active_layer"] in ids,

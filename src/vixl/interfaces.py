@@ -398,6 +398,9 @@ def create_app(path, *, token=None, limits=None):
             "dpi",
             "icon_sizes",
             "time",
+            "page",
+            "pages",
+            "pdf_content",
         }
         require(set(body) <= allowed, "Unknown export option")
         fmt = body.get("format", "PNG").upper()
@@ -412,6 +415,7 @@ def create_app(path, *, token=None, limits=None):
             "AVIF": "image/avif",
             "PDF": "application/pdf",
             "ICO": "image/x-icon",
+            "PPTX": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
         }
         require(fmt in media, "Unsupported export format")
         body = dict(body)
@@ -575,7 +579,8 @@ def create_app(path, *, token=None, limits=None):
         from .mcp_tools import preview
 
         options = fixed(body)
-        allowed = {"variables", "max_width", "max_height", "max_bytes", "artboard", "comp", "region", "time", "proof", "simulate"}
+        allowed = {"variables", "max_width", "max_height", "max_bytes", "artboard", "comp", "region", "time", "proof", "simulate",
+                   "guides", "page"}
         require(not set(options) - allowed, f"Preview accepts {sorted(allowed)}", field="body")
         return Response(preview(session, **options), media_type="image/png")
 

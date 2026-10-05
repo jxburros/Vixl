@@ -69,6 +69,10 @@ vixl render --artboard story --out story.png
 vixl export-screens --out screens --scales 1 2
 ```
 
+Artboards are views of one design at several sizes. For a sequence of different designs at one
+size (slides, carousel frames, booklet pages) use [pages and masters](slides.md), which export to
+multi-page PDF and PowerPoint. Mixed styles inside one text box are [rich text](rich-text.md).
+
 Artboards are named canvas configurations in one document. They share the editable layer stack and resolve canvas constraints at each board's size. A board with `x`/`y` (`vixl artboard crop --width 1080 --height 1080 --x 260 --y 1400`) is instead a viewport: it shows that region of the document canvas, laid out at the document's size. Optional `variables` supply board defaults and `targets` selects top-level layer IDs; absent `targets` means all layers, while an empty stored list shows none. Render overrides take precedence over board variables. `export-screens` writes every board at each scale as `NAME@SCALE x.png` (without the space, e.g. `story@2x.png`); `--artboards square story` selects boards. PNG outputs are staged before publication and existing destinations are rejected. Scaled exports resample the composed raster, as existing Vixl exports do.
 
 ```bash
