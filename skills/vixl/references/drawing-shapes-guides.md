@@ -14,7 +14,8 @@ When a person gives you a photo or scan of their drawing, keep their lines and b
 
 - `import` (MCP: import the image with `vixl_import_image` first, then pass `asset`) cleans the
   photo into `NAME/ink` over a hidden, aligned `NAME/original`. `clean` re-runs it (`sensitivity`,
-  `weight`, `ink: "original"` keeps the pencil colour, `despeckle`, `deskew`).
+  `weight`, `ink: "original"` keeps the pencil colour, `despeckle`, `deskew`). The desk around a
+  photographed sheet of paper is left out (`sheet: false` keeps it, for a border drawn along the photo's edge).
 - `vectorize` makes editable strokes `NAME/s001…` (longest first); `straighten` (only the strokes
   the user asked about — pass `strokes`), `smooth`, `restyle` and `stroke` change them.
 - Before `fill`, call `vixl_workflow("drawing-report", {"target": "house"})`: it lists closed

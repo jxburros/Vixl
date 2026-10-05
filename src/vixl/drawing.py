@@ -28,7 +28,7 @@ from .model import finite, new_layer
 TYPES = ("drawing",)
 ACTIONS = ("import", "clean", "vectorize", "straighten", "smooth", "fill", "stroke", "restyle")
 CLEAN = {"threshold": "auto", "sensitivity": 0.0, "despeckle": "auto", "weight": 0, "deskew": True, "crop": True,
-         "margin": 24, "soft": True, "ink": "#1d1d1f", "flatten": True, "max_size": 2400}
+         "margin": 24, "soft": True, "ink": "#1d1d1f", "flatten": True, "max_size": 2400, "sheet": True}
 MAX_STROKES = 240
 
 
@@ -109,20 +109,121 @@ def distance(mask, limit=64):
     return result
 
 
-def flatten_paper(gray):
+def flatten_paper(gray, sheet=None):
     """Divide out the paper's lighting: an estimate of the blank page (ink removed by a max
     filter, then blurred) becomes 1.0, so shadows and gradients disappear."""
-    return np.clip(gray / np.maximum(paper_estimate(gray), 1.0), 0, 1)
+    return np.clip(gray / np.maximum(paper_estimate(gray, sheet), 1.0), 0, 1)
 
 
-def paper_estimate(gray):
-    """The blank page under the drawing: a max filter removes the lines, a blur the grain."""
+def paper_estimate(gray, sheet=None):
+    """The blank page under the drawing: a max filter removes the lines, a blur the grain. With a
+    ``sheet`` mask only the paper counts: its edge is carried out over the desk, so the desk
+    neither darkens the estimate near the edge nor shows through it."""
     height, width = gray.shape
     factor = max(1, round(max(height, width) / 300))
-    small = Image.fromarray(np.clip(gray, 0, 255).astype(np.uint8)).resize(
+    values = np.clip(gray, 0, 255) if sheet is None else np.where(sheet, np.clip(gray, 0, 255), 0)
+    small = Image.fromarray(values.astype(np.uint8)).resize(
         (max(1, width // factor), max(1, height // factor)), Image.Resampling.BOX)
-    small = small.filter(ImageFilter.MaxFilter(7)).filter(ImageFilter.GaussianBlur(6))
+    small = small.filter(ImageFilter.MaxFilter(7))
+    if sheet is not None:
+        known = np.asarray(small)
+        for _ in range(max(small.size)):
+            if known.all() or not known.any():
+                break
+            grown = np.asarray(Image.fromarray(known).filter(ImageFilter.MaxFilter(3)))
+            known = np.where(known > 0, known, grown)
+        small = Image.fromarray(known)
+    small = small.filter(ImageFilter.GaussianBlur(6))
     return np.asarray(small.resize((width, height), Image.Resampling.BILINEAR), np.float32)
+
+
+def find_sheet(gray, size=600):
+    """The sheet of paper in a photo of a drawing on a darker desk or table: a bool mask of the
+    sheet, kept a few pixels inside its edge, or None when no edge of the paper shows (a scan, or
+    paper filling the frame).
+
+    On a small copy with the ink closed away, the frame's border (where any desk shows) and its
+    centre (where the drawing is) give a threshold between paper and desk. The sheet is the
+    convex hull of the paper's bright pixels, so the desk is cut off along the paper's straight
+    edges, even where it thins to a sliver at a corner. It counts only when the paper is much brighter than
+    the desk right at their boundary (a shadow or uneven light fades instead) and fills its hull."""
+    from PIL import ImageDraw
+
+    from .organic import clip_convex, convex_hull
+
+    height, width = gray.shape
+    factor = max(1.0, max(height, width) / size)
+    sw, sh = max(1, round(width / factor)), max(1, round(height / factor))
+    if min(sw, sh) < 24:
+        return None
+    small = Image.fromarray(np.clip(gray, 0, 255).astype(np.uint8)).resize((sw, sh), Image.Resampling.BOX)
+    raw = np.asarray(small, np.float32) / 255
+    closed = np.asarray(small.filter(ImageFilter.MaxFilter(5)).filter(ImageFilter.MinFilter(5)), np.float32) / 255
+    band = max(2, round(min(sw, sh) * 0.02))
+    border = np.ones((sh, sw), bool)
+    border[band:-band, band:-band] = False
+    centre = np.zeros((sh, sw), bool)
+    centre[sh // 3:sh - sh // 3, sw // 3:sw - sw // 3] = True
+    # The border as photographed: a sliver of desk at a slight tilt is as thin as a line of ink.
+    cut = otsu(np.concatenate([raw[border], closed[centre]]))
+    paper = closed >= cut
+    if (raw[border] < cut).mean() < 0.02 or paper[centre].mean() < 0.5:
+        return None
+    labels, count = label(paper)
+    overlap = np.bincount(labels[centre], minlength=count + 1)
+    overlap[0] = 0
+    sheet = labels == int(np.argmax(overlap))
+    bright = sheet & (raw >= cut)
+    ys, xs = np.nonzero(bright)
+    if len(xs) < 3:
+        return None
+    # The hull of the row ends (as pixel corners) is the hull of the whole sheet.
+    first = np.r_[True, ys[1:] != ys[:-1]]
+    last = np.r_[ys[1:] != ys[:-1], True]
+    corners = np.vstack([np.column_stack([xs[first], ys[first]]), np.column_stack([xs[first], ys[first] + 1]),
+                         np.column_stack([xs[last] + 1, ys[last]]), np.column_stack([xs[last] + 1, ys[last] + 1])])
+    hull = convex_hull(corners)
+    if len(hull) < 3:
+        return None
+    outline = Image.new("L", (sw, sh))
+    ImageDraw.Draw(outline).polygon([tuple(q) for q in hull], fill=255)
+    inside = np.asarray(outline) > 127
+    outside = ~inside
+    if inside.mean() < 0.25 or outside.mean() < 0.002:
+        return None
+    # A desk: much darker than the paper right at their boundary and out to the frame (a frame
+    # drawn near the edge of the paper has paper beyond it), and the paper fills its hull
+    # (straight page edges, not the curve of a shadow).
+    rim_out, rim_in = outside & dilate(inside, 2), inside & dilate(outside, 2)
+    frame = np.ones((sh, sw), bool)
+    frame[1:-1, 1:-1] = False
+    if not rim_out.any() or not rim_in.any() or not (frame & outside).any():
+        return None
+    level = 0.8 * np.median(raw[rim_in])
+    if np.median(raw[rim_out]) > level or np.median(raw[frame & outside]) > level:
+        return None
+    holes, _ = label(~sheet)
+    edge = np.unique(np.concatenate([holes[0], holes[-1], holes[:, 0], holes[:, -1]]))
+    filled = ~np.isin(holes, edge[edge > 0])
+    if (inside & ~filled).sum() > 0.03 * inside.sum():
+        return None
+    # The sheet is the inside of each of its edges, extended across the frame (so a sliver of desk
+    # too thin to see at this size is cut off too) and moved in a little to stay clear of the
+    # edge's own blur and shadow. Where the paper runs off the frame, the frame is no edge.
+    inset = 1.5 * factor + 2
+    region = np.array([[0, 0], [width, 0], [width, height], [0, height]], float)
+    for a, b in zip(hull, np.roll(hull, -1, axis=0)):
+        if (a[0] == b[0] and a[0] in (0, sw)) or (a[1] == b[1] and a[1] in (0, sh)):
+            continue
+        a, b = a * [width / sw, height / sh], b * [width / sw, height / sh]
+        d = b - a
+        normal = np.array([-d[1], d[0]]) / max(1e-9, float(np.linalg.norm(d)))
+        region = clip_convex(region, a + normal * inset, b + normal * inset)
+        if len(region) < 3:
+            return None
+    outline = Image.new("L", (width, height))
+    ImageDraw.Draw(outline).polygon([tuple(q) for q in region], fill=255)
+    return np.asarray(outline) > 127
 
 
 def otsu(values):
@@ -179,8 +280,12 @@ def clean(image, settings=None, state=None):
                              Image.Resampling.LANCZOS)
     rgb = np.asarray(image, np.float32)
     gray = rgb @ np.array([0.299, 0.587, 0.114], np.float32)
-    level = flatten_paper(gray) if settings["flatten"] else gray / 255
+    # The desk around a photographed page is dark too, but it is not ink: leave it out first.
+    sheet = find_sheet(gray) if settings["sheet"] else None
+    level = flatten_paper(gray, sheet) if settings["flatten"] else gray / 255
     darkness = 1 - level
+    if sheet is not None:
+        darkness = darkness * sheet
     if settings["threshold"] == "auto":
         cut = otsu(darkness[darkness > 0.04]) if (darkness > 0.04).any() else 0.5
         cut = max(0.08, cut * 0.9)
@@ -198,6 +303,8 @@ def clean(image, settings=None, state=None):
                 angle, resample=Image.Resampling.BILINEAR, expand=True), np.float32) / 255
             rgb = np.asarray(Image.fromarray(rgb.astype(np.uint8)).rotate(
                 angle, resample=Image.Resampling.BICUBIC, expand=True, fillcolor=(255, 255, 255)), np.float32)
+            if sheet is not None:
+                sheet = np.asarray(Image.fromarray(sheet.astype(np.uint8) * 255).rotate(angle, expand=True)) > 127
     labels, count = label(mask)
     if count:
         sizes = np.bincount(labels.ravel())
@@ -220,6 +327,7 @@ def clean(image, settings=None, state=None):
         x1, y1 = min(mask.shape[1], xs.max() + 1 + margin), min(mask.shape[0], ys.max() + 1 + margin)
         crop = [int(x0), int(y0), int(x1 - x0), int(y1 - y0)]
         mask, darkness, rgb = mask[y0:y1, x0:x1], darkness[y0:y1, x0:x1], rgb[y0:y1, x0:x1]
+        sheet = sheet[y0:y1, x0:x1] if sheet is not None else None
     if settings["soft"]:
         # Keep the pencil's own grain and anti-aliasing inside (and just around) the lines.
         near = dilate(mask, 1)
@@ -231,14 +339,14 @@ def clean(image, settings=None, state=None):
     if settings["ink"] == "original":
         # Unmix the paper: observed = paper · (1 − a) + ink · a, so the pencil keeps its own
         # colour even where a thin line is mostly paper.
-        paper = np.stack([paper_estimate(rgb[..., i]) for i in range(3)], axis=-1)
+        paper = np.stack([paper_estimate(rgb[..., i], sheet) for i in range(3)], axis=-1)
         a = np.maximum(alpha, 0.25)[..., None]
         out[..., :3] = np.clip((rgb - paper * (1 - a)) / a, 0, 255).astype(np.uint8)
     else:
         out[..., :3] = color(resolve_color(settings["ink"], state or {"variables": {}}))[:3]
     out[..., 3] = np.clip(alpha * 255, 0, 255).astype(np.uint8)
     return {"ink": Image.fromarray(out, "RGBA"), "mask": mask, "angle": angle, "crop": crop, "threshold": round(cut, 3),
-            "scale": scale}
+            "scale": scale, "sheet": sheet is not None}
 
 
 # ---------------------------------------------------------------------------------------------
@@ -508,11 +616,141 @@ def _meet(line_a, line_b, fallback):
     return point if np.linalg.norm(point - fallback) < 200 else fallback
 
 
+def _turn(d0, d1):
+    """The signed angle (degrees) from one unit direction to the next."""
+    return math.degrees(math.atan2(d0[0] * d1[1] - d0[1] * d1[0], float(d0 @ d1)))
+
+
+def _bend(points):
+    """How far a stretch of a stroke turns along its length (degrees, signed like ``_turn``):
+    the arc through its ends that encloses as much area with their chord. A wobble to both sides
+    cancels out."""
+    p = np.asarray(points, float)
+    chord = float(np.linalg.norm(p[-1] - p[0]))
+    if len(p) < 3 or chord < 1e-9:
+        return 0.0
+    x, y = p[:, 0], p[:, 1]
+    area = 0.5 * float(np.sum(x * np.roll(y, -1) - np.roll(x, -1) * y))
+    return math.copysign(math.degrees(4 * math.atan(3 * abs(area) / chord ** 2)), area)
+
+
+def _against(points, closed, tolerance):
+    """How far (degrees) a stroke turns against its own way round at sharp turns: the cusps
+    between the lobes of a cloud; none on a circle, however wobbly."""
+    p = np.asarray(points, float)
+    if closed:
+        p = np.vstack([p, p[:1]])
+    v = p[_rdp_indices(p, max(tolerance, 1.5))]
+    d = np.diff(v, axis=0)
+    d = d / np.maximum(np.linalg.norm(d, axis=1, keepdims=True), 1e-9)
+    if closed:
+        d = np.vstack([d, d[:1]])
+    turns = [_turn(a, b) for a, b in zip(d, d[1:])]
+    way = sum(turns)
+    return sum(abs(t) for t in turns if t * way < 0 and abs(t) >= 20)
+
+
+def _curves(p, sides, closed):
+    """Which ``sides`` ((first, last) indices into ``p``) are chords of a curve rather than
+    straight sides.
+
+    The chords of a curve turn the same way bit by bit: along each chord and at each joint as
+    much (a lobe, a tight arc), or by small turns joint after joint (a gentle arc). A run of such
+    joints that turns 45° or more in all is a curve; a corner (a large turn between sides that
+    stay straight) or a turn the other way ends it. A side between two stretches of one curve goes
+    with the curve, but one that stays straight where curving like the rest of its stretch would
+    bend it 40° or more is a straight side the curve runs into (the arms of a U)."""
+    n = len(sides)
+    if n < 2:
+        return [False] * n
+
+    def unit(i0, i1):
+        v = p[i1] - p[i0]
+        return v / max(1e-9, np.linalg.norm(v))
+
+    lengths = [max(1e-9, float(np.linalg.norm(p[i1] - p[i0]))) for i0, i1 in sides]
+    bends = [_bend(p[i0:i1 + 1]) for i0, i1 in sides]
+    joints = n if closed else n - 1  # joint j is between sides j and j + 1
+    turns = [_turn(unit(*sides[j]), unit(*sides[(j + 1) % n])) for j in range(joints)]
+
+    def smooth(j):
+        k, m, turn = j, (j + 1) % n, turns[j]
+        need = max(4.0, abs(turn) / 4)
+        if bends[k] * turn > 0 and bends[m] * turn > 0 and abs(bends[k]) >= need and abs(bends[m]) >= need:
+            return True
+        near = [turns[q % joints] for q in (j - 1, j + 1) if closed or 0 <= q < joints]
+        return abs(turn) <= 30 and any(abs(u) <= 30 and u * turn > 0 for u in near)
+
+    linked = [smooth(j) for j in range(joints)]
+    start = 0
+    if closed:
+        # Begin at a break so no run is split where the loop starts.
+        start = next((j for j in range(joints) if not linked[j] or turns[j] * turns[j - 1] <= 0), 0)
+    runs, run = [], []
+    for j in ((start + i) % joints for i in range(joints)):
+        if linked[j] and run and turns[j] * turns[run[-1]] > 0:
+            run.append(j)
+        else:
+            runs.append(run)
+            run = [j] if linked[j] else []
+    runs.append(run)
+    curved = [False] * n
+    for run in runs:
+        members = {k for j in run for k in (j, (j + 1) % n)}
+        if sum(abs(bends[k]) for k in members) + sum(abs(turns[j]) for j in run) >= 45:
+            for k in members:
+                curved[k] = True
+    if not any(curved):
+        return curved
+    gaps = []
+    for k in range(n):
+        if curved[k] or not closed and k in (0, n - 1):
+            continue
+        a, c, before, after = (k - 1) % n, (k + 1) % n, turns[(k - 1) % joints], turns[k % joints]
+        if curved[a] and curved[c] and before * after > 0 and before * bends[a] > 0 and after * bends[c] > 0:
+            gaps.append(k)
+    for k in gaps:
+        curved[k] = True
+    straight = []
+    for k in range(n):
+        if not curved[k]:
+            continue
+        # The rest of the stretch of curve this side is in, and how sharply it curves on average.
+        others = []
+        for step in (-1, 1):
+            m = k + step
+            while (closed or 0 <= m < n) and curved[m % n] and m % n != k and m % n not in others:
+                others.append(m % n)
+                m += step
+        drawn = sum(lengths[m] for m in others)
+        follow = sum(abs(bends[m]) for m in others) / drawn * lengths[k] if drawn else 0.0
+        if follow >= 40 and abs(bends[k]) < follow / 4:
+            straight.append(k)
+    return [curved[k] and k not in straight for k in range(n)]
+
+
+def _spline(points, step=2.0):
+    """Points about ``step`` apart along the Catmull–Rom spline through ``points``: the curve a
+    smooth stroke draws (``trace.path_data``), for drawing it with straight segments."""
+    p = np.asarray(points, float)
+    if len(p) < 3:
+        return p
+    out = [p[:1]]
+    for i in range(len(p) - 1):
+        p0, p1, p2, p3 = p[max(i - 1, 0)], p[i], p[i + 1], p[min(i + 2, len(p) - 1)]
+        c1, c2 = p1 + (p2 - p0) / 6, p2 - (p3 - p1) / 6
+        t = np.linspace(0, 1, max(1, math.ceil(np.linalg.norm(p2 - p1) / step)) + 1)[1:, None]
+        out.append((1 - t) ** 3 * p1 + 3 * (1 - t) ** 2 * t * c1 + 3 * (1 - t) * t ** 2 * c2 + t ** 3 * p2)
+    return np.vstack(out)
+
+
 def straighten_stroke(points, closed, *, tolerance, angles, angle_tolerance, circles, corner, polylines=True):
     """A straightened version of one stroke: (points, closed, kind) where kind is ``line``,
     ``polyline``, ``circle`` or None (left as drawn). Each side is fitted to the points drawn
-    along it; rounded corners become sharp ones where neighbouring sides meet."""
-    from .trace import length
+    along it; rounded corners become sharp ones where neighbouring sides meet. Curves (lobes,
+    arcs, waves) keep their drawn shape: a stroke that is all curve is left as drawn, and in one
+    with straight sides too only those are straightened."""
+    from .trace import length, resample
 
     p = np.asarray(points, float)
     span = length(p, closed)
@@ -521,8 +759,10 @@ def straighten_stroke(points, closed, *, tolerance, angles, angle_tolerance, cir
     gap = float(np.linalg.norm(p[0] - p[-1]))
     nearly_closed = not closed and len(p) >= 8 and gap <= 3 * tolerance and span > 12 * tolerance
     if circles and (closed or nearly_closed or gap < span * 0.12) and len(p) >= 12:
-        centre, radius, error = _fit_circle(p)
-        if radius > 3 and error <= max(tolerance, radius * 0.12):
+        # Fitted to points evenly along the line (its vertices crowd into the corners), and only
+        # for a round shape: the cusps between a cloud's lobes turn against its way round.
+        centre, radius, error = _fit_circle(resample(p, max(48, int(span / 3)), closed))
+        if radius > 3 and error <= max(tolerance, radius * 0.12) and _against(p, closed or nearly_closed, tolerance) < 90:
             angles_ = np.linspace(0, 2 * math.pi, max(24, int(radius / 2)), endpoint=False)
             circle = np.column_stack([centre[0] + radius * np.cos(angles_), centre[1] + radius * np.sin(angles_)])
             return circle, True, "circle"
@@ -576,26 +816,69 @@ def straighten_stroke(points, closed, *, tolerance, angles, angle_tolerance, cir
         sides.append((i0, i1))
     if len(sides) < (3 if closed else 1) or len(sides) > max(3, len(p) // 3):
         return p[:-1] if closed else p, closed, None
+    along = np.concatenate([[0], np.cumsum(np.linalg.norm(np.diff(p, axis=0), axis=1))])
+
+    def drawn_length(a, b):
+        """The length drawn from index a to b (round the loop when b comes first)."""
+        return along[b] - along[a] if a <= b else along[-1] - along[a] + along[b]
+
+    # Curves (lobes, arcs, waves) stay as drawn and only straight sides are straightened. Short
+    # edges between two sides make a rounded corner; a longer stretch of them is a curve too.
+    curved = _curves(p, sides, closed)
+    gaps = [drawn_length(sides[k][1], sides[(k + 1) % len(sides)][0]) for k in range(len(sides) if closed else len(sides) - 1)]
+    if not closed:
+        gaps += [drawn_length(0, sides[0][0]), drawn_length(sides[-1][1], len(p) - 1)]
+    if any(curved) or max(gaps, default=0) > 2 * corner:
+        # Beside curves, a side too short to tell straight from curved goes with them.
+        curved = [c or np.linalg.norm(p[i1] - p[i0]) < 2 * corner for c, (i0, i1) in zip(curved, sides)]
+    straight = [side for side, c in zip(sides, curved) if not c]
+    if not straight:
+        return p[:-1] if closed else p, closed, None
     lines = []
-    for i0, i1 in sides:
+    for i0, i1 in straight:
         centre, direction = _line_through(p[i0:i1 + 1])
         if angles:
             reach = np.linalg.norm(p[i1] - p[i0]) / 2
             s2, e2, _ = snap_angle(centre - direction * reach, centre + direction * reach, angles, angle_tolerance)
             direction = (e2 - s2) / max(1e-9, np.linalg.norm(e2 - s2))
         lines.append((centre, direction))
+
+    def onto(line, point):
+        centre, direction = line
+        return centre + direction * ((point - centre) @ direction)
+
+    def curve_between(a, b):
+        """Whether the stroke curves between drawn indices a and b (wrapping round a loop)."""
+        return drawn_length(a, b) > 2 * corner or any(
+            c and (a <= i0 < b if a <= b else (i0 >= a or i0 < b)) for (i0, _), c in zip(sides, curved))
+
+    def drawn(a, b, start, end):
+        """The curve as drawn from index a to b, from ``start`` to ``end``."""
+        between = p[a + 1:b] if a < b else np.vstack([p[a + 1:-1], p[:b]])
+        return _spline(np.vstack([start, between, end]))[1:-1]
+
     out = []
     count = len(lines)
     if not closed:
-        centre, direction = lines[0]
-        out.append(centre + direction * ((p[0] - centre) @ direction))
+        first = straight[0][0]
+        if curve_between(0, first):
+            out += [p[0], *drawn(0, first, p[0], onto(lines[0], p[first])), onto(lines[0], p[first])]
+        else:
+            out.append(onto(lines[0], p[0]))
     for i in range(count if closed else count - 1):
         j = (i + 1) % count
-        fallback = (p[sides[i][1]] + p[sides[j][0]]) / 2
-        out.append(_meet(lines[i], lines[j], fallback))
+        end, start = straight[i][1], straight[j][0]
+        if curve_between(end, start):
+            a, b = onto(lines[i], p[end]), onto(lines[j], p[start])
+            out += [a, *drawn(end, start, a, b), b]
+        else:
+            out.append(_meet(lines[i], lines[j], (p[end] + p[start]) / 2))
     if not closed:
-        centre, direction = lines[-1]
-        out.append(centre + direction * ((p[-1] - centre) @ direction))
+        last = straight[-1][1]
+        if curve_between(last, len(p) - 1):
+            out += [onto(lines[-1], p[last]), *drawn(last, len(p) - 1, onto(lines[-1], p[last]), p[-1]), p[-1]]
+        else:
+            out.append(onto(lines[-1], p[-1]))
     return np.asarray(out, float), closed, "polyline"
 
 
