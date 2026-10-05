@@ -161,7 +161,7 @@ Tool results are minified JSON text with no duplicated structured copy. Advertis
 
 The default `detail: "compact"` apply response returns, per stable layer ID, only the **new** values of changed fields (including resolved `bounds`), new layers as `name`/`type`/`bounds` plus their main content, removals, and layer order when it changes. `detail: "full"` returns before/after snapshots. `vixl_measure` summarizes channels as percentiles unless `histogram: "full"`.
 
-Preview defaults: **1024×1024 maximum and 1 MiB of encoded PNG data**, preserving transparency and aspect ratio. Previews render a geometrically scaled copy of the document (JPEG sources decode at reduced scale), so a 24-megapixel document previews in a fraction of a second; documents with canvas-sized effect selections fall back to a full render. `region: [x, y, w, h]` (pixels or percentages) zooms into part of the canvas. File export always uses full resolution unless a scale/profile is requested.
+Preview defaults: **1024×1024 maximum and 1 MiB of encoded PNG data**, preserving transparency and aspect ratio. Previews render a geometrically scaled copy of the document (JPEG sources decode at reduced scale), so a 24-megapixel document previews in a fraction of a second. Every layer edge (and every copy of a `repeat`) lands on a whole preview pixel, so layers or tiles that meet in the full render still meet in the preview and no seam appears between them; documents with canvas-sized effect selections fall back to a full render. `region: [x, y, w, h]` (pixels or percentages) zooms into part of the canvas. File export always uses full resolution unless a scale/profile is requested.
 
 ### Typed AI tools
 
