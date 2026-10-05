@@ -15,22 +15,30 @@ from .project import Project
 from .validation import validate
 
 
-def service_check(operation):
+def service_check(operation, fonts=None):
     """Restrictions for remote/agent callers, applied after normalization so aliases such as
     ``font_family`` cannot bypass them. Service clients import images explicitly; they cannot
-    read arbitrary server files, enable plugins, or resolve linked assets or fonts."""
+    read arbitrary server files, enable plugins, or resolve linked assets or font files.
+    ``fonts`` (the names a document allows, see ``service_fonts``) lets operations on a document
+    name a registered font or role; without it any ``font`` is refused."""
     from .render import EFFECTS
     from .operations import OPERATION_TYPES
 
     kind = operation.get("type")
+    blocked = ("linked",) if fonts is not None else ("linked", "font", "display_font")
     require(
-        not any(k in operation for k in ("linked", "font", "display_font"))
+        not any(k in operation for k in blocked)
         and ("path" not in operation or (kind in ("text-layout", "shape") or (kind == "select" and operation.get("shape") == "path"))),
-        "Filesystem fields (path, linked, font) are unavailable through services; "
-        "import images with vixl_import_image and reference the returned asset",
+        "Filesystem fields (path, linked, font files) are unavailable through services; "
+        "import images with vixl_import_image and reference the returned asset"
+        + ("" if fonts is not None else "; fonts are named only in operations applied to a document, by registered name or role"),
         "forbidden",
-        field=next((k for k in ("path", "linked", "font", "display_font") if k in operation), None),
+        field=next((k for k in ("path", *blocked) if k in operation), None),
     )
+    if fonts is not None:
+        from .service_fonts import check_fonts
+
+        check_fonts(operation, fonts)
     require(kind in set(OPERATION_TYPES) | set(EFFECTS), "Unsupported service operation", field="type")
     if kind == "effect":
         import difflib
@@ -201,7 +209,9 @@ class Session:
             operations = operations.get("operations", [operations])
         require(isinstance(operations, list), "Expected operation array")
         with self.project(write=not dry_run, document=document) as p:
-            return p.apply(operations, dry_run=dry_run, detail=detail, check=service_check)
+            from .service_fonts import checker
+
+            return p.apply(operations, dry_run=dry_run, detail=detail, check=checker(p, service_check))
 
     def render(self, variables=None, artboard=None, comp=None, document=None):
         with self.project(document=document) as p:

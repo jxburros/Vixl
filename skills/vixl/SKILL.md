@@ -239,7 +239,8 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
   For wrapping use `text-layout` with `width`/`height` (optionally `fit: true`).
 - **Variables:** `${name}` works in text, colors, gradient fills and image-asset IDs. Undefined
   variables are errors. Swatches are `@name` in color fields.
-- **Through MCP/REST, operation `path`, `linked` and `font` fields are rejected.** Import files with
+- **Through MCP/REST, operation `path` and `linked` fields are rejected, and `font` takes only a registered
+  font name or role (`heading`/`body`; install with `font pair`/`font install` first).** Import files with
   `vixl_import_image(path=…)` or, when you only have the bytes, `vixl_import_image(data_base64=…)`
   (MCP) or `POST /assets` (REST); reuse already-embedded images via `asset` IDs.
 - **MCP may run as two servers:** `vixl` (`--tools core`) for editing and export, `vixl-ai`

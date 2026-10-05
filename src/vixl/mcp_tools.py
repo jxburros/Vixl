@@ -56,7 +56,7 @@ def service_operation_schema(slim=False):
         kind = props.pop("type")["const"]
         if kind in EFFECTS:
             continue  # All effects use the canonical {type: effect, name: ...} form.
-        for field in ("path", "linked", "font"):
+        for field in ("path", "linked"):  # font stays: a registered font name or role (service_fonts)
             if kind not in ("text-layout", "shape", "select") or field != "path":
                 props.pop(field, None)
         if kind in ("add", "frame"):
@@ -563,7 +563,9 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
     ) -> dict:
         """Apply operations atomically (all or none) and autosave. compact returns new values of changed
         fields by layer ID, and new layers as name/type/bounds; full adds before/after snapshots.
-        dry_run validates and previews the changes without saving. Omit target to use the active layer."""
+        dry_run validates and previews the changes without saving. Omit target to use the active layer.
+        font (text, text-set, rich-text spans, layout-apply, fields) takes a registered font name or a role
+        (heading, body), as vixl_text_add does; install fonts first with vixl_font_pair or vixl_font_install."""
         return session.apply(operations, dry_run, detail, document)
 
     @tool
@@ -589,7 +591,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
                 result[kind] = {"error": "unknown operation type", "suggestions": close}
                 continue
             variant = deepcopy(variants[canonical])
-            for field in ("path", "linked", "font"):
+            for field in ("path", "linked"):
                 if field != "path" or canonical not in ("text-layout", "shape", "select"):
                     variant["properties"].pop(field, None)
             if canonical == "effect":

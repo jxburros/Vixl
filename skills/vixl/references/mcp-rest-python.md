@@ -121,9 +121,12 @@ because the schema is inline in `vixl_operations_apply`.
 
 ### MCP-specific restrictions
 
-- Operation fields `path`, `linked`, `font` are rejected → import with `vixl_import_image`; reference
+- Operation fields `path` and `linked` are rejected → import with `vixl_import_image`; reference
   embedded images by `asset` ID (see `vixl_document_inspect`), e.g. in `frame`/`replace-contents`/`add`.
-- No custom font files over MCP; the bundled DejaVu Sans and system font names still work.
+- `font` works in batches (`text`, `text-set`, `rich-text` spans, `layout-apply`, fields) like `vixl_text_add`:
+  pass a registered font name or a role (`heading`, `body`). Install first with `vixl_font_pair` /
+  `vixl_font_install` / `vixl_import_font`; a file path or unregistered name is an error that lists the
+  registered names. No font files over MCP.
 - No plugins, no linked files. CSV `render --data` and `export-screens` are CLI/Python only.
 - Tool errors carry JSON: `{"error","message","field","operation_index","operation_type","allowed"?,"suggestions"?}`
   — e.g. `layer_not_found` with `suggestions: ["title"]`. Correct the named field and retry; nothing
@@ -162,7 +165,7 @@ Non-loopback hosts require a bearer token from `VIXL_API_TOKEN` (or `--token-env
 | `POST /timeline/export` | `{"format":"gif","fps":15,"scale":0.5}` | Animation bytes |
 
 Errors: HTTP 400 with `{"error":CODE,"message":…}` (403 for `forbidden`, 413 for oversized bodies).
-`path`/`linked`/`font` operation fields are rejected, as with MCP.
+`path`/`linked` operation fields are rejected and `font` takes only a registered name or role, as with MCP.
 
 ```bash
 curl -s -X POST http://127.0.0.1:8765/operations -H 'Content-Type: application/json' \

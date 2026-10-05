@@ -56,7 +56,7 @@ curl -X POST http://127.0.0.1:8765/operations \
 curl http://127.0.0.1:8765/render -o preview.png
 ```
 
-REST sessions fix the project path when launched. Operation `path`, `linked`, and `font` fields are rejected; import image bytes with `/assets`. Services do not enable third-party plugins or linked-file reads. Local AI configuration is trusted, and services can invoke it. Do not share API access with users who should not be able to use your configured AI service. Authentication is all-or-nothing; there are no per-user roles or quotas.
+REST sessions fix the project path when launched. Operation `path` and `linked` fields are rejected, and `font` accepts only a registered font name or role (`heading`, `body`), never a file; import image bytes with `/assets` and fonts with `/fonts` or `font install`. Services do not enable third-party plugins or linked-file reads. Local AI configuration is trusted, and services can invoke it. Do not share API access with users who should not be able to use your configured AI service. Authentication is all-or-nothing; there are no per-user roles or quotas.
 
 ## MCP
 
@@ -143,7 +143,7 @@ Every document tool accepts an optional `document` path. Up to 8 documents stay 
 
 For example, create `poster.vixl` at 4000×3000, import `photo.jpg` as `photo`, apply `[{"type":"move","target":"photo","x":20}]`, run `vixl_check`, request a preview, then export `poster.png`. File paths refer to the machine running Vixl; a client without access to that file system can send image bytes with `data_base64` instead.
 
-Relative and absolute paths are accepted within the workspace. Paths escaping it, including symlinks to outside directories, are rejected. Export refuses existing files unless `overwrite: true` is supplied, and cannot overwrite `.vixl` documents. Subdirectories must already exist. Operation `path`, `linked`, and `font` fields remain unavailable (checked after alias normalization); use the import tool. Services do not enable third-party plugins or linked-file reads.
+Relative and absolute paths are accepted within the workspace. Paths escaping it, including symlinks to outside directories, are rejected. Export refuses existing files unless `overwrite: true` is supplied, and cannot overwrite `.vixl` documents. Subdirectories must already exist. Operation `path` and `linked` fields remain unavailable (checked after alias normalization); use the import tool. `font` (and `display_font`, rich-text span fonts and `font=` in rich-text Markdown) is accepted in `vixl_operations_apply` batches exactly as in `vixl_text_add`: a font registered in the document (`vixl_font_pair`, `vixl_font_install`, `vixl_import_font`, or a `font-register` earlier in the same batch) or a role. A file path or an unregistered name is refused with `forbidden`/`missing_font`, listing the registered names and the install tools. Services do not enable third-party plugins or linked-file reads.
 
 ### Forgiving input and actionable errors
 

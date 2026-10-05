@@ -720,16 +720,16 @@ TYPES = ("rich-text", "text-style")
 
 
 def schemas(add):
-    from .schema import S, N, B, COORD, SIZE
+    from .schema import S, N, B, COORD, SIZE, FONT
 
-    style = {"bold": B, "italic": B, "underline": B, "strike": B, "color": S, "size": N, "font": S, "highlight": S,
+    style = {"bold": B, "italic": B, "underline": B, "strike": B, "color": S, "size": N, "font": FONT, "highlight": S,
              "baseline": {"enum": ["super", "sub", "normal"]}, "tracking": N}
     para = {"list": {"enum": ["none", "bullet", "number"]}, "level": {"type": "integer", "minimum": 0, "maximum": 8},
             "align": {"enum": ["left", "center", "right", "justify"]}, "space_before": N, "space_after": N, "indent": N,
             "line_height": N, "start": {"type": "integer", "minimum": 0}}
     obj = {"type": "object"}
     add("rich-text", {"name": S, "markdown": S, "spans": {"type": "array", "items": obj, "maxItems": MAX_SPANS},
-                      "paragraphs": {"type": "array", "items": obj}, "font": S, "size": N, "color": S,
+                      "paragraphs": {"type": "array", "items": obj}, "font": FONT, "size": N, "color": S,
                       "align": {"enum": ["left", "center", "right", "justify"]}, "line_height": N, "paragraph_spacing": N,
                       "list_indent": N, "font_variants": obj, "width": SIZE, "height": SIZE, "fit": B, "x": COORD,
                       "y": COORD}, anyOf=[{"required": ["markdown"]}, {"required": ["spans"]}])

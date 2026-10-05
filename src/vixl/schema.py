@@ -19,6 +19,11 @@ SIZE = {
     "description": "Pixels or a percentage of the canvas/parent such as '25%'.",
 }
 COORD_FIELDS = ("x", "y", "width", "height")
+FONT = {
+    "type": "string",
+    "description": "Registered font name or role (heading, body); install with font install / font pair / font import. "
+    "File paths work only in the CLI and Python API, not over MCP or REST.",
+}
 
 
 def enum(*values):
@@ -98,13 +103,13 @@ def _operation_schema():
         {
             **text,
             "name": S,
-            "font": S,
+            "font": FONT,
             "x": COORD,
             "y": COORD,
         },
         ["text"],
     )
-    add("text-set", {**text, "font": S, "stroke_width": {"type": "integer", "minimum": 0}, "stroke_color": S})
+    add("text-set", {**text, "font": FONT, "stroke_width": {"type": "integer", "minimum": 0}, "stroke_color": S})
     for kind in (
         "remove",
         "hide",
