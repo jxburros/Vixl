@@ -713,6 +713,22 @@ def _longest_word(project, layer, text, size):
     return max(shape(data, word, size)[1] for word in words)
 
 
+def scale_field(layer, s):
+    """Scale a field's value styling (size, padding, border, ``min_size``) by ``s`` for a reduced
+    or enlarged render-only copy; the caller scales the box. Without this a proxy preview draws
+    values at full-size type inside a shrunken box."""
+    for key in ("size", "padding"):
+        if key in layer:
+            layer[key] = layer[key] * s
+    appearance = layer.get("appearance") or {}
+    for key in ("stroke_width", "radius"):
+        if key in appearance:
+            appearance[key] = appearance[key] * s
+    record = layer.get("field") or {}
+    if "min_size" in record:
+        record["min_size"] = record["min_size"] * s
+
+
 def fit_value(project, layer, text):
     """(size, status) for drawing ``text`` in the field: status ``ok``, ``shrunk``, ``clipped``
     or ``overflow`` following the field's overflow setting."""

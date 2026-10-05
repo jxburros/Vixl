@@ -27,6 +27,10 @@ def _scale_layer(layer, s):
             layer[key] = _size(layer[key], s)
     if "size" in layer and layer.get("type") == "text":
         layer["size"] = _size(layer["size"], s)
+    if layer.get("type") == "field":
+        from .forms import scale_field
+
+        scale_field(layer, s)
     for key in ("spacing", "radius"):
         if key in layer and isinstance(layer[key], (int, float)):
             layer[key] = layer[key] * s
@@ -105,6 +109,9 @@ def scaled_project(project, s):
     state = deepcopy(project.state)
     canvas = state["canvas"]
     canvas["width"], canvas["height"] = _size(canvas["width"], s), _size(canvas["height"], s)
+    if canvas.get("dpi") and any(layer.get("type") == "field" for layer in state["layers"]):
+        # Fields size their values in points (dpi / 72): keep a point the same fraction of the page.
+        canvas["dpi"] = canvas["dpi"] * s
     for layer in state["layers"]:
         _scale_layer(layer, s)
     from .guides import transform_guide
