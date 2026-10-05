@@ -8,11 +8,15 @@ from PIL import Image, ImageDraw, ImageFilter
 from vixl import Project
 from vixl import drawing
 from vixl.errors import VixlError
+from vixl.trace import simplify
 
 
-def photo(path=None, tilt=0.0, size=(600, 450), seed=3):
+def photo(path=None, tilt=0.0, size=(600, 450), seed=3, desk=None, cloud=False):
     """A photographed sketch: a wobbly rounded rectangle, a hand-drawn circle, a near-horizontal
-    line with a gap, a zigzag, dust, uneven lighting and paper grain."""
+    line with a gap, a zigzag, dust, uneven lighting and paper grain. ``cloud`` draws a bumpy
+    loop of seven rounded lobes in place of the circle. With a ``desk`` colour the whole page is
+    photographed at ``tilt`` degrees, so the darker desk shows in the corners (otherwise only the
+    drawing is tilted on the page)."""
     rng = np.random.default_rng(seed)
     w, h = size
     ink = Image.new("L", size, 0)
@@ -32,7 +36,11 @@ def photo(path=None, tilt=0.0, size=(600, 450), seed=3):
     box = [(80 + r, 80), (300 - r, 82), (300, 80 + r), (301, 230 - r), (300 - r, 230), (80 + r, 229), (80, 230 - r),
            (81, 80 + r), (80 + r, 80)]
     line(along(box, 12))
-    line([(460 + 70 * math.cos(a), 150 + 70 * math.sin(a)) for a in np.linspace(0, 2 * math.pi, 80)], 4, 0.6)
+    if cloud:
+        line([(460 + (52 + 18 * abs(math.sin(3.5 * a))) * math.cos(a), 150 + (52 + 18 * abs(math.sin(3.5 * a))) * math.sin(a))
+              for a in np.linspace(0, 2 * math.pi, 140)], 4, 0.6)
+    else:
+        line([(460 + 70 * math.cos(a), 150 + 70 * math.sin(a)) for a in np.linspace(0, 2 * math.pi, 80)], 4, 0.6)
     line(along([(60, 330), (260, 333)], 40), 4)
     line(along([(290, 334), (540, 331)], 40), 4)
     line(along([(80, 400), (130, 370), (180, 400), (230, 370), (280, 400)], 8), 3)
@@ -40,13 +48,15 @@ def photo(path=None, tilt=0.0, size=(600, 450), seed=3):
         x, y = rng.uniform(0, w), rng.uniform(0, h)
         d.ellipse([x - 1, y - 1, x + 1, y + 1], fill=200)
     ink = ink.filter(ImageFilter.GaussianBlur(0.7))
-    if tilt:
+    if tilt and desk is None:
         ink = ink.rotate(tilt, resample=Image.Resampling.BICUBIC)
     yy, xx = np.mgrid[0:h, 0:w]
     paper = 230 - 60 * (xx / w) * (yy / h) + rng.normal(0, 3, (h, w))
     alpha = np.asarray(ink, float)[..., None] / 255 * 0.85
     rgb = paper[..., None] * (1 - alpha) + np.array([55, 55, 70]) * alpha
     image = Image.fromarray(np.clip(rgb, 0, 255).astype(np.uint8))
+    if desk is not None:
+        image = image.rotate(tilt, resample=Image.Resampling.BICUBIC, fillcolor=desk)
     if path:
         image.save(path, quality=90)
     return image
@@ -99,6 +109,31 @@ def test_clean_flattens_paper_removes_dust_and_corrects_tilt():
     original = drawing.clean(photo(), {"ink": "original", "deskew": False})
     rgb = np.asarray(original["ink"])[..., :3][original["mask"]]
     assert abs(float(rgb.mean()) - 60) < 40, "original ink colour is kept"
+
+
+def test_the_desk_around_a_tilted_page_is_not_ink(tmp_path):
+    image = photo(tilt=2.0, desk=(96, 84, 72))
+    result = drawing.clean(image)
+    assert result["sheet"] and 1.5 <= abs(result["angle"]) <= 2.5, "the page is found and its tilt corrected"
+    assert not drawing.clean(photo())["sheet"], "paper filling the frame shows no edge, however uneven the light"
+
+    def rim(settings):
+        mask = drawing.clean(image, {"crop": False, **settings})["mask"].copy()
+        mask[12:-12, 12:-12] = False
+        return mask
+
+    assert not rim({}).any(), "nothing along the page's edge or on the desk is ink"
+    assert rim({"sheet": False}).any(), "sheet: false keeps the desk"
+    path = tmp_path / "tilted.jpg"
+    image.save(path, quality=90)
+    p = built(path, straighten=False)
+    group = p.layer("art")
+    records = [r for layer in p.state["layers"] for r in layer.get("drawing_strokes", [])]
+    assert 4 <= len(records) <= 8
+    for record in records:
+        points = np.asarray(record["points"])
+        assert record["width"] < 8 and points.min() > 12, "no stroke traces the page's edge"
+        assert points[:, 0].max() < group["content_width"] - 12 and points[:, 1].max() < group["content_height"] - 12
 
 
 def test_import_keeps_the_original_and_draws_clean_ink(sketch):
@@ -158,6 +193,42 @@ def test_straighten_options(sketch):
     with pytest.raises(VixlError):
         p.apply({"type": "drawing", "action": "straighten", "target": "art", "settings": {"bogus": 1}})
     assert before != [layer.get("drawing_strokes") for layer in p.state["layers"]]
+
+
+def test_straighten_keeps_the_lobes_of_a_cloud(tmp_path):
+    path = tmp_path / "cloud.jpg"
+    photo(path, cloud=True)
+    p = built(path, straighten=False)
+    x, y = p.layer("art")["drawing"]["crop"][:2]
+    layers = [layer for layer in p.state["layers"] if "drawing_strokes" in layer]
+    cloud = min(layers, key=lambda layer: np.hypot(*(np.mean(layer["drawing_strokes"][0]["points"], axis=0) - (460 - x, 150 - y))))
+    drawn = deepcopy(cloud["drawing_strokes"])
+    assert len(drawn) == 1 and drawn[0]["closed"]
+    p.apply({"type": "drawing", "action": "straighten", "target": "art", "settings": {"close_gaps": 30}})
+    assert p.layer(cloud["name"])["drawing_strokes"] == drawn, "the rounded lobes stay as drawn: no straight segments, no circle"
+    kinds = drawing.report(p, "art")["stroke_kinds"]
+    assert kinds.get("line", 0) >= 2 and kinds.get("polyline", 0) >= 2, "the lines, box and zigzag are still straightened"
+
+
+def test_straighten_keeps_the_curve_of_a_mixed_stroke_and_the_corners_of_a_neat_box():
+    def traced(draw):
+        mask = Image.new("L", (400, 400))
+        draw(ImageDraw.Draw(mask))
+        (stroke,) = drawing.strokes_from_mask(np.asarray(mask) > 0)
+        return simplify(stroke["points"], 0.75, stroke["closed"]), stroke["closed"]
+
+    settings = {"tolerance": 4, "angles": [0, 45, 90, 135], "angle_tolerance": 6, "circles": True, "corner": 24}
+    arch = [(200 + 80 * math.cos(a), 200 + 80 * math.sin(a)) for a in np.linspace(math.pi, 2 * math.pi, 50)]
+    window = traced(lambda d: d.line(arch + [(280, 360), (120, 360), (120, 200)], fill=255, width=5, joint="curve"))
+    points, closed, kind = drawing.straighten_stroke(*window, **settings)
+    points = np.asarray(points)
+    top, sill = points[points[:, 1] < 195], points[points[:, 1] > 340]
+    assert kind == "polyline" and closed
+    assert len(top) > 20 and np.abs(np.hypot(top[:, 0] - 200, top[:, 1] - 200) - 80).max() < 3, "the arch stays round"
+    assert len(sill) == 2 and abs(sill[0, 1] - sill[1, 1]) < 0.01, "the sill is one level side between sharp corners"
+    box = traced(lambda d: d.rounded_rectangle([60, 80, 340, 300], radius=12, outline=255, width=5))
+    points, closed, kind = drawing.straighten_stroke(*box, **settings)
+    assert kind == "polyline" and len(points) == 4, "a neatly drawn box keeps its corners and is no circle"
 
 
 def test_snap_angle():
