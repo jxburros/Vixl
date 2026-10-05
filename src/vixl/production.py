@@ -157,7 +157,9 @@ def plan(spec):
 
 def instantiate(project, values):
     candidate = project.clone()
-    candidate._cache, candidate._decoded = {}, {}
+    from .render import LayerCache
+
+    candidate._cache, candidate._decoded = LayerCache(), {}
     recipe = candidate.state.get("recipe")
     if recipe:
         values = validate_inputs(recipe.get("inputs", {}), values)
@@ -350,7 +352,11 @@ def run(project, spec, directory, *, cancelled=lambda: False, progress=lambda va
             try:
                 return render_variant(project, spec, variant, directory, prior.get(variant["id"]), cancelled)
             except Exception as exc:
-                error = exc.as_dict() if isinstance(exc, VixlError) else {"error": type(exc).__name__}
+                error = (
+                    exc.as_dict()
+                    if isinstance(exc, VixlError)
+                    else {"error": type(exc).__name__, "message": str(exc)[:500]}
+                )
                 return {**variant, "status": "failed", "error": error}
 
         with ThreadPoolExecutor(max_workers=spec.get("workers", 1)) as executor:

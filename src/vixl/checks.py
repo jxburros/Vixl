@@ -58,6 +58,37 @@ def _contains(outer, inner):
     )
 
 
+def glyph_reports(project, layers):
+    """``(layer, {"missing", "fallback"})`` for resolved text layers whose characters need a
+    fallback font or that no available font covers. Text is read with the project's variables."""
+    from .text import glyph_coverage
+    from .render import substitute
+
+    for item in layers:
+        report = glyph_coverage(project, {**item, "text": substitute(item["text"], project.state["variables"])})
+        if report["missing"] or report["fallback"]:
+            yield item, report
+
+
+def missing_glyphs(project):
+    """Visible text layers with characters that no available font covers (they draw as tofu)."""
+    from .render import resolved_layers
+
+    layers = resolved_layers(project)
+    index = {item["id"]: item for item in layers}
+
+    def shown(item):
+        while item:
+            if not item["visible"] or item["opacity"] <= 0:
+                return False
+            item = index.get(item.get("parent"))
+        return True
+
+    text = [item for item in layers if item["type"] == "text" and shown(item)]
+    return [{"layer": item["name"], "missing": report["missing"]}
+            for item, report in glyph_reports(project, text) if report["missing"]]
+
+
 def check_design(
     project,
     *,
@@ -158,12 +189,6 @@ def check_design(
             elif x < 0 or y < 0 or x + w > width or y + h > height:
                 severity = "error" if is_text(item) else "warning"
                 issue("bounds", severity, f"{item['name']!r} is cut off by the canvas edge", [item], bounds=[x, y, w, h])
-            if item.get("parent"):
-                parent = resolved[item["parent"]]
-                box = (0, 0, parent["content_width"], parent["content_height"])
-                if not _contains(box, local_bounds[item["id"]]):
-                    issue("bounds", "error" if is_text(item) else "warning",
-                          f"{item['name']!r} is clipped by group {parent['name']!r}", [item])
 
     alphas = {}
 
@@ -193,17 +218,14 @@ def check_design(
                 issue("content", "warning", f"{item['name']!r} has no visible pixels", [item],
                       **({"strokes": stroke_diagnostics(item)} if item["type"] == "paint" else {}))
 
-    if "fonts" in checks:
-        from .text import glyph_coverage
-        from .render import substitute
-        for item in layers:
-            if item["type"] != "text":
-                continue
-            report = glyph_coverage(candidate, {**item, "text": substitute(item["text"], candidate.state["variables"])})
-            if report["missing"]:
-                issue("fonts", "error", f"{item['name']!r} has unsupported glyphs; import a font and use font-fallbacks", [item], **report)
-            elif report["fallback"]:
-                issue("fonts", "warning", f"{item['name']!r} uses fallback glyphs", [item], **report)
+    # Characters no font can draw render as empty boxes (tofu), so they are reported by every
+    # check run, whichever checks were selected; fallback-font warnings belong to "fonts".
+    for item, report in glyph_reports(candidate, [item for item in layers if item["type"] == "text"]):
+        if report["missing"]:
+            issue("fonts", "error", f"{item['name']!r} has characters no font can draw ({''.join(report['missing'][:12])}); "
+                  "they render as empty boxes. Import a font that covers them and add it with font-fallbacks", [item], **report)
+        elif report["fallback"] and "fonts" in checks:
+            issue("fonts", "warning", f"{item['name']!r} uses fallback glyphs", [item], **report)
 
     def role(item):
         return next((x["role"] for x in (item, *ancestors(item)) if x.get("role")), "content")
@@ -249,11 +271,19 @@ def check_design(
 
     texts = [item for item in content if is_text(item)]
     if "contrast" in checks:
-        from .measure import measure
+        from .measure import measure, top_level_contrast
 
+        # Top-level text is measured from one shared render; grouped text renders its own.
+        top = [item["id"] for item in texts if not item.get("parent")]
+        try:
+            measured = top_level_contrast(candidate, top) if top else {}
+        except Exception:  # noqa: BLE001 - measure each layer separately and report its own failure.
+            measured = {}
         for item in texts:
             try:
-                result = measure(candidate, target=item["id"])["contrast"]
+                result = measured.get(item["id"]) or measure(candidate, target=item["id"])["contrast"]
+                if isinstance(result, Exception):
+                    raise result
             except Exception as exc:  # A text layer without visible pixels has no contrast.
                 issue("contrast", "warning", f"Could not measure {item['name']!r}: {exc}", [item])
                 continue

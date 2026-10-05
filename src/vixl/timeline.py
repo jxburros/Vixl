@@ -734,9 +734,22 @@ def inspect_timeline(project):
 FORMATS = ("gif", "apng", "webp", "sheet", "frames", "mp4", "webm")
 
 
+def cached(project):
+    """A render copy of a saved document that keeps unchanged layers and frames in the bounded
+    per-user render cache, so brush-heavy frames are not repainted on every export."""
+    if getattr(project, "_disk_cache", None) is not None or not getattr(project, "path", None):
+        return project
+    from copy import copy
+    from .render_cache import enable, user_cache_dir
+
+    return enable(copy(project), user_cache_dir())
+
+
 def contact_sheet(project, count=8, columns=None, max_width=1600, times=None):
     """A grid of evenly spaced frames, labelled by time, for checking motion at a glance."""
     from PIL import ImageDraw
+
+    project = cached(project)
 
     timeline = project.state.get("timeline") or default_timeline()
     if times is None:
@@ -783,6 +796,7 @@ def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=No
     ``colors`` (2–256) caps the GIF palette."""
     from .animation import check_colors, gif_bytes, size_warnings
 
+    project = cached(project)
     path = Path(path)
     suffix = path.suffix.lower()
     format = format or {".gif": "gif", ".png": "apng", ".apng": "apng", ".webp": "webp", ".zip": "frames", ".mp4": "mp4", ".webm": "webm"}.get(suffix)

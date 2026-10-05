@@ -101,13 +101,19 @@ def test_group_contrast_uses_siblings_and_ancestors_backdrop():
     assert not p.check(checks=["contrast"], targets=["outer"])["passed"]
 
 
-def test_text_clipped_by_group_is_not_silently_clean():
+def test_text_moved_past_its_group_is_drawn_and_checked():
     p = logo()
     p.apply({"type": "move", "target": "label", "x": 500, "y": 10})
     result = p.check()
     assert not result["passed"]
-    assert any("clipped by group" in i["message"] for i in result["issues"])
+    assert any(i["check"] == "bounds" and "outside the canvas" in i["message"] for i in result["issues"])
     assert any(i["check"] == "contrast" and i["severity"] == "warning" for i in result["issues"])
+    # Groups do not clip: text moved past the group's box still renders and is measured.
+    p = logo()
+    p.apply({"type": "move", "target": "label", "x": 100, "y": 10})
+    assert p.render().convert("L").crop((105, 45, 170, 75)).getextrema()[0] < 255
+    assert any(i["check"] == "contrast" and i["layers"] == ["label"] and i["severity"] == "error"
+               for i in p.check()["issues"])
 
 
 def test_grouped_foreground_measurement_crops_coverage():

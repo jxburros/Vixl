@@ -28,6 +28,8 @@ from .render import (
     EFFECTS,
     color,
     layer_image,
+    layer_ink,
+    ink_origin,
     resolve_font,
     resolve_layout,
     text_metrics,
@@ -694,14 +696,16 @@ def execute(project, op):
             "Remove layer styles/clipping before rasterizing",
         )
         b = resolve_layout(project)[layer["id"]]
-        image = layer_image(project, layer, b)
+        # Bake everything the layer draws, including blur and group children past its box.
+        image = layer_ink(project, layer, b)
+        x, y = ink_origin(image, b)
         layer.update(
             type="raster",
             asset=add_image(project, image),
             width=image.width,
             height=image.height,
-            x=b[0],
-            y=b[1],
+            x=x,
+            y=y,
             rotation=0,
             flip_x=False,
             flip_y=False,

@@ -6,9 +6,13 @@ stamps brush dabs along a smoothed, arc-length-resampled path; seeded jitter, si
 pressure tapers and paper/canvas textures make strokes look hand-made yet reproducible.
 """
 
+from collections import OrderedDict
 from copy import deepcopy
 from functools import lru_cache
+import hashlib
+import json
 import math
+import threading
 
 import numpy as np
 from PIL import Image, ImageFilter
@@ -110,19 +114,21 @@ def validate_settings(settings):
         require(isinstance(settings[key], int) and 0 <= settings[key] <= high, f"{key} must be an integer 0–{high}")
 
 
-def validate_paint(layer, state):
+def validate_paint(layer, state, strokes=None):
+    """Validate a paint layer. ``strokes`` limits the per-stroke checks to those strokes (a paint
+    operation checks the one it adds; the others were checked when they were added)."""
     from .design import resolve_color
     from .render import color
 
-    strokes = layer["strokes"]
     surface = layer.get("surface")
     require(isinstance(surface, list) and len(surface) == 2, "Paint layers need a surface size")
     from .model import Limits
 
     Limits().size(*surface)
-    require(isinstance(strokes, list) and len(strokes) <= MAX_STROKES, f"Paint layers hold at most {MAX_STROKES} strokes")
-    total = 0
-    for stroke in strokes:
+    every = layer["strokes"]
+    require(isinstance(every, list) and len(every) <= MAX_STROKES, f"Paint layers hold at most {MAX_STROKES} strokes")
+    checked, colors = set(), set()
+    for stroke in every if strokes is None else strokes:
         require(isinstance(stroke, dict) and set(stroke) <= STROKE_KEYS, "Invalid paint stroke")
         points = stroke["points"]
         require(isinstance(points, list) and 1 <= len(points) <= MAX_POINTS, f"Strokes need 1–{MAX_POINTS} points")
@@ -132,13 +138,20 @@ def validate_paint(layer, state):
             finite(point[1], "y", -1e6, 1e6)
             if len(point) == 3:
                 finite(point[2], "pressure", 0, 1)
-        total += len(points)
         finite(stroke["size"], "size", 0.5, 2000)
         finite(stroke.get("opacity", 1), "opacity", 0, 1)
         require(stroke.get("mode", "paint") in ("paint", "erase"), "Stroke mode must be paint or erase")
         require(isinstance(stroke.get("seed", 0), int) and stroke.get("seed", 0) >= 0, "Seed must be a nonnegative integer")
-        color(resolve_color(stroke.get("color", "black"), state))
-        brush_settings(state, stroke["brush"], stroke.get("settings"))
+        # Most strokes share a few colors and brushes; check each distinct one once.
+        value = stroke.get("color", "black")
+        if not isinstance(value, str) or value not in colors:
+            color(resolve_color(value, state))
+            colors.add(value)
+        key = json.dumps([stroke["brush"], stroke.get("settings")], sort_keys=True)
+        if key not in checked:
+            brush_settings(state, stroke["brush"], stroke.get("settings"))
+            checked.add(key)
+    total = sum(len(stroke["points"]) for stroke in every)
     require(total <= MAX_LAYER_POINTS, "Paint layer exceeds 200000 points", "resource_limit")
 
 
@@ -262,8 +275,17 @@ def _dab(radius, settings, angle, rng, bristles=None, offset=(0.0, 0.0)):
 
 def stroke_alpha(stroke, settings, shape):
     """Coverage of one stroke as a float32 array of the layer's shape."""
-    h, w = shape
     buffer = np.zeros(shape, np.float32)
+    patch, (x0, y0) = stroke_patch(stroke, settings, shape)
+    buffer[y0 : y0 + patch.shape[0], x0 : x0 + patch.shape[1]] = patch
+    return buffer
+
+
+def stroke_patch(stroke, settings, shape):
+    """Coverage of one stroke over the part of the layer it can touch: ``(patch, (x, y))``.
+    Dabs, texture and wet edges are local, so the result equals that region of the full-layer
+    coverage while the cost follows the stroke's size instead of the layer's."""
+    h, w = shape
     rng = np.random.default_rng(stroke.get("seed", 0))
     bristles = None
     if settings["shape"] == "bristle":
@@ -296,6 +318,17 @@ def stroke_alpha(stroke, settings, shape):
         # Bristles trail behind the brush: spread them across the direction of travel.
         dx, dy = np.gradient(positions[:, 0]), np.gradient(positions[:, 1])
         angles = np.degrees(np.arctan2(dy, dx))
+    # The region every dab can reach (a dab spans radius * 2 + 4 pixels), plus room for the
+    # wet-edge blur, which then sees the same zeros around the stroke as on the full layer.
+    blur = max(1, size * 0.12)
+    reach = (radii.max() if len(radii) else 0) + 4 + (math.ceil(4 * blur) + 4 if settings["wet_edges"] else 0)
+    rx0 = max(0, int(math.floor(positions[:, 0].min() - reach)))
+    ry0 = max(0, int(math.floor(positions[:, 1].min() - reach)))
+    rx1 = min(w, int(math.ceil(positions[:, 0].max() + reach)) + 1)
+    ry1 = min(h, int(math.ceil(positions[:, 1].max() + reach)) + 1)
+    if rx0 >= rx1 or ry0 >= ry1:
+        return np.zeros((0, 0), np.float32), (0, 0)
+    buffer = np.zeros((ry1 - ry0, rx1 - rx0), np.float32)
     for (x, y), radius, alpha, angle in zip(positions, radii, alphas, angles):
         if radius < 0.25 or alpha <= 0:
             continue
@@ -308,48 +341,78 @@ def stroke_alpha(stroke, settings, shape):
         if x0 >= x1 or y0 >= y1:
             continue
         patch = dab[y0 - top : y1 - top, x0 - left : x1 - left] * alpha
-        region = buffer[y0:y1, x0:x1]
+        region = buffer[y0 - ry0 : y1 - ry0, x0 - rx0 : x1 - rx0]
         if settings["build"] == "accumulate":
-            buffer[y0:y1, x0:x1] = region + patch * (1 - region)
+            buffer[y0 - ry0 : y1 - ry0, x0 - rx0 : x1 - rx0] = region + patch * (1 - region)
         else:
             np.maximum(region, patch, out=region)
     if settings["texture"] != "none" and settings["texture_strength"]:
-        texture = _texture(settings["texture"], shape)
+        texture = _texture(settings["texture"], shape)[ry0:ry1, rx0:rx1]
         strength = settings["texture_strength"]
         buffer *= np.clip(1 - strength * (1 - texture) * 1.4, 0, 1)
     if settings["wet_edges"]:
         image = Image.fromarray(np.uint8(np.clip(buffer, 0, 1) * 255))
-        blurred = np.asarray(image.filter(ImageFilter.GaussianBlur(max(1, size * 0.12))), dtype=np.float32) / 255
+        blurred = np.asarray(image.filter(ImageFilter.GaussianBlur(blur)), dtype=np.float32) / 255
         edge = np.clip(buffer - blurred, 0, 1)
         buffer = np.clip(buffer * 0.8 + edge * 1.6, 0, 1)
-    return np.clip(buffer, 0, 1)
+    return np.clip(buffer, 0, 1), (rx0, ry0)
+
+
+PAINT_CACHE_BYTES = 256 * 1024 * 1024
+_PAINT_LOCK = threading.Lock()
 
 
 def paint_image(project, layer):
-    """Render a paint layer's strokes to RGBA at the layer's own pixel size."""
+    """Render a paint layer's strokes to RGBA at the layer's own pixel size.
+
+    Strokes are composited in order, so the buffer after the first N strokes depends only on
+    them. The last buffer of each layer is kept: adding strokes paints just the new ones."""
     from .design import resolve_color
     from .render import color
 
     w, h = layer.get("surface", [layer["width"], layer["height"]])
-    premultiplied = np.zeros((h, w, 4), np.float32)
+    cache = project.__dict__.setdefault("_paint_cache", OrderedDict())
+    digest = hashlib.sha256(json.dumps([w, h], sort_keys=True).encode())
+    prefixes, plans = [], []
     for stroke in layer["strokes"]:
         settings = brush_settings(project.state, stroke["brush"], stroke.get("settings"))
-        coverage = stroke_alpha(stroke, settings, (h, w))
-        r, g, b, a = (v / 255 for v in color(resolve_color(stroke.get("color", "black"), project.state)))
-        alpha = coverage * stroke.get("opacity", 1) * a
-        if stroke.get("mode", "paint") == "erase":
-            premultiplied *= (1 - alpha)[:, :, None]
+        rgba = color(resolve_color(stroke.get("color", "black"), project.state))
+        digest.update(json.dumps([stroke, settings, rgba], sort_keys=True).encode())
+        prefixes.append(digest.hexdigest())
+        plans.append((stroke, settings, rgba))
+    start, premultiplied = 0, None
+    with _PAINT_LOCK:
+        for count in range(len(prefixes), 0, -1):
+            if prefixes[count - 1] in cache:
+                cache.move_to_end(prefixes[count - 1])
+                start, premultiplied = count, cache[prefixes[count - 1]].copy()
+                break
+    if premultiplied is None:
+        premultiplied = np.zeros((h, w, 4), np.float32)
+    for stroke, settings, (r, g, b, a) in plans[start:]:
+        coverage, (x0, y0) = stroke_patch(stroke, settings, (h, w))
+        if not coverage.size:
             continue
-        source = np.array([r, g, b], np.float32)
+        region = premultiplied[y0 : y0 + coverage.shape[0], x0 : x0 + coverage.shape[1]]
+        alpha = coverage * stroke.get("opacity", 1) * (a / 255)
+        if stroke.get("mode", "paint") == "erase":
+            region *= (1 - alpha)[:, :, None]
+            continue
+        source = np.array([r / 255, g / 255, b / 255], np.float32)
         if settings["blend"] == "multiply":
-            existing_alpha = premultiplied[:, :, 3:4]
-            existing = np.where(existing_alpha > 0, premultiplied[:, :, :3] / np.maximum(existing_alpha, 1e-6), 1)
+            existing_alpha = region[:, :, 3:4]
+            existing = np.where(existing_alpha > 0, region[:, :, :3] / np.maximum(existing_alpha, 1e-6), 1)
             tinted = source * (existing * existing_alpha + (1 - existing_alpha))
         else:
-            tinted = np.broadcast_to(source, (h, w, 3))
+            tinted = np.broadcast_to(source, (*alpha.shape, 3))
         a3 = alpha[:, :, None]
-        premultiplied[:, :, :3] = tinted * a3 + premultiplied[:, :, :3] * (1 - a3)
-        premultiplied[:, :, 3] = alpha + premultiplied[:, :, 3] * (1 - alpha)
+        region[:, :, :3] = tinted * a3 + region[:, :, :3] * (1 - a3)
+        region[:, :, 3] = alpha + region[:, :, 3] * (1 - alpha)
+    if prefixes and start < len(prefixes) and premultiplied.nbytes <= PAINT_CACHE_BYTES // 4:
+        with _PAINT_LOCK:
+            cache[prefixes[-1]] = premultiplied.copy()
+            while sum(item.nbytes for item in cache.values()) > PAINT_CACHE_BYTES:
+                cache.popitem(last=False)
     out = np.zeros_like(premultiplied)
     visible = premultiplied[:, :, 3:4] > 1e-6
     out[:, :, :3] = np.where(visible, premultiplied[:, :, :3] / np.maximum(premultiplied[:, :, 3:4], 1e-6), 0)
@@ -436,8 +499,8 @@ def execute_brush(project, op):
             pressure = op["pressure"]
             require(isinstance(pressure, list) and len(pressure) == len(points), "pressure needs one value per point")
             points = [[p[0], p[1], q] for p, q in zip(points, pressure)]
-        bounds = resolve_layout(project)[layer["id"]]
         if op.get("space", "canvas") == "canvas":
+            bounds = resolve_layout(project)[layer["id"]]
             # Canvas pixels → the layer's stroke surface (which may have been moved or resized).
             sw, sh = layer["surface"]
             fx, fy = sw / layer["width"], sh / layer["height"]
@@ -462,7 +525,7 @@ def execute_brush(project, op):
             stroke["settings"] = overrides
         layer["strokes"].append(stroke)
         state["active_layer"] = layer["id"]
-        validate_paint(layer, state)
+        validate_paint(layer, state, [stroke])
         return
     layer = project.layer(op.get("target"))
     require(layer["type"] == "paint", "paint-clear needs a paint layer")

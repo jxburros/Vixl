@@ -172,7 +172,9 @@ def rule_result(project, rule):
             and layer.get("text_layout", {}).get("warp", "none") == "none",
             "Use fit-text to bake measurable fitting before checking",
         )
-        fits = text_fits(project, layer, layer["size"], layer["width"], layer["height"])
+        # Only a text-layout width wraps lines; auto-sized text is measured as it is drawn.
+        wrap = "width" in layer.get("text_layout", {})
+        fits = text_fits(project, layer, layer["size"], layer["width"], layer["height"], wrap=wrap)
         return fits and layer["size"] >= rule.get("minimum", 1), {"actual_size": layer["size"], "fits": fits}
     if kind == "pixels":
         x, y, w, h = region_box(project, rule["region"])
@@ -232,6 +234,23 @@ def run_suite(project, suite, *, variables=None, artboard=None, mode=None):
                     "severity": rule.get("severity", "error"),
                     "time": time,
                     **detail,
+                }
+            )
+        from .checks import missing_glyphs
+
+        # Every suite also fails on characters no font can draw (they render as empty boxes).
+        missing = missing_glyphs(frame)
+        if missing:
+            results.append(
+                {
+                    "id": "missing-glyphs",
+                    "status": "failed",
+                    "severity": "error",
+                    "time": time,
+                    "automatic": True,
+                    "message": "Text has characters no font can draw; import a covering font and add it "
+                    "with font-fallbacks",
+                    "layers": missing,
                 }
             )
     errors = sum(r["status"] == "failed" and r["severity"] == "error" for r in results)

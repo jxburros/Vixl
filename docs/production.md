@@ -63,7 +63,7 @@ Rules:
 | `gap` | `before`, `after`, `axis` horizontal/vertical, `expected`, `tolerance` (default 1px); siblings only |
 | `unchanged` | `target`, captured `snapshot`; preserves layer structure, not its variable-resolved pixels |
 | `pixels` | `region` [x,y,w,h], embedded baseline `asset`, `tolerance` (maximum RGBA channel difference, 0–255) |
-| `text-fit` | `target`, `minimum`; measures unwarped text with baked font size; use `fit-text` first |
+| `text-fit` | `target`, `minimum`; measures unwarped text with baked font size (a text-layout box wraps it; auto-sized text is measured as drawn, unwrapped); use `fit-text` first |
 | `alpha` | `minimum`/`maximum`: permitted fraction of pixels with alpha below 255 |
 
 Every rule has a unique `id` and optional `severity` (`error` or `warning`).
@@ -203,8 +203,11 @@ rerendering that one variant. Old output versions are retained.
 
 ## Persistent rendering cache and library
 
-Production, workflow previews and film document shots enable a bounded persistent PNG
-cache. Direct Python callers may use `vixl.render_cache.enable(project, directory)`.
+Production, workflow previews, film document shots, and timeline exports and contact sheets of
+saved documents enable a bounded persistent PNG cache. Timelines use the per-user cache
+(`~/.cache/vixl/render`, or `VIXL_RENDER_CACHE`), so output folders stay clean. Direct Python callers may use `vixl.render_cache.enable(project, directory)`. Within a
+session, rendered layers are also kept in a bounded in-memory cache keyed by content and size, so a
+layer that only moves between timeline frames is not redrawn.
 Keys include render dependencies, font bytes, engine source/version and imaging library
 versions. Unchanged layers and sampled frames can survive across sessions. Cache corruption
 or an unavailable cache falls back to rendering. The disk cache defaults to 256 MiB.

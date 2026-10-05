@@ -1,5 +1,23 @@
 # Changelog
 
+## Unreleased
+
+Fixes for the problems found while building the ten projects in `explorations/`.
+
+- **Groups no longer clip their members.** A member that is resized, moved or rotated past the group's box (a sprite scaled up, an animated limb in a nested rig) still draws, and scales, flips and turns with the group in PNG and SVG. The box itself is unchanged for layout; `inspect` reports `drawn_bounds` for anything drawn past it. Scaling a group of pixel layers stays nearest-neighbor.
+- **Blur spreads past the layer's box**, so a blurred shape keeps its outline instead of becoming a soft rectangle; at the canvas edge the layer's edge pixels continue, so full-bleed photos do not fade. A later size- or position-dependent effect (wave, noise, vignette, contrast, artistic filters) keeps its stack within the box, unchanged. SVG filter regions and `rasterize` include the spread.
+- A stroke wider than its shape no longer crashes rendering with a raw Pillow error; the visible ring shrinks to nothing as the box approaches the stroke width.
+- `@swatch` colors work in `repeat`/`repeat-blend` fills and endpoints, and swatches defined from variables (`"${brand}"`) resolve everywhere, including per-row render variables.
+- `text-layout fit` shrinks until the longest word fits on a line instead of breaking it ("SOLSTI / CE"). The `text-fit` suite rule measures auto-sized text as drawn, so it no longer always fails.
+- Artboard `x`/`y` are kept: such a board is a viewport onto that region of the document canvas.
+- Characters no font can draw are a `fonts` error in every `check` (whichever checks are selected), an automatic `missing-glyphs` failure in every suite (so production and gated group edits catch them) and a `validate` failure.
+- Text shaping keeps per-thread font objects, fixing production runs with `workers: 2` that failed with `TTLibError`. Unexpected production errors record their message.
+- `validate` grades decorative layers (`layer-intent --role decoration`) that bleed off the edge as warnings.
+- **Faster checks.** Top-level text is contrast-checked from one shared render instead of three renders per layer; nested group renders reuse the document's resolved layout; text measurement is cached; styles and blends are computed over the layer's region instead of the whole canvas; the in-memory layer cache is least-recently-used and sized for real documents. The 01 poster's full `check` went from more than 10 minutes to about 17 s with identical results.
+- **Faster painting.** Strokes rasterize over their own footprint, a layer's painted strokes are cached so adding strokes renders only the new ones, a paint operation validates only its new stroke, and layout no longer copies every stroke. 400 strokes in one batch: 9.8 s to 1.6 s; one more stroke on a 3,000-stroke layer: 10.7 s to 0.3 s. Output is pixel-identical.
+- **Faster timelines.** Cached layer images are keyed by size rather than position, so layers that only move are not redrawn each frame, and timeline exports and contact sheets of saved documents use the persistent render cache (per user: `~/.cache/vixl/render`, or `VIXL_RENDER_CACHE`). A brush-heavy test went from 3.9 s to 0.7 s per frame (0.2 s when exported again).
+- The ten exploration builds, which took up to 14 minutes, now finish in 13 s to about 4 minutes.
+
 ## 0.17.0
 
 - Seeded editable rose, leaf, petal, and blob paths; path fitting; adjustable pen tension and corner anchors.
@@ -13,8 +31,6 @@
 - Version/help/no-update launches avoid installation write locks and pending activation.
 - Runtime installation retries transient Windows scanner/probe file locks with a bounded wait and keeps the active version on failure.
 - Fully verified version changes merged to main can publish releases; publication remains gated by Linux tests, Windows tests, bundled runtime, installer, and installation checks.
-
-## Unreleased
 
 ## 0.16.0
 

@@ -13,6 +13,78 @@ def luminance(rgb):
     return linear @ np.array([0.2126, 0.7152, 0.0722])
 
 
+def contrast_ratios(painted, backdrop, coverage, background="white"):
+    """WCAG contrast of each fully covered pixel: the target drawn (``painted``) against what
+    lies under it (``backdrop``), both composited over an opaque ``background``."""
+    base = Image.new("RGBA", backdrop.size, color(background))
+    require(base.getpixel((0, 0))[3] == 255, "Contrast background must be opaque")
+    below, above = base.copy(), base
+    below.alpha_composite(backdrop)
+    above.alpha_composite(painted)
+    a = luminance(np.asarray(above)[:, :, :3].astype(float))
+    b = luminance(np.asarray(below)[:, :, :3].astype(float))
+    ratios = (np.maximum(a, b) + 0.05) / (np.minimum(a, b) + 0.05)
+    if coverage is not None:
+        mask = np.asarray(coverage)
+        require(mask.max() > 0, "Target has no visible content")
+        # Exclude antialiased fringe pixels; compare the actual styled/transparent layer against its backdrop.
+        ratios = ratios[mask >= mask.max() * 0.95]
+    return ratios
+
+
+def contrast_summary(ratios, background="white"):
+    return {
+        "minimum": round(float(ratios.min()), 3),
+        "p10": round(float(np.percentile(ratios, 10)), 3),
+        "mean": round(float(ratios.mean()), 3),
+        "maximum": round(float(ratios.max()), 3),
+        "background": background,
+        "wcag_aa_normal": bool(ratios.min() >= 4.5),
+        "wcag_aa_large": bool(ratios.min() >= 3),
+    }
+
+
+def top_level_contrast(project, targets):
+    """``measure(target=…)["contrast"]`` for top-level layers, from a single render.
+
+    Measuring one target renders the document twice: everything below it, then that plus the
+    target. Drawing the stack once and keeping each target's box just before and after it is
+    composited gives the same two images for every target. Failures are returned as errors."""
+    from .design import resolve_color
+    from .render import layer_image, render_layers, resolve_layout, resolved_layers
+
+    layers = {item["id"]: item for item in resolved_layers(project)}
+    bounds = resolve_layout(project, layers=list(layers.values()))
+    canvas = project.state["canvas"]
+    results = {}
+
+    def observer(ident):
+        def observe(before, after):
+            try:
+                x, y, w, h = bounds[ident]
+                require(
+                    w > 0 and h > 0 and x >= 0 and y >= 0 and x + w <= canvas["width"] and y + h <= canvas["height"],
+                    "Region must be within canvas",
+                )
+                coverage = layer_image(project, layers[ident], bounds[ident]).getchannel("A")
+                results[ident] = contrast_summary(contrast_ratios(after, before, coverage))
+            except Exception as exc:  # Reported per target, like a failed measure() call.
+                results[ident] = exc
+
+        return observe
+
+    for ident in targets:
+        layer = layers[ident]
+        require(not layer.get("parent"), "Single-pass contrast measures top-level layers")
+        require(layer["visible"] and layer["type"] != "adjustment", "Contrast target must be visible and drawable")
+    render_layers(
+        project,
+        background=resolve_color(canvas["background"], project.state),
+        observe={ident: observer(ident) for ident in targets},
+    )
+    return results
+
+
 def measure(
     project,
     *,
@@ -29,8 +101,11 @@ def measure(
     from .design_render import artboard_project
 
     candidate = artboard_project(project.clone(), artboard, comp, variables)
-    image = candidate.render()
-    result = {"width": image.width, "height": image.height}
+    canvas = candidate.state["canvas"]
+    # A target measurement renders its own backdrop below; the whole document is only needed
+    # for a point sample or an untargeted measurement.
+    image = candidate.render() if point is not None or not target else None
+    result = {"width": canvas["width"], "height": canvas["height"]}
     if point is not None:
         require(len(point) == 2 and all(isinstance(v, int) for v in point), "Point requires integer X Y")
         x, y = point
@@ -125,31 +200,20 @@ def measure(
     if foreground or target_image is not None:
         from .design import resolve_color
 
-        backdrop = Image.new("RGBA", image.size, color(background))
-        require(backdrop.getpixel((0, 0))[3] == 255, "Contrast background must be opaque")
-        backdrop.alpha_composite(image)
-        bg = np.asarray(backdrop)[:, :, :3].astype(float)
         if target_image is not None:
-            painted_image = Image.new("RGBA", image.size, color(background))
-            painted_image.alpha_composite(target_image)
-            painted = np.asarray(painted_image)[:, :, :3].astype(float)
+            ratios = contrast_ratios(target_image, image, coverage, background)
         else:
+            backdrop = Image.new("RGBA", image.size, color(background))
+            require(backdrop.getpixel((0, 0))[3] == 255, "Contrast background must be opaque")
+            backdrop.alpha_composite(image)
+            bg = np.asarray(backdrop)[:, :, :3].astype(float)
             fg = color(resolve_color(foreground, candidate.state))
             painted = np.array(fg[:3]) * (fg[3] / 255) + bg * (1 - fg[3] / 255)
-        a, b = luminance(painted), luminance(bg)
-        ratios = (np.maximum(a, b) + 0.05) / (np.minimum(a, b) + 0.05)
-        if coverage is not None:
-            mask = np.asarray(coverage)
-            require(mask.max() > 0, "Target has no visible content")
-            # Exclude antialiased fringe pixels; compare the actual styled/transparent layer against its backdrop.
-            ratios = ratios[mask >= mask.max() * 0.95]
-        result["contrast"] = {
-            "minimum": round(float(ratios.min()), 3),
-            "p10": round(float(np.percentile(ratios, 10)), 3),
-            "mean": round(float(ratios.mean()), 3),
-            "maximum": round(float(ratios.max()), 3),
-            "background": background,
-            "wcag_aa_normal": bool(ratios.min() >= 4.5),
-            "wcag_aa_large": bool(ratios.min() >= 3),
-        }
+            a, b = luminance(painted), luminance(bg)
+            ratios = (np.maximum(a, b) + 0.05) / (np.minimum(a, b) + 0.05)
+            if coverage is not None:
+                mask = np.asarray(coverage)
+                require(mask.max() > 0, "Target has no visible content")
+                ratios = ratios[mask >= mask.max() * 0.95]
+        result["contrast"] = contrast_summary(ratios, background)
     return result

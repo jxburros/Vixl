@@ -1,10 +1,12 @@
 """Portable project storage, atomic operation batches and a persistent history DAG."""
 
+from collections import OrderedDict
 from copy import copy, deepcopy
 import difflib
 import hashlib
 import io
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -15,6 +17,7 @@ from .assets import decode, read_bounded
 from .errors import VixlError, require
 from .history import diff, patch
 from .model import Limits, new_state, uid
+from .render import LayerCache
 
 # Every Nth revision on a chain stores a full snapshot; the others store a delta from the parent.
 SNAPSHOT_INTERVAL = 32
@@ -54,7 +57,8 @@ class Project:
         self.path = None
         self.allow_linked = False
         self._revision = None
-        self._cache = {}
+        self._cache = LayerCache()
+        self._paint_cache = OrderedDict()  # Painted stroke prefixes, shared by clones (brushes.py).
         self._decoded = {}
         self._head_state = None
         self._verified = set()
@@ -135,12 +139,20 @@ class Project:
         return clone
 
     def inspect(self, target=None):
-        from .render import resolve_layout
+        from .render import child_index, extent, resolve_layout, resolved_layers
 
         state = deepcopy(self.state)
-        resolved = resolve_layout(self)
+        layers = resolved_layers(self)
+        resolved = resolve_layout(self, layers=layers)
+        children, memo = child_index(layers), {}
         for layer in state["layers"]:
-            layer["resolved_bounds"] = resolved[layer["id"]]
+            box = layer["resolved_bounds"] = resolved[layer["id"]]
+            left, top, right, bottom = extent(layer, resolved, children, memo)
+            left, top = math.floor(left + 1e-6), math.floor(top + 1e-6)
+            drawn = (left, top, math.ceil(right - 1e-6) - left, math.ceil(bottom - 1e-6) - top)
+            if drawn != tuple(box):
+                # Blur, styles and group children that reach past the box still draw.
+                layer["drawn_bounds"] = drawn
         if target:
             ident = self.layer(target)["id"]
             return next(x for x in state["layers"] if x["id"] == ident)

@@ -109,7 +109,7 @@ def compile_design(cmd, args):
     if cmd in ("shape", "frame", "symbol-instance", "artboard", "text-layout"):
         p.add_argument("--width", type=int)
         p.add_argument("--height", type=int)
-    if cmd in ("shape", "frame", "symbol-instance"):
+    if cmd in ("shape", "frame", "symbol-instance", "artboard"):
         p.add_argument("--x", type=float)
         p.add_argument("--y", type=float)
     return {"type": cmd, **{k: v for k, v in vars(p.parse_args(args)).items() if v is not None}}
