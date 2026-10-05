@@ -15,7 +15,7 @@ pdf = ["pypdfium2>=4.30,<6"]
 server = ["fastapi>=0.115,<1", "uvicorn>=0.30,<1"]
 mcp = ["mcp>=1.12,<2"]
 anthropic = ["anthropic>=1.11,<2"]
-dev = ["pypdfium2>=4.30,<6", "pytest>=8,<10", "fastapi>=0.115,<1", "uvicorn>=0.30,<1", "mcp>=1.12,<2", "anthropic>=1.11,<2", "ruff>=0.12"]
+dev = ["pypdfium2>=4.30,<6", "pypdf>=5,<7", "python-pptx>=1.0,<2", "pytest>=8,<10", "fastapi>=0.115,<1", "uvicorn>=0.30,<1", "mcp>=1.12,<2", "anthropic>=1.11,<2", "ruff>=0.12"]
 
 [project.scripts]
 vixl = "vixl.cli:main"

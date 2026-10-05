@@ -11,6 +11,12 @@ from .automation import TYPES as AUTOMATION_TYPES
 from .authoring import TYPES as AUTHORING_TYPES
 from .creative import TYPES as CREATIVE_TYPES
 from .containers import TYPES as CONTAINER_TYPES
+from .organic import TYPES as ORGANIC_TYPES
+from .guides import TYPES as GUIDE_TYPES
+from .richtext import TYPES as RICH_TYPES
+from .pages import TYPES as PAGE_TYPES
+from .forms import TYPES as FORM_TYPES
+from .drawing import TYPES as DRAWING_TYPES
 
 from copy import deepcopy
 import hashlib
@@ -51,7 +57,7 @@ ALIASES = {
     "make_selection": "select",
 }
 
-OPERATION_TYPES = list(DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_TYPES + BRUSH_TYPES + TIMELINE_TYPES + LAYOUT_TYPES + COLOR_TYPES + AUTOMATION_TYPES + CREATIVE_TYPES + CONTAINER_TYPES + AUTHORING_TYPES) + [
+OPERATION_TYPES = list(DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_TYPES + BRUSH_TYPES + TIMELINE_TYPES + LAYOUT_TYPES + COLOR_TYPES + AUTOMATION_TYPES + CREATIVE_TYPES + CONTAINER_TYPES + AUTHORING_TYPES + ORGANIC_TYPES + GUIDE_TYPES + RICH_TYPES + PAGE_TYPES + FORM_TYPES + DRAWING_TYPES) + [
     "add",
     "solid",
     "gradient",
@@ -253,6 +259,24 @@ def execute(project, op):
     kind = ALIASES.get(kind, kind)
     require(isinstance(kind, str), "Operation requires a type")
     target = op.get("target", op.get("layer"))
+    if kind in PAGE_TYPES:
+        from .pages import execute as execute_pages
+        return execute_pages(project, op)
+    if kind in FORM_TYPES:
+        from .forms import execute as execute_forms
+        return execute_forms(project, op)
+    if kind in DRAWING_TYPES:
+        from .drawing import execute as execute_drawing
+        return execute_drawing(project, op)
+    if kind in RICH_TYPES:
+        from .richtext import execute as execute_rich
+        return execute_rich(project, op)
+    if kind in GUIDE_TYPES:
+        from .guides import execute as execute_guides
+        return execute_guides(project, op)
+    if kind in ORGANIC_TYPES:
+        from .organic import execute as execute_organic
+        return execute_organic(project, op)
     if kind in AUTHORING_TYPES:
         from .authoring import execute as execute_authoring
         return execute_authoring(project, op)
@@ -427,6 +451,8 @@ def execute(project, op):
         for item in layers:
             if item.get("clip") in removed:
                 item.pop("clip")
+            if item["type"] == "field" and item["field"].get("label_layer") in removed:
+                item["field"].pop("label_layer")  # the form check reports the missing label
         project.state["symbols"] = {
             k: v for k, v in project.state.get("symbols", {}).items() if v not in removed
         }
@@ -444,6 +470,10 @@ def execute(project, op):
         duplicate = deepcopy(layer)
         duplicate["id"] = uid("lyr")
         duplicate["name"] = op["name"] if "name" in op else default_name(project, layer["name"] + " copy")
+        if duplicate["type"] == "field":
+            from .forms import fresh_key
+
+            fresh_key(project, duplicate)
         append_layer(project, duplicate)
         if layer["type"] == "group":
             from .design import descendants
@@ -463,10 +493,19 @@ def execute(project, op):
                         for old, new in mapping.items():
                             expression = expression.replace(old + ".", new + ".")
                         item["constraints"][anchor] = expression
+                if item["type"] == "field":
+                    from .forms import fresh_key
+
+                    fresh_key(project, item)
+                    if item["field"].get("label_layer") in mapping:
+                        item["field"]["label_layer"] = mapping[item["field"]["label_layer"]]
                 append_layer(project, item)
             project.state["active_layer"] = duplicate["id"]
     elif kind == "text-set":
         require(layer["type"] == "text", "Layer is not editable text")
+        if "text" in op and layer.get("rich") and op["text"] != layer["text"]:
+            # New plain text replaces the styled spans; restyle it with text-style or rich-text.
+            layer.pop("rich")
         for key in ("text", "size", "color", "align", "spacing", "stroke_width", "stroke_color"):
             if key in op:
                 layer[key] = op[key]
@@ -506,6 +545,9 @@ def execute(project, op):
             h = op.get("height", max(1, round(h * w / layer["width"])))
         project.limits.size(w, h)
         layer.update(width=w, height=h, auto_size=False)
+    elif kind in ("rotate", "pivot", "flip") and layer["type"] == "field":
+        raise VixlError("invalid_operation", f"{kind} does not apply to fields: PDF form fields are upright rectangles",
+                        field="target")
     elif kind == "rotate":
         layer["rotation"] = finite(op["value"], "angle") % 360
     elif kind == "pivot":

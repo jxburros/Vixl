@@ -26,6 +26,7 @@ def compact_changes(before, after):
         "typography",
         "template",
         "brushes",
+        "form",
     ):
         if before.get(key) != after.get(key):
             changes[key] = after.get(key)
@@ -53,6 +54,16 @@ def compact_changes(before, after):
             "changed": [name for name, f in current.items() if previous.get(name) != f],
             "removed": [name for name in previous if name not in current],
         }
+    if before.get("pages") != after.get("pages") or before.get("masters") != after.get("masters"):
+        changes["pages"] = [{k: v for k, v in page.items() if k in ("number", "name", "layers", "master", "active", "hidden")}
+                            for page in after.get("pages") or []]
+        if after.get("masters"):
+            changes["masters"] = sorted(after["masters"])
+    if before.get("page") != after.get("page"):
+        # A different page is active: report it instead of every layer as added or removed.
+        changes["page"] = after.get("page")
+        changes["layers"] = {layer["id"]: _brief(layer) for layer in after["layers"][:40]}
+        return changes
     old = {layer["id"]: layer for layer in before["layers"]}
     new = {layer["id"]: layer for layer in after["layers"]}
     layers = {}
@@ -165,6 +176,11 @@ def summarize(project, target=None):
         result["brushes"] = sorted(state["brushes"])
     if state.get("animation", {}).get("frames"):
         result["animation_frames"] = [frame["name"] for frame in state["animation"]["frames"]]
+    if state.get("fields"):
+        result["fields"] = [{k: v for k, v in item.items() if k in ("key", "kind", "required", "tab", "rect_pt", "page", "option")}
+                            for item in state["fields"]]
+    if state.get("form"):
+        result["form"] = state["form"]
     if state["transaction"]:
         result["transaction"] = True
     return result

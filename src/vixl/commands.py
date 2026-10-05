@@ -56,10 +56,30 @@ def compile_command(tokens):
     authoring = compile_authoring(cmd, args)
     if authoring is not None:
         return authoring
-    from .authoring import compile_command as compile_authoring
-    authoring = compile_authoring(cmd, args)
-    if authoring is not None:
-        return authoring
+    from .richtext import compile_command as compile_rich
+    rich = compile_rich(cmd, args)
+    if rich is not None:
+        return rich
+    from .drawing import compile_command as compile_drawing
+    sketch = compile_drawing(cmd, args)
+    if sketch is not None:
+        return sketch
+    from .forms import compile_command as compile_forms
+    form = compile_forms(cmd, args)
+    if form is not None:
+        return form
+    from .pages import compile_command as compile_pages
+    paged = compile_pages(cmd, args)
+    if paged is not None:
+        return paged
+    from .guides import compile_command as compile_guides
+    guided = compile_guides(cmd, args)
+    if guided is not None:
+        return guided
+    from .organic import compile_command as compile_organic
+    organic = compile_organic(cmd, args)
+    if organic is not None:
+        return organic
     from .automation import compile_command as compile_automation
     automation = compile_automation(cmd, args)
     if automation is not None:

@@ -53,6 +53,9 @@ def shape_image(project, layer):
                           viewBox=f"0 0 {view[0]} {view[1]}", preserveAspectRatio="none")
         from .colors import parse, hex_of
         attrs = {"d": path, "stroke-width": str(layer.get("stroke_width", 1))}
+        if layer.get("line_cap"):
+            attrs["stroke-linecap"] = layer["line_cap"]
+            attrs["stroke-linejoin"] = "round" if layer["line_cap"] == "round" else "miter"
         for field in ("fill", "stroke"):
             rgba = parse(resolve_color(layer.get(field, "white" if field == "fill" else "transparent"), project.state))
             attrs[field] = hex_of((*rgba[:3], 1))
@@ -114,6 +117,12 @@ def shape_image(project, layer):
 
 def text_image(project, layer):
     from .text import render_text, UnsupportedText
+    from .richtext import active
+
+    if active(layer):
+        from .richtext import render as render_rich
+
+        return render_rich(project, layer)
 
     try:
         return render_text(project, layer)
@@ -388,8 +397,10 @@ def viewport(project, x, y, variables=None):
             b = bounds[layer["id"]]
             layer["x"], layer["y"] = stored_origin(resolved[layer["id"]], (b[0] - x, b[1] - y))
             layer["constraints"] = {}
+    from .guides import transform_guide
+
     for guide in project.state.get("guides", {}).values():
-        guide["position"] -= x if guide["axis"] == "x" else y
+        transform_guide(guide, 1.0, x, y)
 
 
 def artboard_project(project, name=None, comp=None, variables=None):

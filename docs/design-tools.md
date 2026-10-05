@@ -69,6 +69,11 @@ vixl render --artboard story --out story.png
 vixl export-screens --out screens --scales 1 2
 ```
 
+Artboards are views of one design at several sizes. For a sequence of different designs at one
+size (slides, carousel frames, booklet pages) use [pages and masters](slides.md), which export to
+multi-page PDF and PowerPoint. Mixed styles inside one text box are [rich text](rich-text.md);
+places for people to write are [form fields](forms.md), which export as fillable PDFs and fill from CSV.
+
 Artboards are named canvas configurations in one document. They share the editable layer stack and resolve canvas constraints at each board's size. A board with `x`/`y` (`vixl artboard crop --width 1080 --height 1080 --x 260 --y 1400`) is instead a viewport: it shows that region of the document canvas, laid out at the document's size. Optional `variables` supply board defaults and `targets` selects top-level layer IDs; absent `targets` means all layers, while an empty stored list shows none. Render overrides take precedence over board variables. `export-screens` writes every board at each scale as `NAME@SCALE x.png` (without the space, e.g. `story@2x.png`); `--artboards square story` selects boards. PNG outputs are staged before publication and existing destinations are rejected. Scaled exports resample the composed raster, as existing Vixl exports do.
 
 ```bash
@@ -150,7 +155,7 @@ Comps capture visibility, position, rotation, opacity, blend, constraints, and l
 
 Text boxes wrap paragraphs and oversized words; `fit` shrinks from the configured font size until the text fits, and at least until its longest word fits on a line, so a word is broken across lines only when it cannot fit even at 1 px. Warps are `none`, `arc`, `flag`, and `bulge`, with amounts −1 to 1, applied inside the box. Paths are local pixel polylines: glyphs follow segment tangents and content beyond the path is omitted. This is basic glyph placement, not full shaping/kerning on Bézier paths. A warp moves glyphs up or down by a fraction of the box height; the warped line is moved back inside the box so lifted letters keep their tops. Content taller than the box keeps its top and is clipped at the bottom, so allow room for curvature. A new `text-layout` operation replaces the previous settings.
 
-Guides are named absolute x/y positions used in constraint expressions such as `guide:left-margin.left+8`. Grids generate guides `NAME-x1-start`, `NAME-x1-end`, `NAME-y1-start`, etc.; redefining the grid replaces its generated guides. Guides/grids are document metadata, never painted into output, and remain absolute when the canvas changes.
+Guides are named absolute x/y positions used in constraint expressions such as `guide:left-margin.left+8`. Angled lines, rays, points, circles and curves, generated grid systems (thirds, golden, armature, polar, isometric, perspective …), `place` and `snap` are described in [guides](guides.md). Grids generate guides `NAME-x1-start`, `NAME-x1-end`, `NAME-y1-start`, etc.; redefining the grid replaces its generated guides. Guides/grids are document metadata, never painted into output, and remain absolute when the canvas changes.
 
 Pathfinder combines procedural shape silhouettes by union, subtraction in target order, or intersection. It retains procedural operand snapshots for resizing, hides the originals, and uses the first operand's fill. It does not rewrite editable vector paths or track subsequent edits to the original operands.
 

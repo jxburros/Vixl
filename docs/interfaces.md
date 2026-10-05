@@ -212,6 +212,26 @@ REST adds `GET /sizes?category=`, `GET /layouts`, `GET /brushes`, `POST /color` 
 
 Python: `Project.sized("letter", bleed=True)`, `project.export("flyer.pdf", color_space="cmyk", icc_profile=bytes)`, `vixl.colors` (parse, describe, harmony, scale, mix, contrast_ratio, simulate_vision, cmyk_image), `vixl.sizes` (resolve, catalog), `vixl.layouts.catalog()`, `vixl.brushes.catalog()`, `vixl.timeline` (project_at, render_at, contact_sheet, export_timeline) and `vixl.exports.export_icons`.
 
+## Pages, forms, drawings and lyric videos (unreleased)
+
+All editing is ordinary operations. MCP: `vixl_render_preview` gains `page` (`"all"` for a contact
+sheet), `values` and `show_fields`; `vixl_export_file` gains `page`, `pages`, `pdf_content`,
+`fillable`, `values` and `fill_mode` and writes `.pptx`; `vixl_check` gains `page`, `deck`
+settings, `sample`, and the `deck`, `form` and `drawing` families; `vixl_document_inspect` lists
+pages and fields. `vixl_workflow` adds `lyric-video-plan/build/export`, `organic-catalog`,
+`form-fill`, `drawing-report` and `drawing-compare`; jobs add the `lyric-video` and `form-fill`
+kinds.
+
+REST: `POST /export` accepts `page`, `pages`, `pdf_content`, `fillable`, `values` and `fill_mode`
+and format `PPTX`; `POST /preview` accepts `guides`, `page`, `values` and `show_fields`; the fixed
+project's workflow routes include `lyric-video-plan`, `organic-catalog`, `form-fill` and
+`drawing-report`.
+
+Python: `project.export("deck.pptx")`, `project.export("form.pdf", fillable=True)`,
+`project.render(page=2)`, `vixl.forms.fill` / `fill_data`, `vixl.deck.check_deck` /
+`contact_sheet`, `vixl.drawing` (`clean`, `report`, `compare`, `ai_color`), `vixl.lyrics`
+(`parse_lrc`, `plan`, `build`, `export`).
+
 ### Streamable HTTP and live review
 
 ```bash

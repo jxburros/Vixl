@@ -34,6 +34,7 @@ class Glyph:
     y: float
     advance: float
     data: bytes = b""
+    text: str = ""  # The characters this glyph starts (its HarfBuzz cluster), for text extraction.
 
 
 @dataclass
@@ -42,6 +43,9 @@ class Plan:
     height: int
     paths: list
     box: tuple
+    size: float = 0.0       # the size drawn (after fitting)
+    offset: float = 0.0     # horizontal alignment offset inside a text box
+    shaped: bool = True     # False for warped or path text (outlines only)
 
 
 _local = threading.local()
@@ -92,8 +96,8 @@ def visible_char(char):
 
 def font_data(project, layer):
     primary = primary_font_data(project, layer)
-    from .render import substitute
-    text = substitute(layer.get("text", ""), project.state["variables"])
+    from .render import document_variables, substitute
+    text = substitute(layer.get("text", ""), document_variables(project))
     if all(not visible_char(c) or ord(c) in coverage(primary) for c in text):
         return primary
     fonts = [primary]
@@ -189,9 +193,15 @@ def shape(data, text, size):
             buffer.script = tag
             buffer.guess_segment_properties()
             hb.shape(font, buffer)
+            starts = sorted({info.cluster for info in buffer.glyph_infos})
+            ends = dict(zip(starts, starts[1:] + [len(segment)]))
+            seen = set()
             for info, pos in zip(buffer.glyph_infos, buffer.glyph_positions):
+                first = info.cluster not in seen
+                seen.add(info.cluster)
                 glyphs.append(Glyph(names[info.codepoint], cursor + pos.x_offset * factor,
-                                    -pos.y_offset * factor, pos.x_advance * factor, font_data))
+                                    -pos.y_offset * factor, pos.x_advance * factor, font_data,
+                                    segment[info.cluster:ends[info.cluster]] if first else ""))
                 cursor += pos.x_advance * factor
     return glyphs, cursor
 
@@ -278,6 +288,33 @@ def measure(data, text, size, spacing=4, align="left", width=None):
     return paths, box
 
 
+def plan_glyphs(project, layer, layout=None):
+    """Positioned glyphs ``[(font data, glyph name, x, y, size, text)]`` in the layer image's
+    pixels, exactly where ``plan`` draws them (baseline origin, y down). None for warped or path
+    text, whose glyphs are bent."""
+    layout = layout or plan(project, layer)
+    if not layout.shaped:
+        return None
+    data = font_data(project, layer)
+    settings = layer.get("text_layout", {})
+    width = layer["width"] if "width" in settings else None
+    size, spacing, align = layout.size, layer.get("spacing", 4), layer.get("align", "left")
+    outline = face(data)[0]
+    factor = size / outline["head"].unitsPerEm
+    ascent = outline["hhea"].ascent * factor
+    line_height = (outline["hhea"].ascent - outline["hhea"].descent) * factor + spacing
+    shaped = [shape(data, line, size) for line in lines(data, layer["text"], size, width)]
+    widest = max((advance for _, advance in shaped), default=0)
+    result = []
+    for i, (glyphs, advance) in enumerate(shaped):
+        offset = (widest - advance) / 2 if align == "center" else widest - advance if align == "right" else 0
+        for glyph in glyphs:
+            x = glyph.x + offset - layout.box[0] + layout.offset
+            y = glyph.y + ascent + i * line_height - layout.box[1]
+            result.append((glyph.data, glyph.name, x, y, size, glyph.text))
+    return result
+
+
 def fit_ceiling(data, text, size, width):
     """The largest size up to ``size`` at which every word fits on a line of ``width``, so fitting
     shrinks a long word instead of breaking it across lines. Advances scale linearly with size;
@@ -329,7 +366,8 @@ def plan(project, layer):
         if ys:
             dy = fit_span(min(ys) - stroke, max(ys) + stroke, target_h)
             positioned = [(path, (1, 0, 0, 1, 0, dy)) for path, _ in positioned]
-    return Plan(target_w, target_h, positioned, box)
+    return Plan(target_w, target_h, positioned, box, size, offset if settings else 0.0,
+                not settings.get("path") and settings.get("warp", "none") == "none")
 
 
 WARPED_Y = re.compile(r"[ML]-?[\d.]+,(-?[\d.]+)")

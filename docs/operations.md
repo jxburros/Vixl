@@ -81,3 +81,22 @@ New shared operations are `palette-apply` (`name`, optional `prefix`), `template
 | marker | `name`, `time` or `delete` |
 
 New document state: `canvas.size`, `canvas.dpi`, `canvas.physical`, `canvas.bleed` and `canvas.safe` (pixels) with generated `trim-*`/`safe-*` guides; `layout` (the last applied layout's choices and layer IDs); `brushes` (custom brush definitions); paint layers (`type: "paint"`, `surface`, `strokes`); and `timeline` (`duration`, `fps`, `loop`, `markers`, `tracks` of `{target, property, keys}`). All participate in history and validation like other state. Color fields accept the [color language](color-and-print.md).
+
+## Shapes, guides, text, pages, forms and drawings (unreleased)
+
+| Operation | Fields |
+| --- | --- |
+| organic | `preset` or `parts`, `params`, `colors`, `seed`, `naturalness`, `name`, `x`, `y`, `width`, `height`, `target` (regrow) — [organic shapes](organic.md) |
+| guide | `name`, `kind` (`axis`, `line`, `ray`, `segment`, `point`, `circle`, `path`) and its geometry, `delete` — [guides](guides.md) |
+| grid | `name`, `kind` (`columns`, `baseline`, `thirds`, `golden`, `armature`, `golden-spiral`, `polar`, `isometric`, `triangular`, `hex`, `oblique`, `perspective`), kind settings, `region`, `delete` |
+| place / snap | `targets`, `guide`, `at`, `start`/`end`, `spacing`, `with`, `index`, `anchor`, `orient`, `rotate`, `offset`; `snap`: `tolerance` |
+| rich-text | `markdown` or `spans` + `paragraphs`, `name`/`target`, `font`, `size`, `color`, `align`, `width`, `height`, `fit`, `line_height`, `paragraph_spacing`, `list_indent`, `x`, `y` — [rich text](rich-text.md) |
+| text-style | `target`, `match`/`occurrence` or `start`/`end`, character styles, `clear`, `paragraphs` with paragraph settings |
+| page | `action` (`add`, `select`, `remove`, `move`, `set`), `page`/`name`, `after`/`before`/`index`, `duplicate`, `master`, `notes`, `background`, `variables`, `hidden`, `transition`, `rename`, `select` — [pages](slides.md) |
+| master | `action` (`add`, `select`, `remove`, `set`), `name`, `from`, `background`, `rename` |
+| field / field-set | `kind`, `name`/`target`, `key`, `label`, `label_layer`, `group_label`, `required`, `read_only`, `default`, `max_length`, `comb`, `format`, `options`, `editable`, `option`, `on_value`, `tab`, `overflow`, `min_size`, `font`, `size`, `color`, `align`, `padding`, `appearance`, `x`, `y`, `width`, `height` — [forms](forms.md) |
+| form | `tab_order`, `entry_font`, `title`, `lang` |
+| drawing | `action` (`import`, `clean`, `vectorize`, `straighten`, `smooth`, `fill`, `stroke`, `restyle`), `asset`/`path`, `name`/`target`, `strokes`, `points`, `color`, `settings`, `x`, `y`, `width`, `height` — [hand drawings](drawing.md) |
+
+Every operation also accepts `page` (a page name or number) in a multi-page document.
+

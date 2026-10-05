@@ -169,6 +169,10 @@ def preview(
     time=None,
     proof=False,
     simulate=None,
+    guides=None,
+    page=None,
+    values=None,
+    show_fields=False,
 ):
     from .proxy import render_preview
 
@@ -191,6 +195,10 @@ def preview(
             time=time,
             proof=proof,
             simulate=simulate,
+            guides=guides,
+            page=page,
+            values=values,
+            show_fields=show_fields,
         )
         return encode_png(image, max_bytes)
 
@@ -202,8 +210,8 @@ def export_file(session, path, overwrite=False, document=None, **options):
         destination = session.resolve(path)
         require(
             destination.suffix.lower()
-            in (".png", ".jpg", ".jpeg", ".webp", ".tif", ".tiff", ".avif", ".svg", ".pdf", ".ico", ".html", ".htm"),
-            "Choose a PNG, JPEG, WEBP, TIFF, AVIF, SVG, PDF, ICO or HTML filename",
+            in (".png", ".jpg", ".jpeg", ".webp", ".tif", ".tiff", ".avif", ".svg", ".pdf", ".ico", ".html", ".htm", ".pptx"),
+            "Choose a PNG, JPEG, WEBP, TIFF, AVIF, SVG, PDF, ICO, HTML or PPTX filename",
             field="path",
         )
         require(destination.parent.is_dir(), "Destination directory must exist", field="path")
@@ -216,8 +224,9 @@ def export_file(session, path, overwrite=False, document=None, **options):
             fmt = {".jpg": "JPEG", ".jpeg": "JPEG", ".tif": "TIFF", ".tiff": "TIFF", ".pdf": "PDF", ".ico": "ICO"}.get(
                 destination.suffix.lower(), destination.suffix[1:].upper()
             )
+            report = {}
             with session.project(document=document) as project:
-                data = project.export(format=fmt, **options)
+                data = project.export(format=fmt, report=report, **options)
             fd, temporary_path = temporary(
                 destination.parent, like=destination if destination.exists() else None
             )
@@ -234,7 +243,7 @@ def export_file(session, path, overwrite=False, document=None, **options):
             finally:
                 if os.path.exists(temporary_path):
                     os.unlink(temporary_path)
-        return {"path": session.relative(destination), "format": fmt, "bytes": len(data)}
+        return {"path": session.relative(destination), "format": fmt, "bytes": len(data), **report}
 
 
 def decode_upload(data_base64, limit):
@@ -322,7 +331,10 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
             "vixl_fonts → vixl_font_pair (the bundled font is a proofing fallback), and when a brief leaves the "
             "look open, vixl_roll a few directions and compare previews. Paint with brushes (vixl_brushes_list), animate "
             "with keyframes (keyframe/animate/animate-preset → vixl_timeline_preview → vixl_export_timeline), and "
-            "export print-ready CMYK PDF/TIFF/JPEG with vixl_export_file. "
+            "export print-ready CMYK PDF/TIFF/JPEG with vixl_export_file. Slides and carousels are pages (page "
+            "operation; preview page='all'; export .pdf or .pptx); forms are field layers (field operation; check "
+            "form; export_file fillable=true, or values= to fill); hand drawings are drawing operations (import, "
+            "clean, vectorize, straighten, fill) checked with check drawing. "
             + ("AI tools need a configured provider." if tools == "all" else
                "Provider-backed AI tools are served separately by vixl mcp --tools ai.")
         ),
@@ -603,6 +615,10 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         ] = None,
         proof: Annotated[bool, Field(description="Soft-proof the CMYK print separation")] = False,
         simulate: Literal["protanopia", "deuteranopia", "tritanopia", "achromatopsia"] | None = None,
+        guides: Annotated[bool | list[str] | None, Field(description="Draw guides over the preview: true for all, or guide/grid names")] = None,
+        page: Annotated[int | str | None, Field(description="Page number or name; 'all' shows every page on one sheet")] = None,
+        values: Annotated[dict | None, Field(description="Form field values to show, by field key")] = None,
+        show_fields: Annotated[bool, Field(description="Outline form fields with their keys and tab order")] = False,
         document: Document = None,
     ) -> Image:
         """Return an aspect-preserving PNG capped in dimensions and bytes, rendered at preview resolution.
@@ -622,6 +638,10 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
                 time=time,
                 proof=proof,
                 simulate=simulate,
+                guides=guides,
+                page=page,
+                values=values,
+                show_fields=show_fields,
             ),
             format="png",
         )
@@ -648,7 +668,8 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
 
     @tool
     def vixl_check(
-        checks: list[Literal["bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "fonts", "brand", "print", "color_vision"]]
+        checks: list[Literal["bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "fonts", "brand", "print", "color_vision", "guides", "alignment",
+                             "deck", "title_position", "type_scale", "words", "min_font", "notes", "empty", "form", "drawing"]]
         | None = None,
         targets: list[str] | None = None,
         safe_area: Annotated[
@@ -666,13 +687,18 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         min_ppi: Annotated[float, Field(ge=36, le=2400, description="print check: lowest image resolution")] = 200,
         artboard: str | None = None,
         comp: str | None = None,
+        page: Annotated[int | str | None, Field(description="Page to check (default: the active page)")] = None,
+        deck: Annotated[dict | None, Field(description="deck checks: {min_font (pt), max_words, pages, include_hidden}")] = None,
+        sample: Annotated[str | None, Field(description="form checks: 'worst' (worst-case values) or a workspace CSV of rows")] = None,
         document: Document = None,
     ) -> dict:
         """Find design problems without looking: content cut off by the canvas, overlapping text, low WCAG
         text contrast (4.5:1, or 3:1 for 24px+), content outside a safe area or inside reserved zones, and
         text too small at thumbnail width. print (opt-in) checks ink coverage, low-resolution images, tiny
         type in points and backgrounds that stop short of the bleed; color_vision (opt-in) finds text whose
-        contrast collapses for color-blind readers. Reports only problems."""
+        contrast collapses for color-blind readers; deck checks every page plus title placement, type
+        scale, words per page, projected type size and speaker notes; form checks fields (names, overlap, tab
+        order, sizes, contrast) and with sample finds values that overflow. Reports only problems."""
         return session.check(
             document=document,
             checks=checks,
@@ -686,6 +712,9 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
             min_ppi=min_ppi,
             artboard=artboard,
             comp=comp,
+            page=page,
+            deck=deck,
+            sample=sample if sample in (None, "worst") else str(session.resolve(sample)),
         )
 
     @tool
@@ -748,13 +777,21 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         dpi: Annotated[float | None, Field(ge=36, le=2400)] = None,
         icon_sizes: list[int] | None = None,
         time: float | str | None = None,
+        page: Annotated[int | str | None, Field(description="One page of a multi-page document")] = None,
+        pages: Annotated[list[int | str] | str | None, Field(description="PDF/PPTX pages: [1, 3] or '1-3,intro'")] = None,
+        pdf_content: Literal["vector", "raster"] | None = None,
+        fillable: Annotated[bool, Field(description="PDF with fillable form fields")] = False,
+        values: Annotated[dict | None, Field(description="Form field values by key: a filled copy (nothing is saved)")] = None,
+        fill_mode: Literal["flatten", "editable"] = "flatten",
         document: Document = None,
     ) -> dict:
-        """Export to a workspace file, format from extension (PNG/JPEG/WEBP/TIFF/AVIF/SVG/PDF/ICO), full
+        """Export to a workspace file, format from extension (PNG/JPEG/WEBP/TIFF/AVIF/SVG/PDF/ICO/PPTX), full
         size by default. color_space=cmyk separates JPEG/TIFF/PDF for print (with an ICC profile for press
         accuracy, else device-naive GCR with black_generation and ink_limit); dpi defaults to the canvas
-        dpi. SVG policy strict rejects any embedded raster fallback. time exports one timeline frame.
-        Returns file metadata, never image bytes."""
+        dpi. SVG policy strict rejects any embedded raster fallback. time exports one timeline frame. A
+        multi-page document exports every shown page to PDF (vector text) or PowerPoint (editable slides
+        with speaker notes). fillable writes PDF form fields; values fills them (flatten draws them into the
+        artwork, editable prefills a fillable PDF). Returns file metadata, never image bytes."""
         profile_bytes = read_bounded(session.resolve(icc_profile), 16 * 1024 * 1024) if icc_profile else None
         return export_file(
             session,
@@ -780,6 +817,12 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
             dpi=dpi,
             icon_sizes=icon_sizes,
             time=time,
+            page=page,
+            pages=pages,
+            pdf_content=pdf_content,
+            fillable=fillable,
+            values=values,
+            fill_mode=fill_mode,
         )
 
     @tool

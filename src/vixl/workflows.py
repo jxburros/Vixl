@@ -5,6 +5,7 @@ from .studio import ACTIONS as STUDIO_ACTIONS
 
 from .automation import bounded_object
 from .errors import require, VixlError
+from .lyrics import REQUEST_FIELDS as LYRIC_FIELDS
 
 ACTIONS = {
     "check": ({"suite", "mode", "variables", "artboard"}, {"suite"}),
@@ -25,6 +26,14 @@ ACTIONS = {
     "start": ({"workers"}, set()),
     "film-plan": ({"spec"}, {"spec"}),
     "film-export": ({"spec", "output"}, {"spec", "output"}),
+    "organic-catalog": (set(), set()),
+    "lyric-video-plan": (LYRIC_FIELDS, {"audio", "lyrics", "template"}),
+    "lyric-video-build": (LYRIC_FIELDS, {"audio", "lyrics", "template", "build"}),
+    "lyric-video-export": (LYRIC_FIELDS, {"audio", "lyrics", "template", "build", "output"}),
+    "form-fill": ({"data", "values", "output", "name", "format", "combine", "mode", "skip_invalid", "dry_run", "check",
+                   "unknown", "dpi"}, set()),
+    "drawing-report": ({"target"}, {"target"}),
+    "drawing-compare": ({"target", "output"}, {"target", "output"}),
 }
 
 
@@ -56,6 +65,29 @@ def dispatch(session, action, request, document=None):
             raise VixlError("invalid_request", f"Invalid {action} request: {exc}") from exc
     if action == "plan":
         return plan(request["spec"])
+    if action == "organic-catalog":
+        from .organic import catalog
+
+        return catalog()
+    if action == "form-fill":
+        return form_fill(session, request, document)
+    if action in ("drawing-report", "drawing-compare"):
+        from .drawing import compare, report
+
+        with session.project(document=document) as project:
+            result = report(project, request["target"])
+            if action == "drawing-compare":
+                destination = session.resolve(request["output"])
+                require(destination.suffix.lower() == ".png" and not destination.exists(),
+                        "Choose a new .png output", field="output")
+                compare(project, request["target"]).save(destination)
+                result["output"] = session.relative(destination)
+            return result
+    if action.startswith("lyric-video-"):
+        from . import lyrics
+
+        step = {"lyric-video-plan": lyrics.plan, "lyric-video-build": lyrics.build, "lyric-video-export": lyrics.export}[action]
+        return step(request, session.workspace, session.limits)
     if action.startswith("film-"):
         from .film import plan as film_plan, export
 
@@ -170,3 +202,36 @@ def cli(args, options, limits):
     request = read_json(a.request) if a.request else {}
     session = Session(options.project, limits, workspace=a.workspace)
     return dispatch(session, a.action, request)
+
+
+def form_fill(session, request, document=None):
+    """Fill the open form: ``values`` and ``output`` for one copy, or ``data`` (a CSV) with an
+    ``output`` directory or a ``combine`` PDF. Nothing is written to the document."""
+    from .forms import check_values, fill, fill_data
+
+    for field in ("skip_invalid",):
+        if field in request:
+            require(type(request[field]) is bool, f"{field} must be boolean")
+    require(("data" in request) != ("values" in request), "Give values (one copy) or data (a CSV), not both",
+            field="data")
+    with session.project(document=document) as project:
+        options = {key: request[key] for key in ("mode", "unknown", "dpi") if key in request}
+        if "values" in request:
+            if request.get("dry_run"):
+                _, _, errors = check_values(project, request["values"], unknown=request.get("unknown", "error"))
+                return {"dry_run": True, "valid": not errors, "errors": errors}
+            require(isinstance(request.get("output"), str), "Give an output path", field="output")
+            destination = session.resolve(request["output"])
+            result = fill(project, request["values"], destination, format=request.get("format"), **options)
+            return {**result, "output": session.relative(destination)}
+        combine = session.resolve(request["combine"]) if request.get("combine") else None
+        directory = session.resolve(request["output"]) if request.get("output") else None
+        result = fill_data(project, session.resolve(request["data"]), directory, combine=combine,
+                           name=request.get("name", "{row}"), format=request.get("format", "pdf"),
+                           skip_invalid=request.get("skip_invalid", False), dry_run=request.get("dry_run", False),
+                           check=request.get("check"), **options)
+        if result.get("output"):
+            result["output"] = session.relative(Path(result["output"]))
+        for item in result.get("outputs", []):
+            item["output"] = session.relative(Path(item["output"]))
+        return result

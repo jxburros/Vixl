@@ -12,7 +12,7 @@ import zipfile
 from PIL import Image
 
 from .automation import bounded_object
-from .errors import require
+from .errors import VixlError, require
 from .model import Limits, finite
 from .production import publish_file
 
@@ -24,7 +24,43 @@ def local_path(root, value):
     return path
 
 
-def plan(spec, limits=None):
+MAX_FRAMES = 3600
+
+
+def audio_duration(path):
+    """The length of an audio (or video) file's first audio stream in milliseconds, read with
+    ffprobe."""
+    ffprobe = shutil.which("ffprobe")
+    require(ffprobe, "Reading audio length needs ffprobe (part of ffmpeg) on PATH", "codec_error")
+    command = [ffprobe, "-v", "error", "-select_streams", "a:0", "-show_entries", "stream=duration:format=duration",
+               "-of", "json", str(path)]
+    try:
+        result = subprocess.run(command, capture_output=True, timeout=60)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise VixlError("codec_error", f"ffprobe could not read the audio: {exc}") from exc
+    require(result.returncode == 0, "ffprobe could not read the audio file", "codec_error",
+            detail=result.stderr.decode("utf-8", "replace").strip()[:300])
+    import json
+
+    try:
+        info = json.loads(result.stdout or b"{}")
+    except ValueError as exc:
+        raise VixlError("codec_error", "ffprobe returned unreadable output") from exc
+    streams = info.get("streams") or []
+    require(streams, "The file has no audio stream", "codec_error")
+    for value in (streams[0].get("duration"), (info.get("format") or {}).get("duration")):
+        try:
+            seconds = float(value)
+        except (TypeError, ValueError):
+            continue
+        if math.isfinite(seconds) and seconds > 0:
+            return int(round(seconds * 1000))
+    raise VixlError("codec_error", "ffprobe could not determine the audio length")
+
+
+def plan(spec, limits=None, streamed=False):
+    """Validate a film spec. ``streamed`` (MP4/WebM output) lifts the 3,600-frame cap: those
+    formats encode frame by frame, so only the 10-minute duration bounds them."""
     limits = limits or Limits()
     bounded_object(
         spec,
@@ -67,7 +103,10 @@ def plan(spec, limits=None):
         start = duration - overlap
         result.append({**shot, "start_frame": start, "frames": frames, "overlap": overlap})
         duration = start + frames
-    require(duration <= 3600 and duration / fps <= 600, "Film exceeds frame/time limit", "resource_limit")
+    require(duration / fps <= 600, "Film exceeds the 10 minute limit", "resource_limit")
+    require(streamed or duration <= MAX_FRAMES,
+            f"Film has {duration} frames; ZIP output holds at most {MAX_FRAMES}. Render MP4/WebM, which have no "
+            "frame cap, or lower fps or duration", "resource_limit")
     require(
         isinstance(spec.get("captions", []), list) and isinstance(spec.get("audio", []), list),
         "Captions and audio must be arrays",
@@ -143,20 +182,30 @@ def clip_frames(path, shot, size, fps):
             process.wait(timeout=10)
 
 
-def frames(spec, root, *, limits=None, cancelled=lambda: False):
+def _state_key(project):
+    import hashlib
+    import json
+
+    return hashlib.sha256(json.dumps(project.state, sort_keys=True, default=str).encode()).digest()
+
+
+def frames(spec, root, *, limits=None, cancelled=lambda: False, streamed=False):
     from .project import Project
     from .render_cache import enable
     from .timeline import project_at
     from .proxy import render_preview
     from .assets import decode, read_bounded
 
-    settings = plan(spec, limits)
+    settings = plan(spec, limits, streamed)
     limits = limits or Limits()
     size = (settings["width"], settings["height"])
     if spec.get("quality") == "draft":
         ratio = min(1, 640 / max(size))
         size = tuple(max(1, round(n * ratio)) for n in size)
     sources, clips = {}, {}
+    # The last rendered frame per document shot: a frame whose animated state is unchanged
+    # (a lyric held on screen, a pause) reuses it instead of rendering again.
+    memo = {}
     with ExitStack() as stack:
         for frame in range(settings["frames"]):
             require(not cancelled(), "Film cancelled", "cancelled")
@@ -183,9 +232,14 @@ def frames(spec, root, *, limits=None, cancelled=lambda: False):
                     image = next(clips[i])
                 elif isinstance(source, Project):
                     candidate = project_at(source, shot.get("trim", 0) + local * 1000 / settings["fps"])
-                    image = render_preview(
-                        candidate, *size, variables=shot.get("variables"), artboard=shot.get("artboard")
-                    )
+                    key = _state_key(candidate)
+                    if i in memo and memo[i][0] == key:
+                        image = memo[i][1].copy()
+                    else:
+                        image = render_preview(
+                            candidate, *size, variables=shot.get("variables"), artboard=shot.get("artboard")
+                        )
+                        memo[i] = (key, image.copy())
                 else:
                     image = source.copy()
                 from PIL import ImageOps
@@ -232,6 +286,7 @@ def frames(spec, root, *, limits=None, cancelled=lambda: False):
                 shot = settings["shots"][i]
                 if frame + 1 >= shot["start_frame"] + shot["frames"]:
                     sources.pop(i)
+                    memo.pop(i, None)
                     if i in clips:
                         clips.pop(i).close()
 
@@ -239,15 +294,16 @@ def frames(spec, root, *, limits=None, cancelled=lambda: False):
 def export(spec, root, output, *, limits=None, cancelled=lambda: False, progress=lambda value: None):
     import json
 
-    settings = plan(spec, limits)
     output = Path(output)
     require(output.suffix.lower() in (".zip", ".mp4", ".webm"), "Film output must be ZIP, MP4 or WebM")
+    streamed = output.suffix.lower() in (".mp4", ".webm")
+    settings = plan(spec, limits, streamed)
     require(not output.exists(), "Film output already exists")
     require(output.suffix != ".zip" or not spec.get("audio"), "Audio requires MP4/WebM output")
     output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(dir=output.parent, prefix=".film-") as temp:
         staged = Path(temp) / output.name
-        stream = frames(spec, root, limits=limits, cancelled=cancelled)
+        stream = frames(spec, root, limits=limits, cancelled=cancelled, streamed=streamed)
 
         def tracked():
             try:

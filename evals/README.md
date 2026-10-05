@@ -11,7 +11,8 @@ Each task in `tasks/` is a JSON file with:
 - `setup` — optional starting files (generated images, pre-built `.vixl` documents with history);
 - `checks` — programmatic success criteria evaluated on the files the agent leaves behind
   (`canvas`, `layer`, `design` (runs `check_design`), `spacing`, `centered`, `layer_field`,
-  `variable`, `file`, `files_differ`, `assert`);
+  `variable`, `file`, `files_differ`, `assert`, and `pdf_fields` for a PDF's form fields and page count;
+  layer matches can test a field's `field_key` and `field_kind`);
 - `reference` — a scripted tool-call solution, used to prove the task is solvable and the checks
   are correct.
 
@@ -65,8 +66,9 @@ it verifies that the reference passes and that an idle agent fails.
 
 ## Stored baseline and weekly comparison
 
-There are 16 briefs: the original eight plus layouts, font pairing, applied rolls, templates,
-CMYK export, timelines, checked workflow edits, and editable SVG imports. Font tasks populate
+There are 18 briefs: the original eight plus layouts, font pairing, applied rolls, templates,
+CMYK export, timelines, checked workflow edits, editable SVG imports, a fillable registration
+form, and batch form filling with a bad row. Font tasks populate
 an isolated temporary font cache with the bundled DejaVu font under the requested pairing's
 cache names. This tests pairing installation/registration and agent tool usage offline, not the
 appearance or availability of Google Fonts. Live runs use the same fixtures for comparability.

@@ -37,6 +37,18 @@ TYPE_ALIASES = {
     "make-selection": "select",
     "style": "layer-style",
     "add-shape": "shape",
+    "rich": "rich-text",
+    "markdown": "rich-text",
+    "text-rich": "rich-text",
+    "text-span": "text-style",
+    "style-text": "text-style",
+    "span": "text-style",
+    "input": "field",
+    "form-field": "field",
+    "add-field": "field",
+    "set-field": "field-set",
+    "field-update": "field-set",
+    "sketch": "drawing",
 }
 SHAPE_TYPES = {
     "rect": ("rectangle", {}),
@@ -127,8 +139,9 @@ GEOMETRY_TYPES = {
     "select",
     "text-layout",
     "pen",
+    "field",
 }
-CENTER_TYPES = {"solid", "gradient", "shape", "add", "frame", "symbol-instance", "move"}
+CENTER_TYPES = {"solid", "gradient", "shape", "add", "frame", "symbol-instance", "move", "field"}
 
 
 def _snake(key):
@@ -204,6 +217,10 @@ def normalize_operation(operation, properties, known_types, effects, notes, inde
 
     from .design_schema import SHAPES
 
+    if kind in ("field", "field-set"):
+        from .forms import normalize as normalize_field
+
+        op = normalize_field(op, note)
     if kind == "shape" and isinstance(op.get("shape"), str) and op["shape"] not in SHAPES:
         guess = op["shape"].lower().replace("_", "-").replace(" ", "-")
         if guess not in SHAPE_TYPES:

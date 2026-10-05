@@ -35,6 +35,19 @@ def _scale_layer(layer, s):
     if "stroke_width" in layer:
         value = layer["stroke_width"] * s
         layer["stroke_width"] = round(value) if layer.get("type") == "text" else value
+    rich = layer.get("rich")
+    if rich:
+        for span in rich["spans"]:
+            for key in ("size", "tracking"):
+                if key in span:
+                    span[key] = span[key] * s
+        for key in ("paragraph_spacing", "list_indent"):
+            if key in rich:
+                rich[key] = rich[key] * s
+        for item in rich.get("paragraphs", []):
+            for key in ("space_before", "space_after", "indent"):
+                if key in item:
+                    item[key] = item[key] * s
     layout = layer.get("text_layout")
     if layout:
         for key in ("width", "height"):
@@ -94,8 +107,10 @@ def scaled_project(project, s):
     canvas["width"], canvas["height"] = _size(canvas["width"], s), _size(canvas["height"], s)
     for layer in state["layers"]:
         _scale_layer(layer, s)
+    from .guides import transform_guide
+
     for guide in state.get("guides", {}).values():
-        guide["position"] = guide["position"] * s
+        transform_guide(guide, s)
     for style in state.get("character_styles", {}).values():
         for key in ("size", "stroke_width"):
             if key in style:
@@ -108,7 +123,8 @@ def scaled_project(project, s):
 
 
 def render_preview(
-    project, max_width, max_height, *, variables=None, artboard=None, comp=None, region=None, time=None, proof=False, simulate=None
+    project, max_width, max_height, *, variables=None, artboard=None, comp=None, region=None, time=None, proof=False, simulate=None,
+    guides=None, page=None, values=None, show_fields=False,
 ):
     """Render at roughly the preview size. ``region`` [x, y, w, h] (document pixels) zooms in;
     zoomed regions may be enlarged up to 8x so small details stay legible. ``time`` previews a
@@ -118,6 +134,24 @@ def render_preview(
     from .design_render import artboard_project
     from .errors import require
 
+    from .render import view_page
+
+    if page == "all":
+        from .deck import contact_sheet
+
+        count = len(project.state.get("pages") or [])
+        columns = max(1, min(4, count))
+        tile = max(64, min(800, (max_width - 16 * (columns + 1)) // columns))
+        sheet = contact_sheet(project, width=tile, columns=columns)
+        sheet.thumbnail((max_width, max_height), Image.Resampling.LANCZOS)
+        return sheet
+    if isinstance(page, str) and page.isdigit():
+        page = int(page)
+    if values:
+        from .forms import with_values
+
+        project = with_values(project, values, complete=False)
+    project = view_page(project, page)
     if time is not None:
         from .timeline import default_timeline, parse_time, project_at
 
@@ -157,4 +191,14 @@ def render_preview(
             image = colors.simulate_vision(image, simulate)
         if proof:
             image = colors.proof_image(image, ink_limit=None if proof is True else proof / 100)
+    if guides:
+        from .guides import draw_overlay
+
+        image = image.convert("RGBA")
+        draw_overlay(image, candidate, image.width / w, (x, y), None if guides is True else list(guides))
+    if show_fields:
+        from .forms import draw_overlay as draw_fields
+
+        image = image.convert("RGBA")
+        draw_fields(image, candidate, image.width / w, (x, y))
     return image

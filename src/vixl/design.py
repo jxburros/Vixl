@@ -278,33 +278,32 @@ def execute_design(project, op):
                 auto_size=False,
             )
     elif kind == "guide":
-        state.setdefault("guides", {})[named(op["name"])] = {"axis": op["axis"], "position": op["position"]}
-    elif kind == "grid":
-        name = named(op["name"])
-        margin, gutter = op.get("margin", 0), op.get("gutter", 0)
-        finite(margin, "margin", 0)
-        finite(gutter, "gutter", 0)
+        from .guides import make_guide
+
         guides = state.setdefault("guides", {})
-        # Replace old generated guides when changing row/column counts.
+        if op.get("delete"):
+            require(op["name"] in guides, f"Unknown guide {op['name']!r}", field="name")
+            del guides[op["name"]]
+        else:
+            guides[named(op["name"])] = make_guide(op)
+        require(len(guides) <= 1024, "A document holds at most 1024 guides", "resource_limit")
+    elif kind == "grid":
+        from .guides import generate
+
+        name = named(op["name"])
+        guides = state.setdefault("guides", {})
+        # Replace a grid's generated guides when it is redefined (or deleted).
         for key in list(guides):
             if guides[key].get("grid") == name:
                 del guides[key]
-        for axis, key, size in (
-            ("x", "columns", state["canvas"]["width"]),
-            ("y", "rows", state["canvas"]["height"]),
-        ):
-            count = op.get(key, 1)
-            require(count <= 512, "Grid limit is 512 rows/columns")
-            cell = (size - 2 * margin - (count - 1) * gutter) / count
-            require(cell > 0, "Grid margins and gutters exceed canvas")
-            for i in range(count):
-                for edge, offset in (("start", 0), ("end", cell)):
-                    guides[f"{name}-{axis}{i + 1}-{edge}"] = {
-                        "axis": axis,
-                        "position": margin + i * (cell + gutter) + offset,
-                        "grid": name,
-                    }
-        state.setdefault("grids", {})[name] = {k: v for k, v in op.items() if k != "type"}
+        if op.get("delete"):
+            require(name in state.get("grids", {}), f"Unknown grid {name!r}", field="name")
+            del state["grids"][name]
+        else:
+            guides.update(generate(op, state["canvas"]))
+            require(len(guides) <= 1024, "A document holds at most 1024 guides; remove a grid or raise spacing",
+                    "resource_limit")
+            state.setdefault("grids", {})[name] = {k: v for k, v in op.items() if k != "type"}
     elif kind == "pathfinder":
         children = selected(project, op["targets"])
         require(
@@ -514,10 +513,10 @@ def validate_design(project, state):
             if key in board:
                 finite(board[key], "artboard " + key, -1e6, 1e6)
         require(all(t in index for t in board.get("targets", [])), "Artboard references missing layers")
+    from .guides import validate_guide
+
     for name, guide in state.get("guides", {}).items():
-        named(name)
-        require(guide["axis"] in ("x", "y"), "Invalid guide axis")
-        finite(guide["position"], "guide position", -1e9, 1e9)
+        validate_guide(name, guide)
     for name, lut in state.get("luts", {}).items():
         named(name)
         n = lut["size"]
@@ -555,6 +554,11 @@ def validate_design(project, state):
                 project.limits.size(*layer.get("path_view", [layer["width"], layer["height"]]))
             finite(layer.get("radius", 0), "radius", 0, 16384)
             finite(layer.get("stroke_width", 1), "stroke width", 0, 1024)
+            require(layer.get("line_cap", "butt") in ("butt", "round", "square"), "line_cap must be butt, round or square")
+            if "organic" in layer:
+                import json
+                require(isinstance(layer["organic"], dict) and len(json.dumps(layer["organic"])) <= 131072,
+                        "Invalid organic recipe", "invalid_project")
             sides = layer.get("sides", 5)
             require(isinstance(sides, int) and 3 <= sides <= 128, "Polygons/stars require 3–128 sides")
             finite(layer.get("inner_radius", 0.5), "inner radius", 0.01, 1)
@@ -566,6 +570,10 @@ def validate_design(project, state):
             require(layer["symbol"] in state.get("symbols", {}), "Missing symbol master")
         if kind in ("group", "pathfinder"):
             project.limits.size(layer["content_width"], layer["content_height"])
+        if kind == "group" and "organic" in layer:
+            import json
+            require(isinstance(layer["organic"], dict) and len(json.dumps(layer["organic"])) <= 131072,
+                    "Invalid organic recipe", "invalid_project")
         if kind == "pathfinder":
             require(layer["mode"] in ("union", "subtract", "intersect"), "Invalid pathfinder mode")
             require(1 <= len(layer["operands"]) <= project.limits.max_layers, "Invalid pathfinder operands")

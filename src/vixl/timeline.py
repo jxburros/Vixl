@@ -8,6 +8,7 @@ and style animates. Exports stream frames to GIF, APNG, animated WebP, sprite sh
 sequences, or MP4/WebM when ffmpeg is installed.
 """
 
+import bisect
 from copy import copy, deepcopy
 import io
 import json
@@ -30,8 +31,11 @@ COLORS = ("color", "fill", "start", "end", "stroke_color", "stroke", "background
 STEPPED = ("text", "visible")
 MAX_DURATION = 600_000
 MAX_FRAMES = 3600
+# MP4/WebM stream one frame at a time into ffmpeg, so only the 10-minute duration bounds them.
+MAX_STREAMED_FRAMES = MAX_DURATION * 60 // 1000
+STREAMED = ("mp4", "webm")
 MAX_TRACKS = 1024
-MAX_KEYS = 2048
+MAX_KEYS = 8192
 
 NAMED_BEZIER = {
     "ease": (0.25, 0.1, 0.25, 1.0),
@@ -468,10 +472,10 @@ def _segment(keys, time):
         return keys[0], keys[0], 0.0
     if time >= keys[-1]["time"]:
         return keys[-1], keys[-1], 0.0
-    for left, right in zip(keys, keys[1:]):
-        if left["time"] <= time < right["time"]:
-            return left, right, (time - left["time"]) / (right["time"] - left["time"])
-    return keys[-1], keys[-1], 0.0
+    # Long tracks (a lyric video holds thousands of keys) are searched, not scanned.
+    index = bisect.bisect_right(keys, time, key=lambda k: k["time"])
+    left, right = keys[index - 1], keys[index]
+    return left, right, (time - left["time"]) / (right["time"] - left["time"])
 
 
 def sample_track(project, track, time):
@@ -637,14 +641,19 @@ def render_scaled(project, scale, sampling="smooth"):
     return image
 
 
-def frame_times(project, fps=None, start=0, end=None):
+def frame_times(project, fps=None, start=0, end=None, streamed=False):
+    """Frame times from ``start`` to ``end``. Buffered formats (GIF, APNG, WebP, sheets, PNG
+    sequences) hold at most 3,600 frames; ``streamed`` video is bounded only by its duration."""
     timeline = project.state.get("timeline") or default_timeline()
     fps = fps or timeline["fps"]
     require(isinstance(fps, (int, float)) and 1 <= fps <= 60, "fps must be 1–60")
     end = timeline["duration"] if end is None else end
     require(0 <= start < end <= MAX_DURATION, "Invalid frame range")
     count = max(1, math.ceil((end - start) * fps / 1000))
-    require(count <= MAX_FRAMES, f"Timeline exports at most {MAX_FRAMES} frames; lower fps or duration", "resource_limit")
+    limit = MAX_STREAMED_FRAMES if streamed else MAX_FRAMES
+    require(count <= limit, f"Timeline exports at most {limit} frames"
+            + ("; lower fps or duration" if streamed else "; lower fps or duration, or export mp4/webm, which have no frame cap"),
+            "resource_limit")
     return [start + i * 1000 / fps for i in range(count)], fps
 
 
@@ -814,7 +823,7 @@ def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=No
     markers = timeline.get("markers", {})
     first = parse_time(start, timeline["duration"], markers) if start is not None else 0
     last = parse_time(end, timeline["duration"], markers) if end is not None else timeline["duration"]
-    times, fps = frame_times(project, fps, first, last)
+    times, fps = frame_times(project, fps, first, last, streamed=format in STREAMED)
     destinations = [path] + ([path.with_suffix(".json")] if format == "sheet" else [])
     require(overwrite or not any(p.exists() for p in destinations), "Animation output already exists")
     c = project.state["canvas"]
@@ -893,6 +902,8 @@ def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=No
 
 
 def _video(path, frames, fps, format, quality, overwrite, count, size):
+    """Encode frames with ffmpeg as they arrive. Frames are piped as raw pixels, one at a time,
+    so memory does not grow with the video's length."""
     ffmpeg = shutil.which("ffmpeg")
     require(ffmpeg, "MP4/WebM export needs ffmpeg on PATH; export gif, webp, apng or frames instead", "missing_dependency")
     require(overwrite or not path.exists(), "Animation output already exists")
@@ -900,30 +911,41 @@ def _video(path, frames, fps, format, quality, overwrite, count, size):
     even = (w + w % 2, h + h % 2)
     crf = str(max(0, min(51, round(51 - quality * 0.33))))
     codec = ["-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", crf, "-movflags", "+faststart"] if format == "mp4" else ["-c:v", "libvpx-vp9", "-pix_fmt", "yuva420p", "-crf", crf, "-b:v", "0"]
-    with tempfile.TemporaryDirectory(prefix="vixl-video-") as staging:
+    pixels = "rgb24" if format == "mp4" else "rgba"
+    with tempfile.TemporaryDirectory(prefix="vixl-video-") as staging, tempfile.TemporaryFile() as errors:
         staged = Path(staging) / ("out" + path.suffix)
-        command = [ffmpeg, "-loglevel", "error", "-y", "-f", "image2pipe", "-framerate", str(fps), "-c:v", "png", "-i", "-", "-vf", f"pad={even[0]}:{even[1]}", *codec, str(staged)]
-        process = subprocess.Popen(command, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+        command = [ffmpeg, "-loglevel", "error", "-y", "-f", "rawvideo", "-pix_fmt", pixels, "-s", f"{w}x{h}",
+                   "-framerate", str(fps), "-i", "-", "-vf", f"pad={even[0]}:{even[1]}", *codec, str(staged)]
+        # stderr goes to a file: a pipe nobody reads would fill up and stall a long encode.
+        process = subprocess.Popen(command, stdin=subprocess.PIPE, stderr=errors)
+        written = 0
         try:
             for image in frames:
+                if image.size != (w, h):
+                    image = image.resize((w, h), Image.Resampling.LANCZOS)
                 if format == "mp4":
                     base = Image.new("RGBA", image.size, (255, 255, 255, 255))
-                    base.alpha_composite(image)
-                    image = base
-                buffer = io.BytesIO()
-                image.save(buffer, format="PNG")
-                process.stdin.write(buffer.getvalue())
+                    base.alpha_composite(image.convert("RGBA"))
+                    image = base.convert("RGB")
+                else:
+                    image = image.convert("RGBA")
+                process.stdin.write(image.tobytes())
+                written += 1
             process.stdin.close()
-            error = process.stderr.read().decode("utf-8", "replace")
             code = process.wait(timeout=600)
+        except BrokenPipeError:
+            code = process.wait(timeout=60)
         except BaseException:
             process.kill()
+            process.wait()
             raise
+        errors.seek(0)
+        error = errors.read().decode("utf-8", "replace")
         require(code == 0, f"ffmpeg failed: {error.strip()[:500]}", "codec_error")
         from .production import publish_file
         byte_count = staged.stat().st_size
         publish_file(path, staged, replace=overwrite)
-    return {"output": str(path), "format": format, "frames": count, "fps": fps, "duration": round(count * 1000 / fps), "size": [w, h], "bytes": byte_count}
+    return {"output": str(path), "format": format, "frames": written or count, "fps": fps, "duration": round((written or count) * 1000 / fps), "size": [w, h], "bytes": byte_count}
 
 
 def schemas(add):

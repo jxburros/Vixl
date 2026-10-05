@@ -12,9 +12,9 @@ import numpy as np
 from .errors import require
 from .model import finite
 
-CHECKS = ("bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "fonts", "brand", "content")
+CHECKS = ("bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "fonts", "brand", "content", "form")
 FALLBACK_FONT = "DejaVuSans.ttf"
-OPTIONAL_CHECKS = ("print", "color_vision")
+OPTIONAL_CHECKS = ("print", "color_vision", "guides", "alignment", "drawing")
 PERCENT = re.compile(r"^(-?\d+(?:\.\d+)?)%$")
 
 
@@ -67,10 +67,10 @@ def glyph_reports(project, layers):
     """``(layer, {"missing", "fallback"})`` for resolved text layers whose characters need a
     fallback font or that no available font covers. Text is read with the project's variables."""
     from .text import glyph_coverage
-    from .render import substitute
+    from .render import document_variables, substitute
 
     for item in layers:
-        report = glyph_coverage(project, {**item, "text": substitute(item["text"], project.state["variables"])})
+        report = glyph_coverage(project, {**item, "text": substitute(item["text"], document_variables(project))})
         if report["missing"] or report["fallback"]:
             yield item, report
 
@@ -80,14 +80,22 @@ def boxed_text_overflow(project, layer):
     more than the box (they are cut off), else None. Fitted, warped and path text are skipped:
     fit shrinks to the box, and warps and paths are laid out differently."""
     from .text import measure, font_data, UnsupportedText
-    from .render import substitute
+    from .render import document_variables, substitute
 
     settings = layer.get("text_layout") or {}
     if layer["type"] != "text" or "width" not in settings or settings.get("fit") or settings.get("path"):
         return None
+    from .richtext import active
+
+    if active(layer):
+        from .richtext import layout as rich_layout
+
+        result = rich_layout(project, layer)
+        need = (math.ceil(result.box[2]), math.ceil(result.box[3]))
+        return need if need[0] > layer["width"] + 1 or need[1] > layer["height"] + 1 else None
     if settings.get("warp", "none") != "none":
         return None
-    text = substitute(layer["text"], project.state.get("variables", {}))
+    text = substitute(layer["text"], document_variables(project))
     try:
         _, box = measure(font_data(project, layer), text, layer["size"], layer.get("spacing", 4),
                          layer.get("align", "left"), layer["width"])
@@ -118,6 +126,41 @@ def missing_glyphs(project):
             for item, report in glyph_reports(project, text) if report["missing"]]
 
 
+def group_matrix(item, resolved, local_bounds):
+    """The 3×3 matrix taking ``item``'s local (parent group) coordinates to canvas coordinates,
+    through each ancestor's centred scale, flips and rotation, as the renderer draws them."""
+    matrix = np.eye(3)
+    parent = resolved.get(item.get("parent"))
+    while parent is not None:
+        x, y, w, h = local_bounds[parent["id"]]
+        angle = math.radians(parent["rotation"])
+        co, si = math.cos(angle), math.sin(angle)
+        sx = parent["width"] / parent["content_width"] * (-1 if parent["flip_x"] else 1)
+        sy = parent["height"] / parent["content_height"] * (-1 if parent["flip_y"] else 1)
+        transform = np.array([[co * sx, -si * sy, 0], [si * sx, co * sy, 0], [0, 0, 1]])
+        center = transform @ [parent["content_width"] / 2, parent["content_height"] / 2, 1]
+        transform[:2, 2] = [x + w / 2 - center[0], y + h / 2 - center[1]]
+        matrix = transform @ matrix
+        parent = resolved.get(parent.get("parent"))
+    return matrix
+
+
+def canvas_projection(resolved, local_bounds):
+    """Canvas-space integer bounds, text scale factors and group matrices for every layer.
+    Shared by the design checks, guide checks and fillable form export, so they agree."""
+    bounds, scales, matrices = {}, {}, {}
+    for item in resolved.values():
+        matrix = group_matrix(item, resolved, local_bounds)
+        x, y, w, h = local_bounds[item["id"]]
+        corners = matrix @ np.array([[x, x + w, x, x + w], [y, y, y + h, y + h], [1, 1, 1, 1]])
+        left, top = np.floor(corners[:2].min(axis=1) + 1e-8).astype(int)
+        right, bottom = np.ceil(corners[:2].max(axis=1) - 1e-8).astype(int)
+        bounds[item["id"]] = tuple(map(int, (left, top, right - left, bottom - top)))
+        scales[item["id"]] = float(np.linalg.norm(matrix[:2, 1]))
+        matrices[item["id"]] = matrix
+    return {"bounds": bounds, "scales": scales, "matrices": matrices}
+
+
 def check_design(
     project,
     *,
@@ -133,8 +176,15 @@ def check_design(
     variables=None,
     ink_limit=300,
     min_ppi=200,
+    page=None,
+    deck=None,
+    sample=None,
 ):
-    """Return ``{"passed", "errors", "warnings", "issues", "checked"}`` for the rendered design."""
+    """Return ``{"passed", "errors", "warnings", "issues", "checked"}`` for the rendered design.
+    In a multi-page document ``page`` picks the page (default: the active page); the ``deck``
+    check family reviews every page and the deck as a whole (``deck`` holds its settings:
+    ``min_font``, ``max_words``, ``pages``, ``include_hidden``). ``sample`` (``"worst"`` or a CSV
+    path) fills the form's fields to find values that overflow their boxes."""
     from .design_render import artboard_project
     from .render import layer_canvas_surface, resolve_layout, resolved_layers
 
@@ -143,6 +193,20 @@ def check_design(
     if brand and "minimum_contrast" in brand:
         min_contrast = max(min_contrast or 0, brand["minimum_contrast"])
     checks = list(checks or CHECKS)
+    from .deck import DECK_CHECKS
+
+    if "deck" in checks or set(checks) & set(DECK_CHECKS):
+        from .deck import check_deck
+
+        rest = [c for c in checks if c != "deck"]
+        if "deck" in checks:
+            # "deck" means every deck check, with the named design checks (default: the deck set).
+            rest = [c for c in rest if c not in DECK_CHECKS]
+            rest = rest + list(DECK_CHECKS) if rest else None
+        return check_deck(project, checks=rest, safe_area=safe_area, min_contrast=min_contrast, **(deck or {}))
+    from .render import view_page
+
+    project = view_page(project, page)
     unknown = sorted(set(checks) - set(CHECKS + OPTIONAL_CHECKS))
     require(not unknown, f"Unknown check(s) {unknown}; available: {', '.join(CHECKS + OPTIONAL_CHECKS)}", field="checks")
     candidate = artboard_project(project.clone(), artboard, comp, variables)
@@ -159,27 +223,10 @@ def check_design(
     def visible(item):
         return all(x["visible"] and x["opacity"] > 0 for x in (item, *ancestors(item)))
 
-    # Layout bounds are local to the immediate group. Project their corners
-    # through the same centered scale/flip/rotation used by the renderer.
-    bounds, text_scales = {}, {}
-    for item in resolved.values():
-        matrix = np.eye(3)
-        for parent in ancestors(item):
-            x, y, w, h = local_bounds[parent["id"]]
-            angle = math.radians(parent["rotation"])
-            co, si = math.cos(angle), math.sin(angle)
-            sx = parent["width"] / parent["content_width"] * (-1 if parent["flip_x"] else 1)
-            sy = parent["height"] / parent["content_height"] * (-1 if parent["flip_y"] else 1)
-            transform = np.array([[co * sx, -si * sy, 0], [si * sx, co * sy, 0], [0, 0, 1]])
-            center = transform @ [parent["content_width"] / 2, parent["content_height"] / 2, 1]
-            transform[:2, 2] = [x + w / 2 - center[0], y + h / 2 - center[1]]
-            matrix = transform @ matrix
-        x, y, w, h = local_bounds[item["id"]]
-        corners = matrix @ np.array([[x, x + w, x, x + w], [y, y, y + h, y + h], [1, 1, 1, 1]])
-        left, top = np.floor(corners[:2].min(axis=1) + 1e-8).astype(int)
-        right, bottom = np.ceil(corners[:2].max(axis=1) - 1e-8).astype(int)
-        bounds[item["id"]] = tuple(map(int, (left, top, right - left, bottom - top)))
-        text_scales[item["id"]] = float(np.linalg.norm(matrix[:2, 1]))
+    # Layout bounds are local to the immediate group; project them onto the canvas.
+    projection = canvas_projection(resolved, local_bounds)
+    bounds = projection["bounds"]
+    text_scales = projection["scales"]
     layers = [
         item
         for item in resolved.values()
@@ -306,7 +353,8 @@ def check_design(
                         region=[left, top, right - left, bottom - top],
                     )
 
-    texts = [item for item in content if is_text(item)]
+    # Empty text (a lyric between lines, a cleared label) draws nothing to measure.
+    texts = [item for item in content if is_text(item) and resolved[item["id"]].get("text", "").strip()]
     if "contrast" in checks:
         from .measure import measure, top_level_contrast
 
@@ -437,9 +485,27 @@ def check_design(
     if "color_vision" in checks and texts:
         _color_vision(candidate, resolved, bounds, texts, min_contrast, text_scales, issue)
 
+    if "guides" in checks or "alignment" in checks:
+        from .guides import check_alignment, check_guides
+
+        if "guides" in checks:
+            check_guides(candidate, resolved, local_bounds, projection, content, issue)
+        if "alignment" in checks:
+            check_alignment(candidate, resolved, local_bounds, projection, content, issue)
+
     if brand and "brand" in checks:
         from .brand import check as check_brand
         check_brand(candidate, brand, issue)
+
+    if "drawing" in checks:
+        from .drawing import check_drawings
+
+        check_drawings(candidate, list(resolved.values()), issue)
+
+    if "form" in checks:
+        from .forms import check_form
+
+        check_form(candidate, resolved, local_bounds, projection, layers, issue, sample=sample)
 
     errors = sum(1 for x in issues if x["severity"] == "error")
     return {

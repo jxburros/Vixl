@@ -80,6 +80,7 @@ def check_state(project, state):
                 "symbol",
                 "pixel",
                 "paint",
+                "field",
             ),
             "Invalid layer type",
             "invalid_project",
@@ -109,9 +110,21 @@ def check_state(project, state):
             from .brushes import validate_paint
 
             validate_paint(layer, state)
+        if layer["type"] == "field":
+            from .forms import validate_field
+
+            validate_field(layer, state)
+        if "drawing" in layer or "drawing_strokes" in layer:
+            from .drawing import validate as validate_drawing
+
+            validate_drawing(layer, state, project)
         if layer["type"] == "text":
             require(isinstance(layer["text"], str) and len(layer["text"]) <= 100000, "Invalid text")
             finite(layer["size"], "font size", 1, 4096)
+            if "rich" in layer:
+                from .richtext import validate_rich
+
+                validate_rich(layer["rich"], state, layer["text"])
         mask = layer["mask"]
         if mask:
             require(mask["asset"] in project.assets, "Missing mask asset", "missing_asset")
@@ -121,6 +134,9 @@ def check_state(project, state):
             if effect.get("selection"):
                 require(effect["selection"] in project.assets, "Missing effect selection", "missing_asset")
     validate_design(project, state)
+    from .forms import validate_form
+
+    validate_form(project, state)
     from .brushes import validate_brushes
 
     require(isinstance(state.get("brushes", {}), dict), "Invalid brush library")
@@ -136,6 +152,9 @@ def check_state(project, state):
     validate_layout_record(state)
     from .automation import validate_state
     validate_state(state)
+    from .pages import validate_pages
+
+    validate_pages(project, state)
     require(not (ids & names), "Layer names cannot collide with IDs", "invalid_project")
     require(
         state["active_layer"] is None or state["active_layer"] in ids,

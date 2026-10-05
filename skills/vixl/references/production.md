@@ -27,6 +27,16 @@ Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/mai
    video requires an explicitly configured HTTP job gateway; other image providers do
    not automatically gain video support.
 
+9. Lyric videos: `lyric-video-plan` validates a song, an LRC file (timestamps, `[Section]`
+   markers) and a template document with a `lyric` text layer (optional `lyric-next`,
+   `section-label`, `intro`, `bg-<section>` and `cue-<words>` layers) and reports the timed lines;
+   `lyric-video-build` writes an editable keyframed document; `lyric-video-export` renders the
+   MP4/WebM with the song as audio. Long songs run as the `lyric-video` job kind. See
+   `docs/lyric-video.md`.
+10. Form filling: `form-fill` fills the open form from `values` (one copy) or a `data` CSV (one
+   file per row, or `combine` into one PDF); the `form-fill` job kind freezes the form and the data
+   and deletes the data copy when done. See `docs/forms.md`.
+
 MCP paths must remain inside the workspace. REST exposes check/act/plan/film-plan for
 its single project; filesystem, library and queue operations use CLI/Python/MCP.
 Checks certify only their declared rules and sampled times. Review the initial design,

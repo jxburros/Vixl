@@ -139,10 +139,23 @@ class Exporter:
                 viewBox=f"0 0 {view[0]} {view[1]}",
                 preserveAspectRatio="none",
             )
+            if layer.get("line_cap"):
+                attrs.update(stroke_linecap=layer["line_cap"],
+                             stroke_linejoin="round" if layer["line_cap"] == "round" else "miter")
             node(nested, "path", d=path, **attrs)
 
     def text(self, parent, layer):
         from .text import plan, append_paths, UnsupportedText
+        from .richtext import active
+
+        if active(layer):
+            from .richtext import append_svg, fitted
+
+            result = fitted(self.project, layer)
+            nested = node(parent, "svg", width=layer["width"], height=layer["height"],
+                          viewBox=f"0 0 {layer['width']} {layer['height']}", overflow="hidden")
+            append_svg(nested, result, layer, self.project, node=node)
+            return True
 
         try:
             layout = plan(self.project, layer)
@@ -294,6 +307,10 @@ class Exporter:
             )
         elif kind == "pathfinder":
             return self.pathfinder(parent, layer)
+        elif kind == "field":
+            from .forms import svg_field
+
+            return svg_field(self, parent, layer)
         elif kind == "pixel":
             rows = layer["pixels"]
             group = node(

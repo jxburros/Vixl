@@ -271,6 +271,18 @@ def _operation_schema():
     authoring_schemas(add)
     from .containers import schemas as container_schemas
     container_schemas(add)
+    from .organic import schemas as organic_schemas
+    organic_schemas(add)
+    from .guides import schemas as guide_schemas
+    guide_schemas(add)
+    from .richtext import schemas as rich_schemas
+    rich_schemas(add)
+    from .pages import schemas as page_schemas
+    page_schemas(add)
+    from .forms import schemas as form_schemas
+    form_schemas(add)
+    from .drawing import schemas as drawing_schemas
+    drawing_schemas(add)
     add(
         "palette-generate",
         {"name": S, "color": S, "scheme": S, "count": {"type": "integer", "minimum": 2, "maximum": 12}},
@@ -305,6 +317,11 @@ def validate_operation(operation, notes=None, index=None):
     result = deepcopy(operation)
     kind = result.pop("operation", result.get("type"))
     result["type"] = ALIASES.get(kind, kind) if isinstance(kind, str) else kind
+    # Any operation can name the page it edits; "page" operations use the field themselves.
+    page = result.pop("page", None) if result["type"] != "page" else None
+    if page is not None:
+        require(isinstance(page, (str, int)) and not isinstance(page, bool), "page must be a page name or number",
+                field="page")
     properties = _properties()
     result = normalize_operation(
         result, lambda k: properties.get(k, frozenset()), properties, EFFECTS, [] if notes is None else notes, index
@@ -331,6 +348,8 @@ def validate_operation(operation, notes=None, index=None):
         json.dumps(result, allow_nan=False)
     except (ValueError, TypeError, RecursionError) as exc:
         raise VixlError("invalid_operation", "Operations must contain finite JSON values") from exc
+    if page is not None:
+        result["page"] = page
     return result
 
 

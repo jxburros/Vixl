@@ -200,3 +200,18 @@ Apply returns `{"success": true, "dry_run": bool, "operations": N, "changes": {.
 `detail:"compact"` (CLI/MCP/REST default; `Project.apply(..., detail="compact")`) keys changes by layer ID
 with new values only; added layers include name, type and bounds. `detail:"full"` (Python default,
 CLI `--detail full`) includes complete before/after layer snapshots.
+
+## Newer operation families
+
+| type | key fields | reference |
+| --- | --- | --- |
+| `organic` | `preset` or `parts`, `params`, `colors`, `seed`, `name`, `target` (regrow) | [organic shapes](drawing-shapes-guides.md#organic-shapes) |
+| `guide` / `grid` | `guide`: `kind` (`axis`, `line`, `ray`, `segment`, `point`, `circle`, `path`) and its geometry; `grid`: `kind` (`columns`, `baseline`, `thirds`, `golden`, `armature`, `golden-spiral`, `polar`, `isometric`, `triangular`, `hex`, `oblique`, `perspective`), `region`, `delete` | [guides](drawing-shapes-guides.md#guides-grids-and-placement) |
+| `place` / `snap` | `targets`, `guide`, `at`/`start`/`end`/`spacing`/`with`, `anchor`, `orient`; `snap`: `tolerance` | [guides](drawing-shapes-guides.md#guides-grids-and-placement) |
+| `rich-text` / `text-style` | `markdown` or `spans`, `paragraphs`; `text-style`: `match`/`start`/`end`, character styles, `paragraphs` settings | [documents](documents.md#rich-text) |
+| `page` / `master` | `action` (`add`, `select`, `remove`, `move`, `set`), `name`/`page`, `master`, `notes`, `background`, `hidden`, `transition` | [documents](documents.md#pages-masters-and-decks) |
+| `field` / `field-set` / `form` | `kind`, `key`, `label`/`label_layer`, `required`, `options`, `option`, `default`, `appearance`; `form`: `tab_order`, `title`, `lang` | [documents](documents.md#forms) |
+| `drawing` | `action` (`import`, `clean`, `vectorize`, `straighten`, `smooth`, `fill`, `stroke`, `restyle`), `asset`, `target`, `strokes`, `points`, `settings` | [hand drawings](drawing-shapes-guides.md#building-on-a-hand-drawing) |
+
+Any operation also accepts `"page"` to address a page of a multi-page document.
+
