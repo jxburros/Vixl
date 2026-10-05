@@ -230,7 +230,8 @@ def test_cli_workflow_and_ai_colour(sketch, tmp_path):
     from vixl.interfaces import Session
     from vixl.workflows import dispatch as workflow
 
-    assert compile_command(f"drawing import {sketch} --name art --x 10") == {
+    # Tokens, not a shell-style string: a Windows path's backslashes are not escapes.
+    assert compile_command(["drawing", "import", str(sketch), "--name", "art", "--x", "10"]) == {
         "type": "drawing", "action": "import", "path": str(sketch), "name": "art", "x": 10}
     assert compile_command("drawing straighten art --strokes art/s001,art/s002 --settings '{\"tolerance\": 3}'") == {
         "type": "drawing", "action": "straighten", "target": "art", "strokes": ["art/s001", "art/s002"],
