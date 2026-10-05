@@ -93,7 +93,9 @@ def execute(project, op):
         operation = {**item, **{k: v for k, v in op.items() if k in ("name", "x", "y", "fill", "stroke")}}
         apply(project, operation)
         if "width" in op or "height" in op:
-            apply(project, {"type": "resize", **{k: op[k] for k in ("width", "height") if k in op}})
+            # A library shape given one dimension keeps its proportions.
+            apply(project, {"type": "resize", "keep_aspect": ("width" in op) != ("height" in op),
+                            **{k: op[k] for k in ("width", "height") if k in op}})
         return
     item = get("containers", op["resource"], workspace=workspace)
     width, height = item["width"], item["height"]

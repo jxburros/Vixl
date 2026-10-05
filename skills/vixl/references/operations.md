@@ -52,7 +52,7 @@ The authoritative schema is always `vixl schema` / `GET /schema` / `vixl://opera
 | type | fields | notes |
 | --- | --- | --- |
 | `move` | `target`, `x`, `y`, `relative` | Absolute move clears constraints; `relative: true` adds offsets. |
-| `resize` | `target`, `width`, `height` | One dimension keeps aspect ratio; two stretch. Turns off text auto-size. |
+| `resize` | `target`, `width`, `height`, `keep_aspect` | One dimension changes only that side of shapes, text, groups and solids (reported under `normalized`) but scales imported images (raster) proportionally; `keep_aspect: true` scales the other side proportionally on any layer, `false` changes only the given side; two dimensions stretch. Turns off text auto-size. |
 | `scale` | `target`, **`value`** | Factor (0.8 = 80 %). |
 | `rotate` | `target`, **`value`** | Degrees clockwise about the layer's pivot (default: center); bounds expand. |
 | `pivot` | `target`, **`value`** (`[x, y]` fractions of the unrotated box, or `top-left`…`bottom-right`/`center`), `units` (`fraction`/`px`), or `clear` | Point that rotation and scale turn about; stays fixed on the canvas (stills, timeline, SVG). Keeps the drawn pose. A pivoted layer's stored `x`/`y` is its unrotated box. |

@@ -123,7 +123,16 @@ def _operation_schema():
     add("move", {"x": COORD, "y": COORD, "relative": B}, anyOf=[{"required": ["x"]}, {"required": ["y"]}])
     add(
         "resize",
-        {"width": SIZE, "height": SIZE},
+        {
+            "width": SIZE,
+            "height": SIZE,
+            "keep_aspect": {
+                "type": "boolean",
+                "description": "With only width or only height: true scales the other side to keep the aspect "
+                "ratio; false changes just the given side. Default: true for image (raster) layers, false for "
+                "everything else.",
+            },
+        },
         anyOf=[{"required": ["width"]}, {"required": ["height"]}],
     )
     add("scale", {"value": {"type": "number", "exclusiveMinimum": 0}}, ["value"])

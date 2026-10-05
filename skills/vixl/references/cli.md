@@ -97,7 +97,7 @@ vixl raise|lower|top|bottom portrait
 vixl reorder logo --above portrait       # or --below
 vixl move portrait 100 200 ; vixl move portrait --x 100 ; vixl move portrait 20 0 --relative   # mv = move
 vixl scale portrait 80%                  # or 0.8
-vixl resize portrait 800x600 ; vixl resize portrait --width 800
+vixl resize portrait 800x600 ; vixl resize portrait --width 800 [--keep-aspect]   # one side alone leaves the other (images scale proportionally); --no-keep-aspect to stretch
 vixl rotate portrait 15                  # clockwise degrees about the pivot (default: center)
 vixl pivot arm 0.5 0.05                  # fractions of the box; pivot arm top | pivot arm 8 2 --px | pivot arm --clear
 vixl flip portrait horizontal|vertical

@@ -124,6 +124,11 @@ FIELD_ALIASES = {
     "canvas": {"color": "background", "fill": "background"},
     "variable": {"key": "name"},
     "align": {"align": "alignment", "position": "alignment", "relativeTo": "relative_to"},
+    "resize": {
+        key: "keep_aspect"
+        for key in ("lock_aspect", "lock_aspect_ratio", "keep_aspect_ratio", "preserve_aspect", "proportional",
+                    "maintain_aspect", "keep_ratio")
+    },
 }
 FIELD_ALIASES["text-set"] = FIELD_ALIASES["text"]
 GEOMETRY_TYPES = {
@@ -283,6 +288,12 @@ def normalize_operation(operation, properties, known_types, effects, notes, inde
                     value = value / 100
                 fixed[key] = value
             op["settings"] = fixed
+    if kind == "resize" and ("width" in op) != ("height" in op) and "keep_aspect" not in op:
+        given, other = ("width", "height") if "width" in op else ("height", "width")
+        note(
+            f"only {given} given, so {other} is unchanged, except on image (raster) layers, which keep their "
+            "aspect ratio; set keep_aspect to true (scale proportionally) or false (change one side) to choose"
+        )
     if kind == "move" and "x" not in op and "y" not in op and ("dx" in op or "dy" in op):
         op["x"], op["y"] = op.pop("dx", 0), op.pop("dy", 0)
         op["relative"] = True

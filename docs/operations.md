@@ -11,7 +11,7 @@ See [design tools and template production](design-tools.md) for groups, clipping
 ```json
 {"operations":[
   {"type":"add","path":"portrait.png","name":"portrait"},
-  {"type":"resize","target":"portrait","width":800},
+  {"type":"resize","target":"portrait","width":800,"keep_aspect":true},
   {"type":"align","target":"portrait","alignment":"top-right","margin":40},
   {"type":"select","shape":"rect","x":0,"y":0,"width":500,"height":300},
   {"type":"effect","target":"portrait","name":"brightness","amount":15},
@@ -31,7 +31,7 @@ Common operation fields:
 | solid / gradient | name, width, height, color **or** start/end/direction |
 | text | text, name, font, size, color, align, spacing, x/y |
 | text-set | target; text, size, color, align, spacing, stroke_width/stroke_color |
-| move / resize / scale | target; x/y/relative **or** width/height **or** value factor |
+| move / resize / scale | target; x/y/relative **or** width/height (+ `keep_aspect`; one side alone leaves the other except on imported images) **or** value factor |
 | rotate / opacity / blend | target, value |
 | align | target, alignment, margin |
 | constrain | target, constraints object |

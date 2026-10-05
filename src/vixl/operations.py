@@ -541,8 +541,19 @@ def execute(project, op):
             w, h = max(1, round(w * factor)), max(1, round(h * factor))
         else:
             require("width" in op or "height" in op, "Resize requires width or height")
-            w = op.get("width", max(1, round(w * op.get("height", h) / h)))
-            h = op.get("height", max(1, round(h * w / layer["width"])))
+            one_side = ("width" in op) != ("height" in op)
+            require(one_side or not op.get("keep_aspect"),
+                    "keep_aspect scales the other side proportionally: give width or height, not both",
+                    field="keep_aspect")
+            # A side that is not given keeps its size, except on photos, where stretching one axis is
+            # rarely meant: image layers scale proportionally unless keep_aspect is false.
+            if one_side and op.get("keep_aspect", layer["type"] == "raster"):
+                if "width" in op:
+                    w, h = op["width"], max(1, round(h * op["width"] / w))
+                else:
+                    w, h = max(1, round(w * op["height"] / h)), op["height"]
+            else:
+                w, h = op.get("width", w), op.get("height", h)
         project.limits.size(w, h)
         layer.update(width=w, height=h, auto_size=False)
     elif kind in ("rotate", "pivot", "flip") and layer["type"] == "field":

@@ -69,6 +69,7 @@ vixl move x +20
 vixl scale portrait 80%
 vixl resize portrait 800x600
 vixl resize portrait --width 800
+vixl resize portrait --width 800 --keep-aspect       # explicit; --no-keep-aspect stretches one side of an image
 vixl rotate portrait 15
 vixl flip portrait horizontal
 vixl crop portrait 0 0 300 400
@@ -77,7 +78,7 @@ vixl blend portrait multiply
 vixl align logo top-right --margin 40
 ```
 
-`layer` is an optional namespace. `rm` aliases remove and `mv` aliases move. Rotation is clockwise, expands the layer bounds, and anchors the expanded bounding box at its x/y position. Crop coordinates refer to the original embedded raster. Resize with one dimension preserves aspect ratio; with two, it stretches. Numeric scale values are factors; `80%` is `0.8`. The CLI accepts opacity `75` as 75%; canonical JSON always requires 0–1.
+`layer` is an optional namespace. `rm` aliases remove and `mv` aliases move. Rotation is clockwise, expands the layer bounds, and anchors the expanded bounding box at its x/y position. Crop coordinates refer to the original embedded raster. Resize with one dimension changes only that dimension of a shape, text box, group or solid (the other side keeps its size, and the result reports it under `normalized`), but scales an imported image (raster layer) proportionally so a photo is not stretched. `--keep-aspect` (JSON `keep_aspect: true`) scales the other side proportionally on any layer; `--no-keep-aspect` (`keep_aspect: false`) changes just the given side of an image; give both dimensions to stretch. Numeric scale values are factors; `80%` is `0.8`. The CLI accepts opacity `75` as 75%; canonical JSON always requires 0–1.
 
 Alignment supports center, center-x/y, left/right/top/bottom and corner pairs. Absolute moves and alignment clear constraints. `move x +20` and `--relative` add offsets.
 

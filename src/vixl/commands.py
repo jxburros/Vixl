@@ -213,6 +213,9 @@ def compile_command(tokens):
         p.add_argument("values", nargs="*")
         p.add_argument("--width", type=int)
         p.add_argument("--height", type=int)
+        p.add_argument("--keep-aspect", action=argparse.BooleanOptionalAction, default=None,
+                       help="with one dimension: scale the other side proportionally, or (--no-keep-aspect) leave it; "
+                       "default: proportional for images, leave it for everything else")
         data = vars(p.parse_args(args))
         values = data.pop("values")
         if values and not re.fullmatch(r"\d+(?:\.\d+)?%|\d+[x×]\d+|\d+(?:\.\d+)?", values[0]):
@@ -228,6 +231,8 @@ def compile_command(tokens):
                 op["type"] = "scale"
         if data.get("width") is not None or data.get("height") is not None:
             op["type"] = "resize"
+        if op["type"] != "resize":
+            data.pop("keep_aspect", None)
         return {**op, **{k: v for k, v in data.items() if v is not None}}
     elif cmd in ("rotate", "opacity", "blend", "flip", *EFFECTS):
         p.add_argument("values", nargs="*")

@@ -166,7 +166,7 @@ vixl_workspace_list()                                   # see files; paths are r
 vixl_document_create(path="poster.vixl", width=1080, height=1350, background="#101828")
 vixl_import_image(path="photos/portrait.jpg", name="portrait")
 vixl_operations_apply(operations=[
-  {"type":"resize","target":"portrait","width":1080},
+  {"type":"resize","target":"portrait","width":1080,"keep_aspect":true},
   {"type":"align","target":"portrait","alignment":"top"},
   {"type":"gradient","name":"fade","width":1080,"height":600,"y":750,
    "stops":[{"offset":0,"color":"#10182800"},{"offset":1,"color":"#101828"}]},
