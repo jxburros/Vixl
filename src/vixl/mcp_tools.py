@@ -786,6 +786,9 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         fillable: Annotated[bool, Field(description="PDF with fillable form fields")] = False,
         values: Annotated[dict | None, Field(description="Form field values by key: a filled copy (nothing is saved)")] = None,
         fill_mode: Literal["flatten", "editable"] = "flatten",
+        alpha: Annotated[Literal["auto", "keep", "flatten"], Field(
+            description="PNG/WEBP/TIFF/AVIF channels: auto writes RGB when the image is fully opaque, keep always "
+                        "RGBA, flatten composites onto background and writes RGB")] = "auto",
         document: Document = None,
     ) -> dict:
         """Export to a workspace file, format from extension (PNG/JPEG/WEBP/TIFF/AVIF/SVG/PDF/ICO/PPTX), full
@@ -794,7 +797,9 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         dpi. SVG policy strict rejects any embedded raster fallback. time exports one timeline frame. A
         multi-page document exports every shown page to PDF (vector text) or PowerPoint (editable slides
         with speaker notes). fillable writes PDF form fields; values fills them (flatten draws them into the
-        artwork, editable prefills a fillable PDF). Returns file metadata, never image bytes."""
+        artwork, editable prefills a fillable PDF). PNG and other alpha formats are RGB when the image is opaque;
+        alpha=flatten forces RGB on background, alpha=keep forces RGBA. Print-size PDFs measure exactly trim +
+        bleed with TrimBox and BleedBox. Returns file metadata, never image bytes."""
         profile_bytes = read_bounded(session.resolve(icc_profile), 16 * 1024 * 1024) if icc_profile else None
         return export_file(
             session,
@@ -826,6 +831,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
             fillable=fillable,
             values=values,
             fill_mode=fill_mode,
+            alpha=alpha,
         )
 
     @tool

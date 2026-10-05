@@ -411,6 +411,7 @@ def create_app(path, *, token=None, limits=None):
             "fillable",
             "values",
             "fill_mode",
+            "alpha",
         }
         require(set(body) <= allowed, "Unknown export option")
         fmt = body.get("format", "PNG").upper()
