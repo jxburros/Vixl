@@ -27,6 +27,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageOps
 
 from .assets import add_encoded, add_image, decode, read_bounded
+from .denoise import KEYS as DENOISE_KEYS, validate as denoise_valid
 from .errors import VixlError, require
 from .model import finite, new_layer, uid
 from .render import (
@@ -133,6 +134,8 @@ def effect_valid(effect):
         finite(value, "radius", 0, 1000)
     elif name == "sharpen":
         finite(value, "amount", 0, 100)
+    elif name == "denoise":
+        denoise_valid(effect)
     elif name == "gamma":
         finite(value, "gamma", 0.01, 100)
     elif name == "exposure":
@@ -724,7 +727,8 @@ def execute(project, op):
             "enabled": True,
             "selection": project.state["selection"],
         }
-        for key in ("seed", "radius", "strength", "black", "white", "points", "shadow_color", "highlight_color"):
+        for key in ("seed", "radius", "strength", "black", "white", "points", "shadow_color", "highlight_color",
+                    *DENOISE_KEYS):
             if key in op:
                 effect[key] = op[key]
         effect_valid(effect)
@@ -749,7 +753,8 @@ def execute(project, op):
         elif kind == "effect-set":
             if "value" in op and "amount" not in op:
                 op["amount"] = op["value"]
-            for key in ("amount", "seed", "radius", "strength", "black", "white", "points", "shadow_color", "highlight_color"):
+            for key in ("amount", "seed", "radius", "strength", "black", "white", "points", "shadow_color", "highlight_color",
+                        *DENOISE_KEYS):
                 if key in op:
                     effect[key] = op[key]
             effect_valid(effect)

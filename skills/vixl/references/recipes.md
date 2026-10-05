@@ -33,6 +33,7 @@ YouTube add `avoid=[["85%","85%","15%","15%"]]` for the timestamp), then
 ```json
 [
   {"type":"select","shape":"none"},
+  {"type":"denoise","target":"photo","luminance":50,"chroma":60},
   {"type":"auto-tone","target":"photo"},
   {"type":"contrast","target":"photo","amount":8},
   {"type":"saturation","target":"photo","amount":-5},
@@ -41,7 +42,7 @@ YouTube add `avoid=[["85%","85%","15%","15%"]]` for the timestamp), then
 ]
 ```
 
-Tweak later with `effect-set` (`effect` = index or `fx_` ID from `inspect`), toggle with
+`denoise` is a real edge-preserving denoise (non-local means), not a blur: use it for grain and colour noise before sharpening, and keep `search` at 3 for very large photos. Tweak later with `effect-set` (`effect` = index or `fx_` ID from `inspect`), toggle with
 `effect-disable`. Save the stack as a preset (`preset-save`) and reuse it (`preset-apply`) — or for
 a folder: `vixl batch './in/*.jpg' --run cleanup.vixlscript --output ./out`.
 

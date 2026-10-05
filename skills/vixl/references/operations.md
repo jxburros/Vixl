@@ -103,6 +103,7 @@ Add with `{"type":"effect","name":NAME,...}` or the shorthand `{"type":NAME,...}
 | `shadows`, `highlights` | % lift(+)/cut(−) |
 | `blur`, `gaussian-blur` | **radius in px via `amount`** (0–1000). `radius` is normalized to `amount` and reported |
 | `sharpen` | factor (1 = none, 0–100) |
+| `denoise` | edge-preserving noise reduction (non-local means): `luminance` and `chroma` strength 0–100 (default 50 each; `amount` sets both), `search` window radius 1–10 px (default 5; time grows with its square, roughly 1 s per megapixel). Strength is relative to the grain measured in the image |
 | `grayscale`, `invert` | — |
 | `posterize` | bits 1–8 |
 | `threshold` | 0–255 |
@@ -116,7 +117,7 @@ Manage the stack (effect = stable `fx_…` ID **or** 1-based index):
 
 | type | fields |
 | --- | --- |
-| `effect-set` | `target`, **`effect`**, `amount`/`value`, `seed`, `radius`, `strength`, `black`, `white`, `points` |
+| `effect-set` | `target`, **`effect`**, `amount`/`value`, `seed`, `radius`, `strength`, `black`, `white`, `points`, `luminance`, `chroma`, `search` |
 | `effect-enable` / `effect-disable` / `effect-remove` | `target`, **`effect`** |
 | `preset-save` | **`name`**, `target` — saves the layer's effect stack |
 | `preset-apply` | **`name`**, `target`, `overrides` |

@@ -62,7 +62,7 @@ Pixels:    pixel-art, pixel-draw, pixel-palette, pixels [LAYER],
 Editing:   move, resize, scale, rotate, pivot, flip, crop, opacity, blend, align,
            select-layer, select wand|lasso|path|rect|ellipse|color, mask, filter, effect, rasterize
 Effects:   brightness, contrast, saturation, hue, exposure, gamma, temperature,
-           tint, shadows, highlights, blur, sharpen, grayscale, invert,
+           tint, shadows, highlights, blur, sharpen, denoise, grayscale, invert,
            posterize, threshold, noise, grain, vignette, auto-tone, auto-color, auto-contrast
 Layout:    canvas resize SIZE, canvas size NAME [--landscape] [--bleed], canvas dpi N, constrain, unconstrain,
            variable set NAME VALUE

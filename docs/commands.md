@@ -126,6 +126,7 @@ vixl shadows 15
 vixl highlights -10
 vixl blur 8
 vixl sharpen 2
+vixl denoise photo --luminance 40 --chroma 60
 vixl grayscale
 vixl invert
 vixl posterize 6
@@ -139,7 +140,9 @@ vixl effect set portrait 2 --amount 20
 vixl effect remove portrait 3
 ```
 
-Effect indices start at 1; stable effect IDs also work. Curves use JSON `points: [[0,0],[128,160],[255,255]]`. Brightness/contrast/saturation are percentages relative to neutral; exposure is stops; gamma must be positive; hue is degrees; sharpen is a factor (1 is neutral); noise/grain are 0–1 standard deviations; posterize is 1–8 bits. Temperature/tint and shadows/highlights are simple channel/tonal adjustments, not camera-calibrated or color-managed controls. Noise is seeded (default 0).
+Effect indices start at 1; stable effect IDs also work. Curves use JSON `points: [[0,0],[128,160],[255,255]]`. Brightness/contrast/saturation are percentages relative to neutral; exposure is stops; gamma must be positive; hue is degrees; sharpen is a factor (1 is neutral); denoise takes `--luminance` and `--chroma` strengths 0–100 (see below); noise/grain are 0–1 standard deviations; posterize is 1–8 bits. Temperature/tint and shadows/highlights are simple channel/tonal adjustments, not camera-calibrated or color-managed controls. Noise is seeded (default 0).
+
+**Denoise** (`denoise`) is an edge-preserving, non-destructive noise reduction for photos. Luminance (grain) is cleaned with non-local means: each pixel is averaged with the pixels around it whose 5 × 5 neighbourhoods look like its own, so flat areas and skies smooth out while edges and fine lines stay sharp (a Gaussian blur that removes as much grain flattens them). Chroma (colour blotches) is smoothed at reduced resolution, guided by the cleaned luminance, so colour does not bleed across an edge, and colour edges and fine colour detail stay as drawn. `--luminance` and `--chroma` are 0–100 strengths (default 50 each; a positional value or `amount` sets both) and are relative to the noise measured in the image itself, so one setting suits a clean and a grainy photo; 0 leaves that part alone. `--search` (1–10 px, default 5) is the search window radius. Cost: time grows with the number of window positions, `(2·search+1)² − 1`; at the default it is about 1 second per megapixel (four threads, the same result whatever the thread count), so `--search 3` cuts the cost to about 40% on large photos. Previews render a reduced copy, so they are quick. It needs no dependencies beyond NumPy and Pillow, and exports to SVG rasterize the layer as for other pixel effects.
 
 Blend modes: normal, multiply, screen, overlay, darken, lighten, difference, add, subtract.
 
