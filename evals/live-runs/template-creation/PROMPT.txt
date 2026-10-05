@@ -1,0 +1,1 @@
+Create design.vixl from the social-square template with title Spring and subtitle Out Friday, then export preview.png at full size.

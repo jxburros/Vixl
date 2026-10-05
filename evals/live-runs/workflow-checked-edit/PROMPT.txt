@@ -1,0 +1,1 @@
+Create design.vixl at 160x100. Add a 20x20 red rectangle named logo at x=10,y=10. Save a suite named quality asserting layer.logo.bounds within canvas. Use vixl_workflow act with that suite to move logo to x=80, then export preview.png using workflow preview at final quality.

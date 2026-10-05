@@ -1,0 +1,1 @@
+Create design.vixl at 800x800 using hero-statement, seed 4, title Launch, subtitle A new beginning, CTA Learn more. Omit other unfilled slots. Keep it editable with no remaining blanks.

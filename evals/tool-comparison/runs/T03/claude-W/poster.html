@@ -1,0 +1,46 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Harbor Lights</title>
+<style>
+  @font-face{font-family:"Cormorant Garamond";font-style:italic;font-weight:500;src:url(fonts/CormorantGaramond-Italic500.ttf)}
+  @font-face{font-family:"Cormorant Garamond";font-style:italic;font-weight:600;src:url(fonts/CormorantGaramond-Italic600.ttf)}
+  @font-face{font-family:"Jost";font-weight:400;src:url(fonts/Jost-400.ttf)}
+  @font-face{font-family:"Jost";font-weight:500;src:url(fonts/Jost-500.ttf)}
+  /* Page = trim + bleed: 11.25 x 17.25 in = 1080 x 1656 CSS px. Trim inset 12px (0.125in); text safe inset 36px from page edge. */
+  @page { size: 11.25in 17.25in; margin: 0; }
+  html,body{margin:0;padding:0;background:#050a16}
+  .page{position:relative;width:1080px;height:1656px;overflow:hidden;
+        background:#050a16 url(art.png) 0 0/1080px 1656px no-repeat;color:#f6e8cc;
+        font-family:"Jost",sans-serif}
+  .head{position:absolute;left:0;right:0;top:92px;text-align:center}
+  .kicker{font-family:"Jost",sans-serif;font-size:26px;letter-spacing:.42em;text-transform:uppercase;color:#f2b25c;margin-left:.42em}
+  .title{font-family:"Cormorant Garamond",serif;font-style:italic;font-weight:600;font-size:170px;line-height:1;margin:14px 0 6px;
+         color:#fbefd6;text-shadow:0 0 28px rgba(242,165,65,.35)}
+  .tag{font-family:"Cormorant Garamond",serif;font-style:italic;font-weight:500;font-size:36px;color:#e9d7b4;letter-spacing:.01em}
+  .foot{position:absolute;left:96px;right:96px;bottom:84px}
+  .date{font-family:"Jost",sans-serif;font-size:38px;letter-spacing:.04em;color:#fbefd6;text-align:center;
+        padding-bottom:22px;border-bottom:1.5px solid rgba(242,178,92,.55)}
+  .date .time{color:#f2b25c}
+  ul{list-style:none;margin:30px 0 26px;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:16px 48px}
+  li{font-size:27px;line-height:1.25;display:flex;align-items:center;gap:16px;color:#f6e8cc}
+  li::before{content:"";flex:none;width:14px;height:17px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#fff1cf,#f2a541 55%,#b8562a)}
+  .info{font-size:24px;letter-spacing:.05em;text-align:center;color:#e9d7b4;padding-top:22px;border-top:1.5px solid rgba(242,178,92,.55)}
+  .by{margin-top:14px;font-family:"Cormorant Garamond",serif;font-style:italic;font-weight:500;font-size:26px;text-align:center;color:#c9b894}
+</style></head>
+<body><div class="page">
+  <div class="head">
+    <div class="kicker">Port Ellery Quay</div>
+    <h1 class="title">Harbor Lights</h1>
+    <div class="tag">A winter night market on the water</div>
+  </div>
+  <div class="foot">
+    <div class="date">Saturday, December 5, 2026 · <span class="time">4–10 pm</span></div>
+    <ul>
+      <li>Lantern parade at 6 pm</li>
+      <li>Forty local makers</li>
+      <li>Hot cider &amp; roasted chestnuts</li>
+      <li>Live brass band</li>
+    </ul>
+    <div class="info">Free entry · All ages · portellery.example</div>
+    <div class="by">Presented by Tidewick Café</div>
+  </div>
+</div></body></html>

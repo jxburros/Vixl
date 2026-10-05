@@ -1,0 +1,40 @@
+[Script Info]
+ScriptType: v4.00+
+PlayResX: 1280
+PlayResY: 720
+WrapStyle: 0
+ScaledBorderAndShadow: yes
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Title,DejaVu Serif,104,&H00FFFFFF,&H00FFFFFF,&H00301810,&H80000000,-1,0,0,0,100,100,2,0,1,3,4,5,80,80,0,1
+Style: Artist,DejaVu Sans,40,&H0090D8F0,&H0090D8F0,&H00301810,&H80000000,0,0,0,0,100,100,6,0,1,2,2,5,80,80,0,1
+Style: Current,DejaVu Sans,58,&H00FFFFFF,&H00FFFFFF,&H00200C08,&HA0000000,-1,0,0,0,100,100,0,0,1,3,3,5,90,90,0,1
+Style: Next,DejaVu Sans,32,&H50E8E0D8,&H50E8E0D8,&H00200C08,&HA0000000,0,1,0,0,100,100,0,0,1,2,1,8,120,120,0,1
+Style: CurrentChorus,DejaVu Sans,72.5,&H00FFFFFF,&H00FFFFFF,&H00200C08,&HA0000000,-1,0,0,0,100,100,0,0,1,3,3,5,60,60,0,1
+Style: NextChorus,DejaVu Sans,40,&H50E8E0D8,&H50E8E0D8,&H00200C08,&HA0000000,0,1,0,0,100,100,0,0,1,2,1,8,100,100,0,1
+Style: Section,DejaVu Sans,26,&H00B0F0FF,&H00B0F0FF,&H00200C08,&H80000000,-1,0,0,0,100,100,3,0,1,2,1,7,40,40,32,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 1,0:00:00.00,0:00:01.75,Title,,0,0,0,,{\pos(640,320)\fad(300,250)}Lighthouse
+Dialogue: 1,0:00:00.00,0:00:01.75,Artist,,0,0,0,,{\pos(640,430)\fad(500,250)}THE VIXL EXAMPLES
+Dialogue: 2,0:00:01.75,0:00:05.25,Current,,0,0,0,,{\pos(640,320)\fad(150,0)}Out past the harbor where the cold waves break
+Dialogue: 1,0:00:01.75,0:00:05.25,Next,,0,0,0,,{\pos(640,450)\fad(150,0)}A single light is burning for my sake
+Dialogue: 2,0:00:05.25,0:00:08.75,Current,,0,0,0,,{\pos(640,320)\fad(150,0)}A single light is burning for my sake
+Dialogue: 1,0:00:05.25,0:00:08.75,NextChorus,,0,0,0,,{\pos(640,450)\fad(150,0)}Lighthouse, lighthouse, sweep across the sea
+Dialogue: 2,0:00:08.75,0:00:12.25,CurrentChorus,,0,0,0,,{\pos(640,305)\fad(150,0)}Lighthouse, lighthouse, sweep across the sea
+Dialogue: 1,0:00:08.75,0:00:12.25,NextChorus,,0,0,0,,{\pos(640,450)\fad(150,0)}Turn your golden eye and bring the ships to me
+Dialogue: 2,0:00:12.25,0:00:15.75,CurrentChorus,,0,0,0,,{\pos(640,305)\fad(150,0)}Turn your golden eye and bring the ships to me
+Dialogue: 1,0:00:12.25,0:00:15.75,Next,,0,0,0,,{\pos(640,450)\fad(150,0)}The gulls are sleeping on the silver stone
+Dialogue: 1,0:00:15.75,0:00:17.75,Next,,0,0,0,,{\pos(640,450)\fad(150,0)}The gulls are sleeping on the silver stone
+Dialogue: 2,0:00:17.75,0:00:21.25,Current,,0,0,0,,{\pos(640,320)\fad(150,0)}The gulls are sleeping on the silver stone
+Dialogue: 1,0:00:17.75,0:00:21.25,Next,,0,0,0,,{\pos(640,450)\fad(150,0)}The keeper sings the tide a song alone
+Dialogue: 2,0:00:21.25,0:00:24.75,Current,,0,0,0,,{\pos(640,320)\fad(150,0)}The keeper sings the tide a song alone
+Dialogue: 1,0:00:21.25,0:00:24.75,NextChorus,,0,0,0,,{\pos(640,450)\fad(150,0)}Lighthouse, lighthouse, sweep across the sea
+Dialogue: 2,0:00:24.75,0:00:28.25,CurrentChorus,,0,0,0,,{\pos(640,305)\fad(150,0)}Lighthouse, lighthouse, sweep across the sea
+Dialogue: 1,0:00:24.75,0:00:28.25,NextChorus,,0,0,0,,{\pos(640,450)\fad(150,0)}Lighthouse, lighthouse, sweep across the sea
+Dialogue: 2,0:00:28.25,0:00:32.00,CurrentChorus,,0,0,0,,{\pos(640,305)\fad(150,0)}Lighthouse, lighthouse, sweep across the sea
+Dialogue: 3,0:00:08.75,0:00:17.75,Section,,0,0,0,,CHORUS
+Dialogue: 3,0:00:17.75,0:00:24.75,Section,,0,0,0,,VERSE 2
+Dialogue: 3,0:00:24.75,0:00:32.00,Section,,0,0,0,,CHORUS

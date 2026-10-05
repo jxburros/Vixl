@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tidewick Open Mic</title>
+<style>
+  @font-face { font-family: "Fraunces"; font-weight: 800; src: url(fonts/Fraunces-800.ttf); }
+  @font-face { font-family: "DM Sans"; font-weight: 500; src: url(fonts/DMSans-500.ttf); }
+  @font-face { font-family: "DM Sans"; font-weight: 700; src: url(fonts/DMSans-700.ttf); }
+
+  :root {
+    --navy: #14263b;
+    --amber: #f2a541;
+    --foam: #a8d5c8;
+    --coral: #e2725b;
+    --cream: #f7f1e5;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1080px; height: 1350px; background: var(--navy); }
+  .post {
+    position: relative; width: 1080px; height: 1350px; overflow: hidden;
+    background:
+      radial-gradient(ellipse 620px 480px at 540px 330px, rgba(242,165,65,0.30), rgba(242,165,65,0) 70%),
+      var(--navy);
+    font-family: "DM Sans", sans-serif;
+    color: var(--cream);
+  }
+  svg.art { position: absolute; inset: 0; }
+
+  /* All text sits inside a 90px safe frame (brief requires >= 60px). */
+  .text { position: absolute; left: 90px; right: 90px; text-align: center; }
+
+  .kicker {
+    top: 96px;
+    font-weight: 700; font-size: 34px; letter-spacing: 0.22em;
+    color: var(--amber);
+    padding-left: 0.22em; /* balance trailing letter-spacing */
+  }
+  .headline {
+    top: 410px;
+    font-family: "Fraunces", serif; font-weight: 800;
+    font-size: 176px; line-height: 0.95; white-space: nowrap; letter-spacing: -0.02em;
+    color: var(--cream);
+  }
+  .headline span { display: block; }
+  .when {
+    top: 790px;
+    font-weight: 700; font-size: 52px; color: var(--amber);
+  }
+  .where {
+    top: 866px;
+    font-weight: 500; font-size: 40px; color: var(--cream);
+  }
+  .pill-wrap { top: 958px; }
+  .pill {
+    display: inline-block;
+    background: var(--coral); color: var(--navy);
+    font-weight: 700; font-size: 36px;
+    padding: 18px 40px 20px; border-radius: 999px;
+  }
+  .url {
+    top: 1214px;
+    font-weight: 700; font-size: 36px; letter-spacing: 0.04em;
+    color: var(--navy);
+  }
+</style>
+</head>
+<body>
+<div class="post">
+  <svg class="art" width="1080" height="1350" viewBox="0 0 1080 1350" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <radialGradient id="bulbGlow">
+        <stop offset="0" stop-color="#f2a541" stop-opacity="0.55"/>
+        <stop offset="1" stop-color="#f2a541" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+
+    <!-- Festoon string of café lights, swagging across the top -->
+    <path d="M -20 170 Q 270 300 540 220 Q 810 140 1100 260" fill="none" stroke="#a8d5c8" stroke-opacity="0.55" stroke-width="3"/>
+    <g id="bulbs"></g>
+
+    <!-- Microphone on a stand, centred under the lights -->
+    <g transform="translate(540 255)">
+      <ellipse cx="0" cy="40" rx="120" ry="70" fill="url(#bulbGlow)"/>
+      <!-- head -->
+      <rect x="-26" y="0" width="52" height="78" rx="26" fill="#f7f1e5"/>
+      <g stroke="#14263b" stroke-opacity="0.35" stroke-width="3">
+        <line x1="-20" y1="22" x2="20" y2="22"/>
+        <line x1="-22" y1="36" x2="22" y2="36"/>
+        <line x1="-22" y1="50" x2="22" y2="50"/>
+      </g>
+      <!-- collar -->
+      <rect x="-15" y="78" width="30" height="16" rx="4" fill="#e2725b"/>
+      <!-- stand pole stops above headline -->
+      <rect x="-4" y="94" width="8" height="40" fill="#a8d5c8"/>
+    </g>
+
+    <!-- Sea-foam harbor water, three soft wave bands at the bottom -->
+    <path d="M0 1110 C 120 1080, 240 1080, 360 1110 S 600 1140, 720 1110 S 960 1080, 1080 1110 L1080 1350 L0 1350 Z" fill="#a8d5c8" fill-opacity="0.35"/>
+    <path d="M0 1150 C 120 1125, 240 1125, 360 1150 S 600 1175, 720 1150 S 960 1125, 1080 1150 L1080 1350 L0 1350 Z" fill="#a8d5c8" fill-opacity="0.6"/>
+    <path d="M0 1180 C 135 1160, 270 1160, 405 1180 S 675 1200, 810 1180 S 1000 1165, 1080 1175 L1080 1350 L0 1350 Z" fill="#f7f1e5"/>
+
+    <!-- lamp reflections on the water -->
+    <g stroke="#f2a541" stroke-width="5" stroke-linecap="round" opacity="0.85">
+      <line x1="470" y1="1132" x2="530" y2="1132"/>
+      <line x1="560" y1="1132" x2="600" y2="1132"/>
+      <line x1="500" y1="1160" x2="580" y2="1160" opacity="0.7"/>
+    </g>
+  </svg>
+
+  <p class="text kicker">TIDEWICK CAFÉ PRESENTS</p>
+  <h1 class="text headline"><span>Open Mic</span><span>Night</span></h1>
+  <p class="text when">Thursday, November 12 · 7–10 pm</p>
+  <p class="text where">12 Quay Street, Port Ellery</p>
+  <div class="text pill-wrap"><span class="pill">Free entry · Sign up at the counter</span></div>
+  <p class="text url">tidewick.example</p>
+</div>
+
+<script>
+  // Place bulbs along the festoon path at even spacing.
+  const path = document.querySelector('svg.art path');
+  const g = document.getElementById('bulbs');
+  const ns = 'http://www.w3.org/2000/svg';
+  const L = path.getTotalLength();
+  const n = 13;
+  for (let i = 0; i < n; i++) {
+    const t = (i + 0.5) / n;
+    const p = path.getPointAtLength(t * L);
+    // skip bulbs that would collide with the kicker line
+    if (p.y < 150) continue;
+    const glow = document.createElementNS(ns, 'circle');
+    glow.setAttribute('cx', p.x); glow.setAttribute('cy', p.y + 16);
+    glow.setAttribute('r', 34); glow.setAttribute('fill', 'url(#bulbGlow)');
+    const cap = document.createElementNS(ns, 'rect');
+    cap.setAttribute('x', p.x - 5); cap.setAttribute('y', p.y);
+    cap.setAttribute('width', 10); cap.setAttribute('height', 8);
+    cap.setAttribute('fill', '#a8d5c8');
+    const bulb = document.createElementNS(ns, 'ellipse');
+    bulb.setAttribute('cx', p.x); bulb.setAttribute('cy', p.y + 18);
+    bulb.setAttribute('rx', 9); bulb.setAttribute('ry', 12);
+    bulb.setAttribute('fill', i % 4 === 2 ? '#e2725b' : '#f2a541');
+    g.append(glow, cap, bulb);
+  }
+</script>
+</body>
+</html>

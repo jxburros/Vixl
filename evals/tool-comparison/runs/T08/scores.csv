@@ -1,0 +1,4 @@
+test,lane,agent,model,date,blind_code,r1_minutes,r1_nudges,hard_passed,hard_total,fidelity,craft,report_honest,r2_minutes,r2_nudges,editability,revision,notes
+T08,V,claude-code-subagent,claude-opus-5-5,2026-10-05,KOPZ,,0,5,5,5,4,yes,,0,3,5,all numbers and scale exact; no arc/wedge shape so share is a 100% bar; SVG text outlined; r2 numbers and bar geometry recomputed by hand and 14 tea layers deleted+re-added (no fill-change op); resize side effect and raster PDF default needed fixes
+T08,C,claude-code-subagent,claude-opus-5-5,2026-10-05,2VLF,,0,5,5,5,4,yes,,0,5,5,matplotlib; all numbers and scale exact; r2 CSV + one color constant; no drift
+T08,W,claude-code-subagent,claude-opus-5-5,2026-10-05,RQZ3,,0,5,5,5,5,yes,,0,5,5,hand SVG + Playwright; most polished; all numbers and scale exact; r2 CSV + one color constant; busiest-month highlight moved automatically

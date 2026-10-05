@@ -1,0 +1,4 @@
+test,lane,agent,model,date,blind_code,r1_minutes,r1_nudges,hard_passed,hard_total,fidelity,craft,report_honest,r2_minutes,r2_nudges,editability,revision,notes
+T07,V,claude-code-subagent,claude-opus-5-5,2026-10-05,EOFH,,0,6,7,5,4,yes,,0,3,5,Row 6 company slot left as blank space (no reflow); template variables made badges easy but print imposition rebuilt by hand in r2 (~50 calls); PDF raster
+T07,W,claude-code-subagent,claude-opus-5-5,2026-10-05,34JO,,0,7,7,5,5,yes,,0,5,5,Best craft; vector PDF with embedded subset fonts; r2 = 3 edits to build.py and rerun; zero drift
+T07,C,claude-code-subagent,claude-opus-5-5,2026-10-05,YVP2,,0,7,7,5,3,yes,,0,5,5,Correct but generic DejaVu look and cramped name leading; PDF raster; r2 = sed edit plus rerun; zero drift

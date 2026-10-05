@@ -38,11 +38,62 @@ ACTIONS = {
 
 
 ACTIONS.update(STUDIO_ACTIONS)
+FILL_FORMATS = ("pdf", "png", "jpeg", "jpg", "webp", "tiff", "svg")
+
+PATH = {"type": "string", "description": "Workspace-relative path."}
+# Field types shown by describe(). FIELD_TYPES covers names that mean the same thing in every
+# action; ACTION_FIELD_TYPES adds or overrides per action.
+FIELD_TYPES = {
+    "dry_run": {"type": "boolean", "description": "Validate and report without writing."},
+    "replace": {"type": "boolean"},
+    "workers": {"type": "integer", "minimum": 1, "maximum": 4},
+    "output": PATH,
+    "directory": PATH,
+    "spec": {"type": "object"},
+    "job": {"type": "object"},
+    "operations": {"type": "array", "items": {"type": "object"}},
+    "id": {"type": "string"},
+}
+ACTION_FIELD_TYPES = {
+    "form-fill": {
+        "values": {"type": "object", "description": "One copy: {field key: value}. Needs output (a file path). "
+                   "Give values or data, not both."},
+        "data": {**PATH, "description": "Batch: a CSV with a column per field key and a row per copy. Needs output "
+                 "(a directory) or combine."},
+        "output": {**PATH, "description": "With values: the filled file (.pdf, .png, …). With data: a new directory "
+                   "for one file per row."},
+        "combine": {"type": ["string", "boolean"], "description": "With data: one combined PDF with a page per row, "
+                    "as a .pdf path; true writes <data name>-filled.pdf next to the CSV (or to output when it is "
+                    "a .pdf). Replaces output as a directory."},
+        "name": {"type": "string", "default": "{row}", "description": "With data and output: file name template "
+                 "using {row} and {column} values."},
+        "format": {"type": "string", "enum": list(FILL_FORMATS), "description": "Output format (default: pdf, or "
+                   "from the output suffix for values)."},
+        "mode": {"type": "string", "enum": ["flatten", "editable"], "default": "flatten",
+                 "description": "flatten draws values into the artwork; editable writes a fillable PDF."},
+        "skip_invalid": {"type": "boolean", "default": False, "description": "With data: skip bad rows instead of "
+                         "failing the batch."},
+        "check": {"type": "string", "enum": ["design"], "description": "With data: also run the design checks."},
+        "unknown": {"type": "string", "enum": ["error", "ignore"], "default": "error",
+                    "description": "What to do with keys that match no field."},
+        "dpi": {"type": "number", "exclusiveMinimum": 0, "description": "Raster resolution."},
+    },
+}
+
+
+def field_types(action):
+    fields = ACTIONS[action][0]
+    types = {**FIELD_TYPES, **ACTION_FIELD_TYPES.get(action, {})}
+    return {field: types[field] for field in sorted(fields) if field in types}
+
 
 def describe():
     return {
         "version": 1,
-        "actions": {k: {"fields": sorted(v[0]), "required": sorted(v[1])} for k, v in ACTIONS.items()},
+        "actions": {
+            k: {"fields": sorted(v[0]), "required": sorted(v[1]), "properties": field_types(k)}
+            for k, v in ACTIONS.items()
+        },
         "help": "docs/production.md; all paths are workspace-relative; submit + start runs durable background work",
     }
 
@@ -70,7 +121,11 @@ def dispatch(session, action, request, document=None):
 
         return catalog()
     if action == "form-fill":
-        return form_fill(session, request, document)
+        try:
+            return form_fill(session, request, document)
+        except (KeyError, TypeError, ValueError, OverflowError) as exc:
+            raise VixlError("invalid_request", f"Invalid form-fill request: {exc}",
+                            suggestions=["See vixl_workflow_schema actions['form-fill'].properties"]) from exc
     if action in ("drawing-report", "drawing-compare"):
         from .drawing import compare, report
 
@@ -204,29 +259,71 @@ def cli(args, options, limits):
     return dispatch(session, a.action, request)
 
 
+def _check_types(action, request):
+    """Reject a wrongly typed field with the expected type and an example, instead of a raw error."""
+    for field, schema in ACTION_FIELD_TYPES.get(action, {}).items():
+        if field not in request:
+            continue
+        value, expected = request[field], schema["type"]
+        expected = expected if isinstance(expected, list) else [expected]
+        checks = {"string": lambda v: isinstance(v, str), "boolean": lambda v: type(v) is bool,
+                  "object": lambda v: isinstance(v, dict),
+                  "number": lambda v: isinstance(v, (int, float)) and not isinstance(v, bool)}
+        ok = any(checks[kind](value) for kind in expected)
+        if ok and "enum" in schema:
+            ok = (value.lower().lstrip(".") if field == "format" else value) in schema["enum"]
+        if not ok:
+            wanted = " or ".join(expected) + (f" (one of {', '.join(map(str, schema['enum']))})" if "enum" in schema else "")
+            raise VixlError("invalid_request", f"{field} must be {wanted}; got {type(value).__name__} {value!r}",
+                            field=field, expected=schema, suggestions=_examples(field, schema))
+
+
+def _examples(field, schema):
+    if "enum" in schema:
+        return [{field: value} for value in schema["enum"]]
+    return {"combine": [{"combine": "filled/all.pdf"}, {"combine": True}],
+            "output": [{"output": "filled.pdf"}, {"output": "filled/"}],
+            "data": [{"data": "rows.csv"}], "values": [{"values": {"full_name": "Ada"}}],
+            "name": [{"name": "{row}-{full_name}"}], "dpi": [{"dpi": 150}]}.get(field, [])
+
+
 def form_fill(session, request, document=None):
     """Fill the open form: ``values`` and ``output`` for one copy, or ``data`` (a CSV) with an
-    ``output`` directory or a ``combine`` PDF. Nothing is written to the document."""
+    ``output`` directory or a ``combine`` PDF (``combine: true`` picks the path). Nothing is
+    written to the document."""
     from .forms import check_values, fill, fill_data
 
-    for field in ("skip_invalid",):
-        if field in request:
-            require(type(request[field]) is bool, f"{field} must be boolean")
+    _check_types("form-fill", request)
     require(("data" in request) != ("values" in request), "Give values (one copy) or data (a CSV), not both",
-            field="data")
+            field="data", suggestions=[{"values": {"full_name": "Ada"}, "output": "one.pdf"},
+                                       {"data": "rows.csv", "combine": "all.pdf"}])
+    if "values" in request:
+        require(not request.get("combine"), "combine is for data (a CSV); with values give output",
+                field="combine", suggestions=[{"output": "filled.pdf"}])
     with session.project(document=document) as project:
         options = {key: request[key] for key in ("mode", "unknown", "dpi") if key in request}
         if "values" in request:
             if request.get("dry_run"):
                 _, _, errors = check_values(project, request["values"], unknown=request.get("unknown", "error"))
                 return {"dry_run": True, "valid": not errors, "errors": errors}
-            require(isinstance(request.get("output"), str), "Give an output path", field="output")
+            require(isinstance(request.get("output"), str), "Give an output path", field="output",
+                    suggestions=[{"output": "filled.pdf"}])
             destination = session.resolve(request["output"])
             result = fill(project, request["values"], destination, format=request.get("format"), **options)
             return {**result, "output": session.relative(destination)}
-        combine = session.resolve(request["combine"]) if request.get("combine") else None
-        directory = session.resolve(request["output"]) if request.get("output") else None
-        result = fill_data(project, session.resolve(request["data"]), directory, combine=combine,
+        data = session.resolve(request["data"])
+        combine, output = request.get("combine"), request.get("output")
+        if combine is True:
+            if output and Path(output).suffix.lower() == ".pdf":
+                combine, output = output, None
+            else:
+                require(not output, "combine: true writes one PDF; give output as a .pdf path or omit it",
+                        field="combine", suggestions=[{"combine": True, "output": "all.pdf"},
+                                                      {"output": output}])
+                combine = session.relative(data.with_name(f"{data.stem}-filled.pdf"))
+        combine = session.resolve(combine) if combine else None
+        directory = session.resolve(output) if output else None
+        result = fill_data(project, data, directory, combine=combine,
                            name=request.get("name", "{row}"), format=request.get("format", "pdf"),
                            skip_invalid=request.get("skip_invalid", False), dry_run=request.get("dry_run", False),
                            check=request.get("check"), **options)

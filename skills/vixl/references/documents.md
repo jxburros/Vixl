@@ -57,7 +57,8 @@ Rules agents trip over:
   `vixl_render_preview(show_fields=true, values={...})`.
 - Export the fillable PDF with `vixl_export_file(path="form.pdf", fillable=true)`; fill one copy
   with `values={...}` (flatten draws them in; `fill_mode="editable"` prefills fields) or many with
-  `vixl_workflow("form-fill", {"data": "rows.csv", "combine": "all.pdf"})` (`dry_run`, `skip_invalid`).
+  `vixl_workflow("form-fill", {"data": "rows.csv", "combine": "all.pdf"})` (`combine: true` writes
+  `rows-filled.pdf`; `dry_run`, `skip_invalid`; field types in `vixl_workflow_schema`).
 - Filled values never touch the document; errors name rows and keys, never values.
 
 Full reference: `docs/forms.md`.

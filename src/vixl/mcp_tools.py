@@ -72,6 +72,9 @@ def service_operation_schema(slim=False):
         # Avoid repeating it in every tools/list response as the operation catalog grows.
         for constraint in props.values():
             constraint.pop("description", None)
+        if kind in ("field-set", "form"):
+            # Nullable copies of the field settings: names only here, types via vixl_operation_schema.
+            props.update({key: {} for key in props if key not in ("target", "kind")})
         # Coordinates/sizes also accept "center" and "N%" (see the tool description). A short,
         # uniform spelling lets these hoist into one shared definition below.
         for key in ("x", "y"):
