@@ -231,7 +231,7 @@ def _track(timeline, target, prop, create=True):
     return track
 
 
-def _set_key(track, time, value, easing):
+def _set_key(track, time, value, easing, written=None):
     keys = track["keys"]
     keys[:] = [k for k in keys if k["time"] != time]
     key = {"time": time, "value": deepcopy(value)}
@@ -241,6 +241,16 @@ def _set_key(track, time, value, easing):
     keys.append(key)
     keys.sort(key=lambda k: k["time"])
     require(len(keys) <= MAX_KEYS, "Track keyframe limit reached", "resource_limit")
+    if written is not None:
+        written.append(time)
+
+
+def _note(project, message):
+    """Tell the caller about something an operation did that was not asked for. ``Project.apply``
+    returns these as ``warnings``; direct callers without a collector skip them."""
+    notices = getattr(project, "notices", None)
+    if notices is not None:
+        notices.append(message)
 
 
 def _target_id(project, target):
@@ -307,6 +317,10 @@ def execute_timeline(project, op):
         if op.get("clear"):
             timeline["tracks"] = []
             timeline["markers"] = {}
+        past = sum(1 for t in timeline["tracks"] for k in t["keys"] if k["time"] > timeline["duration"])
+        if "duration" in op and past:
+            _note(project, f"{past} keyframe(s) now lie past the timeline end ({timeline['duration']} ms): they stay on "
+                  "their tracks and shape the last frames, but their own moment is not played; keyframe-remove deletes them")
         return
     if kind == "marker":
         from .design import named
@@ -343,11 +357,12 @@ def execute_timeline(project, op):
     target_ref = op.get("target") or project.state["active_layer"]
     require(target_ref, "Pass target (a layer or 'canvas')")
     target = _target_id(project, target_ref)
+    written = []  # Times of the keys this operation sets.
     if kind == "keyframe":
         prop = op["property"]
         _check_value(project, prop, op["value"])
         static_value(project, target, prop)
-        _set_key(_track(timeline, target, prop), parse_time(op["time"], duration, markers), op["value"], op.get("easing"))
+        _set_key(_track(timeline, target, prop), parse_time(op["time"], duration, markers), op["value"], op.get("easing"), written)
     elif kind == "animate":
         prop = op["property"]
         start = parse_time(op.get("start", 0), duration, markers)
@@ -360,15 +375,29 @@ def execute_timeline(project, op):
         _check_value(project, prop, begin)
         _check_value(project, prop, op["to"])
         track = _track(timeline, target, prop)
-        _set_key(track, start, begin, op.get("easing", "ease-in-out"))
-        _set_key(track, end, op["to"], None)
+        _set_key(track, start, begin, op.get("easing", "ease-in-out"), written)
+        _set_key(track, end, op["to"], None, written)
     else:
-        _apply_preset(project, timeline, target, op)
-    timeline["duration"] = max(timeline["duration"], *(k["time"] for t in timeline["tracks"] for k in t["keys"]), 10)
-    require(timeline["duration"] <= MAX_DURATION, "Timeline exceeds 10 minutes")
+        _apply_preset(project, timeline, target, op, written)
+    # A key past the end lengthens the timeline, and the result says so. Only the keys this
+    # operation set count: a key left past the end by an earlier operation (or kept there with
+    # extend: false) never stretches a duration that was set back since. Pass extend: false to
+    # keep the duration and leave the key past the end, where it shapes the last frames.
+    latest = max(written, default=0)
+    if latest > timeline["duration"]:
+        name = "the canvas" if target == "canvas" else repr(project.layer(target)["name"])
+        if op.get("extend", True):
+            old = timeline["duration"]
+            timeline["duration"] = latest
+            require(latest <= MAX_DURATION, "Timeline exceeds 10 minutes")
+            _note(project, f"timeline duration changed {old} -> {latest} ms: a keyframe on {name} sits at {latest} ms, "
+                  f"past the end. Pass extend: false to keep {old} ms, or timeline-set duration to choose the length")
+        else:
+            _note(project, f"a keyframe on {name} sits at {latest} ms, past the timeline end ({timeline['duration']} ms): "
+                  "it shapes the last frames but its own moment is not played")
 
 
-def _apply_preset(project, timeline, target, op):
+def _apply_preset(project, timeline, target, op, written):
     preset = op["preset"]
     require(preset in PRESETS, f"Unknown animation preset {preset!r}; use {', '.join(PRESETS)}")
     duration = timeline["duration"]
@@ -386,7 +415,7 @@ def _apply_preset(project, timeline, target, op):
         track = _track(timeline, target, prop)
         for i, value in enumerate(values):
             time = start + round(length * i / (len(values) - 1))
-            _set_key(track, time, value, ease if i < len(values) - 1 else None)
+            _set_key(track, time, value, ease if i < len(values) - 1 else None, written)
 
     if preset in ("fade-in", "fade-out"):
         current = layer.get("opacity", 1)
@@ -437,8 +466,8 @@ def _apply_preset(project, timeline, target, op):
     elif preset == "bounce":
         height = op.get("amount", 60)
         track = _track(timeline, target, "translate-y")
-        _set_key(track, start, -float(height), easing or "bounce-out")
-        _set_key(track, end, 0.0, None)
+        _set_key(track, start, -float(height), easing or "bounce-out", written)
+        _set_key(track, end, 0.0, None, written)
     elif preset == "float":
         amount = op.get("amount", 10)
         keys("translate-y", [0.0, -float(amount), 0.0], easing or "ease-in-out-sine")
@@ -446,14 +475,14 @@ def _apply_preset(project, timeline, target, op):
         track = _track(timeline, target, "visible")
         count = max(1, int(op.get("amount", 3)))
         for i in range(count * 2 + 1):
-            _set_key(track, start + round(length * i / (count * 2)), i % 2 == 0, None)
+            _set_key(track, start + round(length * i / (count * 2)), i % 2 == 0, None, written)
     elif preset == "typewriter":
         require(layer["type"] == "text", "typewriter animates a text layer")
         text = layer["text"]
         require(len(text) <= 2000, "typewriter supports at most 2000 characters")
         track = _track(timeline, target, "text")
         for i in range(len(text) + 1):
-            _set_key(track, start + round(length * i / max(len(text), 1)), text[:i], None)
+            _set_key(track, start + round(length * i / max(len(text), 1)), text[:i], None, written)
     else:
         require("to" in op, "color-shift needs a 'to' color")
         prop = "background" if target == "canvas" else next((k for k in ("fill", "color", "start") if k in layer), None)
@@ -953,11 +982,14 @@ def schemas(add):
 
     time = {"type": ["number", "string"]}  # ms, "1.5s", "500ms", "50%" or a marker name
     value = {"type": ["number", "string", "boolean"]}
+    extend = {"type": "boolean", "description": "Default true: a key past the timeline end lengthens the duration, and the result's "
+              "warnings say so (timeline duration changed 8000 -> 8400 ms). False keeps the duration; the key stays past the end, "
+              "shaping the last frames, and is not played."}
     add("timeline-set", {"duration": time, "fps": {"type": "number", "minimum": 1, "maximum": 60}, "loop": {"type": "integer", "minimum": 0, "maximum": 65535}, "clear": B})
     targets = {"type": "array", "items": S, "minItems": 1, "uniqueItems": True}
-    add("keyframe", {"property": S, "time": time, "value": value, "easing": S, "targets": targets}, ["property", "time", "value"])
+    add("keyframe", {"property": S, "time": time, "value": value, "easing": S, "targets": targets, "extend": extend}, ["property", "time", "value"])
     add("keyframe-remove", {"property": S, "time": time})
-    add("animate", {"property": S, "from": value, "to": value, "start": time, "end": time, "duration": time, "easing": S, "targets": targets}, ["property", "to"])
-    add("animate-preset", {"preset": S, "start": time, "duration": time, "easing": S, "distance": N, "amount": N, "fade": B, "to": S, "targets": targets}, ["preset"])
+    add("animate", {"property": S, "from": value, "to": value, "start": time, "end": time, "duration": time, "easing": S, "targets": targets, "extend": extend}, ["property", "to"])
+    add("animate-preset", {"preset": S, "start": time, "duration": time, "easing": S, "distance": N, "amount": N, "fade": B, "to": S, "targets": targets, "extend": extend}, ["preset"])
     add("marker", {"name": S, "time": time, "delete": B}, ["name"], anyOf=[{"required": ["time"]}, {"required": ["delete"]}])
 

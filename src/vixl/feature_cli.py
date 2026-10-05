@@ -219,6 +219,7 @@ def compile_feature(cmd, args):
         p.add_argument("time", type=_time)
         p.add_argument("value", type=_value)
         p.add_argument("--easing")
+        p.add_argument("--no-extend", dest="extend", action="store_false", default=None, help="Keep the timeline duration when the key lies past its end")
     elif cmd == "keyframe-remove":
         p.add_argument("target")
         p.add_argument("--property")
@@ -231,6 +232,7 @@ def compile_feature(cmd, args):
         for key in ("start", "end", "duration"):
             p.add_argument("--" + key, type=_time)
         p.add_argument("--easing")
+        p.add_argument("--no-extend", dest="extend", action="store_false", default=None, help="Keep the timeline duration when the key lies past its end")
         data = vars(p.parse_args(args))
         if data.get("from_") is not None:
             data["from"] = data.pop("from_")
@@ -246,6 +248,7 @@ def compile_feature(cmd, args):
         p.add_argument("--distance", type=float)
         p.add_argument("--to")
         p.add_argument("--no-fade", dest="fade", action="store_false", default=None)
+        p.add_argument("--no-extend", dest="extend", action="store_false", default=None, help="Keep the timeline duration when a key lies past its end")
     elif cmd == "marker":
         p.add_argument("name")
         p.add_argument("time", nargs="?", type=_time)

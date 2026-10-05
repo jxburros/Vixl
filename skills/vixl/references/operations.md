@@ -183,10 +183,10 @@ deletes it. One style per kind; all accept `enabled` (bool) and `opacity` (0–1
 | `paint-clear` | `target`, `last` | Remove the last N (or all) strokes. |
 | `brush-define` | **`name`**, `base`, `settings`, `description` | Custom brush in the document. |
 | `timeline-set` | `duration`, `fps` (1–60), `loop` (0 = forever), `clear` | |
-| `keyframe` | `target` (layer or `canvas`) or `targets` (list), **`property`**, **`time`**, **`value`**, `easing` | Replaces a key at the same time. |
+| `keyframe` | `target` (layer or `canvas`) or `targets` (list), **`property`**, **`time`**, **`value`**, `easing`, `extend` | Replaces a key at the same time. A key past the end lengthens the timeline and the result's `warnings` say `timeline duration changed 8000 -> 8400 ms`; `extend: false` keeps the duration. |
 | `keyframe-remove` | `target`, `property`, `time` | Track or single key. |
-| `animate` | `target` or `targets`, **`property`**, **`to`**, `from`, `start`, `end`/`duration`, `easing` | Two keys; `from` defaults to the current value. `targets` gives several parts the same keys. |
-| `animate-preset` | `target` or `targets`, **`preset`**, `start`, `duration`, `easing`, `amount`, `distance`, `fade`, `to` | fade/slide/pop/zoom/spin/pulse/shake/bounce/float/blink/typewriter/color-shift. |
+| `animate` | `target` or `targets`, **`property`**, **`to`**, `from`, `start`, `end`/`duration`, `easing`, `extend` | Two keys; `from` defaults to the current value. `targets` gives several parts the same keys. |
+| `animate-preset` | `target` or `targets`, **`preset`**, `start`, `duration`, `easing`, `amount`, `distance`, `fade`, `to`, `extend` | fade/slide/pop/zoom/spin/pulse/shake/bounce/float/blink/typewriter/color-shift. |
 | `marker` | **`name`**, `time` or `delete` | Named times usable wherever a time is accepted. |
 
 ## Legacy aliases (avoid in new code)
@@ -200,6 +200,7 @@ Apply returns `{"success": true, "dry_run": bool, "operations": N, "changes": {.
 `detail:"compact"` (CLI/MCP/REST default; `Project.apply(..., detail="compact")`) keys changes by layer ID
 with new values only; added layers include name, type and bounds. `detail:"full"` (Python default,
 CLI `--detail full`) includes complete before/after layer snapshots.
+`warnings` (when present) lists effects no operation asked for, such as a timeline that grew to fit a keyframe.
 
 ## Newer operation families
 

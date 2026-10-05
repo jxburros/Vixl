@@ -309,6 +309,7 @@ class Project:
         operations = validated
         candidate = self.clone()
         candidate._resource_budget = self.limits.max_operations - len(operations)
+        candidate.notices = []  # Unrequested effects an operation reports (a timeline that grew); see result warnings.
         before = candidate.inspect()
         for index, operation in enumerate(operations):
             try:
@@ -342,6 +343,7 @@ class Project:
                 raise located(exc, index, operations[index], len(operations)) from exc
             raise
         candidate.__dict__.pop("_resource_budget", None)
+        notices = candidate.__dict__.pop("notices", [])
         after = candidate.inspect()  # Also resolves constraints, rejecting cycles atomically.
         changes = {
             key: {"before": before.get(key), "after": after.get(key)}
@@ -372,6 +374,8 @@ class Project:
                                for layer in painted]
             if any(not item["visible_pixels"] for item in result["paint"]):
                 result["warnings"] = ["Paint has no visible pixels; check --space canvas versus --space layer and resolved bounds."]
+        if notices:
+            result["warnings"] = [*result.get("warnings", []), *notices]
         if notes:
             result["normalized"] = notes
         return result

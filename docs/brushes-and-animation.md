@@ -73,7 +73,9 @@ vixl export-timeline --out sheet.png --format sheet --columns 6
 
 `targets: ["arm-left", "arm-right"]` on `animate`, `animate-preset` or `keyframe` (CLI: `arm-left,arm-right`) applies the same keys to every listed layer in one call.
 
-`animate` without `from` starts from the current animated (or static) value; it sets keys at `start` and `end` (or `start + duration`). The timeline duration grows to fit new keys. Removing a layer removes its tracks.
+`animate` without `from` starts from the current animated (or static) value; it sets keys at `start` and `end` (or `start + duration`). Removing a layer removes its tracks.
+
+**Keys past the end.** A key placed past the timeline end lengthens the timeline, and the operation result says so in `warnings` (`timeline duration changed 8000 -> 8400 ms: a keyframe on 'beam' sits at 8400 ms, past the end…`). Only the keys the operation just set count: a key left past the end earlier never stretches a duration you set back with `timeline-set` (which itself notes how many keys now lie past the end). Pass `extend: false` on `keyframe`, `animate` or `animate-preset` (CLI `--no-extend`) to keep the duration instead: the key stays past the end, so the last played frame is still on its way to it, but its own moment is not played. This is how to ease a loop through a key that sits just beyond the final frame.
 
 ### Characters: pivots and groups
 
