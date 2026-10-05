@@ -210,8 +210,10 @@ vixl export out.png|.jpg|.webp|.tiff|.avif [--quality 90] [--scale 2x] [--profil
 vixl render [F.vixl] --out preview.png [--set title=Hello]      # same options; never persists overrides
 vixl render --data rows.csv --out campaign_dir [--no-check]     # one PNG per CSV row: 0001.png …; rows with design problems carry a "check" report
 vixl export-screens --out screens --scales 1 2 [--artboards square story]   # NAME@2x.png
-vixl export-animation --out sprite.gif --format gif|apng|sheet [--scale 8] [--columns 3] [--colors 64] \
-     [--sampling nearest|smooth]          # smooth: any scale (0.5, 1.5 …) re-rendered crisply
+vixl export-animation --out sprite.gif --format gif|apng|webp|mp4|webm|sheet [--scale 8] [--columns 3] [--colors 64] \
+     [--sampling nearest|smooth] [--animation NAME] [--quality 90]
+     # smooth: any scale (0.5, 1.5 …) re-rendered crisply; format follows the extension; --animation exports one
+     # named animation (default: every saved frame); mp4/webm need ffmpeg
 vixl export - --format PNG > preview.png                        # to stdout
 cat photo.png | vixl convert --grayscale [--format PNG] > gray.png
 vixl compare REF_A REF_B --out comparison.png                   # side-by-side history states
@@ -257,7 +259,12 @@ vixl pixel-draw sprite rect 4 4 --width 8 --height 8 --color s
 vixl pixel-draw sprite fill 0 0 --color .
 vixl pixel-palette sprite --colors '{"g":"#ffdd66"}'
 vixl frame-save idle [--duration 150] ; vixl frame-apply idle ; vixl frame-delete idle
-vixl animation-set --order idle blink --loop 0
+vixl animation-set --order idle blink --loop 0       # default animation: lists every saved frame
+vixl animation-set --name walk --order w1 w2 w3 w2 [--duration 100 | --durations 100 100 100 100] [--loop 0]
+vixl animation-set --name walk --delete              # named animations are subsets; the frames stay
+vixl frames-edit --operations '[{"type":"pixel-palette","target":"upper","colors":{"Y":"#d93a2b"}}]' \
+     [--animation walk | --frames w1 w2] [--scene]   # same edit on every saved frame, atomically
+vixl export-animation --out walk.gif --animation walk --scale 8
 ```
 
 ## AI (needs a configured provider — see ai.md)

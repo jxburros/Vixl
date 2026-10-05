@@ -163,7 +163,8 @@ deletes it. One style per kind; all accept `enabled` (bool) and `opacity` (0–1
 | `frame-save` | **`name`**, `duration` (10–60 000 ms, multiple of 10; default 100) | Snapshot the current scene as an animation frame (any canvas size; frames × canvas pixels ≤ pixel budget). |
 | `frame-apply` | **`name`** | Restore a frame for editing. |
 | `frame-delete` | **`name`** | |
-| `animation-set` | `order` (frame names), `loop` (extra repeats; 0 = infinite) | |
+| `animation-set` | `order` (frame names), `loop` (extra repeats; 0 = infinite); with **`name`** also `duration` (ms for every entry), `durations` (one per entry), `delete` | Without `name`: reorder the default animation (every saved frame exactly once). With `name`: define/replace a **named animation**, any subset of saved frames in any order (repeats allowed), own timing and loop; update only `loop`/`duration`/`durations` of an existing one; `delete: true` removes it. Export one with `vixl_export_animation(animation=NAME)`. `frame-delete` refuses frames a named animation uses. |
+| `frames-edit` | **`operations`** (1–200 normal operations), `animation` (named animation's frames) *or* `frames` (names), `scene` (also edit the working scene; default false) | Apply the same edit to every saved frame (default), e.g. `{"type":"pixel-palette","target":"upper","colors":{"Y":"#d93a2b"}}` to recolour all poses. Atomic; errors name the frame. No animation ops, layouts, templates, pages or filesystem fields inside. |
 
 ## Sizes, layouts and color (0.13)
 

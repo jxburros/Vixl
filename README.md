@@ -246,12 +246,17 @@ vixl pixel-draw sprite pixel 5 5 --color .
 vixl frame-save blink --duration 100
 vixl export-animation --out sprite.gif --scale 8
 vixl export-animation --out sprite-sheet.png --format sheet
+vixl animation-set --name blinking --order idle blink --durations 400 100
+vixl export-animation --out blink.gif --animation blinking --scale 8
+vixl frames-edit --operations '[{"type":"pixel-palette","target":"sprite","colors":{"#":"#222222"}}]'
 ```
 
 Spacing analysis checks only the intent and objects you specify. Pixel sprites use compact
 character grids and palettes that agents can inspect directly; named frames preserve edits
-and timing. [Spacing and pixel-animation reference](docs/pixel-animation-spacing.md)
-documents CLI/Python/REST/MCP workflows, crisp scaling, GIF/APNG and game sprite sheets.
+and timing, named animations play and export subsets of the frames (idle, walk and wave in one
+document), and `frames-edit` applies one edit to every frame.
+[Spacing and pixel-animation reference](docs/pixel-animation-spacing.md)
+documents CLI/Python/REST/MCP workflows, crisp scaling, GIF/APNG/WebP/MP4 and game sprite sheets.
 
 ## Automation and creative history
 

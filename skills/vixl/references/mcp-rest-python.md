@@ -71,12 +71,13 @@ Assertion grammar: `canvas.width == 1920`, `layer.NAME.exists`, `layer.NAME.boun
 | Tool | Parameters | Notes |
 | --- | --- | --- |
 | `vixl_pixels_inspect` | `target` | `{id,name,width,height,palette,rows}` — read/modify sprites as text |
-| `vixl_animation_inspect` | — | Frame names, sizes, durations, total |
+| `vixl_animation_inspect` | — | Frame names, sizes, durations, total; named animations (order, timing, loop) |
 | `vixl_animation_preview` | **`name`**, `scale=1` (1–8) | Crisp nearest-neighbor PNG of a saved frame |
-| `vixl_export_animation` | **`path`**, `format="gif"\|"apng"\|"sheet"`, `scale=1` (1–32), `columns` | Sheet also writes `same-stem.json` with frame rects/durations; never overwrites |
+| `vixl_export_animation` | **`path`**, `format="gif"\|"apng"\|"webp"\|"mp4"\|"webm"\|"sheet"` (default: from extension), `animation=NAME`, `scale=1` (1–32), `sampling`, `colors`, `quality=90`, `columns` | `animation` exports one named animation, else every saved frame; sheet also writes `same-stem.json` with frame rects/durations and the `animations` map; mp4/webm need ffmpeg; never overwrites |
 
 Edits use `vixl_operations_apply` with `pixel-art`, `pixel-draw`, `pixel-palette`, `frame-save`,
-`frame-apply`, `frame-delete`, `animation-set`.
+`frame-apply`, `frame-delete`, `animation-set` (`name`+`order` defines a named animation) and
+`frames-edit` (the same operations applied to every saved frame, or an animation's, atomically).
 
 ### Sizes, layouts, color, timelines and icons (0.13)
 
@@ -151,7 +152,8 @@ Non-loopback hosts require a bearer token from `VIXL_API_TOKEN` (or `--token-env
 | `POST /preview` | `{"max_width":…,"max_height":…,"max_bytes":…,"region":[…]}` | PNG |
 | `POST /compare` | `{"before":"previous","after":"head","mode":"side-by-side"}` | Summary + `image_base64` |
 | `GET /pixels/{target}` | | Pixel rows/palette |
-| `GET /animation` · `GET /animation/frame/{name}?scale=1` | | Frame list · PNG |
+| `GET /animation` · `GET /animation/frame/{name}?scale=1` | | Frame list + named animations · PNG |
+| `POST /animation/export` | `{"format":"gif"\|"apng"\|"webp"\|"mp4"\|"webm"\|"sheet","animation":"walk","scale":8,"sampling":…,"colors":…,"quality":…,"columns":…}` | Animation bytes (mp4/webm need ffmpeg) |
 | `GET /history` · `POST /history/{action}` | `{"ref":…,"count":1}` | History graph / new head |
 | `POST /assets?name=photo` | raw image bytes | New layer |
 | `POST /ai/{command}` | `{"args":["--prompt","forest","--provider","local"]}` | CLI-style AI call |
@@ -195,7 +197,8 @@ p.measure_spacing(targets=["a", "b", "c"], axis="vertical", expected=24, toleran
 p.check(safe_area="5%", avoid=[["85%", "85%", "15%", "15%"]], thumbnail_width=320)
 p.at("previous").render()   # a read-only view at head~1, a branch, checkpoint or revision ID
 p.inspect_pixels("sprite"); p.inspect_animation(); p.render_frame("idle", scale=4)
-p.export_animation("sprite.gif", format="gif", scale=8)      # or "apng" / "sheet" (columns=)
+p.export_animation("sprite.gif", format="gif", scale=8)      # or "apng" / "webp" / "mp4" / "webm" / "sheet" (columns=)
+p.export_animation("walk.gif", animation="walk", scale=8)    # one named animation; REST POST /animation/export {"animation": "walk"}
 p.export_screens("screens", scales=(1, 2))
 p.render_data("rows.csv", "campaign")
 p.manifest()
