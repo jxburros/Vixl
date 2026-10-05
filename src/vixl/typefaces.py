@@ -271,8 +271,15 @@ def _get(client, url):
         return bytes(data)
 
 
-def fetch_font(family, weight=400, italic=False, *, client=None):
-    """Return TTF bytes for one static style of a Google Fonts family, using the user cache."""
+def cache_location():
+    """The font cache directory and what chose it: the ``VIXL_FONT_CACHE`` variable or the default."""
+    return _cache_dir(), "VIXL_FONT_CACHE" if os.environ.get("VIXL_FONT_CACHE") else "default"
+
+
+def fetch_font(family, weight=400, italic=False, *, client=None, source=None):
+    """Return TTF bytes for one static style of a Google Fonts family, using the user cache.
+    A ``source`` dict is filled with where the bytes came from: ``origin`` (``cache`` or
+    ``download``), the cache file, and for a download the stylesheet and font URLs."""
     from .fonts import validate_font
 
     require(isinstance(weight, int) and 100 <= weight <= 900 and weight % 100 == 0, "weight must be 100–900 in steps of 100", field="weight")
@@ -286,6 +293,8 @@ def fetch_font(family, weight=400, italic=False, *, client=None):
         data = cached.read_bytes()
         try:
             validate_font(data)
+            if source is not None:
+                source.update(origin="cache", cache_file=str(cached))
             return data, family
         except VixlError:
             cached.unlink(missing_ok=True)
@@ -297,9 +306,9 @@ def fetch_font(family, weight=400, italic=False, *, client=None):
         css = _get(client, url).decode("utf-8", "replace")
         sources = re.findall(r"url\((https://[^)]+)\)\s*format\('(?:truetype|opentype)'\)", css)
         require(sources, f"No TrueType source for {family} {weight}{' italic' if italic else ''}", "font_download_failed")
-        source = urlparse(sources[0])
+        parsed = urlparse(sources[0])
         # Names outside the Google Fonts library can still answer with a /l/ "kit" URL; only /s/ is a family.
-        require(source.hostname == FONT_HOST and source.path.startswith("/s/"),
+        require(parsed.hostname == FONT_HOST and parsed.path.startswith("/s/"),
                 f"Google Fonts has no family named {family!r}", "unknown_font")
         data = _get(client, sources[0])
     except httpx.HTTPError as exc:
@@ -316,11 +325,14 @@ def fetch_font(family, weight=400, italic=False, *, client=None):
         if own:
             client.close()
     validate_font(data)
+    stored = True
     try:
         cached.parent.mkdir(parents=True, exist_ok=True)
         cached.write_bytes(data)
     except OSError:
-        pass  # A read-only cache only costs a re-download.
+        stored = False  # A read-only cache only costs a re-download.
+    if source is not None:
+        source.update(origin="download", url=sources[0], stylesheet=url, cache_file=str(cached) if stored else None)
     return data, family
 
 
@@ -330,15 +342,26 @@ def install_font(project, family, weight=400, italic=False, name=None, role=None
 
     from .design import named
 
-    data, family = fetch_font(family, weight, italic, client=client)
+    found = {}
+    data, family = fetch_font(family, weight, italic, client=client, source=found)
     name = named(name or f"{slug(family)}-{weight}{'-italic' if italic else ''}")
-    asset = f"fonts/{hashlib.sha256(data).hexdigest()}.ttf"
+    digest = hashlib.sha256(data).hexdigest()
+    asset = f"fonts/{digest}.ttf"
     candidate = project.clone()
     candidate.assets[asset] = data
     op = {"type": "font-register", "name": name, "asset": asset, **({"role": role} if role else {})}
     candidate.apply(op, detail="compact")
     project.__dict__.update(candidate.__dict__)
-    return {"name": name, "family": family, "weight": weight, "italic": italic, **({"role": role} if role else {})}
+    cache_dir, chosen_by = cache_location()
+    return {"name": name, "family": family, "weight": weight, "italic": italic, **({"role": role} if role else {}),
+            "source": {**found, "cache_dir": str(cache_dir), "cache_dir_from": chosen_by, "bundled_fallback": False},
+            "file": {"asset": asset, "bytes": len(data), "sha256": digest}}
+
+
+def origin_of(*installed):
+    """``cache``, ``download`` or ``mixed``: where a set of installed fonts came from."""
+    origins = {item["source"].get("origin", "unknown") for item in installed}
+    return origins.pop() if len(origins) == 1 else "mixed"
 
 
 def pair_fonts(project, pairing=None, *, seed=None, mood=None, best_for=None, client=None):
@@ -357,6 +380,7 @@ def pair_fonts(project, pairing=None, *, seed=None, mood=None, best_for=None, cl
         "why": item.get("why"),
         "caution": item.get("caution"),
         "typography": project.state.get("typography"),
+        "origin": origin_of(heading, body),
         "note": "Layouts now use these fonts by default; pass font/display_font to override.",
     }
     if rolled is not None:
@@ -396,7 +420,8 @@ def roll_document(project=None, *, workspace=None, seed=None, purpose=None, mood
             candidate.begin()
         operation = {**result["operation"], **(slots or {})}
         if not embedded_pair:
-            pair_fonts(candidate, result["direction"]["pairing"])
+            installed = pair_fonts(candidate, result["direction"]["pairing"])
+            result["fonts"] = {key: installed[key] for key in ("origin", "heading", "body")}
             operation.update(font=candidate.state["typography"]["body"],
                              display_font=candidate.state["typography"]["heading"])
         applied = candidate.apply(operation, detail="compact")

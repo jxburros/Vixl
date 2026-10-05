@@ -1016,7 +1016,9 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
     ) -> dict:
         """Download (or reuse from cache), embed and register a curated pairing's heading and body fonts and
         make them the document typography that layouts use by default. pairing='random' rolls one among
-        those matching mood/best_for (seed reproduces it)."""
+        those matching mood/best_for (seed reproduces it). The result's origin (cache, download or mixed) and
+        each font's source (download URL, cache file, VIXL_FONT_CACHE) and embedded file show where they came from;
+        the bundled fallback is never substituted for a failed download."""
         from .typefaces import pair_fonts
 
         with session.project(write=True, document=document) as project:
@@ -1032,7 +1034,8 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         document: Document = None,
     ) -> dict:
         """Download one style of any Google Fonts family, embed and register it (default name
-        family-weight); role makes it the document's heading or body font."""
+        family-weight); role makes it the document's heading or body font. The result's source says whether
+        it came from the cache (cache_file, VIXL_FONT_CACHE) or a download (url), and file the embedded asset."""
         from .typefaces import install_font
 
         with session.project(write=True, document=document) as project:
