@@ -48,6 +48,7 @@ TYPE_ALIASES = {
     "add-field": "field",
     "set-field": "field-set",
     "field-update": "field-set",
+    "sketch": "drawing",
 }
 SHAPE_TYPES = {
     "rect": ("rectangle", {}),

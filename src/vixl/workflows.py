@@ -32,6 +32,8 @@ ACTIONS = {
     "lyric-video-export": (LYRIC_FIELDS, {"audio", "lyrics", "template", "build", "output"}),
     "form-fill": ({"data", "values", "output", "name", "format", "combine", "mode", "skip_invalid", "dry_run", "check",
                    "unknown", "dpi"}, set()),
+    "drawing-report": ({"target"}, {"target"}),
+    "drawing-compare": ({"target", "output"}, {"target", "output"}),
 }
 
 
@@ -69,6 +71,18 @@ def dispatch(session, action, request, document=None):
         return catalog()
     if action == "form-fill":
         return form_fill(session, request, document)
+    if action in ("drawing-report", "drawing-compare"):
+        from .drawing import compare, report
+
+        with session.project(document=document) as project:
+            result = report(project, request["target"])
+            if action == "drawing-compare":
+                destination = session.resolve(request["output"])
+                require(destination.suffix.lower() == ".png" and not destination.exists(),
+                        "Choose a new .png output", field="output")
+                compare(project, request["target"]).save(destination)
+                result["output"] = session.relative(destination)
+            return result
     if action.startswith("lyric-video-"):
         from . import lyrics
 

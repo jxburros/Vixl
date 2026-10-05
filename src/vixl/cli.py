@@ -47,6 +47,9 @@ Forms:     field add KEY --kind text|multiline|number|date|checkbox|radio|dropdo
            field set LAYER …, field list, form settings [--tab-order reading|explicit] [--title T] [--lang en-US],
            check --checks form [--sample worst|rows.csv], render --out F --show-fields [--set KEY=VALUE],
            export form.pdf --fillable, form fill --set KEY=VALUE --out filled.pdf | --data rows.csv (--out DIR | --combine all.pdf)
+Drawings:  drawing import sketch.jpg --name house [--settings '{"ink": "original"}'], drawing clean|vectorize|straighten|smooth house,
+           drawing fill house --points '[[x, y, "#fc0"]]', drawing stroke house --points '[[x, y], …]', drawing restyle house,
+           drawing report house, drawing compare house --out c.png, check --checks drawing, ai drawing-color house --prompt TEXT
 Measure:   info, sample X Y, histogram [--region X Y W H], info --target TEXT,
            spacing --targets A B C --axis vertical [--expected N] [--tolerance N] [--check],
            spacing --around BODY --before HEADER --after FOOTER,
@@ -742,7 +745,7 @@ def project_command(project, cmd, args, *, detail="compact"):
             "--checks",
             nargs="+",
             choices=["bounds", "overlap", "contrast", "safe_area", "legibility", "print", "color_vision", "content", "fonts", "blanks", "brand", "guides", "alignment",
-                     "deck", "title_position", "type_scale", "words", "min_font", "notes", "empty", "form"],
+                     "deck", "title_position", "type_scale", "words", "min_font", "notes", "empty", "form", "drawing"],
         )
         p.add_argument("--page", help="Check one page of a multi-page document (default: the active page)")
         p.add_argument("--pages", help="deck checks: the pages to check, e.g. 1-3,5 (default: every shown page)")

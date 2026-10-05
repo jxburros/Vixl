@@ -14,7 +14,7 @@ from .model import finite
 
 CHECKS = ("bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "fonts", "brand", "content", "form")
 FALLBACK_FONT = "DejaVuSans.ttf"
-OPTIONAL_CHECKS = ("print", "color_vision", "guides", "alignment")
+OPTIONAL_CHECKS = ("print", "color_vision", "guides", "alignment", "drawing")
 PERCENT = re.compile(r"^(-?\d+(?:\.\d+)?)%$")
 
 
@@ -496,6 +496,11 @@ def check_design(
     if brand and "brand" in checks:
         from .brand import check as check_brand
         check_brand(candidate, brand, issue)
+
+    if "drawing" in checks:
+        from .drawing import check_drawings
+
+        check_drawings(candidate, list(resolved.values()), issue)
 
     if "form" in checks:
         from .forms import check_form

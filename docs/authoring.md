@@ -15,7 +15,9 @@ vixl export --out flowers.svg
 ```
 
 For whole organisms (flowers, trees, ferns, creatures, shells, coral, animal markings) built from
-composable generators and growth rules, use [`organic`](organic.md).
+composable generators and growth rules, use [`organic`](organic.md). To start from a person's own
+sketch — cleaned, traced, straightened and coloured while keeping their lines — use
+[`drawing`](drawing.md).
 
 Kinds: `rose`, `leaf`, `petal`, `blob`. `--variation 0..1` controls irregularity;
 `--lobes 3..32` controls blob lobes or rose petals. Paths can be edited with `pen --target`.

@@ -978,8 +978,14 @@ def ai_execute(project, cmd, a):
         "content-aware-fill": "generate",
         "extend": "generate",
         "regenerate": "generate",
+        "drawing-color": "generate",
     }.get(action, action)
     backend = route(capability, provider_name, a.model)
+    if cmd == "ai" and action == "drawing-color":
+        from .drawing import ai_color
+
+        require(len(a.words) == 2, "Use ai drawing-color DRAWING --prompt TEXT", field="words")
+        return ai_color(project, a.words[1], a.prompt, backend, strength=a.strength, seed=a.seed, model=a.model), True
     if cmd == "ai" and a.words and a.words[0] in ("remove", "content-aware-fill"):
         require(project.state["selection"], "Remove and Content-Aware Fill require a selection")
         candidate = project.clone()

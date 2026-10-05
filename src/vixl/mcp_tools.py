@@ -333,7 +333,8 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
             "with keyframes (keyframe/animate/animate-preset → vixl_timeline_preview → vixl_export_timeline), and "
             "export print-ready CMYK PDF/TIFF/JPEG with vixl_export_file. Slides and carousels are pages (page "
             "operation; preview page='all'; export .pdf or .pptx); forms are field layers (field operation; check "
-            "form; export_file fillable=true, or values= to fill). "
+            "form; export_file fillable=true, or values= to fill); hand drawings are drawing operations (import, "
+            "clean, vectorize, straighten, fill) checked with check drawing. "
             + ("AI tools need a configured provider." if tools == "all" else
                "Provider-backed AI tools are served separately by vixl mcp --tools ai.")
         ),
@@ -668,7 +669,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
     @tool
     def vixl_check(
         checks: list[Literal["bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "fonts", "brand", "print", "color_vision", "guides", "alignment",
-                             "deck", "title_position", "type_scale", "words", "min_font", "notes", "empty", "form"]]
+                             "deck", "title_position", "type_scale", "words", "min_font", "notes", "empty", "form", "drawing"]]
         | None = None,
         targets: list[str] | None = None,
         safe_area: Annotated[

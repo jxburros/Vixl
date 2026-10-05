@@ -94,27 +94,16 @@ def form_settings(state):
 
 
 def schemas(add):
-    from .schema import B, S
-
-    number = {"type": "number"}
-    option = {"anyOf": [S, {"type": "object", "properties": {"value": S, "label": S}, "required": ["value"],
-                            "additionalProperties": False}]}
-    appearance = {"type": "object", "properties": {
-        "style": {"enum": list(STYLES)}, "fill": S, "stroke": S, "stroke_width": number, "radius": number,
-        "mark": {"enum": list(MARKS)}, "mark_color": S}, "additionalProperties": False}
-    settings = {
-        "key": S, "kind": {"enum": list(KINDS)}, "label": S, "label_layer": S, "group_label": S, "required": B,
-        "read_only": B, "default": {"type": ["string", "number", "boolean"]}, "max_length": {"type": "integer"},
-        "comb": B, "format": {"type": ["string", "object"]}, "options": {"type": "array", "items": option},
-        "editable": B, "option": S, "on_value": S, "tab": {"type": "integer"}, "overflow": {"enum": list(OVERFLOW)},
-        "min_size": number, "font": S, "size": number, "color": S, "align": {"enum": ["left", "center", "right"]},
-        "padding": number, "appearance": appearance, "x": {}, "y": {}, "width": {}, "height": {},
-    }
-    add("field", {"name": S, **settings}, ["kind"])
-    add("field-set", {"target": S, **{k: v for k, v in settings.items() if k not in ("x", "y", "width", "height")}},
-        ["target"])
+    # Every setting is validated in full at run time (validate_field), so the schema names them
+    # without repeating their types: the operation catalog agents read stays small.
+    names = ("key", "label", "label_layer", "group_label", "required", "read_only", "default", "max_length", "comb",
+             "format", "options", "editable", "option", "on_value", "tab", "overflow", "min_size", "font", "size",
+             "color", "align", "padding", "appearance")
+    settings = {"kind": {"enum": list(KINDS)}, **{name: {} for name in names}}
+    add("field", {"name": {"type": "string"}, **settings, "x": {}, "y": {}, "width": {}, "height": {}}, ["kind"])
+    add("field-set", {"target": {"type": "string"}, **settings}, ["target"])
     add("form", {"tab_order": {"enum": ["reading", "explicit"]}, "entry_font": {"enum": ["standard", "embed"]},
-                 "title": {"type": ["string", "null"]}, "lang": {"type": ["string", "null"]}}, [])
+                 "title": {}, "lang": {}}, [])
 
 
 def normalize(op, note):

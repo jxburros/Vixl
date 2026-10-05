@@ -60,6 +60,10 @@ def compile_command(tokens):
     rich = compile_rich(cmd, args)
     if rich is not None:
         return rich
+    from .drawing import compile_command as compile_drawing
+    sketch = compile_drawing(cmd, args)
+    if sketch is not None:
+        return sketch
     from .forms import compile_command as compile_forms
     form = compile_forms(cmd, args)
     if form is not None:

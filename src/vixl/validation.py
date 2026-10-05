@@ -114,6 +114,10 @@ def check_state(project, state):
             from .forms import validate_field
 
             validate_field(layer, state)
+        if "drawing" in layer or "drawing_strokes" in layer:
+            from .drawing import validate as validate_drawing
+
+            validate_drawing(layer, state, project)
         if layer["type"] == "text":
             require(isinstance(layer["text"], str) and len(layer["text"]) <= 100000, "Invalid text")
             finite(layer["size"], "font size", 1, 4096)

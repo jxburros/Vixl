@@ -41,6 +41,11 @@
 - **`form` checks** (a default check): names, overlaps, rotation, page and trim bounds, tab order, encodable defaults, box and mark sizes, non-text contrast, layers above fields, and `--sample worst|rows.csv` overflow checks. `inspect`, `field list` and MCP inspect summarize fields with their rectangles in points.
 - Agent evaluations `form-registration` and `form-batch-fill`, with a `pdf_fields` grading check; `pypdf` and `python-pptx` join the dev dependencies for tests.
 
+### Hand drawings
+
+- **Build on a hand drawing** ([docs](docs/drawing.md)): `drawing import` turns a photo or scan into clean lines — paper lighting and shadows divided out, dust removed, a tilted page corrected, cropped, the pencil's grain and (optionally) colour kept — over a hidden, aligned copy of the photo. `vectorize` traces editable centre-line strokes with each line's width (or outline shapes that keep pressure); `straighten` makes nearly straight lines straight, keeps drawn corners but sharpens them, rounds nearly round shapes into circles, snaps sides to angles or the document's guides and joins ends that nearly meet; `smooth`, `restyle` and `stroke` (new lines in the same hand) edit strokes; `fill` colours enclosed regions under the lines, bridging small breaks without crossing a line.
+- **Preservation is measured**: `drawing report` / the `drawing-report` workflow action give the share of the original lines still covered and the share that is new, `drawing compare` overlays the original on the result, and the opt-in `drawing` check warns when original line work is lost. `ai drawing-color` adds image-to-image colouring under the drawing's own lines.
+
 ### Fixes from the explorations
 
 Fixes for the problems found while building the ten projects in `explorations/`.

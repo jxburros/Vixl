@@ -6,6 +6,7 @@ that inspect or export instead of editing.
 """
 
 import json
+from pathlib import Path
 
 from .commands import Parser, pairs
 from .errors import require
@@ -283,6 +284,19 @@ def project_feature(project, cmd, args):
         return {"fields": summary(project), "form": form_settings(project.state)}, False
     if cmd == "form" and args[:1] == ["fill"]:
         return form_fill(project, args[1:]), False
+    if cmd == "drawing" and args[:1] in (["report"], ["compare"]):
+        from .drawing import compare, report
+
+        p = Parser(prog=f"vixl drawing {args[0]}")
+        p.add_argument("target")
+        if args[0] == "compare":
+            p.add_argument("--out", required=True)
+        a = p.parse_args(args[1:])
+        if args[0] == "report":
+            return report(project, a.target), False
+        require(not Path(a.out).exists(), "Output already exists")
+        compare(project, a.target).save(a.out)
+        return {"output": a.out, **report(project, a.target)}, False
     if cmd == "timeline" and (not args or args[0] != "set"):
         from .timeline import inspect_timeline
 
@@ -335,7 +349,6 @@ def project_feature(project, cmd, args):
             progress=(lambda event: print(json.dumps({"progress": event}), file=__import__("sys").stderr, flush=True)) if a.progress else None,
         ), False
     if cmd == "timeline-sheet":
-        from pathlib import Path
 
         from .timeline import contact_sheet
 
