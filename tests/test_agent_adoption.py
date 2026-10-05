@@ -139,6 +139,9 @@ def test_viewer_refresh_and_notes_are_shared_with_mcp(tmp_path):
     with TestClient(create_app(path, token="secret")) as client:
         viewer = client.get("/view")
         assert viewer.status_code == 200 and "Connecting…" in viewer.text
+        assert 'rel="icon"' in viewer.text and 'alt="Vixl"' in viewer.text
+        assert viewer.text.count("data:image/svg+xml;base64,") == 2
+        assert "__VIXL_" not in viewer.text
         assert client.get("/review").status_code == 401
         client.headers["Authorization"] = "Bearer secret"
         head = client.get("/review").json()["head"]
@@ -363,6 +366,7 @@ def test_agent_bundles_include_skill_references(tmp_path):
             assert "skills/vixl/references/cli.md" in names
             if output.suffix == ".mcpb":
                 manifest = json.loads(archive.read("manifest.json"))
+                assert archive.read(manifest["icon"]).startswith(b"\x89PNG\r\n\x1a\n")
                 assert "${user_config.workspace}" in manifest["server"]["mcp_config"]["args"]
                 from vixl import __version__
                 source = f"https://github.com/jxburros/Vixl/archive/refs/tags/v{__version__}.tar.gz"
