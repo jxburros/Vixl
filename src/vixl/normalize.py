@@ -124,6 +124,8 @@ FIELD_ALIASES = {
     "canvas": {"color": "background", "fill": "background"},
     "variable": {"key": "name"},
     "align": {"align": "alignment", "position": "alignment", "relativeTo": "relative_to"},
+    "animation-set": {"frames": "order", "sequence": "order"},
+    "frames-edit": {"ops": "operations", "edits": "operations"},
 }
 FIELD_ALIASES["text-set"] = FIELD_ALIASES["text"]
 GEOMETRY_TYPES = {

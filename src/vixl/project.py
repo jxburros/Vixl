@@ -286,7 +286,9 @@ class Project:
         from .operations import execute
 
         if isinstance(operations, dict):
-            operations = operations.get("operations", [operations])
+            # A {"operations": [...]} wrapper; one operation may carry its own list (frames-edit).
+            single = "type" in operations or "operation" in operations
+            operations = [operations] if single else operations.get("operations", [operations])
         require(isinstance(operations, list) and operations, "Expected a nonempty list of operations")
         require(
             len(operations) <= self.limits.max_operations,

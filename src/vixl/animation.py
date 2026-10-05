@@ -1,6 +1,7 @@
-"""Named animation snapshots and bounded GIF/APNG/sprite-sheet exports (pixel-crisp or smooth)."""
+"""Named animation snapshots and bounded GIF/APNG/WebP/MP4/sprite-sheet exports (pixel-crisp or smooth)."""
 
 from copy import copy, deepcopy
+from fractions import Fraction
 import io
 import json
 import math
@@ -12,9 +13,10 @@ from PIL import Image
 from .errors import require
 from .model import finite
 
-ANIMATION_TYPES = ("frame-save", "frame-apply", "frame-delete", "animation-set")
+ANIMATION_TYPES = ("frame-save", "frame-apply", "frame-delete", "animation-set", "frames-edit")
 MAX_FRAMES = 256
 SAMPLING = ("nearest", "smooth")
+VIDEO = ("mp4", "webm")
 GIF_WARN_BYTES = 1024 * 1024
 
 
@@ -35,7 +37,8 @@ def validate_animation(project, state):
 
     animation = state["animation"]
     require(
-        isinstance(animation, dict) and set(animation) <= {"frames", "loop"}, "Invalid animation settings"
+        isinstance(animation, dict) and set(animation) <= {"frames", "loop", "animations"},
+        "Invalid animation settings",
     )
     frames = animation.get("frames", [])
     require(isinstance(frames, list) and len(frames) <= MAX_FRAMES, "Animation supports at most 256 frames")
@@ -80,19 +83,35 @@ def validate_animation(project, state):
         )
         resolve_layout(frame_project(project, frame))
     require(len(sizes) <= 1, "All animation frames must have the same canvas size")
+    from .animation_sets import validate_named
+
+    validate_named(animation, names)
 
 
 def execute_animation(project, op):
     animation = project.state.setdefault("animation", {"frames": [], "loop": 0})
     frames = animation["frames"]
     kind = op["type"]
+    if kind == "frames-edit":
+        from .animation_sets import frames_edit
+
+        return frames_edit(project, op)
     if kind == "animation-set":
+        if "name" in op:
+            from .animation_sets import set_named
+
+            return set_named(animation, op)
+        require(
+            not any(key in op for key in ("duration", "durations", "delete")),
+            "duration, durations and delete apply to a named animation; pass name",
+        )
         if "loop" in op:
             animation["loop"] = op["loop"]
         if "order" in op:
             require(
                 len(op["order"]) == len(frames) and set(op["order"]) == {f["name"] for f in frames},
-                "Order must list every frame exactly once",
+                "Order must list every saved frame exactly once; to play or export a subset, define a named "
+                "animation with animation-set name=... order=[...]",
             )
             by_name = {f["name"]: f for f in frames}
             animation["frames"] = [by_name[name] for name in op["order"]]
@@ -121,6 +140,14 @@ def execute_animation(project, op):
     else:
         require(existing is not None, f"Unknown animation frame: {name}")
         if kind == "frame-delete":
+            from .animation_sets import used_by
+
+            users = used_by(animation, name)
+            require(
+                not users,
+                f"Frame {name} is used by animation(s) {', '.join(users)}; redefine them with animation-set "
+                "(or delete them) first",
+            )
             frames.remove(existing)
         else:
             project.state = deepcopy(existing["state"])
@@ -129,6 +156,9 @@ def execute_animation(project, op):
 
 def inspect_animation(project):
     animation = project.state.get("animation", {"frames": [], "loop": 0})
+    from .animation_sets import summaries
+
+    named = summaries(animation)
     return {
         "loop": animation.get("loop", 0),
         "total_duration": sum(f["duration"] for f in animation["frames"]),
@@ -141,6 +171,7 @@ def inspect_animation(project):
             }
             for f in animation["frames"]
         ],
+        **({"animations": [{"name": name, **info} for name, info in named.items()]} if named else {}),
     }
 
 
@@ -232,41 +263,69 @@ def size_warnings(format, data):
     return []
 
 
-def animation_bytes(project, *, format="gif", scale=1, columns=None, sampling="nearest", colors=256):
-    require(format in ("gif", "apng", "sheet"), "Animation format must be gif, apng or sheet")
+def sheet_cells(entries):
+    """The distinct frames of a sequence in order of first use: one sprite-sheet cell each."""
+    return list({frame["name"]: frame for frame, _ in entries}.values())
+
+
+def animation_bytes(
+    project, *, format="gif", scale=1, columns=None, sampling="nearest", colors=256, animation=None, quality=90
+):
+    """Encode saved frames. ``animation`` selects a named animation (its frames, order, timing and
+    loop); omitted, every saved frame plays in saved order. MP4/WebM stream to a file (export_animation)."""
+    require(
+        format in ("gif", "apng", "webp", "sheet"),
+        "Animation format must be gif, apng, webp or sheet (mp4 and webm are written to files)",
+    )
     validate_animation(project, project.state)
-    animation = project.state.get("animation", {})
-    frames = animation.get("frames", [])
-    require(frames, "Save at least one animation frame")
+    state = project.state.get("animation", {})
+    require(state.get("frames"), "Save at least one animation frame")
+    from .animation_sets import resolve_sequence, summaries
+
+    entries, loop = resolve_sequence(state, animation)
     check_scale(scale, sampling)
     require(colors == 256 or format == "gif", "colors applies to GIF export", field="colors")
     check_colors(colors)
-    w, h = scaled_size(frames[0]["state"]["canvas"], scale)
-    project.limits.size(w, h)
     require(
-        w * h * len(frames) <= project.limits.max_pixels,
+        isinstance(quality, int) and not isinstance(quality, bool) and 1 <= quality <= 100,
+        "quality must be an integer 1–100",
+        field="quality",
+    )
+    w, h = scaled_size(entries[0][0]["state"]["canvas"], scale)
+    project.limits.size(w, h)
+    cells = sheet_cells(entries) if format == "sheet" else entries
+    require(
+        w * h * len(cells) <= project.limits.max_pixels,
         "Animation export exceeds pixel budget",
         "resource_limit",
     )
     require(columns is None or format == "sheet", "Columns apply only to sprite sheets")
     stream = io.BytesIO()
     metadata = None
-    durations = [f["duration"] for f in frames]
+    durations = [duration for _, duration in entries]
+    rendered = {}
+
+    def image_of(frame):
+        # A frame that repeats in the sequence (a ping-pong walk cycle) is rendered once.
+        if frame["name"] not in rendered:
+            rendered[frame["name"]] = render_frame(project, frame["name"], scale, sampling)
+        return rendered[frame["name"]]
+
     if format == "sheet":
-        columns = columns if columns is not None else math.ceil(math.sqrt(len(frames)))
-        require(isinstance(columns, int) and 1 <= columns <= len(frames), "Invalid sprite-sheet column count")
-        rows = math.ceil(len(frames) / columns)
+        columns = columns if columns is not None else math.ceil(math.sqrt(len(cells)))
+        require(isinstance(columns, int) and 1 <= columns <= len(cells), "Invalid sprite-sheet column count")
+        rows = math.ceil(len(cells) / columns)
         project.limits.size(w * columns, h * rows)
         image = Image.new("RGBA", (w * columns, h * rows))
         metadata = {
             "width": image.width,
             "height": image.height,
-            "loop": animation.get("loop", 0),
+            "loop": loop,
             "frames": [],
         }
-        for i, frame in enumerate(frames):
+        for i, frame in enumerate(cells):
             x, y = i % columns * w, i // columns * h
-            image.paste(render_frame(project, frame["name"], scale, sampling), (x, y))
+            image.paste(image_of(frame), (x, y))
             metadata["frames"].append(
                 {
                     "name": frame["name"],
@@ -277,12 +336,30 @@ def animation_bytes(project, *, format="gif", scale=1, columns=None, sampling="n
                     "height": h,
                 }
             )
+        # Frames carry their own saved durations; `animations` says how to play them as named cycles.
+        named = summaries(state)
+        if animation is not None:
+            metadata["animation"] = animation
+            named = {animation: named[animation]}
+        if named:
+            metadata["animations"] = named
         image.save(stream, format="PNG")
     else:
-        images = [render_frame(project, f["name"], scale, sampling) for f in frames]
-        loop = animation.get("loop", 0)
+        images = [image_of(frame) for frame, _ in entries]
         if format == "gif":
             stream.write(gif_bytes(images, durations, loop, colors))
+        elif format == "webp":
+            # Crisp (nearest) pixel art is stored losslessly; smooth renders use `quality`.
+            options = {"lossless": True} if sampling == "nearest" else {"quality": quality, "method": 4}
+            images[0].save(
+                stream,
+                format="WEBP",
+                save_all=True,
+                append_images=images[1:],
+                duration=durations,
+                loop=loop + 1 if loop else 0,
+                **options,
+            )
         else:
             images[0].save(
                 stream,
@@ -297,27 +374,101 @@ def animation_bytes(project, *, format="gif", scale=1, columns=None, sampling="n
     return stream.getvalue(), metadata
 
 
-def export_animation(project, path, *, format=None, scale=1, columns=None, sampling="nearest", colors=256):
-    path = Path(path)
-    format = format or (".gif" == path.suffix.lower() and "gif") or "apng"
+def export_video(project, path, *, format, scale, sampling, quality, animation=None):
+    """Stream an animation to MP4/WebM (needs ffmpeg). Video has a constant frame rate, so frames are
+    repeated on a tick of the greatest common divisor of their durations."""
+    from functools import reduce
+
+    from .animation_sets import resolve_sequence
+    from .timeline import MAX_STREAMED_FRAMES, _video
+
+    validate_animation(project, project.state)
+    state = project.state.get("animation", {})
+    require(state.get("frames"), "Save at least one animation frame")
+    entries, _ = resolve_sequence(state, animation)
+    check_scale(scale, sampling)
     require(
-        path.suffix.lower() in ((".gif",) if format == "gif" else (".png", ".apng")),
-        "Use a GIF or PNG/APNG output filename",
+        isinstance(quality, int) and not isinstance(quality, bool) and 1 <= quality <= 100,
+        "quality must be an integer 1–100",
+        field="quality",
+    )
+    w, h = scaled_size(entries[0][0]["state"]["canvas"], scale)
+    project.limits.size(w, h)
+    require(
+        w * h * len(entries) <= project.limits.max_pixels,
+        "Animation export exceeds pixel budget",
+        "resource_limit",
+    )
+    tick = reduce(math.gcd, (duration for _, duration in entries))
+    counts = [duration // tick for _, duration in entries]
+    require(
+        sum(counts) <= MAX_STREAMED_FRAMES,
+        f"Video would need {sum(counts):,} frames; shorten the animation or use gif, apng or webp",
+        "resource_limit",
+    )
+    repeats = {}
+    for frame, _ in entries:
+        repeats[frame["name"]] = repeats.get(frame["name"], 0) + 1
+    cache = {}
+
+    def frames():
+        for (frame, _), count in zip(entries, counts):
+            name = frame["name"]
+            image = cache.get(name) or render_frame(project, name, scale, sampling)
+            if repeats[name] > 1:
+                cache[name] = image
+            for _ in range(count):
+                yield image
+
+    result = _video(path, frames(), Fraction(1000, tick), format, quality, False, sum(counts), (w, h))
+    return {**result, "fps": float(result["fps"])}
+
+
+def export_animation(
+    project, path, *, format=None, scale=1, columns=None, sampling="nearest", colors=256, animation=None, quality=90
+):
+    path = Path(path)
+    suffix = path.suffix.lower()
+    format = format or {".gif": "gif", ".webp": "webp", ".mp4": "mp4", ".webm": "webm"}.get(suffix, "apng")
+    require(
+        format in ("gif", "apng", "webp", "sheet", *VIDEO),
+        "Animation format must be gif, apng, webp, mp4, webm or sheet",
+        field="format",
+    )
+    expected = {"gif": (".gif",), "webp": (".webp",), "mp4": (".mp4",), "webm": (".webm",)}.get(
+        format, (".png", ".apng")
+    )
+    require(
+        suffix in expected,
+        f"Use a {' or '.join(e.upper().lstrip('.') for e in expected)} output filename for {format}",
+        field="path",
     )
     destinations = [path] + ([path.with_suffix(".json")] if format == "sheet" else [])
     require(not any(p.exists() for p in destinations), "Animation output already exists")
-    data, metadata = animation_bytes(project, format=format, scale=scale, columns=columns, sampling=sampling, colors=colors)
+    if format in VIDEO:
+        require(colors == 256, "colors applies to GIF export", field="colors")
+        require(columns is None, "Columns apply only to sprite sheets")
+        result = export_video(project, path, format=format, scale=scale, sampling=sampling, quality=quality, animation=animation)
+        return {**result, **({"animation": animation} if animation is not None else {})}
+    data, metadata = animation_bytes(
+        project, format=format, scale=scale, columns=columns, sampling=sampling, colors=colors,
+        animation=animation, quality=quality,
+    )
     # Create only after all rendering succeeds. Refuse concurrent clobbers as well.
     with path.open("xb") as stream:
         stream.write(data)
     if metadata is not None:
         with destinations[1].open("x", encoding="utf-8") as stream:
             json.dump(metadata, stream, indent=2)
+    from .animation_sets import resolve_sequence
+
+    entries, _ = resolve_sequence(project.state["animation"], animation)
     return {
         "output": str(path),
         "format": format,
-        "size": list(scaled_size(project.state["animation"]["frames"][0]["state"]["canvas"], scale)),
+        "size": list(scaled_size(entries[0][0]["state"]["canvas"], scale)),
         "bytes": len(data),
+        **({"animation": animation} if animation is not None else {}),
         **({"metadata": str(destinations[1])} if metadata is not None else {}),
         **({"warnings": warnings} if (warnings := size_warnings(format, data)) else {}),
     }

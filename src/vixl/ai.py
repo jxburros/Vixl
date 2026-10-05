@@ -790,7 +790,8 @@ def provider(name=None):
     return make_provider(name, settings)
 
 
-SAFE_PLAN = (set(DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES) - {"frame", "replace-contents"}) | {
+# frames-edit nests operations that the plan check would not see, so planners cannot use it.
+SAFE_PLAN = (set(DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES) - {"frame", "replace-contents", "frames-edit"}) | {
     "text",
     "solid",
     "gradient",
