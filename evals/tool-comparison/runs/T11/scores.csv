@@ -1,0 +1,4 @@
+test,lane,agent,model,date,blind_code,r1_minutes,r1_nudges,hard_passed,hard_total,fidelity,craft,report_honest,r2_minutes,r2_nudges,editability,revision,notes
+T11,V,claude-code-subagent,claude-opus-5-5,2026-10-05,WI9I,,0,4,5,3,3,partly,,0,4,5,House top-left corner gap left open; stroke widths mixed 3-6 px though report says uniform; rays snapped to 45deg; first import failed until manual crop; r2 in place with 5 validation errors
+T11,T,claude-code-subagent,claude-opus-5-5,2026-10-05,FNGM,,0,4,5,4,4,partly,,0,5,5,Tilt only ~1deg of 2deg corrected (paper-corner warp); report calls residual wall lean the drawn slant; line list hand-entered; r2 clean SVG edits
+T11,C,claude-code-subagent,claude-opus-5-5,2026-10-05,74SD,,0,5,5,4,5,yes,,0,5,5,All gaps closed and walls snapped vertical; apex X reduced and wall-top merged into eave; r2 new script on strokes.json with zero drift

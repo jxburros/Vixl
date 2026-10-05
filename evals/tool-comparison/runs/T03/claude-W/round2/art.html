@@ -1,0 +1,117 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Harbor Lights art</title>
+<style>html,body{margin:0;background:#000}canvas{display:block;width:1080px;height:1656px}</style></head>
+<body><canvas id="c"></canvas>
+<script>
+setTimeout(()=>{
+// Background artwork for the full bleed page (11.25 x 17.25 in) at 300 dpi.
+const DPI = 300, W = Math.round(11.25*DPI), H = Math.round(17.25*DPI); // 3375 x 5175
+const S = DPI/96;               // CSS px -> device px (page is 1080 x 1656 CSS px)
+const c = document.getElementById('c'); c.width = W; c.height = H;
+let g = c.getContext('2d');
+let seed = 20261205; const rnd = () => (seed = (seed*1664525 + 1013904223) >>> 0) / 4294967296;
+const HZ = 840*S;               // waterline (CSS y 840)
+
+// Sky
+let sky = g.createLinearGradient(0,0,0,HZ);
+sky.addColorStop(0,'#07101f'); sky.addColorStop(0.55,'#0f1d36'); sky.addColorStop(1,'#1f2c48');
+g.fillStyle = sky; g.fillRect(0,0,W,HZ);
+// faint stars in upper sky
+for (let i=0;i<220;i++){ const x=rnd()*W, y=rnd()*HZ*0.55, r=(rnd()*1.3+0.4)*S*0.7;
+  g.fillStyle=`rgba(230,225,210,${0.15+rnd()*0.45})`; g.beginPath(); g.arc(x,y,r,0,7); g.fill(); }
+
+// Water
+let wat = g.createLinearGradient(0,HZ,0,H);
+wat.addColorStop(0,'#16233d'); wat.addColorStop(0.35,'#0b1529'); wat.addColorStop(1,'#050a16');
+g.fillStyle = wat; g.fillRect(0,HZ,W,H-HZ);
+
+// Lantern strings (catenary-ish). Each: y at ends, sag, list of lanterns.
+const palette = ['#f2a541','#e8643c','#f6c75a','#d9483b','#f08a4b','#f7d98a'];
+const strings = [
+  {y0:350, y1:330, sag:140, n:9,  r:34},
+  {y0:470, y1:500, sag:160, n:11, r:27},
+  {y0:600, y1:575, sag:120, n:13, r:21},
+];
+const lanterns = [];
+function sy(st,t){ return (st.y0+(st.y1-st.y0)*t + st.sag*4*t*(1-t))*S; }
+// global warm haze around lanterns
+let haze = g.createRadialGradient(W/2,470*S,50*S,W/2,470*S,700*S);
+haze.addColorStop(0,'rgba(242,150,70,0.22)'); haze.addColorStop(1,'rgba(242,150,70,0)');
+g.fillStyle=haze; g.fillRect(0,0,W,HZ);
+
+// distant quay silhouette at waterline
+g.fillStyle='#0a1222';
+let x=-20*S; const quay=[];
+while(x<W){ const w=(40+rnd()*90)*S, h=(18+rnd()*60)*S; quay.push([x,w,h]); g.fillRect(x,HZ-h,w,h+1); x+=w; }
+// tiny windows
+for (const [qx,qw,qh] of quay){ for(let k=0;k<qw/(14*S);k++){ if(rnd()<0.35){
+  const wx=qx+k*14*S+4*S, wy=HZ-qh+6*S+rnd()*(qh-14*S);
+  g.fillStyle=`rgba(247,205,120,${0.5+rnd()*0.4})`; g.fillRect(wx,wy,3.5*S,4.5*S);
+  // window reflection
+  g.fillStyle='rgba(247,205,120,0.16)'; g.fillRect(wx-1*S,HZ+(HZ-wy)*0.9-3*S,5.5*S,10*S);} } }
+
+for (const st of strings){
+  g.strokeStyle='rgba(20,18,22,0.9)'; g.lineWidth=2.2*S; g.beginPath();
+  for(let i=0;i<=200;i++){const t=i/200; const px=-20*S+(W+40*S)*t; const py=sy(st,t); i?g.lineTo(px,py):g.moveTo(px,py);} g.stroke();
+  for(let i=0;i<st.n;i++){ const t=(i+0.5)/st.n; const px=-20*S+(W+40*S)*t;
+    lanterns.push({x:px, y:sy(st,t)+ (st.r*1.25+10)*S, top:sy(st,t), r:st.r*S*(0.9+rnd()*0.25), col:palette[Math.floor(rnd()*palette.length)]}); }
+}
+
+function lantern(L){
+  const {x,y,r,col}=L, rx=r, ry=r*1.12;
+  // hanging cord
+  g.strokeStyle='rgba(20,18,22,0.9)'; g.lineWidth=1.6*S; g.beginPath(); g.moveTo(x,L.top); g.lineTo(x,y-ry); g.stroke();
+  // glow
+  let gl=g.createRadialGradient(x,y,r*0.2,x,y,r*3.6);
+  gl.addColorStop(0,hexA(col,0.55)); gl.addColorStop(0.4,hexA(col,0.18)); gl.addColorStop(1,hexA(col,0));
+  g.fillStyle=gl; g.beginPath(); g.arc(x,y,r*3.6,0,7); g.fill();
+  // body
+  let b=g.createRadialGradient(x-rx*0.2,y-ry*0.15,r*0.1,x,y,rx*1.1);
+  b.addColorStop(0,'#fff4d6'); b.addColorStop(0.35,col); b.addColorStop(1,shade(col,0.55));
+  g.fillStyle=b; g.beginPath(); g.ellipse(x,y,rx,ry,0,0,7); g.fill();
+  // ribs
+  g.save(); g.beginPath(); g.ellipse(x,y,rx,ry,0,0,7); g.clip();
+  g.strokeStyle=hexA(shade(col,0.45),0.45); g.lineWidth=1.1*S;
+  for(let k=-3;k<=3;k++){ const yy=y+k*ry*0.27; g.beginPath(); g.moveTo(x-rx,yy); g.quadraticCurveTo(x,yy+(k*ry*0.05),x+rx,yy); g.stroke(); }
+  g.restore();
+  // caps
+  g.fillStyle='#2a1c14'; g.fillRect(x-rx*0.42,y-ry-3*S,rx*0.84,6*S); g.fillRect(x-rx*0.42,y+ry-3*S,rx*0.84,6*S);
+  // tassel
+  g.strokeStyle=hexA(col,0.9); g.lineWidth=1.4*S; g.beginPath(); g.moveTo(x,y+ry+3*S); g.lineTo(x,y+ry+r*0.6); g.stroke();
+}
+function reflection(L){
+  const ry0 = HZ + (HZ-L.y)*0.82;   // mirrored, slightly compressed
+  const n=9;
+  const g0=g; g=rg; g.save();
+  for(let k=0;k<n;k++){
+    const t=k/(n-1); const yy=ry0-L.r*1.4+t*L.r*3.4 + (rnd()-0.5)*6*S;
+    const w=L.r*(1.6-Math.abs(t-0.45)*1.4)*(0.7+rnd()*0.6); if(w<=0) continue;
+    const off=Math.sin(k*1.7+L.x*0.003)*L.r*0.35;
+    g.fillStyle=hexA(L.col,0.34*(1-Math.abs(t-0.45))); g.beginPath();
+    g.ellipse(L.x+off,yy,w,L.r*0.11+1.2*S,0,0,7); g.fill();
+  }
+  // soft vertical column of light
+  let col=g.createLinearGradient(0,ry0-L.r*2,0,ry0+L.r*5);
+  col.addColorStop(0,hexA(L.col,0)); col.addColorStop(0.3,hexA(L.col,0.10)); col.addColorStop(1,hexA(L.col,0));
+  g.fillStyle=col; g.fillRect(L.x-L.r*0.9,ry0-L.r*2,L.r*1.8,L.r*7);
+  g.restore(); g=g0;
+}
+const rc=document.createElement('canvas'); rc.width=W; rc.height=H; const rg=rc.getContext('2d');
+for(const L of lanterns) reflection(L);
+g.save(); g.filter=`blur(${3.6*S}px)`; g.drawImage(rc,0,0); g.restore();
+// ripples across the water
+for(let i=0;i<900;i++){ const y=HZ+Math.pow(rnd(),1.6)*(H-HZ); const d=(y-HZ)/(H-HZ);
+  const w=(20+rnd()*120)*S*(0.5+d); g.strokeStyle=`rgba(150,175,215,${0.05+0.08*(1-d)})`; g.lineWidth=(0.8+d*1.6)*S;
+  const x0=rnd()*W; g.beginPath(); g.moveTo(x0,y); g.quadraticCurveTo(x0+w/2,y-2*S,x0+w,y); g.stroke(); }
+// waterline shimmer
+g.fillStyle='rgba(240,190,120,0.18)'; g.fillRect(0,HZ-1*S,W,2*S);
+for(const L of lanterns) lantern(L);
+// darken bottom for text legibility
+let vb=g.createLinearGradient(0,1180*S,0,H); vb.addColorStop(0,'rgba(4,8,18,0)'); vb.addColorStop(0.35,'rgba(4,8,18,0.6)'); vb.addColorStop(1,'rgba(4,8,18,0.85)');
+g.fillStyle=vb; g.fillRect(0,1180*S,W,H-1180*S);
+
+function hexA(h,a){const n=parseInt(h.slice(1),16);return `rgba(${n>>16},${(n>>8)&255},${n&255},${a})`;}
+function shade(h,f){const n=parseInt(h.slice(1),16);const r=Math.round((n>>16)*f),gg=Math.round(((n>>8)&255)*f),b=Math.round((n&255)*f);return '#'+((1<<24)+(r<<16)+(gg<<8)+b).toString(16).slice(1);}
+window.ART_DONE=true;
+},0);
+</script></body></html>

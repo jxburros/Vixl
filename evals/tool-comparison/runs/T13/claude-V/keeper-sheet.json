@@ -1,0 +1,55 @@
+{
+  "width": 192,
+  "height": 32,
+  "loop": 0,
+  "frames": [
+    {
+      "name": "idle1",
+      "duration": 400,
+      "x": 0,
+      "y": 0,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "name": "idle2",
+      "duration": 400,
+      "x": 32,
+      "y": 0,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "name": "walk1",
+      "duration": 120,
+      "x": 64,
+      "y": 0,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "name": "walk2",
+      "duration": 120,
+      "x": 96,
+      "y": 0,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "name": "walk3",
+      "duration": 120,
+      "x": 128,
+      "y": 0,
+      "width": 32,
+      "height": 32
+    },
+    {
+      "name": "walk4",
+      "duration": 120,
+      "x": 160,
+      "y": 0,
+      "width": 32,
+      "height": 32
+    }
+  ]
+}

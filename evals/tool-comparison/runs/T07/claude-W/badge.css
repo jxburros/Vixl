@@ -1,0 +1,17 @@
+@font-face{font-family:"Instrument Sans";font-weight:700;src:url(fonts/InstrumentSans-Bold.ttf)}
+@font-face{font-family:"Instrument Sans";font-weight:400;src:url(fonts/InstrumentSans-Regular.ttf)}
+*{box-sizing:border-box;margin:0;padding:0}
+.badge{position:relative;width:1200px;height:900px;background:#fbf8f2;overflow:hidden;
+  font-family:"Instrument Sans","WenQuanYi Zen Hei",sans-serif;color:#14263b}
+.badge .event{position:absolute;left:70px;right:70px;top:56px;height:96px;border-bottom:4px solid var(--role)}
+.badge .event-name{font-weight:700;font-size:40px;line-height:46px;letter-spacing:.5px;white-space:nowrap}
+.badge .event-date{font-weight:400;font-size:30px;line-height:40px;color:#3d4f63;white-space:nowrap}
+.badge .names{position:absolute;left:70px;right:70px;top:180px;bottom:250px;
+  display:flex;flex-direction:column;justify-content:center}
+.badge .fit{white-space:nowrap;display:block;width:max-content;max-width:none}
+.badge .first{font-weight:700;font-size:210px;line-height:1.1;letter-spacing:-2px}
+.badge .last{font-weight:700;font-size:104px;line-height:1.2;margin-top:4px}
+.badge .company{font-weight:400;font-size:58px;line-height:1.25;margin-top:16px;color:#3d4f63}
+.badge .bar{position:absolute;left:0;right:0;bottom:0;height:200px;background:var(--role);
+  display:flex;align-items:center;justify-content:center}
+.badge .role{font-weight:700;font-size:100px;letter-spacing:12px;text-transform:uppercase;white-space:nowrap;color:var(--ink)}

@@ -1,0 +1,38 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+*{margin:0;box-sizing:border-box}
+body{width:1600px;height:1200px;font-family:"DejaVu Sans",sans-serif;display:grid;grid-template-rows:600px 600px}
+.half{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:330px 270px;padding:36px 48px;gap:16px 40px;position:relative}
+.cream{background:#f7f1e5;color:#14263b}.navy{background:#14263b;color:#f7f1e5}
+.cell{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px}
+.lab{position:absolute;left:48px;top:14px;font-size:13px;letter-spacing:.12em;text-transform:uppercase;opacity:.7}
+.cap{font-size:12px;letter-spacing:.08em;opacity:.65;text-transform:uppercase}
+.row{display:flex;align-items:flex-end;gap:36px}
+.sz{display:flex;flex-direction:column;align-items:center;gap:8px}
+img{image-rendering:auto;display:block}
+</style></head><body>
+<section class="half cream"><div class="lab">On cream #f7f1e5</div>
+ <div class="cell"><img src="../logo-horizontal.svg" style="width:700px"><div class="cap">logo-horizontal</div></div>
+ <div class="cell"><img src="../logo-stacked.svg" style="height:270px"><div class="cap">logo-stacked</div></div>
+ <div class="cell"><div class="row"><div class="sz"><img src="../mark.svg" style="width:120px"><div class="cap">mark</div></div><div class="sz"><img src="../mark-mono.svg" style="width:120px"><div class="cap">mark-mono</div></div></div></div>
+ <div class="cell"><div class="row">
+   <div class="sz"><img src="px/mark-16.png" width="16" height="16"><div class="cap">16 px</div></div>
+   <div class="sz"><img src="px/mark-32.png" width="32" height="32"><div class="cap">32 px</div></div>
+   <div class="sz"><img src="px/mark-64.png" width="64" height="64"><div class="cap">64 px</div></div>
+   <div class="sz"><img src="px/mono-16.png" width="16" height="16"><div class="cap">mono 16</div></div>
+   <div class="sz"><img src="px/mono-32.png" width="32" height="32"><div class="cap">mono 32</div></div>
+   <div class="sz"><img src="px/mono-64.png" width="64" height="64"><div class="cap">mono 64</div></div>
+ </div><div class="cap">actual size, 1:1 pixels</div></div>
+</section>
+<section class="half navy"><div class="lab">On navy #14263b (reversed: cream lettering and waves)</div>
+ <div class="cell"><img src="logo-horizontal-reverse.svg" style="width:700px"><div class="cap">logo-horizontal (reverse)</div></div>
+ <div class="cell"><img src="logo-stacked-reverse.svg" style="height:270px"><div class="cap">logo-stacked (reverse)</div></div>
+ <div class="cell"><div class="row"><div class="sz"><img src="mark-reverse.svg" style="width:120px"><div class="cap">mark (reverse)</div></div><div class="sz"><img src="mark-mono-reverse.svg" style="width:120px"><div class="cap">mono (cream)</div></div></div></div>
+ <div class="cell"><div class="row">
+   <div class="sz"><img src="px/rev-16.png" width="16" height="16"><div class="cap">16 px</div></div>
+   <div class="sz"><img src="px/rev-32.png" width="32" height="32"><div class="cap">32 px</div></div>
+   <div class="sz"><img src="px/rev-64.png" width="64" height="64"><div class="cap">64 px</div></div>
+   <div class="sz"><img src="px/monorev-16.png" width="16" height="16"><div class="cap">mono 16</div></div>
+   <div class="sz"><img src="px/monorev-32.png" width="32" height="32"><div class="cap">mono 32</div></div>
+   <div class="sz"><img src="px/monorev-64.png" width="64" height="64"><div class="cap">mono 64</div></div>
+ </div><div class="cap">actual size, 1:1 pixels</div></div>
+</section></body></html>

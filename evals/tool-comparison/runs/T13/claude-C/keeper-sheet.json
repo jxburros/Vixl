@@ -1,0 +1,69 @@
+{
+  "image": "keeper-sheet.png",
+  "size": {
+    "w": 192,
+    "h": 32
+  },
+  "frames": [
+    {
+      "name": "idle_1",
+      "x": 0,
+      "y": 0,
+      "width": 32,
+      "height": 32,
+      "duration": 400
+    },
+    {
+      "name": "idle_2",
+      "x": 32,
+      "y": 0,
+      "width": 32,
+      "height": 32,
+      "duration": 400
+    },
+    {
+      "name": "walk_1",
+      "x": 64,
+      "y": 0,
+      "width": 32,
+      "height": 32,
+      "duration": 120
+    },
+    {
+      "name": "walk_2",
+      "x": 96,
+      "y": 0,
+      "width": 32,
+      "height": 32,
+      "duration": 120
+    },
+    {
+      "name": "walk_3",
+      "x": 128,
+      "y": 0,
+      "width": 32,
+      "height": 32,
+      "duration": 120
+    },
+    {
+      "name": "walk_4",
+      "x": 160,
+      "y": 0,
+      "width": 32,
+      "height": 32,
+      "duration": 120
+    }
+  ],
+  "animations": {
+    "idle": [
+      "idle_1",
+      "idle_2"
+    ],
+    "walk": [
+      "walk_1",
+      "walk_2",
+      "walk_3",
+      "walk_4"
+    ]
+  }
+}
