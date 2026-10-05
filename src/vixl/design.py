@@ -561,7 +561,12 @@ def validate_design(project, state):
                         "Invalid organic recipe", "invalid_project")
             sides = layer.get("sides", 5)
             require(isinstance(sides, int) and 3 <= sides <= 128, "Polygons/stars require 3–128 sides")
-            finite(layer.get("inner_radius", 0.5), "inner radius", 0.01, 1)
+            if layer["shape"] == "arc":
+                from .wedge import check_arc
+
+                check_arc(layer)
+            else:
+                finite(layer.get("inner_radius", 0.5), "inner radius", 0.01, 1)
         if kind == "gradient":
             validate_gradient(layer, state)
         if kind == "frame":

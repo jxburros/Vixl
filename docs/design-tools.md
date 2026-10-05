@@ -17,7 +17,29 @@ vixl clip stripes sun
 
 The stripe stays one editable layer. Repeat counts include the original; `dx/dy` are nonnegative offsets between copies and `dw/dh` change each copy's size. `repeat-blend stripe --count 16 --dy 37 --end '{"height":21,"fill":"#4853a4"}'` interpolates size and RGBA color to the last copy. Reapplying repeat replaces its settings; `--count 1` leaves only the original. Counts are bounded to 512 and all resulting dimensions are checked before allocation.
 
-Shapes support `rectangle`, `rounded-rectangle`, `ellipse`, `polygon`, `star`, and `line`; options include `--fill`, `--stroke`, `--stroke-width`, `--radius`, `--sides`, and star `--inner-radius` (0.01–1). Geometry is retained and redrawn at the layer's current size with bounded antialiasing. Version 0.11.0 adds named shape shortcuts and editable single-contour Bézier paths, plus SVG export of simple geometry. See [design resources and vector export](agent-resources.md) for syntax and raster fallback limits.
+Shapes support `rectangle`, `rounded-rectangle`, `ellipse`, `polygon`, `star`, `arc`, and `line`; options include `--fill`, `--stroke`, `--stroke-width`, `--radius`, `--sides`, and star `--inner-radius` (0.01–1). Geometry is retained and redrawn at the layer's current size with bounded antialiasing. Version 0.11.0 adds named shape shortcuts and editable single-contour Bézier paths, plus SVG export of simple geometry. See [design resources and vector export](agent-resources.md) for syntax and raster fallback limits.
+
+### Arcs, pie wedges and donut segments
+
+`shape: "arc"` draws a slice of the ellipse that fills the layer box. `start_angle` and `end_angle`
+are degrees, 0 at 3 o'clock and growing clockwise (as SVG and gradient angles do), so -90 is 12
+o'clock; the wedge runs clockwise from start to end, an `end_angle` below the start wraps around,
+and 360° or more past the start is the full disc or ring (the default when you give no angles).
+`inner_radius` (0–0.99, a fraction of the outer radius, default 0) cuts the hole: 0 is a pie wedge,
+0.6 a donut segment. Wedges that share one box and differ only in their angles make a pie or donut
+chart:
+
+```bash
+vixl shape arc --name flat-white --width 300 --height 300 --x 50 --y 50 --start-angle -90 --end-angle 70.6 --fill '#14263b'
+vixl shape arc --name drip --width 300 --height 300 --x 50 --y 50 --start-angle 70.6 --end-angle 192 --inner-radius 0.55 --fill '#f2a541'
+```
+
+Each wedge is one editable layer; a visible stroke is drawn inside the box, so strokes of
+neighbouring wedges meet cleanly. A non-square box gives elliptical wedges. SVG, PDF and PowerPoint
+exports write native curves (no arc commands, no raster), and the spellings `pie`, `wedge`, `donut`,
+`ring` and `sector` are accepted for `shape` (`donut`/`ring` start with an inner radius of 0.6/0.8).
+`vixl.wedge.wedge_path(cx, cy, radius, start, end, inner=0, aspect=1)` returns the same outline as
+SVG path data for code that draws its own wedges, such as chart layers.
 
 Groups preserve member stacking order and use local child coordinates. Moving, hiding, masking, styling, or changing the opacity of a group affects its combined contents once. Groups nest to 16 dependency levels and duplicate with independent child IDs; edits address children by their existing names or IDs. A group's layout box is the union of member bounds at creation; constraints, alignment, `resize` and `canvas` inside the group use that box. Groups do not clip: members that later move, grow or rotate past the box (an animated limb, a resized sprite) still draw, and scale, flip and rotate with the group. `inspect` adds `drawn_bounds` to a layer that draws past its box. Resizing transforms the combined group raster; a group holding only pixel layers resamples nearest-neighbor, so scaled sprites stay crisp. Constraints between layers and clipping references must stay among siblings; `canvas` inside a group means the group's local content box. Grouping nonadjacent layers places the group at the highest selected slot.
 

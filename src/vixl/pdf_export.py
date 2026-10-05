@@ -306,7 +306,7 @@ class PageBuilder:
 
     def shape(self, layer, w, h, opacity):
         from .design import resolve_color
-        from .geometry import parse_path, shape_path
+        from .geometry import PATH_SHAPES, parse_path, shape_path
         from .render import color
 
         state = self.view.state
@@ -314,7 +314,7 @@ class PageBuilder:
         stroke = color(resolve_color(layer.get("stroke", "transparent"), state))
         width = layer.get("stroke_width", 1)
         shape = layer["shape"]
-        if shape == "path":
+        if shape in PATH_SHAPES:
             path, view = shape_path(layer)
             scale = affine(w / view[0], 0, 0, h / view[1])
             geometry = path_ops(parse_path(path))

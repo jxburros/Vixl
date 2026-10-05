@@ -188,7 +188,7 @@ class Slide:
             # writer does).
             pad = width / 2 if stroke_alpha > 0 else 0
             inset = {"rectangle": 2 * pad, "rounded-rectangle": 2 * pad, "capsule": 2 * pad, "ellipse": 2 * pad,
-                     "path": 0}.get(layer["shape"], pad)
+                     "path": 0, "arc": 0}.get(layer["shape"], pad)
             rw, rh = rest_size(layer)
             if inset and min(rw, rh) - 2 * inset >= 1:
                 frame = (inset, inset, rw - 2 * inset, rh - 2 * inset)
