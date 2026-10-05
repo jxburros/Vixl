@@ -782,7 +782,9 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         time: float | str | None = None,
         page: Annotated[int | str | None, Field(description="One page of a multi-page document")] = None,
         pages: Annotated[list[int | str] | str | None, Field(description="PDF/PPTX pages: [1, 3] or '1-3,intro'")] = None,
-        pdf_content: Literal["vector", "raster"] | None = None,
+        pdf_content: Annotated[Literal["vector", "raster"] | None, Field(
+            description="PDF pages as vector text and shapes (the default, RGB or CMYK) or as one image per page; "
+                        "the result's content and content_reason say which was written")] = None,
         fillable: Annotated[bool, Field(description="PDF with fillable form fields")] = False,
         values: Annotated[dict | None, Field(description="Form field values by key: a filled copy (nothing is saved)")] = None,
         fill_mode: Literal["flatten", "editable"] = "flatten",
@@ -794,9 +796,11 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         """Export to a workspace file, format from extension (PNG/JPEG/WEBP/TIFF/AVIF/SVG/PDF/ICO/PPTX), full
         size by default. color_space=cmyk separates JPEG/TIFF/PDF for print (with an ICC profile for press
         accuracy, else device-naive GCR with black_generation and ink_limit); dpi defaults to the canvas
-        dpi. SVG policy strict rejects any embedded raster fallback. time exports one timeline frame. A
-        multi-page document exports every shown page to PDF (vector text) or PowerPoint (editable slides
-        with speaker notes). fillable writes PDF form fields; values fills them (flatten draws them into the
+        dpi (a multi-page screen document is a 7.5 in tall slide, as in PPTX; dpi sizes both). SVG policy strict
+        rejects any embedded raster fallback. time exports one timeline frame. PDF is vector by default, CMYK
+        too: real text, vector shapes and colours in DeviceCMYK, with images only for effects and the like
+        (see raster_fallbacks). A multi-page document exports every shown page to PDF or PowerPoint (editable
+        slides with speaker notes; its warnings name fonts to install). fillable writes PDF form fields; values fills them (flatten draws them into the
         artwork, editable prefills a fillable PDF). PNG and other alpha formats are RGB when the image is opaque;
         alpha=flatten forces RGB on background, alpha=keep forces RGBA. Print-size PDFs measure exactly trim +
         bleed with TrimBox and BleedBox. Returns file metadata, never image bytes."""

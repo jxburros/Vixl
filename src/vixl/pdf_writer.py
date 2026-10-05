@@ -139,21 +139,23 @@ class Writer:
 # Images
 
 
-def image_xobject(writer, image, *, jpeg_quality=None):
-    """An image XObject (with an SMask for transparency). RGB(A), L, LA and CMYK images."""
+def image_xobject(writer, image, *, jpeg_quality=None, alpha=None):
+    """An image XObject (with an SMask for transparency). RGB(A), L, LA and CMYK images; ``alpha``
+    (an L image) is the transparency of an image that has no alpha channel of its own, such as a
+    separated CMYK tile."""
 
     mode = image.mode
     smask = None
     if mode in ("RGBA", "LA", "PA") or (mode == "P" and "transparency" in image.info):
         rgba = image.convert("RGBA")
         alpha = rgba.getchannel("A")
-        if alpha.getextrema() != (255, 255):
-            smask = writer.add_stream({"Type": Name("XObject"), "Subtype": Name("Image"), "Width": alpha.width,
-                                       "Height": alpha.height, "ColorSpace": Name("DeviceGray"), "BitsPerComponent": 8},
-                                      alpha.tobytes())
         image = rgba.convert("RGB")
     elif mode not in ("RGB", "L", "CMYK"):
         image = image.convert("RGB")
+    if alpha is not None and alpha.getextrema() != (255, 255):
+        smask = writer.add_stream({"Type": Name("XObject"), "Subtype": Name("Image"), "Width": alpha.width,
+                                   "Height": alpha.height, "ColorSpace": Name("DeviceGray"), "BitsPerComponent": 8},
+                                  alpha.tobytes())
     space = {"RGB": "DeviceRGB", "L": "DeviceGray", "CMYK": "DeviceCMYK"}[image.mode]
     dictionary = {"Type": Name("XObject"), "Subtype": Name("Image"), "Width": image.width, "Height": image.height,
                   "ColorSpace": Name(space), "BitsPerComponent": 8, "SMask": smask}

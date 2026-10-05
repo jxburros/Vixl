@@ -190,7 +190,7 @@ def output_options(args, command):
     p.add_argument("--show-guides", action="store_true", help="Draw the document's guides over a raster render")
     p.add_argument("--page", help="Page name or number of a multi-page document; 'all' renders a contact sheet")
     p.add_argument("--pages", help="PDF/PowerPoint pages: numbers, ranges and names, e.g. 1-3,5,intro")
-    p.add_argument("--pdf-content", choices=["vector", "raster"], help="PDF pages as vector text and shapes, or images")
+    p.add_argument("--pdf-content", choices=["vector", "raster"], help="PDF pages as vector text and shapes (default, also CMYK) or one image per page")
     p.add_argument("--columns", type=int, help="Contact sheet columns with --page all")
     p.add_argument("--fillable", action="store_true", help="PDF with fillable form fields")
     p.add_argument("--fill-mode", choices=["flatten", "editable"], default="flatten",

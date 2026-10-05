@@ -32,6 +32,8 @@ A document becomes multi-page with the first `page add`; each page has its own l
   page, projected type size (points) and speaker notes.
 - Export `deck.pdf` (vector, selectable text) or `deck.pptx` (editable slides, notes);
   `pages: "1-3,intro"` picks pages; `export slide.png --pages all` writes numbered files.
+  The deck's PDF pages and PPTX slides are the same size (7.5 in tall for a screen canvas, so
+  1920×1080 is 13.33 × 7.5 in); `dpi` sets both. The result's `page_size` shows it.
 - Name each slide's title layer `title` so it becomes the PowerPoint title placeholder.
 
 Full reference: `docs/slides.md`.

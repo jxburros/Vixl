@@ -967,15 +967,24 @@ def flatten(image, background="white"):
     return base.convert("RGB")
 
 
-def cmyk_image(image, *, profile=None, intent="relative", black=1.0, ink_limit=None, background="white"):
-    """Separate an RGBA render into a CMYK image (alpha is flattened onto ``background``)."""
+def separation_transform(profile, intent="relative"):
+    """The sRGB → CMYK colour transform of an ICC profile, to reuse across many ``cmyk_image`` calls."""
+    from PIL import ImageCms
+
+    return ImageCms.buildTransform(ImageCms.createProfile("sRGB"), profile, "RGB", "CMYK", _intent(intent))
+
+
+def cmyk_image(image, *, profile=None, intent="relative", black=1.0, ink_limit=None, background="white",
+               transform=None):
+    """Separate an RGBA render into a CMYK image (alpha is flattened onto ``background``).
+    ``transform`` is a prebuilt ``separation_transform`` of ``profile``."""
     import numpy as np
     from PIL import Image, ImageCms
 
     rgb = flatten(image, background)
     require(ink_limit is None or 1 <= ink_limit <= 4, "Ink limit must be 100–400%")
     if profile is not None:
-        transform = ImageCms.buildTransform(ImageCms.createProfile("sRGB"), profile, "RGB", "CMYK", _intent(intent))
+        transform = transform or separation_transform(profile, intent)
         separated = ImageCms.applyTransform(rgb, transform)
         if ink_limit is None:
             return separated

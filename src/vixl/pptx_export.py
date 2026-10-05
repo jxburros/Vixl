@@ -480,21 +480,24 @@ class Exporter:
         return font
 
 
-def emu_per_pixel(canvas):
-    if canvas.get("dpi"):
-        return 914400 / canvas["dpi"]
-    # Screen documents: 7.5 inches tall, the height of PowerPoint's standard 16:9 and 4:3 slides.
-    return 6858000 / canvas["height"]
+def emu_per_pixel(canvas, dpi=None):
+    """EMU per canvas pixel: an explicit ``dpi``, else the canvas dpi, else a screen document is a
+    standard slide, 7.5 inches tall (``deck_dpi``; the PDF of a multi-page document uses the same)."""
+    from .pdf_export import deck_dpi
+
+    return 914400 / (dpi or canvas.get("dpi") or deck_dpi(canvas))
 
 
-def export_pptx(project, path=None, *, pages=None, report=None):
-    """Write a .pptx with one slide per page. Returns the bytes."""
+def export_pptx(project, path=None, *, pages=None, dpi=None, report=None):
+    """Write a .pptx with one slide per page. Returns the bytes. ``dpi`` sets the pixels per inch
+    of the slides (default: the canvas dpi, or 7.5 inches tall for a screen canvas)."""
     from .deck import title_layer
+    from .model import finite
     from .pdf_export import page_views
     from .render import resolve_layout, resolved_layers
 
     canvas = project.state["canvas"]
-    emu = emu_per_pixel(canvas)
+    emu = emu_per_pixel(canvas, finite(dpi, "dpi", 36, 2400) if dpi else None)
     cx, cy = round(canvas["width"] * emu), round(canvas["height"] * emu)
     require(914400 <= cx <= 51206400 and 914400 <= cy <= 51206400,
             "PowerPoint slides must be 1–56 inches on each side; give the canvas a dpi", field="canvas")
@@ -540,7 +543,9 @@ def export_pptx(project, path=None, *, pages=None, report=None):
             archive.writestr(info, data)
     data = stream.getvalue()
     if report is not None:
-        report.update(slides=len(slides), fonts=sorted(exporter.fonts_used),
+        report.update(slides=len(slides), page_size={"width": round(cx / 914400, 3), "height": round(cy / 914400, 3),
+                                                    "unit": "in"},
+                      fonts=sorted(exporter.fonts_used),
                       raster_fallbacks={str(i): s.fallbacks for i, (_, s) in enumerate(slides, 1) if s.fallbacks},
                       notes=sum(1 for n in notes if n))
     if path:

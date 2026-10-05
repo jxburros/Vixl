@@ -82,18 +82,25 @@ as `master:NAME/layer` in renders and checks.
 
 `export deck.pdf` writes every shown page (or `--pages …`) to one PDF:
 
-- **Vector content** (default): solids, shapes and paths, gradients (PDF shadings), plain groups
+- **Vector content** (default, for every document and also with `--cmyk`): solids, shapes and paths, gradients (PDF shadings), plain groups
   and text become PDF graphics. Text — plain and rich — is real text in embedded TrueType subsets
   with Unicode maps, so it can be selected, searched and read aloud. Synthetic bold and italic
   are drawn as stroked and slanted text. Image layers are images. Anything PDF cannot draw the
   same way (effects, layer styles, masks, clipping, blend modes, adjustment layers, paint and
   pixel art, warped text) is embedded as an image of exactly what Vixl renders and listed under
   `raster_fallbacks` with the reason, so nothing changes appearance silently.
-- `--pdf-content raster` writes each page as one image; CMYK PDF (`--cmyk`) is always raster.
+- `--pdf-content raster` writes each page as one image. The export result says which mode was
+  written: `content` (`vector` or `raster`) and `content_reason` (`default…` or `requested with
+  pdf_content`; scaled, proofed and profile exports are raster, with that as the reason). The
+  default never depends on the kind of document, so re-exporting an edited copy gives the same kind
+  of PDF as the first export.
+- **Page size.** Pages of a multi-page document are the size of its PowerPoint slides: a canvas
+  with a `dpi` keeps its physical size, a screen canvas is 7.5 inches tall, so 1920×1080 is
+  13.33 × 7.5 in in both formats (`page_size` in the result shows it). `dpi` (`--dpi 96`) sets the
+  pixels per inch of the PDF and of the slides alike (1920×1080 at 96 is 20 × 11.25 in). A single
+  screen page is not a deck: its PDF keeps 1 pixel = 1 point unless `dpi` is given.
 - Documents with bleed get a TrimBox and BleedBox. The file is byte-for-byte deterministic: the
   same document always produces the same PDF.
-
-Single-page documents keep their existing PDF export unless pages or `--pdf-content` are given.
 
 ## PowerPoint
 
@@ -113,7 +120,8 @@ slides) that opens in PowerPoint, Keynote, Google Slides and LibreOffice:
 - Master layers are drawn on each slide (as ordinary shapes, so every slide matches the
   render). Speaker notes become the slide notes; transitions carry over.
 - Slide size: canvases with a `dpi` keep their physical size; screen canvases become 7.5 inches
-  tall (PowerPoint's standard height), so 1920×1080 is the usual 13.33 × 7.5 in 16:9 slide.
+  tall (PowerPoint's standard height), so 1920×1080 is the usual 13.33 × 7.5 in 16:9 slide. The
+  PDF of the same deck has the same page size; `dpi` overrides both (see [PDF](#pdf)).
 - Fonts are referenced by family name and listed under `fonts` in the result: install the same
   fonts wherever the deck is presented (PowerPoint substitutes missing ones).
 

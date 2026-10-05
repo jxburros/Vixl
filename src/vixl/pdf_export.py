@@ -5,7 +5,8 @@ text (embedded TrueType subsets with ToUnicode maps, so text can be selected and
 plain groups as PDF graphics; image layers are images. Anything PDF cannot draw the same way
 (effects, layer styles, masks, clipping, blend modes, adjustment layers, paint and pixel layers)
 is embedded as an image of exactly what the renderer draws, and listed under ``raster_fallbacks``.
-``raster`` content writes each page as one image, which also supports CMYK separation.
+``raster`` content writes each page as one image. With ``color_space="cmyk"`` either mode is
+separated: vector colours become DeviceCMYK operators and images become CMYK images (``pdf_color``).
 
 Every page of a multi-page document becomes a PDF page (hidden pages are left out unless named).
 """
@@ -18,6 +19,7 @@ import numpy as np
 
 from .errors import require
 from .model import finite
+from .pdf_color import CMYKPaint, RGBPaint, ramp
 from .pdf_writer import FontSet, Name, Text, Writer, image_xobject
 
 VECTOR_LEAVES = ("solid", "shape", "gradient", "text")
@@ -114,8 +116,9 @@ def rounded_ops(x, y, w, h, r):
 class PageBuilder:
     """Content stream and resources for one PDF page, in canvas pixels (y down)."""
 
-    def __init__(self, document, view, writer, fonts, images):
+    def __init__(self, document, view, writer, fonts, images, paint=None):
         self.document, self.view, self.writer, self.fonts, self.images = document, view, writer, fonts, images
+        self.paint = paint or RGBPaint()
         self.ops = []
         self.xobjects, self.states, self.shadings = {}, {}, {}
         self.fallbacks = []
@@ -138,7 +141,7 @@ class PageBuilder:
 
         key = hashlib.sha256(image.mode.encode() + str(image.size).encode() + image.tobytes()).hexdigest()
         if key not in self.images:
-            self.images[key] = image_xobject(self.writer, image)
+            self.images[key] = self.paint.image(self.writer, image)
         name = next((n for n, ref in self.xobjects.items() if ref is self.images[key]), None)
         if name is None:
             name = f"Im{len(self.xobjects) + 1}"
@@ -161,16 +164,11 @@ class PageBuilder:
             colors.insert(0, (0.0, colors[0][1]))
         if colors[-1][0] < 1:
             colors.append((1.0, colors[-1][1]))
-        functions = [{"FunctionType": 2, "Domain": [0, 1], "C0": [c / 255 for c in a[:3]], "C1": [c / 255 for c in b[:3]], "N": 1}
-                     for (_, a), (_, b) in zip(colors, colors[1:])]
-        if len(functions) == 1:
-            function = functions[0]
-        else:
-            function = {"FunctionType": 3, "Domain": [0, 1], "Functions": functions,
-                        "Bounds": [offset for offset, _ in colors[1:-1]], "Encode": [0, 1] * len(functions)}
+        function = ramp(self.paint, colors)
+        space = Name(self.paint.space)
         direction = layer.get("direction", "vertical")
         if direction == "radial":
-            shading = {"ShadingType": 3, "ColorSpace": Name("DeviceRGB"), "Coords": [0.5, 0.5, 0, 0.5, 0.5, 0.5],
+            shading = {"ShadingType": 3, "ColorSpace": space, "Coords": [0.5, 0.5, 0, 0.5, 0.5, 0.5],
                        "Function": function, "Extend": [True, True]}
         else:
             if direction == "horizontal":
@@ -182,7 +180,7 @@ class PageBuilder:
                 u = np.array([math.cos(a), math.sin(a)]) / (abs(math.cos(a)) + abs(math.sin(a)))
                 v = u / max(float(u @ u), 1e-12)
                 coords = [0.5 - 0.5 * v[0], 0.5 - 0.5 * v[1], 0.5 + 0.5 * v[0], 0.5 + 0.5 * v[1]]
-            shading = {"ShadingType": 2, "ColorSpace": Name("DeviceRGB"), "Coords": coords, "Function": function,
+            shading = {"ShadingType": 2, "ColorSpace": space, "Coords": coords, "Function": function,
                        "Extend": [True, True]}
         name = f"Sh{len(self.shadings) + 1}"
         self.shadings[name] = self.writer.add(shading)
@@ -293,16 +291,14 @@ class PageBuilder:
         if rgba[3] == 0:
             return
         state_name = self.alpha(rgba[3] / 255 * opacity, 1)
-        self.ops += (["q", f"/{state_name} gs"] if state_name else ["q"]) + [
-            f"{_fmt(rgba[0] / 255)} {_fmt(rgba[1] / 255)} {_fmt(rgba[2] / 255)} rg", *geometry, rule, "Q"]
+        self.ops += (["q", f"/{state_name} gs"] if state_name else ["q"]) + [self.paint.fill(rgba), *geometry, rule, "Q"]
 
     def stroke_ops(self, geometry, rgba, width, opacity, cap=0, join=0):
         if rgba[3] == 0 or width <= 0:
             return
         state_name = self.alpha(1, rgba[3] / 255 * opacity)
         self.ops += (["q", f"/{state_name} gs"] if state_name else ["q"]) + [
-            f"{_fmt(rgba[0] / 255)} {_fmt(rgba[1] / 255)} {_fmt(rgba[2] / 255)} RG", f"{_fmt(width)} w", f"{cap} J",
-            f"{join} j", *geometry, "S", "Q"]
+            self.paint.stroke(rgba), f"{_fmt(width)} w", f"{cap} J", f"{join} j", *geometry, "S", "Q"]
 
     def shape(self, layer, w, h, opacity):
         from .design import resolve_color
@@ -464,9 +460,8 @@ class PageBuilder:
                         self.ops += block + ["ET", "Q"]
                     current = key
                     state_name = self.alpha(paint[3] / 255 * opacity, paint[3] / 255 * opacity)
-                    rgb = f"{_fmt(paint[0] / 255)} {_fmt(paint[1] / 255)} {_fmt(paint[2] / 255)}"
-                    setup = ["q"] + ([f"/{state_name} gs"] if state_name else []) + [f"{rgb} rg", f"{rgb} RG", "BT",
-                                                                                      f"/{resource} 1 Tf"]
+                    setup = ["q"] + ([f"/{state_name} gs"] if state_name else []) + [
+                        self.paint.fill(paint), self.paint.stroke(paint), "BT", f"/{resource} 1 Tf"]
                     if mode == "stroke":
                         setup += ["1 Tr", "1 j"]
                     elif bold:
@@ -539,6 +534,13 @@ def page_views(project, pages=None):
     return [(record["name"], view_page(project, record["id"])) for record in records]
 
 
+def deck_dpi(canvas):
+    """Pixels per inch of a screen canvas (one without a ``dpi``) as a slide: 7.5 inches tall,
+    PowerPoint's standard height, so 1920×1080 is the usual 13.33 × 7.5 in slide. The PDF pages of
+    a multi-page document and its PowerPoint slides share this size."""
+    return canvas["height"] / 7.5
+
+
 def page_geometry(canvas, dpi):
     """(width, height, kx, ky, bleed) of a page in points for a canvas exported at ``dpi``.
 
@@ -573,9 +575,13 @@ def export_pdf(project, path=None, *, pages=None, content="vector", dpi=None, ba
     the widgets. ``report`` (a dict) receives raster fallbacks per page."""
     require(content in ("vector", "raster"), "pdf content must be vector or raster", field="content")
     require(color_space in ("rgb", "cmyk"), "Color space must be rgb or cmyk")
-    require(color_space == "rgb" or content == "raster", "CMYK PDF pages are raster; use content raster", field="content")
     canvas = project.state["canvas"]
-    dpi = finite(dpi or canvas.get("dpi") or 72, "dpi", 36, 2400)
+    if dpi:
+        dpi = finite(dpi, "dpi", 36, 2400)
+    else:
+        # Print sizes keep their physical size; pages of a deck are slides; one screen page is 1 px = 1 pt.
+        dpi = canvas.get("dpi") or (deck_dpi(canvas) if project.state.get("pages") else 72)
+    paint = CMYKPaint(**(separation or {})) if color_space == "cmyk" else RGBPaint()
     views = views if views is not None else page_views(project, pages)
     stream = io.BytesIO()
     writer = Writer(stream)
@@ -584,13 +590,16 @@ def export_pdf(project, path=None, *, pages=None, content="vector", dpi=None, ba
     pages_ref = writer.reserve()
     kids = []
     fallbacks = {}
+    page_size = None
     from .design import resolve_color
     from .render import color, render
 
     for number, (label, view) in enumerate(views):
         c = view.state["canvas"]
         width, height, kx, ky, bleed = page_geometry(c, dpi)
-        builder = PageBuilder(project, view, writer, fonts, images)
+        if page_size is None:
+            page_size = {"width": round(width / 72, 3), "height": round(height / 72, 3), "unit": "in"}
+        builder = PageBuilder(project, view, writer, fonts, images, paint)
         builder.k, builder.ky, builder.fillable = kx, ky, fillable
         builder.ops.append(f"{_fmt(kx)} 0 0 {_fmt(-ky)} 0 {_fmt(height)} cm")
         if content == "raster":
@@ -665,7 +674,8 @@ def export_pdf(project, path=None, *, pages=None, content="vector", dpi=None, ba
     writer.finish(root, info)
     data = stream.getvalue()
     if report is not None:
-        report.update(pages=len(kids), raster_fallbacks=fallbacks, fonts=len(fonts.fonts))
+        report.update(pages=len(kids), content=content, color_space=color_space, raster_fallbacks=fallbacks,
+                      fonts=len(fonts.fonts), page_size=page_size)
     if path:
         Path(path).write_bytes(data)
     return data
