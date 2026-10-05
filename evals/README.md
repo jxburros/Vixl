@@ -58,6 +58,13 @@ formats or normalization rules, and compare success rate, round trips and tokens
 task, read the trace in `results.json`: repeated tool errors usually point at a confusing schema
 or message, which is a product bug.
 
+## Comparing Vixl with other tools
+
+This suite measures agents using Vixl. To compare Vixl with the other ways an agent can make the
+same thing (HTML and SVG, Python libraries, free desktop tools, image generation, Claude Design),
+use the hand-run [tool comparison kit](tool-comparison/README.md): 16 briefs, judging notes with
+answer keys, fixtures and an output inspector.
+
 ## Adding tasks
 
 Write the brief the way a person would, keep checks objective (geometry, text, files, design

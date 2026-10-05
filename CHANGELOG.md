@@ -46,6 +46,10 @@
 - **Build on a hand drawing** ([docs](docs/drawing.md)): `drawing import` turns a photo or scan into clean lines — paper lighting and shadows divided out, dust removed, a tilted page corrected, cropped, the pencil's grain and (optionally) colour kept — over a hidden, aligned copy of the photo. `vectorize` traces editable centre-line strokes with each line's width (or outline shapes that keep pressure); `straighten` makes nearly straight lines straight, keeps drawn corners but sharpens them, rounds nearly round shapes into circles, snaps sides to angles or the document's guides and joins ends that nearly meet; `smooth`, `restyle` and `stroke` (new lines in the same hand) edit strokes; `fill` colours enclosed regions under the lines, bridging small breaks without crossing a line.
 - **Preservation is measured**: `drawing report` / the `drawing-report` workflow action give the share of the original lines still covered and the share that is new, `drawing compare` overlays the original on the result, and the opt-in `drawing` check warns when original line work is lost. `ai drawing-color` adds image-to-image colouring under the drawing's own lines.
 
+### Tool comparison kit
+
+- **`evals/tool-comparison/`** ([guide](evals/tool-comparison/README.md)): 16 hand-run briefs (picture, social post, print poster, logo kit, deck, fillable form, CSV badges, infographic, multi-size campaign, photo correction, hand drawing, animated intro, pixel sprite, lyric video, seamless pattern, menu) for comparing Vixl with HTML/SVG, Python libraries, free desktop tools, image generation and Claude Design under the same model. Judging notes give lanes, hard checks, round-2 revisions and answer keys; `inspect_outputs.py` reports tool-neutral facts (sizes, color modes, PDF boxes, color spaces and form fields, PPTX text and notes, video timing, tile seams) and makes blind copies; `fixtures/` holds the inputs.
+
 ### Fixes from the explorations
 
 Fixes for the problems found while building the ten projects in `explorations/`.
