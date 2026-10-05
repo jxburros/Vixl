@@ -344,10 +344,11 @@ def execute(project, op):
 
 def schemas(add):
     from .schema import S, N, POSITIVE_INT
+    from .workflow_schema import RECIPE, SUITE
 
     obj = {"type": "object"}
     targets = {"type": "array", "items": S, "minItems": 1, "maxItems": 512}
-    add("suite-set", {"name": S, "suite": obj}, ["name", "suite"])
+    add("suite-set", {"name": S, "suite": SUITE}, ["name", "suite"])
     add(
         "suite-capture",
         {"name": S, "targets": targets, "regions": {"type": "array", "maxItems": 100}},
@@ -362,7 +363,7 @@ def schemas(add):
     )
     add("action-define", {"name": S, "action": obj}, ["name", "action"])
     add("action-apply", {"name": S}, ["name"])
-    add("recipe-set", {"recipe": obj}, ["recipe"])
+    add("recipe-set", {"recipe": RECIPE}, ["recipe"])
     add(
         "fit-text",
         {"width": POSITIVE_INT, "height": POSITIVE_INT, "minimum": POSITIVE_INT, "maximum": POSITIVE_INT},
