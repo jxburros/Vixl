@@ -102,7 +102,8 @@ class Builder:
         self.content = {k: op[k] for k in CONTENT_KEYS if k in op}
         self.slots = slot_spec(layout)
         self.unfilled = op.get("unfilled", "blank")
-        require(self.unfilled in ("blank", "omit"), "unfilled must be blank or omit")
+        require(self.unfilled in ("blank", "omit"), "unfilled must be blank or omit", field="unfilled")
+        self.omitted = []
         self.read = set()
         self.placeholders = {}
         self.image_blanks = []
@@ -126,9 +127,12 @@ class Builder:
             value = self.content[key]
             return value if value is not None else default
         slot = self.slots.get(key)
-        if key != "image" and slot and slot["blank"] and self.unfilled == "blank":
-            self.placeholders[key] = slot["placeholder"]
-            return slot["placeholder"]
+        if key != "image" and slot and slot["blank"]:
+            if self.unfilled == "blank":
+                self.placeholders[key] = slot["placeholder"]
+                return slot["placeholder"]
+            if key not in self.omitted:
+                self.omitted.append(key)
         return default
 
     def add(self, op):
@@ -1325,7 +1329,8 @@ def catalog():
             "seed": "Integer or 'random'; omitted seeds derive from the content, so different copy varies the design. "
             "Unspecified palette, mode, type scale, density, alignment and accent are rolled from the seed",
             "unfilled": "blank (default): unfilled slots render as visible [Label] placeholders recorded as blanks that "
-            "check reports as errors; omit: leave unfilled slots out",
+            "check reports as errors; omit: leave unfilled slots out (vixl_roll apply omits them when given "
+            "slots); the layout record's omitted lists what was left out",
             "font": "Registered body font; defaults to the document typography (font pair), else the proofing fallback",
             "display_font": "Registered heading font; defaults to the document typography heading, else font",
             "palette": "Palette name or list of colors (roles are assigned with contrast checks)",
@@ -1461,6 +1466,13 @@ def execute_layout(project, op):
             "check reports unfilled blanks as errors; unfilled='omit' leaves optional copy out instead."
         )
         state["layout"]["blanks"] = blanks
+    if builder.omitted:
+        state["layout"]["omitted"] = builder.omitted
+        notes.append(
+            f"Left out unfilled slots ({', '.join(builder.omitted)}): the composition is laid out around the copy "
+            f"it has, so supplying them later (replace=true, seed={seed}) re-lays it out; unfilled='blank' keeps "
+            "[Label] placeholders that check rejects until filled."
+        )
     if not fonts:
         notes.append(
             "No fonts were chosen, so text uses the bundled fallback font, which is for proofing only. Choose a "
@@ -1562,7 +1574,11 @@ def schemas(add):
         {
             "name": S,
             "seed": {"type": ["integer", "string"]},
-            "unfilled": S,
+            "unfilled": {
+                "enum": ["blank", "omit"],
+                "description": "blank (default): slots left unfilled show as [Label] placeholders that check "
+                "rejects; omit: leave unfilled slots out, so the layout is final and passes check.",
+            },
             "palette": {"type": ["string", "array"]},
             "colors": {"type": "object"},
             # Choice fields are validated (with the allowed values) when the layout is built.

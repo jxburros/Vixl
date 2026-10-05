@@ -55,4 +55,4 @@ vixl roll --for poster --size instagram-post --mood warm
 vixl roll --seed 11 --lock palette=sage --lock pairing=dm-serif-dm-sans
 ```
 
-A roll picks a pairing first, then a palette whose mood fits it, a layout suited to the purpose and canvas, and the mode, type scale, density and accent. It returns the steps and a ready `layout-apply` operation. The same seed reproduces it. Roll several times, preview, and keep the one you like (MCP `vixl_roll`, REST `GET /roll`).
+A roll picks a pairing first, then a palette whose mood fits it, a layout suited to the purpose and canvas, and the mode, type scale, density and accent. It returns the steps and a ready `layout-apply` operation. The same seed reproduces it. Roll several times, preview, and keep the one you like (MCP `vixl_roll`, REST `GET /roll`). `--apply` leaves slots you did not fill out (`--unfilled omit`, the default when you pass `--set`/`slots`), so the result passes `check` with no second layout pass; `--unfilled blank` keeps `[Label]` placeholders for slots to fill later.

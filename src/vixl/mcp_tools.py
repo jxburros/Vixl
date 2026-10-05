@@ -1043,16 +1043,19 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         locks: dict | None = None,
         apply: bool = False,
         slots: dict | None = None,
+        unfilled: Literal["omit", "blank"] | None = None,
         document: Document = None,
     ) -> dict:
         """Roll a coherent direction honoring workspace brand.json. apply=true installs fonts and
         applies the layout in one undo step; slots fills its content (e.g. {title: Launch}).
-        locks fixes choices such as palette or layout. Missing slots are returned immediately."""
+        locks fixes choices such as palette or layout. unfilled: slots you did not fill are left out
+        (omit, the default when slots is given) so the result passes vixl_check, or shown as [Label]
+        placeholders to fill (blank, the default without slots). The result lists what is missing."""
         from .typefaces import roll_document
         if document or session.path or apply:
             with session.project(write=apply, document=document) as project:
                 return roll_document(project, seed=seed, purpose=purpose, mood=mood, locks=locks,
-                                     apply=apply, slots=slots)
+                                     apply=apply, slots=slots, unfilled=unfilled)
         return roll_document(workspace=session.workspace, seed=seed, purpose=purpose, mood=mood, locks=locks)
 
     @tool

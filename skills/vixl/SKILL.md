@@ -95,7 +95,7 @@ Humans can follow progress with `vixl -p DOCUMENT view`.
 Workspace `brand.json` provides default palette roles, pairing/embedded fonts, embedded logos,
 minimum contrast, and required layer names. Layouts, templates, rolls and checks honor it.
 Use `vixl_roll(apply=true, slots={...})` or `roll --apply --set title=...` to apply a whole direction;
-`layout apply` returns unfilled slots immediately. Check and fill them before export.
+`layout apply` returns unfilled slots immediately. Check and fill them before export. A roll with `slots` omits the slots you did not fill (`unfilled: "omit"`), so it passes `check`; pass `unfilled: "blank"` to keep `[Label]` placeholders instead.
 `vixl_import_document` imports editable SVG paths or a raster PDF page. Unsupported SVG
 features return an error; convert them to plain paths before retrying.
 
