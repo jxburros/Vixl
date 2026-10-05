@@ -539,6 +539,29 @@ def page_views(project, pages=None):
     return [(record["name"], view_page(project, record["id"])) for record in records]
 
 
+def page_geometry(canvas, dpi):
+    """(width, height, kx, ky, bleed) of a page in points for a canvas exported at ``dpi``.
+
+    Print sizes keep their physical trim and bleed (``canvas.physical``), so the page measures
+    exactly trim + 2 × bleed even when the bleed is a fractional number of pixels (0.125 in at
+    300 dpi is 37.5 px, stored as 38): the pixels then stretch by a hair to fill the page. Other
+    canvases map pixels to points at ``dpi``."""
+    from .sizes import PX, UNIT_INCHES, to_pixels
+
+    k = 72 / dpi
+    w, h, bleed = canvas["width"], canvas["height"], canvas.get("bleed", 0)
+    physical = canvas.get("physical")
+    if physical and physical.get("unit", PX) != PX and canvas.get("dpi") == dpi:
+        unit, amount = physical["unit"], physical.get("bleed", 0)
+        pixels = [round(to_pixels(physical[key], unit, dpi)) + 2 * round(to_pixels(amount, unit, dpi))
+                  for key in ("width", "height")]
+        if pixels == [w, h] and round(to_pixels(amount, unit, dpi)) == bleed:
+            points = 72 * UNIT_INCHES[unit]
+            width, height = (physical["width"] + 2 * amount) * points, (physical["height"] + 2 * amount) * points
+            return width, height, width / w, height / h, amount * points
+    return w * k, h * k, k, k, bleed * k
+
+
 def export_pdf(project, path=None, *, pages=None, content="vector", dpi=None, background="white", color_space="rgb",
                jpeg_quality=None, title=None, lang=None, annotations=None, acroform=None, fillable=False, separation=None,
                report=None, views=None):
@@ -553,7 +576,6 @@ def export_pdf(project, path=None, *, pages=None, content="vector", dpi=None, ba
     require(color_space == "rgb" or content == "raster", "CMYK PDF pages are raster; use content raster", field="content")
     canvas = project.state["canvas"]
     dpi = finite(dpi or canvas.get("dpi") or 72, "dpi", 36, 2400)
-    k = 72 / dpi
     views = views if views is not None else page_views(project, pages)
     stream = io.BytesIO()
     writer = Writer(stream)
@@ -567,10 +589,10 @@ def export_pdf(project, path=None, *, pages=None, content="vector", dpi=None, ba
 
     for number, (label, view) in enumerate(views):
         c = view.state["canvas"]
-        width, height = c["width"] * k, c["height"] * k
+        width, height, kx, ky, bleed = page_geometry(c, dpi)
         builder = PageBuilder(project, view, writer, fonts, images)
-        builder.k, builder.fillable = k, fillable
-        builder.ops.append(f"{_fmt(k)} 0 0 {_fmt(-k)} 0 {_fmt(height)} cm")
+        builder.k, builder.ky, builder.fillable = kx, ky, fillable
+        builder.ops.append(f"{_fmt(kx)} 0 0 {_fmt(-ky)} 0 {_fmt(height)} cm")
         if content == "raster":
             image = render(view)
             base = np.zeros((image.height, image.width, 4), dtype=np.uint8)
@@ -613,9 +635,8 @@ def export_pdf(project, path=None, *, pages=None, content="vector", dpi=None, ba
         content_ref = writer.add_stream({}, "\n".join(builder.ops).encode("latin-1"))
         page = {"Type": Name("Page"), "Parent": pages_ref, "MediaBox": [0, 0, round(width, 4), round(height, 4)],
                 "Resources": builder.resources(), "Contents": content_ref}
-        bleed = c.get("bleed", 0)
         if bleed:
-            page["TrimBox"] = [round(bleed * k, 4), round(bleed * k, 4), round(width - bleed * k, 4), round(height - bleed * k, 4)]
+            page["TrimBox"] = [round(bleed, 4), round(bleed, 4), round(width - bleed, 4), round(height - bleed, 4)]
             page["BleedBox"] = [0, 0, round(width, 4), round(height, 4)]
         if annots:
             page["Annots"] = annots  # in tab order

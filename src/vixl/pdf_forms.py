@@ -183,7 +183,8 @@ class FormWriter:
         state = view.state
         canvas = state["canvas"]
         self.k = k = builder.k
-        page_height = canvas["height"] * k
+        ky = getattr(builder, "ky", k)
+        page_height = canvas["height"] * ky
         entries, resolved, _, _ = field_geometry(view)
         values = current_values(view)
         refs = []
@@ -192,8 +193,8 @@ class FormWriter:
             if transformed(matrix):
                 raise VixlError("invalid_operation", f"Field {item['name']!r} is rotated or flipped; PDF fields are upright "
                                 "rectangles", field="target")
-            rect = [round(x * k, 4), round(page_height - (y + h) * k, 4), round((x + w) * k, 4), round(page_height - y * k, 4)]
-            width, height = w * k, h * k
+            rect = [round(x * k, 4), round(page_height - (y + h) * ky, 4), round((x + w) * k, 4), round(page_height - y * ky, 4)]
+            width, height = w * k, h * ky
             scale = h / max(1e-9, item["height"])
             size = float(item.get("size", 16)) * scale * k
             rgba = color(resolve_color(item.get("color", "#1f2328"), state))

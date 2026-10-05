@@ -196,6 +196,8 @@ def output_options(args, command):
     p.add_argument("--fill-mode", choices=["flatten", "editable"], default="flatten",
                    help="With field values in --set: draw them into the artwork, or prefill a fillable PDF")
     p.add_argument("--show-fields", action="store_true", help="Outline form fields with their keys and tab order")
+    p.add_argument("--alpha", choices=["auto", "keep", "flatten"], default="auto",
+                   help="PNG/WEBP/TIFF/AVIF: RGB when opaque (auto), always RGBA (keep), or RGB on --background (flatten)")
     return p.parse_args(args)
 
 
@@ -706,6 +708,7 @@ def project_command(project, cmd, args, *, detail="compact"):
             page=page,
             fillable=a.fillable,
             fill_mode=a.fill_mode,
+            alpha=a.alpha,
             values=values if (a.fillable or a.fill_mode == "editable") else None,
             pages=None if a.pages == "all" else parse_pages(a.pages),
             pdf_content=a.pdf_content,

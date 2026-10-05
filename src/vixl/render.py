@@ -1140,11 +1140,16 @@ def export(
     fillable=False,
     values=None,
     fill_mode="flatten",
+    alpha="keep",
 ):
     """Render and encode. ``color_space='cmyk'`` separates JPEG/TIFF/PDF output (ICC profile
     bytes in ``icc_profile`` for press-accurate separation, else device-naive GCR with
     ``black_generation`` 0–1 and ``ink_limit`` in percent). ``proof`` soft-proofs RGB output
-    through that separation; ``simulate`` previews a color-vision deficiency."""
+    through that separation; ``simulate`` previews a color-vision deficiency. ``alpha`` sets the
+    channels of PNG, WEBP, TIFF and AVIF output: ``keep`` always writes RGBA, ``auto`` writes RGB
+    when every pixel is opaque and RGBA otherwise (the file export default), and ``flatten``
+    composites onto ``background`` and writes RGB (as JPEG and PDF always do)."""
+    require(alpha in ("auto", "keep", "flatten"), "alpha must be auto, keep or flatten", field="alpha")
     require(sampling in ("smooth", "nearest"), "Sampling must be smooth or nearest")
     require(color_space in ("rgb", "cmyk"), "Color space must be rgb or cmyk")
     if time is not None:
@@ -1192,8 +1197,10 @@ def export(
         return export_pptx(project, path, pages=pages, report=report)
     wants_pdf = (format or "").upper() == "PDF" or suffix == ".pdf"
     paged = bool(project.state.get("pages"))
-    if wants_pdf and (paged or pdf_content or pages) and not (profile or artboard or comp or proof or simulate):
-        # Multi-page documents and explicit vector/raster requests use Vixl's own PDF writer.
+    print_size = bool(project.state["canvas"].get("physical")) and scale == 1
+    if wants_pdf and (paged or pdf_content or pages or print_size) and not (profile or artboard or comp or proof or simulate):
+        # Multi-page documents, print sizes (exact physical page, TrimBox and BleedBox) and explicit
+        # vector/raster requests use Vixl's own PDF writer.
         require(page is None or not pages, "Pass page or pages, not both")
         from .pdf_export import export_pdf
 
@@ -1309,10 +1316,12 @@ def export(
             settings["icc_profile"] = cms.tobytes()
     elif icc_profile is not None:
         require(proof, "An ICC profile needs color_space='cmyk' or proof=True")
-    if fmt in ("JPEG", "PDF") and image.mode == "RGBA":
+    if image.mode == "RGBA" and (fmt in ("JPEG", "PDF") or alpha == "flatten" and fmt != "ICO"):
         base = Image.new("RGBA", image.size, color(background))
         base.alpha_composite(image)
         image = base.convert("RGB")
+    elif image.mode == "RGBA" and alpha == "auto" and fmt != "ICO" and image.getchannel("A").getextrema()[0] == 255:
+        image = image.convert("RGB")  # an opaque canvas needs no alpha channel
     if fmt == "PDF":
         settings["resolution"] = settings.pop("dpi", (72, 72))[0]
         settings.pop("quality", None)

@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Print and raster export
+
+- **RGB PNGs.** Exports take `alpha`: `auto` writes RGB when every pixel is opaque and RGBA otherwise, `keep` always writes RGBA, and `flatten` composites onto `background` and writes RGB, as JPEG and PDF already do. `vixl_export_file` and `vixl export` default to `auto` (`--alpha` on the CLI); `Project.export` keeps RGBA by default. Applies to PNG, WEBP, TIFF and AVIF.
+- **Exact print PDF pages with TrimBox and BleedBox.** Single-page documents created from a print size now export through Vixl's own PDF writer, like multi-page documents, so they get a TrimBox and BleedBox (Pillow's PDF encoder wrote neither). The page measures exactly trim + 2 × bleed from the size's physical dimensions even when the bleed is a fractional number of pixels: an 11 × 17 in poster with 0.125 in bleed at 300 dpi is 810 × 1242 pt with a 9 pt TrimBox inset, not 810.24 × 1242.24 pt. An explicit `dpi` other than the canvas dpi still maps pixels to points at that dpi.
+
 ## 0.18.0
 
 ### Digital Shift identity
