@@ -1,5 +1,7 @@
 # Organic shapes
 
+[Documentation home](README.md) · [Getting started](getting-started.md) · [Visual gallery](gallery.md)
+
 The `organic` operation draws living things — plants, flowers, trees, creatures, shells, cells,
 coral, animal markings — as editable path layers. A form is a list of **parts**. Each part gets
 its geometry from a **generator**, then applies **rules** in order. **Presets** are ready-made part

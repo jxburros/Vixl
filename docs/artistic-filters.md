@@ -1,5 +1,7 @@
 # Local artistic filters and SVG export
 
+[Documentation home](README.md) · [Getting started](getting-started.md) · [Visual gallery](gallery.md)
+
 Vixl 0.12 adds 19 built-in artistic filters. They use local Pillow/NumPy algorithms, require no AI provider, and never download models or contact a service. Filters remain editable in the effect stack; undo/redo, presets, selections, adjustment layers, REST and MCP use the same implementations.
 
 ![Original artwork and all 19 local treatments](filter-gallery.png)

@@ -1,5 +1,7 @@
 # Workspace brands
 
+[Documentation home](README.md) · [Getting started](getting-started.md) · [Visual gallery](gallery.md)
+
 Put `brand.json` in the MCP workspace root. CLI/Python document edits look beside the document;
 commands without a document, including template creation and standalone roll, use the current
 directory. With `-p DOC` or a current session document, `roll` previews read that document's canvas

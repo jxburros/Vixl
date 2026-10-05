@@ -1,5 +1,41 @@
 # Command reference
 
+For complete first-use workflows, see [getting started](getting-started.md) and the
+[tutorial index](README.md#learn-by-making). Use `vixl COMMAND --help` for the installed
+runtime's exact arguments, and pass `-p file.vixl` explicitly for editing commands.
+
+## Pages, forms, drawing and workflow discovery (0.18)
+
+These commands complement the earlier editing reference below. Examples assume an open
+project with appropriate layers or input files. See each guide for complete creation steps.
+
+| Task | Command | Reference |
+| --- | --- | --- |
+| Add/select/list pages | `page add NAME`, `page select NAME`, `pages` | [Pages and decks](slides.md) |
+| Shared page artwork | `master add NAME`, `master select NAME` | [Masters](slides.md#masters) |
+| Speaker notes | `page set NAME --notes 'Talking points'` | [Page settings](slides.md#how-pages-work) |
+| Deck overview | `render --page all --out sheet.png` | [Seeing pages](slides.md#seeing-pages) |
+| Presentation checks | `check --checks deck` | [Deck checks](slides.md#deck-checks) |
+| Editable slides / page PDF | `export deck.pptx`, `export deck.pdf` | [Export guide](exporting.md) |
+| Rich text | `rich-text 'A **bold** point' --name body --width 900` | [Rich text](rich-text.md) |
+| Field layer | `field add email --kind text --label Email --required` | [Forms](forms.md) |
+| Field inspection | `field list`, `render --show-fields --out fields.png` | [Forms](forms.md) |
+| Fillable PDF | `export form.pdf --fillable` | [Forms](forms.md#the-fillable-pdf) |
+| Filled copy | `form fill --set email=ada@example.com --out ada.pdf` | [Forms](forms.md#filling) |
+| Validate CSV fills | `form fill --data rows.csv --dry-run` | [Form tutorial](tutorials/forms-and-decks.md) |
+| Drawing cleanup | `drawing import sketch.jpg --name sketch`, `drawing straighten sketch` | [Drawing](drawing.md) |
+| Drawing preservation | `drawing report sketch`, `drawing compare sketch --out compare.png` | [Drawing](drawing.md) |
+| Organic shape | `organic sunflower --name bloom --seed 7` | [Organic shapes](organic.md) |
+| Polar grid | `grid dial --kind polar --rings 3 --spokes 12` | [Guides and grids](guides.md) |
+| Workflow contract | `workflow schema` | [Production](production.md), [studio](studio.md) |
+| Lyric video | `workflow lyric-video-export --request request.json --workspace .` | [Lyric videos](lyric-video.md) |
+
+Latest `main` also adds `export --alpha auto|keep|flatten` for supported image formats.
+This source-only option is described in [exporting](exporting.md#image-output-and-alpha)
+and the [Unreleased changelog](../CHANGELOG.md).
+
+[Documentation home](README.md) · [Getting started](getting-started.md) · [Visual gallery](gallery.md)
+
 Checked automation and production: `workflow schema` lists the actions accepted by
 `workflow ACTION --request FILE --workspace DIR`. See [production](production.md) for
 check suites, recipes, matrices, libraries, jobs and films. New editing commands include

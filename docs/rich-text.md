@@ -1,5 +1,7 @@
 # Rich text
 
+[Documentation home](README.md) · [Getting started](getting-started.md) · [Visual gallery](gallery.md)
+
 One text layer can mix styles: bold or italic words, a coloured number, an underlined term,
 bullet and numbered lists with indent levels, and paragraph spacing. Rich text is shaped with the
 same HarfBuzz pipeline as plain text, so it renders identically in PNG, SVG (as vector outlines),

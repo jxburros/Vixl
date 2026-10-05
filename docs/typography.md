@@ -1,5 +1,7 @@
 # Typography: catalog, pairings and installs
 
+[Documentation home](README.md) · [Getting started](getting-started.md) · [Visual gallery](gallery.md)
+
 Vixl bundles DejaVu Sans only as a proofing fallback, so text renders before anyone has chosen type. Design type comes from a researched catalog and is downloaded only when you ask. The default `fonts` check warns while any text still uses the fallback.
 
 ## The catalog

@@ -1,5 +1,12 @@
 # Brushes and animation timelines
 
+![Editable watercolor and ink strokes with a procedural sunflower](assets/generated/paint-organic.png)
+
+See the [motion tutorial](tutorials/motion.md) for a complete animation and its static poses,
+and the [gallery](gallery.md) for editable paint and timeline examples.
+
+[Documentation home](README.md) · [Getting started](getting-started.md) · [Visual gallery](gallery.md)
+
 ## Brushes
 
 Paint layers store strokes, not pixels: each stroke keeps its points, optional pressure, brush, size, color, opacity, mode and seed. Strokes re-render deterministically at any time, survive moves and resizes (they live on the layer's own surface), and stay editable and undoable.

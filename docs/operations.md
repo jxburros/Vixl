@@ -1,5 +1,7 @@
 # Operations and document semantics
 
+[Documentation home](README.md) · [Getting started](getting-started.md) · [Visual gallery](gallery.md)
+
 Vixl is a headless application designed for autonomous AI agents; humans can use the same interfaces.
 
 See [spacing checks and pixel animation](pixel-animation-spacing.md) for the 0.9.0 tools and API examples.
