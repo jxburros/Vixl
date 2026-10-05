@@ -424,23 +424,13 @@ def paint_image(project, layer):
 # Operations
 
 
-def _unique(project, base):
-    names = {layer["name"] for layer in project.state["layers"]}
-    if base not in names:
-        return base
-    index = 2
-    while f"{base} {index}" in names:
-        index += 1
-    return f"{base} {index}"
-
-
 def _new_paint_layer(project, op, default_name="paint"):
-    from .operations import append_layer
+    from .operations import append_layer, default_name as unique_default
 
     c = project.state["canvas"]
     w, h = op.get("width", c["width"]), op.get("height", c["height"])
     layer = new_layer(
-        op.get("name") or _unique(project, default_name),
+        op.get("name") or unique_default(project, default_name),
         "paint",
         w,
         h,

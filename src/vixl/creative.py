@@ -83,37 +83,154 @@ def pen_path(op):
     return " ".join(commands)
 
 
+def shifted(op, dx, dy):
+    """The pen operation with every node, handle and point moved by (dx, dy)."""
+    def move(p):
+        return [p[0] + dx, p[1] + dy]
+
+    result = dict(op)
+    if op.get("nodes") is not None:
+        result["nodes"] = [{key: move(point(value)) for key, value in node.items()} for node in op["nodes"]]
+    else:
+        result["points"] = [move(point(p)) for p in op["points"]]
+    return result
+
+
+def node_extent(path, stroke_width=0):
+    """(left, top, right, bottom) of a pen path, curves included, and of its stroke when given:
+    half the width around every point, plus the tip of each sharp mitred join (SVG's default
+    miter limit of 4 bevels sharper ones)."""
+    import math
+
+    from .geometry import path_polygons
+
+    half = stroke_width / 2
+    xs, ys = [], []
+    for polygon in path_polygons(path):
+        points = [p for i, p in enumerate(polygon) if not i or p != polygon[i - 1]]
+        closed = len(points) > 2 and points[0] == points[-1]
+        points = points[:-1] if closed else points
+        for i, (x, y) in enumerate(points):
+            xs += [x - half, x + half]
+            ys += [y - half, y + half]
+            if not half or (not closed and i in (0, len(points) - 1)):
+                continue
+            ax, ay = points[i - 1]
+            bx, by = points[(i + 1) % len(points)]
+            u = (ax - x, ay - y)
+            v = (bx - x, by - y)
+            lu, lv = math.hypot(*u), math.hypot(*v)
+            if not lu or not lv:
+                continue
+            cos = max(-1.0, min(1.0, (u[0] * v[0] + u[1] * v[1]) / (lu * lv)))
+            sine = math.sin(math.acos(cos) / 2)
+            if sine and 1 / sine <= 4:
+                # The miter tip lies along the outer bisector, half / sin(θ/2) from the node.
+                bisector = (u[0] / lu + v[0] / lv, u[1] / lu + v[1] / lv)
+                length = math.hypot(*bisector)
+                if length:
+                    xs.append(x - bisector[0] / length * half / sine)
+                    ys.append(y - bisector[1] / length * half / sine)
+    return min(xs), min(ys), max(xs), max(ys)
+
+
+def fit(op, stroke_width):
+    """A pen path translated by whole pixels into a box that just holds it and its stroke:
+    ``(path, (ox, oy), (width, height))``, where (ox, oy) is the box's corner in node coordinates."""
+    import math
+
+    import re
+
+    path = pen_path(op)
+    left, top, right, bottom = node_extent(path, stroke_width)
+    # resvg rasterizes a curve slightly differently once a control point leaves the pixmap, so
+    # the box holds the handles too.
+    values = [float(v) for v in re.findall(r"-?[\d.]+(?:e-?\d+)?", path)]
+    left, right = min(left, *values[0::2]), max(right, *values[0::2])
+    top, bottom = min(top, *values[1::2]), max(bottom, *values[1::2])
+    ox, oy = math.floor(left - 1), math.floor(top - 1)
+    width, height = math.ceil(right + 1) - ox, math.ceil(bottom + 1) - oy
+    return pen_path(shifted(op, -ox, -oy)), (ox, oy), (width, height)
+
+
+def require_inside(op, width, height):
+    """Reject anchors outside an explicit box (a curve bulging slightly past it is allowed)."""
+    anchors = [point(node["point"]) for node in op["nodes"]] if op.get("nodes") is not None else [
+        point(p) for p in op["points"]
+    ]
+    xs, ys = zip(*anchors)
+    left, top, right, bottom = min(xs), min(ys), max(xs), max(ys)
+    require(
+        left >= -0.5 and top >= -0.5 and right <= width + 0.5 and bottom <= height + 0.5,
+        f"Pen nodes span ({left:g}, {top:g})–({right:g}, {bottom:g}), outside the {width}×{height} box, and would "
+        "be cut off; leave width and height out to fit the box to the nodes, or give a box that holds them",
+        field="width",
+    )
+
+
+def place(project, layer, op, frame, origin):
+    """Position a fitted pen box: numbers offset the node frame; 'center' centers the box."""
+    canvas = project.state["canvas"]
+    for axis, size, extent, start, offset in (("x", "width", "width", frame[0], origin[0]),
+                                               ("y", "height", "height", frame[1], origin[1])):
+        value = op.get(axis, start)
+        layer[axis] = (canvas[extent] - layer[size]) / 2 if value == "center" else value + offset
+
+
 def execute(project, op):
     from .operations import execute as apply
 
-    path = pen_path(op)
     if op.get("target"):
         layer = project.layer(op["target"])
         require(layer["type"] == "shape" and layer["shape"] == "path", "Pen editing needs a path layer")
-        layer["path"] = path
-        for key in ("fill", "stroke", "stroke_width", "x", "y", "width", "height"):
+        for key in ("fill", "stroke", "stroke_width"):
             if key in op:
                 layer[key] = op[key]
+        if "pen_origin" in layer and "width" not in op and "height" not in op:
+            # Nodes stay in the frame the pen was drawn in; refit the box around the new path.
+            old = layer["pen_origin"]
+            path, origin, size = fit(op, layer.get("stroke_width", 2))
+            layer.update(path=path, width=size[0], height=size[1], path_view=list(size), pen_origin=list(origin))
+            place(project, layer, op, (layer["x"] - old[0], layer["y"] - old[1]), origin)
+            return
+        layer["path"] = pen_path(op)
+        for key in ("width", "height"):
+            if key in op:
+                layer[key] = op[key]
+        place(project, layer, op, (layer["x"], layer["y"]), (0, 0))
         if "width" in op or "height" in op:
             layer["path_view"] = [layer["width"], layer["height"]]
+            require_inside(op, *layer["path_view"])
+            layer["pen_origin"] = [0, 0]
+        return
+    fields = {k: op[k] for k in ("name", "fill", "stroke", "stroke_width", "x", "y", "width", "height") if k in op}
+    boxed = "width" in op or "height" in op
+    if boxed:
+        path, origin = pen_path(op), (0, 0)
     else:
-        fields = {
-            k: op[k]
-            for k in ("name", "fill", "stroke", "stroke_width", "x", "y", "width", "height")
-            if k in op
-        }
-        apply(
-            project,
-            {
-                "type": "shape",
-                "shape": "path",
-                "path": path,
-                "fill": "transparent",
-                "stroke": "black",
-                "stroke_width": 2,
-                **fields,
-            },
-        )
+        # Without a box, the layer fits its nodes (and stroke) instead of spanning the canvas.
+        path, origin, size = fit(op, op.get("stroke_width", 2))
+        fields.update(width=size[0], height=size[1])
+        fields.pop("x", None)
+        fields.pop("y", None)
+    apply(
+        project,
+        {
+            "type": "shape",
+            "shape": "path",
+            "path": path,
+            "fill": "transparent",
+            "stroke": "black",
+            "stroke_width": 2,
+            **fields,
+        },
+    )
+    layer = project.layer()
+    if boxed:
+        require_inside(op, *layer["path_view"])
+    else:
+        place(project, layer, op, (0, 0), origin)
+    layer["pen_origin"] = list(origin)
 
 
 def selection(project, op):

@@ -81,7 +81,7 @@ The whole `output/` folder is about 4.9 MB.
 
 ## Findings
 
-> **Status:** Bugs 1 (blur clipped to the layer box) and 2 (stroke wider than its box crashing the renderer) are fixed. Bug 3 (a 1-pixel sliver at scale 0) is still open. See the Unreleased section of the [changelog](../../CHANGELOG.md).
+> **Status:** Bugs 1 (blur clipped to the layer box), 2 (stroke wider than its box crashing the renderer) and 3 (a 1-pixel sliver at scale 0) are fixed: a layer scaled below one pixel on either axis draws nothing. Rough edge 4 is fixed too: a `units:"px"` pivot that is too far away is reported in pixels, with the allowed range. Rough edges 5 and 6 are still open. See the Unreleased section of the [changelog](../../CHANGELOG.md).
 
 ### Bugs
 

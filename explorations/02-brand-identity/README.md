@@ -47,7 +47,7 @@ is written to `output/`:
 
 ## Findings
 
-> **Status:** Finding 3 is fixed: `check()` on the brand board takes seconds, and the whole build about 20 s. The other findings are still open. See the Unreleased section of the [changelog](../../CHANGELOG.md).
+> **Status:** Finding 3 is fixed: `check()` on the brand board takes seconds, and the whole build about 20 s. Findings 1 and 2 are fixed too: a pen without `width`/`height` gets a box that fits its nodes, stroke and handles, and a box too small for its nodes is rejected instead of clipping them. Finding 12 is fixed as far as the error goes: it now names the operation that uses the undefined swatch (`operations[0] (shape): Unknown swatch: @roast`); a swatch still can't refer forward to one defined later. The other findings are still open. See the Unreleased section of the [changelog](../../CHANGELOG.md).
 
 Bugs and rough edges, with repros:
 

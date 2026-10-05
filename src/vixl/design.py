@@ -42,7 +42,7 @@ def union_bounds(bounds):
 
 
 def execute_design(project, op):
-    from .operations import append_layer, execute
+    from .operations import append_layer, default_name, execute
     from .render import resolve_layout, color, stored_origin
 
     kind = op["type"]
@@ -57,7 +57,7 @@ def execute_design(project, op):
         append_layer(
             project,
             new_layer(
-                op.get("name", "shape"),
+                op["name"] if "name" in op else default_name(project, "shape"),
                 "shape",
                 op.get("width", c["width"]),
                 op.get("height", c["height"]),
@@ -236,7 +236,7 @@ def execute_design(project, op):
         append_layer(
             project,
             new_layer(
-                op.get("name", "adjustment"),
+                op["name"] if "name" in op else default_name(project, "adjustment"),
                 "adjustment",
                 c["width"],
                 c["height"],
@@ -648,7 +648,10 @@ def validate_design(project, state):
                 )
                 if match and match[1] in index:
                     require(
-                        index[match[1]].get("parent") == parent, "Constraints must reference sibling layers"
+                        index[match[1]].get("parent") == parent,
+                        f"Constraints must reference sibling layers: {layer['name']!r} is constrained to "
+                        f"{index[match[1]]['name']!r}, which is in a different group; unconstrain "
+                        f"{layer['name']!r} or keep both layers in the same group",
                     )
 
     # Validate each dependency once; shared clipping bases must not cause exponential traversal.

@@ -162,10 +162,18 @@ def instantiate(project, values):
     candidate._cache, candidate._decoded = LayerCache(), {}
     recipe = candidate.state.get("recipe")
     if recipe:
+        explicit = set(values)
         values = validate_inputs(recipe.get("inputs", {}), values)
         for name, value in values.items():
             if recipe["inputs"][name].get("type") == "asset":
                 require(value in candidate.assets, f"Input {name} must reference an embedded asset")
+        # Row values win; an input's default only fills a variable that the document or the
+        # artboard (already applied to ``project``) has not set, so board variables are kept.
+        values = {
+            name: value
+            for name, value in values.items()
+            if name in explicit or name not in candidate.state["variables"]
+        }
     candidate.state["variables"].update(deepcopy(values))
     for action in recipe.get("actions", []) if recipe else []:
         candidate.apply({"type": "action-apply", "name": action}, detail="compact")

@@ -58,8 +58,13 @@ segments) or explicit anchor nodes. Handle coordinates are absolute in the path'
 ],"stroke":"#006d77","stroke_width":4,"fill":"transparent"}
 ```
 
+Without `width` and `height`, node coordinates are canvas positions (offset by `x`/`y` when
+given) and the layer's box fits the drawn path, its stroke and its handles, so `inspect` and the
+layout checks see the shape where it is; `x:"center"` centers that fitted box. With `width` and
+`height`, nodes are local to that box, and nodes outside it are rejected rather than cut off.
+
 Use `target` instead of `name` to replace an existing path's geometry while preserving its
-layer ID, styles and history. `closed:true` closes an irregular shape; set a fill as needed.
+layer ID, styles and history; a fitted pen keeps its node coordinates and refits its box. `closed:true` closes an irregular shape; set a fill as needed.
 Shapes remain editable through resizing, masks, pathfinder, styles and SVG export. The pen
 supports up to 512 anchors; paths support 1,024 normalized commands and 32 KiB of source.
 

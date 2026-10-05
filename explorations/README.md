@@ -47,6 +47,12 @@ Each project README has repro details. These are the issues that showed up most 
 - **Fixed: `--ink-limit` is silently ignored** when an ICC profile is given (01).
 - **Fixed: outlined text fails the contrast check.** The 01 SIGNAL headline (dark fill, yellow `stroke` style) was flagged at 1.13:1; outlined text now passes when its outline contrasts with the backdrop.
 - **Fixed: missing glyphs pass every check.** Tofu boxes went unreported (06, 07). They are now an error in every `check`, every suite and `validate`.
+- **Fixed: boxed text clipped silently.** Raising the size of layout text cut it off at its `text-layout` box and `check` said nothing (09). The `bounds` check now reports it with the size the text needs.
+- **Fixed: `oil-paint` adds false colours** to thin dark strokes on light ground (05). It now only uses colours already in the image.
+- **Fixed: pen layers ignore their nodes' extent.** Without `width`/`height` a pen was canvas-sized, and a box smaller than the nodes clipped them silently (02, 08). The box now fits the nodes and stroke, and a too-small box is rejected.
+- **Fixed: `scale` 0 leaves a 1-pixel sliver** (03).
+- **Fixed: recipe input defaults override artboard variables** (07).
+- **Not a bug: the 07 single-digit contrast "false positive".** The "7" really touches the stat pill's outline. The contrast message now gives the share of pixels and where they are.
 
 ### Performance
 - **Fixed: the contrast check is the bottleneck.** It re-rendered the whole document per text layer, at 12–137 s per layer on large posters (01, 02, 07, 08). Top-level text is now measured from one shared render, with identical results, and nested renders, text measurement, styles and the layer cache are much cheaper. The full `check` on the 01 poster takes about 17 s instead of more than 10 minutes.
@@ -54,6 +60,7 @@ Each project README has repro details. These are the issues that showed up most 
 - **Fixed: timeline export skips the persistent render cache.** Brush-heavy frames took about 14 s each without the cache and under 1 s with it (05, 10). Layers that only move are no longer redrawn per frame, and timeline exports of saved documents use the persistent cache.
 
 ### Rough edges
+- **Fixed: vague errors.** Ragged pixel rows (04), constraint conflicts (08), the batch limit (05), far `px` pivots (03) and undefined swatches (02) now name the row, layers, anchors, numbers or operation involved. `validate --rules` takes inline assertions (08), and unnamed layers are numbered instead of colliding (09).
 - **No effect reorder operation** (06).
 - **`lookup` isn't a real effect.** It can't be disabled, reordered or limited to a selection (06).
 - **CMYK PDFs are single raster pages** with no TrimBox or BleedBox (01, 02).

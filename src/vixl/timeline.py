@@ -571,6 +571,10 @@ def project_at(project, time):
             x, y, w, h = bounds[ident]
             sx = values.get("scale", 1) * values.get("scale-x", 1)
             sy = values.get("scale", 1) * values.get("scale-y", 1)
+            if round(layer["width"] * abs(sx)) < 1 or round(layer["height"] * abs(sy)) < 1:
+                # Scaled to nothing (a wipe or pop that starts at 0): draw nothing this frame,
+                # instead of the 1 px sliver the smallest box would leave.
+                layer["opacity"] = 0
             if layer.get("pivot") is not None:
                 # x/y place the unrotated box; rotation and scale keep the pivot point fixed.
                 if layer.get("constraints"):

@@ -69,7 +69,7 @@ Outputs: `painting.jpg`, `painting.vixl` (editable, 333 KB), `brush-specimens.pn
 
 ## Findings
 
-> **Status:** Real problems 1–4 are fixed: painting is linear in strokes (a paint operation validates only its new stroke, layout no longer copies strokes, and adding strokes renders only the new ones), strokes rasterize over their own footprint, the in-memory cache is least-recently-used and sized for documents like this one, and moving layers reuse their cached image between timeline frames. The branch-per-layer and plate workarounds in `build.py` are no longer needed for speed. Problem 5 (`oil-paint` fringes) is still open. See the Unreleased section of the [changelog](../../CHANGELOG.md).
+> **Status:** Real problems 1–4 are fixed: painting is linear in strokes (a paint operation validates only its new stroke, layout no longer copies strokes, and adding strokes renders only the new ones), strokes rasterize over their own footprint, the in-memory cache is least-recently-used and sized for documents like this one, and moving layers reuse their cached image between timeline frames. The branch-per-layer and plate workarounds in `build.py` are no longer needed for speed. Problem 5 (`oil-paint` fringes) is fixed as well: `oil-paint` takes the mode of a luminance key and copies that pixel's RGB, so it only produces colours already in the image. The batch-limit error now gives the limit and the batch size. See the Unreleased section of the [changelog](../../CHANGELOG.md).
 
 Timings come from the final run on a shared 4-core container, with other agents' builds running
 (load average 1–3). An earlier run under load ~8 took 731 s for the same cold render.

@@ -83,13 +83,17 @@ def creature_ops(seed, element):
     # wings
     span, lift = rng.randint(150, 210), rng.randint(40, 90)
     wp = wing_points(rng, span, lift)
+    # The feather tips rise above the shoulder line; the box must hold every point (Vixl rejects
+    # points outside a pen's box rather than clipping them).
+    top = min(0, math.floor(min(y for _, y in wp)) - 4)
+    wp = [[x, y - top] for x, y in wp]
     ops += [
         {"type": "pen", "name": "wing-r", "points": wp, "closed": True, "smooth": True,
          "fill": f"alpha({c['main']}, 0.85)", "stroke": c["light"], "stroke_width": 2,
-         "width": span + 20, "height": 140, "x": cx + 20, "y": cy - 80},
+         "width": span + 20, "height": 140 - top, "x": cx + 20, "y": cy - 80 + top},
         {"type": "duplicate", "target": "wing-r", "name": "wing-l"},
         {"type": "flip", "target": "wing-l", "direction": "horizontal"},
-        {"type": "move", "target": "wing-l", "x": cx - 20 - (span + 20), "y": cy - 80},
+        {"type": "move", "target": "wing-l", "x": cx - 20 - (span + 20), "y": cy - 80 + top},
         {"type": "layer-style", "target": "wing-r", "name": "gradient-overlay",
          "settings": {"start": c["light"], "end": c["main"], "direction": "horizontal", "opacity": 0.6}},
         {"type": "layer-style", "target": "wing-l", "name": "gradient-overlay",

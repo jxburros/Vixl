@@ -56,6 +56,11 @@ def check_state(project, state):
             "invalid_project",
         )
         require(layer.get("role", "content") in ("content", "decoration", "background"), "Invalid layer role", "invalid_project")
+        if "pen_origin" in layer:
+            origin = layer["pen_origin"]
+            require(isinstance(origin, list) and len(origin) == 2, "Invalid pen origin", "invalid_project")
+            for value in origin:
+                finite(value, "pen origin", -1e6, 1e6)
         allowed = layer.get("allow_overlap", [])
         require(isinstance(allowed, list) and len(allowed) <= 512 and all(isinstance(x, str) for x in allowed), "Invalid overlap intent", "invalid_project")
         ids.add(layer["id"])

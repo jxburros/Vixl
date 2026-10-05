@@ -89,7 +89,9 @@ def test_pen_handles_freehand_edit_undo_roundtrip(tmp_path):
         },
         check=service_check,
     )
-    assert "C5 50 50 50 50 5" in p.layer()["path"]
+    # The box fits the nodes and stroke; the path is stored relative to it.
+    layer = p.layer()
+    assert layer["path"] == "M2 2 C2 47 47 47 47 2" and (layer["x"], layer["y"]) == (3, 3)
     original = deepcopy(p.layer())
     p.apply(
         {

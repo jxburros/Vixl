@@ -38,15 +38,21 @@ def contrast_summary(ratios, background="white"):
     }
 
 
-def target_contrast(layer, painted, backdrop, coverage, background="white"):
+def target_contrast(layer, painted, backdrop, coverage, background="white", origin=(0, 0)):
     """Contrast of a target layer's glyphs or shapes against its backdrop. A layer outlined with
     a ``stroke`` style also reports ``outline``: the outline ring against the backdrop, since
-    outlined text stays readable through its outline even when the fill blends in."""
+    outlined text stays readable through its outline even when the fill blends in.
+    ``weakest_region`` is the canvas box (the images' corner sits at ``origin``) holding the
+    tenth of the glyph pixels with the lowest contrast, which shows where a failure is."""
     ratios = pixel_ratios(painted, backdrop, background)
     mask = np.asarray(coverage)
     require(mask.max() > 0, "Target has no visible content")
     # Exclude antialiased fringe pixels; compare the actual styled/transparent layer against its backdrop.
-    result = contrast_summary(ratios[mask >= mask.max() * 0.95], background)
+    glyph = mask >= mask.max() * 0.95
+    result = contrast_summary(ratios[glyph], background)
+    ys, xs = np.nonzero(glyph & (ratios <= np.percentile(ratios[glyph], 10)))
+    result["weakest_region"] = [int(xs.min()) + origin[0], int(ys.min()) + origin[1],
+                                int(xs.max() - xs.min()) + 1, int(ys.max() - ys.min()) + 1]
     ring = outline_ring(layer, mask)
     if ring is not None:
         result["outline"] = {**contrast_summary(ratios[ring], background), "width": layer["styles"]["stroke"]["width"]}
@@ -94,7 +100,7 @@ def top_level_contrast(project, targets):
                     "Region must be within canvas",
                 )
                 coverage = layer_image(project, layers[ident], bounds[ident]).getchannel("A")
-                results[ident] = target_contrast(layers[ident], after, before, coverage)
+                results[ident] = target_contrast(layers[ident], after, before, coverage, origin=(x, y))
             except Exception as exc:  # Reported per target, like a failed measure() call.
                 results[ident] = exc
 
@@ -228,7 +234,9 @@ def measure(
         from .design import resolve_color
 
         if target_image is not None:
-            result["contrast"] = target_contrast(effective, target_image, image, coverage, background)
+            result["contrast"] = target_contrast(
+                effective, target_image, image, coverage, background, origin=result["region"][:2]
+            )
         else:
             backdrop = Image.new("RGBA", image.size, color(background))
             require(backdrop.getpixel((0, 0))[3] == 255, "Contrast background must be opaque")

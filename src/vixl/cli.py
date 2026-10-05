@@ -800,9 +800,20 @@ def project_command(project, cmd, args, *, detail="compact"):
     if cmd == "validate":
         p = Parser(prog="vixl validate")
         p.add_argument("profile", nargs="?")
-        p.add_argument("--rules")
+        p.add_argument(
+            "--rules",
+            action="append",
+            help="A JSON file holding a list of rules, or one rule such as 'text.title.font-size >= 120' (repeatable)",
+        )
         a = p.parse_args(args)
-        result = validate(project, a.profile, read_json(a.rules) if a.rules else None)
+        rules = None
+        for value in a.rules or []:
+            # A value naming a .json file (or an existing file) is a rules file; anything else is one rule.
+            inline = not value.endswith(".json") and not Path(value).is_file()
+            loaded = [value] if inline else read_json(value)
+            require(isinstance(loaded, list), "A rules file must hold a JSON list of rules")
+            rules = (rules or []) + loaded
+        result = validate(project, a.profile, rules)
         if not result["valid"]:
             raise VixlError("validation_failed", "Project validation failed", **result)
         return result, False

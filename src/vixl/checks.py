@@ -45,6 +45,11 @@ def _box(value, width, height, name):
     return x, y, w, h
 
 
+def where(region):
+    x, y, w, h = region
+    return f"x {x}–{x + w - 1}, y {y}–{y + h - 1}"
+
+
 def _intersects(a, b):
     return a[0] < b[0] + b[2] and b[0] < a[0] + a[2] and a[1] < b[1] + b[3] and b[1] < a[1] + a[3]
 
@@ -68,6 +73,30 @@ def glyph_reports(project, layers):
         report = glyph_coverage(project, {**item, "text": substitute(item["text"], project.state["variables"])})
         if report["missing"] or report["fallback"]:
             yield item, report
+
+
+def boxed_text_overflow(project, layer):
+    """For text set in a text-layout box, the (width, height) its wrapped lines need when that is
+    more than the box (they are cut off), else None. Fitted, warped and path text are skipped:
+    fit shrinks to the box, and warps and paths are laid out differently."""
+    from .text import measure, font_data, UnsupportedText
+    from .render import substitute
+
+    settings = layer.get("text_layout") or {}
+    if layer["type"] != "text" or "width" not in settings or settings.get("fit") or settings.get("path"):
+        return None
+    if settings.get("warp", "none") != "none":
+        return None
+    text = substitute(layer["text"], project.state.get("variables", {}))
+    try:
+        _, box = measure(font_data(project, layer), text, layer["size"], layer.get("spacing", 4),
+                         layer.get("align", "left"), layer["width"])
+    except UnsupportedText:
+        return None
+    stroke = 2 * layer.get("stroke_width", 0)
+    need = (math.ceil(box[2] - box[0] + stroke), math.ceil(box[3] - box[1] + stroke))
+    # A pixel of slack keeps antialiased glyph edges from counting as clipping.
+    return need if need[0] > layer["width"] + 1 or need[1] > layer["height"] + 1 else None
 
 
 def missing_glyphs(project):
@@ -189,6 +218,14 @@ def check_design(
             elif x < 0 or y < 0 or x + w > width or y + h > height:
                 severity = "error" if is_text(item) else "warning"
                 issue("bounds", severity, f"{item['name']!r} is cut off by the canvas edge", [item], bounds=[x, y, w, h])
+        for item in content:
+            needed = boxed_text_overflow(candidate, resolved[item["id"]])
+            if needed:
+                layer = resolved[item["id"]]
+                issue("bounds", "error",
+                      f"{item['name']!r} does not fit its {layer['width']}×{layer['height']} text box at "
+                      f"{layer['size']} px and is cut off (it needs {needed[0]}×{needed[1]}); enlarge the box "
+                      "with text-layout or shrink the text with fit-text", [item], needs=list(needed))
 
     alphas = {}
 
@@ -295,11 +332,12 @@ def check_design(
                 issue(
                     "contrast",
                     "error",
-                    f"{item['name']!r} contrast is {result['p10']:.2f}:1 for most glyph pixels "
-                    f"(minimum {result['minimum']:.2f}:1)"
+                    f"{item['name']!r} contrast is {result['p10']:.2f}:1 or lower for a tenth of its glyph pixels "
+                    f"(minimum {result['minimum']:.2f}:1, weakest at {where(result['weakest_region'])})"
                     + (f" and {outline['p10']:.2f}:1 for its outline" if outline else "")
                     + f"; needs {threshold:g}:1",
                     [item],
+                    region=result["weakest_region"],
                     contrast=result["p10"],
                     required=threshold,
                     **({"outline_contrast": outline["p10"]} if outline else {}),

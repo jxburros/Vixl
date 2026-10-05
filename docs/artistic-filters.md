@@ -39,7 +39,7 @@ Amount has filter-specific units. Values outside these ranges are rejected atomi
 | charcoal | Dark edges and shaded paper | 100 (0–100% mix) | `radius` 2 (0–20 pixels) |
 | find-edges | Colored edge detection on black | 100 (0–100% mix) | — |
 | emboss | Raised relief appearance | 100 (0–100% mix) | — |
-| oil-paint | Local mode smoothing and reduced colors | 3 (1–6 integer neighborhood radius) | — |
+| oil-paint | Local mode smoothing (on a luminance key, so it only uses colors already in the image) and reduced colors | 3 (1–6 integer neighborhood radius) | — |
 | watercolor | Smoothed reduced colors with paper variation | 100 (0–100% mix) | `seed` 0 |
 | swirl | Twist around the image center | 90 (−720–720 degrees) | `radius` 0.8 (0.01–1 fraction of the shorter dimension) |
 | ripple | Concentric displacement waves | 8 (0–64 pixels) | `radius` 32 (1–256 pixel wavelength) |

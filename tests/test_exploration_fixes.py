@@ -1,6 +1,7 @@
 """Regressions for the bugs and slow paths found while building the ten explorations."""
 
 import io
+import re
 import threading
 from pathlib import Path
 
@@ -515,3 +516,182 @@ def test_outlined_text_passes_contrast_through_its_outline():
     p.apply({"type": "layer-style", "target": "outlined", "name": "stroke", "settings": {"color": "#2a1050", "width": 5}})
     issue = next(i for i in p.check(checks=["contrast"])["issues"] if i["layers"] == ["outlined"])
     assert "for its outline" in issue["message"] and issue["outline_contrast"] < 1.5
+
+
+# Remaining minor findings ---------------------------------------------------------------------
+
+
+def test_check_reports_boxed_text_cut_off_by_its_box():
+    p = Project(300, 250, "white")
+    p.apply([
+        {"type": "text", "name": "kicker", "text": "Kicker Caps gy", "size": 7, "color": "black", "x": 10, "y": 10},
+        {"type": "text-layout", "target": "kicker", "width": 200, "height": 6},
+    ])
+    assert not [i for i in p.check(checks=["bounds"])["issues"] if i["layers"] == ["kicker"]]
+    p.apply({"type": "text-set", "target": "kicker", "size": 10})
+    issue = next(i for i in p.check(checks=["bounds"])["issues"] if i["layers"] == ["kicker"])
+    assert issue["severity"] == "error" and "cut off" in issue["message"] and issue["needs"][1] > 6
+
+
+def test_oil_paint_adds_no_false_colour():
+    from PIL import ImageDraw
+    from vixl.artistic import artistic_filter
+
+    image = Image.new("RGBA", (120, 80), (235, 225, 200, 255))
+    draw = ImageDraw.Draw(image)
+    for x in range(0, 120, 20):
+        draw.rectangle((x, 0, x + 9, 79), fill=(200, 40, 30, 255))
+    draw.ellipse((30, 20, 90, 60), fill=(30, 90, 200, 255))
+    for x in range(10, 110, 7):
+        draw.line((x, 5, x + 12, 75), fill=(40, 30, 20, 255), width=1)
+    source = {tuple(c) for c in np.asarray(image.convert("RGB")).reshape(-1, 3)}
+    out = np.asarray(artistic_filter(image, {"name": "oil-paint", "amount": 3}).convert("RGB")).reshape(-1, 3)
+    # Every output colour is a (posterized) colour from the input, never a channel-wise mix.
+    posterized = {tuple(v & 0xF8 for v in c) for c in source}
+    assert {tuple(c) for c in out} <= posterized
+
+
+def test_scale_zero_draws_nothing():
+    from vixl.timeline import project_at
+
+    p = Project(100, 40, "white")
+    p.apply([
+        {"type": "shape", "shape": "rectangle", "name": "bar", "width": 80, "height": 10, "x": 10, "y": 15, "fill": "black"},
+        {"type": "pivot", "target": "bar", "value": "left"},
+        {"type": "keyframe", "target": "bar", "property": "scale-x", "time": 0, "value": 0},
+        {"type": "keyframe", "target": "bar", "property": "scale-x", "time": 1000, "value": 1},
+    ])
+    assert not ink(project_at(p, 0).render()).any()
+    assert ink(project_at(p, 1000).render()).sum() == 800
+
+
+def test_recipe_input_defaults_do_not_override_artboard_variables():
+    from vixl.production import capture_recipe, instantiate
+    from vixl.design_render import artboard_project
+
+    p = Project(50, 50)
+    p.apply([
+        {"type": "variable", "name": "c", "value": "#00ff00"},
+        {"type": "shape", "shape": "rectangle", "name": "r", "width": 50, "height": 50, "fill": "${c}"},
+        {"type": "artboard", "name": "blue", "width": 50, "height": 50, "variables": {"c": "#0000ff"}},
+    ])
+    p = capture_recipe(p, {"version": 1, "inputs": {"c": {"type": "color", "default": "#ff0000"}}}, {})
+
+    def pixel(artboard, values):
+        return instantiate(artboard_project(p.clone(), artboard, None, None), values).render().getpixel((25, 25))
+
+    assert pixel("blue", {}) == (0, 0, 255, 255)  # The board's value beats the input default.
+    assert pixel("blue", {"c": "#ffffff"}) == (255, 255, 255, 255)  # An explicit row value wins.
+    assert pixel(None, {})[:3] == (255, 0, 0)  # The default still applies where nothing else is set.
+
+
+def test_pen_box_fits_its_nodes():
+    p = Project(400, 300, "white")
+    p.apply({"type": "pen", "name": "a", "nodes": [{"point": [10, 10]}, {"point": [50, 40]}]})
+    x, y, w, h = p.inspect("a")["resolved_bounds"]
+    assert x <= 10 and y <= 10 and x + w >= 50 and y + h >= 40 and w < 60 and h < 50
+    # A stroke along the box edge keeps its full width.
+    p.apply({"type": "pen", "name": "line", "points": [[20, 150], [380, 150]], "stroke": "black",
+             "stroke_width": 10, "fill": "transparent"})
+    assert ink(p.render())[:, 200].sum() == 10
+    # Editing keeps node coordinates in the canvas frame.
+    p.apply({"type": "pen", "target": "a", "nodes": [{"point": [100, 100]}, {"point": [150, 140]}]})
+    x, y, w, h = p.inspect("a")["resolved_bounds"]
+    assert x <= 100 and y <= 100 and x + w >= 150 and y + h >= 140 and w < 60
+    p.apply({"type": "pen", "name": "c", "x": "center", "points": [[0, 0], [40, 0]]})
+    x, _, w, _ = p.inspect("c")["resolved_bounds"]
+    assert abs(x + w / 2 - 200) <= 1
+
+
+def test_pen_rejects_nodes_outside_an_explicit_box():
+    from vixl import VixlError
+
+    p = Project(100, 100)
+    with pytest.raises(VixlError, match="outside the 20×20 box"):
+        p.apply({"type": "pen", "name": "sq", "width": 20, "height": 20, "closed": True,
+                 "nodes": [{"point": [0, 0]}, {"point": [40, 0]}, {"point": [40, 40]}, {"point": [0, 40]}]})
+    p.apply({"type": "pen", "name": "ok", "width": 40, "height": 40, "nodes": [{"point": [0, 0]}, {"point": [40, 40]}]})
+
+
+def test_contrast_issue_says_where_the_glyphs_fail():
+    p = Project(200, 100, "#000000")
+    p.apply([
+        {"type": "shape", "shape": "rectangle", "name": "band", "width": 200, "height": 30, "y": 0, "fill": "#ff7030"},
+        {"type": "text", "name": "t", "text": "TT", "size": 60, "color": "white", "x": 40, "y": 10},
+    ])
+    issue = next(i for i in p.check(checks=["contrast"])["issues"] if i["layers"] == ["t"])
+    x, y, w, h = issue["region"]
+    assert "a tenth of its glyph pixels" in issue["message"] and y + h <= 31
+
+
+@pytest.mark.parametrize(
+    "ops, message",
+    [
+        ([{"type": "pixel-art", "name": "s", "rows": ["##", "###", "##"], "palette": {"#": "red"}}],
+         "row 1 (counting from 0) has 3 characters but row 0 has 2"),
+        ([{"type": "shape", "shape": "rectangle", "name": "anchor", "width": 20, "height": 20},
+          {"type": "text", "name": "cap", "text": "x"},
+          {"type": "constrain", "target": "cap", "constraints": {"top": "anchor.bottom+4"}},
+          {"type": "group", "name": "g", "targets": ["anchor"]}],
+         "'cap' is constrained to 'anchor'"),
+        ([{"type": "text", "name": "t", "text": "x"},
+          {"type": "constrain", "target": "t", "constraints": {"left": "canvas.left+10"}},
+          {"type": "constrain", "target": "t", "constraints": {"center-x": "canvas.center-x"}}],
+         "would have both left and center-x"),
+        ([{"type": "solid", "color": "red", "name": f"s{i}"} for i in range(1001)], "at most 1000 operations, got 1001"),
+        ([{"type": "shape", "shape": "ellipse", "name": "dot", "width": 30, "height": 30},
+          {"type": "pivot", "target": "dot", "units": "px", "value": [15, 314]}],
+         "pivot y of 314 px"),
+    ],
+)
+def test_errors_name_what_is_wrong(ops, message):
+    from vixl import VixlError
+
+    with pytest.raises(VixlError, match=re.escape(message)):
+        Project(300, 300).apply(ops)
+
+
+def test_undefined_swatch_error_points_at_the_operation_using_it():
+    from vixl import VixlError
+
+    p = Project(100, 100)
+    with pytest.raises(VixlError) as caught:
+        p.apply([
+            {"type": "shape", "shape": "ellipse", "name": "a", "width": 40, "height": 40, "fill": "@roast"},
+            {"type": "shape", "shape": "rectangle", "name": "b", "width": 40, "height": 40, "x": 20, "fill": "red"},
+            {"type": "pathfinder", "name": "u", "targets": ["a", "b"], "mode": "union"},
+        ])
+    assert caught.value.details["operation_index"] == 0 and "@roast" in str(caught.value)
+    # A swatch defined later in the same batch still resolves.
+    p.apply([{"type": "shape", "shape": "ellipse", "name": "a", "width": 9, "height": 9, "fill": "@later"},
+             {"type": "swatch", "name": "later", "color": "red"}])
+
+
+def test_unnamed_layers_get_numbered_names():
+    from vixl import VixlError
+
+    p = Project(100, 100)
+    p.apply([
+        {"type": "shape", "shape": "ellipse", "width": 10, "height": 10},
+        {"type": "shape", "shape": "rectangle", "width": 10, "height": 10},
+        {"type": "solid", "color": "red"},
+        {"type": "solid", "color": "blue"},
+        {"type": "duplicate", "target": "shape"},
+        {"type": "duplicate", "target": "shape"},
+    ])
+    assert [layer["name"] for layer in p.state["layers"]] == [
+        "shape", "shape 2", "solid", "solid 2", "shape copy", "shape copy 2"
+    ]
+    with pytest.raises(VixlError, match="already exists"):
+        p.apply({"type": "solid", "color": "red", "name": "solid"})
+
+
+def test_validate_rules_accepts_inline_assertions(tmp_path, monkeypatch):
+    import json
+    from vixl.cli import dispatch
+
+    monkeypatch.chdir(tmp_path)
+    Project(100, 100).save("d.vixl")
+    (tmp_path / "rules.json").write_text(json.dumps(["canvas.height == 100"]))
+    result, _ = dispatch(["-p", "d.vixl", "validate", "--rules", "canvas.width == 100", "--rules", "rules.json"])
+    assert {"canvas.width == 100", "canvas.height == 100"} <= {c["rule"] for c in result["checks"]}

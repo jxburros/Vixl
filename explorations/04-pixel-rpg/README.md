@@ -73,7 +73,7 @@ Variants (one rig, recolored with `pixel-palette`):
 
 ## Findings
 
-> **Status:** Bugs 1 (group `scale` smoothing pixel art) and 2 (a resized child clipped to its group's old box) are fixed: groups no longer clip, so the `ungroup`/`group` workaround in `scale_pixel_group()` is no longer needed. Bugs 3 and 4 are still open. See the Unreleased section of the [changelog](../../CHANGELOG.md).
+> **Status:** Bugs 1 (group `scale` smoothing pixel art) and 2 (a resized child clipped to its group's old box) are fixed: groups no longer clip, so the `ungroup`/`group` workaround in `scale_pixel_group()` is no longer needed. Bug 4 is fixed too: the error names the ragged row and both widths (`row 1 (counting from 0) has 3 characters but row 0 has 2`). Bug 3 (frame subsets) is still open. See the Unreleased section of the [changelog](../../CHANGELOG.md).
 
 **Bugs and real rough edges**
 

@@ -135,7 +135,7 @@ No documents were written by any blocked attempt.
 
 ## Findings
 
-> **Status:** Bugs 1 (`text-fit` always failing on auto-sized text) and 2 (`roll` previews ignoring the document) are fixed. Bug 3 is still open. See the Unreleased section of the [changelog](../../CHANGELOG.md).
+> **Status:** Bugs 1 (`text-fit` always failing on auto-sized text), 2 (`roll` previews ignoring the document) and 3 (boxed text clipped without `check` noticing) are fixed: the `bounds` check reports text that no longer fits its `text-layout` box, with the size it needs. Unnamed layers are now numbered (`shape`, `shape 2`, …) instead of colliding. See the Unreleased section of the [changelog](../../CHANGELOG.md).
 
 ### Bugs
 
