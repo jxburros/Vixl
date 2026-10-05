@@ -37,7 +37,10 @@ Each line is one paragraph.
 ## Character styles
 
 Spans override the layer's own font, size and color; anything a span leaves out follows the
-layer, so `text-set --color` or `--size` restyles the whole box and keeps the emphasis.
+layer, so `text-set --color` or `--size` restyles the whole box and keeps the emphasis (spans that set
+their own value keep it; `text-set` warns when that happens). The `fonts` check follows the font each run
+of text is drawn in: rich text whose visible spans all set a registered `font` is not flagged as using the
+bundled fallback, and fallback glyphs are checked against each span's own font.
 
 | Style | Values |
 | --- | --- |
