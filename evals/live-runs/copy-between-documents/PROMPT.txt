@@ -1,0 +1,1 @@
+Open a.vixl and b.vixl. Replace the text of the layer named placeholder in b.vixl with the exact text of the layer named headline in a.vixl. Do not modify a.vixl.

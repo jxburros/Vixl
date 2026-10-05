@@ -1,0 +1,3 @@
+test,lane,agent,model,date,blind_code,r1_minutes,r1_nudges,hard_passed,hard_total,fidelity,craft,report_honest,r2_minutes,r2_nudges,editability,revision,notes
+T02,V,claude-code-subagent,claude-opus-5-5,2026-10-05,4058,,0,5,5,4,4,yes,,0,5,5,Copy exact (U+00B7 and U+2013 verified in .vixl); loose leading in headline; PNG is RGBA (not required here); r2 only rows 820-1099 changed; story is a real re-layout
+T02,W,claude-code-subagent,claude-opus-5-5,2026-10-05,HF3D,,0,5,5,5,5,yes,,0,5,4,Strongest post; r2 correct but headline nudged up 18 px (collateral); story is a real re-layout

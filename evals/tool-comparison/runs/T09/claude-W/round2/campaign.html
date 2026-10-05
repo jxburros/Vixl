@@ -1,0 +1,103 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Tidewick Winter Menu</title>
+<style>
+@font-face{font-family:"Fraunces";src:url(fonts/Fraunces-latin.woff2) format("woff2");font-weight:100 900;}
+@font-face{font-family:"DM Sans";src:url(fonts/DMSans-latin.woff2) format("woff2");font-weight:100 1000;}
+:root{--navy:#14263b;--amber:#f2a541;--foam:#a8d5c8;--coral:#e2725b;--cream:#f7f1e5;}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{background:#555}
+.ad{position:relative;overflow:hidden;background:var(--navy);color:var(--cream);font-family:"DM Sans",sans-serif;margin:0 0 40px 0}
+.ad svg.bg{position:absolute;inset:0}
+.txt{position:absolute;display:flex;flex-direction:column}
+.h{font-family:"Fraunces",serif;font-weight:800;line-height:.98;letter-spacing:-.01em;font-variation-settings:"opsz" 144, "SOFT" 50}
+.h em{font-style:normal;color:var(--amber)}
+.items{color:var(--foam);font-weight:500}
+.items b,.when b{font-weight:inherit;white-space:nowrap}
+.items i{font-style:normal;color:var(--coral)}
+.when{color:var(--cream);font-weight:700}
+.url{align-self:flex-start;background:var(--coral);color:var(--cream);font-weight:700;border-radius:999px}
+.rule{background:var(--amber);border-radius:4px}
+</style></head>
+<body>
+<div id="root"></div>
+<script>
+const C={navy:"#14263b",amber:"#f2a541",foam:"#a8d5c8",coral:"#e2725b",cream:"#f7f1e5"};
+// motif: harbor lamp (amber disc + halo rings) over three rolling wave bands (sea-foam, coral, cream)
+function wavePath(w,top,amp,len,phase,bottom){
+  let d=`M0 ${bottom} L0 ${top}`;
+  const step=4;
+  for(let x=0;x<=w+step;x+=step){const y=top+amp*Math.sin((x/len)*2*Math.PI+phase);d+=` L${x} ${y.toFixed(1)}`;}
+  return d+` L${w+step} ${bottom} Z`;
+}
+function waves(w,h,{base,amp,len,gap,x0=0,wid=w}){
+  // three bands stacked, last one navy-dark sea
+  const bands=[[C.foam,0,0],[C.coral,gap,1.3],[C.amber,gap*2,2.4],[ "#0d1b2b",gap*3,3.3]];
+  return bands.map(([c,off,ph])=>`<path transform="translate(${x0} 0)" d="${wavePath(wid,base+off,amp,len,ph,h+10)}" fill="${c}"/>`).join("");
+}
+function lamp(cx,cy,r,rings=3){
+  let s="";
+  for(let i=rings;i>=1;i--){s+=`<circle cx="${cx}" cy="${cy}" r="${r+i*r*0.42}" fill="none" stroke="${C.amber}" stroke-opacity="${0.11+0.07*(rings-i)}" stroke-width="${Math.max(1.5,r*0.06)}"/>`;}
+  s+=`<circle cx="${cx}" cy="${cy}" r="${r*1.12}" fill="${C.amber}" fill-opacity=".16"/>`;
+  s+=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="${C.amber}"/>`;
+  // steam curls over the lamp: three small cream strokes (cup/steam nod)
+  const sw=Math.max(1.5,r*0.09);
+  for(let k=-1;k<=1;k++){const x=cx+k*r*0.32;const y=cy-r*0.45;s+=`<path d="M${x} ${y+r*0.75} c ${-r*0.16} ${-r*0.2} ${r*0.16} ${-r*0.35} 0 ${-r*0.6}" stroke="${C.navy}" stroke-width="${sw}" fill="none" stroke-linecap="round"/>`;}
+  return s;
+}
+function stars(w,h,n,seed,maxY){let s="",r=seed;const rnd=()=>{r=(r*9301+49297)%233280;return r/233280};
+  for(let i=0;i<n;i++){s+=`<circle cx="${(rnd()*w).toFixed(0)}" cy="${(rnd()*maxY).toFixed(0)}" r="${(1+rnd()*2.2).toFixed(1)}" fill="${C.cream}" fill-opacity="${(0.25+rnd()*0.4).toFixed(2)}"/>`;}return s;}
+const HEAD='<em>Winter Menu:</em> <span style="white-space:nowrap">now pouring</span>';
+const ITEMS='<b>Gingerbread flat white</b> <i>·</i> <b>Spiced honey cortado</b> <i>·</i> <b>Cardamom bun</b>';
+const WHEN='From Tuesday, December 1 <b>at Tidewick Café</b>';
+const URL='See the menu at tidewick.example';
+function ad(id,w,h,svg,txtStyle,inner){
+  return `<div class="ad" id="${id}" style="width:${w}px;height:${h}px"><svg class="bg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${svg}</svg><div class="txt" style="${txtStyle}">${inner}</div></div>`;
+}
+const F={
+ "instagram-square":()=>ad("instagram-square",1080,1080,
+   stars(1080,1080,40,7,620)+lamp(905,195,88)+waves(1080,1080,{base:850,amp:22,len:360,gap:46}),
+   "left:96px;top:120px;width:700px;gap:0",
+   `<div class="h" style="font-size:118px">${HEAD}</div>
+    <div class="rule" style="width:120px;height:8px;margin:44px 0 36px"></div>
+    <div class="items" style="font-size:34px;line-height:1.35;max-width:640px">${ITEMS}</div>
+    <div class="when" style="font-size:36px;margin-top:28px">${WHEN}</div>
+    <div class="url" style="font-size:30px;padding:14px 30px;margin-top:40px">${URL}</div>`),
+ "instagram-story":()=>ad("instagram-story",1080,1920,
+   stars(1080,1920,70,11,1350)+lamp(540,470,150,4)+waves(1080,1920,{base:1560,amp:30,len:420,gap:62}),
+   "left:90px;top:760px;width:900px;align-items:center;text-align:center",
+   `<div class="h" style="font-size:148px">${HEAD}</div>
+    <div class="rule" style="width:140px;height:10px;margin:52px 0 44px"></div>
+    <div class="items" style="font-size:42px;line-height:1.4;max-width:820px">${ITEMS}</div>
+    <div class="when" style="font-size:42px;margin-top:34px;max-width:820px">${WHEN}</div>
+    <div class="url" style="font-size:36px;padding:18px 40px;margin-top:48px;align-self:center">${URL}</div>`),
+ "x-post":()=>ad("x-post",1600,900,
+   stars(1600,900,45,3,560)+lamp(1330,330,140,3)+waves(1600,900,{base:720,amp:20,len:420,gap:40}),
+   "left:100px;top:90px;width:900px",
+   `<div class="h" style="font-size:120px">${HEAD}</div>
+    <div class="rule" style="width:120px;height:8px;margin:38px 0 30px"></div>
+    <div class="items" style="font-size:34px;line-height:1.35">${ITEMS}</div>
+    <div class="when" style="font-size:34px;margin-top:20px">${WHEN}</div>
+    <div class="url" style="font-size:28px;padding:12px 28px;margin-top:32px">${URL}</div>`),
+ "facebook-event":()=>ad("facebook-event",1920,1005,
+   stars(1920,1005,55,5,640)+lamp(1600,380,170,3)+waves(1920,1005,{base:800,amp:24,len:500,gap:46}),
+   "left:130px;top:120px;width:1060px",
+   `<div class="h" style="font-size:136px">${HEAD}</div>
+    <div class="rule" style="width:140px;height:9px;margin:44px 0 34px"></div>
+    <div class="items" style="font-size:40px;line-height:1.35">${ITEMS}</div>
+    <div class="when" style="font-size:40px;margin-top:22px">${WHEN}</div>
+    <div class="url" style="font-size:32px;padding:14px 32px;margin-top:36px">${URL}</div>`),
+ "leaderboard":()=>ad("leaderboard",728,90,
+   lamp(48,45,20,2)+waves(728,90,{base:52,amp:5,len:70,gap:9,x0:600,wid:128}),
+   "left:104px;top:0;height:90px;width:500px;justify-content:center",
+   `<div class="h" style="font-size:29px;line-height:1.05;white-space:nowrap">${HEAD}</div>
+    <div class="when" style="font-size:14px;margin-top:5px;color:var(--foam);font-weight:500">${WHEN}</div>`),
+ "email-header":()=>ad("email-header",600,200,
+   lamp(512,74,36,3)+waves(600,200,{base:174,amp:5,len:150,gap:8}),
+   "left:36px;top:24px;width:420px",
+   `<div class="h" style="font-size:44px;line-height:1.0"><em>Winter Menu:</em><br>now pouring</div>
+    <div class="rule" style="width:56px;height:4px;margin:12px 0 10px"></div>
+    <div class="when" style="font-size:16px">${WHEN}</div>`),
+};
+const only=location.hash.slice(1);
+document.getElementById("root").innerHTML=Object.keys(F).filter(k=>!only||k===only).map(k=>F[k]()).join("");
+</script></body></html>

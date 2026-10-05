@@ -1,0 +1,1 @@
+Create story.vixl at 1080x1920 with a vertical gradient background from #1a2a6c to #b21f1f. Add three white text layers named item1, item2 and item3 reading 'Plan', 'Build' and 'Ship', each at font size 90 or more, left-aligned at x=120 and stacked top to bottom with equal vertical gaps. vixl_check must report no errors.

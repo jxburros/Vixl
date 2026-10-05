@@ -1,0 +1,193 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Tidewick Coffee 2025</title>
+<style>
+  html, body { margin: 0; padding: 0; background: #f7f1e5; }
+  svg { display: block; }
+</style>
+</head>
+<body>
+<!-- Data: copied verbatim from evals/tool-comparison/fixtures/coffee-2025.csv (build.py checks it still matches) -->
+<script id="csv" type="text/csv">
+month,flat_white,drip,cold_brew,tea
+Jan,1200,1100,60,520
+Feb,1150,1050,70,500
+Mar,1250,1080,110,470
+Apr,1300,1000,180,430
+May,1350,960,260,380
+Jun,1400,900,330,340
+Jul,1380,880,390,330
+Aug,1420,870,420,320
+Sep,1360,940,300,380
+Oct,1330,1000,190,450
+Nov,1280,1060,110,500
+Dec,1300,1040,80,560
+</script>
+<svg id="ig" xmlns="http://www.w3.org/2000/svg" width="1200" height="1800" viewBox="0 0 1200 1800"></svg>
+<script>
+const NAVY = '#14263b', AMBER = '#f2a541', SEA = '#a8d5c8', CORAL = '#e2725b', CREAM = '#f7f1e5';
+const INK = NAVY, MUTED = '#5b6676', GRID = '#d9cfbd', CARD = '#fffaf0';
+const SERIF = "P052, 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif";
+const SANS = "'DejaVu Sans', 'Liberation Sans', Arial, Helvetica, sans-serif";
+
+// ---- Parse data ----
+const lines = document.getElementById('csv').textContent.trim().split(/\r?\n/);
+const header = lines[0].split(',');
+const KEYS = header.slice(1);
+const rows = lines.slice(1).map(l => {
+  const c = l.split(',');
+  const r = { month: c[0] };
+  KEYS.forEach((k, i) => r[k] = Number(c[i + 1]));
+  r.total = KEYS.reduce((s, k) => s + r[k], 0);
+  return r;
+});
+const DRINKS = {
+  flat_white: { label: 'Flat white', color: NAVY },
+  drip:       { label: 'Drip',       color: AMBER },
+  cold_brew:  { label: 'Cold brew',  color: SEA },
+  tea:        { label: 'Tea',        color: CORAL },
+};
+const MONTH_FULL = { Jan:'January', Feb:'February', Mar:'March', Apr:'April', May:'May', Jun:'June',
+  Jul:'July', Aug:'August', Sep:'September', Oct:'October', Nov:'November', Dec:'December' };
+
+// ---- Computations ----
+const drinkTotals = Object.fromEntries(KEYS.map(k => [k, rows.reduce((s, r) => s + r[k], 0)]));
+const grand = KEYS.reduce((s, k) => s + drinkTotals[k], 0);
+const busiest = rows.reduce((a, b) => (b.total > a.total ? b : a));
+const coldPeak = rows.reduce((a, b) => (b.cold_brew > a.cold_brew ? b : a));
+const ties = {
+  busiest: rows.filter(r => r.total === busiest.total).length,
+  cold: rows.filter(r => r.cold_brew === coldPeak.cold_brew).length,
+};
+const share = Object.fromEntries(KEYS.map(k => [k, (drinkTotals[k] / grand) * 100]));
+const fmt = n => n.toLocaleString('en-US');
+const pct = v => v.toFixed(1) + '%';
+window.__results = { drinkTotals, grand, busiest, coldPeak, ties, share, rows };
+
+// ---- SVG helpers ----
+const svg = document.getElementById('ig');
+const NS = 'http://www.w3.org/2000/svg';
+function el(tag, attrs = {}, parent = svg, text) {
+  const e = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+  if (text !== undefined) e.textContent = text;
+  parent.appendChild(e);
+  return e;
+}
+function txt(x, y, s, o = {}, parent = svg) {
+  return el('text', Object.assign({ x, y, fill: INK, 'font-family': SANS, 'font-size': 16 }, o), parent, s);
+}
+
+// ---- Background & header ----
+el('rect', { x: 0, y: 0, width: 1200, height: 1800, fill: CREAM });
+el('rect', { x: 0, y: 0, width: 1200, height: 14, fill: NAVY });
+// four-stripe accent bar using the drink colours
+KEYS.forEach((k, i) => el('rect', { x: 80 + i * 40, y: 78, width: 36, height: 8, rx: 2, fill: DRINKS[k].color }));
+txt(80, 168, 'A Year of Coffee at Tidewick', { 'font-family': SERIF, 'font-size': 66, 'font-weight': 700 });
+txt(82, 214, 'Cups sold per month, 2025', { 'font-size': 26, fill: MUTED });
+
+// ---- Callouts ----
+const callouts = [
+  { big: fmt(grand), label: 'cups sold in 2025', sub: 'all four drinks, Jan to Dec', accent: NAVY },
+  { big: MONTH_FULL[busiest.month], label: 'busiest month', sub: fmt(busiest.total) + ' cups in total', accent: AMBER },
+  { big: fmt(coldPeak.cold_brew), label: 'cups of cold brew', sub: 'its peak month: ' + MONTH_FULL[coldPeak.month], accent: SEA },
+];
+const cW = 333, cH = 170, cGap = 20, cY = 262;
+callouts.forEach((c, i) => {
+  const x = 80 + i * (cW + cGap);
+  const g = el('g', { transform: `translate(${x},${cY})` });
+  el('rect', { x: 0, y: 0, width: cW, height: cH, rx: 14, fill: CARD, stroke: GRID, 'stroke-width': 1.5 }, g);
+  el('rect', { x: 0, y: 0, width: 10, height: cH, rx: 5, fill: c.accent }, g);
+  el('rect', { x: 5, y: 0, width: 5, height: cH, fill: c.accent }, g);
+  txt(34, 76, c.big, { 'font-family': SERIF, 'font-size': 54, 'font-weight': 700 }, g);
+  txt(36, 112, c.label, { 'font-size': 20, 'font-weight': 700 }, g);
+  txt(36, 142, c.sub, { 'font-size': 18, fill: MUTED }, g);
+});
+
+// ---- Stacked bar chart ----
+const sectionTitle = (y, s, sub) => {
+  txt(80, y, s, { 'font-family': SERIF, 'font-size': 34, 'font-weight': 700 });
+  if (sub) txt(80, y + 32, sub, { 'font-size': 18, fill: MUTED });
+};
+sectionTitle(510, 'Cups sold each month, by drink', 'Stacked bars; the axis starts at zero');
+
+// legend
+let lx = 80;
+const ly = 588;
+KEYS.forEach(k => {
+  el('rect', { x: lx, y: ly - 15, width: 18, height: 18, rx: 3, fill: DRINKS[k].color });
+  const t = txt(lx + 26, ly, DRINKS[k].label, { 'font-size': 18 });
+  lx += 26 + DRINKS[k].label.length * 10.5 + 34;
+});
+
+const plot = { x: 180, y: 630, w: 940, h: 520 };
+const yMax = Math.ceil(Math.max(...rows.map(r => r.total)) / 500) * 500; // 3,030 -> 3,500
+const ys = v => plot.y + plot.h - (v / yMax) * plot.h;
+for (let v = 0; v <= yMax; v += 500) {
+  el('line', { x1: plot.x, x2: plot.x + plot.w, y1: ys(v), y2: ys(v), stroke: v === 0 ? INK : GRID,
+    'stroke-width': v === 0 ? 2 : 1 });
+  txt(plot.x - 14, ys(v) + 6, fmt(v), { 'font-size': 16, fill: MUTED, 'text-anchor': 'end' });
+}
+txt(0, 0, 'Cups sold', { 'font-size': 16, fill: MUTED, 'text-anchor': 'middle',
+  transform: `translate(96,${plot.y + plot.h / 2}) rotate(-90)` });
+
+const band = plot.w / rows.length, barW = band * 0.66;
+rows.forEach((r, i) => {
+  const bx = plot.x + i * band + (band - barW) / 2;
+  let cum = 0;
+  KEYS.forEach(k => {
+    const y0 = ys(cum), y1 = ys(cum + r[k]);
+    el('rect', { x: bx.toFixed(2), y: y1.toFixed(3), width: barW.toFixed(2), height: (y0 - y1).toFixed(3),
+      fill: DRINKS[k].color, 'data-month': r.month, 'data-drink': k, 'data-value': r[k] });
+    cum += r[k];
+  });
+  // thin cream separators between segments (drawn on top, centred on boundaries)
+  let c2 = 0;
+  KEYS.slice(0, -1).forEach(k => {
+    c2 += r[k];
+    el('line', { x1: bx, x2: bx + barW, y1: ys(c2), y2: ys(c2), stroke: CREAM, 'stroke-width': 1 });
+  });
+  txt(bx + barW / 2, ys(r.total) - 10, fmt(r.total), { 'font-size': 14, fill: INK, 'text-anchor': 'middle',
+    'font-weight': r === busiest ? 700 : 400 });
+  txt(bx + barW / 2, plot.y + plot.h + 28, r.month, { 'font-size': 17, fill: INK, 'text-anchor': 'middle',
+    'font-weight': r === busiest ? 700 : 400 });
+});
+
+// ---- Share of year (donut) ----
+sectionTitle(1290, 'Share of the year, by drink', 'Percent of all ' + fmt(grand) + ' cups sold in 2025');
+const cx = 320, cy = 1520, R = 175, r0 = 104;
+let a0 = -Math.PI / 2;
+KEYS.forEach(k => {
+  const a1 = a0 + (drinkTotals[k] / grand) * Math.PI * 2;
+  const large = a1 - a0 > Math.PI ? 1 : 0;
+  const p = (ang, rad) => [cx + rad * Math.cos(ang), cy + rad * Math.sin(ang)].map(v => v.toFixed(3)).join(' ');
+  el('path', { d: `M ${p(a0, R)} A ${R} ${R} 0 ${large} 1 ${p(a1, R)} L ${p(a1, r0)} A ${r0} ${r0} 0 ${large} 0 ${p(a0, r0)} Z`,
+    fill: DRINKS[k].color, stroke: CREAM, 'stroke-width': 3, 'data-drink': k });
+  a0 = a1;
+});
+txt(cx, cy - 4, fmt(grand), { 'font-family': SERIF, 'font-size': 40, 'font-weight': 700, 'text-anchor': 'middle' });
+txt(cx, cy + 26, 'cups', { 'font-size': 18, fill: MUTED, 'text-anchor': 'middle' });
+
+// share table to the right
+const tx = 620;
+let ty = 1405;
+KEYS.forEach(k => {
+  el('rect', { x: tx, y: ty - 26, width: 30, height: 30, rx: 5, fill: DRINKS[k].color });
+  txt(tx + 46, ty, DRINKS[k].label, { 'font-size': 24, 'font-weight': 700 });
+  txt(1120, ty, pct(share[k]), { 'font-family': SERIF, 'font-size': 34, 'font-weight': 700, 'text-anchor': 'end' });
+  txt(tx + 46, ty + 28, fmt(drinkTotals[k]) + ' cups', { 'font-size': 17, fill: MUTED });
+  if (k !== KEYS[KEYS.length - 1])
+    el('line', { x1: tx, x2: 1120, y1: ty + 46, y2: ty + 46, stroke: GRID, 'stroke-width': 1 });
+  ty += 84;
+});
+
+// ---- Footnote ----
+el('line', { x1: 80, x2: 1120, y1: 1712, y2: 1712, stroke: GRID, 'stroke-width': 1 });
+txt(80, 1748, 'Fictional data, made for testing.', { 'font-size': 17, fill: MUTED, 'font-style': 'italic' });
+txt(1120, 1748, 'Source: coffee-2025.csv', { 'font-size': 15, fill: MUTED, 'text-anchor': 'end' });
+el('rect', { x: 0, y: 1786, width: 1200, height: 14, fill: NAVY });
+</script>
+</body>
+</html>

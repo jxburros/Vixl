@@ -1,0 +1,577 @@
+{
+ "copy-between-documents": {
+  "passed": true,
+  "checks": [
+   {
+    "check": "text copied",
+    "passed": true,
+    "detail": [
+     "placeholder"
+    ]
+   },
+   {
+    "check": "source unchanged",
+    "passed": true,
+    "detail": [
+     "headline"
+    ]
+   }
+  ]
+ },
+ "equal-spacing": {
+  "passed": true,
+  "checks": [
+   {
+    "check": "canvas",
+    "passed": true,
+    "detail": [
+     1080,
+     1080
+    ]
+   },
+   {
+    "check": "60 px gaps",
+    "passed": true,
+    "detail": [
+     60,
+     60
+    ]
+   },
+   {
+    "check": "row group",
+    "passed": true,
+    "detail": [
+     "row"
+    ]
+   },
+   {
+    "check": "row centered",
+    "passed": true,
+    "detail": [
+     0.0,
+     0.0
+    ]
+   }
+  ]
+ },
+ "fix-layout": {
+  "passed": true,
+  "checks": [
+   {
+    "check": "no design errors",
+    "passed": true,
+    "detail": []
+   },
+   {
+    "check": "title kept",
+    "passed": true,
+    "detail": [
+     "title"
+    ]
+   },
+   {
+    "check": "subtitle kept",
+    "passed": true,
+    "detail": [
+     "subtitle"
+    ]
+   },
+   {
+    "check": "footer kept",
+    "passed": true,
+    "detail": [
+     "footer"
+    ]
+   },
+   {
+    "check": "no extra text",
+    "passed": true,
+    "detail": [
+     "title",
+     "subtitle",
+     "footer"
+    ]
+   }
+  ]
+ },
+ "font-pairing": {
+  "passed": true,
+  "checks": [
+   {
+    "check": "state_field",
+    "passed": true,
+    "detail": "source-serif-4-600"
+   },
+   {
+    "check": "state_field",
+    "passed": true,
+    "detail": "source-sans-3-400"
+   },
+   {
+    "check": "title",
+    "passed": true,
+    "detail": [
+     "headline"
+    ]
+   }
+  ]
+ },
+ "form-batch-fill": {
+  "passed": true,
+  "checks": [
+   {
+    "check": "one flattened page per valid row",
+    "passed": true,
+    "detail": {
+     "pages": 2,
+     "fields": []
+    }
+   }
+  ]
+ },
+ "form-registration": {
+  "passed": true,
+  "checks": [
+   {
+    "check": "full name field",
+    "passed": true,
+    "detail": [
+     "full_name"
+    ]
+   },
+   {
+    "check": "email field",
+    "passed": true,
+    "detail": [
+     "email"
+    ]
+   },
+   {
+    "check": "plan radio group",
+    "passed": true,
+    "detail": [
+     "plan-annual",
+     "plan-monthly"
+    ]
+   },
+   {
+    "check": "newsletter checkbox",
+    "passed": true,
+    "detail": [
+     "newsletter"
+    ]
+   },
+   {
+    "check": "signature box",
+    "passed": true,
+    "detail": [
+     "signature"
+    ]
+   },
+   {
+    "check": "form checks pass",
+    "passed": true,
+    "detail": []
+   },
+   {
+    "check": "fillable export",
+    "passed": true,
+    "detail": {
+     "pages": 1,
+     "fields": [
+      "email",
+      "full_name",
+      "newsletter",
+      "plan",
+      "signature"
+     ]
+    }
+   }
+  ]
+ },
+ "layout-filled": {
+  "passed": true,
+  "checks": [
+   {
+    "check": "state_field",
+    "passed": true,
+    "detail": "hero-statement"
+   },
+   {
+    "check": "title",
+    "passed": true,
+    "detail": [
+     "headline"
+    ]
+   },
+   {
+    "check": "design",
+    "passed": true,
+    "detail": []
+   }
+  ]
+ },
+ "photo-caption": {
+  "passed": true,
+  "checks": [
+   {
+    "check": "canvas",
+    "passed": true,
+    "detail": [
+     1080,
+     1350
+    ]
+   },
+   {
+    "check": "photo at full width",
+    "passed": true,
+    "detail": [
+     "photo"
+    ]
+   },
+   {
+    "check": "caption",
+    "passed": true,
+    "detail": [
+     "caption"
+    ]
+   },
+   {
+    "check": "caption centered horizontally",
+    "passed": true,
+    "detail": [
+     0.0,
+     338.0
+    ]
+   },
+   {
+    "check": "no design errors",
+    "passed": true,
+    "detail": []
+   },
+   {
+    "check": "file",
+    "passed": true,
+    "detail": [
+     1080,
+     1350
+    ]
+   }
+  ]
+ },
+ "print-cmyk": {
+  "passed": true,
+  "checks": [
+   {
+    "check": "state_field",
+    "passed": true,
+    "detail": 300.0
+   },
+   {
+    "check": "file",
+    "passed": true,
+    "detail": [
+     300,
+     300
+    ]
+   }
+  ]
+ },
+ "restore-deleted": {
+  "passed": true,
+  "checks": [
+   {
+    "check": "logo restored",
+    "passed": true,
+    "detail": [
+     "logo"
+    ]
+   },
+   {
+    "check": "note kept",
+    "passed": true,
+    "detail": [
+     "note"
+    ]
+   },
+   {
+    "check": "title moved down 20 px",
+    "passed": true,
+    "detail": 70.0
+   }
+  ]
+ },
+ "roll-applied": {
+  "passed": true,
+  "checks": [
+   {
+    "check": "state_field",
+    "passed": true,
+    "detail": "hero-statement"
+   },
+   {
+    "check": "state_field",
+    "passed": true,
+    "detail": "ocean"
+   },
+   {
+    "check": "state_field",
+    "passed": true,
+    "detail": "source-serif-4-600"
+   },
+   {
+    "check": "title",
+    "passed": true,
+    "detail": [
+     "headline"
+    ]
+   }
+  ]
+ },
+ "story-list": {
+  "passed": true,
+  "checks": [
+   {
+    "check": "canvas",
+    "passed": true,
+    "detail": [
+     1080,
+     1920
+    ]
+   },
+   {
+    "check": "gradient background",
+    "passed": true,
+    "detail": [
+     "background"
+    ]
+   },
+   {
+    "check": "three large items",
+    "passed": true,
+    "detail": [
+     "item1",
+     "item2",
+     "item3"
+    ]
+   },
+   {
+    "check": "equal gaps",
+    "passed": true,
+    "detail": [
+     167,
+     167
+    ]
+   },
+   {
+    "check": "left edge",
+    "passed": true,
+    "detail": 120
+   },
+   {
+    "check": "no design errors",
+    "passed": true,
+    "detail": []
+   }
+  ]
+ },
+ "svg-logo-import": {
+  "passed": true,
+  "checks": [
+   {
+    "check": "layer",
+    "passed": true,
+    "detail": [
+     "mark"
+    ]
+   },
+   {
+    "check": "layer_field",
+    "passed": true,
+    "detail": 5.0
+   },
+   {
+    "check": "file",
+    "passed": true,
+    "detail": [
+     100,
+     100
+    ]
+   }
+  ]
+ },
+ "template-creation": {
+  "passed": true,
+  "checks": [
+   {
+    "check": "canvas",
+    "passed": true,
+    "detail": [
+     1080,
+     1080
+    ]
+   },
+   {
+    "check": "title",
+    "passed": true,
+    "detail": [
+     "title"
+    ]
+   },
+   {
+    "check": "subtitle",
+    "passed": true,
+    "detail": [
+     "subtitle"
+    ]
+   },
+   {
+    "check": "file",
+    "passed": true,
+    "detail": [
+     1080,
+     1080
+    ]
+   }
+  ]
+ },
+ "timeline-motion": {
+  "passed": true,
+  "checks": [
+   {
+    "check": "state_field",
+    "passed": true,
+    "detail": 1000
+   },
+   {
+    "check": "files_differ",
+    "passed": true,
+    "detail": null
+   },
+   {
+    "check": "file",
+    "passed": true,
+    "detail": [
+     200,
+     100
+    ]
+   }
+  ]
+ },
+ "variable-variants": {
+  "passed": true,
+  "checks": [
+   {
+    "check": "templated headline",
+    "passed": true,
+    "detail": [
+     "headline"
+    ]
+   },
+   {
+    "check": "stored value kept",
+    "passed": true,
+    "detail": "Paris"
+   },
+   {
+    "check": "file",
+    "passed": true,
+    "detail": [
+     1200,
+     628
+    ]
+   },
+   {
+    "check": "file",
+    "passed": true,
+    "detail": [
+     1200,
+     628
+    ]
+   },
+   {
+    "check": "variants differ",
+    "passed": true,
+    "detail": null
+   }
+  ]
+ },
+ "workflow-checked-edit": {
+  "passed": true,
+  "checks": [
+   {
+    "check": "layer_field",
+    "passed": true,
+    "detail": 80.0
+   },
+   {
+    "check": "state_field",
+    "passed": true,
+    "detail": "layer.logo.bounds within canvas"
+   },
+   {
+    "check": "file",
+    "passed": true,
+    "detail": [
+     160,
+     100
+    ]
+   }
+  ]
+ },
+ "youtube-thumbnail": {
+  "passed": true,
+  "checks": [
+   {
+    "check": "canvas",
+    "passed": true,
+    "detail": [
+     1280,
+     720
+    ]
+   },
+   {
+    "check": "headline",
+    "passed": true,
+    "detail": [
+     "headline"
+    ]
+   },
+   {
+    "check": "subtitle",
+    "passed": true,
+    "detail": [
+     "subtitle"
+    ]
+   },
+   {
+    "check": "badge label",
+    "passed": true,
+    "detail": [
+     "badge-text"
+    ]
+   },
+   {
+    "check": "badge shape",
+    "passed": true,
+    "detail": [
+     "background",
+     "badge"
+    ]
+   },
+   {
+    "check": "safe area, timestamp zone, contrast, legibility",
+    "passed": true,
+    "detail": []
+   },
+   {
+    "check": "file",
+    "passed": true,
+    "detail": [
+     1280,
+     720
+    ]
+   }
+  ]
+ }
+}

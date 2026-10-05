@@ -1,0 +1,3 @@
+test,lane,agent,model,date,blind_code,r1_minutes,r1_nudges,hard_passed,hard_total,fidelity,craft,report_honest,r2_minutes,r2_nudges,editability,revision,notes
+T05,V,claude-code-subagent,claude-opus-5-5,2026-10-05,4QDL,,0,8,8,5,5,yes,,0,4,5,chart drawn as shapes not a native chart object (to scale); PDF page 26.67x15in vs PPTX 13.33x7.5; fonts not embedded in PPTX; r2 needed delete+recreate of bars because shape target adds a layer; check 8 structural only
+T05,C,claude-code-subagent,claude-opus-5-5,2026-10-05,ZJIV,,0,8,8,5,4,yes,,0,5,5,native editable chart with slidenum field; PDF drawn separately by reportlab; Helvetica unembedded in PDF; r2 was a data edit in script; check 8 structural only
