@@ -61,8 +61,8 @@ class Queue:
         )
         payload = deepcopy(payload)
         kind = payload.get("kind")
-        require(kind in ("production", "film", "generate", "video"), "Unknown job kind")
-        fields = {"spec"} if kind in ("production", "film") else {"provider", "request"}
+        require(kind in ("production", "film", "generate", "video", "lyric-video"), "Unknown job kind")
+        fields = {"spec"} if kind in ("production", "film") else {"request"} if kind == "lyric-video" else {"provider", "request"}
         require(fields <= payload.keys(), "Missing job fields", required=sorted(fields))
         require(isinstance(payload.get("output"), str), "Job needs an output path")
         output = self.resolve(payload["output"])
@@ -74,7 +74,7 @@ class Queue:
         if kind == "production":
             plan(payload["spec"])
         elif kind == "film":
-            film_plan(payload["spec"], self.limits)
+            film_plan(payload["spec"], self.limits, output.suffix.lower() in (".mp4", ".webm"))
         elif kind == "video":
             require(output.suffix.lower() in (".mp4", ".webm"), "Video output must be MP4 or WebM")
             self.video_backend(payload["provider"])
@@ -92,6 +92,15 @@ class Queue:
             from .model import finite
 
             finite(payload["request"]["duration"], "video duration", 0.1, 600)
+        if kind == "lyric-video":
+            from .lyrics import plan as lyric_plan
+
+            require(isinstance(payload["request"], dict), "Lyric video job request must be an object")
+            payload["request"] = {**payload["request"], "output": payload["output"]}
+            require(output.suffix.lower() in (".mp4", ".webm"), "Lyric video output must be MP4 or WebM")
+            require(isinstance(payload["request"].get("build"), str), "Lyric video jobs need a build path")
+            require(not self.resolve(payload["request"]["build"]).exists(), "Lyric video build already exists")
+            lyric_plan(payload["request"], self.workspace, self.limits)
         if kind == "generate":
             require(output.suffix == ".vixl", "Generated image jobs save an editable .vixl document")
             bounded_object(
@@ -119,6 +128,16 @@ class Queue:
         require(
             kind not in ("production", "generate") or payload.get("source"), "Job needs a source document"
         )
+        if kind == "lyric-video":
+            # Freeze the song, lyrics and template; the worker builds and renders from these copies.
+            from .assets import read_bounded
+
+            request = payload["request"]
+            for key in ("audio", "lyrics", "template"):
+                source = self.resolve(request[key])
+                destination = folder / (f"input-{key}" + source.suffix)
+                write_bytes(destination, read_bounded(source, self.limits.max_project_bytes))
+                request[key] = str(destination.relative_to(self.workspace))
         if kind == "film":
             # Freeze media inputs so edits outside the queue cannot alter a submitted film.
             from .assets import read_bounded
@@ -352,6 +371,23 @@ class Queue:
                             progress=progress,
                         )
                         job.update(result=result, status=result["status"])
+                    elif kind == "lyric-video":
+                        from .lyrics import export as lyric_export
+
+                        checkpoint = self.checkpoint_path(job)
+                        built = self.directory / ident / "build.vixl"
+                        if not checkpoint.exists():
+                            request = {**payload["request"], "replace": True,
+                                       "build": str(built.relative_to(self.workspace)),
+                                       "output": str(checkpoint.relative_to(self.workspace))}
+                            report = lyric_export(request, self.workspace, limits,
+                                                  cancelled=lambda: self.cancelled(ident), progress=progress)
+                            job["result"] = {key: report[key] for key in ("frames", "duration_ms", "fps", "warnings")}
+                        self.publish_checkpoint(job)
+                        target = self.resolve(payload["request"]["build"])
+                        if job["status"] == "completed" and built.exists() and not target.exists():
+                            publish_file(target, built)
+                            job["result"]["build"] = payload["request"]["build"]
                     elif kind == "film":
                         from .film import export
 

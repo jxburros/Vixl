@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Lyric videos
+
+- **`lyric-video` workflow** ([docs](docs/lyric-video.md)): a song, a user-timed LRC file and a styled template become a synced MP4/WebM. `lyric-video-plan` validates and returns the timed lines, sections, frame count and warnings; `lyric-video-build` writes an ordinary, editable keyframed document; `lyric-video-export` renders it with the song as the audio track. Sections switch `bg-<section>` layers, `cue-<words>` layers appear while a line contains those words, and `lyric-next`, `section-label` and `intro` are filled in. Available through the CLI, MCP, the `lyric-video` durable job kind (inputs frozen at submission) and REST (`lyric-video-plan`). `vixl.lyrics` exposes `parse_lrc`, `plan`, `build` and `export`.
+- **MP4/WebM have no 3,600-frame cap.** Streamed video is bounded only by the 10-minute duration; buffered formats (GIF, APNG, WebP, sheets, PNG sequences, film ZIPs) keep the cap. Frames are piped to ffmpeg as raw pixels instead of PNG, film frames whose animated state is unchanged reuse the previous render, and keyframe tracks hold up to 8,192 keys with binary-search sampling.
+- `vixl.film.audio_duration` reads an audio file's length with ffprobe. Design checks skip empty text layers instead of warning that they cannot be measured.
+
+### Fixes from the explorations
+
 Fixes for the problems found while building the ten projects in `explorations/`.
 
 - **Groups no longer clip their members.** A member that is resized, moved or rotated past the group's box (a sprite scaled up, an animated limb in a nested rig) still draws, and scales, flips and turns with the group in PNG and SVG. The box itself is unchanged for layout; `inspect` reports `drawn_bounds` for anything drawn past it. Scaling a group of pixel layers stays nearest-neighbor.

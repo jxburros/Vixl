@@ -5,6 +5,7 @@ from .studio import ACTIONS as STUDIO_ACTIONS
 
 from .automation import bounded_object
 from .errors import require, VixlError
+from .lyrics import REQUEST_FIELDS as LYRIC_FIELDS
 
 ACTIONS = {
     "check": ({"suite", "mode", "variables", "artboard"}, {"suite"}),
@@ -25,6 +26,9 @@ ACTIONS = {
     "start": ({"workers"}, set()),
     "film-plan": ({"spec"}, {"spec"}),
     "film-export": ({"spec", "output"}, {"spec", "output"}),
+    "lyric-video-plan": (LYRIC_FIELDS, {"audio", "lyrics", "template"}),
+    "lyric-video-build": (LYRIC_FIELDS, {"audio", "lyrics", "template", "build"}),
+    "lyric-video-export": (LYRIC_FIELDS, {"audio", "lyrics", "template", "build", "output"}),
 }
 
 
@@ -56,6 +60,11 @@ def dispatch(session, action, request, document=None):
             raise VixlError("invalid_request", f"Invalid {action} request: {exc}") from exc
     if action == "plan":
         return plan(request["spec"])
+    if action.startswith("lyric-video-"):
+        from . import lyrics
+
+        step = {"lyric-video-plan": lyrics.plan, "lyric-video-build": lyrics.build, "lyric-video-export": lyrics.export}[action]
+        return step(request, session.workspace, session.limits)
     if action.startswith("film-"):
         from .film import plan as film_plan, export
 

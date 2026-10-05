@@ -306,7 +306,8 @@ def check_design(
                         region=[left, top, right - left, bottom - top],
                     )
 
-    texts = [item for item in content if is_text(item)]
+    # Empty text (a lyric between lines, a cleared label) draws nothing to measure.
+    texts = [item for item in content if is_text(item) and resolved[item["id"]].get("text", "").strip()]
     if "contrast" in checks:
         from .measure import measure, top_level_contrast
 

@@ -1,0 +1,323 @@
+"""Lyric video workflow: LRC parsing, timing, the generated timeline, export and surfaces."""
+
+import json
+import shutil
+import subprocess
+import wave
+
+import pytest
+
+from vixl import Project
+from vixl.errors import VixlError
+from vixl.lyrics import background_for, build, parse_lrc, plan, timing, validate_template
+
+needs_ffmpeg = pytest.mark.skipif(not (shutil.which("ffmpeg") and shutil.which("ffprobe")), reason="ffmpeg not installed")
+
+LRC = """[ti:Streetlights]
+[ar:Example Artist]
+[al:Night Drive]
+
+[00:01.00]Streetlights hum like they know my name
+[00:03.50]Every window's got a different flame
+[00:05.30][Chorus]
+[00:05.30]And I keep on driving
+[00:07.80]
+[00:08.10][00:09.40]This line repeats in the fire
+"""
+
+
+def write_audio(path, seconds=12, rate=8000):
+    with wave.open(str(path), "wb") as audio:
+        audio.setparams((1, 2, rate, 0, "NONE", "not compressed"))
+        audio.writeframes(b"\0\0" * int(rate * seconds))
+
+
+def template(path, **extra):
+    p = Project(160, 90, "#101018")
+    p.apply([
+        {"type": "variable", "name": "title", "value": "T"},
+        {"type": "solid", "name": "bg-default", "color": "#203040"},
+        {"type": "solid", "name": "bg-chorus", "color": "#602030"},
+        {"type": "text", "name": "intro", "text": "${title}", "size": 12, "color": "white", "x": 10, "y": 10},
+        {"type": "text", "name": "lyric", "text": "Lyric", "size": 12, "color": "white", "x": 8, "y": 30},
+        {"type": "text-layout", "target": "lyric", "width": 144, "height": 36, "fit": True},
+        {"type": "text", "name": "lyric-next", "text": "next", "size": 8, "color": "#aaaaaa", "x": 8, "y": 72},
+        {"type": "text", "name": "section-label", "text": "S", "size": 8, "color": "white", "x": 8, "y": 2},
+        {"type": "shape", "shape": "star", "name": "cue-fire", "width": 16, "height": 16, "x": 140, "y": 2, "fill": "orange"},
+        *extra.get("operations", []),
+    ])
+    p.save(path)
+    return p
+
+
+@pytest.fixture
+def workspace(tmp_path):
+    (tmp_path / "song.lrc").write_text(LRC, encoding="utf-8")
+    write_audio(tmp_path / "song.wav")
+    template(tmp_path / "style.vixl")
+    return tmp_path
+
+
+def request(**extra):
+    return {"audio": "song.wav", "lyrics": "song.lrc", "template": "style.vixl", **extra}
+
+
+# Parser --------------------------------------------------------------------------------------
+
+
+def test_parser_reads_timestamps_tags_sections_and_breaks():
+    parsed = parse_lrc(LRC)
+    assert parsed["metadata"] == {"title": "Streetlights", "artist": "Example Artist", "album": "Night Drive"}
+    times = [(line["time"], line["text"]) for line in parsed["lines"]]
+    assert times[0] == (1000, "Streetlights hum like they know my name")
+    # Two timestamps before one text expand into two lines; an empty text is a break.
+    assert (7800, "") in times and (8100, "This line repeats in the fire") in times
+    assert (9400, "This line repeats in the fire") in times
+    assert parsed["sections"] == [{"time": 5300, "label": "Chorus", "name": "chorus", "source_line": 7}]
+
+
+def test_parser_fractions_long_minutes_offsets_words_bom_and_crlf():
+    text = "﻿[offset:-250]\r\n[75:01.5]a\r\n[00:02.25]b\r\n[00:03.125]<00:03.20>c <00:03.60>d\r\n[00:04.00][Verse 2]\r\n"
+    parsed = parse_lrc(text.encode("utf-8"))
+    assert parsed["offset"] == -250
+    lines = {line["text"]: line for line in parsed["lines"]}
+    assert lines["b"]["time"] == 2250 and lines["a"]["time"] == 75 * 60_000 + 1500
+    assert lines["c d"]["time"] == 3125
+    assert lines["c d"]["words"] == [{"time": 3200, "text": "c"}, {"time": 3600, "text": "d"}]
+    assert parsed["sections"][0]["name"] == "verse-2"
+    assert [line["text"] for line in parsed["lines"]] == ["b", "c d", "a"]
+
+
+def test_parser_warns_about_unknown_tags():
+    parsed = parse_lrc("[by:me]\n[00:01.00]hi\n")
+    assert parsed["warnings"][0]["code"] == "unknown_tag" and parsed["warnings"][0]["source_line"] == 1
+
+
+@pytest.mark.parametrize(
+    "text, code, line",
+    [
+        ("[00:01.00]ok\nno timestamp here\n", "lrc_parse", 2),
+        ("[00:01.00]ok\n[0x:01.00]bad\n", "lrc_parse", 2),
+        ("[00:01.00]one\n[00:01.00]two\n", "lrc_conflict", 2),
+        ("[ti:Only tags]\n[00:01.00]\n", "lrc_empty", None),
+    ],
+)
+def test_parser_errors_carry_codes_and_lines(text, code, line):
+    with pytest.raises(VixlError) as error:
+        parse_lrc(text)
+    assert error.value.code == code
+    assert error.value.details.get("source_line") == line
+
+
+def test_positive_offset_shows_lyrics_earlier():
+    parsed = parse_lrc("[offset:+500]\n[00:02.00]x\n")
+    result = timing(parsed, {"lead": 0}, 10_000)
+    assert result["lines"][0]["start"] == 1500
+    later = timing(parse_lrc("[00:02.00]x\n"), {"lead": 0, "offset": -300}, 10_000)
+    assert later["lines"][0]["start"] == 2300
+
+
+# Timing --------------------------------------------------------------------------------------
+
+
+def test_timing_lead_gap_hold_and_last_line():
+    parsed = parse_lrc("[00:01.00]a\n[00:03.00]b\n[00:20.00]c\n")
+    lines = timing(parsed, {"lead": 200, "gap": 100, "max_hold": 5000}, 30_000)["lines"]
+    a, b, c = lines
+    assert (a["show"], a["hide"]) == (800, 2700)        # hides gap before b shows (3000 - 200 - 100)
+    assert (b["show"], b["hide"]) == (2800, 8000)       # max_hold ends it long before c
+    assert (c["show"], c["hide"]) == (19800, 25000)     # the last line also stops at max_hold
+    short = timing(parsed, {"max_hold": 60000}, 22_000)["lines"]
+    assert short[-1]["hide"] == 22_000                  # or at the end of the video
+
+
+def test_timing_breaks_clamping_sections_and_windows():
+    parsed = parse_lrc(LRC)
+    result = timing(parsed, {"lead": 150}, 12_000)
+    lines = result["lines"]
+    driving = next(line for line in lines if line["text"] == "And I keep on driving")
+    assert driving["hide"] == 7800 and driving["section"] == "chorus"
+    assert lines[0]["section"] is None
+    assert result["sections"] == [{"label": "Chorus", "name": "chorus", "source_line": 7, "start": 5300, "end": 12_000}]
+    clamped = timing(parse_lrc("[00:01.00]a\n[00:01.01]b\n"), {"lead": 0, "gap": 50}, 5_000)
+    a, b = clamped["lines"]
+    assert a["hide"] > a["show"] and b["show"] >= a["hide"]
+    window = timing(parsed, {"start": 3000, "end": 6000}, 12_000)
+    assert (window["start"], window["end"]) == (3000, 6000)
+    with pytest.raises(VixlError) as error:
+        timing(parsed, {}, 4_000)
+    assert error.value.code == "lyrics_beyond_audio"
+
+
+def test_short_lines_warn_and_lead_clamp_warns():
+    parsed = parse_lrc("[00:01.00]a\n[00:01.20]b\n[00:05.00]c\n")
+    result = timing(parsed, {"lead": 150, "animation": {"duration": 300}}, 9_000)
+    assert any(w["code"] == "short_line" for w in result["warnings"])
+
+
+# Template contract ---------------------------------------------------------------------------
+
+
+def test_template_validation(tmp_path):
+    p = Project(50, 50)
+    assert validate_template(p)["errors"][0]["code"] == "template_invalid"
+    p.apply([{"type": "solid", "name": "lyric"}])
+    assert "must be a text layer" in validate_template(p)["errors"][0]["message"]
+    q = Project(50, 50)
+    q.apply([
+        {"type": "text", "name": "lyric", "text": "x"},
+        {"type": "solid", "name": "lyric-next"},
+        {"type": "solid", "name": "bg-Bad_Name"},
+    ])
+    messages = " ".join(e["message"] for e in validate_template(q)["errors"])
+    assert "lyric-next" in messages and "bg-Bad_Name" in messages
+    r = Project(50, 50)
+    r.apply([{"type": "text", "name": "lyric", "text": "x"}, {"type": "solid", "name": "bg-verse"}])
+    report = validate_template(r, [{"name": "verse-2"}, {"name": "bridge"}])
+    assert [w["section"] for w in report["warnings"]] == ["bridge"]
+    assert background_for({"verse": 1, "default": 2}, "verse-2") == "verse"
+    assert background_for({"default": 2}, "bridge") == "default"
+
+
+# Build ---------------------------------------------------------------------------------------
+
+
+@needs_ffmpeg
+def test_build_writes_an_editable_timeline(workspace):
+    from vixl.timeline import project_at
+
+    report = build(request(build="song-lyrics.vixl"), workspace)
+    assert report["build"] == "song-lyrics.vixl" and report["frames"] == 288
+    project = Project.load(workspace / "song-lyrics.vixl")
+    assert project.state["variables"]["title"] == "Streetlights"
+    timeline = project.state["timeline"]
+    names = {layer["id"]: layer["name"] for layer in project.state["layers"]}
+    tracks = {(names[t["target"]], t["property"]): t["keys"] for t in timeline["tracks"]}
+    first = report["lines"][0]
+    text_keys = {k["time"]: k["value"] for k in tracks[("lyric", "text")]}
+    assert text_keys[0] == "" and text_keys[first["show"]] == first["text"]
+    assert [k["value"] for k in tracks[("lyric-next", "text")]][1] == report["lines"][1]["text"]
+    assert {k["time"]: k["value"] for k in tracks[("section-label", "text")]}[5300] == "Chorus"
+    assert {k["time"]: k["value"] for k in tracks[("intro", "visible")]} == {0: True, first["show"]: False}
+    assert "chorus-1" in timeline["markers"] and "line-001" in timeline["markers"]
+
+    def at(time):
+        frame = project_at(project, time)
+        return {layer["name"]: layer for layer in frame.state["layers"]}
+
+    assert at(500)["intro"]["visible"] and at(500)["lyric"]["opacity"] == 0
+    middle = at(first["show"] + 1000)
+    assert middle["lyric"]["text"] == first["text"] and middle["lyric"]["opacity"] == 1
+    assert middle["bg-default"]["visible"] and not middle["bg-chorus"]["visible"]
+    chorus = at(6000)
+    assert chorus["bg-chorus"]["visible"] and not chorus["bg-default"]["visible"]
+    assert chorus["lyric"]["text"] == "And I keep on driving" and not chorus["cue-fire"]["visible"]
+    assert at(7900)["lyric"]["opacity"] == 0   # the instrumental break hides the lyric
+    assert at(8600)["cue-fire"]["visible"]      # cue layers follow the words being sung
+    # Re-running refuses to overwrite unless asked.
+    with pytest.raises(VixlError):
+        build(request(build="song-lyrics.vixl"), workspace)
+    assert build(request(build="song-lyrics.vixl", replace=True), workspace)["build"]
+
+
+@needs_ffmpeg
+def test_long_line_rewraps_inside_its_fitted_box(workspace):
+    from vixl.timeline import project_at
+
+    (workspace / "long.lrc").write_text("[00:01.00]" + "a very long lyric line that cannot fit on one row " * 3 + "\n")
+    report = build(request(lyrics="long.lrc", build="long.vixl", animation={"in": "none", "out": "none"}), workspace)
+    project = Project.load(workspace / "long.vixl")
+    frame = project_at(project, report["lines"][0]["show"] + 10)
+    layer = frame.layer("lyric")
+    assert layer["text"].startswith("a very long")
+    box = frame.inspect("lyric")["resolved_bounds"]
+    from vixl.render import layer_image
+
+    image = layer_image(frame, layer, box)
+    ink = image.getchannel("A").getbbox()
+    assert ink and ink[2] <= box[2] and ink[3] <= box[3]
+
+
+@needs_ffmpeg
+def test_cut_and_slide_animations(workspace):
+    from vixl.timeline import project_at
+
+    report = build(request(build="cut.vixl", animation={"in": "slide-up", "out": "none", "duration": 200}), workspace)
+    project = Project.load(workspace / "cut.vixl")
+    line = report["lines"][1]
+    start = {layer["name"]: layer for layer in project_at(project, line["show"] + 20).state["layers"]}
+    settled = {layer["name"]: layer for layer in project_at(project, line["show"] + 400).state["layers"]}
+    assert start["lyric"]["y"] > settled["lyric"]["y"]
+    # A cut holds full opacity until the hide time, then drops to zero.
+    before = {layer["name"]: layer for layer in project_at(project, line["hide"] - 5).state["layers"]}
+    assert before["lyric"]["opacity"] == 1
+
+
+# Export, frame cap and surfaces --------------------------------------------------------------
+
+
+@needs_ffmpeg
+def test_export_draft_mp4_with_audio(workspace):
+    from vixl.lyrics import export
+
+    result = export(request(build="b.vixl", output="song.mp4", quality="draft", fps=8, start=1000, end=4000, check=True), workspace)
+    assert result["video"]["frames"] == 24
+    probe = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "stream=codec_type,duration", "-of", "json",
+                            str(workspace / "song.mp4")], capture_output=True, check=True)
+    streams = json.loads(probe.stdout)["streams"]
+    assert {s["codec_type"] for s in streams} == {"video", "audio"}
+    assert abs(float(next(s for s in streams if s["codec_type"] == "video")["duration"]) - 3.0) < 0.2
+    assert result["checks"]["checked_lines"] >= 1
+
+
+@needs_ffmpeg
+def test_streamed_video_has_no_3600_frame_cap(tmp_path):
+    from vixl.film import export as film_export, plan as film_plan
+
+    p = Project(16, 16, "black")
+    p.apply([{"type": "solid", "name": "dot", "color": "white", "width": 4, "height": 4},
+             {"type": "animate", "target": "dot", "property": "x", "to": 12, "duration": 61_000}])
+    p.save(tmp_path / "long.vixl")
+    spec = {"width": 16, "height": 16, "fps": 60, "quality": "draft", "shots": [{"source": "long.vixl", "duration": 61_000}]}
+    with pytest.raises(VixlError) as error:
+        film_plan(spec)
+    assert error.value.code == "resource_limit"
+    assert film_plan(spec, streamed=True)["frames"] == 3660
+    assert film_export(spec, tmp_path, tmp_path / "long.mp4")["frames"] == 3660
+    with pytest.raises(VixlError) as error:
+        p.state["timeline"]["fps"] = 60
+        from vixl.timeline import export_timeline
+        export_timeline(p, tmp_path / "long.gif")
+    assert error.value.code == "resource_limit"
+
+
+@needs_ffmpeg
+def test_workflow_rest_and_job_surfaces(workspace):
+    from fastapi.testclient import TestClient
+    from vixl.interfaces import Session, create_app
+    from vixl.jobs import Queue
+    from vixl.workflows import describe, dispatch
+
+    actions = describe()["actions"]
+    assert {"lyric-video-plan", "lyric-video-build", "lyric-video-export"} <= set(actions)
+    assert "build" in actions["lyric-video-build"]["required"]
+    session = Session(workspace=workspace)
+    assert dispatch(session, "lyric-video-plan", request())["sections"][0]["name"] == "chorus"
+    client = TestClient(create_app(workspace / "style.vixl"))
+    response = client.post("/workflow/lyric-video-plan", json=request())
+    assert response.status_code == 200 and response.json()["lines"]
+    assert client.post("/workflow/lyric-video-export", json=request(build="x.vixl", output="x.mp4")).status_code == 403
+
+    queue = Queue(workspace)
+    job = queue.submit({"kind": "lyric-video", "output": "job.mp4",
+                        "request": request(build="job.vixl", quality="draft", fps=4, end=3000)})
+    (workspace / "song.lrc").write_text("[00:01.00]changed after submit\n")
+    done = queue.work_one(job["id"])
+    assert done["status"] == "completed", done
+    assert (workspace / "job.mp4").exists() and (workspace / "job.vixl").exists()
+    built = Project.load(workspace / "job.vixl")
+    texts = [k["value"] for t in built.state["timeline"]["tracks"] if t["property"] == "text" for k in t["keys"]]
+    assert "Streetlights hum like they know my name" in texts
+    cancelled = queue.submit({"kind": "lyric-video", "output": "never.mp4", "request": request(build="never.vixl")})
+    queue.cancel(cancelled["id"])
+    assert queue.work_one(cancelled["id"])["status"] == "cancelled"
