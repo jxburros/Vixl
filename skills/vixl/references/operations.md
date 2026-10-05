@@ -23,15 +23,17 @@ The authoritative schema is always `vixl schema` / `GET /schema` / `vixl://opera
 | type | fields | notes |
 | --- | --- | --- |
 | `add` | **`path`** *or* **`asset`**, `name`, `x`, `y`, `linked` | `path` is CLI/Python only (MCP: use `vixl_import_image`). `asset` = an embedded ID like `assets/<sha256>.png`. `linked` keeps an external reference (needs `--allow-linked`). |
-| `solid` | `name`, `width`, `height`, `color`, `x`, `y` | Defaults to canvas size. |
-| `gradient` | `name`, `width`, `height`, `start`, `end`, `direction`, `stops`, `angle`, `x`, `y` | `direction`: `vertical` (default), `horizontal`, `angled` (`angle` 0°=left→right, 90°=top→bottom), `radial`. `stops`: 2–64 `{"offset":0..1,"color":…}` strictly increasing. |
-| `text` | **`text`**, `name`, `size`, `color`, `align` (`left`/`center`/`right`), `spacing` (line spacing px), `font`, `x`, `y` | `x`/`y` may be `"center"` or `"N%"`. `font`: a registered name, `heading`/`body` (follows the document typography), or a file path (CLI/Python only); default font DejaVu Sans is the proofing fallback. Multiline via `\n`. |
-| `shape` | **`shape`**, `name`, `width`, `height`, `x`, `y`, `fill`, `stroke`, `stroke_width`, `radius`, `sides`, `inner_radius` | `shape`: `rectangle`, `rounded-rectangle` (`radius`), `ellipse`, `polygon` (`sides`), `star` (`sides`, `inner_radius` 0.01–1), `line`. Procedural, redrawn crisply on resize. |
+| `solid` | `name`, `width`, `height`, `color`, `x`, `y`, `target` | Defaults to canvas size. With `target`, edits that solid in place. |
+| `gradient` | `name`, `width`, `height`, `start`, `end`, `direction`, `stops`, `angle`, `x`, `y`, `target` | `direction`: `vertical` (default), `horizontal`, `angled` (`angle` 0°=left→right, 90°=top→bottom), `radial`. `stops`: 2–64 `{"offset":0..1,"color":…}` strictly increasing. |
+| `text` | **`text`** *or* `target`, `name`, `size`, `color`, `align` (`left`/`center`/`right`), `spacing` (line spacing px), `font`, `x`, `y` | `x`/`y` may be `"center"` or `"N%"`. `font`: a registered name, `heading`/`body` (follows the document typography), or a file path (CLI/Python only); default font DejaVu Sans is the proofing fallback. Multiline via `\n`. With `target`, edits that text layer in place (like `text-set`; `text` is then optional). |
+| `shape` | **`shape`** *or* `target`, `name`, `width`, `height`, `x`, `y`, `fill`, `stroke`, `stroke_width`, `radius`, `sides`, `inner_radius` | `shape`: `rectangle`, `rounded-rectangle` (`radius`), `ellipse`, `polygon` (`sides`), `star` (`sides`, `inner_radius` 0.01–1), `line`. Procedural, redrawn crisply on resize. |
 | `frame` | `name`, `width`, `height`, `x`, `y`, `path` *or* `asset`, `fit` (`fill`/`fit`) | Image placed in a fixed box; `fill` crops, `fit` letterboxes. |
 | `pixel-art` | `name`, `width`, `height`, `x`, `y`, `palette`, `background`, **or** `rows` | Character-grid sprite (1–256 per side). See *Pixel art* below. |
 | `adjustment` | **`effects`** (list of effect objects), `name` | Adjustment layer: filters the composited stack *below it* in its parent. |
 | `symbol-instance` | **`symbol`**, `name`, `x`, `y`, `width`, `height` | Live copy of a symbol master. |
 | `duplicate` | `target`, `name` | |
+
+**Changing a layer you already made.** `solid`, `gradient`, `shape` and `text` take `target`: with the name or ID of an existing layer of the same kind they edit it in place (same ID, order, effects, constraints; only the fields you pass change) instead of adding a layer. Recolour a bar with `{"type":"shape","target":"bar","fill":"#6b3f69"}`; change its height with `{"type":"shape","target":"bar","height":120}`; recolour a sky with `{"type":"gradient","target":"sky","start":"#01030a","end":"#3a3058"}` (on a multi-stop gradient, `start`/`end` set the first and last stop; `stops` replaces them); resize text with `{"type":"text","target":"headline","size":190}`. `name` renames and `x`/`y` move. A target of a different kind (or `target` on `add`, `frame`, `adjustment`, `symbol-instance`) is an error that names the operation to use — never a silent new layer. CLI: `vixl shape --target bar --fill '#6b3f69'`.
 
 ## Layer management
 

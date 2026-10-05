@@ -11,6 +11,7 @@ from .automation import TYPES as AUTOMATION_TYPES
 from .authoring import TYPES as AUTHORING_TYPES
 from .creative import TYPES as CREATIVE_TYPES
 from .containers import TYPES as CONTAINER_TYPES
+from .inplace import IN_PLACE_TYPES
 from .organic import TYPES as ORGANIC_TYPES
 from .guides import TYPES as GUIDE_TYPES
 from .richtext import TYPES as RICH_TYPES
@@ -259,6 +260,10 @@ def execute(project, op):
     kind = ALIASES.get(kind, kind)
     require(isinstance(kind, str), "Operation requires a type")
     target = op.get("target", op.get("layer"))
+    if target is not None and kind in IN_PLACE_TYPES:
+        from .inplace import execute as execute_in_place
+
+        return execute_in_place(project, {**op, "type": kind, "target": target})
     if kind in PAGE_TYPES:
         from .pages import execute as execute_pages
         return execute_pages(project, op)

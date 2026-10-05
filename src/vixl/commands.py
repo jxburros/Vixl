@@ -145,8 +145,9 @@ def compile_command(tokens):
         p.add_argument("--x", type=float)
         p.add_argument("--y", type=float)
     elif cmd in ("solid", "gradient", "text"):
+        p.add_argument("--target", help=f"edit this existing {cmd} layer in place instead of adding one")
         if cmd == "text":
-            p.add_argument("text")
+            p.add_argument("text", nargs="?", help="the text; optional with --target")
             p.add_argument("--font", help="registered font name, heading, body, or a font file")
             p.add_argument("--size", type=int)
             p.add_argument("--align", choices=["left", "center", "right"])

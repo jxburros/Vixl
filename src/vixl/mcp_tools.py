@@ -563,7 +563,9 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
     ) -> dict:
         """Apply operations atomically (all or none) and autosave. compact returns new values of changed
         fields by layer ID, and new layers as name/type/bounds; full adds before/after snapshots.
-        dry_run validates and previews the changes without saving. Omit target to use the active layer."""
+        dry_run validates and previews the changes without saving. Omit target to use the active layer.
+        shape/solid/gradient/text add a layer, but with target they edit that existing layer in place
+        (keeping its ID), e.g. {type: shape, target: bar, fill: "#6b3f69"}."""
         return session.apply(operations, dry_run, detail, document)
 
     @tool

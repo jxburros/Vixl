@@ -3,6 +3,7 @@
 from copy import deepcopy
 from functools import lru_cache
 
+from .inplace import target_schema
 from .render import EFFECTS, BLENDS
 
 S = {"type": "string"}
@@ -65,10 +66,14 @@ def _operation_schema():
         },
         anyOf=[{"required": ["path"]}, {"required": ["asset"]}],
     )
-    add("solid", {"name": S, "width": SIZE, "height": SIZE, "color": S, "x": COORD, "y": COORD})
+    add(
+        "solid",
+        {"target": target_schema("solid"), "name": S, "width": SIZE, "height": SIZE, "color": S, "x": COORD, "y": COORD},
+    )
     add(
         "gradient",
         {
+            "target": target_schema("gradient"),
             "name": S,
             "width": SIZE,
             "height": SIZE,
@@ -97,12 +102,13 @@ def _operation_schema():
         "text",
         {
             **text,
+            "target": target_schema("text"),
             "name": S,
             "font": S,
             "x": COORD,
             "y": COORD,
         },
-        ["text"],
+        anyOf=[{"required": ["text"]}, {"required": ["target"]}],
     )
     add("text-set", {**text, "font": S, "stroke_width": {"type": "integer", "minimum": 0}, "stroke_color": S})
     for kind in (

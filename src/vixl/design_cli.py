@@ -11,7 +11,8 @@ def compile_design(cmd, args):
         return None
     p = Parser(prog=f"vixl {cmd}")
     if cmd == "shape":
-        p.add_argument("shape")
+        p.add_argument("shape", nargs="?", help="rectangle, ellipse, …; optional with --target")
+        p.add_argument("--target", help="edit this existing shape layer in place instead of adding one")
         p.add_argument("--path")
         for key in ("fill", "stroke"):
             p.add_argument("--" + key)

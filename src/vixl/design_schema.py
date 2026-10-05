@@ -34,6 +34,7 @@ STYLES = ("drop-shadow", "stroke", "outer-glow", "color-overlay", "gradient-over
 
 
 def schemas(add):
+    from .inplace import target_schema
     from .schema import S, N, B, POSITIVE_INT, COORD, SIZE, enum
 
     refs = {"type": "array", "items": S, "minItems": 1, "maxItems": 512, "uniqueItems": True}
@@ -44,6 +45,7 @@ def schemas(add):
         "shape",
         {
             **geometry,
+            "target": target_schema("shape"),
             "shape": enum(*SHAPES),
             "path": S,
             "fill": S,
@@ -53,7 +55,7 @@ def schemas(add):
             "sides": POSITIVE_INT,
             "inner_radius": N,
         },
-        ["shape"],
+        anyOf=[{"required": ["shape"]}, {"required": ["target"]}],
     )
     add("group", {"name": S, "targets": refs}, ["name", "targets"])
     add("ungroup")

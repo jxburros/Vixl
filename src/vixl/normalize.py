@@ -327,7 +327,9 @@ def resolve_geometry(project, op):
         return op, {}
     c = project.state["canvas"]
     width, height = c["width"], c["height"]
-    if kind in ("move", "resize", "text-layout"):
+    from .inplace import IN_PLACE_TYPES
+
+    if kind in ("move", "resize", "text-layout") or (kind in IN_PLACE_TYPES and op.get("target")):
         try:
             layer = project.layer(op.get("target"))
         except Exception:
@@ -359,7 +361,11 @@ def apply_centering(project, centered, operation):
         return
     from .render import resolve_layout, stored_origin
 
-    layer = project.layer(operation.get("target") if operation.get("type") == "move" else None)
+    from .inplace import IN_PLACE_TYPES
+
+    # A creation operation given a target edits that layer, so the target is what gets centered.
+    edits = operation.get("type") == "move" or operation.get("type") in IN_PLACE_TYPES
+    layer = project.layer(operation.get("target") if edits else None)
     bounds = resolve_layout(project)[layer["id"]]
     if layer.get("parent"):
         parent = project.layer(layer["parent"])
