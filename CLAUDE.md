@@ -35,9 +35,10 @@ user docs in `docs/`, the agent skill in `skills/vixl/`. `CONTRIBUTING.md` has t
 1. Code plus a regression test that fails without it.
 2. Docs: the relevant `docs/*.md`, and `skills/vixl/SKILL.md` and `skills/vixl/references/*.md` when behaviour,
    fields or defaults change. Grep for removed names; do not leave stale text.
-3. `CHANGELOG.md`: add to the current top section. Breaking changes need a migration hint.
-4. Goldens, if rendering changed (see above).
-5. Version bumps stay synchronized (`src/vixl/__init__.py`, plugin manifest, `.mcp.json`, README and install URLs, the
+3. `docs/use-cases.md`: add a row for a new use case, or move a row when its cost or blocked status changes.
+4. `CHANGELOG.md`: add to the current top section. Breaking changes need a migration hint.
+5. Goldens, if rendering changed (see above).
+6. Version bumps stay synchronized (`src/vixl/__init__.py`, plugin manifest, `.mcp.json`, README and install URLs, the
    action pin in `docs/ci.md`); see
    `docs/releases.md`. The self-updater and release manifest path (`src/vixl/updater*`, `distribution/`) must stay stable.
 
