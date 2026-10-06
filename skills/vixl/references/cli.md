@@ -84,7 +84,7 @@ vixl shape rectangle|rounded-rectangle|ellipse|polygon|star|arc|line --name s --
 vixl frame --path portrait.jpg --name photo --width 400 --height 500 --fit fill|fit [--asset ID]
 vixl pixel-art --name sprite --width 16 --height 16 [--palette '{".":"transparent","g":"#ffc44d"}'] [--background .]
 vixl pixel-art --name spark --rows '[".w.","www",".w."]' --palette '{".":"transparent","w":"#fff"}'
-vixl adjustment warmth --effects '[{"name":"temperature","amount":500},{"name":"contrast","amount":10}]'
+vixl adjustment warmth --effects '[{"name":"temperature","amount":40},{"name":"contrast","amount":10}]'
 vixl symbol-instance Brandmark --name footer-logo --x 100 --y 800 --width 100 --height 100
 vixl irregular hero eyes --seed 7 [--strength subtle|natural|rough] [--only wobble color] [--remove]  # opt-in imperfection
 vixl tear photo --seed 3 --edges bottom [--as mask|clip|path] [--strength rough] [--rim-width 5]      # torn edge
@@ -103,14 +103,14 @@ vixl move portrait 100 200 ; vixl move portrait --x 100 ; vixl move portrait 20 
 vixl scale portrait 80%                  # or 0.8
 vixl resize portrait 800x600 ; vixl resize portrait --width 800 [--keep-aspect]   # one side alone leaves the other (images scale proportionally); --no-keep-aspect to stretch
 vixl rotate portrait 15                  # clockwise degrees about the pivot (default: center)
-vixl pivot arm 0.5 0.05                  # fractions of the box; pivot arm top | pivot arm 8 2 --px | pivot arm --clear
+vixl pivot arm 0.5 0.05                  # fractions of the box; pivot arm top | pivot arm 8 2 --px | pivot arm 410 300 --canvas | pivot arm --clear
 vixl flip portrait horizontal|vertical
 vixl scale beam --x -1                   # negative factors mirror (--x/--y per axis, or a bare -1 for both)
 vixl crop portrait 0 0 300 400           # X Y W H in the source raster
-vixl opacity portrait 0.75               # or 75 (1–100 = percent)
+vixl opacity portrait 0.75               # or 75% (0–1 scale; a bare 75 is an error)
 vixl blend portrait multiply             # normal multiply screen overlay darken lighten difference add subtract
 vixl rasterize title
-vixl group stripes stripe1 stripe2 ; vixl ungroup stripes
+vixl group stripes stripe1 stripe2 [--above LAYER|--below LAYER] ; vixl ungroup stripes
 vixl stack names --targets first last company --gap 20 --align center --justify center --width 1000 --height 400   # auto-layout; empty hide_if_empty text collapses
 vixl stack names --direction horizontal --gap 8 ; vixl stack names --remove ; vixl text first --hide-if-empty
 vixl shape --target bar --fill '#6b3f69'    # solid/gradient/shape/text add --target edit a layer in place
@@ -160,7 +160,7 @@ vixl mask import LAYER --path mask.png
 
 # Effects: vixl EFFECT [LAYER] AMOUNT
 vixl brightness portrait +20 ; vixl contrast -10 ; vixl saturation +15 ; vixl hue 30
-vixl exposure 0.5 ; vixl gamma 1.1 ; vixl temperature 300 ; vixl tint 10
+vixl exposure 0.5 ; vixl gamma 1.1 ; vixl temperature 30 ; vixl tint 10 ; vixl white-balance photo --neutral '#a08070'
 vixl shadows 15 ; vixl highlights -10 ; vixl blur 8 ; vixl sharpen 2 ; vixl denoise photo --luminance 40 --chroma 60
 vixl grayscale ; vixl invert ; vixl posterize 6 ; vixl threshold 128
 vixl auto-tone photo ; vixl auto-color photo ; vixl auto-contrast photo
@@ -168,10 +168,11 @@ vixl filter noise --amount 0.08 --seed 42
 vixl filter vignette --radius 0.7 --strength 0.4
 vixl filter levels --black 15 --white 240
 vixl filter blur --radius 4 --target photo
-vixl effect disable|enable|remove LAYER EFFECT        # EFFECT = 1-based index or fx_ ID
+vixl effect disable|enable|remove LAYER EFFECT        # EFFECT = 1-based index, fx_ ID or unique name
+vixl effect move LAYER EFFECT --to top|bottom|N       # or --before EFFECT / --after EFFECT
 vixl effect set LAYER EFFECT --amount 20
 vixl preset save gritty portrait ; vixl preset show gritty ; vixl preset apply gritty other --set noise=0.03
-vixl lookup photo look --amount 0.8                  # LUT defined via a `lut` operation in apply
+vixl lookup photo look --amount 0.8                  # LUT (from a `lut` operation) added to the effect stack
 vixl layer-style title drop-shadow|stroke|outer-glow|color-overlay|gradient-overlay --settings '{...}'
 vixl layer-style title drop-shadow --remove
 ```
@@ -199,7 +200,7 @@ vixl info --region X Y W H --foreground '#ffffff' [--background white]   # WCAG 
 vixl info --target title                             # contrast of a rendered layer vs what's beneath
 vixl spacing --targets heading body footer --axis vertical --tolerance 1 [--expected 24] [--check]
 vixl spacing --around body --before heading --after footer
-vixl check [--safe-area 5%] [--avoid X Y W H] [--thumbnail-width 320] [--checks overlap contrast] [--strict]
+vixl check [--safe-area 5%] [--avoid X Y W H] [--thumbnail-width 320|off] [--checks overlap contrast] [--strict]
 vixl validate [instagram-post|instagram-square|story|youtube-thumbnail] [--rules rules.json]
 vixl assert canvas.width == 1920
 vixl assert layer.logo.exists
@@ -213,8 +214,10 @@ and failing `validate`/`assert` exit nonzero with details (`--json` shows every 
 ## Output
 
 ```bash
-vixl export out.png|.jpg|.webp|.tiff|.avif [--quality 90] [--scale 2x] [--profile instagram|discord|print] \
+vixl export out.png|.jpg|.webp|.tiff|.avif [--quality 90] [--title T] [--max-bytes N] [--scale 2x] [--profile instagram|discord|print] \
      [--format PNG] [--background white] [--sampling nearest] [--set var=value] [--artboard NAME] [--comp NAME]
+#   --quality: JPEG/WEBP/AVIF (default 90) and PDF images (omitted: lossless PDF images). --title: PDF title (default: the
+#   title layer or role=title text, then the file name). --max-bytes: warns when a raster file is larger; a PNG over 1 MB warns and names texture looks.
 vixl render [F.vixl] --out preview.png [--set title=Hello]      # same options; never persists overrides
 vixl render --data rows.csv --out campaign_dir [--no-check]     # one PNG per CSV row: 0001.png …; rows with design problems carry a "check" report
 vixl export-screens --out screens --scales 1 2 [--artboards square story]   # NAME@2x.png
@@ -238,6 +241,7 @@ JPEG flattens transparency onto `--background` (white).
 
 ```bash
 vixl apply ops.json [--dry-run]          # or: cat ops.json | vixl apply -
+vixl apply ops.json --check --preview p.png   # also check the result and write a 512 px preview
 vixl run script.vixlscript               # one editing command per line, # comments; atomic
 vixl batch './photos/*.jpg' --run cleanup.vixlscript --output ./processed [--format png]
 vixl each layer --type raster --name 'card-*' -- saturation -10

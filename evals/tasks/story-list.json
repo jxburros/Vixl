@@ -17,7 +17,6 @@
       {"type": "text", "name": "item2", "text": "Build", "size": 110, "x": 120, "y": 820, "color": "white"},
       {"type": "text", "name": "item3", "text": "Ship", "size": 110, "x": 120, "y": 1040, "color": "white"},
       {"type": "distribute", "targets": ["item1", "item2", "item3"], "axis": "vertical"}
-    ]}},
-    {"tool": "vixl_check", "arguments": {}}
+    ], "check": true}}
   ]
 }

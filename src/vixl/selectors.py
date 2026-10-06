@@ -21,7 +21,7 @@ WHERE_KEYS = ("role", "name", "name_regex", "kind", "shape", "tag", "group", "te
 LAYER_KINDS = ("raster", "text", "solid", "gradient", "shape", "group", "frame", "adjustment", "pathfinder",
                "symbol", "pixel", "paint", "field")
 KIND_ALIASES = {"image": "raster", "photo": "raster", "picture": "raster", "rect": "shape", "rectangle": "shape"}
-ROLES = ("content", "decoration", "background")
+ROLES = ("content", "decoration", "background", "title")
 # Operations that create layers or change the whole document: they make no sense once per match.
 NOT_PER_LAYER = {
     "edit-layers", "adapt-layout", "canvas", "page", "master", "layout-apply", "template-apply", "select",
@@ -34,7 +34,7 @@ TEXT_WINDOW = 2000  # Regexes read at most this much text, so a pathological pat
 REPORT_NAMES = 40
 
 DESCRIPTION = (
-    "Layers to change; every given key must match (AND). role: content|decoration|background or a role-set name; "
+    "Layers to change; every given key must match (AND). role: content|decoration|background|title or a role-set name; "
     "name: glob like 'badge-*' (or a list); name_regex; kind: text|shape|raster|group|… (or a list); shape: "
     "rectangle|ellipse|…; tag: a tag set with layer-intent; group: layer or group whose descendants match; "
     "text_contains / text_regex: text layers; id: exact IDs or names; visible: true|false; page: a page number or "

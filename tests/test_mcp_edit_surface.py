@@ -61,9 +61,9 @@ def test_shape_target_edits_in_place_and_one_sided_resize_reports_it(server, tmp
 def test_stack_and_hide_if_empty_through_mcp(server, tmp_path):
     ok(server, "vixl_operations_apply", {"operations": [
         {"type": "variable", "name": "company", "value": "Acme"}]})
-    ok(server, "vixl_text_add", {"text": "Sam", "name": "first", "size": 40, "color": "black"})
-    ok(server, "vixl_text_add", {"text": "${company}", "name": "company", "size": 20, "color": "black",
-                                 "hide_if_empty": True})
+    ok(server, "vixl_operations_apply", {"operations": [
+        {"type": "text", "text": "Sam", "name": "first", "size": 40, "color": "black"},
+        {"type": "text", "text": "${company}", "name": "company", "size": 20, "color": "black", "hide_if_empty": True}]})
     ok(server, "vixl_operations_apply", {"operations": [
         {"type": "stack", "name": "names", "targets": ["first", "company"], "gap": 10, "width": 400, "height": 300,
          "align": "center", "justify": "center"}]})

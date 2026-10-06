@@ -97,8 +97,8 @@ Paste the rule for the lane into the kickoff prompt (below).
 
 ## Setup (once)
 
-1. **Vixl.** The project's `.mcp.json` runs the released v0.20.0 server with the repository root
-   as the workspace (the briefs use paths from there), which is what the latest results used. To
+1. **Vixl.** The project's `.mcp.json` runs the current released server (v0.21.0) with the repository root
+   as the workspace (the briefs use paths from there), the latest recorded results used v0.20.0. To
    test unreleased changes instead, point both agents at the checkout:
 
    ```bash

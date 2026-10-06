@@ -1,8 +1,8 @@
 {
   "passed": false,
   "errors": 11,
-  "warnings": 20,
-  "info": 1,
+  "warnings": 73,
+  "info": 9,
   "by_action": {
     "fix": [
       11,
@@ -15,14 +15,7 @@
       21,
       22,
       23,
-      24,
-      25,
-      26,
-      27,
-      28,
-      29,
-      30,
-      31
+      24
     ],
     "review": [
       1,
@@ -37,10 +30,78 @@
       10,
       16,
       17,
-      18
+      18,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      51,
+      52,
+      53,
+      54,
+      55,
+      56,
+      57,
+      58,
+      59,
+      60,
+      61,
+      62,
+      63,
+      64,
+      65,
+      66,
+      67,
+      68,
+      69,
+      70,
+      71,
+      72,
+      73,
+      74,
+      75,
+      76,
+      77,
+      78,
+      79,
+      80,
+      81,
+      82,
+      83,
+      84,
+      85,
+      86,
+      87,
+      88,
+      89,
+      90,
+      91,
+      92
     ],
     "informational": [
-      0
+      0,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      50
     ]
   },
   "issues": [
@@ -133,9 +194,9 @@
       ],
       "message": "'ring' and 'kicker' overlap by 535 px (19.6% of the smaller layer)",
       "region": [
-        260,
+        176,
         236,
-        240,
+        324,
         19
       ],
       "action": "review"
@@ -149,9 +210,9 @@
       ],
       "message": "'ring' and 'word-0' overlap by 2215 px (5.1% of the smaller layer)",
       "region": [
-        260,
+        176,
         300,
-        451,
+        535,
         135
       ],
       "action": "review"
@@ -165,9 +226,9 @@
       ],
       "message": "'ring' and 'word-1' overlap by 7347 px (17.3% of the smaller layer)",
       "region": [
-        260,
+        176,
         476,
-        441,
+        525,
         135
       ],
       "action": "review"
@@ -181,10 +242,10 @@
       ],
       "message": "'ring' and 'word-2' overlap by 338 px (0.5% of the smaller layer)",
       "region": [
-        260,
+        176,
         652,
-        560,
-        8
+        728,
+        92
       ],
       "action": "review"
     },
@@ -199,7 +260,7 @@
       "region": [
         748,
         185,
-        72,
+        78,
         20
       ],
       "action": "review"
@@ -439,12 +500,12 @@
       "layers": [
         "tagline"
       ],
-      "message": "'tagline' contrast is 2.51:1 or lower for a tenth of its glyph pixels (minimum 2.39:1, weakest at x 272.5\u2013794.5, y 708\u2013745); needs 3:1",
+      "message": "'tagline' contrast is 2.51:1 or lower for a tenth of its glyph pixels (minimum 2.39:1, weakest at x 272\u2013795, y 706\u2013746); needs 3:1",
       "region": [
-        272.5,
-        708,
-        523,
-        38
+        272,
+        706,
+        524,
+        41
       ],
       "contrast": 2.509,
       "required": 3.0,
@@ -452,73 +513,681 @@
     },
     {
       "check": "legibility",
-      "severity": "warning",
+      "severity": "info",
       "layers": [
         "brandmark"
       ],
-      "message": "'brandmark' is 6.5 px tall at 320 px wide; aim for at least 10 px (font size 34+)",
+      "message": "'brandmark' is 6.5 px tall at 320 px wide; aim for at least 10 px (font size 34+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
       "thumbnail_size": 6.52,
-      "action": "fix"
+      "action": "informational"
     },
     {
       "check": "legibility",
-      "severity": "warning",
+      "severity": "info",
       "layers": [
         "timecode"
       ],
-      "message": "'timecode' is 6.5 px tall at 320 px wide; aim for at least 10 px (font size 34+)",
+      "message": "'timecode' is 6.5 px tall at 320 px wide; aim for at least 10 px (font size 34+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
       "thumbnail_size": 6.52,
-      "action": "fix"
+      "action": "informational"
     },
     {
       "check": "legibility",
+      "severity": "info",
+      "layers": [
+        "kicker"
+      ],
+      "message": "'kicker' is 7.7 px tall at 320 px wide; aim for at least 10 px (font size 34+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
+      "thumbnail_size": 7.7,
+      "action": "informational"
+    },
+    {
+      "check": "legibility",
+      "severity": "info",
+      "layers": [
+        "badge-label"
+      ],
+      "message": "'badge-label' is 7.7 px tall at 320 px wide; aim for at least 10 px (font size 34+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
+      "thumbnail_size": 7.7,
+      "action": "informational"
+    },
+    {
+      "check": "legibility",
+      "severity": "info",
+      "layers": [
+        "chip-label-0"
+      ],
+      "message": "'chip-label-0' is 7.1 px tall at 320 px wide; aim for at least 10 px (font size 34+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
+      "thumbnail_size": 7.11,
+      "action": "informational"
+    },
+    {
+      "check": "legibility",
+      "severity": "info",
+      "layers": [
+        "chip-label-1"
+      ],
+      "message": "'chip-label-1' is 7.1 px tall at 320 px wide; aim for at least 10 px (font size 34+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
+      "thumbnail_size": 7.11,
+      "action": "informational"
+    },
+    {
+      "check": "legibility",
+      "severity": "info",
+      "layers": [
+        "chip-label-2"
+      ],
+      "message": "'chip-label-2' is 7.1 px tall at 320 px wide; aim for at least 10 px (font size 34+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
+      "thumbnail_size": 7.11,
+      "action": "informational"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "ticks"
+      ],
+      "message": "Two-key linear movement starts and stops instantly; consider easing, anticipation and settling unless constant speed is intended.",
+      "code": "linear-motion",
+      "action": "review"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "word-0"
+      ],
+      "message": "Loop seam: translate-y on lyr_f65e97faa9ac43f7 ends at -170.0 but starts at 150.0, so the loop jumps when it restarts. Add a closing key (close: true) or end the track where it began.",
+      "code": "loop-seam",
+      "action": "review"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "word-1"
+      ],
+      "message": "Loop seam: translate-y on lyr_fb0456853fcf41fd ends at -170.0 but starts at 150.0, so the loop jumps when it restarts. Add a closing key (close: true) or end the track where it began.",
+      "code": "loop-seam",
+      "action": "review"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "word-2"
+      ],
+      "message": "Loop seam: translate-y on lyr_47cc28197e614f19 ends at -170.0 but starts at 150.0, so the loop jumps when it restarts. Add a closing key (close: true) or end the track where it began.",
+      "code": "loop-seam",
+      "action": "review"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "letter-H"
+      ],
+      "message": "Loop seam: translate-y on lyr_3c9b1bb59eb9485f ends at 0 but starts at -300, so the loop jumps when it restarts. Add a closing key (close: true) or end the track where it began.",
+      "code": "loop-seam",
+      "action": "review"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "letter-A"
+      ],
+      "message": "Loop seam: translate-y on lyr_4b2cd75c75474946 ends at 0 but starts at -300, so the loop jumps when it restarts. Add a closing key (close: true) or end the track where it began.",
+      "code": "loop-seam",
+      "action": "review"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "letter-L"
+      ],
+      "message": "Loop seam: translate-y on lyr_b4d609b8f3934674 ends at 0 but starts at -300, so the loop jumps when it restarts. Add a closing key (close: true) or end the track where it began.",
+      "code": "loop-seam",
+      "action": "review"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "letter-O"
+      ],
+      "message": "Loop seam: translate-y on lyr_2b95d0958d2f4b17 ends at 0 but starts at -300, so the loop jumps when it restarts. Add a closing key (close: true) or end the track where it began.",
+      "code": "loop-seam",
+      "action": "review"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "letter-H"
+      ],
+      "message": "Loop seam: opacity on lyr_3c9b1bb59eb9485f ends at 1.0 but starts at 0.0, so the loop jumps when it restarts. Add a closing key (close: true) or end the track where it began.",
+      "code": "loop-seam",
+      "action": "review"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "letter-A"
+      ],
+      "message": "Loop seam: opacity on lyr_4b2cd75c75474946 ends at 1.0 but starts at 0.0, so the loop jumps when it restarts. Add a closing key (close: true) or end the track where it began.",
+      "code": "loop-seam",
+      "action": "review"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "letter-L"
+      ],
+      "message": "Loop seam: opacity on lyr_b4d609b8f3934674 ends at 1.0 but starts at 0.0, so the loop jumps when it restarts. Add a closing key (close: true) or end the track where it began.",
+      "code": "loop-seam",
+      "action": "review"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "letter-O"
+      ],
+      "message": "Loop seam: opacity on lyr_2b95d0958d2f4b17 ends at 1.0 but starts at 0.0, so the loop jumps when it restarts. Add a closing key (close: true) or end the track where it began.",
+      "code": "loop-seam",
+      "action": "review"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "chip-0"
+      ],
+      "message": "Loop seam: scale on lyr_f3cede0bc1664c0c ends at 1.0 but starts at 0.6, so the loop jumps when it restarts. Add a closing key (close: true) or end the track where it began.",
+      "code": "loop-seam",
+      "action": "review"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "chip-0"
+      ],
+      "message": "Loop seam: opacity on lyr_f3cede0bc1664c0c ends at 1.0 but starts at 0.0, so the loop jumps when it restarts. Add a closing key (close: true) or end the track where it began.",
+      "code": "loop-seam",
+      "action": "review"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "chip-1"
+      ],
+      "message": "Loop seam: scale on lyr_bae1991681b84c27 ends at 1.0 but starts at 0.6, so the loop jumps when it restarts. Add a closing key (close: true) or end the track where it began.",
+      "code": "loop-seam",
+      "action": "review"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "chip-1"
+      ],
+      "message": "Loop seam: opacity on lyr_bae1991681b84c27 ends at 1.0 but starts at 0.0, so the loop jumps when it restarts. Add a closing key (close: true) or end the track where it began.",
+      "code": "loop-seam",
+      "action": "review"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "chip-2"
+      ],
+      "message": "Loop seam: scale on lyr_2a1c9019ad5b4f1e ends at 1.0 but starts at 0.6, so the loop jumps when it restarts. Add a closing key (close: true) or end the track where it began.",
+      "code": "loop-seam",
+      "action": "review"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "chip-2"
+      ],
+      "message": "Loop seam: opacity on lyr_2a1c9019ad5b4f1e ends at 1.0 but starts at 0.0, so the loop jumps when it restarts. Add a closing key (close: true) or end the track where it began.",
+      "code": "loop-seam",
+      "action": "review"
+    },
+    {
+      "check": "motion",
+      "severity": "info",
+      "layers": [
+        "spark-0"
+      ],
+      "message": "Loop seam: translate-y on lyr_9a4f6fd83db141a0 matches at the seam but its speed changes from -1.265 to 0.0 units/s there; ease the first and last segments (ease-in-out) or use constant speed to hide the kink.",
+      "code": "loop-seam-speed",
+      "action": "informational"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [],
+      "message": "Loop seam: background on canvas ends at '#160E36' but starts at '#0D0A1C', so the loop jumps when it restarts. Add a closing key (close: true) or end the track where it began.",
+      "code": "loop-seam",
+      "action": "review"
+    },
+    {
+      "check": "motion",
       "severity": "warning",
       "layers": [
         "kicker"
       ],
-      "message": "'kicker' is 7.7 px tall at 320 px wide; aim for at least 10 px (font size 34+)",
-      "thumbnail_size": 7.7,
-      "action": "fix"
+      "message": "Loop seam: text on lyr_33ec6e0ef8ad4826 ends at '01 \u2014 ONE RING TRACKS IT ALL' but starts at '', so the loop jumps when it restarts. Add a closing key (close: true) or end the track where it began.",
+      "code": "loop-seam",
+      "action": "review"
     },
     {
-      "check": "legibility",
+      "check": "motion",
       "severity": "warning",
       "layers": [
-        "badge-label"
+        "kicker"
       ],
-      "message": "'badge-label' is 7.7 px tall at 320 px wide; aim for at least 10 px (font size 34+)",
-      "thumbnail_size": 7.7,
-      "action": "fix"
+      "message": "Loop seam: opacity on lyr_33ec6e0ef8ad4826 ends at 0.0 but starts at 1.0, so the loop jumps when it restarts. Add a closing key (close: true) or end the track where it began.",
+      "code": "loop-seam",
+      "action": "review"
     },
     {
-      "check": "legibility",
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "sweep"
+      ],
+      "message": "Loop seam: fill on lyr_9bd74dbe7bea4fdd ends at '#FF6A4D' but starts at '#C8FF3D', so the loop jumps when it restarts. Add a closing key (close: true) or end the track where it began.",
+      "code": "loop-seam",
+      "action": "review"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "word-1"
+      ],
+      "message": "Loop seam: color on lyr_fb0456853fcf41fd ends at '#B7A6FF' but starts at '#C8FF3D', so the loop jumps when it restarts. Add a closing key (close: true) or end the track where it began.",
+      "code": "loop-seam",
+      "action": "review"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "word-2"
+      ],
+      "message": "Loop seam: size on lyr_47cc28197e614f19 ends at 196 but starts at 150, so the loop jumps when it restarts. Add a closing key (close: true) or end the track where it began.",
+      "code": "loop-seam",
+      "action": "review"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "glow"
+      ],
+      "message": "Loop seam: opacity on lyr_6ce2bff9f92a49dc ends at 1 but starts at 0, so the loop jumps when it restarts. Add a closing key (close: true) or end the track where it began.",
+      "code": "loop-seam",
+      "action": "review"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "ring"
+      ],
+      "message": "Loop seam: opacity on lyr_ae7c7b6ac40941cf ends at 1.0 but starts at 0.0, so the loop jumps when it restarts. Add a closing key (close: true) or end the track where it began.",
+      "code": "loop-seam",
+      "action": "review"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "ring"
+      ],
+      "message": "Loop seam: scale on lyr_ae7c7b6ac40941cf ends at 1 but starts at 0, so the loop jumps when it restarts. Add a closing key (close: true) or end the track where it began.",
+      "code": "loop-seam",
+      "action": "review"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "ring"
+      ],
+      "message": "Loop seam: effect:1 on lyr_ae7c7b6ac40941cf ends at 0 but starts at 40, so the loop jumps when it restarts. Add a closing key (close: true) or end the track where it began.",
+      "code": "loop-seam",
+      "action": "review"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "ring"
+      ],
+      "message": "Loop seam: stroke on lyr_ae7c7b6ac40941cf ends at '#B7A6FF' but starts at '#C8FF3D', so the loop jumps when it restarts. Add a closing key (close: true) or end the track where it began.",
+      "code": "loop-seam",
+      "action": "review"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "ticks"
+      ],
+      "message": "Loop seam: opacity on lyr_dea327bc3de44e22 ends at 1.0 but starts at 0.0, so the loop jumps when it restarts. Add a closing key (close: true) or end the track where it began.",
+      "code": "loop-seam",
+      "action": "review"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "ticks"
+      ],
+      "message": "Loop seam: rotation on lyr_dea327bc3de44e22 ends at 90.0 but starts at 0, so the loop jumps when it restarts. Add a closing key (close: true) or end the track where it began.",
+      "code": "loop-seam",
+      "action": "review"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "satellite"
+      ],
+      "message": "Loop seam: opacity on lyr_f71d677f3d4949cd ends at 1.0 but starts at 0.0, so the loop jumps when it restarts. Add a closing key (close: true) or end the track where it began.",
+      "code": "loop-seam",
+      "action": "review"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "satellite"
+      ],
+      "message": "Loop seam: rotation on lyr_f71d677f3d4949cd ends at 500 but starts at -40, so the loop jumps when it restarts. Add a closing key (close: true) or end the track where it began.",
+      "code": "loop-seam",
+      "action": "review"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "wordmark"
+      ],
+      "message": "Loop seam: effect:1 on lyr_dcb5e160dca041bb ends at 0 but starts at 22, so the loop jumps when it restarts. Add a closing key (close: true) or end the track where it began.",
+      "code": "loop-seam",
+      "action": "review"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "badge"
+      ],
+      "message": "Loop seam: scale on lyr_e968c653b5164aa8 ends at 1.0 but starts at 0.6, so the loop jumps when it restarts. Add a closing key (close: true) or end the track where it began.",
+      "code": "loop-seam",
+      "action": "review"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "badge"
+      ],
+      "message": "Loop seam: opacity on lyr_e968c653b5164aa8 ends at 1.0 but starts at 0.0, so the loop jumps when it restarts. Add a closing key (close: true) or end the track where it began.",
+      "code": "loop-seam",
+      "action": "review"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "badge"
+      ],
+      "message": "Loop seam: rotation on lyr_e968c653b5164aa8 ends at -9 but starts at 0, so the loop jumps when it restarts. Add a closing key (close: true) or end the track where it began.",
+      "code": "loop-seam",
+      "action": "review"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "badge"
+      ],
+      "message": "Loop seam: translate-y on lyr_e968c653b5164aa8 ends at 0.0 but starts at -26.0, so the loop jumps when it restarts. Add a closing key (close: true) or end the track where it began.",
+      "code": "loop-seam",
+      "action": "review"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "tagline"
+      ],
+      "message": "Loop seam: text on lyr_47f7c61c8c554d1e ends at 'Your whole day, in one ring.' but starts at '', so the loop jumps when it restarts. Add a closing key (close: true) or end the track where it began.",
+      "code": "loop-seam",
+      "action": "review"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "tagline"
+      ],
+      "message": "Loop seam: translate-y on lyr_47f7c61c8c554d1e ends at 0 but starts at 24, so the loop jumps when it restarts. Add a closing key (close: true) or end the track where it began.",
+      "code": "loop-seam",
+      "action": "review"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "tagline"
+      ],
+      "message": "Loop seam: opacity on lyr_47f7c61c8c554d1e ends at 1.0 but starts at 0.0, so the loop jumps when it restarts. Add a closing key (close: true) or end the track where it began.",
+      "code": "loop-seam",
+      "action": "review"
+    },
+    {
+      "check": "motion",
       "severity": "warning",
       "layers": [
         "chip-label-0"
       ],
-      "message": "'chip-label-0' is 7.1 px tall at 320 px wide; aim for at least 10 px (font size 34+)",
-      "thumbnail_size": 7.11,
-      "action": "fix"
+      "message": "Loop seam: text on lyr_c0fc4a5b8866444e ends at '7-DAY BATTERY' but starts at '1-DAY BATTERY', so the loop jumps when it restarts. Add a closing key (close: true) or end the track where it began.",
+      "code": "loop-seam",
+      "action": "review"
     },
     {
-      "check": "legibility",
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "cta-pill"
+      ],
+      "message": "Loop seam: translate-y on lyr_cd8d768bcc164993 ends at 0.0 but starts at 140.0, so the loop jumps when it restarts. Add a closing key (close: true) or end the track where it began.",
+      "code": "loop-seam",
+      "action": "review"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "cta-pill"
+      ],
+      "message": "Loop seam: opacity on lyr_cd8d768bcc164993 ends at 1.0 but starts at 0.0, so the loop jumps when it restarts. Add a closing key (close: true) or end the track where it began.",
+      "code": "loop-seam",
+      "action": "review"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "cta-label"
+      ],
+      "message": "Loop seam: translate-y on lyr_1471233a1a4d49c8 ends at 0.0 but starts at 140.0, so the loop jumps when it restarts. Add a closing key (close: true) or end the track where it began.",
+      "code": "loop-seam",
+      "action": "review"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "cta-label"
+      ],
+      "message": "Loop seam: opacity on lyr_1471233a1a4d49c8 ends at 1.0 but starts at 0.0, so the loop jumps when it restarts. Add a closing key (close: true) or end the track where it began.",
+      "code": "loop-seam",
+      "action": "review"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "cta-pill"
+      ],
+      "message": "Loop seam: fill on lyr_cd8d768bcc164993 ends at '#FF6A4D' but starts at '#C8FF3D', so the loop jumps when it restarts. Add a closing key (close: true) or end the track where it began.",
+      "code": "loop-seam",
+      "action": "review"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "progress"
+      ],
+      "message": "Loop seam: scale-x on lyr_606e48d9377b4830 ends at 1 but starts at 0, so the loop jumps when it restarts. Add a closing key (close: true) or end the track where it began.",
+      "code": "loop-seam",
+      "action": "review"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "timecode"
+      ],
+      "message": "Loop seam: text on lyr_517465d825e4489e ends at 'T+08.00' but starts at 'T+00.00', so the loop jumps when it restarts. Add a closing key (close: true) or end the track where it began.",
+      "code": "loop-seam",
+      "action": "review"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "finish"
+      ],
+      "message": "Loop seam: effect:1 on lyr_f94529a9b4884e23 ends at 0.6 but starts at 0.2, so the loop jumps when it restarts. Add a closing key (close: true) or end the track where it began.",
+      "code": "loop-seam",
+      "action": "review"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "letter-H"
+      ],
+      "message": "Text 'letter-H' is hidden (transparent, empty, trimmed or off-canvas) at 0s, the poster frame, although it is visible at the end.",
+      "code": "text-hidden-at-poster",
+      "action": "review"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "letter-A"
+      ],
+      "message": "Text 'letter-A' is hidden (transparent, empty, trimmed or off-canvas) at 0s, the poster frame, although it is visible at the end.",
+      "code": "text-hidden-at-poster",
+      "action": "review"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "letter-L"
+      ],
+      "message": "Text 'letter-L' is hidden (transparent, empty, trimmed or off-canvas) at 0s, the poster frame, although it is visible at the end.",
+      "code": "text-hidden-at-poster",
+      "action": "review"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "letter-O"
+      ],
+      "message": "Text 'letter-O' is hidden (transparent, empty, trimmed or off-canvas) at 0s, the poster frame, although it is visible at the end.",
+      "code": "text-hidden-at-poster",
+      "action": "review"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "badge-label"
+      ],
+      "message": "Text 'badge-label' is hidden (transparent, empty, trimmed or off-canvas) at 0s, the poster frame, although it is visible at the end.",
+      "code": "text-hidden-at-poster",
+      "action": "review"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "tagline"
+      ],
+      "message": "Text 'tagline' is hidden (transparent, empty, trimmed or off-canvas) at 0s, the poster frame, although it is visible at the end.",
+      "code": "text-hidden-at-poster",
+      "action": "review"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "chip-label-0"
+      ],
+      "message": "Text 'chip-label-0' is hidden (transparent, empty, trimmed or off-canvas) at 0s, the poster frame, although it is visible at the end.",
+      "code": "text-hidden-at-poster",
+      "action": "review"
+    },
+    {
+      "check": "motion",
       "severity": "warning",
       "layers": [
         "chip-label-1"
       ],
-      "message": "'chip-label-1' is 7.1 px tall at 320 px wide; aim for at least 10 px (font size 34+)",
-      "thumbnail_size": 7.11,
-      "action": "fix"
+      "message": "Text 'chip-label-1' is hidden (transparent, empty, trimmed or off-canvas) at 0s, the poster frame, although it is visible at the end.",
+      "code": "text-hidden-at-poster",
+      "action": "review"
     },
     {
-      "check": "legibility",
+      "check": "motion",
       "severity": "warning",
       "layers": [
         "chip-label-2"
       ],
-      "message": "'chip-label-2' is 7.1 px tall at 320 px wide; aim for at least 10 px (font size 34+)",
-      "thumbnail_size": 7.11,
-      "action": "fix"
+      "message": "Text 'chip-label-2' is hidden (transparent, empty, trimmed or off-canvas) at 0s, the poster frame, although it is visible at the end.",
+      "code": "text-hidden-at-poster",
+      "action": "review"
+    },
+    {
+      "check": "motion",
+      "severity": "warning",
+      "layers": [
+        "cta-label"
+      ],
+      "message": "Text 'cta-label' is hidden (transparent, empty, trimmed or off-canvas) at 0s, the poster frame, although it is visible at the end.",
+      "code": "text-hidden-at-poster",
+      "action": "review"
     }
   ],
   "checked": {
@@ -535,9 +1204,11 @@
       "form",
       "links",
       "diagram",
-      "flow"
+      "flow",
+      "motion"
     ],
-    "layers": 41,
+    "layers_checked": 41,
+    "layers_total": 41,
     "text_layers": 16
   }
 }

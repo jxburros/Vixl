@@ -81,13 +81,14 @@ Pixels:    pixel-art, pixel-draw, pixel-palette, pixels [LAYER],
 Editing:   move, resize, scale, rotate, pivot, flip, crop, opacity, blend, align,
            select-layer, select wand|lasso|path|rect|ellipse|color, mask, filter, effect, rasterize
 Effects:   brightness, contrast, saturation, hue, exposure, gamma, temperature,
-           tint, shadows, highlights, blur, sharpen, denoise, grayscale, invert,
-           posterize, threshold, noise, grain, vignette, auto-tone, auto-color, auto-contrast
+           tint, white-balance, shadows, highlights, blur, sharpen, denoise, grayscale, invert,
+           posterize, threshold, noise, grain, vignette, auto-tone, auto-color, auto-contrast;
+           effect disable|enable|remove|set|move LAYER EFFECT, lookup LAYER LUT
 Layout:    canvas resize SIZE, canvas size NAME [--landscape] [--bleed], canvas dpi N, constrain, unconstrain,
            variable set NAME VALUE
 History:   undo [N], redo [N], history, checkpoint NAME, branch NAME,
            checkout REF, branches, compare REF REF --out FILE
-Automate:  apply FILE|- [--dry-run], run SCRIPT, batch GLOB --run SCRIPT --output DIR,
+Automate:  apply FILE|- [--dry-run] [--check [CHECK…]] [--preview PNG], run SCRIPT, batch GLOB --run SCRIPT --output DIR,
            workflow ACTION --request FILE [--workspace DIR] (workflow schema lists actions),
            each layer --name PATTERN -- COMMAND, preset save|apply|show NAME,
            transaction begin|commit|rollback, assert RULE, validate [PROFILE]
@@ -100,7 +101,8 @@ Type:      fonts [--category serif] [--mood M], font show FAMILY, font pairings 
 Finish:    look LAYER NAME [--color C] [--amount 0-1] [--remove]  (glow, neon, soft-shadow, hard-shadow, outline, gradient, grain,
            paper, film, duotone, risograph, sketch, watercolor, halftone), looks (catalog),
            radial-repeat LAYER --count N [--cx 50%] [--cy 50%] [--sweep 360] [--start-angle D] [--mirror] [--name N],
-           guide [BRIEF] (what to make: icons, characters, scenes, patterns … with the operations, layouts and looks that suit it)
+           guide [BRIEF|GUIDANCE] (what to make: icons, characters, scenes, patterns … with the operations, layouts and looks that
+           suit it; or a guidance text such as natural-motion), capabilities [TOPIC] (fields, gotchas and guidance per topic)
 Styles:    styles [list [QUERY] | show NAME | apply NAME [--palette] | check [NAME]], style-set NAME… [--options JSON],
            check --checks style [--style NAME…] (premade rules for swiss, brutalist, minimalist, art-deco …)
 Dice:      roll [--apply] [--set title=…] [--for poster] [--mood M] [--size NAME] [--seed N|random] [--lock palette=sage]
@@ -115,7 +117,7 @@ Motion:    timeline, timeline set --duration 3s --fps 30 [--loop N], keyframe LA
            animate-preset LAYER PRESET [--start T] [--duration T], marker NAME TIME, easings,
            export-timeline --out FILE.gif|.webp|.png|.zip|.mp4 [--fps N] [--scale N] [--colors N],
            timeline-sheet --out FILE [--count 8], render --time 1.5s --out FILE
-Output:    export FILE [--quality N] [--scale 2x] [--profile NAME] [--dpi N]
+Output:    export FILE [--quality N] [--title T] [--max-bytes N] [--scale 2x] [--profile NAME] [--dpi N]
            [--cmyk [--icc PROFILE.icc] [--ink-limit 300]] [--proof] [--simulate deuteranopia],
            export FILE.html | FILE.pdf | FILE.ico [--icon-sizes 16 32 48], export-icons --out DIR [--set web|apple|android|all],
            render [PROJECT] --out FILE [--set NAME=VALUE] [--artboard NAME] [--comp NAME],
@@ -191,7 +193,9 @@ def output_options(args, command):
     p.add_argument("path", nargs="?")
     p.add_argument("--out", "--preview", dest="out")
     p.add_argument("--overwrite", action="store_true", help="Replace existing export files")
-    p.add_argument("--quality", type=int, default=90)
+    p.add_argument("--quality", type=int, default=None)
+    p.add_argument("--title", help="PDF document title (default: the page's title layer, then the file name)")
+    p.add_argument("--max-bytes", type=int, help="Size budget: warn when a raster export is larger")
     p.add_argument("--scale", default="1")
     p.add_argument("--profile")
     p.add_argument("--format", choices=["PNG", "JPEG", "WEBP", "TIFF", "AVIF", "SVG", "JPG", "PDF", "ICO", "HTML", "PPTX"])
@@ -319,6 +323,7 @@ def dispatch(argv):
                             "effect-disable",
                             "effect-enable",
                             "effect-remove",
+                            "effect-move",
                             "preset-save",
                             "preset-apply",
                         }
@@ -333,7 +338,7 @@ def dispatch(argv):
             }
         ), options.json
     if "--help" not in args and "-h" not in args and (
-        cmd in ("guide", "looks") or (cmd == "styles" and not (args and args[0] in ("apply", "check")))
+        cmd in ("guide", "looks", "capabilities") or (cmd == "styles" and not (args and args[0] in ("apply", "check")))
     ):
         from .finishing_cli import standalone as finishing_standalone
 
@@ -585,7 +590,8 @@ def command_help(cmd, args):
         "timeline": "timeline (inspect) | timeline set [--duration 3s] [--fps 30] [--loop N] [--clear]",
         "pages": "pages (list pages and masters of a multi-page document)",
         "styles": "styles [list [QUERY] | show NAME] | styles apply NAME [--palette] | styles check [NAME…]",
-        "guide": "guide [BRIEF]  (e.g. guide a mascot for a coffee brand; guide operations)",
+        "guide": "guide [BRIEF|GUIDANCE]  (e.g. guide a mascot for a coffee brand; guide operations; guide natural-motion)",
+        "capabilities": "capabilities [TOPIC]  (e.g. capabilities animation: operations with fields, workflows, gotchas, guidance)",
         "looks": "looks  (the finishing looks; apply with look LAYER NAME)",
         "guides": "guides (list guides and grids)",
         "links": "links (list the linked documents and their state: ok, stale, missing, cycle)",
@@ -784,6 +790,8 @@ def project_command(project, cmd, args, *, detail="compact"):
             pages=None if a.pages == "all" else parse_pages(a.pages),
             pdf_content=a.pdf_content,
             presenter=presenter_options(a),
+            title=a.title,
+            max_bytes=a.max_bytes,
             report=report,
             **print_options(a, project.limits),
         )
@@ -837,7 +845,8 @@ def project_command(project, cmd, args, *, detail="compact"):
         p.add_argument(
             "--avoid", nargs=4, action="append", metavar=("X", "Y", "W", "H"), help="Reserved zone"
         )
-        p.add_argument("--thumbnail-width", type=int, help="judge text at this thumbnail width (default 320; print sizes judge printed points instead)")
+        p.add_argument("--thumbnail-width", default="auto", type=lambda v: v if v == "auto" else None if v in ("off", "none", "null") else int(v),
+                       help="judge text at this thumbnail width (default 320; 'off' disables; print sizes judge printed points instead)")
         p.add_argument("--min-thumbnail-text", type=float, default=10)
         p.add_argument("--min-contrast", type=float)
         for key in ("artboard", "comp"):
@@ -878,11 +887,13 @@ def project_command(project, cmd, args, *, detail="compact"):
         p.add_argument("--scale", type=float, default=1.0, help="Integer 1–32 with nearest sampling; 0.05–32 with smooth")
         p.add_argument("--sampling", choices=["nearest", "smooth"], default="nearest")
         p.add_argument("--colors", type=int, default=256, help="GIF palette size 2–256")
+        p.add_argument("--dither", choices=["auto", "none", "ordered", "floyd"], default="auto", help="GIF dithering (shared palette)")
+        p.add_argument("--max-bytes", type=int, help="Soft size target: warn when the file is larger")
         p.add_argument("--quality", type=int, default=90, help="WebP (smooth) and MP4/WebM quality 1–100")
         p.add_argument("--columns", type=int)
         a = p.parse_args(args)
         scale = int(a.scale) if a.scale.is_integer() else a.scale
-        return project.export_animation(a.out, format=a.format, scale=scale, columns=a.columns, sampling=a.sampling, colors=a.colors, animation=a.animation, quality=a.quality, overwrite=a.overwrite), False
+        return project.export_animation(a.out, format=a.format, scale=scale, columns=a.columns, sampling=a.sampling, colors=a.colors, animation=a.animation, quality=a.quality, overwrite=a.overwrite, dither=a.dither, max_bytes=a.max_bytes), False
     if cmd == "export-screens":
         from .exports import export_screens
 
@@ -918,9 +929,21 @@ def project_command(project, cmd, args, *, detail="compact"):
         p = Parser(prog=f"vixl {cmd}")
         p.add_argument("file")
         p.add_argument("--dry-run", action="store_true")
+        p.add_argument("--check", nargs="*", metavar="CHECK",
+                       help="also check the result (default checks, or these): fix findings and those on touched layers")
+        p.add_argument("--preview", metavar="PNG", help="also write a small preview of the result to this PNG file")
+        p.add_argument("--preview-width", type=int, default=512)
         a = p.parse_args(args)
         ops = read_json(a.file) if cmd == "apply" else compile_script(a.file)
-        return project.apply(ops, dry_run=a.dry_run, detail=detail), not a.dry_run
+        from .checks import apply_reviewed
+
+        check = None if a.check is None else (a.check or True)
+        result, image = apply_reviewed(project, ops, dry_run=a.dry_run, detail=detail, check=check,
+                                       preview={"max_width": a.preview_width} if a.preview else None)
+        if image is not None:
+            Path(a.preview).write_bytes(image)
+            result["preview"] = a.preview
+        return result, not a.dry_run
     if cmd == "each":
         import fnmatch
 

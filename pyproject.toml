@@ -28,6 +28,9 @@ packages = ["src/vixl"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "visual: golden-image render tests in tests/visual (references generated on Linux; skipped elsewhere unless VIXL_VISUAL=1)",
+]
 
 [tool.ruff]
 line-length = 110

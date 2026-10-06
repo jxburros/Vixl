@@ -20,6 +20,9 @@ Both are undone by normal history, regrown with a new `seed`, and removed with `
 
 ## When not to use it
 
+These rules are also the `imperfection` guidance, which `vixl_guide("imperfection")` returns and the
+character, scene, pattern and hand-drawing guides point to.
+
 Use it on a few chosen things, not as a finish for the whole document. Imperfection helps where
 the viewer expects a person, a material or an accident, and hurts where they expect precision.
 

@@ -137,7 +137,7 @@ def test_timeline_validation_and_layer_removal_prunes_tracks():
         p.apply({"type": "keyframe", "target": "ball", "property": "wobble", "time": 0, "value": 1})
     with pytest.raises(VixlError):
         p.apply({"type": "keyframe", "target": "ball", "property": "opacity", "time": 0, "value": 3})
-    with pytest.raises(VixlError, match="Unknown animation preset"):
+    with pytest.raises(VixlError, match="preset must be one of"):
         p.apply({"type": "animate-preset", "target": "ball", "preset": "explode"})
     p.apply({"type": "remove", "target": "ball"})
     assert all(track["target"] != "ball" for track in p.state["timeline"]["tracks"])
@@ -173,7 +173,7 @@ def test_timeline_exports_stream_formats(tmp_path):
     p_export(p, tmp_path / "a.png")
     assert Image.open(tmp_path / "a.png").n_frames == 10
     sheet = p_export(p, tmp_path / "s.png", format="sheet", columns=5)
-    assert json.loads((tmp_path / "s.json").read_text())["frames"][5]["y"] == 100 and sheet["size"] == [200, 100]
+    assert json.loads((tmp_path / "s.json").read_text())["frames"][5]["y"] == 100 and sheet["size"] == [1000, 200] and sheet["frame_size"] == [200, 100]
     p_export(p, tmp_path / "f.zip", scale=0.5)
     with zipfile.ZipFile(tmp_path / "f.zip") as archive:
         assert len([n for n in archive.namelist() if n.endswith(".png")]) == 10
@@ -244,7 +244,7 @@ def test_mcp_tools_cover_new_features(tmp_path):
             assert preview.content[0].type == "image"
             await call("vixl_render_preview", {"time": "0.25s", "simulate": "deuteranopia", "max_width": 200})
             exported = json.loads((await call("vixl_export_timeline", {"path": "post.gif", "scale": 0.2})).content[0].text)
-            assert exported["frames"] == 4
+            assert exported["frames"] <= exported.get("rendered_frames", 4) == 4  # Identical frames merge in the file.
             pdf = json.loads((await call("vixl_export_file", {"path": "post.pdf", "color_space": "cmyk", "ink_limit": 300})).content[0].text)
             assert pdf["format"] == "PDF"
             icons = json.loads((await call("vixl_export_icons", {"directory": "icons"})).content[0].text)

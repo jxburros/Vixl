@@ -4,7 +4,7 @@ from copy import deepcopy
 import re
 
 from .errors import require
-from .model import new_layer, finite
+from .model import new_layer, finite, uid
 from .design_schema import SHAPES, STYLES
 
 
@@ -52,17 +52,18 @@ def execute_design(project, op):
         fields = {
             k: deepcopy(v) for k, v in op.items() if k not in ("type", "target", "name", "width", "height")
         }
+        width, height = op.get("width", c["width"]), op.get("height", c["height"])
         if op["shape"] == "path":
-            fields["path_view"] = [op.get("width", c["width"]), op.get("height", c["height"])]
+            require(isinstance(op.get("path"), str), "A path shape needs a path", field="path")
+            from .geometry import path_box
+
+            # A missing size reaches the path's farthest point (see path_box), never the whole canvas.
+            reach = path_box(op["path"])
+            width, height = op.get("width", reach[0]), op.get("height", reach[1])
+            fields["path_view"] = [width, height]
         append_layer(
             project,
-            new_layer(
-                op["name"] if "name" in op else default_name(project, "shape"),
-                "shape",
-                op.get("width", c["width"]),
-                op.get("height", c["height"]),
-                **fields,
-            ),
+            new_layer(op["name"] if "name" in op else default_name(project, "shape"), "shape", width, height, **fields),
         )
     elif kind == "group":
         children = selected(project, op["targets"])
@@ -80,6 +81,12 @@ def execute_design(project, op):
             child.update(parent=group["id"], constraints={})
             child["x"], child["y"] = stored_origin(child, (b[0] - x, b[1] - y))
         group["content_width"], group["content_height"] = w, h
+        if "above" in op or "below" in op:
+            require(not ("above" in op and "below" in op), "group takes above or below, not both", field="above")
+            where = "above" if "above" in op else "below"
+            require(project.layer(op[where])["id"] not in {item["id"] for item in children},
+                    f"group {where} must name a layer outside the group", field=where)
+            execute(project, {"type": "reorder", "target": group["id"], where: op[where]})
     elif kind == "ungroup":
         group = project.layer(op.get("target"))
         require(group["type"] == "group", "Target must be a group")
@@ -253,11 +260,18 @@ def execute_design(project, op):
                 finite(value, "LUT channel", 0, 1)
         state.setdefault("luts", {})[named(op["name"])] = {"size": size, "values": deepcopy(op["values"])}
     elif kind == "lookup":
-        require(op["name"] in state.get("luts", {}), "Unknown LUT")
-        project.layer(op.get("target"))["lookup"] = {
-            "name": op["name"],
+        # A LUT is an ordinary entry in the layer's effect stack (toggle, reorder, select).
+        layer = project.layer(op.get("target"))
+        require(op["name"] in state.get("luts", {}), "Unknown LUT", field="name")
+        require(len(layer["effects"]) < 256, "Effect limit reached", "resource_limit")
+        layer["effects"].append({
+            "id": uid("fx"),
+            "name": "lookup",
+            "lut": op["name"],
             "amount": finite(op.get("amount", 1), "amount", 0, 1),
-        }
+            "enabled": True,
+            "selection": state["selection"],
+        })
     elif kind == "comp-save":
         fields = ("visible", "x", "y", "rotation", "opacity", "blend", "constraints", "styles")
         state.setdefault("comps", {})[named(op["name"])] = {
@@ -489,7 +503,8 @@ def validate_style(name, settings, state):
 
 def validate_design(project, state):
     """Validate both live and historical state without trusting archive payloads."""
-    from .render import color, EFFECTS
+    from .render import color
+    from .constants import STACK_EFFECTS
     from .operations import effect_valid
     from .design_render import repeat_items, repeat_bounds
 
@@ -631,9 +646,9 @@ def validate_design(project, state):
         require(isinstance(styles, dict) and len(styles) <= 5, "Invalid styles")
         for name, value in styles.items():
             validate_style(name, value, state)
-        if layer.get("lookup"):
-            require(layer["lookup"]["name"] in state.get("luts", {}), "Missing LUT")
-            finite(layer["lookup"].get("amount", 1), "LUT amount", 0, 1)
+        for effect in layer.get("effects") or []:
+            if effect.get("name") == "lookup":
+                require(effect.get("lut") in state.get("luts", {}), "Missing LUT")
         if layer.get("repeat"):
             r = layer["repeat"]
             require(isinstance(r["count"], int) and 1 <= r["count"] <= 512, "Repeat count must be 1–512")
@@ -658,7 +673,7 @@ def validate_design(project, state):
                 "Adjustment layers use effects, masks, blend and opacity",
             )
             for effect in layer["effects"]:
-                require(effect.get("name") in EFFECTS, "Adjustments require built-in effects")
+                require(effect.get("name") in STACK_EFFECTS, "Adjustments require built-in effects")
                 effect_valid(effect)
         layout = layer.get("text_layout", {})
         if layout:

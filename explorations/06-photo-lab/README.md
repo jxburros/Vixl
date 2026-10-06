@@ -14,7 +14,7 @@ and uses checkpoints, undo/redo, a branch and revision comparison. The last outp
 contact sheet of all 19 artistic filters plus the 5 effect workflows, and before/after numbers
 from Vixl's own `measure()`.
 
-Run from the repo root: `python explorations/06-photo-lab/build.py` (40 s with Vixl 0.20.0 on a shared 4-core container; ≈2 min with 0.16.0, which it was first built with). It wipes and
+Run from the repo root: `python explorations/06-photo-lab/build.py` (26 s with Vixl 0.21.0 on a shared 4-core container; ≈2 min with 0.16.0, which it was first built with). It wipes and
 recreates `output/` and sets `VIXL_RESOURCES` and `VIXL_FONT_CACHE` inside this folder.
 
 ## Before / after

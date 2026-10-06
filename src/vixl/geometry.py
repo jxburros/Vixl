@@ -20,9 +20,59 @@ SHORTCUTS = {
     "parallelogram": "M25 0 L100 0 L75 100 L0 100 Z",
 }
 
+# The one anchor table: named points of a box as (x, y) fractions. Every module that accepts an anchor
+# name (pivot, resize, fit, guides, links, adapt) resolves it through canonical_anchor().
+ANCHORS = {
+    "top-left": (0, 0), "top": (0.5, 0), "top-right": (1, 0),
+    "left": (0, 0.5), "center": (0.5, 0.5), "right": (1, 0.5),
+    "bottom-left": (0, 1), "bottom": (0.5, 1), "bottom-right": (1, 1),
+}
+
+
+def _anchor_synonyms():
+    synonyms = {}
+    for name, (fx, fy) in ANCHORS.items():
+        rows = {0: ("top",), 0.5: ("center", "middle"), 1: ("bottom",)}[fy]
+        cols = {0: ("left",), 0.5: ("center", "middle"), 1: ("right",)}[fx]
+        for v in rows:
+            for h in cols:
+                synonyms[f"{v}-{h}"] = synonyms[f"{h}-{v}"] = name
+    for name in ANCHORS:
+        synonyms.pop(name, None)
+    return synonyms
+
+
+ANCHOR_SYNONYMS = _anchor_synonyms()  # e.g. bottom-center, center-left, middle-right -> bottom, left, right
+
+
+def canonical_anchor(value):
+    """The canonical anchor name for ``value`` (a name or a synonym such as 'bottom-center'), else None."""
+    if not isinstance(value, str):
+        return None
+    key = value.strip().lower().replace("_", "-").replace(" ", "-")
+    return key if key in ANCHORS else ANCHOR_SYNONYMS.get(key)
+
+
 EXTRA_SHAPES = (*CATALOG_SHAPES, *SHORTCUTS, "pentagon", "hexagon", "octagon", "capsule", "path", "arc")
 # Shapes drawn from path data that already includes their own stroke inset (see wedge.arc_layer_path).
 PATH_SHAPES = ("path", "arc")
+# Shape kinds that are open strokes by nature; a ``path`` is open when it has no closing Z.
+OPEN_SHAPES = ("line", "wave", "zigzag", "sawtooth", "square-wave", "dashed-line", "scribble", "squiggle", "swash-underline")
+
+
+def is_open_shape(layer):
+    if layer.get("shape") in OPEN_SHAPES:
+        return True
+    return layer.get("shape") == "path" and re.search(r"[Zz]", str(layer.get("path", ""))) is None
+
+
+def default_fill(layer):
+    """The fill a shape layer paints with. An open shape (a line, or a path with no closing Z) that has a
+    stroke and no explicit fill gets none; every other shape without a fill is white. Every backend uses this."""
+    if "fill" in layer:
+        return layer["fill"]
+    stroked = str(layer.get("stroke", "transparent")).strip().lower() not in ("", "none", "transparent")
+    return "transparent" if stroked and is_open_shape(layer) else "white"
 
 
 def parse_path(path):
@@ -54,6 +104,26 @@ def parse_path(path):
     return commands
 
 
+def compact_number(value, digits):
+    """``value`` with at most ``digits`` decimals and no trailing zeros ('-0' reads '0'): path-data numbers."""
+    text = f"{value:.{digits}f}"
+    if "." in text:
+        text = text.rstrip("0").rstrip(".")
+    return "0" if text in ("", "-0") else text
+
+
+def bezier_points(controls, ts):
+    """Points of the Bézier curve with the given control points (any degree) at parameters ``ts``
+    (de Casteljau), as an (n, 2) float array. The one curve evaluator for path flattening."""
+    import numpy as np
+
+    t = np.asarray(ts, dtype=float).reshape(-1, 1)
+    work = [np.tile(np.asarray(p, dtype=float), (len(t), 1)) for p in controls]
+    while len(work) > 1:
+        work = [(1 - t) * a + t * b for a, b in zip(work, work[1:])]
+    return work[0]
+
+
 def path_polygons(path):
     polygons, points, current = [], [], (0, 0)
     for command, values in parse_path(path):
@@ -71,19 +141,29 @@ def path_polygons(path):
             points.append(current)
         else:
             controls = [current, *zip(values[::2], values[1::2])]
-            for step in range(1, 49):
-                t = step / 48
-                working = controls
-                while len(working) > 1:
-                    working = [
-                        (a[0] * (1 - t) + b[0] * t, a[1] * (1 - t) + b[1] * t)
-                        for a, b in zip(working, working[1:])
-                    ]
-                points.append(working[0])
+            points.extend(map(tuple, bezier_points(controls, [step / 48 for step in range(1, 49)]).tolist()))
             current = tuple(values[-2:])
     if points:
         polygons.append(points)
     return polygons
+
+
+def path_extents(path):
+    """``(min_x, min_y, max_x, max_y)`` of a path's drawn geometry (curves flattened), in its own units."""
+    points = [point for polygon in path_polygons(path) for point in polygon]
+    xs, ys = [p[0] for p in points], [p[1] for p in points]
+    return min(xs), min(ys), max(xs), max(ys)
+
+
+def path_box(path):
+    """The (width, height) a ``path`` shape gets when created without them.
+
+    Path coordinates are literal local pixels: a point (px, py) draws at the layer's (x + px, y + py).
+    The box runs from that origin to the path's farthest point on each axis, never the whole canvas,
+    and the path text is kept as written. Negative coordinates draw left of / above the box (keep
+    paths in positive coordinates, or use ``path-fit`` to scale geometry into a box)."""
+    _, _, x1, y1 = path_extents(path)
+    return max(1, x1), max(1, y1)
 
 
 def shape_path(layer):

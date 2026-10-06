@@ -42,12 +42,12 @@ def schemas(add):
                  "drawn-texture": "Add a seeded hand-drawn texture overlay while keeping the source vector editable.",
                  "clone-stamp": "Clone pixels from a frozen source snapshot with aligned or restarting brush strokes."}
     def add(kind, properties, required=(), **extra):
-        properties = {key: {**value, "description": descriptions[key]} for key, value in properties.items()}
+        properties = {key: {**value, "description": value.get("description", descriptions[key])} for key, value in properties.items()}
         original_add(kind, properties, required, description=summaries[kind], **extra)
     from .schema import S, N, B
     point = {"type": "array", "items": N, "minItems": 2, "maxItems": 2}
     points = {"type": "array", "items": point, "minItems": 1, "maxItems": 10000}
-    params = {"pattern": S, "scale": {"type": "number", "exclusiveMinimum": 0}, "rotation": N,
+    params = {"pattern": {"type": "string", "examples": list(PATTERNS), "description": "Built-in pattern (" + ", ".join(PATTERNS) + ") or the name of a pattern saved in the document with pattern-define."}, "scale": {"type": "number", "exclusiveMinimum": 0}, "rotation": N,
               "offset": point, "spacing": {"type": "number", "minimum": 2, "maximum": 256},
               "colors": {"type": "array", "items": S, "minItems": 2, "maxItems": 2}, "seed": {"type": "integer"}}
     add("pattern-define", {"name": S, "selection": B, "seamless": B}, ["name"])

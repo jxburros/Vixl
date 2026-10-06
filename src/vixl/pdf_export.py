@@ -117,6 +117,7 @@ class PageBuilder:
         self.ops = []
         self.xobjects, self.states, self.shadings = {}, {}, {}
         self.fallbacks = []
+        self.jpeg_quality = None  # set: raster images are written as JPEG at this quality
 
     # -- resources ----------------------------------------------------------------------------
 
@@ -136,7 +137,7 @@ class PageBuilder:
 
         key = hashlib.sha256(image.mode.encode() + str(image.size).encode() + image.tobytes()).hexdigest()
         if key not in self.images:
-            self.images[key] = self.paint.image(self.writer, image)
+            self.images[key] = self.paint.image(self.writer, image, self.jpeg_quality)
         name = next((n for n, ref in self.xobjects.items() if ref is self.images[key]), None)
         if name is None:
             name = f"Im{len(self.xobjects) + 1}"
@@ -245,8 +246,6 @@ class PageBuilder:
             return "mask"
         if layer.get("clip"):
             return "clipping"
-        if layer.get("lookup"):
-            return "lookup table"
         if layer.get("repeat"):
             return "repeat"
         if layer["type"] == "group":
@@ -324,7 +323,7 @@ class PageBuilder:
 
     def shape(self, layer, w, h, opacity):
         from .design import resolve_color
-        from .geometry import PATH_SHAPES, parse_path, shape_path
+        from .geometry import PATH_SHAPES, default_fill, parse_path, shape_path
         from .render import color
 
         state = self.view.state
@@ -335,7 +334,7 @@ class PageBuilder:
                 if path:
                     self.fill_ops(path_ops(parse_path(path)), color(resolve_color(paint, state)), opacity)
             return
-        fill = color(resolve_color(layer.get("fill", "white"), state))
+        fill = color(resolve_color(default_fill(layer), state))
         stroke = color(resolve_color(layer.get("stroke", "transparent"), state))
         width = layer.get("stroke_width", 1)
         shape = layer["shape"]
@@ -631,6 +630,7 @@ def export_pdf(project, path=None, *, pages=None, content="vector", dpi=None, ba
             page_size = {"width": round(width / 72, 3), "height": round(height / 72, 3), "unit": "in"}
         builder = PageBuilder(project, view, writer, fonts, images, paint)
         builder.k, builder.ky, builder.fillable = kx, ky, fillable
+        builder.jpeg_quality = jpeg_quality
         builder.ops.append(f"{_fmt(kx)} 0 0 {_fmt(-ky)} 0 {_fmt(height)} cm")
         if content == "raster":
             image = render(view)
@@ -665,7 +665,7 @@ def export_pdf(project, path=None, *, pages=None, content="vector", dpi=None, ba
             if any(item["type"] == "adjustment" or item.get("blend", "normal") != "normal" for item in layers
                    if item["visible"]):
                 # Backdrop-dependent layers: the whole page as one image.
-                builder.fallback({"name": "page"}, "blend modes or adjustment layers depend on the backdrop")
+                builder.fallback({"type": "page", "name": "page"}, "blend modes or adjustment layers depend on the backdrop")
                 image = render(view)
                 builder.place_image(image, np.eye(3), (0, 0, image.width, image.height))
             else:
@@ -687,11 +687,15 @@ def export_pdf(project, path=None, *, pages=None, content="vector", dpi=None, ba
             fallbacks[label] = builder.fallbacks
     fonts.write(writer)
     writer.add({"Type": Name("Pages"), "Kids": kids, "Count": len(kids)}, pages_ref)
-    texts = []
     if title is None:
-        for _, view in views[:1]:
-            texts = [layer.get("text", "") for layer in view.state["layers"] if layer["type"] == "text" and layer["visible"]]
-        title = (texts[0] if texts else "")[:200]
+        # The first page's title layer (a role or an exact name, else the largest top text), then the file name.
+        from .deck import document_title
+
+        try:
+            title = document_title(views[0][1]) if views else None
+        except Exception:  # a title is a nicety; never fail an export over it
+            title = None
+        title = (title or (Path(path).stem if path else ""))[:200]
     info = writer.add({"Title": Text(title) if title else None, "Producer": Text("Vixl")})
     catalog = {"Type": Name("Catalog"), "Pages": pages_ref}
     if title:

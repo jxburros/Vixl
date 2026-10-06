@@ -1,7 +1,8 @@
 """Advisories: problems an apply call can see cheaply, returned under ``warnings`` (never errors).
 
 A successful apply used to say nothing about text that spills off the canvas or out of its box, or
-about a field that was accepted but changes nothing, so a wrong guess looked like success. These
+about a valid field that changes nothing for this shape, so a wrong guess looked like success.
+Unknown fields and invalid values are errors (schema.py, normalize.py), never advisories. These
 checks look only at the layers and operations of this one call, so they add no noise about
 pre-existing problems. ``vixl_check`` remains the complete audit.
 """
@@ -10,8 +11,14 @@ MAX_WARNINGS = 12
 MAX_LAYERS = 200
 # A non-text layer may bleed past the canvas edge on purpose; warn when most of it is outside.
 OUTSIDE_FRACTION = 0.25
-EFFECT_FIELDS = {"name", "amount", "value", "seed", "radius", "strength", "shadow_color", "highlight_color",
-                 "black", "white", "points", "enabled"}
+
+
+# Shapes that read inner_radius: a star's inner points and an arc's hole (donut/ring/pie share arc).
+INNER_RADIUS_SHAPES = ("star", "arc")
+
+
+def _names(shapes):
+    return " and ".join(repr(shape) for shape in shapes)
 
 
 def advise(candidate, before, after, operations):
@@ -36,13 +43,25 @@ def ignored_fields(candidate, op):
     found = []
     if kind == "shape":
         shape, name = op.get("shape"), repr(op.get("name", "shape"))
+        if shape is None:  # editing an existing layer: its own shape decides what each field does
+            try:
+                shape = candidate.layer(op.get("target", op.get("layer"))).get("shape")
+            except Exception:  # noqa: BLE001 - an unresolvable target is reported by the operation itself
+                return found
+        from .normalize import SHAPE_TYPES
+
+        shape = SHAPE_TYPES.get(shape, (shape,))[0] if isinstance(shape, str) else shape  # donut → arc, pill → ...
+        from .shape_catalog import KINDS
+
+        if shape in KINDS:  # catalog shapes read their own parameters (burst/seal inner_radius, sides, radius ...)
+            return found
         if "radius" in op and shape not in ("rounded-rectangle", "capsule"):
             found.append(f"shape {name}: radius only rounds 'rounded-rectangle' and 'capsule'; it does nothing "
                          f"for {shape!r}")
         if "sides" in op and shape not in ("polygon", "star"):
             found.append(f"shape {name}: sides only applies to 'polygon' and 'star', not {shape!r}")
-        if "inner_radius" in op and shape != "star":
-            found.append(f"shape {name}: inner_radius only applies to 'star', not {shape!r}")
+        if "inner_radius" in op and shape not in INNER_RADIUS_SHAPES:
+            found.append(f"shape {name}: inner_radius only applies to {_names(INNER_RADIUS_SHAPES)}, not {shape!r}")
         if "path" in op and shape != "path":
             found.append(f"shape {name}: path is only drawn for shape 'path', not {shape!r}")
         if "stroke_width" in op and "stroke" not in op and shape != "line":
@@ -57,19 +76,6 @@ def ignored_fields(candidate, op):
     elif kind == "align":
         if op.get("margin") and op.get("alignment") in ("center", "center-x", "center-y"):
             found.append(f"align: margin has no effect on {op['alignment']!r}")
-    elif kind == "adjustment":
-        for number, effect in enumerate(op.get("effects") or []):
-            if isinstance(effect, dict):
-                extra = sorted(set(effect) - EFFECT_FIELDS)
-                if extra:
-                    found.append(f"adjustment effects[{number}]: unknown field(s) {', '.join(map(repr, extra))} are "
-                                 f"ignored; known: {', '.join(sorted(EFFECT_FIELDS - {'enabled'}))}")
-    elif kind == "preset-apply":
-        saved = {effect["name"] for effect in candidate.state.get("presets", {}).get(op.get("name"), [])}
-        extra = sorted(set(op.get("overrides") or {}) - saved)
-        if extra:
-            found.append(f"preset-apply: overrides for {', '.join(map(repr, extra))} match no effect in preset "
-                         f"{op.get('name')!r} (it has {', '.join(sorted(saved)) or 'none'}); they are ignored")
     return found
 
 
@@ -103,8 +109,8 @@ def placement(candidate, before, after):
     suspect = [layer["id"] for layer in layers if needs_check(layer, canvas)]
     report = check_design(candidate, checks=["bounds"], targets=suspect) if suspect else {"issues": []}
     for issue in report["issues"]:
-        if issue["check"] != "bounds":
-            continue
+        if issue["check"] != "bounds" or issue["severity"] == "info":
+            continue  # Intentional bleed and marked crops are not warnings.
         box = issue.get("bounds")
         if box and "cut off by the canvas edge" in issue["message"] and issue["severity"] != "error":
             x, y, w, h = box
@@ -112,7 +118,8 @@ def placement(candidate, before, after):
             if w * h and 1 - seen / (w * h) <= OUTSIDE_FRACTION:
                 continue  # a small bleed is normal for artwork
         suffix = f" (bounds {[round(v) for v in box]})" if box else ""
-        warnings.append(issue["message"] + suffix)
+        if issue["message"] + suffix not in warnings:
+            warnings.append(issue["message"] + suffix)
     for layer in layers:
         parent = index.get(layer.get("parent"))
         if layer["type"] != "text" or parent is None or "content_width" not in parent:

@@ -1,11 +1,11 @@
 # Aetherling Spirits: a data-driven trading-card set
 
-This project is one editable 750×1050 px card template (2.5×3.5 in at 300 dpi) for a set of fantasy "elemental spirit" cards. The data is a 13-row `cards.csv` that includes deliberately awkward rows: a 70-character name, a 380-character flavor text, Latin accents, CJK and emoji, a long rules paragraph, and a row of unfilled placeholder copy. The creature art is also painted with Vixl operations (`art.py`), so there are no external images. The build renders the set from CSV through the CLI in a standard and a holo-foil comp. It then attaches a custom check suite, captures a typed recipe, plans and runs a variation matrix (element × rarity × edition), and runs the whole CSV through a durable checked-production job with repair actions. It finishes with a QA-annotated contact sheet and a CMYK PDF print sheet: 3×3 cards on US Letter with bleed. It was first built with Vixl 0.16.0; the committed outputs are rebuilt with 0.20.0.
+This project is one editable 750×1050 px card template (2.5×3.5 in at 300 dpi) for a set of fantasy "elemental spirit" cards. The data is a 13-row `cards.csv` that includes deliberately awkward rows: a 70-character name, a 380-character flavor text, Latin accents, CJK and emoji, a long rules paragraph, and a row of unfilled placeholder copy. The creature art is also painted with Vixl operations (`art.py`), so there are no external images. The build renders the set from CSV through the CLI in a standard and a holo-foil comp. It then attaches a custom check suite, captures a typed recipe, plans and runs a variation matrix (element × rarity × edition), and runs the whole CSV through a durable checked-production job with repair actions. It finishes with a QA-annotated contact sheet and a CMYK PDF print sheet: 3×3 cards on US Letter with bleed. It was first built with Vixl 0.16.0; the committed outputs are rebuilt with 0.21.0.
 
 Run it from the repository root:
 
 ```bash
-python explorations/07-trading-cards/build.py     # 0.20.0: 2.5–3 min on a shared 4-core container; 0.16.0: ~15 min idle, ~35 min under load
+python explorations/07-trading-cards/build.py     # 0.21.0: 1 min 43 s on a shared 4-core container; 0.16.0: ~15 min idle, ~35 min under load
 ```
 
 | Template (standard comp) | Holo comp, long name (row 6) | Holo comp, CJK + emoji name (row 9) |

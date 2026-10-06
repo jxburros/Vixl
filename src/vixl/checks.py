@@ -1,7 +1,8 @@
 """Design self-checks for agents that cannot look at every pixel.
 
 ``check_design`` reports only problems, including visible descendants of groups.
-Full-canvas non-text layers are treated as background.
+Layers marked ``role: background`` and non-text layers whose drawn geometry covers the
+canvas are background and skipped; ``checked`` reports how many layers were checked of the total.
 """
 
 import math
@@ -173,10 +174,52 @@ def group_matrix(item, resolved, local_bounds):
     return matrix
 
 
+def geometry_bounds(layer):
+    """(left, top, right, bottom) of what the layer actually draws, in its own box's pixel space
+    (the origin is the box's top-left corner). Shapes report their path geometry including stroke,
+    every other layer fills its box. Checks use
+    this instead of the layer box so a path drawn smaller than its (often full-canvas) box is judged
+    by what it paints."""
+    from .render import rest_size
+
+    width, height = rest_size(layer)
+    box = (0.0, 0.0, float(width), float(height))
+    if layer["type"] != "shape" or layer.get("repeat"):
+        return box
+    try:
+        from fontTools.pens.boundsPen import BoundsPen
+        from fontTools.svgLib.path import parse_path
+
+        from .geometry import PATH_SHAPES
+        from .shape_catalog import active as catalog_active
+        from .vector_paths import pixel_path
+        from .vector_strokes import active as stroke_active, primitives
+
+        free = bool(catalog_active(layer) or stroke_active(layer) or layer.get("distort") or layer.get("_distort_groups"))
+        pen = BoundsPen(None)
+        if free:
+            for path, paint in primitives(layer):
+                if path and paint != "transparent":
+                    parse_path(path, pen)
+        elif layer.get("shape") in PATH_SHAPES:
+            parse_path(pixel_path(layer), pen)
+        else:
+            return box
+        if pen.bounds is None:
+            return box
+        x0, y0, x1, y1 = pen.bounds
+        if not free and layer.get("stroke", "transparent") != "transparent" and layer.get("stroke_width", 1) > 0:
+            pad = layer.get("stroke_width", 1) / 2
+            x0, y0, x1, y1 = x0 - pad, y0 - pad, x1 + pad, y1 + pad
+        return (float(x0), float(y0), float(x1), float(y1))
+    except Exception:  # noqa: BLE001 - geometry that cannot be read falls back to the box.
+        return box
+
+
 def canvas_projection(resolved, local_bounds):
     """Canvas-space integer bounds, text scale factors and group matrices for every layer.
     Shared by the design checks, guide checks and fillable form export, so they agree."""
-    bounds, scales, matrices, exact = {}, {}, {}, {}
+    bounds, scales, matrices, exact, drawn = {}, {}, {}, {}, {}
     for item in resolved.values():
         matrix = group_matrix(item, resolved, local_bounds)
         x, y, w, h = local_bounds[item["id"]]
@@ -187,10 +230,14 @@ def canvas_projection(resolved, local_bounds):
         from .affine import layer_matrix, corners as affine_corners, envelope
         from .render import rest_size
         rw, rh = rest_size(item)
-        exact[item["id"]] = envelope(affine_corners((0, 0, rw, rh), matrix @ layer_matrix(item, local_bounds[item["id"]])))
+        placed = matrix @ layer_matrix(item, local_bounds[item["id"]])
+        exact[item["id"]] = envelope(affine_corners((0, 0, rw, rh), placed))
+        gl, gt, gr, gb = geometry_bounds(item)
+        drawn[item["id"]] = envelope(affine_corners((gl, gt, gr - gl, gb - gt), placed))
         scales[item["id"]] = float(np.linalg.norm(matrix[:2, 1]))
         matrices[item["id"]] = matrix
-    return {"bounds": bounds, "scales": scales, "matrices": matrices, "exact_bounds": exact}
+    return {"bounds": bounds, "scales": scales, "matrices": matrices, "exact_bounds": exact,
+            "geometry_bounds": drawn}
 
 
 def check_design(
@@ -200,7 +247,7 @@ def check_design(
     targets=None,
     safe_area=None,
     avoid=None,
-    thumbnail_width=None,
+    thumbnail_width="auto",
     min_thumbnail_text=10,
     min_contrast=None,
     artboard=None,
@@ -229,7 +276,9 @@ def check_design(
     brand = for_project(project)
     if brand and "minimum_contrast" in brand:
         min_contrast = max(min_contrast or 0, brand["minimum_contrast"])
-    checks = list(checks or CHECKS)
+    # A document with animation is also checked over time (loop seam, poster frame) unless checks are named.
+    animated = not checks and bool((project.state.get("timeline") or {}).get("tracks"))
+    checks = list(checks or CHECKS) + (["motion"] if animated else [])
     from .deck import DECK_CHECKS
 
     if "deck" in checks or set(checks) & set(DECK_CHECKS):
@@ -240,7 +289,7 @@ def check_design(
             # "deck" means every deck check, with the named design checks (default: the deck set).
             rest = [c for c in rest if c not in DECK_CHECKS]
             rest = rest + list(DECK_CHECKS) if rest else None
-        options = {"thumbnail_width": thumbnail_width, "min_thumbnail_text": min_thumbnail_text, **(deck or {})}
+        options = {"thumbnail_width": None if thumbnail_width == "auto" else thumbnail_width, "min_thumbnail_text": min_thumbnail_text, **(deck or {})}
         if "deck" in checks and "type_scale" not in checks and rest and options.get("profile") in ("screen", "phone"):
             rest = [c for c in rest if c != "type_scale"]
         return check_deck(project, checks=rest, safe_area=safe_area, min_contrast=min_contrast, **options)
@@ -254,6 +303,9 @@ def check_design(
     width, height = c["width"], c["height"]
     resolved = {item["id"]: item for item in resolved_layers(candidate)}
     local_bounds = resolve_layout(candidate, layers=list(resolved.values()))
+
+    def is_text(item):
+        return resolved[item["id"]]["type"] == "text"
 
     def ancestors(item):
         while item.get("parent"):
@@ -282,15 +334,6 @@ def check_design(
     unreadable = broken_links(candidate, {item["id"] for item in layers if item["type"] == "link"})
     layers = [item for item in layers if item["id"] not in unreadable]
 
-    def background(item):
-        return item["type"] != "text" and _contains(bounds[item["id"]], (0, 0, width, height))
-
-    content = [item for item in layers if not background(item)]
-    issues = []
-
-    def is_text(item):
-        return resolved[item["id"]]["type"] == "text"
-
     def role(item):
         explicit = next((x["role"] for x in (item, *ancestors(item)) if x.get("role")), None)
         if explicit:
@@ -315,6 +358,30 @@ def check_design(
         )
 
 
+    geometry = projection["geometry_bounds"]
+
+    def outward(box):
+        x, y, w, h = box
+        left, top = math.floor(x + 1e-6), math.floor(y + 1e-6)
+        return left, top, math.ceil(x + w - 1e-6) - left, math.ceil(y + h - 1e-6) - top
+
+    def background(item):
+        """Marked ``role: background``, or a non-text layer whose drawn geometry (not its box) covers the canvas."""
+        if is_text(item):
+            return False
+        if role(item) == "background":
+            return True
+        if not _contains(outward(geometry[item["id"]]), (0, 0, width, height)):
+            return False
+        if item["type"] == "shape" and item.get("shape") not in ("rectangle", "rounded-rectangle"):
+            # A path or ellipse can span the canvas and still paint a sliver (a diagonal line).
+            tile = layer_canvas_surface(candidate, resolved[item["id"]], local_bounds, resolved)
+            return float((np.asarray(tile.getchannel("A")) > 32).mean()) >= 0.5
+        return True
+
+    content = [item for item in layers if not background(item)]
+    issues = []
+
     def issue(check, severity, message, layers=(), **extra):
         issues.append(
             {"check": check, "severity": severity, "layers": [x["name"] for x in layers], "message": message, **extra}
@@ -328,12 +395,15 @@ def check_design(
 
     if "bounds" in checks:
         for item in content:
-            x, y, w, h = projection["exact_bounds"][item["id"]]
+            x, y, w, h = geometry[item["id"]]
             if x >= width or y >= height or x + w <= 0 or y + h <= 0:
                 issue("bounds", "error", f"{item['name']!r} is entirely outside the canvas", [item], bounds=[x, y, w, h])
             elif x < -1e-8 or y < -1e-8 or x + w > width + 1e-8 or y + h > height + 1e-8:
-                if intentional_crop(item):
-                    issue("bounds", "info", f"{item['name']!r} bleeds off the canvas edge (marked as an intentional crop)",
+                crossed = sum((x < -1e-8, y < -1e-8, x + w > width + 1e-8, y + h > height + 1e-8))
+                if intentional_crop(item) or (item["type"] in ("shape", "gradient") and crossed >= 2):
+                    # Artwork that runs past two or more edges (a hill, a glow) is bleed by design.
+                    issue("bounds", "info", f"{item['name']!r} bleeds off the canvas edge (" + (
+                              "marked as an intentional crop)" if intentional_crop(item) else "artwork running past two edges)"),
                           [item], bounds=[x, y, w, h], intentional=True)
                 else:
                     severity = "error" if is_text(item) else "warning"
@@ -349,12 +419,28 @@ def check_design(
                       f"{layer['size']} px and is cut off (it needs {needed[0]}×{needed[1]}); enlarge the box "
                       "with text-layout or shrink the text with fit-text", [item], needs=list(needed))
 
-    alphas = {}
+    alphas, inks = {}, {}
+
+    def ink(item):
+        """Integer canvas box of everything the layer paints: its drawn geometry widened by strokes,
+        shadows, glows and blurs (which draw past the layer's box)."""
+        if item["id"] not in inks:
+            from .render import effect_margin, style_margin
+
+            layer = resolved[item["id"]]
+            x, y, w, h = geometry[item["id"]]
+            sx, sy = style_margin(layer)
+            ex, ey = effect_margin(layer)
+            stroke = layer.get("stroke_width", 0) if layer["type"] == "text" else 0
+            scale = text_scales[item["id"]]
+            mx, my = (sx + ex + stroke) * scale, (sy + ey + stroke) * scale
+            inks[item["id"]] = outward((x - mx, y - my, w + 2 * mx, h + 2 * my))
+        return inks[item["id"]]
 
     def alpha(item):
         if item["id"] not in alphas:
             tile = layer_canvas_surface(candidate, resolved[item["id"]], local_bounds, resolved)
-            x, y, w, h = bounds[item["id"]]
+            x, y, w, h = ink(item)
             box = (max(0, x), max(0, y), min(width, x + w), min(height, y + h))
             alphas[item["id"]] = np.asarray(tile.getchannel("A").crop(box)) > 32
         return alphas[item["id"]]
@@ -394,15 +480,15 @@ def check_design(
                     continue
                 if (role(first) == "decoration" and not is_text(first)) or (role(second) == "decoration" and not is_text(second)):
                     continue
-                a, b = bounds[first["id"]], bounds[second["id"]]
-                if not _intersects(projection["exact_bounds"][first["id"]], projection["exact_bounds"][second["id"]]):
+                a, b = ink(first), ink(second)
+                if not _intersects(a, b):
                     continue
                 texts = [x for x in (first, second) if is_text(x)]
                 if not texts:
                     continue  # Overlapping images and shapes are ordinary composition.
                 if len(texts) == 1:
                     other = second if texts[0] is first else first
-                    if _contains(bounds[other["id"]], bounds[texts[0]["id"]]):
+                    if _contains(outward(geometry[other["id"]]), outward(geometry[texts[0]["id"]])):
                         continue  # A label inside its button or panel.
                 left, top = max(0, a[0], b[0]), max(0, a[1], b[1])
                 right = min(width, a[0] + a[2], b[0] + b[2])
@@ -440,12 +526,13 @@ def check_design(
 
         measured.update(chart_contrast(candidate, resolved, local_bounds, bounds, [x for x in texts if x.get("parent")]))
         for item in texts:
+            result = measured.get(item["id"])
             try:
-                result = measured.get(item["id"]) or measure(candidate, target=item["id"])["contrast"]
-                if isinstance(result, Exception):
-                    raise result
-            except Exception as exc:  # A text layer without visible pixels has no contrast.
-                issue("contrast", "warning", f"Could not measure {item['name']!r}: {exc}", [item])
+                if result is None or isinstance(result, Exception):
+                    # The single-pass measurement failed for this layer: measure it on its own.
+                    result = measure(candidate, target=item["id"])["contrast"]
+            except Exception as exc:  # noqa: BLE001 - never a silent pass: an unmeasurable layer is an error.
+                issue("contrast", "error", f"Could not measure the contrast of {item['name']!r}: {exc}", [item])
                 continue
             large = resolved[item["id"]].get("size", 0) * text_scales[item["id"]] >= 24
             threshold = min_contrast or (3.0 if large else 4.5)
@@ -466,19 +553,27 @@ def check_design(
                     **({"outline_contrast": outline["p10"]} if outline else {}),
                 )
 
-    if "safe_area" in checks and (safe_area is not None or avoid):
-        if safe_area is not None:
-            left, top, right, bottom = _insets(safe_area, width, height)
+    # Without an explicit safe_area the canvas's own (size-preset) safe area applies, from the trim edge.
+    from .sizes import safe_sides
+
+    canvas_safe = tuple(c.get("bleed", 0) + v for v in safe_sides(c)) if any(safe_sides(c)) else None
+    if "safe_area" in checks and (safe_area is not None or canvas_safe or avoid):
+        if safe_area is not None or canvas_safe:
+            left, top, right, bottom = _insets(safe_area, width, height) if safe_area is not None else canvas_safe
             safe = (left, top, width - left - right, height - top - bottom)
             for item in content:
-                if not _contains(safe, bounds[item["id"]]):
-                    crop = intentional_crop(item)
+                box = outward(geometry[item["id"]])
+                if not _contains(safe, box):
+                    x, y, w, h = geometry[item["id"]]
+                    # Artwork running off the canvas is bleed, not a safe-area mistake.
+                    crop = intentional_crop(item) or (
+                        item["type"] in ("shape", "gradient") and (x < 0 or y < 0 or x + w > width or y + h > height))
                     issue(
                         "safe_area",
                         "info" if crop else "error" if is_text(item) else "warning",
-                        f"{item['name']!r} extends outside the safe area" + (" (marked as an intentional crop)" if crop else ""),
+                        f"{item['name']!r} extends outside the safe area" + (" (intentional crop or bleed)" if crop else ""),
                         [item],
-                        bounds=list(bounds[item["id"]]),
+                        bounds=list(box),
                         safe_area=[round(v, 2) for v in safe],
                         **({"intentional": True} if crop else {}),
                     )
@@ -495,7 +590,7 @@ def check_design(
                     )
 
     physical = c.get("physical") and c.get("dpi")
-    if "legibility" in checks and physical and thumbnail_width is None:
+    if "legibility" in checks and physical and thumbnail_width in ("auto", None):
         # Print is read at full size, not as a thumbnail: judge the printed point size.
         for item in texts:
             points = resolved[item["id"]].get("size", 0) * text_scales[item["id"]] * 72 / c["dpi"]
@@ -507,8 +602,15 @@ def check_design(
                     [item],
                     points=round(points, 2),
                 )
-    elif "legibility" in checks:
-        thumbnail_width = (600 if c.get("size") in ("og-image", "x-post") else 320) if thumbnail_width is None else thumbnail_width
+    elif "legibility" in checks and thumbnail_width is not None:  # ``None`` switches the thumbnail test off.
+        from .sizes import SIZES
+
+        # Only pieces that are really seen as thumbnails (social posts, icons, store listings) fail the test;
+        # anywhere else small text at thumbnail size is worth a look, not a fix.
+        category = SIZES.get(c.get("size"), {}).get("category")
+        thumbnail_piece = category in ("social", "icons", "app-store")
+        if thumbnail_width == "auto":
+            thumbnail_width = 600 if c.get("size") in ("og-image", "x-post") else 320
         finite(thumbnail_width, "thumbnail_width", 16, 16384)
         scale = thumbnail_width / width
         for item in texts:
@@ -520,9 +622,10 @@ def check_design(
             if effective < min_thumbnail_text:
                 issue(
                     "legibility",
-                    "warning",
+                    "warning" if thumbnail_piece else "info",
                     f"{item['name']!r} is {effective:.1f} px tall at {thumbnail_width} px wide; "
-                    f"aim for at least {min_thumbnail_text} px (font size {size * min_thumbnail_text / effective:.0f}+)",
+                    f"aim for at least {min_thumbnail_text} px (font size {size * min_thumbnail_text / effective:.0f}+)"
+                    + ("" if thumbnail_piece else "; only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)"),
                     [item],
                     thumbnail_size=round(effective, 2),
                 )
@@ -564,6 +667,8 @@ def check_design(
         _print_checks(candidate, c, resolved, local_bounds, bounds, layers, content, texts, text_scales, issue, ink_limit, min_ppi)
     if "color_vision" in checks and texts:
         _color_vision(candidate, resolved, bounds, texts, min_contrast, text_scales, issue)
+    if "color_vision" in checks:
+        _series_color_vision(candidate, resolved, issue)
 
     if "guides" in checks or "alignment" in checks:
         from .guides import check_alignment, check_guides
@@ -620,10 +725,23 @@ def check_design(
                 issue(name, finding["severity"], finding["message"], [target] if target else [],
                       **{k: v for k, v in finding.items() if k not in ("check", "severity", "message", "layer")})
 
+    if "legibility" in checks and (project.state.get("timeline") or {}).get("tracks"):
+        # Many apps show only frame 0: read the legibility of the poster frame too.
+        from .timeline import project_at
+
+        known = {x["message"] for x in issues}
+        frame = project_at(project, 0)
+        frame.state.pop("timeline", None)  # A render-only copy: the nested check must not time-check again.
+        poster = check_design(frame, checks=["legibility"], thumbnail_width=thumbnail_width,
+                              min_thumbnail_text=min_thumbnail_text, targets=targets)
+        for item in poster["issues"]:
+            if item["message"] not in known:
+                issues.append({**item, "message": "At the poster frame (0 s): " + item["message"]})
+
     return {
         **tally(issues),
         "issues": issues,
-        "checked": {"checks": checks, "layers": len(content), "text_layers": len(texts)},
+        "checked": {"checks": checks, "layers_checked": len(content), "layers_total": len(layers), "text_layers": len(texts)},
         **({"style": style_report} if style_report is not None else {}),
     }
 
@@ -676,13 +794,16 @@ def _print_checks(candidate, c, resolved, local_bounds, bounds, layers, content,
         points = resolved[item["id"]].get("size", 0) * text_scales[item["id"]] * 72 / dpi
         if points < 6:
             issue("print", "warning", f"{item['name']!r} is {points:.1f} pt; most print needs 6 pt or more", [item], points=round(points, 2))
-    bleed, safe = c.get("bleed", 0), c.get("safe", 0)
-    if safe or bleed:
-        inset = bleed + safe
-        live = (inset, inset, width - 2 * inset, height - 2 * inset)
+    from .sizes import safe_sides
+
+    bleed, sides = c.get("bleed", 0), safe_sides(c)
+    if any(sides) or bleed:
+        left, top, right, bottom = (bleed + v for v in sides)
+        live = (left, top, width - left - right, height - top - bottom)
+        inset = f"{left}px" if len({left, top, right, bottom}) == 1 else f"{left}/{top}/{right}/{bottom}px left/top/right/bottom"
         for item in texts:
             if not _contains(live, bounds[item["id"]]):
-                issue("print", "error", f"{item['name']!r} is outside the live area ({inset}px from the edge) and may be trimmed", [item], live_area=list(live))
+                issue("print", "error", f"{item['name']!r} is outside the live area ({inset} from the edge) and may be trimmed", [item], live_area=list(live))
     if bleed:
         for item in layers:
             x, y, w, h = bounds[item["id"]]
@@ -702,6 +823,40 @@ def _print_checks(candidate, c, resolved, local_bounds, bounds, layers, content,
                     f"{item['name']!r} stops at the trim on the {', '.join(edges)} edge; extend it into the {bleed}px bleed",
                     [item],
                 )
+
+
+def _series_color_vision(candidate, resolved, issue):
+    """Chart series (and the legend swatches that name them) told apart by color alone: pairs that look
+    distinct to typical vision but merge under a color-vision deficiency. A chart that also labels its
+    values or uses patterns can say so with ``layer-intent color_vision_safe``."""
+    import math
+
+    from PIL import Image
+
+    from . import colors
+    from .charts import series_colors
+
+    def distance(a, b):
+        return math.dist(colors.srgb_to_oklab(tuple(v / 255 for v in a)), colors.srgb_to_oklab(tuple(v / 255 for v in b)))
+
+    def simulate(rgb, kind):
+        return colors.simulate_vision(Image.new("RGB", (1, 1), tuple(rgb)), kind).convert("RGB").getpixel((0, 0))
+
+    for group, series in series_colors(candidate, resolved):
+        if group.get("color_vision_safe") or len(series) < 2:
+            continue
+        for kind in ("protanopia", "deuteranopia", "tritanopia"):
+            seen = [simulate(rgb, kind) for _, rgb, _ in series]
+            for i in range(len(series)):
+                for j in range(i + 1, len(series)):
+                    normal, simulated = distance(series[i][1], series[j][1]), distance(seen[i], seen[j])
+                    if normal >= 0.1 and simulated < 0.07 and simulated < normal * 0.5:
+                        marks = series[i][2][:1] + series[j][2][:1]
+                        issue("color_vision", "warning",
+                              f"{group['name']!r} series {series[i][0]!r} and {series[j][0]!r} look alike with {kind}; "
+                              "tell them apart by lightness, direct labels or patterns, or mark the chart with "
+                              "layer-intent color_vision_safe if it does", [group, *marks],
+                              vision=kind, distance=round(simulated, 3))
 
 
 def _color_vision(candidate, resolved, bounds, texts, min_contrast, text_scales, issue):
@@ -783,3 +938,110 @@ def compare(project, before="previous", after="head", *, max_width=1024, max_hei
     canvas.alpha_composite(left, (0, 0))
     canvas.alpha_composite(right, (left.width + 8, 0))
     return canvas, summary
+
+
+APPLY_ISSUES = 20  # Findings an apply call returns; vixl_check lists them all.
+APPLY_PREVIEW = ("page", "region", "max_width", "max_height", "time")
+
+
+def _apply_options(check, preview):
+    """Validate apply's ``check`` and ``preview`` before anything is applied."""
+    from .deck import DECK_CHECKS
+
+    if check is True or not check:
+        names = None
+    elif isinstance(check, str):
+        names = [check]
+    else:
+        require(isinstance(check, list) and all(isinstance(name, str) for name in check),
+                "check is true, a check name or a list of check names", field="check")
+        names = check
+    unknown = sorted(set(names or ()) - {*CHECKS, *OPTIONAL_CHECKS, "deck", *DECK_CHECKS})
+    require(not unknown, f"Unknown check(s) {unknown}; available: {', '.join(CHECKS + OPTIONAL_CHECKS)}", field="check")
+    options = {}
+    if preview:
+        options = {} if preview is True else preview
+        require(isinstance(options, dict) and not set(options) - set(APPLY_PREVIEW),
+                f"preview is true or an object with {', '.join(APPLY_PREVIEW)}", field="preview")
+        options = {"max_width": 512, **options}
+        options.setdefault("max_height", options["max_width"])
+    return names, options
+
+
+def _touched(before, project):
+    """Names of the layers a batch added or changed, with the groups around them and the layers inside them."""
+    layers = {layer["id"]: layer for layer in project.state["layers"]}
+    changed = {ident for ident, layer in layers.items() if before.get(ident) != layer}
+    ids = set(changed)
+    for ident, layer in layers.items():
+        parent = layer.get("parent")
+        while parent in layers:
+            if parent in changed:
+                ids.add(ident)
+            parent = layers[parent].get("parent")
+    for ident in changed:
+        parent = layers[ident].get("parent")
+        while parent in layers:
+            ids.add(parent)
+            parent = layers[parent].get("parent")
+    return {layers[ident]["name"] for ident in ids}
+
+
+def batch_findings(project, names, touched):
+    """vixl_check's summary with its issues limited to the touched layers plus every 'fix' finding (at most
+    APPLY_ISSUES, fixes first). The counts and ``passed`` still describe the whole document."""
+    report = check_design(project, checks=names)
+    if "issues" not in report:
+        return report
+
+    def concerns(item):
+        layers = item.get("layers") or ([item["layer"]] if item.get("layer") else [])
+        return item["action"] == "fix" or bool(touched & set(layers))
+
+    order = {action: index for index, action in enumerate(ACTIONS)}
+    kept = sorted((item for item in report["issues"] if concerns(item)), key=lambda item: order[item["action"]])[:APPLY_ISSUES]
+    summary = {key: report[key] for key in ("passed", "errors", "warnings", "info") if key in report}
+    summary.update(issues=kept, by_action={action: [i for i, x in enumerate(kept) if x["action"] == action] for action in ACTIONS})
+    if "checked" in report:
+        summary["checked"] = report["checked"]
+    if len(report["issues"]) > len(kept):
+        summary["omitted"] = len(report["issues"]) - len(kept)
+        summary["note"] = f"Only 'fix' findings and those on layers this batch touched are listed (at most {APPLY_ISSUES}); vixl_check lists all."
+    return summary
+
+
+def apply_reviewed(project, operations, *, dry_run=False, detail="brief", check=None, preview=None, validate=None,
+                   budget=None):
+    """Apply a batch and, on request, check and preview the result in the same call: one round trip instead of
+    apply, vixl_check and vixl_render_preview. ``check`` is true (the default checks), a check name or a list;
+    ``preview`` is true or {page, region, max_width (default 512), max_height, time}. A dry run checks and previews
+    the candidate without saving it. ``budget`` (seconds) skips the review when the edit alone used it up, so a slow
+    batch never also waits for a check. ``validate`` is Project.apply's per-operation ``check``.
+    Returns ``(result, PNG bytes or None)``."""
+    import time
+    from copy import deepcopy
+
+    if not check and not preview:
+        return project.apply(operations, dry_run=dry_run, detail=detail, check=validate), None
+    names, options = _apply_options(check, preview)
+    started = time.monotonic()
+    before = {layer["id"]: layer for layer in deepcopy(project.state["layers"])}
+    target = project.clone() if dry_run else project  # The candidate a dry run checks and previews, then drops.
+    result = target.apply(operations, detail=detail, check=validate)
+    result["dry_run"] = dry_run
+    skipped, image = [], None
+    for part, wanted in (("check", check), ("preview", preview)):
+        if not wanted:
+            continue
+        if budget is not None and time.monotonic() - started > budget:
+            skipped.append(part)
+        elif part == "check":
+            result["check"] = batch_findings(target, names, _touched(before, target))
+        else:
+            from .proxy import preview_png
+
+            image = preview_png(target, max_bytes=524_288, **options)
+    if skipped:
+        result["review_skipped"] = (f"The edit took {time.monotonic() - started:.0f} s, so {' and '.join(skipped)} did not run; "
+                                    "call vixl_check or vixl_render_preview.")
+    return result, image

@@ -34,6 +34,8 @@ MIRRORING = ("scale", "scale-x", "scale-y")
 TRIM = ("trim_start", "trim_end")  # Stroke trim, percent of a shape's outline (trim.py).
 PROPERTY_ALIASES = {"skew-x": "skew_x", "skew-y": "skew_y", "trim-start": "trim_start", "trim-end": "trim_end"}
 MAX_DURATION = 600_000
+# Presets whose motion returns to where it began, so a loop needs no closing key.
+LOOPING_PRESETS = ("spin", "pulse", "shake", "float", "blink")
 MAX_FRAMES = 3600
 # MP4/WebM stream one frame at a time into ffmpeg, so only the 10-minute duration bounds them.
 MAX_STREAMED_FRAMES = MAX_DURATION * 60 // 1000
@@ -92,6 +94,19 @@ PRESETS = (
     "draw-on",
     "draw-off",
 )
+
+
+def easing_schema(description=None):
+    """JSON Schema for an easing name: the named curves as an enum, plus the parametric forms."""
+    names = ["linear", "hold", "step", "step-end", *NAMED_BEZIER, "bounce-out", "bounce-in", "elastic-out", "spring"]
+    return {
+        "anyOf": [
+            {"enum": names},
+            {"type": "string", "pattern": r"^\s*cubic-bezier\(", "description": "cubic-bezier(x1,y1,x2,y2): x1 and x2 in 0-1, y1 and y2 within +-10."},
+            {"type": "string", "pattern": r"^\s*steps\(", "description": "steps(n): n discrete steps, 1-1000."},
+        ],
+        "description": description or "Easing curve by name, cubic-bezier(x1,y1,x2,y2) or steps(n). Default linear (ease-out for presets).",
+    }
 
 
 def _bezier(x1, y1, x2, y2):
@@ -353,9 +368,28 @@ def execute_timeline(project, op):
         if "loop" in op:
             require(isinstance(op["loop"], int) and 0 <= op["loop"] <= 65535, "loop must be 0 (forever)–65535")
             timeline["loop"] = op["loop"]
+        if "loop_mode" in op:
+            require(op["loop_mode"] in ("seamless", "off"), "loop_mode must be 'seamless' or 'off'", field="loop_mode")
+            if op["loop_mode"] == "seamless":
+                timeline["loop_mode"] = "seamless"
+                if "loop" not in op:
+                    timeline["loop"] = 0  # A seamless loop plays forever unless a count is given.
+            else:
+                timeline.pop("loop_mode", None)
         if op.get("clear"):
             timeline["tracks"] = []
             timeline["markers"] = {}
+        if timeline.get("loop_mode") == "seamless" and ("loop_mode" in op or op.get("close")):
+            open_tracks = []
+            for track in timeline["tracks"]:
+                if op.get("close"):
+                    close_track(project, timeline, track)
+                if track["keys"] and not seam_matches(project, track, timeline):
+                    open_tracks.append(track)
+            if open_tracks:
+                _note(project, f"{len(open_tracks)} track(s) end at a different value than they start, so the loop jumps at the seam: "
+                      + ", ".join(_track_name(project, t) for t in open_tracks[:6]) + (" ..." if len(open_tracks) > 6 else "")
+                      + ". Pass close: true to append each start value at the loop end")
         past = sum(1 for t in timeline["tracks"] for k in t["keys"] if k["time"] > timeline["duration"])
         if "duration" in op and past:
             _note(project, f"{past} keyframe(s) now lie past the timeline end ({timeline['duration']} ms): they stay on "
@@ -390,13 +424,23 @@ def execute_timeline(project, op):
         require("target" not in op, "Pass target or targets, not both")
         targets = op["targets"]
         require(isinstance(targets, list) and 1 <= len(targets) <= 256, "targets must list 1–256 layers")
-        for target in targets:
-            execute_timeline(project, {**{k: v for k, v in op.items() if k != "targets"}, "target": target})
+        stagger = finite(op.get("stagger", 0), "stagger", 0, 600000)
+        for index, target in enumerate(targets):
+            each = {k: v for k, v in op.items() if k not in ("targets", "stagger")}
+            if stagger and index:
+                each = _shifted(each, round(stagger * index), duration, markers)
+            execute_timeline(project, {**each, "target": target})
+        return
+    require("stagger" not in op, "stagger offsets each of several targets: pass targets (a list of layers)", field="stagger")
+    if kind in ("animate", "animate-preset") and ("repeat" in op or "until" in op):
+        _repeat(project, timeline, op)
         return
     target_ref = op.get("target") or project.state["active_layer"]
     require(target_ref, "Pass target (a layer or 'canvas')")
     target = _target_id(project, target_ref)
     written = []  # Times of the keys this operation sets.
+    before = _snapshot(timeline, target)
+    mirror = None
     if kind == "keyframe":
         prop = op["property"]
         _check_value(project, prop, op["value"])
@@ -423,7 +467,8 @@ def execute_timeline(project, op):
         _set_key(track, start, begin, op.get("easing", "ease-in-out"), written)
         _set_key(track, end, op["to"], None, written)
     else:
-        _apply_preset(project, timeline, target, op, written)
+        mirror = _apply_preset(project, timeline, target, op, written)
+    _close_touched(project, timeline, target, before, op, mirror, kind == "animate-preset")
     # A key past the end lengthens the timeline, and the result says so. Only the keys this
     # operation set count: a key left past the end by an earlier operation (or kept there with
     # extend: false) never stretches a duration that was set back since. Pass extend: false to
@@ -455,6 +500,9 @@ def _apply_preset(project, timeline, target, op, written):
     layer = None if target == "canvas" else project.layer(target)
     require(layer is not None or preset == "color-shift", "Only color-shift applies to the canvas")
     c = project.state["canvas"]
+    # Entrances and exits end on a different value than they start from: when a loop closes them they
+    # hold, then play back over the same length so the loop ends where it began.
+    mirror = None if preset in LOOPING_PRESETS else (length, easing)
 
     def keys(prop, values, ease):
         track = _track(timeline, target, prop)
@@ -541,6 +589,7 @@ def _apply_preset(project, timeline, target, op, written):
         begin = project.state["canvas"]["background"] if target == "canvas" else layer[prop]
         _check_value(project, prop, op["to"])
         keys(prop, [begin, op["to"]], easing or "ease-in-out")
+    return mirror
 
 
 # ---------------------------------------------------------------------------------------------
@@ -762,6 +811,200 @@ def frame_times(project, fps=None, start=0, end=None, streamed=False):
 
 
 # ---------------------------------------------------------------------------------------------
+# Loops: seam detection, closing keys, repeats
+
+def _snapshot(timeline, target):
+    return {t["property"]: deepcopy(t["keys"]) for t in timeline["tracks"] if t["target"] == target}
+
+
+def _track_name(project, track):
+    if track["target"] == "canvas":
+        return f"canvas.{track['property']}"
+    layer = next((item for item in project.state["layers"] if item["id"] == track["target"]), None)
+    return f"{layer['name'] if layer else track['target']}.{track['property']}"
+
+
+def seam_matches(project, track, timeline):
+    """True when the track's value at the loop end equals its value at t=0. Rotation compares modulo
+    360 degrees (or one symmetry step: a track with ``symmetry`` n repeats every 360/n degrees)."""
+    a = track["keys"][0]["value"]
+    b = sample_track(project, track, timeline["duration"])
+    kind = _property_kind(track["property"])
+    if kind == "number":
+        diff = abs(a - b)
+        if track["property"] == "rotation":
+            period = 360 / max(1, track.get("symmetry", 1))
+            diff = diff % period
+            diff = min(diff, period - diff)
+        return diff <= 1e-4 * max(1, abs(a), abs(b))
+    if kind == "color":
+        from .design import resolve_color
+        from .render import color
+
+        return color(resolve_color(a, project.state)) == color(resolve_color(b, project.state))
+    return a == b
+
+
+def close_track(project, timeline, track, mirror=None):
+    """Make ``track`` end where it began: append its t=0 value at the loop end. ``mirror`` is
+    ``(length, easing)`` for entrances and exits: the last value is held, then the track plays back to
+    the start value over ``length`` ms so the loop does not snap. Returns True when keys were added."""
+    keys, end = track["keys"], timeline["duration"]
+    if not keys or seam_matches(project, track, timeline):
+        return False
+    first, last = keys[0], keys[-1]
+    if last["time"] >= end:
+        return False  # The last key sits on or past the loop end: there is no room to close.
+    if mirror and _property_kind(track["property"]) != "step" and end - mirror[0] > last["time"]:
+        _set_key(track, end - mirror[0], last["value"], mirror[1] or "ease-in-out")
+    elif "easing" not in last and str(first.get("easing", "")).startswith("ease-in-out"):
+        # The first segment leaves from rest, so arrive at rest too: matched speed at the seam.
+        last["easing"] = first["easing"]
+    _set_key(track, end, first["value"], None)
+    return True
+
+
+def _close_touched(project, timeline, target, before, op, mirror, is_preset):
+    close = op.get("close", op.get("loop_safe"))
+    if close is None:
+        close = is_preset and timeline.get("loop_mode") == "seamless"
+    if not close:
+        return
+    for track in timeline["tracks"]:
+        if track["target"] == target and track["keys"] != before.get(track["property"]):
+            if not close_track(project, timeline, track, mirror) and not seam_matches(project, track, timeline):
+                _note(project, f"{_track_name(project, track)} cannot be closed: its last key sits at or past the "
+                      f"timeline end ({timeline['duration']} ms), so the loop jumps there")
+
+
+def _shifted(op, delta, duration, markers):
+    """``op`` with its start (and end, when it has one) moved ``delta`` ms later."""
+    shifted = {**op, "start": parse_time(op.get("start", 0), duration, markers) + delta}
+    if "end" in op:
+        shifted["end"] = parse_time(op["end"], duration, markers) + delta
+    return shifted
+
+
+def _repeat(project, timeline, op):
+    """Play an animate/animate-preset ``repeat`` times (or ``until`` a time), one cycle every ``period``
+    ms (default: the cycle's own length). A cycle that would abut the next one ends 1 ms early so the
+    next cycle's first key does not replace its last."""
+    duration, markers = timeline["duration"], timeline.get("markers", {})
+    start = parse_time(op.get("start", 0), duration, markers)
+    if op["type"] == "animate":
+        if "end" in op:
+            length = parse_time(op["end"], duration, markers) - start
+        else:
+            length = parse_time(op.get("duration", duration - start), duration, markers)
+    else:
+        length = parse_time(op.get("duration", 600), duration, markers)
+    require(length >= 10, "A repeated cycle must be at least 10 ms long")
+    period = finite(op.get("period", length), "period", length, 600000)
+    require("repeat" not in op or "until" not in op, "Pass repeat (a count) or until (a time), not both", field="repeat")
+    if "until" in op:
+        count = max(1, int((parse_time(op["until"], duration, markers) - start) // period))
+    else:
+        count = op["repeat"]
+        require(isinstance(count, int) and not isinstance(count, bool) and 1 <= count <= 1000, "repeat must be a whole number 1-1000", field="repeat")
+    target = _target_id(project, op.get("target") or project.state["active_layer"])
+    before = _snapshot(timeline, target)
+    cycle = {k: v for k, v in op.items() if k not in ("repeat", "until", "period", "close", "loop_safe", "end", "duration", "start")}
+    if op["type"] == "animate":
+        cycle["from"] = op["from"] if "from" in op else _value_at(project, timeline, target, op["property"], start)
+    for i in range(count):
+        span = length if i == count - 1 or period > length else length - 1
+        execute_timeline(project, {**cycle, "start": round(start + i * period), "duration": span})
+    mirror = (length, op.get("easing")) if op["type"] == "animate-preset" and op["preset"] not in LOOPING_PRESETS else None
+    _close_touched(project, timeline, target, before, op, mirror, op["type"] == "animate-preset")
+
+
+def seam_findings(project, timeline=None):
+    """Tracks that end on another value than they start with (``kind`` "value"), plus closed tracks
+    whose speed changes at the seam ("speed"). ``[{track, kind, first, last}]``."""
+    timeline = timeline or project.state.get("timeline") or default_timeline()
+    result = []
+    end = timeline["duration"]
+    for track in timeline.get("tracks", []):
+        keys = track["keys"]
+        if not keys:
+            continue
+        last = sample_track(project, track, end)
+        if not seam_matches(project, track, timeline):
+            result.append({"track": track, "kind": "value", "first": keys[0]["value"], "last": last})
+            continue
+        if _property_kind(track["property"]) != "number" or len(keys) < 2 or track["property"] == "rotation":
+            continue  # A spin's constant speed matches by construction.
+        eps = min(40, max(1, end / 4))
+        start_speed = (sample_track(project, track, eps) - keys[0]["value"]) / eps
+        end_speed = (last - sample_track(project, track, end - eps)) / eps
+        top = max(abs(start_speed), abs(end_speed))
+        if top > 1e-3 and abs(start_speed - end_speed) > 0.5 * top:
+            result.append({"track": track, "kind": "speed", "first": round(start_speed * 1000, 3), "last": round(end_speed * 1000, 3)})
+    return result
+
+
+def is_looping(timeline):
+    return timeline.get("loop_mode") == "seamless" or timeline.get("loop", 0) != 1
+
+
+def sample_frame_times(timeline):
+    """The frames reviews and checks look at: the poster (frame 0), the middle and the last frame, which
+    loops back to the poster. ``[(label, time_ms)]``."""
+    duration, fps = timeline["duration"], timeline.get("fps", 30)
+    count = max(1, math.ceil(duration * fps / 1000))
+    last = round((count - 1) * 1000 / fps)
+    return [("poster", 0), ("middle", round(last / 2)), ("last", last)]
+
+
+def visible_content(frame):
+    """Ids of the layers a viewer can see in a (time-applied) project: shown, not transparent, not
+    empty text, not fully trimmed away, and inside the canvas. Groups and adjustment layers do not count."""
+    from .spatial import canvas_boxes
+
+    c = frame.state["canvas"]
+    by_id = {layer["id"]: layer for layer in frame.state["layers"]}
+    boxes = canvas_boxes(frame)
+    seen = set()
+    for layer in frame.state["layers"]:
+        if layer["type"] in ("group", "adjustment"):
+            continue
+        chain, item = [layer], layer
+        while item.get("parent") in by_id:
+            item = by_id[item["parent"]]
+            chain.append(item)
+        if not all(x.get("visible", True) and x.get("opacity", 1) > 0.01 for x in chain):
+            continue
+        if layer["type"] == "text" and not str(layer.get("text", "")).strip():
+            continue
+        if layer.get("trim_end", 100) <= layer.get("trim_start", 0):
+            continue
+        box = boxes.get(layer["id"])
+        if box and (box[0] + box[2] <= 0 or box[1] + box[3] <= 0 or box[0] >= c["width"] or box[1] >= c["height"]):
+            continue
+        seen.add(layer["id"])
+    return seen
+
+
+def poster_findings(project, time=0):
+    """Review findings for a poster frame (``time`` ms): near-empty compared with the end, or text that
+    is hidden there although it is visible at the end. ``[(code, message, layer_id_or_None)]``."""
+    timeline = project.state.get("timeline") or default_timeline()
+    if not timeline.get("tracks"):
+        return []
+    at_end = project_at(project, timeline["duration"])
+    resting = visible_content(at_end)
+    shown = visible_content(project_at(project, time))
+    seconds = f"{time / 1000:g}s"
+    if resting and len(shown & resting) < 0.1 * len(resting):
+        return [("empty-poster", f"The poster frame ({seconds}) shows {len(shown & resting)} of the {len(resting)} layers visible "
+                 "at the end: apps that show only the first frame will show an empty card. Export with poster: 'end', "
+                 "or keep the main content visible at t=0.", None)]
+    return [("text-hidden-at-poster", f"Text {layer['name']!r} is hidden (transparent, empty, trimmed or off-canvas) at {seconds}, "
+             "the poster frame, although it is visible at the end.", layer["id"])
+            for layer in at_end.state["layers"] if layer["type"] == "text" and layer["id"] in resting and layer["id"] not in shown]
+
+
+# ---------------------------------------------------------------------------------------------
 # Validation and inspection
 
 
@@ -770,7 +1013,7 @@ def validate_timeline(project, state):
         return
     timeline = state["timeline"]
     require(
-        isinstance(timeline, dict) and set(timeline) <= {"duration", "fps", "loop", "tracks", "markers"},
+        isinstance(timeline, dict) and set(timeline) <= {"duration", "fps", "loop", "loop_mode", "tracks", "markers"},
         "Invalid timeline",
         "invalid_project",
     )
@@ -779,6 +1022,7 @@ def validate_timeline(project, state):
     fps = timeline.get("fps", 30)
     require(isinstance(fps, (int, float)) and not isinstance(fps, bool) and 1 <= fps <= 60, "Invalid timeline fps")
     require(isinstance(timeline.get("loop", 0), int) and 0 <= timeline.get("loop", 0) <= 65535, "Invalid timeline loop")
+    require(timeline.get("loop_mode", "seamless") == "seamless", "Invalid timeline loop_mode")
     markers = timeline.get("markers", {})
     require(isinstance(markers, dict), "Invalid timeline markers")
     from .design import named
@@ -793,7 +1037,8 @@ def validate_timeline(project, state):
     candidate = copy(project)
     candidate.state = state
     for track in tracks:
-        require(isinstance(track, dict) and set(track) == {"target", "property", "keys"}, "Invalid timeline track")
+        require(isinstance(track, dict) and {"target", "property", "keys"} <= set(track) <= {"target", "property", "keys", "symmetry"}, "Invalid timeline track")
+        require(isinstance(track.get("symmetry", 1), int) and 1 <= track.get("symmetry", 1) <= 1000, "Invalid track symmetry")
         target, prop = track["target"], track["property"]
         require(target == "canvas" or target in ids, "Timeline track targets a missing layer", "invalid_project")
         require((target, prop) not in seen, "Duplicate timeline track")
@@ -866,23 +1111,35 @@ def cached(project):
     return enable(copy(project), user_cache_dir())
 
 
-def contact_sheet(project, count=8, columns=None, max_width=1600, times=None):
-    """A grid of evenly spaced frames, labelled by time, for checking motion at a glance."""
+def contact_sheet(project, count=8, columns=None, max_width=1600, times=None, thumbnail=None):
+    """A grid of evenly spaced frames (or the given ``times``), labelled by time, for checking motion at a
+    glance. Frame 0 is labelled "poster": it is what many apps show. ``thumbnail`` (a frame width in
+    pixels, e.g. 360 for a phone) shows the poster, middle and last frame side by side at that width."""
     from PIL import ImageDraw
 
     project = cached(project)
 
     timeline = project.state.get("timeline") or default_timeline()
-    if times is None:
+    labels = {}
+    if thumbnail is not None:
+        finite(thumbnail, "thumbnail", 32, 1600)
+    if times is None and thumbnail is not None:
+        frames = sample_frame_times(timeline)
+        times = [t for _, t in frames]
+        labels = {i: name + (" (loops to poster)" if name == "last" and is_looping(timeline) else "") for i, (name, _) in enumerate(frames)}
+    elif times is None:
         require(isinstance(count, int) and 2 <= count <= 48, "Contact sheets show 2–48 frames")
         times = [round(timeline["duration"] * i / (count - 1)) for i in range(count)]
     else:
         times = [parse_time(t, timeline["duration"], timeline.get("markers")) for t in times]
         require(1 <= len(times) <= 48, "Contact sheets show 1–48 frames")
-    columns = columns or min(4, len(times))
+    columns = columns or min(4 if thumbnail is None else 12, len(times))
     rows = math.ceil(len(times) / columns)
     c = project.state["canvas"]
-    cell_w = max(32, min(c["width"], (max_width - 8 * (columns + 1)) // columns))
+    if thumbnail is not None:
+        cell_w = round(thumbnail)
+    else:
+        cell_w = max(32, min(c["width"], (max_width - 8 * (columns + 1)) // columns))
     cell_h = max(16, round(c["height"] * cell_w / c["width"]))
     sheet = Image.new("RGBA", (columns * (cell_w + 8) + 8, rows * (cell_h + 26) + 8), (245, 245, 245, 255))
     draw = ImageDraw.Draw(sheet)
@@ -891,7 +1148,8 @@ def contact_sheet(project, count=8, columns=None, max_width=1600, times=None):
         x, y = 8 + (i % columns) * (cell_w + 8), 8 + (i // columns) * (cell_h + 26)
         sheet.alpha_composite(frame, (x, y))
         draw.rectangle((x - 1, y - 1, x + cell_w, y + cell_h), outline=(200, 200, 200, 255))
-        draw.text((x, y + cell_h + 4), f"{time / 1000:.2f}s", fill=(60, 60, 60, 255))
+        label = labels.get(i) or ("poster" if time == 0 else "")
+        draw.text((x, y + cell_h + 4), f"{time / 1000:.2f}s" + (f" {label}" if label else ""), fill=(60, 60, 60, 255))
     return sheet
 
 
@@ -911,11 +1169,14 @@ def _frames(project, times, scale, preview=False, cancelled=None, progress=None)
         yield image if image.size == size else image.resize(size, Image.Resampling.LANCZOS)
 
 
-def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=None, end=None, background=None, columns=None, quality=90, colors=256, overwrite=False, preview=False, cancelled=None, progress=None):
+def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=None, end=None, background=None, columns=None, quality=90, colors=256, overwrite=False, preview=False, cancelled=None, progress=None, dither="auto", max_bytes=None, poster=None):
     """Write the timeline as an animation, sheet or frame sequence. Never clobbers by default.
     Frames render at the target resolution (``scale`` 0.05–16, bounded by the pixel budget);
-    ``colors`` (2–256) caps the GIF palette."""
-    from .animation import check_colors, gif_bytes, size_warnings
+    ``colors`` (2–256) caps the GIF palette and ``dither`` ("auto", "none", "ordered", "floyd") sets how
+    it is quantized. ``max_bytes`` is a soft size target: the result warns when the file is over it.
+    ``poster`` (a time, marker, "end", or percentage) rotates a GIF/WebP/APNG so that frame comes first,
+    which is what many apps show; a looping animation still loops without a jump."""
+    from .animation import check_colors, check_dither, encoded_frames, gif_bytes, has_gradients, size_warnings
 
     project = cached(project)
     path = Path(path)
@@ -927,6 +1188,10 @@ def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=No
     finite(scale, "scale", 0.05, 16)
     require(colors == 256 or format == "gif", "colors applies to GIF export", field="colors")
     check_colors(colors)
+    check_dither(dither)
+    require(dither == "auto" or format == "gif", "dither applies to GIF export", field="dither")
+    require(max_bytes is None or (isinstance(max_bytes, int) and not isinstance(max_bytes, bool) and max_bytes > 0), "max_bytes must be a positive whole number", field="max_bytes")
+    require(poster is None or format in ("gif", "apng", "webp"), "poster applies to gif, apng and webp exports", field="poster")
     timeline = project.state.get("timeline") or default_timeline()
     markers = timeline.get("markers", {})
     first = parse_time(start, timeline["duration"], markers) if start is not None else 0
@@ -943,6 +1208,21 @@ def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=No
     durations = [b - a for a, b in zip(boundaries, boundaries[1:])]
     require(all(d >= quantum for d in durations), "Frame rate exceeds the animation format timing resolution; lower fps")
     loop = timeline.get("loop", 0)
+    warnings = []
+    poster_info = None
+    if poster is not None:
+        poster_time = last if poster == "end" else parse_time(poster, timeline["duration"], markers)
+        index = min(range(len(times)), key=lambda i: abs(times[i] - poster_time))
+        poster_info = {"time": round(times[index]), "frame": index}
+        if index:
+            # Rotating the frames keeps a loop seamless; a play-once animation would start mid-way.
+            times, durations = times[index:] + times[:index], durations[index:] + durations[:index]
+            if loop == 1:
+                warnings.append("poster moved a later frame first, but the timeline plays once (loop 1): it now starts there. "
+                                "Set the timeline to loop, or export without poster.")
+    if format in ("gif", "apng", "webp"):
+        shown = times[0] if poster_info is None else poster_info["time"]
+        warnings += [message for _, message, _ in poster_findings(project, shown)]
     frames = _frames(project, times, scale, preview, cancelled, progress)
     if background is not None:
         from .render import color
@@ -999,30 +1279,46 @@ def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=No
     else:
         images = list(frames)
         if format == "gif":
-            stream.write(gif_bytes(images, durations, loop, colors))
+            stream.write(gif_bytes(images, durations, loop, colors, dither))
         elif format == "apng":
             images[0].save(stream, format="PNG", save_all=True, append_images=images[1:], duration=durations, loop=loop + 1 if loop else 0, disposal=0, blend=0)
         else:
             images[0].save(stream, format="WEBP", save_all=True, append_images=images[1:], duration=durations, loop=loop, quality=quality, method=4)
     data = stream.getvalue()
+    gradients = format == "gif" and has_gradients(images, colors)
     mode = "wb" if overwrite else "xb"
     with path.open(mode) as output:
         output.write(data)
     if metadata is not None:
         with destinations[1].open("w" if overwrite else "x", encoding="utf-8") as output:
             json.dump(metadata, output, indent=2)
+    # Report what was written: the sheet's own size, and (GIF/WebP/APNG) the frames and timing left
+    # after the encoder merged identical neighbours.
+    rendered = len(times)
+    size = [metadata["width"], metadata["height"]] if metadata is not None else [w, h]
+    if format in ("gif", "apng", "webp"):
+        count, written = encoded_frames(data)
+        if count != rendered:
+            durations = written
+    else:
+        count = rendered
+    warnings += size_warnings(format, data, max_bytes, gradients)
     return {
         "output": str(path),
         "format": format,
-        "frames": len(times),
+        "frames": count,
+        **({"rendered_frames": rendered} if count != rendered else {}),
         "fps": fps,
         "duration": sum(durations),
         "frame_durations": durations,
         "requested_duration": round(last - first),
-        "size": [w, h],
+        "size": size,
+        **({"frame_size": [w, h]} if metadata is not None else {}),
         "bytes": len(data),
+        **({"dither": "ordered" if dither == "auto" and gradients else "none" if dither == "auto" else dither} if format == "gif" else {}),
+        **({"poster": poster_info} if poster_info else {}),
         **({"metadata": str(destinations[1])} if metadata is not None else {}),
-        **({"warnings": warnings} if (warnings := size_warnings(format, data)) else {}),
+        **({"warnings": warnings} if warnings else {}),
     }
 
 
@@ -1081,15 +1377,39 @@ def schemas(add):
     prop = {"type": "string", "description": "Animatable property: " + ", ".join(NUMERIC + COLORS + STEPPED) + ", or effect:ID. "
             "scale, scale-x and scale-y accept negative values: -1 mirrors the layer on that axis, so animating "
             "scale-x from 1 to -1 swings it over about its pivot (center by default). trim_start and trim_end (0-100, percent of a "
-            "shape's or path's outline) draw its stroke on or off: animate trim_end from 0 to 100."}
-    extend = {"type": "boolean", "description": "Default true: a key past the timeline end lengthens the duration, and the result's "
+            "shape's or path's outline) draw its stroke on or off: animate trim_end from 0 to 100. With trim_start equal to trim_end nothing is drawn, so a draw-on can reset invisibly. "
+            "scale, scale-x and scale-y pivot at the layer box centre unless a pivot is set (pivot fractions are relative to the layer's own box)."}
+    extend = {"type": "boolean", "description": "Default true: a key past the timeline end extends the timeline (lengthens the duration), and the result's "
               "warnings say so (timeline duration changed 8000 -> 8400 ms). False keeps the duration; the key stays past the end, "
               "shaping the last frames, and is not played."}
-    add("timeline-set", {"duration": time, "fps": {"type": "number", "minimum": 1, "maximum": 60}, "loop": {"type": "integer", "minimum": 0, "maximum": 65535}, "clear": B})
+    key_easing = easing_schema(
+        "Easing of the segment that STARTS at this key (from this key to the next one), not the one arriving at it; "
+        "the last key's easing has no effect. Names: linear, hold (keep this key's value until the next key, then jump), "
+        "ease, ease-in, ease-out, ease-in-out, ease-{in,out,in-out}-{sine,quad,cubic,quart,expo,back}, bounce-out, "
+        "bounce-in, elastic-out, spring; or cubic-bezier(x1,y1,x2,y2) or steps(n). Before the first key and after the "
+        "last key a track holds that key's value."
+    )
+    segment_easing = easing_schema(
+        "Easing of the move from the start key to the end key (the easing is stored on the start key and shapes the "
+        "segment leaving it). Names: linear, hold, ease, ease-in, ease-out, ease-in-out, "
+        "ease-{in,out,in-out}-{sine,quad,cubic,quart,expo,back}, bounce-out, bounce-in, elastic-out, spring; or "
+        "cubic-bezier(x1,y1,x2,y2) or steps(n). Default linear."
+    )
+    close = {"type": "boolean", "description": "Close the loop: append each touched track's t=0 value at the timeline end so the track ends where it began. "
+             "Entrance/exit presets hold their final value and play back over the same length. Rotation is closed modulo 360. "
+             "The speed at the seam is matched only for eased (ease-in-out) or constant-speed segments; see docs/animation-authoring.md."}
+    repeat = {"type": "integer", "minimum": 1, "maximum": 1000, "description": "Play this many cycles back to back (one cycle every period ms; default the cycle's own length). "
+              "animate repeats from the same from value each cycle; presets such as pulse/float repeat in place."}
+    until = {**time, "description": "Repeat whole cycles until this time instead of a count."}
+    period = {"type": "number", "minimum": 10, "description": "With repeat/until: ms from one cycle's start to the next (default the cycle length; larger leaves a gap)."}
+    stagger = {"type": "number", "minimum": 0, "description": "With targets: each target starts this many ms after the previous one."}
+    add("timeline-set", {"duration": time, "fps": {"type": "number", "minimum": 1, "maximum": 60}, "loop": {"type": "integer", "minimum": 0, "maximum": 65535}, "clear": B,
+                         "loop_mode": {"enum": ["seamless", "off"], "description": "seamless: the timeline is meant to loop without a jump. Plays forever unless loop is given, warns for every track whose end value differs from its start, and makes animate-preset entrances close themselves."},
+                         "close": {"type": "boolean", "description": "With loop_mode seamless: append the start value at the end of every track that does not already end where it began."}})
     targets = {"type": "array", "items": S, "minItems": 1, "uniqueItems": True}
-    add("keyframe", {"property": prop, "time": time, "value": value, "easing": S, "targets": targets, "extend": extend}, ["property", "time", "value"])
+    add("keyframe", {"property": prop, "time": time, "value": value, "easing": key_easing, "targets": targets, "extend": extend, "close": close}, ["property", "time", "value"])
     add("keyframe-remove", {"property": S, "time": time})
-    add("animate", {"property": prop, "from": value, "to": value, "start": time, "end": time, "duration": time, "easing": S, "targets": targets, "extend": extend}, ["property", "to"])
-    add("animate-preset", {"preset": S, "start": time, "duration": time, "easing": S, "distance": N, "amount": N, "fade": B, "to": S, "targets": targets, "extend": extend}, ["preset"])
+    add("animate", {"property": prop, "from": value, "to": value, "start": time, "end": time, "duration": time, "easing": segment_easing, "targets": targets, "extend": extend, "close": close, "repeat": repeat, "until": until, "period": period, "stagger": stagger}, ["property", "to"])
+    add("animate-preset", {"preset": {"enum": list(PRESETS), "description": "Ready-made motion: " + ", ".join(PRESETS) + ". draw-on/draw-off need a shape or path layer; color-shift also works on the canvas."}, "start": time, "duration": time, "easing": easing_schema("Override the preset's own easing (names as for keyframe easing, or cubic-bezier(...) / steps(n))."), "distance": N, "amount": N, "fade": B, "to": S, "targets": targets, "extend": extend, "close": close, "loop_safe": {"type": "boolean", "description": "Alias of close."}, "repeat": repeat, "until": until, "period": period, "stagger": stagger}, ["preset"])
     add("marker", {"name": S, "time": time, "delete": B}, ["name"], anyOf=[{"required": ["time"]}, {"required": ["delete"]}])
 

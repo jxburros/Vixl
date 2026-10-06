@@ -15,6 +15,7 @@ most 90° each, so every exporter (SVG, PDF, PowerPoint, raster) draws them with
 import math
 
 from .errors import require
+from .geometry import compact_number
 from .model import finite
 
 MAX_ANGLE = 10000
@@ -40,8 +41,7 @@ def wedge_centroid(cx, cy, radius, start, end, inner=0.0, aspect=1.0):
 
 
 def _number(value, digits):
-    text = f"{value:.{digits}f}".rstrip("0").rstrip(".")
-    return "0" if text in ("", "-0") else text
+    return compact_number(value, digits)
 
 
 def _curves(cx, cy, rx, ry, start, sweep):

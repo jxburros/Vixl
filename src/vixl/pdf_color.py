@@ -32,8 +32,8 @@ class RGBPaint:
     def stroke(self, rgba):
         return " ".join(_num(c) for c in self.components(rgba)) + " RG"
 
-    def image(self, writer, image):
-        return image_xobject(writer, image)
+    def image(self, writer, image, jpeg_quality=None):
+        return image_xobject(writer, image, jpeg_quality=jpeg_quality)
 
 
 class CMYKPaint(RGBPaint):
@@ -67,10 +67,10 @@ class CMYKPaint(RGBPaint):
     def stroke(self, rgba):
         return " ".join(_num(c) for c in self.components(rgba)) + " K"
 
-    def image(self, writer, image):
+    def image(self, writer, image, jpeg_quality=None):
         rgba = image.convert("RGBA")
         separated = colors.cmyk_image(rgba.convert("RGB"), **self.options, transform=self.transform)
-        return image_xobject(writer, separated, alpha=rgba.getchannel("A"))
+        return image_xobject(writer, separated, alpha=rgba.getchannel("A"), jpeg_quality=jpeg_quality)
 
 
 def ramp(paint, stops):

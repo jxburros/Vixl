@@ -1,11 +1,11 @@
 {
   "copy-agent.preview": {
     "branch": "copy-agent",
-    "source_head": "rev_7e0702b00e7d4660",
-    "branch_head": "rev_228a441b3fe54cea",
+    "source_head": "rev_67196e6115404d89",
+    "branch_head": "rev_487f1e3cabe44348",
     "conflicts": [
       {
-        "path": "/layers/lyr_1135ecdf68a84398/text",
+        "path": "/layers/lyr_70b9fa29f3644657/text",
         "base": "LAUNCHING JUNE 1",
         "ours": "LAUNCHING SATURDAY JUNE 1",
         "theirs": "LAUNCHING JUNE 1 · RIVERSIDE",
@@ -22,8 +22,8 @@
   },
   "copy-agent.resolved-preview": {
     "branch": "copy-agent",
-    "source_head": "rev_7e0702b00e7d4660",
-    "branch_head": "rev_228a441b3fe54cea",
+    "source_head": "rev_67196e6115404d89",
+    "branch_head": "rev_487f1e3cabe44348",
     "conflicts": [],
     "can_merge": true,
     "success": true,
@@ -31,21 +31,32 @@
   },
   "copy-agent.merge": {
     "branch": "copy-agent",
-    "source_head": "rev_7e0702b00e7d4660",
-    "branch_head": "rev_228a441b3fe54cea",
+    "source_head": "rev_67196e6115404d89",
+    "branch_head": "rev_487f1e3cabe44348",
     "conflicts": [],
     "can_merge": true,
     "success": true,
     "dry_run": false,
-    "head": "rev_0c23781ef4df4b08"
+    "head": "rev_51dd6c1cd00f4891"
   },
   "design-agent.preview": {
     "branch": "design-agent",
-    "source_head": "rev_0c23781ef4df4b08",
-    "branch_head": "rev_5ecfd8107f5040bc",
+    "source_head": "rev_51dd6c1cd00f4891",
+    "branch_head": "rev_3d66c86b4aa14137",
     "conflicts": [
       {
-        "path": "/layers/lyr_482b5ae001024618/text",
+        "path": "/layers/lyr_a058058af08942e7/text",
+        "base": "Ride the Loop",
+        "ours": "Your city, on a Loop",
+        "theirs": "RIDE THE LOOP",
+        "deleted": {
+          "base": false,
+          "ours": false,
+          "theirs": false
+        }
+      },
+      {
+        "path": "/layers/lyr_c4b873afb2e34bcf/text",
         "base": "Get the app",
         "ours": "Download Loop",
         "theirs": "GET THE APP",
@@ -56,21 +67,10 @@
         }
       },
       {
-        "path": "/layers/lyr_482b5ae001024618/width",
+        "path": "/layers/lyr_c4b873afb2e34bcf/width",
         "base": 153,
         "ours": 205,
         "theirs": 180,
-        "deleted": {
-          "base": false,
-          "ours": false,
-          "theirs": false
-        }
-      },
-      {
-        "path": "/layers/lyr_e88cd3a113874aa0/text",
-        "base": "Ride the Loop",
-        "ours": "Your city, on a Loop",
-        "theirs": "RIDE THE LOOP",
         "deleted": {
           "base": false,
           "ours": false,
@@ -88,18 +88,18 @@
   },
   "design-agent.merge": {
     "branch": "design-agent",
-    "source_head": "rev_9842fc6f1fcb4ff3",
-    "branch_head": "rev_5ecfd8107f5040bc",
+    "source_head": "rev_b7c817b4273b493f",
+    "branch_head": "rev_3d66c86b4aa14137",
     "conflicts": [],
     "can_merge": true,
     "success": true,
     "dry_run": false,
-    "head": "rev_54c99c9ceb1e4348"
+    "head": "rev_6e30ca240b1e49fe"
   },
   "design-agent.resolutions": {
-    "/layers/lyr_482b5ae001024618/text": "ours",
-    "/layers/lyr_482b5ae001024618/width": "ours",
-    "/layers/lyr_e88cd3a113874aa0/text": "ours"
+    "/layers/lyr_a058058af08942e7/text": "ours",
+    "/layers/lyr_c4b873afb2e34bcf/text": "ours",
+    "/layers/lyr_c4b873afb2e34bcf/width": "ours"
   },
   "branches": {
     "branches": [
@@ -108,22 +108,22 @@
         "branch": "copy-agent",
         "source": "ig-portrait.vixl",
         "base": ".vixl-branches/copy-agent.base.vixl",
-        "base_hash": "b2b009389191c99340a4c68f667b2d70e198887d0876be927cb0ac773ba128d6",
+        "base_hash": "2b1927c65ade4b40ab4d739baed44af7f6ccab43e53cd531c1954184600b26df",
         "output": "copy-agent.vixl",
         "author": "copy-agent",
         "status": "merged",
-        "head": "rev_0c23781ef4df4b08"
+        "head": "rev_51dd6c1cd00f4891"
       },
       {
         "version": 1,
         "branch": "design-agent",
         "source": "ig-portrait.vixl",
         "base": ".vixl-branches/design-agent.base.vixl",
-        "base_hash": "b2b009389191c99340a4c68f667b2d70e198887d0876be927cb0ac773ba128d6",
+        "base_hash": "2b1927c65ade4b40ab4d739baed44af7f6ccab43e53cd531c1954184600b26df",
         "output": "design-agent.vixl",
         "author": "design-agent",
         "status": "merged",
-        "head": "rev_54c99c9ceb1e4348"
+        "head": "rev_6e30ca240b1e49fe"
       }
     ]
   }

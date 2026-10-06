@@ -36,12 +36,25 @@ PX = "px"
 
 def _print(w, h, unit, description, dpi=300, category="print", bleed=None, safe=None):
     bleed = bleed if bleed is not None else (0.125 if unit == IN else 3)
-    safe = safe if safe is not None else (0.125 if unit == IN else 5)
+    # Most desktop printers cannot print within about a quarter inch of the page edge.
+    safe = safe if safe is not None else (0.25 if unit == IN else 6)
     return {"category": category, "width": w, "height": h, "unit": unit, "dpi": dpi, "bleed": bleed, "safe": safe, "description": description}
 
 
 def _px(w, h, category, description, safe=0):
     return {"category": category, "width": w, "height": h, "unit": PX, "safe": safe, "description": description}
+
+
+# Platform UI covers the top and bottom of a story; the sides only need a normal margin.
+STORY_SAFE = {"top": 250, "bottom": 250, "left": 60, "right": 60}
+
+SIDES = ("left", "top", "right", "bottom")
+
+
+def safe_sides(canvas):
+    """The canvas safe area as (left, top, right, bottom) pixel insets from the trim edge."""
+    safe = canvas.get("safe", 0)
+    return tuple(safe.get(side, 0) for side in SIDES) if isinstance(safe, dict) else (safe,) * 4
 
 
 SIZES = {
@@ -107,9 +120,9 @@ SIZES = {
     "instagram-post": _px(1080, 1080, "social", "Instagram square post (alias)", safe=60),
     "instagram-portrait": _px(1080, 1350, "social", "Instagram 4:5 portrait post", safe=60),
     "instagram-landscape": _px(1080, 566, "social", "Instagram 1.91:1 landscape post", safe=40),
-    "instagram-story": _px(1080, 1920, "social", "Instagram/Facebook story; keep text out of top/bottom 250px", safe=250),
-    "story": _px(1080, 1920, "social", "Vertical 9:16 story", safe=250),
-    "reel-cover": _px(1080, 1920, "social", "Reel/short cover; center 1080×1440 shows in grids", safe=240),
+    "instagram-story": _px(1080, 1920, "social", "Instagram/Facebook story; keep text out of top/bottom 250px", safe=STORY_SAFE),
+    "story": _px(1080, 1920, "social", "Vertical 9:16 story", safe=STORY_SAFE),
+    "reel-cover": _px(1080, 1920, "social", "Reel/short cover; center 1080×1440 shows in grids", safe={"top": 240, "bottom": 240, "left": 60, "right": 60}),
     "facebook-post": _px(1200, 630, "social", "Facebook link/feed image", safe=40),
     "facebook-cover": _px(1640, 624, "social", "Facebook page cover (high resolution)", safe=80),
     "facebook-event": _px(1920, 1005, "social", "Facebook event cover", safe=60),
@@ -294,7 +307,9 @@ def resolve(name, *, dpi=None, orientation=None, bleed=False):
     trim_w = round(to_pixels(w, unit, dpi or 1))
     trim_h = round(to_pixels(h, unit, dpi or 1))
     bleed_px = round(to_pixels(bleed_amount, unit, dpi or 1))
-    safe_px = round(to_pixels(entry.get("safe", 0), unit, dpi or 1))
+    safe = entry.get("safe", 0)
+    safe_px = ({side: round(to_pixels(safe.get(side, 0), unit, dpi or 1)) for side in SIDES}
+               if isinstance(safe, dict) else round(to_pixels(safe, unit, dpi or 1)))
     result = {
         "size": key,
         "category": entry["category"],
@@ -350,15 +365,17 @@ def size_guides(info):
         ):
             guides[name] = {"axis": axis, "position": position, "generated": "size"}
     if safe:
-        inset = bleed + safe
-        if 2 * inset < min(w, h):
-            for name, axis, position in (
-                ("safe-left", "x", inset),
-                ("safe-right", "x", w - inset),
-                ("safe-top", "y", inset),
-                ("safe-bottom", "y", h - inset),
-            ):
-                guides[name] = {"axis": axis, "position": position, "generated": "size"}
+        sides = safe_sides({"safe": safe})
+        left, top, right, bottom = (bleed + v for v in sides)
+        if left + right < w and top + bottom < h:
+            for (name, axis, position), side in zip((
+                ("safe-left", "x", left),
+                ("safe-top", "y", top),
+                ("safe-right", "x", w - right),
+                ("safe-bottom", "y", h - bottom),
+            ), sides):
+                if side:
+                    guides[name] = {"axis": axis, "position": position, "generated": "size"}
     return guides
 
 
@@ -419,7 +436,13 @@ def validate_canvas(canvas):
         finite(canvas["dpi"], "dpi", 36, 2400)
     for key in ("bleed", "safe"):
         if key in canvas:
-            require(isinstance(canvas[key], int) and 0 <= canvas[key] < min(canvas["width"], canvas["height"]), f"Invalid canvas {key}", "invalid_project")
+            value = canvas[key]
+            limit = min(canvas["width"], canvas["height"])
+            if key == "safe" and isinstance(value, dict):
+                require(set(value) <= set(SIDES) and all(isinstance(v, int) and 0 <= v < limit for v in value.values()),
+                        "Invalid canvas safe", "invalid_project")
+            else:
+                require(isinstance(value, int) and 0 <= value < limit, f"Invalid canvas {key}", "invalid_project")
     if "physical" in canvas:
         physical = canvas["physical"]
         require(isinstance(physical, dict) and set(physical) <= {"width", "height", "unit", "bleed"} and physical.get("unit") in UNIT_INCHES, "Invalid physical canvas size", "invalid_project")

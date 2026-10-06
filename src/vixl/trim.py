@@ -58,8 +58,9 @@ def validate_trim(layer):
 
 
 def _num(value):
-    text = f"{value:.3f}".rstrip("0").rstrip(".")
-    return "0" if text in ("", "-0") else text
+    from .geometry import compact_number
+
+    return compact_number(value, 3)
 
 
 def _d(commands):
@@ -206,6 +207,7 @@ def trimmed_image(project, layer):
 
     from .colors import hex_of, parse
     from .design import resolve_color
+    from .geometry import default_fill
 
     def paint(field, default):
         rgba = parse(resolve_color(layer.get(field, default), project.state))
@@ -213,7 +215,7 @@ def trimmed_image(project, layer):
 
     w, h = layer["width"], layer["height"]
     stroke, stroke_opacity = paint("stroke", "transparent")
-    fill, fill_opacity = paint("fill", "white")
+    fill, fill_opacity = paint("fill", default_fill(layer))
     geometry = trim_geometry(layer, float(stroke_opacity) > 0)
     root = ET.Element("svg", xmlns="http://www.w3.org/2000/svg", width=str(w), height=str(h))
     if geometry["view"]:

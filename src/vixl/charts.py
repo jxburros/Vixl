@@ -119,7 +119,9 @@ def nice_scale(low, high, intervals, fixed_min=None, fixed_max=None):
     for exponent in (-1, 0, 1):
         for factor in (1, 2, 5):
             step = factor * base * 10 ** exponent
-            score = abs(math.ceil(span / step - 1e-9) - intervals)
+            count = math.ceil(span / step - 1e-9)
+            # Headroom above the data counts against a step, so 3,330 gets 0–3,500 rather than 0–4,000.
+            score = abs(count - intervals) + (0 if fixed_max is not None else 12 * max(0, (count * step - span) / span - 0.1))
             if best is None or score < best[0] or (score == best[0] and step > best[1]):
                 best = (score, step)
     step = round(best[1], 12)
@@ -1296,6 +1298,37 @@ def chart_contrast(project, resolved, local_bounds, bounds, items):
     return results
 
 
+def series_colors(project, resolved):
+    """``[(chart group, [(series name, RGB, [mark layers])])]``: the fill (stroke for lines) each series of
+    every chart is drawn in, read from the chart's generated marks, so checks can compare series colors."""
+    import re
+
+    from .design import resolve_color
+    from .render import color
+
+    found = []
+    for group in resolved.values():
+        recipe = group.get("chart")
+        if not recipe or group["type"] != "group":
+            continue
+        radial = recipe.get("kind") in ("pie", "donut")
+        names = recipe.get("categories", []) if radial else [s.get("name") for s in recipe.get("series", [])]
+        series = {}
+        for layer in resolved.values():
+            match = re.fullmatch(r"(bar|area|line|slice)-(\d+)(?:-\d+)?", layer.get("chart_part", ""))
+            if layer.get("parent") != group["id"] or not match or not layer["visible"]:
+                continue
+            value = layer.get("stroke") if match[1] == "line" else layer.get("fill")
+            rgba = color(resolve_color(value, project.state)) if value else (0, 0, 0, 0)
+            if rgba[3] < 128:
+                continue
+            index = int(match[2])
+            entry = series.setdefault(index, [names[index] if index < len(names) else f"series {index + 1}", rgba[:3], []])
+            entry[2].append(layer)
+        found.append((group, [tuple(series[i]) for i in sorted(series)]))
+    return found
+
+
 # ---------------------------------------------------------------------------------------------
 # Operations
 
@@ -1330,6 +1363,12 @@ def execute(project, op):
                 "or omit target to draw a new one", field="target")
     recipe = deepcopy(target["chart"]) if target else {"kind": "bar"}
     merge_options(recipe, op)
+    pinned = [s["name"] for s in recipe.get("series", []) if s.get("color")] if op.get("colors") else []
+    if pinned and not (op.get("series") or op.get("rows") or op.get("csv")):
+        from .notices import warn
+
+        warn(project, f"colors does not recolour series {', '.join(map(repr, pinned[:6]))}: each stores its own "
+                      "color, which wins; resend series with new colors, or without color to take colors")
     if not read_data(project, op, recipe):
         require(target is not None, "A chart needs data: categories + series, a table, or a csv", field="categories")
     if target is not None:

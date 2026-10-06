@@ -27,6 +27,19 @@ NODE_KEYS = {"id", "parent", "operations", "label", "state", "delta", "squashed"
 ASSET_REFERENCE = re.compile(rb"(?:assets|masks|fonts|sources)/[0-9a-f]{64}\.[a-z0-9]{2,5}")
 
 
+def upgrade_state(state):
+    """Bring a state saved by an earlier Vixl up to date in place (and return it): a layer's
+    ``lookup`` field becomes a ``lookup`` entry at the end of its effect stack, where it rendered."""
+    for layer in state.get("layers", []):
+        old = layer.pop("lookup", None)
+        if old:
+            layer.setdefault("effects", []).append({
+                "id": f"fx_lut_{layer['id']}", "name": "lookup", "lut": old["name"],
+                "amount": old.get("amount", 1), "enabled": True, "selection": None,
+            })
+    return state
+
+
 def swatch_user(error, operations, index):
     """For an unknown-swatch error, the first operation that uses the swatch: colors resolve when
     a later operation (or the final state check) reads them, not where the reference was written."""
@@ -49,6 +62,26 @@ def located(error, index, operation, count):
         if count > 1:
             error.args = (f"operations[{index}] ({kind}): {error}",)
     return error
+
+
+# Error codes of a malformed operation: the schema phase collects every one of them in a batch.
+INVALID_CODES = ("invalid_operation", "unknown_operation", "invalid_property", "invalid_path", "invalid_color")
+MAX_REPORTED = 50
+
+
+def batch_error(errors):
+    """One error for every invalid operation of a batch. The top-level fields describe the first
+    error; ``errors`` lists each one (operation_index, field, message, suggestions ...)."""
+    first = errors[0]
+    if len(errors) == 1:
+        return first
+    keep = ("operation_index", "operation_type", "field", "suggestions")  # long field lists stay on the first error
+    entries = [{"error": e.code, "message": str(e), **{k: e.details[k] for k in keep if k in e.details}}
+               for e in errors[:MAX_REPORTED]]
+    more = f"\n... and {len(errors) - MAX_REPORTED} more" if len(errors) > MAX_REPORTED else ""
+    message = (f"{len(errors)} operations are invalid; nothing was applied. Fix them all and resend:\n"
+               + "\n".join(f"- {entry['message']}" for entry in entries) + more)
+    return VixlError(first.code, message, **first.details, errors=entries, error_count=len(errors))
 
 
 class Project:
@@ -326,16 +359,22 @@ class Project:
         )
         from .schema import validate_operation
         from .normalize import apply_centering, resolve_geometry
+        from .targets import fan_out
 
         notes = []
         validated = []
+        invalid = []  # Every schema error of the batch, so one round trip fixes them all.
         for index, operation in enumerate(operations):
             try:
                 validated.append(validate_operation(operation, notes, index if len(operations) > 1 else None))
                 if check:
                     check(validated[-1])
             except VixlError as exc:
-                raise located(exc, index, operation, len(operations)) from exc
+                if exc.code not in INVALID_CODES:
+                    raise located(exc, index, operation, len(operations)) from exc
+                invalid.append(located(exc, index, operation, len(operations)))
+        if invalid:
+            raise batch_error(invalid)
         operations = validated
         candidate = self.clone()
         candidate._service = bool(check)
@@ -357,12 +396,13 @@ class Project:
                 if operation["type"] in ("layout-apply", "template-apply"):
                     from .brand import prepare
                     operation = prepare(candidate, operation)
-                resolved, centered = resolve_geometry(candidate, operation)
-                execute(candidate, deepcopy(resolved))
-                if operation["type"] in ("layout-apply", "template-apply"):
-                    from .brand import finish
-                    finish(candidate)
-                apply_centering(candidate, centered, operation)
+                for single in fan_out(operation):  # targets on a per-layer operation: once per layer
+                    resolved, centered = resolve_geometry(candidate, single)
+                    execute(candidate, deepcopy(resolved))
+                    if single["type"] in ("layout-apply", "template-apply"):
+                        from .brand import finish
+                        finish(candidate)
+                    apply_centering(candidate, centered, single)
             except VixlError as exc:
                 index = swatch_user(exc, operations, index)
                 raise located(exc, index, operations[index], len(operations)) from exc
@@ -481,7 +521,10 @@ class Project:
             self._restore(self.redo_stack.pop())
 
     def _restore(self, node):
-        state = self._state_at(node)
+        # The head state stays as stored, so new deltas patch the stored revisions; the live state
+        # is brought up to date.
+        stored = self._state_at(node)
+        state = upgrade_state(deepcopy(stored))
         if node not in self._verified:
             # Archived history is untrusted until a revision is actually used.
             from .validation import check_state
@@ -493,7 +536,7 @@ class Project:
             self._verified.add(node)
         self.head = node
         self.state = state
-        self._head_state = deepcopy(state)
+        self._head_state = stored
         if self.current_branch:
             self.branches[self.current_branch] = node
 
@@ -527,7 +570,7 @@ class Project:
         if node == self.head:
             return self
         view = copy(self)
-        view.state = self._state_at(node)
+        view.state = upgrade_state(self._state_at(node))
         if node not in self._verified:
             from .validation import check_state
 
@@ -584,6 +627,25 @@ class Project:
         from .render import render
 
         return render(self, variables, artboard, comp, page=page)
+
+    def show(self, page=None, region=None):
+        """The rendered document as a PIL image, for notebooks and scripts. ``page`` is a page number or name;
+        ``region`` crops to ``[x, y, width, height]`` in document pixels."""
+        image = self.render(page=page)
+        if region is not None:
+            require(len(region) == 4, "region is [x, y, width, height]", field="region")
+            x, y, w, h = (float(v) for v in region)
+            require(w > 0 and h > 0, "region needs a positive width and height", field="region")
+            image = image.crop((round(x), round(y), round(x + w), round(y + h)))
+        return image
+
+    def _repr_png_(self):
+        """Jupyter shows a Project as its rendered PNG."""
+        import io
+
+        buffer = io.BytesIO()
+        self.render().save(buffer, "PNG")
+        return buffer.getvalue()
 
     def export(self, path=None, **options):
         from .render import export
@@ -799,6 +861,7 @@ class Project:
                 project.path = path
                 project._head_state = None
                 project._verified = set()
+                upgrade_state(project.state)
                 check_document(project)
                 project._revision = revision
                 return project

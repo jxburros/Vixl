@@ -6,24 +6,15 @@ import numpy as np
 from .errors import require
 from .model import finite
 from .affine import layer_matrix, linear, matrix
+from .geometry import ANCHORS, canonical_anchor
 
 TYPES = ("skew", "transform", "match-size", "fit", "snap-to-pixel")
-ANCHORS = {
-    "top-left": [0, 0],
-    "top": [0.5, 0],
-    "top-right": [1, 0],
-    "left": [0, 0.5],
-    "center": [0.5, 0.5],
-    "right": [1, 0.5],
-    "bottom-left": [0, 1],
-    "bottom": [0.5, 1],
-    "bottom-right": [1, 1],
-}
 VECTOR_TYPES = ("shape", "pathfinder", "text", "solid", "gradient", "group", "symbol")
 
 
 def anchor(value):
-    value = ANCHORS.get(value, value) if isinstance(value, str) else value
+    if isinstance(value, str) and canonical_anchor(value):
+        value = list(ANCHORS[canonical_anchor(value)])
     require(
         isinstance(value, (list, tuple)) and len(value) == 2,
         "Anchor must be a named anchor or [x, y] fractions",
@@ -112,9 +103,9 @@ def enrich_transform_schemas(variants):
         kind, props = variant["properties"]["type"]["const"], variant["properties"]
         if kind in descriptions:
             variant["description"] = descriptions[kind]
-            for key, prop in props.items():
-                if key in fields:
-                    prop.setdefault("description", fields[key])
+            for key, prop in list(props.items()):
+                if key in fields and "description" not in prop:
+                    props[key] = {**prop, "description": fields[key]}
         if kind in ("resize", "scale"):
             props["anchor"] = {**anchors, "description": fields["anchor"]}
         if kind == "resize":

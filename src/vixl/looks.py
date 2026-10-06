@@ -95,7 +95,7 @@ def _grain(layer, state, color, a):
 
 
 def _paper(layer, state, color, a):
-    return {}, [_effect("temperature", round(6 + 16 * a)), _effect("grain", round(0.03 + 0.05 * a, 3), seed=_seed(layer)),
+    return {}, [_effect("temperature", round(8 + 12 * a)), _effect("grain", round(0.03 + 0.05 * a, 3), seed=_seed(layer)),
                 _effect("vignette", round(0.08 + 0.2 * a, 2), radius=0.85, strength=round(0.08 + 0.2 * a, 2))]
 
 

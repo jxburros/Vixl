@@ -21,11 +21,11 @@ def schemas(add):
         "x": COORD, "y": COORD,
     })
     add("path-fit", {"padding": {"type": "number", "minimum": 0}, "preserve_aspect": B}, ["target"])
-    add("layer-intent", {"role": {"enum": ["content", "decoration", "background"]},
+    add("layer-intent", {"role": {"enum": ["content", "decoration", "background", "title"]},
                          "allow_overlap": {"type": "array", "items": S, "maxItems": 512},
                          "tags": {"type": "array", "items": S, "maxItems": 32,
                                   "description": "Labels (replacing the layer's tags) that edit-layers can select with where.tag"},
-                         "allow_crop": B}, ["target"])
+                         "allow_crop": B, "color_vision_safe": B}, ["target"])
     add("font-fallbacks", {"fonts": {"type": "array", "items": S, "maxItems": 16}}, ["fonts"])
 
 
@@ -96,6 +96,8 @@ def execute(project, op):
     if kind == "font-fallbacks":
         from .render import resolve_font
         from .text import primary_font_data
+        require("target" not in op, "font-fallbacks is document-wide and takes no target: the list applies to "
+                "every text layer; pass fonts only", field="target")
         fonts = []
         for name in op["fonts"]:
             require(name in project.state.get("fonts", {}) or name in ("heading", "body", "DejaVuSans.ttf"), "Import fallback fonts with font import first; use their registered names")
@@ -124,6 +126,12 @@ def execute(project, op):
                 layer["tags"] = sorted(set(op["tags"]))
             else:
                 layer.pop("tags", None)
+        if "color_vision_safe" in op:
+            # Series that also differ by labels or patterns: the color-vision check skips this chart.
+            if op["color_vision_safe"]:
+                layer["color_vision_safe"] = True
+            else:
+                layer.pop("color_vision_safe", None)
         if "allow_crop" in op:
             # A deliberate bleed or crop: checks report it as informational instead of a problem.
             if op["allow_crop"]:

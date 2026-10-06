@@ -14,7 +14,7 @@ in whole pixels. A title screen mixes dithered pixel art with Press Start 2P and
 integer upscale.
 
 Rebuild from the repo root: `python explorations/04-pixel-rpg/build.py` (it wipes and recreates
-`output/`; 36 s with 0.20.0 on a shared 4-core container; about 2 min CPU with 0.16.0, mostly the timeline export).
+`output/`; 25 s with 0.21.0 on a shared 4-core container; about 2 min CPU with 0.16.0, mostly the timeline export).
 
 ## Title screen and HUD
 

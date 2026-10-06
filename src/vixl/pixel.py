@@ -74,10 +74,12 @@ def execute_pixel(project, op):
             require(symbol in palette, "Background symbol is not in the palette")
             rows = [symbol * width for _ in range(height)]
         else:
-            require(
-                "width" not in op and "height" not in op and "background" not in op,
-                "Rows specify their own dimensions and background",
-            )
+            require("background" not in op, "Rows specify their own background; omit background")
+            if isinstance(rows, list) and rows and isinstance(rows[0], str):
+                for key, expected in (("width", len(rows[0])), ("height", len(rows))):
+                    require(key not in op or op[key] == expected,
+                            f"Rows are {len(rows[0])}x{len(rows)}, so {key} must be {expected} (or omit it); "
+                            f"got {op.get(key)}", field=key)
         require(isinstance(rows, list) and rows and isinstance(rows[0], str), "Provide pixel rows")
         layer = new_layer(
             op["name"] if "name" in op else default_name(project, "sprite"),

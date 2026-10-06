@@ -19,6 +19,7 @@ from PIL import Image, ImageDraw
 
 from .errors import VixlError, require
 from .safe_catalog import SAFE_PALETTES
+from .sizes import safe_sides
 
 LAYOUT_TYPES = ("layout-apply", "type-scale")
 RATIOS = {
@@ -58,7 +59,7 @@ class Builder:
         density = op.get("density") or self.rng.choice(["airy", "balanced", "balanced", "dense"])
         require(density in DENSITY_MARGIN, "density must be airy, balanced or dense")
         self.density = density
-        inset = c.get("bleed", 0) + c.get("safe", 0)
+        inset = c.get("bleed", 0) + max(safe_sides(c))
         margin = max(short * DENSITY_MARGIN[density], inset + short * 0.02 if inset else 0)
         if "margin" in op.get("direction", {}):
             fraction = op["direction"]["margin"]
@@ -849,17 +850,20 @@ def _event_details(b, grow):
     y = b.T
     _, _, _, h = b.text(role("headline"), b.get("title"), b.L, y, b.cw, name="headline", align="left", max_height=b.ch * 0.38, display=True)
     y += h + b.unit * 4 * grow
+    headline_size = next(op["size"] for op in reversed(b.ops) if op.get("type") == "text")
     date = b.get("label")
     if date:
         pad = b.unit * 3 * min(grow, 1.5)
         bw = b.cw * (0.5 if b.orientation != "tall" else 0.8)
         # The block widens to hold the date on one line rather than wrapping it.
-        size = round(b.sizes["title"] * grow)
+        # The event name stays the dominant element: the date is at most ~60% of the headline as placed.
+        size = min(round(b.sizes["title"] * grow), round(headline_size * 0.6))
+        size = max(size, 6)
         bw = min(b.cw, max(bw, b.measure(date, size, None, round(size * 0.1), "left", b.display_font)[0] + pad * 2 + size * 0.3))
         b.rect("date-block", b.L, y, bw, 1, "@accent")
         block = b.ops[-1]
         # Size the block to the text as placed (heavy type may shrink to fit), not the nominal size.
-        _, _, _, th = b.text(role("title"), date, b.L + pad, y + pad, bw - pad * 2, name="date", color="@on-accent", align="left", display=True)
+        _, _, _, th = b.text(size, date, b.L + pad, y + pad, bw - pad * 2, name="date", color="@on-accent", align="left", display=True)
         block["height"] = round(th + pad * 2)
         y += th + pad * 2 + b.unit * 4 * grow
     details = [line for line in str(b.get("body")).split("\n") if line.strip()]
@@ -1090,7 +1094,7 @@ def _thumbnail_bold(b):
 def _story_vertical(b):
     b.background()
     c = b.project.state["canvas"]
-    safe = max(c.get("safe", 0), round(b.H * 0.12))
+    safe = max(safe_sides(c)[1], safe_sides(c)[3], round(b.H * 0.12))
     top, bottom = safe, b.H - safe
     _, _, _, h = b.text("caption", b.label_text(), b.L, top, b.cw, name="label", color="@accent-text", align=b.align)
     y = top + h + b.unit * 3

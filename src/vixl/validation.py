@@ -55,7 +55,7 @@ def check_state(project, state):
             "Duplicate layer identifier",
             "invalid_project",
         )
-        require(layer.get("role", "content") in ("content", "decoration", "background"), "Invalid layer role", "invalid_project")
+        require(layer.get("role", "content") in ("content", "decoration", "background", "title"), "Invalid layer role", "invalid_project")
         if "pen_origin" in layer:
             origin = layer["pen_origin"]
             require(isinstance(origin, list) and len(origin) == 2, "Invalid pen origin", "invalid_project")
@@ -64,6 +64,7 @@ def check_state(project, state):
         allowed = layer.get("allow_overlap", [])
         require(isinstance(allowed, list) and len(allowed) <= 512 and all(isinstance(x, str) for x in allowed), "Invalid overlap intent", "invalid_project")
         require(isinstance(layer.get("allow_crop", False), bool), "Invalid crop intent", "invalid_project")
+        require(isinstance(layer.get("color_vision_safe", False), bool), "Invalid color vision intent", "invalid_project")
         ids.add(layer["id"])
         names.add(layer["name"])
         require(
@@ -234,8 +235,11 @@ def check_document(project):
     if project.transaction:
         check_state(project, project.transaction["state"])
         require(isinstance(project.transaction["operations"], list), "Invalid transaction")
+    from copy import deepcopy
+    from .project import upgrade_state
+
     head = project._state_at(project.head)
-    check_state(project, head)
+    check_state(project, upgrade_state(deepcopy(head)))
     project._head_state = head
     project._verified = {project.head}
     resolve_layout(project)

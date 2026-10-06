@@ -10,6 +10,7 @@ import math
 import numpy as np
 
 from .errors import require
+from .geometry import compact_number
 
 
 # ---------------------------------------------------------------------------------------------
@@ -135,8 +136,7 @@ def chaikin(points, iterations=1, closed=True):
 
 
 def _number(value, precision):
-    text = f"{value:.{precision}f}".rstrip("0").rstrip(".")
-    return "0" if text in ("-0", "") else text
+    return compact_number(value, precision)
 
 
 def path_data(points, closed=False, smooth=True, precision=2, tension=1.0):

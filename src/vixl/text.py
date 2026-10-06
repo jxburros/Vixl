@@ -243,6 +243,25 @@ def clusters(data, word):
     return [word[a:b] for a, b in zip(boundaries, boundaries[1:])]
 
 
+SEPARATORS = frozenset("·•–—|/")
+
+
+def words_of(paragraph):
+    """A paragraph's words and runs of spaces, with a lone separator (· – — | …) and the space after it glued to
+    the next word, so a line never ends in one."""
+    tokens = re.findall(r" +|[^ ]+", paragraph)
+    glued, i = [], 0
+    while i < len(tokens):
+        token = tokens[i]
+        if (not token.isspace() and set(token) <= SEPARATORS and i + 2 < len(tokens) and tokens[i + 1].isspace()
+                and not tokens[i + 2].isspace()):
+            token += tokens[i + 1] + tokens[i + 2]
+            i += 2
+        glued.append(token)
+        i += 1
+    return glued
+
+
 def lines(data, text, size, width=None):
     result = []
     for paragraph in text.expandtabs(4).split("\n"):
@@ -250,7 +269,7 @@ def lines(data, text, size, width=None):
             result.append(paragraph)
             continue
         line = ""
-        for word in re.findall(r" +|[^ ]+", paragraph):
+        for word in words_of(paragraph):
             proposed = line + word
             if shape(data, proposed, size)[1] <= width:
                 line = proposed
@@ -504,23 +523,22 @@ def append_paths(parent, layout, layer, project):
         color(resolve_color(layer.get(key, default), project.state))
         for key, default in (("color", "white"), ("stroke_color", "black"))
     ]
+    stroked = layer.get("stroke_width", 0) > 0 and stroke[3] > 0  # no-op stroke attributes are left out
     for path, matrix in layout.paths:
-        ET.SubElement(
-            parent,
-            "{http://www.w3.org/2000/svg}path",
-            {
-                "d": path,
-                "transform": "matrix(" + " ".join(map(str, matrix)) + ")",
-                "fill": f"rgb{fill[:3]}",
-                "fill-opacity": str(fill[3] / 255),
+        attrs = {
+            "d": path,
+            "transform": "matrix(" + " ".join(map(str, matrix)) + ")",
+            "fill": f"rgb{fill[:3]}",
+            "fill-opacity": str(fill[3] / 255),
+        }
+        if stroked:
+            attrs.update({
                 "stroke": f"rgb{stroke[:3]}",
                 "stroke-opacity": str(stroke[3] / 255),
-                "stroke-width": str(
-                    2 * layer.get("stroke_width", 0) / max(1e-6, math.hypot(matrix[0], matrix[1]))
-                ),
+                "stroke-width": str(2 * layer.get("stroke_width", 0) / max(1e-6, math.hypot(matrix[0], matrix[1]))),
                 "paint-order": "stroke fill",
-            },
-        )
+            })
+        ET.SubElement(parent, "{http://www.w3.org/2000/svg}path", attrs)
 
 
 def render_text(project, layer):

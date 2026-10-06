@@ -34,7 +34,11 @@ instead of improvising freehand shapes:
    and returns the operations, layouts, looks and styles that suit it, with a working example.
    `vixl_guide(brief="operations")` lists every operation by purpose. Layouts are *text compositions*:
    ten requests for different things are not ten posters. Icons, characters, scenes and patterns are
-   built from `shape`, `pen`, `pathfinder`, `organic` and `radial-repeat`.
+   built from `shape`, `pen`, `pathfinder`, `organic` and `radial-repeat`; characters are grouped parts
+   with a `pivot` at each joint, patterns scatter motifs rather than tile a grid, and animation loops
+   are `motion` recipes (`period`, several `targets`, `stagger`). A kind names the guidance to read:
+   `vixl_guide(brief="looping-motion")` (or `natural-motion`, `character-rigging`, `imperfection` …)
+   returns the text.
 2. **Layout** — `vixl_sizes_list` → `vixl_document_create(size=…)`. For anything with text,
    `vixl_layouts_list` → `layout-apply`, filling every slot it lists. An unfilled image slot comes back
    with `next_steps` (import, resource, draw, or AI) and its bounds.
@@ -44,7 +48,8 @@ instead of improvising freehand shapes:
    `vixl_styles` and `style-set`, then `check --checks style`.
 5. **Check** — `vixl_check`: fix the `fix` findings, glance at `review`, accept `informational` ones
    (mark a deliberate edge crop with `layer-intent` `allow_crop`); then `vixl_render_preview` →
-   `vixl_export_file`.
+   `vixl_export_file`. `vixl_operations_apply(..., check=true, preview=true)` returns the findings
+   (the batch's layers plus every `fix`) and a small preview with the edit itself, so the loop is one call.
 
 ## Creative and collaborative studio
 
@@ -77,8 +82,8 @@ agent, edit independently, preview branch-merge, resolve conflicts explicitly, t
   as editable layers (swimlanes, auto-fit, `check diagram`).
 - **Organic shapes** — `organic` presets and composable generators for living things.
 - **Imperfection** — opt-in `irregular` (seeded wobble, stroke weight, color drift, micro placement)
-  and `tear` (torn edges) for characters, hand-made looks and ripped paper; never for logos,
-  charts, text or anything that must align. `arc` shapes draw pie wedges and donut segments.
+  and `tear` (torn edges) for characters, stickers, scenes, scattered patterns, hand-made looks and
+  ripped paper; never for logos, charts, text or anything that must align (`vixl_guide("imperfection")`). `arc` shapes draw pie wedges and donut segments.
 - **Charts** — `chart` (bar, stacked, 100 %, horizontal, line, area, pie, donut) from a table or workspace CSV, `chart-data` to fix
   a value on stable layer IDs, native PPTX charts; see [charts](references/charts.md) before drawing any chart by hand.
 - **Guides beyond right angles** — angled/curved guides, compositional and perspective grids,
@@ -213,6 +218,8 @@ vixl_operations_apply(operations=[
 vixl_check(safe_area="5%")                              # overlap, contrast, bounds, legibility
 vixl_render_preview()
 vixl_export_file(path="poster.png")
+# or check and look in the same call as an edit:
+vixl_operations_apply(operations=[{"type":"move","target":"title","y":900}], check=true, preview=true)
 ```
 
 **MCP, from a brief** ("make a launch post for our spring collection")
@@ -341,7 +348,7 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
 | Transform | `move`, `resize`, `scale`, `rotate`, `flip`, `crop`, `opacity`, `blend`, `hide`/`show` |
 | Stacking | `raise`, `lower`, `top`, `bottom`, `reorder` (`above`/`below`), `group`/`ungroup`, `clip` |
 | Layout | `align` (to canvas/selection/layer), `distribute`, `constrain`/`unconstrain`, `stack` (auto-layout column/row that re-flows around hidden or empty members; text `hide_if_empty`), `guide`, `grid`, `canvas` (resize/preset), `artboard` |
-| Color & filters | 25 built-in effects (brightness … auto-contrast), `effect-set/enable/disable/remove`, `lut` + `lookup`, `preset-save/apply` |
+| Color & filters | 27 built-in effects (brightness … white-balance … auto-contrast), `effect-set/enable/disable/remove/move`, `lut` + `lookup` (a stack effect), `preset-save/apply` |
 | Selections & masks | `select` (rect/ellipse/color/alpha/all/none/invert, add/subtract/intersect, feather), `mask` (create/from-selection/import/invert/enable/disable/delete) |
 | Typography | `text`, `text-set`, `text-layout` (box, fit, warp, path), `style-define`/`style-apply`, `swatch` |
 | Decoration | `layer-style` (drop-shadow, stroke, outer-glow, color-overlay, gradient-overlay), `look` (named finishes: glow, neon, soft-shadow, hard-shadow, outline, gradient, grain, paper, film, duotone, risograph, sketch, watercolor, halftone), `repeat`, `repeat-blend`, `radial-repeat` (copies around a center, optional mirror), `pathfinder` |

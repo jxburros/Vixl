@@ -105,7 +105,8 @@ def execute(project, op):
     centered = {axis: True for axis in ("x", "y") if op.get(axis) == "center"}
     position = {axis: op[axis] for axis in ("x", "y") if axis in op and axis not in centered}
     if position:
-        apply(project, {"type": "move", "target": ident, **position})
+        space = {"space": op["space"]} if "space" in op else {}  # canvas: x/y in document coordinates
+        apply(project, {"type": "move", "target": ident, **position, **space})
     if centered:
         from .normalize import apply_centering
 

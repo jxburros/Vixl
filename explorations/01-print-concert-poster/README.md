@@ -1,6 +1,6 @@
 # SOLSTICE SIGNAL: print-ready festival poster
 
-A poster for a made-up three-night desert music festival, built entirely with Vixl. It was first built with 0.16.0; the committed outputs are rebuilt with 0.20.0. The canvas is the named `tabloid` size (11 × 17 in) with 1/8 in bleed. The look is retro-synthwave: a multi-stop dusk sky, a sliced gradient sun clipped to its disc, glowing sparkles, a perspective grid drawn as one multi-contour path, warped Syne 800 headlines, a line of DM Sans text set on an arc concentric with the sun, a lineup panel and a sunburst date badge. Footer, title and badge positions are constraints anchored to the generated `guide:safe-*` guides. After the design, `build.py` runs print QA (`check` with `print` and `color_vision`, plus contrast on every text layer), renders two soft proofs and three colour-blindness simulations, and exports a CMYK PDF with a 300% ink limit, a CMYK JPEG separated with an ICC profile, an RGB PNG and an SVG.
+A poster for a made-up three-night desert music festival, built entirely with Vixl. It was first built with 0.16.0; the committed outputs are rebuilt with 0.21.0. The canvas is the named `tabloid` size (11 × 17 in) with 1/8 in bleed. The look is retro-synthwave: a multi-stop dusk sky, a sliced gradient sun clipped to its disc, glowing sparkles, a perspective grid drawn as one multi-contour path, warped Syne 800 headlines, a line of DM Sans text set on an arc concentric with the sun, a lineup panel and a sunburst date badge. Footer, title and badge positions are constraints anchored to the generated `guide:safe-*` guides. After the design, `build.py` runs print QA (`check` with `print` and `color_vision`, plus contrast on every text layer), renders two soft proofs and three colour-blindness simulations, and exports a CMYK PDF with a 300% ink limit, a CMYK JPEG separated with an ICC profile, an RGB PNG and an SVG.
 
 ![SOLSTICE SIGNAL poster](output/poster-rgb.png)
 
@@ -10,7 +10,7 @@ A poster for a made-up three-night desert music festival, built entirely with Vi
 
 Run it from the repo root with `python explorations/01-print-concert-poster/build.py`. It needs network access for Google Fonts and the ICC profile.
 
-With 0.20.0 the build takes about 2 minutes (1 min 56 s on a shared 4-core container, fonts and ICC profile cached), and the contrast check now covers every text layer. With 0.16.0 it took about 10 minutes while checking only the five smallest text layers; checking all of them took 30 to 40 minutes (see Findings). `QUICK=1` stops after the document and writes a preview to `.work/quick.png`.
+With 0.21.0 the build takes about 1½ minutes (1 min 17 s on a shared 4-core container, fonts and ICC profile cached), and the contrast check now covers every text layer. With 0.16.0 it took about 10 minutes while checking only the five smallest text layers; checking all of them took 30 to 40 minutes (see Findings). `QUICK=1` stops after the document and writes a preview to `.work/quick.png`.
 
 ## Outputs (`output/`, about 15.4 MB)
 
@@ -63,7 +63,7 @@ With 0.20.0 the build takes about 2 minutes (1 min 56 s on a shared 4-core conta
   - `vixl check --checks contrast` on all 13 text layers.
 - **Proofs and simulations.** `export --proof` (GCR, and with `--icc`); `export --simulate deuteranopia|protanopia|tritanopia`.
 - **Exports.**
-  - `export --cmyk --ink-limit 300 --quality 75 --pdf-content raster` to PDF.
+  - `export --cmyk --ink-limit 300 --quality 75` to PDF.
   - `export --cmyk --icc … --intent relative` to JPEG.
   - `export --scale` to PNG.
   - `export --comp vector` to SVG.
@@ -73,10 +73,10 @@ With 0.20.0 the build takes about 2 minutes (1 min 56 s on a shared 4-core conta
 
 > **Status in 0.20.0:** Bugs 1–3 are fixed (0.18.0): `@swatch` works in repeats, `fit` shrinks a word instead of breaking it, and warped text is moved back inside its box. `build.py` no longer resolves swatches to literals for the repeats or pads the warped headlines with a transparent stroke, and the rebuilt headlines look the same. `--ink-limit` now applies with `--icc` too (this build's SWOP JPEG doesn't pass one). The full contrast check takes seconds and is now the default. The CMYK PDF has a TrimBox and BleedBox (0.19.0). Blend modes still rasterize the whole SVG.
 >
-> **New in 0.20.0:**
-> - Exporting this poster to a CMYK PDF with the default vector content crashes with `KeyError: 'type'` (`pdf_export.py`, the page fallback for blend modes and adjustment layers passes a layer dict without `type`). The page would be one image anyway, so `build.py` passes `--pdf-content raster`.
-> - `--quality` is ignored for PDF export, so the PDF is a 7.5 MB Flate image instead of a JPEG.
-> - The contrast check cannot measure 5 of the 13 text layers (`eyebrow`, `headliners`, `extras`, `cta-text`, `fineprint`): `Could not measure 'fineprint': boolean index did not match indexed array along axis 1; size of axis is 796 but size of corresponding boolean axis is 794`. These layers are centred by constraints and land on half-pixel positions (`fineprint` is at x 446.5); the coverage mask and the backdrop crop then differ by a pixel or two. The check reports them as warnings and passes, so it says nothing about their contrast.
+> **0.20.0 bugs, since fixed:**
+> - Exporting this poster to a CMYK PDF with the default vector content crashed with `KeyError: 'type'` (the page fallback for blend modes and adjustment layers). Fixed in 0.21, so `build.py` no longer passes `--pdf-content raster`. The page is still one image, now JPEG-compressed because `--quality 75` is honoured (2.4 MB; without `--quality` the image stays lossless).
+> - `--quality` was ignored for PDF export, so the PDF was a 7.5 MB Flate image. Fixed in 0.21.
+> - The contrast check could not measure 5 of the 13 text layers (`eyebrow`, `headliners`, `extras`, `cta-text`, `fineprint`) because they land on half-pixel positions. Fixed: all 13 are measured. In 0.21 the canvas safe area is checked by default, which reports the SIGNAL title (and the print live area) as outside it; the design is left as it was.
 
 ### Bugs
 
@@ -124,4 +124,4 @@ With 0.20.0 the build takes about 2 minutes (1 min 56 s on a shared 4-core conta
 - **Text on a path.** The polyline produced clean, evenly spaced glyphs along the arc.
 - **Colour-vision QA.** The `color_vision` check passed, and the simulations confirm the hierarchy survives all three deficiencies, because the type contrast is carried by lightness.
 - **What the SWOP proof showed.** The out-of-gamut indigo night sky turns into flat charcoal, and the electric cyan badge and magenta grid lose most of their punch. The sun, the yellow type and the overall hierarchy hold up. For press, the sky should be rebuilt from in-gamut purples, or the client warned.
-- **CMYK files are correct.** The PDF is `DeviceCMYK` at the correct physical size (`DCTDecode` in 0.16.0, Flate in 0.20.0), and the JPEG is a real 4-channel CMYK file with dpi metadata.
+- **CMYK files are correct.** The PDF is `DeviceCMYK` at the correct physical size (`DCTDecode` in 0.16.0, Flate in 0.20.0, `DCTDecode` again in 0.21 because `--quality` is honoured), and the JPEG is a real 4-channel CMYK file with dpi metadata.

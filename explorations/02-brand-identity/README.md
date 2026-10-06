@@ -1,7 +1,7 @@
 # 02 · Brand identity system: Morrow Coffee Roasters
 
 Morrow is a fictional Portland coffee roaster. This project builds its whole identity headlessly with Vixl.
-It was first built with 0.16.0; the committed outputs are rebuilt with 0.20.0. The mark is a coffee bean, drawn with the pen tool and split by a Bézier crease, set inside a disc
+It was first built with 0.16.0; the committed outputs are rebuilt with 0.21.0. The mark is a coffee bean, drawn with the pen tool and split by a Bézier crease, set inside a disc
 and rising over sunrise "reflection" bands. It is built only from vector geometry and pathfinder booleans.
 On top of that sit a palette generated from one ember colour (a tonal scale plus a split-complementary
 harmony, frozen with `palette-define`) and a Fraunces × Work Sans pairing. From there the script produces
@@ -11,8 +11,8 @@ The logo is then checked against the brand palette with a saved suite and with `
 
 ![Brand board](output/board/brand-board.png)
 
-Run from the repo root: `python explorations/02-brand-identity/build.py`. With 0.20.0 a full run takes
-about 25 s. With 0.16.0 it took about 7–8 minutes, almost all of it in `check()` on the brand board. `QUICK=1` skips that check. Everything
+Run from the repo root: `python explorations/02-brand-identity/build.py`. With 0.21.0 a full run takes
+about 14 s. With 0.16.0 it took about 7–8 minutes, almost all of it in `check()` on the brand board. `QUICK=1` skips that check. Everything
 is written to `output/`:
 
 | Path | What |

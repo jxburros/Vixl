@@ -160,7 +160,7 @@ Python exposes `project.render(artboard=..., comp=..., variables=...)`, `project
 
 A template filled from data meets empty fields: a badge row with no company, a card with no subtitle. Fixed text frames leave a hole where the empty line was. Two features let the layout react instead:
 
-- **`hide_if_empty`** on a text layer (`text`, `text-set`, `vixl text add --hide-if-empty`, MCP `vixl_text_add`): while the text is empty or blank after `${variable}` substitution, the layer is not drawn, not checked, not exported and takes no space in a stack. `inspect` marks it `collapsed: true`; the layer and its settings stay, so a later non-empty value brings it back.
+- **`hide_if_empty`** on a text layer (`text`, `text-set`, `vixl text add --hide-if-empty`, or the `text` operation over MCP): while the text is empty or blank after `${variable}` substitution, the layer is not drawn, not checked, not exported and takes no space in a stack. `inspect` marks it `collapsed: true`; the layer and its settings stay, so a later non-empty value brings it back.
 - **`stack`** turns a group into an auto-layout column or row. `{"type":"stack","name":"names","targets":["first","last","company"],"direction":"vertical","gap":20,"align":"center","justify":"center","width":1000,"height":400}` groups the layers and lays them out in the group's box; `{"type":"stack","target":"names","gap":12}` changes an existing stack. `direction` is `vertical` (default) or `horizontal`; `gap` and `padding` are pixels; `align` places members across the stack and `justify` along it (`start`, `center` or `end`); `width`/`height` set the box (pixels or `N%`). Members are laid out in document order. Members that are hidden (`hide`) or collapsed by `hide_if_empty` take no space, so the others reflow and, with `justify: "center"`, stay centred. A stack with `hide_if_empty: true` collapses when all its members do, so stacks nest. `stack` with `remove: true` releases the members at their current positions.
 
 Stacks are resolved whenever the document is laid out (render, export, check, `inspect`), so `render --data rows.csv`, `--set company=` and export-time `variables` re-centre each row; only the settings are stored. A stack positions its members, so `move`, `align`, `distribute`, `constrain` and `unconstrain` on a member fail with `stack_managed` and say what to use; resize and reorder members, or move the stack. A group's box is fixed (members may overflow it), and members are positioned individually, so put overlapping artwork (a pill behind its label) in a sub-group and stack the sub-group.
@@ -184,7 +184,7 @@ Use `project.measure(...)`, REST POST `/measure`, or MCP `vixl_measure` for the 
 
 ```bash
 vixl gradient --name sky --direction angled --angle 35 --stops '[{"offset":0,"color":"#152235"},{"offset":0.4,"color":"#b36881"},{"offset":1,"color":"#e8885c"}]'
-vixl adjustment warmth --effects '[{"name":"temperature","amount":500},{"name":"contrast","amount":10}]'
+vixl adjustment warmth --effects '[{"name":"temperature","amount":40},{"name":"contrast","amount":10}]'
 vixl auto-tone photo
 vixl auto-color photo
 vixl auto-contrast photo
@@ -200,7 +200,7 @@ Named 3D LUTs are embedded, shareable JSON resources:
 {"type":"lut","name":"look","size":2,"values":[[0,0,0],[1,0,0],[0,1,0],[1,1,0],[0,0,1],[1,0,1],[0,1,1],[1,1,1]]}
 ```
 
-This is an identity table. Sizes 2–33 require exactly `size³` normalized RGB triples, with red varying fastest, then green, then blue (cube ordering). `vixl lookup photo look --amount 0.8` attaches the named look, using trilinear interpolation and preserving alpha. Redefining the table updates all uses. Share the `lut` operation through JSON; native `.cube` parsing is not included.
+This is an identity table. Sizes 2–33 require exactly `size³` normalized RGB triples, with red varying fastest, then green, then blue (cube ordering). `vixl lookup photo look --amount 0.8` adds the named look to the layer's effect stack as a `lookup` effect (trilinear interpolation, alpha preserved): it applies in stack order, can be disabled, removed, reordered with `effect-move` or limited to the current selection, and works on adjustment layers. Redefining the table updates all uses. Documents that stored a LUT as a layer's `lookup` field open with it converted to a `lookup` effect at the end of the stack. Share the `lut` operation through JSON; native `.cube` parsing is not included.
 
 ## Comps, text layout, guides, pathfinder, and symbols
 

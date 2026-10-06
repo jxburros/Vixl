@@ -20,16 +20,42 @@ def decode(data, limits, mode="RGBA", size_hint=None):
             warnings.simplefilter("error", Image.DecompressionBombWarning)
             with Image.open(io.BytesIO(data)) as image:
                 limits.size(*image.size)
-                if size_hint and image.format == "JPEG":
+                if size_hint and image.format == "JPEG" and image.mode != "CMYK":
                     # Orientation may swap axes, so request the larger side on both.
                     side = max(size_hint)
                     image.draft("RGB", (side, side))
                 image.load()
                 if image.getexif().get(0x0112, 1) != 1:
                     image = ImageOps.exif_transpose(image)
+                image = to_srgb(image)
                 return image.convert(mode) if image.mode != mode else image.copy()
     except (OSError, ValueError, Image.DecompressionBombError, Image.DecompressionBombWarning) as exc:
         raise VixlError("invalid_image", f"Cannot decode image: {exc}") from exc
+
+
+def to_srgb(image):
+    """``image`` in sRGB (or its own mode when it has no usable profile). An embedded ICC profile, and the
+    profile of a CMYK JPEG or TIFF, is applied rather than ignored, so print images keep their colors;
+    CMYK without a profile converts the naive way."""
+    profile = image.info.get("icc_profile")
+    if not profile or image.mode not in ("RGB", "RGBA", "L", "LA", "CMYK"):
+        return image
+    try:
+        from PIL import ImageCms
+
+        source = ImageCms.ImageCmsProfile(io.BytesIO(profile))
+        if "srgb" in (ImageCms.getProfileDescription(source) or "").lower() and image.mode != "CMYK":
+            return image
+        target = ImageCms.createProfile("sRGB")
+        alpha = image.getchannel("A") if image.mode in ("RGBA", "LA") else None
+        base = image.convert({"RGBA": "RGB", "LA": "L"}.get(image.mode, image.mode))
+        out = ImageCms.profileToProfile(base, source, target, renderingIntent=ImageCms.Intent.RELATIVE_COLORIMETRIC,
+                                        outputMode="RGB", flags=ImageCms.Flags.BLACKPOINTCOMPENSATION)
+        if alpha is not None:
+            out.putalpha(alpha)
+        return out
+    except Exception:  # an unreadable or mismatched profile falls back to the plain conversion
+        return image
 
 
 def png_bytes(image):
