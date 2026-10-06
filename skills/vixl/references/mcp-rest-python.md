@@ -166,7 +166,7 @@ Non-loopback hosts require a bearer token from `VIXL_API_TOKEN` (or `--token-env
 | `POST /assets?name=photo` | raw image bytes | New layer |
 | `POST /ai/{command}` | `{"args":["--prompt","forest","--provider","local"]}` | CLI-style AI call |
 | `POST /export` | `{"format":"PDF","color_space":"cmyk","ink_limit":300}`, `ICO`+`icon_sizes`, `icc_profile_base64`, `proof`, `simulate`, `dpi`, `time` | File bytes |
-| `GET /sizes?category=` · `GET /layouts` · `GET /brushes` | | Catalogs |
+| `GET /sizes?category=` · `GET /layouts` · `GET /brushes` · `GET /guide?brief=` · `GET /styles?query=\|name=` · `GET /looks` | | Catalogs |
 | `POST /color` | `{"action":"harmony","colors":["#2563eb"],"scheme":"triadic"}` | Color tools |
 | `GET /timeline` · `GET /timeline/frame?time=1.5s` | | Tracks · PNG frame |
 | `POST /timeline/export` | `{"format":"gif","fps":15,"scale":0.5}` | Animation bytes |

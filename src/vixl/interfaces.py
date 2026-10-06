@@ -449,6 +449,24 @@ def create_app(path, *, token=None, limits=None):
 
         return catalog()
 
+    @app.get("/guide")
+    def guide(brief: str | None = None):
+        from .briefs import guide as make_guide
+
+        return make_guide(brief)
+
+    @app.get("/styles")
+    def style_catalog(query: str | None = None, name: str | None = None):
+        from . import styles
+
+        return styles.describe(name) if name else styles.listing(query)
+
+    @app.get("/looks")
+    def look_catalog():
+        from .looks import catalog
+
+        return {"looks": catalog()}
+
     @app.get("/typefaces")
     def typeface_catalog(category: str | None = None, role: str | None = None, mood: str | None = None):
         from .typefaces import list_fonts

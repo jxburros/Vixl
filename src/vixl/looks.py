@@ -31,8 +31,9 @@ def _reference(layer):
 
 
 def _base(layer, state):
-    """The layer's own main color, as written (it may be an @swatch), or white."""
-    for key in ("fill", "color", "start"):
+    """The layer's own main color, as written (it may be an @swatch): fill, text color, gradient start or, for an
+    outline-only shape, its stroke; white when it has none."""
+    for key in ("fill", "color", "start", "stroke"):
         value = layer.get(key)
         if isinstance(value, str) and value not in ("transparent", ""):
             return value

@@ -97,7 +97,6 @@ New document state: `canvas.size`, `canvas.dpi`, `canvas.physical`, `canvas.blee
 | field / field-set | `kind`, `name`/`target`, `key`, `label`, `label_layer`, `group_label`, `required`, `read_only`, `default`, `max_length`, `comb`, `format`, `options`, `editable`, `option`, `on_value`, `tab`, `overflow`, `min_size`, `font`, `size`, `color`, `align`, `padding`, `appearance`, `x`, `y`, `width`, `height` — [forms](forms.md) |
 | form | `tab_order`, `entry_font`, `title`, `lang` |
 | drawing | `action` (`import`, `clean`, `vectorize`, `straighten`, `smooth`, `fill`, `stroke`, `restyle`), `asset`/`path`, `name`/`target`, `strokes`, `points`, `color`, `settings`, `x`, `y`, `width`, `height` — [hand drawings](drawing.md) |
-
 | radial-repeat | `target`, `count`, `cx`, `cy`, `sweep`, `start_angle`, `mirror`, `group`, `name` — [radial repeat](design-tools.md#radial-repeat) |
 | look | `look`, `target`/`targets`, `color`, `amount`, `remove` — [looks](looks.md) |
 | style-set | `style` (name, names or null), `options` — [styles](styles.md) |

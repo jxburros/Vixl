@@ -337,9 +337,9 @@ class Facts:
     # -- render
     def image(self):
         def build():
-            image = self.project.render()
-            image.thumbnail((256, 256))
-            return np.asarray(image.convert("RGBA"), dtype=np.int32)
+            from .proxy import render_preview
+
+            return np.asarray(render_preview(self.project, 256, 256).convert("RGBA"), dtype=np.int32)
 
         return self.memo("image", build)
 
@@ -355,7 +355,9 @@ class Facts:
                     layer["visible"] = False
             from PIL import Image
 
-            image = hidden.render()
+            from .proxy import render_preview
+
+            image = render_preview(hidden, 256, 256)
             image = image.resize((full.shape[1], full.shape[0]), Image.Resampling.BILINEAR)
             ground = np.asarray(image.convert("RGBA"), dtype=np.int32)
             mask = np.abs(full - ground).max(axis=2) <= 12
