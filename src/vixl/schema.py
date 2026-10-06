@@ -285,6 +285,8 @@ def _operation_schema():
     drawing_schemas(add)
     from .diagrams import schemas as diagram_schemas
     diagram_schemas(add)
+    from .textflow import schemas as flow_schemas
+    flow_schemas(add)
     add(
         "palette-generate",
         {"name": S, "color": S, "scheme": S, "count": {"type": "integer", "minimum": 2, "maximum": 12}},

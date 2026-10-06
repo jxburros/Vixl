@@ -336,6 +336,11 @@ class Project:
             from .diagrams import refresh as refresh_diagrams
 
             refresh_diagrams(candidate)
+        reflowed = []
+        if candidate.state.get("flows"):
+            from .textflow import refresh as refresh_flows
+
+            reflowed = refresh_flows(candidate)
         from .validation import check_state
 
         try:
@@ -370,6 +375,12 @@ class Project:
             from .diagrams import report as diagram_report
 
             result["diagram"] = diagram_report(candidate, operations)
+        if candidate.state.get("flows") and (reflowed or any(op["type"] == "text-flow" for op in operations)):
+            from .textflow import report as flow_report, warnings as flow_warnings
+
+            result["text_flow"] = flow_report(candidate, operations, reflowed)
+            if flow_warnings(candidate, result["text_flow"]):
+                result.setdefault("warnings", []).extend(flow_warnings(candidate, result["text_flow"]))
         if any(op["type"] == "paint" for op in operations):
             from .brushes import stroke_diagnostics
             from .render import layer_image, resolve_layout

@@ -82,7 +82,13 @@ def primary_font_data(project, layer):
         return project.assets[name]
     font = font_for(project, layer)
     path = font.path
-    return path.getvalue() if hasattr(path, "getvalue") else Path(path).read_bytes()
+    return path.getvalue() if hasattr(path, "getvalue") else _file_bytes(str(path), Path(path).stat().st_mtime_ns)
+
+
+@lru_cache(maxsize=16)
+def _file_bytes(path, stamp):
+    """A font file's bytes, read once until the file changes (layout asks for them for every word)."""
+    return Path(path).read_bytes()
 
 
 @lru_cache(maxsize=32)

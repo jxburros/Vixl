@@ -583,8 +583,9 @@ def test_mcp_tools_apply_describe_and_check_diagrams(tmp_path):
     assert result["diagram"]["flow"]["nodes"] == 3 and result["diagram"]["flow"]["crossings"] == 0
     report = call("vixl_check", {"checks": ["diagram"]})
     assert report["passed"] and report["checked"]["checks"] == ["diagram"]
-    schema = call("vixl_operation_schema", {"types": ["diagram"]})
+    schema = call("vixl_operation_schema", {"types": ["diagram", "text-flow"]})
     assert schema["diagram"]["properties"]["nodes"]["items"]["anyOf"][1]["properties"]["kind"]["enum"][0] == "process"
+    assert "keep_together" in schema["text-flow"]["properties"]
 
     async def font_file():  # services do not take font files; typography roles are the way to set type
         try:
@@ -593,3 +594,6 @@ def test_mcp_tools_apply_describe_and_check_diagrams(tmp_path):
             return str(exc)
 
     assert "forbidden" in asyncio.run(font_file())
+    flow = call("vixl_operations_apply", {"operations": [
+        {"type": "text-flow", "name": "s", "text": "word " * 400, "x": 10, "y": 10, "width": 200, "height": 100}]})
+    assert flow["text_flow"]["s"]["overflow"] is True and flow["warnings"]

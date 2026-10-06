@@ -72,8 +72,8 @@ def service_operation_schema(slim=False):
         # Avoid repeating it in every tools/list response as the operation catalog grows.
         for constraint in props.values():
             constraint.pop("description", None)
-        if kind in ("diagram", "diagram-set"):
-            for key in ("nodes", "edges"):
+        if kind in ("diagram", "diagram-set", "text-flow"):
+            for key in ("nodes", "edges", "frames"):
                 if key in props:  # item fields are checked on apply; vixl_operation_schema lists them
                     props[key] = {"type": "array"}
         if kind in ("field-set", "form"):
@@ -677,7 +677,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
     def vixl_check(
         checks: list[Literal["bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "fonts", "brand", "print", "color_vision", "guides", "alignment",
                              "deck", "title_position", "type_scale", "words", "min_font", "notes", "empty", "form", "drawing",
-                             "diagram"]]
+                             "diagram", "flow"]]
         | None = None,
         targets: list[str] | None = None,
         safe_area: Annotated[

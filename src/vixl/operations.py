@@ -18,6 +18,7 @@ from .pages import TYPES as PAGE_TYPES
 from .forms import TYPES as FORM_TYPES
 from .drawing import TYPES as DRAWING_TYPES
 from .diagrams import TYPES as DIAGRAM_TYPES
+from .textflow import TYPES as FLOW_TYPES
 
 from copy import deepcopy
 import hashlib
@@ -58,7 +59,7 @@ ALIASES = {
     "make_selection": "select",
 }
 
-OPERATION_TYPES = list(DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_TYPES + BRUSH_TYPES + TIMELINE_TYPES + LAYOUT_TYPES + COLOR_TYPES + AUTOMATION_TYPES + CREATIVE_TYPES + CONTAINER_TYPES + AUTHORING_TYPES + ORGANIC_TYPES + GUIDE_TYPES + RICH_TYPES + PAGE_TYPES + FORM_TYPES + DRAWING_TYPES + DIAGRAM_TYPES) + [
+OPERATION_TYPES = list(DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_TYPES + BRUSH_TYPES + TIMELINE_TYPES + LAYOUT_TYPES + COLOR_TYPES + AUTOMATION_TYPES + CREATIVE_TYPES + CONTAINER_TYPES + AUTHORING_TYPES + ORGANIC_TYPES + GUIDE_TYPES + RICH_TYPES + PAGE_TYPES + FORM_TYPES + DRAWING_TYPES + DIAGRAM_TYPES + FLOW_TYPES) + [
     "add",
     "solid",
     "gradient",
@@ -272,6 +273,9 @@ def execute(project, op):
     if kind in DIAGRAM_TYPES:
         from .diagrams import execute as execute_diagram
         return execute_diagram(project, op)
+    if kind in FLOW_TYPES:
+        from .textflow import execute as execute_flow
+        return execute_flow(project, op)
     if kind in RICH_TYPES:
         from .richtext import execute as execute_rich
         return execute_rich(project, op)
