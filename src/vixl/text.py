@@ -243,6 +243,25 @@ def clusters(data, word):
     return [word[a:b] for a, b in zip(boundaries, boundaries[1:])]
 
 
+SEPARATORS = frozenset("·•–—|/")
+
+
+def words_of(paragraph):
+    """A paragraph's words and runs of spaces, with a lone separator (· – — | …) and the space after it glued to
+    the next word, so a line never ends in one."""
+    tokens = re.findall(r" +|[^ ]+", paragraph)
+    glued, i = [], 0
+    while i < len(tokens):
+        token = tokens[i]
+        if (not token.isspace() and set(token) <= SEPARATORS and i + 2 < len(tokens) and tokens[i + 1].isspace()
+                and not tokens[i + 2].isspace()):
+            token += tokens[i + 1] + tokens[i + 2]
+            i += 2
+        glued.append(token)
+        i += 1
+    return glued
+
+
 def lines(data, text, size, width=None):
     result = []
     for paragraph in text.expandtabs(4).split("\n"):
@@ -250,7 +269,7 @@ def lines(data, text, size, width=None):
             result.append(paragraph)
             continue
         line = ""
-        for word in re.findall(r" +|[^ ]+", paragraph):
+        for word in words_of(paragraph):
             proposed = line + word
             if shape(data, proposed, size)[1] <= width:
                 line = proposed

@@ -102,6 +102,27 @@ def test_chart_colors_overridden_by_series_colors_warn_and_axis_headroom_is_tigh
     assert nice_scale(0, 100, 5)[:2] == (0, 100)
 
 
+def test_text_never_wraps_right_after_a_separator_and_event_poster_headline_dominates():  # #226
+    from vixl.text import face, lines, words_of
+    from vixl.render import font_for
+
+    assert [w for w in words_of("Sat · June 12 – 6 pm") if w.strip()] == ["Sat", "· June", "12", "– 6", "pm"]
+    p = Project(400, 300, "white")
+    data = p.apply  # noqa: F841 - keep the project alive; font bytes come from the bundled fallback
+    from vixl.text import primary_font_data
+
+    font = primary_font_data(p, {"font": "DejaVuSans.ttf"})
+    for width in range(60, 400, 7):
+        for line in lines(font, "SAT 12 · JUNE 21 · 6 PM – 11 PM | PARK", 30, width):
+            assert not line.rstrip().endswith(("·", "–", "|")), (width, line)
+
+    poster = Project.sized("instagram-portrait", "white")
+    poster.apply([{"type": "layout-apply", "name": "event-poster", "title": "Night Market", "label": "Sat · June 21",
+                   "body": "6 pm\nPark", "cta": "RSVP", "caption": "x.com"}])
+    sizes = {layer["name"]: layer["size"] for layer in poster.state["layers"] if layer["type"] == "text"}
+    assert sizes["headline"] >= 1.5 * sizes["date"]
+
+
 def test_operations_path_over_mcp_json_and_jsonl(tmp_path):  # #184
     server = mcp_server(workspace=tmp_path)
     (tmp_path / "ops.json").write_text(json.dumps([{"type": "solid", "name": "bg", "color": "red"}]))
