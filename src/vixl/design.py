@@ -87,6 +87,11 @@ def execute_design(project, op):
             require(project.layer(op[where])["id"] not in {item["id"] for item in children},
                     f"group {where} must name a layer outside the group", field=where)
             execute(project, {"type": "reorder", "target": group["id"], where: op[where]})
+        from .selectors import record
+
+        record(project, "groups", {"id": group["id"], "name": group["name"], "bounds": [x, y, w, h],
+                                   "members": {child["name"]: [bounds[child["id"]][0] - x, bounds[child["id"]][1] - y]
+                                               for child in children}})
     elif kind == "ungroup":
         group = project.layer(op.get("target"))
         require(group["type"] == "group", "Target must be a group")
@@ -108,7 +113,10 @@ def execute_design(project, op):
         all_bounds = resolve_layout(project)
         b = all_bounds[group["id"]]
         children = [item for item in state["layers"] if item.get("parent") == group["id"]]
-        index = state["layers"].index(group)
+        from .group_bake import ungroup_tracks
+
+        # Sample the group's own animation before it is dissolved; refuses what cannot move.
+        finish = ungroup_tracks(project, group, children, b[:2])
         for child in children:
             require(child.get("clip") != group["id"], "Cannot ungroup referenced clipping base")
             local = all_bounds[child["id"]]
@@ -118,6 +126,7 @@ def execute_design(project, op):
         index = state["layers"].index(group)
         state["layers"][index : index + 1] = children
         state["active_layer"] = children[-1]["id"] if children else None
+        finish()
     elif kind == "clip":
         layer = project.layer(op.get("target"))
         if op.get("release"):

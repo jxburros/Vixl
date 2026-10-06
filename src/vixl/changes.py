@@ -106,6 +106,7 @@ def brief_changes(before, after):
     (``bounds``), without new field values. The caller knows what it asked for; read a layer
     with vixl_document_inspect, or use detail=compact for the new values."""
     changes, other = {}, []
+    current = {layer["id"]: layer for layer in after["layers"]}
     for key, value in compact_changes(before, after).items():
         if key == "layers":
             layers = {}
@@ -118,6 +119,7 @@ def brief_changes(before, after):
                     layers[ident] = {"changed": sorted(k for k in delta if k not in ("bounds", "canvas_bounds", "path_nodes", *TEXT_METRICS)),
                                      **{key: delta[key] for key in TEXT_METRICS if key in delta},
                                      **({"bounds": delta["bounds"]} if "bounds" in delta else {})}
+                layers[ident].update(_grouped(current.get(ident), current))
             changes["layers"] = layers
         elif key in ("canvas", "active_layer", "page", "selection"):
             changes[key] = value
@@ -128,6 +130,15 @@ def brief_changes(before, after):
     if other:
         changes["also_changed"] = sorted(other)
     return changes
+
+
+def _grouped(layer, layers):
+    """A grouped layer's ``bounds`` are local to its group: name the group and add canvas bounds."""
+    if not layer or not layer.get("parent"):
+        return {}
+    parent = layers.get(layer["parent"])
+    return {"parent": layer["parent"], **({"parent_name": parent["name"]} if parent else {}), "coordinate_space": "parent",
+            **({"canvas_bounds": [round(v, 2) for v in layer["canvas_bounds"]]} if "canvas_bounds" in layer else {})}
 
 
 def _stroke(stroke):

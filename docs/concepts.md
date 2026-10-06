@@ -32,7 +32,23 @@ turn ordinary coordinates into inches. A 300 dpi, 1-inch gap is 300 px. Groups i
 local coordinates; inspect resolved bounds after grouping, rotation or constraints, or pass
 `space: "canvas"` (move, and shape/text edits with `target`) and pivot `units: "canvas"` to work
 in document coordinates. A new group takes its topmost member's slot in the stack unless
-`group` names `above` or `below` a layer.
+`group` names `above` or `below` a layer. The `group` result lists each member's offset from
+the group's top-left corner (`groups[].members`, `{name: [dx, dy]}`), and edit results for a grouped
+layer name its `parent` and add `canvas_bounds` beside the group-local `bounds`
+(`coordinate_space: "parent"`).
+
+Stacking inside groups follows three rules:
+
+- A group draws as one picture at its own slot among its siblings; everything inside it is
+  above the layers below the group and below the layers above it, however deep it is nested.
+- Children stack among themselves, bottom to top, in their order in the layer list. `raise`,
+  `lower`, `top`, `bottom` and `reorder` move a layer only among its siblings (the layers with the
+  same parent); `reorder` refuses a layer from another group.
+- A layer cannot sit between two layers of another group. To put a part of one group in front
+  of a part of another, move it out of its group (or `ungroup`), or split the group in two.
+  `ungroup` keeps every child where it was drawn, also over time: a group's animation (position,
+  rotation, scale, size, visibility, and opacity on a group of one) becomes per-frame keys on its
+  children, and an animation that cannot be rewritten exactly is refused with the tracks named.
 
 `move` changes position, `resize` changes dimensions and `scale` uses a factor (`0.8`
 means 80%). Procedural shapes retain geometry. Raster images have a fixed original
