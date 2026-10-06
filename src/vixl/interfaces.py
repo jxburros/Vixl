@@ -633,7 +633,7 @@ def create_app(path, *, token=None, limits=None):
 
         from .timeline import export_timeline
 
-        allowed = {"format", "fps", "scale", "start", "end", "background", "columns", "quality", "colors"}
+        allowed = {"format", "fps", "scale", "start", "end", "background", "columns", "quality", "colors", "dither", "max_bytes", "poster"}
         require(set(body) <= allowed, f"Timeline export accepts {sorted(allowed)}", field="body")
         fmt = body.get("format", "gif")
         suffix = {"gif": ".gif", "apng": ".png", "webp": ".webp", "sheet": ".png", "frames": ".zip", "mp4": ".mp4", "webm": ".webm"}
@@ -750,7 +750,7 @@ def create_app(path, *, token=None, limits=None):
 
         from .animation import VIDEO, animation_bytes, export_animation
 
-        allowed = {"format", "scale", "sampling", "colors", "columns", "animation", "quality"}
+        allowed = {"format", "scale", "sampling", "colors", "columns", "animation", "quality", "dither", "max_bytes"}
         require(set(body) <= allowed, f"Animation export accepts {sorted(allowed)}", field="body")
         if isinstance(body.get("scale"), float) and body["scale"].is_integer():
             body["scale"] = int(body["scale"])

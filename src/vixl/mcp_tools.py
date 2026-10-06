@@ -1133,6 +1133,8 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         columns: Positive | None = None,
         document: Document = None,
         overwrite: bool = False,
+        dither: Annotated[Literal["auto", "none", "ordered", "floyd"], Field(description="GIF dithering against one shared palette (no shimmer between frames): auto picks ordered for gradients")] = "auto",
+        max_bytes: Annotated[int | None, Field(ge=1, description="Soft size target: the result warns (and suggests MP4/WebP) when the file is larger")] = None,
     ) -> dict:
         """Write saved frames as GIF, APNG, animated WebP, MP4/WebM (needs ffmpeg) or a PNG sprite sheet plus
         JSON timing metadata in the workspace. Format follows the extension. animation=NAME exports one named
@@ -1154,6 +1156,8 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
                 quality=quality,
                 columns=columns,
                 overwrite=overwrite,
+                dither=dither,
+                max_bytes=max_bytes,
             )
             result["output"] = session.relative(destination)
             if "metadata" in result:
@@ -1391,16 +1395,20 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         columns: Annotated[int | None, Field(ge=1, le=12)] = None,
         max_width: Annotated[int, Field(ge=64, le=4096)] = 1600,
         document: Document = None,
+        times: Annotated[list[float | str] | None, Field(max_length=48, description="Exact frames for the contact sheet: ms, '1.5s', '50%' or markers")] = None,
+        thumbnail: Annotated[int | None, Field(ge=32, le=1600, description="Phone-size strip: poster (frame 0), middle and last frame side by side, each this many px wide (e.g. 360)")] = None,
     ) -> Image:
         """Check motion without exporting: one frame at time, or a labelled contact sheet of evenly
-        spaced frames."""
+        spaced frames (count) or chosen frames (times). Frame 0 is labelled "poster", the frame many apps
+        show alone. thumbnail=360 shows poster, middle and last frame at phone width to check how the
+        card reads small."""
         from .timeline import contact_sheet
 
         with session.project(document=document) as project:
             if time is not None:
                 data = preview(session, None, max_width, max_width, 2_097_152, None, None, None, document, time=time)
                 return Image(data=data, format="png")
-            sheet = contact_sheet(project, count, columns, max_width)
+            sheet = contact_sheet(project, count, columns, max_width, times=times, thumbnail=thumbnail)
         return Image(data=encode_png(sheet, 4_194_304), format="png")
 
     @tool
@@ -1417,11 +1425,16 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         colors: Annotated[int, Field(ge=2, le=256)] = 256,
         overwrite: bool = False,
         document: Document = None,
+        dither: Annotated[Literal["auto", "none", "ordered", "floyd"], Field(description="GIF dithering against one shared palette (stable between frames): auto picks ordered when the frames hold gradients")] = "auto",
+        max_bytes: Annotated[int | None, Field(ge=1, description="Soft size target: the result warns, and suggests MP4/WebP, when the file is larger")] = None,
+        poster: Annotated[float | str | None, Field(description="GIF/WebP/APNG: time, marker, percent or 'end' whose frame comes first (many apps show only frame 0); the loop stays seamless")] = None,
     ) -> dict:
         """Write the keyframe timeline as GIF, APNG, animated WebP, sprite sheet (+JSON), PNG-sequence ZIP,
         or MP4/WebM (needs ffmpeg). Format follows the extension. Frames render crisply at scale (0.05–16,
         within the pixel budget). colors (GIF palette 2–256) plus lower fps/scale shrink GIFs; results report
-        bytes and warn above 1 MB."""
+        bytes and warn above 1 MB or max_bytes, and suggest MP4/WebP for big or gradient-heavy GIFs. dither
+        smooths GIF gradients. poster rotates the frames so a chosen moment (e.g. 'end') comes first; the
+        result warns when that first frame is empty. Results report the frames and size actually written."""
         from .timeline import export_timeline
 
         with session.project(document=document) as project:
@@ -1439,6 +1452,9 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
                 quality=quality,
                 colors=colors,
                 overwrite=overwrite,
+                dither=dither,
+                max_bytes=max_bytes,
+                poster=poster,
                 progress=calls.progress_dict,
                 cancelled=calls.cancelled,
             )

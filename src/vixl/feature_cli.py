@@ -339,6 +339,9 @@ def project_feature(project, cmd, args):
         p.add_argument("--columns", type=int)
         p.add_argument("--quality", type=int, default=90)
         p.add_argument("--colors", type=int, default=256, help="GIF palette size 2–256 (fewer colors = smaller file)")
+        p.add_argument("--dither", choices=["auto", "none", "ordered", "floyd"], default="auto", help="GIF dithering (shared palette)")
+        p.add_argument("--max-bytes", type=int, help="Soft size target: warn when the file is larger")
+        p.add_argument("--poster", type=_time, help="Time/marker/'end' whose frame comes first (GIF/WebP/APNG)")
         p.add_argument("--overwrite", action="store_true")
         p.add_argument("--progress", action="store_true", help="Write frame progress to stderr")
         a = p.parse_args(args)
@@ -355,6 +358,9 @@ def project_feature(project, cmd, args):
             columns=a.columns,
             quality=a.quality,
             colors=a.colors,
+            dither=a.dither,
+            max_bytes=a.max_bytes,
+            poster=a.poster,
             overwrite=a.overwrite,
             progress=(lambda event: print(json.dumps({"progress": event}), file=__import__("sys").stderr, flush=True)) if a.progress else None,
         ), False
@@ -367,9 +373,10 @@ def project_feature(project, cmd, args):
         p.add_argument("--count", type=int, default=8)
         p.add_argument("--columns", type=int)
         p.add_argument("--times", nargs="+", type=_time)
+        p.add_argument("--thumbnail", type=int, help="Frame width in px (e.g. 360): poster, middle and last frame at phone size")
         a = p.parse_args(args)
         require(not Path(a.out).exists(), "Output already exists")
-        sheet = contact_sheet(project, a.count, a.columns, times=a.times)
+        sheet = contact_sheet(project, a.count, a.columns, times=a.times, thumbnail=a.thumbnail)
         sheet.save(a.out, format="PNG")
         return {"output": a.out, "size": list(sheet.size)}, False
     if cmd == "pages":

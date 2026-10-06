@@ -229,7 +229,9 @@ def check_design(
     brand = for_project(project)
     if brand and "minimum_contrast" in brand:
         min_contrast = max(min_contrast or 0, brand["minimum_contrast"])
-    checks = list(checks or CHECKS)
+    # A document with animation is also checked over time (loop seam, poster frame) unless checks are named.
+    animated = not checks and bool((project.state.get("timeline") or {}).get("tracks"))
+    checks = list(checks or CHECKS) + (["motion"] if animated else [])
     from .deck import DECK_CHECKS
 
     if "deck" in checks or set(checks) & set(DECK_CHECKS):
@@ -619,6 +621,19 @@ def check_design(
                 target = resolved.get(finding.get("layer"))
                 issue(name, finding["severity"], finding["message"], [target] if target else [],
                       **{k: v for k, v in finding.items() if k not in ("check", "severity", "message", "layer")})
+
+    if "legibility" in checks and (project.state.get("timeline") or {}).get("tracks"):
+        # Many apps show only frame 0: read the legibility of the poster frame too.
+        from .timeline import project_at
+
+        known = {x["message"] for x in issues}
+        frame = project_at(project, 0)
+        frame.state.pop("timeline", None)  # A render-only copy: the nested check must not time-check again.
+        poster = check_design(frame, checks=["legibility"], thumbnail_width=thumbnail_width,
+                              min_thumbnail_text=min_thumbnail_text, targets=targets)
+        for item in poster["issues"]:
+            if item["message"] not in known:
+                issues.append({**item, "message": "At the poster frame (0 s): " + item["message"]})
 
     return {
         **tally(issues),

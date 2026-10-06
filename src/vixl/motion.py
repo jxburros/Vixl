@@ -7,7 +7,7 @@ from .errors import require
 from .model import finite
 
 TYPES = ("motion", "keyframes")
-RECIPES = ("follow-path", "orbit", "bounce", "shake", "wiggle", "spring", "look-at", "overlap", "breathing", "blink", "hover")
+RECIPES = ("follow-path", "orbit", "bounce", "shake", "wiggle", "spring", "look-at", "overlap", "breathing", "blink", "hover", "spin")
 
 
 def schemas(add):
@@ -21,20 +21,24 @@ def schemas(add):
         "start": time, "duration": time, "period": N, "amount": N, "frequency": N, "damping": N,
         "gravity": N, "restitution": N, "radius": N, "center": point, "points": {"type": "array", "items": point, "minItems": 2, "maxItems": 256},
         "to": N, "property": S, "follow": S, "stagger": N, "children": B, "samples": {"type": "integer", "minimum": 2, "maximum": 512},
-        "phase": N, "easing": easing_schema(), "extend": B}, ["recipe"])
+        "phase": N, "easing": easing_schema(), "extend": B,
+        "turns": N,
+        "symmetry": {"type": "integer", "minimum": 1, "maximum": 1000},
+        "close": B}, ["recipe"])
     add("keyframes", {"property": S, "keys": {"type": "array", "minItems": 1, "maxItems": 8192,
         "items": {"type": "object", "properties": {"time": time, "value": {}, "easing": easing_schema()}, "required": ["time", "value"], "additionalProperties": False}}, "extend": B}, ["property", "keys"])
 
 
 def execute(project, op):
-    from .timeline import execute_timeline, _timeline, parse_time, static_value, project_at
+    from .timeline import execute_timeline, _timeline, parse_time, static_value, project_at, _snapshot
     if op["type"] == "keyframes":
         for key in op["keys"]:
             execute_timeline(project, {"type": "keyframe", "target": op.get("target"), "property": op["property"], "extend": op.get("extend", True), **key})
         return
     settings = _timeline(project)
     start = parse_time(op.get("start", 0), settings["duration"], settings.get("markers"))
-    length = parse_time(op.get("duration", 1000), settings["duration"], settings.get("markers"))
+    # A spin fills the rest of the timeline by default: one operation, one seamless loop.
+    length = parse_time(op.get("duration", settings["duration"] - start if op.get("recipe") == "spin" else 1000), settings["duration"], settings.get("markers"))
     require(length >= 10, "Motion duration must be at least 10 ms")
     recipe = op["recipe"]
     require(recipe in RECIPES, "Unknown motion recipe")
@@ -43,13 +47,32 @@ def execute(project, op):
         roots = {layer["id"] for layer in targets}
         targets = [layer for layer in project.state["layers"] if layer.get("parent") in roots]
     require(targets, "Motion needs at least one target")
+    stagger = finite(op.get("stagger", 0), "stagger", 0, 600000)
+    before = {layer["id"]: _snapshot(settings, layer["id"]) for layer in targets}
+    if recipe == "spin":
+        turns = finite(op.get("turns", 1), "turns", -1000, 1000)
+        symmetry = op.get("symmetry", 1)
+        require(isinstance(symmetry, int) and not isinstance(symmetry, bool) and 1 <= symmetry <= 1000, "symmetry must be a whole number 1-1000", field="symmetry")
+        if turns != int(turns):
+            from .timeline import _note
+            _note(project, f"spin turns {turns:g} is not a whole number, so the loop jumps at the seam; use a whole number of turns")
+        sweep = 360 * turns / symmetry
+        for index, layer in enumerate(targets):
+            offset = start + round(stagger * index)
+            base = static_value(project, layer["id"], "rotation")
+            for time, value in ((offset, base), (offset + length, base + sweep)):
+                execute_timeline(project, {"type": "keyframe", "target": layer["id"], "property": "rotation", "time": time, "value": value,
+                                           "easing": op.get("easing", "linear"), "extend": op.get("extend", True)})
+            if symmetry > 1:
+                next(t for t in settings["tracks"] if t["target"] == layer["id"] and t["property"] == "rotation")["symmetry"] = symmetry
+        _close_motion(project, settings, op, targets, before)
+        return
     samples = op.get("samples", min(120, max(16, math.ceil(length / 1000 * settings["fps"]))))
     require(isinstance(samples, int) and 2 <= samples <= 512, "Motion samples must be 2–512")
     amount = finite(op.get("amount", 12), "amount", -100000, 100000)
     period = finite(op.get("period", 1000), "period", 10, 600000)
     frequency = finite(op.get("frequency", 3), "frequency", 0.01, 60)
     damping = finite(op.get("damping", 6), "damping", 0.01, 100)
-    stagger = finite(op.get("stagger", 0), "stagger", 0, 600000)
     phase = finite(op.get("phase", 0), "phase", -10000, 10000)
     follow = project.layer(op["follow"])["id"] if "follow" in op else None
     require(recipe not in ("look-at", "overlap") or follow, f"{recipe} needs follow")
@@ -149,6 +172,40 @@ def execute(project, op):
             for key, value in values.items():
                 execute_timeline(project, {"type": "keyframe", "target": layer["id"], "property": key,
                     "time": offset + round(length * u), "value": value, "easing": "hold" if recipe == "blink" else "linear", "extend": op.get("extend", True)})
+    _close_motion(project, settings, op, targets, before)
+
+
+def _close_motion(project, timeline, op, targets, before):
+    if op.get("close"):
+        from .timeline import _close_touched
+        for layer in targets:
+            _close_touched(project, timeline, layer["id"], before.get(layer["id"], {}), {"close": True}, None, False)
+
+
+def time_findings(project):
+    """What a viewer sees over time, from the frames the shared sampler picks (poster, middle, last):
+    a loop that jumps at its seam, and text missing from the poster frame."""
+    from .timeline import is_looping, poster_findings, seam_findings
+
+    timeline = project.state.get("timeline")
+    if not timeline or not timeline.get("tracks"):
+        return []
+    result = []
+    if is_looping(timeline):
+        for item in seam_findings(project, timeline):
+            track = item["track"]
+            name = f"{track['property']} on {track['target']}"
+            if item["kind"] == "value":
+                result.append({"check": "motion", "severity": "warning", "layer": track["target"], "code": "loop-seam",
+                               "message": f"Loop seam: {name} ends at {item['last']!r} but starts at {item['first']!r}, so the loop jumps when it restarts. "
+                                          "Add a closing key (close: true) or end the track where it began."})
+            else:
+                result.append({"check": "motion", "severity": "info", "layer": track["target"], "code": "loop-seam-speed",
+                               "message": f"Loop seam: {name} matches at the seam but its speed changes from {item['first']} to {item['last']} units/s there; "
+                                          "ease the first and last segments (ease-in-out) or use constant speed to hide the kink."})
+    for code, message, layer in poster_findings(project, 0):
+        result.append({"check": "motion", "severity": "warning", "layer": layer, "code": code, "message": message})
+    return result
 
 
 def findings(project):
@@ -167,7 +224,7 @@ def findings(project):
             if dt and abs(b - a) / dt > 100000:
                 result.append({"check": "motion", "severity": "warning", "layer": track["target"], "code": "high-acceleration", "message": "Abrupt acceleration exceeds 100,000 units/s²; inspect for a teleport or missing anticipation (impacts may be intentional)."})
                 break
-    return result
+    return result + time_findings(project)
 
 GUIDANCE = {
     "natural-motion": "Use anticipation (a small opposing move before effort), weight shift, curved paths, eased starts/stops and delayed secondary motion. Gravity uses y=y0+v0*t+g*t²/2 in pixels/seconds; each bounce loses velocity by restitution (0.5–0.75 is a useful start). Springs need zero initial velocity and damping; do not force an oscillating curve abruptly to its final value. Build a bouncing ball with motion recipe=bounce, then character-cycle walk, then react; inspect contact/extension/recovery poses. Use motion overlap for hair/accessories and stagger only related parts. Check motion findings for linear two-key stops and extreme acceleration; these are review heuristics, not proof of physical correctness. Constant-speed camera travel and impacts can be intentional. Sources: Thomas & Johnston, The Illusion of Life (1981); Richard Williams, The Animator's Survival Kit (2001); Newtonian projectile and damped oscillator equations.",

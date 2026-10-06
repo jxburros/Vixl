@@ -202,10 +202,32 @@ def render_frame(project, name, scale=1, sampling="nearest"):
     return render_scaled(frame_project(project, frame), scale, sampling)
 
 
-def gif_frame(image, colors=256, palette=None):
+DITHERS = ("auto", "none", "ordered", "floyd")
+# 8x8 Bayer matrix: a fixed pattern in screen space, so ordered dithering never shimmers between frames.
+BAYER = (np.array([[0, 32, 8, 40, 2, 34, 10, 42], [48, 16, 56, 24, 50, 18, 58, 26], [12, 44, 4, 36, 14, 46, 6, 38],
+                   [60, 28, 52, 20, 62, 30, 54, 22], [3, 35, 11, 43, 1, 33, 9, 41], [51, 19, 59, 27, 49, 17, 57, 25],
+                   [15, 47, 7, 39, 13, 45, 5, 37], [63, 31, 55, 23, 61, 29, 53, 21]]) + 0.5) / 64 - 0.5
+
+
+def has_gradients(images, colors=256):
+    """True when the first frames hold many more distinct colors than a GIF palette can: gradients, glows
+    or soft shadows, which band when quantized without dithering."""
+    sample = images[0].convert("RGB")
+    sample = sample.reduce(max(1, math.ceil(math.sqrt(sample.width * sample.height / 40000))))
+    return len(sample.getcolors(maxcolors=1 << 24) or ()) > colors * 2
+
+
+def gif_frame(image, colors=256, palette=None, dither="none"):
     # Reserve index 0 for transparency, with a deterministic alpha threshold.
-    if palette is not None:
-        indexed = image.convert("RGB").quantize(palette=palette, dither=Image.Dither.NONE)
+    if palette is not None and dither == "ordered":
+        rgb = np.asarray(image.convert("RGB"), dtype=np.float32)
+        height, width = rgb.shape[:2]
+        spread = min(64.0, max(10.0, 255 / colors ** (1 / 3) * 0.6))
+        rgb = rgb + spread * np.tile(BAYER, (height // 8 + 1, width // 8 + 1))[:height, :width, None]
+        indexed = Image.fromarray(np.clip(rgb, 0, 255).astype("uint8")).quantize(palette=palette, dither=Image.Dither.NONE)
+    elif palette is not None:
+        mode = Image.Dither.FLOYDSTEINBERG if dither == "floyd" else Image.Dither.NONE
+        indexed = image.convert("RGB").quantize(palette=palette, dither=mode)
     else:
         indexed = image.convert("RGB").quantize(
             colors=colors - 1, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE
@@ -222,15 +244,24 @@ def check_colors(colors):
     require(isinstance(colors, int) and not isinstance(colors, bool) and 2 <= colors <= 256, "GIF colors must be an integer 2–256", field="colors")
 
 
-def gif_bytes(images, duration, loop, colors=256):
+def check_dither(dither):
+    require(dither in DITHERS, f"dither must be one of {', '.join(DITHERS)}", field="dither")
+
+
+def gif_bytes(images, duration, loop, colors=256, dither="none"):
     """Encode RGBA frames as an animated GIF. Fully opaque sequences keep each frame and store only
-    the changed pixels of the next (lossless); sequences with transparency clear between frames."""
+    the changed pixels of the next (lossless); sequences with transparency clear between frames.
+    ``dither`` "ordered" (a fixed Bayer pattern) or "floyd" (error diffusion) quantizes every frame to
+    one shared palette so gradients band less; "auto" picks ordered when the frames hold gradients."""
     check_colors(colors)
+    check_dither(dither)
+    if dither == "auto":
+        dither = "ordered" if has_gradients(images, colors) else "none"
     opaque = all(image.getchannel("A").getextrema()[0] >= 128 for image in images)
     palette = None
-    if colors < 256:
-        # A reduced palette is shared by every frame, so unchanged pixels stay identical between
-        # frames and the frame-difference encoding stays small.
+    if colors < 256 or dither != "none":
+        # A shared palette keeps unchanged pixels identical between frames, so the frame-difference
+        # encoding stays small and dithering is stable from frame to frame.
         sample = images[:: max(1, len(images) // 16)][:16]
         step = max(1, math.ceil(math.sqrt(sample[0].width * sample[0].height / 65536)))
         tiles = [image.convert("RGB").reduce(step) for image in sample]
@@ -238,7 +269,7 @@ def gif_bytes(images, duration, loop, colors=256):
         for i, tile in enumerate(tiles):
             montage.paste(tile, (0, i * tiles[0].height))
         palette = montage.quantize(colors=colors - 1, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE)
-    frames = [gif_frame(image, colors, palette) for image in images]
+    frames = [gif_frame(image, colors, palette, dither) for image in images]
     stream = io.BytesIO()
     frames[0].save(
         stream,
@@ -254,13 +285,34 @@ def gif_bytes(images, duration, loop, colors=256):
     return stream.getvalue()
 
 
-def size_warnings(format, data):
-    if format == "gif" and len(data) > GIF_WARN_BYTES:
-        return [
-            f"GIF is {len(data) / 1048576:.1f} MB; ad networks and chat apps often cap GIFs near 150 KB–1 MB. "
-            "Lower fps, colors or scale, shorten the range, or export WebP/MP4."
-        ]
-    return []
+def size_warnings(format, data, max_bytes=None, gradients=False):
+    """Warnings for an encoded animation: a GIF over 1 MB (or ``max_bytes``) and gradient-heavy GIFs steer
+    to MP4/WebP, which are typically several times smaller and band-free. The export never fails over size."""
+    warnings = []
+    size = len(data)
+    if max_bytes is not None and size > max_bytes:
+        warnings.append(f"{format.upper()} is {size:,} bytes, over the max_bytes target of {max_bytes:,}. Lower fps, colors or scale, "
+                        "or shorten the range" + ("; export MP4 or WebP instead, typically about 10x smaller." if format == "gif" else "."))
+    elif format == "gif" and size > GIF_WARN_BYTES:
+        warnings.append(
+            f"GIF is {size / 1048576:.1f} MB; ad networks and chat apps often cap GIFs near 150 KB–1 MB. "
+            "Lower fps, colors or scale, shorten the range, or export MP4 (typically about 10x smaller) or WebP."
+        )
+    if format == "gif" and gradients and size > GIF_WARN_BYTES // 4 and not any("MP4" in w for w in warnings):
+        warnings.append("This GIF has gradients or soft glows, which band in 256 colors: export MP4 or WebP for clean results, "
+                        "or pass dither: 'ordered'.")
+    return warnings
+
+
+def encoded_frames(data):
+    """``(frame_count, durations)`` of an animated GIF/WebP/APNG as written (the encoder merges identical frames)."""
+    with Image.open(io.BytesIO(data)) as image:
+        count = getattr(image, "n_frames", 1)
+        durations = []
+        for index in range(count):
+            image.seek(index)
+            durations.append(image.info.get("duration", 0))
+    return count, durations
 
 
 TEXTURE_LOOKS = ("grain", "paper", "film", "risograph", "halftone", "noise")
@@ -298,7 +350,7 @@ def sheet_cells(entries):
 
 
 def animation_bytes(
-    project, *, format="gif", scale=1, columns=None, sampling="nearest", colors=256, animation=None, quality=90
+    project, *, format="gif", scale=1, columns=None, sampling="nearest", colors=256, animation=None, quality=90, dither="auto"
 ):
     """Encode saved frames. ``animation`` selects a named animation (its frames, order, timing and
     loop); omitted, every saved frame plays in saved order. MP4/WebM stream to a file (export_animation)."""
@@ -315,6 +367,8 @@ def animation_bytes(
     check_scale(scale, sampling)
     require(colors == 256 or format == "gif", "colors applies to GIF export", field="colors")
     check_colors(colors)
+    check_dither(dither)
+    require(dither == "auto" or format == "gif", "dither applies to GIF export", field="dither")
     require(
         isinstance(quality, int) and not isinstance(quality, bool) and 1 <= quality <= 100,
         "quality must be an integer 1–100",
@@ -376,7 +430,7 @@ def animation_bytes(
     else:
         images = [image_of(frame) for frame, _ in entries]
         if format == "gif":
-            stream.write(gif_bytes(images, durations, loop, colors))
+            stream.write(gif_bytes(images, durations, loop, colors, dither))
         elif format == "webp":
             # Crisp (nearest) pixel art is stored losslessly; smooth renders use `quality`.
             options = {"lossless": True} if sampling == "nearest" else {"quality": quality, "method": 4}
@@ -455,7 +509,7 @@ def export_video(project, path, *, format, scale, sampling, quality, animation=N
 
 def export_animation(
     project, path, *, format=None, scale=1, columns=None, sampling="nearest", colors=256, animation=None, quality=90,
-    overwrite=False,
+    overwrite=False, dither="auto", max_bytes=None,
 ):
     path = Path(path)
     suffix = path.suffix.lower()
@@ -483,7 +537,7 @@ def export_animation(
         return {**result, **({"animation": animation} if animation is not None else {})}
     data, metadata = animation_bytes(
         project, format=format, scale=scale, columns=columns, sampling=sampling, colors=colors,
-        animation=animation, quality=quality,
+        animation=animation, quality=quality, dither=dither,
     )
     # Create only after all rendering succeeds. Refuse concurrent clobbers as well.
     with path.open("wb" if overwrite else "xb") as stream:
@@ -494,12 +548,21 @@ def export_animation(
     from .animation_sets import resolve_sequence
 
     entries, _ = resolve_sequence(project.state["animation"], animation)
+    # Report what was written: the sheet's own size, and the frames left after the encoder merged repeats.
+    size = [metadata["width"], metadata["height"]] if metadata is not None else list(scaled_size(entries[0][0]["state"]["canvas"], scale))
+    written = {}
+    if format != "sheet":
+        count, _ = encoded_frames(data)
+        written = {"frames": count, **({"rendered_frames": len(entries)} if count != len(entries) else {})}
+    gradients = format == "gif" and has_gradients([render_frame(project, entries[0][0]["name"], scale, sampling)], colors)
     return {
         "output": str(path),
         "format": format,
-        "size": list(scaled_size(entries[0][0]["state"]["canvas"], scale)),
+        "size": size,
+        **({"frame_size": list(scaled_size(entries[0][0]["state"]["canvas"], scale))} if metadata is not None else {}),
+        **written,
         "bytes": len(data),
         **({"animation": animation} if animation is not None else {}),
         **({"metadata": str(destinations[1])} if metadata is not None else {}),
-        **({"warnings": warnings} if (warnings := size_warnings(format, data)) else {}),
+        **({"warnings": warnings} if (warnings := size_warnings(format, data, max_bytes, gradients)) else {}),
     }

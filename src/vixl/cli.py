@@ -882,11 +882,13 @@ def project_command(project, cmd, args, *, detail="compact"):
         p.add_argument("--scale", type=float, default=1.0, help="Integer 1–32 with nearest sampling; 0.05–32 with smooth")
         p.add_argument("--sampling", choices=["nearest", "smooth"], default="nearest")
         p.add_argument("--colors", type=int, default=256, help="GIF palette size 2–256")
+        p.add_argument("--dither", choices=["auto", "none", "ordered", "floyd"], default="auto", help="GIF dithering (shared palette)")
+        p.add_argument("--max-bytes", type=int, help="Soft size target: warn when the file is larger")
         p.add_argument("--quality", type=int, default=90, help="WebP (smooth) and MP4/WebM quality 1–100")
         p.add_argument("--columns", type=int)
         a = p.parse_args(args)
         scale = int(a.scale) if a.scale.is_integer() else a.scale
-        return project.export_animation(a.out, format=a.format, scale=scale, columns=a.columns, sampling=a.sampling, colors=a.colors, animation=a.animation, quality=a.quality, overwrite=a.overwrite), False
+        return project.export_animation(a.out, format=a.format, scale=scale, columns=a.columns, sampling=a.sampling, colors=a.colors, animation=a.animation, quality=a.quality, overwrite=a.overwrite, dither=a.dither, max_bytes=a.max_bytes), False
     if cmd == "export-screens":
         from .exports import export_screens
 
