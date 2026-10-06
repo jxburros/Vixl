@@ -171,10 +171,12 @@ def test_animation_set_errors_say_how_to_fix_them():
         ({"type": "animation-set", "name": "a", "order": ["idle1"], "duration": 100, "durations": [100]}, "not both"),
         ({"type": "animation-set", "name": "a", "order": ["idle1", "idle2"], "durations": [100]}, "one value per frame"),
         ({"type": "animation-set", "name": "a", "order": ["idle1"], "duration": 15}, "multiple"),
+        ({"type": "animation-set", "name": "a", "order": ["idle1"], "durations": [15]}, "multiple"),
+        ({"type": "animation-set", "name": "a", "order": ["idle1"], "durations": ["fast"]}, "multiple"),
         ({"type": "animation-set", "name": "bad name!", "order": ["idle1"]}, "Resource names"),
         ({"type": "animation-set", "duration": 100}, "pass name"),
         ({"type": "animation-set", "name": "a", "order": ["idle1"], "delete": True}, "cannot be combined"),
-        ({"type": "animation-set", "name": "a", "order": []}, "at least|1–1024|non-empty|too short"),
+        ({"type": "animation-set", "name": "a", "order": []}, "1–1024 frame names"),
     ]
     for op, message in cases:
         with pytest.raises(VixlError, match=message):
@@ -305,7 +307,10 @@ def test_frames_edit_rejects_what_cannot_run_per_frame():
         ({"operations": [{"type": "hide", "target": "coat"}], "frames": ["idle1"], "animation": "x"}, "not both"),
         ({"operations": [{"type": "hide", "target": "coat"}], "frames": ["idel1"]}, "did you mean 'idle1'"),
         ({"operations": [{"type": "hide", "target": "coat"}], "animation": "nope"}, "Unknown animation"),
-        ({"operations": []}, "non-empty"),
+        ({"operations": []}, "needs 1–200 operations"),
+        ({"operations": [{"type": "hide", "target": "coat"}], "frames": []}, "list of saved frame names"),
+        ({"operations": [{"type": "hide", "target": "coat"}], "frames": [["idle1"]]}, "list of saved frame names"),
+        ({"operations": ["hide"]}, "must be an object"),
     ]
     for body, message in cases:
         with pytest.raises(VixlError, match=message):

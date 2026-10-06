@@ -86,6 +86,7 @@ def resolve_sequence(animation, name=None):
     if name is None:
         return [(frame, frame["duration"]) for frame in frames], animation.get("loop", 0)
     sets = animation.get("animations", {})
+    require(isinstance(name, str), "animation must be the name of a named animation", field="animation")
     if name not in sets:
         close = difflib.get_close_matches(str(name), sorted(sets), 3, 0.5)
         raise VixlError(
@@ -180,7 +181,12 @@ def target_frames(animation, op):
         entries, _ = resolve_sequence(animation, op["animation"])
         names = list(dict.fromkeys(frame["name"] for frame, _ in entries))
     elif "frames" in op:
-        names = list(op["frames"])
+        require(
+            isinstance(op["frames"], list) and op["frames"] and all(isinstance(n, str) for n in op["frames"]),
+            "frames needs a list of saved frame names",
+            field="frames",
+        )
+        names = list(dict.fromkeys(op["frames"]))
         unknown_frames(names, {frame["name"] for frame in frames})
     else:
         names = [frame["name"] for frame in frames]

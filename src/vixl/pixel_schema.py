@@ -52,7 +52,8 @@ def schemas(add):
     )
     add("frame-apply", {"name": S}, ["name"])
     add("frame-delete", {"name": S}, ["name"])
-    duration = {"type": "integer", "minimum": 10, "maximum": 60000, "multipleOf": 10}
+    # Ranges (10–60000 ms in tens, 1–1024 entries, 1–200 operations) are checked in animation_sets, which keeps
+    # the inline schema that MCP clients download small.
     add(
         "animation-set",
         {
@@ -60,7 +61,6 @@ def schemas(add):
             "order": {
                 "type": "array",
                 "items": S,
-                "maxItems": 1024,
                 "description": "Frame names in play order. Without name: every saved frame exactly once "
                 "(reorders the document's default animation). With name: any subset of the saved frames, "
                 "repeats allowed.",
@@ -71,13 +71,13 @@ def schemas(add):
                 "animation: a subset of saved frames with its own order, timing and loop. Export it alone with "
                 "export-animation animation=NAME.",
             },
-            "duration": {**duration, "description": "Named animations: ms for every frame, overriding saved durations."},
+            "duration": {
+                "type": "integer",
+                "description": "Named animations: ms (10–60000, multiple of 10) for every frame, overriding saved durations.",
+            },
             "durations": {
                 "type": "array",
-                "items": duration,
-                "minItems": 1,
-                "maxItems": 1024,
-                "description": "Named animations: one ms value per entry of order.",
+                "description": "Named animations: one ms value (10–60000, multiple of 10) per entry of order.",
             },
             "delete": {**B, "description": "Remove the named animation (its saved frames stay)."},
         },
@@ -87,21 +87,14 @@ def schemas(add):
         {
             "operations": {
                 "type": "array",
-                "items": {"type": "object"},
-                "minItems": 1,
-                "maxItems": 200,
-                "description": "Operations to run on each target frame, e.g. a pixel-palette recolour. "
+                "description": "1–200 operations to run on each target frame, e.g. a pixel-palette recolour. "
                 "Frames are snapshots, so layers are found by name or ID within each frame. Animation "
                 "operations, layouts, templates and filesystem paths are not allowed.",
             },
             "animation": {"type": "string", "description": "Edit only the frames of this named animation."},
             "frames": {
                 "type": "array",
-                "items": S,
-                "minItems": 1,
-                "maxItems": 256,
-                "uniqueItems": True,
-                "description": "Edit only these saved frames. Omit frames and animation to edit every frame.",
+                "description": "Edit only these saved frame names. Omit frames and animation to edit every frame.",
             },
             "scene": {**B, "description": "Also apply the operations to the working scene (default false)."},
         },
