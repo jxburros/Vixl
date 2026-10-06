@@ -106,18 +106,53 @@ def visible_char(char):
     return not char.isspace() and unicodedata.category(char) not in ("Cf", "Cc") and not (0xFE00 <= ord(char) <= 0xFE0F)
 
 
+@lru_cache(maxsize=64)
+def font_style(data):
+    """(family, weight, italic) of a font file from its name and OS/2 tables."""
+    try:
+        font = TTFont(io.BytesIO(data), lazy=True)
+        names = font["name"]
+        family = names.getDebugName(16) or names.getDebugName(1) or ""
+        os2 = font["OS/2"] if "OS/2" in font else None
+        weight = getattr(os2, "usWeightClass", 400) or 400
+        italic = bool(os2 and os2.fsSelection & 1) or bool(font["head"].macStyle & 2)
+        return family, weight, italic
+    except Exception:  # noqa: BLE001 - unreadable metadata: treat as a regular face of its own family
+        return str(len(data)), 400, False
+
+
+def fallback_chain(primary, fallbacks):
+    """``primary`` followed by ``fallbacks`` with each family's faces ordered by how well they
+    match the primary's slope, then weight (as CSS font matching does), so a bold heading falls
+    back to the bold face of a fallback family. The order of families is kept."""
+    _, weight, italic = font_style(primary)
+    families, order = {}, []
+    for data in fallbacks:
+        if data == primary or data in families.get(font_style(data)[0], ()):
+            continue
+        family = font_style(data)[0]
+        if family not in families:
+            order.append(family)
+        families.setdefault(family, []).append(data)
+
+    def distance(data):
+        _, w, slanted = font_style(data)
+        return (slanted != italic) * 1000 + abs(w - weight)
+
+    chain = [primary]
+    for family in order:
+        chain += [data for data in sorted(families[family], key=distance) if data not in chain]
+    return tuple(chain)
+
+
 def font_data(project, layer):
     primary = primary_font_data(project, layer)
     from .render import document_variables, substitute
     text = substitute(layer.get("text", ""), document_variables(project))
     if all(not visible_char(c) or ord(c) in coverage(primary) for c in text):
         return primary
-    fonts = [primary]
-    for name in [*project.state.get("font_fallbacks", []), "DejaVuSans.ttf"]:
-        fallback = primary_font_data(project, {**layer, "font": name})
-        if fallback not in fonts:
-            fonts.append(fallback)
-    return tuple(fonts)
+    names = [*project.state.get("font_fallbacks", []), "DejaVuSans.ttf"]
+    return fallback_chain(primary, [primary_font_data(project, {**layer, "font": name}) for name in names])
 
 
 def glyph_coverage(project, layer):
