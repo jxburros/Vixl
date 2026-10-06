@@ -1,41 +1,57 @@
-# T04 Logo kit: Tidewick Café (lane V, Vixl MCP)
+# T04 · Tidewick logo kit (Lane V: Vixl)
 
-**Timing:** start 2026-10-05 22:18:22 UTC, end 22:35:30 UTC (about 17 minutes). About 100 tool calls, counting every Vixl MCP, Bash, Read, Write and ToolSearch call.
+All artwork was built and exported with the Vixl MCP tools (`vixl_document_create`,
+`vixl_operations_apply`, `vixl_import_document`, `vixl_font_pair`, `vixl_export_file`/`vixl_export_batch`,
+`vixl_render_preview`, `vixl_check`). I didn't hand-write any SVG, HTML or pixels, and I didn't use an image generator.
+I used Python (PIL, resvg_py) only to check the outputs: rendering the exported SVGs, reading the ICO sizes, and
+zooming into the small marks.
 
-## The mark
+## Concept
 
-The mark is a navy disc holding an amber lamp or candle flame with a small navy inner flame (the "wick" of Tide*wick*), set above an amber wave. It uses two colors, navy `#14263b` and amber `#f2a541`, and no anchors or ship wheels. I drew it with Vixl `shape` operations: an ellipse plus cubic-Bézier `path` shapes on a 512×512 grid. I tried and rejected a round "lamp" circle, because it read as a person icon. I also tried a plain teardrop, which read as a water drop, and a rounded wick slot, which read as a house door.
+The name is "Tide" plus "wick": a candle or lamp flame in lamp amber with a navy core, set above one bold navy wave.
+The flame leans slightly so it reads as a flame and not as a water drop. There are no anchors or ship wheels.
+The mark uses two colors (navy `#14263b` and amber `#f2a541`). Type is Fraunces 700 for the wordmark
+"Tidewick" and Work Sans 400 for the all-caps tagline "COFFEE BY THE HARBOR". Both are open-licensed
+Google Fonts, installed with `vixl_font_pair` (pairing `fraunces-work-sans`).
 
-Type: Fraunces 700 for the wordmark and Work Sans 500 for the tagline. Both are open-licensed Google Fonts, installed with `vixl_font_install`. Vixl's SVG export turns all lettering into outline paths. I checked every SVG: no `<text>`, no `<image>`, no font references, no base64.
+## Files
 
-## Files (all in this folder)
-
-| File | How it was made |
+| File | What it is / how it was made |
 | --- | --- |
-| `logo-horizontal.svg` | `logo-horizontal.vixl` (1400×440, transparent). The mark is a group of 4 shapes resized to 320 px, with the "Tidewick" wordmark (200 px, navy) to its right and the tagline (54 px, navy) under the wordmark. Exported with `svg_policy="strict"`. |
-| `logo-stacked.svg` | `logo-stacked.vixl` (1000×800, transparent). The mark (380 px) is centered over the wordmark (180 px) and tagline (52 px), each centered by computed x. Exported strict. |
-| `mark.svg` | `mark.vixl` (512×512, transparent): navy disc, amber flame, navy inner flame, amber wave. Exported strict. |
-| `mark-mono.svg` | `mark-mono.vixl` (512×512, transparent), navy only: a ring (stroked ellipse), the flame as a 30 px stroked outline, a solid inner flame and a solid wave. Exported strict. |
-| `favicon.ico` | `favicon.vixl`, exported with `vixl_export_file(icon_sizes=[16,32,48])`. Checked with PIL: it contains 16, 32 and 48 px images. |
-| `app-icon-1024.png` | `app-icon.vixl` (1024×1024): a full-bleed navy solid with the amber flame and wave at about 82% of the width. Square corners, no disc. |
-| `logo-sheet.png` | `logo-sheet.vixl` (1600×1200), split into a cream half and a navy half. Each half shows the horizontal lockup, the stacked lockup, the marks, the app icon, and the mark at real 16, 32 and 64 px. |
+| `mark.svg` | 512 × 512 transparent canvas. The flame and its core are `pen` Bézier paths, and the wave is a parametric `wave` shape with a 58 px round-capped stroke. Navy + amber. Exported with `svg_policy="strict"`. |
+| `mark-mono.svg` | The same geometry in navy only. The flame core is a real hole (a `pathfinder` subtract, even-odd compound path), so the core still shows on a single-color print. Strict SVG. |
+| `logo-horizontal.svg` | 1164 × 392, transparent. I exported `mark.svg`, re-imported it as editable paths (`vixl_import_document`), grouped it and scaled it ×0.62 on the left. The wordmark is 160 px Fraunces 700 and the tagline 40 px Work Sans beneath it. Margins are about 50 px. Strict SVG. |
+| `logo-stacked.svg` | 834 × 627, transparent. The same mark group is centered above the wordmark and tagline. Strict SVG. |
+| `favicon.ico` | Contains 16, 32 and 48 px images. I checked this with PIL. The source is `src/favicon.vixl`, a 512 px navy square with the mark at ×0.92, flame amber and wave cream, exported with `icon_sizes=[16,32,48]`. |
+| `app-icon-1024.png` | 1024 × 1024, mode RGB, so there is no alpha channel. It is a navy square with square corners and the mark at ×1.25 centered, with the wave in cream. Exported with `alpha="flatten"`. |
+| `logo-sheet.png` | 1600 × 1200, RGB. The left half is cream and the right half navy. Each half shows the horizontal logo, the stacked logo, the color mark, the mono mark and an "ACTUAL SIZE" row with the mark at real 16, 32 and 64 px. Each item is a live `link` layer to the source `.vixl` files. The navy half passes `variables: {ink: "#f7f1e5"}`, so the navy parts render in cream. |
+| `src/*.vixl` | Editable Vixl sources for every file above. In mark, mark-mono and both logos, the navy color comes from the variable `${ink}`. |
 
-Extras, not requested: `logo-horizontal-reversed.svg`, `logo-stacked-reversed.svg` and `mark-reversed.svg` are the on-navy versions. In these the disc is amber, the flame and wave are navy, the wordmark is cream and the tagline is amber. The `.vixl` sources are kept and stay editable. `work/` holds the intermediate PNGs (lockup and mark renders, small-size tests) that went into the sheet.
+On the SVGs:
+- All four were exported with `svg_policy="strict"`. They contain no `<image>`, `<text>` or `@font-face`.
+- Lettering is converted to glyph outlines (`<path>`), so they don't need the fonts to be installed.
+- I rendered each one with resvg to confirm it looks right.
 
-## How the sheet was built
+## Deviations and choices
 
-I exported each SVG's source document from Vixl to PNG and imported the PNGs into `logo-sheet.vixl` with `vixl_import_image`. The lockups and marks were scaled down there. The 16, 32 and 64 px marks were exported from `mark.vixl` (cream side) and `mark-reversed.vixl` (navy side) at exactly those sizes, then placed at integer positions with no resampling. Labels are Work Sans. `vixl_check` (bounds, overlap, contrast, fonts) passed.
+- **Reversed versions on navy use cream.** On the navy half of the sheet, the favicon and the app icon, the parts
+  that are navy on light backgrounds (wave, wordmark, tagline) become cream `#f7f1e5`, and the flame stays amber.
+  Each version still uses at most two colors on its background. A navy-only mark can't be seen on navy, so on the
+  navy half the "mono" mark is shown as a one-color cream knockout. I didn't deliver that as a separate file.
+- **Favicon and app icon are on a navy tile.** A transparent favicon would lose the navy wave on dark browser
+  tabs. The mark geometry is the same as `mark.svg`; only the wave is recolored cream.
+- **"Real size" on the sheet** means the full 512 px `mark.svg` square drawn at 16, 32 and 64 px. The mark itself
+  fills about 86–95 % of that square. The favicon fills its tile a little more (scale 0.92).
+- `vixl_check` on the sheet flagged the small labels (15–18 px) as hard to read at a 320 px thumbnail
+  width. I left them: the sheet is a reference meant to be viewed at full size.
+- Margins and sizes of the logo canvases were my own choice; the brief didn't set any.
 
-## Where I differed from the brief, and why
+## Unsure about
 
-- **Versions on navy.** The navy-only mono mark would vanish on navy, so the navy half doesn't show it. Instead it shows the color mark as it falls on navy (the disc merges into the background, leaving the amber flame and wave) and the amber reversed mark. Every lockup appears on both backgrounds.
-- **The mono mark is not a silhouette of the color mark.** My first version was a knockout: a navy disc with the flame and wave cut out, made with Vixl `pathfinder subtract`. Vixl writes that boolean as SVG alpha masks (`mask-type="alpha"`). When I rendered it in Inkscape, the mark came out as a faint grey disc, which fails the "looks the same on another computer" rule. I rebuilt the mono mark from plain strokes and fills instead (ring, flame outline, solid inner flame, solid wave), and it now renders correctly in Inkscape. Its wave is a little narrower so it fits inside the ring.
-- **The favicon leaves out the inner flame.** At 16 px the small navy counter turned into a muddy pixel, so `favicon.vixl` keeps only the disc, flame and wave. The 16/32/64 marks on the sheet do use the full mark.
-- **The app icon PNG is RGBA, not RGB.** Every alpha value is 255 (checked: alpha extrema 255–255), so it is fully opaque, but the file still has an alpha channel. Vixl's PNG export kept RGBA even with a navy background and an opaque solid layer, and I didn't convert it outside Vixl. Some app-store checkers reject any alpha channel, so it may need flattening to RGB before submission.
-
-## Things I'm unsure about
-
-- I checked the SVGs only in Inkscape 1.x and in Vixl's own renderer. I didn't test them in a browser. The lockup and mark SVGs use nested `<svg>` and `<g transform>` but no masks.
-- In `mark-mono.svg`, the tip of the stroked flame reaches the ring and ends in a slightly squared miter. It reads as the flame touching the rim, but it is less refined than the color mark.
-- The flame and wave are recognizable at 16 px, but only just: the flame is about 5 px tall.
-- Vixl's text bounds are glyph boxes, so the spacing between wordmark and tagline was set by eye from previews, not measured from baselines.
+- **16 px legibility.** At 16 px the flame, core and wave are still recognizable, but the navy core is only about 2 px and
+  blurs into the flame. It reads as "amber flame over a wave" rather than showing detail. At 32 and 48 px it is clear.
+- **Variable colors in the sources.** The navy color in the sources is the variable `${ink}`. The exported SVGs contain
+  the resolved `rgb(20,38,59)`; I checked that no `${` is left in them. Anyone editing the `.vixl` files needs to know
+  about the variable.
+- **Flame/drop ambiguity.** With the lean, the shape reads as a flame next to the wave, but on its own the mono mark could
+  still be read by some people as a drop.

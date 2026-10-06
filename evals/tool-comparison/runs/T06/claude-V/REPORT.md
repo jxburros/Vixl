@@ -1,26 +1,67 @@
-# T06 Fillable PDF form (lane V: Vixl via MCP)
+# T06 · Fillable PDF form (lane V, Vixl)
 
-## Timing
-Start 2026-10-05 22:18:46 UTC, end 2026-10-05 22:26:41 UTC (about 8 minutes). About 37 tool calls in total (Vixl MCP, Bash, Read, ToolSearch).
+All of the visual work went through the Vixl MCP tools: `vixl_document_create`, `vixl_font_pair`, `vixl_operations_apply`, `vixl_check`, `vixl_render_preview` and `vixl_export_file`. I wrote no SVG, HTML or pixels myself. The only scripts were checks afterwards: pypdf to read the field dictionaries, and pdftoppm/pypdf to render the sample and pull its text.
 
 ## Files
+
 | File | How it was made |
 | --- | --- |
-| `signup-form.vixl` | The editable Vixl source. Made with `vixl_document_create(size="letter")` (2550x3300 px at 300 dpi), then `vixl_font_pair` (Bricolage Grotesque 800 for the title, Figtree 400 for the rest), `vixl_text_add`, and one atomic `vixl_operations_apply` batch: shapes, text, 17 `field` layers and `form` (tab_order `reading`, title, lang `en`). After that, `field-set` tweaks. |
-| `signup-form.pdf` | `vixl_export_file(fillable=true)`. US Letter 612x792 pt, vector, with an AcroForm of 14 fields named exactly as the brief's keys. |
-| `signup-sample.pdf` | `vixl_export_file(values={...}, fill_mode="flatten")` with the brief's sample values. It has no AcroForm and no annotations, so the values are drawn into the page. |
+| `signup-form.vixl` | The editable Vixl source. It was created at US Letter size (2550 × 3300 px at 300 dpi). I then added two batches of operations: shapes, text layers, 17 `field` layers and a `form` op, followed by a `field-set` and move fix-up. |
+| `signup-form.pdf` | The blank fillable form, made with `vixl_export_file(fillable=true)`. It is one page, vector artwork, with 14 field keys (17 widgets, because the four radio buttons are separate widgets). |
+| `signup-sample.pdf` | The sample fill, flattened, made with `vixl_export_file(values={…}, fill_mode="flatten")`. It has no AcroForm and no annotations, so no fields are left. |
+| `REPORT.md` | This file. |
 
-Checked with pypdf, pdftotext and pdftoppm. Field types: text fields are /Tx, `act_type` is one radio /Btn with export values music/poetry/comedy/other, the checkboxes are /Btn (on value `Yes`), and `slot` is a /Ch combo with the 4 options. Required flags are set on performer_name, email, act_type, slot, signature and date. MaxLen is 80 on performer_name. The widget order (tab order) runs performer_name, email, phone, act_type, performers, needs_mic, needs_amp, needs_keyboard, needs_projector, pieces, slot, photo_consent, signature, date, which is the reading order. In the rendered sample PDF every value is fully visible: the long performer name fits on one line, pieces shows 3 lines, and the date is 2026-11-12.
+## Design
 
-## Differences from the brief and choices I made
-- **`signature` is a required single-line text field, not a signature field.** Vixl refuses `required` on signature-kind fields, and the brief allows "signature or text field".
-- **Rules the PDF does not enforce:** the email format, the 1 to 6 range on `performers` and the date format are stored as Vixl field rules (`format: email`, `{decimals:0,min:1,max:6}`, date `YYYY-MM-DD`). Vixl validates them when it fills the form. But the fillable PDF has no JavaScript or actions, so a PDF viewer will not reject a bad email or a 7 typed by hand. The "1 to 6" hint is printed next to the box.
-- **Extra limits I added:** `phone` max 24 characters and `signature` max 60. Vixl's worst-case check flagged these fields as able to overflow without a limit.
-- **Labels:** required fields show " *" in their label, with a "* required" note at top right. Because the labels are linked to the fields, the PDF tooltips (accessible names) also end in " *". Each checkbox's accessible name is "We need: <item>". "Type of act" is the radio group's question.
-- **Title font size:** the brief does not set one, so I picked it. The navy header has an amber rule under it, and an amber rule sits above the footer.
+- **Page.** The header is a navy `#14263b` band with an amber `#f2a541` rule under it. The title "Open Mic Sign-up" is set in Work Sans Bold, white. The subtitle "Tidewick Café · Thursdays 7–10 pm" is set in Bitter, amber. The footer is an amber rule with the brief's footer line centred under it.
+- **Fonts.** The type pairing is Work Sans and Bitter, installed with `vixl_font_pair`.
+- **Fields.** Each field has a visible label above it. Required fields are marked with " *", and a "* required" note sits top right. The fields have light-grey boxes. The signature is a line to write on.
 
-## Unsure or known issues
-- `vixl_check(sample="worst")` still reports 1 error: `pieces` (multiline) can overflow with worst-case text. Vixl does not allow `max_length` on multiline fields, so the error cannot be cleared. The sample text fits.
-- After I set the field sizes, `vixl_check` raised no other errors or warnings.
-- **Vixl bug, preview only:** `vixl_render_preview(values=...)` drew single-line field values oversized and clipped. The exported PDFs draw them correctly, which I confirmed by rasterising them with pdftoppm. The deliverables are affected only to this extent: I judged the result from the PDF rasters, not from Vixl's preview.
-- People typing into the fillable PDF get Helvetica (Vixl's design). The flattened sample uses Figtree.
+## Field check (read back from the PDF with pypdf)
+
+| Key | PDF type and flags |
+| --- | --- |
+| `performer_name` | Text, Required, MaxLen 80 |
+| `email` | Text, Required, MaxLen 80. A validate script checks the `name@host` form. |
+| `phone` | Text, optional, MaxLen 21 |
+| `act_type` | Radio group with options `music` / `poetry` / `comedy` / `other`. Required, tooltip "Type of act". |
+| `performers` | Text field with number actions: `AFNumber_Keystroke`/`Format` with 0 decimals, plus a validate script for the range 1–6. MaxLen 1. |
+| `needs_mic`, `needs_amp`, `needs_keyboard`, `needs_projector` | Checkboxes (on value `Yes`), sitting under a visible "We need:" heading |
+| `pieces` | Multiline text, box sized for 3 lines, MaxLen 300 |
+| `slot` | Combo box with the four slots exactly as written (en dashes). Required. |
+| `photo_consent` | Checkbox, optional |
+| `signature` | Text, Required, MaxLen 40 |
+| `date` | Text with `AFDate_KeystrokeEx`/`FormatEx` set to `yyyy-mm-dd`. Required. |
+
+- **Tab order.** The page declares `/Tabs /S`, and the widgets are annotated in reading order: performer_name, email, phone, act_type, performers, the four needs_* boxes, pieces, slot, photo_consent, signature, date.
+- **Two fields share a row.** Email and phone are side by side, and so are signature and date. In each pair the left field comes first in the tab order.
+- **`vixl_check`.** With `sample="worst"` it passes: 0 errors, 0 warnings.
+
+## Sample fill
+
+`pypdf` reads all the brief's values back from `signup-sample.pdf` as text, and none of them are cut off:
+
+- The long performer name is drawn at the field's normal 44 px size.
+- Pieces are drawn one per line, on three lines.
+- Phone is left empty.
+- Music, mic, amp and photo consent are ticked or selected. Keyboard and projector are not ticked.
+
+I also looked at a 60 dpi render of the sample to confirm this.
+
+## Choices and deviations
+
+- **Signature is a text field, not a PDF signature field.** The brief allows either. I used text because Vixl's `signature` kind can't take a fill value, and the sample needs "B. Okonkwo-Fitzgerald" drawn in. It is still required, but it can't hold a digital signature.
+- **Limits I added.** The brief gives no length for these, so I chose them.
+  - Phone: max 21. This is the longest worst-case value that fits the box.
+  - Email: max 80.
+  - Pieces: max 300.
+  - Signature: max 40. This is the most that fits at the smallest size I allowed.
+- **Smaller minimum text size for two fields.** For `performer_name` and `email`, the smallest size the value can shrink to is 25 px (6 pt) instead of 30 px. At that size, the worst case passes the overflow check: 80 "W" characters for the name, 64 for the email. Real values never shrink that far; the sample name renders at full size.
+- **Number of performers.** Vixl writes it as a PDF text field with number format and range actions, because PDF has no separate number field type. Viewers that don't run JavaScript (some browser viewers) won't enforce the 1–6 range or the email format. Vixl does enforce them when it fills a form.
+- **Field tooltips (accessible names) come from the visible labels.** Fields whose label is a text layer above them get that text as their tooltip, so it includes the " *" marker (e.g. "Email *", "Date * (YYYY-MM-DD)"). The checkbox tooltips are "We need: Microphone" and so on, so the group context gets read out. The visible text next to each checkbox is a separate text layer.
+- **What people type in a viewer uses Helvetica.** Vixl's fillable PDF uses Helvetica for typed entries. The flattened sample uses the form's Bitter font.
+
+## Unsure about
+
+- I haven't tested the fillable PDF by hand in Acrobat, Preview or a browser. I only read its structure with pypdf.
+- How the dropdown's en dashes look when someone picks an option in a viewer depends on that viewer's Helvetica coverage. Helvetica does include the en dash.

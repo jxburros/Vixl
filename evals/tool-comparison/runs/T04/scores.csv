@@ -1,3 +1,3 @@
 test,lane,agent,model,date,blind_code,r1_minutes,r1_nudges,hard_passed,hard_total,fidelity,craft,report_honest,r2_minutes,r2_nudges,editability,revision,notes
-T04,V,claude-code-subagent,claude-opus-5-5,2026-10-05,VPK7,,0,6,8,4,4,yes,,0,5,5,app icon RGBA (alpha 255) and mono missing on navy half of sheet; better type (Fraunces/Work Sans); mono outline mark weak at 16 px; r2 mark byte-identical
+T04,V,claude-code-subagent,claude-opus-5-5,2026-10-06,YYOO,,0,8,8,5,4,yes,,0,5,5,"Vixl 0.20.0: all checks pass; app icon RGB via alpha=flatten; every version on cream and navy via live links; flame+wave mark reads at 16 px; Fraunces/Work Sans; r2 mark/favicon/app icon byte-identical, 14 sheet links repointed to round2/src"
 T04,W,claude-code-subagent,claude-opus-5-5,2026-10-05,Q9L3,,0,8,8,5,4,yes,,0,5,5,all checks pass; strong 16 px mark with true-silhouette mono; generic DejaVu wordmark (font download blocked); tagline set in caps; r2 mark paths identical
