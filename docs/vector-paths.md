@@ -1,6 +1,6 @@
 # Editable vector shapes, strokes and paths
 
-All examples are operations for `Project.apply`, the CLI edit command, or `vixl_edit`.
+All examples are operations for `Project.apply`, the CLI edit command, or `vixl_operations_apply`.
 Changes participate in the same validation, atomic batches, save/load and undo history as
 other edits. `shape` with `target` updates a recipe without changing the layer ID.
 

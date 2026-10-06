@@ -49,6 +49,9 @@ def ignored_fields(candidate, op):
                 shape = candidate.layer(op.get("target", op.get("layer"))).get("shape")
             except Exception:  # noqa: BLE001 - an unresolvable target is reported by the operation itself
                 return found
+        from .normalize import SHAPE_TYPES
+
+        shape = SHAPE_TYPES.get(shape, (shape,))[0] if isinstance(shape, str) else shape  # donut → arc, pill → ...
         if "radius" in op and shape not in ("rounded-rectangle", "capsule"):
             found.append(f"shape {name}: radius only rounds 'rounded-rectangle' and 'capsule'; it does nothing "
                          f"for {shape!r}")
