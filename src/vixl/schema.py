@@ -335,7 +335,8 @@ def validate_operation(operation, notes=None, index=None):
         raise VixlError(
             "unknown_operation",
             f"Unknown operation type {result['type']!r}"
-            + (f"; did you mean {' or '.join(map(repr, close))}?" if close else "; see the operation schema"),
+            + (f"; did you mean {' or '.join(map(repr, close))}?" if close else "; see the operation schema")
+            + " Fields of any type: vixl_operation_schema(types=[...])",
             field="type",
             suggestions=close,
         )
@@ -404,5 +405,11 @@ def schema_error(error, operation, allowed):
         details["limit"] = error.validator_value
     else:
         message = f"{field + ': ' if field else ''}{error.message}"
-    return VixlError("invalid_operation", message, **details)
+    # Point at the exact contract so one lookup, not a guess, fixes the next attempt.
+    hint = f"vixl_operation_schema(types=[{kind!r}])"
+    details.setdefault("fields", allowed)
+    if validator == "type" and isinstance(error.schema, dict):
+        details["expected"] = {k: v for k, v in error.schema.items() if k != "description"}
+    details["schema"] = hint
+    return VixlError("invalid_operation", f"{message} (see {hint})", **details)
 

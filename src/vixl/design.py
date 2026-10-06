@@ -418,7 +418,8 @@ def validate_gradient(data, state):
         require(isinstance(stops, list) and 2 <= len(stops) <= 64, "Gradients require 2–64 stops")
         last = -1
         for stop in stops:
-            require(isinstance(stop, dict) and set(stop) == {"offset", "color"}, "Invalid gradient stop")
+            require(isinstance(stop, dict) and set(stop) == {"offset", "color"},
+                    f"Invalid gradient stop {stop!r}: each stop is exactly {{offset: 0–1, color}}", field="stops")
             finite(stop["offset"], "stop offset", 0, 1)
             require(stop["offset"] > last, "Gradient offsets must strictly increase")
             last = stop["offset"]

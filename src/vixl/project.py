@@ -375,6 +375,10 @@ class Project:
                                for layer in painted]
             if any(not item["visible_pixels"] for item in result["paint"]):
                 result["warnings"] = ["Paint has no visible pixels; check --space canvas versus --space layer and resolved bounds."]
+        from .advisories import advise
+
+        if warnings := advise(candidate, before, after, operations):
+            result["warnings"] = [*result.get("warnings", []), *warnings]
         if notes:
             result["normalized"] = notes
         return result

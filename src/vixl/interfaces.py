@@ -146,7 +146,7 @@ class Session:
             resolved = self.resolve(path)
             require(resolved.suffix.lower() == ".vixl", "Document path must end in .vixl", field="path")
             require((size is None) != (width is None or height is None), "Provide width and height, or a named size", field="size")
-            require(resolved.parent.is_dir(), "Destination directory must exist", field="path")
+            self.make_parent(resolved)
             with file_lock(str(resolved)):
                 require(not resolved.exists(), "Destination already exists; open it instead", field="path")
                 if size is not None:
@@ -159,6 +159,15 @@ class Session:
                 project.save(resolved)
                 self._remember(resolved, project, self.stamp(resolved))
             return self.summary(project)
+
+    def make_parent(self, path):
+        """Create the missing directories above ``path`` (always inside the workspace: ``resolve``
+        has already rejected anything else, symlinks included)."""
+        require(
+            not path.parent.exists() or path.parent.is_dir(),
+            f"{self.relative(path.parent)} exists and is not a directory", field="path",
+        )
+        path.parent.mkdir(parents=True, exist_ok=True)
 
     def close(self, document=None):
         with self._mutex:

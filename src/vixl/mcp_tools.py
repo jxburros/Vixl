@@ -207,18 +207,20 @@ def preview(
         return encode_png(image, max_bytes)
 
 
+EXPORT_SUFFIXES = (".png", ".jpg", ".jpeg", ".webp", ".tif", ".tiff", ".avif", ".svg", ".pdf", ".ico", ".html", ".htm", ".pptx")
+
+
 def export_file(session, path, overwrite=False, document=None, **options):
     from .fileio import temporary
 
     with session._mutex:
         destination = session.resolve(path)
         require(
-            destination.suffix.lower()
-            in (".png", ".jpg", ".jpeg", ".webp", ".tif", ".tiff", ".avif", ".svg", ".pdf", ".ico", ".html", ".htm", ".pptx"),
+            destination.suffix.lower() in EXPORT_SUFFIXES,
             "Choose a PNG, JPEG, WEBP, TIFF, AVIF, SVG, PDF, ICO, HTML or PPTX filename",
             field="path",
         )
-        require(destination.parent.is_dir(), "Destination directory must exist", field="path")
+        session.make_parent(destination)
         with file_lock(str(destination)):
             require(
                 overwrite or not destination.exists(),
@@ -421,10 +423,8 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
 
         with session._mutex:
             destination = session.resolve(path)
-            require(
-                destination.suffix.lower() == ".vixl" and destination.parent.is_dir(),
-                "Use a .vixl path in an existing workspace directory",
-            )
+            require(destination.suffix.lower() == ".vixl", "Use a .vixl path in the workspace", field="path")
+            session.make_parent(destination)
             with file_lock(str(destination)):
                 require(not destination.exists(), "Destination already exists")
                 project = create_template(name, variables, limits=session.limits, workspace=session.workspace)
@@ -833,6 +833,29 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
             fill_mode=fill_mode,
             alpha=alpha,
         )
+
+    @tool
+    def vixl_export_batch(
+        targets: Annotated[
+            list[dict],
+            Field(
+                min_length=1,
+                max_length=64,
+                description="Outputs to write: {path, document?, overwrite?, ...any vixl_export_file option} "
+                "(scale, profile, artboard, page, quality, color_space, …); one entry per file",
+            ),
+        ],
+        defaults: Annotated[dict | None, Field(description="Options shared by every target; a target's own win")] = None,
+        overwrite: bool = False,
+        stop_on_error: bool = False,
+        document: Document = None,
+    ) -> dict:
+        """Export several files in one call: several sizes, formats or artboards of one document, or
+        several documents. Every target is checked first (unknown options, duplicate or existing paths), then
+        written in order; each reports its own file metadata or error. Missing directories are created."""
+        from .export_batch import export_batch
+
+        return export_batch(session, export_file, targets, defaults, overwrite, stop_on_error, document)
 
     @tool
     def vixl_job(
