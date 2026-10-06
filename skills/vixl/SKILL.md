@@ -291,6 +291,10 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
   font name or role (`heading`/`body`; install with `font pair`/`font install` first).** Import files with
   `vixl_import_image(path=…)` or, when you only have the bytes, `vixl_import_image(data_base64=…)`
   (MCP) or `POST /assets` (REST); reuse already-embedded images via `asset` IDs.
+- **Images from the web:** `vixl_import_image(url="https://…", credit="Photo: Ana Ruiz / Unsplash",
+  license="Unsplash License")` (CLI `vixl import URL --credit … --license …`). HTTPS only, no private
+  hosts, size-capped; the layer's provenance keeps the source URL, fetch time and sha256 with your credit
+  and license, and inspect shows them. Use only images you have the rights to (guidance `image-rights`).
 - **MCP may run as two servers:** `vixl` (`--tools core`) for editing and export, `vixl-ai`
   (`--tools ai`) for provider-backed `vixl_ai_*` tools. They share the workspace; edits made in one are
   seen by the other on its next call.

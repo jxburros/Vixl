@@ -130,6 +130,7 @@ Updates:   update [--check | --rollback], updates [on | off | status]
 Services:  serve | view [--host 127.0.0.1] [--port 8765], notes list|add|resolve
            mcp [--workspace DIR] [--http] [--tools core|ai|compact] [--schema slim] [--planner] [--require-document]
 Import:    import FILE.svg [--svg-mode editable|appearance|auto] | FILE.pdf [--page 1] [--dpi 144]
+           import PHOTO.jpg | https://HOST/photo.jpg [--name N] [--credit TEXT] [--license TEXT]
 
 Options: --project/-p FILE, --json, --allow-linked, --plugins, --max-pixels N, --detail brief|compact|full, --version
 Use vixl commands --json for a complete inventory; vixl COMMAND --help works without a document. See docs/commands.md.
@@ -615,14 +616,24 @@ def project_command(project, cmd, args, *, detail="compact"):
     if cmd == "import":
         from .imports import import_document
         p = Parser(prog="vixl import")
-        p.add_argument("path")
-        p.add_argument("--name", default="import")
+        p.add_argument("path", help="an .svg or .pdf document, an image file, or an https:// image URL")
+        p.add_argument("--name")
         p.add_argument("--svg-mode", choices=["editable", "appearance", "auto"], default="editable")
         p.add_argument("--page", type=int, default=1)
         p.add_argument("--dpi", type=int, default=144)
+        p.add_argument("--credit", help="attribution kept with an image, e.g. 'Photo: Ana Ruiz / Unsplash'")
+        p.add_argument("--license", help="license or usage terms of an image, e.g. 'CC BY 4.0'")
         a = p.parse_args(args)
+        is_url = re.match(r"(?i)[a-z][a-z0-9+.-]*://", a.path)
+        if is_url or Path(a.path).suffix.lower() not in (".svg", ".pdf"):
+            from .image_import import import_image_from
+
+            return import_image_from(project, url=a.path if is_url else None, path=None if is_url else a.path,
+                                     name=a.name or "image", credit=a.credit, license=a.license), True
+        require(a.credit is None and a.license is None, "--credit and --license apply to image imports",
+                field="credit")
         return import_document(project, read_bounded(a.path, project.limits.max_asset_bytes),
-                               Path(a.path).suffix.lstrip("."), a.name, a.page, a.dpi, a.svg_mode), True
+                               Path(a.path).suffix.lstrip("."), a.name or "import", a.page, a.dpi, a.svg_mode), True
     if cmd == "notes":
         from .review import notes
         p = Parser(prog="vixl notes")

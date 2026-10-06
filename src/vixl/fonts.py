@@ -5,11 +5,10 @@ from io import BytesIO
 from pathlib import Path
 from urllib.parse import urlparse
 
-import httpx
 from PIL import ImageFont
 
 from .assets import read_bounded
-from .errors import VixlError, require
+from .errors import VixlError
 
 
 def validate_font(data):
@@ -27,24 +26,14 @@ def import_font(project, source, name):
     named(name)
     limit = min(project.limits.max_asset_bytes, 16 * 1024 * 1024)
     if urlparse(str(source)).scheme in ("http", "https"):
-        require(urlparse(str(source)).scheme == "https", "Font downloads require HTTPS")
-        require(
-            not urlparse(str(source)).username and not urlparse(str(source)).password,
-            "Font URLs cannot contain credentials",
-        )
+        from .fetch import fetch_bounded
+
         try:
-            with httpx.Client(timeout=30, follow_redirects=False) as client:
-                with client.stream("GET", str(source)) as response:
-                    require(
-                        response.status_code == 200, f"Font download returned HTTP {response.status_code}"
-                    )
-                    data = bytearray()
-                    for chunk in response.iter_bytes():
-                        data.extend(chunk)
-                        require(len(data) <= limit, "Font exceeds byte limit", "resource_limit")
-                    data = bytes(data)
-        except httpx.HTTPError as exc:
-            raise VixlError("font_download_failed", f"Font download failed ({type(exc).__name__})") from exc
+            data, _ = fetch_bounded(str(source), limit, label="Font")
+        except VixlError as exc:
+            if exc.code == "fetch_failed":
+                raise VixlError("font_download_failed", str(exc), **exc.details) from exc
+            raise
     else:
         data = read_bounded(Path(source), limit)
     validate_font(data)

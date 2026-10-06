@@ -465,12 +465,20 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
                 return result
 
     @tool
-    def vixl_import_font(path: str, name: str, document: Document = None) -> dict:
-        """Import a workspace TTF/OTF font; use its registered name as font in text operations."""
+    def vixl_import_font(
+        name: str,
+        path: str | None = None,
+        url: Annotated[str | None, Field(
+            description="Public https:// URL of a TTF/OTF file (no credentials, at most 5 redirects, 16 MB)")] = None,
+        document: Document = None,
+    ) -> dict:
+        """Import a TTF/OTF font from a workspace file or an https URL; use its registered name as font
+        in text operations."""
         from .fonts import import_font
 
+        require((path is None) != (url is None), "Provide exactly one of path or url")
         with session.project(write=True, document=document) as project:
-            return import_font(project, session.resolve(path), name)
+            return import_font(project, url if url is not None else session.resolve(path), name)
 
     @tool
     def vixl_models_list(
@@ -815,15 +823,27 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         data_base64: Annotated[
             str | None, Field(description="Image bytes as base64 or a data: URL, when no file path exists")
         ] = None,
+        url: Annotated[str | None, Field(
+            description="Public https:// image URL to download (no credentials, at most 5 redirects, byte and "
+                        "pixel limits; private and loopback hosts are refused)")] = None,
         name: str = "image",
+        credit: Annotated[str | None, Field(
+            description="Attribution to keep with the image, e.g. 'Photo: Ana Ruiz / Unsplash'")] = None,
+        license: Annotated[str | None, Field(
+            description="License or usage terms, e.g. 'CC BY 4.0' or 'Unsplash License'")] = None,
         document: Document = None,
     ) -> dict:
-        """Embed an image as a new layer from a workspace file or from base64 bytes. Returns the layer
-        id, size and bounds. PNG/JPEG/WebP keep their original bytes."""
-        require((path is None) != (data_base64 is None), "Provide exactly one of path or data_base64")
+        """Embed an image as a new layer from a workspace file, base64 bytes or a URL. Returns the layer
+        id, size, bounds and source (final url, bytes, sha256). PNG/JPEG/WebP keep their original bytes.
+        Use web images only with the rights to do so and record credit and license; inspect shows them."""
+        require(sum(value is not None for value in (path, data_base64, url)) == 1,
+                "Provide exactly one of path, data_base64 or url")
+        if url is not None:
+            return session.import_image(None, name, document, url=url, credit=credit, license=license)
         limit = session.limits.max_asset_bytes
         data = read_bounded(session.resolve(path), limit) if path else decode_upload(data_base64, limit)
-        return session.import_image(data, name, document)
+        return session.import_image(data, name, document, source={"path": path} if path else None,
+                                    credit=credit, license=license)
 
     @tool
     def vixl_export_file(

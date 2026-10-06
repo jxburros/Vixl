@@ -23,6 +23,8 @@ project.save()
 
 `Project.apply(..., detail="compact")` returns changed fields keyed by stable layer ID; the Python API keeps `detail="full"` as its compatibility default.
 
+`Project.import_image(path=None, *, url=None, data=None, name="image", credit=None, license=None)` embeds an image from a file, bytes or an `https://` URL as a new layer and returns its id, size, bounds, `asset` and `source` (see [Import existing artwork](#import-existing-artwork)).
+
 `Project.render()` returns a Pillow RGBA image. In a notebook a `Project` displays as its rendered PNG, and `Project.show(page=None, region=None)` returns the image (optionally one page, cropped to `[x, y, width, height]`). `Project.export()` returns encoded bytes, optionally writing to a path. `Project.inspect()` returns an independent JSON-serializable state description. History methods: `undo`, `redo`, `branch`, `checkpoint`, `checkout`, `begin`, `commit`, `rollback`.
 
 Loading does not implicitly trust linked image paths; use `allow_linked=True` only when those local file references are intended. Direct Python APIs are trusted local APIs and can import files. Exceptions expose `VixlError.code`, `.details`, and `.as_dict()`.
@@ -47,7 +49,7 @@ Default binding is `127.0.0.1:8765`. OpenAPI is at `/docs`. To bind beyond loopb
 | `POST /validate` | `{profile: "instagram-post", rules: [...]}` → checks |
 | `GET /history` | History graph and named references |
 | `POST /history/{action}` | `{ref: "name", count: 1}`; undo/redo/branch/checkpoint/checkout/begin/commit/rollback |
-| `POST /assets?name=photo` | Raw image bytes → imported layer |
+| `POST /assets?name=photo` | Raw image bytes → imported layer; or an empty body with `url=https://…` to download one. `credit` and `license` are recorded in provenance |
 | `POST /ai/{command}` | `{args: ["--prompt", "forest", "--provider", "local"]}`; uses locally configured providers |
 
 ```bash
@@ -129,7 +131,7 @@ Vixl is designed to be driven mainly by agents. The intended loop is: create or 
 | `vixl_document_create(path, width?, height?, background, size?, dpi?, orientation?, bleed?, font_pairing?)` | Create and activate a new `.vixl` from pixels or a named size; creates missing directories; refuses overwrites; `font_pairing` also installs a pairing as the document typography (same as `vixl_font_pair`) |
 | `vixl_document_open(path)` / `vixl_document_close(document)` | Activate an existing document / drop one from the session; edits are already saved |
 | `vixl_document_inspect(target?, detail)` | `compact` (default): canvas plus one line per layer with resolved `[x, y, w, h]` bounds; `full`: every stored field |
-| `vixl_import_image(path? \| data_base64?, name)` | Embed a workspace file or base64/data-URL bytes as a layer; returns id, size, bounds |
+| `vixl_import_image(path? \| data_base64? \| url?, name, credit?, license?)` | Embed a workspace file, base64/data-URL bytes or a public `https://` image as a layer; returns id, size, bounds and `source` (final `url`, `bytes`, `sha256`, `fetched_at`). `credit`/`license` are kept in the layer's provenance and shown by inspect |
 | `vixl_operations_apply(operations or operations_path, dry_run, detail, check?, preview?, request_id?, as_job?)` | Atomic edits; `operations_path` is a workspace-relative `.json` array or `.jsonl` file (one operation per line, errors cite the line) used instead of inline `operations`; schemas are included directly in tools/list (or on demand in slim mode). `detail` is `brief` (default), `compact` or `full`; results carry `warnings`. `check` (true or check names) adds a `check` block shaped like `vixl_check`'s, listing every `fix` finding and the findings on the layers the batch touched (at most 20; `omitted` counts the rest); `preview` (true or `{page, region, max_width, max_height, time}`, 512 px by default) adds a PNG after the JSON. Both also work with `dry_run`, and are skipped with a `review_skipped` note when the edit itself took more than half of `VIXL_MCP_INLINE_SECONDS`. A call that became a job keeps the JSON only. |
 | `vixl_operation_schema(types)` | Exact JSON Schema for named operation types |
 | `vixl_check(checks, targets, safe_area, avoid, thumbnail_width, ..., ink_limit, min_ppi, style)` | Design problems: bounds, text overlap, WCAG contrast, safe area/reserved zones, thumbnail legibility, `diagram` (overlapping nodes, edges through nodes, unreadable labels) and `flow` (text-flow overflow); opt-in `print`, `color_vision` and `style`. Every issue has a `severity` (error, warning, info) and an `action` (fix, review, informational); `by_action` lists the issue indexes under each. A layer marked `allow_crop` (`layer-intent`) reports its edge crop as informational; `thumbnail_width: null` turns the thumbnail test off, the canvas safe area is checked by default, and the summary reports `layers_checked` and `layers_total` |
@@ -241,7 +243,7 @@ Enable plugins explicitly with `vixl --plugins ...` or `vixl.plugins.enable_plug
 
 ## New agent resources (0.11)
 
-MCP adds `vixl_resources_list`, `vixl_resource_get`, `vixl_resource_add`, `vixl_template_create`, `vixl_import_font`, and `vixl_models_list`. Resource discovery needs no open document. Font paths and document destinations remain workspace scoped. `vixl_export_file` accepts `.svg`; operations accept registered font names while service operations continue to reject filesystem font paths.
+MCP adds `vixl_resources_list`, `vixl_resource_get`, `vixl_resource_add`, `vixl_template_create`, `vixl_import_font` (a workspace `path` or an `https://` `url`), and `vixl_models_list`. Resource discovery needs no open document. Font paths and document destinations remain workspace scoped. `vixl_export_file` accepts `.svg`; operations accept registered font names while service operations continue to reject filesystem font paths.
 
 REST adds GET `/resources/{kind}`, GET/POST `/resources/{kind}/{name}` (POST body `{"value":...}`), POST `/fonts?name=brand` with raw TTF/OTF bytes (16 MiB maximum), and POST `/export` with options such as `{"format":"SVG"}`. Export returns bytes and accepts no destination path. Python exposes the matching `vixl.resources` and `vixl.fonts` helpers. [Detailed examples and boundaries](agent-resources.md).
 
@@ -322,11 +324,23 @@ them with `vixl_review_notes`; CLI users use `notes list|add|resolve`. REST prov
 vixl -p poster.vixl import logo.svg
 # Optional PDF dependency: pip install 'vixl-engine[pdf]'
 vixl -p poster.vixl import flyer.pdf --page 1 --dpi 144 --name reference
+vixl -p poster.vixl import photo.jpg --name hero --credit "Photo: Ana Ruiz" --license "CC0"
+vixl -p poster.vixl import https://images.example.com/cat.jpg --name cat --credit "Photo: Ana Ruiz / Unsplash" --license "Unsplash License"
 ```
 
 MCP: `vixl_import_document(format="svg", path="logo.svg")`, or `data_base64` instead of `path`.
 REST: `POST /import?format=svg` with raw bytes. PDF additionally accepts a one-based `page` and
 `dpi` (36–600); it imports a raster reference layer, not editable PDF text or paths.
+
+Any other file, or an `https://` URL, is imported as an image layer, the same as
+`vixl_import_image(url=…)`, `POST /assets?url=…` and `Project.import_image(url=…)` in Python. A URL
+download is HTTPS only, follows at most 5 redirects, refuses private, loopback and link-local hosts
+and is size-capped; the bytes must decode as an image whatever the server's `Content-Type` says (see
+[architecture](architecture.md#trust-and-security)). The layer's `provenance` records
+`source: {url, fetched_at, sha256, bytes}`, plus `credit` and `license` when you pass them (also for
+file and base64 imports, and the `add` operation's `credit`/`license` fields). Compact inspect shows
+`source_url`, `credit` and `license`; `vixl dependencies` lists them under `attributions`. Use web
+images only with the rights to do so (guidance `image-rights`).
 
 SVG imports create editable path layers with solid fills, strokes, translations, scales,
 rotations, matrix transforms, and compound nonzero-winding paths (including holes). Arc and

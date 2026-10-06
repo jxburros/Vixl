@@ -487,6 +487,9 @@ def execute(project, op):
                                        fit=op.get("fit", "fill"))
             provenance.update(original_size=list(original_size), embedded_size=list(image.size))
             provenance.update({key: op[key] for key in ("downsample", "max_pixels") if key in op})
+        from .image_import import attribution
+
+        provenance.update(attribution(op.get("credit"), op.get("license")))
         layer = new_layer(
             op["name"] if "name" in op else default_name(project, Path(op.get("path", "image")).stem),
             "raster",

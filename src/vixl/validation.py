@@ -260,6 +260,11 @@ def dependencies(project):
         provenance = layer.get("provenance", {})
         if provenance.get("provider"):
             result["providers"].append(provenance["provider"])
+        source = provenance.get("source") if isinstance(provenance.get("source"), dict) else {}
+        if source.get("url") or provenance.get("credit") or provenance.get("license"):
+            result.setdefault("attributions", []).append({
+                "layer": layer["id"], **{key: source[key] for key in ("url", "fetched_at") if source.get(key)},
+                **{key: provenance[key] for key in ("credit", "license") if provenance.get(key)}})
     return result
 
 

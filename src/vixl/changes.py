@@ -181,6 +181,13 @@ def _brief(layer):
         result["clip"] = layer["clip"]
     if layer.get("constraints"):
         result["constraints"] = layer["constraints"]
+    provenance = layer.get("provenance") or {}
+    source = provenance.get("source")
+    if isinstance(source, dict) and source.get("url"):
+        result["source_url"] = source["url"]
+    for key in ("credit", "license"):
+        if provenance.get(key):
+            result[key] = provenance[key]
     return result
 
 

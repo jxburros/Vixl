@@ -9,7 +9,6 @@ from weakref import WeakKeyDictionary
 from .calls import current_client, note_document
 from .fileio import file_lock
 
-from .assets import add_encoded
 from .errors import VixlError, require
 from .model import Limits
 from . import __version__
@@ -346,19 +345,17 @@ class Session:
                 "nodes": [{k: v for k, v in node.items() if k not in ("state", "delta")} for node in p.nodes.values()],
             }
 
-    def import_image(self, data, name="image", document=None):
+    def import_image(self, data=None, name="image", document=None, *, url=None, source=None, credit=None,
+                     license=None):
+        """Embed image bytes, or download ``url`` first (outside the document lock)."""
+        from .image_import import attribution, fetch_image, import_image
+
+        require((data is None) != (url is None), "Provide exactly one of image bytes or url", field="url")
+        attribution(credit, license)
+        if url is not None:
+            data, source = fetch_image(url, self.limits)
         with self.project(write=True, document=document) as p:
-            asset, _ = add_encoded(p, data)
-            p.apply({"type": "add", "asset": asset, "name": name})
-            layer = p.inspect(p.state["active_layer"])
-            return {
-                "id": layer["id"],
-                "name": layer["name"],
-                "width": layer["width"],
-                "height": layer["height"],
-                "bounds": layer["resolved_bounds"],
-                "asset": asset,
-            }
+            return import_image(p, data, name, source=source, credit=credit, license=license)
 
     def ai(self, command, args, document=None):
         from .ai import ai_command
@@ -807,10 +804,16 @@ def create_app(path, *, token=None, limits=None):
         return await run_in_threadpool(apply_import)
 
     @app.post("/assets")
-    async def assets(request: Request, name: str = "image"):
+    async def assets(request: Request, name: str = "image", url: str | None = None, credit: str | None = None,
+                     license: str | None = None):
+        from functools import partial
+
         from starlette.concurrency import run_in_threadpool
 
-        return await run_in_threadpool(session.import_image, await request.body(), name)
+        body = await request.body()
+        require(not (url and body), "Send image bytes or a url query parameter, not both", field="url")
+        return await run_in_threadpool(partial(session.import_image, None if url else body, name, url=url,
+                                               credit=credit, license=license))
 
     @app.post("/ai/{command}")
     def ai(command: str, body: dict):

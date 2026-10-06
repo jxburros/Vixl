@@ -88,6 +88,8 @@ def _operation_schema():
             "x": COORD,
             "y": COORD,
             "provenance": {"type": "object"},
+            "credit": {"type": "string", "maxLength": 1000},
+            "license": {"type": "string", "maxLength": 1000},
             "width": SIZE,
             "height": SIZE,
             "max_pixels": {"type": "integer", "minimum": 1},

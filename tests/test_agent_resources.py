@@ -137,6 +137,9 @@ def test_font_import_portable_registered_names_and_https(monkeypatch, tmp_path):
     p = Project(128, 64)
     data = font.read_bytes()
     real_client = httpx.Client
+    from vixl import fetch
+
+    monkeypatch.setattr(fetch, "resolve", lambda host, port: ["93.184.216.34"])
     monkeypatch.setattr(
         httpx,
         "Client",

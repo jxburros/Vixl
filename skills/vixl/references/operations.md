@@ -32,7 +32,7 @@ The authoritative schema is always `vixl schema` / `GET /schema` / `vixl://opera
 
 | type | fields | notes |
 | --- | --- | --- |
-| `add` | **`path`** *or* **`asset`**, `name`, `x`, `y`, `linked` | `path` is CLI/Python only (MCP: use `vixl_import_image`). `asset` = an embedded ID like `assets/<sha256>.png`. `linked` keeps an external reference (needs `--allow-linked`). |
+| `add` | **`path`** *or* **`asset`**, `name`, `x`, `y`, `linked`, `credit`, `license` | `path` is CLI/Python only (MCP: use `vixl_import_image`, which also takes a `url`). `asset` = an embedded ID like `assets/<sha256>.png`. `linked` keeps an external reference (needs `--allow-linked`). `credit`/`license` are stored in the layer's `provenance` for attribution. |
 | `solid` | `name`, `width`, `height`, `color`, `x`, `y`, `target` | Defaults to canvas size. With `target`, edits that solid in place. |
 | `gradient` | `name`, `width`, `height`, `start`, `end`, `direction`, `stops`, `angle`, `x`, `y`, `target` | `direction`: `vertical` (default), `horizontal`, `angled` (`angle` 0°=left→right, 90°=top→bottom), `radial`. `stops`: 2–64 `{"offset":0..1,"color":…}` strictly increasing. |
 | `text` | **`text`** *or* `target`, `name`, `size`, `hide_if_empty`, `color`, `align` (`left`/`center`/`right`), `spacing` (line spacing px), `font`, `x`, `y` | `x`/`y` may be `"center"` or `"N%"`. `font`: a registered name, `heading`/`body` (follows the document typography), or a file path (CLI/Python only); default font DejaVu Sans is the proofing fallback. Multiline via `\n`. With `target`, edits that text layer in place (like `text-set`; `text` is then optional). |
