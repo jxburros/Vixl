@@ -11,6 +11,7 @@ the result and export. Text, geometry, masks, effects and history stay in the `.
 1. [Install and make your first design](getting-started.md): a complete CLI and Python walkthrough.
 2. [Understand the document](concepts.md): layers, coordinates, constraints, assets and history.
 3. [Explore the visual gallery](gallery.md): actual Vixl output with editable masters and recipes.
+   The [use-case catalog](use-cases.md) lists what you can make, grouped by how long each takes.
 4. [Choose an export format](exporting.md): images, vectors, print, decks, forms and motion.
 5. [Resolve common problems](troubleshooting.md): installation, text, checks, imports and providers.
 
