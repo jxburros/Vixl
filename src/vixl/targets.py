@@ -14,9 +14,10 @@ The docs table in docs/operations.md is generated from the schema by ``markdown_
 """
 
 from .errors import VixlError, require
+from .model import MAX_LAYERS
 from .render import EFFECTS
 
-MAX_TARGETS = 512
+MAX_TARGETS = MAX_LAYERS
 ALIASES = ("layers", "layer_ids", "layerIds", "target_ids", "targetIds")
 
 # Operations applied once per listed layer. Creation operations (shape, text, solid, gradient)

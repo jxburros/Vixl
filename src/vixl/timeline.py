@@ -23,7 +23,7 @@ import zipfile
 from PIL import Image
 
 from .errors import VixlError, require
-from .model import finite
+from .model import MAX_LAYERS, finite
 
 TIMELINE_TYPES = ("timeline-set", "keyframe", "keyframe-remove", "animate", "animate-preset", "marker")
 NUMERIC = ("x", "y", "translate-x", "translate-y", "opacity", "rotation", "scale", "scale-x", "scale-y", "width", "height", "size", "spacing",
@@ -423,7 +423,7 @@ def execute_timeline(project, op):
         require(kind in ("keyframe", "animate", "animate-preset"), f"{kind} takes a single target")
         require("target" not in op, "Pass target or targets, not both")
         targets = op["targets"]
-        require(isinstance(targets, list) and 1 <= len(targets) <= 256, "targets must list 1–256 layers")
+        require(isinstance(targets, list) and 1 <= len(targets) <= MAX_LAYERS, f"targets must list 1–{MAX_LAYERS} layers")
         stagger = finite(op.get("stagger", 0), "stagger", 0, 600000)
         for index, target in enumerate(targets):
             each = {k: v for k, v in op.items() if k not in ("targets", "stagger")}

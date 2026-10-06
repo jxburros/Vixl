@@ -17,7 +17,7 @@ from copy import deepcopy
 import zlib
 
 from .errors import VixlError, require
-from .model import finite, uid
+from .model import MAX_LAYERS, finite, uid
 
 TYPES = ("look",)
 
@@ -164,7 +164,7 @@ def schemas(add):
         "look": {"enum": list(LOOKS)},
         "color": S,
         "amount": {"type": "number", "minimum": 0, "maximum": 1},
-        "targets": {"type": "array", "items": S, "minItems": 1, "maxItems": 512, "uniqueItems": True},
+        "targets": {"type": "array", "items": S, "minItems": 1, "maxItems": MAX_LAYERS, "uniqueItems": True},
         "remove": B,
     }, ["look"])
 

@@ -216,21 +216,32 @@ def effect_valid(effect):
 
 def unique_name(project, proposed):
     require(isinstance(proposed, str) and 0 < len(proposed) <= 200, "Layer name must be 1–200 characters")
-    require(
-        not any(proposed in (x["name"], x["id"]) for x in project.state["layers"]),
-        f"Layer name already exists: {proposed}",
-    )
+    require(taken(project, proposed) is None, f"Layer name already exists: {proposed}")
     return proposed
+
+
+def taken(project, name):
+    """The layer whose ID or name is ``name``, or None (indexed on a Project)."""
+    find = getattr(project, "find_layer", None)
+    if find is not None:
+        return find(name)
+    return next((x for x in project.state["layers"] if name in (x["name"], x["id"])), None)
 
 
 def default_name(project, base):
     """A free name for a layer the operation left unnamed: ``base``, then ``base 2``, ``base 3``…
-    Explicit names must still be unique."""
-    taken = {x["name"] for x in project.state["layers"]} | {x["id"] for x in project.state["layers"]}
-    name, index = base, 2
-    while name in taken:
-        name, index = f"{base} {index}", index + 1
-    return name
+    Explicit names must still be unique. Within one ``Project.apply`` the count continues from the
+    last name handed out for ``base`` (so a batch of unnamed shapes does not rescan every earlier
+    name); a number freed earlier in the same batch is not reused."""
+    if taken(project, base) is None:
+        return base
+    hints = getattr(project, "_name_hints", None)
+    index = max(2, (hints or {}).get(base, 2))
+    while taken(project, f"{base} {index}") is not None:
+        index += 1
+    if hints is not None:
+        hints[base] = index + 1
+    return f"{base} {index}"
 
 
 def append_layer(project, layer):
@@ -239,6 +250,8 @@ def append_layer(project, layer):
     from .transforms import VECTOR_TYPES
     project.limits.size(layer["width"], layer["height"], vector=layer["type"] in VECTOR_TYPES)
     project.state["layers"].append(layer)
+    if hasattr(project, "_indexed"):
+        project._indexed(layer)
     project.state["active_layer"] = layer["id"]
     return layer
 

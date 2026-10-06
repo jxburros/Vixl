@@ -54,7 +54,9 @@ History is a DAG of revisions. Each revision stores a structural delta from its 
 Defaults (`vixl.model.Limits`):
 
 - 40 million pixels per canvas/layer; 16,384 pixels per dimension.
-- 512 layers; 256 effects per layer.
+- 4,096 layers per document (per page in a multi-page document); 256 effects per layer. Lists of layer
+  references (`targets`) take up to the same number. Earlier releases allowed 512 layers and refuse to open a
+  document with more.
 - 64 MiB per imported asset/provider response.
 - 256 MiB per archive and its expanded contents.
 - 10,000 operations per submitted batch; 2,000 history revisions (older ones are squashed, not refused).

@@ -11,7 +11,7 @@ nothing is stored but the settings. Stack members are positioned by the stack, n
 from argparse import BooleanOptionalAction
 
 from .errors import VixlError, require
-from .model import finite
+from .model import MAX_LAYERS, finite
 
 TYPES = ("stack",)
 DIRECTIONS = ("vertical", "horizontal")
@@ -25,7 +25,7 @@ POSITIONING = ("move", "align", "distribute", "constrain", "unconstrain")
 def schemas(add):
     from .schema import S, B, SIZE, enum
 
-    refs = {"type": "array", "items": S, "minItems": 1, "maxItems": 512, "uniqueItems": True}
+    refs = {"type": "array", "items": S, "minItems": 1, "maxItems": MAX_LAYERS, "uniqueItems": True}
     amount = {"type": "number", "minimum": 0}
     add(
         "stack",

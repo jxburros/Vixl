@@ -122,7 +122,7 @@ data and outputs must be inside it.
 
 ## Notes and limits
 
-- At most 5,000 copies and 500 sheets per merge, and 512 layers per sheet (marks included).
+- At most 5,000 copies and 500 sheets per merge, and 4,096 layers per sheet (marks included).
 - A template without a `dpi` is placed at one pixel per sheet pixel (a warning says so); give it a print size.
 - Crop marks are drawn in the margins only, at every cut line; with a gutter each copy's two edges get a
   mark. Registration marks are plain black rings and crosses, not a separation colour.

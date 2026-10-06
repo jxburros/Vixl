@@ -129,11 +129,51 @@ class Project:
         project._record([], f"Create {info['size']} document")
         return project
 
+    def find_layer(self, target):
+        """The layer whose ID or name is ``target``, or None.
+
+        IDs and names are unique across a page's layers, so a remembered position that still holds
+        a matching layer is the answer. Layers are edited in place everywhere, so the index is only
+        a hint: a stale entry rebuilds it, and a name it does not know is looked up in the list."""
+        layers = self.state["layers"]
+        if not isinstance(target, str):
+            return next((layer for layer in layers if target in (layer["id"], layer["name"])), None)
+        cached = getattr(self, "_layer_index", None)
+        if cached is None or cached[0] is not layers:
+            cached = self._index_layers()
+        position = cached[1].get(target)
+        if position is None:
+            position = next((i for i, layer in enumerate(layers) if target in (layer["id"], layer["name"])), None)
+            if position is None:
+                return None
+            cached[1][target] = position
+        elif position >= len(layers) or target not in (layers[position]["id"], layers[position]["name"]):
+            position = self._index_layers()[1].get(target)
+            if position is None:
+                return None
+        return layers[position]
+
+    def _index_layers(self):
+        layers, index = self.state["layers"], {}
+        for position, layer in enumerate(layers):
+            index.setdefault(layer["id"], position)
+            index.setdefault(layer["name"], position)
+        self._layer_index = (layers, index)
+        return self._layer_index
+
+    def _indexed(self, layer):
+        """Record a layer just appended to the list (see ``find_layer``)."""
+        cached = getattr(self, "_layer_index", None)
+        layers = self.state["layers"]
+        if cached is not None and cached[0] is layers and layers and layers[-1] is layer:
+            cached[1].setdefault(layer["id"], len(layers) - 1)
+            cached[1].setdefault(layer["name"], len(layers) - 1)
+
     def layer(self, target=None):
         target = target or self.state["active_layer"]
-        for layer in self.state["layers"]:
-            if target in (layer["id"], layer["name"]):
-                return layer
+        found = self.find_layer(target)
+        if found is not None:
+            return found
         names = [x["name"] for x in self.state["layers"]]
         folded = [name for name in names if name.casefold() == str(target).casefold()]
         suggestions = folded or difflib.get_close_matches(str(target), names, 3, 0.5)
@@ -383,6 +423,7 @@ class Project:
 
         notices.start(candidate)
         candidate._reports = {}  # What operations such as edit-layers and adapt-layout report back.
+        candidate._name_hints = {}  # Default layer names handed out in this batch (operations.default_name).
         before = candidate.inspect()
         for index, operation in enumerate(operations):
             calls.check_cancelled()  # A cancelled batch leaves the document untouched: nothing is committed yet.
@@ -429,6 +470,7 @@ class Project:
                 raise located(exc, index, operations[index], len(operations)) from exc
             raise
         candidate.__dict__.pop("_resource_budget", None)
+        candidate.__dict__.pop("_name_hints", None)
         candidate.__dict__.pop("_service", None)
         warned, interpreted = notices.finish(candidate)
         reports = candidate.__dict__.pop("_reports", {})

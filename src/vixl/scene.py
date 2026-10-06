@@ -5,7 +5,7 @@ import math
 import numpy as np
 from PIL import Image, ImageFilter
 from .errors import require
-from .model import finite
+from .model import MAX_LAYERS, finite
 
 TYPES = ("layer-depth", "camera", "lighting", "particles", "cut-paper")
 
@@ -21,7 +21,7 @@ def schemas(add):
     add("camera", {"from": pose, "to": pose, "start": N, "duration": N, "easing": easing_schema(), "follow": S, "shake": N, "focus": N, "focus_to": N, "aperture": N, "seed": {"type": "integer"}, "clear": B})
     add("lighting", {"lights": {"type": "array", "maxItems": 16, "items": {"type": "object"}}, "ambient": N, "vignette": N, "exposure": N, "saturation": N, "tint": S, "shadow": {"type": "object"}, "clear": B})
     add("particles", {"name": S, "preset": {"enum": ["dust", "bubbles", "sparks", "spores"]}, "count": {"type": "integer", "minimum": 1, "maximum": 256}, "x": N, "y": N, "spread": point, "velocity": point, "gravity": N, "turbulence": N, "life": N, "size": N, "color": S, "start": N, "duration": N, "seed": {"type": "integer"}}, ["name"])
-    add("cut-paper", {"targets": {"type": "array", "items": S, "maxItems": 512}, "grain": N, "roughness": N, "thickness": N, "fps": N, "jitter": N, "seed": {"type": "integer"}, "children": B, "clear": B})
+    add("cut-paper", {"targets": {"type": "array", "items": S, "maxItems": MAX_LAYERS}, "grain": N, "roughness": N, "thickness": N, "fps": N, "jitter": N, "seed": {"type": "integer"}, "children": B, "clear": B})
 
 
 def execute(project, op):

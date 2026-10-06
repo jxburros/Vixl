@@ -15,7 +15,7 @@ from PIL import Image, ImageColor, ImageDraw, ImageEnhance, ImageFilter, ImageFo
 from .assets import decode, read_bounded
 from .constants import EFFECTS as EFFECTS
 from .errors import VixlError, require
-from .model import finite
+from .model import MAX_LAYERS, finite
 
 BLENDS = ("normal", "multiply", "screen", "overlay", "darken", "lighten", "difference", "add", "subtract")
 CANVAS_PRESETS = {
@@ -161,7 +161,7 @@ def document_variables(project):
 
 
 def text_metrics(project, layer, variables=None):
-    text = substitute(layer["text"], variables or document_variables(project))
+    text = substitute(layer["text"], variables if variables is not None else document_variables(project))
     require(len(text) <= 100000, "Text exceeds length limit", "resource_limit")
     from .richtext import active
 
@@ -248,8 +248,10 @@ def resolved_layers(project, variables=None):
     variables = {**document_variables(project), **(variables or {})}
     # Paint strokes can hold hundreds of thousands of points and are only read while rendering
     # and laying out, so the resolved copies share them instead of copying them each time.
+    # Scalars are immutable, so only containers are copied (this runs for every layer on every resolve).
     layers = [
-        {key: value if key == "strokes" else deepcopy(value) for key, value in layer.items()}
+        {key: deepcopy(value) if key != "strokes" and isinstance(value, (dict, list, tuple)) else value
+         for key, value in layer.items()}
         for layer in project.state["layers"]
     ]
     originals = {item["id"]: item for item in layers}
@@ -653,7 +655,7 @@ class LayerCache(OrderedDict):
     Checks and timelines render a document many times; a cache smaller than the document's
     layers would evict each layer before it is reused."""
 
-    def __init__(self, entries=512, budget=384 * 1024 * 1024):
+    def __init__(self, entries=2 * MAX_LAYERS, budget=384 * 1024 * 1024):
         super().__init__()
         self.entries, self.budget, self.bytes = entries, budget, 0
 

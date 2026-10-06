@@ -6,12 +6,16 @@ import uuid
 
 from .errors import require
 
+# Layers in one document (or page). Lists that name layers (targets, refs) share this bound; documents with more
+# layers than an older release allowed do not open in that release.
+MAX_LAYERS = 4096
+
 
 @dataclass(frozen=True)
 class Limits:
     max_pixels: int = 40_000_000
     max_dimension: int = 16384
-    max_layers: int = 512
+    max_layers: int = MAX_LAYERS
     max_asset_bytes: int = 64 * 1024 * 1024
     max_project_bytes: int = 256 * 1024 * 1024
     max_operations: int = 10000

@@ -91,6 +91,6 @@ Preview answers “does it look right?” Use all three. Bounds checks cannot es
 legibility, provider quality or an artistic outcome; saved suites cover their declared
 rules and sample times. [Production workflows](production.md) explains coverage and repairs.
 
-Defaults include 40 MP per canvas/layer, 16,384 px per side, 512 layers and 10,000 operations
+Defaults include 40 MP per canvas/layer, 16,384 px per side, 4,096 layers and 10,000 operations
 per batch. See [architecture](architecture.md#resource-policy) for the complete resource policy
 and [coverage](coverage.md) for unsupported features.
