@@ -1,3 +1,3 @@
 test,lane,agent,model,date,blind_code,r1_minutes,r1_nudges,hard_passed,hard_total,fidelity,craft,report_honest,r2_minutes,r2_nudges,editability,revision,notes
-T14,V,claude-code-subagent,claude-opus-5-5,2026-10-05,8F4V,,0,5,5,5,4,yes,,0,4,4,Frame-exact timing; break hand-cleared; polished scene; r2 needed workflow rebuild plus redone hand edit and larger chorus wraps with orphan word
+T14,V,claude-code-subagent,claude-opus-5-5,2026-10-06,FVK7,,0,5,5,5,4,yes,,0,5,5,Vixl 0.20.0; frame-exact timing; build clears break and holds repeated line natively; polished scene; r2 offset field plus four chorus size keys with nothing else moved; report says mono AAC but it is stereo
 T14,T,claude-code-subagent,claude-opus-5-5,2026-10-05,N21H,,0,3,5,4,3,yes,,0,5,4,Frame-exact timing but next-line preview stays during 16-18 s break (disclosed); generic DejaVu type and bar lighthouse; r2 two constants in build.py
