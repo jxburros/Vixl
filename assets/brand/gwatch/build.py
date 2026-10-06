@@ -90,9 +90,9 @@ class Shape:
                 "height": max(height, 1), "path": " ".join(out), "fill": fill}
 
 
-def agent_g(shape):
-    """The Agent's G as one contour: ring with its opening, plus the crossbar."""
-    g = GEOMETRY["agent"]
+def gwatch_g(shape):
+    """The GWatch G as one contour: ring with its opening, plus the crossbar."""
+    g = GEOMETRY["gwatch"]
     cx, cy, ro, ri = (g["ring"][k] for k in ("cx", "cy", "outer", "inner"))
     bar = g["bar"]
     theta = math.radians(g["opening_angle"])
@@ -112,8 +112,8 @@ def agent_g(shape):
     return shape
 
 
-def agent_handle(shape):
-    h = GEOMETRY["agent"]["handle"]
+def gwatch_handle(shape):
+    h = GEOMETRY["gwatch"]["handle"]
     (x1, y1), (x2, y2), r = h["from"], h["to"], h["radius"]
     length = math.hypot(x2 - x1, y2 - y1)
     nx, ny = -(y2 - y1) / length * r, (x2 - x1) / length * r
@@ -131,11 +131,11 @@ def agent_handle(shape):
 
 def artwork_bounds(logo):
     """Visible extent of a mark in source pixels: (left, top, right, bottom)."""
-    if logo == "gwatch":
-        points = [(v[i], v[i + 1]) for c in GEOMETRY["gwatch"]["navy"] for _, *v in c for i in range(0, len(v), 2)]
+    if logo == "agent":
+        points = [(v[i], v[i + 1]) for c in GEOMETRY["agent"]["navy"] for _, *v in c for i in range(0, len(v), 2)]
         xs, ys = zip(*points)
         return min(xs), min(ys), max(xs), max(ys)
-    g = GEOMETRY["agent"]
+    g = GEOMETRY["gwatch"]
     cx, cy, ro = g["ring"]["cx"], g["ring"]["cy"], g["ring"]["outer"]
     (hx, hy), r = g["handle"]["to"], g["handle"]["radius"]
     return cx - ro, cy - ro, max(cx + ro, hx + r), max(cy + ro, hy + r)
@@ -163,19 +163,19 @@ def mark_ops(logo, variant, scale, ox, oy):
 
     ops = []
     if fills["disc"]:
-        if logo == "gwatch":
+        if logo == "agent":
             ops.append(shape().contour(geo["white"][0]).op("eye-white", fills["disc"]))
         else:
             ring = geo["ring"]
             ops.append(shape().circle(ring["cx"], ring["cy"], ring["inner"] + 2).op("eye-white", fills["disc"]))
-    if logo == "gwatch":
+    if logo == "agent":
         body = shape()
         for contour in geo["navy"]:
             body.contour(contour)
         ops.append(body.op("hat-and-g", fills["body"]))
     else:
-        ops.append(agent_g(shape()).op("g", fills["body"]))
-        ops.append(agent_handle(shape()).op("handle", fills["body"]))
+        ops.append(gwatch_g(shape()).op("g", fills["body"]))
+        ops.append(gwatch_handle(shape()).op("handle", fills["body"]))
     (ix, iy, ir), (px, py, pr), (hx, hy, hr) = geo["iris"], geo["pupil"], geo["highlight"]
     # The iris is a ring wherever the pupil is a knockout or the same colour as the iris.
     hole = None

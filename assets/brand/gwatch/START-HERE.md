@@ -1,6 +1,6 @@
 # GWatch and GWatch Agent logo kits
 
-Vector rebuilds of the supplied GWatch (detective hat, blue eye) and GWatch Agent (magnifier, gold
+Vector rebuilds of the supplied GWatch (magnifier, gold eye) and GWatch Agent (detective hat, blue
 eye) logos, made with Vixl. Each kit has the same files:
 
 | Folder | Kit | |
@@ -42,15 +42,15 @@ reads.
 - **Icon sets** (`Icon-Sets/app-icon-light`, `Icon-Sets/app-icon-dark`): drop-in platform sets: web
   (`favicon.ico`, `apple-touch-icon.png`, `android-chrome-*`, `site.webmanifest`), Apple (20–1024),
   Android mipmaps and Play Store 512, and Windows tiles.
-- **Vixl** (`Editable-Vixl/`): editable masters, each part on its own named layer (`hat-and-g` or
-  `g` and `handle`, `eye-white`, `iris`, `pupil`, `highlight`, `wordmark`).
+- **Vixl** (`Editable-Vixl/`): editable masters, each part on its own named layer (`g` and `handle`, or
+  `hat-and-g`, `eye-white`, `iris`, `pupil`, `highlight`, `wordmark`).
 
 ## Brand details
 
 | | GWatch | GWatch Agent |
 | --- | --- | --- |
-| Navy | `#022252` | `#061A3A` |
-| Accent | Blue `#207DFB` | Gold `#D3A32E` |
+| Navy | `#061A3A` | `#022252` |
+| Accent | Gold `#D3A32E` | Blue `#207DFB` |
 | White | `#FFFFFF` | `#FFFFFF` |
 
 Colours were sampled from the supplied artwork. The wordmark is **Outfit SemiBold (600)**; it was not
@@ -60,14 +60,14 @@ part of the supplied logos, so swap it in `build.py` (`WORDMARK_FONT`) if GWatch
 
 Keep the proportions; don't recolour parts individually or stretch the mark. Leave clear space of
 at least the iris's width around it. Use SVG where you can, otherwise a PNG at least as large as it
-is displayed. The GWatch hat gets busy below about 32 px; at 16 px the Agent mark reads better, so
-consider the Agent favicon if one icon must serve both.
+is displayed. The GWatch Agent hat gets busy below about 32 px; at 16 px the GWatch mark reads better,
+so consider the GWatch favicon if one icon must serve both.
 
 ## How it was made
 
 - `source/` holds the supplied originals. `source/trace.py` turned them into `source/geometry.json`:
-  the GWatch hat, brim and G are traced at 4x with potrace (they are hand-drawn curves); the eyes and
-  the whole Agent mark are true circles, lines and rectangles least-squares fitted to the originals.
+  the GWatch Agent hat, brim and G are traced at 4x with potrace (they are hand-drawn curves); the eyes and
+  the whole GWatch mark are true circles, lines and rectangles least-squares fitted to the originals.
 - `build.py` draws every file with Vixl from that geometry and exports it. Rebuild from the repository
   root with `python assets/brand/gwatch/build.py` (or `... build.py gwatch` / `agent`). The wordmark
   font downloads from Google Fonts on the first run.

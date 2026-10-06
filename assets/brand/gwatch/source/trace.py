@@ -8,9 +8,9 @@ Run once, from the repository root, when the source artwork changes:
 Writes geometry.json next to this file. build.py reads only that JSON, so building the kit needs
 neither potracer nor scipy.
 
-- GWatch: the deerstalker hat, brim and G are irregular hand-drawn curves, so they are traced
+- GWatch Agent: the deerstalker hat, brim and G are irregular hand-drawn curves, so they are traced
   (potrace, at 4x with sub-pixel edges) from the original. The eye is redrawn as true circles.
-- GWatch Agent: every part is a circle, line or rectangle, so it is rebuilt from parameters that
+- GWatch: every part is a circle, line or rectangle, so it is rebuilt from parameters that
   were least-squares fitted to the original (the fit misses the source by about 1 px on average).
 
 All coordinates are in the 1254 x 1254 pixel space of the supplied files.
@@ -28,18 +28,18 @@ HERE = Path(__file__).resolve().parent
 UP = 4  # trace at 4x for sub-pixel accurate edges
 
 # Sampled from the flat colour areas of the originals.
-GWATCH_COLORS = {"navy": "#022252", "accent": "#207DFB", "white": "#FFFFFF"}
-AGENT_COLORS = {"navy": "#061A3A", "accent": "#D3A32E", "white": "#FFFFFF"}
+AGENT_COLORS = {"navy": "#022252", "accent": "#207DFB", "white": "#FFFFFF"}
+GWATCH_COLORS = {"navy": "#061A3A", "accent": "#D3A32E", "white": "#FFFFFF"}
 
-# Eye circles fitted to the GWatch original.
-GWATCH_EYE = {
+# Eye circles fitted to the GWatch Agent original.
+AGENT_EYE = {
     "iris": [622.5, 744.6, 174.0],
     "pupil": [622.5, 744.6, 98.4],
     "highlight": [666.0, 704.5, 29.0],
 }
 
-# Fitted GWatch Agent geometry (see the module docstring).
-AGENT = {
+# Fitted GWatch geometry (see the module docstring).
+GWATCH = {
     "ring": {"cx": 615.5, "cy": 594.7, "outer": 339.3, "inner": 257.2},
     # The G opening: ring removed between this ray (degrees, clockwise from 3 o'clock) and the bar.
     "opening_angle": -33.4,
@@ -88,11 +88,11 @@ def circle_mask(shape, cx, cy, r):
     return (xx - cx) ** 2 + (yy - cy) ** 2 < r * r
 
 
-def gwatch():
-    alpha, lum = load(HERE / "gwatch-original.webp")
+def agent():
+    alpha, lum = load(HERE / "gwatch-agent-original.webp")
     navy_lum, white_lum = 0.03, 1.0
     darkness = np.clip((white_lum - lum) / (white_lum - navy_lum), 0, 1)
-    ix, iy, ir = GWATCH_EYE["iris"]
+    ix, iy, ir = AGENT_EYE["iris"]
     eye = circle_mask(alpha.shape, ix, iy, ir + 3)
 
     # Navy: hat, brim and G. The pupil is drawn as a circle, so the eye is left out.
@@ -113,18 +113,18 @@ def gwatch():
     sizes = ndimage.sum(white_mask, labels, range(1, count + 1))
     white_mask = labels == 1 + int(np.argmax(sizes))
     return {
-        "colors": GWATCH_COLORS,
+        "colors": AGENT_COLORS,
         "navy": trace(navy_mask),
         "white": trace(white_mask),
-        **GWATCH_EYE,
+        **AGENT_EYE,
     }
 
 
 def main():
-    data = {"gwatch": gwatch(), "agent": {"colors": AGENT_COLORS, **AGENT}}
+    data = {"agent": agent(), "gwatch": {"colors": GWATCH_COLORS, **GWATCH}}
     (HERE / "geometry.json").write_text(json.dumps(data, separators=(",", ":")))
     for contour_set in ("navy", "white"):
-        print(contour_set, len(data["gwatch"][contour_set]), "contours")
+        print(contour_set, len(data["agent"][contour_set]), "contours")
 
 
 if __name__ == "__main__":
