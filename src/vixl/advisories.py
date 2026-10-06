@@ -52,6 +52,10 @@ def ignored_fields(candidate, op):
         from .normalize import SHAPE_TYPES
 
         shape = SHAPE_TYPES.get(shape, (shape,))[0] if isinstance(shape, str) else shape  # donut → arc, pill → ...
+        from .shape_catalog import KINDS
+
+        if shape in KINDS:  # catalog shapes read their own parameters (burst/seal inner_radius, sides, radius ...)
+            return found
         if "radius" in op and shape not in ("rounded-rectangle", "capsule"):
             found.append(f"shape {name}: radius only rounds 'rounded-rectangle' and 'capsule'; it does nothing "
                          f"for {shape!r}")

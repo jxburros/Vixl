@@ -25,6 +25,9 @@ def test_edit_of_existing_path_layer_does_not_warn_path_only_for_path():  # #229
     assert not warn(p, [{"type": "shape", "target": "a", "inner_radius": 0.3}])
     assert not warn(p, [{"type": "shape", "shape": "donut", "name": "d", "width": 40, "height": 40, "fill": "red",
                          "inner_radius": 0.5}])
+    for kind in ("burst", "seal", "sparkle"):  # catalog shapes read inner_radius too
+        assert not warn(p, [{"type": "shape", "shape": kind, "name": kind, "width": 40, "height": 40, "fill": "red",
+                             "inner_radius": 0.5}])
 
 
 def test_pixel_art_accepts_matching_width_and_height_with_rows():  # #227
