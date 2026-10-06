@@ -82,8 +82,8 @@ as `master:NAME/layer` in renders and checks.
 
 `export deck.pdf` writes every shown page (or `--pages …`) to one PDF:
 
-- **Vector content** (default, for every document and also with `--cmyk`): solids, shapes and paths, gradients (PDF shadings), plain groups
-  and text become PDF graphics. Text — plain and rich — is real text in embedded TrueType subsets
+- **Vector content** (default, for every document and also with `--cmyk`): solids, shapes and paths, pathfinder booleans (one compound path),
+  gradients (PDF shadings), plain groups and text become PDF graphics. Text — plain and rich — is real text in embedded TrueType subsets
   with Unicode maps, so it can be selected, searched and read aloud. Synthetic bold and italic
   are drawn as stroked and slanted text. Image layers are images. Anything PDF cannot draw the
   same way (effects, layer styles, masks, clipping, blend modes, adjustment layers, paint and
