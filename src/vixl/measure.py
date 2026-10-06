@@ -95,9 +95,10 @@ def top_level_contrast(project, targets):
     def observer(ident):
         def observe(before, after):
             try:
-                left, top, right, bottom = pixel_box(bounds[ident], (canvas["width"], canvas["height"]))
-                require(right > left and bottom > top, "Region must be within canvas")
                 x, y, w, h = bounds[ident]
+                left, top, right, bottom = pixel_box(bounds[ident], (canvas["width"], canvas["height"]))
+                require(right > left and bottom > top and x >= 0 and y >= 0 and math.ceil(x + w - 1e-8) <= canvas["width"]
+                        and math.ceil(y + h - 1e-8) <= canvas["height"], "Region must be within canvas")
                 tile = layer_image(project, layers[ident], bounds[ident]).getchannel("A")
                 # The tile is cut to the same whole-pixel box as the before/after crops.
                 coverage = Image.new("L", (right - left, bottom - top))
