@@ -423,6 +423,7 @@ def create_app(path, *, token=None, limits=None):
             "values",
             "fill_mode",
             "alpha",
+            "presenter",
         }
         require(set(body) <= allowed, "Unknown export option")
         fmt = body.get("format", "PNG").upper()

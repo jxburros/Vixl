@@ -42,6 +42,7 @@ Guides:    guide NAME x|y POS | guide NAME --kind line|ray|segment|point|circle|
 Pages:     page add NAME [--master M] [--after P] [--duplicate P] [--notes TEXT], page select|remove P, page move P --index N,
            page set P [--rename N] [--notes TEXT] [--hidden] [--transition fade], master add NAME [--from P], pages,
            render --page 2 | --page all (contact sheet), export deck.pdf|deck.pptx [--pages 1-3,5] [--pdf-content raster],
+           export deck.html [--presenter-theme dark|light|auto] [--slide-images svg|png] [--start-slide N] [--no-notes],
            check --checks deck [--min-font 18] [--max-words 60]; any operation accepts "page": P
 Forms:     field add KEY --kind text|multiline|number|date|checkbox|radio|dropdown|signature --label TEXT [--required] …,
            field set LAYER …, field list, form settings [--tab-order reading|explicit] [--title T] [--lang en-US],
@@ -194,6 +195,13 @@ def output_options(args, command):
     p.add_argument("--page", help="Page name or number of a multi-page document; 'all' renders a contact sheet")
     p.add_argument("--pages", help="PDF/PowerPoint pages: numbers, ranges and names, e.g. 1-3,5,intro")
     p.add_argument("--pdf-content", choices=["vector", "raster"], help="PDF pages as vector text and shapes, or images")
+    p.add_argument("--presenter", action="store_true", default=None,
+                   help="HTML: a self-contained slide presentation (the default for multi-page documents)")
+    p.add_argument("--no-presenter", dest="presenter", action="store_false", help="HTML: one static image, not a presentation")
+    p.add_argument("--presenter-theme", choices=["dark", "light", "auto"], help="Presentation surround and controls")
+    p.add_argument("--slide-images", choices=["svg", "png"], help="Presentation slides as inline vectors (default) or PNGs")
+    p.add_argument("--start-slide", help="Presentation: slide number or page name shown first")
+    p.add_argument("--no-notes", action="store_true", help="Presentation: leave the speaker notes out of the file")
     p.add_argument("--columns", type=int, help="Contact sheet columns with --page all")
     p.add_argument("--fillable", action="store_true", help="PDF with fillable form fields")
     p.add_argument("--fill-mode", choices=["flatten", "editable"], default="flatten",
@@ -202,6 +210,15 @@ def output_options(args, command):
     p.add_argument("--alpha", choices=["auto", "keep", "flatten"], default="auto",
                    help="PNG/WEBP/TIFF/AVIF: RGB when opaque (auto), always RGBA (keep), or RGB on --background (flatten)")
     return p.parse_args(args)
+
+
+def presenter_options(a):
+    """``--presenter``/``--no-presenter`` and the presenter flags as the export's ``presenter`` option."""
+    options = {"theme": a.presenter_theme, "slide_images": a.slide_images,
+               "start": int(a.start_slide) if a.start_slide and a.start_slide.isdigit() else a.start_slide,
+               "notes": False if a.no_notes else None}
+    options = {key: value for key, value in options.items() if value is not None}
+    return a.presenter if options == {} or a.presenter is False else options
 
 
 def print_options(a, limits):
@@ -678,7 +695,7 @@ def project_command(project, cmd, args, *, detail="compact"):
         from .pages import parse_pages
 
         fmt = (a.format or Path(destination).suffix.lstrip(".")).upper()
-        if a.pages and fmt not in ("PDF", "PPTX"):
+        if a.pages and fmt not in ("PDF", "PPTX") and not (fmt in ("HTML", "HTM") and a.presenter is not False):
             # Raster and SVG pages export as numbered files: carousel.png → carousel-01.png …
             from .pages import find_page, page_list
 
@@ -715,6 +732,7 @@ def project_command(project, cmd, args, *, detail="compact"):
             values=values if (a.fillable or a.fill_mode == "editable") else None,
             pages=None if a.pages == "all" else parse_pages(a.pages),
             pdf_content=a.pdf_content,
+            presenter=presenter_options(a),
             report=report,
             **print_options(a, project.limits),
         )

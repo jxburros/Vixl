@@ -336,9 +336,10 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
             "look open, vixl_roll a few directions and compare previews. Paint with brushes (vixl_brushes_list), animate "
             "with keyframes (keyframe/animate/animate-preset → vixl_timeline_preview → vixl_export_timeline), and "
             "export print-ready CMYK PDF/TIFF/JPEG with vixl_export_file. Slides and carousels are pages (page "
-            "operation; preview page='all'; export .pdf or .pptx); forms are field layers (field operation; check "
-            "form; export_file fillable=true, or values= to fill); hand drawings are drawing operations (import, "
-            "clean, vectorize, straighten, fill) checked with check drawing. "
+            "operation; preview page='all'; export .pdf, .pptx or .html, a self-contained presentation); forms "
+            "are field layers (field operation; check form; export_file fillable=true, or values= to fill); hand "
+            "drawings are drawing operations (import, clean, vectorize, straighten, fill) checked with check "
+            "drawing. "
             + ("AI tools need a configured provider." if tools == "all" else
                "Provider-backed AI tools are served separately by vixl mcp --tools ai.")
         ),
@@ -794,6 +795,10 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         alpha: Annotated[Literal["auto", "keep", "flatten"], Field(
             description="PNG/WEBP/TIFF/AVIF channels: auto writes RGB when the image is fully opaque, keep always "
                         "RGBA, flatten composites onto background and writes RGB")] = "auto",
+        presenter: Annotated[bool | dict | None, Field(
+            description=".html of a multi-page document is a self-contained slide presentation; false writes one "
+                        "static image instead, true presents any document. Options: {theme: dark|light|auto, "
+                        "slide_images: svg|png, notes: bool, start: slide number or page name, title}")] = None,
         document: Document = None,
     ) -> dict:
         """Export to a workspace file, format from extension (PNG/JPEG/WEBP/TIFF/AVIF/SVG/PDF/ICO/PPTX), full
@@ -801,7 +806,8 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         accuracy, else device-naive GCR with black_generation and ink_limit); dpi defaults to the canvas
         dpi. SVG policy strict rejects any embedded raster fallback. time exports one timeline frame. A
         multi-page document exports every shown page to PDF (vector text) or PowerPoint (editable slides
-        with speaker notes). fillable writes PDF form fields; values fills them (flatten draws them into the
+        with speaker notes) or HTML (a self-contained presentation: keyboard, overview, transitions, speaker
+        view; pages= picks pages). fillable writes PDF form fields; values fills them (flatten draws them into the
         artwork, editable prefills a fillable PDF). PNG and other alpha formats are RGB when the image is opaque;
         alpha=flatten forces RGB on background, alpha=keep forces RGBA. Print-size PDFs measure exactly trim +
         bleed with TrimBox and BleedBox. Returns file metadata, never image bytes."""
@@ -837,6 +843,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
             values=values,
             fill_mode=fill_mode,
             alpha=alpha,
+            presenter=presenter,
         )
 
     @tool

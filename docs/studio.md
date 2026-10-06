@@ -258,7 +258,9 @@ Text uses the bundled fallback font; arbitrary browser CSS/fonts are not reprodu
 HTML export is a standalone responsive artwork page with a self-contained SVG image, escaped
 accessible text and restrictive CSP. It needs no server, JavaScript or external assets. It is
 an artwork export, not conversion into editable HTML layout components. CLI, Python, MCP
-file export and REST `POST /export` (`format:"HTML"`) share the implementation.
+file export and REST `POST /export` (`format:"HTML"`) share the implementation. A document with
+pages exports as a slide presentation instead (see [presenter](presenter.md)); `--no-presenter`
+(`presenter=false`) keeps the single artwork page.
 
 ## Plugin packs and trusted Python extensions
 

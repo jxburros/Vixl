@@ -1145,6 +1145,7 @@ def export(
     values=None,
     fill_mode="flatten",
     alpha="keep",
+    presenter=None,
 ):
     """Render and encode. ``color_space='cmyk'`` separates JPEG/TIFF/PDF output (ICC profile
     bytes in ``icc_profile`` for press-accurate separation, else device-naive GCR with
@@ -1152,7 +1153,10 @@ def export(
     through that separation; ``simulate`` previews a color-vision deficiency. ``alpha`` sets the
     channels of PNG, WEBP, TIFF and AVIF output: ``keep`` always writes RGBA, ``auto`` writes RGB
     when every pixel is opaque and RGBA otherwise (the file export default), and ``flatten``
-    composites onto ``background`` and writes RGB (as JPEG and PDF always do)."""
+    composites onto ``background`` and writes RGB (as JPEG and PDF always do). HTML output of a
+    multi-page document is a self-contained slide presentation (see ``presenter.py``): ``presenter``
+    is ``False`` for the plain single-image HTML, ``True`` for a presentation of any document, or
+    a dict of options (theme, notes, slide_images, start, title)."""
     require(alpha in ("auto", "keep", "flatten"), "alpha must be auto, keep or flatten", field="alpha")
     require(sampling in ("smooth", "nearest"), "Sampling must be smooth or nearest")
     require(color_space in ("rgb", "cmyk"), "Color space must be rgb or cmyk")
@@ -1195,6 +1199,20 @@ def export(
         project = with_values(project, values)
         if (format or "").upper() == "PDF" or suffix == ".pdf":
             pdf_content = pdf_content or "vector"
+    from .presenter import export_presenter, wants_presenter
+
+    html_name = (format or (suffix[1:] if suffix in (".html", ".htm") else "")).upper() in ("HTML", "HTM")
+    # Options a presentation cannot honor keep a paged document's HTML export the single artwork page.
+    artwork = bool(profile or artboard or comp or proof or simulate or icc_profile) or color_space != "rgb"
+    if wants_presenter(False if presenter is None and artwork else presenter, html=html_name,
+                       paged=bool(project.state.get("pages")), page=page):
+        require(not artwork, "A presentation shows pages in RGB; profile, artboard, comp, proof, simulate and CMYK do not apply")
+        require(page is None or not pages, "Pass page or pages, not both")
+        data = export_presenter(project, pages=pages or ([page] if page is not None else None), options=presenter,
+                                variables=variables, svg_policy=svg_policy, scale=scale, report=report)
+        if path:
+            Path(path).write_bytes(data)
+        return data
     if (format or "").upper() == "PPTX" or suffix == ".pptx":
         from .pptx_export import export_pptx
 
