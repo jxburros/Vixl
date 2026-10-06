@@ -96,6 +96,8 @@ def execute(project, op):
     if kind == "font-fallbacks":
         from .render import resolve_font
         from .text import primary_font_data
+        require("target" not in op, "font-fallbacks is document-wide and takes no target: the list applies to "
+                "every text layer; pass fonts only", field="target")
         fonts = []
         for name in op["fonts"]:
             require(name in project.state.get("fonts", {}) or name in ("heading", "body", "DejaVuSans.ttf"), "Import fallback fonts with font import first; use their registered names")

@@ -252,7 +252,39 @@ class Session:
         with self.project(document=document) as p:
             return p.inspect(target)
 
-    def apply(self, operations, dry_run=False, detail="compact", document=None):
+    def load_operations(self, path):
+        """Operations from a workspace JSON file (array, or an object with ``operations``) or a JSONL file
+        (one operation per line; a bad line is reported with its line number)."""
+        import json
+
+        from .assets import read_bounded
+
+        resolved = self.resolve(path)
+        require(resolved.is_file(), f"No operations file at {path!r}", "not_found", field="operations_path")
+        text = read_bounded(resolved, 8 * 1024 * 1024).decode("utf-8-sig", "replace")
+        if resolved.suffix.lower() in (".jsonl", ".ndjson"):
+            operations = []
+            for number, line in enumerate(text.splitlines(), 1):
+                if not line.strip():
+                    continue
+                try:
+                    item = json.loads(line)
+                except ValueError as exc:
+                    raise VixlError("invalid_json", f"{path} line {number}: {exc}", field="operations_path") from exc
+                require(isinstance(item, dict), f"{path} line {number}: expected one operation object per line",
+                        "invalid_json", field="operations_path")
+                operations.append(item)
+            return operations
+        try:
+            loaded = json.loads(text)
+        except ValueError as exc:
+            raise VixlError("invalid_json", f"{path}: {exc}", field="operations_path") from exc
+        return loaded
+
+    def apply(self, operations, dry_run=False, detail="compact", document=None, operations_path=None):
+        if operations_path is not None:
+            require(operations is None, "Pass operations or operations_path, not both", field="operations_path")
+            operations = self.load_operations(operations_path)
         if isinstance(operations, dict):
             single = "type" in operations or "operation" in operations
             operations = [operations] if single else operations.get("operations", [operations])
@@ -636,7 +668,8 @@ def create_app(path, *, token=None, limits=None):
     @app.post("/operations")
     def operations(body: dict):
         return session.apply(
-            body.get("operations"), bool(body.get("dry_run", False)), body.get("detail", "compact")
+            body.get("operations"), bool(body.get("dry_run", False)), body.get("detail", "compact"),
+            operations_path=body.get("operations_path"),
         )
 
     @app.get("/render")

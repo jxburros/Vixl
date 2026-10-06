@@ -1682,9 +1682,9 @@ def preset_octopus(v):
     color = _p(v, "color", "#c4456a")
     return [
         {"name": "arms", "generator": "tentacle", "params": {"length": 1.5, "width": 0.13, "taper": 1.1, "curl": 0.55,
-                                                             "wave": 1.0, "waves": 1.0},
+                                                             "wave": 1.0, "waves": 1.0, "tip_width": 0.03},
          "rules": [{"rule": "radial", "count": 8, "radius": 0.18, "start": 20, "spread": 140, "jitter": 0.6},
-                   {"rule": "noise", "amount": 0.015, "frequency": 2}],
+                   {"rule": "noise", "amount": 0.008, "frequency": 2}],
          "hidden": True},
         {"name": "head", "generator": "ellipse", "params": {"form": "egg", "aspect": 0.85},
          "rules": [{"rule": "transform", "scale": 0.62, "translate": [0, -0.62]}], "hidden": True},

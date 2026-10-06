@@ -1,6 +1,6 @@
 # Motion, reusable characters, compositing and sound
 
-All operation times are milliseconds. Motion coordinates are pixels; velocities and gravity use seconds. These operations work through the same `vixl_apply`, CLI batch and Python `Project.apply` boundary. Read the `natural-motion`, `character-rigging`, `cut-paper` and `audio-composition` guidance resources before planning a sequence. Run `vixl_check` with `motion`, `character`, `anatomy` and `captions` checks and inspect important frames, then play the export.
+All operation times are milliseconds. Motion coordinates are pixels; velocities and gravity use seconds. These operations work through the same `vixl_operations_apply`, CLI batch and Python `Project.apply` boundary. Read the `natural-motion`, `character-rigging`, `cut-paper` and `audio-composition` guidance resources before planning a sequence. Run `vixl_check` with `motion`, `character`, `anatomy` and `captions` checks and inspect important frames, then play the export.
 
 ## Bouncing ball → walk → reaction
 
@@ -51,4 +51,4 @@ Natural movement has a cause: prepare a large action with a small opposite actio
  "notes":[{"start":0,"duration":500,"midi":60},{"start":500,"duration":500,"midi":64},{"start":1000,"duration":900,"midi":67}]}
 ```
 
-Instruments: sine, triangle, square, saw, piano, bell, bass, kick, snare, hihat, noise, whoosh, pop, click and splash. Use ADSR `envelope` attack/decay/release in milliseconds and sustain 0–1. `volume`, `pan`, `fade_in`, `fade_out` and `trim` control a track; timeline `start` can reference a marker. PCM WAV `source` imports are workspace-contained and become embedded assets. Film audio additionally accepts compressed imports through ffmpeg. MP4/WebM timeline and film exports mux the mix; `vixl_export_audio` / Python `export_audio(project,path)` writes PCM WAV. Mixing sums tracks and clips only at PCM encoding, so keep headroom and inspect peak levels with `vixl_audio_analyze`.
+Instruments: sine, triangle, square, saw, piano, bell, bass, kick, snare, hihat, noise, whoosh, pop, click and splash. Use ADSR `envelope` attack/decay/release in milliseconds and sustain 0–1. `volume`, `pan`, `fade_in`, `fade_out` and `trim` control a track; timeline `start` can reference a marker. PCM WAV `source` imports are workspace-contained and become embedded assets. Film audio additionally accepts compressed imports through ffmpeg. MP4/WebM timeline and film exports mux the mix; `vixl_export_audio` / Python `export_audio(project,path)` writes PCM WAV. Mixing sums tracks and clips only at PCM encoding, so keep headroom and inspect peak levels with `vixl_workflow("audio-analyze", {"source": "mix.wav"})`.

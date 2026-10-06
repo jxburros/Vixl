@@ -585,6 +585,25 @@ class Project:
 
         return render(self, variables, artboard, comp, page=page)
 
+    def show(self, page=None, region=None):
+        """The rendered document as a PIL image, for notebooks and scripts. ``page`` is a page number or name;
+        ``region`` crops to ``[x, y, width, height]`` in document pixels."""
+        image = self.render(page=page)
+        if region is not None:
+            require(len(region) == 4, "region is [x, y, width, height]", field="region")
+            x, y, w, h = (float(v) for v in region)
+            require(w > 0 and h > 0, "region needs a positive width and height", field="region")
+            image = image.crop((round(x), round(y), round(x + w), round(y + h)))
+        return image
+
+    def _repr_png_(self):
+        """Jupyter shows a Project as its rendered PNG."""
+        import io
+
+        buffer = io.BytesIO()
+        self.render().save(buffer, "PNG")
+        return buffer.getvalue()
+
     def export(self, path=None, **options):
         from .render import export
 

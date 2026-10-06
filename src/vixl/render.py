@@ -129,6 +129,11 @@ def resolve_font(project, name):
     if name in ("heading", "body"):
         # A role uses the proofing fallback until the document typography sets it.
         role, name = name, typography.get(name, "DejaVuSans.ttf")
+        if name == "DejaVuSans.ttf":
+            from .notices import warn
+
+            warn(project, f"font role {role!r} has no typeface in this document, so text uses the bundled proofing "
+                          "font (DejaVu Sans); choose type with vixl_fonts then vixl_font_pair (or vixl_font_install)")
     font = fonts.get(name, name)
     if font not in project.assets and Path(font).is_file():
         from .assets import read_bounded

@@ -23,7 +23,7 @@ project.save()
 
 `Project.apply(..., detail="compact")` returns changed fields keyed by stable layer ID; the Python API keeps `detail="full"` as its compatibility default.
 
-`Project.render()` returns a Pillow RGBA image. `Project.export()` returns encoded bytes, optionally writing to a path. `Project.inspect()` returns an independent JSON-serializable state description. History methods: `undo`, `redo`, `branch`, `checkpoint`, `checkout`, `begin`, `commit`, `rollback`.
+`Project.render()` returns a Pillow RGBA image. In a notebook a `Project` displays as its rendered PNG, and `Project.show(page=None, region=None)` returns the image (optionally one page, cropped to `[x, y, width, height]`). `Project.export()` returns encoded bytes, optionally writing to a path. `Project.inspect()` returns an independent JSON-serializable state description. History methods: `undo`, `redo`, `branch`, `checkpoint`, `checkout`, `begin`, `commit`, `rollback`.
 
 Loading does not implicitly trust linked image paths; use `allow_linked=True` only when those local file references are intended. Direct Python APIs are trusted local APIs and can import files. Exceptions expose `VixlError.code`, `.details`, and `.as_dict()`.
 
@@ -41,7 +41,7 @@ Default binding is `127.0.0.1:8765`. OpenAPI is at `/docs`. To bind beyond loopb
 | `GET /document` | Inspected state |
 | `GET /layers` | Layer list |
 | `GET /schema` | Canonical operation batch JSON Schema |
-| `POST /operations` | `{operations: [...], dry_run: false, detail: "compact"}` → change summary (use `full` for snapshots) |
+| `POST /operations` | `{operations: [...] or operations_path: "ops.jsonl", dry_run: false, detail: "compact"}` → change summary (use `full` for snapshots) |
 | `GET /render` | PNG bytes |
 | `POST /render` | `{variables: {title: "Hello"}}` → PNG bytes |
 | `POST /validate` | `{profile: "instagram-post", rules: [...]}` → checks |
@@ -126,11 +126,11 @@ Vixl is designed to be driven mainly by agents. The intended loop is: create or 
 | Tool | Purpose |
 | --- | --- |
 | `vixl_workspace_list(directory, offset, limit)` | Discover workspace paths and the open documents |
-| `vixl_document_create(path, width?, height?, background, size?, dpi?, orientation?, bleed?)` | Create and activate a new `.vixl` from pixels or a named size; creates missing directories; refuses overwrites |
+| `vixl_document_create(path, width?, height?, background, size?, dpi?, orientation?, bleed?, font_pairing?)` | Create and activate a new `.vixl` from pixels or a named size; creates missing directories; refuses overwrites; `font_pairing` also installs a pairing as the document typography (same as `vixl_font_pair`) |
 | `vixl_document_open(path)` / `vixl_document_close(document)` | Activate an existing document / drop one from the session; edits are already saved |
 | `vixl_document_inspect(target?, detail)` | `compact` (default): canvas plus one line per layer with resolved `[x, y, w, h]` bounds; `full`: every stored field |
 | `vixl_import_image(path? \| data_base64?, name)` | Embed a workspace file or base64/data-URL bytes as a layer; returns id, size, bounds |
-| `vixl_operations_apply(operations, dry_run, detail, request_id?, as_job?)` | Atomic edits; schemas are included directly in tools/list (or on demand in slim mode). `detail` is `brief` (default), `compact` or `full`; results carry `warnings` |
+| `vixl_operations_apply(operations or operations_path, dry_run, detail, request_id?, as_job?)` | Atomic edits; `operations_path` is a workspace-relative `.json` array or `.jsonl` file (one operation per line, errors cite the line) used instead of inline `operations`; schemas are included directly in tools/list (or on demand in slim mode). `detail` is `brief` (default), `compact` or `full`; results carry `warnings` |
 | `vixl_operation_schema(types)` | Exact JSON Schema for named operation types |
 | `vixl_check(checks, targets, safe_area, avoid, thumbnail_width, ..., ink_limit, min_ppi, style)` | Design problems: bounds, text overlap, WCAG contrast, safe area/reserved zones, thumbnail legibility, `diagram` (overlapping nodes, edges through nodes, unreadable labels) and `flow` (text-flow overflow); opt-in `print`, `color_vision` and `style`. Every issue has a `severity` (error, warning, info) and an `action` (fix, review, informational); `by_action` lists the issue indexes under each. A layer marked `allow_crop` (`layer-intent`) reports its edge crop as informational |
 | `vixl_guide(brief?)` | What to make: the start-here recipe and every kind of work, or the approach, operations, layouts, looks, styles and a working example for a kind or free-text brief; `brief=operations` and `brief=looks` list those catalogs |
