@@ -1,0 +1,92 @@
+{
+  "panels": [
+    {
+      "page": 1,
+      "panel": 1,
+      "art_box": [
+        44,
+        44,
+        1112,
+        509
+      ],
+      "file": "explorations/12-lamplighter-comic/output/panels/page-1-panel-1.png"
+    },
+    {
+      "page": 1,
+      "panel": 2,
+      "art_box": [
+        44,
+        622,
+        545,
+        556
+      ],
+      "file": "explorations/12-lamplighter-comic/output/panels/page-1-panel-2.png"
+    },
+    {
+      "page": 1,
+      "panel": 3,
+      "art_box": [
+        611,
+        622,
+        545,
+        556
+      ],
+      "file": "explorations/12-lamplighter-comic/output/panels/page-1-panel-3.png"
+    },
+    {
+      "page": 1,
+      "panel": 4,
+      "art_box": [
+        44,
+        1200,
+        1112,
+        509
+      ],
+      "file": "explorations/12-lamplighter-comic/output/panels/page-1-panel-4.png"
+    },
+    {
+      "page": 2,
+      "panel": 1,
+      "art_box": [
+        44,
+        44,
+        1112,
+        509
+      ],
+      "file": "explorations/12-lamplighter-comic/output/panels/page-2-panel-1.png"
+    },
+    {
+      "page": 2,
+      "panel": 2,
+      "art_box": [
+        44,
+        622,
+        545,
+        556
+      ],
+      "file": "explorations/12-lamplighter-comic/output/panels/page-2-panel-2.png"
+    },
+    {
+      "page": 2,
+      "panel": 3,
+      "art_box": [
+        611,
+        622,
+        545,
+        556
+      ],
+      "file": "explorations/12-lamplighter-comic/output/panels/page-2-panel-3.png"
+    },
+    {
+      "page": 2,
+      "panel": 4,
+      "art_box": [
+        44,
+        1200,
+        1112,
+        509
+      ],
+      "file": "explorations/12-lamplighter-comic/output/panels/page-2-panel-4.png"
+    }
+  ]
+}

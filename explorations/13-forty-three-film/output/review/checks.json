@@ -1,0 +1,104 @@
+{
+  "a": {
+    "passed": true,
+    "errors": 0,
+    "warnings": 1,
+    "info": 0,
+    "by_action": {
+      "fix": [],
+      "review": [
+        0
+      ],
+      "informational": []
+    },
+    "issues": [
+      {
+        "check": "motion",
+        "severity": "warning",
+        "layers": [
+          "wren"
+        ],
+        "message": "Two-key linear movement starts and stops instantly; consider easing, anticipation and settling unless constant speed is intended.",
+        "code": "linear-motion",
+        "action": "review"
+      }
+    ],
+    "checked": {
+      "checks": [
+        "motion",
+        "character",
+        "captions"
+      ],
+      "layers": 140,
+      "text_layers": 0
+    }
+  },
+  "b": {
+    "passed": true,
+    "errors": 0,
+    "warnings": 1,
+    "info": 0,
+    "by_action": {
+      "fix": [],
+      "review": [
+        0
+      ],
+      "informational": []
+    },
+    "issues": [
+      {
+        "check": "motion",
+        "severity": "warning",
+        "layers": [
+          "rain"
+        ],
+        "message": "Abrupt acceleration exceeds 100,000 units/s\u00b2; inspect for a teleport or missing anticipation (impacts may be intentional).",
+        "code": "high-acceleration",
+        "action": "review"
+      }
+    ],
+    "checked": {
+      "checks": [
+        "motion",
+        "character",
+        "captions"
+      ],
+      "layers": 201,
+      "text_layers": 0
+    }
+  },
+  "c": {
+    "passed": true,
+    "errors": 0,
+    "warnings": 1,
+    "info": 0,
+    "by_action": {
+      "fix": [],
+      "review": [
+        0
+      ],
+      "informational": []
+    },
+    "issues": [
+      {
+        "check": "motion",
+        "severity": "warning",
+        "layers": [
+          "burst"
+        ],
+        "message": "Two-key linear movement starts and stops instantly; consider easing, anticipation and settling unless constant speed is intended.",
+        "code": "linear-motion",
+        "action": "review"
+      }
+    ],
+    "checked": {
+      "checks": [
+        "motion",
+        "character",
+        "captions"
+      ],
+      "layers": 50,
+      "text_layers": 1
+    }
+  }
+}

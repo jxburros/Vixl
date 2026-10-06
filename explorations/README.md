@@ -1,6 +1,6 @@
 # Vixl explorations
 
-Ten complex projects built with Vixl 0.16.0, each designed to stretch a different part of the engine. Every project has a reproducible `build.py`, which you run from the repo root with `python explorations/NN-name/build.py`. Each also has its outputs and a README with the features it used and its findings.
+Ten complex projects built with Vixl 0.16.0 (and, below, four built with 0.20.0), each designed to stretch a different part of the engine. Every project has a reproducible `build.py`, which you run from the repo root with `python explorations/NN-name/build.py`. Each also has its outputs and a README with the features it used and its findings.
 
 ![Gallery](gallery.jpg)
 
@@ -16,6 +16,36 @@ Ten complex projects built with Vixl 0.16.0, each designed to stretch a differen
 | 08 | [The Great Green Switch infographic](08-infographic/) | Charts from data with shapes/paths/repeat, grids and constraints, spacing/validate QA, color-vision checks, SVG/HTML/PDF |
 | 09 | [Loop collaborative campaign](09-collab-campaign/) | brand.json, rolls, layouts across 7 sizes, adapt-layout, branch fork/merge with conflict resolution, group-apply gated by suites |
 | 10 | [Pip the robot film](10-character-film/) | Nested rig with pivots, walk/wave/jump, parallax, painted texture, film-plan with camera, crossfades, captions and audio to MP4 |
+
+## 0.20.0 projects: the Lamplight suite
+
+Four more projects, built with Vixl 0.20.0 and only its own features: no imported images and no AI
+provider tools. They share one story: the poster's lantern is the comic's lighthouse, the comic
+continues as the film, and the programme advertises the festival where both are set. Each one
+leans on a different part of the 0.20 release. Like the first ten, each has a `build.py`, outputs
+and a README with its findings.
+
+![Lamplight suite](gallery-0.20.jpg)
+
+| # | Project | What it pushes on |
+| --- | --- | --- |
+| 11 | [THE FRESNEL LANTERN patent plate](11-lantern-blueprint/) | Parametric shape catalog, strokes (dashes, caps, multiple strokes, width profiles, markers), shape-to-path and node editing, offset path, pathfinder divide, corner-pin and flag distortion, affine matrix and skew, anchored resize, hug-stack callouts, spatial API; PNG/SVG/vector PDF |
+| 12 | [THE LAST LAMPLIGHTER comic](12-lamplighter-comic/) | Two comic-layout pages, anchored speech/thought/shout/whisper bubbles, natural palettes, perspective guides, clone stamp, a custom seamless pattern, built-in patterns, all six drawn textures, character IK, spatial hit tests |
+| 13 | [FORTY-THREE short film](13-forty-three-film/) | Reusable character across documents, parallax depth and camera, walk cycle, compact keyframe arrays, motion recipes, animated distortion and dash offset, lip-sync, a following bubble, cut paper, lighting, rack focus, particles, synthesized score, film preview, video sampling, audio analysis |
+| 14 | [THE LAMPLIGHT FESTIVAL programme](14-festival-programme/) | Use-case templates and combinations, nine container types, image slots with focal crops, container variants and reflow, hug-stack badges and a code window, seeded rolls from the safe pools |
+
+Building them turned up six engine bugs. All are fixed in this branch, with regression tests:
+
+- A matrix `transform` stored a numpy bool, which made the document unsaveable.
+- Vector PDF export failed on long generated stroke outlines (dotted borders, smoothed paths).
+- Hug-stack backgrounds painted over the members they had just grouped.
+- The contrast check reflowed hug stacks while measuring them, so it judged their text against the wrong backdrop.
+- The stroke schema's descriptions leaked into a shared fragment, labelling 284 unrelated fields "Dash offset.".
+- Film captions couldn't use any registered font.
+
+The project READMEs list these and the limitations that remain (comic dialogue can't be aimed,
+palette roles are document-wide, container type doesn't scale up, film captions aren't checked,
+and others).
 
 ## Caveats on the outputs
 

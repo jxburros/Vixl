@@ -1,0 +1,94 @@
+{
+  "cover": {
+    "passed": true,
+    "errors": 0,
+    "warnings": 0,
+    "info": 0,
+    "by_action": {
+      "fix": [],
+      "review": [],
+      "informational": []
+    },
+    "issues": [],
+    "checked": {
+      "checks": [
+        "bounds",
+        "contrast",
+        "blanks",
+        "fonts",
+        "overlap"
+      ],
+      "layers": 17,
+      "text_layers": 7
+    }
+  },
+  "programme": {
+    "passed": true,
+    "errors": 0,
+    "warnings": 0,
+    "info": 0,
+    "by_action": {
+      "fix": [],
+      "review": [],
+      "informational": []
+    },
+    "issues": [],
+    "checked": {
+      "checks": [
+        "bounds",
+        "contrast",
+        "blanks",
+        "fonts",
+        "overlap"
+      ],
+      "layers": 46,
+      "text_layers": 23
+    }
+  },
+  "people": {
+    "passed": true,
+    "errors": 0,
+    "warnings": 0,
+    "info": 0,
+    "by_action": {
+      "fix": [],
+      "review": [],
+      "informational": []
+    },
+    "issues": [],
+    "checked": {
+      "checks": [
+        "bounds",
+        "contrast",
+        "blanks",
+        "fonts",
+        "overlap"
+      ],
+      "layers": 24,
+      "text_layers": 14
+    }
+  },
+  "tickets": {
+    "passed": true,
+    "errors": 0,
+    "warnings": 0,
+    "info": 0,
+    "by_action": {
+      "fix": [],
+      "review": [],
+      "informational": []
+    },
+    "issues": [],
+    "checked": {
+      "checks": [
+        "bounds",
+        "contrast",
+        "blanks",
+        "fonts",
+        "overlap"
+      ],
+      "layers": 48,
+      "text_layers": 26
+    }
+  }
+}

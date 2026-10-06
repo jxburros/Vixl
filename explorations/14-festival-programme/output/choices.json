@@ -1,0 +1,11 @@
+{
+  "cover_template": {
+    "name": "print-flyer",
+    "seed": 7,
+    "rolled": {
+      "palette": "coffee",
+      "mode": "light",
+      "look": "paper"
+    }
+  }
+}

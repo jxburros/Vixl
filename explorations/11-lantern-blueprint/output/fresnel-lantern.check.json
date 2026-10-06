@@ -1,0 +1,31 @@
+{
+  "passed": true,
+  "errors": 0,
+  "warnings": 0,
+  "info": 0,
+  "by_action": {
+    "fix": [],
+    "review": [],
+    "informational": []
+  },
+  "issues": [],
+  "checked": {
+    "checks": [
+      "bounds",
+      "overlap",
+      "contrast",
+      "safe_area",
+      "legibility",
+      "blanks",
+      "fonts",
+      "brand",
+      "content",
+      "form",
+      "links",
+      "diagram",
+      "flow"
+    ],
+    "layers": 159,
+    "text_layers": 52
+  }
+}

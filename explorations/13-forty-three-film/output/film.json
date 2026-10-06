@@ -1,0 +1,267 @@
+{
+  "version": 1,
+  "width": 960,
+  "height": 540,
+  "fps": 24,
+  "quality": "final",
+  "shots": [
+    {
+      "source": "explorations/13-forty-three-film/output/shots/shot-a.vixl",
+      "duration": 4800
+    },
+    {
+      "source": "explorations/13-forty-three-film/output/shots/shot-b.vixl",
+      "duration": 4000,
+      "transition": 500
+    },
+    {
+      "source": "explorations/13-forty-three-film/output/shots/shot-c.vixl",
+      "duration": 5200,
+      "transition": 500
+    }
+  ],
+  "captions": [
+    {
+      "text": "Port Halloran. The night after.",
+      "start": 300,
+      "end": 3200,
+      "animation": "typewriter",
+      "x": 40,
+      "y": 470,
+      "size": 30,
+      "font": "comic-neue-700",
+      "color": "#FFF1C2",
+      "box": {
+        "color": "#15171CCC",
+        "padding": 12
+      }
+    },
+    {
+      "text": "Then the storm took the power.",
+      "start": 4600,
+      "end": 6700,
+      "animation": "fade",
+      "x": 40,
+      "y": 470,
+      "size": 30,
+      "font": "comic-neue-700",
+      "color": "#FFF1C2",
+      "box": {
+        "color": "#15171CCC",
+        "padding": 12
+      }
+    },
+    {
+      "text": "FORTY-THREE",
+      "start": 11900,
+      "end": 12950,
+      "animation": "fade",
+      "x": 380,
+      "y": 400,
+      "size": 96,
+      "font": "bangers-400",
+      "color": "#F6C453",
+      "style": {
+        "stroke_color": "#15171C",
+        "stroke_width": 4,
+        "tracking": 2
+      }
+    }
+  ],
+  "audio": [
+    {
+      "name": "piano",
+      "synth": "piano",
+      "notes": [
+        {
+          "start": 0,
+          "duration": 380,
+          "midi": 64
+        },
+        {
+          "start": 400,
+          "duration": 380,
+          "midi": 67
+        },
+        {
+          "start": 800,
+          "duration": 380,
+          "midi": 71
+        },
+        {
+          "start": 1200,
+          "duration": 380,
+          "midi": 69
+        },
+        {
+          "start": 1800,
+          "duration": 380,
+          "midi": 67
+        },
+        {
+          "start": 2200,
+          "duration": 380,
+          "midi": 64
+        },
+        {
+          "start": 2600,
+          "duration": 380,
+          "midi": 62
+        },
+        {
+          "start": 3200,
+          "duration": 380,
+          "midi": 64
+        },
+        {
+          "start": 8200,
+          "duration": 420,
+          "midi": 62
+        },
+        {
+          "start": 8600,
+          "duration": 420,
+          "midi": 65
+        },
+        {
+          "start": 9000,
+          "duration": 420,
+          "midi": 69
+        },
+        {
+          "start": 9400,
+          "duration": 420,
+          "midi": 67
+        },
+        {
+          "start": 10000,
+          "duration": 420,
+          "midi": 65
+        },
+        {
+          "start": 10400,
+          "duration": 420,
+          "midi": 62
+        },
+        {
+          "start": 10800,
+          "duration": 420,
+          "midi": 60
+        },
+        {
+          "start": 11400,
+          "duration": 420,
+          "midi": 62
+        },
+        {
+          "start": 11700,
+          "duration": 1200,
+          "midi": 60
+        },
+        {
+          "start": 11700,
+          "duration": 1200,
+          "midi": 64
+        }
+      ],
+      "duration": 13000,
+      "volume": 0.45,
+      "fade_out": 600
+    },
+    {
+      "name": "bells",
+      "synth": "bell",
+      "notes": [
+        {
+          "start": 384,
+          "duration": 900,
+          "midi": 84
+        },
+        {
+          "start": 1632,
+          "duration": 900,
+          "midi": 86
+        },
+        {
+          "start": 2880,
+          "duration": 900,
+          "midi": 88
+        },
+        {
+          "start": 4128,
+          "duration": 900,
+          "midi": 90
+        }
+      ],
+      "duration": 4800,
+      "volume": 0.3,
+      "pan": 0.2
+    },
+    {
+      "name": "wind",
+      "synth": "whoosh",
+      "start": 4100,
+      "duration": 4400,
+      "volume": 0.35,
+      "fade_in": 400,
+      "fade_out": 600
+    },
+    {
+      "name": "rain",
+      "synth": "noise",
+      "start": 4300,
+      "duration": 4000,
+      "volume": 0.08,
+      "fade_in": 300,
+      "fade_out": 500
+    },
+    {
+      "name": "thunder",
+      "synth": "kick",
+      "notes": [
+        {
+          "start": 5520,
+          "duration": 900,
+          "midi": 36
+        },
+        {
+          "start": 7120,
+          "duration": 900,
+          "midi": 36
+        }
+      ],
+      "start": 0,
+      "duration": 13000,
+      "volume": 0.7
+    },
+    {
+      "name": "relight",
+      "synth": "bell",
+      "start": 7550,
+      "duration": 1200,
+      "volume": 0.35,
+      "notes": [
+        {
+          "start": 0,
+          "duration": 1200,
+          "midi": 79
+        }
+      ]
+    },
+    {
+      "name": "chime",
+      "synth": "bell",
+      "start": 11500,
+      "duration": 1500,
+      "volume": 0.3,
+      "notes": [
+        {
+          "start": 0,
+          "duration": 1500,
+          "midi": 88
+        }
+      ],
+      "fade_out": 800
+    }
+  ]
+}

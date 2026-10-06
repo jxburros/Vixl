@@ -1,0 +1,140 @@
+[
+  {
+    "file": "output/social/event-promo-minimal-light.png",
+    "template": {
+      "name": "social-event-promo",
+      "seed": 21,
+      "rolled": {
+        "palette": "slate",
+        "mode": "light",
+        "look": "none"
+      }
+    },
+    "check": {
+      "passed": true,
+      "errors": 0,
+      "warnings": 0
+    }
+  },
+  {
+    "file": "output/social/event-promo-bold-dark.png",
+    "template": {
+      "name": "social-event-promo",
+      "seed": 21,
+      "rolled": {
+        "palette": "midnight",
+        "mode": "dark",
+        "look": "soft-shadow"
+      }
+    },
+    "check": {
+      "passed": true,
+      "errors": 0,
+      "warnings": 0
+    }
+  },
+  {
+    "file": "output/social/event-promo-warm-editorial.png",
+    "template": {
+      "name": "social-event-promo",
+      "seed": 21,
+      "rolled": {
+        "palette": "coffee",
+        "mode": "light",
+        "look": "paper"
+      }
+    },
+    "check": {
+      "passed": true,
+      "errors": 0,
+      "warnings": 0
+    }
+  },
+  {
+    "file": "output/social/link-card-roll-3.png",
+    "seed": 3,
+    "check": {
+      "passed": true,
+      "errors": 0,
+      "warnings": 0
+    },
+    "choices": {
+      "layout": "offset-column",
+      "pairing": "work-sans-bitter",
+      "palette": "clay-navy",
+      "mode": "dark",
+      "type_scale": "perfect-fifth",
+      "density": "dense",
+      "accent": "outline",
+      "layout_seed": 3596902313,
+      "container": "photo-caption",
+      "container_variant": "default",
+      "motif": "none",
+      "look": "light-paper",
+      "style": "corporate-flat",
+      "weight_contrast": "strong",
+      "margin": 0.085,
+      "corner": "soft",
+      "background_treatment": "flat",
+      "color_assignment": "dark"
+    }
+  },
+  {
+    "file": "output/social/link-card-roll-14.png",
+    "seed": 14,
+    "check": {
+      "passed": true,
+      "errors": 0,
+      "warnings": 0
+    },
+    "choices": {
+      "layout": "open-letter",
+      "pairing": "roboto-slab-roboto",
+      "palette": "sand-terracotta",
+      "mode": "light",
+      "type_scale": "major-third",
+      "density": "balanced",
+      "accent": "none",
+      "layout_seed": 1098547461,
+      "container": "feature-icon",
+      "container_variant": "split",
+      "motif": "rule",
+      "look": "subtle-grain",
+      "style": "corporate-flat",
+      "weight_contrast": "strong",
+      "margin": 0.1,
+      "corner": "pill",
+      "background_treatment": "gradient",
+      "color_assignment": "light"
+    }
+  },
+  {
+    "file": "output/social/link-card-roll-27.png",
+    "seed": 27,
+    "check": {
+      "passed": true,
+      "errors": 0,
+      "warnings": 0
+    },
+    "choices": {
+      "layout": "quiet-editorial",
+      "pairing": "public-sans-single",
+      "palette": "warm-graphite",
+      "mode": "dark",
+      "type_scale": "minor-third",
+      "density": "airy",
+      "accent": "dot",
+      "layout_seed": 1430510379,
+      "container": "profile",
+      "container_variant": "left",
+      "motif": "none",
+      "look": "soft-shadow",
+      "style": "minimalist",
+      "weight_contrast": "strong",
+      "margin": 0.085,
+      "corner": "sharp",
+      "background_treatment": "flat",
+      "color_assignment": "dark"
+    }
+  }
+]
