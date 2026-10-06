@@ -13,10 +13,16 @@ Template contract (layer names; only ``lyric`` is required):
 ``intro``          layer or group visible before the first lyric
 ``bg-<section>``   visible only during that section (``bg-chorus``); ``bg-default`` otherwise
 ``cue-<words>``    visible while the current line contains those words (``cue-fire``,
-                   ``cue-city-lights``), so lyrics can drive graphics
+                   ``cue-city-lights``), so lyrics can drive graphics; it can fade, slide or
+                   sweep instead of cutting on and off (``cue_animation``)
+
+A built document records the options and sources it was built from (``state["lyric_build"]``), so
+``export`` can render a hand-edited build as it is instead of rebuilding it from the template.
 """
 
 from copy import deepcopy
+import hashlib
+import json
 import math
 from pathlib import Path
 import re
@@ -47,9 +53,13 @@ SHORT_NAMES = {
     "slide-down": ("slide-in-down", "slide-out-down"),
     "cut": ("none", "none"),
 }
+CUE_ENTRY = tuple(kind for kind in ENTRY if kind != "typewriter")
+CUE_MOTIONS = ("none", "sweep")
+RECORD = "lyric_build"  # The document state key that records how a build was made.
 REQUEST_FIELDS = {
     "audio", "lyrics", "template", "build", "output", "fps", "quality", "offset", "lead", "gap",
-    "max_hold", "animation", "next_line", "camera", "start", "end", "check", "replace", "width", "height",
+    "max_hold", "animation", "cue_animation", "next_line", "camera", "start", "end", "check", "replace",
+    "rebuild", "width", "height",
 }
 
 
@@ -226,6 +236,35 @@ def _animation(request):
     return {"in": entry, "out": exit_, "duration": round(duration), "distance": distance}
 
 
+def _cue_animation(request):
+    """How a ``cue-*`` layer enters, leaves and moves while its words are sung. The default is the
+    original cut on and off."""
+    settings = request.get("cue_animation", {})
+    allowed = {"in", "out", "duration", "distance", "motion", "amount", "period"}
+    require(isinstance(settings, dict) and not set(settings) - allowed,
+            f"cue_animation takes {', '.join(sorted(allowed))}", field="cue_animation")
+    entry, exit_ = settings.get("in", "none"), settings.get("out", "none")
+    entry = SHORT_NAMES.get(entry, (entry,))[0]
+    exit_ = SHORT_NAMES.get(exit_, (None, exit_))[1]
+    require(entry in CUE_ENTRY, f"cue_animation.in must be one of {', '.join(CUE_ENTRY)}", field="cue_animation.in", allowed=list(CUE_ENTRY))
+    require(exit_ in EXIT, f"cue_animation.out must be one of {', '.join(EXIT)}", field="cue_animation.out", allowed=list(EXIT))
+    motion = settings.get("motion", "none")
+    require(motion in CUE_MOTIONS, f"cue_animation.motion must be one of {', '.join(CUE_MOTIONS)}", field="cue_animation.motion",
+            allowed=list(CUE_MOTIONS))
+    distance = settings.get("distance")
+    if distance is not None:
+        finite(distance, "cue_animation.distance", 0, 100000)
+    return {
+        "in": entry,
+        "out": exit_,
+        "duration": round(finite(settings.get("duration", 300), "cue_animation.duration", 0, 5000)),
+        "distance": distance,
+        "motion": motion,
+        "amount": finite(settings.get("amount", 12), "cue_animation.amount", 0, 180),
+        "period": round(finite(settings.get("period", 2800), "cue_animation.period", 200, 60000)),
+    }
+
+
 def _number(request, key, default, low, high):
     value = request.get(key, default)
     if value is None:
@@ -248,6 +287,7 @@ def timing(parsed, request, duration):
     require(end <= duration, f"end ({end} ms) is after the end of the audio ({duration} ms)", field="end")
     require(start < end, "start must be before end", field="start")
     animation = _animation(request)
+    cue = _cue_animation(request)
     warnings = list(parsed["warnings"])
     events = [{**line, "time": max(0, line["time"] - offset)} for line in parsed["lines"]]
     for line in events:
@@ -274,7 +314,7 @@ def timing(parsed, request, duration):
                 current = item["name"]
         return current
 
-    lines, previous_hide = [], 0
+    lines, previous_hide, carried = [], 0, False
     for i, line in enumerate(events):
         if not line["text"]:
             continue
@@ -288,13 +328,16 @@ def timing(parsed, request, duration):
             show = previous_hide
         show = max(0, show)
         candidates = [line["time"] + max_hold, end]
+        follow = None
         if nxt is not None:
             # The next line shows ``lead`` early; an empty-text break hides at its own timestamp.
-            candidates.append((nxt["time"] - lead if nxt["text"] else nxt["time"]) - gap)
+            follow = (nxt["time"] - lead if nxt["text"] else nxt["time"]) - gap
+            candidates.append(follow)
         hide = min(candidates)
+        handed_on = follow is not None and hide == follow  # The next line, not max_hold or the end, ends this one.
         if hide <= show:
             hide = min(show + max(1, round(1000 / 60)), max(end, show + 1))
-        lines.append({
+        item = {
             "index": len(lines),
             "text": line["text"],
             "start": line["time"],
@@ -303,11 +346,21 @@ def timing(parsed, request, duration):
             "section": section_at(line["time"]),
             "source_line": line["source_line"],
             **({"words": line["words"]} if line["words"] else {}),
-        })
+        }
+        if carried:
+            # Sung again straight after itself: the line stays up, with no exit and no new entry.
+            item["repeat"] = True
+            lines[-1]["hide"] = max(lines[-1]["hide"], item["show"])
+        if nxt is not None and not nxt["text"] and nxt["time"] - gap < end:
+            item["break_at"] = round(max(hide, nxt["time"] - gap))  # An empty timestamp follows: the screen clears here.
+        lines.append(item)
+        carried = handed_on and nxt["text"] == line["text"]
         previous_hide = hide
-    for item in lines:
+    for i, item in enumerate(lines):
         span = item["hide"] - item["show"]
-        needed = (animation["duration"] if animation["in"] != "none" else 0) + (animation["duration"] if animation["out"] != "none" else 0)
+        entering, leaving = not item.get("repeat"), not (i + 1 < len(lines) and lines[i + 1].get("repeat"))
+        needed = (animation["duration"] if entering and animation["in"] != "none" else 0) + (
+            animation["duration"] if leaving and animation["out"] != "none" else 0)
         if needed and span < needed:
             warnings.append({"code": "short_line", "index": item["index"],
                              "message": f"Line {item['index']} is shown for {span} ms; shorter than its in+out "
@@ -320,6 +373,7 @@ def timing(parsed, request, duration):
         "max_hold": max_hold,
         "offset": offset,
         "animation": animation,
+        "cue_animation": cue,
         "lines": lines,
         "sections": sections,
         "warnings": warnings,
@@ -357,7 +411,7 @@ def _settings(request, template):
     width, height = request.get("width", canvas["width"]), request.get("height", canvas["height"])
     for key, value in (("width", width), ("height", height)):
         require(isinstance(value, int) and 16 <= value <= 4096, f"{key} must be 16–4096 pixels", field=key)
-    for key in ("next_line", "check"):
+    for key in ("next_line", "check", "rebuild"):
         require(isinstance(request.get(key, True), bool), f"{key} must be true or false", field=key)
     camera = request.get("camera")
     if camera is not None:
@@ -378,7 +432,7 @@ def plan(request, root, limits=None):
 
 def _prepare(request, root, limits=None):
     limits = limits or Limits()
-    _, parsed, template, duration = _inputs(request, root, limits)
+    paths, parsed, template, duration = _inputs(request, root, limits)
     settings = _settings(request, template)
     timed = timing(parsed, request, duration)
     contract = validate_template(template, timed["sections"])
@@ -410,7 +464,9 @@ def _prepare(request, root, limits=None):
         "template": {k: v for k, v in contract["roles"].items() if v},
         "warnings": warnings,
     }
-    return report, parsed, template, timed, contract
+    sources = {"lyrics": hashlib.sha256(paths["lyrics"].read_bytes()).hexdigest(), "template": template._revision,
+               "audio_ms": duration}
+    return report, parsed, template, timed, contract, sources
 
 
 # ---------------------------------------------------------------------------------------------
@@ -465,6 +521,55 @@ def contains_phrase(text, phrase):
     return any(words[i:i + len(target)] == target for i in range(len(words) - len(target) + 1))
 
 
+def cue_keys(key, layer, ident, start, end, cue, canvas):
+    """Animate one cue layer over a window in which its words are on screen: an entry and exit
+    (fade, slide, pop, zoom) and a continuous ``sweep`` (a swing about the layer's pivot, so a
+    lighthouse beam turns instead of popping on and off). The default cuts, with no extra keys."""
+    span = end - start
+    if span <= 0 or (cue["in"] == "none" and cue["out"] == "none" and cue["motion"] == "none"):
+        return
+    base = layer["opacity"]
+    distance = cue["distance"]
+    entry_length = cue["duration"] if cue["in"] != "none" else 0
+    exit_length = cue["duration"] if cue["out"] != "none" else 0
+    if entry_length + exit_length > span:
+        ratio = span / (entry_length + exit_length)
+        entry_length, exit_length = int(entry_length * ratio), int(exit_length * ratio)
+
+    def reach(kind):
+        horizontal = kind.endswith(("left", "right"))
+        if distance is not None:
+            return distance
+        return round(canvas["width" if horizontal else "height"] * 0.06)
+
+    if cue["in"] != "none" or cue["out"] != "none":
+        rest = {"opacity": base, "translate-x": 0.0, "translate-y": 0.0, "scale": 1.0}
+        entry = _entry_keys(cue["in"], start, entry_length, base, reach(cue["in"]))
+        leaving = _exit_keys(cue["out"], end, exit_length, base, reach(cue["out"])) if cue["out"] != "none" else {}
+        # A cue shown again starts from rest, whatever the last exit left it at.
+        for prop in (set(_entry_keys(cue["in"], 0, 1000, base, 1)) | set(_exit_keys(cue["out"], 1000, 1000, base, 1))) - set(entry):
+            entry[prop] = [(start, rest[prop], "hold")]
+        for keys in (entry, leaving):
+            for prop, values in keys.items():
+                for time, value, easing in values:
+                    key(ident, prop, time, value, easing)
+    if cue["motion"] == "sweep":
+        from .timeline import easing_function
+
+        ease = easing_function("ease-in-out-sine")
+        angle, half, centre, swing = 0, cue["period"] / 2, layer.get("rotation", 0), cue["amount"]
+        while True:
+            time, value = start + angle * half, centre + (-swing if angle % 2 == 0 else swing)
+            if time + half >= end:
+                # The window ends partway through a swing: the last key is where that swing has got to.
+                far = centre + (swing if angle % 2 == 0 else -swing)
+                key(ident, "rotation", time, value, "ease-in-out-sine")
+                key(ident, "rotation", end, value + (far - value) * ease((end - time) / half))
+                break
+            key(ident, "rotation", time, value, "ease-in-out-sine")
+            angle += 1
+
+
 def write_timeline(project, timed, roles, request):
     """Replace ``project``'s timeline (a template copy) with the lyric timeline. Returns the
     number of keyframes written."""
@@ -491,11 +596,19 @@ def write_timeline(project, timed, roles, request):
     distance_x = animation["distance"] if animation["distance"] is not None else round(canvas["width"] * 0.06)
     distance_y = animation["distance"] if animation["distance"] is not None else round(canvas["height"] * 0.06)
     steps_budget = max(1, (MAX_KEYS - 2) // max(1, len(lines)) - 1)
+    rest = {"opacity": base, "translate-x": 0.0, "translate-y": 0.0, "scale": 1.0}
+    # What the entry and exit move. Every entry puts back whatever it does not set itself, so a cut
+    # after a slide-out does not start where the last line left off.
+    moved = set(_entry_keys(animation["in"], 0, 1000, base, 1)) | set(_exit_keys(animation["out"], 1000, 1000, base, 1))
+    plans = []
     for i, line in enumerate(lines):
         show, hide = line["show"], line["hide"]
         span = hide - show
-        entry_length = animation["duration"] if animation["in"] != "none" else 0
-        exit_length = animation["duration"] if animation["out"] != "none" else 0
+        # A line repeated straight after itself holds on screen: no exit before it, no entry for it.
+        entering = not line.get("repeat")
+        leaving = not (i + 1 < len(lines) and lines[i + 1].get("repeat"))
+        entry_length = animation["duration"] if entering and animation["in"] != "none" else 0
+        exit_length = animation["duration"] if leaving and animation["out"] != "none" else 0
         if entry_length + exit_length > span:
             ratio = span / (entry_length + exit_length)
             entry_length, exit_length = int(entry_length * ratio), int(exit_length * ratio)
@@ -504,19 +617,29 @@ def write_timeline(project, timed, roles, request):
         # value and the entry's start value are separate keys.
         exit_end = min(hide, following - 1) if following is not None and following <= hide else hide
         exit_end = max(exit_end, show + entry_length)
-        if animation["in"] == "typewriter":
-            text = line["text"]
-            steps = max(1, min(len(text), steps_budget, 24))
-            for step in range(steps + 1):
-                key(lyric, "text", show + entry_length * step / steps, text[: round(len(text) * step / steps)])
-            entry = {"opacity": [(show, base, "hold")]}
-        else:
-            key(lyric, "text", show, line["text"])
-            distance = distance_x if animation["in"].endswith(("left", "right")) else distance_y
-            entry = _entry_keys(animation["in"], show, entry_length, base, distance)
-        distance = distance_x if animation["out"].endswith(("left", "right")) else distance_y
-        leaving = _exit_keys(animation["out"], exit_end, min(exit_length, exit_end - show - entry_length), base, distance)
-        for keys in (entry, leaving):
+        plans.append((entering, leaving, entry_length, exit_length, exit_end))
+    for i, line in enumerate(lines):
+        show = line["show"]
+        entering, leaving, entry_length, exit_length, exit_end = plans[i]
+        keys_here = []
+        if entering:
+            if animation["in"] == "typewriter":
+                text = line["text"]
+                steps = max(1, min(len(text), steps_budget, 24))
+                for step in range(steps + 1):
+                    key(lyric, "text", show + entry_length * step / steps, text[: round(len(text) * step / steps)])
+                entry = {"opacity": [(show, base, "hold")]}
+            else:
+                key(lyric, "text", show, line["text"])
+                distance = distance_x if animation["in"].endswith(("left", "right")) else distance_y
+                entry = _entry_keys(animation["in"], show, entry_length, base, distance)
+            for prop in moved - set(entry):
+                entry[prop] = [(show, rest[prop], "hold")]
+            keys_here.append(entry)
+        if leaving:
+            distance = distance_x if animation["out"].endswith(("left", "right")) else distance_y
+            keys_here.append(_exit_keys(animation["out"], exit_end, min(exit_length, exit_end - show - entry_length), base, distance))
+        for keys in keys_here:
             for prop, values in keys.items():
                 for time, value, easing in values:
                     key(lyric, prop, time, value, easing)
@@ -529,6 +652,25 @@ def write_timeline(project, timed, roles, request):
             key(upcoming, "text", 0, "")
             for i, line in enumerate(lines):
                 key(upcoming, "text", line["show"], lines[i + 1]["text"] if i + 1 < len(lines) else "")
+            base_next = layers[upcoming]["opacity"]
+            for i, line in enumerate(lines[:-1]):
+                at, following = line.get("break_at"), lines[i + 1]
+                if at is None or at >= following["show"]:
+                    continue
+                # An empty timestamp clears the preview too, until the line after the break shows.
+                key(upcoming, "text", at, "")
+                fade_in = plans[i + 1][2]
+                if animation["out"] != "none" or animation["in"] != "none":
+                    # The preview leaves with the lyric's exit and returns with the next entry.
+                    fade_out = animation["duration"] if animation["out"] != "none" else 0
+                    if fade_out:
+                        key(upcoming, "opacity", max(line["show"], at - fade_out), base_next, "ease-in")
+                    key(upcoming, "opacity", at, 0.0, "hold")
+                    if fade_in:
+                        key(upcoming, "opacity", following["show"], 0.0, "ease-out")
+                        key(upcoming, "opacity", following["show"] + fade_in, base_next, "hold")
+                    else:
+                        key(upcoming, "opacity", following["show"], base_next, "hold")
             key(upcoming, "visible", 0, True)
         else:
             key(upcoming, "visible", 0, False)
@@ -549,12 +691,18 @@ def write_timeline(project, timed, roles, request):
         key(intro, "visible", lines[0]["show"], False)
     for phrase, ident in roles["cues"].items():
         key(ident, "visible", 0, False)
+        windows = []
         for line in lines:
             if contains_phrase(line["text"], phrase):
-                key(ident, "visible", line["hide"], False)
-        for line in lines:
-            if contains_phrase(line["text"], phrase):
-                key(ident, "visible", line["show"], True)
+                # Consecutive matching lines are one window, so the cue does not blink between them.
+                if windows and line["show"] <= windows[-1][1]:
+                    windows[-1][1] = max(windows[-1][1], line["hide"])
+                else:
+                    windows.append([line["show"], line["hide"]])
+        for window_start, window_end in windows:
+            key(ident, "visible", window_start, True)
+            key(ident, "visible", window_end, False)
+            cue_keys(key, layers[ident], ident, window_start, window_end, timed["cue_animation"], canvas)
     require(len(tracks) <= MAX_TRACKS, "Too many animated template layers", "resource_limit")
     timeline = default_timeline()
     timeline.update(fps=request.get("fps", 24), loop=0)
@@ -574,19 +722,52 @@ def write_timeline(project, timed, roles, request):
     return sum(len(track["keys"]) for track in timeline["tracks"])
 
 
+def _build_options(request, timed):
+    """What shapes the built timeline. Rendering choices (quality, size, camera, the window start)
+    are not part of it."""
+    return {
+        "fps": request.get("fps", 24),
+        "offset": timed["offset"],
+        "lead": timed["lead"],
+        "gap": timed["gap"],
+        "max_hold": timed["max_hold"],
+        "animation": timed["animation"],
+        "cue_animation": timed["cue_animation"],
+        "next_line": request.get("next_line", True),
+        "end": None if request.get("end") is None else timed["end"],
+    }
+
+
+def _fingerprint(state):
+    """A hash of everything in a built document except its build record, to tell a document that
+    still is what the build wrote from one that has been edited since."""
+    body = {key: value for key, value in state.items() if key != RECORD}
+    return hashlib.sha256(json.dumps(body, sort_keys=True, separators=(",", ":"), default=str).encode()).hexdigest()
+
+
 def build(request, root, limits=None):
     """Write the timeline document to ``build`` and return the plan plus its path."""
     from .film import local_path
-    from .validation import check_state
 
     limits = limits or Limits()
     root = Path(root)
     require(isinstance(request.get("build"), str) and request["build"].endswith(".vixl"),
             "build must be a .vixl path", field="build")
     destination = local_path(root, request["build"])
-    require(request.get("replace", False) or not destination.exists(),
+    _may_replace(request, destination)
+    return _write_build(request, root, limits, _prepare(request, root, limits), destination)
+
+
+def _may_replace(request, destination):
+    require(request.get("replace", False) or request.get("rebuild", False) or not destination.exists(),
             f"{request['build']!r} already exists; choose a new path or pass replace: true", field="build")
-    report, parsed, template, timed, contract = _prepare(request, root, limits)
+
+
+def _write_build(request, root, limits, prepared, destination):
+    from .film import local_path
+    from .validation import check_state
+
+    report, parsed, template, timed, contract, sources = prepared
     require(destination != local_path(root, request["template"]), "build cannot overwrite the template", field="build")
     project = template.clone()
     project.path, project._revision = None, None
@@ -597,12 +778,64 @@ def build(request, root, limits=None):
         else:
             variables.setdefault(name, "")
     keys = write_timeline(project, timed, contract["roles"], request)
+    project.state[RECORD] = {"version": 1, "options": _build_options(request, timed), "sources": sources,
+                             "state": _fingerprint(project.state)}
     check_state(project, project.state)
     project._record([], f"Build lyric video from {Path(request['lyrics']).name}")
     if destination.exists():
         destination.unlink()
     project.save(destination)
     return {**report, "build": request["build"], "keyframes": keys}
+
+
+def _differences(record, options, sources):
+    """How a build's recorded settings and sources differ from what a request now asks for."""
+    recorded = record.get("options") or {}
+    changed = [name for name, value in options.items() if name != "end" and recorded.get(name) != value]
+    # A build made for a window (end) does not cover a longer render; a full build covers any window.
+    built_end = recorded.get("end")
+    if built_end is not None and (options["end"] is None or options["end"] > built_end):
+        changed.append("end")
+    for name in ("lyrics", "template"):
+        if (record.get("sources") or {}).get(name) != sources[name]:
+            changed.append(f"the {name} file")
+    if (record.get("sources") or {}).get("audio_ms") != sources["audio_ms"]:
+        changed.append("the audio length")
+    return changed
+
+
+def _kept_build(request, limits, prepared, destination):
+    """The report for rendering an existing build as it is (hand edits and all), ``None`` when it
+    should be built again (a legacy file, or settings that changed on an unedited build; the
+    caller then checks that it may replace the file), or a ``build_stale`` error when the build
+    has hand edits that a rebuild would discard."""
+    from .project import Project
+
+    report, _, _, timed, _, sources = prepared
+    try:
+        existing = Project.load(destination, limits=limits)
+    except (VixlError, OSError, ValueError, KeyError):
+        return None
+    record = existing.state.get(RECORD)
+    if not isinstance(record, dict) or record.get("version") != 1:
+        return None
+    changed = _differences(record, _build_options(request, timed), sources)
+    edited = _fingerprint(existing.state) != record.get("state")
+    if changed:
+        if edited:
+            raise VixlError(
+                "build_stale",
+                f"{request['build']!r} has hand edits and was built with different inputs ({', '.join(changed)}); "
+                "rendering it as it is would ignore the new ones. Pass rebuild: true to build it again (this discards the "
+                "edits), choose a new build path, or restore the earlier settings",
+                field="build", changed=changed)
+        return None
+    keyframes = sum(len(track["keys"]) for track in (existing.state.get("timeline") or {}).get("tracks", []))
+    warnings = list(report["warnings"])
+    if edited:
+        warnings.append({"code": "build_reused", "message": f"Rendered {request['build']!r} as it is, with its hand edits; "
+                         "pass rebuild: true to build it again from the template"})
+    return {**report, "build": request["build"], "keyframes": keyframes, "build_reused": True, "warnings": warnings}
 
 
 def film_spec(request, report):
@@ -639,7 +872,8 @@ def check_lines(project, report, settle=300, limit=200):
 
 
 def export(request, root, limits=None, *, cancelled=lambda: False, progress=lambda value: None):
-    """Build, then render the MP4/WebM with the song as its audio track."""
+    """Build, then render the MP4/WebM with the song as its audio track. A build that already exists
+    and still matches the request is rendered as it is, hand edits included (``build_reused``)."""
     from .film import export as film_export, local_path
     from .project import Project
 
@@ -650,7 +884,18 @@ def export(request, root, limits=None, *, cancelled=lambda: False, progress=lamb
     output = local_path(root, request["output"])
     require(request.get("replace", False) or not output.exists(),
             f"{request['output']!r} already exists; choose a new path or pass replace: true", field="output")
-    report = build(request, root, limits)
+    require(isinstance(request.get("build"), str) and request["build"].endswith(".vixl"),
+            "build must be a .vixl path", field="build")
+    destination = local_path(root, request["build"])
+    prepared = _prepare(request, root, limits)
+    # A build that exists is rendered as it is when it still matches the request, so edits made to
+    # it survive; ``rebuild`` builds it again from the template.
+    report = None
+    if destination.exists() and not request.get("rebuild"):
+        report = _kept_build(request, limits, prepared, destination)
+    if report is None:
+        _may_replace(request, destination)
+        report = _write_build(request, root, limits, prepared, destination)
     if output.exists():
         output.unlink()
     result = film_export(film_spec(request, report), root, output, limits=limits, cancelled=cancelled, progress=progress)

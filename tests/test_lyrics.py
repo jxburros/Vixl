@@ -321,3 +321,206 @@ def test_workflow_rest_and_job_surfaces(workspace):
     cancelled = queue.submit({"kind": "lyric-video", "output": "never.mp4", "request": request(build="never.vixl")})
     queue.cancel(cancelled["id"])
     assert queue.work_one(cancelled["id"])["status"] == "cancelled"
+
+
+# Breaks, repeated lines, cue animation and rebuilding ------------------------------------------
+
+
+def frame(project, time):
+    from vixl.timeline import project_at
+
+    return {layer["name"]: layer for layer in project_at(project, time).state["layers"]}
+
+
+def keys(project, name, prop):
+    ident = project.layer(name)["id"]
+    track = next((t for t in project.state["timeline"]["tracks"] if t["target"] == ident and t["property"] == prop), None)
+    return [(k["time"], k["value"]) for k in track["keys"]] if track else []
+
+
+@needs_ffmpeg
+def test_empty_timestamp_clears_the_next_line_preview(workspace):
+    report = build(request(build="b.vixl", lead=0, animation={"duration": 200}), workspace)
+    driving = next(line for line in report["lines"] if line["text"] == "And I keep on driving")
+    assert driving["break_at"] == 7800 and driving["hide"] == 7800
+    built = Project.load(workspace / "b.vixl")
+    # Before the break the preview shows the line after it; during the break nothing does.
+    assert frame(built, 6000)["lyric-next"]["text"] == "This line repeats in the fire"
+    assert frame(built, 7000)["lyric-next"]["opacity"] == 1
+    assert 0 < frame(built, 7700)["lyric-next"]["opacity"] < 1  # it fades out with the lyric
+    for time in (7800, 7900, 8000):
+        assert frame(built, time)["lyric"]["opacity"] == 0
+        assert frame(built, time)["lyric-next"]["text"] == ""
+    # It returns with the first line after the break, previewing the line after that.
+    assert frame(built, 8100)["lyric"]["text"] == "This line repeats in the fire"
+    assert frame(built, 8100)["lyric-next"]["opacity"] < 0.01
+    assert frame(built, 8400)["lyric-next"]["opacity"] == 1 and frame(built, 8400)["lyric-next"]["text"] == "This line repeats in the fire"
+    # A cut (no animations) clears the text alone.
+    cut = build(request(build="cut.vixl", lead=0, animation={"in": "none", "out": "none"}), workspace)
+    assert cut["lines"][2]["break_at"] == 7800
+    plain = Project.load(workspace / "cut.vixl")
+    assert frame(plain, 7900)["lyric-next"]["text"] == "" and keys(plain, "lyric-next", "opacity") == []
+    # The preview still clears at the empty timestamp when max_hold hid the line earlier.
+    held = build(request(build="held.vixl", lead=0, max_hold=1500), workspace)
+    assert held["lines"][2]["hide"] == 6800 and held["lines"][2]["break_at"] == 7800
+
+
+@needs_ffmpeg
+def test_identical_consecutive_lines_hold_instead_of_fading_again(workspace):
+    from vixl.lyrics import plan
+
+    report = build(request(build="b.vixl", lead=100, animation={"duration": 200}), workspace)
+    first, second = report["lines"][3], report["lines"][4]
+    assert first["text"] == second["text"] and second["repeat"] and "repeat" not in first
+    assert first["hide"] == second["show"]
+    built = Project.load(workspace / "b.vixl")
+    opacity = keys(built, "lyric", "opacity")
+    # One entry at the first showing and one exit after the second: nothing in between dips to zero.
+    between = [v for t, v in opacity if first["show"] + 200 <= t <= second["hide"] - 200]
+    assert between and all(v == 1.0 for v in between)
+    assert [v for t, v in keys(built, "lyric", "text") if first["show"] < t < second["hide"]] == []
+    assert frame(built, second["show"])["lyric"]["opacity"] == 1 and frame(built, second["show"] - 1)["lyric"]["opacity"] == 1
+    assert frame(built, second["hide"] - 20)["lyric"]["opacity"] < 1  # the exit comes after the repeat
+    assert plan(request(lead=100), workspace)["lines"][4]["repeat"]
+    # A gap between lines does not blank a repeated line; a break or max_hold between them still does.
+    gapped = build(request(build="gap.vixl", lead=100, gap=300, animation={"duration": 200}), workspace)
+    assert gapped["lines"][4]["repeat"] and gapped["lines"][3]["hide"] == gapped["lines"][4]["show"]
+    (workspace / "r.lrc").write_text("[00:01.00]a\n[00:02.00]\n[00:03.00]a\n[00:06.00]b\n[00:09.00]b\n")
+    split = build(request(lyrics="r.lrc", build="r.vixl", lead=0, max_hold=2000), workspace)
+    assert [line.get("repeat", False) for line in split["lines"]] == [False, False, False, False]
+    # Warnings count only the animation a line actually plays: the middle repeat plays none.
+    (workspace / "s.lrc").write_text("[00:01.00]same\n[00:01.30]same\n[00:01.60]same\n[00:05.00]end\n")
+    short = build(request(lyrics="s.lrc", build="s.vixl", lead=0, animation={"duration": 300}), workspace)
+    assert not [w for w in short["warnings"] if w["code"] == "short_line" and w["index"] == 1]
+
+
+@needs_ffmpeg
+def test_cue_layers_can_fade_and_sweep(workspace):
+    build(request(build="plain.vixl", lead=0), workspace)
+    cut = Project.load(workspace / "plain.vixl")
+    assert keys(cut, "cue-fire", "opacity") == [] and keys(cut, "cue-fire", "rotation") == []
+    assert keys(cut, "cue-fire", "visible") == [(0, False), (8100, True), (12000, False)]
+    cue = {"in": "fade-in", "out": "fade-out", "duration": 200, "motion": "sweep", "amount": 10, "period": 1000}
+    build(request(build="cue.vixl", lead=0, cue_animation=cue), workspace)
+    built = Project.load(workspace / "cue.vixl")
+    assert keys(built, "cue-fire", "visible") == [(0, False), (8100, True), (12000, False)]  # one window for both lines
+    opacity = keys(built, "cue-fire", "opacity")
+    assert opacity[0] == (8100, 0.0) and (8300, 1.0) in opacity and (11800, 1.0) in opacity and opacity[-1] == (12000, 0.0)
+    swing = keys(built, "cue-fire", "rotation")
+    assert swing[0] == (8100, -10.0) and swing[1] == (8600, 10.0) and swing[2] == (9100, -10.0)
+    assert swing[-1][0] == 12000 and -10 <= swing[-1][1] <= 10  # the last key is where the swing has got to
+    assert frame(built, 8100)["cue-fire"]["opacity"] == 0 and frame(built, 8400)["cue-fire"]["opacity"] == 1
+    assert frame(built, 8200)["cue-fire"]["visible"] and frame(built, 11500)["cue-fire"]["visible"]
+    assert frame(built, 8350)["cue-fire"]["rotation"] != frame(built, 8850)["cue-fire"]["rotation"]
+    # A cue shown again starts from rest, whatever the last exit left it at.
+    build(request(build="slide.vixl", lead=0, cue_animation={"in": "none", "out": "slide-out-up", "duration": 200}), workspace)
+    slide = Project.load(workspace / "slide.vixl")
+    assert keys(slide, "cue-fire", "translate-y")[0] == (8100, 0.0)
+    for bad, message in (
+        ({"motion": "spin"}, "motion must be one of"),
+        ({"in": "typewriter"}, "cue_animation.in"),
+        ({"sparkle": 1}, "cue_animation takes"),
+        ({"period": 50}, "period"),
+    ):
+        with pytest.raises(VixlError, match=message):
+            build(request(build="bad.vixl", cue_animation=bad), workspace)
+
+
+@needs_ffmpeg
+def test_a_cut_entry_after_a_slide_out_starts_from_rest(workspace):
+    report = build(request(build="b.vixl", lead=0, animation={"in": "none", "out": "slide-out-left", "duration": 200}), workspace)
+    built = Project.load(workspace / "b.vixl")
+    rest = built.layer("lyric")["x"]
+    second = report["lines"][1]
+    assert frame(built, second["show"] + 50)["lyric"]["x"] == rest
+    assert frame(built, second["hide"] - 20)["lyric"]["x"] < rest
+
+
+@needs_ffmpeg
+def test_export_keeps_hand_edits_to_the_build(workspace):
+    import numpy as np
+    from PIL import Image
+
+    from vixl.lyrics import export
+
+    fields = dict(build="b.vixl", quality="draft", fps=4, start=1000, end=2000)
+    first = export(request(**fields, output="one.mp4"), workspace)
+    assert "build_reused" not in first and first["keyframes"] > 0
+    built = Project.load(workspace / "b.vixl")
+    record = built.state["lyric_build"]
+    assert record["options"]["lead"] == 150 and record["options"]["fps"] == 4
+    assert set(record["sources"]) == {"lyrics", "template", "audio_ms"}
+
+    def pixel(video):
+        out = workspace / "shot.png"
+        out.unlink(missing_ok=True)
+        subprocess.run(["ffmpeg", "-v", "error", "-i", str(workspace / video), "-frames:v", "1", str(out)], check=True)
+        return np.asarray(Image.open(out).convert("RGB"))[2, 2]
+
+    assert pixel("one.mp4")[0] < 80
+    # Hand edit: the background goes red. The same request renders the edited document, even with
+    # replace set for the video, and leaves the build file alone.
+    built.apply({"type": "keyframe", "target": "bg-default", "property": "fill", "time": 0, "value": "#ff0000"})
+    built.save(workspace / "b.vixl")
+    before = (workspace / "b.vixl").read_bytes()
+    second = export(request(**fields, output="two.mp4"), workspace)
+    assert second["build_reused"] is True and any(w["code"] == "build_reused" for w in second["warnings"])
+    assert (workspace / "b.vixl").read_bytes() == before
+    assert pixel("two.mp4")[0] > 200
+    third = export(request(**fields, output="two.mp4", replace=True), workspace)
+    assert third["build_reused"] is True and pixel("two.mp4")[0] > 200
+    # Settings that would change the build are refused instead of silently ignored, and no file changes.
+    with pytest.raises(VixlError) as stale:
+        export(request(**fields, output="three.mp4", lead=400, replace=True), workspace)
+    assert stale.value.code == "build_stale" and stale.value.details["changed"] == ["lead"]
+    assert not (workspace / "three.mp4").exists() and (workspace / "b.vixl").read_bytes() == before
+    # Rendering choices that are not part of the build do not count.
+    export(request(**fields, output="four.mp4", width=80, height=45), workspace)
+    # rebuild: true builds it again from the template, discarding the edit.
+    again = export(request(**fields, output="five.mp4", lead=400, rebuild=True), workspace)
+    assert "build_reused" not in again and pixel("five.mp4")[0] < 80
+    assert Project.load(workspace / "b.vixl").state["lyric_build"]["options"]["lead"] == 400
+
+
+@needs_ffmpeg
+def test_export_rebuilds_an_unedited_or_unrecorded_build_only_when_allowed(workspace):
+    from vixl.lyrics import export
+
+    fields = dict(build="b.vixl", quality="draft", fps=4, start=1000, end=2000)
+    export(request(**fields, output="a.mp4"), workspace)
+    # Unedited and still matching: reused, quietly.
+    same = export(request(**fields, output="b.mp4"), workspace)
+    assert same["build_reused"] is True and not any(w["code"] == "build_reused" for w in same["warnings"])
+    # Unedited but the settings changed: a rebuild needs replace (or rebuild), as before.
+    with pytest.raises(VixlError, match="already exists"):
+        export(request(**fields, output="c.mp4", lead=300), workspace)
+    changed = export(request(**fields, output="c.mp4", lead=300, replace=True), workspace)
+    assert "build_reused" not in changed
+    assert Project.load(workspace / "b.vixl").state["lyric_build"]["options"]["lead"] == 300
+    # A build with no record (made by an earlier version) is rebuilt only with replace.
+    legacy = Project.load(workspace / "b.vixl")
+    del legacy.state["lyric_build"]
+    legacy.save(workspace / "b.vixl")
+    with pytest.raises(VixlError, match="already exists"):
+        export(request(**fields, output="d.mp4", lead=300), workspace)
+    assert "build_reused" not in export(request(**fields, output="d.mp4", lead=300, replace=True), workspace)
+    # Changing the lyrics file also makes a build stale.
+    (workspace / "song.lrc").write_text(LRC.replace("flame", "fire"), encoding="utf-8")
+    with pytest.raises(VixlError, match="already exists"):
+        export(request(**fields, output="e.mp4", lead=300), workspace)
+
+
+@needs_ffmpeg
+def test_build_record_tracks_edits_and_the_workflow_schema_lists_the_new_fields(workspace):
+    from vixl.lyrics import _fingerprint, plan
+    from vixl.workflows import describe
+
+    build(request(build="b.vixl"), workspace)
+    built = Project.load(workspace / "b.vixl")
+    # Opening a build never changes its fingerprint, so only edits are detected.
+    assert _fingerprint(built.state) == built.state["lyric_build"]["state"]
+    built.apply({"type": "opacity", "target": "lyric", "value": 0.5})
+    assert _fingerprint(built.state) != built.state["lyric_build"]["state"]
+    props = describe()["actions"]["lyric-video-export"]["properties"]
+    assert "sweep" in props["cue_animation"]["description"] and props["rebuild"]["type"] == "boolean"
+    assert plan(request(cue_animation={"motion": "sweep"}), workspace)["lines"]
