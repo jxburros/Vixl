@@ -23,12 +23,15 @@ import numpy as np
 from PIL import Image, ImageFilter, ImageOps
 
 from .errors import require
+from .gaps import close_gaps
 from .model import finite, new_layer
 
+DEFAULT_INK = "#1d1d1f"  # near-black, a printed pen line; set `ink` on import (or `color` on vectorize/restyle) for pure black
 TYPES = ("drawing",)
 ACTIONS = ("import", "clean", "vectorize", "straighten", "smooth", "fill", "stroke", "restyle")
 CLEAN = {"threshold": "auto", "sensitivity": 0.0, "despeckle": "auto", "weight": 0, "deskew": True, "crop": True,
-         "margin": 24, "soft": True, "ink": "#1d1d1f", "flatten": True, "max_size": 2400, "sheet": True}
+         "margin": 24, "soft": True, "ink": DEFAULT_INK, "flatten": True, "max_size": 2400, "sheet": True,
+         "perspective": True}
 MAX_STROKES = 240
 
 
@@ -96,16 +99,25 @@ def erode(mask, radius):
 
 
 def distance(mask, limit=64):
-    """Approximate distance (in pixels) from each mask pixel to the nearest background pixel."""
+    """Euclidean distance (pixels) from each mask pixel to the nearest background pixel, up to
+    ``limit``. Exact, so a diagonal line reads as wide as a straight one drawn with the same pen
+    (a chessboard distance reads it about 30% thinner). One pass finds the distance along each
+    row; the nearest background pixel in any row then follows from the rows above and below."""
+    mask = np.asarray(mask, bool)
     result = np.zeros(mask.shape, np.float32)
-    current = np.asarray(mask, bool)
-    image = Image.fromarray(current.astype(np.uint8) * 255)
-    for step in range(1, limit + 1):
-        if not current.any():
-            break
-        result[current] = step
-        image = image.filter(ImageFilter.MinFilter(3))
-        current = np.asarray(image) > 127
+    if not mask.any():
+        return result
+    columns = np.arange(mask.shape[1])[None, :]
+    near = np.maximum.accumulate(np.where(mask, -(10 ** 6), columns), axis=1)
+    far = np.minimum.accumulate(np.where(mask, 10 ** 6, columns)[:, ::-1], axis=1)[:, ::-1]
+    along = np.minimum(columns - near, far - columns).astype(np.float32)
+    squared = np.minimum(along, limit + 1) ** 2
+    best = squared.copy()
+    for rows in range(1, int(min(limit, np.sqrt(squared[mask].max()))) + 1):
+        cost = np.float32(rows * rows)
+        np.minimum(best[rows:], squared[:-rows] + cost, out=best[rows:])
+        np.minimum(best[:-rows], squared[rows:] + cost, out=best[:-rows])
+    result[mask] = np.minimum(np.sqrt(best[mask]), limit)
     return result
 
 
@@ -137,10 +149,10 @@ def paper_estimate(gray, sheet=None):
     return np.asarray(small.resize((width, height), Image.Resampling.BILINEAR), np.float32)
 
 
-def find_sheet(gray, size=600):
-    """The sheet of paper in a photo of a drawing on a darker desk or table: a bool mask of the
-    sheet, kept a few pixels inside its edge, or None when no edge of the paper shows (a scan, or
-    paper filling the frame).
+def locate_sheet(gray, size=600):
+    """The sheet of paper in a photo of a drawing on a darker desk or table: (a bool mask of the
+    sheet, kept a few pixels inside its edge, and the convex hull of the paper in pixels), or
+    (None, None) when no edge of the paper shows (a scan, or paper filling the frame).
 
     On a small copy with the ink closed away, the frame's border (where any desk shows) and its
     centre (where the drawing is) give a threshold between paper and desk. The sheet is the
@@ -155,7 +167,7 @@ def find_sheet(gray, size=600):
     factor = max(1.0, max(height, width) / size)
     sw, sh = max(1, round(width / factor)), max(1, round(height / factor))
     if min(sw, sh) < 24:
-        return None
+        return None, None
     small = Image.fromarray(np.clip(gray, 0, 255).astype(np.uint8)).resize((sw, sh), Image.Resampling.BOX)
     raw = np.asarray(small, np.float32) / 255
     closed = np.asarray(small.filter(ImageFilter.MaxFilter(5)).filter(ImageFilter.MinFilter(5)), np.float32) / 255
@@ -165,10 +177,10 @@ def find_sheet(gray, size=600):
     centre = np.zeros((sh, sw), bool)
     centre[sh // 3:sh - sh // 3, sw // 3:sw - sw // 3] = True
     # The border as photographed: a sliver of desk at a slight tilt is as thin as a line of ink.
-    cut = otsu(np.concatenate([raw[border], closed[centre]]))
+    cut = otsu(np.concatenate([raw[border], closed[centre]]), centered=True)
     paper = closed >= cut
     if (raw[border] < cut).mean() < 0.02 or paper[centre].mean() < 0.5:
-        return None
+        return None, None
     labels, count = label(paper)
     overlap = np.bincount(labels[centre], minlength=count + 1)
     overlap[0] = 0
@@ -176,7 +188,7 @@ def find_sheet(gray, size=600):
     bright = sheet & (raw >= cut)
     ys, xs = np.nonzero(bright)
     if len(xs) < 3:
-        return None
+        return None, None
     # The hull of the row ends (as pixel corners) is the hull of the whole sheet.
     first = np.r_[True, ys[1:] != ys[:-1]]
     last = np.r_[ys[1:] != ys[:-1], True]
@@ -184,13 +196,13 @@ def find_sheet(gray, size=600):
                          np.column_stack([xs[last] + 1, ys[last]]), np.column_stack([xs[last] + 1, ys[last] + 1])])
     hull = convex_hull(corners)
     if len(hull) < 3:
-        return None
+        return None, None
     outline = Image.new("L", (sw, sh))
     ImageDraw.Draw(outline).polygon([tuple(q) for q in hull], fill=255)
     inside = np.asarray(outline) > 127
     outside = ~inside
     if inside.mean() < 0.25 or outside.mean() < 0.002:
-        return None
+        return None, None
     # A desk: much darker than the paper right at their boundary and out to the frame (a frame
     # drawn near the edge of the paper has paper beyond it), and the paper fills its hull
     # (straight page edges, not the curve of a shadow).
@@ -198,15 +210,15 @@ def find_sheet(gray, size=600):
     frame = np.ones((sh, sw), bool)
     frame[1:-1, 1:-1] = False
     if not rim_out.any() or not rim_in.any() or not (frame & outside).any():
-        return None
+        return None, None
     level = 0.8 * np.median(raw[rim_in])
     if np.median(raw[rim_out]) > level or np.median(raw[frame & outside]) > level:
-        return None
+        return None, None
     holes, _ = label(~sheet)
     edge = np.unique(np.concatenate([holes[0], holes[-1], holes[:, 0], holes[:, -1]]))
     filled = ~np.isin(holes, edge[edge > 0])
     if (inside & ~filled).sum() > 0.03 * inside.sum():
-        return None
+        return None, None
     # The sheet is the inside of each of its edges, extended across the frame (so a sliver of desk
     # too thin to see at this size is cut off too) and moved in a little to stay clear of the
     # edge's own blur and shadow. Where the paper runs off the frame, the frame is no edge.
@@ -220,13 +232,21 @@ def find_sheet(gray, size=600):
         normal = np.array([-d[1], d[0]]) / max(1e-9, float(np.linalg.norm(d)))
         region = clip_convex(region, a + normal * inset, b + normal * inset)
         if len(region) < 3:
-            return None
+            return None, None
     outline = Image.new("L", (width, height))
     ImageDraw.Draw(outline).polygon([tuple(q) for q in region], fill=255)
-    return np.asarray(outline) > 127
+    return np.asarray(outline) > 127, hull * [width / sw, height / sh]
 
 
-def otsu(values):
+def find_sheet(gray, size=600):
+    """The mask of the sheet of paper in a photo (see ``locate_sheet``), or None."""
+    return locate_sheet(gray, size)[0]
+
+
+def otsu(values, centered=False):
+    """Otsu's threshold (0-1). Between two clean peaks every threshold separates them equally well:
+    the lowest is returned, or with ``centered`` the middle of that gap, which leaves the noise on
+    either peak on its own side."""
     histogram, edges = np.histogram(values, bins=256, range=(0, 1))
     histogram = histogram.astype(float)
     total = histogram.sum()
@@ -236,6 +256,8 @@ def otsu(values):
     weight = np.cumsum(histogram)
     mean = np.cumsum(histogram * centers)
     between = (mean[-1] * weight / total - mean) ** 2 / np.maximum(weight * (total - weight), 1e-9)
+    if centered:
+        return float(centers[int(np.mean(np.nonzero(between >= between.max() * (1 - 1e-9))[0]))])
     return float(centers[int(np.argmax(between))])
 
 
@@ -265,10 +287,13 @@ def skew_angle(mask, limit=8.0):
     return round(best, 2) if abs(best) >= 0.3 else 0.0
 
 
-def clean(image, settings=None, state=None):
+def clean(image, settings=None, state=None, frame=None):
     """Clean a photographed or scanned drawing. Returns {"ink": RGBA image of the lines on
     transparency, "mask": bool line mask, "angle", "crop": [x, y, w, h] of the result within the
-    deskewed photo, "threshold"}. ``state`` resolves swatch colours for ``ink``."""
+    deskewed photo, "threshold", "perspective": the flattening applied to a page photographed at
+    an angle (or None)}. ``state`` resolves swatch colours for ``ink``. ``frame`` is the
+    flattening to apply instead of looking for one (False for none)."""
+    from . import paper
     from .design import resolve_color
     from .render import color
 
@@ -281,7 +306,15 @@ def clean(image, settings=None, state=None):
     rgb = np.asarray(image, np.float32)
     gray = rgb @ np.array([0.299, 0.587, 0.114], np.float32)
     # The desk around a photographed page is dark too, but it is not ink: leave it out first.
-    sheet = find_sheet(gray) if settings["sheet"] else None
+    sheet, hull = locate_sheet(gray) if settings["sheet"] and not frame else (None, None)
+    if frame is None and hull is not None and settings["perspective"]:
+        # A page photographed at an angle is a trapezoid: flatten it before anything is traced.
+        frame = paper.frame_for(hull, image.size, 1.5 * max(1.0, max(gray.shape) / 600) + 2)
+    if frame:
+        image = paper.rectify(image, frame)
+        rgb = np.asarray(image, np.float32)
+        gray = rgb @ np.array([0.299, 0.587, 0.114], np.float32)
+        sheet = None
     level = flatten_paper(gray, sheet) if settings["flatten"] else gray / 255
     darkness = 1 - level
     if sheet is not None:
@@ -346,7 +379,7 @@ def clean(image, settings=None, state=None):
         out[..., :3] = color(resolve_color(settings["ink"], state or {"variables": {}}))[:3]
     out[..., 3] = np.clip(alpha * 255, 0, 255).astype(np.uint8)
     return {"ink": Image.fromarray(out, "RGBA"), "mask": mask, "angle": angle, "crop": crop, "threshold": round(cut, 3),
-            "scale": scale, "sheet": sheet is not None}
+            "scale": scale, "sheet": sheet is not None or bool(frame), "perspective": frame or None}
 
 
 # ---------------------------------------------------------------------------------------------
@@ -524,7 +557,42 @@ def strokes_from_mask(mask, *, min_length=6.0, join_angle=40.0):
             continue
         result.append({**item, "width": max(1.0, round(item["width"], 1))})
     result.sort(key=lambda item: (-length(item["points"], item["closed"])))
+    for item, width in zip(result, _widths(mask, result)):
+        item["width"] = width
     return result
+
+
+def _widths(mask, strokes):
+    """The width of each stroke: the ink that belongs to it (each ink pixel goes to its nearest
+    stroke) over its length. Unlike the distance from the centre line to the edge, which reads a
+    line of even width a pixel thin, this gives the pen's width however the line runs."""
+    from .trace import length
+
+    labels = np.zeros(mask.shape, np.int32)
+    for index, stroke in enumerate(strokes, 1):
+        p = np.round(np.asarray(stroke["points"], float)).astype(int)
+        labels[np.clip(p[:, 1], 0, mask.shape[0] - 1), np.clip(p[:, 0], 0, mask.shape[1] - 1)] = index
+    reach = int(min(24, np.ceil(max([s["width"] for s in strokes], default=1) / 2) + 2))
+    for _ in range(reach):
+        empty = (labels == 0) & mask
+        if not empty.any():
+            break
+        for axis, step in ((0, 1), (0, -1), (1, 1), (1, -1)):
+            shifted = np.roll(labels, step, axis=axis)
+            if axis == 0:
+                shifted[0 if step == 1 else -1, :] = 0
+            else:
+                shifted[:, 0 if step == 1 else -1] = 0
+            take = empty & (shifted > 0)
+            labels[take] = shifted[take]
+            empty &= ~take
+    area = np.bincount(labels[mask], minlength=len(strokes) + 1)
+    widths = []
+    for index, stroke in enumerate(strokes, 1):
+        span = length(stroke["points"], stroke["closed"])
+        # A stroke only a few widths long is mostly junction: keep the distance reading.
+        widths.append(max(1.0, round(float(area[index] / span), 1)) if span >= 4 * stroke["width"] else stroke["width"])
+    return widths
 
 
 # ---------------------------------------------------------------------------------------------
@@ -882,56 +950,6 @@ def straighten_stroke(points, closed, *, tolerance, angles, angle_tolerance, cir
     return np.asarray(out, float), closed, "polyline"
 
 
-def _intersect(s1, s2):
-    p, r = s1[0], s1[1] - s1[0]
-    q, s = s2[0], s2[1] - s2[0]
-    cross = r[0] * s[1] - r[1] * s[0]
-    if abs(cross) < 1e-9:
-        return (s1[1] + s2[0]) / 2
-    t = ((q - p)[0] * s[1] - (q - p)[1] * s[0]) / cross
-    point = p + t * r
-    # A nearly parallel pair can meet far away; then keep the drawn joint.
-    if np.linalg.norm(point - s1[1]) > np.linalg.norm(r) + np.linalg.norm(s):
-        return (s1[1] + s2[0]) / 2
-    return point
-
-
-def close_gaps(strokes, gap):
-    """Extend open stroke ends to meet a nearby end (or a stroke body) within ``gap`` pixels.
-    Returns the number of joins."""
-    joins = 0
-    ends = []
-    for index, stroke in enumerate(strokes):
-        if stroke["closed"] or len(stroke["points"]) < 2:
-            continue
-        for end in (0, -1):
-            ends.append((index, end))
-    taken = set()
-    for i, (a, ea) in enumerate(ends):
-        if (a, ea) in taken:
-            continue
-        pa = strokes[a]["points"][ea]
-        best = None
-        for b, eb in ends[i + 1:]:
-            if (b, eb) in taken or (a == b and len(strokes[a]["points"]) < 4):
-                continue
-            pb = strokes[b]["points"][eb]
-            d = float(np.linalg.norm(pa - pb))
-            if 0 < d <= gap and (best is None or d < best[0]):
-                best = (d, b, eb)
-        if best:
-            _, b, eb = best
-            middle = (pa + strokes[b]["points"][eb]) / 2
-            for index, end in ((a, ea), (b, eb)):
-                points = strokes[index]["points"]
-                strokes[index]["points"] = np.vstack([middle[None], points]) if end == 0 else np.vstack([points, middle[None]])
-                taken.add((index, end))
-            if a == b:
-                strokes[a]["closed"] = True
-            joins += 1
-    return joins
-
-
 # ---------------------------------------------------------------------------------------------
 # Regions
 
@@ -971,9 +989,16 @@ def regions(mask, gap=4, min_area=64):
 def schemas(add):
     from .schema import S
 
+    settings = ("Per-action settings (see docs/drawing.md). import/clean: ink (line colour, default #1d1d1f), sheet, "
+                "perspective, deskew, crop, weight, threshold. vectorize: mode, width (pixels or 'uniform'), color. "
+                "straighten: angles ('drawn' keeps each line's angle, 'axes', '45', 'guides' or degrees), tolerance, "
+                "close_gaps (pixels or 'auto'), circles, polylines. restyle: width (pixels or 'uniform'), width_scale. "
+                "fill: gap, min_area, under. stroke: width, smooth, closed.")
     add("drawing", {"action": {"enum": list(ACTIONS)}, "name": S, "target": S, "asset": S, "path": S, "x": {}, "y": {},
-                    "width": {}, "height": {}, "settings": {"type": "object"},
-                    "strokes": {"type": ["array", "string"], "items": S}, "points": {"type": "array"}, "color": S},
+                    "width": {}, "height": {}, "settings": {"type": "object", "description": settings},
+                    "strokes": {"type": ["array", "string"], "items": S}, "points": {"type": "array"},
+                    "color": {"type": "string", "description": "Line colour: strokes' colour for restyle/stroke, vectorize's "
+                              "colour, or on import shorthand for settings.ink (default #1d1d1f)."}},
         ["action"])
 
 
@@ -1023,6 +1048,10 @@ def _aligned_photo(image, result):
     if result["scale"] < 1:
         image = image.resize((max(1, round(image.width * result["scale"])), max(1, round(image.height * result["scale"]))),
                              Image.Resampling.LANCZOS)
+    if result.get("perspective"):
+        from .paper import rectify
+
+        image = rectify(image, result["perspective"])
     if result["angle"]:
         image = image.rotate(result["angle"], resample=Image.Resampling.BICUBIC, expand=True, fillcolor=(255, 255, 255))
     x, y, w, h = result["crop"]
@@ -1086,7 +1115,7 @@ def stroke_layer(name, records, color, width=None):
 
 
 def _rebuild(layer, records):
-    fresh = stroke_layer(layer["name"], records, layer.get("stroke", "#1d1d1f"),
+    fresh = stroke_layer(layer["name"], records, layer.get("stroke", DEFAULT_INK),
                          layer["stroke_width"] if len(records) > 1 else None)
     for key in ("path", "path_view", "width", "height", "x", "y", "stroke_width", "drawing_strokes"):
         layer[key] = fresh[key]
@@ -1142,6 +1171,8 @@ def _import(project, op):
     from .operations import default_name, unique_name
 
     settings = _settings(op.get("settings"), CLEAN)
+    if op.get("color") and "ink" not in (op.get("settings") or {}):
+        settings["ink"] = op["color"]  # `color` is shorthand for the `ink` setting
     source, image = _source_image(project, op)
     result = clean(image, settings, project.state)
     require(result["mask"].any(), "No lines found in the image; try a higher sensitivity", field="settings")
@@ -1166,7 +1197,8 @@ def _import(project, op):
     group = new_layer(name, "group", int(width), int(height), x=finite(x, "x"), y=finite(y, "y"),
                       content_width=cw, content_height=ch, role="content")
     group["drawing"] = {"source": source, "reference": reference, "settings": settings, "angle": result["angle"],
-                        "crop": result["crop"], "scale": result["scale"]}
+                        "crop": result["crop"], "scale": result["scale"], "perspective": result["perspective"],
+                        "paper": result["sheet"]}
     for child in (original, ink):
         child["parent"] = group["id"]
         _insert(project, child)
@@ -1181,7 +1213,8 @@ def _clean(project, group, op):
     image = project.image(record["source"])
     result = clean(image, settings, project.state)
     strokes = [layer for layer in _children(project, group) if "drawing_strokes" in layer or layer.get("drawing_role") == "fill"]
-    geometry_changed = (result["angle"], result["crop"]) != (record["angle"], record["crop"])
+    geometry_changed = (result["angle"], result["crop"], result["perspective"]) != (
+        record["angle"], record["crop"], record.get("perspective"))
     if geometry_changed and strokes:
         # Keep strokes and fills aligned: clean again in the drawing's existing frame.
         result = clean_in_frame(image, settings, record, project.state)
@@ -1198,12 +1231,13 @@ def _clean(project, group, op):
         for layer in (ink, original):
             layer["width"], layer["height"] = cw, ch
         group.update(content_width=cw, content_height=ch, width=max(1, round(cw * sx)), height=max(1, round(ch * sy)))
-        record.update(angle=result["angle"], crop=result["crop"], scale=result["scale"])
+        record.update(angle=result["angle"], crop=result["crop"], scale=result["scale"], perspective=result["perspective"],
+                      paper=result["sheet"])
 
 
 def clean_in_frame(image, settings, record, state):
     """Clean with the drawing's stored tilt and crop (so existing strokes stay aligned)."""
-    result = clean(image, {**settings, "deskew": False, "crop": False}, state)
+    result = clean(image, {**settings, "deskew": False, "crop": False}, state, frame=record.get("perspective") or False)
     angle, (x, y, w, h) = record["angle"], record["crop"]
     ink, mask = result["ink"], result["mask"]
     if angle:
@@ -1215,7 +1249,25 @@ def clean_in_frame(image, settings, record, state):
 
 
 VECTORIZE = {"mode": "centerline", "min_length": 6, "detail": 0.75, "max_strokes": MAX_STROKES, "keep_ink": False,
-             "color": None}
+             "color": None, "width": None}
+
+
+def uniform_width(records):
+    """The pen width most of the line work has: the median stroke width, weighted by length."""
+    from .trace import length
+
+    widths = np.array([r["width"] for r in records], float)
+    spans = np.array([max(length(np.asarray(r["points"], float), r["closed"]), 1e-6) for r in records])
+    order = np.argsort(widths)
+    reached = np.cumsum(spans[order])
+    return round(float(widths[order][int(np.searchsorted(reached, reached[-1] / 2))]), 1)
+
+
+def _width_setting(value, records):
+    """A stroke width asked for: a number, or ``uniform`` (the median of ``records``' widths)."""
+    if value == "uniform":
+        return uniform_width(records)
+    return finite(value, "width", 0.5, 500)
 
 
 def _vectorize(project, group, op):
@@ -1223,12 +1275,14 @@ def _vectorize(project, group, op):
 
     settings = _settings(op.get("settings"), VECTORIZE)
     require(settings["mode"] in ("centerline", "outline"), "mode is centerline or outline", field="settings")
+    require(settings["width"] is None or settings["mode"] == "centerline",
+            "width applies to centerline mode; outline mode keeps the pen's own pressure", field="settings")
     record = group["drawing"]
     mask = np.asarray(project.image(record["reference"], "L")) > 127
     ink = _child(project, group, "ink")
-    color = settings["color"] or op.get("color") or record["settings"].get("ink", "#1d1d1f")
+    color = settings["color"] or op.get("color") or record["settings"].get("ink", DEFAULT_INK)
     if color == "original":
-        color = "#1d1d1f"
+        color = DEFAULT_INK
     for layer in [layer for layer in _children(project, group) if "drawing_strokes" in layer or layer.get("drawing_role") == "lines"]:
         project.state["layers"].remove(layer)
     name = group["name"]
@@ -1246,6 +1300,11 @@ def _vectorize(project, group, op):
         limit = int(finite(settings["max_strokes"], "max_strokes", 1, MAX_STROKES))
         records = [{"points": simplify(s["points"], float(settings["detail"]), s["closed"]), "closed": s["closed"],
                     "width": s["width"], "smooth": True, "origin": "traced"} for s in strokes]
+        if settings["width"] is not None:
+            # One pen width for every stroke (the pen's own pressure and the line's angle vary it a little).
+            width = _width_setting(settings["width"], records)
+            for record in records:
+                record["width"] = width
         main, rest = (records[:limit - 1], records[limit - 1:]) if len(records) > limit else (records, [])
         for index, item in enumerate(main, 1):
             layer = stroke_layer(f"{name}/s{index:03d}", [item], color)
@@ -1260,31 +1319,42 @@ def _vectorize(project, group, op):
     project.state["active_layer"] = group["id"]
 
 
-STRAIGHTEN = {"tolerance": 4.0, "angles": [0, 45, 90, 135], "angle_tolerance": 6.0, "circles": True, "close_gaps": 0.0,
+# ``angles``: "drawn" keeps each straightened line at the angle it was drawn at; "axes" and "45" snap
+# to horizontal/vertical or to 45° steps too; a list of degrees, or "guides", snaps to those.
+ANGLE_SETS = {"drawn": [], "none": [], "axes": [0, 90], "45": [0, 45, 90, 135]}
+STRAIGHTEN = {"tolerance": 4.0, "angles": "drawn", "angle_tolerance": 6.0, "circles": True, "close_gaps": 0.0,
               "corner": 24.0, "polylines": True, "amount": 0.5}
 
 
+def _snap_angles(project, value):
+    """The angles (degrees) straightened sides may snap to; none keeps the drawn angle."""
+    if value == "guides":
+        value = _guide_angles(project)
+        require(value, "The document has no angled guides to snap to", field="settings")
+    elif value in (None, False) or (isinstance(value, str) and value in ANGLE_SETS):
+        value = ANGLE_SETS.get(value, [])
+    require(isinstance(value, list) and len(value) <= 64,
+            "angles is 'drawn' (the default), 'axes', '45', 'guides' or a list of degrees", field="settings")
+    return [finite(a, "angle") for a in value]
+
+
+def _gap_limit(group, value):
+    """Pixels of gap to close: a number, or ``auto`` (2% of the drawing's longer side, at least 8)."""
+    if value == "auto":
+        return max(8.0, 0.02 * max(group["content_width"], group["content_height"]))
+    return finite(value, "close_gaps", 0, 1000)
+
+
 def _straighten(project, group, op, action):
-    from .trace import chaikin
+    from .trace import chaikin, simplify
 
     settings = _settings(op.get("settings"), STRAIGHTEN)
     layers = _records(project, group, op.get("strokes", "all"))
-    angles = settings["angles"]
-    if angles == "guides":
-        angles = _guide_angles(project)
-        require(angles, "The document has no angled guides to snap to", field="settings")
-    elif angles in (None, "none", False):
-        angles = []
-    require(isinstance(angles, list) and len(angles) <= 64, "angles is a list of degrees, 'guides' or 'none'", field="settings")
-    angles = [finite(a, "angle") for a in angles]
-    if action == "straighten" and settings["close_gaps"]:
-        records = [r for layer in layers for r in layer["drawing_strokes"]]
-        arrays = [{**r, "points": np.asarray(r["points"], float)} for r in records]
-        close_gaps(arrays, finite(settings["close_gaps"], "close_gaps", 0, 1000))
-        for r, a in zip(records, arrays):
-            r["points"], r["closed"] = a["points"].tolist(), a["closed"]
+    angles = _snap_angles(project, settings["angles"])
+    gap = _gap_limit(group, settings["close_gaps"]) if action == "straighten" else 0
+    updated = {}
     for layer in layers:
-        updated = []
+        records = []
         for record in layer["drawing_strokes"]:
             points = np.asarray(record["points"], float)
             if action == "smooth":
@@ -1293,21 +1363,38 @@ def _straighten(project, group, op, action):
                 smoothed = chaikin(points, passes, record["closed"])
                 if not record["closed"] and len(points) > 2:
                     smoothed = np.vstack([points[:1], smoothed, points[-1:]])
-                from .trace import simplify
-
                 smoothed = simplify(smoothed, 0.5, record["closed"])
-                updated.append({**record, "points": smoothed.tolist(), "kind": "smoothed", "smooth": True})
+                records.append({**record, "points": smoothed.tolist(), "kind": "smoothed", "smooth": True})
                 continue
             new, closed, kind = straighten_stroke(points, record["closed"], tolerance=finite(settings["tolerance"], "tolerance", 0, 1000),
                                                   angles=angles, angle_tolerance=finite(settings["angle_tolerance"], "angle_tolerance", 0, 45),
                                                   circles=bool(settings["circles"]), corner=finite(settings["corner"], "corner", 0, 10000),
                                                   polylines=bool(settings["polylines"]))
             if kind is None:
-                updated.append(record)
+                records.append({**record})
             else:
-                updated.append({**record, "points": np.asarray(new).tolist(), "closed": closed, "kind": kind,
+                records.append({**record, "points": np.asarray(new).tolist(), "closed": closed, "kind": kind,
                                 "smooth": kind == "circle"})
-        _rebuild(layer, updated)
+        updated[layer["id"]] = records
+    if gap:
+        # Gaps are closed once the sides are straight, so a corner is run on to where its lines cross.
+        # Every stroke of the drawing is something an end can run on to; only the chosen ones move.
+        everything = [layer for layer in _children(project, group) if "drawing_strokes" in layer]
+        flat, movable = [], set()
+        for layer in everything:
+            for record in updated.get(layer["id"], layer["drawing_strokes"]):
+                if layer["id"] in updated:
+                    movable.add(len(flat))
+                flat.append({**record, "points": np.asarray(record["points"], float)})
+        close_gaps(flat, gap, movable)
+        position = 0
+        for layer in everything:
+            for record in updated.get(layer["id"], layer["drawing_strokes"]):
+                if layer["id"] in updated:
+                    record["points"], record["closed"] = flat[position]["points"].tolist(), flat[position]["closed"]
+                position += 1
+    for layer in layers:
+        _rebuild(layer, updated[layer["id"]])
 
 
 FILL = {"gap": 6.0, "min_area": 64, "under": True}
@@ -1428,9 +1515,9 @@ def _add_stroke(project, group, op):
     existing = [r for layer in _children(project, group) for r in layer.get("drawing_strokes", [])]
     width = settings["width"] or (float(np.median([r["width"] for r in existing])) if existing else 4.0)
     color = op.get("color") or next((layer.get("stroke") for layer in _children(project, group) if "drawing_strokes" in layer),
-                                    group["drawing"]["settings"].get("ink", "#1d1d1f"))
+                                    group["drawing"]["settings"].get("ink", DEFAULT_INK))
     if color == "original":
-        color = "#1d1d1f"
+        color = DEFAULT_INK
     count = 1 + sum(1 for layer in _children(project, group) if layer["name"].startswith(f"{group['name']}/added"))
     name = op.get("name") or f"{group['name']}/added-{count}"
     record = {"points": content.tolist(), "closed": bool(settings["closed"]), "width": finite(width, "width", 0.5, 500),
@@ -1443,6 +1530,9 @@ def _add_stroke(project, group, op):
 def _restyle(project, group, op):
     settings = _settings(op.get("settings"), {"width": None, "width_scale": None})
     layers = _records(project, group, op.get("strokes", "all"))
+    width = settings["width"]
+    if width is not None:
+        width = _width_setting(width, [r for layer in layers for r in layer["drawing_strokes"]])
     for layer in layers:
         if op.get("color"):
             from .design import resolve_color
@@ -1451,9 +1541,9 @@ def _restyle(project, group, op):
             color(resolve_color(op["color"], project.state))
             layer["stroke"] = op["color"]
         records = layer["drawing_strokes"]
-        if settings["width"] is not None or settings["width_scale"] is not None:
+        if width is not None or settings["width_scale"] is not None:
             for record in records:
-                record["width"] = (finite(settings["width"], "width", 0.5, 500) if settings["width"] is not None
+                record["width"] = (width if width is not None
                                    else record["width"] * finite(settings["width_scale"], "width_scale", 0.05, 20))
             layer["stroke_width"] = float(np.median([r["width"] for r in records]))
         _rebuild(layer, records)
@@ -1469,6 +1559,12 @@ def validate(layer, state, project):
         require(isinstance(record, dict) and layer["type"] == "group", "Invalid drawing record", "invalid_project")
         for key in ("source", "reference"):
             require(record.get(key) in project.assets, "Missing drawing asset", "missing_asset")
+        flat = record.get("perspective")
+        if flat is not None:
+            require(isinstance(flat, dict) and len(flat.get("quad", [])) == 4 and len(flat.get("size", [])) == 2
+                    and all(len(p) == 2 and all(isinstance(v, (int, float)) for v in p) for p in flat["quad"])
+                    and all(isinstance(v, int) and 1 <= v <= 20000 for v in flat["size"]),
+                    "Invalid drawing perspective", "invalid_project")
     if "drawing_strokes" in layer:
         records = layer["drawing_strokes"]
         require(layer["type"] == "shape" and isinstance(records, list) and 1 <= len(records) <= 5000,
@@ -1501,15 +1597,19 @@ def report(project, target):
         x, y, _ = matrix @ np.array([point[0], point[1], 1.0])
         return [round(float(x), 1), round(float(y), 1)]
 
+    sizes = sorted(r["width"] for r in strokes)
     kinds = {}
     for r in strokes:
         kinds[r.get("kind") or r.get("origin", "traced")] = kinds.get(r.get("kind") or r.get("origin", "traced"), 0) + 1
     return {
         "drawing": group["name"], "preserved": round(preserved, 4), "added": round(new, 4), "tolerance_px": tolerance,
         "strokes": len(strokes), "stroke_kinds": kinds,
+        "stroke_width": {"min": sizes[0], "median": uniform_width(strokes), "max": sizes[-1]} if strokes else None,
         "regions": [{"id": i["id"], "area": i["area"], "point": canvas(i["point"])} for i in info if not i["outside"]][:64],
         "fills": [layer["name"] for layer in _children(project, group) if layer.get("drawing_role") == "fill"],
         "tilt_corrected": group["drawing"]["angle"],
+        "perspective_corrected": bool(group["drawing"].get("perspective")),
+        "paper_found": bool(group["drawing"].get("paper")),
     }
 
 
