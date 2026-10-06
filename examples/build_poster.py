@@ -124,6 +124,7 @@ ops += [
 p.apply(ops)
 p.checkpoint("finished-layout")
 p.save(out / "after-hours.vixl")
-p.export(out / "after-hours.png")
-p.export(out / "late-edition.png", variables={"event": "LATE\nEDITION", "date": "NOV 13  /  DOORS 22:00"})
+p.export(out / "after-hours.png", overwrite=True)
+p.export(out / "late-edition.png", variables={"event": "LATE\nEDITION", "date": "NOV 13  /  DOORS 22:00"},
+         overwrite=True)
 print(f"Created editable template and two renders in {out.resolve()}")

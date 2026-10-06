@@ -42,7 +42,7 @@ def build(output):
         project = Project(width, height, PAPER)
         project.apply(ops)
         project.save(output / f"{name}.vixl")
-        project.export(output / f"{name}.png", alpha="auto")
+        project.export(output / f"{name}.png", alpha="auto", overwrite=True)
         (output / f"{name}.json").write_text(json.dumps({"operations": ops}, indent=2) + "\n")
         report = project.check(checks=["bounds"])
         if report["issues"]:
@@ -108,7 +108,8 @@ def build(output):
             text("campaign-date", "${date}", 80, 439, 26, "#ffffff")]
     project = save("campaign", 1060, 570, ops, "Variable-driven campaign master")
     project.export(output / "campaign-variant.png",
-                   variables={"headline": "NIGHT SCHOOL", "date": "SATURDAY / 20:00"}, alpha="auto")
+                   variables={"headline": "NIGHT SCHOOL", "date": "SATURDAY / 20:00"}, alpha="auto",
+                   overwrite=True)
 
     ops = heading("Paint and procedural forms", "Editable strokes and a seeded organic shape; no image provider.")
     ops += [dict(type="paint-layer", name="watercolor"),
@@ -137,9 +138,10 @@ def build(output):
            text("newsletter-label", "Send me studio news", 105, 530, 22),
            text("form-footer", "Keep this editable master; export copies for attendees.", 60, 975, 20, MUTED)]
     project = save("registration", 850, 1100, ops, "Letter-size form with text and checkbox fields")
-    project.export(output / "registration.pdf", fillable=True)
+    project.export(output / "registration.pdf", fillable=True, overwrite=True)
     project.export(output / "registration-filled.png",
-                   values={"full_name": "Ada Lovelace", "email": "ada@example.com", "newsletter": True})
+                   values={"full_name": "Ada Lovelace", "email": "ada@example.com", "newsletter": True},
+                   overwrite=True)
 
     ops = [dict(type="page", action="add", name="cover", notes="Introduce the editable workflow."),
            *heading("Design once. Export many ways.", "Vixl / an editable slide deck"),
@@ -151,8 +153,8 @@ def build(output):
            *[op for op in records_chart_ops(values)]]
     project = save("slides", 1060, 595, ops, "Two real pages with speaker notes and editable chart layers")
     page_sheet(project).save(output / "slides.png")
-    project.export(output / "slides.pdf")
-    project.export(output / "slides.pptx")
+    project.export(output / "slides.pdf", overwrite=True)
+    project.export(output / "slides.pptx", overwrite=True)
 
     ops = heading("Animate a layer", "A 2-second translation; export works offline as animated WebP.")
     ops += [box("motion-track", 48, 188, 964, 100, "#e4e7e7"),
@@ -163,7 +165,7 @@ def build(output):
     project = save("motion", 1060, 450, ops, "Keyframe translation on a real editable layer")
     export_timeline(project, output / "motion.webp", fps=12, overwrite=True)
     for index, time in enumerate((0, 1, 2)):
-        project.export(output / f"motion-{index}.png", time=f"{time}s", alpha="auto")
+        project.export(output / f"motion-{index}.png", time=f"{time}s", alpha="auto", overwrite=True)
 
     (output / "manifest.json").write_text(json.dumps(records, indent=2) + "\n")
     print(f"Built {len(records)} editable illustrations with Vixl {__version__} in {output.resolve()}")

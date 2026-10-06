@@ -1,6 +1,6 @@
 # Local artistic filters and SVG export
 
-Vixl 0.12 adds 19 built-in artistic filters. They use local Pillow/NumPy algorithms, require no AI provider, and never download models or contact a service. Filters remain editable in the effect stack; undo/redo, presets, selections, adjustment layers, REST and MCP use the same implementations.
+Vixl has 19 built-in artistic filters (since 0.12). They use local Pillow/NumPy algorithms, require no AI provider, and never download models or contact a service. Filters remain editable in the effect stack; undo/redo, presets, selections, adjustment layers, REST and MCP use the same implementations.
 
 ![Original artwork and all 19 local treatments](../../../docs/filter-gallery.png)
 
@@ -18,7 +18,7 @@ vixl effect disable photo 1
 vixl effect enable photo 1
 ```
 
-Layer and amount are optional for these new shortcuts. With no layer, Vixl uses the active layer; with no amount, it uses the defaults below. `vixl filter sepia --target photo --amount 70` is the equivalent generic syntax. JSON uses `{"type":"ink-blot","target":"photo","amount":140,"radius":2}` or `{"type":"effect","name":"ink-blot",...}`. `vixl commands --json` and `vixl schema` discover the built-ins and operation fields.
+Layer and amount are optional for these shortcuts. With no layer, Vixl uses the active layer; with no amount, it uses the defaults below. `vixl filter sepia --target photo --amount 70` is the equivalent generic syntax. JSON uses `{"type":"ink-blot","target":"photo","amount":140,"radius":2}` or `{"type":"effect","name":"ink-blot",...}`. `vixl commands --json` and `vixl schema` discover the built-ins and operation fields.
 
 ## Treatments
 

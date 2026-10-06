@@ -14,7 +14,14 @@ From the repository root, using the latest source environment:
 ```bash
 python -m pip install -e '.[dev]'
 python examples/build_documentation.py
+python examples/build_poster.py --output examples/output  # copy after-hours.png to docs/example-poster.png, after-hours.vixl to examples/
+python examples/build_filter_gallery.py     # docs/filter-gallery.png
+python examples/build_organic_gallery.py    # docs/organic-gallery.png
+python examples/build_irregular_gallery.py  # docs/irregular-gallery.png
+python examples/build_drawing_pipeline.py   # docs/drawing-pipeline.png
 ```
+
+The gallery builders write into `docs/` by default and also take `--output DIR`.
 
 The builder needs no network, AI service, GPU or ffmpeg. It intentionally uses the bundled
 font for portable proofing. Outputs go to `docs/assets/generated/` by default; use

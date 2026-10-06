@@ -6,11 +6,17 @@
       1260,
       490
     ],
-    "version": "0.18.0",
+    "version": "0.20.0",
     "bounds": {
       "passed": true,
       "errors": 0,
       "warnings": 0,
+      "info": 0,
+      "by_action": {
+        "fix": [],
+        "review": [],
+        "informational": []
+      },
       "issues": [],
       "checked": {
         "checks": [
@@ -28,11 +34,17 @@
       1180,
       630
     ],
-    "version": "0.18.0",
+    "version": "0.20.0",
     "bounds": {
       "passed": true,
       "errors": 0,
       "warnings": 0,
+      "info": 0,
+      "by_action": {
+        "fix": [],
+        "review": [],
+        "informational": []
+      },
       "issues": [],
       "checked": {
         "checks": [
@@ -50,11 +62,17 @@
       1060,
       595
     ],
-    "version": "0.18.0",
+    "version": "0.20.0",
     "bounds": {
       "passed": true,
       "errors": 0,
       "warnings": 0,
+      "info": 0,
+      "by_action": {
+        "fix": [],
+        "review": [],
+        "informational": []
+      },
       "issues": [],
       "checked": {
         "checks": [
@@ -78,11 +96,17 @@
       1060,
       570
     ],
-    "version": "0.18.0",
+    "version": "0.20.0",
     "bounds": {
       "passed": true,
       "errors": 0,
       "warnings": 0,
+      "info": 0,
+      "by_action": {
+        "fix": [],
+        "review": [],
+        "informational": []
+      },
       "issues": [],
       "checked": {
         "checks": [
@@ -100,11 +124,17 @@
       1060,
       560
     ],
-    "version": "0.18.0",
+    "version": "0.20.0",
     "bounds": {
       "passed": true,
       "errors": 0,
       "warnings": 0,
+      "info": 0,
+      "by_action": {
+        "fix": [],
+        "review": [],
+        "informational": []
+      },
       "issues": [],
       "checked": {
         "checks": [
@@ -122,11 +152,17 @@
       850,
       1100
     ],
-    "version": "0.18.0",
+    "version": "0.20.0",
     "bounds": {
       "passed": true,
       "errors": 0,
       "warnings": 0,
+      "info": 0,
+      "by_action": {
+        "fix": [],
+        "review": [],
+        "informational": []
+      },
       "issues": [],
       "checked": {
         "checks": [
@@ -144,11 +180,17 @@
       1060,
       595
     ],
-    "version": "0.18.0",
+    "version": "0.20.0",
     "bounds": {
       "passed": true,
       "errors": 0,
       "warnings": 0,
+      "info": 0,
+      "by_action": {
+        "fix": [],
+        "review": [],
+        "informational": []
+      },
       "issues": [],
       "checked": {
         "checks": [
@@ -166,11 +208,17 @@
       1060,
       450
     ],
-    "version": "0.18.0",
+    "version": "0.20.0",
     "bounds": {
       "passed": true,
       "errors": 0,
       "warnings": 0,
+      "info": 0,
+      "by_action": {
+        "fix": [],
+        "review": [],
+        "informational": []
+      },
       "issues": [],
       "checked": {
         "checks": [
