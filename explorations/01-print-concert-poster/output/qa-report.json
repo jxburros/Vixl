@@ -9,8 +9,8 @@
       "role": "heading",
       "source": {
         "origin": "cache",
-        "cache_file": "/home/user/Vixl/.claude/worktrees/agent-aa5dda75eb6019910/explorations/01-print-concert-poster/.work/fonts/syne-800.ttf",
-        "cache_dir": "/home/user/Vixl/.claude/worktrees/agent-aa5dda75eb6019910/explorations/01-print-concert-poster/.work/fonts",
+        "cache_file": "/home/user/Vixl/explorations/01-print-concert-poster/.work/fonts/syne-800.ttf",
+        "cache_dir": "/home/user/Vixl/explorations/01-print-concert-poster/.work/fonts",
         "cache_dir_from": "VIXL_FONT_CACHE",
         "bundled_fallback": false
       },
@@ -28,8 +28,8 @@
       "role": "body",
       "source": {
         "origin": "cache",
-        "cache_file": "/home/user/Vixl/.claude/worktrees/agent-aa5dda75eb6019910/explorations/01-print-concert-poster/.work/fonts/dm-sans-400.ttf",
-        "cache_dir": "/home/user/Vixl/.claude/worktrees/agent-aa5dda75eb6019910/explorations/01-print-concert-poster/.work/fonts",
+        "cache_file": "/home/user/Vixl/explorations/01-print-concert-poster/.work/fonts/dm-sans-400.ttf",
+        "cache_dir": "/home/user/Vixl/explorations/01-print-concert-poster/.work/fonts",
         "cache_dir_from": "VIXL_FONT_CACHE",
         "bundled_fallback": false
       },
@@ -55,8 +55,8 @@
     "italic": false,
     "source": {
       "origin": "cache",
-      "cache_file": "/home/user/Vixl/.claude/worktrees/agent-aa5dda75eb6019910/explorations/01-print-concert-poster/.work/fonts/dm-sans-700.ttf",
-      "cache_dir": "/home/user/Vixl/.claude/worktrees/agent-aa5dda75eb6019910/explorations/01-print-concert-poster/.work/fonts",
+      "cache_file": "/home/user/Vixl/explorations/01-print-concert-poster/.work/fonts/dm-sans-700.ttf",
+      "cache_dir": "/home/user/Vixl/explorations/01-print-concert-poster/.work/fonts",
       "cache_dir_from": "VIXL_FONT_CACHE",
       "bundled_fallback": false
     },
@@ -586,14 +586,14 @@
   },
   "icc_profile": "default_cmyk.icc",
   "export_png": {
-    "output": "/home/user/Vixl/.claude/worktrees/agent-aa5dda75eb6019910/explorations/01-print-concert-poster/output/poster-rgb.png",
+    "output": "/home/user/Vixl/explorations/01-print-concert-poster/output/poster-rgb.png",
     "bytes": 2278137,
     "warnings": [
       "PNG is 2.2 MB; messaging apps often recompress or reject images this large. Texture looks (grain) add noise that PNG cannot compress: lower their amount, or export JPEG or WebP."
     ]
   },
   "export_pdf": {
-    "output": "/home/user/Vixl/.claude/worktrees/agent-aa5dda75eb6019910/explorations/01-print-concert-poster/output/poster-cmyk.pdf",
+    "output": "/home/user/Vixl/explorations/01-print-concert-poster/output/poster-cmyk.pdf",
     "bytes": 2352950,
     "pages": 1,
     "content": "vector",
@@ -615,11 +615,11 @@
     "content_reason": "default: vector, with images only for what PDF cannot draw (see raster_fallbacks)"
   },
   "export_jpg": {
-    "output": "/home/user/Vixl/.claude/worktrees/agent-aa5dda75eb6019910/explorations/01-print-concert-poster/output/poster-cmyk-swop.jpg",
+    "output": "/home/user/Vixl/explorations/01-print-concert-poster/output/poster-cmyk-swop.jpg",
     "bytes": 2564667
   },
   "export_svg": {
-    "output": "/home/user/Vixl/.claude/worktrees/agent-aa5dda75eb6019910/explorations/01-print-concert-poster/output/poster.svg",
+    "output": "/home/user/Vixl/explorations/01-print-concert-poster/output/poster.svg",
     "bytes": 249029,
     "svg": {
       "vector_only": true,
@@ -627,7 +627,7 @@
     }
   },
   "export_svg_full_comp": {
-    "output": "/home/user/Vixl/.claude/worktrees/agent-aa5dda75eb6019910/explorations/01-print-concert-poster/.work/poster-fullcomp.svg",
+    "output": "/home/user/Vixl/explorations/01-print-concert-poster/.work/poster-fullcomp.svg",
     "bytes": 10852273,
     "svg": {
       "vector_only": false,
