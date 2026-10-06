@@ -28,7 +28,7 @@ EACH = frozenset({
     "style-apply", "lut", "lookup", "layer-intent", "fit-text", "path-fit", "shape-to-path", "path-simplify",
     "path-smooth", "offset-path", "outline-stroke", "round-corners", "distort", "skew", "transform", "fit",
     "snap-to-pixel", "keyframe-remove", "shape", "text", "solid", "gradient", "ungroup", "link-refresh",
-    "link-embed", "replace-contents", "pattern-fill",
+    "link-embed", "replace-contents", "pattern-fill", "text-animate",
 })
 # Operations that already take targets themselves and apply to each listed layer.
 OWN_EACH = frozenset({"keyframe", "animate", "animate-preset", "look", "irregular", "cut-paper", "motion", "snap",

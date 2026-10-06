@@ -309,6 +309,9 @@ vixl easings | timeline | timeline set [--duration T] [--fps N] [--loop N] [--cl
 vixl keyframe LAYER|canvas PROPERTY TIME VALUE [--easing E] | keyframe-remove LAYER [--property P] [--time T]
 vixl animate LAYER PROPERTY --to V [--from V] [--start T] [--end T | --duration T] [--easing E]
 vixl animate-preset LAYER|canvas PRESET [--start T] [--duration T] [--easing E] [--amount N] [--distance N] [--to C] [--no-fade]
+vixl text-animate TEXT PRESET [--unit char|word|line] [--start T] [--duration T] [--stagger T|N%] [--easing E]
+    [--direction forward|reverse|center|edges|random] [--seed N] [--mode in|out|in-out] [--distance N] [--amount N]
+    [--rotate DEG] [--from C] [--repeat] [--remove] [--no-extend]
 vixl marker NAME TIME | marker NAME --delete
 vixl render --time T --out FILE | timeline-sheet --out FILE [--count 8] [--columns N] [--times T…]
 vixl export-timeline --out FILE.gif|.png|.webp|.zip|.mp4|.webm [--format sheet] [--fps N] [--scale F]

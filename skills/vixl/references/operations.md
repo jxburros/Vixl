@@ -215,6 +215,7 @@ deletes it. One style per kind; all accept `enabled` (bool) and `opacity` (0–1
 | `animate` | `target` or `targets`, **`property`**, **`to`**, `from`, `start`, `end`/`duration`, `easing`, `extend` | Two keys; `from` defaults to the current value. `targets` gives several parts the same keys. |
 | `animate-preset` | `target` or `targets`, **`preset`**, `start`, `duration`, `easing`, `amount`, `distance`, `fade`, `to`, `extend` | fade/slide/pop/zoom/spin/pulse/shake/bounce/float/blink/typewriter/color-shift/draw-on/draw-off. |
 | `marker` | **`name`**, `time` or `delete` | Named times usable wherever a time is accepted. |
+| `text-animate` | `target` or `targets` (text layers), **`preset`**, `unit` (`char`/`word`/`line`), `start`, `duration` (each unit), `stagger` (ms or `"30%"` of duration), `easing`, `direction` (forward/reverse/center/edges/random + `seed`), `mode` (in/out/in-out), `distance`, `amount`, `rotate`, `from`, `repeat`, `remove`, `extend` | Kinetic type: fade/fade-up/fade-down/slide-left/slide-right/pop/wave/typewriter/color-sweep per unit. The text stays one editable layer; stills, SVG, PDF and PPTX show the resting text. |
 
 ## Legacy aliases (avoid in new code)
 

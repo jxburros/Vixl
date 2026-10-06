@@ -612,8 +612,9 @@ def measure(project, layer, variables=None):
 # Drawing
 
 
-def append_svg(parent, result, layer, project, *, node=None):
-    """Add the layout's highlights, glyph paths and decorations to an SVG element."""
+def append_svg(parent, result, layer, project, *, node=None, motion=None):
+    """Add the layout's highlights, glyph paths and decorations to an SVG element. ``motion``
+    (kinetic type) gives each glyph a ``(matrix prefix, opacity, fill or None)``."""
     from .design import resolve_color
     from .render import color
     from .text import face, glyph_outline
@@ -633,7 +634,7 @@ def append_svg(parent, result, layer, project, *, node=None):
                          "fill_opacity": alpha})
     outline_width = layer.get("stroke_width", 0)
     outline_color = color(resolve_color(layer.get("stroke_color", "black"), project.state))
-    for glyph in result.glyphs:
+    for index, glyph in enumerate(result.glyphs):
         path, _ = glyph_outline(glyph.data, glyph.name)
         if not path:
             continue
@@ -641,8 +642,18 @@ def append_svg(parent, result, layer, project, *, node=None):
         f = glyph.size / upem
         skew = f * SYNTHETIC_SKEW if glyph.italic else 0
         fill, alpha = paint(glyph.color)
-        attrs = {"d": path, "transform": f"matrix({f:.6f} 0 {skew:.6f} {-f:.6f} {glyph.x:.3f} {glyph.y:.3f})",
-                 "fill": fill, "fill_opacity": alpha}
+        transform = f"matrix({f:.6f} 0 {skew:.6f} {-f:.6f} {glyph.x:.3f} {glyph.y:.3f})"
+        extra = {}
+        if motion:
+            from .kinetic import multiply
+
+            prefix, opacity, override = motion[index]
+            transform = "matrix(" + " ".join(f"{v:.6f}" for v in multiply(prefix, (f, 0, skew, -f, glyph.x, glyph.y))) + ")"
+            if override:
+                fill, alpha = paint(override)
+            if opacity < 1:
+                extra["opacity"] = f"{opacity:.4f}"
+        attrs = {"d": path, "transform": transform, "fill": fill, "fill_opacity": alpha, **extra}
         width = 0.0
         stroke = fill
         stroke_alpha = alpha
@@ -669,6 +680,18 @@ def render(project, layer):
 
     result = fitted(project, layer)
     width, height = (layer["width"], layer["height"]) if layer.get("text_layout") else (result.width, result.height)
+    if layer.get("_kinetic"):
+        from .kinetic import padding, rich_motion, svg_canvas
+
+        moves, boxes = rich_motion(project, layer, result)
+        margin = padding(boxes, [m[0] for m in moves], width, height, layer.get("stroke_width", 0) + 0.05 * layer.get("size", 48))
+        size, attrs = svg_canvas(width, height, *margin)
+        project.limits.size(*size)
+        root = ET.Element(SVG + "svg", attrs)
+        append_svg(root, result, layer, project, motion=moves)
+        image = Image.open(io.BytesIO(resvg_py.svg_to_bytes(svg_string=ET.tostring(root, encoding="unicode")))).convert("RGBA")
+        image.info["vixl_vector_overflow"] = True
+        return image
     project.limits.size(width, height)
     root = ET.Element(SVG + "svg", {"width": str(width), "height": str(height), "viewBox": f"0 0 {width} {height}"})
     append_svg(root, result, layer, project)

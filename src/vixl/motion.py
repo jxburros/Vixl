@@ -185,10 +185,10 @@ def _close_motion(project, timeline, op, targets, before):
 def time_findings(project):
     """What a viewer sees over time, from the frames the shared sampler picks (poster, middle, last):
     a loop that jumps at its seam, and text missing from the poster frame."""
-    from .timeline import is_looping, poster_findings, seam_findings
+    from .timeline import animated, is_looping, poster_findings, seam_findings
 
     timeline = project.state.get("timeline")
-    if not timeline or not timeline.get("tracks"):
+    if not animated(timeline):
         return []
     result = []
     if is_looping(timeline):
@@ -203,6 +203,13 @@ def time_findings(project):
                 result.append({"check": "motion", "severity": "info", "layer": track["target"], "code": "loop-seam-speed",
                                "message": f"Loop seam: {name} matches at the seam but its speed changes from {item['first']} to {item['last']} units/s there; "
                                           "ease the first and last segments (ease-in-out) or use constant speed to hide the kink."})
+        from .kinetic import seam_findings as text_seams
+
+        for layer in text_seams(project, timeline):
+            result.append({"check": "motion", "severity": "warning", "layer": layer["id"], "code": "loop-seam",
+                           "message": f"Loop seam: the text animation on {layer['name']!r} poses its letters differently at the loop end "
+                                      "than at t=0, so the loop jumps when it restarts. Use text-animate mode: in-out (or a repeating "
+                                      "wave whose period divides the timeline)."})
     for code, message, layer in poster_findings(project, 0):
         result.append({"check": "motion", "severity": "warning", "layer": layer, "code": code, "message": message})
     return result

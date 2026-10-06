@@ -12,6 +12,7 @@ import numpy as np
 
 from .errors import require
 from .model import finite
+from .timeline import animated as timeline_animated
 
 CHECKS = ("bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "fonts", "brand", "content", "form",
           "links", "diagram", "flow")
@@ -277,7 +278,7 @@ def check_design(
     if brand and "minimum_contrast" in brand:
         min_contrast = max(min_contrast or 0, brand["minimum_contrast"])
     # A document with animation is also checked over time (loop seam, poster frame) unless checks are named.
-    animated = not checks and bool((project.state.get("timeline") or {}).get("tracks"))
+    animated = not checks and timeline_animated(project.state.get("timeline"))
     checks = list(checks or CHECKS) + (["motion"] if animated else [])
     from .deck import DECK_CHECKS
 
@@ -725,7 +726,7 @@ def check_design(
                 issue(name, finding["severity"], finding["message"], [target] if target else [],
                       **{k: v for k, v in finding.items() if k not in ("check", "severity", "message", "layer")})
 
-    if "legibility" in checks and (project.state.get("timeline") or {}).get("tracks"):
+    if "legibility" in checks and timeline_animated(project.state.get("timeline")):
         # Many apps show only frame 0: read the legibility of the poster frame too.
         from .timeline import project_at
 

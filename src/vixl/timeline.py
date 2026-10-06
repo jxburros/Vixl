@@ -25,7 +25,7 @@ from PIL import Image
 from .errors import VixlError, require
 from .model import finite
 
-TIMELINE_TYPES = ("timeline-set", "keyframe", "keyframe-remove", "animate", "animate-preset", "marker")
+TIMELINE_TYPES = ("timeline-set", "keyframe", "keyframe-remove", "animate", "animate-preset", "marker", "text-animate")
 NUMERIC = ("x", "y", "translate-x", "translate-y", "opacity", "rotation", "scale", "scale-x", "scale-y", "width", "height", "size", "spacing",
            "trim_start", "trim_end", "skew_x", "skew_y", "dash_offset", "stroke_width", "distort:amount", "distort:angle", "distort:phase", "distort:frequency", "distort:size")
 COLORS = ("color", "fill", "start", "end", "stroke_color", "stroke", "background")
@@ -379,6 +379,7 @@ def execute_timeline(project, op):
         if op.get("clear"):
             timeline["tracks"] = []
             timeline["markers"] = {}
+            timeline.pop("text_animations", None)
         if timeline.get("loop_mode") == "seamless" and ("loop_mode" in op or op.get("close")):
             open_tracks = []
             for track in timeline["tracks"]:
@@ -390,10 +391,22 @@ def execute_timeline(project, op):
                 _note(project, f"{len(open_tracks)} track(s) end at a different value than they start, so the loop jumps at the seam: "
                       + ", ".join(_track_name(project, t) for t in open_tracks[:6]) + (" ..." if len(open_tracks) > 6 else "")
                       + ". Pass close: true to append each start value at the loop end")
+            if timeline.get("text_animations"):
+                from .kinetic import seam_findings as text_seams
+
+                jumping = text_seams(project, timeline)
+                if jumping:
+                    _note(project, "text-animate on " + ", ".join(repr(layer["name"]) for layer in jumping[:6])
+                          + " ends in another pose than it starts, so the loop jumps at the seam; re-apply it with mode: in-out")
         past = sum(1 for t in timeline["tracks"] for k in t["keys"] if k["time"] > timeline["duration"])
         if "duration" in op and past:
             _note(project, f"{past} keyframe(s) now lie past the timeline end ({timeline['duration']} ms): they stay on "
                   "their tracks and shape the last frames, but their own moment is not played; keyframe-remove deletes them")
+        return
+    if kind == "text-animate":
+        from .kinetic import execute
+
+        execute(project, op, timeline, lambda message: _note(project, message))
         return
     if kind == "marker":
         from .design import named
@@ -647,6 +660,10 @@ def project_at(project, time):
     candidate = copy(project)
     candidate.state = deepcopy(project.state)
     if not timeline or not timeline.get("tracks"):
+        if timeline and timeline.get("text_animations"):
+            from .kinetic import apply_frame
+
+            apply_frame(candidate, timeline, time)
         return apply_at(candidate, time)
     state = candidate.state
     layers = {layer["id"]: layer for layer in state["layers"]}
@@ -767,6 +784,10 @@ def project_at(project, time):
             layer.update(
                 x=x + values.get("translate-x", 0), y=y + values.get("translate-y", 0), constraints={}
             )
+    if timeline.get("text_animations"):
+        from .kinetic import apply_frame
+
+        apply_frame(candidate, timeline, time)
     candidate._cache = project._cache
     return apply_at(candidate, time)
 
@@ -943,6 +964,11 @@ def seam_findings(project, timeline=None):
     return result
 
 
+def animated(timeline):
+    """Whether a timeline moves anything: keyframe tracks or per-unit text animations."""
+    return bool(timeline and (timeline.get("tracks") or timeline.get("text_animations")))
+
+
 def is_looping(timeline):
     return timeline.get("loop_mode") == "seamless" or timeline.get("loop", 0) != 1
 
@@ -976,6 +1002,11 @@ def visible_content(frame):
             continue
         if layer["type"] == "text" and not str(layer.get("text", "")).strip():
             continue
+        if layer["type"] == "text" and layer.get("_kinetic"):
+            from .kinetic import hidden
+
+            if hidden(layer):
+                continue
         if layer.get("trim_end", 100) <= layer.get("trim_start", 0):
             continue
         box = boxes.get(layer["id"])
@@ -989,7 +1020,7 @@ def poster_findings(project, time=0):
     """Review findings for a poster frame (``time`` ms): near-empty compared with the end, or text that
     is hidden there although it is visible at the end. ``[(code, message, layer_id_or_None)]``."""
     timeline = project.state.get("timeline") or default_timeline()
-    if not timeline.get("tracks"):
+    if not animated(timeline):
         return []
     at_end = project_at(project, timeline["duration"])
     resting = visible_content(at_end)
@@ -1013,7 +1044,7 @@ def validate_timeline(project, state):
         return
     timeline = state["timeline"]
     require(
-        isinstance(timeline, dict) and set(timeline) <= {"duration", "fps", "loop", "loop_mode", "tracks", "markers"},
+        isinstance(timeline, dict) and set(timeline) <= {"duration", "fps", "loop", "loop_mode", "tracks", "markers", "text_animations"},
         "Invalid timeline",
         "invalid_project",
     )
@@ -1061,12 +1092,20 @@ def validate_timeline(project, state):
             if "easing" in key:
                 easing_function(key["easing"])
         require(times == sorted(set(times)), "Keyframes must have increasing, unique times")
+    if "text_animations" in timeline:
+        from .kinetic import validate
+
+        validate(state, timeline)
 
 
 def prune_targets(state, removed):
     timeline = state.get("timeline")
     if timeline:
         timeline["tracks"] = [t for t in timeline.get("tracks", []) if t["target"] not in removed]
+        if "text_animations" in timeline:
+            timeline["text_animations"] = [s for s in timeline["text_animations"] if s["target"] not in removed]
+            if not timeline["text_animations"]:
+                timeline.pop("text_animations")
 
 
 def inspect_timeline(project):
@@ -1091,7 +1130,14 @@ def inspect_timeline(project):
             }
             for track in timeline.get("tracks", [])
         ],
+        **({"text_animations": _text_animations(project, timeline)} if timeline.get("text_animations") else {}),
     }
+
+
+def _text_animations(project, timeline):
+    from .kinetic import inspect
+
+    return inspect(project, timeline)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -1412,4 +1458,7 @@ def schemas(add):
     add("animate", {"property": prop, "from": value, "to": value, "start": time, "end": time, "duration": time, "easing": segment_easing, "targets": targets, "extend": extend, "close": close, "repeat": repeat, "until": until, "period": period, "stagger": stagger}, ["property", "to"])
     add("animate-preset", {"preset": {"enum": list(PRESETS), "description": "Ready-made motion: " + ", ".join(PRESETS) + ". draw-on/draw-off need a shape or path layer; color-shift also works on the canvas."}, "start": time, "duration": time, "easing": easing_schema("Override the preset's own easing (names as for keyframe easing, or cubic-bezier(...) / steps(n))."), "distance": N, "amount": N, "fade": B, "to": S, "targets": targets, "extend": extend, "close": close, "loop_safe": {"type": "boolean", "description": "Alias of close."}, "repeat": repeat, "until": until, "period": period, "stagger": stagger}, ["preset"])
     add("marker", {"name": S, "time": time, "delete": B}, ["name"], anyOf=[{"required": ["time"]}, {"required": ["delete"]}])
+    from .kinetic import schemas as kinetic_schemas
+
+    kinetic_schemas(add)
 

@@ -328,6 +328,12 @@ def plan_glyphs(project, layer, layout=None):
     """Positioned glyphs ``[(font data, glyph name, x, y, size, text)]`` in the layer image's
     pixels, exactly where ``plan`` draws them (baseline origin, y down). None for warped or path
     text, whose glyphs are bent."""
+    placed = placed_glyphs(project, layer, layout)
+    return None if placed is None else [item[:6] for item in placed]
+
+
+def placed_glyphs(project, layer, layout=None):
+    """``plan_glyphs`` with each glyph's line index appended: ``(data, name, x, y, size, text, line)``."""
     layout = layout or plan(project, layer)
     if not layout.shaped:
         return None
@@ -347,7 +353,7 @@ def plan_glyphs(project, layer, layout=None):
         for glyph in glyphs:
             x = glyph.x + offset - layout.box[0] + layout.offset
             y = glyph.y + ascent + i * line_height - layout.box[1]
-            result.append((glyph.data, glyph.name, x, y, size, glyph.text))
+            result.append((glyph.data, glyph.name, x, y, size, glyph.text, i))
     return result
 
 
@@ -515,7 +521,9 @@ def warped(paths, width, height, settings):
     return result
 
 
-def append_paths(parent, layout, layer, project):
+def append_paths(parent, layout, layer, project, motion=None):
+    """Glyph paths as SVG. ``motion`` (kinetic type) gives each path a ``(matrix prefix, opacity,
+    fill or None)`` applied on top of its own matrix."""
     from .render import color
     from .design import resolve_color
 
@@ -524,12 +532,22 @@ def append_paths(parent, layout, layer, project):
         for key, default in (("color", "white"), ("stroke_color", "black"))
     ]
     stroked = layer.get("stroke_width", 0) > 0 and stroke[3] > 0  # no-op stroke attributes are left out
-    for path, matrix in layout.paths:
+    for index, (path, matrix) in enumerate(layout.paths):
+        paint, extra = fill, {}
+        if motion:
+            from .kinetic import multiply
+
+            prefix, opacity, override = motion[index]
+            matrix = multiply(prefix, matrix)
+            paint = override or fill
+            if opacity < 1:
+                extra["opacity"] = f"{opacity:.4f}"
         attrs = {
             "d": path,
             "transform": "matrix(" + " ".join(map(str, matrix)) + ")",
-            "fill": f"rgb{fill[:3]}",
-            "fill-opacity": str(fill[3] / 255),
+            "fill": f"rgb{paint[:3]}",
+            "fill-opacity": str(paint[3] / 255),
+            **extra,
         }
         if stroked:
             attrs.update({
@@ -543,6 +561,10 @@ def append_paths(parent, layout, layer, project):
 
 def render_text(project, layer):
     layout = plan(project, layer)
+    if layer.get("_kinetic") and layout.shaped:
+        from .kinetic import render_plain
+
+        return render_plain(project, layer, layout, placed_glyphs(project, layer, layout))
     root = ET.Element(
         "{http://www.w3.org/2000/svg}svg",
         {

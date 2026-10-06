@@ -115,6 +115,7 @@ Paint:     brushes, paint-layer [--name N], paint [LAYER] --brush ink --points J
 Motion:    timeline, timeline set --duration 3s --fps 30 [--loop N], keyframe LAYER PROP TIME VALUE,
            animate LAYER PROP --to V [--from V] [--start T] [--duration T] [--easing E],
            animate-preset LAYER PRESET [--start T] [--duration T], marker NAME TIME, easings,
+           text-animate TEXT PRESET [--unit char|word|line] [--stagger T] [--direction D] [--mode in|out|in-out],
            export-timeline --out FILE.gif|.webp|.png|.zip|.mp4 [--fps N] [--scale N] [--colors N],
            timeline-sheet --out FILE [--count 8], render --time 1.5s --out FILE
 Output:    export FILE [--quality N] [--title T] [--max-bytes N] [--scale 2x] [--profile NAME] [--dpi N]

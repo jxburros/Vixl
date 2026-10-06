@@ -122,6 +122,7 @@ SUMMARIES = {
     "animate": "Animate a property between two values over a time range.",
     "animate-preset": "Apply a ready-made motion (fade-in, slide, pop, bounce …) to layers.",
     "marker": "Add or delete a named timeline marker.",
+    "text-animate": "Animate a text layer per character, word or line (fade-up, pop, wave, typewriter …) with stagger.",
     "suite-set": "Attach a check suite (assert rules) to the document under a name.",
     "suite-capture": "Capture a structural and pixel baseline of layers as a suite.",
     "role-set": "Name a set of layers as a role that motions can target.",
@@ -739,6 +740,10 @@ EXAMPLES = {
     ],
     "animate-preset": [
         {"type": "animate-preset", "targets": ["greeting"], "preset": "fade-in", "start": 0, "duration": "600ms"},
+    ],
+    "text-animate": [
+        {"type": "text-animate", "target": "greeting", "preset": "fade-up", "unit": "char", "duration": "400ms", "stagger": "40ms"},
+        {"type": "text-animate", "target": "greeting", "preset": "wave", "unit": "char", "stagger": "20%", "repeat": True},
     ],
 }
 
