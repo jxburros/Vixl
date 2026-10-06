@@ -388,6 +388,10 @@ def resolve_layout(project, variables=None, layers=None):
 def apply_effect(image, effect):
     from .constants import ARTISTIC_DEFAULTS
 
+    if effect["name"] == "denoise":
+        from .denoise import denoise_image
+
+        return denoise_image(image, effect)
     if effect["name"] in ARTISTIC_DEFAULTS:
         from .artistic import artistic_filter
 

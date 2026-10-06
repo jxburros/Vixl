@@ -15,9 +15,14 @@ When a person gives you a photo or scan of their drawing, keep their lines and b
 - `import` (MCP: import the image with `vixl_import_image` first, then pass `asset`) cleans the
   photo into `NAME/ink` over a hidden, aligned `NAME/original`. `clean` re-runs it (`sensitivity`,
   `weight`, `ink: "original"` keeps the pencil colour, `despeckle`, `deskew`). The desk around a
-  photographed sheet of paper is left out (`sheet: false` keeps it, for a border drawn along the photo's edge).
-- `vectorize` makes editable strokes `NAME/s001…` (longest first); `straighten` (only the strokes
-  the user asked about — pass `strokes`), `smooth`, `restyle` and `stroke` change them.
+  photographed sheet of paper is left out (`sheet: false` keeps it, for a border drawn along the photo's edge), and a page
+  photographed at an angle is flattened first (`perspective: false` skips it). The lines are `#1d1d1f` (near-black) unless you
+  set `ink` (or `color`) on `import`; `drawing report` tells you `paper_found`, `perspective_corrected`, `tilt_corrected`.
+- `vectorize` makes editable strokes `NAME/s001…` (longest first); `settings.width: "uniform"` gives every stroke one
+  weight (a number sets it). `straighten` (only the strokes the user asked about — pass `strokes`), `smooth`, `restyle`
+  and `stroke` change them. `straighten` keeps each line at the angle it was drawn at; add `angles: "axes"` to square up
+  walls and floors or `"45"` for diagonals only when asked, and `close_gaps: 30` (or `"auto"`) to close corner and
+  T gaps (corners get sharp, lines keep their angles).
 - Before `fill`, call `vixl_workflow("drawing-report", {"target": "house"})`: it lists closed
   regions with a point inside each, and how much of the original line work is kept.
 - After edits, check `preserved` (aim for ≥ 0.9 unless told to redraw) and look at

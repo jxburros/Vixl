@@ -265,9 +265,12 @@ def compile_command(tokens):
         p.add_argument("--strength", type=float)
         p.add_argument("--shadow-color")
         p.add_argument("--highlight-color")
+        p.add_argument("--luminance", type=float)
+        p.add_argument("--chroma", type=float)
+        p.add_argument("--search", type=int)
         data = vars(p.parse_args(args))
         values = data.pop("values")
-        if cmd in ARTISTIC_DEFAULTS:
+        if cmd in ARTISTIC_DEFAULTS or cmd == "denoise":
             require(len(values) <= 2, "Expected [LAYER] [VALUE]")
             if len(values) == 2:
                 data["target"], data["value"] = values[0], float(values[1])
@@ -396,9 +399,10 @@ def compile_command(tokens):
     elif cmd == "filter":
         p.add_argument("name")
         p.add_argument("--target")
-        for key in ("amount", "radius", "strength", "black", "white"):
+        for key in ("amount", "radius", "strength", "black", "white", "luminance", "chroma"):
             p.add_argument(f"--{key}", type=float)
         p.add_argument("--seed", type=int)
+        p.add_argument("--search", type=int)
         p.add_argument("--shadow-color")
         p.add_argument("--highlight-color")
         data = {k: v for k, v in vars(p.parse_args(args)).items() if v is not None}
@@ -409,9 +413,10 @@ def compile_command(tokens):
         p.add_argument("action", choices=["disable", "enable", "remove", "set"])
         p.add_argument("target")
         p.add_argument("effect")
-        for key in ("amount", "radius", "strength", "black", "white"):
+        for key in ("amount", "radius", "strength", "black", "white", "luminance", "chroma"):
             p.add_argument(f"--{key}", type=float)
         p.add_argument("--seed", type=int)
+        p.add_argument("--search", type=int)
         p.add_argument("--shadow-color")
         p.add_argument("--highlight-color")
         data = vars(p.parse_args(args))

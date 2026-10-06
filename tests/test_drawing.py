@@ -162,7 +162,8 @@ def test_vectorize_traces_editable_strokes(sketch):
 
 
 def test_straighten_lines_corners_and_circles(sketch):
-    p = built(sketch)
+    p = built(sketch, straighten=False)
+    p.apply({"type": "drawing", "action": "straighten", "target": "art", "settings": {"angles": "axes"}})
     kinds = drawing.report(p, "art")["stroke_kinds"]
     assert kinds.get("circle") == 1 and kinds.get("line", 0) >= 2 and kinds.get("polyline", 0) >= 1
     records = [r for layer in p.state["layers"] for r in layer.get("drawing_strokes", [])]

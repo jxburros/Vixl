@@ -41,7 +41,7 @@ Common operation fields:
 | constrain | target, constraints object |
 | select | shape, shape-specific coordinates/color/target/asset; mode, feather |
 | mask | target, action; path for import |
-| effect | target, name, amount; seed, radius, strength, black/white, points, shadow_color/highlight_color |
+| effect | target, name, amount; seed, radius, strength, black/white, points, shadow_color/highlight_color; luminance, chroma, search (denoise) |
 | effect-set / enable / disable / remove | target, effect ID or 1-based index; amount etc. for set |
 | variable | name, value; or delete: true |
 | preset-save / preset-apply | name, target; overrides for apply |

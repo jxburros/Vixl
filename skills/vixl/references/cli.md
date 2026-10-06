@@ -161,7 +161,7 @@ vixl mask import LAYER --path mask.png
 # Effects: vixl EFFECT [LAYER] AMOUNT
 vixl brightness portrait +20 ; vixl contrast -10 ; vixl saturation +15 ; vixl hue 30
 vixl exposure 0.5 ; vixl gamma 1.1 ; vixl temperature 300 ; vixl tint 10
-vixl shadows 15 ; vixl highlights -10 ; vixl blur 8 ; vixl sharpen 2
+vixl shadows 15 ; vixl highlights -10 ; vixl blur 8 ; vixl sharpen 2 ; vixl denoise photo --luminance 40 --chroma 60
 vixl grayscale ; vixl invert ; vixl posterize 6 ; vixl threshold 128
 vixl auto-tone photo ; vixl auto-color photo ; vixl auto-contrast photo
 vixl filter noise --amount 0.08 --seed 42
