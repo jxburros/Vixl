@@ -62,6 +62,9 @@ def service_operation_schema(slim=False):
         if kind in ("add", "frame"):
             variant.pop("anyOf")
             variant["required"].append("asset")
+        if kind in ("shape", "text"):
+            # shape/text also edit an existing layer through target; the full schema says what is required.
+            variant.pop("anyOf")
         if kind == "replace-contents":
             variant["anyOf"] = [{"required": ["asset"]}, {"required": ["variable"]}]
         if kind == "mask":
