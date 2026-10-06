@@ -1,0 +1,146 @@
+{
+  "output": "the-germ-king.mp4",
+  "spec": {
+    "version": 1,
+    "width": 1280,
+    "height": 720,
+    "fps": 24,
+    "shots": [
+      {
+        "source": "scenes/01-council.vixl",
+        "duration": 9000,
+        "camera": {
+          "from": [
+            0.5,
+            0.5,
+            1.0
+          ],
+          "to": [
+            0.5,
+            0.53,
+            1.06
+          ]
+        }
+      },
+      {
+        "source": "scenes/02-shrink.vixl",
+        "duration": 6000,
+        "transition": 400,
+        "camera": {
+          "from": [
+            0.5,
+            0.5,
+            1.0
+          ],
+          "to": [
+            0.4,
+            0.6,
+            1.22
+          ]
+        }
+      },
+      {
+        "source": "scenes/03-arrival.vixl",
+        "duration": 7000,
+        "transition": 400,
+        "camera": {
+          "from": [
+            0.5,
+            0.5,
+            1.0
+          ],
+          "to": [
+            0.5,
+            0.55,
+            1.06
+          ]
+        }
+      },
+      {
+        "source": "scenes/04-coronation.vixl",
+        "duration": 7000,
+        "transition": 400,
+        "camera": {
+          "from": [
+            0.5,
+            0.5,
+            1.0
+          ],
+          "to": [
+            0.5,
+            0.52,
+            1.07
+          ]
+        }
+      },
+      {
+        "source": "scenes/05-march.vixl",
+        "duration": 5500,
+        "transition": 400,
+        "camera": {
+          "from": [
+            0.45,
+            0.5,
+            1.07
+          ],
+          "to": [
+            0.55,
+            0.5,
+            1.07
+          ]
+        }
+      },
+      {
+        "source": "scenes/06-sneeze.vixl",
+        "duration": 5200,
+        "transition": 400,
+        "camera": {
+          "from": [
+            0.5,
+            0.5,
+            1.0
+          ],
+          "to": [
+            0.5,
+            0.5,
+            1.04
+          ]
+        }
+      },
+      {
+        "source": "scenes/07-aftermath.vixl",
+        "duration": 9500,
+        "transition": 400,
+        "camera": {
+          "from": [
+            0.5,
+            0.5,
+            1.0
+          ],
+          "to": [
+            0.5,
+            0.5,
+            1.05
+          ]
+        }
+      },
+      {
+        "source": "scenes/08-title.vixl",
+        "duration": 4500,
+        "transition": 400
+      }
+    ],
+    "audio": [
+      {
+        "source": "audio/score.wav",
+        "start": 0,
+        "volume": 0.5
+      },
+      {
+        "source": "audio/effects.wav",
+        "start": 0,
+        "volume": 0.6
+      }
+    ]
+  }
+}
