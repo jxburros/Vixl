@@ -35,9 +35,10 @@ vixl shape arc --name drip --width 300 --height 300 --x 50 --y 50 --start-angle 
 ```
 
 Each wedge is one editable layer; a visible stroke is drawn inside the box, so strokes of
-neighbouring wedges meet cleanly. A non-square box gives elliptical wedges. SVG, PDF and PowerPoint
-exports write native curves (no arc commands, no raster), and the spellings `pie`, `wedge`, `donut`,
-`ring` and `sector` are accepted for `shape` (`donut`/`ring` start with an inner radius of 0.6/0.8).
+neighbouring wedges meet cleanly. A non-square box gives elliptical wedges. SVG, vector PDF
+(`pdf_content: vector`, the default for paged documents) and PowerPoint exports write native curves
+(no arc commands, no raster), and the spellings `pie`, `wedge`, `donut`, `ring` and `sector` are
+accepted for `shape` (`donut`/`ring` start with an inner radius of 0.6/0.8).
 `vixl.wedge.wedge_path(cx, cy, radius, start, end, inner=0, aspect=1)` returns the same outline as
 SVG path data for code that draws its own wedges, such as chart layers.
 
