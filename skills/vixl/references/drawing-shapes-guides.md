@@ -24,7 +24,10 @@ When a person gives you a photo or scan of their drawing, keep their lines and b
   walls and floors or `"45"` for diagonals only when asked, and `close_gaps: 30` (or `"auto"`) to close corner and
   T gaps (corners get sharp, lines keep their angles).
 - Before `fill`, call `vixl_workflow("drawing-report", {"target": "house"})`: it lists closed
-  regions with a point inside each, and how much of the original line work is kept.
+  regions with a point inside each (`point` on the canvas, `group_point` in the drawing's own
+  coordinates), the drawing group's `offset`, `scale` and `rotation`, and how much of the original line
+  work is kept. `fill` and `stroke` points are canvas positions by default, wherever the drawing has been
+  moved; pass `space: "group"` to give them in the drawing's own coordinates instead.
 - After edits, check `preserved` (aim for ≥ 0.9 unless told to redraw) and look at
   `vixl_workflow("drawing-compare", {"target": "house", "output": "compare.png"})` (original red,
   result blue). `vixl_check(checks=["drawing"])` warns when original lines were lost.

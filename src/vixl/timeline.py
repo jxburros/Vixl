@@ -1068,8 +1068,17 @@ def validate_timeline(project, state):
     candidate = copy(project)
     candidate.state = state
     for track in tracks:
-        require(isinstance(track, dict) and {"target", "property", "keys"} <= set(track) <= {"target", "property", "keys", "symmetry"}, "Invalid timeline track")
+        require(isinstance(track, dict) and {"target", "property", "keys"} <= set(track) <= {"target", "property", "keys", "symmetry", "attach"}, "Invalid timeline track")
         require(isinstance(track.get("symmetry", 1), int) and 1 <= track.get("symmetry", 1) <= 1000, "Invalid track symmetry")
+        if "attach" in track:
+            # What the attach recipe baked these keys from; the keys themselves are ordinary.
+            record = track["attach"]
+            require(isinstance(record, dict) and set(record) == {"to", "anchor", "rotation", "start", "end"}
+                    and isinstance(record["to"], str) and isinstance(record["rotation"], bool)
+                    and isinstance(record["anchor"], list) and len(record["anchor"]) == 2
+                    and all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in record["anchor"])
+                    and all(isinstance(record[k], int) and 0 <= record[k] <= MAX_DURATION for k in ("start", "end")),
+                    "Invalid track attachment", "invalid_project")
         target, prop = track["target"], track["property"]
         require(target == "canvas" or target in ids, "Timeline track targets a missing layer", "invalid_project")
         require((target, prop) not in seen, "Duplicate timeline track")
@@ -1106,11 +1115,28 @@ def prune_targets(state, removed):
             timeline["text_animations"] = [s for s in timeline["text_animations"] if s["target"] not in removed]
             if not timeline["text_animations"]:
                 timeline.pop("text_animations")
+        for track in timeline["tracks"]:
+            if track.get("attach", {}).get("to") in removed:
+                del track["attach"]
+
+
+def attachment_report(project):
+    """The ``attach`` motions baked into the timeline: who rides on what, at which point, and when."""
+    names = {layer["id"]: layer["name"] for layer in project.state["layers"]}
+    result = []
+    for track in (project.state.get("timeline") or {}).get("tracks", []):
+        record = track.get("attach")
+        if record and track["property"] == "translate-x":
+            result.append({"layer": names.get(track["target"], track["target"]), "to": names.get(record["to"], record["to"]),
+                           **{k: record[k] for k in ("anchor", "rotation", "start", "end")},
+                           "baked": "per-frame translate" + (" and rotation" if record["rotation"] else "") + " keys"})
+    return result
 
 
 def inspect_timeline(project):
     timeline = project.state.get("timeline") or default_timeline()
     names = {layer["id"]: layer["name"] for layer in project.state["layers"]}
+    attachments = attachment_report(project)
     return {
         "duration": timeline["duration"],
         "fps": timeline["fps"],
@@ -1127,10 +1153,12 @@ def inspect_timeline(project):
                     for k in track["keys"][:64]
                 ],
                 **({"truncated_keys": len(track["keys"])} if len(track["keys"]) > 64 else {}),
+                **({"attached_to": names.get(track["attach"]["to"], track["attach"]["to"])} if "attach" in track else {}),
             }
             for track in timeline.get("tracks", [])
         ],
         **({"text_animations": _text_animations(project, timeline)} if timeline.get("text_animations") else {}),
+        **({"attachments": attachments} if attachments else {}),
     }
 
 

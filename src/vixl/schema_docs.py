@@ -588,6 +588,8 @@ OVERRIDES = {
     "path-fit": {"padding": "Inner margin in pixels.", "preserve_aspect": "true keeps the path's proportions."},
     "layer-intent": {"role": "content, decoration (may overlap and bleed), background (checks skip it; use it for full-canvas art), or title (the heading that names the page and the PDF).",
                      "allow_overlap": "Layers this layer may overlap without a check finding.",
+                     "detached_ok": "true on a part says it floats free on purpose (a spark, a thrown ball), or on a "
+                                    "group that its parts are separate by design, so the connected check skips it.",
                      "color_vision_safe": "true on a chart group says its series differ by more than color (labels, patterns), so the color_vision check skips it.",
                      "allow_crop": "true marks a deliberate edge crop or bleed: checks report it as informational "
                                    "instead of a problem."},
@@ -639,7 +641,7 @@ OVERRIDES = {
     "drawing": {"action": "import, clean, vectorize, straighten, smooth, fill, stroke or restyle.",
                 "name": "Drawing name.", "asset": "Embedded scan or photo asset.", "path": "Scan or photo file.",
                 "settings": "Action settings (docs/drawing.md).", "strokes": "Stroke IDs or 'all'.",
-                "points": "Points for a manual stroke.", "color": "Color.",
+                "color": "Color.",
                 "x": "Position x.", "y": "Position y.", "width": "Width.", "height": "Height."},
     "palette-generate": {"name": "Prefix for the swatches (NAME-50 … or NAME-1 …).",
                          "color": "Source color (any color value or @swatch).",

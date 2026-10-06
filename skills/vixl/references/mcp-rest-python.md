@@ -58,11 +58,11 @@ result (`"replayed": true`) instead of applying twice.
 
 | Tool | Parameters | Returns / notes |
 | --- | --- | --- |
-| `vixl_operations_apply` | **`operations`** (1–10000 operation objects) or `operations_path` (workspace `.json`/`.jsonl` file), `dry_run=False`, `detail="brief"\|"compact"\|"full"`, `check`, `preview`, `request_id`, `as_job` | Atomic. `check=true` (or check names) adds vixl_check's findings for the touched layers plus every `fix`; `preview=true` (or `{page, region, max_width, time}`) adds a 512 px PNG, so one call replaces apply → check → preview. Brief (default): per layer ID, new layers as `{added, name, type, bounds}`, changed layers as `{changed: [fields], bounds}`; compact adds the new values of changed fields; full: before/after snapshots. `warnings` (text cut off or overflowing its box/group, fields that change nothing) and `normalized` (rewritten spellings) appear when relevant. |
+| `vixl_operations_apply` | **`operations`** (1–10000 operation objects) or `operations_path` (workspace `.json`/`.jsonl` file), `dry_run=False`, `detail="brief"\|"compact"\|"full"`, `check`, `preview`, `request_id`, `as_job` | Atomic. `check=true` (or check names) adds vixl_check's findings for the touched layers plus every `fix`; `preview=true` (or `{page, region, max_width, time, isolate}`) adds a 512 px PNG, so one call replaces apply → check → preview. Brief (default): per layer ID, new layers as `{added, name, type, bounds}`, changed layers as `{changed: [fields], bounds}` (plus `parent`, `canvas_bounds` inside a group); compact adds the new values of changed fields; full: before/after snapshots. `warnings` (text cut off or overflowing its box/group, fields that change nothing) and `normalized` (rewritten spellings) appear when relevant. |
 | `vixl_capabilities` | `topic`, `fields=False` | Task-specific operations, exact fields, limits and gotchas |
 | `vixl_operation_schema` | **`types`** (1–20 names) | Exact JSON Schema for those operation types (needed with `vixl mcp --schema slim`) |
-| `vixl_render_preview` | `variables`, `max_width=1024`, `max_height=1024` (≤4096), `max_bytes=1048576` (64 KiB–4 MiB), `region=[x,y,w,h]` (px or %), `artboard`, `comp` | PNG at preview resolution (fast); `region` zooms in up to 8× |
-| `vixl_render_compare` | `before="previous"`, `after="head"`, `mode="side-by-side"\|"diff"`, `max_width`, `max_height` | Summary (`changed_fraction`, `changed_region`) + image; refs: `head`, `previous`, `head~N`, branch, checkpoint, revision ID |
+| `vixl_render_preview` | `variables`, `max_width=1024`, `max_height=1024` (≤4096), `max_bytes=1048576` (64 KiB–4 MiB), `region=[x,y,w,h]` (px or %), `artboard`, `comp`, `isolate=[layer…]` | PNG at preview resolution (fast); `region` zooms in up to 8×; `isolate` shows one object (a group with its parts) alone, cropped to its ink |
+| `vixl_render_compare` | `before="previous"`, `after="head"`, `mode="side-by-side"\|"diff"`, `max_width`, `max_height`, `isolate=[layer…]` | Summary (`changed_fraction`, `changed_region`) + image; refs: `head`, `previous`, `head~N`, branch, checkpoint, revision ID |
 | `vixl_history` | `action="list"\|"undo"\|"redo"\|"branch"\|"checkpoint"\|"checkout"\|"begin"\|"commit"\|"rollback"`, `ref`, `count=1`, `offset`, `limit=20` | `list` → paginated node summaries; others → new head/branch |
 
 Transactions: `vixl_history(action="begin")` → several `vixl_operations_apply` calls →
@@ -183,8 +183,8 @@ Non-loopback hosts require a bearer token from `VIXL_API_TOKEN` (or `--token-env
 | `POST /spacing` | same keys as `vixl_measure_spacing` | Spacing report |
 | `POST /validate` | `{"profile":…,"rules":[…]}` | Checks |
 | `POST /check` | same keys as `vixl_check` | Design issues |
-| `POST /preview` | `{"max_width":…,"max_height":…,"max_bytes":…,"region":[…]}` | PNG |
-| `POST /compare` | `{"before":"previous","after":"head","mode":"side-by-side"}` | Summary + `image_base64` |
+| `POST /preview` | `{"max_width":…,"max_height":…,"max_bytes":…,"region":[…],"isolate":[…]}` | PNG |
+| `POST /compare` | `{"before":"previous","after":"head","mode":"side-by-side","isolate":[…]}` | Summary + `image_base64` |
 | `GET /pixels/{target}` | | Pixel rows/palette |
 | `GET /animation` · `GET /animation/frame/{name}?scale=1` | | Frame list + named animations · PNG |
 | `POST /animation/export` | `{"format":"gif"\|"apng"\|"webp"\|"mp4"\|"webm"\|"sheet","animation":"walk","scale":8,"sampling":…,"colors":…,"quality":…,"columns":…}` | Animation bytes (mp4/webm need ffmpeg) |

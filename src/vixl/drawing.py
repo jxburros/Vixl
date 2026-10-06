@@ -996,7 +996,13 @@ def schemas(add):
                 "fill: gap, min_area, under. stroke: width, smooth, closed.")
     add("drawing", {"action": {"enum": list(ACTIONS)}, "name": S, "target": S, "asset": S, "path": S, "x": {}, "y": {},
                     "width": {}, "height": {}, "settings": {"type": "object", "description": settings},
-                    "strokes": {"type": ["array", "string"], "items": S}, "points": {"type": "array"},
+                    "strokes": {"type": ["array", "string"], "items": S},
+                    "points": {"type": "array", "description": "stroke: [[x, y], …]; fill: [[x, y, color], …]. Canvas "
+                               "positions by default (where the drawing shows now, through moved, scaled or rotated "
+                               "groups); with space: group, the drawing's own coordinates (drawing report lists both)."},
+                    "space": {"enum": ["canvas", "group"], "description": "How stroke and fill points read: canvas "
+                              "(default) document pixels, or group: the drawing group's own coordinates, which move "
+                              "with the group."},
                     "color": {"type": "string", "description": "Line colour: strokes' colour for restyle/stroke, vectorize's "
                               "colour, or on import shorthand for settings.ink (default #1d1d1f)."}},
         ["action"])
@@ -1083,10 +1089,19 @@ def _content_matrix(project, group):
     return group_matrix(child, resolved, local)
 
 
-def _to_content(project, group, points):
+def _to_content(project, group, points, space="canvas"):
+    """Drawing content coordinates of ``points``: canvas positions (default), or already in the
+    drawing group's own coordinates with ``space: group``, which stay put when the group moves."""
+    require(space in ("canvas", "group"), "space is canvas or group", field="space")
+    try:
+        p = np.asarray(points, float)
+    except (TypeError, ValueError):
+        p = np.zeros((0,))
+    require(p.ndim == 2 and p.shape[1] >= 2 and len(p) <= 20000, f"points are [[x, y], …] {space} positions",
+            field="points")
+    if space == "group":
+        return p[:, :2]
     matrix = np.linalg.inv(_content_matrix(project, group))
-    p = np.asarray(points, float)
-    require(p.ndim == 2 and p.shape[1] >= 2 and len(p) <= 20000, "points are [[x, y], …] canvas positions", field="points")
     homogeneous = np.column_stack([p[:, :2], np.ones(len(p))])
     return (matrix @ homogeneous.T).T[:, :2]
 
@@ -1412,7 +1427,7 @@ def _fill(project, group, op):
     mask = line_mask(project, group)
     gap = int(finite(settings["gap"], "gap", 0, 200))
     labels, info = regions(mask, gap, int(settings["min_area"]))
-    content = _to_content(project, group, [p[:2] for p in points])
+    content = _to_content(project, group, [p[:2] for p in points], op.get("space", "canvas"))
     count = len([layer for layer in _children(project, group) if layer.get("drawing_role") == "fill"])
     anchor = next((layer for layer in _children(project, group) if layer.get("drawing_role") in ("ink", "lines")
                    or "drawing_strokes" in layer), group)
@@ -1510,7 +1525,7 @@ STROKE = {"width": None, "smooth": True, "closed": False}
 
 def _add_stroke(project, group, op):
     settings = _settings(op.get("settings"), STROKE)
-    content = _to_content(project, group, op.get("points") or [])
+    content = _to_content(project, group, op.get("points") or [], op.get("space", "canvas"))
     require(len(content) >= 2, "stroke needs at least two points", field="points")
     existing = [r for layer in _children(project, group) for r in layer.get("drawing_strokes", [])]
     width = settings["width"] or (float(np.median([r["width"] for r in existing])) if existing else 4.0)
@@ -1597,6 +1612,8 @@ def report(project, target):
         x, y, _ = matrix @ np.array([point[0], point[1], 1.0])
         return [round(float(x), 1), round(float(y), 1)]
 
+    origin = canvas((0, 0))
+
     sizes = sorted(r["width"] for r in strokes)
     kinds = {}
     for r in strokes:
@@ -1605,7 +1622,14 @@ def report(project, target):
         "drawing": group["name"], "preserved": round(preserved, 4), "added": round(new, 4), "tolerance_px": tolerance,
         "strokes": len(strokes), "stroke_kinds": kinds,
         "stroke_width": {"min": sizes[0], "median": uniform_width(strokes), "max": sizes[-1]} if strokes else None,
-        "regions": [{"id": i["id"], "area": i["area"], "point": canvas(i["point"])} for i in info if not i["outside"]][:64],
+        # Region points work as fill points in either space: point with the default space canvas,
+        # group_point with space: group.
+        "space": "canvas",
+        "group": {"offset": origin, "scale": round(float(np.linalg.norm(matrix[:2, 0])), 4),
+                  "rotation": round(float(np.degrees(np.arctan2(matrix[1, 0], matrix[0, 0]))), 2)},
+        "regions": [{"id": i["id"], "area": i["area"], "point": canvas(i["point"]),
+                     "group_point": [round(float(i["point"][0]), 1), round(float(i["point"][1]), 1)]}
+                    for i in info if not i["outside"]][:64],
         "fills": [layer["name"] for layer in _children(project, group) if layer.get("drawing_role") == "fill"],
         "tilt_corrected": group["drawing"]["angle"],
         "perspective_corrected": bool(group["drawing"].get("perspective")),

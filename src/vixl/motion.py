@@ -7,7 +7,7 @@ from .errors import require
 from .model import finite
 
 TYPES = ("motion", "keyframes")
-RECIPES = ("follow-path", "orbit", "bounce", "shake", "wiggle", "spring", "look-at", "overlap", "breathing", "blink", "hover", "spin")
+RECIPES = ("follow-path", "orbit", "bounce", "shake", "wiggle", "spring", "look-at", "overlap", "breathing", "blink", "hover", "spin", "attach")
 
 
 def schemas(add):
@@ -20,7 +20,16 @@ def schemas(add):
     add("motion", {"recipe": {"enum": list(RECIPES)}, "targets": {"type": "array", "items": S, "minItems": 1, "maxItems": 256},
         "start": time, "duration": time, "period": N, "amount": N, "frequency": N, "damping": N,
         "gravity": N, "restitution": N, "radius": N, "center": point, "points": {"type": "array", "items": point, "minItems": 2, "maxItems": 256},
-        "to": N, "property": S, "follow": S, "stagger": N, "children": B, "samples": {"type": "integer", "minimum": 2, "maximum": 512},
+        "to": {"type": ["number", "string"], "description": "spring: end value. attach: the layer to ride on (same as follow)."},
+        "anchor": {"anyOf": [point, {"type": "string"}], "description": "attach: the point of the followed layer to "
+                   "ride on, in its own box: [fx, fy] fractions (units: fraction, default), [x, y] pixels from its top-left "
+                   "corner (units: px) or an anchor name (center, top-right …). Default: where the layer is now."},
+        "units": {"enum": ["fraction", "px"], "description": "attach: how anchor reads (default fraction)."},
+        "offset": {**point, "description": "attach: [dx, dy] pixels added to the anchor, in the followed layer's own "
+                   "frame (it turns and scales with that layer)."},
+        "rotation": {"type": "boolean", "description": "attach: also turn with the followed layer (default true); "
+                     "false keeps the layer upright and moves it only."},
+        "property": S, "follow": S, "stagger": N, "children": B, "samples": {"type": "integer", "minimum": 2, "maximum": 512},
         "phase": N, "easing": easing_schema(), "extend": B,
         "turns": N,
         "symmetry": {"type": "integer", "minimum": 1, "maximum": 1000},
@@ -38,7 +47,7 @@ def execute(project, op):
     settings = _timeline(project)
     start = parse_time(op.get("start", 0), settings["duration"], settings.get("markers"))
     # A spin fills the rest of the timeline by default: one operation, one seamless loop.
-    length = parse_time(op.get("duration", settings["duration"] - start if op.get("recipe") == "spin" else 1000), settings["duration"], settings.get("markers"))
+    length = parse_time(op.get("duration", settings["duration"] - start if op.get("recipe") in ("spin", "attach") else 1000), settings["duration"], settings.get("markers"))
     require(length >= 10, "Motion duration must be at least 10 ms")
     recipe = op["recipe"]
     require(recipe in RECIPES, "Unknown motion recipe")
@@ -65,6 +74,17 @@ def execute(project, op):
                                            "easing": op.get("easing", "linear"), "extend": op.get("extend", True)})
             if symmetry > 1:
                 next(t for t in settings["tracks"] if t["target"] == layer["id"] and t["property"] == "rotation")["symmetry"] = symmetry
+        _close_motion(project, settings, op, targets, before)
+        return
+    if recipe == "attach":
+        ref = op.get("follow", op.get("to"))
+        require(isinstance(ref, str), "attach needs follow (or to): the layer to ride on", field="follow")
+        follow = project.layer(ref)["id"]
+        require("samples" not in op or isinstance(op["samples"], int) and 2 <= op["samples"] <= 512,
+                "Motion samples must be 2–512", field="samples")
+        from .group_bake import attach
+        for index, layer in enumerate(targets):
+            attach(project, op, layer, follow, start + round(stagger * index), length)
         _close_motion(project, settings, op, targets, before)
         return
     samples = op.get("samples", min(120, max(16, math.ceil(length / 1000 * settings["fps"]))))

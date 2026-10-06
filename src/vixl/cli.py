@@ -87,8 +87,8 @@ Effects:   brightness, contrast, saturation, hue, exposure, gamma, temperature,
 Layout:    canvas resize SIZE, canvas size NAME [--landscape] [--bleed], canvas dpi N, constrain, unconstrain,
            variable set NAME VALUE
 History:   undo [N], redo [N], history, checkpoint NAME, branch NAME,
-           checkout REF, branches, compare REF REF --out FILE
-Automate:  apply FILE|- [--dry-run] [--check [CHECK…]] [--preview PNG], run SCRIPT, batch GLOB --run SCRIPT --output DIR,
+           checkout REF, branches, compare REF REF --out FILE [--isolate LAYER…]
+Automate:  apply FILE|- [--dry-run] [--check [CHECK…]] [--preview PNG [--isolate LAYER…]], run SCRIPT, batch GLOB --run SCRIPT --output DIR,
            workflow ACTION --request FILE [--workspace DIR] (workflow schema lists actions),
            each layer --name PATTERN -- COMMAND, preset save|apply|show NAME,
            transaction begin|commit|rollback, assert RULE, validate [PROFILE]
@@ -841,8 +841,10 @@ def project_command(project, cmd, args, *, detail="compact"):
             nargs="+",
             choices=["bounds", "overlap", "contrast", "safe_area", "legibility", "print", "color_vision", "content", "fonts", "blanks", "brand", "guides", "alignment",
                      "deck", "title_position", "type_scale", "words", "min_font", "notes", "empty", "form", "drawing", "links", "style",
-                     "diagram", "flow"],
+                     "diagram", "flow", "connected"],
         )
+        p.add_argument("--connect-tolerance", type=float, default=2,
+                       help="connected check: pixels of gap still counted as touching (default 2)")
         p.add_argument("--style", nargs="+", help="style checks: evaluate this style (or styles) instead of the document's tag")
         p.add_argument("--page", help="Check one page of a multi-page document (default: the active page)")
         p.add_argument("--pages", help="deck checks: the pages to check, e.g. 1-3,5 (default: every shown page)")
@@ -945,13 +947,15 @@ def project_command(project, cmd, args, *, detail="compact"):
                        help="also check the result (default checks, or these): fix findings and those on touched layers")
         p.add_argument("--preview", metavar="PNG", help="also write a small preview of the result to this PNG file")
         p.add_argument("--preview-width", type=int, default=512)
+        p.add_argument("--isolate", nargs="+", metavar="LAYER", help="preview only these layers, zoomed to their ink")
         a = p.parse_args(args)
         ops = read_json(a.file) if cmd == "apply" else compile_script(a.file)
         from .checks import apply_reviewed
 
         check = None if a.check is None else (a.check or True)
+        preview = {"max_width": a.preview_width, **({"isolate": a.isolate} if a.isolate else {})}
         result, image = apply_reviewed(project, ops, dry_run=a.dry_run, detail=detail, check=check,
-                                       preview={"max_width": a.preview_width} if a.preview else None)
+                                       preview=preview if a.preview else None)
         if image is not None:
             Path(a.preview).write_bytes(image)
             result["preview"] = a.preview
@@ -1006,11 +1010,18 @@ def project_command(project, cmd, args, *, detail="compact"):
         p.add_argument("left")
         p.add_argument("right")
         p.add_argument("--out", required=True)
+        p.add_argument("--isolate", nargs="+", metavar="LAYER", help="compare only these layers, cropped to their ink")
         a = p.parse_args(args)
         left, right = project.clone(), project.clone()
         left.checkout(a.left)
         right.checkout(a.right)
-        li, ri = left.render(), right.render()
+        if a.isolate:
+            from .proxy import isolated_pair
+
+            *views, (x, y, w, h) = isolated_pair(left, right, a.isolate)
+            li, ri = (view.render().crop((x, y, x + w, y + h)) for view in views)
+        else:
+            li, ri = left.render(), right.render()
         project.limits.size(li.width + ri.width, max(li.height, ri.height))
         canvas = Image.new("RGBA", (li.width + ri.width, max(li.height, ri.height)))
         canvas.paste(li, (0, 0))

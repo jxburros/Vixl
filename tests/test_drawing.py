@@ -255,6 +255,25 @@ def test_fill_regions_under_the_lines(sketch):
     assert fill["fill"] == "#ffcc00"
 
 
+def test_fill_and_stroke_points_in_group_space_follow_a_moved_drawing(sketch):
+    p = built(sketch)
+    p.apply({"type": "move", "target": "art", "x": p.layer("art")["x"] + 37, "y": p.layer("art")["y"] + 21})
+    report = drawing.report(p, "art")
+    assert report["space"] == "canvas" and report["group"]["offset"][0] == pytest.approx(p.layer("art")["x"], abs=0.1)
+    inside = max(report["regions"], key=lambda r: r["area"])
+    assert inside["point"][0] == pytest.approx(inside["group_point"][0] + report["group"]["offset"][0], abs=0.2)
+    p.apply({"type": "drawing", "action": "fill", "target": "art", "space": "group",
+             "points": [[*inside["group_point"], "#ffcc00"]]})
+    assert p.render().convert("RGB").getpixel(tuple(int(v) for v in inside["point"])) == (255, 204, 0)
+    p.apply({"type": "drawing", "action": "stroke", "target": "art", "space": "group", "name": "art/local",
+             "points": [[10, 10], [60, 10]], "settings": {"smooth": False}})
+    p.apply({"type": "drawing", "action": "stroke", "target": "art", "name": "art/canvas",
+             "points": [[10, 10], [60, 10]], "settings": {"smooth": False}})
+    local, canvas = (p.layer(name)["drawing_strokes"][0]["points"][0] for name in ("art/local", "art/canvas"))
+    assert local == [10, 10]
+    assert canvas[0] == pytest.approx(10 - report["group"]["offset"][0], abs=0.01)
+
+
 def test_added_strokes_restyle_and_preservation_check(sketch):
     p = built(sketch)
     p.apply({"type": "drawing", "action": "stroke", "target": "art", "points": [[100, 450], [300, 450], [300, 500]],

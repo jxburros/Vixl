@@ -117,7 +117,7 @@ KINDS = {
                        "pen", "pathfinder", "group", "pivot", "irregular", "drawn-texture", "cut-paper", "look", "layer-style"],
         "layouts": ["emblem", "centered-axis"], "looks": ["outline", "soft-shadow", "hard-shadow"],
         "styles": ["kawaii", "neo-brutalist", "hand-drawn", "line-art"], "sizes": ["sticker", "profile-picture", "discord-emoji"],
-        "guidance": ["character-rigging", "anatomy-proportions", "imperfection"],
+        "guidance": ["multi-part-objects", "character-rigging", "anatomy-proportions", "imperfection"],
         "example": [
             {"type": "shape", "shape": "ellipse", "name": "body", "x": 290, "y": 270, "width": 220, "height": 240, "fill": "#c8925a"},
             {"type": "shape", "shape": "ellipse", "name": "ear-left", "x": 300, "y": 90, "width": 64, "height": 64, "fill": "#b07a48"},

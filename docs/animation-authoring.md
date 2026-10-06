@@ -16,7 +16,7 @@ All operation times are milliseconds. Motion coordinates are pixels; velocities 
 
 A free fall accelerates as `y = y0 + v0*t + ½*g*t²`; a bounce reverses velocity and multiplies it by restitution. Keep a consistent ground plane and inspect the contact frame. Springs use a damped oscillatory response with zero initial velocity. Increase damping to settle sooner; choose a duration that includes settling instead of forcing an instantaneous final snap.
 
-Natural movement has a cause: prepare a large action with a small opposite action, shift weight before stepping, move limbs along arcs, and delay loose parts after the torso. A walk alternates contact, down, passing and up poses. A reaction anticipates before extension and recovery. `motion` provides follow-path (arc-length traversal), orbit, bounce, shake, wiggle, spring, look-at, overlap, breathing, blink, hover and spin. `targets`, `children` and millisecond `stagger` apply coordinated motion without hand-writing every key. `keyframes` writes a compact array of keys for one property. Generated keys remain ordinary editable tracks.
+Natural movement has a cause: prepare a large action with a small opposite action, shift weight before stepping, move limbs along arcs, and delay loose parts after the torso. A walk alternates contact, down, passing and up poses. A reaction anticipates before extension and recovery. `motion` provides follow-path (arc-length traversal), orbit, bounce, shake, wiggle, spring, look-at, overlap, breathing, blink, hover, spin and attach. `targets`, `children` and millisecond `stagger` apply coordinated motion without hand-writing every key. `keyframes` writes a compact array of keys for one property. Generated keys remain ordinary editable tracks.
 
 **Seamless loops.** `timeline-set` with `loop_mode: "seamless"` says the timeline must loop without a jump (it plays forever unless `loop` is given). It warns for every track that ends on a different value than it starts, and `close: true` (on `timeline-set`, `keyframe`, `animate`, `animate-preset` or `motion`) appends each track's t=0 value at the timeline end. Entrance and exit presets (`fade-in`, `slide-in-*`, `pop-in`, `draw-on`, `color-shift` ...) close by holding their final value and playing back over the same length, and do so on their own in a seamless timeline; `loop_safe: true` is an alias of `close`. Rotation closes modulo 360. For a rotating symmetric shape use `motion` `recipe: "spin"`: `turns` (default 1) and `symmetry` n turn the layer `turns/n` of a circle, so a 12-ray sun with `symmetry: 12` turns 30 degrees over the whole timeline (or `duration`) and lands on itself. Pass whole `turns`; a fraction warns. Limits: closing matches the value at the seam, not the speed. Constant-speed (linear) tracks and tracks whose first and last segments are `ease-in-out` (close then eases the return the same way) have no kink; other easings can, and `vixl_check` reports such tracks as `loop-seam-speed` notes. `step`/`hold` properties (`text`, `visible`) jump at the seam by nature.
 
@@ -61,3 +61,22 @@ Natural movement has a cause: prepare a large action with a small opposite actio
 ```
 
 Instruments: sine, triangle, square, saw, piano, bell, bass, kick, snare, hihat, noise, whoosh, pop, click and splash. Use ADSR `envelope` attack/decay/release in milliseconds and sustain 0–1. `volume`, `pan`, `fade_in`, `fade_out` and `trim` control a track; timeline `start` can reference a marker. PCM WAV `source` imports are workspace-contained and become embedded assets. Film audio additionally accepts compressed imports through ffmpeg. MP4/WebM timeline and film exports mux the mix; `vixl_export_audio` / Python `export_audio(project,path)` writes PCM WAV. Mixing sums tracks and clips only at PCM encoding, so keep headroom and inspect peak levels with `vixl_workflow("audio-analyze", {"source": "mix.wav"})`.
+
+## Attaching one layer to another
+
+`{type: motion, recipe: attach, target: sword, follow: forearm, anchor: [1, 0.5]}` keeps a layer on a
+point of another layer in every frame, however that layer moves: through the groups both sit in, their
+rotation, scale and their own keys. `follow` (or `to`) names the layer to ride on. `anchor` is the point
+in that layer's own box: `[fx, fy]` fractions (the default `units: "fraction"`), pixels from its
+top-left corner with `units: "px"`, or a name such as `center` or `right`; without `anchor` the layer
+keeps the place it has now relative to the followed layer. `offset: [dx, dy]` adds pixels in the
+followed layer's frame. The follower's pivot (its centre when it has none) sits on the point.
+`rotation: true` (default) also turns it with the followed layer; `false` keeps it upright.
+`start` and `duration` default to the whole timeline.
+
+attach writes ordinary `translate-x`, `translate-y` (and `rotation`) keys, one per frame at the
+timeline's fps (`samples` sets fewer), replacing that range of those tracks. It is baked: if the followed
+layer's animation changes afterwards, run attach again. `vixl_timeline_inspect` and `vixl timeline`
+list each baked attachment under `attachments` (`layer`, `to`, `anchor` in pixels, `rotation`, `start`,
+`end`), and the tracks it wrote carry `attached_to`.
+

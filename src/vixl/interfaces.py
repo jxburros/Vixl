@@ -714,7 +714,7 @@ def create_app(path, *, token=None, limits=None):
 
         options = fixed(body)
         allowed = {"variables", "max_width", "max_height", "max_bytes", "artboard", "comp", "region", "time", "proof", "simulate",
-                   "guides", "page", "values", "show_fields"}
+                   "guides", "page", "values", "show_fields", "isolate"}
         require(not set(options) - allowed, f"Preview accepts {sorted(allowed)}", field="body")
         return Response(preview(session, **options), media_type="image/png")
 
@@ -731,6 +731,7 @@ def create_app(path, *, token=None, limits=None):
                 options.get("before", "previous"),
                 options.get("after", "head"),
                 mode=options.get("mode", "side-by-side"),
+                isolate=options.get("isolate"),
             )
         stream = io.BytesIO()
         image.save(stream, format="PNG")

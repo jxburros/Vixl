@@ -17,7 +17,8 @@ from .timeline import animated as timeline_animated
 CHECKS = ("bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "fonts", "brand", "content", "form",
           "links", "diagram", "flow")
 FALLBACK_FONT = "DejaVuSans.ttf"
-OPTIONAL_CHECKS = ("print", "color_vision", "guides", "alignment", "drawing", "style", "motion", "character", "captions")
+OPTIONAL_CHECKS = ("print", "color_vision", "guides", "alignment", "drawing", "style", "motion", "character", "captions",
+                   "connected")
 # What to do about a finding. Errors and the warnings below need a design change ("fix"); other warnings
 # are worth a look ("review"); notes and deliberate choices the document marked are "informational".
 ACTIONS = ("fix", "review", "informational")
@@ -260,6 +261,7 @@ def check_design(
     deck=None,
     sample=None,
     style=None,
+    connect_tolerance=2,
 ):
     """Return ``{"passed", "errors", "warnings", "info", "issues", "by_action", "checked"}`` for the rendered
     design. Each issue has a ``severity`` (error, warning, info) and an ``action`` (fix, review or
@@ -269,7 +271,8 @@ def check_design(
     check family reviews every page and the deck as a whole (``deck`` holds its settings:
     ``min_font``, ``max_words``, ``pages``, ``include_hidden``). ``sample`` (``"worst"`` or a CSV
     path) fills the form's fields to find values that overflow their boxes. The ``style`` check
-    evaluates the document's style tag (or ``style``, a name or list of names) rule by rule."""
+    evaluates the document's style tag (or ``style``, a name or list of names) rule by rule. The ``connected``
+    check reports parts of a group that float free of its main body (gaps above ``connect_tolerance`` px)."""
     from .design_render import artboard_project
     from .render import layer_canvas_surface, resolve_layout, resolved_layers
 
@@ -689,6 +692,11 @@ def check_design(
         from .brand import check as check_brand
         check_brand(candidate, brand, issue)
 
+    if "connected" in checks:
+        from .parts import check_connected
+
+        check_connected(candidate, issue, connect_tolerance, targets, resolved)
+
     if "drawing" in checks:
         from .drawing import check_drawings
 
@@ -903,17 +911,22 @@ def _color_vision(candidate, resolved, bounds, texts, min_contrast, text_scales,
                 )
 
 
-def compare(project, before="previous", after="head", *, max_width=1024, max_height=1024, mode="side-by-side"):
-    """Render two revisions for an at-a-glance review. Returns ``(image, summary)``."""
+def compare(project, before="previous", after="head", *, max_width=1024, max_height=1024, mode="side-by-side",
+            isolate=None):
+    """Render two revisions for an at-a-glance review. Returns ``(image, summary)``. ``isolate`` (layer
+    IDs or names) shows only those layers, both sides cropped to the same box around their ink."""
     from PIL import Image, ImageChops
 
-    from .proxy import render_preview
+    from .proxy import isolated_pair, render_preview
 
     require(mode in ("side-by-side", "diff"), "mode must be side-by-side or diff", field="mode")
     left_project, right_project = project.at(before), project.at(after)
     half = max_width // 2 if mode == "side-by-side" else max_width
-    left = render_preview(left_project, half, max_height).convert("RGBA")
-    right = render_preview(right_project, half, max_height).convert("RGBA")
+    region = None
+    if isolate is not None:
+        left_project, right_project, region = isolated_pair(left_project, right_project, isolate)
+    left = render_preview(left_project, half, max_height, region=region).convert("RGBA")
+    right = render_preview(right_project, half, max_height, region=region).convert("RGBA")
     if left.size != right.size:
         right = right.resize(left.size, Image.Resampling.LANCZOS) if mode == "diff" else right
     summary = {"before": project.resolve_ref(before), "after": project.resolve_ref(after)}
@@ -921,13 +934,17 @@ def compare(project, before="previous", after="head", *, max_width=1024, max_hei
         difference = ImageChops.difference(left, right).convert("L").point(lambda v: 255 if v > 8 else 0)
         box = difference.getbbox()
         changed = int(np.count_nonzero(np.asarray(difference)))
-        scale = project.at(after).state["canvas"]["width"] / right.width
+        origin = region[:2] if region else (0, 0)
+        scale = (region[2] if region else project.at(after).state["canvas"]["width"]) / right.width
         summary.update(
             changed_fraction=round(changed / (right.width * right.height), 4),
-            changed_region=[round(v * scale) for v in (box[0], box[1], box[2] - box[0], box[3] - box[1])]
+            changed_region=[round(origin[0] + box[0] * scale), round(origin[1] + box[1] * scale),
+                            round((box[2] - box[0]) * scale), round((box[3] - box[1]) * scale)]
             if box
             else None,
         )
+        if region:
+            summary["region"] = region
     else:
         difference = None
         summary["changed_region"] = "canvas size changed"
@@ -942,7 +959,7 @@ def compare(project, before="previous", after="head", *, max_width=1024, max_hei
 
 
 APPLY_ISSUES = 20  # Findings an apply call returns; vixl_check lists them all.
-APPLY_PREVIEW = ("page", "region", "max_width", "max_height", "time")
+APPLY_PREVIEW = ("page", "region", "max_width", "max_height", "time", "isolate")
 
 
 def _apply_options(check, preview):

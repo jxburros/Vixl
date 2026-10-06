@@ -207,11 +207,12 @@ def preview(
     page=None,
     values=None,
     show_fields=False,
+    isolate=None,
 ):
     with session.project(document=document) as project:
         return preview_png(project, max_width, max_height, max_bytes, region=region, variables=variables,
                            artboard=artboard, comp=comp, time=time, proof=proof, simulate=simulate, guides=guides,
-                           page=page, values=values, show_fields=show_fields)
+                           page=page, values=values, show_fields=show_fields, isolate=isolate)
 
 
 EXPORT_SUFFIXES = (".png", ".jpg", ".jpeg", ".webp", ".tif", ".tiff", ".avif", ".svg", ".pdf", ".ico", ".html", ".htm", ".pptx", ".psd")
@@ -607,7 +608,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         ] = None,
         preview: Annotated[
             bool | dict | None,
-            Field(description="Also return a small preview PNG: true, or {page, region, max_width (512), max_height, time}"),
+            Field(description="Also return a small preview PNG: true, or {page, region, max_width (512), max_height, time, isolate}"),
         ] = None,
     ) -> dict:
         """Apply operations atomically (all or none) and autosave. Give operations inline, or operations_path
@@ -691,11 +692,14 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         page: Annotated[int | str | None, Field(description="Page number or name; 'all' shows every page on one sheet")] = None,
         values: Annotated[dict | None, Field(description="Form field values to show, by field key")] = None,
         show_fields: Annotated[bool, Field(description="Outline form fields with their keys and tab order")] = False,
+        isolate: Annotated[list[str] | None, Field(description="Show only these layers (a group with all its parts) on the "
+                           "canvas background, zoomed to their ink with a small margin unless region is given")] = None,
         document: Document = None,
     ) -> Image:
         """Return an aspect-preserving PNG capped in dimensions and bytes, rendered at preview resolution.
         region zooms into part of the canvas and may enlarge it up to 8x for detail checks. time previews
-        an animation frame; proof shows print (CMYK) color; simulate checks color-blind legibility."""
+        an animation frame; proof shows print (CMYK) color; simulate checks color-blind legibility.
+        isolate shows one object (a group or layers) alone, to judge its parts without the scene around it."""
         return Image(
             data=preview(
                 session,
@@ -714,6 +718,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
                 page=page,
                 values=values,
                 show_fields=show_fields,
+                isolate=isolate,
             ),
             format="png",
         )
@@ -725,16 +730,18 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         mode: Literal["side-by-side", "diff"] = "side-by-side",
         max_width: Annotated[int, Field(ge=64, le=4096)] = 1024,
         max_height: Annotated[int, Field(ge=64, le=4096)] = 768,
+        isolate: Annotated[list[str] | None, Field(description="Compare only these layers (a group with all its parts), "
+                           "zoomed to their ink in either revision")] = None,
         document: Document = None,
     ) -> list:
         """Compare two revisions (head, previous, head~N, branch, checkpoint or revision ID).
         side-by-side shows before|after; diff highlights changed pixels in red. Also returns the
-        changed fraction and changed region in document pixels."""
+        changed fraction and changed region in document pixels. isolate compares one object alone."""
         from .checks import compare
 
         with session.project(document=document) as project:
             image, summary = compare(
-                project, before, after, max_width=max_width, max_height=max_height, mode=mode
+                project, before, after, max_width=max_width, max_height=max_height, mode=mode, isolate=isolate
             )
             summary["document"] = session.relative(project.path)
         return [compact_json(summary), Image(data=encode_png(image, 2_097_152), format="png")]
@@ -743,7 +750,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
     def vixl_check(
         checks: list[Literal["bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "fonts", "brand", "print", "color_vision", "guides", "alignment",
                              "deck", "title_position", "type_scale", "words", "min_font", "notes", "empty", "form", "drawing", "links", "style",
-                             "diagram", "flow", "motion", "character", "captions"]]
+                             "diagram", "flow", "motion", "character", "captions", "connected"]]
         | None = None,
         targets: list[str] | None = None,
         safe_area: Annotated[
@@ -765,6 +772,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         deck: Annotated[dict | None, Field(description="deck checks: {profile: projected|screen|phone, min_font (profile units), thumbnail_width, max_words, pages, include_hidden}")] = None,
         sample: Annotated[str | None, Field(description="form checks: 'worst' (worst-case values) or a workspace CSV of rows")] = None,
         style: Annotated[str | list[str] | None, Field(description="style check: evaluate this style (or list) instead of the document's style tag")] = None,
+        connect_tolerance: Annotated[float, Field(ge=0, le=100, description="connected check: pixels of gap still counted as touching")] = 2,
         document: Document = None,
     ) -> dict:
         """Find design problems without looking: content cut off by the canvas, overlapping text, low WCAG
@@ -776,7 +784,8 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         order, sizes, contrast) and with sample finds values that overflow; style (opt-in) evaluates the document's
         style tag rule by rule. Each issue has a severity (error, warning, info) and an action: fix (needs a design
         change), review (look and decide) or informational (expected, such as a crop marked with layer-intent
-        allow_crop); by_action lists the issue indexes under each. Reports only problems."""
+        allow_crop); by_action lists the issue indexes under each. connected (opt-in) finds parts of a group (a mascot,
+        a character) that float free of its main body. Reports only problems."""
         return session.check(
             document=document,
             checks=checks,
@@ -794,6 +803,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
             deck=deck,
             sample=sample if sample in (None, "worst") else str(session.resolve(sample)),
             style=style,
+            connect_tolerance=connect_tolerance,
         )
 
     @tool
