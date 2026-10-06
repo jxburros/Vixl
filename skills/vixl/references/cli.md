@@ -213,8 +213,10 @@ and failing `validate`/`assert` exit nonzero with details (`--json` shows every 
 ## Output
 
 ```bash
-vixl export out.png|.jpg|.webp|.tiff|.avif [--quality 90] [--scale 2x] [--profile instagram|discord|print] \
+vixl export out.png|.jpg|.webp|.tiff|.avif [--quality 90] [--title T] [--max-bytes N] [--scale 2x] [--profile instagram|discord|print] \
      [--format PNG] [--background white] [--sampling nearest] [--set var=value] [--artboard NAME] [--comp NAME]
+#   --quality: JPEG/WEBP/AVIF (default 90) and PDF images (omitted: lossless PDF images). --title: PDF title (default: the
+#   title layer or role=title text, then the file name). --max-bytes: warns when a raster file is larger; a PNG over 1 MB warns and names texture looks.
 vixl render [F.vixl] --out preview.png [--set title=Hello]      # same options; never persists overrides
 vixl render --data rows.csv --out campaign_dir [--no-check]     # one PNG per CSV row: 0001.png …; rows with design problems carry a "check" report
 vixl export-screens --out screens --scales 1 2 [--artboards square story]   # NAME@2x.png

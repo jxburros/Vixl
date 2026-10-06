@@ -821,7 +821,7 @@ def parse(value):
     require(0 < len(text) <= 2048, "Color text must be 1–2048 characters", "invalid_color")
     if "(" not in text and not text.startswith("#"):
         found = lookup_name(text)
-        if text.lower() == "transparent":
+        if text.lower() in ("transparent", "none"):
             return (0.0, 0.0, 0.0, 0.0)
         if found is not None:
             return _hex(found)

@@ -844,7 +844,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
     @tool
     def vixl_export_file(
         path: str,
-        quality: Annotated[int, Field(ge=1, le=100)] = 90,
+        quality: Annotated[int, Field(ge=1, le=100)] | None = None,
         scale: Annotated[float, Field(ge=0.01, le=16)] = 1,
         profile: str | None = None,
         variables: dict | None = None,
@@ -879,6 +879,8 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
             description=".html of a multi-page document is a self-contained slide presentation; false writes one "
                         "static image instead, true presents any document. Options: {theme: dark|light|auto, "
                         "slide_images: svg|png, notes: bool, start: slide number or page name, title}")] = None,
+        title: Annotated[str | None, Field(description="PDF document title; default the page's title layer, then the file name")] = None,
+        max_bytes: Annotated[int | None, Field(ge=1, description="Size budget for a raster file: a warning (never a failure) when the file is larger")] = None,
         document: Document = None,
     ) -> dict:
         """Export to a workspace file, format from extension (PNG/JPEG/WEBP/TIFF/AVIF/SVG/PDF/ICO/PPTX), full
@@ -927,6 +929,8 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
             fill_mode=fill_mode,
             alpha=alpha,
             presenter=presenter,
+            title=title,
+            max_bytes=max_bytes,
         )
 
     @tool

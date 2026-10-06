@@ -77,7 +77,7 @@ Set `VIXL_NO_UPDATE=1` to suppress both automatic checks and pending activation 
 | `status`, `inspect [LAYER]`, `describe`, `layers` | JSON state, including resolved bounds |
 | `manifest`, `dependencies`, `reproduce --check` | List assets/fonts/providers; check current renderability |
 | `render [project.vixl] --out preview.png --set title=Hello` | Render without persisting overrides |
-| `export image.jpg --quality 90 --scale 2x` | Export, preserving the editable document |
+| `export image.jpg --quality 90 --scale 2x` | Export, preserving the editable document. `--quality` also compresses PDF images; `--title` sets the PDF title (default: the title layer, then the file name); `--max-bytes N` warns when a raster file is larger, and a PNG over 1 MB warns, naming texture looks (grain, paper, film) as the likely cause |
 | `export image.png --profile discord` | Contain in 512×512; Instagram contains in 1080×1080; print emits RGB/RGBA TIFF at 300 DPI |
 | `canvas resize 1080x1080`, `canvas preset story` | Resize and reflow constraints |
 | `canvas background transparent` | Set the canvas base color |

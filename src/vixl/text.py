@@ -504,23 +504,22 @@ def append_paths(parent, layout, layer, project):
         color(resolve_color(layer.get(key, default), project.state))
         for key, default in (("color", "white"), ("stroke_color", "black"))
     ]
+    stroked = layer.get("stroke_width", 0) > 0 and stroke[3] > 0  # no-op stroke attributes are left out
     for path, matrix in layout.paths:
-        ET.SubElement(
-            parent,
-            "{http://www.w3.org/2000/svg}path",
-            {
-                "d": path,
-                "transform": "matrix(" + " ".join(map(str, matrix)) + ")",
-                "fill": f"rgb{fill[:3]}",
-                "fill-opacity": str(fill[3] / 255),
+        attrs = {
+            "d": path,
+            "transform": "matrix(" + " ".join(map(str, matrix)) + ")",
+            "fill": f"rgb{fill[:3]}",
+            "fill-opacity": str(fill[3] / 255),
+        }
+        if stroked:
+            attrs.update({
                 "stroke": f"rgb{stroke[:3]}",
                 "stroke-opacity": str(stroke[3] / 255),
-                "stroke-width": str(
-                    2 * layer.get("stroke_width", 0) / max(1e-6, math.hypot(matrix[0], matrix[1]))
-                ),
+                "stroke-width": str(2 * layer.get("stroke_width", 0) / max(1e-6, math.hypot(matrix[0], matrix[1]))),
                 "paint-order": "stroke fill",
-            },
-        )
+            })
+        ET.SubElement(parent, "{http://www.w3.org/2000/svg}path", attrs)
 
 
 def render_text(project, layer):

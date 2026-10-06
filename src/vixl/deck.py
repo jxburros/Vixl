@@ -20,7 +20,7 @@ from collections import Counter
 from .errors import require
 
 DECK_CHECKS = ("title_position", "type_scale", "words", "min_font", "notes", "empty")
-TITLE_NAME = re.compile(r"(^|[-_ /])(title|heading|headline)($|[-_ /\d])", re.I)
+TITLE_NAME = re.compile(r"(title|heading|headline)[-_ ]?\d*", re.I)  # an exact name, not a substring
 CHROME_NAME = re.compile(r"(footer|footnote|page-?num|slide-?num|folio|source|credit|copyright|legal)", re.I)
 
 
@@ -74,8 +74,9 @@ def _visible(item, resolved):
 
 
 def title_layer(view, layers=None, info=None):
-    """The page's title: a text layer named title/heading/headline (the topmost if several), else
-    the largest text whose top is in the upper 40% of the page. Master layers are never titles."""
+    """The page's title: a text layer with role title, else one named exactly title/heading/headline (the
+    topmost if several), else the largest text whose top is in the upper 40% of the page. A substring
+    such as ``code-title`` is not a title. Master layers are never titles."""
     resolved, projection = info or _canvas_info(view, layers)
     masters = _master_ids(view)
     texts = [item for item in resolved.values() if item["type"] == "text" and item["id"] not in masters
@@ -83,7 +84,9 @@ def title_layer(view, layers=None, info=None):
     if not texts:
         return None
     bounds = projection["bounds"]
-    named = [item for item in texts if TITLE_NAME.search(item["name"])]
+    titled = view.state.get("roles", {}).get("title", ())
+    named = ([item for item in texts if item.get("role") == "title" or item["id"] in titled]
+             or [item for item in texts if TITLE_NAME.fullmatch(item["name"].strip())])
     if named:
         return min(named, key=lambda item: (bounds[item["id"]][1], bounds[item["id"]][0]))
     height = view.state["canvas"]["height"]
@@ -100,6 +103,12 @@ def title_layer(view, layers=None, info=None):
     if others and size(best) < max(others) * 0.999:
         return None
     return best
+
+
+def document_title(view):
+    """The text of the view's title layer (see ``title_layer``), or None; used for PDF and deck titles."""
+    layer = title_layer(view)
+    return " ".join(layer["text"].split()) if layer else None
 
 
 def contact_sheet(project, pages=None, *, width=480, columns=None, labels=True, include_hidden=True, variables=None):

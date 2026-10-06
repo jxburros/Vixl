@@ -50,6 +50,8 @@ class Target(BaseModel):
     values: dict | None = None
     fill_mode: Literal["flatten", "editable"] = "flatten"
     alpha: Literal["auto", "keep", "flatten"] = "auto"
+    title: str | None = None
+    max_bytes: int | None = Field(None, ge=1)
 
 
 SPECIAL = {"path", "document", "overwrite", "icc_profile"}

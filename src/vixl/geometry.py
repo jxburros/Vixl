@@ -56,6 +56,23 @@ def canonical_anchor(value):
 EXTRA_SHAPES = (*CATALOG_SHAPES, *SHORTCUTS, "pentagon", "hexagon", "octagon", "capsule", "path", "arc")
 # Shapes drawn from path data that already includes their own stroke inset (see wedge.arc_layer_path).
 PATH_SHAPES = ("path", "arc")
+# Shape kinds that are open strokes by nature; a ``path`` is open when it has no closing Z.
+OPEN_SHAPES = ("line", "wave", "zigzag", "sawtooth", "square-wave", "dashed-line", "scribble", "squiggle", "swash-underline")
+
+
+def is_open_shape(layer):
+    if layer.get("shape") in OPEN_SHAPES:
+        return True
+    return layer.get("shape") == "path" and re.search(r"[Zz]", str(layer.get("path", ""))) is None
+
+
+def default_fill(layer):
+    """The fill a shape layer paints with. An open shape (a line, or a path with no closing Z) that has a
+    stroke and no explicit fill gets none; every other shape without a fill is white. Every backend uses this."""
+    if "fill" in layer:
+        return layer["fill"]
+    stroked = str(layer.get("stroke", "transparent")).strip().lower() not in ("", "none", "transparent")
+    return "transparent" if stroked and is_open_shape(layer) else "white"
 
 
 def parse_path(path):

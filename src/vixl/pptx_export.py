@@ -204,6 +204,7 @@ class Slide:
             fill = self.fill((*color(resolve_color(layer.get("fill", "white"), self.view.state))[:3], 255), opacity)
             line = "<a:ln><a:noFill/></a:ln>"
         else:
+            from .geometry import default_fill
             from .render import rest_size
 
             stroke_xml, stroke_alpha = self.color(layer.get("stroke", "transparent"), opacity)
@@ -218,7 +219,7 @@ class Slide:
             if inset and min(rw, rh) - 2 * inset >= 1:
                 frame = (inset, inset, rw - 2 * inset, rh - 2 * inset)
             geometry = self.geometry(layer, pad)
-            fill = self.fill(layer.get("fill", "white"), opacity)
+            fill = self.fill(default_fill(layer), opacity)
             if layer["shape"] == "line":
                 fill = "<a:noFill/>"
                 if stroke_alpha <= 0:
@@ -375,9 +376,13 @@ class Slide:
         first_top = -layout.box[1] - layer.get("spacing", 4)
         pen_left = layout.box[0] if layer.get("align", "left") == "left" else 0
         align = {"left": "l", "center": "ctr", "right": "r"}[layer.get("align", "left")]
+        # A bold or italic registered face (inter-700, inter-400-italic) is the style of plain text too.
+        font = layer.get("font", "DejaVuSans.ttf")
+        span = {"font": self.view.state.get("fonts", {}).get(font, font)}
+        style = {"bold": self.exporter.is_bold(span), "italic": self.exporter.is_italic(span)}
         out = []
         for text in layer["text"].split("\n"):
-            run = self.run(text, size * pt, rgba, family, {}, layer["opacity"]) if text else ""
+            run = self.run(text, size * pt, rgba, family, style, layer["opacity"]) if text else ""
             out.append(f'<a:p><a:pPr algn="{align}"><a:lnSpc><a:spcPts val="{round(line * pt * 100)}"/></a:lnSpc>'
                        f'<a:buNone/></a:pPr>{run}<a:endParaRPr lang="en-US" sz="{round(size * pt * 100)}" dirty="0"/></a:p>')
         return out, first_top, pen_left
