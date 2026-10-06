@@ -81,6 +81,7 @@ Bigger documents, layer merging, scatter and pattern tiles, kinetic type, QR cod
 - MCP calls queued behind busy workers become jobs sooner under load; job pointers and `vixl_job` report `queued`, `wait_ms` and `queue_depth`. The docs recommend one `--http` server for many agents (#167).
 - Eight new agent eval briefs (charts, decks/PPTX, drawings, organic shapes, pathfinder, seamless loops, adapt-layout, `targets` fan-out) with per-task tool-call budgets and a mean ceiling in `evals/baseline.json`.
 - CI: a ruff lint job, parallel tests (`pytest-xdist` in the dev extra), ffmpeg-backed tests on Linux, a non-blocking pip-audit job and weekly Dependabot; installer builds on pull requests run only when packaging changes. Package metadata gains classifiers, keywords and project URLs.
+- Source comments: decorative section banners, label comments and history narrative are removed (#261).
 
 ### Fixes
 
