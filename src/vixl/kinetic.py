@@ -13,6 +13,7 @@ of them between spaces or line breaks, a line a rendered (wrapped) line with vis
 
 import math
 import random
+import re
 
 from .errors import require
 from .model import finite
@@ -531,6 +532,11 @@ def validate(state, timeline):
             require(isinstance(spec[key], int) and 0 <= spec[key] <= 600_000, "Invalid text animation time", "invalid_project")
         if "easing" in spec:
             easing_function(spec["easing"])
+        if "stagger" in spec:
+            stagger = spec["stagger"]
+            require(isinstance(stagger, str) and re.fullmatch(r"\d+(\.\d+)?%", stagger) or isinstance(stagger, (int, float))
+                    and not isinstance(stagger, bool) and 0 <= stagger <= 600_000, "Invalid text animation stagger",
+                    "invalid_project")
 
 
 def seam_findings(project, timeline):
