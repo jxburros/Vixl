@@ -1,0 +1,11 @@
+{
+  "issues": [
+    {
+      "check": "coverage",
+      "severity": "warning",
+      "action": "informational",
+      "layer": null,
+      "message": "'grid' is inside a repeated group; geometry checks cover its base instance. Visually inspect the repeated instances."
+    }
+  ]
+}

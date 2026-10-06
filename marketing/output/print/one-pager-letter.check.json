@@ -1,0 +1,18 @@
+{
+  "issues": [
+    {
+      "check": "coverage",
+      "severity": "warning",
+      "action": "informational",
+      "layer": null,
+      "message": "'grid' is inside a repeated group; geometry checks cover its base instance. Visually inspect the repeated instances."
+    },
+    {
+      "check": "bounds",
+      "severity": "warning",
+      "action": "review",
+      "layer": null,
+      "message": "'glow' is cut off by the canvas edge; if the crop is deliberate, mark it with layer-intent allow_crop"
+    }
+  ]
+}

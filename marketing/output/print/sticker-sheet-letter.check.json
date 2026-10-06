@@ -1,0 +1,11 @@
+{
+  "issues": [
+    {
+      "check": "overlap",
+      "severity": "warning",
+      "action": "review",
+      "layer": null,
+      "message": "'s5-px-9' and 's5-a' overlap by 72 px (50.0% of the smaller layer)"
+    }
+  ]
+}
