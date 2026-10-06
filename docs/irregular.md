@@ -53,7 +53,9 @@ vixl irregular leaves --seed 3 --only placement color     # micro variation for 
 ```
 
 `target` (or `targets`) names layers; a group stands for all the vector layers inside it, so one
-operation varies a whole set, each layer on its own stream of the seed.
+operation varies a whole set, each layer on its own stream of the seed. Over MCP send the JSON form
+through `vixl_operations_apply`; `vixl_operation_schema(types=["irregular", "tear"])` lists the
+fields with their bounds and descriptions.
 
 | Field | Meaning |
 | --- | --- |
