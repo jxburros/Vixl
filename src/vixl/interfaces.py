@@ -642,7 +642,7 @@ def create_app(path, *, token=None, limits=None):
 
         from .timeline import export_timeline
 
-        allowed = {"format", "fps", "scale", "start", "end", "background", "columns", "quality", "colors", "dither", "max_bytes", "poster", "sample_rate"}
+        allowed = {"format", "fps", "scale", "start", "end", "background", "columns", "quality", "colors", "dither", "max_bytes", "poster", "sample_rate", "target_bytes", "preset"}
         require(set(body) <= allowed, f"Timeline export accepts {sorted(allowed)}", field="body")
         fmt = body.get("format", "gif")
         suffix = {"gif": ".gif", "apng": ".png", "webp": ".webp", "sheet": ".png", "frames": ".zip", "mp4": ".mp4", "webm": ".webm"}

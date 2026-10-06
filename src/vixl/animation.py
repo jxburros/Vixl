@@ -285,23 +285,116 @@ def gif_bytes(images, duration, loop, colors=256, dither="none"):
     return stream.getvalue()
 
 
-def size_warnings(format, data, max_bytes=None, gradients=False):
+def webp_trial(images, durations, loop=0):
+    """Bytes of a quick lossy animated WebP of the same frames, or ``None`` when Pillow has no WebP."""
+    from PIL import features
+
+    if not images or not features.check("webp"):
+        return None
+    stream = io.BytesIO()
+    try:
+        images[0].save(stream, format="WEBP", save_all=True, append_images=images[1:], duration=durations,
+                       loop=loop, quality=75, method=0)
+    except (OSError, ValueError):
+        return None
+    return len(stream.getvalue())
+
+
+def decoded_frames(data):
+    """RGBA frames and durations of an encoded animation."""
+    frames, durations = [], []
+    with Image.open(io.BytesIO(data)) as image:
+        for index in range(getattr(image, "n_frames", 1)):
+            image.seek(index)
+            frames.append(image.convert("RGBA"))
+            durations.append(image.info.get("duration", 100))
+    return frames, durations
+
+
+def _alternatives(size, webp=None):
+    """What to export instead of a big GIF, with the WebP size measured when it can be."""
+    measured = webp() if webp is not None else None
+    if measured is None:
+        return "export MP4 or WebP, which are usually several times smaller"
+    if measured < size:
+        return (f"export WebP ({measured:,} bytes for these frames, measured: {size / measured:.1f}x smaller) "
+                "or MP4")
+    return f"WebP measured no smaller here ({measured:,} bytes); export MP4"
+
+
+def size_warnings(format, data, max_bytes=None, gradients=False, webp=None, label="max_bytes"):
     """Warnings for an encoded animation: a GIF over 1 MB (or ``max_bytes``) and gradient-heavy GIFs steer
-    to MP4/WebP, which are typically several times smaller and band-free. The export never fails over size."""
+    to MP4/WebP. ``webp`` is a callable returning the size of a trial WebP of the same frames, called only
+    when a warning needs it. The export never fails over size."""
     warnings = []
     size = len(data)
     if max_bytes is not None and size > max_bytes:
-        warnings.append(f"{format.upper()} is {size:,} bytes, over the max_bytes target of {max_bytes:,}. Lower fps, colors or scale, "
-                        "or shorten the range" + ("; export MP4 or WebP instead, typically about 10x smaller." if format == "gif" else "."))
+        warnings.append(f"{format.upper()} is {size:,} bytes, over the {label} target of {max_bytes:,}. Lower fps, colors or scale, "
+                        "or shorten the range" + (f"; or {_alternatives(size, webp)}." if format == "gif" else "."))
     elif format == "gif" and size > GIF_WARN_BYTES:
         warnings.append(
             f"GIF is {size / 1048576:.1f} MB; ad networks and chat apps often cap GIFs near 150 KB–1 MB. "
-            "Lower fps, colors or scale, shorten the range, or export MP4 (typically about 10x smaller) or WebP."
+            f"Lower fps, colors or scale, shorten the range, pass target_bytes, or {_alternatives(size, webp)}."
         )
     if format == "gif" and gradients and size > GIF_WARN_BYTES // 4 and not any("MP4" in w for w in warnings):
         warnings.append("This GIF has gradients or soft glows, which band in 256 colors: export MP4 or WebP for clean results, "
                         "or pass dither: 'ordered'.")
     return warnings
+
+
+# Defaults a ``preset`` fills in where the call leaves fps, scale, colors and target_bytes at their defaults.
+PRESETS = {
+    "chat": {"width": 480, "fps": 15, "target_bytes": 1_000_000},
+    "web": {"width": 800, "fps": 20, "target_bytes": 2_000_000},
+    "email": {"width": 600, "fps": 10, "colors": 128, "target_bytes": 1_000_000},
+}
+MAX_FIT_TRIES = 10
+
+
+def fit_steps(format, fps, colors, quality):
+    """(tone, frame step, scale) to try in order: fewer GIF colors (lower WebP quality) first, then a
+    lower frame rate, then a smaller size."""
+    if format == "gif":
+        tones = [colors] + [c for c in (128, 64) if c < colors]
+    elif format == "webp":
+        tones = [quality] + [q for q in (75, 60, 45) if q < quality]
+    else:
+        tones = [None]
+    steps = [(tone, 1, 1.0) for tone in tones]
+    tone = tones[-1]
+    steps += [(tone, k, 1.0) for k in (2, 3) if fps / k >= 5]
+    step = steps[-1][1]
+    steps += [(tone, step, s) for s in (0.75, 0.56, 0.42)]
+    return steps[:MAX_FIT_TRIES]
+
+
+def _subsample(images, durations, step):
+    if step == 1:
+        return images, durations
+    return images[::step], [sum(durations[i:i + step]) for i in range(0, len(durations), step)]
+
+
+def fit_encode(images, durations, encode, target, steps, fps, tone_name=None, cancelled=None):
+    """Encode, measure and step down (``fit_steps``) until the file is at most ``target`` bytes.
+    Returns ``(data, frames, durations, chosen)``; when nothing fits, the smallest attempt with
+    ``chosen["fits"]`` false."""
+    best = None
+    for tries, (tone, step, scale) in enumerate(steps, 1):
+        require(not (cancelled and cancelled()), "Export cancelled", "cancelled")
+        frames, times = _subsample(images, durations, step)
+        if scale < 1:
+            size = (max(1, round(images[0].width * scale)), max(1, round(images[0].height * scale)))
+            frames = [image.resize(size, Image.Resampling.LANCZOS) for image in frames]
+        data = encode(frames, times, tone)
+        chosen = {"fps": round(fps / step, 3), "scale": scale, "bytes": len(data), "tries": tries, "fits": len(data) <= target}
+        if tone_name:
+            chosen[tone_name] = tone
+        if best is None or len(data) < len(best[0]):
+            best = (data, frames, times, chosen)
+        if chosen["fits"]:
+            return data, frames, times, chosen
+    data, frames, times, chosen = best
+    return data, frames, times, {**chosen, "tries": len(steps)}
 
 
 def encoded_frames(data):
@@ -564,5 +657,6 @@ def export_animation(
         "bytes": len(data),
         **({"animation": animation} if animation is not None else {}),
         **({"metadata": str(destinations[1])} if metadata is not None else {}),
-        **({"warnings": warnings} if (warnings := size_warnings(format, data, max_bytes, gradients)) else {}),
+        **({"warnings": warnings} if (warnings := size_warnings(
+            format, data, max_bytes, gradients, webp=lambda: webp_trial(*decoded_frames(data)))) else {}),
     }

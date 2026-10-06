@@ -138,7 +138,17 @@ vixl animate kid,shadow translate-x --to 120 --duration 2s    # shared timing fo
 
 Frames render at the target resolution: `scale` (0.05–16) re-renders vectors, text and shapes crisply instead of enlarging a bitmap; raster images resample with LANCZOS and effects driven by a fixed-size selection fall back to an enlarged render. Each frame must fit the pixel budget (`--max-pixels`).
 
-GIF size: results report `bytes`, and a GIF over 1 MB (or over the soft `max_bytes` target, which only warns) adds a `warnings` entry that suggests MP4 (typically ~10x smaller) or WebP; gradient-heavy GIFs get that suggestion at any size, since 256 colors band. `dither` (`auto` default, `none`, `ordered`, `floyd`; CLI `--dither`) quantizes every frame to one shared palette: `ordered` uses a fixed Bayer pattern that never shimmers between frames (`auto` picks it when the frames hold gradients), `floyd` is smoother in stills but its error diffusion can shimmer around moving content. Fully opaque animations are stored as frame differences (identical decoded frames, often 3–5× smaller); `colors` (2–256, default 256) shares one reduced palette across frames, and lower `fps` or `scale` shrink further. A 728×90, 4 s, 20 fps banner went from 0.93 MB to 190 KB at default settings, 76 KB with `--colors 64`, and 41 KB with `--colors 32 --fps 10`. For strict ad limits prefer WebP or MP4 when the network accepts them.
+GIF size: results report `bytes`, and a GIF over 1 MB (or over the soft `max_bytes` target, which only warns) adds a `warnings` entry that suggests MP4 or WebP, quoting the size of a quick trial WebP encode of the same frames when Pillow has WebP ("export WebP (184,220 bytes for these frames, measured: 5.1x smaller) or MP4"); gradient-heavy GIFs get that suggestion at any size, since 256 colors band. `dither` (`auto` default, `none`, `ordered`, `floyd`; CLI `--dither`) quantizes every frame to one shared palette: `ordered` uses a fixed Bayer pattern that never shimmers between frames (`auto` picks it when the frames hold gradients), `floyd` is smoother in stills but its error diffusion can shimmer around moving content. Fully opaque animations are stored as frame differences (identical decoded frames, often 3–5× smaller); `colors` (2–256, default 256) shares one reduced palette across frames, and lower `fps` or `scale` shrink further. A 728×90, 4 s, 20 fps banner went from 0.93 MB to 190 KB at default settings, 76 KB with `--colors 64`, and 41 KB with `--colors 32 --fps 10`. For strict ad limits prefer WebP or MP4 when the network accepts them.
+
+**Fitting a size.** `target_bytes` (timeline GIF, WebP and APNG export; CLI `--target-bytes`) encodes, measures and steps down until the file fits: GIF colors 256 → 128 → 64 (WebP quality → 75 → 60 → 45), then every 2nd and 3rd frame (while that stays at 5 fps or more), then 0.75, 0.56 and 0.42 of the size, at most 10 tries. The result reports `chosen: {fps, colors | quality, scale, bytes, tries, fits}` and the file holds the first setting that fits; when none does, the smallest is written with a warning. `preset` fills in what you leave at the defaults:
+
+| Preset | Width (at most) | fps | colors | target_bytes |
+| --- | --- | --- | --- | --- |
+| `chat` | 480 | 15 | 256 | 1,000,000 |
+| `web` | 800 | 20 | 256 | 2,000,000 |
+| `email` | 600 | 10 | 128 | 1,000,000 |
+
+A long fit runs past the MCP inline limit as a job like any heavy call (poll `vixl_job`).
 
 ```bash
 vixl export-timeline --out banner.gif --colors 64 --fps 12
