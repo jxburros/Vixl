@@ -178,8 +178,11 @@ GEOMETRY_TYPES = {
     "stack",
     "link",
     "chart",
+    "organic",
 }
-CENTER_TYPES = {"solid", "gradient", "shape", "add", "frame", "symbol-instance", "move", "field", "link", "chart"}
+CENTER_TYPES = {
+    "solid", "gradient", "shape", "add", "frame", "symbol-instance", "move", "field", "link", "chart", "organic",
+}
 
 
 def _snake(key):

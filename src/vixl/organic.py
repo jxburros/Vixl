@@ -2309,6 +2309,11 @@ def execute(project, op):
         layer["opacity"] = finite(opacity, "opacity", 0, 1)
         return layer
 
+    def place(layer):
+        for key in ("x", "y"):
+            if key in op:
+                layer[key] = finite(op[key], key)
+
     if target is None:
         name = op["name"] if "name" in op else default_name(project, recipe.get("preset", "organic"))
         x = op.get("x", 0)
@@ -2339,6 +2344,8 @@ def execute(project, op):
         target.update(path=d, path_view=[width, height], width=width, height=height, line_cap="round",
                       **regrown_style(kept, style, op))
         target["organic"] = stored
+        place(target)
+        project.state["active_layer"] = target["id"]
         return
     require(target["type"] == "group", "Organic regeneration needs the organic group or path", field="target")
     from .design import descendants
@@ -2366,6 +2373,7 @@ def execute(project, op):
     sy = target["height"] / target["content_height"]
     target.update(content_width=width, content_height=height, width=max(1, round(width * sx)), height=max(1, round(height * sy)))
     target["organic"] = stored
+    place(target)
     project.state["active_layer"] = target["id"]
 
 
@@ -2374,7 +2382,7 @@ def compile_command(cmd, args):
         return None
     import json
 
-    from .commands import Parser
+    from .commands import Parser, number_or_center
 
     p = Parser(prog="vixl organic", description="Composable organic shapes. vixl organics lists presets, generators and rules.")
     p.add_argument("preset", nargs="?", choices=list(PRESETS))
@@ -2384,7 +2392,9 @@ def compile_command(cmd, args):
     p.add_argument("--naturalness", type=float)
     for key in ("width", "height"):
         p.add_argument("--" + key, type=int)
-    for key in ("x", "y", "padding", "stroke-width"):
+    for key in ("x", "y"):
+        p.add_argument("--" + key, type=number_or_center)
+    for key in ("padding", "stroke-width"):
         p.add_argument("--" + key, type=float)
     p.add_argument("--stroke")
     p.add_argument("--fill", help="Fill for every filled part (--color names single parts)")

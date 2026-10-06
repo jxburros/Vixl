@@ -30,8 +30,10 @@ A regrow restyles only what the operation names: `fill` or `colors` reset fills,
 `stroke_width` reset lines (the same result as creating the form with them), and a new `preset` or
 `parts` restyles everything. A plain new `seed` keeps the colors on the layers. When none of
 `fill`, `colors`, `stroke` is given, each preset keeps its default colors.
-Leaving out `height` (or `width`) sizes the box to the form's own proportions. Output is pure
-vector: SVG export writes native paths.
+Leaving out `height` (or `width`) sizes the box to the form's own proportions. `x` and `y` take
+pixels, `"center"` or a canvas percentage such as `"25%"` (CLI `--x center --y 25%`), as for shapes;
+on a regrow they move the form, and without them it stays where it is. Output is pure vector: SVG
+export writes native paths.
 
 | Field | Meaning |
 | --- | --- |

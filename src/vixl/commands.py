@@ -31,7 +31,9 @@ def pairs(values):
 
 
 def number_or_center(value):
-    return value if value == "center" else float(value)
+    from .normalize import PERCENT
+
+    return value if value == "center" or PERCENT.match(value) else float(value)
 
 
 def normalize(tokens):
