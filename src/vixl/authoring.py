@@ -6,6 +6,7 @@ import math
 import random
 
 from .errors import require
+from .model import MAX_LAYERS
 
 TYPES = ("organic-shape", "path-fit", "layer-intent", "font-fallbacks")
 KINDS = ("leaf", "petal", "blob", "rose")
@@ -22,7 +23,7 @@ def schemas(add):
     })
     add("path-fit", {"padding": {"type": "number", "minimum": 0}, "preserve_aspect": B}, ["target"])
     add("layer-intent", {"role": {"enum": ["content", "decoration", "background", "title"]},
-                         "allow_overlap": {"type": "array", "items": S, "maxItems": 512},
+                         "allow_overlap": {"type": "array", "items": S, "maxItems": MAX_LAYERS},
                          "tags": {"type": "array", "items": S, "maxItems": 32,
                                   "description": "Labels (replacing the layer's tags) that edit-layers can select with where.tag"},
                          "allow_crop": B, "color_vision_safe": B, "detached_ok": B}, ["target"])

@@ -35,9 +35,10 @@ STYLES = ("drop-shadow", "stroke", "outer-glow", "color-overlay", "gradient-over
 
 def schemas(add):
     from .inplace import target_schema
+    from .model import MAX_LAYERS
     from .schema import S, N, B, POSITIVE_INT, COORD, SIZE, enum
 
-    refs = {"type": "array", "items": S, "minItems": 1, "maxItems": 512, "uniqueItems": True}
+    refs = {"type": "array", "items": S, "minItems": 1, "maxItems": MAX_LAYERS, "uniqueItems": True}
     obj = {"type": "object"}
     geometry = {"name": S, "width": SIZE, "height": SIZE, "x": COORD, "y": COORD}
     board = {"name": S, "width": POSITIVE_INT, "height": POSITIVE_INT, "x": N, "y": N}

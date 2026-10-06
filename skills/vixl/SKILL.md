@@ -13,8 +13,9 @@ JSON operations**, so anything you learn in one transfers to the others.
 
 Key properties to rely on:
 
-- **Everything stays editable.** Text is text until `rasterize`; effects are a stack you can
-  disable/edit/remove; masks and styles are attachments. Prefer editing over re-creating.
+- **Everything stays editable.** Text is text until `rasterize` (or `merge-layers` / `flatten`, which
+  bake several layers into one); effects are a stack you can disable/edit/remove; masks and styles are
+  attachments. Prefer editing over re-creating.
 - **Batches are atomic.** A list of operations either fully applies or changes nothing.
 - **Every successful edit autosaves** and is undoable (CLI and MCP).
 - **Layers are addressed by unique name or immutable ID** (`lyr_…`). IDs survive renames;
@@ -351,7 +352,7 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
   when exact separations matter; without one Vixl uses a GCR approximation with an optional ink limit.
   A CMYK PDF keeps real text and vector shapes (colours as DeviceCMYK); only effects and images are
   CMYK images. Every PDF is vector by default; the result's `content`/`content_reason` say what was written.
-- **Limits:** 40 MP per canvas/layer, 16 384 px per side, 512 layers, 256 effects/layer,
+- **Limits:** 40 MP per canvas/layer, 16 384 px per side, 4 096 layers, 256 effects/layer,
   10 000 operations per batch. History keeps 2 000 revisions; older unreferenced ones are squashed
   automatically, so long sessions never lock. Pixel-art frames ≤ 256×256, ≤ 256 frames; timelines
   ≤ 10 min, 60 fps, 3 600 frames; 4 096 strokes per paint layer.

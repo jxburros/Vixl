@@ -36,11 +36,11 @@ import numpy as np
 
 from .errors import VixlError, require
 from .geometry import compact_number
+from .model import MAX_LAYERS
 
 TYPES = ("irregular", "tear")
 EFFECTS = ("wobble", "jitter", "width", "pressure", "color", "placement")
 EDGES = ("top", "right", "bottom", "left")
-MAX_LAYERS = 256
 MAX_POINTS = 3500          # per outline after perturbing; a ribbon has two sides, and a path takes 8192 commands
 MAX_FIBRES = 1500
 # What a layer is restored from: every field the engine may change.

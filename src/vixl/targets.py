@@ -14,9 +14,10 @@ The docs table in docs/operations.md is generated from the schema by ``markdown_
 """
 
 from .errors import VixlError, require
+from .model import MAX_LAYERS
 from .render import EFFECTS
 
-MAX_TARGETS = 512
+MAX_TARGETS = MAX_LAYERS
 ALIASES = ("layers", "layer_ids", "layerIds", "target_ids", "targetIds")
 
 # Operations applied once per listed layer. Creation operations (shape, text, solid, gradient)
@@ -35,7 +36,7 @@ OWN_EACH = frozenset({"keyframe", "animate", "animate-preset", "look", "irregula
                       "match-size"})
 # Operations that act on the listed layers together.
 JOINT = frozenset({"align", "group", "distribute", "artboard", "pathfinder", "suite-capture", "role-set",
-                   "arrange-grid", "adapt-layout", "stack", "place"})
+                   "arrange-grid", "adapt-layout", "stack", "place", "merge-layers"})
 
 DESCRIPTION = ("Several layer IDs or names: the operation is applied to each in turn, in this order, within the "
                "same atomic batch. Pass target or targets, not both.")

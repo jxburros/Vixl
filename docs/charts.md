@@ -138,7 +138,7 @@ the chart; role swatches (`@accent`, `@ink`) recolor it without one.
 
 ## Limits
 
-A chart is at most 200 categories by 24 series and must fit the document's layer limit (512): a
+A chart is at most 200 categories by 24 series and must fit the document's layer limit (4,096): a
 12 × 4 stacked chart with every label is about 140 layers. Over the limit the operation fails and
 names the way out (fewer categories, or `value_labels: false`, `markers: false`). A chart that is too small
 for its labels says so; enlarge it or lower `font_size`.

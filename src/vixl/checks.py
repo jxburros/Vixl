@@ -242,6 +242,31 @@ def canvas_projection(resolved, local_bounds):
             "geometry_bounds": drawn}
 
 
+def overlap_candidates(boxes, texts, width, height):
+    """Index pairs (i < j), in order, whose boxes meet on the canvas and of which at least one is
+    text: a sweep along x, so a document of thousands of shapes is not compared pair by pair."""
+    starts = []
+    for index, (x, y, w, h) in enumerate(boxes):
+        left, top, right, bottom = max(0, x), max(0, y), min(width, x + w), min(height, y + h)
+        if left < right and top < bottom:
+            starts.append((left, right, top, bottom, index))
+    starts.sort()
+    pairs, open_all, open_text = [], [], []
+    for left, right, top, bottom, index in starts:
+        # Every box is compared with the open text boxes; text is also compared with the rest.
+        open_text = [item for item in open_text if item[0] > left]
+        if texts[index]:
+            open_all = [item for item in open_all if item[0] > left]
+        for other_right, other_top, other_bottom, other in (open_all if texts[index] else open_text):
+            if other_top < bottom and top < other_bottom:
+                pairs.append((min(index, other), max(index, other)))
+        entry = (right, top, bottom, index)
+        open_all.append(entry)
+        if texts[index]:
+            open_text.append(entry)
+    return sorted(set(pairs))
+
+
 def check_design(
     project,
     *,
@@ -478,42 +503,42 @@ def check_design(
 
     if "overlap" in checks:
         drawable = [item for item in content if item["type"] != "group"]
-        for i, first in enumerate(drawable):
-            for second in drawable[i + 1 :]:
-                if second["id"] in first.get("allow_overlap", []) or first["id"] in second.get("allow_overlap", []):
-                    continue
-                if (role(first) == "decoration" and not is_text(first)) or (role(second) == "decoration" and not is_text(second)):
-                    continue
-                a, b = ink(first), ink(second)
-                if not _intersects(a, b):
-                    continue
-                texts = [x for x in (first, second) if is_text(x)]
-                if not texts:
-                    continue  # Overlapping images and shapes are ordinary composition.
-                if len(texts) == 1:
-                    other = second if texts[0] is first else first
-                    if _contains(outward(geometry[other["id"]]), outward(geometry[texts[0]["id"]])):
-                        continue  # A label inside its button or panel.
-                left, top = max(0, a[0], b[0]), max(0, a[1], b[1])
-                right = min(width, a[0] + a[2], b[0] + b[2])
-                bottom = min(height, a[1] + a[3], b[1] + b[3])
-                if left >= right or top >= bottom:
-                    continue
-                ax, ay, bx, by = max(0, a[0]), max(0, a[1]), max(0, b[0]), max(0, b[1])
-                ma = alpha(first)[top - ay:bottom - ay, left - ax:right - ax]
-                mb = alpha(second)[top - by:bottom - by, left - bx:right - bx]
-                pixels = int(np.logical_and(ma, mb).sum())
-                smaller = max(1, min(int(alpha(first).sum()), int(alpha(second).sum())))
-                if pixels > 4 and pixels / smaller > 0.005:
-                    severity = "error" if len(texts) == 2 else "warning"
-                    issue(
-                        "overlap",
-                        severity,
-                        f"{first['name']!r} and {second['name']!r} overlap by {pixels} px "
-                        f"({pixels / smaller:.1%} of the smaller layer)",
-                        [first, second],
-                        region=[left, top, right - left, bottom - top],
-                    )
+        for i, j in overlap_candidates([ink(item) for item in drawable], [is_text(item) for item in drawable], width, height):
+            first, second = drawable[i], drawable[j]
+            if second["id"] in first.get("allow_overlap", []) or first["id"] in second.get("allow_overlap", []):
+                continue
+            if (role(first) == "decoration" and not is_text(first)) or (role(second) == "decoration" and not is_text(second)):
+                continue
+            a, b = ink(first), ink(second)
+            if not _intersects(a, b):
+                continue
+            texts = [x for x in (first, second) if is_text(x)]
+            if not texts:
+                continue  # Overlapping images and shapes are ordinary composition.
+            if len(texts) == 1:
+                other = second if texts[0] is first else first
+                if _contains(outward(geometry[other["id"]]), outward(geometry[texts[0]["id"]])):
+                    continue  # A label inside its button or panel.
+            left, top = max(0, a[0], b[0]), max(0, a[1], b[1])
+            right = min(width, a[0] + a[2], b[0] + b[2])
+            bottom = min(height, a[1] + a[3], b[1] + b[3])
+            if left >= right or top >= bottom:
+                continue
+            ax, ay, bx, by = max(0, a[0]), max(0, a[1]), max(0, b[0]), max(0, b[1])
+            ma = alpha(first)[top - ay:bottom - ay, left - ax:right - ax]
+            mb = alpha(second)[top - by:bottom - by, left - bx:right - bx]
+            pixels = int(np.logical_and(ma, mb).sum())
+            smaller = max(1, min(int(alpha(first).sum()), int(alpha(second).sum())))
+            if pixels > 4 and pixels / smaller > 0.005:
+                severity = "error" if len(texts) == 2 else "warning"
+                issue(
+                    "overlap",
+                    severity,
+                    f"{first['name']!r} and {second['name']!r} overlap by {pixels} px "
+                    f"({pixels / smaller:.1%} of the smaller layer)",
+                    [first, second],
+                    region=[left, top, right - left, bottom - top],
+                )
 
     # Empty text (a lyric between lines, a cleared label) draws nothing to measure.
     texts = [item for item in content if is_text(item) and resolved[item["id"]].get("text", "").strip()]

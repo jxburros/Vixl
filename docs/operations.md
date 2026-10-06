@@ -57,6 +57,9 @@ Common operation fields:
 | rotate / opacity / blend | target or targets, value (opacity 0–1 or `"N%"`) |
 | pivot | target, value `[x, y]` or an anchor; units `fraction` (default), `px` or `canvas` (a document point, converted through the parent groups) |
 | group | name, targets; `above`/`below` a layer to choose the new group's slot (default: its topmost member's) |
+| rasterize | target or targets; bakes the layer, with its effects, mask, layer styles, clipping, opacity and transform, into a raster layer (the blend mode stays; the original is kept in `provenance.original`) |
+| merge-layers | targets (two or more sharing a parent; a group brings its members), name; one raster layer at the topmost target's slot, named after it by default. Blend modes composite among the merged layers; blending with layers below the merge (or the canvas background) cannot be kept, so the merged layer is `normal` and a warning names the layers whose look may change. Hidden targets are discarded; a layer clipped to a merged layer clips to the merged one. Alias `merge` |
+| flatten | name (default `flattened`), keep_hidden; every visible top-level layer of the page becomes one canvas-size raster layer (master-page layers are not included; pixels outside the canvas are dropped). Hidden top-level layers are discarded unless `keep_hidden: true` keeps them in place |
 | align | target, alignment, margin |
 | constrain | target, constraints object |
 | select | shape, shape-specific coordinates/color/target/asset; mode, feather |

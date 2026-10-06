@@ -36,6 +36,7 @@ from .audio import TYPES as AUDIO_TYPES
 from .captions import TYPES as CAPTION_TYPES
 from .scene import TYPES as SCENE_TYPES
 from .vector_paths import TYPES as VECTOR_TYPES
+from .merging import TYPES as MERGE_TYPES
 
 from copy import deepcopy
 import hashlib
@@ -64,7 +65,7 @@ from .render import (
 COLOR_TYPES = ("palette-generate",)
 
 
-OPERATION_TYPES = list(DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_TYPES + BRUSH_TYPES + TIMELINE_TYPES + LAYOUT_TYPES + COLOR_TYPES + AUTOMATION_TYPES + CREATIVE_TYPES + CONTAINER_TYPES + AUTHORING_TYPES + ORGANIC_TYPES + IRREGULAR_TYPES + GUIDE_TYPES + RICH_TYPES + PAGE_TYPES + FORM_TYPES + DRAWING_TYPES + STACK_TYPES + SELECTOR_TYPES + LINK_TYPES + CODE_TYPES + CHART_TYPES + FINISHING_TYPES + DIAGRAM_TYPES + FLOW_TYPES + TRANSFORM_TYPES + MOTION_TYPES + CHARACTER_TYPES + COMIC_TYPES + TEXTURE_TYPES + AUDIO_TYPES + VECTOR_TYPES + CAPTION_TYPES + SCENE_TYPES) + [
+OPERATION_TYPES = list(DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_TYPES + BRUSH_TYPES + TIMELINE_TYPES + LAYOUT_TYPES + COLOR_TYPES + AUTOMATION_TYPES + CREATIVE_TYPES + CONTAINER_TYPES + AUTHORING_TYPES + ORGANIC_TYPES + IRREGULAR_TYPES + GUIDE_TYPES + RICH_TYPES + PAGE_TYPES + FORM_TYPES + DRAWING_TYPES + STACK_TYPES + SELECTOR_TYPES + LINK_TYPES + CODE_TYPES + CHART_TYPES + FINISHING_TYPES + DIAGRAM_TYPES + FLOW_TYPES + TRANSFORM_TYPES + MOTION_TYPES + CHARACTER_TYPES + COMIC_TYPES + TEXTURE_TYPES + AUDIO_TYPES + VECTOR_TYPES + CAPTION_TYPES + SCENE_TYPES + MERGE_TYPES) + [
     "add",
     "solid",
     "gradient",
@@ -243,21 +244,32 @@ def effect_valid(effect):
 
 def unique_name(project, proposed):
     require(isinstance(proposed, str) and 0 < len(proposed) <= 200, "Layer name must be 1–200 characters")
-    require(
-        not any(proposed in (x["name"], x["id"]) for x in project.state["layers"]),
-        f"Layer name already exists: {proposed}",
-    )
+    require(taken(project, proposed) is None, f"Layer name already exists: {proposed}")
     return proposed
+
+
+def taken(project, name):
+    """The layer whose ID or name is ``name``, or None (indexed on a Project)."""
+    find = getattr(project, "find_layer", None)
+    if find is not None:
+        return find(name)
+    return next((x for x in project.state["layers"] if name in (x["name"], x["id"])), None)
 
 
 def default_name(project, base):
     """A free name for a layer the operation left unnamed: ``base``, then ``base 2``, ``base 3``…
-    Explicit names must still be unique."""
-    taken = {x["name"] for x in project.state["layers"]} | {x["id"] for x in project.state["layers"]}
-    name, index = base, 2
-    while name in taken:
-        name, index = f"{base} {index}", index + 1
-    return name
+    Explicit names must still be unique. Within one ``Project.apply`` the count continues from the
+    last name handed out for ``base`` (so a batch of unnamed shapes does not rescan every earlier
+    name); a number freed earlier in the same batch is not reused."""
+    if taken(project, base) is None:
+        return base
+    hints = getattr(project, "_name_hints", None)
+    index = max(2, (hints or {}).get(base, 2))
+    while taken(project, f"{base} {index}") is not None:
+        index += 1
+    if hints is not None:
+        hints[base] = index + 1
+    return f"{base} {index}"
 
 
 def append_layer(project, layer):
@@ -266,8 +278,39 @@ def append_layer(project, layer):
     from .transforms import VECTOR_TYPES
     project.limits.size(layer["width"], layer["height"], vector=layer["type"] in VECTOR_TYPES)
     project.state["layers"].append(layer)
+    if hasattr(project, "_indexed"):
+        project._indexed(layer)
     project.state["active_layer"] = layer["id"]
     return layer
+
+
+def forget_layers(project, removed, replacement=None):
+    """Drop references to the layer IDs ``removed`` (already taken out of the list). With
+    ``replacement`` (the ID of the layer that now draws their pixels), clipping and artboard
+    membership move to it instead."""
+    layers = project.state["layers"]
+    for item in layers:
+        if item.get("clip") in removed:
+            if replacement and item["id"] != replacement:
+                item["clip"] = replacement
+            else:
+                item.pop("clip")
+        if item["type"] == "field" and item["field"].get("label_layer") in removed:
+            item["field"].pop("label_layer")  # the form check reports the missing label
+    project.state["symbols"] = {
+        k: v for k, v in project.state.get("symbols", {}).items() if v not in removed
+    }
+    for board in project.state.get("artboards", {}).values():
+        if "targets" in board:
+            kept = [ident for ident in board["targets"] if ident not in removed]
+            if replacement and len(kept) < len(board["targets"]) and replacement not in kept:
+                kept.append(replacement)
+            board["targets"] = kept
+    if project.state["active_layer"] in removed:
+        project.state["active_layer"] = replacement or (layers[-1]["id"] if layers else None)
+    from .timeline import prune_targets
+
+    prune_targets(project.state, removed)
 
 
 def selection_image(project):
@@ -354,6 +397,9 @@ def execute(project, op):
         if "opacity" in op:
             execute(project, {"type": "opacity", "target": ident, "value": op["opacity"]})
         return result
+    if kind in MERGE_TYPES:
+        from .merging import execute as execute_merge
+        return execute_merge(project, op)
     if kind in SCENE_TYPES:
         from .scene import execute as execute_scene
         return execute_scene(project, op)
@@ -635,22 +681,7 @@ def execute(project, op):
 
         removed = descendants(project, layer["id"]) | {layer["id"]}
         layers[:] = [item for item in layers if item["id"] not in removed]
-        for item in layers:
-            if item.get("clip") in removed:
-                item.pop("clip")
-            if item["type"] == "field" and item["field"].get("label_layer") in removed:
-                item["field"].pop("label_layer")  # the form check reports the missing label
-        project.state["symbols"] = {
-            k: v for k, v in project.state.get("symbols", {}).items() if v not in removed
-        }
-        for board in project.state.get("artboards", {}).values():
-            if "targets" in board:
-                board["targets"] = [ident for ident in board["targets"] if ident not in removed]
-        if project.state["active_layer"] in removed:
-            project.state["active_layer"] = layers[-1]["id"] if layers else None
-        from .timeline import prune_targets
-
-        prune_targets(project.state, removed)
+        forget_layers(project, removed)
     elif kind == "rename":
         layer["name"] = unique_name(project, op["name"])
     elif kind == "duplicate":
@@ -973,14 +1004,19 @@ def execute(project, op):
         else:
             raise VixlError("unknown_operation", f"Unknown operation: {kind}")
     elif kind == "rasterize":
-        require(
-            not layer.get("styles") and not layer.get("clip"),
-            "Remove layer styles/clipping before rasterizing",
-        )
-        b = resolve_layout(project)[layer["id"]]
-        # Bake everything the layer draws, including blur and group children past its box.
-        image = layer_ink(project, layer, b)
-        x, y = ink_origin(image, b)
+        if layer.get("styles") or layer.get("clip"):
+            from .render import render_members
+
+            # Styles and clipping are drawn on the layer's tile, as the renderer composites it.
+            image, (x, y) = render_members(project, [layer["id"]], include_hidden=True)
+            box = image.getchannel("A").getbbox()
+            require(box, "The layer draws no pixels to rasterize")
+            image, x, y = image.crop(box), x + box[0], y + box[1]
+        else:
+            b = resolve_layout(project)[layer["id"]]
+            # Bake everything the layer draws, including blur and group children past its box.
+            image = layer_ink(project, layer, b)
+            x, y = ink_origin(image, b)
         layer.update(
             type="raster",
             asset=add_image(project, image),
@@ -1002,7 +1038,10 @@ def execute(project, op):
 
             removed = descendants(project, layer["id"])
             layers[:] = [item for item in layers if item["id"] not in removed]
-        for key in ("text", "font", "size", "auto_size", "crop", "linked", "repeat"):
+            forget_layers(project, removed, layer["id"])
+        # The pixels hold the styles, clipping and transform now.
+        for key in ("text", "font", "size", "auto_size", "crop", "linked", "repeat", "styles", "clip", "pivot",
+                    "skew_x", "skew_y", "affine"):
             layer.pop(key, None)
     elif kind == "preset-save":
         project.state["presets"][op["name"]] = deepcopy(layer["effects"])

@@ -4,7 +4,7 @@ Coordinates and gravity use pixels and seconds; operation times use milliseconds
 """
 import math
 from .errors import require
-from .model import finite
+from .model import MAX_LAYERS, finite
 
 TYPES = ("motion", "keyframes")
 RECIPES = ("follow-path", "orbit", "bounce", "shake", "wiggle", "spring", "look-at", "overlap", "breathing", "blink", "hover", "spin", "attach")
@@ -17,7 +17,7 @@ def schemas(add):
     from .timeline import easing_schema
     point = {"type": "array", "items": N, "minItems": 2, "maxItems": 2}
     time = {"type": ["number", "string"]}
-    add("motion", {"recipe": {"enum": list(RECIPES)}, "targets": {"type": "array", "items": S, "minItems": 1, "maxItems": 256},
+    add("motion", {"recipe": {"enum": list(RECIPES)}, "targets": {"type": "array", "items": S, "minItems": 1, "maxItems": MAX_LAYERS},
         "start": time, "duration": time, "period": N, "amount": N, "frequency": N, "damping": N,
         "gravity": N, "restitution": N, "radius": N, "center": point, "points": {"type": "array", "items": point, "minItems": 2, "maxItems": 256},
         "to": {"type": ["number", "string"], "description": "spring: end value. attach: the layer to ride on (same as follow)."},

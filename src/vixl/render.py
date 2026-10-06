@@ -15,7 +15,7 @@ from PIL import Image, ImageColor, ImageDraw, ImageEnhance, ImageFilter, ImageFo
 from .assets import decode, read_bounded
 from .constants import EFFECTS as EFFECTS
 from .errors import VixlError, require
-from .model import finite
+from .model import MAX_LAYERS, finite
 from .variables import substitute as substitute, with_maps
 
 BLENDS = ("normal", "multiply", "screen", "overlay", "darken", "lighten", "difference", "add", "subtract")
@@ -153,7 +153,7 @@ def document_variables(project):
 
 
 def text_metrics(project, layer, variables=None):
-    text = substitute(layer["text"], variables or document_variables(project))
+    text = substitute(layer["text"], variables if variables is not None else document_variables(project))
     require(len(text) <= 100000, "Text exceeds length limit", "resource_limit")
     from .richtext import active
 
@@ -240,8 +240,10 @@ def resolved_layers(project, variables=None):
     variables = {**document_variables(project), **(variables or {})}
     # Paint strokes can hold hundreds of thousands of points and are only read while rendering
     # and laying out, so the resolved copies share them instead of copying them each time.
+    # Scalars are immutable, so only containers are copied (this runs for every layer on every resolve).
     layers = [
-        {key: value if key == "strokes" else deepcopy(value) for key, value in layer.items()}
+        {key: deepcopy(value) if key != "strokes" and isinstance(value, (dict, list, tuple)) else value
+         for key, value in layer.items()}
         for layer in project.state["layers"]
     ]
     originals = {item["id"]: item for item in layers}
@@ -649,7 +651,7 @@ class LayerCache(OrderedDict):
     Checks and timelines render a document many times; a cache smaller than the document's
     layers would evict each layer before it is reused."""
 
-    def __init__(self, entries=512, budget=384 * 1024 * 1024):
+    def __init__(self, entries=2 * MAX_LAYERS, budget=384 * 1024 * 1024):
         super().__init__()
         self.entries, self.budget, self.bytes = entries, budget, 0
 
@@ -1177,13 +1179,62 @@ def render_layers(project, parent=None, size=None, background="transparent", obs
             project._resolution = None
 
 
-def _render_layers(project, layers, bounds, parent, size, background, observe):
+def render_members(project, members, region=None, background="transparent", include_hidden=False):
+    """Composite the layers ``members`` (IDs sharing a parent) in document order, as the renderer
+    draws them (styles, clipping, masks, opacity and blend modes among themselves), onto a tile.
+
+    ``region`` is (left, top, width, height) in their parent's space, whole pixels; by default it is
+    everything the members draw. Returns the tile and its (left, top). ``include_hidden`` draws
+    hidden members too."""
+    layers = resolved_layers(project)
+    bounds = resolve_layout(project, layers=layers)
+    members = set(members)
+    picked = [item for item in layers if item["id"] in members]
+    require(picked, "Nothing to draw")
+    parent = picked[0].get("parent")
+    require(all(item.get("parent") == parent for item in picked), "Layers must share a parent")
+    if include_hidden:
+        for item in picked:
+            item["visible"] = True
+    if region is None:
+        children, memo, edges = child_index(layers), {}, []
+        for item in picked:
+            x, y, w, h = bounds[item["id"]]
+            mx, my = ink_margin(item, bounds, children, memo)
+            edges.append((x - mx, y - my, x + w + mx, y + h + my))
+        # Two spare pixels hold antialiasing and rounding at the edges of styles and strokes.
+        left, top = math.floor(min(e[0] for e in edges)) - 2, math.floor(min(e[1] for e in edges)) - 2
+        right, bottom = math.ceil(max(e[2] for e in edges)) + 2, math.ceil(max(e[3] for e in edges)) + 2
+        region = (left, top, right - left, bottom - top)
+    left, top, width, height = region
+    if parent is None and (left, top) != (0, 0) and any(
+        any(effect_margin(item)) or any(effect.get("selection") for effect in item.get("effects") or []) for item in picked
+    ):
+        # Canvas-edge blur and selection-masked effects depend on where the layer sits on the canvas:
+        # draw them in place, keeping what lies on the canvas.
+        left, top = max(0, left), max(0, top)
+        c = project.state["canvas"]
+        right, bottom = min(c["width"], region[0] + width), min(c["height"], region[1] + height)
+        require(left < right and top < bottom, "The layers draw nothing on the canvas")
+        image, _ = render_members(project, [item["id"] for item in picked], (0, 0, right, bottom), background, include_hidden)
+        return image.crop((left, top, right, bottom)), (left, top)
+    placed = shift(bounds, [item for item in layers if item.get("parent") == parent], -left, -top)
+    shared = getattr(project, "_resolution", None)
+    project._resolution = (project.state, layers, bounds)
+    try:
+        image = _render_layers(project, layers, placed, parent, (width, height), background, None, members)
+    finally:
+        project._resolution = shared
+    return image, (left, top)
+
+
+def _render_layers(project, layers, bounds, parent, size, background, observe, members=None):
     c = project.state["canvas"]
     size = size or (c["width"], c["height"])
     index = {item["id"]: item for item in layers}
     children, memo = child_index(layers), {}
     ax = ay = 0
-    if parent is not None:
+    if parent is not None and members is None:
         # A group's tile also holds whatever its children draw outside its box.
         ax, ay = overflow(index[parent], bounds, children, memo)
         if ax or ay:
@@ -1252,7 +1303,7 @@ def _render_layers(project, layers, bounds, parent, size, background, observe):
         return image
 
     for layer in layers:
-        if layer.get("parent") != parent or not layer["visible"]:
+        if layer.get("parent") != parent or not layer["visible"] or (members is not None and layer["id"] not in members):
             continue
         if observe and layer["id"] in observe:
             box = pixel_box(bounds[layer["id"]], image.size)

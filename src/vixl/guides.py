@@ -19,7 +19,7 @@ import numpy as np
 
 from .errors import VixlError, require
 from .geometry import ANCHORS, BASELINE, canonical_anchor
-from .model import finite
+from .model import MAX_LAYERS, finite
 
 TYPES = ("place", "snap")
 KINDS = ("axis", "line", "ray", "segment", "point", "circle", "path")
@@ -570,7 +570,7 @@ def execute_place(project, op):
     """Put layers on a guide: at a position, distributed along it, or at intersections."""
     targets = op.get("targets") or [op.get("target") or project.state["active_layer"]]
     require(all(targets), "place needs target or targets", field="target")
-    require(len(targets) <= 512, "place moves at most 512 layers", field="targets")
+    require(len(targets) <= MAX_LAYERS, f"place moves at most {MAX_LAYERS} layers", field="targets")
     if "within" in op:
         require("guide" not in op, "place takes guide or within, not both", field="within")
         for target in targets:
@@ -714,7 +714,7 @@ def execute(project, op):
 def schemas(add):
     from .schema import S, N, B
 
-    refs = {"type": "array", "items": S, "minItems": 1, "maxItems": 512, "uniqueItems": True}
+    refs = {"type": "array", "items": S, "minItems": 1, "maxItems": MAX_LAYERS, "uniqueItems": True}
     point = {"type": "array", "items": N, "minItems": 2, "maxItems": 2}
     anchor = {"anyOf": [{"enum": list(ANCHORS)}, point]}
     add("place", {"targets": refs, "guide": S, "with": S, "index": {"type": "integer", "minimum": 0}, "at": N, "start": N,

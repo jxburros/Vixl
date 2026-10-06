@@ -59,6 +59,10 @@ def compile_command(tokens):
     authoring = compile_authoring(cmd, args)
     if authoring is not None:
         return authoring
+    from .merging import compile_command as compile_merge
+    merged = compile_merge(cmd, args)
+    if merged is not None:
+        return merged
     from .stacks import compile_command as compile_stack
     stack = compile_stack(cmd, args)
     if stack is not None:

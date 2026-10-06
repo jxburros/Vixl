@@ -133,9 +133,22 @@ vixl text add 'Hello' --name title --size 96 --font DejaVuSans.ttf --color white
 vixl text title --text 'Good evening' --size 80 --align center
 vixl text title --stroke-width 2 --stroke-color black
 vixl rasterize title
+vixl merge-layers paper back disc --name art
+vixl flatten --keep-hidden
 ```
 
-Text remains editable until rasterized. Custom `--font /path/to/font.ttf` imports and embeds a font. Other font names use Pillow's system-font lookup. Font substitution is never silent. HarfBuzz shaping and shared PNG/SVG outlines support ligatures, combining marks and scripts covered by the selected font, with multiline text, wrapping/fitting and path/warp layouts. Bitmap/color fonts and unsupported Unicode isolate controls retain appearance fallbacks. See [local artistic filters and SVG policies](artistic-filters.md).
+Text remains editable until rasterized. `rasterize` bakes everything the layer draws into a raster layer: effects,
+mask, layer styles (drop shadow, glow, stroke, overlays), clipping, opacity and transform; the blend mode stays.
+`merge-layers` (JSON `{"type": "merge-layers", "targets": [...]}`; `merge` is accepted) draws the listed layers,
+which must share a parent, into one raster layer at the topmost one's place in the stack, named after it unless
+`--name` is given; a listed group brings its members, and hidden listed layers are discarded. Blend modes are
+composited among the merged layers; how a merged layer blended with the layers below the merge (or with the canvas
+background) cannot be kept in pixels, so the merged layer uses the normal blend mode and the result warns where that
+can change the look. A layer clipped to a merged layer is clipped to the merged layer. `flatten` draws every visible
+top-level layer of the page into one canvas-size raster layer named `flattened` (master-page layers are not part of
+it, and pixels outside the canvas are dropped); hidden layers are discarded unless `--keep-hidden` keeps them in
+place. The originals are kept in the new layer's `provenance` (`merged` / `flattened`), and each operation is one
+history entry, so `undo` restores them. Custom `--font /path/to/font.ttf` imports and embeds a font. Other font names use Pillow's system-font lookup. Font substitution is never silent. HarfBuzz shaping and shared PNG/SVG outlines support ligatures, combining marks and scripts covered by the selected font, with multiline text, wrapping/fitting and path/warp layouts. Bitmap/color fonts and unsupported Unicode isolate controls retain appearance fallbacks. See [local artistic filters and SVG policies](artistic-filters.md).
 
 ## Selections, masks, effects
 

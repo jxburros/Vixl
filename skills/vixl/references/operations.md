@@ -60,7 +60,9 @@ The authoritative schema is always `vixl schema` / `GET /schema` / `vixl://opera
 | `raise`, `lower`, `top`, `bottom` | `target` |
 | `reorder` | `target`, `above` *or* `below` (layer) |
 | `select-layer` | `target` — makes it the active layer |
-| `rasterize` | `target` — bakes text/shape/etc. to pixels (remove styles/clip first) |
+| `rasterize` | `target` — bakes text/shape/etc. to pixels, with effects, mask, layer styles and clipping |
+| `merge-layers` | **`targets`** (≥2, one parent; groups bring their members), `name` — one raster layer at the topmost's slot; blends composite among the merged layers only (warns otherwise); hidden targets are discarded |
+| `flatten` | `name` (default `flattened`), `keep_hidden` — the page's visible top-level layers become one canvas-size raster layer |
 | `group` | **`name`**, **`targets`** (list), `above`/`below` (a layer: the new group's z-slot; default its topmost member's) — children keep local coordinates; nest ≤16. Edit a member by canvas coordinates with `space: "canvas"` on `move` or `shape`/`text` with `target`. |
 | `ungroup` | `target` |
 | `clip` | `target`, `base` (sibling) — multiplies target alpha by base alpha; `release: true` removes |

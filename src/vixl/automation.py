@@ -3,7 +3,7 @@
 from copy import deepcopy
 
 from .errors import require
-from .model import finite
+from .model import MAX_LAYERS, finite
 
 TYPES = (
     "suite-set",
@@ -152,7 +152,7 @@ def validate_state(state):
         named(name)
         require(
             isinstance(targets, list)
-            and 0 < len(targets) <= 512
+            and 0 < len(targets) <= MAX_LAYERS
             and all(isinstance(t, str) for t in targets),
             "Role needs layer identifiers",
         )
@@ -209,7 +209,7 @@ def expand(project, op):
         ]
     if kind == "arrange-grid":
         targets = op["targets"]
-        require(0 < len(targets) <= 512, "Grid needs 1–512 targets")
+        require(0 < len(targets) <= MAX_LAYERS, f"Grid needs 1–{MAX_LAYERS} targets")
         layers = [project.layer(t) for t in targets]
         require(len({x["id"] for x in layers}) == len(layers), "Grid targets must be unique")
         require(len({x.get("parent") for x in layers}) == 1, "Grid targets must be siblings")
@@ -268,7 +268,7 @@ def expand(project, op):
         require(step["role"] in bindings, f"Missing motion role: {step['role']}")
         targets = bindings[step["role"]]
         targets = [targets] if isinstance(targets, str) else targets
-        require(isinstance(targets, list) and 0 < len(targets) <= 512, "Invalid role binding")
+        require(isinstance(targets, list) and 0 < len(targets) <= MAX_LAYERS, "Invalid role binding")
         after = step.get("after")
         require(after is None or after in ends, "Motion dependencies must reference an earlier step")
         start = (ends[after] if after else offset) + parse_time(step.get("start", 0), markers=markers) / scale
@@ -373,7 +373,7 @@ def schemas(add):
     from .workflow_schema import RECIPE, SUITE
 
     obj = {"type": "object"}
-    targets = {"type": "array", "items": S, "minItems": 1, "maxItems": 512}
+    targets = {"type": "array", "items": S, "minItems": 1, "maxItems": MAX_LAYERS}
     add("suite-set", {"name": S, "suite": SUITE}, ["name", "suite"])
     add(
         "suite-capture",

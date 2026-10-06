@@ -109,7 +109,8 @@ vixl scale beam --x -1                   # negative factors mirror (--x/--y per 
 vixl crop portrait 0 0 300 400           # X Y W H in the source raster
 vixl opacity portrait 0.75               # or 75% (0–1 scale; a bare 75 is an error)
 vixl blend portrait multiply             # normal multiply screen overlay darken lighten difference add subtract
-vixl rasterize title
+vixl rasterize title                     # bakes effects, styles and clipping into pixels
+vixl merge-layers back disc --name art   # one raster layer at the topmost's slot ; vixl flatten [--keep-hidden]
 vixl group stripes stripe1 stripe2 [--above LAYER|--below LAYER] ; vixl ungroup stripes
 vixl stack names --targets first last company --gap 20 --align center --justify center --width 1000 --height 400   # auto-layout; empty hide_if_empty text collapses
 vixl stack names --direction horizontal --gap 8 ; vixl stack names --remove ; vixl text first --hide-if-empty

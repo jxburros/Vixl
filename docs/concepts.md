@@ -79,8 +79,9 @@ photo is not overwritten. Linked files are a separate, explicitly trusted mode; 
 
 Effects remain in a stack that can be edited, disabled or removed. A mask controls layer
 visibility: white reveals, black hides. Selection state affects an effect **when it is
-added**; clear the selection for whole-layer effects. Flattening or rasterizing a layer
-bakes editable detail into pixels; keep a checkpoint first.
+added**; clear the selection for whole-layer effects. Rasterizing, merging or flattening layers
+bakes editable detail into pixels (the originals stay in the new layer's `provenance`, and undo
+restores them); keep a checkpoint first.
 
 ## Variables, swatches and styles
 
@@ -116,6 +117,6 @@ Preview answers “does it look right?” Use all three. Bounds checks cannot es
 legibility, provider quality or an artistic outcome; saved suites cover their declared
 rules and sample times. [Production workflows](production.md) explains coverage and repairs.
 
-Defaults include 40 MP per canvas/layer, 16,384 px per side, 512 layers and 10,000 operations
+Defaults include 40 MP per canvas/layer, 16,384 px per side, 4,096 layers and 10,000 operations
 per batch. See [architecture](architecture.md#resource-policy) for the complete resource policy
 and [coverage](coverage.md) for unsupported features.

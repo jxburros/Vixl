@@ -80,7 +80,8 @@ Pixels:    pixel-art, pixel-draw, pixel-palette, pixels [LAYER],
            export-animation --out FILE --format gif|apng|webp|mp4|webm|sheet [--animation NAME] [--scale N]
                             [--sampling nearest|smooth] [--colors N] [--quality N]
 Editing:   move, resize, scale, rotate, pivot, flip, crop, opacity, blend, align,
-           select-layer, select wand|lasso|path|rect|ellipse|color, mask, filter, effect, rasterize
+           select-layer, select wand|lasso|path|rect|ellipse|color, mask, filter, effect, rasterize,
+           merge-layers LAYER LAYER… [--name N], flatten [--keep-hidden] [--name N]
 Effects:   brightness, contrast, saturation, hue, exposure, gamma, temperature,
            tint, white-balance, shadows, highlights, blur, sharpen, denoise, grayscale, invert,
            posterize, threshold, noise, grain, vignette, auto-tone, auto-color, auto-contrast;
