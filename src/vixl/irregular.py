@@ -551,7 +551,6 @@ def execute_irregular(project, op):
 # tear
 
 
-
 MODES = ("mask", "clip", "path")
 
 

@@ -175,7 +175,8 @@ shapes["face"], shapes["rim"]      # point arrays;  shapes["fibres"]  ->  (start
 
 ## Limits
 
-At most 256 layers per `irregular` operation; each outline is limited to about 3,500 sampled
-points (a path takes 8,192 commands), so very long outlines get a coarser sampling; fibres are
-capped at 1,500 per edge. Text and raster layers are refused by `irregular`, and `tear` needs a
-box (a layer, or `width` and `height`).
+A layer drawn with `repeat` is still one layer, so its copies stay identical: `duplicate` it into
+separate layers first when each copy should differ. At most 256 layers per `irregular` operation;
+each outline is limited to about 3,500 sampled points (a path takes 8,192 commands), so very long
+outlines get a coarser sampling; fibres are capped at 1,500 per edge. Text and raster layers are
+refused by `irregular`, and `tear` needs a box (a layer, or `width` and `height`).
