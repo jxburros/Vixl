@@ -7,7 +7,6 @@ structured code/field/suggestions, and every document tool accepts an optional `
 import base64
 import binascii
 from copy import deepcopy
-import functools
 from io import BytesIO
 import json
 import os
@@ -18,8 +17,10 @@ from .fileio import file_lock
 from PIL import Image as PILImage
 from pydantic import Field, WithJsonSchema
 
+from . import calls
 from .assets import read_bounded
 from .errors import VixlError, require
+from .mcp_runtime import Runtime
 from .schema import operation_schema
 
 COORDINATE_NOTE = (
@@ -293,7 +294,7 @@ def typed_ai(session, command, words=(), document=None, **options):
 
 
 # Tools both split servers need: the AI server addresses layers by name and checks its results.
-SHARED_TOOLS = {"vixl_workspace_list", "vixl_document_open", "vixl_document_inspect", "vixl_render_preview"}
+SHARED_TOOLS = {"vixl_workspace_list", "vixl_document_open", "vixl_document_inspect", "vixl_render_preview", "vixl_job"}
 AI_INSTRUCTIONS = (
     "Provider-backed AI editing for Vixl documents in the configured workspace: generate, inpaint, extend, "
     "upscale, remove objects or backgrounds, select subjects/objects, and describe/detect/OCR. Each tool takes "
@@ -345,28 +346,20 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
 
     def selected(name):
         if tools == "compact":
-            return name in SHARED_TOOLS | {"vixl_document_create", "vixl_operations_apply", "vixl_operation_schema",
+            # The compact set stays at 12 tools: job ids are polled through vixl_workflow instead of vixl_job.
+            return name in (SHARED_TOOLS - {"vixl_job"}) | {"vixl_document_create", "vixl_operations_apply", "vixl_operation_schema",
                 "vixl_workflow", "vixl_workflow_schema", "vixl_export_file", "vixl_import_image", "vixl_import_document"}
         if tools == "all" or name in SHARED_TOOLS:
             return True
         return is_ai_tool(name) == (tools == "ai")
 
+    runtime = Runtime(session, compact_json, ToolError, poll_with_workflow=tools == "compact")
+    server.vixl_runtime = runtime
+
     def tool(fn):
-        """Register a tool returning minified JSON, with structured errors."""
-
-        @functools.wraps(fn)
-        def wrapper(*args, **kwargs):
-            try:
-                result = fn(*args, **kwargs)
-            except VixlError as exc:
-                raise ToolError(compact_json(exc.as_dict())) from exc
-            if isinstance(result, dict):
-                return compact_json(result)
-            return result
-
-        wrapper.__annotations__ = {**fn.__annotations__}
-        if wrapper.__annotations__.get("return") is dict:
-            wrapper.__annotations__["return"] = str
+        """Register a tool returning minified JSON, with structured errors. It runs in a worker
+        thread with progress, background jobs and retry ids (mcp_runtime.py)."""
+        wrapper = runtime.wrap(fn)
         if selected(fn.__name__):
             server.tool(structured_output=False)(wrapper)
         return wrapper
@@ -393,10 +386,16 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         branch/merge collaboration, production, libraries and jobs. Discover action fields with vixl_workflow_schema.
         Paths stay in workspace. Branch merge and group apply default to dry_run=true.
 
-        Long jobs: submit with start=true, then status. AI jobs require an explicit configured provider.
+        Long jobs: submit with start=true, then status. A call that returned {job: job_…} is followed with
+        action status/cancel and request {id, wait?}. AI jobs require an explicit configured provider.
         Repairs preserve test suites. Unknown/unmeasurable checks report needs_review.
         """
         from .workflows import dispatch
+
+        if action in ("status", "cancel") and str(request.get("id", "")).startswith("job_"):
+            # A call that became a job (see vixl_job); the compact tool set polls it here.
+            return runtime.job("result" if action == "status" else action, request["id"],
+                               min(float(request.get("wait", 0)), 25))
         return dispatch(session, action, request, document)
 
     @tool
@@ -667,6 +666,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
             image, summary = compare(
                 project, before, after, max_width=max_width, max_height=max_height, mode=mode
             )
+            summary["document"] = session.relative(project.path)
         return [compact_json(summary), Image(data=encode_png(image, 2_097_152), format="png")]
 
     @tool
@@ -833,6 +833,20 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
             fill_mode=fill_mode,
             alpha=alpha,
         )
+
+    @tool
+    def vixl_job(
+        action: Literal["status", "result", "cancel", "list"] = "status",
+        id: str | None = None,
+        wait: Annotated[float, Field(ge=0, le=50, description="Seconds to wait for the job to finish")] = 0,
+    ) -> dict:
+        """Follow a long call. A call still running after about 40 s (VIXL_MCP_INLINE_SECONDS), or one sent
+        with as_job=true, returns {status: running, job: ID} while it carries on. status reports
+        progress (wait= blocks until it ends or the time is up), result returns the call's normal result, cancel
+        stops a queued job or a running one at its next checkpoint, list shows recent jobs. Also accepts the ID
+        of a durable workflow job. A call that timed out on your side is in list: read its result instead
+        of sending it again (or retry with the same request_id)."""
+        return runtime.job(action, id, wait)
 
     @tool
     def vixl_measure_spacing(
@@ -1126,6 +1140,8 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
                 quality=quality,
                 colors=colors,
                 overwrite=overwrite,
+                progress=calls.progress_dict,
+                cancelled=calls.cancelled,
             )
             result["output"] = session.relative(destination)
             if "metadata" in result:
@@ -1369,6 +1385,15 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
     def operations_reference() -> str:
         return json.dumps(operation_schema())
 
+    poll = "vixl_workflow (action status, request {id})" if tools == "compact" else "vixl_job"
+    server._mcp_server.instructions += (
+        f" Results name their document. A call still running after ~40 s returns a job: poll {poll} and do not "
+        "resend it (heavy calls can also pass as_job=true; mutating calls take request_id so a retry never "
+        "applies twice)."
+    )
+    if session.require_document:
+        server._mcp_server.instructions += " Every document tool needs document= on every call."
     for registered in server._tool_manager.list_tools():
         registered.parameters = slim_schema(registered.parameters)
+        runtime.watch_arguments(registered)
     return server

@@ -12,7 +12,7 @@ from pathlib import Path
 import re
 import zipfile
 
-from . import __version__
+from . import __version__, calls
 from .assets import decode, read_bounded
 from .errors import VixlError, require
 from .history import diff, patch
@@ -311,6 +311,8 @@ class Project:
         candidate._resource_budget = self.limits.max_operations - len(operations)
         before = candidate.inspect()
         for index, operation in enumerate(operations):
+            calls.check_cancelled()  # A cancelled batch leaves the document untouched: nothing is committed yet.
+            calls.progress(index, len(operations), operation["type"])
             try:
                 if "page" in operation and operation["type"] != "page":
                     from .pages import select
@@ -332,6 +334,7 @@ class Project:
             except (KeyError, TypeError, ValueError, OverflowError) as exc:
                 error = VixlError("invalid_operation", f"Malformed operation: {exc}")
                 raise located(error, index, operation, len(operations)) from exc
+        calls.progress(len(operations), len(operations), "checking")
         from .validation import check_state
 
         try:

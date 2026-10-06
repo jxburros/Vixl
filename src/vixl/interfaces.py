@@ -4,7 +4,9 @@ from contextlib import contextmanager
 import hmac
 from pathlib import Path
 from threading import RLock
+from weakref import WeakKeyDictionary
 
+from .calls import current_client, note_document
 from .fileio import file_lock
 
 from .assets import add_encoded
@@ -61,19 +63,48 @@ class Session:
     """Workspace-scoped documents kept loaded between calls.
 
     Several documents can be open at once (bounded LRU); every method takes an optional
-    ``document`` path and otherwise uses the active document."""
+    ``document`` path and otherwise uses the active document. The active document belongs to
+    one MCP client session (see ``calls.py``), so clients sharing a server cannot redirect each
+    other's edits; with ``require_document`` there is no active document and ``document`` is
+    mandatory."""
 
     MAX_OPEN = 8
 
-    def __init__(self, path=None, limits=None, *, workspace=None):
+    def __init__(self, path=None, limits=None, *, workspace=None, require_document=False):
         self.limits = limits or Limits()
         self.workspace = Path(workspace or (Path(path).resolve().parent if path else Path.cwd())).resolve()
         require(self.workspace.is_dir(), "Workspace must be an existing directory")
-        self.path = None
+        self.require_document = require_document
+        self._path = None  # The server-wide default: the document it started with, or set outside MCP.
+        self._client_paths = WeakKeyDictionary()
         self.documents = {}
         self._mutex = RLock()
         if path:
             self.open(path if workspace else Path(path).resolve())
+
+    @property
+    def path(self):
+        client = current_client()
+        return self._path if client is None else self._client_paths.get(client, self._path)
+
+    @path.setter
+    def path(self, value):
+        client = current_client()
+        if client is None:
+            self._path = value
+        else:
+            self._client_paths[client] = value
+
+    def active(self):
+        """The calling client's active document, unless the server insists on ``document=``."""
+        require(
+            not self.require_document,
+            "document= is required on this server (started with --require-document); pass the .vixl path",
+            "document_required",
+            field="document",
+        )
+        require(self.path is not None, "Create or open a document first", "no_project")
+        return self.path
 
     def resolve(self, path):
         resolved = (self.workspace / path).resolve()
@@ -98,6 +129,7 @@ class Session:
                 break
             del self.documents[oldest]  # Everything is already saved; reopening reloads it.
         self.path = path
+        note_document(path)
 
     def open(self, path):
         with self._mutex:
@@ -113,8 +145,8 @@ class Session:
         with self._mutex:
             resolved = self.resolve(path)
             require(resolved.suffix.lower() == ".vixl", "Document path must end in .vixl", field="path")
-            require(resolved.parent.is_dir(), "Destination directory must exist", field="path")
             require((size is None) != (width is None or height is None), "Provide width and height, or a named size", field="size")
+            require(resolved.parent.is_dir(), "Destination directory must exist", field="path")
             with file_lock(str(resolved)):
                 require(not resolved.exists(), "Destination already exists; open it instead", field="path")
                 if size is not None:
@@ -130,11 +162,13 @@ class Session:
 
     def close(self, document=None):
         with self._mutex:
-            path = self.resolve(document) if document else self.path
+            path = self.resolve(document) if document else self.active()
             require(path in self.documents, "Document is not open", "no_project", field="document")
+            note_document(path)
             del self.documents[path]
             if self.path == path:
-                self.path = next(reversed(self.documents), None)
+                # Another client's document must not become this client's active one.
+                self.path = next(reversed(self.documents), None) if current_client() is None else None
             return self.open_documents()
 
     def open_documents(self):
@@ -161,8 +195,8 @@ class Session:
                 if path not in self.documents:
                     require(path.is_file(), f"Document does not exist: {document}", "not_found", field="document")
             else:
-                require(self.path is not None, "Create or open a document first", "no_project")
-                path = self.path
+                path = self.active()
+            note_document(path)
             with file_lock(str(path)):
                 entry = self.documents.get(path)
                 try:
@@ -713,14 +747,25 @@ def serve(path, host="127.0.0.1", port=8765, token=None, limits=None, *, open_br
         uvicorn.run(app, host=host, port=port)
 
 
-def mcp_server(path=None, limits=None, *, workspace=None, schema="full", planner=False, tools="all"):
+def require_document_default():
+    """``VIXL_REQUIRE_DOCUMENT=1`` makes every document call name its document (see Session)."""
+    import os
+
+    return os.environ.get("VIXL_REQUIRE_DOCUMENT", "").strip().lower() in ("1", "true", "yes", "on")
+
+
+def mcp_server(path=None, limits=None, *, workspace=None, schema="full", planner=False, tools="all",
+               require_document=None):
     try:
         from .mcp_tools import build_server
         import mcp.server.fastmcp  # noqa: F401
     except ImportError as exc:
         raise VixlError("missing_dependency", "Install vixl-engine[mcp]") from exc
 
-    return build_server(Session(path, limits, workspace=workspace), schema=schema, planner=planner, tools=tools)
+    if require_document is None:
+        require_document = require_document_default()
+    session = Session(path, limits, workspace=workspace, require_document=require_document)
+    return build_server(session, schema=schema, planner=planner, tools=tools)
 
 
 def mcp_http_app(server, *, token=None):
