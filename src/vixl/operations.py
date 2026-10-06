@@ -513,7 +513,7 @@ def execute(project, op):
                 color(resolve_color(op.get(key, default), project.state))
                 layer[key] = op.get(key, default)
             layer["direction"] = op.get("direction", "vertical")
-            layer.update({k: deepcopy(op[k]) for k in ("stops", "angle") if k in op})
+            layer.update({k: deepcopy(op[k]) for k in ("stops", "angle", "falloff") if k in op})
         else:
             font, role = resolve_font(project, op.get("font"))
             layer.update(

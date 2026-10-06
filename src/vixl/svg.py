@@ -248,10 +248,9 @@ class Exporter:
                 x2=cx + qx / (2 * square),
                 y2=cy + qy / (2 * square),
             )
-        for stop in settings.get("stops") or [
-            {"offset": 0, "color": settings.get("start", "black")},
-            {"offset": 1, "color": settings.get("end", "white")},
-        ]:
+        from .design import gradient_stops
+
+        for stop in gradient_stops(settings, self.project.state):
             fill, alpha = paint(stop["color"], self.project.state)
             node(gradient, "stop", offset=stop["offset"], stop_color=fill, stop_opacity=alpha)
         return f"url(#{ident})"

@@ -60,7 +60,7 @@ indexes or colors; `layout-apply colors: {…}`). `palette-generate` only adds n
 
 ## Finishing looks and styles
 
-`look` applies a named finish in one operation (glow, neon, soft-shadow, hard-shadow, outline, gradient, grain,
+`look` applies a named finish in one operation (glow, neon, soft-shadow, hard-shadow, outline, gradient, soft-halo, grain,
 paper, film, duotone, risograph, sketch, watercolor, halftone); `radial-repeat` makes rosettes and mandalas;
 `vixl_styles` serves 28 design styles with premade checks. See [looks](../../../docs/looks.md) and
 [styles](../../../docs/styles.md).

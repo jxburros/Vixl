@@ -174,6 +174,31 @@ def group_matrix(item, resolved, local_bounds):
     return matrix
 
 
+def gradient_edges(project, layer, box, width, height, opacity=1.0, threshold=0.12):
+    """The sides of a fade-to-transparent gradient layer's box that are inside the canvas but still
+    visibly painted: a hard rectangular edge the fade was meant to hide."""
+    from .design import gradient_stops, resolve_color
+    from .design_render import gradient_image
+    from .render import color
+
+    # Rotated, masked or effected (blurred, feathered) layers have other edges; they are left out.
+    if (layer["type"] != "gradient" or layer.get("rotation", 0) or layer.get("skew_x") or layer.get("skew_y")
+            or layer.get("mask") or any(effect.get("enabled", True) for effect in layer.get("effects", []))):
+        return []
+    stops = gradient_stops(layer, project.state)
+    if all(color(resolve_color(stop["color"], project.state))[3] for stop in stops):
+        return []
+    x, y, w, h = box
+    inside = {"top": 0.5 < y < height, "bottom": 0 < y + h < height - 0.5,
+              "left": 0.5 < x < width, "right": 0 < x + w < width - 0.5}
+    if not any(inside.values()):
+        return []
+    size = (max(2, min(256, math.ceil(layer["width"]))), max(2, min(256, math.ceil(layer["height"]))))
+    alpha = np.asarray(gradient_image(project, layer, size).getchannel("A"), dtype=float) / 255 * opacity
+    edges = {"top": alpha[0], "bottom": alpha[-1], "left": alpha[:, 0], "right": alpha[:, -1]}
+    return [side for side in ("top", "bottom", "left", "right") if inside[side] and edges[side].max() > threshold]
+
+
 def geometry_bounds(layer):
     """(left, top, right, bottom) of what the layer actually draws, in its own box's pixel space
     (the origin is the box's top-left corner). Shapes report their path geometry including stroke,
@@ -418,6 +443,16 @@ def check_design(
                       f"{item['name']!r} does not fit its {layer['width']}×{layer['height']} text box at "
                       f"{layer['size']} px and is cut off (it needs {needed[0]}×{needed[1]}); enlarge the box "
                       "with text-layout or shrink the text with fit-text", [item], needs=list(needed))
+        for item in layers:
+            sides = gradient_edges(candidate, resolved[item["id"]], geometry[item["id"]], width, height,
+                                   math.prod(x["opacity"] for x in (item, *ancestors(item))))
+            if sides:
+                issue("bounds", "warning",
+                      f"{item['name']!r} fades to transparent but its "
+                      f"{' and '.join([', '.join(sides[:-1]), sides[-1]] if len(sides) > 1 else sides)} edge"
+                      f"{'s are' if len(sides) > 1 else ' is'} not transparent, so its box shows as a visible "
+                      "rectangle. End the fade at the box edge (a radial gradient ends at its inscribed ellipse), "
+                      "enlarge the box, or run it past the canvas edge", [item], code="gradient-edge", sides=sides)
 
     alphas, inks = {}, {}
 

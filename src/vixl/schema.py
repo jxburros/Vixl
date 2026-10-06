@@ -111,6 +111,7 @@ def _operation_schema():
             "direction": enum("horizontal", "vertical", "radial", "angled"),
             "stops": {"type": "array", "items": {"type": "object"}},
             "angle": N,
+            "falloff": enum("linear", "smooth", "ease", "quadratic", "gaussian"),
             "x": COORD,
             "y": COORD,
         },
