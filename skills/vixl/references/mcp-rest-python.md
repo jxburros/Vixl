@@ -35,6 +35,8 @@ so switching documents never loses work. External edits to the file are detected
 
 **Long calls:** a call still running after ~40 s (`VIXL_MCP_INLINE_SECONDS`) returns
 `{"status":"running","job":"job_…"}` and carries on; `as_job: true` on heavy tools does so at once.
+Under load (more calls than `VIXL_MCP_WORKERS`) calls become jobs sooner; `queued: true` means it
+has not started yet.
 Follow it with `vixl_job(action="status"|"result"|"cancel"|"list", id, wait=…)`; never resend a call
 that timed out. Mutating tools take `request_id`: repeating a call with the same id returns the first
 result (`"replayed": true`) instead of applying twice.
