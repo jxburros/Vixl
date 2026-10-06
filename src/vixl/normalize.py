@@ -49,6 +49,11 @@ TYPE_ALIASES = {
     "set-field": "field-set",
     "field-update": "field-set",
     "sketch": "drawing",
+    "add-chart": "chart",
+    "graph": "chart",
+    "update-chart": "chart",
+    "set-chart-data": "chart-data",
+    "update-chart-data": "chart-data",
 }
 SHAPE_TYPES = {
     "rect": ("rectangle", {}),

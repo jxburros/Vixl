@@ -1337,12 +1337,11 @@ def execute(project, op):
             from .operations import unique_name
 
             target["name"] = unique_name(project, op["name"])
-        if "x" in op:
-            target["x"] = op["x"]
-        if "y" in op:
-            target["y"] = op["y"]
-        size = (op["width"], op["height"]) if "width" in op or "height" in op else None
-        if size:
+        for axis in ("x", "y"):
+            if axis in op:
+                target[axis], target["constraints"] = op[axis], {}
+        size = None
+        if "width" in op or "height" in op:
             size = (op.get("width", target["content_width"]), op.get("height", target["content_height"]))
             project.limits.size(*size)
         return redraw(project, target, recipe, size)
@@ -1415,10 +1414,17 @@ def validate_chart(layer, state):
     require(isinstance(layer["chart"], dict) and len(json.dumps(layer["chart"])) <= 4_000_000, "Invalid chart recipe",
             "invalid_project")
     check_options(state, layer["chart"])
-
-
-def part_of(layer):
-    return layer.get("chart_part")
+    summary = layer["chart"].get("summary", {})
+    colors, scale = summary.get("colors", []), summary.get("scale", {})
+    require(isinstance(summary, dict) and isinstance(colors, list) and len(colors) <= 400
+            and all(isinstance(c, str) for c in colors) and summary.get("legend") in (None, "top", "bottom", "left", "right")
+            and isinstance(scale, dict) and all(isinstance(scale.get(k, 0), (int, float)) for k in ("min", "max", "step")),
+            "Invalid chart summary", "invalid_project")
+    for key in ("label_format", "percent_format"):
+        if key in summary:
+            parse_format(summary[key])
+    if "format" in scale:
+        parse_format(scale["format"])
 
 
 def schemas(add):

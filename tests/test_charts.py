@@ -337,11 +337,28 @@ def test_service_sessions_resolve_csv_in_their_workspace(tmp_path):
         session.apply([{"type": "chart", "csv": "../outside.csv"}])
 
 
+def test_rest_service_draws_and_edits_charts(tmp_path):
+    from fastapi.testclient import TestClient
+
+    from vixl.interfaces import create_app
+
+    Project(600, 400, "#ffffff").save(tmp_path / "doc.vixl")
+    (tmp_path / "cups.csv").write_text("Month,Cups\nJan,10\nFeb,20\n")
+    client = TestClient(create_app(tmp_path / "doc.vixl"))
+    drawn = client.post("/operations", json={"operations": [{"type": "chart", "name": "S", "csv": "cups.csv"}]})
+    assert drawn.status_code == 200, drawn.text
+    fixed = client.post("/operations", json={"operations": [{"type": "chart-data", "target": "S", "set": [{"category": "Feb", "value": 25}]}]})
+    assert fixed.status_code == 200 and Project.load(tmp_path / "doc.vixl").layer("S")["chart"]["series"][0]["values"] == [10, 25]
+    assert client.get("/render").content.startswith(b"\x89PNG")
+    outside = client.post("/operations", json={"operations": [{"type": "chart", "csv": "../cups.csv"}]})
+    assert outside.status_code == 403
+
+
 def test_table_rows_and_chartjs_spellings_are_accepted():
     p = Project(600, 400)
     p.apply({"type": "chart", "name": "T", "table": [["", "A", "B"], ["x", 1, 2], ["y", 3, 4]]})
     assert p.layer("T")["chart"]["series"][1] == {"name": "B", "values": [2, 4]}
-    result = p.apply({"type": "chart", "name": "J", "chartType": "column", "labels": ["a", "b"],
+    result = p.apply({"type": "add-chart", "name": "J", "chartType": "column", "labels": ["a", "b"],
                       "datasets": [{"label": "S", "data": [1, 2], "backgroundColor": "#ff0000"}]})
     chart = p.layer("J")["chart"]
     assert chart["kind"] == "bar" and chart["series"] == [{"name": "S", "values": [1, 2], "color": "#ff0000"}]
@@ -447,6 +464,17 @@ def test_bad_charts_are_rejected_with_a_reason(op, message):
     with pytest.raises(VixlError, match=message):
         p.apply(op)
     assert p.render().tobytes() == before, "a rejected chart operation changes nothing"
+
+
+def test_a_tampered_recipe_is_refused():
+    p = make("bar", SALES)
+    p.layer("Sales")["chart"]["summary"]["legend"] = "diagonal"
+    with pytest.raises(VixlError, match="Invalid chart summary"):
+        p.apply({"type": "hide", "target": "Sales"})
+    q = make("bar", SALES)
+    q.layer("Sales")["chart"]["kind"] = "radar"
+    with pytest.raises(VixlError, match="kind"):
+        q.apply({"type": "hide", "target": "Sales"})
 
 
 def test_unknown_category_suggests_the_closest():
