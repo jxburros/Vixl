@@ -252,7 +252,9 @@ REST adds `GET /sizes?category=`, `GET /layouts`, `GET /brushes`, `GET /guide?br
 
 Python: `Project.sized("letter", bleed=True)`, `project.export("flyer.pdf", color_space="cmyk", icc_profile=bytes)`, `vixl.colors` (parse, describe, harmony, scale, mix, contrast_ratio, simulate_vision, cmyk_image), `vixl.sizes` (resolve, catalog), `vixl.layouts.catalog()`, `vixl.brushes.catalog()`, `vixl.timeline` (project_at, render_at, contact_sheet, export_timeline) and `vixl.exports.export_icons`.
 
-## Pages, forms, drawings and lyric videos (unreleased)
+<a id="pages-forms-drawings-and-lyric-videos-unreleased"></a>
+
+## Pages, forms, drawings and lyric videos (0.19)
 
 All editing is ordinary operations. MCP: `vixl_render_preview` gains `page` (`"all"` for a contact
 sheet), `values` and `show_fields`; `vixl_export_file` gains `page`, `pages`, `pdf_content`,

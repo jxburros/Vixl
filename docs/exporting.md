@@ -39,15 +39,14 @@ reported layers to simplify the design, or choose appearance policy if raster co
 acceptable. See [design tools](design-tools.md) and [artistic filters](artistic-filters.md)
 for supported native effects and fallback behavior.
 
-**Latest source addition:** CLI/MCP image exports default to `alpha=auto`, producing RGB
+**Since 0.19.0:** CLI/MCP image exports default to `alpha=auto`, producing RGB
 when every pixel is opaque and RGBA when needed. `--alpha keep` forces RGBA;
 `--alpha flatten --background '#ffffff'` composites onto white. Applies to PNG, WebP,
 TIFF and AVIF. Python `Project.export` retains `alpha="keep"` by default for compatibility.
-These options are documented under [Unreleased](../CHANGELOG.md); the v0.18.0 tag predates
-them. Use a source checkout containing those changes or consult your installed help.
+These options are available in [0.19.0](../CHANGELOG.md#0190) and later.
 
 ```python
-# Latest main only for the alpha argument:
+# Requires 0.19.0 or later for the alpha argument:
 project.export("opaque.png", alpha="auto")
 project.export("transparent.png", alpha="keep")
 project.export("flattened.png", alpha="flatten", background="#ffffff")
