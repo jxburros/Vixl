@@ -211,7 +211,7 @@ def march() -> Doc:
     bubble(d, "sayPip1", "TO THE COUNCIL!", 640, 330, 500, 2500, 56)
     bubble(d, "sayPip2", "Time to get...\nSERIOUS.", 560, 280, 3500, 5400, 48)
     vignette(d, "#000000a0", 0.6)
-    narrate(d, "narr", "Soon, an army was on the march.", 100, 1900)
+    narrate(d, "narr", "Soon, an army was on the march.", 100, 1900, y=74)
     for b in ("sayPip1", "sayPip2", "zzz"):
         d.ops.append({"type": "top", "target": b})
     return d
@@ -341,7 +341,7 @@ def sneeze() -> Doc:
     d.key("flash", "opacity", 3430, 0.9)
     d.key("flash", "opacity", 3800, 0)
     vignette(d, "#000000a8", 0.55)
-    narrate(d, "narr", "Meanwhile, one very tall sleeper...", 100, 1700, y=14, size=44)
+    narrate(d, "narr", "Meanwhile, one very tall sleeper...", 100, 1700, y=56, size=44)
     for b in ("sayPip", "ah1", "ah2", "ah3", "choo", "flash"):
         d.ops.append({"type": "top", "target": b})
     return d
@@ -472,6 +472,10 @@ def title() -> Doc:
     d.key("pip_armL", "rotation", 0, 0)
     d.key("pip_armL", "rotation", 2300, 100)
     blink(d, ["pip_eyeL", "pip_eyeR"], [2600, 3800])
+    d.solid("fadeOut", "#000000")
+    d.key("fadeOut", "opacity", 0, 0)
+    d.key("fadeOut", "opacity", 3900, 0)
+    d.key("fadeOut", "opacity", 4500, 1, "ease-in")
     return d
 
 

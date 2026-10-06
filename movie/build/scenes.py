@@ -304,6 +304,9 @@ def council() -> Doc:
     d.ops.append({"type": "top", "target": "sayPip1"})
     for b in ("sayPip2", "sayE2", "sayE1", "sayE3", "bang"):
         d.ops.append({"type": "top", "target": b})
+    d.solid("fadeIn", "#000000")  # open from black
+    d.key("fadeIn", "opacity", 0, 1)
+    d.key("fadeIn", "opacity", 700, 0, "ease-out")
     return d
 
 

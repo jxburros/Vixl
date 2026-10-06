@@ -15,6 +15,8 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+import numpy as np  # noqa: E402
+
 import scenes  # noqa: E402
 import scenes_b  # noqa: E402
 import score  # noqa: E402
@@ -27,13 +29,13 @@ OUTPUT = "the-germ-king.mp4"
 
 # (scene master, duration ms, optional slow camera move [from, to])
 SHOTS = [
-    ("01-council", 9000, [[0.5, 0.55, 1.0], [0.42, 0.62, 1.12]]),
+    ("01-council", 9000, [[0.5, 0.5, 1.0], [0.5, 0.53, 1.06]]),
     ("02-shrink", 6000, [[0.5, 0.5, 1.0], [0.4, 0.6, 1.22]]),
-    ("03-arrival", 7000, [[0.5, 0.52, 1.0], [0.46, 0.6, 1.08]]),
-    ("04-coronation", 7000, [[0.5, 0.5, 1.0], [0.5, 0.55, 1.1]]),
-    ("05-march", 5500, [[0.42, 0.55, 1.08], [0.58, 0.55, 1.08]]),
-    ("06-sneeze", 5200, [[0.5, 0.5, 1.0], [0.5, 0.5, 1.05]]),
-    ("07-aftermath", 9500, [[0.5, 0.5, 1.0], [0.42, 0.6, 1.14]]),
+    ("03-arrival", 7000, [[0.5, 0.5, 1.0], [0.5, 0.55, 1.06]]),
+    ("04-coronation", 7000, [[0.5, 0.5, 1.0], [0.5, 0.52, 1.07]]),
+    ("05-march", 5500, [[0.45, 0.5, 1.07], [0.55, 0.5, 1.07]]),
+    ("06-sneeze", 5200, [[0.5, 0.5, 1.0], [0.5, 0.5, 1.04]]),
+    ("07-aftermath", 9500, [[0.5, 0.5, 1.0], [0.5, 0.5, 1.05]]),
     ("08-title", 4500, None),
 ]
 
@@ -56,6 +58,10 @@ def main():
     print(f"film length {total:.1f}s; synthesising score ...", flush=True)
     music, sfx = score.build_audio(starts, talks, total)
     os.makedirs(os.path.join(ROOT, "audio"), exist_ok=True)
+    for track in (music, sfx):  # fade the last 0.9 s out, the first 80 ms in
+        n_out, n_in = int(0.9 * score.SR), int(0.08 * score.SR)
+        track[-n_out:] *= np.linspace(1, 0, n_out)
+        track[:n_in] *= np.linspace(0, 1, n_in)
     score.write_wav(os.path.join(ROOT, "audio", "score.wav"), music, 0.8)
     score.write_wav(os.path.join(ROOT, "audio", "effects.wav"), sfx, 0.9)
 
