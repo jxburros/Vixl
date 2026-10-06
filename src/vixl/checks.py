@@ -12,7 +12,8 @@ import numpy as np
 from .errors import require
 from .model import finite
 
-CHECKS = ("bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "fonts", "brand", "content", "form", "links")
+CHECKS = ("bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "fonts", "brand", "content", "form",
+          "links", "diagram", "flow")
 FALLBACK_FONT = "DejaVuSans.ttf"
 OPTIONAL_CHECKS = ("print", "color_vision", "guides", "alignment", "drawing", "style")
 # What to do about a finding. Errors and the warnings below need a design change ("fix"); other warnings
@@ -571,6 +572,16 @@ def check_design(
         from .drawing import check_drawings
 
         check_drawings(candidate, list(resolved.values()), issue)
+
+    if "diagram" in checks and candidate.state.get("diagrams"):
+        from .diagrams import check_diagrams
+
+        check_diagrams(candidate, resolved, local_bounds, projection, issue)
+
+    if "flow" in checks and candidate.state.get("flows"):
+        from .textflow import check_flows
+
+        check_flows(candidate, resolved, issue)
 
     if "form" in checks:
         from .forms import check_form

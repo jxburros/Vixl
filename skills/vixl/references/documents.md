@@ -16,6 +16,26 @@ Bold/italic use installed variants (`font install Inter --weight 700`) or are sy
 on a rich layer keeps bullets, spacing and span styles where the structure still applies and lists what it
 dropped under `warnings`; `rich-text --target` rebuilds formatted content. Full syntax: `docs/rich-text.md`.
 
+## Text flow: one story through linked frames
+
+`text-flow` threads a long text through frames: columns, one frame per page, or a shape's outline. Each frame is an
+ordinary text layer holding the slice that fits it, so every export just works; the flow re-flows when the text or a
+frame's size changes.
+
+```json
+{"type": "text-flow", "name": "article", "markdown": "# Title\nBody …", "size": 16, "keep_together": true, "orphans": 2, "widows": 2,
+ "frames": [{"x": 60, "y": 80, "width": 1000, "height": 700, "columns": 2, "gutter": 40}]}
+{"type": "page", "action": "add", "name": "p2"}
+{"type": "text-flow", "name": "article", "action": "add-frame", "x": 60, "y": 80, "width": 1000, "height": 700, "columns": 2, "page": "p2"}
+{"type": "text-flow", "name": "article", "action": "set", "text": "New story."}
+```
+
+- Read the result: `text_flow.<name>.overflow` and `remaining_chars` (also an error in `vixl_check`, check `flow`).
+  Fix overflow with `add-frame`, bigger frames or a smaller `size`.
+- Edit the story with `text-flow set` / `action: "style"` (`match`, `format`); `text-set` on a frame is overwritten.
+- `action`: `create`, `set`, `add-frame`, `link`, `unlink`, `reflow`, `style`, `delete`. Frames may follow a `shape`
+  (`mode: "bands"` or `"inscribed"`). Full reference: `docs/text-flow.md`.
+
 ## Pages, masters and decks
 
 A document becomes multi-page with the first `page add`; each page has its own layers, the rest

@@ -97,6 +97,10 @@ def service_operation_schema(slim=False):
             if kind in ("suite-set", "recipe-set") and "properties" in constraint:
                 # The suite and recipe objects are typed in vixl_operation_schema and validated when applied.
                 props[key] = {"type": "object"}
+        if kind in ("diagram", "diagram-set", "text-flow"):
+            for key in ("nodes", "edges", "frames"):
+                if key in props:  # item fields are checked on apply; vixl_operation_schema lists them
+                    props[key] = {"type": "array"}
         if kind in ("field-set", "form", "chart", "chart-data"):
             # Nullable copies of the field settings: names only here, types via vixl_operation_schema.
             props.update({key: {} for key in props if key not in ("target", "kind")})
@@ -717,7 +721,8 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
     @tool
     def vixl_check(
         checks: list[Literal["bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "fonts", "brand", "print", "color_vision", "guides", "alignment",
-                             "deck", "title_position", "type_scale", "words", "min_font", "notes", "empty", "form", "drawing", "links", "style"]]
+                             "deck", "title_position", "type_scale", "words", "min_font", "notes", "empty", "form", "drawing", "links", "style",
+                             "diagram", "flow"]]
         | None = None,
         targets: list[str] | None = None,
         safe_area: Annotated[

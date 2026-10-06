@@ -152,6 +152,10 @@ SUMMARIES = {
     "chart": "Draw a data-bound chart (bars, lines, areas, pie, donut) as vector layers, or restyle one with target.",
     "chart-data": "Edit a chart's data in place (cells, categories, series, CSV reload) and redraw it, keeping layer IDs.",
     "stack": "Lay a group out as a row or column that reflows and re-centres when a member is empty or hidden.",
+    "diagram": "Draw a flowchart, dependency graph, org chart or mind map from nodes and edges, laid out automatically.",
+    "diagram-from-text": "Draw a diagram from a short text format (A -> B: label, indentation for hierarchies, group lanes).",
+    "diagram-set": "Change a diagram's nodes, edges or options and lay it out again in place, keeping layer IDs.",
+    "text-flow": "Flow one story through linked text frames (columns, pages, shapes), reflow it and report overflow.",
 }
 
 # Every effect is also an operation type ({type: blur, amount: 6} equals {type: effect, name: blur ...}).
@@ -307,7 +311,40 @@ FIELDS = {
     "appearance": "Drawn appearance of the field box.",
 }
 
+_DIAGRAM_FIELDS = {
+    "layout": "Layout: auto (picks one from the graph), layered (flowcharts, dependencies), tree, radial, mindmap or grid.",
+    "routing": "How edges run: orthogonal (right angles, default), curved or straight.",
+    "lanes": "Layered layout: turn kind: group nodes into swimlanes (columns for TB, rows for LR) instead of cluster boxes.",
+    "theme": "Colors: light (default), dark or mono.",
+    "text_color": "Default label color for nodes and edges.",
+    "node_color": "Default node fill; a node's own color wins.",
+    "edge_color": "Default edge and arrowhead color; an edge's own color wins.",
+    "node_gap": "Space between nodes in the same rank, in pixels at scale 1 (default 44).",
+    "rank_gap": "Space between ranks (rows or columns of the layout), in pixels at scale 1 (default 68).",
+    "arrows": "Draw arrowheads on edges (default true).",
+}
+
 OVERRIDES = {
+    "diagram": {**_DIAGRAM_FIELDS, "replace": "Replace an existing diagram of the same name instead of failing."},
+    "diagram-from-text": {**_DIAGRAM_FIELDS, "replace": "Replace an existing diagram of the same name instead of failing."},
+    "diagram-set": {**_DIAGRAM_FIELDS, "remove_nodes": "IDs of nodes to remove, with the edges that touch them.",
+                    "remove_edges": "IDs of edges to remove."},
+    "text-flow": {"action": "create (default), set, add-frame, link, unlink, reflow, style or delete.",
+                  "markdown": "The story as Markdown (headings, bold, italic, lists), same syntax as rich-text.",
+                  "spans": "The story as explicit rich-text spans (with paragraphs), same shape as rich-text.",
+                  "frames": "Frames to flow through, in order: each {x, y, width, height} with optional columns, gutter, "
+                            "page, inset, shape.",
+                  "layers": "Existing text layers (IDs or names) to link into the chain, in order.",
+                  "gutter": "Space between columns, in pixels (default 1.5 x the font size).",
+                  "page": "Page (name or number) a frame lives on, in a multi-page document.",
+                  "inset": "Space kept between a frame's edge and its text, in pixels.",
+                  "keep_together": "Never split a paragraph that fits one frame between two frames.",
+                  "keep_with_next": "Never leave a heading as the last thing in a frame (default true for rich text).",
+                  "orphans": "Fewest lines of a paragraph left at the bottom of a frame (0 turns the rule off).",
+                  "widows": "Fewest lines of a paragraph carried to the top of the next frame (0 turns the rule off).",
+                  "delete_frames": "With unlink or delete: remove the frame layers too, not just the link.",
+                  "match": "style: the words of the story to style (see occurrence).",
+                  "occurrence": "style: which match to style, a 1-based number or 'all' (default)."},
     "link": {"source": "Workspace path of the .vixl document to draw (a link with a target: the new source).",
              "position": "Where the document sits in the box when it does not fill it: an anchor name (center, top-left …) "
                          "or [x, y] fractions 0-1.",

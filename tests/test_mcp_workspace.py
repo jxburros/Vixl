@@ -44,9 +44,12 @@ def test_operation_schema_is_in_tools_list(tmp_path):
         assert "args" not in tools["vixl_ai_generate"].inputSchema["properties"]
         assert tools["vixl_ai_generate"].inputSchema["properties"]["seed"]["type"] == "integer"
         # Design, pixel/animation, brush, timeline, layout, pen/container, organic/intent, color, guide/placement,
-        # page, rich text, form-field, drawing, stack, linked-document and chart operations extend the catalog; shared constraints and
+        # page, rich text, form-field, drawing, stack, linked-document, chart, diagram and text-flow operations extend the catalog; shared constraints and
         # runtime-validated nested settings keep the inline schema bounded (slim mode is smaller still).
-        assert len(json.dumps(schema)) < 45000  # provisional: see the lead's note on schema growth
+        # 35.7k before the 2026-10 additions (charts, links, diagrams, text flow, forms rules, looks, styles ...); about
+        # 49k with them. The growth is spread over ~70 new operations, none above ~1.5k; `--schema slim` advertises
+        # names only (under 2k) for clients that want a small tools/list.
+        assert len(json.dumps(schema)) < 50000
 
     asyncio.run(run())
 

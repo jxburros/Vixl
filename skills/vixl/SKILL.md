@@ -72,6 +72,9 @@ agent, edit independently, preview branch-merge, resolve conflicts explicitly, t
   lines and measure it with `drawing-report` (`preserved`) and `drawing-compare`.
 - **Rich text** — `rich-text` (Markdown) and `text-style` for mixed styles and lists in one box. `text-set` changes the
   whole layer (text, color, size, font) and keeps bullets and span styles that still apply; read the result's `warnings`.
+- **Text flow** — `text-flow` threads a long text through linked frames (columns, pages, shapes); results report `overflow`.
+- **Diagrams** — `diagram-from-text` / `diagram` / `diagram-set` draw flowcharts, dependency graphs, org charts and mind maps
+  as editable layers (swimlanes, auto-fit, `check diagram`).
 - **Organic shapes** — `organic` presets and composable generators for living things.
 - **Imperfection** — opt-in `irregular` (seeded wobble, stroke weight, color drift, micro placement)
   and `tear` (torn edges) for characters, hand-made looks and ripped paper; never for logos,

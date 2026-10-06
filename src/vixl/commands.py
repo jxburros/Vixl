@@ -68,6 +68,14 @@ def compile_command(tokens):
     rich = compile_rich(cmd, args)
     if rich is not None:
         return rich
+    from .diagrams import compile_command as compile_diagram
+    diagram = compile_diagram(cmd, args)
+    if diagram is not None:
+        return diagram
+    from .textflow import compile_command as compile_flow
+    flow = compile_flow(cmd, args)
+    if flow is not None:
+        return flow
     from .drawing import compile_command as compile_drawing
     sketch = compile_drawing(cmd, args)
     if sketch is not None:

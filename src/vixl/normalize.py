@@ -60,6 +60,9 @@ TYPE_ALIASES = {
     "update-chart": "chart",
     "set-chart-data": "chart-data",
     "update-chart-data": "chart-data",
+    "flowchart": "diagram",
+    "flow-chart": "diagram",
+    "diagram-text": "diagram-from-text",
 }
 SHAPE_TYPES = {
     "rect": ("rectangle", {}),

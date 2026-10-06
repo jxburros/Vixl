@@ -165,6 +165,12 @@ def check_state(project, state):
     validate_style_tag(state)
     from .automation import validate_state
     validate_state(state)
+    from .diagrams import validate as validate_diagrams
+
+    validate_diagrams(state)
+    from .textflow import validate as validate_flows
+
+    validate_flows(state)
     from .pages import validate_pages
 
     validate_pages(project, state)

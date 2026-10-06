@@ -24,6 +24,8 @@ from .selectors import TYPES as SELECTOR_TYPES
 from .links import TYPES as LINK_TYPES
 from .charts import TYPES as CHART_TYPES
 from .finishing import TYPES as FINISHING_TYPES
+from .diagrams import TYPES as DIAGRAM_TYPES
+from .textflow import TYPES as FLOW_TYPES
 
 from copy import deepcopy
 import hashlib
@@ -65,7 +67,7 @@ ALIASES = {
     "make_selection": "select",
 }
 
-OPERATION_TYPES = list(DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_TYPES + BRUSH_TYPES + TIMELINE_TYPES + LAYOUT_TYPES + COLOR_TYPES + AUTOMATION_TYPES + CREATIVE_TYPES + CONTAINER_TYPES + AUTHORING_TYPES + ORGANIC_TYPES + IRREGULAR_TYPES + GUIDE_TYPES + RICH_TYPES + PAGE_TYPES + FORM_TYPES + DRAWING_TYPES + STACK_TYPES + SELECTOR_TYPES + LINK_TYPES + CHART_TYPES + FINISHING_TYPES) + [
+OPERATION_TYPES = list(DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_TYPES + BRUSH_TYPES + TIMELINE_TYPES + LAYOUT_TYPES + COLOR_TYPES + AUTOMATION_TYPES + CREATIVE_TYPES + CONTAINER_TYPES + AUTHORING_TYPES + ORGANIC_TYPES + IRREGULAR_TYPES + GUIDE_TYPES + RICH_TYPES + PAGE_TYPES + FORM_TYPES + DRAWING_TYPES + STACK_TYPES + SELECTOR_TYPES + LINK_TYPES + CHART_TYPES + FINISHING_TYPES + DIAGRAM_TYPES + FLOW_TYPES) + [
     "add",
     "solid",
     "gradient",
@@ -302,6 +304,12 @@ def execute(project, op):
     if kind in DRAWING_TYPES:
         from .drawing import execute as execute_drawing
         return execute_drawing(project, op)
+    if kind in DIAGRAM_TYPES:
+        from .diagrams import execute as execute_diagram
+        return execute_diagram(project, op)
+    if kind in FLOW_TYPES:
+        from .textflow import execute as execute_flow
+        return execute_flow(project, op)
     if kind in RICH_TYPES:
         from .richtext import execute as execute_rich
         return execute_rich(project, op)

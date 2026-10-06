@@ -50,6 +50,10 @@ Pages:     page add NAME [--master M] [--after P] [--duplicate P] [--notes TEXT]
            render --page 2 | --page all (contact sheet), export deck.pdf|deck.pptx [--pages 1-3,5] [--pdf-content raster],
            export deck.html [--presenter-theme dark|light|auto] [--slide-images svg|png] [--start-slide N] [--no-notes],
            check --checks deck [--min-font 18] [--max-words 60]; any operation accepts "page": P
+Diagrams:  diagram-from-text "A -> B -> C" --name NAME [--layout layered|tree|radial|mindmap|grid] [--direction TB|LR] [--routing orthogonal|curved|straight],
+           diagram NAME --nodes JSON --edges JSON, diagram-set NAME [--text TEXT] [--nodes JSON] [--remove-nodes ID…] [--delete], check --checks diagram
+Text flow: text-flow create NAME --text TEXT --x N --y N --width N --height N [--columns 2 --gutter 24] [--keep-together --orphans 2 --widows 2],
+           text-flow add-frame|link|unlink|reflow|set|style|delete NAME …, check --checks flow
 Forms:     field add KEY --kind text|multiline|number|date|checkbox|radio|dropdown|signature --label TEXT [--required] …,
            field set LAYER …, field list, form settings [--tab-order reading|explicit] [--title T] [--lang en-US],
            check --checks form [--sample worst|rows.csv], render --out F --show-fields [--set KEY=VALUE],
@@ -812,7 +816,8 @@ def project_command(project, cmd, args, *, detail="compact"):
             "--checks",
             nargs="+",
             choices=["bounds", "overlap", "contrast", "safe_area", "legibility", "print", "color_vision", "content", "fonts", "blanks", "brand", "guides", "alignment",
-                     "deck", "title_position", "type_scale", "words", "min_font", "notes", "empty", "form", "drawing", "links", "style"],
+                     "deck", "title_position", "type_scale", "words", "min_font", "notes", "empty", "form", "drawing", "links", "style",
+                     "diagram", "flow"],
         )
         p.add_argument("--style", nargs="+", help="style checks: evaluate this style (or styles) instead of the document's tag")
         p.add_argument("--page", help="Check one page of a multi-page document (default: the active page)")

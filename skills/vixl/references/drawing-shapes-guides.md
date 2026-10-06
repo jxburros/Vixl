@@ -32,6 +32,24 @@ When a person gives you a photo or scan of their drawing, keep their lines and b
 
 Full reference: `docs/drawing.md`.
 
+## Diagrams: flowcharts, dependency graphs, org charts, mind maps
+
+`diagram-from-text` (or `diagram` with `nodes` and `edges`) lays a graph out and writes ordinary layers in one group
+(`flow/<id>`, `flow/<from>-><to>`, labels as `….label`). `diagram-set` changes it and re-lays it out in place (same layer IDs).
+
+```json
+{"type": "diagram-from-text", "name": "flow", "direction": "LR", "text": "Start([Start]) -> Check{Valid?}\nCheck -> Save[(DB)]: yes\nCheck -> Fix[Show error]: no\nFix -> Check"}
+{"type": "diagram", "name": "org", "layout": "tree", "text": "CEO\n  CTO\n    Dev lead\n  CFO"}
+{"type": "diagram-set", "name": "flow", "text": "Save -> Done([Done])", "remove_nodes": ["Fix"]}
+```
+
+- Text format: `A -> B -> C`, `A -> B: label`, `A{Question?}` (decision), `A([x])` terminator, `A[/x/]` io, `A[(x)]` database,
+  `@color=… @icon=check @group=…`, `group Lane: A, B`, indentation for hierarchies, `direction: LR`.
+- `layout`: `layered` (flows, dependencies), `tree`, `radial`, `mindmap`, `grid`; `direction` TB/LR/BT/RL; `routing`
+  orthogonal/curved/straight; `lanes: true` for swimlanes. The diagram shrinks to fit the canvas (`fit`, `x/y/width/height`).
+- Check with `vixl_check(checks=["diagram"])`: overlapping nodes, edges through nodes, labels that do not fit or lack
+  contrast, text scaled below 9 px. Full reference: `docs/diagrams.md`.
+
 ## Organic shapes
 
 For living things (flowers, trees, leaves, shells, creatures, coral, markings) use `organic`

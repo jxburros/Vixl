@@ -221,6 +221,8 @@ symbols, provider-backed editing tools, and their precise limits.
 ```bash
 vixl page add results --master std --notes 'Revenue up 42%'   # slides with masters and speaker notes
 vixl rich-text 'Revenue grew **42%**\n- Faster *checkout*' --name body --size 44 --width 900
+vixl text-flow create story --text "$(cat story.txt)" --x 60 --y 60 --width 900 --height 500 --columns 3   # linked text frames, overflow reported
+vixl diagram-from-text 'Start -> Check{Valid?} -> Done' --name flow --direction LR   # flowcharts, org charts, mind maps as layers
 vixl export deck.pptx                                          # editable PowerPoint; deck.pdf is vector
 vixl export deck.html                                          # one-file slide show with speaker view
 vixl field add email --kind text --label Email --required      # fillable form fields
@@ -237,7 +239,7 @@ vixl workflow lyric-video-export --request request.json --workspace .   # LRC + 
 
 [Slides and pages](docs/slides.md) · [HTML presenter](docs/presenter.md) · [forms](docs/forms.md) · [hand drawings](docs/drawing.md) ·
 [rich text](docs/rich-text.md) · [charts](docs/charts.md) · [organic shapes](docs/organic.md) · [irregularity and torn edges](docs/irregular.md) · [guides and grids](docs/guides.md) ·
-[lyric videos](docs/lyric-video.md) · [linked documents](docs/linked-documents.md) · [data merge and imposition](docs/imposition.md) · [finishing looks](docs/looks.md) · [design styles and checks](docs/styles.md)
+[lyric videos](docs/lyric-video.md) · [linked documents](docs/linked-documents.md) · [data merge and imposition](docs/imposition.md) · [finishing looks](docs/looks.md) · [design styles and checks](docs/styles.md) · [text flow](docs/text-flow.md) · [diagrams](docs/diagrams.md)
 
 ## Spacing checks, pixel art and animation
 

@@ -112,6 +112,9 @@ New document state: `canvas.size`, `canvas.dpi`, `canvas.physical`, `canvas.blee
 | style-set | `style` (name, names or null), `options` — [styles](styles.md) |
 | layer-intent | `target`, `role`, `allow_overlap`, `allow_crop` |
 | palette-apply | `name`, `prefix`, `roles` (true/false or `{role: color-or-index}`), `keep_order`, `policy` |
+| diagram / diagram-from-text | `name`, `nodes` (`id`, `label`, `kind`, `color`, `text_color`, `icon`, `size`, `group`), `edges` (`from`, `to`, `label`, `kind`, `from_port`, `to_port`, `color`, `arrow`, `id`) or `text`, `layout` (`auto`, `layered`, `tree`, `radial`, `mindmap`, `grid`), `direction`, `routing`, `lanes`, `columns`, `theme`, `font`, `size`, `fit`, `x`, `y`, `width`, `height`, `margin`, `replace` — [diagrams](diagrams.md) |
+| diagram-set | `name`, the diagram fields, `remove_nodes`, `remove_edges`, `delete`; lays the diagram out again in place |
+| text-flow | `action` (`create`, `set`, `add-frame`, `link`, `unlink`, `reflow`, `style`, `delete`), `name`, `text`/`markdown`/`spans`/`target`, `frames` (or `x`, `y`, `width`, `height`, `columns`, `gutter`, `page`, `shape`, `mode`), `frame`, `layers`, `after`/`before`, style fields, `keep_together`, `keep_with_next`, `orphans`, `widows`, `format`, `delete_frames` — [text flow](text-flow.md) |
 
 `vixl_operation_schema` gives every operation a one-line description, typed and described fields and (for the common ones) examples.
 
