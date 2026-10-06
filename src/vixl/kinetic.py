@@ -31,10 +31,6 @@ MAX_SPECS = 1024
 IDENTITY = (1.0, 0.0, 0.0, 1.0, 0.0, None)  # opacity, dx, dy, scale, rotation, (sweep colour, progress)
 
 
-# ---------------------------------------------------------------------------------------------
-# Units
-
-
 def assign(items):
     """Unit indices for glyphs given as ``[(cluster text, line)]``: ``(per-glyph (char, word, line)
     or None for blank glyphs, {unit: count})``. A glyph that continues a cluster (empty text) joins
@@ -96,10 +92,6 @@ def glyphs(project, layer):
         return None
     units, counts = assign([(item[5], item[6]) for item in placed])
     return "plain", (layout, placed), units, counts
-
-
-# ---------------------------------------------------------------------------------------------
-# Timing and poses
 
 
 def ranks(direction, count, seed=0):
@@ -261,10 +253,6 @@ def hidden(layer):
     return bool(poses) and any(units and all(item[0] <= 0.01 for item in units) for units in poses.values())
 
 
-# ---------------------------------------------------------------------------------------------
-# Drawing
-
-
 def multiply(a, b):
     """``a`` after ``b`` for 2x3 affine matrices ``(a, b, c, d, e, f)`` in SVG order."""
     return (a[0] * b[0] + a[2] * b[1], a[1] * b[0] + a[3] * b[1], a[0] * b[2] + a[2] * b[3],
@@ -399,10 +387,6 @@ def rich_motion(project, layer, result):
     boxes = glyph_boxes([(g.data, g.name, g.x, g.y, g.size, SYNTHETIC_SKEW if g.italic else 0) for g in result.glyphs])
     moves = motion(layer["_kinetic"], units, boxes, [g.color for g in result.glyphs])
     return moves, boxes
-
-
-# ---------------------------------------------------------------------------------------------
-# Operation
 
 
 def _resolve_stagger(value, duration, markers):

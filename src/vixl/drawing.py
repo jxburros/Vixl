@@ -36,10 +36,6 @@ CLEAN = {"threshold": "auto", "sensitivity": 0.0, "despeckle": "auto", "weight":
 MAX_STROKES = 240
 
 
-# ---------------------------------------------------------------------------------------------
-# Raster helpers
-
-
 def label(mask):
     """8-connected components of a boolean mask: (labels int32 array, count). Union–find over
     the runs of each row, so it is fast on line art (no per-pixel Python loop)."""
@@ -383,10 +379,6 @@ def clean(image, settings=None, state=None, frame=None):
             "scale": scale, "sheet": sheet is not None or bool(frame), "perspective": frame or None}
 
 
-# ---------------------------------------------------------------------------------------------
-# Thinning and tracing
-
-
 def thin(mask):
     """Zhang–Suen thinning to a one-pixel skeleton."""
     image = np.pad(np.asarray(mask, np.uint8), 1)
@@ -594,10 +586,6 @@ def _widths(mask, strokes):
         # A stroke only a few widths long is mostly junction: keep the distance reading.
         widths.append(max(1.0, round(float(area[index] / span), 1)) if span >= 4 * stroke["width"] else stroke["width"])
     return widths
-
-
-# ---------------------------------------------------------------------------------------------
-# Straightening and smoothing
 
 
 def _fit_line(points):
@@ -951,10 +939,6 @@ def straighten_stroke(points, closed, *, tolerance, angles, angle_tolerance, cir
     return np.asarray(out, float), closed, "polyline"
 
 
-# ---------------------------------------------------------------------------------------------
-# Regions
-
-
 def regions(mask, gap=4, min_area=64):
     """Regions enclosed by the lines: (labels, info) where info lists each region's id, area,
     bounding box and an interior point. ``gap`` closes small breaks in the outlines first; the
@@ -975,9 +959,6 @@ def regions(mask, gap=4, min_area=64):
     return labels, info
 
 
-# ---------------------------------------------------------------------------------------------
-# Document model
-#
 # The drawing group's content space is the cleaned image's pixel grid. Its record:
 #   group["drawing"] = {"source": asset of the photo as imported, "reference": asset of the
 #   cleaned line mask (what preservation is measured against), "settings": clean settings,
@@ -1565,10 +1546,6 @@ def _restyle(project, group, op):
         _rebuild(layer, records)
 
 
-# ---------------------------------------------------------------------------------------------
-# Validation, reports and checks
-
-
 def validate(layer, state, project):
     if "drawing" in layer:
         record = layer["drawing"]
@@ -1668,10 +1645,6 @@ def check_drawings(candidate, layers, issue):
                   added=info["added"])
 
 
-# ---------------------------------------------------------------------------------------------
-# AI colouring
-
-
 def line_art(project, group):
     """The drawing as drawn so far (fills and lines, no AI colour) on white, in content pixels."""
     from .render import render_layers
@@ -1720,10 +1693,6 @@ def ai_color(project, target, prompt, backend, *, strength=0.6, seed=None, model
         candidate._amend_head()
     project.__dict__.update(candidate.__dict__)
     return result
-
-
-# ---------------------------------------------------------------------------------------------
-# CLI
 
 
 def compile_command(cmd, args):

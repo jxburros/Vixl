@@ -46,8 +46,6 @@ def ids(p):
     return {layer["chart_part"]: layer["id"] for layer in children(p)}
 
 
-# -- drawing ---------------------------------------------------------------------------------------
-
 def test_chart_is_a_group_of_ordinary_vector_layers():
     p = make("bar", DRINKS)
     group = p.layer("Sales")
@@ -192,8 +190,6 @@ def test_dense_charts_thin_their_labels_and_skip_automatic_value_labels():
     assert p.check(checks=["overlap"])["passed"]
 
 
-# -- editing in place ------------------------------------------------------------------------------
-
 def test_fixing_one_number_is_one_operation_with_stable_layer_ids():
     p = make("bar", SALES, value_labels=True)
     before = ids(p)
@@ -286,8 +282,6 @@ def test_rasterizing_a_chart_leaves_a_valid_document():
         p.apply({"type": "chart-data", "target": "Sales", "set": [{"category": "Jan", "value": 1}]})
 
 
-# -- data sources ----------------------------------------------------------------------------------
-
 def test_csv_binds_a_chart_and_reload_follows_the_file(tmp_path):
     (tmp_path / "data").mkdir()
     csv = tmp_path / "data" / "cups.csv"
@@ -368,8 +362,6 @@ def test_table_rows_and_chartjs_spellings_are_accepted():
     assert (image == (255, 0, 0)).all(axis=2).any()
 
 
-# -- document styling ------------------------------------------------------------------------------
-
 def test_colors_fonts_and_text_follow_the_document():
     p = Project(900, 560, "#0f172a")
     p.apply([{"type": "palette-apply", "name": "neon"}])
@@ -435,8 +427,6 @@ def test_nice_scale_picks_round_steps():
     assert (low, high, ticks[-1]) == (0, 10, 10)
 
 
-# -- validation ------------------------------------------------------------------------------------
-
 @pytest.mark.parametrize("op, message", [
     ({"type": "chart"}, "needs data"),
     ({"type": "chart", "kind": "bar", "categories": ["a", "a"], "series": [{"name": "s", "values": [1, 2]}]}, "unique"),
@@ -498,8 +488,6 @@ def test_chart_is_too_small_for_its_labels():
         make("bar", DRINKS, width=60, height=60)
 
 
-# -- checks and exports ----------------------------------------------------------------------------
-
 def test_checks_see_inside_the_chart():
     p = make("stacked-bar", DRINKS, value_labels=True, font_size=26)
     report = p.check(checks=["overlap", "contrast", "bounds"])
@@ -554,8 +542,6 @@ def test_vector_exports_keep_the_chart_as_paths_and_text(tmp_path):
     png = p.export(tmp_path / "c.png", format="PNG")
     assert png.startswith(b"\x89PNG")
 
-
-# -- PowerPoint ------------------------------------------------------------------------------------
 
 def deck(kind="bar", data=DRINKS, **options):
     p = Project(1280, 720, "#ffffff")
@@ -683,8 +669,6 @@ def test_chart_with_effects_is_a_picture_like_any_other_group():
     data = p.export(format="PPTX", report=report)
     assert not chart_shapes(data) and report["raster_fallbacks"]["1"][0]["layer"] == "Sales"
 
-
-# -- interfaces ------------------------------------------------------------------------------------
 
 def test_operation_schema_documents_chart_operations():
     variants = {v["properties"]["type"]["const"]: v for v in operation_schema()["properties"]["operations"]["items"]["oneOf"]}

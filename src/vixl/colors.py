@@ -16,8 +16,7 @@ import re
 
 from .errors import VixlError, require
 
-# ---------------------------------------------------------------------------------------------
-# Transfer functions and matrices (CSS Color 4 reference values)
+# Transfer functions and matrices use the CSS Color 4 reference values.
 
 SRGB_TO_XYZ = (
     (0.41239079926595934, 0.357584339383878, 0.1804807884018343),
@@ -170,8 +169,7 @@ def from_polar(lch):
     return L, C * math.cos(math.radians(H)), C * math.sin(math.radians(H))
 
 
-# ---------------------------------------------------------------------------------------------
-# Conversions from encoded sRGB floats (0–1), the canonical internal form
+# Encoded sRGB floats (0–1) are the canonical internal form.
 
 
 def srgb_to_linear(rgb):
@@ -339,10 +337,6 @@ def kelvin_to_srgb(kelvin):
     return tuple(min(max(v, 0), 255) / 255 for v in (r, g, b))
 
 
-# ---------------------------------------------------------------------------------------------
-# Named colors
-
-
 @lru_cache(maxsize=1)
 def _css_names():
     """CSS color names as hex. Pillow replaces its own table entries with parsed tuples after first
@@ -414,9 +408,6 @@ def nearest_names(rgb, count=3):
     )
     return [{"name": name, "hex": value, "distance": round(distance, 4)} for distance, name, value in scored[:count]]
 
-
-# ---------------------------------------------------------------------------------------------
-# Parser
 
 TOKEN = re.compile(
     r"\s*(?:(?P<hex>#[0-9a-fA-F]+)|(?P<num>[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?)(?P<unit>%|deg|grad|rad|turn)?"
@@ -926,9 +917,6 @@ def resolve_expression(value, swatches, depth=0):
 
     return re.sub(r"@([A-Za-z0-9_][\w-]*)", replace, value)
 
-
-# ---------------------------------------------------------------------------------------------
-# Images: CMYK separation, soft proofing and vision simulation
 
 INTENTS = ("perceptual", "relative", "saturation", "absolute")
 

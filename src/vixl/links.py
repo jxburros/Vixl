@@ -54,10 +54,6 @@ _RENDERS = []  # one LayerCache of drawn sources, created on first use (render.p
 _CHAIN = ContextVar("vixl_link_chain", default=())
 
 
-# ---------------------------------------------------------------------------------------------
-# Operations
-
-
 def schemas(add):
     """Operation schemas. position, crop, source_page and variables are typed here and checked in more detail
     when the operation runs (with specific messages); null clears one on a link with a target."""
@@ -332,10 +328,6 @@ def validate(layer, state):
                 "Invalid link source size", "invalid_project")
 
 
-# ---------------------------------------------------------------------------------------------
-# Finding and opening sources
-
-
 def bases(project):
     """Folders a relative source resolves against, in order: the document's folder, then the workspace."""
     found = []
@@ -447,10 +439,6 @@ def _canvas_size(child, page, artboard, source):
     return state["canvas"]["width"], state["canvas"]["height"]
 
 
-# ---------------------------------------------------------------------------------------------
-# Cycles
-
-
 def link_layers(state):
     """[(page or master name or None, layer)] for every link layer: the active content and the content
     of inactive pages and masters."""
@@ -517,10 +505,6 @@ def entering(project, path, source):
         yield
     finally:
         _CHAIN.reset(token)
-
-
-# ---------------------------------------------------------------------------------------------
-# Rendering
 
 
 class Prepared:
@@ -711,10 +695,6 @@ def pdf_link(builder, layer, bounds, matrix):
     return None
 
 
-# ---------------------------------------------------------------------------------------------
-# Status
-
-
 def status(project):
     """One record per link layer: its source, ``state`` (ok, stale, missing, error, cycle or forbidden) and
     what is wrong. ``stale`` means the source changed since ``link-refresh`` last recorded it; the layer
@@ -803,10 +783,6 @@ def fingerprint(project):
 
     walk(project, 0)
     return sorted(found.items())
-
-
-# ---------------------------------------------------------------------------------------------
-# Workflow action and CLI
 
 
 def dispatch(session, request, document=None):

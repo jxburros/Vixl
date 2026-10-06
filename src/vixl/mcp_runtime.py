@@ -234,8 +234,6 @@ class Runtime:
         # Following a job must never queue behind the calls it is waiting for.
         self.light = ThreadPoolExecutor(max_workers=8, thread_name_prefix="vixl-poll")
 
-    # -- registration ------------------------------------------------------------------------
-
     def wrap(self, fn):
         """An async tool that runs ``fn`` in a worker thread, with the extras this tool offers."""
         from mcp.server.fastmcp import Context
@@ -265,8 +263,6 @@ class Runtime:
         if returns is dict:
             wrapper.__annotations__["return"] = str
         return wrapper
-
-    # -- running a call ----------------------------------------------------------------------
 
     def watch_arguments(self, registered):
         """Report arguments a tool does not take. FastMCP drops them silently, so a misspelt option
@@ -502,8 +498,6 @@ class Runtime:
             "status": "running", "request_id": request_id,
             "message": "The original call with this request_id is still running; repeat this call shortly.",
         })
-
-    # -- vixl_job ----------------------------------------------------------------------------
 
     def job(self, action="status", id=None, wait=0):
         require(action in ("status", "result", "cancel", "list"), "action is status, result, cancel or list",

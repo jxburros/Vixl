@@ -56,8 +56,7 @@ KIND_ALIASES = {
 }
 
 
-# ---------------------------------------------------------------------------------------------
-# Numbers: Excel-style formats (the same string drives Vixl's labels and the PPTX chart), scales
+# Number formats are Excel-style: the same string drives Vixl's labels and the PPTX chart.
 
 _LITERAL = r'(?:"[^"]*"|\\.|[^#0.,%"\\])'
 _FORMAT = re.compile(rf"({_LITERAL}*)([#0,]*[#0])(\.0*)?(,*)(%?)({_LITERAL}*)")
@@ -134,9 +133,6 @@ def nice_scale(low, high, intervals, fixed_min=None, fixed_max=None):
             field="ticks")
     return low, high, step, ticks
 
-
-# ---------------------------------------------------------------------------------------------
-# Data: tables from inline values, rows or a workspace CSV
 
 def category_name(value, where):
     require(isinstance(value, (str, int, float)) and not isinstance(value, bool),
@@ -388,8 +384,7 @@ def edit_data(project, op, recipe):
             "remove_series, reload, or new categories/series, table or csv", field="set")
 
 
-# ---------------------------------------------------------------------------------------------
-# Statistics: what the chart says in numbers (kept on the recipe so agents never recompute them)
+# Statistics are kept on the recipe so agents never recompute them.
 
 def statistics(recipe):
     categories, series = recipe["categories"], recipe["series"]
@@ -403,9 +398,6 @@ def statistics(recipe):
         result["shares"] = {c: round((v or 0) / grand * 100, 6) for c, v in zip(categories, series[0]["values"])}
     return result
 
-
-# ---------------------------------------------------------------------------------------------
-# Style: colors and fonts from the document
 
 def rgba(state, value):
     from .design import resolve_color
@@ -612,9 +604,6 @@ class Collider:
         self.boxes.append(box)
 
 
-# ---------------------------------------------------------------------------------------------
-# Layout: shared furniture (title, legend) then the plot
-
 def header(kit, style, recipe, parts, size):
     """Title and subtitle at the top-left; returns the y below them."""
     y = style.pad
@@ -731,8 +720,6 @@ class Cartesian:
         self.draw_legend()
         self.stats.update(scale={"min": self.lo, "max": self.hi, "step": self.step, "ticks": self.ticks, "format": self.tick_format},
                           label_format=self.label_format, colors=self.colors, legend=self.position)
-
-    # -- geometry -----------------------------------------------------------------------------
 
     def value_range(self):
         zero = self.zero = [[v or 0 for v in s["values"]] for s in self.series]
@@ -851,8 +838,6 @@ class Cartesian:
                 return
         self.crowd.take(box)
         self.parts.text(key, name, lab, left, top, Z_VALUES)
-
-    # -- drawing ------------------------------------------------------------------------------
 
     def axes(self):
         parts, style, gap = self.parts, self.style, self.gap
@@ -1148,9 +1133,6 @@ def layout(project, recipe, size):
     return parts, stats
 
 
-# ---------------------------------------------------------------------------------------------
-# Keeping the group in step with its recipe
-
 SHAPES = {"rect": "rectangle", "ellipse": "ellipse", "path": "path"}
 
 
@@ -1232,9 +1214,6 @@ def redraw(project, group, recipe, size=None):
         group["width"], group["height"] = width, height
     project.state["active_layer"] = group["id"]
 
-
-# ---------------------------------------------------------------------------------------------
-# Checks
 
 def plain(layer):
     """True for a layer that draws what is inside it unchanged (no scaling, rotation, fading, effects)."""
@@ -1328,9 +1307,6 @@ def series_colors(project, resolved):
         found.append((group, [tuple(series[i]) for i in sorted(series)]))
     return found
 
-
-# ---------------------------------------------------------------------------------------------
-# Operations
 
 def merge_options(recipe, op):
     for key in OPTIONS:
@@ -1567,9 +1543,6 @@ def schemas(add):
     }, description="Edit a chart's data in place: cell edits, new or removed categories and series, a CSV "
                                "reload, or a new table. The chart redraws with the same layer IDs and reports its totals under chart.summary.")
 
-
-# ---------------------------------------------------------------------------------------------
-# Human command syntax
 
 def compile_command(cmd, args):
     if cmd not in TYPES:

@@ -27,10 +27,6 @@ MAX_SIDE = 30000  # The PSD (version 1) limit on each canvas side.
 GROUP_END = "</Layer group>"
 
 
-# ---------------------------------------------------------------------------------------------
-# Encoding
-
-
 def packbits(row):
     """PackBits-encode one row of bytes (``bytes`` or uint8 array)."""
     data = np.frombuffer(bytes(row), dtype=np.uint8)
@@ -106,10 +102,6 @@ def block(key, data):
 def unicode_name(name):
     text = name.encode("utf-16-be")
     return block(b"luni", struct.pack(">I", len(text) // 2) + text)
-
-
-# ---------------------------------------------------------------------------------------------
-# Layer tree
 
 
 class Record:
@@ -201,10 +193,6 @@ def build(project, report):
         report["adjustments_in_composite_only"] = skipped
         warnings.append("adjustment layer(s) are applied in the composite image only: " + ", ".join(skipped[:8]))
     return records
-
-
-# ---------------------------------------------------------------------------------------------
-# Writer
 
 
 def _record_bytes(record):

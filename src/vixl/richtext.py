@@ -35,10 +35,6 @@ SYNTHETIC_SKEW = math.tan(math.radians(12))
 SVG = "{http://www.w3.org/2000/svg}"
 
 
-# ---------------------------------------------------------------------------------------------
-# Content: spans, paragraphs and Markdown
-
-
 def plain(rich):
     return "".join(span["text"] for span in rich["spans"])
 
@@ -240,10 +236,6 @@ def validate_paragraph(item):
         require(isinstance(item["start"], int) and 0 <= item["start"] <= 999999, "start must be a whole number", field="start")
 
 
-# ---------------------------------------------------------------------------------------------
-# Fonts
-
-
 def _registered_name(state, font):
     for name, asset in state.get("fonts", {}).items():
         if asset == font:
@@ -289,10 +281,6 @@ def style_font_data(project, font, text):
         return primary
     names = [*project.state.get("font_fallbacks", []), "DejaVuSans.ttf"]
     return fallback_chain(primary, [primary_font_data(project, {"font": name, "size": 12}) for name in names])
-
-
-# ---------------------------------------------------------------------------------------------
-# Layout
 
 
 @dataclass
@@ -604,10 +592,6 @@ def measure(project, layer, variables=None):
     return result.width, result.height, (0, 0, result.width, result.height)
 
 
-# ---------------------------------------------------------------------------------------------
-# Drawing
-
-
 def append_svg(parent, result, layer, project, *, node=None, motion=None):
     """Add the layout's highlights, glyph paths and decorations to an SVG element. ``motion``
     (kinetic type) gives each glyph a ``(matrix prefix, opacity, fill or None)``."""
@@ -733,10 +717,6 @@ def fill_variables(rich, variables):
 
     for span in rich["spans"]:
         span["text"] = substitute(span["text"], variables)
-
-
-# ---------------------------------------------------------------------------------------------
-# Operations
 
 
 TYPES = ("rich-text", "text-style")

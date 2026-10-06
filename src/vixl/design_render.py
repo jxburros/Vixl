@@ -65,7 +65,7 @@ def shape_image(project, layer):
         for field, value in (("fill", default_fill(layer)), ("stroke", layer.get("stroke", "transparent"))):
             rgba = parse(resolve_color(value, project.state))
             if field == "stroke" and (rgba[3] == 0 or layer.get("stroke_width", 1) <= 0):
-                continue  # no stroke: leave the stroke attributes out
+                continue
             attrs[field] = hex_of((*rgba[:3], 1))
             attrs[field + "-opacity"] = str(rgba[3])
             if field == "stroke":

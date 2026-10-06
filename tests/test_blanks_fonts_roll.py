@@ -144,9 +144,6 @@ def test_cli_layout_show_lists_slots_and_unused_slot_errors(tmp_path, capsys, mo
     assert main(["--project", "a.vixl", "layout", "apply", "event-poster", "--set", "title=x", "--seed", "random"]) == 0
 
 
-# -- Typefaces ------------------------------------------------------------------------------
-
-
 def test_catalog_and_pairings_are_consistent():
     families = {f["family"]: f for f in typefaces.fonts()}
     assert len(families) >= 60

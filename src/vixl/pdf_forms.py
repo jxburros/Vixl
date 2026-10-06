@@ -178,8 +178,6 @@ class FormWriter:
 
         self.embed = form_settings(project.state).get("entry_font") == "embed"
 
-    # -- resources ----------------------------------------------------------------------------
-
     def entry_font(self, view, item):
         """The EntryFont a field's entries are typed in (Helvetica unless ``entry_font`` is embed)."""
         if not self.embed:
@@ -220,8 +218,6 @@ class FormWriter:
         resources = {"Font": {name: self.font(name) for name in fonts}} if fonts else {}
         return self.writer.add_stream({"Type": Name("XObject"), "Subtype": Name("Form"), "BBox": [0, 0, round(w, 4), round(h, 4)],
                                        "Resources": resources}, "\n".join(ops).encode("latin-1"))
-
-    # -- appearances --------------------------------------------------------------------------
 
     def text_appearance(self, item, w, h, display, size, rgba, font=HELV):
         record = item["field"]
@@ -285,8 +281,6 @@ class FormWriter:
             i += 3
         ops.append("S")
         return self.xobject(w, h, ops), mark
-
-    # -- fields -------------------------------------------------------------------------------
 
     def annotations(self, view, number, builder):
         """Widgets for one page, in tab order; called by ``export_pdf`` for each page."""

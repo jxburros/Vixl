@@ -121,7 +121,6 @@ def import_photo(photo, tmp_path, settings=None, straighten=None):
     return project
 
 
-# ---------------------------------------------------------------------------------------------
 # The page and its perspective
 
 
@@ -202,7 +201,6 @@ def test_a_photo_with_no_desk_in_it_is_left_as_it_was(page, tmp_path):
     assert result["perspective"] is None and not result["sheet"]
 
 
-# ---------------------------------------------------------------------------------------------
 # Uniform stroke width and the width the pen drew
 
 
@@ -241,10 +239,6 @@ def test_vectorize_can_draw_every_stroke_with_one_pen(page, tmp_path):
         p.apply({"type": "drawing", "action": "vectorize", "target": "art", "settings": {"mode": "outline", "width": "uniform"}})
     with pytest.raises(VixlError):
         p.apply({"type": "drawing", "action": "vectorize", "target": "art", "settings": {"width": "thick"}})
-
-
-# ---------------------------------------------------------------------------------------------
-# Closing gaps
 
 
 def stroke(points, kind="line", closed=False):
@@ -322,10 +316,6 @@ def test_closing_the_house_corner_makes_a_closed_room(page, slanted, tmp_path):
         closed_house.apply({"type": "drawing", "action": "straighten", "target": "art", "settings": {"close_gaps": "wide"}})
 
 
-# ---------------------------------------------------------------------------------------------
-# Angles
-
-
 def ray_offsets(project):
     """How far (degrees) each of the sun's eight rays is from the nearest 45° step."""
     width = project.layer("art")["content_width"]
@@ -367,10 +357,6 @@ def test_straighten_stroke_defaults_to_the_drawn_angle():
     assert abs(line[1][1] - line[0][1]) < 1e-9
 
 
-# ---------------------------------------------------------------------------------------------
-# The line colour
-
-
 def test_the_default_line_colour_is_documented_and_settable(page, tmp_path):
     path = tmp_path / "page.jpg"
     page.save(path, quality=92)
@@ -389,7 +375,6 @@ def test_the_default_line_colour_is_documented_and_settable(page, tmp_path):
     assert p.layer("art/s001")["stroke"] == "#000000"
 
 
-# ---------------------------------------------------------------------------------------------
 # The photographed sketch of the tool comparison (T11): desk strips, a corner gap, rays, mixed weights
 
 SKETCH = Path(__file__).resolve().parents[1] / "evals" / "tool-comparison" / "fixtures" / "sketch.jpg"

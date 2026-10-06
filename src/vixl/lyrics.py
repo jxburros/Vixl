@@ -526,10 +526,6 @@ def _prepare(request, root, limits=None):
     return report, parsed, template, timed, contract, sources
 
 
-# ---------------------------------------------------------------------------------------------
-# Build
-
-
 
 
 def _entry_keys(kind, show, length, base, distance):

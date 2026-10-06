@@ -120,10 +120,6 @@ class Result:
     notes: list = field(default_factory=list)
 
 
-# ---------------------------------------------------------------------------------------------
-# Shapes: where a connector meets a node
-
-
 def _polygon(node):
     x, y, w, h = node.x, node.y, node.w, node.h
     if node.shape == "diamond":
@@ -216,10 +212,6 @@ def _segment_distance(point, p, q):
     length = ex * ex + ey * ey
     t = 0.0 if length < EPS else max(0.0, min(1.0, ((point[0] - p[0]) * ex + (point[1] - p[1]) * ey) / length))
     return math.hypot(point[0] - (p[0] + t * ex), point[1] - (p[1] + t * ey))
-
-
-# ---------------------------------------------------------------------------------------------
-# Routes: polylines and cubic curves
 
 
 def polyline(points):
@@ -539,10 +531,6 @@ def count_crossings(routes):
     return total
 
 
-# ---------------------------------------------------------------------------------------------
-# Obstacle-avoiding orthogonal router
-
-
 class Router:
     """Right-angled routing on the compressed grid of obstacle edges (A*, bend and overlap penalties)."""
 
@@ -724,10 +712,6 @@ def _loop(node, edge, side, o):
     return Route(segments, label)
 
 
-# ---------------------------------------------------------------------------------------------
-# Layered layout
-
-
 class _Dummy:
     """A point a long connector passes through in a layer."""
 
@@ -865,7 +849,7 @@ class _Layered:
         self.exit_side = EXIT[o.direction]
         self.entry_side = OPPOSITE[self.exit_side]
 
-    # -- sizes in the abstract frame: ``a`` runs across the layers, ``r`` along them
+    # Sizes in the abstract frame: ``a`` runs across the layers, ``r`` along them.
     def sa(self, n):
         return n.h if self.horizontal else n.w
 
@@ -929,7 +913,6 @@ class _Layered:
         self.assign_along()
         return self.build(loops)
 
-    # -- order within layers
     def order_layers(self):
         layers, up, down = self.layers, self.up, self.down
 
@@ -1012,7 +995,6 @@ class _Layered:
         if count > best_count:
             self.layers = best
 
-    # -- coordinates across the layers
     def size_a(self, v):
         if v in self.nodes:
             return self.sa(self.nodes[v]) + 2 * self.loop_extra.get(v, 0.0)
@@ -1179,7 +1161,7 @@ class _Layered:
             cursor += width
         return bands
 
-    # -- coordinates along the layers; one track per horizontal run in each gap
+    # Coordinates along the layers: one track per horizontal run in each gap.
     def attach_offsets(self):
         """Offsets along the node sides at both ends of every hop, spread so connectors do not merge."""
         out_slots, in_slots = defaultdict(list), defaultdict(list)
@@ -1374,10 +1356,6 @@ class _Layered:
         return boxes
 
 
-# ---------------------------------------------------------------------------------------------
-# Trees: tidy, radial and mind map
-
-
 def _forest(ids, edges):
     """(parent map, children map, roots, edges left over) of a breadth-first spanning forest."""
     out = defaultdict(list)
@@ -1537,10 +1515,6 @@ class _Tree:
         return routes
 
 
-# ---------------------------------------------------------------------------------------------
-# Radial and mind map
-
-
 def _leaves(children, v, memo):
     if v not in memo:
         kids = children.get(v, [])
@@ -1600,10 +1574,6 @@ def _place_radial(nodes, edges, o):
         cx, cy = radius[depth[v]] * math.cos(theta), radius[depth[v]] * math.sin(theta)
         n.x, n.y = float(round(cx - n.w / 2)), float(round(cy - n.h / 2))
     return parent, depth, (0.0, 0.0)
-
-
-# ---------------------------------------------------------------------------------------------
-# Entry point
 
 
 def layout(nodes, edges, groups=None, options=None):

@@ -67,8 +67,6 @@ class Slide:
         self.next_id += 1
         return self.next_id - 1
 
-    # -- color and geometry -------------------------------------------------------------------
-
     def color(self, value, opacity=1.0):
         from .design import resolve_color
         from .render import color
@@ -110,8 +108,6 @@ class Slide:
         if child:
             inner += f'<a:chOff x="0" y="0"/><a:chExt cx="{max(1, round(child[0] * emu))}" cy="{max(1, round(child[1] * emu))}"/>'
         return f"<{tag}{attrs}>{inner}</{tag}>"
-
-    # -- layers -------------------------------------------------------------------------------
 
     def layers(self, layers, bounds, parent, emu, index):
         out = []
@@ -307,8 +303,6 @@ class Slide:
             angle = {"vertical": 90, "horizontal": 0}.get(direction, layer.get("angle", 0)) % 360
             shade = f'<a:lin ang="{round(angle * 60000)}" scaled="0"/>'
         return f'<a:gradFill rotWithShape="1"><a:gsLst>{items}</a:gsLst>{shade}</a:gradFill>'
-
-    # -- text ---------------------------------------------------------------------------------
 
     def text(self, layer, bounds, emu, ident):
         from .richtext import active

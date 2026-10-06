@@ -79,10 +79,6 @@ TEAR_KEYS = ("seed", "strength", "as", "edges", "depth", "length", "roughness", 
              "fibre_width", "fill")
 
 
-# ---------------------------------------------------------------------------------------------
-# Noise and outlines
-
-
 def stream(seed, *keys):
     """A random stream for a seed and any number of integer keys; the same arguments always give
     the same stream, and each key path gives an independent one."""
@@ -273,10 +269,6 @@ def ribbon(points, closed, widths):
     return [(np.vstack([left, right[::-1]]), True)]
 
 
-# ---------------------------------------------------------------------------------------------
-# Layers as outlines
-
-
 def visible(value, project):
     from .colors import parse
     from .design import resolve_color
@@ -356,10 +348,6 @@ def drifted(value, project, u, lightness, chroma, hue):
     c = max(c * (1 + chroma * u[1]), 0.0)
     rgb = gamut_map(from_polar((light, c, h + hue * u[2])))
     return hex_of((*rgb, rgba[3]))
-
-
-# ---------------------------------------------------------------------------------------------
-# irregular
 
 
 def size_of(w, h):
@@ -542,10 +530,6 @@ def execute_irregular(project, op):
                   **{k: deepcopy(op[k]) for k in RECIPE_KEYS if k in op}}
         restore(project, layer)
         layer["irregular"] = make_irregular(project, layer, recipe, index)
-
-
-# ---------------------------------------------------------------------------------------------
-# tear
 
 
 MODES = ("mask", "clip", "path")
@@ -803,10 +787,6 @@ def execute_tear(project, op):
                       **({"face": face["id"]} if mode == "clip" else {})}
     if mode == "path":
         project.state["active_layer"] = holder["id"]
-
-
-# ---------------------------------------------------------------------------------------------
-# Operations
 
 
 def execute(project, op):
