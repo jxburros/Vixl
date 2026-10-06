@@ -9,6 +9,7 @@ build/
 .vixl-session.json
 .vixl-jobs/
 .vixl-cache/
+.vixl-cache.usage.json
 .vixl/rolls.json
 *.vixl.lock
 *.vixl

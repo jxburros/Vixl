@@ -238,9 +238,9 @@ class Doc:
             vixl("-p", path, "font", "install", FONT_FAMILY, "--weight", str(FONT_WEIGHT),
                  "--name", "display", cwd=directory)
         batch = [{"type": "timeline-set", "duration": self.duration, "fps": self.fps}] + self.ops
-        for i in range(0, len(batch), 900):  # one apply call holds at most 1000 operations
+        for i in range(0, len(batch), 9000):  # one apply call holds at most 10,000 operations
             with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as fh:
-                json.dump(batch[i:i + 900], fh)
+                json.dump(batch[i:i + 9000], fh)
             try:
                 vixl("-p", path, "apply", fh.name, cwd=directory)
             finally:

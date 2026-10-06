@@ -9,10 +9,10 @@
     },
     {
       "check": "bounds",
-      "severity": "warning",
-      "action": "review",
+      "severity": "info",
+      "action": "informational",
       "layer": null,
-      "message": "'glow' is cut off by the canvas edge; if the crop is deliberate, mark it with layer-intent allow_crop"
+      "message": "'glow' bleeds off the canvas edge (marked as an intentional crop)"
     }
   ]
 }

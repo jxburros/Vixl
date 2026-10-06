@@ -9,31 +9,31 @@
     },
     {
       "check": "bounds",
-      "severity": "warning",
-      "action": "review",
+      "severity": "info",
+      "action": "informational",
       "layer": null,
-      "message": "'glow' is cut off by the canvas edge; if the crop is deliberate, mark it with layer-intent allow_crop"
+      "message": "'glow' bleeds off the canvas edge (marked as an intentional crop)"
     },
     {
       "check": "safe_area",
-      "severity": "warning",
-      "action": "review",
+      "severity": "info",
+      "action": "informational",
       "layer": null,
-      "message": "'glow' extends outside the safe area"
+      "message": "'glow' extends outside the safe area (marked as an intentional crop)"
     },
     {
       "check": "safe_area",
-      "severity": "warning",
-      "action": "review",
+      "severity": "info",
+      "action": "informational",
       "layer": null,
-      "message": "'grid' extends outside the safe area"
+      "message": "'grid' extends outside the safe area (marked as an intentional crop)"
     },
     {
       "check": "safe_area",
-      "severity": "warning",
-      "action": "review",
+      "severity": "info",
+      "action": "informational",
       "layer": null,
-      "message": "'grid-row' extends outside the safe area"
+      "message": "'grid-row' extends outside the safe area (marked as an intentional crop)"
     }
   ]
 }

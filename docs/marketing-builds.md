@@ -35,3 +35,14 @@ upscales. `max_pixels` caps the embedded pixel area and may reduce that resoluti
 further. The source path, checksum, original size and embedded size are recorded
 in provenance; the original file remains untouched. Saving drops unreferenced
 assets, while assets referenced by retained history stay available for undo.
+
+## Example: the marketing kit
+
+[`marketing/build.py`](../marketing/build.py) builds Vixl's own marketing kit with Vixl 0.20.0
+in about 1½ minutes on a 4-core machine. It checks the 1080 × 1350 carousel with
+`deck={"profile": "phone"}` and the pitch deck, which is read on screen rather than projected,
+with `deck={"profile": "screen"}`. Its dot grids are marked `layer-intent role=decoration`, and
+the strikethrough bars on its timing slide use `allow_overlap`, so the remaining findings are
+informational or deliberate. Its copy quotes counts taken from the 0.20.0 registries:
+179 operation types, 150 named sizes, 47 layouts, 40 templates, 19 containers, 28 styles,
+17 looks and 17 brushes. [`marketing/README.md`](../marketing/README.md) says how to recount them.

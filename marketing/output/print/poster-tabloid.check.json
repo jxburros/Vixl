@@ -9,17 +9,10 @@
     },
     {
       "check": "bounds",
-      "severity": "warning",
-      "action": "review",
+      "severity": "info",
+      "action": "informational",
       "layer": null,
-      "message": "'glow' is cut off by the canvas edge; if the crop is deliberate, mark it with layer-intent allow_crop"
-    },
-    {
-      "check": "overlap",
-      "severity": "warning",
-      "action": "review",
-      "layer": null,
-      "message": "'glow' and 'head' overlap by 12340 px (5.1% of the smaller layer)"
+      "message": "'glow' bleeds off the canvas edge (marked as an intentional crop)"
     }
   ]
 }
