@@ -72,7 +72,8 @@ Set `VIXL_NO_UPDATE=1` to suppress both automatic checks and pending activation 
 | Command | Behavior |
 | --- | --- |
 | `new 1920x1080 -o poster.vixl --background '#111111'` | Create a project; refuses existing files |
-| `open poster.vixl` | Select an existing project for this directory |
+| `open poster.vixl` | Select an existing project for this directory. A document saved before 0.21 reports, under `upgrade`, the layers that render differently now (effects on rotated/flipped/skewed layers, `temperature`/`tint`, open stroked shapes that were filled white) |
+| `upgrade [poster.vixl] [--report] [--pin-fills]` | Accept the 0.21 rendering for an older document and stop the notice; `--pin-fills` first gives open stroked shapes the explicit white fill they used to render with (one undoable revision); `--report` only lists the affected layers |
 | `save [copy.vixl]` | Save, or save as a new selected project |
 | `status`, `inspect [LAYER]`, `describe`, `layers` | JSON state, including resolved bounds |
 | `manifest`, `dependencies`, `reproduce --check` | List assets/fonts/providers; check current renderability |

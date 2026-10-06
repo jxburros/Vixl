@@ -559,9 +559,18 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         return created
 
     @tool
-    def vixl_document_open(path: str) -> dict:
-        """Open and activate an existing .vixl file. Other open documents stay available."""
-        return session.open(path)
+    def vixl_document_open(
+        path: str,
+        upgrade: Annotated[
+            Literal["accept", "pin-fills"] | None,
+            Field(description="For a document saved before 0.21 (the result lists affected layers under "
+                  "'upgrade'): 'accept' keeps the new rendering and stops the notice; 'pin-fills' also "
+                  "restores the white fill of open stroked shapes"),
+        ] = None,
+    ) -> dict:
+        """Open and activate an existing .vixl file. Other open documents stay available. A document
+        saved by an older Vixl reports what now renders differently under 'upgrade'."""
+        return session.open(path, upgrade=upgrade)
 
     @tool
     def vixl_document_close(document: Document = None) -> dict:

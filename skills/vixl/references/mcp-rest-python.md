@@ -45,7 +45,7 @@ result (`"replayed": true`) instead of applying twice.
 | --- | --- | --- |
 | `vixl_workspace_list` | `directory="."`, `offset=0`, `limit=100` (≤200) | `entries[{path,directory?}]`, `active`, `open`, `next_offset` |
 | `vixl_document_create` | **`path`**, **`width`**, **`height`**, `background="transparent"` | Creates + activates (and creates missing directories); refuses existing files |
-| `vixl_document_open` | **`path`** | Activates an existing `.vixl`; other open documents stay open (up to 8) |
+| `vixl_document_open` | **`path`**, `upgrade` | Activates an existing `.vixl`; other open documents stay open (up to 8). A document saved before 0.21 lists affected layers under `upgrade` (effects on rotated layers, temperature/tint, open stroked shapes no longer white); pass `upgrade="pin-fills"` to restore the white fills or `"accept"` to keep the new look |
 | `vixl_document_close` | `document` | Drops a document from the session (edits are already saved) |
 | `vixl_document_inspect` | `target=None`, `detail="compact"\|"full"` | Compact: canvas + one entry per layer with `bounds`; full: every field (with `resolved_bounds`) |
 | `vixl_import_image` | `path` **or** `data_base64` (base64 or `data:` URL), `name="image"` | New layer; returns `{id, name, width, height, bounds, asset}` (≤64 MiB) |
