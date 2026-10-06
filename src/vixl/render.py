@@ -1170,7 +1170,7 @@ def export(
     project,
     path=None,
     *,
-    quality=90,
+    quality=None,
     scale=1,
     profile=None,
     variables=None,
@@ -1203,6 +1203,8 @@ def export(
     width=480,
     columns=None,
     labels=True,
+    title=None,
+    max_bytes=None,
 ):
     """Render and encode. ``color_space='cmyk'`` separates JPEG/TIFF/PDF output (ICC profile
     bytes in ``icc_profile`` for press-accurate separation, else device-naive GCR with
@@ -1215,11 +1217,15 @@ def export(
     receives ``content``, ``content_reason``, ``raster_fallbacks`` and ``page_size``. HTML output of a
     multi-page document is a self-contained slide presentation (see ``presenter.py``): ``presenter``
     is ``False`` for the plain single-image HTML, ``True`` for a presentation of any document, or
-    a dict of options (theme, notes, slide_images, start, title)."""
+    a dict of options (theme, notes, slide_images, start, title). ``title`` is the PDF document title
+    (default: the page's title layer, then the file name). ``max_bytes`` is a size budget: when the
+    encoded file is larger, ``report['warnings']`` says so (the export still succeeds)."""
     require(isinstance(overwrite, bool), "overwrite must be true or false", field="overwrite")
     require(path is None or overwrite or not Path(path).exists(),
             "Export output already exists; pass overwrite=True to replace it", "output_exists", field="path")
     require(path is None or Path(path).suffix.lower() != ".vixl", "Cannot export over a Vixl project")
+    quality_given = quality is not None  # None: not given (PDF images stay lossless, others use 90)
+    quality = 90 if quality is None else quality
     require(alpha in ("auto", "keep", "flatten"), "alpha must be auto, keep or flatten", field="alpha")
     require(sampling in ("smooth", "nearest"), "Sampling must be smooth or nearest")
     require(color_space in ("rgb", "cmyk"), "Color space must be rgb or cmyk")
@@ -1314,7 +1320,8 @@ def export(
                               ink_limit=None if ink_limit is None else ink_limit / 100, background=background)
         content = pdf_content or "vector"
         data = export_pdf(project, path, pages=pages or ([page] if page is not None else None), content=content,
-                          dpi=dpi, background=background, color_space=color_space, separation=separation, report=report)
+                          dpi=dpi, background=background, color_space=color_space, separation=separation,
+                          jpeg_quality=int(quality) if quality_given else None, title=title, report=report)
         if report is not None:
             report["content_reason"] = ("requested with pdf_content" if pdf_content else
                                         "default: vector, with images only for what PDF cannot draw (see raster_fallbacks)")
@@ -1455,6 +1462,11 @@ def export(
         report.update(content="raster", color_space=color_space, content_reason=(
             f"{', '.join(raster_only)} export the page as an image" if raster_only else
             f"scale {requested_scale:g} exports a larger image; pass pdf_content for a vector or raster PDF at its natural size"))
+    if report is not None and fmt in ("PNG", "JPEG", "WEBP", "TIFF", "AVIF"):
+        from .animation import still_size_warnings
+
+        if warnings := still_size_warnings(project, fmt, len(data), max_bytes):
+            report.setdefault("warnings", []).extend(warnings)
     if path:
         Path(path).write_bytes(data)
     return data

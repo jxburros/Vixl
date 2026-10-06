@@ -61,14 +61,19 @@ def shape_image(project, layer):
         root = ET.Element("svg", xmlns="http://www.w3.org/2000/svg", width=str(w), height=str(h),
                           viewBox=f"0 0 {view[0]} {view[1]}", preserveAspectRatio="none")
         from .colors import parse, hex_of
-        attrs = {"d": path, "stroke-width": str(layer.get("stroke_width", 1))}
-        if layer.get("line_cap"):
-            attrs["stroke-linecap"] = layer["line_cap"]
-            attrs["stroke-linejoin"] = "round" if layer["line_cap"] == "round" else "miter"
-        for field in ("fill", "stroke"):
-            rgba = parse(resolve_color(layer.get(field, "white" if field == "fill" else "transparent"), project.state))
+        attrs = {"d": path}
+        from .geometry import default_fill
+        for field, value in (("fill", default_fill(layer)), ("stroke", layer.get("stroke", "transparent"))):
+            rgba = parse(resolve_color(value, project.state))
+            if field == "stroke" and (rgba[3] == 0 or layer.get("stroke_width", 1) <= 0):
+                continue  # no stroke: leave the stroke attributes out
             attrs[field] = hex_of((*rgba[:3], 1))
             attrs[field + "-opacity"] = str(rgba[3])
+            if field == "stroke":
+                attrs["stroke-width"] = str(layer.get("stroke_width", 1))
+                if layer.get("line_cap"):
+                    attrs["stroke-linecap"] = layer["line_cap"]
+                    attrs["stroke-linejoin"] = "round" if layer["line_cap"] == "round" else "miter"
         ET.SubElement(root, "path", attrs)
         return Image.open(io.BytesIO(resvg_py.svg_to_bytes(svg_string=ET.tostring(root, encoding="unicode")))).convert("RGBA")
     # Supersample within the resource budget; geometry is re-evaluated at every size.
@@ -79,7 +84,9 @@ def shape_image(project, layer):
     )
     image = Image.new("RGBA", (w * factor, h * factor))
     draw = ImageDraw.Draw(image)
-    fill = color(resolve_color(layer.get("fill", "white"), project.state))
+    from .geometry import default_fill
+
+    fill = color(resolve_color(default_fill(layer), project.state))
     stroke = color(resolve_color(layer.get("stroke", "transparent"), project.state))
     width = round(layer.get("stroke_width", 1) * factor)
     pad = width / 2 if stroke[3] else 0

@@ -78,7 +78,7 @@ SUMMARIES = {
     "radial-repeat": "Make N copies of a layer around a center, optionally mirrored (radial symmetry, mandalas, rosettes).",
     "look": "Apply a named finishing look (glow, drop shadow, grain, paper, gradient …) to layers in one step.",
     "layer-style": "Add or remove a layer style: drop shadow, stroke, outer glow, color or gradient overlay.",
-    "layer-intent": "Mark a layer as content, decoration or background, allow intended overlaps, or allow an intentional crop.",
+    "layer-intent": "Mark a layer as content, decoration, background or the page title, allow intended overlaps, or allow an intentional crop.",
     "path-fit": "Fit a path layer's geometry into its box.",
     "font-fallbacks": "Register fonts used for characters the primary font lacks.",
     "artboard": "Define a named artboard (size, background, variables, viewport) for variants.",
@@ -563,7 +563,7 @@ OVERRIDES = {
     "organic-shape": {"kind": "leaf, petal, blob or rose.", "lobes": "Lobe or petal count.",
                       "variation": "Randomness of the outline, 0-1."},
     "path-fit": {"padding": "Inner margin in pixels.", "preserve_aspect": "true keeps the path's proportions."},
-    "layer-intent": {"role": "content, decoration (may overlap and bleed) or background.",
+    "layer-intent": {"role": "content, decoration (may overlap and bleed), background, or title (the heading that names the page and the PDF).",
                      "allow_overlap": "Layers this layer may overlap without a check finding.",
                      "allow_crop": "true marks a deliberate edge crop or bleed: checks report it as informational "
                                    "instead of a problem."},

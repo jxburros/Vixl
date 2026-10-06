@@ -55,7 +55,7 @@ def check_state(project, state):
             "Duplicate layer identifier",
             "invalid_project",
         )
-        require(layer.get("role", "content") in ("content", "decoration", "background"), "Invalid layer role", "invalid_project")
+        require(layer.get("role", "content") in ("content", "decoration", "background", "title"), "Invalid layer role", "invalid_project")
         if "pen_origin" in layer:
             origin = layer["pen_origin"]
             require(isinstance(origin, list) and len(origin) == 2, "Invalid pen origin", "invalid_project")

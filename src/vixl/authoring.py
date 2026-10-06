@@ -21,7 +21,7 @@ def schemas(add):
         "x": COORD, "y": COORD,
     })
     add("path-fit", {"padding": {"type": "number", "minimum": 0}, "preserve_aspect": B}, ["target"])
-    add("layer-intent", {"role": {"enum": ["content", "decoration", "background"]},
+    add("layer-intent", {"role": {"enum": ["content", "decoration", "background", "title"]},
                          "allow_overlap": {"type": "array", "items": S, "maxItems": 512},
                          "tags": {"type": "array", "items": S, "maxItems": 32,
                                   "description": "Labels (replacing the layer's tags) that edit-layers can select with where.tag"},

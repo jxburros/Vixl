@@ -115,7 +115,7 @@ Motion:    timeline, timeline set --duration 3s --fps 30 [--loop N], keyframe LA
            animate-preset LAYER PRESET [--start T] [--duration T], marker NAME TIME, easings,
            export-timeline --out FILE.gif|.webp|.png|.zip|.mp4 [--fps N] [--scale N] [--colors N],
            timeline-sheet --out FILE [--count 8], render --time 1.5s --out FILE
-Output:    export FILE [--quality N] [--scale 2x] [--profile NAME] [--dpi N]
+Output:    export FILE [--quality N] [--title T] [--max-bytes N] [--scale 2x] [--profile NAME] [--dpi N]
            [--cmyk [--icc PROFILE.icc] [--ink-limit 300]] [--proof] [--simulate deuteranopia],
            export FILE.html | FILE.pdf | FILE.ico [--icon-sizes 16 32 48], export-icons --out DIR [--set web|apple|android|all],
            render [PROJECT] --out FILE [--set NAME=VALUE] [--artboard NAME] [--comp NAME],
@@ -191,7 +191,9 @@ def output_options(args, command):
     p.add_argument("path", nargs="?")
     p.add_argument("--out", "--preview", dest="out")
     p.add_argument("--overwrite", action="store_true", help="Replace existing export files")
-    p.add_argument("--quality", type=int, default=90)
+    p.add_argument("--quality", type=int, default=None)
+    p.add_argument("--title", help="PDF document title (default: the page's title layer, then the file name)")
+    p.add_argument("--max-bytes", type=int, help="Size budget: warn when a raster export is larger")
     p.add_argument("--scale", default="1")
     p.add_argument("--profile")
     p.add_argument("--format", choices=["PNG", "JPEG", "WEBP", "TIFF", "AVIF", "SVG", "JPG", "PDF", "ICO", "HTML", "PPTX"])
@@ -784,6 +786,8 @@ def project_command(project, cmd, args, *, detail="compact"):
             pages=None if a.pages == "all" else parse_pages(a.pages),
             pdf_content=a.pdf_content,
             presenter=presenter_options(a),
+            title=a.title,
+            max_bytes=a.max_bytes,
             report=report,
             **print_options(a, project.limits),
         )

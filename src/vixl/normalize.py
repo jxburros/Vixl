@@ -199,6 +199,10 @@ def _canonical_type(kind, known):
     return candidates[-1] if candidates[-1] in SHAPE_TYPES or candidates[-1] in STYLE_ALIASES else kind
 
 
+# Colour fields where "none" means no paint, spelled "transparent" from here on.
+COLOR_FIELDS = ("fill", "stroke", "color", "stroke_color", "background", "start", "end", "highlight")
+
+
 def normalize_operation(operation, properties, known_types, effects, notes, index=None):
     """Rewrite well-known guesses into canonical form. ``properties(kind)`` returns the schema's
     property names for a canonical operation type; the result is still schema-validated."""
@@ -345,6 +349,10 @@ def normalize_operation(operation, properties, known_types, effects, notes, inde
                 {"offset": round(i / (len(colors) - 1), 6), "color": c} for i, c in enumerate(colors)
             ]
         note("colors → start/end/stops")
+    for key in COLOR_FIELDS:
+        if isinstance(op.get(key), str) and op[key].strip().lower() == "none":
+            op[key] = "transparent"
+            note(f"{key} 'none' → 'transparent'")
     return op
 
 

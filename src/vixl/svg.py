@@ -8,7 +8,7 @@ import xml.etree.ElementTree as ET
 from .assets import png_bytes
 from .design import resolve_color
 from .design_render import artboard_project
-from .geometry import shape_path
+from .geometry import default_fill, shape_path
 from .render import color, effect_margin, ink_origin, layer_image, layer_ink, render, resolved_layers, resolve_layout
 from .errors import VixlError
 from .svg_effects import supported, native_styles, effect_filter, style_filter
@@ -101,7 +101,7 @@ class Exporter:
         return "matrix(" + " ".join(format(v, ".12g") for v in values) + ")"
 
     def attrs(self, layer):
-        fill, alpha = paint(layer.get("fill", "white"), self.project.state)
+        fill, alpha = paint(default_fill(layer), self.project.state)
         stroke, sa = paint(layer.get("stroke", "transparent"), self.project.state)
         return dict(
             fill=fill,

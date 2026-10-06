@@ -263,6 +263,35 @@ def size_warnings(format, data):
     return []
 
 
+TEXTURE_LOOKS = ("grain", "paper", "film", "risograph", "halftone", "noise")
+
+
+def textured_layers(project):
+    """Names of the layers carrying texture looks or grain/noise effects: per-pixel noise that PNG cannot compress."""
+    names = []
+    for layer in project.state.get("layers", []):
+        effects = [e.get("name") for e in layer.get("effects") or []]
+        if any(name in TEXTURE_LOOKS for name in (*layer.get("looks", []), *effects)):
+            names.append(layer["name"])
+    return names
+
+
+def still_size_warnings(project, format, size, max_bytes=None):
+    """Warnings for an encoded still of ``size`` bytes: over ``max_bytes`` when given, and a PNG above
+    1 MB, naming texture looks as the likely cause. The export itself never fails over size."""
+    warnings = []
+    textured = textured_layers(project)
+    hint = (f" Texture looks ({', '.join(textured[:5])}) add noise that PNG cannot compress: lower their amount, "
+            "or export JPEG or WebP." if textured and format == "PNG" else "")
+    if max_bytes is not None and size > max_bytes:
+        warnings.append(f"{format} is {size:,} bytes, over the max_bytes budget of {max_bytes:,}." + hint
+                        + ("" if format == "PNG" else " Lower quality or scale."))
+    elif format == "PNG" and size > GIF_WARN_BYTES:
+        warnings.append(f"PNG is {size / 1048576:.1f} MB; messaging apps often recompress or reject images this large."
+                        + (hint or " Export JPEG or WebP, or reduce the canvas size."))
+    return warnings
+
+
 def sheet_cells(entries):
     """The distinct frames of a sequence in order of first use: one sprite-sheet cell each."""
     return list({frame["name"]: frame for frame, _ in entries}.values())
