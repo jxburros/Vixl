@@ -1,34 +1,51 @@
-# T11 round 2: red roof and chimney (lane V, Vixl MCP)
+# T11 round 2: red roof and chimney (lane V, Vixl)
 
-**Timing:** start 22:30:43 UTC, end about 22:36 UTC (about 6 min). **Tool calls: 44 in total** (Vixl MCP, Bash, ToolSearch together, plus the final hand-back call). This includes 5 Vixl calls that returned a validation error, 1 call to a tool name that wasn't loaded, and 2 `document_close` calls that reported the documents were already closed.
-
-All visual edits were made with Vixl MCP tools. Bash/Python was only used to copy the sources, read stroke widths from the `.vixl` JSON, and check the outputs (sizes, sampled colours, SVG element counts). Nothing outside `round2/` was changed. The round-1 files in the parent folder are untouched.
+I made both changes in Vixl through its MCP tools. Copies of `sketch.vixl` and `compare.vixl` in `round2/`
+were edited in place. All six deliverables were then re-exported from those copies with the same file
+names. Nothing outside `round2/` was changed. The only scripts I wrote read the exported files to check them.
 
 ## What changed
 
-1. **Roof is now red `#c0392b`.** I removed the old coral roof fill (`house/fill-4`, `#e2725b`) and refilled the same closed roof region with `drawing fill` in `#c0392b`. The new layer is `house/fill-roof`. The region is the same because the chimney sits above the roof line and doesn't split it. Sampled in `sketch-color.png`: roof = `#c0392b`.
-2. **Chimney added on the right side of the roof** (`house/chimney`). It is one open polyline made with `drawing stroke`: it starts on the right roof line, goes up, across the top and back down to the roof line (group coordinates (880,509.5) to (880,430) to (940,430) to (940,569.5); canvas = group + (130,60)). The bottom edge is the existing roof line, as it would be in a pen drawing. Then I ran `drawing straighten` on it so it is made of straight segments like the house walls and roof. `drawing stroke` had smoothed it into curves at first.
-   - **Line weight:** 3 px black (`#000000`), round caps. This matches the two roof sides it joins (`s006`/`s007`, both 3 px). Note that round 1's strokes are a mix of 3 px and 5 px: the walls, windows and door are 5 px. I matched the roof because the chimney meets it directly.
-   - **Fill:** `house/fill-chimney` in the same red `#c0392b` (brick chimney). The brief gives no colour for a chimney, so this is my choice.
-3. Re-exported every deliverable that the change affects, in the same way as round 1:
-   - `sketch-color.png`: 2000×1450, full document.
-   - `sketch-clean.png`: 2000×1450, with all fill and `bg-*` layers hidden, black strokes on white. Visibility was restored afterwards, so `sketch.vixl` is saved in its coloured state.
-   - `sketch-lines.svg`: `svg_policy: strict`. 35 `<path>` elements (34 from before plus the chimney) and 0 `<image>`.
-   - `compare.png`: 4040×1500. In `compare.vixl` I replaced the `colored` layer with the new `sketch-color.png`, at the same position (2040,25).
-4. `vixl_check` (drawing, bounds) passed with no issues.
+1. **Roof colour.** I changed the roof fill layer `house/fill-1` from coral `#e2725b` to `#c0392b`
+   (operation `shape` with `target`, so the layer keeps its ID).
+2. **Chimney.** I added `house/chimney`, made with `drawing stroke`. It is one open stroke with three
+   straight sides: up from the right roof slope, across the top, and back down to the slope. It is
+   60 px wide. It stands 59 px above the roof line on its left side and 120 px on its right side.
+   - The canvas points I used are (980, 559.2), (980, 500), (1040, 500) and (1040, 619.9).
+   - Both bottom ends lie on the traced right roof line (`house/s006`). I computed them from that
+     stroke's endpoints, so the chimney sits on the roof and does not cross into it. The roof line
+     itself is unchanged and forms the chimney's bottom edge.
+   - **Line character.** Pure black `#000000`, round caps, unsmoothed straight segments, at exact
+     right angles like the straightened walls and windows. The stroke is 5 px (I asked for 5.1 and
+     Vixl stored 5.0), which matches the drawing's median stroke weight of 5.1 px.
+3. **Chimney colour.** `drawing fill` (`gap: 12`) added `house/fill-15` inside the chimney in the
+   same red `#c0392b`. This is my own choice, since the brief gives no colour for the chimney.
+4. **Comps.** I re-saved both comps. `lines` hides `house/fill-15` like every other fill, so the
+   clean PNG and SVG show only the chimney outline. `color` shows it.
+5. **compare.vixl / compare.png.** I imported the new `sketch-color.png` as a layer at (2040, 0) in
+   place of the old right-hand image and renamed it `colored`. The original photo on the left is unchanged.
 
-## Files in round2/
+## Checks
 
-| File | Notes |
-| --- | --- |
-| `sketch.vixl` | Copy of the round-1 source with the edits above (`house/fill-4` removed; `house/fill-roof`, `house/fill-chimney` and `house/chimney` added). |
-| `sketch-color.png`, `sketch-clean.png`, `sketch-lines.svg` | Re-exported from it. |
-| `compare.vixl`, `compare.png` | Copy of the round-1 compare source with the coloured image swapped in. |
+- `vixl_check` with the `drawing` and `bounds` checks passed with no issues.
+- `drawing-report`: `preserved 0.9999` (unchanged), `added 0.0402` (was 0.0157; the chimney accounts
+  for the difference), 35 strokes, stroke width min 3.7 / median 5.1 / max 6.6.
+- I sampled `sketch-color.png`. The roof and the chimney are both `rgb(192,57,43)` = `#c0392b`. No
+  pixels of the old coral `#e2725b` remain.
+- I compared each new file with its round-1 version pixel by pixel.
+  - In `sketch-color.png`, the changed pixels all fall inside the box (587,427)–(1111,700), which
+    holds the roof and the chimney.
+  - In `sketch-clean.png`, they all fall inside (977,497)–(1043,623), which is the chimney outline alone.
+- `sketch-lines.svg` (strict policy) now has 35 `<path>` elements (34 plus the chimney), with no
+  `<image>` and no base64 data. All files are the same sizes as before: 2000×1500, and 4040×1500 for compare.
 
-Round-1 working and extra files (`photo-crop.vixl`, `work-photo-crop.png`, `drawing-overlay.png`) did not change and were not copied. The overlay compares against the original photo, which has no chimney.
+## Notes
 
-## Unsure about
-
-- **Line weight.** I chose 3 px to match the roof. If "the rest" means the heavier 5 px house-body lines, the chimney is lighter than those.
-- **Chimney colour.** It is the same red as the roof, so the two read as one red mass with a black line between them.
-- **It adds an object.** The original brief said not to add objects. Round 2 asks for one explicitly, so the chimney does not appear in the original photo on the left of `compare.png`.
+- The two chimney sides are different heights because the roof slopes. Measured from the roof line,
+  the left side is 59 px and the right side 120 px. The top is level.
+- I chose 5 px, the drawing's median weight, for the chimney. The roof lines it sits on are a little
+  thinner (3.7 and 4.0 px, as traced), so at full zoom the chimney reads slightly heavier than the
+  roof. It matches the walls (5.1–5.7 px).
+- Mistake I corrected: my first chimney attempt was off by the house group's (−29, −38) offset,
+  because `drawing stroke` takes canvas coordinates and I had given it group-local ones. I removed
+  that stroke and redrew it. Neither the bad stroke nor its removal appears in the exported files.
