@@ -820,7 +820,7 @@ def _snapshot(timeline, target):
 def _track_name(project, track):
     if track["target"] == "canvas":
         return f"canvas.{track['property']}"
-    layer = next((l for l in project.state["layers"] if l["id"] == track["target"]), None)
+    layer = next((item for item in project.state["layers"] if item["id"] == track["target"]), None)
     return f"{layer['name'] if layer else track['target']}.{track['property']}"
 
 

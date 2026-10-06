@@ -106,8 +106,7 @@ def test_chart_colors_overridden_by_series_colors_warn_and_axis_headroom_is_tigh
 
 
 def test_text_never_wraps_right_after_a_separator_and_event_poster_headline_dominates():  # #226
-    from vixl.text import face, lines, words_of
-    from vixl.render import font_for
+    from vixl.text import lines, words_of
 
     assert [w for w in words_of("Sat · June 12 – 6 pm") if w.strip()] == ["Sat", "· June", "12", "– 6", "pm"]
     p = Project(400, 300, "white")

@@ -1,5 +1,4 @@
 """Seamless loops, repeat/stagger, time-aware checks, poster frames, GIF dithering and honest export results."""
-import io
 
 import numpy as np
 import pytest

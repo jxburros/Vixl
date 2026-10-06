@@ -5,7 +5,7 @@ import math
 import numpy as np
 import pytest
 
-from vixl import adapt, geometry, guides, links, transforms
+from vixl import adapt, guides, links, transforms
 from vixl.geometry import ANCHORS, bezier_points, compact_number, parse_path, path_polygons
 from vixl.irregular import flatten
 

@@ -49,7 +49,10 @@ def test_no_description_leaks_between_unrelated_fields():
 
 def test_fields_named_in_the_issue_have_their_own_descriptions():
     v = variants()
-    desc = lambda kind, field: v[kind]["properties"][field].get("description", "")
+
+    def desc(kind, field):
+        return v[kind]["properties"][field].get("description", "")
+
     assert "Dash offset" not in str(v["gradient"]["properties"]["angle"])
     assert "Degrees" in desc("gradient", "angle")
     assert "color" in desc("gradient", "start").lower() and "color" in desc("gradient", "end").lower()
