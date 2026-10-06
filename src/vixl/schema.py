@@ -231,7 +231,7 @@ def _operation_schema():
         "chroma": {"type": "number", "minimum": 0, "maximum": 100,
                    "description": "denoise: colour-noise strength 0-100, smoothing blotches without bleeding across edges; default 50."},
         "search": {"type": "integer", "minimum": 1, "maximum": 10,
-                   "description": "denoise: search window radius in pixels, default 5; render time grows with its square."},
+                   "description": "denoise: search window radius in pixels, default 5; render time grows with its square (about 1 s per megapixel at 5)."},
         "points": {
             "type": "array",
             "items": {"type": "array", "items": N, "minItems": 2, "maxItems": 2},

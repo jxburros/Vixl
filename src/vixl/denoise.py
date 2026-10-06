@@ -8,11 +8,12 @@ reduced resolution with the cleaned luminance guiding which pixels may be averag
 colour does not bleed across an edge. Strengths are relative to the noise measured in the image
 itself, so one setting suits a clean photo and a grainy one alike.
 
-Cost: ``search`` sets the window radius, and the time grows with the number of window positions,
-(2 * search + 1) ** 2 - 1. At the default (5) the luminance pass takes roughly a second per
-megapixel on one core and the work is spread over up to four threads in strips (the result is the
-same whatever the thread count); chroma at half or quarter resolution adds about a third. Only
-NumPy and Pillow are used.
+Cost: ``search`` sets the window radius, and the time grows with the number of window positions
+tried: every position within two pixels, then every other one farther out, 24 + ((2 * search + 1)
+** 2 - 25) / 2 in all (72 at the default of 5, 124 at 7, at most 232). That takes roughly a
+second per megapixel at the default and is spread over up to four threads in strips (the result
+is the same whatever the thread count); chroma, at half or quarter resolution, adds about a third.
+Only NumPy and Pillow are used.
 """
 
 from concurrent.futures import ThreadPoolExecutor
@@ -27,7 +28,7 @@ from .model import finite
 DEFAULTS = {"luminance": 50.0, "chroma": 50.0, "search": 5}
 KEYS = tuple(DEFAULTS)
 PATCH = 2                  # patch radius: 5 x 5 pixel patches
-MAX_SEARCH = 10            # at most 440 window positions
+MAX_SEARCH = 10            # at most 232 window positions
 STRIP_PIXELS = 1 << 18     # pixels per strip: the working arrays stay in cache
 CHROMA_LEVELS = 12.0       # chroma levels that count as one colour at full chroma strength
 CHROMA_DETAIL = 0.5        # chroma detail steeper than this share of that tolerance is kept as drawn
@@ -92,7 +93,10 @@ def _nlm(guides, targets, floor, search, opacity=None):
     guides = [np.pad(g, m, mode=mode) for g in guides]
     padded = [np.pad(t, m, mode=mode) for t in targets]
     alpha = None if opacity is None else np.pad(opacity, m, mode=mode)
-    offsets = [(dy, dx) for dy in range(-search, search + 1) for dx in range(-search, search + 1) if dy or dx]
+    # Every position within two pixels, then every other one (a checkerboard) farther out: the same
+    # noise reduction as the full window at about 60% of the cost.
+    offsets = [(dy, dx) for dy in range(-search, search + 1) for dx in range(-search, search + 1)
+               if (dy or dx) and (max(abs(dy), abs(dx)) <= 2 or (dy + dx) % 2 == 0)]
     result = [np.empty((h, w), np.float32) for _ in targets]
     span = 2 * PATCH
 

@@ -74,9 +74,15 @@ def close_gaps(strokes, gap, movable=None):
             owner.append(np.full(len(p) - 1, index))
     first, last, owner = (np.vstack(first), np.vstack(last), np.concatenate(owner)) if first else (None, None, None)
 
+    if gap <= 0 or not ends:
+        return 0
     candidates = []  # (cost, kind, end, other end or hit point)
+    cells = {}  # ends by square of the plane, so only near ends are compared
+    for k, end in enumerate(ends):
+        cells.setdefault((int(end["point"][0] // gap), int(end["point"][1] // gap)), []).append(k)
     for i, a in enumerate(ends):
-        for j in range(i + 1, len(ends)):
+        x, y = int(a["point"][0] // gap), int(a["point"][1] // gap)
+        for j in sorted(k for dx in (-1, 0, 1) for dy in (-1, 0, 1) for k in cells.get((x + dx, y + dy), ()) if k > i):
             b = ends[j]
             d = float(np.linalg.norm(a["point"] - b["point"]))
             same = a["stroke"] == b["stroke"]
