@@ -203,6 +203,12 @@ Keep output order stable when resuming: variant IDs derive from row/matrix/board
 Completed files are published atomically; a crash before recording completion can require
 rerendering that one variant. Old output versions are retained.
 
+## Print merge
+
+`merge-impose` merges a template and a CSV into print sheets (n-up, crop marks, bleed) with vector text, validating every row
+first; see [imposition](imposition.md). Variant production fingerprints include the revisions of any documents a design
+[links](linked-documents.md), so a changed source re-renders the variants that use it.
+
 ## Persistent rendering cache and library
 
 Production, workflow previews, film document shots, and timeline exports and contact sheets of

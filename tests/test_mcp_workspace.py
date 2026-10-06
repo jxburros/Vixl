@@ -44,7 +44,7 @@ def test_operation_schema_is_in_tools_list(tmp_path):
         assert "args" not in tools["vixl_ai_generate"].inputSchema["properties"]
         assert tools["vixl_ai_generate"].inputSchema["properties"]["seed"]["type"] == "integer"
         # Design, pixel/animation, brush, timeline, layout, pen/container, organic/intent, color, guide/placement,
-        # page, rich text, form-field, drawing and stack operations extend the catalog; shared constraints and
+        # page, rich text, form-field, drawing, stack and linked-document operations extend the catalog; shared constraints and
         # runtime-validated nested settings keep the inline schema bounded (slim mode is smaller still).
         assert len(json.dumps(schema)) < 40000
 

@@ -50,6 +50,8 @@ def vector_overlay(layer, state):
 
 
 def fallback_reason(layer):
+    if layer["type"] == "link":
+        return "linked documents are exported as images"
     if layer.get("repeat"):
         return "repeat is not exported as vectors"
     if layer.get("lookup"):

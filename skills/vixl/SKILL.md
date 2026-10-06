@@ -57,6 +57,9 @@ agent, edit independently, preview branch-merge, resolve conflicts explicitly, t
 - **Guides beyond right angles** — angled/curved guides, compositional and perspective grids,
   `place`, `snap`, `guides`/`alignment` checks.
 - **Lyric videos** — `lyric-video-plan/build/export` workflow actions (song + LRC + template).
+- **Linked documents** — `link` layers render another `.vixl` live (derived crops, pattern previews, sheets); `links` reports
+  stale/missing sources, `link-embed` freezes one. See [production](references/production.md).
+- **Print merge** — `merge-impose` lays CSV rows out on print sheets with crop marks: vector-text PDF plus an editable sheet.
 
 Read [documents](references/documents.md) (rich text, pages, forms) and
 [drawing, shapes and guides](references/drawing-shapes-guides.md); lyric videos and form-fill jobs

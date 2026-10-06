@@ -183,6 +183,10 @@ class Project:
             from .forms import summary as field_summary
 
             state["fields"] = field_summary(self)
+        from .links import link_layers, status as link_status
+
+        if link_layers(self.state):
+            state["links"] = link_status(self)
         return {
             **state,
             "version": __version__,

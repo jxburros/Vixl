@@ -81,6 +81,7 @@ def check_state(project, state):
                 "pixel",
                 "paint",
                 "field",
+                "link",
             ),
             "Invalid layer type",
             "invalid_project",
@@ -114,6 +115,10 @@ def check_state(project, state):
             from .forms import validate_field
 
             validate_field(layer, state)
+        if layer["type"] == "link":
+            from .links import validate as validate_link
+
+            validate_link(layer, state)
         if "drawing" in layer or "drawing_strokes" in layer:
             from .drawing import validate as validate_drawing
 

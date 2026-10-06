@@ -148,6 +148,8 @@ def _brief(layer):
         result["shape"] = layer.get("shape")
     if layer["type"] == "paint":
         result["strokes"] = len(layer.get("strokes", []))
+    if layer["type"] == "link":
+        result.update({key: layer[key] for key in ("source", "artboard", "source_page") if key in layer})
     for key in ("color", "fill"):
         if key in layer:
             result[key] = layer[key]
@@ -215,6 +217,12 @@ def summarize(project, target=None):
                             for item in state["fields"]]
     if state.get("form"):
         result["form"] = state["form"]
+    if state.get("links"):
+        problems = [{key: item[key] for key in ("layer", "source", "state", "message") if key in item}
+                    for item in state["links"] if item["state"] != "ok"]
+        counts = {name: sum(1 for item in state["links"] if item["state"] == name) for name in {i["state"] for i in state["links"]}}
+        result["links"] = {"count": len(state["links"]), **{name: n for name, n in sorted(counts.items()) if name != "ok"},
+                           **({"problems": problems[:20]} if problems else {})}
     if state["transaction"]:
         result["transaction"] = True
     return result

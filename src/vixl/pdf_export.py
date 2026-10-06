@@ -18,7 +18,8 @@ import numpy as np
 
 from .errors import require
 from .model import finite
-from .pdf_writer import FontSet, Name, Text, Writer, image_xobject
+from .links import pdf_link
+from .pdf_writer import FontSet, Name, Text, Writer, font_digest, image_xobject
 
 VECTOR_LEAVES = ("solid", "shape", "gradient", "text")
 
@@ -209,6 +210,10 @@ class PageBuilder:
                                                                  layer["height"] / layer["content_height"])
                 self.draw(layers, bounds, layer["id"], inner)
                 continue
+            if reason == "linked document":
+                reason = pdf_link(self, layer, b, matrix)
+                if reason is None:
+                    continue
             if reason is None:
                 try:
                     self.leaf(layer, b, matrix)
@@ -260,7 +265,7 @@ class PageBuilder:
             return "trimmed stroke"
         if layer["type"] not in VECTOR_LEAVES:
             return {"raster": "image", "frame": "image", "paint": "brush strokes", "pixel": "pixel art",
-                    "pathfinder": "pathfinder"}.get(layer["type"], layer["type"])
+                    "pathfinder": "pathfinder", "link": "linked document"}.get(layer["type"], layer["type"])
         return None
 
     def leaf(self, layer, bounds, matrix):
@@ -522,9 +527,7 @@ class Fonts(FontSet):
         return round(outline["hmtx"][name][0] * 1000 / outline["head"].unitsPerEm)
 
     def embeddable_cached(self, data):
-        import hashlib
-
-        key = hashlib.sha256(data).hexdigest()
+        key = font_digest(data)
         if key not in self._embeddable:
             self._embeddable[key] = self.embeddable(data)
         return self._embeddable[key]

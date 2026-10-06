@@ -72,6 +72,10 @@ def compile_command(tokens):
     form = compile_forms(cmd, args)
     if form is not None:
         return form
+    from .links import compile_command as compile_links
+    linked = compile_links(cmd, args)
+    if linked is not None:
+        return linked
     from .pages import compile_command as compile_pages
     paged = compile_pages(cmd, args)
     if paged is not None:

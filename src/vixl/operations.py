@@ -21,6 +21,7 @@ from .pages import TYPES as PAGE_TYPES
 from .forms import TYPES as FORM_TYPES
 from .drawing import TYPES as DRAWING_TYPES
 from .selectors import TYPES as SELECTOR_TYPES
+from .links import TYPES as LINK_TYPES
 
 from copy import deepcopy
 import hashlib
@@ -62,7 +63,7 @@ ALIASES = {
     "make_selection": "select",
 }
 
-OPERATION_TYPES = list(DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_TYPES + BRUSH_TYPES + TIMELINE_TYPES + LAYOUT_TYPES + COLOR_TYPES + AUTOMATION_TYPES + CREATIVE_TYPES + CONTAINER_TYPES + AUTHORING_TYPES + ORGANIC_TYPES + IRREGULAR_TYPES + GUIDE_TYPES + RICH_TYPES + PAGE_TYPES + FORM_TYPES + DRAWING_TYPES + STACK_TYPES + SELECTOR_TYPES) + [
+OPERATION_TYPES = list(DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_TYPES + BRUSH_TYPES + TIMELINE_TYPES + LAYOUT_TYPES + COLOR_TYPES + AUTOMATION_TYPES + CREATIVE_TYPES + CONTAINER_TYPES + AUTHORING_TYPES + ORGANIC_TYPES + IRREGULAR_TYPES + GUIDE_TYPES + RICH_TYPES + PAGE_TYPES + FORM_TYPES + DRAWING_TYPES + STACK_TYPES + SELECTOR_TYPES + LINK_TYPES) + [
     "add",
     "solid",
     "gradient",
@@ -287,6 +288,9 @@ def execute(project, op):
     if kind in FORM_TYPES:
         from .forms import execute as execute_forms
         return execute_forms(project, op)
+    if kind in LINK_TYPES:
+        from .links import execute as execute_links
+        return execute_links(project, op)
     if kind in DRAWING_TYPES:
         from .drawing import execute as execute_drawing
         return execute_drawing(project, op)

@@ -340,6 +340,8 @@ def _operation_schema():
     drawing_schemas(add)
     from .selectors import schemas as selector_schemas
     selector_schemas(add)
+    from .links import schemas as link_schemas
+    link_schemas(add)
     add(
         "palette-generate",
         {"name": S, "color": S, "scheme": S, "count": {"type": "integer", "minimum": 2, "maximum": 12}},

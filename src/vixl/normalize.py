@@ -150,6 +150,7 @@ FIELD_ALIASES = {
         for key in ("lock_aspect", "lock_aspect_ratio", "keep_aspect_ratio", "preserve_aspect", "proportional",
                     "maintain_aspect", "keep_ratio")
     },
+    "link": {"path": "source", "file": "source", "src": "source", "document": "source", "doc": "source"},
 }
 FIELD_ALIASES["text-set"] = FIELD_ALIASES["text"]
 GEOMETRY_TYPES = {
@@ -167,8 +168,9 @@ GEOMETRY_TYPES = {
     "pen",
     "field",
     "stack",
+    "link",
 }
-CENTER_TYPES = {"solid", "gradient", "shape", "add", "frame", "symbol-instance", "move", "field"}
+CENTER_TYPES = {"solid", "gradient", "shape", "add", "frame", "symbol-instance", "move", "field", "link"}
 
 
 def _snake(key):

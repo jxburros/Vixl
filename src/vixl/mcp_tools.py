@@ -346,7 +346,8 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
             "operation; preview page='all'; export .pdf, .pptx or .html, a self-contained presentation); forms "
             "are field layers (field operation; check form; export_file fillable=true, or values= to fill); hand "
             "drawings are drawing operations (import, clean, vectorize, straighten, fill) checked with check "
-            "drawing. "
+            "drawing; a design derived from another is a live link layer, and print "
+            "sheets from a CSV are vixl_workflow merge-impose. "
             + ("AI tools need a configured provider." if tools == "all" else
                "Provider-backed AI tools are served separately by vixl mcp --tools ai.")
         ),
@@ -391,7 +392,8 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         request: dict, document: Document = None,
     ) -> dict:
         """Unified workflows: resources, palettes, saved shapes, suites, effects, plugin packs, project groups,
-        branch/merge collaboration, production, libraries and jobs. Discover action fields with vixl_workflow_schema.
+        branch/merge collaboration, production, libraries, jobs, linked-document status (links) and print merge
+        (merge-impose). Discover action fields with vixl_workflow_schema.
         Paths stay in workspace. Branch merge and group apply default to dry_run=true.
 
         Long jobs: submit with start=true, then status. A call that returned {job: job_…} is followed with
@@ -690,7 +692,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
     @tool
     def vixl_check(
         checks: list[Literal["bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "fonts", "brand", "print", "color_vision", "guides", "alignment",
-                             "deck", "title_position", "type_scale", "words", "min_font", "notes", "empty", "form", "drawing"]]
+                             "deck", "title_position", "type_scale", "words", "min_font", "notes", "empty", "form", "drawing", "links"]]
         | None = None,
         targets: list[str] | None = None,
         safe_area: Annotated[

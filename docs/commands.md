@@ -256,3 +256,24 @@ vixl export-timeline --out FILE.gif|.png|.webp|.zip|.mp4|.webm [--format sheet] 
 ```
 
 Times are milliseconds or `1.5s`, `250ms`, `50%` or a marker name. Details: [sizes and layouts](sizes-and-layouts.md), [color and print](color-and-print.md), [brushes and animation](brushes-and-animation.md).
+
+## Linked documents and print merge (unreleased)
+
+```bash
+vixl link FILE.vixl [--name N] [--x X] [--y Y] [--width W] [--height H] [--fit fill|fit|stretch]
+    [--position top-left|0.5,0.5] [--crop X,Y,W,H] [--artboard NAME] [--source-page P] [--set NAME=VALUE]…
+vixl link-set LAYER [--source F] [--fit …] [--position …] [--crop …] [--artboard …] [--source-page …]
+    [--set NAME=VALUE]… [--clear artboard|source_page|variables|crop]…
+vixl link-refresh [LAYER] | link-embed LAYER | links          # links: every link, ok / stale / missing / cycle
+
+vixl merge [TEMPLATE.vixl] --data rows.csv --out sheets.pdf [--sheet-document sheets.vixl]
+    [--size letter] [--cols 2] [--rows 3] [--gutter 0.125] [--margin 0.5] [--bleed template|0.125]
+    [--no-crop-marks] [--registration] [--slug TEXT] [--copies N] [--set NAME=VALUE]…
+    [--unknown warn|error|ignore] [--defaults error|warn|ignore] [--check design]
+    [--skip-invalid] [--dry-run] [--replace]
+vixl merge --rerun sheets.vixl [--data new.csv] [--out new.pdf]
+```
+
+[Linked documents](linked-documents.md) render another `.vixl` live (`--allow-linked` for sources outside the current
+folder); [imposition](imposition.md) lays CSV rows out on print sheets with crop marks, as a vector-text PDF and an editable
+sheet of links.
