@@ -42,8 +42,9 @@ agent, edit independently, preview branch-merge, resolve conflicts explicitly, t
 
 - **Slides and decks** — `page`/`master` operations, speaker notes, `vixl_render_preview(page="all")`,
   `vixl_check(checks=["deck"])`, export `.pdf` (vector, selectable text) or `.pptx` (editable).
-- **Forms** — `field` layers, `export_file(fillable=true)`, filling with `values` or the
-  `form-fill` workflow, `check form` with `sample="worst"`.
+- **Forms** — `field` layers (rules such as `format`, `pattern`, `max_length` become PDF actions),
+  `export_file(fillable=true)`, filling with `values` or the `form-fill` workflow, `check form` with
+  `sample="worst"` (each overflow reports what it measured).
 - **Hand drawings** — `drawing` import/clean/vectorize/straighten/fill/stroke; keep the person's
   lines and measure it with `drawing-report` (`preserved`) and `drawing-compare`.
 - **Rich text** — `rich-text` (Markdown) and `text-style` for mixed styles and lists in one box. `text-set` changes the

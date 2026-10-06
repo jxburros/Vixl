@@ -55,8 +55,16 @@ Rules agents trip over:
   each button has its own `option`, and one button sets `group_label`.
 - Keys are 1–64 of `[A-Za-z0-9_-]` (no dots) and cannot equal a variable name.
 - Fields cannot be rotated or flipped.
-- Check with `vixl_check(checks=["form"], sample="worst")`; preview with
-  `vixl_render_preview(show_fields=true, values={...})`.
+- `required` works on every kind (a required `signature` is signed in the viewer; fills never need
+  it). `max_length` works on `text`, `multiline` and `number`.
+- Validation rules reach the fillable PDF as standard field actions a viewer enforces: `format`
+  `email`/`digits`, number `{decimals, min, max}`, the date `format.display`, and `pattern` (a
+  regex the whole value must match; no flags, look-around, back-references or `(a+)+`), with
+  `message` for the text a viewer shows. Pages with fields get `/Tabs /S`.
+- Check with `vixl_check(checks=["form"], sample="worst")`; each overflow says what it measured
+  (`measured`: sample, font, sizes, box and rendered width) and the `max_length_that_fits` to set.
+  Preview with `vixl_render_preview(show_fields=true, values={...})`; it draws values exactly as
+  the filled export does.
 - Export the fillable PDF with `vixl_export_file(path="form.pdf", fillable=true)`; fill one copy
   with `values={...}` (flatten draws them in; `fill_mode="editable"` prefills fields) or many with
   `vixl_workflow("form-fill", {"data": "rows.csv", "combine": "all.pdf"})` (`combine: true` writes

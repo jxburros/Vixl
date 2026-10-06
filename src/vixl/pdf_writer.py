@@ -6,7 +6,7 @@ in the order they were added, and a file ``/ID`` derived from a hash of the cont
 
 Every text string is written as hex UTF-16BE with a byte-order mark (``<FEFF…>``) and every byte
 string as hex, so user text can never escape into PDF syntax. Names use ``#xx`` escaping.
-The writer emits no actions, JavaScript or links of any kind.
+The writer adds no actions, JavaScript or links of its own (``pdf_forms`` supplies field validation scripts).
 """
 
 import hashlib

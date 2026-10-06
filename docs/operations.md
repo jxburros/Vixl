@@ -94,7 +94,7 @@ New document state: `canvas.size`, `canvas.dpi`, `canvas.physical`, `canvas.blee
 | text-style | `target`, `match`/`occurrence` or `start`/`end`, character styles, `clear`, `paragraphs` with paragraph settings — parts of a text layer; use `text-set` for the whole layer's text, color, size or font |
 | page | `action` (`add`, `select`, `remove`, `move`, `set`), `page`/`name`, `after`/`before`/`index`, `duplicate`, `master`, `notes`, `background`, `variables`, `hidden`, `transition`, `rename`, `select` — [pages](slides.md) |
 | master | `action` (`add`, `select`, `remove`, `set`), `name`, `from`, `background`, `rename` |
-| field / field-set | `kind`, `name`/`target`, `key`, `label`, `label_layer`, `group_label`, `required`, `read_only`, `default`, `max_length`, `comb`, `format`, `options`, `editable`, `option`, `on_value`, `tab`, `overflow`, `min_size`, `font`, `size`, `color`, `align`, `padding`, `appearance`, `x`, `y`, `width`, `height` — [forms](forms.md) |
+| field / field-set | `kind`, `name`/`target`, `key`, `label`, `label_layer`, `group_label`, `required`, `read_only`, `default`, `max_length`, `comb`, `format`, `pattern`, `message`, `options`, `editable`, `option`, `on_value`, `tab`, `overflow`, `min_size`, `font`, `size`, `color`, `align`, `padding`, `appearance`, `x`, `y`, `width`, `height` — [forms](forms.md) |
 | form | `tab_order`, `entry_font`, `title`, `lang` |
 | drawing | `action` (`import`, `clean`, `vectorize`, `straighten`, `smooth`, `fill`, `stroke`, `restyle`), `asset`/`path`, `name`/`target`, `strokes`, `points`, `color`, `settings`, `x`, `y`, `width`, `height` — [hand drawings](drawing.md) |
 
