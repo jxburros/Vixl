@@ -120,7 +120,8 @@ class Session:
         return resolved
 
     def relative(self, path):
-        return str(Path(path).relative_to(self.workspace))
+        # Reported paths use "/" on every platform (Windows accepts it when a client passes one back).
+        return Path(path).relative_to(self.workspace).as_posix()
 
     @staticmethod
     def stamp(path):

@@ -313,3 +313,17 @@ def test_blur_radius_is_read_as_amount():
     assert p.layer("s")["effects"][-1]["amount"] == 3 and "radius" in " ".join(result["normalized"])
     p.apply({"type": "gaussian-blur", "target": "s", "radius": 2})
     assert p.layer("s")["effects"][-1]["amount"] == 2
+
+
+def test_reported_paths_use_forward_slashes_on_windows(monkeypatch):
+    """Session.relative feeds every path in a result; with Windows path types it must still give "/"."""
+    from pathlib import PureWindowsPath
+    from types import SimpleNamespace
+
+    import vixl.interfaces as interfaces
+
+    monkeypatch.setattr(interfaces, "Path", PureWindowsPath)
+    session = SimpleNamespace(workspace=PureWindowsPath("C:/work/space"))
+    assert interfaces.Session.relative(session, PureWindowsPath("C:/work/space/clients/acme/poster.vixl")) == (
+        "clients/acme/poster.vixl")
+    assert interfaces.Session.relative(session, PureWindowsPath("C:/work/space/a.vixl")) == "a.vixl"
