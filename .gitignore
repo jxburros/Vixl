@@ -21,3 +21,4 @@ movie/.film-*/
 .env
 
 examples/output/
+!marketing/output/**/*.vixl
