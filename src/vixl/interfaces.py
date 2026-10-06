@@ -150,7 +150,9 @@ class Session:
                 self._remember(resolved, project, stamp)
             return self.summary(project)
 
-    def create(self, path, width=None, height=None, background="transparent", *, size=None, dpi=None, orientation=None, bleed=False, seed=None, variety=None):
+    def create(self, path, width=None, height=None, background="transparent", *, size=None, dpi=None, orientation=None, bleed=False, seed=None, variety=None, workspace_fonts=True):
+        """``workspace_fonts`` embeds the workspace's default fonts (``brand.json`` pairing/fonts);
+        the summary reports them under ``workspace_fonts``."""
         with self._mutex:
             resolved = self.resolve(path)
             require(resolved.suffix.lower() == ".vixl", "Document path must end in .vixl", field="path")
@@ -165,12 +167,17 @@ class Session:
                     project = Project(width, height, background, limits=self.limits)
                     if dpi:
                         project.apply({"type": "canvas", "dpi": dpi})
+                fonts = None
+                if workspace_fonts:
+                    from .brand import apply_workspace_fonts
+
+                    fonts = apply_workspace_fonts(project, self.workspace)
                 from .variety import document_defaults
 
                 document_defaults(project, seed=seed, variety=variety, workspace=self.workspace)
                 project.save(resolved)
                 self._remember(resolved, project, self.stamp(resolved))
-            return self.summary(project)
+            return {**self.summary(project), **({"workspace_fonts": fonts} if fonts else {})}
 
     def make_parent(self, path):
         """Create the missing directories above ``path`` (always inside the workspace: ``resolve``
@@ -582,16 +589,22 @@ def create_app(path, *, token=None, limits=None):
 
     @app.post("/typefaces/pair")
     def typeface_pair(body: dict):
-        from .typefaces import pair_fonts
+        from .typefaces import pair_fonts, pair_workspace
 
+        if body.get("scope") == "workspace":
+            return pair_workspace(session.workspace, body.get("pairing", "random"), seed=body.get("seed"), mood=body.get("mood"), best_for=body.get("best_for"))
+        require(body.get("scope", "document") == "document", "scope must be document or workspace", field="scope")
         with session.project(write=True) as project:
             return pair_fonts(project, body.get("pairing", "random"), seed=body.get("seed"), mood=body.get("mood"), best_for=body.get("best_for"))
 
     @app.post("/typefaces/install")
     def typeface_install(body: dict):
-        from .typefaces import install_font
+        from .typefaces import install_font, install_workspace
 
         require(isinstance(body.get("family"), str), "family is required", field="family")
+        if body.get("scope") == "workspace":
+            return install_workspace(session.workspace, body["family"], body.get("weight", 400), body.get("italic", False), body.get("name"), body.get("role"))
+        require(body.get("scope", "document") == "document", "scope must be document or workspace", field="scope")
         with session.project(write=True) as project:
             return install_font(project, body["family"], body.get("weight", 400), body.get("italic", False), body.get("name"), body.get("role"))
 

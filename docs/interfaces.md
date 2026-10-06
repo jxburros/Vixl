@@ -126,7 +126,7 @@ Vixl is designed to be driven mainly by agents. The intended loop is: create or 
 | Tool | Purpose |
 | --- | --- |
 | `vixl_workspace_list(directory, offset, limit)` | Discover workspace paths and the open documents |
-| `vixl_document_create(path, width?, height?, background, size?, dpi?, orientation?, bleed?, font_pairing?)` | Create and activate a new `.vixl` from pixels or a named size; creates missing directories; refuses overwrites; `font_pairing` also installs a pairing as the document typography (same as `vixl_font_pair`) |
+| `vixl_document_create(path, width?, height?, background, size?, dpi?, orientation?, bleed?, font_pairing?)` | Create and activate a new `.vixl` from pixels or a named size; creates missing directories; refuses overwrites; `font_pairing` also installs a pairing as the document typography (same as `vixl_font_pair`); otherwise the workspace default fonts from `brand.json` are embedded and reported under `workspace_fonts` (`workspace_fonts: false` skips them) |
 | `vixl_document_open(path)` / `vixl_document_close(document)` | Activate an existing document / drop one from the session; edits are already saved |
 | `vixl_document_inspect(target?, detail)` | `compact` (default): canvas plus one line per layer with resolved `[x, y, w, h]` bounds; `full`: every stored field |
 | `vixl_import_image(path? \| data_base64?, name)` | Embed a workspace file or base64/data-URL bytes as a layer; returns id, size, bounds |

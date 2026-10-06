@@ -126,18 +126,23 @@ def document_defaults(project, *, seed=None, variety=None, workspace=None):
     result = roll_document(project, workspace=workspace, seed=seed, variety=variety)
     project.state["design_defaults"] = {"seed": result["seed"], "variety": result["variety"],
                                         "direction": deepcopy(result["direction"])}
+    record_as_creation(project, "Choose reproducible design defaults")
+    return project.state["design_defaults"]
+
+
+def record_as_creation(project, label):
+    """Fold changes into a fresh document's first revision, or record them as ``label``."""
     initial = project.nodes.get(project.head, {})
     if (project.path is None and len(project.nodes) == 1 and initial.get("parent") is None
             and not initial.get("operations") and not project.checkpoints and not project.transaction):
         # Like Project.sized, choices made during construction belong to creation, so the
         # first user edit remains the first undoable step. Saved/edited documents keep history.
-        label = initial.get("label", "Create document")
+        first = initial.get("label", "Create document")
         project.nodes, project.head, project._head_state, project.branches = {}, None, None, {}
         project._verified = set()
-        project._record([], label)
+        project._record([], first)
     else:
-        project._record([], "Choose reproducible design defaults")
-    return project.state["design_defaults"]
+        project._record([], label)
 
 
 def sparse_options(project, op, *, keys=("palette", "look")):

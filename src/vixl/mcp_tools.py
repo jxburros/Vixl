@@ -188,6 +188,7 @@ Positive = Annotated[int, Field(ge=1)]
 Detail = Literal["compact", "full"]
 ApplyDetail = Literal["brief", "compact", "full"]
 Document = Annotated[str | None, Field(description=".vixl path; default: active document")]
+FontScope = Annotated[Literal["document", "workspace"], Field(description="document (default): install into the document; workspace: write the workspace default in brand.json for new documents")]
 
 
 def preview(
@@ -543,11 +544,18 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
             Field(description="Also install and apply this curated pairing (a vixl_font_pair name, or 'random') as "
                               "the document typography; needs the font cache or network"),
         ] = None,
+        workspace_fonts: Annotated[
+            bool,
+            Field(description="Embed the workspace default fonts (brand.json pairing/fonts, set with "
+                              "vixl_font_pair or vixl_font_install scope='workspace'); ignored when font_pairing is given"),
+        ] = True,
     ) -> dict:
         """Create and activate a new .vixl file from width/height or a named size (print sizes record dpi,
         bleed, safe area and trim/safe guides). Never overwrites an existing file. font_pairing replaces
-        a separate vixl_font_pair call, so heading/body roles resolve to real typefaces, not the proofing fallback."""
-        created = session.create(path, width, height, background, size=size, dpi=dpi, orientation=orientation, bleed=bleed, seed=seed, variety=variety)
+        a separate vixl_font_pair call, so heading/body roles resolve to real typefaces, not the proofing fallback.
+        Without it the workspace default fonts apply; the result's workspace_fonts says which."""
+        created = session.create(path, width, height, background, size=size, dpi=dpi, orientation=orientation, bleed=bleed,
+                                 seed=seed, variety=variety, workspace_fonts=workspace_fonts and not font_pairing)
         if font_pairing:
             from .typefaces import pair_fonts
 
@@ -1273,15 +1281,19 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         seed: int | None = None,
         mood: str | None = None,
         best_for: str | None = None,
+        scope: FontScope = "document",
         document: Document = None,
     ) -> dict:
         """Download (or reuse from cache), embed and register a curated pairing's heading and body fonts and
         make them the document typography that layouts use by default. pairing='random' rolls one among
         those matching mood/best_for (seed reproduces it). The result's origin (cache, download or mixed) and
         each font's source (download URL, cache file, VIXL_FONT_CACHE) and embedded file show where they came from;
-        the bundled fallback is never substituted for a failed download."""
-        from .typefaces import pair_fonts
+        the bundled fallback is never substituted for a failed download. scope='workspace' instead makes the
+        pairing the workspace default in brand.json, embedded in every document created afterwards."""
+        from .typefaces import pair_fonts, pair_workspace
 
+        if scope == "workspace":
+            return pair_workspace(session.workspace, pairing, seed=seed, mood=mood, best_for=best_for)
         with session.project(write=True, document=document) as project:
             return pair_fonts(project, pairing, seed=seed, mood=mood, best_for=best_for)
 
@@ -1292,12 +1304,17 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         italic: bool = False,
         name: str | None = None,
         role: Literal["heading", "body"] | None = None,
+        scope: FontScope = "document",
         document: Document = None,
     ) -> dict:
         """Download one style of any Google Fonts family, embed and register it (default name
         family-weight); role makes it the document's heading or body font. The result's source says whether
-        it came from the cache (cache_file, VIXL_FONT_CACHE) or a download (url), and file the embedded asset."""
-        from .typefaces import install_font
+        it came from the cache (cache_file, VIXL_FONT_CACHE) or a download (url), and file the embedded asset.
+        scope='workspace' (needs role) instead embeds it in brand.json as the workspace default for that role."""
+        from .typefaces import install_font, install_workspace
+
+        if scope == "workspace":
+            return install_workspace(session.workspace, family, weight, italic, name, role)
 
         with session.project(write=True, document=document) as project:
             return install_font(project, family, weight, italic, name, role)

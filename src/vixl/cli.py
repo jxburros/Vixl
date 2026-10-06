@@ -97,7 +97,7 @@ Resources: commands, shapes, sizes [--category print], palette list|show|add|app
            guidance list|show|add|apply|import|remove, providers, models
 Type:      fonts [--category serif] [--mood M], font show FAMILY, font pairings [--mood M] [--for poster],
            font pairing NAME, font principles, font install FAMILY [--weight 700] [--role heading|body], font pair NAME|random,
-           font use NAME --role heading|body, font list|import
+           font use NAME --role heading|body, font list|import, --scope workspace (install/pair: brand.json default for new documents)
 Finish:    look LAYER NAME [--color C] [--amount 0-1] [--remove]  (glow, neon, soft-shadow, hard-shadow, outline, gradient, grain,
            paper, film, duotone, risograph, sketch, watercolor, halftone), looks (catalog),
            radial-repeat LAYER --count N [--cx 50%] [--cy 50%] [--sweep 360] [--start-angle D] [--mirror] [--name N],
@@ -366,6 +366,12 @@ def dispatch(argv):
                 return {"name": args[1], **describe(args[1]), "options": items["options"]}, options.json
             return items, options.json
         return feature_standalone(cmd, args), options.json
+    from .resource_cli import workspace_scope
+
+    if workspace_scope(cmd, args) and "--help" not in args and "-h" not in args:
+        from .resource_cli import project_command as resource_command
+
+        return resource_command(None, cmd, args)[0], options.json
     if cmd in ("palette", "template", "guidance"):
         from .resource_cli import standalone
 
@@ -411,6 +417,8 @@ def dispatch(argv):
         orientation.add_argument("--landscape", dest="orientation", action="store_const", const="landscape")
         orientation.add_argument("--portrait", dest="orientation", action="store_const", const="portrait")
         p.add_argument("--bleed", nargs="?", const=True, type=float, help="Add standard bleed, or an amount in the size's unit")
+        p.add_argument("--no-workspace-fonts", dest="workspace_fonts", action="store_false",
+                       help="Do not embed the workspace default fonts (brand.json pairing/fonts beside the document)")
         a = p.parse_args(args)
         require(not Path(a.out).exists() or a.overwrite, "Project already exists; use --overwrite to replace it")
         require(not Path(a.out).is_dir(), "Output must be a file")
@@ -427,6 +435,11 @@ def dispatch(argv):
                 project.state["canvas"]["dpi"] = a.dpi
                 project.nodes, project.head, project._head_state, project.branches = {}, None, None, {}
                 project._record([], "Create document")
+        fonts = None
+        if a.workspace_fonts:
+            from .brand import apply_workspace_fonts
+
+            fonts = apply_workspace_fonts(project, Path(a.out).resolve().parent)
         project.save(a.out)
         remember(a.out)
         return (
@@ -437,6 +450,7 @@ def dispatch(argv):
                 "canvas": project.state["canvas"],
                 "layers": len(project.state["layers"]),
                 "head": project.head,
+                **({"workspace_fonts": fonts} if fonts else {}),
             }
         ), options.json
     if cmd == "open":
