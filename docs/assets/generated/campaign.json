@@ -1,0 +1,80 @@
+{
+  "operations": [
+    {
+      "type": "text",
+      "name": "heading",
+      "text": "Reusable campaign, changing copy",
+      "x": 48,
+      "y": 32,
+      "size": 38,
+      "color": "#18283b"
+    },
+    {
+      "type": "text",
+      "name": "subtitle",
+      "text": "Variables replace content while keeping the composition.",
+      "x": 48,
+      "y": 88,
+      "size": 20,
+      "color": "#4d6175"
+    },
+    {
+      "type": "variable",
+      "name": "headline",
+      "value": "OPEN STUDIO"
+    },
+    {
+      "type": "variable",
+      "name": "date",
+      "value": "FRIDAY / 19:00"
+    },
+    {
+      "type": "shape",
+      "shape": "rounded-rectangle",
+      "name": "campaign-card",
+      "x": 48,
+      "y": 145,
+      "width": 964,
+      "height": 375,
+      "fill": "#18283b",
+      "radius": 16
+    },
+    {
+      "type": "shape",
+      "shape": "ellipse",
+      "name": "campaign-orb",
+      "x": 739,
+      "y": 197,
+      "width": 190,
+      "height": 190,
+      "fill": "#f5a56a"
+    },
+    {
+      "type": "text",
+      "name": "campaign-kicker",
+      "text": "VIXL / COMMUNITY SERIES",
+      "x": 80,
+      "y": 176,
+      "size": 20,
+      "color": "#c1d4e5"
+    },
+    {
+      "type": "text",
+      "name": "campaign-title",
+      "text": "${headline}",
+      "x": 80,
+      "y": 270,
+      "size": 56,
+      "color": "#ffffff"
+    },
+    {
+      "type": "text",
+      "name": "campaign-date",
+      "text": "${date}",
+      "x": 80,
+      "y": 439,
+      "size": 26,
+      "color": "#ffffff"
+    }
+  ]
+}

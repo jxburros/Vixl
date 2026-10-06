@@ -1,0 +1,71 @@
+# Troubleshooting
+
+[Documentation home](README.md) · [Commands](commands.md) · [Coverage and limits](coverage.md)
+
+Start with `vixl --version`, the exact command and its structured error. For source installs,
+record `git rev-parse HEAD`. Use `vixl -p your-file.vixl inspect --json` to confirm the target
+document before changing anything.
+
+| Symptom | Cause to check | Next step |
+| --- | --- | --- |
+| `vixl` is not found | Terminal/client PATH or inactive virtual environment | Activate the environment or reopen the terminal; Windows users see [PATH repair](releases.md#using-the-current-terminal) |
+| Old version after updating | Another executable on PATH or a running old session | Check executable location, run its `--version`, restart the client/session |
+| Server/view or PDF import is unavailable | Missing optional dependency | Install `.[server]` or `.[pdf]` in the same environment as Vixl |
+| Command edits the wrong file | Directory-default project selection | Pass `-p file.vixl` explicitly; MCP tools accept `document=` |
+| Unknown operation/field | Wrong spelling or syntax from another release | Inspect `vixl schema` and command `--help`; follow the error's field and suggestions |
+| Layer not found | Typo, renamed layer or wrong active page | Inspect layers/pages; use the immutable layer ID when names can change |
+| “Unknown swatch” / undefined variable | `@name` or `${name}` has no definition | Define it first, or use a literal; inspect the reported operation index |
+| Image/font file denied through a service | Services restrict operation file paths | Import through MCP image/font tools or REST asset endpoints; reuse embedded asset IDs |
+| Effect changes only part of a layer | Selection was active when effect was added | Clear selection before adding whole-layer effects; edit/remove the old masked effect |
+| Layer stops responding to canvas resize | Absolute move/align cleared constraints | Reapply intended constraints, then preview the new canvas |
+| Text is cut off or too small | Copy exceeded box or fit reduced size | Inspect resolved bounds, use a suitable text-layout box and review at destination size |
+| Layout contains `[Label]` placeholders | Unfilled template/layout slots | Discover slots, fill all required copy and reapply with the same seed |
+| Pixel sprite looks blurred | Smooth resampling | Use nearest sampling and integer scaling |
+| Strict SVG fails | Content needs a raster fallback | Read the layer/effect details; simplify or use appearance export |
+| Export refuses a destination | Existing file or protected extension | Use a fresh filename; MCP needs `overwrite=true` for allowed export overwrite |
+| Movie/audio export fails | ffmpeg unavailable or input invalid | Check `ffmpeg -version`; try WebP or frame output to isolate encoding |
+| Provider command fails | Missing config/key, unsupported model/capability or service error | Check [provider discovery](providers.md); image generators and vision providers have different abilities |
+
+## Interpret checks
+
+A passing report certifies its requested checks and samples. It does not certify all
+export formats, every animation frame or artistic quality. A warning about fallback fonts
+can be expected in a proof; replace them for final typography. A contrast check does not
+remove the need to inspect text over complex imagery.
+
+Use targeted checks to investigate a problem, and a broader suite before delivery:
+
+```bash
+vixl -p campaign.vixl check --checks bounds contrast
+vixl -p registration.vixl check --checks form --sample worst
+vixl -p slides.vixl check --checks deck
+vixl -p flyer.vixl check --checks print
+```
+
+Respond to findings by changing the design or explicitly revising requirements with a
+reason. Do not lower thresholds simply to make a report pass. [Studio](studio.md) and
+[production](production.md) describe reusable contracts and coverage.
+
+## Recover a design
+
+Use `undo` for the last edit or `checkout` for a named checkpoint. Atomic batches fail
+without partial document changes. A persistent CLI transaction can be rolled back:
+
+```bash
+vixl -p campaign.vixl undo
+vixl -p campaign.vixl checkout approved-layout
+vixl -p campaign.vixl transaction rollback
+```
+
+Use the command matching your situation; rollback requires an open transaction. Keep
+backups of masters. Windows runtime rollback is separate (`vixl update --rollback`);
+see [releases](releases.md). Restart interrupted durable job workers and inspect job
+status rather than blindly repeating an uncertain external generation request.
+
+## Report a reproducible issue
+
+Include version/commit, operating system, interface, command or operation JSON, full
+structured error, expected result and a small non-sensitive document/input that reproduces
+the problem. For visual differences include preview and export settings. Do not include
+provider credentials or private form data. Source tests run with `python -m pytest -q`
+after installing `.[dev]`; [architecture](architecture.md) explains module boundaries.

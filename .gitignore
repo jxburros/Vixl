@@ -12,7 +12,12 @@ build/
 *.vixl.lock
 *.vixl
 !examples/after-hours.vixl
+!docs/assets/generated/*.vixl
 !assets/brand/digital-shift/Editable-Vixl/*.vixl
+!movie/build/
+!movie/scenes/*.vixl
+movie/audio/
+movie/.film-*/
 .env
 
 examples/output/

@@ -1,0 +1,61 @@
+{
+  "operations": [
+    {
+      "type": "text",
+      "name": "heading",
+      "text": "Animate a layer",
+      "x": 48,
+      "y": 32,
+      "size": 38,
+      "color": "#18283b"
+    },
+    {
+      "type": "text",
+      "name": "subtitle",
+      "text": "A 2-second translation; export works offline as animated WebP.",
+      "x": 48,
+      "y": 88,
+      "size": 20,
+      "color": "#4d6175"
+    },
+    {
+      "type": "shape",
+      "shape": "rounded-rectangle",
+      "name": "motion-track",
+      "x": 48,
+      "y": 188,
+      "width": 964,
+      "height": 100,
+      "fill": "#e4e7e7",
+      "radius": 16
+    },
+    {
+      "type": "shape",
+      "shape": "rounded-rectangle",
+      "name": "moving-card",
+      "x": 68,
+      "y": 202,
+      "width": 160,
+      "height": 72,
+      "fill": "#087f78",
+      "radius": 16
+    },
+    {
+      "type": "animate",
+      "target": "moving-card",
+      "property": "translate-x",
+      "to": 760,
+      "duration": "2s",
+      "easing": "ease-in-out"
+    },
+    {
+      "type": "text",
+      "name": "motion-caption",
+      "text": "Resting state is editable; time selects a rendered pose.",
+      "x": 48,
+      "y": 355,
+      "size": 24,
+      "color": "#18283b"
+    }
+  ]
+}

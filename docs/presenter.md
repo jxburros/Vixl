@@ -1,5 +1,7 @@
 # HTML presenter
 
+[Documentation home](README.md) · [Getting started](getting-started.md) · [Visual gallery](gallery.md)
+
 A multi-page document ([pages, slides and decks](slides.md)) exports as one `.html` file that
 presents in any browser, with no server, no network and no software to install: double-click it,
 email it, or put it on a USB stick.

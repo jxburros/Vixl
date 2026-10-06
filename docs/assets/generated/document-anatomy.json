@@ -1,0 +1,160 @@
+{
+  "operations": [
+    {
+      "type": "text",
+      "name": "heading",
+      "text": "Inside an editable design",
+      "x": 48,
+      "y": 32,
+      "size": 38,
+      "color": "#18283b"
+    },
+    {
+      "type": "text",
+      "name": "subtitle",
+      "text": "Names identify layers; constraints describe relationships.",
+      "x": 48,
+      "y": 88,
+      "size": 20,
+      "color": "#4d6175"
+    },
+    {
+      "type": "shape",
+      "shape": "rounded-rectangle",
+      "name": "poster-bg",
+      "x": 48,
+      "y": 148,
+      "width": 570,
+      "height": 430,
+      "fill": "#18283b",
+      "radius": 16
+    },
+    {
+      "type": "shape",
+      "shape": "ellipse",
+      "name": "orb",
+      "x": 368,
+      "y": 208,
+      "width": 190,
+      "height": 190,
+      "fill": "#f5a56a"
+    },
+    {
+      "type": "text",
+      "name": "poster-label",
+      "text": "FIELD NOTES / 01",
+      "x": 78,
+      "y": 179,
+      "size": 17,
+      "color": "#c1d4e5"
+    },
+    {
+      "type": "text",
+      "name": "poster-title",
+      "text": "MAKE\nSOMETHING",
+      "x": 78,
+      "y": 265,
+      "size": 44,
+      "color": "#ffffff"
+    },
+    {
+      "type": "text",
+      "name": "poster-date",
+      "text": "FRIDAY \u00b7 19:00",
+      "x": 78,
+      "y": 490,
+      "size": 22,
+      "color": "#ffffff"
+    },
+    {
+      "type": "text",
+      "name": "layer-0",
+      "text": "title",
+      "x": 678,
+      "y": 157,
+      "size": 25,
+      "color": "#235cdb"
+    },
+    {
+      "type": "text",
+      "name": "meaning-0",
+      "text": "Editable text, not baked pixels",
+      "x": 678,
+      "y": 193,
+      "size": 20,
+      "color": "#4d6175"
+    },
+    {
+      "type": "text",
+      "name": "layer-1",
+      "text": "orb",
+      "x": 678,
+      "y": 239,
+      "size": 25,
+      "color": "#235cdb"
+    },
+    {
+      "type": "text",
+      "name": "meaning-1",
+      "text": "Procedural ellipse + solid fill",
+      "x": 678,
+      "y": 275,
+      "size": 20,
+      "color": "#4d6175"
+    },
+    {
+      "type": "text",
+      "name": "layer-2",
+      "text": "poster-bg",
+      "x": 678,
+      "y": 321,
+      "size": 25,
+      "color": "#235cdb"
+    },
+    {
+      "type": "text",
+      "name": "meaning-2",
+      "text": "Independent background shape",
+      "x": 678,
+      "y": 357,
+      "size": 20,
+      "color": "#4d6175"
+    },
+    {
+      "type": "text",
+      "name": "layer-3",
+      "text": "Layout",
+      "x": 678,
+      "y": 403,
+      "size": 25,
+      "color": "#235cdb"
+    },
+    {
+      "type": "text",
+      "name": "meaning-3",
+      "text": "Origin: top-left; units: pixels",
+      "x": 678,
+      "y": 439,
+      "size": 20,
+      "color": "#4d6175"
+    },
+    {
+      "type": "text",
+      "name": "layer-4",
+      "text": "History",
+      "x": 678,
+      "y": 485,
+      "size": 25,
+      "color": "#235cdb"
+    },
+    {
+      "type": "text",
+      "name": "meaning-4",
+      "text": "Save checkpoints before big edits",
+      "x": 678,
+      "y": 521,
+      "size": 20,
+      "color": "#4d6175"
+    }
+  ]
+}

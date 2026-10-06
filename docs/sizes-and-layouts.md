@@ -1,5 +1,7 @@
 # Named sizes and principled layouts
 
+[Documentation home](README.md) · [Getting started](getting-started.md) · [Visual gallery](gallery.md)
+
 ## Named sizes
 
 150 sizes are built in. Print sizes are stored in inches or millimetres with a default resolution, a standard bleed and a safe (live-area) margin; screen sizes are pixels with a recommended safe inset.

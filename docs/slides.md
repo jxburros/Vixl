@@ -1,5 +1,13 @@
 # Pages, slides and decks
 
+![Two-page deck rendered as a Vixl contact sheet](assets/generated/slides.png)
+
+The [forms and decks tutorial](tutorials/forms-and-decks.md) builds this example.
+Download the [master](assets/generated/slides.vixl), [PowerPoint](assets/generated/slides.pptx)
+or [PDF](assets/generated/slides.pdf).
+
+[Documentation home](README.md) · [Getting started](getting-started.md) · [Visual gallery](gallery.md)
+
 A document can hold several pages: slides in a deck, frames of a social carousel, the pages of a
 booklet or a multi-page form. Each page has its own layers; the canvas size, fonts, swatches,
 styles, palettes, brushes, guides and variables are shared. Master pages hold layers drawn under

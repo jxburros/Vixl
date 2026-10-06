@@ -1,5 +1,7 @@
 # Data merge and print imposition
 
+[Documentation home](README.md) · [Getting started](getting-started.md) · [Visual gallery](gallery.md)
+
 `merge-impose` turns a template and a CSV into print sheets: n copies per page, with gutters, bleed,
 crop marks, registration marks and slug text, as a multi-page PDF whose text is **real, selectable vector
 text** and/or an **editable sheet document**. A change to the data or the template is one more call, not a

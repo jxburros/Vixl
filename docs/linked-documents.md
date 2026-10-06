@@ -1,5 +1,7 @@
 # Linked documents
 
+[Documentation home](README.md) · [Getting started](getting-started.md) · [Visual gallery](gallery.md)
+
 A `link` layer shows another `.vixl` document inside this one, live. Nothing is flattened: each render
 opens the source, draws it, and places the result in the layer's box. Change the source and every
 document that links to it shows the change the next time it renders, so derived designs (an Instagram

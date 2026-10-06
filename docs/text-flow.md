@@ -1,5 +1,7 @@
 # Text flow frames
 
+[Documentation home](README.md) · [Getting started](getting-started.md) · [Visual gallery](gallery.md)
+
 A long text can flow through a chain of linked text frames: columns inside one frame, a frame per page of a
 multi-page document, or frames that follow a shape. When a frame is full the text continues in the next one. Edit
 the text or resize a frame and the whole chain re-flows. Plain and [rich text](rich-text.md) both work, and rich

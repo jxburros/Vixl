@@ -1,5 +1,7 @@
 # Charts
 
+[Documentation home](README.md) · [Getting started](getting-started.md) · [Visual gallery](gallery.md)
+
 The `chart` operation turns a table into a bar, stacked, line, area, pie or donut chart. The chart is
 a **group of ordinary vector layers** (rectangles, paths, text and thin rules), so every renderer,
 export and check treats it like any other group. The data stays attached to the group, and

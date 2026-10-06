@@ -1,5 +1,7 @@
 # Looks: finishing flat shapes in one operation
 
+[Documentation home](README.md) · [Getting started](getting-started.md) · [Visual gallery](gallery.md)
+
 A flat shape reads as a draft. A soft shadow, a gradient or a little grain makes it read as finished. `look` applies a named
 finish to one or more layers in a single operation. Looks are recipes over what the engine already renders (layer styles and
 the non-destructive effect stack), so they stay editable, undo cleanly and export like anything added by hand.

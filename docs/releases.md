@@ -1,5 +1,7 @@
 # Windows installation, updates, and GitHub releases
 
+[Documentation home](README.md) · [Getting started](getting-started.md) · [Visual gallery](gallery.md)
+
 Vixl is a headless application designed for autonomous AI agents; humans can use the same interfaces.
 
 ## Install once

@@ -1,5 +1,7 @@
 # Irregularity and torn edges
 
+[Documentation home](README.md) · [Getting started](getting-started.md) · [Visual gallery](gallery.md)
+
 Vector output is exact: every curve is true and every copy identical. That is right for a logo
 and wrong for an original character, a hand-inked outline or a sheet of paper that was ripped.
 Two operations add the small, bounded flaws that make such things look made rather than computed:

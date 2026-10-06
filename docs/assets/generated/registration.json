@@ -1,0 +1,99 @@
+{
+  "operations": [
+    {
+      "type": "canvas",
+      "size": "letter",
+      "dpi": 100,
+      "background": "#ffffff"
+    },
+    {
+      "type": "text",
+      "name": "title",
+      "text": "Studio registration",
+      "x": 60,
+      "y": 58,
+      "size": 36,
+      "color": "#18283b"
+    },
+    {
+      "type": "text",
+      "name": "intro",
+      "text": "A real fillable PDF, built from field layers.",
+      "x": 60,
+      "y": 120,
+      "size": 22,
+      "color": "#4d6175"
+    },
+    {
+      "type": "text",
+      "name": "name-label",
+      "text": "Full name",
+      "x": 60,
+      "y": 215,
+      "size": 22,
+      "color": "#18283b"
+    },
+    {
+      "type": "field",
+      "name": "full_name",
+      "label_layer": "name-label",
+      "kind": "text",
+      "x": 60,
+      "y": 254,
+      "width": 730,
+      "height": 64,
+      "required": true,
+      "size": 24
+    },
+    {
+      "type": "text",
+      "name": "email-label",
+      "text": "Email",
+      "x": 60,
+      "y": 365,
+      "size": 22,
+      "color": "#18283b"
+    },
+    {
+      "type": "field",
+      "name": "email",
+      "label_layer": "email-label",
+      "kind": "text",
+      "format": "email",
+      "x": 60,
+      "y": 404,
+      "width": 730,
+      "height": 64,
+      "required": true,
+      "size": 24
+    },
+    {
+      "type": "field",
+      "name": "newsletter",
+      "kind": "checkbox",
+      "label": "Send me studio news",
+      "x": 60,
+      "y": 530,
+      "width": 28,
+      "height": 28
+    },
+    {
+      "type": "text",
+      "name": "newsletter-label",
+      "text": "Send me studio news",
+      "x": 105,
+      "y": 530,
+      "size": 22,
+      "color": "#18283b"
+    },
+    {
+      "type": "text",
+      "name": "form-footer",
+      "text": "Keep this editable master; export copies for attendees.",
+      "x": 60,
+      "y": 975,
+      "size": 20,
+      "color": "#4d6175"
+    }
+  ]
+}

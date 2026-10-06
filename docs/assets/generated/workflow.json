@@ -1,0 +1,315 @@
+{
+  "operations": [
+    {
+      "type": "text",
+      "name": "heading",
+      "text": "From brief to deliverable",
+      "x": 48,
+      "y": 32,
+      "size": 38,
+      "color": "#18283b"
+    },
+    {
+      "type": "text",
+      "name": "subtitle",
+      "text": "One editable document. A repeatable review loop.",
+      "x": 48,
+      "y": 88,
+      "size": 20,
+      "color": "#4d6175"
+    },
+    {
+      "type": "shape",
+      "shape": "rounded-rectangle",
+      "name": "card-0",
+      "x": 48,
+      "y": 160,
+      "width": 176,
+      "height": 190,
+      "fill": "#ffffff",
+      "radius": 16
+    },
+    {
+      "type": "text",
+      "name": "number-0",
+      "text": "01",
+      "x": 66,
+      "y": 178,
+      "size": 20,
+      "color": "#235cdb"
+    },
+    {
+      "type": "text",
+      "name": "label-0",
+      "text": "Create",
+      "x": 66,
+      "y": 223,
+      "size": 28,
+      "color": "#18283b"
+    },
+    {
+      "type": "text",
+      "name": "detail-0",
+      "text": "Size + palette",
+      "x": 66,
+      "y": 288,
+      "size": 15,
+      "color": "#4d6175"
+    },
+    {
+      "type": "text",
+      "name": "arrow-0",
+      "text": "\u2192",
+      "x": 227,
+      "y": 224,
+      "size": 22,
+      "color": "#4d6175"
+    },
+    {
+      "type": "shape",
+      "shape": "rounded-rectangle",
+      "name": "card-1",
+      "x": 246,
+      "y": 160,
+      "width": 176,
+      "height": 190,
+      "fill": "#ffffff",
+      "radius": 16
+    },
+    {
+      "type": "text",
+      "name": "number-1",
+      "text": "02",
+      "x": 264,
+      "y": 178,
+      "size": 20,
+      "color": "#087f78"
+    },
+    {
+      "type": "text",
+      "name": "label-1",
+      "text": "Apply",
+      "x": 264,
+      "y": 223,
+      "size": 28,
+      "color": "#18283b"
+    },
+    {
+      "type": "text",
+      "name": "detail-1",
+      "text": "Atomic operations",
+      "x": 264,
+      "y": 288,
+      "size": 15,
+      "color": "#4d6175"
+    },
+    {
+      "type": "text",
+      "name": "arrow-1",
+      "text": "\u2192",
+      "x": 425,
+      "y": 224,
+      "size": 22,
+      "color": "#4d6175"
+    },
+    {
+      "type": "shape",
+      "shape": "rounded-rectangle",
+      "name": "card-2",
+      "x": 444,
+      "y": 160,
+      "width": 176,
+      "height": 190,
+      "fill": "#ffffff",
+      "radius": 16
+    },
+    {
+      "type": "text",
+      "name": "number-2",
+      "text": "03",
+      "x": 462,
+      "y": 178,
+      "size": 20,
+      "color": "#235cdb"
+    },
+    {
+      "type": "text",
+      "name": "label-2",
+      "text": "Inspect",
+      "x": 462,
+      "y": 223,
+      "size": 28,
+      "color": "#18283b"
+    },
+    {
+      "type": "text",
+      "name": "detail-2",
+      "text": "Layers + bounds",
+      "x": 462,
+      "y": 288,
+      "size": 15,
+      "color": "#4d6175"
+    },
+    {
+      "type": "text",
+      "name": "arrow-2",
+      "text": "\u2192",
+      "x": 623,
+      "y": 224,
+      "size": 22,
+      "color": "#4d6175"
+    },
+    {
+      "type": "shape",
+      "shape": "rounded-rectangle",
+      "name": "card-3",
+      "x": 642,
+      "y": 160,
+      "width": 176,
+      "height": 190,
+      "fill": "#ffffff",
+      "radius": 16
+    },
+    {
+      "type": "text",
+      "name": "number-3",
+      "text": "04",
+      "x": 660,
+      "y": 178,
+      "size": 20,
+      "color": "#087f78"
+    },
+    {
+      "type": "text",
+      "name": "label-3",
+      "text": "Check",
+      "x": 660,
+      "y": 223,
+      "size": 28,
+      "color": "#18283b"
+    },
+    {
+      "type": "text",
+      "name": "detail-3",
+      "text": "Explicit rules",
+      "x": 660,
+      "y": 288,
+      "size": 15,
+      "color": "#4d6175"
+    },
+    {
+      "type": "text",
+      "name": "arrow-3",
+      "text": "\u2192",
+      "x": 821,
+      "y": 224,
+      "size": 22,
+      "color": "#4d6175"
+    },
+    {
+      "type": "shape",
+      "shape": "rounded-rectangle",
+      "name": "card-4",
+      "x": 840,
+      "y": 160,
+      "width": 176,
+      "height": 190,
+      "fill": "#ffffff",
+      "radius": 16
+    },
+    {
+      "type": "text",
+      "name": "number-4",
+      "text": "05",
+      "x": 858,
+      "y": 178,
+      "size": 20,
+      "color": "#235cdb"
+    },
+    {
+      "type": "text",
+      "name": "label-4",
+      "text": "Preview",
+      "x": 858,
+      "y": 223,
+      "size": 28,
+      "color": "#18283b"
+    },
+    {
+      "type": "text",
+      "name": "detail-4",
+      "text": "Visual review",
+      "x": 858,
+      "y": 288,
+      "size": 15,
+      "color": "#4d6175"
+    },
+    {
+      "type": "text",
+      "name": "arrow-4",
+      "text": "\u2192",
+      "x": 1019,
+      "y": 224,
+      "size": 22,
+      "color": "#4d6175"
+    },
+    {
+      "type": "shape",
+      "shape": "rounded-rectangle",
+      "name": "card-5",
+      "x": 1038,
+      "y": 160,
+      "width": 176,
+      "height": 190,
+      "fill": "#ffffff",
+      "radius": 16
+    },
+    {
+      "type": "text",
+      "name": "number-5",
+      "text": "06",
+      "x": 1056,
+      "y": 178,
+      "size": 20,
+      "color": "#bd491c"
+    },
+    {
+      "type": "text",
+      "name": "label-5",
+      "text": "Export",
+      "x": 1056,
+      "y": 223,
+      "size": 28,
+      "color": "#18283b"
+    },
+    {
+      "type": "text",
+      "name": "detail-5",
+      "text": "Right format",
+      "x": 1056,
+      "y": 288,
+      "size": 15,
+      "color": "#4d6175"
+    },
+    {
+      "type": "shape",
+      "shape": "rounded-rectangle",
+      "name": "review-loop",
+      "x": 48,
+      "y": 388,
+      "width": 1166,
+      "height": 64,
+      "fill": "#e3eee9",
+      "radius": 16
+    },
+    {
+      "type": "text",
+      "name": "review-note",
+      "text": "Revise after checks or preview \u2192 inspect, check and preview again",
+      "x": 70,
+      "y": 405,
+      "size": 22,
+      "color": "#18283b"
+    }
+  ]
+}

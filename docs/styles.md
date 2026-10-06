@@ -1,5 +1,7 @@
 # Design styles: guidance and premade checks
 
+[Documentation home](README.md) · [Getting started](getting-started.md) · [Visual gallery](gallery.md)
+
 A brief that names a look ("make it brutalist", "something Art Deco") needs more than a mood word: principles,
 palettes, type, layout and imagery to aim for, and a way to tell whether the result got there. Vixl keeps a curated
 catalog of 28 design styles, tags a document with one, and evaluates optional, parameterised **rules** against the

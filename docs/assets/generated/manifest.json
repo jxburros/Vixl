@@ -1,0 +1,184 @@
+[
+  {
+    "name": "workflow",
+    "description": "Creation and visual review loop",
+    "size": [
+      1260,
+      490
+    ],
+    "version": "0.18.0",
+    "bounds": {
+      "passed": true,
+      "errors": 0,
+      "warnings": 0,
+      "issues": [],
+      "checked": {
+        "checks": [
+          "bounds"
+        ],
+        "layers": 33,
+        "text_layers": 26
+      }
+    }
+  },
+  {
+    "name": "document-anatomy",
+    "description": "Real text and shape layers alongside explanatory labels",
+    "size": [
+      1180,
+      630
+    ],
+    "version": "0.18.0",
+    "bounds": {
+      "passed": true,
+      "errors": 0,
+      "warnings": 0,
+      "issues": [],
+      "checked": {
+        "checks": [
+          "bounds"
+        ],
+        "layers": 17,
+        "text_layers": 15
+      }
+    }
+  },
+  {
+    "name": "chart",
+    "description": "An editable horizontal bar chart with explicit illustrative data",
+    "size": [
+      1060,
+      595
+    ],
+    "version": "0.18.0",
+    "bounds": {
+      "passed": true,
+      "errors": 0,
+      "warnings": 0,
+      "issues": [],
+      "checked": {
+        "checks": [
+          "bounds"
+        ],
+        "layers": 19,
+        "text_layers": 11
+      }
+    },
+    "data": {
+      "Draft": 24,
+      "Review": 38,
+      "Refine": 52,
+      "Deliver": 68
+    }
+  },
+  {
+    "name": "campaign",
+    "description": "Variable-driven campaign master",
+    "size": [
+      1060,
+      570
+    ],
+    "version": "0.18.0",
+    "bounds": {
+      "passed": true,
+      "errors": 0,
+      "warnings": 0,
+      "issues": [],
+      "checked": {
+        "checks": [
+          "bounds"
+        ],
+        "layers": 7,
+        "text_layers": 5
+      }
+    }
+  },
+  {
+    "name": "paint-organic",
+    "description": "Actual editable brush strokes and organic generator",
+    "size": [
+      1060,
+      560
+    ],
+    "version": "0.18.0",
+    "bounds": {
+      "passed": true,
+      "errors": 0,
+      "warnings": 0,
+      "issues": [],
+      "checked": {
+        "checks": [
+          "bounds"
+        ],
+        "layers": 8,
+        "text_layers": 4
+      }
+    }
+  },
+  {
+    "name": "registration",
+    "description": "Letter-size form with text and checkbox fields",
+    "size": [
+      850,
+      1100
+    ],
+    "version": "0.18.0",
+    "bounds": {
+      "passed": true,
+      "errors": 0,
+      "warnings": 0,
+      "issues": [],
+      "checked": {
+        "checks": [
+          "bounds"
+        ],
+        "layers": 9,
+        "text_layers": 6
+      }
+    }
+  },
+  {
+    "name": "slides",
+    "description": "Two real pages with speaker notes and editable chart layers",
+    "size": [
+      1060,
+      595
+    ],
+    "version": "0.18.0",
+    "bounds": {
+      "passed": true,
+      "errors": 0,
+      "warnings": 0,
+      "issues": [],
+      "checked": {
+        "checks": [
+          "bounds"
+        ],
+        "layers": 14,
+        "text_layers": 10
+      }
+    }
+  },
+  {
+    "name": "motion",
+    "description": "Keyframe translation on a real editable layer",
+    "size": [
+      1060,
+      450
+    ],
+    "version": "0.18.0",
+    "bounds": {
+      "passed": true,
+      "errors": 0,
+      "warnings": 0,
+      "issues": [],
+      "checked": {
+        "checks": [
+          "bounds"
+        ],
+        "layers": 5,
+        "text_layers": 3
+      }
+    }
+  }
+]

@@ -1,5 +1,7 @@
 # Hand drawings
 
+[Documentation home](README.md) · [Getting started](getting-started.md) · [Visual gallery](gallery.md)
+
 Bring in a photo or scan of a hand drawing and build on it: clean it up, trace it into editable
 strokes, straighten what should be straight, close gaps, colour the shapes, add new lines in the
 same hand — while keeping as much of the original drawing as possible, and measuring how much was

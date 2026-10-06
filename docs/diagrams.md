@@ -1,5 +1,7 @@
 # Diagrams
 
+[Documentation home](README.md) · [Getting started](getting-started.md) · [Visual gallery](gallery.md)
+
 Flowcharts, dependency graphs, org charts, mind maps, swimlane processes and grids. You give
 Vixl the nodes and edges; it lays them out, routes the connectors, and writes **ordinary editable
 layers**: shapes, paths and text in one group, named after your node and edge IDs. Everything else
