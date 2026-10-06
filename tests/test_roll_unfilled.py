@@ -17,7 +17,11 @@ def blank_issues(project):
 @pytest.fixture(autouse=True)
 def offline_fonts(monkeypatch):
     # The pairing's fonts are not needed to lay the direction out; skip the download.
-    monkeypatch.setattr("vixl.typefaces.pair_fonts", lambda project, pairing=None, **kwargs: None)
+    monkeypatch.setattr(
+        "vixl.typefaces.pair_fonts",
+        lambda project, pairing=None, **kwargs: {
+            "origin": "cache", "heading": {"name": "DejaVuSans.ttf"}, "body": {"name": "DejaVuSans.ttf"}},
+    )
 
 
 def apply_roll(**options):
