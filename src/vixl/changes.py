@@ -111,12 +111,14 @@ def brief_changes(before, after):
             layers = {}
             for ident, delta in value.items():
                 if delta.get("added"):
-                    layers[ident] = {k: delta[k] for k in ("added", "name", "type", "bounds", *TEXT_METRICS) if k in delta}
+                    layers[ident] = {k: delta[k] for k in ("added", "name", "type", "bounds", "content_bounds", *TEXT_METRICS)
+                                     if k in delta}
                 elif delta.get("removed"):
                     layers[ident] = delta
                 else:
-                    layers[ident] = {"changed": sorted(k for k in delta if k not in ("bounds", "canvas_bounds", "path_nodes", *TEXT_METRICS)),
-                                     **{key: delta[key] for key in TEXT_METRICS if key in delta},
+                    layers[ident] = {"changed": sorted(k for k in delta if k not in ("bounds", "canvas_bounds", "content_bounds",
+                                                                                     "path_nodes", *TEXT_METRICS)),
+                                     **{key: delta[key] for key in (*TEXT_METRICS, "content_bounds") if key in delta},
                                      **({"bounds": delta["bounds"]} if "bounds" in delta else {})}
             changes["layers"] = layers
         elif key in ("canvas", "active_layer", "page", "selection"):
@@ -154,6 +156,8 @@ def _brief(layer):
         result["size"] = layer.get("size")
     if layer["type"] == "shape":
         result["shape"] = layer.get("shape")
+        if "content_bounds" in layer:
+            result["content_bounds"] = layer["content_bounds"]
     if layer["type"] == "paint":
         result["strokes"] = len(layer.get("strokes", []))
     if layer["type"] == "link":

@@ -44,7 +44,60 @@ parameters can be changed later. Paths and holes export as real vector geometry.
 
 Image content can be placed in UI frames with the existing image `frame`, `replace-contents`
 and clipping operations; the decorative shape does not embed an additional hidden image slot.
-Speech bubbles use the existing bubble/container operations.
+The comic `speech-bubble` operation builds a bubble sized around its text; the `speech-bubble`
+shape below is a single outline whose body and tail you shape yourself.
+
+## Shape-specific parameters
+
+The shortcut shapes take parameters of their own. Without them each keeps its fixed outline;
+any of them makes the shape parametric (redrawn crisply in every output). Lengths accept pixels,
+a fraction up to 1 (of the dimension named) or a percentage.
+
+| Shape | Parameters (defaults) |
+| --- | --- |
+| `heart` | `apex` 0.5: where the cleft and tip sit across the width (below 0.5 the left lobe is smaller); `cleft` 0.2: how far the top notch dips; `tip` 0.95: how far down the point reaches (both of the height, from the top) |
+| `speech-bubble` | `pointer_side` `bottom` (`top`, `left`, `right`): the side the tail comes from; `pointer_position` 0.2: the tail tip along that side, 0-1 (at 0.2 or less the tail base runs from the tip toward the middle, at 0.5 it is centred, at 0.8 or more it runs back); `pointer_size` 0.25: tail base width, of the side; `body` 0.75: depth of the body, of the height (of the width for a left/right tail); the rest is tail |
+| `shield` | `depth` 0.55: depth of the point, of the height |
+| `chevron` | `thickness` 0.4: band thickness, of the width; `point_radius` |
+| `trapezoid`, `parallelogram` | `slant` 0.25: top-corner inset (trapezoid) or top-edge offset (parallelogram), of the width; `point_radius` |
+| `triangle` | `apex` 0.5: the top vertex across the width (0 is a right triangle); `point_radius` |
+| `tag` | `depth` 0.22: length of the point, of the width; `hole` |
+| `star`, `polygon`, `burst`, `seal` … | `sides`/`count`, `inner_radius`, `point_radius`, `valley_radius`, `rotation_offset` (see above) |
+| `ring`, `frame`, `plus`, `cross`, `minus` | `thickness`: band or arm thickness |
+| `arrow`, `callout` | `head_length`, `head_width`, `shaft_width` …; `pointer_position`, `pointer_size` |
+
+```json
+{"type":"shape","shape":"speech-bubble","name":"bubble","width":320,"height":200,"pointer_side":"left","pointer_position":0.7,"body":0.85,"fill":"white","stroke":"#17202a","stroke_width":3}
+{"type":"shape","shape":"heart","name":"heart","width":200,"height":180,"cleft":0.3,"tip":0.9,"apex":0.45,"fill":"crimson"}
+```
+
+`tail_side`, `tail_position`, `tail_size`/`tail_width`, `body_ratio`, `lobe_balance` (heart
+`apex`), `points` (star `sides`) and `arm_width` (`thickness`) are accepted spellings, reported
+under `normalized`. A parameter a shape does not read (`cleft` on a rectangle) is reported under
+`warnings`. `vixl_capabilities("shapes")` lists every shape's parameters.
+
+## Content boxes
+
+A shape's content box is its usable inner area: a speech bubble's body (without the tail and
+rounded corners), a tag without its point, the circle inside a star, badge, seal or polygon, the
+inscribed rectangle of an ellipse or rounded rectangle, a ring or frame opening, a device or
+browser screen, a banner between its folds, and the largest rectangle inside organic outlines
+(heart, shield, cloud, triangle, arrow …). `inspect` and apply results report it in canvas
+coordinates as `content_bounds` whenever it is smaller than the box (rotation and flips included;
+a rectangle, a line or an icon has none).
+
+Centre text in it, or pin it to a corner of it:
+
+```json
+{"type":"text","text":"Hello!","name":"line","size":28,"color":"#17202a","within":"bubble"}
+{"type":"place","targets":["line"],"within":"bubble","anchor":"top-left","margin":8}
+{"type":"align","targets":["line"],"relative_to":"bubble","box":"content","alignment":"center"}
+```
+
+`text` with `within` centres the text in the content box (no `x`/`y`). `place` with `within`
+instead of `guide` puts each target's `anchor` (default `center`) on the same point of the
+content box, inset by `margin`; `box: "bounds"` uses the whole box. Both work across groups.
+`align` with `box: "content"` aligns sibling layers to the content box of the `relative_to` layer.
 
 ## Strokes
 

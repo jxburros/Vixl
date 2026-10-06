@@ -191,6 +191,7 @@ def compile_command(tokens):
             p.add_argument("--size", type=int)
             p.add_argument("--align", choices=["left", "center", "right"])
             p.add_argument("--spacing", type=int)
+            p.add_argument("--within", help="centre the text in this shape's content box (instead of --x/--y)")
             p.add_argument("--hide-if-empty", action=argparse.BooleanOptionalAction, default=None,
                            help="do not draw the text while it is empty after ${variable} substitution")
         elif cmd == "gradient":
@@ -348,6 +349,7 @@ def compile_command(tokens):
         p.add_argument("alignment")
         p.add_argument("--margin", type=float)
         p.add_argument("--relative-to")
+        p.add_argument("--box", choices=["bounds", "content"], help="content: align to the --relative-to layer's inner area")
         p.add_argument("--targets", nargs="+")
     elif cmd == "reorder":
         p.add_argument("target")

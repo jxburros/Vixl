@@ -98,5 +98,9 @@ perspective systems. Place layers exactly on them instead of computing coordinat
 {"type": "snap", "targets": ["logo", "title"], "tolerance": 8}
 ```
 
+`place` with `within` (instead of `guide`) puts each target's `anchor` on the same point of a
+shape's content box (`content_bounds`: a speech bubble's body, a badge, a frame opening), inset
+by `margin`; `text` with `within` centres new text there.
+
 `vixl_check(checks=["guides", "alignment"])` reports near misses with the fixing move;
 `vixl_render_preview(guides=true)` draws them. Full reference: `docs/guides.md`.

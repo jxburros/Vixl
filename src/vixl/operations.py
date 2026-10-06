@@ -542,6 +542,12 @@ def execute(project, op):
             finite(op.get("y", 0), "y") if op.get("y") != "center" else (c["height"] - layer["height"]) / 2
         )
         append_layer(project, layer)
+        if "within" in op:
+            from .guides import place_within
+
+            require(not {"x", "y"} & set(op), "within positions the text; drop x and y (or use place with within "
+                    "and an anchor)", field="within")
+            place_within(project, layer["id"], op["within"])
         return
     if kind == "canvas":
         c = project.state["canvas"]
@@ -786,6 +792,13 @@ def execute(project, op):
             other = project.layer(ref)
             require(other.get("parent") == targets[0].get("parent"), "Alignment targets must share a parent")
             box = layout[other["id"]]
+            if op.get("box", "bounds") == "content":
+                from .affine import layer_matrix
+                from .spatial import content_rect
+
+                box = content_rect(other, layer_matrix(other, box)) or box
+        require(op.get("box", "bounds") == "bounds" or ref not in ("selection", "canvas"),
+                "box: content needs relative_to naming a layer (its content box is the target area)", field="box")
         margin = finite(op.get("margin", 0), "margin", 0)
         alignment = op["alignment"]
         for item in targets:

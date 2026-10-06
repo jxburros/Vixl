@@ -110,7 +110,8 @@ SUMMARIES = {
     "layout-apply": "Build a principled layout (hero-statement, app-icon, logo-horizontal …) from copy slots, palette and seed.",
     "guide": "Create or delete a guide: an axis, line, ray, segment, point, circle or path.",
     "grid": "Create a grid system (columns, baseline, thirds, golden, polar, isometric, perspective …) of guides.",
-    "place": "Place layers on a guide: at a fraction, spread evenly, at intersections, turned to the tangent.",
+    "place": "Place layers on a guide (at a fraction, spread evenly, at intersections, turned to the tangent), or "
+             "within a shape's content box (a bubble's body, a badge) with an anchor and margin.",
     "snap": "Move near-miss layers onto guides and points, and straighten near-miss angles.",
     "frame-save": "Save the current canvas as a named animation frame.",
     "frame-apply": "Load a saved animation frame onto the canvas.",

@@ -111,6 +111,12 @@ def execute(project, op):
         from .normalize import apply_centering
 
         apply_centering(project, centered, op)
+    if "within" in op:
+        from .guides import place_within
+
+        require(not {"x", "y"} & set(op), "within positions the text; drop x and y (or use place with within "
+                "and an anchor)", field="within")
+        place_within(project, ident, op["within"])
     if "name" in op and op["name"] != layer["name"]:
         layer["name"] = unique_name(project, op["name"])
 

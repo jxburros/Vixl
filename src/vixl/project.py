@@ -204,12 +204,16 @@ class Project:
         resolved = resolve_layout(self, layers=layers)
         from .spatial import canvas_boxes
 
-        canvas_bounds = canvas_boxes(self)
+        content_bounds = {}
+        canvas_bounds = canvas_boxes(self, content=content_bounds)
         children, memo = child_index(layers), {}
         shown = {item["id"]: item["visible"] for item in layers}
         for layer in state["layers"]:
             box = layer["resolved_bounds"] = resolved[layer["id"]]
             layer["canvas_bounds"] = canvas_bounds[layer["id"]]
+            if layer["id"] in content_bounds:
+                # The usable inner area of a shape (a bubble's body, a badge's centre, a device screen).
+                layer["content_bounds"] = [round(v, 2) for v in content_bounds[layer["id"]]]
             layer["coordinate_space"] = "parent" if layer.get("parent") else "canvas"
             if layer["type"] == "shape" and layer.get("shape") == "path":
                 from .vector_paths import inspect_nodes
