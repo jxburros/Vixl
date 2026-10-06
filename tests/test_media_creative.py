@@ -293,12 +293,17 @@ def test_render_cache_inserts_do_not_rescan_every_frame(tmp_path, monkeypatch):
 
 
 def test_render_cache_shared_writers_keep_byte_budget_and_lru(tmp_path):
+    import os
     from vixl.render_cache import RenderCache
     from vixl.model import Limits
     first, second = RenderCache(tmp_path, budget=420), RenderCache(tmp_path, budget=420)
     image = Image.new("RGBA", (16, 16), "red")
     first.put("first", image)
     second.put("second", image)
+    # Make the earlier access order unambiguous, then verify that a cache hit
+    # refreshes the oldest entry before eviction, without sleeps or clock ties.
+    os.utime(tmp_path / "first.png", ns=(1_000_000_000, 1_000_000_000))
+    os.utime(tmp_path / "second.png", ns=(2_000_000_000, 2_000_000_000))
     assert first.get("first", Limits()) is not None
     for key in ("third", "fourth", "fifth"):
         second.put(key, image)
@@ -308,3 +313,33 @@ def test_render_cache_shared_writers_keep_byte_budget_and_lru(tmp_path):
         (first if i % 2 else second).put(f"frame-{i}", image)
         assert sum(p.stat().st_size for p in tmp_path.glob("*.png")) <= 420
     assert len(list(tmp_path.glob("*.png"))) >= 4
+
+
+def test_render_cache_shared_usage_survives_directory_timestamp_collisions(tmp_path, monkeypatch):
+    from vixl.render_cache import RenderCache
+    # Model a filesystem whose directory timestamp never changes during the run.
+    monkeypatch.setattr(RenderCache, "_signature", lambda self: [1, 2, 3])
+    first, second = RenderCache(tmp_path, budget=420), RenderCache(tmp_path, budget=420)
+    image = Image.new("RGBA", (16, 16), "red")
+    for i in range(25):
+        cache = first if i % 2 else second
+        cache.put(f"frame-{i}", image)
+        total = sum(p.stat().st_size for p in tmp_path.glob("*.png"))
+        assert total <= 420
+        assert cache._bytes == total
+
+
+def test_render_cache_recovers_interrupted_usage_ledger(tmp_path):
+    import json
+    from vixl.render_cache import RenderCache
+    cache = RenderCache(tmp_path, budget=420)
+    image = Image.new("RGBA", (16, 16), "red")
+    cache.put("first", image)
+    # Simulate interruption after writing a PNG but before committing usage.
+    image.save(tmp_path / "uncommitted.png")
+    usage = tmp_path.parent / (tmp_path.name + ".usage.json")
+    usage.write_text(json.dumps({"version": 1, "dirty": True}))
+    recovered = RenderCache(tmp_path, budget=420)
+    recovered.put("third", image)
+    assert recovered._bytes == sum(p.stat().st_size for p in tmp_path.glob("*.png"))
+    assert json.loads(usage.read_text())["dirty"] is False

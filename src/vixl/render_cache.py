@@ -91,8 +91,41 @@ class RenderCache:
         self.directory = Path(directory).resolve()
         self.budget = budget
         self.hits = self.misses = 0
-        self._directory_stamp = None
         self._bytes = 0
+
+    def _signature(self):
+        stat = self.directory.stat()
+        return [stat.st_dev, stat.st_ino, stat.st_mtime_ns]
+
+    def _read_usage(self):
+        try:
+            with open(str(self.directory) + ".usage.json", "rb") as stream:
+                usage = json.loads(stream.read(1024))
+            if (isinstance(usage, dict) and usage.get("version") == 1 and usage.get("dirty") is False
+                    and type(usage.get("bytes")) is int and 0 <= usage["bytes"] < 2**63
+                    and usage.get("directory") == self._signature()):
+                return usage["bytes"]
+        except (OSError, ValueError, TypeError):
+            pass
+        return None
+
+    def _write_usage(self, *, dirty):
+        """The lock protects both PNGs and this small, atomically replaced ledger.
+
+        Mark it dirty before touching PNGs, so interruption or write failure causes
+        the next writer to rebuild the count instead of trusting stale usage.
+        """
+        usage = {"version": 1, "dirty": dirty}
+        if not dirty:
+            usage.update(bytes=self._bytes, directory=self._signature())
+        fd, staged = temporary(self.directory.parent)
+        try:
+            with os.fdopen(fd, "wb") as stream:
+                stream.write(json.dumps(usage).encode())
+            os.replace(staged, str(self.directory) + ".usage.json")
+        finally:
+            if os.path.exists(staged):
+                os.unlink(staged)
 
     def get(self, key, limits):
         if key is None:
@@ -123,11 +156,14 @@ class RenderCache:
             # Keep the lock beside the directory: creating/removing it inside would
             # change the directory mtime on every call and defeat change detection.
             with file_lock(str(self.directory) + ".usage"):
-                stamp = self.directory.stat().st_mtime_ns
-                if stamp != self._directory_stamp:
-                    # Initial scan, or another cache instance/process wrote/deleted a
-                    # PNG. Reads only touch file timestamps, so need no size rescan.
-                    self._bytes = sum(path.stat().st_size for path in self.directory.glob("*.png"))
+                # Read each writer's committed count, even when the filesystem gives
+                # consecutive directory changes the same timestamp. The signature
+                # additionally detects ordinary external additions/deletions.
+                usage = self._read_usage()
+                self._bytes = usage if usage is not None else sum(
+                    path.stat().st_size for path in self.directory.glob("*.png")
+                )
+                self._write_usage(dirty=True)
                 destination = self.directory / (key + ".png")
                 previous = destination.stat().st_size if destination.exists() else 0
                 fd, temp = temporary(self.directory)
@@ -142,9 +178,9 @@ class RenderCache:
                             break
                         path.unlink()
                         self._bytes -= stat.st_size
-                self._directory_stamp = self.directory.stat().st_mtime_ns
+                self._write_usage(dirty=False)
         except OSError:
-            self._directory_stamp = None
+            pass
         finally:
             if temp and os.path.exists(temp):
                 os.unlink(temp)
@@ -159,4 +195,3 @@ def user_cache_dir():
 def enable(project, directory):
     project._disk_cache = RenderCache(directory)
     return project
-
