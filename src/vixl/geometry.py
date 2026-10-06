@@ -24,7 +24,7 @@ EXTRA_SHAPES = (*CATALOG_SHAPES, *SHORTCUTS, "pentagon", "hexagon", "octagon", "
 # Shapes drawn from path data that already includes their own stroke inset (see wedge.arc_layer_path).
 PATH_SHAPES = ("path", "arc")
 # Shape kinds that are open strokes by nature; a ``path`` is open when it has no closing Z.
-OPEN_SHAPES = ("line",)
+OPEN_SHAPES = ("line", "wave", "zigzag", "sawtooth", "square-wave", "dashed-line", "scribble", "squiggle", "swash-underline")
 
 
 def is_open_shape(layer):
