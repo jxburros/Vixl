@@ -91,6 +91,8 @@ Layers are ordered bottom to top. A target is a unique layer name or immutable I
 ```bash
 vixl layer add image.png --name hero
 vixl add logo.png --name logo --linked
+vixl add photo.jpg --name hero --credit "Photo: Ana Ruiz" --license "CC0"
+vixl import https://images.example.com/cat.jpg --name cat --license "CC BY 4.0"
 vixl select-layer hero
 vixl layer rename hero portrait
 vixl layer duplicate portrait copy
@@ -118,7 +120,7 @@ vixl blend portrait multiply
 vixl align logo top-right --margin 40
 ```
 
-`layer` is an optional namespace. `rm` aliases remove and `mv` aliases move. Rotation is clockwise, expands the layer bounds, and anchors the expanded bounding box at its x/y position. Crop coordinates refer to the original embedded raster. Resize with one dimension changes only that dimension of a shape, text box, group or solid (the other side keeps its size, and the result reports it under `normalized`), but scales an imported image (raster layer) proportionally so a photo is not stretched. `--keep-aspect` (JSON `keep_aspect: true`) scales the other side proportionally on any layer; `--no-keep-aspect` (`keep_aspect: false`) changes just the given side of an image; give both dimensions to stretch. Numeric scale values are factors; `80%` is `0.8`; a negative factor (`-1`, or `--x -1` for one axis) mirrors the layer as `flip` does and scales by its size. Opacity is 0–1 (`opacity portrait 0.75`); `75%` is read as 0.75, and a bare `75` is an error. `pivot LAYER X Y --canvas` takes a document point; `group NAME A B --above LAYER` (or `--below`) chooses where the new group lands; `shape` takes `--opacity`, `--rotation` and, with `--target`, `--space canvas`.
+`add` and `import` take `--credit` and `--license`, kept in the layer's provenance for attribution; `import` also takes an `https://` image URL (fetch policy in [architecture](architecture.md#trust-and-security), more in [interfaces](interfaces.md#import-existing-artwork)). `layer` is an optional namespace. `rm` aliases remove and `mv` aliases move. Rotation is clockwise, expands the layer bounds, and anchors the expanded bounding box at its x/y position. Crop coordinates refer to the original embedded raster. Resize with one dimension changes only that dimension of a shape, text box, group or solid (the other side keeps its size, and the result reports it under `normalized`), but scales an imported image (raster layer) proportionally so a photo is not stretched. `--keep-aspect` (JSON `keep_aspect: true`) scales the other side proportionally on any layer; `--no-keep-aspect` (`keep_aspect: false`) changes just the given side of an image; give both dimensions to stretch. Numeric scale values are factors; `80%` is `0.8`; a negative factor (`-1`, or `--x -1` for one axis) mirrors the layer as `flip` does and scales by its size. Opacity is 0–1 (`opacity portrait 0.75`); `75%` is read as 0.75, and a bare `75` is an error. `pivot LAYER X Y --canvas` takes a document point; `group NAME A B --above LAYER` (or `--below`) chooses where the new group lands; `shape` takes `--opacity`, `--rotation` and, with `--target`, `--space canvas`.
 
 Alignment supports center, center-x/y, left/right/top/bottom and corner pairs. Absolute moves and alignment clear constraints. `move x +20` and `--relative` add offsets.
 

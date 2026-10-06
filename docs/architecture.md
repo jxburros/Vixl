@@ -71,6 +71,17 @@ Scripts compile only supported Vixl operations; they do not run shell/Python cod
 
 Plugins and local provider configuration are trusted code/configuration. A provider may transmit the current rendered image, selection, text and document metadata to its configured service. Credentials are referenced by environment-variable name and not copied into Vixl's request provenance. Provider metadata should contain provenance only. HTTP adapters preserve TLS verification and do not follow redirects. They fetch result URLs only where a service requires it: FLUX polling and signed result URLs must be HTTPS on approved hosts (`*.bfl.ai`, `*.blob.core.windows.net`, configurable) and are fetched without credentials. ComfyUI files are fetched only from the configured server.
 
+Vixl reaches the network on its own only for the AI providers above and `font install`/`font pair` (Google Fonts). Everything else is an explicit URL import: image imports with `url` (`vixl_import_image`, `vixl import URL`, `POST /assets?url=`, `Project.import_image(url=)`) and font imports from a URL (`vixl_import_font(url=)`, `vixl font import URL`). These share one bounded fetch (`vixl.fetch.fetch_bounded`):
+
+- HTTPS only; a URL with a user name or password is refused.
+- At most 5 redirects, each one validated again like the first URL (an HTTPS page cannot redirect to `http:` or to an internal address).
+- A 30 s timeout per network step (120 s in all) and a streamed byte cap (the asset byte limit for images, 16 MiB for fonts); a larger `Content-Length` is refused before reading.
+- Every address the host resolves to must be public. Private (10/8, 172.16/12, 192.168/16, fc00::/7), loopback, link-local (including the 169.254.169.254 cloud metadata address), shared/CGNAT, multicast, reserved, documentation and unspecified addresses are refused, also when embedded in IPv6 (IPv4-mapped, IPv4-compatible, NAT64, 6to4, Teredo). Literal IP hosts get the same check.
+- Without a proxy, the connection goes to the address that was checked; the host name is kept for the `Host` header, TLS SNI and certificate verification, so a second DNS answer cannot move the request to another address (DNS rebinding).
+- Downloaded bytes are not trusted by `Content-Type`: images are decoded under the normal pixel and decompression-bomb limits, fonts are validated as TrueType/OpenType.
+
+Residual limits: when an `HTTPS_PROXY`/`ALL_PROXY` environment proxy applies, the proxy resolves and connects, so Vixl checks its own resolution of the name (and refuses a private answer) but cannot pin the address the proxy uses; the proxy's policy is the final boundary. Set `VIXL_ALLOW_PRIVATE_FETCH=1` to allow intranet or local test hosts; the other rules still apply. A URL import records `source: {url, fetched_at, sha256, bytes}` (and `requested_url` after a redirect) in the layer's provenance, with optional caller-supplied `credit` and `license`.
+
 The REST service defaults to loopback, validates host headers without a token, requires a token for non-loopback binding, and limits bodies before JSON parsing. Use a TLS reverse proxy for remote use. API tokens do not create a multi-tenant permission system. Image/font codecs and optional plugins still execute native/Python code in-process; a container remains the appropriate boundary for hostile inputs.
 
 ## Verification

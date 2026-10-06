@@ -131,7 +131,7 @@ Standalone design-system pieces:
 {"type": "guidance", "name": "typography", "style": "typography"}
 ```
 
-Built-in guidance now covers `overall`, `minimal`, `editorial`, `playful`, `logo`, `pixel-art`, `typography`, `color`, `layout`, `accessibility`, `print`, `icon`, `motion` and `brush`.
+Built-in guidance now covers `overall`, `minimal`, `editorial`, `playful`, `logo`, `pixel-art`, `typography`, `color`, `layout`, `accessibility`, `print`, `icon`, `motion`, `brush` and `image-rights`.
 
 Layouts are text compositions, which is why open requests drift toward posters. For icons, characters, scenes, patterns,
 mandalas and diagrams, `vixl_guide(brief)` (CLI `vixl guide BRIEF`) names the approach, operations, layouts, looks and

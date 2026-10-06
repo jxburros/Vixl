@@ -177,6 +177,8 @@ def compile_command(tokens):
         p.add_argument("path")
         p.add_argument("--name")
         p.add_argument("--linked", action="store_true")
+        p.add_argument("--credit", help="attribution kept with the image")
+        p.add_argument("--license", help="license or usage terms of the image")
         p.add_argument("--x", type=float)
         p.add_argument("--y", type=float)
     elif cmd in ("solid", "gradient", "text"):

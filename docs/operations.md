@@ -47,7 +47,7 @@ Common operation fields:
 
 | Type | Fields |
 | --- | --- |
-| add | path **or** embedded asset; name, x, y, linked |
+| add | path **or** embedded asset; name, x, y, linked, credit, license (kept in provenance) |
 | solid / gradient | name, width, height, color **or** start/end/direction/stops/angle; `target` edits an existing layer |
 | text | text, name, font, size, color, align, spacing, hide_if_empty, x/y; `target` edits an existing text layer |
 | shape | shape, name, width, height, x/y, fill, stroke, stroke_width, line_cap, trim_start/trim_end, radius, sides, inner_radius, path, opacity, rotation; `target` edits an existing shape. A `path` is in literal local pixels from the layer's x/y; without width/height its box reaches the path's farthest point ([vector paths](vector-paths.md#path-coordinates-and-the-layer-box)) |

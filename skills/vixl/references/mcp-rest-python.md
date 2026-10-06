@@ -48,7 +48,7 @@ result (`"replayed": true`) instead of applying twice.
 | `vixl_document_open` | **`path`** | Activates an existing `.vixl`; other open documents stay open (up to 8) |
 | `vixl_document_close` | `document` | Drops a document from the session (edits are already saved) |
 | `vixl_document_inspect` | `target=None`, `detail="compact"\|"full"` | Compact: canvas + one entry per layer with `bounds`; full: every field (with `resolved_bounds`) |
-| `vixl_import_image` | `path` **or** `data_base64` (base64 or `data:` URL), `name="image"` | New layer; returns `{id, name, width, height, bounds, asset}` (≤64 MiB) |
+| `vixl_import_image` | `path` **or** `data_base64` (base64 or `data:` URL) **or** `url` (public `https://`), `name="image"`, `credit`, `license` | New layer; returns `{id, name, width, height, bounds, asset, source}` (≤64 MiB); `source` has the final `url`, `bytes`, `sha256`, `fetched_at` |
 | `vixl_export_file` | **`path`**, `quality` (default 90 for raster formats; PDF images stay lossless unless given, then JPEG-compresses PDF images when given), `title` (PDF title), `max_bytes` (warn when a raster file is larger), `scale=1` (0.01–16), `profile`, `variables`, `background="white"`, `overwrite=False`, `sampling="smooth"\|"nearest"`, `artboard`, `comp` | Writes PNG/JPEG/WEBP/TIFF/AVIF (by extension); returns `{path, format, bytes}` |
 | `vixl_export_batch` | **`targets`** (1–64 of `{path, document?, overwrite?, …any export option}`), `defaults`, `overwrite=False`, `stop_on_error=False` | Several sizes/formats/artboards/documents in one call. Everything is validated before the first file is written; each target reports `{path, format, bytes, document}` or its own `error` |
 | `vixl_adapt_layout` | **`sizes`** (1–16: named size, `"1080x1920"` or `{size\|width+height, orientation, dpi, bleed, name}`), `directory`, `name="{name}-{size}"`, `options` (`scale`, `anchors`, `where`, `text`), `formats` (e.g. `["png"]`), `overwrite`, `report="summary"\|"layers"` | One call, a whole campaign: each size is a saved copy re-laid out by `adapt-layout` (optionally exported); the source is untouched; per size: file, canvas, scale, layers moved, warnings |
@@ -157,7 +157,7 @@ because the schema is inline in `vixl_operations_apply`.
   embedded images by `asset` ID (see `vixl_document_inspect`), e.g. in `frame`/`replace-contents`/`add`.
 - `font` works in batches (`text`, `text-set`, `rich-text` spans, `layout-apply`, fields):
   pass a registered font name or a role (`heading`, `body`). Install first with `vixl_font_pair` /
-  `vixl_font_install` / `vixl_import_font`; a file path or unregistered name is an error that lists the
+  `vixl_font_install` / `vixl_import_font` (`path` or `url`); a file path or unregistered name is an error that lists the
   registered names. No font files over MCP.
 - No plugins, no linked files. CSV `render --data` and `export-screens` are CLI/Python only.
 - Tool errors carry JSON: `{"error","message","field","operation_index","operation_type","allowed"?,"suggestions"?}`
@@ -189,7 +189,7 @@ Non-loopback hosts require a bearer token from `VIXL_API_TOKEN` (or `--token-env
 | `GET /animation` · `GET /animation/frame/{name}?scale=1` | | Frame list + named animations · PNG |
 | `POST /animation/export` | `{"format":"gif"\|"apng"\|"webp"\|"mp4"\|"webm"\|"sheet","animation":"walk","scale":8,"sampling":…,"colors":…,"quality":…,"columns":…}` | Animation bytes (mp4/webm need ffmpeg) |
 | `GET /history` · `POST /history/{action}` | `{"ref":…,"count":1}` | History graph / new head |
-| `POST /assets?name=photo` | raw image bytes | New layer |
+| `POST /assets?name=photo` | raw image bytes, or empty with `url=https://…`; optional `credit`, `license` | New layer |
 | `POST /ai/{command}` | `{"args":["--prompt","forest","--provider","local"]}` | CLI-style AI call |
 | `POST /export` | `{"format":"PDF","color_space":"cmyk","ink_limit":300}`, `ICO`+`icon_sizes`, `icc_profile_base64`, `proof`, `simulate`, `dpi`, `time` | File bytes |
 | `GET /sizes?category=` · `GET /layouts` · `GET /brushes` · `GET /guide?brief=` · `GET /styles?query=\|name=` · `GET /looks` | | Catalogs |
@@ -217,6 +217,8 @@ p = Project(1080, 1080, background="#101828")              # new, unsaved
 p = Project.load("poster.vixl", limits=Limits(max_pixels=16_000_000), allow_linked=False)
 
 p.apply([{"type": "text", "name": "title", "text": "Hi", "size": 64}], dry_run=False, detail="compact")
+p.import_image("photo.jpg", name="hero", credit="Photo: Ana Ruiz", license="CC0")   # or data=bytes
+p.import_image(url="https://images.example.com/cat.jpg", name="cat", license="CC BY 4.0")  # https, public hosts only
 p.inspect()                 # dict; p.inspect("title") for one layer
 p.layer("title")            # live layer dict (read-only use)
 img = p.render(variables={"title": "Hello"}, artboard=None, comp=None)   # Pillow RGBA
