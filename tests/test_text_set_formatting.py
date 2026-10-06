@@ -63,7 +63,9 @@ def test_text_set_carries_span_styles_by_word():
 
 def test_text_set_matches_lines_and_inherits_list_settings():
     p = Project(600, 400, "white")
-    p.apply({"type": "rich-text", "name": "list", "color": "black", "width": 400,
+    # A box tall enough for the six lines the text-set adds, so "no warnings" means no formatting was dropped
+    # (and not that the apply advisories found text cut off by the box).
+    p.apply({"type": "rich-text", "name": "list", "color": "black", "width": 400, "height": 300, "size": 24,
              "markdown": "# Menu\n- soup\n  - leeks\n- bread\n3. tea"})
     before = p.layer("list")["rich"]["paragraphs"]
     # A line inserted after a nested bullet continues that list; the other lines keep their own settings.
