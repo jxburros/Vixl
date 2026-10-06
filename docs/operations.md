@@ -90,7 +90,9 @@ New shared operations are `palette-apply` (`name`, optional `prefix`), `template
 
 New document state: `canvas.size`, `canvas.dpi`, `canvas.physical`, `canvas.bleed` and `canvas.safe` (pixels) with generated `trim-*`/`safe-*` guides; `layout` (the last applied layout's choices and layer IDs); `brushes` (custom brush definitions); paint layers (`type: "paint"`, `surface`, `strokes`); and `timeline` (`duration`, `fps`, `loop`, `markers`, `tracks` of `{target, property, keys}`). All participate in history and validation like other state. Color fields accept the [color language](color-and-print.md).
 
-## Shapes, guides, text, pages, forms, drawings and charts (unreleased)
+<a id="shapes-guides-text-pages-forms-drawings-and-charts-unreleased"></a>
+
+## Shapes, guides, text, pages, forms, drawings and charts (0.19)
 
 | Operation | Fields |
 | --- | --- |
@@ -122,7 +124,9 @@ New document state: `canvas.size`, `canvas.dpi`, `canvas.physical`, `canvas.blee
 
 Every operation also accepts `page` (a page name or number) in a multi-page document.
 
-## Bulk edits and resizing a whole layout (unreleased)
+<a id="bulk-edits-and-resizing-a-whole-layout-unreleased"></a>
+
+## Bulk edits and resizing a whole layout (0.19)
 
 Repetitive work (menus, badge sheets, price tags, a campaign in six sizes) should not cost one call per layer.
 

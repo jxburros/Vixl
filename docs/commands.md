@@ -30,9 +30,9 @@ project with appropriate layers or input files. See each guide for complete crea
 | Workflow contract | `workflow schema` | [Production](production.md), [studio](studio.md) |
 | Lyric video | `workflow lyric-video-export --request request.json --workspace .` | [Lyric videos](lyric-video.md) |
 
-Latest `main` also adds `export --alpha auto|keep|flatten` for supported image formats.
-This source-only option is described in [exporting](exporting.md#image-output-and-alpha)
-and the [Unreleased changelog](../CHANGELOG.md).
+Since 0.19.0, `export --alpha auto|keep|flatten` controls supported image formats.
+See [exporting](exporting.md#image-output-and-alpha) and the
+[release notes](../CHANGELOG.md#0190).
 
 [Documentation home](README.md) · [Getting started](getting-started.md) · [Visual gallery](gallery.md)
 
@@ -310,7 +310,7 @@ vixl export-timeline --out FILE.gif|.png|.webp|.zip|.mp4|.webm [--format sheet] 
 
 Times are milliseconds or `1.5s`, `250ms`, `50%` or a marker name. Details: [sizes and layouts](sizes-and-layouts.md), [color and print](color-and-print.md), [brushes and animation](brushes-and-animation.md).
 
-## Linked documents and print merge (unreleased)
+## Linked documents and print merge (0.19)
 
 ```bash
 vixl link FILE.vixl [--name N] [--x X] [--y Y] [--width W] [--height H] [--fit fill|fit|stretch]
