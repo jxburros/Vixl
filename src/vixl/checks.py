@@ -372,6 +372,9 @@ def check_design(
             measured = top_level_contrast(candidate, top) if top else {}
         except Exception:  # noqa: BLE001 - measure each layer separately and report its own failure.
             measured = {}
+        from .charts import chart_contrast
+
+        measured.update(chart_contrast(candidate, resolved, local_bounds, bounds, [x for x in texts if x.get("parent")]))
         for item in texts:
             try:
                 result = measured.get(item["id"]) or measure(candidate, target=item["id"])["contrast"]

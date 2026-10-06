@@ -77,7 +77,7 @@ def service_operation_schema(slim=False):
         variant.pop("description", None)
         for constraint in props.values():
             constraint.pop("description", None)
-        if kind in ("field-set", "form"):
+        if kind in ("field-set", "form", "chart", "chart-data"):
             # Nullable copies of the field settings: names only here, types via vixl_operation_schema.
             props.update({key: {} for key in props if key not in ("target", "kind")})
         # Coordinates/sizes also accept "center" and "N%" (see the tool description). A short,

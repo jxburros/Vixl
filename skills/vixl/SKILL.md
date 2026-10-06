@@ -1,6 +1,6 @@
 ---
 name: vixl
-description: Create and edit layered, editable images with Vixl (the `vixl` CLI, its MCP server, REST API, or Python API). Use whenever a task involves making or changing a poster, flyer, letterhead, business card, social graphic, thumbnail, banner, logo, icon or favicon set, photo edit, template, CSV-driven image variants, brush painting, pixel-art sprite, keyframe animation (GIF/WebP/MP4), print-ready CMYK PDF, slide deck or PowerPoint, carousel, fillable PDF form or form filling from CSV, lyric video, cleaning up and building on a hand drawing, organic shapes (plants, creatures), rich text, guides and grids, color palette, or checking an image's layout, spacing, contrast, print readiness or dimensions — and whenever `vixl_*` MCP tools, `.vixl` files, `.vixlscript` files, or the `vixl` command are available or mentioned. Covers named sizes, principled layouts, the color language, every operation type, CLI command, MCP tool, REST route, AI-provider feature, and the verify-by-preview loop.
+description: Create and edit layered, editable images with Vixl (the `vixl` CLI, its MCP server, REST API, or Python API). Use whenever a task involves making or changing a poster, flyer, letterhead, business card, social graphic, thumbnail, banner, logo, icon or favicon set, photo edit, template, CSV-driven image variants, brush painting, pixel-art sprite, keyframe animation (GIF/WebP/MP4), print-ready CMYK PDF, slide deck or PowerPoint, carousel, fillable PDF form or form filling from CSV, lyric video, cleaning up and building on a hand drawing, organic shapes (plants, creatures), charts and infographics from data, rich text, guides and grids, color palette, or checking an image's layout, spacing, contrast, print readiness or dimensions — and whenever `vixl_*` MCP tools, `.vixl` files, `.vixlscript` files, or the `vixl` command are available or mentioned. Covers named sizes, principled layouts, the color language, every operation type, CLI command, MCP tool, REST route, AI-provider feature, and the verify-by-preview loop.
 ---
 
 # Vixl for agents
@@ -54,6 +54,8 @@ agent, edit independently, preview branch-merge, resolve conflicts explicitly, t
 - **Imperfection** — opt-in `irregular` (seeded wobble, stroke weight, color drift, micro placement)
   and `tear` (torn edges) for characters, hand-made looks and ripped paper; never for logos,
   charts, text or anything that must align. `arc` shapes draw pie wedges and donut segments.
+- **Charts** — `chart` (bar, stacked, 100 %, horizontal, line, area, pie, donut) from a table or workspace CSV, `chart-data` to fix
+  a value on stable layer IDs, native PPTX charts; see [charts](references/charts.md) before drawing any chart by hand.
 - **Guides beyond right angles** — angled/curved guides, compositional and perspective grids,
   `place`, `snap`, `guides`/`alignment` checks.
 - **Lyric videos** — `lyric-video-plan/build/export` workflow actions (song + LRC + template).
@@ -61,7 +63,7 @@ agent, edit independently, preview branch-merge, resolve conflicts explicitly, t
   stale/missing sources, `link-embed` freezes one. See [production](references/production.md).
 - **Print merge** — `merge-impose` lays CSV rows out on print sheets with crop marks: vector-text PDF plus an editable sheet.
 
-Read [documents](references/documents.md) (rich text, pages, forms) and
+Read [documents](references/documents.md) (rich text, pages, forms), [charts](references/charts.md) and
 [drawing, shapes and guides](references/drawing-shapes-guides.md); lyric videos and form-fill jobs
 are in [production](references/production.md).
 

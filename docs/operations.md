@@ -88,10 +88,12 @@ New shared operations are `palette-apply` (`name`, optional `prefix`), `template
 
 New document state: `canvas.size`, `canvas.dpi`, `canvas.physical`, `canvas.bleed` and `canvas.safe` (pixels) with generated `trim-*`/`safe-*` guides; `layout` (the last applied layout's choices and layer IDs); `brushes` (custom brush definitions); paint layers (`type: "paint"`, `surface`, `strokes`); and `timeline` (`duration`, `fps`, `loop`, `markers`, `tracks` of `{target, property, keys}`). All participate in history and validation like other state. Color fields accept the [color language](color-and-print.md).
 
-## Shapes, guides, text, pages, forms and drawings (unreleased)
+## Shapes, guides, text, pages, forms, drawings and charts (unreleased)
 
 | Operation | Fields |
 | --- | --- |
+| chart | `kind`, `categories`+`series` or `table` or `csv` (`category_column`, `series_columns`), `title`, `subtitle`, `colors`, `legend`, `legend_values`, `value_labels`, `total_labels`, `gridlines`, `number_format`, `min`, `max`, `ticks`, `value_title`, `category_title`, `font_size`, `title_font`, `label_font`, `text_color`, `grid_color`, `axis_color`, `background`, `bar_gap`, `line_width`, `markers`, `hole`, `start_angle`, `center_text`, `padding`, `name`, `x`, `y`, `width`, `height`, `target` (restyle) — [charts](charts.md) |
+| chart-data | `target`, `set`, `append`, `remove_categories`, `add_series`, `remove_series`, `reload`, or new `categories`+`series`/`table`/`csv` |
 | irregular | **`seed`** (or `remove`), `target`/`targets`, `strength`, `amount`, `only`, `wobble`, `wobble_length`, `jitter`, `roughness`, `width_variation`, `pressure`, `lightness_drift`, `chroma_drift`, `hue_drift`, `rotation_jitter`, `scale_jitter`, `position_jitter` — [irregularity](irregular.md) |
 | tear | **`seed`** (or `remove`), `target`, `as`, `edges`, `strength`, `depth`, `length`, `roughness`, `rim_width`, `rim_color`, `fibres`, `fibre_width`, `fill`, `name`, `x`, `y`, `width`, `height` — [torn edges](irregular.md#tear) |
 | organic | `preset` or `parts`, `params`, `colors`, `fill`, `stroke`, `stroke_width`, `seed`, `naturalness`, `name`, `x`, `y`, `width`, `height`, `target` (regrow) — [organic shapes](organic.md) |

@@ -230,12 +230,13 @@ vixl drawing straighten house                                  # … keeping its
 vixl link tile.vixl --name preview --width 600                 # a live linked document: edit tile.vixl, the link follows
 vixl merge badge.vixl --data badges.csv --out sheets.pdf       # CSV rows → print sheets, vector text, crop marks
 vixl organic sunflower --name bloom --seed 7                   # composable organic forms
+vixl chart bar --name sales --csv cups.csv --title 'Cups sold'  # data-bound chart; chart-data --set Dec=3330 fixes a number
 vixl grid dial --kind polar --rings 3 --spokes 12              # guides beyond right angles; place, snap
 vixl workflow lyric-video-export --request request.json --workspace .   # LRC + audio → MP4
 ```
 
 [Slides and pages](docs/slides.md) · [HTML presenter](docs/presenter.md) · [forms](docs/forms.md) · [hand drawings](docs/drawing.md) ·
-[rich text](docs/rich-text.md) · [organic shapes](docs/organic.md) · [irregularity and torn edges](docs/irregular.md) · [guides and grids](docs/guides.md) ·
+[rich text](docs/rich-text.md) · [charts](docs/charts.md) · [organic shapes](docs/organic.md) · [irregularity and torn edges](docs/irregular.md) · [guides and grids](docs/guides.md) ·
 [lyric videos](docs/lyric-video.md) · [linked documents](docs/linked-documents.md) · [data merge and imposition](docs/imposition.md)
 
 ## Spacing checks, pixel art and animation

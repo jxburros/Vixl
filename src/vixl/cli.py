@@ -34,6 +34,9 @@ Organic:   organics (presets, generators, rules), organic PRESET [--set petals=8
            organic --parts JSON, organic --target NAME --seed N (regrow)
 Imperfect: irregular TARGET --seed N [--strength subtle|natural|rough] (wobble, stroke weight, color drift, micro placement),
            tear TARGET --seed N [--edges bottom] (torn edge as a mask; --as path for layers), --remove undoes either
+Charts:    chart bar|stacked-bar|percent-bar|horizontal-bar|line|area|pie|donut --name N (--csv FILE | --categories JSON --series JSON)
+           [--title T] [--legend bottom] [--value-labels true] [--number-format '#,##0'], chart line --target N (restyle, resize, change kind),
+           chart-data --target N --set DEC=3330 | --append 'JAN=1,2' | --remove-category C | --reload; exports to .pptx as a native chart
 Design:    pen, shape, shape-place, container-place, container-swap, container-reflow, group, ungroup, clip, layer-style, distribute, style-define,
            style-apply, swatch, artboard, frame, replace-contents, repeat, repeat-blend,
            adjustment, lut, lookup, comp-save, comp-apply, text-layout, pathfinder, symbol, symbol-instance,

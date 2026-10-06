@@ -119,6 +119,10 @@ def check_state(project, state):
             from .links import validate as validate_link
 
             validate_link(layer, state)
+        if "chart" in layer:
+            from .charts import validate_chart
+
+            validate_chart(layer, state)
         if "drawing" in layer or "drawing_strokes" in layer:
             from .drawing import validate as validate_drawing
 

@@ -32,7 +32,7 @@ A document becomes multi-page with the first `page add`; each page has its own l
 - Preview every page at once: `vixl_render_preview(page="all")` / `render --page all`.
 - `vixl_check(checks=["deck"])` checks every page plus title placement, type scale, words per
   page, projected type size (points) and speaker notes.
-- Export `deck.pdf` (vector, selectable text), `deck.pptx` (editable slides, notes) or `deck.html`
+- Export `deck.pdf` (vector, selectable text), `deck.pptx` (editable slides, notes; a `chart` becomes a native chart with its data table, see [charts](charts.md)) or `deck.html`
   (a self-contained presentation: keyboard/swipe/`#3` navigation, overview, the pages'
   transitions, speaker view with notes and timer on `S`, print one slide per page);
   `pages: "1-3,intro"` picks pages; `export slide.png --pages all` writes numbered files.

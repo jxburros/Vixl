@@ -218,6 +218,7 @@ includes complete before/after layer snapshots.
 
 | type | key fields | reference |
 | --- | --- | --- |
+| `chart` / `chart-data` | `kind`, `categories`+`series` / `table` / `csv`, `title`, `colors`, `legend`, `value_labels`, `number_format`, `target` (restyle); `chart-data`: `set`, `append`, `remove_categories`, `add_series`, `remove_series`, `reload` | [charts](charts.md) |
 | `organic` | `preset` or `parts`, `params`, `colors`, `fill`, `stroke`, `stroke_width`, `seed`, `name`, `target` (regrow) | [organic shapes](drawing-shapes-guides.md#organic-shapes) |
 | `irregular` | **`seed`** (or `remove`), `target`/`targets`, `strength` (`subtle`/`natural`/`rough`), `amount`, `only`, `wobble`, `wobble_length`, `jitter`, `roughness`, `width_variation`, `pressure`, `lightness_drift`, `chroma_drift`, `hue_drift`, `rotation_jitter`, `scale_jitter`, `position_jitter` — opt-in, bounded imperfection; not for logos, charts, text or anything that must align | [imperfection](drawing-shapes-guides.md#imperfection-irregular-and-tear) |
 | `tear` | **`seed`** (or `remove`), `target`, `as` (`mask`/`clip`/`path`), `edges`, `strength`, `depth`, `length`, `roughness`, `rim_width`, `rim_color`, `fibres`, `fill`, `name`, `width`/`height`/`x`/`y` (no target) — torn edge with rim and fibres | [imperfection](drawing-shapes-guides.md#imperfection-irregular-and-tear) |
