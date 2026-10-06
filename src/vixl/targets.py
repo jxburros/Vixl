@@ -24,7 +24,7 @@ ALIASES = ("layers", "layer_ids", "layerIds", "target_ids", "targetIds")
 EACH = frozenset({
     "text-set", "text-style", "remove", "hide", "show", "raise", "lower", "top", "bottom", "rasterize", "unconstrain",
     "duplicate", "move", "resize", "scale", "rotate", "pivot", "opacity", "blend", "flip", "crop", "constrain",
-    "effect", *EFFECTS, "effect-disable", "effect-enable", "effect-remove", "effect-set", "layer-style",
+    "effect", *EFFECTS, "effect-disable", "effect-enable", "effect-move", "effect-remove", "effect-set", "layer-style",
     "style-apply", "lut", "lookup", "layer-intent", "fit-text", "path-fit", "shape-to-path", "path-simplify",
     "path-smooth", "offset-path", "outline-stroke", "round-corners", "distort", "skew", "transform", "fit",
     "snap-to-pixel", "keyframe-remove", "shape", "text", "solid", "gradient", "ungroup", "link-refresh",
