@@ -94,7 +94,7 @@ def export_batch(session, export_file, targets, defaults=None, overwrite=False, 
         target = parse_target(index, raw, defaults)
         destination = session.resolve(target.path)
         require(destination.suffix.lower() in EXPORT_SUFFIXES,
-                f"targets[{index}]: choose a PNG, JPEG, WEBP, TIFF, AVIF, SVG, PDF, ICO, HTML or PPTX filename",
+                f"targets[{index}]: choose a PNG, JPEG, WEBP, TIFF, AVIF, SVG, PDF, ICO, HTML, PPTX or PSD filename",
                 field=f"targets[{index}].path")
         require(destination not in seen,
                 f"targets[{index}] and targets[{seen.get(destination)}] both write {target.path}",

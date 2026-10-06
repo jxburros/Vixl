@@ -214,7 +214,7 @@ def preview(
                            page=page, values=values, show_fields=show_fields)
 
 
-EXPORT_SUFFIXES = (".png", ".jpg", ".jpeg", ".webp", ".tif", ".tiff", ".avif", ".svg", ".pdf", ".ico", ".html", ".htm", ".pptx")
+EXPORT_SUFFIXES = (".png", ".jpg", ".jpeg", ".webp", ".tif", ".tiff", ".avif", ".svg", ".pdf", ".ico", ".html", ".htm", ".pptx", ".psd")
 
 
 def export_file(session, path, overwrite=False, document=None, **options):
@@ -224,7 +224,7 @@ def export_file(session, path, overwrite=False, document=None, **options):
         destination = session.resolve(path)
         require(
             destination.suffix.lower() in EXPORT_SUFFIXES,
-            "Choose a PNG, JPEG, WEBP, TIFF, AVIF, SVG, PDF, ICO, HTML or PPTX filename",
+            "Choose a PNG, JPEG, WEBP, TIFF, AVIF, SVG, PDF, ICO, HTML, PPTX or PSD filename",
             field="path",
         )
         session.make_parent(destination)
@@ -867,7 +867,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         max_bytes: Annotated[int | None, Field(ge=1, description="Size budget for a raster file: a warning (never a failure) when the file is larger")] = None,
         document: Document = None,
     ) -> dict:
-        """Export to a workspace file, format from extension (PNG/JPEG/WEBP/TIFF/AVIF/SVG/PDF/ICO/PPTX), full
+        """Export to a workspace file, format from extension (PNG/JPEG/WEBP/TIFF/AVIF/SVG/PDF/ICO/PPTX/PSD), full
         size by default. color_space=cmyk separates JPEG/TIFF/PDF for print (with an ICC profile for press
         accuracy, else device-naive GCR with black_generation and ink_limit); dpi defaults to the canvas
         dpi (a multi-page screen document is a 7.5 in tall slide, as in PPTX; dpi sizes both). SVG policy strict
@@ -879,7 +879,8 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         fills them (flatten draws them into the artwork, editable prefills a fillable PDF). PNG and other alpha
         formats are RGB when the image is opaque;
         alpha=flatten forces RGB on background, alpha=keep forces RGBA. Print-size PDFs measure exactly trim +
-        bleed with TrimBox and BleedBox. Returns file metadata, never image bytes."""
+        bleed with TrimBox and BleedBox. PSD is a layered handoff file: one pixel layer per layer (effects
+        included), groups as layer groups, text as pixels (warnings say so). Returns file metadata, never image bytes."""
         profile_bytes = read_bounded(session.resolve(icc_profile), 16 * 1024 * 1024) if icc_profile else None
         return export_file(
             session,

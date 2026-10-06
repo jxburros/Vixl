@@ -199,7 +199,7 @@ def output_options(args, command):
     p.add_argument("--max-bytes", type=int, help="Size budget: warn when a raster export is larger")
     p.add_argument("--scale", default="1")
     p.add_argument("--profile")
-    p.add_argument("--format", choices=["PNG", "JPEG", "WEBP", "TIFF", "AVIF", "SVG", "JPG", "PDF", "ICO", "HTML", "PPTX"])
+    p.add_argument("--format", choices=["PNG", "JPEG", "WEBP", "TIFF", "AVIF", "SVG", "JPG", "PDF", "ICO", "HTML", "PPTX", "PSD"])
     p.add_argument("--background", default="white")
     p.add_argument("--set", action="append")
     p.add_argument("--artboard")

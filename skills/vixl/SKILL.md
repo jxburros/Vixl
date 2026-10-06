@@ -197,6 +197,7 @@ If found, prepend its folder to PATH for this session — see
    WCAG contrast of a text layer), `vixl_measure_spacing` / `vixl spacing` (gaps),
    `vixl_validate` / `vixl validate` (bounds, aspect ratios, assertions).
 8. **Fix with targeted edits or `undo`**, then **export** (`vixl_export_file` / `vixl export`).
+   A `.psd` path writes a layered Photoshop handoff file (one pixel layer per layer, groups kept, text as pixels).
 
 ## 3. Minimal examples
 
@@ -339,7 +340,8 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
   automatically, so long sessions never lock. Pixel-art frames ≤ 256×256, ≤ 256 frames; timelines
   ≤ 10 min, 60 fps, 3 600 frames; 4 096 strokes per paint layer.
 - **Not supported** (don't promise them): arbitrary SVG import, path arcs/multiple contours,
-  skew/perspective, CMYK *editing* or spot colors, live tablet input, audio, RAW, PSD/XCF import, GUI.
+  skew/perspective, CMYK *editing* or spot colors, live tablet input, audio, RAW, PSD/XCF import (PSD *export*
+  is layered pixels: text is not editable type), GUI.
 
 ## 5. Feature map (where to look)
 
