@@ -77,14 +77,17 @@ vixl solid --name panel --width 400 --height 200 --color '#26344e' [--x --y]
 vixl gradient --name sky --start '#152641' --end '#635e83' --direction vertical|horizontal|radial|angled [--angle 35]
 vixl gradient --name sky --direction angled --angle 35 --stops '[{"offset":0,"color":"#152235"},{"offset":1,"color":"#e8885c"}]'
 vixl text add 'Hello' --name title --size 96 --color white [--font path.ttf] [--align center] [--spacing 8] [--x center --y 120]
-vixl shape rectangle|rounded-rectangle|ellipse|polygon|star|line --name s --width W --height H [--x --y] \
+vixl shape rectangle|rounded-rectangle|ellipse|polygon|star|arc|line --name s --width W --height H [--x --y] \
      [--fill C] [--stroke C] [--stroke-width N] [--radius N] [--sides N] [--inner-radius 0.4] \
      [--line-cap butt|round|square] [--trim-start PCT] [--trim-end PCT]
+     [--start-angle -90 --end-angle 70]   # arc: pie wedge / donut segment (0 = 3 o'clock, clockwise)
 vixl frame --path portrait.jpg --name photo --width 400 --height 500 --fit fill|fit [--asset ID]
 vixl pixel-art --name sprite --width 16 --height 16 [--palette '{".":"transparent","g":"#ffc44d"}'] [--background .]
 vixl pixel-art --name spark --rows '[".w.","www",".w."]' --palette '{".":"transparent","w":"#fff"}'
 vixl adjustment warmth --effects '[{"name":"temperature","amount":500},{"name":"contrast","amount":10}]'
 vixl symbol-instance Brandmark --name footer-logo --x 100 --y 800 --width 100 --height 100
+vixl irregular hero eyes --seed 7 [--strength subtle|natural|rough] [--only wobble color] [--remove]  # opt-in imperfection
+vixl tear photo --seed 3 --edges bottom [--as mask|clip|path] [--strength rough] [--rim-width 5]      # torn edge
 ```
 
 ## Layer management and transforms

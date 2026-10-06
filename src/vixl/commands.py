@@ -84,6 +84,10 @@ def compile_command(tokens):
     organic = compile_organic(cmd, args)
     if organic is not None:
         return organic
+    from .irregular import compile_command as compile_irregular
+    irregular = compile_irregular(cmd, args)
+    if irregular is not None:
+        return irregular
     from .automation import compile_command as compile_automation
     automation = compile_automation(cmd, args)
     if automation is not None:

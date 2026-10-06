@@ -16,7 +16,7 @@ def compile_design(cmd, args):
         p.add_argument("--path")
         for key in ("fill", "stroke"):
             p.add_argument("--" + key)
-        for key in ("stroke-width", "radius", "inner-radius", "trim-start", "trim-end"):
+        for key in ("stroke-width", "radius", "inner-radius", "start-angle", "end-angle", "trim-start", "trim-end"):
             p.add_argument("--" + key, type=float)
         p.add_argument("--line-cap", choices=["butt", "round", "square"])
         p.add_argument("--sides", type=int)

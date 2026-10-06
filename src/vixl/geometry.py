@@ -18,7 +18,9 @@ SHORTCUTS = {
     "trapezoid": "M25 0 L75 0 L100 100 L0 100 Z",
     "parallelogram": "M25 0 L100 0 L75 100 L0 100 Z",
 }
-EXTRA_SHAPES = (*SHORTCUTS, "pentagon", "hexagon", "octagon", "capsule", "path")
+EXTRA_SHAPES = (*SHORTCUTS, "pentagon", "hexagon", "octagon", "capsule", "path", "arc")
+# Shapes drawn from path data that already includes their own stroke inset (see wedge.arc_layer_path).
+PATH_SHAPES = ("path", "arc")
 
 
 def parse_path(path):
@@ -86,6 +88,10 @@ def shape_path(layer):
     shape = layer["shape"]
     if shape == "path":
         return layer["path"], layer.get("path_view", (layer["width"], layer["height"]))
+    if shape == "arc":
+        from .wedge import arc_layer_path
+
+        return arc_layer_path(layer)
     if shape in SHORTCUTS:
         return SHORTCUTS[shape], (100, 100)
     sides = {"pentagon": 5, "hexagon": 6, "octagon": 8}.get(

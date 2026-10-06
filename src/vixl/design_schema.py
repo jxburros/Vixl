@@ -55,7 +55,18 @@ def schemas(add):
             "stroke_width": N,
             "radius": N,
             "sides": POSITIVE_INT,
-            "inner_radius": N,
+            "inner_radius": {
+                **N,
+                "description": "star: inner point radius 0.01–1; arc: hole radius 0 (pie wedge) to 0.99 (thin ring), as a fraction of the outer radius.",
+            },
+            "start_angle": {
+                **N,
+                "description": "arc: start angle in degrees, 0 at 3 o'clock, clockwise (-90 is 12 o'clock). Default 0.",
+            },
+            "end_angle": {
+                **N,
+                "description": "arc: end angle in degrees, clockwise from start_angle; 360 or more past it is the full circle/ring. Default start_angle + 360.",
+            },
             **trim_schema(),
         },
         anyOf=[{"required": ["shape"]}, {"required": ["target"]}],

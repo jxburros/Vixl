@@ -320,6 +320,8 @@ def _operation_schema():
     stack_schemas(add)
     from .organic import schemas as organic_schemas
     organic_schemas(add)
+    from .irregular import schemas as irregular_schemas
+    irregular_schemas(add)
     from .guides import schemas as guide_schemas
     guide_schemas(add)
     from .richtext import schemas as rich_schemas

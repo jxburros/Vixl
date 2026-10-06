@@ -49,6 +49,12 @@ TYPE_ALIASES = {
     "set-field": "field-set",
     "field-update": "field-set",
     "sketch": "drawing",
+    "roughen": "irregular",
+    "distress": "irregular",
+    "imperfect": "irregular",
+    "torn-edge": "tear",
+    "rip": "tear",
+    "torn": "tear",
 }
 SHAPE_TYPES = {
     "rect": ("rectangle", {}),
@@ -70,6 +76,12 @@ SHAPE_TYPES = {
     "polygon": ("polygon", {}),
     "star": ("star", {}),
     "line": ("line", {}),
+    "arc": ("arc", {}),
+    "pie": ("arc", {}),
+    "wedge": ("arc", {}),
+    "sector": ("arc", {}),
+    "donut": ("arc", {"inner_radius": 0.6}),
+    "ring": ("arc", {"inner_radius": 0.8}),
 }
 STYLE_ALIASES = {
     "shadow": "drop-shadow",
@@ -113,6 +125,12 @@ FIELD_ALIASES = {
         "border_radius": "radius",
         "type_of_shape": "shape",
         "kind": "shape",
+        "start": "start_angle",
+        "end": "end_angle",
+        "angle_start": "start_angle",
+        "angle_end": "end_angle",
+        "hole": "inner_radius",
+        "inner": "inner_radius",
     },
     "solid": {"fill": "color", "colour": "color", "fill_color": "color"},
     "gradient": {"from": "start", "to": "end", "start_color": "start", "end_color": "end"},
