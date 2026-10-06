@@ -7,6 +7,8 @@ name = "vixl-engine"
 dynamic = ["version"]
 description = "A headless image-document engine designed for autonomous AI agents"
 readme = "README.md"
+license = "LicenseRef-PolyForm-Small-Business-1.0.0"
+license-files = ["LICENSE"]
 requires-python = ">=3.11"
 keywords = ["image", "graphics", "design", "layers", "svg", "pdf", "mcp", "ai-agents", "automation", "animation"]
 classifiers = [

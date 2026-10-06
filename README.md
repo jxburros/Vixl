@@ -150,10 +150,20 @@ operation recipe; see [documentation maintenance](docs/documentation-maintenance
 [agent evaluations](evals/README.md) measure design tasks.
 
 Vixl edits in RGBA8 sRGB and exports supported vectors or documented raster fallbacks.
-CMYK is an export setting. RAW development, spot-color editing, PSD/XCF project
-compatibility and a desktop GUI are outside this implementation. Review
+CMYK is an export setting. RAW development, spot-color editing, PSD/XCF import
+(PSD export is layered pixels) and a desktop GUI are outside this implementation. Review
 [coverage and limitations](docs/coverage.md), [export behavior](docs/exporting.md) and
 [architecture](docs/architecture.md) before choosing it for a workflow.
 The [original product specification](docs/product-spec.md) is retained as design context.
 The [Digital Shift identity kit](assets/brand/digital-shift/START-HERE.md) includes logos,
 icons, usage guidance and editable masters.
+
+## Licence
+
+Vixl is source-available under the [PolyForm Small Business License 1.0.0](LICENSE): free for
+individuals and for companies with fewer than 100 people and under US$1M (2019) revenue; larger
+companies need a commercial licence from the licensor. Copies of Vixl must carry the licence and
+its `Required Notice:` lines. If Vixl helped make your work, please credit it ("Made with Vixl").
+
+Bundled assets keep their own terms: DejaVu Sans ([font licence](src/vixl/data/FONT-LICENSE.txt))
+and the xkcd colour names (CC0).

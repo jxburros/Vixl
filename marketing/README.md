@@ -66,8 +66,8 @@ so the logo links resolve.
   The "Seconds, not minutes" deck slide quotes the before/after timings in
   [explorations/README.md](../explorations/README.md#performance).
   If those numbers change, edit `FACTS` and the slide in `build.py`.
-- **No licence claim.** The repository has no licence file, so nothing says "open source". Add it
-  to the chips in `build_og` once a licence is chosen.
+- **Licence.** Vixl is source-available under PolyForm Small Business 1.0.0, not open source: never
+  say "open source". A licence chip in `build_og` waits for the next kit rebuild.
 
 ## Checks
 
