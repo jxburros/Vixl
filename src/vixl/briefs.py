@@ -33,7 +33,7 @@ KINDS = {
         "looks": ["grain", "paper", "hard-shadow"], "styles": ["swiss", "brutalist", "editorial", "risograph"],
         "sizes": ["poster-18x24", "a3", "instagram-portrait"],
         "example": [{"type": "layout-apply", "name": "hero-statement", "title": "Make it simple", "subtitle": "One idea, said well.",
-                     "palette": "midnight", "seed": 7}],
+                     "label": "Open call", "cta": "Join in", "palette": "midnight", "seed": 7}],
     },
     "social-card": {
         "title": "Social post, story or thumbnail",
@@ -206,7 +206,7 @@ KINDS = {
                      "vixl_timeline_preview, then vixl_export_timeline."],
         "operations": ["timeline-set", "animate-preset", "animate", "keyframe", "marker", "frame-save", "animation-set"],
         "layouts": [], "looks": ["glow"], "styles": ["pixel-art", "retro-futurism"], "sizes": ["video-1080p", "video-square", "story"],
-        "example": [{"type": "text", "text": "Hello", "name": "greeting", "size": 96, "color": "#ffffff", "x": "center", "y": "center"},
+        "example": [{"type": "text", "text": "Hello", "name": "greeting", "size": 96, "color": "#111827", "x": "center", "y": "center"},
                     {"type": "animate-preset", "targets": ["greeting"], "preset": "pop-in", "start": 0, "duration": "600ms"}],
     },
     "pixel-art": {
@@ -217,8 +217,9 @@ KINDS = {
                      "frame-save per animation frame; export with sampling nearest."],
         "operations": ["pixel-art", "pixel-draw", "pixel-palette", "frame-save", "animation-set"],
         "layouts": [], "looks": [], "styles": ["pixel-art"], "sizes": ["sprite-32", "sprite-64", "icon-64"],
-        "example": [{"type": "pixel-art", "name": "heart", "palette": {".": "transparent", "#": "#e11d48"},
-                     "rows": [".##.##.", "#######", "#######", ".#####.", "..###..", "...#..."]}],
+        "example": [{"type": "pixel-art", "name": "heart", "x": 260, "y": 160, "palette": {".": "transparent", "#": "#e11d48"},
+                     "rows": [".##.##.", "#######", "#######", ".#####.", "..###..", "...#..."]},
+                    {"type": "resize", "target": "heart", "width": 280}],
     },
     "hand-drawing": {
         "title": "Hand drawing or sketch cleanup",
@@ -228,7 +229,8 @@ KINDS = {
         "operations": ["drawing", "paint-layer", "paint", "pen", "organic"],
         "layouts": [], "looks": ["sketch", "watercolor", "paper"], "styles": ["hand-drawn", "line-art"], "sizes": ["a4", "photo-square"],
         "example": [{"type": "paint-layer", "name": "ink"},
-                    {"type": "paint", "brush": "ink", "points": [[100, 100], [200, 160], [300, 100]], "size": 6, "color": "#111111"}],
+                    {"type": "paint", "brush": "ink", "size": 8, "color": "#111111",
+                     "points": [[200, 300], [260, 220], [340, 200], [420, 240], [440, 320], [380, 380], [300, 380]]}],
     },
     "photo-composition": {
         "title": "Photo with caption or overlay",

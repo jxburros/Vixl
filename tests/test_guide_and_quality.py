@@ -84,6 +84,8 @@ def test_every_example_in_the_guide_runs(kind):
     ops = briefs.KINDS[kind]["example"]
     result = project.apply(ops, detail="compact")
     assert result["success"]
+    # Examples practise what the guide preaches: every text slot of a layout is filled (an image slot may await a photo).
+    assert set(result.get("unfilled_slots", [])) <= {"image"}, result.get("unfilled_slots")
     image = project.render()
     assert image.getbbox() is not None
 

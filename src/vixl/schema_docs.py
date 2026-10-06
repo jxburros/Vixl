@@ -628,7 +628,7 @@ EXAMPLES = {
     ],
     "layout-apply": [
         {"type": "layout-apply", "name": "hero-statement", "title": "Make it simple", "subtitle": "One idea, said well.",
-         "palette": "midnight", "seed": 7},
+         "label": "Open call", "cta": "Join in", "palette": "midnight", "seed": 7},
         {"type": "layout-apply", "name": "app-icon", "title": "Notes", "palette": ["#0f172a", "#1e293b", "#38bdf8"],
          "keep_order": True},
     ],

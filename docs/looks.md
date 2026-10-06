@@ -31,6 +31,10 @@ CLI: `vixl look LAYER NAME [--color C] [--amount A] [--remove]`, `vixl looks` fo
 | `watercolor` | soft watercolor wash | raster fallback |
 | `halftone` | print-style dot screen | raster fallback |
 
+The raster looks split in two. `grain`, `paper` and `film` suit anything, flat shapes included. `duotone`, `risograph`, `sketch`, `watercolor` and
+`halftone` render tone and edges, so they are for photographs and illustrations: on a flat fill there is only one tone, so `duotone` turns it gray
+and `sketch` fades it out.
+
 ## Behaviour
 
 - **`amount`** (0-1, default 0.5) moves a look between subtle and strong. Sizes scale with the layer (blur and offsets follow its smaller side), so the

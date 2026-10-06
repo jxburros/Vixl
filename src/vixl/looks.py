@@ -139,11 +139,11 @@ LOOKS = {
     "grain": (_grain, "Fine film grain that breaks up flat color.", "raster", ["backgrounds", "posters", "textures"]),
     "paper": (_paper, "Warm paper: slight warm tint, fibre grain and soft edge darkening.", "raster", ["full-canvas backgrounds", "letterpress", "zines"]),
     "film": (_film, "Faded film: sepia, grain and vignette.", "raster", ["photos", "vintage"]),
-    "duotone": (_duotone, "Map the layer to two tones of one color (color).", "raster", ["photos", "posters", "brand imagery"]),
-    "risograph": (_risograph, "Two-ink print: one ink color on warm paper with grain.", "raster", ["zines", "posters", "illustration"]),
-    "sketch": (_sketch, "Pencil-sketch rendering of the layer.", "raster", ["photos", "illustration"]),
-    "watercolor": (_watercolor, "Soft watercolor wash.", "raster", ["photos", "illustration", "backgrounds"]),
-    "halftone": (_halftone, "Print-style dot screen.", "raster", ["pop art", "newsprint", "photos"]),
+    "duotone": (_duotone, "Map a photo or illustration to two tones of one color (color); a flat fill has one tone, so it turns gray.", "raster", ["photos", "posters", "brand imagery"]),
+    "risograph": (_risograph, "Two-ink print: one ink color on warm paper with grain; best on photos and tonal artwork.", "raster", ["zines", "posters", "illustration"]),
+    "sketch": (_sketch, "Pencil-sketch rendering of a photo or illustration (flat fills have no edges and fade out).", "raster", ["photos", "illustration"]),
+    "watercolor": (_watercolor, "Soft watercolor wash for photos and illustration.", "raster", ["photos", "illustration", "backgrounds"]),
+    "halftone": (_halftone, "Print-style dot screen: turns a photo or gradient into black and white dots.", "raster", ["pop art", "newsprint", "photos"]),
 }
 
 
