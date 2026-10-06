@@ -80,10 +80,9 @@ class Rig:
         return name
 
     def reach(self, name, cx, cy, half):
-        """Invisible square centred on a joint. Groups keep the union bounds of their members
-        at creation and crop anything that later moves outside, so each limb group carries a
-        transparent box big enough for its full range of motion; it also puts the joint at the
-        group's centre, so the pivot is simply [0.5, 0.5]."""
+        """Invisible square centred on a joint. It puts the joint at the limb group's centre, so
+        the pivot is simply [0.5, 0.5]. (In Vixl 0.16.0 it was also needed to stop the group
+        cropping the limb as it rotated; groups no longer clip their members.)"""
         return self.shape(name, "rectangle", cx - half, cy - half, 2 * half, 2 * half,
                           "#00000000", stroke=False)
 
@@ -306,8 +305,8 @@ def scenery(ops, *, extra=0, blur=0, sun=(760, 120)):
     ]
     ops.append({"type": "group", "name": "foreground", "targets": ["ground", "path-band", "grass"]})
     if blur:
-        # Effects are clipped to a layer's own box, so blur one backdrop group whose box
-        # (the oversized sky) overhangs the canvas; its soft edges then fall off-frame.
+        # Depth of field for the close-up: blur the whole backdrop as one group. Its oversized
+        # sky overhangs the canvas, so the blur's soft edges fall off-frame.
         top = ["sky", "sun", "sky-wash", "cloud0", "cloud1", "cloud2", "hills-far", "midground", "foreground"]
         ops.append({"type": "group", "name": "backdrop", "targets": top})
         ops.append({"type": "effect", "target": "backdrop", "name": "blur", "amount": blur})
@@ -718,6 +717,7 @@ def main():
         subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", str(t), "-i", str(OUT / "pip-film.mp4"),
                         "-frames:v", "1", str(OUT / f"{name}.png")], check=True)
     shutil.rmtree(WORK / ".vixl-cache", ignore_errors=True)
+    (WORK / ".vixl-cache.usage.json").unlink(missing_ok=True)  # the cache's bookkeeping file
     for f in WORK.glob("_*.json"):
         f.unlink()
     total = sum(f.stat().st_size for f in OUT.rglob("*") if f.is_file())

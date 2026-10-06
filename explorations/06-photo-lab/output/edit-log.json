@@ -6,7 +6,9 @@
    "resize",
    "align"
   ],
-  "normalized": null
+  "normalized": [
+   "operations[1]: only width given, so height is unchanged, except on image (raster) layers, which keep their aspect ratio; set keep_aspect to true (scale proportionally) or false (change one side) to choose"
+  ]
  },
  {
   "step": "crop / flip / straighten",
@@ -17,7 +19,9 @@
    "resize",
    "align"
   ],
-  "normalized": null
+  "normalized": [
+   "operations[3]: only width given, so height is unchanged, except on image (raster) layers, which keep their aspect ratio; set keep_aspect to true (scale proportionally) or false (change one side) to choose"
+  ]
  },
  {
   "step": "select sky: rect minus colour, feather 14",
@@ -621,7 +625,10 @@
    "text",
    "text"
   ],
-  "normalized": null
+  "normalized": [
+   "operations[1]: only width given, so height is unchanged, except on image (raster) layers, which keep their aspect ratio; set keep_aspect to true (scale proportionally) or false (change one side) to choose",
+   "operations[4]: only width given, so height is unchanged, except on image (raster) layers, which keep their aspect ratio; set keep_aspect to true (scale proportionally) or false (change one side) to choose"
+  ]
  },
  {
   "step": "sheet: tiles",

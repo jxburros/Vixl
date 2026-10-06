@@ -50,8 +50,8 @@
   "sky_luma_with_mask": 56.7
  },
  "compare_toned_vs_local_diff": {
-  "before": "rev_a07aa98c8f644a54",
-  "after": "rev_1d7bcd4e1d554681",
+  "before": "rev_d03bb29459cf4bf1",
+  "after": "rev_ffa8fd3afea54a7e",
   "changed_fraction": 0.7863,
   "changed_region": [
    0,
@@ -61,8 +61,8 @@
   ]
  },
  "compare_original_vs_graded": {
-  "before": "rev_3f651ddb0e8b493c",
-  "after": "rev_1d9e1925487e498a",
+  "before": "rev_6803804af82c47f0",
+  "after": "rev_893d636ec7b84a45",
   "changed_fraction": 0.9646,
   "changed_region": [
    0,
@@ -72,8 +72,8 @@
   ]
  },
  "compare_graded_vs_mono": {
-  "before": "rev_1d9e1925487e498a",
-  "after": "rev_c57aa2f81a944227",
+  "before": "rev_893d636ec7b84a45",
+  "after": "rev_19ee04fb8cc74d37",
   "changed_fraction": 0.6877,
   "changed_region": [
    0,
@@ -269,8 +269,8 @@
  },
  "preset_transfer": {
   "compare": {
-   "before": "rev_26f913b003514a47",
-   "after": "rev_e9b6644741c643d4",
+   "before": "rev_b9b65ef7d00d4a48",
+   "after": "rev_dbd7db1de7464936",
    "changed_fraction": 0.9999,
    "changed_region": [
     0,

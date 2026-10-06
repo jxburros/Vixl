@@ -4,8 +4,8 @@
     "check_passed": false,
     "issues": [
       "'stat' is cut off by the canvas edge",
-      "'stat' and 'stat-caption' overlap by 1155 px (68.0% of the smaller layer)",
-      "'stat-caption' contrast is 2.07:1 for most glyph pixels (minimum 1.01:1); needs 4.5:1"
+      "'stat' and 'stat-caption' overlap by 1138 px (66.9% of the smaller layer)",
+      "'stat-caption' contrast is 2.07:1 or lower for a tenth of its glyph pixels (minimum 1.20:1, weakest at x 736–984, y 1238–1257); needs 4.5:1"
     ]
   },
   "after_undo": 132,
@@ -17,31 +17,31 @@
   },
   "back_on_main_check_passed": true,
   "branches": {
-    "main": "rev_3e2ae828364e4aa4",
-    "night-edition": "rev_41ae4472849b41ef"
+    "main": "rev_0ed2088562b7478a",
+    "night-edition": "rev_7902c9bd9ab54c56"
   },
   "checkpoints": {
-    "layout-approved": "rev_e9f306b0d3e6432f",
-    "group-published": "rev_3e2ae828364e4aa4",
-    "night-v1": "rev_41ae4472849b41ef"
+    "layout-approved": "rev_645c53c7f5c440b0",
+    "group-published": "rev_0ed2088562b7478a",
+    "night-v1": "rev_7902c9bd9ab54c56"
   },
   "current_branch": "main",
   "revisions": 19,
   "nodes": [
     {
-      "id": "rev_8f78fab946874054",
+      "id": "rev_043b90175e95474b",
       "label": "Create instagram-portrait document",
       "ops": []
     },
     {
-      "id": "rev_96eb42fa8bc741fe",
+      "id": "rev_9b041dfa381440c7",
       "label": null,
       "ops": [
         "add"
       ]
     },
     {
-      "id": "rev_baa22c4bc789470d",
+      "id": "rev_dcf6b217cf0c4463",
       "label": "Transaction",
       "ops": [
         "font-register",
@@ -50,14 +50,14 @@
       ]
     },
     {
-      "id": "rev_c56ed54f70274090",
+      "id": "rev_e93b4cfcdbfe419f",
       "label": null,
       "ops": [
         "remove"
       ]
     },
     {
-      "id": "rev_e9f306b0d3e6432f",
+      "id": "rev_645c53c7f5c440b0",
       "label": null,
       "ops": [
         "resize",
@@ -67,31 +67,31 @@
       ]
     },
     {
-      "id": "rev_3a58a443dedd46ac",
+      "id": "rev_7e0702b00e7d4660",
       "label": null,
       "ops": [
         "text-set"
       ]
     },
     {
-      "id": "rev_3de35761d2f44b54",
+      "id": "rev_0c23781ef4df4b08",
       "label": "Merge copy-agent by copy-agent",
       "ops": []
     },
     {
-      "id": "rev_8d82cbcd2763460d",
+      "id": "rev_9842fc6f1fcb4ff3",
       "label": null,
       "ops": [
         "text-set"
       ]
     },
     {
-      "id": "rev_bd66b249498143ef",
+      "id": "rev_54c99c9ceb1e4348",
       "label": "Merge design-agent by design-agent",
       "ops": []
     },
     {
-      "id": "rev_cffbe2e9185840e6",
+      "id": "rev_47d5d4e046b148af",
       "label": null,
       "ops": [
         "text-set",
@@ -101,28 +101,28 @@
       ]
     },
     {
-      "id": "rev_30f9672577f34127",
+      "id": "rev_eb9234c9a80747dc",
       "label": null,
       "ops": [
         "suite-set"
       ]
     },
     {
-      "id": "rev_72541e1f71ae4852",
+      "id": "rev_4d06f536094a4ce3",
       "label": null,
       "ops": [
         "suite-set"
       ]
     },
     {
-      "id": "rev_6d6d2e5d55664250",
+      "id": "rev_9cc58a9af4174c2f",
       "label": null,
       "ops": [
         "suite-set"
       ]
     },
     {
-      "id": "rev_d9d8d3b62fa34d38",
+      "id": "rev_638b412ac8e04811",
       "label": null,
       "ops": [
         "suite-set",
@@ -131,14 +131,14 @@
       ]
     },
     {
-      "id": "rev_2c67c4143f524f03",
+      "id": "rev_ae6a3e9ecff640e3",
       "label": null,
       "ops": [
         "action-define"
       ]
     },
     {
-      "id": "rev_1882adf1e3bd416b",
+      "id": "rev_fceaad2c57e044ea",
       "label": null,
       "ops": [
         "variable",
@@ -146,7 +146,7 @@
       ]
     },
     {
-      "id": "rev_3e2ae828364e4aa4",
+      "id": "rev_0ed2088562b7478a",
       "label": null,
       "ops": [
         "variable",
@@ -157,14 +157,14 @@
       ]
     },
     {
-      "id": "rev_cfa0538fad854b3a",
+      "id": "rev_181151de5e5c4c3c",
       "label": null,
       "ops": [
         "text-set"
       ]
     },
     {
-      "id": "rev_41ae4472849b41ef",
+      "id": "rev_7902c9bd9ab54c56",
       "label": null,
       "ops": [
         "swatch",

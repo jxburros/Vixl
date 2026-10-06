@@ -1,11 +1,11 @@
 {
   "copy-agent.preview": {
     "branch": "copy-agent",
-    "source_head": "rev_3a58a443dedd46ac",
-    "branch_head": "rev_ffe7e0a1a8c74e45",
+    "source_head": "rev_7e0702b00e7d4660",
+    "branch_head": "rev_228a441b3fe54cea",
     "conflicts": [
       {
-        "path": "/layers/lyr_df7015b3b3bf496c/text",
+        "path": "/layers/lyr_1135ecdf68a84398/text",
         "base": "LAUNCHING JUNE 1",
         "ours": "LAUNCHING SATURDAY JUNE 1",
         "theirs": "LAUNCHING JUNE 1 · RIVERSIDE",
@@ -22,8 +22,8 @@
   },
   "copy-agent.resolved-preview": {
     "branch": "copy-agent",
-    "source_head": "rev_3a58a443dedd46ac",
-    "branch_head": "rev_ffe7e0a1a8c74e45",
+    "source_head": "rev_7e0702b00e7d4660",
+    "branch_head": "rev_228a441b3fe54cea",
     "conflicts": [],
     "can_merge": true,
     "success": true,
@@ -31,21 +31,21 @@
   },
   "copy-agent.merge": {
     "branch": "copy-agent",
-    "source_head": "rev_3a58a443dedd46ac",
-    "branch_head": "rev_ffe7e0a1a8c74e45",
+    "source_head": "rev_7e0702b00e7d4660",
+    "branch_head": "rev_228a441b3fe54cea",
     "conflicts": [],
     "can_merge": true,
     "success": true,
     "dry_run": false,
-    "head": "rev_3de35761d2f44b54"
+    "head": "rev_0c23781ef4df4b08"
   },
   "design-agent.preview": {
     "branch": "design-agent",
-    "source_head": "rev_3de35761d2f44b54",
-    "branch_head": "rev_4dbf2db249924f56",
+    "source_head": "rev_0c23781ef4df4b08",
+    "branch_head": "rev_5ecfd8107f5040bc",
     "conflicts": [
       {
-        "path": "/layers/lyr_11e4722039ea4571/text",
+        "path": "/layers/lyr_482b5ae001024618/text",
         "base": "Get the app",
         "ours": "Download Loop",
         "theirs": "GET THE APP",
@@ -56,10 +56,10 @@
         }
       },
       {
-        "path": "/layers/lyr_11e4722039ea4571/width",
-        "base": 152,
-        "ours": 204,
-        "theirs": 179,
+        "path": "/layers/lyr_482b5ae001024618/width",
+        "base": 153,
+        "ours": 205,
+        "theirs": 180,
         "deleted": {
           "base": false,
           "ours": false,
@@ -67,7 +67,7 @@
         }
       },
       {
-        "path": "/layers/lyr_dda8aaab1d25454a/text",
+        "path": "/layers/lyr_e88cd3a113874aa0/text",
         "base": "Ride the Loop",
         "ours": "Your city, on a Loop",
         "theirs": "RIDE THE LOOP",
@@ -88,18 +88,18 @@
   },
   "design-agent.merge": {
     "branch": "design-agent",
-    "source_head": "rev_8d82cbcd2763460d",
-    "branch_head": "rev_4dbf2db249924f56",
+    "source_head": "rev_9842fc6f1fcb4ff3",
+    "branch_head": "rev_5ecfd8107f5040bc",
     "conflicts": [],
     "can_merge": true,
     "success": true,
     "dry_run": false,
-    "head": "rev_bd66b249498143ef"
+    "head": "rev_54c99c9ceb1e4348"
   },
   "design-agent.resolutions": {
-    "/layers/lyr_11e4722039ea4571/text": "ours",
-    "/layers/lyr_11e4722039ea4571/width": "ours",
-    "/layers/lyr_dda8aaab1d25454a/text": "ours"
+    "/layers/lyr_482b5ae001024618/text": "ours",
+    "/layers/lyr_482b5ae001024618/width": "ours",
+    "/layers/lyr_e88cd3a113874aa0/text": "ours"
   },
   "branches": {
     "branches": [
@@ -108,22 +108,22 @@
         "branch": "copy-agent",
         "source": "ig-portrait.vixl",
         "base": ".vixl-branches/copy-agent.base.vixl",
-        "base_hash": "e2a0dbabe509ffca253aa7922769fce5687f27b580412f313bd2e2ba39ca04a8",
+        "base_hash": "b2b009389191c99340a4c68f667b2d70e198887d0876be927cb0ac773ba128d6",
         "output": "copy-agent.vixl",
         "author": "copy-agent",
         "status": "merged",
-        "head": "rev_3de35761d2f44b54"
+        "head": "rev_0c23781ef4df4b08"
       },
       {
         "version": 1,
         "branch": "design-agent",
         "source": "ig-portrait.vixl",
         "base": ".vixl-branches/design-agent.base.vixl",
-        "base_hash": "e2a0dbabe509ffca253aa7922769fce5687f27b580412f313bd2e2ba39ca04a8",
+        "base_hash": "b2b009389191c99340a4c68f667b2d70e198887d0876be927cb0ac773ba128d6",
         "output": "design-agent.vixl",
         "author": "design-agent",
         "status": "merged",
-        "head": "rev_bd66b249498143ef"
+        "head": "rev_54c99c9ceb1e4348"
       }
     ]
   }

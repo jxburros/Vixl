@@ -2,6 +2,12 @@
   "passed": true,
   "errors": 0,
   "warnings": 0,
+  "info": 0,
+  "by_action": {
+    "fix": [],
+    "review": [],
+    "informational": []
+  },
   "issues": [],
   "checked": {
     "checks": [

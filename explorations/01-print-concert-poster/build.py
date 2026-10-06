@@ -42,6 +42,8 @@ LOG = {}
 def vixl(*args, key=None, ok_codes=(0,)):
     """Run the vixl CLI against our document, return parsed JSON when possible."""
     cmd = ["vixl", "-p", str(DOC), *map(str, args)]
+    if args[0] == "export":
+        cmd.append("--overwrite")  # .work/ files survive between runs; exports refuse to replace them
     res = subprocess.run(cmd, capture_output=True, text=True, env=ENV)
     if res.returncode not in ok_codes:
         print(" ".join(cmd), "\n", res.stdout, res.stderr, file=sys.stderr)
@@ -94,21 +96,6 @@ ops = [
     {"type": "swatch", "name": "accent-text", "color": "readable(@night, @sun-hot, @dusk-300, @ink)"},
 ]
 p.apply(ops, detail="compact")
-SWATCHES = p.inspect()["swatches"]
-
-
-def lit(expr):
-    """Resolve an @swatch expression to a literal #rrggbbaa.
-
-    Workaround: `repeat` / `repeat-blend` interpolate fill colors with the plain
-    color parser, so a swatch reference on the repeated layer (or in `end`) fails
-    with invalid_color. See README findings.
-    """
-    from vixl.colors import resolve_expression
-    from vixl.render import color
-
-    r, g, b, a = color(resolve_expression(expr, SWATCHES))
-    return f"#{r:02x}{g:02x}{b:02x}{a:02x}"
 
 
 def text_width(text, font, size):
@@ -158,9 +145,9 @@ ops += [
      "settings": {"color": "@dusk-400", "blur": 60, "opacity": 0.8}},
     # sky-coloured slices that thicken towards the horizon, clipped to the sun disc
     {"type": "shape", "shape": "rectangle", "name": "slice", "width": SUN_D + px(40), "height": px(6),
-     "x": CX - SUN_D // 2 - px(20), "y": SUN_Y + px(380), "fill": lit("#7a1f7a")},
+     "x": CX - SUN_D // 2 - px(20), "y": SUN_Y + px(380), "fill": "#7a1f7a"},
     {"type": "repeat-blend", "target": "slice", "count": 9, "dy": px(40), "dh": px(3),
-     "end": {"height": px(30), "fill": lit("@dusk-500")}},
+     "end": {"height": px(30), "fill": "@dusk-500"}},
     {"type": "group", "name": "sun-slices", "targets": ["slice"]},
     {"type": "clip", "target": "sun-slices", "base": "sun"},
     {"type": "blend", "target": "sun-slices", "value": "multiply"},
@@ -217,9 +204,9 @@ ops += [
 GROUND_H = H - HORIZON
 ops += [
     {"type": "shape", "shape": "rectangle", "name": "rung", "width": W, "height": px(2), "x": 0,
-     "y": HORIZON + px(18), "fill": lit("alpha(@dusk-400, 0.55)")},
+     "y": HORIZON + px(18), "fill": "alpha(@dusk-400, 0.55)"},
     {"type": "repeat-blend", "target": "rung", "count": 14, "dy": px(78), "dh": px(0.4),
-     "end": {"height": px(7), "fill": lit("alpha(@teal, 0.35)")}},
+     "end": {"height": px(7), "fill": "alpha(@teal, 0.35)"}},
 ]
 fan = []
 vx, vy = W / 2, 0
@@ -239,9 +226,6 @@ ops += [
     {"type": "text", "name": "title", "text": "SOLSTICE", "font": "heading",
      "size": fit_size("SOLSTICE", "heading", px(1440), px(260)),
      "color": "@ink", "align": "center"},
-    # Workaround: warped text is top-aligned in its box, so the warp pushes glyphs out of
-    # the top and they get clipped. A transparent text stroke pads the glyph box.
-    {"type": "text-set", "target": "title", "stroke_width": px(42), "stroke_color": "transparent"},
     {"type": "text-layout", "target": "title", "width": px(1580), "height": px(330),
      "warp": "arc", "amount": 0.2},
     {"type": "constrain", "target": "title",
@@ -257,8 +241,6 @@ ops += [
 
     {"type": "text", "name": "subtitle", "text": "SIGNAL", "font": "heading", "size": SIG_SIZE,
      "color": "@night", "align": "center"},
-    # flag warp lifts glyphs out of the box, so give it ~2x the cap height of headroom
-    {"type": "text-set", "target": "subtitle", "stroke_width": px(46), "stroke_color": "transparent"},
     {"type": "text-layout", "target": "subtitle", "width": px(1300), "height": px(330),
      "warp": "flag", "amount": 0.12},
     {"type": "layer-style", "target": "subtitle", "name": "stroke", "settings": {"color": "@sun-hot", "width": 5}},
@@ -422,16 +404,9 @@ if os.environ.get("QUICK"):
     raise SystemExit(0)
 
 # ---------------------------------------------------------------- 10. QA
-# `check` contrast measures each text layer with three full renders, which takes minutes
-# per layer on a tabloid canvas. By default we contrast-check the smallest/riskiest text;
-# FULL_CHECK=1 checks every layer (slow: ~30-40 min on a loaded machine).
 FAST = ["bounds", "overlap", "safe_area", "legibility", "print", "color_vision"]
 vixl("check", "--checks", *FAST, "--ink-limit", "300", key="check_print_colorvision", ok_codes=(0, 1))
-if os.environ.get("FULL_CHECK"):
-    vixl("check", "--checks", "contrast", key="check_contrast_all", ok_codes=(0, 1))
-else:
-    vixl("check", "--checks", "contrast", "--targets", "fineprint", "undercard", "extras", "eyebrow",
-         "lineup-label", key="check_contrast_small_text", ok_codes=(0, 1))
+vixl("check", "--checks", "contrast", key="check_contrast_all", ok_codes=(0, 1))
 
 # ---------------------------------------------------------------- 11. renders + exports
 # Vixl ships no press profiles. Without one, --proof only reflects the GCR/ink-limit
@@ -458,7 +433,11 @@ if HAVE_ICC:
          "--scale", MAIN)
 for kind in ("deuteranopia", "protanopia", "tritanopia"):
     vixl("export", WORK / f"sim-{kind}.png", "--simulate", kind, "--scale", SMALL)
-vixl("export", OUT / "poster-cmyk.pdf", "--cmyk", "--ink-limit", "300", "--quality", "75", key="export_pdf")
+# The poster's blend modes and adjustment layers make the whole page an image anyway.
+# Vixl 0.20.0's vector PDF writer crashes on such pages (KeyError 'type' in the page
+# fallback), so ask for a raster page directly.
+vixl("export", OUT / "poster-cmyk.pdf", "--cmyk", "--ink-limit", "300", "--quality", "75",
+     "--pdf-content", "raster", key="export_pdf")
 if HAVE_ICC:
     vixl("export", OUT / "poster-cmyk-swop.jpg", "--cmyk", "--icc", ICC, "--intent", "relative",
          "--quality", "72", key="export_jpg")

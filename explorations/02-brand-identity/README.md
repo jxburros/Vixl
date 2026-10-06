@@ -1,7 +1,7 @@
 # 02 · Brand identity system: Morrow Coffee Roasters
 
-Morrow is a fictional Portland coffee roaster. This project builds its whole identity headlessly with Vixl
-0.16.0. The mark is a coffee bean, drawn with the pen tool and split by a Bézier crease, set inside a disc
+Morrow is a fictional Portland coffee roaster. This project builds its whole identity headlessly with Vixl.
+It was first built with 0.16.0; the committed outputs are rebuilt with 0.20.0. The mark is a coffee bean, drawn with the pen tool and split by a Bézier crease, set inside a disc
 and rising over sunrise "reflection" bands. It is built only from vector geometry and pathfinder booleans.
 On top of that sit a palette generated from one ember colour (a tonal scale plus a split-complementary
 harmony, frozen with `palette-define`) and a Fraunces × Work Sans pairing. From there the script produces
@@ -11,15 +11,15 @@ The logo is then checked against the brand palette with a saved suite and with `
 
 ![Brand board](output/board/brand-board.png)
 
-Run from the repo root: `python explorations/02-brand-identity/build.py`. A full run took about 7–8 minutes, almost
-all of it spent in `check()` on the brand board; with the fixes in the [changelog](../../CHANGELOG.md) the whole run takes about 15 s. `QUICK=1` skips that check. Everything
+Run from the repo root: `python explorations/02-brand-identity/build.py`. With 0.20.0 a full run takes
+about 25 s. With 0.16.0 it took about 7–8 minutes, almost all of it in `check()` on the brand board. `QUICK=1` skips that check. Everything
 is written to `output/`:
 
 | Path | What |
 | --- | --- |
 | `output/logo/morrow-mark.{png,svg}`, `morrow-mark-1color.svg` | Mark: transparent PNG, strict SVG, one-ink SVG |
 | `output/logo/morrow-logo-{horizontal,stacked}.{png,svg}` | Lockups rendered from two artboards (PNG transparent, SVG `svg_policy="strict"`) |
-| `output/card/card-{front,back}{.png,-cmyk.pdf,-softproof.png}` | 3.5×2 in card with 0.125 in bleed; CMYK PDF (GCR, 300% ink limit) and RGB soft proof |
+| `output/card/card-{front,back}{.png,-cmyk.pdf,-softproof.png}` | 3.5×2 in card with 0.125 in bleed; vector CMYK PDF (GCR, 300% ink limit, embedded fonts, TrimBox/BleedBox) and RGB soft proof |
 | `output/icons/app-icon-1024.png`, `icons/set/*` | App icon + `export-icons` set `all` (web/apple/android/windows, ICO, webmanifest) |
 | `output/icons/favicon.ico`, `favicon-512.png` | Simplified small-size mark, ICO 16/32/48/64 |
 | `output/board/brand-board.{png,html}`, `brand-board-deuteranopia.png` | Brand board, standalone HTML export, colour-vision simulation |
@@ -47,7 +47,7 @@ is written to `output/`:
 
 ## Findings
 
-> **Status:** Finding 3 is fixed: `check()` on the brand board takes seconds, and the whole build about 20 s. Findings 1 and 2 are fixed too: a pen without `width`/`height` gets a box that fits its nodes, stroke and handles, and a box too small for its nodes is rejected instead of clipping them. Finding 12 is fixed as far as the error goes: it now names the operation that uses the undefined swatch (`operations[0] (shape): Unknown swatch: @roast`); a swatch still can't refer forward to one defined later. The other findings are still open. See the Unreleased section of the [changelog](../../CHANGELOG.md).
+> **Status in 0.20.0:** Findings 1–3 are fixed (0.18.0): `check()` on the brand board takes seconds, a pen without `width`/`height` gets a box that fits its nodes, stroke and handles, and a box too small for its nodes is rejected instead of clipping them. `build.py` still passes explicit pen boxes, which is harmless. Finding 5 is fixed in 0.19.0: pathfinder results export as real compound paths, and the four logo SVGs contain no `<mask>` elements. Finding 6 is fixed in 0.19.0: each card PDF is a vector DeviceCMYK page (`k` fills, 2–3 embedded font subsets, no images) with a TrimBox and BleedBox. Finding 12 is fixed as far as the error goes: it names the operation that uses the undefined swatch (`operations[0] (shape): Unknown swatch: @roast`); a swatch still can't refer forward to one defined later. The other findings are as recorded below. The rebuilt mark, lockups, cards and board look the same as the 0.16.0 outputs.
 
 Bugs and rough edges, with repros:
 

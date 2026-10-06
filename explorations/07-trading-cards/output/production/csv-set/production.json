@@ -25,13 +25,13 @@
         "spd": "4",
         "set_no": "001",
         "edition": "First Edition",
-        "art": "assets/8204f96e1f55c05d16f2a45c79a4c26a36145c5b693b9cf79075f08d1154e109.jpg"
+        "art": "assets/424112c18b34af09dd39a33a9b53f04f1cbf739efb9b324e7130177b4c350e82.jpg"
       },
       "artboard": null,
       "status": "completed",
-      "output": "0001-4f56b3b1b19b0245.webp",
-      "fingerprint": "4f56b3b1b19b024567e2458f90c9a8ace5c2c94aebd0c2bda3ef8d1e5d53d90a",
-      "sha256": "3819985712f4430409b4b9cef5495f4576d030d19d51edd680aa981e06b66490",
+      "output": "0001-091581c3feaaa336.webp",
+      "fingerprint": "091581c3feaaa3367d960b580896f6eeacf792ea2bf4b5299df88fcd30689386",
+      "sha256": "fd16d1b012f2b9f264a5ee5c5e25280d4c40b843e91061fb4aba4a583d63b325",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -125,8 +125,8 @@
                 "#a99a80"
               ],
               "pixels_checked": 114448,
-              "outside_pixels": 375,
-              "outside_fraction": 0.0032765972319306583,
+              "outside_pixels": 364,
+              "outside_fraction": 0.0031804837131273593,
               "max_fraction": 0.04,
               "tolerance": 40,
               "maximum_distance": 61,
@@ -153,6 +153,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -187,6 +193,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -201,8 +213,8 @@
       },
       "repairs": [],
       "cache": {
-        "hits": 40,
-        "misses": 34
+        "hits": 1,
+        "misses": 30
       }
     },
     {
@@ -226,13 +238,13 @@
         "spd": "3",
         "set_no": "002",
         "edition": "First Edition",
-        "art": "assets/20f0e79db33d1dedbc4828868c4fb689b7265f623df858943d2f1631cf5b4cc3.jpg"
+        "art": "assets/d40c0ac8dddc1a4eabe20e40daa82efee76ede237b7f03f00973a4d7a5376261.jpg"
       },
       "artboard": null,
       "status": "completed",
-      "output": "0002-8e64d533f50c6992.webp",
-      "fingerprint": "8e64d533f50c6992e3748459cb0a801da06c8d0c830903d679885c95e8e5757a",
-      "sha256": "6fe5d295cb52a38b5576b4193a956fb20f036421aed9e98382cd5030fe9cb61e",
+      "output": "0002-5792ddc22fdda135.webp",
+      "fingerprint": "5792ddc22fdda135e9a6157d18de44384254c2019f8d999c36a7aab919abdc84",
+      "sha256": "546392b6e2df929d72fc4d9a57c124b12bc3b4f5f3229062c8527c8a7963048e",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -326,15 +338,15 @@
                 "#a99a80"
               ],
               "pixels_checked": 114448,
-              "outside_pixels": 270,
-              "outside_fraction": 0.0023591500069900743,
+              "outside_pixels": 281,
+              "outside_fraction": 0.0024552635257933733,
               "max_fraction": 0.04,
               "tolerance": 40,
               "maximum_distance": 78,
               "examples": [
                 "#a6dbe4",
-                "#777063",
                 "#cac1ad",
+                "#777063",
                 "#766f62"
               ],
               "metric": "maximum RGB channel distance (0\u2013255); alpha below alpha_min excluded"
@@ -354,6 +366,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -388,6 +406,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -402,8 +426,8 @@
       },
       "repairs": [],
       "cache": {
-        "hits": 39,
-        "misses": 31
+        "hits": 5,
+        "misses": 28
       }
     },
     {
@@ -427,13 +451,13 @@
         "spd": "1",
         "set_no": "003",
         "edition": "First Edition",
-        "art": "assets/7fa1e907b5798edf6d270367f9de459e6d95fe577de15b0134b9ee21b448561c.jpg"
+        "art": "assets/599b2dee97bce947a28d4998ca95be9155f74f2a5dde018e7e64525a8c2eff6f.jpg"
       },
       "artboard": null,
       "status": "completed",
-      "output": "0003-82b6e72abe15ca36.webp",
-      "fingerprint": "82b6e72abe15ca365974457ab3a8bdddc79b069d34b797c581035d80c7388853",
-      "sha256": "83257d5228276153225ed1474dae25d388e9371271a2a8f3f47e300eab8ec277",
+      "output": "0003-5dd323f0fd790f87.webp",
+      "fingerprint": "5dd323f0fd790f873e49b10930eea34549f956faa21a5e739803bcf411c146bf",
+      "sha256": "febffbb3e4122ecabd9e1078dbb8d2deaf89585f225a3c6f02b41a885a024373",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -534,9 +558,9 @@
               "maximum_distance": 52,
               "examples": [
                 "#c0e0b6",
+                "#777063",
                 "#cac1ad",
-                "#766f62",
-                "#777063"
+                "#766f62"
               ],
               "metric": "maximum RGB channel distance (0\u2013255); alpha below alpha_min excluded"
             },
@@ -555,6 +579,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -589,6 +619,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -603,8 +639,8 @@
       },
       "repairs": [],
       "cache": {
-        "hits": 41,
-        "misses": 31
+        "hits": 7,
+        "misses": 27
       }
     },
     {
@@ -632,9 +668,9 @@
       },
       "artboard": null,
       "status": "completed",
-      "output": "0004-de33d9ad0bdedbf6.webp",
-      "fingerprint": "de33d9ad0bdedbf6438c1265bc3a30ac6247a4004abb8b3de607ee3cc5fd4917",
-      "sha256": "cd9060047910d943bebf565f092dc81372de85c0ca2d2ed0d1daaa3fdf1c404e",
+      "output": "0004-2c57bf2e72ae49e7.webp",
+      "fingerprint": "2c57bf2e72ae49e7964e611264ba7ba8c8cca9340dd767a41d98cc121fab1227",
+      "sha256": "62f87e7968f1a57211bbc2eb75e719a2021db0c1538d23a73d57771dd3d67dcb",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -728,15 +764,15 @@
                 "#a99a80"
               ],
               "pixels_checked": 114448,
-              "outside_pixels": 395,
-              "outside_fraction": 0.0034513490843002936,
+              "outside_pixels": 372,
+              "outside_fraction": 0.003250384454075213,
               "max_fraction": 0.04,
               "tolerance": 40,
               "maximum_distance": 45,
               "examples": [
-                "#766f62",
                 "#cac1ad",
-                "#777063"
+                "#777063",
+                "#766f62"
               ],
               "metric": "maximum RGB channel distance (0\u2013255); alpha below alpha_min excluded"
             },
@@ -755,6 +791,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -789,6 +831,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -803,8 +851,8 @@
       },
       "repairs": [],
       "cache": {
-        "hits": 40,
-        "misses": 32
+        "hits": 5,
+        "misses": 28
       }
     },
     {
@@ -828,13 +876,13 @@
         "spd": "5",
         "set_no": "005",
         "edition": "First Edition",
-        "art": "assets/2b12cf07bcabb47b2caa488ce5a7d45650b52fac1bd963daa4af1acd729f3626.jpg"
+        "art": "assets/e8399721306be8fbaa1bbe27854bb065deaedf5a3bb0b449f3ad1adbf327987d.jpg"
       },
       "artboard": null,
       "status": "completed",
-      "output": "0005-6aa955bde3abc4c7.webp",
-      "fingerprint": "6aa955bde3abc4c7ab8014dc2ec018b492dba0a4446aa8b149278b5173c9f029",
-      "sha256": "a6c9fef512c93a7de0ab02eae55da011c6ed852a12699f0fcad14041897185f3",
+      "output": "0005-7bd32dc1d7025ff6.webp",
+      "fingerprint": "7bd32dc1d7025ff63b2dc181a8f4bd86a3dd692eb274d3ccee8427a31e21a613",
+      "sha256": "22b22f3217fdc9de795abbc2f76343c81067b4b0a9ecd1a4f700a04f4e987741",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -928,8 +976,8 @@
                 "#a99a80"
               ],
               "pixels_checked": 114448,
-              "outside_pixels": 341,
-              "outside_fraction": 0.0029795190829022787,
+              "outside_pixels": 343,
+              "outside_fraction": 0.0029969942681392424,
               "max_fraction": 0.04,
               "tolerance": 40,
               "maximum_distance": 61,
@@ -955,6 +1003,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -989,6 +1043,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -1003,8 +1063,8 @@
       },
       "repairs": [],
       "cache": {
-        "hits": 42,
-        "misses": 30
+        "hits": 9,
+        "misses": 26
       }
     },
     {
@@ -1028,14 +1088,14 @@
         "spd": "4",
         "set_no": "006",
         "edition": "First Edition",
-        "art": "assets/1ed399983a0e3e744fe0dc02a8b442fd855a1f872811025c9328926299d14dc8.jpg"
+        "art": "assets/b6f201ab748db24b561b1b04259d1e88fac0db5dcf9fb060b7f5f13d914917f7.jpg"
       },
       "artboard": null,
       "status": "failed",
       "error": {
         "error": "text_overflow",
         "message": "Text cannot fit at the minimum size",
-        "target": "lyr_41d67290382a4005",
+        "target": "lyr_58498aaf9b9f41d7",
         "minimum": 22,
         "operation_index": 0,
         "operation_type": "action-apply"
@@ -1062,13 +1122,13 @@
         "spd": "4",
         "set_no": "007",
         "edition": "First Edition",
-        "art": "assets/be776c6881f3d589b87ae6d4d85492aa6a13e59fdae4f60861e64387b3028433.jpg"
+        "art": "assets/7b5b8c46ca6a8cd326e0b28c9f81eb172366ea9323644e4559fc8787b6037abb.jpg"
       },
       "artboard": null,
       "status": "completed",
-      "output": "0007-9ebdf89b4f91b457.webp",
-      "fingerprint": "9ebdf89b4f91b45755638c4b1f32ebf6cdec2b3298a62c0af8c2c63ad92f2019",
-      "sha256": "337b6acf6ef8d4a9613dbfac3880c5c77e7d6b6230907bec0b17b5744c8d925a",
+      "output": "0007-9d0235826794e1c1.webp",
+      "fingerprint": "9d0235826794e1c1034230be6332e87d06998ce38ab1e0850e2629144178e06c",
+      "sha256": "aacf625fa0a53570f96febdb2d4f2955ab301088fa8972226d6e86d85b1a7a95",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -1162,8 +1222,8 @@
                 "#a99a80"
               ],
               "pixels_checked": 114448,
-              "outside_pixels": 273,
-              "outside_fraction": 0.0023853627848455196,
+              "outside_pixels": 284,
+              "outside_fraction": 0.0024814763036488186,
               "max_fraction": 0.04,
               "tolerance": 40,
               "maximum_distance": 45,
@@ -1189,6 +1249,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -1223,6 +1289,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -1237,8 +1309,8 @@
       },
       "repairs": [],
       "cache": {
-        "hits": 55,
-        "misses": 15
+        "hits": 41,
+        "misses": 11
       }
     },
     {
@@ -1262,7 +1334,7 @@
         "spd": "5",
         "set_no": "008",
         "edition": "First Edition",
-        "art": "assets/56bb4f66ae481502f13ec89141214bb64ae67cc1193c018a077be23f8176fc59.jpg"
+        "art": "assets/6d087908030dde716ab5646157194fe7b74ac5bb3b5398b5059884066e185600.jpg"
       },
       "artboard": null,
       "status": "needs_review",
@@ -1359,15 +1431,16 @@
                 "#a99a80"
               ],
               "pixels_checked": 114448,
-              "outside_pixels": 230,
-              "outside_fraction": 0.0020096463022508037,
+              "outside_pixels": 223,
+              "outside_fraction": 0.0019484831539214316,
               "max_fraction": 0.04,
               "tolerance": 40,
               "maximum_distance": 52,
               "examples": [
                 "#c0e0b6",
                 "#cac1ad",
-                "#777063"
+                "#777063",
+                "#766f62"
               ],
               "metric": "maximum RGB channel distance (0\u2013255); alpha below alpha_min excluded"
             },
@@ -1386,6 +1459,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -1420,6 +1499,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -1458,20 +1543,17 @@
         "spd": "7",
         "set_no": "009",
         "edition": "First Edition",
-        "art": "assets/1960965b23a05696ee09966d16492ce478966a1236d5b1a06787756dcaff5bd3.jpg"
+        "art": "assets/d00fc5c662effd3c35489a5aefb3512b8b2599dc0d4ed777abc9f3c1ec7cb814.jpg"
       },
       "artboard": null,
-      "status": "completed",
-      "output": "0009-8dbb471cef60b63d.webp",
-      "fingerprint": "8dbb471cef60b63da472b2d83a7b9989f4170d546c636a6e9b72e39e706f0762",
-      "sha256": "1a3ac3bd936d4c102d1cea9b82d5149151e3eb039653df677abfe3712ea532cd",
+      "status": "needs_review",
       "checks": {
         "card-qa": {
           "version": 1,
           "suite_hash": "9320037720cef443af5bb808a24b4fe36691803ac6cecaf08ec9c68e3b0f4076",
-          "passed": true,
-          "status": "passed",
-          "errors": 0,
+          "passed": false,
+          "status": "failed",
+          "errors": 2,
           "needs_review": 0,
           "coverage": {
             "mode": "still",
@@ -1580,13 +1662,38 @@
             },
             {
               "id": "name-contrast",
-              "status": "passed",
+              "status": "failed",
               "severity": "error",
               "time": null,
-              "passed": true,
-              "errors": 0,
+              "passed": false,
+              "errors": 1,
               "warnings": 0,
-              "issues": [],
+              "info": 0,
+              "by_action": {
+                "fix": [
+                  0
+                ],
+                "review": [],
+                "informational": []
+              },
+              "issues": [
+                {
+                  "check": "fonts",
+                  "severity": "error",
+                  "layers": [
+                    "card-name"
+                  ],
+                  "message": "'card-name' has characters no font can draw (\u2728\u306e\u5149\u72d0); they render as empty boxes. Import a font that covers them and add it with font-fallbacks",
+                  "missing": [
+                    "\u2728",
+                    "\u306e",
+                    "\u5149",
+                    "\u72d0"
+                  ],
+                  "fallback": [],
+                  "action": "fix"
+                }
+              ],
               "checked": {
                 "checks": [
                   "contrast",
@@ -1595,15 +1702,51 @@
                 "layers": 2,
                 "text_layers": 2
               }
+            },
+            {
+              "id": "missing-glyphs",
+              "status": "failed",
+              "severity": "error",
+              "time": null,
+              "automatic": true,
+              "message": "Text has characters no font can draw; import a covering font and add it with font-fallbacks",
+              "layers": [
+                {
+                  "layer": "card-name",
+                  "missing": [
+                    "\u2728",
+                    "\u306e",
+                    "\u5149",
+                    "\u72d0"
+                  ]
+                },
+                {
+                  "layer": "flavor",
+                  "missing": [
+                    "\u3001",
+                    "\u300c",
+                    "\u300d",
+                    "\u3046",
+                    "\u306b",
+                    "\u306f",
+                    "\u3092",
+                    "\u5149",
+                    "\u5f71",
+                    "\u8005",
+                    "\u8ff7",
+                    "\u8ffd"
+                  ]
+                }
+              ]
             }
           ]
         },
         "no-placeholders": {
           "version": 1,
           "suite_hash": "c11e6e04e7ce3e236e94ed5e168d2cbe2e943185bc97f04b99a0d53dc1cd64db",
-          "passed": true,
-          "status": "passed",
-          "errors": 0,
+          "passed": false,
+          "status": "failed",
+          "errors": 2,
           "needs_review": 0,
           "coverage": {
             "mode": "still",
@@ -1614,13 +1757,63 @@
           "results": [
             {
               "id": "copy",
-              "status": "passed",
+              "status": "failed",
               "severity": "error",
               "time": null,
-              "passed": true,
-              "errors": 0,
+              "passed": false,
+              "errors": 2,
               "warnings": 0,
-              "issues": [],
+              "info": 0,
+              "by_action": {
+                "fix": [
+                  0,
+                  1
+                ],
+                "review": [],
+                "informational": []
+              },
+              "issues": [
+                {
+                  "check": "fonts",
+                  "severity": "error",
+                  "layers": [
+                    "card-name"
+                  ],
+                  "message": "'card-name' has characters no font can draw (\u2728\u306e\u5149\u72d0); they render as empty boxes. Import a font that covers them and add it with font-fallbacks",
+                  "missing": [
+                    "\u2728",
+                    "\u306e",
+                    "\u5149",
+                    "\u72d0"
+                  ],
+                  "fallback": [],
+                  "action": "fix"
+                },
+                {
+                  "check": "fonts",
+                  "severity": "error",
+                  "layers": [
+                    "flavor"
+                  ],
+                  "message": "'flavor' has characters no font can draw (\u3001\u300c\u300d\u3046\u306b\u306f\u3092\u5149\u5f71\u8005\u8ff7\u8ffd); they render as empty boxes. Import a font that covers them and add it with font-fallbacks",
+                  "missing": [
+                    "\u3001",
+                    "\u300c",
+                    "\u300d",
+                    "\u3046",
+                    "\u306b",
+                    "\u306f",
+                    "\u3092",
+                    "\u5149",
+                    "\u5f71",
+                    "\u8005",
+                    "\u8ff7",
+                    "\u8ffd"
+                  ],
+                  "fallback": [],
+                  "action": "fix"
+                }
+              ],
               "checked": {
                 "checks": [
                   "blanks"
@@ -1628,17 +1821,50 @@
                 "layers": 26,
                 "text_layers": 13
               }
+            },
+            {
+              "id": "missing-glyphs",
+              "status": "failed",
+              "severity": "error",
+              "time": null,
+              "automatic": true,
+              "message": "Text has characters no font can draw; import a covering font and add it with font-fallbacks",
+              "layers": [
+                {
+                  "layer": "card-name",
+                  "missing": [
+                    "\u2728",
+                    "\u306e",
+                    "\u5149",
+                    "\u72d0"
+                  ]
+                },
+                {
+                  "layer": "flavor",
+                  "missing": [
+                    "\u3001",
+                    "\u300c",
+                    "\u300d",
+                    "\u3046",
+                    "\u306b",
+                    "\u306f",
+                    "\u3092",
+                    "\u5149",
+                    "\u5f71",
+                    "\u8005",
+                    "\u8ff7",
+                    "\u8ffd"
+                  ]
+                }
+              ]
             }
           ]
         }
       },
       "repairs": [
-        "fit-name"
-      ],
-      "cache": {
-        "hits": 103,
-        "misses": 23
-      }
+        "fit-name",
+        "fit-rules"
+      ]
     },
     {
       "id": "0010",
@@ -1661,7 +1887,7 @@
         "spd": "1",
         "set_no": "010",
         "edition": "First Edition",
-        "art": "assets/a6348e80fa47c363d6cce6be9067ca0b299d16e0b347276fc5bca630599d38de.jpg"
+        "art": "assets/ba08000314ee99892936852ce7269106d9f4357d6a078ddb5bb8147f77cfe09d.jpg"
       },
       "artboard": null,
       "status": "needs_review",
@@ -1758,16 +1984,16 @@
                 "#a99a80"
               ],
               "pixels_checked": 114448,
-              "outside_pixels": 951,
-              "outside_fraction": 0.00830945058017615,
+              "outside_pixels": 908,
+              "outside_fraction": 0.007933734097581434,
               "max_fraction": 0.04,
               "tolerance": 40,
               "maximum_distance": 61,
               "examples": [
                 "#f8adc0",
                 "#cac1ad",
-                "#766f62",
-                "#777063"
+                "#777063",
+                "#766f62"
               ],
               "metric": "maximum RGB channel distance (0\u2013255); alpha below alpha_min excluded"
             },
@@ -1786,6 +2012,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -1820,6 +2052,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -1858,13 +2096,13 @@
         "spd": "0",
         "set_no": "011",
         "edition": "First Edition",
-        "art": "assets/c8f2a9e47007a9c6834f250f13eb6689b9cc527b374fd1a8e5ac9630f76d47f4.jpg"
+        "art": "assets/86eef40ecaab6b341ed225b0fc8ba96afaadd26606e86c1a61014cf303d836ac.jpg"
       },
       "artboard": null,
       "status": "completed",
-      "output": "0011-f73164e8d67d0326.webp",
-      "fingerprint": "f73164e8d67d032649d0920998feead5a5f1200766b724907be1b48aeee2c56b",
-      "sha256": "09daeb406c94d775e004e5b004a6cc6b653797576f01633bcf3335e7e8d04c14",
+      "output": "0011-172c66dce52aaaf9.webp",
+      "fingerprint": "172c66dce52aaaf96fbe61932222a8529e642277cabd5b9732dd923a6ccea96f",
+      "sha256": "b0f87f3fc775d7712d6d3c85650337092b1946b83e5e1693cb251384ea140fb1",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -1958,15 +2196,15 @@
                 "#a99a80"
               ],
               "pixels_checked": 114448,
-              "outside_pixels": 128,
-              "outside_fraction": 0.0011184118551656648,
+              "outside_pixels": 120,
+              "outside_fraction": 0.0010485111142178108,
               "max_fraction": 0.04,
               "tolerance": 40,
               "maximum_distance": 45,
               "examples": [
+                "#cac1ad",
                 "#777063",
-                "#766f62",
-                "#cac1ad"
+                "#766f62"
               ],
               "metric": "maximum RGB channel distance (0\u2013255); alpha below alpha_min excluded"
             },
@@ -1985,6 +2223,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -2019,6 +2263,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -2033,8 +2283,8 @@
       },
       "repairs": [],
       "cache": {
-        "hits": 50,
-        "misses": 18
+        "hits": 35,
+        "misses": 14
       }
     },
     {
@@ -2058,13 +2308,13 @@
         "spd": "6",
         "set_no": "012",
         "edition": "First Edition",
-        "art": "assets/ec745e44076f5c322348a6722b0d964d311ce843f80228eba527012a614661ca.jpg"
+        "art": "assets/c4a98c8361c3775d16c171cad0192d8925c7b582a12fac490a45e0e2139b3b42.jpg"
       },
       "artboard": null,
       "status": "completed",
-      "output": "0012-c42f378c86e75db9.webp",
-      "fingerprint": "c42f378c86e75db9725a7717a07615d183d7bf0c99dd7df7f6b66f6bd6130198",
-      "sha256": "bf4477a977b55ca71b6da464ba475c8374b6c3c665bebb79e6ad54fb419dcee1",
+      "output": "0012-1c5c95d2a022861c.webp",
+      "fingerprint": "1c5c95d2a022861ccffd77f7b08cd36a79ae3447e2e778e63c1ef2fb05a29b26",
+      "sha256": "14f11f92d830e054619ddbcf6e301ea1a218fbb8c756e50e23e7341c65473db1",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -2158,8 +2408,8 @@
                 "#a99a80"
               ],
               "pixels_checked": 114448,
-              "outside_pixels": 378,
-              "outside_fraction": 0.0033028100097861036,
+              "outside_pixels": 435,
+              "outside_fraction": 0.0038008527890395637,
               "max_fraction": 0.04,
               "tolerance": 40,
               "maximum_distance": 61,
@@ -2186,6 +2436,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -2220,6 +2476,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -2236,8 +2498,8 @@
         "fit-name"
       ],
       "cache": {
-        "hits": 107,
-        "misses": 23
+        "hits": 77,
+        "misses": 15
       }
     },
     {
@@ -2261,13 +2523,13 @@
         "spd": "6",
         "set_no": "013",
         "edition": "First Edition",
-        "art": "assets/65b965a724774a853b7d74d0902481eea0f9173e7c105523732359e9a5ae0bf7.jpg"
+        "art": "assets/218cc5ea7a0f156abd6f7bb501de19787fb90eb4e1d03644e7ceca344de56e0b.jpg"
       },
       "artboard": null,
       "status": "completed",
-      "output": "0013-3aac106d53aad2d0.webp",
-      "fingerprint": "3aac106d53aad2d03744176e4a9f8a8ff5df802d5febe8b3281eb2b047a6f745",
-      "sha256": "42271d9a496bb2ac53cef67d0942844d1a8f7756def3215ad64c01ccda62f335",
+      "output": "0013-cdf8c0392795f818.webp",
+      "fingerprint": "cdf8c0392795f8183d5ba2894e16bf16de58d1a4e400cd468e2962b9aec23dce",
+      "sha256": "77f3afcc37a04c88de4d9182facce0cbae814d6015da4bde6bb64aca1b0a616e",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -2361,8 +2623,8 @@
                 "#a99a80"
               ],
               "pixels_checked": 114448,
-              "outside_pixels": 355,
-              "outside_fraction": 0.0031018453795610234,
+              "outside_pixels": 329,
+              "outside_fraction": 0.0028746679714804976,
               "max_fraction": 0.04,
               "tolerance": 40,
               "maximum_distance": 61,
@@ -2389,6 +2651,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -2423,6 +2691,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -2437,8 +2711,8 @@
       },
       "repairs": [],
       "cache": {
-        "hits": 56,
-        "misses": 14
+        "hits": 43,
+        "misses": 10
       }
     }
   ],

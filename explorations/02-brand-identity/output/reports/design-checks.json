@@ -3,6 +3,12 @@
     "passed": true,
     "errors": 0,
     "warnings": 0,
+    "info": 0,
+    "by_action": {
+      "fix": [],
+      "review": [],
+      "informational": []
+    },
     "issues": [],
     "checked": {
       "checks": [
@@ -13,7 +19,12 @@
         "legibility",
         "blanks",
         "fonts",
-        "brand"
+        "brand",
+        "content",
+        "form",
+        "links",
+        "diagram",
+        "flow"
       ],
       "layers": 2,
       "text_layers": 0
@@ -23,6 +34,14 @@
     "passed": true,
     "errors": 0,
     "warnings": 1,
+    "info": 0,
+    "by_action": {
+      "fix": [
+        0
+      ],
+      "review": [],
+      "informational": []
+    },
     "issues": [
       {
         "check": "legibility",
@@ -31,7 +50,8 @@
           "h-tag"
         ],
         "message": "'h-tag' is 8.4 px tall at 320 px wide; aim for at least 10 px (font size 50+)",
-        "thumbnail_size": 8.4
+        "thumbnail_size": 8.4,
+        "action": "fix"
       }
     ],
     "checked": {
@@ -43,7 +63,12 @@
         "legibility",
         "blanks",
         "fonts",
-        "brand"
+        "brand",
+        "content",
+        "form",
+        "links",
+        "diagram",
+        "flow"
       ],
       "layers": 5,
       "text_layers": 2
@@ -53,6 +78,12 @@
     "passed": true,
     "errors": 0,
     "warnings": 0,
+    "info": 0,
+    "by_action": {
+      "fix": [],
+      "review": [],
+      "informational": []
+    },
     "issues": [],
     "checked": {
       "checks": [
@@ -63,7 +94,12 @@
         "legibility",
         "blanks",
         "fonts",
-        "brand"
+        "brand",
+        "content",
+        "form",
+        "links",
+        "diagram",
+        "flow"
       ],
       "layers": 5,
       "text_layers": 2
@@ -73,6 +109,12 @@
     "passed": true,
     "errors": 0,
     "warnings": 0,
+    "info": 0,
+    "by_action": {
+      "fix": [],
+      "review": [],
+      "informational": []
+    },
     "issues": [],
     "checked": {
       "checks": [
@@ -83,7 +125,12 @@
         "legibility",
         "blanks",
         "fonts",
-        "brand"
+        "brand",
+        "content",
+        "form",
+        "links",
+        "diagram",
+        "flow"
       ],
       "layers": 11,
       "text_layers": 4
@@ -92,7 +139,30 @@
   "card-back": {
     "passed": true,
     "errors": 0,
-    "warnings": 18,
+    "warnings": 16,
+    "info": 0,
+    "by_action": {
+      "fix": [],
+      "review": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "informational": []
+    },
     "issues": [
       {
         "check": "bounds",
@@ -100,13 +170,14 @@
         "layers": [
           "bean-0"
         ],
-        "message": "'bean-0' is cut off by the canvas edge",
+        "message": "'bean-0' is cut off by the canvas edge; if the crop is deliberate, mark it with layer-intent allow_crop",
         "bounds": [
-          -30,
-          -40,
-          71,
-          76
-        ]
+          -28.55255888325765,
+          -38.98076211353316,
+          68.1051177665153,
+          73.96152422706632
+        ],
+        "action": "review"
       },
       {
         "check": "bounds",
@@ -114,13 +185,14 @@
         "layers": [
           "bean-1"
         ],
-        "message": "'bean-1' is cut off by the canvas edge",
+        "message": "'bean-1' is cut off by the canvas edge; if the crop is deliberate, mark it with layer-intent allow_crop",
         "bounds": [
-          116,
-          -43,
-          73,
-          77
-        ]
+          117.2713619351108,
+          -41.69324292839277,
+          70.45727612977842,
+          74.38648585678554
+        ],
+        "action": "review"
       },
       {
         "check": "bounds",
@@ -128,13 +200,14 @@
         "layers": [
           "bean-2"
         ],
-        "message": "'bean-2' is cut off by the canvas edge",
+        "message": "'bean-2' is cut off by the canvas edge; if the crop is deliberate, mark it with layer-intent allow_crop",
         "bounds": [
-          249,
-          -41,
-          61,
-          72
-        ]
+          250.48506046856485,
+          -39.67179378092751,
+          58.029879062870265,
+          69.34358756185502
+        ],
+        "action": "review"
       },
       {
         "check": "bounds",
@@ -142,13 +215,14 @@
         "layers": [
           "bean-3"
         ],
-        "message": "'bean-3' is cut off by the canvas edge",
+        "message": "'bean-3' is cut off by the canvas edge; if the crop is deliberate, mark it with layer-intent allow_crop",
         "bounds": [
-          386,
-          -43,
-          77,
-          75
-        ]
+          387.37733929332677,
+          -41.636606039213696,
+          74.2453214133464,
+          72.27321207842739
+        ],
+        "action": "review"
       },
       {
         "check": "bounds",
@@ -156,13 +230,14 @@
         "layers": [
           "bean-4"
         ],
-        "message": "'bean-4' is cut off by the canvas edge",
+        "message": "'bean-4' is cut off by the canvas edge; if the crop is deliberate, mark it with layer-intent allow_crop",
         "bounds": [
-          510,
-          -43,
-          73,
-          77
-        ]
+          511.2713619351108,
+          -41.69324292839277,
+          70.45727612977839,
+          74.38648585678554
+        ],
+        "action": "review"
       },
       {
         "check": "bounds",
@@ -170,13 +245,14 @@
         "layers": [
           "bean-5"
         ],
-        "message": "'bean-5' is cut off by the canvas edge",
+        "message": "'bean-5' is cut off by the canvas edge; if the crop is deliberate, mark it with layer-intent allow_crop",
         "bounds": [
-          653,
-          -31,
-          73,
-          77
-        ]
+          654.2713619351108,
+          -29.69324292839277,
+          70.45727612977839,
+          74.38648585678554
+        ],
+        "action": "review"
       },
       {
         "check": "bounds",
@@ -184,13 +260,14 @@
         "layers": [
           "bean-6"
         ],
-        "message": "'bean-6' is cut off by the canvas edge",
+        "message": "'bean-6' is cut off by the canvas edge; if the crop is deliberate, mark it with layer-intent allow_crop",
         "bounds": [
-          783,
-          -42,
-          77,
-          75
-        ]
+          784.3773392933268,
+          -40.636606039213696,
+          74.24532141334635,
+          72.27321207842739
+        ],
+        "action": "review"
       },
       {
         "check": "bounds",
@@ -198,13 +275,14 @@
         "layers": [
           "bean-7"
         ],
-        "message": "'bean-7' is cut off by the canvas edge",
+        "message": "'bean-7' is cut off by the canvas edge; if the crop is deliberate, mark it with layer-intent allow_crop",
         "bounds": [
-          925,
-          -43,
-          77,
-          75
-        ]
+          926.3773392933268,
+          -41.636606039213696,
+          74.24532141334635,
+          72.27321207842739
+        ],
+        "action": "review"
       },
       {
         "check": "bounds",
@@ -212,13 +290,14 @@
         "layers": [
           "bean-8"
         ],
-        "message": "'bean-8' is cut off by the canvas edge",
+        "message": "'bean-8' is cut off by the canvas edge; if the crop is deliberate, mark it with layer-intent allow_crop",
         "bounds": [
-          1051,
-          -37,
-          77,
-          75
-        ]
+          1052.3773392933267,
+          -35.636606039213696,
+          74.24532141334657,
+          72.27321207842739
+        ],
+        "action": "review"
       },
       {
         "check": "bounds",
@@ -226,13 +305,14 @@
         "layers": [
           "bean-13"
         ],
-        "message": "'bean-13' is cut off by the canvas edge",
+        "message": "'bean-13' is cut off by the canvas edge; if the crop is deliberate, mark it with layer-intent allow_crop",
         "bounds": [
-          -22,
-          213,
-          77,
-          75
-        ]
+          -20.6226607066732,
+          214.3633939607863,
+          74.2453214133464,
+          72.27321207842738
+        ],
+        "action": "review"
       },
       {
         "check": "bounds",
@@ -240,13 +320,14 @@
         "layers": [
           "bean-16"
         ],
-        "message": "'bean-16' is cut off by the canvas edge",
+        "message": "'bean-16' is cut off by the canvas edge; if the crop is deliberate, mark it with layer-intent allow_crop",
         "bounds": [
-          1067,
-          214,
-          73,
-          77
-        ]
+          1068.2713619351107,
+          215.30675707160722,
+          70.45727612977839,
+          74.38648585678553
+        ],
+        "action": "review"
       },
       {
         "check": "bounds",
@@ -254,27 +335,14 @@
         "layers": [
           "bean-21"
         ],
-        "message": "'bean-21' is cut off by the canvas edge",
+        "message": "'bean-21' is cut off by the canvas edge; if the crop is deliberate, mark it with layer-intent allow_crop",
         "bounds": [
-          -26,
-          477,
-          71,
-          76
-        ]
-      },
-      {
-        "check": "bounds",
-        "severity": "warning",
-        "layers": [
-          "bean-24"
+          -24.55255888325765,
+          478.01923788646684,
+          68.1051177665153,
+          73.96152422706632
         ],
-        "message": "'bean-24' is cut off by the canvas edge",
-        "bounds": [
-          1056,
-          472,
-          71,
-          76
-        ]
+        "action": "review"
       },
       {
         "check": "bounds",
@@ -282,13 +350,14 @@
         "layers": [
           "bean-25"
         ],
-        "message": "'bean-25' is cut off by the canvas edge",
+        "message": "'bean-25' is cut off by the canvas edge; if the crop is deliberate, mark it with layer-intent allow_crop",
         "bounds": [
-          45,
-          604,
-          71,
-          76
-        ]
+          46.44744111674234,
+          605.0192378864668,
+          68.1051177665153,
+          73.96152422706632
+        ],
+        "action": "review"
       },
       {
         "check": "bounds",
@@ -296,27 +365,14 @@
         "layers": [
           "bean-26"
         ],
-        "message": "'bean-26' is cut off by the canvas edge",
+        "message": "'bean-26' is cut off by the canvas edge; if the crop is deliberate, mark it with layer-intent allow_crop",
         "bounds": [
-          175,
-          608,
-          64,
-          74
-        ]
-      },
-      {
-        "check": "bounds",
-        "severity": "warning",
-        "layers": [
-          "bean-28"
+          176.06615804293995,
+          609.2847782232581,
+          61.86768391412008,
+          71.430443553484
         ],
-        "message": "'bean-28' is cut off by the canvas edge",
-        "bounds": [
-          440,
-          603,
-          64,
-          74
-        ]
+        "action": "review"
       },
       {
         "check": "bounds",
@@ -324,13 +380,14 @@
         "layers": [
           "bean-29"
         ],
-        "message": "'bean-29' is cut off by the canvas edge",
+        "message": "'bean-29' is cut off by the canvas edge; if the crop is deliberate, mark it with layer-intent allow_crop",
         "bounds": [
-          572,
-          611,
-          77,
-          75
-        ]
+          573.3773392933268,
+          612.3633939607863,
+          74.24532141334635,
+          72.27321207842738
+        ],
+        "action": "review"
       },
       {
         "check": "bounds",
@@ -338,13 +395,14 @@
         "layers": [
           "bean-32"
         ],
-        "message": "'bean-32' is cut off by the canvas edge",
+        "message": "'bean-32' is cut off by the canvas edge; if the crop is deliberate, mark it with layer-intent allow_crop",
         "bounds": [
-          997,
-          607,
-          77,
-          75
-        ]
+          998.3773392933268,
+          608.3633939607863,
+          74.24532141334646,
+          72.27321207842738
+        ],
+        "action": "review"
       }
     ],
     "checked": {
@@ -356,7 +414,12 @@
         "legibility",
         "blanks",
         "fonts",
-        "brand"
+        "brand",
+        "content",
+        "form",
+        "links",
+        "diagram",
+        "flow"
       ],
       "layers": 38,
       "text_layers": 2
@@ -366,6 +429,12 @@
     "passed": true,
     "errors": 0,
     "warnings": 0,
+    "info": 0,
+    "by_action": {
+      "fix": [],
+      "review": [],
+      "informational": []
+    },
     "issues": [],
     "checked": {
       "checks": [
@@ -376,7 +445,12 @@
         "legibility",
         "blanks",
         "fonts",
-        "brand"
+        "brand",
+        "content",
+        "form",
+        "links",
+        "diagram",
+        "flow"
       ],
       "layers": 2,
       "text_layers": 0
@@ -386,6 +460,12 @@
     "passed": true,
     "errors": 0,
     "warnings": 0,
+    "info": 0,
+    "by_action": {
+      "fix": [],
+      "review": [],
+      "informational": []
+    },
     "issues": [],
     "checked": {
       "checks": [
@@ -396,7 +476,12 @@
         "legibility",
         "blanks",
         "fonts",
-        "brand"
+        "brand",
+        "content",
+        "form",
+        "links",
+        "diagram",
+        "flow"
       ],
       "layers": 1,
       "text_layers": 0
@@ -406,6 +491,59 @@
     "passed": true,
     "errors": 0,
     "warnings": 46,
+    "info": 0,
+    "by_action": {
+      "fix": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45
+      ],
+      "review": [],
+      "informational": []
+    },
     "issues": [
       {
         "check": "legibility",
@@ -414,7 +552,8 @@
           "footer"
         ],
         "message": "'footer' is 3.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
-        "thumbnail_size": 3.33
+        "thumbnail_size": 3.33,
+        "action": "fix"
       },
       {
         "check": "legibility",
@@ -423,7 +562,8 @@
           "hdr-left"
         ],
         "message": "'hdr-left' is 3.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
-        "thumbnail_size": 3.33
+        "thumbnail_size": 3.33,
+        "action": "fix"
       },
       {
         "check": "legibility",
@@ -432,7 +572,8 @@
           "hdr-right"
         ],
         "message": "'hdr-right' is 3.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
-        "thumbnail_size": 3.33
+        "thumbnail_size": 3.33,
+        "action": "fix"
       },
       {
         "check": "legibility",
@@ -441,7 +582,8 @@
           "lbl-primary"
         ],
         "message": "'lbl-primary' is 2.7 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
-        "thumbnail_size": 2.67
+        "thumbnail_size": 2.67,
+        "action": "fix"
       },
       {
         "check": "legibility",
@@ -450,7 +592,8 @@
           "lbl-reversed"
         ],
         "message": "'lbl-reversed' is 2.7 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
-        "thumbnail_size": 2.67
+        "thumbnail_size": 2.67,
+        "action": "fix"
       },
       {
         "check": "legibility",
@@ -459,7 +602,8 @@
           "bh-tag"
         ],
         "message": "'bh-tag' is 4.7 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
-        "thumbnail_size": 4.67
+        "thumbnail_size": 4.67,
+        "action": "fix"
       },
       {
         "check": "legibility",
@@ -468,7 +612,8 @@
           "bs-tag"
         ],
         "message": "'bs-tag' is 3.0 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
-        "thumbnail_size": 3.0
+        "thumbnail_size": 3.0,
+        "action": "fix"
       },
       {
         "check": "legibility",
@@ -477,7 +622,8 @@
           "lbl-palette"
         ],
         "message": "'lbl-palette' is 2.7 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
-        "thumbnail_size": 2.67
+        "thumbnail_size": 2.67,
+        "action": "fix"
       },
       {
         "check": "legibility",
@@ -486,7 +632,8 @@
           "chip-roast-role"
         ],
         "message": "'chip-roast-role' is 2.2 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
-        "thumbnail_size": 2.17
+        "thumbnail_size": 2.17,
+        "action": "fix"
       },
       {
         "check": "legibility",
@@ -495,7 +642,8 @@
           "chip-roast-name"
         ],
         "message": "'chip-roast-name' is 5.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
-        "thumbnail_size": 5.33
+        "thumbnail_size": 5.33,
+        "action": "fix"
       },
       {
         "check": "legibility",
@@ -504,7 +652,8 @@
           "chip-roast-hex"
         ],
         "message": "'chip-roast-hex' is 3.2 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
-        "thumbnail_size": 3.17
+        "thumbnail_size": 3.17,
+        "action": "fix"
       },
       {
         "check": "legibility",
@@ -513,7 +662,8 @@
           "chip-crema-role"
         ],
         "message": "'chip-crema-role' is 2.2 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
-        "thumbnail_size": 2.17
+        "thumbnail_size": 2.17,
+        "action": "fix"
       },
       {
         "check": "legibility",
@@ -522,7 +672,8 @@
           "chip-crema-name"
         ],
         "message": "'chip-crema-name' is 5.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
-        "thumbnail_size": 5.33
+        "thumbnail_size": 5.33,
+        "action": "fix"
       },
       {
         "check": "legibility",
@@ -531,7 +682,8 @@
           "chip-crema-hex"
         ],
         "message": "'chip-crema-hex' is 3.2 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
-        "thumbnail_size": 3.17
+        "thumbnail_size": 3.17,
+        "action": "fix"
       },
       {
         "check": "legibility",
@@ -540,7 +692,8 @@
           "chip-ember-role"
         ],
         "message": "'chip-ember-role' is 2.2 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
-        "thumbnail_size": 2.17
+        "thumbnail_size": 2.17,
+        "action": "fix"
       },
       {
         "check": "legibility",
@@ -549,7 +702,8 @@
           "chip-ember-name"
         ],
         "message": "'chip-ember-name' is 5.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
-        "thumbnail_size": 5.33
+        "thumbnail_size": 5.33,
+        "action": "fix"
       },
       {
         "check": "legibility",
@@ -558,7 +712,8 @@
           "chip-ember-hex"
         ],
         "message": "'chip-ember-hex' is 3.2 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
-        "thumbnail_size": 3.17
+        "thumbnail_size": 3.17,
+        "action": "fix"
       },
       {
         "check": "legibility",
@@ -567,7 +722,8 @@
           "chip-ember-deep-role"
         ],
         "message": "'chip-ember-deep-role' is 2.2 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
-        "thumbnail_size": 2.17
+        "thumbnail_size": 2.17,
+        "action": "fix"
       },
       {
         "check": "legibility",
@@ -576,7 +732,8 @@
           "chip-ember-deep-name"
         ],
         "message": "'chip-ember-deep-name' is 5.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
-        "thumbnail_size": 5.33
+        "thumbnail_size": 5.33,
+        "action": "fix"
       },
       {
         "check": "legibility",
@@ -585,7 +742,8 @@
           "chip-ember-deep-hex"
         ],
         "message": "'chip-ember-deep-hex' is 3.2 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
-        "thumbnail_size": 3.17
+        "thumbnail_size": 3.17,
+        "action": "fix"
       },
       {
         "check": "legibility",
@@ -594,7 +752,8 @@
           "chip-kettle-role"
         ],
         "message": "'chip-kettle-role' is 2.2 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
-        "thumbnail_size": 2.17
+        "thumbnail_size": 2.17,
+        "action": "fix"
       },
       {
         "check": "legibility",
@@ -603,7 +762,8 @@
           "chip-kettle-name"
         ],
         "message": "'chip-kettle-name' is 5.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
-        "thumbnail_size": 5.33
+        "thumbnail_size": 5.33,
+        "action": "fix"
       },
       {
         "check": "legibility",
@@ -612,7 +772,8 @@
           "chip-kettle-hex"
         ],
         "message": "'chip-kettle-hex' is 3.2 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
-        "thumbnail_size": 3.17
+        "thumbnail_size": 3.17,
+        "action": "fix"
       },
       {
         "check": "legibility",
@@ -621,7 +782,8 @@
           "chip-oat-role"
         ],
         "message": "'chip-oat-role' is 2.2 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
-        "thumbnail_size": 2.17
+        "thumbnail_size": 2.17,
+        "action": "fix"
       },
       {
         "check": "legibility",
@@ -630,7 +792,8 @@
           "chip-oat-name"
         ],
         "message": "'chip-oat-name' is 5.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
-        "thumbnail_size": 5.33
+        "thumbnail_size": 5.33,
+        "action": "fix"
       },
       {
         "check": "legibility",
@@ -639,7 +802,8 @@
           "chip-oat-hex"
         ],
         "message": "'chip-oat-hex' is 3.2 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
-        "thumbnail_size": 3.17
+        "thumbnail_size": 3.17,
+        "action": "fix"
       },
       {
         "check": "legibility",
@@ -648,7 +812,8 @@
           "scale-50-lbl"
         ],
         "message": "'scale-50-lbl' is 2.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
-        "thumbnail_size": 2.33
+        "thumbnail_size": 2.33,
+        "action": "fix"
       },
       {
         "check": "legibility",
@@ -657,7 +822,8 @@
           "scale-100-lbl"
         ],
         "message": "'scale-100-lbl' is 2.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
-        "thumbnail_size": 2.33
+        "thumbnail_size": 2.33,
+        "action": "fix"
       },
       {
         "check": "legibility",
@@ -666,7 +832,8 @@
           "scale-200-lbl"
         ],
         "message": "'scale-200-lbl' is 2.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
-        "thumbnail_size": 2.33
+        "thumbnail_size": 2.33,
+        "action": "fix"
       },
       {
         "check": "legibility",
@@ -675,7 +842,8 @@
           "scale-300-lbl"
         ],
         "message": "'scale-300-lbl' is 2.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
-        "thumbnail_size": 2.33
+        "thumbnail_size": 2.33,
+        "action": "fix"
       },
       {
         "check": "legibility",
@@ -684,7 +852,8 @@
           "scale-400-lbl"
         ],
         "message": "'scale-400-lbl' is 2.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
-        "thumbnail_size": 2.33
+        "thumbnail_size": 2.33,
+        "action": "fix"
       },
       {
         "check": "legibility",
@@ -693,7 +862,8 @@
           "scale-500-lbl"
         ],
         "message": "'scale-500-lbl' is 2.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
-        "thumbnail_size": 2.33
+        "thumbnail_size": 2.33,
+        "action": "fix"
       },
       {
         "check": "legibility",
@@ -702,7 +872,8 @@
           "scale-600-lbl"
         ],
         "message": "'scale-600-lbl' is 2.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
-        "thumbnail_size": 2.33
+        "thumbnail_size": 2.33,
+        "action": "fix"
       },
       {
         "check": "legibility",
@@ -711,7 +882,8 @@
           "scale-700-lbl"
         ],
         "message": "'scale-700-lbl' is 2.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
-        "thumbnail_size": 2.33
+        "thumbnail_size": 2.33,
+        "action": "fix"
       },
       {
         "check": "legibility",
@@ -720,7 +892,8 @@
           "scale-800-lbl"
         ],
         "message": "'scale-800-lbl' is 2.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
-        "thumbnail_size": 2.33
+        "thumbnail_size": 2.33,
+        "action": "fix"
       },
       {
         "check": "legibility",
@@ -729,7 +902,8 @@
           "scale-900-lbl"
         ],
         "message": "'scale-900-lbl' is 2.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
-        "thumbnail_size": 2.33
+        "thumbnail_size": 2.33,
+        "action": "fix"
       },
       {
         "check": "legibility",
@@ -738,7 +912,8 @@
           "scale-950-lbl"
         ],
         "message": "'scale-950-lbl' is 2.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
-        "thumbnail_size": 2.33
+        "thumbnail_size": 2.33,
+        "action": "fix"
       },
       {
         "check": "legibility",
@@ -747,7 +922,8 @@
           "lbl-type"
         ],
         "message": "'lbl-type' is 2.7 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
-        "thumbnail_size": 2.67
+        "thumbnail_size": 2.67,
+        "action": "fix"
       },
       {
         "check": "legibility",
@@ -756,7 +932,8 @@
           "spec-head-name"
         ],
         "message": "'spec-head-name' is 6.7 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
-        "thumbnail_size": 6.67
+        "thumbnail_size": 6.67,
+        "action": "fix"
       },
       {
         "check": "legibility",
@@ -765,7 +942,8 @@
           "spec-head-use"
         ],
         "message": "'spec-head-use' is 4.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
-        "thumbnail_size": 4.33
+        "thumbnail_size": 4.33,
+        "action": "fix"
       },
       {
         "check": "legibility",
@@ -774,7 +952,8 @@
           "spec-body-name"
         ],
         "message": "'spec-body-name' is 3.0 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
-        "thumbnail_size": 3.0
+        "thumbnail_size": 3.0,
+        "action": "fix"
       },
       {
         "check": "legibility",
@@ -783,7 +962,8 @@
           "spec-body"
         ],
         "message": "'spec-body' is 3.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
-        "thumbnail_size": 3.33
+        "thumbnail_size": 3.33,
+        "action": "fix"
       },
       {
         "check": "legibility",
@@ -792,7 +972,8 @@
           "lbl-apps"
         ],
         "message": "'lbl-apps' is 2.7 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
-        "thumbnail_size": 2.67
+        "thumbnail_size": 2.67,
+        "action": "fix"
       },
       {
         "check": "legibility",
@@ -801,7 +982,8 @@
           "fav-caption"
         ],
         "message": "'fav-caption' is 2.2 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
-        "thumbnail_size": 2.17
+        "thumbnail_size": 2.17,
+        "action": "fix"
       },
       {
         "check": "legibility",
@@ -810,7 +992,8 @@
           "cap-cards"
         ],
         "message": "'cap-cards' is 2.5 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
-        "thumbnail_size": 2.5
+        "thumbnail_size": 2.5,
+        "action": "fix"
       },
       {
         "check": "legibility",
@@ -819,7 +1002,8 @@
           "cap-icon"
         ],
         "message": "'cap-icon' is 2.5 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
-        "thumbnail_size": 2.5
+        "thumbnail_size": 2.5,
+        "action": "fix"
       }
     ],
     "checked": {
@@ -831,7 +1015,12 @@
         "legibility",
         "blanks",
         "fonts",
-        "brand"
+        "brand",
+        "content",
+        "form",
+        "links",
+        "diagram",
+        "flow"
       ],
       "layers": 82,
       "text_layers": 49
@@ -841,6 +1030,12 @@
     "passed": true,
     "errors": 0,
     "warnings": 0,
+    "info": 0,
+    "by_action": {
+      "fix": [],
+      "review": [],
+      "informational": []
+    },
     "issues": [],
     "checked": {
       "checks": [
@@ -854,6 +1049,12 @@
     "passed": true,
     "errors": 0,
     "warnings": 0,
+    "info": 0,
+    "by_action": {
+      "fix": [],
+      "review": [],
+      "informational": []
+    },
     "issues": [],
     "checked": {
       "checks": [

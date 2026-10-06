@@ -1,6 +1,6 @@
 # Vixl explorations
 
-Ten complex projects built with Vixl 0.16.0, each designed to stretch a different part of the engine. Every project has a reproducible `build.py`, which you run from the repo root with `python explorations/NN-name/build.py`. Each also has its outputs and a README with the features it used and its findings.
+Ten complex projects, each designed to stretch a different part of the engine. They were first built with Vixl 0.16.0 to find its limits; the committed outputs are now rebuilt with Vixl 0.20.0. Every project has a reproducible `build.py`, which you run from the repo root with `python explorations/NN-name/build.py`. Each also has its outputs and a README with the features it used and its findings. `python explorations/build_gallery.py` recomposes `gallery.jpg` from the outputs.
 
 ![Gallery](gallery.jpg)
 
@@ -21,13 +21,17 @@ Ten complex projects built with Vixl 0.16.0, each designed to stretch a differen
 
 - **The poster is at 150 dpi.** 01 builds at 150 dpi to keep the committed files small. For press resolution, set `DPI = 300` at the top of its `build.py`; every coordinate scales with the canvas.
 - **The infographic's data is invented.** 08's renewable-share figures were made up to exercise the layout, and its README says so. Don't cite them.
-- **The infographic's committed QA report shows `validate` as invalid.** The only failures are the decorative sun and rays, which bleed off the top edge on purpose. `build.py` now marks them as decoration, which `validate` grades as a warning, so a rebuild reports both datasets valid.
-- **Build times.** When the projects were built, the longest builds took 8 to 14 minutes, mostly in the design check. With the fixes, rebuilding all ten (two at a time on a 4-core container) took 13 s (02) to about 4 minutes (05); every other build finished in about 2¼ minutes or less.
-- **The committed outputs predate the fixes.** They were built with Vixl 0.16.0, using the workarounds each README describes. All ten rebuild with the current engine and give the same designs. The differences are 0.17.0's own changes (repeats stay vectors in SVG, animation frame timing), a few pixels the old renderer clipped at group edges, and card 009, which the 07 checks now hold back for missing glyphs.
+- **The infographic's validate run passes; its contrast check does not.** The decorative sun and rays that bleed off the top edge are marked as decoration, so `validate` reports both datasets valid. Checking every text layer (it used to check 12 to save time) found one real error: the white "98.6%" label inside the first green bar is 3.42:1, below 4.5:1. The design is left as it was.
+- **Build times with 0.20.0.** Each build ran on its own on a shared 4-core container, with downloaded fonts and the ICC profile already cached: 01 1 min 56 s, 02 25 s, 03 2 min 7 s, 04 36 s, 05 3 min 55 s, 06 40 s, 07 2 min 36 s to 3 min 9 s (two runs), 08 1 min 2 s, 09 2 min 7 s, 10 about 2 min 5 s. With 0.16.0 the longest builds took 8 to 14 minutes, mostly in the design check.
+- **What changed in the rebuild.** Most designs are pixel-identical or nearly so. The visible differences are the fixes themselves (blur spreading past its box in 03 and 10, `oil-paint` without false colours in 05, uncut wing tips on the 07 creatures, card 009 left off the 07 print sheet for missing glyphs) and 0.20.0's new `roll` catalogue in 09, which rolls different directions. Each project README lists its differences and the workarounds removed from `build.py`.
+- **0.20.0 bugs the rebuild found.** The 01 and 09 builds work around the first and third; see their READMEs.
+  - A vector PDF export of a page with blend modes or adjustment layers crashes (`KeyError: 'type'` in the PDF writer's page fallback). 01 asks for `--pdf-content raster`.
+  - `--quality` is ignored for PDF: Vixl's own PDF writer stores images with Flate, so the 01 poster PDF is 7.5 MB instead of 2.4 MB.
+  - The contrast check cannot measure text whose box lands on a half pixel, which 0.20.0's fractional positions produce when text is centred on an odd-sized difference (`Could not measure 'cta': boolean index did not match ...`). It reports a warning instead of a ratio, and a suite then reports `needs_review`. Five text layers of the 01 poster are affected; 09 nudges its centred button labels by half a pixel so its group publish can pass.
 
 ## Cross-project findings
 
-Each project README has repro details. These are the issues that showed up most often or matter most. Items marked **Fixed** are fixed in the Unreleased section of the [changelog](../CHANGELOG.md); the projects' committed outputs were built before the fixes, with the workarounds their READMEs describe.
+Each project README has repro details. These are the issues the explorations found in Vixl 0.16.0 that showed up most often or matter most. Items marked **Fixed** shipped in 0.18.0 ("Fixes from the explorations" in the [changelog](../CHANGELOG.md)) unless another release is named. The 0.20.0 rebuild, with most of the workarounds removed, exercises most of them.
 
 ### Bugs
 - **Fixed: group bounds are frozen.** A group kept the bounds it had when created, so resized or rotated children got clipped (04, 10). Groups no longer clip their members, and `inspect` reports `drawn_bounds` for anything drawn past the box. Group `scale` no longer smooths pixel art (04).
@@ -63,11 +67,11 @@ Each project README has repro details. These are the issues that showed up most 
 - **Fixed: vague errors.** Ragged pixel rows (04), constraint conflicts (08), the batch limit (05), far `px` pivots (03) and undefined swatches (02) now name the row, layers, anchors, numbers or operation involved. `validate --rules` takes inline assertions (08), and unnamed layers are numbered instead of colliding (09).
 - **No effect reorder operation** (06).
 - **`lookup` isn't a real effect.** It can't be disabled, reordered or limited to a selection (06).
-- **CMYK PDFs are single raster pages** with no TrimBox or BleedBox (01, 02).
-- **Blend modes force raster fallbacks in SVG** (01). Repeats of vector shapes did too in 0.16.0 (01, 08), but export as vectors since 0.17.0.
+- **Fixed in 0.19.0: CMYK PDFs are single raster pages** with no TrimBox or BleedBox (01, 02). The 02 business cards are now vector DeviceCMYK pages with embedded fonts, and the print PDFs of 01, 02 and 07 have a TrimBox and BleedBox. The 01 poster is still one image, because its blend modes need the backdrop.
+- **Blend modes force raster fallbacks in SVG** (01): the full 01 poster is still one embedded image. Repeats of vector shapes did too in 0.16.0 (01, 08), but export as vectors since 0.17.0, so the 01 `vector` comp and the 08 poster now export strict SVG with no images.
 - **`color_vision` checks only text,** not chart fills (08).
-- **`animation-set` can't export a subset of frames** (04).
-- **Film captions have no font field,** and film camera zoom softens the image (10).
+- **Fixed in 0.19.0: `animation-set` can't export a subset of frames** (04). Named animations replace the clone-and-delete workaround in 04.
+- **Film captions have no font field,** and film camera zoom softens the image (10). 0.20.0 adds a caption font and style; 10 does not use it, so this rebuild does not confirm it. Camera zoom still crops and enlarges with bicubic resampling.
 
 ### Worked well
 Atomic batches with precise, structured errors. Pivots on deep rigs. Markers used as times. Three-way branch merges with explicit resolutions and `expected_head`. Suite-gated group publishing. Symbols and artboards. Font pairing and embedding. The print, contrast, bleed and spacing checks caught real problems.

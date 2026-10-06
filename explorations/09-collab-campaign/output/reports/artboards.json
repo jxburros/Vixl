@@ -6,6 +6,16 @@
       "passed": true,
       "errors": 0,
       "warnings": 3,
+      "info": 0,
+      "by_action": {
+        "fix": [
+          0,
+          1,
+          2
+        ],
+        "review": [],
+        "informational": []
+      },
       "issues": [
         {
           "check": "legibility",
@@ -14,7 +24,8 @@
             "headline"
           ],
           "message": "'headline' is 6.6 px tall at 320 px wide; aim for at least 10 px (font size 30+)",
-          "thumbnail_size": 6.6
+          "thumbnail_size": 6.6,
+          "action": "fix"
         },
         {
           "check": "legibility",
@@ -23,7 +34,8 @@
             "subtitle"
           ],
           "message": "'subtitle' is 3.3 px tall at 320 px wide; aim for at least 10 px (font size 30+)",
-          "thumbnail_size": 3.3
+          "thumbnail_size": 3.3,
+          "action": "fix"
         },
         {
           "check": "legibility",
@@ -32,7 +44,8 @@
             "cta"
           ],
           "message": "'cta' is 3.3 px tall at 320 px wide; aim for at least 10 px (font size 30+)",
-          "thumbnail_size": 3.3
+          "thumbnail_size": 3.3,
+          "action": "fix"
         }
       ],
       "checked": {
@@ -44,7 +57,12 @@
           "legibility",
           "blanks",
           "fonts",
-          "brand"
+          "brand",
+          "content",
+          "form",
+          "links",
+          "diagram",
+          "flow"
         ],
         "layers": 6,
         "text_layers": 3
@@ -58,6 +76,16 @@
       "passed": true,
       "errors": 0,
       "warnings": 3,
+      "info": 0,
+      "by_action": {
+        "fix": [
+          0,
+          1,
+          2
+        ],
+        "review": [],
+        "informational": []
+      },
       "issues": [
         {
           "check": "legibility",
@@ -66,7 +94,8 @@
             "headline"
           ],
           "message": "'headline' is 6.6 px tall at 320 px wide; aim for at least 10 px (font size 30+)",
-          "thumbnail_size": 6.6
+          "thumbnail_size": 6.6,
+          "action": "fix"
         },
         {
           "check": "legibility",
@@ -75,7 +104,8 @@
             "subtitle"
           ],
           "message": "'subtitle' is 3.3 px tall at 320 px wide; aim for at least 10 px (font size 30+)",
-          "thumbnail_size": 3.3
+          "thumbnail_size": 3.3,
+          "action": "fix"
         },
         {
           "check": "legibility",
@@ -84,7 +114,8 @@
             "cta"
           ],
           "message": "'cta' is 3.3 px tall at 320 px wide; aim for at least 10 px (font size 30+)",
-          "thumbnail_size": 3.3
+          "thumbnail_size": 3.3,
+          "action": "fix"
         }
       ],
       "checked": {
@@ -96,7 +127,12 @@
           "legibility",
           "blanks",
           "fonts",
-          "brand"
+          "brand",
+          "content",
+          "form",
+          "links",
+          "diagram",
+          "flow"
         ],
         "layers": 6,
         "text_layers": 3

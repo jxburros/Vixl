@@ -12,7 +12,7 @@
         "element_color": "#ff6b35",
         "element_dark": "#2a0905",
         "element_light": "#ffd166",
-        "art": "assets/58accd4f49886551b9ee1b3845ab31bd52bf7a2e99b3b67bac14778f53b40a85.jpg",
+        "art": "assets/1e7958055ca456d0acd9b59e25c68935ef33e1e4cda95da0b22888697cf03545.jpg",
         "kind": "Spirit \u2014 Warden",
         "ability_name": "Ward",
         "ability": "Other Ember spirits you control get +1 DEF.",
@@ -21,9 +21,9 @@
       },
       "artboard": "common",
       "status": "completed",
-      "output": "0001-dc386b8efc84da69.webp",
-      "fingerprint": "dc386b8efc84da696d59a1946fdf0f11f83ade3d59d8ed6f3d0c43fe725c624c",
-      "sha256": "2b2370e787ec3ccb4141fa5e75a2230d45fc5315b7b868247e2eb696b0944b93",
+      "output": "0001-cc64c15e14493ec7.webp",
+      "fingerprint": "cc64c15e14493ec7c8c87ea5d9496d10adcb36e278dfa12298e18a60f7ef94ca",
+      "sha256": "2d2e2cc87871eb5b29bedad7bec9cd343c51029d2344d632e671dc112f5a9bcf",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -144,6 +144,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -178,6 +184,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -192,8 +204,8 @@
       },
       "repairs": [],
       "cache": {
-        "hits": 52,
-        "misses": 47
+        "hits": 2,
+        "misses": 56
       }
     },
     {
@@ -204,7 +216,7 @@
         "element_color": "#ff6b35",
         "element_dark": "#2a0905",
         "element_light": "#ffd166",
-        "art": "assets/58accd4f49886551b9ee1b3845ab31bd52bf7a2e99b3b67bac14778f53b40a85.jpg",
+        "art": "assets/1e7958055ca456d0acd9b59e25c68935ef33e1e4cda95da0b22888697cf03545.jpg",
         "kind": "Spirit \u2014 Warden",
         "ability_name": "Ward",
         "ability": "Other Ember spirits you control get +1 DEF.",
@@ -213,9 +225,9 @@
       },
       "artboard": "rare",
       "status": "completed",
-      "output": "0002-99a29f9754e3dc2a.webp",
-      "fingerprint": "99a29f9754e3dc2ae75d0e89306f2b2f6aabbbd1c79a7983d1149766daa5c0dd",
-      "sha256": "ece413aca45e234ff205ebe5b4f271fa8ab8dc930e0fd1c024bada69856fb1e6",
+      "output": "0002-e505118a8077541d.webp",
+      "fingerprint": "e505118a8077541d46f12f5cef0d21cdd82a54325f45e2d36f93c35ed4818276",
+      "sha256": "02d53e7d4ff9e0573c3caee9c3506c46b57be358ea9d0fbaeca05dc7dece4b1c",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -336,6 +348,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -370,6 +388,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -384,8 +408,8 @@
       },
       "repairs": [],
       "cache": {
-        "hits": 48,
-        "misses": 36
+        "hits": 59,
+        "misses": 20
       }
     },
     {
@@ -396,7 +420,7 @@
         "element_color": "#ff6b35",
         "element_dark": "#2a0905",
         "element_light": "#ffd166",
-        "art": "assets/58accd4f49886551b9ee1b3845ab31bd52bf7a2e99b3b67bac14778f53b40a85.jpg",
+        "art": "assets/1e7958055ca456d0acd9b59e25c68935ef33e1e4cda95da0b22888697cf03545.jpg",
         "kind": "Spirit \u2014 Warden",
         "ability_name": "Ward",
         "ability": "Other Ember spirits you control get +1 DEF.",
@@ -405,9 +429,9 @@
       },
       "artboard": "epic",
       "status": "completed",
-      "output": "0003-0b1ab3b6ff5bc571.webp",
-      "fingerprint": "0b1ab3b6ff5bc5710ff24f4f0b56b3c2f5f0295ce9dd3d178e6330cb93c66421",
-      "sha256": "78cdb8caaf459af7f09e36dfaaea5883f21fa1b1cb725cf10e6196920bbf0d43",
+      "output": "0003-9536c414fc945815.webp",
+      "fingerprint": "9536c414fc9458152cc6b38d6f919756550e129e05484cd3e3eb03c62b5de1e6",
+      "sha256": "43ab790d39333793caaba453e9ef5ae902d01af270a7cd0824f0dadfe2fff881",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -528,6 +552,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -562,6 +592,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -576,8 +612,8 @@
       },
       "repairs": [],
       "cache": {
-        "hits": 94,
-        "misses": 10
+        "hits": 80,
+        "misses": 6
       }
     },
     {
@@ -588,7 +624,7 @@
         "element_color": "#ff6b35",
         "element_dark": "#2a0905",
         "element_light": "#ffd166",
-        "art": "assets/58accd4f49886551b9ee1b3845ab31bd52bf7a2e99b3b67bac14778f53b40a85.jpg",
+        "art": "assets/1e7958055ca456d0acd9b59e25c68935ef33e1e4cda95da0b22888697cf03545.jpg",
         "kind": "Spirit \u2014 Warden",
         "ability_name": "Ward",
         "ability": "Other Ember spirits you control get +1 DEF.",
@@ -597,9 +633,9 @@
       },
       "artboard": "legendary",
       "status": "completed",
-      "output": "0004-243bcd18e948aa00.webp",
-      "fingerprint": "243bcd18e948aa00df94afcd0d6060a619510b7757c7951e5908861269b20364",
-      "sha256": "3022f06c072d519a1a86dccf75e2a0aba50a5e4ed3e149a44a81f19eb2605116",
+      "output": "0004-89a8ffb8c81189d5.webp",
+      "fingerprint": "89a8ffb8c81189d550113ae45fec9c7fc7dac75a7513c169bb91ca95f3f801d2",
+      "sha256": "f1e868732277de26cc83cbfef65ea76bb47de7dc8252363b17f3ead3d2a4f42a",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -720,6 +756,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -754,6 +796,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -768,8 +816,8 @@
       },
       "repairs": [],
       "cache": {
-        "hits": 94,
-        "misses": 10
+        "hits": 80,
+        "misses": 6
       }
     },
     {
@@ -780,7 +828,7 @@
         "element_color": "#ff6b35",
         "element_dark": "#2a0905",
         "element_light": "#ffd166",
-        "art": "assets/58accd4f49886551b9ee1b3845ab31bd52bf7a2e99b3b67bac14778f53b40a85.jpg",
+        "art": "assets/1e7958055ca456d0acd9b59e25c68935ef33e1e4cda95da0b22888697cf03545.jpg",
         "kind": "Spirit \u2014 Warden",
         "ability_name": "Ward",
         "ability": "Other Ember spirits you control get +1 DEF.",
@@ -789,9 +837,9 @@
       },
       "artboard": "common",
       "status": "completed",
-      "output": "0005-36961d5effb138d5.webp",
-      "fingerprint": "36961d5effb138d5d60042f7914b92b22fde03b6b42ef9de4cfbd671742eb539",
-      "sha256": "07982aa99e7429ea63fa5f784c984983859eb76cbe4eb584a6d423fb53d1d159",
+      "output": "0005-e9e6a373b085aa4c.webp",
+      "fingerprint": "e9e6a373b085aa4c03fd94843ab1a7117de9fc92f68a149789d780c5dca5090d",
+      "sha256": "afdfb80394d91436e095057be138954fa23a565ab6584907755124583e257206",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -912,6 +960,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -946,6 +1000,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -960,8 +1020,8 @@
       },
       "repairs": [],
       "cache": {
-        "hits": 100,
-        "misses": 8
+        "hits": 83,
+        "misses": 4
       }
     },
     {
@@ -972,7 +1032,7 @@
         "element_color": "#ff6b35",
         "element_dark": "#2a0905",
         "element_light": "#ffd166",
-        "art": "assets/58accd4f49886551b9ee1b3845ab31bd52bf7a2e99b3b67bac14778f53b40a85.jpg",
+        "art": "assets/1e7958055ca456d0acd9b59e25c68935ef33e1e4cda95da0b22888697cf03545.jpg",
         "kind": "Spirit \u2014 Warden",
         "ability_name": "Ward",
         "ability": "Other Ember spirits you control get +1 DEF.",
@@ -981,9 +1041,9 @@
       },
       "artboard": "rare",
       "status": "completed",
-      "output": "0006-cd73714f74d0c3bc.webp",
-      "fingerprint": "cd73714f74d0c3bc33344773f80f64d8646cf6e3f2f762581726d3f46c745872",
-      "sha256": "66064b1649a83ee34dc635bf95f500b06a4f7297b3bc84067d7c7d4938f69d18",
+      "output": "0006-c2088836bd2c69ec.webp",
+      "fingerprint": "c2088836bd2c69ec5bae5acafb7decaf579382c32980f8ca36f0bdbbdf6591a1",
+      "sha256": "54407cc46c88701c3224eaa63517155e14756cfc27e885391329d1caa7da1114",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -1104,6 +1164,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -1138,6 +1204,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -1152,8 +1224,8 @@
       },
       "repairs": [],
       "cache": {
-        "hits": 102,
-        "misses": 6
+        "hits": 83,
+        "misses": 4
       }
     },
     {
@@ -1164,7 +1236,7 @@
         "element_color": "#ff6b35",
         "element_dark": "#2a0905",
         "element_light": "#ffd166",
-        "art": "assets/58accd4f49886551b9ee1b3845ab31bd52bf7a2e99b3b67bac14778f53b40a85.jpg",
+        "art": "assets/1e7958055ca456d0acd9b59e25c68935ef33e1e4cda95da0b22888697cf03545.jpg",
         "kind": "Spirit \u2014 Warden",
         "ability_name": "Ward",
         "ability": "Other Ember spirits you control get +1 DEF.",
@@ -1173,9 +1245,9 @@
       },
       "artboard": "epic",
       "status": "completed",
-      "output": "0007-b11cc92b58eff574.webp",
-      "fingerprint": "b11cc92b58eff57411978935b0148872dc452f8c56c2d8a2f248f436e5957b54",
-      "sha256": "3a3c3503d5aeec6ab849cc7112b2edbe0da7a28fadd2747aada9537538c2432b",
+      "output": "0007-a6671d736bb1284b.webp",
+      "fingerprint": "a6671d736bb1284b3c1767cdcef7b94b39fadf2d2092907e1bc76ac274310175",
+      "sha256": "e0157e597d34217da689497d1bdfeaad3878ee06c53a7950da805db630048ac5",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -1296,6 +1368,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -1330,6 +1408,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -1344,8 +1428,8 @@
       },
       "repairs": [],
       "cache": {
-        "hits": 102,
-        "misses": 6
+        "hits": 86,
+        "misses": 2
       }
     },
     {
@@ -1356,7 +1440,7 @@
         "element_color": "#ff6b35",
         "element_dark": "#2a0905",
         "element_light": "#ffd166",
-        "art": "assets/58accd4f49886551b9ee1b3845ab31bd52bf7a2e99b3b67bac14778f53b40a85.jpg",
+        "art": "assets/1e7958055ca456d0acd9b59e25c68935ef33e1e4cda95da0b22888697cf03545.jpg",
         "kind": "Spirit \u2014 Warden",
         "ability_name": "Ward",
         "ability": "Other Ember spirits you control get +1 DEF.",
@@ -1365,9 +1449,9 @@
       },
       "artboard": "legendary",
       "status": "completed",
-      "output": "0008-834a93046cf2efa8.webp",
-      "fingerprint": "834a93046cf2efa84e948e50df7ad0549714ca9cceefd762a0125b7f8335bc03",
-      "sha256": "54ab3d93ee7a4590ef8560d699613fbeb0dde772e3797a228e2ecd84b63aadc9",
+      "output": "0008-d6a476394f4f672d.webp",
+      "fingerprint": "d6a476394f4f672d9f626fdbdb9a2c58698367085fa577cd2fe1a918137c72b8",
+      "sha256": "41ffc8e4662e4d6b14a0e899dffbb0894c221d98495a37a2c1b37459986730ef",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -1488,6 +1572,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -1522,6 +1612,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -1536,8 +1632,8 @@
       },
       "repairs": [],
       "cache": {
-        "hits": 102,
-        "misses": 6
+        "hits": 86,
+        "misses": 2
       }
     },
     {
@@ -1557,9 +1653,9 @@
       },
       "artboard": "common",
       "status": "completed",
-      "output": "0009-c0b1e47525aa9170.webp",
-      "fingerprint": "c0b1e47525aa917099307c1b0c2b433df9996b7703e6c0ab0be94faf11803f59",
-      "sha256": "23222ff32f05a9f84d31d10a77f8bbaabfdfa744830fb167dc3f8b29113be691",
+      "output": "0009-36b53d8a18b83630.webp",
+      "fingerprint": "36b53d8a18b83630cd0684cbe5461ad0d2c08e6946e09a745756c0f3ebcd9899",
+      "sha256": "a5941f6f8eb321b901c768dd4a791f582e60b8da0cf5bc8cad0767b145f026e3",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -1681,6 +1777,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -1715,6 +1817,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -1729,8 +1837,8 @@
       },
       "repairs": [],
       "cache": {
-        "hits": 53,
-        "misses": 37
+        "hits": 28,
+        "misses": 38
       }
     },
     {
@@ -1750,9 +1858,9 @@
       },
       "artboard": "rare",
       "status": "completed",
-      "output": "0010-ff69857ef0e35f0c.webp",
-      "fingerprint": "ff69857ef0e35f0cada20e7e60f840bd0590cefe6041f0fcfa29687618222766",
-      "sha256": "d61f6384698576c495cb60dc07dbbc5d36384658472a71cb84642d79d991056e",
+      "output": "0010-1aec67da04fb68c9.webp",
+      "fingerprint": "1aec67da04fb68c93cf12fe3fc8434b370afddb3b725388aa345247bfa4f7fd8",
+      "sha256": "adecec878f226e18408bf8251f26c26ac4a11499f13e7d8435cba42255dcb2df",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -1874,6 +1982,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -1908,6 +2022,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -1922,8 +2042,8 @@
       },
       "repairs": [],
       "cache": {
-        "hits": 59,
-        "misses": 31
+        "hits": 66,
+        "misses": 17
       }
     },
     {
@@ -1943,9 +2063,9 @@
       },
       "artboard": "epic",
       "status": "completed",
-      "output": "0011-265171023761735c.webp",
-      "fingerprint": "265171023761735c224b2b9f7c5b2190851660c84f768fa812273da60dc39a52",
-      "sha256": "4d0a854770dbeb59ff04e747a89ccf91a6ecc4db8aaef2186054ff5943b684bd",
+      "output": "0011-8f744079e5aeb77e.webp",
+      "fingerprint": "8f744079e5aeb77e1a1391a1db45c3c85fc2d7c9da8614c6c973cbb1a6ce931a",
+      "sha256": "3d03cc2bbd9de39d7b5576ea3a8259cbd187db4d737d5d324379f83694fcb7af",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -2067,6 +2187,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -2101,6 +2227,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -2115,8 +2247,8 @@
       },
       "repairs": [],
       "cache": {
-        "hits": 98,
-        "misses": 8
+        "hits": 83,
+        "misses": 4
       }
     },
     {
@@ -2136,9 +2268,9 @@
       },
       "artboard": "legendary",
       "status": "completed",
-      "output": "0012-5eb6a329f3b9ec2e.webp",
-      "fingerprint": "5eb6a329f3b9ec2eabc23538ef92f1a900d0dd783695322a1beea1e36389a19f",
-      "sha256": "e04eb986b4c0293623f3d8a5ecd489d14a99e1ba801f8cfc58c267a3363e4e56",
+      "output": "0012-08b8073d2439c959.webp",
+      "fingerprint": "08b8073d2439c959241334adb8ce17b8533c6e3e5bbddf5f35f22bb8cf28e10c",
+      "sha256": "93d0344450bacc8038a42bc3fb76e973bbff953493e920c86b6260af7ad00e4d",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -2260,6 +2392,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -2294,6 +2432,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -2308,8 +2452,8 @@
       },
       "repairs": [],
       "cache": {
-        "hits": 98,
-        "misses": 8
+        "hits": 83,
+        "misses": 4
       }
     },
     {
@@ -2329,9 +2473,9 @@
       },
       "artboard": "common",
       "status": "completed",
-      "output": "0013-fd62358d341da467.webp",
-      "fingerprint": "fd62358d341da4670c1a86427c98e68d3bf054dc41300450393470f4cb7063b7",
-      "sha256": "a88b8e04a588f5f176f377d667bea93d363b6d904fa8d7d6ab7ed571a8b860aa",
+      "output": "0013-59d25b1db30922fd.webp",
+      "fingerprint": "59d25b1db30922fd9c757e32d6fab1825418ad4a33f3ad9a178a9d9b0e358d66",
+      "sha256": "f081652adae3ca9cb3a1e6c39fef05904814ee4f58d13388fe65250fb12cd1ac",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -2453,6 +2597,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -2487,6 +2637,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -2501,8 +2657,8 @@
       },
       "repairs": [],
       "cache": {
-        "hits": 102,
-        "misses": 6
+        "hits": 86,
+        "misses": 2
       }
     },
     {
@@ -2522,9 +2678,9 @@
       },
       "artboard": "rare",
       "status": "completed",
-      "output": "0014-5a879e85c7727e97.webp",
-      "fingerprint": "5a879e85c7727e97eae7302392d3b431a8019433ab95d0cb32aedfe872e403ac",
-      "sha256": "bb4375b3f3ccc71c1f567d3a6901f127795f305320cbf382ead228d110fcdd3b",
+      "output": "0014-d5f4e8d1c06f6fbd.webp",
+      "fingerprint": "d5f4e8d1c06f6fbdec3a5197f0c12c280ddde0d97248368b87a297ee9f8f390f",
+      "sha256": "2d73709c0b5e68e71eaff5a2380f8ae1f65069919c3979827d36fb08049632db",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -2646,6 +2802,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -2680,6 +2842,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -2694,8 +2862,8 @@
       },
       "repairs": [],
       "cache": {
-        "hits": 102,
-        "misses": 6
+        "hits": 86,
+        "misses": 2
       }
     },
     {
@@ -2715,9 +2883,9 @@
       },
       "artboard": "epic",
       "status": "completed",
-      "output": "0015-23617917e9c56d3d.webp",
-      "fingerprint": "23617917e9c56d3d16066ae97760b70cd6d8fe9113fdbcd933fd1aeabf784359",
-      "sha256": "7332fa587e402f848e1924fb5823383b2242597bdabf63aa85dca8332ac28a48",
+      "output": "0015-d7828866117bcea0.webp",
+      "fingerprint": "d7828866117bcea0af0d59cb63eaa6037c73b6ceb8d0836612b6863f2c2c6a00",
+      "sha256": "3809d47f043d849cf03c5d8175b5ef5a343421ca7673386b32552e0722e85a1b",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -2839,6 +3007,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -2873,6 +3047,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -2887,8 +3067,8 @@
       },
       "repairs": [],
       "cache": {
-        "hits": 102,
-        "misses": 6
+        "hits": 86,
+        "misses": 2
       }
     },
     {
@@ -2908,9 +3088,9 @@
       },
       "artboard": "legendary",
       "status": "completed",
-      "output": "0016-ea640412c6967f2f.webp",
-      "fingerprint": "ea640412c6967f2f536b127b3a5eefc8b0a48fa6a60ed4c38266ce7146f6be31",
-      "sha256": "3cc0a3457c866c9b1883a1dc32df3f9624927f20cfb073281cd949f5fbb9b2d6",
+      "output": "0016-029a2957306c7a8b.webp",
+      "fingerprint": "029a2957306c7a8b0557a2c0cdded7625acd675e6ec995ff0b170a20bf3fd813",
+      "sha256": "d3d667d7b246fc824fa83f198edd067fafce7f441e0b793a55fad4498c3d5f19",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -3032,6 +3212,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -3066,6 +3252,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -3080,8 +3272,8 @@
       },
       "repairs": [],
       "cache": {
-        "hits": 102,
-        "misses": 6
+        "hits": 86,
+        "misses": 2
       }
     },
     {
@@ -3092,7 +3284,7 @@
         "element_color": "#b388ff",
         "element_dark": "#130a2e",
         "element_light": "#f1e6ff",
-        "art": "assets/ea8639166deac9e193def32f5ef09362796211bb87b22094e6fd2bf1d9772944.jpg",
+        "art": "assets/2a31272048182e590e5d3ca43dea0661d49246fc3b11b2e34981a95175ebc050.jpg",
         "kind": "Spirit \u2014 Warden",
         "ability_name": "Ward",
         "ability": "Other Storm spirits you control get +1 DEF.",
@@ -3101,9 +3293,9 @@
       },
       "artboard": "common",
       "status": "completed",
-      "output": "0017-31c4eeea9fa7658f.webp",
-      "fingerprint": "31c4eeea9fa7658f1502206aaceec61b577ee155eab09a33e074ab6d1c77d21d",
-      "sha256": "3d0db502415318e3345b93011e9ae08e270f6e8262a23e0eca1e7ca6f16ae441",
+      "output": "0017-c39d18b2392d7c22.webp",
+      "fingerprint": "c39d18b2392d7c220fccf8b5688822fd14b39f67be0ae04f7b1165f3f51a1c0e",
+      "sha256": "c580b55ee1100d553428cc064cc8411f3eb5c5ea3254e81226fcfbdb8212962c",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -3223,6 +3415,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -3257,6 +3455,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -3271,8 +3475,8 @@
       },
       "repairs": [],
       "cache": {
-        "hits": 56,
-        "misses": 21
+        "hits": 28,
+        "misses": 38
       }
     },
     {
@@ -3283,7 +3487,7 @@
         "element_color": "#b388ff",
         "element_dark": "#130a2e",
         "element_light": "#f1e6ff",
-        "art": "assets/ea8639166deac9e193def32f5ef09362796211bb87b22094e6fd2bf1d9772944.jpg",
+        "art": "assets/2a31272048182e590e5d3ca43dea0661d49246fc3b11b2e34981a95175ebc050.jpg",
         "kind": "Spirit \u2014 Warden",
         "ability_name": "Ward",
         "ability": "Other Storm spirits you control get +1 DEF.",
@@ -3292,9 +3496,9 @@
       },
       "artboard": "rare",
       "status": "completed",
-      "output": "0018-d2ca11fa9675fda5.webp",
-      "fingerprint": "d2ca11fa9675fda5798edb1b234af614759e34eba4ca11475db086b9f0bf7b48",
-      "sha256": "c0468c632cd9662281ae62c82e494dfed3e36cd294931b02bcf1f4852c27bb23",
+      "output": "0018-6eed365fae77131d.webp",
+      "fingerprint": "6eed365fae77131dad8be5e8452e6aa7452b46fe103c058cc3c450ce496a66a0",
+      "sha256": "e5dddd09bbe5f5c47ed97642ec35644a8f2310c3ed323866c4a285cc831c4be8",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -3414,6 +3618,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -3448,6 +3658,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -3462,8 +3678,8 @@
       },
       "repairs": [],
       "cache": {
-        "hits": 42,
-        "misses": 41
+        "hits": 71,
+        "misses": 14
       }
     },
     {
@@ -3474,7 +3690,7 @@
         "element_color": "#b388ff",
         "element_dark": "#130a2e",
         "element_light": "#f1e6ff",
-        "art": "assets/ea8639166deac9e193def32f5ef09362796211bb87b22094e6fd2bf1d9772944.jpg",
+        "art": "assets/2a31272048182e590e5d3ca43dea0661d49246fc3b11b2e34981a95175ebc050.jpg",
         "kind": "Spirit \u2014 Warden",
         "ability_name": "Ward",
         "ability": "Other Storm spirits you control get +1 DEF.",
@@ -3483,9 +3699,9 @@
       },
       "artboard": "epic",
       "status": "completed",
-      "output": "0019-aaecc82e426d332a.webp",
-      "fingerprint": "aaecc82e426d332aac3cfe82304808fe7a508436e70107331831be1ee0a0cd6d",
-      "sha256": "88165927886e05a1c8fab35a486bfcce0871bdb8ac2ccbe036b3ce64c3b3bfb0",
+      "output": "0019-c1f04b9c9fbf1f6a.webp",
+      "fingerprint": "c1f04b9c9fbf1f6a39c7118599a59aa1c4822ed7ca1f3eade4a0f8c7f2958378",
+      "sha256": "29fc14ab8823f09b495132f274e5cdd5ff1a6c97986a9b7382123c8875f65383",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -3605,6 +3821,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -3639,6 +3861,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -3653,8 +3881,8 @@
       },
       "repairs": [],
       "cache": {
-        "hits": 98,
-        "misses": 8
+        "hits": 83,
+        "misses": 4
       }
     },
     {
@@ -3665,7 +3893,7 @@
         "element_color": "#b388ff",
         "element_dark": "#130a2e",
         "element_light": "#f1e6ff",
-        "art": "assets/ea8639166deac9e193def32f5ef09362796211bb87b22094e6fd2bf1d9772944.jpg",
+        "art": "assets/2a31272048182e590e5d3ca43dea0661d49246fc3b11b2e34981a95175ebc050.jpg",
         "kind": "Spirit \u2014 Warden",
         "ability_name": "Ward",
         "ability": "Other Storm spirits you control get +1 DEF.",
@@ -3674,9 +3902,9 @@
       },
       "artboard": "legendary",
       "status": "completed",
-      "output": "0020-7dc6d5e7115b9729.webp",
-      "fingerprint": "7dc6d5e7115b9729b74921a277d2ae6b5d507e1c1e563c66fedc7099e80c29cc",
-      "sha256": "342773267b225e90b1ba1a0391cf28783d262491983a4d8f3f8ff43168ea1fff",
+      "output": "0020-06eb7a1ab65ce0cb.webp",
+      "fingerprint": "06eb7a1ab65ce0cbae7d1f64c4e4774f4db1a2bfbbb2eda496cb7234e89c8c84",
+      "sha256": "ed22da91d9a9505adc6df807b5a0c3bbb9b28900d8709655a6a8c29c756944e8",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -3796,6 +4024,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -3830,6 +4064,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -3844,8 +4084,8 @@
       },
       "repairs": [],
       "cache": {
-        "hits": 98,
-        "misses": 8
+        "hits": 83,
+        "misses": 4
       }
     },
     {
@@ -3856,7 +4096,7 @@
         "element_color": "#b388ff",
         "element_dark": "#130a2e",
         "element_light": "#f1e6ff",
-        "art": "assets/ea8639166deac9e193def32f5ef09362796211bb87b22094e6fd2bf1d9772944.jpg",
+        "art": "assets/2a31272048182e590e5d3ca43dea0661d49246fc3b11b2e34981a95175ebc050.jpg",
         "kind": "Spirit \u2014 Warden",
         "ability_name": "Ward",
         "ability": "Other Storm spirits you control get +1 DEF.",
@@ -3865,9 +4105,9 @@
       },
       "artboard": "common",
       "status": "completed",
-      "output": "0021-ca3ac5fdff00590e.webp",
-      "fingerprint": "ca3ac5fdff00590ebe7b4cd021140e0b06fc2a98ea12eb91549d82cb35fe99c9",
-      "sha256": "a2c43486eb43ec1e85295af7a80eced8c48617b7dfff8cf49eae3a2c1d6867c4",
+      "output": "0021-514f676db4f7549e.webp",
+      "fingerprint": "514f676db4f7549e4acacbe04a83ea8e9bbc575353d9eaa751549bd0b7a17b37",
+      "sha256": "c3b6479c301e7c8c5878b433259fc105655daff804ec650e47138ee33fb50912",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -3987,6 +4227,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -4021,6 +4267,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -4035,8 +4287,8 @@
       },
       "repairs": [],
       "cache": {
-        "hits": 102,
-        "misses": 6
+        "hits": 86,
+        "misses": 2
       }
     },
     {
@@ -4047,7 +4299,7 @@
         "element_color": "#b388ff",
         "element_dark": "#130a2e",
         "element_light": "#f1e6ff",
-        "art": "assets/ea8639166deac9e193def32f5ef09362796211bb87b22094e6fd2bf1d9772944.jpg",
+        "art": "assets/2a31272048182e590e5d3ca43dea0661d49246fc3b11b2e34981a95175ebc050.jpg",
         "kind": "Spirit \u2014 Warden",
         "ability_name": "Ward",
         "ability": "Other Storm spirits you control get +1 DEF.",
@@ -4056,9 +4308,9 @@
       },
       "artboard": "rare",
       "status": "completed",
-      "output": "0022-68291fcbf3a10076.webp",
-      "fingerprint": "68291fcbf3a1007684400666b22307c3993a175c94bfbf3f46567fdd42bd00d1",
-      "sha256": "f3e00a5c877abd1bbd52a4297672626fcb74c9b3ab48be3110d7ed8ec54cb7e6",
+      "output": "0022-ae3e176f28f25ced.webp",
+      "fingerprint": "ae3e176f28f25ced5ace2ad5dd977a54fa66cf88035bf13702c17daa4d4868e1",
+      "sha256": "5c32a369d777598bd07a0d15f44f8d9120b8c45b1436e09c57826dbd81466909",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -4178,6 +4430,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -4212,6 +4470,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -4226,8 +4490,8 @@
       },
       "repairs": [],
       "cache": {
-        "hits": 102,
-        "misses": 6
+        "hits": 86,
+        "misses": 2
       }
     },
     {
@@ -4238,7 +4502,7 @@
         "element_color": "#b388ff",
         "element_dark": "#130a2e",
         "element_light": "#f1e6ff",
-        "art": "assets/ea8639166deac9e193def32f5ef09362796211bb87b22094e6fd2bf1d9772944.jpg",
+        "art": "assets/2a31272048182e590e5d3ca43dea0661d49246fc3b11b2e34981a95175ebc050.jpg",
         "kind": "Spirit \u2014 Warden",
         "ability_name": "Ward",
         "ability": "Other Storm spirits you control get +1 DEF.",
@@ -4247,9 +4511,9 @@
       },
       "artboard": "epic",
       "status": "completed",
-      "output": "0023-fda819f764073326.webp",
-      "fingerprint": "fda819f7640733266b4b58dfc4c04644642cb379efa53cc051d35d61798770a2",
-      "sha256": "017658166ce5a107bc16390372b0b061c60b05103b58e6a17ca92c898e1ccc89",
+      "output": "0023-82f1505591fc6bb1.webp",
+      "fingerprint": "82f1505591fc6bb1635e332c27fc64d8e8a4edf6b62fc733a8dfeef8ef28ce4c",
+      "sha256": "73b816a1082bda68fc5a3c6b2052a2aa237500eabf864a13d42c0761b894b488",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -4369,6 +4633,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -4403,6 +4673,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -4417,8 +4693,8 @@
       },
       "repairs": [],
       "cache": {
-        "hits": 102,
-        "misses": 6
+        "hits": 86,
+        "misses": 2
       }
     },
     {
@@ -4429,7 +4705,7 @@
         "element_color": "#b388ff",
         "element_dark": "#130a2e",
         "element_light": "#f1e6ff",
-        "art": "assets/ea8639166deac9e193def32f5ef09362796211bb87b22094e6fd2bf1d9772944.jpg",
+        "art": "assets/2a31272048182e590e5d3ca43dea0661d49246fc3b11b2e34981a95175ebc050.jpg",
         "kind": "Spirit \u2014 Warden",
         "ability_name": "Ward",
         "ability": "Other Storm spirits you control get +1 DEF.",
@@ -4438,9 +4714,9 @@
       },
       "artboard": "legendary",
       "status": "completed",
-      "output": "0024-14ed0a5f4177d761.webp",
-      "fingerprint": "14ed0a5f4177d7618ed5bd6cc2d26c29cdd6719caf635aa2a3033c54edf87554",
-      "sha256": "78a3997dab2498923037781d78a92646aeb4ff21aea3eacd9e3f0c4f57a3838e",
+      "output": "0024-4395c5b13825c3f6.webp",
+      "fingerprint": "4395c5b13825c3f6d19c6076f08dea324057edbffc6c1d4d4e78132cbdd6bdae",
+      "sha256": "0a979e1ee86791da5b4c305f053ea9de62d3445f41af9df80225b21671d73245",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -4560,6 +4836,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -4594,6 +4876,12 @@
               "passed": true,
               "errors": 0,
               "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -4608,8 +4896,8 @@
       },
       "repairs": [],
       "cache": {
-        "hits": 102,
-        "misses": 6
+        "hits": 86,
+        "misses": 2
       }
     }
   ],
