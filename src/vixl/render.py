@@ -1164,7 +1164,9 @@ def export(
     through that separation; ``simulate`` previews a color-vision deficiency. ``alpha`` sets the
     channels of PNG, WEBP, TIFF and AVIF output: ``keep`` always writes RGBA, ``auto`` writes RGB
     when every pixel is opaque and RGBA otherwise (the file export default), and ``flatten``
-    composites onto ``background`` and writes RGB (as JPEG and PDF always do). HTML output of a
+    composites onto ``background`` and writes RGB (as JPEG and PDF always do). PDF is vector by
+    default, RGB or CMYK: ``pdf_content='raster'`` writes one image per page instead, and ``report``
+    receives ``content``, ``content_reason``, ``raster_fallbacks`` and ``page_size``. HTML output of a
     multi-page document is a self-contained slide presentation (see ``presenter.py``): ``presenter``
     is ``False`` for the plain single-image HTML, ``True`` for a presentation of any document, or
     a dict of options (theme, notes, slide_images, start, title)."""
@@ -1227,13 +1229,21 @@ def export(
     if (format or "").upper() == "PPTX" or suffix == ".pptx":
         from .pptx_export import export_pptx
 
-        return export_pptx(project, path, pages=pages, report=report)
+        return export_pptx(project, path, pages=pages, dpi=dpi, report=report)
     wants_pdf = (format or "").upper() == "PDF" or suffix == ".pdf"
     paged = bool(project.state.get("pages"))
-    print_size = bool(project.state["canvas"].get("physical")) and scale == 1
-    if wants_pdf and (paged or pdf_content or pages or print_size) and not (profile or artboard or comp or proof or simulate):
-        # Multi-page documents, print sizes (exact physical page, TrimBox and BleedBox) and explicit
-        # vector/raster requests use Vixl's own PDF writer.
+    requested_scale = scale
+    raster_only = [name for name, used in (("profile", profile), ("artboard", artboard), ("comp", comp), ("proof", proof),
+                                           ("simulate", simulate)) if used]
+    if wants_pdf:
+        require(pdf_content in (None, "vector", "raster"), "pdf_content must be vector or raster", field="pdf_content")
+        require(not (raster_only and pdf_content == "vector"),
+                f"pdf_content=vector cannot be combined with {', '.join(raster_only)}: those export the page as an image",
+                field="pdf_content")
+    if wants_pdf and not raster_only and (pdf_content or scale == 1):
+        # Every PDF is written by Vixl's own writer: vector unless raster is asked for (exact physical
+        # print pages, TrimBox and BleedBox, selectable text, CMYK). A scaled export is a larger
+        # raster, so it keeps the image path below unless pdf_content says otherwise.
         require(page is None or not pages, "Pass page or pages, not both")
         from .pdf_export import export_pdf
 
@@ -1244,9 +1254,13 @@ def export(
             separation = dict(profile=colors.load_profile(icc_profile) if icc_profile is not None else None,
                               intent=intent, black=finite(black_generation, "black_generation", 0, 1),
                               ink_limit=None if ink_limit is None else ink_limit / 100, background=background)
-        content = pdf_content or ("raster" if color_space == "cmyk" else "vector")
-        return export_pdf(project, path, pages=pages or ([page] if page is not None else None), content=content,
+        content = pdf_content or "vector"
+        data = export_pdf(project, path, pages=pages or ([page] if page is not None else None), content=content,
                           dpi=dpi, background=background, color_space=color_space, separation=separation, report=report)
+        if report is not None:
+            report["content_reason"] = ("requested with pdf_content" if pdf_content else
+                                        "default: vector, with images only for what PDF cannot draw (see raster_fallbacks)")
+        return data
     if page is not None or paged:
         project = view_page(project, page)
     resample = Image.Resampling.NEAREST if sampling == "nearest" else Image.Resampling.LANCZOS
@@ -1375,6 +1389,10 @@ def export(
     except (OSError, KeyError) as exc:
         raise VixlError("codec_error", str(exc)) from exc
     data = stream.getvalue()
+    if fmt == "PDF" and report is not None:
+        report.update(content="raster", color_space=color_space, content_reason=(
+            f"{', '.join(raster_only)} export the page as an image" if raster_only else
+            f"scale {requested_scale:g} exports a larger image; pass pdf_content for a vector or raster PDF at its natural size"))
     if path:
         Path(path).write_bytes(data)
     return data

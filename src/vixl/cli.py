@@ -203,7 +203,7 @@ def output_options(args, command):
     p.add_argument("--show-guides", action="store_true", help="Draw the document's guides over a raster render")
     p.add_argument("--page", help="Page name or number of a multi-page document; 'all' renders a contact sheet")
     p.add_argument("--pages", help="PDF/PowerPoint pages: numbers, ranges and names, e.g. 1-3,5,intro")
-    p.add_argument("--pdf-content", choices=["vector", "raster"], help="PDF pages as vector text and shapes, or images")
+    p.add_argument("--pdf-content", choices=["vector", "raster"], help="PDF pages as vector text and shapes (default, also CMYK) or one image per page")
     p.add_argument("--presenter", action="store_true", default=None,
                    help="HTML: a self-contained slide presentation (the default for multi-page documents)")
     p.add_argument("--no-presenter", dest="presenter", action="store_false", help="HTML: one static image, not a presentation")

@@ -60,11 +60,14 @@ Export formats:
 | --- | --- |
 | PDF (RGB) | `vixl export flyer.pdf` |
 | CMYK PDF/TIFF/JPEG | `vixl export flyer.pdf --cmyk`, `vixl export flyer.tif --cmyk --ink-limit 300` |
+| CMYK PDF as one image per page | `vixl export flyer.pdf --cmyk --pdf-content raster` |
 | Press separation with the printer's profile | `vixl export flyer.pdf --cmyk --icc ISOcoated_v2.icc --intent relative` |
 | Soft proof (how print will look) | `vixl export proof.png --proof [--icc PROFILE.icc]` |
 | Explicit resolution metadata | `--dpi 300` (defaults to the canvas dpi × scale) |
 
-Without a profile, CMYK uses a predictable device-naive separation with gray-component replacement: `--black-generation` (0–1, default 1, full GCR) and `--ink-limit` (total area coverage in percent) control it. With `--icc`, LittleCMS converts sRGB to the profile's CMYK with the chosen rendering intent (`perceptual`, `relative`, `saturation`, `absolute`) and embeds the profile; the profile decides black generation, and `--ink-limit`, when given, still caps total coverage by reducing C, M and Y. Vixl does not bundle press profiles; use the one your printer supplies. Alpha is flattened onto `--background` (white by default).
+Without a profile, CMYK uses a predictable device-naive separation with gray-component replacement: `--black-generation` (0–1, default 1, full GCR) and `--ink-limit` (total area coverage in percent) control it. With `--icc`, LittleCMS converts sRGB to the profile's CMYK with the chosen rendering intent (`perceptual`, `relative`, `saturation`, `absolute`) and embeds the profile in TIFF and JPEG files; the profile decides black generation, and `--ink-limit`, when given, still caps total coverage by reducing C, M and Y. Vixl does not bundle press profiles; use the one your printer supplies. Alpha is flattened onto `--background` (white by default).
+
+**CMYK PDFs keep vectors.** A CMYK PDF is vector by default, as an RGB one is: text stays real, embedded-font text, shapes and paths stay paths, and gradients stay PDF shadings, with their colours written as DeviceCMYK (`k`/`K` operators and CMYK shading functions) instead of RGB. Only what PDF cannot draw (effects, layer styles, masks, blend modes and the like, listed under `raster_fallbacks`) and image layers become images, and those are CMYK images with a soft mask where they are translucent. Vector colours go through the same separation as images (the `--icc` profile or GCR with `--black-generation` and `--ink-limit`), so a vector page and a raster page of one document print the same ink; with a profile, pure `#000000` text and shapes stay 100% K instead of the profile's rich black. TrimBox and BleedBox are kept and the file is deterministic. `--pdf-content raster` writes one CMYK image per page when you want the whole page flattened. A blend mode or adjustment layer makes its page one image (`raster_fallbacks` names it). Vixl does not write PDF/X, an OutputIntent or spot colors.
 
 `vixl check --checks print` reports:
 

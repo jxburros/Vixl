@@ -135,8 +135,9 @@ def test_cmyk_export_pdf_tiff_jpeg_and_dpi():
     assert c > 240 and m < 10 and y < 10
     jpeg = Image.open(io.BytesIO(p.export(format="JPEG", color_space="cmyk")))
     assert jpeg.mode == "CMYK"
-    pdf = p.export(format="PDF", color_space="cmyk")
-    assert pdf.startswith(b"%PDF") and b"/DeviceCMYK" in pdf
+    pdf = p.export(format="PDF", color_space="cmyk")  # vector: colours are DeviceCMYK operators (k/K), not an image
+    assert pdf.startswith(b"%PDF") and b"/DeviceCMYK" not in pdf
+    assert b"/DeviceCMYK" in p.export(format="PDF", color_space="cmyk", pdf_content="raster")
     assert p.export(format="PDF").startswith(b"%PDF")
     with pytest.raises(VixlError, match="CMYK export supports"):
         p.export(format="PNG", color_space="cmyk")

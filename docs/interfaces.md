@@ -250,6 +250,10 @@ pages and fields. `vixl_workflow` adds `lyric-video-plan/build/export`, `organic
 `form-fill`, `drawing-report` and `drawing-compare`; jobs add the `lyric-video` and `form-fill`
 kinds.
 
+PDF export is vector by default (also with `color_space="cmyk"`); the export result reports `content`, `content_reason`,
+`color_space` and `page_size`, and `dpi` sizes PDF pages and PowerPoint slides alike. A PPTX result's `warnings`
+name the fonts that are not embedded and must be installed where the deck is opened (`fonts_not_embedded`).
+
 REST: `POST /export` accepts `page`, `pages`, `pdf_content`, `fillable`, `values`, `fill_mode` and
 `presenter` (HTML slide presentation options) and format `PPTX`; `POST /preview` accepts `guides`, `page`, `values` and `show_fields`; the fixed
 project's workflow routes include `lyric-video-plan`, `organic-catalog`, `form-fill` and

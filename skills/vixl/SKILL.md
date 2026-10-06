@@ -292,6 +292,8 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
   (`extend: false` keeps the duration).
 - **CMYK is an export setting** (`color_space="cmyk"` for PDF/TIFF/JPEG). Pass the printer's ICC profile
   when exact separations matter; without one Vixl uses a GCR approximation with an optional ink limit.
+  A CMYK PDF keeps real text and vector shapes (colours as DeviceCMYK); only effects and images are
+  CMYK images. Every PDF is vector by default; the result's `content`/`content_reason` say what was written.
 - **Limits:** 40 MP per canvas/layer, 16 384 px per side, 512 layers, 256 effects/layer,
   1 000 operations per batch. History keeps 2 000 revisions; older unreferenced ones are squashed
   automatically, so long sessions never lock. Pixel-art frames ≤ 256×256, ≤ 256 frames; timelines

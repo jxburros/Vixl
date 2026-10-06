@@ -58,4 +58,6 @@ vixl_export_file(path="favicon.ico", icon_sizes=[16, 32, 48])
 vixl_export_icons(directory="icons", icon_set="all")   # web/apple/android/windows sets + manifest
 ```
 
+A CMYK PDF is vector like an RGB one (real text, paths and shadings with DeviceCMYK colours; effects and images become CMYK images, listed in `raster_fallbacks`); `pdf_content="raster"` flattens each page into one image, and every PDF export reports `content` and `content_reason`.
+
 CLI: `vixl export flyer.pdf --cmyk [--icc press.icc] [--ink-limit 300]`, `--proof`, `--simulate deuteranopia`, `--dpi 300`, `vixl export-icons --out icons`. CMYK applies to JPEG, TIFF and PDF. Documents stay RGBA sRGB; CMYK values you type are converted to sRGB, so use the printer's ICC profile when exact separations matter. Vixl ships no press profiles.

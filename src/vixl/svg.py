@@ -1,7 +1,6 @@
 """Self-contained SVG with vector logo geometry and explicit raster fallbacks."""
 
 import base64
-from copy import deepcopy
 import json
 import math
 import xml.etree.ElementTree as ET
@@ -246,64 +245,19 @@ class Exporter:
         return f"url(#{ident})"
 
     def pathfinder(self, parent, layer):
-        from .render import transformed_size
+        """A boolean operation as one compound path: real geometry that every renderer fills the same
+        way. (Alpha masks were drawn wrongly by renderers without ``mask-type``, such as Inkscape.)
+        What cannot be combined as geometry is drawn as an image and listed as a raster fallback."""
+        from .pathfinder_geometry import Unsupported, path_data, pathfinder_commands
 
-        # SVG masks match opaque boolean operands. Translucent operands retain
-        # Vixl's alpha max/min/subtraction through the raster implementation.
-        for operand in layer["operands"]:
-            if (
-                operand["opacity"] != 1
-                or operand.get("effects")
-                or operand.get("mask")
-                or styles(operand)
-                or operand.get("repeat")
-                or operand.get("lookup")
-                or color(resolve_color(operand.get("fill", "white"), self.project.state))[3] != 255
-                or color(resolve_color(operand.get("stroke", "transparent"), self.project.state))[3]
-                not in (0, 255)
-            ):
-                return False
-        w, h = layer["width"], layer["height"]
-        sx, sy = w / layer["content_width"], h / layer["content_height"]
-        masks = []
-        for operand in layer["operands"]:
-            item = deepcopy(operand)
-            item.update(width=max(1, round(item["width"] * sx)), height=max(1, round(item["height"] * sy)))
-            item["x"], item["y"] = round(item["x"] * sx), round(item["y"] * sy)
-            ident = self.ident("operand")
-            mask = node(
-                self.defs,
-                "mask",
-                id=ident,
-                maskUnits="userSpaceOnUse",
-                x=0,
-                y=0,
-                width=w,
-                height=h,
-                mask_type="alpha",
-            )
-            g = node(
-                mask, "g", transform=self.transform(item, (item["x"], item["y"], *transformed_size(item)))
-            )
-            if not self.geometry(g, item):
-                return False
-            masks.append(ident)
-        ident = self.ident("boolean")
-        mask = node(self.defs, "mask", id=ident, maskUnits="userSpaceOnUse", x=0, y=0, width=w, height=h)
-        if layer["mode"] == "union":
-            for operand in masks:
-                node(mask, "rect", width=w, height=h, fill="white", mask=f"url(#{operand})")
-        elif layer["mode"] == "subtract":
-            node(mask, "rect", width=w, height=h, fill="white", mask=f"url(#{masks[0]})")
-            for operand in masks[1:]:
-                node(mask, "rect", width=w, height=h, fill="black", mask=f"url(#{operand})")
-        else:
-            current = mask
-            for operand in masks:
-                current = node(current, "g", mask=f"url(#{operand})")
-            node(current, "rect", width=w, height=h, fill="white")
-        fill, _ = paint(layer.get("fill", "white"), self.project.state)
-        node(parent, "rect", width=w, height=h, fill=fill, mask=f"url(#{ident})")
+        try:
+            commands = pathfinder_commands(layer, self.project.state)
+        except Unsupported as exc:
+            self.text_reasons[layer["id"]] = f"pathfinder cannot be exported as path geometry: {exc}"
+            return False
+        if commands:
+            fill, _ = paint(layer.get("fill", "white"), self.project.state)
+            node(parent, "path", d=path_data(commands), fill=fill, fill_rule="evenodd")
         return True
 
     def geometry(self, parent, layer):

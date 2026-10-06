@@ -7,8 +7,9 @@ paragraph alignment and spacing, and bullets or numbering; plain groups become g
 PowerPoint cannot draw the same way (effects, styles, masks, clipping, blend modes, paint and pixel
 art) become pictures of exactly what Vixl renders, listed under ``raster_fallbacks``; image layers
 are pictures anyway.
-Master-page layers are drawn on every slide that uses them. Fonts are referenced by family name;
-the report lists them so they can be installed where the deck is presented.
+Master-page layers are drawn on every slide that uses them. Fonts are referenced by family name and
+are not embedded (see ``Exporter.font_warnings``); the report lists them, and warns about each one
+that is not a font every Office installation has, so they can be installed where the deck is shown.
 """
 
 import io
@@ -25,6 +26,9 @@ NS = ('xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" '
 REL = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
 DOC_REL = "http://schemas.openxmlformats.org/package/2006/relationships"
 XML = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
+# Families PowerPoint, Keynote and Google Slides all have, so a deck using only these needs no warning.
+COMMON_FONTS = frozenset({"Arial", "Calibri", "Calibri Light", "Cambria", "Consolas", "Courier New", "Georgia", "Helvetica",
+                          "Impact", "Segoe UI", "Tahoma", "Times New Roman", "Trebuchet MS", "Verdana"})
 TRANSITIONS = {"fade": "<p:fade/>", "push": '<p:push dir="u"/>', "wipe": "<p:wipe/>", "cover": "<p:cover/>",
                "split": "<p:split/>", "zoom": "<p:zoom/>"}
 
@@ -178,6 +182,18 @@ class Slide:
             fill, line = self.gradient(layer, opacity), "<a:ln><a:noFill/></a:ln>"
         elif kind == "field":
             raise Unsupported("form field")
+        elif kind == "pathfinder":
+            from .design import resolve_color
+            from .pathfinder_geometry import Unsupported as NoGeometry, pathfinder_commands
+            from .render import color
+
+            try:
+                commands = pathfinder_commands(layer, self.view.state)
+            except NoGeometry as exc:
+                raise Unsupported(f"pathfinder: {exc}") from exc
+            geometry = self.custom_geometry(commands, (layer["width"], layer["height"]))
+            fill = self.fill((*color(resolve_color(layer.get("fill", "white"), self.view.state))[:3], 255), opacity)
+            line = "<a:ln><a:noFill/></a:ln>"
         else:
             from .render import rest_size
 
@@ -226,10 +242,15 @@ class Slide:
         if shape == "line":
             return '<a:prstGeom prst="line"><a:avLst/></a:prstGeom>'
         path, view = shape_path(layer)
+        return self.custom_geometry(parse_path(path), view)
+
+    @staticmethod
+    def custom_geometry(parsed, view):
+        """Custom geometry for path commands (M L C Q Z) in a ``view`` box; subpaths share one path."""
         scale = 100
         commands = []
         current = (0.0, 0.0)
-        for command, values in parse_path(path):
+        for command, values in parsed:
             pts = [(round(x * scale), round(y * scale)) for x, y in zip(values[0::2], values[1::2])]
             if command == "M":
                 commands.append(f'<a:moveTo><a:pt x="{pts[0][0]}" y="{pts[0][1]}"/></a:moveTo>')
@@ -452,6 +473,18 @@ class Exporter:
         self.fonts_used.add(self._families[key])
         return self._families[key]
 
+    def font_warnings(self):
+        """(families, warnings) for the fonts a deck needs that its viewers may not have.
+
+        PowerPoint embeds fonts as Embedded OpenType parts (``ppt/fonts/*.fntdata`` listed in
+        ``p:embeddedFontLst``). Vixl does not write them: only PowerPoint itself decides whether such
+        a part is acceptable (python-pptx ignores it), and a malformed one makes PowerPoint offer to
+        repair the file. A missing font is substituted, which moves text, so each one is named."""
+        families = sorted(self.fonts_used - COMMON_FONTS)
+        return families, [
+            f"Font {family!r} is not embedded in the PPTX (Vixl cannot embed fonts in PowerPoint files): install it "
+            "wherever the deck is opened, or share the PDF, which embeds its fonts" for family in families]
+
     def _registered(self, font):
         from .richtext import _registered_name
 
@@ -480,21 +513,24 @@ class Exporter:
         return font
 
 
-def emu_per_pixel(canvas):
-    if canvas.get("dpi"):
-        return 914400 / canvas["dpi"]
-    # Screen documents: 7.5 inches tall, the height of PowerPoint's standard 16:9 and 4:3 slides.
-    return 6858000 / canvas["height"]
+def emu_per_pixel(canvas, dpi=None):
+    """EMU per canvas pixel: an explicit ``dpi``, else the canvas dpi, else a screen document is a
+    standard slide, 7.5 inches tall (``deck_dpi``; the PDF of a multi-page document uses the same)."""
+    from .pdf_export import deck_dpi
+
+    return 914400 / (dpi or canvas.get("dpi") or deck_dpi(canvas))
 
 
-def export_pptx(project, path=None, *, pages=None, report=None):
-    """Write a .pptx with one slide per page. Returns the bytes."""
+def export_pptx(project, path=None, *, pages=None, dpi=None, report=None):
+    """Write a .pptx with one slide per page. Returns the bytes. ``dpi`` sets the pixels per inch
+    of the slides (default: the canvas dpi, or 7.5 inches tall for a screen canvas)."""
     from .deck import title_layer
+    from .model import finite
     from .pdf_export import page_views
     from .render import resolve_layout, resolved_layers
 
     canvas = project.state["canvas"]
-    emu = emu_per_pixel(canvas)
+    emu = emu_per_pixel(canvas, finite(dpi, "dpi", 36, 2400) if dpi else None)
     cx, cy = round(canvas["width"] * emu), round(canvas["height"] * emu)
     require(914400 <= cx <= 51206400 and 914400 <= cy <= 51206400,
             "PowerPoint slides must be 1–56 inches on each side; give the canvas a dpi", field="canvas")
@@ -540,9 +576,14 @@ def export_pptx(project, path=None, *, pages=None, report=None):
             archive.writestr(info, data)
     data = stream.getvalue()
     if report is not None:
-        report.update(slides=len(slides), fonts=sorted(exporter.fonts_used),
+        report.update(slides=len(slides), page_size={"width": round(cx / 914400, 3), "height": round(cy / 914400, 3),
+                                                    "unit": "in"},
+                      fonts=sorted(exporter.fonts_used),
                       raster_fallbacks={str(i): s.fallbacks for i, (_, s) in enumerate(slides, 1) if s.fallbacks},
                       notes=sum(1 for n in notes if n))
+        families, warnings = exporter.font_warnings()
+        if warnings:
+            report.update(fonts_not_embedded=families, warnings=warnings)
     if path:
         Path(path).write_bytes(data)
     return data
