@@ -301,7 +301,10 @@ Times are milliseconds. Shots accept still images, `.vixl` timelines and MP4/Web
 clips. `.vixl` shots also accept variables/artboard. Sources are fitted to the output;
 still/document aspect mismatches use a centered crop, video clips are letterboxed.
 Camera poses are normalized center-x/center-y plus zoom (1–16); motion interpolates
-linearly. `transition` is incoming crossfade duration (0–2000ms). Transitions overlap
+linearly. A zoomed shot stays sharp: its source is drawn up to its closest zoom times larger
+(`.vixl` documents re-render at that scale, images and clips are fitted from their full
+resolution), at most 4x and within the pixel budget, and the camera window is cut from
+that. `transition` is incoming crossfade duration (0–2000ms). Transitions overlap
 shot durations and cannot create a three-shot overlap. Captions use global film time.
 Clip audio is not implicitly retained: add explicit audio tracks to control the mix.
 The mix is written at the highest source sample rate (up to 48 kHz; 48 kHz for synthesized

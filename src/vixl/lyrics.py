@@ -59,7 +59,7 @@ RECORD = "lyric_build"  # The document state key that records how a build was ma
 REQUEST_FIELDS = {
     "audio", "lyrics", "template", "build", "output", "fps", "quality", "offset", "lead", "gap",
     "max_hold", "animation", "cue_animation", "next_line", "camera", "start", "end", "check", "replace",
-    "rebuild", "width", "height", "sample_rate", "section_styles",
+    "rebuild", "width", "height", "sample_rate",
 }
 
 
