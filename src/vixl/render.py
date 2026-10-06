@@ -1453,6 +1453,12 @@ def export(
         if path:
             Path(path).write_bytes(data)
         return data
+    if (format or "").upper() == "PSD" or suffix == ".psd":
+        require(not (pages or artwork), "PSD export writes one page in RGB; profile, artboard, "
+                "comp, proof, simulate, CMYK and pages do not apply", field="format")
+        from .psd_export import export_psd
+
+        return export_psd(project, path, page=page, variables=variables, report=report)
     if (format or "").upper() == "PPTX" or suffix == ".pptx":
         from .pptx_export import export_pptx
 

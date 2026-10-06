@@ -273,7 +273,7 @@ PDF export is vector by default (also with `color_space="cmyk"`); the export res
 name the fonts that are not embedded and must be installed where the deck is opened (`fonts_not_embedded`).
 
 REST: `POST /export` accepts `page`, `pages`, `pdf_content`, `fillable`, `values`, `fill_mode` and
-`presenter` (HTML slide presentation options) and format `PPTX`; `POST /preview` accepts `guides`, `page`, `values` and `show_fields`; the fixed
+`presenter` (HTML slide presentation options) and formats `PPTX` and `PSD` (layered, see [exporting](exporting.md#layered-psd-for-designer-handoff)); `POST /preview` accepts `guides`, `page`, `values` and `show_fields`; the fixed
 project's workflow routes include `lyric-video-plan`, `organic-catalog`, `form-fill` and
 `drawing-report`.
 

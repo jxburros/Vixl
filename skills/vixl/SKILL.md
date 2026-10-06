@@ -197,6 +197,7 @@ If found, prepend its folder to PATH for this session — see
    WCAG contrast of a text layer), `vixl_measure_spacing` / `vixl spacing` (gaps),
    `vixl_validate` / `vixl validate` (bounds, aspect ratios, assertions).
 8. **Fix with targeted edits or `undo`**, then **export** (`vixl_export_file` / `vixl export`).
+   A `.psd` path writes a layered Photoshop handoff file (one pixel layer per layer, groups kept, text as pixels).
 
 ## 3. Minimal examples
 
@@ -328,6 +329,8 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
   `targets`. Keep GIFs small with `colors` and a lower `fps`.
 - **Animate with `translate-x/y` and `scale`** so constrained layouts keep working; the saved document
   is the frame at rest, and `time=` previews or exports a moment.
+- **Kinetic type** is `text-animate` on the text layer (`unit: char|word|line`, `preset: fade-up|pop|wave|typewriter|color-sweep …`,
+  `stagger`, `direction`), not one layer per letter: the text stays editable and stills show it at rest.
 - **Draw a line on** with `animate-preset draw-on` (or animate `trim_end` 0→100 on a `shape`/`pen` stroke;
   `line_cap: "round"` for a round tip). **Swing a layer over** with a negative `scale-x`/`scale-y`
   (`1` → `-1`). A key past the timeline end lengthens it and the result's `warnings` say so
@@ -341,7 +344,8 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
   automatically, so long sessions never lock. Pixel-art frames ≤ 256×256, ≤ 256 frames; timelines
   ≤ 10 min, 60 fps, 3 600 frames; 4 096 strokes per paint layer.
 - **Not supported** (don't promise them): arbitrary SVG import, path arcs/multiple contours,
-  skew/perspective, CMYK *editing* or spot colors, live tablet input, audio, RAW, PSD/XCF import, GUI.
+  skew/perspective, CMYK *editing* or spot colors, live tablet input, audio, RAW, PSD/XCF import (PSD *export*
+  is layered pixels: text is not editable type), GUI.
 
 ## 5. Feature map (where to look)
 
@@ -358,7 +362,7 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
 | Decoration | `layer-style` (drop-shadow, stroke, outer-glow, color-overlay, gradient-overlay), `look` (named finishes: glow, neon, soft-shadow, hard-shadow, outline, gradient, grain, paper, film, duotone, risograph, sketch, watercolor, halftone), `repeat`, `repeat-blend`, `radial-repeat` (copies around a center, optional mirror), `pathfinder` |
 | Templates | `variable`, `replace-contents`, `comp-save`/`comp-apply`, CSV `render --data`, `export-screens` |
 | Painting | `paint` (17 brushes, points or SVG path, pressure, erase), `paint-clear`, `brush-define` |
-| Motion | `timeline-set`, `keyframe`, `keyframe-remove`, `animate`, `animate-preset`, `marker`; `vixl_timeline_preview`, `vixl_export_timeline` |
+| Motion | `timeline-set`, `keyframe`, `keyframe-remove`, `animate`, `animate-preset`, `text-animate` (per char/word/line), `marker`; `vixl_timeline_preview`, `vixl_export_timeline` |
 | Pixel art & sprite frames | `pixel-art`, `pixel-draw`, `pixel-palette`, `frame-save/apply/delete`, `animation-set` (`name`+`order`: named animations, each exportable alone with `animation=`), `frames-edit` (one edit applied to every saved frame), `export-animation` (GIF/APNG/WebP/MP4/sheet) |
 | Color & print | color language in every color field, `vixl_color`, CMYK/PDF/ICO export, `vixl_export_icons`, proof/simulate previews, `print`/`color_vision` checks |
 | History | undo/redo, checkpoint, branch, checkout, compare, transactions |

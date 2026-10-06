@@ -218,9 +218,10 @@ def summarize(project, target=None):
             result[key] = sorted(state[key])
     if state.get("selection"):
         result["selection"] = True
-    if state.get("timeline", {}).get("tracks"):
+    if state.get("timeline", {}).get("tracks") or state.get("timeline", {}).get("text_animations"):
         timeline = state["timeline"]
-        result["timeline"] = {"duration": timeline["duration"], "fps": timeline["fps"], "tracks": len(timeline["tracks"])}
+        result["timeline"] = {"duration": timeline["duration"], "fps": timeline["fps"], "tracks": len(timeline["tracks"]),
+                              **({"text_animations": len(timeline["text_animations"])} if timeline.get("text_animations") else {})}
     if state.get("brushes"):
         result["brushes"] = sorted(state["brushes"])
     if state.get("animation", {}).get("frames"):

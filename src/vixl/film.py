@@ -193,7 +193,7 @@ def frames(spec, root, *, limits=None, cancelled=lambda: False, streamed=False,
            start_frame=0, end_frame=None, region=None):
     from .project import Project
     from .render_cache import enable
-    from .timeline import project_at
+    from .timeline import animated as timeline_animated, project_at
     from .proxy import render_preview
     from .assets import decode, read_bounded
 
@@ -239,7 +239,7 @@ def frames(spec, root, *, limits=None, cancelled=lambda: False, streamed=False,
                 if i in clips:
                     image = next(clips[i])
                 elif isinstance(source, Project):
-                    animated = bool((source.state.get("timeline") or {}).get("tracks") or
+                    animated = bool(timeline_animated(source.state.get("timeline")) or
                                     source.state.get("camera") or source.state.get("stop_motion") or
                                     any("particle" in layer for layer in source.state["layers"]))
                     candidate = project_at(source, shot.get("trim", 0) + local * 1000 / settings["fps"]) if animated else source

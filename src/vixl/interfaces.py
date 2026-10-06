@@ -525,6 +525,7 @@ def create_app(path, *, token=None, limits=None):
             "PDF": "application/pdf",
             "ICO": "image/x-icon",
             "PPTX": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            "PSD": "image/vnd.adobe.photoshop",
         }
         require(fmt in media, "Unsupported export format")
         body = dict(body)

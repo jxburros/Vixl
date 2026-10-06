@@ -21,6 +21,7 @@ EDITING = (
     "keyframe-remove",
     "animate",
     "animate-preset",
+    "text-animate",
     "marker",
     "palette-generate",
     "type-scale",
@@ -251,6 +252,27 @@ def compile_feature(cmd, args):
         p.add_argument("--to")
         p.add_argument("--no-fade", dest="fade", action="store_false", default=None)
         p.add_argument("--no-extend", dest="extend", action="store_false", default=None, help="Keep the timeline duration when a key lies past its end")
+    elif cmd == "text-animate":
+        p.add_argument("target", help="Text layer, or several comma-separated layers")
+        p.add_argument("preset", nargs="?")
+        p.add_argument("--unit", choices=["char", "word", "line"])
+        for key in ("start", "duration", "stagger"):
+            p.add_argument("--" + key, type=_time)
+        p.add_argument("--easing")
+        p.add_argument("--direction", choices=["forward", "reverse", "center", "edges", "random"])
+        p.add_argument("--seed", type=int)
+        p.add_argument("--mode", choices=["in", "out", "in-out"])
+        for key in ("distance", "amount", "rotate"):
+            p.add_argument("--" + key, type=float)
+        p.add_argument("--from", dest="from_")
+        p.add_argument("--repeat", action="store_true", default=None)
+        p.add_argument("--remove", action="store_true", default=None)
+        p.add_argument("--no-extend", dest="extend", action="store_false", default=None, help="Keep the timeline duration")
+        data = vars(p.parse_args(args))
+        if data.get("from_") is not None:
+            data["from"] = data["from_"]
+        data.pop("from_", None)
+        return _targets({"type": cmd, **{k: v for k, v in data.items() if v is not None}})
     elif cmd == "marker":
         p.add_argument("name")
         p.add_argument("time", nargs="?", type=_time)
