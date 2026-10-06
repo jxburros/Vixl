@@ -88,6 +88,7 @@ def test_stack_and_hide_if_empty_through_mcp(server, tmp_path):
 def test_roll_apply_passes_check_with_unfilled_omit(server, monkeypatch):
     def fake_pair(project, pairing=None, **kwargs):  # Skip the font download; the proofing font will do.
         project.state["typography"] = {"body": "DejaVuSans.ttf", "heading": "DejaVuSans.ttf"}
+        return {"origin": "cache", "heading": {"name": "DejaVuSans.ttf"}, "body": {"name": "DejaVuSans.ttf"}}
 
     monkeypatch.setattr("vixl.typefaces.pair_fonts", fake_pair)
     ok(server, "vixl_document_create", {"path": "b.vixl", "width": 800, "height": 800})
