@@ -8,6 +8,79 @@
 - **Exact print PDF pages with TrimBox and BleedBox.** Single-page documents created from a print size now export through Vixl's own PDF writer, like multi-page documents, so they get a TrimBox and BleedBox (Pillow's PDF encoder wrote neither). The page measures exactly trim + 2 × bleed from the size's physical dimensions even when the bleed is a fractional number of pixels: an 11 × 17 in poster with 0.125 in bleed at 300 dpi is 810 × 1242 pt with a 9 pt TrimBox inset, not 810.24 × 1242.24 pt. An explicit `dpi` other than the canvas dpi still maps pixels to points at that dpi.
 - `form-fill` accepts `combine: true` (writes `<data>-filled.pdf` beside the CSV, or to `output` when it is a `.pdf`) and rejects wrongly typed fields with a structured error naming the field, the expected type and example values, instead of a raw Python error.
 - `vixl_workflow_schema` reports each action's field `properties` (types, enums, descriptions; fully for `form-fill`), and the `field`, `field-set` and `form` operations' schemas give every setting a type and description.
+- **CMYK PDFs keep vectors.** Text, shapes, paths and gradients stay vector in DeviceCMYK through the same separation as CMYK images; only effects and images become CMYK images.
+- Deck PDF pages match PPTX slides (7.5 in tall for a screen canvas) and `dpi` sizes both. A PPTX names the fonts it does not embed (`warnings`, `fonts_not_embedded`); the fonts themselves are not embedded.
+- Pathfinder booleans export as real geometry in SVG, PDF and PPTX (one compound path with `evenodd` fill, no alpha masks), so they render the same in browsers and Inkscape.
+
+### Behavior changes
+
+- **PDF export is vector by default for every document** (it was a single image for plain single-page documents). `pdf_content="raster"` still flattens, and the export result reports `content`, `content_reason`, `color_space` and `page_size`. Photo-heavy pages are larger than the old JPEG output because images are stored with Flate.
+- **MCP `vixl_operations_apply` and `vixl_text_add` return `detail: brief` by default** (IDs, names, bounds and warnings of changed layers). `compact` and `full` still return more; CLI, REST and Python defaults are unchanged.
+- **`resize` with only a width or only a height changes only that side** (imported images stay proportional by default; `keep_aspect` chooses explicitly).
+- **Drawing `straighten` keeps each line at its drawn angle** by default (`angles: "drawn"`); pass `"axes"`, `"45"`, `"guides"` or a list to snap.
+- **A keyframe past the end of the timeline reports the change** (`timeline duration changed 8000 -> 8400 ms`) instead of lengthening it silently.
+
+### Text, fonts and rich text
+
+- Operation batches over MCP and REST accept `font` (a registered name or the `heading`/`body` role) on `text`, `text-set`, `layout-apply`, fields and rich-text spans; a file path is refused with a pointer to `vixl_font_install`, `vixl_font_pair` and `vixl_import_font`.
+- `text-set` on a rich-text layer keeps bullets, spacing and span styles where they still apply and reports what it dropped under `warnings`. `text-set` and `text-style` explain their split in the schema and tool help, and a rangeless `text-style` that only sets color, size or font acts as `text-set`.
+- The `fonts` check no longer flags rich text whose spans set their own font, and checks fallback glyphs against each span's font. `${variables}` inside a rich-text span (page numbers, for example) keep that span's font and formatting in PNG, SVG, PDF and PPTX.
+- `font_install` and `font_pair` results report where a font came from (cache or download, URLs, cache file, whether `VIXL_FONT_CACHE` chose it) and the embedded file.
+
+### Layers, layouts and variable content
+
+- `shape`, `solid`, `gradient` and `text` given a `target` edit that layer in place (same ID, order and effects); a target of the wrong kind is rejected naming the operation to use.
+- Text takes `hide_if_empty`, and the new `stack` operation lays a group out as a row or column that reflows and re-centres around hidden or empty members, so a CSV row without a company line no longer leaves a gap.
+- `roll`/`vixl_roll` take `unfilled` (default `omit` when slots are given), so an applied roll passes `check` without a second layout pass.
+- `edit-layers` applies a change or an operation to every layer matching a selector (role, name, kind, tag, text); `layer-intent` takes `tags`. `adapt-layout` without `targets` re-lays a document out at another size (proportional, reports each layer's move), and `vixl_adapt_layout` does several sizes in one call.
+
+### Animation, timeline and lyric videos
+
+- Named animations: `animation-set` with `name`, `order`, `duration`/`durations`, `loop` and `delete` defines subsets of saved frames with their own order and timing; `export-animation --animation NAME` exports one on its own, and sprite-sheet JSON lists `animations`. `export-animation` also writes `webp`, `mp4` and `webm` (`quality`).
+- `frames-edit` applies a list of operations to every saved frame, a named animation's frames or chosen frames, atomically (a shared recolour is one call; frames are still stored as full snapshots).
+- Keyframes accept `extend: false` to keep the duration. Negative `scale`, `scale-x` and `scale-y` mirror a layer and animate (a beam can swing through a flip); `scale` takes per-axis `x` and `y`.
+- Animatable `trim_start` and `trim_end` (0-100 %) and `line_cap` on shape and pen strokes, with `draw-on` and `draw-off` presets: stills, GIF/MP4 and SVG draw the stroke on; PDF and PPTX rasterize the layer and say so.
+- Lyric video: an empty timestamp also clears the next-line preview, identical consecutive lines hold instead of re-fading, `cue_animation` fades, slides or sweeps `cue-*` layers, and `lyric-video-export` keeps hand edits to an existing build (`rebuild: true` rebuilds; `build_stale` is raised if the options changed under hand edits).
+
+### Shapes, organic forms and imperfection
+
+- `organic` presets follow `stroke` and `stroke_width` on every output (shell chambers, leaf veins, feather barbs), including when regrowing, and take `fill`.
+- `shape: arc` draws pie wedges, donut segments and rings (`start_angle`, `end_angle`, `inner_radius`) in PNG, SVG, vector PDF and PPTX; `vixl.wedge.wedge_path` is the reusable geometry.
+- Opt-in imperfection ([docs](docs/irregular.md)): `irregular` (seeded wobble, vertex jitter, stroke-weight and pressure variation, color drift, micro placement) and `tear` (fractal torn edge with a paper rim and fibres, as a mask, clip or path), for characters, hand-made looks and ripped paper, not for logos or anything that must align.
+- `look` applies one of 14 named finishes (glow, drop shadow, grain, paper texture ...) in one operation; `radial-repeat` makes rosettes and mandalas in one step.
+
+### Photos, drawings and previews
+
+- `denoise` effect: edge-preserving non-local-means noise reduction with separate luminance and chroma strengths and a `search` window; non-destructive, NumPy and Pillow only (about 1 s per megapixel at the default).
+- Drawing import flattens a page photographed at an angle (paper detection and perspective correction; `perspective: false` skips it) and takes `color` for the line colour (default `#1d1d1f`, now documented). Gap closing runs after straightening and makes sharp corners and T joins (`close_gaps` accepts `"auto"`), and `vectorize`/`restyle` take `width: "uniform"` or a number; stroke widths are measured from ink area.
+- Reduced previews snap layer and repeat edges to whole pixels, so repeated tiles no longer show seams the export lacks.
+
+### Forms
+
+- Signature fields can be `required` (signed in the viewer; fills never need them) and multiline fields take `max_length`. Validation rules (`format` email, digits, number decimals and range, date display, and a text `pattern` with `message`) are exported to fillable PDFs as AFNumber/AFRange/AFDate and JavaScript field actions, and every page with fields declares `/Tabs /S`.
+- `vixl_render_preview(values=...)`, enlarged exports and page contact sheets draw field values like the filled export (they were oversized and clipped). The `vixl_check` form worst-case reports what it measured (`measured`, plus `max_length_that_fits`), and its multiline sample now wraps so an unfixable overflow can no longer appear.
+
+### Charts
+
+- `chart` and `chart-data` ([docs](docs/charts.md)): bar, stacked, 100 %, horizontal, line, area, pie and donut charts from an inline table or a workspace CSV, drawn as a group of vector layers. Editing the data keeps layer IDs (the group stores totals, shares and scale), `check` sees inside charts, and PPTX export writes native, editable charts with an embedded data table.
+
+### Linked documents and data merge
+
+- Linked-document layers ([docs](docs/linked-documents.md)): `link`, `link-refresh`, `link-embed`, `vixl links` and the `links` check draw another `.vixl` live with fit, position, crop, artboard, page and variables. Changes to the source show at the next render, with stale and missing reporting, cycle and depth checks, vector text in PDF, and links confined to the workspace over MCP and REST.
+- `merge-impose` / `vixl merge` ([docs](docs/imposition.md)): CSV rows laid out on print sheets with gutters, bleed, crop and registration marks and slug text, as a vector-text PDF and an editable sheet of live links. Rows are validated first and the merge can be rerun. Vector PDF export with many glyphs is several times faster.
+
+### HTML presenter
+
+- `export deck.html` of a multi-page document is a self-contained slide presentation ([docs](docs/presenter.md)) with inline vector slides, keyboard, click, swipe and `#3` navigation, an overview grid, CSS transitions from the page settings, one-slide-per-page printing and a speaker view with notes and timer. `--presenter`, `--no-presenter`, `--presenter-theme`, `--slide-images svg|png`, `--start-slide` and `--no-notes` configure it; slides SVG cannot express are listed under `raster_fallbacks`.
+
+### MCP server and agent experience
+
+- Every MCP tool runs in a worker thread. A call still running after 40 s (`VIXL_MCP_INLINE_SECONDS`) becomes a job, `as_job` starts one at once, and `vixl_job` polls, waits, returns results or cancels. Operation batches, timeline frames and export targets send progress notifications, and `request_id` on mutating tools makes a retried call replay the recorded result instead of applying twice.
+- The active document is per MCP client session (a stdio server has one session, so subagents sharing one still share it); `vixl mcp --require-document` / `VIXL_REQUIRE_DOCUMENT=1` makes `document=` mandatory, every result names its document, and arguments a tool does not take are reported.
+- Apply results carry `warnings` for text cut off by the canvas or overflowing its box and for fields that were accepted but changed nothing; schema errors end with a pointer to `vixl_operation_schema` and list the accepted fields. `document_create` and exports create missing directories; `vixl_export_batch` writes several targets in one call.
+- Every operation has a one-line description, typed and described fields and, for the common ones, examples; every workflow action has a summary and typed, described fields, and the check-suite object is typed. A lint test enforces this. The MCP `tools/list` inline operation schema grew from about 35.7k to about 45k characters with the new operations (`--schema slim` advertises names only).
+- `vixl_guide` maps a brief (icon, character, scene, pattern, mandala, logo, diagram ...) to operations, layouts, looks and styles, and the server instructions and skill open with a start-here recipe. Image slots list `fill_with` options and `layout-apply` returns `next_steps`; `layout-apply` and `palette-apply` explain how roles were assigned and take `keep_order` and `roles`; check findings carry `action` (`fix`, `review`, `informational`) and `layer-intent allow_crop` marks an intentional crop.
+- Design styles ([docs](docs/styles.md)): 28 styles (swiss, brutalist, art deco, kawaii ...) with guidance and premade checks, `style-set`, `check --checks style` and `vixl_styles`.
 
 ## 0.18.0
 
