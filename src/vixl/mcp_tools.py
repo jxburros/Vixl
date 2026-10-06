@@ -318,6 +318,27 @@ def is_ai_tool(name):
     return name.startswith("vixl_ai_") or name == "vixl_models_list"
 
 
+# Tools that were removed, with what replaces them, so an agent following old instructions recovers in one call.
+REMOVED_TOOLS = {
+    "vixl_text_add": "vixl_text_add was removed in 0.21.0: add text with a 'text' operation in vixl_operations_apply, "
+                     "e.g. operations=[{type: 'text', text: 'Hello', x: 'center', y: 100, size: 64, font: 'heading'}]",
+}
+
+
+def unknown_tool_message(name, tools, defined):
+    """The error for a call to a tool this server does not serve: the replacement of a removed tool, the
+    server mode that serves it, or the closest names."""
+    import difflib
+
+    if name in REMOVED_TOOLS:
+        return f"Unknown tool: {name}. {REMOVED_TOOLS[name]}"
+    if name in defined:
+        mode = "ai" if is_ai_tool(name) else "core"
+        return f"Unknown tool: {name}. This server runs --tools {tools}; {name} is served by vixl mcp --tools {mode}."
+    close = difflib.get_close_matches(name, sorted(defined), n=3)
+    return f"Unknown tool: {name}." + (f" Did you mean {', '.join(close)}?" if close else "")
+
+
 def build_server(session, *, schema="full", planner=False, tools="all"):
     """Create the FastMCP server. ``schema='slim'`` advertises only operation type names (fetch
     fields with vixl_operation_schema); ``planner`` exposes the provider-backed planning tool,
@@ -373,11 +394,22 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
 
     runtime = Runtime(session, compact_json, ToolError, poll_with_workflow=tools == "compact")
     server.vixl_runtime = runtime
+    defined = set()
+    manager = server._tool_manager
+    serve_call = manager.call_tool
+
+    async def call_tool(name, arguments, context=None, convert_result=False):
+        if manager.get_tool(name) is None:
+            raise ToolError(unknown_tool_message(name, tools, defined))
+        return await serve_call(name, arguments, context=context, convert_result=convert_result)
+
+    manager.call_tool = call_tool
 
     def tool(fn):
         """Register a tool returning minified JSON, with structured errors. It runs in a worker
         thread with progress, background jobs and retry ids (mcp_runtime.py)."""
         wrapper = runtime.wrap(fn)
+        defined.add(fn.__name__)
         if selected(fn.__name__):
             server.tool(structured_output=False)(wrapper)
         return wrapper

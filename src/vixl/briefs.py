@@ -437,6 +437,12 @@ def guide(brief=None, *, seed=None, variety=None, workspace=None):
                 "next": "vixl_operation_schema(types=[…]) gives each operation's fields, a summary and examples"}
     if key in ("start-here", "start", "recipe"):
         return {"start_here": START_HERE}
+    if key == "capabilities" or key.startswith("capabilities-"):
+        topic = brief.strip()[len("capabilities"):].strip(" :")
+        call = f"vixl_capabilities(topic={topic!r})" if topic else "vixl_capabilities()"
+        raise VixlError("moved", f"vixl_guide('capabilities …') was removed in 0.21.0: call {call} (CLI: vixl "
+                                 f"capabilities {topic or 'TOPIC'}) for fields and gotchas; vixl_guide takes a kind of work "
+                                 "or a brief.", field="brief", suggestions=[call])
     if key == "looks":
         from .looks import catalog
 
