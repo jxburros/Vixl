@@ -199,7 +199,7 @@ vixl info --region X Y W H --foreground '#ffffff' [--background white]   # WCAG 
 vixl info --target title                             # contrast of a rendered layer vs what's beneath
 vixl spacing --targets heading body footer --axis vertical --tolerance 1 [--expected 24] [--check]
 vixl spacing --around body --before heading --after footer
-vixl check [--safe-area 5%] [--avoid X Y W H] [--thumbnail-width 320] [--checks overlap contrast] [--strict]
+vixl check [--safe-area 5%] [--avoid X Y W H] [--thumbnail-width 320|off] [--checks overlap contrast] [--strict]
 vixl validate [instagram-post|instagram-square|story|youtube-thumbnail] [--rules rules.json]
 vixl assert canvas.width == 1920
 vixl assert layer.logo.exists

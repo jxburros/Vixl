@@ -81,7 +81,7 @@ Without a profile, CMYK uses a predictable device-naive separation with gray-com
 
 ## Accessibility and color vision
 
-`--simulate protanopia|deuteranopia|tritanopia|achromatopsia` (CLI export/render), `simulate=` (MCP preview/export) and `vixl check --checks color_vision` use Machado et al. (2009) matrices to show or detect text whose contrast collapses for color-blind readers. Fix such text with a lightness difference, not a different hue.
+`--simulate protanopia|deuteranopia|tritanopia|achromatopsia` (CLI export/render), `simulate=` (MCP preview/export) and `vixl check --checks color_vision` use Machado et al. (2009) matrices to show or detect text whose contrast collapses for color-blind readers, and chart series whose colors merge (mark a chart that also uses labels or patterns with `layer-intent color_vision_safe`). Fix such text with a lightness difference, not a different hue.
 
 ## Boundaries
 

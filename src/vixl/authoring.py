@@ -25,7 +25,7 @@ def schemas(add):
                          "allow_overlap": {"type": "array", "items": S, "maxItems": 512},
                          "tags": {"type": "array", "items": S, "maxItems": 32,
                                   "description": "Labels (replacing the layer's tags) that edit-layers can select with where.tag"},
-                         "allow_crop": B}, ["target"])
+                         "allow_crop": B, "color_vision_safe": B}, ["target"])
     add("font-fallbacks", {"fonts": {"type": "array", "items": S, "maxItems": 16}}, ["fonts"])
 
 
@@ -126,6 +126,12 @@ def execute(project, op):
                 layer["tags"] = sorted(set(op["tags"]))
             else:
                 layer.pop("tags", None)
+        if "color_vision_safe" in op:
+            # Series that also differ by labels or patterns: the color-vision check skips this chart.
+            if op["color_vision_safe"]:
+                layer["color_vision_safe"] = True
+            else:
+                layer.pop("color_vision_safe", None)
         if "allow_crop" in op:
             # A deliberate bleed or crop: checks report it as informational instead of a problem.
             if op["allow_crop"]:

@@ -85,7 +85,7 @@ def top_level_contrast(project, targets):
     target. Drawing the stack once and keeping each target's box just before and after it is
     composited gives the same two images for every target. Failures are returned as errors."""
     from .design import resolve_color
-    from .render import layer_image, render_layers, resolve_layout, resolved_layers
+    from .render import layer_image, pixel_box, render_layers, resolve_layout, resolved_layers
 
     layers = {item["id"]: item for item in resolved_layers(project)}
     bounds = resolve_layout(project, layers=list(layers.values()))
@@ -95,13 +95,14 @@ def top_level_contrast(project, targets):
     def observer(ident):
         def observe(before, after):
             try:
+                left, top, right, bottom = pixel_box(bounds[ident], (canvas["width"], canvas["height"]))
+                require(right > left and bottom > top, "Region must be within canvas")
                 x, y, w, h = bounds[ident]
-                require(
-                    w > 0 and h > 0 and x >= 0 and y >= 0 and x + w <= canvas["width"] and y + h <= canvas["height"],
-                    "Region must be within canvas",
-                )
-                coverage = layer_image(project, layers[ident], bounds[ident]).getchannel("A")
-                results[ident] = target_contrast(layers[ident], after, before, coverage, origin=(x, y))
+                tile = layer_image(project, layers[ident], bounds[ident]).getchannel("A")
+                # The tile is cut to the same whole-pixel box as the before/after crops.
+                coverage = Image.new("L", (right - left, bottom - top))
+                coverage.paste(tile, (math.floor(x + 1e-8) - left, math.floor(y + 1e-8) - top))
+                results[ident] = target_contrast(layers[ident], after, before, coverage, origin=(left, top))
             except Exception as exc:  # Reported per target, like a failed measure() call.
                 results[ident] = exc
 
