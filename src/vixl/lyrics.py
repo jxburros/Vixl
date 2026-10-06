@@ -59,7 +59,7 @@ RECORD = "lyric_build"  # The document state key that records how a build was ma
 REQUEST_FIELDS = {
     "audio", "lyrics", "template", "build", "output", "fps", "quality", "offset", "lead", "gap",
     "max_hold", "animation", "cue_animation", "next_line", "camera", "start", "end", "check", "replace",
-    "rebuild", "width", "height",
+    "rebuild", "width", "height", "sample_rate", "section_styles",
 }
 
 
@@ -413,6 +413,8 @@ def _settings(request, template):
         require(isinstance(value, int) and 16 <= value <= 4096, f"{key} must be 16–4096 pixels", field=key)
     for key in ("next_line", "check", "rebuild"):
         require(isinstance(request.get(key, True), bool), f"{key} must be true or false", field=key)
+    from .audio import check_rate
+    check_rate(request.get("sample_rate"))
     camera = request.get("camera")
     if camera is not None:
         require(isinstance(camera, dict) and set(camera) <= {"from", "to"}, "camera takes from and to poses", field="camera")
@@ -852,6 +854,7 @@ def film_spec(request, report):
         "quality": request.get("quality", "final"),
         "shots": [shot],
         "audio": [{"source": request["audio"], "start": 0, "trim": report["start"], "volume": 1}],
+        **({"sample_rate": request["sample_rate"]} if request.get("sample_rate") is not None else {}),
     }
 
 

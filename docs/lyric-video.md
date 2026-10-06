@@ -156,6 +156,7 @@ not a one-time `x: "center"`, so it stays centred when the variables are filled 
 | `camera` | none | A slow camera move over the whole video, as film-export camera poses `[x, y, zoom]`. |
 | `start`, `end` | 0, song length | Render only part of the song. Audio is trimmed to match. |
 | `width`, `height` | template canvas | Video size. |
+| `sample_rate` | the song's, up to 48000 | Audio rate in Hz (8000–96000). WebM uses the nearest Opus rate at or above it. The result's `video` reports `sample_rate` and `channels`. |
 | `check` | false | Run the design checks on one frame per unique line and return the findings. |
 | `replace` | false | Allow `output` to replace an existing file, and `lyric-video-build` (or an export that has to build again) to replace `build`. |
 | `rebuild` | false | Export only: build `build` again from the template and LRC even though it exists, discarding hand edits in it. |

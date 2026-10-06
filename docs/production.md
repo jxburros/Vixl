@@ -304,6 +304,9 @@ Camera poses are normalized center-x/center-y plus zoom (1–16); motion interpo
 linearly. `transition` is incoming crossfade duration (0–2000ms). Transitions overlap
 shot durations and cannot create a three-shot overlap. Captions use global film time.
 Clip audio is not implicitly retained: add explicit audio tracks to control the mix.
+The mix is written at the highest source sample rate (up to 48 kHz; 48 kHz for synthesized
+tracks), mono when every source is mono and unpanned; `sample_rate` (Hz) on the spec chooses
+another. The result reports `sample_rate` and `channels`.
 
 Limits: 100 shots, 1,000 captions, eight audio tracks, 3,600 frames, ten minutes, 60fps.
 MP4/WebM, clip decoding and audio mixing require ffmpeg on PATH. ZIP exports stream PNG

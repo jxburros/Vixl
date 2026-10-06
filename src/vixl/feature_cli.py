@@ -342,6 +342,7 @@ def project_feature(project, cmd, args):
         p.add_argument("--dither", choices=["auto", "none", "ordered", "floyd"], default="auto", help="GIF dithering (shared palette)")
         p.add_argument("--max-bytes", type=int, help="Soft size target: warn when the file is larger")
         p.add_argument("--poster", type=_time, help="Time/marker/'end' whose frame comes first (GIF/WebP/APNG)")
+        p.add_argument("--sample-rate", type=int, help="MP4/WebM audio rate in Hz (default: highest source rate up to 48000)")
         p.add_argument("--overwrite", action="store_true")
         p.add_argument("--progress", action="store_true", help="Write frame progress to stderr")
         a = p.parse_args(args)
@@ -361,6 +362,7 @@ def project_feature(project, cmd, args):
             dither=a.dither,
             max_bytes=a.max_bytes,
             poster=a.poster,
+            sample_rate=a.sample_rate,
             overwrite=a.overwrite,
             progress=(lambda event: print(json.dumps({"progress": event}), file=__import__("sys").stderr, flush=True)) if a.progress else None,
         ), False

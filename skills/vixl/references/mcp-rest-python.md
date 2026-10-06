@@ -124,7 +124,7 @@ paths, `color_space="cmyk"`, `icc_profile` (workspace path), `intent`, `black_ge
 ### Character, audio and spatial authoring
 
 `vixl_export_character(target, output)` saves reusable character artwork and rigs as a portable `.vixl`.
-`vixl_export_audio(path)` writes timeline score, sound effects and imported audio to WAV.
+`vixl_export_audio(path, sample_rate=None)` writes timeline score, sound effects and imported audio to WAV at the highest source rate (up to 48 kHz; 48 kHz for synthesized sound), mono when every source is mono and unpanned; it reports `sample_rate` and `channels`.
 Use `vixl_spatial` for bounds, nearest/between/relative queries, free regions, snap candidates, grid cells, guides and hit tests.
 Fetch exact operations with `vixl_capabilities(topic="animation")` and `vixl_operation_schema(types=[...])`.
 

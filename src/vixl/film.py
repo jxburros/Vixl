@@ -64,7 +64,7 @@ def plan(spec, limits=None, streamed=False):
     limits = limits or Limits()
     bounded_object(
         spec,
-        {"version", "width", "height", "fps", "shots", "captions", "audio", "quality"},
+        {"version", "width", "height", "fps", "shots", "captions", "audio", "quality", "sample_rate"},
         "Unknown film field",
     )
     require(spec.get("version", 1) == 1, "Unsupported film version")
@@ -130,6 +130,8 @@ def plan(spec, limits=None, streamed=False):
         validate_track(track)
         require("asset" not in track, "Film audio uses source paths or synth; embedded assets need a timeline project")
         finite(track.get("start", 0), "audio start", 0, 600000)
+    from .audio import check_rate
+    check_rate(spec.get("sample_rate"))
     return {
         "version": 1,
         "width": width,
@@ -306,6 +308,7 @@ def export(spec, root, output, *, limits=None, cancelled=lambda: False, progress
     require(not output.exists(), "Film output already exists")
     require(output.suffix != ".zip" or not spec.get("audio"), "Audio requires MP4/WebM output")
     output.parent.mkdir(parents=True, exist_ok=True)
+    sound = None
     with tempfile.TemporaryDirectory(dir=output.parent, prefix=".film-") as temp:
         staged = Path(temp) / output.name
         stream = frames(spec, root, limits=limits, cancelled=cancelled, streamed=streamed or selected,
@@ -345,7 +348,9 @@ def export(spec, root, output, *, limits=None, cancelled=lambda: False, progress
                 mixed = Path(temp) / ("mixed" + output.suffix)
                 command = [shutil.which("ffmpeg"), "-v", "error", "-i", str(staged)]
                 from .audio import prepare_tracks
-                tracks = prepare_tracks(spec["audio"], temp, settings["duration"], root=root)
+                tracks, sound = prepare_tracks(spec["audio"], temp, settings["duration"], root=root,
+                                               sample_rate=spec.get("sample_rate"),
+                                               encoder="opus" if output.suffix.lower() == ".webm" else None)
                 filters = []
                 for i, track in enumerate(tracks, 1):
                     path = Path(track["source"])
@@ -366,6 +371,8 @@ def export(spec, root, output, *, limits=None, cancelled=lambda: False, progress
                         "copy",
                         "-c:a",
                         "aac" if output.suffix == ".mp4" else "libopus",
+                        "-ar",
+                        str(sound["sample_rate"]),
                         "-t",
                         str(count / settings["fps"]),
                         str(mixed),
@@ -383,6 +390,7 @@ def export(spec, root, output, *, limits=None, cancelled=lambda: False, progress
         "duration": count * 1000 / settings["fps"],
         "start": first * 1000 / settings["fps"],
         "quality": spec.get("quality", "final"),
+        **(sound or {}),
     }
 
 

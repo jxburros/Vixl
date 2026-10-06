@@ -1071,15 +1071,20 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         return {**report, "output": session.relative(destination)}
 
     @tool
-    def vixl_export_audio(path: str, document: Document = None) -> dict:
-        """Mix the document's imported and synthesized audio tracks to a new WAV; reports clipped samples."""
+    def vixl_export_audio(
+        path: str,
+        document: Document = None,
+        sample_rate: Annotated[int | None, Field(ge=8000, le=96000, description="Hz; default the highest source rate up to 48000 (48000 for synthesized sound)")] = None,
+    ) -> dict:
+        """Mix the document's imported and synthesized audio tracks to a new WAV; reports sample_rate, channels
+        (mono when every source is mono and unpanned) and clipped samples."""
         from .audio import export_audio
 
         destination = session.resolve(path)
         require(destination.suffix.lower() == ".wav", "Choose a .wav output", field="path")
         session.make_parent(destination)
         with session.project(document=document) as project:
-            report = export_audio(project, destination)
+            report = export_audio(project, destination, sample_rate)
         return {**report, "output": session.relative(destination)}
 
     @tool
@@ -1394,6 +1399,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         dither: Annotated[Literal["auto", "none", "ordered", "floyd"], Field(description="GIF dithering against one shared palette (stable between frames): auto picks ordered when the frames hold gradients")] = "auto",
         max_bytes: Annotated[int | None, Field(ge=1, description="Soft size target: the result warns, and suggests MP4/WebP, when the file is larger")] = None,
         poster: Annotated[float | str | None, Field(description="GIF/WebP/APNG: time, marker, percent or 'end' whose frame comes first (many apps show only frame 0); the loop stays seamless")] = None,
+        sample_rate: Annotated[int | None, Field(ge=8000, le=96000, description="MP4/WebM audio rate in Hz; default the highest source rate up to 48000")] = None,
     ) -> dict:
         """Write the keyframe timeline as GIF, APNG, animated WebP, sprite sheet (+JSON), PNG-sequence ZIP,
         or MP4/WebM (needs ffmpeg). Format follows the extension. Frames render crisply at scale (0.05–16,
@@ -1421,6 +1427,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
                 dither=dither,
                 max_bytes=max_bytes,
                 poster=poster,
+                sample_rate=sample_rate,
                 progress=calls.progress_dict,
                 cancelled=calls.cancelled,
             )

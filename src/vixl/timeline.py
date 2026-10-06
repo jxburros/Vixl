@@ -1169,13 +1169,14 @@ def _frames(project, times, scale, preview=False, cancelled=None, progress=None)
         yield image if image.size == size else image.resize(size, Image.Resampling.LANCZOS)
 
 
-def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=None, end=None, background=None, columns=None, quality=90, colors=256, overwrite=False, preview=False, cancelled=None, progress=None, dither="auto", max_bytes=None, poster=None):
+def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=None, end=None, background=None, columns=None, quality=90, colors=256, overwrite=False, preview=False, cancelled=None, progress=None, dither="auto", max_bytes=None, poster=None, sample_rate=None):
     """Write the timeline as an animation, sheet or frame sequence. Never clobbers by default.
     Frames render at the target resolution (``scale`` 0.05–16, bounded by the pixel budget);
     ``colors`` (2–256) caps the GIF palette and ``dither`` ("auto", "none", "ordered", "floyd") sets how
     it is quantized. ``max_bytes`` is a soft size target: the result warns when the file is over it.
     ``poster`` (a time, marker, "end", or percentage) rotates a GIF/WebP/APNG so that frame comes first,
-    which is what many apps show; a looping animation still loops without a jump."""
+    which is what many apps show; a looping animation still loops without a jump. ``sample_rate`` sets
+    the MP4/WebM audio rate (default: the highest source rate up to 48 kHz; 48 kHz for synthesized sound)."""
     from .animation import check_colors, check_dither, encoded_frames, gif_bytes, has_gradients, size_warnings
 
     project = cached(project)
@@ -1192,6 +1193,9 @@ def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=No
     require(dither == "auto" or format == "gif", "dither applies to GIF export", field="dither")
     require(max_bytes is None or (isinstance(max_bytes, int) and not isinstance(max_bytes, bool) and max_bytes > 0), "max_bytes must be a positive whole number", field="max_bytes")
     require(poster is None or format in ("gif", "apng", "webp"), "poster applies to gif, apng and webp exports", field="poster")
+    from .audio import check_rate
+    check_rate(sample_rate)
+    require(sample_rate is None or format in ("mp4", "webm"), "sample_rate applies to MP4/WebM exports with audio", field="sample_rate")
     timeline = project.state.get("timeline") or default_timeline()
     markers = timeline.get("markers", {})
     first = parse_time(start, timeline["duration"], markers) if start is not None else 0
@@ -1239,22 +1243,26 @@ def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=No
     metadata = None
     if format in ("mp4", "webm"):
         if project.state.get("audio_tracks"):
-            from .audio import mix_tracks, wav_bytes, RATE
+            from .audio import mix_tracks, plan_mix, wav_bytes
             from .production import publish_file
+            chosen = plan_mix(project.state["audio_tracks"], project=project, sample_rate=sample_rate,
+                              encoder="opus" if format == "webm" else None)
+            rate = chosen["sample_rate"]
             with tempfile.TemporaryDirectory(prefix="vixl-score-") as staging:
                 silent = Path(staging) / ("silent." + format)
                 result = _video(silent, frames, fps, format, quality, False, len(times), (w, h))
                 audio_path = Path(staging) / "score.wav"
-                samples = mix_tracks(project.state["audio_tracks"], timeline["duration"], project=project)
-                samples = samples[round(first * RATE / 1000):round(last * RATE / 1000)]
-                audio_path.write_bytes(wav_bytes(samples))
+                samples = mix_tracks(project.state["audio_tracks"], timeline["duration"], project=project, rate=rate,
+                                     channels=chosen["channels"])
+                samples = samples[round(first * rate / 1000):round(last * rate / 1000)]
+                audio_path.write_bytes(wav_bytes(samples, rate))
                 mixed = Path(staging) / ("mixed." + format)
-                command = [shutil.which("ffmpeg"), "-v", "error", "-i", str(silent), "-i", str(audio_path), "-map", "0:v:0", "-map", "1:a:0", "-c:v", "copy", "-c:a", "aac" if format == "mp4" else "libopus", "-t", str((last - first) / 1000), str(mixed)]
+                command = [shutil.which("ffmpeg"), "-v", "error", "-i", str(silent), "-i", str(audio_path), "-map", "0:v:0", "-map", "1:a:0", "-c:v", "copy", "-c:a", "aac" if format == "mp4" else "libopus", "-ar", str(rate), "-t", str((last - first) / 1000), str(mixed)]
                 encoded = subprocess.run(command, capture_output=True, timeout=600)
                 require(encoded.returncode == 0, "Timeline audio mux failed", "codec_error")
                 size_bytes = mixed.stat().st_size
                 publish_file(path, mixed, replace=overwrite)
-                return {**result, "output": str(path), "bytes": size_bytes, "audio_tracks": len(project.state["audio_tracks"])}
+                return {**result, "output": str(path), "bytes": size_bytes, "audio_tracks": len(project.state["audio_tracks"]), **chosen}
         return _video(path, frames, fps, format, quality, overwrite, len(times), (w, h))
     stream = io.BytesIO()
     if format == "frames":
