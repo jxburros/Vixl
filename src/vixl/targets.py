@@ -14,9 +14,10 @@ The docs table in docs/operations.md is generated from the schema by ``markdown_
 """
 
 from .errors import VixlError, require
+from .model import MAX_LAYERS
 from .render import EFFECTS
 
-MAX_TARGETS = 512
+MAX_TARGETS = MAX_LAYERS
 ALIASES = ("layers", "layer_ids", "layerIds", "target_ids", "targetIds")
 
 # Operations applied once per listed layer. Creation operations (shape, text, solid, gradient)
@@ -28,14 +29,14 @@ EACH = frozenset({
     "style-apply", "lut", "lookup", "layer-intent", "fit-text", "path-fit", "shape-to-path", "path-simplify",
     "path-smooth", "offset-path", "outline-stroke", "round-corners", "distort", "skew", "transform", "fit",
     "snap-to-pixel", "keyframe-remove", "shape", "text", "solid", "gradient", "ungroup", "link-refresh",
-    "link-embed", "replace-contents", "pattern-fill",
+    "link-embed", "replace-contents", "pattern-fill", "text-animate", "qr", "barcode",
 })
 # Operations that already take targets themselves and apply to each listed layer.
 OWN_EACH = frozenset({"keyframe", "animate", "animate-preset", "look", "irregular", "cut-paper", "motion", "snap",
                       "match-size"})
 # Operations that act on the listed layers together.
 JOINT = frozenset({"align", "group", "distribute", "artboard", "pathfinder", "suite-capture", "role-set",
-                   "arrange-grid", "adapt-layout", "stack", "place"})
+                   "arrange-grid", "adapt-layout", "stack", "place", "merge-layers"})
 
 DESCRIPTION = ("Several layer IDs or names: the operation is applied to each in turn, in this order, within the "
                "same atomic batch. Pass target or targets, not both.")

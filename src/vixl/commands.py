@@ -31,7 +31,9 @@ def pairs(values):
 
 
 def number_or_center(value):
-    return value if value == "center" else float(value)
+    from .normalize import PERCENT
+
+    return value if value == "center" or PERCENT.match(value) else float(value)
 
 
 def normalize(tokens):
@@ -57,6 +59,10 @@ def compile_command(tokens):
     authoring = compile_authoring(cmd, args)
     if authoring is not None:
         return authoring
+    from .merging import compile_command as compile_merge
+    merged = compile_merge(cmd, args)
+    if merged is not None:
+        return merged
     from .stacks import compile_command as compile_stack
     stack = compile_stack(cmd, args)
     if stack is not None:
@@ -177,6 +183,8 @@ def compile_command(tokens):
         p.add_argument("path")
         p.add_argument("--name")
         p.add_argument("--linked", action="store_true")
+        p.add_argument("--credit", help="attribution kept with the image")
+        p.add_argument("--license", help="license or usage terms of the image")
         p.add_argument("--x", type=float)
         p.add_argument("--y", type=float)
     elif cmd in ("solid", "gradient", "text"):
@@ -187,6 +195,7 @@ def compile_command(tokens):
             p.add_argument("--size", type=int)
             p.add_argument("--align", choices=["left", "center", "right"])
             p.add_argument("--spacing", type=int)
+            p.add_argument("--within", help="centre the text in this shape's content box (instead of --x/--y)")
             p.add_argument("--hide-if-empty", action=argparse.BooleanOptionalAction, default=None,
                            help="do not draw the text while it is empty after ${variable} substitution")
         elif cmd == "gradient":
@@ -344,6 +353,7 @@ def compile_command(tokens):
         p.add_argument("alignment")
         p.add_argument("--margin", type=float)
         p.add_argument("--relative-to")
+        p.add_argument("--box", choices=["bounds", "content"], help="content: align to the --relative-to layer's inner area")
         p.add_argument("--targets", nargs="+")
     elif cmd == "reorder":
         p.add_argument("target")

@@ -14,6 +14,7 @@ import math
 import zlib
 
 from .errors import require
+from .geometry import compact_number
 
 
 class Name(str):
@@ -53,10 +54,7 @@ def number(value):
     if isinstance(value, int):
         return str(value).encode()
     require(math.isfinite(value), "PDF numbers must be finite")
-    if abs(value - round(value)) < 1e-9:
-        return str(int(round(value))).encode()
-    text = f"{value:.5f}".rstrip("0").rstrip(".")
-    return (text if text not in ("-0", "") else "0").encode()
+    return compact_number(value, 5).encode()
 
 
 def serialize(value):
@@ -135,10 +133,6 @@ class Writer:
         self._write(b"".join(lines) + b"trailer\n" + serialize(trailer) + f"\nstartxref\n{start}\n%%EOF\n".encode())
 
 
-# ---------------------------------------------------------------------------------------------
-# Images
-
-
 def image_xobject(writer, image, *, jpeg_quality=None, alpha=None):
     """An image XObject (with an SMask for transparency). RGB(A), L, LA and CMYK images; ``alpha``
     (an L image) is the transparency of an image that has no alpha channel of its own, such as a
@@ -170,10 +164,6 @@ def image_xobject(writer, image, *, jpeg_quality=None, alpha=None):
             dictionary["Decode"] = [1, 0, 1, 0, 1, 0, 1, 0]
         return writer.add_stream(dictionary, buffer.getvalue(), compress=False)
     return writer.add_stream(dictionary, image.tobytes())
-
-
-# ---------------------------------------------------------------------------------------------
-# Fonts
 
 
 _DIGESTS = {}  # id(data) -> (data, sha256): a few font programs are used for every glyph, so each is hashed once

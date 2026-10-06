@@ -25,6 +25,7 @@ Usage: vixl [--project FILE] [--json] COMMAND ...
 
 Documents: new SIZE|NAME [-o FILE] [--background COLOR] [--dpi N] [--landscape] [--bleed],
            open FILE, save [FILE]   (NAME: letter, a4, business-card, instagram-portrait, favicon …)
+           upgrade FILE [--report] [--pin-fills]   (a document saved before 0.21: what renders differently)
 Inspect:   status, inspect [LAYER], describe, layers, effects [LAYER], manifest,
            dependencies, reproduce --check, schema
 Layers:    add FILE --name NAME, solid --color COLOR, gradient --start A --end B,
@@ -62,7 +63,7 @@ Drawings:  drawing import sketch.jpg --name house [--settings '{"ink": "original
            drawing fill house --points '[[x, y, "#fc0"]]', drawing stroke house --points '[[x, y], …]', drawing restyle house,
            drawing report house, drawing compare house --out c.png, check --checks drawing, ai drawing-color house --prompt TEXT
 Linked:    link FILE.vixl [--name N] [--width W] [--fit fill|fit|stretch] [--position top-left] [--crop X,Y,W,H] [--artboard A] [--page P]
-           [--set NAME=VALUE], link-set LAYER … (changes a link), link-refresh [LAYER], link-embed LAYER, links (each link: ok, stale or missing)
+           [--set NAME=VALUE], link-set LAYER … (changes a link), link-refresh [LAYER], link-embed LAYER, links-relink FROM TO, links (each link: ok, stale or missing)
 Merge:     merge [TEMPLATE.vixl] --data rows.csv --out sheets.pdf [--sheet-document sheets.vixl] [--size letter] [--cols 2 --rows 3]
            [--gutter 0.125] [--margin 0.5] [--bleed template|0.125] [--no-crop-marks] [--registration] [--slug TEXT] [--copies N]
            [--dry-run] [--skip-invalid] [--unknown warn|error|ignore] [--replace], merge --rerun sheets.vixl [--data new.csv]
@@ -79,7 +80,8 @@ Pixels:    pixel-art, pixel-draw, pixel-palette, pixels [LAYER],
            export-animation --out FILE --format gif|apng|webp|mp4|webm|sheet [--animation NAME] [--scale N]
                             [--sampling nearest|smooth] [--colors N] [--quality N]
 Editing:   move, resize, scale, rotate, pivot, flip, crop, opacity, blend, align,
-           select-layer, select wand|lasso|path|rect|ellipse|color, mask, filter, effect, rasterize
+           select-layer, select wand|lasso|path|rect|ellipse|color, mask, filter, effect, rasterize,
+           merge-layers LAYER LAYER… [--name N], flatten [--keep-hidden] [--name N]
 Effects:   brightness, contrast, saturation, hue, exposure, gamma, temperature,
            tint, white-balance, shadows, highlights, blur, sharpen, denoise, grayscale, invert,
            posterize, threshold, noise, grain, vignette, auto-tone, auto-color, auto-contrast;
@@ -87,9 +89,10 @@ Effects:   brightness, contrast, saturation, hue, exposure, gamma, temperature,
 Layout:    canvas resize SIZE, canvas size NAME [--landscape] [--bleed], canvas dpi N, constrain, unconstrain,
            variable set NAME VALUE
 History:   undo [N], redo [N], history, checkpoint NAME, branch NAME,
-           checkout REF, branches, compare REF REF --out FILE
-Automate:  apply FILE|- [--dry-run] [--check [CHECK…]] [--preview PNG], run SCRIPT, batch GLOB --run SCRIPT --output DIR,
-           workflow ACTION --request FILE [--workspace DIR] (workflow schema lists actions),
+           checkout REF, branches, compare REF REF --out FILE [--isolate LAYER…], diff A B [--out D.png] (two documents or images)
+Automate:  apply FILE|- [--dry-run] [--check [CHECK…]] [--preview PNG [--isolate LAYER…]], run SCRIPT, batch GLOB --run SCRIPT --output DIR,
+           workflow ACTION --request FILE [--workspace DIR] (workflow schema lists actions; proof, logo-package …),
+           compose --request FILE [--preview P.png] (create → layout → look → operations → check → exports, atomic),
            each layer --name PATTERN -- COMMAND, preset save|apply|show NAME,
            transaction begin|commit|rollback, assert RULE, validate [PROFILE]
 Resources: commands, shapes, sizes [--category print], palette list|show|add|apply,
@@ -97,10 +100,13 @@ Resources: commands, shapes, sizes [--category print], palette list|show|add|app
            guidance list|show|add|apply|import|remove, providers, models
 Type:      fonts [--category serif] [--mood M], font show FAMILY, font pairings [--mood M] [--for poster],
            font pairing NAME, font principles, font install FAMILY [--weight 700] [--role heading|body], font pair NAME|random,
-           font use NAME --role heading|body, font list|import
+           font use NAME --role heading|body, font list|import, --scope workspace (install/pair: brand.json default for new documents)
 Finish:    look LAYER NAME [--color C] [--amount 0-1] [--remove]  (glow, neon, soft-shadow, hard-shadow, outline, gradient, grain,
-           paper, film, duotone, risograph, sketch, watercolor, halftone), looks (catalog),
-           radial-repeat LAYER --count N [--cx 50%] [--cy 50%] [--sweep 360] [--start-angle D] [--mirror] [--name N],
+           paper, film, duotone, risograph, sketch, watercolor, halftone, hand-made, plush), looks (catalog),
+           radial-repeat LAYER --count N [--cx 50%] [--cy 50%] [--sweep 360] [--start-angle D] [--mirror] [--name N]
+           [--rotation-step D] [--scale-step F] [--opacity-step F] [--rotation-jitter D] [--seed N] [--merge],
+           scatter LAYER --source MOTIF… | --preset fur [--count N|--spacing PX] [--placement inside|along] [--merge],
+           pattern-scatter --source MOTIF… --width W --height H [--count N] [--seed N] [--pattern NAME],
            guide [BRIEF|GUIDANCE] (what to make: icons, characters, scenes, patterns … with the operations, layouts and looks that
            suit it; or a guidance text such as natural-motion), capabilities [TOPIC] (fields, gotchas and guidance per topic)
 Styles:    styles [list [QUERY] | show NAME | apply NAME [--palette] | check [NAME]], style-set NAME… [--options JSON],
@@ -115,6 +121,7 @@ Paint:     brushes, paint-layer [--name N], paint [LAYER] --brush ink --points J
 Motion:    timeline, timeline set --duration 3s --fps 30 [--loop N], keyframe LAYER PROP TIME VALUE,
            animate LAYER PROP --to V [--from V] [--start T] [--duration T] [--easing E],
            animate-preset LAYER PRESET [--start T] [--duration T], marker NAME TIME, easings,
+           text-animate TEXT PRESET [--unit char|word|line] [--stagger T] [--direction D] [--mode in|out|in-out],
            export-timeline --out FILE.gif|.webp|.png|.zip|.mp4 [--fps N] [--scale N] [--colors N],
            timeline-sheet --out FILE [--count 8], render --time 1.5s --out FILE
 Output:    export FILE [--quality N] [--title T] [--max-bytes N] [--scale 2x] [--profile NAME] [--dpi N]
@@ -128,8 +135,9 @@ AI:        ask PROMPT [--apply], generate --prompt TEXT --provider NAME,
            select object LABEL --provider NAME, ai remove|content-aware-fill|select-subject
 Updates:   update [--check | --rollback], updates [on | off | status]
 Services:  serve | view [--host 127.0.0.1] [--port 8765], notes list|add|resolve
-           mcp [--workspace DIR] [--http] [--tools core|ai|compact] [--schema slim] [--planner] [--require-document]
+           mcp [--workspace DIR] [--http] [--tools core|ai|compact|all] [--schema slim|full] [--planner] [--require-document]
 Import:    import FILE.svg [--svg-mode editable|appearance|auto] | FILE.pdf [--page 1] [--dpi 144]
+           import PHOTO.jpg | https://HOST/photo.jpg [--name N] [--credit TEXT] [--license TEXT]
 
 Options: --project/-p FILE, --json, --allow-linked, --plugins, --max-pixels N, --detail brief|compact|full, --version
 Use vixl commands --json for a complete inventory; vixl COMMAND --help works without a document. See docs/commands.md.
@@ -198,7 +206,7 @@ def output_options(args, command):
     p.add_argument("--max-bytes", type=int, help="Size budget: warn when a raster export is larger")
     p.add_argument("--scale", default="1")
     p.add_argument("--profile")
-    p.add_argument("--format", choices=["PNG", "JPEG", "WEBP", "TIFF", "AVIF", "SVG", "JPG", "PDF", "ICO", "HTML", "PPTX"])
+    p.add_argument("--format", choices=["PNG", "JPEG", "WEBP", "TIFF", "AVIF", "SVG", "JPG", "PDF", "ICO", "HTML", "PPTX", "PSD"])
     p.add_argument("--background", default="white")
     p.add_argument("--set", action="append")
     p.add_argument("--artboard")
@@ -301,7 +309,13 @@ def dispatch(argv):
     if cmd == "merge":
         from .imposition import cli as merge_cli
         return merge_cli(args, options, limits), options.json
-    if cmd in ("open", "schema") and any(arg in ("--help", "-h") for arg in args):
+    if cmd == "diff":
+        from .image_diff import cli as diff_cli
+        return diff_cli(args, limits), options.json
+    if cmd == "compose":
+        from .compose import cli as compose_cli
+        return compose_cli(args, options, limits), options.json
+    if cmd in ("open", "schema", "upgrade") and any(arg in ("--help", "-h") for arg in args):
         return command_help(cmd, args), options.json
     if cmd in ("commands", "shapes"):
         from .operations import OPERATION_TYPES
@@ -332,7 +346,7 @@ def dispatch(argv):
                     | {"filter"}
                     | {"workflow"}
                     | set(
-                        "new session open save status inspect describe layers effects manifest dependencies reproduce schema check batch convert render export export-screens export-animation spacing pixels animation info sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert validate preset ai ask generate detect ocr serve view notes import mcp update updates commands shapes palette template guidance font fonts roll providers models color sizes layout layouts brushes organics easings timeline export-timeline timeline-sheet export-icons pages guides links merge styles looks guide".split()
+                        "new session open upgrade save status inspect describe layers effects manifest dependencies reproduce schema check batch convert render export export-screens export-animation spacing pixels animation info sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert validate preset ai ask generate detect ocr serve view notes import mcp update updates commands shapes palette template guidance font fonts roll providers models color sizes layout layouts brushes organics easings timeline export-timeline timeline-sheet export-icons pages guides links merge styles looks guide diff compose".split()
                     )
                 )
             }
@@ -366,6 +380,12 @@ def dispatch(argv):
                 return {"name": args[1], **describe(args[1]), "options": items["options"]}, options.json
             return items, options.json
         return feature_standalone(cmd, args), options.json
+    from .resource_cli import workspace_scope
+
+    if workspace_scope(cmd, args) and "--help" not in args and "-h" not in args:
+        from .resource_cli import project_command as resource_command
+
+        return resource_command(None, cmd, args)[0], options.json
     if cmd in ("palette", "template", "guidance"):
         from .resource_cli import standalone
 
@@ -411,6 +431,8 @@ def dispatch(argv):
         orientation.add_argument("--landscape", dest="orientation", action="store_const", const="landscape")
         orientation.add_argument("--portrait", dest="orientation", action="store_const", const="portrait")
         p.add_argument("--bleed", nargs="?", const=True, type=float, help="Add standard bleed, or an amount in the size's unit")
+        p.add_argument("--no-workspace-fonts", dest="workspace_fonts", action="store_false",
+                       help="Do not embed the workspace default fonts (brand.json pairing/fonts beside the document)")
         a = p.parse_args(args)
         require(not Path(a.out).exists() or a.overwrite, "Project already exists; use --overwrite to replace it")
         require(not Path(a.out).is_dir(), "Output must be a file")
@@ -427,6 +449,11 @@ def dispatch(argv):
                 project.state["canvas"]["dpi"] = a.dpi
                 project.nodes, project.head, project._head_state, project.branches = {}, None, None, {}
                 project._record([], "Create document")
+        fonts = None
+        if a.workspace_fonts:
+            from .brand import apply_workspace_fonts
+
+            fonts = apply_workspace_fonts(project, Path(a.out).resolve().parent)
         project.save(a.out)
         remember(a.out)
         return (
@@ -437,12 +464,16 @@ def dispatch(argv):
                 "canvas": project.state["canvas"],
                 "layers": len(project.state["layers"]),
                 "head": project.head,
+                **({"workspace_fonts": fonts} if fonts else {}),
             }
         ), options.json
     if cmd == "open":
         require(len(args) == 1, "Use open FILE")
+        from .upgrade import report
+
         project = Project.load(args[0], limits=limits, allow_linked=options.allow_linked)
         remember(args[0])
+        notice = report(project.state, project.upgraded_from) if project.upgraded_from else None
         return (
             project.inspect()
             if options.detail == "full"
@@ -451,8 +482,26 @@ def dispatch(argv):
                 "canvas": project.state["canvas"],
                 "layers": len(project.state["layers"]),
                 "head": project.head,
+                **({"upgrade": notice} if notice else {}),
             }
         ), options.json
+    if cmd == "upgrade":
+        from .upgrade import upgrade
+
+        p = Parser(prog="vixl upgrade")
+        p.add_argument("file", nargs="?", help="Document (default: the current one)")
+        p.add_argument("--report", action="store_true", help="Only list what renders differently; change nothing")
+        p.add_argument("--pin-fills", action="store_true",
+                       help="Give open stroked shapes the explicit white fill they rendered with before 0.21")
+        a = p.parse_args(args)
+        require(not (a.report and a.pin_fills), "--report changes nothing; leave out --pin-fills")
+        path = current_path(a.file or options.project)
+        with file_lock(str(path)):
+            project = Project.load(path, limits=limits, allow_linked=options.allow_linked)
+            result = upgrade(project, pin_fills=a.pin_fills, accept=not a.report)
+            if not a.report and result["upgraded_from"]:
+                project.save()
+        return {"path": str(project.path), **result}, options.json
     if cmd == "schema":
         from .schema import operation_schema
 
@@ -491,15 +540,17 @@ def dispatch(argv):
         p.add_argument(
             "--schema",
             choices=["full", "slim"],
-            default=os.environ.get("VIXL_MCP_SCHEMA", "full"),
-            help="slim advertises operation names only; fields come from vixl_operation_schema",
+            default=os.environ.get("VIXL_MCP_SCHEMA", "slim"),
+            help="slim (default) advertises operation names only; fields come from vixl_operation_schema; "
+            "full inlines every operation schema",
         )
         p.add_argument("--planner", action="store_true", help="Expose the provider-backed vixl_ai_plan tool")
         p.add_argument(
             "--tools",
             choices=["all", "core", "ai", "compact"],
-            default=os.environ.get("VIXL_MCP_TOOLS", "all"),
-            help="core: all editing tools; compact: 12 document/workflow tools; ai: provider-backed tools",
+            default=os.environ.get("VIXL_MCP_TOOLS", "core"),
+            help="core (default): all editing tools; compact: 13 document/workflow tools; ai: provider-backed tools; "
+            "all: core and ai from one server",
         )
         p.add_argument(
             "--require-document",
@@ -555,6 +606,7 @@ def command_help(cmd, args):
 
     manual = {
         "open": "open FILE",
+        "upgrade": "upgrade [FILE] [--report] [--pin-fills]",
         "schema": "schema",
         "canvas": "canvas resize SIZE | preset NAME | background COLOR",
         "save": "save [FILE]",
@@ -576,6 +628,7 @@ def command_help(cmd, args):
         "checkout": "checkout REF",
         "branches": "branches",
         "history": "history",
+        "compact": "compact [--dry-run] [--keep-fonts] (drop undo history and embedded files the design does not use)",
         "transaction": "transaction begin|commit|rollback",
         "assert": "assert RULE",
         "each": "each layer [--name PATTERN] [--type TYPE] -- COMMAND",
@@ -615,14 +668,24 @@ def project_command(project, cmd, args, *, detail="compact"):
     if cmd == "import":
         from .imports import import_document
         p = Parser(prog="vixl import")
-        p.add_argument("path")
-        p.add_argument("--name", default="import")
+        p.add_argument("path", help="an .svg or .pdf document, an image file, or an https:// image URL")
+        p.add_argument("--name")
         p.add_argument("--svg-mode", choices=["editable", "appearance", "auto"], default="editable")
         p.add_argument("--page", type=int, default=1)
         p.add_argument("--dpi", type=int, default=144)
+        p.add_argument("--credit", help="attribution kept with an image, e.g. 'Photo: Ana Ruiz / Unsplash'")
+        p.add_argument("--license", help="license or usage terms of an image, e.g. 'CC BY 4.0'")
         a = p.parse_args(args)
+        is_url = re.match(r"(?i)[a-z][a-z0-9+.-]*://", a.path)
+        if is_url or Path(a.path).suffix.lower() not in (".svg", ".pdf"):
+            from .image_import import import_image_from
+
+            return import_image_from(project, url=a.path if is_url else None, path=None if is_url else a.path,
+                                     name=a.name or "image", credit=a.credit, license=a.license), True
+        require(a.credit is None and a.license is None, "--credit and --license apply to image imports",
+                field="credit")
         return import_document(project, read_bounded(a.path, project.limits.max_asset_bytes),
-                               Path(a.path).suffix.lstrip("."), a.name, a.page, a.dpi, a.svg_mode), True
+                               Path(a.path).suffix.lstrip("."), a.name or "import", a.page, a.dpi, a.svg_mode), True
     if cmd == "notes":
         from .review import notes
         p = Parser(prog="vixl notes")
@@ -829,8 +892,10 @@ def project_command(project, cmd, args, *, detail="compact"):
             nargs="+",
             choices=["bounds", "overlap", "contrast", "safe_area", "legibility", "print", "color_vision", "content", "fonts", "blanks", "brand", "guides", "alignment",
                      "deck", "title_position", "type_scale", "words", "min_font", "notes", "empty", "form", "drawing", "links", "style",
-                     "diagram", "flow"],
+                     "diagram", "flow", "codes", "connected"],
         )
+        p.add_argument("--connect-tolerance", type=float, default=2,
+                       help="connected check: pixels of gap still counted as touching (default 2)")
         p.add_argument("--style", nargs="+", help="style checks: evaluate this style (or styles) instead of the document's tag")
         p.add_argument("--page", help="Check one page of a multi-page document (default: the active page)")
         p.add_argument("--pages", help="deck checks: the pages to check, e.g. 1-3,5 (default: every shown page)")
@@ -933,13 +998,15 @@ def project_command(project, cmd, args, *, detail="compact"):
                        help="also check the result (default checks, or these): fix findings and those on touched layers")
         p.add_argument("--preview", metavar="PNG", help="also write a small preview of the result to this PNG file")
         p.add_argument("--preview-width", type=int, default=512)
+        p.add_argument("--isolate", nargs="+", metavar="LAYER", help="preview only these layers, zoomed to their ink")
         a = p.parse_args(args)
         ops = read_json(a.file) if cmd == "apply" else compile_script(a.file)
         from .checks import apply_reviewed
 
         check = None if a.check is None else (a.check or True)
+        preview = {"max_width": a.preview_width, **({"isolate": a.isolate} if a.isolate else {})}
         result, image = apply_reviewed(project, ops, dry_run=a.dry_run, detail=detail, check=check,
-                                       preview={"max_width": a.preview_width} if a.preview else None)
+                                       preview=preview if a.preview else None)
         if image is not None:
             Path(a.preview).write_bytes(image)
             result["preview"] = a.preview
@@ -976,6 +1043,13 @@ def project_command(project, cmd, args, *, detail="compact"):
             "checkpoints": project.checkpoints,
             "current": project.current_branch,
         }, False
+    if cmd == "compact":
+        p = Parser(prog="vixl compact", description="Drop all undo history, branches and checkpoints, and the embedded "
+                   "files the current design does not use. The design itself does not change.")
+        p.add_argument("--dry-run", action="store_true", help="Report what would be dropped")
+        p.add_argument("--keep-fonts", action="store_true", help="Keep registered fonts no text, role or fallback uses")
+        a = p.parse_args(args)
+        return project.compact(fonts=not a.keep_fonts, dry_run=a.dry_run), not a.dry_run
     if cmd == "history":
         return [
             {k: v for k, v in node.items() if k not in ("state", "delta")} for node in project.nodes.values()
@@ -994,11 +1068,18 @@ def project_command(project, cmd, args, *, detail="compact"):
         p.add_argument("left")
         p.add_argument("right")
         p.add_argument("--out", required=True)
+        p.add_argument("--isolate", nargs="+", metavar="LAYER", help="compare only these layers, cropped to their ink")
         a = p.parse_args(args)
         left, right = project.clone(), project.clone()
         left.checkout(a.left)
         right.checkout(a.right)
-        li, ri = left.render(), right.render()
+        if a.isolate:
+            from .proxy import isolated_pair
+
+            *views, (x, y, w, h) = isolated_pair(left, right, a.isolate)
+            li, ri = (view.render().crop((x, y, x + w, y + h)) for view in views)
+        else:
+            li, ri = left.render(), right.render()
         project.limits.size(li.width + ri.width, max(li.height, ri.height))
         canvas = Image.new("RGBA", (li.width + ri.width, max(li.height, ri.height)))
         canvas.paste(li, (0, 0))

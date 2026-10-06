@@ -6,6 +6,8 @@ alone. They are descriptive: ``workflows.dispatch`` and the owning modules still
 
 from copy import deepcopy
 
+from .logo_package import field_types as _logo_package_types
+
 STR = {"type": "string"}
 PATH = {"type": "string", "description": "Workspace-relative path."}
 COLOR = {"type": "string", "description": "Any Vixl color: name, #hex, rgb()/hsl()/…, or @swatch."}
@@ -13,6 +15,8 @@ STRINGS = {"type": "array", "items": STR}
 REGION = {"type": "array", "items": {"type": "integer"}, "minItems": 4, "maxItems": 4,
           "description": "Integer [x, y, width, height] inside the canvas."}
 SCALAR = {"type": ["string", "number", "boolean"]}
+
+LOGO_PACKAGE_TYPES = _logo_package_types()
 
 # Check suite (assert-rule format). Rule fields per kind live in assurance.RULE_FIELDS; each
 # rule needs a unique id and a kind, and may set severity.
@@ -145,6 +149,16 @@ LYRIC = {
     "replace": {"type": "boolean", "default": False, "description": "Overwrite an existing build or output."},
     "width": {"type": "integer", "minimum": 16, "maximum": 4096, "description": "Video width (default template)."},
     "height": {"type": "integer", "minimum": 16, "maximum": 4096, "description": "Video height (default template)."},
+    "sample_rate": {"type": "integer", "minimum": 8000, "maximum": 96000,
+                    "description": "Audio rate in Hz (default the song's own, up to 48000)."},
+    "section_styles": {"type": "object", "description": "Restyle the lyric layers per section: {section or 'default': "
+                                                       "{size, color, x, y}}, e.g. {chorus: {size: 72, color: '#ffd166'}}. "
+                                                       "Fonts change with lyric-<section> template layers instead.",
+                       "additionalProperties": {"type": "object", "description": "Styles for one section.", "properties": {
+                           "size": {"type": "integer", "minimum": 1, "maximum": 4096, "description": "Text size, px."},
+                           "color": {"type": "string", "description": "Text color."},
+                           "x": {"type": "number", "description": "Left edge, px."},
+                           "y": {"type": "number", "description": "Top edge, px."}}}},
 }
 
 PRODUCTION_SPEC = {
@@ -193,6 +207,9 @@ FILM_SPEC = {
                      "items": {"type": "object", "required": ["text", "start", "end"]}},
         "audio": {"type": "array", "maxItems": 8, "description": "Audio tracks {source, start, trim, volume}.",
                   "items": {"type": "object", "required": ["source"]}},
+        "sample_rate": {"type": "integer", "minimum": 8000, "maximum": 96000,
+                        "description": "Audio rate in Hz; default the highest source rate up to 48000 (48000 for "
+                                       "synthesized sound). WebM (Opus) uses the nearest Opus rate at or above it."},
     },
     "required": ["width", "height", "shots"],
 }
@@ -303,6 +320,27 @@ ACTION_FIELDS = {
     "drawing-report": {"target": {"type": "string", "description": "Drawing layer ID or name."}},
     "drawing-compare": {"target": {"type": "string", "description": "Drawing layer ID or name."},
                         "output": {**PATH, "description": "A new .png comparison image."}},
+    "proof": {
+        "items": {"type": "array", "minItems": 1, "maxItems": 200,
+                  "items": {"type": ["string", "object"], "properties": {
+                      "path": {**PATH, "description": "A .vixl document or an export (PNG, JPEG, WEBP, TIFF, GIF, "
+                               "SVG, PDF, ICO)."},
+                      "label": {"type": "string", "description": "Card title (default the file name)."},
+                      "before": {"type": "string", "description": "Before/after: another file, or a revision of a "
+                                 ".vixl item (previous, head~1, a checkpoint)."},
+                      "note": {"type": "string", "description": "Text shown on the card."}}},
+                  "description": "What to review: paths, or {path, label?, before?, note?}."},
+        "output": {**PATH, "description": "The .html page to write (self-contained, works offline)."},
+        "title": {"type": "string", "default": "Proof", "description": "Page heading."},
+        "check": {"type": "boolean", "default": True, "description": "Run vixl_check on .vixl items and show the "
+                  "findings."},
+        "decisions": {"type": "boolean", "default": False, "description": "Add approve/reject and a note per item, "
+                      "and a button that downloads them as <page>-decisions.json."},
+        "max_size": {"type": "integer", "minimum": 128, "maximum": 2400, "default": 1200,
+                     "description": "Longest side of each embedded image, px (shown small, enlarged on click)."},
+        "overwrite": {"type": "boolean", "default": False, "description": "Replace an existing page."},
+    },
+    "logo-package": LOGO_PACKAGE_TYPES,
     "resource-list": {},
     "resource-get": {"name": {"type": "string", "description": "Resource name from resource-list."}},
     "resource-save": {"name": {"type": "string", "description": "Name for the saved resource."},
@@ -403,6 +441,11 @@ SUMMARIES = {
     "form-fill": "Fill the open form with one set of values or a CSV of rows into PDFs or images.",
     "links": "List the open document's linked documents with their revision, whether each is stale or missing, and its size.",
     "merge-impose": "Merge a template and CSV rows onto print sheets (grid, gutters, bleed, crop marks) as a vector PDF or sheet document.",
+    "proof": "Write one self-contained offline HTML proof page: thumbnails, format/size/colour metadata, check "
+             "findings, optional before/after and approve/reject decisions downloaded as JSON.",
+    "logo-package": "Build a logo delivery folder: full-colour, mono and on-light/dark variants, optional mark/"
+                    "horizontal/stacked lockups, strict SVG, RGB/CMYK PDF, PNG 1x-3x, icons and favicon, social "
+                    "images, a usage sheet and an optional zip. No EPS.",
     "drawing-report": "Measure a hand-drawing layer: strokes, closures, straightness and cleanup suggestions.",
     "drawing-compare": "Write a before/after comparison PNG of a drawing layer.",
     "resource-list": "List built-in and user resources of one category.",

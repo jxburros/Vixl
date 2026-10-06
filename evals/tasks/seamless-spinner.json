@@ -1,0 +1,20 @@
+{
+  "prompt": "Create spinner.vixl at 240x240 with a white background and an orange five-pointed star named star (about 100 px) in the middle. Animate it as a 2-second loading spinner at 12 fps that loops forever with no visible jump at the loop point. Export spinner.gif.",
+  "document": "spinner.vixl",
+  "checks": [
+    {"type": "state_field", "name": "two-second timeline", "field": ["timeline", "duration"], "equals": 2000},
+    {"type": "layer", "name": "star", "match": {"type": "shape", "name": "star"}},
+    {"type": "design", "name": "no loop seam", "options": {"checks": ["motion"]}, "forbid": ["loop-seam", "loop-seam-speed"]},
+    {"type": "animated", "name": "star turns", "layer": "star", "property": "rotation"},
+    {"type": "file", "path": "spinner.gif", "image_size": [240, 240]}
+  ],
+  "reference": [
+    {"tool": "vixl_document_create", "arguments": {"path": "spinner.vixl", "width": 240, "height": 240, "background": "white"}},
+    {"tool": "vixl_operations_apply", "arguments": {"operations": [
+      {"type": "shape", "shape": "star", "sides": 5, "name": "star", "x": 70, "y": 70, "width": 100, "height": 100, "fill": "orange"},
+      {"type": "timeline-set", "duration": "2s", "fps": 12, "loop_mode": "seamless"},
+      {"type": "motion", "target": "star", "recipe": "spin", "turns": 1, "symmetry": 5}
+    ]}},
+    {"tool": "vixl_export_timeline", "arguments": {"path": "spinner.gif"}}
+  ]
+}

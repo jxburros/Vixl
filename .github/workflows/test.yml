@@ -6,6 +6,16 @@ on:
 permissions:
   contents: read
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install "ruff>=0.12"
+      # Lint rules only; `ruff format` is not enforced.
+      - run: ruff check
   test:
     runs-on: ${{ matrix.os }}
     strategy:
@@ -18,8 +28,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
+      # MP4/WebM export and lyric-video tests skip without ffmpeg; one job runs them.
+      - name: Install ffmpeg
+        if: runner.os == 'Linux' && matrix.python == '3.13'
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
       - run: python -m pip install -e ".[dev]"
-      - run: pytest -q
+      - run: pytest -q -n auto
       - run: python -m pip wheel . --no-deps --wheel-dir dist
       - uses: actions/upload-artifact@v4
         with:
@@ -33,10 +47,21 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install -e ".[dev]"
-      - run: pytest -q -m visual tests/visual
+      - run: pytest -q -n auto -m visual tests/visual
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: visual-failures
           path: tests/visual/_failures
           if-no-files-found: ignore
+  audit:
+    # Advisory for now: a vulnerable dependency is reported but does not fail the workflow.
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -e ".[dev,server,pdf,anthropic]" pip-audit
+      - run: pip-audit --skip-editable --progress-spinner off

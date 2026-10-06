@@ -52,8 +52,10 @@ def test_signature_fields_can_be_required():
     p.apply({"type": "field-set", "target": "sig", "required": True})
     # A signature is signed in a viewer, so a fill needs every other required field but not that one.
     assert fill(p, {"email": "a@b.c"})["warnings"] == []
+    # A sample signature is drawn into a flattened fill, but never set as the PDF field's value.
+    assert fill(p, {"email": "a@b.c", "sig": "Ada"})["warnings"] == []
     with pytest.raises(VixlError):
-        fill(p, {"email": "a@b.c", "sig": "Ada"})
+        fill(p, {"email": "a@b.c", "sig": "Ada"}, format="PDF", mode="editable")
     with pytest.raises(VixlError) as error:
         fill(p, {})
     assert [e["key"] for e in error.value.details["errors"]] == ["email"]

@@ -82,3 +82,52 @@ def inspect_text(project, layer, bounds):
                 "baselines": [y + b for b in baselines], "metrics_space": "unrotated-parent"}
     except UnsupportedText:
         return {"metrics_unavailable": "This font requires raster text layout"}
+
+
+def first_baseline(project, layer):
+    """Distance from the top of a text layer's unrotated box to its first line's baseline, in pixels, for the
+    resolved ``layer`` (rich text with mixed fonts uses the measured first line)."""
+    from .errors import require
+
+    require(layer["type"] == "text", f"{layer['name']!r} is a {layer['type']} layer; baselines belong to text layers "
+            "(use a box anchor such as top or bottom)", field="target")
+    info = inspect_text(project, layer, (0, 0, layer["width"], layer["height"]))
+    require(info.get("baseline") is not None, f"{layer['name']!r} has no measurable baseline (empty text or a font "
+            "drawn as raster text)", field="target")
+    return info["baseline"]
+
+
+def resolved_text(project, target):
+    """(stored layer, resolved layer, local bounds) of a text layer."""
+    from .render import resolve_layout, resolved_layers
+
+    layer = project.layer(target)
+    layers = resolved_layers(project)
+    resolved = next(item for item in layers if item["id"] == layer["id"])
+    return layer, resolved, resolve_layout(project, layers=layers)[layer["id"]]
+
+
+def place_baseline(project, operation):
+    """``baseline_y``: move the text layer so its first baseline sits at that y, in the same space as ``y``."""
+    from .errors import require
+    from .inplace import IN_PLACE_TYPES
+    from .model import finite
+    from .render import stored_origin
+
+    value = finite(operation["baseline_y"], "baseline_y", -1e6, 1e6)
+    kind = operation.get("type")
+    require("y" not in operation, "Give y (the top of the box) or baseline_y (the first baseline), not both",
+            field="baseline_y")
+    require(not operation.get("relative"), "baseline_y is an absolute position; drop relative", field="baseline_y")
+    edits = kind == "move" or kind == "text-set" or kind in IN_PLACE_TYPES
+    layer, resolved, bounds = resolved_text(project, operation.get("target") if edits else None)
+    require(not layer.get("rotation") % 360 and not layer.get("skew_x") and not layer.get("skew_y"),
+            f"{layer['name']!r} is rotated or skewed; baseline_y positions upright text", field="baseline_y")
+    offset = first_baseline(project, resolved)
+    require(not (layer.get("parent") and (operation.get("space") == "canvas" or operation.get("absolute"))),
+            "baseline_y on a grouped layer is in the group's coordinates; drop space: canvas", field="baseline_y")
+    _, layer["y"] = stored_origin(layer, (bounds[0], value - offset))
+    if isinstance(layer["y"], float) and layer["y"].is_integer():
+        layer["y"] = int(layer["y"])
+    layer["constraints"] = {key: v for key, v in layer.get("constraints", {}).items()
+                            if key not in ("top", "bottom", "center-y")}

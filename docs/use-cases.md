@@ -80,6 +80,9 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | DOC-11 | Close one of several open documents | `vixl_document_close` | 1 · <1 | E | Multi-document sessions pass `document=`. |
 | DOC-12 | List the files in the workspace | `vixl_workspace_list` | 1 · <1 | E | |
 | DOC-13 | Inspect what a document depends on and check it reproduces | `vixl dependencies`, `vixl reproduce --check` | 1 · <1 | E | |
+| BLK-16 | Relink the links in a copied `.vixl` | `links-relink {from, to}` | 1 · <1 | E | Since 0.22; sources beside the document are stored relative to it. |
+| DOC-31 | Import an image from a URL with its credit and licence | `vixl_import_image(url=…, credit, license)` | 1 · <1 | E | Since 0.22; https only, private hosts refused. |
+| DOC-32 | Merge layers into one, or flatten the page | `merge-layers`, `flatten` | 1 · <1 | E | Since 0.22; undo restores the originals. |
 
 ### Text and typography
 
@@ -94,6 +97,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | TXT-07 | Read text metrics (ink box, baseline, cap height, x-height) | `vixl_measure`, `info --target TEXT` | 1 · <1 | E | |
 | TXT-08 | Warp text (arc, flag, wave …) or set it along a path | `text` with `warp` / polyline placement | 1 · <1 | E | Outlined warp presets export as vectors. |
 | TXT-09 | Define and apply a linked character/paragraph style | `style-define`, `style-apply` | 2 · <1 | E | |
+| BLK-08 | Place text by its baseline | `baseline_y` on text/move, `align` `baseline`, `snap` to a baseline grid | 1 · <1 | E | Since 0.22. |
 
 ### Color
 
@@ -127,6 +131,8 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | SHP-14 | Find empty space, margins or a hit-test point | `vixl_spatial` | 1 · <1 | E | |
 | SHP-15 | Set opacity or a blend mode | `opacity` (0–1), `blend` | 1 · <1 | E | |
 | SHP-16 | Pin a layer to an edge or another layer | `constrain` | 1 · <1 | E | One anchor per axis; cycles rejected. |
+| SHP-21 | QR code or barcode (Code 128, EAN-13) as a vector layer | `qr`, `barcode` | 1 · <1 | E | Since 0.22; `${variables}` re-encode per merge row; `codes` check. |
+| SHP-22 | Center text in a shape's body (bubble, badge, frame) | `text` `within`, `place` `within`, `align` `box: "content"` | 1 · <1 | E | Since 0.22; shapes report `content_bounds`. |
 
 ### Effects and finishing
 
@@ -166,6 +172,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | DOC-27 | Render a quick preview, or zoom on a region | `vixl_render_preview(region=…)` | 1 · <1 | E | Draft proxies are fast. |
 | DOC-28 | Export a self-contained HTML page of the design | `export FILE.html` | 1 · <1 | E | |
 | DOC-29 | Keep a still export under a byte budget | `export --max-bytes N` | 1 · <1 | E | Warns and names heavy grain/paper layers. |
+| DOC-30 | Layered PSD for a designer | `vixl_export_file` `.psd` | 1 · <1 | E | Since 0.22; pixel layers with names, blend modes and groups; text is pixels. |
 
 ### Checks and discovery
 
@@ -236,6 +243,8 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | SOC-18 | Text-only typographic poster for screen | `typographic-poster` layout, font pair | 5–8 · 2 | E | |
 | SOC-19 | Event promo from the social-event-promo template | `vixl_template_create` | 4–6 · 1–2 | E | |
 | SOC-20 | Watermark or logo stamp on a photo | import, `opacity`, `align` | 4–5 · 1 | E | |
+| SOC-82 | A finished card in one call (create, layout, fonts, look, check, export) | `vixl_compose` | 1–3 · 1 | E | Since 0.22; atomic, errors name the step. |
+| SOC-83 | Meme from your own image (top/bottom, comparison, four-panel, reaction GIF) | `layout-apply` meme layouts with `images` | 3–6 · 1–2 | E | Since 0.22; bring your own images. |
 
 ### Print and stationery
 
@@ -257,6 +266,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | BRD-04 | Wordmark in a paired font | `wordmark` size, `text`, font pair | 4–6 · 1–2 | E | |
 | CLR-10 | Recolor a design to a different palette | `palette apply`, swatch edits | 3–5 · 1 | E | |
 | CLR-11 | Check how much of a design stays inside a palette | `vixl_workflow` palette-check | 2–3 · <1 | E | |
+| BRD-51 | Logo package: colour/mono/reversed variants, lockups, SVG/PDF/PNG, icons, social images, usage sheet | `vixl_workflow` logo-package | 1–3 · 1–3 | E | Since 0.22; recolouring is heuristic and reported; no EPS. |
 
 ### Data and diagrams
 
@@ -281,6 +291,8 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | PHO-13 | Vignette, grain or film finish on a photo | effects/looks | 2–4 · <1 | E | |
 | PHO-14 | Select by color, wand or lasso and adjust only that area | `select`, effect | 3–4 · 1 | E | |
 | PHO-15 | Clone-stamp a blemish | clone stamp | 2–4 · <1 | E | |
+| BLK-11 | Seamless random scatter for patterns | `pattern-scatter`, `pattern-fill` | 2–4 · 1 | E | Since 0.22; reports a seam score. |
+| ILL-51 | Scatter motifs inside or along a shape, or fur on a mascot | `scatter` (`preset: fur`), `plush` look | 1–3 · 1 | E | Since 0.22. |
 
 ### Motion and pixels
 
@@ -296,6 +308,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | PIX-01 | Small pixel-art icon from rows of palette indices | `pixel-art` | 2–4 · <1 | E | |
 | PIX-02 | Palette-swap an existing sprite | `pixel-palette` | 2 · <1 | E | |
 | PIX-03 | Export saved frames as GIF/APNG/sprite sheet at whole-number scale | `vixl_export_animation` | 1–2 · <1 | E | |
+| BLK-12 | Per-character, per-word or per-line text animation | `text-animate` | 2–4 · 1 | E | Since 0.22; text stays one editable layer. |
 
 ### Production, forms and review
 
@@ -310,6 +323,9 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | COL-02 | Fork a branch, edit it and see its status | `vixl_workflow` branch-fork/branch-status | 3–4 · 1 | E | |
 | AGT-10 | Connect an MCP client to a workspace | `vixl mcp --workspace . --tools core --schema slim` | config · 1–3 | E | |
 | AGT-11 | Display a design inline in a notebook | `Project.show()` | 1–2 · <1 | E | |
+| BLK-10 | Lookups or case changes inside a data merge | `${name\|upper}`, `${role\|map:colors}`, `variable-map` | 2–4 · 1 | E | Since 0.22. |
+| QA-22 | Proof page for human sign-off with approve/reject | `vixl_workflow` proof | 1–2 · 1 | E | Since 0.22; offline HTML, decisions download as JSON. |
+| QA-23 | Check `.vixl` files in pull requests | GitHub Action (`action.yml`), `vixl diff` | 1 · CI | E | Since 0.22; see [CI](ci.md). |
 
 ### Provider-backed
 
@@ -598,27 +614,22 @@ note the version.
 | ID | Use case | Status | Workaround |
 | --- | --- | --- | --- |
 | BLK-01 | Edit in CMYK, use spot colors, control overprint or trapping | Out of scope (CMYK is export-only) | Design in sRGB, export CMYK with an ICC profile. |
-| BLK-02 | Open or save Photoshop PSD or GIMP XCF projects | Not implemented | Import flattened PNG/TIFF, or SVG/PDF. |
+| BLK-02 | Open Photoshop PSD or GIMP XCF projects, or save editable PSD type/vector layers | Not implemented (layered PSD export of pixel layers since 0.22) | Import flattened PNG/TIFF, or SVG/PDF; export `.psd` for pixel handoff. |
 | BLK-03 | Develop camera RAW files or keep camera metadata | Not implemented | Develop elsewhere, import TIFF/JPEG. |
 | BLK-04 | High-bit-depth (16/32-bit) editing | Not implemented (RGBA8) | – |
 | BLK-05 | Draw live with a pressure tablet | No live input; pressure is explicit or simulated | Send stroke points with pressure values. |
 | BLK-06 | Use a desktop GUI, TUI or web editor | Headless only | `vixl view` for live review. [server] |
 | BLK-07 | Tables with tab stops, decimal tabs or dot leaders | Missing (T16) | One text layer per cell or price. |
-| BLK-08 | Place text by its baseline | Missing (T16) | Read baseline from inspect, then move. |
 | BLK-09 | Bind chart values into text, or one chart into another | Missing (T08) | Type totals and callouts by hand. |
-| BLK-10 | Lookups or case changes inside a data merge | Missing (T07) | Prepare the CSV with a script. |
-| BLK-11 | Seamless random scatter for patterns | Partial (recipe scatters; no wrap-aware scatter) (T15) | Compute positions outside Vixl. |
-| BLK-12 | Per-character animation beyond typewriter | Not implemented | One layer per character. |
-| BLK-13 | Motion-path editor, nested motion compositions | Not implemented | Keyframes per property; markers. |
-| BLK-14 | Automatic multi-font fallback for mixed scripts | Not implemented | Document-wide `font-fallbacks`. |
+| BLK-13 | Motion-path editor, nested compositions with their own timelines | Not implemented (group and child tracks compose; `attach` follows a moving layer since 0.22) | Keyframes per property; markers. |
+| BLK-14 | Automatic discovery of fallback fonts for mixed scripts | Not implemented (fallbacks are listed by hand; weight- and slope-matched since 0.22) | Document-wide `font-fallbacks`. |
 | BLK-15 | Reliable multi-size adaptation from one master | Partial: `adapt-layout` leaves story text in bands, stretches decoration, can set banner text tiny (T02, T09) | Fix each size after adapting. |
-| BLK-16 | Relink links in a copied `.vixl` | Missing (T04) | `link-set` each link by hand. |
 | BLK-17 | Video generation | Needs an explicitly configured gateway; no bundled model | [AI] |
 | BLK-18 | Segmentation or background removal with OpenAI alone | Needs a mask-producing HTTP/ComfyUI provider | [AI] |
 | BLK-19 | Branch merging by replay or real-time collaboration | Not implemented; shared-filesystem locks only | Branch fork/merge with explicit resolutions. |
 | BLK-20 | Imposition for saddle-stitched booklets (reader → printer spreads) | Not implemented | Order pages by hand. |
 | BLK-21 | Dielines, folds and packaging nets | Not implemented as a feature | Draw with guides and paths. |
-| BLK-22 | Drawing fill bounded by the canvas edge; strokes in a moved group's own coordinates | Missing (T11) | Add a boundary path; convert coordinates. |
+| BLK-22 | Drawing fill bounded by the canvas edge | Missing (T11); strokes in a moved group's own coordinates work since 0.22 (`space: "group"`) | Add a boundary path. |
 | BLK-23 | Live (active/scripted) SVG content | Not implemented; static SVG only | – |
 | BLK-24 | Placing a library component as an editable group | Placement is a raster snapshot | Open the component as its own document and link it. |
 | BLK-25 | Hard memory cap or execution timeout per call | Not implemented | Use OS/container limits. |

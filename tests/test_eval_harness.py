@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 import sys
 from types import SimpleNamespace
@@ -6,7 +7,9 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from evals.harness import ClaudeAgent, ReferenceAgent, grade, load_tasks, markdown, prepare_workspace, run  # noqa: E402
+from evals.harness import (  # noqa: E402
+    ClaudeAgent, ReferenceAgent, grade, load_tasks, markdown, over_budget, prepare_workspace, run,
+)
 
 TASKS = load_tasks()
 
@@ -114,3 +117,46 @@ def test_claude_agent_stops_on_refusal():
     result = run([task], agent)[0][0]
     assert not result["passed"] and result["stop_reason"] == "refusal" and result["round_trips"] == 1
     assert "fallbacks" not in messages.requests[0]
+
+
+BASELINE = json.loads((Path(__file__).resolve().parent.parent / "evals" / "baseline.json").read_text())
+
+
+def test_baseline_requires_every_task_and_budgets_its_calls():
+    names = {task["id"] for task in TASKS}
+    assert set(BASELINE["required_passes"]) == names
+    assert set(BASELINE["tool_call_budgets"]) == names
+    for task in TASKS:
+        # A reference solution needs no retries, so it must fit well inside the budget a live agent gets.
+        assert len(task["reference"]) <= BASELINE["tool_call_budgets"][task["id"]] / 2, task["id"]
+
+
+def test_calls_over_budget_are_regressions(tmp_path):
+    from evals import run as runner
+
+    results = [{"task": "a", "tool_calls": 5}, {"task": "b", "tool_calls": 12}, {"task": "c", "tool_calls": 50}]
+    assert over_budget(results, {"a": 5, "b": 10}) == ["b (12 calls > 10)"]
+    baseline = tmp_path / "baseline.json"
+    baseline.write_text(json.dumps({"required_passes": ["targets-fanout"], "tool_call_budgets": {"targets-fanout": 1}}))
+    code = runner.main(["--tasks", "targets-fanout", "--baseline", str(baseline), "--out", str(tmp_path / "out")])
+    assert code == 1 and "targets-fanout (2 calls > 1)" in (tmp_path / "out" / "report.md").read_text(encoding="utf-8")
+    baseline.write_text(json.dumps({"required_passes": ["targets-fanout"], "max_mean_tool_calls": 1}))
+    assert runner.main(["--tasks", "targets-fanout", "--baseline", str(baseline), "--out", str(tmp_path / "out")]) == 1
+    assert "mean tool calls 2.0 > 1" in (tmp_path / "out" / "report.md").read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize("name", ["pathfinder-badge", "seamless-spinner", "targets-fanout"])
+def test_new_checks_reject_the_shortcut(name):
+    """A plain group instead of a boolean, a spin that jumps at the seam, or a second edit fail."""
+    task = next(t for t in TASKS if t["id"] == name)
+    shortcut = json.loads(json.dumps(task["reference"]))
+    operations = shortcut[1]["arguments"]["operations"]
+    if name == "pathfinder-badge":
+        operations[2] = {"type": "group", "name": "badge", "targets": ["disc", "hole"]}
+    elif name == "seamless-spinner":
+        operations[1:] = [{"type": "timeline-set", "duration": "2s", "fps": 12},
+                          {"type": "animate", "target": "star", "property": "rotation", "from": 0, "to": 180}]
+    else:
+        shortcut.append({"tool": "vixl_operations_apply", "arguments": {"operations": [{"type": "show", "target": "dot5"}]}})
+    result = run([{**task, "reference": shortcut}], ReferenceAgent())[0][0]
+    assert not result["passed"]

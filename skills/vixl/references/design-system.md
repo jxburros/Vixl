@@ -32,7 +32,7 @@ vixl_operations_apply(operations=[{"type":"layout-apply","name":"event-poster",
 vixl_check() ; vixl_render_preview()
 ```
 
-- Pick by medium: `hero-statement`, `split-screen`, `rule-of-thirds`, `asymmetric-balance` (social, posters); `editorial-grid`, `f-pattern`, `letterhead`, `framed` (documents); `banner`, `z-pattern` (wide ads); `story-vertical` (9:16); `thumbnail-bold` (YouTube); `slide-title`, `slide-content`; `logo-horizontal`, `logo-stacked`, `emblem`, `monogram`, `app-icon` (identity); `price-list`, `event-poster`, `product-card`, `big-number`, `quote-card`, `bento-grid`, `typographic-poster`, `minimal-mark`, `photo-caption`, `diagonal-band`, `golden-section`, `centered-axis`.
+- Pick by medium: `hero-statement`, `split-screen`, `rule-of-thirds`, `asymmetric-balance` (social, posters); `editorial-grid`, `f-pattern`, `letterhead`, `framed` (documents); `banner`, `z-pattern` (wide ads); `story-vertical` (9:16); `thumbnail-bold` (YouTube); `slide-title`, `slide-content`; `logo-horizontal`, `logo-stacked`, `emblem`, `monogram`, `app-icon` (identity); `price-list`, `event-poster`, `product-card`, `big-number`, `quote-card`, `bento-grid`, `typographic-poster`, `minimal-mark`, `photo-caption`, `diagonal-band`, `golden-section`, `centered-axis`; `meme-top-bottom`, `meme-caption-above`, `meme-comparison`, `meme-labelled`, `meme-reaction`, `meme-four-panel` (memes: `image` or `images`, one asset per panel; bring your own pictures).
 - Content keys: `title`, `subtitle`, `body`, `label`, `cta`, `caption`, `items` (newline-separated; `Name | $9` rows for price lists; `Heading: text` for f-pattern; bullets for slides), `image` (an embedded asset ID; otherwise a placeholder frame named `image` you fill with `replace-contents`).
 - Variation: change `seed` to explore; pin `palette`, `mode` (light/dark), `type_scale` (`minor-third` … `golden` or a number), `density` (airy/balanced/dense), `align`, `accent` (rule/bar/dot/block/outline/none). The chosen system is in the result's `changes.layout` and in `state.layout`; a `notes` entry means type was shrunk to fit.
 - Layouts create swatches `@background @surface @ink @muted @accent @accent-text @on-accent` (contrast-checked) and character styles `caption body lead subhead title headline display`. Edit a swatch to retint everything; use `@accent-text` (not `@accent`) for small accent-colored text.
@@ -60,7 +60,7 @@ indexes or colors; `layout-apply colors: {…}`). `palette-generate` only adds n
 
 ## Finishing looks and styles
 
-`look` applies a named finish in one operation (glow, neon, soft-shadow, hard-shadow, outline, gradient, grain,
+`look` applies a named finish in one operation (glow, neon, soft-shadow, hard-shadow, outline, gradient, soft-halo, grain,
 paper, film, duotone, risograph, sketch, watercolor, halftone); `radial-repeat` makes rosettes and mandalas;
 `vixl_styles` serves 28 design styles with premade checks. See [looks](../../../docs/looks.md) and
 [styles](../../../docs/styles.md).

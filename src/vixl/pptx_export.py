@@ -67,8 +67,6 @@ class Slide:
         self.next_id += 1
         return self.next_id - 1
 
-    # -- color and geometry -------------------------------------------------------------------
-
     def color(self, value, opacity=1.0):
         from .design import resolve_color
         from .render import color
@@ -110,8 +108,6 @@ class Slide:
         if child:
             inner += f'<a:chOff x="0" y="0"/><a:chExt cx="{max(1, round(child[0] * emu))}" cy="{max(1, round(child[1] * emu))}"/>'
         return f"<{tag}{attrs}>{inner}</{tag}>"
-
-    # -- layers -------------------------------------------------------------------------------
 
     def layers(self, layers, bounds, parent, emu, index):
         out = []
@@ -289,19 +285,24 @@ class Slide:
                 f'</a:pathLst></a:custGeom>')
 
     def gradient(self, layer, opacity):
-        stops = layer.get("stops") or [{"offset": 0, "color": layer.get("start", "black")},
-                                       {"offset": 1, "color": layer.get("end", "white")}]
+        from .design import gradient_stops
+
+        stops = gradient_stops(layer, self.view.state)
+        direction = layer.get("direction", "vertical")
+        if direction == "radial":
+            # A circle path gradient reaches 100% at the ellipse through the box corners, which is
+            # sqrt(2) times the inscribed ellipse every other renderer ends at (for any aspect ratio).
+            # Scaling the stops in and padding with the last color makes PowerPoint end where they do.
+            stops = [{**stop, "offset": stop["offset"] / math.sqrt(2)} for stop in stops]
+            stops.append({"offset": 1, "color": stops[-1]["color"]})
         items = "".join(f'<a:gs pos="{round(stop["offset"] * 100000)}">{self.color(stop["color"], opacity)[0]}</a:gs>'
                         for stop in stops)
-        direction = layer.get("direction", "vertical")
         if direction == "radial":
             shade = '<a:path path="circle"><a:fillToRect l="50000" t="50000" r="50000" b="50000"/></a:path>'
         else:
             angle = {"vertical": 90, "horizontal": 0}.get(direction, layer.get("angle", 0)) % 360
             shade = f'<a:lin ang="{round(angle * 60000)}" scaled="0"/>'
         return f'<a:gradFill rotWithShape="1"><a:gsLst>{items}</a:gsLst>{shade}</a:gradFill>'
-
-    # -- text ---------------------------------------------------------------------------------
 
     def text(self, layer, bounds, emu, ident):
         from .richtext import active
@@ -356,13 +357,21 @@ class Slide:
                 f'<a:latin typeface={face}/><a:ea typeface={face}/><a:cs typeface={face}/></a:rPr>'
                 f'<a:t>{_text(text)}</a:t></a:r>')
 
+    def font_runs(self, text, data, size_pt, rgba, style, opacity):
+        """Runs for ``text``, split where characters fall back to another font of ``data`` (a
+        fallback chain), so each run names the face that draws it, as PNG, SVG and PDF do."""
+        from .text import font_runs
+
+        pieces = font_runs(data, text) if isinstance(data, tuple) else [(data, text)]
+        return "".join(self.run(piece, size_pt, rgba, self.exporter.font(font), style, opacity) for font, piece in pieces)
+
     def plain_paragraphs(self, layer, pt):
         from .design import resolve_color
         from .render import color
         from .text import face, font_data, plan
 
         data = font_data(self.view, layer)
-        family = self.exporter.font(data)
+        self.exporter.font(data)
         rgba = color(resolve_color(layer.get("color", "white"), self.view.state))
         layout = plan(self.view, layer)
         size = layout.size
@@ -382,7 +391,7 @@ class Slide:
         style = {"bold": self.exporter.is_bold(span), "italic": self.exporter.is_italic(span)}
         out = []
         for text in layer["text"].split("\n"):
-            run = self.run(text, size * pt, rgba, family, style, layer["opacity"]) if text else ""
+            run = self.font_runs(text, data, size * pt, rgba, style, layer["opacity"]) if text else ""
             out.append(f'<a:p><a:pPr algn="{align}"><a:lnSpc><a:spcPts val="{round(line * pt * 100)}"/></a:lnSpc>'
                        f'<a:buNone/></a:pPr>{run}<a:endParaRPr lang="en-US" sz="{round(size * pt * 100)}" dirty="0"/></a:p>')
         return out, first_top, pen_left
@@ -435,8 +444,8 @@ class Slide:
                          "highlight": span["highlight"]}
                 from .richtext import style_font_data
 
-                family = self.exporter.font(style_font_data(self.view, self.exporter.base_font(span["font"]), span["text"]))
-                runs.append(self.run(span["text"], span["size"] * scale * pt, span["color"], family, style, layer["opacity"]))
+                data = style_font_data(self.view, self.exporter.base_font(span["font"]), span["text"])
+                runs.append(self.font_runs(span["text"], data, span["size"] * scale * pt, span["color"], style, layer["opacity"]))
             out.append(f'<a:p><a:pPr{attrs}>{spacing}{bullet}</a:pPr>{"".join(runs)}'
                        f'<a:endParaRPr lang="en-US" sz="{round(base * pt * 100)}" dirty="0"/></a:p>')
         first_top = 0.0
@@ -459,6 +468,7 @@ class Exporter:
         self.fonts_used = set()
         self.title_ids = {}
         self._families = {}
+        self._family_data = {}  # family name -> font bytes, for the embedding report
         self._styles = {}
 
     def media(self, slide, image):
@@ -492,6 +502,7 @@ class Exporter:
         key = hashlib.sha256(primary).hexdigest()
         if key not in self._families:
             self._families[key] = family_name(primary)
+            self._family_data.setdefault(self._families[key], primary)
         self.fonts_used.add(self._families[key])
         return self._families[key]
 
@@ -501,11 +512,23 @@ class Exporter:
         PowerPoint embeds fonts as Embedded OpenType parts (``ppt/fonts/*.fntdata`` listed in
         ``p:embeddedFontLst``). Vixl does not write them: only PowerPoint itself decides whether such
         a part is acceptable (python-pptx ignores it), and a malformed one makes PowerPoint offer to
-        repair the file. A missing font is substituted, which moves text, so each one is named."""
+        repair the file. A missing font is substituted, which moves text, so each one is named, with
+        its OS/2 embedding permission and, for open-licensed fonts, the license that allows installing it."""
+        from .fonts import embedding, license_name
+
         families = sorted(self.fonts_used - COMMON_FONTS)
-        return families, [
-            f"Font {family!r} is not embedded in the PPTX (Vixl cannot embed fonts in PowerPoint files): install it "
-            "wherever the deck is opened, or share the PDF, which embeds its fonts" for family in families]
+        details, warnings = {}, []
+        for family in families:
+            data = self._family_data.get(family)
+            info = {"embedding": embedding(data) if data else "unknown"}
+            if data and (found := license_name(data)):
+                info["license"] = found
+            details[family] = info
+            hint = ("it is open-licensed (" + info["license"] + "), so install it on the presenting machine (Google Fonts) "
+                    if "license" in info else "install it wherever the deck is opened ")
+            warnings.append(f"Font {family!r} is not embedded in the PPTX (Vixl cannot embed fonts in PowerPoint files; "
+                            f"embedding: {info['embedding']}): {hint}or share the PDF, which embeds its fonts")
+        return families, warnings, details
 
     def _registered(self, font):
         from .richtext import _registered_name
@@ -606,9 +629,9 @@ def export_pptx(project, path=None, *, pages=None, dpi=None, report=None):
                       fonts=sorted(exporter.fonts_used),
                       raster_fallbacks={str(i): s.fallbacks for i, (_, s) in enumerate(slides, 1) if s.fallbacks},
                       notes=sum(1 for n in notes if n))
-        families, warnings = exporter.font_warnings()
+        families, warnings, details = exporter.font_warnings()
         if warnings:
-            report.update(fonts_not_embedded=families, warnings=warnings)
+            report.update(fonts_not_embedded=families, font_embedding=details, warnings=warnings)
         charts = {str(i): s.chart_info for i, (_, s) in enumerate(slides, 1) if s.chart_info}
         if charts:
             report["charts"] = charts

@@ -88,6 +88,8 @@ def _operation_schema():
             "x": COORD,
             "y": COORD,
             "provenance": {"type": "object"},
+            "credit": {"type": "string", "maxLength": 1000},
+            "license": {"type": "string", "maxLength": 1000},
             "width": SIZE,
             "height": SIZE,
             "max_pixels": {"type": "integer", "minimum": 1},
@@ -111,6 +113,7 @@ def _operation_schema():
             "direction": enum("horizontal", "vertical", "radial", "angled"),
             "stops": {"type": "array", "items": {"type": "object"}},
             "angle": N,
+            "falloff": enum("linear", "smooth", "ease", "quadratic", "gaussian"),
             "x": COORD,
             "y": COORD,
         },
@@ -125,6 +128,9 @@ def _operation_schema():
                            "mode": enum("light", "dark"), "columns": {"type": "integer", "minimum": 1, "maximum": 12}}, ["name"])
     add("guidance", {"name": S, "text": S, "style": S, "delete": B}, ["name"])
     add("font-register", {"name": S, "asset": S, "role": S}, ["name"])
+    baseline_y = {"type": "number", "description": "Place the text's first baseline at this y (instead of y, the top "
+                  "of its box), in the same coordinates as y. Multi-line text: the first line; mixed fonts: the measured "
+                  "first line."}
     text = {
         "text": S,
         "size": POSITIVE_INT,
@@ -146,6 +152,10 @@ def _operation_schema():
             "font": FONT,
             "x": COORD,
             "y": COORD,
+            "within": field(S, "A layer to centre the text in instead of x/y: the middle of its content box (a "
+                            "speech bubble's body, a badge, a frame's opening; see content_bounds in inspect). "
+                            "Use place with within for other anchors or a margin."),
+            "baseline_y": baseline_y,
         },
         anyOf=[{"required": ["text"]}, {"required": ["target"]}],
     )
@@ -161,6 +171,7 @@ def _operation_schema():
             "font": FONT,
             "stroke_width": {"type": "integer", "minimum": 0},
             "stroke_color": S,
+            "baseline_y": baseline_y,
         },
         description="Change a whole text layer: content, color, size, font, alignment, spacing or stroke. To style only "
         "part of the text (a phrase, a character range, a paragraph, bold/italic/tracking) use text-style.",
@@ -180,7 +191,8 @@ def _operation_schema():
         add(kind)
     add("rename", {"name": S}, ["name"])
     add("duplicate", {"name": S})
-    add("move", {"x": COORD, "y": COORD, "relative": B}, anyOf=[{"required": ["x"]}, {"required": ["y"]}])
+    add("move", {"x": COORD, "y": COORD, "relative": B, "baseline_y": baseline_y},
+        anyOf=[{"required": ["x"]}, {"required": ["y"]}, {"required": ["baseline_y"]}])
     add(
         "resize",
         {
@@ -232,9 +244,14 @@ def _operation_schema():
                 "top-right",
                 "bottom-left",
                 "bottom-right",
+                "baseline",
             ),
             "margin": N,
             "relative_to": S,
+            "box": field(enum("bounds", "content"),
+                         "With relative_to a layer: bounds (default) aligns to its whole box; content aligns to its "
+                         "usable inner area (a speech bubble's body, a badge's centre, a frame's opening, a device "
+                         "screen), reported as content_bounds by inspect."),
             "targets": {"type": "array", "items": S, "minItems": 1, "uniqueItems": True},
         },
         ["alignment"],
@@ -328,6 +345,8 @@ def _operation_schema():
         )
     add("effect-move", {"effect": ref, "to": ref, "before": ref, "after": ref}, ["effect"])
     add("variable", {"name": S, "value": {"type": ["string", "number", "boolean"]}, "delete": B}, ["name"])
+    add("variable-map", {"name": S, "values": {"type": "object", "additionalProperties": {"type": ["string", "number", "boolean"]}},
+                         "merge": B, "delete": B}, ["name"])
     add("preset-save", {"name": S}, ["name"])
     add(
         "preset-apply",
@@ -377,6 +396,8 @@ def _operation_schema():
     selector_schemas(add)
     from .links import schemas as link_schemas
     link_schemas(add)
+    from .codes import schemas as code_schemas
+    code_schemas(add)
     from .charts import schemas as chart_schemas
     chart_schemas(add)
     from .finishing import schemas as finishing_schemas
@@ -396,6 +417,9 @@ def _operation_schema():
     from .captions import schemas as caption_schemas
 
     caption_schemas(add)
+    from .merging import schemas as merge_schemas
+
+    merge_schemas(add)
     from .vector_paths import schemas as vector_schemas
 
     vector_schemas(add)

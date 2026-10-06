@@ -32,6 +32,10 @@ The fixed-project REST service exposes `GET /workflow/schema` and
 `POST /workflow/check|act|plan|film-plan`. Filesystem/library/job actions require
 CLI, Python or a workspace-scoped MCP session. This preserves REST's existing scope.
 
+`vixl_compose` (CLI `vixl compose --request req.json`) builds a new document in one atomic call (create, font pairing,
+layout, style, look, operations, check, preview, save, exports); see [interfaces](interfaces.md#build-a-piece-in-one-call).
+To check documents in pull requests, see [CI](ci.md).
+
 ## Design check suites
 
 Attach a suite with an explicit `suite-set` operation:
@@ -217,6 +221,67 @@ rerendering that one variant. Old output versions are retained.
 first; see [imposition](imposition.md). Variant production fingerprints include the revisions of any documents a design
 [links](linked-documents.md), so a changed source re-renders the variants that use it.
 
+## Proof pages
+
+`proof` writes one HTML page for reviewing a set of documents and exports, for a client, a teammate or a pull
+request:
+
+```json
+{"items": ["poster.vixl", {"path": "out/poster.png", "before": "out/poster-v1.png", "note": "Brighter headline"},
+           {"path": "poster.vixl", "label": "Since last round", "before": "round-1"}],
+ "output": "review/round-2.html", "title": "Poster, round 2", "decisions": true}
+```
+
+```text
+vixl workflow proof --request proof.json --workspace .
+```
+
+Each item gets a thumbnail (click it to enlarge), its format, byte size, pixel size, colour mode (PNG/JPEG/TIFF
+mode, ICC profile, the PDF colour spaces it uses, a document's canvas and dpi) and, for `.vixl` documents, the
+`vixl_check` findings (`check: false` skips them). `before` adds a before/after pair with the changed share: it is
+another file, or a revision of a `.vixl` item (`previous`, `head~2`, a checkpoint or branch). Items are paths or
+`{path, label?, before?, note?}`; up to 200.
+
+The page is a single file that works offline: every image is a data URI, and its Content-Security-Policy allows only
+those images, inline styles and, with `decisions: true`, the one inline script it names by hash. That script adds
+approve/reject and a note per item and a **Download decisions (JSON)** button: a static page cannot write files, so
+it downloads `<page>-decisions.json` (`{proof, page, generated, decided, items: [{id, path, label, decision, note}]}`)
+for the reviewer to send back. Without `decisions` the page has no script at all. An existing page is replaced only
+with `overwrite: true`.
+
+## Logo packages
+
+`logo-package` turns one logo into the folder a brand hand-off needs:
+
+```json
+{"output": "brand/acme", "mark": "symbol", "wordmark": "name", "png_sizes": [256, 512], "cmyk": true, "zip": true}
+```
+
+| Input | Meaning |
+| --- | --- |
+| `source` | The logo: the open document (default), a `.vixl`, a PNG/JPEG/WEBP (placed as an image) or an SVG (imported). `trace: true` traces a raster with the drawing `vectorize` action (outline mode, one colour) so SVG and the mono variants are vector |
+| `variants` | Any of `full-color`, `mono-black`, `mono-white`, `on-light`, `on-dark` (default all). `light`/`dark` set the backgrounds (`#ffffff`, `#111111`) |
+| `mark`, `wordmark` | Top-level layers (names or IDs). Together they build the `mark`, `horizontal` and `stacked` lockups (`lockups` picks some) with `clear_space` (default 0.25 of the mark's height) around and between the parts. Without them the whole logo is one `logo` lockup, trimmed to its content plus clear space |
+| `png_sizes` | Base widths; each is written at 1x, 2x and 3x (`png/NAME-512w@2x.png`) |
+| `cmyk` | Also `pdf/NAME-cmyk.pdf` |
+| `icons` | `web` (default: favicon.ico, PNG favicons, Apple touch icon, Android icons, web manifest), `apple`, `android`, `windows`, `all` or `false`; built from the mark |
+| `social` | `social/avatar.png` (800×800) and `social/og-image.png` (1200×630) on the light background (default true) |
+| `proof`, `zip` | `usage.html`, the usage sheet (a proof page with a usage note per variant; default true); `zip: true` writes `<output>.zip` (or give a path) |
+
+The folder holds `source/` (an editable `.vixl` per lockup and variant), `svg/` (strict SVG: a variant with raster
+content is skipped and listed under `report.skipped`), `pdf/`, `png/`, `icons/`, `social/`, `usage.html` and
+`package.json` (the file list, settings and report). Files go through the same export path as `vixl_export_batch`.
+Nothing is overwritten unless `overwrite: true`, and a failure removes the files the call wrote.
+
+Recolouring is a heuristic, and `report.variants` says what it did per variant: mono variants turn every visible
+fill, stroke, text and gradient colour into one ink, drop shadows, glows and effects, and make images a silhouette
+of their alpha (an opaque image first loses the background colour found in its corners). Detail separated only by
+colour merges, so review the mono variants. `on-light` and `on-dark` keep the colour logo when its average colour
+has at least 3:1 contrast with the background and otherwise use the one-colour logo (`reversed` explains it).
+
+There is no EPS output: EPS cannot carry transparency and most tools that once needed it accept PDF or SVG. Hand
+over the PDF (print) or SVG (web, sign makers).
+
 ## Persistent rendering cache and library
 
 Production, workflow previews, film document shots, and timeline exports and contact sheets of
@@ -301,9 +366,15 @@ Times are milliseconds. Shots accept still images, `.vixl` timelines and MP4/Web
 clips. `.vixl` shots also accept variables/artboard. Sources are fitted to the output;
 still/document aspect mismatches use a centered crop, video clips are letterboxed.
 Camera poses are normalized center-x/center-y plus zoom (1–16); motion interpolates
-linearly. `transition` is incoming crossfade duration (0–2000ms). Transitions overlap
+linearly. A zoomed shot stays sharp: its source is drawn up to its closest zoom times larger
+(`.vixl` documents re-render at that scale, images and clips are fitted from their full
+resolution), at most 4x and within the pixel budget, and the camera window is cut from
+that. `transition` is incoming crossfade duration (0–2000ms). Transitions overlap
 shot durations and cannot create a three-shot overlap. Captions use global film time.
 Clip audio is not implicitly retained: add explicit audio tracks to control the mix.
+The mix is written at the highest source sample rate (up to 48 kHz; 48 kHz for synthesized
+tracks), mono when every source is mono and unpanned; `sample_rate` (Hz) on the spec chooses
+another. The result reports `sample_rate` and `channels`.
 
 Limits: 100 shots, 1,000 captions, eight audio tracks, 3,600 frames, ten minutes, 60fps.
 MP4/WebM, clip decoding and audio mixing require ffmpeg on PATH. ZIP exports stream PNG

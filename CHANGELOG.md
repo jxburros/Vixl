@@ -1,5 +1,99 @@
 # Changelog
 
+## 0.22.0
+
+Bigger documents, layer merging, scatter and pattern tiles, kinetic type, QR codes, merge-field filters, logo packages, proof pages, one-call builds, layered PSD export, and a leaner default MCP server.
+
+### Breaking changes
+
+- **`vixl mcp` defaults to `--tools core --schema slim`** (about 58k characters of tools/list instead of 147k). Pass `--tools all --schema full` (or `VIXL_MCP_TOOLS=all`, `VIXL_MCP_SCHEMA=full`) for the old default. `python -m evals.run` defaults to core/slim too.
+- **Documents can hold 4,096 layers** (was 512), and layer lists (`targets`, group/stack/look refs) take as many. Documents with more than 512 layers do not open in earlier releases (#263).
+- **Linked documents resolve relative sources beside the document first**, then the workspace, and a source inside the document's folder is stored relative to it; saving into another folder rewrites them (one `links-relink` history entry). Old documents still resolve through the workspace fallback; if one has the same relative name beside it and in the workspace, the file beside it now wins: use `links-relink` to point elsewhere (#212).
+- **Audio mixes keep their sources' quality** instead of 24 kHz stereo: the highest source rate capped at 48 kHz (48 kHz for synthesized-only mixes), mono when every source is mono and unpanned. Pass `sample_rate` to choose. In Python, `audio.RATE` is replaced by `DEFAULT_RATE`, `prepare_tracks` returns `(tracks, format)` and `mix_tracks` returns `(frames, channels)` (#207).
+- **PPTX radial gradients end at the inscribed ellipse** like the other renderers, so existing decks look tighter (#245).
+- `vixl_guide("capabilities …")` fails with a `moved` error pointing to `vixl_capabilities(topic)` instead of matching a kind of work.
+- A `brand.json` that embeds a font for one role now takes the other role from its `pairing` (before, `pairing` was ignored whenever `fonts` was present). Remove `pairing` or embed both roles to keep the old result (#183).
+- `codes` is a new default check; it only reports on documents with QR codes or barcodes (#168).
+- `vixl_render_compare`'s `changed_fraction` counts a pixel as changed when any RGBA channel moves by more than 8 (it was luminance), so values can be slightly higher.
+- Font URL imports follow the new fetch policy: private hosts are refused, up to 5 checked redirects are followed (previously none), and a refused URL is error `unsafe_url` (#265).
+
+### Building whole pieces
+
+- `vixl_compose` (MCP, CLI `vixl compose`, Python `vixl.compose.run`, REST `POST /compose` as a dry run) builds a piece in one atomic call: create, font pairing (or the workspace default fonts), layout, style, look, operations, check, preview, save and exports. Nothing is saved or exported unless every step succeeds; errors name the failing `step`. In the core and compact toolsets (compact now has 13 tools) (#181).
+- `logo-package` workflow: full-colour, mono black, mono white, on-light and on-dark variants, optional mark/horizontal/stacked lockups, strict SVG, RGB and optional CMYK PDF, PNG at 1x/2x/3x, an icon set with favicon, social avatar and Open Graph images, a usage sheet, editable sources and an optional zip. Raster logos can be traced. Recolouring is heuristic and reported; EPS is not produced (#260).
+- `proof` workflow: one self-contained offline HTML page with thumbnails, click-to-enlarge, format/size/colour metadata, `vixl_check` findings, optional before/after diffs, and approve/reject decisions downloaded as JSON (#173).
+- `vixl diff A B` pixel-diffs two documents or images (changed pixels, fraction, region), with an optional diff image and a `--max-fraction` exit code. A composite GitHub Action (`action.yml`, [docs/ci.md](docs/ci.md)) checks `.vixl` files in pull requests, diffs them against the base branch, writes a job summary and can upload a proof page (#174).
+- Meme layouts `meme-top-bottom`, `meme-caption-above`, `meme-comparison`, `meme-labelled`, `meme-reaction`, `meme-four-panel`; `layout-apply` takes `images` (one asset per panel) and `uppercase`; a `meme` brief and guidance with a GIF recipe (#193).
+- New documents embed the workspace default fonts from `brand.json` and report them under `workspace_fonts` (`workspace_fonts: false` / `--no-workspace-fonts` skips them); `vixl_font_pair` and `vixl_font_install` take `scope: "workspace"` to set them (#183).
+
+### Layers, objects and coordinates
+
+- `merge-layers` (alias `merge`; CLI `vixl merge-layers A B … [--name]`) merges sibling layers into one raster layer at the topmost one's place, compositing blend modes among them and keeping the originals in provenance. `flatten` (CLI `vixl flatten [--keep-hidden] [--name]`) draws the page's visible layers into one canvas-size raster layer. Both are one undoable step (#262).
+- Large documents are faster: indexed layer lookup and default names, an overlap check that no longer compares every pair (24 s → under 1 s at 4,000 layers), cached re-renders past 512 layers, and text measurement that no longer rescans for form fields (#263).
+- `ungroup` keeps a group's animation: position, rotation, scale, size, visibility and (single-child) opacity tracks become per-frame keys on its children; animation that cannot be rewritten exactly is refused with the tracks named (#244).
+- `group` results list each member's offset from the group box (`groups[].members`); brief edit results for grouped layers add `parent`, `parent_name`, `coordinate_space` and `canvas_bounds` (#244).
+- `drawing` stroke and fill take `space: "group"`; `drawing report` gives region points in both spaces and the group's offset, scale and rotation (#217).
+- `isolate` on `vixl_render_preview`, `vixl_render_compare`, apply's `preview`, REST `/preview` and `/compare`, and CLI `compare` / `apply --preview` shows one object alone, cropped to its ink. The opt-in `connected` check finds parts of a grouped object that float free of its body, also at sampled animation frames (`connect_tolerance`, layer intent `detached_ok`). New guidance `multi-part-objects` (#257).
+- Shape-specific parameters: heart `apex`/`cleft`/`tip`, speech-bubble `pointer_side`/`pointer_position`/`pointer_size`/`body`, shield and tag `depth`, chevron `thickness`, trapezoid/parallelogram `slant`, triangle `apex`; defaults keep the existing outlines and `vixl_capabilities("shapes")` lists every shape's parameters. Aliases `tail_side`, `tail_position`, `tail_size`/`tail_width`, `body_ratio`, `lobe_balance`, `points`, `arm_width`; a warning when a parameter does nothing for the chosen shape (#178).
+- Shapes report `content_bounds` (bubble body, badge or star centre, frame opening, device screen, largest inner rectangle of organic outlines); `text` `within`, `place` `within` (with `box`, `anchor`, `margin`) and `align` `box: "content"` position layers in it (#187).
+- `baseline_y` on `text`, `text-set` and `move` places the first baseline; `align` takes `alignment: "baseline"` and `snap` takes `anchors: ["baseline"]` for baseline grids (#186).
+
+### Scatter, patterns and generated geometry
+
+- `scatter`: Poisson-disc copies of motif layers or a mark inside or along a layer's outline, with seeded rotation/scale/position/tone jitter, exclusions, and `merge` into one path per tone; `preset: fur` (#256, #240).
+- `pattern-scatter`: a seamless toroidal scatter tile with wrapped copies, a stored recipe for rebuilds, a seam score in the result and an optional saved pattern. `pattern-define` reports its seam check, and `pattern-fill`/`pattern-stroke` take `tile_variation` (#216, #256).
+- `repeat` and `radial-repeat` take `rotation_step`, `scale_step`, `opacity_step`, seeded jitter and `merge`; `keyframes` takes `sample` (sin, cos, triangle, saw, square, noise) to generate keys without scripting (#247).
+- `hand-made` and `plush` looks, a `fur-blob` organic preset and a `line-boil` motion recipe (#256, #240).
+- `qr` and `barcode` (Code 128, EAN-13) draw codes as native vector paths in PNG, SVG, PDF and PPTX, with quiet zone, colours, size, in-place edits and `${variables}` re-encoded per merge row; the `codes` check covers module size at the export dpi, contrast and ink in the quiet zone. New dependency: `segno` (#168).
+
+### Text, data and fonts
+
+- Merge field filters `${name|upper|lower|title|default:TEXT|map:NAME|number:2|format:SPEC}` shared by text, colours, link variables and merge-impose; `variable-map` defines document maps (with a `"*"` fallback); unknown filters and undefined maps are validation errors; `inspect` lists placeholders under `placeholders` (#215).
+- `links-relink {from, to}` rewrites link source prefixes on every page (CLI `vixl links-relink FROM TO`); the links listing reports `resolved_from`, `check links` notes sources outside the document's folder, and merge-impose sheets store the template relative to themselves (#212).
+- Font fallbacks choose the face whose slope and weight match the text's font; PPTX runs name the fallback family (#206).
+- `vixl_check` reports embedded files the design does not use, with their sizes; `vixl compact` / `vixl_history(action="compact")` explicitly drops them together with the undo history (`dry_run` first) (#206).
+- PPTX font warnings give each font's embedding permission and licence (`font_embedding`) and point to installing OFL fonts or sharing the PDF; PPTX does not embed fonts (#166).
+- Forms: `entry_font: "embed"` embeds each field's TrueType font so people type in the design's font (Helvetica with a warning when a font cannot be embedded); signature fields accept a sample (text or a data-URI image) in flattened fills and previews, never as a fillable value (#222).
+
+### Images and imports
+
+- Import images from the web: `vixl_import_image(url=…)`, `vixl import https://…`, REST `POST /assets?url=…`, `Project.import_image(url=…)`. HTTPS only, no credentials in the URL, at most 5 re-validated redirects, byte and time caps; hosts resolving to private, loopback, link-local, multicast or reserved addresses are refused (`VIXL_ALLOW_PRIVATE_FETCH=1` for intranet hosts). The bytes must decode as an image whatever the Content-Type says (#265).
+- Imported layers record `source: {url, fetched_at, sha256}` and optional `credit`/`license` (all imports, the `add` operation and CLI `--credit`/`--license`); compact inspect shows them and `vixl dependencies` lists them under `attributions`. New guidance `image-rights`. `vixl_import_font` accepts an `https://` `url` (#265).
+
+### Animation, video and gradients
+
+- Kinetic type: `text-animate` animates the characters, words or lines of one editable text layer (fade, fade-up, fade-down, slide-left, slide-right, pop, wave, typewriter, color-sweep) with `stagger`, `direction` (forward/reverse/center/edges/random), `mode` in/out/in-out (in-out by default in seamless loops) and `repeat` for wave. Timeline renders animate; stills, SVG, PDF and PPTX show the resting text. `vixl timeline` lists `text_animations`, and motion and poster checks account for them. CLI `vixl text-animate`.
+- `motion` recipe `attach` keeps a layer on a point of another layer through nested groups, optionally turning with it; timeline inspect lists `attachments` (#239).
+- Sampled motion findings `moving-over-text`, `text-mostly-hidden`, `parts-drift` and `loop-seam-render`; timeline GIF/WebP/APNG exports warn about loop seams (#237).
+- `target_bytes` auto-fit and `preset` (`chat`/`web`/`email`) for timeline GIF/WebP/APNG export, reporting what was `chosen`; size warnings quote a measured WebP size (#246).
+- `sample_rate` on `vixl_export_audio`, timeline MP4/WebM export, film specs and lyric-video requests; results report `sample_rate` and `channels` (#207).
+- Lyric videos accept `lyric-<section>`/`next-<section>` template layers and `section_styles` (#221).
+- Gradient `falloff` (`smooth`, `ease`, `quadratic`, `gaussian`), identical in PNG, SVG, PDF and PPTX; a `soft-halo` look; a `gradient-edge` review finding for fades whose box edge still shows (#245).
+
+### Export
+
+- Layered PSD export: a `.psd` path in `vixl_export_file`, `vixl export` or REST writes one 8-bit RGBA pixel layer per layer (effects included), keeping names, opacity, visibility and blend modes (add → Linear Dodge, subtract → Subtract), groups as layer groups, plus the flattened composite. Groups transformed or filtered as a whole become single layers; text is pixels, not editable type, and the result says so.
+
+### Agents, upgrades and project hygiene
+
+- Documents saved before 0.21 report under `upgrade` on open which layers render differently (effects on rotated/flipped/skewed layers, temperature/tint, open stroked shapes that used to be white). `vixl upgrade DOC [--report] [--pin-fills]` and `vixl_document_open(path, upgrade="accept"|"pin-fills")` accept the change or restore the white fills.
+- Unknown-tool errors name the replacement of removed tools (`vixl_text_add` → the `text` operation), the `--tools` mode that serves a tool, or the closest tool names.
+- MCP calls queued behind busy workers become jobs sooner under load; job pointers and `vixl_job` report `queued`, `wait_ms` and `queue_depth`. The docs recommend one `--http` server for many agents (#167).
+- Eight new agent eval briefs (charts, decks/PPTX, drawings, organic shapes, pathfinder, seamless loops, adapt-layout, `targets` fan-out) with per-task tool-call budgets and a mean ceiling in `evals/baseline.json`.
+- CI: a ruff lint job, parallel tests (`pytest-xdist` in the dev extra), ffmpeg-backed tests on Linux, a non-blocking pip-audit job and weekly Dependabot; installer builds on pull requests run only when packaging changes. Package metadata gains classifiers, keywords and project URLs.
+- Source comments: decorative section banners, label comments and history narrative are removed (#261).
+
+### Fixes
+
+- `organic` accepts `x`/`y` as `"center"` or a percentage (they were stored as text and layout crashed); regrowing with `target` moves the form when `x`/`y` are given instead of centring the active layer; CLI `--x`/`--y` accept `center` and `N%`.
+- `ungroup` on a group with keyframe tracks no longer fails with "Timeline track targets a missing layer", and children's own x/y keys move into the parent's space (#244).
+- `rasterize` bakes layer styles (drop shadow, glow, stroke, overlays) and clipping as its description says, instead of refusing, and no longer keeps skew/affine fields it has already baked (#262).
+- `point_radius` rounds triangle, chevron, trapezoid and parallelogram corners (it was ignored) (#178).
+- Zoomed film camera shots render at the zoom instead of enlarging output pixels (#232); imported and lyric-video audio is no longer resampled to 24 kHz with linear interpolation and forced to stereo (#207).
+- The pattern guide uses `pattern-scatter`, so motifs crossing a tile edge wrap (#216).
+- One parser for `${...}` placeholders replaces three copies; the remaining local Bezier evaluators and number formatters use `geometry.bezier_points` / `compact_number`, with a guard test (#215, #255).
+- docs/coverage.md covers 0.20 and 0.21 and no longer lists shipped skew/matrix transforms, form validation actions or font fallback as missing.
+
 ## 0.21.0
 
 A breaking "correctness and consolidation" release. Duplicate concepts are gone (one opacity scale, one anchor table, one guidance registry, one place for LUTs), checks report what is actually drawn, and renderers agree with each other. Old saved documents, field names and render output may change; forgiving input aliases (camelCase, `rect`, `font_size`, `"50%"`) stay.

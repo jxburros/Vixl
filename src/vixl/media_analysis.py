@@ -56,7 +56,7 @@ def run(arguments, timeout=60):
 
 def probe(source):
     try:
-        info = json.loads(run(["ffprobe", "-v", "error", "-show_entries", "format=duration:stream=codec_type,width,height,channels",
+        info = json.loads(run(["ffprobe", "-v", "error", "-show_entries", "format=duration:stream=codec_type,width,height,channels,sample_rate",
                                "-of", "json", str(source)]))
         duration = float(info["format"]["duration"]) * 1000
         finite(duration, "media duration", 1, 600000)

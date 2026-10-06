@@ -24,6 +24,8 @@ TYPE_ALIASES = {
     "update-text": "text-set",
     "delete": "remove",
     "delete-layer": "remove",
+    "merge": "merge-layers",
+    "flatten-image": "flatten",
     "translate": "move",
     "set-position": "move",
     "set-opacity": "opacity",
@@ -139,6 +141,16 @@ FIELD_ALIASES = {
         "angle_end": "end_angle",
         "hole": "inner_radius",
         "inner": "inner_radius",
+        "tail_position": "pointer_position",
+        "tail_size": "pointer_size",
+        "tail_width": "pointer_size",
+        "tail_side": "pointer_side",
+        "pointer": "pointer_side",
+        "body_ratio": "body",
+        "body_size": "body",
+        "lobe_balance": "apex",
+        "points": "sides",
+        "arm_width": "thickness",
     },
     "solid": {"fill": "color", "colour": "color", "fill_color": "color"},
     "gradient": {"from": "start", "to": "end", "start_color": "start", "end_color": "end"},
@@ -162,6 +174,8 @@ FIELD_ALIASES = {
 }
 FIELD_ALIASES["text-set"] = FIELD_ALIASES["text"]
 GEOMETRY_TYPES = {
+    "qr",
+    "barcode",
     "solid",
     "gradient",
     "shape",
@@ -178,8 +192,12 @@ GEOMETRY_TYPES = {
     "stack",
     "link",
     "chart",
+    "organic",
 }
-CENTER_TYPES = {"solid", "gradient", "shape", "add", "frame", "symbol-instance", "move", "field", "link", "chart"}
+CENTER_TYPES = {
+    "solid", "gradient", "shape", "add", "frame", "symbol-instance", "move", "field", "link", "chart", "organic", "qr",
+    "barcode",
+}
 
 
 def _snake(key):
@@ -282,7 +300,7 @@ def normalize_operation(operation, properties, known_types, effects, notes, inde
         raise VixlError("invalid_operation", f"Unknown pivot anchor {op['value']!r}; use {', '.join(ANCHORS)}", field="value",
                         allowed=list(ANCHORS))
     if kind == "snap" and isinstance(op.get("anchors"), list):
-        op["anchors"] = [canonical_anchor(v) or v for v in op["anchors"]]
+        op["anchors"] = [canonical_anchor(v, baseline=True) or v for v in op["anchors"]]
 
     if kind == "adjustment" and isinstance(op.get("effects"), list):
         for number, effect in enumerate(op["effects"]):
@@ -328,7 +346,7 @@ def normalize_operation(operation, properties, known_types, effects, notes, inde
         kind == "effect" and op.get("name") in ("blur", "gaussian-blur")
     )
     if blur and "radius" in op and "amount" not in op and "value" not in op:
-        # Blur strength lives in amount; a radius field used to be accepted and silently ignored.
+        # Blur strength lives in amount, so a radius given for a blur is read as its amount.
         op["amount"] = op.pop("radius")
         note("blur 'radius' → 'amount'")
     if kind == "layer-style" and isinstance(op.get("name"), str):
@@ -473,9 +491,17 @@ def resolve_geometry(project, op):
 
 
 def apply_centering(project, centered, operation):
-    """Center the created (or moved) layer within its canvas or parent group."""
-    if not centered:
-        return
+    """Center the created (or moved) layer within its canvas or parent group, then place a text layer's first
+    baseline at ``baseline_y`` when the operation gives one."""
+    if centered:
+        _center(project, centered, operation)
+    if operation.get("baseline_y") is not None:
+        from .text_metrics import place_baseline
+
+        place_baseline(project, operation)
+
+
+def _center(project, centered, operation):
     from .render import resolve_layout, stored_origin
 
     from .inplace import IN_PLACE_TYPES

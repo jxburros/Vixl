@@ -18,6 +18,7 @@ vixl guide wave --kind path --d 'M0 500 C480 300 1440 700 1920 500'
 vixl place n1 n2 n3 n4 n5 n6 n7 n8 n9 n10 n11 n12 --guide dial-r3  # evenly round the circle
 vixl place hero --guide rule-x2 --with rule-y1                # on an intersection
 vixl place tick --guide dial-r2 --at 0.25 --orient normal     # turned to point outward
+vixl place line --within bubble --anchor top-left --margin 8   # inside a shape's content box
 vixl snap logo title --tolerance 8                            # fix near misses
 vixl check --checks guides alignment                          # report near misses
 vixl render --out guides.png --show-guides                    # see the guides over the design
@@ -80,6 +81,7 @@ points that `place --with` can use.
 | `with`, `index` | Place on the intersection(s) of two guides; several targets take successive intersections. |
 | `orient` | `none` (default), `tangent` (follow the guide), `normal` (perpendicular, pointing outward on circles), `radial` (pointing inward) or `upright`. `rotate` adds degrees. |
 | `offset` | Pixels to the side of the guide (along its normal). |
+| `within`, `box`, `margin` | Instead of `guide`: place inside a layer. The anchor lands on the same point of that layer's content box (`box: "bounds"` for its whole box), inset by `margin` pixels; see [content boxes](vector-paths.md#content-boxes). |
 
 Placement works for layers inside groups, scaled or rotated groups included: positions are in
 canvas pixels. `place` clears a layer's constraints, as `move` does.

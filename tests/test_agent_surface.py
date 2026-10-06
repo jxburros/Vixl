@@ -12,6 +12,7 @@ from fastapi.testclient import TestClient
 from vixl import Project, briefs
 from vixl.capabilities import TOPICS, lookup
 from vixl.checks import apply_reviewed
+from vixl.errors import VixlError
 from vixl.guidance import GUIDANCE
 from vixl.interfaces import create_app, mcp_server
 
@@ -40,7 +41,6 @@ def server(tmp_path):
     return server
 
 
-# ---------------------------------------------------------------------------------------------
 # #180: one call applies, checks and previews
 
 
@@ -147,7 +147,6 @@ def test_rest_and_cli_apply_return_findings_and_a_preview(tmp_path):
     assert (tmp_path / "p.png").read_bytes().startswith(b"\x89PNG") and Project.load(path).layer("box")
 
 
-# ---------------------------------------------------------------------------------------------
 # #236 / #255: one guidance registry
 
 
@@ -176,8 +175,9 @@ def test_every_guidance_name_resolves_through_guide_resources_and_capabilities(t
 def test_mcp_guide_returns_guidance_and_capabilities_is_its_own_tool(server):
     assert "anticipation" in call(server, "vixl_guide", {"brief": "natural-motion"})["text"]
     assert call(server, "vixl_resource_get", {"kind": "guidance", "name": "imperfection"})["value"] == GUIDANCE["imperfection"]
-    # The old vixl_guide('capabilities …') alias duplicated vixl_capabilities; it is gone.
-    assert "gotchas" not in briefs.guide("capabilities animation")
+    # The old vixl_guide('capabilities …') alias duplicated vixl_capabilities; it is gone and points there.
+    with pytest.raises(VixlError, match=r"vixl_capabilities\(topic='animation'\)"):
+        briefs.guide("capabilities animation")
     from vixl.finishing_cli import standalone
 
     cli = standalone("capabilities", ["animation"])  # vixl capabilities animation: the CLI's own command now
@@ -196,7 +196,6 @@ def test_tool_list_has_no_duplicate_text_tool_and_names_the_split_tools(server):
     assert {"check", "preview"} <= set(tools["vixl_operations_apply"].inputSchema["properties"])
 
 
-# ---------------------------------------------------------------------------------------------
 # #236, #185, #216, #256: the starting points
 
 
@@ -235,8 +234,8 @@ def test_looping_example_returns_to_its_first_frame():
 def test_pattern_guide_scatters_instead_of_making_a_grid():
     pattern = briefs.guide("pattern")
     assert "repeat" not in {op["type"] for op in pattern["example"]}
-    assert any(rule["rule"] == "scatter" for op in pattern["example"] if op["type"] == "organic"
-               for part in op["parts"] for rule in part["rules"])
+    tile = next(op for op in pattern["example"] if op["type"] == "pattern-scatter")  # seamless, wrapped tile (#256)
+    assert tile["seed"] is not None and tile["pattern"]
     assert "irregular" in json.dumps(pattern["approach"]) and "imperfection" in pattern["guidance"]
 
 

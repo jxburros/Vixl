@@ -8,13 +8,18 @@ real design briefs through the MCP tools, and at what cost. This suite measures 
 Each task in `tasks/` is a JSON file with:
 
 - `prompt` — the brief given to the agent, exactly as a user might write it;
-- `setup` — optional starting files (generated images, pre-built `.vixl` documents with history);
+- `setup` — optional starting files (generated images, optionally with pen `lines` drawn on them
+  as a stand-in for a sketch photo, and pre-built `.vixl` documents with history);
 - `checks` — programmatic success criteria evaluated on the files the agent leaves behind
-  (`canvas`, `layer`, `design` (runs `check_design`), `spacing`, `centered`, `layer_field`,
-  `variable`, `file`, `files_differ`, `assert`, and `pdf_fields` for a PDF's form fields and page count;
-  layer matches can test a field's `field_key` and `field_kind`);
+  (`canvas`, `layer`, `design` (runs `check_design`; `forbid` lists issue codes that fail it at any
+  severity), `spacing`, `centered`, `layer_field` (a key or a path such as `["chart", "kind"]`),
+  `variable`, `state_field`, `animated` (a layer has a changing timeline track), `pixel` (alpha at a
+  point of the render), `file` (optionally `image_size`, `image_mode` or text it `contains`),
+  `files_differ`, `assert`, `pdf_fields` for a PDF's form fields and page count, and `pptx` for slide
+  count, slide text and speaker notes; layer matches can test a field's `field_key` and `field_kind`);
 - `reference` — a scripted tool-call solution, used to prove the task is solvable and the checks
-  are correct.
+  are correct. A step with `save_as: NAME` keeps its JSON result, and a later argument
+  `"${NAME.key}"` uses a value from it (an imported image's `asset`, for example).
 
 The harness (`harness.py`) starts the real MCP server in-process on a fresh temporary workspace
 per task, runs an agent, grades the workspace, and records:
@@ -73,9 +78,12 @@ it verifies that the reference passes and that an idle agent fails.
 
 ## Stored baseline and weekly comparison
 
-There are 18 briefs: the original eight plus layouts, font pairing, applied rolls, templates,
+There are 26 briefs: the original eight plus layouts, font pairing, applied rolls, templates,
 CMYK export, timelines, checked workflow edits, editable SVG imports, a fillable registration
-form, and batch form filling with a bad row. Font tasks populate
+form, batch form filling with a bad row, and (added after the 0.20 tool comparison) a chart whose
+value is corrected in place, a three-slide deck exported to PPTX and PDF, a sketch photo
+vectorized as a drawing, an organic flower, a pathfinder badge with a see-through hole, a seamless
+spinner loop, a promo adapted to two sizes, and a `targets` fan-out edit in one atomic batch. Font tasks populate
 an isolated temporary font cache with the bundled DejaVu font under the requested pairing's
 cache names. This tests pairing installation/registration and agent tool usage offline, not the
 appearance or availability of Google Fonts. Live runs use the same fixtures for comparability.
@@ -86,7 +94,10 @@ python -m evals.run --schema slim --tools core --baseline evals/baseline.json
 ```
 
 `baseline.json` stores required task passes, derived from working reference solutions. A missing
-or failed baseline task fails the run. It is an acceptance baseline, not a fabricated measurement
+or failed baseline task fails the run. It also stores a tool-call budget per task
+(`tool_call_budgets`: about twice the calls the recorded live run needed, at least 10) and a ceiling
+on the mean (`max_mean_tool_calls`): calls per task are the cost measure, so a run over either is
+reported as a regression. Reports show the mean and the largest number of calls per task. It is an acceptance baseline, not a fabricated measurement
 of Claude success rate. `state_field` checks inspect nested persisted document fields; `file`
 checks can also require an image mode (for example CMYK).
 
@@ -104,6 +115,6 @@ Current deterministic tool-context measurements (compact JSON characters divided
 | slim / all | 53 | 8,043 |
 | slim / core | 42 | 6,898 |
 
-Both schema modes pass all 16 reference tasks. Recommend `--tools core --schema slim` for new
-setups, while keeping the existing full/all default until live model results justify a change.
+Both schema modes pass every reference task. `vixl mcp` and `python -m evals.run` default to
+`--tools core --schema slim`; pass `--tools all --schema full` to measure the old default.
 Reference replay cannot measure whether a model discovers the right operation fields.

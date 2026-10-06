@@ -23,9 +23,9 @@ import zipfile
 from PIL import Image
 
 from .errors import VixlError, require
-from .model import finite
+from .model import MAX_LAYERS, finite
 
-TIMELINE_TYPES = ("timeline-set", "keyframe", "keyframe-remove", "animate", "animate-preset", "marker")
+TIMELINE_TYPES = ("timeline-set", "keyframe", "keyframe-remove", "animate", "animate-preset", "marker", "text-animate")
 NUMERIC = ("x", "y", "translate-x", "translate-y", "opacity", "rotation", "scale", "scale-x", "scale-y", "width", "height", "size", "spacing",
            "trim_start", "trim_end", "skew_x", "skew_y", "dash_offset", "stroke_width", "distort:amount", "distort:angle", "distort:phase", "distort:frequency", "distort:size")
 COLORS = ("color", "fill", "start", "end", "stroke_color", "stroke", "background")
@@ -379,6 +379,7 @@ def execute_timeline(project, op):
         if op.get("clear"):
             timeline["tracks"] = []
             timeline["markers"] = {}
+            timeline.pop("text_animations", None)
         if timeline.get("loop_mode") == "seamless" and ("loop_mode" in op or op.get("close")):
             open_tracks = []
             for track in timeline["tracks"]:
@@ -390,10 +391,22 @@ def execute_timeline(project, op):
                 _note(project, f"{len(open_tracks)} track(s) end at a different value than they start, so the loop jumps at the seam: "
                       + ", ".join(_track_name(project, t) for t in open_tracks[:6]) + (" ..." if len(open_tracks) > 6 else "")
                       + ". Pass close: true to append each start value at the loop end")
+            if timeline.get("text_animations"):
+                from .kinetic import seam_findings as text_seams
+
+                jumping = text_seams(project, timeline)
+                if jumping:
+                    _note(project, "text-animate on " + ", ".join(repr(layer["name"]) for layer in jumping[:6])
+                          + " ends in another pose than it starts, so the loop jumps at the seam; re-apply it with mode: in-out")
         past = sum(1 for t in timeline["tracks"] for k in t["keys"] if k["time"] > timeline["duration"])
         if "duration" in op and past:
             _note(project, f"{past} keyframe(s) now lie past the timeline end ({timeline['duration']} ms): they stay on "
                   "their tracks and shape the last frames, but their own moment is not played; keyframe-remove deletes them")
+        return
+    if kind == "text-animate":
+        from .kinetic import execute
+
+        execute(project, op, timeline, lambda message: _note(project, message))
         return
     if kind == "marker":
         from .design import named
@@ -423,7 +436,7 @@ def execute_timeline(project, op):
         require(kind in ("keyframe", "animate", "animate-preset"), f"{kind} takes a single target")
         require("target" not in op, "Pass target or targets, not both")
         targets = op["targets"]
-        require(isinstance(targets, list) and 1 <= len(targets) <= 256, "targets must list 1–256 layers")
+        require(isinstance(targets, list) and 1 <= len(targets) <= MAX_LAYERS, f"targets must list 1–{MAX_LAYERS} layers")
         stagger = finite(op.get("stagger", 0), "stagger", 0, 600000)
         for index, target in enumerate(targets):
             each = {k: v for k, v in op.items() if k not in ("targets", "stagger")}
@@ -592,10 +605,6 @@ def _apply_preset(project, timeline, target, op, written):
     return mirror
 
 
-# ---------------------------------------------------------------------------------------------
-# Sampling
-
-
 def _segment(keys, time):
     if time <= keys[0]["time"]:
         return keys[0], keys[0], 0.0
@@ -647,6 +656,10 @@ def project_at(project, time):
     candidate = copy(project)
     candidate.state = deepcopy(project.state)
     if not timeline or not timeline.get("tracks"):
+        if timeline and timeline.get("text_animations"):
+            from .kinetic import apply_frame
+
+            apply_frame(candidate, timeline, time)
         return apply_at(candidate, time)
     state = candidate.state
     layers = {layer["id"]: layer for layer in state["layers"]}
@@ -767,6 +780,10 @@ def project_at(project, time):
             layer.update(
                 x=x + values.get("translate-x", 0), y=y + values.get("translate-y", 0), constraints={}
             )
+    if timeline.get("text_animations"):
+        from .kinetic import apply_frame
+
+        apply_frame(candidate, timeline, time)
     candidate._cache = project._cache
     return apply_at(candidate, time)
 
@@ -809,9 +826,6 @@ def frame_times(project, fps=None, start=0, end=None, streamed=False):
             "resource_limit")
     return [start + i * 1000 / fps for i in range(count)], fps
 
-
-# ---------------------------------------------------------------------------------------------
-# Loops: seam detection, closing keys, repeats
 
 def _snapshot(timeline, target):
     return {t["property"]: deepcopy(t["keys"]) for t in timeline["tracks"] if t["target"] == target}
@@ -943,6 +957,11 @@ def seam_findings(project, timeline=None):
     return result
 
 
+def animated(timeline):
+    """Whether a timeline moves anything: keyframe tracks or per-unit text animations."""
+    return bool(timeline and (timeline.get("tracks") or timeline.get("text_animations")))
+
+
 def is_looping(timeline):
     return timeline.get("loop_mode") == "seamless" or timeline.get("loop", 0) != 1
 
@@ -976,6 +995,11 @@ def visible_content(frame):
             continue
         if layer["type"] == "text" and not str(layer.get("text", "")).strip():
             continue
+        if layer["type"] == "text" and layer.get("_kinetic"):
+            from .kinetic import hidden
+
+            if hidden(layer):
+                continue
         if layer.get("trim_end", 100) <= layer.get("trim_start", 0):
             continue
         box = boxes.get(layer["id"])
@@ -989,7 +1013,7 @@ def poster_findings(project, time=0):
     """Review findings for a poster frame (``time`` ms): near-empty compared with the end, or text that
     is hidden there although it is visible at the end. ``[(code, message, layer_id_or_None)]``."""
     timeline = project.state.get("timeline") or default_timeline()
-    if not timeline.get("tracks"):
+    if not animated(timeline):
         return []
     at_end = project_at(project, timeline["duration"])
     resting = visible_content(at_end)
@@ -1004,16 +1028,12 @@ def poster_findings(project, time=0):
             for layer in at_end.state["layers"] if layer["type"] == "text" and layer["id"] in resting and layer["id"] not in shown]
 
 
-# ---------------------------------------------------------------------------------------------
-# Validation and inspection
-
-
 def validate_timeline(project, state):
     if "timeline" not in state:
         return
     timeline = state["timeline"]
     require(
-        isinstance(timeline, dict) and set(timeline) <= {"duration", "fps", "loop", "loop_mode", "tracks", "markers"},
+        isinstance(timeline, dict) and set(timeline) <= {"duration", "fps", "loop", "loop_mode", "tracks", "markers", "text_animations"},
         "Invalid timeline",
         "invalid_project",
     )
@@ -1037,8 +1057,17 @@ def validate_timeline(project, state):
     candidate = copy(project)
     candidate.state = state
     for track in tracks:
-        require(isinstance(track, dict) and {"target", "property", "keys"} <= set(track) <= {"target", "property", "keys", "symmetry"}, "Invalid timeline track")
+        require(isinstance(track, dict) and {"target", "property", "keys"} <= set(track) <= {"target", "property", "keys", "symmetry", "attach"}, "Invalid timeline track")
         require(isinstance(track.get("symmetry", 1), int) and 1 <= track.get("symmetry", 1) <= 1000, "Invalid track symmetry")
+        if "attach" in track:
+            # What the attach recipe baked these keys from; the keys themselves are ordinary.
+            record = track["attach"]
+            require(isinstance(record, dict) and set(record) == {"to", "anchor", "rotation", "start", "end"}
+                    and isinstance(record["to"], str) and isinstance(record["rotation"], bool)
+                    and isinstance(record["anchor"], list) and len(record["anchor"]) == 2
+                    and all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in record["anchor"])
+                    and all(isinstance(record[k], int) and 0 <= record[k] <= MAX_DURATION for k in ("start", "end")),
+                    "Invalid track attachment", "invalid_project")
         target, prop = track["target"], track["property"]
         require(target == "canvas" or target in ids, "Timeline track targets a missing layer", "invalid_project")
         require((target, prop) not in seen, "Duplicate timeline track")
@@ -1061,17 +1090,42 @@ def validate_timeline(project, state):
             if "easing" in key:
                 easing_function(key["easing"])
         require(times == sorted(set(times)), "Keyframes must have increasing, unique times")
+    if "text_animations" in timeline:
+        from .kinetic import validate
+
+        validate(state, timeline)
 
 
 def prune_targets(state, removed):
     timeline = state.get("timeline")
     if timeline:
         timeline["tracks"] = [t for t in timeline.get("tracks", []) if t["target"] not in removed]
+        if "text_animations" in timeline:
+            timeline["text_animations"] = [s for s in timeline["text_animations"] if s["target"] not in removed]
+            if not timeline["text_animations"]:
+                timeline.pop("text_animations")
+        for track in timeline["tracks"]:
+            if track.get("attach", {}).get("to") in removed:
+                del track["attach"]
+
+
+def attachment_report(project):
+    """The ``attach`` motions baked into the timeline: who rides on what, at which point, and when."""
+    names = {layer["id"]: layer["name"] for layer in project.state["layers"]}
+    result = []
+    for track in (project.state.get("timeline") or {}).get("tracks", []):
+        record = track.get("attach")
+        if record and track["property"] == "translate-x":
+            result.append({"layer": names.get(track["target"], track["target"]), "to": names.get(record["to"], record["to"]),
+                           **{k: record[k] for k in ("anchor", "rotation", "start", "end")},
+                           "baked": "per-frame translate" + (" and rotation" if record["rotation"] else "") + " keys"})
+    return result
 
 
 def inspect_timeline(project):
     timeline = project.state.get("timeline") or default_timeline()
     names = {layer["id"]: layer["name"] for layer in project.state["layers"]}
+    attachments = attachment_report(project)
     return {
         "duration": timeline["duration"],
         "fps": timeline["fps"],
@@ -1088,14 +1142,20 @@ def inspect_timeline(project):
                     for k in track["keys"][:64]
                 ],
                 **({"truncated_keys": len(track["keys"])} if len(track["keys"]) > 64 else {}),
+                **({"attached_to": names.get(track["attach"]["to"], track["attach"]["to"])} if "attach" in track else {}),
             }
             for track in timeline.get("tracks", [])
         ],
+        **({"text_animations": _text_animations(project, timeline)} if timeline.get("text_animations") else {}),
+        **({"attachments": attachments} if attachments else {}),
     }
 
 
-# ---------------------------------------------------------------------------------------------
-# Export
+def _text_animations(project, timeline):
+    from .kinetic import inspect
+
+    return inspect(project, timeline)
+
 
 FORMATS = ("gif", "apng", "webp", "sheet", "frames", "mp4", "webm")
 
@@ -1169,14 +1229,19 @@ def _frames(project, times, scale, preview=False, cancelled=None, progress=None)
         yield image if image.size == size else image.resize(size, Image.Resampling.LANCZOS)
 
 
-def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=None, end=None, background=None, columns=None, quality=90, colors=256, overwrite=False, preview=False, cancelled=None, progress=None, dither="auto", max_bytes=None, poster=None):
+def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=None, end=None, background=None, columns=None, quality=90, colors=256, overwrite=False, preview=False, cancelled=None, progress=None, dither="auto", max_bytes=None, poster=None, sample_rate=None, target_bytes=None, preset=None):
     """Write the timeline as an animation, sheet or frame sequence. Never clobbers by default.
     Frames render at the target resolution (``scale`` 0.05–16, bounded by the pixel budget);
     ``colors`` (2–256) caps the GIF palette and ``dither`` ("auto", "none", "ordered", "floyd") sets how
     it is quantized. ``max_bytes`` is a soft size target: the result warns when the file is over it.
     ``poster`` (a time, marker, "end", or percentage) rotates a GIF/WebP/APNG so that frame comes first,
-    which is what many apps show; a looping animation still loops without a jump."""
-    from .animation import check_colors, check_dither, encoded_frames, gif_bytes, has_gradients, size_warnings
+    which is what many apps show; a looping animation still loops without a jump. ``sample_rate`` sets
+    the MP4/WebM audio rate (default: the highest source rate up to 48 kHz; 48 kHz for synthesized sound).
+    ``target_bytes`` (GIF/WebP/APNG) encodes, measures and steps down colors (WebP quality), then fps, then
+    scale until the file fits, reporting the settings it chose; ``preset`` ("chat", "web", "email") fills in
+    fps, size, colors and target_bytes left at their defaults."""
+    from .animation import (PRESETS, check_colors, check_dither, encoded_frames, fit_encode, fit_steps, gif_bytes,
+                            has_gradients, size_warnings, webp_trial)
 
     project = cached(project)
     path = Path(path)
@@ -1192,6 +1257,23 @@ def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=No
     require(dither == "auto" or format == "gif", "dither applies to GIF export", field="dither")
     require(max_bytes is None or (isinstance(max_bytes, int) and not isinstance(max_bytes, bool) and max_bytes > 0), "max_bytes must be a positive whole number", field="max_bytes")
     require(poster is None or format in ("gif", "apng", "webp"), "poster applies to gif, apng and webp exports", field="poster")
+    if preset is not None:
+        require(preset in PRESETS, f"preset must be one of {', '.join(PRESETS)}", field="preset", allowed=list(PRESETS))
+        require(format in ("gif", "apng", "webp"), "preset applies to gif, apng and webp exports", field="preset")
+        defaults = PRESETS[preset]
+        fps = defaults["fps"] if fps is None else fps
+        if scale == 1.0:
+            scale = min(1.0, defaults["width"] / project.state["canvas"]["width"])
+        if format == "gif" and colors == 256:
+            colors = defaults.get("colors", 256)
+        target_bytes = defaults["target_bytes"] if target_bytes is None else target_bytes
+    require(target_bytes is None or (isinstance(target_bytes, int) and not isinstance(target_bytes, bool) and target_bytes > 0),
+            "target_bytes must be a positive whole number", field="target_bytes")
+    require(target_bytes is None or format in ("gif", "apng", "webp"), "target_bytes applies to gif, apng and webp exports",
+            field="target_bytes")
+    from .audio import check_rate
+    check_rate(sample_rate)
+    require(sample_rate is None or format in ("mp4", "webm"), "sample_rate applies to MP4/WebM exports with audio", field="sample_rate")
     timeline = project.state.get("timeline") or default_timeline()
     markers = timeline.get("markers", {})
     first = parse_time(start, timeline["duration"], markers) if start is not None else 0
@@ -1223,6 +1305,10 @@ def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=No
     if format in ("gif", "apng", "webp"):
         shown = times[0] if poster_info is None else poster_info["time"]
         warnings += [message for _, message, _ in poster_findings(project, shown)]
+        if start is None and end is None:
+            from .motion import seam_value_findings
+
+            warnings += [item["message"] for item in seam_value_findings(project, timeline) if item["severity"] == "warning"]
     frames = _frames(project, times, scale, preview, cancelled, progress)
     if background is not None:
         from .render import color
@@ -1239,22 +1325,26 @@ def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=No
     metadata = None
     if format in ("mp4", "webm"):
         if project.state.get("audio_tracks"):
-            from .audio import mix_tracks, wav_bytes, RATE
+            from .audio import mix_tracks, plan_mix, wav_bytes
             from .production import publish_file
+            chosen = plan_mix(project.state["audio_tracks"], project=project, sample_rate=sample_rate,
+                              encoder="opus" if format == "webm" else None)
+            rate = chosen["sample_rate"]
             with tempfile.TemporaryDirectory(prefix="vixl-score-") as staging:
                 silent = Path(staging) / ("silent." + format)
                 result = _video(silent, frames, fps, format, quality, False, len(times), (w, h))
                 audio_path = Path(staging) / "score.wav"
-                samples = mix_tracks(project.state["audio_tracks"], timeline["duration"], project=project)
-                samples = samples[round(first * RATE / 1000):round(last * RATE / 1000)]
-                audio_path.write_bytes(wav_bytes(samples))
+                samples = mix_tracks(project.state["audio_tracks"], timeline["duration"], project=project, rate=rate,
+                                     channels=chosen["channels"])
+                samples = samples[round(first * rate / 1000):round(last * rate / 1000)]
+                audio_path.write_bytes(wav_bytes(samples, rate))
                 mixed = Path(staging) / ("mixed." + format)
-                command = [shutil.which("ffmpeg"), "-v", "error", "-i", str(silent), "-i", str(audio_path), "-map", "0:v:0", "-map", "1:a:0", "-c:v", "copy", "-c:a", "aac" if format == "mp4" else "libopus", "-t", str((last - first) / 1000), str(mixed)]
+                command = [shutil.which("ffmpeg"), "-v", "error", "-i", str(silent), "-i", str(audio_path), "-map", "0:v:0", "-map", "1:a:0", "-c:v", "copy", "-c:a", "aac" if format == "mp4" else "libopus", "-ar", str(rate), "-t", str((last - first) / 1000), str(mixed)]
                 encoded = subprocess.run(command, capture_output=True, timeout=600)
                 require(encoded.returncode == 0, "Timeline audio mux failed", "codec_error")
                 size_bytes = mixed.stat().st_size
                 publish_file(path, mixed, replace=overwrite)
-                return {**result, "output": str(path), "bytes": size_bytes, "audio_tracks": len(project.state["audio_tracks"])}
+                return {**result, "output": str(path), "bytes": size_bytes, "audio_tracks": len(project.state["audio_tracks"]), **chosen}
         return _video(path, frames, fps, format, quality, overwrite, len(times), (w, h))
     stream = io.BytesIO()
     if format == "frames":
@@ -1278,12 +1368,30 @@ def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=No
         sheet.save(stream, format="PNG")
     else:
         images = list(frames)
-        if format == "gif":
-            stream.write(gif_bytes(images, durations, loop, colors, dither))
-        elif format == "apng":
-            images[0].save(stream, format="PNG", save_all=True, append_images=images[1:], duration=durations, loop=loop + 1 if loop else 0, disposal=0, blend=0)
+
+        def encode(frames, durations, tone):
+            buffer = io.BytesIO()
+            if format == "gif":
+                buffer.write(gif_bytes(frames, durations, loop, tone, dither))
+            elif format == "apng":
+                frames[0].save(buffer, format="PNG", save_all=True, append_images=frames[1:], duration=durations, loop=loop + 1 if loop else 0, disposal=0, blend=0)
+            else:
+                frames[0].save(buffer, format="WEBP", save_all=True, append_images=frames[1:], duration=durations, loop=loop, quality=tone, method=4)
+            return buffer.getvalue()
+
+        tone = colors if format == "gif" else quality if format == "webp" else None
+        if target_bytes:
+            data, images, durations, chosen = fit_encode(
+                images, durations, encode, target_bytes, fit_steps(format, fps, colors, quality), fps,
+                {"gif": "colors", "webp": "quality"}.get(format), cancelled)
+            colors = chosen.get("colors", colors)
+            fps, w, h = chosen["fps"], images[0].width, images[0].height
+            if not chosen["fits"]:
+                warnings.append(f"target_bytes {target_bytes:,} not reached after {chosen['tries']} tries; wrote the smallest "
+                                f"({chosen['bytes']:,} bytes). Shorten the range or crop the canvas.")
         else:
-            images[0].save(stream, format="WEBP", save_all=True, append_images=images[1:], duration=durations, loop=loop, quality=quality, method=4)
+            data = encode(images, durations, tone)
+        stream.write(data)
     data = stream.getvalue()
     gradients = format == "gif" and has_gradients(images, colors)
     mode = "wb" if overwrite else "xb"
@@ -1294,7 +1402,7 @@ def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=No
             json.dump(metadata, output, indent=2)
     # Report what was written: the sheet's own size, and (GIF/WebP/APNG) the frames and timing left
     # after the encoder merged identical neighbours.
-    rendered = len(times)
+    rendered = len(images) if format in ("gif", "apng", "webp") else len(times)
     size = [metadata["width"], metadata["height"]] if metadata is not None else [w, h]
     if format in ("gif", "apng", "webp"):
         count, written = encoded_frames(data)
@@ -1302,7 +1410,9 @@ def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=No
             durations = written
     else:
         count = rendered
-    warnings += size_warnings(format, data, max_bytes, gradients)
+    warnings += size_warnings(format, data, max_bytes or target_bytes, gradients,
+                              webp=lambda: webp_trial(images, durations, loop) if format == "gif" else None,
+                              label="max_bytes" if max_bytes else "target_bytes")
     return {
         "output": str(path),
         "format": format,
@@ -1317,6 +1427,8 @@ def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=No
         "bytes": len(data),
         **({"dither": "ordered" if dither == "auto" and gradients else "none" if dither == "auto" else dither} if format == "gif" else {}),
         **({"poster": poster_info} if poster_info else {}),
+        **({"preset": preset} if preset else {}),
+        **({"chosen": chosen} if target_bytes and format in ("gif", "apng", "webp") else {}),
         **({"metadata": str(destinations[1])} if metadata is not None else {}),
         **({"warnings": warnings} if warnings else {}),
     }
@@ -1412,4 +1524,7 @@ def schemas(add):
     add("animate", {"property": prop, "from": value, "to": value, "start": time, "end": time, "duration": time, "easing": segment_easing, "targets": targets, "extend": extend, "close": close, "repeat": repeat, "until": until, "period": period, "stagger": stagger}, ["property", "to"])
     add("animate-preset", {"preset": {"enum": list(PRESETS), "description": "Ready-made motion: " + ", ".join(PRESETS) + ". draw-on/draw-off need a shape or path layer; color-shift also works on the canvas."}, "start": time, "duration": time, "easing": easing_schema("Override the preset's own easing (names as for keyframe easing, or cubic-bezier(...) / steps(n))."), "distance": N, "amount": N, "fade": B, "to": S, "targets": targets, "extend": extend, "close": close, "loop_safe": {"type": "boolean", "description": "Alias of close."}, "repeat": repeat, "until": until, "period": period, "stagger": stagger}, ["preset"])
     add("marker", {"name": S, "time": time, "delete": B}, ["name"], anyOf=[{"required": ["time"]}, {"required": ["delete"]}])
+    from .kinetic import schemas as kinetic_schemas
+
+    kinetic_schemas(add)
 

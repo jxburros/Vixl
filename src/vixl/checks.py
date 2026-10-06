@@ -12,11 +12,13 @@ import numpy as np
 
 from .errors import require
 from .model import finite
+from .timeline import animated as timeline_animated
 
 CHECKS = ("bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "fonts", "brand", "content", "form",
-          "links", "diagram", "flow")
+          "links", "diagram", "flow", "codes")
 FALLBACK_FONT = "DejaVuSans.ttf"
-OPTIONAL_CHECKS = ("print", "color_vision", "guides", "alignment", "drawing", "style", "motion", "character", "captions")
+OPTIONAL_CHECKS = ("print", "color_vision", "guides", "alignment", "drawing", "style", "motion", "character", "captions",
+                   "connected")
 # What to do about a finding. Errors and the warnings below need a design change ("fix"); other warnings
 # are worth a look ("review"); notes and deliberate choices the document marked are "informational".
 ACTIONS = ("fix", "review", "informational")
@@ -174,6 +176,31 @@ def group_matrix(item, resolved, local_bounds):
     return matrix
 
 
+def gradient_edges(project, layer, box, width, height, opacity=1.0, threshold=0.12):
+    """The sides of a fade-to-transparent gradient layer's box that are inside the canvas but still
+    visibly painted: a hard rectangular edge the fade was meant to hide."""
+    from .design import gradient_stops, resolve_color
+    from .design_render import gradient_image
+    from .render import color
+
+    # Rotated, masked or effected (blurred, feathered) layers have other edges; they are left out.
+    if (layer["type"] != "gradient" or layer.get("rotation", 0) or layer.get("skew_x") or layer.get("skew_y")
+            or layer.get("mask") or any(effect.get("enabled", True) for effect in layer.get("effects", []))):
+        return []
+    stops = gradient_stops(layer, project.state)
+    if all(color(resolve_color(stop["color"], project.state))[3] for stop in stops):
+        return []
+    x, y, w, h = box
+    inside = {"top": 0.5 < y < height, "bottom": 0 < y + h < height - 0.5,
+              "left": 0.5 < x < width, "right": 0 < x + w < width - 0.5}
+    if not any(inside.values()):
+        return []
+    size = (max(2, min(256, math.ceil(layer["width"]))), max(2, min(256, math.ceil(layer["height"]))))
+    alpha = np.asarray(gradient_image(project, layer, size).getchannel("A"), dtype=float) / 255 * opacity
+    edges = {"top": alpha[0], "bottom": alpha[-1], "left": alpha[:, 0], "right": alpha[:, -1]}
+    return [side for side in ("top", "bottom", "left", "right") if inside[side] and edges[side].max() > threshold]
+
+
 def geometry_bounds(layer):
     """(left, top, right, bottom) of what the layer actually draws, in its own box's pixel space
     (the origin is the box's top-left corner). Shapes report their path geometry including stroke,
@@ -240,6 +267,31 @@ def canvas_projection(resolved, local_bounds):
             "geometry_bounds": drawn}
 
 
+def overlap_candidates(boxes, texts, width, height):
+    """Index pairs (i < j), in order, whose boxes meet on the canvas and of which at least one is
+    text: a sweep along x, so a document of thousands of shapes is not compared pair by pair."""
+    starts = []
+    for index, (x, y, w, h) in enumerate(boxes):
+        left, top, right, bottom = max(0, x), max(0, y), min(width, x + w), min(height, y + h)
+        if left < right and top < bottom:
+            starts.append((left, right, top, bottom, index))
+    starts.sort()
+    pairs, open_all, open_text = [], [], []
+    for left, right, top, bottom, index in starts:
+        # Every box is compared with the open text boxes; text is also compared with the rest.
+        open_text = [item for item in open_text if item[0] > left]
+        if texts[index]:
+            open_all = [item for item in open_all if item[0] > left]
+        for other_right, other_top, other_bottom, other in (open_all if texts[index] else open_text):
+            if other_top < bottom and top < other_bottom:
+                pairs.append((min(index, other), max(index, other)))
+        entry = (right, top, bottom, index)
+        open_all.append(entry)
+        if texts[index]:
+            open_text.append(entry)
+    return sorted(set(pairs))
+
+
 def check_design(
     project,
     *,
@@ -259,6 +311,7 @@ def check_design(
     deck=None,
     sample=None,
     style=None,
+    connect_tolerance=2,
 ):
     """Return ``{"passed", "errors", "warnings", "info", "issues", "by_action", "checked"}`` for the rendered
     design. Each issue has a ``severity`` (error, warning, info) and an ``action`` (fix, review or
@@ -268,7 +321,8 @@ def check_design(
     check family reviews every page and the deck as a whole (``deck`` holds its settings:
     ``min_font``, ``max_words``, ``pages``, ``include_hidden``). ``sample`` (``"worst"`` or a CSV
     path) fills the form's fields to find values that overflow their boxes. The ``style`` check
-    evaluates the document's style tag (or ``style``, a name or list of names) rule by rule."""
+    evaluates the document's style tag (or ``style``, a name or list of names) rule by rule. The ``connected``
+    check reports parts of a group that float free of its main body (gaps above ``connect_tolerance`` px)."""
     from .design_render import artboard_project
     from .render import layer_canvas_surface, resolve_layout, resolved_layers
 
@@ -277,7 +331,7 @@ def check_design(
     if brand and "minimum_contrast" in brand:
         min_contrast = max(min_contrast or 0, brand["minimum_contrast"])
     # A document with animation is also checked over time (loop seam, poster frame) unless checks are named.
-    animated = not checks and bool((project.state.get("timeline") or {}).get("tracks"))
+    animated = not checks and timeline_animated(project.state.get("timeline"))
     checks = list(checks or CHECKS) + (["motion"] if animated else [])
     from .deck import DECK_CHECKS
 
@@ -418,6 +472,16 @@ def check_design(
                       f"{item['name']!r} does not fit its {layer['width']}×{layer['height']} text box at "
                       f"{layer['size']} px and is cut off (it needs {needed[0]}×{needed[1]}); enlarge the box "
                       "with text-layout or shrink the text with fit-text", [item], needs=list(needed))
+        for item in layers:
+            sides = gradient_edges(candidate, resolved[item["id"]], geometry[item["id"]], width, height,
+                                   math.prod(x["opacity"] for x in (item, *ancestors(item))))
+            if sides:
+                issue("bounds", "warning",
+                      f"{item['name']!r} fades to transparent but its "
+                      f"{' and '.join([', '.join(sides[:-1]), sides[-1]] if len(sides) > 1 else sides)} edge"
+                      f"{'s are' if len(sides) > 1 else ' is'} not transparent, so its box shows as a visible "
+                      "rectangle. End the fade at the box edge (a radial gradient ends at its inscribed ellipse), "
+                      "enlarge the box, or run it past the canvas edge", [item], code="gradient-edge", sides=sides)
 
     alphas, inks = {}, {}
 
@@ -474,42 +538,42 @@ def check_design(
 
     if "overlap" in checks:
         drawable = [item for item in content if item["type"] != "group"]
-        for i, first in enumerate(drawable):
-            for second in drawable[i + 1 :]:
-                if second["id"] in first.get("allow_overlap", []) or first["id"] in second.get("allow_overlap", []):
-                    continue
-                if (role(first) == "decoration" and not is_text(first)) or (role(second) == "decoration" and not is_text(second)):
-                    continue
-                a, b = ink(first), ink(second)
-                if not _intersects(a, b):
-                    continue
-                texts = [x for x in (first, second) if is_text(x)]
-                if not texts:
-                    continue  # Overlapping images and shapes are ordinary composition.
-                if len(texts) == 1:
-                    other = second if texts[0] is first else first
-                    if _contains(outward(geometry[other["id"]]), outward(geometry[texts[0]["id"]])):
-                        continue  # A label inside its button or panel.
-                left, top = max(0, a[0], b[0]), max(0, a[1], b[1])
-                right = min(width, a[0] + a[2], b[0] + b[2])
-                bottom = min(height, a[1] + a[3], b[1] + b[3])
-                if left >= right or top >= bottom:
-                    continue
-                ax, ay, bx, by = max(0, a[0]), max(0, a[1]), max(0, b[0]), max(0, b[1])
-                ma = alpha(first)[top - ay:bottom - ay, left - ax:right - ax]
-                mb = alpha(second)[top - by:bottom - by, left - bx:right - bx]
-                pixels = int(np.logical_and(ma, mb).sum())
-                smaller = max(1, min(int(alpha(first).sum()), int(alpha(second).sum())))
-                if pixels > 4 and pixels / smaller > 0.005:
-                    severity = "error" if len(texts) == 2 else "warning"
-                    issue(
-                        "overlap",
-                        severity,
-                        f"{first['name']!r} and {second['name']!r} overlap by {pixels} px "
-                        f"({pixels / smaller:.1%} of the smaller layer)",
-                        [first, second],
-                        region=[left, top, right - left, bottom - top],
-                    )
+        for i, j in overlap_candidates([ink(item) for item in drawable], [is_text(item) for item in drawable], width, height):
+            first, second = drawable[i], drawable[j]
+            if second["id"] in first.get("allow_overlap", []) or first["id"] in second.get("allow_overlap", []):
+                continue
+            if (role(first) == "decoration" and not is_text(first)) or (role(second) == "decoration" and not is_text(second)):
+                continue
+            a, b = ink(first), ink(second)
+            if not _intersects(a, b):
+                continue
+            texts = [x for x in (first, second) if is_text(x)]
+            if not texts:
+                continue  # Overlapping images and shapes are ordinary composition.
+            if len(texts) == 1:
+                other = second if texts[0] is first else first
+                if _contains(outward(geometry[other["id"]]), outward(geometry[texts[0]["id"]])):
+                    continue  # A label inside its button or panel.
+            left, top = max(0, a[0], b[0]), max(0, a[1], b[1])
+            right = min(width, a[0] + a[2], b[0] + b[2])
+            bottom = min(height, a[1] + a[3], b[1] + b[3])
+            if left >= right or top >= bottom:
+                continue
+            ax, ay, bx, by = max(0, a[0]), max(0, a[1]), max(0, b[0]), max(0, b[1])
+            ma = alpha(first)[top - ay:bottom - ay, left - ax:right - ax]
+            mb = alpha(second)[top - by:bottom - by, left - bx:right - bx]
+            pixels = int(np.logical_and(ma, mb).sum())
+            smaller = max(1, min(int(alpha(first).sum()), int(alpha(second).sum())))
+            if pixels > 4 and pixels / smaller > 0.005:
+                severity = "error" if len(texts) == 2 else "warning"
+                issue(
+                    "overlap",
+                    severity,
+                    f"{first['name']!r} and {second['name']!r} overlap by {pixels} px "
+                    f"({pixels / smaller:.1%} of the smaller layer)",
+                    [first, second],
+                    region=[left, top, right - left, bottom - top],
+                )
 
     # Empty text (a lyric between lines, a cleared label) draws nothing to measure.
     texts = [item for item in content if is_text(item) and resolved[item["id"]].get("text", "").strip()]
@@ -688,6 +752,11 @@ def check_design(
         from .brand import check as check_brand
         check_brand(candidate, brand, issue)
 
+    if "connected" in checks:
+        from .parts import check_connected
+
+        check_connected(candidate, issue, connect_tolerance, targets, resolved)
+
     if "drawing" in checks:
         from .drawing import check_drawings
 
@@ -708,6 +777,11 @@ def check_design(
 
         check_form(candidate, resolved, local_bounds, projection, layers, issue, sample=sample)
 
+    if "codes" in checks:
+        from .codes import check_codes
+
+        check_codes(candidate, resolved, layers, issue)
+
     if "links" in checks:
         check_links(candidate, [resolved[i] for i in resolved if resolved[i]["type"] == "link" and visible(resolved[i])],
                     issue)
@@ -725,7 +799,7 @@ def check_design(
                 issue(name, finding["severity"], finding["message"], [target] if target else [],
                       **{k: v for k, v in finding.items() if k not in ("check", "severity", "message", "layer")})
 
-    if "legibility" in checks and (project.state.get("timeline") or {}).get("tracks"):
+    if "legibility" in checks and timeline_animated(project.state.get("timeline")):
         # Many apps show only frame 0: read the legibility of the poster frame too.
         from .timeline import project_at
 
@@ -902,46 +976,84 @@ def _color_vision(candidate, resolved, bounds, texts, min_contrast, text_scales,
                 )
 
 
-def compare(project, before="previous", after="head", *, max_width=1024, max_height=1024, mode="side-by-side"):
-    """Render two revisions for an at-a-glance review. Returns ``(image, summary)``."""
-    from PIL import Image, ImageChops
+def compare(project, before="previous", after="head", *, max_width=1024, max_height=1024, mode="side-by-side",
+            isolate=None):
+    """Render two revisions for an at-a-glance review. Returns ``(image, summary)``. ``isolate`` (layer
+    IDs or names) shows only those layers, both sides cropped to the same box around their ink."""
+    from PIL import Image
 
-    from .proxy import render_preview
+    from .proxy import isolated_pair, render_preview
 
     require(mode in ("side-by-side", "diff"), "mode must be side-by-side or diff", field="mode")
     left_project, right_project = project.at(before), project.at(after)
     half = max_width // 2 if mode == "side-by-side" else max_width
-    left = render_preview(left_project, half, max_height).convert("RGBA")
-    right = render_preview(right_project, half, max_height).convert("RGBA")
+    region = None
+    if isolate is not None:
+        left_project, right_project, region = isolated_pair(left_project, right_project, isolate)
+    left = render_preview(left_project, half, max_height, region=region).convert("RGBA")
+    right = render_preview(right_project, half, max_height, region=region).convert("RGBA")
     if left.size != right.size:
         right = right.resize(left.size, Image.Resampling.LANCZOS) if mode == "diff" else right
     summary = {"before": project.resolve_ref(before), "after": project.resolve_ref(after)}
     if left.size == right.size:
-        difference = ImageChops.difference(left, right).convert("L").point(lambda v: 255 if v > 8 else 0)
-        box = difference.getbbox()
-        changed = int(np.count_nonzero(np.asarray(difference)))
-        scale = project.at(after).state["canvas"]["width"] / right.width
+        difference, stats = pixel_diff(left, right)
+        origin = region[:2] if region else (0, 0)
+        scale = (region[2] if region else project.at(after).state["canvas"]["width"]) / right.width
+        box = stats["changed_region"]
         summary.update(
-            changed_fraction=round(changed / (right.width * right.height), 4),
-            changed_region=[round(v * scale) for v in (box[0], box[1], box[2] - box[0], box[3] - box[1])]
-            if box
-            else None,
+            changed_fraction=stats["changed_fraction"],
+            changed_region=[round(origin[0] + box[0] * scale), round(origin[1] + box[1] * scale),
+                            round(box[2] * scale), round(box[3] * scale)] if box else None,
         )
+        if region:
+            summary["region"] = region
     else:
         difference = None
         summary["changed_region"] = "canvas size changed"
     if mode == "diff" and difference is not None:
-        dimmed = Image.blend(Image.new("RGBA", right.size, "black"), right, 0.35)
-        highlight = Image.new("RGBA", right.size, (255, 40, 40, 255))
-        return Image.composite(highlight, dimmed, difference), summary
-    canvas = Image.new("RGBA", (left.width + right.width + 8, max(left.height, right.height)), (128, 128, 128, 255))
-    canvas.alpha_composite(left, (0, 0))
-    canvas.alpha_composite(right, (left.width + 8, 0))
-    return canvas, summary
+        return diff_highlight(right, difference), summary
+    return side_by_side(left, right), summary
+
+
+def pixel_diff(left, right, threshold=8):
+    """Changed pixels between two same-size images: ``(mask, stats)``. A pixel changes when any RGBA channel
+    moves by more than ``threshold``; ``stats`` has changed_pixels, changed_fraction and changed_region
+    ([x, y, w, h] or None)."""
+    from PIL import Image, ImageChops
+
+    require(left.size == right.size, "Images must be the same size to compare")
+    channels = np.asarray(ImageChops.difference(left.convert("RGBA"), right.convert("RGBA")))
+    changed_mask = channels.max(axis=2) > threshold
+    mask = Image.fromarray((changed_mask * 255).astype(np.uint8), "L")
+    box = mask.getbbox()
+    changed = int(np.count_nonzero(changed_mask))
+    return mask, {
+        "changed_pixels": changed,
+        "changed_fraction": round(changed / max(1, left.width * left.height), 4),
+        "changed_region": [box[0], box[1], box[2] - box[0], box[3] - box[1]] if box else None,
+    }
+
+
+def diff_highlight(image, mask):
+    """``image`` dimmed, with the pixels in ``mask`` painted red."""
+    from PIL import Image
+
+    image = image.convert("RGBA")
+    dimmed = Image.blend(Image.new("RGBA", image.size, "black"), image, 0.35)
+    return Image.composite(Image.new("RGBA", image.size, (255, 40, 40, 255)), dimmed, mask)
+
+
+def side_by_side(left, right, gap=8):
+    from PIL import Image
+
+    canvas = Image.new("RGBA", (left.width + right.width + gap, max(left.height, right.height)), (128, 128, 128, 255))
+    canvas.alpha_composite(left.convert("RGBA"), (0, 0))
+    canvas.alpha_composite(right.convert("RGBA"), (left.width + gap, 0))
+    return canvas
 
 
 APPLY_ISSUES = 20  # Findings an apply call returns; vixl_check lists them all.
-APPLY_PREVIEW = ("page", "region", "max_width", "max_height", "time")
+APPLY_PREVIEW = ("page", "region", "max_width", "max_height", "time", "isolate")
 
 
 def _apply_options(check, preview):

@@ -22,6 +22,7 @@ from .forms import TYPES as FORM_TYPES
 from .drawing import TYPES as DRAWING_TYPES
 from .selectors import TYPES as SELECTOR_TYPES
 from .links import TYPES as LINK_TYPES
+from .codes import TYPES as CODE_TYPES
 from .charts import TYPES as CHART_TYPES
 from .finishing import TYPES as FINISHING_TYPES
 from .diagrams import TYPES as DIAGRAM_TYPES
@@ -35,6 +36,7 @@ from .audio import TYPES as AUDIO_TYPES
 from .captions import TYPES as CAPTION_TYPES
 from .scene import TYPES as SCENE_TYPES
 from .vector_paths import TYPES as VECTOR_TYPES
+from .merging import TYPES as MERGE_TYPES
 
 from copy import deepcopy
 import hashlib
@@ -63,7 +65,7 @@ from .render import (
 COLOR_TYPES = ("palette-generate",)
 
 
-OPERATION_TYPES = list(DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_TYPES + BRUSH_TYPES + TIMELINE_TYPES + LAYOUT_TYPES + COLOR_TYPES + AUTOMATION_TYPES + CREATIVE_TYPES + CONTAINER_TYPES + AUTHORING_TYPES + ORGANIC_TYPES + IRREGULAR_TYPES + GUIDE_TYPES + RICH_TYPES + PAGE_TYPES + FORM_TYPES + DRAWING_TYPES + STACK_TYPES + SELECTOR_TYPES + LINK_TYPES + CHART_TYPES + FINISHING_TYPES + DIAGRAM_TYPES + FLOW_TYPES + TRANSFORM_TYPES + MOTION_TYPES + CHARACTER_TYPES + COMIC_TYPES + TEXTURE_TYPES + AUDIO_TYPES + VECTOR_TYPES + CAPTION_TYPES + SCENE_TYPES) + [
+OPERATION_TYPES = list(DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_TYPES + BRUSH_TYPES + TIMELINE_TYPES + LAYOUT_TYPES + COLOR_TYPES + AUTOMATION_TYPES + CREATIVE_TYPES + CONTAINER_TYPES + AUTHORING_TYPES + ORGANIC_TYPES + IRREGULAR_TYPES + GUIDE_TYPES + RICH_TYPES + PAGE_TYPES + FORM_TYPES + DRAWING_TYPES + STACK_TYPES + SELECTOR_TYPES + LINK_TYPES + CODE_TYPES + CHART_TYPES + FINISHING_TYPES + DIAGRAM_TYPES + FLOW_TYPES + TRANSFORM_TYPES + MOTION_TYPES + CHARACTER_TYPES + COMIC_TYPES + TEXTURE_TYPES + AUDIO_TYPES + VECTOR_TYPES + CAPTION_TYPES + SCENE_TYPES + MERGE_TYPES) + [
     "add",
     "solid",
     "gradient",
@@ -103,9 +105,35 @@ OPERATION_TYPES = list(DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_T
     "effect-move",
     "rasterize",
     "variable",
+    "variable-map",
     "preset-save",
     "preset-apply",
 ]
+
+
+def _align_baselines(project, op, targets, ref):
+    """Move text layers vertically so their first baselines line up with the reference's: a text layer named in
+    relative_to, or the first target."""
+    from .render import stored_origin
+    from .text_metrics import first_baseline, resolved_text
+
+    require(ref != "canvas", "Baseline alignment lines text up with another text layer: give targets (the first sets "
+            "the baseline) or relative_to a text layer", field="relative_to")
+
+    def baseline(item):
+        layer, resolved, bounds = resolved_text(project, item["id"])
+        require(not layer.get("rotation") % 360 and not layer.get("skew_x") and not layer.get("skew_y"),
+                f"{layer['name']!r} is rotated or skewed; baselines align on upright text", field="targets")
+        return bounds, first_baseline(project, resolved)
+
+    reference = project.layer(ref) if ref != "selection" else targets[0]
+    require(reference.get("parent") == targets[0].get("parent"), "Alignment targets must share a parent")
+    bounds, offset = baseline(reference)
+    line = bounds[1] + offset + finite(op.get("margin", 0), "margin", 0)
+    for item in targets:
+        box, offset = baseline(item)
+        item.update(constraints={})
+        item["x"], item["y"] = stored_origin(item, (box[0], line - offset))
 
 
 def embed_font_file(project, layer):
@@ -216,21 +244,32 @@ def effect_valid(effect):
 
 def unique_name(project, proposed):
     require(isinstance(proposed, str) and 0 < len(proposed) <= 200, "Layer name must be 1–200 characters")
-    require(
-        not any(proposed in (x["name"], x["id"]) for x in project.state["layers"]),
-        f"Layer name already exists: {proposed}",
-    )
+    require(taken(project, proposed) is None, f"Layer name already exists: {proposed}")
     return proposed
+
+
+def taken(project, name):
+    """The layer whose ID or name is ``name``, or None (indexed on a Project)."""
+    find = getattr(project, "find_layer", None)
+    if find is not None:
+        return find(name)
+    return next((x for x in project.state["layers"] if name in (x["name"], x["id"])), None)
 
 
 def default_name(project, base):
     """A free name for a layer the operation left unnamed: ``base``, then ``base 2``, ``base 3``…
-    Explicit names must still be unique."""
-    taken = {x["name"] for x in project.state["layers"]} | {x["id"] for x in project.state["layers"]}
-    name, index = base, 2
-    while name in taken:
-        name, index = f"{base} {index}", index + 1
-    return name
+    Explicit names must still be unique. Within one ``Project.apply`` the count continues from the
+    last name handed out for ``base`` (so a batch of unnamed shapes does not rescan every earlier
+    name); a number freed earlier in the same batch is not reused."""
+    if taken(project, base) is None:
+        return base
+    hints = getattr(project, "_name_hints", None)
+    index = max(2, (hints or {}).get(base, 2))
+    while taken(project, f"{base} {index}") is not None:
+        index += 1
+    if hints is not None:
+        hints[base] = index + 1
+    return f"{base} {index}"
 
 
 def append_layer(project, layer):
@@ -239,8 +278,39 @@ def append_layer(project, layer):
     from .transforms import VECTOR_TYPES
     project.limits.size(layer["width"], layer["height"], vector=layer["type"] in VECTOR_TYPES)
     project.state["layers"].append(layer)
+    if hasattr(project, "_indexed"):
+        project._indexed(layer)
     project.state["active_layer"] = layer["id"]
     return layer
+
+
+def forget_layers(project, removed, replacement=None):
+    """Drop references to the layer IDs ``removed`` (already taken out of the list). With
+    ``replacement`` (the ID of the layer that now draws their pixels), clipping and artboard
+    membership move to it instead."""
+    layers = project.state["layers"]
+    for item in layers:
+        if item.get("clip") in removed:
+            if replacement and item["id"] != replacement:
+                item["clip"] = replacement
+            else:
+                item.pop("clip")
+        if item["type"] == "field" and item["field"].get("label_layer") in removed:
+            item["field"].pop("label_layer")  # the form check reports the missing label
+    project.state["symbols"] = {
+        k: v for k, v in project.state.get("symbols", {}).items() if v not in removed
+    }
+    for board in project.state.get("artboards", {}).values():
+        if "targets" in board:
+            kept = [ident for ident in board["targets"] if ident not in removed]
+            if replacement and len(kept) < len(board["targets"]) and replacement not in kept:
+                kept.append(replacement)
+            board["targets"] = kept
+    if project.state["active_layer"] in removed:
+        project.state["active_layer"] = replacement or (layers[-1]["id"] if layers else None)
+    from .timeline import prune_targets
+
+    prune_targets(project.state, removed)
 
 
 def selection_image(project):
@@ -327,6 +397,9 @@ def execute(project, op):
         if "opacity" in op:
             execute(project, {"type": "opacity", "target": ident, "value": op["opacity"]})
         return result
+    if kind in MERGE_TYPES:
+        from .merging import execute as execute_merge
+        return execute_merge(project, op)
     if kind in SCENE_TYPES:
         from .scene import execute as execute_scene
         return execute_scene(project, op)
@@ -381,6 +454,9 @@ def execute(project, op):
     if kind in LINK_TYPES:
         from .links import execute as execute_links
         return execute_links(project, op)
+    if kind in CODE_TYPES:
+        from .codes import execute as execute_codes
+        return execute_codes(project, op)
     if kind in FINISHING_TYPES:
         from .finishing import execute as execute_finishing
         return execute_finishing(project, op)
@@ -487,6 +563,9 @@ def execute(project, op):
                                        fit=op.get("fit", "fill"))
             provenance.update(original_size=list(original_size), embedded_size=list(image.size))
             provenance.update({key: op[key] for key in ("downsample", "max_pixels") if key in op})
+        from .image_import import attribution
+
+        provenance.update(attribution(op.get("credit"), op.get("license")))
         layer = new_layer(
             op["name"] if "name" in op else default_name(project, Path(op.get("path", "image")).stem),
             "raster",
@@ -513,7 +592,7 @@ def execute(project, op):
                 color(resolve_color(op.get(key, default), project.state))
                 layer[key] = op.get(key, default)
             layer["direction"] = op.get("direction", "vertical")
-            layer.update({k: deepcopy(op[k]) for k in ("stops", "angle") if k in op})
+            layer.update({k: deepcopy(op[k]) for k in ("stops", "angle", "falloff") if k in op})
         else:
             font, role = resolve_font(project, op.get("font"))
             layer.update(
@@ -539,6 +618,12 @@ def execute(project, op):
             finite(op.get("y", 0), "y") if op.get("y") != "center" else (c["height"] - layer["height"]) / 2
         )
         append_layer(project, layer)
+        if "within" in op:
+            from .guides import place_within
+
+            require(not {"x", "y"} & set(op), "within positions the text; drop x and y (or use place with within "
+                    "and an anchor)", field="within")
+            place_within(project, layer["id"], op["within"])
         return
     if kind == "canvas":
         c = project.state["canvas"]
@@ -582,6 +667,11 @@ def execute(project, op):
             require(isinstance(op["value"], (str, int, float, bool)), "Variables must be scalar values")
             project.state["variables"][op["name"]] = op["value"]
         return
+    if kind == "variable-map":
+        from .variables import execute_map
+
+        execute_map(project, op)
+        return
     layer = project.layer(target)
     layers = project.state["layers"]
     if kind == "select-layer":
@@ -591,22 +681,7 @@ def execute(project, op):
 
         removed = descendants(project, layer["id"]) | {layer["id"]}
         layers[:] = [item for item in layers if item["id"] not in removed]
-        for item in layers:
-            if item.get("clip") in removed:
-                item.pop("clip")
-            if item["type"] == "field" and item["field"].get("label_layer") in removed:
-                item["field"].pop("label_layer")  # the form check reports the missing label
-        project.state["symbols"] = {
-            k: v for k, v in project.state.get("symbols", {}).items() if v not in removed
-        }
-        for board in project.state.get("artboards", {}).values():
-            if "targets" in board:
-                board["targets"] = [ident for ident in board["targets"] if ident not in removed]
-        if project.state["active_layer"] in removed:
-            project.state["active_layer"] = layers[-1]["id"] if layers else None
-        from .timeline import prune_targets
-
-        prune_targets(project.state, removed)
+        forget_layers(project, removed)
     elif kind == "rename":
         layer["name"] = unique_name(project, op["name"])
     elif kind == "duplicate":
@@ -783,8 +858,17 @@ def execute(project, op):
             other = project.layer(ref)
             require(other.get("parent") == targets[0].get("parent"), "Alignment targets must share a parent")
             box = layout[other["id"]]
+            if op.get("box", "bounds") == "content":
+                from .affine import layer_matrix
+                from .spatial import content_rect
+
+                box = content_rect(other, layer_matrix(other, box)) or box
+        require(op.get("box", "bounds") == "bounds" or ref not in ("selection", "canvas"),
+                "box: content needs relative_to naming a layer (its content box is the target area)", field="box")
         margin = finite(op.get("margin", 0), "margin", 0)
         alignment = op["alignment"]
+        if alignment == "baseline":
+            return _align_baselines(project, op, targets, ref)
         for item in targets:
             x, y, w, h = layout[item["id"]]
             bx, by, bw, bh = box
@@ -920,14 +1004,19 @@ def execute(project, op):
         else:
             raise VixlError("unknown_operation", f"Unknown operation: {kind}")
     elif kind == "rasterize":
-        require(
-            not layer.get("styles") and not layer.get("clip"),
-            "Remove layer styles/clipping before rasterizing",
-        )
-        b = resolve_layout(project)[layer["id"]]
-        # Bake everything the layer draws, including blur and group children past its box.
-        image = layer_ink(project, layer, b)
-        x, y = ink_origin(image, b)
+        if layer.get("styles") or layer.get("clip"):
+            from .render import render_members
+
+            # Styles and clipping are drawn on the layer's tile, as the renderer composites it.
+            image, (x, y) = render_members(project, [layer["id"]], include_hidden=True)
+            box = image.getchannel("A").getbbox()
+            require(box, "The layer draws no pixels to rasterize")
+            image, x, y = image.crop(box), x + box[0], y + box[1]
+        else:
+            b = resolve_layout(project)[layer["id"]]
+            # Bake everything the layer draws, including blur and group children past its box.
+            image = layer_ink(project, layer, b)
+            x, y = ink_origin(image, b)
         layer.update(
             type="raster",
             asset=add_image(project, image),
@@ -949,7 +1038,10 @@ def execute(project, op):
 
             removed = descendants(project, layer["id"])
             layers[:] = [item for item in layers if item["id"] not in removed]
-        for key in ("text", "font", "size", "auto_size", "crop", "linked", "repeat"):
+            forget_layers(project, removed, layer["id"])
+        # The pixels hold the styles, clipping and transform now.
+        for key in ("text", "font", "size", "auto_size", "crop", "linked", "repeat", "styles", "clip", "pivot",
+                    "skew_x", "skew_y", "affine"):
             layer.pop(key, None)
     elif kind == "preset-save":
         project.state["presets"][op["name"]] = deepcopy(layer["effects"])

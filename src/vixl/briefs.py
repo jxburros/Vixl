@@ -77,6 +77,21 @@ KINDS = {
         "example": [{"type": "layout-apply", "name": "banner", "title": "Your offer in one line", "subtitle": "A short detail",
                      "cta": "Get started", "palette": "ocean", "seed": 2}],
     },
+    "meme": {
+        "title": "Meme or reaction image",
+        "keywords": ["meme", "memes", "reaction", "caption", "top text", "bottom text", "four panel", "gif"],
+        "summary": "A picture with a few huge stroked words, or labelled panels; text fits its box and reads on any image.",
+        "approach": ["Create a social size (instagram-post, story).",
+                     "layout-apply a meme layout with image or images set to assets you may use, and short captions.",
+                     "Install an OFL Impact-style face (Anton) for the captions; check, preview small, export."],
+        "operations": ["layout-apply", "fit-text", "text-set", "animate-preset", "motion"],
+        "layouts": ["meme-top-bottom", "meme-caption-above", "meme-comparison", "meme-labelled", "meme-reaction",
+                    "meme-four-panel"],
+        "looks": ["outline"], "styles": [], "sizes": ["instagram-post", "story", "x-post"],
+        "guidance": ["meme"],
+        "example": [{"type": "layout-apply", "name": "meme-top-bottom", "title": "When the build passes",
+                     "caption": "On the first try", "seed": 1}],
+    },
     "logo": {
         "title": "Logo, wordmark or monogram",
         "keywords": ["logo", "wordmark", "monogram", "brand", "identity", "emblem", "badge", "mark", "lockup"],
@@ -117,7 +132,7 @@ KINDS = {
                        "pen", "pathfinder", "group", "pivot", "irregular", "drawn-texture", "cut-paper", "look", "layer-style"],
         "layouts": ["emblem", "centered-axis"], "looks": ["outline", "soft-shadow", "hard-shadow"],
         "styles": ["kawaii", "neo-brutalist", "hand-drawn", "line-art"], "sizes": ["sticker", "profile-picture", "discord-emoji"],
-        "guidance": ["character-rigging", "anatomy-proportions", "imperfection"],
+        "guidance": ["multi-part-objects", "character-rigging", "anatomy-proportions", "imperfection"],
         "example": [
             {"type": "shape", "shape": "ellipse", "name": "body", "x": 290, "y": 270, "width": 220, "height": 240, "fill": "#c8925a"},
             {"type": "shape", "shape": "ellipse", "name": "ear-left", "x": 300, "y": 90, "width": 64, "height": 64, "fill": "#b07a48"},
@@ -162,25 +177,30 @@ KINDS = {
         "keywords": ["pattern", "texture", "tile", "wallpaper", "seamless", "repeat", "grid", "dots", "stripes", "background", "gradient",
                      "scatter", "confetti", "terrazzo"],
         "summary": "Motifs scattered irregularly (an even grid reads as a table, not a pattern), or a textured field.",
-        "approach": ["Draw one or two motifs, or use organic generators (leaf, petal, blob) as motifs.",
-                     "Scatter them: an organic layer with a scatter rule (Poisson-disc spacing, varied size and turn) covers the "
-                     "canvas evenly without a grid; vary a set of drawn copies with irregular only [placement, color].",
+        "approach": ["Draw one or two motifs (shape, pen, or organic leaf, petal, blob) off to the side.",
+                     "Seamless tile: pattern-scatter {source: [motifs], width, height, count or spacing, seed, "
+                     "rotation_jitter, scale_jitter, background, pattern: NAME} scatters them with wrap-around "
+                     "Poisson-disc spacing; motifs crossing an edge get wrapped copies on the opposite edge, so the "
+                     "tile has no seam. The result reports a seam score; pattern-fill a layer with the saved pattern "
+                     "(tile_variation varies each repeat). After editing a motif, pattern-scatter {target: TILE} rebuilds it.",
+                     "Scatter over a shape instead: scatter {target: SHAPE, source: [motifs], count, seed, merge: true} "
+                     "(merge draws a thousand marks as one path per tone); exclude keeps areas clear. To vary a set of "
+                     "drawn copies by hand, use irregular with only [placement, color].",
                      "Use repeat or arrange-grid only when the brief asks for a grid (stripes, checks, polka dots).",
-                     "For a seamless tile, pattern-define the result and check its seams (vixl_workflow pattern-check); motifs "
-                     "crossing an edge are not wrapped, so keep them inside the tile.",
                      "Or fill with gradient layers and apply grain, paper or halftone looks."],
-        "operations": ["organic", "shape", "irregular", "duplicate", "group", "pattern-define", "pattern-fill", "repeat",
-                       "arrange-grid", "gradient", "look"],
+        "operations": ["pattern-scatter", "scatter", "organic", "shape", "irregular", "group", "pattern-define",
+                       "pattern-fill", "repeat", "arrange-grid", "gradient", "look"],
         "layouts": [], "looks": ["grain", "paper", "halftone", "duotone"], "styles": ["memphis", "risograph", "minimalist"],
         "sizes": ["web-hero", "photo-square", "phone-wallpaper"],
-        "guidance": ["imperfection", "drawn-textures"],
+        "guidance": ["imperfection", "drawn-textures", "scatter"],
         "example": [
+            {"type": "shape", "shape": "ellipse", "name": "dot", "x": 0, "y": 0, "width": 26, "height": 26, "fill": "#f97316"},
+            {"type": "organic", "preset": "leaf", "name": "leaf", "x": 0, "y": 0, "width": 34, "height": 56, "fill": "#3f7d4e"},
+            {"type": "pattern-scatter", "source": ["dot", "leaf"], "width": 200, "height": 200, "count": 14, "seed": 11,
+             "rotation_jitter": 180, "scale_jitter": 0.3, "background": "#fff7ed", "pattern": "leaves", "name": "tile"},
+            {"type": "hide", "target": "tile"},
             {"type": "solid", "name": "ground", "color": "#fff7ed"},
-            {"type": "organic", "name": "scatter", "seed": 11, "x": 0, "y": 0, "width": 800, "height": 600, "stretch": True, "parts": [
-                {"name": "leaves", "generator": "leaf", "fill": "#3f7d4e",
-                 "rules": [{"rule": "scatter", "count": 26, "within": "square", "scale": 0.09, "size_variation": 0.3}]},
-                {"name": "dots", "generator": "blob", "fill": "#f97316",
-                 "rules": [{"rule": "scatter", "count": 40, "within": "square", "scale": 0.025, "size_variation": 0.4}]}]},
+            {"type": "pattern-fill", "target": "ground", "pattern": "leaves", "tile_variation": 0.3, "name": "wallpaper"},
         ],
     },
     "mandala": {
@@ -325,7 +345,7 @@ OPERATION_GROUPS = {
     "Arrange and transform": ["move", "resize", "scale", "rotate", "pivot", "flip", "crop", "align", "distribute", "constrain", "unconstrain",
                               "reorder", "raise", "lower", "top", "bottom", "group", "ungroup", "clip", "duplicate", "rename", "remove",
                               "hide", "show", "select-layer", "arrange-grid", "adapt-layout", "fit-text", "text-layout"],
-    "Repeat and symmetry": ["repeat", "repeat-blend", "radial-repeat", "place", "snap", "guide", "grid", "pathfinder", "path-fit"],
+    "Repeat and symmetry": ["repeat", "repeat-blend", "radial-repeat", "scatter", "pattern-scatter", "place", "snap", "guide", "grid", "pathfinder", "path-fit"],
     "Finish and style": ["look", "layer-style", "effect", "style-set", "style-define", "style-apply", "type-scale", "swatch", "palette-apply",
                          "palette-generate", "palette-define", "opacity", "blend", "mask", "lookup", "lut"],
     "Compose from layouts": ["layout-apply", "template-apply", "container-place", "container-swap", "container-reflow", "container-variant", "container-fill", "image-slot", "shape-place"],
@@ -437,6 +457,12 @@ def guide(brief=None, *, seed=None, variety=None, workspace=None):
                 "next": "vixl_operation_schema(types=[…]) gives each operation's fields, a summary and examples"}
     if key in ("start-here", "start", "recipe"):
         return {"start_here": START_HERE}
+    if key == "capabilities" or key.startswith("capabilities-"):
+        topic = brief.strip()[len("capabilities"):].strip(" :")
+        call = f"vixl_capabilities(topic={topic!r})" if topic else "vixl_capabilities()"
+        raise VixlError("moved", f"vixl_guide('capabilities …') was removed in 0.21.0: call {call} (CLI: vixl "
+                                 f"capabilities {topic or 'TOPIC'}) for fields and gotchas; vixl_guide takes a kind of work "
+                                 "or a brief.", field="brief", suggestions=[call])
     if key == "looks":
         from .looks import catalog
 

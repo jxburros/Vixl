@@ -99,7 +99,7 @@ Python installations intentionally do not self-update or invoke pip. They return
 
 ## Maintaining releases
 
-`.github/workflows/release.yml` builds and tests Windows installers on pull requests. Test artifacts can be downloaded from the successful Actions run. Normal CI additionally tests Python 3.11–3.14 on Linux, macOS and Windows.
+`.github/workflows/release.yml` builds and tests Windows installers on pull requests that change packaging (`distribution/`, `src/vixl/__init__.py`, the updater, `pyproject.toml` or the workflow itself), on version changes pushed to `main` and on version tags; the push and tag runs also run the full test suite on Linux and Windows before anything is published. Test artifacts can be downloaded from the successful Actions run. Normal CI (`test.yml`) tests Python 3.11–3.14 on Linux, macOS and Windows on every pull request, runs `ruff check`, the golden-image suite, MP4/WebM tests with ffmpeg in one Linux job, and an advisory `pip-audit` job that reports vulnerable dependencies without failing the run. Dependabot proposes pip and GitHub Actions updates weekly. To exercise the installer on a pull request that does not touch those paths, run the workflow manually (`workflow_dispatch`).
 
 To publish a stable release:
 

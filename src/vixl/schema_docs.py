@@ -53,7 +53,9 @@ SUMMARIES = {
     "top": "Move a layer to the top of its stack.",
     "bottom": "Move a layer to the bottom of its stack.",
     "select-layer": "Make a layer the active layer (the default target).",
-    "rasterize": "Bake a layer, with its effects and styles, into pixels.",
+    "rasterize": "Bake a layer, with its effects, styles, mask and clipping, into pixels (a raster layer).",
+    "merge-layers": "Merge layers into one raster layer at the topmost one's place, keeping their blend modes among themselves.",
+    "flatten": "Flatten the page's visible layers into one canvas-size raster layer.",
     "unconstrain": "Drop a layer's constraints, keeping where it is now.",
     "rename": "Rename a layer.",
     "duplicate": "Copy a layer (and a group's children).",
@@ -73,9 +75,11 @@ SUMMARIES = {
     "group": "Group layers into one transformable layer.",
     "ungroup": "Dissolve a group, keeping its children in place.",
     "clip": "Clip a layer to the shape of a base layer beneath it (or release it).",
-    "repeat": "Repeat a layer N times with a per-copy offset and size change (linear).",
+    "repeat": "Repeat a layer N times with a per-copy offset and size change; per-step turn/scale/opacity, jitter or merge make real copies.",
     "repeat-blend": "Repeat a layer N times while blending its size and color to an end state.",
-    "radial-repeat": "Make N copies of a layer around a center, optionally mirrored (radial symmetry, mandalas, rosettes).",
+    "radial-repeat": "Make N copies of a layer around a center, optionally mirrored, stepped, jittered or merged (mandalas, rosettes).",
+    "scatter": "Scatter motif copies inside or along a layer's outline (Poisson-disc, seeded jitter, fur), as layers or merged paths.",
+    "pattern-scatter": "Scatter motifs in a seamless wrap-around tile (copies crossing an edge wrap), report its seam score.",
     "look": "Apply a named finishing look (glow, drop shadow, grain, paper, gradient …) to layers in one step.",
     "layer-style": "Add or remove a layer style: drop shadow, stroke, outer glow, color or gradient overlay.",
     "layer-intent": "Mark a layer as content, decoration, background or the page title, allow intended overlaps, or allow an intentional crop.",
@@ -95,7 +99,8 @@ SUMMARIES = {
     "effect-move": "Reorder a layer's effect stack: move one effect to a position, to the top or bottom, or before/after another.",
     "preset-save": "Save a layer's effect stack as a named preset.",
     "preset-apply": "Add a saved effect preset to a layer, optionally overriding amounts.",
-    "variable": "Set or delete a document variable used as ${name} in text, colors and images.",
+    "variable": "Set or delete a document variable used as ${name} (or ${name|upper|default:TEXT|map:NAME ...}) in text, colors and images.",
+    "variable-map": "Define, extend or delete a named value map that ${name|map:NAME} placeholders look values up in.",
     "swatch": "Define a named color (used as @name) that can build on other swatches.",
     "palette-define": "Define a named palette of 2-256 colors.",
     "palette-apply": "Apply a palette: adds numbered swatches and assigns role swatches (background, ink, accent …).",
@@ -110,7 +115,8 @@ SUMMARIES = {
     "layout-apply": "Build a principled layout (hero-statement, app-icon, logo-horizontal …) from copy slots, palette and seed.",
     "guide": "Create or delete a guide: an axis, line, ray, segment, point, circle or path.",
     "grid": "Create a grid system (columns, baseline, thirds, golden, polar, isometric, perspective …) of guides.",
-    "place": "Place layers on a guide: at a fraction, spread evenly, at intersections, turned to the tangent.",
+    "place": "Place layers on a guide (at a fraction, spread evenly, at intersections, turned to the tangent), or "
+             "within a shape's content box (a bubble's body, a badge) with an anchor and margin.",
     "snap": "Move near-miss layers onto guides and points, and straighten near-miss angles.",
     "frame-save": "Save the current canvas as a named animation frame.",
     "frame-apply": "Load a saved animation frame onto the canvas.",
@@ -122,6 +128,7 @@ SUMMARIES = {
     "animate": "Animate a property between two values over a time range.",
     "animate-preset": "Apply a ready-made motion (fade-in, slide, pop, bounce …) to layers.",
     "marker": "Add or delete a named timeline marker.",
+    "text-animate": "Animate a text layer per character, word or line (fade-up, pop, wave, typewriter …) with stagger.",
     "suite-set": "Attach a check suite (assert rules) to the document under a name.",
     "suite-capture": "Capture a structural and pixel baseline of layers as a suite.",
     "role-set": "Name a set of layers as a role that motions can target.",
@@ -142,6 +149,9 @@ SUMMARIES = {
     "edit-layers": "Apply a change or operation to every layer matching a selector (role, name, kind, tag, text) in one call.",
     "frames-edit": "Apply a list of operations to every saved frame, a named animation's frames or chosen frames, atomically.",
     "link": "Draw another .vixl document live as a layer (fit, position, crop, artboard, page, variables), or change a link.",
+    "qr": "Add a QR code as a vector shape (merged module path) with quiet zone and background; data may use ${variables}.",
+    "barcode": "Add a Code 128 or EAN-13 barcode as a vector shape with quiet zones; data may use ${variables}.",
+    "links-relink": "Rewrite the start of every link source in the document (a moved file or folder) and record the new revisions.",
     "link-refresh": "Record the current revision of linked documents so stale links are reported only when the source changes.",
     "link-embed": "Freeze a linked document into an ordinary raster layer that no longer follows its source.",
     "chart": "Draw a data-bound chart (bars, lines, areas, pie, donut) as vector layers, or restyle one with target.",
@@ -344,6 +354,8 @@ OVERRIDES = {
                   "delete_frames": "With unlink or delete: remove the frame layers too, not just the link.",
                   "match": "style: the words of the story to style (see occurrence).",
                   "occurrence": "style: which match to style, a 1-based number or 'all' (default)."},
+    "links-relink": {"from": "The source prefix to replace: a whole source path or a folder (whole path segments).",
+                     "to": "Its replacement; every rewritten source must name an existing .vixl file."},
     "link": {"source": "Workspace path of the .vixl document to draw (a link with a target: the new source).",
              "position": "Where the document sits in the box when it does not fill it: an anchor name (center, top-left …) "
                          "or [x, y] fractions 0-1.",
@@ -356,10 +368,15 @@ OVERRIDES = {
             "linked": "Keep the layer linked to the file instead of embedding it.",
             "max_pixels": "Downsample the embedded copy to at most this many pixels; retain source provenance.",
             "downsample": "placed@2x stores an image with twice the placed resolution without upscaling.",
-            "provenance": "Record of where the image came from."},
+            "provenance": "Record of where the image came from.",
+            "credit": "Attribution kept with the image (provenance.credit), e.g. 'Photo: Ana Ruiz / Unsplash'.",
+            "license": "License or usage terms kept with the image (provenance.license), e.g. 'CC BY 4.0'."},
     "solid": {"color": "Fill color.", "name": "Layer name (default 'solid')."},
     "gradient": {"start": "Start color (the first stop).", "end": "End color (the last stop).",
-                 "direction": "horizontal and vertical run edge to edge, radial from the center, angled uses angle.",
+                 "direction": "horizontal and vertical run edge to edge, radial from the center to the inscribed ellipse "
+                              "(the box's corners lie past the last stop and take its color), angled uses angle.",
+                 "falloff": "Curve between the stops: linear (default), smooth, ease (soft outer edge), quadratic or "
+                            "gaussian (soft halo). Drawn the same in raster, SVG, PDF and PPTX.",
                  "stops": "2-64 color stops [{offset: 0-1 (strictly increasing), color}], used instead of start/end.",
                  "angle": "Degrees for direction 'angled'."},
     "palette-define": {"name": "Palette name.", "colors": "2-256 colors."},
@@ -401,7 +418,7 @@ OVERRIDES = {
     "flip": {"direction": "horizontal mirrors left-right; vertical mirrors top-bottom."},
     "crop": {"x": "Left edge of the crop in source pixels.", "y": "Top edge of the crop in source pixels.",
              "width": "Crop width in source pixels.", "height": "Crop height in source pixels."},
-    "align": {"alignment": "Which edge or center to align to.", "margin": "Gap from the edge in pixels.",
+    "align": {"alignment": "Which edge or center to align to; baseline lines up text layers' first baselines.", "margin": "Gap from the edge in pixels.",
               "relative_to": "canvas, selection, or a layer name (default canvas, or the selection for targets).",
               "targets": "Layers to align together (default the target)."},
     "constrain": {"constraints": "Anchors to expressions: {left|right|top|bottom|center-x|center-y: a number, "
@@ -433,6 +450,10 @@ OVERRIDES = {
                     "before": "Place it just before this effect (ID, position or name).",
                     "after": "Place it just after this effect (ID, position or name)."},
     "variable": {"name": "Variable name (letters, digits, - and _).", "value": "String, number or boolean value."},
+    "variable-map": {"name": "Map name (letters, digits, - and _), used as ${variable|map:NAME}.",
+                     "values": "{value: replacement} entries; a '*' entry is used for values the map does not list.",
+                     "merge": "true adds to or overrides the existing entries instead of replacing the map.",
+                     "delete": "true removes the map (placeholders that still use it become an error)."},
     "preset-save": {"name": "Preset name."},
     "preset-apply": {"name": "Saved preset.", "overrides": "{effect name: amount} replacements."},
     "shape": {"shape": "rectangle, rounded-rectangle, ellipse, polygon, star, line, triangle, right-triangle, "
@@ -584,6 +605,8 @@ OVERRIDES = {
     "path-fit": {"padding": "Inner margin in pixels.", "preserve_aspect": "true keeps the path's proportions."},
     "layer-intent": {"role": "content, decoration (may overlap and bleed), background (checks skip it; use it for full-canvas art), or title (the heading that names the page and the PDF).",
                      "allow_overlap": "Layers this layer may overlap without a check finding.",
+                     "detached_ok": "true on a part says it floats free on purpose (a spark, a thrown ball), or on a "
+                                    "group that its parts are separate by design, so the connected check skips it.",
                      "color_vision_safe": "true on a chart group says its series differ by more than color (labels, patterns), so the color_vision check skips it.",
                      "allow_crop": "true marks a deliberate edge crop or bleed: checks report it as informational "
                                    "instead of a problem."},
@@ -635,7 +658,7 @@ OVERRIDES = {
     "drawing": {"action": "import, clean, vectorize, straighten, smooth, fill, stroke or restyle.",
                 "name": "Drawing name.", "asset": "Embedded scan or photo asset.", "path": "Scan or photo file.",
                 "settings": "Action settings (docs/drawing.md).", "strokes": "Stroke IDs or 'all'.",
-                "points": "Points for a manual stroke.", "color": "Color.",
+                "color": "Color.",
                 "x": "Position x.", "y": "Position y.", "width": "Width.", "height": "Height."},
     "palette-generate": {"name": "Prefix for the swatches (NAME-50 … or NAME-1 …).",
                          "color": "Source color (any color value or @swatch).",
@@ -656,6 +679,19 @@ OVERRIDES = {
 }
 
 EXAMPLES = {
+    "qr": [
+        {"type": "qr", "name": "ticket-qr", "data": "https://example.com/t/123", "module": 6, "x": 40, "y": 40},
+        {"type": "qr", "name": "logo-qr", "data": "https://example.com", "error": "H", "size": 240,
+         "color": "#0f172a", "background": "#ffffff"},
+    ],
+    "barcode": [
+        {"type": "barcode", "name": "sku", "data": "400638133393", "symbology": "ean13", "module": 3, "height": 120,
+         "x": 40, "y": 400},
+        {"type": "barcode", "name": "order", "data": "ORDER-2026-0042", "module": 2, "height": 80},
+    ],
+    "variable-map": [
+        {"type": "variable-map", "name": "state", "values": {"NY": "New York", "CA": "California", "*": "Elsewhere"}},
+    ],
     "gradient": [
         {"type": "gradient", "name": "sky", "start": "#1e3a8a", "end": "#7dd3fc", "direction": "vertical"},
         {"type": "gradient", "name": "glow-disc", "width": 400, "height": 400, "start": "#fde68a",
@@ -680,8 +716,23 @@ EXAMPLES = {
     ],
     "repeat": [
         {"type": "repeat", "target": "badge", "count": 5, "dx": 70, "dy": 0},
+        {"type": "repeat", "target": "badge", "count": 6, "dx": 50, "rotation_step": 15, "scale_step": 0.9,
+         "opacity_step": -0.12, "name": "badge-trail"},
+    ],
+    "scatter": [
+        {"type": "scatter", "target": "card", "source": "logo", "count": 40, "seed": 2, "rotation_jitter": 30,
+         "scale_jitter": 0.3, "tone_variation": 0.08, "merge": True, "name": "confetti"},
+        {"type": "scatter", "target": "moon", "preset": "fur", "seed": 1},
+        {"type": "scatter", "target": "card", "source": "badge", "placement": "along", "spacing": 60,
+         "scale": 0.25, "name": "studs"},
+    ],
+    "pattern-scatter": [
+        {"type": "pattern-scatter", "source": ["badge", "logo"], "width": 200, "height": 200, "count": 12, "seed": 5,
+         "scale_jitter": 0.3, "rotation_jitter": 180, "background": "#fef3c7", "pattern": "stars", "name": "star-tile"},
     ],
     "radial-repeat": [
+        {"type": "radial-repeat", "target": "logo", "count": 16, "cx": 400, "cy": 300, "rotation_jitter": 8, "seed": 1,
+         "scale_step": 0.97, "merge": True, "name": "ring"},
         {"type": "radial-repeat", "target": "badge", "count": 12, "cx": "50%", "cy": "50%", "name": "rosette"},
         {"type": "radial-repeat", "target": "badge", "count": 8, "cx": 300, "cy": 200, "mirror": True,
          "name": "mandala"},
@@ -739,6 +790,10 @@ EXAMPLES = {
     ],
     "animate-preset": [
         {"type": "animate-preset", "targets": ["greeting"], "preset": "fade-in", "start": 0, "duration": "600ms"},
+    ],
+    "text-animate": [
+        {"type": "text-animate", "target": "greeting", "preset": "fade-up", "unit": "char", "duration": "400ms", "stagger": "40ms"},
+        {"type": "text-animate", "target": "greeting", "preset": "wave", "unit": "char", "stagger": "20%", "repeat": True},
     ],
 }
 

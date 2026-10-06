@@ -4,10 +4,13 @@ Coordinates and gravity use pixels and seconds; operation times use milliseconds
 """
 import math
 from .errors import require
-from .model import finite
+from .model import MAX_LAYERS, finite
 
 TYPES = ("motion", "keyframes")
-RECIPES = ("follow-path", "orbit", "bounce", "shake", "wiggle", "spring", "look-at", "overlap", "breathing", "blink", "hover", "spin")
+RECIPES = ("follow-path", "orbit", "bounce", "shake", "wiggle", "spring", "look-at", "overlap", "breathing", "blink", "hover", "spin",
+           "attach", "line-boil")
+SAMPLE_FUNCTIONS = ("sin", "cos", "triangle", "saw", "square", "noise")
+BOIL_STRENGTHS = ("subtle", "natural", "rough")
 
 
 def schemas(add):
@@ -17,28 +20,134 @@ def schemas(add):
     from .timeline import easing_schema
     point = {"type": "array", "items": N, "minItems": 2, "maxItems": 2}
     time = {"type": ["number", "string"]}
-    add("motion", {"recipe": {"enum": list(RECIPES)}, "targets": {"type": "array", "items": S, "minItems": 1, "maxItems": 256},
+    add("motion", {"recipe": {"enum": list(RECIPES)}, "targets": {"type": "array", "items": S, "minItems": 1, "maxItems": MAX_LAYERS},
         "start": time, "duration": time, "period": N, "amount": N, "frequency": N, "damping": N,
         "gravity": N, "restitution": N, "radius": N, "center": point, "points": {"type": "array", "items": point, "minItems": 2, "maxItems": 256},
-        "to": N, "property": S, "follow": S, "stagger": N, "children": B, "samples": {"type": "integer", "minimum": 2, "maximum": 512},
+        "to": {"type": ["number", "string"], "description": "spring: end value. attach: the layer to ride on (same as follow)."},
+        "anchor": {"anyOf": [point, {"type": "string"}], "description": "attach: the point of the followed layer to "
+                   "ride on, in its own box: [fx, fy] fractions (units: fraction, default), [x, y] pixels from its top-left "
+                   "corner (units: px) or an anchor name (center, top-right …). Default: where the layer is now."},
+        "units": {"enum": ["fraction", "px"], "description": "attach: how anchor reads (default fraction)."},
+        "offset": {**point, "description": "attach: [dx, dy] pixels added to the anchor, in the followed layer's own "
+                   "frame (it turns and scales with that layer)."},
+        "rotation": {"type": "boolean", "description": "attach: also turn with the followed layer (default true); "
+                     "false keeps the layer upright and moves it only."},
+        "property": S, "follow": S, "stagger": N, "children": B, "samples": {"type": "integer", "minimum": 2, "maximum": 512},
         "phase": N, "easing": easing_schema(), "extend": B,
         "turns": N,
         "symmetry": {"type": "integer", "minimum": 1, "maximum": 1000},
-        "close": B}, ["recipe"])
+        "close": B,
+        "fps": {"type": "number", "minimum": 1, "maximum": 30, "description": "line-boil: redraws per second, each "
+                "held until the next (default 10; 8-12 reads as hand-drawn boil)."},
+        "variants": {"type": "integer", "minimum": 2, "maximum": 8, "description": "line-boil: how many wobbled "
+                     "drawings cycle (default 3); each is a copy of the layer, so this multiplies its layers."},
+        "seed": {"type": "integer", "minimum": 0, "description": "line-boil: seed of the first drawing; the others use "
+                 "the next seeds."},
+        "strength": {"enum": list(BOIL_STRENGTHS), "description": "line-boil: wobble strength (default subtle)."}},
+        ["recipe"])
+    sample = {"type": "object", "description": "Generate the keys from a periodic function instead of listing them: "
+              "{fn: sin|cos|triangle|saw|square|noise, period (ms), amplitude, offset, phase (cycles), step_ms or "
+              "samples, duration (ms), start (ms), seed (noise)}. value = offset + amplitude * fn(phase + t/period).",
+              "properties": {"fn": {"enum": list(SAMPLE_FUNCTIONS)}, "period": {"type": "number", "exclusiveMinimum": 0},
+                             "amplitude": N, "offset": N, "phase": N,
+                             "step_ms": {"type": "number", "minimum": 1}, "samples": {"type": "integer", "minimum": 1,
+                                                                                    "maximum": 8192},
+                             "duration": {"type": "number", "exclusiveMinimum": 0}, "start": N,
+                             "seed": {"type": "integer", "minimum": 0}},
+              "required": ["fn"], "additionalProperties": False}
     add("keyframes", {"property": S, "keys": {"type": "array", "minItems": 1, "maxItems": 8192,
-        "items": {"type": "object", "properties": {"time": time, "value": {}, "easing": easing_schema()}, "required": ["time", "value"], "additionalProperties": False}}, "extend": B}, ["property", "keys"])
+        "items": {"type": "object", "properties": {"time": time, "value": {}, "easing": easing_schema()}, "required": ["time", "value"], "additionalProperties": False}},
+        "sample": sample, "extend": B}, ["property"], anyOf=[{"required": ["keys"]}, {"required": ["sample"]}])
+
+
+def sampled_keys(project, spec):
+    """Keys from a ``sample`` spec: a periodic function sampled every ``step_ms`` (or ``samples``
+    times) over ``duration``. Square waves hold between keys; the rest are linear."""
+    from .timeline import _timeline
+
+    settings = _timeline(project)
+    fn = spec["fn"]
+    period = finite(spec.get("period", 1000), "sample.period", 1, 600000)
+    duration = finite(spec.get("duration", settings["duration"]), "sample.duration", 1, 600000)
+    start = finite(spec.get("start", 0), "sample.start", 0, 600000)
+    amplitude = finite(spec.get("amplitude", 1), "sample.amplitude", -1e6, 1e6)
+    offset = finite(spec.get("offset", 0), "sample.offset", -1e6, 1e6)
+    phase = finite(spec.get("phase", 0), "sample.phase", -1e4, 1e4)
+    require(not ("step_ms" in spec and "samples" in spec), "sample takes step_ms or samples, not both", field="sample.samples")
+    if "samples" in spec:
+        count = spec["samples"]
+    else:
+        step = finite(spec.get("step_ms", 1000 / settings.get("fps", 30)), "sample.step_ms", 1, 600000)
+        count = max(1, math.ceil(duration / step - 1e-9))
+    require(isinstance(count, int) and 1 <= count <= 8192, "sample makes 1-8192 keys; raise step_ms", "resource_limit",
+            field="sample.step_ms")
+    times = [start + duration * i / count for i in range(count + 1)]
+    cycles = [phase + (t - start) / period for t in times]
+    if fn == "noise":
+        import numpy as np
+        from .irregular import correlated_noise
+
+        rng = np.random.default_rng([spec.get("seed", 0), 7])
+        loop = (times[-1] - start) / period
+        closed = abs(loop - round(loop)) < 1e-9 and round(loop) >= 1
+        values = correlated_noise(rng, [(c - phase) * period for c in cycles], period, duration, closed, 2, 0.5)
+        values = [float(v) for v in values]
+    else:
+        wave = {"sin": lambda c: math.sin(math.tau * c), "cos": lambda c: math.cos(math.tau * c),
+                "triangle": lambda c: 1 - 4 * abs((c + 0.25) % 1 - 0.5), "saw": lambda c: 2 * (c % 1) - 1,
+                "square": lambda c: 1.0 if c % 1 < 0.5 else -1.0}[fn]
+        values = [wave(c) for c in cycles]
+    easing = "hold" if fn == "square" else "linear"
+    return [{"time": round(t, 3), "value": round(offset + amplitude * v, 6), "easing": easing} for t, v in zip(times, values)]
+
+
+def line_boil(project, op, targets, start, length):
+    """Hand-drawn line boil: ``variants`` copies of each target, each wobbled by irregular with
+    its own seed, shown one at a time and held for 1/fps seconds, cycling."""
+    from .operations import execute as apply
+    from .timeline import execute_timeline
+    from .scatter import Namer
+
+    fps = finite(op.get("fps", 10), "fps", 1, 30)
+    variants = op.get("variants", 3)
+    require(isinstance(variants, int) and 2 <= variants <= 8, "variants must be 2-8", field="variants")
+    seed = op.get("seed", 0)
+    strength = op.get("strength", "subtle")
+    require(strength in BOIL_STRENGTHS, f"strength must be {', '.join(BOIL_STRENGTHS)}", field="strength")
+    frames = max(1, math.ceil(length * fps / 1000 - 1e-9))
+    require(frames * variants * len(targets) <= 8192, "line-boil would write too many keys; shorten duration or lower "
+            "fps or variants", "resource_limit", field="fps")
+    namer = Namer(project)
+    for layer in targets:
+        require(layer["type"] in ("shape", "group"), f"line-boil redraws vector layers; {layer['name']!r} is a "
+                f"{layer['type']} layer", field="targets")
+        copies = [layer["id"]]
+        for k in range(1, variants):
+            apply(project, {"type": "duplicate", "target": layer["id"], "name": namer(f"{layer['name']}-boil-{k + 1}")})
+            copies.append(project.state["active_layer"])
+        for k, ident in enumerate(copies):
+            apply(project, {"type": "irregular", "target": ident, "seed": seed + k, "strength": strength,
+                            "only": ["wobble", "jitter", "width"]})
+        apply(project, {"type": "group", "name": namer(f"{layer['name']}-boil"), "targets": copies})
+        for k, ident in enumerate(copies):
+            for j in range(frames):
+                execute_timeline(project, {"type": "keyframe", "target": ident, "property": "visible",
+                                           "time": start + round(j * 1000 / fps), "value": j % variants == k,
+                                           "easing": "hold", "extend": op.get("extend", True)})
 
 
 def execute(project, op):
     from .timeline import execute_timeline, _timeline, parse_time, static_value, project_at, _snapshot
     if op["type"] == "keyframes":
-        for key in op["keys"]:
+        keys = (sampled_keys(project, op["sample"]) if "sample" in op else []) + list(op.get("keys", []))
+        require(len(keys) <= 8192, "keyframes writes at most 8192 keys", "resource_limit", field="sample")
+        for key in keys:
             execute_timeline(project, {"type": "keyframe", "target": op.get("target"), "property": op["property"], "extend": op.get("extend", True), **key})
         return
     settings = _timeline(project)
     start = parse_time(op.get("start", 0), settings["duration"], settings.get("markers"))
     # A spin fills the rest of the timeline by default: one operation, one seamless loop.
-    length = parse_time(op.get("duration", settings["duration"] - start if op.get("recipe") == "spin" else 1000), settings["duration"], settings.get("markers"))
+    length = parse_time(op.get("duration", settings["duration"] - start if op.get("recipe") in ("spin", "attach") else 1000), settings["duration"], settings.get("markers"))
     require(length >= 10, "Motion duration must be at least 10 ms")
     recipe = op["recipe"]
     require(recipe in RECIPES, "Unknown motion recipe")
@@ -48,6 +157,9 @@ def execute(project, op):
         targets = [layer for layer in project.state["layers"] if layer.get("parent") in roots]
     require(targets, "Motion needs at least one target")
     stagger = finite(op.get("stagger", 0), "stagger", 0, 600000)
+    if recipe == "line-boil":
+        line_boil(project, op, targets, start, length)
+        return
     before = {layer["id"]: _snapshot(settings, layer["id"]) for layer in targets}
     if recipe == "spin":
         turns = finite(op.get("turns", 1), "turns", -1000, 1000)
@@ -65,6 +177,17 @@ def execute(project, op):
                                            "easing": op.get("easing", "linear"), "extend": op.get("extend", True)})
             if symmetry > 1:
                 next(t for t in settings["tracks"] if t["target"] == layer["id"] and t["property"] == "rotation")["symmetry"] = symmetry
+        _close_motion(project, settings, op, targets, before)
+        return
+    if recipe == "attach":
+        ref = op.get("follow", op.get("to"))
+        require(isinstance(ref, str), "attach needs follow (or to): the layer to ride on", field="follow")
+        follow = project.layer(ref)["id"]
+        require("samples" not in op or isinstance(op["samples"], int) and 2 <= op["samples"] <= 512,
+                "Motion samples must be 2–512", field="samples")
+        from .group_bake import attach
+        for index, layer in enumerate(targets):
+            attach(project, op, layer, follow, start + round(stagger * index), length)
         _close_motion(project, settings, op, targets, before)
         return
     samples = op.get("samples", min(120, max(16, math.ceil(length / 1000 * settings["fps"]))))
@@ -182,17 +305,28 @@ def _close_motion(project, timeline, op, targets, before):
             _close_touched(project, timeline, layer["id"], before.get(layer["id"], {}), {"close": True}, None, False)
 
 
-def time_findings(project):
-    """What a viewer sees over time, from the frames the shared sampler picks (poster, middle, last):
-    a loop that jumps at its seam, and text missing from the poster frame."""
-    from .timeline import is_looping, poster_findings, seam_findings
+SAMPLE_STEP = 100  # ms between sampled frames
+MAX_SAMPLES = 48
+TEXT_HIDDEN_SHARE = 0.5  # a looping text layer hidden for more of the loop than this is reported
+SEAM_PREVIEW = 160  # px, longest side of the frames compared at the loop seam
 
-    timeline = project.state.get("timeline")
-    if not timeline or not timeline.get("tracks"):
+
+def seam_value_findings(project, timeline=None):
+    """Loop-seam findings from the track values: a track that ends elsewhere than it starts, or
+    changes speed there."""
+    from .kinetic import seam_findings as text_seams
+    from .timeline import animated, is_looping, seam_findings
+
+    timeline = timeline or project.state.get("timeline")
+    if not animated(timeline) or not is_looping(timeline):
         return []
     result = []
-    if is_looping(timeline):
-        for item in seam_findings(project, timeline):
+    for layer in text_seams(project, timeline):
+        result.append({"check": "motion", "severity": "warning", "layer": layer["id"], "code": "loop-seam",
+                       "message": f"Loop seam: the text animation on {layer['name']!r} poses its letters differently at the loop end "
+                                  "than at t=0, so the loop jumps when it restarts. Use text-animate mode: in-out (or a repeating "
+                                  "wave whose period divides the timeline)."})
+    for item in seam_findings(project, timeline):
             track = item["track"]
             name = f"{track['property']} on {track['target']}"
             if item["kind"] == "value":
@@ -203,9 +337,157 @@ def time_findings(project):
                 result.append({"check": "motion", "severity": "info", "layer": track["target"], "code": "loop-seam-speed",
                                "message": f"Loop seam: {name} matches at the seam but its speed changes from {item['first']} to {item['last']} units/s there; "
                                           "ease the first and last segments (ease-in-out) or use constant speed to hide the kink."})
+    return result
+
+
+def time_findings(project):
+    """What a viewer sees over time: a loop that jumps at its seam (track values, and the rendered
+    last and first frames), text missing from the poster frame, and from frames sampled every
+    SAMPLE_STEP ms: moving layers crossing text, text hidden for most of a loop, and parts that
+    start on one centre and drift apart."""
+    from .timeline import animated, poster_findings
+
+    timeline = project.state.get("timeline")
+    if not animated(timeline):
+        return []
+    result = seam_value_findings(project, timeline)
     for code, message, layer in poster_findings(project, 0):
         result.append({"check": "motion", "severity": "warning", "layer": layer, "code": code, "message": message})
+    result += sampled_findings(project, timeline)
+    if not any(item["code"] == "loop-seam" for item in result):
+        result += rendered_seam_findings(project, timeline)
     return result
+
+
+def _sample_times(timeline):
+    duration = timeline["duration"]
+    step = max(SAMPLE_STEP, duration / MAX_SAMPLES)
+    count = max(2, min(MAX_SAMPLES, math.floor(duration / step) + 1))
+    return [round(i * step) for i in range(count) if i * step < duration] or [0]
+
+
+def _centre(box):
+    return box[0] + box[2] / 2, box[1] + box[3] / 2
+
+
+def _intersects(a, b):
+    return a[0] < b[0] + b[2] and b[0] < a[0] + a[2] and a[1] < b[1] + b[3] and b[1] < a[1] + a[3]
+
+
+def sampled_findings(project, timeline):
+    """Findings from layer boxes (text by its glyph ink) at frames sampled across the timeline."""
+    from .spatial import canvas_boxes
+    from .timeline import is_looping, project_at, visible_content
+
+    times = _sample_times(timeline)
+    frames = []
+    for time in times:
+        frame = project_at(project, time)
+        frames.append((time, canvas_boxes(frame, "ink"), visible_content(frame)))
+    layers = project.state["layers"]
+    by_id = {layer["id"]: layer for layer in layers}
+    order = {layer["id"]: i for i, layer in enumerate(layers)}
+    c = project.state["canvas"]
+
+    def related(a, b):
+        def chain(ident):
+            while ident in by_id:
+                yield ident
+                ident = by_id[ident].get("parent")
+        return a in set(chain(b)) or b in set(chain(a))
+
+    def moved(ident):
+        seen = [found.get(ident) for _, found, _ in frames]
+        return any(box and seen[0] and max(abs(p - q) for p, q in zip(box, seen[0])) > 1 for box in seen)
+
+    leaves = [layer for layer in layers if layer["type"] not in ("group", "adjustment")]
+    movers = [layer for layer in leaves if moved(layer["id"])]
+    moving = {layer["id"] for layer in movers}
+    texts = [layer for layer in leaves if layer["type"] == "text"]
+    result = []
+    for text in texts:
+        for mover in movers:
+            if mover["id"] == text["id"] or related(mover["id"], text["id"]) or order[mover["id"]] < order[text["id"]]:
+                continue
+            hits = []
+            for time, boxes, shown in frames:
+                a, b = boxes.get(text["id"]), boxes.get(mover["id"])
+                if a and b and text["id"] in shown and mover["id"] in shown and _intersects(a, b):
+                    if b[2] * b[3] < 0.9 * c["width"] * c["height"]:
+                        hits.append(time)
+            if hits:
+                result.append({"check": "motion", "severity": "warning", "layer": mover["id"], "code": "moving-over-text",
+                               "message": f"{mover['name']!r} moves over the text {text['name']!r} between {hits[0] / 1000:g}s and "
+                                          f"{hits[-1] / 1000:g}s ({len(hits)} of {len(frames)} sampled frames); move its path, "
+                                          "put it behind the text, or time it for when the text is hidden.",
+                               "text": text["name"], "times": [hits[0], hits[-1]]})
+    if is_looping(timeline):
+        animated_text = {track["target"] for track in timeline["tracks"] if track["property"] == "text"}
+        for text in texts:
+            if text["id"] in animated_text:
+                continue
+            hidden = sum(1 for _, _, shown in frames if text["id"] not in shown)
+            if 0 < hidden < len(frames) and hidden / len(frames) > TEXT_HIDDEN_SHARE:
+                result.append({"check": "motion", "severity": "warning", "layer": text["id"], "code": "text-mostly-hidden",
+                               "message": f"Text {text['name']!r} is hidden for {round(100 * hidden / len(frames))}% of the loop "
+                                          f"({hidden} of {len(frames)} sampled frames), so most viewers catch it missing; "
+                                          "hold it on screen longer."})
+    first = frames[0][1]
+    siblings = {}
+    for layer in leaves:
+        siblings.setdefault(layer.get("parent"), []).append(layer)
+    for group in siblings.values():
+        if len(group) > 64:
+            continue
+        for i, a in enumerate(group):
+            for b in group[i + 1:]:
+                if a["id"] not in moving and b["id"] not in moving:
+                    continue
+                boxes_a, boxes_b = first.get(a["id"]), first.get(b["id"])
+                if not boxes_a or not boxes_b:
+                    continue
+                if math.dist(_centre(boxes_a), _centre(boxes_b)) > 1:
+                    continue
+                limit = max(4.0, 0.05 * min(boxes_a[2], boxes_a[3], boxes_b[2], boxes_b[3]))
+                worst = max(((math.dist(_centre(boxes[a["id"]]), _centre(boxes[b["id"]])), time)
+                             for time, boxes, _ in frames if a["id"] in boxes and b["id"] in boxes), default=(0, 0))
+                if worst[0] > limit:
+                    result.append({"check": "motion", "severity": "warning", "layer": a["id"], "code": "parts-drift",
+                                   "message": f"{a['name']!r} and {b['name']!r} share a centre at 0s but are {worst[0]:.0f} px apart "
+                                              f"at {worst[1] / 1000:g}s; animate them together (group them and animate the group) "
+                                              "or give them the same keys.",
+                                   "other": b["name"], "time": worst[1]})
+    return result
+
+
+def rendered_seam_findings(project, timeline):
+    """Compare the last and first frames at low resolution: a looping animation whose seam changes the
+    picture far more than an ordinary frame step jumps when it restarts, whatever the cause
+    (effects, particles, expressions) that the track values miss."""
+    import numpy as np
+    from .proxy import render_preview
+    from .timeline import is_looping, project_at, sample_frame_times
+
+    if not is_looping(timeline):
+        return []
+    last = dict(sample_frame_times(timeline))["last"]
+    step = 1000 / timeline.get("fps", 30)
+    if last < 2 * step:
+        return []
+
+    def picture(time):
+        return np.asarray(render_preview(project_at(project, time), SEAM_PREVIEW, SEAM_PREVIEW).convert("RGBA"), dtype=float)
+
+    first, end, before = picture(0), picture(last), picture(last - step)
+    seam = float(np.mean(np.abs(first - end)))
+    ordinary = float(np.mean(np.abs(end - before)))
+    if seam > 2.0 and seam > 3 * ordinary + 1:
+        return [{"check": "motion", "severity": "warning", "layer": None, "code": "loop-seam-render",
+                 "message": f"Loop seam: the last frame differs from the first by {seam:.1f} (mean per channel, 0-255) against "
+                            f"{ordinary:.1f} between ordinary frames, so the loop visibly jumps when it restarts. "
+                            "End every animation where it began.", "seam_difference": round(seam, 2),
+                 "frame_difference": round(ordinary, 2)}]
+    return []
 
 
 def findings(project):

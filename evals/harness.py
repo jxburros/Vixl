@@ -66,6 +66,14 @@ def prepare_workspace(task, workspace):
             top, bottom = Image.new("RGB", image.size, spec["gradient"][0]), Image.new("RGB", image.size, spec["gradient"][1])
             mask = Image.linear_gradient("L").resize(image.size)
             image = Image.composite(bottom, top, mask)
+        if spec.get("lines"):
+            # A stand-in for a photographed sketch: dark pen polylines on paper.
+            from PIL import ImageDraw
+
+            draw = ImageDraw.Draw(image)
+            for line in spec["lines"]:
+                draw.line([tuple(point) for point in line], fill=spec.get("ink", "#222222"),
+                          width=spec.get("line_width", 6), joint="curve")
         image.save(workspace / spec["path"])
     for spec in task.get("setup", {}).get("documents", []):
         project = Project(spec["width"], spec["height"], spec.get("background", "transparent"))
@@ -125,9 +133,20 @@ def grade(task, workspace):
                         passed = detail == check["image_size"]
                         if check.get("image_mode"):
                             passed = passed and image.mode == check["image_mode"]
+                if passed and check.get("contains"):
+                    passed = check["contains"] in path.read_text(encoding="utf-8", errors="replace")
             elif kind == "files_differ":
                 first, second = (workspace / path for path in check["paths"])
                 passed = first.is_file() and second.is_file() and first.read_bytes() != second.read_bytes()
+            elif kind == "pptx":
+                from pptx import Presentation
+
+                slides = Presentation(workspace / check["path"]).slides
+                texts = " ".join(shape.text_frame.text for slide in slides for shape in slide.shapes if shape.has_text_frame)
+                notes = " ".join(slide.notes_slide.notes_text_frame.text for slide in slides if slide.has_notes_slide)
+                detail = {"slides": len(slides), "missing": [t for t in check.get("texts", []) if t.lower() not in texts.lower()]
+                          + [t for t in check.get("notes", []) if t.lower() not in notes.lower()]}
+                passed = ("slides" not in check or detail["slides"] == check["slides"]) and not detail["missing"]
             elif kind == "pdf_fields":
                 import pypdf
 
@@ -146,6 +165,17 @@ def grade(task, workspace):
                     for key in check["field"]:
                         detail = detail[key]
                     passed = detail == check["equals"]
+                elif kind == "animated":
+                    # The layer has a timeline track (for ``property`` when given) whose values change.
+                    target = project.layer(check["layer"])["id"]
+                    tracks = [t for t in state.get("timeline", {}).get("tracks", []) if t["target"] == target
+                              and check.get("property") in (None, t["property"])]
+                    detail = [t["property"] for t in tracks]
+                    passed = any(len({json.dumps(k["value"]) for k in t["keys"]}) > 1 for t in tracks)
+                elif kind == "pixel":
+                    # The rendered document at one point: alpha_max (see-through) or alpha_min (painted).
+                    detail = list(project.render().convert("RGBA").getpixel(tuple(check["at"])))
+                    passed = detail[3] <= check.get("alpha_max", 255) and detail[3] >= check.get("alpha_min", 0)
                 elif kind == "canvas":
                     detail = [state["canvas"]["width"], state["canvas"]["height"]]
                     passed = detail == [check["width"], check["height"]]
@@ -162,8 +192,11 @@ def grade(task, workspace):
                         )
                 elif kind == "design":
                     report = project.check(**check.get("options", {}))
-                    detail = [issue["message"] for issue in report["issues"] if issue["severity"] == "error"]
-                    passed = report["passed"]
+                    # forbid: issue codes that fail the check whatever their severity (a loop seam is a warning).
+                    forbidden = set(check.get("forbid", []))
+                    detail = [issue["message"] for issue in report["issues"]
+                              if issue["severity"] == "error" or issue.get("code") in forbidden]
+                    passed = report["passed"] and not any(issue.get("code") in forbidden for issue in report["issues"])
                 elif kind == "spacing":
                     report = project.measure_spacing(**check["options"])
                     detail = [gap["pixels"] for gap in report["gaps"]]
@@ -172,7 +205,11 @@ def grade(task, workspace):
                     detail = state["variables"].get(check["variable"])
                     passed = detail == check["equals"]
                 elif kind == "layer_field":
-                    detail = project.layer(check["layer"]).get(check["field"])
+                    # field is a key, or a path of keys and list indexes into nested data (["chart", "kind"]).
+                    path = check["field"] if isinstance(check["field"], list) else [check["field"]]
+                    detail = project.layer(check["layer"])
+                    for key in path:
+                        detail = detail[key] if isinstance(detail, (dict, list)) else None
                     passed = detail == check["equals"]
                 elif kind == "assert":
                     detail = [rule for rule in check["rules"] if not assert_rule(project, rule)]
@@ -187,7 +224,7 @@ def grade(task, workspace):
                     passed = all(offsets[i] <= check.get("tolerance", 2) for i, a in enumerate(("x", "y")) if a in axes)
                 else:
                     raise ValueError(f"Unknown check type {kind!r}")
-        except (VixlError, OSError, KeyError, ValueError) as exc:
+        except (VixlError, OSError, KeyError, IndexError, TypeError, ValueError) as exc:
             detail = f"{type(exc).__name__}: {exc}"
         results.append({"check": check.get("name", kind), "passed": bool(passed), "detail": detail})
     return results
@@ -251,11 +288,25 @@ class ReferenceAgent:
     name = "reference"
 
     def run(self, task, tools):
-        trace = []
+        trace, saved = [], {}
         for step in task.get("reference", []):
-            failed, blocks = tools.call(step["tool"], step.get("arguments", {}))
+            failed, blocks = tools.call(step["tool"], _fill(step.get("arguments", {}), saved))
             trace.append({"tool": step["tool"], "error": failed, "output": _text(blocks)[:500]})
+            if step.get("save_as") and not failed:
+                # A later step can use a value only known at run time (an imported asset id): "${name.key}".
+                saved[step["save_as"]] = json.loads(blocks[0]["text"])
         return {"round_trips": len(task.get("reference", [])), "trace": trace, "usage": {}}
+
+
+def _fill(value, saved):
+    if isinstance(value, dict):
+        return {key: _fill(item, saved) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_fill(item, saved) for item in value]
+    if isinstance(value, str) and value.startswith("${") and value.endswith("}"):
+        name, _, key = value[2:-1].partition(".")
+        return saved[name][key]
+    return value
 
 
 class ClaudeAgent:
@@ -363,6 +414,12 @@ def run_task(task, agent, schema="full", keep=None, tool_set="all"):
         }
 
 
+def over_budget(results, budgets):
+    """Tasks whose tool calls exceed their budget ({task: max calls}), as 'task (calls > budget)'."""
+    return [f"{r['task']} ({r['tool_calls']} calls > {budgets[r['task']]})"
+            for r in results if r["task"] in budgets and r["tool_calls"] > budgets[r["task"]]]
+
+
 def summarize(results):
     count = len(results) or 1
     total = {key: sum(r["usage"].get(key, 0) for r in results) for key in ("input_tokens", "output_tokens")}
@@ -372,6 +429,7 @@ def summarize(results):
         "success_rate": round(sum(r["passed"] for r in results) / count, 3),
         "mean_round_trips": round(sum(r["round_trips"] for r in results) / count, 2),
         "mean_tool_calls": round(sum(r["tool_calls"] for r in results) / count, 2),
+        "max_tool_calls": max((r["tool_calls"] for r in results), default=0),
         "tool_error_rate": round(sum(r["tool_errors"] for r in results) / max(1, sum(r["tool_calls"] for r in results)), 3),
         "mean_tool_result_tokens": round(sum(r["tool_result_tokens_estimate"] for r in results) / count),
         **{f"total_{key}": value for key, value in total.items()},

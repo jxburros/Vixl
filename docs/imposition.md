@@ -27,6 +27,11 @@ sample value for each variable (that is how it measures and previews); they are 
 refuses to print them by accident (see [Validation](#validation)). Use `page`/`artboard` to merge one page or
 artboard of a larger document; an artboard is then the item, with no bleed.
 
+Placeholders may carry filters (`${first_name|upper}`, `${company|default:Independent}`,
+`${state|map:states}`; see [concepts](concepts.md#variables-swatches-and-styles)). The column is matched by
+the name before the first `|`, and the filters run on each copy's value, so one CSV can feed upper-case name
+lines and a mapped colour.
+
 Image variables (`replace-contents --variable photo`) take a file name in the CSV: an image next to the CSV
 or in the workspace, never outside it.
 
@@ -122,7 +127,7 @@ data and outputs must be inside it.
 
 ## Notes and limits
 
-- At most 5,000 copies and 500 sheets per merge, and 512 layers per sheet (marks included).
+- At most 5,000 copies and 500 sheets per merge, and 4,096 layers per sheet (marks included).
 - A template without a `dpi` is placed at one pixel per sheet pixel (a warning says so); give it a print size.
 - Crop marks are drawn in the margins only, at every cut line; with a gutter each copy's two edges get a
   mark. Registration marks are plain black rings and crosses, not a separation colour.

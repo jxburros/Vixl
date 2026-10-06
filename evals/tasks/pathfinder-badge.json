@@ -1,0 +1,19 @@
+{
+  "prompt": "Create badge.vixl at 400x400 with a transparent background. Make a gold badge named badge: a 300 px circle centred on the canvas with a 100 px square hole punched through its middle, so the background shows through the hole. It must be one combined vector shape, not a black square drawn on top. Export badge.svg with real vector geometry.",
+  "document": "badge.vixl",
+  "checks": [
+    {"type": "layer", "name": "combined shape", "match": {"type": "pathfinder", "name": "badge"}},
+    {"type": "pixel", "name": "hole is see-through", "at": [200, 200], "alpha_max": 10},
+    {"type": "pixel", "name": "ring is painted", "at": [200, 80], "alpha_min": 245},
+    {"type": "file", "name": "vector svg", "path": "badge.svg", "contains": "evenodd"}
+  ],
+  "reference": [
+    {"tool": "vixl_document_create", "arguments": {"path": "badge.vixl", "width": 400, "height": 400}},
+    {"tool": "vixl_operations_apply", "arguments": {"operations": [
+      {"type": "shape", "shape": "ellipse", "name": "disc", "x": 50, "y": 50, "width": 300, "height": 300, "fill": "gold"},
+      {"type": "shape", "shape": "rectangle", "name": "hole", "x": 150, "y": 150, "width": 100, "height": 100, "fill": "black"},
+      {"type": "pathfinder", "name": "badge", "targets": ["disc", "hole"], "mode": "subtract"}
+    ]}},
+    {"tool": "vixl_export_file", "arguments": {"path": "badge.svg"}}
+  ]
+}

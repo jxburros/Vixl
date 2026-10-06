@@ -29,6 +29,10 @@ project with appropriate layers or input files. See each guide for complete crea
 | Polar grid | `grid dial --kind polar --rings 3 --spokes 12` | [Guides and grids](guides.md) |
 | Workflow contract | `workflow schema` | [Production](production.md), [studio](studio.md) |
 | Lyric video | `workflow lyric-video-export --request request.json --workspace .` | [Lyric videos](lyric-video.md) |
+| Whole piece in one call | `compose --request req.json [--preview p.png] [--workspace DIR]` | [Interfaces](interfaces.md#build-a-piece-in-one-call) |
+| Pixel diff of two files | `diff before.vixl after.png [--out diff.png] [--mode diff\|side-by-side] [--threshold 8] [--max-fraction F] [--overwrite]` | [CI](ci.md#the-same-checks-locally) |
+| Proof page | `workflow proof --request proof.json --workspace .` | [Proof pages](production.md#proof-pages) |
+| Logo package | `workflow logo-package --request logo.json --workspace .` | [Logo packages](production.md#logo-packages) |
 
 Since 0.19.0, `export --alpha auto|keep|flatten` controls supported image formats.
 See [exporting](exporting.md#image-output-and-alpha) and the
@@ -72,7 +76,8 @@ Set `VIXL_NO_UPDATE=1` to suppress both automatic checks and pending activation 
 | Command | Behavior |
 | --- | --- |
 | `new 1920x1080 -o poster.vixl --background '#111111'` | Create a project; refuses existing files |
-| `open poster.vixl` | Select an existing project for this directory |
+| `open poster.vixl` | Select an existing project for this directory. A document saved before 0.21 reports, under `upgrade`, the layers that render differently now (effects on rotated/flipped/skewed layers, `temperature`/`tint`, open stroked shapes that were filled white) |
+| `upgrade [poster.vixl] [--report] [--pin-fills]` | Accept the 0.21 rendering for an older document and stop the notice; `--pin-fills` first gives open stroked shapes the explicit white fill they used to render with (one undoable revision); `--report` only lists the affected layers |
 | `save [copy.vixl]` | Save, or save as a new selected project |
 | `status`, `inspect [LAYER]`, `describe`, `layers` | JSON state, including resolved bounds |
 | `manifest`, `dependencies`, `reproduce --check` | List assets/fonts/providers; check current renderability |
@@ -91,6 +96,8 @@ Layers are ordered bottom to top. A target is a unique layer name or immutable I
 ```bash
 vixl layer add image.png --name hero
 vixl add logo.png --name logo --linked
+vixl add photo.jpg --name hero --credit "Photo: Ana Ruiz" --license "CC0"
+vixl import https://images.example.com/cat.jpg --name cat --license "CC BY 4.0"
 vixl select-layer hero
 vixl layer rename hero portrait
 vixl layer duplicate portrait copy
@@ -116,9 +123,10 @@ vixl crop portrait 0 0 300 400
 vixl opacity portrait 0.75
 vixl blend portrait multiply
 vixl align logo top-right --margin 40
+vixl align caption center --relative-to bubble --box content   # centre in a shape's content box
 ```
 
-`layer` is an optional namespace. `rm` aliases remove and `mv` aliases move. Rotation is clockwise, expands the layer bounds, and anchors the expanded bounding box at its x/y position. Crop coordinates refer to the original embedded raster. Resize with one dimension changes only that dimension of a shape, text box, group or solid (the other side keeps its size, and the result reports it under `normalized`), but scales an imported image (raster layer) proportionally so a photo is not stretched. `--keep-aspect` (JSON `keep_aspect: true`) scales the other side proportionally on any layer; `--no-keep-aspect` (`keep_aspect: false`) changes just the given side of an image; give both dimensions to stretch. Numeric scale values are factors; `80%` is `0.8`; a negative factor (`-1`, or `--x -1` for one axis) mirrors the layer as `flip` does and scales by its size. Opacity is 0–1 (`opacity portrait 0.75`); `75%` is read as 0.75, and a bare `75` is an error. `pivot LAYER X Y --canvas` takes a document point; `group NAME A B --above LAYER` (or `--below`) chooses where the new group lands; `shape` takes `--opacity`, `--rotation` and, with `--target`, `--space canvas`.
+`add` and `import` take `--credit` and `--license`, kept in the layer's provenance for attribution; `import` also takes an `https://` image URL (fetch policy in [architecture](architecture.md#trust-and-security), more in [interfaces](interfaces.md#import-existing-artwork)). `layer` is an optional namespace. `rm` aliases remove and `mv` aliases move. Rotation is clockwise, expands the layer bounds, and anchors the expanded bounding box at its x/y position. Crop coordinates refer to the original embedded raster. Resize with one dimension changes only that dimension of a shape, text box, group or solid (the other side keeps its size, and the result reports it under `normalized`), but scales an imported image (raster layer) proportionally so a photo is not stretched. `--keep-aspect` (JSON `keep_aspect: true`) scales the other side proportionally on any layer; `--no-keep-aspect` (`keep_aspect: false`) changes just the given side of an image; give both dimensions to stretch. Numeric scale values are factors; `80%` is `0.8`; a negative factor (`-1`, or `--x -1` for one axis) mirrors the layer as `flip` does and scales by its size. Opacity is 0–1 (`opacity portrait 0.75`); `75%` is read as 0.75, and a bare `75` is an error. `pivot LAYER X Y --canvas` takes a document point; `group NAME A B --above LAYER` (or `--below`) chooses where the new group lands; `shape` takes `--opacity`, `--rotation` and, with `--target`, `--space canvas`.
 
 Alignment supports center, center-x/y, left/right/top/bottom and corner pairs. Absolute moves and alignment clear constraints. `move x +20` and `--relative` add offsets.
 
@@ -129,9 +137,22 @@ vixl text add 'Hello' --name title --size 96 --font DejaVuSans.ttf --color white
 vixl text title --text 'Good evening' --size 80 --align center
 vixl text title --stroke-width 2 --stroke-color black
 vixl rasterize title
+vixl merge-layers paper back disc --name art
+vixl flatten --keep-hidden
 ```
 
-Text remains editable until rasterized. Custom `--font /path/to/font.ttf` imports and embeds a font. Other font names use Pillow's system-font lookup. Font substitution is never silent. HarfBuzz shaping and shared PNG/SVG outlines support ligatures, combining marks and scripts covered by the selected font, with multiline text, wrapping/fitting and path/warp layouts. Bitmap/color fonts and unsupported Unicode isolate controls retain appearance fallbacks. See [local artistic filters and SVG policies](artistic-filters.md).
+Text remains editable until rasterized. `rasterize` bakes everything the layer draws into a raster layer: effects,
+mask, layer styles (drop shadow, glow, stroke, overlays), clipping, opacity and transform; the blend mode stays.
+`merge-layers` (JSON `{"type": "merge-layers", "targets": [...]}`; `merge` is accepted) draws the listed layers,
+which must share a parent, into one raster layer at the topmost one's place in the stack, named after it unless
+`--name` is given; a listed group brings its members, and hidden listed layers are discarded. Blend modes are
+composited among the merged layers; how a merged layer blended with the layers below the merge (or with the canvas
+background) cannot be kept in pixels, so the merged layer uses the normal blend mode and the result warns where that
+can change the look. A layer clipped to a merged layer is clipped to the merged layer. `flatten` draws every visible
+top-level layer of the page into one canvas-size raster layer named `flattened` (master-page layers are not part of
+it, and pixels outside the canvas are dropped); hidden layers are discarded unless `--keep-hidden` keeps them in
+place. The originals are kept in the new layer's `provenance` (`merged` / `flattened`), and each operation is one
+history entry, so `undo` restores them. Custom `--font /path/to/font.ttf` imports and embeds a font. Other font names use Pillow's system-font lookup. Font substitution is never silent. HarfBuzz shaping and shared PNG/SVG outlines support ligatures, combining marks and scripts covered by the selected font, with multiline text, wrapping/fitting and path/warp layouts. Bitmap/color fonts and unsupported Unicode isolate controls retain appearance fallbacks. See [local artistic filters and SVG policies](artistic-filters.md).
 
 ## Selections, masks, effects
 
@@ -237,9 +258,13 @@ vixl checkout clean
 vixl history
 vixl branches
 vixl compare vivid clean --out comparison.png
+vixl compact --dry-run   # what compacting would drop
+vixl compact             # drop undo history and unused embedded files
 ```
 
 Presets save the active/target layer's complete effect stack. Applying one assigns fresh effect IDs and captures the current selection. Branches name movable tips; checkpoints are fixed. Checking out a checkpoint detaches history; create a branch to name subsequent work. Undo/redo moves the current branch tip; alternate history nodes remain available by ID. Transactions allow provisional edits across processes and commit as one undoable history entry. They do not hide provisional state from other clients of the same project.
+
+A document keeps every embedded file that some revision uses, so undo can restore a replaced image or an earlier font pairing; saving drops only files no revision references. `check` reports the files the current design does not use (an `info` finding of the `fonts` check, with `unused_assets`: each file's `asset`, `kind`, `bytes`, and `fonts` for a registered font no text, role or fallback uses). `vixl compact` (MCP `vixl_history(action="compact")`, REST `POST /history/compact`, Python `project.compact()`) is the explicit way to shed them: it discards all undo history, the redo stack, branches and checkpoints, unregisters unused fonts (`--keep-fonts` keeps them), and drops every embedded file the current design does not use. The design does not change. The result lists what went (`revisions_dropped`, `branches_dropped`, `checkpoints_dropped`, `fonts_unregistered`, `assets_dropped` with bytes, `bytes_dropped`); `--dry-run` (`dry_run: true`) reports without changing anything. Nothing compacts implicitly, and an open transaction must be committed or rolled back first.
 
 `batch` refuses output collisions and existing destinations, reports each input's result, and exits nonzero if any fail. Earlier successful outputs remain if a later item fails.
 
@@ -252,6 +277,8 @@ Use `palette list|show|add|apply`, `template list|show|add|new|apply`, `guidance
 ### Group checks and SVG assurance
 
 `check` inspects visible group descendants, including nested text. Selecting a group includes its descendants; selecting a child checks that child. Bounds and safe areas use canvas coordinates (`bounds` also reports boxed text, with a `text-layout` width and height, that no longer fits its box and is cut off), overlap uses rendered coverage, and thumbnail legibility accounts for ancestor scaling. Contrast compares grouped text with its backdrop through ancestor transforms and opacity. Hidden or fully transparent ancestors exclude their children. Characters that no font can draw (they render as empty boxes) are a `fonts` error in every `check`, whichever checks are selected, and an automatic `missing-glyphs` result in every suite, so checked production and gated group edits catch them. Top-level text is contrast-checked from one shared render; grouped text renders its own backdrop. Outlined text (a `stroke` style at least 3 px wide and 2% of its font size) passes when either its fill or its outline contrasts with the backdrop. Text fails when a tenth of its glyph pixels fall below the required ratio; the issue's `region` (and `weakest_region` in `measure --target`) is where those weakest pixels are, often where the text crosses an outline or edge. Repeated groups emit a coverage warning because geometry checks assess the base instance; visually inspect the repeated copies. Text whose contrast cannot be measured (for example, it is wholly off the canvas) is an error, never a silent pass; `passed` means no errors, so also inspect `warnings` and `issues` and visually review the result. Checks judge what a layer draws, not its box: shapes use their path geometry including stroke (`geometry_bounds`), so a path on a full-canvas box is checked by its drawn shape, and overlap uses the ink of strokes, shadows and glows. Layers marked `role: background`, and non-text layers whose drawn geometry covers the canvas, are background and skipped; `checked` reports `layers_checked` and `layers_total`. Shapes and gradients that run past two or more canvas edges (a hill, a glow) are intentional bleed and report as informational. Safe area defaults to the canvas's own `safe` (a pixel inset, or a `{left, top, right, bottom}` object, measured from the trim edge); pass `safe_area` to override. The thumbnail legibility test (320 px wide; `thumbnail_width: null` or `--thumbnail-width off` disables it) is a warning only for social, icon and app-store sizes and informational elsewhere. `color_vision` also compares chart series colors and flags pairs that merge under a color-vision deficiency; mark a chart whose series also differ by labels or patterns with `layer-intent color_vision_safe`.
+
+`connected` (opt-in: `check --checks connected`, `--connect-tolerance 2`) looks inside every visible group that is one object (a mascot, a character, a prop built from shapes; charts, drawings, repeats and speech bubbles are skipped). The drawn ink of each direct part is compared on the canvas: parts whose ink touches or overlaps within the tolerance form one piece, the piece with the most ink is the main body, and every other part is a `connected` warning with its `gap` in pixels and its `group`. Text parts are ignored. A document with a timeline is checked at its poster, middle and last frames (`frame` names the one where a part first comes loose). Mark a part that floats on purpose (a spark, a thrown ball), or a group whose parts are separate by design, with `layer-intent detached_ok`. To look at one object alone, preview it with `isolate` (`vixl_render_preview(isolate=["cat"])`).
 
 Saved SVG exports report `svg.vector_only` and `svg.raster_fallbacks` in the CLI result so embedded bitmaps are visible without opening the SVG metadata. Use `export logo.svg --svg-policy strict` to reject all embedded raster content. Exporting to `-` still writes only SVG bytes. Supported grouped shapes and outlined text remain vectors; unsupported appearances may rasterize in the default appearance policy.
 
@@ -309,6 +336,9 @@ vixl easings | timeline | timeline set [--duration T] [--fps N] [--loop N] [--cl
 vixl keyframe LAYER|canvas PROPERTY TIME VALUE [--easing E] | keyframe-remove LAYER [--property P] [--time T]
 vixl animate LAYER PROPERTY --to V [--from V] [--start T] [--end T | --duration T] [--easing E]
 vixl animate-preset LAYER|canvas PRESET [--start T] [--duration T] [--easing E] [--amount N] [--distance N] [--to C] [--no-fade]
+vixl text-animate TEXT PRESET [--unit char|word|line] [--start T] [--duration T] [--stagger T|N%] [--easing E]
+    [--direction forward|reverse|center|edges|random] [--seed N] [--mode in|out|in-out] [--distance N] [--amount N]
+    [--rotate DEG] [--from C] [--repeat] [--remove] [--no-extend]
 vixl marker NAME TIME | marker NAME --delete
 vixl render --time T --out FILE | timeline-sheet --out FILE [--count 8] [--columns N] [--times T…]
 vixl export-timeline --out FILE.gif|.png|.webp|.zip|.mp4|.webm [--format sheet] [--fps N] [--scale F]

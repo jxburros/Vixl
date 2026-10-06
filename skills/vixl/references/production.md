@@ -29,12 +29,14 @@ Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/mai
 
 9. Lyric videos: `lyric-video-plan` validates a song, an LRC file (timestamps, `[Section]`
    markers) and a template document with a `lyric` text layer (optional `lyric-next`,
-   `section-label`, `intro`, `bg-<section>` and `cue-<words>` layers) and reports the timed lines;
+   `section-label`, `intro`, `bg-<section>`, `cue-<words>`, and `lyric-<section>`/`next-<section>` text
+   layers that take over for one section) and reports the timed lines;
    `lyric-video-build` writes an editable keyframed document; `lyric-video-export` renders the
    MP4/WebM with the song as audio, rendering an existing hand-edited build as it is (`rebuild: true`
    rebuilds; `build_stale` if the settings changed under edits). An empty timestamp clears the lyric and the
    preview, a line sung twice in a row holds instead of re-fading, and `cue_animation` (`in`/`out`,
-   `motion: "sweep"`) animates `cue-*` layers. Long songs run as the `lyric-video` job kind. See
+   `motion: "sweep"`) animates `cue-*` layers. `section_styles` (`{chorus: {size, color, x, y}}`) restyles
+   the lyric per section; `sample_rate` sets the audio rate (default the song's). Long songs run as the `lyric-video` job kind. See
    `docs/lyric-video.md`.
 10. Form filling: `form-fill` fills the open form from `values` (one copy) or a `data` CSV (one
    file per row, or `combine` into one PDF); the `form-fill` job kind freezes the form and the data
@@ -45,9 +47,22 @@ Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/mai
    `link` layers. Run it with `dry_run` first: the report names missing/unknown columns, overflowing text, tofu glyphs and the
    grid. `{"rerun": "sheet.vixl"}` repeats it after the data changes. See `docs/imposition.md`.
 12. Linked documents: a `link` layer shows another `.vixl` live (`fit`, `position`, `crop`, `artboard`, `source_page`,
-   `variables`); `vixl_workflow("links", {})` reports ok/stale/missing, `link-refresh` records the seen revision,
-   `link-embed` freezes it. Use it instead of exporting a PNG and importing it into a derived design. See
+   `variables`); `vixl_workflow("links", {})` reports ok/stale/missing with each resolved `path`, `link-refresh`
+   records the seen revision, `links-relink {from, to}` follows moved sources, `link-embed` freezes it. Keep sources
+   beside the document so the folder can be copied (`check` notes sources outside it). Use it instead of exporting a PNG and importing it into a derived design. See
    `docs/linked-documents.md`.
+13. Logo packages: `vixl_workflow("logo-package", {output, source?, trace?, mark?, wordmark?, variants?, png_sizes?,
+   cmyk?, icons?, social?, proof?, zip?, overwrite?})` writes `source/` (.vixl per variant), `svg/` (strict), `pdf/` (RGB,
+   `-cmyk` with `cmyk: true`), `png/` (`NAME-<width>w@1x|2x|3x.png`), `icons/` (favicon.ico, web manifest …),
+   `social/` (avatar 800×800, og-image 1200×630), `usage.html` and `package.json`. Lockups need top-level `mark` and
+   `wordmark` layers. Mono variants turn every visible colour into one ink, drop shadows/effects and silhouette
+   images; `on-light`/`on-dark` fall back to the one-colour logo when the colour logo lacks 3:1 contrast. Read
+   `report` and preview before handing it over. No EPS. Existing files are never replaced without `overwrite`.
+14. Proof pages: `vixl_workflow("proof", {items: [path | {path, label?, before?, note?}], output: "proof.html",
+   decisions?, check?, title?})` writes one self-contained HTML page (no network; strict CSP). `.vixl` items show their
+   `vixl_check` findings; `before` (another file, or a revision such as `previous`) adds a diff; `decisions: true` adds
+   approve/reject and a button that downloads `<page>-decisions.json`, which the reviewer sends back. `vixl diff A B
+   --out d.png` gives the same pixel diff on the command line.
 
 MCP paths must remain inside the workspace. REST exposes check/act/plan/film-plan for
 its single project; filesystem, library and queue operations use CLI/Python/MCP.

@@ -46,7 +46,36 @@ Installs fetch one static TTF per style from the Google Fonts CSS API (`fonts.gs
 
 Each install reports where the font came from, so agents and CI can verify offline behaviour: `source.origin` is `cache` (served from `source.cache_file` with no network) or `download` (with the Google Fonts stylesheet in `source.stylesheet` and the font file in `source.url`; `cache_file` is the copy it was stored as, or null when the cache is not writable). `source.cache_dir` is the cache directory and `source.cache_dir_from` says whether `VIXL_FONT_CACHE` or the default chose it. `family`, `weight`, `italic` and `name` give the resolved style, and `file` names the embedded asset (`fonts/<sha256>.ttf`), its byte size and hash. `font pair` returns this for both the heading and body fonts plus `origin` (`cache`, `download` or `mixed`); `vixl_roll` with `apply` returns the same under `fonts`. `source.bundled_fallback` is always false: a font that cannot be downloaded or found in the cache fails with `font_download_failed` (or `unknown_font`), and the bundled DejaVu Sans is never substituted silently. To run offline, pre-fill the cache (or set `VIXL_FONT_CACHE` to a directory holding `family-weight[-italic].ttf` files such as `inter-400.ttf`) and check for `origin: "cache"`.
 
+### Workspace default fonts
+
+A workspace can give every new document the same typography. `vixl_font_pair(pairing=..., scope="workspace")` (CLI `vixl font pair NAME --scope workspace`, REST `POST /typefaces/pair` with `"scope": "workspace"`) writes `pairing` into the workspace `brand.json`; `vixl_font_install(family=..., role="heading"|"body", scope="workspace")` (CLI `vixl font install FAMILY --role heading --scope workspace`) embeds that one style in `brand.json` under `fonts.<role>`, overriding the pairing for that role. A workspace pairing replaces embedded `fonts` entries, and the result lists them under `workspace.replaced`. Both fetch the fonts immediately, so an unknown family fails at once, and neither changes existing documents.
+
+`vixl_document_create`, `Session.create` and `vixl new` then download (or reuse from the cache) and embed the workspace fonts as part of the creation step, and report them under `workspace_fonts` (`pairing`, and `applied.heading`/`applied.body` with each font's `name` and whether it came `from` the pairing or `fonts`). Fonts are embedded in each document, so files stay portable. Passing `font_pairing` to `vixl_document_create`, `workspace_fonts: false` (CLI `--no-workspace-fonts`) skips them. When a pairing cannot be fetched (offline, empty cache), the document is still created and `workspace_fonts.error` says why; run `vixl_font_pair` later. The CLI uses the `brand.json` beside the new document (`--scope workspace` writes it in the current directory).
+
 MCP: `vixl_fonts` (views `fonts`, `font`, `pairings`, `pairing`, `principles`), `vixl_font_pair`, `vixl_font_install`. REST: `GET /typefaces`, `GET /typefaces/pairings`, `POST /typefaces/pair`, `POST /typefaces/install`.
+
+## Baselines
+
+Text results and `inspect` report each text layer's `baseline` (the first line), `baselines` (every line),
+`ascent`, `descent`, `cap_height` and `x_height` in the layer's parent coordinates. Three operations position
+text by its baseline instead of its box:
+
+- **`baseline_y`** on `text` (creating, or editing with a `target`), `text-set` and `move` places the layer
+  so its **first** line's baseline sits at that y, in the same coordinates as `y` (a grouped layer's group).
+  Give `y` or `baseline_y`, not both. Multi-line text is positioned by its first line; to line up the last
+  line, read `baselines[-1]` from `inspect` and move by the difference. Rich text with several sizes or fonts
+  uses the measured first line, so a large word on that line counts. `baseline_y` positions once, like `y`:
+  a later size change keeps the box's top, so give `baseline_y` again with the new size.
+  `{"type": "text-set", "target": "price", "size": 64, "baseline_y": 540}`
+- **`align` with `alignment: "baseline"`** moves text layers vertically so their first baselines match: the
+  first of `targets` sets the line, or `relative_to` names a text layer. `margin` shifts the shared line down.
+  Other layer kinds have no baseline and are rejected with a message saying so.
+- **`snap` with `anchors: ["baseline"]`** snaps text layers' first baselines onto guides, for example the
+  lines of a baseline grid (`{"type": "grid", "kind": "baseline", "spacing": 24}`). `baseline` is not one of
+  the nine box anchors (`geometry.ANCHORS`): pivots, fits, link positions and the other anchor fields do not
+  take it.
+
+Rotated or skewed text is not positioned by baseline (the measurements are in the upright frame).
 
 ## Rolling a direction
 

@@ -43,13 +43,20 @@ def _anchor_synonyms():
 
 
 ANCHOR_SYNONYMS = _anchor_synonyms()  # e.g. bottom-center, center-left, middle-right -> bottom, left, right
+# Text layers have one more anchor: their first line's baseline (at the box's horizontal centre). It depends on
+# the font, not on the box, so it is not a fraction in ANCHORS; align and snap measure it per text layer and
+# reject it for other layers. Only callers that pass ``baseline=True`` accept it.
+BASELINE = "baseline"
 
 
-def canonical_anchor(value):
-    """The canonical anchor name for ``value`` (a name or a synonym such as 'bottom-center'), else None."""
+def canonical_anchor(value, baseline=False):
+    """The canonical anchor name for ``value`` (a name or a synonym such as 'bottom-center'), else None.
+    With ``baseline``, 'baseline' (or 'first-baseline') is accepted too."""
     if not isinstance(value, str):
         return None
     key = value.strip().lower().replace("_", "-").replace(" ", "-")
+    if baseline and key in (BASELINE, "first-baseline"):
+        return BASELINE
     return key if key in ANCHORS else ANCHOR_SYNONYMS.get(key)
 
 

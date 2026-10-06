@@ -75,6 +75,8 @@ Explicit seeds are deterministic. Without one, sparse designs get a fresh seed u
 | `photo-caption` | scrim for contrast | social, covers |
 | `minimal-mark` | negative space, restraint | posters, covers |
 | `bento-grid` | modular tiles of varied span | web, slides, infographics |
+| `meme-top-bottom`, `meme-caption-above`, `meme-reaction` | text over or beside one picture, caption contrast | memes, social, GIFs |
+| `meme-comparison`, `meme-four-panel`, `meme-labelled` | panels in reading order, short labels | memes, social |
 
 ```bash
 vixl layout list
@@ -87,7 +89,7 @@ vixl check
 
 ### Slots: fill in the blanks
 
-Each layout is a form. `vixl layout show NAME` (or `vixl_layouts_list`) lists its slots, with a label and a hint for what each one means in that layout. In `event-poster`, for example, `label` is the date and `body` is one detail per line. Slot keys are `title`, `subtitle`, `body`, `label`, `cta`, `caption`, `items` (newline-separated; `Name | Price` rows for price lists, `Heading: text` for F-pattern) and `image` (an embedded asset ID).
+Each layout is a form. `vixl layout show NAME` (or `vixl_layouts_list`) lists its slots, with a label and a hint for what each one means in that layout. In `event-poster`, for example, `label` is the date and `body` is one detail per line. Slot keys are `title`, `subtitle`, `body`, `label`, `cta`, `caption`, `items` (newline-separated; `Name | Price` rows for price lists, `Heading: text` for F-pattern) and `image` (an embedded asset ID); multi-panel layouts take `images`, a list of asset IDs in reading order.
 
 - **Unfilled slots are blanks, not sample copy.** A slot the composition needs renders as a visible `[Label]` placeholder (`[Date]`, `[Time]`, `[Action]`) and is recorded in `state.blanks` and in the layout's `blanks` list. `check` reports every unfilled blank as an error, so placeholder text can never ship silently. An image slot without an asset draws a placeholder frame that is also a blank until you pass `image` or use `replace-contents`. Pass `unfilled: "omit"` to leave unfilled slots out instead: the layout is composed around the copy it has, passes `check`, and the layout record's `omitted` lists what was left out (supplying one later re-lays the layout out; text added by hand does not).
 - **Unfilled image slots say how to fill them.** `vixl layout show NAME` gives the `image` slot a `fill_with` list, and the
@@ -97,6 +99,17 @@ Each layout is a form. `vixl layout show NAME` (or `vixl_layouts_list`) lists it
   **draw** (build it from `shape`, `pen`, `pathfinder`, `organic` and `paint` inside the bounds, group it, remove the
   placeholder; `rasterize` the group to get an asset for `replace-contents`) and **AI** (`vixl_ai_generate`, which needs a
   configured provider). Text slots get a re-apply hint with the seed.
+- **Memes.** The six `meme-*` layouts are image slots plus caption rules; Vixl ships no meme images, so supply pictures
+  you may use. Stroked captions (`meme-top-bottom`, `meme-labelled`, `meme-four-panel`) are uppercase (`uppercase: false`
+  keeps the case), white with a black `stroke` style that the contrast check reads them through, and shrink until they
+  fit their box without breaking a word. `meme-caption-above` and `meme-comparison` set plain dark text on white;
+  `meme-reaction` sets a subtitle line on black. `items` holds one label or caption per line. For an Impact-style face
+  install an OFL font such as Anton (`vixl font install Anton --role heading`, or `display_font`).
+
+  GIF recipe: apply `meme-reaction` on `instagram-post`, then
+  `{type: animate-preset, target: caption, preset: pop-in, duration: 400}` (or a looping `motion`), set the timeline
+  (`timeline-set` 2–4 s, `loop: 0`), check a frame with `vixl_timeline_preview` and export with
+  `vixl_export_timeline(path="reaction.gif", fps=15)`. Keep GIFs short and small: 480–600 px wide and few colours.
 - **Unused slots are errors.** Copy for a slot the layout does not read on this canvas, such as `subtitle` on `event-poster`, fails with `unused_slot` and lists the slots it does use, instead of being dropped.
 - **Fill blanks by re-applying.** Re-apply with the copy, `replace: true` and the `seed` the first pass reported. The composition stays the same and type is sized for the real copy. Editing a blank layer's text directly also clears it.
 
@@ -131,7 +144,7 @@ Standalone design-system pieces:
 {"type": "guidance", "name": "typography", "style": "typography"}
 ```
 
-Built-in guidance now covers `overall`, `minimal`, `editorial`, `playful`, `logo`, `pixel-art`, `typography`, `color`, `layout`, `accessibility`, `print`, `icon`, `motion` and `brush`.
+Built-in guidance now covers `overall`, `minimal`, `editorial`, `playful`, `logo`, `pixel-art`, `typography`, `color`, `layout`, `accessibility`, `print`, `icon`, `motion`, `brush` and `image-rights`.
 
 Layouts are text compositions, which is why open requests drift toward posters. For icons, characters, scenes, patterns,
 mandalas and diagrams, `vixl_guide(brief)` (CLI `vixl guide BRIEF`) names the approach, operations, layouts, looks and

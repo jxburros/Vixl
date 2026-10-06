@@ -1,0 +1,22 @@
+{
+  "prompt": "Create report.vixl at 800x500 with a white background. Add a bar chart named sales of units sold per quarter: Q1 120, Q2 150, Q3 90, Q4 180, with the title 'Units sold'. Then finance tells you Q3 was actually 130: correct that one number on the existing chart (it must stay an editable chart, not redrawn shapes). Export report.png.",
+  "document": "report.vixl",
+  "checks": [
+    {"type": "canvas", "width": 800, "height": 500},
+    {"type": "layer_field", "name": "bar chart", "layer": "sales", "field": ["chart", "kind"], "equals": "bar"},
+    {"type": "layer_field", "name": "corrected values", "layer": "sales", "field": ["chart", "series", 0, "values"], "equals": [120, 150, 130, 180]},
+    {"type": "layer_field", "name": "categories", "layer": "sales", "field": ["chart", "categories"], "equals": ["Q1", "Q2", "Q3", "Q4"]},
+    {"type": "file", "path": "report.png", "image_size": [800, 500]}
+  ],
+  "reference": [
+    {"tool": "vixl_document_create", "arguments": {"path": "report.vixl", "width": 800, "height": 500, "background": "white"}},
+    {"tool": "vixl_operations_apply", "arguments": {"operations": [
+      {"type": "chart", "name": "sales", "kind": "bar", "x": 40, "y": 40, "width": 720, "height": 420, "title": "Units sold",
+       "categories": ["Q1", "Q2", "Q3", "Q4"], "series": [{"name": "Units", "values": [120, 150, 90, 180]}]}
+    ]}},
+    {"tool": "vixl_operations_apply", "arguments": {"operations": [
+      {"type": "chart-data", "target": "sales", "set": [{"category": "Q3", "series": "Units", "value": 130}]}
+    ]}},
+    {"tool": "vixl_export_file", "arguments": {"path": "report.png"}}
+  ]
+}

@@ -18,6 +18,7 @@ from pathlib import Path
 import numpy as np
 
 from .errors import require
+from .geometry import compact_number
 from .model import finite
 from .links import pdf_link
 from .pdf_color import CMYKPaint, RGBPaint, ramp
@@ -27,9 +28,8 @@ VECTOR_LEAVES = ("solid", "shape", "gradient", "text", "pathfinder")
 
 
 def _fmt(value):
-    if float(value).is_integer():
-        return str(int(value))
-    return f"{value:.12f}".rstrip("0").rstrip(".")
+    """A PDF content-stream coordinate (12 decimals, so vector geometry round-trips)."""
+    return compact_number(value, 12)
 
 
 def matrix_ops(m):
@@ -119,8 +119,6 @@ class PageBuilder:
         self.fallbacks = []
         self.jpeg_quality = None  # set: raster images are written as JPEG at this quality
 
-    # -- resources ----------------------------------------------------------------------------
-
     def alpha(self, fill=1.0, stroke=1.0):
         fill, stroke = round(fill, 4), round(stroke, 4)
         if fill >= 1 and stroke >= 1:
@@ -151,8 +149,9 @@ class PageBuilder:
         from .render import color
 
         state = self.view.state
-        stops = layer.get("stops") or [{"offset": 0, "color": layer.get("start", "black")},
-                                       {"offset": 1, "color": layer.get("end", "white")}]
+        from .design import gradient_stops
+
+        stops = gradient_stops(layer, state)
         colors = [(s["offset"], color(resolve_color(s["color"], state))) for s in stops]
         if any(rgba[3] < 255 for _, rgba in colors):
             return None
@@ -181,8 +180,6 @@ class PageBuilder:
         name = f"Sh{len(self.shadings) + 1}"
         self.shadings[name] = self.writer.add(shading)
         return name
-
-    # -- drawing ------------------------------------------------------------------------------
 
     def fallback(self, layer, reason):
         if layer["type"] not in ("raster", "frame") or reason != "image":  # an image layer is an image anyway

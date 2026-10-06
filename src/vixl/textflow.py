@@ -43,10 +43,6 @@ MAX_FRAMES = 200
 MAX_TEXT = 100000
 
 
-# ---------------------------------------------------------------------------------------------
-# Schema
-
-
 def schemas(add):
     from .schema import S, N, B, enum
 
@@ -81,10 +77,6 @@ def schemas(add):
                    "space_before, space_after, indent, number_start)."},
     }
     add("text-flow", props, ["name"])
-
-
-# ---------------------------------------------------------------------------------------------
-# Finding layers and pages
 
 
 def _all_layers(state):
@@ -140,8 +132,7 @@ def _page_name(state, page_id):
     return None
 
 
-# ---------------------------------------------------------------------------------------------
-# The story: plain text or rich spans, sliced by character
+# A story is plain text or rich spans, sliced by character.
 
 
 def _normalise_text(text):
@@ -232,10 +223,6 @@ def _slice_rich(rich, text, a, b, numbers, size):
         if key in rich:
             result[key] = deepcopy(rich[key])
     return result
-
-
-# ---------------------------------------------------------------------------------------------
-# Measuring a slice with the frame's own text engine
 
 
 class Oracle:
@@ -429,10 +416,6 @@ def _split_rules(story, oracle, a, e, options):
     return e
 
 
-# ---------------------------------------------------------------------------------------------
-# Reflow
-
-
 def _slots(state, rec):
     """[(layer, page id)] for the chain's frames in order; frames whose layer is gone are left out."""
     slots = []
@@ -476,7 +459,6 @@ def reflow(project, name):
         end = _adjust(story, oracle, a, end, options)
         ranges.append([a, end])
         position = end
-    # Write the slices into the frames.
     for (layer, _), (a, b) in zip(slots, ranges):
         text, rich = story.slice(a, b, float(layer.get("size", 48))) if b > a else ("", None)
         layer["text"] = text
@@ -512,10 +494,6 @@ def refresh(project):
             reflow(project, name)
             reflowed.append(name)
     return reflowed
-
-
-# ---------------------------------------------------------------------------------------------
-# Creating frames
 
 
 def _default_color(state):
@@ -751,10 +729,6 @@ def _frame_specs(op):
     return specs
 
 
-# ---------------------------------------------------------------------------------------------
-# Story from an operation
-
-
 def _story_from(project, op, style, rec=None, adopted=None):
     """(text, rich) for the operation's text, markdown, spans or an adopted layer; None when it carries none."""
     from .richtext import _make_rich, plain
@@ -810,10 +784,6 @@ def _options_from(op, rec):
         if key in op:
             require(isinstance(op[key], int) and 0 <= op[key] <= 20, f"{key} must be a whole number of lines (0–20)", field=key)
             rec[key] = op[key]
-
-
-# ---------------------------------------------------------------------------------------------
-# Operations
 
 
 def execute(project, op):
@@ -902,7 +872,6 @@ def _set(project, name, rec, op):
     state = project.state
     if any(k in op for k in STYLE_KEYS):
         rec["style"] = _style_from(project, op, rec["style"])
-        # new look for every frame the flow owns
         for layer, _ in _slots(state, rec):
             style = rec["style"]
             layer.update(font=style["font"], size=style["size"], color=style["color"],
@@ -1077,10 +1046,6 @@ def _delete(project, name, op):
                 apply(project, {"type": "remove", "target": layer["id"]})
 
 
-# ---------------------------------------------------------------------------------------------
-# Results, validation and checks
-
-
 def report(project, operations, reflowed=()):
     """Per-flow summary for operation results: overflow, remaining characters and each frame's share."""
     state = project.state
@@ -1163,10 +1128,6 @@ def check_flows(project, resolved, issue):
                 issue("flow", "error", f"Frame {layer['name']!r} of {name!r} is too small to hold a line of text", [layer])
             elif not expected:
                 issue("flow", "warning", f"Frame {layer['name']!r} of {name!r} is empty: the story ended before it", [layer])
-
-
-# ---------------------------------------------------------------------------------------------
-# Command line
 
 
 def compile_command(cmd, args):

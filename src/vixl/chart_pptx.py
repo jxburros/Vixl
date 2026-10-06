@@ -34,7 +34,6 @@ def number(value):
     return repr(value) if isinstance(value, float) else str(value)
 
 
-# ---------------------------------------------------------------------------------------------
 # The embedded workbook: one sheet, categories down column A, one series per column after it
 
 def column(index):
@@ -100,9 +99,6 @@ def workbook(categories, series):
             archive.writestr(zipfile.ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0)), data)
     return stream.getvalue()
 
-
-# ---------------------------------------------------------------------------------------------
-# The chart part
 
 def solid(state, value, alpha=1.0):
     r, g, b, a = rgba(state, value)
@@ -175,8 +171,6 @@ class Native:
         self.categories, self.series = self.recipe["categories"], self.recipe["series"]
         self.colors = self.summary["colors"]
         self.size = self.style.fs * pt
-
-    # -- pieces -------------------------------------------------------------------------------
 
     def refs(self, j):
         n = len(self.categories)

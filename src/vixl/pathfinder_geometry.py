@@ -204,10 +204,7 @@ def path_data(commands):
     """SVG path data for path commands."""
     from .geometry import compact_number
 
-    def number(value):
-        return compact_number(value, 3)
-
     parts = []
     for command, values in commands:
-        parts.append(command + " ".join(number(v) for v in values) if values else command)
+        parts.append(command + " ".join(compact_number(v, 3) for v in values) if values else command)
     return " ".join(parts)

@@ -172,7 +172,7 @@ The standard checks (`bounds`, `overlap`, `contrast`, `legibility`) see the diag
 ## Limits
 
 * At most 150 nodes and 300 edges per diagram, and every node adds two layers (shape and label) and every edge one or
-  two: the document's 512-layer limit applies, and a diagram that would exceed it is refused with an advice to split it.
+  two: the document's 4,096-layer limit applies, and a diagram that would exceed it is refused with an advice to split it.
 * Lanes do not nest. Clusters can nest.
 * Labels longer than about 170 px wrap; very long labels make large nodes.
 * Characters that no font can draw are reported by the usual `fonts` check.

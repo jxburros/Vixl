@@ -109,7 +109,8 @@ vixl scale beam --x -1                   # negative factors mirror (--x/--y per 
 vixl crop portrait 0 0 300 400           # X Y W H in the source raster
 vixl opacity portrait 0.75               # or 75% (0–1 scale; a bare 75 is an error)
 vixl blend portrait multiply             # normal multiply screen overlay darken lighten difference add subtract
-vixl rasterize title
+vixl rasterize title                     # bakes effects, styles and clipping into pixels
+vixl merge-layers back disc --name art   # one raster layer at the topmost's slot ; vixl flatten [--keep-hidden]
 vixl group stripes stripe1 stripe2 [--above LAYER|--below LAYER] ; vixl ungroup stripes
 vixl stack names --targets first last company --gap 20 --align center --justify center --width 1000 --height 400   # auto-layout; empty hide_if_empty text collapses
 vixl stack names --direction horizontal --gap 8 ; vixl stack names --remove ; vixl text first --hide-if-empty
@@ -206,10 +207,13 @@ vixl assert canvas.width == 1920
 vixl assert layer.logo.exists
 vixl assert layer.logo.bounds within canvas
 vixl assert text.title.font-size '>=' 48
+vixl diff before.vixl after.png [--out diff.png] [--mode diff|side-by-side] [--threshold 8] [--max-fraction 0.01]
 ```
 
 All accept `--artboard NAME` / `--comp NAME` where relevant. `--check` (spacing), `check --strict`
-and failing `validate`/`assert` exit nonzero with details (`--json` shows every check).
+and failing `validate`/`assert` exit nonzero with details (`--json` shows every check). `diff` needs no open
+document: it compares two `.vixl` documents or images (PNG, JPEG, WEBP, TIFF, SVG, PDF) and reports `changed_pixels`,
+`changed_fraction` and `changed_region`; `--max-fraction` makes it exit nonzero above that share.
 
 ## Output
 
@@ -243,6 +247,7 @@ JPEG flattens transparency onto `--background` (white).
 vixl apply ops.json [--dry-run]          # or: cat ops.json | vixl apply -
 vixl apply ops.json --check --preview p.png   # also check the result and write a 512 px preview
 vixl run script.vixlscript               # one editing command per line, # comments; atomic
+vixl compose --request req.json [--preview p.png] [--workspace DIR]   # vixl_compose: create → … → exports, atomic
 vixl batch './photos/*.jpg' --run cleanup.vixlscript --output ./processed [--format png]
 vixl each layer --type raster --name 'card-*' -- saturation -10
 vixl transaction begin ; …edits… ; vixl transaction commit   # or rollback; one undo step
@@ -296,8 +301,9 @@ vixl ai remove --as removed ; vixl ai content-aware-fill --prompt '…' ; vixl a
 
 ```bash
 vixl -p F.vixl serve [--host 127.0.0.1] [--port 8765] [--token-env VIXL_API_TOKEN]
-vixl mcp --workspace DIR [--tools core|ai] [--require-document]   # MCP over stdio; core + ai run as two servers (default all); --require-document (or VIXL_REQUIRE_DOCUMENT=1) makes document= mandatory
+vixl mcp --workspace DIR [--tools core|ai|compact|all] [--schema slim|full] [--require-document]   # MCP over stdio; default core + slim; core + ai run as two servers; --require-document (or VIXL_REQUIRE_DOCUMENT=1) makes document= mandatory
 vixl update --check | vixl update | vixl update --rollback ; vixl updates status|on|off   # Windows installer only
+vixl upgrade old.vixl [--report] [--pin-fills]   # document saved before 0.21: list layers that render differently; --pin-fills restores white open-shape fills
 ```
 
 ## Sizes, layouts, color, print, brushes and motion (0.13)

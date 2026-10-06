@@ -16,10 +16,22 @@ from PIL import Image
 
 async def verify(executable, workspace):
     Image.new("RGB", (2400, 1600), "blue").save(workspace / "input photo.jpg")
+    env = {**os.environ, "VIXL_NO_UPDATE": "1"}
+    env.pop("VIXL_MCP_TOOLS", None)
+    env.pop("VIXL_MCP_SCHEMA", None)
+    # A bare `vixl mcp` serves core tools with slim schemas.
+    default = StdioServerParameters(command=executable, args=["mcp", "--workspace", str(workspace)], env=env)
+    async with stdio_client(default) as (read, write):
+        async with ClientSession(read, write) as client:
+            await client.initialize()
+            tools = {tool.name: tool for tool in (await client.list_tools()).tools}
+            assert "vixl_compose" in tools and "vixl_ai_remove_background" not in tools
+            assert "oneOf" not in json.dumps(tools["vixl_operations_apply"].inputSchema["properties"]["operations"])
+
     params = StdioServerParameters(
         command=executable,
-        args=["mcp", "--workspace", str(workspace)],
-        env={**os.environ, "VIXL_NO_UPDATE": "1"},
+        args=["mcp", "--workspace", str(workspace), "--tools", "all", "--schema", "full"],
+        env=env,
     )
     async with stdio_client(params) as (read, write):
         async with ClientSession(read, write) as client:

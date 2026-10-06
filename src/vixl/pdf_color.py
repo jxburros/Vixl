@@ -8,13 +8,12 @@ a profile is used, as press people expect for text.
 """
 
 from . import colors
+from .geometry import compact_number
 from .pdf_writer import image_xobject
 
 
 def _num(value):
-    if abs(value - round(value)) < 1e-6:
-        return str(int(round(value)))
-    return f"{value:.4f}".rstrip("0").rstrip(".")
+    return compact_number(value, 4)  # Colour components: four decimals.
 
 
 class RGBPaint:

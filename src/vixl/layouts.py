@@ -31,7 +31,8 @@ RATIOS = {
     "golden": 1.618,
 }
 ROLE_STEPS = {"caption": -1, "body": 0, "lead": 1, "subhead": 2, "title": 3, "headline": 4, "display": 5}
-CONTENT_KEYS = ("title", "subtitle", "body", "label", "cta", "caption", "image", "items")
+CONTENT_KEYS = ("title", "subtitle", "body", "label", "cta", "caption", "image", "images", "items")
+IMAGE_KEYS = ("image", "images")
 DENSITY_MARGIN = {"airy": 0.095, "balanced": 0.072, "dense": 0.05}
 ACCENTS = ("rule", "bar", "dot", "block", "outline", "none")
 PALETTE_POOL = tuple(SAFE_PALETTES)
@@ -114,6 +115,7 @@ class Builder:
         self.read = set()
         self.placeholders = {}
         self.image_blanks = []
+        self.blank_slots = {}
         typography = project.state.get("typography") or {}
         self.font = op.get("font") or typography.get("body")
         self.display_font = op.get("display_font") or typography.get("heading") or self.font
@@ -122,8 +124,6 @@ class Builder:
             self.font = resolve_font(project, self.font)[0]
         if self.display_font and self.display_font not in project.state.get("fonts", {}):
             self.display_font = resolve_font(project, self.display_font)[0]
-
-    # -- helpers ---------------------------------------------------------------------------
 
     def name(self, base):
         return f"{self.prefix}{base}"
@@ -134,7 +134,7 @@ class Builder:
             value = self.content[key]
             return value if value is not None else default
         slot = self.slots.get(key)
-        if key != "image" and slot and slot["blank"]:
+        if key not in IMAGE_KEYS and slot and slot["blank"]:
             if self.unfilled == "blank":
                 self.placeholders[key] = slot["placeholder"]
                 return slot["placeholder"]
@@ -195,6 +195,16 @@ class Builder:
         self.created.append(layer)
         return (round(x), round(y), width, h)
 
+    def measure_box(self, size, content, width, max_height):
+        """The size text() settles on for heavy ``content`` in a ``width`` × ``max_height`` box, and its extent."""
+        spacing = round(size * 0.15)
+        w, h = self.measure(content, size, width, spacing, "left", self.display_font)
+        while size > 6 and (w > width or h > max_height):
+            size = max(6, int(size * 0.92))
+            spacing = round(size * 0.15)
+            w, h = self.measure(content, size, width, spacing, "left", self.display_font)
+        return size, spacing, w, h
+
     def glyphs(self, size, content, cx, cy, name, color="@on-accent"):
         """Short centered text (initials, a glyph) as an unwrapped, auto-sized layer."""
         w, h = self.measure(content, size, None, 0, "left", self.display_font)
@@ -237,19 +247,22 @@ class Builder:
         self.add({"type": "solid", "name": self.name("background"), "color": fill, "width": self.W, "height": self.H, "x": 0, "y": 0})
         self.created.append(self.name("background"))
 
-    def image(self, name, x, y, w, h):
-        """A frame holding the supplied image asset, or an editable placeholder to replace."""
+    def image(self, name, x, y, w, h, asset=None, slot="image"):
+        """A frame holding the supplied image asset, or an editable placeholder to replace. ``slot`` images
+        takes ``asset`` (one entry of the images list) instead of reading the image slot."""
         from .assets import add_image
         from .render import color as rgba
         from .design import resolve_color
 
         w, h = max(1, round(w)), max(1, round(h))
-        asset = self.get("image", None)
+        if slot == "image":
+            asset = self.get("image", None)
         layer = self.name(name)
         if asset:
             self.project.image(asset)
         else:
             self.image_blanks.append(layer)
+            self.blank_slots[layer] = slot
             scale = min(1, 800 / max(w, h))
             pw, ph = max(2, round(w * scale)), max(2, round(h * scale))
             top = rgba(resolve_color(self.colors["surface"], self.project.state))
@@ -354,10 +367,6 @@ class Builder:
     def label_text(self):
         label = self.get("label")
         return label.upper() if label and self.op.get("uppercase_labels", True) else label
-
-
-# ---------------------------------------------------------------------------------------------
-# Color roles
 
 
 ROLES = ("background", "surface", "ink", "muted", "accent", "accent-text", "on-accent")
@@ -479,8 +488,7 @@ def assign_roles(op, rng):
     return roles
 
 
-# ---------------------------------------------------------------------------------------------
-# Layouts. Each receives a Builder; geometry is derived from the canvas, never fixed pixels.
+# Each layout receives a Builder; geometry is derived from the canvas, never fixed pixels.
 
 
 def _hero_statement(b):
@@ -1198,6 +1206,113 @@ def _bento_grid(b):
     if b.get("cta"):
         b.button(b.get("cta"), info[0] + info[2] - pad, info[1] + info[3] - pad - b.sizes["body"] * 2.3, align="right")
 
+# Memes: image slots and caption rules only (no stock images). Captions are white with a black stroke and set
+# uppercase (uppercase=false keeps the case); they shrink to fit their box. Fonts follow the document typography
+# or display_font: an Impact-style OFL face such as Anton (vixl_font_install) suits them.
+
+
+def _meme_text(b, text, x, y, width, max_height, name, anchor="top", stroked=True, color="#ffffff"):
+    if not text:
+        return (x, y, 0, 0)
+    if stroked and b.op.get("uppercase", True):
+        text = text.upper()
+    size = max(8, round(min(b.W, b.H) * 0.11))
+    # Never break a word: shrink until the longest word fits the line.
+    longest = max(text.split(), key=len)
+    while size > 8 and b.measure(longest, size, None, 0, "left", b.display_font)[0] > width:
+        size = max(8, int(size * 0.92))
+    x, top, w, h = b.text(size, text, x, y, width, name=name, align="center", color=color, max_height=max_height,
+                          display=True, line=0.04)
+    layer = b.name(name)
+    op = next(op for op in b.ops if op.get("name") == layer and op["type"] == "text")
+    if stroked:
+        # A stroke style (outside the glyphs) is the outline the contrast check reads text through.
+        b.add({"type": "layer-style", "target": layer, "name": "stroke",
+               "settings": {"color": "#000000", "width": max(3, round(op["size"] * 0.07))}})
+    if anchor == "bottom":
+        op["y"] = top = round(y - h)
+    return (x, top, w, h)
+
+
+def _meme_lines(b, count):
+    lines = [line.strip() for line in str(b.get("items") or "").splitlines() if line.strip()]
+    return (lines + [""] * count)[:count]
+
+
+def _meme_images(b, count):
+    images = b.get("images", None) or []
+    require(isinstance(images, list) and all(isinstance(item, str) for item in images) and len(images) <= count,
+            f"images is a list of up to {count} asset ids", field="images")
+    return images + [None] * (count - len(images))
+
+
+def _meme_top_bottom(b):
+    b.background("#000000")
+    b.image("image", 0, 0, b.W, b.H)
+    pad = round(min(b.W, b.H) * 0.04)
+    _meme_text(b, b.get("title"), pad, pad, b.W - 2 * pad, b.H * 0.3, "top-text")
+    _meme_text(b, b.get("caption"), pad, b.H - pad, b.W - 2 * pad, b.H * 0.3, "bottom-text", anchor="bottom")
+
+
+def _meme_caption_above(b):
+    pad = round(min(b.W, b.H) * 0.05)
+    b.background("#ffffff")
+    size = max(8, round(min(b.W, b.H) * 0.065))
+    _, _, _, h = b.text(size, b.get("title"), pad, pad, b.W - 2 * pad, name="caption", align="left", color="#111111",
+                        max_height=b.H * 0.3, display=True, line=0.2)
+    band = max(round(b.H * 0.16), h + 2 * pad)
+    b.image("image", 0, band, b.W, b.H - band)
+
+
+def _meme_comparison(b):
+    b.background("#ffffff")
+    images, lines = _meme_images(b, 2), _meme_lines(b, 2)
+    split = round(b.W * 0.5)
+    pad = round(min(b.W, b.H) * 0.04)
+    for index in range(2):
+        top, height = round(b.H * index / 2), round(b.H / 2)
+        b.image(f"panel-{index + 1}", 0, top, split, height, asset=images[index], slot="images")
+        text = lines[index]
+        if not text:
+            continue
+        size = max(8, round(min(b.W, b.H) * 0.07))
+        size, _, _, h = b.measure_box(size, text, b.W - split - 2 * pad, height - 2 * pad)
+        b.text(size, text, split + pad, top + max(pad, (height - h) / 2), b.W - split - 2 * pad,
+               name=f"label-{index + 1}", align="left", color="#111111", max_height=height - 2 * pad, display=True,
+               line=0.15)
+    b.rect("divider", 0, round(b.H / 2) - 1, b.W, 2, "#000000")
+
+
+def _meme_labelled(b):
+    b.background("#000000")
+    b.image("image", 0, 0, b.W, b.H)
+    lines = [line for line in _meme_lines(b, 6) if line]
+    width = b.W / max(1, len(lines))
+    for index, text in enumerate(lines):
+        _meme_text(b, text, index * width + width * 0.06, b.H * 0.62, width * 0.88, b.H * 0.25, f"label-{index + 1}")
+
+
+def _meme_reaction(b):
+    b.background("#000000")
+    pad = round(min(b.W, b.H) * 0.05)
+    reserve = round(b.H * 0.22)
+    b.image("image", 0, 0, b.W, b.H - reserve)
+    _meme_text(b, b.get("caption"), pad, b.H - reserve + pad / 2, b.W - 2 * pad, reserve - pad, "caption",
+               stroked=False)
+
+
+def _meme_four_panel(b):
+    b.background("#000000")
+    images, lines = _meme_images(b, 4), _meme_lines(b, 4)
+    gutter = max(2, round(min(b.W, b.H) * 0.008))
+    w, h = (b.W - gutter) / 2, (b.H - gutter) / 2
+    pad = round(min(w, h) * 0.05)
+    for index in range(4):
+        x, y = (index % 2) * (w + gutter), (index // 2) * (h + gutter)
+        b.image(f"panel-{index + 1}", x, y, w, h, asset=images[index], slot="images")
+        _meme_text(b, lines[index], x + pad, y + h - pad, w - 2 * pad, h * 0.4, f"caption-{index + 1}", anchor="bottom")
+
+
 
 def _layout(fn, description, principles, best_for, examples, **extra):
     """``examples`` show the kind and length of copy each slot expects; they are never rendered."""
@@ -1217,6 +1332,8 @@ SLOT_TEXT = {
     "cta": ("Action", "A two- or three-word call to action, shown as a button"),
     "caption": ("Caption", "A small supporting note"),
     "items": ("Items", "One item per line"),
+    "images": ("Images", "A list of embedded image asset ids, one per panel in reading order (vixl_import_image returns "
+               "them). Panels left empty get placeholder frames to fill later"),
     "image": ("Image", "An embedded image asset id (vixl_import_image returns one). Left empty, a placeholder frame is drawn; "
               "fill it later by importing a file, placing a saved resource, drawing it with shape/organic/paint operations, "
               "or generating it with an AI tool: see next_steps in the layout-apply result"),
@@ -1247,8 +1364,21 @@ SLOT_OVERRIDES = {
     "z-pattern": {"caption": ("Note", "A small note such as a deadline")},
     "editorial-grid": {"caption": ("Image caption", "Describes the image")},
     "diagonal-band": {"subtitle": ("Band text", "The offer or line set on the band")},
+    "meme-top-bottom": {"title": ("Top text", "The setup, a few words"), "caption": ("Bottom text", "The punchline"),
+                        "image": ("Image", "The picture: an asset you have the rights to use")},
+    "meme-caption-above": {"title": ("Caption", "One or two sentences set above the picture")},
+    "meme-comparison": {"items": ("Panel labels", "One per line: the rejected option, then the preferred one",
+                                  "[Rejected option]\n[Preferred option]"),
+                        "images": ("Panel images", "Two asset ids: the reaction to each option")},
+    "meme-labelled": {"items": ("Labels", "One label per line (up to 6); move each label layer onto its object",
+                                "[Label]\n[Label]\n[Label]")},
+    "meme-reaction": {"caption": ("Caption", "What the reaction answers, in a short line")},
+    "meme-four-panel": {"items": ("Panel captions", "One caption per line, four panels in reading order",
+                                  "[Caption]\n[Caption]\n[Caption]\n[Caption]"),
+                        "images": ("Panel images", "Up to four asset ids in reading order")},
 }
-IMAGE_LAYOUTS = {"bento-grid", "editorial-grid", "golden-section", "photo-caption", "product-card", "rule-of-thirds", "slide-content", "split-screen", "story-vertical", "thumbnail-bold"}
+MULTI_IMAGE_LAYOUTS = {"meme-comparison", "meme-four-panel"}
+IMAGE_LAYOUTS = {"meme-top-bottom", "meme-caption-above", "meme-labelled", "meme-reaction", "bento-grid", "editorial-grid", "golden-section", "photo-caption", "product-card", "rule-of-thirds", "slide-content", "split-screen", "story-vertical", "thumbnail-bold"}
 OPTIONAL_SLOTS = {"emblem": {"label"}, "monogram": {"label"}, "app-icon": {"label"}, "letterhead": {"body"}, "logo-horizontal": {"subtitle"}, "logo-stacked": {"subtitle"}}
 
 # Every slot each builder can read (some only on certain canvases); used for discovery only —
@@ -1286,6 +1416,12 @@ OPTIONAL_READS = {
     "thumbnail-bold": ('image', 'label', 'title'),
     "typographic-poster": ('caption', 'label', 'subtitle', 'title'),
     "z-pattern": ('body', 'caption', 'cta', 'label', 'subtitle', 'title'),
+    "meme-top-bottom": ('caption', 'image', 'title'),
+    "meme-caption-above": ('image', 'title'),
+    "meme-comparison": ('images', 'items'),
+    "meme-labelled": ('image', 'items'),
+    "meme-reaction": ('caption', 'image'),
+    "meme-four-panel": ('images', 'items'),
 }
 
 
@@ -1294,11 +1430,12 @@ def slot_spec(layout):
     name = next((key for key, value in LAYOUTS.items() if value is layout), None)
     overrides = SLOT_OVERRIDES.get(name, {})
     examples = layout["examples"]
-    keys = [k for k in CONTENT_KEYS if k in examples or k in overrides or (k == "image" and name in IMAGE_LAYOUTS)]
+    keys = [k for k in CONTENT_KEYS if k in examples or k in overrides or (k == "image" and name in IMAGE_LAYOUTS)
+            or (k == "images" and name in MULTI_IMAGE_LAYOUTS)]
     spec = {}
     for key in keys:
         label, hint, *placeholder = overrides.get(key, SLOT_TEXT[key])
-        blank = key not in OPTIONAL_SLOTS.get(name, ()) and (key == "image" or bool(examples.get(key)))
+        blank = key not in OPTIONAL_SLOTS.get(name, ()) and (key in IMAGE_KEYS or bool(examples.get(key)))
         spec[key] = {"label": label, "hint": hint, "placeholder": placeholder[0] if placeholder else f"[{label}]", "blank": blank}
         if examples.get(key):
             spec[key]["example"] = examples[key]
@@ -1339,6 +1476,12 @@ LAYOUTS = {
     "photo-caption": _layout(_photo_caption, "Full-bleed image with a gradient scrim keeping caption text legible.", ["figure first", "scrim for contrast", "caption hierarchy"], ["social", "web", "covers"], {"label": "Travel", "title": "A caption headline over the photo", "subtitle": "Keep text on the scrim, never on busy image areas."}),
     "minimal-mark": _layout(_minimal_mark, "Small text in a corner with vast negative space and one accent dot.", ["negative space", "restraint", "deliberate placement"], ["poster", "social", "covers"], {"title": "Less, but better", "subtitle": "A quiet line of context."}, accents=["none"]),
     "bento-grid": _layout(_bento_grid, "Rounded tiles of varied spans: message, stat, image and info.", ["modular tiles", "varied emphasis by span", "consistent gutters"], ["web", "social", "slides", "infographics"], {"title": "Everything in one place", "label": "3×", "caption": "faster setup", "subtitle": "Short supporting copy in its own tile.", "cta": "Try it"}, accents=["none"]),
+    "meme-top-bottom": _layout(_meme_top_bottom, "Classic meme: full-bleed picture with stroked uppercase top and bottom text.", ["text over image with a stroke for contrast", "setup and punchline", "few words, huge type"], ["memes", "social"], {"title": "When the build passes", "caption": "On the first try"}, accents=["none"]),
+    "meme-caption-above": _layout(_meme_caption_above, "Caption in a white band above the picture.", ["caption first, then image", "plain text on white", "image carries the joke"], ["memes", "social"], {"title": "Me explaining why the meeting could have been an email"}, accents=["none"]),
+    "meme-comparison": _layout(_meme_comparison, "Two-row comparison: a reaction image beside each labelled option.", ["contrast of two choices", "image–label pairs", "reading order top to bottom"], ["memes", "social"], {"items": "Writing docs by hand\nGenerating them from the schema"}, accents=["none"]),
+    "meme-labelled": _layout(_meme_labelled, "Picture with stroked labels for the objects in it.", ["labels as metaphor", "short labels", "label on its object"], ["memes", "social"], {"items": "Me\nNew framework\nWorking code"}, accents=["none"]),
+    "meme-reaction": _layout(_meme_reaction, "Reaction frame (GIF-ready): picture over a black subtitle bar.", ["one reaction", "subtitle-style caption", "loops cleanly"], ["memes", "gifs", "social"], {"caption": "Me reading my own code from last year"}, accents=["none"]),
+    "meme-four-panel": _layout(_meme_four_panel, "Four panels in a 2×2 grid, each with a stroked caption.", ["sequence in reading order", "escalation across panels", "one caption per panel"], ["memes", "comics", "social"], {"items": "Idea\nPrototype\nScope creep\nRewrite"}, accents=["none"]),
 }
 
 
@@ -1413,19 +1556,19 @@ def next_steps(project):
     if not blanks:
         return []
     steps = []
-    text = list(dict.fromkeys(b["slot"] for b in blanks if b["slot"] != "image"))
+    text = list(dict.fromkeys(b["slot"] for b in blanks if b["slot"] not in IMAGE_KEYS))
     if text:
         steps.append({"slot": text, "action": "fill",
                       "how": f"Re-apply layout-apply with name={record.get('name')!r}, seed={record.get('seed')}, replace=true "
                              f"and the copy for: {', '.join(text)}"})
-    images = [b for b in blanks if b["slot"] == "image"]
+    images = [b for b in blanks if b["slot"] in IMAGE_KEYS]
     bounds = resolve_layout(project) if images else {}
     for blank in images:
         layer = next((x for x in project.state["layers"] if x["name"] == blank["layer"]), None)
         if layer is None:
             continue
         x, y, w, h = bounds[layer["id"]]
-        steps.append({"slot": "image", "layer": layer["name"], "bounds": [x, y, w, h], "aspect_ratio": round(w / max(h, 1), 3),
+        steps.append({"slot": blank["slot"], "layer": layer["name"], "bounds": [x, y, w, h], "aspect_ratio": round(w / max(h, 1), 3),
                       "action": "fill", "options": IMAGE_OPTIONS,
                       "note": "The placeholder is an editable frame; check reports it as an unfilled blank until it is replaced"})
     return steps
@@ -1443,7 +1586,7 @@ def describe(name):
         "best_for": item["best_for"],
         "slots": {
             k: {"label": v["label"], "hint": v["hint"], "blank_if_unfilled": v["blank"], **({"example": v["example"]} if "example" in v else {}),
-                **({"fill_with": IMAGE_OPTIONS} if k == "image" else {})}
+                **({"fill_with": IMAGE_OPTIONS} if k in IMAGE_KEYS else {})}
             for k, v in spec.items()
         },
         **({"also_accepts": extra} if extra else {}),
@@ -1671,8 +1814,10 @@ def _record_blanks(state, builder, layout_name, created):
     for name in builder.image_blanks:
         layer = by_name.get(name)
         if layer:
-            registry[layer["id"]] = {"slot": "image", "asset": layer["asset"], "hint": SLOT_TEXT["image"][1], "source": f"layout:{layout_name}"}
-            found.append({"slot": "image", "layer": name, "hint": "pass image=ASSET_ID, or fill the frame later (see next_steps)"})
+            slot = builder.blank_slots.get(name, "image")
+            registry[layer["id"]] = {"slot": slot, "asset": layer["asset"], "hint": SLOT_TEXT[slot][1], "source": f"layout:{layout_name}"}
+            found.append({"slot": slot, "layer": name, "hint": f"pass {slot}=" + ("ASSET_ID" if slot == "image" else "[ASSET_ID, …]")
+                          + ", or fill the frame later (see next_steps)"})
     return found
 
 
@@ -1769,7 +1914,10 @@ def schemas(add):
             "replace": B,
             "predictable": B,
             "keep_order": B,
-            **{key: S for key in CONTENT_KEYS},
+            **{key: S for key in CONTENT_KEYS if key != "images"},
+            "images": {"type": "array", "items": S, "maxItems": 8,
+                       "description": "Multi-panel layouts (meme-comparison, meme-four-panel): one image asset id per panel."},
+            "uppercase": {"type": "boolean", "description": "Meme layouts: set stroked captions uppercase (default true)."},
         },
         ["name"],
     )

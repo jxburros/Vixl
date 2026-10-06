@@ -1,6 +1,7 @@
 """Editable design operations. References are immutable IDs; groups use local coordinates."""
 
 from copy import deepcopy
+import math
 import re
 
 from .errors import require
@@ -43,6 +44,7 @@ def union_bounds(bounds):
 
 def execute_design(project, op):
     from .operations import append_layer, default_name, execute
+    from .scatter import bake_repeat, stepped
     from .render import resolve_layout, color, stored_origin
 
     kind = op["type"]
@@ -87,6 +89,11 @@ def execute_design(project, op):
             require(project.layer(op[where])["id"] not in {item["id"] for item in children},
                     f"group {where} must name a layer outside the group", field=where)
             execute(project, {"type": "reorder", "target": group["id"], where: op[where]})
+        from .selectors import record
+
+        record(project, "groups", {"id": group["id"], "name": group["name"], "bounds": [x, y, w, h],
+                                   "members": {child["name"]: [bounds[child["id"]][0] - x, bounds[child["id"]][1] - y]
+                                               for child in children}})
     elif kind == "ungroup":
         group = project.layer(op.get("target"))
         require(group["type"] == "group", "Target must be a group")
@@ -108,7 +115,10 @@ def execute_design(project, op):
         all_bounds = resolve_layout(project)
         b = all_bounds[group["id"]]
         children = [item for item in state["layers"] if item.get("parent") == group["id"]]
-        index = state["layers"].index(group)
+        from .group_bake import ungroup_tracks
+
+        # Sample the group's own animation before it is dissolved; refuses what cannot move.
+        finish = ungroup_tracks(project, group, children, b[:2])
         for child in children:
             require(child.get("clip") != group["id"], "Cannot ungroup referenced clipping base")
             local = all_bounds[child["id"]]
@@ -118,6 +128,7 @@ def execute_design(project, op):
         index = state["layers"].index(group)
         state["layers"][index : index + 1] = children
         state["active_layer"] = children[-1]["id"] if children else None
+        finish()
     elif kind == "clip":
         layer = project.layer(op.get("target"))
         if op.get("release"):
@@ -234,7 +245,11 @@ def execute_design(project, op):
                 layer["type"] = "frame"
             layer.pop("linked", None)
             layer.pop("crop", None)
+    elif kind == "repeat" and stepped(op):
+        bake_repeat(project, op)
     elif kind in ("repeat", "repeat-blend"):
+        require("name" not in op, "name names the copies made with per-step fields or merge; a live repeat keeps the "
+                "layer's name", field="name")
         layer = project.layer(op.get("target"))
         layer["repeat"] = {k: deepcopy(v) for k, v in op.items() if k not in ("type", "target")}
         validate_design(project, state)
@@ -397,7 +412,9 @@ def resolve_color(value, state, variables=None):
 
     from .colors import MAX_DEPTH, resolve_expression
 
-    variables = {**state["variables"], **(variables or {})}
+    from .variables import with_maps
+
+    variables = with_maps({**state["variables"], **(variables or {})}, state.get("maps"))
     swatches = state.get("swatches", {})
     # A swatch may be defined from a variable (${brand}) and a variable may name a swatch, so
     # expand both until neither is left.
@@ -436,6 +453,66 @@ def validate_text_style(kind, settings, state):
         require(settings["align"] in ("left", "center", "right"), "Invalid paragraph alignment")
 
 
+GRADIENT_FALLOFFS = ("linear", "smooth", "ease", "quadratic", "gaussian")
+FALLOFF_SAMPLES = 24
+
+
+def _falloff(name, t):
+    """How far along the stops (0–1) a gradient is at position ``t`` (0 at its start, 1 at its end)."""
+    if name == "smooth":
+        return t * t * (3 - 2 * t)
+    if name == "ease":
+        return 1 - (1 - t) ** 2
+    if name == "quadratic":
+        return t * t
+    if name == "gaussian":
+        return (1 - math.exp(-4.5 * t * t)) / (1 - math.exp(-4.5))
+    return t
+
+
+def gradient_stops(settings, state):
+    """The stops every renderer draws. A ``falloff`` other than linear is expanded into extra stops
+    (colours mixed with premultiplied alpha), so raster, SVG, PDF and PPTX draw the same curve."""
+    stops = settings.get("stops") or [{"offset": 0, "color": settings.get("start", "black")},
+                                      {"offset": 1, "color": settings.get("end", "white")}]
+    name = settings.get("falloff", "linear")
+    if name == "linear":
+        return stops
+    from .render import color
+
+    offsets = [stop["offset"] for stop in stops]
+    rgba = [color(resolve_color(stop["color"], state)) for stop in stops]
+    premultiplied = [[c[0] * c[3] / 255, c[1] * c[3] / 255, c[2] * c[3] / 255, c[3]] for c in rgba]
+
+    def inverse(value):
+        low, high = 0.0, 1.0
+        for _ in range(40):
+            middle = (low + high) / 2
+            low, high = (middle, high) if _falloff(name, middle) < value else (low, middle)
+        return (low + high) / 2
+
+    positions = {i / FALLOFF_SAMPLES for i in range(FALLOFF_SAMPLES + 1)}
+    positions |= {inverse(offset) for offset in offsets}
+    result = []
+    for t in sorted(positions):
+        p = min(1.0, max(0.0, _falloff(name, t)))
+        if p <= offsets[0]:
+            mixed = premultiplied[0]
+        elif p >= offsets[-1]:
+            mixed = premultiplied[-1]
+        else:
+            i = next(i for i in range(1, len(offsets)) if p <= offsets[i])
+            u = (p - offsets[i - 1]) / (offsets[i] - offsets[i - 1])
+            mixed = [a + (b - a) * u for a, b in zip(premultiplied[i - 1], premultiplied[i])]
+        alpha = mixed[3]
+        rgb = [round(min(255, v * 255 / alpha)) if alpha > 0 else 0 for v in mixed[:3]]
+        offset = round(t, 6)
+        if result and offset <= result[-1]["offset"]:
+            continue
+        result.append({"offset": offset, "color": "#{:02x}{:02x}{:02x}{:02x}".format(*rgb, round(alpha))})
+    return result
+
+
 def validate_gradient(data, state):
     from .render import color
 
@@ -458,6 +535,8 @@ def validate_gradient(data, state):
         "Invalid gradient direction",
     )
     finite(data.get("angle", 0), "angle", -36000, 36000)
+    require(data.get("falloff", "linear") in GRADIENT_FALLOFFS,
+            f"falloff must be one of {', '.join(GRADIENT_FALLOFFS)}", field="falloff", allowed=list(GRADIENT_FALLOFFS))
 
 
 def validate_style(name, settings, state):
@@ -475,7 +554,7 @@ def validate_style(name, settings, state):
         "outer-glow": {"color", "blur"},
         "stroke": {"color", "width"},
         "color-overlay": {"color"},
-        "gradient-overlay": {"start", "end", "stops", "direction", "angle"},
+        "gradient-overlay": {"start", "end", "stops", "direction", "angle", "falloff"},
     }[name] | common
     unknown = sorted(set(settings) - allowed)
     require(

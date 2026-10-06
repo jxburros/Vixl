@@ -15,7 +15,7 @@ the result and export. Text, geometry, masks, effects and history stay in the `.
 4. [Choose an export format](exporting.md): images, vectors, print, decks, forms and motion.
 5. [Resolve common problems](troubleshooting.md): installation, text, checks, imports and providers.
 
-Current tagged release: **0.21.0**. See the [release notes](../CHANGELOG.md#0210)
+Current tagged release: **0.22.0**. See the [release notes](../CHANGELOG.md#0220)
 for the features and behavior changes in this version.
 See [installation and updating](releases.md) for Windows, source and agent bundles.
 
@@ -43,9 +43,9 @@ offline with `python examples/build_documentation.py`.
 | Finishing and imperfection | [Looks](looks.md), [irregularity and torn edges](irregular.md) |
 | Images and drawing | [Materials and media review](media-craft.md), [Drawing cleanup](drawing.md), [artistic filters](artistic-filters.md), [brushes](brushes-and-animation.md) |
 | Output | [Export guide](exporting.md), [color and print](color-and-print.md), [slides](slides.md), [HTML presenter](presenter.md), [forms](forms.md) |
-| Data and reuse | [Charts](charts.md), [linked documents](linked-documents.md), [data merge and print imposition](imposition.md) |
+| Data and reuse | [Charts](charts.md), [linked documents](linked-documents.md), [data merge and print imposition](imposition.md), [QR codes and barcodes](codes.md) |
 | Motion | [Characters, rigs and scene authoring](animation-authoring.md), [Brushes and timelines](brushes-and-animation.md), [pixel animation](pixel-animation-spacing.md), [lyric video](lyric-video.md) |
-| Automation and collaboration | [Production workflows](production.md), [studio and custom tests](studio.md) |
+| Automation and collaboration | [Production workflows](production.md) (proof pages, logo packages), [studio and custom tests](studio.md), [checking designs in CI](ci.md) |
 | AI | [Provider setup and capability matrix](providers.md) |
 | Integration | [Capability discovery](agent-discovery.md), [MCP toolset evaluation](mcp-toolsets.md), [Python, REST and MCP](interfaces.md), [agent skill](../skills/vixl/SKILL.md) |
 | Installation | [Releases, updates and rollback](releases.md) |

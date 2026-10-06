@@ -32,7 +32,23 @@ turn ordinary coordinates into inches. A 300 dpi, 1-inch gap is 300 px. Groups i
 local coordinates; inspect resolved bounds after grouping, rotation or constraints, or pass
 `space: "canvas"` (move, and shape/text edits with `target`) and pivot `units: "canvas"` to work
 in document coordinates. A new group takes its topmost member's slot in the stack unless
-`group` names `above` or `below` a layer.
+`group` names `above` or `below` a layer. The `group` result lists each member's offset from
+the group's top-left corner (`groups[].members`, `{name: [dx, dy]}`), and edit results for a grouped
+layer name its `parent` and add `canvas_bounds` beside the group-local `bounds`
+(`coordinate_space: "parent"`).
+
+Stacking inside groups follows three rules:
+
+- A group draws as one picture at its own slot among its siblings; everything inside it is
+  above the layers below the group and below the layers above it, however deep it is nested.
+- Children stack among themselves, bottom to top, in their order in the layer list. `raise`,
+  `lower`, `top`, `bottom` and `reorder` move a layer only among its siblings (the layers with the
+  same parent); `reorder` refuses a layer from another group.
+- A layer cannot sit between two layers of another group. To put a part of one group in front
+  of a part of another, move it out of its group (or `ungroup`), or split the group in two.
+  `ungroup` keeps every child where it was drawn, also over time: a group's animation (position,
+  rotation, scale, size, visibility, and opacity on a group of one) becomes per-frame keys on its
+  children, and an animation that cannot be rewritten exactly is refused with the tracks named.
 
 `move` changes position, `resize` changes dimensions and `scale` uses a factor (`0.8`
 means 80%). Procedural shapes retain geometry. Raster images have a fixed original
@@ -63,8 +79,9 @@ photo is not overwritten. Linked files are a separate, explicitly trusted mode; 
 
 Effects remain in a stack that can be edited, disabled or removed. A mask controls layer
 visibility: white reveals, black hides. Selection state affects an effect **when it is
-added**; clear the selection for whole-layer effects. Flattening or rasterizing a layer
-bakes editable detail into pixels; keep a checkpoint first.
+added**; clear the selection for whole-layer effects. Rasterizing, merging or flattening layers
+bakes editable detail into pixels (the originals stay in the new layer's `provenance`, and undo
+restores them); keep a checkpoint first.
 
 ## Variables, swatches and styles
 
@@ -72,6 +89,15 @@ Use `${headline}` for variable text, and `@accent` for a named color swatch. Var
 allow content changes without rebuilding geometry; render overrides leave the saved master
 unchanged. Undefined variables fail rather than silently becoming blank. Font roles,
 linked text styles and palettes let repeated elements follow shared choices.
+
+Placeholders take filters, applied left to right: `${name|upper}`, `lower`, `title`,
+`${company|default:Independent}` (used when the variable is undefined or empty),
+`${state|map:states}` (looks the value up in a document map defined with `variable-map`; a `"*"`
+entry catches values the map does not list), `${price|number:2}` (thousands separators, 2
+decimals) and `${seat|format:03d}` (a Python format spec). An unknown filter or an undefined map is a
+validation error. Text, colours (`${tier|map:tier_colors}`), link variables and merge-impose
+templates all substitute the same way, and `inspect` lists every placeholder with its filters under
+`placeholders`.
 
 Pages share canvas dimensions and resources but have their own layers and settings.
 Masters draw underneath pages that use them. Artboards offer alternate canvases or subsets;
@@ -91,6 +117,6 @@ Preview answers “does it look right?” Use all three. Bounds checks cannot es
 legibility, provider quality or an artistic outcome; saved suites cover their declared
 rules and sample times. [Production workflows](production.md) explains coverage and repairs.
 
-Defaults include 40 MP per canvas/layer, 16,384 px per side, 512 layers and 10,000 operations
+Defaults include 40 MP per canvas/layer, 16,384 px per side, 4,096 layers and 10,000 operations
 per batch. See [architecture](architecture.md#resource-policy) for the complete resource policy
 and [coverage](coverage.md) for unsupported features.

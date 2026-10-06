@@ -27,7 +27,7 @@ class Unsupported(Exception):
     """The layer's boolean cannot be expressed as path geometry; the message says why."""
 
 
-# -- segments: a line is (p0, p1), a cubic Bézier is (p0, c1, c2, p3); points are (x, y) -----------------
+# A line segment is (p0, p1), a cubic Bézier is (p0, c1, c2, p3); points are (x, y).
 
 
 def lerp(a, b, t):
@@ -98,9 +98,6 @@ def is_flat(seg, tolerance=2e-3):
         if off > tolerance:
             return False
     return True
-
-
-# -- intersections -----------------------------------------------------------------------------------
 
 
 def line_line(a, b, slack=1e-9):
@@ -284,9 +281,6 @@ def intersections(a, b):
     return cubic_cubic(a, b)
 
 
-# -- point tests -------------------------------------------------------------------------------------
-
-
 def turning_points(seg, axes):
     """Parameters inside (0, 1) where a cubic stops rising and starts falling (or back) along an axis."""
     cuts = []
@@ -379,9 +373,6 @@ class Region:
             else:
                 hi = t
         return point_at(seg, (lo + hi) / 2)[0]
-
-
-# -- the boolean ---------------------------------------------------------------------------------------
 
 
 class Points:

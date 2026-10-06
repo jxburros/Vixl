@@ -106,18 +106,53 @@ def visible_char(char):
     return not char.isspace() and unicodedata.category(char) not in ("Cf", "Cc") and not (0xFE00 <= ord(char) <= 0xFE0F)
 
 
+@lru_cache(maxsize=64)
+def font_style(data):
+    """(family, weight, italic) of a font file from its name and OS/2 tables."""
+    try:
+        font = TTFont(io.BytesIO(data), lazy=True)
+        names = font["name"]
+        family = names.getDebugName(16) or names.getDebugName(1) or ""
+        os2 = font["OS/2"] if "OS/2" in font else None
+        weight = getattr(os2, "usWeightClass", 400) or 400
+        italic = bool(os2 and os2.fsSelection & 1) or bool(font["head"].macStyle & 2)
+        return family, weight, italic
+    except Exception:  # noqa: BLE001 - unreadable metadata: treat as a regular face of its own family
+        return str(len(data)), 400, False
+
+
+def fallback_chain(primary, fallbacks):
+    """``primary`` followed by ``fallbacks`` with each family's faces ordered by how well they
+    match the primary's slope, then weight (as CSS font matching does), so a bold heading falls
+    back to the bold face of a fallback family. The order of families is kept."""
+    _, weight, italic = font_style(primary)
+    families, order = {}, []
+    for data in fallbacks:
+        if data == primary or data in families.get(font_style(data)[0], ()):
+            continue
+        family = font_style(data)[0]
+        if family not in families:
+            order.append(family)
+        families.setdefault(family, []).append(data)
+
+    def distance(data):
+        _, w, slanted = font_style(data)
+        return (slanted != italic) * 1000 + abs(w - weight)
+
+    chain = [primary]
+    for family in order:
+        chain += [data for data in sorted(families[family], key=distance) if data not in chain]
+    return tuple(chain)
+
+
 def font_data(project, layer):
     primary = primary_font_data(project, layer)
     from .render import document_variables, substitute
     text = substitute(layer.get("text", ""), document_variables(project))
     if all(not visible_char(c) or ord(c) in coverage(primary) for c in text):
         return primary
-    fonts = [primary]
-    for name in [*project.state.get("font_fallbacks", []), "DejaVuSans.ttf"]:
-        fallback = primary_font_data(project, {**layer, "font": name})
-        if fallback not in fonts:
-            fonts.append(fallback)
-    return tuple(fonts)
+    names = [*project.state.get("font_fallbacks", []), "DejaVuSans.ttf"]
+    return fallback_chain(primary, [primary_font_data(project, {**layer, "font": name}) for name in names])
 
 
 def glyph_coverage(project, layer):
@@ -328,6 +363,12 @@ def plan_glyphs(project, layer, layout=None):
     """Positioned glyphs ``[(font data, glyph name, x, y, size, text)]`` in the layer image's
     pixels, exactly where ``plan`` draws them (baseline origin, y down). None for warped or path
     text, whose glyphs are bent."""
+    placed = placed_glyphs(project, layer, layout)
+    return None if placed is None else [item[:6] for item in placed]
+
+
+def placed_glyphs(project, layer, layout=None):
+    """``plan_glyphs`` with each glyph's line index appended: ``(data, name, x, y, size, text, line)``."""
     layout = layout or plan(project, layer)
     if not layout.shaped:
         return None
@@ -347,7 +388,7 @@ def plan_glyphs(project, layer, layout=None):
         for glyph in glyphs:
             x = glyph.x + offset - layout.box[0] + layout.offset
             y = glyph.y + ascent + i * line_height - layout.box[1]
-            result.append((glyph.data, glyph.name, x, y, size, glyph.text))
+            result.append((glyph.data, glyph.name, x, y, size, glyph.text, i))
     return result
 
 
@@ -480,18 +521,11 @@ def warped(paths, width, height, settings):
             self.commands.append("L" + self.point(p))
 
         def _curveToOne(self, p1, p2, p3):
+            from .geometry import bezier_points
+
             p0 = self._getCurrentPoint()
-            for i in range(1, 25):
-                t = i / 24
-                self._lineTo(
-                    tuple(
-                        (1 - t) ** 3 * p0[j]
-                        + 3 * (1 - t) ** 2 * t * p1[j]
-                        + 3 * (1 - t) * t * t * p2[j]
-                        + t**3 * p3[j]
-                        for j in (0, 1)
-                    )
-                )
+            for point in bezier_points((p0, p1, p2, p3), [i / 24 for i in range(1, 25)]).tolist():
+                self._lineTo(tuple(point))
 
         def _qCurveToOne(self, p1, p2):
             p0 = self._getCurrentPoint()
@@ -515,7 +549,9 @@ def warped(paths, width, height, settings):
     return result
 
 
-def append_paths(parent, layout, layer, project):
+def append_paths(parent, layout, layer, project, motion=None):
+    """Glyph paths as SVG. ``motion`` (kinetic type) gives each path a ``(matrix prefix, opacity,
+    fill or None)`` applied on top of its own matrix."""
     from .render import color
     from .design import resolve_color
 
@@ -524,12 +560,22 @@ def append_paths(parent, layout, layer, project):
         for key, default in (("color", "white"), ("stroke_color", "black"))
     ]
     stroked = layer.get("stroke_width", 0) > 0 and stroke[3] > 0  # no-op stroke attributes are left out
-    for path, matrix in layout.paths:
+    for index, (path, matrix) in enumerate(layout.paths):
+        paint, extra = fill, {}
+        if motion:
+            from .kinetic import multiply
+
+            prefix, opacity, override = motion[index]
+            matrix = multiply(prefix, matrix)
+            paint = override or fill
+            if opacity < 1:
+                extra["opacity"] = f"{opacity:.4f}"
         attrs = {
             "d": path,
             "transform": "matrix(" + " ".join(map(str, matrix)) + ")",
-            "fill": f"rgb{fill[:3]}",
-            "fill-opacity": str(fill[3] / 255),
+            "fill": f"rgb{paint[:3]}",
+            "fill-opacity": str(paint[3] / 255),
+            **extra,
         }
         if stroked:
             attrs.update({
@@ -543,6 +589,10 @@ def append_paths(parent, layout, layer, project):
 
 def render_text(project, layer):
     layout = plan(project, layer)
+    if layer.get("_kinetic") and layout.shaped:
+        from .kinetic import render_plain
+
+        return render_plain(project, layer, layout, placed_glyphs(project, layer, layout))
     root = ET.Element(
         "{http://www.w3.org/2000/svg}svg",
         {

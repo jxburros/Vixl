@@ -8,14 +8,16 @@ from .model import Limits
 TOPICS = {
     "text": ("text rich font layout stack container caption bubble", ["typography", "layout"]),
     "drawing": (
-        "shape pen path stroke distort organic irregular tear pattern texture clone paint repeat scatter",
-        ["imperfection", "drawn-textures", "illustration-perspective", "brush"],
+        "shape pen path stroke distort organic irregular tear pattern texture clone paint repeat scatter fur plush "
+        "seamless tile",
+        ["scatter", "imperfection", "drawn-textures", "illustration-perspective", "brush", "multi-part-objects"],
     ),
     "animation": (
         "motion animate keyframe keyframes timeline character rig ik pivot loop stagger cycle scene camera particle "
-        "cut-paper viseme",
-        ["looping-motion", "natural-motion", "character-rigging", "motion", "cut-paper", "audio-composition"],
+        "cut-paper viseme wiggle boil sample wave",
+        ["looping-motion", "scatter", "natural-motion", "character-rigging", "motion", "cut-paper", "audio-composition"],
     ),
+    "shapes": ("shape shapes heart bubble badge star content", []),
     "film": ("film video audio caption", ["film-review", "audio-composition"]),
     "layout": (
         "layout container template stack fit align distribute spatial grid snap guide comic",
@@ -37,6 +39,9 @@ GOTCHAS = [
     "For motion, check sampled frames and film-preview with the camera before a full export; start at draft quality.",
     "Loops: motion recipes take period, stagger and many targets in one operation; a duration that is a whole number of "
     "periods returns every track to its frame-0 value.",
+    "No expression language: generate repetition with keyframes sample {fn: sin|triangle|noise, period, amplitude, "
+    "step_ms}, motion recipe wiggle (amount, frequency, samples) or line-boil, and repeat/radial-repeat per-step "
+    "fields with seeded jitter; scatter/pattern-scatter with merge: true keep many copies to a few layers.",
 ]
 
 
@@ -73,9 +78,21 @@ def lookup(topic=None, *, fields=False):
         for name, spec in catalog.items()
         if relevant(name)
     }
+    extra = {}
+    if "shapes" in chosen:
+        from .shape_catalog import SHAPE_PARAMETERS
+
+        extra["shape_parameters"] = {kind: list(keys) for kind, keys in SHAPE_PARAMETERS.items()}
+        extra["content_boxes"] = (
+            "inspect reports content_bounds (canvas space) for shapes whose usable inner area is smaller than "
+            "their box: a speech bubble's body, a badge or star centre, a ring/frame opening, a device screen. "
+            "Centre text there with text within=SHAPE, place within=SHAPE (anchor, margin) or align "
+            "relative_to=SHAPE box=content."
+        )
     return {
         "topic": topic,
         "topics": chosen,
+        **extra,
         "operations": operations,
         "workflows": {name: spec["summary"] for name, spec in workflows.items() if relevant(name)},
         "guidance": list(dict.fromkeys(name for topic in chosen for name in TOPICS[topic][1])),

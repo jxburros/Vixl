@@ -12,6 +12,7 @@ from vixl import Project
 from vixl.charts import format_number, nice_scale
 from vixl.commands import compile_command
 from vixl.errors import VixlError
+from vixl.model import Limits
 from vixl.schema import operation_schema, validate_operation
 
 MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"]
@@ -44,8 +45,6 @@ def part(p, key, name="Sales"):
 def ids(p):
     return {layer["chart_part"]: layer["id"] for layer in children(p)}
 
-
-# -- drawing ---------------------------------------------------------------------------------------
 
 def test_chart_is_a_group_of_ordinary_vector_layers():
     p = make("bar", DRINKS)
@@ -191,8 +190,6 @@ def test_dense_charts_thin_their_labels_and_skip_automatic_value_labels():
     assert p.check(checks=["overlap"])["passed"]
 
 
-# -- editing in place ------------------------------------------------------------------------------
-
 def test_fixing_one_number_is_one_operation_with_stable_layer_ids():
     p = make("bar", SALES, value_labels=True)
     before = ids(p)
@@ -285,8 +282,6 @@ def test_rasterizing_a_chart_leaves_a_valid_document():
         p.apply({"type": "chart-data", "target": "Sales", "set": [{"category": "Jan", "value": 1}]})
 
 
-# -- data sources ----------------------------------------------------------------------------------
-
 def test_csv_binds_a_chart_and_reload_follows_the_file(tmp_path):
     (tmp_path / "data").mkdir()
     csv = tmp_path / "data" / "cups.csv"
@@ -367,8 +362,6 @@ def test_table_rows_and_chartjs_spellings_are_accepted():
     assert (image == (255, 0, 0)).all(axis=2).any()
 
 
-# -- document styling ------------------------------------------------------------------------------
-
 def test_colors_fonts_and_text_follow_the_document():
     p = Project(900, 560, "#0f172a")
     p.apply([{"type": "palette-apply", "name": "neon"}])
@@ -434,8 +427,6 @@ def test_nice_scale_picks_round_steps():
     assert (low, high, ticks[-1]) == (0, 10, 10)
 
 
-# -- validation ------------------------------------------------------------------------------------
-
 @pytest.mark.parametrize("op, message", [
     ({"type": "chart"}, "needs data"),
     ({"type": "chart", "kind": "bar", "categories": ["a", "a"], "series": [{"name": "s", "values": [1, 2]}]}, "unique"),
@@ -486,7 +477,7 @@ def test_unknown_category_suggests_the_closest():
 
 def test_a_chart_too_big_for_the_layer_limit_is_refused():
     categories = [f"c{i}" for i in range(200)]
-    p = Project(2000, 600)
+    p = Project(2000, 600, limits=Limits(max_layers=512))
     with pytest.raises(VixlError) as caught:
         p.apply({"type": "chart", "categories": categories, "series": [{"name": s, "values": [1] * 200} for s in "abc"]})
     assert caught.value.code == "resource_limit"
@@ -496,8 +487,6 @@ def test_chart_is_too_small_for_its_labels():
     with pytest.raises(VixlError, match="too small"):
         make("bar", DRINKS, width=60, height=60)
 
-
-# -- checks and exports ----------------------------------------------------------------------------
 
 def test_checks_see_inside_the_chart():
     p = make("stacked-bar", DRINKS, value_labels=True, font_size=26)
@@ -553,8 +542,6 @@ def test_vector_exports_keep_the_chart_as_paths_and_text(tmp_path):
     png = p.export(tmp_path / "c.png", format="PNG")
     assert png.startswith(b"\x89PNG")
 
-
-# -- PowerPoint ------------------------------------------------------------------------------------
 
 def deck(kind="bar", data=DRINKS, **options):
     p = Project(1280, 720, "#ffffff")
@@ -682,8 +669,6 @@ def test_chart_with_effects_is_a_picture_like_any_other_group():
     data = p.export(format="PPTX", report=report)
     assert not chart_shapes(data) and report["raster_fallbacks"]["1"][0]["layer"] == "Sales"
 
-
-# -- interfaces ------------------------------------------------------------------------------------
 
 def test_operation_schema_documents_chart_operations():
     variants = {v["properties"]["type"]["const"]: v for v in operation_schema()["properties"]["operations"]["items"]["oneOf"]}

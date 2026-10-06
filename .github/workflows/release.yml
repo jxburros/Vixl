@@ -1,6 +1,13 @@
 name: Windows installer and releases
 on:
+  # Pull requests build the installer only when packaging can change; test.yml runs the test suite on every PR.
   pull_request:
+    paths:
+      - 'distribution/**'
+      - 'src/vixl/__init__.py'
+      - 'src/vixl/updater*'
+      - 'pyproject.toml'
+      - '.github/workflows/release.yml'
   push:
     tags: ['v*']
     branches: [main]
@@ -20,7 +27,8 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install -e ".[dev]" build
-      - run: pytest -q
+      - run: pytest -q -n auto
+        if: github.event_name != 'pull_request'
       - name: Verify stable tag and package versions agree
         if: startsWith(github.ref, 'refs/tags/')
         env:
@@ -45,7 +53,8 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install -e ".[dev]" pyinstaller==6.16.0
-      - run: pytest -q
+      - run: pytest -q -n auto
+        if: github.event_name != 'pull_request'
       - name: Build bundled runtime, stable launcher, and installer
         shell: pwsh
         run: ./distribution/build_windows.ps1

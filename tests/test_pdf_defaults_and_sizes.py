@@ -36,7 +36,7 @@ def _deck():
     return p
 
 
-# -- #50: the default mode ---------------------------------------------------------------------
+# #50: the default mode
 
 
 def test_default_pdf_is_vector_for_every_kind_of_document():
@@ -114,7 +114,7 @@ def test_cli_export_prints_the_mode(tmp_path):
     assert result["content"] == "vector" and "content_reason" in result
 
 
-# -- #49: deck page size -------------------------------------------------------------------------
+# #49: deck page size
 
 
 def _slide_inches(data):

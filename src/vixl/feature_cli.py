@@ -21,6 +21,7 @@ EDITING = (
     "keyframe-remove",
     "animate",
     "animate-preset",
+    "text-animate",
     "marker",
     "palette-generate",
     "type-scale",
@@ -251,6 +252,27 @@ def compile_feature(cmd, args):
         p.add_argument("--to")
         p.add_argument("--no-fade", dest="fade", action="store_false", default=None)
         p.add_argument("--no-extend", dest="extend", action="store_false", default=None, help="Keep the timeline duration when a key lies past its end")
+    elif cmd == "text-animate":
+        p.add_argument("target", help="Text layer, or several comma-separated layers")
+        p.add_argument("preset", nargs="?")
+        p.add_argument("--unit", choices=["char", "word", "line"])
+        for key in ("start", "duration", "stagger"):
+            p.add_argument("--" + key, type=_time)
+        p.add_argument("--easing")
+        p.add_argument("--direction", choices=["forward", "reverse", "center", "edges", "random"])
+        p.add_argument("--seed", type=int)
+        p.add_argument("--mode", choices=["in", "out", "in-out"])
+        for key in ("distance", "amount", "rotate"):
+            p.add_argument("--" + key, type=float)
+        p.add_argument("--from", dest="from_")
+        p.add_argument("--repeat", action="store_true", default=None)
+        p.add_argument("--remove", action="store_true", default=None)
+        p.add_argument("--no-extend", dest="extend", action="store_false", default=None, help="Keep the timeline duration")
+        data = vars(p.parse_args(args))
+        if data.get("from_") is not None:
+            data["from"] = data["from_"]
+        data.pop("from_", None)
+        return _targets({"type": cmd, **{k: v for k, v in data.items() if v is not None}})
     elif cmd == "marker":
         p.add_argument("name")
         p.add_argument("time", nargs="?", type=_time)
@@ -342,6 +364,9 @@ def project_feature(project, cmd, args):
         p.add_argument("--dither", choices=["auto", "none", "ordered", "floyd"], default="auto", help="GIF dithering (shared palette)")
         p.add_argument("--max-bytes", type=int, help="Soft size target: warn when the file is larger")
         p.add_argument("--poster", type=_time, help="Time/marker/'end' whose frame comes first (GIF/WebP/APNG)")
+        p.add_argument("--sample-rate", type=int, help="MP4/WebM audio rate in Hz (default: highest source rate up to 48000)")
+        p.add_argument("--target-bytes", type=int, help="GIF/WebP/APNG size to fit by lowering colors, fps, then scale")
+        p.add_argument("--preset", choices=["chat", "web", "email"], help="GIF/WebP/APNG defaults for fps, width, colors and size")
         p.add_argument("--overwrite", action="store_true")
         p.add_argument("--progress", action="store_true", help="Write frame progress to stderr")
         a = p.parse_args(args)
@@ -361,6 +386,9 @@ def project_feature(project, cmd, args):
             dither=a.dither,
             max_bytes=a.max_bytes,
             poster=a.poster,
+            sample_rate=a.sample_rate,
+            target_bytes=a.target_bytes,
+            preset=a.preset,
             overwrite=a.overwrite,
             progress=(lambda event: print(json.dumps({"progress": event}), file=__import__("sys").stderr, flush=True)) if a.progress else None,
         ), False

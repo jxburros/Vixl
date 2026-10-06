@@ -7,7 +7,10 @@ worker thread through ``Runtime.wrap``:
 
 * A call that outlives ``inline_seconds`` (default 40) is *detached*: it keeps running, and the
   client receives ``{"status": "running", "job": ...}`` while it can still read the answer.
-  ``as_job: true`` on the heavy tools returns that job at once.
+  ``as_job: true`` on the heavy tools returns that job at once. When more calls are in flight than
+  there are workers, a new call waits proportionally less before it becomes a job, so clients do
+  not time out while their call is still queued; job pointers report ``queued``, ``wait_ms`` and
+  ``queue_depth``.
 * ``vixl_job`` reports a job's progress, waits for it, returns its result or cancels it. Ids of
   durable workspace jobs (``vixl_workflow submit``) are served from ``jobs.py``.
 * A client that sent a progress token receives ``notifications/progress`` while the call runs
@@ -40,6 +43,9 @@ from .calls import CALL, UNKNOWN, CallState
 from .errors import VixlError, require
 
 DEFAULT_INLINE_SECONDS = 40
+DEFAULT_WORKERS = 32
+# Under load the inline wait shrinks, but never below this (or below inline_seconds when that is smaller).
+MIN_INLINE_SECONDS = 2.0
 MAX_JOBS = 100
 MAX_REQUESTS = 512
 MAX_PER_DOCUMENT = 64
@@ -51,12 +57,14 @@ RETRYABLE = {
     "vixl_document_create", "vixl_document_close", "vixl_template_create", "vixl_export_file",
     "vixl_export_batch", "vixl_export_timeline", "vixl_export_animation", "vixl_export_icons",
     "vixl_font_pair", "vixl_font_install", "vixl_history", "vixl_workflow", "vixl_roll", "vixl_adapt_layout",
+    "vixl_compose",
 }
 # Tools worth running as a job: heavy renders, exports, imports, large batches and provider calls.
 JOB_TOOLS = {
     "vixl_operations_apply", "vixl_import_image", "vixl_import_document", "vixl_export_file",
     "vixl_export_batch", "vixl_export_timeline", "vixl_export_animation", "vixl_export_icons",
     "vixl_font_pair", "vixl_font_install", "vixl_workflow", "vixl_roll", "vixl_check", "vixl_adapt_layout",
+    "vixl_compose",
 }
 NO_EXTRAS = {"vixl_job"}
 
@@ -108,6 +116,9 @@ class Job:
     def summary(self):
         status = self.status
         result = {"id": self.id, "status": status, "tool": self.tool}
+        if self.box.submitted is not None:
+            result["queued"] = status == "queued"
+            result["wait_ms"] = round(((self.box.started or time.time()) - self.box.submitted) * 1000)
         if self.document:
             result["document"] = self.document
         if self.request_id:
@@ -195,6 +206,7 @@ class _Box:
     """State shared between a running call, its progress reporter and its job."""
 
     def __init__(self):
+        self.submitted = None
         self.started = None
         self.progress = None
         self.job = None
@@ -215,13 +227,12 @@ class Runtime:
         self.jobs = JobStore()
         self.log = RequestLog()
         self.parameters = {}  # Tool name -> the parameter names it takes (see watch_arguments).
-        self.executor = ThreadPoolExecutor(
-            max_workers=int(os.environ.get("VIXL_MCP_WORKERS", 32)), thread_name_prefix="vixl-call"
-        )
+        self.workers = int(os.environ.get("VIXL_MCP_WORKERS", DEFAULT_WORKERS))
+        self.executor = ThreadPoolExecutor(max_workers=self.workers, thread_name_prefix="vixl-call")
+        self.in_flight = 0  # Calls submitted to ``executor`` that have not finished (running or queued).
+        self.flight_lock = threading.Lock()
         # Following a job must never queue behind the calls it is waiting for.
         self.light = ThreadPoolExecutor(max_workers=8, thread_name_prefix="vixl-poll")
-
-    # -- registration ------------------------------------------------------------------------
 
     def wrap(self, fn):
         """An async tool that runs ``fn`` in a worker thread, with the extras this tool offers."""
@@ -252,8 +263,6 @@ class Runtime:
         if returns is dict:
             wrapper.__annotations__["return"] = str
         return wrapper
-
-    # -- running a call ----------------------------------------------------------------------
 
     def watch_arguments(self, registered):
         """Report arguments a tool does not take. FastMCP drops them silently, so a misspelt option
@@ -363,9 +372,39 @@ class Runtime:
 
         return report
 
+    def queue_depth(self):
+        """Calls waiting for a free worker."""
+        with self.flight_lock:
+            return max(0, self.in_flight - self.workers)
+
+    def budget(self, in_flight):
+        """How long a call waits inline before it becomes a job. With more calls in flight than workers,
+        the call may sit in the queue for most of that time, so the wait shrinks in proportion."""
+        if in_flight <= self.workers:
+            return self.inline_seconds
+        return max(min(MIN_INLINE_SECONDS, self.inline_seconds), self.inline_seconds * self.workers / in_flight)
+
+    def submit(self, *args):
+        """Run ``work`` on the call pool, counting it in flight until it ends (or is cancelled while queued)."""
+        with self.flight_lock:
+            self.in_flight += 1
+            in_flight = self.in_flight
+        try:
+            future = self.executor.submit(self.work, *args)
+        except BaseException:
+            self.landed(None)
+            raise
+        future.add_done_callback(self.landed)
+        return future, in_flight
+
+    def landed(self, _):
+        with self.flight_lock:
+            self.in_flight -= 1
+
     def pointer(self, job, why):
         text = job.summary()
         text["job"] = text.pop("id")
+        text["queue_depth"] = self.queue_depth()
         poll = (f"vixl_workflow(action='status', request={{'id': '{job.id}', 'wait': 20}})" if self.poll_with_workflow
                 else f"vixl_job(action='status', id='{job.id}', wait=20), then action='result'")
         text["message"] = why + f" Poll {poll}. Do not send the call again unless the job fails."
@@ -400,8 +439,11 @@ class Runtime:
                 return self.replayed(entry, request_id)
             if outcome == "running":
                 return await self.join(entry, request_id)
-        pool = self.light if name in NO_EXTRAS else self.executor
-        future = pool.submit(self.work, fn, returns, args, kwargs, state, box, request_id, entry)
+        box.submitted = time.time()
+        if name in NO_EXTRAS:
+            future, in_flight = self.light.submit(self.work, fn, returns, args, kwargs, state, box, request_id, entry), 0
+        else:
+            future, in_flight = self.submit(fn, returns, args, kwargs, state, box, request_id, entry)
         if as_job:
             job = self.detach(name, kwargs, future, box, request_id, entry)
             return self.pointer(job, "Started in the background.")
@@ -409,11 +451,14 @@ class Runtime:
         waiter.add_done_callback(lambda f: f.cancelled() or f.exception())  # Retrieved even if nobody waits.
         if returns is not dict or not self.inline_seconds or name in NO_EXTRAS:
             return await waiter
+        budget = self.budget(in_flight)
         try:
-            return await asyncio.wait_for(asyncio.shield(waiter), self.inline_seconds)
+            return await asyncio.wait_for(asyncio.shield(waiter), budget)
         except asyncio.TimeoutError:
             job = self.detach(name, kwargs, future, box, request_id, entry)
-            return self.pointer(job, f"Still running after {self.inline_seconds:g} s.")
+            why = (f"Still running after {budget:g} s." if box.started else
+                   f"Queued behind {self.queue_depth()} other call(s) after {budget:g} s; it runs when a worker is free.")
+            return self.pointer(job, why)
         except asyncio.CancelledError:
             # The client gave up or disconnected. The edit still finishes; keep it findable.
             self.detach(name, kwargs, future, box, request_id, entry)
@@ -453,8 +498,6 @@ class Runtime:
             "status": "running", "request_id": request_id,
             "message": "The original call with this request_id is still running; repeat this call shortly.",
         })
-
-    # -- vixl_job ----------------------------------------------------------------------------
 
     def job(self, action="status", id=None, wait=0):
         require(action in ("status", "result", "cancel", "list"), "action is status, result, cancel or list",

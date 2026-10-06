@@ -35,9 +35,10 @@ STYLES = ("drop-shadow", "stroke", "outer-glow", "color-overlay", "gradient-over
 
 def schemas(add):
     from .inplace import target_schema
+    from .model import MAX_LAYERS
     from .schema import S, N, B, POSITIVE_INT, COORD, SIZE, enum
 
-    refs = {"type": "array", "items": S, "minItems": 1, "maxItems": 512, "uniqueItems": True}
+    refs = {"type": "array", "items": S, "minItems": 1, "maxItems": MAX_LAYERS, "uniqueItems": True}
     obj = {"type": "object"}
     geometry = {"name": S, "width": SIZE, "height": SIZE, "x": COORD, "y": COORD}
     board = {"name": S, "width": POSITIVE_INT, "height": POSITIVE_INT, "x": N, "y": N}
@@ -110,7 +111,10 @@ def schemas(add):
         anyOf=[{"required": ["path"]}, {"required": ["asset"]}, {"required": ["variable"]}],
     )
     repeat = {"count": POSITIVE_INT, "dx": N, "dy": N, "dw": N, "dh": N}
-    add("repeat", repeat, ["count"])
+    from .scatter import step_schema
+
+    add("repeat", {**repeat, **step_schema(), "name": {**S, "description": "With per-step fields or merge: name of "
+                   "the group (or merged layer) of copies."}}, ["count"])
     add("repeat-blend", {**repeat, "end": obj}, ["count", "end"])
     add("adjustment", {"name": S, "effects": {"type": "array", "items": obj, "maxItems": 256}}, ["effects"])
     add(

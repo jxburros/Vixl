@@ -174,9 +174,88 @@ def scaled_project(project, s):
     return candidate
 
 
+def isolated(project, refs, missing_ok=False):
+    """A render copy that shows only the layers ``refs`` name (a group with everything inside it) on the
+    canvas background. Their ancestor groups still transform them, and the clipping bases they use still
+    clip them; every other layer is hidden, so constraints and layout resolve as in the document."""
+    from .design import descendants
+    from .errors import require
+
+    require(isinstance(refs, list) and 0 < len(refs) <= 256 and all(isinstance(r, str) for r in refs),
+            "isolate is a list of 1-256 layer IDs or names", field="isolate")
+    roots = []
+    for ref in refs:
+        try:
+            roots.append(project.layer(ref)["id"])
+        except Exception:
+            if not missing_ok:
+                raise
+    candidate = copy(project)
+    candidate.state = deepcopy(project.state)
+    layers = {layer["id"]: layer for layer in candidate.state["layers"]}
+    shown = set()
+    for ident in roots:
+        shown |= {ident} | descendants(candidate, ident)
+    for ident in list(shown):
+        base = layers[ident].get("clip")
+        if base in layers:
+            shown |= {base} | descendants(candidate, base)
+    keep = set(shown)
+    for ident in shown:
+        parent = layers[ident].get("parent")
+        while parent in layers:
+            keep.add(parent)
+            parent = layers[parent].get("parent")
+    for ident, layer in layers.items():
+        if ident not in keep:
+            layer["visible"] = False
+    candidate._isolated = roots
+    return candidate
+
+
+def ink_region(project, refs, padding=None):
+    """[x, y, w, h] around everything ``refs`` draw on the canvas, padded (4% of the larger side, at
+    least 4 px), or None when they draw nothing."""
+    from .spatial import canvas_boxes
+
+    boxes = canvas_boxes(project, "ink")
+    found = [boxes[project.layer(ref)["id"]] for ref in refs if project.layer(ref)["id"] in boxes]
+    found = [b for b in found if b[2] > 0 and b[3] > 0]
+    if not found:
+        return None
+    x0, y0 = min(b[0] for b in found), min(b[1] for b in found)
+    x1, y1 = max(b[0] + b[2] for b in found), max(b[1] + b[3] for b in found)
+    pad = max(4.0, 0.04 * max(x1 - x0, y1 - y0)) if padding is None else padding
+    return [x0 - pad, y0 - pad, x1 - x0 + 2 * pad, y1 - y0 + 2 * pad]
+
+
+def isolated_pair(before, after, refs):
+    """Two revisions isolated to ``refs`` and one canvas region around their ink in either."""
+    from .errors import require
+
+    views = [isolated(side, refs, True) for side in (before, after)]
+    require(any(view._isolated for view in views), f"No layer named {refs} in either revision", field="isolate")
+    boxes = [box for view in views if (box := ink_region(view, view._isolated))]
+    require(boxes, "The isolated layers draw nothing in either revision", field="isolate")
+    x0, y0 = min(b[0] for b in boxes), min(b[1] for b in boxes)
+    x1, y1 = max(b[0] + b[2] for b in boxes), max(b[1] + b[3] for b in boxes)
+    region = clamp_region([x0, y0, x1 - x0, y1 - y0], views[1].state["canvas"])
+    require(region[2] > 0 and region[3] > 0, "The isolated layers are outside the canvas", field="isolate")
+    return views[0], views[1], region
+
+
+def clamp_region(region, canvas):
+    import math
+
+    x, y, w, h = region
+    left, top = max(0, math.floor(x)), max(0, math.floor(y))
+    right, bottom = min(canvas["width"], math.ceil(x + w)), min(canvas["height"], math.ceil(y + h))
+    return [left, top, max(0, right - left), max(0, bottom - top)]
+
+
 def render_preview(
     project, max_width, max_height, *, variables=None, artboard=None, comp=None, region=None, time=None, proof=False, simulate=None,
-    guides=None, page=None, values=None, show_fields=False,
+    guides=None, page=None, values=None, show_fields=False, isolate=None,
 ):
     """Render at roughly the preview size. ``region`` [x, y, w, h] (document pixels) zooms in;
     zoomed regions may be enlarged up to 8x so small details stay legible. ``time`` previews a
@@ -211,6 +290,14 @@ def render_preview(
         project = project_at(project, parse_time(time, timeline["duration"], timeline.get("markers")))
     candidate = artboard_project(project, artboard, comp, variables)
     c = candidate.state["canvas"]
+    if isolate is not None:
+        candidate = isolated(candidate, isolate)
+        if region is None:
+            region = ink_region(candidate, candidate._isolated)
+            require(region is not None, "The isolated layers draw nothing here; check visibility or pass region",
+                    field="isolate")
+            region = clamp_region(region, c)
+            require(region[2] > 0 and region[3] > 0, "The isolated layers are outside the canvas", field="isolate")
     if region is not None:
         x, y, w, h = region
         require(w > 0 and h > 0, "Region width and height must be positive", field="region")

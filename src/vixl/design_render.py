@@ -13,11 +13,10 @@ from .design import resolve_color
 def gradient_image(project, layer, size):
     from .render import color
 
+    from .design import gradient_stops
+
     w, h = size
-    stops = layer.get("stops") or [
-        {"offset": 0, "color": layer.get("start", "black")},
-        {"offset": 1, "color": layer.get("end", "white")},
-    ]
+    stops = gradient_stops(layer, project.state)
     offsets = [s["offset"] for s in stops]
     colors = np.array([color(resolve_color(s["color"], project.state)) for s in stops], dtype=float)
     direction = layer.get("direction", "vertical")
@@ -66,7 +65,7 @@ def shape_image(project, layer):
         for field, value in (("fill", default_fill(layer)), ("stroke", layer.get("stroke", "transparent"))):
             rgba = parse(resolve_color(value, project.state))
             if field == "stroke" and (rgba[3] == 0 or layer.get("stroke_width", 1) <= 0):
-                continue  # no stroke: leave the stroke attributes out
+                continue
             attrs[field] = hex_of((*rgba[:3], 1))
             attrs[field + "-opacity"] = str(rgba[3])
             if field == "stroke":

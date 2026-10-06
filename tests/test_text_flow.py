@@ -45,10 +45,6 @@ def assert_covers(rec):
     assert placed.split() == text[:last].split()
 
 
-# ---------------------------------------------------------------------------------------------
-# Slices
-
-
 def test_slices_cover_the_story_exactly_once():
     p, result = flow(height=520)
     rec = record(p)
@@ -99,10 +95,6 @@ def test_short_stories_leave_trailing_frames_empty_with_a_warning():
     messages = [i for i in p.check(checks=["flow"])["issues"]]
     assert [i["severity"] for i in messages] == ["warning", "warning"] and "empty" in messages[0]["message"]
     assert p.render().size == (900, 600)
-
-
-# ---------------------------------------------------------------------------------------------
-# Frames: columns, gutters, existing layers, shapes
 
 
 def test_columns_and_gutter_inside_one_frame():
@@ -185,10 +177,6 @@ def test_shape_frames_follow_the_outline():
         p.apply([{"type": "text-flow", "name": "tiny", "text": STORY, "size": 90, "frames": [{"shape": "star"}]}])
 
 
-# ---------------------------------------------------------------------------------------------
-# Re-flow
-
-
 def test_editing_the_story_reflows_the_frames():
     p, _ = flow(height=520)
     ids = [f["id"] for f in frames(p)]
@@ -241,10 +229,6 @@ def test_reflow_action_and_directly_edited_frames():
     layer = p.layer("story-1")
     layer["text"] = "Edited behind the engine's back"
     assert any("edited directly" in i["message"] for i in p.check(checks=["flow"])["issues"])
-
-
-# ---------------------------------------------------------------------------------------------
-# Paragraph rules
 
 
 def paragraphs_at_frame_ends(p):
@@ -306,10 +290,6 @@ def test_a_heading_is_not_left_alone_at_the_bottom_of_a_frame():
         assert not last_paragraph.startswith("Part") and last_paragraph != "Title", last_paragraph
     p.apply([{"type": "text-flow", "name": "story", "keep_with_next": False}])
     assert record(p)["keep_with_next"] is False
-
-
-# ---------------------------------------------------------------------------------------------
-# Rich text
 
 
 RICH = ("# Report\n" + "".join(
@@ -391,10 +371,6 @@ def test_justified_flows_use_rich_paragraphs():
     assert_covers(record(p))
 
 
-# ---------------------------------------------------------------------------------------------
-# Pages and exports
-
-
 def test_a_flow_continues_onto_other_pages_and_every_export_agrees():
     pypdf = pytest.importorskip("pypdf")
     p = Project(700, 500, "white")
@@ -441,10 +417,6 @@ def test_rich_pdf_text_matches_the_story_too():
     covered = [w for w in story if w in shown]
     assert len(covered) >= len(story) - len(story) // 10, "the PDF carries the story's words"
     assert "Report" in pdf and "red" in pdf
-
-
-# ---------------------------------------------------------------------------------------------
-# Interfaces
 
 
 def test_errors_and_schema():

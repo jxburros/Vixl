@@ -38,7 +38,8 @@ user docs in `docs/`, the agent skill in `skills/vixl/`. `CONTRIBUTING.md` has t
 3. `docs/use-cases.md`: add a row for a new use case, or move a row when its cost or blocked status changes.
 4. `CHANGELOG.md`: add to the current top section. Breaking changes need a migration hint.
 5. Goldens, if rendering changed (see above).
-6. Version bumps stay synchronized (`src/vixl/__init__.py`, plugin manifest, `.mcp.json`, README and install URLs); see
+6. Version bumps stay synchronized (`src/vixl/__init__.py`, plugin manifest, `.mcp.json`, README and install URLs, the
+   action pin in `docs/ci.md`); see
    `docs/releases.md`. The self-updater and release manifest path (`src/vixl/updater*`, `distribution/`) must stay stable.
 
 ## Rules

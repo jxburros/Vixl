@@ -85,6 +85,10 @@ def batch_error(errors):
 
 
 class Project:
+    # The older Vixl version that saved this document, kept across saves until the upgrade is accepted
+    # (vixl upgrade); see upgrade.py.
+    upgraded_from = None
+
     def __init__(self, width=1920, height=1080, background="#00000000", *, limits=None, workspace=None):
         self.limits = limits or Limits()
         self.limits.size(width, height)
@@ -129,11 +133,51 @@ class Project:
         project._record([], f"Create {info['size']} document")
         return project
 
+    def find_layer(self, target):
+        """The layer whose ID or name is ``target``, or None.
+
+        IDs and names are unique across a page's layers, so a remembered position that still holds
+        a matching layer is the answer. Layers are edited in place everywhere, so the index is only
+        a hint: a stale entry rebuilds it, and a name it does not know is looked up in the list."""
+        layers = self.state["layers"]
+        if not isinstance(target, str):
+            return next((layer for layer in layers if target in (layer["id"], layer["name"])), None)
+        cached = getattr(self, "_layer_index", None)
+        if cached is None or cached[0] is not layers:
+            cached = self._index_layers()
+        position = cached[1].get(target)
+        if position is None:
+            position = next((i for i, layer in enumerate(layers) if target in (layer["id"], layer["name"])), None)
+            if position is None:
+                return None
+            cached[1][target] = position
+        elif position >= len(layers) or target not in (layers[position]["id"], layers[position]["name"]):
+            position = self._index_layers()[1].get(target)
+            if position is None:
+                return None
+        return layers[position]
+
+    def _index_layers(self):
+        layers, index = self.state["layers"], {}
+        for position, layer in enumerate(layers):
+            index.setdefault(layer["id"], position)
+            index.setdefault(layer["name"], position)
+        self._layer_index = (layers, index)
+        return self._layer_index
+
+    def _indexed(self, layer):
+        """Record a layer just appended to the list (see ``find_layer``)."""
+        cached = getattr(self, "_layer_index", None)
+        layers = self.state["layers"]
+        if cached is not None and cached[0] is layers and layers and layers[-1] is layer:
+            cached[1].setdefault(layer["id"], len(layers) - 1)
+            cached[1].setdefault(layer["name"], len(layers) - 1)
+
     def layer(self, target=None):
         target = target or self.state["active_layer"]
-        for layer in self.state["layers"]:
-            if target in (layer["id"], layer["name"]):
-                return layer
+        found = self.find_layer(target)
+        if found is not None:
+            return found
         names = [x["name"] for x in self.state["layers"]]
         folded = [name for name in names if name.casefold() == str(target).casefold()]
         suggestions = folded or difflib.get_close_matches(str(target), names, 3, 0.5)
@@ -204,12 +248,16 @@ class Project:
         resolved = resolve_layout(self, layers=layers)
         from .spatial import canvas_boxes
 
-        canvas_bounds = canvas_boxes(self)
+        content_bounds = {}
+        canvas_bounds = canvas_boxes(self, content=content_bounds)
         children, memo = child_index(layers), {}
         shown = {item["id"]: item["visible"] for item in layers}
         for layer in state["layers"]:
             box = layer["resolved_bounds"] = resolved[layer["id"]]
             layer["canvas_bounds"] = canvas_bounds[layer["id"]]
+            if layer["id"] in content_bounds:
+                # The usable inner area of a shape (a bubble's body, a badge's centre, a device screen).
+                layer["content_bounds"] = [round(v, 2) for v in content_bounds[layer["id"]]]
             layer["coordinate_space"] = "parent" if layer.get("parent") else "canvas"
             if layer["type"] == "shape" and layer.get("shape") == "path":
                 from .vector_paths import inspect_nodes
@@ -241,6 +289,11 @@ class Project:
 
         if link_layers(self.state):
             state["links"] = link_status(self)
+        from .variables import listing as placeholder_listing
+
+        placeholders = placeholder_listing(self)
+        if placeholders:
+            state["placeholders"] = placeholders
         return {
             **state,
             "version": __version__,
@@ -383,6 +436,7 @@ class Project:
 
         notices.start(candidate)
         candidate._reports = {}  # What operations such as edit-layers and adapt-layout report back.
+        candidate._name_hints = {}  # Default layer names handed out in this batch (operations.default_name).
         before = candidate.inspect()
         for index, operation in enumerate(operations):
             calls.check_cancelled()  # A cancelled batch leaves the document untouched: nothing is committed yet.
@@ -429,6 +483,7 @@ class Project:
                 raise located(exc, index, operations[index], len(operations)) from exc
             raise
         candidate.__dict__.pop("_resource_budget", None)
+        candidate.__dict__.pop("_name_hints", None)
         candidate.__dict__.pop("_service", None)
         warned, interpreted = notices.finish(candidate)
         reports = candidate.__dict__.pop("_reports", {})
@@ -657,6 +712,13 @@ class Project:
 
         return measure_spacing(self, **options)
 
+    def import_image(self, path=None, *, url=None, data=None, name="image", credit=None, license=None):
+        """Embed an image from a file, bytes or an https URL as a new layer, recording its source
+        (url, fetched_at, sha256) and optional credit and license in the layer's provenance."""
+        from .image_import import import_image_from
+
+        return import_image_from(self, path=path, url=url, data=data, name=name, credit=credit, license=license)
+
     def inspect_pixels(self, target=None):
         from .pixel import inspect_pixels
 
@@ -680,7 +742,19 @@ class Project:
     def check(self, **options):
         from .checks import check_design
 
-        return check_design(self, **options)
+        report = check_design(self, **options)
+        if not options.get("checks") or "fonts" in options["checks"]:
+            from .compaction import check_note
+
+            check_note(self, report)
+        return report
+
+    def compact(self, *, fonts=True, dry_run=False):
+        """Drop undo history and the embedded files the current design does not use (see
+        ``compaction.compact``); returns what was dropped. Save afterwards to shrink the file."""
+        from .compaction import compact
+
+        return compact(self, fonts=fonts, dry_run=dry_run)
 
     def check_suite(self, suite, **options):
         from .assurance import run_suite
@@ -718,6 +792,7 @@ class Project:
         return {
             "format_version": FORMAT_VERSION,
             "vixl_version": __version__,
+            **({"upgraded_from": self.upgraded_from} if self.upgraded_from else {}),
             "state": self.state,
             "nodes": self.nodes,
             "head": self.head,
@@ -729,6 +804,22 @@ class Project:
             "asset_hashes": {k: hashlib.sha256(v).hexdigest() for k, v in self.assets.items()},
         }
 
+    def _rebase_links(self, path):
+        """Saving into another folder keeps relative link sources pointing at the same files (one history entry)."""
+        from .links import link_layers, rebase
+
+        if not self.path or not link_layers(self.state):
+            return
+        ops = rebase(self, path)
+        if not ops:
+            return
+        previous = self.path
+        self.path = path
+        try:
+            self.apply(ops)
+        finally:
+            self.path = previous
+
     def save(self, path=None):
         from .fileio import file_lock
         from .fileio import temporary
@@ -736,6 +827,7 @@ class Project:
         require(path or self.path, "Provide a .vixl project path")
         path = Path(path or self.path).resolve()
         require(path.suffix == ".vixl", "Project filenames must end in .vixl")
+        self._rebase_links(path)
         path.parent.mkdir(parents=True, exist_ok=True)
         with file_lock(str(path)):
             if self.path == path and self._revision and path.exists():
@@ -834,6 +926,11 @@ class Project:
                     "transaction",
                 ):
                     setattr(project, key, metadata[key])
+                from .upgrade import predates_render_changes
+
+                saved = metadata.get("vixl_version")
+                project.upgraded_from = metadata.get("upgraded_from") or (
+                    (saved or "unknown") if predates_render_changes(saved) else None)
                 project.assets = {n: archive.read(n) for n in names if n != "project.json"}
                 hashes = metadata["asset_hashes"]
                 require(set(hashes) == set(project.assets), "Asset manifest mismatch", "invalid_project")
