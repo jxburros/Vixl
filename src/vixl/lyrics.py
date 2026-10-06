@@ -760,7 +760,8 @@ def build(request, root, limits=None):
 
 def _may_replace(request, destination):
     require(request.get("replace", False) or request.get("rebuild", False) or not destination.exists(),
-            f"{request['build']!r} already exists; choose a new path or pass replace: true", field="build")
+            f"{request['build']!r} already exists; choose a new path or pass replace: true (rebuild: true also works)",
+            field="build")
 
 
 def _write_build(request, root, limits, prepared, destination):

@@ -131,7 +131,7 @@ def _transform(commands, scale, offset):
     return [(letter, tuple(v * scale[i % 2] + offset[i % 2] for i, v in enumerate(values))) for letter, values in commands]
 
 
-@lru_cache(maxsize=256)
+@lru_cache(maxsize=64)
 def _outline(shape, path, width, height, inset, radius, sides, inner_radius):
     """The outline as ``((commands, length), …)``, one entry per contour, in its own units: the
     path's viewBox for a ``path`` shape, else pixels of the ``width`` × ``height`` box, inset by

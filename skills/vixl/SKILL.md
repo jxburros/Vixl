@@ -261,6 +261,10 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
   `targets`. Keep GIFs small with `colors` and a lower `fps`.
 - **Animate with `translate-x/y` and `scale`** so constrained layouts keep working; the saved document
   is the frame at rest, and `time=` previews or exports a moment.
+- **Draw a line on** with `animate-preset draw-on` (or animate `trim_end` 0→100 on a `shape`/`pen` stroke;
+  `line_cap: "round"` for a round tip). **Swing a layer over** with a negative `scale-x`/`scale-y`
+  (`1` → `-1`). A key past the timeline end lengthens it and the result's `warnings` say so
+  (`extend: false` keeps the duration).
 - **CMYK is an export setting** (`color_space="cmyk"` for PDF/TIFF/JPEG). Pass the printer's ICC profile
   when exact separations matter; without one Vixl uses a GCR approximation with an optional ink limit.
 - **Limits:** 40 MP per canvas/layer, 16 384 px per side, 512 layers, 256 effects/layer,
