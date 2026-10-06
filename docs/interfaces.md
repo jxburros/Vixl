@@ -146,7 +146,7 @@ Vixl is designed to be driven mainly by agents. The intended loop is: create or 
 | `vixl_timeline_inspect`, `vixl_timeline_preview(time \| count)`, `vixl_export_timeline(path, format, fps, scale, …)` | Keyframe timelines: inspect, preview a frame or contact sheet, export GIF/APNG/WebP/sheet/PNG ZIP/MP4/WebM |
 | `vixl_export_icons(directory, icon_set)` | Standard icon sets (web favicons and manifest, Apple, Android, Windows) |
 | `vixl_measure`, `vixl_measure_spacing`, `vixl_validate` | Samples, channel statistics, contrast; spacing intent; assertions and profiles |
-| `vixl_history(action, ref, count, offset, limit)` | Undo/redo/transactions/branches/checkpoints; newest-first summaries |
+| `vixl_history(action, ref, count, offset, limit, dry_run, fonts)` | Undo/redo/transactions/branches/checkpoints; newest-first summaries; `compact` discards undo history and drops embedded files the design does not use (`dry_run` reports first; see [commands](commands.md#scripts-presets-history)) |
 
 The server instructions carry the start-here recipe: `vixl_guide` for the kind of work, then `vixl_sizes_list` → `vixl_document_create(size=…)`,
 `vixl_layouts_list` → `layout-apply` (all slots filled; art with no text frame is built from `shape`/`organic`/`pathfinder`/`radial-repeat`),

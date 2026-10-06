@@ -590,6 +590,7 @@ def command_help(cmd, args):
         "checkout": "checkout REF",
         "branches": "branches",
         "history": "history",
+        "compact": "compact [--dry-run] [--keep-fonts] (drop undo history and embedded files the design does not use)",
         "transaction": "transaction begin|commit|rollback",
         "assert": "assert RULE",
         "each": "each layer [--name PATTERN] [--type TYPE] -- COMMAND",
@@ -990,6 +991,13 @@ def project_command(project, cmd, args, *, detail="compact"):
             "checkpoints": project.checkpoints,
             "current": project.current_branch,
         }, False
+    if cmd == "compact":
+        p = Parser(prog="vixl compact", description="Drop all undo history, branches and checkpoints, and the embedded "
+                   "files the current design does not use. The design itself does not change.")
+        p.add_argument("--dry-run", action="store_true", help="Report what would be dropped")
+        p.add_argument("--keep-fonts", action="store_true", help="Keep registered fonts no text, role or fallback uses")
+        a = p.parse_args(args)
+        return project.compact(fonts=not a.keep_fonts, dry_run=a.dry_run), not a.dry_run
     if cmd == "history":
         return [
             {k: v for k, v in node.items() if k not in ("state", "delta")} for node in project.nodes.values()

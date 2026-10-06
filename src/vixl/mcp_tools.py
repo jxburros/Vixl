@@ -1507,17 +1507,22 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
     @tool
     def vixl_history(
         action: Literal[
-            "list", "undo", "redo", "branch", "checkpoint", "checkout", "begin", "commit", "rollback"
+            "list", "undo", "redo", "branch", "checkpoint", "checkout", "begin", "commit", "rollback", "compact"
         ] = "list",
         ref: str | None = None,
         count: Positive = 1,
         offset: Annotated[int, Field(ge=0)] = 0,
         limit: Annotated[int, Field(ge=1, le=100)] = 20,
+        dry_run: Annotated[bool, Field(description="compact: report what would be dropped without changing anything")] = False,
+        fonts: Annotated[bool, Field(description="compact: also unregister fonts no text, role or fallback uses")] = True,
         document: Document = None,
     ) -> dict:
         """Navigate history. list returns newest-first revision summaries (paginated); other actions
-        return the current head. Old revisions are squashed automatically and never block edits."""
-        result = session.history(action, ref, count, document)
+        return the current head. Old revisions are squashed automatically and never block edits.
+        compact discards ALL undo history, branches and checkpoints and drops embedded files the current
+        design does not use (vixl_check reports them as an info finding); the result lists what went.
+        Use dry_run first; the design itself does not change."""
+        result = session.history(action, ref, count, document, dry_run=dry_run, fonts=fonts)
         nodes = result.pop("nodes")
         if action == "list":
             newest = list(reversed(nodes))

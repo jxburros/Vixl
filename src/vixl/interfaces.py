@@ -330,14 +330,17 @@ class Session:
         with self.project(document=document) as p:
             return validate(p, profile, rules, **options)
 
-    def history(self, action="list", ref=None, count=1, document=None):
+    def history(self, action="list", ref=None, count=1, document=None, *, dry_run=False, fonts=True):
+        """Navigate history. ``compact`` squashes it to the current state and drops unused embedded
+        files (``dry_run`` reports what it would drop; ``fonts`` False keeps unused registered fonts)."""
         require(
             action
-            in ("list", "undo", "redo", "branch", "checkpoint", "checkout", "begin", "commit", "rollback"),
+            in ("list", "undo", "redo", "branch", "checkpoint", "checkout", "begin", "commit", "rollback", "compact"),
             "Unknown history action",
             field="action",
         )
-        with self.project(write=action != "list", document=document) as p:
+        with self.project(write=action != "list" and not (action == "compact" and dry_run), document=document) as p:
+            compacted = p.compact(fonts=fonts, dry_run=dry_run) if action == "compact" else None
             if action in ("undo", "redo"):
                 getattr(p, action)(count)
             elif action in ("branch", "checkpoint", "checkout"):
@@ -351,6 +354,7 @@ class Session:
                 "branches": p.branches,
                 "checkpoints": p.checkpoints,
                 "nodes": [{k: v for k, v in node.items() if k not in ("state", "delta")} for node in p.nodes.values()],
+                **({"compact": compacted} if compacted else {}),
             }
 
     def import_image(self, data, name="image", document=None):
@@ -807,7 +811,8 @@ def create_app(path, *, token=None, limits=None):
 
     @app.post("/history/{action}")
     def history_action(action: str, body: dict):
-        return session.history(action, body.get("ref"), body.get("count", 1))
+        return session.history(action, body.get("ref"), body.get("count", 1), dry_run=bool(body.get("dry_run", False)),
+                               fonts=bool(body.get("fonts", True)))
 
     @app.post("/import")
     async def import_document(request: Request, format: str, name: str = "import", page: int = 1, dpi: int = 144, svg_mode: str = "editable"):
