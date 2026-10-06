@@ -31,6 +31,7 @@ import re
 import threading
 
 from .errors import VixlError, require
+from .geometry import ANCHORS, canonical_anchor
 from .model import finite, new_layer
 
 TYPES = ("link", "link-refresh", "link-embed")
@@ -39,11 +40,6 @@ FITS = ("fill", "fit", "stretch")
 MAX_DEPTH = 4
 MAX_SOURCE_PATH = 500
 MAX_RENDER_SCALE = 8
-ANCHORS = {
-    "top-left": [0, 0], "top": [0.5, 0], "top-right": [1, 0],
-    "left": [0, 0.5], "center": [0.5, 0.5], "right": [1, 0.5],
-    "bottom-left": [0, 1], "bottom": [0.5, 1], "bottom-right": [1, 1],
-}
 OK, STALE, MISSING, ERROR, CYCLE, FORBIDDEN = "ok", "stale", "missing", "error", "cycle", "forbidden"
 BROKEN = (MISSING, ERROR, CYCLE, FORBIDDEN)
 
@@ -226,8 +222,9 @@ def _references(project, values):
 
 def _position(value):
     if isinstance(value, str):
-        require(value in ANCHORS, f"Unknown position {value!r}; use {', '.join(ANCHORS)} or [x, y] fractions", field="position")
-        return list(ANCHORS[value])
+        name = canonical_anchor(value)
+        require(name, f"Unknown position {value!r}; use {', '.join(ANCHORS)} or [x, y] fractions", field="position")
+        return list(ANCHORS[name])
     require(isinstance(value, list) and len(value) == 2, "position is [x, y] fractions or an anchor", field="position")
     return [finite(v, "position", 0, 1) for v in value]
 

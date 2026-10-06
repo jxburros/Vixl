@@ -902,8 +902,9 @@ def _shape_fields(info, w, h, style, s):
 
 
 def _num(value):
-    text = f"{value:.2f}".rstrip("0").rstrip(".")
-    return text if text not in ("-0", "") else "0"
+    from .geometry import compact_number
+
+    return compact_number(value, 2)
 
 
 def _path_d(chains, close_heads=()):

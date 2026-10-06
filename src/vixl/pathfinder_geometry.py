@@ -202,9 +202,10 @@ def pathfinder_commands(layer, state):
 
 def path_data(commands):
     """SVG path data for path commands."""
+    from .geometry import compact_number
+
     def number(value):
-        text = f"{value:.3f}".rstrip("0").rstrip(".")
-        return "0" if text in ("", "-0") else text
+        return compact_number(value, 3)
 
     parts = []
     for command, values in commands:

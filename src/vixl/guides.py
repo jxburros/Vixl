@@ -18,6 +18,7 @@ import math
 import numpy as np
 
 from .errors import VixlError, require
+from .geometry import ANCHORS, canonical_anchor
 from .model import finite
 
 TYPES = ("place", "snap")
@@ -26,11 +27,6 @@ GRID_KINDS = ("columns", "baseline", "thirds", "golden", "armature", "golden-spi
               "triangular", "hex", "oblique", "perspective")
 MAX_GUIDES = 1024
 PHI = (1 + 5 ** 0.5) / 2
-ANCHORS = {
-    "top-left": (0, 0), "top": (0.5, 0), "top-right": (1, 0),
-    "left": (0, 0.5), "center": (0.5, 0.5), "right": (1, 0.5),
-    "bottom-left": (0, 1), "bottom": (0.5, 1), "bottom-right": (1, 1),
-}
 
 
 # ---------------------------------------------------------------------------------------------
@@ -527,8 +523,9 @@ def _anchor(value):
     if value is None:
         return ANCHORS["center"]
     if isinstance(value, str):
-        require(value in ANCHORS, f"anchor must be one of {', '.join(ANCHORS)} or [fx, fy]", field="anchor", allowed=list(ANCHORS))
-        return ANCHORS[value]
+        name = canonical_anchor(value)
+        require(name, f"anchor must be one of {', '.join(ANCHORS)} or [fx, fy]", field="anchor", allowed=list(ANCHORS))
+        return ANCHORS[name]
     require(isinstance(value, list) and len(value) == 2, "anchor must be a name or [fx, fy]", field="anchor")
     return tuple(finite(v, "anchor", -10, 10) for v in value)
 

@@ -318,12 +318,12 @@ def compile_command(tokens):
         p.add_argument("--clear", action="store_true", help="Remove the pivot (rotate/scale about the center again)")
         data = vars(p.parse_args(args))
         values = data.pop("values")
-        from .operations import PIVOT_ANCHORS
+        from .geometry import canonical_anchor
 
         if data.pop("clear"):
             require(len(values) <= 1, "Use pivot [LAYER] --clear")
             return {**op, "clear": True, **({"target": values[0]} if values else {})}
-        if values and values[-1] in PIVOT_ANCHORS:
+        if values and canonical_anchor(values[-1]):
             require(len(values) <= 2, "Use pivot [LAYER] ANCHOR")
             return {**op, "value": values[-1], **({"target": values[0]} if len(values) == 2 else {})}
         require(len(values) in (2, 3), "Use pivot [LAYER] X Y, pivot [LAYER] ANCHOR or pivot [LAYER] --clear")
