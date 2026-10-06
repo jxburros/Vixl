@@ -829,8 +829,10 @@ def project_command(project, cmd, args, *, detail="compact"):
             nargs="+",
             choices=["bounds", "overlap", "contrast", "safe_area", "legibility", "print", "color_vision", "content", "fonts", "blanks", "brand", "guides", "alignment",
                      "deck", "title_position", "type_scale", "words", "min_font", "notes", "empty", "form", "drawing", "links", "style",
-                     "diagram", "flow"],
+                     "diagram", "flow", "connected"],
         )
+        p.add_argument("--connect-tolerance", type=float, default=2,
+                       help="connected check: pixels of gap still counted as touching (default 2)")
         p.add_argument("--style", nargs="+", help="style checks: evaluate this style (or styles) instead of the document's tag")
         p.add_argument("--page", help="Check one page of a multi-page document (default: the active page)")
         p.add_argument("--pages", help="deck checks: the pages to check, e.g. 1-3,5 (default: every shown page)")

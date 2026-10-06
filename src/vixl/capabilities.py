@@ -9,7 +9,7 @@ TOPICS = {
     "text": ("text rich font layout stack container caption bubble", ["typography", "layout"]),
     "drawing": (
         "shape pen path stroke distort organic irregular tear pattern texture clone paint repeat scatter",
-        ["imperfection", "drawn-textures", "illustration-perspective", "brush"],
+        ["imperfection", "drawn-textures", "illustration-perspective", "brush", "multi-part-objects"],
     ),
     "animation": (
         "motion animate keyframe keyframes timeline character rig ik pivot loop stagger cycle scene camera particle "

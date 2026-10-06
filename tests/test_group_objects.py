@@ -166,6 +166,47 @@ def test_compare_can_isolate_an_object():
     assert x <= cx and cx + cw <= x + w and 50 <= cy <= 65
 
 
+def mascot():
+    p = Project(300, 240, "#ffffff")
+    p.apply([
+        {"type": "shape", "name": "body", "shape": "ellipse", "width": 80, "height": 100, "x": 100, "y": 90, "fill": "#e07a5f"},
+        {"type": "shape", "name": "head", "shape": "ellipse", "width": 60, "height": 60, "x": 110, "y": 40, "fill": "#e07a5f"},
+        {"type": "shape", "name": "ear", "shape": "triangle", "width": 20, "height": 20, "x": 120, "y": 26, "fill": "#e07a5f"},
+        {"type": "shape", "name": "tail", "shape": "rectangle", "width": 30, "height": 8, "x": 200, "y": 150, "fill": "#e07a5f"},
+        {"type": "text", "name": "label", "text": "Hi", "x": 10, "y": 10, "size": 18},
+        {"type": "group", "name": "cat", "targets": ["body", "head", "ear", "tail", "label"]},
+    ])
+    return p
+
+
+def connected(project, **options):
+    return [i for i in project.check(checks=["connected"], **options)["issues"] if i["check"] == "connected"]
+
+
+def test_connected_check_finds_parts_floating_free_of_the_body():
+    p = mascot()
+    found = connected(p)
+    assert [(i["layers"], i["group"]) for i in found] == [(["tail"], "cat")]
+    assert 15 <= found[0]["gap"] <= 25 and "detached_ok" in found[0]["message"]
+    assert connected(p, connect_tolerance=25) == []
+    p.apply({"type": "layer-intent", "target": "tail", "detached_ok": True})
+    assert connected(p) == []
+    p.apply([{"type": "layer-intent", "target": "tail", "detached_ok": False},
+             {"type": "move", "target": "tail", "x": 170, "y": 150, "space": "canvas"}])
+    assert connected(p) == []
+    assert "connected" not in p.check()["checked"]["checks"]
+
+
+def test_connected_check_samples_animation_frames():
+    p = mascot()
+    p.apply([{"type": "move", "target": "tail", "x": 170, "y": 150, "space": "canvas"},
+             {"type": "timeline-set", "duration": 1000, "fps": 10},
+             {"type": "keyframes", "target": "tail", "property": "translate-x",
+              "keys": [{"time": 0, "value": 0}, {"time": 500, "value": 40}, {"time": 1000, "value": 0}]}])
+    found = connected(p)
+    assert len(found) == 1 and found[0]["frame"] == "middle" and "middle frame" in found[0]["message"]
+
+
 def test_group_result_lists_member_offsets_and_brief_edits_name_the_group():
     p = Project(300, 200)
     p.apply([{"type": "shape", "name": "a", "shape": "rectangle", "width": 20, "height": 20, "x": 100, "y": 50},
@@ -180,3 +221,12 @@ def test_group_result_lists_member_offsets_and_brief_edits_name_the_group():
     assert change["canvas_bounds"] == [60, 50, 20, 20]
     top = p.apply({"type": "opacity", "target": "g", "value": 0.5}, detail="brief")["changes"]["layers"][p.layer("g")["id"]]
     assert "parent" not in top and "canvas_bounds" not in top
+
+
+def test_multi_part_object_guidance_points_at_isolate_and_connected():
+    from vixl.capabilities import TOPICS
+    from vixl.guidance import GUIDANCE
+
+    text = GUIDANCE["multi-part-objects"]
+    assert "isolate" in text and "connected" in text and "detached_ok" in text and "silhouette" in text
+    assert "multi-part-objects" in TOPICS["drawing"][1]
