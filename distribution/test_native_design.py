@@ -84,6 +84,21 @@ def verify(executable, workspace):
     image = Image.open(io.BytesIO(resvg_py.svg_to_bytes(svg_string=svg)))
     vector = np.asarray(image)[:, :, 3] > 128
     assert (raster & vector).sum() / (raster | vector).sum() > 0.97
+    # Exercise GEOS in the frozen runtime, including its Windows native DLLs.
+    cli("new", "300x240", "-o", "offset.vixl")
+    cli("apply", "-", operations={"operations": [
+        {"type": "shape", "shape": "ring", "name": "cutline", "width": 120, "height": 120,
+         "x": 90, "y": 60, "thickness": 12, "fill": "navy"},
+        {"type": "offset-path", "target": "cutline", "distance": 6, "join": "round"},
+    ]})
+    cli("export", "offset.svg", "--svg-policy", "strict")
+    cli("export", "offset.pdf")
+    cli("export", "offset.png")
+    svg = ET.parse(workspace / "offset.svg")
+    assert svg.findall(".//{*}path") and not svg.findall(".//{*}image")
+    with Image.open(workspace / "offset.png") as image:
+        assert image.getbbox() and image.getpixel((150, 120))[3] == 0
+    assert (workspace / "offset.pdf").read_bytes().startswith(b"%PDF")
     cli("new", "400x200", "-o", "unicode.vixl")
     cli(
         "apply",

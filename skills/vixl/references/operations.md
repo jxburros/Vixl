@@ -7,7 +7,7 @@ Every edit in Vixl is a JSON object with a `type`. Send a single object, an arra
 REST `POST /operations`, or Python `Project.apply(...)`. Common alternative spellings (`rect`,
 `circle`, `font_size`, `fill`/`color`, camelCase keys, opacity 1–100, blur `radius`) are normalized
 and reported under `normalized`; other unknown fields, unknown types, malformed sizes and non-finite
-numbers are rejected with the operation index, field and suggestions. Max 1 000 operations per
+numbers are rejected with the operation index, field and suggestions. Max 10 000 operations per
 batch; the batch is atomic.
 
 Conventions used below: **bold** = required. `target` is a layer name or `lyr_…` ID and, when

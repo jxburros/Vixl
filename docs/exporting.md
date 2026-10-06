@@ -106,3 +106,18 @@ animations use `export-animation` instead. See [motion tutorial](tutorials/motio
 
 For repeated output families, use [production workflows](production.md) to retain manifests,
 checks, render decisions and resume information.
+# Python export consistency
+
+`Project.export`, `Project.export_animation`, `export_timeline` and the MCP export
+tools protect existing files by default (`overwrite=False`). Pass `overwrite=True`
+for repeatable builds that intentionally replace outputs; CLI render/export and
+saved-frame animation commands accept `--overwrite`.
+
+Raster exports accept `page="all"` or `pages=["cover", "results"]` to write one
+contact sheet. `width` is the width of each page tile (default 480), `columns`
+controls the grid, and `labels=False` hides page labels. PDF/PPTX `pages` still
+selects actual document pages.
+
+```python
+p.export("overview.png", page="all", width=320, columns=3, overwrite=True)
+```

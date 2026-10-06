@@ -560,6 +560,9 @@ def export_pptx(project, path=None, *, pages=None, dpi=None, report=None):
     views = page_views(project, [r["id"] for r in records] if records else pages)
     slides, notes = [], []
     for number, (label, view) in enumerate(views, 1):
+        from .export_appearance import prepare
+
+        view = prepare(view)
         slide = Slide(exporter, view, number)
         layers = resolved_layers(view)
         bounds = resolve_layout(view, layers=layers)

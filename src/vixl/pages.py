@@ -22,7 +22,7 @@ from .model import uid
 
 TYPES = ("page", "master")
 # State that belongs to one page because it holds or refers to that page's layers.
-SCOPED = ("layers", "active_layer", "selection", "timeline", "blanks", "layout", "comps", "symbols", "artboards",
+SCOPED = ("comic", "template", "audio_tracks", "lighting", "camera", "particles", "stop_motion", "layers", "active_layer", "selection", "timeline", "blanks", "layout", "comps", "symbols", "artboards",
           "roles", "containers", "animation")
 PAGE_FIELDS = {"id", "name", "notes", "master", "background", "variables", "hidden", "transition", "content"}
 MASTER_FIELDS = {"background", "content"}

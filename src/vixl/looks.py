@@ -130,6 +130,9 @@ def _halftone(layer, state, color, a):
 
 # name -> (builder, summary, svg export, best for). svg: "native" when every part is an SVG filter.
 LOOKS = {
+    "clean-flat": (lambda layer, state, color, amount: ({}, []), "Restrained flat color without effects.", "native", ["documents", "cards"]),
+    "subtle-grain": (lambda layer, state, color, amount: _grain(layer, state, color, amount * 0.1), "A restrained grain finish for broad-use backgrounds.", "raster", ["backgrounds", "editorial"]),
+    "light-paper": (lambda layer, state, color, amount: _paper(layer, state, color, amount * 0.1), "A quiet paper finish with minimal tint and texture.", "raster", ["documents", "backgrounds"]),
     "glow": (_glow, "Soft outer glow in the layer's own color (or color).", "native", ["neon signs", "icons on dark", "highlights"]),
     "neon": (_neon, "Bright outline with a wide glow, like a lit tube.", "native", ["cyberpunk", "nightlife", "text outlines"]),
     "soft-shadow": (_soft_shadow, "Gentle blurred drop shadow that lifts a card or button off the page.", "native", ["cards", "buttons", "ui"]),
@@ -148,7 +151,9 @@ LOOKS = {
 
 
 def catalog():
-    return {name: {"summary": summary, "svg": svg, "best_for": best}
+    from .safe_catalog import SAFE_LOOKS
+
+    return {name: {"summary": summary, "svg": svg, "best_for": best, "safe": name in SAFE_LOOKS}
             for name, (_, summary, svg, best) in LOOKS.items()}
 
 

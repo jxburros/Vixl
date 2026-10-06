@@ -1,5 +1,6 @@
 """Read-only rendered-image measurements for humans and agents."""
 
+import math
 import numpy as np
 from PIL import Image
 
@@ -154,7 +155,9 @@ def measure(
     if target:
         layer = candidate.layer(target)
         b = resolve_layout(candidate)[layer["id"]]
-        region = list(b)
+        from .spatial import canvas_boxes
+        result["bounds"] = list(canvas_boxes(candidate)[layer["id"]])
+        region = [math.floor(b[0]), math.floor(b[1]), math.ceil(b[0]+b[2])-math.floor(b[0]), math.ceil(b[1]+b[3])-math.floor(b[1])]
         from .render import layer_canvas_surface, resolved_layers
 
         effective = next(item for item in resolved_layers(candidate) if item["id"] == layer["id"])
@@ -185,7 +188,7 @@ def measure(
             if coverage is None:
                 tile = layer_image(candidate, effective, b)
                 coverage = Image.new("L", image.size)
-                coverage.paste(tile.getchannel("A"), b[:2])
+                coverage.paste(tile.getchannel("A"), (math.floor(b[0]), math.floor(b[1])))
     if region is not None:
         require(
             len(region) == 4 and all(isinstance(v, int) for v in region),

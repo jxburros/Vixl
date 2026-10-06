@@ -374,7 +374,7 @@ def animation_bytes(
     return stream.getvalue(), metadata
 
 
-def export_video(project, path, *, format, scale, sampling, quality, animation=None):
+def export_video(project, path, *, format, scale, sampling, quality, animation=None, overwrite=False):
     """Stream an animation to MP4/WebM (needs ffmpeg). Video has a constant frame rate, so frames are
     repeated on a tick of the greatest common divisor of their durations."""
     from functools import reduce
@@ -420,12 +420,13 @@ def export_video(project, path, *, format, scale, sampling, quality, animation=N
             for _ in range(count):
                 yield image
 
-    result = _video(path, frames(), Fraction(1000, tick), format, quality, False, sum(counts), (w, h))
+    result = _video(path, frames(), Fraction(1000, tick), format, quality, overwrite, sum(counts), (w, h))
     return {**result, "fps": float(result["fps"])}
 
 
 def export_animation(
-    project, path, *, format=None, scale=1, columns=None, sampling="nearest", colors=256, animation=None, quality=90
+    project, path, *, format=None, scale=1, columns=None, sampling="nearest", colors=256, animation=None, quality=90,
+    overwrite=False,
 ):
     path = Path(path)
     suffix = path.suffix.lower()
@@ -444,21 +445,22 @@ def export_animation(
         field="path",
     )
     destinations = [path] + ([path.with_suffix(".json")] if format == "sheet" else [])
-    require(not any(p.exists() for p in destinations), "Animation output already exists")
+    require(overwrite or not any(p.exists() for p in destinations), "Animation output already exists; pass overwrite=True")
     if format in VIDEO:
         require(colors == 256, "colors applies to GIF export", field="colors")
         require(columns is None, "Columns apply only to sprite sheets")
-        result = export_video(project, path, format=format, scale=scale, sampling=sampling, quality=quality, animation=animation)
+        result = export_video(project, path, format=format, scale=scale, sampling=sampling, quality=quality,
+                              animation=animation, overwrite=overwrite)
         return {**result, **({"animation": animation} if animation is not None else {})}
     data, metadata = animation_bytes(
         project, format=format, scale=scale, columns=columns, sampling=sampling, colors=colors,
         animation=animation, quality=quality,
     )
     # Create only after all rendering succeeds. Refuse concurrent clobbers as well.
-    with path.open("xb") as stream:
+    with path.open("wb" if overwrite else "xb") as stream:
         stream.write(data)
     if metadata is not None:
-        with destinations[1].open("x", encoding="utf-8") as stream:
+        with destinations[1].open("w" if overwrite else "x", encoding="utf-8") as stream:
             json.dump(metadata, stream, indent=2)
     from .animation_sets import resolve_sequence
 

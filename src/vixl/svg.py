@@ -49,6 +49,8 @@ def vector_overlay(layer, state):
 
 
 def fallback_reason(layer):
+    if layer.get("export_fallback") or layer.get("cut_paper"):
+        return layer.get("export_fallback", "cut-paper grain and edge texture")
     if layer["type"] == "link":
         return "linked documents are exported as images"
     if layer.get("repeat"):
@@ -86,15 +88,17 @@ class Exporter:
         return True
 
     def transform(self, layer, bounds):
-        x, y, w, h = bounds
-        from .render import rest_size
-        rw, rh = rest_size(layer)
-        # SVG's y axis points down, like Vixl. Positive angles are clockwise.
-        return (
-            f"translate({x + w / 2} {y + h / 2}) rotate({layer['rotation']}) "
-            f"scale({-1 if layer['flip_x'] else 1} {-1 if layer['flip_y'] else 1}) "
-            f"translate({-rw / 2} {-rh / 2})"
-        )
+        from .affine import layer_matrix, precise
+        if not precise(layer):
+            from .render import rest_size
+            x, y, w, h = bounds
+            rw, rh = rest_size(layer)
+            return (f"translate({x + w / 2} {y + h / 2}) rotate({layer['rotation']}) "
+                    f"scale({-1 if layer['flip_x'] else 1} {-1 if layer['flip_y'] else 1}) "
+                    f"translate({-rw / 2} {-rh / 2})")
+        m = layer_matrix(layer, bounds)
+        values = (m[0, 0], m[1, 0], m[0, 1], m[1, 1], m[0, 2], m[1, 2])
+        return "matrix(" + " ".join(format(v, ".12g") for v in values) + ")"
 
     def attrs(self, layer):
         fill, alpha = paint(layer.get("fill", "white"), self.project.state)
@@ -132,6 +136,14 @@ class Exporter:
         from .trim import trim_range
 
         attrs = self.attrs(layer)
+        from .shape_catalog import active as catalog_active
+        from .vector_strokes import active as stroke_active, primitives
+        if catalog_active(layer) or stroke_active(layer) or layer.get("distort") or layer.get("_distort_groups"):
+            for path, color in primitives(layer, self.project):
+                fill, alpha = paint(color, self.project.state)
+                if path and alpha:
+                    node(parent, "path", d=path, fill=fill, fill_opacity=alpha)
+            return
         if trim_range(layer):
             return self.trimmed(parent, layer, attrs)
         sw, sh = layer["width"], layer["height"]
@@ -341,6 +353,8 @@ class Exporter:
         simple = (
             not (layer.get("mask") and layer["mask"].get("enabled", True))
             and not layer.get("lookup")
+            and not layer.get("cut_paper")
+            and not layer.get("export_fallback")
             and supported(layer)
             and vector_overlay(layer, self.project.state)
         )
@@ -453,6 +467,9 @@ class Exporter:
 
 def export_svg(project, *, scale=1, variables=None, artboard=None, comp=None, svg_policy="appearance"):
     candidate = artboard_project(project, artboard, comp, variables)
+    from .export_appearance import prepare
+
+    candidate = prepare(candidate)
     c = candidate.state["canvas"]
     root = ET.Element(
         f"{{{NS}}}svg",

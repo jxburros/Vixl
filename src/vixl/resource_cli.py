@@ -80,6 +80,7 @@ def font_standalone(cmd, args, project=None):
         from .sizes import resolve
 
         p = Parser(prog="vixl roll")
+        p.add_argument("--variety", choices=["low", "medium", "high", "fixed"])
         p.add_argument("--for", dest="purpose", help="What it is for: poster, social, slides, logos …")
         p.add_argument("--mood")
         p.add_argument("--size", help="Named size or WxH, so the layout suits the canvas")
@@ -100,8 +101,10 @@ def font_standalone(cmd, args, project=None):
         locks = pairs(a.lock)
         if "layout_seed" in locks:
             locks["layout_seed"] = int(locks["layout_seed"])
+        if "margin" in locks:
+            locks["margin"] = float(locks["margin"])
         return typefaces.roll_document(project, seed=a.seed, purpose=a.purpose, mood=a.mood, canvas=canvas, locks=locks, apply=a.apply,
-                                     slots=pairs(a.set), unfilled=a.unfilled)
+                                     slots=pairs(a.set), unfilled=a.unfilled, variety=a.variety, workspace=Path.cwd())
     p = Parser(prog="vixl font")
     p.add_argument("action", choices=FONT_STANDALONE)
     p.add_argument("family", nargs="?")

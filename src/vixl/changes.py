@@ -1,5 +1,7 @@
 """Small, stable-ID edit summaries; full snapshots remain an explicit option."""
 
+TEXT_METRICS = ("ink_bounds", "line_bounds", "baseline", "baselines", "ascent", "descent", "cap_height", "x_height", "metrics_space")
+
 
 def compact_changes(before, after):
     changes = {}
@@ -109,11 +111,12 @@ def brief_changes(before, after):
             layers = {}
             for ident, delta in value.items():
                 if delta.get("added"):
-                    layers[ident] = {k: delta[k] for k in ("added", "name", "type", "bounds") if k in delta}
+                    layers[ident] = {k: delta[k] for k in ("added", "name", "type", "bounds", *TEXT_METRICS) if k in delta}
                 elif delta.get("removed"):
                     layers[ident] = delta
                 else:
-                    layers[ident] = {"changed": sorted(k for k in delta if k != "bounds"),
+                    layers[ident] = {"changed": sorted(k for k in delta if k not in ("bounds", "canvas_bounds", "path_nodes", *TEXT_METRICS)),
+                                     **{key: delta[key] for key in TEXT_METRICS if key in delta},
                                      **({"bounds": delta["bounds"]} if "bounds" in delta else {})}
             changes["layers"] = layers
         elif key in ("canvas", "active_layer", "page", "selection"):
@@ -143,6 +146,9 @@ def _brief(layer):
     if "resolved_bounds" in layer:
         result["bounds"] = list(layer["resolved_bounds"])
     if layer["type"] == "text":
+        for key in TEXT_METRICS:
+            if key in layer:
+                result[key] = layer[key]
         text = layer.get("text", "")
         result["text"] = text if len(text) <= 80 else text[:77] + "..."
         result["size"] = layer.get("size")

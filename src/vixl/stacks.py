@@ -16,6 +16,7 @@ from .model import finite
 TYPES = ("stack",)
 DIRECTIONS = ("vertical", "horizontal")
 ALIGNS = ("start", "center", "end")
+EXTRAS = {"size", "background", "radius", "stroke", "stroke_width"}
 DEFAULTS = {"direction": "vertical", "gap": 0, "padding": 0, "align": "start", "justify": "start"}
 # Operations that set a layer's position, which a stack decides for its members.
 POSITIONING = ("move", "align", "distribute", "constrain", "unconstrain")
@@ -38,7 +39,12 @@ def schemas(add):
             "direction": {**enum(*DIRECTIONS), "description": "vertical lays members out top to bottom (default), "
                           "horizontal left to right."},
             "gap": {**amount, "description": "Pixels between members; hidden and empty members take none."},
-            "padding": {**amount, "description": "Pixels kept clear inside the group box on every side."},
+            "padding": {"oneOf": [amount, {"type": "object", "properties": {k: amount for k in ("top", "right", "bottom", "left")}, "additionalProperties": False}], "description": "Uniform pixels or per-side padding."},
+            "size": {**enum("fixed", "hug"), "description": "hug follows visible content and per-side padding on every render."},
+            "background": {**S, "description": "Background fill color for a generated rectangle that follows the stack."},
+            "radius": {**amount, "description": "Corner radius of the stack background in pixels."},
+            "stroke": {**S, "description": "Outline color of the stack background."},
+            "stroke_width": {**amount, "description": "Outline thickness of the stack background in pixels."},
             "align": {**enum(*ALIGNS), "description": "Across the stack: start, center or end of the box."},
             "justify": {**enum(*ALIGNS), "description": "Along the stack: start packs members at the start of "
                         "the box, center keeps them centred as members come and go, end packs them at the end."},
@@ -55,11 +61,14 @@ def validate_layer(layer):
     if stack is not None:
         require(layer["type"] == "group", "Only groups can be stacks", "invalid_project")
         require(
-            isinstance(stack, dict) and set(stack) <= set(DEFAULTS), "Invalid stack settings", "invalid_project"
+            isinstance(stack, dict) and set(stack) <= set(DEFAULTS) | EXTRAS, "Invalid stack settings", "invalid_project"
         )
         require(stack.get("direction", "vertical") in DIRECTIONS, "Invalid stack direction", "invalid_project")
-        for key in ("gap", "padding"):
-            finite(stack.get(key, 0), f"stack {key}", 0, 16384)
+        finite(stack.get("gap", 0), "stack gap", 0, 16384)
+        padding_sides(stack.get("padding", 0))
+        require(stack.get("size", "fixed") in ("fixed", "hug"), "Invalid stack size")
+        for key in ("radius", "stroke_width"):
+            finite(stack.get(key, 0), key, 0, 16384)
         for key in ("align", "justify"):
             require(stack.get(key, "start") in ALIGNS, f"Invalid stack {key}", "invalid_project")
     if "hide_if_empty" in layer:
@@ -94,6 +103,15 @@ def execute(project, op):
             if member.get("parent") == group["id"]:
                 member["constraints"] = {}
                 member["x"], member["y"] = stored_origin(member, bounds[member["id"]][:2])
+        if group["stack"].get("size") == "hug":
+            from .render import resolved_layers
+            settled = next(item for item in resolved_layers(project) if item["id"] == group["id"])
+            for key in ("width", "height", "content_width", "content_height"):
+                group[key] = settled[key]
+            for member in project.state["layers"]:
+                if member.get("stack_background") == group["id"]:
+                    member.update(width=settled["content_width"], height=settled["content_height"])
+                    member.pop("stack_background", None)
         group.pop("stack")
         group.pop("hide_if_empty", None)
         return
@@ -105,12 +123,25 @@ def execute(project, op):
             field="width",
         )
         width, height = op.get("width", group["width"]), op.get("height", group["height"])
-        project.limits.size(width, height)
+        project.limits.size(width, height, vector=True)
         group.update(width=width, height=height, content_width=width, content_height=height)
-    group["stack"] = {**DEFAULTS, **group.get("stack", {}), **{k: op[k] for k in DEFAULTS if k in op}}
+    group["stack"] = {**DEFAULTS, **group.get("stack", {}), **{k: op[k] for k in set(DEFAULTS) | EXTRAS if k in op}}
     if "hide_if_empty" in op:
         group["hide_if_empty"] = op["hide_if_empty"]
     validate_layer(group)
+    if "background" in op or "stroke" in op:
+        from .operations import execute as apply
+        bg = next((item for item in project.state["layers"] if item.get("stack_background") == group["id"]), None)
+        if bg is None:
+            apply(project, {"type": "shape", "name": group["name"] + "/background", "shape": "rounded-rectangle",
+                            "width": max(1, group["width"]), "height": max(1, group["height"]), "fill": op.get("background", "transparent")})
+            bg = project.layer()
+            bg.update(parent=group["id"], stack_background=group["id"])
+            project.state["layers"].remove(bg)
+            project.state["layers"].insert(project.state["layers"].index(group), bg)
+        bg.update(fill=group["stack"].get("background", "transparent"), radius=group["stack"].get("radius", 0),
+                  stroke=group["stack"].get("stroke", "transparent"), stroke_width=group["stack"].get("stroke_width", 1))
+        project.state["active_layer"] = group["id"]
 
 
 def guard(project, op, target):
@@ -158,11 +189,26 @@ def collapse(layers):
     # Innermost groups first, so a nested stack's visibility is settled before its parent lays it out.
     groups = [item for item in layers if item["type"] == "group" and (item.get("hide_if_empty") or "stack" in item)]
     for group in sorted(groups, key=depth, reverse=True):
-        shown = [item for item in members.get(group["id"], []) if item["visible"] and item["type"] != "adjustment"]
+        shown = [item for item in members.get(group["id"], []) if item["visible"] and item["type"] != "adjustment" and not item.get("stack_background")]
         if group.get("hide_if_empty") and not shown:
             group["visible"] = False
-        if "stack" in group and shown:
+        if "stack" in group:
             place(group, shown)
+            for background in members.get(group["id"], []):
+                if background.get("stack_background"):
+                    background.update(x=0, y=0, width=group["content_width"], height=group["content_height"],
+                                      radius=group["stack"].get("radius", 0))
+
+
+def padding_sides(value):
+    if isinstance(value, dict):
+        require(not set(value) - {"top", "right", "bottom", "left"}, "Unknown padding side")
+        sides = [value.get(k, 0) for k in ("top", "right", "bottom", "left")]
+    else:
+        sides = [value] * 4
+    for side in sides:
+        finite(side, "padding", 0, 16384)
+    return sides
 
 
 def place(group, shown):
@@ -172,17 +218,25 @@ def place(group, shown):
     vertical = settings["direction"] == "vertical"
     sizes = [transformed_size(item) for item in shown]
     along, across = (1, 0) if vertical else (0, 1)
-    padding, gap = settings["padding"], settings["gap"]
+    top, right, bottom, left = padding_sides(settings["padding"])
+    gap = settings["gap"]
+    before, after = ((top, bottom), (left, right)) if vertical else ((left, right), (top, bottom))
+    used = sum(size[along] for size in sizes) + gap * max(0, len(shown) - 1)
+    if settings.get("size") == "hug":
+        extent = max((size[across] for size in sizes), default=0)
+        dimensions = [0, 0]
+        dimensions[along] = max(1, int(used + sum(before) + 0.5))
+        dimensions[across] = max(1, int(extent + sum(after) + 0.5))
+        group.update(width=dimensions[0], height=dimensions[1], content_width=dimensions[0], content_height=dimensions[1])
     box = (group["content_width"], group["content_height"])
-    room_along, room_across = box[along] - 2 * padding, box[across] - 2 * padding
-    used = sum(size[along] for size in sizes) + gap * (len(shown) - 1)
+    room_along, room_across = box[along] - sum(before), box[across] - sum(after)
 
     def offset(room, extent, how):
         return {"start": 0, "center": (room - extent) / 2, "end": room - extent}[how]
 
-    cursor = padding + offset(room_along, used, settings["justify"])
+    cursor = before[0] + offset(room_along, used, settings["justify"])
     for item, size in zip(shown, sizes):
-        side = padding + offset(room_across, size[across], settings["align"])
+        side = after[0] + offset(room_across, size[across], settings["align"])
         point = (side, cursor) if vertical else (cursor, side)
         item["constraints"] = {}
         # Whole pixels, so equal gaps stay equal after layout bounds are rounded.
@@ -199,6 +253,11 @@ def compile_command(cmd, args):
     p.add_argument("target", help="the group to stack, or the new group's name with --targets")
     p.add_argument("--targets", nargs="+", help="layers to group and stack in one step")
     p.add_argument("--direction", choices=DIRECTIONS)
+    p.add_argument("--size", choices=("fixed", "hug"))
+    p.add_argument("--background")
+    p.add_argument("--radius", type=float)
+    p.add_argument("--stroke")
+    p.add_argument("--stroke-width", type=float)
     p.add_argument("--gap", type=float)
     p.add_argument("--padding", type=float)
     p.add_argument("--width", type=int, help="width of the stack's box in pixels")
@@ -212,3 +271,14 @@ def compile_command(cmd, args):
     if "targets" in data:
         data["name"] = data.pop("target")
     return {"type": "stack", **data}
+
+
+def scale_settings(layer, factor):
+    """Scale stack pixel settings on a preview copy alongside its children."""
+    settings = layer.get("stack")
+    if not settings:
+        return
+    for key in ("gap", "padding", "radius", "stroke_width"):
+        if key in settings:
+            value = settings[key]
+            settings[key] = {side: amount * factor for side, amount in value.items()} if isinstance(value, dict) else value * factor

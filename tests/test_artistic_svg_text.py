@@ -242,7 +242,7 @@ def test_fallback_isolates_styled_layer_and_strict_refuses_before_writing(tmp_pa
     path = tmp_path / "art.svg"
     path.write_text("existing artwork")
     with pytest.raises(VixlError) as caught:
-        p.export(path, svg_policy="strict")
+        p.export(path, svg_policy="strict", overwrite=True)
     assert caught.value.code == "svg_raster_required"
     assert caught.value.details["fallbacks"][0]["layer"] == "ink"
     assert caught.value.details["fallbacks"][0]["effects"] == ["ink-blot"]

@@ -25,8 +25,9 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def test_guide_without_a_brief_gives_the_recipe_and_every_kind():
     result = briefs.guide()
-    assert len(result["start_here"]) == 5
-    assert "layout" in result["start_here"][1] and "vixl_fonts" in result["start_here"][2] and "vixl_check" in result["start_here"][4]
+    assert len(result["start_here"]) >= 5
+    assert any("Sparse briefs" in step and "seed" in step for step in result["start_here"])
+    assert all(any(term in step for step in result["start_here"]) for term in ("layout", "vixl_fonts", "vixl_check"))
     assert {"logo", "app-icon", "character", "scene", "pattern", "mandala", "diagram", "social-card", "slides"} <= set(result["kinds"])
     assert "not default to a poster" in result["tip"]
 

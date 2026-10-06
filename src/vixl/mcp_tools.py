@@ -22,6 +22,7 @@ from .assets import read_bounded
 from .errors import VixlError, require
 from .mcp_runtime import Runtime
 from .schema import operation_schema
+from .model import Limits
 
 COORDINATE_NOTE = (
     "x/y accept pixels, 'center' or a percentage like '50%'; width/height accept pixels or '25%' "
@@ -104,14 +105,6 @@ def service_operation_schema(slim=False):
         if kind in ("field-set", "form", "chart", "chart-data"):
             # Nullable copies of the field settings: names only here, types via vixl_operation_schema.
             props.update({key: {} for key in props if key not in ("target", "kind")})
-        # Coordinates/sizes also accept "center" and "N%" (see the tool description). A short,
-        # uniform spelling lets these hoist into one shared definition below.
-        for key in ("x", "y"):
-            if key in props:
-                props[key] = {"type": ["number", "string"], "pattern": r"^(center|-?\d+(\.\d+)?%)$"}
-        for key in ("width", "height"):
-            if key in props:
-                props[key] = {"type": ["integer", "string"], "minimum": 1, "pattern": r"^\d+(\.\d+)?%$"}
         key = json.dumps(variant, sort_keys=True)
         groups.setdefault(key, []).append(kind)
     variants = []
@@ -144,7 +137,25 @@ def service_operation_schema(slim=False):
             variant.pop("required")
         for key in common.keys() & variant["properties"].keys():
             variant["properties"][key] = {k: v for k, v in variant["properties"][key].items() if k not in common[key]}
-    return {"type": "object", "required": ["type"], "properties": common, "oneOf": variants}
+    repeated = {}
+    for variant in variants:
+        for field, constraint in variant["properties"].items():
+            if field != "type" and constraint:
+                repeated.setdefault((field, json.dumps(constraint, sort_keys=True)), []).append(variant)
+    conditions = []
+    for (field, encoded), members in repeated.items():
+        if len(members) < 2:
+            continue
+        kinds = [kind for member in members for kind in member["properties"]["type"]["enum"]]
+        condition = {"if": {"properties": {"type": {"enum": kinds}}},
+                     "then": {"properties": {field: json.loads(encoded)}}}
+        if (len(encoded) - 2) * len(members) <= len(json.dumps(condition)):
+            continue
+        conditions.append(condition)
+        for member in members:
+            member["properties"][field] = {}
+    return {"type": "object", "required": ["type"], "properties": common, "oneOf": variants,
+            **({"allOf": conditions} if conditions else {})}
 
 
 def slim_schema(schema, in_properties=False):
@@ -366,7 +377,8 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
             "vixl_render_preview (region= to zoom) → vixl_export_file. Typical loop: vixl_document_create/open → "
             "vixl_operations_apply (atomic batches; dry_run to test) → vixl_check (overlap, contrast, safe area, "
             "thumbnail legibility) → vixl_render_preview → vixl_export_file. Use layer IDs or "
-            "names from results. " + COORDINATE_NOTE + " Errors are JSON with error, message, field, "
+            "names from results. Batches accept up to 10,000 operations atomically. Path coordinates are literal local pixels; "
+            "use path-fit to scale geometry into its box. vixl_capabilities(topic) lists relevant fields and gotchas. " + COORDINATE_NOTE + " Errors are JSON with error, message, field, "
             "operation_index and suggestions. Paths are relative to the workspace; imports accept a path or "
             "base64 bytes. Several documents can be open: pass document= to address one. When a brief leaves the "
             "look open, vixl_roll a few directions and compare previews. Paint with brushes (vixl_brushes_list), animate "
@@ -419,7 +431,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
     def vixl_workflow(
         action: str,
         request: dict, document: Document = None,
-    ) -> dict:
+    ) -> dict | list:
         """Unified workflows: resources, palettes, saved shapes, suites, effects, plugin packs, project groups,
         branch/merge collaboration, production, libraries, jobs, linked-document status (links) and print merge
         (merge-impose). Discover action fields with vixl_workflow_schema.
@@ -435,7 +447,20 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
             # A call that became a job (see vixl_job); the compact tool set polls it here.
             return runtime.job("result" if action == "status" else action, request["id"],
                                min(float(request.get("wait", 0)), 25))
-        return dispatch(session, action, request, document)
+        result = dispatch(session, action, request, document)
+        if action in ("film-preview", "video-sample", "audio-analyze"):
+            paths = result.get("images", []) if isinstance(result, dict) else []
+            if isinstance(result, dict) and not paths:
+                paths = [result.get("output") or result.get("spectrogram")]
+            images = []
+            for path in paths[:8]:
+                if isinstance(path, str) and path.lower().endswith((".png", ".jpg", ".jpeg", ".webp")):
+                    resolved = session.resolve(path)
+                    with PILImage.open(resolved) as source:
+                        images.append(Image(data=encode_png(source.convert("RGB"), 524288), format="png"))
+            if images:
+                return [compact_json(result), *images]
+        return result
 
     @tool
     def vixl_resource_get(kind: Literal["palettes", "templates", "guidance"], name: str) -> dict:
@@ -566,10 +591,12 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         dpi: Annotated[float | None, Field(ge=36, le=2400)] = None,
         orientation: Literal["portrait", "landscape"] | None = None,
         bleed: Annotated[bool | float, Field(description="Print sizes: true adds standard bleed")] = False,
+        seed: int | None = None,
+        variety: Literal["low", "medium", "high", "fixed"] | None = None,
     ) -> dict:
         """Create and activate a new .vixl file from width/height or a named size (print sizes record dpi,
         bleed, safe area and trim/safe guides). Never overwrites an existing file."""
-        return session.create(path, width, height, background, size=size, dpi=dpi, orientation=orientation, bleed=bleed)
+        return session.create(path, width, height, background, size=size, dpi=dpi, orientation=orientation, bleed=bleed, seed=seed, variety=variety)
 
     @tool
     def vixl_document_open(path: str) -> dict:
@@ -596,7 +623,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
 
     @tool
     def vixl_operations_apply(
-        operations: Annotated[list[Operation], Field(min_length=1, max_length=1000)],
+        operations: Annotated[list[Operation], Field(min_length=1, max_length=Limits().max_operations)],
         dry_run: bool = False,
         detail: ApplyDetail = "brief",
         document: Document = None,
@@ -629,7 +656,9 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         }
         result = {}
         for kind in types:
-            canonical = kind.lower().replace("_", "-")
+            from .normalize import _canonical_type
+
+            canonical = _canonical_type(kind, set(variants))
             if canonical not in variants:
                 import difflib
 
@@ -722,7 +751,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
     def vixl_check(
         checks: list[Literal["bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "fonts", "brand", "print", "color_vision", "guides", "alignment",
                              "deck", "title_position", "type_scale", "words", "min_font", "notes", "empty", "form", "drawing", "links", "style",
-                             "diagram", "flow"]]
+                             "diagram", "flow", "motion", "character", "captions"]]
         | None = None,
         targets: list[str] | None = None,
         safe_area: Annotated[
@@ -741,7 +770,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         artboard: str | None = None,
         comp: str | None = None,
         page: Annotated[int | str | None, Field(description="Page to check (default: the active page)")] = None,
-        deck: Annotated[dict | None, Field(description="deck checks: {min_font (pt), max_words, pages, include_hidden}")] = None,
+        deck: Annotated[dict | None, Field(description="deck checks: {profile: projected|screen|phone, min_font (profile units), thumbnail_width, max_words, pages, include_hidden}")] = None,
         sample: Annotated[str | None, Field(description="form checks: 'worst' (worst-case values) or a workspace CSV of rows")] = None,
         style: Annotated[str | list[str] | None, Field(description="style check: evaluate this style (or list) instead of the document's style tag")] = None,
         document: Document = None,
@@ -966,6 +995,24 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         return runtime.job(action, id, wait)
 
     @tool
+    def vixl_spatial(
+        target: str | None = None, targets: list[str | dict] | None = None, to: str | None = None,
+        mode: Literal["relations", "canvas", "matrix", "grid", "guides", "composition", "hit", "free", "snap", "all"] = "all",
+        bounds: Literal["box", "ink"] = "box", tolerance: float = 1,
+        point: list[float] | None = None, region: list[float] | None = None, grid: str | None = None,
+        describe: bool = False, include_hidden: bool = False,
+        limit: Annotated[int, Field(ge=1, le=200)] = 20,
+        artboard: str | None = None, page: str | int | None = None,
+        safe_area: float | list[float] | dict | None = None, document: Document = None,
+    ) -> dict:
+        """Canvas-space relationships, gaps, alignment, margins, grid/guide offsets, hit tests, empty regions and snap operations.
+        Targets accept IDs, names, globs and groups; choose box or ink bounds. Results respect parent transforms."""
+        with session.project(document=document) as project:
+            return project.spatial(target=target, targets=targets, to=to, mode=mode, bounds=bounds,
+                                   tolerance=tolerance, point=point, region=region, grid=grid, describe=describe,
+                                   include_hidden=include_hidden, limit=limit, artboard=artboard, page=page, safe_area=safe_area)
+
+    @tool
     def vixl_measure_spacing(
         targets: list[str] | None = None,
         axis: Literal["horizontal", "vertical"] = "vertical",
@@ -1023,6 +1070,31 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
             return Image(data=stream.getvalue(), format="png")
 
     @tool
+    def vixl_export_character(target: str, output: str, document: Document = None) -> dict:
+        """Save one reusable character and its assets to a new .vixl library file. Load with character-load source=output."""
+        from .characters import export_character
+
+        destination = session.resolve(output)
+        require(destination.suffix.lower() == ".vixl", "Choose a .vixl character library file", field="output")
+        require(not destination.exists(), "Character output already exists", field="output")
+        session.make_parent(destination)
+        with session.project(document=document) as project:
+            report = export_character(project, target, destination)
+        return {**report, "output": session.relative(destination)}
+
+    @tool
+    def vixl_export_audio(path: str, document: Document = None) -> dict:
+        """Mix the document's imported and synthesized audio tracks to a new WAV; reports clipped samples."""
+        from .audio import export_audio
+
+        destination = session.resolve(path)
+        require(destination.suffix.lower() == ".wav", "Choose a .wav output", field="path")
+        session.make_parent(destination)
+        with session.project(document=document) as project:
+            report = export_audio(project, destination)
+        return {**report, "output": session.relative(destination)}
+
+    @tool
     def vixl_export_animation(
         path: str,
         format: Literal["gif", "apng", "webp", "mp4", "webm", "sheet"] | None = None,
@@ -1033,13 +1105,14 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         quality: Annotated[int, Field(ge=1, le=100)] = 90,
         columns: Positive | None = None,
         document: Document = None,
+        overwrite: bool = False,
     ) -> dict:
         """Write saved frames as GIF, APNG, animated WebP, MP4/WebM (needs ffmpeg) or a PNG sprite sheet plus
         JSON timing metadata in the workspace. Format follows the extension. animation=NAME exports one named
         animation (a subset of the saved frames with its own order, timing and loop; define it with the
         animation-set operation, see vixl_animation_inspect); omit it to export every saved frame in saved
         order. A sheet holds every saved frame (or the animation's) and its JSON lists the named animations.
-        Never overwrites files. sampling="nearest" (integer scale 1–32) keeps pixel art crisp; "smooth"
+        Refuses existing files unless overwrite=true. sampling="nearest" (integer scale 1–32) keeps pixel art crisp; "smooth"
         re-renders at any scale 0.05–32 for illustrations. colors caps the GIF palette; quality applies to
         MP4/WebM and smooth WebP (nearest WebP is lossless)."""
         with session.project(document=document) as project:
@@ -1053,6 +1126,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
                 colors=colors,
                 quality=quality,
                 columns=columns,
+                overwrite=overwrite,
             )
             result["output"] = session.relative(destination)
             if "metadata" in result:
@@ -1072,7 +1146,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
 
     @tool
     def vixl_color(
-        action: Literal["info", "convert", "harmony", "scale", "mix", "contrast", "names"],
+        action: Literal["info", "convert", "harmony", "scale", "mix", "contrast", "names", "natural"],
         colors: Annotated[list[str], Field(min_length=1, max_length=16)],
         to: Literal["hex", "rgb", "hsl", "hsv", "hwb", "cmyk", "lab", "lch", "oklab", "oklch", "css"] | None = None,
         scheme: str = "complementary",
@@ -1086,6 +1160,10 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         two colors. contrast: WCAG ratio and AA/AAA. names: search about 1,040 color names. Any value accepts
         names, hex, rgb/hsl/hwb/lab/lch/oklab/oklch/cmyk/kelvin()/color(display-p3 …)/color-mix() and
         modifiers such as lighten(navy, 20%)."""
+        if action == "natural":
+            from .natural_guidance import natural_palette
+
+            return natural_palette(colors[0], colors[1] if len(colors) > 1 else "day")
         from .feature_cli import color_command
 
         args = [action, *colors]
@@ -1117,10 +1195,19 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         return catalog()
 
     @tool
+    def vixl_capabilities(topic: str | None = None, fields: bool = False) -> dict:
+        """Task-aware operations, workflows, fields, limits and gotchas: text, drawing, animation, film, layout, color, export."""
+        from .capabilities import lookup
+
+        return lookup(topic, fields=fields)
+
+    @tool
     def vixl_guide(
         brief: Annotated[str | None, Field(description="A kind of work (icon, character, scene, pattern, mandala, logo, diagram, "
                                                       "poster …), a free-text brief such as 'a mascot for a coffee brand', "
                                                       "'operations' or 'looks'")] = None,
+        seed: int | None = None,
+        variety: Literal["low", "medium", "high", "fixed"] | None = None,
     ) -> dict:
         """What to make and how. No brief: the start-here recipe and every kind of work (poster, social card, logo, icon,
         character, scene, pattern, mandala, diagram, slides, stationery, form, animation, pixel art …). A kind or free-text
@@ -1129,7 +1216,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         grain, paper …). Use it before improvising: layouts are text compositions, so non-poster work starts here."""
         from .briefs import guide
 
-        return guide(brief)
+        return guide(brief, seed=seed, variety=variety, workspace=session.workspace)
 
     @tool
     def vixl_styles(
@@ -1225,6 +1312,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         purpose: str | None = None,
         mood: str | None = None,
         seed: int | None = None,
+        variety: Literal["low", "medium", "high", "fixed"] | None = None,
         locks: dict | None = None,
         apply: bool = False,
         slots: dict | None = None,
@@ -1240,8 +1328,8 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         if document or session.path or apply:
             with session.project(write=apply, document=document) as project:
                 return roll_document(project, seed=seed, purpose=purpose, mood=mood, locks=locks,
-                                     apply=apply, slots=slots, unfilled=unfilled)
-        return roll_document(workspace=session.workspace, seed=seed, purpose=purpose, mood=mood, locks=locks)
+                                     apply=apply, slots=slots, unfilled=unfilled, variety=variety)
+        return roll_document(workspace=session.workspace, seed=seed, purpose=purpose, mood=mood, locks=locks, variety=variety)
 
     @tool
     def vixl_brushes_list() -> dict:
@@ -1254,12 +1342,20 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         return catalog()
 
     @tool
-    def vixl_timeline_inspect(document: Document = None) -> dict:
-        """Timeline duration, fps, frame count, markers and each track's keyframes (time, value, easing)."""
-        from .timeline import inspect_timeline
+    def vixl_timeline_inspect(
+        document: Document = None, detail: Literal["summary", "full"] = "summary",
+        targets: list[str] | None = None, properties: list[str] | None = None,
+        start: float | str | None = None, end: float | str | None = None,
+        offset: Annotated[int, Field(ge=0)] = 0, limit: Annotated[int, Field(ge=1, le=200)] = 50,
+        key_offset: Annotated[int, Field(ge=0)] = 0, key_limit: Annotated[int, Field(ge=1, le=200)] = 50,
+    ) -> dict:
+        """Bounded timeline summary; full adds paginated keys. Filter target/property globs and time range."""
+        from .diagnostics import timeline_report
 
         with session.project(document=document) as project:
-            return inspect_timeline(project)
+            return timeline_report(project, detail=detail, targets=targets, properties=properties,
+                                   start=start, end=end, offset=offset, limit=limit,
+                                   key_offset=key_offset, key_limit=key_limit)
 
     @tool
     def vixl_timeline_preview(
@@ -1367,10 +1463,18 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
 
     @tool
     def vixl_validate(
-        profile: str | None = None, rules: list[str] | None = None, document: Document = None
+        profile: str | None = None, rules: list[str] | None = None, document: Document = None,
+        detail: Literal["summary", "full"] = "summary", targets: list[str] | None = None,
+        severity: Literal["error", "warning", "info"] | None = None,
+        suppress: list[str] | None = None, offset: Annotated[int, Field(ge=0)] = 0,
+        limit: Annotated[int, Field(ge=1, le=200)] = 50,
     ) -> dict:
-        """Check bounds, export profiles and assertions without changing the document."""
-        return session.validate(profile, rules, document)
+        """Bounded validation findings; full includes passes. Filters preserve overall validity; suppress omits rules.
+        Mark intentional bleed with layer-intent allow_crop or role background/decoration."""
+        from .diagnostics import validation_report
+
+        report = session.validate(profile, rules, document, suppress=suppress)
+        return validation_report(report, detail=detail, targets=targets, severity=severity, offset=offset, limit=limit)
 
     @tool
     def vixl_history(

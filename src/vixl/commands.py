@@ -468,7 +468,7 @@ def compile_command(tokens):
             require(not overrides, "Preset save does not accept overrides")
         return {"type": f"preset-{action}", **{k: v for k, v in data.items() if v is not None}}
     else:
-        raise VixlError("unknown_command", f"Unknown editing command: {cmd}. Run vixl --help.")
+        return compile_schema_command(cmd, args)
     return {**op, **{k: v for k, v in vars(p.parse_args(args)).items() if v is not None}}
 
 
@@ -493,3 +493,33 @@ def compile_script(path):
             raise VixlError("script_error", f"{path}:{line_no}: {exc}") from exc
     return ops
 
+
+
+def compile_schema_command(kind, args):
+    """Compile catalog extensions directly from the public schema, without a second field registry."""
+    import json
+    from .schema import operation_schema, validate_operation
+
+    variants = operation_schema()["properties"]["operations"]["items"]["oneOf"]
+    spec = next((v for v in variants if v["properties"]["type"]["const"] == kind), None)
+    if spec is None:
+        raise VixlError("unknown_command", f"Unknown editing command: {kind}. Run vixl --help.")
+    parser = Parser(prog=f"vixl {kind}", description=spec.get("description"),
+                    epilog="Arrays and objects use JSON. Full contract: vixl schema. Operations also work in vixl apply batches.")
+    def parse_value(value, constraint):
+        if constraint.get("type") == "string" or (constraint.get("enum") and all(isinstance(v, str) for v in constraint["enum"])):
+            return value
+        try:
+            return json.loads(value)
+        except ValueError:
+            return value
+    for field, constraint in spec["properties"].items():
+        if field == "type":
+            continue
+        options = {"dest": field, "default": argparse.SUPPRESS, "help": constraint.get("description", "").replace("%", "%%")}
+        if constraint.get("type") == "boolean":
+            options["action"] = argparse.BooleanOptionalAction
+        else:
+            options["type"] = lambda value, constraint=constraint: parse_value(value, constraint)
+        parser.add_argument("--" + field.replace("_", "-"), **options)
+    return validate_operation({"type": kind, **vars(parser.parse_args(args))})

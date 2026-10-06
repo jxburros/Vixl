@@ -27,9 +27,9 @@ VECTOR_LEAVES = ("solid", "shape", "gradient", "text", "pathfinder")
 
 
 def _fmt(value):
-    if abs(value - round(value)) < 1e-6:
-        return str(int(round(value)))
-    return f"{value:.4f}".rstrip("0").rstrip(".")
+    if float(value).is_integer():
+        return str(int(value))
+    return f"{value:.12f}".rstrip("0").rstrip(".")
 
 
 def matrix_ops(m):
@@ -43,14 +43,8 @@ def affine(a=1.0, b=0.0, c=0.0, d=1.0, e=0.0, f=0.0):
 
 def layer_matrix(layer, bounds):
     """Local layer pixels (0…rest width/height) → parent pixels, as the renderer places them."""
-    from .render import rest_size
-
-    x, y, w, h = bounds
-    rw, rh = rest_size(layer)
-    angle = math.radians(layer.get("rotation", 0))
-    co, si = math.cos(angle), math.sin(angle)
-    flip = affine(-1 if layer.get("flip_x") else 1, 0, 0, -1 if layer.get("flip_y") else 1)
-    return affine(1, 0, 0, 1, x + w / 2, y + h / 2) @ affine(co, si, -si, co) @ flip @ affine(1, 0, 0, 1, -rw / 2, -rh / 2)
+    from .affine import layer_matrix as shared_matrix
+    return shared_matrix(layer, bounds)
 
 
 def path_ops(commands):
@@ -237,6 +231,8 @@ class PageBuilder:
 
     @staticmethod
     def raster_reason(layer):
+        if layer.get("export_fallback") or layer.get("cut_paper"):
+            return layer.get("export_fallback", "cut-paper grain and edge texture")
         if layer["type"] == "adjustment":
             return "adjustment layers change what is beneath them"
         if layer.get("blend", "normal") != "normal":
@@ -260,7 +256,10 @@ class PageBuilder:
         from .trim import trim_range
 
         if trim_range(layer):
-            return "trimmed stroke"
+            from .shape_catalog import active as catalog_active
+            from .vector_strokes import active as stroke_active
+            if not (catalog_active(layer) or stroke_active(layer) or layer.get("distort") or layer.get("_distort_groups")):
+                return "trimmed stroke"
         if layer["type"] not in VECTOR_LEAVES:
             return {"raster": "image", "frame": "image", "paint": "brush strokes", "pixel": "pixel art",
                     "link": "linked document"}.get(layer["type"], layer["type"])
@@ -329,6 +328,13 @@ class PageBuilder:
         from .render import color
 
         state = self.view.state
+        from .shape_catalog import active as catalog_active
+        from .vector_strokes import active as stroke_active, primitives
+        if catalog_active(layer) or stroke_active(layer) or layer.get("distort") or layer.get("_distort_groups"):
+            for path, paint in primitives(layer, self.view):
+                if path:
+                    self.fill_ops(path_ops(parse_path(path)), color(resolve_color(paint, state)), opacity)
+            return
         fill = color(resolve_color(layer.get("fill", "white"), state))
         stroke = color(resolve_color(layer.get("stroke", "transparent"), state))
         width = layer.get("stroke_width", 1)
@@ -616,6 +622,9 @@ def export_pdf(project, path=None, *, pages=None, content="vector", dpi=None, ba
     from .render import color, render
 
     for number, (label, view) in enumerate(views):
+        from .export_appearance import prepare
+
+        view = prepare(view)
         c = view.state["canvas"]
         width, height, kx, ky, bleed = page_geometry(c, dpi)
         if page_size is None:

@@ -87,9 +87,14 @@ def check_state(project, state):
             "Invalid layer type",
             "invalid_project",
         )
-        project.limits.size(layer["width"], layer["height"])
+        from .transforms import VECTOR_TYPES
+        project.limits.size(layer["width"], layer["height"], vector=layer["type"] in VECTOR_TYPES)
         for axis in ("x", "y", "rotation"):
             finite(layer[axis], axis, -1e9, 1e9)
+        for axis in ("skew_x", "skew_y"):
+            finite(layer.get(axis, 0), axis, -89.999999, 89.999999)
+        if "snap_to_pixel" in layer:
+            require(isinstance(layer["snap_to_pixel"], bool), "snap_to_pixel must be boolean")
         if "pivot" in layer:
             pivot = layer["pivot"]
             require(isinstance(pivot, list) and len(pivot) == 2, "Pivot must be [x, y] fractions of the layer box")
@@ -157,6 +162,9 @@ def check_state(project, state):
     from .timeline import validate_timeline
 
     validate_timeline(project, state)
+    from .animation_support import validate_state as validate_animation_support
+
+    validate_animation_support(project, state)
     from .layouts import validate_layout_record
 
     validate_layout_record(state)
@@ -298,11 +306,19 @@ def assert_rule(project, rule):
     }[op](actual, float(expected))
 
 
-def validate(project, profile=None, rules=None):
+def validate(project, profile=None, rules=None, *, suppress=None):
     checks = []
 
-    def add(name, ok, severity="error"):
-        checks.append({"rule": name, "passed": bool(ok), "severity": severity})
+    from fnmatch import fnmatchcase
+
+    require(suppress is None or isinstance(suppress, list) and all(isinstance(x, str) for x in suppress),
+            "suppress must be a list of rule names or globs", field="suppress")
+
+    def add(name, ok, severity="error", layer=None):
+        if any(fnmatchcase(name, pattern) for pattern in suppress or []):
+            return
+        checks.append({"rule": name, "passed": bool(ok), "severity": severity,
+                       **({"layer": layer["name"], "target": layer["id"]} if layer else {})})
 
     c = project.state["canvas"]
     if profile:
@@ -318,29 +334,27 @@ def validate(project, profile=None, rules=None):
         if profile.startswith("instagram"):
             add("PNG export under 8 MB", len(project.export(format="PNG")) <= 8 * 1024 * 1024)
     add("RGBA8 document", c["color_mode"] == "rgba8")
-    bounds = resolve_layout(project)
-    index = {layer["id"]: layer for layer in project.state["layers"]}
+    from .checks import canvas_projection
+    from .render import resolved_layers
 
-    def decoration(layer):
+    index = {layer["id"]: layer for layer in resolved_layers(project)}
+    bounds = canvas_projection(index, resolve_layout(project, layers=list(index.values())))["bounds"]
+
+    def bleed_intent(layer):
         while layer is not None:
-            if layer.get("role"):
-                return layer["role"] == "decoration"
+            if layer.get("allow_crop") or layer.get("role") in ("decoration", "background"):
+                return True
             layer = index.get(layer.get("parent"))
         return False
 
     for layer in project.state["layers"]:
         x, y, w, h = bounds[layer["id"]]
         inside = x >= 0 and y >= 0 and x + w <= c["width"] and y + h <= c["height"]
-        # Decorative artwork (layer-intent --role decoration) may bleed off the edge on purpose;
-        # that is a warning unless it is text or entirely off the canvas.
-        bleeds = (
-            decoration(layer)
-            and layer["type"] != "text"
-            and x < c["width"] and y < c["height"] and x + w > 0 and y + h > 0
-        )
-        add(f"layer.{layer['name']}.bounds within canvas", inside, "warning" if bleeds else "error")
+        intentional = bleed_intent(layer)
+        add(f"layer.{layer['name']}.bounds within canvas", inside,
+            "info" if intentional else "error", layer)
         if layer["type"] == "text":
-            add(f"{layer['name']} font size >= 24", font_size(project, layer) >= 24, "warning")
+            add(f"{layer['name']} font size >= 24", font_size(project, layer) >= 24, "warning", layer)
     from .checks import missing_glyphs
 
     for item in missing_glyphs(project):
@@ -349,5 +363,5 @@ def validate(project, profile=None, rules=None):
         add(f"Linked asset exists: {item['path']}", item["exists"])
     for rule in rules or []:
         add(rule, assert_rule(project, rule))
-    return {"valid": all(x["passed"] or x["severity"] == "warning" for x in checks), "checks": checks}
+    return {"valid": all(x["passed"] or x["severity"] in ("warning", "info") for x in checks), "checks": checks}
 

@@ -43,13 +43,11 @@ def test_operation_schema_is_in_tools_list(tmp_path):
         assert "vixl_ai" not in tools
         assert "args" not in tools["vixl_ai_generate"].inputSchema["properties"]
         assert tools["vixl_ai_generate"].inputSchema["properties"]["seed"]["type"] == "integer"
-        # Design, pixel/animation, brush, timeline, layout, pen/container, organic/intent, color, guide/placement,
-        # page, rich text, form-field, drawing, stack, linked-document, chart, diagram and text-flow operations extend the catalog; shared constraints and
-        # runtime-validated nested settings keep the inline schema bounded (slim mode is smaller still).
-        # 35.7k before the 2026-10 additions (charts, links, diagrams, text flow, forms rules, looks, styles ...); about
-        # 49k with them. The growth is spread over ~70 new operations, none above ~1.5k; `--schema slim` advertises
-        # names only (under 2k) for clients that want a small tools/list.
-        assert len(json.dumps(schema)) < 50000
+        # Full inline fields include vector editing, motion, characters and materials. Repeated
+        # constraints are shared; slim mode offers the operation names with on-demand field lookup.
+        assert len(json.dumps(schema)) < 95000
+        from vixl.mcp_tools import service_operation_schema
+        assert len(json.dumps(service_operation_schema(slim=True))) < 6000
 
     asyncio.run(run())
 

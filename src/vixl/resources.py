@@ -14,6 +14,9 @@ from .fileio import file_lock
 from .assets import read_bounded
 from .design import named
 from .errors import require
+from .natural_guidance import GUIDANCE as NATURAL_GUIDANCE
+from .motion import GUIDANCE as MOTION_GUIDANCE
+from .safe_catalog import SAFE_PALETTES
 
 PALETTES = {
     "midnight": ["#101828", "#344054", "#667085", "#e4e7ec", "#f9fafb"],
@@ -49,6 +52,8 @@ PALETTES = {
     "peach": ["#5c374c", "#985277", "#ce6a85", "#ff8c61", "#ffd6a5"],
     "sage": ["#344e41", "#3a5a40", "#588157", "#a3b18a", "#dad7cd"],
 }
+PALETTES.update({name: colors for name, (_, colors) in SAFE_PALETTES.items()})
+
 GUIDANCE = {
     "overall": "Choose a clear hierarchy, align related elements, use consistent spacing, preserve readable contrast, inspect at delivery size, and measure before exporting.",
     "minimal": "Use generous negative space, a small palette, few type sizes, and a single focal point. Prefer simple geometry and deliberate alignment.",
@@ -76,6 +81,9 @@ def template(width, height, operations, description):
         "operations": operations,
     }
 
+
+GUIDANCE.update(NATURAL_GUIDANCE)
+GUIDANCE.update(MOTION_GUIDANCE)
 
 TEMPLATES = {}
 for name, w, h in (
@@ -209,7 +217,8 @@ def validate(kind, value):
                 f"Template roll maps variables to color roles: {', '.join(roles)}")
         sample = {**{k: "#000000" for k in roll}, **blanks, **value.get("defaults", {})}
         ops = value.get("operations")
-        require(isinstance(ops, list) and 0 < len(ops) <= 1000, "Template needs 1–1000 operations")
+        maximum = Limits().max_operations
+        require(isinstance(ops, list) and 0 < len(ops) <= maximum, f"Template needs 1–{maximum} operations")
         for op in ops:
             validate_operation(substitute(op, sample))
             require(
@@ -330,17 +339,41 @@ def execute_resource(project, op):
         from .schema import validate_operation
 
         item = get("templates", name, workspace=getattr(project, "_workspace", None))
+        from .typefaces import resolve_seed
+        import random
+        from .layouts import assign_roles, ROLES
+        from .brand import for_project
+        kit = for_project(project)
+        from .variety import sparse_options
+
+        explicit_palette = "palette" in op
+        op = sparse_options(project, op)
+        # Every template receives a reproducible direction; explicit and brand roles win.
+        role_options = {k: op[k] for k in ("palette", "mode") if k in op}
+        if explicit_palette:
+            role_options["policy"] = "strict"
+        if kit.get("palette") and not explicit_palette:
+            role_options["colors"] = kit["palette"]
+        chosen_roles = assign_roles(role_options, random.Random(op["seed"]))
+        swatches = project.state.setdefault("swatches", {})
+        for role in ROLES:
+            if role in kit.get("palette", {}) and not explicit_palette:
+                swatches[role] = kit["palette"][role]
+            elif "palette" in op or role not in swatches:
+                swatches[role] = chosen_roles[role]
         supplied = op.get("variables", {})
         values = {**item.get("defaults", {}), **supplied}
         before = {layer["id"] for layer in project.state["layers"]}
+        from .pages import page_content
+        for page in project.state.get("pages", []):
+            before.update(layer["id"] for layer in page_content(project, page).get("layers", []))
         blanks = {k: v for k, v in item.get("blanks", {}).items() if k not in values}
         values.update(blanks)
-        rolled, seed = {}, None
+        rolled, seed = {"palette": chosen_roles["_palette"], "mode": chosen_roles["_mode"]}, op["seed"]
         missing = {var: role for var, role in item.get("roll", {}).items() if var not in values}
         if missing:
             import random
             import secrets
-            import zlib
 
             from .layouts import assign_roles
 
@@ -348,9 +381,9 @@ def execute_resource(project, op):
             if seed == "random":
                 seed = secrets.randbelow(2**32)
             elif seed is None:
-                seed = zlib.crc32(json.dumps([name, supplied], sort_keys=True, default=str).encode())
+                seed = resolve_seed(None)
             require(isinstance(seed, int) and 0 <= seed < 2**32, "seed must be a nonnegative 32-bit integer or 'random'", field="seed")
-            roles = assign_roles({}, random.Random(seed))
+            roles = chosen_roles
             # Rolled colors become role swatches (existing ones are kept), so palette apply can
             # recolor the template later.
             swatches = project.state.setdefault("swatches", {})
@@ -363,7 +396,8 @@ def execute_resource(project, op):
             from .automation import validate_inputs
             values = validate_inputs(item["inputs"], values)
             project.state["variables"].update(values)
-        expanded = substitute(item["operations"], values)
+        from .container_library import template_operations
+        expanded = substitute(template_operations(project, item, op, values), values)
         # Template text follows the document typography: the largest text is the heading.
         texts = [o for o in expanded if o.get("type") == "text" and "font" not in o]
         largest = max((o.get("size", 48) for o in texts), default=None)
@@ -379,6 +413,16 @@ def execute_resource(project, op):
             resolved, centered = resolve_geometry(project, operation)
             execute(project, resolved)
             apply_centering(project, centered, operation)
+        look = op.get("look", "none")
+        from .container_library import finish_template
+        finish_template(project, look, before)
+        rolled["look"] = look
+        if op.get("style"):
+            from .styles import apply_operations
+
+            for operation in apply_operations(op["style"], palette=False):
+                execute(project, operation)
+            rolled["style"] = op["style"]
         for key, kind, field in (("suites", "suite-set", "suite"), ("motions", "motion-define", "motion"),
                                  ("actions", "action-define", "action")):
             for resource_name, resource in item.get(key, {}).items():
@@ -398,6 +442,10 @@ def execute_resource(project, op):
                 found.append({"slot": slot, "layer": layer["name"]})
         if found or rolled:
             record = {"name": name}
+            if not project.state.get("typography"):
+                from .variety import font_next_step
+
+                record["font_choice"] = font_next_step(project, seed)
             if rolled:
                 record.update(seed=seed, rolled=rolled)
             if found:
@@ -406,11 +454,11 @@ def execute_resource(project, op):
             project.state["template"] = record
 
 
-def create_template(name, variables=None, *, limits=None, workspace=None):
+def create_template(name, variables=None, *, limits=None, workspace=None, seed=None, palette=None, look=None):
     from .project import Project
 
     item = get("templates", name, workspace=workspace)
     p = Project(item["width"], item["height"], item.get("background", "transparent"), limits=limits)
     p._workspace = workspace
-    p.apply({"type": "template-apply", "name": name, "variables": variables or {}}, detail="compact")
+    p.apply({"type": "template-apply", "name": name, "variables": variables or {}, **{k:v for k,v in {"seed":seed,"palette":palette,"look":look}.items() if v is not None}}, detail="compact")
     return p

@@ -42,6 +42,10 @@ def shape_image(project, layer):
     from .render import color
     from .trim import trim_range, trimmed_image
 
+    from .shape_catalog import active as catalog_active
+    from .vector_strokes import active as stroke_active, render as vector_render
+    if catalog_active(layer) or stroke_active(layer) or layer.get("distort") or layer.get("_distort_groups") or any(not isinstance(layer[k], int) for k in ("width", "height")):
+        return vector_render(project, layer)
     if trim_range(layer):
         return trimmed_image(project, layer)
     w, h = layer["width"], layer["height"]
@@ -285,12 +289,16 @@ def special_image(project, layer):
             mask = Image.new("L", (w, h))
             mask.paste(tile.getchannel("A"), (round(item["x"] * sx), round(item["y"] * sy)))
             masks.append(mask)
+        if layer["mode"] == "minus-back":
+            masks = masks[::-1]
         alpha = masks[0]
         for mask in masks[1:]:
             alpha = {
                 "union": ImageChops.lighter,
                 "subtract": ImageChops.subtract,
                 "intersect": ImageChops.darker,
+                "exclude": ImageChops.difference,
+                "minus-back": ImageChops.subtract,
             }[layer["mode"]](alpha, mask)
         from .render import color
 
@@ -455,12 +463,12 @@ def repeat_items(layer, state=None, colors=True):
         item.pop("repeat")
         item.update(rotation=0, flip_x=False, flip_y=False, effects=[], mask=None, opacity=1)
         item.pop("lookup", None)
-        item["width"] = round(layer["width"] + i * settings.get("dw", 0))
-        item["height"] = round(layer["height"] + i * settings.get("dh", 0))
+        item["width"] = layer["width"] + i * settings.get("dw", 0)
+        item["height"] = layer["height"] + i * settings.get("dh", 0)
         for key, end in settings.get("end", {}).items():
             t = i / max(1, count - 1)
             if key in ("width", "height"):
-                item[key] = round(layer[key] * (1 - t) + end * t)
+                item[key] = layer[key] * (1 - t) + end * t
             elif key in ("fill", "color") and colors:
                 from .render import color
 
@@ -482,11 +490,11 @@ def repeat_bounds(layer):
 def repeat_image(project, layer):
     from .render import layer_image
 
-    size = repeat_bounds(layer)
+    size = tuple(math.ceil(v) for v in repeat_bounds(layer))
     project.limits.size(*size)
     image = Image.new("RGBA", size)
     for item, x, y in repeat_items(layer, project.state):
-        project.limits.size(item["width"], item["height"])
+        project.limits.size(item["width"], item["height"], vector=True)
         tile = layer_image(project, item, (0, 0, item["width"], item["height"]))
         image.alpha_composite(tile, (x, y))
     return image

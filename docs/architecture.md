@@ -57,7 +57,7 @@ Defaults (`vixl.model.Limits`):
 - 512 layers; 256 effects per layer.
 - 64 MiB per imported asset/provider response.
 - 256 MiB per archive and its expanded contents.
-- 1,000 operations per submitted batch; 2,000 history revisions (older ones are squashed, not refused).
+- 10,000 operations per submitted batch; 2,000 history revisions (older ones are squashed, not refused).
 - At most 10,000 archive entries.
 - Layer-render cache: 16 entries / 64 MiB, with entries under 32 MiB; decoded-asset cache: 256 MiB.
 

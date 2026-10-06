@@ -4,6 +4,7 @@ import math
 import re
 
 from .errors import require
+from .shape_catalog import KINDS as CATALOG_SHAPES
 
 SHORTCUTS = {
     "triangle": "M50 0 L100 100 L0 100 Z",
@@ -18,7 +19,8 @@ SHORTCUTS = {
     "trapezoid": "M25 0 L75 0 L100 100 L0 100 Z",
     "parallelogram": "M25 0 L100 0 L75 100 L0 100 Z",
 }
-EXTRA_SHAPES = (*SHORTCUTS, "pentagon", "hexagon", "octagon", "capsule", "path", "arc")
+
+EXTRA_SHAPES = (*CATALOG_SHAPES, *SHORTCUTS, "pentagon", "hexagon", "octagon", "capsule", "path", "arc")
 # Shapes drawn from path data that already includes their own stroke inset (see wedge.arc_layer_path).
 PATH_SHAPES = ("path", "arc")
 
@@ -86,6 +88,9 @@ def path_polygons(path):
 
 def shape_path(layer):
     shape = layer["shape"]
+    from .shape_catalog import active, path
+    if active(layer) and shape not in ("path", "arc"):
+        return path(layer), (layer["width"], layer["height"])
     if shape == "path":
         return layer["path"], layer.get("path_view", (layer["width"], layer["height"]))
     if shape == "arc":

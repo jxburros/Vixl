@@ -330,7 +330,8 @@ def open_source(project, path, source):
     try:
         stat = path.stat()
     except OSError as exc:
-        raise VixlError("link_missing", f"Linked document not found: {source} (looked for {path})", source=source,
+        searched = [Path(source).resolve()] if Path(source).is_absolute() else [(root / source).resolve() for root in bases(project)]
+        raise VixlError("link_missing", f"Linked document not found: {source} (looked for {', '.join(map(str, searched))})", source=source,
                         path=str(path)) from exc
     require(path.is_file(), f"Linked document {source!r} is not a file: {path}", "link_missing", source=source)
     stamp = (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns)

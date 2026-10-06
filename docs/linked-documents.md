@@ -115,3 +115,13 @@ Through MCP and REST the same operations go through `vixl_operations_apply` / `P
 
 [Data merge and imposition](imposition.md) builds sheets out of link layers: each cell of a printed sheet
 is a link to the template with one CSV row as its `variables`.
+# Python workspace roots
+
+`Project(..., workspace=ROOT)`, `Project.sized(..., workspace=ROOT)` and
+`Project.load(path, workspace=ROOT)` expose the linked-source workspace publicly.
+The default is the current directory captured when the project is created or
+loaded. Relative links resolve against that fixed root, then the saved document's
+directory. Saving into a subdirectory or changing the process directory does not
+change an existing project's workspace. When opening a master from another working
+directory, pass the original workspace explicitly; workspace paths are not embedded
+in portable documents.

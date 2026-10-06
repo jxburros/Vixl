@@ -26,6 +26,15 @@ from .charts import TYPES as CHART_TYPES
 from .finishing import TYPES as FINISHING_TYPES
 from .diagrams import TYPES as DIAGRAM_TYPES
 from .textflow import TYPES as FLOW_TYPES
+from .transforms import TYPES as TRANSFORM_TYPES
+from .motion import TYPES as MOTION_TYPES
+from .characters import TYPES as CHARACTER_TYPES
+from .comics import TYPES as COMIC_TYPES
+from .textures import TYPES as TEXTURE_TYPES
+from .audio import TYPES as AUDIO_TYPES
+from .captions import TYPES as CAPTION_TYPES
+from .scene import TYPES as SCENE_TYPES
+from .vector_paths import TYPES as VECTOR_TYPES
 
 from copy import deepcopy
 import hashlib
@@ -57,17 +66,9 @@ PIVOT_ANCHORS = {
     "left": [0, 0.5], "center": [0.5, 0.5], "right": [1, 0.5],
     "bottom-left": [0, 1], "bottom": [0.5, 1], "bottom-right": [1, 1],
 }
-ALIASES = {
-    "set_opacity": "opacity",
-    "set_blend": "blend",
-    "add_layer": "add",
-    "remove_layer": "remove",
-    "move_layer": "move",
-    "set_effect": "effect",
-    "make_selection": "select",
-}
 
-OPERATION_TYPES = list(DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_TYPES + BRUSH_TYPES + TIMELINE_TYPES + LAYOUT_TYPES + COLOR_TYPES + AUTOMATION_TYPES + CREATIVE_TYPES + CONTAINER_TYPES + AUTHORING_TYPES + ORGANIC_TYPES + IRREGULAR_TYPES + GUIDE_TYPES + RICH_TYPES + PAGE_TYPES + FORM_TYPES + DRAWING_TYPES + STACK_TYPES + SELECTOR_TYPES + LINK_TYPES + CHART_TYPES + FINISHING_TYPES + DIAGRAM_TYPES + FLOW_TYPES) + [
+
+OPERATION_TYPES = list(DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_TYPES + BRUSH_TYPES + TIMELINE_TYPES + LAYOUT_TYPES + COLOR_TYPES + AUTOMATION_TYPES + CREATIVE_TYPES + CONTAINER_TYPES + AUTHORING_TYPES + ORGANIC_TYPES + IRREGULAR_TYPES + GUIDE_TYPES + RICH_TYPES + PAGE_TYPES + FORM_TYPES + DRAWING_TYPES + STACK_TYPES + SELECTOR_TYPES + LINK_TYPES + CHART_TYPES + FINISHING_TYPES + DIAGRAM_TYPES + FLOW_TYPES + TRANSFORM_TYPES + MOTION_TYPES + CHARACTER_TYPES + COMIC_TYPES + TEXTURE_TYPES + AUDIO_TYPES + VECTOR_TYPES + CAPTION_TYPES + SCENE_TYPES) + [
     "add",
     "solid",
     "gradient",
@@ -200,7 +201,8 @@ def default_name(project, base):
 def append_layer(project, layer):
     require(len(project.state["layers"]) < project.limits.max_layers, "Layer limit reached", "resource_limit")
     unique_name(project, layer["name"])
-    project.limits.size(layer["width"], layer["height"])
+    from .transforms import VECTOR_TYPES
+    project.limits.size(layer["width"], layer["height"], vector=layer["type"] in VECTOR_TYPES)
     project.state["layers"].append(layer)
     project.state["active_layer"] = layer["id"]
     return layer
@@ -268,9 +270,35 @@ def _select(project, op):
 
 def execute(project, op):
     kind = op.get("type", op.get("operation"))
-    kind = ALIASES.get(kind, kind)
+    from .normalize import _canonical_type
+
+    kind = _canonical_type(kind, set(OPERATION_TYPES))
     require(isinstance(kind, str), "Operation requires a type")
     target = op.get("target", op.get("layer"))
+    if kind in SCENE_TYPES:
+        from .scene import execute as execute_scene
+        return execute_scene(project, op)
+    if kind in CAPTION_TYPES:
+        from .captions import execute as execute_caption
+        return execute_caption(project, op)
+    if kind in VECTOR_TYPES:
+        from .vector_paths import execute as execute_vector
+        return execute_vector(project, op)
+    if kind in AUDIO_TYPES:
+        from .audio import execute as execute_audio
+        return execute_audio(project, op)
+    if kind in COMIC_TYPES:
+        from .comics import execute as execute_comic
+        return execute_comic(project, op)
+    if kind in TEXTURE_TYPES:
+        from .textures import execute as execute_texture
+        return execute_texture(project, op)
+    if kind in MOTION_TYPES:
+        from .motion import execute as execute_motion
+        return execute_motion(project, op)
+    if kind in CHARACTER_TYPES:
+        from .characters import execute as execute_character
+        return execute_character(project, op)
     if target is not None and kind in IN_PLACE_TYPES:
         from .inplace import execute as execute_in_place
 
@@ -279,6 +307,9 @@ def execute(project, op):
         from .stacks import guard
 
         guard(project, op, target)
+    from .transforms import execute as execute_transform
+    if kind in (*TRANSFORM_TYPES, "move", "resize", "scale"):
+        return execute_transform(project, op)
     if kind in STACK_TYPES:
         from .stacks import execute as execute_stack
 
@@ -378,10 +409,12 @@ def execute(project, op):
         execute_design(project, op)
         return
     if kind == "add":
+        original_size = None
         if "asset" in op:
             image = project.image(op["asset"])
             asset = op["asset"]
-            provenance = op.get("provenance", {"type": "embedded"})
+            provenance = deepcopy(op.get("provenance", {"type": "embedded"}))
+            data = project.assets[asset]
         else:
             source = Path(op["path"]).resolve()
             data = read_bounded(source, project.limits.max_asset_bytes)
@@ -389,12 +422,23 @@ def execute(project, op):
             provenance = {
                 "type": "imported",
                 "original_filename": source.name,
+                "original_path": str(source),
                 "checksum": hashlib.sha256(data).hexdigest(),
             }
+        original_size = image.size
+        width, height = op.get("width", image.width), op.get("height", image.height)
+        if op.get("max_pixels") is not None or op.get("downsample"):
+            require(not op.get("linked"), "Downsampling requires an embedded image, not linked=True", field="downsample")
+            require(op.get("downsample") in (None, "placed@2x"), "downsample must be placed@2x", field="downsample")
+            asset, image = add_encoded(project, data, max_pixels=op.get("max_pixels"),
+                                       placed_size=(width * 2, height * 2) if op.get("downsample") else None,
+                                       fit=op.get("fit", "fill"))
+            provenance.update(original_size=list(original_size), embedded_size=list(image.size))
+            provenance.update({key: op[key] for key in ("downsample", "max_pixels") if key in op})
         layer = new_layer(
             op["name"] if "name" in op else default_name(project, Path(op.get("path", "image")).stem),
             "raster",
-            *image.size,
+            width, height,
             asset=asset,
             provenance=provenance,
         )
@@ -577,49 +621,6 @@ def execute(project, op):
             # A text-layout box keeps its wrapping dimensions; plain text re-fits its content.
             layer["width"], layer["height"], _ = text_metrics(project, layer)
             layer["auto_size"] = True
-    elif kind == "move":
-        from .render import stored_origin
-
-        bounds = resolve_layout(project)[layer["id"]]
-        origin = list(bounds[:2])
-        for i, axis in enumerate(("x", "y")):
-            if axis in op:
-                origin[i] = finite(op[axis], axis) + (bounds[i] if op.get("relative") else 0)
-        layer["x"], layer["y"] = stored_origin(layer, origin)
-        layer["constraints"] = {}
-    elif kind in ("resize", "scale"):
-        w, h = layer["width"], layer["height"]
-        if kind == "scale":
-            # A negative factor mirrors that axis (value: both axes) and scales by its size.
-            require(any(key in op for key in ("value", "x", "y")), "Scale requires value, x or y", field="value")
-            both = op.get("value", 1)
-            factors = {"value": both, "x": op.get("x", both), "y": op.get("y", both)}
-            for name, factor in factors.items():
-                finite(factor, f"scale {name}")
-                require(0.001 <= abs(factor) <= 100, f"scale {name} must be 0.001–100 in size (negative mirrors); got {factor}", field=name)
-            if factors["x"] < 0 or factors["y"] < 0:
-                require(layer["type"] != "field", "Negative scale mirrors the layer; PDF form fields are upright rectangles", field="target")
-            for axis, key in (("x", "flip_x"), ("y", "flip_y")):
-                if factors[axis] < 0:
-                    layer[key] = not layer[key]
-            w, h = max(1, round(w * abs(factors["x"]))), max(1, round(h * abs(factors["y"])))
-        else:
-            require("width" in op or "height" in op, "Resize requires width or height")
-            one_side = ("width" in op) != ("height" in op)
-            require(one_side or not op.get("keep_aspect"),
-                    "keep_aspect scales the other side proportionally: give width or height, not both",
-                    field="keep_aspect")
-            # A side that is not given keeps its size, except on photos, where stretching one axis is
-            # rarely meant: image layers scale proportionally unless keep_aspect is false.
-            if one_side and op.get("keep_aspect", layer["type"] == "raster"):
-                if "width" in op:
-                    w, h = op["width"], max(1, round(h * op["width"] / w))
-                else:
-                    w, h = max(1, round(w * op["height"] / h)), op["height"]
-            else:
-                w, h = op.get("width", w), op.get("height", h)
-        project.limits.size(w, h)
-        layer.update(width=w, height=h, auto_size=False)
     elif kind in ("rotate", "pivot", "flip") and layer["type"] == "field":
         raise VixlError("invalid_operation", f"{kind} does not apply to fields: PDF form fields are upright rectangles",
                         field="target")
@@ -879,4 +880,3 @@ def execute(project, op):
         require(len(layer["effects"]) <= 256, "Effect limit reached", "resource_limit")
     else:
         raise VixlError("unknown_operation", f"Unknown operation: {kind}")
-

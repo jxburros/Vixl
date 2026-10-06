@@ -1,0 +1,37 @@
+# Marketing build options
+
+Use `p.check(checks=["deck"], deck={"profile": "phone"})` for a carousel,
+`profile="screen"` for a PDF read on a laptop, and `profile="projected"` for
+slides shown to an audience. Instagram named sizes infer `phone`; other documents
+default to `projected`. Explicit settings always take precedence.
+
+| Profile | Minimum text | Word limit | Reading width |
+| --- | --- | --- | --- |
+| projected | 18 points on the slide | 60 | 320 px thumbnails |
+| screen | 14 px at reading width | 250 | 1280 px |
+| phone | 12 px at reading width | 150 | 540 px |
+
+`deck.min_font` overrides the minimum in the profile's units. Screen and phone
+profiles omit the projected type-scale advice unless requested explicitly. When
+`legibility` is requested, phone covers use a 320 px grid preview and inner pages
+use 540 px. Explicit `thumbnail_width` and `min_thumbnail_text` reach every page.
+Single-page `og-image` and `x-post` checks default to 600 px previews.
+
+Gradients that fade to transparency at an edge are inferred as decoration for
+bounds/overlap checks (radial gradients use their outside edge). Explicit
+`layer-intent role=content` opts back into those findings. Intentional clipping is
+still reported as information.
+
+To reduce embedded image size while preserving placement, use `downsample="placed@2x"`
+or `max_pixels` on `add` and `frame` operations:
+
+```python
+p.apply({"type": "frame", "path": "photo.jpg", "name": "photo",
+         "width": 490, "height": 255, "downsample": "placed@2x"})
+```
+
+`placed@2x` retains enough resolution for the frame's fill/fit mode and never
+upscales. `max_pixels` caps the embedded pixel area and may reduce that resolution
+further. The source path, checksum, original size and embedded size are recorded
+in provenance; the original file remains untouched. Saving drops unreferenced
+assets, while assets referenced by retained history stay available for undo.

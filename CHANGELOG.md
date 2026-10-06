@@ -1,5 +1,50 @@
 # Changelog
 
+## 0.20.0
+
+### Editable vector drawing and placement
+
+- Expand the parametric shape catalog with configurable arrows, per-corner rounding/chamfers, rounded stars and seals, geometric/technical shapes, symbols and ornaments.
+- Add complete stroke controls: dashes, offsets, caps, joins, alignment, multiple strokes, width profiles and markers, with shared vector geometry for SVG/PDF output.
+- Convert shapes to editable path nodes; move/insert/delete/reverse/round nodes, simplify and smooth paths, offset paths, outline strokes and use additional pathfinder modes. Non-destructive vector distortion supports envelopes and corner pinning, including animated parameters.
+- Preserve fractional vector sizes and positions. Resize/scale from named or fractional anchors, skew/shear, apply affine matrices, resize relatively, match sizes and fit/fill regions. Optional pixel snapping remains available.
+- `move` explicitly supports canvas coordinates for grouped layers. Inspect reports parent/canvas bounds and coordinate semantics. `vixl_spatial` measures relationships, margins, alignment, grid/guide offsets, compositional positions, hit tests, empty regions and applicable snap suggestions.
+
+### Containers, templates and design variety
+
+- Hug-content stacks support padding and backgrounds for pills, badges, buttons and code windows. Containers support image slots, focal cropping, masks, adaptive min/max sizing, reflow and content-preserving layout variants.
+- Expand the container and use-case template libraries, with palette/style/light/dark variants and a reproducible preview gallery. Comic layouts provide editable panels, reading order, gutters, artwork slots, captions and dialogue.
+- Sparse briefs choose from curated safe palettes, layouts, pairings and understated finishes. Choices and seeds are reported; explicit seeds, fixed variety and user/brand locks preserve reproducibility.
+- Rolls vary additional coherent dimensions and keep a bounded workspace history to reduce repeats. Low/medium/high variety controls the choice pool.
+
+### Motion, characters, sound and film review
+
+- Procedural motion, compact keyframe arrays, character part standards, reusable character assets, constrained rigs, two-bone IK, reusable cycles and viseme cues reduce handwritten keyframes.
+- Add depth-based parallax, camera choreography, deterministic particles, compositing light/color controls and cut-paper texture/cadence. New motion and character checks report suspicious timing or invalid rigs.
+- Speech/thought/shout/whisper bubbles size to their text and follow their target; captions support font/style/background and fade/typewriter animation.
+- Import, synthesize and mix audio tracks with timing, gain and fades; export WAV and mux timeline/film video. Video sampling returns visible frames; audio analysis reports levels, clipping, silence, onset timing and optional spectrograms.
+- Preview a film frame, shot or interval with camera/transitions applied before a full render. Draft previews, seeking and cached unchanged frames make review faster.
+
+### Materials and visual guidance
+
+- Built-in repeatable patterns and custom tiles, pattern-filled artwork/strokes, pencil/charcoal/crayon/ink-wash/stipple/hatch finishes and an undoable clone stamp with aligned and merged-source sampling.
+- On-demand references and recipes cover motion, natural color/light, anatomy, illustration and perspective. Natural palette and figure/perspective helpers include advisory checks based on explicit scene measurements.
+
+### Text, preview and export corrections
+
+- Preserve leading whitespace, including non-breaking spaces, in text and rich text. Inspection exposes ink/line bounds, baselines, ascent/descent and cap/x heights.
+- Re-import Vixl SVGs with empty definitions; prevent zero-size allocations in reduced previews of tiny repeated shapes; keep links rooted consistently before and after saving.
+- Support raster `Project.export(page="all")` contact sheets. Export methods consistently refuse existing files unless `overwrite=True` is explicit.
+- Deck checks respect thumbnail width and projected/screen/phone profiles. Decorative glows/gradients and explicit crop intent avoid false crop/overlap findings.
+- Opt-in downsampling keeps placed image assets compact while preserving source-resolution defaults. Existing PPTX font warnings, deterministic form measurements and bulk editing regressions remain covered.
+
+### Agent interfaces and release discipline
+
+- Atomic batches now allow 10,000 operations. Canonical alias handling and factored schema constraints keep interfaces aligned; new CLI operations derive their flags from the same schema.
+- `vixl_capabilities` provides task-aware fields, workflows and gotchas. Schema help explicitly documents registered fonts and literal-pixel path coordinates. Workflow errors identify unknown fields, valid fields and likely corrections.
+- Validation and timeline inspection return bounded summaries by default, with filters, pagination and full-detail opt-in. Intentional bleed can be marked or individual validation rules suppressed.
+- Document the measured full/core/compact/slim MCP tradeoffs and keep generated repository artifacts free of model signatures. Update release metadata to 0.20.0.
+
 ## 0.19.0
 
 ### Print and raster export

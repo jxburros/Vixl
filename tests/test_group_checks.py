@@ -129,11 +129,11 @@ def test_cli_svg_reports_raster_fallbacks(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     p = logo()
     p.save("logo.vixl")
-    result, _ = dispatch(["-p", "logo.vixl", "export", "logo.svg"])
+    result, _ = dispatch(["-p", "logo.vixl", "export", "logo.svg", "--overwrite"])
     assert result["svg"] == {"vector_only": True, "raster_fallbacks": []}
     p.apply({"type": "filter", "target": "label", "name": "ink-blot"})
     p.save("logo.vixl")
-    result, _ = dispatch(["-p", "logo.vixl", "export", "logo.svg"])
+    result, _ = dispatch(["-p", "logo.vixl", "export", "logo.svg", "--overwrite"])
     assert result["svg"]["vector_only"] is False
     assert any(f["layer"] == "label" for f in result["svg"]["raster_fallbacks"])
 

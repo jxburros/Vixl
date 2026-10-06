@@ -67,7 +67,9 @@ def fonts():
 
 @lru_cache(maxsize=1)
 def pairings():
-    return json.loads((DATA / "font-pairings.json").read_text(encoding="utf-8"))
+    from .safe_catalog import safe_pairing
+
+    return [{**entry, "safe": safe_pairing(entry)} for entry in json.loads((DATA / "font-pairings.json").read_text(encoding="utf-8"))]
 
 
 def principles():
@@ -140,6 +142,7 @@ def _brief(pairing):
         "body": f"{pairing['body']['family']} {pairing['body']['weight']}",
         "relationship": pairing.get("relationship"),
         "mood": pairing.get("mood", []),
+        "safe": pairing.get("safe", False),
     }
 
 
@@ -182,10 +185,12 @@ def roll_pairing(seed=None, mood=None, best_for=None):
     """A seeded pick among pairings matching the filters (or all of them if none match)."""
     seed = resolve_seed(seed)
     pool = list_pairings(mood, best_for, full=True)["pairings"] or list(pairings())
+    if mood is None:
+        pool = [item for item in pool if item.get("safe")] or pool
     return random.Random(seed).choice(pool), seed
 
 
-def roll(seed=None, *, purpose=None, mood=None, canvas=None, locks=None):
+def roll(seed=None, *, purpose=None, mood=None, canvas=None, locks=None, variety="medium", recent=None):
     """Roll a coherent design direction: pairing first, then a mood-consistent palette and layout.
 
     Every field that ``locks`` fixes is kept; the rest come from the seed, which is returned so
@@ -193,19 +198,38 @@ def roll(seed=None, *, purpose=None, mood=None, canvas=None, locks=None):
     """
     from .layouts import ACCENTS, DENSITY_MARGIN, LAYOUTS, RATIOS
     from .resources import PALETTES
+    from .safe_catalog import SAFE_PALETTES
+    from .variety import VARIETIES, choose, dimensions
 
     locks = dict(locks or {})
+    contrast = locks.get("weight_contrast")
+    require(contrast in (None, "moderate", "strong"), "weight_contrast must be moderate or strong", field="locks")
+    require(variety in VARIETIES, "variety must be low, medium, high or fixed", field="variety")
+    recent = recent or []
+    if variety == "fixed" and seed is None:
+        seed = 0
     seed = resolve_seed(seed)
     rng = random.Random(seed)
     if "pairing" in locks:
         pairing = get_pairing(locks.pop("pairing"))
     else:
         pool = list_pairings(mood, purpose, full=True)["pairings"] or list_pairings(mood, full=True)["pairings"] or list(pairings())
+        pool = [p for p in pool if p.get("safe")] or [p for p in pairings() if p.get("safe")]
+        if contrast:
+            pool = [p for p in pool if ("strong" if p["heading"]["weight"] - p["body"]["weight"] >= 300 else "moderate") == contrast]
+            if not pool:
+                pool = [p for p in pairings() if p.get("safe") and ("strong" if p["heading"]["weight"] - p["body"]["weight"] >= 300 else "moderate") == contrast]
+            require(pool, "No safe pairing has the requested weight contrast", field="locks")
         pairing = rng.choice(pool)
+    actual_contrast = "strong" if pairing["heading"]["weight"] - pairing["body"]["weight"] >= 300 else "moderate"
+    require(contrast is None or contrast == actual_contrast,
+            "Locked pairing and weight_contrast conflict; unlock one choice", field="locks")
     moods = {slug(m) for m in pairing.get("mood", [])} | ({slug(mood)} if mood else set())
-    palettes = sorted(PALETTES)
-    fitting = [name for name in palettes if {slug(m) for m in PALETTE_MOODS.get(name, ())} & moods]
-    layouts = sorted(LAYOUTS)
+    palettes = sorted(name for name in PALETTES if name in SAFE_PALETTES)
+    fitting = [name for name in palettes if {slug(m) for m in (*PALETTE_MOODS.get(name, ()), SAFE_PALETTES[name][0])} & moods]
+    if len(fitting) < 3:
+        fitting = palettes
+    layouts = sorted(name for name in LAYOUTS if LAYOUTS[name].get("safe"))
     if purpose:
         suited = [name for name in layouts if any(slug(purpose) in slug(b) for b in LAYOUTS[name]["best_for"])]
         layouts = suited or layouts
@@ -216,18 +240,38 @@ def roll(seed=None, *, purpose=None, mood=None, canvas=None, locks=None):
         elif aspect > 1.6:
             layouts = [n for n in layouts if n not in ("story-vertical", "letterhead", "framed")] or layouts
     direction = {
-        "layout": rng.choice(layouts),
+        "layout": choose(rng, layouts, recent, "layout"),
         "pairing": pairing["name"],
-        "palette": rng.choice(fitting or palettes),
+        "palette": choose(rng, fitting or palettes, recent, "palette"),
         "mode": rng.choice(["light", "light", "dark"]),
         "type_scale": rng.choice([k for k in RATIOS if k != "augmented-fourth"]),
         "density": rng.choice(list(DENSITY_MARGIN)),
         "accent": rng.choice(ACCENTS),
         "layout_seed": rng.randrange(2**32),
+        **dimensions(rng, pairing, variety),
     }
     unknown = set(locks) - set(direction)
     require(not unknown, f"Unknown lock(s) {sorted(unknown)}; lockable: {', '.join(direction)}", field="locks")
     direction.update(locks)
+    if "container" in locks:
+        from .resources import get
+
+        component = get("containers", direction["container"])
+        variants = list(component.get("variants", {})) or ["default"]
+        if "container_variant" not in locks:
+            direction["container_variant"] = rng.choice(variants)
+        require(direction["container_variant"] in ("default", *variants), "Unknown container variant", field="locks")
+    if "mode" in locks:
+        direction["color_assignment"] = direction["mode"]
+    else:
+        direction["mode"] = direction["color_assignment"]
+    if direction["style"] == "editorial" and direction["corner"] == "pill":
+        require("corner" not in locks or "style" not in locks,
+                "Editorial style and pill corners conflict; unlock one choice", field="locks")
+        if "corner" in locks:
+            direction["style"] = "minimalist"
+        else:
+            direction["corner"] = "soft"
     require(direction["layout"] in LAYOUTS, f"Unknown layout {direction['layout']!r}")
     operation = {
         "type": "layout-apply",
@@ -238,9 +282,13 @@ def roll(seed=None, *, purpose=None, mood=None, canvas=None, locks=None):
         "type_scale": direction["type_scale"],
         "density": direction["density"],
         "accent": direction["accent"],
+        "direction": {key: value for key, value in direction.items() if key not in ("layout", "palette", "mode", "type_scale", "density", "accent", "layout_seed", "pairing")},
     }
+    if "container" in locks:
+        operation["direction"]["place_container"] = True
     return {
         "seed": seed,
+        "variety": variety,
         "direction": direction,
         "pairing": pairing,
         "steps": [
@@ -250,6 +298,9 @@ def roll(seed=None, *, purpose=None, mood=None, canvas=None, locks=None):
             f"--accent {direction['accent']} --set title=…",
         ],
         "operation": operation,
+        "component": {"resource": direction["container"], "variant": direction["container_variant"],
+                      "applied": "container" in locks,
+                      "how": "Lock container to compose supplied content inside this component; otherwise use it in container-place."},
         "note": "One roll among many: roll again (new seed) for alternatives, lock what you like (--lock palette=sage), "
         "and keep a direction by its seed.",
     }
@@ -389,7 +440,7 @@ def pair_fonts(project, pairing=None, *, seed=None, mood=None, best_for=None, cl
 
 
 def roll_document(project=None, *, workspace=None, seed=None, purpose=None, mood=None, canvas=None,
-                  locks=None, apply=False, slots=None, unfilled=None):
+                  locks=None, apply=False, slots=None, unfilled=None, variety=None):
     """Choose brand defaults and optionally commit the whole direction in one undo step.
 
     ``unfilled`` says what an unfilled layout slot becomes: ``omit`` leaves it out, so the applied
@@ -409,7 +460,13 @@ def roll_document(project=None, *, workspace=None, seed=None, purpose=None, mood
     if project and canvas is None:
         c = project.state["canvas"]
         canvas = (c["width"], c["height"])
-    result = roll(seed, purpose=purpose, mood=mood, canvas=canvas, locks=choices)
+    from .variety import history, remember, seed_for
+
+    workspace = workspace or (getattr(project, "_workspace", None) if project else None)
+    explicit_seed = seed is not None and seed != "random"
+    seed, variety = seed_for(project, seed, variety, workspace)
+    recent = [] if explicit_seed or variety == "fixed" else history(workspace)
+    result = roll(seed, purpose=purpose, mood=mood, canvas=canvas, locks=choices, variety=variety, recent=recent)
     if kit.get("palette") and not (locks or {}).get("palette"):
         result["operation"]["colors"] = kit["palette"]
     unfilled = unfilled or ("omit" if slots else "blank")
@@ -439,4 +496,7 @@ def roll_document(project=None, *, workspace=None, seed=None, purpose=None, mood
             candidate.commit()
         project.__dict__.update(candidate.__dict__)
         result["applied"] = applied
+        result["check"] = project.check(checks=["contrast", "legibility"])
+    if not explicit_seed and variety != "fixed":
+        remember(workspace, result)
     return result

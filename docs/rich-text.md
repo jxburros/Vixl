@@ -110,3 +110,17 @@ the text). Variables (`${name}`) work inside spans and keep the span's formattin
 numbers (`${page}`) on a master. A timeline that keyframes `text` draws those frames as plain text.
 
 Warped text (`text-layout --warp`) and text on a path draw plain text only.
+# Whitespace and inspectable metrics
+
+Plain `text` and rich-text spans preserve authored leading spaces and nonbreaking
+spaces. Tabs advance to four-character stops, including across adjacent styled spans.
+Automatic wrapping may discard an ordinary separator at a line break. Markdown
+still interprets indentation for nested lists; use spans for literal code samples.
+
+`Project.inspect(target)` reports `ink_bounds`, `line_bounds`, `baseline`,
+`baselines`, `ascent`, `descent`, `cap_height` and `x_height` for both text kinds.
+Bounds are `[x, y, width, height]`; baselines are y coordinates. These metrics use
+unrotated parent coordinates (`metrics_space="unrotated-parent"`) and pixels.
+The historical `resolved_bounds` continues to describe the layer's own layout box.
+Line boxes include font ascent/descent and line spacing, while ink boxes measure
+glyph outlines. Brief apply results include the new text geometry as well.

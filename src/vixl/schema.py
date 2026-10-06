@@ -4,6 +4,7 @@ from copy import deepcopy
 from functools import lru_cache
 
 from .inplace import target_schema
+from .model import Limits
 from .render import EFFECTS, BLENDS
 
 S = {"type": "string"}
@@ -16,7 +17,7 @@ COORD = {
     "description": "Pixels, 'center', or a percentage of the canvas/parent such as '50%'.",
 }
 SIZE = {
-    "anyOf": [POSITIVE_INT, {"type": "string", "pattern": r"^\d+(\.\d+)?%$"}],
+    "anyOf": [{"type": "number", "exclusiveMinimum": 0}, {"type": "string", "pattern": r"^\d+(\.\d+)?%$"}],
     "description": "Pixels or a percentage of the canvas/parent such as '25%'.",
 }
 COORD_FIELDS = ("x", "y", "width", "height")
@@ -68,6 +69,10 @@ def _operation_schema():
             "x": COORD,
             "y": COORD,
             "provenance": {"type": "object"},
+            "width": SIZE,
+            "height": SIZE,
+            "max_pixels": {"type": "integer", "minimum": 1},
+            "downsample": enum("placed@2x"),
         },
         anyOf=[{"required": ["path"]}, {"required": ["asset"]}],
     )
@@ -96,7 +101,9 @@ def _operation_schema():
 
     add("palette-apply", {"name": S, "prefix": S, "roles": {"anyOf": [B, role_schema()]}, "keep_order": B,
                           "policy": enum("strict", "accessible")}, ["name"])
-    add("template-apply", {"name": S, "variables": {"type": "object"}, "seed": {"type": ["integer", "string"]}}, ["name"])
+    add("template-apply", {"name": S, "variables": {"type": "object"}, "seed": {"type": ["integer", "string"]},
+                           "palette": {"type": ["string", "array"], "items": S}, "look": {**S, "description": "Named finish for the template."}, "style": {**S, "description": "Named design style for the template."},
+                           "mode": enum("light", "dark"), "columns": {"type": "integer", "minimum": 1, "maximum": 12}}, ["name"])
     add("guidance", {"name": S, "text": S, "style": S, "delete": B}, ["name"])
     add("font-register", {"name": S, "asset": S, "role": S}, ["name"])
     text = {
@@ -169,14 +176,12 @@ def _operation_schema():
         },
         anyOf=[{"required": ["width"]}, {"required": ["height"]}],
     )
-    # A negative factor mirrors: value flips both axes, x or y just that one (scale x: -1 = flip horizontal).
     scale = {"type": "number", "description": "Size factor, 0.001-100 (0.8 = 80%). Negative values mirror the layer on that axis."}
     add("scale", {"value": {**scale, "description": "Size factor for both axes, 0.001-100 (0.8 = 80%). Negative mirrors both axes."},
                   "x": {**scale, "description": "Horizontal factor, overriding value. Negative mirrors horizontally, like flip."},
                   "y": {**scale, "description": "Vertical factor, overriding value. Negative mirrors vertically."}},
         anyOf=[{"required": ["value"]}, {"required": ["x"]}, {"required": ["y"]}])
     add("rotate", {"value": N}, ["value"])
-    # value: [x, y] fractions of the unrotated box (0.5, 0.5 = center) or an anchor such as "top-left".
     add("pivot", {"value": {"type": ["array", "string"], "items": N}, "units": enum("fraction", "px"), "clear": B})
     add("opacity", {"value": {"type": "number", "minimum": 0, "maximum": 1}}, ["value"])
     add("blend", {"value": enum(*BLENDS)}, ["value"])
@@ -358,6 +363,32 @@ def _operation_schema():
         {"name": S, "color": S, "scheme": S, "count": {"type": "integer", "minimum": 2, "maximum": 12}},
         ["name", "color"],
     )
+    from .scene import schemas as scene_schemas
+
+    scene_schemas(add)
+    from .captions import schemas as caption_schemas
+
+    caption_schemas(add)
+    from .vector_paths import schemas as vector_schemas
+
+    vector_schemas(add)
+    from .audio import schemas as audio_schemas
+
+    audio_schemas(add)
+    from .comics import schemas as comic_schemas
+    from .textures import schemas as texture_schemas
+
+    comic_schemas(add)
+    texture_schemas(add)
+    from .motion import schemas as motion_schemas
+    from .characters import schemas as character_schemas
+
+    motion_schemas(add)
+    character_schemas(add)
+    from .transforms import schemas as transform_schemas, enrich_transform_schemas
+
+    transform_schemas(add)
+    enrich_transform_schemas(variants)
     from .schema_docs import enrich
 
     enrich(variants)
@@ -366,7 +397,7 @@ def _operation_schema():
         "title": "Vixl operation batch",
         "type": "object",
         "properties": {
-            "operations": {"type": "array", "minItems": 1, "maxItems": 1000, "items": {"oneOf": variants}}
+            "operations": {"type": "array", "minItems": 1, "maxItems": Limits().max_operations, "items": {"oneOf": variants}}
         },
         "required": ["operations"],
         "additionalProperties": False,
@@ -384,12 +415,11 @@ def validate_operation(operation, notes=None, index=None):
     import json
     from .errors import VixlError, require
     from .normalize import normalize_operation
-    from .operations import ALIASES
 
     require(isinstance(operation, dict), "Each operation must be an object")
     result = deepcopy(operation)
     kind = result.pop("operation", result.get("type"))
-    result["type"] = ALIASES.get(kind, kind) if isinstance(kind, str) else kind
+    result["type"] = kind
     # Any operation can name the page it edits; "page" operations use the field themselves.
     page = result.pop("page", None) if result["type"] != "page" else None
     if page is not None:
@@ -488,4 +518,3 @@ def schema_error(error, operation, allowed):
         details["expected"] = {k: v for k, v in error.schema.items() if k != "description"}
     details["schema"] = hint
     return VixlError("invalid_operation", f"{message} (see {hint})", **details)
-

@@ -370,6 +370,11 @@ def properties(action, fields):
 
 # One line per action: what it does and what it returns.
 SUMMARIES = {
+    "guide-check": "Check explicit lighting, anatomy, perspective and illustration measurements against advisory rules.",
+    "perspective-guides": "Plan vanishing-point guides and scale-by-depth object sizes.",
+    "figure-plan": "Plan an editable figure from head units with a named part map.",
+    "pattern-list": "List built-in and document-defined repeatable textures and patterns.",
+    "pattern-check": "Measure edge discontinuity in a pattern tile before repeating it.",
     "check": "Run an attached or inline check suite against the document; returns passed/failed/needs_review per rule.",
     "act": "Apply operations to a candidate, run suites, and commit only when every suite passes.",
     "capture": "Turn the open document into a portable recipe document with typed inputs; writes a new .vixl.",
@@ -386,6 +391,9 @@ SUMMARIES = {
     "resume": "Resume an interrupted or failed background job.",
     "work": "Run queued jobs in the foreground until the queue is empty.",
     "start": "Start background workers for queued jobs.",
+    "film-preview": "Preview a film frame, shot or interval with camera and transitions applied.",
+    "video-sample": "Sample labelled video frames as a contact sheet or individual images.",
+    "audio-analyze": "Measure loudness, peaks, clipping, silence and onset timing; optionally write a spectrogram.",
     "film-plan": "Validate a film spec and report its frames, duration and shots without rendering.",
     "film-export": "Render a shot sequence with captions and audio to a video or animation file.",
     "organic-catalog": "List organic generators, rules and presets with their parameters.",

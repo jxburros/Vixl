@@ -36,7 +36,10 @@ def test_every_look_applies_changes_pixels_and_removes_cleanly(look):
     before = json.dumps(project.state["layers"], sort_keys=True)
     project.apply({"type": "look", "target": "card", "look": look})
     assert look in project.layer("card")["looks"]
-    assert changed_pixels(plain, project.render()) > 100, f"{look} changed nothing visible"
+    if look == "clean-flat":
+        assert changed_pixels(plain, project.render()) == 0
+    else:
+        assert changed_pixels(plain, project.render()) > 100, f"{look} changed nothing visible"
     # Applying again replaces rather than stacks.
     project.apply({"type": "look", "target": "card", "look": look, "amount": 0.9})
     card = project.layer("card")

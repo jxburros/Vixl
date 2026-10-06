@@ -102,7 +102,7 @@ def title_layer(view, layers=None, info=None):
     return best
 
 
-def contact_sheet(project, pages=None, *, width=480, columns=None, labels=True, include_hidden=True):
+def contact_sheet(project, pages=None, *, width=480, columns=None, labels=True, include_hidden=True, variables=None):
     """One image with every page side by side (labelled with its number and name), for reviewing
     a deck at a glance."""
     from PIL import Image, ImageDraw, ImageFont
@@ -131,7 +131,7 @@ def contact_sheet(project, pages=None, *, width=480, columns=None, labels=True, 
         x, y = gap + column * (width + gap), gap + row * (height + label + gap)
         view = view_page(project, record["id"])
         proxy = scaled_project(view, width / canvas["width"]) if width < canvas["width"] * 0.75 else None
-        image = (render(proxy) if proxy is not None else render(view)).convert("RGBA")
+        image = (render(proxy, variables) if proxy is not None else render(view, variables)).convert("RGBA")
         image = image.resize((width, height), Image.Resampling.LANCZOS)
         backdrop = Image.new("RGBA", image.size, (255, 255, 255, 255))
         sheet.paste(Image.alpha_composite(backdrop, image), (x, y + label))
@@ -155,8 +155,8 @@ def _cluster(values, tolerance):
     return groups
 
 
-def check_deck(project, *, checks=None, safe_area=None, min_contrast=None, pages=None, min_font=18, max_words=60,
-               include_hidden=False):
+def check_deck(project, *, checks=None, safe_area=None, min_contrast=None, pages=None, min_font=None, max_words=None,
+               include_hidden=False, profile=None, thumbnail_width=None, min_thumbnail_text=10):
     """Run the design checks on every page and the deck checks across pages.
 
     ``checks`` mixes design check names (default: the standard set) with deck check names
@@ -168,9 +168,17 @@ def check_deck(project, *, checks=None, safe_area=None, min_contrast=None, pages
 
     require(project.state.get("pages"), "The deck checks need a document with pages; add them with page add",
             field="checks")
+    canvas = project.state["canvas"]
+    profile = profile or ("phone" if canvas.get("size") in ("instagram-portrait", "instagram-square", "instagram-story") else "projected")
+    require(profile in ("projected", "screen", "phone"), "deck profile must be projected, screen or phone", field="profile")
+    defaults = {"projected": (18, 60, 320), "screen": (14, 250, 1280), "phone": (12, 150, 540)}[profile]
+    min_font = defaults[0] if min_font is None else min_font
+    max_words = defaults[1] if max_words is None else max_words
     # The thumbnail legibility check judges a social post, not a projected slide: ``min_font``
     # replaces it unless it is asked for by name.
     checks = list(checks) if checks else [c for c in CHECKS if c != "legibility"] + list(DECK_CHECKS)
+    if profile != "projected" and checks == [c for c in CHECKS if c != "legibility"] + list(DECK_CHECKS):
+        checks.remove("type_scale")
     unknown = sorted(set(checks) - set(CHECKS + OPTIONAL_CHECKS + DECK_CHECKS))
     require(not unknown, f"Unknown check(s) {unknown}; available: {', '.join(CHECKS + OPTIONAL_CHECKS + DECK_CHECKS)}",
             field="checks")
@@ -180,8 +188,8 @@ def check_deck(project, *, checks=None, safe_area=None, min_contrast=None, pages
     deck = [c for c in checks if c in DECK_CHECKS]
     records = [find_page(project.state, ref, "pages") for ref in pages] if pages else page_list(project, include_hidden)
     require(records, "No pages to check", field="pages")
-    canvas = project.state["canvas"]
     pt = points_per_pixel(canvas)
+    font_scale = pt if profile == "projected" else defaults[2] / canvas["width"]
     issues, summaries = [], []
 
     def issue(check, severity, message, page=None, layers=(), **extra):
@@ -192,7 +200,11 @@ def check_deck(project, *, checks=None, safe_area=None, min_contrast=None, pages
     for number, record in enumerate(records, 1):
         label = record["name"]
         if design:
-            result = check_design(project, checks=design, safe_area=safe_area, min_contrast=min_contrast, page=record["id"])
+            thumb = thumbnail_width
+            if thumb is None and profile != "projected":
+                thumb = 320 if profile == "phone" and number == 1 else defaults[2]
+            result = check_design(project, checks=design, safe_area=safe_area, min_contrast=min_contrast,
+                                  page=record["id"], thumbnail_width=thumb, min_thumbnail_text=min_thumbnail_text)
             for item in result["issues"]:
                 # The same finding on several pages (usually a master layer or a document-wide
                 # setting such as fonts) is reported once with every page it affects.
@@ -231,10 +243,12 @@ def check_deck(project, *, checks=None, safe_area=None, min_contrast=None, pages
             for size, count in text_sizes(view, item):
                 px = round(size * scale * 2) / 2
                 sizes[px] += count
-                if "min_font" in deck and not chrome and px * pt < min_font - 0.05:
+                if "min_font" in deck and not chrome and px * font_scale < min_font - 0.05:
+                    display = (f"{px * pt:.1f} pt when projected (below {min_font} pt)" if profile == "projected" else
+                               f"{px * font_scale:.1f} px at {defaults[2]} px {profile} width (below {min_font} px)")
                     issue("min_font", "warning",
-                          f"{item['name']!r} on page {label!r} is {px * pt:.1f} pt when projected (below {min_font} pt); "
-                          f"use at least {min_font / pt:.0f} px on this canvas", label, [item["name"]],
+                          f"{item['name']!r} on page {label!r} is {display}; "
+                          f"use at least {min_font / font_scale:.0f} px on this canvas", label, [item["name"]],
                           points=round(px * pt, 1), pixels=px)
                     break
 
@@ -300,7 +314,8 @@ def check_deck(project, *, checks=None, safe_area=None, min_contrast=None, pages
     return {
         **tally(issues),
         "issues": issues,
-        "checked": {"checks": checks, "pages": len(records), "min_font_pt": min_font, "max_words": max_words,
-                    "points_per_pixel": round(pt, 4)},
+        "checked": {"checks": checks, "pages": len(records), "profile": profile,
+                    "min_font_pt" if profile == "projected" else "min_font_px": min_font, "max_words": max_words,
+                    "thumbnail_width": thumbnail_width, "display_width": defaults[2], "points_per_pixel": round(pt, 4)},
         "pages": summaries,
     }

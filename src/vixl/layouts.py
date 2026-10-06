@@ -14,11 +14,11 @@ import math
 import random
 import re
 import secrets
-import zlib
 
 from PIL import Image, ImageDraw
 
 from .errors import VixlError, require
+from .safe_catalog import SAFE_PALETTES
 
 LAYOUT_TYPES = ("layout-apply", "type-scale")
 RATIOS = {
@@ -33,11 +33,7 @@ ROLE_STEPS = {"caption": -1, "body": 0, "lead": 1, "subhead": 2, "title": 3, "he
 CONTENT_KEYS = ("title", "subtitle", "body", "label", "cta", "caption", "image", "items")
 DENSITY_MARGIN = {"airy": 0.095, "balanced": 0.072, "dense": 0.05}
 ACCENTS = ("rule", "bar", "dot", "block", "outline", "none")
-PALETTE_POOL = (
-    "midnight", "ocean", "sunset", "forest", "desert", "berry", "lavender", "earth", "copper", "ice",
-    "rose", "slate", "coral", "autumn", "spring", "summer", "winter", "nordic", "coffee", "plum", "peach", "sage",
-    "gold", "retro", "accessible-blue", "accessible-green",
-)
+PALETTE_POOL = tuple(SAFE_PALETTES)
 
 
 class Builder:
@@ -64,6 +60,10 @@ class Builder:
         self.density = density
         inset = c.get("bleed", 0) + c.get("safe", 0)
         margin = max(short * DENSITY_MARGIN[density], inset + short * 0.02 if inset else 0)
+        if "margin" in op.get("direction", {}):
+            fraction = op["direction"]["margin"]
+            require(isinstance(fraction, (int, float)) and 0.02 <= fraction <= 0.2, "direction.margin must be 0.02–0.2")
+            margin = max(inset, short * fraction)
         if self.orientation == "wide":
             margin = max(short * 0.12, inset)
         self.m = round(margin)
@@ -85,9 +85,15 @@ class Builder:
         else:
             base = max(short * 0.026, 10)
         base = op.get("base_size", base * fit)
+        if layout.get("safe") and layout.get("safe_composition"):
+            base = op.get("base_size", max(short * 0.04, 14) * fit)
         require(isinstance(base, (int, float)) and 4 <= base <= 1000, "base_size must be 4–1000 pixels")
         self.base = base
         self.sizes = {role: max(6, round(base * self.ratio**step)) for role, step in ROLE_STEPS.items()}
+        if layout.get("safe_composition"):
+            thumbnail = 600 if self.W / self.H > 1.6 else 320
+            minimum = math.ceil(self.W / thumbnail * 10)
+            self.sizes = {role: max(minimum, value) for role, value in self.sizes.items()}
         self.unit = max(2, round(base / 2))
         # Color roles with contrast guarantees.
         self.colors = assign_roles(op, self.rng)
@@ -1332,6 +1338,55 @@ LAYOUTS = {
 }
 
 
+def _safe_composition(b):
+    """Fifteen restrained systems: varied alignment, measure, position and quiet framing."""
+    b.background()
+    fraction, vertical, alignment, device = b.layout["safe_composition"]
+    b.align = b.op.get("align", alignment)
+    width = b.cw * (max(fraction, 0.82) if b.orientation in ("portrait", "tall") else fraction)
+    x = b.L if b.align == "left" else b.R - width if b.align == "right" else b.L + (b.cw - width) / 2
+    entries = [("caption", b.label_text(), "label"), ("headline", b.get("title"), "headline"),
+               ("lead", b.get("subtitle"), "subtitle"), ("body", b.get("body"), "body"),
+               ("button", b.get("cta"), "cta"), ("caption", b.get("caption"), "caption")]
+    height = b.stack_height(entries, width, gap=b.unit * 2)
+    y = b.T + max(0, b.ch - height) * vertical
+    if device == "rule":
+        b.rect("quiet-rule", b.L, b.T, b.cw, max(2, b.unit / 4), "@accent")
+    elif device == "rail":
+        b.rect("quiet-rail", b.L / 2, b.T, max(2, b.unit / 4), b.ch, "@accent")
+    elif device == "panel":
+        b.rect("quiet-panel", b.L / 2, b.T / 2, b.W - b.L, b.H - b.T, "@surface", radius=b.unit)
+    elif device == "footer":
+        b.rect("quiet-footer", b.L, b.B - b.unit / 4, b.cw, max(2, b.unit / 4), "@accent")
+    b.stack(entries, x, y, width, gap=b.unit * 2, align=b.align)
+
+
+SAFE_COMPOSITIONS = {
+    "quiet-editorial": (0.72, 0.20, "left", "rule"),
+    "offset-column": (0.70, 0.45, "right", "rail"),
+    "centered-note": (0.76, 0.42, "center", "none"),
+    "open-letter": (0.84, 0.18, "left", "footer"),
+    "gallery-label": (0.65, 0.78, "left", "none"),
+    "soft-panel": (0.78, 0.45, "center", "panel"),
+    "modern-bulletin": (0.92, 0.12, "left", "rule"),
+    "balanced-announcement": (0.82, 0.32, "center", "footer"),
+    "right-margin": (0.67, 0.26, "right", "none"),
+    "calm-cover": (0.76, 0.62, "left", "rail"),
+    "centered-rule": (0.84, 0.50, "center", "rule"),
+    "inset-editorial": (0.69, 0.28, "left", "panel"),
+    "wide-statement": (0.96, 0.42, "left", "none"),
+    "quiet-invitation": (0.68, 0.28, "center", "footer"),
+    "asymmetric-note": (0.74, 0.68, "right", "rule"),
+}
+for _name, _composition in SAFE_COMPOSITIONS.items():
+    LAYOUTS[_name] = _layout(_safe_composition, f"Restrained {_name.replace('-', ' ')} with a clear message and measured spacing.",
+                            ["readable hierarchy", "measured whitespace", "restrained decoration"],
+                            ["poster", "social", "web", "slides", "print"], COPY,
+                            safe=True, safe_composition=_composition, aligns=[_composition[2]], accents=["none"])
+for _name, _layout_entry in LAYOUTS.items():
+    _layout_entry.setdefault("safe", False)
+
+
 IMAGE_OPTIONS = [
     {"option": "import", "how": "vixl_import_image(path='photo.png') returns an asset id; then re-apply this layout with "
      "image=<asset>, replace=true and the same seed, or run {type: replace-contents, target: <image layer>, asset: <asset>} "
@@ -1379,6 +1434,7 @@ def describe(name):
     extra = sorted(set(OPTIONAL_READS.get(name, ())) - set(spec))
     return {
         "description": item["description"],
+        "safe": item.get("safe", False),
         "principles": item["principles"],
         "best_for": item["best_for"],
         "slots": {
@@ -1395,6 +1451,7 @@ def catalog():
         "layouts": {
             name: {
                 "description": item["description"],
+                "safe": item.get("safe", False),
                 "best_for": item["best_for"],
                 "slots": {k: v["label"] for k, v in slot_spec(item).items()},
             }
@@ -1402,7 +1459,7 @@ def catalog():
         },
         "detail": "vixl layout show NAME (vixl_layouts_list name=…) gives principles and each slot's meaning",
         "options": {
-            "seed": "Integer or 'random'; omitted seeds derive from the content, so different copy varies the design. "
+            "seed": "Integer or 'random'; omitted seeds are fresh unless document/workspace variety is fixed. "
             "Unspecified palette, mode, type scale, density, alignment and accent are rolled from the seed",
             "unfilled": "blank (default): unfilled slots render as visible [Label] placeholders recorded as blanks that "
             "check reports as errors; omit: leave unfilled slots out (vixl_roll apply omits them when given "
@@ -1429,8 +1486,7 @@ def _seed(op, canvas):
     if "seed" in op:
         require(isinstance(op["seed"], int) and 0 <= op["seed"] < 2**32, "seed must be a nonnegative 32-bit integer or 'random'")
         return op["seed"]
-    text = "|".join(str(op.get(k, "")) for k in ("name", *CONTENT_KEYS)) + f"|{canvas['width']}x{canvas['height']}"
-    return zlib.crc32(text.encode())
+    return secrets.randbelow(2**32)
 
 
 def execute_layout(project, op):
@@ -1451,6 +1507,19 @@ def execute_layout(project, op):
             execute(project, {"type": "style-define", "name": f"{prefix}{role}", "kind": "character", "settings": settings})
         return
     op = deepcopy(op)
+    explicit_palette = "palette" in op or "colors" in op
+    from .variety import seed_for
+    from .brand import for_project
+
+    defaults = state.get("design_defaults", {})
+    if "seed" not in op:
+        op["seed"], _ = seed_for(project, defaults.get("seed"), op.get("variety"))
+        for key, value in defaults.get("direction", {}).items():
+            if key in ("palette", "mode", "type_scale", "density", "accent"):
+                op.setdefault(key, deepcopy(value))
+    kit = for_project(project)
+    if kit.get("palette") and not explicit_palette:
+        op["colors"] = kit["palette"]
     if op.get("mode", "inherit") == "inherit":
         from .render import color
         rgba = color(state["canvas"].get("background", "transparent"))
@@ -1536,6 +1605,7 @@ def execute_layout(project, op):
         "fonts": fonts or "fallback",
         "rolled": rolled,
         "layers": created,
+        **({"direction": deepcopy(op["direction"])} if op.get("direction") else {}),
     }
     notes = []
     if blanks:
@@ -1553,6 +1623,9 @@ def execute_layout(project, op):
             "[Label] placeholders that check rejects until filled."
         )
     if not fonts:
+        from .variety import font_next_step
+
+        state["layout"]["font_choice"] = font_next_step(project, seed)
         notes.append(
             "No fonts were chosen, so text uses the bundled fallback font, which is for proofing only. Choose a "
             "pairing (vixl font pairings, or vixl font pair random) or pass font/display_font."
@@ -1622,6 +1695,10 @@ def _build(project, layout, op, seed, fit):
         resolved, centered = resolve_geometry(project, operation)
         execute(project, resolved)
         apply_centering(project, centered, operation)
+    if op.get("direction"):
+        from .variety import apply_direction
+
+        apply_direction(project, builder, op["direction"])
     # Decoration a layout lets run off the canvas (a corner block, a counterweight) is a drawn bleed:
     # mark it so checks report it as informational instead of cut-off content.
     from .render import resolve_layout
@@ -1666,6 +1743,8 @@ def schemas(add):
         {
             "name": S,
             "seed": {"type": ["integer", "string"]},
+            "variety": {"enum": ["low", "medium", "high", "fixed"], "description": "Sparse-choice range; fixed defaults to seed 0 or the workspace seed."},
+            "direction": {"type": "object", "description": "Extra rolled choices: motif, look, style, margin, corner, background_treatment and color_assignment."},
             "unfilled": {
                 "enum": ["blank", "omit"],
                 "description": "blank (default): slots left unfilled show as [Label] placeholders that check "
@@ -1691,4 +1770,3 @@ def schemas(add):
         ["name"],
     )
     add("type-scale", {"base": N, "ratio": {"type": ["string", "number"]}, "prefix": S, "color": S})
-

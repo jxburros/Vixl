@@ -22,6 +22,13 @@ def _size(value, s):
 
 
 def _scale_layer(layer, s):
+    from .stacks import scale_settings
+
+    scale_settings(layer, s)
+    if "bubble" in layer:
+        for key in ("tail_width", "padding"):
+            if key in layer["bubble"]:
+                layer["bubble"][key] *= s
     for key in ("x", "y"):
         if key in layer:
             layer[key] = layer[key] * s
@@ -114,8 +121,8 @@ def _snap_edges(layer, source, s):
         layer["x"], layer["y"] = x0, y0
         layer["repeat"]["snapped"] = [
             [round((source["x"] + x) * s) - x0, round((source["y"] + y) * s) - y0,
-             round((source["x"] + x + item["width"]) * s) - round((source["x"] + x) * s),
-             round((source["y"] + y + item["height"]) * s) - round((source["y"] + y) * s)]
+             max(1, round((source["x"] + x + item["width"]) * s) - round((source["x"] + x) * s)),
+             max(1, round((source["y"] + y + item["height"]) * s) - round((source["y"] + y) * s))]
             for item, x, y in repeat_items(source, colors=False)
         ]
         return
@@ -144,6 +151,11 @@ def scaled_project(project, s):
     if canvas.get("dpi") and any(layer.get("type") == "field" for layer in state["layers"]):
         # Fields size their values in points (dpi / 72): keep a point the same fraction of the page.
         canvas["dpi"] = canvas["dpi"] * s
+    # Light positions/radii live in canvas pixels, just like the layers below.
+    # Scale omitted defaults too, or a default 200px radius grows in a draft preview.
+    for light in state.get("lighting", {}).get("lights", []):
+        for key, default in (("x", 0), ("y", 0), ("radius", 200)):
+            light[key] = light.get(key, default) * s
     for layer, source in zip(state["layers"], project.state["layers"]):
         _scale_layer(layer, s)
         _snap_edges(layer, source, s)

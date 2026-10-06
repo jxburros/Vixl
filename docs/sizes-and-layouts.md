@@ -43,7 +43,7 @@ Fixed templates make every adopter look alike. A layout is a composition system 
 - **Spacing** — margins from the density (`airy`, `balanced`, `dense`), never inside the safe area, and gaps on a spacing unit.
 - **Composition** — alignment, focal placement, split proportions, accent device (`rule`, `bar`, `dot`, `block`, `outline`, `none`) and button shape.
 
-Seeds are deterministic. Without one, the seed comes from the content and canvas, so different copy gives a different but stable variation. The applied choices are recorded in `state.layout` (and reported in the change summary), so you can re-roll with another `seed` (or `"random"`) or pin any choice explicitly.
+Explicit seeds are deterministic. Without one, sparse designs get a fresh seed unless the document or workspace sets `variety: "fixed"`. The applied choices are recorded in `state.layout` (and reported in the change summary), so you can reproduce a result with its returned seed or pin any choice explicitly. See [safe variety](safe-variety.md) for safe pools, expanded roll dimensions and workspace history.
 
 | Layout | Principles | Best for |
 | --- | --- | --- |
