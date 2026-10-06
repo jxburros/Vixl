@@ -80,6 +80,20 @@ def test_pdf_and_rich_text_embed_the_matching_face(document):
     assert font_style(chain[1])[1] == 700
 
 
+def test_pptx_runs_name_the_fallback_family_for_fallback_characters(document):
+    import zipfile
+
+    pytest.importorskip("pptx")
+    document.apply({"type": "text", "name": "t", "text": "Bold " + CYRILLIC, "font": "primary-700", "size": 40,
+                    "color": "black"})
+    report = {}
+    data = document.export(format="PPTX", report=report)
+    slide = zipfile.ZipFile(io.BytesIO(data)).read("ppt/slides/slide1.xml").decode()
+    assert '<a:latin typeface="Primary Sans"/>' in slide and f"<a:t>{CYRILLIC}</a:t>" in slide
+    assert slide.index('typeface="Fallback Sans"') > slide.index("<a:t>Bold </a:t>")
+    assert {"Primary Sans", "Fallback Sans"} <= set(report["fonts"])
+
+
 def test_italic_primary_prefers_an_italic_fallback(document):
     register(document, "primary-italic", face("Primary Sans", 700, italic=True, latin_only=True))
     document.apply({"type": "text", "name": "t", "text": CYRILLIC, "font": "primary-italic", "size": 40, "color": "black"})

@@ -50,8 +50,8 @@ For missing glyphs, PNG and SVG use the bundled DejaVu outline font automaticall
 each font is embedded. `font-fallbacks` with an empty list clears it. The list is document-wide: a `target` is rejected, because fallbacks apply to every text layer.
 List several faces of a fallback family (for example `noto-sans-jp-400` and `noto-sans-jp-700`) and each text
 uses the face that matches its own font best: the same slope (italic or upright) first, then the nearest
-OS/2 weight, so a bold heading falls back to the bold face in PNG, SVG, PDF and PPTX alike. Families keep their
-list order. QA identifies fallback characters
+OS/2 weight, so a bold heading falls back to the bold face in PNG, SVG and PDF alike; a PPTX gives those
+characters their own runs naming the fallback family. Families keep their list order. QA identifies fallback characters
 and errors on characters unsupported by the entire stack. This is outline-font fallback;
 color emoji and complex joiner sequences retain the existing text-engine limitations.
 

@@ -356,13 +356,21 @@ class Slide:
                 f'<a:latin typeface={face}/><a:ea typeface={face}/><a:cs typeface={face}/></a:rPr>'
                 f'<a:t>{_text(text)}</a:t></a:r>')
 
+    def font_runs(self, text, data, size_pt, rgba, style, opacity):
+        """Runs for ``text``, split where characters fall back to another font of ``data`` (a
+        fallback chain), so each run names the face that draws it, as PNG, SVG and PDF do."""
+        from .text import font_runs
+
+        pieces = font_runs(data, text) if isinstance(data, tuple) else [(data, text)]
+        return "".join(self.run(piece, size_pt, rgba, self.exporter.font(font), style, opacity) for font, piece in pieces)
+
     def plain_paragraphs(self, layer, pt):
         from .design import resolve_color
         from .render import color
         from .text import face, font_data, plan
 
         data = font_data(self.view, layer)
-        family = self.exporter.font(data)
+        self.exporter.font(data)
         rgba = color(resolve_color(layer.get("color", "white"), self.view.state))
         layout = plan(self.view, layer)
         size = layout.size
@@ -382,7 +390,7 @@ class Slide:
         style = {"bold": self.exporter.is_bold(span), "italic": self.exporter.is_italic(span)}
         out = []
         for text in layer["text"].split("\n"):
-            run = self.run(text, size * pt, rgba, family, style, layer["opacity"]) if text else ""
+            run = self.font_runs(text, data, size * pt, rgba, style, layer["opacity"]) if text else ""
             out.append(f'<a:p><a:pPr algn="{align}"><a:lnSpc><a:spcPts val="{round(line * pt * 100)}"/></a:lnSpc>'
                        f'<a:buNone/></a:pPr>{run}<a:endParaRPr lang="en-US" sz="{round(size * pt * 100)}" dirty="0"/></a:p>')
         return out, first_top, pen_left
@@ -435,8 +443,8 @@ class Slide:
                          "highlight": span["highlight"]}
                 from .richtext import style_font_data
 
-                family = self.exporter.font(style_font_data(self.view, self.exporter.base_font(span["font"]), span["text"]))
-                runs.append(self.run(span["text"], span["size"] * scale * pt, span["color"], family, style, layer["opacity"]))
+                data = style_font_data(self.view, self.exporter.base_font(span["font"]), span["text"])
+                runs.append(self.font_runs(span["text"], data, span["size"] * scale * pt, span["color"], style, layer["opacity"]))
             out.append(f'<a:p><a:pPr{attrs}>{spacing}{bullet}</a:pPr>{"".join(runs)}'
                        f'<a:endParaRPr lang="en-US" sz="{round(base * pt * 100)}" dirty="0"/></a:p>')
         first_top = 0.0
