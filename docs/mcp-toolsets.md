@@ -2,7 +2,7 @@
 
 `vixl mcp` serves `--tools core --schema slim` by default, the recommended configuration for most agents; `--tools compact --schema slim` is the smallest surface when tool-discovery context matters most. Keep one atomic editing tool and load exact operation fields on demand. This avoids splitting an edit across several transaction boundaries, while task-aware `vixl_capabilities` supplies relevant operations and gotchas.
 
-Measured for the next release (with `vixl_compose` and the new operations) using serialized `tools/list` tool objects (compact JSON, including input schemas; characters, not model tokens):
+Measured for 0.22.0 (with `vixl_compose` and the new operations) using serialized `tools/list` tool objects (compact JSON, including input schemas; characters, not model tokens):
 
 | Toolset | Schema | Tools | Characters |
 | --- | --- | ---: | ---: |

@@ -37,7 +37,8 @@ user docs in `docs/`, the agent skill in `skills/vixl/`. `CONTRIBUTING.md` has t
    fields or defaults change. Grep for removed names; do not leave stale text.
 3. `CHANGELOG.md`: add to the current top section. Breaking changes need a migration hint.
 4. Goldens, if rendering changed (see above).
-5. Version bumps stay synchronized (`src/vixl/__init__.py`, plugin manifest, `.mcp.json`, README and install URLs); see
+5. Version bumps stay synchronized (`src/vixl/__init__.py`, plugin manifest, `.mcp.json`, README and install URLs, the
+   action pin in `docs/ci.md`); see
    `docs/releases.md`. The self-updater and release manifest path (`src/vixl/updater*`, `distribution/`) must stay stable.
 
 ## Rules

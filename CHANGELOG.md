@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.22.0
 
 Bigger documents, layer merging, scatter and pattern tiles, kinetic type, QR codes, merge-field filters, logo packages, proof pages, one-call builds, layered PSD export, and a leaner default MCP server.
 
