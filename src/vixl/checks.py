@@ -904,7 +904,7 @@ def _color_vision(candidate, resolved, bounds, texts, min_contrast, text_scales,
 
 def compare(project, before="previous", after="head", *, max_width=1024, max_height=1024, mode="side-by-side"):
     """Render two revisions for an at-a-glance review. Returns ``(image, summary)``."""
-    from PIL import Image, ImageChops
+    from PIL import Image
 
     from .proxy import render_preview
 
@@ -917,27 +917,54 @@ def compare(project, before="previous", after="head", *, max_width=1024, max_hei
         right = right.resize(left.size, Image.Resampling.LANCZOS) if mode == "diff" else right
     summary = {"before": project.resolve_ref(before), "after": project.resolve_ref(after)}
     if left.size == right.size:
-        difference = ImageChops.difference(left, right).convert("L").point(lambda v: 255 if v > 8 else 0)
-        box = difference.getbbox()
-        changed = int(np.count_nonzero(np.asarray(difference)))
+        difference, stats = pixel_diff(left, right)
         scale = project.at(after).state["canvas"]["width"] / right.width
-        summary.update(
-            changed_fraction=round(changed / (right.width * right.height), 4),
-            changed_region=[round(v * scale) for v in (box[0], box[1], box[2] - box[0], box[3] - box[1])]
-            if box
-            else None,
-        )
+        box = stats["changed_region"]
+        summary.update(changed_fraction=stats["changed_fraction"],
+                       changed_region=[round(v * scale) for v in box] if box else None)
     else:
         difference = None
         summary["changed_region"] = "canvas size changed"
     if mode == "diff" and difference is not None:
-        dimmed = Image.blend(Image.new("RGBA", right.size, "black"), right, 0.35)
-        highlight = Image.new("RGBA", right.size, (255, 40, 40, 255))
-        return Image.composite(highlight, dimmed, difference), summary
-    canvas = Image.new("RGBA", (left.width + right.width + 8, max(left.height, right.height)), (128, 128, 128, 255))
-    canvas.alpha_composite(left, (0, 0))
-    canvas.alpha_composite(right, (left.width + 8, 0))
-    return canvas, summary
+        return diff_highlight(right, difference), summary
+    return side_by_side(left, right), summary
+
+
+def pixel_diff(left, right, threshold=8):
+    """Changed pixels between two same-size images: ``(mask, stats)``. A pixel changes when any RGBA channel
+    moves by more than ``threshold``; ``stats`` has changed_pixels, changed_fraction and changed_region
+    ([x, y, w, h] or None)."""
+    from PIL import Image, ImageChops
+
+    require(left.size == right.size, "Images must be the same size to compare")
+    channels = np.asarray(ImageChops.difference(left.convert("RGBA"), right.convert("RGBA")))
+    changed_mask = channels.max(axis=2) > threshold
+    mask = Image.fromarray((changed_mask * 255).astype(np.uint8), "L")
+    box = mask.getbbox()
+    changed = int(np.count_nonzero(changed_mask))
+    return mask, {
+        "changed_pixels": changed,
+        "changed_fraction": round(changed / max(1, left.width * left.height), 4),
+        "changed_region": [box[0], box[1], box[2] - box[0], box[3] - box[1]] if box else None,
+    }
+
+
+def diff_highlight(image, mask):
+    """``image`` dimmed, with the pixels in ``mask`` painted red."""
+    from PIL import Image
+
+    image = image.convert("RGBA")
+    dimmed = Image.blend(Image.new("RGBA", image.size, "black"), image, 0.35)
+    return Image.composite(Image.new("RGBA", image.size, (255, 40, 40, 255)), dimmed, mask)
+
+
+def side_by_side(left, right, gap=8):
+    from PIL import Image
+
+    canvas = Image.new("RGBA", (left.width + right.width + gap, max(left.height, right.height)), (128, 128, 128, 255))
+    canvas.alpha_composite(left.convert("RGBA"), (0, 0))
+    canvas.alpha_composite(right.convert("RGBA"), (left.width + gap, 0))
+    return canvas
 
 
 APPLY_ISSUES = 20  # Findings an apply call returns; vixl_check lists them all.
