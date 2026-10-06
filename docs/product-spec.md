@@ -775,7 +775,7 @@ poster > layers
   2  texture
   1  background
 
-poster > opacity 80
+poster > opacity 80%
 
 poster > move x +20
 

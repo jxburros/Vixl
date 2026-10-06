@@ -43,7 +43,7 @@ def verify(executable, workspace):
                     "y": 300,
                     "fill": "rgba(255, 100, 0, 0.5)",
                 },
-                {"type": "opacity", "target": "Normalized", "value": 50},
+                {"type": "opacity", "target": "Normalized", "value": "50%"},
             ]
         },
     )
