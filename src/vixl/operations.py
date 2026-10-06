@@ -269,7 +269,24 @@ def execute(project, op):
 
     kind = _canonical_type(kind, set(OPERATION_TYPES))
     require(isinstance(kind, str), "Operation requires a type")
+    from .targets import EACH, fan_out
+
+    if kind in EACH and "targets" in op:  # Nested batches (actions, edit-layers ...) fan out here.
+        for single in fan_out({**op, "type": kind}):
+            execute(project, single)
+        return None
     target = op.get("target", op.get("layer"))
+    from .schema import LAYER_FINISH
+
+    if kind in LAYER_FINISH and ("opacity" in op or "rotation" in op):
+        # Creation fields that stand for the rotate and opacity operations on the new (or edited) layer.
+        result = execute(project, {k: v for k, v in op.items() if k not in ("opacity", "rotation")})
+        ident = project.layer(target)["id"] if target is not None else project.state["active_layer"]
+        if "rotation" in op:
+            execute(project, {"type": "rotate", "target": ident, "value": op["rotation"]})
+        if "opacity" in op:
+            execute(project, {"type": "opacity", "target": ident, "value": op["opacity"]})
+        return result
     if kind in SCENE_TYPES:
         from .scene import execute as execute_scene
         return execute_scene(project, op)
@@ -649,6 +666,17 @@ def execute(project, op):
                             field="value",
                         )
                     value = [value[0] / rw, value[1] / rh]
+                elif op.get("units") == "canvas":
+                    # A point on the canvas, taken back through the parent groups and the layer's own transform.
+                    from .affine import layer_matrix
+                    from .checks import group_matrix
+                    from .render import resolved_layers
+
+                    rw, rh = rest_size(layer)
+                    index = {item["id"]: item for item in resolved_layers(project)}
+                    full = group_matrix(index[layer["id"]], index, resolve_layout(project)) @ layer_matrix(layer, bounds)
+                    local = np.linalg.inv(full) @ [finite(value[0], "pivot x"), finite(value[1], "pivot y"), 1]
+                    value = [float(local[0] / rw), float(local[1] / rh)]
             layer["pivot"] = [finite(value[0], "pivot x", -10, 10), finite(value[1], "pivot y", -10, 10)]
         if not layer["constraints"]:
             # Keep the drawn pose; only the origin of later rotation and scaling moves.
@@ -867,6 +895,10 @@ def execute(project, op):
         project.state["presets"][op["name"]] = deepcopy(layer["effects"])
     elif kind == "preset-apply":
         require(op["name"] in project.state["presets"], "Preset not found")
+        saved = {item["name"] for item in project.state["presets"][op["name"]]}
+        extra = sorted(set(op.get("overrides") or {}) - saved)
+        require(not extra, f"overrides for {', '.join(map(repr, extra))} match no effect in preset {op['name']!r} "
+                f"(it has {', '.join(sorted(saved)) or 'none'})", field="overrides", allowed=sorted(saved))
         for item in project.state["presets"][op["name"]]:
             item = deepcopy(item)
             item["id"] = uid("fx")

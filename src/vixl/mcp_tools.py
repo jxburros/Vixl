@@ -29,7 +29,8 @@ COORDINATE_NOTE = (
     "(of the canvas, or of the parent group for grouped layers). Colors accept CSS and xkcd names, #hex, "
     "rgb()/hsl()/hwb()/lab()/lch()/oklab()/oklch()/cmyk()/kelvin()/color(display-p3 …)/color-mix(), @swatch "
     "references and modifiers such as lighten(@brand, 10%) or mix(@a, @b, 30%). Common aliases (rect, circle, font_size, fill, camelCase keys, "
-    "opacity 0–100) are accepted and reported under 'normalized'."
+    "opacity '70%') are accepted and reported under 'normalized'. Opacity is 0–1 everywhere; a bare 70 is an error. "
+    "Operations on existing layers take target or targets (a list: applied to each, or jointly for group/align)."
 )
 
 
@@ -379,7 +380,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
             "thumbnail legibility) → vixl_render_preview → vixl_export_file. Use layer IDs or "
             "names from results. Batches accept up to 10,000 operations atomically. Path coordinates are literal local pixels; "
             "use path-fit to scale geometry into its box. vixl_capabilities(topic) lists relevant fields and gotchas. " + COORDINATE_NOTE + " Errors are JSON with error, message, field, "
-            "operation_index and suggestions. Paths are relative to the workspace; imports accept a path or "
+            "operation_index and suggestions; a batch with several invalid operations lists them all under errors. Paths are relative to the workspace; imports accept a path or "
             "base64 bytes. Several documents can be open: pass document= to address one. When a brief leaves the "
             "look open, vixl_roll a few directions and compare previews. Paint with brushes (vixl_brushes_list), animate "
             "with keyframes (keyframe/animate/animate-preset → vixl_timeline_preview → vixl_export_timeline), and "

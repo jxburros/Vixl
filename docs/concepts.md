@@ -21,12 +21,18 @@ import files through the relevant interface instead of passing unrestricted path
 Layers are stacked bottom to top. They may be images, text, shapes, groups, paint, pixel
 grids, adjustments or form fields. Give them useful names; use immutable `lyr_…` IDs when
 names could change during a long automation. Most operations use the active layer if
-`target` is omitted, so explicit targets make scripts easier to understand.
+`target` is omitted, so explicit targets make scripts easier to understand. Operations on
+existing layers also take `targets`, a list: per-layer operations (opacity, move, effects …)
+apply to each, joint ones (group, align, distribute) treat them together; see
+[operations](operations.md). Opacity is always 0–1 (`"70%"` also works).
 
 The canvas origin is top-left. Positive x moves right; positive y moves down. Positions
 and dimensions are pixels. Print metadata adds physical dimensions and dpi; it does not
 turn ordinary coordinates into inches. A 300 dpi, 1-inch gap is 300 px. Groups introduce
-local coordinates; inspect resolved bounds after grouping, rotation or constraints.
+local coordinates; inspect resolved bounds after grouping, rotation or constraints, or pass
+`space: "canvas"` (move, and shape/text edits with `target`) and pivot `units: "canvas"` to work
+in document coordinates. A new group takes its topmost member's slot in the stack unless
+`group` names `above` or `below` a layer.
 
 `move` changes position, `resize` changes dimensions and `scale` uses a factor (`0.8`
 means 80%). Procedural shapes retain geometry. Raster images have a fixed original

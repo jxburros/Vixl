@@ -75,7 +75,11 @@ def schemas(add):
         },
         anyOf=[{"required": ["shape"]}, {"required": ["target"]}],
     )
-    add("group", {"name": S, "targets": refs}, ["name", "targets"])
+    add("group", {"name": S, "targets": refs,
+                  "above": {**S, "description": "Place the new group directly above this layer (same parent) instead "
+                            "of at its topmost member's slot."},
+                  "below": {**S, "description": "Place the new group directly below this layer (same parent)."}},
+        ["name", "targets"])
     add("ungroup")
     add("clip", {"base": S, "release": B})
     add("layer-style", {"name": enum(*STYLES), "settings": obj, "remove": B}, ["name"])

@@ -386,8 +386,12 @@ OVERRIDES = {
     "rotate": {"value": "Degrees clockwise about the layer's pivot (default its center)."},
     "pivot": {"value": "[x, y] as fractions of the layer box (0.5, 0.5 is the center) or an anchor such as "
                        "'top-left'.",
-              "units": "fraction (default) or px for value.", "clear": "true restores the default center pivot."},
-    "opacity": {"value": "0 (invisible) to 1 (opaque)."},
+              "units": "fraction (default) of the layer box; px from the layer box's top-left corner; canvas: "
+                       "an absolute document point (for a grouped layer, converted through its parent groups' "
+                       "transforms).",
+              "clear": "true restores the default center pivot."},
+    "opacity": {"value": "0 (invisible) to 1 (opaque); a percentage string such as '70%' is read as 0.7. A bare "
+                         "number above 1 is an error."},
     "blend": {"value": "Blend mode: normal, multiply, screen, overlay, darken, lighten, difference, add, subtract."},
     "flip": {"direction": "horizontal mirrors left-right; vertical mirrors top-bottom."},
     "crop": {"x": "Left edge of the crop in source pixels.", "y": "Top edge of the crop in source pixels.",
@@ -422,7 +426,11 @@ OVERRIDES = {
     "preset-apply": {"name": "Saved preset.", "overrides": "{effect name: amount} replacements."},
     "shape": {"shape": "rectangle, rounded-rectangle, ellipse, polygon, star, line, triangle, right-triangle, "
                        "diamond, arrow, chevron, cross, heart, speech-bubble, or path (with path).",
-              "path": "path shape: SVG commands (M L C Q A Z) in literal local pixels, not normalized to width/height. Use path-fit to scale into the box.",
+              "path": "path shape: SVG path data (M L H V C S Q T A Z, several M sub-paths allowed) in literal local "
+                      "pixels: a point (px, py) draws at (x + px, y + py). Without width/height the box reaches the "
+                      "path's farthest point (never the whole canvas); with them, that is the box it is drawn in. "
+                      "Negative coordinates draw outside the box. Later resizes scale the path; path-fit scales "
+                      "geometry into a box.",
               "radius": "Corner radius in pixels (rounded-rectangle).", "sides": "Polygon side count.",
               "inner_radius": "Star inner radius as a fraction of the outer radius.",
               "fill": "Fill color; use a gradient-overlay layer-style (or the look operation) for gradients."},

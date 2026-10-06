@@ -5,10 +5,20 @@ Vixl is headless and designed for autonomous AI agents; humans can use the same 
 Every edit in Vixl is a JSON object with a `type`. Send a single object, an array, or
 `{"operations": [...]}` to: MCP `vixl_operations_apply(operations=[...])`, CLI `vixl apply FILE|-`,
 REST `POST /operations`, or Python `Project.apply(...)`. Common alternative spellings (`rect`,
-`circle`, `font_size`, `fill`/`color`, camelCase keys, opacity 1–100, blur `radius`) are normalized
-and reported under `normalized`; other unknown fields, unknown types, malformed sizes and non-finite
-numbers are rejected with the operation index, field and suggestions. Max 10 000 operations per
-batch; the batch is atomic.
+`circle`, `font_size`, `fill`/`color`, camelCase keys, opacity `"70%"`, blur `radius`) are normalized
+and reported under `normalized`; other unknown fields, invalid values, unknown types, malformed sizes and
+non-finite numbers are rejected with the operation index, field and suggestions. The whole batch is
+validated first and every invalid operation is reported in one error (`errors: [{operation_index, field,
+message, suggestions}]`; top-level fields = the first). Max 10 000 operations per batch; the batch is atomic.
+
+**Opacity is 0–1 everywhere** (`opacity`, creation `opacity`, `layer-style` settings, keyframe/animate
+values of `opacity`): `"70%"` is read as 0.7; a bare `70` is an error suggesting `0.7` or `"70%"`.
+
+**`target` / `targets`.** Every operation on existing layers takes `target` (one) or `targets` (a list).
+Per-layer operations (`opacity`, `move`, `rotate`, `hide`, `layer-intent`, `layer-style`, effects, `shape`/`text`
+edits …) apply to each listed layer within the batch; joint ones (`group`, `align`, `distribute`, `pathfinder`
+…) treat the list together; single-layer ones (`rename` …) accept a one-item list only. The full table is in
+docs/operations.md (`x-targets` in the schema).
 
 Conventions used below: **bold** = required. `target` is a layer name or `lyr_…` ID and, when
 omitted, defaults to the active layer. Colors accept CSS names, `#rgb`, `#rrggbb`, `#rrggbbaa`,
@@ -26,7 +36,7 @@ The authoritative schema is always `vixl schema` / `GET /schema` / `vixl://opera
 | `solid` | `name`, `width`, `height`, `color`, `x`, `y`, `target` | Defaults to canvas size. With `target`, edits that solid in place. |
 | `gradient` | `name`, `width`, `height`, `start`, `end`, `direction`, `stops`, `angle`, `x`, `y`, `target` | `direction`: `vertical` (default), `horizontal`, `angled` (`angle` 0°=left→right, 90°=top→bottom), `radial`. `stops`: 2–64 `{"offset":0..1,"color":…}` strictly increasing. |
 | `text` | **`text`** *or* `target`, `name`, `size`, `hide_if_empty`, `color`, `align` (`left`/`center`/`right`), `spacing` (line spacing px), `font`, `x`, `y` | `x`/`y` may be `"center"` or `"N%"`. `font`: a registered name, `heading`/`body` (follows the document typography), or a file path (CLI/Python only); default font DejaVu Sans is the proofing fallback. Multiline via `\n`. With `target`, edits that text layer in place (like `text-set`; `text` is then optional). |
-| `shape` | **`shape`** *or* `target`, `name`, `width`, `height`, `x`, `y`, `fill`, `stroke`, `stroke_width`, `line_cap`, `trim_start`, `trim_end`, `radius`, `sides`, `inner_radius`, `start_angle`, `end_angle` | `shape`: `rectangle`, `rounded-rectangle` (`radius`), `ellipse`, `polygon` (`sides`), `star` (`sides`, `inner_radius` 0.01–1), `arc`, `line`. `arc` is a pie wedge or donut segment of the ellipse filling the box: angles in degrees, 0 = 3 o'clock, clockwise (-90 = 12 o'clock), `inner_radius` 0–0.99 of the outer radius (0 = wedge, 0.6 = donut), no angles = full disc/ring. Wedges sharing a box and differing in angles make a pie/donut chart. Procedural, redrawn crisply on resize. `trim_start`/`trim_end` (0–100 %) draw only that part of the stroke, and are animatable (draw-on); `line_cap`: `butt`/`round`/`square`. `pen` takes the same three. Fill: a closed shape with no `fill` is white; an open one (`line`, or a `path` with no closing `Z`) that has a `stroke` and no `fill` is unfilled in every output (render, SVG, PDF, PPTX). `fill: "none"` means `transparent`. |
+| `shape` | **`shape`** *or* `target`, `name`, `width`, `height`, `x`, `y`, `fill`, `stroke`, `stroke_width`, `line_cap`, `trim_start`, `trim_end`, `radius`, `sides`, `inner_radius`, `start_angle`, `end_angle`, `opacity`, `rotation`, `space` | `shape`: `rectangle`, `rounded-rectangle` (`radius`), `ellipse`, `polygon` (`sides`), `star` (`sides`, `inner_radius` 0.01–1), `arc`, `line`. `arc` is a pie wedge or donut segment of the ellipse filling the box: angles in degrees, 0 = 3 o'clock, clockwise (-90 = 12 o'clock), `inner_radius` 0–0.99 of the outer radius (0 = wedge, 0.6 = donut), no angles = full disc/ring. Wedges sharing a box and differing in angles make a pie/donut chart. Procedural, redrawn crisply on resize. `trim_start`/`trim_end` (0–100 %) draw only that part of the stroke, and are animatable (draw-on); `line_cap`: `butt`/`round`/`square`. `pen` takes the same three. Fill: a closed shape with no `fill` is white; an open one (`line`, or a `path` with no closing `Z`) that has a `stroke` and no `fill` is unfilled in every output (render, SVG, PDF, PPTX). `fill: "none"` means `transparent`. `path`: literal local pixels from x/y; without width/height the box reaches the path's farthest point (never the canvas); negative coordinates draw outside the box. `opacity` (0–1) and `rotation` (degrees) apply at creation or edit; with `target`, `space: "canvas"` reads x/y as document coordinates for a grouped layer. |
 | `frame` | `name`, `width`, `height`, `x`, `y`, `path` *or* `asset`, `fit` (`fill`/`fit`) | Image placed in a fixed box; `fill` crops, `fit` letterboxes. |
 | `pixel-art` | `name`, `width`, `height`, `x`, `y`, `palette`, `background`, **or** `rows` | Character-grid sprite (1–256 per side). See *Pixel art* below. |
 | `adjustment` | **`effects`** (list of effect objects), `name` | Adjustment layer: filters the composited stack *below it* in its parent. |
@@ -48,7 +58,7 @@ The authoritative schema is always `vixl schema` / `GET /schema` / `vixl://opera
 | `reorder` | `target`, `above` *or* `below` (layer) |
 | `select-layer` | `target` — makes it the active layer |
 | `rasterize` | `target` — bakes text/shape/etc. to pixels (remove styles/clip first) |
-| `group` | **`name`**, **`targets`** (list) — children keep local coordinates; nest ≤16 |
+| `group` | **`name`**, **`targets`** (list), `above`/`below` (a layer: the new group's z-slot; default its topmost member's) — children keep local coordinates; nest ≤16. Edit a member by canvas coordinates with `space: "canvas"` on `move` or `shape`/`text` with `target`. |
 | `ungroup` | `target` |
 | `clip` | `target`, `base` (sibling) — multiplies target alpha by base alpha; `release: true` removes |
 
@@ -60,10 +70,10 @@ The authoritative schema is always `vixl schema` / `GET /schema` / `vixl://opera
 | `resize` | `target`, `width`, `height`, `keep_aspect` | One dimension changes only that side of shapes, text, groups and solids (reported under `normalized`) but scales imported images (raster) proportionally; `keep_aspect: true` scales the other side proportionally on any layer, `false` changes only the given side; two dimensions stretch. Turns off text auto-size. |
 | `scale` | `target`, **`value`** or `x`/`y` | Factor (0.8 = 80 %), 0.001–100. Negative mirrors: `value` flips both axes, `x: -1` flips horizontally (like `flip`) and keeps the size. |
 | `rotate` | `target`, **`value`** | Degrees clockwise about the layer's pivot (default: center); bounds expand. |
-| `pivot` | `target`, **`value`** (`[x, y]` fractions of the unrotated box, or `top-left`…`bottom-right`/`center`), `units` (`fraction`/`px`), or `clear` | Point that rotation and scale turn about; stays fixed on the canvas (stills, timeline, SVG). Keeps the drawn pose. A pivoted layer's stored `x`/`y` is its unrotated box. |
+| `pivot` | `target`, **`value`** (`[x, y]` fractions of the unrotated box, or `top-left`…`bottom-right`/`center`), `units` (`fraction`/`px`/`canvas` — a document point, through parent groups), or `clear` | Point that rotation and scale turn about; stays fixed on the canvas (stills, timeline, SVG). Keeps the drawn pose. A pivoted layer's stored `x`/`y` is its unrotated box. |
 | `flip` | `target`, **`direction`** | `horizontal` / `vertical`. |
 | `crop` | `target`, **`x`, `y`, `width`, `height`** | In the original embedded raster's coordinates. |
-| `opacity` | `target`, **`value`** | 0–1. |
+| `opacity` | `target`/`targets`, **`value`** | 0–1, or `"N%"`; a bare number above 1 is an error. |
 | `blend` | `target`, **`value`** | `normal`, `multiply`, `screen`, `overlay`, `darken`, `lighten`, `difference`, `add`, `subtract`. |
 | `text-set` | `target`, `text`, `size`, `color`, `align`, `spacing`, `stroke_width`, `stroke_color`, `font` | Edit a whole text layer (content, colour, size, font); keeps a `text-layout` box and, on rich text, the formatting that still applies (`warnings` lists what was dropped). Partial styling is `text-style`. `font`: registered name, `heading`/`body` role, or a file (CLI/Python). |
 | `text-layout` | `target`, `width`, `height`, `fit`, `warp`, `amount`, `path` | Box wrapping; `fit: true` shrinks font to fit; `warp`: `none`/`arc`/`flag`/`bulge` with `amount` −1..1; `path`: polyline `[[x,y],…]` in local px. Replaces previous layout. |
@@ -211,8 +221,8 @@ deletes it. One style per kind; all accept `enabled` (bool) and `opacity` (0–1
 ## Results
 
 Apply returns `{"success": true, "dry_run": bool, "operations": N, "changes": {...}}` plus, when relevant,
-`warnings` (text cut off by the canvas or overflowing its box/group; fields that were accepted but change
-nothing; effects no operation asked for, such as a timeline that grew to fit a keyframe), `normalized`, `edit_layers` and `adapt_layout`. `detail:"brief"` (MCP default) keys changes by layer ID
+`warnings` (text cut off by the canvas or overflowing its box/group; valid fields that change nothing for
+that shape; effects no operation asked for, such as a timeline that grew to fit a keyframe), `normalized`, `edit_layers` and `adapt_layout`. `detail:"brief"` (MCP default) keys changes by layer ID
 with only `added`/`name`/`type`/`bounds`, or `changed` field names and `bounds`, or `removed`.
 `detail:"compact"` (CLI/REST default; `Project.apply(..., detail="compact")`) gives the new values of changed
 fields; added layers include name, type and bounds. `detail:"full"` (Python default, CLI `--detail full`)
