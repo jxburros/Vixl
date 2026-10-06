@@ -83,6 +83,7 @@ vector: SVG export writes native paths.
 | `dandelion` | a seed head of radiating stalks | `seeds`, `color` |
 | `pinecone` | pointed scales clipped to an egg, occluded | `rows`, `color` |
 | `lily-pad` | notched pad with radiating veins | `color` |
+| `fur-blob` | an ellipse body with lanceolate tufts `along` its outline pointing out, and darker inner flicks | `tufts`, `aspect`, `length`, `color`, `flick_color` |
 
 ## Custom forms
 
@@ -233,3 +234,14 @@ Agents can build new organisms by combining the same steps the presets use:
 - **Caterpillar / worm / bamboo**: `segments` → `occlude` → a head `at` `body.head`.
 - **Animal coat or tissue**: `pattern` (spots, stripes, labyrinth) or `cells` → `intersect` with
   the body part so the markings stay inside it.
+- **Furry body**: the `fur-blob` preset, or for any existing shape the `scatter` operation with
+  `preset: fur` (tufts along the edge behind it, inner flicks above it, merged into two paths) or
+  the `plush` look (the same plus a soft gradient).
+
+## Scattering over layers
+
+The `scatter` rule works inside an organic form's own unit frame. To scatter copies of finished
+layers over another layer's outline (leaves over a hill, confetti in a card, studs along an
+edge), use the `scatter` operation; for a seamless wrap-around tile, `pattern-scatter`. Both use
+the same Poisson-disc sampling, take a `seed`, and with `merge: true` draw all copies as one path
+per tone. See [design tools](design-tools.md#scatter-and-seamless-pattern-tiles).

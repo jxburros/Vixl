@@ -17,7 +17,7 @@ vixl group stripes stripe
 vixl clip stripes sun
 ```
 
-The stripe stays one editable layer. Repeat counts include the original; `dx/dy` are nonnegative offsets between copies and `dw/dh` change each copy's size. `repeat-blend stripe --count 16 --dy 37 --end '{"height":21,"fill":"#4853a4"}'` interpolates size and RGBA color to the last copy. Reapplying repeat replaces its settings; `--count 1` leaves only the original. Counts are bounded to 512 and all resulting dimensions are checked before allocation.
+The stripe stays one editable layer. Repeat counts include the original; `dx/dy` are nonnegative offsets between copies and `dw/dh` change each copy's size (per-step turns, scale, opacity, jitter and `merge` make real copies instead: see [below](#per-step-transforms-jitter-and-merged-repeats)). `repeat-blend stripe --count 16 --dy 37 --end '{"height":21,"fill":"#4853a4"}'` interpolates size and RGBA color to the last copy. Reapplying repeat replaces its settings; `--count 1` leaves only the original. Counts are bounded to 512 and all resulting dimensions are checked before allocation.
 
 Shapes support `rectangle`, `rounded-rectangle`, `ellipse`, `polygon`, `star`, `arc`, and `line`; `vixl shape --target NAME --fill COLOR` (JSON `{"type":"shape","target":"NAME",…}`) changes the fill, stroke or geometry of an existing shape in place, keeping its layer ID; options include `--fill`, `--stroke`, `--stroke-width`, `--line-cap`, `--trim-start`/`--trim-end` (draw only part of the stroke, 0–100 %, animatable: see [Drawing a line on](brushes-and-animation.md#drawing-a-line-on)), `--radius`, `--sides`, and star `--inner-radius` (0.01–1). Geometry is retained and redrawn at the layer's current size with bounded antialiasing. Version 0.11.0 adds named shape shortcuts and editable single-contour Bézier paths, plus SVG export of simple geometry. See [design resources and vector export](agent-resources.md) for syntax and raster fallback limits.
 
@@ -78,6 +78,72 @@ loose. At most 360 copies including mirrors. The group records its `radial` sett
 vixl shape ellipse --name petal --x 380 --y 120 --width 40 --height 150 --fill '#7c3aed'
 vixl radial-repeat petal --count 12 --cx 50% --cy 50% --mirror --name rosette
 ```
+
+### Per-step transforms, jitter and merged repeats
+
+`repeat` and `radial-repeat` also take `rotation_step` (degrees each copy turns more than the one before),
+`scale_step` (a factor applied once more per copy, 0.9 = each copy 10% smaller), `opacity_step` (added per
+copy, clamped to 0-1), seeded `rotation_jitter`, `scale_jitter`, `position_jitter` and `opacity_jitter`
+(`seed`, default 0), and `merge: true`, which draws every copy as one path layer (one per color; shape layers
+only). A live `repeat` draws an unrotated strip, so with any of these fields `repeat` makes real copies
+instead: a group named `name` (default `<layer>-repeat`) holding the original and its copies, or one merged
+path. `dx`/`dy` may then be negative. Copies count against the document's layer limit; `merge` costs one layer.
+
+```json
+{"type": "repeat", "target": "badge", "count": 6, "dx": 50, "rotation_step": 15, "scale_step": 0.9, "opacity_step": -0.12, "name": "trail"}
+{"type": "radial-repeat", "target": "petal", "count": 16, "cx": "50%", "cy": "50%", "rotation_jitter": 6, "scale_jitter": 0.1, "seed": 3, "merge": true, "name": "bloom"}
+```
+
+## Scatter and seamless pattern tiles
+
+`scatter` places copies of one or more motif layers (`source`, a name or a list picked at random per copy) or
+of a motif drawn on the fly (`mark`: a shape spec such as `{"shape": "ellipse", "width": 8, "height": 8, "fill":
+"#fff"}`, or a built-in `{"mark": "tuft"}`/`{"mark": "flick"}`) over a target layer's outline:
+
+- `placement: inside` (default): Poisson-disc samples inside the outline (holes and even-odd shapes respected),
+  at least `spacing` pixels apart; `count` alone sets the spacing from the area. No grid look.
+- `placement: along`: evenly along the edge (`spacing` or `count`), pointing out along the normal
+  (`direction: normal`), along the edge (`tangent`), in a cone of `spread` degrees around the normal (`cone`) or
+  anywhere (`random`); `anchor: base` (the default here) puts each motif's bottom centre on the line, so blades
+  and tufts grow out of it; `offset` moves the line out (positive) or in.
+- Each copy gets `scale` × (1 ± `scale_jitter`), `rotation` ± `rotation_jitter`, a move up to `position_jitter`
+  pixels, a fill from `colors`, and a lightness shift up to `tone_variation` (OKLab L) in `tones` steps.
+  `exclude` lists layers whose outlines stay clear (plus `exclude_margin`).
+- Output: a group named `name` (default `<target>-scatter`) right above the target, in the target's parent
+  group, with copies `NAME/1`, `NAME/2` …; or with `merge: true` one path layer per tone (a group of them when
+  there are several), so a thousand marks cost a few layers. Without `merge` the copies count against the
+  layer limit, and the error says so. Motif layers are hidden afterwards (`hide_source: false` keeps them).
+- `preset: fur` grows tufts in the target's fill along its edge, behind it, and a second merged layer of darker
+  inner flicks (`flicks` per tuft, default 0.5) above it; `length` sets the tuft length. The `plush` look does
+  the same with a soft gradient, and the organic `fur-blob` preset is a ready furry body.
+
+The result reports `scatter: [{name, copies, spacing, seed, layers}]`, and the first output layer keeps the
+recipe under `scatter`.
+
+```json
+{"type": "scatter", "target": "card", "source": ["dot", "star"], "count": 60, "seed": 4, "rotation_jitter": 180, "scale_jitter": 0.3, "tone_variation": 0.08, "exclude": ["title"], "merge": true, "name": "confetti"}
+{"type": "scatter", "target": "bear", "preset": "fur", "seed": 2}
+```
+
+`pattern-scatter` scatters motifs in a `width` × `height` tile (at `x`, `y`, default 0, 0) with toroidal
+Poisson-disc spacing: distances wrap across the edges, and a copy that crosses an edge gets a wrapped copy on the
+opposite side, so the tile repeats without a seam. `background` adds a colored rectangle under the motifs;
+`pattern: NAME` also saves the tile (cropped to its box) as a document pattern for `pattern-fill`. The result
+reports `pattern_scatter: [{name, copies, ghosts, spacing, seed, seam}]`, where `seam` is the same
+`seamless_check` report `pattern-define` gives (`edge_error` close to `interior_variation` means no visible
+seam). The recipe stays on the tile group (`pattern_scatter`): after editing a motif, `{"type":
+"pattern-scatter", "target": "tile"}` rebuilds it with the same seed, so the tile re-wraps; any field passed
+with it changes the recipe. The group shows wrapped copies past its box on the canvas; the saved pattern is the
+cropped tile. Hide the tile once the pattern is saved.
+
+```json
+{"type": "pattern-scatter", "source": ["leaf", "dot"], "width": 200, "height": 200, "count": 14, "seed": 11, "rotation_jitter": 180, "background": "#fff7ed", "pattern": "leaves", "name": "tile"}
+{"type": "pattern-fill", "target": "ground", "pattern": "leaves", "tile_variation": 0.3}
+```
+
+`pattern-fill` and `pattern-stroke` take `tile_variation` (0-1): each repeat of the tile is lightened or darkened
+by its own seeded amount (up to 25%), so a large fill does not read as a grid. `pattern-define` reports its seam
+check under `patterns` in the result.
 
 ## Attached layer styles
 

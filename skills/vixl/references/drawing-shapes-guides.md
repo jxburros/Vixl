@@ -86,6 +86,26 @@ kept source, so edits made since are replaced. `tear` `as`: `mask` (default with
 (vector face the target is clipped to), `path` (free rim, face and fibre layers); regrow by
 targeting the torn layer (the `-face` layer for a free sheet). Reference: `docs/irregular.md`.
 
+## Scatter, seamless tiles and fur
+
+```json
+{"type": "scatter", "target": "hill", "source": ["leaf", "flower"], "count": 80, "seed": 3, "rotation_jitter": 40, "scale_jitter": 0.3, "tone_variation": 0.06, "merge": true}
+{"type": "scatter", "target": "card", "mark": {"shape": "ellipse", "width": 6, "height": 6, "fill": "#fff"}, "placement": "along", "spacing": 18}
+{"type": "scatter", "target": "bear", "preset": "fur", "seed": 2}
+{"type": "pattern-scatter", "source": ["leaf", "dot"], "width": 200, "height": 200, "count": 14, "seed": 11, "rotation_jitter": 180, "background": "#fff7ed", "pattern": "leaves", "name": "tile"}
+{"type": "pattern-scatter", "target": "tile"}                 # rebuild and re-wrap after editing a motif
+```
+
+`scatter` copies motifs inside a layer's outline (Poisson-disc, no grid look) or `along` its edge
+(`direction` normal/tangent/cone/random, `anchor: base` grows marks out of the line), with seeded
+jitter, `colors`/`tone_variation` and `exclude`. `merge: true` draws every copy as one path per tone
+(shape motifs), so large scatters stay within the layer limit. `pattern-scatter` makes a seamless
+tile: motifs crossing an edge get wrapped copies, the result reports `seam`, and `pattern` saves it
+for `pattern-fill` (`tile_variation` varies each repeat). Fur: `preset: fur`, the `plush` look or
+the organic `fur-blob` preset; the `hand-made` look applies a removable irregular wobble.
+`repeat`/`radial-repeat` take `rotation_step`, `scale_step`, `opacity_step`, seeded jitter and
+`merge`. Reference: `docs/design-tools.md#scatter-and-seamless-pattern-tiles`.
+
 ## Guides, grids and placement
 
 Guides can be angled lines, rays, segments, points, circles and curves; `grid --kind` makes

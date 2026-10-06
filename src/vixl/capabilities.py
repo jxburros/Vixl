@@ -8,13 +8,14 @@ from .model import Limits
 TOPICS = {
     "text": ("text rich font layout stack container caption bubble", ["typography", "layout"]),
     "drawing": (
-        "shape pen path stroke distort organic irregular tear pattern texture clone paint repeat scatter",
-        ["imperfection", "drawn-textures", "illustration-perspective", "brush"],
+        "shape pen path stroke distort organic irregular tear pattern texture clone paint repeat scatter fur plush "
+        "seamless tile",
+        ["scatter", "imperfection", "drawn-textures", "illustration-perspective", "brush"],
     ),
     "animation": (
         "motion animate keyframe keyframes timeline character rig ik pivot loop stagger cycle scene camera particle "
-        "cut-paper viseme",
-        ["looping-motion", "natural-motion", "character-rigging", "motion", "cut-paper", "audio-composition"],
+        "cut-paper viseme wiggle boil sample wave",
+        ["looping-motion", "scatter", "natural-motion", "character-rigging", "motion", "cut-paper", "audio-composition"],
     ),
     "film": ("film video audio caption", ["film-review", "audio-composition"]),
     "layout": (
@@ -37,6 +38,9 @@ GOTCHAS = [
     "For motion, check sampled frames and film-preview with the camera before a full export; start at draft quality.",
     "Loops: motion recipes take period, stagger and many targets in one operation; a duration that is a whole number of "
     "periods returns every track to its frame-0 value.",
+    "No expression language: generate repetition with keyframes sample {fn: sin|triangle|noise, period, amplitude, "
+    "step_ms}, motion recipe wiggle (amount, frequency, samples) or line-boil, and repeat/radial-repeat per-step "
+    "fields with seeded jitter; scatter/pattern-scatter with merge: true keep many copies to a few layers.",
 ]
 
 

@@ -235,8 +235,8 @@ def test_looping_example_returns_to_its_first_frame():
 def test_pattern_guide_scatters_instead_of_making_a_grid():
     pattern = briefs.guide("pattern")
     assert "repeat" not in {op["type"] for op in pattern["example"]}
-    assert any(rule["rule"] == "scatter" for op in pattern["example"] if op["type"] == "organic"
-               for part in op["parts"] for rule in part["rules"])
+    tile = next(op for op in pattern["example"] if op["type"] == "pattern-scatter")  # seamless, wrapped tile (#256)
+    assert tile["seed"] is not None and tile["pattern"]
     assert "irregular" in json.dumps(pattern["approach"]) and "imperfection" in pattern["guidance"]
 
 

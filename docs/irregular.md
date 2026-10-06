@@ -125,6 +125,19 @@ the layer's `irregular` record, so:
 * edits you made to the layer since (a new fill, a move) are replaced by a regrow or remove. Make
   such edits after you have chosen the seed.
 
+### As a look, and animated
+
+The `hand-made` look applies a natural-strength wobble (outline, vertices and line weight, no
+placement or color drift) as a removable look: `{"type": "look", "target": "mascot", "look":
+"hand-made", "amount": 0.4}`; `remove: true` restores the source. For hand-drawn line boil in an
+animation, the `line-boil` motion recipe makes `variants` copies of each target (default 3), wobbles
+each with its own seed (`seed`, `seed + 1` …; `strength` subtle by default), groups them as
+`NAME-boil` and keys their `visible` property so one drawing shows at a time, held for `1/fps`
+seconds (`fps` default 10; 8-12 reads as drawn on twos or threes):
+`{"type": "motion", "recipe": "line-boil", "target": "mascot", "fps": 10, "duration": 2000}`.
+Seeds are not keyframable, so the boil is built from copies: it multiplies the target's layers by
+`variants`. Animate the `NAME-boil` group (not the original drawing) for other motion.
+
 ## `tear`
 
 ```bash
