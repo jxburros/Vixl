@@ -938,3 +938,110 @@ def compare(project, before="previous", after="head", *, max_width=1024, max_hei
     canvas.alpha_composite(left, (0, 0))
     canvas.alpha_composite(right, (left.width + 8, 0))
     return canvas, summary
+
+
+APPLY_ISSUES = 20  # Findings an apply call returns; vixl_check lists them all.
+APPLY_PREVIEW = ("page", "region", "max_width", "max_height", "time")
+
+
+def _apply_options(check, preview):
+    """Validate apply's ``check`` and ``preview`` before anything is applied."""
+    from .deck import DECK_CHECKS
+
+    if check is True or not check:
+        names = None
+    elif isinstance(check, str):
+        names = [check]
+    else:
+        require(isinstance(check, list) and all(isinstance(name, str) for name in check),
+                "check is true, a check name or a list of check names", field="check")
+        names = check
+    unknown = sorted(set(names or ()) - {*CHECKS, *OPTIONAL_CHECKS, "deck", *DECK_CHECKS})
+    require(not unknown, f"Unknown check(s) {unknown}; available: {', '.join(CHECKS + OPTIONAL_CHECKS)}", field="check")
+    options = {}
+    if preview:
+        options = {} if preview is True else preview
+        require(isinstance(options, dict) and not set(options) - set(APPLY_PREVIEW),
+                f"preview is true or an object with {', '.join(APPLY_PREVIEW)}", field="preview")
+        options = {"max_width": 512, **options}
+        options.setdefault("max_height", options["max_width"])
+    return names, options
+
+
+def _touched(before, project):
+    """Names of the layers a batch added or changed, with the groups around them and the layers inside them."""
+    layers = {layer["id"]: layer for layer in project.state["layers"]}
+    changed = {ident for ident, layer in layers.items() if before.get(ident) != layer}
+    ids = set(changed)
+    for ident, layer in layers.items():
+        parent = layer.get("parent")
+        while parent in layers:
+            if parent in changed:
+                ids.add(ident)
+            parent = layers[parent].get("parent")
+    for ident in changed:
+        parent = layers[ident].get("parent")
+        while parent in layers:
+            ids.add(parent)
+            parent = layers[parent].get("parent")
+    return {layers[ident]["name"] for ident in ids}
+
+
+def batch_findings(project, names, touched):
+    """vixl_check's summary with its issues limited to the touched layers plus every 'fix' finding (at most
+    APPLY_ISSUES, fixes first). The counts and ``passed`` still describe the whole document."""
+    report = check_design(project, checks=names)
+    if "issues" not in report:
+        return report
+
+    def concerns(item):
+        layers = item.get("layers") or ([item["layer"]] if item.get("layer") else [])
+        return item["action"] == "fix" or bool(touched & set(layers))
+
+    order = {action: index for index, action in enumerate(ACTIONS)}
+    kept = sorted((item for item in report["issues"] if concerns(item)), key=lambda item: order[item["action"]])[:APPLY_ISSUES]
+    summary = {key: report[key] for key in ("passed", "errors", "warnings", "info") if key in report}
+    summary.update(issues=kept, by_action={action: [i for i, x in enumerate(kept) if x["action"] == action] for action in ACTIONS})
+    if "checked" in report:
+        summary["checked"] = report["checked"]
+    if len(report["issues"]) > len(kept):
+        summary["omitted"] = len(report["issues"]) - len(kept)
+        summary["note"] = f"Only 'fix' findings and those on layers this batch touched are listed (at most {APPLY_ISSUES}); vixl_check lists all."
+    return summary
+
+
+def apply_reviewed(project, operations, *, dry_run=False, detail="brief", check=None, preview=None, validate=None,
+                   budget=None):
+    """Apply a batch and, on request, check and preview the result in the same call: one round trip instead of
+    apply, vixl_check and vixl_render_preview. ``check`` is true (the default checks), a check name or a list;
+    ``preview`` is true or {page, region, max_width (default 512), max_height, time}. A dry run checks and previews
+    the candidate without saving it. ``budget`` (seconds) skips the review when the edit alone used it up, so a slow
+    batch never also waits for a check. ``validate`` is Project.apply's per-operation ``check``.
+    Returns ``(result, PNG bytes or None)``."""
+    import time
+    from copy import deepcopy
+
+    if not check and not preview:
+        return project.apply(operations, dry_run=dry_run, detail=detail, check=validate), None
+    names, options = _apply_options(check, preview)
+    started = time.monotonic()
+    before = {layer["id"]: layer for layer in deepcopy(project.state["layers"])}
+    target = project.clone() if dry_run else project  # The candidate a dry run checks and previews, then drops.
+    result = target.apply(operations, detail=detail, check=validate)
+    result["dry_run"] = dry_run
+    skipped, image = [], None
+    for part, wanted in (("check", check), ("preview", preview)):
+        if not wanted:
+            continue
+        if budget is not None and time.monotonic() - started > budget:
+            skipped.append(part)
+        elif part == "check":
+            result["check"] = batch_findings(target, names, _touched(before, target))
+        else:
+            from .proxy import preview_png
+
+            image = preview_png(target, max_bytes=524_288, **options)
+    if skipped:
+        result["review_skipped"] = (f"The edit took {time.monotonic() - started:.0f} s, so {' and '.join(skipped)} did not run; "
+                                    "call vixl_check or vixl_render_preview.")
+    return result, image

@@ -833,7 +833,8 @@ STYLES = {
             "layouts": ["typographic-poster", "diagonal-band", "thumbnail-bold"],
         },
         "imagery": {
-            "advice": "Thresholded and halftoned photos, torn paper shapes, tape rectangles, grain on everything.",
+            "advice": "Thresholded and halftoned photos, torn paper shapes (tear with as: mask on photos, as: path for "
+                      "scraps), tape rectangles, grain on everything; irregular placement on rotated cut-outs.",
             "looks": ["grain", "halftone", "paper"], "effects": ["threshold", "halftone", "grain", "photocopy"],
             "avoid": ["clean gradients", "soft shadows", "tidy grids"],
         },
@@ -977,7 +978,9 @@ STYLES = {
             "layouts": ["rule-of-thirds", "hero-statement", "photo-caption", "quote-card"],
         },
         "imagery": {
-            "advice": "Use organic, paint and pen operations; botanical presets; pencil or watercolor looks.",
+            "advice": "Use organic, paint and pen operations; botanical presets; pencil or watercolor looks. Give drawn "
+                      "shapes and outlines irregular (subtle or natural, with pressure) so lines waver like ink; add "
+                      "drawn-texture pencil or ink-wash on fills. Keep the type and frame clean.",
             "looks": ["sketch", "watercolor", "paper"], "effects": ["pencil-sketch", "watercolor"],
             "avoid": ["hard shadows", "glossy gradients", "perfect geometry only"],
         },
@@ -1118,7 +1121,9 @@ STYLES = {
             "layouts": ["centered-axis", "hero-statement", "product-card", "emblem"],
         },
         "imagery": {
-            "advice": "Draw characters with ellipses and rounded rectangles; soft outlines; sparkle and heart accents.",
+            "advice": "Build characters from grouped rounded parts (character, or ellipses and rounded rectangles) with soft "
+                      "outlines and sparkle and heart accents. irregular strength subtle on bodies, ears and accents (not "
+                      "eyes) keeps them hand-made; scatter accents irregularly rather than on a grid.",
             "looks": ["soft-shadow", "outline", "glow"], "effects": [],
             "avoid": ["sharp corners", "harsh black", "gritty textures"],
         },

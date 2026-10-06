@@ -254,3 +254,35 @@ def render_preview(
         image = image.convert("RGBA")
         draw_fields(image, candidate, image.width / w, (x, y))
     return image
+
+
+def encode_png(image, max_bytes):
+    """PNG bytes of ``image``, shrunk by quarters until they fit ``max_bytes``."""
+    from io import BytesIO
+
+    from PIL import Image
+
+    while True:
+        stream = BytesIO()
+        image.save(stream, format="PNG")
+        data = stream.getvalue()
+        if len(data) <= max_bytes:
+            return data
+        image = image.resize(
+            (max(1, image.width * 3 // 4), max(1, image.height * 3 // 4)), Image.Resampling.LANCZOS
+        )
+
+
+def preview_png(project, max_width=1024, max_height=1024, max_bytes=1_048_576, *, region=None, **options):
+    """The preview PNG every interface returns (vixl_render_preview, REST /preview, apply's ``preview``):
+    ``region`` accepts pixels or percentages; ``options`` are render_preview's."""
+    from .errors import require
+
+    require(1 <= max_width <= 4096 and 1 <= max_height <= 4096, "Preview dimensions must be 1–4096")
+    require(65_536 <= max_bytes <= 4_194_304, "Preview byte limit must be 65536–4194304")
+    if region is not None:
+        from .checks import _box
+
+        c = project.state["canvas"]
+        region = [round(v) for v in _box(region, c["width"], c["height"], "region")]
+    return encode_png(render_preview(project, max_width, max_height, region=region, **options), max_bytes)

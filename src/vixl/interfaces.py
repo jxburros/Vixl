@@ -282,6 +282,14 @@ class Session:
         return loaded
 
     def apply(self, operations, dry_run=False, detail="compact", document=None, operations_path=None):
+        return self.apply_reviewed(operations, dry_run, detail, document, operations_path)[0]
+
+    def apply_reviewed(self, operations, dry_run=False, detail="compact", document=None, operations_path=None,
+                       check=None, preview=None, budget=None):
+        """apply, plus the optional ``check`` findings and ``preview`` PNG of the result (checks.apply_reviewed):
+        returns ``(result, PNG bytes or None)``."""
+        from .checks import apply_reviewed
+
         if operations_path is not None:
             require(operations is None, "Pass operations or operations_path, not both", field="operations_path")
             operations = self.load_operations(operations_path)
@@ -292,7 +300,8 @@ class Session:
         with self.project(write=not dry_run, document=document) as p:
             from .service_fonts import checker
 
-            return p.apply(operations, dry_run=dry_run, detail=detail, check=checker(p, service_check))
+            return apply_reviewed(p, operations, dry_run=dry_run, detail=detail, check=check, preview=preview,
+                                  validate=checker(p, service_check), budget=budget)
 
     def render(self, variables=None, artboard=None, comp=None, document=None):
         with self.project(document=document) as p:
@@ -667,10 +676,15 @@ def create_app(path, *, token=None, limits=None):
 
     @app.post("/operations")
     def operations(body: dict):
-        return session.apply(
+        import base64
+
+        result, image = session.apply_reviewed(
             body.get("operations"), bool(body.get("dry_run", False)), body.get("detail", "compact"),
-            operations_path=body.get("operations_path"),
+            operations_path=body.get("operations_path"), check=body.get("check"), preview=body.get("preview"),
         )
+        if image is not None:
+            result["preview_base64"] = base64.b64encode(image).decode()
+        return result
 
     @app.get("/render")
     def render():

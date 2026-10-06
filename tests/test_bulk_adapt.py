@@ -371,7 +371,7 @@ def test_mcp_apply_defaults_to_brief_and_text_add_too(tmp_path):
             full = await call("vixl_operations_apply", detail="compact", operations=[
                 {"type": "move", "target": "box", "x": 9}])
             assert next(iter(full["changes"]["layers"].values()))["x"] == 9
-            added = await call("vixl_text_add", text="Hi", name="hi")
+            added = await call("vixl_operations_apply", operations=[{"type": "text", "text": "Hi", "name": "hi"}])
             assert next(iter(added["changes"]["layers"].values()))["name"] == "hi"
 
     asyncio.run(scenario())

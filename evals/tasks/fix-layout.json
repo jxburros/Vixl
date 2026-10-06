@@ -20,7 +20,6 @@
       {"type": "move", "target": "subtitle", "x": 90, "y": 360},
       {"type": "text-set", "target": "subtitle", "color": "#555555"},
       {"type": "move", "target": "footer", "x": 80, "y": 1200}
-    ]}},
-    {"tool": "vixl_check", "arguments": {}}
+    ], "check": true}}
   ]
 }

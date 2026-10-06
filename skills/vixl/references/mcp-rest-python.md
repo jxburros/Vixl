@@ -58,7 +58,7 @@ result (`"replayed": true`) instead of applying twice.
 
 | Tool | Parameters | Returns / notes |
 | --- | --- | --- |
-| `vixl_operations_apply` | **`operations`** (1–10000 operation objects) or `operations_path` (workspace `.json`/`.jsonl` file), `dry_run=False`, `detail="brief"\|"compact"\|"full"`, `request_id`, `as_job` | Atomic. Brief (default): per layer ID, new layers as `{added, name, type, bounds}`, changed layers as `{changed: [fields], bounds}`; compact adds the new values of changed fields; full: before/after snapshots. `warnings` (text cut off or overflowing its box/group, fields that change nothing) and `normalized` (rewritten spellings) appear when relevant. |
+| `vixl_operations_apply` | **`operations`** (1–10000 operation objects) or `operations_path` (workspace `.json`/`.jsonl` file), `dry_run=False`, `detail="brief"\|"compact"\|"full"`, `check`, `preview`, `request_id`, `as_job` | Atomic. `check=true` (or check names) adds vixl_check's findings for the touched layers plus every `fix`; `preview=true` (or `{page, region, max_width, time}`) adds a 512 px PNG, so one call replaces apply → check → preview. Brief (default): per layer ID, new layers as `{added, name, type, bounds}`, changed layers as `{changed: [fields], bounds}`; compact adds the new values of changed fields; full: before/after snapshots. `warnings` (text cut off or overflowing its box/group, fields that change nothing) and `normalized` (rewritten spellings) appear when relevant. |
 | `vixl_capabilities` | `topic`, `fields=False` | Task-specific operations, exact fields, limits and gotchas |
 | `vixl_operation_schema` | **`types`** (1–20 names) | Exact JSON Schema for those operation types (needed with `vixl mcp --schema slim`) |
 | `vixl_render_preview` | `variables`, `max_width=1024`, `max_height=1024` (≤4096), `max_bytes=1048576` (64 KiB–4 MiB), `region=[x,y,w,h]` (px or %), `artboard`, `comp` | PNG at preview resolution (fast); `region` zooms in up to 8× |
@@ -155,7 +155,7 @@ because the schema is inline in `vixl_operations_apply`.
 
 - Operation fields `path` and `linked` are rejected → import with `vixl_import_image`; reference
   embedded images by `asset` ID (see `vixl_document_inspect`), e.g. in `frame`/`replace-contents`/`add`.
-- `font` works in batches (`text`, `text-set`, `rich-text` spans, `layout-apply`, fields) like `vixl_text_add`:
+- `font` works in batches (`text`, `text-set`, `rich-text` spans, `layout-apply`, fields):
   pass a registered font name or a role (`heading`, `body`). Install first with `vixl_font_pair` /
   `vixl_font_install` / `vixl_import_font`; a file path or unregistered name is an error that lists the
   registered names. No font files over MCP.

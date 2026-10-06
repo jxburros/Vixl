@@ -214,7 +214,7 @@ def test_mcp_resources_templates_font_and_vector_geometry(tmp_path):
         await server.call_tool("vixl_template_create", {"path": "logo.vixl", "name": "logo"})
         await server.call_tool("vixl_import_font", {"path": "font.ttf", "name": "brand"})
         await server.call_tool(
-            "vixl_text_add", {"text": "Vixl", "name": "label", "font": "brand", "size": 16}
+            "vixl_operations_apply", {"operations": [{"type": "text", "text": "Vixl", "name": "label", "font": "brand", "size": 16}]}
         )
         await server.call_tool(
             "vixl_operations_apply",
@@ -236,6 +236,7 @@ def test_mcp_resources_templates_font_and_vector_geometry(tmp_path):
     asyncio.run(run())
     assert ET.fromstring((tmp_path / "logo.svg").read_bytes()).find(".//{*}path") is not None
     assert Project.load(tmp_path / "logo.vixl").state["fonts"]
+    assert Project.load(tmp_path / "logo.vixl").layer("label")["font"]  # The registered name, through operations_apply.
     s = Session(workspace=tmp_path)
     s.open("logo.vixl")
     with pytest.raises(VixlError):

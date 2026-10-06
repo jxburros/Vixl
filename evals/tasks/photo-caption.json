@@ -18,8 +18,7 @@
       {"type": "move", "target": "photo", "x": 0, "y": 0},
       {"type": "solid", "name": "bar", "width": 1080, "height": 675, "x": 0, "y": 675, "color": "#111111"},
       {"type": "text", "name": "caption", "text": "Summer Sale – 40% off", "size": 64, "color": "white", "x": "center", "y": 980}
-    ]}},
-    {"tool": "vixl_check", "arguments": {}},
+    ], "check": true, "preview": true}},
     {"tool": "vixl_export_file", "arguments": {"path": "post.jpg"}}
   ]
 }
