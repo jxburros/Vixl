@@ -25,4 +25,3 @@ movie/.film-*/
 examples/output/
 !marketing/output/**/*.vixl
 
-!logos/**/*.vixl
