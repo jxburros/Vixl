@@ -4,8 +4,8 @@ A document can hold several pages: slides in a deck, frames of a social carousel
 booklet or a multi-page form. Each page has its own layers; the canvas size, fonts, swatches,
 styles, palettes, brushes, guides and variables are shared. Master pages hold layers drawn under
 every page that uses them (a footer band, a logo, a page number). Pages carry speaker notes, and
-the whole document exports as a multi-page vector PDF with selectable text or as an editable
-PowerPoint deck.
+the whole document exports as a multi-page vector PDF with selectable text, as an editable
+PowerPoint deck or as a self-contained HTML presentation you can present from any browser.
 
 ```bash
 vixl new 1920x1080 -o deck.vixl --background '#ffffff'
@@ -22,6 +22,7 @@ vixl render --page all --out sheet.png                         # every page on o
 vixl check --checks deck                                       # every page + deck-wide checks
 vixl export deck.pdf                                           # vector PDF, one page per page
 vixl export deck.pptx                                          # editable slides with speaker notes
+vixl export deck.html                                          # one-file slide show with speaker view
 ```
 
 ```json
@@ -54,9 +55,10 @@ Page settings:
   notes and counted by the deck checks, never drawn.
 - `background` — overrides the canvas (or master) background for this page.
 - `variables` — page-specific values for `${name}` text, on top of the document's variables.
-- `hidden` — left out of PDF export, previews of `all` pages, the deck checks and per-page image
-  export; exported to PowerPoint as a hidden slide.
-- `transition` — `fade`, `push`, `wipe`, `cover`, `split` or `zoom` in PowerPoint.
+- `hidden` — left out of PDF export, the HTML presentation, previews of `all` pages, the deck
+  checks and per-page image export; exported to PowerPoint as a hidden slide.
+- `transition` — `fade`, `push`, `wipe`, `cover`, `split` or `zoom` in PowerPoint and in the HTML
+  presentation.
 
 Built-in variables: `${page}` (the page number), `${pages}` (the page count) and `${page_name}`.
 
@@ -116,6 +118,16 @@ slides) that opens in PowerPoint, Keynote, Google Slides and LibreOffice:
   tall (PowerPoint's standard height), so 1920×1080 is the usual 13.33 × 7.5 in 16:9 slide.
 - Fonts are referenced by family name and listed under `fonts` in the result: install the same
   fonts wherever the deck is presented (PowerPoint substitutes missing ones).
+
+## HTML presentation
+
+`export deck.html` writes the deck as a single web page that presents with no server or network:
+vector slides scaled to the window, keyboard, click, swipe and `#3` navigation, an overview grid,
+the pages' transitions, one slide per printed page, and a speaker view (notes, next slide, timer)
+in a second window. Hidden pages are left out; `--pages` picks pages, `--presenter-theme`,
+`--slide-images png`, `--start-slide` and `--no-notes` adjust it, and `--no-presenter` gives the
+old single-image page back. Speaker notes are inside the file, so export with `--no-notes` for the
+copy you share. See [presenter](presenter.md).
 
 ## Deck checks
 

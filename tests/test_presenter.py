@@ -286,13 +286,15 @@ def deck_file(tmp_path_factory):
 class Viewer:
     """A page showing the presentation, with its console, requests and CSP reports recorded."""
 
-    def __init__(self, browser, path, hash="", **context):
+    def __init__(self, browser, path, hash="", scripts=(), **context):
         self.context = browser.new_context(viewport={"width": 1280, "height": 720}, **context)
         self.problems, self.requests = [], []
         self.context.add_init_script("""
             window.__csp = [];
             document.addEventListener('securitypolicyviolation', e => window.__csp.push(e.violatedDirective));
         """)
+        for script in scripts:
+            self.context.add_init_script(script)
         self.page = self.watch(self.context.new_page())
         self.uri = path.as_uri()
         self.page.goto(self.uri + hash)
@@ -525,6 +527,28 @@ def test_browser_speaker_view_shows_notes_and_stays_in_sync(viewer):
     speaker.click("[data-act=larger]")
     assert speaker.evaluate("document.getElementById('sp-notes').style.fontSize") == "22px"
     assert v.current() == 2 and v.page.url.endswith("#2")
+
+
+NO_BROADCAST = "delete window.BroadcastChannel;"
+NO_STORAGE = "Storage.prototype.setItem = function () { throw new Error('storage blocked'); };"
+NO_MESSAGES = "window.addEventListener('message', e => e.stopImmediatePropagation(), true);"
+
+
+@pytest.mark.parametrize("name,scripts", [
+    ("BroadcastChannel", [NO_STORAGE, NO_MESSAGES]),
+    ("localStorage", [NO_BROADCAST, NO_MESSAGES]),
+    ("postMessage", [NO_BROADCAST, NO_STORAGE]),
+])
+def test_browser_speaker_view_sync_works_over_each_transport_alone(viewer, name, scripts):
+    v = viewer("#1", scripts=scripts)
+    with v.context.expect_page() as opened:
+        v.page.keyboard.press("s")
+    speaker = v.watch(opened.value)
+    speaker.wait_for_selector("#sp-count")
+    v.page.keyboard.press("ArrowRight")
+    v.wait("document.getElementById('sp-count').textContent === 'Slide 2 of 3'", speaker)
+    speaker.keyboard.press("End")
+    v.wait("document.querySelector('.slide.is-cur').dataset.n === '3'")
 
 
 def test_browser_print_gives_one_page_per_slide(viewer):

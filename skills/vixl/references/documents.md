@@ -30,11 +30,17 @@ A document becomes multi-page with the first `page add`; each page has its own l
 - Preview every page at once: `vixl_render_preview(page="all")` / `render --page all`.
 - `vixl_check(checks=["deck"])` checks every page plus title placement, type scale, words per
   page, projected type size (points) and speaker notes.
-- Export `deck.pdf` (vector, selectable text) or `deck.pptx` (editable slides, notes);
+- Export `deck.pdf` (vector, selectable text), `deck.pptx` (editable slides, notes) or `deck.html`
+  (a self-contained presentation: keyboard/swipe/`#3` navigation, overview, the pages'
+  transitions, speaker view with notes and timer on `S`, print one slide per page);
   `pages: "1-3,intro"` picks pages; `export slide.png --pages all` writes numbered files.
+  HTML options (`presenter={"theme": "dark|light|auto", "slide_images": "svg|png", "notes": false,
+  "start": 3}`; CLI `--presenter-theme --slide-images --no-notes --start-slide`). Notes are inside
+  the file, so pass `notes: false` for a copy to share; `presenter: false` gives a single image.
+  Details: `docs/presenter.md`.
 - Name each slide's title layer `title` so it becomes the PowerPoint title placeholder.
 
-Full reference: `docs/slides.md`.
+Full reference: `docs/slides.md` (HTML presentations: `docs/presenter.md`).
 
 ## Forms
 

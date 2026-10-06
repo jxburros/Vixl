@@ -370,7 +370,8 @@ SCRIPT = r"""
     msg.from = me;
     msg.id = me + ":" + (++seq);
     if (chan) { try { chan.postMessage(msg); } catch (e) { /* channel closed */ } }
-    try { localStorage.setItem(KEY, JSON.stringify(msg)); } catch (e) { /* storage may be blocked */ }
+    // Writing then removing the key still raises a storage event in the other window and leaves nothing behind.
+    try { localStorage.setItem(KEY, JSON.stringify(msg)); localStorage.removeItem(KEY); } catch (e) { /* storage may be blocked */ }
     peers = peers.filter(function (w) { return w && !w.closed; });
     peers.forEach(function (w) { try { w.postMessage({ vixl: KEY, msg: msg }, "*"); } catch (e) { /* window gone */ } });
   }
