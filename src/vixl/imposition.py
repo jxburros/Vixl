@@ -605,7 +605,7 @@ def run(session, template, request):
             field="copies")
     for field in ("skip_invalid", "dry_run", "replace"):
         require(type(request.get(field, False)) is bool, f"{field} must be true or false", field=field)
-    outputs = _outputs(session, request, request.get("replace", False))
+    outputs = _outputs(session, request, request.get("replace", False) or request.get("dry_run", False))
     require(request.get("dry_run") or outputs, "Give output (a .pdf or .vixl) or sheet_document, or dry_run to only validate",
             field="output")
     spec = sheet_spec(request.get("sheet"))
@@ -775,7 +775,7 @@ def cli(args, options, limits):
 
     args = list(args)
     project = None
-    if "--rerun" not in args:
+    if "--rerun" not in args and not any(arg in ("-h", "--help") for arg in args):
         path = args.pop(0) if args and args[0].endswith(".vixl") else current_path(options.project)
         project = Project.load(path, limits=limits, allow_linked=options.allow_linked)
         project._workspace = Path.cwd()

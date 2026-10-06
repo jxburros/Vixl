@@ -112,7 +112,7 @@ def test_variables_override_source_variables_and_read_host_variables(tmp_path):
     assert np.abs(pixels(host.render().crop((0, 0, 200, 100))) - pixels(reference.render())).max() <= 1
     assert host.render(variables={"greeting": "Other"}).crop((0, 0, 200, 100)).tobytes() != host.render().crop((0, 0, 200, 100)).tobytes()
     with pytest.raises(VixlError, match="Undefined variable: nope"):
-        host.apply({"type": "link-set", "target": "a", "variables": {"who": "${nope}"}})
+        host.apply({"type": "link", "target": "a", "variables": {"who": "${nope}"}})
     host.state["layers"][0]["variables"] = {"who": "${nope}"}  # edited behind the engine's back: still an error
     with pytest.raises(VixlError, match="Undefined variable: nope"):
         host.render()
@@ -292,20 +292,20 @@ def test_link_set_changes_settings_and_validates_against_the_source(tmp_path):
     make_tile(tmp_path / "b.vixl", fill="#0000ff")
     host = host_at(tmp_path)
     host.apply({"type": "link", "source": "a.vixl", "name": "t", "variables": {"who": "x"}})
-    host.apply({"type": "link-set", "target": "t", "source": "b.vixl", "fit": "fit", "position": [0, 1]})
+    host.apply({"type": "link", "target": "t", "source": "b.vixl", "fit": "fit", "position": [0, 1]})
     layer = host.layer("t")
     assert layer["source"] == "b.vixl" and layer["fit"] == "fit" and layer["position"] == [0, 1]
     assert host.render().getpixel((190, 90))[:3] == (0, 0, 255)
-    host.apply({"type": "link-set", "target": "t", "variables": None, "crop": {"x": 0, "y": 0, "width": 100, "height": 50}})
+    host.apply({"type": "link", "target": "t", "variables": None, "crop": {"x": 0, "y": 0, "width": 100, "height": 50}})
     assert "variables" not in host.layer("t") and host.layer("t")["crop"] == [0, 0, 100, 50]
-    host.apply({"type": "link-set", "target": "t", "crop": None})
+    host.apply({"type": "link", "target": "t", "crop": None})
     assert "crop" not in host.layer("t")
     with pytest.raises(VixlError, match="exceeds"):
-        host.apply({"type": "link-set", "target": "t", "crop": {"x": 150, "y": 0, "width": 100, "height": 50}})
+        host.apply({"type": "link", "target": "t", "crop": {"x": 150, "y": 0, "width": 100, "height": 50}})
     with pytest.raises(VixlError, match="something to change"):
-        host.apply({"type": "link-set", "target": "t"})
+        host.apply({"type": "link", "target": "t"})
     with pytest.raises(VixlError, match="not a linked document layer"):
-        host.apply([{"type": "solid", "name": "plain"}, {"type": "link-set", "target": "plain", "fit": "fit"}])
+        host.apply([{"type": "solid", "name": "plain"}, {"type": "link", "target": "plain", "fit": "fit"}])
     with pytest.raises(VixlError):
         host.apply({"type": "link", "source": "a.vixl", "position": "middle-ish"})
 
@@ -403,7 +403,7 @@ def test_link_commands_compile_and_run_from_the_cli(tmp_path):
                   "position": "top-left", "crop": {"x": 0.0, "y": 0.0, "width": 100.0, "height": 50.0},
                   "artboard": "card", "source_page": 2, "variables": {"who": "Ada", "n": "3"}}
     assert compile_command("link-set hero --clear crop --clear source_page --position 0.25,0.75") == {
-        "type": "link-set", "target": "hero", "position": [0.25, 0.75], "crop": None, "source_page": None}
+        "type": "link", "target": "hero", "position": [0.25, 0.75], "crop": None, "source_page": None}
     assert compile_command("link-refresh") == {"type": "link-refresh"}
     assert compile_command("link-embed hero") == {"type": "link-embed", "target": "hero"}
 
@@ -468,3 +468,42 @@ def test_placement_geometry():
     assert links.placement(layer, (200, 200)) == ((50, 0, 50, 50), (0, 0, 200, 200), 0.25)
     layer.update(fit="stretch", crop=[50, 50, 150, 100])
     assert links.placement(layer, (200, 200)) == ((0, 0, 100, 50), (50, 50, 150, 100), 1.0)
+
+
+def test_link_operation_edits_by_target_and_reports_misuse(tmp_path):
+    make_tile(tmp_path / "tile.vixl")
+    host = host_at(tmp_path)
+    host.apply({"type": "link", "source": "tile.vixl", "name": "t"})
+    with pytest.raises(VixlError, match="needs a source"):
+        host.apply({"type": "link", "name": "no-source"})
+    with pytest.raises(VixlError, match="rename, move or resize"):
+        host.apply({"type": "link", "target": "t", "x": 5})
+    with pytest.raises(VixlError, match="must be one of 'fill', 'fit', 'stretch'"):
+        host.apply({"type": "link", "target": "t", "fit": "squish"})
+    host.apply({"type": "link", "target": "t", "fit": "fit", "artboard": None})
+    assert host.layer("t")["fit"] == "fit"
+
+
+def test_preview_exports_and_production_follow_linked_sources(tmp_path):
+    import zipfile
+
+    from vixl.production import run
+    from vixl.proxy import render_preview
+
+    make_tile(tmp_path / "tile.vixl", fill="#336699")
+    host = host_at(tmp_path)
+    host.apply({"type": "link", "source": "tile.vixl", "name": "t", "x": 100, "y": 50, "width": 400})
+    preview = render_preview(host, 150, 75)
+    assert preview.size == (150, 75) and preview.getpixel((75, 25))[:3] == (0x33, 0x66, 0x99)
+    pptx = tmp_path / "out.pptx"
+    host.export(pptx, format="PPTX")
+    assert any(name.startswith("ppt/media/") for name in zipfile.ZipFile(pptx).namelist())
+    spec = {"rows": [{}], "format": "png", "quality": "final"}
+    first = run(host, spec, tmp_path / "campaign")
+    assert first["results"][0]["status"] == "completed"
+    again = run(host, spec, tmp_path / "campaign")
+    assert again["results"][0]["status"] == "reused"
+    make_tile(tmp_path / "tile.vixl", fill="#cc3300")
+    changed = run(host, spec, tmp_path / "campaign")
+    assert changed["results"][0]["status"] == "completed"
+    assert changed["results"][0]["output"] != first["results"][0]["output"]

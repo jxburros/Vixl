@@ -42,8 +42,8 @@ Common operation fields:
 | variable | name, value; or delete: true |
 | preset-save / preset-apply | name, target; overrides for apply |
 | canvas | width, height, background; or `size`/`preset` (named size) with orientation, bleed, dpi; or dpi alone |
-| link | **source** (a workspace `.vixl`); name, x, y, width, height, fit (`fill`/`fit`/`stretch`), position, crop, artboard, source_page, variables. A live [linked document](linked-documents.md) |
-| link-set / link-refresh / link-embed | target (link-refresh: omit for every link); link-set changes source, artboard, source_page, variables, fit, position, crop; link-embed freezes the link into an image |
+| link | **source** (a workspace `.vixl`); name, x, y, width, height, fit (`fill`/`fit`/`stretch`), position, crop, artboard, source_page, variables. A live [linked document](linked-documents.md). With `target` instead of `source` it changes that link (`null` clears a setting) |
+| link-refresh / link-embed | target (link-refresh: omit for every link); link-refresh records the revision a link has seen, link-embed freezes the link into an image |
 
 History transitions and project lifecycle use explicit methods / commands, not editing operations. Provider results are recorded as `ai-result` / `ai-mask` audit events; those audit events are not public operation types. History snapshots and embedded assets reproduce their pixels without recontacting a provider.
 

@@ -33,7 +33,7 @@ import threading
 from .errors import VixlError, require
 from .model import finite, new_layer
 
-TYPES = ("link", "link-set", "link-refresh", "link-embed")
+TYPES = ("link", "link-refresh", "link-embed")
 ACTIONS = {"links": (set(), set())}
 FITS = ("fill", "fit", "stretch")
 MAX_DEPTH = 4
@@ -49,7 +49,7 @@ BROKEN = (MISSING, ERROR, CYCLE, FORBIDDEN)
 
 VARIABLE = re.compile(r"\$\{([\w-]+)\}")
 _LOCK = threading.RLock()
-_SOURCES = OrderedDict()  # (path, allow_linked) -> (stamp, revision, Project)
+_SOURCES = OrderedDict()  # (path, allow_linked) -> (stamp, revision, Project, asset bytes)
 _RENDERS = []  # one LayerCache of drawn sources, created on first use (render.py imports this module lazily)
 _CHAIN = ContextVar("vixl_link_chain", default=())
 
@@ -59,42 +59,31 @@ _CHAIN = ContextVar("vixl_link_chain", default=())
 
 
 def schemas(add):
-    from .schema import N, S, SIZE, COORD, enum
+    """Operation schemas. Only the fields every agent needs are typed here; position, crop, source_page and variables
+    are validated when the operation runs (with specific messages) to keep the inline tools/list catalog small."""
+    from .schema import S, SIZE, COORD, enum
 
-    position = {"type": ["array", "string"], "items": N, "description": "Where content that does not fill the box sits: "
-                "[x, y] fractions (0 = left/top, 1 = right/bottom) or an anchor such as 'top-left'."}
-    crop = {"type": "object", "description": "A region of the source, in the source's pixels.",
-            "properties": {"x": N, "y": N, "width": {"type": "number", "exclusiveMinimum": 0},
-                           "height": {"type": "number", "exclusiveMinimum": 0}},
-            "required": ["x", "y", "width", "height"], "additionalProperties": False}
-    settings = {
-        "fit": enum(*FITS),
-        "position": position,
-        "crop": crop,
-        "artboard": S,
-        "source_page": {"type": ["string", "integer"], "description": "The source's page (a name or number); "
-                        "'page' on an operation names the page of this document that it edits."},
-        "variables": {"type": "object", "description": "Overrides for the source's variables; a ${name} in a value "
-                      "reads this document's variable."},
-    }
-    add("link", {"name": S, "source": S, "x": COORD, "y": COORD, "width": SIZE, "height": SIZE, **settings}, ["source"])
-    nullable = {key: {**value, "type": [*(value["type"] if isinstance(value["type"], list) else [value["type"]]), "null"]}
-                for key, value in settings.items() if key in ("crop", "artboard", "source_page", "variables")}
-    add("link-set", {"source": S, **settings, **nullable})
+    settings = {"fit": enum(*FITS), "position": {}, "crop": {}, "artboard": {"type": ["string", "null"]}, "source_page": {},
+                "variables": {}}
+    add("link", {"name": S, "source": S, "x": COORD, "y": COORD, "width": SIZE, "height": SIZE, **settings})
     add("link-refresh")
     add("link-embed")
 
 
 def execute(project, op):
     kind = op["type"]
-    if kind == "link":
-        return _add(project, op)
     if kind == "link-refresh":
         return _refresh(project, op)
+    if kind == "link" and not op.get("target"):
+        require("source" in op, "A link needs a source (or a target: the link layer to change)", field="source")
+        return _add(project, op)
     layer = project.layer(op.get("target"))
     require(layer["type"] == "link", f"{layer['name']!r} is not a linked document layer", field="target")
     if kind == "link-embed":
         return _embed(project, layer)
+    require(not {"name", "x", "y", "width", "height"} & op.keys(),
+            "Changing a link layer's name, position or size takes rename, move or resize; link with a target changes "
+            "its source, fit, position, crop, artboard, source_page or variables")
     return _set(project, layer, op)
 
 
@@ -126,7 +115,7 @@ def _add(project, op):
 
 def _set(project, layer, op):
     settings = _settings(op, nullable=True, project=project)
-    require(settings or "source" in op or "fit" in op, "link-set needs something to change: source, artboard, "
+    require(settings or "source" in op or "fit" in op, "A link with a target needs something to change: source, artboard, "
             "source_page, variables, fit, position or crop", field="source")
     if "source" in op:
         layer["source"] = stored_source(project, locate(project, op["source"]))
@@ -357,9 +346,11 @@ def open_source(project, path, source):
                         path=str(path)) from exc
     child._workspace = getattr(project, "_workspace", None)
     revision = child._revision
+    weight = sum(len(data) for data in child.assets.values())
     with _LOCK:
-        _SOURCES[key] = (stamp, revision, child)
-        while len(_SOURCES) > 8:
+        _SOURCES[key] = (stamp, revision, child, weight)
+        # Keep a handful of documents, and no more than ~512 MiB of their embedded assets.
+        while len(_SOURCES) > 1 and (len(_SOURCES) > 8 or sum(item[3] for item in _SOURCES.values()) > 512 * 1024 * 1024):
             _SOURCES.popitem(last=False)
     return child, revision
 
@@ -606,8 +597,6 @@ def _rendered(project, prepared, scale):
     return image
 
 
-
-
 def pdf_link(builder, layer, bounds, matrix):
     """Draw a link into a PDF page as vector artwork. Returns ``None`` when drawn, or the reason the
     link has to be an image instead (opacity, or a source with layers that depend on their backdrop)."""
@@ -754,9 +743,9 @@ def dispatch(session, request, document=None):
 
 
 def compile_command(cmd, args):
-    """``vixl link SOURCE …``, ``link-set TARGET …``, ``link-refresh [TARGET]`` and ``link-embed TARGET``
-    (``vixl links`` lists links and is a document command)."""
-    if cmd not in TYPES:
+    """``vixl link SOURCE …``, ``link-set TARGET …`` (a ``link`` operation with a target), ``link-refresh [TARGET]``
+    and ``link-embed TARGET`` (``vixl links`` lists links and is a document command)."""
+    if cmd not in (*TYPES, "link-set"):
         return None
     from .commands import Parser, pairs
 
@@ -781,7 +770,7 @@ def compile_command(cmd, args):
         p.add_argument("--source-page", dest="source_page", help="The source's page (name or number)")
         p.add_argument("--set", action="append", metavar="NAME=VALUE", help="Override a source variable (repeat)")
     a = vars(p.parse_args(args))
-    op = {"type": cmd}
+    op = {"type": "link" if cmd == "link-set" else cmd}
     clear = a.pop("clear", None) or []
     values = pairs(a.pop("set", None))
     if values:

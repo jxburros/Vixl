@@ -15,7 +15,7 @@ a sheet of badges built from one template) stop going out of date.
 
 | Field | Meaning |
 | --- | --- |
-| `source` | **Required.** The linked `.vixl` file, workspace-relative (see [Where links resolve](#where-links-resolve)). |
+| `source` | **Required** to create a link (or give `target` to change one). The linked `.vixl` file, workspace-relative (see [Where links resolve](#where-links-resolve)). |
 | `name`, `x`, `y`, `width`, `height` | As for any layer. With neither size the layer takes the source's canvas size; with one, the other follows the source's aspect ratio. `x`/`y` accept `"center"`, `width`/`height` accept `"N%"`. |
 | `fit` | How the source fills the box: `fill` (default; scales to cover the box and crops the overflow, like a frame), `fit` (scales to sit inside and leaves the rest transparent) or `stretch` (distorts to the box). |
 | `position` | Where the content sits when it does not fill the box: `[x, y]` fractions (0 = left/top, 1 = right/bottom; default `[0.5, 0.5]`) or an anchor such as `top-left`. |
@@ -29,9 +29,10 @@ link exactly as on an image layer (`rotate`, `flip`, `opacity`, `blur`, `group`,
 `scale` change the box, and `fit`/`position`/`crop` decide what happens inside it. The source is
 re-rendered at the size it is shown at, so text and vectors stay sharp when you enlarge a link.
 
-`link-set TARGET` changes `source`, `artboard`, `source_page`, `variables`, `fit`, `position` or `crop`
-(`null` clears an optional setting) and checks the result against the source. A link layer stores the
-source's `source_hash` (SHA-256) and `source_size` as of the last `link`, `link-set source` or
+A `link` operation with a `target` (CLI: `link-set LAYER`) changes `source`, `artboard`, `source_page`, `variables`,
+`fit`, `position` or `crop` (`null` clears an optional setting) and checks the result against the source; the layer's
+name, position and size have their own operations (`rename`, `move`, `resize`). A link layer stores the
+source's `source_hash` (SHA-256) and `source_size` as of the last `link`, change of `source` or
 `link-refresh`.
 
 ## Keeping track of changes
@@ -106,7 +107,7 @@ vixl links                       # every link with its state
 ```
 
 Through MCP and REST the same operations go through `vixl_operations_apply` / `POST /operations`
-(`link`, `link-set`, `link-refresh`, `link-embed`).
+(`link`, `link-refresh`, `link-embed`).
 
 ## Related
 

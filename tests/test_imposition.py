@@ -295,6 +295,12 @@ def test_order_alignment_copies_and_no_marks(tmp_path):
     assert sheet.layer("row-1")["x"] == 75 and sheet.layer("row-1")["y"] == 75
     text = pdf_pages(tmp_path / "print.pdf")[0].extract_text()
     assert text.count("Mara") == 3 and text.count("Niamh") == 3
+    # A dry run is not stopped by outputs that already exist; the page of a metric size is exact.
+    assert merge(session, output="print.pdf", dry_run=True)["dry_run"]
+    a4 = merge(session, output="a4.pdf", sheet={"size": "a4", "cols": 1, "rows": 3, "margin": 5})
+    page = pdf_pages(tmp_path / "a4.pdf")[0]
+    assert (float(page.mediabox.width), float(page.mediabox.height)) == pytest.approx((595.276, 841.89), abs=0.01)
+    assert a4["layout"]["page"]["unit"] == "mm" and a4["layout"]["grid"]["margin"] == [5.0, 5.0, 5.0, 5.0]
 
 
 def test_bleed_gutter_and_exact_page_boxes(tmp_path):
@@ -441,6 +447,12 @@ def test_cli_merge_and_rerun(tmp_path):
     assert json.loads(rerun.stdout)["pages"] == 1 and len(pdf_pages(tmp_path / "print.pdf")) == 1
     missing = run("merge", "badge.vixl", "--out", "x.pdf", "--json")
     assert missing.returncode == 1 and json.loads(missing.stderr)["error"] == "invalid_operation"
+    helped = run("merge", "--help")
+    assert helped.returncode == 0 and b"--sheet-document" in helped.stdout
+    (tmp_path / "request.json").write_text(json.dumps({"template": "badge.vixl", "data": "badges.csv", "output": "via-workflow.pdf"}))
+    flow = run("workflow", "merge-impose", "--request", "request.json", "--workspace", ".")
+    assert flow.returncode == 0, flow.stderr
+    assert json.loads(flow.stdout)["output"] == "via-workflow.pdf" and (tmp_path / "via-workflow.pdf").exists()
 
 
 def test_workflow_schema_and_mcp(tmp_path):
@@ -479,3 +491,25 @@ def test_pdf_from_the_sheet_document_is_also_vector_with_selectable_text(tmp_pat
     # Export of the editable sheet still supports every other output (a raster PNG of sheet 1 here).
     png = sheet.export(None, format="PNG", page=1)
     assert Image.open(io.BytesIO(png)).size == (2550, 3300)
+
+
+def test_a_chosen_page_of_a_multi_page_template_is_merged(tmp_path):
+    template = Project(600, 300, "#ffffff")
+    template.apply([{"type": "canvas", "dpi": 300}, {"type": "variable", "name": "who", "value": "Sample"},
+                    {"type": "text", "name": "front", "text": "Front ${who}", "size": 40, "x": 20, "y": 20, "color": "#000000"},
+                    {"type": "page", "action": "add", "name": "back"},
+                    {"type": "text", "name": "backside", "text": "Back ${who}", "size": 40, "x": 20, "y": 20, "color": "#000000"},
+                    {"type": "page", "action": "select", "page": 1}])
+    template.save(tmp_path / "card.vixl")
+    (tmp_path / "who.csv").write_text("who\nAda\nGrace\n")
+    session = Session(None, workspace=tmp_path)
+    report = dispatch(session, "merge-impose", {"template": "card.vixl", "data": "who.csv", "page": "back", "output": "back.pdf",
+                                                "sheet_document": "back.vixl"})
+    text = pdf_pages(tmp_path / "back.pdf")[0].extract_text()
+    assert "Back Ada" in text and "Back Grace" in text and "Front" not in text and report["valid"] == 2
+    link = Project.load(tmp_path / "back.vixl").state["pages"][0]
+    assert link["name"] == "sheet-1"
+    sheet = Project.load(tmp_path / "back.vixl")
+    assert sheet.layer("row-1")["source_page"] == "back"
+    with pytest.raises(VixlError, match="nope"):
+        dispatch(session, "merge-impose", {"template": "card.vixl", "data": "who.csv", "page": "nope", "dry_run": True})

@@ -51,7 +51,7 @@ Drawings:  drawing import sketch.jpg --name house [--settings '{"ink": "original
            drawing fill house --points '[[x, y, "#fc0"]]', drawing stroke house --points '[[x, y], …]', drawing restyle house,
            drawing report house, drawing compare house --out c.png, check --checks drawing, ai drawing-color house --prompt TEXT
 Linked:    link FILE.vixl [--name N] [--width W] [--fit fill|fit|stretch] [--position top-left] [--crop X,Y,W,H] [--artboard A] [--page P]
-           [--set NAME=VALUE], link-set LAYER …, link-refresh [LAYER], link-embed LAYER, links (each link: ok, stale or missing)
+           [--set NAME=VALUE], link-set LAYER … (changes a link), link-refresh [LAYER], link-embed LAYER, links (each link: ok, stale or missing)
 Merge:     merge [TEMPLATE.vixl] --data rows.csv --out sheets.pdf [--sheet-document sheets.vixl] [--size letter] [--cols 2 --rows 3]
            [--gutter 0.125] [--margin 0.5] [--bleed template|0.125] [--no-crop-marks] [--registration] [--slug TEXT] [--copies N]
            [--dry-run] [--skip-invalid] [--unknown warn|error|ignore] [--replace], merge --rerun sheets.vixl [--data new.csv]
@@ -256,7 +256,7 @@ def dispatch(argv):
     if cmd == "workflow":
         from .workflows import cli
         return cli(args, options, limits), options.json
-    if cmd == "merge" and not any(arg in ("--help", "-h") for arg in args):
+    if cmd == "merge":
         from .imposition import cli as merge_cli
         return merge_cli(args, options, limits), options.json
     if cmd in ("open", "schema") and any(arg in ("--help", "-h") for arg in args):
@@ -533,6 +533,7 @@ def command_help(cmd, args):
         "timeline": "timeline (inspect) | timeline set [--duration 3s] [--fps 30] [--loop N] [--clear]",
         "pages": "pages (list pages and masters of a multi-page document)",
         "guides": "guides (list guides and grids)",
+        "links": "links (list the linked documents and their state: ok, stale, missing, cycle)",
     }
     if cmd in manual:
         return "Usage: vixl " + manual[cmd]
