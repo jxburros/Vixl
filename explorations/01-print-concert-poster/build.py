@@ -433,11 +433,10 @@ if HAVE_ICC:
          "--scale", MAIN)
 for kind in ("deuteranopia", "protanopia", "tritanopia"):
     vixl("export", WORK / f"sim-{kind}.png", "--simulate", kind, "--scale", SMALL)
-# The poster's blend modes and adjustment layers make the whole page an image anyway.
-# Vixl 0.20.0's vector PDF writer crashes on such pages (KeyError 'type' in the page
-# fallback), so ask for a raster page directly.
+# The poster's blend modes and adjustment layers make the whole page one image; --quality
+# JPEG-compresses it (PDF images stay lossless when it is left out).
 vixl("export", OUT / "poster-cmyk.pdf", "--cmyk", "--ink-limit", "300", "--quality", "75",
-     "--pdf-content", "raster", key="export_pdf")
+     key="export_pdf")
 if HAVE_ICC:
     vixl("export", OUT / "poster-cmyk-swop.jpg", "--cmyk", "--icc", ICC, "--intent", "relative",
          "--quality", "72", key="export_jpg")

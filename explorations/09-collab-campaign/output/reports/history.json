@@ -5,43 +5,48 @@
     "issues": [
       "'stat' is cut off by the canvas edge",
       "'stat' and 'stat-caption' overlap by 1138 px (66.9% of the smaller layer)",
-      "'stat-caption' contrast is 2.07:1 or lower for a tenth of its glyph pixels (minimum 1.20:1, weakest at x 736–984, y 1238–1257); needs 4.5:1"
+      "Could not measure the contrast of 'stat': Region must be within canvas",
+      "'stat-caption' contrast is 2.07:1 or lower for a tenth of its glyph pixels (minimum 1.20:1, weakest at x 736–984, y 1238–1257); needs 4.5:1",
+      "'stat' extends outside the safe area",
+      "'stat-caption' extends outside the safe area"
     ]
   },
   "after_undo": 132,
   "after_redo": 300,
   "after_second_undo": 132,
   "night_check": {
-    "passed": true,
-    "errors": []
+    "passed": false,
+    "errors": [
+      "'stat-caption' extends outside the safe area"
+    ]
   },
-  "back_on_main_check_passed": true,
+  "back_on_main_check_passed": false,
   "branches": {
-    "main": "rev_0ed2088562b7478a",
-    "night-edition": "rev_7902c9bd9ab54c56"
+    "main": "rev_f4a516eca9ac421a",
+    "night-edition": "rev_b5a3af8d1391492c"
   },
   "checkpoints": {
-    "layout-approved": "rev_645c53c7f5c440b0",
-    "group-published": "rev_0ed2088562b7478a",
-    "night-v1": "rev_7902c9bd9ab54c56"
+    "layout-approved": "rev_80f17f4e1bb8439a",
+    "group-published": "rev_f4a516eca9ac421a",
+    "night-v1": "rev_b5a3af8d1391492c"
   },
   "current_branch": "main",
   "revisions": 19,
   "nodes": [
     {
-      "id": "rev_043b90175e95474b",
+      "id": "rev_a29a0b39e68e44da",
       "label": "Create instagram-portrait document",
       "ops": []
     },
     {
-      "id": "rev_9b041dfa381440c7",
+      "id": "rev_e5f24cdbf3d64a76",
       "label": null,
       "ops": [
         "add"
       ]
     },
     {
-      "id": "rev_dcf6b217cf0c4463",
+      "id": "rev_6cdac74147cc4b16",
       "label": "Transaction",
       "ops": [
         "font-register",
@@ -50,14 +55,14 @@
       ]
     },
     {
-      "id": "rev_e93b4cfcdbfe419f",
+      "id": "rev_54b038cb898145b9",
       "label": null,
       "ops": [
         "remove"
       ]
     },
     {
-      "id": "rev_645c53c7f5c440b0",
+      "id": "rev_80f17f4e1bb8439a",
       "label": null,
       "ops": [
         "resize",
@@ -67,31 +72,31 @@
       ]
     },
     {
-      "id": "rev_7e0702b00e7d4660",
+      "id": "rev_67196e6115404d89",
       "label": null,
       "ops": [
         "text-set"
       ]
     },
     {
-      "id": "rev_0c23781ef4df4b08",
+      "id": "rev_51dd6c1cd00f4891",
       "label": "Merge copy-agent by copy-agent",
       "ops": []
     },
     {
-      "id": "rev_9842fc6f1fcb4ff3",
+      "id": "rev_b7c817b4273b493f",
       "label": null,
       "ops": [
         "text-set"
       ]
     },
     {
-      "id": "rev_54c99c9ceb1e4348",
+      "id": "rev_6e30ca240b1e49fe",
       "label": "Merge design-agent by design-agent",
       "ops": []
     },
     {
-      "id": "rev_47d5d4e046b148af",
+      "id": "rev_78795a6ae2134814",
       "label": null,
       "ops": [
         "text-set",
@@ -101,28 +106,28 @@
       ]
     },
     {
-      "id": "rev_eb9234c9a80747dc",
+      "id": "rev_a1f7c2e0cbbb437f",
       "label": null,
       "ops": [
         "suite-set"
       ]
     },
     {
-      "id": "rev_4d06f536094a4ce3",
+      "id": "rev_2f0ca6b541fb44c2",
       "label": null,
       "ops": [
         "suite-set"
       ]
     },
     {
-      "id": "rev_9cc58a9af4174c2f",
+      "id": "rev_ea45e1cb78774169",
       "label": null,
       "ops": [
         "suite-set"
       ]
     },
     {
-      "id": "rev_638b412ac8e04811",
+      "id": "rev_5a0fc29c4b3c42f3",
       "label": null,
       "ops": [
         "suite-set",
@@ -131,14 +136,14 @@
       ]
     },
     {
-      "id": "rev_ae6a3e9ecff640e3",
+      "id": "rev_4d4222a60a014918",
       "label": null,
       "ops": [
         "action-define"
       ]
     },
     {
-      "id": "rev_fceaad2c57e044ea",
+      "id": "rev_6dda6d50aeeb423b",
       "label": null,
       "ops": [
         "variable",
@@ -146,7 +151,7 @@
       ]
     },
     {
-      "id": "rev_0ed2088562b7478a",
+      "id": "rev_f4a516eca9ac421a",
       "label": null,
       "ops": [
         "variable",
@@ -157,14 +162,14 @@
       ]
     },
     {
-      "id": "rev_181151de5e5c4c3c",
+      "id": "rev_ba0b2e2093a34ea6",
       "label": null,
       "ops": [
         "text-set"
       ]
     },
     {
-      "id": "rev_7902c9bd9ab54c56",
+      "id": "rev_b5a3af8d1391492c",
       "label": null,
       "ops": [
         "swatch",

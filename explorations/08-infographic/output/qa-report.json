@@ -2,21 +2,21 @@
   "world": {
     "kpi_cards": {
       "axis": "horizontal",
-      "scope": "lyr_50362582f4af4305",
+      "scope": "lyr_1be3741dc77c49b6",
       "gaps": [
         {
-          "from": "lyr_9cee812d29dc4233",
+          "from": "lyr_95faeba1cc944529",
           "from_name": "kpi0",
-          "to": "lyr_928cca7d621e4ac3",
+          "to": "lyr_22617bc7b689451c",
           "to_name": "kpi1",
           "pixels": 32,
           "overlap": false,
           "cross_axis_overlap": 236
         },
         {
-          "from": "lyr_928cca7d621e4ac3",
+          "from": "lyr_22617bc7b689451c",
           "from_name": "kpi1",
-          "to": "lyr_fe602eb48c5e4671",
+          "to": "lyr_738f461d96b242f8",
           "to_name": "kpi2",
           "pixels": 32,
           "overlap": false,
@@ -37,102 +37,102 @@
     },
     "bars": {
       "axis": "vertical",
-      "scope": "lyr_a11a797d59f54040",
+      "scope": "lyr_62fd5f64df0b493a",
       "gaps": [
         {
-          "from": "lyr_c52590334f224c81",
+          "from": "lyr_5addcb1efdb1478d",
           "from_name": "a-bar0",
-          "to": "lyr_10f498b374eb40cb",
+          "to": "lyr_5fa81742f043441e",
           "to_name": "a-bar1",
           "pixels": 18,
           "overlap": false,
           "cross_axis_overlap": 866.5079999999999
         },
         {
-          "from": "lyr_10f498b374eb40cb",
+          "from": "lyr_5fa81742f043441e",
           "from_name": "a-bar1",
-          "to": "lyr_b093fa4724964f54",
+          "to": "lyr_b08a6c13c21642fb",
           "to_name": "a-bar2",
           "pixels": 18,
           "overlap": false,
           "cross_axis_overlap": 849.8820000000001
         },
         {
-          "from": "lyr_b093fa4724964f54",
+          "from": "lyr_b08a6c13c21642fb",
           "from_name": "a-bar2",
-          "to": "lyr_5c100326f9bc4097",
+          "to": "lyr_d7cba386833f48e4",
           "to_name": "a-bar3",
           "pixels": 18,
           "overlap": false,
           "cross_axis_overlap": 822.4979999999999
         },
         {
-          "from": "lyr_5c100326f9bc4097",
+          "from": "lyr_d7cba386833f48e4",
           "from_name": "a-bar3",
-          "to": "lyr_82bdbbadbc2a467d",
+          "to": "lyr_c56f409ec8eb4085",
           "to_name": "a-bar4",
           "pixels": 18,
           "overlap": false,
           "cross_axis_overlap": 697.314
         },
         {
-          "from": "lyr_82bdbbadbc2a467d",
+          "from": "lyr_c56f409ec8eb4085",
           "from_name": "a-bar4",
-          "to": "lyr_f6afbb212b8a4042",
+          "to": "lyr_34a82e3fec8045d2",
           "to_name": "a-bar5",
           "pixels": 18,
           "overlap": false,
           "cross_axis_overlap": 547.68
         },
         {
-          "from": "lyr_f6afbb212b8a4042",
+          "from": "lyr_34a82e3fec8045d2",
           "from_name": "a-bar5",
-          "to": "lyr_1be7db78263d44ba",
+          "to": "lyr_ba07517bf2bb4567",
           "to_name": "a-bar6",
           "pixels": 18,
           "overlap": false,
           "cross_axis_overlap": 534.966
         },
         {
-          "from": "lyr_1be7db78263d44ba",
+          "from": "lyr_ba07517bf2bb4567",
           "from_name": "a-bar6",
-          "to": "lyr_57fe65ad59ad4447",
+          "to": "lyr_553cff3bf32748a0",
           "to_name": "a-bar7",
           "pixels": 18,
           "overlap": false,
           "cross_axis_overlap": 487.0439999999999
         },
         {
-          "from": "lyr_57fe65ad59ad4447",
+          "from": "lyr_553cff3bf32748a0",
           "from_name": "a-bar7",
-          "to": "lyr_f5e0e7449e7f4f3b",
+          "to": "lyr_da0d0e8120f447d4",
           "to_name": "a-bar8",
           "pixels": 18,
           "overlap": false,
           "cross_axis_overlap": 354.03600000000006
         },
         {
-          "from": "lyr_f5e0e7449e7f4f3b",
+          "from": "lyr_da0d0e8120f447d4",
           "from_name": "a-bar8",
-          "to": "lyr_9ea95bae11514387",
+          "to": "lyr_a8d166b6e9e84cb6",
           "to_name": "a-bar9",
           "pixels": 18,
           "overlap": false,
           "cross_axis_overlap": 252.324
         },
         {
-          "from": "lyr_9ea95bae11514387",
+          "from": "lyr_a8d166b6e9e84cb6",
           "from_name": "a-bar9",
-          "to": "lyr_6126e079473a44d4",
+          "to": "lyr_e5368935121b4460",
           "to_name": "a-bar10",
           "pixels": 18,
           "overlap": false,
           "cross_axis_overlap": 245.47800000000004
         },
         {
-          "from": "lyr_6126e079473a44d4",
+          "from": "lyr_e5368935121b4460",
           "from_name": "a-bar10",
-          "to": "lyr_ce29aca70122402d",
+          "to": "lyr_73b0624290f74305",
           "to_name": "a-bar11",
           "pixels": 18,
           "overlap": false,
@@ -153,48 +153,48 @@
     },
     "donut_legend": {
       "axis": "vertical",
-      "scope": "lyr_03cb6ed6db2e4a6c",
+      "scope": "lyr_98be856c7eeb4639",
       "gaps": [
         {
-          "from": "lyr_7a3ab48559344e4a",
+          "from": "lyr_52e418c5bd054534",
           "from_name": "c-lg0",
-          "to": "lyr_15191241d503449a",
+          "to": "lyr_b844c57bf2584dfd",
           "to_name": "c-lg1",
           "pixels": 18,
           "overlap": false,
           "cross_axis_overlap": 85
         },
         {
-          "from": "lyr_15191241d503449a",
+          "from": "lyr_b844c57bf2584dfd",
           "from_name": "c-lg1",
-          "to": "lyr_213ce4633d6149ab",
+          "to": "lyr_a8aa17dc06a1437e",
           "to_name": "c-lg2",
           "pixels": 18,
           "overlap": false,
           "cross_axis_overlap": 85
         },
         {
-          "from": "lyr_213ce4633d6149ab",
+          "from": "lyr_a8aa17dc06a1437e",
           "from_name": "c-lg2",
-          "to": "lyr_4783fc1f3dff4094",
+          "to": "lyr_a78a4b9d71e64586",
           "to_name": "c-lg3",
           "pixels": 18,
           "overlap": false,
           "cross_axis_overlap": 94
         },
         {
-          "from": "lyr_4783fc1f3dff4094",
+          "from": "lyr_a78a4b9d71e64586",
           "from_name": "c-lg3",
-          "to": "lyr_b54b817705494ef1",
+          "to": "lyr_265f73b44dd740ad",
           "to_name": "c-lg4",
           "pixels": 18,
           "overlap": false,
           "cross_axis_overlap": 91
         },
         {
-          "from": "lyr_b54b817705494ef1",
+          "from": "lyr_265f73b44dd740ad",
           "from_name": "c-lg4",
-          "to": "lyr_b123926ba9514944",
+          "to": "lyr_ed0c94cb98364c51",
           "to_name": "c-lg5",
           "pixels": 18,
           "overlap": false,
@@ -218,90 +218,90 @@
       "scope": "canvas",
       "gaps": [
         {
-          "from": "lyr_9088f025b9ee4f22",
+          "from": "lyr_d4f76e38a3db4851",
           "from_name": "b-x0",
-          "to": "lyr_6adf060abd064a70",
+          "to": "lyr_fc12699027bb4f3f",
           "to_name": "b-x1",
           "pixels": 80.0,
           "overlap": false,
           "cross_axis_overlap": 12
         },
         {
-          "from": "lyr_6adf060abd064a70",
+          "from": "lyr_fc12699027bb4f3f",
           "from_name": "b-x1",
-          "to": "lyr_ce539489d5404518",
+          "to": "lyr_e15c5bbde3e640d0",
           "to_name": "b-x2",
           "pixels": 81.0,
           "overlap": false,
           "cross_axis_overlap": 12
         },
         {
-          "from": "lyr_ce539489d5404518",
+          "from": "lyr_e15c5bbde3e640d0",
           "from_name": "b-x2",
-          "to": "lyr_dea46108f0a944f2",
+          "to": "lyr_ccdb53102e184eb9",
           "to_name": "b-x3",
           "pixels": 80.0,
           "overlap": false,
           "cross_axis_overlap": 12
         },
         {
-          "from": "lyr_dea46108f0a944f2",
+          "from": "lyr_ccdb53102e184eb9",
           "from_name": "b-x3",
-          "to": "lyr_c56998b66fdc46ee",
+          "to": "lyr_52fa170d9c8f4667",
           "to_name": "b-x4",
           "pixels": 81.0,
           "overlap": false,
           "cross_axis_overlap": 12
         },
         {
-          "from": "lyr_c56998b66fdc46ee",
+          "from": "lyr_52fa170d9c8f4667",
           "from_name": "b-x4",
-          "to": "lyr_902315f886fb4023",
+          "to": "lyr_e538de3972734d26",
           "to_name": "b-x5",
           "pixels": 80.0,
           "overlap": false,
           "cross_axis_overlap": 12
         },
         {
-          "from": "lyr_902315f886fb4023",
+          "from": "lyr_e538de3972734d26",
           "from_name": "b-x5",
-          "to": "lyr_1bf115255f6445d1",
+          "to": "lyr_db45c770681e42b7",
           "to_name": "b-x6",
           "pixels": 80.0,
           "overlap": false,
           "cross_axis_overlap": 12
         },
         {
-          "from": "lyr_1bf115255f6445d1",
+          "from": "lyr_db45c770681e42b7",
           "from_name": "b-x6",
-          "to": "lyr_d548019810074691",
+          "to": "lyr_90e49b47785f485c",
           "to_name": "b-x7",
           "pixels": 81.0,
           "overlap": false,
           "cross_axis_overlap": 12
         },
         {
-          "from": "lyr_d548019810074691",
+          "from": "lyr_90e49b47785f485c",
           "from_name": "b-x7",
-          "to": "lyr_ee19e30586bc4b07",
+          "to": "lyr_7a8bca953b194388",
           "to_name": "b-x8",
           "pixels": 80.0,
           "overlap": false,
           "cross_axis_overlap": 12
         },
         {
-          "from": "lyr_ee19e30586bc4b07",
+          "from": "lyr_7a8bca953b194388",
           "from_name": "b-x8",
-          "to": "lyr_ed746daf916540a3",
+          "to": "lyr_27d788e963f24169",
           "to_name": "b-x9",
           "pixels": 81.0,
           "overlap": false,
           "cross_axis_overlap": 12
         },
         {
-          "from": "lyr_ed746daf916540a3",
+          "from": "lyr_27d788e963f24169",
           "from_name": "b-x9",
-          "to": "lyr_e675de355b65489d",
+          "to": "lyr_d1ac5a5d4c4b4a52",
           "to_name": "b-x10",
           "pixels": 80.0,
           "overlap": false,
@@ -325,9 +325,9 @@
       "scope": "canvas",
       "gaps": [
         {
-          "from": "lyr_a30f7cf6d50d409a",
+          "from": "lyr_3845d20759cc45f0",
           "from_name": "c-title",
-          "to": "lyr_0514d61ab188443d",
+          "to": "lyr_149e18d9715443e7",
           "to_name": "d-title",
           "pixels": 305,
           "overlap": false,
@@ -359,2065 +359,2065 @@
           "passed": true,
           "severity": "error",
           "layer": "night-band",
-          "target": "lyr_991ddaec10874780"
+          "target": "lyr_65b74c37910846e9"
         },
         {
           "rule": "layer.sun.bounds within canvas",
           "passed": false,
           "severity": "info",
           "layer": "sun",
-          "target": "lyr_0f5d1255701e4612"
+          "target": "lyr_52148898569e4f33"
         },
         {
           "rule": "layer.ray.bounds within canvas",
           "passed": false,
           "severity": "info",
           "layer": "ray",
-          "target": "lyr_1c3cba309bed4737"
+          "target": "lyr_de1f38c500784370"
         },
         {
           "rule": "layer.rays.bounds within canvas",
           "passed": false,
           "severity": "info",
           "layer": "rays",
-          "target": "lyr_984477ea9c16476c"
+          "target": "lyr_d79935e283394554"
         },
         {
           "rule": "layer.eyebrow.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "eyebrow",
-          "target": "lyr_668619ecd9e24c78"
+          "target": "lyr_72de5dae20304432"
         },
         {
           "rule": "eyebrow font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "eyebrow",
-          "target": "lyr_668619ecd9e24c78"
+          "target": "lyr_72de5dae20304432"
         },
         {
           "rule": "layer.title.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "title",
-          "target": "lyr_fdb219364d1f4d65"
+          "target": "lyr_f64139a9f967439f"
         },
         {
           "rule": "title font size >= 24",
           "passed": true,
           "severity": "warning",
           "layer": "title",
-          "target": "lyr_fdb219364d1f4d65"
+          "target": "lyr_f64139a9f967439f"
         },
         {
           "rule": "layer.deck.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "deck",
-          "target": "lyr_28d0b17925cb4c66"
+          "target": "lyr_e0ca6989570c4ca9"
         },
         {
           "rule": "deck font size >= 24",
           "passed": true,
           "severity": "warning",
           "layer": "deck",
-          "target": "lyr_28d0b17925cb4c66"
+          "target": "lyr_e0ca6989570c4ca9"
         },
         {
           "rule": "layer.kpi0-card.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "kpi0-card",
-          "target": "lyr_133bed9cf33942ab"
+          "target": "lyr_184b7b4ef1314bc8"
         },
         {
           "rule": "layer.kpi0-bar.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "kpi0-bar",
-          "target": "lyr_6690f3cc9ec24278"
+          "target": "lyr_b90d87b353a34a05"
         },
         {
           "rule": "layer.kpi0-num.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "kpi0-num",
-          "target": "lyr_47b167485c534d16"
+          "target": "lyr_df1a031d4ae445f1"
         },
         {
           "rule": "kpi0-num font size >= 24",
           "passed": true,
           "severity": "warning",
           "layer": "kpi0-num",
-          "target": "lyr_47b167485c534d16"
+          "target": "lyr_df1a031d4ae445f1"
         },
         {
           "rule": "layer.kpi0-cap.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "kpi0-cap",
-          "target": "lyr_23f339e8e95d498b"
+          "target": "lyr_80042ddbe67047f7"
         },
         {
           "rule": "kpi0-cap font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "kpi0-cap",
-          "target": "lyr_23f339e8e95d498b"
+          "target": "lyr_80042ddbe67047f7"
         },
         {
           "rule": "layer.kpi0.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "kpi0",
-          "target": "lyr_9cee812d29dc4233"
+          "target": "lyr_95faeba1cc944529"
         },
         {
           "rule": "layer.kpi1-card.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "kpi1-card",
-          "target": "lyr_0d369e05e75d4266"
+          "target": "lyr_64e7990ed4cd488f"
         },
         {
           "rule": "layer.kpi1-bar.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "kpi1-bar",
-          "target": "lyr_29f7bfdaec6e475a"
+          "target": "lyr_973cda9f4f0d4681"
         },
         {
           "rule": "layer.kpi1-num.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "kpi1-num",
-          "target": "lyr_930e83c8c41c4b23"
+          "target": "lyr_30f922b831af4f07"
         },
         {
           "rule": "kpi1-num font size >= 24",
           "passed": true,
           "severity": "warning",
           "layer": "kpi1-num",
-          "target": "lyr_930e83c8c41c4b23"
+          "target": "lyr_30f922b831af4f07"
         },
         {
           "rule": "layer.kpi1-cap.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "kpi1-cap",
-          "target": "lyr_bb87e32ebce34002"
+          "target": "lyr_213f230c232a4bf8"
         },
         {
           "rule": "kpi1-cap font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "kpi1-cap",
-          "target": "lyr_bb87e32ebce34002"
+          "target": "lyr_213f230c232a4bf8"
         },
         {
           "rule": "layer.kpi1.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "kpi1",
-          "target": "lyr_928cca7d621e4ac3"
+          "target": "lyr_22617bc7b689451c"
         },
         {
           "rule": "layer.kpi2-card.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "kpi2-card",
-          "target": "lyr_6ee1f3185e774cce"
+          "target": "lyr_a5521759191743a6"
         },
         {
           "rule": "layer.kpi2-bar.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "kpi2-bar",
-          "target": "lyr_4e1fa04011e94298"
+          "target": "lyr_5ef83e64bf5a4a85"
         },
         {
           "rule": "layer.kpi2-num.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "kpi2-num",
-          "target": "lyr_f2553c2b73f241d6"
+          "target": "lyr_289f51d8afc74916"
         },
         {
           "rule": "kpi2-num font size >= 24",
           "passed": true,
           "severity": "warning",
           "layer": "kpi2-num",
-          "target": "lyr_f2553c2b73f241d6"
+          "target": "lyr_289f51d8afc74916"
         },
         {
           "rule": "layer.kpi2-cap.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "kpi2-cap",
-          "target": "lyr_3df8e2035e6244ee"
+          "target": "lyr_1db3e3ac9ab844aa"
         },
         {
           "rule": "kpi2-cap font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "kpi2-cap",
-          "target": "lyr_3df8e2035e6244ee"
+          "target": "lyr_1db3e3ac9ab844aa"
         },
         {
           "rule": "layer.kpi2.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "kpi2",
-          "target": "lyr_fe602eb48c5e4671"
+          "target": "lyr_738f461d96b242f8"
         },
         {
           "rule": "layer.kpis.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "kpis",
-          "target": "lyr_50362582f4af4305"
+          "target": "lyr_1be3741dc77c49b6"
         },
         {
           "rule": "layer.a-rule.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-rule",
-          "target": "lyr_d79be019155d400c"
+          "target": "lyr_38035b67ac314378"
         },
         {
           "rule": "layer.a-num.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-num",
-          "target": "lyr_795094e5d0b44436"
+          "target": "lyr_aa10f9f6a5cf403d"
         },
         {
           "rule": "a-num font size >= 24",
           "passed": true,
           "severity": "warning",
           "layer": "a-num",
-          "target": "lyr_795094e5d0b44436"
+          "target": "lyr_aa10f9f6a5cf403d"
         },
         {
           "rule": "layer.a-title.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-title",
-          "target": "lyr_29728a4c6a1e40c2"
+          "target": "lyr_b14047d743f84243"
         },
         {
           "rule": "a-title font size >= 24",
           "passed": true,
           "severity": "warning",
           "layer": "a-title",
-          "target": "lyr_29728a4c6a1e40c2"
+          "target": "lyr_b14047d743f84243"
         },
         {
           "rule": "layer.a-sub.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-sub",
-          "target": "lyr_55d0e358b7ba4781"
+          "target": "lyr_0b985f8a401f4dc1"
         },
         {
           "rule": "a-sub font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-sub",
-          "target": "lyr_55d0e358b7ba4781"
+          "target": "lyr_0b985f8a401f4dc1"
         },
         {
           "rule": "layer.lg-a-bar.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "lg-a-bar",
-          "target": "lyr_33a16af2b64d44c2"
+          "target": "lyr_15fad69e92fc438a"
         },
         {
           "rule": "layer.lg-a-bar-t.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "lg-a-bar-t",
-          "target": "lyr_b90f1d9a00e54d4e"
+          "target": "lyr_b53c7daad4d1428a"
         },
         {
           "rule": "lg-a-bar-t font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "lg-a-bar-t",
-          "target": "lyr_b90f1d9a00e54d4e"
+          "target": "lyr_b53c7daad4d1428a"
         },
         {
           "rule": "layer.lg-a-tick.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "lg-a-tick",
-          "target": "lyr_6e896549a84d42ef"
+          "target": "lyr_1fd81b0aaaf04c44"
         },
         {
           "rule": "layer.lg-a-tick-t.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "lg-a-tick-t",
-          "target": "lyr_3e5b5d187f2d4b4a"
+          "target": "lyr_4ed6c17be2b34a0f"
         },
         {
           "rule": "lg-a-tick-t font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "lg-a-tick-t",
-          "target": "lyr_3e5b5d187f2d4b4a"
+          "target": "lyr_4ed6c17be2b34a0f"
         },
         {
           "rule": "layer.legend-a.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "legend-a",
-          "target": "lyr_d670ac36f869425a"
+          "target": "lyr_c8e46e05bffa42b0"
         },
         {
           "rule": "layer.a-frame.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-frame",
-          "target": "lyr_66fc12fb484e4854"
+          "target": "lyr_bb66922cc2c84aae"
         },
         {
           "rule": "layer.a-grid.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-grid",
-          "target": "lyr_5da8bd4f7f574ed3"
+          "target": "lyr_28c3d74eca564573"
         },
         {
           "rule": "layer.a-bar0.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-bar0",
-          "target": "lyr_c52590334f224c81"
+          "target": "lyr_5addcb1efdb1478d"
         },
         {
           "rule": "layer.a-bar1.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-bar1",
-          "target": "lyr_10f498b374eb40cb"
+          "target": "lyr_5fa81742f043441e"
         },
         {
           "rule": "layer.a-bar2.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-bar2",
-          "target": "lyr_b093fa4724964f54"
+          "target": "lyr_b08a6c13c21642fb"
         },
         {
           "rule": "layer.a-bar3.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-bar3",
-          "target": "lyr_5c100326f9bc4097"
+          "target": "lyr_d7cba386833f48e4"
         },
         {
           "rule": "layer.a-bar4.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-bar4",
-          "target": "lyr_82bdbbadbc2a467d"
+          "target": "lyr_c56f409ec8eb4085"
         },
         {
           "rule": "layer.a-bar5.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-bar5",
-          "target": "lyr_f6afbb212b8a4042"
+          "target": "lyr_34a82e3fec8045d2"
         },
         {
           "rule": "layer.a-bar6.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-bar6",
-          "target": "lyr_1be7db78263d44ba"
+          "target": "lyr_ba07517bf2bb4567"
         },
         {
           "rule": "layer.a-bar7.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-bar7",
-          "target": "lyr_57fe65ad59ad4447"
+          "target": "lyr_553cff3bf32748a0"
         },
         {
           "rule": "layer.a-bar8.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-bar8",
-          "target": "lyr_f5e0e7449e7f4f3b"
+          "target": "lyr_da0d0e8120f447d4"
         },
         {
           "rule": "layer.a-bar9.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-bar9",
-          "target": "lyr_9ea95bae11514387"
+          "target": "lyr_a8d166b6e9e84cb6"
         },
         {
           "rule": "layer.a-bar10.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-bar10",
-          "target": "lyr_6126e079473a44d4"
+          "target": "lyr_e5368935121b4460"
         },
         {
           "rule": "layer.a-bar11.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-bar11",
-          "target": "lyr_ce29aca70122402d"
+          "target": "lyr_73b0624290f74305"
         },
         {
           "rule": "layer.a-plot.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-plot",
-          "target": "lyr_a11a797d59f54040"
+          "target": "lyr_62fd5f64df0b493a"
         },
         {
           "rule": "layer.a-tick0.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-tick0",
-          "target": "lyr_46ae25cfb5eb42b5"
+          "target": "lyr_5168d2433a0c4232"
         },
         {
           "rule": "layer.a-tick1.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-tick1",
-          "target": "lyr_81e78fdbc61e4fab"
+          "target": "lyr_f5728ea0914144f8"
         },
         {
           "rule": "layer.a-tick2.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-tick2",
-          "target": "lyr_680f53a09fc04771"
+          "target": "lyr_6550498b24c74f3c"
         },
         {
           "rule": "layer.a-tick3.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-tick3",
-          "target": "lyr_30365f9ff13b4f12"
+          "target": "lyr_538f102ba5954041"
         },
         {
           "rule": "layer.a-tick4.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-tick4",
-          "target": "lyr_a933447acd8c425b"
+          "target": "lyr_6b8f7b7fcb0f49b2"
         },
         {
           "rule": "layer.a-tick5.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-tick5",
-          "target": "lyr_5e59386690a840d0"
+          "target": "lyr_b28f6faae3cf451e"
         },
         {
           "rule": "layer.a-tick6.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-tick6",
-          "target": "lyr_708b5097b518421c"
+          "target": "lyr_b9bba81d15bb45f9"
         },
         {
           "rule": "layer.a-tick7.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-tick7",
-          "target": "lyr_e5f29ff7aa7f4421"
+          "target": "lyr_d709664fbb284945"
         },
         {
           "rule": "layer.a-tick8.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-tick8",
-          "target": "lyr_8413e8bf0bef4677"
+          "target": "lyr_f1ab6c3f1f6e440d"
         },
         {
           "rule": "layer.a-tick9.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-tick9",
-          "target": "lyr_04a5c1fb881c47b5"
+          "target": "lyr_48ca7fe446064349"
         },
         {
           "rule": "layer.a-tick10.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-tick10",
-          "target": "lyr_59df37b10a6e4e4b"
+          "target": "lyr_9aae8f7d8eea4096"
         },
         {
           "rule": "layer.a-tick11.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-tick11",
-          "target": "lyr_8cbbee831bc74d8b"
+          "target": "lyr_013d782bdb3d4723"
         },
         {
           "rule": "layer.a-ticks.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-ticks",
-          "target": "lyr_11ff782d93544482"
+          "target": "lyr_b50cdd7a4da14355"
         },
         {
           "rule": "layer.a-name0.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-name0",
-          "target": "lyr_3f079b166b704629"
+          "target": "lyr_8cefa8aa962c4911"
         },
         {
           "rule": "a-name0 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-name0",
-          "target": "lyr_3f079b166b704629"
+          "target": "lyr_8cefa8aa962c4911"
         },
         {
           "rule": "layer.a-val0.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-val0",
-          "target": "lyr_b87e2210bb0a459d"
+          "target": "lyr_62c1ac8630d44049"
         },
         {
           "rule": "a-val0 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-val0",
-          "target": "lyr_b87e2210bb0a459d"
+          "target": "lyr_62c1ac8630d44049"
         },
         {
           "rule": "layer.a-name1.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-name1",
-          "target": "lyr_492daa060d794598"
+          "target": "lyr_be94ce6e57194c24"
         },
         {
           "rule": "a-name1 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-name1",
-          "target": "lyr_492daa060d794598"
+          "target": "lyr_be94ce6e57194c24"
         },
         {
           "rule": "layer.a-val1.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-val1",
-          "target": "lyr_c89176d587b64373"
+          "target": "lyr_30a85bb4893e43bd"
         },
         {
           "rule": "a-val1 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-val1",
-          "target": "lyr_c89176d587b64373"
+          "target": "lyr_30a85bb4893e43bd"
         },
         {
           "rule": "layer.a-name2.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-name2",
-          "target": "lyr_699e2064f33d47fe"
+          "target": "lyr_fbe5bcf9611245fe"
         },
         {
           "rule": "a-name2 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-name2",
-          "target": "lyr_699e2064f33d47fe"
+          "target": "lyr_fbe5bcf9611245fe"
         },
         {
           "rule": "layer.a-val2.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-val2",
-          "target": "lyr_762ece2097e14d06"
+          "target": "lyr_1eb8b385de57436d"
         },
         {
           "rule": "a-val2 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-val2",
-          "target": "lyr_762ece2097e14d06"
+          "target": "lyr_1eb8b385de57436d"
         },
         {
           "rule": "layer.a-name3.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-name3",
-          "target": "lyr_d7bfb79f4407447d"
+          "target": "lyr_a96331979aaf48aa"
         },
         {
           "rule": "a-name3 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-name3",
-          "target": "lyr_d7bfb79f4407447d"
+          "target": "lyr_a96331979aaf48aa"
         },
         {
           "rule": "layer.a-val3.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-val3",
-          "target": "lyr_b0ae2c0d4b244425"
+          "target": "lyr_08c6b9686f04454a"
         },
         {
           "rule": "a-val3 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-val3",
-          "target": "lyr_b0ae2c0d4b244425"
+          "target": "lyr_08c6b9686f04454a"
         },
         {
           "rule": "layer.a-name4.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-name4",
-          "target": "lyr_379cf0e2e5344fb9"
+          "target": "lyr_15277dd09a9945de"
         },
         {
           "rule": "a-name4 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-name4",
-          "target": "lyr_379cf0e2e5344fb9"
+          "target": "lyr_15277dd09a9945de"
         },
         {
           "rule": "layer.a-val4.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-val4",
-          "target": "lyr_c1c327e00fc4435d"
+          "target": "lyr_131ab00165b54259"
         },
         {
           "rule": "a-val4 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-val4",
-          "target": "lyr_c1c327e00fc4435d"
+          "target": "lyr_131ab00165b54259"
         },
         {
           "rule": "layer.a-name5.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-name5",
-          "target": "lyr_cf6ca1ff26534c58"
+          "target": "lyr_fe1fc892c41646ca"
         },
         {
           "rule": "a-name5 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-name5",
-          "target": "lyr_cf6ca1ff26534c58"
+          "target": "lyr_fe1fc892c41646ca"
         },
         {
           "rule": "layer.a-val5.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-val5",
-          "target": "lyr_16e3c99aff4b4415"
+          "target": "lyr_7b6ba04c0cee417d"
         },
         {
           "rule": "a-val5 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-val5",
-          "target": "lyr_16e3c99aff4b4415"
+          "target": "lyr_7b6ba04c0cee417d"
         },
         {
           "rule": "layer.a-name6.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-name6",
-          "target": "lyr_e1987f288d784072"
+          "target": "lyr_29d38edc95534076"
         },
         {
           "rule": "a-name6 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-name6",
-          "target": "lyr_e1987f288d784072"
+          "target": "lyr_29d38edc95534076"
         },
         {
           "rule": "layer.a-val6.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-val6",
-          "target": "lyr_54bc853eb5ab4ea3"
+          "target": "lyr_9b44662982b54787"
         },
         {
           "rule": "a-val6 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-val6",
-          "target": "lyr_54bc853eb5ab4ea3"
+          "target": "lyr_9b44662982b54787"
         },
         {
           "rule": "layer.a-name7.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-name7",
-          "target": "lyr_dc4a179bc6bb4e0b"
+          "target": "lyr_f8dc73e0cdc94a99"
         },
         {
           "rule": "a-name7 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-name7",
-          "target": "lyr_dc4a179bc6bb4e0b"
+          "target": "lyr_f8dc73e0cdc94a99"
         },
         {
           "rule": "layer.a-val7.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-val7",
-          "target": "lyr_52d1ba70cb7c40ae"
+          "target": "lyr_43d6cf755b214fa2"
         },
         {
           "rule": "a-val7 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-val7",
-          "target": "lyr_52d1ba70cb7c40ae"
+          "target": "lyr_43d6cf755b214fa2"
         },
         {
           "rule": "layer.a-name8.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-name8",
-          "target": "lyr_d5b947cce5e74cd0"
+          "target": "lyr_57cefdc131934665"
         },
         {
           "rule": "a-name8 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-name8",
-          "target": "lyr_d5b947cce5e74cd0"
+          "target": "lyr_57cefdc131934665"
         },
         {
           "rule": "layer.a-val8.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-val8",
-          "target": "lyr_5ed9148684fa4863"
+          "target": "lyr_96de36eabf524180"
         },
         {
           "rule": "a-val8 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-val8",
-          "target": "lyr_5ed9148684fa4863"
+          "target": "lyr_96de36eabf524180"
         },
         {
           "rule": "layer.a-name9.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-name9",
-          "target": "lyr_4fb39d903cbd4ac6"
+          "target": "lyr_f8d875262f7f4168"
         },
         {
           "rule": "a-name9 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-name9",
-          "target": "lyr_4fb39d903cbd4ac6"
+          "target": "lyr_f8d875262f7f4168"
         },
         {
           "rule": "layer.a-val9.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-val9",
-          "target": "lyr_2ce8b01f78524897"
+          "target": "lyr_cc495183eca24117"
         },
         {
           "rule": "a-val9 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-val9",
-          "target": "lyr_2ce8b01f78524897"
+          "target": "lyr_cc495183eca24117"
         },
         {
           "rule": "layer.a-name10.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-name10",
-          "target": "lyr_a774d8282aa1449d"
+          "target": "lyr_c7e73381bd0148bc"
         },
         {
           "rule": "a-name10 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-name10",
-          "target": "lyr_a774d8282aa1449d"
+          "target": "lyr_c7e73381bd0148bc"
         },
         {
           "rule": "layer.a-val10.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-val10",
-          "target": "lyr_b5646e1f60fe4487"
+          "target": "lyr_f2d2624b23544dd0"
         },
         {
           "rule": "a-val10 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-val10",
-          "target": "lyr_b5646e1f60fe4487"
+          "target": "lyr_f2d2624b23544dd0"
         },
         {
           "rule": "layer.a-name11.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-name11",
-          "target": "lyr_557cd8c3af3943bc"
+          "target": "lyr_3c9063d6d1294daf"
         },
         {
           "rule": "a-name11 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-name11",
-          "target": "lyr_557cd8c3af3943bc"
+          "target": "lyr_3c9063d6d1294daf"
         },
         {
           "rule": "layer.a-val11.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-val11",
-          "target": "lyr_4fca6826ec8e4719"
+          "target": "lyr_0f55584059f24590"
         },
         {
           "rule": "a-val11 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-val11",
-          "target": "lyr_4fca6826ec8e4719"
+          "target": "lyr_0f55584059f24590"
         },
         {
           "rule": "layer.a-ax0.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-ax0",
-          "target": "lyr_b583e04c4f114b6f"
+          "target": "lyr_02dfa55ecd31431b"
         },
         {
           "rule": "a-ax0 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-ax0",
-          "target": "lyr_b583e04c4f114b6f"
+          "target": "lyr_02dfa55ecd31431b"
         },
         {
           "rule": "layer.a-ax1.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-ax1",
-          "target": "lyr_6b21eb8e9f12494d"
+          "target": "lyr_333473ed03c74edc"
         },
         {
           "rule": "a-ax1 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-ax1",
-          "target": "lyr_6b21eb8e9f12494d"
+          "target": "lyr_333473ed03c74edc"
         },
         {
           "rule": "layer.a-ax2.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-ax2",
-          "target": "lyr_5fd05b89bfd843bf"
+          "target": "lyr_0d76336287854d81"
         },
         {
           "rule": "a-ax2 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-ax2",
-          "target": "lyr_5fd05b89bfd843bf"
+          "target": "lyr_0d76336287854d81"
         },
         {
           "rule": "layer.a-ax3.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-ax3",
-          "target": "lyr_73d9a90d00cd4f06"
+          "target": "lyr_18adae3a7ba74e29"
         },
         {
           "rule": "a-ax3 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-ax3",
-          "target": "lyr_73d9a90d00cd4f06"
+          "target": "lyr_18adae3a7ba74e29"
         },
         {
           "rule": "layer.a-ax4.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-ax4",
-          "target": "lyr_0270432cff5446ca"
+          "target": "lyr_ca1f2d4db12f4abb"
         },
         {
           "rule": "a-ax4 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-ax4",
-          "target": "lyr_0270432cff5446ca"
+          "target": "lyr_ca1f2d4db12f4abb"
         },
         {
           "rule": "layer.a-ref.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-ref",
-          "target": "lyr_7b141d4c39f24124"
+          "target": "lyr_c4620b8b07884c33"
         },
         {
           "rule": "layer.a-ref-t.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-ref-t",
-          "target": "lyr_255a57b1817f4b96"
+          "target": "lyr_5674b782b9ac48cc"
         },
         {
           "rule": "a-ref-t font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-ref-t",
-          "target": "lyr_255a57b1817f4b96"
+          "target": "lyr_5674b782b9ac48cc"
         },
         {
           "rule": "layer.b-rule.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-rule",
-          "target": "lyr_9381318fbcb8411b"
+          "target": "lyr_b637022226f14ba2"
         },
         {
           "rule": "layer.b-num.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-num",
-          "target": "lyr_2e3ab5df7d774b8b"
+          "target": "lyr_23018e0a41f145b7"
         },
         {
           "rule": "b-num font size >= 24",
           "passed": true,
           "severity": "warning",
           "layer": "b-num",
-          "target": "lyr_2e3ab5df7d774b8b"
+          "target": "lyr_23018e0a41f145b7"
         },
         {
           "rule": "layer.b-title.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-title",
-          "target": "lyr_dd763244afaa473c"
+          "target": "lyr_396a2995d381483e"
         },
         {
           "rule": "b-title font size >= 24",
           "passed": true,
           "severity": "warning",
           "layer": "b-title",
-          "target": "lyr_dd763244afaa473c"
+          "target": "lyr_396a2995d381483e"
         },
         {
           "rule": "layer.b-sub.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-sub",
-          "target": "lyr_6181b5ee57144f52"
+          "target": "lyr_1b3b7e270be84c0c"
         },
         {
           "rule": "b-sub font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "b-sub",
-          "target": "lyr_6181b5ee57144f52"
+          "target": "lyr_1b3b7e270be84c0c"
         },
         {
           "rule": "layer.b-grid.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-grid",
-          "target": "lyr_74317c0efdd14c05"
+          "target": "lyr_b4099d8c70494718"
         },
         {
           "rule": "layer.b-base.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-base",
-          "target": "lyr_20a408fa3aaf4452"
+          "target": "lyr_3f06b4403e2d4229"
         },
         {
           "rule": "layer.b-yl0.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-yl0",
-          "target": "lyr_8caab61b66d0430b"
+          "target": "lyr_fd68e095a12a48c1"
         },
         {
           "rule": "b-yl0 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "b-yl0",
-          "target": "lyr_8caab61b66d0430b"
+          "target": "lyr_fd68e095a12a48c1"
         },
         {
           "rule": "layer.b-yl1.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-yl1",
-          "target": "lyr_7d23e4514d54421c"
+          "target": "lyr_8ba0b6ebede34bae"
         },
         {
           "rule": "b-yl1 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "b-yl1",
-          "target": "lyr_7d23e4514d54421c"
+          "target": "lyr_8ba0b6ebede34bae"
         },
         {
           "rule": "layer.b-yl2.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-yl2",
-          "target": "lyr_55bedb79417f482c"
+          "target": "lyr_3d30eb967c55475a"
         },
         {
           "rule": "b-yl2 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "b-yl2",
-          "target": "lyr_55bedb79417f482c"
+          "target": "lyr_3d30eb967c55475a"
         },
         {
           "rule": "layer.b-yl3.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-yl3",
-          "target": "lyr_1fdb664a5503485d"
+          "target": "lyr_8f7b46a0ed864ecf"
         },
         {
           "rule": "b-yl3 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "b-yl3",
-          "target": "lyr_1fdb664a5503485d"
+          "target": "lyr_8f7b46a0ed864ecf"
         },
         {
           "rule": "layer.b-yl4.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-yl4",
-          "target": "lyr_08e83799da5047cf"
+          "target": "lyr_e584cccc0a5147cd"
         },
         {
           "rule": "b-yl4 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "b-yl4",
-          "target": "lyr_08e83799da5047cf"
+          "target": "lyr_e584cccc0a5147cd"
         },
         {
           "rule": "layer.b-x0.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-x0",
-          "target": "lyr_9088f025b9ee4f22"
+          "target": "lyr_d4f76e38a3db4851"
         },
         {
           "rule": "b-x0 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "b-x0",
-          "target": "lyr_9088f025b9ee4f22"
+          "target": "lyr_d4f76e38a3db4851"
         },
         {
           "rule": "layer.b-x1.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-x1",
-          "target": "lyr_6adf060abd064a70"
+          "target": "lyr_fc12699027bb4f3f"
         },
         {
           "rule": "b-x1 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "b-x1",
-          "target": "lyr_6adf060abd064a70"
+          "target": "lyr_fc12699027bb4f3f"
         },
         {
           "rule": "layer.b-x2.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-x2",
-          "target": "lyr_ce539489d5404518"
+          "target": "lyr_e15c5bbde3e640d0"
         },
         {
           "rule": "b-x2 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "b-x2",
-          "target": "lyr_ce539489d5404518"
+          "target": "lyr_e15c5bbde3e640d0"
         },
         {
           "rule": "layer.b-x3.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-x3",
-          "target": "lyr_dea46108f0a944f2"
+          "target": "lyr_ccdb53102e184eb9"
         },
         {
           "rule": "b-x3 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "b-x3",
-          "target": "lyr_dea46108f0a944f2"
+          "target": "lyr_ccdb53102e184eb9"
         },
         {
           "rule": "layer.b-x4.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-x4",
-          "target": "lyr_c56998b66fdc46ee"
+          "target": "lyr_52fa170d9c8f4667"
         },
         {
           "rule": "b-x4 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "b-x4",
-          "target": "lyr_c56998b66fdc46ee"
+          "target": "lyr_52fa170d9c8f4667"
         },
         {
           "rule": "layer.b-x5.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-x5",
-          "target": "lyr_902315f886fb4023"
+          "target": "lyr_e538de3972734d26"
         },
         {
           "rule": "b-x5 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "b-x5",
-          "target": "lyr_902315f886fb4023"
+          "target": "lyr_e538de3972734d26"
         },
         {
           "rule": "layer.b-x6.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-x6",
-          "target": "lyr_1bf115255f6445d1"
+          "target": "lyr_db45c770681e42b7"
         },
         {
           "rule": "b-x6 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "b-x6",
-          "target": "lyr_1bf115255f6445d1"
+          "target": "lyr_db45c770681e42b7"
         },
         {
           "rule": "layer.b-x7.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-x7",
-          "target": "lyr_d548019810074691"
+          "target": "lyr_90e49b47785f485c"
         },
         {
           "rule": "b-x7 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "b-x7",
-          "target": "lyr_d548019810074691"
+          "target": "lyr_90e49b47785f485c"
         },
         {
           "rule": "layer.b-x8.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-x8",
-          "target": "lyr_ee19e30586bc4b07"
+          "target": "lyr_7a8bca953b194388"
         },
         {
           "rule": "b-x8 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "b-x8",
-          "target": "lyr_ee19e30586bc4b07"
+          "target": "lyr_7a8bca953b194388"
         },
         {
           "rule": "layer.b-x9.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-x9",
-          "target": "lyr_ed746daf916540a3"
+          "target": "lyr_27d788e963f24169"
         },
         {
           "rule": "b-x9 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "b-x9",
-          "target": "lyr_ed746daf916540a3"
+          "target": "lyr_27d788e963f24169"
         },
         {
           "rule": "layer.b-x10.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-x10",
-          "target": "lyr_e675de355b65489d"
+          "target": "lyr_d1ac5a5d4c4b4a52"
         },
         {
           "rule": "b-x10 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "b-x10",
-          "target": "lyr_e675de355b65489d"
+          "target": "lyr_d1ac5a5d4c4b4a52"
         },
         {
           "rule": "layer.b-area.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-area",
-          "target": "lyr_e726f531a8754e71"
+          "target": "lyr_47d385ee99ef4065"
         },
         {
           "rule": "layer.b-area2.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-area2",
-          "target": "lyr_9307126bf18a41e6"
+          "target": "lyr_cc96007b05a64ea0"
         },
         {
           "rule": "layer.b-line.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-line",
-          "target": "lyr_4268c22893954b77"
+          "target": "lyr_0d85e115d6a64707"
         },
         {
           "rule": "layer.b-line2.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-line2",
-          "target": "lyr_5b87434921e9421e"
+          "target": "lyr_15047ccf7ab042b4"
         },
         {
           "rule": "layer.b-plot.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-plot",
-          "target": "lyr_c0ae9337b5a14030"
+          "target": "lyr_bb82668efe4747e0"
         },
         {
           "rule": "layer.b-end.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-end",
-          "target": "lyr_47b19d38d8cb4832"
+          "target": "lyr_c3fe52866ee340fb"
         },
         {
           "rule": "layer.b-end-v.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-end-v",
-          "target": "lyr_9b76c847d28c48a3"
+          "target": "lyr_9a88228aac524558"
         },
         {
           "rule": "b-end-v font size >= 24",
           "passed": true,
           "severity": "warning",
           "layer": "b-end-v",
-          "target": "lyr_9b76c847d28c48a3"
+          "target": "lyr_9a88228aac524558"
         },
         {
           "rule": "layer.b-end-t.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-end-t",
-          "target": "lyr_a21d3ab180be45c7"
+          "target": "lyr_ec83edab9bdc4a78"
         },
         {
           "rule": "b-end-t font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "b-end-t",
-          "target": "lyr_a21d3ab180be45c7"
+          "target": "lyr_ec83edab9bdc4a78"
         },
         {
           "rule": "layer.b-end2.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-end2",
-          "target": "lyr_22a8c3b410434c85"
+          "target": "lyr_7bcf0fac254849c4"
         },
         {
           "rule": "layer.b-end2-v.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-end2-v",
-          "target": "lyr_7965d824ea16488b"
+          "target": "lyr_62516ba247b24c7c"
         },
         {
           "rule": "b-end2-v font size >= 24",
           "passed": true,
           "severity": "warning",
           "layer": "b-end2-v",
-          "target": "lyr_7965d824ea16488b"
+          "target": "lyr_62516ba247b24c7c"
         },
         {
           "rule": "layer.b-end2-t.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-end2-t",
-          "target": "lyr_36d36a2966ca4a68"
+          "target": "lyr_ea04e9275aea4a3e"
         },
         {
           "rule": "b-end2-t font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "b-end2-t",
-          "target": "lyr_36d36a2966ca4a68"
+          "target": "lyr_ea04e9275aea4a3e"
         },
         {
           "rule": "layer.b-n0-dot.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-n0-dot",
-          "target": "lyr_d565f815e6284d7b"
+          "target": "lyr_418e74f2a6ce4e27"
         },
         {
           "rule": "layer.b-n0-lead.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-n0-lead",
-          "target": "lyr_7cdb0405bf5e402a"
+          "target": "lyr_acdb83a6ed924225"
         },
         {
           "rule": "layer.b-n0-t.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-n0-t",
-          "target": "lyr_defdecda4b194052"
+          "target": "lyr_e6c920db1e7f4aed"
         },
         {
           "rule": "b-n0-t font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "b-n0-t",
-          "target": "lyr_defdecda4b194052"
+          "target": "lyr_e6c920db1e7f4aed"
         },
         {
           "rule": "layer.b-n1-dot.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-n1-dot",
-          "target": "lyr_c2d189a75f39472c"
+          "target": "lyr_22a5883fa34c432b"
         },
         {
           "rule": "layer.b-n1-lead.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-n1-lead",
-          "target": "lyr_9c1822790597482e"
+          "target": "lyr_f749cca1b9b04bb4"
         },
         {
           "rule": "layer.b-n1-t.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-n1-t",
-          "target": "lyr_479da4eaec7f4d13"
+          "target": "lyr_4cf48156dfa94b66"
         },
         {
           "rule": "b-n1-t font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "b-n1-t",
-          "target": "lyr_479da4eaec7f4d13"
+          "target": "lyr_4cf48156dfa94b66"
         },
         {
           "rule": "layer.c-rule.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-rule",
-          "target": "lyr_91d1780a8a504fc1"
+          "target": "lyr_a1bbf0cb6cdb447a"
         },
         {
           "rule": "layer.c-num.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-num",
-          "target": "lyr_bbfbf8155c8e41d3"
+          "target": "lyr_cf51e3f456b44fe8"
         },
         {
           "rule": "c-num font size >= 24",
           "passed": true,
           "severity": "warning",
           "layer": "c-num",
-          "target": "lyr_bbfbf8155c8e41d3"
+          "target": "lyr_cf51e3f456b44fe8"
         },
         {
           "rule": "layer.c-title.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-title",
-          "target": "lyr_a30f7cf6d50d409a"
+          "target": "lyr_3845d20759cc45f0"
         },
         {
           "rule": "c-title font size >= 24",
           "passed": true,
           "severity": "warning",
           "layer": "c-title",
-          "target": "lyr_a30f7cf6d50d409a"
+          "target": "lyr_3845d20759cc45f0"
         },
         {
           "rule": "layer.c-sub.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-sub",
-          "target": "lyr_cf4d5bca8a0341c6"
+          "target": "lyr_e5ff981e8a8b493a"
         },
         {
           "rule": "c-sub font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "c-sub",
-          "target": "lyr_cf4d5bca8a0341c6"
+          "target": "lyr_e5ff981e8a8b493a"
         },
         {
           "rule": "layer.d-rule.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "d-rule",
-          "target": "lyr_982d70b9fcae4c5e"
+          "target": "lyr_cd83deabf30d43b7"
         },
         {
           "rule": "layer.d-num.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "d-num",
-          "target": "lyr_5e7f8d1e72ed4845"
+          "target": "lyr_dd2867c4e12d48e5"
         },
         {
           "rule": "d-num font size >= 24",
           "passed": true,
           "severity": "warning",
           "layer": "d-num",
-          "target": "lyr_5e7f8d1e72ed4845"
+          "target": "lyr_dd2867c4e12d48e5"
         },
         {
           "rule": "layer.d-title.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "d-title",
-          "target": "lyr_0514d61ab188443d"
+          "target": "lyr_149e18d9715443e7"
         },
         {
           "rule": "d-title font size >= 24",
           "passed": true,
           "severity": "warning",
           "layer": "d-title",
-          "target": "lyr_0514d61ab188443d"
+          "target": "lyr_149e18d9715443e7"
         },
         {
           "rule": "layer.d-sub.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "d-sub",
-          "target": "lyr_309d08cdaaaa40a6"
+          "target": "lyr_28f5188d9aee425b"
         },
         {
           "rule": "d-sub font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "d-sub",
-          "target": "lyr_309d08cdaaaa40a6"
+          "target": "lyr_28f5188d9aee425b"
         },
         {
           "rule": "layer.c-seg0.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-seg0",
-          "target": "lyr_e8975fa300534300"
+          "target": "lyr_1056f6f488624a1b"
         },
         {
           "rule": "layer.c-seg1.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-seg1",
-          "target": "lyr_a6f84d1153434441"
+          "target": "lyr_0d725916abf9401d"
         },
         {
           "rule": "layer.c-seg2.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-seg2",
-          "target": "lyr_cf0115053d804f9d"
+          "target": "lyr_ce267d8eebcd4ff5"
         },
         {
           "rule": "layer.c-seg3.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-seg3",
-          "target": "lyr_8ca9fabe2ff04658"
+          "target": "lyr_85ce4088c8ee4c08"
         },
         {
           "rule": "layer.c-seg4.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-seg4",
-          "target": "lyr_57db4f72c7094569"
+          "target": "lyr_f839a0511bdd41d0"
         },
         {
           "rule": "layer.c-seg5.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-seg5",
-          "target": "lyr_e172101621e34010"
+          "target": "lyr_859ab7ab61da4d29"
         },
         {
           "rule": "layer.c-donut.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-donut",
-          "target": "lyr_6ce6765066ce49d5"
+          "target": "lyr_24dc3b4caf954a28"
         },
         {
           "rule": "layer.c-center.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-center",
-          "target": "lyr_4575c8f83d764869"
+          "target": "lyr_80eff81968284dca"
         },
         {
           "rule": "c-center font size >= 24",
           "passed": true,
           "severity": "warning",
           "layer": "c-center",
-          "target": "lyr_4575c8f83d764869"
+          "target": "lyr_80eff81968284dca"
         },
         {
           "rule": "layer.c-center-t.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-center-t",
-          "target": "lyr_1558891015fb42b8"
+          "target": "lyr_5172545362414fc9"
         },
         {
           "rule": "c-center-t font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "c-center-t",
-          "target": "lyr_1558891015fb42b8"
+          "target": "lyr_5172545362414fc9"
         },
         {
           "rule": "layer.c-lg0-sw.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-lg0-sw",
-          "target": "lyr_4bbdf6d4413a4f29"
+          "target": "lyr_c736054ae95a40f9"
         },
         {
           "rule": "layer.c-lg0-l.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-lg0-l",
-          "target": "lyr_05058e00dd194277"
+          "target": "lyr_6d2c8172548b46b4"
         },
         {
           "rule": "c-lg0-l font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "c-lg0-l",
-          "target": "lyr_05058e00dd194277"
+          "target": "lyr_6d2c8172548b46b4"
         },
         {
           "rule": "layer.c-lg0-v.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-lg0-v",
-          "target": "lyr_9ab68c04643c4fde"
+          "target": "lyr_341bd6ec91564403"
         },
         {
           "rule": "c-lg0-v font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "c-lg0-v",
-          "target": "lyr_9ab68c04643c4fde"
+          "target": "lyr_341bd6ec91564403"
         },
         {
           "rule": "layer.c-lg0.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-lg0",
-          "target": "lyr_7a3ab48559344e4a"
+          "target": "lyr_52e418c5bd054534"
         },
         {
           "rule": "layer.c-lg1-sw.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-lg1-sw",
-          "target": "lyr_b69e31a199924803"
+          "target": "lyr_64ebadf1abb74796"
         },
         {
           "rule": "layer.c-lg1-l.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-lg1-l",
-          "target": "lyr_6e92deab213846ad"
+          "target": "lyr_484e9f5c8d924493"
         },
         {
           "rule": "c-lg1-l font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "c-lg1-l",
-          "target": "lyr_6e92deab213846ad"
+          "target": "lyr_484e9f5c8d924493"
         },
         {
           "rule": "layer.c-lg1-v.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-lg1-v",
-          "target": "lyr_9654f66e99f44b70"
+          "target": "lyr_187d3c1f3d1e4bcc"
         },
         {
           "rule": "c-lg1-v font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "c-lg1-v",
-          "target": "lyr_9654f66e99f44b70"
+          "target": "lyr_187d3c1f3d1e4bcc"
         },
         {
           "rule": "layer.c-lg1.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-lg1",
-          "target": "lyr_15191241d503449a"
+          "target": "lyr_b844c57bf2584dfd"
         },
         {
           "rule": "layer.c-lg2-sw.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-lg2-sw",
-          "target": "lyr_94f1a96eaedc4a07"
+          "target": "lyr_496027654804435d"
         },
         {
           "rule": "layer.c-lg2-l.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-lg2-l",
-          "target": "lyr_0a766a0b2e2544cd"
+          "target": "lyr_fd5b0aa88321434f"
         },
         {
           "rule": "c-lg2-l font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "c-lg2-l",
-          "target": "lyr_0a766a0b2e2544cd"
+          "target": "lyr_fd5b0aa88321434f"
         },
         {
           "rule": "layer.c-lg2-v.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-lg2-v",
-          "target": "lyr_fff938a5163e4fdc"
+          "target": "lyr_0b7066618ee74d61"
         },
         {
           "rule": "c-lg2-v font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "c-lg2-v",
-          "target": "lyr_fff938a5163e4fdc"
+          "target": "lyr_0b7066618ee74d61"
         },
         {
           "rule": "layer.c-lg2.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-lg2",
-          "target": "lyr_213ce4633d6149ab"
+          "target": "lyr_a8aa17dc06a1437e"
         },
         {
           "rule": "layer.c-lg3-sw.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-lg3-sw",
-          "target": "lyr_c90f758f98d744da"
+          "target": "lyr_5a935fc298c84230"
         },
         {
           "rule": "layer.c-lg3-l.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-lg3-l",
-          "target": "lyr_9dda37ec81ba4022"
+          "target": "lyr_743fa7fa8338456f"
         },
         {
           "rule": "c-lg3-l font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "c-lg3-l",
-          "target": "lyr_9dda37ec81ba4022"
+          "target": "lyr_743fa7fa8338456f"
         },
         {
           "rule": "layer.c-lg3-v.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-lg3-v",
-          "target": "lyr_7ac7e0107a644fa3"
+          "target": "lyr_b52ac45c65b5452a"
         },
         {
           "rule": "c-lg3-v font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "c-lg3-v",
-          "target": "lyr_7ac7e0107a644fa3"
+          "target": "lyr_b52ac45c65b5452a"
         },
         {
           "rule": "layer.c-lg3.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-lg3",
-          "target": "lyr_4783fc1f3dff4094"
+          "target": "lyr_a78a4b9d71e64586"
         },
         {
           "rule": "layer.c-lg4-sw.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-lg4-sw",
-          "target": "lyr_a7253df3822f457b"
+          "target": "lyr_90364eeb59d745c1"
         },
         {
           "rule": "layer.c-lg4-l.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-lg4-l",
-          "target": "lyr_7030cc37992a4f07"
+          "target": "lyr_a497635e607f4bdf"
         },
         {
           "rule": "c-lg4-l font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "c-lg4-l",
-          "target": "lyr_7030cc37992a4f07"
+          "target": "lyr_a497635e607f4bdf"
         },
         {
           "rule": "layer.c-lg4-v.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-lg4-v",
-          "target": "lyr_1b5f08a804c147dc"
+          "target": "lyr_c949b86c27ac4741"
         },
         {
           "rule": "c-lg4-v font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "c-lg4-v",
-          "target": "lyr_1b5f08a804c147dc"
+          "target": "lyr_c949b86c27ac4741"
         },
         {
           "rule": "layer.c-lg4.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-lg4",
-          "target": "lyr_b54b817705494ef1"
+          "target": "lyr_265f73b44dd740ad"
         },
         {
           "rule": "layer.c-lg5-sw.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-lg5-sw",
-          "target": "lyr_388699ef9cad42fa"
+          "target": "lyr_d6efc0e9942b4a90"
         },
         {
           "rule": "layer.c-lg5-l.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-lg5-l",
-          "target": "lyr_33a0c92bbfe442af"
+          "target": "lyr_d24a935d3d8e4b96"
         },
         {
           "rule": "c-lg5-l font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "c-lg5-l",
-          "target": "lyr_33a0c92bbfe442af"
+          "target": "lyr_d24a935d3d8e4b96"
         },
         {
           "rule": "layer.c-lg5-v.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-lg5-v",
-          "target": "lyr_8db23300bba14fe3"
+          "target": "lyr_939b1dac6f5241bf"
         },
         {
           "rule": "c-lg5-v font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "c-lg5-v",
-          "target": "lyr_8db23300bba14fe3"
+          "target": "lyr_939b1dac6f5241bf"
         },
         {
           "rule": "layer.c-lg5.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-lg5",
-          "target": "lyr_b123926ba9514944"
+          "target": "lyr_ed0c94cb98364c51"
         },
         {
           "rule": "layer.c-legend.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-legend",
-          "target": "lyr_03cb6ed6db2e4a6c"
+          "target": "lyr_98be856c7eeb4639"
         },
         {
           "rule": "layer.donut-block.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "donut-block",
-          "target": "lyr_5d290e122d6d4a79"
+          "target": "lyr_0a2be6434eb442bd"
         },
         {
           "rule": "layer.d-r0-0.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "d-r0-0",
-          "target": "lyr_bdf9c82af63c4f9d"
+          "target": "lyr_7cd21ca90f1c4d8e"
         },
         {
           "rule": "layer.d-r0-9.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "d-r0-9",
-          "target": "lyr_e0a10ee229d24660"
+          "target": "lyr_42e32bdf84204be5"
         },
         {
           "rule": "layer.d-r1-0.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "d-r1-0",
-          "target": "lyr_cf4869c5fba8404d"
+          "target": "lyr_95b837e9c83b49a6"
         },
         {
           "rule": "layer.d-r1-9.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "d-r1-9",
-          "target": "lyr_283f55cf9c614c3b"
+          "target": "lyr_2816f77b29d34cba"
         },
         {
           "rule": "layer.d-r2-0.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "d-r2-0",
-          "target": "lyr_d1abe9ffbfe144db"
+          "target": "lyr_3e4712227b8e4b13"
         },
         {
           "rule": "layer.d-r3-0.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "d-r3-0",
-          "target": "lyr_0c32e93b24184146"
+          "target": "lyr_76f4069070d6402d"
         },
         {
           "rule": "layer.d-r3-3.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "d-r3-3",
-          "target": "lyr_d9af3dac32e24700"
+          "target": "lyr_94aee27b0677491e"
         },
         {
           "rule": "layer.d-r3-5.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "d-r3-5",
-          "target": "lyr_5e3276989fd44297"
+          "target": "lyr_a36fbf8bd09b4a68"
         },
         {
           "rule": "layer.d-r4-0.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "d-r4-0",
-          "target": "lyr_8921b9212a124f72"
+          "target": "lyr_57483272c7d04080"
         },
         {
           "rule": "layer.d-r4-4.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "d-r4-4",
-          "target": "lyr_e76448afe20d4b0a"
+          "target": "lyr_74280f210ead4a30"
         },
         {
           "rule": "layer.d-r5-0.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "d-r5-0",
-          "target": "lyr_ca893b717425424d"
+          "target": "lyr_4b44d6a078ee446c"
         },
         {
           "rule": "layer.d-r6-0.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "d-r6-0",
-          "target": "lyr_a7b487e0363b4b40"
+          "target": "lyr_4423949627604310"
         },
         {
           "rule": "layer.d-r7-0.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "d-r7-0",
-          "target": "lyr_9cf09b42efe14b89"
+          "target": "lyr_cb0b83d372914ddc"
         },
         {
           "rule": "layer.d-r8-0.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "d-r8-0",
-          "target": "lyr_41e3355e7afc45d1"
+          "target": "lyr_f28116fb5c234743"
         },
         {
           "rule": "layer.d-r9-0.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "d-r9-0",
-          "target": "lyr_e000a445257e43f7"
+          "target": "lyr_658d1bd91f94452f"
         },
         {
           "rule": "layer.d-grid.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "d-grid",
-          "target": "lyr_3b6a886da9b548e2"
+          "target": "lyr_ee7014dbf80e4854"
         },
         {
           "rule": "layer.d-note.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "d-note",
-          "target": "lyr_d20ed84eab1e467e"
+          "target": "lyr_d886e951c87244a9"
         },
         {
           "rule": "d-note font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "d-note",
-          "target": "lyr_d20ed84eab1e467e"
+          "target": "lyr_d886e951c87244a9"
         },
         {
           "rule": "layer.f-rule.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "f-rule",
-          "target": "lyr_f278f1ae7f6d45f1"
+          "target": "lyr_cd9cbbef56134301"
         },
         {
           "rule": "layer.f-note.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "f-note",
-          "target": "lyr_4203779cfbce45b1"
+          "target": "lyr_74859f9f79b9459a"
         },
         {
           "rule": "f-note font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "f-note",
-          "target": "lyr_4203779cfbce45b1"
+          "target": "lyr_74859f9f79b9459a"
         },
         {
           "rule": "layer.f-method.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "f-method",
-          "target": "lyr_e134fb336d454ae0"
+          "target": "lyr_3d6281b2038b4cb1"
         },
         {
           "rule": "f-method font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "f-method",
-          "target": "lyr_e134fb336d454ae0"
+          "target": "lyr_3d6281b2038b4cb1"
         },
         {
           "rule": "layer.f-brand.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "f-brand",
-          "target": "lyr_cf160e4cb1804e4c"
+          "target": "lyr_5d808d6fed954cfd"
         },
         {
           "rule": "f-brand font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "f-brand",
-          "target": "lyr_cf160e4cb1804e4c"
+          "target": "lyr_5d808d6fed954cfd"
         },
         {
           "rule": "layer.f-palette.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "f-palette",
-          "target": "lyr_a0623beb694b4b30"
+          "target": "lyr_06fb9edd10b6431e"
         },
         {
           "rule": "f-palette font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "f-palette",
-          "target": "lyr_a0623beb694b4b30"
+          "target": "lyr_06fb9edd10b6431e"
         },
         {
           "rule": "layer.s-eyebrow.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "s-eyebrow",
-          "target": "lyr_be0ec6981dbf4f5d"
+          "target": "lyr_c76b187dd72143e8"
         },
         {
           "rule": "s-eyebrow font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "s-eyebrow",
-          "target": "lyr_be0ec6981dbf4f5d"
+          "target": "lyr_c76b187dd72143e8"
         },
         {
           "rule": "layer.s-title.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "s-title",
-          "target": "lyr_7acb6c19527142a7"
+          "target": "lyr_c0d1c054ff1d40f4"
         },
         {
           "rule": "s-title font size >= 24",
           "passed": true,
           "severity": "warning",
           "layer": "s-title",
-          "target": "lyr_7acb6c19527142a7"
+          "target": "lyr_c0d1c054ff1d40f4"
         },
         {
           "rule": "layer.s-foot.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "s-foot",
-          "target": "lyr_b4d9e393719d4232"
+          "target": "lyr_f069e3cb7774401b"
         },
         {
           "rule": "s-foot font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "s-foot",
-          "target": "lyr_b4d9e393719d4232"
+          "target": "lyr_f069e3cb7774401b"
         },
         {
           "rule": "canvas.width == 1600",
@@ -2588,7 +2588,7 @@
           "layers": [
             "sun"
           ],
-          "message": "'sun' extends outside the safe area (marked as an intentional crop)",
+          "message": "'sun' extends outside the safe area (intentional crop or bleed)",
           "bounds": [
             980,
             -260,
@@ -2610,7 +2610,7 @@
           "layers": [
             "ray"
           ],
-          "message": "'ray' extends outside the safe area (marked as an intentional crop)",
+          "message": "'ray' extends outside the safe area (intentional crop or bleed)",
           "bounds": [
             960,
             -240,
@@ -2632,7 +2632,7 @@
           "layers": [
             "rays"
           ],
-          "message": "'rays' extends outside the safe area (marked as an intentional crop)",
+          "message": "'rays' extends outside the safe area (intentional crop or bleed)",
           "bounds": [
             960,
             -240,
@@ -2657,29 +2657,21 @@
           "legibility",
           "color_vision"
         ],
-        "layers": 195,
+        "layers_checked": 195,
+        "layers_total": 195,
         "text_layers": 94
       }
     },
     "check_contrast": {
       "passed": false,
       "errors": 1,
-      "warnings": 8,
+      "warnings": 0,
       "info": 0,
       "by_action": {
         "fix": [
           0
         ],
-        "review": [
-          1,
-          2,
-          3,
-          4,
-          5,
-          6,
-          7,
-          8
-        ],
+        "review": [],
         "informational": []
       },
       "issues": [
@@ -2699,85 +2691,14 @@
           "contrast": 3.421,
           "required": 4.5,
           "action": "fix"
-        },
-        {
-          "check": "contrast",
-          "severity": "warning",
-          "layers": [
-            "a-ax2"
-          ],
-          "message": "Could not measure 'a-ax2': boolean index did not match indexed array along axis 1; size of axis is 30 but size of corresponding boolean axis is 28",
-          "action": "review"
-        },
-        {
-          "check": "contrast",
-          "severity": "warning",
-          "layers": [
-            "a-ax4"
-          ],
-          "message": "Could not measure 'a-ax4': boolean index did not match indexed array along axis 1; size of axis is 40 but size of corresponding boolean axis is 38",
-          "action": "review"
-        },
-        {
-          "check": "contrast",
-          "severity": "warning",
-          "layers": [
-            "b-x0"
-          ],
-          "message": "Could not measure 'b-x0': boolean index did not match indexed array along axis 1; size of axis is 40 but size of corresponding boolean axis is 38",
-          "action": "review"
-        },
-        {
-          "check": "contrast",
-          "severity": "warning",
-          "layers": [
-            "b-x3"
-          ],
-          "message": "Could not measure 'b-x3': boolean index did not match indexed array along axis 1; size of axis is 40 but size of corresponding boolean axis is 38",
-          "action": "review"
-        },
-        {
-          "check": "contrast",
-          "severity": "warning",
-          "layers": [
-            "b-x4"
-          ],
-          "message": "Could not measure 'b-x4': boolean index did not match indexed array along axis 1; size of axis is 40 but size of corresponding boolean axis is 38",
-          "action": "review"
-        },
-        {
-          "check": "contrast",
-          "severity": "warning",
-          "layers": [
-            "b-x6"
-          ],
-          "message": "Could not measure 'b-x6': boolean index did not match indexed array along axis 1; size of axis is 40 but size of corresponding boolean axis is 38",
-          "action": "review"
-        },
-        {
-          "check": "contrast",
-          "severity": "warning",
-          "layers": [
-            "b-x7"
-          ],
-          "message": "Could not measure 'b-x7': boolean index did not match indexed array along axis 1; size of axis is 40 but size of corresponding boolean axis is 38",
-          "action": "review"
-        },
-        {
-          "check": "contrast",
-          "severity": "warning",
-          "layers": [
-            "b-x10"
-          ],
-          "message": "Could not measure 'b-x10': boolean index did not match indexed array along axis 1; size of axis is 40 but size of corresponding boolean axis is 38",
-          "action": "review"
         }
       ],
       "checked": {
         "checks": [
           "contrast"
         ],
-        "layers": 195,
+        "layers_checked": 195,
+        "layers_total": 195,
         "text_layers": 94
       }
     },
@@ -2798,23 +2719,24 @@
           "overlap",
           "color_vision"
         ],
-        "layers": 38,
+        "layers_checked": 38,
+        "layers_total": 38,
         "text_layers": 17
       }
     },
     "timings": {
-      "check_without_contrast": 0.5,
-      "contrast_all_text": 12.7,
-      "check_social": 0.5
+      "check_without_contrast": 0.3,
+      "contrast_all_text": 7.3,
+      "check_social": 0.2
     },
     "spacing_social": {
       "axis": "vertical",
       "scope": "canvas",
       "gaps": [
         {
-          "from": "lyr_be0ec6981dbf4f5d",
+          "from": "lyr_c76b187dd72143e8",
           "from_name": "s-eyebrow",
-          "to": "lyr_7acb6c19527142a7",
+          "to": "lyr_c0d1c054ff1d40f4",
           "to_name": "s-title",
           "pixels": 18,
           "overlap": false,
@@ -2837,21 +2759,21 @@
   "europe": {
     "kpi_cards": {
       "axis": "horizontal",
-      "scope": "lyr_04fbc48708884367",
+      "scope": "lyr_47398341d8cc4634",
       "gaps": [
         {
-          "from": "lyr_48512e6b72574fe2",
+          "from": "lyr_7dbb05836e3b4c84",
           "from_name": "kpi0",
-          "to": "lyr_a1fb9bbfaca647e7",
+          "to": "lyr_fd99cc3a8ea8479c",
           "to_name": "kpi1",
           "pixels": 32,
           "overlap": false,
           "cross_axis_overlap": 236
         },
         {
-          "from": "lyr_a1fb9bbfaca647e7",
+          "from": "lyr_fd99cc3a8ea8479c",
           "from_name": "kpi1",
-          "to": "lyr_d93d4c1250554694",
+          "to": "lyr_b2d3ad3e58b64c4e",
           "to_name": "kpi2",
           "pixels": 32,
           "overlap": false,
@@ -2872,93 +2794,93 @@
     },
     "bars": {
       "axis": "vertical",
-      "scope": "lyr_886ba51849154ffb",
+      "scope": "lyr_42dba7b0f35a4db4",
       "gaps": [
         {
-          "from": "lyr_cd9c7e0c1520413f",
+          "from": "lyr_93f8adaa6dc245b0",
           "from_name": "a-bar0",
-          "to": "lyr_e20bd2837524458b",
+          "to": "lyr_f65328695f1c41cc",
           "to_name": "a-bar1",
           "pixels": 18,
           "overlap": false,
           "cross_axis_overlap": 822.4979999999999
         },
         {
-          "from": "lyr_e20bd2837524458b",
+          "from": "lyr_f65328695f1c41cc",
           "from_name": "a-bar1",
-          "to": "lyr_76a18e4d54b24bb8",
+          "to": "lyr_42c847b616674984",
           "to_name": "a-bar2",
           "pixels": 18,
           "overlap": false,
           "cross_axis_overlap": 792.18
         },
         {
-          "from": "lyr_76a18e4d54b24bb8",
+          "from": "lyr_42c847b616674984",
           "from_name": "a-bar2",
-          "to": "lyr_12c6a95ed31b4b01",
+          "to": "lyr_6098a889567f4404",
           "to_name": "a-bar3",
           "pixels": 18,
           "overlap": false,
           "cross_axis_overlap": 708.0720000000001
         },
         {
-          "from": "lyr_12c6a95ed31b4b01",
+          "from": "lyr_6098a889567f4404",
           "from_name": "a-bar3",
-          "to": "lyr_2172a76858d44357",
+          "to": "lyr_621b2c29f28e4417",
           "to_name": "a-bar4",
           "pixels": 18,
           "overlap": false,
           "cross_axis_overlap": 697.314
         },
         {
-          "from": "lyr_2172a76858d44357",
+          "from": "lyr_621b2c29f28e4417",
           "from_name": "a-bar4",
-          "to": "lyr_16d791d7a8224b76",
+          "to": "lyr_8dcd8b456677444b",
           "to_name": "a-bar5",
           "pixels": 18,
           "overlap": false,
           "cross_axis_overlap": 547.68
         },
         {
-          "from": "lyr_16d791d7a8224b76",
+          "from": "lyr_8dcd8b456677444b",
           "from_name": "a-bar5",
-          "to": "lyr_446a3a8886a34f46",
+          "to": "lyr_2142d29696a94651",
           "to_name": "a-bar6",
           "pixels": 18,
           "overlap": false,
           "cross_axis_overlap": 534.966
         },
         {
-          "from": "lyr_446a3a8886a34f46",
+          "from": "lyr_2142d29696a94651",
           "from_name": "a-bar6",
-          "to": "lyr_3ee2ed6e31514dc6",
+          "to": "lyr_ffb6e42af1884e6e",
           "to_name": "a-bar7",
           "pixels": 18,
           "overlap": false,
           "cross_axis_overlap": 484.11
         },
         {
-          "from": "lyr_3ee2ed6e31514dc6",
+          "from": "lyr_ffb6e42af1884e6e",
           "from_name": "a-bar7",
-          "to": "lyr_0d93104e9c974b56",
+          "to": "lyr_5681dea079ec4fea",
           "to_name": "a-bar8",
           "pixels": 18,
           "overlap": false,
           "cross_axis_overlap": 432.27600000000007
         },
         {
-          "from": "lyr_0d93104e9c974b56",
+          "from": "lyr_5681dea079ec4fea",
           "from_name": "a-bar8",
-          "to": "lyr_82d609222dc4434b",
+          "to": "lyr_1fa18bff2d0f47b4",
           "to_name": "a-bar9",
           "pixels": 18,
           "overlap": false,
           "cross_axis_overlap": 289.48800000000006
         },
         {
-          "from": "lyr_82d609222dc4434b",
+          "from": "lyr_1fa18bff2d0f47b4",
           "from_name": "a-bar9",
-          "to": "lyr_42bc18abd6184b6f",
+          "to": "lyr_279e514329d14ba1",
           "to_name": "a-bar10",
           "pixels": 18,
           "overlap": false,
@@ -2979,48 +2901,48 @@
     },
     "donut_legend": {
       "axis": "vertical",
-      "scope": "lyr_1e138312926249bc",
+      "scope": "lyr_3a183174d0ec4ea9",
       "gaps": [
         {
-          "from": "lyr_4533657cec95479d",
+          "from": "lyr_7226b0b4ee604d35",
           "from_name": "c-lg0",
-          "to": "lyr_b9fd858836f94399",
+          "to": "lyr_afa83cccf15144ce",
           "to_name": "c-lg1",
           "pixels": 18,
           "overlap": false,
           "cross_axis_overlap": 92
         },
         {
-          "from": "lyr_b9fd858836f94399",
+          "from": "lyr_afa83cccf15144ce",
           "from_name": "c-lg1",
-          "to": "lyr_2da86595b2004b26",
+          "to": "lyr_506837b07edc44b2",
           "to_name": "c-lg2",
           "pixels": 18,
           "overlap": false,
           "cross_axis_overlap": 92
         },
         {
-          "from": "lyr_2da86595b2004b26",
+          "from": "lyr_506837b07edc44b2",
           "from_name": "c-lg2",
-          "to": "lyr_37287a4d3237464d",
+          "to": "lyr_9fe723cb00a249a5",
           "to_name": "c-lg3",
           "pixels": 18,
           "overlap": false,
           "cross_axis_overlap": 92
         },
         {
-          "from": "lyr_37287a4d3237464d",
+          "from": "lyr_9fe723cb00a249a5",
           "from_name": "c-lg3",
-          "to": "lyr_b98e42d2ca334d4a",
+          "to": "lyr_d8de5b992a814584",
           "to_name": "c-lg4",
           "pixels": 18,
           "overlap": false,
           "cross_axis_overlap": 95
         },
         {
-          "from": "lyr_b98e42d2ca334d4a",
+          "from": "lyr_d8de5b992a814584",
           "from_name": "c-lg4",
-          "to": "lyr_85701c9c1cf444f4",
+          "to": "lyr_25d2e8b318db4857",
           "to_name": "c-lg5",
           "pixels": 18,
           "overlap": false,
@@ -3044,90 +2966,90 @@
       "scope": "canvas",
       "gaps": [
         {
-          "from": "lyr_2965a56f2cd44dbe",
+          "from": "lyr_450df20ca3534a9d",
           "from_name": "b-x0",
-          "to": "lyr_38772223f8e04bd7",
+          "to": "lyr_a14c8b3c3c4e4f3f",
           "to_name": "b-x1",
           "pixels": 80.0,
           "overlap": false,
           "cross_axis_overlap": 12
         },
         {
-          "from": "lyr_38772223f8e04bd7",
+          "from": "lyr_a14c8b3c3c4e4f3f",
           "from_name": "b-x1",
-          "to": "lyr_44ad28177ab34637",
+          "to": "lyr_bfa050e357574510",
           "to_name": "b-x2",
           "pixels": 81.0,
           "overlap": false,
           "cross_axis_overlap": 12
         },
         {
-          "from": "lyr_44ad28177ab34637",
+          "from": "lyr_bfa050e357574510",
           "from_name": "b-x2",
-          "to": "lyr_3547218e45994ddf",
+          "to": "lyr_dc190e8cca8e40a8",
           "to_name": "b-x3",
           "pixels": 80.0,
           "overlap": false,
           "cross_axis_overlap": 12
         },
         {
-          "from": "lyr_3547218e45994ddf",
+          "from": "lyr_dc190e8cca8e40a8",
           "from_name": "b-x3",
-          "to": "lyr_bd19b0002a22425d",
+          "to": "lyr_55e7eb3b1f614f6d",
           "to_name": "b-x4",
           "pixels": 81.0,
           "overlap": false,
           "cross_axis_overlap": 12
         },
         {
-          "from": "lyr_bd19b0002a22425d",
+          "from": "lyr_55e7eb3b1f614f6d",
           "from_name": "b-x4",
-          "to": "lyr_d085733f37a047bc",
+          "to": "lyr_11f1d3f2e0954356",
           "to_name": "b-x5",
           "pixels": 80.0,
           "overlap": false,
           "cross_axis_overlap": 12
         },
         {
-          "from": "lyr_d085733f37a047bc",
+          "from": "lyr_11f1d3f2e0954356",
           "from_name": "b-x5",
-          "to": "lyr_8fc0e3391f8d4f9a",
+          "to": "lyr_d2d01863a0034567",
           "to_name": "b-x6",
           "pixels": 80.0,
           "overlap": false,
           "cross_axis_overlap": 12
         },
         {
-          "from": "lyr_8fc0e3391f8d4f9a",
+          "from": "lyr_d2d01863a0034567",
           "from_name": "b-x6",
-          "to": "lyr_90d26690663e4f78",
+          "to": "lyr_67be866272674284",
           "to_name": "b-x7",
           "pixels": 81.0,
           "overlap": false,
           "cross_axis_overlap": 12
         },
         {
-          "from": "lyr_90d26690663e4f78",
+          "from": "lyr_67be866272674284",
           "from_name": "b-x7",
-          "to": "lyr_2b57bc851af54043",
+          "to": "lyr_92b2970f03fb417f",
           "to_name": "b-x8",
           "pixels": 80.0,
           "overlap": false,
           "cross_axis_overlap": 12
         },
         {
-          "from": "lyr_2b57bc851af54043",
+          "from": "lyr_92b2970f03fb417f",
           "from_name": "b-x8",
-          "to": "lyr_5e26a208041d4a9c",
+          "to": "lyr_66b1b5d96c4f4278",
           "to_name": "b-x9",
           "pixels": 81.0,
           "overlap": false,
           "cross_axis_overlap": 12
         },
         {
-          "from": "lyr_5e26a208041d4a9c",
+          "from": "lyr_66b1b5d96c4f4278",
           "from_name": "b-x9",
-          "to": "lyr_f6c99161eb5d41ba",
+          "to": "lyr_d3621f1967384839",
           "to_name": "b-x10",
           "pixels": 80.0,
           "overlap": false,
@@ -3151,9 +3073,9 @@
       "scope": "canvas",
       "gaps": [
         {
-          "from": "lyr_557b145bb1c641dc",
+          "from": "lyr_4ebe5021b9c34b76",
           "from_name": "c-title",
-          "to": "lyr_a57a6c4db64c4991",
+          "to": "lyr_b3c64b96b6154f56",
           "to_name": "d-title",
           "pixels": 305,
           "overlap": false,
@@ -3185,2009 +3107,2009 @@
           "passed": true,
           "severity": "error",
           "layer": "night-band",
-          "target": "lyr_aaefbda9d3a54281"
+          "target": "lyr_8fe1e66c3c0f4553"
         },
         {
           "rule": "layer.sun.bounds within canvas",
           "passed": false,
           "severity": "info",
           "layer": "sun",
-          "target": "lyr_f3aac7b172c04f29"
+          "target": "lyr_367f311b774145ef"
         },
         {
           "rule": "layer.ray.bounds within canvas",
           "passed": false,
           "severity": "info",
           "layer": "ray",
-          "target": "lyr_8848e199ecc44109"
+          "target": "lyr_98f718b3733642a9"
         },
         {
           "rule": "layer.rays.bounds within canvas",
           "passed": false,
           "severity": "info",
           "layer": "rays",
-          "target": "lyr_e61b3b659d914fa7"
+          "target": "lyr_3b06df05a9324e79"
         },
         {
           "rule": "layer.eyebrow.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "eyebrow",
-          "target": "lyr_373567e983ee435a"
+          "target": "lyr_e00c6fbabd69474f"
         },
         {
           "rule": "eyebrow font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "eyebrow",
-          "target": "lyr_373567e983ee435a"
+          "target": "lyr_e00c6fbabd69474f"
         },
         {
           "rule": "layer.title.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "title",
-          "target": "lyr_212ee995066c42f8"
+          "target": "lyr_e60f457d3dde4a3c"
         },
         {
           "rule": "title font size >= 24",
           "passed": true,
           "severity": "warning",
           "layer": "title",
-          "target": "lyr_212ee995066c42f8"
+          "target": "lyr_e60f457d3dde4a3c"
         },
         {
           "rule": "layer.deck.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "deck",
-          "target": "lyr_193ecbdc590546f2"
+          "target": "lyr_0ae8d4f3ba264da4"
         },
         {
           "rule": "deck font size >= 24",
           "passed": true,
           "severity": "warning",
           "layer": "deck",
-          "target": "lyr_193ecbdc590546f2"
+          "target": "lyr_0ae8d4f3ba264da4"
         },
         {
           "rule": "layer.kpi0-card.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "kpi0-card",
-          "target": "lyr_7f4909f9af92445c"
+          "target": "lyr_3d7dd88034794133"
         },
         {
           "rule": "layer.kpi0-bar.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "kpi0-bar",
-          "target": "lyr_e177fa1b3a224eac"
+          "target": "lyr_40c9905303f24c8d"
         },
         {
           "rule": "layer.kpi0-num.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "kpi0-num",
-          "target": "lyr_87ff6cf496c24065"
+          "target": "lyr_1b6d25398fc44b6d"
         },
         {
           "rule": "kpi0-num font size >= 24",
           "passed": true,
           "severity": "warning",
           "layer": "kpi0-num",
-          "target": "lyr_87ff6cf496c24065"
+          "target": "lyr_1b6d25398fc44b6d"
         },
         {
           "rule": "layer.kpi0-cap.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "kpi0-cap",
-          "target": "lyr_ed1caf4924374444"
+          "target": "lyr_bffe65a9030846a9"
         },
         {
           "rule": "kpi0-cap font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "kpi0-cap",
-          "target": "lyr_ed1caf4924374444"
+          "target": "lyr_bffe65a9030846a9"
         },
         {
           "rule": "layer.kpi0.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "kpi0",
-          "target": "lyr_48512e6b72574fe2"
+          "target": "lyr_7dbb05836e3b4c84"
         },
         {
           "rule": "layer.kpi1-card.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "kpi1-card",
-          "target": "lyr_f2f74ede7d914c3c"
+          "target": "lyr_80f552877c164744"
         },
         {
           "rule": "layer.kpi1-bar.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "kpi1-bar",
-          "target": "lyr_dc9a2734c2df45ae"
+          "target": "lyr_224242b906154506"
         },
         {
           "rule": "layer.kpi1-num.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "kpi1-num",
-          "target": "lyr_37c5d3ee3949496a"
+          "target": "lyr_674a5879cca94ddc"
         },
         {
           "rule": "kpi1-num font size >= 24",
           "passed": true,
           "severity": "warning",
           "layer": "kpi1-num",
-          "target": "lyr_37c5d3ee3949496a"
+          "target": "lyr_674a5879cca94ddc"
         },
         {
           "rule": "layer.kpi1-cap.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "kpi1-cap",
-          "target": "lyr_aecd2704625548c1"
+          "target": "lyr_762292f3a884420b"
         },
         {
           "rule": "kpi1-cap font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "kpi1-cap",
-          "target": "lyr_aecd2704625548c1"
+          "target": "lyr_762292f3a884420b"
         },
         {
           "rule": "layer.kpi1.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "kpi1",
-          "target": "lyr_a1fb9bbfaca647e7"
+          "target": "lyr_fd99cc3a8ea8479c"
         },
         {
           "rule": "layer.kpi2-card.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "kpi2-card",
-          "target": "lyr_34b6c6fce8644deb"
+          "target": "lyr_2b4d52f49ed341c1"
         },
         {
           "rule": "layer.kpi2-bar.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "kpi2-bar",
-          "target": "lyr_50adf071be30414c"
+          "target": "lyr_43d3f94a59234ff8"
         },
         {
           "rule": "layer.kpi2-num.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "kpi2-num",
-          "target": "lyr_2be4c50b02534b11"
+          "target": "lyr_272fc6491a614169"
         },
         {
           "rule": "kpi2-num font size >= 24",
           "passed": true,
           "severity": "warning",
           "layer": "kpi2-num",
-          "target": "lyr_2be4c50b02534b11"
+          "target": "lyr_272fc6491a614169"
         },
         {
           "rule": "layer.kpi2-cap.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "kpi2-cap",
-          "target": "lyr_574b99cf1c81471b"
+          "target": "lyr_e02cb3924c0a44c0"
         },
         {
           "rule": "kpi2-cap font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "kpi2-cap",
-          "target": "lyr_574b99cf1c81471b"
+          "target": "lyr_e02cb3924c0a44c0"
         },
         {
           "rule": "layer.kpi2.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "kpi2",
-          "target": "lyr_d93d4c1250554694"
+          "target": "lyr_b2d3ad3e58b64c4e"
         },
         {
           "rule": "layer.kpis.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "kpis",
-          "target": "lyr_04fbc48708884367"
+          "target": "lyr_47398341d8cc4634"
         },
         {
           "rule": "layer.a-rule.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-rule",
-          "target": "lyr_b0b127d6a0bd492d"
+          "target": "lyr_479312eaa25e4f36"
         },
         {
           "rule": "layer.a-num.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-num",
-          "target": "lyr_1a62a6c597084772"
+          "target": "lyr_ff0ff3e97d6c46f7"
         },
         {
           "rule": "a-num font size >= 24",
           "passed": true,
           "severity": "warning",
           "layer": "a-num",
-          "target": "lyr_1a62a6c597084772"
+          "target": "lyr_ff0ff3e97d6c46f7"
         },
         {
           "rule": "layer.a-title.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-title",
-          "target": "lyr_639c68d08e864183"
+          "target": "lyr_d89fb2f1406b4f32"
         },
         {
           "rule": "a-title font size >= 24",
           "passed": true,
           "severity": "warning",
           "layer": "a-title",
-          "target": "lyr_639c68d08e864183"
+          "target": "lyr_d89fb2f1406b4f32"
         },
         {
           "rule": "layer.a-sub.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-sub",
-          "target": "lyr_3f69d281b5d74dda"
+          "target": "lyr_cf33b8c3f84749b9"
         },
         {
           "rule": "a-sub font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-sub",
-          "target": "lyr_3f69d281b5d74dda"
+          "target": "lyr_cf33b8c3f84749b9"
         },
         {
           "rule": "layer.lg-a-bar.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "lg-a-bar",
-          "target": "lyr_cc41d2e6953544e4"
+          "target": "lyr_0d9767a18cd1464d"
         },
         {
           "rule": "layer.lg-a-bar-t.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "lg-a-bar-t",
-          "target": "lyr_c77469b847394b95"
+          "target": "lyr_55d02fe92c5f4e8f"
         },
         {
           "rule": "lg-a-bar-t font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "lg-a-bar-t",
-          "target": "lyr_c77469b847394b95"
+          "target": "lyr_55d02fe92c5f4e8f"
         },
         {
           "rule": "layer.lg-a-tick.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "lg-a-tick",
-          "target": "lyr_2ecad952f44340f7"
+          "target": "lyr_c3c3dbcbfa0c405b"
         },
         {
           "rule": "layer.lg-a-tick-t.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "lg-a-tick-t",
-          "target": "lyr_00133be54be249dc"
+          "target": "lyr_64200847503f4347"
         },
         {
           "rule": "lg-a-tick-t font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "lg-a-tick-t",
-          "target": "lyr_00133be54be249dc"
+          "target": "lyr_64200847503f4347"
         },
         {
           "rule": "layer.legend-a.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "legend-a",
-          "target": "lyr_9acde3dc8ab743b8"
+          "target": "lyr_9a271bda3f934946"
         },
         {
           "rule": "layer.a-frame.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-frame",
-          "target": "lyr_f301b186149d40aa"
+          "target": "lyr_10dd9e0a7df0413b"
         },
         {
           "rule": "layer.a-grid.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-grid",
-          "target": "lyr_1c16f93c93ce4453"
+          "target": "lyr_eca3a640cb7c4ea0"
         },
         {
           "rule": "layer.a-bar0.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-bar0",
-          "target": "lyr_cd9c7e0c1520413f"
+          "target": "lyr_93f8adaa6dc245b0"
         },
         {
           "rule": "layer.a-bar1.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-bar1",
-          "target": "lyr_e20bd2837524458b"
+          "target": "lyr_f65328695f1c41cc"
         },
         {
           "rule": "layer.a-bar2.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-bar2",
-          "target": "lyr_76a18e4d54b24bb8"
+          "target": "lyr_42c847b616674984"
         },
         {
           "rule": "layer.a-bar3.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-bar3",
-          "target": "lyr_12c6a95ed31b4b01"
+          "target": "lyr_6098a889567f4404"
         },
         {
           "rule": "layer.a-bar4.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-bar4",
-          "target": "lyr_2172a76858d44357"
+          "target": "lyr_621b2c29f28e4417"
         },
         {
           "rule": "layer.a-bar5.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-bar5",
-          "target": "lyr_16d791d7a8224b76"
+          "target": "lyr_8dcd8b456677444b"
         },
         {
           "rule": "layer.a-bar6.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-bar6",
-          "target": "lyr_446a3a8886a34f46"
+          "target": "lyr_2142d29696a94651"
         },
         {
           "rule": "layer.a-bar7.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-bar7",
-          "target": "lyr_3ee2ed6e31514dc6"
+          "target": "lyr_ffb6e42af1884e6e"
         },
         {
           "rule": "layer.a-bar8.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-bar8",
-          "target": "lyr_0d93104e9c974b56"
+          "target": "lyr_5681dea079ec4fea"
         },
         {
           "rule": "layer.a-bar9.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-bar9",
-          "target": "lyr_82d609222dc4434b"
+          "target": "lyr_1fa18bff2d0f47b4"
         },
         {
           "rule": "layer.a-bar10.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-bar10",
-          "target": "lyr_42bc18abd6184b6f"
+          "target": "lyr_279e514329d14ba1"
         },
         {
           "rule": "layer.a-plot.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-plot",
-          "target": "lyr_886ba51849154ffb"
+          "target": "lyr_42dba7b0f35a4db4"
         },
         {
           "rule": "layer.a-tick0.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-tick0",
-          "target": "lyr_f7c2506c04544e3d"
+          "target": "lyr_8c3995e5d8304590"
         },
         {
           "rule": "layer.a-tick1.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-tick1",
-          "target": "lyr_3534715302124a87"
+          "target": "lyr_19a77bc3df8f492e"
         },
         {
           "rule": "layer.a-tick2.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-tick2",
-          "target": "lyr_78a998fcdea24d17"
+          "target": "lyr_1854d4d021c94363"
         },
         {
           "rule": "layer.a-tick3.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-tick3",
-          "target": "lyr_e0341ed09c4f4a0f"
+          "target": "lyr_0e52d9b573ec4c52"
         },
         {
           "rule": "layer.a-tick4.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-tick4",
-          "target": "lyr_93e1c6698b3546e1"
+          "target": "lyr_502a4f32b4d94392"
         },
         {
           "rule": "layer.a-tick5.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-tick5",
-          "target": "lyr_c7494af6967c4e0f"
+          "target": "lyr_e096f08311e14999"
         },
         {
           "rule": "layer.a-tick6.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-tick6",
-          "target": "lyr_4dc420b5729f426c"
+          "target": "lyr_e63906fea8d34a6a"
         },
         {
           "rule": "layer.a-tick7.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-tick7",
-          "target": "lyr_a73908fbe65e4fd9"
+          "target": "lyr_c524354101134f9d"
         },
         {
           "rule": "layer.a-tick8.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-tick8",
-          "target": "lyr_c705377914084434"
+          "target": "lyr_b60e11f57f2b452d"
         },
         {
           "rule": "layer.a-tick9.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-tick9",
-          "target": "lyr_1c80ef97b7334ef9"
+          "target": "lyr_7ea33c82bf43428f"
         },
         {
           "rule": "layer.a-tick10.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-tick10",
-          "target": "lyr_3d9370650f2a4da2"
+          "target": "lyr_24e2331f6ec442b3"
         },
         {
           "rule": "layer.a-ticks.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-ticks",
-          "target": "lyr_443eedc064284e58"
+          "target": "lyr_41e03714f09347b9"
         },
         {
           "rule": "layer.a-name0.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-name0",
-          "target": "lyr_3acd285007de4ee8"
+          "target": "lyr_9ac9553144ff47fd"
         },
         {
           "rule": "a-name0 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-name0",
-          "target": "lyr_3acd285007de4ee8"
+          "target": "lyr_9ac9553144ff47fd"
         },
         {
           "rule": "layer.a-val0.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-val0",
-          "target": "lyr_64a1d0102bd84440"
+          "target": "lyr_cb823218b1a84efc"
         },
         {
           "rule": "a-val0 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-val0",
-          "target": "lyr_64a1d0102bd84440"
+          "target": "lyr_cb823218b1a84efc"
         },
         {
           "rule": "layer.a-name1.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-name1",
-          "target": "lyr_1e38bebc73154945"
+          "target": "lyr_3b193e5dc9194086"
         },
         {
           "rule": "a-name1 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-name1",
-          "target": "lyr_1e38bebc73154945"
+          "target": "lyr_3b193e5dc9194086"
         },
         {
           "rule": "layer.a-val1.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-val1",
-          "target": "lyr_1ba850340f7a412e"
+          "target": "lyr_ac8c65fb46844d22"
         },
         {
           "rule": "a-val1 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-val1",
-          "target": "lyr_1ba850340f7a412e"
+          "target": "lyr_ac8c65fb46844d22"
         },
         {
           "rule": "layer.a-name2.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-name2",
-          "target": "lyr_686e35bd8c324af1"
+          "target": "lyr_33b0d69305c24a89"
         },
         {
           "rule": "a-name2 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-name2",
-          "target": "lyr_686e35bd8c324af1"
+          "target": "lyr_33b0d69305c24a89"
         },
         {
           "rule": "layer.a-val2.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-val2",
-          "target": "lyr_f4df8f12be31490d"
+          "target": "lyr_73a9b6a6932a49ae"
         },
         {
           "rule": "a-val2 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-val2",
-          "target": "lyr_f4df8f12be31490d"
+          "target": "lyr_73a9b6a6932a49ae"
         },
         {
           "rule": "layer.a-name3.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-name3",
-          "target": "lyr_24fa11bb4c124a98"
+          "target": "lyr_0e299d35faba403b"
         },
         {
           "rule": "a-name3 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-name3",
-          "target": "lyr_24fa11bb4c124a98"
+          "target": "lyr_0e299d35faba403b"
         },
         {
           "rule": "layer.a-val3.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-val3",
-          "target": "lyr_c2f0a0bdd3a64ee1"
+          "target": "lyr_e1cf67c8e99e4d27"
         },
         {
           "rule": "a-val3 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-val3",
-          "target": "lyr_c2f0a0bdd3a64ee1"
+          "target": "lyr_e1cf67c8e99e4d27"
         },
         {
           "rule": "layer.a-name4.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-name4",
-          "target": "lyr_db9fd6a684cf4fa7"
+          "target": "lyr_f20cdb7333cb4805"
         },
         {
           "rule": "a-name4 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-name4",
-          "target": "lyr_db9fd6a684cf4fa7"
+          "target": "lyr_f20cdb7333cb4805"
         },
         {
           "rule": "layer.a-val4.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-val4",
-          "target": "lyr_7a500a8677da4380"
+          "target": "lyr_3d52cc190934480f"
         },
         {
           "rule": "a-val4 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-val4",
-          "target": "lyr_7a500a8677da4380"
+          "target": "lyr_3d52cc190934480f"
         },
         {
           "rule": "layer.a-name5.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-name5",
-          "target": "lyr_211dc48c8278437c"
+          "target": "lyr_a8a04f66a5d64c05"
         },
         {
           "rule": "a-name5 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-name5",
-          "target": "lyr_211dc48c8278437c"
+          "target": "lyr_a8a04f66a5d64c05"
         },
         {
           "rule": "layer.a-val5.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-val5",
-          "target": "lyr_8f4831ee09114b3d"
+          "target": "lyr_7ae16deff18a490d"
         },
         {
           "rule": "a-val5 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-val5",
-          "target": "lyr_8f4831ee09114b3d"
+          "target": "lyr_7ae16deff18a490d"
         },
         {
           "rule": "layer.a-name6.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-name6",
-          "target": "lyr_0f47c7ca7848415b"
+          "target": "lyr_6e213e7387454bda"
         },
         {
           "rule": "a-name6 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-name6",
-          "target": "lyr_0f47c7ca7848415b"
+          "target": "lyr_6e213e7387454bda"
         },
         {
           "rule": "layer.a-val6.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-val6",
-          "target": "lyr_8e62abec5ed64471"
+          "target": "lyr_33b95ec9651b4971"
         },
         {
           "rule": "a-val6 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-val6",
-          "target": "lyr_8e62abec5ed64471"
+          "target": "lyr_33b95ec9651b4971"
         },
         {
           "rule": "layer.a-name7.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-name7",
-          "target": "lyr_4b05cbf68a72405c"
+          "target": "lyr_bad12f0d56a04517"
         },
         {
           "rule": "a-name7 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-name7",
-          "target": "lyr_4b05cbf68a72405c"
+          "target": "lyr_bad12f0d56a04517"
         },
         {
           "rule": "layer.a-val7.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-val7",
-          "target": "lyr_cfede08c5212453f"
+          "target": "lyr_3f4e95c89fe7489c"
         },
         {
           "rule": "a-val7 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-val7",
-          "target": "lyr_cfede08c5212453f"
+          "target": "lyr_3f4e95c89fe7489c"
         },
         {
           "rule": "layer.a-name8.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-name8",
-          "target": "lyr_1ba7df27daae4538"
+          "target": "lyr_1d03b9829be74d55"
         },
         {
           "rule": "a-name8 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-name8",
-          "target": "lyr_1ba7df27daae4538"
+          "target": "lyr_1d03b9829be74d55"
         },
         {
           "rule": "layer.a-val8.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-val8",
-          "target": "lyr_b5182102997a4cdf"
+          "target": "lyr_642f3842524a4065"
         },
         {
           "rule": "a-val8 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-val8",
-          "target": "lyr_b5182102997a4cdf"
+          "target": "lyr_642f3842524a4065"
         },
         {
           "rule": "layer.a-name9.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-name9",
-          "target": "lyr_a94d5fc6b70a4210"
+          "target": "lyr_37229820fb694616"
         },
         {
           "rule": "a-name9 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-name9",
-          "target": "lyr_a94d5fc6b70a4210"
+          "target": "lyr_37229820fb694616"
         },
         {
           "rule": "layer.a-val9.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-val9",
-          "target": "lyr_c7854321748a4b0b"
+          "target": "lyr_b5bf15dcab1e4c75"
         },
         {
           "rule": "a-val9 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-val9",
-          "target": "lyr_c7854321748a4b0b"
+          "target": "lyr_b5bf15dcab1e4c75"
         },
         {
           "rule": "layer.a-name10.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-name10",
-          "target": "lyr_2dbf9d09bb7c4ec8"
+          "target": "lyr_265274d003304b06"
         },
         {
           "rule": "a-name10 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-name10",
-          "target": "lyr_2dbf9d09bb7c4ec8"
+          "target": "lyr_265274d003304b06"
         },
         {
           "rule": "layer.a-val10.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-val10",
-          "target": "lyr_36e3144a80a64e02"
+          "target": "lyr_dff7c98db4ce4455"
         },
         {
           "rule": "a-val10 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-val10",
-          "target": "lyr_36e3144a80a64e02"
+          "target": "lyr_dff7c98db4ce4455"
         },
         {
           "rule": "layer.a-ax0.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-ax0",
-          "target": "lyr_20f58ac2ff35486d"
+          "target": "lyr_0ef7c4894c6c4b83"
         },
         {
           "rule": "a-ax0 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-ax0",
-          "target": "lyr_20f58ac2ff35486d"
+          "target": "lyr_0ef7c4894c6c4b83"
         },
         {
           "rule": "layer.a-ax1.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-ax1",
-          "target": "lyr_5eb3959648524f8d"
+          "target": "lyr_428395acd5e945ad"
         },
         {
           "rule": "a-ax1 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-ax1",
-          "target": "lyr_5eb3959648524f8d"
+          "target": "lyr_428395acd5e945ad"
         },
         {
           "rule": "layer.a-ax2.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-ax2",
-          "target": "lyr_7962e7c182654b20"
+          "target": "lyr_130dba888f784c9b"
         },
         {
           "rule": "a-ax2 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-ax2",
-          "target": "lyr_7962e7c182654b20"
+          "target": "lyr_130dba888f784c9b"
         },
         {
           "rule": "layer.a-ax3.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-ax3",
-          "target": "lyr_90d629b964d74f12"
+          "target": "lyr_f07e567eb73f4507"
         },
         {
           "rule": "a-ax3 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-ax3",
-          "target": "lyr_90d629b964d74f12"
+          "target": "lyr_f07e567eb73f4507"
         },
         {
           "rule": "layer.a-ax4.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-ax4",
-          "target": "lyr_7566dbec670a476f"
+          "target": "lyr_3f7f3ae35a484946"
         },
         {
           "rule": "a-ax4 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-ax4",
-          "target": "lyr_7566dbec670a476f"
+          "target": "lyr_3f7f3ae35a484946"
         },
         {
           "rule": "layer.a-ref.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-ref",
-          "target": "lyr_7fee8362d7ac47a7"
+          "target": "lyr_831e893569634d18"
         },
         {
           "rule": "layer.a-ref-t.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "a-ref-t",
-          "target": "lyr_2ae63d5783824129"
+          "target": "lyr_1a5bd8c71062411b"
         },
         {
           "rule": "a-ref-t font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "a-ref-t",
-          "target": "lyr_2ae63d5783824129"
+          "target": "lyr_1a5bd8c71062411b"
         },
         {
           "rule": "layer.b-rule.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-rule",
-          "target": "lyr_0801291c01ed4cb9"
+          "target": "lyr_6e3750b95b0a4aef"
         },
         {
           "rule": "layer.b-num.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-num",
-          "target": "lyr_a8c361b1c2074de9"
+          "target": "lyr_2fcf37fcacac4812"
         },
         {
           "rule": "b-num font size >= 24",
           "passed": true,
           "severity": "warning",
           "layer": "b-num",
-          "target": "lyr_a8c361b1c2074de9"
+          "target": "lyr_2fcf37fcacac4812"
         },
         {
           "rule": "layer.b-title.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-title",
-          "target": "lyr_1322edb088754237"
+          "target": "lyr_28057081602c4b0e"
         },
         {
           "rule": "b-title font size >= 24",
           "passed": true,
           "severity": "warning",
           "layer": "b-title",
-          "target": "lyr_1322edb088754237"
+          "target": "lyr_28057081602c4b0e"
         },
         {
           "rule": "layer.b-sub.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-sub",
-          "target": "lyr_ad368e2362c14b14"
+          "target": "lyr_da8ff0e5a7964b32"
         },
         {
           "rule": "b-sub font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "b-sub",
-          "target": "lyr_ad368e2362c14b14"
+          "target": "lyr_da8ff0e5a7964b32"
         },
         {
           "rule": "layer.b-grid.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-grid",
-          "target": "lyr_441678aa7766487b"
+          "target": "lyr_fe4b1a737bfe4857"
         },
         {
           "rule": "layer.b-base.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-base",
-          "target": "lyr_fed3cf9d323d4c27"
+          "target": "lyr_56e421bc71b9483f"
         },
         {
           "rule": "layer.b-yl0.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-yl0",
-          "target": "lyr_0ce47c7768d54cb1"
+          "target": "lyr_ecca4a0270f14d24"
         },
         {
           "rule": "b-yl0 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "b-yl0",
-          "target": "lyr_0ce47c7768d54cb1"
+          "target": "lyr_ecca4a0270f14d24"
         },
         {
           "rule": "layer.b-yl1.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-yl1",
-          "target": "lyr_941be32db6ee4fed"
+          "target": "lyr_10db35d6196b4158"
         },
         {
           "rule": "b-yl1 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "b-yl1",
-          "target": "lyr_941be32db6ee4fed"
+          "target": "lyr_10db35d6196b4158"
         },
         {
           "rule": "layer.b-yl2.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-yl2",
-          "target": "lyr_2572c6d46906455a"
+          "target": "lyr_be8995acc2254097"
         },
         {
           "rule": "b-yl2 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "b-yl2",
-          "target": "lyr_2572c6d46906455a"
+          "target": "lyr_be8995acc2254097"
         },
         {
           "rule": "layer.b-yl3.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-yl3",
-          "target": "lyr_200aad2adcc44658"
+          "target": "lyr_8892810d8ec242a4"
         },
         {
           "rule": "b-yl3 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "b-yl3",
-          "target": "lyr_200aad2adcc44658"
+          "target": "lyr_8892810d8ec242a4"
         },
         {
           "rule": "layer.b-yl4.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-yl4",
-          "target": "lyr_503527e4e2fe44b6"
+          "target": "lyr_78635fee638e48f5"
         },
         {
           "rule": "b-yl4 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "b-yl4",
-          "target": "lyr_503527e4e2fe44b6"
+          "target": "lyr_78635fee638e48f5"
         },
         {
           "rule": "layer.b-x0.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-x0",
-          "target": "lyr_2965a56f2cd44dbe"
+          "target": "lyr_450df20ca3534a9d"
         },
         {
           "rule": "b-x0 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "b-x0",
-          "target": "lyr_2965a56f2cd44dbe"
+          "target": "lyr_450df20ca3534a9d"
         },
         {
           "rule": "layer.b-x1.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-x1",
-          "target": "lyr_38772223f8e04bd7"
+          "target": "lyr_a14c8b3c3c4e4f3f"
         },
         {
           "rule": "b-x1 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "b-x1",
-          "target": "lyr_38772223f8e04bd7"
+          "target": "lyr_a14c8b3c3c4e4f3f"
         },
         {
           "rule": "layer.b-x2.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-x2",
-          "target": "lyr_44ad28177ab34637"
+          "target": "lyr_bfa050e357574510"
         },
         {
           "rule": "b-x2 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "b-x2",
-          "target": "lyr_44ad28177ab34637"
+          "target": "lyr_bfa050e357574510"
         },
         {
           "rule": "layer.b-x3.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-x3",
-          "target": "lyr_3547218e45994ddf"
+          "target": "lyr_dc190e8cca8e40a8"
         },
         {
           "rule": "b-x3 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "b-x3",
-          "target": "lyr_3547218e45994ddf"
+          "target": "lyr_dc190e8cca8e40a8"
         },
         {
           "rule": "layer.b-x4.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-x4",
-          "target": "lyr_bd19b0002a22425d"
+          "target": "lyr_55e7eb3b1f614f6d"
         },
         {
           "rule": "b-x4 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "b-x4",
-          "target": "lyr_bd19b0002a22425d"
+          "target": "lyr_55e7eb3b1f614f6d"
         },
         {
           "rule": "layer.b-x5.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-x5",
-          "target": "lyr_d085733f37a047bc"
+          "target": "lyr_11f1d3f2e0954356"
         },
         {
           "rule": "b-x5 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "b-x5",
-          "target": "lyr_d085733f37a047bc"
+          "target": "lyr_11f1d3f2e0954356"
         },
         {
           "rule": "layer.b-x6.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-x6",
-          "target": "lyr_8fc0e3391f8d4f9a"
+          "target": "lyr_d2d01863a0034567"
         },
         {
           "rule": "b-x6 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "b-x6",
-          "target": "lyr_8fc0e3391f8d4f9a"
+          "target": "lyr_d2d01863a0034567"
         },
         {
           "rule": "layer.b-x7.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-x7",
-          "target": "lyr_90d26690663e4f78"
+          "target": "lyr_67be866272674284"
         },
         {
           "rule": "b-x7 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "b-x7",
-          "target": "lyr_90d26690663e4f78"
+          "target": "lyr_67be866272674284"
         },
         {
           "rule": "layer.b-x8.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-x8",
-          "target": "lyr_2b57bc851af54043"
+          "target": "lyr_92b2970f03fb417f"
         },
         {
           "rule": "b-x8 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "b-x8",
-          "target": "lyr_2b57bc851af54043"
+          "target": "lyr_92b2970f03fb417f"
         },
         {
           "rule": "layer.b-x9.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-x9",
-          "target": "lyr_5e26a208041d4a9c"
+          "target": "lyr_66b1b5d96c4f4278"
         },
         {
           "rule": "b-x9 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "b-x9",
-          "target": "lyr_5e26a208041d4a9c"
+          "target": "lyr_66b1b5d96c4f4278"
         },
         {
           "rule": "layer.b-x10.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-x10",
-          "target": "lyr_f6c99161eb5d41ba"
+          "target": "lyr_d3621f1967384839"
         },
         {
           "rule": "b-x10 font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "b-x10",
-          "target": "lyr_f6c99161eb5d41ba"
+          "target": "lyr_d3621f1967384839"
         },
         {
           "rule": "layer.b-area.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-area",
-          "target": "lyr_7f738a5fc6ed4f33"
+          "target": "lyr_bb0eb41a149f499f"
         },
         {
           "rule": "layer.b-area2.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-area2",
-          "target": "lyr_f0dd8cb9e6f24f91"
+          "target": "lyr_0b2e0cba43944bca"
         },
         {
           "rule": "layer.b-line.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-line",
-          "target": "lyr_d0de9493ed384f77"
+          "target": "lyr_04c48742266b4448"
         },
         {
           "rule": "layer.b-line2.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-line2",
-          "target": "lyr_0d11051682ec4ae9"
+          "target": "lyr_7b37d212159344e2"
         },
         {
           "rule": "layer.b-plot.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-plot",
-          "target": "lyr_866a9e9737e34355"
+          "target": "lyr_9c144a9372bd4464"
         },
         {
           "rule": "layer.b-end.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-end",
-          "target": "lyr_66db96a39a4f40ba"
+          "target": "lyr_3fe2d582a45047cc"
         },
         {
           "rule": "layer.b-end-v.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-end-v",
-          "target": "lyr_16633f5af0da423b"
+          "target": "lyr_cabdda1704ee4798"
         },
         {
           "rule": "b-end-v font size >= 24",
           "passed": true,
           "severity": "warning",
           "layer": "b-end-v",
-          "target": "lyr_16633f5af0da423b"
+          "target": "lyr_cabdda1704ee4798"
         },
         {
           "rule": "layer.b-end-t.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-end-t",
-          "target": "lyr_665c51ecfedd4d1f"
+          "target": "lyr_2ae67ab7bf1d414d"
         },
         {
           "rule": "b-end-t font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "b-end-t",
-          "target": "lyr_665c51ecfedd4d1f"
+          "target": "lyr_2ae67ab7bf1d414d"
         },
         {
           "rule": "layer.b-end2.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-end2",
-          "target": "lyr_453b7f608322423c"
+          "target": "lyr_6ada5a618f144598"
         },
         {
           "rule": "layer.b-end2-v.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-end2-v",
-          "target": "lyr_ea8bd0b70ea04470"
+          "target": "lyr_2329c8e013b54b75"
         },
         {
           "rule": "b-end2-v font size >= 24",
           "passed": true,
           "severity": "warning",
           "layer": "b-end2-v",
-          "target": "lyr_ea8bd0b70ea04470"
+          "target": "lyr_2329c8e013b54b75"
         },
         {
           "rule": "layer.b-end2-t.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-end2-t",
-          "target": "lyr_3a264439cb4f4e6b"
+          "target": "lyr_f0990f99b5ff4698"
         },
         {
           "rule": "b-end2-t font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "b-end2-t",
-          "target": "lyr_3a264439cb4f4e6b"
+          "target": "lyr_f0990f99b5ff4698"
         },
         {
           "rule": "layer.b-n0-dot.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-n0-dot",
-          "target": "lyr_252d8fd342b045dd"
+          "target": "lyr_168fd3de29a740bd"
         },
         {
           "rule": "layer.b-n0-lead.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-n0-lead",
-          "target": "lyr_70abab489bd54a2a"
+          "target": "lyr_88f24d229b2d45f2"
         },
         {
           "rule": "layer.b-n0-t.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-n0-t",
-          "target": "lyr_fae45f0ddca549e7"
+          "target": "lyr_37146df3a79e4d89"
         },
         {
           "rule": "b-n0-t font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "b-n0-t",
-          "target": "lyr_fae45f0ddca549e7"
+          "target": "lyr_37146df3a79e4d89"
         },
         {
           "rule": "layer.b-n1-dot.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-n1-dot",
-          "target": "lyr_e759f6df42a54d78"
+          "target": "lyr_7638454b8e854362"
         },
         {
           "rule": "layer.b-n1-lead.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-n1-lead",
-          "target": "lyr_42a0090d0a11484e"
+          "target": "lyr_0ebfc14f9c43439b"
         },
         {
           "rule": "layer.b-n1-t.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "b-n1-t",
-          "target": "lyr_fb91d52fce99431c"
+          "target": "lyr_c77fca42e7e44ff4"
         },
         {
           "rule": "b-n1-t font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "b-n1-t",
-          "target": "lyr_fb91d52fce99431c"
+          "target": "lyr_c77fca42e7e44ff4"
         },
         {
           "rule": "layer.c-rule.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-rule",
-          "target": "lyr_9946559f25b5494e"
+          "target": "lyr_0a2a04d6f51c4afb"
         },
         {
           "rule": "layer.c-num.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-num",
-          "target": "lyr_1d562f0149b245a0"
+          "target": "lyr_36521d01cc5649aa"
         },
         {
           "rule": "c-num font size >= 24",
           "passed": true,
           "severity": "warning",
           "layer": "c-num",
-          "target": "lyr_1d562f0149b245a0"
+          "target": "lyr_36521d01cc5649aa"
         },
         {
           "rule": "layer.c-title.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-title",
-          "target": "lyr_557b145bb1c641dc"
+          "target": "lyr_4ebe5021b9c34b76"
         },
         {
           "rule": "c-title font size >= 24",
           "passed": true,
           "severity": "warning",
           "layer": "c-title",
-          "target": "lyr_557b145bb1c641dc"
+          "target": "lyr_4ebe5021b9c34b76"
         },
         {
           "rule": "layer.c-sub.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-sub",
-          "target": "lyr_ab6f40335b53464e"
+          "target": "lyr_eeabcd5d6c924c3e"
         },
         {
           "rule": "c-sub font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "c-sub",
-          "target": "lyr_ab6f40335b53464e"
+          "target": "lyr_eeabcd5d6c924c3e"
         },
         {
           "rule": "layer.d-rule.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "d-rule",
-          "target": "lyr_6d8881dde2f34a05"
+          "target": "lyr_fe0fd9dda6d049cf"
         },
         {
           "rule": "layer.d-num.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "d-num",
-          "target": "lyr_1ea20b74d5754f6c"
+          "target": "lyr_003162bc71d549e9"
         },
         {
           "rule": "d-num font size >= 24",
           "passed": true,
           "severity": "warning",
           "layer": "d-num",
-          "target": "lyr_1ea20b74d5754f6c"
+          "target": "lyr_003162bc71d549e9"
         },
         {
           "rule": "layer.d-title.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "d-title",
-          "target": "lyr_a57a6c4db64c4991"
+          "target": "lyr_b3c64b96b6154f56"
         },
         {
           "rule": "d-title font size >= 24",
           "passed": true,
           "severity": "warning",
           "layer": "d-title",
-          "target": "lyr_a57a6c4db64c4991"
+          "target": "lyr_b3c64b96b6154f56"
         },
         {
           "rule": "layer.d-sub.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "d-sub",
-          "target": "lyr_0954369e9cc6423d"
+          "target": "lyr_2b334e9d6f2c495c"
         },
         {
           "rule": "d-sub font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "d-sub",
-          "target": "lyr_0954369e9cc6423d"
+          "target": "lyr_2b334e9d6f2c495c"
         },
         {
           "rule": "layer.c-seg0.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-seg0",
-          "target": "lyr_c2f86651c9804a81"
+          "target": "lyr_94160fd1472d486f"
         },
         {
           "rule": "layer.c-seg1.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-seg1",
-          "target": "lyr_ccd81cf67d0046e9"
+          "target": "lyr_85f0a823ec984daa"
         },
         {
           "rule": "layer.c-seg2.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-seg2",
-          "target": "lyr_b71631a69cb54761"
+          "target": "lyr_d8dced56ecf54b3e"
         },
         {
           "rule": "layer.c-seg3.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-seg3",
-          "target": "lyr_28f491c4c2654a62"
+          "target": "lyr_abced342cea04af2"
         },
         {
           "rule": "layer.c-seg4.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-seg4",
-          "target": "lyr_4d1f8248c9e94f4b"
+          "target": "lyr_fcf0c27ba72e4caa"
         },
         {
           "rule": "layer.c-seg5.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-seg5",
-          "target": "lyr_6c751bfcf8344a6a"
+          "target": "lyr_937161968cef486f"
         },
         {
           "rule": "layer.c-donut.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-donut",
-          "target": "lyr_66fdf35dd59f4c5c"
+          "target": "lyr_626772c9db9b4eb3"
         },
         {
           "rule": "layer.c-center.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-center",
-          "target": "lyr_372105f357b54970"
+          "target": "lyr_9d75da938cb5410e"
         },
         {
           "rule": "c-center font size >= 24",
           "passed": true,
           "severity": "warning",
           "layer": "c-center",
-          "target": "lyr_372105f357b54970"
+          "target": "lyr_9d75da938cb5410e"
         },
         {
           "rule": "layer.c-center-t.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-center-t",
-          "target": "lyr_d3e5f1745d384997"
+          "target": "lyr_5b5353e82449468a"
         },
         {
           "rule": "c-center-t font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "c-center-t",
-          "target": "lyr_d3e5f1745d384997"
+          "target": "lyr_5b5353e82449468a"
         },
         {
           "rule": "layer.c-lg0-sw.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-lg0-sw",
-          "target": "lyr_bb917db789f64588"
+          "target": "lyr_3457cdba4d5a46f9"
         },
         {
           "rule": "layer.c-lg0-l.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-lg0-l",
-          "target": "lyr_0c94311873d949cc"
+          "target": "lyr_38b8ee1bb6cc47e8"
         },
         {
           "rule": "c-lg0-l font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "c-lg0-l",
-          "target": "lyr_0c94311873d949cc"
+          "target": "lyr_38b8ee1bb6cc47e8"
         },
         {
           "rule": "layer.c-lg0-v.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-lg0-v",
-          "target": "lyr_5e9abbd41f0141ab"
+          "target": "lyr_b531b4d026f04fb0"
         },
         {
           "rule": "c-lg0-v font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "c-lg0-v",
-          "target": "lyr_5e9abbd41f0141ab"
+          "target": "lyr_b531b4d026f04fb0"
         },
         {
           "rule": "layer.c-lg0.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-lg0",
-          "target": "lyr_4533657cec95479d"
+          "target": "lyr_7226b0b4ee604d35"
         },
         {
           "rule": "layer.c-lg1-sw.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-lg1-sw",
-          "target": "lyr_1815e3718143479a"
+          "target": "lyr_2a3da9a042d84b59"
         },
         {
           "rule": "layer.c-lg1-l.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-lg1-l",
-          "target": "lyr_ce44656ef6f94877"
+          "target": "lyr_fe28fbee1ad94cdf"
         },
         {
           "rule": "c-lg1-l font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "c-lg1-l",
-          "target": "lyr_ce44656ef6f94877"
+          "target": "lyr_fe28fbee1ad94cdf"
         },
         {
           "rule": "layer.c-lg1-v.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-lg1-v",
-          "target": "lyr_24b37f938df54fd7"
+          "target": "lyr_d28e7d26c4734abb"
         },
         {
           "rule": "c-lg1-v font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "c-lg1-v",
-          "target": "lyr_24b37f938df54fd7"
+          "target": "lyr_d28e7d26c4734abb"
         },
         {
           "rule": "layer.c-lg1.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-lg1",
-          "target": "lyr_b9fd858836f94399"
+          "target": "lyr_afa83cccf15144ce"
         },
         {
           "rule": "layer.c-lg2-sw.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-lg2-sw",
-          "target": "lyr_abe59c9075dc42e8"
+          "target": "lyr_cecd39ede0624ea9"
         },
         {
           "rule": "layer.c-lg2-l.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-lg2-l",
-          "target": "lyr_a49212ab170e4f3f"
+          "target": "lyr_2e3d981d2115449b"
         },
         {
           "rule": "c-lg2-l font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "c-lg2-l",
-          "target": "lyr_a49212ab170e4f3f"
+          "target": "lyr_2e3d981d2115449b"
         },
         {
           "rule": "layer.c-lg2-v.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-lg2-v",
-          "target": "lyr_105ab45ade2a4aa1"
+          "target": "lyr_60bf8682b1ac447e"
         },
         {
           "rule": "c-lg2-v font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "c-lg2-v",
-          "target": "lyr_105ab45ade2a4aa1"
+          "target": "lyr_60bf8682b1ac447e"
         },
         {
           "rule": "layer.c-lg2.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-lg2",
-          "target": "lyr_2da86595b2004b26"
+          "target": "lyr_506837b07edc44b2"
         },
         {
           "rule": "layer.c-lg3-sw.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-lg3-sw",
-          "target": "lyr_e678196aac084897"
+          "target": "lyr_336f5c37a2e14873"
         },
         {
           "rule": "layer.c-lg3-l.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-lg3-l",
-          "target": "lyr_da935a407f284527"
+          "target": "lyr_5d44c17359b44d24"
         },
         {
           "rule": "c-lg3-l font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "c-lg3-l",
-          "target": "lyr_da935a407f284527"
+          "target": "lyr_5d44c17359b44d24"
         },
         {
           "rule": "layer.c-lg3-v.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-lg3-v",
-          "target": "lyr_3c1703689cf047f1"
+          "target": "lyr_0ee1a040850f442a"
         },
         {
           "rule": "c-lg3-v font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "c-lg3-v",
-          "target": "lyr_3c1703689cf047f1"
+          "target": "lyr_0ee1a040850f442a"
         },
         {
           "rule": "layer.c-lg3.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-lg3",
-          "target": "lyr_37287a4d3237464d"
+          "target": "lyr_9fe723cb00a249a5"
         },
         {
           "rule": "layer.c-lg4-sw.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-lg4-sw",
-          "target": "lyr_9086924793ea4b47"
+          "target": "lyr_06e5f7a197f84b70"
         },
         {
           "rule": "layer.c-lg4-l.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-lg4-l",
-          "target": "lyr_691d2821b60e4f2f"
+          "target": "lyr_7faa4556f0ce4475"
         },
         {
           "rule": "c-lg4-l font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "c-lg4-l",
-          "target": "lyr_691d2821b60e4f2f"
+          "target": "lyr_7faa4556f0ce4475"
         },
         {
           "rule": "layer.c-lg4-v.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-lg4-v",
-          "target": "lyr_a7d9e0235f284750"
+          "target": "lyr_92af1e8d30f549b7"
         },
         {
           "rule": "c-lg4-v font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "c-lg4-v",
-          "target": "lyr_a7d9e0235f284750"
+          "target": "lyr_92af1e8d30f549b7"
         },
         {
           "rule": "layer.c-lg4.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-lg4",
-          "target": "lyr_b98e42d2ca334d4a"
+          "target": "lyr_d8de5b992a814584"
         },
         {
           "rule": "layer.c-lg5-sw.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-lg5-sw",
-          "target": "lyr_b168a130eb324730"
+          "target": "lyr_986697b79b014f6d"
         },
         {
           "rule": "layer.c-lg5-l.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-lg5-l",
-          "target": "lyr_ac85fa17bca44c19"
+          "target": "lyr_b7491c20c81746a1"
         },
         {
           "rule": "c-lg5-l font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "c-lg5-l",
-          "target": "lyr_ac85fa17bca44c19"
+          "target": "lyr_b7491c20c81746a1"
         },
         {
           "rule": "layer.c-lg5-v.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-lg5-v",
-          "target": "lyr_a192db6e92c34577"
+          "target": "lyr_63913ab9d4bb4fa7"
         },
         {
           "rule": "c-lg5-v font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "c-lg5-v",
-          "target": "lyr_a192db6e92c34577"
+          "target": "lyr_63913ab9d4bb4fa7"
         },
         {
           "rule": "layer.c-lg5.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-lg5",
-          "target": "lyr_85701c9c1cf444f4"
+          "target": "lyr_25d2e8b318db4857"
         },
         {
           "rule": "layer.c-legend.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "c-legend",
-          "target": "lyr_1e138312926249bc"
+          "target": "lyr_3a183174d0ec4ea9"
         },
         {
           "rule": "layer.donut-block.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "donut-block",
-          "target": "lyr_d85023da0e1a473c"
+          "target": "lyr_fe48ca858d594d6f"
         },
         {
           "rule": "layer.d-r0-0.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "d-r0-0",
-          "target": "lyr_22f05d8d5251405e"
+          "target": "lyr_148d12e644724550"
         },
         {
           "rule": "layer.d-r1-0.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "d-r1-0",
-          "target": "lyr_7daca0bddf5b4bc3"
+          "target": "lyr_08c4cbf7b79d4dfb"
         },
         {
           "rule": "layer.d-r2-0.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "d-r2-0",
-          "target": "lyr_8b9880fb6a20473e"
+          "target": "lyr_1c630d18a8d741c0"
         },
         {
           "rule": "layer.d-r3-0.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "d-r3-0",
-          "target": "lyr_edf9479ea3f44788"
+          "target": "lyr_7c4d5e5cac6440f8"
         },
         {
           "rule": "layer.d-r4-0.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "d-r4-0",
-          "target": "lyr_202c490ebc754d31"
+          "target": "lyr_934c8e9ecfdd4e94"
         },
         {
           "rule": "layer.d-r4-3.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "d-r4-3",
-          "target": "lyr_ec71c03667a9438b"
+          "target": "lyr_d70ae8bfe66a43c1"
         },
         {
           "rule": "layer.d-r4-7.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "d-r4-7",
-          "target": "lyr_dd53c158dcc6491c"
+          "target": "lyr_4f84c2709b8649f6"
         },
         {
           "rule": "layer.d-r5-0.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "d-r5-0",
-          "target": "lyr_d381a1dcab7049f5"
+          "target": "lyr_eabb27f015064319"
         },
         {
           "rule": "layer.d-r6-0.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "d-r6-0",
-          "target": "lyr_0d9ac39dd79d44e4"
+          "target": "lyr_36398d494ef04573"
         },
         {
           "rule": "layer.d-r6-9.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "d-r6-9",
-          "target": "lyr_f7e86f1b1e8b4bbb"
+          "target": "lyr_1539b7ef2e5b4a20"
         },
         {
           "rule": "layer.d-r7-0.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "d-r7-0",
-          "target": "lyr_4eafc893e4b24812"
+          "target": "lyr_89112ae622844927"
         },
         {
           "rule": "layer.d-r8-0.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "d-r8-0",
-          "target": "lyr_e6787ec8d0404f58"
+          "target": "lyr_b85d52ebe4234b84"
         },
         {
           "rule": "layer.d-r9-0.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "d-r9-0",
-          "target": "lyr_b033a7549b994f5a"
+          "target": "lyr_1101b69ec68b4747"
         },
         {
           "rule": "layer.d-grid.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "d-grid",
-          "target": "lyr_4f8a5df7c5e9483d"
+          "target": "lyr_62420dcaaa3641e8"
         },
         {
           "rule": "layer.d-note.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "d-note",
-          "target": "lyr_26fd25c30b95424a"
+          "target": "lyr_80b9544b7ddf4454"
         },
         {
           "rule": "d-note font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "d-note",
-          "target": "lyr_26fd25c30b95424a"
+          "target": "lyr_80b9544b7ddf4454"
         },
         {
           "rule": "layer.f-rule.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "f-rule",
-          "target": "lyr_7bda05d2daed4244"
+          "target": "lyr_31a6ee845cec4880"
         },
         {
           "rule": "layer.f-note.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "f-note",
-          "target": "lyr_0a42c187aa9c49dd"
+          "target": "lyr_e1ea9f774a084be7"
         },
         {
           "rule": "f-note font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "f-note",
-          "target": "lyr_0a42c187aa9c49dd"
+          "target": "lyr_e1ea9f774a084be7"
         },
         {
           "rule": "layer.f-method.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "f-method",
-          "target": "lyr_b1f14a99fc474c8a"
+          "target": "lyr_3ff6345fe9494c73"
         },
         {
           "rule": "f-method font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "f-method",
-          "target": "lyr_b1f14a99fc474c8a"
+          "target": "lyr_3ff6345fe9494c73"
         },
         {
           "rule": "layer.f-brand.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "f-brand",
-          "target": "lyr_4ac8878c21b84213"
+          "target": "lyr_5bfe674532004706"
         },
         {
           "rule": "f-brand font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "f-brand",
-          "target": "lyr_4ac8878c21b84213"
+          "target": "lyr_5bfe674532004706"
         },
         {
           "rule": "layer.f-palette.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "f-palette",
-          "target": "lyr_8421efec91d64cc7"
+          "target": "lyr_55ec729bb6ea4aa3"
         },
         {
           "rule": "f-palette font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "f-palette",
-          "target": "lyr_8421efec91d64cc7"
+          "target": "lyr_55ec729bb6ea4aa3"
         },
         {
           "rule": "layer.s-eyebrow.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "s-eyebrow",
-          "target": "lyr_9515368e49064095"
+          "target": "lyr_98018044c1aa4cf9"
         },
         {
           "rule": "s-eyebrow font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "s-eyebrow",
-          "target": "lyr_9515368e49064095"
+          "target": "lyr_98018044c1aa4cf9"
         },
         {
           "rule": "layer.s-title.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "s-title",
-          "target": "lyr_03721f2df3b2427b"
+          "target": "lyr_8a22157c49bd4c94"
         },
         {
           "rule": "s-title font size >= 24",
           "passed": true,
           "severity": "warning",
           "layer": "s-title",
-          "target": "lyr_03721f2df3b2427b"
+          "target": "lyr_8a22157c49bd4c94"
         },
         {
           "rule": "layer.s-foot.bounds within canvas",
           "passed": true,
           "severity": "error",
           "layer": "s-foot",
-          "target": "lyr_73218486c1574aa0"
+          "target": "lyr_f39dd45040a24c42"
         },
         {
           "rule": "s-foot font size >= 24",
           "passed": false,
           "severity": "warning",
           "layer": "s-foot",
-          "target": "lyr_73218486c1574aa0"
+          "target": "lyr_f39dd45040a24c42"
         },
         {
           "rule": "canvas.width == 1600",
@@ -5324,9 +5246,9 @@
           ],
           "message": "'a-val8' and 'a-ref' overlap by 21 px (6.2% of the smaller layer)",
           "region": [
-            915,
+            917,
             1796,
-            6,
+            2,
             14
           ],
           "action": "review"
@@ -5358,7 +5280,7 @@
           "layers": [
             "sun"
           ],
-          "message": "'sun' extends outside the safe area (marked as an intentional crop)",
+          "message": "'sun' extends outside the safe area (intentional crop or bleed)",
           "bounds": [
             980,
             -260,
@@ -5380,7 +5302,7 @@
           "layers": [
             "ray"
           ],
-          "message": "'ray' extends outside the safe area (marked as an intentional crop)",
+          "message": "'ray' extends outside the safe area (intentional crop or bleed)",
           "bounds": [
             960,
             -240,
@@ -5402,7 +5324,7 @@
           "layers": [
             "rays"
           ],
-          "message": "'rays' extends outside the safe area (marked as an intentional crop)",
+          "message": "'rays' extends outside the safe area (intentional crop or bleed)",
           "bounds": [
             960,
             -240,
@@ -5427,29 +5349,21 @@
           "legibility",
           "color_vision"
         ],
-        "layers": 189,
+        "layers_checked": 189,
+        "layers_total": 189,
         "text_layers": 92
       }
     },
     "check_contrast": {
       "passed": false,
       "errors": 1,
-      "warnings": 8,
+      "warnings": 0,
       "info": 0,
       "by_action": {
         "fix": [
           0
         ],
-        "review": [
-          1,
-          2,
-          3,
-          4,
-          5,
-          6,
-          7,
-          8
-        ],
+        "review": [],
         "informational": []
       },
       "issues": [
@@ -5469,85 +5383,14 @@
           "contrast": 3.421,
           "required": 4.5,
           "action": "fix"
-        },
-        {
-          "check": "contrast",
-          "severity": "warning",
-          "layers": [
-            "a-ax2"
-          ],
-          "message": "Could not measure 'a-ax2': boolean index did not match indexed array along axis 1; size of axis is 30 but size of corresponding boolean axis is 28",
-          "action": "review"
-        },
-        {
-          "check": "contrast",
-          "severity": "warning",
-          "layers": [
-            "a-ax4"
-          ],
-          "message": "Could not measure 'a-ax4': boolean index did not match indexed array along axis 1; size of axis is 40 but size of corresponding boolean axis is 38",
-          "action": "review"
-        },
-        {
-          "check": "contrast",
-          "severity": "warning",
-          "layers": [
-            "b-x0"
-          ],
-          "message": "Could not measure 'b-x0': boolean index did not match indexed array along axis 1; size of axis is 40 but size of corresponding boolean axis is 38",
-          "action": "review"
-        },
-        {
-          "check": "contrast",
-          "severity": "warning",
-          "layers": [
-            "b-x3"
-          ],
-          "message": "Could not measure 'b-x3': boolean index did not match indexed array along axis 1; size of axis is 40 but size of corresponding boolean axis is 38",
-          "action": "review"
-        },
-        {
-          "check": "contrast",
-          "severity": "warning",
-          "layers": [
-            "b-x4"
-          ],
-          "message": "Could not measure 'b-x4': boolean index did not match indexed array along axis 1; size of axis is 40 but size of corresponding boolean axis is 38",
-          "action": "review"
-        },
-        {
-          "check": "contrast",
-          "severity": "warning",
-          "layers": [
-            "b-x6"
-          ],
-          "message": "Could not measure 'b-x6': boolean index did not match indexed array along axis 1; size of axis is 40 but size of corresponding boolean axis is 38",
-          "action": "review"
-        },
-        {
-          "check": "contrast",
-          "severity": "warning",
-          "layers": [
-            "b-x7"
-          ],
-          "message": "Could not measure 'b-x7': boolean index did not match indexed array along axis 1; size of axis is 40 but size of corresponding boolean axis is 38",
-          "action": "review"
-        },
-        {
-          "check": "contrast",
-          "severity": "warning",
-          "layers": [
-            "b-x10"
-          ],
-          "message": "Could not measure 'b-x10': boolean index did not match indexed array along axis 1; size of axis is 40 but size of corresponding boolean axis is 38",
-          "action": "review"
         }
       ],
       "checked": {
         "checks": [
           "contrast"
         ],
-        "layers": 189,
+        "layers_checked": 189,
+        "layers_total": 189,
         "text_layers": 92
       }
     },
@@ -5568,23 +5411,24 @@
           "overlap",
           "color_vision"
         ],
-        "layers": 38,
+        "layers_checked": 38,
+        "layers_total": 38,
         "text_layers": 17
       }
     },
     "timings": {
       "check_without_contrast": 0.3,
-      "contrast_all_text": 12.0,
-      "check_social": 0.3
+      "contrast_all_text": 7.4,
+      "check_social": 0.4
     },
     "spacing_social": {
       "axis": "vertical",
       "scope": "canvas",
       "gaps": [
         {
-          "from": "lyr_9515368e49064095",
+          "from": "lyr_98018044c1aa4cf9",
           "from_name": "s-eyebrow",
-          "to": "lyr_03721f2df3b2427b",
+          "to": "lyr_8a22157c49bd4c94",
           "to_name": "s-title",
           "pixels": 18,
           "overlap": false,

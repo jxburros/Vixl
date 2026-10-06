@@ -1,21 +1,327 @@
 {
-  "passed": true,
-  "errors": 0,
-  "warnings": 0,
+  "passed": false,
+  "errors": 2,
+  "warnings": 12,
   "info": 0,
   "by_action": {
-    "fix": [],
-    "review": [],
+    "fix": [
+      12,
+      13
+    ],
+    "review": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+    ],
     "informational": []
   },
-  "issues": [],
+  "issues": [
+    {
+      "check": "safe_area",
+      "severity": "warning",
+      "layers": [
+        "print-1"
+      ],
+      "message": "'print-1' extends outside the safe area",
+      "bounds": [
+        164,
+        89,
+        750,
+        1050
+      ],
+      "safe_area": [
+        113,
+        113,
+        2400,
+        3150
+      ],
+      "action": "review"
+    },
+    {
+      "check": "safe_area",
+      "severity": "warning",
+      "layers": [
+        "cut-1"
+      ],
+      "message": "'cut-1' extends outside the safe area",
+      "bounds": [
+        164,
+        89,
+        750,
+        1050
+      ],
+      "safe_area": [
+        113,
+        113,
+        2400,
+        3150
+      ],
+      "action": "review"
+    },
+    {
+      "check": "safe_area",
+      "severity": "warning",
+      "layers": [
+        "print-2"
+      ],
+      "message": "'print-2' extends outside the safe area",
+      "bounds": [
+        938,
+        89,
+        750,
+        1050
+      ],
+      "safe_area": [
+        113,
+        113,
+        2400,
+        3150
+      ],
+      "action": "review"
+    },
+    {
+      "check": "safe_area",
+      "severity": "warning",
+      "layers": [
+        "cut-2"
+      ],
+      "message": "'cut-2' extends outside the safe area",
+      "bounds": [
+        938,
+        89,
+        750,
+        1050
+      ],
+      "safe_area": [
+        113,
+        113,
+        2400,
+        3150
+      ],
+      "action": "review"
+    },
+    {
+      "check": "safe_area",
+      "severity": "warning",
+      "layers": [
+        "print-3"
+      ],
+      "message": "'print-3' extends outside the safe area",
+      "bounds": [
+        1712,
+        89,
+        750,
+        1050
+      ],
+      "safe_area": [
+        113,
+        113,
+        2400,
+        3150
+      ],
+      "action": "review"
+    },
+    {
+      "check": "safe_area",
+      "severity": "warning",
+      "layers": [
+        "cut-3"
+      ],
+      "message": "'cut-3' extends outside the safe area",
+      "bounds": [
+        1712,
+        89,
+        750,
+        1050
+      ],
+      "safe_area": [
+        113,
+        113,
+        2400,
+        3150
+      ],
+      "action": "review"
+    },
+    {
+      "check": "safe_area",
+      "severity": "warning",
+      "layers": [
+        "print-7"
+      ],
+      "message": "'print-7' extends outside the safe area",
+      "bounds": [
+        164,
+        2237,
+        750,
+        1050
+      ],
+      "safe_area": [
+        113,
+        113,
+        2400,
+        3150
+      ],
+      "action": "review"
+    },
+    {
+      "check": "safe_area",
+      "severity": "warning",
+      "layers": [
+        "cut-7"
+      ],
+      "message": "'cut-7' extends outside the safe area",
+      "bounds": [
+        164,
+        2237,
+        750,
+        1050
+      ],
+      "safe_area": [
+        113,
+        113,
+        2400,
+        3150
+      ],
+      "action": "review"
+    },
+    {
+      "check": "safe_area",
+      "severity": "warning",
+      "layers": [
+        "print-8"
+      ],
+      "message": "'print-8' extends outside the safe area",
+      "bounds": [
+        938,
+        2237,
+        750,
+        1050
+      ],
+      "safe_area": [
+        113,
+        113,
+        2400,
+        3150
+      ],
+      "action": "review"
+    },
+    {
+      "check": "safe_area",
+      "severity": "warning",
+      "layers": [
+        "cut-8"
+      ],
+      "message": "'cut-8' extends outside the safe area",
+      "bounds": [
+        938,
+        2237,
+        750,
+        1050
+      ],
+      "safe_area": [
+        113,
+        113,
+        2400,
+        3150
+      ],
+      "action": "review"
+    },
+    {
+      "check": "safe_area",
+      "severity": "warning",
+      "layers": [
+        "print-9"
+      ],
+      "message": "'print-9' extends outside the safe area",
+      "bounds": [
+        1712,
+        2237,
+        750,
+        1050
+      ],
+      "safe_area": [
+        113,
+        113,
+        2400,
+        3150
+      ],
+      "action": "review"
+    },
+    {
+      "check": "safe_area",
+      "severity": "warning",
+      "layers": [
+        "cut-9"
+      ],
+      "message": "'cut-9' extends outside the safe area",
+      "bounds": [
+        1712,
+        2237,
+        750,
+        1050
+      ],
+      "safe_area": [
+        113,
+        113,
+        2400,
+        3150
+      ],
+      "action": "review"
+    },
+    {
+      "check": "safe_area",
+      "severity": "error",
+      "layers": [
+        "slug"
+      ],
+      "message": "'slug' extends outside the safe area",
+      "bounds": [
+        107,
+        1200,
+        26,
+        976
+      ],
+      "safe_area": [
+        113,
+        113,
+        2400,
+        3150
+      ],
+      "action": "fix"
+    },
+    {
+      "check": "print",
+      "severity": "error",
+      "layers": [
+        "slug"
+      ],
+      "message": "'slug' is outside the live area (113px from the edge) and may be trimmed",
+      "live_area": [
+        113,
+        113,
+        2400,
+        3150
+      ],
+      "action": "fix"
+    }
+  ],
   "checked": {
     "checks": [
       "print",
       "bounds",
       "safe_area"
     ],
-    "layers": 19,
+    "layers_checked": 19,
+    "layers_total": 20,
     "text_layers": 1
   }
 }

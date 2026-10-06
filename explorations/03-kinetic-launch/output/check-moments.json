@@ -35,7 +35,8 @@
     "overlap",
     "bounds"
    ],
-   "layers": 18,
+   "layers_checked": 18,
+   "layers_total": 18,
    "text_layers": 6
   }
  },
@@ -93,14 +94,14 @@
     "layers": [
      "badge-label"
     ],
-    "message": "'badge-label' contrast is 1.45:1 or lower for a tenth of its glyph pixels (minimum 1.42:1, weakest at x 783\u2013824, y 160\u2013177); needs 3:1",
+    "message": "'badge-label' contrast is 1.44:1 or lower for a tenth of its glyph pixels (minimum 1.42:1, weakest at x 786\u2013824, y 160\u2013177); needs 3:1",
     "region": [
-     783,
+     786,
      160,
-     42,
+     39,
      18
     ],
-    "contrast": 1.446,
+    "contrast": 1.436,
     "required": 3.0,
     "action": "fix"
    }
@@ -111,7 +112,8 @@
     "overlap",
     "bounds"
    ],
-   "layers": 24,
+   "layers_checked": 24,
+   "layers_total": 24,
    "text_layers": 7
   }
  },
@@ -157,7 +159,7 @@
     "region": [
      746,
      179,
-     74,
+     82,
      32
     ],
     "action": "review"
@@ -169,7 +171,8 @@
     "overlap",
     "bounds"
    ],
-   "layers": 36,
+   "layers_checked": 36,
+   "layers_total": 36,
    "text_layers": 12
   }
  }

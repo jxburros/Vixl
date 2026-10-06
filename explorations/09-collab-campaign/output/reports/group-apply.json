@@ -49,8 +49,8 @@
               "id": "contrast",
               "status": "failed",
               "issues": [
-                "'date' contrast is 1.90:1 or lower for a tenth of its glyph pixels (minimum 1.90:1, weakest at x 241–1461, y 2144–2291); needs 4.5:1",
-                "'cta' contrast is 1.90:1 or lower for a tenth of its glyph pixels (minimum 1.90:1, weakest at x 185–429, y 3163–3208); needs 4.5:1"
+                "'date' contrast is 1.90:1 or lower for a tenth of its glyph pixels (minimum 1.90:1, weakest at x 276–1183, y 2146–2255); needs 4.5:1",
+                "'cta' contrast is 1.90:1 or lower for a tenth of its glyph pixels (minimum 1.90:1, weakest at x 220–464, y 3128–3173); needs 4.5:1"
               ]
             }
           ]
@@ -71,7 +71,7 @@
               "id": "logo-clear",
               "status": "needs_review",
               "issues": [
-                "'headline' and 'logo' overlap by 25034 px (35.2% of the smaller layer)"
+                "'headline' and 'logo' overlap by 19688 px (27.7% of the smaller layer)"
               ]
             }
           ]
@@ -121,7 +121,7 @@
               "id": "logo-clear",
               "status": "needs_review",
               "issues": [
-                "'headline' and 'logo' overlap by 25034 px (35.2% of the smaller layer)"
+                "'headline' and 'logo' overlap by 19688 px (27.7% of the smaller layer)"
               ]
             }
           ]

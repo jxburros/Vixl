@@ -2,56 +2,58 @@
   "mark": {
     "passed": true,
     "errors": 0,
-    "warnings": 0,
+    "warnings": 2,
     "info": 0,
     "by_action": {
       "fix": [],
-      "review": [],
-      "informational": []
-    },
-    "issues": [],
-    "checked": {
-      "checks": [
-        "bounds",
-        "overlap",
-        "contrast",
-        "safe_area",
-        "legibility",
-        "blanks",
-        "fonts",
-        "brand",
-        "content",
-        "form",
-        "links",
-        "diagram",
-        "flow"
+      "review": [
+        0,
+        1
       ],
-      "layers": 2,
-      "text_layers": 0
-    }
-  },
-  "logo@horizontal": {
-    "passed": true,
-    "errors": 0,
-    "warnings": 1,
-    "info": 0,
-    "by_action": {
-      "fix": [
-        0
-      ],
-      "review": [],
       "informational": []
     },
     "issues": [
       {
-        "check": "legibility",
+        "check": "safe_area",
         "severity": "warning",
         "layers": [
-          "h-tag"
+          "sun"
         ],
-        "message": "'h-tag' is 8.4 px tall at 320 px wide; aim for at least 10 px (font size 50+)",
-        "thumbnail_size": 8.4,
-        "action": "fix"
+        "message": "'sun' extends outside the safe area",
+        "bounds": [
+          16,
+          16,
+          480,
+          480
+        ],
+        "safe_area": [
+          48,
+          48,
+          416,
+          416
+        ],
+        "action": "review"
+      },
+      {
+        "check": "safe_area",
+        "severity": "warning",
+        "layers": [
+          "mark"
+        ],
+        "message": "'mark' extends outside the safe area",
+        "bounds": [
+          16,
+          16,
+          480,
+          480
+        ],
+        "safe_area": [
+          48,
+          48,
+          416,
+          416
+        ],
+        "action": "review"
       }
     ],
     "checked": {
@@ -70,21 +72,35 @@
         "diagram",
         "flow"
       ],
-      "layers": 5,
-      "text_layers": 2
+      "layers_checked": 2,
+      "layers_total": 2,
+      "text_layers": 0
     }
   },
-  "logo@stacked": {
+  "logo@horizontal": {
     "passed": true,
     "errors": 0,
     "warnings": 0,
-    "info": 0,
+    "info": 1,
     "by_action": {
       "fix": [],
       "review": [],
-      "informational": []
+      "informational": [
+        0
+      ]
     },
-    "issues": [],
+    "issues": [
+      {
+        "check": "legibility",
+        "severity": "info",
+        "layers": [
+          "h-tag"
+        ],
+        "message": "'h-tag' is 8.4 px tall at 320 px wide; aim for at least 10 px (font size 50+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
+        "thumbnail_size": 8.4,
+        "action": "informational"
+      }
+    ],
     "checked": {
       "checks": [
         "bounds",
@@ -101,45 +117,94 @@
         "diagram",
         "flow"
       ],
-      "layers": 5,
+      "layers_checked": 5,
+      "layers_total": 5,
+      "text_layers": 2
+    }
+  },
+  "logo@stacked": {
+    "passed": false,
+    "errors": 1,
+    "warnings": 1,
+    "info": 0,
+    "by_action": {
+      "fix": [
+        0
+      ],
+      "review": [
+        1
+      ],
+      "informational": []
+    },
+    "issues": [
+      {
+        "check": "safe_area",
+        "severity": "error",
+        "layers": [
+          "s-word"
+        ],
+        "message": "'s-word' extends outside the safe area",
+        "bounds": [
+          55,
+          780,
+          889,
+          157
+        ],
+        "safe_area": [
+          60,
+          60,
+          880,
+          1080
+        ],
+        "action": "fix"
+      },
+      {
+        "check": "safe_area",
+        "severity": "warning",
+        "layers": [
+          "s-lockup"
+        ],
+        "message": "'s-lockup' extends outside the safe area",
+        "bounds": [
+          55,
+          208,
+          889,
+          784
+        ],
+        "safe_area": [
+          60,
+          60,
+          880,
+          1080
+        ],
+        "action": "review"
+      }
+    ],
+    "checked": {
+      "checks": [
+        "bounds",
+        "overlap",
+        "contrast",
+        "safe_area",
+        "legibility",
+        "blanks",
+        "fonts",
+        "brand",
+        "content",
+        "form",
+        "links",
+        "diagram",
+        "flow"
+      ],
+      "layers_checked": 5,
+      "layers_total": 5,
       "text_layers": 2
     }
   },
   "card-front": {
     "passed": true,
     "errors": 0,
-    "warnings": 0,
-    "info": 0,
-    "by_action": {
-      "fix": [],
-      "review": [],
-      "informational": []
-    },
-    "issues": [],
-    "checked": {
-      "checks": [
-        "bounds",
-        "overlap",
-        "contrast",
-        "safe_area",
-        "legibility",
-        "blanks",
-        "fonts",
-        "brand",
-        "content",
-        "form",
-        "links",
-        "diagram",
-        "flow"
-      ],
-      "layers": 11,
-      "text_layers": 4
-    }
-  },
-  "card-back": {
-    "passed": true,
-    "errors": 0,
-    "warnings": 16,
+    "warnings": 4,
     "info": 0,
     "by_action": {
       "fix": [],
@@ -147,37 +212,187 @@
         0,
         1,
         2,
+        3
+      ],
+      "informational": []
+    },
+    "issues": [
+      {
+        "check": "safe_area",
+        "severity": "warning",
+        "layers": [
+          "stripe0"
+        ],
+        "message": "'stripe0' extends outside the safe area",
+        "bounds": [
+          0,
+          548,
+          1126,
+          6
+        ],
+        "safe_area": [
+          94,
+          94,
+          938,
+          488
+        ],
+        "action": "review"
+      },
+      {
+        "check": "safe_area",
+        "severity": "warning",
+        "layers": [
+          "stripe1"
+        ],
+        "message": "'stripe1' extends outside the safe area",
+        "bounds": [
+          0,
+          570,
+          1126,
+          8
+        ],
+        "safe_area": [
+          94,
+          94,
+          938,
+          488
+        ],
+        "action": "review"
+      },
+      {
+        "check": "safe_area",
+        "severity": "warning",
+        "layers": [
+          "stripe2"
+        ],
+        "message": "'stripe2' extends outside the safe area",
+        "bounds": [
+          0,
+          596,
+          1126,
+          10
+        ],
+        "safe_area": [
+          94,
+          94,
+          938,
+          488
+        ],
+        "action": "review"
+      },
+      {
+        "check": "safe_area",
+        "severity": "warning",
+        "layers": [
+          "stripe3"
+        ],
+        "message": "'stripe3' extends outside the safe area",
+        "bounds": [
+          0,
+          626,
+          1126,
+          50
+        ],
+        "safe_area": [
+          94,
+          94,
+          938,
+          488
+        ],
+        "action": "review"
+      }
+    ],
+    "checked": {
+      "checks": [
+        "bounds",
+        "overlap",
+        "contrast",
+        "safe_area",
+        "legibility",
+        "blanks",
+        "fonts",
+        "brand",
+        "content",
+        "form",
+        "links",
+        "diagram",
+        "flow"
+      ],
+      "layers_checked": 11,
+      "layers_total": 12,
+      "text_layers": 4
+    }
+  },
+  "card-back": {
+    "passed": true,
+    "errors": 0,
+    "warnings": 24,
+    "info": 18,
+    "by_action": {
+      "fix": [],
+      "review": [
+        1,
+        2,
         3,
         4,
         5,
         6,
         7,
-        8,
         9,
         10,
         11,
         12,
         13,
         14,
-        15
+        15,
+        25,
+        26,
+        27,
+        30,
+        31,
+        33,
+        36,
+        37,
+        39,
+        40
       ],
-      "informational": []
+      "informational": [
+        0,
+        8,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        28,
+        29,
+        32,
+        34,
+        35,
+        38,
+        41
+      ]
     },
     "issues": [
       {
         "check": "bounds",
-        "severity": "warning",
+        "severity": "info",
         "layers": [
           "bean-0"
         ],
-        "message": "'bean-0' is cut off by the canvas edge; if the crop is deliberate, mark it with layer-intent allow_crop",
+        "message": "'bean-0' bleeds off the canvas edge (artwork running past two edges)",
         "bounds": [
           -28.55255888325765,
           -38.98076211353316,
           68.1051177665153,
           73.96152422706632
         ],
-        "action": "review"
+        "intentional": true,
+        "action": "informational"
       },
       {
         "check": "bounds",
@@ -286,18 +501,19 @@
       },
       {
         "check": "bounds",
-        "severity": "warning",
+        "severity": "info",
         "layers": [
           "bean-8"
         ],
-        "message": "'bean-8' is cut off by the canvas edge; if the crop is deliberate, mark it with layer-intent allow_crop",
+        "message": "'bean-8' bleeds off the canvas edge (artwork running past two edges)",
         "bounds": [
           1052.3773392933267,
           -35.636606039213696,
           74.24532141334657,
           72.27321207842739
         ],
-        "action": "review"
+        "intentional": true,
+        "action": "informational"
       },
       {
         "check": "bounds",
@@ -403,6 +619,568 @@
           72.27321207842738
         ],
         "action": "review"
+      },
+      {
+        "check": "safe_area",
+        "severity": "info",
+        "layers": [
+          "bean-0"
+        ],
+        "message": "'bean-0' extends outside the safe area (intentional crop or bleed)",
+        "bounds": [
+          -29,
+          -39,
+          69,
+          74
+        ],
+        "safe_area": [
+          94,
+          94,
+          938,
+          488
+        ],
+        "intentional": true,
+        "action": "informational"
+      },
+      {
+        "check": "safe_area",
+        "severity": "info",
+        "layers": [
+          "bean-1"
+        ],
+        "message": "'bean-1' extends outside the safe area (intentional crop or bleed)",
+        "bounds": [
+          117,
+          -42,
+          71,
+          75
+        ],
+        "safe_area": [
+          94,
+          94,
+          938,
+          488
+        ],
+        "intentional": true,
+        "action": "informational"
+      },
+      {
+        "check": "safe_area",
+        "severity": "info",
+        "layers": [
+          "bean-2"
+        ],
+        "message": "'bean-2' extends outside the safe area (intentional crop or bleed)",
+        "bounds": [
+          250,
+          -40,
+          59,
+          70
+        ],
+        "safe_area": [
+          94,
+          94,
+          938,
+          488
+        ],
+        "intentional": true,
+        "action": "informational"
+      },
+      {
+        "check": "safe_area",
+        "severity": "info",
+        "layers": [
+          "bean-3"
+        ],
+        "message": "'bean-3' extends outside the safe area (intentional crop or bleed)",
+        "bounds": [
+          387,
+          -42,
+          75,
+          73
+        ],
+        "safe_area": [
+          94,
+          94,
+          938,
+          488
+        ],
+        "intentional": true,
+        "action": "informational"
+      },
+      {
+        "check": "safe_area",
+        "severity": "info",
+        "layers": [
+          "bean-4"
+        ],
+        "message": "'bean-4' extends outside the safe area (intentional crop or bleed)",
+        "bounds": [
+          511,
+          -42,
+          71,
+          75
+        ],
+        "safe_area": [
+          94,
+          94,
+          938,
+          488
+        ],
+        "intentional": true,
+        "action": "informational"
+      },
+      {
+        "check": "safe_area",
+        "severity": "info",
+        "layers": [
+          "bean-5"
+        ],
+        "message": "'bean-5' extends outside the safe area (intentional crop or bleed)",
+        "bounds": [
+          654,
+          -30,
+          71,
+          75
+        ],
+        "safe_area": [
+          94,
+          94,
+          938,
+          488
+        ],
+        "intentional": true,
+        "action": "informational"
+      },
+      {
+        "check": "safe_area",
+        "severity": "info",
+        "layers": [
+          "bean-6"
+        ],
+        "message": "'bean-6' extends outside the safe area (intentional crop or bleed)",
+        "bounds": [
+          784,
+          -41,
+          75,
+          73
+        ],
+        "safe_area": [
+          94,
+          94,
+          938,
+          488
+        ],
+        "intentional": true,
+        "action": "informational"
+      },
+      {
+        "check": "safe_area",
+        "severity": "info",
+        "layers": [
+          "bean-7"
+        ],
+        "message": "'bean-7' extends outside the safe area (intentional crop or bleed)",
+        "bounds": [
+          926,
+          -42,
+          75,
+          73
+        ],
+        "safe_area": [
+          94,
+          94,
+          938,
+          488
+        ],
+        "intentional": true,
+        "action": "informational"
+      },
+      {
+        "check": "safe_area",
+        "severity": "info",
+        "layers": [
+          "bean-8"
+        ],
+        "message": "'bean-8' extends outside the safe area (intentional crop or bleed)",
+        "bounds": [
+          1052,
+          -36,
+          75,
+          73
+        ],
+        "safe_area": [
+          94,
+          94,
+          938,
+          488
+        ],
+        "intentional": true,
+        "action": "informational"
+      },
+      {
+        "check": "safe_area",
+        "severity": "warning",
+        "layers": [
+          "bean-9"
+        ],
+        "message": "'bean-9' extends outside the safe area",
+        "bounds": [
+          30,
+          103,
+          75,
+          73
+        ],
+        "safe_area": [
+          94,
+          94,
+          938,
+          488
+        ],
+        "action": "review"
+      },
+      {
+        "check": "safe_area",
+        "severity": "warning",
+        "layers": [
+          "bean-10"
+        ],
+        "message": "'bean-10' extends outside the safe area",
+        "bounds": [
+          177,
+          86,
+          62,
+          72
+        ],
+        "safe_area": [
+          94,
+          94,
+          938,
+          488
+        ],
+        "action": "review"
+      },
+      {
+        "check": "safe_area",
+        "severity": "warning",
+        "layers": [
+          "bean-12"
+        ],
+        "message": "'bean-12' extends outside the safe area",
+        "bounds": [
+          1001,
+          91,
+          59,
+          70
+        ],
+        "safe_area": [
+          94,
+          94,
+          938,
+          488
+        ],
+        "action": "review"
+      },
+      {
+        "check": "safe_area",
+        "severity": "info",
+        "layers": [
+          "bean-13"
+        ],
+        "message": "'bean-13' extends outside the safe area (intentional crop or bleed)",
+        "bounds": [
+          -21,
+          214,
+          75,
+          73
+        ],
+        "safe_area": [
+          94,
+          94,
+          938,
+          488
+        ],
+        "intentional": true,
+        "action": "informational"
+      },
+      {
+        "check": "safe_area",
+        "severity": "info",
+        "layers": [
+          "bean-16"
+        ],
+        "message": "'bean-16' extends outside the safe area (intentional crop or bleed)",
+        "bounds": [
+          1068,
+          215,
+          71,
+          75
+        ],
+        "safe_area": [
+          94,
+          94,
+          938,
+          488
+        ],
+        "intentional": true,
+        "action": "informational"
+      },
+      {
+        "check": "safe_area",
+        "severity": "warning",
+        "layers": [
+          "bean-17"
+        ],
+        "message": "'bean-17' extends outside the safe area",
+        "bounds": [
+          45,
+          354,
+          62,
+          72
+        ],
+        "safe_area": [
+          94,
+          94,
+          938,
+          488
+        ],
+        "action": "review"
+      },
+      {
+        "check": "safe_area",
+        "severity": "warning",
+        "layers": [
+          "bean-20"
+        ],
+        "message": "'bean-20' extends outside the safe area",
+        "bounds": [
+          996,
+          343,
+          71,
+          75
+        ],
+        "safe_area": [
+          94,
+          94,
+          938,
+          488
+        ],
+        "action": "review"
+      },
+      {
+        "check": "safe_area",
+        "severity": "info",
+        "layers": [
+          "bean-21"
+        ],
+        "message": "'bean-21' extends outside the safe area (intentional crop or bleed)",
+        "bounds": [
+          -25,
+          478,
+          69,
+          74
+        ],
+        "safe_area": [
+          94,
+          94,
+          938,
+          488
+        ],
+        "intentional": true,
+        "action": "informational"
+      },
+      {
+        "check": "safe_area",
+        "severity": "warning",
+        "layers": [
+          "bean-24"
+        ],
+        "message": "'bean-24' extends outside the safe area",
+        "bounds": [
+          1057,
+          473,
+          69,
+          74
+        ],
+        "safe_area": [
+          94,
+          94,
+          938,
+          488
+        ],
+        "action": "review"
+      },
+      {
+        "check": "safe_area",
+        "severity": "info",
+        "layers": [
+          "bean-25"
+        ],
+        "message": "'bean-25' extends outside the safe area (intentional crop or bleed)",
+        "bounds": [
+          46,
+          605,
+          69,
+          74
+        ],
+        "safe_area": [
+          94,
+          94,
+          938,
+          488
+        ],
+        "intentional": true,
+        "action": "informational"
+      },
+      {
+        "check": "safe_area",
+        "severity": "info",
+        "layers": [
+          "bean-26"
+        ],
+        "message": "'bean-26' extends outside the safe area (intentional crop or bleed)",
+        "bounds": [
+          176,
+          609,
+          62,
+          72
+        ],
+        "safe_area": [
+          94,
+          94,
+          938,
+          488
+        ],
+        "intentional": true,
+        "action": "informational"
+      },
+      {
+        "check": "safe_area",
+        "severity": "warning",
+        "layers": [
+          "bean-27"
+        ],
+        "message": "'bean-27' extends outside the safe area",
+        "bounds": [
+          305,
+          599,
+          62,
+          72
+        ],
+        "safe_area": [
+          94,
+          94,
+          938,
+          488
+        ],
+        "action": "review"
+      },
+      {
+        "check": "safe_area",
+        "severity": "warning",
+        "layers": [
+          "bean-28"
+        ],
+        "message": "'bean-28' extends outside the safe area",
+        "bounds": [
+          441,
+          604,
+          62,
+          72
+        ],
+        "safe_area": [
+          94,
+          94,
+          938,
+          488
+        ],
+        "action": "review"
+      },
+      {
+        "check": "safe_area",
+        "severity": "info",
+        "layers": [
+          "bean-29"
+        ],
+        "message": "'bean-29' extends outside the safe area (intentional crop or bleed)",
+        "bounds": [
+          573,
+          612,
+          75,
+          73
+        ],
+        "safe_area": [
+          94,
+          94,
+          938,
+          488
+        ],
+        "intentional": true,
+        "action": "informational"
+      },
+      {
+        "check": "safe_area",
+        "severity": "warning",
+        "layers": [
+          "bean-30"
+        ],
+        "message": "'bean-30' extends outside the safe area",
+        "bounds": [
+          714,
+          605,
+          59,
+          70
+        ],
+        "safe_area": [
+          94,
+          94,
+          938,
+          488
+        ],
+        "action": "review"
+      },
+      {
+        "check": "safe_area",
+        "severity": "warning",
+        "layers": [
+          "bean-31"
+        ],
+        "message": "'bean-31' extends outside the safe area",
+        "bounds": [
+          845,
+          601,
+          69,
+          74
+        ],
+        "safe_area": [
+          94,
+          94,
+          938,
+          488
+        ],
+        "action": "review"
+      },
+      {
+        "check": "safe_area",
+        "severity": "info",
+        "layers": [
+          "bean-32"
+        ],
+        "message": "'bean-32' extends outside the safe area (intentional crop or bleed)",
+        "bounds": [
+          998,
+          608,
+          75,
+          73
+        ],
+        "safe_area": [
+          94,
+          94,
+          938,
+          488
+        ],
+        "intentional": true,
+        "action": "informational"
       }
     ],
     "checked": {
@@ -421,7 +1199,8 @@
         "diagram",
         "flow"
       ],
-      "layers": 38,
+      "layers_checked": 38,
+      "layers_total": 40,
       "text_layers": 2
     }
   },
@@ -452,7 +1231,8 @@
         "diagram",
         "flow"
       ],
-      "layers": 2,
+      "layers_checked": 2,
+      "layers_total": 3,
       "text_layers": 0
     }
   },
@@ -483,17 +1263,20 @@
         "diagram",
         "flow"
       ],
-      "layers": 1,
+      "layers_checked": 1,
+      "layers_total": 2,
       "text_layers": 0
     }
   },
   "brand-board": {
     "passed": true,
     "errors": 0,
-    "warnings": 46,
-    "info": 0,
+    "warnings": 0,
+    "info": 46,
     "by_action": {
-      "fix": [
+      "fix": [],
+      "review": [],
+      "informational": [
         0,
         1,
         2,
@@ -540,470 +1323,468 @@
         43,
         44,
         45
-      ],
-      "review": [],
-      "informational": []
+      ]
     },
     "issues": [
       {
         "check": "legibility",
-        "severity": "warning",
+        "severity": "info",
         "layers": [
           "footer"
         ],
-        "message": "'footer' is 3.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "message": "'footer' is 3.3 px tall at 320 px wide; aim for at least 10 px (font size 60+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
         "thumbnail_size": 3.33,
-        "action": "fix"
+        "action": "informational"
       },
       {
         "check": "legibility",
-        "severity": "warning",
+        "severity": "info",
         "layers": [
           "hdr-left"
         ],
-        "message": "'hdr-left' is 3.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "message": "'hdr-left' is 3.3 px tall at 320 px wide; aim for at least 10 px (font size 60+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
         "thumbnail_size": 3.33,
-        "action": "fix"
+        "action": "informational"
       },
       {
         "check": "legibility",
-        "severity": "warning",
+        "severity": "info",
         "layers": [
           "hdr-right"
         ],
-        "message": "'hdr-right' is 3.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "message": "'hdr-right' is 3.3 px tall at 320 px wide; aim for at least 10 px (font size 60+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
         "thumbnail_size": 3.33,
-        "action": "fix"
+        "action": "informational"
       },
       {
         "check": "legibility",
-        "severity": "warning",
+        "severity": "info",
         "layers": [
           "lbl-primary"
         ],
-        "message": "'lbl-primary' is 2.7 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "message": "'lbl-primary' is 2.7 px tall at 320 px wide; aim for at least 10 px (font size 60+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
         "thumbnail_size": 2.67,
-        "action": "fix"
+        "action": "informational"
       },
       {
         "check": "legibility",
-        "severity": "warning",
+        "severity": "info",
         "layers": [
           "lbl-reversed"
         ],
-        "message": "'lbl-reversed' is 2.7 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "message": "'lbl-reversed' is 2.7 px tall at 320 px wide; aim for at least 10 px (font size 60+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
         "thumbnail_size": 2.67,
-        "action": "fix"
+        "action": "informational"
       },
       {
         "check": "legibility",
-        "severity": "warning",
+        "severity": "info",
         "layers": [
           "bh-tag"
         ],
-        "message": "'bh-tag' is 4.7 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "message": "'bh-tag' is 4.7 px tall at 320 px wide; aim for at least 10 px (font size 60+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
         "thumbnail_size": 4.67,
-        "action": "fix"
+        "action": "informational"
       },
       {
         "check": "legibility",
-        "severity": "warning",
+        "severity": "info",
         "layers": [
           "bs-tag"
         ],
-        "message": "'bs-tag' is 3.0 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "message": "'bs-tag' is 3.0 px tall at 320 px wide; aim for at least 10 px (font size 60+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
         "thumbnail_size": 3.0,
-        "action": "fix"
+        "action": "informational"
       },
       {
         "check": "legibility",
-        "severity": "warning",
+        "severity": "info",
         "layers": [
           "lbl-palette"
         ],
-        "message": "'lbl-palette' is 2.7 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "message": "'lbl-palette' is 2.7 px tall at 320 px wide; aim for at least 10 px (font size 60+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
         "thumbnail_size": 2.67,
-        "action": "fix"
+        "action": "informational"
       },
       {
         "check": "legibility",
-        "severity": "warning",
+        "severity": "info",
         "layers": [
           "chip-roast-role"
         ],
-        "message": "'chip-roast-role' is 2.2 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "message": "'chip-roast-role' is 2.2 px tall at 320 px wide; aim for at least 10 px (font size 60+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
         "thumbnail_size": 2.17,
-        "action": "fix"
+        "action": "informational"
       },
       {
         "check": "legibility",
-        "severity": "warning",
+        "severity": "info",
         "layers": [
           "chip-roast-name"
         ],
-        "message": "'chip-roast-name' is 5.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "message": "'chip-roast-name' is 5.3 px tall at 320 px wide; aim for at least 10 px (font size 60+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
         "thumbnail_size": 5.33,
-        "action": "fix"
+        "action": "informational"
       },
       {
         "check": "legibility",
-        "severity": "warning",
+        "severity": "info",
         "layers": [
           "chip-roast-hex"
         ],
-        "message": "'chip-roast-hex' is 3.2 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "message": "'chip-roast-hex' is 3.2 px tall at 320 px wide; aim for at least 10 px (font size 60+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
         "thumbnail_size": 3.17,
-        "action": "fix"
+        "action": "informational"
       },
       {
         "check": "legibility",
-        "severity": "warning",
+        "severity": "info",
         "layers": [
           "chip-crema-role"
         ],
-        "message": "'chip-crema-role' is 2.2 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "message": "'chip-crema-role' is 2.2 px tall at 320 px wide; aim for at least 10 px (font size 60+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
         "thumbnail_size": 2.17,
-        "action": "fix"
+        "action": "informational"
       },
       {
         "check": "legibility",
-        "severity": "warning",
+        "severity": "info",
         "layers": [
           "chip-crema-name"
         ],
-        "message": "'chip-crema-name' is 5.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "message": "'chip-crema-name' is 5.3 px tall at 320 px wide; aim for at least 10 px (font size 60+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
         "thumbnail_size": 5.33,
-        "action": "fix"
+        "action": "informational"
       },
       {
         "check": "legibility",
-        "severity": "warning",
+        "severity": "info",
         "layers": [
           "chip-crema-hex"
         ],
-        "message": "'chip-crema-hex' is 3.2 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "message": "'chip-crema-hex' is 3.2 px tall at 320 px wide; aim for at least 10 px (font size 60+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
         "thumbnail_size": 3.17,
-        "action": "fix"
+        "action": "informational"
       },
       {
         "check": "legibility",
-        "severity": "warning",
+        "severity": "info",
         "layers": [
           "chip-ember-role"
         ],
-        "message": "'chip-ember-role' is 2.2 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "message": "'chip-ember-role' is 2.2 px tall at 320 px wide; aim for at least 10 px (font size 60+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
         "thumbnail_size": 2.17,
-        "action": "fix"
+        "action": "informational"
       },
       {
         "check": "legibility",
-        "severity": "warning",
+        "severity": "info",
         "layers": [
           "chip-ember-name"
         ],
-        "message": "'chip-ember-name' is 5.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "message": "'chip-ember-name' is 5.3 px tall at 320 px wide; aim for at least 10 px (font size 60+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
         "thumbnail_size": 5.33,
-        "action": "fix"
+        "action": "informational"
       },
       {
         "check": "legibility",
-        "severity": "warning",
+        "severity": "info",
         "layers": [
           "chip-ember-hex"
         ],
-        "message": "'chip-ember-hex' is 3.2 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "message": "'chip-ember-hex' is 3.2 px tall at 320 px wide; aim for at least 10 px (font size 60+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
         "thumbnail_size": 3.17,
-        "action": "fix"
+        "action": "informational"
       },
       {
         "check": "legibility",
-        "severity": "warning",
+        "severity": "info",
         "layers": [
           "chip-ember-deep-role"
         ],
-        "message": "'chip-ember-deep-role' is 2.2 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "message": "'chip-ember-deep-role' is 2.2 px tall at 320 px wide; aim for at least 10 px (font size 60+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
         "thumbnail_size": 2.17,
-        "action": "fix"
+        "action": "informational"
       },
       {
         "check": "legibility",
-        "severity": "warning",
+        "severity": "info",
         "layers": [
           "chip-ember-deep-name"
         ],
-        "message": "'chip-ember-deep-name' is 5.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "message": "'chip-ember-deep-name' is 5.3 px tall at 320 px wide; aim for at least 10 px (font size 60+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
         "thumbnail_size": 5.33,
-        "action": "fix"
+        "action": "informational"
       },
       {
         "check": "legibility",
-        "severity": "warning",
+        "severity": "info",
         "layers": [
           "chip-ember-deep-hex"
         ],
-        "message": "'chip-ember-deep-hex' is 3.2 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "message": "'chip-ember-deep-hex' is 3.2 px tall at 320 px wide; aim for at least 10 px (font size 60+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
         "thumbnail_size": 3.17,
-        "action": "fix"
+        "action": "informational"
       },
       {
         "check": "legibility",
-        "severity": "warning",
+        "severity": "info",
         "layers": [
           "chip-kettle-role"
         ],
-        "message": "'chip-kettle-role' is 2.2 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "message": "'chip-kettle-role' is 2.2 px tall at 320 px wide; aim for at least 10 px (font size 60+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
         "thumbnail_size": 2.17,
-        "action": "fix"
+        "action": "informational"
       },
       {
         "check": "legibility",
-        "severity": "warning",
+        "severity": "info",
         "layers": [
           "chip-kettle-name"
         ],
-        "message": "'chip-kettle-name' is 5.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "message": "'chip-kettle-name' is 5.3 px tall at 320 px wide; aim for at least 10 px (font size 60+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
         "thumbnail_size": 5.33,
-        "action": "fix"
+        "action": "informational"
       },
       {
         "check": "legibility",
-        "severity": "warning",
+        "severity": "info",
         "layers": [
           "chip-kettle-hex"
         ],
-        "message": "'chip-kettle-hex' is 3.2 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "message": "'chip-kettle-hex' is 3.2 px tall at 320 px wide; aim for at least 10 px (font size 60+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
         "thumbnail_size": 3.17,
-        "action": "fix"
+        "action": "informational"
       },
       {
         "check": "legibility",
-        "severity": "warning",
+        "severity": "info",
         "layers": [
           "chip-oat-role"
         ],
-        "message": "'chip-oat-role' is 2.2 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "message": "'chip-oat-role' is 2.2 px tall at 320 px wide; aim for at least 10 px (font size 60+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
         "thumbnail_size": 2.17,
-        "action": "fix"
+        "action": "informational"
       },
       {
         "check": "legibility",
-        "severity": "warning",
+        "severity": "info",
         "layers": [
           "chip-oat-name"
         ],
-        "message": "'chip-oat-name' is 5.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "message": "'chip-oat-name' is 5.3 px tall at 320 px wide; aim for at least 10 px (font size 60+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
         "thumbnail_size": 5.33,
-        "action": "fix"
+        "action": "informational"
       },
       {
         "check": "legibility",
-        "severity": "warning",
+        "severity": "info",
         "layers": [
           "chip-oat-hex"
         ],
-        "message": "'chip-oat-hex' is 3.2 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "message": "'chip-oat-hex' is 3.2 px tall at 320 px wide; aim for at least 10 px (font size 60+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
         "thumbnail_size": 3.17,
-        "action": "fix"
+        "action": "informational"
       },
       {
         "check": "legibility",
-        "severity": "warning",
+        "severity": "info",
         "layers": [
           "scale-50-lbl"
         ],
-        "message": "'scale-50-lbl' is 2.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "message": "'scale-50-lbl' is 2.3 px tall at 320 px wide; aim for at least 10 px (font size 60+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
         "thumbnail_size": 2.33,
-        "action": "fix"
+        "action": "informational"
       },
       {
         "check": "legibility",
-        "severity": "warning",
+        "severity": "info",
         "layers": [
           "scale-100-lbl"
         ],
-        "message": "'scale-100-lbl' is 2.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "message": "'scale-100-lbl' is 2.3 px tall at 320 px wide; aim for at least 10 px (font size 60+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
         "thumbnail_size": 2.33,
-        "action": "fix"
+        "action": "informational"
       },
       {
         "check": "legibility",
-        "severity": "warning",
+        "severity": "info",
         "layers": [
           "scale-200-lbl"
         ],
-        "message": "'scale-200-lbl' is 2.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "message": "'scale-200-lbl' is 2.3 px tall at 320 px wide; aim for at least 10 px (font size 60+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
         "thumbnail_size": 2.33,
-        "action": "fix"
+        "action": "informational"
       },
       {
         "check": "legibility",
-        "severity": "warning",
+        "severity": "info",
         "layers": [
           "scale-300-lbl"
         ],
-        "message": "'scale-300-lbl' is 2.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "message": "'scale-300-lbl' is 2.3 px tall at 320 px wide; aim for at least 10 px (font size 60+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
         "thumbnail_size": 2.33,
-        "action": "fix"
+        "action": "informational"
       },
       {
         "check": "legibility",
-        "severity": "warning",
+        "severity": "info",
         "layers": [
           "scale-400-lbl"
         ],
-        "message": "'scale-400-lbl' is 2.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "message": "'scale-400-lbl' is 2.3 px tall at 320 px wide; aim for at least 10 px (font size 60+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
         "thumbnail_size": 2.33,
-        "action": "fix"
+        "action": "informational"
       },
       {
         "check": "legibility",
-        "severity": "warning",
+        "severity": "info",
         "layers": [
           "scale-500-lbl"
         ],
-        "message": "'scale-500-lbl' is 2.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "message": "'scale-500-lbl' is 2.3 px tall at 320 px wide; aim for at least 10 px (font size 60+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
         "thumbnail_size": 2.33,
-        "action": "fix"
+        "action": "informational"
       },
       {
         "check": "legibility",
-        "severity": "warning",
+        "severity": "info",
         "layers": [
           "scale-600-lbl"
         ],
-        "message": "'scale-600-lbl' is 2.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "message": "'scale-600-lbl' is 2.3 px tall at 320 px wide; aim for at least 10 px (font size 60+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
         "thumbnail_size": 2.33,
-        "action": "fix"
+        "action": "informational"
       },
       {
         "check": "legibility",
-        "severity": "warning",
+        "severity": "info",
         "layers": [
           "scale-700-lbl"
         ],
-        "message": "'scale-700-lbl' is 2.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "message": "'scale-700-lbl' is 2.3 px tall at 320 px wide; aim for at least 10 px (font size 60+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
         "thumbnail_size": 2.33,
-        "action": "fix"
+        "action": "informational"
       },
       {
         "check": "legibility",
-        "severity": "warning",
+        "severity": "info",
         "layers": [
           "scale-800-lbl"
         ],
-        "message": "'scale-800-lbl' is 2.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "message": "'scale-800-lbl' is 2.3 px tall at 320 px wide; aim for at least 10 px (font size 60+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
         "thumbnail_size": 2.33,
-        "action": "fix"
+        "action": "informational"
       },
       {
         "check": "legibility",
-        "severity": "warning",
+        "severity": "info",
         "layers": [
           "scale-900-lbl"
         ],
-        "message": "'scale-900-lbl' is 2.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "message": "'scale-900-lbl' is 2.3 px tall at 320 px wide; aim for at least 10 px (font size 60+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
         "thumbnail_size": 2.33,
-        "action": "fix"
+        "action": "informational"
       },
       {
         "check": "legibility",
-        "severity": "warning",
+        "severity": "info",
         "layers": [
           "scale-950-lbl"
         ],
-        "message": "'scale-950-lbl' is 2.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "message": "'scale-950-lbl' is 2.3 px tall at 320 px wide; aim for at least 10 px (font size 60+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
         "thumbnail_size": 2.33,
-        "action": "fix"
+        "action": "informational"
       },
       {
         "check": "legibility",
-        "severity": "warning",
+        "severity": "info",
         "layers": [
           "lbl-type"
         ],
-        "message": "'lbl-type' is 2.7 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "message": "'lbl-type' is 2.7 px tall at 320 px wide; aim for at least 10 px (font size 60+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
         "thumbnail_size": 2.67,
-        "action": "fix"
+        "action": "informational"
       },
       {
         "check": "legibility",
-        "severity": "warning",
+        "severity": "info",
         "layers": [
           "spec-head-name"
         ],
-        "message": "'spec-head-name' is 6.7 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "message": "'spec-head-name' is 6.7 px tall at 320 px wide; aim for at least 10 px (font size 60+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
         "thumbnail_size": 6.67,
-        "action": "fix"
+        "action": "informational"
       },
       {
         "check": "legibility",
-        "severity": "warning",
+        "severity": "info",
         "layers": [
           "spec-head-use"
         ],
-        "message": "'spec-head-use' is 4.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "message": "'spec-head-use' is 4.3 px tall at 320 px wide; aim for at least 10 px (font size 60+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
         "thumbnail_size": 4.33,
-        "action": "fix"
+        "action": "informational"
       },
       {
         "check": "legibility",
-        "severity": "warning",
+        "severity": "info",
         "layers": [
           "spec-body-name"
         ],
-        "message": "'spec-body-name' is 3.0 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "message": "'spec-body-name' is 3.0 px tall at 320 px wide; aim for at least 10 px (font size 60+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
         "thumbnail_size": 3.0,
-        "action": "fix"
+        "action": "informational"
       },
       {
         "check": "legibility",
-        "severity": "warning",
+        "severity": "info",
         "layers": [
           "spec-body"
         ],
-        "message": "'spec-body' is 3.3 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "message": "'spec-body' is 3.3 px tall at 320 px wide; aim for at least 10 px (font size 60+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
         "thumbnail_size": 3.33,
-        "action": "fix"
+        "action": "informational"
       },
       {
         "check": "legibility",
-        "severity": "warning",
+        "severity": "info",
         "layers": [
           "lbl-apps"
         ],
-        "message": "'lbl-apps' is 2.7 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "message": "'lbl-apps' is 2.7 px tall at 320 px wide; aim for at least 10 px (font size 60+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
         "thumbnail_size": 2.67,
-        "action": "fix"
+        "action": "informational"
       },
       {
         "check": "legibility",
-        "severity": "warning",
+        "severity": "info",
         "layers": [
           "fav-caption"
         ],
-        "message": "'fav-caption' is 2.2 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "message": "'fav-caption' is 2.2 px tall at 320 px wide; aim for at least 10 px (font size 60+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
         "thumbnail_size": 2.17,
-        "action": "fix"
+        "action": "informational"
       },
       {
         "check": "legibility",
-        "severity": "warning",
+        "severity": "info",
         "layers": [
           "cap-cards"
         ],
-        "message": "'cap-cards' is 2.5 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "message": "'cap-cards' is 2.5 px tall at 320 px wide; aim for at least 10 px (font size 60+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
         "thumbnail_size": 2.5,
-        "action": "fix"
+        "action": "informational"
       },
       {
         "check": "legibility",
-        "severity": "warning",
+        "severity": "info",
         "layers": [
           "cap-icon"
         ],
-        "message": "'cap-icon' is 2.5 px tall at 320 px wide; aim for at least 10 px (font size 60+)",
+        "message": "'cap-icon' is 2.5 px tall at 320 px wide; aim for at least 10 px (font size 60+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
         "thumbnail_size": 2.5,
-        "action": "fix"
+        "action": "informational"
       }
     ],
     "checked": {
@@ -1022,7 +1803,8 @@
         "diagram",
         "flow"
       ],
-      "layers": 82,
+      "layers_checked": 82,
+      "layers_total": 83,
       "text_layers": 49
     }
   },
@@ -1041,7 +1823,8 @@
       "checks": [
         "print"
       ],
-      "layers": 11,
+      "layers_checked": 11,
+      "layers_total": 12,
       "text_layers": 4
     }
   },
@@ -1060,7 +1843,8 @@
       "checks": [
         "print"
       ],
-      "layers": 38,
+      "layers_checked": 38,
+      "layers_total": 40,
       "text_layers": 2
     }
   }
