@@ -15,7 +15,6 @@ Messages name rows and columns, never cell values.
 """
 
 import difflib
-import json
 import math
 from pathlib import Path
 import re
@@ -505,9 +504,11 @@ class Preflight:
 # Building the sheet document
 
 
-def build_sheet(session, plan, items, source, revision, size, page, artboard):
+def build_sheet(session, plan, items, source, revision, size, page, artboard, path=None):
     """The sheet document in memory: one page per sheet, a ``link`` layer per copy, marks and slug text.
-    ``items`` is [(row number, copy number, variables)]."""
+    ``items`` is [(row number, copy number, variables)]. With ``path`` (where the sheet document will be saved)
+    the cells store the template relative to that folder when it lies inside it."""
+    from .links import stored_source
     from .pages import empty_content, put_content, set_builtins
     from .pages import MAX_PAGES as PAGE_LIMIT
     from .project import Project
@@ -519,6 +520,9 @@ def build_sheet(session, plan, items, source, revision, size, page, artboard):
             f"{min(MAX_PAGES, PAGE_LIMIT)} are supported", "resource_limit", field="rows")
     project = Project(plan["page"][0], plan["page"][1], spec["background"], limits=session.limits)
     project._workspace = session.workspace
+    if path is not None:
+        project.path = Path(path).resolve()
+    cell_source = stored_source(project, session.resolve(source))
     canvas = project.state["canvas"]
     canvas["dpi"] = plan["dpi"]
     canvas["physical"] = {"width": plan["page_unit"][0], "height": plan["page_unit"][1], "unit": plan["unit"], "bleed": 0}
@@ -535,7 +539,7 @@ def build_sheet(session, plan, items, source, revision, size, page, artboard):
         for col, row, (number, copy, variables) in entries:
             _, _, box, crop = cell_geometry(plan, col, row, occupied)
             layer = new_layer(f"row-{number}" if copy == 1 else f"row-{number}-copy-{copy}", "link", box[2], box[3],
-                              source=source, fit="stretch", crop=[int(v) if float(v).is_integer() else round(v, 6) for v in crop],
+                              source=cell_source, fit="stretch", crop=[int(v) if float(v).is_integer() else round(v, 6) for v in crop],
                               variables=dict(variables), source_hash=revision, source_size=list(size))
             layer["x"], layer["y"] = box[0], box[1]
             if page is not None:
@@ -651,7 +655,8 @@ def run(session, template, request):
                         "written (skip_invalid writes the valid rows)", report=report)
     require(valid, "No valid rows to write", "merge_invalid", report=report)
     require(len(expanded) <= MAX_ITEMS, f"At most {MAX_ITEMS} copies per merge", "resource_limit", field="copies")
-    sheet = build_sheet(session, plan, expanded, source, check.revision, check.size, request.get("page"), request.get("artboard"))
+    sheet = build_sheet(session, plan, expanded, source, check.revision, check.size, request.get("page"), request.get("artboard"),
+                        outputs.get("sheet_document"))
     sheet.state["merge"] = _record(request, source, data_source, plan)
     check_state(sheet, sheet.state)
     sheet.nodes, sheet.head, sheet._head_state, sheet.branches = {}, None, None, {}

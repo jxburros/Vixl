@@ -45,8 +45,9 @@ Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/mai
    `link` layers. Run it with `dry_run` first: the report names missing/unknown columns, overflowing text, tofu glyphs and the
    grid. `{"rerun": "sheet.vixl"}` repeats it after the data changes. See `docs/imposition.md`.
 12. Linked documents: a `link` layer shows another `.vixl` live (`fit`, `position`, `crop`, `artboard`, `source_page`,
-   `variables`); `vixl_workflow("links", {})` reports ok/stale/missing, `link-refresh` records the seen revision,
-   `link-embed` freezes it. Use it instead of exporting a PNG and importing it into a derived design. See
+   `variables`); `vixl_workflow("links", {})` reports ok/stale/missing with each resolved `path`, `link-refresh`
+   records the seen revision, `links-relink {from, to}` follows moved sources, `link-embed` freezes it. Keep sources
+   beside the document so the folder can be copied (`check` notes sources outside it). Use it instead of exporting a PNG and importing it into a derived design. See
    `docs/linked-documents.md`.
 
 MCP paths must remain inside the workspace. REST exposes check/act/plan/film-plan for

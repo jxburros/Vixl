@@ -143,6 +143,7 @@ SUMMARIES = {
     "edit-layers": "Apply a change or operation to every layer matching a selector (role, name, kind, tag, text) in one call.",
     "frames-edit": "Apply a list of operations to every saved frame, a named animation's frames or chosen frames, atomically.",
     "link": "Draw another .vixl document live as a layer (fit, position, crop, artboard, page, variables), or change a link.",
+    "links-relink": "Rewrite the start of every link source in the document (a moved file or folder) and record the new revisions.",
     "link-refresh": "Record the current revision of linked documents so stale links are reported only when the source changes.",
     "link-embed": "Freeze a linked document into an ordinary raster layer that no longer follows its source.",
     "chart": "Draw a data-bound chart (bars, lines, areas, pie, donut) as vector layers, or restyle one with target.",
@@ -345,6 +346,8 @@ OVERRIDES = {
                   "delete_frames": "With unlink or delete: remove the frame layers too, not just the link.",
                   "match": "style: the words of the story to style (see occurrence).",
                   "occurrence": "style: which match to style, a 1-based number or 'all' (default)."},
+    "links-relink": {"from": "The source prefix to replace: a whole source path or a folder (whole path segments).",
+                     "to": "Its replacement; every rewritten source must name an existing .vixl file."},
     "link": {"source": "Workspace path of the .vixl document to draw (a link with a target: the new source).",
              "position": "Where the document sits in the box when it does not fill it: an anchor name (center, top-left …) "
                          "or [x, y] fractions 0-1.",
