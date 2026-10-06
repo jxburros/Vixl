@@ -16,6 +16,7 @@ TOPICS = {
         "cut-paper viseme",
         ["looping-motion", "natural-motion", "character-rigging", "motion", "cut-paper", "audio-composition"],
     ),
+    "shapes": ("shape shapes heart bubble badge star content", []),
     "film": ("film video audio caption", ["film-review", "audio-composition"]),
     "layout": (
         "layout container template stack fit align distribute spatial grid snap guide comic",
@@ -73,9 +74,21 @@ def lookup(topic=None, *, fields=False):
         for name, spec in catalog.items()
         if relevant(name)
     }
+    extra = {}
+    if "shapes" in chosen:
+        from .shape_catalog import SHAPE_PARAMETERS
+
+        extra["shape_parameters"] = {kind: list(keys) for kind, keys in SHAPE_PARAMETERS.items()}
+        extra["content_boxes"] = (
+            "inspect reports content_bounds (canvas space) for shapes whose usable inner area is smaller than "
+            "their box: a speech bubble's body, a badge or star centre, a ring/frame opening, a device screen. "
+            "Centre text there with text within=SHAPE, place within=SHAPE (anchor, margin) or align "
+            "relative_to=SHAPE box=content."
+        )
     return {
         "topic": topic,
         "topics": chosen,
+        **extra,
         "operations": operations,
         "workflows": {name: spec["summary"] for name, spec in workflows.items() if relevant(name)},
         "guidance": list(dict.fromkeys(name for topic in chosen for name in TOPICS[topic][1])),

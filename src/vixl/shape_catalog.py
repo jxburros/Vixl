@@ -5,6 +5,7 @@ Compound outlines use opposite winding for holes and remain editable shape recip
 """
 
 import math
+from functools import lru_cache
 
 from .errors import require
 
@@ -52,7 +53,71 @@ PARAMETERS = (
     "smooth",
     "seed",
     "radius",
+    "cleft",
+    "tip",
+    "body",
+    "pointer_side",
+    "slant",
 )
+# Parameters each shape reads, for discovery (vixl_capabilities) and the ignored-field advisory. The shared
+# lengths (thickness, depth ...) mean the same thing everywhere; the per-shape defaults are in path().
+SHAPE_PARAMETERS = {
+    "heart": ("apex", "cleft", "tip"),
+    "speech-bubble": ("body", "pointer_side", "pointer_position", "pointer_size"),
+    "shield": ("depth",),
+    "chevron": ("thickness", "point_radius"),
+    "trapezoid": ("slant", "point_radius"),
+    "parallelogram": ("slant", "point_radius"),
+    "triangle": ("apex", "point_radius"),
+    "isosceles-triangle": ("apex",),
+    "kite": ("apex",),
+    "rhombus": ("angle",),
+    "tag": ("depth", "hole"),
+    "callout": ("pointer_position", "pointer_size"),
+    "arrow": ("head_length", "head_width", "shaft_width", "heads", "head_style", "curve", "from", "to", "control",
+              "point_radius"),
+    "cross": ("thickness",),
+    "plus": ("thickness",),
+    "minus": ("thickness",),
+    "star": ("sides", "inner_radius", "point_radius", "valley_radius", "rotation_offset", "corner_style"),
+    "polygon": ("sides", "point_radius", "rotation_offset", "corner_style"),
+    "burst": ("count", "inner_radius", "point_radius", "valley_radius", "rotation_offset"),
+    "starburst": ("count", "inner_radius", "point_radius", "valley_radius", "rotation_offset"),
+    "seal": ("count", "inner_radius", "rotation_offset"),
+    "flower": ("petals", "inner_radius", "rotation_offset"),
+    "sparkle": ("arms", "inner_radius", "rotation_offset"),
+    "sunburst": ("count", "inner_radius", "taper"),
+    "sun": ("count", "ray_length", "thickness"),
+    "ring": ("thickness", "frame_shape", "sides"),
+    "donut": ("thickness", "frame_shape", "sides"),
+    "frame": ("thickness", "frame_shape", "radius", "sides"),
+    "phone-frame": ("thickness", "radius"),
+    "tablet-frame": ("thickness", "radius"),
+    "browser-window": ("thickness", "radius"),
+    "rounded-rectangle": ("radius", "corner_style"),
+    "gear": ("teeth", "depth", "hole"),
+    "cog": ("teeth", "depth", "hole"),
+    "cloud": ("depth",),
+    "crescent": ("depth",),
+    "moon": ("depth",),
+    "lens": ("depth",),
+    "banner": ("fold",),
+    "ribbon": ("fold",),
+    "ticket": ("notch",),
+    "notched-rectangle": ("notch",),
+    "stamp": ("count", "depth"),
+    "postmark": ("count", "depth"),
+    "sticker": ("peel",),
+    "squircle": ("exponent",),
+    "superellipse": ("exponent",),
+    "star-polygon": ("sides", "step"),
+    "cylinder": ("depth",),
+    "cube": ("depth",),
+    "star-rating": ("count", "rating"),
+}
+# New per-shape parameters: a shape that does not read one of these ignores it (reported as an advisory).
+SHAPE_ONLY = ("cleft", "tip", "body", "pointer_side", "slant")
+POINTER_SIDES = ("bottom", "top", "left", "right")
 
 
 def length(value, base, default=0):
@@ -581,10 +646,11 @@ def path(layer):
     if k in ("tag", "ticket", "notched-rectangle", "stamp", "postmark", "sticker", "confetti"):
         if k == "tag":
             hole = length(p.get("hole"), mn, mn * 0.13)
+            point = tag_point(p, w)
             return (
-                normalized([(0.22, 0), (1, 0), (1, 1), (0.22, 1), (0, 0.5)])
+                poly([(point, 0), (w, 0), (w, h), (point, h), (0, h / 2)])
                 + " "
-                + ellipse(w * 0.15 - hole / 2, h / 2 - hole / 2, hole, hole, True)
+                + ellipse(point * 0.15 / 0.22 - hole / 2, h / 2 - hole / 2, hole, hole, True)
             )
         if k == "sticker":
             peel = length(p.get("peel"), mn, mn * 0.25)
@@ -827,6 +893,8 @@ def path(layer):
             a = q * math.tau * p.get("count", 2)
             pts.append((q, 0.5 + 0.4 * math.sin(a) * (1 - q * 0.6)))
         return line(pts, max(1, t / 3))
+    if k in PARAMETRIC_SHORTCUTS:
+        return PARAMETRIC_SHORTCUTS[k](p, w, h)
     from .geometry import SHORTCUTS, parse_path
     from .pathfinder_geometry import path_data
 
@@ -840,6 +908,272 @@ def path(layer):
     if k in ("pentagon", "hexagon", "octagon"):
         return path({**p, "shape": "polygon", "sides": {"pentagon": 5, "hexagon": 6, "octagon": 8}[k]})
     raise ValueError(f"No parametric generator for {k}")
+
+
+def fraction(value, default, low=0.0, high=1.0):
+    return default if value is None else min(high, max(low, float(value)))
+
+
+def tag_point(p, w):
+    return min(w, max(0, length(p.get("depth"), w, w * 0.22)))
+
+
+def heart(p, w, h):
+    """The heart shortcut in pixels. Its defaults (apex 0.5, cleft 0.2, tip 0.95) reproduce the fixed outline:
+    ``apex`` moves the cleft and tip sideways (the lobes change size), ``cleft`` sets how far the top notch dips
+    and ``tip`` how far down the point reaches, both from the top of the box."""
+    ax = w * fraction(p.get("apex"), 0.5, 0.05, 0.95)
+    cleft = min(h, max(0, length(p.get("cleft"), h, h * 0.2)))
+    tip = min(h, max(h * 0.35, length(p.get("tip"), h, h * 0.95)))
+
+    def x(u):
+        return u / 50 * ax if u <= 50 else ax + (u - 50) / 50 * (w - ax)
+
+    def y(v):
+        return v * h / 100 if v <= 30 else h * 0.3 + (v - 30) / 65 * (tip - h * 0.3)
+
+    def pt(u, v):
+        return f"{x(u):.7g} {y(v):.7g}"
+
+    return (f"M{pt(50, 95)} C{pt(35, 80)} {pt(0, 55)} {pt(0, 30)} C{pt(0, 0)} {pt(35, -5)} {ax:.7g} {cleft:.7g} "
+            f"C{pt(65, -5)} {pt(100, 0)} {pt(100, 30)} C{pt(100, 55)} {pt(65, 80)} {pt(50, 95)} Z")
+
+
+def bubble_frame(p, w, h):
+    """Speech-bubble layout in an edge frame: (side, edge length, depth, body depth, tail tip, tail base, corner
+    radii along/across the edge). The tail sits on ``pointer_side``; ``pointer_position`` is its tip along that
+    side (0-1), ``pointer_size`` its base width and ``body`` the body's share of the depth (the rest is tail)."""
+    side = p.get("pointer_side", "bottom")
+    edge, depth = (w, h) if side in ("bottom", "top") else (h, w)
+    body = min(depth, max(1e-6, length(p.get("body"), depth, depth * 0.75)))
+    ru, rv = 0.1 * edge, 0.1 * depth
+    position = fraction(p.get("pointer_position"), 0.2)
+    size = min(edge - 2 * ru, max(0, length(p.get("pointer_size"), edge, edge * 0.25)))
+    tip = position * edge
+    # The base leans away from the nearer end: it runs from the tip toward the middle at 0.2 (the default)
+    # and below, is centred under a tip at 0.5, and runs back from the tip at 0.8 and above.
+    lean = min(1, max(0, (position - 0.2) / 0.6))
+    low = min(max(tip - size * lean, ru), edge - ru - size)
+    return side, edge, depth, body, tip, (low, low + size), (ru, rv)
+
+
+def speech_bubble(p, w, h):
+    side, edge, depth, body, tip, (low, high), (ru, rv) = bubble_frame(p, w, h)
+
+    def pt(u, v):
+        x, y = {"bottom": (u, v), "top": (u, h - v), "right": (v, u), "left": (w - v, u)}[side]
+        return f"{x:.7g} {y:.7g}"
+
+    return (f"M{pt(ru, 0)} L{pt(edge - ru, 0)} Q{pt(edge, 0)} {pt(edge, rv)} L{pt(edge, body - rv)} "
+            f"Q{pt(edge, body)} {pt(edge - ru, body)} L{pt(high, body)} L{pt(tip, depth)} L{pt(low, body)} "
+            f"L{pt(ru, body)} Q{pt(0, body)} {pt(0, body - rv)} L{pt(0, rv)} Q{pt(0, 0)} {pt(ru, 0)} Z")
+
+
+def shield(p, w, h):
+    depth = min(h, max(0, length(p.get("depth"), h, h * 0.55)))
+    shoulder, control = h - depth, h - depth + depth * 35 / 55
+    return (f"M0 0 L{w:.7g} 0 L{w:.7g} {shoulder:.7g} Q{w:.7g} {control:.7g} {w / 2:.7g} {h:.7g} "
+            f"Q0 {control:.7g} 0 {shoulder:.7g} Z")
+
+
+def _polygon_shortcut(points):
+    def build(p, w, h):
+        return rounded_polygon(points(p, w, h), length(p.get("point_radius"), min(w, h), 0))
+
+    return build
+
+
+def _chevron(p, w, h):
+    t = min(w, max(0, length(p.get("thickness"), w, w * 0.4)))
+    return [(0, 0), (t, 0), (w, h / 2), (t, h), (0, h), (w - t, h / 2)]
+
+
+def _slant(p, w, limit):
+    return min(limit, max(0, length(p.get("slant"), w, w * 0.25)))
+
+
+PARAMETRIC_SHORTCUTS = {
+    "heart": heart,
+    "speech-bubble": speech_bubble,
+    "shield": shield,
+    "chevron": _polygon_shortcut(_chevron),
+    "trapezoid": _polygon_shortcut(lambda p, w, h: [(_slant(p, w, w / 2), 0), (w - _slant(p, w, w / 2), 0), (w, h), (0, h)]),
+    "parallelogram": _polygon_shortcut(lambda p, w, h: [(_slant(p, w, w), 0), (w, 0), (w - _slant(p, w, w), h), (0, h)]),
+    "triangle": _polygon_shortcut(lambda p, w, h: [(w * fraction(p.get("apex"), 0.5), 0), (w, h), (0, h)]),
+}
+
+
+# Content boxes: the usable inner rectangle of a shape, in local layer pixels, for centring text in a badge,
+# a bubble's body or a device screen. Shapes listed in INSCRIBED get the largest axis-aligned rectangle
+# inside their filled outline; shapes with no inner area (lines, symbols, open paths) use the whole box.
+INSCRIBED = frozenset(
+    "heart shield cloud teardrop crescent moon lens vesica reuleaux quarter-circle semicircle half-circle "
+    "ellipse-segment kite rhombus isosceles-triangle triangle right-triangle diamond trapezoid parallelogram "
+    "arrow cross plus document folder house squircle superellipse trefoil quatrefoil blob flame map-pin "
+    "cylinder hexagram octagram star-polygon".split()
+)
+ROUNDED = ("rounded-rectangle", "capsule", "button", "confetti", "stop")
+RADIAL = ("star", "burst", "starburst", "sparkle", "seal", "flower", "polygon", "pentagon", "hexagon", "octagon")
+FRAMES = ("ring", "donut", "frame", "phone-frame", "tablet-frame", "browser-window", "scalloped-border")
+
+
+def _centered(w, h, fx, fy=None):
+    """A centred rectangle covering fractions ``fx`` × ``fy`` of the box."""
+    fy = fx if fy is None else fy
+    return (w * (1 - fx) / 2, h * (1 - fy) / 2, w * fx, h * fy)
+
+
+def _radial_box(p, k):
+    """Radius of the circle inside a radial shape, as a fraction of its outer radius."""
+    sides = {"pentagon": 5, "hexagon": 6, "octagon": 8}.get(k)
+    if k in ("polygon", "pentagon", "hexagon", "octagon"):
+        n = sides or int(p.get("sides", p.get("count", 6)))
+        return math.cos(math.pi / max(3, n))
+    n = int(p.get("sides", p.get("count", p.get("petals", p.get("arms", 4 if k == "sparkle" else 5 if k == "star" else 12
+                                                                     if k in ("burst", "starburst", "seal") else 6)))))
+    inner = p.get("inner_radius", 0.15 if k == "sparkle" else 0.75 if k in ("burst", "starburst", "seal", "flower") else 0.5)
+    return inner if k in ("seal", "flower") else inner * math.cos(math.pi / max(2, n))
+
+
+def content_box(layer):
+    """``(x, y, width, height)`` of a shape's usable inner area in local layer pixels (the whole box when the
+    shape has no distinct inner area)."""
+    k, w, h = layer.get("shape"), float(layer["width"]), float(layer["height"])
+    full = (0.0, 0.0, w, h)
+    if layer.get("type", "shape") != "shape" or w <= 0 or h <= 0:
+        return full
+    mn = min(w, h)
+    p = layer
+    if k == "ellipse":
+        return _centered(w, h, 1 / math.sqrt(2))
+    if k in ROUNDED:
+        default = mn / 2 if k == "capsule" else mn / 5
+        radius = p.get("radius", default if k != "stop" else 0)
+        raw = radius if isinstance(radius, (list, tuple)) else [radius]
+        r = min(mn / 2, max(length(v, mn) if isinstance(v, str) else float(v) for v in raw))
+        style = p.get("corner_style", "round")
+        inset = r * {"round": 1 - 1 / math.sqrt(2), "chamfer": 0.5}.get(style, 1 / math.sqrt(2))
+        return (inset, inset, w - 2 * inset, h - 2 * inset)
+    if k == "polygon" and int(p.get("sides", p.get("count", 6))) <= 4:
+        return inscribed(layer)
+    if k in RADIAL:
+        return _centered(w, h, max(0.0, _radial_box(p, k)) / math.sqrt(2))
+    if k == "sun":
+        return _centered(w, h, 0.5 / math.sqrt(2))
+    if k in FRAMES:
+        t = min(length(p.get("thickness"), mn, mn * 0.15), mn / 2 - 0.001)
+        shape = p.get("frame_shape", "ellipse" if k in ("ring", "donut") else "rectangle")
+        if shape == "ellipse":
+            x, y, iw, ih = _centered(w - 2 * t, h - 2 * t, 1 / math.sqrt(2))
+            return (t + x, t + y, iw, ih)
+        if shape == "polygon":
+            n = max(3, int(p.get("count", p.get("sides", 6))))
+            x, y, iw, ih = _centered(w - 2 * t, h - 2 * t, math.cos(math.pi / n) / math.sqrt(2))
+            return (t + x, t + y, iw, ih)
+        top = 2 * t if k == "browser-window" else t
+        return (t, top, w - 2 * t, h - t - top)
+    if k == "arc":
+        inner = p.get("inner_radius", 0)
+        sweep = p.get("end_angle", p.get("start_angle", 0) + 360) - p.get("start_angle", 0)
+        if inner > 0 and abs(sweep) >= 360:
+            return _centered(w, h, inner / math.sqrt(2))
+        return full
+    if k == "speech-bubble":
+        side, edge, depth, body, _, _, (ru, rv) = bubble_frame(p, w, h)
+        # Quadratic corners pass a quarter of the radius in from the corner on each axis.
+        u0, u1, v0, v1 = ru / 4, edge - ru / 4, rv / 4, max(rv / 4, body - rv / 4)
+        return {"bottom": (u0, v0, u1 - u0, v1 - v0), "top": (u0, h - v1, u1 - u0, v1 - v0),
+                "right": (v0, u0, v1 - v0, u1 - u0), "left": (w - v1, u0, v1 - v0, u1 - u0)}[side]
+    if k == "callout":
+        s = min(h, length(p.get("pointer_size"), mn, mn * 0.2))
+        return (0.0, 0.0, w, h - s)
+    if k == "tag":
+        point = tag_point(p, w)
+        return (point, 0.0, w - point, h)
+    if k in ("ticket", "notched-rectangle"):
+        notch = min(mn / 2, length(p.get("notch"), mn, mn * 0.15))
+        inset = notch / math.sqrt(2) if k == "ticket" else notch / 2
+        return (inset, inset, w - 2 * inset, h - 2 * inset)
+    if k in ("stamp", "postmark"):
+        d = length(p.get("depth"), mn, mn * 0.035)
+        return (d, d, w - 2 * d, h - 2 * d)
+    if k == "sticker":
+        peel = length(p.get("peel"), mn, mn * 0.25)
+        return (0.0, 0.0, w - peel / 2, h - peel / 2)
+    if k in ("banner", "ribbon"):
+        fold = length(p.get("fold"), w, w * 0.15)
+        return (fold, h * 0.18, w - 2 * fold, h * 0.64)
+    if k in INSCRIBED:
+        return inscribed(layer)
+    return full
+
+
+def inscribed(layer):
+    from .geometry import shape_path
+
+    w, h = float(layer["width"]), float(layer["height"])
+    try:
+        path, view = shape_path(layer)
+    except Exception:  # noqa: BLE001 - a shape without geometry has no inner area beyond its box
+        return (0.0, 0.0, w, h)
+    return _inscribed_path(path, float(view[0]), float(view[1]), w, h)
+
+
+@lru_cache(maxsize=512)
+def _inscribed_path(path, view_width, view_height, w, h):
+    from .geometry import path_polygons
+
+    sx, sy = w / view_width, h / view_height
+    polygons = [[(x * sx, y * sy) for x, y in polygon] for polygon in path_polygons(path)]
+    return _largest_rectangle(polygons, w, h)
+
+
+def _largest_rectangle(polygons, w, h, cells=64):
+    """The largest axis-aligned rectangle of grid samples inside ``polygons`` (nonzero
+    winding, so overlapping parts add and reversed holes cut). Ties go to the rectangle nearest the centre."""
+    import numpy as np
+
+    xs = (np.arange(cells) + 0.5) / cells * w
+    ys = (np.arange(cells) + 0.5) / cells * h
+    px, py = np.meshgrid(xs, ys)
+    px, py = px.ravel(), py.ravel()
+    winding = np.zeros(px.shape, dtype=int)
+    for polygon in polygons:
+        pts = np.asarray(polygon, dtype=float)
+        if len(pts) < 3:
+            continue
+        a, b = pts, np.roll(pts, -1, axis=0)
+        for start in range(0, len(a), 256):
+            x0, y0 = a[start:start + 256, 0][:, None], a[start:start + 256, 1][:, None]
+            x1, y1 = b[start:start + 256, 0][:, None], b[start:start + 256, 1][:, None]
+            cross = (x1 - x0) * (py - y0) - (px - x0) * (y1 - y0)
+            up = (y0 <= py) & (y1 > py) & (cross > 0)
+            down = (y0 > py) & (y1 <= py) & (cross < 0)
+            winding += up.sum(axis=0) - down.sum(axis=0)
+    inside = (winding != 0).reshape(cells, cells)
+    if not inside.any():
+        return (0.0, 0.0, w, h)
+    heights = np.zeros(cells, dtype=int)
+    best = None
+    centre = (cells - 1) / 2
+    for row in range(cells):
+        heights = np.where(inside[row], heights + 1, 0)
+        stack = []
+        for col in range(cells + 1):
+            current = int(heights[col]) if col < cells else 0
+            start = col
+            while stack and stack[-1][1] >= current:
+                start, height = stack.pop()
+                if height:
+                    area = height * (col - start)
+                    cx, cy = (start + col - 1) / 2, row - (height - 1) / 2
+                    key = (area, -((cx - centre) ** 2 + (cy - centre) ** 2))
+                    if best is None or key > best[0]:
+                        best = (key, start, col, row - height + 1, row + 1)
+            stack.append((start, current))
+    _, c0, c1, r0, r1 = best
+    # Span the outermost sample centres (all inside), not the cell edges, which can cross the outline.
+    return ((c0 + 0.5) / cells * w, (r0 + 0.5) / cells * h, (c1 - c0 - 1) / cells * w, (r1 - r0 - 1) / cells * h)
 
 
 def active(layer):
@@ -877,6 +1211,10 @@ def schema():
         "ray_length",
         "notch",
         "peel",
+        "cleft",
+        "tip",
+        "body",
+        "slant",
     ):
         props[key] = {
             **length_schema,
@@ -914,10 +1252,37 @@ def schema():
         "maximum": 32,
         "description": "Superellipse exponent (2 ellipse, 4 squircle).",
     }
+    for key, text in DESCRIPTIONS.items():
+        props[key] = {**props[key], "description": text}
+    props["pointer_side"] = {**enum(*POINTER_SIDES), "description": DESCRIPTIONS["pointer_side"]}
     for key, v in list(props.items()):
         if "description" not in v:
             props[key] = {**v, "description": "Shape-specific editable geometry setting."}
     return props
+
+
+LENGTH = "pixels, a fraction up to 1 or a percentage"
+DESCRIPTIONS = {
+    "apex": "Horizontal position of the top point as a fraction of the width (0-1, default 0.5): triangle and "
+            "isosceles-triangle apex, kite top point; heart: where the cleft and tip sit (below 0.5 the left lobe "
+            "is smaller).",
+    "cleft": f"heart: how far the top notch dips from the top edge ({LENGTH} of the height; default 0.2).",
+    "tip": f"heart: how far down the bottom point reaches from the top edge ({LENGTH} of the height; default 0.95).",
+    "body": f"speech-bubble: depth of the body measured from the side opposite the tail ({LENGTH} of the height, "
+            "or of the width for a left/right tail; default 0.75); the rest is the tail.",
+    "pointer_side": "speech-bubble: side the tail comes out of: bottom (default), top, left or right.",
+    "pointer_position": "Tail tip along its side as a fraction 0-1 (left to right, or top to bottom). "
+                        "speech-bubble default 0.2 (the tail base leans toward the middle; 0.5 centres it); "
+                        "callout default 0.3.",
+    "pointer_size": f"Tail base width ({LENGTH} of the side): speech-bubble default 0.25, callout default 0.2 of the "
+                    "shorter edge.",
+    "slant": f"trapezoid: inset of each top corner; parallelogram: horizontal offset of the top edge ({LENGTH} of "
+             "the width; default 0.25).",
+    "depth": f"Depth of the shape's main feature ({LENGTH}): shield point (default 0.55 of the height), tag point "
+             "(0.22 of the width), cloud/crescent/lens curvature, gear tooth depth, stamp edge, cylinder/cube depth.",
+    "thickness": f"Band or stroke thickness ({LENGTH}): ring/frame band, plus/cross/minus arms, chevron band "
+                 "(default 0.4 of the width), line symbols.",
+}
 
 
 def validate(layer):
@@ -937,6 +1302,8 @@ def validate(layer):
         )
     require(layer.get("corner_style", "round") in ("round", "chamfer", "inverted"), "Invalid corner style")
     require(0.2 <= layer.get("exponent", 4) <= 32, "exponent must be 0.2–32")
+    require(layer.get("pointer_side", "bottom") in POINTER_SIDES,
+            f"pointer_side must be {', '.join(POINTER_SIDES)}", field="pointer_side")
     if layer.get("shape") == "reuleaux":
         count = layer.get("sides", layer.get("count", 3))
         require(

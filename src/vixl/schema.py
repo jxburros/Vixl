@@ -146,6 +146,9 @@ def _operation_schema():
             "font": FONT,
             "x": COORD,
             "y": COORD,
+            "within": field(S, "A layer to centre the text in instead of x/y: the middle of its content box (a "
+                            "speech bubble's body, a badge, a frame's opening; see content_bounds in inspect). "
+                            "Use place with within for other anchors or a margin."),
         },
         anyOf=[{"required": ["text"]}, {"required": ["target"]}],
     )
@@ -235,6 +238,10 @@ def _operation_schema():
             ),
             "margin": N,
             "relative_to": S,
+            "box": field(enum("bounds", "content"),
+                         "With relative_to a layer: bounds (default) aligns to its whole box; content aligns to its "
+                         "usable inner area (a speech bubble's body, a badge's centre, a frame's opening, a device "
+                         "screen), reported as content_bounds by inspect."),
             "targets": {"type": "array", "items": S, "minItems": 1, "uniqueItems": True},
         },
         ["alignment"],

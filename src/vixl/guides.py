@@ -570,6 +570,11 @@ def execute_place(project, op):
     targets = op.get("targets") or [op.get("target") or project.state["active_layer"]]
     require(all(targets), "place needs target or targets", field="target")
     require(len(targets) <= 512, "place moves at most 512 layers", field="targets")
+    if "within" in op:
+        require("guide" not in op, "place takes guide or within, not both", field="within")
+        for target in targets:
+            place_within(project, target, op["within"], op.get("box", "content"), op.get("anchor"), op.get("margin", 0))
+        return
     guide = _guide(project, op.get("guide"))
     canvas = project.state["canvas"]
     fraction = _anchor(op.get("anchor"))
@@ -623,6 +628,24 @@ def execute_place(project, op):
         elif orient == "upright":
             rotation = turn
         move_anchor_to(project, target, fraction, point, rotation)
+
+
+def place_within(project, target, container, box="content", anchor=None, margin=0):
+    """Move ``target`` so its ``anchor`` point lands on the same point of ``container``'s content box (or
+    whole box), inset by ``margin``: centre text in a bubble's body or pin a label to a badge's corner."""
+    from .spatial import canvas_boxes
+
+    require(box in ("bounds", "content"), "box must be bounds or content", field="box")
+    other = project.layer(container)
+    layer = project.layer(target)
+    require(other["id"] != layer["id"], "within must name another layer", field="within")
+    content = {}
+    boxes = canvas_boxes(project, content=content if box == "content" else None)
+    x, y, w, h = content.get(other["id"], boxes[other["id"]])
+    margin = finite(margin, "margin", 0, 1e6)
+    x, y, w, h = x + margin, y + margin, max(0.0, w - 2 * margin), max(0.0, h - 2 * margin)
+    fraction = _anchor(anchor)
+    move_anchor_to(project, layer["id"], fraction, np.array([x + fraction[0] * w, y + fraction[1] * h]))
 
 
 def execute_snap(project, op):
@@ -687,7 +710,15 @@ def schemas(add):
     anchor = {"anyOf": [{"enum": list(ANCHORS)}, point]}
     add("place", {"targets": refs, "guide": S, "with": S, "index": {"type": "integer", "minimum": 0}, "at": N, "start": N,
                   "end": N, "spacing": N, "angle": N, "anchor": anchor, "orient": {"enum": ["none", "tangent", "normal", "radial", "upright"]},
-                  "rotate": N, "offset": N}, ["guide"])
+                  "rotate": N, "offset": N,
+                  "within": {**S, "description": "Instead of a guide: a layer to place inside. Each target's anchor "
+                             "(default center) lands on the same point of that layer's content box, so text centres "
+                             "in a speech bubble's body, a badge or a device screen."},
+                  "box": {"enum": ["content", "bounds"], "description": "within: content (default) uses the layer's "
+                          "usable inner area (content_bounds in inspect); bounds uses its whole box."},
+                  "margin": {**N, "minimum": 0, "description": "within: inset from the box edges in pixels, for "
+                             "corner and edge anchors."}},
+        anyOf=[{"required": ["guide"]}, {"required": ["within"]}])
     add("snap", {"targets": refs, "guides": {"type": "array", "items": S, "maxItems": 1024}, "tolerance": N,
                  "angle_tolerance": N, "angles": B, "intersections": B,
                  "anchors": {"type": "array", "items": {"enum": list(ANCHORS)}, "minItems": 1}})

@@ -50,9 +50,14 @@ def ignored_fields(candidate, op):
                 return found
         from .normalize import SHAPE_TYPES
 
+        stored = shape
         shape = SHAPE_TYPES.get(shape, (shape,))[0] if isinstance(shape, str) else shape  # donut → arc, pill → ...
-        from .shape_catalog import KINDS
+        from .shape_catalog import KINDS, SHAPE_ONLY, SHAPE_PARAMETERS
 
+        for key in SHAPE_ONLY:
+            if key in op and key not in SHAPE_PARAMETERS.get(stored, ()):
+                readers = sorted(kind for kind, keys in SHAPE_PARAMETERS.items() if key in keys)
+                found.append(f"shape {name}: {key} only shapes {_names(readers)}, not {stored!r}")
         if shape in KINDS:  # catalog shapes read their own parameters (burst/seal inner_radius, sides, radius ...)
             return found
         if "radius" in op and shape not in ("rounded-rectangle", "capsule"):
