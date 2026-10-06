@@ -29,6 +29,10 @@ project with appropriate layers or input files. See each guide for complete crea
 | Polar grid | `grid dial --kind polar --rings 3 --spokes 12` | [Guides and grids](guides.md) |
 | Workflow contract | `workflow schema` | [Production](production.md), [studio](studio.md) |
 | Lyric video | `workflow lyric-video-export --request request.json --workspace .` | [Lyric videos](lyric-video.md) |
+| Whole piece in one call | `compose --request req.json [--preview p.png] [--workspace DIR]` | [Interfaces](interfaces.md#build-a-piece-in-one-call) |
+| Pixel diff of two files | `diff before.vixl after.png [--out diff.png] [--mode diff\|side-by-side] [--threshold 8] [--max-fraction F] [--overwrite]` | [CI](ci.md#the-same-checks-locally) |
+| Proof page | `workflow proof --request proof.json --workspace .` | [Proof pages](production.md#proof-pages) |
+| Logo package | `workflow logo-package --request logo.json --workspace .` | [Logo packages](production.md#logo-packages) |
 
 Since 0.19.0, `export --alpha auto|keep|flatten` controls supported image formats.
 See [exporting](exporting.md#image-output-and-alpha) and the

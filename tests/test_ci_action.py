@@ -34,7 +34,7 @@ def test_ci_script_checks_diffs_against_base_summarizes_and_fails_on_level(tmp_p
     bad.save(tmp_path / "designs" / "bad.vixl")
     summary = tmp_path / "summary.md"
     env = {**os.environ, "GITHUB_STEP_SUMMARY": str(summary)}
-    command = [sys.executable, str(ROOT / "scripts" / "vixl_ci.py"), "--paths", "designs/*.vixl", "--base", "HEAD",
+    command = [sys.executable, str(ROOT / "scripts" / "check_documents.py"), "--paths", "designs/*.vixl", "--base", "HEAD",
                "--proof", ".vixl-ci/proof.html"]
     done = subprocess.run(command, cwd=tmp_path, env=env, capture_output=True, text=True, timeout=300)
     text = summary.read_text(encoding="utf-8")
@@ -52,5 +52,5 @@ def test_action_declares_its_inputs_and_runs_the_script():
     text = (ROOT / "action.yml").read_text(encoding="utf-8")
     for name in ("paths", "checks", "suite", "fail-on", "vixl-version", "compare-base", "proof"):
         assert f"\n  {name}:\n" in text
-    assert "using: composite" in text and "scripts/vixl_ci.py" in text and "GITHUB_STEP_SUMMARY" not in text.split("runs:")[0]
+    assert "using: composite" in text and "scripts/check_documents.py" in text and "GITHUB_STEP_SUMMARY" not in text.split("runs:")[0]
     assert 'vixl-engine[pdf]==$VIXL_VERSION' in text

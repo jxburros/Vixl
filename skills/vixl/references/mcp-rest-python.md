@@ -51,6 +51,7 @@ result (`"replayed": true`) instead of applying twice.
 | `vixl_import_image` | `path` **or** `data_base64` (base64 or `data:` URL), `name="image"` | New layer; returns `{id, name, width, height, bounds, asset}` (≤64 MiB) |
 | `vixl_export_file` | **`path`**, `quality` (default 90 for raster formats; PDF images stay lossless unless given, then JPEG-compresses PDF images when given), `title` (PDF title), `max_bytes` (warn when a raster file is larger), `scale=1` (0.01–16), `profile`, `variables`, `background="white"`, `overwrite=False`, `sampling="smooth"\|"nearest"`, `artboard`, `comp` | Writes PNG/JPEG/WEBP/TIFF/AVIF (by extension); returns `{path, format, bytes}` |
 | `vixl_export_batch` | **`targets`** (1–64 of `{path, document?, overwrite?, …any export option}`), `defaults`, `overwrite=False`, `stop_on_error=False` | Several sizes/formats/artboards/documents in one call. Everything is validated before the first file is written; each target reports `{path, format, bytes, document}` or its own `error` |
+| `vixl_compose` | `path`, `size` or `width`/`height`, `background`, `dpi`, `orientation`, `bleed`, `seed`, `font_pairing`, `layout` ({name, …slots}), `style`, `look` ({look, target?, …} or a list), `operations` or `operations_path`, `check=True`, `strict=False`, `preview`, `exports` (paths or export targets), `overwrite`, `dry_run`, `request_id`, `as_job` | A whole new piece in one atomic call: create → fonts → layout → style → look → operations → check → preview → save → exports. Nothing is saved or exported unless every step succeeds; errors keep the normal schema plus `step`. Returns `steps`, per-step summaries (layout seed/blanks/notes), `check`, `document`, `exports` and the preview image. In the core and compact toolsets |
 | `vixl_adapt_layout` | **`sizes`** (1–16: named size, `"1080x1920"` or `{size\|width+height, orientation, dpi, bleed, name}`), `directory`, `name="{name}-{size}"`, `options` (`scale`, `anchors`, `where`, `text`), `formats` (e.g. `["png"]`), `overwrite`, `report="summary"\|"layers"` | One call, a whole campaign: each size is a saved copy re-laid out by `adapt-layout` (optionally exported); the source is untouched; per size: file, canvas, scale, layers moved, warnings |
 | `vixl_job` | `action="status"\|"result"\|"cancel"\|"list"`, `id`, `wait` (≤50 s) | Follow a long call or durable workflow job; see Long calls above. The compact tool set polls through `vixl_workflow` (`action: "status"`, `request: {id}`) |
 
@@ -184,6 +185,7 @@ Non-loopback hosts require a bearer token from `VIXL_API_TOKEN` (or `--token-env
 | `POST /validate` | `{"profile":…,"rules":[…]}` | Checks |
 | `POST /check` | same keys as `vixl_check` | Design issues |
 | `POST /preview` | `{"max_width":…,"max_height":…,"max_bytes":…,"region":[…]}` | PNG |
+| `POST /compose` | vixl_compose fields without `path`, `exports` or `operations_path` | Dry run: steps, check findings, `preview_base64` (the server serves one fixed document, so nothing is saved) |
 | `POST /compare` | `{"before":"previous","after":"head","mode":"side-by-side"}` | Summary + `image_base64` |
 | `GET /pixels/{target}` | | Pixel rows/palette |
 | `GET /animation` · `GET /animation/frame/{name}?scale=1` | | Frame list + named animations · PNG |
@@ -236,6 +238,14 @@ p.export_animation("walk.gif", animation="walk", scale=8)    # one named animati
 p.export_screens("screens", scales=(1, 2))
 p.render_data("rows.csv", "campaign")
 p.manifest()
+
+from vixl.compose import run    # vixl_compose: a new piece in one atomic call, inside a workspace folder
+run("work", path="card.vixl", size="instagram-post", layout={"name": "hero-statement", "title": "Hi"},
+    exports=["card.png"], preview=True)   # result dict; preview PNG bytes under "preview_png"
+from vixl.image_diff import diff_files   # vixl diff
+diff_files("before.png", "after.vixl", "diff.png")     # changed_pixels, changed_fraction, changed_region
+from vixl.proof import proof_page        # workflow proof
+proof_page(["card.vixl", {"path": "card.png", "before": "old.png"}], "proof.html", decisions=True)
 
 try:
     p.apply({"type": "move", "target": "nope", "x": 1})

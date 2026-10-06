@@ -67,7 +67,7 @@ runs:
         VIXL_PROOF: ${{ inputs.proof == 'true' && '.vixl-ci/proof.html' || '' }}
       run: |
         set +e
-        python "${{ github.action_path }}/scripts/vixl_ci.py" --paths "$VIXL_PATHS" --checks "$VIXL_CHECKS" \
+        python "${{ github.action_path }}/scripts/check_documents.py" --paths "$VIXL_PATHS" --checks "$VIXL_CHECKS" \
           --suite "$VIXL_SUITE" --fail-on "$VIXL_FAIL_ON" --base "$VIXL_BASE" --proof "$VIXL_PROOF" \
           --work .vixl-ci > .vixl-ci-summary.md
         status=$?

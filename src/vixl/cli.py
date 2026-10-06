@@ -87,9 +87,10 @@ Effects:   brightness, contrast, saturation, hue, exposure, gamma, temperature,
 Layout:    canvas resize SIZE, canvas size NAME [--landscape] [--bleed], canvas dpi N, constrain, unconstrain,
            variable set NAME VALUE
 History:   undo [N], redo [N], history, checkpoint NAME, branch NAME,
-           checkout REF, branches, compare REF REF --out FILE
+           checkout REF, branches, compare REF REF --out FILE, diff A B [--out D.png] (two documents or images)
 Automate:  apply FILE|- [--dry-run] [--check [CHECK…]] [--preview PNG], run SCRIPT, batch GLOB --run SCRIPT --output DIR,
-           workflow ACTION --request FILE [--workspace DIR] (workflow schema lists actions),
+           workflow ACTION --request FILE [--workspace DIR] (workflow schema lists actions; proof, logo-package …),
+           compose --request FILE [--preview P.png] (create → layout → look → operations → check → exports, atomic),
            each layer --name PATTERN -- COMMAND, preset save|apply|show NAME,
            transaction begin|commit|rollback, assert RULE, validate [PROFILE]
 Resources: commands, shapes, sizes [--category print], palette list|show|add|apply,

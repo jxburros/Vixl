@@ -2,18 +2,20 @@
 
 The existing compact server with slim schemas is the recommended configuration when minimizing tool-discovery context matters. Keep one atomic editing tool and load exact operation fields on demand. This avoids splitting an edit across several transaction boundaries, while task-aware `vixl_capabilities` supplies relevant operations and gotchas.
 
-Measured on the 0.21.0 implementation using serialized `tools/list` tool objects (compact JSON, including input schemas; characters, not model tokens):
+Measured after adding `vixl_compose` (next release) using serialized `tools/list` tool objects (compact JSON, including input schemas; characters, not model tokens):
 
 | Toolset | Schema | Tools | Characters |
 | --- | --- | ---: | ---: |
-| all | full | 61 | 123,682 |
-| all | slim | 61 | 55,675 |
-| core | full | 50 | 117,061 |
-| core | slim | 50 | 49,054 |
-| compact | full | 12 | 85,146 |
-| compact | slim | 12 | 17,139 |
+| all | full | 62 | 134,431 |
+| all | slim | 62 | 60,263 |
+| core | full | 51 | 127,810 |
+| core | slim | 51 | 53,642 |
+| compact | full | 13 | 94,031 |
+| compact | slim | 13 | 19,863 |
 | ai | full | 16 | 10,367 |
 | ai | slim | 16 | 10,367 |
+
+`vixl_compose` is in core and compact (about 2,700 characters): it runs create → fonts → layout → style → look → operations → check → preview → save → exports in one atomic call, so a new piece needs one tool call instead of five. Its `operations` are typed as plain objects (fields from `vixl_operation_schema`) so the operation schema is not advertised twice.
 
 Reproduce by constructing `build_server(Session(workspace=...), tools=MODE, schema=SCHEMA)`, awaiting `list_tools()`, and measuring `json.dumps([t.model_dump(exclude_none=True) for t in tools], separators=(',', ':'))`. Values change as tools evolve; the schema size tests guard against unbounded growth.
 

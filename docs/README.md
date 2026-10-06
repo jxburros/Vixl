@@ -44,7 +44,7 @@ offline with `python examples/build_documentation.py`.
 | Output | [Export guide](exporting.md), [color and print](color-and-print.md), [slides](slides.md), [HTML presenter](presenter.md), [forms](forms.md) |
 | Data and reuse | [Charts](charts.md), [linked documents](linked-documents.md), [data merge and print imposition](imposition.md) |
 | Motion | [Characters, rigs and scene authoring](animation-authoring.md), [Brushes and timelines](brushes-and-animation.md), [pixel animation](pixel-animation-spacing.md), [lyric video](lyric-video.md) |
-| Automation and collaboration | [Production workflows](production.md), [studio and custom tests](studio.md) |
+| Automation and collaboration | [Production workflows](production.md) (proof pages, logo packages), [studio and custom tests](studio.md), [checking designs in CI](ci.md) |
 | AI | [Provider setup and capability matrix](providers.md) |
 | Integration | [Capability discovery](agent-discovery.md), [MCP toolset evaluation](mcp-toolsets.md), [Python, REST and MCP](interfaces.md), [agent skill](../skills/vixl/SKILL.md) |
 | Installation | [Releases, updates and rollback](releases.md) |

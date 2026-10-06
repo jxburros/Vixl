@@ -953,7 +953,9 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         layout: Annotated[dict | None, Field(description="layout-apply fields: {name, seed?, title, subtitle, …}")] = None,
         style: Annotated[str | None, Field(description="Style to tag (vixl_styles)")] = None,
         look: Annotated[dict | list[dict] | None, Field(description="{look, target?, color?, amount?} or a list")] = None,
-        operations: Annotated[list[Operation] | None, Field(max_length=Limits().max_operations)] = None,
+        operations: Annotated[list[dict] | None, Field(
+            max_length=Limits().max_operations,
+            description="Operations as for vixl_operations_apply (fields: vixl_operation_schema)")] = None,
         operations_path: Annotated[str | None, Field(description="Workspace .json/.jsonl of operations")] = None,
         check: Annotated[bool | list[str], Field(description="vixl_check the result (true, or check names)")] = True,
         strict: Annotated[bool, Field(description="Fail, saving nothing, when check has 'fix' findings")] = False,

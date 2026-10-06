@@ -51,19 +51,42 @@ instead of improvising freehand shapes:
    `vixl_export_file`. `vixl_operations_apply(..., check=true, preview=true)` returns the findings
    (the batch's layers plus every `fix`) and a small preview with the edit itself, so the loop is one call.
 
+**One call for a new piece.** When you already know the size, layout slots, look and operations,
+`vixl_compose(path, size=…, font_pairing=…, layout={name, …slots}, style=…, look={…}, operations=[…],
+check=true, preview=true, exports=[…])` (CLI `vixl compose --request req.json --preview p.png`) runs steps 1–5
+atomically: nothing is saved or exported unless every step succeeds, and an error carries `step`
+(request, create, fonts, layout, style, look, operations, check, preview, save, export). `strict=true` refuses to
+save while `check` has `fix` findings; `dry_run=true` builds, checks and previews without writing. Keep editing the
+result with `vixl_operations_apply`.
+
 ## Creative and collaborative studio
 
 Read [studio workflows](references/studio.md) for wand/lasso selections, pen handles and
 freehand paths, strict/custom palettes and rendered-pixel palette tests, modular containers,
 saved shapes, shared project groups, plugin packs, SVG appearance import and HTML export.
 Use `vixl_workflow_schema` to discover the consolidated resource/test/effect/group/branch APIs.
-For small tool context use `--tools compact --schema slim` (12 tools).
+For small tool context use `--tools compact --schema slim` (13 tools).
 
 For each new brief, inspect starter suites with resource-list/get and create a custom suite
 for its actual requirements. Run it after edits and before export. Freeze allowed colors in
 palette regression rules; choose antialias tolerances before checking, not to hide violations.
 Use container-reflow after changing copy, then check container-layout. Fork one document per
 agent, edit independently, preview branch-merge, resolve conflicts explicitly, then merge.
+
+## New in this release
+
+- **`vixl_compose`** — the whole start-here chain in one atomic call (above); REST `POST /compose` is a dry run.
+- **Logo packages** — `vixl_workflow("logo-package", {output, mark?, wordmark?, …})` turns a logo (open document,
+  `.vixl`, PNG/JPEG/WEBP or SVG; `trace: true` vectorizes a raster) into full-colour, mono black, mono white,
+  on-light and on-dark variants, optional mark/horizontal/stacked lockups, strict SVG, RGB (+ CMYK) PDF, PNG at
+  1x/2x/3x, icons with favicon, social avatar and Open Graph images, `usage.html` and an optional zip. Recolouring is
+  heuristic: read `report`. There is no EPS export: hand over the PDF or SVG.
+- **Proof pages** — `vixl_workflow("proof", {items, output, decisions?})` writes one offline HTML page to review
+  documents and exports (thumbnails, metadata, check findings, before/after, approve/reject saved as a JSON download).
+- **`vixl diff A B --out d.png`** — pixel-diff two documents or images (changed pixels, fraction, region).
+- **Memes** — `meme-top-bottom`, `meme-caption-above`, `meme-comparison`, `meme-labelled`, `meme-reaction`,
+  `meme-four-panel` layouts (`images` takes one asset per panel); `vixl_guide("meme")`. Bring your own images.
+- **CI** — the repository's GitHub Action checks `.vixl` files on pull requests (`docs/ci.md` in the Vixl repository).
 
 ## New since 0.17
 
@@ -110,7 +133,7 @@ Use submit/start/status for long jobs. An uncertain external generation request 
 not be blindly repeated; preserve its remote job identity.
 
 - **Named sizes** — `vixl_document_create(size="letter", bleed=true)` / `vixl new business-card --bleed`; 150 print, social, web, ad, video, slide, icon and logo sizes with dpi, bleed, safe area and guides.
-- **Layouts** — 33 principled, seed-varied layouts (`layout-apply`) that adapt to the canvas and set up contrast-checked color roles, a type scale and grids. Use them when a brief gives you free rein. They are fill-in-the-blank forms: `vixl layout show NAME` / `vixl_layouts_list` lists each layout's slots and what each needs. Fill them all; an unfilled slot renders as a `[Label]` blank that `check` reports as an error, and a slot the layout doesn't use is rejected rather than silently dropped. Templates work the same way.
+- **Layouts** — 53 principled, seed-varied layouts (`layout-apply`) that adapt to the canvas and set up contrast-checked color roles, a type scale and grids. Use them when a brief gives you free rein. They are fill-in-the-blank forms: `vixl layout show NAME` / `vixl_layouts_list` lists each layout's slots and what each needs. Fill them all; an unfilled slot renders as a `[Label]` blank that `check` reports as an error, and a slot the layout doesn't use is rejected rather than silently dropped. Templates work the same way.
 - **Typefaces** — the bundled font is a proofing fallback (`check` warns about it). Pick real type from a researched catalog of open-licensed families and curated heading/body pairings: `vixl font pairings --mood editorial` / `vixl_fonts`, then `vixl font pair NAME|random` / `vixl_font_pair` downloads, embeds and sets them as the document typography that layouts use; the result's `source` says whether each font came from the cache or a download (URL). `vixl font principles` explains how to combine fonts.
 - **Dice** — when the brief is thin, roll instead of defaulting: `vixl roll --for poster` / `vixl_roll` picks a pairing, a mood-consistent palette, a layout and its parameters from one seed; layouts and templates accept `seed: "random"`. Roll a few, preview, keep the seed you like, and `--lock` choices you want fixed.
 - **Color language** — `oklch()`, `lab()`, `cmyk()`, `color(display-p3 …)`, `kelvin()`, `color-mix()`, `lighten(@brand, 10%)` … everywhere; `vixl_color` for harmonies, scales and contrast; `palette-generate`.
