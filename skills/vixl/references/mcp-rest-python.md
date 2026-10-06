@@ -23,29 +23,42 @@ the two see each other's work. The default `--tools all` serves everything from 
 Windows installer path if `vixl` is not on PATH: `%LOCALAPPDATA%\Programs\Vixl\bin\vixl.exe`
 (escape backslashes in JSON). Restart the client after install/config changes.
 
-**Session model:** one *active document* at a time. Nothing works until you call
-`vixl_document_create` or `vixl_document_open` (error: "Create or open a document first").
+**Session model:** one *active document* per MCP client session. Nothing works without `document=`
+until you call `vixl_document_create` or `vixl_document_open` (error: "Create or open a document
+first"). Every result names the document it acted on (`"document": "poster.vixl"`). Subagents sharing
+one stdio server share its one client session, so pass `document=` on every call; start the server
+with `--require-document` (or `VIXL_REQUIRE_DOCUMENT=1`) to make that mandatory (`document_required`).
 All paths are server-local and relative to (or absolute inside) the workspace; escaping paths and
-symlinks out are rejected; parent directories must exist. Successful edits are saved immediately,
+symlinks out are rejected; `vixl_document_create`, `vixl_template_create` and exports create missing
+directories inside the workspace. Successful edits are saved immediately,
 so switching documents never loses work. External edits to the file are detected and reloaded.
+
+**Long calls:** a call still running after ~40 s (`VIXL_MCP_INLINE_SECONDS`) returns
+`{"status":"running","job":"job_…"}` and carries on; `as_job: true` on heavy tools does so at once.
+Follow it with `vixl_job(action="status"|"result"|"cancel"|"list", id, wait=…)`; never resend a call
+that timed out. Mutating tools take `request_id`: repeating a call with the same id returns the first
+result (`"replayed": true`) instead of applying twice.
 
 ### Documents and files
 
 | Tool | Parameters | Returns / notes |
 | --- | --- | --- |
 | `vixl_workspace_list` | `directory="."`, `offset=0`, `limit=100` (≤200) | `entries[{path,directory?}]`, `active`, `open`, `next_offset` |
-| `vixl_document_create` | **`path`**, **`width`**, **`height`**, `background="transparent"` | Creates + activates; refuses existing files |
+| `vixl_document_create` | **`path`**, **`width`**, **`height`**, `background="transparent"` | Creates + activates (and creates missing directories); refuses existing files |
 | `vixl_document_open` | **`path`** | Activates an existing `.vixl`; other open documents stay open (up to 8) |
 | `vixl_document_close` | `document` | Drops a document from the session (edits are already saved) |
 | `vixl_document_inspect` | `target=None`, `detail="compact"\|"full"` | Compact: canvas + one entry per layer with `bounds`; full: every field (with `resolved_bounds`) |
 | `vixl_import_image` | `path` **or** `data_base64` (base64 or `data:` URL), `name="image"` | New layer; returns `{id, name, width, height, bounds, asset}` (≤64 MiB) |
 | `vixl_export_file` | **`path`**, `quality=90`, `scale=1` (0.01–16), `profile`, `variables`, `background="white"`, `overwrite=False`, `sampling="smooth"\|"nearest"`, `artboard`, `comp` | Writes PNG/JPEG/WEBP/TIFF/AVIF (by extension); returns `{path, format, bytes}` |
+| `vixl_export_batch` | **`targets`** (1–64 of `{path, document?, overwrite?, …any export option}`), `defaults`, `overwrite=False`, `stop_on_error=False` | Several sizes/formats/artboards/documents in one call. Everything is validated before the first file is written; each target reports `{path, format, bytes, document}` or its own `error` |
+| `vixl_adapt_layout` | **`sizes`** (1–16: named size, `"1080x1920"` or `{size\|width+height, orientation, dpi, bleed, name}`), `directory`, `name="{name}-{size}"`, `options` (`scale`, `anchors`, `where`, `text`), `formats` (e.g. `["png"]`), `overwrite`, `report="summary"\|"layers"` | One call, a whole campaign: each size is a saved copy re-laid out by `adapt-layout` (optionally exported); the source is untouched; per size: file, canvas, scale, layers moved, warnings |
+| `vixl_job` | `action="status"\|"result"\|"cancel"\|"list"`, `id`, `wait` (≤50 s) | Follow a long call or durable workflow job; see Long calls above. The compact tool set polls through `vixl_workflow` (`action: "status"`, `request: {id}`) |
 
 ### Editing and viewing
 
 | Tool | Parameters | Returns / notes |
 | --- | --- | --- |
-| `vixl_operations_apply` | **`operations`** (1–1000 operation objects), `dry_run=False`, `detail="compact"\|"full"` | Atomic. Compact: per layer ID, only the new values of changed fields (incl. `bounds`); new layers as `{added, name, type, bounds, …}`; `normalized` lists any rewritten spellings. Full: before/after snapshots. |
+| `vixl_operations_apply` | **`operations`** (1–1000 operation objects), `dry_run=False`, `detail="brief"\|"compact"\|"full"`, `request_id`, `as_job` | Atomic. Brief (default): per layer ID, new layers as `{added, name, type, bounds}`, changed layers as `{changed: [fields], bounds}`; compact adds the new values of changed fields; full: before/after snapshots. `warnings` (text cut off or overflowing its box/group, fields that change nothing) and `normalized` (rewritten spellings) appear when relevant. |
 | `vixl_operation_schema` | **`types`** (1–20 names) | Exact JSON Schema for those operation types (needed with `vixl mcp --schema slim`) |
 | `vixl_render_preview` | `variables`, `max_width=1024`, `max_height=1024` (≤4096), `max_bytes=1048576` (64 KiB–4 MiB), `region=[x,y,w,h]` (px or %), `artboard`, `comp` | PNG at preview resolution (fast); `region` zooms in up to 8× |
 | `vixl_render_compare` | `before="previous"`, `after="head"`, `mode="side-by-side"\|"diff"`, `max_width`, `max_height` | Summary (`changed_fraction`, `changed_region`) + image; refs: `head`, `previous`, `head~N`, branch, checkpoint, revision ID |

@@ -5,6 +5,9 @@ Checked automation and production: `workflow schema` lists the actions accepted 
 check suites, recipes, matrices, libraries, jobs and films. New editing commands include
 `suite-set`, `suite-capture`, `role-set`, `motion-define`, `motion-apply`, `action-define`,
 `action-apply`, `fit-text`, `arrange-grid`, `adapt-layout` and `recipe-set`; each has `--help`.
+`edit-layers --where JSON --do JSON [--expect N] [--dry-run]` runs an operation on every layer matching a selector, and
+`adapt-layout --size story [--scale fit|fill|width|height|N] [--anchors JSON] [--where JSON] [--text keep]` (without
+`--targets`) resizes the canvas and re-lays out every layer; see [operations](operations.md#bulk-edits-and-resizing-a-whole-layout-unreleased).
 
 Vixl is a headless application designed for autonomous AI agents; humans can use the same interfaces.
 

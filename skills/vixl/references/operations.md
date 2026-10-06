@@ -77,6 +77,8 @@ The authoritative schema is always `vixl schema` / `GET /schema` / `vixl://opera
 | `guide` | **`name`**, **`axis`** (`x`/`y`), **`position`** | Named, never rendered; use in constraints as `guide:NAME.left+8`. |
 | `grid` | **`name`**, `columns`, `rows`, `margin`, `gutter` | Generates guides `NAME-x1-start`, `NAME-x1-end`, `NAME-y1-start`, … |
 | `artboard` | **`name`**, `preset` *or* `width`/`height`, `x`, `y`, `background`, `variables`, `targets`, `delete` | Named alternate canvas sizes in one document. `targets` = top-level layer IDs shown (absent = all). |
+| `edit-layers` | **`where`**, **`do`**, `dry_run`, `expect` | Bulk edit: runs the operation(s) in `do` on every layer matching `where` (`role`, `name` glob, `name_regex`, `kind`, `shape`, `tag`, `group`, `text_contains`, `text_regex`, `id`, `visible`, `page`, `not`; keys AND together, values may be lists). Result `edit_layers: [{matched, layers}]`; `expect` fails unless exactly that many match; no match warns. `do` must not set `target` or create layers. Tag layers with `layer-intent` `tags`. |
+| `adapt-layout` | `size` *or* `width`+`height`, `scale` (`fit`/`fill`/`width`/`height`/number), `anchors`, `where`, `text` (`scale`/`keep`), `report`; or with `targets`: `targets`, `width`, `height`, `margin`, `gap` | Without `targets`: resize the canvas and re-lay out every layer proportionally (edge margins kept, middle content keeps its relative place, backgrounds stretch, photos cover, text scales); result `adapt_layout` lists where each layer moved. With `targets`: vertical reflow. For several sizes at once use `vixl_adapt_layout`. |
 
 ## Selections and masks
 
@@ -196,10 +198,13 @@ deletes it. One style per kind; all accept `enabled` (bool) and `opacity` (0–1
 
 ## Results
 
-Apply returns `{"success": true, "dry_run": bool, "operations": N, "changes": {...}}`.
-`detail:"compact"` (CLI/MCP/REST default; `Project.apply(..., detail="compact")`) keys changes by layer ID
-with new values only; added layers include name, type and bounds. `detail:"full"` (Python default,
-CLI `--detail full`) includes complete before/after layer snapshots.
+Apply returns `{"success": true, "dry_run": bool, "operations": N, "changes": {...}}` plus, when relevant,
+`warnings` (text cut off by the canvas or overflowing its box/group; fields that were accepted but change
+nothing), `normalized`, `edit_layers` and `adapt_layout`. `detail:"brief"` (MCP default) keys changes by layer ID
+with only `added`/`name`/`type`/`bounds`, or `changed` field names and `bounds`, or `removed`.
+`detail:"compact"` (CLI/REST default; `Project.apply(..., detail="compact")`) gives the new values of changed
+fields; added layers include name, type and bounds. `detail:"full"` (Python default, CLI `--detail full`)
+includes complete before/after layer snapshots.
 
 ## Newer operation families
 

@@ -356,6 +356,8 @@ For agents, MCP offers:
 - **Design starting points**: `vixl_sizes_list`, `vixl_layouts_list`, `vixl_color`, `vixl_brushes_list`, timeline preview/export and icon-set export tools.
 - **Small responses**: minified JSON, compact diffs, an optional slim schema (`vixl mcp --schema slim`), and a core/AI split into two servers (`--tools core|ai`) so agents load only the tools they use.
 - **Long sessions**: delta history keeps every edit fast and old revisions are squashed instead of blocking edits.
+- **Long calls and shared servers**: calls run in worker threads; one that outlives ~40 s returns a job (`vixl_job`) instead of timing out, `request_id` makes a retry safe, progress is streamed, results name their document, and `--require-document` makes `document=` mandatory when several agents share a server.
+- **Less work per call**: `edit-layers` changes every layer matching a selector, `adapt-layout` / `vixl_adapt_layout` carry a design to other sizes, `vixl_export_batch` writes several files at once, and apply results are `brief` with `warnings` for cut-off text and ignored fields.
 
 The [agent eval suite](evals/README.md) measures how well a model completes real design briefs with these tools. REST stays scoped to one project. See [interface setup](docs/interfaces.md), including MCP client configuration and authenticated REST access.
 

@@ -99,8 +99,10 @@ Higher-level operations:
   so fitting one item does not resize every use of a shared style.
 - `arrange-grid`: targets, columns, gap, x/y. Places unique sibling layers in cells
   sized for the largest item; it does not resize content.
-- `adapt-layout`: targets, width, height, margin/gap. Explicit vertical reflow in the
+- `adapt-layout` with `targets`: targets, width, height, margin/gap. Explicit vertical reflow in the
   given priority order. Refuses content that cannot fit; this is not a general constraint solver.
+  Without `targets` the same verb re-lays out every layer proportionally at another size and reports
+  where each layer moved (see [operations](operations.md#bulk-edits-and-resizing-a-whole-layout-unreleased)).
 - Existing `replace-contents` preserves a frame's placement, effects and identity.
 
 An `action-define` stores bounded canonical operations under a name; `action-apply`
