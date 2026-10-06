@@ -103,7 +103,7 @@ vixl distribute horizontal title logo badge
 vixl distribute vertical first second third --gap 24
 ```
 
-`align` supports `targets` and `relative_to`: `canvas`, `selection` (the union of the selected bounds), or another sibling's name/ID. Multiple targets default to selection bounds; one target defaults to the canvas. Distribution sorts by current position. Without a gap it preserves the outer edges and computes equal edge-to-edge spacing, accounting for unequal sizes; with a gap it starts at the first layer. It requires at least three siblings. Both commands bake resolved positions and clear constraints on affected layers.
+`align` supports `targets` and `relative_to`: `canvas`, `selection` (the union of the selected bounds), or another sibling's name/ID; with a sibling, `box: "content"` (`--box content`) aligns to its content box, such as a speech bubble's body (see [content boxes](vector-paths.md#content-boxes)). Multiple targets default to selection bounds; one target defaults to the canvas. Distribution sorts by current position. Without a gap it preserves the outer edges and computes equal edge-to-edge spacing, accounting for unequal sizes; with a gap it starts at the first layer. It requires at least three siblings. Both commands bake resolved positions and clear constraints on affected layers.
 
 ## Named character styles, paragraph styles, and swatches
 

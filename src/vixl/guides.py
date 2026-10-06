@@ -916,7 +916,11 @@ def compile_command(cmd, args):
     p = Parser(prog=f"vixl {cmd}")
     p.add_argument("targets", nargs="+")
     if cmd == "place":
-        p.add_argument("--guide", required=True)
+        where = p.add_mutually_exclusive_group(required=True)
+        where.add_argument("--guide")
+        where.add_argument("--within", help="place inside this layer's content box instead of on a guide")
+        p.add_argument("--box", choices=["content", "bounds"])
+        p.add_argument("--margin", type=float)
         p.add_argument("--with", dest="with_")
         p.add_argument("--index", type=int)
         for key in ("at", "start", "end", "spacing", "angle", "rotate", "offset"):

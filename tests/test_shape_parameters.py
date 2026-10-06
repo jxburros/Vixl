@@ -271,7 +271,12 @@ def test_place_within_and_text_within_use_the_content_box_through_groups():
         p.apply({"type": "place", "targets": ["t"]})
 
 
-def test_cli_align_takes_box():
+def test_cli_align_place_and_text_take_content_boxes():
     op = compile_command("align title center --relative-to bubble --box content")
     op = op[0] if isinstance(op, list) else op
     assert op["box"] == "content" and op["relative_to"] == "bubble"
+    assert compile_command("place line --within bubble --anchor top-left --margin 6") == {
+        "type": "place", "target": "line", "within": "bubble", "anchor": "top-left", "margin": 6.0}
+    assert compile_command("text add Hi --within bubble") == {"type": "text", "text": "Hi", "within": "bubble"}
+    with pytest.raises(VixlError):
+        compile_command("place line --within bubble --guide g")

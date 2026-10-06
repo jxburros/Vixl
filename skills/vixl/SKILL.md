@@ -84,6 +84,10 @@ agent, edit independently, preview branch-merge, resolve conflicts explicitly, t
 - **Imperfection** — opt-in `irregular` (seeded wobble, stroke weight, color drift, micro placement)
   and `tear` (torn edges) for characters, stickers, scenes, scattered patterns, hand-made looks and
   ripped paper; never for logos, charts, text or anything that must align (`vixl_guide("imperfection")`). `arc` shapes draw pie wedges and donut segments.
+- **Shape parameters and content boxes** — shortcut shapes take their own parameters (heart `apex`/`cleft`/`tip`,
+  speech-bubble `pointer_side`/`pointer_position`/`pointer_size`/`body`, shield `depth`, `slant`, chevron
+  `thickness`; `vixl_capabilities("shapes")` lists all). Shapes report `content_bounds` (a bubble's body, a
+  badge's centre, a screen): put text there with `text` `within`, `place` `within` or `align` `box: "content"`.
 - **Charts** — `chart` (bar, stacked, 100 %, horizontal, line, area, pie, donut) from a table or workspace CSV, `chart-data` to fix
   a value on stable layer IDs, native PPTX charts; see [charts](references/charts.md) before drawing any chart by hand.
 - **Guides beyond right angles** — angled/curved guides, compositional and perspective grids,

@@ -187,6 +187,7 @@ def compile_command(tokens):
             p.add_argument("--size", type=int)
             p.add_argument("--align", choices=["left", "center", "right"])
             p.add_argument("--spacing", type=int)
+            p.add_argument("--within", help="centre the text in this shape's content box (instead of --x/--y)")
             p.add_argument("--hide-if-empty", action=argparse.BooleanOptionalAction, default=None,
                            help="do not draw the text while it is empty after ${variable} substitution")
         elif cmd == "gradient":
