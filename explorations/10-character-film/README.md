@@ -14,9 +14,9 @@ grime clipped to Pip's torso. The script exports the walk as a GIF and a sprite 
 the production `film-plan` / `film-export` workflow to cut an establishing shot, the walk and a
 soft-focus wave close-up into an MP4. The film has camera moves, crossfades, captions and a
 synthesized sine-wave score with footstep ticks. The project was first built with Vixl 0.16.0; the
-committed outputs are rebuilt with 0.20.0.
+committed outputs are rebuilt with 0.21.0.
 
-Run from the repo root (about 2 min 5 s with 0.20.0 on a shared 4-core container, 100 s of it the film render; about 9–12 minutes with 0.16.0):
+Run from the repo root (about 1 min 57 s with 0.21.0 on a shared 4-core container, 100 s of it the film render; about 9–12 minutes with 0.16.0):
 
 ```bash
 python explorations/10-character-film/build.py            # everything

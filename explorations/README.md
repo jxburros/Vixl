@@ -1,6 +1,6 @@
 # Vixl explorations
 
-Ten complex projects, each designed to stretch a different part of the engine. They were first built with Vixl 0.16.0 to find its limits; the committed outputs are now rebuilt with Vixl 0.20.0. Every project has a reproducible `build.py`, which you run from the repo root with `python explorations/NN-name/build.py`. Each also has its outputs and a README with the features it used and its findings. `python explorations/build_gallery.py` recomposes `gallery.jpg` from the outputs.
+Ten complex projects, each designed to stretch a different part of the engine. They were first built with Vixl 0.16.0 to find its limits; the committed outputs are now rebuilt with Vixl 0.21.0. Every project has a reproducible `build.py`, which you run from the repo root with `python explorations/NN-name/build.py`. Each also has its outputs and a README with the features it used and its findings. `python explorations/build_gallery.py` recomposes `gallery.jpg` from the outputs.
 
 ![Gallery](gallery.jpg)
 
@@ -32,7 +32,7 @@ Ten complex projects, each designed to stretch a different part of the engine. T
 
 ## Cross-project findings
 
-Each project README has repro details. These are the issues the explorations found in Vixl 0.16.0 that showed up most often or matter most. Items marked **Fixed** shipped in 0.18.0 ("Fixes from the explorations" in the [changelog](../CHANGELOG.md)) unless another release is named. The 0.20.0 rebuild, with most of the workarounds removed, exercises most of them.
+Each project README has repro details. These are the issues the explorations found in Vixl 0.16.0 that showed up most often or matter most. Items marked **Fixed** shipped in 0.18.0 ("Fixes from the explorations" in the [changelog](../CHANGELOG.md)) unless another release is named. The 0.21.0 rebuild, with most of the workarounds removed, exercises most of them.
 
 ### Bugs
 - **Fixed: group bounds are frozen.** A group kept the bounds it had when created, so resized or rotated children got clipped (04, 10). Groups no longer clip their members, and `inspect` reports `drawn_bounds` for anything drawn past the box. Group `scale` no longer smooths pixel art (04).

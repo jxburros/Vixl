@@ -14,7 +14,7 @@ other 651 are copies made when the mountain layers are duplicated for the reflec
 editable in `output/painting.vixl`. The project was first built with Vixl 0.16.0; the committed outputs
 are rebuilt with 0.20.0.
 
-Run from the repo root: `python explorations/05-generative-painting/build.py` (3 min 55 s with 0.20.0 on a shared 4-core container; about 13 minutes with 0.16.0).
+Run from the repo root: `python explorations/05-generative-painting/build.py` (2 min 41 s with 0.21.0 on a shared 4-core container; about 13 minutes with 0.16.0).
 
 ![The finished painting](output/painting.jpg)
 

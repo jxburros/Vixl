@@ -1,6 +1,6 @@
 # SOLSTICE SIGNAL: print-ready festival poster
 
-A poster for a made-up three-night desert music festival, built entirely with Vixl. It was first built with 0.16.0; the committed outputs are rebuilt with 0.20.0. The canvas is the named `tabloid` size (11 × 17 in) with 1/8 in bleed. The look is retro-synthwave: a multi-stop dusk sky, a sliced gradient sun clipped to its disc, glowing sparkles, a perspective grid drawn as one multi-contour path, warped Syne 800 headlines, a line of DM Sans text set on an arc concentric with the sun, a lineup panel and a sunburst date badge. Footer, title and badge positions are constraints anchored to the generated `guide:safe-*` guides. After the design, `build.py` runs print QA (`check` with `print` and `color_vision`, plus contrast on every text layer), renders two soft proofs and three colour-blindness simulations, and exports a CMYK PDF with a 300% ink limit, a CMYK JPEG separated with an ICC profile, an RGB PNG and an SVG.
+A poster for a made-up three-night desert music festival, built entirely with Vixl. It was first built with 0.16.0; the committed outputs are rebuilt with 0.21.0. The canvas is the named `tabloid` size (11 × 17 in) with 1/8 in bleed. The look is retro-synthwave: a multi-stop dusk sky, a sliced gradient sun clipped to its disc, glowing sparkles, a perspective grid drawn as one multi-contour path, warped Syne 800 headlines, a line of DM Sans text set on an arc concentric with the sun, a lineup panel and a sunburst date badge. Footer, title and badge positions are constraints anchored to the generated `guide:safe-*` guides. After the design, `build.py` runs print QA (`check` with `print` and `color_vision`, plus contrast on every text layer), renders two soft proofs and three colour-blindness simulations, and exports a CMYK PDF with a 300% ink limit, a CMYK JPEG separated with an ICC profile, an RGB PNG and an SVG.
 
 ![SOLSTICE SIGNAL poster](output/poster-rgb.png)
 
@@ -10,7 +10,7 @@ A poster for a made-up three-night desert music festival, built entirely with Vi
 
 Run it from the repo root with `python explorations/01-print-concert-poster/build.py`. It needs network access for Google Fonts and the ICC profile.
 
-With 0.20.0 the build takes about 2 minutes (1 min 56 s on a shared 4-core container, fonts and ICC profile cached), and the contrast check now covers every text layer. With 0.16.0 it took about 10 minutes while checking only the five smallest text layers; checking all of them took 30 to 40 minutes (see Findings). `QUICK=1` stops after the document and writes a preview to `.work/quick.png`.
+With 0.21.0 the build takes about 1½ minutes (1 min 17 s on a shared 4-core container, fonts and ICC profile cached), and the contrast check now covers every text layer. With 0.16.0 it took about 10 minutes while checking only the five smallest text layers; checking all of them took 30 to 40 minutes (see Findings). `QUICK=1` stops after the document and writes a preview to `.work/quick.png`.
 
 ## Outputs (`output/`, about 15.4 MB)
 

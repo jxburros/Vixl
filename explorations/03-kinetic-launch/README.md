@@ -2,7 +2,7 @@
 
 An 8-second, 1080×1080, 30 fps product-launch animation for a fictional smart ring, "HALO". The
 film is built entirely from editable Vixl layers and timeline tracks. It was first built with Vixl
-0.16.0; the committed outputs are rebuilt with 0.20.0. Act one stacks three words
+0.16.0; the committed outputs are rebuilt with 0.21.0. Act one stacks three words
 ("SLEEP. MOVE. RECOVER.") that rise in on a staggered motion recipe, recolour, and leave upwards.
 In act two the canvas shifts from night to violet, and a glowing lime ring springs open with
 `elastic-out` while its blur clears. The letters of HALO drop in one by one on a `spring`
@@ -18,7 +18,7 @@ UI labels, all downloaded from Google Fonts and embedded in the `.vixl`.
 Contact sheet (16 evenly spaced frames): [`output/contact-sheet.jpg`](output/contact-sheet.jpg).
 Sheet at named markers: [`output/contact-markers.jpg`](output/contact-markers.jpg).
 
-Rebuild from the repo root: `python explorations/03-kinetic-launch/build.py` (2 min 7 s with 0.20.0 on a
+Rebuild from the repo root: `python explorations/03-kinetic-launch/build.py` (1 min 35 s with 0.21.0 on a
 shared 4-core container; about 12 minutes with 0.16.0, mostly frame rendering; `QUICK=1` skips the animation exports).
 
 ## Outputs

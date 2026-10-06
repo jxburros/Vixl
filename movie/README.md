@@ -53,8 +53,8 @@ python build.py                       # scenes/*.vixl (add scene names to rebuil
 python make_film.py                   # audio/*.wav, film-spec.json, ../the-germ-king.mp4
 ```
 
-`make_film.py` renders 1,219 frames, so expect it to take a while. With Vixl 0.20.0 on a shared
-4-core container, `build.py` took 19 s and `make_film.py` about 19 minutes (1,159 s).
+`make_film.py` renders 1,219 frames, so expect it to take a while. On a shared 4-core container with 0.20.0, `build.py` took 19 s and `make_film.py` about 19 minutes
+(1,159 s); 0.21.0 should be similar.
 
 To tweak a single scene in the real editor-style loop instead of regenerating it:
 
@@ -71,7 +71,7 @@ all work on these documents. If you edit a master by hand, `make_film.py` will p
 
 * `build/vixlkit.py` — a small helper that collects Vixl operations (`shape`, `pen`, `group`,
   `pivot`, `keyframe`, `layer-style`, …) and applies each scene as one atomic batch (up to 9,000
-  operations per call; Vixl 0.20.0 allows 10,000, where 0.18.0 allowed 1,000).
+  operations per call; Vixl 0.21.0 allows 10,000, where 0.18.0 allowed 1,000).
 * `build/characters.py` — Pip, the three council elders and the germs.
 * `build/scenes.py`, `build/scenes_b.py` — the eight scene definitions.
 * `build/score.py` — a numpy synthesiser for the score, sound effects and talking blips. The blips
@@ -79,12 +79,12 @@ all work on these documents. If you edit a master by hand, `make_film.py` will p
 * `build/make_film.py` — assembles the shots with `vixl workflow film-export`
   (crossfades, slow camera moves, a two-track audio mix) and writes the MP4.
 
-### Known limits (Vixl 0.20.0)
+### Known limits (Vixl 0.21.0)
 
-* The score is synthesised at 44.1 kHz, but 0.20.0's `film-export` premixes every audio track at
+* The score is synthesised at 44.1 kHz, but 0.21.0's `film-export` premixes every audio track at
   24 kHz stereo (linear resampling), so the soundtrack has nothing above 12 kHz. The film made
   with 0.18.0 carried 44.1 kHz mono audio.
 * The camera moves are crops that are enlarged with bicubic resampling, so the zoomed shots
   (most visibly `02-shrink`, up to 1.22×) are a little soft.
-* Speech bubbles are hand-placed groups that pop in and out; 0.20.0's text-sized bubbles that
+* Speech bubbles are hand-placed groups that pop in and out; 0.21.0's text-sized bubbles that
   follow their target are not used here.

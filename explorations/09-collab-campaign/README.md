@@ -15,10 +15,10 @@ every document, defines the campaign as a project group, and pushes a shared hea
 swatch with `group-apply`. The suites gate that publication: three attempts are blocked before one
 publishes. The run finishes with checkpoints, undo/redo, an in-document "night edition" branch,
 revision compares, the final exports and an overview sheet. It was first built with Vixl 0.16.0;
-the committed outputs are rebuilt with 0.20.0.
+the committed outputs are rebuilt with 0.21.0.
 
 ```bash
-python explorations/09-collab-campaign/build.py   # from the repo root; 2 min 7 s with 0.20.0 (~3 min with 0.16.0); rewrites output/
+python explorations/09-collab-campaign/build.py   # from the repo root; 1 min 23 s with 0.21.0 (~3 min with 0.16.0); rewrites output/
 ```
 
 ## Results
