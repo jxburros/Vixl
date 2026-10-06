@@ -191,7 +191,8 @@ def test_gif_size_controls_are_lossless_by_default(tmp_path):
 
     default = export_timeline(p, tmp_path / "a.gif")
     small = export_timeline(p, tmp_path / "b.gif", colors=32)
-    assert small["bytes"] < default["bytes"] and "warnings" not in default
+    # The only warning is the loop seam: the dot ends at x 200 and jumps back to 10 when the GIF loops.
+    assert small["bytes"] < default["bytes"] and all(w.startswith("Loop seam") for w in default.get("warnings", []))
     # Opaque sequences are frame-differenced, but every decoded frame matches a full-frame encoding.
     times, _ = frame_times(p)
     expected = [gif_frame(render_at(p, t)).convert("RGBA") for t in times]

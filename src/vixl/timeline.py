@@ -1245,6 +1245,10 @@ def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=No
     if format in ("gif", "apng", "webp"):
         shown = times[0] if poster_info is None else poster_info["time"]
         warnings += [message for _, message, _ in poster_findings(project, shown)]
+        if start is None and end is None:
+            from .motion import seam_value_findings
+
+            warnings += [item["message"] for item in seam_value_findings(project, timeline) if item["severity"] == "warning"]
     frames = _frames(project, times, scale, preview, cancelled, progress)
     if background is not None:
         from .render import color
