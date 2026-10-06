@@ -1,7 +1,8 @@
 """Advisories: problems an apply call can see cheaply, returned under ``warnings`` (never errors).
 
 A successful apply used to say nothing about text that spills off the canvas or out of its box, or
-about a field that was accepted but changes nothing, so a wrong guess looked like success. These
+about a valid field that changes nothing for this shape, so a wrong guess looked like success.
+Unknown fields and invalid values are errors (schema.py, normalize.py), never advisories. These
 checks look only at the layers and operations of this one call, so they add no noise about
 pre-existing problems. ``vixl_check`` remains the complete audit.
 """
@@ -10,8 +11,6 @@ MAX_WARNINGS = 12
 MAX_LAYERS = 200
 # A non-text layer may bleed past the canvas edge on purpose; warn when most of it is outside.
 OUTSIDE_FRACTION = 0.25
-EFFECT_FIELDS = {"name", "amount", "value", "seed", "radius", "strength", "shadow_color", "highlight_color",
-                 "black", "white", "points", "enabled"}
 
 
 # Shapes that read inner_radius: a star's inner points and an arc's hole (donut/ring/pie share arc).
@@ -77,19 +76,6 @@ def ignored_fields(candidate, op):
     elif kind == "align":
         if op.get("margin") and op.get("alignment") in ("center", "center-x", "center-y"):
             found.append(f"align: margin has no effect on {op['alignment']!r}")
-    elif kind == "adjustment":
-        for number, effect in enumerate(op.get("effects") or []):
-            if isinstance(effect, dict):
-                extra = sorted(set(effect) - EFFECT_FIELDS)
-                if extra:
-                    found.append(f"adjustment effects[{number}]: unknown field(s) {', '.join(map(repr, extra))} are "
-                                 f"ignored; known: {', '.join(sorted(EFFECT_FIELDS - {'enabled'}))}")
-    elif kind == "preset-apply":
-        saved = {effect["name"] for effect in candidate.state.get("presets", {}).get(op.get("name"), [])}
-        extra = sorted(set(op.get("overrides") or {}) - saved)
-        if extra:
-            found.append(f"preset-apply: overrides for {', '.join(map(repr, extra))} match no effect in preset "
-                         f"{op.get('name')!r} (it has {', '.join(sorted(saved)) or 'none'}); they are ignored")
     return found
 
 

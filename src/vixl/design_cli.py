@@ -20,9 +20,16 @@ def compile_design(cmd, args):
             p.add_argument("--" + key, type=float)
         p.add_argument("--line-cap", choices=["butt", "round", "square"])
         p.add_argument("--sides", type=int)
+        p.add_argument("--rotation", type=float, help="degrees clockwise")
+        p.add_argument("--opacity", type=lambda v: v if v.endswith("%") else float(v), help="0-1 or a percentage")
+        p.add_argument("--space", choices=["parent", "canvas"], help="with --target: how --x/--y read in a group")
     elif cmd in ("group", "pathfinder"):
         p.add_argument("name")
         p.add_argument("targets", nargs="+")
+        if cmd == "group":
+            where = p.add_mutually_exclusive_group()
+            where.add_argument("--above", help="place the new group directly above this layer")
+            where.add_argument("--below", help="place the new group directly below this layer")
         if cmd == "pathfinder":
             p.add_argument("--mode", choices=["union", "subtract", "intersect"], required=True)
     elif cmd == "clip":

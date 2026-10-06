@@ -308,13 +308,15 @@ def compile_command(tokens):
             if len(values) == 2:
                 data["target"] = values.pop(0)
             key = "direction" if cmd == "flip" else "value"
-            # Opacity 1–100 is read as a percentage by the shared normalizer.
-            data[key] = values[0] if cmd in ("flip", "blend") else float(values[0])
+            # Opacity is 0–1; "70%" stays a string for the shared normalizer to read as 0.7.
+            percent = cmd == "opacity" and values[0].endswith("%")
+            data[key] = values[0] if cmd in ("flip", "blend") or percent else float(values[0])
         return {**op, **{k: v for k, v in data.items() if v is not None}}
     elif cmd == "pivot":
         p.description = "Set the point a layer rotates and scales about: X Y fractions of its box (0 0 top-left, 0.5 0.5 center), --px for pixels from its top-left, or an anchor such as top-left."
         p.add_argument("values", nargs="*", metavar="[LAYER] X Y | [LAYER] ANCHOR")
         p.add_argument("--px", action="store_true", help="X Y are pixels from the layer box's top-left")
+        p.add_argument("--canvas", action="store_true", help="X Y are a document (canvas) point, through any groups")
         p.add_argument("--clear", action="store_true", help="Remove the pivot (rotate/scale about the center again)")
         data = vars(p.parse_args(args))
         values = data.pop("values")
@@ -331,7 +333,8 @@ def compile_command(tokens):
             point = [float(values[-2]), float(values[-1])]
         except ValueError:
             raise VixlError("usage_error", "Pivot X and Y must be numbers") from None
-        return {**op, "value": point, **({"units": "px"} if data["px"] else {}), **({"target": values[0]} if len(values) == 3 else {})}
+        units = "canvas" if data["canvas"] else "px" if data["px"] else None
+        return {**op, "value": point, **({"units": units} if units else {}), **({"target": values[0]} if len(values) == 3 else {})}
     elif cmd == "crop":
         p.add_argument("target")
         for key in ("x", "y", "width", "height"):

@@ -148,6 +148,24 @@ def path_polygons(path):
     return polygons
 
 
+def path_extents(path):
+    """``(min_x, min_y, max_x, max_y)`` of a path's drawn geometry (curves flattened), in its own units."""
+    points = [point for polygon in path_polygons(path) for point in polygon]
+    xs, ys = [p[0] for p in points], [p[1] for p in points]
+    return min(xs), min(ys), max(xs), max(ys)
+
+
+def path_box(path):
+    """The (width, height) a ``path`` shape gets when created without them.
+
+    Path coordinates are literal local pixels: a point (px, py) draws at the layer's (x + px, y + py).
+    The box runs from that origin to the path's farthest point on each axis, never the whole canvas,
+    and the path text is kept as written. Negative coordinates draw left of / above the box (keep
+    paths in positive coordinates, or use ``path-fit`` to scale geometry into a box)."""
+    _, _, x1, y1 = path_extents(path)
+    return max(1, x1), max(1, y1)
+
+
 def shape_path(layer):
     shape = layer["shape"]
     from .shape_catalog import active, path

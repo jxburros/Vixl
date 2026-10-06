@@ -42,7 +42,7 @@ def test_common_model_guesses_are_normalized_and_reported():
         [
             {"type": "rect", "name": "box", "width": "50%", "height": 40, "color": "rgba(255, 0, 0, 0.5)", "x": "center", "y": "10%"},
             {"type": "text", "name": "title", "text": "Hi", "fontSize": 30, "fill": "white", "x": "center", "y": "center"},
-            {"type": "opacity", "layer": "box", "value": 50},
+            {"type": "opacity", "layer": "box", "value": "50%"},
             {"type": "drop_shadow", "target": "title", "offsetX": 3, "radius": 2},
             {"type": "circle", "name": "dot", "width": 20, "height": 20, "fill": "blue"},
             {"type": "shape", "shape": "hexagonal", "name": "hex", "width": 20, "height": 20},
@@ -58,7 +58,7 @@ def test_common_model_guesses_are_normalized_and_reported():
     assert p.layer("dot")["shape"] == "ellipse"
     assert p.layer("hex")["shape"] == "polygon" and p.layer("hex")["sides"] == 6
     notes = " ".join(result["normalized"])
-    assert "operations[0]" in notes and "'fontSize' → 'size'" in notes and "percent" in notes
+    assert "operations[0]" in notes and "'fontSize' → 'size'" in notes and "value '50%' → 0.5" in notes
     assert p.render().getpixel((200, 30))[0] > 100  # The CSS rgba() color rendered.
 
 
@@ -70,16 +70,20 @@ def test_percentages_resolve_against_parent_group():
     assert p.layer("a")["x"] == 50  # 50% of the 100 px group, not the 400 px canvas
 
 
-def test_opacity_is_percent_in_every_interface(tmp_path):
+def test_opacity_is_one_scale_in_every_interface(tmp_path):
     from vixl.commands import compile_command
 
-    assert compile_command("opacity 40")["value"] == 40.0
+    # 0-1 everywhere; an explicit percentage string is read as a fraction, a bare 40 is an error.
+    assert compile_command("opacity 40%")["value"] == "40%"
+    assert compile_command("opacity 0.4")["value"] == 0.4
     p = Project(8, 8)
     p.apply({"type": "solid", "name": "s"})
-    p.apply(compile_command("opacity 40"))
+    p.apply(compile_command("opacity 40%"))
     assert p.layer("s")["opacity"] == 0.4
-    with pytest.raises(VixlError):
-        p.apply({"type": "opacity", "value": 250})
+    for value in (40, 250):
+        with pytest.raises(VixlError) as error:
+            p.apply(compile_command(f"opacity {value}"))
+        assert f"use {value / 100:g} or the string \"{value}%\"" in str(error.value)
 
 
 # --- errors --------------------------------------------------------------------------------

@@ -67,6 +67,35 @@ Outside strokes and rounded caps may extend beyond the layer's layout box. `dash
 and `stroke_width` are numeric timeline properties. `trim_start`/`trim_end` reveal a
 percentage of the contour; they compose with dashes, rather than replacing the dash pattern.
 
+## Path coordinates and the layer box
+
+`{"type":"shape","shape":"path","path":"…"}` draws SVG path data (`M L H V C S Q T A Z`,
+absolute or relative, several sub-paths `M…M…` in one layer). The contract:
+
+- **Coordinates are literal local pixels.** A path point `(px, py)` draws at
+  `(x + px, y + py)` in the layer's parent (the canvas, or the group's box), where `x`/`y` are the
+  layer's position (default `0, 0`). They are never normalized to the box.
+- **Without `width`/`height` the box reaches the path's farthest point:** `width` is the
+  largest x the drawn path reaches (curves included), `height` the largest y, so the box runs from
+  the layer origin to the path's far corner. It is never the whole canvas. Giving only one of them
+  sets that side; the other still comes from the path. The path text is kept exactly as written.
+- **With `width`/`height` at creation**, coordinates are still literal: the given size is the box
+  the path is drawn in (`path_view`), and geometry beyond it still draws (shapes do not clip).
+- **Resizing scales the path.** A later `resize`/`scale` (or `shape` with `target` and a new
+  `width`/`height`) scales the drawn path with the box. Replacing `path` with `target` keeps the
+  current box, so the new path is again read in literal pixels of that box.
+- **Negative coordinates** draw left of / above the layer origin, outside its box: the box (and so
+  alignment, `center`, pivots and checks) does not include them. Keep paths in positive
+  coordinates, move the layer with `x`/`y`, or use `path-fit` to scale geometry into a box.
+- An open path (no `Z`) with a `stroke` and no `fill` is stroked only; otherwise set
+  `fill: "none"` (read as `transparent`) for an outline.
+
+```json
+{"type":"shape","shape":"path","name":"flick","path":"M300 200 Q320 150 340 140 M310 210 Q330 170 352 165","stroke":"#5a3a1a","stroke_width":3}
+```
+
+This layer's box is `0, 0, 352, 210`: the strokes draw at their literal coordinates.
+
 ## Indexed path editing
 
 `shape-to-path` converts parametric and organic shapes to editable Bézier paths while

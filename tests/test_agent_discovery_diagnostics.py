@@ -97,7 +97,7 @@ def test_discovery_parity_and_aliases(tmp_path):
     assert "font" in result["operations"]["text"]["fields"]
     assert "literal local pixels" in " ".join(result["gotchas"])
     assert validate_operation({"type": "move_layer", "x": 2})["type"] == "move"
-    assert validate_operation({"type": "set_opacity", "opacity": 50})["value"] == 0.5
+    assert validate_operation({"type": "set_opacity", "opacity": "50%"})["value"] == 0.5
 
     async def run():
         server = build_server(Session(workspace=tmp_path))

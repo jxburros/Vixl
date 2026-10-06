@@ -32,7 +32,9 @@ both dimensions. Fit boxes and alignment use canvas space, including nested grou
 
 Grouped layers store parent-relative positions. Default `move` coordinates are in that parent
 space; use `space: "canvas"` (or `absolute: true`) to position a nested layer by its canvas
-bounding-box corner. `inspect` returns both `resolved_bounds` in parent space and
+bounding-box corner. `shape`, `text`, `solid` and `gradient` with `target` take the same `space`
+for their `x`/`y`, and `pivot` takes `units: "canvas"` to set a joint at a document point (it is
+converted through the parent groups' transforms). `inspect` returns both `resolved_bounds` in parent space and
 `canvas_bounds` in canvas space. Canvas moves round-trip those bounds, including transformed
 ancestors. Edits that move content entirely off the canvas return an apply warning.
 

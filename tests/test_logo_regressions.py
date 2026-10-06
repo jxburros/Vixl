@@ -233,7 +233,7 @@ def test_cli_normalization_under_legacy_windows_output_encoding(tmp_path):
                 "y": 300,
                 "fill": "rgba(255, 100, 0, 0.5)",
             },
-            {"type": "opacity", "target": "Normalized", "value": 50},
+            {"type": "opacity", "target": "Normalized", "value": "50%"},
         ]
     }
     result = subprocess.run(

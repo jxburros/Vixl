@@ -4,7 +4,7 @@ from copy import deepcopy
 from functools import lru_cache
 
 from .geometry import ANCHORS
-from .inplace import target_schema
+from .inplace import EDITS, target_schema
 from .model import Limits
 from .render import EFFECTS, BLENDS
 
@@ -22,6 +22,19 @@ SIZE = {
     "description": "Pixels or a percentage of the canvas/parent such as '25%'.",
 }
 COORD_FIELDS = ("x", "y", "width", "height")
+OPACITY = {
+    "type": "number", "minimum": 0, "maximum": 1,
+    "description": "0 (clear) to 1 (opaque); a percentage string such as '70%' is read as 0.7. A bare number above "
+    "1 is an error.",
+}
+# Layer-creating operations that also set the layer's opacity and rotation (the opacity and rotate
+# operations, in one step); with target they change the edited layer's.
+LAYER_FINISH = ("add", "solid", "gradient", "text", "shape")
+FINISH_FIELDS = {
+    "opacity": OPACITY,
+    "rotation": {"type": "number", "description": "Rotation in degrees, clockwise, around the layer's pivot "
+                 "(its center unless pivot moved it), as the rotate operation sets it."},
+}
 FONT = {
     "type": "string",
     "description": "Registered font name or role (heading, body); install with font install / font pair / font import. "
@@ -190,9 +203,10 @@ def _operation_schema():
     add("rotate", {"value": N}, ["value"])
     add("pivot", {"value": {"anyOf": [{"type": "array", "items": N, "minItems": 2, "maxItems": 2}, enum(*ANCHORS)],
                             "description": "[x, y] as fractions of the layer box (0.5, 0.5 is the center; pixels from the "
-                            "top-left with units: px) or an anchor name: " + ", ".join(ANCHORS) + ". Synonyms such as "
-                            "bottom-center or center-left are accepted."}, "units": enum("fraction", "px"), "clear": B})
-    add("opacity", {"value": {"type": "number", "minimum": 0, "maximum": 1}}, ["value"])
+                            "top-left with units: px; a canvas point with units: canvas) or an anchor name: "
+                            + ", ".join(ANCHORS) + ". Synonyms such as bottom-center or center-left are accepted."},
+                  "units": enum("fraction", "px", "canvas"), "clear": B})
+    add("opacity", {"value": OPACITY}, ["value"])
     add("blend", {"value": enum(*BLENDS)}, ["value"])
     add("flip", {"direction": enum("horizontal", "vertical")}, ["direction"])
     add(
@@ -398,9 +412,20 @@ def _operation_schema():
 
     transform_schemas(add)
     enrich_transform_schemas(variants)
+    for variant in variants:
+        if variant["properties"]["type"]["const"] in LAYER_FINISH:
+            variant["properties"].update(deepcopy(FINISH_FIELDS))
+        if variant["properties"]["type"]["const"] in EDITS:
+            variant["properties"]["space"] = {
+                "enum": ["parent", "canvas"],
+                "description": "With target: how x/y read for a layer inside a group. parent (default): local to the "
+                "group's box; canvas: document coordinates, as move's space: canvas.",
+            }
     from .schema_docs import enrich
+    from .targets import enrich as enrich_targets
 
     enrich(variants)
+    enrich_targets(variants)
     return {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "title": "Vixl operation batch",
@@ -417,6 +442,12 @@ def _operation_schema():
 def _properties():
     variants = _operation_schema()["properties"]["operations"]["items"]["oneOf"]
     return {v["properties"]["type"]["const"]: frozenset(v["properties"]) for v in variants}
+
+
+@lru_cache(maxsize=1)
+def _required():
+    variants = _operation_schema()["properties"]["operations"]["items"]["oneOf"]
+    return {v["properties"]["type"]["const"]: frozenset(v["required"]) for v in variants}
 
 
 def validate_operation(operation, notes=None, index=None):
@@ -436,7 +467,8 @@ def validate_operation(operation, notes=None, index=None):
                 field="page")
     properties = _properties()
     result = normalize_operation(
-        result, lambda k: properties.get(k, frozenset()), properties, EFFECTS, [] if notes is None else notes, index
+        result, lambda k: properties.get(k, frozenset()), properties, EFFECTS, [] if notes is None else notes, index,
+        required=lambda k: _required().get(k, frozenset()),
     )
     require(isinstance(result.get("type"), str), "Operation requires a string type", field="type")
     validator = _validators().get(result["type"])

@@ -52,17 +52,18 @@ def execute_design(project, op):
         fields = {
             k: deepcopy(v) for k, v in op.items() if k not in ("type", "target", "name", "width", "height")
         }
+        width, height = op.get("width", c["width"]), op.get("height", c["height"])
         if op["shape"] == "path":
-            fields["path_view"] = [op.get("width", c["width"]), op.get("height", c["height"])]
+            require(isinstance(op.get("path"), str), "A path shape needs a path", field="path")
+            from .geometry import path_box
+
+            # A missing size reaches the path's farthest point (see path_box), never the whole canvas.
+            reach = path_box(op["path"])
+            width, height = op.get("width", reach[0]), op.get("height", reach[1])
+            fields["path_view"] = [width, height]
         append_layer(
             project,
-            new_layer(
-                op["name"] if "name" in op else default_name(project, "shape"),
-                "shape",
-                op.get("width", c["width"]),
-                op.get("height", c["height"]),
-                **fields,
-            ),
+            new_layer(op["name"] if "name" in op else default_name(project, "shape"), "shape", width, height, **fields),
         )
     elif kind == "group":
         children = selected(project, op["targets"])
@@ -80,6 +81,12 @@ def execute_design(project, op):
             child.update(parent=group["id"], constraints={})
             child["x"], child["y"] = stored_origin(child, (b[0] - x, b[1] - y))
         group["content_width"], group["content_height"] = w, h
+        if "above" in op or "below" in op:
+            require(not ("above" in op and "below" in op), "group takes above or below, not both", field="above")
+            where = "above" if "above" in op else "below"
+            require(project.layer(op[where])["id"] not in {item["id"] for item in children},
+                    f"group {where} must name a layer outside the group", field=where)
+            execute(project, {"type": "reorder", "target": group["id"], where: op[where]})
     elif kind == "ungroup":
         group = project.layer(op.get("target"))
         require(group["type"] == "group", "Target must be a group")

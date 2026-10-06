@@ -51,6 +51,26 @@ def located(error, index, operation, count):
     return error
 
 
+# Error codes of a malformed operation: the schema phase collects every one of them in a batch.
+INVALID_CODES = ("invalid_operation", "unknown_operation", "invalid_property", "invalid_path", "invalid_color")
+MAX_REPORTED = 50
+
+
+def batch_error(errors):
+    """One error for every invalid operation of a batch. The top-level fields describe the first
+    error; ``errors`` lists each one (operation_index, field, message, suggestions ...)."""
+    first = errors[0]
+    if len(errors) == 1:
+        return first
+    keep = ("operation_index", "operation_type", "field", "suggestions")  # long field lists stay on the first error
+    entries = [{"error": e.code, "message": str(e), **{k: e.details[k] for k in keep if k in e.details}}
+               for e in errors[:MAX_REPORTED]]
+    more = f"\n... and {len(errors) - MAX_REPORTED} more" if len(errors) > MAX_REPORTED else ""
+    message = (f"{len(errors)} operations are invalid; nothing was applied. Fix them all and resend:\n"
+               + "\n".join(f"- {entry['message']}" for entry in entries) + more)
+    return VixlError(first.code, message, **first.details, errors=entries, error_count=len(errors))
+
+
 class Project:
     def __init__(self, width=1920, height=1080, background="#00000000", *, limits=None, workspace=None):
         self.limits = limits or Limits()
@@ -326,16 +346,22 @@ class Project:
         )
         from .schema import validate_operation
         from .normalize import apply_centering, resolve_geometry
+        from .targets import fan_out
 
         notes = []
         validated = []
+        invalid = []  # Every schema error of the batch, so one round trip fixes them all.
         for index, operation in enumerate(operations):
             try:
                 validated.append(validate_operation(operation, notes, index if len(operations) > 1 else None))
                 if check:
                     check(validated[-1])
             except VixlError as exc:
-                raise located(exc, index, operation, len(operations)) from exc
+                if exc.code not in INVALID_CODES:
+                    raise located(exc, index, operation, len(operations)) from exc
+                invalid.append(located(exc, index, operation, len(operations)))
+        if invalid:
+            raise batch_error(invalid)
         operations = validated
         candidate = self.clone()
         candidate._service = bool(check)
@@ -357,12 +383,13 @@ class Project:
                 if operation["type"] in ("layout-apply", "template-apply"):
                     from .brand import prepare
                     operation = prepare(candidate, operation)
-                resolved, centered = resolve_geometry(candidate, operation)
-                execute(candidate, deepcopy(resolved))
-                if operation["type"] in ("layout-apply", "template-apply"):
-                    from .brand import finish
-                    finish(candidate)
-                apply_centering(candidate, centered, operation)
+                for single in fan_out(operation):  # targets on a per-layer operation: once per layer
+                    resolved, centered = resolve_geometry(candidate, single)
+                    execute(candidate, deepcopy(resolved))
+                    if single["type"] in ("layout-apply", "template-apply"):
+                        from .brand import finish
+                        finish(candidate)
+                    apply_centering(candidate, centered, single)
             except VixlError as exc:
                 index = swatch_user(exc, operations, index)
                 raise located(exc, index, operations[index], len(operations)) from exc

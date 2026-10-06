@@ -26,8 +26,12 @@ TOPICS = {
     "export": ("export film merge form", ["docs/releases.md"]),
 }
 GOTCHAS = [
-    "x/y are parent-local pixels unless move uses space=canvas. Width/height percentages use the parent box.",
-    "SVG path coordinates are literal local pixels, not normalized to width/height; path-fit scales the geometry.",
+    "x/y are parent-local pixels unless move (or shape/text/solid/gradient with target) uses space=canvas; "
+    "pivot units=canvas takes a document point. Width/height percentages use the parent box.",
+    "SVG path coordinates are literal local pixels, not normalized to width/height; without width/height a path's "
+    "box reaches its farthest point; path-fit scales the geometry.",
+    "Opacity is 0-1 everywhere (opacity, keyframes, layer-style, creation fields); '70%' is read as 0.7, 70 is an error.",
+    "Per-layer operations take targets: [...] to apply to several layers; group/align/distribute treat targets jointly.",
     "font accepts a registered name or heading/body role. Import/install fonts before applying text batches.",
     "Batches are atomic; dry_run validates without changing the document. Use history begin/commit for several batches.",
     "Use layer-intent allow_crop=true for intentional bleed. Summary diagnostics offer bounded full detail with pagination.",

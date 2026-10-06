@@ -72,8 +72,10 @@ def test_fields_that_change_nothing_are_reported():
     ])
     p = document()
     p.apply([{"type": "effect", "target": "t", "name": "blur", "amount": 2}, {"type": "preset-save", "target": "t", "name": "soft"}])
-    stray = warnings([{"type": "preset-apply", "target": "t", "name": "soft", "overrides": {"sharpen": 3}}], p)
-    assert stray and "match no effect in preset 'soft'" in stray[0]
+    # An override that matches nothing is invalid input, so it fails the batch rather than warning.
+    with pytest.raises(VixlError, match="match no effect in preset 'soft'") as error:
+        p.apply([{"type": "preset-apply", "target": "t", "name": "soft", "overrides": {"sharpen": 3}}])
+    assert error.value.details["field"] == "overrides" and error.value.details["allowed"] == ["blur"]
 
 
 def test_validation_errors_point_at_the_schema_and_name_the_fields():
