@@ -1109,15 +1109,23 @@ def _render_layers(project, layers, bounds, parent, size, background, observe, a
         if layer.get("parent") != parent or not layer["visible"]:
             continue
         if observe and layer["id"] in observe:
-            x, y, w, h = bounds[layer["id"]]
-            before = image.crop((x, y, x + w, y + h))
+            box = pixel_box(bounds[layer["id"]], image.size)
+            before = image.crop(box)
             image = draw(layer)
-            observe[layer["id"]](before, image.crop((x, y, x + w, y + h)))
+            observe[layer["id"]](before, image.crop(box))
         else:
             image = draw(layer)
     if ax or ay:
         image = trim_overflow(image, content, ax, ay)
     return image
+
+
+def pixel_box(bounds, size):
+    """The whole-pixel (left, top, right, bottom) box covering fractional layout ``bounds``, clamped
+    to an image of ``size``. Every crop of a layer's pixels uses it so the images stay the same shape."""
+    x, y, w, h = bounds
+    return (max(0, math.floor(x + 1e-8)), max(0, math.floor(y + 1e-8)),
+            min(size[0], math.ceil(x + w - 1e-8)), min(size[1], math.ceil(y + h - 1e-8)))
 
 
 def trim_overflow(image, content, ax, ay):

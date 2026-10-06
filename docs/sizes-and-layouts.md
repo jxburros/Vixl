@@ -30,7 +30,7 @@ vixl canvas dpi 300
 
 Operations: `{"type": "canvas", "size": "a4", "orientation": "landscape", "bleed": true, "dpi": 300}`; `canvas.preset` and `artboard.preset` accept the same names (older preset names still work). MCP: `vixl_document_create(path, size="letter", bleed=true)` and `vixl_sizes_list`.
 
-A sized canvas records `size`, `dpi`, `physical`, `bleed` and `safe` (pixels), and generated guides `trim-*` and `safe-*`, so layers can be anchored with constraints such as `{"left": "guide:safe-left.left"}`. A custom canvas resize drops the size metadata and generated guides but keeps `dpi` and any guide a layer is anchored to. Export uses the canvas dpi for PNG/JPEG/TIFF/PDF metadata, and `vixl check --checks print` uses the bleed and safe area.
+A sized canvas records `size`, `dpi`, `physical`, `bleed` and `safe` (pixels; print sizes default to a quarter inch, story sizes to 250 px at the top and bottom and 60 px at the sides, as a `{left, top, right, bottom}` object when the sides differ), and generated guides `trim-*` and `safe-*`, so layers can be anchored with constraints such as `{"left": "guide:safe-left.left"}`. A custom canvas resize drops the size metadata and generated guides but keeps `dpi` and any guide a layer is anchored to. Export uses the canvas dpi for PNG/JPEG/TIFF/PDF metadata, and `vixl check` tests text and artwork against the safe area by default (`--checks print` also uses the bleed).
 
 Icon sets: design on `favicon` (or any square canvas) and run `vixl export-icons --out icons --set web|apple|android|windows|all`, or export `favicon.ico` directly (`--icon-sizes 16 32 48`).
 

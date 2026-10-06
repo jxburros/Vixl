@@ -563,8 +563,9 @@ OVERRIDES = {
     "organic-shape": {"kind": "leaf, petal, blob or rose.", "lobes": "Lobe or petal count.",
                       "variation": "Randomness of the outline, 0-1."},
     "path-fit": {"padding": "Inner margin in pixels.", "preserve_aspect": "true keeps the path's proportions."},
-    "layer-intent": {"role": "content, decoration (may overlap and bleed), background, or title (the heading that names the page and the PDF).",
+    "layer-intent": {"role": "content, decoration (may overlap and bleed), background (checks skip it; use it for full-canvas art), or title (the heading that names the page and the PDF).",
                      "allow_overlap": "Layers this layer may overlap without a check finding.",
+                     "color_vision_safe": "true on a chart group says its series differ by more than color (labels, patterns), so the color_vision check skips it.",
                      "allow_crop": "true marks a deliberate edge crop or bleed: checks report it as informational "
                                    "instead of a problem."},
     "font-fallbacks": {"fonts": "Registered font names tried for missing characters."},

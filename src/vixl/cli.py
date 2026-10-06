@@ -841,7 +841,8 @@ def project_command(project, cmd, args, *, detail="compact"):
         p.add_argument(
             "--avoid", nargs=4, action="append", metavar=("X", "Y", "W", "H"), help="Reserved zone"
         )
-        p.add_argument("--thumbnail-width", type=int, help="judge text at this thumbnail width (default 320; print sizes judge printed points instead)")
+        p.add_argument("--thumbnail-width", default="auto", type=lambda v: v if v == "auto" else None if v in ("off", "none", "null") else int(v),
+                       help="judge text at this thumbnail width (default 320; 'off' disables; print sizes judge printed points instead)")
         p.add_argument("--min-thumbnail-text", type=float, default=10)
         p.add_argument("--min-contrast", type=float)
         for key in ("artboard", "comp"):

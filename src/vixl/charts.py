@@ -1298,6 +1298,37 @@ def chart_contrast(project, resolved, local_bounds, bounds, items):
     return results
 
 
+def series_colors(project, resolved):
+    """``[(chart group, [(series name, RGB, [mark layers])])]``: the fill (stroke for lines) each series of
+    every chart is drawn in, read from the chart's generated marks, so checks can compare series colors."""
+    import re
+
+    from .design import resolve_color
+    from .render import color
+
+    found = []
+    for group in resolved.values():
+        recipe = group.get("chart")
+        if not recipe or group["type"] != "group":
+            continue
+        radial = recipe.get("kind") in ("pie", "donut")
+        names = recipe.get("categories", []) if radial else [s.get("name") for s in recipe.get("series", [])]
+        series = {}
+        for layer in resolved.values():
+            match = re.fullmatch(r"(bar|area|line|slice)-(\d+)(?:-\d+)?", layer.get("chart_part", ""))
+            if layer.get("parent") != group["id"] or not match or not layer["visible"]:
+                continue
+            value = layer.get("stroke") if match[1] == "line" else layer.get("fill")
+            rgba = color(resolve_color(value, project.state)) if value else (0, 0, 0, 0)
+            if rgba[3] < 128:
+                continue
+            index = int(match[2])
+            entry = series.setdefault(index, [names[index] if index < len(names) else f"series {index + 1}", rgba[:3], []])
+            entry[2].append(layer)
+        found.append((group, [tuple(series[i]) for i in sorted(series)]))
+    return found
+
+
 # ---------------------------------------------------------------------------------------------
 # Operations
 

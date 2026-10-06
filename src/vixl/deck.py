@@ -213,7 +213,7 @@ def check_deck(project, *, checks=None, safe_area=None, min_contrast=None, pages
             if thumb is None and profile != "projected":
                 thumb = 320 if profile == "phone" and number == 1 else defaults[2]
             result = check_design(project, checks=design, safe_area=safe_area, min_contrast=min_contrast,
-                                  page=record["id"], thumbnail_width=thumb, min_thumbnail_text=min_thumbnail_text)
+                                  page=record["id"], thumbnail_width="auto" if thumb is None else thumb, min_thumbnail_text=min_thumbnail_text)
             for item in result["issues"]:
                 # The same finding on several pages (usually a master layer or a document-wide
                 # setting such as fonts) is reported once with every page it affects.

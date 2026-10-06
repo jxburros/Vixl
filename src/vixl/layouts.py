@@ -19,6 +19,7 @@ from PIL import Image, ImageDraw
 
 from .errors import VixlError, require
 from .safe_catalog import SAFE_PALETTES
+from .sizes import safe_sides
 
 LAYOUT_TYPES = ("layout-apply", "type-scale")
 RATIOS = {
@@ -58,7 +59,7 @@ class Builder:
         density = op.get("density") or self.rng.choice(["airy", "balanced", "balanced", "dense"])
         require(density in DENSITY_MARGIN, "density must be airy, balanced or dense")
         self.density = density
-        inset = c.get("bleed", 0) + c.get("safe", 0)
+        inset = c.get("bleed", 0) + max(safe_sides(c))
         margin = max(short * DENSITY_MARGIN[density], inset + short * 0.02 if inset else 0)
         if "margin" in op.get("direction", {}):
             fraction = op["direction"]["margin"]
@@ -1093,7 +1094,7 @@ def _thumbnail_bold(b):
 def _story_vertical(b):
     b.background()
     c = b.project.state["canvas"]
-    safe = max(c.get("safe", 0), round(b.H * 0.12))
+    safe = max(safe_sides(c)[1], safe_sides(c)[3], round(b.H * 0.12))
     top, bottom = safe, b.H - safe
     _, _, _, h = b.text("caption", b.label_text(), b.L, top, b.cw, name="label", color="@accent-text", align=b.align)
     y = top + h + b.unit * 3

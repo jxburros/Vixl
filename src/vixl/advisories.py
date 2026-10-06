@@ -123,8 +123,8 @@ def placement(candidate, before, after):
     suspect = [layer["id"] for layer in layers if needs_check(layer, canvas)]
     report = check_design(candidate, checks=["bounds"], targets=suspect) if suspect else {"issues": []}
     for issue in report["issues"]:
-        if issue["check"] != "bounds":
-            continue
+        if issue["check"] != "bounds" or issue["severity"] == "info":
+            continue  # Intentional bleed and marked crops are not warnings.
         box = issue.get("bounds")
         if box and "cut off by the canvas edge" in issue["message"] and issue["severity"] != "error":
             x, y, w, h = box
@@ -132,7 +132,8 @@ def placement(candidate, before, after):
             if w * h and 1 - seen / (w * h) <= OUTSIDE_FRACTION:
                 continue  # a small bleed is normal for artwork
         suffix = f" (bounds {[round(v) for v in box]})" if box else ""
-        warnings.append(issue["message"] + suffix)
+        if issue["message"] + suffix not in warnings:
+            warnings.append(issue["message"] + suffix)
     for layer in layers:
         parent = index.get(layer.get("parent"))
         if layer["type"] != "text" or parent is None or "content_width" not in parent:

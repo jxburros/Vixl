@@ -64,6 +64,7 @@ def check_state(project, state):
         allowed = layer.get("allow_overlap", [])
         require(isinstance(allowed, list) and len(allowed) <= 512 and all(isinstance(x, str) for x in allowed), "Invalid overlap intent", "invalid_project")
         require(isinstance(layer.get("allow_crop", False), bool), "Invalid crop intent", "invalid_project")
+        require(isinstance(layer.get("color_vision_safe", False), bool), "Invalid color vision intent", "invalid_project")
         ids.add(layer["id"])
         names.add(layer["name"])
         require(
