@@ -35,6 +35,22 @@ def compact_json(value):
     return json.dumps(value, separators=(",", ":"), ensure_ascii=False, default=str)
 
 
+def strip_prose(schema):
+    """Remove descriptions and examples from a schema and the schemas nested in it, in place."""
+    if isinstance(schema, list):
+        for item in schema:
+            strip_prose(item)
+    elif isinstance(schema, dict):
+        schema.pop("description", None)
+        schema.pop("examples", None)
+        for key, value in schema.items():
+            if key in ("properties", "$defs", "definitions", "patternProperties"):
+                for sub in value.values():
+                    strip_prose(sub)
+            elif key not in ("enum", "const", "default"):
+                strip_prose(value)
+
+
 def service_operation_schema(slim=False):
     """Advertise canonical service operations directly in tools/list, without alias repetition."""
     from .render import EFFECTS
@@ -68,10 +84,15 @@ def service_operation_schema(slim=False):
             props["action"]["enum"].remove("import")
         if kind == "effect":
             props["name"] = {"type": "string", "enum": sorted(EFFECTS)}
-        # Detailed field prose remains available through vixl_operation_schema.
-        # Avoid repeating it in every tools/list response as the operation catalog grows.
-        for constraint in props.values():
-            constraint.pop("description", None)
+        # Detailed field prose, summaries and examples remain available through vixl_operation_schema.
+        # Avoid repeating them in every tools/list response as the operation catalog grows.
+        variant.pop("description", None)
+        variant.pop("examples", None)
+        for key, constraint in props.items():
+            strip_prose(constraint)
+            if kind in ("suite-set", "recipe-set") and "properties" in constraint:
+                # The suite and recipe objects are typed in vixl_operation_schema and validated when applied.
+                props[key] = {"type": "object"}
         if kind in ("field-set", "form"):
             # Nullable copies of the field settings: names only here, types via vixl_operation_schema.
             props.update({key: {} for key in props if key not in ("target", "kind")})
@@ -323,15 +344,20 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
     server = FastMCP(
         "Vixl AI" if tools == "ai" else "Vixl",
         instructions=AI_INSTRUCTIONS if tools == "ai" else (
-            "Edit layered image documents in the configured workspace. Typical loop: vixl_document_create/open → "
+            "Edit layered image documents in the configured workspace. START HERE (open-ended briefs default to this path, "
+            "not freehand shapes): "
+            + ("" if tools == "compact" else "vixl_guide(brief) says what to make and with which tools (icons, characters, scenes, "
+               "patterns, mandalas, logos, diagrams, social cards, slides, posters); ")
+            + "1) vixl_sizes_list → vixl_document_create(size=…); 2) text work: vixl_layouts_list → layout-apply, filling every "
+            "slot it lists (art with no text frame: shape/organic/pathfinder/radial-repeat); 3) type: vixl_fonts → vixl_font_pair "
+            "(the bundled font is a proofing fallback); 4) finish with look (glow, soft-shadow, gradient, grain, paper …) and, "
+            "when the brief names a style, vixl_styles; 5) vixl_check → fix the 'fix' findings, glance at 'review' → "
+            "vixl_render_preview (region= to zoom) → vixl_export_file. Typical loop: vixl_document_create/open → "
             "vixl_operations_apply (atomic batches; dry_run to test) → vixl_check (overlap, contrast, safe area, "
-            "thumbnail legibility) → vixl_render_preview (region= to zoom) → vixl_export_file. Use layer IDs or "
+            "thumbnail legibility) → vixl_render_preview → vixl_export_file. Use layer IDs or "
             "names from results. " + COORDINATE_NOTE + " Errors are JSON with error, message, field, "
             "operation_index and suggestions. Paths are relative to the workspace; imports accept a path or "
-            "base64 bytes. Several documents can be open: pass document= to address one. Start from a named size "
-            "(vixl_sizes_list) and, when given open-ended briefs, a principled layout (vixl_layouts_list → "
-            "layout-apply, filling every slot it lists) instead of improvising; then refine. Choose type with "
-            "vixl_fonts → vixl_font_pair (the bundled font is a proofing fallback), and when a brief leaves the "
+            "base64 bytes. Several documents can be open: pass document= to address one. When a brief leaves the "
             "look open, vixl_roll a few directions and compare previews. Paint with brushes (vixl_brushes_list), animate "
             "with keyframes (keyframe/animate/animate-preset → vixl_timeline_preview → vixl_export_timeline), and "
             "export print-ready CMYK PDF/TIFF/JPEG with vixl_export_file. Slides and carousels are pages (page "
@@ -672,7 +698,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
     @tool
     def vixl_check(
         checks: list[Literal["bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "fonts", "brand", "print", "color_vision", "guides", "alignment",
-                             "deck", "title_position", "type_scale", "words", "min_font", "notes", "empty", "form", "drawing"]]
+                             "deck", "title_position", "type_scale", "words", "min_font", "notes", "empty", "form", "drawing", "style"]]
         | None = None,
         targets: list[str] | None = None,
         safe_area: Annotated[
@@ -693,6 +719,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         page: Annotated[int | str | None, Field(description="Page to check (default: the active page)")] = None,
         deck: Annotated[dict | None, Field(description="deck checks: {min_font (pt), max_words, pages, include_hidden}")] = None,
         sample: Annotated[str | None, Field(description="form checks: 'worst' (worst-case values) or a workspace CSV of rows")] = None,
+        style: Annotated[str | list[str] | None, Field(description="style check: evaluate this style (or list) instead of the document's style tag")] = None,
         document: Document = None,
     ) -> dict:
         """Find design problems without looking: content cut off by the canvas, overlapping text, low WCAG
@@ -701,7 +728,10 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         type in points and backgrounds that stop short of the bleed; color_vision (opt-in) finds text whose
         contrast collapses for color-blind readers; deck checks every page plus title placement, type
         scale, words per page, projected type size and speaker notes; form checks fields (names, overlap, tab
-        order, sizes, contrast) and with sample finds values that overflow. Reports only problems."""
+        order, sizes, contrast) and with sample finds values that overflow; style (opt-in) evaluates the document's
+        style tag rule by rule. Each issue has a severity (error, warning, info) and an action: fix (needs a design
+        change), review (look and decide) or informational (expected, such as a crop marked with layer-intent
+        allow_crop); by_action lists the issue indexes under each. Reports only problems."""
         return session.check(
             document=document,
             checks=checks,
@@ -718,6 +748,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
             page=page,
             deck=deck,
             sample=sample if sample in (None, "worst") else str(session.resolve(sample)),
+            style=style,
         )
 
     @tool
@@ -965,13 +996,56 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         slots render as [Label] blanks that vixl_check rejects, and a slot the layout does not use is an
         error. Unspecified choices are rolled from the seed. Layouts produce editable layers, role swatches
         (@background @ink @accent …), a type scale and guides, and use the document typography. Pass name
-        for one layout's principles and each slot's meaning."""
+        for one layout's principles and each slot's meaning. Layouts are text compositions; for icons, characters, scenes
+        and patterns call vixl_guide. An unfilled image slot gets next_steps in the layout-apply result (import, resource,
+        draw, AI)."""
         from .layouts import LAYOUTS, catalog, describe
 
         if name:
             require(name in LAYOUTS, f"Unknown layout {name!r}", field="name")
             return {"name": name, **describe(name), "options": catalog()["options"]}
         return catalog()
+
+    @tool
+    def vixl_guide(
+        brief: Annotated[str | None, Field(description="A kind of work (icon, character, scene, pattern, mandala, logo, diagram, "
+                                                      "poster …), a free-text brief such as 'a mascot for a coffee brand', "
+                                                      "'operations' or 'looks'")] = None,
+    ) -> dict:
+        """What to make and how. No brief: the start-here recipe and every kind of work (poster, social card, logo, icon,
+        character, scene, pattern, mandala, diagram, slides, stationery, form, animation, pixel art …). A kind or free-text
+        brief: the approach, the operations, layouts, looks and styles that suit it, and a working example. brief=operations
+        lists every operation by purpose with a one-line summary; brief=looks lists the finishing looks (glow, soft-shadow,
+        grain, paper …). Use it before improvising: layouts are text compositions, so non-poster work starts here."""
+        from .briefs import guide
+
+        return guide(brief)
+
+    @tool
+    def vixl_styles(
+        action: Literal["list", "get", "apply", "check"] = "list",
+        name: Annotated[str | None, Field(description="Style name (get, apply) or style to check against (check; default the document's tag)")] = None,
+        query: Annotated[str | None, Field(description="list: words to find in names, summaries, keywords and uses")] = None,
+        palette: Annotated[bool, Field(description="apply: also define and apply the style's first palette")] = False,
+        document: Document = None,
+    ) -> dict:
+        """Design style catalog (swiss, brutalist, neo-brutalist, minimalist, scandinavian, bauhaus, art-deco,
+        mid-century-modern, memphis, retro-futurism, vaporwave, y2k, editorial, corporate-flat, material, glassmorphism,
+        grunge-zine, japanese-minimal, vintage-letterpress, hand-drawn, maximalist, cyberpunk, kawaii, line-art, risograph,
+        data-viz, art-nouveau, pixel-art). list searches them; get returns principles, palettes, type, layout, imagery,
+        do/don't and the premade checks; apply tags the document (style-set), stores the brief as design guidance and
+        optionally applies the palette; check evaluates the style's rules on the document (same as vixl_check
+        checks=['style'])."""
+        from . import styles
+
+        if action == "list":
+            return styles.listing(query)
+        if action == "check":
+            return session.check(document=document, checks=["style"], style=name)
+        require(name, f"{action} needs a style name (vixl_styles lists them)", field="name")
+        if action == "get":
+            return styles.describe(name)
+        return session.apply(styles.apply_operations(name, palette=palette), False, "compact", document)
 
     @tool
     def vixl_fonts(

@@ -93,7 +93,7 @@ call `vixl_operation_schema` for the fields of unfamiliar operations.
 
 `vixl mcp` can serve its tools as two servers, so an agent loads only the tools it uses:
 
-- `--tools core`: documents, operations, rendering, checks, export, sizes, layouts, fonts, color, brushes, animation and workflows (42 tools).
+- `--tools core`: documents, operations, rendering, checks, export, sizes, layouts, fonts, color, brushes, animation and workflows (44 tools).
 - `--tools ai`: the provider-backed tools (`vixl_ai_*`, `vixl_models_list`) plus `vixl_workspace_list`, `vixl_document_open`, `vixl_document_inspect` and `vixl_render_preview`, so the AI server can find layers and check its results (15 tools).
 
 ```json
@@ -128,7 +128,9 @@ Vixl is designed to be driven mainly by agents. The intended loop is: create or 
 | `vixl_import_image(path? \| data_base64?, name)` | Embed a workspace file or base64/data-URL bytes as a layer; returns id, size, bounds |
 | `vixl_operations_apply(operations, dry_run, detail)` | Atomic edits; schemas are included directly in tools/list (or on demand in slim mode) |
 | `vixl_operation_schema(types)` | Exact JSON Schema for named operation types |
-| `vixl_check(checks, targets, safe_area, avoid, thumbnail_width, ..., ink_limit, min_ppi)` | Design problems: bounds, text overlap, WCAG contrast, safe area/reserved zones, thumbnail legibility; opt-in `print` and `color_vision` |
+| `vixl_check(checks, targets, safe_area, avoid, thumbnail_width, ..., ink_limit, min_ppi, style)` | Design problems: bounds, text overlap, WCAG contrast, safe area/reserved zones, thumbnail legibility; opt-in `print`, `color_vision` and `style`. Every issue has a `severity` (error, warning, info) and an `action` (fix, review, informational); `by_action` lists the issue indexes under each. A layer marked `allow_crop` (`layer-intent`) reports its edge crop as informational |
+| `vixl_guide(brief?)` | What to make: the start-here recipe and every kind of work, or the approach, operations, layouts, looks, styles and a working example for a kind or free-text brief; `brief=operations` and `brief=looks` list those catalogs |
+| `vixl_styles(action, name?, query?, palette?)` | 28 design styles: list/search, get (principles, palettes, type, layout, imagery, do/don't, checks), apply (tag the document, store the brief, optionally the palette), check (same as `vixl_check` `style`) |
 | `vixl_render_preview(variables, max_width, max_height, max_bytes, region, time, proof, simulate)` | Fast preview-resolution PNG; `region` zooms in (up to 8×); `time` shows a timeline frame; `proof` soft-proofs CMYK; `simulate` shows color-vision deficiency |
 | `vixl_render_compare(before, after, mode)` | Side-by-side or red-highlight diff of two revisions (`previous`, `head~N`, branch, checkpoint, ID) plus the changed region |
 | `vixl_export_file(path, quality, scale, profile, variables, background, overwrite, color_space, icc_profile, intent, black_generation, ink_limit, proof, simulate, dpi, icon_sizes, time)` | Save full-resolution PNG/JPEG/WEBP/TIFF/AVIF/SVG/PDF/ICO, CMYK for print; return only file metadata |
@@ -138,6 +140,15 @@ Vixl is designed to be driven mainly by agents. The intended loop is: create or 
 | `vixl_export_icons(directory, icon_set)` | Standard icon sets (web favicons and manifest, Apple, Android, Windows) |
 | `vixl_measure`, `vixl_measure_spacing`, `vixl_validate` | Samples, channel statistics, contrast; spacing intent; assertions and profiles |
 | `vixl_history(action, ref, count, offset, limit)` | Undo/redo/transactions/branches/checkpoints; newest-first summaries |
+
+The server instructions carry the start-here recipe: `vixl_guide` for the kind of work, then `vixl_sizes_list` → `vixl_document_create(size=…)`,
+`vixl_layouts_list` → `layout-apply` (all slots filled; art with no text frame is built from `shape`/`organic`/`pathfinder`/`radial-repeat`),
+`vixl_fonts` → `vixl_font_pair`, a `look` or `vixl_styles` to finish, then `vixl_check` (fix the `fix` findings) → `vixl_render_preview` → `vixl_export_file`.
+Open-ended briefs default to that path instead of freehand shapes.
+
+`vixl_operation_schema(types=[…])` returns each operation's one-line `description`, every field with a JSON type and a description,
+and `examples` for the common ones (gradients, glows, shadows, radial repeats, layouts, palettes …). `tools/list` stays lean: it carries
+types and constraints only.
 
 Every document tool accepts an optional `document` path. Up to 8 documents stay open per session; addressing one with `document` does not change the active document.
 

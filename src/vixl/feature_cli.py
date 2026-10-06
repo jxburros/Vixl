@@ -152,6 +152,8 @@ def compile_feature(cmd, args):
         p.add_argument("--colors", type=json.loads)
         p.add_argument("--mode", choices=["inherit", "light", "dark"])
         p.add_argument("--predictable", action="store_true", default=None)
+        p.add_argument("--keep-order", action="store_true", default=None,
+                       help="Use --palette colors as given: background, surface, then accents (no light/dark reassignment)")
         p.add_argument("--type-scale")
         p.add_argument("--base-size", type=float)
         p.add_argument("--density", choices=["airy", "balanced", "dense"])

@@ -98,5 +98,13 @@ New document state: `canvas.size`, `canvas.dpi`, `canvas.physical`, `canvas.blee
 | form | `tab_order`, `entry_font`, `title`, `lang` |
 | drawing | `action` (`import`, `clean`, `vectorize`, `straighten`, `smooth`, `fill`, `stroke`, `restyle`), `asset`/`path`, `name`/`target`, `strokes`, `points`, `color`, `settings`, `x`, `y`, `width`, `height` — [hand drawings](drawing.md) |
 
+| radial-repeat | `target`, `count`, `cx`, `cy`, `sweep`, `start_angle`, `mirror`, `group`, `name` — [radial repeat](design-tools.md#radial-repeat) |
+| look | `look`, `target`/`targets`, `color`, `amount`, `remove` — [looks](looks.md) |
+| style-set | `style` (name, names or null), `options` — [styles](styles.md) |
+| layer-intent | `target`, `role`, `allow_overlap`, `allow_crop` |
+| palette-apply | `name`, `prefix`, `roles` (true/false or `{role: color-or-index}`), `keep_order`, `policy` |
+
+`vixl_operation_schema` gives every operation a one-line description, typed and described fields and (for the common ones) examples.
+
 Every operation also accepts `page` (a page name or number) in a multi-page document.
 

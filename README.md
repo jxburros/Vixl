@@ -233,7 +233,7 @@ vixl workflow lyric-video-export --request request.json --workspace .   # LRC + 
 
 [Slides and pages](docs/slides.md) · [forms](docs/forms.md) · [hand drawings](docs/drawing.md) ·
 [rich text](docs/rich-text.md) · [organic shapes](docs/organic.md) · [guides and grids](docs/guides.md) ·
-[lyric videos](docs/lyric-video.md)
+[lyric videos](docs/lyric-video.md) · [finishing looks](docs/looks.md) · [design styles and checks](docs/styles.md)
 
 ## Spacing checks, pixel art and animation
 

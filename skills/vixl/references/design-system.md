@@ -39,6 +39,32 @@ vixl_check() ; vixl_render_preview()
 - Second layout in the same document: pass `prefix` (e.g. `"b-"`) or `replace: true`.
 - `type-scale` alone defines the styles: `{"type":"type-scale","base":18,"ratio":"golden"}`. Guidance resources `typography`, `color`, `layout`, `accessibility`, `print`, `icon`, `motion`, `brush` hold the principles in words (`{"type":"guidance","name":"print","style":"print"}`).
 
+## Unfilled image slots
+
+A layout with an image slot (`product-card`, `split-screen`, `photo-caption`, `story-vertical` …) draws a
+placeholder frame when `image` is not given and returns `next_steps` with the slot's bounds and the four
+ways to fill it: **import** (`vixl_import_image` → `replace-contents` or re-apply with `image=`),
+**resource** (a saved shape or container), **draw** (shape/pen/organic/paint inside the bounds), or **AI**
+(`vixl_ai_generate`, needs a provider). `check` reports the placeholder as a blank until it is replaced.
+
+## Palette roles
+
+`palette-apply` and `layout-apply palette=[…]` turn colors into `@background`, `@surface`, `@ink`, `@muted`, `@accent`,
+`@accent-text` and `@on-accent` by luminance and chroma, following light or dark mode. That reassigns colors
+passed in an order that looked like background, surface, accents. The result explains it: `palette_roles`
+(palette-apply) and `layout.roles` (layout-apply) give each role's color, whether it is a palette entry
+(`palette[2]`) or derived, and a one-line reason, plus `mode` and where it came from. To decide yourself, pass
+`keep_order: true` (first color background, second surface, the rest accents; ink and muted are derived for 7:1 and
+4.5:1 contrast), or set roles (`palette-apply roles: {background: 0, accent: "#e11d48"}`, values are palette
+indexes or colors; `layout-apply colors: {…}`). `palette-generate` only adds numbered swatches (`brand-50` …).
+
+## Finishing looks and styles
+
+`look` applies a named finish in one operation (glow, neon, soft-shadow, hard-shadow, outline, gradient, grain,
+paper, film, duotone, risograph, sketch, watercolor, halftone); `radial-repeat` makes rosettes and mandalas;
+`vixl_styles` serves 28 design styles with premade checks. See [looks](../../../docs/looks.md) and
+[styles](../../../docs/styles.md).
+
 ## Color language
 
 Every color field accepts names (CSS + survey names like `dusty rose`), hex, `rgb()`, `hsl()`, `hwb()`, `lab()`, `lch()`, `oklab()`, `oklch()`, `color(display-p3 …)`, `cmyk(c m y k)`, `gray()`, `kelvin(2700)`, `color-mix(in oklab, a 30%, b)`, `@swatch`, and modifiers `lighten/darken(c, 10%)`, `saturate/desaturate`, `mix(a, b, 25%)`, `tint/shade/tone`, `alpha(c, 0.5)`, `rotate(c, 30deg)`, `complement`, `invert`, `grayscale`, `readable(bg)`. Swatches may reference swatches: `{"type":"swatch","name":"brand-soft","color":"mix(@brand, white, 70%)"}`.

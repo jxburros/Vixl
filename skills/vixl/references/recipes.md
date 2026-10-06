@@ -226,3 +226,32 @@ vixl_operations_apply(operations=[
 vixl_timeline_preview(count=8)
 vixl_export_timeline(path="post.mp4")          # needs ffmpeg; otherwise post.webp or post.gif
 ```
+
+
+## Character, scene and mandala (no text layout)
+
+Open brief, no copy to set: ask `vixl_guide(brief="a mascot for a coffee brand")` first. It returns the approach,
+operations, looks and a runnable example for the kind of work (character, scene, pattern, mandala, icon, logo …).
+
+```json
+{"operations":[
+  {"type":"shape","shape":"ellipse","name":"body","x":140,"y":160,"width":240,"height":260,"fill":"#ffd23f"},
+  {"type":"shape","shape":"ellipse","name":"eye-left","x":200,"y":250,"width":34,"height":44,"fill":"#222"},
+  {"type":"shape","shape":"ellipse","name":"eye-right","x":286,"y":250,"width":34,"height":44,"fill":"#222"},
+  {"type":"group","name":"mascot","targets":["body","eye-left","eye-right"]},
+  {"type":"look","target":"mascot","look":"soft-shadow"}
+]}
+```
+
+A mandala is one petal and `radial-repeat`, then a glow:
+
+```json
+{"operations":[
+  {"type":"shape","shape":"ellipse","name":"petal","x":380,"y":120,"width":40,"height":150,"fill":"#7c3aed"},
+  {"type":"radial-repeat","target":"petal","count":12,"cx":"50%","cy":"50%","mirror":true,"name":"ring"},
+  {"type":"look","target":"ring","look":"glow","color":"#c4b5fd"}
+]}
+```
+
+A scene stacks a gradient sky, a glowing sun, hills (`allow_crop` for the bleed) and an `organic` tree, then
+`look grain`. Tag a style with `vixl_styles(action="apply", name="retro-futurism")` and run `check --checks style`.

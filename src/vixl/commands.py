@@ -56,6 +56,10 @@ def compile_command(tokens):
     authoring = compile_authoring(cmd, args)
     if authoring is not None:
         return authoring
+    from .finishing import compile_command as compile_finishing
+    finishing = compile_finishing(cmd, args)
+    if finishing is not None:
+        return finishing
     from .richtext import compile_command as compile_rich
     rich = compile_rich(cmd, args)
     if rich is not None:

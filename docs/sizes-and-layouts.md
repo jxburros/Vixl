@@ -88,10 +88,35 @@ vixl check
 Each layout is a form. `vixl layout show NAME` (or `vixl_layouts_list`) lists its slots, with a label and a hint for what each one means in that layout. In `event-poster`, for example, `label` is the date and `body` is one detail per line. Slot keys are `title`, `subtitle`, `body`, `label`, `cta`, `caption`, `items` (newline-separated; `Name | Price` rows for price lists, `Heading: text` for F-pattern) and `image` (an embedded asset ID).
 
 - **Unfilled slots are blanks, not sample copy.** A slot the composition needs renders as a visible `[Label]` placeholder (`[Date]`, `[Time]`, `[Action]`) and is recorded in `state.blanks` and in the layout's `blanks` list. `check` reports every unfilled blank as an error, so placeholder text can never ship silently. An image slot without an asset draws a placeholder frame that is also a blank until you pass `image` or use `replace-contents`. Pass `unfilled: "omit"` to leave unfilled slots out instead.
+- **Unfilled image slots say how to fill them.** `vixl layout show NAME` gives the `image` slot a `fill_with` list, and the
+  `layout-apply` result carries `next_steps` for every unfilled slot. For an image it names the frame layer, its
+  `bounds` and `aspect_ratio`, and four options: **import** (`vixl_import_image` returns an asset; re-apply with `image=`
+  and the same seed, or `replace-contents` on the frame), **resource** (`shape-place` a saved shape or container),
+  **draw** (build it from `shape`, `pen`, `pathfinder`, `organic` and `paint` inside the bounds, group it, remove the
+  placeholder; `rasterize` the group to get an asset for `replace-contents`) and **AI** (`vixl_ai_generate`, which needs a
+  configured provider). Text slots get a re-apply hint with the seed.
 - **Unused slots are errors.** Copy for a slot the layout does not read on this canvas, such as `subtitle` on `event-poster`, fails with `unused_slot` and lists the slots it does use, instead of being dropped.
 - **Fill blanks by re-applying.** Re-apply with the copy, `replace: true` and the `seed` the first pass reported. The composition stays the same and type is sized for the real copy. Editing a blank layer's text directly also clears it.
 
 `prefix` namespaces layer names, `replace: true` removes the previous layout's layers, `transparent: true` skips the background, and `font`/`display_font` use registered fonts. Without them, layouts use the document typography set by `font pair`, or the proofing fallback font, which `check` flags.
+
+### Palette roles and keeping your order
+
+`palette` can be a name or a list of colors. Roles are assigned by luminance and chroma and follow mode: in light mode the
+lightest color becomes `@background`, in dark mode the darkest, so a list passed as "background, surface, accents" can
+come back rearranged. The layout record explains it: `layout.mode` with `layout.mode_source` (the `mode` argument,
+inherited from the canvas background, taken from the first palette color, or rolled from the seed) and `layout.roles`,
+one entry per role with its `color`, `source` (`palette[2]`, `derived`, `explicit`) and `reason`. When a custom list is
+rearranged, `layout.notes` says how to take control:
+
+- `keep_order: true` uses the list as given: first color `@background`, second `@surface`, the rest accents (the first is
+  `@accent`). Nothing is lightened or darkened to suit a mode; mode follows the first color. `@ink` is not part of that
+  order, so it is derived from the background hue for 7:1 contrast, and `@muted`, `@accent-text` and `@on-accent` are derived
+  from it.
+- `colors: {background: "#0f172a", accent: "#38bdf8"}` sets individual roles and wins over everything else.
+
+`palette-apply` works the same way (`roles` true/false or `{role: color-or-palette-index}`, `keep_order`) and records the
+mapping as `palette_roles` in the apply result. `palette-generate` never assigns roles; it only adds numbered swatches.
 
 ### Rolling the dice
 
@@ -105,5 +130,9 @@ Standalone design-system pieces:
 ```
 
 Built-in guidance now covers `overall`, `minimal`, `editorial`, `playful`, `logo`, `pixel-art`, `typography`, `color`, `layout`, `accessibility`, `print`, `icon`, `motion` and `brush`.
+
+Layouts are text compositions, which is why open requests drift toward posters. For icons, characters, scenes, patterns,
+mandalas and diagrams, `vixl_guide(brief)` (CLI `vixl guide BRIEF`) names the approach, operations, layouts, looks and
+styles for the kind of work and gives a runnable example; see [looks](looks.md) and [styles](styles.md).
 
 Layouts are a starting structure, not a finished design: inspect, check and refine them. For open-ended briefs, applying a layout first prevents the common failure modes of unconstrained generation (no hierarchy, crowded edges, low contrast, arbitrary sizes).

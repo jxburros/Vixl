@@ -353,8 +353,13 @@ ROLES = ("background", "surface", "ink", "muted", "accent", "accent-text", "on-a
 
 
 def assign_roles(op, rng):
-    """Background/surface/ink/muted/accent/on-accent from a palette with checked contrast."""
+    """Background/surface/ink/muted/accent/on-accent from a palette with checked contrast.
+
+    By default roles follow light or dark mode (lightest color behind the work in light mode,
+    darkest in dark mode). ``keep_order`` takes the palette as given instead: background, surface,
+    then accents. The result carries ``_explain``: each role's color, source and reason."""
     from .colors import contrast_ratio, hex_of, mix, parse, relative_luminance, srgb_to_oklab, to_polar
+    from .palette_roles import describe, explicit, notes
     from .resources import get
 
     palette = op.get("palette")
@@ -363,12 +368,20 @@ def assign_roles(op, rng):
     colors = get("palettes", palette) if isinstance(palette, str) else palette
     require(isinstance(colors, list) and 2 <= len(colors) <= 256, "palette must be a palette name or 2–256 colors")
     parsed = [parse(c) for c in colors]
+    keep_order = bool(op.get("keep_order"))
     by_light = sorted(parsed, key=lambda c: relative_luminance(c[:3]))
-    mode = op.get("mode") or rng.choice(["light", "light", "dark"])
+    mode_source = op.get("_mode_source") or ("mode argument" if op.get("mode") else "rolled from the seed")
+    if keep_order and (not op.get("mode") or op.get("_mode_source") == "inherited from the canvas background"):
+        mode = "dark" if relative_luminance(parsed[0][:3]) < 0.4 else "light"
+        mode_source = "taken from the first palette color"
+    else:
+        mode = op.get("mode") or rng.choice(["light", "light", "dark"])
     require(mode in ("light", "dark"), "mode must be light or dark")
-    background = by_light[-1] if mode == "light" else by_light[0]
+    background = parsed[0] if keep_order else by_light[-1] if mode == "light" else by_light[0]
     ink = by_light[0] if mode == "light" else by_light[-1]
-    if op.get("policy") == "strict":
+    label = palette if isinstance(palette, str) else "custom"
+    chosen = explicit(colors, op["role_map"]) if op.get("role_map") else {}
+    if op.get("policy") == "strict" and not keep_order:
         candidates = [c for c in parsed if c not in (background, ink)] or [ink]
         accent = max(candidates, key=lambda c: to_polar(srgb_to_oklab(c[:3]))[1])
         def contrast(c):
@@ -378,13 +391,23 @@ def assign_roles(op, rng):
                  "muted": min(readable, key=contrast), "accent": accent,
                  "accent-text": accent if contrast(accent) >= 4.5 else ink,
                  "on-accent": max(parsed, key=lambda c: contrast_ratio(c[:3], accent[:3]))}
-        return {**{k: hex_of(v) for k, v in roles.items()}, "_palette": palette if isinstance(palette, str) else "custom", "_mode": mode}
+        result = {k: hex_of(v) for k, v in roles.items()}
+        result.update(chosen)
+        return {**result, "_palette": label, "_mode": mode, "_mode_source": mode_source,
+                "_explain": describe(colors, result, mode=mode, mode_source=mode_source, policy="strict",
+                                     explicit_roles=chosen),
+                "_notes": notes(keep_order=False, mode=mode, mode_source=mode_source, explicit_roles=chosen)}
     white, black = (1.0, 1.0, 1.0, 1.0), (0.0, 0.0, 0.0, 1.0)
-    if mode == "light" and relative_luminance(background[:3]) < 0.6:
-        background = mix(background, white, 0.82)
-    if mode == "dark" and relative_luminance(background[:3]) > 0.08:
-        background = mix(background, black, 0.75)
     extreme = black if mode == "light" else white
+    if keep_order:
+        # Honour the order given: nothing is lightened or darkened to suit the mode. Ink is not in the
+        # order, so it is derived from the background hue.
+        ink = mix(background, extreme, 0.9)
+    else:
+        if mode == "light" and relative_luminance(background[:3]) < 0.6:
+            background = mix(background, white, 0.82)
+        if mode == "dark" and relative_luminance(background[:3]) > 0.08:
+            background = mix(background, black, 0.75)
     for step in range(12):
         if contrast_ratio(ink[:3], background[:3]) >= 7.1:
             break
@@ -393,13 +416,17 @@ def assign_roles(op, rng):
     def chroma(c):
         return to_polar(srgb_to_oklab(c[:3]))[1]
 
-    candidates = [c for c in parsed if c not in (background, ink)] or [ink]
-    accent = max(candidates, key=lambda c: chroma(c) + rng.random() * 0.02)
-    for step in range(12):
-        if contrast_ratio(accent[:3], background[:3]) >= 3:
-            break
-        accent = mix(accent, extreme, 0.18)
-    surface = mix(background, ink, 0.07 if mode == "light" else 0.12)
+    if keep_order:
+        accent = parsed[2] if len(parsed) > 2 else parsed[1]
+        surface = parsed[1] if len(parsed) > 2 else mix(background, ink, 0.07 if mode == "light" else 0.12)
+    else:
+        candidates = [c for c in parsed if c not in (background, ink)] or [ink]
+        accent = max(candidates, key=lambda c: chroma(c) + rng.random() * 0.02)
+        for step in range(12):
+            if contrast_ratio(accent[:3], background[:3]) >= 3:
+                break
+            accent = mix(accent, extreme, 0.18)
+        surface = mix(background, ink, 0.07 if mode == "light" else 0.12)
 
     def readable(c, target=4.6):  # margin for hex rounding
         return min(contrast_ratio(c[:3], background[:3]), contrast_ratio(c[:3], surface[:3])) >= target
@@ -430,8 +457,14 @@ def assign_roles(op, rng):
         require(key in roles, f"colors keys are {', '.join(roles)}")
         parse(value)
         roles[key] = value
-    roles["_palette"] = palette if isinstance(palette, str) else "custom"
+    roles.update(chosen)
+    given = {**{k: v for k, v in (op.get("colors") or {}).items()}, **chosen}
+    roles["_palette"] = label
     roles["_mode"] = mode
+    roles["_mode_source"] = mode_source
+    roles["_explain"] = describe(colors, roles, mode=mode, mode_source=mode_source, keep_order=keep_order,
+                                 explicit_roles=given)
+    roles["_notes"] = notes(keep_order=keep_order, mode=mode, mode_source=mode_source, explicit_roles=given)
     return roles
 
 
@@ -1170,7 +1203,9 @@ SLOT_TEXT = {
     "cta": ("Action", "A two- or three-word call to action, shown as a button"),
     "caption": ("Caption", "A small supporting note"),
     "items": ("Items", "One item per line"),
-    "image": ("Image", "An embedded image asset id; without one a placeholder frame is drawn"),
+    "image": ("Image", "An embedded image asset id (vixl_import_image returns one). Left empty, a placeholder frame is drawn; "
+              "fill it later by importing a file, placing a saved resource, drawing it with shape/organic/paint operations, "
+              "or generating it with an AI tool: see next_steps in the layout-apply result"),
 }
 # Layout-specific meaning for slots: (label, hint[, placeholder]). Placeholders keep the shape
 # the layout parses (one detail per line, "item | price") so the blank composition is honest.
@@ -1293,6 +1328,46 @@ LAYOUTS = {
 }
 
 
+IMAGE_OPTIONS = [
+    {"option": "import", "how": "vixl_import_image(path='photo.png') returns an asset id; then re-apply this layout with "
+     "image=<asset>, replace=true and the same seed, or run {type: replace-contents, target: <image layer>, asset: <asset>} "
+     "and remove the temporary layer"},
+    {"option": "resource", "how": "A saved shape or container: vixl_workflow(action='resource-list', request={kind: 'shapes'}) "
+     "then {type: shape-place, resource: NAME, x, y, width, height} inside the slot"},
+    {"option": "draw", "how": "Build it from shape, pen, pathfinder, organic (flowers, trees, shells …) and paint operations "
+     "inside the slot's bounds, group them, and remove the placeholder; {type: rasterize} on the group gives an asset for replace-contents"},
+    {"option": "ai", "how": "vixl_ai_generate(prompt=…, width, height) (needs a configured provider: vixl_models_list), then "
+     "replace-contents with the generated layer's asset"},
+]
+
+
+def next_steps(project):
+    """What to do about the layout's unfilled slots, with the image slot's bounds and every way to fill it."""
+    from .render import resolve_layout
+
+    record = project.state.get("layout") or {}
+    blanks = record.get("blanks", [])
+    if not blanks:
+        return []
+    steps = []
+    text = list(dict.fromkeys(b["slot"] for b in blanks if b["slot"] != "image"))
+    if text:
+        steps.append({"slot": text, "action": "fill",
+                      "how": f"Re-apply layout-apply with name={record.get('name')!r}, seed={record.get('seed')}, replace=true "
+                             f"and the copy for: {', '.join(text)}"})
+    images = [b for b in blanks if b["slot"] == "image"]
+    bounds = resolve_layout(project) if images else {}
+    for blank in images:
+        layer = next((x for x in project.state["layers"] if x["name"] == blank["layer"]), None)
+        if layer is None:
+            continue
+        x, y, w, h = bounds[layer["id"]]
+        steps.append({"slot": "image", "layer": layer["name"], "bounds": [x, y, w, h], "aspect_ratio": round(w / max(h, 1), 3),
+                      "action": "fill", "options": IMAGE_OPTIONS,
+                      "note": "The placeholder is an editable frame; check reports it as an unfilled blank until it is replaced"})
+    return steps
+
+
 def describe(name):
     """Full form for one layout: each slot's label, hint, example and whether it becomes a blank."""
     item = LAYOUTS[name]
@@ -1303,7 +1378,8 @@ def describe(name):
         "principles": item["principles"],
         "best_for": item["best_for"],
         "slots": {
-            k: {"label": v["label"], "hint": v["hint"], "blank_if_unfilled": v["blank"], **({"example": v["example"]} if "example" in v else {})}
+            k: {"label": v["label"], "hint": v["hint"], "blank_if_unfilled": v["blank"], **({"example": v["example"]} if "example" in v else {}),
+                **({"fill_with": IMAGE_OPTIONS} if k == "image" else {})}
             for k, v in spec.items()
         },
         **({"also_accepts": extra} if extra else {}),
@@ -1375,6 +1451,7 @@ def execute_layout(project, op):
         rgba = color(state["canvas"].get("background", "transparent"))
         if rgba[3]:
             op["mode"] = "dark" if sum(v * w for v, w in zip(rgba[:3], (0.2126, 0.7152, 0.0722))) < 128 else "light"
+            op["_mode_source"] = "inherited from the canvas background"
         else:
             op.pop("mode", None)
     if op.get("predictable"):
@@ -1441,6 +1518,8 @@ def execute_layout(project, op):
         "seed": seed,
         "palette": builder.colors["_palette"],
         "mode": builder.colors["_mode"],
+        "mode_source": builder.colors["_mode_source"],
+        "roles": builder.colors["_explain"],
         "type_scale": builder.ratio_name,
         "base_size": round(builder.base, 2),
         "density": builder.density,
@@ -1471,6 +1550,8 @@ def execute_layout(project, op):
             f"Few design parameters were given, so seed {seed} chose {', '.join(sorted(rolled))}. Treat this as one "
             "roll of the dice: try seed='random' (or vixl roll) a few times, compare previews, and keep the seed you like."
         )
+    if isinstance(op.get("palette"), list):
+        notes.extend(builder.colors["_notes"])
     if fit < 1:
         notes.append(
             f"Type was reduced to {fit:.0%} of the medium's scale to fit this canvas; "
@@ -1502,7 +1583,7 @@ def _record_blanks(state, builder, layout_name, created):
         layer = by_name.get(name)
         if layer:
             registry[layer["id"]] = {"slot": "image", "asset": layer["asset"], "hint": SLOT_TEXT["image"][1], "source": f"layout:{layout_name}"}
-            found.append({"slot": "image", "layer": name, "hint": "pass image=ASSET_ID"})
+            found.append({"slot": "image", "layer": name, "hint": "pass image=ASSET_ID, or fill the frame later (see next_steps)"})
     return found
 
 
@@ -1529,6 +1610,17 @@ def _build(project, layout, op, seed, fit):
         resolved, centered = resolve_geometry(project, operation)
         execute(project, resolved)
         apply_centering(project, centered, operation)
+    # Decoration a layout lets run off the canvas (a corner block, a counterweight) is a drawn bleed:
+    # mark it so checks report it as informational instead of cut-off content.
+    from .render import resolve_layout
+
+    canvas = state["canvas"]
+    bounds = resolve_layout(project)
+    for layer in state["layers"]:
+        if layer["name"] in set(builder.created) and layer["type"] != "text":
+            x, y, w, h = bounds[layer["id"]]
+            if x < 0 or y < 0 or x + w > canvas["width"] or y + h > canvas["height"]:
+                layer["allow_crop"] = True
     return builder
 
 
@@ -1577,6 +1669,7 @@ def schemas(add):
             "prefix": S,
             "replace": B,
             "predictable": B,
+            "keep_order": B,
             **{key: S for key in CONTENT_KEYS},
         },
         ["name"],

@@ -63,6 +63,7 @@ def check_state(project, state):
                 finite(value, "pen origin", -1e6, 1e6)
         allowed = layer.get("allow_overlap", [])
         require(isinstance(allowed, list) and len(allowed) <= 512 and all(isinstance(x, str) for x in allowed), "Invalid overlap intent", "invalid_project")
+        require(isinstance(layer.get("allow_crop", False), bool), "Invalid crop intent", "invalid_project")
         ids.add(layer["id"])
         names.add(layer["name"])
         require(
@@ -150,6 +151,9 @@ def check_state(project, state):
     from .layouts import validate_layout_record
 
     validate_layout_record(state)
+    from .styles import validate_style_tag
+
+    validate_style_tag(state)
     from .automation import validate_state
     validate_state(state)
     from .pages import validate_pages

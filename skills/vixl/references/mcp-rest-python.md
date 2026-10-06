@@ -78,6 +78,16 @@ Assertion grammar: `canvas.width == 1920`, `layer.NAME.exists`, `layer.NAME.boun
 Edits use `vixl_operations_apply` with `pixel-art`, `pixel-draw`, `pixel-palette`, `frame-save`,
 `frame-apply`, `frame-delete`, `animation-set`.
 
+### Guide, looks and styles
+
+`vixl_guide(brief?)` is the first call for an open brief: with no argument it returns the start-here recipe and every
+kind of work; with a kind or free text ("a mascot for a coffee brand") it returns the approach, operations, layouts,
+looks, styles and a working example (`brief="operations"` and `brief="looks"` list those catalogs).
+`vixl_styles(action="list|get|apply|check", name?, query?, palette?)` serves the 28 design styles; `apply` tags the
+document (`style-set`), stores the brief as guidance and optionally applies the palette; `check` is
+`vixl_check(checks=["style"])`. `vixl_check` also takes `style=` and returns `by_action` (fix / review /
+informational) with every issue's `action`.
+
 ### Sizes, layouts, color, timelines and icons (0.13)
 
 | Tool | Parameters | Notes |

@@ -1,5 +1,6 @@
 """Project-independent resource discovery and explicit user-library imports."""
 
+import json
 from pathlib import Path
 
 from .assets import read_bounded
@@ -24,6 +25,8 @@ def resource_options(cmd, args):
     p.add_argument("--prefix")
     p.add_argument("--set", action="append")
     p.add_argument("--out", "-o")
+    p.add_argument("--keep-order", action="store_true", help="palette apply: colors as background, surface, accents")
+    p.add_argument("--roles", help='palette apply: JSON role map, e.g. {"background": 0, "accent": "#e11d48"}')
     return p.parse_args(args)
 
 
@@ -153,6 +156,10 @@ def project_command(project, cmd, args):
             op = {"type": "palette-apply", "name": a.name}
             if a.prefix:
                 op["prefix"] = a.prefix
+            if a.keep_order:
+                op["keep_order"] = True
+            if a.roles:
+                op["roles"] = json.loads(a.roles)
         else:
             op = {"type": "template-apply", "name": a.name, "variables": pairs(a.set)}
     elif cmd == "guidance" and a.action == "import":

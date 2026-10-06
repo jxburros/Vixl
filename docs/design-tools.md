@@ -23,6 +23,37 @@ Groups preserve member stacking order and use local child coordinates. Moving, h
 
 `clip TARGET BASE` multiplies TARGET's rendered alpha by the sibling BASE's alpha. It follows base transforms and masks, works on groups, and rejects cycles. The base remains an ordinary visible layer. `clip TARGET --release` removes the relationship. `ungroup NAME` restores local members to their parent; reset group appearance and transforms first when ungrouping would discard those settings. `remove GROUP` removes its descendants. Reordering always stays among siblings.
 
+## Examples: gradients, glows, shadows and radial repeats
+
+Shapes take a flat `fill`. Gradients, glows and shadows are layer styles or looks on the same layer, so one shape stays one
+editable layer. `vixl_operation_schema(types=[...])` returns these (and more) as `examples` next to each operation's fields.
+
+```json
+{"type":"gradient","name":"sky","start":"#1e3a8a","end":"#7dd3fc","direction":"vertical"}
+{"type":"gradient","name":"sunset","direction":"angled","angle":35,"stops":[{"offset":0,"color":"#f97316"},{"offset":0.55,"color":"#db2777"},{"offset":1,"color":"#4c1d95"}]}
+{"type":"gradient","name":"glow-disc","width":400,"height":400,"start":"#fde68a","end":"#00000000","direction":"radial"}
+{"type":"layer-style","target":"card","name":"gradient-overlay","settings":{"start":"#6366f1","end":"#ec4899","direction":"angled","angle":45}}
+{"type":"layer-style","target":"badge","name":"outer-glow","settings":{"color":"#fde047","blur":18,"opacity":0.9}}
+{"type":"layer-style","target":"card","name":"drop-shadow","settings":{"color":"#00000066","dx":0,"dy":12,"blur":24}}
+{"type":"radial-repeat","target":"petal","count":12,"cx":"50%","cy":"50%","mirror":true,"name":"mandala"}
+```
+
+`look` wraps the common finishes in one operation (`{"type":"look","target":"badge","look":"glow"}`); see [looks](looks.md).
+
+## Radial repeat
+
+`repeat` steps a layer along a line. `radial-repeat` turns it about a point: `count` copies spread over `sweep` degrees
+(default 360) around `cx`, `cy` (pixels, `"50%"` or `"center"`; default the canvas, or the parent group, center), each turned
+to face outward, starting at `start_angle`. `mirror: true` adds a reflection of every copy across the vertical axis through
+the center (the symmetry of a kaleidoscope: `count` 6 makes 12 copies). Copies are ordinary layers (turned about their own
+centers and moved onto the circle) inside one group named `name` (default `<layer>-radial`); `group: false` leaves them
+loose. At most 360 copies including mirrors. The group records its `radial` settings.
+
+```bash
+vixl shape ellipse --name petal --x 380 --y 120 --width 40 --height 150 --fill '#7c3aed'
+vixl radial-repeat petal --count 12 --cx 50% --cy 50% --mirror --name rosette
+```
+
 ## Attached layer styles
 
 ```bash
@@ -32,6 +63,9 @@ vixl layer-style logo outer-glow --settings '{"color":"#80cfff","blur":12}'
 vixl layer-style logo color-overlay --settings '{"color":"@brand"}'
 vixl layer-style title drop-shadow --remove
 ```
+
+Looks (`look`) are named recipes over these styles and the effect stack; a layer remembers which looks it carries so that
+`remove` takes one off without touching hand-made styles.
 
 Styles are editable settings, one per kind, applied after effects and masks. `enabled` and `opacity` are shared settings. Shadow, glow, and outer stroke sit behind the content; color and gradient overlays recolor it while preserving alpha. Overlays use the visible silhouette's bounding box. Group/layer opacity is applied to the styled result, then it is composited with the selected blend mode. Shadows and glows extend past the layer's geometric bounds and past a parent group's box. Inspection/alignment report geometry bounds; `inspect` adds `drawn_bounds` when styles, blur or group members reach further. Rasterizing a styled or externally clipped layer requires removing those attachments first.
 
