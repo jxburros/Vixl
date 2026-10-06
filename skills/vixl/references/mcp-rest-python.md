@@ -4,7 +4,7 @@ Vixl is headless and designed for autonomous AI agents; humans can use the same 
 
 ## MCP server
 
-Start: `vixl mcp --workspace DIR` (stdio; requires the `mcp` extra or the Windows installer).
+Start: `vixl mcp --workspace DIR` (stdio; MCP support is part of the base `vixl-engine` package and the Windows installer).
 Legacy form `vixl --project /abs/poster.vixl mcp` opens that document and uses its folder as the
 workspace. Client config:
 
@@ -18,7 +18,7 @@ catalogs; `--tools ai` serves the provider-backed `vixl_ai_*` tools and `vixl_mo
 `vixl_workspace_list`, `vixl_document_open`, `vixl_document_inspect` and `vixl_render_preview`.
 Register them as `vixl` and `vixl-ai` with the same workspace; skip `vixl-ai` when no provider is
 configured. Edits are saved at once and each server reloads a document that changed on disk, so
-the two see each other's work. The default `--tools all` serves everything from one server.
+the two see each other's work. `vixl mcp` defaults to `--tools core --schema slim`; `--tools all` serves everything from one server.
 
 Windows installer path if `vixl` is not on PATH: `%LOCALAPPDATA%\Programs\Vixl\bin\vixl.exe`
 (escape backslashes in JSON). Restart the client after install/config changes.
@@ -35,6 +35,8 @@ so switching documents never loses work. External edits to the file are detected
 
 **Long calls:** a call still running after ~40 s (`VIXL_MCP_INLINE_SECONDS`) returns
 `{"status":"running","job":"job_…"}` and carries on; `as_job: true` on heavy tools does so at once.
+Under load (more calls than `VIXL_MCP_WORKERS`) calls become jobs sooner; `queued: true` means it
+has not started yet.
 Follow it with `vixl_job(action="status"|"result"|"cancel"|"list", id, wait=…)`; never resend a call
 that timed out. Mutating tools take `request_id`: repeating a call with the same id returns the first
 result (`"replayed": true`) instead of applying twice.
@@ -45,7 +47,7 @@ result (`"replayed": true`) instead of applying twice.
 | --- | --- | --- |
 | `vixl_workspace_list` | `directory="."`, `offset=0`, `limit=100` (≤200) | `entries[{path,directory?}]`, `active`, `open`, `next_offset` |
 | `vixl_document_create` | **`path`**, **`width`**, **`height`**, `background="transparent"` | Creates + activates (and creates missing directories); refuses existing files |
-| `vixl_document_open` | **`path`** | Activates an existing `.vixl`; other open documents stay open (up to 8) |
+| `vixl_document_open` | **`path`**, `upgrade` | Activates an existing `.vixl`; other open documents stay open (up to 8). A document saved before 0.21 lists affected layers under `upgrade` (effects on rotated layers, temperature/tint, open stroked shapes no longer white); pass `upgrade="pin-fills"` to restore the white fills or `"accept"` to keep the new look |
 | `vixl_document_close` | `document` | Drops a document from the session (edits are already saved) |
 | `vixl_document_inspect` | `target=None`, `detail="compact"\|"full"` | Compact: canvas + one entry per layer with `bounds`; full: every field (with `resolved_bounds`) |
 | `vixl_import_image` | `path` **or** `data_base64` (base64 or `data:` URL) **or** `url` (public `https://`), `name="image"`, `credit`, `license` | New layer; returns `{id, name, width, height, bounds, asset, source}` (≤64 MiB); `source` has the final `url`, `bytes`, `sha256`, `fetched_at` |

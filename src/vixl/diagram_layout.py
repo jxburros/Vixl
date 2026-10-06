@@ -24,6 +24,8 @@ import math
 
 import numpy as np
 
+from .geometry import bezier_points
+
 EPS = 1e-6
 NORMALS = {"top": (0, -1), "right": (1, 0), "bottom": (0, 1), "left": (-1, 0)}
 OPPOSITE = {"top": "bottom", "bottom": "top", "left": "right", "right": "left"}
@@ -289,12 +291,9 @@ def end_direction(segments):
     return (0.0, 0.0)
 
 
-def bezier_point(p0, c1, c2, p1, t):
-    u = 1 - t
-    return (
-        u**3 * p0[0] + 3 * u * u * t * c1[0] + 3 * u * t * t * c2[0] + t**3 * p1[0],
-        u**3 * p0[1] + 3 * u * u * t * c1[1] + 3 * u * t * t * c2[1] + t**3 * p1[1],
-    )
+def curve_points(controls, ts):
+    """Points of a cubic segment's curve at ``ts`` as (x, y) tuples (geometry.bezier_points)."""
+    return [tuple(point) for point in bezier_points(controls, ts).tolist()]
 
 
 def split_bezier(p0, c1, c2, p1, t):
@@ -315,7 +314,7 @@ def flatten(segments, steps=24):
             points.append(segment[2])
         else:
             _, p0, c1, c2, p1 = segment
-            points.extend(bezier_point(p0, c1, c2, p1, i / steps) for i in range(1, steps + 1))
+            points.extend(curve_points((p0, c1, c2, p1), [i / steps for i in range(1, steps + 1)]))
     return points
 
 
@@ -450,7 +449,7 @@ def _cut_segment(segment, rect):
             pieces.append(("keep", ("L", at(t1), q)))
         return pieces
     _, p0, c1, c2, p1 = segment
-    samples = [bezier_point(p0, c1, c2, p1, i / 64) for i in range(65)]
+    samples = curve_points((p0, c1, c2, p1), [i / 64 for i in range(65)])
     inside = [i for i, s in enumerate(samples) if _inside(s, rect)]
     if not inside:
         return [("keep", segment)]
@@ -458,12 +457,12 @@ def _cut_segment(segment, rect):
     a, b = max(0, inside[0] - 1) / 64, inside[0] / 64
     for _ in range(22):
         m = (a + b) / 2
-        a, b = (m, b) if not _inside(bezier_point(p0, c1, c2, p1, m), rect) else (a, m)
+        a, b = (m, b) if not _inside(curve_points((p0, c1, c2, p1), [m])[0], rect) else (a, m)
     t_in = b
     a, b = inside[-1] / 64, min(64, inside[-1] + 1) / 64
     for _ in range(22):
         m = (a + b) / 2
-        a, b = (a, m) if not _inside(bezier_point(p0, c1, c2, p1, m), rect) else (m, b)
+        a, b = (a, m) if not _inside(curve_points((p0, c1, c2, p1), [m])[0], rect) else (m, b)
     t_out = a
     pieces = []
     head, rest = split_bezier(p0, c1, c2, p1, t_in)
@@ -1902,7 +1901,7 @@ def _normalise(result, nodes, edges):
             for p in (segment[1], segment[-1]):
                 add(p[0], p[1], p[0], p[1])
             if segment[0] == "C":
-                samples = [bezier_point(*segment[1:], i / 8) for i in range(9)]
+                samples = curve_points(segment[1:], [i / 8 for i in range(9)])
                 for p in samples:
                     add(p[0], p[1], p[0], p[1])
         if route.label and key in labels:

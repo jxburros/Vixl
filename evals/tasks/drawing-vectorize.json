@@ -1,0 +1,30 @@
+{
+  "prompt": "sketch.png is a photo of a pen sketch of a house. Turn it into a clean, editable vector line drawing named house in house.vixl (keep the canvas the size of the photo), and export house.svg.",
+  "document": "house.vixl",
+  "setup": {
+    "images": [
+      {"path": "sketch.png", "width": 640, "height": 480, "color": "#f4f1ea", "line_width": 7, "lines": [
+        [[160, 420], [160, 220], [480, 220], [480, 420], [160, 420]],
+        [[140, 230], [320, 90], [500, 230]],
+        [[280, 420], [280, 320], [360, 320], [360, 420]],
+        [[390, 260], [450, 260], [450, 310], [390, 310], [390, 260]]
+      ]}
+    ]
+  },
+  "checks": [
+    {"type": "canvas", "width": 640, "height": 480},
+    {"type": "layer", "name": "drawing group", "match": {"type": "group", "name": "house"}},
+    {"type": "layer", "name": "vector strokes", "match": {"type": "shape", "shape": "path"}, "min": 3},
+    {"type": "file", "path": "house.svg"}
+  ],
+  "reference": [
+    {"tool": "vixl_document_create", "arguments": {"path": "house.vixl", "width": 640, "height": 480, "background": "white"}},
+    {"tool": "vixl_import_image", "arguments": {"path": "sketch.png", "name": "photo"}, "save_as": "photo"},
+    {"tool": "vixl_operations_apply", "arguments": {"operations": [
+      {"type": "drawing", "action": "import", "asset": "${photo.asset}", "name": "house"},
+      {"type": "remove", "target": "photo"},
+      {"type": "drawing", "action": "vectorize", "target": "house"}
+    ]}},
+    {"tool": "vixl_export_file", "arguments": {"path": "house.svg"}}
+  ]
+}

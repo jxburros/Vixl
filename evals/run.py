@@ -10,7 +10,7 @@ import json
 from pathlib import Path
 import sys
 
-from evals.harness import ClaudeAgent, ReferenceAgent, load_tasks, markdown, run
+from evals.harness import ClaudeAgent, ReferenceAgent, load_tasks, markdown, over_budget, run
 
 
 def main(argv=None):
@@ -18,8 +18,8 @@ def main(argv=None):
     parser.add_argument("--agent", choices=["reference", "claude"], default="reference")
     parser.add_argument("--model", default="claude-opus-5-5")
     parser.add_argument("--effort", choices=["low", "medium", "high", "xhigh", "max"])
-    parser.add_argument("--schema", choices=["full", "slim"], default="full", help="MCP schema mode under test")
-    parser.add_argument("--tools", choices=["all", "core"], default="all")
+    parser.add_argument("--schema", choices=["full", "slim"], default="slim", help="MCP schema mode under test")
+    parser.add_argument("--tools", choices=["all", "core"], default="core")
     parser.add_argument("--baseline", help="Stored task acceptance baseline to compare")
     parser.add_argument("--tasks", default="*", help="glob over task ids, e.g. 'photo-*'")
     parser.add_argument("--max-turns", type=int, default=40)
@@ -47,6 +47,11 @@ def main(argv=None):
         for name in baseline["required_passes"]:
             if name not in by_task or not by_task[name]["passed"]:
                 regressions.append(name)
+        # Calls per task are the cost measure: a task over its budget, or a higher mean, is a regression.
+        regressions += over_budget(results, baseline.get("tool_call_budgets", {}))
+        ceiling = baseline.get("max_mean_tool_calls")
+        if ceiling is not None and summary["mean_tool_calls"] > ceiling:
+            regressions.append(f"mean tool calls {summary['mean_tool_calls']} > {ceiling}")
     report = markdown(results, summary, meta)
     if args.baseline:
         report += "\nBaseline: " + ("regressions: " + ", ".join(regressions) if regressions else "all required tasks pass") + "\n"

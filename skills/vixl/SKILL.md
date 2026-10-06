@@ -137,9 +137,11 @@ See [resources](references/resources.md) for the new MCP tools and CLI/operation
 
 ## Workspace review and brands
 
-Prefer `vixl mcp --workspace . --tools core --schema slim`; fetch operation details with
+`vixl mcp --workspace .` serves `--tools core --schema slim` by default; fetch operation details with
 `vixl_operation_schema`. HTTP clients can use `--http` at `/mcp` with the configured bearer token.
 Read `vixl_review_notes` before revising a document and resolve notes after addressing them.
+When `vixl_document_open` returns `upgrade`, the document predates 0.21: review the listed layers and
+open it again with `upgrade="pin-fills"` (old white fills) or `"accept"`.
 Humans can follow progress with `vixl -p DOCUMENT view`.
 
 Workspace `brand.json` provides default palette roles, pairing/embedded fonts, embedded logos,

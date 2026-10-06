@@ -135,10 +135,6 @@ def chaikin(points, iterations=1, closed=True):
 # SVG path output
 
 
-def _number(value, precision):
-    return compact_number(value, precision)
-
-
 def path_data(points, closed=False, smooth=True, precision=2, tension=1.0):
     """An SVG path for one polyline or loop. ``smooth`` passes a Catmull–Rom spline through the
     points (as cubic Béziers); otherwise straight segments join them."""
@@ -147,7 +143,7 @@ def path_data(points, closed=False, smooth=True, precision=2, tension=1.0):
         return ""
 
     def fmt(pt):
-        return f"{_number(pt[0], precision)} {_number(pt[1], precision)}"
+        return f"{compact_number(pt[0], precision)} {compact_number(pt[1], precision)}"
 
     if len(p) < 3 or not smooth:
         body = "M" + fmt(p[0]) + "".join(" L" + fmt(q) for q in p[1:])

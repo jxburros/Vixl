@@ -89,11 +89,11 @@ If the client cannot find `vixl` on PATH, use the absolute executable path, norm
 
 ### Recommended starting configuration
 
-Start with `--tools core --schema slim`. The offline suite passes all 16 tasks with these flags.
-The schema costs approximately 6,898 tokens (JSON characters ÷ 4), versus 12,789 for full/all,
-a 46% reduction. This measures tool context, not model performance; defaults remain full/all
-until the scheduled live-agent comparison provides evidence to change them. With slim schemas,
-call `vixl_operation_schema` for the fields of unfamiliar operations.
+`vixl mcp` defaults to `--tools core --schema slim` (`VIXL_MCP_TOOLS` and `VIXL_MCP_SCHEMA` override it). Its tool list is about 49k JSON characters, against about 124k for `--tools all --schema full`,
+the default in 0.21 and earlier; pass those flags to get the old behaviour. The offline reference suite passes with
+both. With slim schemas, call `vixl_operation_schema` for the fields of unfamiliar operations.
+`--tools compact --schema slim` (12 tools, about 17k characters) is the smallest surface; see
+[MCP toolsets](mcp-toolsets.md) for the measurements.
 
 ### Two servers: core and AI
 
@@ -117,7 +117,7 @@ call `vixl_operation_schema` for the fields of unfamiliar operations.
 }
 ```
 
-Give both the same workspace. Every edit is saved immediately and each server reloads a document that changed on disk (writes are serialized with file locks), so an image generated through `vixl-ai` appears in `vixl` on its next call. AI tools take `document=` or use the document opened with `vixl_document_open`. Leave out `vixl-ai` when no AI provider is configured. The default, `--tools all` (or `VIXL_MCP_TOOLS`), keeps serving every tool from one server, so existing configurations are unchanged.
+Give both the same workspace. Every edit is saved immediately and each server reloads a document that changed on disk (writes are serialized with file locks), so an image generated through `vixl-ai` appears in `vixl` on its next call. AI tools take `document=` or use the document opened with `vixl_document_open`. Leave out `vixl-ai` when no AI provider is configured. `--tools all` serves core and AI tools from one server.
 
 Existing `vixl --project /absolute/path/poster.vixl mcp` configurations still work: they open that document and use its parent directory as the workspace. You can also pass `--workspace` explicitly; the starting project must be within it.
 
@@ -129,7 +129,7 @@ Vixl is designed to be driven mainly by agents. The intended loop is: create or 
 | --- | --- |
 | `vixl_workspace_list(directory, offset, limit)` | Discover workspace paths and the open documents |
 | `vixl_document_create(path, width?, height?, background, size?, dpi?, orientation?, bleed?, font_pairing?)` | Create and activate a new `.vixl` from pixels or a named size; creates missing directories; refuses overwrites; `font_pairing` also installs a pairing as the document typography (same as `vixl_font_pair`) |
-| `vixl_document_open(path)` / `vixl_document_close(document)` | Activate an existing document / drop one from the session; edits are already saved |
+| `vixl_document_open(path, upgrade?)` / `vixl_document_close(document)` | Activate an existing document / drop one from the session; edits are already saved. A document saved before 0.21 lists the layers that render differently under `upgrade`; `upgrade="accept"` stops the notice and `"pin-fills"` also restores the white fill of open stroked shapes (CLI: `vixl upgrade`) |
 | `vixl_document_inspect(target?, detail)` | `compact` (default): canvas plus one line per layer with resolved `[x, y, w, h]` bounds; `full`: every stored field |
 | `vixl_import_image(path? \| data_base64? \| url?, name, credit?, license?)` | Embed a workspace file, base64/data-URL bytes or a public `https://` image as a layer; returns id, size, bounds and `source` (final `url`, `bytes`, `sha256`, `fetched_at`). `credit`/`license` are kept in the layer's provenance and shown by inspect |
 | `vixl_operations_apply(operations or operations_path, dry_run, detail, check?, preview?, request_id?, as_job?)` | Atomic edits; `operations_path` is a workspace-relative `.json` array or `.jsonl` file (one operation per line, errors cite the line) used instead of inline `operations`; schemas are included directly in tools/list (or on demand in slim mode). `detail` is `brief` (default), `compact` or `full`; results carry `warnings`. `check` (true or check names) adds a `check` block shaped like `vixl_check`'s, listing every `fix` finding and the findings on the layers the batch touched (at most 20; `omitted` counts the rest); `preview` (true or `{page, region, max_width, max_height, time, isolate}`, 512 px by default) adds a PNG after the JSON. Both also work with `dry_run`, and are skipped with a `review_skipped` note when the edit itself took more than half of `VIXL_MCP_INLINE_SECONDS`. A call that became a job keeps the JSON only. |
@@ -191,6 +191,7 @@ Preview defaults: **1024×1024 maximum and 1 MiB of encoded PNG data**, preservi
 An MCP client typically gives up on a call after about 60 s, while the server still finishes the work and saves it. Vixl runs every tool call in a worker thread (a slow render no longer blocks other calls or the heartbeat) and turns a slow call into a job:
 
 - **Automatic jobs.** A call that is still running after `VIXL_MCP_INLINE_SECONDS` (default 40, `0` disables) returns `{"status": "running", "job": "job_…", …}` while it carries on. Poll with `vixl_job`.
+- **Under load.** Calls run on `VIXL_MCP_WORKERS` threads (default 32). When more calls are in flight than there are workers, a new call waits proportionally less (inline seconds × workers ÷ calls in flight, at least 2 s) before it becomes a job, so a call stuck behind others is not lost to a client timeout. Job pointers and `vixl_job` report `queued` (still waiting for a worker), `wait_ms` (time spent waiting for a worker) and, in pointers, `queue_depth` (calls waiting).
 - **`as_job: true`** on the heavy tools (`vixl_operations_apply`, `vixl_import_image`, `vixl_import_document`, the export tools, `vixl_font_pair`, `vixl_font_install`, `vixl_workflow`, `vixl_roll`, `vixl_check`, the `vixl_ai_*` tools) starts the call as a job and returns its id at once.
 - **`vixl_job(action, id, wait)`:** `status` reports `queued`/`running`/`completed`/`failed`/`cancelled` with `progress` (`wait=20` blocks up to that many seconds, at most 50, so one call replaces a polling loop); `result` returns the call's normal result under `result` (or `error`); `cancel` stops a queued job, or a running one at its next checkpoint (a batch of operations is atomic, so a cancelled batch changes nothing; timeline exports stop between frames); `list` shows recent jobs, including calls that timed out on your side. The server remembers the last 100 jobs in memory; durable workspace jobs from `vixl_workflow submit` use the same tool with their 32-character ids.
 - **Retries: `request_id`.** The mutating tools (`vixl_operations_apply`, imports, exports, `vixl_document_create`/`close`, `vixl_template_create`, fonts, `vixl_history`, `vixl_workflow`, `vixl_roll`, the AI tools) accept an optional `request_id` (1–64 characters). Repeating a call with the same id returns the first call's recorded result with `"replayed": true` instead of applying twice; if the first call is still running, the repeat waits briefly and then points at its job. An id reused with different arguments is an error (`request_id_conflict`), and a call that failed is not remembered, so its retry runs. The store keeps the last 64 ids per document (512 overall), in memory.
@@ -205,6 +206,8 @@ The server keeps documents loaded in one shared cache, but the **active document
 - `vixl mcp --require-document` (or `VIXL_REQUIRE_DOCUMENT=1`) makes `document=` mandatory on every document tool: there is no active document to fall back to, and a call without it fails with `document_required`. `vixl_document_create`/`open` still work and name the document in their result.
 - Every result names the document it acted on (`document`), so a mistake shows up in the first response.
 - Pass `document=` on every call, with `request_id` on mutating ones.
+
+For many agents at once, run one `vixl mcp --http` server they all connect to (each gets its own active document and the calls share one worker pool and job store) rather than one stdio server per agent; raise `VIXL_MCP_WORKERS` when results come back as `queued` jobs.
 
 ### Typed AI tools
 

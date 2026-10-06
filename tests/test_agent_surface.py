@@ -12,6 +12,7 @@ from fastapi.testclient import TestClient
 from vixl import Project, briefs
 from vixl.capabilities import TOPICS, lookup
 from vixl.checks import apply_reviewed
+from vixl.errors import VixlError
 from vixl.guidance import GUIDANCE
 from vixl.interfaces import create_app, mcp_server
 
@@ -176,8 +177,9 @@ def test_every_guidance_name_resolves_through_guide_resources_and_capabilities(t
 def test_mcp_guide_returns_guidance_and_capabilities_is_its_own_tool(server):
     assert "anticipation" in call(server, "vixl_guide", {"brief": "natural-motion"})["text"]
     assert call(server, "vixl_resource_get", {"kind": "guidance", "name": "imperfection"})["value"] == GUIDANCE["imperfection"]
-    # The old vixl_guide('capabilities …') alias duplicated vixl_capabilities; it is gone.
-    assert "gotchas" not in briefs.guide("capabilities animation")
+    # The old vixl_guide('capabilities …') alias duplicated vixl_capabilities; it is gone and points there.
+    with pytest.raises(VixlError, match=r"vixl_capabilities\(topic='animation'\)"):
+        briefs.guide("capabilities animation")
     from vixl.finishing_cli import standalone
 
     cli = standalone("capabilities", ["animation"])  # vixl capabilities animation: the CLI's own command now

@@ -1,0 +1,33 @@
+{
+  "prompt": "In dots.vixl, make dot2, dot4 and dot6 orange (#ff8800) at 50% opacity, and hide dot1 and dot3. Leave dot5 as it is. Do it as one atomic edit.",
+  "document": "dots.vixl",
+  "setup": {
+    "documents": [
+      {"path": "dots.vixl", "width": 700, "height": 200, "background": "white", "batches": [[
+        {"type": "shape", "shape": "ellipse", "name": "dot1", "x": 20, "y": 60, "width": 80, "height": 80, "fill": "gray"},
+        {"type": "shape", "shape": "ellipse", "name": "dot2", "x": 130, "y": 60, "width": 80, "height": 80, "fill": "gray"},
+        {"type": "shape", "shape": "ellipse", "name": "dot3", "x": 240, "y": 60, "width": 80, "height": 80, "fill": "gray"},
+        {"type": "shape", "shape": "ellipse", "name": "dot4", "x": 350, "y": 60, "width": 80, "height": 80, "fill": "gray"},
+        {"type": "shape", "shape": "ellipse", "name": "dot5", "x": 460, "y": 60, "width": 80, "height": 80, "fill": "gray"},
+        {"type": "shape", "shape": "ellipse", "name": "dot6", "x": 570, "y": 60, "width": 80, "height": 80, "fill": "gray"}
+      ]]}
+    ]
+  },
+  "checks": [
+    {"type": "layer", "name": "three orange dots", "match": {"type": "shape", "fill": "#ff8800", "opacity": 0.5}, "min": 3, "max": 3},
+    {"type": "layer_field", "name": "dot2 orange", "layer": "dot2", "field": "fill", "equals": "#ff8800"},
+    {"type": "layer_field", "name": "dot6 half opacity", "layer": "dot6", "field": "opacity", "equals": 0.5},
+    {"type": "layer_field", "name": "dot1 hidden", "layer": "dot1", "field": "visible", "equals": false},
+    {"type": "layer_field", "name": "dot3 hidden", "layer": "dot3", "field": "visible", "equals": false},
+    {"type": "layer_field", "name": "dot5 unchanged", "layer": "dot5", "field": "fill", "equals": "gray"},
+    {"type": "layer_field", "name": "dot5 visible", "layer": "dot5", "field": "visible", "equals": true},
+    {"type": "state_field", "name": "one atomic revision", "field": ["history_count"], "equals": 3}
+  ],
+  "reference": [
+    {"tool": "vixl_document_open", "arguments": {"path": "dots.vixl"}},
+    {"tool": "vixl_operations_apply", "arguments": {"operations": [
+      {"type": "shape", "targets": ["dot2", "dot4", "dot6"], "fill": "#ff8800", "opacity": 0.5},
+      {"type": "hide", "targets": ["dot1", "dot3"]}
+    ]}}
+  ]
+}

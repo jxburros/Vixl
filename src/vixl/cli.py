@@ -25,6 +25,7 @@ Usage: vixl [--project FILE] [--json] COMMAND ...
 
 Documents: new SIZE|NAME [-o FILE] [--background COLOR] [--dpi N] [--landscape] [--bleed],
            open FILE, save [FILE]   (NAME: letter, a4, business-card, instagram-portrait, favicon …)
+           upgrade FILE [--report] [--pin-fills]   (a document saved before 0.21: what renders differently)
 Inspect:   status, inspect [LAYER], describe, layers, effects [LAYER], manifest,
            dependencies, reproduce --check, schema
 Layers:    add FILE --name NAME, solid --color COLOR, gradient --start A --end B,
@@ -129,7 +130,7 @@ AI:        ask PROMPT [--apply], generate --prompt TEXT --provider NAME,
            select object LABEL --provider NAME, ai remove|content-aware-fill|select-subject
 Updates:   update [--check | --rollback], updates [on | off | status]
 Services:  serve | view [--host 127.0.0.1] [--port 8765], notes list|add|resolve
-           mcp [--workspace DIR] [--http] [--tools core|ai|compact] [--schema slim] [--planner] [--require-document]
+           mcp [--workspace DIR] [--http] [--tools core|ai|compact|all] [--schema slim|full] [--planner] [--require-document]
 Import:    import FILE.svg [--svg-mode editable|appearance|auto] | FILE.pdf [--page 1] [--dpi 144]
            import PHOTO.jpg | https://HOST/photo.jpg [--name N] [--credit TEXT] [--license TEXT]
 
@@ -303,7 +304,7 @@ def dispatch(argv):
     if cmd == "merge":
         from .imposition import cli as merge_cli
         return merge_cli(args, options, limits), options.json
-    if cmd in ("open", "schema") and any(arg in ("--help", "-h") for arg in args):
+    if cmd in ("open", "schema", "upgrade") and any(arg in ("--help", "-h") for arg in args):
         return command_help(cmd, args), options.json
     if cmd in ("commands", "shapes"):
         from .operations import OPERATION_TYPES
@@ -334,7 +335,7 @@ def dispatch(argv):
                     | {"filter"}
                     | {"workflow"}
                     | set(
-                        "new session open save status inspect describe layers effects manifest dependencies reproduce schema check batch convert render export export-screens export-animation spacing pixels animation info sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert validate preset ai ask generate detect ocr serve view notes import mcp update updates commands shapes palette template guidance font fonts roll providers models color sizes layout layouts brushes organics easings timeline export-timeline timeline-sheet export-icons pages guides links merge styles looks guide".split()
+                        "new session open upgrade save status inspect describe layers effects manifest dependencies reproduce schema check batch convert render export export-screens export-animation spacing pixels animation info sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert validate preset ai ask generate detect ocr serve view notes import mcp update updates commands shapes palette template guidance font fonts roll providers models color sizes layout layouts brushes organics easings timeline export-timeline timeline-sheet export-icons pages guides links merge styles looks guide".split()
                     )
                 )
             }
@@ -443,8 +444,11 @@ def dispatch(argv):
         ), options.json
     if cmd == "open":
         require(len(args) == 1, "Use open FILE")
+        from .upgrade import report
+
         project = Project.load(args[0], limits=limits, allow_linked=options.allow_linked)
         remember(args[0])
+        notice = report(project.state, project.upgraded_from) if project.upgraded_from else None
         return (
             project.inspect()
             if options.detail == "full"
@@ -453,8 +457,26 @@ def dispatch(argv):
                 "canvas": project.state["canvas"],
                 "layers": len(project.state["layers"]),
                 "head": project.head,
+                **({"upgrade": notice} if notice else {}),
             }
         ), options.json
+    if cmd == "upgrade":
+        from .upgrade import upgrade
+
+        p = Parser(prog="vixl upgrade")
+        p.add_argument("file", nargs="?", help="Document (default: the current one)")
+        p.add_argument("--report", action="store_true", help="Only list what renders differently; change nothing")
+        p.add_argument("--pin-fills", action="store_true",
+                       help="Give open stroked shapes the explicit white fill they rendered with before 0.21")
+        a = p.parse_args(args)
+        require(not (a.report and a.pin_fills), "--report changes nothing; leave out --pin-fills")
+        path = current_path(a.file or options.project)
+        with file_lock(str(path)):
+            project = Project.load(path, limits=limits, allow_linked=options.allow_linked)
+            result = upgrade(project, pin_fills=a.pin_fills, accept=not a.report)
+            if not a.report and result["upgraded_from"]:
+                project.save()
+        return {"path": str(project.path), **result}, options.json
     if cmd == "schema":
         from .schema import operation_schema
 
@@ -493,15 +515,17 @@ def dispatch(argv):
         p.add_argument(
             "--schema",
             choices=["full", "slim"],
-            default=os.environ.get("VIXL_MCP_SCHEMA", "full"),
-            help="slim advertises operation names only; fields come from vixl_operation_schema",
+            default=os.environ.get("VIXL_MCP_SCHEMA", "slim"),
+            help="slim (default) advertises operation names only; fields come from vixl_operation_schema; "
+            "full inlines every operation schema",
         )
         p.add_argument("--planner", action="store_true", help="Expose the provider-backed vixl_ai_plan tool")
         p.add_argument(
             "--tools",
             choices=["all", "core", "ai", "compact"],
-            default=os.environ.get("VIXL_MCP_TOOLS", "all"),
-            help="core: all editing tools; compact: 12 document/workflow tools; ai: provider-backed tools",
+            default=os.environ.get("VIXL_MCP_TOOLS", "core"),
+            help="core (default): all editing tools; compact: 12 document/workflow tools; ai: provider-backed tools; "
+            "all: core and ai from one server",
         )
         p.add_argument(
             "--require-document",
@@ -557,6 +581,7 @@ def command_help(cmd, args):
 
     manual = {
         "open": "open FILE",
+        "upgrade": "upgrade [FILE] [--report] [--pin-fills]",
         "schema": "schema",
         "canvas": "canvas resize SIZE | preset NAME | background COLOR",
         "save": "save [FILE]",

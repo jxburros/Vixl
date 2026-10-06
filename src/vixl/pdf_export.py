@@ -18,6 +18,7 @@ from pathlib import Path
 import numpy as np
 
 from .errors import require
+from .geometry import compact_number
 from .model import finite
 from .links import pdf_link
 from .pdf_color import CMYKPaint, RGBPaint, ramp
@@ -27,9 +28,8 @@ VECTOR_LEAVES = ("solid", "shape", "gradient", "text", "pathfinder")
 
 
 def _fmt(value):
-    if float(value).is_integer():
-        return str(int(value))
-    return f"{value:.12f}".rstrip("0").rstrip(".")
+    """A PDF content-stream coordinate (12 decimals, so vector geometry round-trips)."""
+    return compact_number(value, 12)
 
 
 def matrix_ops(m):

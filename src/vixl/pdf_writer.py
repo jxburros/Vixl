@@ -14,6 +14,7 @@ import math
 import zlib
 
 from .errors import require
+from .geometry import compact_number
 
 
 class Name(str):
@@ -53,10 +54,7 @@ def number(value):
     if isinstance(value, int):
         return str(value).encode()
     require(math.isfinite(value), "PDF numbers must be finite")
-    if abs(value - round(value)) < 1e-9:
-        return str(int(round(value))).encode()
-    text = f"{value:.5f}".rstrip("0").rstrip(".")
-    return (text if text not in ("-0", "") else "0").encode()
+    return compact_number(value, 5).encode()
 
 
 def serialize(value):
