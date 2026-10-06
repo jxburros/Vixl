@@ -210,7 +210,7 @@ CLI `--detail full`) includes complete before/after layer snapshots.
 | `place` / `snap` | `targets`, `guide`, `at`/`start`/`end`/`spacing`/`with`, `anchor`, `orient`; `snap`: `tolerance` | [guides](drawing-shapes-guides.md#guides-grids-and-placement) |
 | `rich-text` / `text-style` | `markdown` or `spans`, `paragraphs`; `text-style`: `match`/`start`/`end`, character styles, `paragraphs` settings | [documents](documents.md#rich-text) |
 | `page` / `master` | `action` (`add`, `select`, `remove`, `move`, `set`), `name`/`page`, `master`, `notes`, `background`, `hidden`, `transition` | [documents](documents.md#pages-masters-and-decks) |
-| `field` / `field-set` / `form` | `kind`, `key`, `label`/`label_layer`, `required`, `options`, `option`, `default`, `appearance`; `form`: `tab_order`, `title`, `lang` | [documents](documents.md#forms) |
+| `field` / `field-set` / `form` | `kind`, `key`, `label`/`label_layer`, `required`, `max_length`, `format`, `pattern`/`message` (rules a fillable PDF enforces), `options`, `option`, `default`, `appearance`; `form`: `tab_order`, `title`, `lang` | [documents](documents.md#forms) |
 | `drawing` | `action` (`import`, `clean`, `vectorize`, `straighten`, `smooth`, `fill`, `stroke`, `restyle`), `asset`, `target`, `strokes`, `points`, `settings` | [hand drawings](drawing-shapes-guides.md#building-on-a-hand-drawing) |
 
 Any operation also accepts `"page"` to address a page of a multi-page document.
