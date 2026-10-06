@@ -635,7 +635,7 @@ OVERRIDES = {
     "drawing": {"action": "import, clean, vectorize, straighten, smooth, fill, stroke or restyle.",
                 "name": "Drawing name.", "asset": "Embedded scan or photo asset.", "path": "Scan or photo file.",
                 "settings": "Action settings (docs/drawing.md).", "strokes": "Stroke IDs or 'all'.",
-                "points": "Points for a manual stroke.", "color": "Color.",
+                "color": "Color.",
                 "x": "Position x.", "y": "Position y.", "width": "Width.", "height": "Height."},
     "palette-generate": {"name": "Prefix for the swatches (NAME-50 … or NAME-1 …).",
                          "color": "Source color (any color value or @swatch).",
