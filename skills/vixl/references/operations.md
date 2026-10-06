@@ -205,6 +205,7 @@ CLI `--detail full`) includes complete before/after layer snapshots.
 
 | type | key fields | reference |
 | --- | --- | --- |
+| `chart` / `chart-data` | `kind`, `categories`+`series` / `table` / `csv`, `title`, `colors`, `legend`, `value_labels`, `number_format`, `target` (restyle); `chart-data`: `set`, `append`, `remove_categories`, `add_series`, `remove_series`, `reload` | [charts](charts.md) |
 | `organic` | `preset` or `parts`, `params`, `colors`, `seed`, `name`, `target` (regrow) | [organic shapes](drawing-shapes-guides.md#organic-shapes) |
 | `guide` / `grid` | `guide`: `kind` (`axis`, `line`, `ray`, `segment`, `point`, `circle`, `path`) and its geometry; `grid`: `kind` (`columns`, `baseline`, `thirds`, `golden`, `armature`, `golden-spiral`, `polar`, `isometric`, `triangular`, `hex`, `oblique`, `perspective`), `region`, `delete` | [guides](drawing-shapes-guides.md#guides-grids-and-placement) |
 | `place` / `snap` | `targets`, `guide`, `at`/`start`/`end`/`spacing`/`with`, `anchor`, `orient`; `snap`: `tolerance` | [guides](drawing-shapes-guides.md#guides-grids-and-placement) |

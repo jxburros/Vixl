@@ -108,6 +108,8 @@ slides) that opens in PowerPoint, Keynote, Google Slides and LibreOffice:
 - Rectangles, rounded rectangles, ellipses and lines become preset shapes; polygons, stars and
   paths become custom geometry; solid and linear/radial gradient fills and outlines carry over.
   Plain groups become groups.
+- A [chart](charts.md) becomes a native chart with its data table embedded, so *Edit Data* works.
+  A rotated or flipped chart is exported as its shapes, and the report lists each chart under `charts`.
 - Image layers become pictures. Layers PowerPoint cannot draw the same way become pictures of
   exactly what Vixl renders and are listed under `raster_fallbacks`.
 - Master layers are drawn on each slide (as ordinary shapes, so every slide matches the

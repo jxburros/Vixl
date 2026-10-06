@@ -156,6 +156,41 @@ def test_one_slice_pie_is_a_full_circle():
     assert tuple(image[cy, cx]) != (255, 255, 255)
 
 
+def test_geometry_keywords_place_the_chart():
+    p = Project(1000, 800, "#fff")
+    p.apply({"type": "chart", "name": "C", "x": "center", "y": "10%", "width": "50%", "height": "60%", **SALES})
+    group = p.layer("C")
+    assert (group["width"], group["height"]) == (500, 480)
+    assert (group["x"], group["y"]) == (250, 80)
+
+
+def test_edge_cases_still_draw():
+    zero = make("bar", {"categories": ["a", "b"], "series": [{"name": "s", "values": [0, 0]}]})
+    assert not any(layer["chart_part"].startswith("bar-") for layer in children(zero))
+    assert zero.layer("Sales")["chart"]["summary"]["scale"]["max"] == 1
+    gaps = make("area", {"categories": ["a", "b", "c"], "series": [{"name": "s", "values": [1, None, 3]}]}, value_labels=True)
+    assert part(gaps, "area-0")["shape"] == "path" and not any(layer["chart_part"] == "value-0-1" for layer in children(gaps))
+    negative = make("bar", {"categories": ["a", "b"], "series": [{"name": "s", "values": [-5, 10]}]}, value_labels=True)
+    below, above = part(negative, "bar-0-0"), part(negative, "bar-0-1")
+    assert below["y"] >= above["y"] + above["height"] - 2, "a negative bar hangs below the zero line"
+    assert part(negative, "value-0-0")["y"] >= below["y"] + below["height"]
+    one = make("line", {"categories": ["only"], "series": [{"name": "s", "values": [4]}]})
+    assert part(one, "marker-0-0") and not any(layer["chart_part"].startswith("line-") for layer in children(one))
+    slices = make("pie", {"categories": ["a", "b", "c"], "series": [{"name": "s", "values": [1, 0, 3]}]})
+    assert part(slices, "slice-0") and part(slices, "slice-2") and not any(layer["chart_part"] == "slice-1" for layer in children(slices))
+    assert slices.layer("Sales")["chart"]["summary"]["shares"]["b"] == 0
+
+
+def test_dense_charts_thin_their_labels_and_skip_automatic_value_labels():
+    categories = [f"Day {i + 1}" for i in range(120)]
+    p = make("line", {"categories": categories, "series": [{"name": "v", "values": [i % 17 + i / 9 for i in range(120)]}]},
+             width=1400, height=500)
+    labels = [layer for layer in children(p) if layer["chart_part"].startswith("category-label-")]
+    assert 5 < len(labels) < 40 and all("\n" not in layer["text"] for layer in labels)
+    assert not any(layer["chart_part"].startswith(("value-", "marker-")) for layer in children(p))
+    assert p.check(checks=["overlap"])["passed"]
+
+
 # -- editing in place ------------------------------------------------------------------------------
 
 def test_fixing_one_number_is_one_operation_with_stable_layer_ids():
@@ -200,7 +235,7 @@ def test_rows_columns_and_series_can_be_added_and_removed():
     assert chart["categories"][0] == "Feb" and [s["name"] for s in chart["series"]] == ["Espresso", "Latte"]
     assert not any(layer["chart_part"].startswith("bar-2-") for layer in children(p))
     p.apply({"type": "chart-data", "target": "Sales", "add_series": [{"name": "Tea", "values": [1] * 7}]})
-    assert chart is not None and p.layer("Sales")["chart"]["series"][2]["name"] == "Tea"
+    assert p.layer("Sales")["chart"]["series"][2]["name"] == "Tea"
     p.apply({"type": "chart-data", "categories": ["x", "y"], "series": [{"name": "only", "values": [3, 4]}]})
     assert [s["name"] for s in p.layer("Sales")["chart"]["series"]] == ["only"]  # the active layer is the chart
 
@@ -335,6 +370,19 @@ def test_colors_fonts_and_text_follow_the_document():
     image = np.asarray(q.render().convert("RGB"))
     assert (image == (0, 170, 0)).all(axis=2).any(), "a swatch change recolors the chart"
     assert part(q, "title", "C")["font_role"] == "heading" and part(q, "tick-label-0", "C")["font_role"] == "body"
+
+
+def test_text_sizes_sit_on_the_document_type_scale():
+    p = Project(900, 560, "#fff")
+    for name, size in (("small", 14), ("body", 18), ("lead", 24), ("h2", 32), ("h1", 48)):
+        p.apply({"type": "style-define", "name": name, "settings": {"size": size}})
+    p.apply({"type": "chart", "name": "C", "kind": "donut", "title": "T", "subtitle": "s", "center_text": "{total} cups",
+             "categories": ["a", "b"], "series": [{"name": "s", "values": [3, 4]}], "value_labels": True})
+    sizes = {layer["size"] for layer in children(p, "C") if layer["type"] == "text"}
+    assert sizes <= {14, 18, 24, 32, 48}, sizes
+    q = Project(900, 560, "#fff")
+    q.apply({"type": "chart", "name": "C", "kind": "bar", "font_size": 17, **SALES})
+    assert part(q, "tick-label-0", "C")["size"] == 17
 
 
 def test_number_format_scale_and_labels_stay_in_sync():

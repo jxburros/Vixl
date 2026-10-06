@@ -30,7 +30,7 @@ A document becomes multi-page with the first `page add`; each page has its own l
 - Preview every page at once: `vixl_render_preview(page="all")` / `render --page all`.
 - `vixl_check(checks=["deck"])` checks every page plus title placement, type scale, words per
   page, projected type size (points) and speaker notes.
-- Export `deck.pdf` (vector, selectable text) or `deck.pptx` (editable slides, notes);
+- Export `deck.pdf` (vector, selectable text) or `deck.pptx` (editable slides, notes; a `chart` becomes a native chart with its data table, see [charts](charts.md));
   `pages: "1-3,intro"` picks pages; `export slide.png --pages all` writes numbered files.
 - Name each slide's title layer `title` so it becomes the PowerPoint title placeholder.
 

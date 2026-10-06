@@ -41,11 +41,17 @@ def column(index):
     return chr(ord("A") + index)
 
 
+def string_item(value):
+    space = ' xml:space="preserve"' if value != value.strip() else ""
+    return f"<si><t{space}>{text(value)}</t></si>"
+
+
 def workbook(categories, series):
     """The bytes of a minimal .xlsx holding the chart's table (written deterministically)."""
-    strings = []
+    strings, references = [], []
 
     def shared(value):
+        references.append(value)
         if value not in strings:
             strings.append(value)
         return strings.index(value)
@@ -60,7 +66,7 @@ def workbook(categories, series):
     main = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
     sheet = (f'{XML}<worksheet xmlns="{main}"><dimension ref="A1:{column(len(series))}{len(categories) + 1}"/>'
              f'<sheetData>{"".join(rows)}</sheetData></worksheet>')
-    table = "".join(f'<si><t xml:space="preserve">{text(s)}</t></si>' for s in strings)
+    table = "".join(string_item(s) for s in strings)
     parts = {
         "[Content_Types].xml": (
             f'{XML}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
@@ -80,12 +86,13 @@ def workbook(categories, series):
             f'<Relationship Id="rId2" Type="{REL}/styles" Target="styles.xml"/>'
             f'<Relationship Id="rId3" Type="{REL}/sharedStrings" Target="sharedStrings.xml"/></Relationships>'),
         "xl/worksheets/sheet1.xml": sheet,
-        "xl/sharedStrings.xml": (f'{XML}<sst xmlns="{main}" count="{len(strings)}" uniqueCount="{len(strings)}">{table}</sst>'),
+        "xl/sharedStrings.xml": (f'{XML}<sst xmlns="{main}" count="{len(references)}" uniqueCount="{len(strings)}">{table}</sst>'),
         "xl/styles.xml": (f'{XML}<styleSheet xmlns="{main}"><fonts count="1"><font><sz val="11"/><name val="Calibri"/></font></fonts>'
                           '<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>'
                           '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>'
                           '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
-                          '<cellXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/></cellXfs></styleSheet>'),
+                          '<cellXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/></cellXfs>'
+                          '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>'),
     }
     stream = io.BytesIO()
     with zipfile.ZipFile(stream, "w", zipfile.ZIP_DEFLATED) as archive:

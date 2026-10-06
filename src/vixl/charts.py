@@ -28,6 +28,7 @@ KINDS = (
 )
 MAX_CATEGORIES = 200
 MAX_SERIES = 24
+AUTO_LABELS = 60  # value_labels "auto" labels charts of up to this many values
 LEGENDS = ("auto", "none", "top", "bottom", "left", "right")
 LABEL_MODES = ("auto", "none", "value", "percent", "both")
 DEFAULT_COLORS = ["#0072b2", "#e69f00", "#009e73", "#cc79a7", "#d55e00", "#56b4e9", "#7f7f7f", "#f0c800"]
@@ -438,7 +439,9 @@ class Style:
     def __init__(self, project, recipe, width, height):
         state = project.state
         self.project, self.recipe = project, recipe
-        self.fs = int(round(recipe.get("font_size") or max(10, min(40, min(width, height) / 30))))
+        # Sizes sit on the document's type scale (its character styles) when it has one.
+        self.scale = sorted({float(s["size"]) for s in state.get("character_styles", {}).values() if "size" in s})
+        self.fs = int(round(recipe["font_size"])) if recipe.get("font_size") else self.snap(max(10, min(40, min(width, height) / 30)))
         self.pad = int(round(recipe["padding"] if "padding" in recipe else self.fs * 0.8))
         override = recipe.get("background")
         self.surface = override or state["canvas"]["background"]
@@ -463,6 +466,17 @@ class Style:
         self.grid = recipe.get("grid_color") or hex_color(mix(rgb, self.bg, 0.14))
         self.axis = recipe.get("axis_color") or hex_color(mix(rgb, self.bg, 0.5))
         self.separator = hex_color(self.bg)
+
+    def snap(self, size):
+        """``size`` pixels, or the nearest size of the document's type scale."""
+        if not self.scale:
+            return max(1, int(round(size)))
+        return int(round(min(self.scale, key=lambda step: abs(math.log(size / step)))))
+
+    def smaller(self, size):
+        """The next size down: one pixel, or one step of the type scale."""
+        lower = [step for step in self.scale if step < size]
+        return int(round(max(lower))) if lower else size - 1
 
     def colors(self, count):
         """One color per series (or slice): explicit colors first, then the document palette, then a
@@ -602,7 +616,8 @@ class Collider:
 def header(kit, style, recipe, parts, size):
     """Title and subtitle at the top-left; returns the y below them."""
     y = style.pad
-    for key, size_, color, head in (("title", style.fs * 1.5, style.ink, True), ("subtitle", style.fs * 1.1, style.muted, False)):
+    for key, size_, color, head in (("title", style.snap(style.fs * 1.5), style.ink, True),
+                                           ("subtitle", style.snap(style.fs * 1.1), style.muted, False)):
         if recipe.get(key):
             lab = kit.make(kit.wrap(recipe[key], size_, size[0] - 2 * style.pad, 4), size_, color, head)
             place(parts, key, key, lab, style.pad, y, Z_TITLE, at="top")
@@ -695,11 +710,13 @@ class Cartesian:
         self.colors = [s.get("color") or c for s, c in zip(self.series, style.colors(self.m))]
         self.shown, forced, _ = labels_mode(recipe, False)
         self.auto = self.shown and not forced
+        if self.auto and self.n * self.m > AUTO_LABELS:
+            self.shown = self.auto = False  # automatic labels are for charts of a readable number of values
         self.point_labels = self.shown and not (self.area and not forced)
         self.totals_shown = bool(recipe.get("total_labels")) and self.stacked and not self.percent
         self.crowd = Collider()
         self.cap = kit.make("0", style.fs, style.ink)["cap"]
-        self.value_size = max(8, round(style.fs * 0.85))
+        self.value_size = max(8, style.snap(style.fs * 0.85))
         self.value_cap = kit.make("0", self.value_size, style.ink)["cap"]
         values = [v for s in self.series for v in s["values"] if v is not None]
         self.label_format = recipe.get("number_format") or auto_format(values + list(stats["totals"]["by_category"].values()))
@@ -787,12 +804,12 @@ class Cartesian:
             if self.area:
                 right -= max(0, kit.width(self.categories[-1], fs) / 2 - pad) + 2
             self.band = (right - left) / (self.n - 1 if self.area else self.n)
-            limit = self.band * 0.96
+            limit, skip = self.band * 0.96, 1
             wrapped = [kit.wrap(c, fs, limit) for c in self.categories]
-            widest_label = max(kit.width(line, fs) for text in wrapped for line in text.split("\n"))
-            skip = max(1, math.ceil(widest_label / max(1, limit)))
-            if skip > 1:
-                wrapped = [kit.wrap(c, fs, limit * skip) for c in self.categories]
+            if max(kit.width(line, fs) for text in wrapped for line in text.split("\n")) > limit * 1.02:
+                # Even wrapped they would touch: show every few, each on one line where it fits.
+                skip = math.ceil((max(kit.width(c, fs) for c in self.categories) + gap) / max(1, self.band))
+                wrapped = [kit.wrap(c, fs, self.band * skip - gap) for c in self.categories]
             self.cat_labels = [(i, kit.make(text, fs, style.muted, align="center")) for i, text in enumerate(wrapped)
                                if i % skip == 0]
             bottom -= self.cap + max(lab["height"] - lab["base"] for _, lab in self.cat_labels) + gap * 2
@@ -924,7 +941,7 @@ class Cartesian:
 
     def draw_lines(self):
         parts, style, gap, n = self.parts, self.style, self.gap, self.n
-        width = self.recipe.get("line_width") or max(2, round(style.fs * 0.18))
+        width = self.recipe.get("line_width") or (max(2, round(style.fs * 0.18)) if n <= 60 else 1.5)
         dots = self.recipe.get("markers", n * self.m <= 60) and not self.area
         dot = max(6, round(width * 2.4))
         below = [0] * n
@@ -960,7 +977,7 @@ class Cartesian:
                 if dots:
                     parts.add(f"marker-{s_index}-{i}", f"marker {name} {self.categories[i]}", "ellipse", Z_MARKERS,
                               x=round(x - dot / 2), y=round(y - dot / 2), width=dot, height=dot, fill=color)
-                if self.point_labels:
+                if self.point_labels and s["values"][i] is not None:
                     value, reach = s["values"][i], (dot if dots else width) / 2 + gap
                     key, label = f"value-{s_index}-{i}", f"value {name} {self.categories[i]}"
                     if value >= 0:
@@ -1100,10 +1117,10 @@ def radial(project, recipe, size, style, kit, parts, stats):
             place(parts, f"slice-label-{i}", f"slice label {categories[i]}", lab, x, y, Z_VALUES, "center", "mid")
     if donut and recipe.get("center_text"):
         text = recipe["center_text"].replace("{total}", format_number(total, label_format))
-        points = fs * 1.8
+        points = style.snap(fs * 1.8)
         lab = kit.make(text, points, style.ink, True, "center")
         while points > 8 and (lab["width"] > inner * 1.7 or lab["height"] > inner * 1.2):
-            points -= 1
+            points = style.smaller(points)
             lab = kit.make(text, points, style.ink, True, "center")
         place(parts, "center-text", "center text", lab, cx, cy, Z_TITLE, "center", "mid")
     if legend:
