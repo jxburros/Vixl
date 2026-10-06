@@ -4,7 +4,9 @@
 rosettes, sunbursts, flower heads and gear teeth need. Each copy is an ordinary layer (turned
 about its own center and moved to its place on the circle), so the result stays editable and
 the copies are grouped under one name. ``mirror`` adds a reflection of every copy across the
-vertical axis through the center, giving the dihedral symmetry of a kaleidoscope.
+vertical axis through the center, giving the dihedral symmetry of a kaleidoscope. Per-step fields
+(``rotation_step``, ``scale_step``, ``opacity_step``) and seeded jitter vary the copies, and
+``merge`` draws them all as one path layer (scatter.py holds the shared helpers).
 """
 
 import math
@@ -18,8 +20,10 @@ MAX_COPIES = 360
 
 def schemas(add):
     from .schema import S, N, B, COORD
+    from .scatter import step_schema
 
     add("radial-repeat", {
+        **step_schema(),
         "count": {"type": "integer", "minimum": 2, "maximum": MAX_COPIES},
         "cx": COORD,
         "cy": COORD,
@@ -44,6 +48,7 @@ def _center(value, base, default, name):
 
 def execute(project, op):
     from .operations import execute as apply
+    from .scatter import adjust, merge_in_place, step_values, stepped, stream
     from .render import resolve_layout, resolved_layers, transformed_size
 
     layer = project.layer(op.get("target"))
@@ -92,14 +97,30 @@ def execute(project, op):
         members.append(copy["id"])
         return copy
 
+    steps = []
     for i in range(count):
         theta = start + step * i
         if i:
             place(clone(f"{name}-{i + 1}"), theta, False)
         else:
             place(layer, theta, False)
+        steps.append(i)
         if mirror:
             place(clone(f"{name}-{i + 1}-mirror"), theta, True)
+            steps.append(i)
+    if stepped(op):
+        rng = stream(op.get("seed", 0), 5)
+        for ident, i in zip(members, steps):
+            rotation, scale, opacity, move = step_values(op, i, rng)
+            item = project.layer(ident)
+            # A mirrored copy turns the other way, so the pair stays symmetric.
+            adjust(project, item, -rotation if item["flip_x"] != base_flip else rotation, scale, opacity, move)
+    if op.get("merge"):
+        require(layer["type"] == "shape", f"merge needs a shape layer; {name!r} is a {layer['type']} layer",
+                field="merge")
+        label = op.get("name") or f"{name}-radial"
+        merge_in_place(project, [project.layer(ident) for ident in members], label, "name" in op)
+        return
     # The original keeps its own name; put everything under one group so it moves as a whole.
     if grouped:
         label = op.get("name") or f"{name}-radial"
@@ -127,5 +148,8 @@ def compile_command(cmd, args):
     p.add_argument("--start-angle", type=float)
     p.add_argument("--mirror", action="store_true", default=None, help="add a mirrored copy of each")
     p.add_argument("--no-group", dest="group", action="store_false", default=None)
+    from .scatter import step_arguments
+
+    step_arguments(p)
     p.add_argument("--name")
     return {"type": cmd, **{k: v for k, v in vars(p.parse_args(args)).items() if v is not None}}

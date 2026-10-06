@@ -77,6 +77,11 @@ def compile_design(cmd, args):
             p.add_argument("--" + key, type=float)
         if cmd == "repeat-blend":
             p.add_argument("--end", type=json.loads, required=True)
+        else:
+            from .scatter import step_arguments
+
+            step_arguments(p)
+            p.add_argument("--name")
     elif cmd == "adjustment":
         p.add_argument("name")
         p.add_argument("--effects", type=json.loads, required=True)

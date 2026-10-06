@@ -110,7 +110,10 @@ def schemas(add):
         anyOf=[{"required": ["path"]}, {"required": ["asset"]}, {"required": ["variable"]}],
     )
     repeat = {"count": POSITIVE_INT, "dx": N, "dy": N, "dw": N, "dh": N}
-    add("repeat", repeat, ["count"])
+    from .scatter import step_schema
+
+    add("repeat", {**repeat, **step_schema(), "name": {**S, "description": "With per-step fields or merge: name of "
+                   "the group (or merged layer) of copies."}}, ["count"])
     add("repeat-blend", {**repeat, "end": obj}, ["count", "end"])
     add("adjustment", {"name": S, "effects": {"type": "array", "items": obj, "maxItems": 256}}, ["effects"])
     add(

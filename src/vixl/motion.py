@@ -7,7 +7,10 @@ from .errors import require
 from .model import finite
 
 TYPES = ("motion", "keyframes")
-RECIPES = ("follow-path", "orbit", "bounce", "shake", "wiggle", "spring", "look-at", "overlap", "breathing", "blink", "hover", "spin")
+RECIPES = ("follow-path", "orbit", "bounce", "shake", "wiggle", "spring", "look-at", "overlap", "breathing", "blink", "hover", "spin",
+           "line-boil")
+SAMPLE_FUNCTIONS = ("sin", "cos", "triangle", "saw", "square", "noise")
+BOIL_STRENGTHS = ("subtle", "natural", "rough")
 
 
 def schemas(add):
@@ -24,15 +27,112 @@ def schemas(add):
         "phase": N, "easing": easing_schema(), "extend": B,
         "turns": N,
         "symmetry": {"type": "integer", "minimum": 1, "maximum": 1000},
-        "close": B}, ["recipe"])
+        "close": B,
+        "fps": {"type": "number", "minimum": 1, "maximum": 30, "description": "line-boil: redraws per second, each "
+                "held until the next (default 10; 8-12 reads as hand-drawn boil)."},
+        "variants": {"type": "integer", "minimum": 2, "maximum": 8, "description": "line-boil: how many wobbled "
+                     "drawings cycle (default 3); each is a copy of the layer, so this multiplies its layers."},
+        "seed": {"type": "integer", "minimum": 0, "description": "line-boil: seed of the first drawing; the others use "
+                 "the next seeds."},
+        "strength": {"enum": list(BOIL_STRENGTHS), "description": "line-boil: wobble strength (default subtle)."}},
+        ["recipe"])
+    sample = {"type": "object", "description": "Generate the keys from a periodic function instead of listing them: "
+              "{fn: sin|cos|triangle|saw|square|noise, period (ms), amplitude, offset, phase (cycles), step_ms or "
+              "samples, duration (ms), start (ms), seed (noise)}. value = offset + amplitude * fn(phase + t/period).",
+              "properties": {"fn": {"enum": list(SAMPLE_FUNCTIONS)}, "period": {"type": "number", "exclusiveMinimum": 0},
+                             "amplitude": N, "offset": N, "phase": N,
+                             "step_ms": {"type": "number", "minimum": 1}, "samples": {"type": "integer", "minimum": 1,
+                                                                                    "maximum": 8192},
+                             "duration": {"type": "number", "exclusiveMinimum": 0}, "start": N,
+                             "seed": {"type": "integer", "minimum": 0}},
+              "required": ["fn"], "additionalProperties": False}
     add("keyframes", {"property": S, "keys": {"type": "array", "minItems": 1, "maxItems": 8192,
-        "items": {"type": "object", "properties": {"time": time, "value": {}, "easing": easing_schema()}, "required": ["time", "value"], "additionalProperties": False}}, "extend": B}, ["property", "keys"])
+        "items": {"type": "object", "properties": {"time": time, "value": {}, "easing": easing_schema()}, "required": ["time", "value"], "additionalProperties": False}},
+        "sample": sample, "extend": B}, ["property"], anyOf=[{"required": ["keys"]}, {"required": ["sample"]}])
+
+
+def sampled_keys(project, spec):
+    """Keys from a ``sample`` spec: a periodic function sampled every ``step_ms`` (or ``samples``
+    times) over ``duration``. Square waves hold between keys; the rest are linear."""
+    from .timeline import _timeline
+
+    settings = _timeline(project)
+    fn = spec["fn"]
+    period = finite(spec.get("period", 1000), "sample.period", 1, 600000)
+    duration = finite(spec.get("duration", settings["duration"]), "sample.duration", 1, 600000)
+    start = finite(spec.get("start", 0), "sample.start", 0, 600000)
+    amplitude = finite(spec.get("amplitude", 1), "sample.amplitude", -1e6, 1e6)
+    offset = finite(spec.get("offset", 0), "sample.offset", -1e6, 1e6)
+    phase = finite(spec.get("phase", 0), "sample.phase", -1e4, 1e4)
+    require(not ("step_ms" in spec and "samples" in spec), "sample takes step_ms or samples, not both", field="sample.samples")
+    if "samples" in spec:
+        count = spec["samples"]
+    else:
+        step = finite(spec.get("step_ms", 1000 / settings.get("fps", 30)), "sample.step_ms", 1, 600000)
+        count = max(1, math.ceil(duration / step - 1e-9))
+    require(isinstance(count, int) and 1 <= count <= 8192, "sample makes 1-8192 keys; raise step_ms", "resource_limit",
+            field="sample.step_ms")
+    times = [start + duration * i / count for i in range(count + 1)]
+    cycles = [phase + (t - start) / period for t in times]
+    if fn == "noise":
+        import numpy as np
+        from .irregular import correlated_noise
+
+        rng = np.random.default_rng([spec.get("seed", 0), 7])
+        loop = (times[-1] - start) / period
+        closed = abs(loop - round(loop)) < 1e-9 and round(loop) >= 1
+        values = correlated_noise(rng, [(c - phase) * period for c in cycles], period, duration, closed, 2, 0.5)
+        values = [float(v) for v in values]
+    else:
+        wave = {"sin": lambda c: math.sin(math.tau * c), "cos": lambda c: math.cos(math.tau * c),
+                "triangle": lambda c: 1 - 4 * abs((c + 0.25) % 1 - 0.5), "saw": lambda c: 2 * (c % 1) - 1,
+                "square": lambda c: 1.0 if c % 1 < 0.5 else -1.0}[fn]
+        values = [wave(c) for c in cycles]
+    easing = "hold" if fn == "square" else "linear"
+    return [{"time": round(t, 3), "value": round(offset + amplitude * v, 6), "easing": easing} for t, v in zip(times, values)]
+
+
+def line_boil(project, op, targets, start, length):
+    """Hand-drawn line boil: ``variants`` copies of each target, each wobbled by irregular with
+    its own seed, shown one at a time and held for 1/fps seconds, cycling."""
+    from .operations import execute as apply
+    from .timeline import execute_timeline
+    from .scatter import Namer
+
+    fps = finite(op.get("fps", 10), "fps", 1, 30)
+    variants = op.get("variants", 3)
+    require(isinstance(variants, int) and 2 <= variants <= 8, "variants must be 2-8", field="variants")
+    seed = op.get("seed", 0)
+    strength = op.get("strength", "subtle")
+    require(strength in BOIL_STRENGTHS, f"strength must be {', '.join(BOIL_STRENGTHS)}", field="strength")
+    frames = max(1, math.ceil(length * fps / 1000 - 1e-9))
+    require(frames * variants * len(targets) <= 8192, "line-boil would write too many keys; shorten duration or lower "
+            "fps or variants", "resource_limit", field="fps")
+    namer = Namer(project)
+    for layer in targets:
+        require(layer["type"] in ("shape", "group"), f"line-boil redraws vector layers; {layer['name']!r} is a "
+                f"{layer['type']} layer", field="targets")
+        copies = [layer["id"]]
+        for k in range(1, variants):
+            apply(project, {"type": "duplicate", "target": layer["id"], "name": namer(f"{layer['name']}-boil-{k + 1}")})
+            copies.append(project.state["active_layer"])
+        for k, ident in enumerate(copies):
+            apply(project, {"type": "irregular", "target": ident, "seed": seed + k, "strength": strength,
+                            "only": ["wobble", "jitter", "width"]})
+        apply(project, {"type": "group", "name": namer(f"{layer['name']}-boil"), "targets": copies})
+        for k, ident in enumerate(copies):
+            for j in range(frames):
+                execute_timeline(project, {"type": "keyframe", "target": ident, "property": "visible",
+                                           "time": start + round(j * 1000 / fps), "value": j % variants == k,
+                                           "easing": "hold", "extend": op.get("extend", True)})
 
 
 def execute(project, op):
     from .timeline import execute_timeline, _timeline, parse_time, static_value, project_at, _snapshot
     if op["type"] == "keyframes":
-        for key in op["keys"]:
+        keys = (sampled_keys(project, op["sample"]) if "sample" in op else []) + list(op.get("keys", []))
+        require(len(keys) <= 8192, "keyframes writes at most 8192 keys", "resource_limit", field="sample")
+        for key in keys:
             execute_timeline(project, {"type": "keyframe", "target": op.get("target"), "property": op["property"], "extend": op.get("extend", True), **key})
         return
     settings = _timeline(project)
@@ -48,6 +148,9 @@ def execute(project, op):
         targets = [layer for layer in project.state["layers"] if layer.get("parent") in roots]
     require(targets, "Motion needs at least one target")
     stagger = finite(op.get("stagger", 0), "stagger", 0, 600000)
+    if recipe == "line-boil":
+        line_boil(project, op, targets, start, length)
+        return
     before = {layer["id"]: _snapshot(settings, layer["id"]) for layer in targets}
     if recipe == "spin":
         turns = finite(op.get("turns", 1), "turns", -1000, 1000)

@@ -295,6 +295,13 @@ def layer_outline(layer, project):
     Primitive shapes are drawn the way the renderer draws them, including the inset that keeps a
     stroke inside the box.
     """
+    path, scale, offset = layer_path(layer, project)
+    return flatten(path, scale, offset)
+
+
+def layer_path(layer, project):
+    """A shape layer's outline as SVG path data plus the ``(scale, offset)`` that maps it into the
+    layer's own pixel space; curves stay curves, so callers that transform it keep exact geometry."""
     from .geometry import shape_path
     from .wedge import wedge_path
 
@@ -303,26 +310,26 @@ def layer_outline(layer, project):
     width = layer.get("stroke_width", 1)
     pad = width / 2 if visible(layer.get("stroke", "transparent"), project) and width > 0 else 0
     pad = min(pad, (min(w, h) - 1) / 4) if min(w, h) > 1 else 0
+    unit = ((1.0, 1.0), (0.0, 0.0))
     if shape in ("rectangle", "rounded-rectangle", "capsule", "ellipse"):
         i = 2 * pad
         x0, y0, x1, y1 = i, i, w - i, h - i
         if shape == "rectangle":
-            return flatten(f"M{x0} {y0} L{x1} {y0} L{x1} {y1} L{x0} {y1} Z")
+            return (f"M{x0} {y0} L{x1} {y0} L{x1} {y1} L{x0} {y1} Z", *unit)
         if shape == "ellipse":
             aspect = (y1 - y0) / (x1 - x0)
-            return flatten(wedge_path((x0 + x1) / 2, (y0 + y1) / 2, (x1 - x0) / 2, 0, 360, aspect=aspect))
+            return (wedge_path((x0 + x1) / 2, (y0 + y1) / 2, (x1 - x0) / 2, 0, 360, aspect=aspect), *unit)
         r = min(layer.get("radius", min(w, h) / (2 if shape == "capsule" else 5)), (x1 - x0) / 2, (y1 - y0) / 2)
         k = r * 0.5523
-        return flatten(
-            f"M{x0 + r} {y0} L{x1 - r} {y0} C{x1 - r + k} {y0} {x1} {y0 + r - k} {x1} {y0 + r} L{x1} {y1 - r} "
-            f"C{x1} {y1 - r + k} {x1 - r + k} {y1} {x1 - r} {y1} L{x0 + r} {y1} C{x0 + r - k} {y1} {x0} {y1 - r + k} "
-            f"{x0} {y1 - r} L{x0} {y0 + r} C{x0} {y0 + r - k} {x0 + r - k} {y0} {x0 + r} {y0} Z")
+        return (f"M{x0 + r} {y0} L{x1 - r} {y0} C{x1 - r + k} {y0} {x1} {y0 + r - k} {x1} {y0 + r} L{x1} {y1 - r} "
+                f"C{x1} {y1 - r + k} {x1 - r + k} {y1} {x1 - r} {y1} L{x0 + r} {y1} C{x0 + r - k} {y1} {x0} {y1 - r + k} "
+                f"{x0} {y1 - r} L{x0} {y0 + r} C{x0} {y0 + r - k} {x0 + r - k} {y0} {x0 + r} {y0} Z", *unit)
     if shape == "line":
-        return flatten(f"M0 0 L{w} {h}")
+        return (f"M0 0 L{w} {h}", *unit)
     path, view = shape_path(layer)
     if shape in ("path", "arc"):
-        return flatten(path, (w / view[0], h / view[1]))
-    return flatten(path, ((w - 2 * pad) / view[0], (h - 2 * pad) / view[1]), (pad, pad))
+        return path, (w / view[0], h / view[1]), (0.0, 0.0)
+    return path, ((w - 2 * pad) / view[0], (h - 2 * pad) / view[1]), (pad, pad)
 
 
 def fit_box(layer, outlines, pad):

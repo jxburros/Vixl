@@ -24,7 +24,7 @@ FIELDS = {
     "preset": "Particle emitter appearance and physics defaults.", "count": "Number of particles, bounded by the project layer budget.", "spread": "Emitter [width,height] spread in pixels.", "velocity": "Initial [x,y] particle velocity in pixels per second.", "turbulence": "Deterministic lateral displacement amplitude in pixels.", "life": "Lifetime of each particle in milliseconds.", "grain": "Paper grain strength, 0–0.5.", "roughness": "Rough-cut edge erosion strength, 0–1.", "thickness": "Paper thickness/shadow offset in pixels.", "fps": "Held-frame stop-motion cadence, 1–60 frames per second.", "jitter": "Per-held-frame handmade position jitter in pixels.",
 }
 SUMMARIES = {
-    "motion": "Compile path, orbit, physics, follow-through or looping motion into editable timeline keys.", "keyframes": "Write a compact array of keys to one layer property.",
+    "motion": "Compile path, orbit, physics, follow-through, looping motion or line boil into editable timeline keys.", "keyframes": "Write a compact array of keys to one layer property, or sample them from a wave (sin, triangle, noise …).",
     "character": "Create a standard articulated character or bind existing artwork to named standard parts.", "character-save": "Save a character and its rig as a reusable template inside the portable document.", "character-load": "Instantiate a saved character with independent IDs, colors, outfit and scale.", "character-rig": "Attach a parented skeleton with root origins, bone lengths and joint limits to character parts.", "character-pose": "Apply constrained joint angles and recompute connected limb positions.", "character-ik": "Solve a two-bone limb toward a local target with a chosen bend direction and joint limits.", "character-cycle": "Retarget a walk, run, idle, ride or reaction cycle to a character rig.", "character-lipsync": "Animate mouth visemes from approximate transcript timing or explicit audio-aligned cues.",
     "audio-track": "Add or replace a timeline score/SFX/imported audio track with level, pan, fades and marker sync.", "audio-remove": "Remove a named audio track from the document timeline.", "speech-bubble": "Create an editable, text-sized speech/thought/shout/whisper bubble whose tail follows a layer.", "caption": "Add a styled, wrapped caption with optional box, timing, fade or typewriter animation.",
     "layer-depth": "Set a layer's depth for camera parallax and depth of field.", "camera": "Author an eased pan/zoom/dolly, target follow, shake or rack-focus move.", "lighting": "Composite point lights, ambient light, shadows, vignette and color grading.", "particles": "Create a deterministic emitter with lifetime, velocity, gravity and turbulence.", "cut-paper": "Apply paper grain, rough edges, thickness shadows, layered depth and held-frame animation cadence.",
@@ -32,6 +32,7 @@ SUMMARIES = {
 
 def documented(add):
     def register(kind, properties=None, required=(), **extra):
-        props = {name: {"description": FIELDS[name], **schema} for name, schema in (properties or {}).items()}
+        props = {name: schema if "description" in schema else {"description": FIELDS[name], **schema}
+                 for name, schema in (properties or {}).items()}
         add(kind, props, required, description=SUMMARIES[kind], **extra)
     return register

@@ -1649,6 +1649,34 @@ def preset_grass(v):
              "fill": _p(v, "color", "#5e9e3a")}]
 
 
+def preset_fur_blob(v):
+    """A furry body: tufts pointing out all round an ellipse, the body over them, inner flicks on top."""
+    count = int(_p(v, "tufts", 56))
+    aspect = float(_p(v, "aspect", 1.0))
+    color = _p(v, "color", "#b07848")
+    length = float(_p(v, "length", 0.22))
+
+    def ring(radius):
+        t = np.linspace(0, math.tau, 181)
+        return [[round(radius * aspect * math.cos(a), 4), round(radius * math.sin(a), 4)] for a in t]
+
+    def fur(spine, n, size, width):
+        # Along a clockwise ring, side "left" at 90 degrees points straight out.
+        return [{"rule": "warp", "kind": "bend", "amount": 0.25},
+                {"rule": "along", "spine": spine, "count": max(n, 1), "side": "left", "angle": 90,
+                 "scale": [size, size], "range": [0, 1 - 1 / max(n, 1)], "jitter": 1}], width
+
+    tuft_rules, _ = fur(ring(0.97), count, length, 0.3)
+    flick_rules, _ = fur(ring(0.86), count // 2, length * 0.55, 0.16)
+    return [
+        {"name": "tufts", "generator": "leaf", "params": {"shape": "lanceolate", "veins": "none", "width": 0.3},
+         "rules": tuft_rules, "fill": color},
+        {"name": "body", "generator": "ellipse", "params": {"aspect": aspect}, "fill": color},
+        {"name": "flicks", "generator": "leaf", "params": {"shape": "linear", "veins": "none", "width": 0.16},
+         "rules": flick_rules, "fill": _p(v, "flick_color", "rgba(60, 35, 20, 0.35)")},
+    ]
+
+
 def preset_starfish(v):
     return [
         {"name": "body", "generator": "superformula", "params": {"m": int(_p(v, "arms", 5)), "n1": 2, "n2": 7, "n3": 7},
@@ -1883,6 +1911,7 @@ PRESETS = {
     "branch": (preset_branch, "A leafy twig: alternate leaves along a curved stem", {"leaf_count": 9}),
     "vine": (preset_vine, "Curling vine with heart-shaped leaves and a tendril", {"leaf_count": 7}),
     "grass": (preset_grass, "A tuft of bending grass blades", {"blades": 14}),
+    "fur-blob": (preset_fur_blob, "A furry body: tufts all round an ellipse with inner flicks", {"tufts": 56, "aspect": 1.0}),
     "starfish": (preset_starfish, "Superformula starfish with tubercles", {"arms": 5}),
     "jellyfish": (preset_jellyfish, "Scalloped bell with waving tentacles", {"tentacles": 8}),
     "octopus": (preset_octopus, "Head and eight curling arms blended into one body", {}),
