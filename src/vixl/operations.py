@@ -61,11 +61,6 @@ from .render import (
 )
 
 COLOR_TYPES = ("palette-generate",)
-PIVOT_ANCHORS = {
-    "top-left": [0, 0], "top": [0.5, 0], "top-right": [1, 0],
-    "left": [0, 0.5], "center": [0.5, 0.5], "right": [1, 0.5],
-    "bottom-left": [0, 1], "bottom": [0.5, 1], "bottom-right": [1, 1],
-}
 
 
 OPERATION_TYPES = list(DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_TYPES + BRUSH_TYPES + TIMELINE_TYPES + LAYOUT_TYPES + COLOR_TYPES + AUTOMATION_TYPES + CREATIVE_TYPES + CONTAINER_TYPES + AUTHORING_TYPES + ORGANIC_TYPES + IRREGULAR_TYPES + GUIDE_TYPES + RICH_TYPES + PAGE_TYPES + FORM_TYPES + DRAWING_TYPES + STACK_TYPES + SELECTOR_TYPES + LINK_TYPES + CHART_TYPES + FINISHING_TYPES + DIAGRAM_TYPES + FLOW_TYPES + TRANSFORM_TYPES + MOTION_TYPES + CHARACTER_TYPES + COMIC_TYPES + TEXTURE_TYPES + AUDIO_TYPES + VECTOR_TYPES + CAPTION_TYPES + SCENE_TYPES) + [
@@ -636,8 +631,11 @@ def execute(project, op):
             require("value" in op, "Pass value: [x, y] or an anchor such as 'top-left'", field="value")
             value = op["value"]
             if isinstance(value, str):
-                require(value in PIVOT_ANCHORS, f"Unknown pivot anchor {value!r}; use {', '.join(PIVOT_ANCHORS)}", field="value")
-                value = PIVOT_ANCHORS[value]
+                from .geometry import ANCHORS, canonical_anchor
+
+                name = canonical_anchor(value)
+                require(name, f"Unknown pivot anchor {value!r}; use {', '.join(ANCHORS)}", field="value")
+                value = list(ANCHORS[name])
             else:
                 require(isinstance(value, list) and len(value) == 2, "Pivot value must be [x, y]", field="value")
                 if op.get("units") == "px":

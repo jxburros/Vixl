@@ -20,6 +20,39 @@ SHORTCUTS = {
     "parallelogram": "M25 0 L100 0 L75 100 L0 100 Z",
 }
 
+# The one anchor table: named points of a box as (x, y) fractions. Every module that accepts an anchor
+# name (pivot, resize, fit, guides, links, adapt) resolves it through canonical_anchor().
+ANCHORS = {
+    "top-left": (0, 0), "top": (0.5, 0), "top-right": (1, 0),
+    "left": (0, 0.5), "center": (0.5, 0.5), "right": (1, 0.5),
+    "bottom-left": (0, 1), "bottom": (0.5, 1), "bottom-right": (1, 1),
+}
+
+
+def _anchor_synonyms():
+    synonyms = {}
+    for name, (fx, fy) in ANCHORS.items():
+        rows = {0: ("top",), 0.5: ("center", "middle"), 1: ("bottom",)}[fy]
+        cols = {0: ("left",), 0.5: ("center", "middle"), 1: ("right",)}[fx]
+        for v in rows:
+            for h in cols:
+                synonyms[f"{v}-{h}"] = synonyms[f"{h}-{v}"] = name
+    for name in ANCHORS:
+        synonyms.pop(name, None)
+    return synonyms
+
+
+ANCHOR_SYNONYMS = _anchor_synonyms()  # e.g. bottom-center, center-left, middle-right -> bottom, left, right
+
+
+def canonical_anchor(value):
+    """The canonical anchor name for ``value`` (a name or a synonym such as 'bottom-center'), else None."""
+    if not isinstance(value, str):
+        return None
+    key = value.strip().lower().replace("_", "-").replace(" ", "-")
+    return key if key in ANCHORS else ANCHOR_SYNONYMS.get(key)
+
+
 EXTRA_SHAPES = (*CATALOG_SHAPES, *SHORTCUTS, "pentagon", "hexagon", "octagon", "capsule", "path", "arc")
 # Shapes drawn from path data that already includes their own stroke inset (see wedge.arc_layer_path).
 PATH_SHAPES = ("path", "arc")

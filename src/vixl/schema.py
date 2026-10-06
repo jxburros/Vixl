@@ -3,6 +3,7 @@
 from copy import deepcopy
 from functools import lru_cache
 
+from .geometry import ANCHORS
 from .inplace import target_schema
 from .model import Limits
 from .render import EFFECTS, BLENDS
@@ -30,6 +31,11 @@ FONT = {
 
 def enum(*values):
     return {"enum": list(values)}
+
+
+def field(base, description):
+    """A copy of a shared schema constant carrying its own description (shared constants are never mutated)."""
+    return {**base, "description": description}
 
 
 def operation_schema():
@@ -182,7 +188,10 @@ def _operation_schema():
                   "y": {**scale, "description": "Vertical factor, overriding value. Negative mirrors vertically."}},
         anyOf=[{"required": ["value"]}, {"required": ["x"]}, {"required": ["y"]}])
     add("rotate", {"value": N}, ["value"])
-    add("pivot", {"value": {"type": ["array", "string"], "items": N}, "units": enum("fraction", "px"), "clear": B})
+    add("pivot", {"value": {"anyOf": [{"type": "array", "items": N, "minItems": 2, "maxItems": 2}, enum(*ANCHORS)],
+                            "description": "[x, y] as fractions of the layer box (0.5, 0.5 is the center; pixels from the "
+                            "top-left with units: px) or an anchor name: " + ", ".join(ANCHORS) + ". Synonyms such as "
+                            "bottom-center or center-left are accepted."}, "units": enum("fraction", "px"), "clear": B})
     add("opacity", {"value": {"type": "number", "minimum": 0, "maximum": 1}}, ["value"])
     add("blend", {"value": enum(*BLENDS)}, ["value"])
     add("flip", {"direction": enum("horizontal", "vertical")}, ["direction"])

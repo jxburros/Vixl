@@ -914,8 +914,9 @@ def schema():
         "maximum": 32,
         "description": "Superellipse exponent (2 ellipse, 4 squircle).",
     }
-    for v in props.values():
-        v.setdefault("description", "Shape-specific editable geometry setting.")
+    for key, v in list(props.items()):
+        if "description" not in v:
+            props[key] = {**v, "description": "Shape-specific editable geometry setting."}
     return props
 
 

@@ -8,7 +8,7 @@ reports what changed so the caller can learn the canonical form.
 
 import re
 
-from .errors import require
+from .errors import VixlError, require
 
 PERCENT = re.compile(r"^(-?\d+(?:\.\d+)?)%$")
 
@@ -254,6 +254,22 @@ def normalize_operation(operation, properties, known_types, effects, notes, inde
             note(f"{key!r} → {canonical!r}")
 
     from .design_schema import SHAPES
+    from .geometry import ANCHORS, canonical_anchor
+
+    if isinstance(op.get("easing"), str) and op["easing"] != op["easing"].strip().lower():
+        note(f"easing {op['easing']!r} → {op['easing'].strip().lower()!r}")
+        op["easing"] = op["easing"].strip().lower()
+    # Anchor synonyms (bottom-center, center-left, ...) → the canonical anchor names.
+    for key in ("anchor", "align", "position", *(("value",) if kind == "pivot" else ())):
+        name = canonical_anchor(op.get(key))
+        if name and name != op[key]:
+            note(f"{key} {op[key]!r} → {name!r}")
+            op[key] = name
+    if kind == "pivot" and isinstance(op.get("value"), str) and op["value"] not in ANCHORS:
+        raise VixlError("invalid_operation", f"Unknown pivot anchor {op['value']!r}; use {', '.join(ANCHORS)}", field="value",
+                        allowed=list(ANCHORS))
+    if kind == "snap" and isinstance(op.get("anchors"), list):
+        op["anchors"] = [canonical_anchor(v) or v for v in op["anchors"]]
 
     if kind in ("field", "field-set"):
         from .forms import normalize as normalize_field

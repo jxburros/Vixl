@@ -137,7 +137,7 @@ def test_timeline_validation_and_layer_removal_prunes_tracks():
         p.apply({"type": "keyframe", "target": "ball", "property": "wobble", "time": 0, "value": 1})
     with pytest.raises(VixlError):
         p.apply({"type": "keyframe", "target": "ball", "property": "opacity", "time": 0, "value": 3})
-    with pytest.raises(VixlError, match="Unknown animation preset"):
+    with pytest.raises(VixlError, match="preset must be one of"):
         p.apply({"type": "animate-preset", "target": "ball", "preset": "explode"})
     p.apply({"type": "remove", "target": "ball"})
     assert all(track["target"] != "ball" for track in p.state["timeline"]["tracks"])

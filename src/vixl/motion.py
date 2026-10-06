@@ -14,15 +14,16 @@ def schemas(add):
     from .motion_schema import documented
     add = documented(add)
     from .schema import S, N, B
+    from .timeline import easing_schema
     point = {"type": "array", "items": N, "minItems": 2, "maxItems": 2}
     time = {"type": ["number", "string"]}
     add("motion", {"recipe": {"enum": list(RECIPES)}, "targets": {"type": "array", "items": S, "minItems": 1, "maxItems": 256},
         "start": time, "duration": time, "period": N, "amount": N, "frequency": N, "damping": N,
         "gravity": N, "restitution": N, "radius": N, "center": point, "points": {"type": "array", "items": point, "minItems": 2, "maxItems": 256},
         "to": N, "property": S, "follow": S, "stagger": N, "children": B, "samples": {"type": "integer", "minimum": 2, "maximum": 512},
-        "phase": N, "easing": S, "extend": B}, ["recipe"])
+        "phase": N, "easing": easing_schema(), "extend": B}, ["recipe"])
     add("keyframes", {"property": S, "keys": {"type": "array", "minItems": 1, "maxItems": 8192,
-        "items": {"type": "object", "properties": {"time": time, "value": {}, "easing": S}, "required": ["time", "value"], "additionalProperties": False}}, "extend": B}, ["property", "keys"])
+        "items": {"type": "object", "properties": {"time": time, "value": {}, "easing": easing_schema()}, "required": ["time", "value"], "additionalProperties": False}}, "extend": B}, ["property", "keys"])
 
 
 def execute(project, op):

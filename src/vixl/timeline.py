@@ -94,6 +94,19 @@ PRESETS = (
 )
 
 
+def easing_schema(description=None):
+    """JSON Schema for an easing name: the named curves as an enum, plus the parametric forms."""
+    names = ["linear", "hold", "step", "step-end", *NAMED_BEZIER, "bounce-out", "bounce-in", "elastic-out", "spring"]
+    return {
+        "anyOf": [
+            {"enum": names},
+            {"type": "string", "pattern": r"^\s*cubic-bezier\(", "description": "cubic-bezier(x1,y1,x2,y2): x1 and x2 in 0-1, y1 and y2 within +-10."},
+            {"type": "string", "pattern": r"^\s*steps\(", "description": "steps(n): n discrete steps, 1-1000."},
+        ],
+        "description": description or "Easing curve by name, cubic-bezier(x1,y1,x2,y2) or steps(n). Default linear (ease-out for presets).",
+    }
+
+
 def _bezier(x1, y1, x2, y2):
     def sample(a, b, t):
         return 3 * a * (1 - t) ** 2 * t + 3 * b * (1 - t) * t * t + t**3
@@ -1081,15 +1094,29 @@ def schemas(add):
     prop = {"type": "string", "description": "Animatable property: " + ", ".join(NUMERIC + COLORS + STEPPED) + ", or effect:ID. "
             "scale, scale-x and scale-y accept negative values: -1 mirrors the layer on that axis, so animating "
             "scale-x from 1 to -1 swings it over about its pivot (center by default). trim_start and trim_end (0-100, percent of a "
-            "shape's or path's outline) draw its stroke on or off: animate trim_end from 0 to 100."}
-    extend = {"type": "boolean", "description": "Default true: a key past the timeline end lengthens the duration, and the result's "
+            "shape's or path's outline) draw its stroke on or off: animate trim_end from 0 to 100. With trim_start equal to trim_end nothing is drawn, so a draw-on can reset invisibly. "
+            "scale, scale-x and scale-y pivot at the layer box centre unless a pivot is set (pivot fractions are relative to the layer's own box)."}
+    extend = {"type": "boolean", "description": "Default true: a key past the timeline end extends the timeline (lengthens the duration), and the result's "
               "warnings say so (timeline duration changed 8000 -> 8400 ms). False keeps the duration; the key stays past the end, "
               "shaping the last frames, and is not played."}
+    key_easing = easing_schema(
+        "Easing of the segment that STARTS at this key (from this key to the next one), not the one arriving at it; "
+        "the last key's easing has no effect. Names: linear, hold (keep this key's value until the next key, then jump), "
+        "ease, ease-in, ease-out, ease-in-out, ease-{in,out,in-out}-{sine,quad,cubic,quart,expo,back}, bounce-out, "
+        "bounce-in, elastic-out, spring; or cubic-bezier(x1,y1,x2,y2) or steps(n). Before the first key and after the "
+        "last key a track holds that key's value."
+    )
+    segment_easing = easing_schema(
+        "Easing of the move from the start key to the end key (the easing is stored on the start key and shapes the "
+        "segment leaving it). Names: linear, hold, ease, ease-in, ease-out, ease-in-out, "
+        "ease-{in,out,in-out}-{sine,quad,cubic,quart,expo,back}, bounce-out, bounce-in, elastic-out, spring; or "
+        "cubic-bezier(x1,y1,x2,y2) or steps(n). Default linear."
+    )
     add("timeline-set", {"duration": time, "fps": {"type": "number", "minimum": 1, "maximum": 60}, "loop": {"type": "integer", "minimum": 0, "maximum": 65535}, "clear": B})
     targets = {"type": "array", "items": S, "minItems": 1, "uniqueItems": True}
-    add("keyframe", {"property": prop, "time": time, "value": value, "easing": S, "targets": targets, "extend": extend}, ["property", "time", "value"])
+    add("keyframe", {"property": prop, "time": time, "value": value, "easing": key_easing, "targets": targets, "extend": extend}, ["property", "time", "value"])
     add("keyframe-remove", {"property": S, "time": time})
-    add("animate", {"property": prop, "from": value, "to": value, "start": time, "end": time, "duration": time, "easing": S, "targets": targets, "extend": extend}, ["property", "to"])
-    add("animate-preset", {"preset": S, "start": time, "duration": time, "easing": S, "distance": N, "amount": N, "fade": B, "to": S, "targets": targets, "extend": extend}, ["preset"])
+    add("animate", {"property": prop, "from": value, "to": value, "start": time, "end": time, "duration": time, "easing": segment_easing, "targets": targets, "extend": extend}, ["property", "to"])
+    add("animate-preset", {"preset": {"enum": list(PRESETS), "description": "Ready-made motion: " + ", ".join(PRESETS) + ". draw-on/draw-off need a shape or path layer; color-shift also works on the canvas."}, "start": time, "duration": time, "easing": easing_schema("Override the preset's own easing (names as for keyframe easing, or cubic-bezier(...) / steps(n))."), "distance": N, "amount": N, "fade": B, "to": S, "targets": targets, "extend": extend}, ["preset"])
     add("marker", {"name": S, "time": time, "delete": B}, ["name"], anyOf=[{"required": ["time"]}, {"required": ["delete"]}])
 
