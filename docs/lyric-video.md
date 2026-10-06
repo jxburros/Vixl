@@ -122,6 +122,10 @@ An ordinary Vixl document designed with the usual tools. Only `lyric` is require
 | `intro` | Layer or group visible before the first lyric (for example the title and artist). |
 | `bg-<section>` | Layer or group visible only during that section, such as `bg-chorus`. A numbered section also matches its base name (`Verse 2` uses `bg-verse-2`, else `bg-verse`). `bg-default` shows when nothing matches. |
 | `cue-<words>` | Layer or group visible while the current line contains those words: `cue-fire`, `cue-city-lights`. This lets the lyrics drive graphics. By default it cuts on and off; `cue_animation` can fade, slide or sweep it. |
+| `lyric-<section>` | Optional text layer that replaces `lyric` for lines in that section, with its own font, size, colour and position: `lyric-chorus`. Matched like `bg-<section>` (exact name, then the name without its number); other lines use `lyric`. |
+| `next-<section>` | The same for `lyric-next`: `next-chorus` shows the upcoming line during the chorus. Needs `lyric-next`. |
+
+A line belongs to the section its timestamp falls in. The variant switches when that line shows, after the previous line's exit, so a line is never restyled while it is on screen.
 
 The template may use `${title}`, `${artist}` and `${album}` wherever variables work. Its own
 timeline is replaced. The video is the template's canvas size unless the request sets `width` and
@@ -156,6 +160,7 @@ not a one-time `x: "center"`, so it stays centred when the variables are filled 
 | `camera` | none | A slow camera move over the whole video, as film-export camera poses `[x, y, zoom]`. |
 | `start`, `end` | 0, song length | Render only part of the song. Audio is trimmed to match. |
 | `width`, `height` | template canvas | Video size. |
+| `section_styles` | none | Restyle the lyric per section without extra layers: `{"chorus": {"size": 72, "color": "#ffd166", "y": 400}, "default": {...}}`. Each section takes `size`, `color`, `x` and `y`; a section is matched like `bg-<section>`, then `default`, else the template's own values come back. The keys are written on `lyric` and every `lyric-<section>` layer when a line from a differently styled section shows. Fonts cannot change by keyframe: use a `lyric-<section>` layer. Part of the build: changing it rebuilds an unedited build and makes an edited one `build_stale`. |
 | `sample_rate` | the song's, up to 48000 | Audio rate in Hz (8000–96000). WebM uses the nearest Opus rate at or above it. The result's `video` reports `sample_rate` and `channels`. |
 | `check` | false | Run the design checks on one frame per unique line and return the findings. |
 | `replace` | false | Allow `output` to replace an existing file, and `lyric-video-build` (or an export that has to build again) to replace `build`. |
@@ -184,6 +189,10 @@ proportion and a `short_line` warning names the line.
 - `lyric-next`: the following line's text at each show time. At an instrumental break the text is
   cleared at the empty timestamp, with an opacity fade out (the lyric's exit) and back in (the next
   entry) when the lyric animates.
+- `lyric-<section>` / `next-<section>`: the same keys as `lyric` / `lyric-next`, plus stepped `visible` keys so only the one
+  chosen for the current line shows.
+- `section_styles`: `hold` keys for `size`, `color`, `x`, `y` on the lyric layers at the show time of the first line of each
+  differently styled section.
 - `section-label`: the label at each section start.
 - `bg-*`: stepped `visible` keys so exactly one background shows at a time.
 - `intro`: visible from 0 until the first line shows.
@@ -226,7 +235,7 @@ Errors use the standard structured format; parse errors also carry `source_line`
 | `lrc_conflict` | Two different lyrics share one timestamp. |
 | `lrc_empty` | No timed lyric lines. |
 | `lyrics_beyond_audio` | A line or section starts after the end of the audio. Lines after a requested `end` are simply outside the render window. |
-| `template_invalid` | No `lyric` text layer, a reserved name on the wrong layer type, or a `bg-`/`cue-` name that is not a slug. |
+| `template_invalid` | No `lyric` text layer, a reserved name on the wrong layer type (`lyric-<section>` and `next-<section>` must be text), or a `bg-`/`cue-`/`lyric-`/`next-` name that is not a slug. |
 | `missing_file` | An input path does not exist in the workspace. |
 | `codec_error` | ffmpeg/ffprobe is missing, or the audio has no readable stream. |
 | `build_stale` | Export found a hand-edited build made with different settings or sources; see [Editing a build](#editing-a-build). |

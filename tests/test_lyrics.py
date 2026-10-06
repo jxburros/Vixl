@@ -524,3 +524,78 @@ def test_build_record_tracks_edits_and_the_workflow_schema_lists_the_new_fields(
     props = describe()["actions"]["lyric-video-export"]["properties"]
     assert "sweep" in props["cue_animation"]["description"] and props["rebuild"]["type"] == "boolean"
     assert plan(request(cue_animation={"motion": "sweep"}), workspace)["lines"]
+
+
+
+# Per-section styles (#221) ---------------------------------------------------------------------
+
+
+def section_template(workspace):
+    template(workspace / "style.vixl", operations=[
+        {"type": "text", "name": "lyric-chorus", "text": "C", "size": 16, "color": "#ffd166", "x": 8, "y": 20},
+        {"type": "text", "name": "next-chorus", "text": "n", "size": 8, "color": "#ffd166", "x": 8, "y": 80},
+    ])
+
+
+@needs_ffmpeg
+def test_section_text_layers_take_over_for_their_section(workspace):
+    from vixl.timeline import project_at
+
+    section_template(workspace)
+    report = build(request(build="b.vixl"), workspace)
+    assert set(report["template"]["lyrics"]) == {"chorus"} and set(report["template"]["nexts"]) == {"chorus"}
+    project = Project.load(workspace / "b.vixl")
+
+    def at(time):
+        return {layer["name"]: layer for layer in project_at(project, time).state["layers"]}
+
+    verse, chorus = at(2000), at(6000)
+    assert verse["lyric"]["visible"] and not verse["lyric-chorus"]["visible"]
+    assert verse["lyric-next"]["visible"] and not verse["next-chorus"]["visible"]
+    assert chorus["lyric-chorus"]["visible"] and not chorus["lyric"]["visible"]
+    assert chorus["lyric-chorus"]["text"] == "And I keep on driving" and chorus["lyric-chorus"]["opacity"] == 1
+    assert chorus["next-chorus"]["visible"] and not chorus["lyric-next"]["visible"]
+    assert at(8600)["lyric-chorus"]["text"] == "This line repeats in the fire"
+
+
+@needs_ffmpeg
+def test_section_styles_restyle_the_lyric_and_survive_rebuilds(workspace):
+    from vixl.lyrics import export
+    from vixl.timeline import project_at
+
+    styles = {"chorus": {"size": 20, "color": "#ff0000", "y": 40}}
+    build(request(build="b.vixl", section_styles=styles), workspace)
+    project = Project.load(workspace / "b.vixl")
+    verse, chorus = project_at(project, 2000).layer("lyric"), project_at(project, 6000).layer("lyric")
+    assert (verse["size"], verse["color"], verse["y"]) == (12, "#ffffff", 30)
+    assert (chorus["size"], chorus["color"].lower(), chorus["y"]) == (20, "#ff0000", 40)
+    assert project.state["lyric_build"]["options"]["section_styles"] == styles
+    # A hand-edited build made with other section styles is stale; rebuild applies the new ones.
+    fields = dict(build="b.vixl", quality="draft", start=5000, end=6500)
+    project.apply({"type": "opacity", "target": "intro", "value": 0.5})
+    project.save(workspace / "b.vixl")
+    with pytest.raises(VixlError) as stale:
+        export(request(**fields, output="a.mp4", section_styles={"chorus": {"size": 24}}), workspace)
+    assert stale.value.details["changed"] == ["section_styles"]
+    export(request(**fields, output="a.mp4", section_styles={"chorus": {"size": 24}}, rebuild=True), workspace)
+    assert project_at(Project.load(workspace / "b.vixl"), 6000).layer("lyric")["size"] == 24
+
+
+@needs_ffmpeg
+@pytest.mark.parametrize("styles, words", [
+    ({"chorus": {"font": "Inter"}}, "lyric-chorus"),
+    ({"chorus": {"weight": 700}}, "size, color, x, y"),
+    ({"Chorus!": {"size": 20}}, "section name"),
+    ({"chorus": {"size": 0}}, "1–4096"),
+])
+def test_section_styles_are_checked(workspace, styles, words):
+    from vixl.lyrics import plan
+
+    with pytest.raises(VixlError, match=words):
+        plan(request(section_styles=styles), workspace)
+
+
+def test_section_text_layers_must_be_text():
+    p = Project(50, 50)
+    p.apply([{"type": "text", "name": "lyric", "text": "x"}, {"type": "solid", "name": "lyric-chorus"}])
+    assert "'lyric-chorus' must be a text layer" in validate_template(p)["errors"][0]["message"]
