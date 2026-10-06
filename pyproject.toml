@@ -26,15 +26,15 @@ classifiers = [
     "Topic :: Multimedia :: Graphics :: Editors",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
-dependencies = ["mcp>=1.12,<2", "Pillow>=11.3,<13", "numpy>=2.0,<3", "httpx>=0.28,<1", "filelock>=3.21,<4", "jsonschema>=4.23,<5", "fonttools>=4.59,<5", "uharfbuzz>=0.52,<1", "python-bidi>=0.6.6,<1", "resvg-py>=0.5,<1", "shapely>=2.1.2,<3", "segno>=1.6,<2"]
+dependencies = ["mcp>=1.12,<3", "Pillow>=11.3,<13", "numpy>=2.0,<3", "httpx>=0.28,<1", "filelock>=3.21,<4", "jsonschema>=4.23,<5", "fonttools>=4.59,<5", "uharfbuzz>=0.52,<1", "python-bidi>=0.6.6,<1", "resvg-py>=0.5,<1", "shapely>=2.1.2,<3", "segno>=1.6,<2"]
 
 [project.optional-dependencies]
 pdf = ["pypdfium2>=4.30,<6"]
 server = ["fastapi>=0.115,<1", "uvicorn>=0.30,<1"]
 # Kept so existing `pip install "vixl-engine[mcp]"` commands keep working; MCP is in the base package.
-mcp = ["mcp>=1.12,<2"]
+mcp = ["mcp>=1.12,<3"]
 anthropic = ["anthropic>=1.11,<2"]
-dev = ["pypdfium2>=4.30,<6", "pypdf>=5,<7", "python-pptx>=1.0,<2", "pytest>=8,<10", "pytest-xdist>=3.6,<4", "fastapi>=0.115,<1", "uvicorn>=0.30,<1", "mcp>=1.12,<2", "anthropic>=1.11,<2", "ruff>=0.12"]
+dev = ["pypdfium2>=4.30,<6", "pypdf>=5,<7", "python-pptx>=1.0,<2", "pytest>=8,<10", "pytest-xdist>=3.6,<4", "fastapi>=0.115,<1", "uvicorn>=0.30,<1", "mcp>=1.12,<3", "anthropic>=1.11,<2", "ruff>=0.12"]
 
 [project.urls]
 Homepage = "https://github.com/jxburros/Vixl"
