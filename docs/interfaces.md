@@ -90,17 +90,17 @@ If the client cannot find `vixl` on PATH, use the absolute executable path, norm
 
 ### Recommended starting configuration
 
-`vixl mcp` defaults to `--tools core --schema slim` (`VIXL_MCP_TOOLS` and `VIXL_MCP_SCHEMA` override it). Its tool list is about 49k JSON characters, against about 124k for `--tools all --schema full`,
+`vixl mcp` defaults to `--tools core --schema slim` (`VIXL_MCP_TOOLS` and `VIXL_MCP_SCHEMA` override it). Its tool list is about 58k JSON characters, against about 147k for `--tools all --schema full`,
 the default in 0.21 and earlier; pass those flags to get the old behaviour. The offline reference suite passes with
 both. With slim schemas, call `vixl_operation_schema` for the fields of unfamiliar operations.
-`--tools compact --schema slim` (12 tools, about 17k characters) is the smallest surface; see
+`--tools compact --schema slim` (13 tools, about 22k characters) is the smallest surface; see
 [MCP toolsets](mcp-toolsets.md) for the measurements.
 
 ### Two servers: core and AI
 
 `vixl mcp` can serve its tools as two servers, so an agent loads only the tools it uses:
 
-- `--tools core`: documents, operations, rendering, checks, export, sizes, layouts, fonts, color, brushes, animation, workflows, batch export, layout adaptation, jobs, and the guidance tools `vixl_guide` and `vixl_styles` (47 tools).
+- `--tools core`: documents, operations, rendering, checks, export, sizes, layouts, fonts, color, brushes, animation, workflows, batch export, layout adaptation, jobs, and the guidance tools `vixl_guide` and `vixl_styles` (51 tools).
 - `--tools ai`: the provider-backed tools (`vixl_ai_*`, `vixl_models_list`) plus `vixl_workspace_list`, `vixl_document_open`, `vixl_document_inspect` and `vixl_render_preview`, so the AI server can find layers and check its results, plus `vixl_job` (16 tools).
 
 ```json
@@ -384,4 +384,4 @@ Imports never fetch external resources. The original SVG element IDs become laye
 
 ### Consolidated studio workflows
 
-`vixl mcp --tools compact --schema slim` exposes 12 document/operation/workflow/preview/import/export tools. Workflow actions include resource-list/get/save, shape-save, suite-use, palette-check, effect-run, group-list/define/show/apply/recover, branch-list/fork/status/merge and plugin-list/install/remove. REST allows the resource/test/effect actions while retaining fixed-project scope. `vixl_export_file` and REST export support HTML. Full contracts and examples: [studio.md](studio.md).
+`vixl mcp --tools compact --schema slim` exposes 13 document/operation/workflow/compose/preview/import/export tools. Workflow actions include resource-list/get/save, shape-save, suite-use, palette-check, effect-run, group-list/define/show/apply/recover, branch-list/fork/status/merge and plugin-list/install/remove. REST allows the resource/test/effect actions while retaining fixed-project scope. `vixl_export_file` and REST export support HTML. Full contracts and examples: [studio.md](studio.md).

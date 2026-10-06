@@ -6,7 +6,7 @@ Bigger documents, layer merging, scatter and pattern tiles, kinetic type, QR cod
 
 ### Breaking changes
 
-- **`vixl mcp` defaults to `--tools core --schema slim`** (about 49k characters of tools/list instead of 124k). Pass `--tools all --schema full` (or `VIXL_MCP_TOOLS=all`, `VIXL_MCP_SCHEMA=full`) for the old default. `python -m evals.run` defaults to core/slim too.
+- **`vixl mcp` defaults to `--tools core --schema slim`** (about 58k characters of tools/list instead of 147k). Pass `--tools all --schema full` (or `VIXL_MCP_TOOLS=all`, `VIXL_MCP_SCHEMA=full`) for the old default. `python -m evals.run` defaults to core/slim too.
 - **Documents can hold 4,096 layers** (was 512), and layer lists (`targets`, group/stack/look refs) take as many. Documents with more than 512 layers do not open in earlier releases (#263).
 - **Linked documents resolve relative sources beside the document first**, then the workspace, and a source inside the document's folder is stored relative to it; saving into another folder rewrites them (one `links-relink` history entry). Old documents still resolve through the workspace fallback; if one has the same relative name beside it and in the workspace, the file beside it now wins: use `links-relink` to point elsewhere (#212).
 - **Audio mixes keep their sources' quality** instead of 24 kHz stereo: the highest source rate capped at 48 kHz (48 kHz for synthesized-only mixes), mono when every source is mono and unpanned. Pass `sample_rate` to choose. In Python, `audio.RATE` is replaced by `DEFAULT_RATE`, `prepare_tracks` returns `(tracks, format)` and `mix_tracks` returns `(frames, channels)` (#207).

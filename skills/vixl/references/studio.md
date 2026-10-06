@@ -12,7 +12,7 @@ vixl mcp --workspace . --tools compact --schema slim
 MCP: `vixl_workflow(action, request, document?)`; Python:
 `dispatch(Session("campaign.vixl", workspace="."), action, request)` from
 `vixl.workflows`. `vixl_workflow_schema` discovers action names and allowed/required fields.
-The compact profile exposes 12 tools for documents, operations, workflow discovery/execution,
+The compact profile exposes 13 tools for documents, operations, one-call builds (`vixl_compose`), workflow discovery/execution,
 preview, import and export. Use `core` for the full typography/catalog convenience tools,
 and `ai` for provider-backed tools. Existing tool names remain available in the original profiles.
 REST exposes the document/resource actions at `/workflow/{action}`; branch, group and plugin

@@ -549,7 +549,7 @@ def dispatch(argv):
             "--tools",
             choices=["all", "core", "ai", "compact"],
             default=os.environ.get("VIXL_MCP_TOOLS", "core"),
-            help="core (default): all editing tools; compact: 12 document/workflow tools; ai: provider-backed tools; "
+            help="core (default): all editing tools; compact: 13 document/workflow tools; ai: provider-backed tools; "
             "all: core and ai from one server",
         )
         p.add_argument(

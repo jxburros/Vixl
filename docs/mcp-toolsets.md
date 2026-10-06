@@ -2,18 +2,18 @@
 
 `vixl mcp` serves `--tools core --schema slim` by default, the recommended configuration for most agents; `--tools compact --schema slim` is the smallest surface when tool-discovery context matters most. Keep one atomic editing tool and load exact operation fields on demand. This avoids splitting an edit across several transaction boundaries, while task-aware `vixl_capabilities` supplies relevant operations and gotchas.
 
-Measured after adding `vixl_compose` (next release) using serialized `tools/list` tool objects (compact JSON, including input schemas; characters, not model tokens):
+Measured for the next release (with `vixl_compose` and the new operations) using serialized `tools/list` tool objects (compact JSON, including input schemas; characters, not model tokens):
 
 | Toolset | Schema | Tools | Characters |
 | --- | --- | ---: | ---: |
-| all | full | 62 | 134,431 |
-| all | slim | 62 | 60,263 |
-| core | full | 51 | 127,810 |
-| core | slim | 51 | 53,642 |
-| compact | full | 13 | 94,031 |
-| compact | slim | 13 | 19,863 |
-| ai | full | 16 | 10,367 |
-| ai | slim | 16 | 10,367 |
+| all | full | 62 | 146,671 |
+| all | slim | 62 | 64,762 |
+| core | full | 51 | 140,050 |
+| core | slim | 51 | 58,141 |
+| compact | full | 13 | 103,562 |
+| compact | slim | 13 | 21,653 |
+| ai | full | 16 | 11,045 |
+| ai | slim | 16 | 11,045 |
 
 `vixl_compose` is in core and compact (about 2,700 characters): it runs create → fonts → layout → style → look → operations → check → preview → save → exports in one atomic call, so a new piece needs one tool call instead of five. Its `operations` are typed as plain objects (fields from `vixl_operation_schema`) so the operation schema is not advertised twice.
 
