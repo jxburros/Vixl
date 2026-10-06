@@ -268,7 +268,7 @@ kinds.
 
 PDF export is vector by default (also with `color_space="cmyk"`); the export result reports `content`, `content_reason`,
 `color_space` and `page_size`, and `dpi` sizes PDF pages and PowerPoint slides alike. A PPTX result's `warnings`
-name the fonts that are not embedded and must be installed where the deck is opened (`fonts_not_embedded`).
+name the fonts that are not embedded and must be installed where the deck is opened (`fonts_not_embedded`, with each one's fsType permission and license under `font_embedding`).
 
 REST: `POST /export` accepts `page`, `pages`, `pdf_content`, `fillable`, `values`, `fill_mode` and
 `presenter` (HTML slide presentation options) and format `PPTX`; `POST /preview` accepts `guides`, `page`, `values` and `show_fields`; the fixed

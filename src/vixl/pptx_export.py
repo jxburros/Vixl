@@ -459,6 +459,7 @@ class Exporter:
         self.fonts_used = set()
         self.title_ids = {}
         self._families = {}
+        self._family_data = {}  # family name -> font bytes, for the embedding report
         self._styles = {}
 
     def media(self, slide, image):
@@ -492,6 +493,7 @@ class Exporter:
         key = hashlib.sha256(primary).hexdigest()
         if key not in self._families:
             self._families[key] = family_name(primary)
+            self._family_data.setdefault(self._families[key], primary)
         self.fonts_used.add(self._families[key])
         return self._families[key]
 
@@ -501,11 +503,23 @@ class Exporter:
         PowerPoint embeds fonts as Embedded OpenType parts (``ppt/fonts/*.fntdata`` listed in
         ``p:embeddedFontLst``). Vixl does not write them: only PowerPoint itself decides whether such
         a part is acceptable (python-pptx ignores it), and a malformed one makes PowerPoint offer to
-        repair the file. A missing font is substituted, which moves text, so each one is named."""
+        repair the file. A missing font is substituted, which moves text, so each one is named, with
+        its OS/2 embedding permission and, for open-licensed fonts, the license that allows installing it."""
+        from .fonts import embedding, license_name
+
         families = sorted(self.fonts_used - COMMON_FONTS)
-        return families, [
-            f"Font {family!r} is not embedded in the PPTX (Vixl cannot embed fonts in PowerPoint files): install it "
-            "wherever the deck is opened, or share the PDF, which embeds its fonts" for family in families]
+        details, warnings = {}, []
+        for family in families:
+            data = self._family_data.get(family)
+            info = {"embedding": embedding(data) if data else "unknown"}
+            if data and (found := license_name(data)):
+                info["license"] = found
+            details[family] = info
+            hint = ("it is open-licensed (" + info["license"] + "), so install it on the presenting machine (Google Fonts) "
+                    if "license" in info else "install it wherever the deck is opened ")
+            warnings.append(f"Font {family!r} is not embedded in the PPTX (Vixl cannot embed fonts in PowerPoint files; "
+                            f"embedding: {info['embedding']}): {hint}or share the PDF, which embeds its fonts")
+        return families, warnings, details
 
     def _registered(self, font):
         from .richtext import _registered_name
@@ -606,9 +620,9 @@ def export_pptx(project, path=None, *, pages=None, dpi=None, report=None):
                       fonts=sorted(exporter.fonts_used),
                       raster_fallbacks={str(i): s.fallbacks for i, (_, s) in enumerate(slides, 1) if s.fallbacks},
                       notes=sum(1 for n in notes if n))
-        families, warnings = exporter.font_warnings()
+        families, warnings, details = exporter.font_warnings()
         if warnings:
-            report.update(fonts_not_embedded=families, warnings=warnings)
+            report.update(fonts_not_embedded=families, font_embedding=details, warnings=warnings)
         charts = {str(i): s.chart_info for i, (_, s) in enumerate(slides, 1) if s.chart_info}
         if charts:
             report["charts"] = charts

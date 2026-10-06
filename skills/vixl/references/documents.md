@@ -61,7 +61,8 @@ A document becomes multi-page with the first `page add`; each page has its own l
   the file, so pass `notes: false` for a copy to share; `presenter: false` gives a single image.
   Details: `docs/presenter.md`.
   A PPTX does not embed fonts: its `warnings` name each font to install where the deck is shown
-  (or send the PDF, which embeds them).
+  (or send the PDF, which embeds them); `font_embedding` gives each one's fsType permission
+  (`installable`, `editable`, `preview-print`, `restricted`) and `license` (`OFL` fonts install freely).
   The deck's PDF pages and PPTX slides are the same size (7.5 in tall for a screen canvas, so
   1920×1080 is 13.33 × 7.5 in); `dpi` sets both. The result's `page_size` shows it.
 - Name each slide's title layer `title` so it becomes the PowerPoint title placeholder.
