@@ -96,6 +96,7 @@ perspective systems. Place layers exactly on them instead of computing coordinat
 {"type": "grid", "name": "dial", "kind": "polar", "rings": 3, "spokes": 12}
 {"type": "place", "targets": ["n1", "n2", "n3"], "guide": "dial-r3", "orient": "radial"}
 {"type": "snap", "targets": ["logo", "title"], "tolerance": 8}
+{"type": "snap", "targets": ["title", "body"], "anchors": ["baseline"]}
 ```
 
 `vixl_check(checks=["guides", "alignment"])` reports near misses with the fixing move;

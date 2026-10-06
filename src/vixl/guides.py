@@ -18,7 +18,7 @@ import math
 import numpy as np
 
 from .errors import VixlError, require
-from .geometry import ANCHORS, canonical_anchor
+from .geometry import ANCHORS, BASELINE, canonical_anchor
 from .model import finite
 
 TYPES = ("place", "snap")
@@ -499,8 +499,9 @@ def _layer_frame(project, target):
     return layer, resolved[layer["id"]], local[layer["id"]], matrix, np.linalg.inv(matrix)
 
 
-def anchor_points(layer, box, matrix, names=None):
-    """Canvas positions of a layer's anchors (corners, edge midpoints, centre) on its rotated box."""
+def anchor_points(layer, box, matrix, names=None, fractions=None):
+    """Canvas positions of a layer's anchors (corners, edge midpoints, centre; or the given ``fractions``) on its
+    rotated box."""
     from .render import rest_size
 
     x, y, w, h = box
@@ -509,7 +510,7 @@ def anchor_points(layer, box, matrix, names=None):
     a = math.radians(layer.get("rotation", 0))
     co, si = math.cos(a), math.sin(a)
     result = {}
-    for name, (fx, fy) in ANCHORS.items():
+    for name, (fx, fy) in (fractions or ANCHORS).items():
         if names and name not in names:
             continue
         ux, uy = (fx - 0.5) * rw * (-1 if layer.get("flip_x") else 1), (fy - 0.5) * rh * (-1 if layer.get("flip_y") else 1)
@@ -653,7 +654,15 @@ def execute_snap(project, op):
             if 0 < gap <= angle_tolerance:
                 layer["rotation"] = (layer.get("rotation", 0) + ((best - current + 90) % 180 - 90)) % 360
                 layer, resolved, box, matrix, _ = _layer_frame(project, target)
-        anchors = anchor_points(resolved, box, matrix, wanted)
+        fractions = dict(ANCHORS)
+        boxed = [name for name in wanted if name != BASELINE] if wanted else None
+        anchors = anchor_points(resolved, box, matrix, boxed) if boxed is None or boxed else {}
+        if wanted and BASELINE in wanted:
+            from .render import rest_size
+            from .text_metrics import first_baseline
+
+            fractions[BASELINE] = (0.5, first_baseline(project, resolved) / rest_size(resolved)[1])
+            anchors.update(anchor_points(resolved, box, matrix, fractions={BASELINE: fractions[BASELINE]}))
         best = None
         for anchor, q in anchors.items():
             for p in points.values():
@@ -669,7 +678,7 @@ def execute_snap(project, op):
                     if d <= tolerance and (best is None or d < best[0] - 1e-9):
                         best = (d, anchor, p)
         if best is not None and best[0] > 1e-6:
-            move_anchor_to(project, target, ANCHORS[best[1]], best[2])
+            move_anchor_to(project, target, fractions[best[1]], best[2])
 
 
 def execute(project, op):
@@ -690,7 +699,9 @@ def schemas(add):
                   "rotate": N, "offset": N}, ["guide"])
     add("snap", {"targets": refs, "guides": {"type": "array", "items": S, "maxItems": 1024}, "tolerance": N,
                  "angle_tolerance": N, "angles": B, "intersections": B,
-                 "anchors": {"type": "array", "items": {"enum": list(ANCHORS)}, "minItems": 1}})
+                 "anchors": {"type": "array", "items": {"enum": [*ANCHORS, BASELINE]}, "minItems": 1,
+                             "description": "Which anchors may snap (default: the nine box anchors). 'baseline' snaps a "
+                             "text layer's first baseline, e.g. onto a baseline grid; other layers reject it."}})
 
 
 # ---------------------------------------------------------------------------------------------
@@ -897,7 +908,7 @@ def compile_command(cmd, args):
         p.add_argument("--tolerance", type=float)
         p.add_argument("--angle-tolerance", type=float)
         p.add_argument("--no-angles", dest="angles", action="store_false", default=None)
-        p.add_argument("--anchors", nargs="+", choices=list(ANCHORS))
+        p.add_argument("--anchors", nargs="+", choices=[*ANCHORS, BASELINE])
     data = {k: v for k, v in vars(p.parse_args(args)).items() if v is not None}
     if "with_" in data:
         data["with"] = data.pop("with_")

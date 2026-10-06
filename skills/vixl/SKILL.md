@@ -77,6 +77,8 @@ agent, edit independently, preview branch-merge, resolve conflicts explicitly, t
   lines and measure it with `drawing-report` (`preserved`) and `drawing-compare`.
 - **Rich text** — `rich-text` (Markdown) and `text-style` for mixed styles and lists in one box. `text-set` changes the
   whole layer (text, color, size, font) and keeps bullets and span styles that still apply; read the result's `warnings`.
+- **Baselines** — `baseline_y` on `text`/`text-set`/`move` places the first line's baseline; `align` with
+  `alignment: "baseline"` and `snap` with `anchors: ["baseline"]` (onto a baseline grid) line text up by baseline.
 - **Text flow** — `text-flow` threads a long text through linked frames (columns, pages, shapes); results report `overflow`.
 - **Diagrams** — `diagram-from-text` / `diagram` / `diagram-set` draw flowcharts, dependency graphs, org charts and mind maps
   as editable layers (swimlanes, auto-fit, `check diagram`).

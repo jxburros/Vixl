@@ -125,6 +125,9 @@ def _operation_schema():
                            "mode": enum("light", "dark"), "columns": {"type": "integer", "minimum": 1, "maximum": 12}}, ["name"])
     add("guidance", {"name": S, "text": S, "style": S, "delete": B}, ["name"])
     add("font-register", {"name": S, "asset": S, "role": S}, ["name"])
+    baseline_y = {"type": "number", "description": "Place the text's first baseline at this y (instead of y, the top "
+                  "of its box), in the same coordinates as y. Multi-line text: the first line; mixed fonts: the measured "
+                  "first line."}
     text = {
         "text": S,
         "size": POSITIVE_INT,
@@ -146,6 +149,7 @@ def _operation_schema():
             "font": FONT,
             "x": COORD,
             "y": COORD,
+            "baseline_y": baseline_y,
         },
         anyOf=[{"required": ["text"]}, {"required": ["target"]}],
     )
@@ -161,6 +165,7 @@ def _operation_schema():
             "font": FONT,
             "stroke_width": {"type": "integer", "minimum": 0},
             "stroke_color": S,
+            "baseline_y": baseline_y,
         },
         description="Change a whole text layer: content, color, size, font, alignment, spacing or stroke. To style only "
         "part of the text (a phrase, a character range, a paragraph, bold/italic/tracking) use text-style.",
@@ -180,7 +185,8 @@ def _operation_schema():
         add(kind)
     add("rename", {"name": S}, ["name"])
     add("duplicate", {"name": S})
-    add("move", {"x": COORD, "y": COORD, "relative": B}, anyOf=[{"required": ["x"]}, {"required": ["y"]}])
+    add("move", {"x": COORD, "y": COORD, "relative": B, "baseline_y": baseline_y},
+        anyOf=[{"required": ["x"]}, {"required": ["y"]}, {"required": ["baseline_y"]}])
     add(
         "resize",
         {
@@ -232,6 +238,7 @@ def _operation_schema():
                 "top-right",
                 "bottom-left",
                 "bottom-right",
+                "baseline",
             ),
             "margin": N,
             "relative_to": S,

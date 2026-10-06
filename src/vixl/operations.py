@@ -110,6 +110,31 @@ OPERATION_TYPES = list(DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_T
 ]
 
 
+def _align_baselines(project, op, targets, ref):
+    """Move text layers vertically so their first baselines line up with the reference's: a text layer named in
+    relative_to, or the first target."""
+    from .render import stored_origin
+    from .text_metrics import first_baseline, resolved_text
+
+    require(ref != "canvas", "Baseline alignment lines text up with another text layer: give targets (the first sets "
+            "the baseline) or relative_to a text layer", field="relative_to")
+
+    def baseline(item):
+        layer, resolved, bounds = resolved_text(project, item["id"])
+        require(not layer.get("rotation") % 360 and not layer.get("skew_x") and not layer.get("skew_y"),
+                f"{layer['name']!r} is rotated or skewed; baselines align on upright text", field="targets")
+        return bounds, first_baseline(project, resolved)
+
+    reference = project.layer(ref) if ref != "selection" else targets[0]
+    require(reference.get("parent") == targets[0].get("parent"), "Alignment targets must share a parent")
+    bounds, offset = baseline(reference)
+    line = bounds[1] + offset + finite(op.get("margin", 0), "margin", 0)
+    for item in targets:
+        box, offset = baseline(item)
+        item.update(constraints={})
+        item["x"], item["y"] = stored_origin(item, (box[0], line - offset))
+
+
 def embed_font_file(project, layer):
     if layer["font"] not in project.assets and Path(layer["font"]).is_file():
         data = read_bounded(layer["font"], project.limits.max_asset_bytes)
@@ -795,6 +820,8 @@ def execute(project, op):
             box = layout[other["id"]]
         margin = finite(op.get("margin", 0), "margin", 0)
         alignment = op["alignment"]
+        if alignment == "baseline":
+            return _align_baselines(project, op, targets, ref)
         for item in targets:
             x, y, w, h = layout[item["id"]]
             bx, by, bw, bh = box

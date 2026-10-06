@@ -407,7 +407,7 @@ OVERRIDES = {
     "flip": {"direction": "horizontal mirrors left-right; vertical mirrors top-bottom."},
     "crop": {"x": "Left edge of the crop in source pixels.", "y": "Top edge of the crop in source pixels.",
              "width": "Crop width in source pixels.", "height": "Crop height in source pixels."},
-    "align": {"alignment": "Which edge or center to align to.", "margin": "Gap from the edge in pixels.",
+    "align": {"alignment": "Which edge or center to align to; baseline lines up text layers' first baselines.", "margin": "Gap from the edge in pixels.",
               "relative_to": "canvas, selection, or a layer name (default canvas, or the selection for targets).",
               "targets": "Layers to align together (default the target)."},
     "constrain": {"constraints": "Anchors to expressions: {left|right|top|bottom|center-x|center-y: a number, "
