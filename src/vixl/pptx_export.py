@@ -55,7 +55,9 @@ class Slide:
         self.shapes = []
         self.next_id = 2
         self.images = []  # (rId, media path)
+        self.charts = []  # (rId, chart part path)
         self.fallbacks = []
+        self.chart_info = []
 
     def ident(self):
         self.next_id += 1
@@ -116,6 +118,13 @@ class Slide:
 
             reason = PageBuilder.raster_reason(layer)
             if reason is None and layer["type"] == "group":
+                if "chart" in layer:
+                    from .chart_pptx import shapes as chart_shapes
+
+                    native = chart_shapes(self, layer, bounds, emu, layers, index)
+                    if native is not None:
+                        out.extend(native)
+                        continue
                 children = self.layers(layers, bounds, layer["id"], emu, index)
                 ident = self.ident()
                 out.append(f'<p:grpSp><p:nvGrpSpPr><p:cNvPr id="{ident}" name={_attr(layer["name"])}/><p:cNvGrpSpPr/>'
@@ -420,6 +429,7 @@ class Exporter:
     def __init__(self, project):
         self.project = project
         self.media_files = {}
+        self.charts = []  # (chart XML, embedded workbook) per native chart, numbered from 1
         self.fonts_used = set()
         self.title_ids = {}
         self._families = {}
@@ -440,6 +450,13 @@ class Exporter:
             return existing
         rid = f"rId{len(slide.images) + 3}"
         slide.images.append((rid, target))
+        return rid
+
+    def chart(self, slide, xml, workbook):
+        """Register a native chart part for ``slide``; returns the slide relationship ID."""
+        self.charts.append((xml, workbook))
+        rid = f"rIdChart{len(self.charts)}"
+        slide.charts.append((rid, f"ppt/charts/chart{len(self.charts)}.xml"))
         return rid
 
     def font(self, data):
@@ -543,6 +560,9 @@ def export_pptx(project, path=None, *, pages=None, report=None):
         report.update(slides=len(slides), fonts=sorted(exporter.fonts_used),
                       raster_fallbacks={str(i): s.fallbacks for i, (_, s) in enumerate(slides, 1) if s.fallbacks},
                       notes=sum(1 for n in notes if n))
+        charts = {str(i): s.chart_info for i, (_, s) in enumerate(slides, 1) if s.chart_info}
+        if charts:
+            report["charts"] = charts
     if path:
         Path(path).write_bytes(data)
     return data
@@ -569,10 +589,14 @@ def package(project, exporter, slides, notes, cx, cy):
         overrides.append((f"/ppt/slides/slide{i}.xml", "application/vnd.openxmlformats-officedocument.presentationml.slide+xml"))
         overrides.append((f"/ppt/notesSlides/notesSlide{i}.xml",
                           "application/vnd.openxmlformats-officedocument.presentationml.notesSlide+xml"))
+    from .chart_pptx import content_types as chart_types, files as chart_files
+
+    chart_default, chart_overrides = chart_types(exporter)
     types = (f'{XML}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
              '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
              '<Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/>'
-             + "".join(f'<Override PartName="{name}" ContentType="{kind}"/>' for name, kind in overrides) + "</Types>")
+             + chart_default + "".join(f'<Override PartName="{name}" ContentType="{kind}"/>' for name, kind in overrides)
+             + chart_overrides + "</Types>")
     files.append(("[Content_Types].xml", types))
     files.append(("_rels/.rels", rels([
         ("rId1", f"{REL}/officeDocument", "ppt/presentation.xml"),
@@ -624,6 +648,7 @@ def package(project, exporter, slides, notes, cx, cy):
         slide_rels = [("rId1", f"{REL}/slideLayout", "../slideLayouts/slideLayout1.xml"),
                       ("rId2", f"{REL}/notesSlide", f"../notesSlides/notesSlide{i}.xml")]
         slide_rels += [(rid, f"{REL}/image", "../" + target[4:]) for rid, target in slide.images]
+        slide_rels += [(rid, f"{REL}/chart", "../" + target[4:]) for rid, target in slide.charts]
         files.append((f"ppt/slides/_rels/slide{i}.xml.rels", rels(slide_rels)))
         files.append((f"ppt/notesSlides/notesSlide{i}.xml", notes_xml(text)))
         files.append((f"ppt/notesSlides/_rels/notesSlide{i}.xml.rels", rels([
@@ -631,6 +656,7 @@ def package(project, exporter, slides, notes, cx, cy):
             ("rId2", f"{REL}/slide", f"../slides/slide{i}.xml")])))
     for target, data in exporter.media_files.values():
         files.append((target, data))
+    files.extend(chart_files(exporter))
     return files
 
 

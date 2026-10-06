@@ -140,8 +140,9 @@ GEOMETRY_TYPES = {
     "text-layout",
     "pen",
     "field",
+    "chart",
 }
-CENTER_TYPES = {"solid", "gradient", "shape", "add", "frame", "symbol-instance", "move", "field"}
+CENTER_TYPES = {"solid", "gradient", "shape", "add", "frame", "symbol-instance", "move", "field", "chart"}
 
 
 def _snake(key):
@@ -221,6 +222,10 @@ def normalize_operation(operation, properties, known_types, effects, notes, inde
         from .forms import normalize as normalize_field
 
         op = normalize_field(op, note)
+    if kind in ("chart", "chart-data"):
+        from .charts import normalize as normalize_chart
+
+        op = normalize_chart(op, note)
     if kind == "shape" and isinstance(op.get("shape"), str) and op["shape"] not in SHAPES:
         guess = op["shape"].lower().replace("_", "-").replace(" ", "-")
         if guess not in SHAPE_TYPES:
