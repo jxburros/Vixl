@@ -12,6 +12,8 @@ import re
 from .errors import VixlError
 
 START_HERE = [
+    "Sparse briefs use fresh seeds and curated safe choices. Keep the returned seed to reproduce a direction, "
+    "pass explicit palette/font/style choices to lock them, or set .vixl/variety.json to {variety: fixed, seed: 0}.",
     "Size: pick a named size (vixl_sizes_list) and vixl_document_create(size=…).",
     "Structure: for anything with text, vixl_layouts_list then layout-apply, filling every slot it lists (seed makes it repeatable). "
     "For art without a text frame (icons, characters, scenes, patterns), build from shape, pen, pathfinder, organic and radial-repeat.",
@@ -22,6 +24,16 @@ START_HERE = [
 ]
 
 KINDS = {
+    "comic": {
+        "title": "Comic page or sequential panels",
+        "keywords": ["comic", "manga", "panels", "storytelling", "speech bubble"],
+        "summary": "A panel grid with editable captions and speech bubbles; each panel can hold an image or scene.",
+        "approach": ["Create the page size and a comic-layout panel grid.",
+                     "Place scene art in panels, then add speech-bubble and caption elements in reading order."],
+        "operations": ["comic-layout", "speech-bubble", "caption", "page", "image-slot"],
+        "layouts": [], "looks": ["outline", "subtle-grain"], "styles": ["line-art"], "sizes": ["a4", "instagram-portrait"],
+        "example": [{"type": "comic-layout", "panels": [{"caption": "An idea begins."}, {"caption": "Then it grows."}], "columns": 2}],
+    },
     "poster": {
         "title": "Poster, flyer or cover",
         "keywords": ["poster", "flyer", "cover", "event", "announcement", "headline", "typographic", "print"],
@@ -255,7 +267,7 @@ OPERATION_GROUPS = {
     "Repeat and symmetry": ["repeat", "repeat-blend", "radial-repeat", "place", "snap", "guide", "grid", "pathfinder", "path-fit"],
     "Finish and style": ["look", "layer-style", "effect", "style-set", "style-define", "style-apply", "type-scale", "swatch", "palette-apply",
                          "palette-generate", "palette-define", "opacity", "blend", "mask", "lookup", "lut"],
-    "Compose from layouts": ["layout-apply", "template-apply", "container-place", "container-swap", "container-reflow", "shape-place"],
+    "Compose from layouts": ["layout-apply", "template-apply", "container-place", "container-swap", "container-reflow", "container-variant", "container-fill", "image-slot", "shape-place"],
     "Time and pages": ["timeline-set", "keyframe", "animate", "animate-preset", "marker", "page", "master", "frame-save", "frame-apply",
                        "animation-set"],
     "Document and checks": ["canvas", "variable", "artboard", "guidance", "font-register", "font-fallbacks", "layer-intent", "suite-set",
@@ -266,13 +278,16 @@ OPERATION_GROUPS = {
 def operations_index():
     """Operations grouped by what they are for, each with its one-line summary; anything not grouped is listed under 'other'."""
     from .render import EFFECTS
-    from .schema_docs import SUMMARIES
+    from .schema import operation_schema
     from .operations import OPERATION_TYPES
+
+    summaries = {v["properties"]["type"]["const"]: v.get("description", "")
+                 for v in operation_schema()["properties"]["operations"]["items"]["oneOf"]}
 
     grouped = {name for names in OPERATION_GROUPS.values() for name in names}
     rest = sorted(set(OPERATION_TYPES) - grouped - set(EFFECTS))
     groups = {**OPERATION_GROUPS, **({"Other": rest} if rest else {})}
-    return {title: {name: SUMMARIES.get(name, "") for name in names if name in OPERATION_TYPES}
+    return {title: {name: summaries.get(name, "") for name in names if name in OPERATION_TYPES}
             for title, names in groups.items()} | {"Effects (also {type: <name>})": sorted(EFFECTS)}
 
 
@@ -307,16 +322,24 @@ def entry(kind):
             "layouts": [{"name": name, "description": LAYOUTS[name]["description"]} for name in item["layouts"]]}
 
 
-def guide(brief=None):
+def guide(brief=None, *, seed=None, variety=None, workspace=None):
     """The start-here recipe and kinds (no ``brief``), one kind, or the best match for a free-text brief."""
+    if brief and brief.strip().lower().startswith("capabilities"):
+        from .capabilities import lookup
+
+        return lookup(brief.strip()[len("capabilities"):].strip() or None, fields=True)
     if not brief or not brief.strip():
         return {"start_here": START_HERE,
                 "kinds": {kind: {"title": e["title"], "summary": e["summary"]} for kind, e in KINDS.items()},
-                "also": "vixl_guide(brief='operations') lists every operation by purpose; vixl_styles lists design styles; "
+                "also": "vixl_capabilities(topic) returns task-specific fields and gotchas; vixl_guide(brief='operations') lists every operation by purpose; vixl_styles lists design styles; "
                         "vixl_layouts_list lists text layouts. A brief such as 'a mascot for a coffee brand' picks the closest kind.",
                 "tip": "Open-ended brief with no text frame (icon, character, scene, pattern)? Start from shape, organic and radial-repeat, "
                        "then look: do not default to a poster layout."}
     key = re.sub(r"[\s_]+", "-", brief.strip().lower())
+    if key in ("safe-pools", "safe", "variety"):
+        from .safe_catalog import catalog
+
+        return catalog()
     if key in ("operations", "ops", "operation", "operations-index"):
         return {"operations": operations_index(),
                 "next": "vixl_operation_schema(types=[…]) gives each operation's fields, a summary and examples"}
@@ -333,10 +356,16 @@ def guide(brief=None):
 
         return listing()
     if key in KINDS:
-        return {**entry(key), "start_here": START_HERE}
+        from .typefaces import roll_document
+
+        return {**entry(key), "start_here": START_HERE,
+                "direction": roll_document(workspace=workspace, seed=seed, variety=variety, purpose=key)}
     ranked = match(brief)
     if not ranked:
         raise VixlError("no_match", f"No kind of work matches {brief!r}; kinds: {', '.join(KINDS)}. Call vixl_guide() for the start-here "
                                     "recipe.", field="brief", suggestions=list(KINDS)[:6], allowed=list(KINDS))
     best = ranked[0]
-    return {"matched": best, **entry(best), "alternatives": ranked[1:4], "start_here": START_HERE}
+    from .typefaces import roll_document
+
+    return {"matched": best, **entry(best), "alternatives": ranked[1:4], "start_here": START_HERE,
+            "direction": roll_document(workspace=workspace, seed=seed, variety=variety, purpose=best)}

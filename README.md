@@ -11,7 +11,7 @@ Create, inspect, edit, measure and export layered designs through MCP, CLI, Pyth
 No graphical display is required. Text, shapes, masks, effects, variables, constraints,
 pages and history stay editable in a portable `.vixl` master.
 
-Current tagged release: **0.19.0**. See the [changelog](CHANGELOG.md#0190) for release notes.
+Current tagged release: **0.20.0**. See the [changelog](CHANGELOG.md#0200) for release notes.
 Run `vixl --version` to check your runtime;
 record the Git commit when using a source checkout.
 
@@ -30,8 +30,12 @@ record the Git commit when using a source checkout.
 | Photo edits, drawings and painted artwork | [Filters](docs/artistic-filters.md), [drawing cleanup](docs/drawing.md), [brushes](docs/brushes-and-animation.md), [organic shapes](docs/organic.md), [irregularity and torn edges](docs/irregular.md) |
 | Presentations, carousels and booklets | [Forms and decks tutorial](docs/tutorials/forms-and-decks.md), [slides/pages](docs/slides.md), [HTML presenter](docs/presenter.md), [rich text](docs/rich-text.md), [text flow](docs/text-flow.md) |
 | Registration forms and filled copies | [Forms](docs/forms.md), including fillable PDFs and CSV-driven output |
-| Motion, sprites and lyric videos | [Motion tutorial](docs/tutorials/motion.md), [pixel animation](docs/pixel-animation-spacing.md), [lyric videos](docs/lyric-video.md) |
+| Motion, sprites and lyric videos | [Character rigs, audio and cameras](docs/animation-authoring.md), [Motion tutorial](docs/tutorials/motion.md), [pixel animation](docs/pixel-animation-spacing.md), [lyric videos](docs/lyric-video.md) |
 | Checked production and collaboration | [Production workflows](docs/production.md), [studio](docs/studio.md), [agent resources](docs/agent-resources.md) |
+| Reusable containers, templates and comics | [Container and template library](docs/containers-and-templates.md) |
+| Vector drawing and precise placement | [Vector paths and shape catalog](docs/vector-paths.md), [spatial queries and transforms](docs/spatial-transforms.md) |
+| Texture, lighting and media review | [Creative media workflows](docs/media-craft.md) |
+| Agent discovery and bounded diagnostics | [Agent workflow guide](docs/agent-discovery.md), [MCP toolset evaluation](docs/mcp-toolsets.md) |
 | AI generation and vision | [Provider setup and capabilities](docs/providers.md); external services required |
 
 ## Install
@@ -90,7 +94,7 @@ vixl mcp --workspace . --tools core --schema slim
 For a pinned tagged runtime with uv:
 
 ```bash
-uvx --from https://github.com/jxburros/Vixl/archive/refs/tags/v0.19.0.tar.gz vixl mcp --workspace . --tools core --schema slim
+uvx --from https://github.com/jxburros/Vixl/archive/refs/tags/v0.20.0.tar.gz vixl mcp --workspace . --tools core --schema slim
 ```
 
 The workspace must exist. Use `--tools compact --schema slim` for consolidated workflow

@@ -15,7 +15,7 @@ from .model import finite
 CHECKS = ("bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "fonts", "brand", "content", "form",
           "links", "diagram", "flow")
 FALLBACK_FONT = "DejaVuSans.ttf"
-OPTIONAL_CHECKS = ("print", "color_vision", "guides", "alignment", "drawing", "style")
+OPTIONAL_CHECKS = ("print", "color_vision", "guides", "alignment", "drawing", "style", "motion", "character", "captions")
 # What to do about a finding. Errors and the warnings below need a design change ("fix"); other warnings
 # are worth a look ("review"); notes and deliberate choices the document marked are "informational".
 ACTIONS = ("fix", "review", "informational")
@@ -165,14 +165,9 @@ def group_matrix(item, resolved, local_bounds):
     matrix = np.eye(3)
     parent = resolved.get(item.get("parent"))
     while parent is not None:
-        x, y, w, h = local_bounds[parent["id"]]
-        angle = math.radians(parent["rotation"])
-        co, si = math.cos(angle), math.sin(angle)
-        sx = parent["width"] / parent["content_width"] * (-1 if parent["flip_x"] else 1)
-        sy = parent["height"] / parent["content_height"] * (-1 if parent["flip_y"] else 1)
-        transform = np.array([[co * sx, -si * sy, 0], [si * sx, co * sy, 0], [0, 0, 1]])
-        center = transform @ [parent["content_width"] / 2, parent["content_height"] / 2, 1]
-        transform[:2, 2] = [x + w / 2 - center[0], y + h / 2 - center[1]]
+        from .affine import layer_matrix, matrix as affine_matrix
+        transform = layer_matrix(parent, local_bounds[parent["id"]]) @ affine_matrix(
+            parent["width"] / parent["content_width"], 0, 0, parent["height"] / parent["content_height"])
         matrix = transform @ matrix
         parent = resolved.get(parent.get("parent"))
     return matrix
@@ -181,7 +176,7 @@ def group_matrix(item, resolved, local_bounds):
 def canvas_projection(resolved, local_bounds):
     """Canvas-space integer bounds, text scale factors and group matrices for every layer.
     Shared by the design checks, guide checks and fillable form export, so they agree."""
-    bounds, scales, matrices = {}, {}, {}
+    bounds, scales, matrices, exact = {}, {}, {}, {}
     for item in resolved.values():
         matrix = group_matrix(item, resolved, local_bounds)
         x, y, w, h = local_bounds[item["id"]]
@@ -189,9 +184,13 @@ def canvas_projection(resolved, local_bounds):
         left, top = np.floor(corners[:2].min(axis=1) + 1e-8).astype(int)
         right, bottom = np.ceil(corners[:2].max(axis=1) - 1e-8).astype(int)
         bounds[item["id"]] = tuple(map(int, (left, top, right - left, bottom - top)))
+        from .affine import layer_matrix, corners as affine_corners, envelope
+        from .render import rest_size
+        rw, rh = rest_size(item)
+        exact[item["id"]] = envelope(affine_corners((0, 0, rw, rh), matrix @ layer_matrix(item, local_bounds[item["id"]])))
         scales[item["id"]] = float(np.linalg.norm(matrix[:2, 1]))
         matrices[item["id"]] = matrix
-    return {"bounds": bounds, "scales": scales, "matrices": matrices}
+    return {"bounds": bounds, "scales": scales, "matrices": matrices, "exact_bounds": exact}
 
 
 def check_design(
@@ -241,7 +240,10 @@ def check_design(
             # "deck" means every deck check, with the named design checks (default: the deck set).
             rest = [c for c in rest if c not in DECK_CHECKS]
             rest = rest + list(DECK_CHECKS) if rest else None
-        return check_deck(project, checks=rest, safe_area=safe_area, min_contrast=min_contrast, **(deck or {}))
+        options = {"thumbnail_width": thumbnail_width, "min_thumbnail_text": min_thumbnail_text, **(deck or {})}
+        if "deck" in checks and "type_scale" not in checks and rest and options.get("profile") in ("screen", "phone"):
+            rest = [c for c in rest if c != "type_scale"]
+        return check_deck(project, checks=rest, safe_area=safe_area, min_contrast=min_contrast, **options)
     from .render import view_page
 
     project = view_page(project, page)
@@ -289,11 +291,27 @@ def check_design(
     def is_text(item):
         return resolved[item["id"]]["type"] == "text"
 
+    def role(item):
+        explicit = next((x["role"] for x in (item, *ancestors(item)) if x.get("role")), None)
+        if explicit:
+            return explicit
+        from .design import resolve_color
+        from .render import color
+
+        # A fade to transparency has no hard visual edge: it is normally a decorative
+        # glow/background. Explicit content intent always overrides this inference.
+        if item["type"] == "gradient":
+            stops = item.get("stops") or [{"color": item.get("start", "black")}, {"color": item.get("end", "white")}]
+            edge = [stops[-1]] if item.get("direction") == "radial" else [stops[0], stops[-1]]
+            if any(color(resolve_color(stop["color"], candidate.state))[3] == 0 for stop in edge):
+                return "decoration"
+        return "content"
+
     def intentional_crop(item):
         """A deliberate edge crop: the layer (or a group above it) is marked allow_crop, or it is non-text decoration."""
         chain = (item, *ancestors(item))
         return any(x.get("allow_crop") for x in chain) or (
-            not is_text(item) and next((x["role"] for x in chain if x.get("role")), "content") == "decoration"
+            not is_text(item) and role(item) == "decoration"
         )
 
 
@@ -310,10 +328,10 @@ def check_design(
 
     if "bounds" in checks:
         for item in content:
-            x, y, w, h = bounds[item["id"]]
+            x, y, w, h = projection["exact_bounds"][item["id"]]
             if x >= width or y >= height or x + w <= 0 or y + h <= 0:
                 issue("bounds", "error", f"{item['name']!r} is entirely outside the canvas", [item], bounds=[x, y, w, h])
-            elif x < 0 or y < 0 or x + w > width or y + h > height:
+            elif x < -1e-8 or y < -1e-8 or x + w > width + 1e-8 or y + h > height + 1e-8:
                 if intentional_crop(item):
                     issue("bounds", "info", f"{item['name']!r} bleeds off the canvas edge (marked as an intentional crop)",
                           [item], bounds=[x, y, w, h], intentional=True)
@@ -368,9 +386,6 @@ def check_design(
         elif report["fallback"] and "fonts" in checks:
             issue("fonts", "warning", f"{item['name']!r} uses fallback glyphs", [item], **report)
 
-    def role(item):
-        return next((x["role"] for x in (item, *ancestors(item)) if x.get("role")), "content")
-
     if "overlap" in checks:
         drawable = [item for item in content if item["type"] != "group"]
         for i, first in enumerate(drawable):
@@ -380,7 +395,7 @@ def check_design(
                 if (role(first) == "decoration" and not is_text(first)) or (role(second) == "decoration" and not is_text(second)):
                     continue
                 a, b = bounds[first["id"]], bounds[second["id"]]
-                if not _intersects(a, b):
+                if not _intersects(projection["exact_bounds"][first["id"]], projection["exact_bounds"][second["id"]]):
                     continue
                 texts = [x for x in (first, second) if is_text(x)]
                 if not texts:
@@ -493,7 +508,7 @@ def check_design(
                     points=round(points, 2),
                 )
     elif "legibility" in checks:
-        thumbnail_width = 320 if thumbnail_width is None else thumbnail_width
+        thumbnail_width = (600 if c.get("size") in ("og-image", "x-post") else 320) if thumbnail_width is None else thumbnail_width
         finite(thumbnail_width, "thumbnail_width", 16, 16384)
         scale = thumbnail_width / width
         for item in texts:
@@ -591,6 +606,19 @@ def check_design(
     if "links" in checks:
         check_links(candidate, [resolved[i] for i in resolved if resolved[i]["type"] == "link" and visible(resolved[i])],
                     issue)
+
+    for name in ("motion", "character", "captions"):
+        if name in checks:
+            if name == "motion":
+                from .motion import findings
+            elif name == "character":
+                from .characters import findings
+            else:
+                from .captions import findings
+            for finding in findings(candidate):
+                target = resolved.get(finding.get("layer"))
+                issue(name, finding["severity"], finding["message"], [target] if target else [],
+                      **{k: v for k, v in finding.items() if k not in ("check", "severity", "message", "layer")})
 
     return {
         **tally(issues),

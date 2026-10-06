@@ -198,7 +198,7 @@ def execute_design(project, op):
                 {
                     k: v
                     for k, v in {**op, "type": "add"}.items()
-                    if k in ("type", "name", "path", "asset", "x", "y")
+                    if k in ("type", "name", "path", "asset", "x", "y", "width", "height", "fit", "max_pixels", "downsample")
                 },
             )
             layer = project.layer()
@@ -299,11 +299,14 @@ def execute_design(project, op):
         if op.get("delete"):
             require(name in state.get("grids", {}), f"Unknown grid {name!r}", field="name")
             del state["grids"][name]
+            if state.get("active_grid") == name:
+                state.pop("active_grid", None)
         else:
             guides.update(generate(op, state["canvas"]))
             require(len(guides) <= 1024, "A document holds at most 1024 guides; remove a grid or raise spacing",
                     "resource_limit")
             state.setdefault("grids", {})[name] = {k: v for k, v in op.items() if k != "type"}
+            state["active_grid"] = name
     elif kind == "pathfinder":
         children = selected(project, op["targets"])
         require(
@@ -315,6 +318,15 @@ def execute_design(project, op):
             "Expand repeats/clipping first",
         )
         bounds = resolve_layout(project)
+        if op["mode"] in ("divide", "trim", "merge"):
+            from .vector_paths import pathfinder_parts
+            from .booleans import Unsupported
+            from .errors import VixlError
+            try:
+                pathfinder_parts(project, op, children, bounds)
+            except Unsupported as exc:
+                raise VixlError("unsupported_geometry", f"Pathfinder {op['mode']}: {exc}") from exc
+            return
         x, y, w, h = union_bounds([bounds[item["id"]] for item in children])
         operands = deepcopy(children)
         for layer in operands:
@@ -546,6 +558,8 @@ def validate_design(project, state):
     def check_layer(layer, depth=0):
         require(depth <= 16, "Design nesting exceeds 16 levels", "resource_limit")
         kind = layer["type"]
+        from .vector_paths import validate_distort
+        validate_distort(layer)
         for record in ("irregular", "tear"):
             if record in layer:
                 import json
@@ -557,8 +571,13 @@ def validate_design(project, state):
                 from .geometry import parse_path
 
                 parse_path(layer.get("path"))
-                project.limits.size(*layer.get("path_view", [layer["width"], layer["height"]]))
-            finite(layer.get("radius", 0), "radius", 0, 16384)
+                project.limits.size(*layer.get("path_view", [layer["width"], layer["height"]]), vector=True)
+            from .shape_catalog import validate as validate_shape
+            from .vector_strokes import validate as validate_strokes
+            validate_shape(layer)
+            validate_strokes(layer)
+            for stroke in layer.get("strokes", []):
+                color(resolve_color(stroke["color"], state))
             finite(layer.get("stroke_width", 1), "stroke width", 0, 1024)
             require(layer.get("line_cap", "butt") in ("butt", "round", "square"), "line_cap must be butt, round or square")
             from .trim import validate_trim
@@ -583,17 +602,17 @@ def validate_design(project, state):
         if kind == "symbol":
             require(layer["symbol"] in state.get("symbols", {}), "Missing symbol master")
         if kind in ("group", "pathfinder"):
-            project.limits.size(layer["content_width"], layer["content_height"])
+            project.limits.size(layer["content_width"], layer["content_height"], vector=True)
         if kind == "group" and "organic" in layer:
             import json
             require(isinstance(layer["organic"], dict) and len(json.dumps(layer["organic"])) <= 131072,
                     "Invalid organic recipe", "invalid_project")
         if kind == "pathfinder":
-            require(layer["mode"] in ("union", "subtract", "intersect"), "Invalid pathfinder mode")
+            require(layer["mode"] in ("union", "subtract", "intersect", "exclude", "divide", "minus-back", "trim", "merge"), "Invalid pathfinder mode")
             require(1 <= len(layer["operands"]) <= project.limits.max_layers, "Invalid pathfinder operands")
             for item in layer["operands"]:
                 require(item["type"] in ("shape", "pathfinder"), "Invalid pathfinder operand")
-                project.limits.size(item["width"], item["height"])
+                project.limits.size(item["width"], item["height"], vector=True)
                 check_layer(item, depth + 1)
         for category in ("character", "paragraph"):
             if category + "_style" in layer:
@@ -631,8 +650,8 @@ def validate_design(project, state):
                 else:
                     finite(value, key, 1, 16384)
             for item, _, _ in repeat_items(layer, state):
-                project.limits.size(item["width"], item["height"])
-            project.limits.size(*repeat_bounds(layer))
+                project.limits.size(item["width"], item["height"], vector=True)
+            project.limits.size(*repeat_bounds(layer), vector=True)
         if kind == "adjustment":
             require(
                 not layer.get("clip") and not layer.get("repeat") and not layer.get("styles"),

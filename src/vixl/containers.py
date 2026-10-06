@@ -6,8 +6,8 @@ from .errors import require
 from .model import finite, new_layer, Limits
 from .stacks import collapsed
 
-TYPES = ("container-place", "container-swap", "container-reflow", "shape-place")
-CONTENT = {"text", "solid", "gradient", "shape", "pen"}
+TYPES = ("container-place", "container-swap", "container-variant", "container-fill", "container-reflow", "shape-place", "image-slot")
+CONTENT = {"text", "solid", "gradient", "shape", "pen", "image-slot"}
 
 
 def validate(value):
@@ -18,10 +18,18 @@ def validate(value):
 
     bounded_object(
         value,
-        {"width", "height", "operations", "rules", "defaults", "description"},
+        {"width", "height", "min_width", "max_width", "min_height", "max_height", "operations", "rules", "defaults", "description", "variants", "safe", "slots", "category", "default_variant"},
         "Unknown container field",
     )
     Limits().size(value["width"], value["height"])
+    for axis in ("width", "height"):
+        lo, hi = value.get("min_" + axis, value[axis]), value.get("max_" + axis, value[axis])
+        require(type(lo) is int and type(hi) is int and 1 <= lo <= value[axis] <= hi <= 16384, "Invalid container size bounds")
+    variants = value.get("variants", {})
+    require(isinstance(variants, dict) and len(variants) <= 20, "Invalid container variants")
+    for name, variant in variants.items():
+        require(isinstance(name, str) and isinstance(variant, dict) and set(variant) <= {"operations", "rules"}, "Invalid variant")
+        validate({**value, **variant, "variants": {}})
     rules = value.get("rules", {})
     bounded_object(
         rules, {"layout", "padding", "gap", "columns", "max_items", "contain"}, "Unknown container rule"
@@ -46,7 +54,17 @@ def validate(value):
             op.get("type") in CONTENT,
             "Container content must be self-contained text, shape, pen, solid or gradient",
         )
-        operation = validate_operation(op)
+        if "frame" in op:
+            frame = op["frame"]
+            require(isinstance(frame, list) and len(frame) == 4, "Container frame needs four fractions")
+            for fraction in frame:
+                finite(fraction, "frame fraction", 0, 1)
+            require(frame[2] > 0 and frame[3] > 0 and frame[0] + frame[2] <= 1.001 and frame[1] + frame[3] <= 1.001, "Container frame exceeds bounds")
+        if "fit_text" in op:
+            require(op["type"] == "text" and op["fit_text"] in (True, False, "wrap", "shrink"), "fit_text must be wrap, shrink or boolean on text")
+        if "min_size" in op:
+            finite(op["min_size"], "min_size", 1, 4096)
+        operation = validate_operation({k: v for k, v in op.items() if k not in ("frame", "fit_text", "min_size")})
         service_check(operation)
         require(not operation.get("target"), "Container content cannot target existing layers")
         name = operation.get("name", operation["type"])
@@ -56,15 +74,39 @@ def validate(value):
 
 def schemas(add):
     from .schema import S, COORD
+    register = add
+    descriptions = {
+        "container-variant": "Switch a container arrangement while preserving its filled slots.",
+        "container-fill": "Fill container text and image slots and reflow their layout.",
+        "image-slot": "Create an editable image placeholder or fit an embedded image into a shaped slot.",
+    }
+    fields = {"variant": "Named arrangement from the container resource; omitted choices are seeded.",
+              "slot": "Semantic image slot name used by variables and checks.",
+              "fit": "cover crops, contain letterboxes, and fill stretches to the slot.",
+              "focal": "Subject position as [x, y] fractions in the source image.",
+              "mask_shape": "Shape silhouette for the crop, including circle and rounded aliases.",
+              "seed": "32-bit integer for reproducible choice, or random; omitted values use a fresh seed."}
+    def add(kind, properties=None, required=(), **extra):
+        properties = {k: {**v, "description": v.get("description", fields.get(k, k.replace("_", " ").capitalize() + " for this container or slot."))} for k,v in (properties or {}).items()}
+        register(kind, properties, required, **({"description": descriptions[kind]} if kind in descriptions else {}), **extra)
 
+    from .schema import SIZE, enum
     obj = {"type": "object"}
+    common = {"variables": obj, "variant": S, "width": SIZE, "height": SIZE,
+              "seed": {"type": ["integer", "string"]}}
     add(
         "container-place",
-        {"name": S, "resource": S, "x": COORD, "y": COORD, "variables": obj},
+        {"name": S, "resource": S, "x": COORD, "y": COORD, **common},
         ["name", "resource"],
     )
     add("container-reflow", {}, ["target"])
-    add("container-swap", {"resource": S, "variables": obj}, ["target", "resource"])
+    add("container-swap", {"resource": S, **common}, ["target", "resource"])
+    add("container-variant", common, ["target", "variant"])
+    add("container-fill", {"variables": obj}, ["target", "variables"])
+    add("image-slot", {"name": S, "slot": S, "asset": S, "x": COORD, "y": COORD,
+                       "width": SIZE, "height": SIZE, "fit": enum("cover", "contain", "fill"),
+                       "focal": {"type": "array", "items": {"type": "number", "minimum": 0, "maximum": 1}, "minItems": 2, "maxItems": 2},
+                       "mask_shape": S, "radius": {"type": "number", "minimum": 0}}, ["name", "width", "height"])
     add(
         "shape-place",
         {
@@ -98,99 +140,170 @@ def execute(project, op):
             apply(project, {"type": "resize", "keep_aspect": ("width" in op) != ("height" in op),
                             **{k: op[k] for k in ("width", "height") if k in op}})
         return
-    item = get("containers", op["resource"], workspace=workspace)
-    width, height = item["width"], item["height"]
-    if op["type"] == "container-swap":
-        group = project.layer(op["target"])
+    if op["type"] == "image-slot":
+        return image_slot(project, op)
+    changing = op["type"] in ("container-swap", "container-variant", "container-fill")
+    group = project.layer(op["target"]) if changing else None
+    if changing:
         require(group["type"] == "group" and "container" in group, "Target must be a template container")
-        require(
-            [width, height] == group["container"]["size"], "Replacement container must have the same size"
-        )
+    previous = deepcopy(group["container"]) if group else {}
+    resource = op.get("resource", previous.get("resource"))
+    item = get("containers", resource, workspace=workspace)
+    width, height = (op.get(k, previous.get("size", [item["width"], item["height"]])[i]) for i, k in enumerate(("width", "height")))
+    if changing and "width" not in op and "height" not in op and resource != previous.get("resource"):
+        require([item["width"], item["height"]] == previous.get("base_size", previous["size"]), "Replacement container must have the same size")
+    size_bounds(item, width, height)
+    from .variety import seed_for
+    import random
+    seed, _ = seed_for(project, op.get("seed", previous.get("seed")))
+    choices = list(item.get("variants", {}))
+    variant = op.get("variant", previous.get("variant") if previous.get("resource") == resource else None)
+    direction = project.state.get("design_defaults", {}).get("direction", {})
+    if variant is None and op.get("seed") is None and direction.get("container_variant") in choices:
+        variant = direction["container_variant"]
+    variant = variant or (random.Random(seed).choice(choices) if choices else "default")
+    require(variant == "default" or variant in item.get("variants", {}), "Unknown container variant")
+    selected = {**item, **item.get("variants", {}).get(variant, {})}
+    edited = {}
+    if group:
+        for child in project.state["layers"]:
+            if child.get("parent") == group["id"] and child.get("container_variable"):
+                edited[child["container_variable"]] = child.get("text", child.get("image_slot", {}).get("source", ""))
+    variables = {**item.get("defaults", {}), **previous.get("variables", {}), **edited, **op.get("variables", {})}
+    if changing:
         ids = descendants(project, group["id"])
-        # Referenced children require explicit repair before swapping, rather than dangling IDs.
         for layer in project.state["layers"]:
             if layer["id"] not in ids:
-                require(
-                    layer.get("clip") not in ids, "Container children are referenced outside the container"
-                )
+                require(layer.get("clip") not in ids, "Container children are referenced outside the container")
         project.state["layers"] = [x for x in project.state["layers"] if x["id"] not in ids]
         for ident in ids:
             project.state.get("blanks", {}).pop(ident, None)
     else:
         group = new_layer(op["name"], "group", width, height, x=op.get("x", 0), y=op.get("y", 0))
         append_layer(project, group)
-    group.update(
-        content_width=width,
-        content_height=height,
-        container={
-            "resource": op["resource"],
-            "size": [width, height],
-            "rules": deepcopy(item.get("rules", {})),
-        },
-    )
-    variables = {**item.get("defaults", {}), **op.get("variables", {})}
-    rules = item.get("rules", {})
-    padding, gap = rules.get("padding", 0), rules.get("gap", 0)
-    layout, cursor = rules.get("layout", "free"), padding
-    columns = rules.get("columns", 2)
-    ops = substitute(item["operations"], variables)
+    group.update(width=width, height=height, content_width=width, content_height=height,
+                 container={"resource": resource, "size": [width, height], "base_size": [item["width"], item["height"]],
+                            "rules": deepcopy(selected.get("rules", {})), "variables": variables, "variant": variant,
+                            "seed": seed, "bounds": {k: item[k] for k in ("min_width", "max_width", "min_height", "max_height") if k in item}})
+    ops = substitute(selected["operations"], variables)
     budget = getattr(project, "_resource_budget", project.limits.max_operations) - len(ops)
     require(budget >= 0, "Container expansion exceeds operation limit", "resource_limit")
     project._resource_budget = budget
     children = []
-    for index, operation in enumerate(ops):
-        operation["name"] = group["name"] + "/" + operation.get("name", operation["type"])
+    for original, operation in zip(selected["operations"], ops):
+        operation = deepcopy(operation)
+        local_name = operation.get("name", operation["type"])
+        spec = {k: operation.pop(k) for k in ("frame", "fit_text", "min_size") if k in operation}
+        operation["name"] = group["name"] + "/" + local_name
+        if operation["type"] == "text" and spec.get("fit_text"):
+            # Start from a type scale suited to the requested cell, then wrap/shrink locally.
+            scale = min(width / item["width"], height / item["height"])
+            operation["size"] = max(spec.get("min_size", 12), round(operation.get("size", 24) * scale))
+        if operation["type"] == "image-slot":
+            slot = operation.get("slot", local_name)
+            operation["asset"] = variables.get(slot, operation.get("asset", ""))
         apply(project, operation)
         layer = project.layer()
-        layer["parent"] = group["id"]
-        if layer["id"] in collapsed(project):
-            # An empty hide_if_empty text takes no space; reflow closes the gap if it fills later.
-            children.append(layer["id"])
-            continue
-        if layout in ("vertical", "horizontal"):
-            layer["x"], layer["y"] = (padding, cursor) if layout == "vertical" else (cursor, padding)
-            cursor += layer["height" if layout == "vertical" else "width"] + gap
-        elif layout == "grid":
-            rows = (len(ops) + columns - 1) // columns
-            cell_w, cell_h = (
-                (width - 2 * padding - (columns - 1) * gap) / columns,
-                (height - 2 * padding - (rows - 1) * gap) / rows,
-            )
-            require(cell_w > 0 and cell_h > 0, "Grid has no usable area")
-            layer["x"] = padding + (index % columns) * (cell_w + gap)
-            layer["y"] = padding + (index // columns) * (cell_h + gap)
-            require(
-                layer["width"] <= cell_w and layer["height"] <= cell_h, "Content exceeds container grid cell"
-            )
-        if rules.get("contain", True):
-            require(
-                layer["x"] >= padding
-                and layer["y"] >= padding
-                and layer["x"] + layer["width"] <= width - padding
-                and layer["y"] + layer["height"] <= height - padding,
-                "Content exceeds container bounds or padding",
-            )
-        if layer["type"] == "text":
-            for key, value in item.get("defaults", {}).items():
-                if (
-                    key not in op.get("variables", {})
-                    and isinstance(value, str)
-                    and value.startswith("[")
-                    and value.endswith("]")
-                    and value in layer["text"]
-                ):
-                    project.state.setdefault("blanks", {})[layer["id"]] = {
-                        "slot": key,
-                        "text": layer["text"],
-                        "hint": f"Fill {group['name']} variable {key}",
-                        "source": f"container:{op['resource']}",
-                    }
+        layer.update(parent=group["id"], container_local=local_name)
+        template_text = original.get("text", "")
+        if template_text.startswith("${") and template_text.endswith("}") and template_text.count("${") == 1:
+            layer["container_variable"] = template_text[2:-1]
+        elif layer.get("image_slot"):
+            layer["container_variable"] = original.get("slot", local_name)
+        if spec:
+            layer["container_layout"] = spec
+        for key, value in item.get("defaults", {}).items():
+            if layer["type"] == "text" and isinstance(value, str) and value.startswith("[") and value.endswith("]") and value in layer["text"]:
+                project.state.setdefault("blanks", {})[layer["id"]] = {"slot": key, "text": layer["text"], "hint": f"Fill {group['name']} variable {key}", "source": f"container:{resource}"}
         children.append(layer["id"])
+    reflow(project, group["id"])
     project.state["active_layer"] = group["id"]
-    project.state.setdefault("containers", {})[group["id"]] = {
-        "resource": op["resource"],
-        "children": children,
-    }
+    project.state.setdefault("containers", {})[group["id"]] = {"resource": resource, "children": children}
+
+
+def size_bounds(item, width, height):
+    Limits().size(width, height, vector=True)
+    for key, value in (("width", width), ("height", height)):
+        if "min_" + key in item or "max_" + key in item:
+            require(item.get("min_" + key, 1) <= value <= item.get("max_" + key, 16384), f"Container {key} exceeds min/max bounds")
+
+
+def image_slot(project, op):
+    """Embed a source once, retaining its identity and crop recipe for later resizing."""
+    from pathlib import Path
+    from .assets import add_encoded, read_bounded
+    from .operations import append_layer
+    w, h = op["width"], op["height"]
+    layer = new_layer(op["name"], "raster", w, h, x=op.get("x", 0), y=op.get("y", 0))
+    source = op.get("asset") or ""
+    if source and source not in project.assets:
+        require(not getattr(project, "_service", False), "Image slots in services require imported embedded assets", "forbidden")
+        root = Path(getattr(project, "_workspace", None) or ".").resolve()
+        path = (root / source).resolve()
+        require(path.is_relative_to(root), "Image slot path escapes workspace", "forbidden")
+        source, _ = add_encoded(project, read_bounded(path, project.limits.max_asset_bytes))
+    layer["image_slot"] = {"slot": op.get("slot", op["name"]), "source": source,
+                           "fit": op.get("fit", "cover"), "focal": op.get("focal", [0.5, 0.5]),
+                           "mask_shape": op.get("mask_shape", "rectangle"), **({"radius": op["radius"]} if "radius" in op else {})}
+    fit_image(project, layer)
+    append_layer(project, layer)
+
+
+def fit_image(project, layer):
+    from PIL import Image, ImageOps, ImageChops
+    from .assets import decode, add_image
+    from .design_render import shape_image
+    spec = layer["image_slot"]
+    w, h = max(1, round(layer["width"])), max(1, round(layer["height"]))
+    source = spec.get("source")
+    if source:
+        image = decode(project.assets[source], project.limits)
+        spec["source_size"] = list(image.size)
+        if spec["fit"] == "cover":
+            scale = max(w / image.width, h / image.height)
+            crop_w, crop_h = w / scale, h / scale
+            left = max(0, min(image.width - crop_w, spec["focal"][0] * image.width - crop_w / 2))
+            top = max(0, min(image.height - crop_h, spec["focal"][1] * image.height - crop_h / 2))
+            image = image.resize((w, h), Image.Resampling.LANCZOS, box=(left, top, left + crop_w, top + crop_h))
+        elif spec["fit"] == "contain":
+            fit = ImageOps.contain(image, (w, h), Image.Resampling.LANCZOS)
+            image = Image.new("RGBA", (w, h))
+            image.alpha_composite(fit, ((w-fit.width)//2, (h-fit.height)//2))
+        else:
+            image = image.resize((w, h), Image.Resampling.LANCZOS)
+    else:
+        image = Image.new("RGBA", (w, h), "#d9dee5")
+        from PIL import ImageDraw
+        draw = ImageDraw.Draw(image)
+        draw.line((0, 0, w, h), fill="#a3abb7", width=max(1, min(w, h)//100))
+        draw.line((w, 0, 0, h), fill="#a3abb7", width=max(1, min(w, h)//100))
+    shape = spec.get("mask_shape", "rectangle")
+    shape = {"rect": "rectangle", "circle": "ellipse", "rounded": "rounded-rectangle"}.get(shape, shape)
+    if shape != "rectangle":
+        from .design_schema import SHAPES
+        require(shape in SHAPES and shape != "path", "Unknown image mask shape")
+        mask = shape_image(project, new_layer("mask", "shape", w, h, shape=shape, fill="#ffffff", stroke="transparent", stroke_width=0, radius=spec.get("radius", min(w,h)/8)))
+        image.putalpha(ImageChops.multiply(image.getchannel("A"), mask.getchannel("A")))
+    layer["asset"] = add_image(project, image)
+    if not source:
+        project.state.setdefault("blanks", {})[layer["id"]] = {"slot": spec["slot"], "asset": layer["asset"],
+                                                              "hint": "Import and fill this image slot", "source": "image-slot"}
+    elif project.state.get("blanks", {}).get(layer["id"], {}).get("source") == "image-slot":
+        project.state["blanks"].pop(layer["id"])
+
+
+def resize(project, group, op):
+    """Resize the local layout box, preserving editable children and their IDs."""
+    width, height = op.get("width", group["width"]), op.get("height", group["height"])
+    if op.get("keep_aspect") and (("width" in op) != ("height" in op)):
+        if "width" in op:
+            height = round(group["height"] * width / group["width"])
+        else:
+            width = round(group["width"] * height / group["height"])
+    size_bounds(group["container"].get("bounds", {}), width, height)
+    group.update(width=width, height=height, content_width=width, content_height=height)
+    group["container"]["size"] = [width, height]
+    reflow(project, group["id"])
 
 
 def builtins():
@@ -268,12 +381,15 @@ def builtins():
                 for i, resource in enumerate(choices)
             ],
         }
-    return containers, templates
+    from .container_library import expand
+    return expand(containers, templates)
 
 
 def measure(project, target=None):
     """Audit container rules after edits; changing artwork never changes its expectations."""
-    from .render import resolve_layout
+    from .render import resolve_layout, resolved_layers
+    from .checks import group_matrix
+    import math
 
     groups = (
         [project.layer(target)]
@@ -285,6 +401,7 @@ def measure(project, target=None):
         "No template containers to check",
     )
     bounds = resolve_layout(project)
+    resolved = {layer["id"]: layer for layer in resolved_layers(project)}
     hidden = collapsed(project)
     violations = []
     for group in groups:
@@ -300,6 +417,17 @@ def measure(project, target=None):
         columns = rules.get("columns", 2)
         rows = max(1, (len(children) + columns - 1) // columns)
         for index, layer in enumerate(children):
+            if layer.get("image_slot"):
+                slot = layer["image_slot"]
+                if not slot.get("source"):
+                    violations.append({"container": group["name"], "target": layer["name"], "rule": "unfilled_image"})
+                else:
+                    matrix = group_matrix(layer, resolved, bounds)
+                    scale = max(math.hypot(matrix[0, 0], matrix[1, 0]), math.hypot(matrix[0, 1], matrix[1, 1]))
+                    ratio = max if slot.get("fit") == "contain" else min
+                    effective = ratio(a / b for a, b in zip(slot["source_size"], (layer["width"], layer["height"]))) / max(scale, 1e-9)
+                    if effective < 1:
+                        violations.append({"container": group["name"], "target": layer["name"], "rule": "image_resolution", "source_size": slot["source_size"], "pixels_per_pixel": round(effective, 3)})
             x, y, w, h = bounds[layer["id"]]
             failed = []
             if rules.get("contain", True) and not (
@@ -351,6 +479,41 @@ def reflow(project, target):
                 if layer.get("parent") == group["id"] and layer["id"] not in hidden]
     cursor, columns = padding, rules.get("columns", 2)
     rows = max(1, (len(children) + columns - 1) // columns)
+    for layer in children:
+        spec = layer.get("container_layout", {})
+        frame = spec.get("frame")
+        if frame:
+            require(isinstance(frame, list) and len(frame) == 4 and all(isinstance(v, (int, float)) for v in frame), "frame must be [x,y,width,height] fractions")
+            layer["x"], layer["y"] = round(frame[0] * width), round(frame[1] * height)
+            layer["width"], layer["height"] = max(1, round(frame[2] * width)), max(1, round(frame[3] * height))
+        if layer["type"] == "text" and spec.get("fit_text"):
+            from .text import measure as text_measure, font_data
+            if not frame:
+                count = max(1, len(children))
+                available_w, available_h = width - 2 * padding, height - 2 * padding
+                if layout == "horizontal":
+                    available_w = (available_w - gap * (count - 1)) / count
+                elif layout == "grid":
+                    available_w = (available_w - gap * (columns - 1)) / columns
+                    available_h = (available_h - gap * (rows - 1)) / rows
+                else:
+                    available_h = (available_h - gap * (count - 1)) / count
+                layer.update(width=max(1, round(available_w)), height=max(1, round(available_h)))
+            maximum = layer.setdefault("container_font_size", layer["size"])
+            minimum = spec.get("min_size", 12)
+            size = maximum
+            while True:
+                _, box = text_measure(font_data(project, layer), layer["text"], size, layer.get("spacing", 0), layer.get("align", "left"), layer["width"])
+                if (box[3] - box[1] <= layer["height"] and box[2] - box[0] <= layer["width"]) or size <= minimum or spec.get("fit_text") == "wrap":
+                    break
+                size -= 1
+            require(box[3]-box[1] <= layer["height"] and box[2]-box[0] <= layer["width"], "Text cannot fit container at minimum size")
+            if not frame:
+                import math
+                layer["height"] = max(1, math.ceil(box[3] - box[1]))
+            layer.update(size=size, auto_size=False, text_layout={"width": layer["width"], "height": layer["height"]})
+        if layer.get("image_slot"):
+            fit_image(project, layer)
     bounds = resolve_layout(project)
     for index, layer in enumerate(children):
         require(
@@ -374,5 +537,5 @@ def reflow(project, target):
             )
     report = measure(project, target)
     require(
-        report["passed"], "Reflow cannot satisfy container rules; resize or fit content first", report=report
+        not any(v["rule"] not in ("unfilled_image", "image_resolution") for v in report["violations"]), "Reflow cannot satisfy container bounds or rules; resize or fit content first", report=report
     )

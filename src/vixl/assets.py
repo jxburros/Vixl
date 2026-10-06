@@ -2,6 +2,7 @@
 
 import hashlib
 import io
+import math
 import warnings
 from pathlib import Path
 
@@ -47,17 +48,39 @@ def read_bounded(path, limit):
 SOURCE_FORMATS = {"PNG": "png", "JPEG": "jpg", "WEBP": "webp"}
 
 
-def add_encoded(project, data, category="assets"):
+def add_encoded(project, data, category="assets", *, max_pixels=None, placed_size=None, fit="fill"):
     """Embed an imported file. Compact still-image formats keep their original bytes (a JPEG
     photo stays a JPEG instead of growing ~10x as PNG); anything else is normalized to PNG.
     Returns ``(asset_name, decoded_image)``."""
     image = decode(data, project.limits)
+    original_size = image.size
+    ratio = 1.0
+    if max_pixels is not None:
+        require(isinstance(max_pixels, int) and not isinstance(max_pixels, bool) and max_pixels > 0,
+                "max_pixels must be a positive integer", field="max_pixels")
+        ratio = min(ratio, math.sqrt(max_pixels / (image.width * image.height)))
+    if placed_size is not None:
+        choose = min if fit == "fit" else max
+        ratio = min(ratio, choose(placed_size[0] / image.width, placed_size[1] / image.height))
+    if ratio < 1:
+        image = image.resize((max(1, math.floor(image.width * ratio)), max(1, math.floor(image.height * ratio))),
+                             Image.Resampling.LANCZOS)
     try:
         with Image.open(io.BytesIO(data)) as probe:
             fmt = probe.format
             frames = getattr(probe, "n_frames", 1)
     except (OSError, ValueError) as exc:
         raise VixlError("invalid_image", f"Cannot decode image: {exc}") from exc
+    if image.size != original_size:
+        stream = io.BytesIO()
+        if fmt == "JPEG":
+            image.convert("RGB").save(stream, format="JPEG", quality=90)
+        elif fmt == "WEBP":
+            image.save(stream, format="WEBP", quality=90)
+        else:
+            fmt = "PNG"
+            image.save(stream, format=fmt)
+        data, frames = stream.getvalue(), 1
     if fmt in SOURCE_FORMATS and frames == 1:
         name = f"{category}/{hashlib.sha256(data).hexdigest()}.{SOURCE_FORMATS[fmt]}"
         project.assets[name] = data

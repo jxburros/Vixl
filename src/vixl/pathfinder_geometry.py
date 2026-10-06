@@ -7,7 +7,6 @@ coverage of its operands' outlines (a stroked, translucent or effect-carrying op
 then draws the layer as an image and lists the reason.
 """
 
-import math
 
 from .booleans import KAPPA, Unsupported, combine_outlines
 
@@ -94,6 +93,10 @@ def shape_contours(item):
     from .geometry import parse_path, shape_path
 
     w, h = float(item["width"]), float(item["height"])
+    from .shape_catalog import active
+    if active(item) or item.get("distort"):
+        from .vector_paths import pixel_path
+        return _from_commands(parse_path(pixel_path(item)), 1, 1)
     shape = item.get("shape", "rectangle")
     if shape == "rectangle":
         return [_close([(0, 0), (w, 0), (w, h), (0, h)])]
@@ -114,18 +117,15 @@ def shape_contours(item):
 def placed(contours, item, x, y):
     """``contours`` of ``item`` (a rotated, flipped layer whose transformed box has its top-left at x, y)
     in its parent's coordinates, as the renderers place it."""
-    from .render import rest_size, transformed_size
+    from .render import transformed_size
+    from .affine import layer_matrix
 
-    rw, rh = rest_size(item)
     tw, th = transformed_size(item)
-    angle = math.radians(item.get("rotation", 0))
-    co, si = math.cos(angle), math.sin(angle)
-    fx, fy = (-1 if item.get("flip_x") else 1), (-1 if item.get("flip_y") else 1)
-    cx, cy = x + tw / 2, y + th / 2
+    transform = layer_matrix(item, (x, y, tw, th))
 
     def move(p):
-        ux, uy = (p[0] - rw / 2) * fx, (p[1] - rh / 2) * fy
-        return cx + ux * co - uy * si, cy + ux * si + uy * co
+        result = transform @ [p[0], p[1], 1]
+        return float(result[0]), float(result[1])
 
     return [[tuple(move(p) for p in seg) for seg in contour] for contour in contours]
 
@@ -134,6 +134,11 @@ MODES = {
     "union": lambda *inside: any(inside),
     "subtract": lambda first, *rest: first and not any(rest),
     "intersect": lambda *inside: all(inside),
+    "exclude": lambda *inside: sum(inside) % 2 == 1,
+    "minus-back": lambda first, *rest: bool(rest) and rest[-1] and not (first or any(rest[:-1])),
+    "merge": lambda *inside: any(inside),
+    "trim": lambda *inside: any(inside),
+    "divide": lambda *inside: any(inside),
 }
 
 

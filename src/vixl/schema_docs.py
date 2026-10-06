@@ -10,7 +10,6 @@ fails when an operation, field or example is missing here.
 from copy import deepcopy
 
 SUMMARIES = {
-    # Layers and content
     "add": "Embed an image as a new raster layer (an embedded asset id from vixl_import_image, or a path in the CLI).",
     "solid": "Add a flat-color rectangle layer, by default covering the canvas (a background).",
     "gradient": "Add a linear, angled or radial gradient layer between two colors or several stops.",
@@ -46,7 +45,6 @@ SUMMARIES = {
     "container-reflow": "Re-run a container's flow or grid layout after its content changed.",
     "container-swap": "Swap a placed container for another resource, keeping the placement.",
     "shape-place": "Place a saved shape resource as a shape layer.",
-    # Layer operations
     "remove": "Delete a layer (and a group's children).",
     "hide": "Hide a layer without deleting it.",
     "show": "Show a hidden layer.",
@@ -86,7 +84,6 @@ SUMMARIES = {
     "artboard": "Define a named artboard (size, background, variables, viewport) for variants.",
     "comp-save": "Save the layers' visibility, position, opacity and styles as a named comp.",
     "comp-apply": "Restore a saved comp.",
-    # Canvas, selection, masks, effects
     "canvas": "Set the canvas size (pixels or a named size), background, dpi, orientation or bleed.",
     "select": "Make a selection (rect, ellipse, color, alpha, wand, lasso, path …) that effects and masks use.",
     "mask": "Create, import, invert, enable, disable or delete a layer mask.",
@@ -97,7 +94,6 @@ SUMMARIES = {
     "effect-remove": "Remove an effect from a layer.",
     "preset-save": "Save a layer's effect stack as a named preset.",
     "preset-apply": "Add a saved effect preset to a layer, optionally overriding amounts.",
-    # Document data
     "variable": "Set or delete a document variable used as ${name} in text, colors and images.",
     "swatch": "Define a named color (used as @name) that can build on other swatches.",
     "palette-define": "Define a named palette of 2-256 colors.",
@@ -115,7 +111,6 @@ SUMMARIES = {
     "grid": "Create a grid system (columns, baseline, thirds, golden, polar, isometric, perspective …) of guides.",
     "place": "Place layers on a guide: at a fraction, spread evenly, at intersections, turned to the tangent.",
     "snap": "Move near-miss layers onto guides and points, and straighten near-miss angles.",
-    # Animation and time
     "frame-save": "Save the current canvas as a named animation frame.",
     "frame-apply": "Load a saved animation frame onto the canvas.",
     "frame-delete": "Delete a saved animation frame.",
@@ -126,7 +121,6 @@ SUMMARIES = {
     "animate": "Animate a property between two values over a time range.",
     "animate-preset": "Apply a ready-made motion (fade-in, slide, pop, bounce …) to layers.",
     "marker": "Add or delete a named timeline marker.",
-    # Production
     "suite-set": "Attach a check suite (assert rules) to the document under a name.",
     "suite-capture": "Capture a structural and pixel baseline of layers as a suite.",
     "role-set": "Name a set of layers as a role that motions can target.",
@@ -355,6 +349,8 @@ OVERRIDES = {
             "asset": "Embedded asset ID from vixl_import_image.",
             "name": "Layer name (defaults to the file name).",
             "linked": "Keep the layer linked to the file instead of embedding it.",
+            "max_pixels": "Downsample the embedded copy to at most this many pixels; retain source provenance.",
+            "downsample": "placed@2x stores an image with twice the placed resolution without upscaling.",
             "provenance": "Record of where the image came from."},
     "solid": {"color": "Fill color.", "name": "Layer name (default 'solid')."},
     "gradient": {"start": "Start color (the first stop).", "end": "End color (the last stop).",
@@ -426,7 +422,7 @@ OVERRIDES = {
     "preset-apply": {"name": "Saved preset.", "overrides": "{effect name: amount} replacements."},
     "shape": {"shape": "rectangle, rounded-rectangle, ellipse, polygon, star, line, triangle, right-triangle, "
                        "diamond, arrow, chevron, cross, heart, speech-bubble, or path (with path).",
-              "path": "path shape: SVG commands (M L C Q A Z) in the layer's box.",
+              "path": "path shape: SVG commands (M L C Q A Z) in literal local pixels, not normalized to width/height. Use path-fit to scale into the box.",
               "radius": "Corner radius in pixels (rounded-rectangle).", "sides": "Polygon side count.",
               "inner_radius": "Star inner radius as a fraction of the outer radius.",
               "fill": "Fill color; use a gradient-overlay layer-style (or the look operation) for gradients."},
@@ -448,6 +444,8 @@ OVERRIDES = {
                  "preset": "Named size for the artboard.", "variables": "Variable overrides for this artboard.",
                  "targets": "Layers shown on this artboard (default all)."},
     "frame": {"fit": "fill crops the image to cover the frame; fit shows the whole image.",
+              "max_pixels": "Downsample the embedded copy to at most this many pixels; retain source provenance.",
+              "downsample": "placed@2x stores enough resolution to draw this frame at twice its placed size.",
               "path": "Image file in the workspace (CLI and Python).", "asset": "Embedded asset ID from vixl_import_image."},
     "replace-contents": {"path": "Image file in the workspace (CLI and Python).",
                          "asset": "Embedded asset ID from vixl_import_image.", "variable": "Bind the image to this variable (replace it later by changing the variable).",
@@ -518,7 +516,7 @@ OVERRIDES = {
                        "targets": "Layers to animate."},
     "marker": {"name": "Marker name.", "time": "Time of the marker.", "delete": "true removes it."},
     "layout-apply": {"name": "Layout from vixl_layouts_list.",
-                     "seed": "Integer or 'random'; omitted derives from the copy.",
+                     "seed": "Integer or 'random'; omitted uses a fresh seed unless document/workspace variety is fixed.",
                      "unfilled": "blank (default) shows [Label] placeholders that check flags; omit leaves them out.",
                      "palette": "Palette name or colors; roles are assigned by luminance and mode unless keep_order "
                                 "or colors says otherwise.",

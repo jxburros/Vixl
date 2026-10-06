@@ -10,6 +10,8 @@ names the operation to use, never a silent new layer.
 from copy import deepcopy
 
 from .errors import VixlError, require
+from .shape_catalog import PARAMETERS as CATALOG_FIELDS
+from .vector_strokes import FIELDS as STROKE_FIELDS
 
 # Operation type -> the layer type it creates and edits.
 EDITS = {"shape": "shape", "solid": "solid", "gradient": "gradient", "text": "text"}
@@ -37,7 +39,8 @@ USE_INSTEAD = {
     "adjustment": ("effect-set", "change its effects with effect-set, effect-remove or effect"),
     "field": ("field-set", "change the form field with field-set"),
 }
-SHAPE_FIELDS = ("shape", "path", "fill", "stroke", "stroke_width", "radius", "sides", "inner_radius")
+
+SHAPE_FIELDS = (*CATALOG_FIELDS, *STROKE_FIELDS, "shape", "path", "fill", "stroke", "stroke_width", "radius", "sides", "inner_radius", "start_angle", "end_angle", "trim_start", "trim_end")
 TEXT_FIELDS = ("text", "size", "color", "align", "spacing", "font", "hide_if_empty")
 
 
@@ -97,7 +100,7 @@ def execute(project, op):
             apply(project, {"type": "text-set", "target": ident, **fields})
     if kind != "text" and ("width" in op or "height" in op):
         width, height = op.get("width", layer["width"]), op.get("height", layer["height"])
-        project.limits.size(width, height)
+        project.limits.size(width, height, vector=True)
         layer.update(width=width, height=height)
     centered = {axis: True for axis in ("x", "y") if op.get(axis) == "center"}
     position = {axis: op[axis] for axis in ("x", "y") if axis in op and axis not in centered}

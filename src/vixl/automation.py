@@ -22,7 +22,17 @@ MACROS = {"fit-text", "arrange-grid", "adapt-layout", "motion-apply"}
 
 
 def bounded_object(value, keys, message):
-    require(isinstance(value, dict) and not set(value) - set(keys), message)
+    import difflib
+
+    require(isinstance(value, dict), f"{message}: expected an object", expected="object")
+    extras = sorted(set(value) - set(keys))
+    allowed = sorted(keys)
+    suggestions = {key: matches[0] for key in extras
+                   if (matches := difflib.get_close_matches(key, allowed, n=1, cutoff=0.5))}
+    suffix = "; ".join(f"{key!r}: did you mean {candidate!r}?" for key, candidate in suggestions.items())
+    require(not extras, f"{message}: {', '.join(map(repr, extras))}. Allowed: {', '.join(allowed)}"
+            + (f". {suffix}" if suffix else ""), field=extras[0] if extras else None,
+            fields=extras, allowed=allowed, suggestions=suggestions)
 
 
 def validate_inputs(schema, values, *, partial=False):

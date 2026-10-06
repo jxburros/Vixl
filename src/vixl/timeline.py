@@ -27,12 +27,12 @@ from .model import finite
 
 TIMELINE_TYPES = ("timeline-set", "keyframe", "keyframe-remove", "animate", "animate-preset", "marker")
 NUMERIC = ("x", "y", "translate-x", "translate-y", "opacity", "rotation", "scale", "scale-x", "scale-y", "width", "height", "size", "spacing",
-           "trim_start", "trim_end")
+           "trim_start", "trim_end", "skew_x", "skew_y", "dash_offset", "stroke_width", "distort:amount", "distort:angle", "distort:phase", "distort:frequency", "distort:size")
 COLORS = ("color", "fill", "start", "end", "stroke_color", "stroke", "background")
 STEPPED = ("text", "visible")
 MIRRORING = ("scale", "scale-x", "scale-y")
 TRIM = ("trim_start", "trim_end")  # Stroke trim, percent of a shape's outline (trim.py).
-PROPERTY_ALIASES = {"trim-start": "trim_start", "trim-end": "trim_end"}
+PROPERTY_ALIASES = {"skew-x": "skew_x", "skew-y": "skew_y", "trim-start": "trim_start", "trim-end": "trim_end"}
 MAX_DURATION = 600_000
 MAX_FRAMES = 3600
 # MP4/WebM stream one frame at a time into ffmpeg, so only the 10-minute duration bounds them.
@@ -213,10 +213,16 @@ def _check_value(project, prop, value):
             finite(value, "opacity", 0, 1)
         if prop in ("width", "height", "size"):
             finite(value, prop, 0, 1e5)
+        if prop in ("skew_x", "skew_y"):
+            finite(value, prop, -89, 89)
         if prop in MIRRORING:
             finite(value, prop, -1e5, 1e5)  # A negative scale mirrors the layer on that axis.
         if prop in TRIM:
             finite(value, prop, 0, 100)
+        if prop in ("stroke_width", "distort:size", "distort:frequency"):
+            finite(value, prop, 0, 100000)
+        if prop == "distort:amount":
+            finite(value, prop, -10, 10)
     elif kind == "color":
         from .design import resolve_color
         from .render import color
@@ -285,6 +291,15 @@ def static_value(project, target, prop):
     if prop.startswith("effect:"):
         effect = _effect(layer, prop[7:])
         return effect.get("amount", 0)
+    if prop.startswith("distort:"):
+        require(layer["type"] in ("shape", "group") and isinstance(layer.get("distort"), dict), "Distortion animation needs a shape/group with an existing distortion")
+        return layer["distort"].get(prop.split(":", 1)[1], 0)
+    if prop in ("dash_offset", "stroke_width"):
+        require(layer["type"] in ("shape", "group"), "Stroke animation needs a shape or group")
+        return layer.get(prop, 0)
+    if prop in ("skew_x", "skew_y"):
+        require(layer["type"] != "field", "PDF form fields are upright rectangles", field="property")
+        return layer.get(prop, 0)
     if prop in TRIM:
         from .trim import require_shape
 
@@ -400,6 +415,8 @@ def execute_timeline(project, op):
         begin = op["from"] if "from" in op else _value_at(project, timeline, target, prop, start)
         _check_value(project, prop, begin)
         _check_value(project, prop, op["to"])
+        if prop in ("skew_x", "skew_y", "stroke_width", "dash_offset") or prop.startswith("distort:"):
+            static_value(project, target, prop)
         if prop in MIRRORING and target != "canvas":
             _check_mirror(project.layer(target), prop, min(begin, op["to"]))
         track = _track(timeline, target, prop)
@@ -576,10 +593,12 @@ def project_at(project, time):
     if not isinstance(time, (int, float)) or isinstance(time, bool):
         settings = timeline or default_timeline()
         time = parse_time(time, settings["duration"], settings.get("markers"))
+    from .scene import quantize_time, apply_at
+    time = quantize_time(project, time)
     candidate = copy(project)
     candidate.state = deepcopy(project.state)
     if not timeline or not timeline.get("tracks"):
-        return candidate
+        return apply_at(candidate, time)
     state = candidate.state
     layers = {layer["id"]: layer for layer in state["layers"]}
     geometry = {}
@@ -596,10 +615,13 @@ def project_at(project, time):
             continue
         if prop in ("x", "y", "translate-x", "translate-y", "scale", "scale-x", "scale-y"):
             geometry.setdefault(target, {})[prop] = value
+        elif prop.startswith("distort:"):
+            layer["distort"][prop.split(":", 1)[1]] = value
         elif prop.startswith("effect:"):
             _effect(layer, prop[7:])["amount"] = value
         elif prop in ("width", "height"):
-            layer[prop] = max(1, int(round(value)))
+            from .transforms import dimension
+            layer[prop] = dimension(candidate, layer, max(.000001, value))
             layer["auto_size"] = False
         elif prop == "size":
             layer["size"] = max(1, int(round(value)))
@@ -609,6 +631,8 @@ def project_at(project, time):
             layer["visible"] = bool(value)
         elif prop == "opacity":
             layer["opacity"] = min(max(value, 0.0), 1.0)
+        elif prop in ("skew_x", "skew_y"):
+            layer[prop] = min(89, max(-89, value))
         elif prop in TRIM:
             layer[prop] = min(max(value, 0.0), 100.0)  # Easings that overshoot stay on the outline.
         elif prop == "rotation":
@@ -620,6 +644,7 @@ def project_at(project, time):
         if layer["type"] == "text" and layer.get("auto_size", True):
             layer["width"], layer["height"], _ = text_metrics(candidate, layer)
     if geometry:
+        from .transforms import dimension
         from .render import pivot_delta, rest_size, transformed_size
 
         bounds = resolve_layout(candidate)
@@ -645,7 +670,9 @@ def project_at(project, time):
             flip_x, flip_y = sx < 0, sy < 0
             sx, sy = abs(sx), abs(sy)
             resized = sx != 1 or sy != 1
-            if round(layer["width"] * sx) < 1 or round(layer["height"] * sy) < 1:
+            from .transforms import snapped
+            cutoff = 0.5 if snapped(candidate, layer) else 1e-6
+            if layer["width"] * sx < cutoff or layer["height"] * sy < cutoff:
                 # Scaled to nothing (a wipe or pop that starts at 0): draw nothing this frame,
                 # instead of the 1 px sliver the smallest box would leave.
                 layer["opacity"] = 0
@@ -663,7 +690,7 @@ def project_at(project, time):
                     (rw, rh), (px, py) = rest_size(layer), layer["pivot"]
                     anchor = x + px * rw, y + py * rh
                     if resized:
-                        layer.update(width=max(1, int(round(layer["width"] * sx))), height=max(1, int(round(layer["height"] * sy))), auto_size=False)
+                        layer.update(width=dimension(candidate, layer, max(.000001, layer["width"] * sx)), height=dimension(candidate, layer, max(.000001, layer["height"] * sy)), auto_size=False)
                     # The pivot is a point of the artwork, so mirroring moves it to the other side
                     # of the box while it stays fixed on the canvas.
                     px, py = (1 - px if flip_x else px), (1 - py if flip_y else py)
@@ -683,7 +710,7 @@ def project_at(project, time):
                 if "y" in values:
                     cy = values["y"] + h / 2
                 if resized:
-                    layer.update(width=max(1, int(round(layer["width"] * sx))), height=max(1, int(round(layer["height"] * sy))), auto_size=False)
+                    layer.update(width=dimension(candidate, layer, max(.000001, layer["width"] * sx)), height=dimension(candidate, layer, max(.000001, layer["height"] * sy)), auto_size=False)
                 tw, th = transformed_size(layer)
                 x, y = cx - tw / 2, cy - th / 2
             # Animated geometry freezes this layer's constraints for the frame; layers anchored
@@ -692,7 +719,7 @@ def project_at(project, time):
                 x=x + values.get("translate-x", 0), y=y + values.get("translate-y", 0), constraints={}
             )
     candidate._cache = project._cache
-    return candidate
+    return apply_at(candidate, time)
 
 
 def render_at(project, time, **options):
@@ -772,6 +799,8 @@ def validate_timeline(project, state):
         require((target, prop) not in seen, "Duplicate timeline track")
         seen.add((target, prop))
         _property_kind(prop)
+        if prop.startswith("distort:") or prop in ("dash_offset", "stroke_width"):
+            static_value(candidate, target, prop)
         if prop.startswith("effect:"):
             _effect(ids[target], prop[7:])
         keys = track["keys"]
@@ -929,6 +958,23 @@ def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=No
         frames = flattened(frames)
     metadata = None
     if format in ("mp4", "webm"):
+        if project.state.get("audio_tracks"):
+            from .audio import mix_tracks, wav_bytes, RATE
+            from .production import publish_file
+            with tempfile.TemporaryDirectory(prefix="vixl-score-") as staging:
+                silent = Path(staging) / ("silent." + format)
+                result = _video(silent, frames, fps, format, quality, False, len(times), (w, h))
+                audio_path = Path(staging) / "score.wav"
+                samples = mix_tracks(project.state["audio_tracks"], timeline["duration"], project=project)
+                samples = samples[round(first * RATE / 1000):round(last * RATE / 1000)]
+                audio_path.write_bytes(wav_bytes(samples))
+                mixed = Path(staging) / ("mixed." + format)
+                command = [shutil.which("ffmpeg"), "-v", "error", "-i", str(silent), "-i", str(audio_path), "-map", "0:v:0", "-map", "1:a:0", "-c:v", "copy", "-c:a", "aac" if format == "mp4" else "libopus", "-t", str((last - first) / 1000), str(mixed)]
+                encoded = subprocess.run(command, capture_output=True, timeout=600)
+                require(encoded.returncode == 0, "Timeline audio mux failed", "codec_error")
+                size_bytes = mixed.stat().st_size
+                publish_file(path, mixed, replace=overwrite)
+                return {**result, "output": str(path), "bytes": size_bytes, "audio_tracks": len(project.state["audio_tracks"])}
         return _video(path, frames, fps, format, quality, overwrite, len(times), (w, h))
     stream = io.BytesIO()
     if format == "frames":

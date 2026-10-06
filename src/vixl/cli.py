@@ -190,6 +190,7 @@ def output_options(args, command):
     p = Parser(prog=f"vixl {command}")
     p.add_argument("path", nargs="?")
     p.add_argument("--out", "--preview", dest="out")
+    p.add_argument("--overwrite", action="store_true", help="Replace existing export files")
     p.add_argument("--quality", type=int, default=90)
     p.add_argument("--scale", default="1")
     p.add_argument("--profile")
@@ -676,6 +677,8 @@ def project_command(project, cmd, args, *, detail="compact"):
         a = output_options(args, cmd)
         destination = a.out or a.path
         require(destination, "Provide output filename or --out FILE")
+        require(destination == "-" or a.data or a.overwrite or not Path(destination).exists(),
+                "Export output already exists; use --overwrite to replace it", "output_exists")
         require(
             destination == "-" or Path(destination).resolve() != project.path,
             "Cannot export over the project",
@@ -754,7 +757,7 @@ def project_command(project, cmd, args, *, detail="compact"):
             outputs = []
             for number, record in enumerate(records, 1):
                 path = target.with_name(f"{target.stem}-{number:02d}{target.suffix}")
-                project.export(path, quality=a.quality, scale=float(a.scale.rstrip("x")), profile=a.profile,
+                project.export(path, overwrite=a.overwrite, quality=a.quality, scale=float(a.scale.rstrip("x")), profile=a.profile,
                                variables=variables, format=a.format, background=a.background, sampling=a.sampling,
                                svg_policy=a.svg_policy, page=record["id"], **print_options(a, project.limits))
                 outputs.append({"page": record["name"], "output": str(path)})
@@ -762,6 +765,7 @@ def project_command(project, cmd, args, *, detail="compact"):
         report = {}
         data = project.export(
             None if destination == "-" else destination,
+            overwrite=a.overwrite,
             quality=a.quality,
             scale=float(a.scale.rstrip("x")),
             profile=a.profile,
@@ -868,6 +872,7 @@ def project_command(project, cmd, args, *, detail="compact"):
     if cmd == "export-animation":
         p = Parser(prog="vixl export-animation")
         p.add_argument("--out", required=True)
+        p.add_argument("--overwrite", action="store_true")
         p.add_argument("--format", choices=["gif", "apng", "webp", "mp4", "webm", "sheet"])
         p.add_argument("--animation", help="Export this named animation instead of every saved frame")
         p.add_argument("--scale", type=float, default=1.0, help="Integer 1–32 with nearest sampling; 0.05–32 with smooth")
@@ -877,7 +882,7 @@ def project_command(project, cmd, args, *, detail="compact"):
         p.add_argument("--columns", type=int)
         a = p.parse_args(args)
         scale = int(a.scale) if a.scale.is_integer() else a.scale
-        return project.export_animation(a.out, format=a.format, scale=scale, columns=a.columns, sampling=a.sampling, colors=a.colors, animation=a.animation, quality=a.quality), False
+        return project.export_animation(a.out, format=a.format, scale=scale, columns=a.columns, sampling=a.sampling, colors=a.colors, animation=a.animation, quality=a.quality, overwrite=a.overwrite), False
     if cmd == "export-screens":
         from .exports import export_screens
 
@@ -1109,4 +1114,3 @@ def main(argv=None):
 
 if __name__ == "__main__":
     sys.exit(main())
-

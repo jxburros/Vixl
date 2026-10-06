@@ -326,7 +326,7 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
   A CMYK PDF keeps real text and vector shapes (colours as DeviceCMYK); only effects and images are
   CMYK images. Every PDF is vector by default; the result's `content`/`content_reason` say what was written.
 - **Limits:** 40 MP per canvas/layer, 16 384 px per side, 512 layers, 256 effects/layer,
-  1 000 operations per batch. History keeps 2 000 revisions; older unreferenced ones are squashed
+  10 000 operations per batch. History keeps 2 000 revisions; older unreferenced ones are squashed
   automatically, so long sessions never lock. Pixel-art frames ≤ 256×256, ≤ 256 frames; timelines
   ≤ 10 min, 60 fps, 3 600 frames; 4 096 strokes per paint layer.
 - **Not supported** (don't promise them): arbitrary SVG import, path arcs/multiple contours,

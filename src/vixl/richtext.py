@@ -366,13 +366,18 @@ def styled_spans(project, layer, variables=None):
 def _paragraphs(spans):
     """Split styled spans into paragraphs at newlines."""
     paragraphs = [[]]
+    column = 0
     for span in spans:
         parts = span["text"].split("\n")
         for i, part in enumerate(parts):
             if i:
                 paragraphs.append([])
+                column = 0
             if part:
-                paragraphs[-1].append({**span, "text": part})
+                # Tabs use four-character stops, including text in preceding styled spans.
+                expanded = (" " * (column % 4) + part).expandtabs(4)[column % 4:]
+                paragraphs[-1].append({**span, "text": expanded})
+                column += len(expanded)
     return paragraphs
 
 
@@ -404,7 +409,7 @@ def _tokens(project, paragraph, scale):
 
     tokens = []
     for span in paragraph:
-        for piece in re.findall(r"\s+|[^\s]+", span["text"]):
+        for piece in re.findall(r" +|[^ ]+", span["text"]):
             size = span["size"] * scale * (0.65 if span["baseline"] in ("super", "sub") else 1)
             data = style_font_data(project, span["font"], piece)
             glyphs, advance = shape(data, piece, size)
@@ -414,7 +419,7 @@ def _tokens(project, paragraph, scale):
                     glyph.x += tracking * i
                 advance += tracking * len(glyphs)
             ascent, descent = _metrics(data)
-            tokens.append({"space": piece.isspace(), "glyphs": glyphs, "width": advance, "style": span, "size": size,
+            tokens.append({"space": piece.isspace() and "\u00a0" not in piece, "glyphs": glyphs, "width": advance, "style": span, "size": size,
                            "ascent": ascent * span["size"] * scale, "descent": descent * span["size"] * scale,
                            "data": data, "text": piece})
     return tokens
@@ -482,9 +487,9 @@ def layout(project, layer, *, width=None, scale=1.0, variables=None):
         limit = None if available is None else max(1.0, available - text_left)
         lines, current, x = [], [], 0.0
         for token in tokens:
-            if token["space"] and not current:
-                continue
             if limit is not None and not token["space"] and current and x + token["width"] > limit:
+                while current and current[-1]["space"]:
+                    current.pop()
                 lines.append(current)
                 current, x = [], 0.0
             if limit is not None and not token["space"] and not current and token["width"] > limit:
@@ -495,8 +500,6 @@ def layout(project, layer, *, width=None, scale=1.0, variables=None):
             x += token["width"]
         if current:
             lines.append(current)
-        lines = [line[:len(line) - next((i for i, t in enumerate(reversed(line)) if not t["space"]), len(line))]
-                 for line in lines]
         lines = [line for line in lines if line] or [[]]
         for number, line in enumerate(lines):
             if line:

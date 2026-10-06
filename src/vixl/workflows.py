@@ -8,6 +8,7 @@ from .errors import require, VixlError
 from .imposition import ACTIONS as IMPOSITION_ACTIONS, FIELD_TYPES as IMPOSITION_FIELD_TYPES
 from .links import ACTIONS as LINK_ACTIONS
 from .lyrics import REQUEST_FIELDS as LYRIC_FIELDS
+from . import media_analysis, natural_guidance
 
 ACTIONS = {
     "check": ({"suite", "mode", "variables", "artboard"}, {"suite"}),
@@ -39,6 +40,8 @@ ACTIONS = {
 }
 
 
+ACTIONS.update(natural_guidance.ACTIONS)
+ACTIONS.update(media_analysis.ACTIONS)
 ACTIONS.update(STUDIO_ACTIONS)
 ACTIONS.update(LINK_ACTIONS)
 ACTIONS.update(IMPOSITION_ACTIONS)
@@ -75,6 +78,9 @@ ACTION_FIELD_TYPES = {
 }
 
 ACTION_FIELD_TYPES["merge-impose"] = IMPOSITION_FIELD_TYPES
+for _module in (media_analysis, natural_guidance):
+    for _action in _module.ACTIONS:
+        ACTION_FIELD_TYPES[_action] = _module.FIELD_TYPES
 
 
 LYRIC_TYPES = {
@@ -125,6 +131,10 @@ def dispatch(session, action, request, document=None):
     for field in ("dry_run", "replace"):
         if field in request:
             require(type(request[field]) is bool, f"{field} must be boolean")
+    if action in natural_guidance.ACTIONS:
+        return natural_guidance.dispatch(session, action, request, document)
+    if action in media_analysis.ACTIONS:
+        return media_analysis.dispatch(session, action, request, document)
     if action in LINK_ACTIONS:
         from .links import dispatch as links_dispatch
 

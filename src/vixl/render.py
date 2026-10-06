@@ -200,6 +200,11 @@ def pivot_delta(layer):
         return 0.0, 0.0
     rw, rh = rest_size(layer)
     tw, th = transformed_size(layer)
+    from .affine import linear, precise
+    if precise(layer):
+        v = np.array([(pivot[0] - .5) * rw, (pivot[1] - .5) * rh, 0])
+        turned = linear(layer) @ v
+        return (rw - tw) / 2 + v[0] - turned[0], (rh - th) / 2 + v[1] - turned[1]
     vx, vy = (pivot[0] - 0.5) * rw, (pivot[1] - 0.5) * rh
     angle = math.radians(layer.get("rotation", 0) % 360)
     co, si = math.cos(angle), math.sin(angle)
@@ -214,6 +219,10 @@ def stored_origin(layer, bounds):
 
 def transformed_size(layer):
     w, h = rest_size(layer)
+    from .affine import linear, precise
+    if precise(layer):
+        size = np.abs(linear(layer)[:2, :2]) @ [w, h]
+        return float(size[0]), float(size[1])
     if layer.get("rotation", 0) % 360:
         # Pillow determines the exact expanded pixel bounds, without allocating the source raster.
         angle = math.radians(layer["rotation"] % 360)
@@ -299,10 +308,14 @@ def resolved_layers(project, variables=None):
             layer["width"], layer["height"], _ = text_metrics(project, layer, variables)
         if layer["type"] == "field":
             layer["value"] = list(fields.get(layer["field"]["key"], (None, "")))
-        project.limits.size(layer["width"], layer["height"])
+        if layer.get("snap_to_pixel", project.state.get("snap_to_pixel", False)):
+            layer["width"], layer["height"] = max(1, round(layer["width"])), max(1, round(layer["height"]))
+        project.limits.size(layer["width"], layer["height"], vector=True)
     from .stacks import collapse
 
     collapse(layers)
+    from .vector_paths import attach_ancestors
+    attach_ancestors(layers)
     return layers
 
 
@@ -347,7 +360,7 @@ def resolve_layout(project, variables=None, layers=None):
         require(ident not in visiting, "Layout constraints contain a cycle", "constraint_cycle")
         visiting.add(ident)
         w, h = transformed_size(layer)
-        project.limits.size(w, h)
+        project.limits.size(w, h, vector=True)
         x, y = layer["x"], layer["y"]
         dx, dy = pivot_delta(layer)
         if layer.get("pivot") is not None:
@@ -376,7 +389,9 @@ def resolve_layout(project, variables=None, layers=None):
                 y = val - h / 2
             else:
                 raise VixlError("invalid_constraint", f"Unknown anchor: {anchor}")
-        bounds[ident] = (round(x + dx), round(y + dy), *transformed_size(layer))
+        snap = layer.get("snap_to_pixel", project.state.get("snap_to_pixel", False)) or layer["type"] in ("raster", "pixel", "paint", "field", "frame")
+        bounds[ident] = (round(x + dx) if snap else x + dx, round(y + dy) if snap else y + dy, *transformed_size(layer))
+        bounds[ident] = tuple(int(v) if float(v).is_integer() else v for v in bounds[ident])
         visiting.remove(ident)
         return bounds[ident]
 
@@ -534,15 +549,15 @@ def extent(layer, bounds, children, memo):
         if (u0, v0, u1, v1) != (0, 0, cw, ch):
             # Map the children's reach through the group's scale, flips and rotation about the
             # centre of its box, which is where the renderer turns it.
-            sx = layer["width"] / cw * (-1 if layer.get("flip_x") else 1)
-            sy = layer["height"] / ch * (-1 if layer.get("flip_y") else 1)
-            angle = math.radians(layer.get("rotation", 0) % 360)
-            co, si = math.cos(angle), math.sin(angle)
+            from .affine import layer_matrix, matrix as affine_matrix
+            transform = layer_matrix(layer, bounds[layer["id"]]) @ affine_matrix(layer["width"] / cw, 0, 0, layer["height"] / ch)
             for u, v in ((u0, v0), (u1, v0), (u0, v1), (u1, v1)):
-                px, py = (u - cw / 2) * sx, (v - ch / 2) * sy
-                qx, qy = x + w / 2 + px * co - py * si, y + h / 2 + px * si + py * co
+                qx, qy, _ = transform @ [u, v, 1]
                 left, top, right, bottom = min(left, qx), min(top, qy), max(right, qx), max(bottom, qy)
     ex, ey = effect_margin(layer)
+    from .vector_strokes import margin as vector_margin
+    vx, vy = vector_margin(layer)
+    left, top, right, bottom = left-vx, top-vy, right+vx, bottom+vy
     sx, sy = style_margin(layer)
     memo[layer["id"]] = (left - ex - sx, top - ey - sy, right + ex + sx, bottom + ey + sy)
     return memo[layer["id"]]
@@ -590,7 +605,7 @@ def shift(bounds, layers, dx, dy):
 
 def ink_origin(image, bounds):
     """Where a layer image lands: it is centred on the layer's box and may extend past it."""
-    return bounds[0] + (bounds[2] - image.width) // 2, bounds[1] + (bounds[3] - image.height) // 2
+    return math.floor(bounds[0] + (bounds[2] - image.width) / 2 + 1e-9), math.floor(bounds[1] + (bounds[3] - image.height) / 2 + 1e-9)
 
 
 class LayerCache(OrderedDict):
@@ -644,6 +659,7 @@ def layer_ink(project, layer, bounds):
     content = layer if placed else {k: v for k, v in layer.items() if k not in ("x", "y", "constraints")}
     canvas = project.state["canvas"]
     extent_key = [*bounds, canvas["width"], canvas["height"]] if placed else list(bounds[2:])
+    extent_key = [*extent_key, bounds[0] % 1, bounds[1] % 1]
     dependencies = [content, extent_key]
     if layer["type"] == "text":
         from .text import font_data
@@ -653,7 +669,7 @@ def layer_ink(project, layer, bounds):
         dependencies.append(project.state.get("brushes", {}))
     key = hashlib.sha256(json.dumps(dependencies, sort_keys=True).encode()).hexdigest()
     linked = layer.get("linked")
-    cacheable = not linked and not layer.get("lookup") and layer["type"] not in ("group", "pathfinder", "link")
+    cacheable = not linked and not layer.get("lookup") and not layer.get("_distort_groups") and layer["type"] not in ("group", "pathfinder", "link")
     cache = project._cache = project._cache if isinstance(project._cache, LayerCache) else LayerCache()
     if cacheable:
         cached = cache.image(key)
@@ -705,7 +721,7 @@ def layer_ink(project, layer, bounds):
 
         image = text_image(project, layer)
     elif kind == "solid":
-        image = Image.new("RGBA", (layer["width"], layer["height"]), color(layer["fill"]))
+        image = Image.new("RGBA", (math.ceil(layer["width"]), math.ceil(layer["height"])), color(layer["fill"]))
     elif kind == "field":
         from .forms import field_image
 
@@ -717,9 +733,12 @@ def layer_ink(project, layer, bounds):
     elif kind == "gradient":
         from .design_render import gradient_image
 
-        image = gradient_image(project, layer, (layer["width"], layer["height"]))
+        image = gradient_image(project, layer, (math.ceil(layer["width"]), math.ceil(layer["height"])))
     else:
         raise VixlError("invalid_layer", f"Unsupported layer type: {kind}")
+    from .scene import paper_image
+
+    image = paper_image(image, layer)
     image = transform_layer_image(project, layer, bounds, image)
     if cacheable:
         cache.put(key, image)
@@ -738,20 +757,28 @@ def transform_layer_image(project, layer, bounds, image):
         # source box chosen so the scale is exactly the group's: its box lands where it would
         # without the overflow, which only adds whole output pixels around it.
         image = group_overflow_resize(layer, image, sampling)
-    elif not layer.get("repeat"):
-        image = image.resize((layer["width"], layer["height"]), sampling)
-    if layer.get("flip_x"):
+    elif not layer.get("repeat") and not image.info.get("vixl_vector_overflow"):
+        image = image.resize((max(1, math.ceil(layer["width"])), max(1, math.ceil(layer["height"]))), sampling)
+    from .affine import linear, precise
+    if precise(layer):
+        transform = linear(layer)
+        out = np.abs(transform[:2, :2]) @ [image.width, image.height]
+        size = tuple(max(1, math.ceil(v)) for v in out)
+        transform[:2, 2] += np.array(size) / 2 - transform[:2, :2] @ [image.width / 2, image.height / 2]
+        inverse = np.linalg.inv(transform)
+        image = image.transform(size, Image.Transform.AFFINE, tuple(inverse[:2].ravel()), Image.Resampling.NEAREST if crisp else Image.Resampling.BICUBIC)
+    if not precise(layer) and layer.get("flip_x"):
         image = ImageOps.mirror(image)
-    if layer.get("flip_y"):
+    if not precise(layer) and layer.get("flip_y"):
         image = ImageOps.flip(image)
-    if layer.get("rotation", 0) % 360:
+    if not precise(layer) and layer.get("rotation", 0) % 360:
         image = image.rotate(
             -layer["rotation"],
             Image.Resampling.NEAREST if crisp else Image.Resampling.BICUBIC,
             expand=True,
         )
         # Match conservative layout bounds consistently, keeping anything drawn past them.
-        target = (max(bounds[2], image.width), max(bounds[3], image.height))
+        target = (max(math.ceil(bounds[2]), image.width), max(math.ceil(bounds[3]), image.height))
         if image.size != target:
             padded = Image.new("RGBA", target)
             padded.alpha_composite(
@@ -777,11 +804,11 @@ def transform_layer_image(project, layer, bounds, image):
         image = apply_lookup(project, image, layer["lookup"])
     mask = layer.get("mask")
     if mask and mask.get("enabled", True):
-        m = project.image(mask["asset"], "L").resize(tuple(bounds[2:]), Image.Resampling.LANCZOS)
+        m = project.image(mask["asset"], "L").resize(tuple(math.ceil(v) for v in bounds[2:]), Image.Resampling.LANCZOS)
         if m.size != image.size:
             # The mask covers the layer's box; its edges continue over what is drawn past it.
             x, y = ink_origin(image, bounds)
-            left, top = bounds[0] - x, bounds[1] - y
+            left, top = max(0, (image.width - m.width) // 2), max(0, (image.height - m.height) // 2)
             m = Image.fromarray(
                 np.pad(
                     np.asarray(m),
@@ -793,6 +820,14 @@ def transform_layer_image(project, layer, bounds, image):
         image.putalpha(Image.fromarray(np.uint8(alpha)))
     if layer["opacity"] != 1:
         image.putalpha(image.getchannel("A").point(lambda a: round(a * layer["opacity"])))
+    # Carry fractional placement through rasterization instead of rounding the geometry.
+    ox, oy = bounds[0] + (bounds[2] - image.width) / 2, bounds[1] + (bounds[3] - image.height) / 2
+    # Use the same epsilon as ink_origin: affine arithmetic may land one ulp below an integer.
+    fx, fy = max(0, ox - math.floor(ox + 1e-9)), max(0, oy - math.floor(oy + 1e-9))
+    if not crisp and (fx > 1e-8 or fy > 1e-8):
+        padded = Image.new("RGBA", (image.width + 2, image.height + 2))
+        padded.paste(image, (1, 1))
+        image = padded.transform(padded.size, Image.Transform.AFFINE, (1, 0, -fx, 0, 1, -fy), Image.Resampling.BICUBIC)
     return image
 
 
@@ -839,7 +874,7 @@ def group_overflow_resize(layer, image, sampling):
         padded.paste(image, (px, py))
         image, mx, my = padded, mx + px, my + py
     box = (mx - ox / sx, my - oy / sy, mx + cw + ox / sx, my + ch + oy / sy)
-    return image.resize((w + 2 * ox, h + 2 * oy), sampling, box=box)
+    return image.resize((math.ceil(w + 2 * ox), math.ceil(h + 2 * oy)), sampling, box=box)
 
 
 def pixel_group(project, group):
@@ -931,7 +966,7 @@ def layer_canvas_surface(project, layer, bounds=None, index=None):
         if not parent:
             return canvas_size, bounds
         ax, ay = overflow(parent, bounds, children, memo)
-        size = (parent["content_width"] + 2 * ax, parent["content_height"] + 2 * ay)
+        size = (math.ceil(parent["content_width"]) + 2 * ax, math.ceil(parent["content_height"]) + 2 * ay)
         return size, shift(bounds, children[parent["id"]], ax, ay) if ax or ay else bounds
 
     size, placed = container(layer)
@@ -1003,6 +1038,7 @@ def _render_layers(project, layers, bounds, parent, size, background, observe, a
             size = (size[0] + 2 * ax, size[1] + 2 * ay)
             bounds = shift(bounds, children.get(parent, []), ax, ay)
             memo = {}  # Extents measured before the shift no longer match these bounds.
+    size = tuple(math.ceil(v) for v in size)
     project.limits.size(*size)
     image = Image.new("RGBA", size, color(background))
 
@@ -1106,6 +1142,9 @@ def render(project, variables=None, artboard=None, comp=None, page=None):
 
     project = view_page(project, page)
     candidate = artboard_project(project, artboard, comp, variables)
+    from .captions import prepare_bubbles
+
+    candidate = prepare_bubbles(candidate)
     from .design import resolve_color
 
     disk = getattr(project, "_disk_cache", None)
@@ -1119,6 +1158,9 @@ def render(project, variables=None, artboard=None, comp=None, page=None):
     image = render_layers(
         candidate, background=resolve_color(candidate.state["canvas"]["background"], candidate.state)
     )
+    from .scene import composite
+
+    image = composite(image, candidate)
     if disk:
         disk.put(key, image)
     return image
@@ -1157,6 +1199,10 @@ def export(
     fill_mode="flatten",
     alpha="keep",
     presenter=None,
+    overwrite=False,
+    width=480,
+    columns=None,
+    labels=True,
 ):
     """Render and encode. ``color_space='cmyk'`` separates JPEG/TIFF/PDF output (ICC profile
     bytes in ``icc_profile`` for press-accurate separation, else device-naive GCR with
@@ -1170,6 +1216,10 @@ def export(
     multi-page document is a self-contained slide presentation (see ``presenter.py``): ``presenter``
     is ``False`` for the plain single-image HTML, ``True`` for a presentation of any document, or
     a dict of options (theme, notes, slide_images, start, title)."""
+    require(isinstance(overwrite, bool), "overwrite must be true or false", field="overwrite")
+    require(path is None or overwrite or not Path(path).exists(),
+            "Export output already exists; pass overwrite=True to replace it", "output_exists", field="path")
+    require(path is None or Path(path).suffix.lower() != ".vixl", "Cannot export over a Vixl project")
     require(alpha in ("auto", "keep", "flatten"), "alpha must be auto, keep or flatten", field="alpha")
     require(sampling in ("smooth", "nearest"), "Sampling must be smooth or nearest")
     require(color_space in ("rgb", "cmyk"), "Color space must be rgb or cmyk")
@@ -1186,6 +1236,14 @@ def export(
     if isinstance(page, str) and page.isdigit():
         page = int(page)
     suffix = Path(path).suffix.lower() if path else ""
+    requested = (format or suffix.lstrip(".") or "PNG").upper()
+    sheet = page == "all" or bool(pages) and requested not in ("PDF", "PPTX", "HTML", "HTM")
+    require(page is None or not pages, "Pass page or pages, not both")
+    if sheet:
+        require(requested in ("PNG", "JPG", "JPEG", "WEBP", "TIFF", "TIF", "AVIF"),
+                "Page contact sheets require a raster image format", field="page")
+        require(not (artboard or comp or profile or time is not None),
+                "Page contact sheets do not take artboard, comp, profile or time", field="page")
     require(fill_mode in ("flatten", "editable"), "fill_mode must be flatten or editable", field="fill_mode")
     if fillable or fill_mode == "editable":
         # A fillable PDF: Vixl's artwork with AcroForm fields on top (prefilled with ``values``).
@@ -1261,7 +1319,7 @@ def export(
             report["content_reason"] = ("requested with pdf_content" if pdf_content else
                                         "default: vector, with images only for what PDF cannot draw (see raster_fallbacks)")
         return data
-    if page is not None or paged:
+    if not sheet and (page is not None or paged):
         project = view_page(project, page)
     resample = Image.Resampling.NEAREST if sampling == "nearest" else Image.Resampling.LANCZOS
     require(path is None or Path(path).suffix.lower() != ".vixl", "Cannot export over a Vixl project")
@@ -1293,7 +1351,11 @@ def export(
     if format:
         format = {"JPG": "JPEG", "TIF": "TIFF"}.get(format.upper(), format.upper())
     image = None
-    if scale > 1 and sampling != "nearest" and not (artboard or comp or settings.get("size")):
+    if sheet:
+        from .deck import contact_sheet
+
+        image = contact_sheet(project, pages=pages, width=width, columns=columns, labels=labels, variables=variables)
+    if image is None and scale > 1 and sampling != "nearest" and not (artboard or comp or settings.get("size")):
         # Enlarge by re-rendering a scaled copy, so text, shapes and vectors stay crisp.
         from .proxy import scaled_project
 
@@ -1396,4 +1458,3 @@ def export(
     if path:
         Path(path).write_bytes(data)
     return data
-

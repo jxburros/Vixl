@@ -91,6 +91,8 @@ class RenderCache:
         self.directory = Path(directory).resolve()
         self.budget = budget
         self.hits = self.misses = 0
+        self._directory_stamp = None
+        self._bytes = 0
 
     def get(self, key, limits):
         if key is None:
@@ -118,20 +120,31 @@ class RenderCache:
             if len(data) > min(self.budget // 4, 64 * 1024 * 1024):
                 return
             self.directory.mkdir(parents=True, exist_ok=True)
-            with file_lock(str(self.directory / "cache")):
+            # Keep the lock beside the directory: creating/removing it inside would
+            # change the directory mtime on every call and defeat change detection.
+            with file_lock(str(self.directory) + ".usage"):
+                stamp = self.directory.stat().st_mtime_ns
+                if stamp != self._directory_stamp:
+                    # Initial scan, or another cache instance/process wrote/deleted a
+                    # PNG. Reads only touch file timestamps, so need no size rescan.
+                    self._bytes = sum(path.stat().st_size for path in self.directory.glob("*.png"))
+                destination = self.directory / (key + ".png")
+                previous = destination.stat().st_size if destination.exists() else 0
                 fd, temp = temporary(self.directory)
                 with os.fdopen(fd, "wb") as stream:
                     stream.write(data)
-                os.replace(temp, self.directory / (key + ".png"))
-                entries = sorted(self.directory.glob("*.png"), key=lambda p: p.stat().st_mtime_ns)
-                total = sum(p.stat().st_size for p in entries)
-                for path in entries:
-                    if total <= self.budget:
-                        break
-                    total -= path.stat().st_size
-                    path.unlink()
+                os.replace(temp, destination)
+                self._bytes += len(data) - previous
+                if self._bytes > self.budget:
+                    entries = [(path, path.stat()) for path in self.directory.glob("*.png")]
+                    for path, stat in sorted(entries, key=lambda entry: entry[1].st_mtime_ns):
+                        if self._bytes <= self.budget:
+                            break
+                        path.unlink()
+                        self._bytes -= stat.st_size
+                self._directory_stamp = self.directory.stat().st_mtime_ns
         except OSError:
-            pass
+            self._directory_stamp = None
         finally:
             if temp and os.path.exists(temp):
                 os.unlink(temp)

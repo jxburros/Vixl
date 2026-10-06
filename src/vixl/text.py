@@ -250,13 +250,18 @@ def lines(data, text, size, width=None):
             result.append(paragraph)
             continue
         line = ""
-        for word in paragraph.split(" "):
-            proposed = line + (" " if line else "") + word
+        for word in re.findall(r" +|[^ ]+", paragraph):
+            proposed = line + word
             if shape(data, proposed, size)[1] <= width:
                 line = proposed
                 continue
+            if word.isspace():
+                # Preserve authored indentation; separators at a soft wrap belong to the
+                # preceding line and are trimmed when the following word wraps.
+                line = proposed
+                continue
             if line:
-                result.append(line)
+                result.append(line.rstrip(" "))
             line = ""
             for char in clusters(data, word):
                 if line and shape(data, line + char, size)[1] > width:
@@ -292,7 +297,7 @@ def measure(data, text, size, spacing=4, align="left", width=None):
                         (box[0] * factor + x, -box[3] * factor + y, box[2] * factor + x, -box[1] * factor + y)
                     )
     box = (
-        min((b[0] for b in bounds), default=0),
+        min(0, min((b[0] for b in bounds), default=0)),
         min((b[1] for b in bounds), default=0),
         max(widest, max((b[2] for b in bounds), default=0)),
         max((b[3] for b in bounds), default=ascent) if bounds else ascent,

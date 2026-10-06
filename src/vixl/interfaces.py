@@ -150,7 +150,7 @@ class Session:
                 self._remember(resolved, project, stamp)
             return self.summary(project)
 
-    def create(self, path, width=None, height=None, background="transparent", *, size=None, dpi=None, orientation=None, bleed=False):
+    def create(self, path, width=None, height=None, background="transparent", *, size=None, dpi=None, orientation=None, bleed=False, seed=None, variety=None):
         with self._mutex:
             resolved = self.resolve(path)
             require(resolved.suffix.lower() == ".vixl", "Document path must end in .vixl", field="path")
@@ -165,6 +165,9 @@ class Session:
                     project = Project(width, height, background, limits=self.limits)
                     if dpi:
                         project.apply({"type": "canvas", "dpi": dpi})
+                from .variety import document_defaults
+
+                document_defaults(project, seed=seed, variety=variety, workspace=self.workspace)
                 project.save(resolved)
                 self._remember(resolved, project, self.stamp(resolved))
             return self.summary(project)
@@ -201,6 +204,7 @@ class Session:
             "canvas": project.state["canvas"],
             "layer_count": len(project.state["layers"]),
             "head": project.head,
+            **({"design_defaults": project.state["design_defaults"]} if "design_defaults" in project.state else {}),
         }
 
     @contextmanager
@@ -274,9 +278,9 @@ class Session:
         with self.project(document=document) as p:
             return p.check(**options)
 
-    def validate(self, profile=None, rules=None, document=None):
+    def validate(self, profile=None, rules=None, document=None, **options):
         with self.project(document=document) as p:
-            return validate(p, profile, rules)
+            return validate(p, profile, rules, **options)
 
     def history(self, action="list", ref=None, count=1, document=None):
         require(

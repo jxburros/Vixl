@@ -371,7 +371,7 @@ def resolve_geometry(project, op):
             layer = project.layer(op["targets"][0] if kind == "stack" and op.get("targets") else op.get("target"))
         except Exception:
             layer = None
-        if layer and layer.get("parent"):
+        if layer and layer.get("parent") and op.get("space") != "canvas" and not op.get("absolute"):
             parent = project.layer(layer["parent"])
             width, height = parent.get("content_width", width), parent.get("content_height", height)
     centered = {}
@@ -385,10 +385,12 @@ def resolve_geometry(project, op):
             centered[key] = True
             result[key] = 0
             continue
+        if kind == "resize" and key in ("width", "height") and value.startswith(("+", "-")):
+            continue
         match = PERCENT.match(value)
         if match:
             amount = float(match[1]) * base / 100
-            result[key] = max(1, round(amount)) if key in ("width", "height") else amount
+            result[key] = int(amount) if amount.is_integer() else amount
     return result, centered
 
 
@@ -404,6 +406,15 @@ def apply_centering(project, centered, operation):
     edits = operation.get("type") == "move" or operation.get("type") in IN_PLACE_TYPES
     layer = project.layer(operation.get("target") if edits else None)
     bounds = resolve_layout(project)[layer["id"]]
+    if operation.get("type") == "move" and (operation.get("space") == "canvas" or operation.get("absolute")):
+        from .spatial import canvas_boxes
+        from .transforms import execute
+        box = canvas_boxes(project)[layer["id"]]
+        canvas = project.state["canvas"]
+        coords = {key: (canvas["width" if key == "x" else "height"] - box[2 if key == "x" else 3]) / 2
+                  for key in centered}
+        execute(project, {"type": "move", "target": layer["id"], "space": "canvas", **coords})
+        return
     if layer.get("parent"):
         parent = project.layer(layer["parent"])
         width, height = parent["content_width"], parent["content_height"]

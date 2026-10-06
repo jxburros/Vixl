@@ -638,7 +638,7 @@ def test_contrast_issue_says_where_the_glyphs_fail():
           {"type": "constrain", "target": "t", "constraints": {"left": "canvas.left+10"}},
           {"type": "constrain", "target": "t", "constraints": {"center-x": "canvas.center-x"}}],
          "would have both left and center-x"),
-        ([{"type": "solid", "color": "red", "name": f"s{i}"} for i in range(1001)], "at most 1000 operations, got 1001"),
+        ([{"type": "solid", "color": "red", "name": f"s{i}"} for i in range(10001)], "at most 10000 operations, got 10001"),
         ([{"type": "shape", "shape": "ellipse", "name": "dot", "width": 30, "height": 30},
           {"type": "pivot", "target": "dot", "units": "px", "value": [15, 314]}],
          "pivot y of 314 px"),

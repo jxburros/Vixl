@@ -52,7 +52,7 @@ def located(error, index, operation, count):
 
 
 class Project:
-    def __init__(self, width=1920, height=1080, background="#00000000", *, limits=None):
+    def __init__(self, width=1920, height=1080, background="#00000000", *, limits=None, workspace=None):
         self.limits = limits or Limits()
         self.limits.size(width, height)
         from .render import color
@@ -68,6 +68,7 @@ class Project:
         self.redo_stack = []
         self.transaction = None
         self.path = None
+        self._workspace = str(Path(workspace or Path.cwd()).resolve())
         self.allow_linked = False
         self._revision = None
         self._cache = LayerCache()
@@ -78,7 +79,7 @@ class Project:
         self._record([], "Create document")
 
     @classmethod
-    def sized(cls, size, background="transparent", *, limits=None, dpi=None, orientation=None, bleed=False):
+    def sized(cls, size, background="transparent", *, limits=None, dpi=None, orientation=None, bleed=False, workspace=None):
         """Create a document from a named size (``letter``, ``instagram-portrait``, ``favicon`` …),
         recording its dpi, bleed, safe area and trim/safe guides in the first revision."""
         from .operations import execute
@@ -86,7 +87,7 @@ class Project:
         from .validation import check_state
 
         info = resolve(size, dpi=dpi, orientation=orientation, bleed=bleed)
-        project = cls(info["width"], info["height"], background, limits=limits)
+        project = cls(info["width"], info["height"], background, limits=limits, workspace=workspace)
         op = {"type": "canvas", "size": info["size"], "orientation": orientation, "dpi": dpi, "bleed": bleed}
         execute(project, {k: v for k, v in op.items() if v not in (None, False)})
         check_state(project, project.state)
@@ -151,6 +152,12 @@ class Project:
         clone._verified = set(self._verified)
         return clone
 
+    def spatial(self, **options):
+        """Measure relationships, hit tests, guides, grids and free space in canvas coordinates."""
+        from .spatial import query
+
+        return query(self, **options)
+
     def inspect(self, target=None):
         from .render import child_index, extent, resolve_layout, resolved_layers
 
@@ -162,10 +169,24 @@ class Project:
             state["pages"], state["masters"] = info["pages"], info["masters"]
         layers = resolved_layers(self)
         resolved = resolve_layout(self, layers=layers)
+        from .spatial import canvas_boxes
+
+        canvas_bounds = canvas_boxes(self)
         children, memo = child_index(layers), {}
         shown = {item["id"]: item["visible"] for item in layers}
         for layer in state["layers"]:
             box = layer["resolved_bounds"] = resolved[layer["id"]]
+            layer["canvas_bounds"] = canvas_bounds[layer["id"]]
+            layer["coordinate_space"] = "parent" if layer.get("parent") else "canvas"
+            if layer["type"] == "shape" and layer.get("shape") == "path":
+                from .vector_paths import inspect_nodes
+
+                layer["path_nodes"] = inspect_nodes(layer)
+            if layer["type"] == "text":
+                from .text_metrics import inspect_text
+
+                effective = next(item for item in layers if item["id"] == layer["id"])
+                layer.update(inspect_text(self, effective, box))
             if layer["visible"] and not shown[layer["id"]]:
                 layer["collapsed"] = True  # Hidden by hide_if_empty or an empty stack, not by the user.
             left, top, right, bottom = extent(layer, resolved, children, memo)
@@ -317,6 +338,7 @@ class Project:
                 raise located(exc, index, operation, len(operations)) from exc
         operations = validated
         candidate = self.clone()
+        candidate._service = bool(check)
         candidate._resource_budget = self.limits.max_operations - len(operations)
         from . import notices
 
@@ -367,6 +389,7 @@ class Project:
                 raise located(exc, index, operations[index], len(operations)) from exc
             raise
         candidate.__dict__.pop("_resource_budget", None)
+        candidate.__dict__.pop("_service", None)
         warned, interpreted = notices.finish(candidate)
         reports = candidate.__dict__.pop("_reports", {})
         after = candidate.inspect()  # Also resolves constraints, rejecting cycles atomically.
@@ -386,6 +409,13 @@ class Project:
                 candidate._record(operations)
             self.__dict__.update(candidate.__dict__)
         result = {"success": True, "dry_run": dry_run, "operations": len(operations), "changes": changes}
+        if any(op["type"] == "template-apply" for op in operations):
+            result["template"] = deepcopy(candidate.state.get("template", {}))
+        if any(op["type"].startswith("container-") for op in operations):
+            result["containers"] = [{"id": layer["id"], "name": layer["name"], **deepcopy(layer["container"])}
+                                    for layer in candidate.state["layers"] if "container" in layer]
+        if any(op["type"] == "comic-layout" for op in operations):
+            result["comic"] = deepcopy(candidate.state.get("comic", {}))
         if any(op["type"] == "layout-apply" for op in operations):
             result["layout"] = deepcopy(candidate.state.get("layout", {}))
             if detail == "brief":
@@ -689,7 +719,7 @@ class Project:
         return str(path)
 
     @classmethod
-    def load(cls, path, *, limits=None, allow_linked=False):
+    def load(cls, path, *, limits=None, allow_linked=False, workspace=None):
         from .validation import check_document
 
         limits = limits or Limits()
@@ -730,7 +760,7 @@ class Project:
                     "Unsupported project format",
                     "invalid_project",
                 )
-                project = cls(1, 1, limits=limits)
+                project = cls(1, 1, limits=limits, workspace=workspace)
                 for key in (
                     "state",
                     "nodes",
@@ -759,6 +789,10 @@ class Project:
                         from PIL import ImageFont
 
                         ImageFont.truetype(io.BytesIO(data), 12)
+                    elif name.startswith("assets/") and name.endswith(".wav"):
+                        from .audio import read_audio
+
+                        read_audio(data)
                     else:
                         decode(data, limits)
                 project.allow_linked = allow_linked
@@ -770,4 +804,3 @@ class Project:
                 return project
         except (KeyError, TypeError, ValueError, RecursionError, zipfile.BadZipFile) as exc:
             raise VixlError("invalid_project", f"Malformed Vixl archive: {exc}") from exc
-

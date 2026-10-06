@@ -4,15 +4,18 @@ import numpy as np
 from PIL import Image, ImageDraw
 
 from .errors import require
+from .vector_strokes import FIELDS as STROKE_FIELDS
 from .model import finite
 
 TYPES = ("pen",)
-TRIM_FIELDS = ("trim_start", "trim_end", "line_cap")  # Stroke trim and caps, shared with shape.
+
+TRIM_FIELDS = ("trim_start", "trim_end", *STROKE_FIELDS)  # Stroke trim and caps, shared with shape.
 
 
 def schemas(add):
     from .schema import S, N, B, SIZE, COORD
     from .trim import schema as trim_schema
+    from .vector_strokes import schema as stroke_schema
 
     point = {"type": "array", "items": N, "minItems": 2, "maxItems": 2}
     node = {
@@ -35,6 +38,7 @@ def schemas(add):
             "stroke": S,
             "stroke_width": N,
             **trim_schema(),
+            **stroke_schema(),
             "width": SIZE,
             "height": SIZE,
             "x": COORD,

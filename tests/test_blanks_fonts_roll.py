@@ -121,14 +121,14 @@ def test_layouts_use_document_typography_and_flag_the_fallback_font():
 
 
 def test_builtin_templates_use_blanks_and_seeded_colors():
-    a = create_template("social-square", {"title": "Launch"})
-    b = create_template("social-square", {"title": "Launch"})
+    a = create_template("social-square", {"title": "Launch"}, seed=7)
+    b = create_template("social-square", {"title": "Launch"}, seed=7)
     assert a.state["template"]["rolled"] == b.state["template"]["rolled"]
     assert [x["slot"] for x in a.state["template"]["blanks"]] == ["subtitle"]
     assert "Your subtitle" not in json.dumps(a.state["layers"])
     assert [i["slot"] for i in blank_checks(a)] == ["subtitle"]
     fixed = create_template("social-square", {"title": "A", "subtitle": "B", "background": "#000000", "foreground": "#ffffff"})
-    assert "template" not in fixed.state and blank_checks(fixed) == []
+    assert isinstance(fixed.state["template"]["seed"], int) and blank_checks(fixed) == []
     rolled = create_template("logo")
     assert rolled.state["template"]["rolled"]["accent"].startswith("#")
 

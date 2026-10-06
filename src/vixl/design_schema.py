@@ -42,6 +42,8 @@ def schemas(add):
     geometry = {"name": S, "width": SIZE, "height": SIZE, "x": COORD, "y": COORD}
     board = {"name": S, "width": POSITIVE_INT, "height": POSITIVE_INT, "x": N, "y": N}
     from .trim import schema as trim_schema
+    from .shape_catalog import schema as catalog_schema
+    from .vector_strokes import schema as stroke_schema
 
     add(
         "shape",
@@ -68,6 +70,8 @@ def schemas(add):
                 "description": "arc: end angle in degrees, clockwise from start_angle; 360 or more past it is the full circle/ring. Default start_angle + 360.",
             },
             **trim_schema(),
+            **catalog_schema(),
+            **stroke_schema(),
         },
         anyOf=[{"required": ["shape"]}, {"required": ["target"]}],
     )
@@ -92,7 +96,8 @@ def schemas(add):
     )
     add(
         "frame",
-        {**geometry, "path": S, "asset": S, "fit": enum("fill", "fit")},
+        {**geometry, "path": S, "asset": S, "fit": enum("fill", "fit"),
+         "max_pixels": {"type": "integer", "minimum": 1}, "downsample": enum("placed@2x")},
         anyOf=[{"required": ["path"]}, {"required": ["asset"]}],
     )
     add(
@@ -157,7 +162,7 @@ def schemas(add):
     )
     add(
         "pathfinder",
-        {"name": S, "targets": refs, "mode": enum("union", "subtract", "intersect")},
+        {"name": S, "targets": refs, "mode": enum("union", "subtract", "intersect", "exclude", "divide", "minus-back", "trim", "merge")},
         ["name", "targets", "mode"],
     )
     add("symbol", {"name": S}, ["name"])

@@ -58,7 +58,8 @@ result (`"replayed": true`) instead of applying twice.
 
 | Tool | Parameters | Returns / notes |
 | --- | --- | --- |
-| `vixl_operations_apply` | **`operations`** (1–1000 operation objects), `dry_run=False`, `detail="brief"\|"compact"\|"full"`, `request_id`, `as_job` | Atomic. Brief (default): per layer ID, new layers as `{added, name, type, bounds}`, changed layers as `{changed: [fields], bounds}`; compact adds the new values of changed fields; full: before/after snapshots. `warnings` (text cut off or overflowing its box/group, fields that change nothing) and `normalized` (rewritten spellings) appear when relevant. |
+| `vixl_operations_apply` | **`operations`** (1–10000 operation objects), `dry_run=False`, `detail="brief"\|"compact"\|"full"`, `request_id`, `as_job` | Atomic. Brief (default): per layer ID, new layers as `{added, name, type, bounds}`, changed layers as `{changed: [fields], bounds}`; compact adds the new values of changed fields; full: before/after snapshots. `warnings` (text cut off or overflowing its box/group, fields that change nothing) and `normalized` (rewritten spellings) appear when relevant. |
+| `vixl_capabilities` | `topic`, `fields=False` | Task-specific operations, exact fields, limits and gotchas |
 | `vixl_operation_schema` | **`types`** (1–20 names) | Exact JSON Schema for those operation types (needed with `vixl mcp --schema slim`) |
 | `vixl_render_preview` | `variables`, `max_width=1024`, `max_height=1024` (≤4096), `max_bytes=1048576` (64 KiB–4 MiB), `region=[x,y,w,h]` (px or %), `artboard`, `comp` | PNG at preview resolution (fast); `region` zooms in up to 8× |
 | `vixl_render_compare` | `before="previous"`, `after="head"`, `mode="side-by-side"\|"diff"`, `max_width`, `max_height` | Summary (`changed_fraction`, `changed_region`) + image; refs: `head`, `previous`, `head~N`, branch, checkpoint, revision ID |
@@ -74,7 +75,7 @@ Transactions: `vixl_history(action="begin")` → several `vixl_operations_apply`
 | `vixl_check` | `checks` (`bounds`,`overlap`,`contrast`,`safe_area`,`legibility`; default all), `targets`, `safe_area` (px, `"5%"` or `{left,top,right,bottom}`), `avoid` (reserved zones), `thumbnail_width=320`, `min_thumbnail_text=10`, `min_contrast`, `artboard`, `comp` | `{passed, errors, warnings, issues[{check,severity,layers,message,…}]}` — only problems |
 | `vixl_measure` | `point=[x,y]`, `region=[x,y,w,h]`, `foreground`, `target`, `histogram="summary"\|"full"\|"none"`, `artboard`, `comp` | RGBA/hex sample, alpha-weighted average, channel percentiles (or 256-bin histograms), WCAG contrast min/p10/mean/max |
 | `vixl_measure_spacing` | `targets`, `axis="vertical"`, `around`/`before`/`after`, `expected`, `tolerance=1`, `artboard`, `comp` | Per-gap pixels, overlap, min/max/mean/spread, `passed` |
-| `vixl_validate` | `profile` (`instagram-post`, `instagram-square`, `story`, `youtube-thumbnail`), `rules` (assertion strings) | `{valid, checks[{rule,passed,severity}]}`; failures raise `validation_failed` with checks |
+| `vixl_validate` | `profile`, `rules`, `detail="summary"\|"full"`, `targets`, `severity`, `suppress`, `offset`, `limit=50` (≤200) | Overall `valid`, counts and paginated findings; full includes passing checks. Layer intent can mark deliberate bleed. |
 
 Assertion grammar: `canvas.width == 1920`, `layer.NAME.exists`, `layer.NAME.bounds within canvas`,
 `text.NAME.font-size >= 48`; comparators `== != > < >= <=`.
@@ -86,7 +87,7 @@ Assertion grammar: `canvas.width == 1920`, `layer.NAME.exists`, `layer.NAME.boun
 | `vixl_pixels_inspect` | `target` | `{id,name,width,height,palette,rows}` — read/modify sprites as text |
 | `vixl_animation_inspect` | — | Frame names, sizes, durations, total; named animations (order, timing, loop) |
 | `vixl_animation_preview` | **`name`**, `scale=1` (1–8) | Crisp nearest-neighbor PNG of a saved frame |
-| `vixl_export_animation` | **`path`**, `format="gif"\|"apng"\|"webp"\|"mp4"\|"webm"\|"sheet"` (default: from extension), `animation=NAME`, `scale=1` (1–32), `sampling`, `colors`, `quality=90`, `columns` | `animation` exports one named animation, else every saved frame; sheet also writes `same-stem.json` with frame rects/durations and the `animations` map; mp4/webm need ffmpeg; never overwrites |
+| `vixl_export_animation` | **`path`**, `format="gif"\|"apng"\|"webp"\|"mp4"\|"webm"\|"sheet"` (default: from extension), `animation=NAME`, `scale=1` (1–32), `sampling`, `colors`, `quality=90`, `columns`, `overwrite=False` | `animation` exports one named animation, else every saved frame; sheet also writes `same-stem.json` with frame rects/durations and the `animations` map; mp4/webm need ffmpeg; overwrites only when requested |
 
 Edits use `vixl_operations_apply` with `pixel-art`, `pixel-draw`, `pixel-palette`, `frame-save`,
 `frame-apply`, `frame-delete`, `animation-set` (`name`+`order` defines a named animation) and
@@ -110,7 +111,7 @@ informational) with every issue's `action`.
 | `vixl_layouts_list` | — | Layout names, principles, content keys and options (apply with `layout-apply`) |
 | `vixl_brushes_list` | — | Brushes and settings (paint with the `paint` operation) |
 | `vixl_color` | **`action`** `info\|convert\|harmony\|scale\|mix\|contrast\|names`, **`colors`**, `to`, `scheme`, `count`, `amount`, `space` | Color language tools |
-| `vixl_timeline_inspect` | — | Duration, fps, frames, markers, tracks |
+| `vixl_timeline_inspect` | `detail="summary"\|"full"`, `targets`, `properties`, `start`, `end`, `offset`, `limit=50`, `key_offset`, `key_limit=50` (limits ≤200) | Bounded track/key counts and ranges; full adds paginated keys |
 | `vixl_timeline_preview` | `time` **or** `count=8`, `columns`, `max_width=1600` | One frame or a labelled contact sheet |
 | `vixl_export_timeline` | **`path`** (.gif/.png/.webp/.zip/.mp4/.webm), `format` (`sheet`), `fps`, `scale`, `start`, `end`, `background`, `columns`, `quality`, `overwrite` | Never overwrites unless asked |
 | `vixl_export_icons` | **`directory`**, `icon_set` `web\|apple\|android\|windows\|all`, `sampling` | favicon.ico, PNG sizes, site.webmanifest |
@@ -119,6 +120,13 @@ informational) with every issue's `action`.
 paths, `color_space="cmyk"`, `icc_profile` (workspace path), `intent`, `black_generation`, `ink_limit`,
 `proof`, `simulate`, `dpi`, `icon_sizes`, `time`; `vixl_check` also takes `checks=["print","color_vision"]`,
 `ink_limit`, `min_ppi`.
+
+### Character, audio and spatial authoring
+
+`vixl_export_character(target, output)` saves reusable character artwork and rigs as a portable `.vixl`.
+`vixl_export_audio(path)` writes timeline score, sound effects and imported audio to WAV.
+Use `vixl_spatial` for bounds, nearest/between/relative queries, free regions, snap candidates, grid cells, guides and hit tests.
+Fetch exact operations with `vixl_capabilities(topic="animation")` and `vixl_operation_schema(types=[...])`.
 
 ### AI tools (need configured providers; see ai.md)
 

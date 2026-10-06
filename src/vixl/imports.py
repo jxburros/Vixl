@@ -101,7 +101,7 @@ def svg_operations(data, project, name):
         "display",
         "visibility",
     }
-    common = inherited_keys | {"id", "transform", "style", "opacity"}
+    common = inherited_keys | {"id", "transform", "style", "opacity", "paint-order"}
     geometry_keys = {
         "path": {"d"},
         "rect": {"x", "y", "width", "height", "rx", "ry"},
@@ -112,7 +112,7 @@ def svg_operations(data, project, name):
         "polyline": {"points"},
     }
 
-    def walk(node, matrix, inherited, depth=0):
+    def walk(node, matrix, inherited, depth=0, clips=()):
         nonlocal seen
         seen += 1
         require(
@@ -121,15 +121,16 @@ def svg_operations(data, project, name):
             "resource_limit",
         )
         tag = node.tag.rsplit("}", 1)[-1]
-        if tag in ("title", "desc", "metadata"):
+        # Definitions have no appearance of their own. Referencing one still fails at the
+        # unsupported use/paint attribute below, with an appearance-import suggestion.
+        if tag in ("title", "desc", "metadata", "defs"):
             return
         require(
             tag in {*geometry_keys, "svg", "g"},
-            f"Unsupported SVG element {tag!r}; simplify it to paths before importing",
+            f"Unsupported SVG element {tag!r}; simplify it to paths or import with svg_mode='appearance' or 'auto'",
             "unsupported_svg",
         )
-        require(tag != "svg" or depth == 0, "Nested SVG viewports are unsupported", "unsupported_svg")
-        attrs = dict(node.attrib)
+        attrs = {key: value for key, value in node.attrib.items() if not key.startswith("data-")}
         style = attrs.pop("style", "")
         for declaration in style.split(";"):
             if declaration.strip():
@@ -139,7 +140,7 @@ def svg_operations(data, project, name):
                 attrs[k.strip()] = v.strip()
         allowed = common | geometry_keys.get(tag, set())
         if tag == "svg":
-            allowed |= {"width", "height", "viewBox", "version", "preserveAspectRatio"}
+            allowed |= {"width", "height", "viewBox", "version", "preserveAspectRatio", "x", "y", "overflow"}
         require(
             not set(attrs) - allowed,
             f"Unsupported SVG attributes: {sorted(set(attrs) - allowed)}",
@@ -147,6 +148,21 @@ def svg_operations(data, project, name):
         )
         props = {**inherited, **{k: v for k, v in attrs.items() if k in inherited_keys}}
         matrix = matrix.transform(transform(attrs.get("transform", "")))
+        if tag == "svg" and depth:
+            viewbox = numbers(attrs["viewBox"]) if "viewBox" in attrs else [0, 0, length(attrs.get("width", "0")), length(attrs.get("height", "0"))]
+            require(len(viewbox) == 4 and viewbox[2] > 0 and viewbox[3] > 0, "Invalid nested SVG viewBox", "unsupported_svg")
+            w, h = length(attrs.get("width", str(viewbox[2]))), length(attrs.get("height", str(viewbox[3])))
+            require(w > 0 and h > 0, "Nested SVG dimensions must be positive", "unsupported_svg")
+            matrix = matrix.translate(length(attrs.get("x", "0")), length(attrs.get("y", "0")))
+            require(attrs.get("overflow", "hidden") in ("hidden", "visible"), "Unsupported SVG viewport overflow", "unsupported_svg")
+            if attrs.get("overflow", "hidden") == "hidden":
+                clips = (*clips, (matrix.inverse(), w, h))
+            preserve = attrs.get("preserveAspectRatio", "xMidYMid meet")
+            require(preserve in ("none", "xMidYMid", "xMidYMid meet"), "Unsupported preserveAspectRatio", "unsupported_svg")
+            sx, sy = w / viewbox[2], h / viewbox[3]
+            if preserve != "none":
+                sx = sy = min(sx, sy)
+            matrix = matrix.translate((w - viewbox[2] * sx) / 2, (h - viewbox[3] * sy) / 2).scale(sx, sy).translate(-viewbox[0], -viewbox[1])
         if props.get("display") == "none" or props.get("visibility") == "hidden":
             return
         opacity = float(attrs.get("opacity", 1))
@@ -154,7 +170,7 @@ def svg_operations(data, project, name):
         if tag in ("svg", "g"):
             require(opacity == 1, "Group opacity must be flattened before editable import", "unsupported_svg")
             for child in node:
-                walk(child, matrix, props, depth + 1)
+                walk(child, matrix, props, depth + 1, clips)
             return
         require(not len(node), "SVG shape children are unsupported", "unsupported_svg")
 
@@ -198,19 +214,39 @@ def svg_operations(data, project, name):
         pen.replay(bounds)
         if bounds.bounds is None:
             return
+        for inverse, viewport_w, viewport_h in clips:
+            local = BoundsPen(None)
+            pen.replay(TransformPen(local, inverse))
+            if local.bounds:
+                left, top, right, bottom = local.bounds
+                require(left >= -1e-6 and top >= -1e-6 and right <= viewport_w + 1e-6 and bottom <= viewport_h + 1e-6,
+                        "Clipped nested SVG geometry requires svg_mode='appearance' or 'auto'", "unsupported_svg")
         x0, y0, x1, y1 = bounds.bounds
         stroke_width = get("stroke-width", props.get("stroke-width", 1))
         # Stroke width is representable only under a similarity transform.
         a, b, c, d, _, _ = matrix
         scale = math.hypot(a, b)
         stroke = props.get("stroke", "none")
+        require(attrs.get("paint-order", "normal") in ("normal", "fill stroke") or stroke == "none" or
+                stroke_width == 0 or float(props.get("stroke-opacity", 1)) == 0,
+                "SVG stroke-first painting requires svg_mode='appearance' or 'auto'", "unsupported_svg")
         if stroke != "none":
             require(
                 abs(scale - math.hypot(c, d)) < 1e-6 and abs(a * c + b * d) < 1e-6,
                 "Nonuniform SVG strokes must be outlined before import",
                 "unsupported_svg",
             )
-        pad = stroke_width * scale / 2 if stroke != "none" else 0
+        pad = stroke_width * scale / 2 if stroke != "none" and float(props.get("stroke-opacity", 1)) > 0 else 0
+        if pad:
+            for inverse, viewport_w, viewport_h in clips:
+                local = BoundsPen(None)
+                pen.replay(TransformPen(local, inverse))
+                if local.bounds:
+                    left, top, right, bottom = local.bounds
+                    a, b, c, d, _, _ = inverse
+                    dx, dy = pad * math.hypot(a, c), pad * math.hypot(b, d)
+                    require(left - dx >= -1e-6 and top - dy >= -1e-6 and right + dx <= viewport_w + 1e-6 and bottom + dy <= viewport_h + 1e-6,
+                            "Clipped nested SVG strokes require svg_mode='appearance' or 'auto'", "unsupported_svg")
         x0, y0 = math.floor(x0 - pad), math.floor(y0 - pad)
         w, h = max(1, math.ceil(x1 + pad) - x0), max(1, math.ceil(y1 + pad) - y0)
         project.limits.size(w, h)
@@ -226,6 +262,8 @@ def svg_operations(data, project, name):
 
         def paint(key):
             value = props.get(key, "black" if key == "fill" else "none")
+            require(not value.startswith("url("),
+                    "Referenced SVG paints require svg_mode='appearance' or 'auto'", "unsupported_svg")
             if value == "none":
                 return "transparent"
             rgba = parse(value)

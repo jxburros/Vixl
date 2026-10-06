@@ -18,7 +18,7 @@ def build(output):
     output.mkdir(parents=True, exist_ok=True)
     if (output / "campaign.vixl").exists():
         raise SystemExit("Choose a fresh output directory; the demo preserves existing projects.")
-    project = create_template("modular-split", workspace=output)
+    project = create_template("modular-split", workspace=output, palette="ocean", look="none", seed=0)
     project.apply(
         [
             {"type": "text-set", "target": "slot-1/title", "text": "New directions"},

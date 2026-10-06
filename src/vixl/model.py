@@ -14,11 +14,15 @@ class Limits:
     max_layers: int = 512
     max_asset_bytes: int = 64 * 1024 * 1024
     max_project_bytes: int = 256 * 1024 * 1024
-    max_operations: int = 1000
+    max_operations: int = 10000
     max_history: int = 2000
 
-    def size(self, width, height):
-        require(isinstance(width, int) and isinstance(height, int), "Dimensions must be integers")
+    def size(self, width, height, *, vector=False):
+        if vector:
+            finite(width, "width")
+            finite(height, "height")
+        else:
+            require(isinstance(width, int) and isinstance(height, int), "Dimensions must be integers")
         require(
             0 < width <= self.max_dimension and 0 < height <= self.max_dimension,
             f"Dimensions must be 1–{self.max_dimension}",

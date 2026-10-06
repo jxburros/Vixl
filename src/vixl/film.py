@@ -112,7 +112,8 @@ def plan(spec, limits=None, streamed=False):
         "Captions and audio must be arrays",
     )
     for caption in spec.get("captions", []):
-        bounded_object(caption, {"text", "start", "end", "x", "y", "size", "color"}, "Unknown caption field")
+        from .captions import validate_caption
+        validate_caption(caption)
         require(
             isinstance(caption.get("text"), str) and len(caption["text"]) <= 10000, "Invalid caption text"
         )
@@ -125,11 +126,10 @@ def plan(spec, limits=None, streamed=False):
         "Too many captions/audio tracks",
     )
     for track in spec.get("audio", []):
-        bounded_object(track, {"source", "start", "trim", "volume"}, "Unknown audio field")
-        require(isinstance(track.get("source"), str) and track["source"], "Audio track needs a source")
-        finite(track.get("volume", 1), "volume", 0, 4)
+        from .audio import validate_track
+        validate_track(track)
+        require("asset" not in track, "Film audio uses source paths or synth; embedded assets need a timeline project")
         finite(track.get("start", 0), "audio start", 0, 600000)
-        finite(track.get("trim", 0), "audio trim", 0, 600000)
     return {
         "version": 1,
         "width": width,
@@ -189,7 +189,8 @@ def _state_key(project):
     return hashlib.sha256(json.dumps(project.state, sort_keys=True, default=str).encode()).digest()
 
 
-def frames(spec, root, *, limits=None, cancelled=lambda: False, streamed=False):
+def frames(spec, root, *, limits=None, cancelled=lambda: False, streamed=False,
+           start_frame=0, end_frame=None, region=None):
     from .project import Project
     from .render_cache import enable
     from .timeline import project_at
@@ -202,12 +203,16 @@ def frames(spec, root, *, limits=None, cancelled=lambda: False, streamed=False):
     if spec.get("quality") == "draft":
         ratio = min(1, 640 / max(size))
         size = tuple(max(1, round(n * ratio)) for n in size)
+    end_frame = settings["frames"] if end_frame is None else end_frame
+    require(isinstance(start_frame, int) and isinstance(end_frame, int) and
+            0 <= start_frame < end_frame <= settings["frames"], "Invalid film frame interval")
+    crop = preview_region(region, settings, size)
     sources, clips = {}, {}
     # The last rendered frame per document shot: a frame whose animated state is unchanged
     # (a lyric held on screen, a pause) reuses it instead of rendering again.
     memo = {}
     with ExitStack() as stack:
-        for frame in range(settings["frames"]):
+        for frame in range(start_frame, end_frame):
             require(not cancelled(), "Film cancelled", "cancelled")
             active = [
                 (i, s)
@@ -222,17 +227,23 @@ def frames(spec, root, *, limits=None, cancelled=lambda: False, streamed=False):
                     if path.suffix.lower() == ".vixl":
                         sources[i] = enable(Project.load(path, limits=limits), Path(root) / ".vixl-cache")
                     elif path.suffix.lower() in (".mp4", ".webm", ".mov"):
-                        clips[i] = clip_frames(path, shot, size, settings["fps"])
+                        clips[i] = clip_frames(path, {**shot, "trim": shot.get("trim", 0) + local * 1000 / settings["fps"],
+                                                     "frames": shot["frames"] - local}, size, settings["fps"])
                         stack.callback(clips[i].close)
                         sources[i] = None
                     else:
-                        sources[i] = decode(read_bounded(path, limits.max_asset_bytes), limits)
+                        from PIL import ImageOps
+                        sources[i] = ImageOps.fit(decode(read_bounded(path, limits.max_asset_bytes), limits),
+                                                 size, method=Image.Resampling.LANCZOS)
                 source = sources[i]
                 if i in clips:
                     image = next(clips[i])
                 elif isinstance(source, Project):
-                    candidate = project_at(source, shot.get("trim", 0) + local * 1000 / settings["fps"])
-                    key = _state_key(candidate)
+                    animated = bool((source.state.get("timeline") or {}).get("tracks") or
+                                    source.state.get("camera") or source.state.get("stop_motion") or
+                                    any("particle" in layer for layer in source.state["layers"]))
+                    candidate = project_at(source, shot.get("trim", 0) + local * 1000 / settings["fps"]) if animated else source
+                    key = _state_key(candidate) if animated else b"static"
                     if i in memo and memo[i][0] == key:
                         image = memo[i][1].copy()
                     else:
@@ -265,22 +276,11 @@ def frames(spec, root, *, limits=None, cancelled=lambda: False, streamed=False):
             if captions:
                 overlay = Project(*size, limits=limits)
                 scale = size[0] / settings["width"]
-                overlay.apply(
-                    [
-                        {
-                            "type": "text",
-                            "name": f"caption-{j}",
-                            "text": c["text"],
-                            "size": max(1, round(c.get("size", 40) * scale)),
-                            "color": c.get("color", "white"),
-                            "x": c.get("x", 20) * scale,
-                            "y": c.get("y", settings["height"] - 80) * scale,
-                        }
-                        for j, c in enumerate(captions)
-                    ]
-                )
+                from .captions import apply_caption
+                for j, caption in enumerate(captions):
+                    apply_caption(overlay, caption, now, scale, j)
                 image.alpha_composite(overlay.render())
-            yield image
+            yield image.crop(crop) if crop else image
             # Release completed sources; long films do not keep every decoded image in memory.
             for i in list(sources):
                 shot = settings["shots"][i]
@@ -291,24 +291,30 @@ def frames(spec, root, *, limits=None, cancelled=lambda: False, streamed=False):
                         clips.pop(i).close()
 
 
-def export(spec, root, output, *, limits=None, cancelled=lambda: False, progress=lambda value: None):
+def export(spec, root, output, *, limits=None, cancelled=lambda: False, progress=lambda value: None,
+           start=None, end=None, shot=None, region=None):
     import json
 
     output = Path(output)
     require(output.suffix.lower() in (".zip", ".mp4", ".webm"), "Film output must be ZIP, MP4 or WebM")
     streamed = output.suffix.lower() in (".mp4", ".webm")
-    settings = plan(spec, limits, streamed)
+    selected = start is not None or end is not None or shot is not None
+    settings = plan(spec, limits, streamed or selected)
+    first, last = preview_interval(settings, start=start, end=end, shot=shot)
+    count = last - first
+    require(streamed or count <= MAX_FRAMES, "ZIP preview exceeds the frame budget", "resource_limit")
     require(not output.exists(), "Film output already exists")
     require(output.suffix != ".zip" or not spec.get("audio"), "Audio requires MP4/WebM output")
     output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(dir=output.parent, prefix=".film-") as temp:
         staged = Path(temp) / output.name
-        stream = frames(spec, root, limits=limits, cancelled=cancelled, streamed=streamed)
+        stream = frames(spec, root, limits=limits, cancelled=cancelled, streamed=streamed or selected,
+                        start_frame=first, end_frame=last, region=region)
 
         def tracked():
             try:
                 for i, image in enumerate(stream):
-                    progress({"done": i + 1, "total": settings["frames"]})
+                    progress({"done": i + 1, "total": count})
                     yield image
             finally:
                 stream.close()
@@ -321,7 +327,7 @@ def export(spec, root, output, *, limits=None, cancelled=lambda: False, progress
                     archive.writestr(f"{i:06d}.png", buffer.getvalue())
                 archive.writestr(
                     "timing.json",
-                    json.dumps({"version": 1, "fps": settings["fps"], "frames": settings["frames"]}),
+                    json.dumps({"version": 1, "fps": settings["fps"], "frames": count, "start": first * 1000 / settings["fps"]}),
                 )
         else:
             from .timeline import _video
@@ -330,18 +336,24 @@ def export(spec, root, output, *, limits=None, cancelled=lambda: False, progress
             if spec.get("quality") == "draft":
                 ratio = min(1, 640 / max(size))
                 size = tuple(max(1, round(n * ratio)) for n in size)
-            _video(staged, tracked(), settings["fps"], output.suffix[1:], 90, False, settings["frames"], size)
+            crop = preview_region(region, settings, size)
+            if crop:
+                size = (crop[2] - crop[0], crop[3] - crop[1])
+            _video(staged, tracked(), settings["fps"], output.suffix[1:],
+                   60 if spec.get("quality") == "draft" else 90, False, count, size)
             if spec.get("audio"):
                 mixed = Path(temp) / ("mixed" + output.suffix)
                 command = [shutil.which("ffmpeg"), "-v", "error", "-i", str(staged)]
+                from .audio import prepare_tracks
+                tracks = prepare_tracks(spec["audio"], temp, settings["duration"], root=root)
                 filters = []
-                for i, track in enumerate(spec["audio"], 1):
-                    path = local_path(root, track["source"])
+                for i, track in enumerate(tracks, 1):
+                    path = Path(track["source"])
                     command.extend(["-ss", str(track.get("trim", 0) / 1000), "-i", str(path)])
                     delay = round(track.get("start", 0))
                     filters.append(f"[{i}:a]volume={track.get('volume', 1)},adelay={delay}:all=1[a{i}]")
-                labels = "".join(f"[a{i}]" for i in range(1, len(spec["audio"]) + 1))
-                filters.append(labels + f"amix=inputs={len(spec['audio'])}:normalize=0,apad[a]")
+                labels = "".join(f"[a{i}]" for i in range(1, len(tracks) + 1))
+                filters.append(labels + f"amix=inputs={len(tracks)}:normalize=0,apad,atrim=start={first / settings['fps']}:end={last / settings['fps']},asetpts=PTS-STARTPTS[a]")
                 command.extend(
                     [
                         "-filter_complex",
@@ -355,7 +367,7 @@ def export(spec, root, output, *, limits=None, cancelled=lambda: False, progress
                         "-c:a",
                         "aac" if output.suffix == ".mp4" else "libopus",
                         "-t",
-                        str(settings["duration"] / 1000),
+                        str(count / settings["fps"]),
                         str(mixed),
                     ]
                 )
@@ -367,7 +379,78 @@ def export(spec, root, output, *, limits=None, cancelled=lambda: False, progress
     return {
         "version": 1,
         "output": str(output),
-        "frames": settings["frames"],
-        "duration": settings["duration"],
+        "frames": count,
+        "duration": count * 1000 / settings["fps"],
+        "start": first * 1000 / settings["fps"],
         "quality": spec.get("quality", "final"),
     }
+
+
+def preview_interval(settings, *, start=None, end=None, shot=None):
+    """Public preview times are milliseconds, consistent with all film/timeline timing."""
+    fps = settings["fps"]
+    if shot is not None:
+        require(start is None and end is None, "Choose shot or interval, not both")
+        require(isinstance(shot, int) and not isinstance(shot, bool) and 0 <= shot < len(settings["shots"]),
+                "Shot is a zero-based index")
+        item = settings["shots"][shot]
+        return item["start_frame"], item["start_frame"] + item["frames"]
+    start = finite(0 if start is None else start, "start", 0, settings["duration"])
+    end = finite(settings["duration"] if end is None else end, "end", 0, settings["duration"])
+    require(start < end, "Preview start must be before end")
+    return min(settings["frames"] - 1, math.floor(start * fps / 1000)), min(settings["frames"], math.ceil(end * fps / 1000))
+
+
+def preview_region(region, settings, size):
+    if region is None:
+        return None
+    require(isinstance(region, list) and len(region) == 4, "Region is [x,y,width,height] in film pixels")
+    x, y, w, h = [finite(v, "region", 0) for v in region]
+    require(w > 0 and h > 0 and x + w <= settings["width"] and y + h <= settings["height"],
+            "Preview region must fit inside the film")
+    sx, sy = size[0] / settings["width"], size[1] / settings["height"]
+    left, top = round(x * sx), round(y * sy)
+    return left, top, max(left + 1, round((x + w) * sx)), max(top + 1, round((y + h) * sy))
+
+
+def preview(spec, root, output, *, time=0, start=None, end=None, shot=None, region=None, loop=0, limits=None):
+    """Seek directly to a film frame, or render only the selected interval, camera/crossfades included.
+
+    PNG is a scrubbed frame; GIF loops a bounded interval; MP4/WebM/ZIP export an interval.
+    Preview defaults to draft unless quality is explicitly supplied in the film spec.
+    """
+    spec = {"quality": "draft", **spec}
+    settings = plan(spec, limits, streamed=True)
+    output = Path(output)
+    require(not output.exists(), "Preview output already exists")
+    if output.suffix.lower() in (".zip", ".mp4", ".webm"):
+        return export(spec, root, output, limits=limits, start=start, end=end, shot=shot, region=region)
+    require(output.suffix.lower() in (".png", ".gif"), "Preview output must be PNG, GIF, ZIP, MP4 or WebM")
+    if output.suffix.lower() == ".png":
+        require(start is None and end is None and shot is None, "PNG preview uses time; intervals use GIF/ZIP/video")
+        finite(time, "time", 0, settings["duration"])
+        first = min(settings["frames"] - 1, math.floor(time * settings["fps"] / 1000))
+        last = first + 1
+    else:
+        first, last = preview_interval(settings, start=start, end=end, shot=shot)
+        require(last - first <= 300, "Loop preview is limited to 300 frames; select a shorter interval", "resource_limit")
+        require(isinstance(loop, int) and not isinstance(loop, bool) and 0 <= loop <= 100, "Loop is 0 (forever) or 1–100")
+    output.parent.mkdir(parents=True, exist_ok=True)
+    stream = frames(spec, root, limits=limits, streamed=True, start_frame=first, end_frame=last, region=region)
+    with tempfile.TemporaryDirectory(dir=output.parent, prefix=".preview-") as temp:
+        staged = Path(temp) / output.name
+        try:
+            first_image = next(stream)
+            if output.suffix.lower() == ".png":
+                first_image.save(staged)
+            else:
+                require(first_image.width * first_image.height * (last - first) <= 80_000_000,
+                        "Loop preview exceeds pixel budget; use a smaller region or video", "resource_limit")
+                first_image.save(staged, save_all=True, append_images=list(stream),
+                                 duration=1000 / settings["fps"], loop=loop, disposal=2)
+        finally:
+            stream.close()
+        publish_file(output, staged)
+    return {"output": str(output), "frames": last - first, "start": first * 1000 / settings["fps"],
+            "duration": (last - first) * 1000 / settings["fps"], "quality": spec["quality"],
+            "camera": True, "transitions": True}
