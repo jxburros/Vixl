@@ -1,6 +1,6 @@
 # The Germ King
 
-*A very small revenge.* A short animated film made entirely with Vixl (rebuilt with Vixl 0.20.0).
+*A very small revenge.* A short animated film made entirely with Vixl (rebuilt with Vixl 0.21.0).
 
 Wizard Pip is too short to be taken seriously by the Council of the Very Tall. So he shrinks
 himself to microscopic size, discovers a world where he is finally the tall one, becomes
