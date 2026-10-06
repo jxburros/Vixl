@@ -23,7 +23,8 @@ VIXL = [sys.executable, "-m", "vixl"]  # the interpreter running this script has
 
 
 def run(command):
-    process = subprocess.run(command, capture_output=True, text=True)
+    process = subprocess.run(command, capture_output=True, encoding="utf-8", errors="replace",
+                             env={**os.environ, "PYTHONIOENCODING": "utf-8"})
     text = process.stdout.strip() or process.stderr.strip()
     try:
         data = json.loads(text) if text else {}
@@ -116,7 +117,10 @@ def main(argv=None):
     parser.add_argument("--proof", default="", help="Write a proof page here (.html)")
     parser.add_argument("--work", default=".vixl-ci", help="Folder for base renders and diff images")
     a = parser.parse_args(argv)
-    paths = sorted({path for pattern in a.paths.split() for path in glob.glob(pattern, recursive=True)
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="replace")  # a Windows console cannot print every finding
+    # Forward slashes on every platform: the summary shows them and `git show BASE:path` needs them.
+    paths = sorted({Path(path).as_posix() for pattern in a.paths.split() for path in glob.glob(pattern, recursive=True)
                     if path.endswith(".vixl") and Path(path).is_file()
                     and not Path(path).resolve().is_relative_to(Path(a.work).resolve())})
     rows = []

@@ -139,10 +139,10 @@ def test_calls_over_budget_are_regressions(tmp_path):
     baseline = tmp_path / "baseline.json"
     baseline.write_text(json.dumps({"required_passes": ["targets-fanout"], "tool_call_budgets": {"targets-fanout": 1}}))
     code = runner.main(["--tasks", "targets-fanout", "--baseline", str(baseline), "--out", str(tmp_path / "out")])
-    assert code == 1 and "targets-fanout (2 calls > 1)" in (tmp_path / "out" / "report.md").read_text()
+    assert code == 1 and "targets-fanout (2 calls > 1)" in (tmp_path / "out" / "report.md").read_text(encoding="utf-8")
     baseline.write_text(json.dumps({"required_passes": ["targets-fanout"], "max_mean_tool_calls": 1}))
     assert runner.main(["--tasks", "targets-fanout", "--baseline", str(baseline), "--out", str(tmp_path / "out")]) == 1
-    assert "mean tool calls 2.0 > 1" in (tmp_path / "out" / "report.md").read_text()
+    assert "mean tool calls 2.0 > 1" in (tmp_path / "out" / "report.md").read_text(encoding="utf-8")
 
 
 @pytest.mark.parametrize("name", ["pathfinder-badge", "seamless-spinner", "targets-fanout"])

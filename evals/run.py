@@ -39,10 +39,10 @@ def main(argv=None):
     out.mkdir(parents=True, exist_ok=True)
     results, summary = run(tasks, agent, schema=args.schema, keep=out / "workspaces" if args.keep else None, tool_set=args.tools)
     meta = {"agent": args.agent, "model": args.model if args.agent == "claude" else None, "effort": args.effort, "schema": args.schema, "tools": args.tools}
-    (out / "results.json").write_text(json.dumps({"meta": meta, "summary": summary, "results": results}, indent=2, default=str))
+    (out / "results.json").write_text(json.dumps({"meta": meta, "summary": summary, "results": results}, indent=2, default=str), encoding="utf-8")
     regressions = []
     if args.baseline:
-        baseline = json.loads(Path(args.baseline).read_text())
+        baseline = json.loads(Path(args.baseline).read_text(encoding="utf-8"))
         by_task = {r["task"]: r for r in results}
         for name in baseline["required_passes"]:
             if name not in by_task or not by_task[name]["passed"]:
@@ -55,7 +55,7 @@ def main(argv=None):
     report = markdown(results, summary, meta)
     if args.baseline:
         report += "\nBaseline: " + ("regressions: " + ", ".join(regressions) if regressions else "all required tasks pass") + "\n"
-    (out / "report.md").write_text(report)
+    (out / "report.md").write_text(report, encoding="utf-8")
     print(report)
     return 0 if summary["passed"] == summary["tasks"] and not regressions else 1
 
