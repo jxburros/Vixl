@@ -128,7 +128,7 @@ Vixl is designed to be driven mainly by agents. The intended loop is: create or 
 | `vixl_import_image(path? \| data_base64?, name)` | Embed a workspace file or base64/data-URL bytes as a layer; returns id, size, bounds |
 | `vixl_operations_apply(operations, dry_run, detail)` | Atomic edits; schemas are included directly in tools/list (or on demand in slim mode) |
 | `vixl_operation_schema(types)` | Exact JSON Schema for named operation types |
-| `vixl_check(checks, targets, safe_area, avoid, thumbnail_width, ..., ink_limit, min_ppi)` | Design problems: bounds, text overlap, WCAG contrast, safe area/reserved zones, thumbnail legibility; opt-in `print` and `color_vision` |
+| `vixl_check(checks, targets, safe_area, avoid, thumbnail_width, ..., ink_limit, min_ppi)` | Design problems: bounds, text overlap, WCAG contrast, safe area/reserved zones, thumbnail legibility, and `diagram` (overlapping nodes, edges through nodes, unreadable labels); opt-in `print` and `color_vision` |
 | `vixl_render_preview(variables, max_width, max_height, max_bytes, region, time, proof, simulate)` | Fast preview-resolution PNG; `region` zooms in (up to 8×); `time` shows a timeline frame; `proof` soft-proofs CMYK; `simulate` shows color-vision deficiency |
 | `vixl_render_compare(before, after, mode)` | Side-by-side or red-highlight diff of two revisions (`previous`, `head~N`, branch, checkpoint, ID) plus the changed region |
 | `vixl_export_file(path, quality, scale, profile, variables, background, overwrite, color_space, icc_profile, intent, black_generation, ink_limit, proof, simulate, dpi, icon_sizes, time)` | Save full-resolution PNG/JPEG/WEBP/TIFF/AVIF/SVG/PDF/ICO, CMYK for print; return only file metadata |

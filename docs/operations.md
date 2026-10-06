@@ -97,6 +97,8 @@ New document state: `canvas.size`, `canvas.dpi`, `canvas.physical`, `canvas.blee
 | field / field-set | `kind`, `name`/`target`, `key`, `label`, `label_layer`, `group_label`, `required`, `read_only`, `default`, `max_length`, `comb`, `format`, `options`, `editable`, `option`, `on_value`, `tab`, `overflow`, `min_size`, `font`, `size`, `color`, `align`, `padding`, `appearance`, `x`, `y`, `width`, `height` — [forms](forms.md) |
 | form | `tab_order`, `entry_font`, `title`, `lang` |
 | drawing | `action` (`import`, `clean`, `vectorize`, `straighten`, `smooth`, `fill`, `stroke`, `restyle`), `asset`/`path`, `name`/`target`, `strokes`, `points`, `color`, `settings`, `x`, `y`, `width`, `height` — [hand drawings](drawing.md) |
+| diagram / diagram-from-text | `name`, `nodes` (`id`, `label`, `kind`, `color`, `text_color`, `icon`, `size`, `group`), `edges` (`from`, `to`, `label`, `kind`, `from_port`, `to_port`, `color`, `arrow`, `id`) or `text`, `layout` (`auto`, `layered`, `tree`, `radial`, `mindmap`, `grid`), `direction`, `routing`, `lanes`, `columns`, `theme`, `font`, `size`, `fit`, `x`, `y`, `width`, `height`, `margin`, `replace` — [diagrams](diagrams.md) |
+| diagram-set | `name`, the diagram fields, `remove_nodes`, `remove_edges`, `delete`; lays the diagram out again in place |
 
 Every operation also accepts `page` (a page name or number) in a multi-page document.
 

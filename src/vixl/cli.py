@@ -43,6 +43,8 @@ Pages:     page add NAME [--master M] [--after P] [--duplicate P] [--notes TEXT]
            page set P [--rename N] [--notes TEXT] [--hidden] [--transition fade], master add NAME [--from P], pages,
            render --page 2 | --page all (contact sheet), export deck.pdf|deck.pptx [--pages 1-3,5] [--pdf-content raster],
            check --checks deck [--min-font 18] [--max-words 60]; any operation accepts "page": P
+Diagrams:  diagram-from-text "A -> B -> C" --name NAME [--layout layered|tree|radial|mindmap|grid] [--direction TB|LR] [--routing orthogonal|curved|straight],
+           diagram NAME --nodes JSON --edges JSON, diagram-set NAME [--text TEXT] [--nodes JSON] [--remove-nodes ID…] [--delete], check --checks diagram
 Forms:     field add KEY --kind text|multiline|number|date|checkbox|radio|dropdown|signature --label TEXT [--required] …,
            field set LAYER …, field list, form settings [--tab-order reading|explicit] [--title T] [--lang en-US],
            check --checks form [--sample worst|rows.csv], render --out F --show-fields [--set KEY=VALUE],
@@ -748,7 +750,8 @@ def project_command(project, cmd, args, *, detail="compact"):
             "--checks",
             nargs="+",
             choices=["bounds", "overlap", "contrast", "safe_area", "legibility", "print", "color_vision", "content", "fonts", "blanks", "brand", "guides", "alignment",
-                     "deck", "title_position", "type_scale", "words", "min_font", "notes", "empty", "form", "drawing"],
+                     "deck", "title_position", "type_scale", "words", "min_font", "notes", "empty", "form", "drawing",
+                     "diagram"],
         )
         p.add_argument("--page", help="Check one page of a multi-page document (default: the active page)")
         p.add_argument("--pages", help="deck checks: the pages to check, e.g. 1-3,5 (default: every shown page)")

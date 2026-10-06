@@ -60,6 +60,10 @@ def compile_command(tokens):
     rich = compile_rich(cmd, args)
     if rich is not None:
         return rich
+    from .diagrams import compile_command as compile_diagram
+    diagram = compile_diagram(cmd, args)
+    if diagram is not None:
+        return diagram
     from .drawing import compile_command as compile_drawing
     sketch = compile_drawing(cmd, args)
     if sketch is not None:

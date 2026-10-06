@@ -212,6 +212,7 @@ CLI `--detail full`) includes complete before/after layer snapshots.
 | `page` / `master` | `action` (`add`, `select`, `remove`, `move`, `set`), `name`/`page`, `master`, `notes`, `background`, `hidden`, `transition` | [documents](documents.md#pages-masters-and-decks) |
 | `field` / `field-set` / `form` | `kind`, `key`, `label`/`label_layer`, `required`, `options`, `option`, `default`, `appearance`; `form`: `tab_order`, `title`, `lang` | [documents](documents.md#forms) |
 | `drawing` | `action` (`import`, `clean`, `vectorize`, `straighten`, `smooth`, `fill`, `stroke`, `restyle`), `asset`, `target`, `strokes`, `points`, `settings` | [hand drawings](drawing-shapes-guides.md#building-on-a-hand-drawing) |
+| `diagram` / `diagram-from-text` / `diagram-set` | `name`, `nodes`, `edges` or `text`, `layout`, `direction`, `routing`, `lanes`, `fit`, `x/y/width/height`; `diagram-set`: `remove_nodes`, `remove_edges`, `delete` | [diagrams](drawing-shapes-guides.md#diagrams-flowcharts-dependency-graphs-org-charts-mind-maps) |
 
 Any operation also accepts `"page"` to address a page of a multi-page document.
 

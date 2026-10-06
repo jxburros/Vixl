@@ -152,6 +152,9 @@ def check_state(project, state):
     validate_layout_record(state)
     from .automation import validate_state
     validate_state(state)
+    from .diagrams import validate as validate_diagrams
+
+    validate_diagrams(state)
     from .pages import validate_pages
 
     validate_pages(project, state)

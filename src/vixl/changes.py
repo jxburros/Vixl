@@ -164,7 +164,7 @@ def summarize(project, target=None):
     for key in ("variables", "swatches", "presets"):
         if state.get(key):
             result[key] = state[key] if key != "presets" else sorted(state[key])
-    for key in ("artboards", "comps", "symbols", "guides", "character_styles", "paragraph_styles", "luts"):
+    for key in ("artboards", "comps", "symbols", "guides", "character_styles", "paragraph_styles", "luts", "diagrams"):
         if state.get(key):
             result[key] = sorted(state[key])
     if state.get("selection"):

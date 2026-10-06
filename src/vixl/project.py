@@ -332,6 +332,10 @@ class Project:
             except (KeyError, TypeError, ValueError, OverflowError) as exc:
                 error = VixlError("invalid_operation", f"Malformed operation: {exc}")
                 raise located(error, index, operation, len(operations)) from exc
+        if candidate.state.get("diagrams"):
+            from .diagrams import refresh as refresh_diagrams
+
+            refresh_diagrams(candidate)
         from .validation import check_state
 
         try:
@@ -362,6 +366,10 @@ class Project:
         if any(op["type"] == "layout-apply" for op in operations):
             result["layout"] = deepcopy(candidate.state.get("layout", {}))
             result["unfilled_slots"] = list(dict.fromkeys(b["slot"] for b in result["layout"].get("blanks", [])))
+        if any(op["type"].startswith("diagram") for op in operations):
+            from .diagrams import report as diagram_report
+
+            result["diagram"] = diagram_report(candidate, operations)
         if any(op["type"] == "paint" for op in operations):
             from .brushes import stroke_diagnostics
             from .render import layer_image, resolve_layout
