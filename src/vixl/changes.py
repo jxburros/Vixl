@@ -54,6 +54,10 @@ def compact_changes(before, after):
             "changed": [name for name, f in current.items() if previous.get(name) != f],
             "removed": [name for name in previous if name not in current],
         }
+        if before.get("animation", {}).get("animations") != after.get("animation", {}).get("animations"):
+            from .animation_sets import summaries
+
+            changes["animation"]["animations"] = summaries(after.get("animation", {}))
     if before.get("pages") != after.get("pages") or before.get("masters") != after.get("masters"):
         changes["pages"] = [{k: v for k, v in page.items() if k in ("number", "name", "layers", "master", "active", "hidden")}
                             for page in after.get("pages") or []]
@@ -176,6 +180,8 @@ def summarize(project, target=None):
         result["brushes"] = sorted(state["brushes"])
     if state.get("animation", {}).get("frames"):
         result["animation_frames"] = [frame["name"] for frame in state["animation"]["frames"]]
+    if state.get("animation", {}).get("animations"):
+        result["animations"] = sorted(state["animation"]["animations"])
     if state.get("fields"):
         result["fields"] = [{k: v for k, v in item.items() if k in ("key", "kind", "required", "tab", "rect_pt", "page", "option")}
                             for item in state["fields"]]

@@ -875,7 +875,8 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
 
     @tool
     def vixl_animation_inspect(document: Document = None) -> dict:
-        """List saved animation frame names, sizes and durations without full snapshots."""
+        """List saved animation frame names, sizes and durations, plus any named animations (frame order,
+        timing, loop), without full snapshots."""
         with session.project(document=document) as project:
             return project.inspect_animation()
 
@@ -898,24 +899,33 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
     @tool
     def vixl_export_animation(
         path: str,
-        format: Literal["gif", "apng", "sheet"] = "gif",
+        format: Literal["gif", "apng", "webp", "mp4", "webm", "sheet"] | None = None,
+        animation: str | None = None,
         scale: Annotated[float, Field(ge=0.05, le=32)] = 1,
         sampling: Literal["nearest", "smooth"] = "nearest",
         colors: Annotated[int, Field(ge=2, le=256)] = 256,
+        quality: Annotated[int, Field(ge=1, le=100)] = 90,
         columns: Positive | None = None,
         document: Document = None,
     ) -> dict:
-        """Write saved frames as GIF, APNG or PNG sprite sheet plus JSON timing metadata in the workspace.
+        """Write saved frames as GIF, APNG, animated WebP, MP4/WebM (needs ffmpeg) or a PNG sprite sheet plus
+        JSON timing metadata in the workspace. Format follows the extension. animation=NAME exports one named
+        animation (a subset of the saved frames with its own order, timing and loop; define it with the
+        animation-set operation, see vixl_animation_inspect); omit it to export every saved frame in saved
+        order. A sheet holds every saved frame (or the animation's) and its JSON lists the named animations.
         Never overwrites files. sampling="nearest" (integer scale 1–32) keeps pixel art crisp; "smooth"
-        re-renders at any scale 0.05–32 for illustrations. colors caps the GIF palette; sheets keep every frame."""
+        re-renders at any scale 0.05–32 for illustrations. colors caps the GIF palette; quality applies to
+        MP4/WebM and smooth WebP (nearest WebP is lossless)."""
         with session.project(document=document) as project:
             destination = session.resolve(path)
             result = project.export_animation(
                 destination,
                 format=format,
+                animation=animation,
                 scale=int(scale) if float(scale).is_integer() else scale,
                 sampling=sampling,
                 colors=colors,
+                quality=quality,
                 columns=columns,
             )
             result["output"] = session.relative(destination)

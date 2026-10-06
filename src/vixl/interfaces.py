@@ -206,7 +206,8 @@ class Session:
 
     def apply(self, operations, dry_run=False, detail="compact", document=None):
         if isinstance(operations, dict):
-            operations = operations.get("operations", [operations])
+            single = "type" in operations or "operation" in operations
+            operations = [operations] if single else operations.get("operations", [operations])
         require(isinstance(operations, list), "Expected operation array")
         with self.project(write=not dry_run, document=document) as p:
             from .service_fonts import checker
@@ -645,16 +646,25 @@ def create_app(path, *, token=None, limits=None):
 
     @app.post("/animation/export")
     def animation_export(body: dict):
-        from .animation import animation_bytes
+        import tempfile
 
-        allowed = {"format", "scale", "sampling", "colors", "columns"}
+        from .animation import VIDEO, animation_bytes, export_animation
+
+        allowed = {"format", "scale", "sampling", "colors", "columns", "animation", "quality"}
         require(set(body) <= allowed, f"Animation export accepts {sorted(allowed)}", field="body")
         if isinstance(body.get("scale"), float) and body["scale"].is_integer():
             body["scale"] = int(body["scale"])
         fmt = body.get("format", "gif")
+        media = {"gif": "image/gif", "apng": "image/apng", "webp": "image/webp", "mp4": "video/mp4", "webm": "video/webm"}
+        if fmt in VIDEO:
+            with tempfile.TemporaryDirectory(prefix="vixl-animation-") as staging:
+                path = Path(staging) / ("animation." + fmt)
+                with session.project() as p:
+                    export_animation(p, path, **body)
+                return Response(path.read_bytes(), media_type=media[fmt])
         with session.project() as p:
             data, _ = animation_bytes(p, **body)
-        return Response(data, media_type={"gif": "image/gif", "apng": "image/apng"}.get(fmt, "image/png"))
+        return Response(data, media_type=media.get(fmt, "image/png"))
 
     @app.post("/measure")
     def measure(body: dict):

@@ -139,6 +139,22 @@ Inspect as text with `vixl_pixels_inspect("coin")`; preview `vixl_animation_prev
 export `vixl_export_animation(path="coin.gif", format="gif", scale=8)` or `format="sheet"` for a game
 engine (writes `coin.png` + `coin.json`). Static enlargements: `sampling="nearest"`.
 
+Several animations in one document: save every pose with `frame-save`, then give each cycle its own
+subset, order and timing, and export them separately. Recolour all poses at once with `frames-edit`
+(add `"scene": true` to keep the working scene in step so the next `frame-save` stays consistent):
+
+```json
+[
+  {"type":"animation-set","name":"idle","order":["idle1","idle2"]},
+  {"type":"animation-set","name":"walk","order":["walk1","walk2","walk3","walk2"],"duration":120},
+  {"type":"frames-edit","scene":true,"operations":[
+    {"type":"pixel-palette","target":"upper","colors":{"Y":"#d93a2b"}}]}
+]
+```
+
+`vixl_export_animation(path="keeper-walk.gif", animation="walk", scale=8)` (likewise `.webp`/`.mp4`), and
+`format="sheet"` once for a sprite sheet whose JSON lists every frame rectangle plus the animations.
+
 ## Explore alternatives safely
 
 ```text
