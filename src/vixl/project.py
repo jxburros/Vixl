@@ -282,7 +282,7 @@ class Project:
         )
 
     def apply(self, operations, *, dry_run=False, detail="full", check=None):
-        require(detail in ("compact", "full"), "Unknown response detail")
+        require(detail in ("brief", "compact", "full"), "Unknown response detail; use brief, compact or full")
         from .operations import execute
 
         if isinstance(operations, dict):
@@ -309,6 +309,7 @@ class Project:
         operations = validated
         candidate = self.clone()
         candidate._resource_budget = self.limits.max_operations - len(operations)
+        candidate._reports = {}  # What operations such as edit-layers and adapt-layout report back.
         before = candidate.inspect()
         for index, operation in enumerate(operations):
             calls.check_cancelled()  # A cancelled batch leaves the document untouched: nothing is committed yet.
@@ -345,16 +346,17 @@ class Project:
                 raise located(exc, index, operations[index], len(operations)) from exc
             raise
         candidate.__dict__.pop("_resource_budget", None)
+        reports = candidate.__dict__.pop("_reports", {})
         after = candidate.inspect()  # Also resolves constraints, rejecting cycles atomically.
         changes = {
             key: {"before": before.get(key), "after": after.get(key)}
             for key in candidate.state
             if before.get(key) != after.get(key)
         }
-        if detail == "compact":
-            from .changes import compact_changes
+        if detail in ("brief", "compact"):
+            from .changes import brief_changes, compact_changes
 
-            changes = compact_changes(before, after)
+            changes = (brief_changes if detail == "brief" else compact_changes)(before, after)
         if not dry_run:
             if candidate.transaction is not None:
                 candidate.transaction["operations"].extend(deepcopy(operations))
@@ -364,6 +366,9 @@ class Project:
         result = {"success": True, "dry_run": dry_run, "operations": len(operations), "changes": changes}
         if any(op["type"] == "layout-apply" for op in operations):
             result["layout"] = deepcopy(candidate.state.get("layout", {}))
+            if detail == "brief":
+                for key in ("layers", "principles"):
+                    result["layout"].pop(key, None)
             result["unfilled_slots"] = list(dict.fromkeys(b["slot"] for b in result["layout"].get("blanks", [])))
         if any(op["type"] == "paint" for op in operations):
             from .brushes import stroke_diagnostics
@@ -377,8 +382,11 @@ class Project:
                 result["warnings"] = ["Paint has no visible pixels; check --space canvas versus --space layer and resolved bounds."]
         from .advisories import advise
 
-        if warnings := advise(candidate, before, after, operations):
+        warnings = [*reports.pop("warnings", []), *advise(candidate, before, after, operations)]
+        if warnings:
             result["warnings"] = [*result.get("warnings", []), *warnings]
+        notes = [*notes, *reports.pop("normalized", [])]
+        result.update(reports)
         if notes:
             result["normalized"] = notes
         return result

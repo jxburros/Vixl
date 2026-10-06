@@ -103,7 +103,7 @@ Services:  serve | view [--host 127.0.0.1] [--port 8765], notes list|add|resolve
            mcp [--workspace DIR] [--http] [--tools core|ai|compact] [--schema slim] [--planner] [--require-document]
 Import:    import FILE.svg [--svg-mode editable|appearance|auto] | FILE.pdf [--page 1] [--dpi 144]
 
-Options: --project/-p FILE, --json, --allow-linked, --plugins, --max-pixels N, --detail compact|full, --version
+Options: --project/-p FILE, --json, --allow-linked, --plugins, --max-pixels N, --detail brief|compact|full, --version
 Use vixl commands --json for a complete inventory; vixl COMMAND --help works without a document. See docs/commands.md.
 """
 
@@ -224,7 +224,7 @@ def dispatch(argv):
     global_parser.add_argument("--allow-linked", action="store_true")
     global_parser.add_argument("--plugins", action="store_true")
     global_parser.add_argument("--max-pixels", type=int, default=40_000_000)
-    global_parser.add_argument("--detail", choices=["compact", "full"], default="compact")
+    global_parser.add_argument("--detail", choices=["brief", "compact", "full"], default="compact")
     global_parser.add_argument("--version", action="store_true")
     global_parser.add_argument("--runtime-info", action="store_true")
     options, tokens = global_parser.parse_known_args(argv)

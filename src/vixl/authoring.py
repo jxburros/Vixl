@@ -21,7 +21,10 @@ def schemas(add):
     })
     add("path-fit", {"padding": {"type": "number", "minimum": 0}, "preserve_aspect": B}, ["target"])
     add("layer-intent", {"role": {"enum": ["content", "decoration", "background"]},
-                         "allow_overlap": {"type": "array", "items": S, "maxItems": 512}}, ["target"])
+                         "allow_overlap": {"type": "array", "items": S, "maxItems": 512},
+                         "tags": {"type": "array", "items": S, "maxItems": 32,
+                                  "description": "Labels (replacing the layer's tags) that edit-layers can select with where.tag"}},
+        ["target"])
     add("font-fallbacks", {"fonts": {"type": "array", "items": S, "maxItems": 16}}, ["fonts"])
 
 
@@ -111,6 +114,15 @@ def execute(project, op):
             layer["role"] = op["role"]
         if "allow_overlap" in op:
             layer["allow_overlap"] = [project.layer(name)["id"] for name in op["allow_overlap"]]
+        if "tags" in op:
+            import re
+            for tag in op["tags"]:
+                require(re.fullmatch(r"[\w.:-]{1,40}", tag),
+                        f"Tags are 1–40 letters, digits, underscores, dots, colons or hyphens; got {tag!r}", field="tags")
+            if op["tags"]:
+                layer["tags"] = sorted(set(op["tags"]))
+            else:
+                layer.pop("tags", None)
         return
     if kind == "path-fit":
         require(layer["type"] == "shape" and layer["shape"] == "path", "Path fit needs a path layer")
@@ -158,6 +170,7 @@ def compile_command(cmd, args):
         p.add_argument("target")
         p.add_argument("--role", choices=["content", "decoration", "background"])
         p.add_argument("--allow-overlap", nargs="*")
+        p.add_argument("--tags", nargs="*")
     else:
         p.add_argument("fonts", nargs="*")
     return {"type": cmd, **{k: v for k, v in vars(p.parse_args(args)).items() if v is not None}}

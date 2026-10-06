@@ -145,6 +145,7 @@ def slim_schema(schema, in_properties=False):
 
 Positive = Annotated[int, Field(ge=1)]
 Detail = Literal["compact", "full"]
+ApplyDetail = Literal["brief", "compact", "full"]
 Document = Annotated[str | None, Field(description=".vixl path; default: active document")]
 
 
@@ -459,7 +460,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
             if font:
                 require(font in project.state.get("fonts", {}), "Import/register this font first")
                 op["font"] = project.state["fonts"][font]
-            return project.apply(op, detail="compact")
+            return project.apply(op, detail="brief")
 
     @tool
     def vixl_models_list(
@@ -557,12 +558,14 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
     def vixl_operations_apply(
         operations: Annotated[list[Operation], Field(min_length=1, max_length=1000)],
         dry_run: bool = False,
-        detail: Detail = "compact",
+        detail: ApplyDetail = "brief",
         document: Document = None,
     ) -> dict:
-        """Apply operations atomically (all or none) and autosave. compact returns new values of changed
-        fields by layer ID, and new layers as name/type/bounds; full adds before/after snapshots.
-        dry_run validates and previews the changes without saving. Omit target to use the active layer."""
+        """Apply operations atomically (all or none) and autosave. brief (default) returns the ID, name and
+        resulting bounds of each changed layer plus warnings (off-canvas or overflowing text, ignored fields);
+        compact adds the new values of changed fields; full adds before/after snapshots. dry_run validates and
+        previews the changes without saving. Omit target to use the active layer; edit-layers changes every
+        layer matching a selector in one operation."""
         return session.apply(operations, dry_run, detail, document)
 
     @tool
@@ -856,6 +859,34 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         from .export_batch import export_batch
 
         return export_batch(session, export_file, targets, defaults, overwrite, stop_on_error, document)
+
+    @tool
+    def vixl_adapt_layout(
+        sizes: Annotated[
+            list[str | dict],
+            Field(
+                min_length=1,
+                max_length=16,
+                description="Target sizes: a named size ('story', 'a4'), 'WIDTHxHEIGHT', or {size | width+height, "
+                "orientation?, dpi?, bleed?, name?}",
+            ),
+        ],
+        directory: str = ".",
+        name: Annotated[str, Field(description="File name template for each adapted copy: {name} {size} {index}")] = "{name}-{size}",
+        options: Annotated[dict | None, Field(description="adapt-layout settings for every size: scale, anchors, where, text")] = None,
+        formats: Annotated[list[str] | None, Field(description="Also export each copy, e.g. ['png']")] = None,
+        overwrite: bool = False,
+        report: Literal["summary", "layers"] = "summary",
+        document: Document = None,
+    ) -> dict:
+        """Adapt one document to several sizes in one call (a campaign: square, story, banner, print). Each size is
+        a saved copy re-laid out by the adapt-layout operation (sizes scale, each layer keeps its anchor to an edge
+        or its relative place, backgrounds stretch, photos cover) and optionally exported. Returns per size the
+        new file, canvas, scale, how many layers moved and any warnings; report='layers' lists where each layer
+        went. The source document is not changed; refine a copy with vixl_operations_apply."""
+        from .adapt import adapt_copies
+
+        return adapt_copies(session, export_file, sizes, directory, name, options, document, overwrite, formats, report)
 
     @tool
     def vixl_job(

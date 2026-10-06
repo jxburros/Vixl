@@ -17,6 +17,7 @@ from .richtext import TYPES as RICH_TYPES
 from .pages import TYPES as PAGE_TYPES
 from .forms import TYPES as FORM_TYPES
 from .drawing import TYPES as DRAWING_TYPES
+from .selectors import TYPES as SELECTOR_TYPES
 
 from copy import deepcopy
 import hashlib
@@ -57,7 +58,7 @@ ALIASES = {
     "make_selection": "select",
 }
 
-OPERATION_TYPES = list(DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_TYPES + BRUSH_TYPES + TIMELINE_TYPES + LAYOUT_TYPES + COLOR_TYPES + AUTOMATION_TYPES + CREATIVE_TYPES + CONTAINER_TYPES + AUTHORING_TYPES + ORGANIC_TYPES + GUIDE_TYPES + RICH_TYPES + PAGE_TYPES + FORM_TYPES + DRAWING_TYPES) + [
+OPERATION_TYPES = list(DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_TYPES + BRUSH_TYPES + TIMELINE_TYPES + LAYOUT_TYPES + COLOR_TYPES + AUTOMATION_TYPES + CREATIVE_TYPES + CONTAINER_TYPES + AUTHORING_TYPES + ORGANIC_TYPES + GUIDE_TYPES + RICH_TYPES + PAGE_TYPES + FORM_TYPES + DRAWING_TYPES + SELECTOR_TYPES) + [
     "add",
     "solid",
     "gradient",
@@ -259,6 +260,9 @@ def execute(project, op):
     kind = ALIASES.get(kind, kind)
     require(isinstance(kind, str), "Operation requires a type")
     target = op.get("target", op.get("layer"))
+    if kind in SELECTOR_TYPES:
+        from .selectors import execute as execute_selectors
+        return execute_selectors(project, op)
     if kind in PAGE_TYPES:
         from .pages import execute as execute_pages
         return execute_pages(project, op)
