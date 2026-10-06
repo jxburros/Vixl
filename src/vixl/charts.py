@@ -119,7 +119,9 @@ def nice_scale(low, high, intervals, fixed_min=None, fixed_max=None):
     for exponent in (-1, 0, 1):
         for factor in (1, 2, 5):
             step = factor * base * 10 ** exponent
-            score = abs(math.ceil(span / step - 1e-9) - intervals)
+            count = math.ceil(span / step - 1e-9)
+            # Headroom above the data counts against a step, so 3,330 gets 0–3,500 rather than 0–4,000.
+            score = abs(count - intervals) + (0 if fixed_max is not None else 12 * max(0, (count * step - span) / span - 0.1))
             if best is None or score < best[0] or (score == best[0] and step > best[1]):
                 best = (score, step)
     step = round(best[1], 12)
@@ -1330,6 +1332,12 @@ def execute(project, op):
                 "or omit target to draw a new one", field="target")
     recipe = deepcopy(target["chart"]) if target else {"kind": "bar"}
     merge_options(recipe, op)
+    pinned = [s["name"] for s in recipe.get("series", []) if s.get("color")] if op.get("colors") else []
+    if pinned and not (op.get("series") or op.get("rows") or op.get("csv")):
+        from .notices import warn
+
+        warn(project, f"colors does not recolour series {', '.join(map(repr, pinned[:6]))}: each stores its own "
+                      "color, which wins; resend series with new colors, or without color to take colors")
     if not read_data(project, op, recipe):
         require(target is not None, "A chart needs data: categories + series, a table, or a csv", field="categories")
     if target is not None:

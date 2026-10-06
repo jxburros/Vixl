@@ -69,7 +69,7 @@ Aliases: `input` and `form-field` are `field`; kinds `textbox` → `text`, `text
 | Setting | Meaning |
 | --- | --- |
 | `key` | Data key and PDF field name: 1–64 letters, digits, `_` or `-`, no dots. Defaults to the layer name. Unique, except that radio buttons of one group share it. It cannot also be a variable name. |
-| `label` / `label_layer` | The accessible name (the PDF tooltip a screen reader announces): text, or a text layer whose text names the field. Every field needs one. For a radio button, the option's own label. |
+| `label` / `label_layer` | The accessible name (the PDF tooltip a screen reader announces): text, or a text layer whose text names the field. Required markers (a trailing `*`, `(required)`) are stripped, so "Email *" is announced as "Email"; set `tooltip` to give the PDF tooltip explicitly and unchanged. Every field needs one. For a radio button, the option's own label. |
 | `group_label` | A radio group's question. |
 | `required`, `read_only` | PDF Required and ReadOnly flags. Filling rejects an empty required field, except a required signature, which is signed in the viewer. |
 | `default` | The initial value, validated like any value. Radio groups set it on one button. |

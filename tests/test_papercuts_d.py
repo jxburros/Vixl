@@ -72,6 +72,36 @@ def test_font_fallbacks_rejects_a_target():  # #206
     p.apply([{"type": "font-fallbacks", "fonts": ["DejaVuSans.ttf"]}])
 
 
+def test_form_tooltips_drop_required_markers_and_can_be_explicit():  # #222
+    import io
+
+    pypdf = pytest.importorskip("pypdf")
+    p = Project(400, 300, "white")
+    p.apply([
+        {"type": "text", "name": "l", "text": "Date * (YYYY-MM-DD)", "x": 10, "y": 10},
+        {"type": "field", "name": "date", "kind": "text", "label_layer": "l", "x": 10, "y": 60, "width": 200, "height": 30},
+        {"type": "field", "name": "email", "kind": "text", "label": "Email *", "x": 10, "y": 120, "width": 200, "height": 30},
+        {"type": "field", "name": "tel", "kind": "text", "label": "Phone *", "tooltip": "Phone number *",
+         "x": 10, "y": 180, "width": 200, "height": 30},
+    ])
+    fields = pypdf.PdfReader(io.BytesIO(p.export(format="PDF", fillable=True))).get_fields()
+    assert fields["date"]["/TU"] == "Date (YYYY-MM-DD)"
+    assert fields["email"]["/TU"] == "Email"
+    assert fields["tel"]["/TU"] == "Phone number *"
+
+
+def test_chart_colors_overridden_by_series_colors_warn_and_axis_headroom_is_tight():  # #214
+    from vixl.charts import nice_scale
+
+    p = Project(600, 400, "white")
+    p.apply([{"type": "chart", "name": "c", "kind": "bar", "categories": ["a", "b"],
+              "series": [{"name": "tea", "values": [1, 2], "color": "#ff7f50"}]}])
+    result = p.apply([{"type": "chart", "target": "c", "colors": ["#123456"]}], detail="compact")
+    assert any("'tea'" in w and "colors" in w for w in result.get("warnings", []))
+    assert nice_scale(0, 3330, 5)[:2] == (0, 3500)
+    assert nice_scale(0, 100, 5)[:2] == (0, 100)
+
+
 def test_operations_path_over_mcp_json_and_jsonl(tmp_path):  # #184
     server = mcp_server(workspace=tmp_path)
     (tmp_path / "ops.json").write_text(json.dumps([{"type": "solid", "name": "bg", "color": "red"}]))

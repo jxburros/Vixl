@@ -429,7 +429,7 @@ def test_nice_scale_picks_round_steps():
     assert nice_scale(0, 12, 5)[:3] == (0, 12, 2)
     assert nice_scale(-90, 150, 5)[2] == 50
     assert nice_scale(0, 0, 5)[:2] == (0, 1)
-    assert nice_scale(0, 3330, 5)[1] == 4000
+    assert nice_scale(0, 3330, 5)[1] == 3500
     low, high, step, ticks = nice_scale(0, 10, 5, fixed_min=0, fixed_max=10)
     assert (low, high, ticks[-1]) == (0, 10, 10)
 

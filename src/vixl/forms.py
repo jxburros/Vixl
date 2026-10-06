@@ -39,7 +39,7 @@ MAX_OPTIONS = 200
 MAX_LABEL = 500
 MAX_VALUE = 10000
 KEY = re.compile(r"[\w-]{1,64}")
-FIELD_SETTINGS = ("key", "kind", "label", "label_layer", "group_label", "required", "read_only", "default", "max_length",
+FIELD_SETTINGS = ("key", "kind", "label", "tooltip", "label_layer", "group_label", "required", "read_only", "default", "max_length",
                   "comb", "format", "pattern", "message", "options", "editable", "option", "on_value", "tab", "overflow",
                   "min_size")
 APPEARANCE = ("style", "fill", "stroke", "stroke_width", "radius", "mark", "mark_color")
@@ -123,6 +123,8 @@ def schemas(add):
         "kind": d({"type": "string", "enum": list(KINDS)}, "Field kind."),
         "key": d(S, "Data key used by fills and CSV columns: 1–64 letters, digits, _ or - (default: from name)."),
         "label": d(S, f"Accessible name, up to {MAX_LABEL} characters (label or label_layer is required)."),
+        "tooltip": d(S, f"Accessible name (PDF tooltip) used as given, up to {MAX_LABEL} characters; by default it is the "
+                        "label with required markers such as a trailing * removed."),
         "label_layer": d(S, "ID or name of a text layer whose text names the field."),
         "group_label": d(S, "Radio only: accessible name of the radio group."),
         "required": d(B, "The value must be filled. A required signature is flagged for the viewer and signed there."),
@@ -352,7 +354,7 @@ def validate_field(layer, state):
     key = record.get("key")
     require(isinstance(key, str) and KEY.fullmatch(key),
             "key must be 1–64 letters, digits, underscores or hyphens (no dots)", field="key")
-    for name in ("label", "group_label"):
+    for name in ("label", "tooltip", "group_label"):
         if name in record:
             require(isinstance(record[name], str) and len(record[name]) <= MAX_LABEL,
                     f"{name} is text up to {MAX_LABEL} characters", field=name)
@@ -1130,8 +1132,10 @@ def tab_order(state, entries):
 def label_text(view, layer, resolved=None):
     """A field's accessible name: its label, or its label layer's text."""
     record = layer["field"]
+    if record.get("tooltip"):
+        return record["tooltip"]
     if record.get("label"):
-        return record["label"]
+        return plain_label(record["label"])
     if record.get("label_layer"):
         resolved = resolved or {}
         target = resolved.get(record["label_layer"])
@@ -1140,8 +1144,16 @@ def label_text(view, layer, resolved=None):
         if target and target.get("type") == "text":
             from .render import substitute
 
-            return substitute(target.get("text", ""), view.state.get("variables", {})).strip()
+            return plain_label(substitute(target.get("text", ""), view.state.get("variables", {})))
     return ""
+
+
+def plain_label(text):
+    """A label without its required marker (a trailing or leading ``*``/``†``, ``(required)``), so screen
+    readers say "Email" for "Email *"."""
+    text = re.sub(r"\s*\(required\)\s*$", "", text.strip(), flags=re.I)
+    text = re.sub(r"\s*[*\u2020\u2217\u204e]+\s*(?=(\(|$))", " ", text).strip()
+    return re.sub(r"^[*\u2020]+\s*", "", text) or text
 
 
 def summary(project, page=None):
