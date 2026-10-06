@@ -58,6 +58,8 @@ segments) or explicit anchor nodes. Handle coordinates are absolute in the path'
 ],"stroke":"#006d77","stroke_width":4,"fill":"transparent"}
 ```
 
+`stroke_width`, `line_cap`, `trim_start` and `trim_end` apply to the pen's stroke; the trim (0–100 % of the path's length) is animatable, which draws the path on over time (see [animation](brushes-and-animation.md#drawing-a-line-on)).
+
 Without `width` and `height`, node coordinates are canvas positions (offset by `x`/`y` when
 given) and the layer's box fits the drawn path, its stroke and its handles, so `inspect` and the
 layout checks see the shape where it is; `x:"center"` centers that fitted box. With `width` and

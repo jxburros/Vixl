@@ -254,6 +254,10 @@ class PageBuilder:
             return "group opacity" if layer["opacity"] != 1 else None
         if layer["type"] == "field":
             return None
+        from .trim import trim_range
+
+        if trim_range(layer):
+            return "trimmed stroke"
         if layer["type"] not in VECTOR_LEAVES:
             return {"raster": "image", "frame": "image", "paint": "brush strokes", "pixel": "pixel art",
                     "pathfinder": "pathfinder"}.get(layer["type"], layer["type"])

@@ -26,7 +26,7 @@ The authoritative schema is always `vixl schema` / `GET /schema` / `vixl://opera
 | `solid` | `name`, `width`, `height`, `color`, `x`, `y` | Defaults to canvas size. |
 | `gradient` | `name`, `width`, `height`, `start`, `end`, `direction`, `stops`, `angle`, `x`, `y` | `direction`: `vertical` (default), `horizontal`, `angled` (`angle` 0°=left→right, 90°=top→bottom), `radial`. `stops`: 2–64 `{"offset":0..1,"color":…}` strictly increasing. |
 | `text` | **`text`**, `name`, `size`, `color`, `align` (`left`/`center`/`right`), `spacing` (line spacing px), `font`, `x`, `y` | `x`/`y` may be `"center"` or `"N%"`. `font`: a registered name, `heading`/`body` (follows the document typography), or a file path (CLI/Python only); default font DejaVu Sans is the proofing fallback. Multiline via `\n`. |
-| `shape` | **`shape`**, `name`, `width`, `height`, `x`, `y`, `fill`, `stroke`, `stroke_width`, `radius`, `sides`, `inner_radius` | `shape`: `rectangle`, `rounded-rectangle` (`radius`), `ellipse`, `polygon` (`sides`), `star` (`sides`, `inner_radius` 0.01–1), `line`. Procedural, redrawn crisply on resize. |
+| `shape` | **`shape`**, `name`, `width`, `height`, `x`, `y`, `fill`, `stroke`, `stroke_width`, `line_cap`, `trim_start`, `trim_end`, `radius`, `sides`, `inner_radius` | `shape`: `rectangle`, `rounded-rectangle` (`radius`), `ellipse`, `polygon` (`sides`), `star` (`sides`, `inner_radius` 0.01–1), `line`. Procedural, redrawn crisply on resize. `trim_start`/`trim_end` (0–100 %) draw only that part of the stroke, and are animatable (draw-on); `line_cap`: `butt`/`round`/`square`. `pen` takes the same three. |
 | `frame` | `name`, `width`, `height`, `x`, `y`, `path` *or* `asset`, `fit` (`fill`/`fit`) | Image placed in a fixed box; `fill` crops, `fit` letterboxes. |
 | `pixel-art` | `name`, `width`, `height`, `x`, `y`, `palette`, `background`, **or** `rows` | Character-grid sprite (1–256 per side). See *Pixel art* below. |
 | `adjustment` | **`effects`** (list of effect objects), `name` | Adjustment layer: filters the composited stack *below it* in its parent. |
@@ -186,7 +186,7 @@ deletes it. One style per kind; all accept `enabled` (bool) and `opacity` (0–1
 | `keyframe` | `target` (layer or `canvas`) or `targets` (list), **`property`**, **`time`**, **`value`**, `easing`, `extend` | Replaces a key at the same time. A key past the end lengthens the timeline and the result's `warnings` say `timeline duration changed 8000 -> 8400 ms`; `extend: false` keeps the duration. |
 | `keyframe-remove` | `target`, `property`, `time` | Track or single key. |
 | `animate` | `target` or `targets`, **`property`**, **`to`**, `from`, `start`, `end`/`duration`, `easing`, `extend` | Two keys; `from` defaults to the current value. `targets` gives several parts the same keys. |
-| `animate-preset` | `target` or `targets`, **`preset`**, `start`, `duration`, `easing`, `amount`, `distance`, `fade`, `to`, `extend` | fade/slide/pop/zoom/spin/pulse/shake/bounce/float/blink/typewriter/color-shift. |
+| `animate-preset` | `target` or `targets`, **`preset`**, `start`, `duration`, `easing`, `amount`, `distance`, `fade`, `to`, `extend` | fade/slide/pop/zoom/spin/pulse/shake/bounce/float/blink/typewriter/color-shift/draw-on/draw-off. |
 | `marker` | **`name`**, `time` or `delete` | Named times usable wherever a time is accepted. |
 
 ## Legacy aliases (avoid in new code)

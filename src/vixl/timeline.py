@@ -26,10 +26,13 @@ from .errors import VixlError, require
 from .model import finite
 
 TIMELINE_TYPES = ("timeline-set", "keyframe", "keyframe-remove", "animate", "animate-preset", "marker")
-NUMERIC = ("x", "y", "translate-x", "translate-y", "opacity", "rotation", "scale", "scale-x", "scale-y", "width", "height", "size", "spacing")
+NUMERIC = ("x", "y", "translate-x", "translate-y", "opacity", "rotation", "scale", "scale-x", "scale-y", "width", "height", "size", "spacing",
+           "trim_start", "trim_end")
 COLORS = ("color", "fill", "start", "end", "stroke_color", "stroke", "background")
 STEPPED = ("text", "visible")
 MIRRORING = ("scale", "scale-x", "scale-y")
+TRIM = ("trim_start", "trim_end")  # Stroke trim, percent of a shape's outline (trim.py).
+PROPERTY_ALIASES = {"trim-start": "trim_start", "trim-end": "trim_end"}
 MAX_DURATION = 600_000
 MAX_FRAMES = 3600
 # MP4/WebM stream one frame at a time into ffmpeg, so only the 10-minute duration bounds them.
@@ -86,6 +89,8 @@ PRESETS = (
     "blink",
     "typewriter",
     "color-shift",
+    "draw-on",
+    "draw-off",
 )
 
 
@@ -210,6 +215,8 @@ def _check_value(project, prop, value):
             finite(value, prop, 0, 1e5)
         if prop in MIRRORING:
             finite(value, prop, -1e5, 1e5)  # A negative scale mirrors the layer on that axis.
+        if prop in TRIM:
+            finite(value, prop, 0, 100)
     elif kind == "color":
         from .design import resolve_color
         from .render import color
@@ -278,6 +285,11 @@ def static_value(project, target, prop):
     if prop.startswith("effect:"):
         effect = _effect(layer, prop[7:])
         return effect.get("amount", 0)
+    if prop in TRIM:
+        from .trim import require_shape
+
+        require_shape(layer, prop)
+        return layer.get(prop, 0 if prop == "trim_start" else 100)
     if prop in ("scale", "scale-x", "scale-y"):
         return 1.0
     if prop in ("translate-x", "translate-y"):
@@ -309,6 +321,8 @@ def _effect(layer, ref):
 
 
 def execute_timeline(project, op):
+    if op.get("property") in PROPERTY_ALIASES:
+        op = {**op, "property": PROPERTY_ALIASES[op["property"]]}
     timeline = _timeline(project)
     kind = op["type"]
     duration = timeline["duration"]
@@ -490,6 +504,12 @@ def _apply_preset(project, timeline, target, op, written):
         count = max(1, int(op.get("amount", 3)))
         for i in range(count * 2 + 1):
             _set_key(track, start + round(length * i / (count * 2)), i % 2 == 0, None, written)
+    elif preset in ("draw-on", "draw-off"):
+        from .trim import require_shape
+
+        require_shape(layer, preset)
+        # Draw on: the stroke's end runs 0 -> 100%. Draw off: its start follows, erasing it the way it was drawn.
+        keys("trim_end" if preset == "draw-on" else "trim_start", [0.0, 100.0], easing or "ease-in-out")
     elif preset == "typewriter":
         require(layer["type"] == "text", "typewriter animates a text layer")
         text = layer["text"]
@@ -589,6 +609,8 @@ def project_at(project, time):
             layer["visible"] = bool(value)
         elif prop == "opacity":
             layer["opacity"] = min(max(value, 0.0), 1.0)
+        elif prop in TRIM:
+            layer[prop] = min(max(value, 0.0), 100.0)  # Easings that overshoot stay on the outline.
         elif prop == "rotation":
             layer["rotation"] = value % 360
             geometry.setdefault(target, {})["rotation"] = value
@@ -1012,7 +1034,8 @@ def schemas(add):
     value = {"type": ["number", "string", "boolean"]}
     prop = {"type": "string", "description": "Animatable property: " + ", ".join(NUMERIC + COLORS + STEPPED) + ", or effect:ID. "
             "scale, scale-x and scale-y accept negative values: -1 mirrors the layer on that axis, so animating "
-            "scale-x from 1 to -1 swings it over about its pivot (center by default)."}
+            "scale-x from 1 to -1 swings it over about its pivot (center by default). trim_start and trim_end (0-100, percent of a "
+            "shape's or path's outline) draw its stroke on or off: animate trim_end from 0 to 100."}
     extend = {"type": "boolean", "description": "Default true: a key past the timeline end lengthens the duration, and the result's "
               "warnings say so (timeline duration changed 8000 -> 8400 ms). False keeps the duration; the key stays past the end, "
               "shaping the last frames, and is not played."}

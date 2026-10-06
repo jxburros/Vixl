@@ -123,6 +123,9 @@ def compile_command(tokens):
             p.add_argument("--tension", type=float)
             p.add_argument("--corners", type=json.loads)
             p.add_argument("--stroke-width", type=float)
+            p.add_argument("--trim-start", type=float, help="Draw the stroke from this percent of its length (animatable)")
+            p.add_argument("--trim-end", type=float, help="Draw the stroke up to this percent of its length (animatable)")
+            p.add_argument("--line-cap", choices=["butt", "round", "square"])
         else:
             p.add_argument("resource")
             p.add_argument("--target", required=cmd == "container-swap")

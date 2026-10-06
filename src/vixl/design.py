@@ -555,6 +555,9 @@ def validate_design(project, state):
             finite(layer.get("radius", 0), "radius", 0, 16384)
             finite(layer.get("stroke_width", 1), "stroke width", 0, 1024)
             require(layer.get("line_cap", "butt") in ("butt", "round", "square"), "line_cap must be butt, round or square")
+            from .trim import validate_trim
+
+            validate_trim(layer)
             if "organic" in layer:
                 import json
                 require(isinstance(layer["organic"], dict) and len(json.dumps(layer["organic"])) <= 131072,
