@@ -2,6 +2,7 @@
 everywhere, the path box, and canvas-space edits of grouped layers."""
 
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -81,9 +82,10 @@ def test_mcp_rest_and_cli_surface_the_full_list(tmp_path):
     assert response.status_code == 400 and len(response.json()["errors"]) == 3
     result = subprocess.run([sys.executable, "-m", "vixl", "-p", str(path), "apply", "-"],
                             input=json.dumps({"operations": THREE_BAD}).encode(), capture_output=True, timeout=30,
-                            env={"PYTHONPATH": str(Path(__file__).parents[1] / "src"), "PATH": ""})
-    assert result.returncode == 1
-    assert all(f"operations[{i}]" in result.stderr.decode() for i in (0, 2, 3))
+                            env={**os.environ, "PYTHONPATH": str(Path(__file__).parents[1] / "src")})
+    stderr = result.stderr.decode(errors="replace")
+    assert result.returncode == 1, stderr
+    assert all(f"operations[{i}]" in stderr for i in (0, 2, 3)), stderr
 
 
 # --- #242: one opacity scale ------------------------------------------------------------------
