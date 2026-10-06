@@ -77,6 +77,8 @@ agent, edit independently, preview branch-merge, resolve conflicts explicitly, t
   lines and measure it with `drawing-report` (`preserved`) and `drawing-compare`.
 - **Rich text** — `rich-text` (Markdown) and `text-style` for mixed styles and lists in one box. `text-set` changes the
   whole layer (text, color, size, font) and keeps bullets and span styles that still apply; read the result's `warnings`.
+- **Baselines** — `baseline_y` on `text`/`text-set`/`move` places the first line's baseline; `align` with
+  `alignment: "baseline"` and `snap` with `anchors: ["baseline"]` (onto a baseline grid) line text up by baseline.
 - **Text flow** — `text-flow` threads a long text through linked frames (columns, pages, shapes); results report `overflow`.
 - **Diagrams** — `diagram-from-text` / `diagram` / `diagram-set` draw flowcharts, dependency graphs, org charts and mind maps
   as editable layers (swimlanes, auto-fit, `check diagram`).
@@ -96,6 +98,9 @@ agent, edit independently, preview branch-merge, resolve conflicts explicitly, t
 - **Linked documents** — `link` layers render another `.vixl` live (derived crops, pattern previews, sheets); `links` reports
   stale/missing sources, `link-embed` freezes one. See [production](references/production.md).
 - **Print merge** — `merge-impose` lays CSV rows out on print sheets with crop marks: vector-text PDF plus an editable sheet.
+  Placeholders take filters: `${name|upper}`, `${company|default:Independent}`, `${state|map:states}` (`variable-map`).
+- **QR codes and barcodes** — `qr` and `barcode` (Code 128, EAN-13) are vector shapes in every export; `data` may use
+  `${variables}` for merges; `check codes` flags small modules, low contrast and ink in the quiet zone.
 
 Read [documents](references/documents.md) (rich text, pages, forms), [charts](references/charts.md) and
 [drawing, shapes and guides](references/drawing-shapes-guides.md); lyric videos and form-fill jobs

@@ -123,6 +123,10 @@ def check_state(project, state):
             from .forms import validate_field
 
             validate_field(layer, state)
+        if layer.get("code") is not None:
+            from .codes import validate as validate_code
+
+            validate_code(layer)
         if layer["type"] == "link":
             from .links import validate as validate_link
 

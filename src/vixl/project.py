@@ -245,6 +245,11 @@ class Project:
 
         if link_layers(self.state):
             state["links"] = link_status(self)
+        from .variables import listing as placeholder_listing
+
+        placeholders = placeholder_listing(self)
+        if placeholders:
+            state["placeholders"] = placeholders
         return {
             **state,
             "version": __version__,
@@ -740,6 +745,22 @@ class Project:
             "asset_hashes": {k: hashlib.sha256(v).hexdigest() for k, v in self.assets.items()},
         }
 
+    def _rebase_links(self, path):
+        """Saving into another folder keeps relative link sources pointing at the same files (one history entry)."""
+        from .links import link_layers, rebase
+
+        if not self.path or not link_layers(self.state):
+            return
+        ops = rebase(self, path)
+        if not ops:
+            return
+        previous = self.path
+        self.path = path
+        try:
+            self.apply(ops)
+        finally:
+            self.path = previous
+
     def save(self, path=None):
         from .fileio import file_lock
         from .fileio import temporary
@@ -747,6 +768,7 @@ class Project:
         require(path or self.path, "Provide a .vixl project path")
         path = Path(path or self.path).resolve()
         require(path.suffix == ".vixl", "Project filenames must end in .vixl")
+        self._rebase_links(path)
         path.parent.mkdir(parents=True, exist_ok=True)
         with file_lock(str(path)):
             if self.path == path and self._revision and path.exists():

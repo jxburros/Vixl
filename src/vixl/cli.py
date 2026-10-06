@@ -62,7 +62,7 @@ Drawings:  drawing import sketch.jpg --name house [--settings '{"ink": "original
            drawing fill house --points '[[x, y, "#fc0"]]', drawing stroke house --points '[[x, y], …]', drawing restyle house,
            drawing report house, drawing compare house --out c.png, check --checks drawing, ai drawing-color house --prompt TEXT
 Linked:    link FILE.vixl [--name N] [--width W] [--fit fill|fit|stretch] [--position top-left] [--crop X,Y,W,H] [--artboard A] [--page P]
-           [--set NAME=VALUE], link-set LAYER … (changes a link), link-refresh [LAYER], link-embed LAYER, links (each link: ok, stale or missing)
+           [--set NAME=VALUE], link-set LAYER … (changes a link), link-refresh [LAYER], link-embed LAYER, links-relink FROM TO, links (each link: ok, stale or missing)
 Merge:     merge [TEMPLATE.vixl] --data rows.csv --out sheets.pdf [--sheet-document sheets.vixl] [--size letter] [--cols 2 --rows 3]
            [--gutter 0.125] [--margin 0.5] [--bleed template|0.125] [--no-crop-marks] [--registration] [--slug TEXT] [--copies N]
            [--dry-run] [--skip-invalid] [--unknown warn|error|ignore] [--replace], merge --rerun sheets.vixl [--data new.csv]
@@ -841,7 +841,7 @@ def project_command(project, cmd, args, *, detail="compact"):
             nargs="+",
             choices=["bounds", "overlap", "contrast", "safe_area", "legibility", "print", "color_vision", "content", "fonts", "blanks", "brand", "guides", "alignment",
                      "deck", "title_position", "type_scale", "words", "min_font", "notes", "empty", "form", "drawing", "links", "style",
-                     "diagram", "flow", "connected"],
+                     "diagram", "flow", "codes", "connected"],
         )
         p.add_argument("--connect-tolerance", type=float, default=2,
                        help="connected check: pixels of gap still counted as touching (default 2)")

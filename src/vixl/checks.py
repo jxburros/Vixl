@@ -15,7 +15,7 @@ from .model import finite
 from .timeline import animated as timeline_animated
 
 CHECKS = ("bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "fonts", "brand", "content", "form",
-          "links", "diagram", "flow")
+          "links", "diagram", "flow", "codes")
 FALLBACK_FONT = "DejaVuSans.ttf"
 OPTIONAL_CHECKS = ("print", "color_vision", "guides", "alignment", "drawing", "style", "motion", "character", "captions",
                    "connected")
@@ -716,6 +716,11 @@ def check_design(
         from .forms import check_form
 
         check_form(candidate, resolved, local_bounds, projection, layers, issue, sample=sample)
+
+    if "codes" in checks:
+        from .codes import check_codes
+
+        check_codes(candidate, resolved, layers, issue)
 
     if "links" in checks:
         check_links(candidate, [resolved[i] for i in resolved if resolved[i]["type"] == "link" and visible(resolved[i])],

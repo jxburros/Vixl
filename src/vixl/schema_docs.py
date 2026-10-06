@@ -95,7 +95,8 @@ SUMMARIES = {
     "effect-move": "Reorder a layer's effect stack: move one effect to a position, to the top or bottom, or before/after another.",
     "preset-save": "Save a layer's effect stack as a named preset.",
     "preset-apply": "Add a saved effect preset to a layer, optionally overriding amounts.",
-    "variable": "Set or delete a document variable used as ${name} in text, colors and images.",
+    "variable": "Set or delete a document variable used as ${name} (or ${name|upper|default:TEXT|map:NAME ...}) in text, colors and images.",
+    "variable-map": "Define, extend or delete a named value map that ${name|map:NAME} placeholders look values up in.",
     "swatch": "Define a named color (used as @name) that can build on other swatches.",
     "palette-define": "Define a named palette of 2-256 colors.",
     "palette-apply": "Apply a palette: adds numbered swatches and assigns role swatches (background, ink, accent …).",
@@ -144,6 +145,9 @@ SUMMARIES = {
     "edit-layers": "Apply a change or operation to every layer matching a selector (role, name, kind, tag, text) in one call.",
     "frames-edit": "Apply a list of operations to every saved frame, a named animation's frames or chosen frames, atomically.",
     "link": "Draw another .vixl document live as a layer (fit, position, crop, artboard, page, variables), or change a link.",
+    "qr": "Add a QR code as a vector shape (merged module path) with quiet zone and background; data may use ${variables}.",
+    "barcode": "Add a Code 128 or EAN-13 barcode as a vector shape with quiet zones; data may use ${variables}.",
+    "links-relink": "Rewrite the start of every link source in the document (a moved file or folder) and record the new revisions.",
     "link-refresh": "Record the current revision of linked documents so stale links are reported only when the source changes.",
     "link-embed": "Freeze a linked document into an ordinary raster layer that no longer follows its source.",
     "chart": "Draw a data-bound chart (bars, lines, areas, pie, donut) as vector layers, or restyle one with target.",
@@ -346,6 +350,8 @@ OVERRIDES = {
                   "delete_frames": "With unlink or delete: remove the frame layers too, not just the link.",
                   "match": "style: the words of the story to style (see occurrence).",
                   "occurrence": "style: which match to style, a 1-based number or 'all' (default)."},
+    "links-relink": {"from": "The source prefix to replace: a whole source path or a folder (whole path segments).",
+                     "to": "Its replacement; every rewritten source must name an existing .vixl file."},
     "link": {"source": "Workspace path of the .vixl document to draw (a link with a target: the new source).",
              "position": "Where the document sits in the box when it does not fill it: an anchor name (center, top-left …) "
                          "or [x, y] fractions 0-1.",
@@ -405,7 +411,7 @@ OVERRIDES = {
     "flip": {"direction": "horizontal mirrors left-right; vertical mirrors top-bottom."},
     "crop": {"x": "Left edge of the crop in source pixels.", "y": "Top edge of the crop in source pixels.",
              "width": "Crop width in source pixels.", "height": "Crop height in source pixels."},
-    "align": {"alignment": "Which edge or center to align to.", "margin": "Gap from the edge in pixels.",
+    "align": {"alignment": "Which edge or center to align to; baseline lines up text layers' first baselines.", "margin": "Gap from the edge in pixels.",
               "relative_to": "canvas, selection, or a layer name (default canvas, or the selection for targets).",
               "targets": "Layers to align together (default the target)."},
     "constrain": {"constraints": "Anchors to expressions: {left|right|top|bottom|center-x|center-y: a number, "
@@ -437,6 +443,10 @@ OVERRIDES = {
                     "before": "Place it just before this effect (ID, position or name).",
                     "after": "Place it just after this effect (ID, position or name)."},
     "variable": {"name": "Variable name (letters, digits, - and _).", "value": "String, number or boolean value."},
+    "variable-map": {"name": "Map name (letters, digits, - and _), used as ${variable|map:NAME}.",
+                     "values": "{value: replacement} entries; a '*' entry is used for values the map does not list.",
+                     "merge": "true adds to or overrides the existing entries instead of replacing the map.",
+                     "delete": "true removes the map (placeholders that still use it become an error)."},
     "preset-save": {"name": "Preset name."},
     "preset-apply": {"name": "Saved preset.", "overrides": "{effect name: amount} replacements."},
     "shape": {"shape": "rectangle, rounded-rectangle, ellipse, polygon, star, line, triangle, right-triangle, "
@@ -662,6 +672,19 @@ OVERRIDES = {
 }
 
 EXAMPLES = {
+    "qr": [
+        {"type": "qr", "name": "ticket-qr", "data": "https://example.com/t/123", "module": 6, "x": 40, "y": 40},
+        {"type": "qr", "name": "logo-qr", "data": "https://example.com", "error": "H", "size": 240,
+         "color": "#0f172a", "background": "#ffffff"},
+    ],
+    "barcode": [
+        {"type": "barcode", "name": "sku", "data": "400638133393", "symbology": "ean13", "module": 3, "height": 120,
+         "x": 40, "y": 400},
+        {"type": "barcode", "name": "order", "data": "ORDER-2026-0042", "module": 2, "height": 80},
+    ],
+    "variable-map": [
+        {"type": "variable-map", "name": "state", "values": {"NY": "New York", "CA": "California", "*": "Elsewhere"}},
+    ],
     "gradient": [
         {"type": "gradient", "name": "sky", "start": "#1e3a8a", "end": "#7dd3fc", "direction": "vertical"},
         {"type": "gradient", "name": "glow-disc", "width": 400, "height": 400, "start": "#fde68a",

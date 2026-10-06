@@ -750,7 +750,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
     def vixl_check(
         checks: list[Literal["bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "fonts", "brand", "print", "color_vision", "guides", "alignment",
                              "deck", "title_position", "type_scale", "words", "min_font", "notes", "empty", "form", "drawing", "links", "style",
-                             "diagram", "flow", "motion", "character", "captions", "connected"]]
+                             "diagram", "flow", "codes", "motion", "character", "captions", "connected"]]
         | None = None,
         targets: list[str] | None = None,
         safe_area: Annotated[

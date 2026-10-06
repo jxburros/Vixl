@@ -172,6 +172,8 @@ FIELD_ALIASES = {
 }
 FIELD_ALIASES["text-set"] = FIELD_ALIASES["text"]
 GEOMETRY_TYPES = {
+    "qr",
+    "barcode",
     "solid",
     "gradient",
     "shape",
@@ -191,7 +193,8 @@ GEOMETRY_TYPES = {
     "organic",
 }
 CENTER_TYPES = {
-    "solid", "gradient", "shape", "add", "frame", "symbol-instance", "move", "field", "link", "chart", "organic",
+    "solid", "gradient", "shape", "add", "frame", "symbol-instance", "move", "field", "link", "chart", "organic", "qr",
+    "barcode",
 }
 
 
@@ -295,7 +298,7 @@ def normalize_operation(operation, properties, known_types, effects, notes, inde
         raise VixlError("invalid_operation", f"Unknown pivot anchor {op['value']!r}; use {', '.join(ANCHORS)}", field="value",
                         allowed=list(ANCHORS))
     if kind == "snap" and isinstance(op.get("anchors"), list):
-        op["anchors"] = [canonical_anchor(v) or v for v in op["anchors"]]
+        op["anchors"] = [canonical_anchor(v, baseline=True) or v for v in op["anchors"]]
 
     if kind == "adjustment" and isinstance(op.get("effects"), list):
         for number, effect in enumerate(op["effects"]):
@@ -486,9 +489,17 @@ def resolve_geometry(project, op):
 
 
 def apply_centering(project, centered, operation):
-    """Center the created (or moved) layer within its canvas or parent group."""
-    if not centered:
-        return
+    """Center the created (or moved) layer within its canvas or parent group, then place a text layer's first
+    baseline at ``baseline_y`` when the operation gives one."""
+    if centered:
+        _center(project, centered, operation)
+    if operation.get("baseline_y") is not None:
+        from .text_metrics import place_baseline
+
+        place_baseline(project, operation)
+
+
+def _center(project, centered, operation):
     from .render import resolve_layout, stored_origin
 
     from .inplace import IN_PLACE_TYPES

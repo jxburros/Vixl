@@ -22,6 +22,7 @@ from .forms import TYPES as FORM_TYPES
 from .drawing import TYPES as DRAWING_TYPES
 from .selectors import TYPES as SELECTOR_TYPES
 from .links import TYPES as LINK_TYPES
+from .codes import TYPES as CODE_TYPES
 from .charts import TYPES as CHART_TYPES
 from .finishing import TYPES as FINISHING_TYPES
 from .diagrams import TYPES as DIAGRAM_TYPES
@@ -63,7 +64,7 @@ from .render import (
 COLOR_TYPES = ("palette-generate",)
 
 
-OPERATION_TYPES = list(DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_TYPES + BRUSH_TYPES + TIMELINE_TYPES + LAYOUT_TYPES + COLOR_TYPES + AUTOMATION_TYPES + CREATIVE_TYPES + CONTAINER_TYPES + AUTHORING_TYPES + ORGANIC_TYPES + IRREGULAR_TYPES + GUIDE_TYPES + RICH_TYPES + PAGE_TYPES + FORM_TYPES + DRAWING_TYPES + STACK_TYPES + SELECTOR_TYPES + LINK_TYPES + CHART_TYPES + FINISHING_TYPES + DIAGRAM_TYPES + FLOW_TYPES + TRANSFORM_TYPES + MOTION_TYPES + CHARACTER_TYPES + COMIC_TYPES + TEXTURE_TYPES + AUDIO_TYPES + VECTOR_TYPES + CAPTION_TYPES + SCENE_TYPES) + [
+OPERATION_TYPES = list(DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_TYPES + BRUSH_TYPES + TIMELINE_TYPES + LAYOUT_TYPES + COLOR_TYPES + AUTOMATION_TYPES + CREATIVE_TYPES + CONTAINER_TYPES + AUTHORING_TYPES + ORGANIC_TYPES + IRREGULAR_TYPES + GUIDE_TYPES + RICH_TYPES + PAGE_TYPES + FORM_TYPES + DRAWING_TYPES + STACK_TYPES + SELECTOR_TYPES + LINK_TYPES + CODE_TYPES + CHART_TYPES + FINISHING_TYPES + DIAGRAM_TYPES + FLOW_TYPES + TRANSFORM_TYPES + MOTION_TYPES + CHARACTER_TYPES + COMIC_TYPES + TEXTURE_TYPES + AUDIO_TYPES + VECTOR_TYPES + CAPTION_TYPES + SCENE_TYPES) + [
     "add",
     "solid",
     "gradient",
@@ -103,9 +104,35 @@ OPERATION_TYPES = list(DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_T
     "effect-move",
     "rasterize",
     "variable",
+    "variable-map",
     "preset-save",
     "preset-apply",
 ]
+
+
+def _align_baselines(project, op, targets, ref):
+    """Move text layers vertically so their first baselines line up with the reference's: a text layer named in
+    relative_to, or the first target."""
+    from .render import stored_origin
+    from .text_metrics import first_baseline, resolved_text
+
+    require(ref != "canvas", "Baseline alignment lines text up with another text layer: give targets (the first sets "
+            "the baseline) or relative_to a text layer", field="relative_to")
+
+    def baseline(item):
+        layer, resolved, bounds = resolved_text(project, item["id"])
+        require(not layer.get("rotation") % 360 and not layer.get("skew_x") and not layer.get("skew_y"),
+                f"{layer['name']!r} is rotated or skewed; baselines align on upright text", field="targets")
+        return bounds, first_baseline(project, resolved)
+
+    reference = project.layer(ref) if ref != "selection" else targets[0]
+    require(reference.get("parent") == targets[0].get("parent"), "Alignment targets must share a parent")
+    bounds, offset = baseline(reference)
+    line = bounds[1] + offset + finite(op.get("margin", 0), "margin", 0)
+    for item in targets:
+        box, offset = baseline(item)
+        item.update(constraints={})
+        item["x"], item["y"] = stored_origin(item, (box[0], line - offset))
 
 
 def embed_font_file(project, layer):
@@ -381,6 +408,9 @@ def execute(project, op):
     if kind in LINK_TYPES:
         from .links import execute as execute_links
         return execute_links(project, op)
+    if kind in CODE_TYPES:
+        from .codes import execute as execute_codes
+        return execute_codes(project, op)
     if kind in FINISHING_TYPES:
         from .finishing import execute as execute_finishing
         return execute_finishing(project, op)
@@ -590,6 +620,11 @@ def execute(project, op):
         else:
             require(isinstance(op["value"], (str, int, float, bool)), "Variables must be scalar values")
             project.state["variables"][op["name"]] = op["value"]
+        return
+    if kind == "variable-map":
+        from .variables import execute_map
+
+        execute_map(project, op)
         return
     layer = project.layer(target)
     layers = project.state["layers"]
@@ -801,6 +836,8 @@ def execute(project, op):
                 "box: content needs relative_to naming a layer (its content box is the target area)", field="box")
         margin = finite(op.get("margin", 0), "margin", 0)
         alignment = op["alignment"]
+        if alignment == "baseline":
+            return _align_baselines(project, op, targets, ref)
         for item in targets:
             x, y, w, h = layout[item["id"]]
             bx, by, bw, bh = box

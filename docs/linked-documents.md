@@ -17,7 +17,7 @@ a sheet of badges built from one template) stop going out of date.
 
 | Field | Meaning |
 | --- | --- |
-| `source` | **Required** to create a link (or give `target` to change one). The linked `.vixl` file, workspace-relative (see [Where links resolve](#where-links-resolve)). |
+| `source` | **Required** to create a link (or give `target` to change one). The linked `.vixl` file, relative to this document's folder or the workspace (see [Where links resolve](#where-links-resolve)). |
 | `name`, `x`, `y`, `width`, `height` | As for any layer. With neither size the layer takes the source's canvas size; with one, the other follows the source's aspect ratio. `x`/`y` accept `"center"`, `width`/`height` accept `"N%"`. |
 | `fit` | How the source fills the box: `fill` (default; scales to cover the box and crops the overflow, like a frame), `fit` (scales to sit inside and leaves the rest transparent) or `stretch` (distorts to the box). |
 | `position` | Where the content sits when it does not fill the box: `[x, y]` fractions (0 = left/top, 1 = right/bottom; default `[0.5, 0.5]`) or an anchor such as `top-left`. |
@@ -51,7 +51,10 @@ so you can tell what changed behind your back:
 - **`link-refresh [TARGET]`** records the current revision and size of one link (or every link of the
   active page) and re-checks it, so `stale` goes back to `ok`.
 - **`check`** gains a `links` check: broken links are errors (and are left out of the other checks so one
-  missing file does not hide the rest), stale or resized sources are warnings.
+  missing file does not hide the rest), stale or resized sources are warnings, and a source outside the
+  document's folder is an `info` finding (copying the folder elsewhere would break it).
+- Each listed link carries `path` (the resolved absolute file) and `resolved_from` (`document`,
+  `workspace` or `absolute`: which folder it was found in).
 - Production runs (`vixl_workflow("run", …)`) include the revisions of linked sources in their
   fingerprints, so a changed source re-renders the variants that use it.
 
@@ -68,9 +71,19 @@ rather than `rasterize` on a link: it also drops the link's fields).
 Linked files are an opt-in dependency, not an import (see the security notes in
 [architecture](architecture.md)):
 
-- A relative `source` resolves against the **workspace** (the folder `vixl mcp --workspace` serves, or the
-  CLI's current folder), then the folder of the document itself. The `link` operation stores the
-  workspace-relative path, so `source: "assets/tile.vixl"` works the same from the CLI, MCP and REST.
+- A relative `source` resolves against the **folder of the document itself** first, then the **workspace**
+  (the folder `vixl mcp --workspace` serves, or the CLI's current folder). The `link` operation stores a
+  source inside the document's folder relative to that folder, and any other source relative to the
+  workspace, so a folder holding a document and its sources can be copied or moved as a whole and its links
+  keep working. Documents saved before 0.22 stored workspace-relative paths; they still resolve through the
+  workspace fallback.
+- **Saving to another folder** (`save NEW.vixl`, `Project.save(path)`) rewrites relative sources so they still
+  name the same files (one `links-relink` history entry). Merge-impose sheet documents store the template
+  relative to the sheet document's folder when it is inside it.
+- **`links-relink {from, to}`** rewrites every source that starts with `from` (a file or a folder prefix,
+  whole path segments) to start with `to`, on every page and master, and records each moved link's
+  revision: `{"type": "links-relink", "from": "old-templates", "to": "templates"}`. The new files must
+  exist.
 - Through **REST and MCP** a source must stay inside the workspace. Absolute paths, `..` escapes and
   symlinks that lead outside are refused with a `forbidden` error, both when linking and when a
   hand-edited document is rendered. Only `.vixl` files can be linked.
@@ -105,11 +118,12 @@ vixl link-set LAYER [--source F] [--fit …] [--position …] [--crop …] [--ar
           [--set NAME=VALUE]… [--clear artboard|source_page|variables|crop]…
 vixl link-refresh [LAYER]
 vixl link-embed LAYER
+vixl links-relink FROM TO        # rewrite a source prefix in every link
 vixl links                       # every link with its state
 ```
 
 Through MCP and REST the same operations go through `vixl_operations_apply` / `POST /operations`
-(`link`, `link-refresh`, `link-embed`).
+(`link`, `link-refresh`, `link-embed`, `links-relink`).
 
 ## Related
 
