@@ -162,6 +162,8 @@ FIELD_ALIASES = {
 }
 FIELD_ALIASES["text-set"] = FIELD_ALIASES["text"]
 GEOMETRY_TYPES = {
+    "qr",
+    "barcode",
     "solid",
     "gradient",
     "shape",
@@ -179,7 +181,8 @@ GEOMETRY_TYPES = {
     "link",
     "chart",
 }
-CENTER_TYPES = {"solid", "gradient", "shape", "add", "frame", "symbol-instance", "move", "field", "link", "chart"}
+CENTER_TYPES = {"solid", "gradient", "shape", "add", "frame", "symbol-instance", "move", "field", "link", "chart", "qr",
+                "barcode"}
 
 
 def _snake(key):

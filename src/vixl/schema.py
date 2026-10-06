@@ -379,6 +379,8 @@ def _operation_schema():
     selector_schemas(add)
     from .links import schemas as link_schemas
     link_schemas(add)
+    from .codes import schemas as code_schemas
+    code_schemas(add)
     from .charts import schemas as chart_schemas
     chart_schemas(add)
     from .finishing import schemas as finishing_schemas

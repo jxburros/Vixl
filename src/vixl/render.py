@@ -281,6 +281,10 @@ def resolved_layers(project, variables=None):
         for key in ("text", "asset"):
             if key in layer:
                 layer[key] = substitute(layer[key], variables)
+        if layer.get("code"):
+            from .codes import resolve as resolve_code
+
+            resolve_code(layer, variables)
         if layer["type"] == "text" and layer.get("rich"):
             from .richtext import fill_variables
 

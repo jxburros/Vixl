@@ -92,6 +92,9 @@ agent, edit independently, preview branch-merge, resolve conflicts explicitly, t
 - **Linked documents** — `link` layers render another `.vixl` live (derived crops, pattern previews, sheets); `links` reports
   stale/missing sources, `link-embed` freezes one. See [production](references/production.md).
 - **Print merge** — `merge-impose` lays CSV rows out on print sheets with crop marks: vector-text PDF plus an editable sheet.
+  Placeholders take filters: `${name|upper}`, `${company|default:Independent}`, `${state|map:states}` (`variable-map`).
+- **QR codes and barcodes** — `qr` and `barcode` (Code 128, EAN-13) are vector shapes in every export; `data` may use
+  `${variables}` for merges; `check codes` flags small modules, low contrast and ink in the quiet zone.
 
 Read [documents](references/documents.md) (rich text, pages, forms), [charts](references/charts.md) and
 [drawing, shapes and guides](references/drawing-shapes-guides.md); lyric videos and form-fill jobs

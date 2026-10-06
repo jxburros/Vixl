@@ -143,6 +143,8 @@ SUMMARIES = {
     "edit-layers": "Apply a change or operation to every layer matching a selector (role, name, kind, tag, text) in one call.",
     "frames-edit": "Apply a list of operations to every saved frame, a named animation's frames or chosen frames, atomically.",
     "link": "Draw another .vixl document live as a layer (fit, position, crop, artboard, page, variables), or change a link.",
+    "qr": "Add a QR code as a vector shape (merged module path) with quiet zone and background; data may use ${variables}.",
+    "barcode": "Add a Code 128 or EAN-13 barcode as a vector shape with quiet zones; data may use ${variables}.",
     "links-relink": "Rewrite the start of every link source in the document (a moved file or folder) and record the new revisions.",
     "link-refresh": "Record the current revision of linked documents so stale links are reported only when the source changes.",
     "link-embed": "Freeze a linked document into an ordinary raster layer that no longer follows its source.",
@@ -664,6 +666,16 @@ OVERRIDES = {
 }
 
 EXAMPLES = {
+    "qr": [
+        {"type": "qr", "name": "ticket-qr", "data": "https://example.com/t/123", "module": 6, "x": 40, "y": 40},
+        {"type": "qr", "name": "logo-qr", "data": "https://example.com", "error": "H", "size": 240,
+         "color": "#0f172a", "background": "#ffffff"},
+    ],
+    "barcode": [
+        {"type": "barcode", "name": "sku", "data": "400638133393", "symbology": "ean13", "module": 3, "height": 120,
+         "x": 40, "y": 400},
+        {"type": "barcode", "name": "order", "data": "ORDER-2026-0042", "module": 2, "height": 80},
+    ],
     "variable-map": [
         {"type": "variable-map", "name": "state", "values": {"NY": "New York", "CA": "California", "*": "Elsewhere"}},
     ],
