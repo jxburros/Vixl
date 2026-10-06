@@ -1,0 +1,1429 @@
+[
+ {
+  "type": "shape",
+  "target": "bib",
+  "width": 478,
+  "height": 842
+ },
+ {
+  "type": "shape",
+  "target": "bib-fur-0",
+  "width": 331,
+  "height": 757
+ },
+ {
+  "type": "shape",
+  "target": "bib-fur-1",
+  "width": 347,
+  "height": 815
+ },
+ {
+  "type": "shape",
+  "target": "bib-fur-2",
+  "width": 366,
+  "height": 736
+ },
+ {
+  "type": "shape",
+  "target": "bib-fur-3",
+  "width": 385,
+  "height": 793
+ },
+ {
+  "type": "shape",
+  "target": "bib-fur-4",
+  "width": 406,
+  "height": 769
+ },
+ {
+  "type": "shape",
+  "target": "bib-fur-5",
+  "width": 424,
+  "height": 762
+ },
+ {
+  "type": "shape",
+  "target": "bib-fur-6",
+  "width": 436,
+  "height": 741
+ },
+ {
+  "type": "shape",
+  "target": "blaze",
+  "width": 480,
+  "height": 702
+ },
+ {
+  "type": "shape",
+  "target": "body-fur-0",
+  "width": 281,
+  "height": 772
+ },
+ {
+  "type": "shape",
+  "target": "body-fur-1",
+  "width": 237,
+  "height": 783
+ },
+ {
+  "type": "shape",
+  "target": "body-fur-10",
+  "width": 522,
+  "height": 768
+ },
+ {
+  "type": "shape",
+  "target": "body-fur-11",
+  "width": 231,
+  "height": 745
+ },
+ {
+  "type": "shape",
+  "target": "body-fur-12",
+  "width": 280,
+  "height": 665
+ },
+ {
+  "type": "shape",
+  "target": "body-fur-13",
+  "width": 284,
+  "height": 707
+ },
+ {
+  "type": "shape",
+  "target": "body-fur-14",
+  "width": 524,
+  "height": 763
+ },
+ {
+  "type": "shape",
+  "target": "body-fur-15",
+  "width": 246,
+  "height": 800
+ },
+ {
+  "type": "shape",
+  "target": "body-fur-16",
+  "width": 278,
+  "height": 769
+ },
+ {
+  "type": "shape",
+  "target": "body-fur-17",
+  "width": 511,
+  "height": 746
+ },
+ {
+  "type": "shape",
+  "target": "body-fur-18",
+  "width": 496,
+  "height": 718
+ },
+ {
+  "type": "shape",
+  "target": "body-fur-19",
+  "width": 248,
+  "height": 778
+ },
+ {
+  "type": "shape",
+  "target": "body-fur-2",
+  "width": 277,
+  "height": 785
+ },
+ {
+  "type": "shape",
+  "target": "body-fur-20",
+  "width": 274,
+  "height": 687
+ },
+ {
+  "type": "shape",
+  "target": "body-fur-21",
+  "width": 242,
+  "height": 787
+ },
+ {
+  "type": "shape",
+  "target": "body-fur-22",
+  "width": 546,
+  "height": 771
+ },
+ {
+  "type": "shape",
+  "target": "body-fur-23",
+  "width": 280,
+  "height": 800
+ },
+ {
+  "type": "shape",
+  "target": "body-fur-24",
+  "width": 293,
+  "height": 710
+ },
+ {
+  "type": "shape",
+  "target": "body-fur-3",
+  "width": 280,
+  "height": 782
+ },
+ {
+  "type": "shape",
+  "target": "body-fur-4",
+  "width": 250,
+  "height": 737
+ },
+ {
+  "type": "shape",
+  "target": "body-fur-5",
+  "width": 538,
+  "height": 768
+ },
+ {
+  "type": "shape",
+  "target": "body-fur-6",
+  "width": 253,
+  "height": 752
+ },
+ {
+  "type": "shape",
+  "target": "body-fur-7",
+  "width": 494,
+  "height": 661
+ },
+ {
+  "type": "shape",
+  "target": "body-fur-8",
+  "width": 531,
+  "height": 740
+ },
+ {
+  "type": "shape",
+  "target": "body-fur-9",
+  "width": 273,
+  "height": 737
+ },
+ {
+  "type": "shape",
+  "target": "bowl-base",
+  "width": 990,
+  "height": 1012
+ },
+ {
+  "type": "shape",
+  "target": "box-inside",
+  "width": 605,
+  "height": 822
+ },
+ {
+  "type": "shape",
+  "target": "brow-0",
+  "width": 300,
+  "height": 528
+ },
+ {
+  "type": "shape",
+  "target": "brow-1",
+  "width": 312,
+  "height": 524
+ },
+ {
+  "type": "shape",
+  "target": "brow-2",
+  "width": 482,
+  "height": 528
+ },
+ {
+  "type": "shape",
+  "target": "brow-3",
+  "width": 462,
+  "height": 524
+ },
+ {
+  "type": "shape",
+  "target": "bubble-tail",
+  "width": 704,
+  "height": 540
+ },
+ {
+  "type": "shape",
+  "target": "ear-l",
+  "width": 360,
+  "height": 524
+ },
+ {
+  "type": "shape",
+  "target": "ear-l-in",
+  "width": 336,
+  "height": 490
+ },
+ {
+  "type": "shape",
+  "target": "ear-r",
+  "width": 522,
+  "height": 524
+ },
+ {
+  "type": "shape",
+  "target": "ear-r-in",
+  "width": 500,
+  "height": 490
+ },
+ {
+  "type": "shape",
+  "target": "ear-tuft-0",
+  "width": 298,
+  "height": 480
+ },
+ {
+  "type": "shape",
+  "target": "ear-tuft-1",
+  "width": 312,
+  "height": 486
+ },
+ {
+  "type": "shape",
+  "target": "ear-tuft-2",
+  "width": 488,
+  "height": 480
+ },
+ {
+  "type": "shape",
+  "target": "ear-tuft-3",
+  "width": 478,
+  "height": 486
+ },
+ {
+  "type": "shape",
+  "target": "fish-tail",
+  "width": 182,
+  "height": 388
+ },
+ {
+  "type": "shape",
+  "target": "flap-l",
+  "width": 196,
+  "height": 812
+ },
+ {
+  "type": "shape",
+  "target": "flap-l-edge",
+  "width": 116,
+  "height": 758
+ },
+ {
+  "type": "shape",
+  "target": "flap-r",
+  "width": 712,
+  "height": 822
+ },
+ {
+  "type": "shape",
+  "target": "flap-r-edge",
+  "width": 712,
+  "height": 772
+ },
+ {
+  "type": "shape",
+  "target": "frame-string",
+  "width": 150,
+  "height": 302
+ },
+ {
+  "type": "shape",
+  "target": "grain-0",
+  "width": 397,
+  "height": 965
+ },
+ {
+  "type": "shape",
+  "target": "grain-1",
+  "width": 180,
+  "height": 1050
+ },
+ {
+  "type": "shape",
+  "target": "grain-10",
+  "width": 667,
+  "height": 1005
+ },
+ {
+  "type": "shape",
+  "target": "grain-11",
+  "width": 212,
+  "height": 1052
+ },
+ {
+  "type": "shape",
+  "target": "grain-12",
+  "width": 231,
+  "height": 1050
+ },
+ {
+  "type": "shape",
+  "target": "grain-13",
+  "width": 184,
+  "height": 1052
+ },
+ {
+  "type": "shape",
+  "target": "grain-14",
+  "width": 796,
+  "height": 1055
+ },
+ {
+  "type": "shape",
+  "target": "grain-15",
+  "width": 582,
+  "height": 1056
+ },
+ {
+  "type": "shape",
+  "target": "grain-2",
+  "width": 683,
+  "height": 957
+ },
+ {
+  "type": "shape",
+  "target": "grain-3",
+  "width": 151,
+  "height": 955
+ },
+ {
+  "type": "shape",
+  "target": "grain-4",
+  "width": 201,
+  "height": 960
+ },
+ {
+  "type": "shape",
+  "target": "grain-5",
+  "width": 522,
+  "height": 950
+ },
+ {
+  "type": "shape",
+  "target": "grain-6",
+  "width": 778,
+  "height": 1061
+ },
+ {
+  "type": "shape",
+  "target": "grain-7",
+  "width": 687,
+  "height": 1009
+ },
+ {
+  "type": "shape",
+  "target": "grain-8",
+  "width": 144,
+  "height": 1051
+ },
+ {
+  "type": "shape",
+  "target": "grain-9",
+  "width": 504,
+  "height": 967
+ },
+ {
+  "type": "shape",
+  "target": "head",
+  "width": 563,
+  "height": 700
+ },
+ {
+  "type": "shape",
+  "target": "head-fur-0",
+  "width": 374,
+  "height": 465
+ },
+ {
+  "type": "shape",
+  "target": "head-fur-1",
+  "width": 325,
+  "height": 476
+ },
+ {
+  "type": "shape",
+  "target": "head-fur-10",
+  "width": 266,
+  "height": 523
+ },
+ {
+  "type": "shape",
+  "target": "head-fur-11",
+  "width": 343,
+  "height": 470
+ },
+ {
+  "type": "shape",
+  "target": "head-fur-12",
+  "width": 467,
+  "height": 484
+ },
+ {
+  "type": "shape",
+  "target": "head-fur-13",
+  "width": 284,
+  "height": 502
+ },
+ {
+  "type": "shape",
+  "target": "head-fur-14",
+  "width": 514,
+  "height": 525
+ },
+ {
+  "type": "shape",
+  "target": "head-fur-15",
+  "width": 360,
+  "height": 467
+ },
+ {
+  "type": "shape",
+  "target": "head-fur-16",
+  "width": 440,
+  "height": 473
+ },
+ {
+  "type": "shape",
+  "target": "head-fur-17",
+  "width": 261,
+  "height": 532
+ },
+ {
+  "type": "shape",
+  "target": "head-fur-2",
+  "width": 378,
+  "height": 465
+ },
+ {
+  "type": "shape",
+  "target": "head-fur-3",
+  "width": 527,
+  "height": 553
+ },
+ {
+  "type": "shape",
+  "target": "head-fur-4",
+  "width": 429,
+  "height": 470
+ },
+ {
+  "type": "shape",
+  "target": "head-fur-5",
+  "width": 252,
+  "height": 557
+ },
+ {
+  "type": "shape",
+  "target": "head-fur-6",
+  "width": 518,
+  "height": 531
+ },
+ {
+  "type": "shape",
+  "target": "head-fur-7",
+  "width": 327,
+  "height": 476
+ },
+ {
+  "type": "shape",
+  "target": "head-fur-8",
+  "width": 442,
+  "height": 474
+ },
+ {
+  "type": "shape",
+  "target": "head-fur-9",
+  "width": 503,
+  "height": 511
+ },
+ {
+  "type": "shape",
+  "target": "mouth",
+  "width": 404,
+  "height": 673
+ },
+ {
+  "type": "shape",
+  "target": "muzzle-shade",
+  "width": 452,
+  "height": 700
+ },
+ {
+  "type": "shape",
+  "target": "name-swash",
+  "width": 700,
+  "height": 262
+ },
+ {
+  "type": "shape",
+  "target": "nose",
+  "width": 408,
+  "height": 634
+ },
+ {
+  "type": "shape",
+  "target": "nose-spot",
+  "width": 399,
+  "height": 646
+ },
+ {
+  "type": "shape",
+  "target": "stache-l",
+  "width": 372,
+  "height": 654
+ },
+ {
+  "type": "shape",
+  "target": "stache-r",
+  "width": 426,
+  "height": 654
+ },
+ {
+  "type": "shape",
+  "target": "tail",
+  "width": 685,
+  "height": 852
+ },
+ {
+  "type": "shape",
+  "target": "tail-fur",
+  "width": 685,
+  "height": 852
+ },
+ {
+  "type": "shape",
+  "target": "tail-tip",
+  "width": 644,
+  "height": 610
+ },
+ {
+  "type": "shape",
+  "target": "tape-crease",
+  "width": 372,
+  "height": 1020
+ },
+ {
+  "type": "shape",
+  "target": "whisker-0",
+  "width": 330,
+  "height": 652
+ },
+ {
+  "type": "shape",
+  "target": "whisker-1",
+  "width": 330,
+  "height": 676
+ },
+ {
+  "type": "shape",
+  "target": "whisker-2",
+  "width": 332,
+  "height": 708
+ },
+ {
+  "type": "shape",
+  "target": "whisker-3",
+  "width": 550,
+  "height": 652
+ },
+ {
+  "type": "shape",
+  "target": "whisker-4",
+  "width": 546,
+  "height": 676
+ },
+ {
+  "type": "shape",
+  "target": "whisker-5",
+  "width": 524,
+  "height": 708
+ },
+ {
+  "type": "shape",
+  "target": "head",
+  "stroke": "#0c0b10",
+  "stroke_width": 5
+ },
+ {
+  "type": "shape",
+  "target": "ear-l",
+  "stroke": "#0c0b10",
+  "stroke_width": 5
+ },
+ {
+  "type": "shape",
+  "target": "ear-r",
+  "stroke": "#0c0b10",
+  "stroke_width": 5
+ },
+ {
+  "type": "shape",
+  "target": "body",
+  "stroke": "#0c0b10",
+  "stroke_width": 5
+ },
+ {
+  "type": "shape",
+  "target": "paw-l",
+  "stroke": "#2e1f17",
+  "stroke_width": 3
+ },
+ {
+  "type": "shape",
+  "target": "paw-r",
+  "stroke": "#2e1f17",
+  "stroke_width": 3
+ },
+ {
+  "type": "shape",
+  "target": "nose",
+  "stroke": "#a8606e",
+  "stroke_width": 2
+ },
+ {
+  "type": "shape",
+  "target": "box-front",
+  "stroke": "#2e1f17",
+  "stroke_width": 3
+ },
+ {
+  "type": "shape",
+  "target": "flap-l",
+  "stroke": "#2e1f17",
+  "stroke_width": 3
+ },
+ {
+  "type": "shape",
+  "target": "flap-r",
+  "stroke": "#2e1f17",
+  "stroke_width": 3
+ },
+ {
+  "type": "shape",
+  "target": "box-inside",
+  "stroke": "#2e1f17",
+  "stroke_width": 3
+ },
+ {
+  "type": "shape",
+  "target": "bowl-rim",
+  "stroke": "#2e1f17",
+  "stroke_width": 3
+ },
+ {
+  "type": "shape",
+  "target": "bowl-base",
+  "stroke": "#2e1f17",
+  "stroke_width": 3
+ },
+ {
+  "type": "shape",
+  "target": "fish-body",
+  "stroke": "#2e1f17",
+  "stroke_width": 3
+ },
+ {
+  "type": "shape",
+  "target": "fish-tail",
+  "stroke": "#2e1f17",
+  "stroke_width": 3
+ },
+ {
+  "type": "shape",
+  "target": "ship-label",
+  "stroke": "#2e1f17",
+  "stroke_width": 2
+ },
+ {
+  "type": "shape",
+  "target": "box-tape",
+  "stroke": "#a98250",
+  "stroke_width": 1.5
+ },
+ {
+  "type": "shape",
+  "target": "note",
+  "stroke": "#b8972c",
+  "stroke_width": 2
+ },
+ {
+  "type": "text",
+  "target": "heading",
+  "font": "shantell",
+  "size": 66,
+  "x": 120,
+  "y": 34,
+  "rotation": -1.5
+ },
+ {
+  "type": "text",
+  "target": "heading-name",
+  "font": "shantell",
+  "size": 108,
+  "x": 334,
+  "y": 108,
+  "rotation": -2.5
+ },
+ {
+  "type": "text",
+  "target": "frame-caption",
+  "rotation": -6
+ },
+ {
+  "type": "irregular",
+  "targets": [
+   "head",
+   "ear-l",
+   "ear-r",
+   "body",
+   "bib",
+   "blaze",
+   "paw-l",
+   "paw-r",
+   "ear-l-in",
+   "ear-r-in",
+   "muzzle-shade"
+  ],
+  "seed": 11,
+  "strength": "natural",
+  "only": [
+   "wobble",
+   "pressure",
+   "width"
+  ]
+ },
+ {
+  "type": "irregular",
+  "targets": [
+   "nose",
+   "nose-spot",
+   "stache-l",
+   "stache-r",
+   "mouth"
+  ],
+  "seed": 12,
+  "strength": "subtle",
+  "only": [
+   "wobble",
+   "pressure"
+  ]
+ },
+ {
+  "type": "irregular",
+  "targets": [
+   "body-fur-0",
+   "body-fur-1",
+   "body-fur-2",
+   "body-fur-3",
+   "body-fur-4",
+   "body-fur-5",
+   "body-fur-6",
+   "body-fur-7",
+   "body-fur-8",
+   "body-fur-9",
+   "body-fur-10",
+   "body-fur-11",
+   "body-fur-12",
+   "body-fur-13",
+   "body-fur-14",
+   "body-fur-15",
+   "body-fur-16",
+   "body-fur-17",
+   "body-fur-18",
+   "body-fur-19",
+   "body-fur-20",
+   "body-fur-21",
+   "body-fur-22",
+   "body-fur-23",
+   "body-fur-24",
+   "head-fur-0",
+   "head-fur-1",
+   "head-fur-2",
+   "head-fur-3",
+   "head-fur-4",
+   "head-fur-5",
+   "head-fur-6",
+   "head-fur-7",
+   "head-fur-8",
+   "head-fur-9",
+   "head-fur-10",
+   "head-fur-11",
+   "head-fur-12",
+   "head-fur-13",
+   "head-fur-14",
+   "head-fur-15",
+   "head-fur-16",
+   "head-fur-17",
+   "bib-fur-0",
+   "bib-fur-1",
+   "bib-fur-2",
+   "bib-fur-3",
+   "bib-fur-4",
+   "bib-fur-5",
+   "bib-fur-6"
+  ],
+  "seed": 13,
+  "strength": "natural",
+  "only": [
+   "wobble",
+   "pressure",
+   "width",
+   "placement"
+  ]
+ },
+ {
+  "type": "irregular",
+  "targets": [
+   "whisker-0",
+   "whisker-1",
+   "whisker-2",
+   "whisker-3",
+   "whisker-4",
+   "whisker-5",
+   "brow-0",
+   "brow-1",
+   "brow-2",
+   "brow-3",
+   "ear-tuft-0",
+   "ear-tuft-1",
+   "ear-tuft-2",
+   "ear-tuft-3"
+  ],
+  "seed": 14,
+  "strength": "natural",
+  "only": [
+   "wobble",
+   "pressure"
+  ]
+ },
+ {
+  "type": "irregular",
+  "targets": [
+   "tail",
+   "tail-fur",
+   "tail-tip"
+  ],
+  "seed": 15,
+  "strength": "natural",
+  "only": [
+   "pressure",
+   "width"
+  ]
+ },
+ {
+  "type": "irregular",
+  "targets": [
+   "box-front",
+   "flap-l",
+   "flap-r",
+   "box-inside",
+   "box-tape",
+   "ship-label",
+   "stamp",
+   "box-rim",
+   "flap-l-edge",
+   "flap-r-edge",
+   "tape-crease"
+  ],
+  "seed": 16,
+  "strength": "natural",
+  "only": [
+   "wobble",
+   "jitter",
+   "pressure"
+  ]
+ },
+ {
+  "type": "irregular",
+  "targets": [
+   "bubble",
+   "bubble-tail"
+  ],
+  "seed": 17,
+  "strength": "subtle",
+  "only": [
+   "wobble",
+   "pressure"
+  ]
+ },
+ {
+  "type": "irregular",
+  "targets": [
+   "bowl-rim",
+   "bowl-base",
+   "bowl-inside",
+   "note",
+   "note-tape",
+   "frame",
+   "fish-body",
+   "fish-tail",
+   "frame-string"
+  ],
+  "seed": 18,
+  "strength": "natural",
+  "only": [
+   "wobble",
+   "jitter",
+   "pressure"
+  ]
+ },
+ {
+  "type": "irregular",
+  "targets": [
+   "floor-seam-0",
+   "floor-seam-1",
+   "floor-vseam-0",
+   "floor-vseam-1",
+   "floor-vseam-2",
+   "floor-vseam-3",
+   "floor-vseam-4",
+   "floor-vseam-5",
+   "floor-vseam-6",
+   "floor-vseam-7",
+   "grain-0",
+   "grain-1",
+   "grain-2",
+   "grain-3",
+   "grain-4",
+   "grain-5",
+   "grain-6",
+   "grain-7",
+   "grain-8",
+   "grain-9",
+   "grain-10",
+   "grain-11",
+   "grain-12",
+   "grain-13",
+   "grain-14",
+   "grain-15",
+   "baseboard-lip",
+   "name-swash"
+  ],
+  "seed": 19,
+  "strength": "natural",
+  "only": [
+   "wobble",
+   "pressure",
+   "width"
+  ]
+ },
+ {
+  "type": "irregular",
+  "targets": [
+   "paper-0",
+   "paper-1",
+   "paper-2",
+   "paper-3",
+   "paper-4",
+   "paper-5",
+   "paper-6",
+   "paper-7",
+   "paper-8",
+   "paper-9",
+   "paper-10",
+   "paper-11",
+   "paper-12",
+   "paper-13",
+   "paper-14",
+   "paper-15",
+   "paper-16",
+   "paper-17",
+   "paper-18",
+   "paper-19",
+   "paper-20",
+   "paper-21",
+   "paper-22",
+   "paper-23",
+   "paper-24",
+   "paper-25",
+   "paper-26",
+   "paper-27",
+   "paper-28",
+   "paper-29",
+   "paper-30",
+   "paper-31",
+   "paper-32",
+   "paper-33",
+   "paper-34",
+   "paper-35",
+   "paper-36",
+   "paper-37",
+   "paper-38",
+   "paper-39",
+   "paper-40",
+   "paper-41",
+   "paper-42",
+   "paper-43",
+   "paper-44",
+   "paper-45",
+   "paper-46",
+   "paper-47",
+   "paper-48",
+   "paper-49",
+   "paper-50",
+   "paper-51",
+   "paper-52",
+   "paper-53",
+   "paper-54",
+   "paper-55",
+   "paper-56",
+   "paper-57",
+   "paper-58",
+   "paper-59",
+   "paper-60",
+   "paper-61",
+   "paper-62",
+   "paper-63",
+   "paper-64",
+   "paper-65",
+   "paper-66",
+   "paper-67",
+   "paper-68",
+   "paper-69",
+   "paper-70",
+   "paper-71",
+   "paper-72",
+   "paper-73",
+   "paper-74",
+   "paper-75",
+   "paper-76",
+   "paper-77",
+   "paper-78",
+   "paper-79",
+   "paper-80",
+   "paper-81",
+   "paper-82",
+   "paper-83",
+   "paper-84",
+   "paper-85",
+   "paper-86",
+   "paper-87",
+   "paper-88",
+   "paper-89",
+   "paper-90",
+   "paper-91",
+   "paper-92",
+   "paper-93",
+   "paper-94",
+   "paper-95",
+   "paper-96",
+   "paper-97",
+   "paper-98",
+   "paper-99",
+   "paper-100",
+   "paper-101",
+   "paper-102",
+   "paper-103",
+   "paper-104",
+   "paper-105",
+   "paper-106",
+   "paper-107",
+   "paper-108",
+   "paper-109",
+   "paper-110",
+   "paper-111",
+   "paper-112",
+   "paper-113",
+   "paper-114",
+   "paper-115",
+   "paper-116",
+   "paper-117",
+   "paper-118",
+   "paper-119",
+   "paper-120",
+   "paper-121",
+   "paper-122",
+   "paper-123",
+   "paper-124",
+   "paper-125",
+   "paper-126",
+   "paper-127",
+   "paper-128",
+   "paper-129",
+   "paper-130",
+   "paper-131",
+   "paper-132",
+   "paper-133",
+   "paper-134",
+   "paper-135",
+   "paper-136",
+   "paper-137",
+   "paper-138",
+   "paper-139",
+   "paper-140",
+   "paper-141",
+   "paper-142",
+   "paper-143",
+   "paper-144",
+   "paper-145",
+   "paper-146",
+   "paper-147",
+   "paper-148",
+   "paper-149",
+   "paper-150",
+   "paper-151",
+   "paper-152",
+   "paper-153",
+   "paper-154",
+   "paper-155",
+   "paper-156",
+   "paper-157",
+   "paper-158",
+   "paper-159",
+   "paper-160",
+   "paper-161",
+   "paper-162",
+   "paper-163",
+   "paper-164",
+   "paper-165",
+   "paper-166",
+   "paper-167",
+   "paper-168",
+   "paper-169",
+   "paper-170",
+   "paper-171",
+   "paper-172",
+   "paper-173",
+   "paper-174",
+   "paper-175",
+   "paper-176",
+   "paper-177",
+   "paper-178",
+   "paper-179",
+   "paper-180",
+   "paper-181",
+   "paper-182",
+   "paper-183",
+   "paper-184",
+   "paper-185",
+   "paper-186",
+   "paper-187",
+   "paper-188",
+   "paper-189",
+   "paper-190",
+   "paper-191",
+   "paper-192",
+   "paper-193",
+   "paper-194",
+   "paper-195",
+   "paper-196",
+   "paper-197"
+  ],
+  "seed": 20,
+  "strength": "natural",
+  "only": [
+   "placement",
+   "color"
+  ]
+ },
+ {
+  "type": "irregular",
+  "targets": [
+   "sparkle-0",
+   "sparkle-1",
+   "sparkle-2"
+  ],
+  "seed": 21,
+  "strength": "natural",
+  "only": [
+   "wobble",
+   "placement"
+  ]
+ },
+ {
+  "type": "drawn-texture",
+  "target": "body",
+  "name": "body-tex",
+  "preset": "crayon",
+  "color": "#57535f",
+  "seed": 3,
+  "strength": 0.45
+ },
+ {
+  "type": "reorder",
+  "target": "body-tex",
+  "above": "body"
+ },
+ {
+  "type": "clip",
+  "target": "body-tex",
+  "base": "body"
+ },
+ {
+  "type": "drawn-texture",
+  "target": "head",
+  "name": "head-tex",
+  "preset": "crayon",
+  "color": "#57535f",
+  "seed": 4,
+  "strength": 0.4
+ },
+ {
+  "type": "reorder",
+  "target": "head-tex",
+  "above": "head"
+ },
+ {
+  "type": "clip",
+  "target": "head-tex",
+  "base": "head"
+ },
+ {
+  "type": "drawn-texture",
+  "target": "bib",
+  "name": "bib-tex",
+  "preset": "pencil",
+  "color": "#c9bfb2",
+  "seed": 5,
+  "strength": 0.35
+ },
+ {
+  "type": "reorder",
+  "target": "bib-tex",
+  "above": "bib"
+ },
+ {
+  "type": "clip",
+  "target": "bib-tex",
+  "base": "bib"
+ },
+ {
+  "type": "drawn-texture",
+  "target": "blaze",
+  "name": "blaze-tex",
+  "preset": "pencil",
+  "color": "#cfc5b8",
+  "seed": 6,
+  "strength": 0.3
+ },
+ {
+  "type": "reorder",
+  "target": "blaze-tex",
+  "above": "blaze"
+ },
+ {
+  "type": "clip",
+  "target": "blaze-tex",
+  "base": "blaze"
+ },
+ {
+  "type": "drawn-texture",
+  "target": "box-front",
+  "name": "box-tex",
+  "preset": "hatch",
+  "color": "#8d5c2e",
+  "seed": 7,
+  "strength": 0.3
+ },
+ {
+  "type": "reorder",
+  "target": "box-tex",
+  "above": "box-front"
+ },
+ {
+  "type": "clip",
+  "target": "box-tex",
+  "base": "box-front"
+ },
+ {
+  "type": "drawn-texture",
+  "target": "floor",
+  "name": "floor-tex",
+  "preset": "crayon",
+  "color": "#6a3216",
+  "seed": 8,
+  "strength": 0.35
+ },
+ {
+  "type": "reorder",
+  "target": "floor-tex",
+  "above": "floor"
+ },
+ {
+  "type": "clip",
+  "target": "floor-tex",
+  "base": "floor"
+ },
+ {
+  "type": "drawn-texture",
+  "target": "note",
+  "name": "note-tex",
+  "preset": "crayon",
+  "color": "#e2be3c",
+  "seed": 9,
+  "strength": 0.4
+ },
+ {
+  "type": "reorder",
+  "target": "note-tex",
+  "above": "note"
+ },
+ {
+  "type": "clip",
+  "target": "note-tex",
+  "base": "note"
+ },
+ {
+  "type": "drawn-texture",
+  "target": "bubble",
+  "name": "bubble-tex",
+  "preset": "pencil",
+  "color": "#ddd5c8",
+  "seed": 10,
+  "strength": 0.2
+ },
+ {
+  "type": "reorder",
+  "target": "bubble-tex",
+  "above": "bubble"
+ },
+ {
+  "type": "clip",
+  "target": "bubble-tex",
+  "base": "bubble"
+ },
+ {
+  "type": "drawn-texture",
+  "target": "wall",
+  "name": "wall-tex",
+  "preset": "pencil",
+  "color": "#d9bf98",
+  "seed": 22,
+  "strength": 0.25
+ },
+ {
+  "type": "reorder",
+  "target": "wall-tex",
+  "above": "wall"
+ },
+ {
+  "type": "clip",
+  "target": "wall-tex",
+  "base": "wall"
+ },
+ {
+  "type": "pivot",
+  "target": "body-tex",
+  "value": "bottom"
+ },
+ {
+  "type": "motion",
+  "recipe": "breathing",
+  "targets": [
+   "body-tex"
+  ],
+  "amount": 2,
+  "period": 3000,
+  "duration": 12000,
+  "close": true
+ },
+ {
+  "type": "look",
+  "target": "wall",
+  "look": "paper",
+  "amount": 0.6
+ }
+]

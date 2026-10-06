@@ -1,0 +1,207 @@
+[
+ {
+  "type": "pivot",
+  "target": "bubble-ink",
+  "value": [
+   660,
+   500
+  ],
+  "units": "canvas"
+ },
+ {
+  "type": "keyframes",
+  "target": "bubble-ink",
+  "property": "scale",
+  "keys": [
+   {
+    "time": 0,
+    "value": 1
+   },
+   {
+    "time": 2999,
+    "value": 1
+   },
+   {
+    "time": 3000,
+    "value": 0.94,
+    "easing": "ease-out-back"
+   },
+   {
+    "time": 3300,
+    "value": 1
+   },
+   {
+    "time": 5999,
+    "value": 1
+   },
+   {
+    "time": 6000,
+    "value": 0.94,
+    "easing": "ease-out-back"
+   },
+   {
+    "time": 6300,
+    "value": 1
+   },
+   {
+    "time": 8999,
+    "value": 1
+   },
+   {
+    "time": 9000,
+    "value": 0.94,
+    "easing": "ease-out-back"
+   },
+   {
+    "time": 9300,
+    "value": 1
+   },
+   {
+    "time": 12000,
+    "value": 1
+   }
+  ]
+ },
+ {
+  "type": "pivot",
+  "target": "bubble-tail-ink",
+  "value": [
+   660,
+   500
+  ],
+  "units": "canvas"
+ },
+ {
+  "type": "keyframes",
+  "target": "bubble-tail-ink",
+  "property": "scale",
+  "keys": [
+   {
+    "time": 0,
+    "value": 1
+   },
+   {
+    "time": 2999,
+    "value": 1
+   },
+   {
+    "time": 3000,
+    "value": 0.94,
+    "easing": "ease-out-back"
+   },
+   {
+    "time": 3300,
+    "value": 1
+   },
+   {
+    "time": 5999,
+    "value": 1
+   },
+   {
+    "time": 6000,
+    "value": 0.94,
+    "easing": "ease-out-back"
+   },
+   {
+    "time": 6300,
+    "value": 1
+   },
+   {
+    "time": 8999,
+    "value": 1
+   },
+   {
+    "time": 9000,
+    "value": 0.94,
+    "easing": "ease-out-back"
+   },
+   {
+    "time": 9300,
+    "value": 1
+   },
+   {
+    "time": 12000,
+    "value": 1
+   }
+  ]
+ },
+ {
+  "type": "pivot",
+  "target": "bubble-tex",
+  "value": [
+   660,
+   500
+  ],
+  "units": "canvas"
+ },
+ {
+  "type": "keyframes",
+  "target": "bubble-tex",
+  "property": "scale",
+  "keys": [
+   {
+    "time": 0,
+    "value": 1
+   },
+   {
+    "time": 2999,
+    "value": 1
+   },
+   {
+    "time": 3000,
+    "value": 0.94,
+    "easing": "ease-out-back"
+   },
+   {
+    "time": 3300,
+    "value": 1
+   },
+   {
+    "time": 5999,
+    "value": 1
+   },
+   {
+    "time": 6000,
+    "value": 0.94,
+    "easing": "ease-out-back"
+   },
+   {
+    "time": 6300,
+    "value": 1
+   },
+   {
+    "time": 8999,
+    "value": 1
+   },
+   {
+    "time": 9000,
+    "value": 0.94,
+    "easing": "ease-out-back"
+   },
+   {
+    "time": 9300,
+    "value": 1
+   },
+   {
+    "time": 12000,
+    "value": 1
+   }
+  ]
+ },
+ {
+  "type": "pivot",
+  "target": "body-ink",
+  "value": "bottom"
+ },
+ {
+  "type": "motion",
+  "recipe": "breathing",
+  "targets": [
+   "body-ink"
+  ],
+  "amount": 2,
+  "period": 3000,
+  "duration": 12000,
+  "close": true
+ }
+]
