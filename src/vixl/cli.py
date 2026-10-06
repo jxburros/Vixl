@@ -101,8 +101,11 @@ Type:      fonts [--category serif] [--mood M], font show FAMILY, font pairings 
            font pairing NAME, font principles, font install FAMILY [--weight 700] [--role heading|body], font pair NAME|random,
            font use NAME --role heading|body, font list|import
 Finish:    look LAYER NAME [--color C] [--amount 0-1] [--remove]  (glow, neon, soft-shadow, hard-shadow, outline, gradient, grain,
-           paper, film, duotone, risograph, sketch, watercolor, halftone), looks (catalog),
-           radial-repeat LAYER --count N [--cx 50%] [--cy 50%] [--sweep 360] [--start-angle D] [--mirror] [--name N],
+           paper, film, duotone, risograph, sketch, watercolor, halftone, hand-made, plush), looks (catalog),
+           radial-repeat LAYER --count N [--cx 50%] [--cy 50%] [--sweep 360] [--start-angle D] [--mirror] [--name N]
+           [--rotation-step D] [--scale-step F] [--opacity-step F] [--rotation-jitter D] [--seed N] [--merge],
+           scatter LAYER --source MOTIF… | --preset fur [--count N|--spacing PX] [--placement inside|along] [--merge],
+           pattern-scatter --source MOTIF… --width W --height H [--count N] [--seed N] [--pattern NAME],
            guide [BRIEF|GUIDANCE] (what to make: icons, characters, scenes, patterns … with the operations, layouts and looks that
            suit it; or a guidance text such as natural-motion), capabilities [TOPIC] (fields, gotchas and guidance per topic)
 Styles:    styles [list [QUERY] | show NAME | apply NAME [--palette] | check [NAME]], style-set NAME… [--options JSON],

@@ -33,6 +33,7 @@ def schemas(add):
         "source": "Sample anchor [x,y] in layer pixels, or canvas pixels with sample_all.",
         "strokes": "Separate brush paths; non-aligned mode resets sampling to source for each path.",
         "hardness": "Brush edge hardness from 0 (soft) to 1 (hard).", "brush": "Round or square clone brush tip.",
+        "tile_variation": "Per-tile tone variation from 0 to 1: each repeat of the tile is lightened or darkened by its own seeded amount, so a large fill does not read as a grid.",
         "aligned": "Preserve the source-to-destination offset across separate strokes (default true).",
         "sample_all": "Sample the rendered canvas snapshot instead of the target raster (default false).",
     }
@@ -49,7 +50,8 @@ def schemas(add):
     points = {"type": "array", "items": point, "minItems": 1, "maxItems": 10000}
     params = {"pattern": {"type": "string", "examples": list(PATTERNS), "description": "Built-in pattern (" + ", ".join(PATTERNS) + ") or the name of a pattern saved in the document with pattern-define."}, "scale": {"type": "number", "exclusiveMinimum": 0}, "rotation": N,
               "offset": point, "spacing": {"type": "number", "minimum": 2, "maximum": 256},
-              "colors": {"type": "array", "items": S, "minItems": 2, "maxItems": 2}, "seed": {"type": "integer"}}
+              "colors": {"type": "array", "items": S, "minItems": 2, "maxItems": 2}, "seed": {"type": "integer"},
+              "tile_variation": {"type": "number", "minimum": 0, "maximum": 1}}
     add("pattern-define", {"name": S, "selection": B, "seamless": B}, ["name"])
     add("pattern-fill", {**params, "name": S, "opacity": N}, ["pattern"])
     add("pattern-stroke", {**params, "name": S, "points": points, "size": N, "opacity": N}, ["pattern", "points"])
@@ -65,7 +67,7 @@ def schemas(add):
 def catalog(project=None):
     return {"builtins": list(PATTERNS), "custom": sorted((project.state.get("patterns") or {}) if project else {}),
             "drawn": list(DRAWN), "operations": list(TYPES),
-            "parameters": ["scale", "rotation", "offset", "spacing", "colors", "seed"]}
+            "parameters": ["scale", "rotation", "offset", "spacing", "colors", "seed", "tile_variation"]}
 
 
 def seamless_check(image):
@@ -105,14 +107,17 @@ def pattern_image(project, size, options):
     seed = options.get("seed", 0)
     require(isinstance(seed, int) and 0 <= seed <= 2**32 - 1, "Seed must be an unsigned 32-bit integer")
     noise_tile = np.random.default_rng(seed).random((32, 32))
+    variation = finite(options.get("tile_variation", 0), "tile_variation", 0, 1)
     # Chunked coordinates keep full-canvas textures within the document's pixel budget.
     for top in range(0, size[1], 128):
         y, x = np.mgrid[top:min(top + 128, size[1]), :size[0]].astype(float)
         x, y = (x - offset[0]) / scale, (y - offset[1]) / scale
         u, v = x * math.cos(angle) + y * math.sin(angle), -x * math.sin(angle) + y * math.cos(angle)
         if custom:
-            output[top:top + len(y)] = custom_values[np.floor(v).astype(int) % custom.height,
-                                                   np.floor(u).astype(int) % custom.width]
+            rows = custom_values[np.floor(v).astype(int) % custom.height, np.floor(u).astype(int) % custom.width]
+            if variation:
+                rows = _vary(rows, np.floor(u / custom.width), np.floor(v / custom.height), seed, variation)
+            output[top:top + len(y)] = rows
             continue
         u, v = u / spacing, v / spacing
         a, b = u % 1, v % 1
@@ -146,8 +151,20 @@ def pattern_image(project, size, options):
         else:
             coverage = noise if name == "noise" else .1 + .25*noise
         coverage = np.asarray(coverage, dtype=float)[..., None]
-        output[top:top + len(y)] = np.uint8(np.clip(bg + (fg-bg)*coverage, 0, 255))
+        rows = np.uint8(np.clip(bg + (fg-bg)*coverage, 0, 255))
+        if variation:
+            rows = _vary(rows, np.floor(u), np.floor(v), seed, variation)
+        output[top:top + len(y)] = rows
     return Image.fromarray(output)
+
+
+def _vary(rows, cell_x, cell_y, seed, amount):
+    """Lighten or darken each tile cell by its own seeded amount (up to 25% at amount 1)."""
+    h = np.sin(cell_x * 12.9898 + cell_y * 78.233 + (seed % 9973) * 0.6180339) * 43758.5453
+    shift = (h - np.floor(h)) * 2 - 1
+    factor = (1 + 0.25 * amount * shift)[..., None]
+    rgb = np.clip(rows[..., :3].astype(float) * factor, 0, 255)
+    return np.concatenate([np.uint8(rgb), rows[..., 3:]], axis=-1)
 
 
 def _target_image(project, target):
@@ -298,6 +315,8 @@ def execute(project, op):
         patterns = project.state.setdefault("patterns", {})
         require(op["name"] in patterns or len(patterns) < 128, "Pattern library is full", "resource_limit")
         patterns[op["name"]] = {"asset": add_image(project,image), "width": image.width, "height":image.height, "check":report}
+        from .selectors import record
+        record(project, "patterns", {"name": op["name"], "width": image.width, "height": image.height, "seam": report})
         return report
     if kind == "pattern-stroke":
         canvas = project.state["canvas"]

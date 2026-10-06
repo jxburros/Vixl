@@ -44,6 +44,7 @@ def union_bounds(bounds):
 
 def execute_design(project, op):
     from .operations import append_layer, default_name, execute
+    from .scatter import bake_repeat, stepped
     from .render import resolve_layout, color, stored_origin
 
     kind = op["type"]
@@ -244,7 +245,11 @@ def execute_design(project, op):
                 layer["type"] = "frame"
             layer.pop("linked", None)
             layer.pop("crop", None)
+    elif kind == "repeat" and stepped(op):
+        bake_repeat(project, op)
     elif kind in ("repeat", "repeat-blend"):
+        require("name" not in op, "name names the copies made with per-step fields or merge; a live repeat keeps the "
+                "layer's name", field="name")
         layer = project.layer(op.get("target"))
         layer["repeat"] = {k: deepcopy(v) for k, v in op.items() if k not in ("type", "target")}
         validate_design(project, state)

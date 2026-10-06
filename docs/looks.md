@@ -33,6 +33,8 @@ CLI: `vixl look LAYER NAME [--color C] [--amount A] [--remove]`, `vixl looks` fo
 | `sketch` | pencil-sketch rendering | raster fallback |
 | `watercolor` | soft watercolor wash | raster fallback |
 | `halftone` | print-style dot screen | raster fallback |
+| `hand-made` | hand-drawn wobble of a vector layer's outlines and line weight (`irregular`, seeded from the layer's name) | native |
+| `plush` | fur tufts along a shape's edge (behind it), inner flicks (above it) and a soft gradient | native |
 
 The raster looks split in two. `grain`, `paper` and `film` suit anything, flat shapes included. `duotone`, `risograph`, `sketch`, `watercolor` and
 `halftone` render tone and edges, so they are for photographs and illustrations: on a flat fill there is only one tone, so `duotone` turns it gray
@@ -50,6 +52,14 @@ and `sketch` fades it out.
   duotone, halftone and the artistic filters are raster effects: SVG export embeds a raster fallback under `svg_policy: appearance` and
   rejects it under `strict`, exactly as for a hand-added effect. The table above says which looks are native.
 - **Not for form fields.** Fields are upright PDF rectangles; looks reject them.
+- **Geometry looks.** `hand-made` and `plush` change geometry, so they are made from the layer as it is when the look is
+  applied; apply them again after moving or reshaping it. `hand-made` runs `irregular` (wobble, vertex jitter and stroke
+  weight, strength from `amount`) on a shape or on the shapes of a group; the pristine source stays in each layer's
+  `irregular` record, so removing the look restores it exactly. It refuses text and raster layers and layers that already
+  carry `irregular`. `plush` runs `scatter` with `preset: fur` and keeps the tuft and flick layers as helpers
+  (`part_of` the layer, named `NAME-plush` and `NAME-plush-flicks`); removing or re-applying the look deletes them. Each
+  look records what it changed (`irregular`, `parts`) next to its styles and effects. To animate hand-drawn lines, use the
+  `line-boil` motion recipe.
 
 Radial symmetry has its own operation, `radial-repeat` (see [design tools](design-tools.md#radial-repeat)); mandalas, rosettes and
 sunbursts are one petal, `radial-repeat`, then `look glow`.

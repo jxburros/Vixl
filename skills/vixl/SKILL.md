@@ -84,6 +84,9 @@ agent, edit independently, preview branch-merge, resolve conflicts explicitly, t
 - **Diagrams** — `diagram-from-text` / `diagram` / `diagram-set` draw flowcharts, dependency graphs, org charts and mind maps
   as editable layers (swimlanes, auto-fit, `check diagram`).
 - **Organic shapes** — `organic` presets and composable generators for living things.
+- **Scatter and seamless tiles** — `scatter` (Poisson-disc copies inside or along a layer's outline, seeded jitter,
+  `merge` for one path per tone, `preset: fur`), `pattern-scatter` (wrap-around tile with a seam score), per-step
+  and jittered `repeat`/`radial-repeat` (`vixl_guide("scatter")`).
 - **Imperfection** — opt-in `irregular` (seeded wobble, stroke weight, color drift, micro placement)
   and `tear` (torn edges) for characters, stickers, scenes, scattered patterns, hand-made looks and
   ripped paper; never for logos, charts, text or anything that must align (`vixl_guide("imperfection")`). `arc` shapes draw pie wedges and donut segments.
@@ -372,10 +375,10 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
 | Color & filters | 27 built-in effects (brightness … white-balance … auto-contrast), `effect-set/enable/disable/remove/move`, `lut` + `lookup` (a stack effect), `preset-save/apply` |
 | Selections & masks | `select` (rect/ellipse/color/alpha/all/none/invert, add/subtract/intersect, feather), `mask` (create/from-selection/import/invert/enable/disable/delete) |
 | Typography | `text`, `text-set`, `text-layout` (box, fit, warp, path), `style-define`/`style-apply`, `swatch` |
-| Decoration | `layer-style` (drop-shadow, stroke, outer-glow, color-overlay, gradient-overlay), `look` (named finishes: glow, neon, soft-shadow, hard-shadow, outline, gradient, soft-halo, grain, paper, film, duotone, risograph, sketch, watercolor, halftone), `repeat`, `repeat-blend`, `radial-repeat` (copies around a center, optional mirror), `pathfinder` |
+| Decoration | `layer-style` (drop-shadow, stroke, outer-glow, color-overlay, gradient-overlay), `look` (named finishes: glow, neon, soft-shadow, hard-shadow, outline, gradient, soft-halo, grain, paper, film, duotone, risograph, sketch, watercolor, halftone, hand-made, plush), `repeat`, `repeat-blend`, `radial-repeat` (copies around a center, optional mirror, per-step/jitter, `merge`), `scatter`, `pattern-scatter`, `pathfinder` |
 | Templates | `variable`, `replace-contents`, `comp-save`/`comp-apply`, CSV `render --data`, `export-screens` |
 | Painting | `paint` (17 brushes, points or SVG path, pressure, erase), `paint-clear`, `brush-define` |
-| Motion | `timeline-set`, `keyframe`, `keyframe-remove`, `animate`, `animate-preset`, `text-animate` (per char/word/line), `marker`; `vixl_timeline_preview`, `vixl_export_timeline` |
+| Motion | `timeline-set`, `keyframe`, `keyframes` (or `sample` a wave), `keyframe-remove`, `animate`, `animate-preset`, `text-animate` (per char/word/line), `motion` (wiggle, line-boil …), `marker`; `vixl_timeline_preview`, `vixl_export_timeline` |
 | Pixel art & sprite frames | `pixel-art`, `pixel-draw`, `pixel-palette`, `frame-save/apply/delete`, `animation-set` (`name`+`order`: named animations, each exportable alone with `animation=`), `frames-edit` (one edit applied to every saved frame), `export-animation` (GIF/APNG/WebP/MP4/sheet) |
 | Color & print | color language in every color field, `vixl_color`, CMYK/PDF/ICO export, `vixl_export_icons`, proof/simulate previews, `print`/`color_vision` checks |
 | History | undo/redo, checkpoint, branch, checkout, compare, transactions |

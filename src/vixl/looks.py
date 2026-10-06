@@ -11,6 +11,13 @@ added by hand, and applying a look twice replaces rather than stacks it.
 
 ``amount`` (0-1, default 0.5) moves each look between subtle and strong; sizes scale with the
 layer, so the same look suits an icon and a poster.
+
+Two looks also change geometry, and keep what they need to undo it in the same record:
+``hand-made`` wobbles the layer's outlines with irregular (the pristine source stays in the
+layer's ``irregular`` record, so removing the look restores it exactly), and ``plush`` grows fur
+tufts along the edge and inner flicks with scatter, as helper layers (``part_of`` the layer)
+that removing or re-applying the look deletes. Both are made from the layer as it is when the
+look is applied: re-apply after moving or reshaping it.
 """
 
 from copy import deepcopy
@@ -144,6 +151,59 @@ def _halftone(layer, state, color, a):
     return {}, [_effect("halftone", round(4 + 12 * a))]
 
 
+def _hand_made(layer, state, color, a):
+    return {}, []
+
+
+def _plush(layer, state, color, a):
+    base = color or _base(layer, state)
+    return {"gradient-overlay": {"start": f"lighten({base}, {round(6 + 12 * a)}%)",
+                                 "end": f"darken({base}, {round(6 + 14 * a)}%)", "direction": "vertical"}}, []
+
+
+def _wobble(project, layer, a, record):
+    """hand-made: irregular wobble on the layer's vector outlines, restored when the look goes."""
+    from .irregular import vector_layers
+    from .operations import execute
+
+    require(layer["type"] in ("shape", "group"), f"hand-made wobbles vector outlines; {layer['name']!r} is a "
+            f"{layer['type']} layer (try the sketch look or drawn-texture)", field="look")
+    members = vector_layers(project, {"target": layer["id"]})
+    taken = [m["name"] for m in members if "irregular" in m]
+    require(not taken, f"{', '.join(taken)} already carries irregular; remove it (irregular remove: true) or adjust "
+            "it directly instead of adding hand-made", field="look")
+    execute(project, {"type": "irregular", "target": layer["id"], "seed": _seed(layer), "strength": "natural",
+                      "amount": round(0.3 + 1.2 * a, 3), "only": ["wobble", "jitter", "width"]})
+    record["irregular"] = [m["id"] for m in members]
+
+
+def _fur(project, layer, a, record):
+    """plush: fur tufts behind the edge and flicks inside it, as helper layers of the layer."""
+    from .scatter import execute_scatter
+
+    require(layer["type"] == "shape", f"plush grows fur along a shape's outline; {layer['name']!r} is a "
+            f"{layer['type']} layer", field="look")
+    before = {x["id"] for x in project.state["layers"]}
+    short = min(layer["width"], layer["height"])
+    execute_scatter(project, {"type": "scatter", "target": layer["id"], "preset": "fur", "seed": _seed(layer),
+                              "length": max(3.0, short * (0.04 + 0.06 * a)), "flicks": round(0.3 + 0.5 * a, 3),
+                              "name": f"{layer['name']}-plush"})
+    made = [x for x in project.state["layers"] if x["id"] not in before]
+    below = project.state["layers"].index(layer)
+    shading = _plush(layer, project.state, record.get("color"), a)[0]
+    for item in made:
+        item["part_of"] = layer["id"]
+        item.pop("scatter", None)
+        if item["type"] == "shape" and project.state["layers"].index(item) < below:
+            # The tufts carry the body's gradient, so the fur edge shades with it.
+            item["styles"] = deepcopy(shading)
+    record["parts"] = [x["id"] for x in made]
+    project.state["active_layer"] = layer["id"]
+
+
+# Looks that also change geometry: name -> hook(project, layer, amount, record).
+GEOMETRY = {"hand-made": _wobble, "plush": _fur}
+
 # name -> (builder, summary, svg export, best for). svg: "native" when every part is an SVG filter.
 LOOKS = {
     "clean-flat": (lambda layer, state, color, amount: ({}, []), "Restrained flat color without effects.", "native", ["documents", "cards"]),
@@ -164,6 +224,8 @@ LOOKS = {
     "sketch": (_sketch, "Pencil-sketch rendering of a photo or illustration (flat fills have no edges and fade out).", "raster", ["photos", "illustration"]),
     "watercolor": (_watercolor, "Soft watercolor wash for photos and illustration.", "raster", ["photos", "illustration", "backgrounds"]),
     "halftone": (_halftone, "Print-style dot screen: turns a photo or gradient into black and white dots.", "raster", ["pop art", "newsprint", "photos"]),
+    "hand-made": (_hand_made, "Hand-drawn wobble on vector outlines and line weight (irregular); removing it restores the exact source.", "native", ["characters", "stickers", "botanical shapes"]),
+    "plush": (_plush, "Soft toy fur: tufts along a shape's edge, inner flicks and a soft gradient.", "native", ["mascots", "toys", "animals"]),
 }
 
 
@@ -186,11 +248,23 @@ def schemas(add):
     }, ["look"])
 
 
-def _strip(layer, name):
+def _strip(layer, name, project=None):
     """Remove what ``name`` added to ``layer`` and forget the record."""
     record = layer.get("looks", {}).pop(name, None)
     if record is None:
         return False
+    if project is not None and (record.get("irregular") or record.get("parts")):
+        from .design import descendants
+        from .irregular import restore
+
+        for item in project.state["layers"]:
+            if item["id"] in record.get("irregular", []):
+                restore(project, item)
+        parts = {i for i in record.get("parts", []) if any(x["id"] == i and x.get("part_of") == layer["id"]
+                                                           for x in project.state["layers"])}
+        for ident in list(parts):
+            parts |= descendants(project, ident)
+        project.state["layers"][:] = [x for x in project.state["layers"] if x["id"] not in parts]
     for style in record.get("styles", []):
         layer.get("styles", {}).pop(style, None)
     for key, value in record.get("fields", {}).items():
@@ -198,6 +272,8 @@ def _strip(layer, name):
             layer.pop(key, None)
         else:
             layer[key] = deepcopy(value)
+    if "styles" in layer and not layer["styles"] and record.get("styles"):
+        layer.pop("styles")
     gone = set(record.get("effects", []))
     layer["effects"] = [effect for effect in layer["effects"] if effect["id"] not in gone]
     if not layer["looks"]:
@@ -211,10 +287,10 @@ def apply_look(project, layer, name, color=None, amount=0.5, remove=False):
 
     state = project.state
     if remove:
-        require(_strip(layer, name), f"{layer['name']!r} has no {name!r} look", field="look")
+        require(_strip(layer, name, project), f"{layer['name']!r} has no {name!r} look", field="look")
         return
     builder = LOOKS[name][0]
-    _strip(layer, name)
+    _strip(layer, name, project)
     styles, effects, *rest = builder(layer, state, color, amount)
     fields = rest[0] if rest else {}
     record = {"styles": [], "effects": [], "amount": amount, **({"color": color} if color else {})}
@@ -239,6 +315,8 @@ def apply_look(project, layer, name, color=None, amount=0.5, remove=False):
         effect_valid(effect)
         layer["effects"].append(effect)
         record["effects"].append(effect["id"])
+    if name in GEOMETRY:
+        GEOMETRY[name](project, layer, amount, record)
     layer.setdefault("looks", {})[name] = record
 
 
