@@ -149,7 +149,7 @@ deletes it. One style per kind; all accept `enabled` (bool) and `opacity` (0–1
 | `comp-save` | **`name`** | Captures visibility/position/rotation/opacity/blend/constraints/styles. |
 | `comp-apply` | **`name`** | Undoable; `render --comp NAME` previews read-only. |
 | `symbol` | **`name`**, `target` | Turn a drawable layer into a master. |
-| `pathfinder` | **`name`**, **`targets`** (shapes), **`mode`** (`union`/`subtract`/`intersect`) | New layer; hides originals; uses first operand's fill. |
+| `pathfinder` | **`name`**, **`targets`** (shapes), **`mode`** (`union`/`subtract`/`intersect`) | New layer; hides originals; uses first operand's fill. Exports to SVG/PDF/PPTX as one compound path (real geometry, no masks); a stroked, translucent or effect-carrying operand cannot be geometry and becomes a listed raster fallback (rejected by `svg_policy="strict"`). |
 | `repeat` | `target`, **`count`** (≤512, includes original), `dx`, `dy` (≥0), `dw`, `dh` | Stays one layer; re-applying replaces settings. |
 | `repeat-blend` | as `repeat` plus **`end`** `{width,height,fill,color}` | Interpolates size/color to the last copy. |
 

@@ -182,6 +182,18 @@ class Slide:
             fill, line = self.gradient(layer, opacity), "<a:ln><a:noFill/></a:ln>"
         elif kind == "field":
             raise Unsupported("form field")
+        elif kind == "pathfinder":
+            from .design import resolve_color
+            from .pathfinder_geometry import Unsupported as NoGeometry, pathfinder_commands
+            from .render import color
+
+            try:
+                commands = pathfinder_commands(layer, self.view.state)
+            except NoGeometry as exc:
+                raise Unsupported(f"pathfinder: {exc}") from exc
+            geometry = self.custom_geometry(commands, (layer["width"], layer["height"]))
+            fill = self.fill((*color(resolve_color(layer.get("fill", "white"), self.view.state))[:3], 255), opacity)
+            line = "<a:ln><a:noFill/></a:ln>"
         else:
             from .render import rest_size
 
@@ -230,10 +242,15 @@ class Slide:
         if shape == "line":
             return '<a:prstGeom prst="line"><a:avLst/></a:prstGeom>'
         path, view = shape_path(layer)
+        return self.custom_geometry(parse_path(path), view)
+
+    @staticmethod
+    def custom_geometry(parsed, view):
+        """Custom geometry for path commands (M L C Q Z) in a ``view`` box; subpaths share one path."""
         scale = 100
         commands = []
         current = (0.0, 0.0)
-        for command, values in parse_path(path):
+        for command, values in parsed:
             pts = [(round(x * scale), round(y * scale)) for x, y in zip(values[0::2], values[1::2])]
             if command == "M":
                 commands.append(f'<a:moveTo><a:pt x="{pts[0][0]}" y="{pts[0][1]}"/></a:moveTo>')

@@ -1148,7 +1148,9 @@ def export(
     through that separation; ``simulate`` previews a color-vision deficiency. ``alpha`` sets the
     channels of PNG, WEBP, TIFF and AVIF output: ``keep`` always writes RGBA, ``auto`` writes RGB
     when every pixel is opaque and RGBA otherwise (the file export default), and ``flatten``
-    composites onto ``background`` and writes RGB (as JPEG and PDF always do)."""
+    composites onto ``background`` and writes RGB (as JPEG and PDF always do). PDF is vector by
+    default, RGB or CMYK: ``pdf_content='raster'`` writes one image per page instead, and ``report``
+    receives ``content``, ``content_reason``, ``raster_fallbacks`` and ``page_size``."""
     require(alpha in ("auto", "keep", "flatten"), "alpha must be auto, keep or flatten", field="alpha")
     require(sampling in ("smooth", "nearest"), "Sampling must be smooth or nearest")
     require(color_space in ("rgb", "cmyk"), "Color space must be rgb or cmyk")

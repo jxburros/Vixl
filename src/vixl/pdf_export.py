@@ -22,7 +22,7 @@ from .model import finite
 from .pdf_color import CMYKPaint, RGBPaint, ramp
 from .pdf_writer import FontSet, Name, Text, Writer, image_xobject
 
-VECTOR_LEAVES = ("solid", "shape", "gradient", "text")
+VECTOR_LEAVES = ("solid", "shape", "gradient", "text", "pathfinder")
 
 
 def _fmt(value):
@@ -253,13 +253,21 @@ class PageBuilder:
         if layer["type"] == "field":
             return None
         if layer["type"] not in VECTOR_LEAVES:
-            return {"raster": "image", "frame": "image", "paint": "brush strokes", "pixel": "pixel art",
-                    "pathfinder": "pathfinder"}.get(layer["type"], layer["type"])
+            return {"raster": "image", "frame": "image", "paint": "brush strokes", "pixel": "pixel art"}.get(
+                layer["type"], layer["type"])
         return None
 
     def leaf(self, layer, bounds, matrix):
         from .render import color
 
+        commands = None
+        if layer["type"] == "pathfinder":
+            from .pathfinder_geometry import Unsupported as NoGeometry, pathfinder_commands
+
+            try:
+                commands = pathfinder_commands(layer, self.view.state)
+            except NoGeometry as exc:
+                raise Unsupported(f"pathfinder: {exc}") from exc
         local = matrix @ layer_matrix(layer, bounds)
         w, h = layer["width"], layer["height"]
         opacity = layer["opacity"]
@@ -279,6 +287,12 @@ class PageBuilder:
                 matrix_ops(affine(w, 0, 0, h)), "0 0 1 1 re W n", f"/{name} sh"]
         elif kind == "shape":
             self.shape(layer, w, h, opacity)
+        elif kind == "pathfinder":
+            # One compound path: contours and holes wind oppositely and never overlap.
+            from .design import resolve_color
+
+            rgba = (*color(resolve_color(layer.get("fill", "white"), self.view.state))[:3], 255)
+            self.fill_ops(path_ops(commands), rgba, opacity, "f*")
         elif kind == "field":
             from .forms import pdf_field_appearance
 
