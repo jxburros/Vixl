@@ -128,7 +128,7 @@ AI:        ask PROMPT [--apply], generate --prompt TEXT --provider NAME,
            select object LABEL --provider NAME, ai remove|content-aware-fill|select-subject
 Updates:   update [--check | --rollback], updates [on | off | status]
 Services:  serve | view [--host 127.0.0.1] [--port 8765], notes list|add|resolve
-           mcp [--workspace DIR] [--http] [--tools core|ai|compact] [--schema slim] [--planner] [--require-document]
+           mcp [--workspace DIR] [--http] [--tools core|ai|compact|all] [--schema slim|full] [--planner] [--require-document]
 Import:    import FILE.svg [--svg-mode editable|appearance|auto] | FILE.pdf [--page 1] [--dpi 144]
 
 Options: --project/-p FILE, --json, --allow-linked, --plugins, --max-pixels N, --detail brief|compact|full, --version
@@ -491,15 +491,17 @@ def dispatch(argv):
         p.add_argument(
             "--schema",
             choices=["full", "slim"],
-            default=os.environ.get("VIXL_MCP_SCHEMA", "full"),
-            help="slim advertises operation names only; fields come from vixl_operation_schema",
+            default=os.environ.get("VIXL_MCP_SCHEMA", "slim"),
+            help="slim (default) advertises operation names only; fields come from vixl_operation_schema; "
+            "full inlines every operation schema",
         )
         p.add_argument("--planner", action="store_true", help="Expose the provider-backed vixl_ai_plan tool")
         p.add_argument(
             "--tools",
             choices=["all", "core", "ai", "compact"],
-            default=os.environ.get("VIXL_MCP_TOOLS", "all"),
-            help="core: all editing tools; compact: 12 document/workflow tools; ai: provider-backed tools",
+            default=os.environ.get("VIXL_MCP_TOOLS", "core"),
+            help="core (default): all editing tools; compact: 12 document/workflow tools; ai: provider-backed tools; "
+            "all: core and ai from one server",
         )
         p.add_argument(
             "--require-document",

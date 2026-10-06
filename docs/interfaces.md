@@ -87,11 +87,11 @@ If the client cannot find `vixl` on PATH, use the absolute executable path, norm
 
 ### Recommended starting configuration
 
-Start with `--tools core --schema slim`. The offline suite passes all 16 tasks with these flags.
-The schema costs approximately 6,898 tokens (JSON characters ÷ 4), versus 12,789 for full/all,
-a 46% reduction. This measures tool context, not model performance; defaults remain full/all
-until the scheduled live-agent comparison provides evidence to change them. With slim schemas,
-call `vixl_operation_schema` for the fields of unfamiliar operations.
+`vixl mcp` defaults to `--tools core --schema slim` (`VIXL_MCP_TOOLS` and `VIXL_MCP_SCHEMA` override it). Its tool list is about 49k JSON characters, against about 124k for `--tools all --schema full`,
+the default in 0.21 and earlier; pass those flags to get the old behaviour. The offline reference suite passes with
+both. With slim schemas, call `vixl_operation_schema` for the fields of unfamiliar operations.
+`--tools compact --schema slim` (12 tools, about 17k characters) is the smallest surface; see
+[MCP toolsets](mcp-toolsets.md) for the measurements.
 
 ### Two servers: core and AI
 
@@ -115,7 +115,7 @@ call `vixl_operation_schema` for the fields of unfamiliar operations.
 }
 ```
 
-Give both the same workspace. Every edit is saved immediately and each server reloads a document that changed on disk (writes are serialized with file locks), so an image generated through `vixl-ai` appears in `vixl` on its next call. AI tools take `document=` or use the document opened with `vixl_document_open`. Leave out `vixl-ai` when no AI provider is configured. The default, `--tools all` (or `VIXL_MCP_TOOLS`), keeps serving every tool from one server, so existing configurations are unchanged.
+Give both the same workspace. Every edit is saved immediately and each server reloads a document that changed on disk (writes are serialized with file locks), so an image generated through `vixl-ai` appears in `vixl` on its next call. AI tools take `document=` or use the document opened with `vixl_document_open`. Leave out `vixl-ai` when no AI provider is configured. `--tools all` serves core and AI tools from one server.
 
 Existing `vixl --project /absolute/path/poster.vixl mcp` configurations still work: they open that document and use its parent directory as the workspace. You can also pass `--workspace` explicitly; the starting project must be within it.
 

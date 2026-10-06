@@ -18,7 +18,7 @@ catalogs; `--tools ai` serves the provider-backed `vixl_ai_*` tools and `vixl_mo
 `vixl_workspace_list`, `vixl_document_open`, `vixl_document_inspect` and `vixl_render_preview`.
 Register them as `vixl` and `vixl-ai` with the same workspace; skip `vixl-ai` when no provider is
 configured. Edits are saved at once and each server reloads a document that changed on disk, so
-the two see each other's work. The default `--tools all` serves everything from one server.
+the two see each other's work. `vixl mcp` defaults to `--tools core --schema slim`; `--tools all` serves everything from one server.
 
 Windows installer path if `vixl` is not on PATH: `%LOCALAPPDATA%\Programs\Vixl\bin\vixl.exe`
 (escape backslashes in JSON). Restart the client after install/config changes.
