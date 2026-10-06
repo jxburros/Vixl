@@ -1,33 +1,56 @@
-# T08 Infographic, round 2: claude-V (Vixl lane)
+# T08 Round 2: corrected December and plum tea (claude-V)
 
-The change request: December's numbers were wrong. The correct values are flat_white 1480, drip 1120, cold_brew 90, tea 640. Tea's color changes to plum `#6b3f69`. Every chart and number had to be updated.
+All the visual edits went through the Vixl MCP tools. A small Python script only computed the corrected totals
+and checked the exported files. Nothing outside `round2/` was changed. I only read the round-1 files.
 
-**Tool calls:** 26 in total, counting this report and the hand-off.
+## What changed
 
-## Files (all in `round2/`; nothing outside `round2/` changed)
-| File | How it was made |
-| --- | --- |
-| `infographic.vixl` | I copied the round-1 source into `round2/` and edited it in place with `vixl_operations_apply` (always with `document=` set). That took one atomic batch of 50 operations and a fix-up batch of 11. |
-| `infographic.png` | `vixl_export_file`, 1200×1800. I checked the size with PIL. |
-| `infographic.svg` | `vixl_export_file` with `svg_policy="strict"`. It is all vector, with no `<image>` elements. |
-| `infographic.pdf` | `vixl_export_file` with `pdf_content="vector"`. It has 2 embedded fonts and no raster fallbacks. |
+**December data.** The old values were flat_white 1300, drip 1040, cold_brew 80, tea 560. The new values are 1480, 1120, 90, 640.
 
-## Corrected numbers (the CSV with December replaced)
-- **Dec total**: 3,330 (was 2,980). The other months are unchanged.
-- **Total cups in 2025**: 35,630 (was 35,280). This appears in the first callout and in the share subtitle.
-- **Busiest month**: now **December, 3,330 cups** (was August, 3,030).
-- **Cold brew peak**: still August, 420 cups. December's 90 cups doesn't change it.
-- **Share of the year**: flat white 44.6% (15,900), drip 33.6% (11,960), cold brew 7.0% (2,510), tea 14.8% (5,260). The rounded figures add up to exactly 100.0%.
+| Number shown | Round 1 | Round 2 |
+| --- | --- | --- |
+| Total cups in 2025 (callout and donut centre) | 35,280 | **35,630** |
+| Busiest month (callout) | August, 3,030 | **December, 3,330** |
+| Cold brew peak (callout) | August, 420 | August, 420 (no change; Dec cold brew is now 90) |
+| December bar total label | 2,980 | **3,330** |
+| Flat white yearly total and share | 15,720, 44.6% | 15,900, 44.6% |
+| Drip yearly total and share | 11,880, 33.7% | 11,960, 33.6% |
+| Cold brew yearly total and share | 2,500, 7.1% | 2,510, 7.0% |
+| Tea yearly total and share | 5,180, 14.7% | 5,260, 14.8% |
 
-## What changed in the document
-- **December bar**: I redrew it to the same scale as before (0.16 px per cup, baseline y=1240), using running totals rounded to whole pixels. Flat white is 237 px (y 1003), drip 179 px (y 824), cold brew 14 px (y 810) and tea 103 px (y 707). The PNG sampled down the bar's centre matches these exactly. The `total_Dec` label reads "3,330" and moved up to sit above the taller bar. It still fits under the 3,500 axis maximum, so the axis is unchanged.
-- **Callouts**: I changed the text of `card0_value` (35,630), `card1_value` (December) and `card1_sub` (3,330 cups sold). "December" is 273 px wide and fits inside its card.
-- **Share bar** (1,080 px, edges at the rounded running share): flat white is 482 px wide, drip 362 px (x 542), cold brew 77 px (x 904) and tea 159 px (x 981). I updated the percentage labels. The flat white labels moved to the new segment centre (x 301).
-- **Tea color**: I changed all 14 tea shapes (12 bars, the legend swatch and the share segment) to `#6b3f69`. I couldn't find an operation in the reference that changes an existing shape's fill: a `shape` op with `target` adds a new layer instead. So I removed each tea layer and added it again with the same name, bounds and radius and the new fill. That means those 14 layers have new layer IDs. The PNG has 0 coral pixels left. The SVG's coral fills were all replaced by plum (14 of each).
+Because December's total rose, the busiest month moved from August to December. The axis still runs from 0 to 4,000
+in steps of 1,000, since 3,330 is under 4,000. The new December segments are drawn to the same scale of 448 px per
+4,000 cups: Flat white 166 px, Drip 125 px, Cold brew 10 px and Tea 72 px.
 
-## Problems found along the way
-- A `resize` with only `height` also scaled the width to keep the proportions. This made the December bars 54–57 px wide and the cold-brew share segment 91 px tall. The second batch reset width and height explicitly. All the bounds are now correct: 50 px bars and 90 px share segments.
-- The first PDF export used the default content setting and came out rasterized (one image, no fonts). I re-exported it with `pdf_content="vector"`, which matches round 1.
+**Tea colour.** Tea changed from coral `#e2725b` to plum `#6b3f69` everywhere: in all 12 tea bar segments, in the
+stacked-bar legend swatch, and in the donut slice and its legend swatch. The other drinks keep their colours. No coral
+remains in the SVG. A sample of the PNG at the December tea segment reads rgb(107, 63, 105).
 
-## Checks
-`vixl_check` (bounds, overlap, contrast, blanks) passed with 0 errors. It gave 3 warnings, the same ones as round 1: the 3,000 gridline runs through the Jan/Mar/Apr total labels. I looked over the full rendered preview and it has no problems.
+## How
+
+1. I copied `../infographic.vixl` to `round2/infographic.vixl` and opened the copy.
+2. One atomic `vixl_operations_apply` batch made these changes:
+   - `chart-data` on `monthly` set the four December cells.
+   - `chart-data` on `share` set the four new yearly totals. Vixl recomputed the percentages, the slice angles,
+     the legend values and the `{total}` centre text.
+   - `chart` restyle with the new `colors` on both charts.
+   - `text-set` on the three callout values that changed (total, busiest month, busiest-month note).
+3. In the stacked-bar chart, each series had its own `color` stored, and that overrode the chart-level `colors`.
+   As a result the tea bars were still coral after step 2. I fixed this with a second `chart` restyle on `monthly`
+   that sets the four series again, using the same values with Tea's `color: #6b3f69`. The layer IDs were kept.
+4. "December" at 64 px came out 314 px wide and ran 6 px past the right edge of its callout card. I reduced it to
+   56 px (274 px wide) and moved it down 6 px so its baseline (438.7) lines up with the other two callout values (438.6).
+5. `vixl_check` found no errors and no overlap, contrast or bounds problems. It gave the same 53 thumbnail-legibility
+   warnings as round 1, which I left for the reason given in the round-1 report. I looked at `vixl_render_preview`
+   of the full page and of the callout row.
+6. I exported with `vixl_export_batch`:
+   - `infographic.png` is 1200 x 1800 px, RGB.
+   - `infographic.svg` is vector, with no `<image>` elements.
+   - `infographic.pdf` is a vector PDF with 2 embedded fonts and no raster fallbacks. `pdftotext` shows 35,630, December, 3,330 and the new percentages.
+
+## Files in round2/
+`infographic.vixl`, `infographic.png`, `infographic.svg`, `infographic.pdf`, and `REPORT.md`. The file names are the same as round 1.
+
+## Notes
+- The fixture CSV was not edited. The charts hold their data inline, as they did in round 1.
+- The busiest-month callout now uses a smaller type size (56 px) than the other two callout values (64 px).

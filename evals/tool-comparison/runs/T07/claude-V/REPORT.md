@@ -1,33 +1,39 @@
-# T07 Name badges — claude-V (Vixl MCP)
+# T07 · Name badges — lane V (Vixl)
 
-Timing: start 22:19:09 UTC, end 22:26 UTC, 2026-10-05 (about 7 minutes). About 62 tool calls in all (Vixl MCP, Bash, Read and ToolSearch together).
+All the visual work was done with the Vixl MCP tools: document create, font pair/install, operations_apply, check, render_preview, workflow `merge-impose`, and export_batch. I did not draw pixels or write SVG/HTML myself. The only script, `prepare_data.py`, adds columns to the CSV; I explain why below. I used Python/Poppler only to check outputs (PNG sizes, `pdfinfo`, `pdftotext`, `pdffonts`, and a contact sheet for viewing).
 
 ## Files
-| File | How it was made |
-| --- | --- |
-| `badge.vixl` | Editable source and template. A 1200×900 px, 300 dpi Vixl document. The fonts are Montserrat 700 (names, role) and Open Sans 400 (event, company), from the `montserrat-open-sans` pairing, plus Noto Sans JP 700/400 set as font fallbacks for the CJK names. The text layers use the variables `${first}`, `${last}`, `${company}` and `${role}`. The bar fill is `${bar}` and the role text color is `${bar_ink}`. |
-| `badges/badge-01.png` … `badge-10.png` | One `vixl_export_file` call per CSV row, in file order, passing that row's values as `variables`. Each is 1200×900 px (checked with PIL). |
-| `badges-print.vixl` | Editable imposition source. A two-page Letter document at 300 dpi (2550×3300 px). It holds the ten badge PNGs as image layers and the crop marks as 3 px black rectangles. |
-| `badges-print.pdf` | Exported from `badges-print.vixl`: 2 pages, 612×792 pt (US Letter, portrait). Each badge is a 1200×900 px image placed at 288×216 pt, which is 4×3 in at actual size. |
+
+| File | What it is | How it was made |
+| --- | --- | --- |
+| `badge-template.vixl` | Editable source: one 1200 × 900 px badge at 300 dpi (4 × 3 in) with `${first_name}`, `${last_name}`, `${company}`, `${role_label}`, `${bar_color}` and `${bar_ink}` variables | `vixl_document_create` (1200×900, dpi 300, background `#fbf8f2`), `vixl_font_pair montserrat-open-sans`, `vixl_font_install` (Montserrat 500, Noto Sans JP 500 and 700), then one `vixl_operations_apply` batch (variables, shapes, text, `text-layout` fit boxes, `font-fallbacks`) and a few small edits to move or resize layers |
+| `badges-data.csv` | The fixture plus three columns the template needs: `role_label`, `bar_color` and `bar_ink` | `python3 prepare_data.py ../../../fixtures/badges.csv badges-data.csv` |
+| `prepare_data.py` | Script that maps each role to its bar colour, bar text colour and capitalised label. It copies the name, role and company cells unchanged | Written by hand |
+| `badges/badge-01.png` … `badge-10.png` | One badge per CSV row, in file order, 1200 × 900 RGB PNG | `vixl_export_batch` on the template, with each target's `variables` set to that row's values |
+| `badges-print.pdf` | US Letter portrait, 2 pages, 2 columns × 3 rows, actual size (4 × 3 in per badge), grid centred (0.25 in left/right, 1 in top/bottom), crop marks at every cut line. Page 2 holds badges 7–10 in the same grid positions | `vixl_workflow merge-impose` with template + `badges-data.csv`, `sheet {size: letter, orientation: portrait, cols: 2, rows: 3, align: center, crop_marks: true}`, `check: design`. The PDF is vector, its text is selectable, and its 4 fonts are embedded subsets |
+| `badges-sheet.vixl` | Editable imposition sheet written by the same merge: one page per sheet, one live link per badge. Re-running is `{"rerun": "…/badges-sheet.vixl"}` | `merge-impose` `sheet_document` |
 
 ## Design
-- Top-left: "HARBOR MAKERS SUMMIT 2026" (34 px), with "November 20–21, 2026 · Port Ellery" (32 px) under it, then a short coral rule.
-- First name: Montserrat Bold in a 1040×180 box with `fit: true`. Last name: a 1040×110 fit box. Company: Open Sans in a 1040×72 fit box. The fit boxes shrink long names (Bartholomew / Featherstonehaugh-Villanueva / Port Ellery Maritime Museum & Historical Society) and enlarge short ones (Jo / Li). Because the boxes are nested in size, the first name is always the largest line, then the last name, then the company.
-- Bar: full width, y 690–900, in the role color. The role is in capitals and centered. Text on the bar is navy `#14263b` on amber, sea-foam and coral, and white on navy (Staff). The contrast check passed.
-- Priya Raman's role, Volunteer, gets the sea-foam bar and prints "VOLUNTEER".
-- Sam Okafor has no company, so the company line is an empty string and nothing prints there. Nothing else moves, so his badge has blank space where that line would be.
-- I passed every name to Vixl exactly as it appears in the CSV, including Zoë, Ångström, O'Brien, Ana Lucía, Gómez, Tidewick Café and 花子 山田. I checked the renders visually.
 
-## Print sheet
-- Six badges per page in 2 columns × 3 rows, centered. The grid is 8×9 in, with margins of 0.25 in left and right and 1 in top and bottom.
-- There are only 10 badges, so page 2 has 4 of them (2×2). They are centered on that page (y offset 2.5 in).
-- Crop marks sit only in the margins. Every cut line, including the shared edges between badges, gets a mark about 0.2 in long, 0.06 in from the trim. The marks are 3 px wide (0.24 pt).
+- **Type:** Montserrat Bold for the first name (170 px) and the role, Montserrat Medium for the last name (84 px), Open Sans Regular for the company (42 px) and the dates (32 px). The event name is Montserrat Bold 38 px in capitals.
+- **Layout:** The event name and dates sit at the top left under a short rule in the role colour. Then come first name, last name and company. A full-width bar 180 px tall runs along the bottom with the role in capitals, centred.
+- **Fitting:** Each of the four variable text layers has a fixed `text-layout` box, 1040 px wide (80 px margins), with `fit: true`. Long text shrinks to fit the box instead of being clipped. The merge's validation reported no overflow on any row.
+- **Empty company:** The company layer has `hide_if_empty`, so Sam Okafor's badge (row 6) leaves the line out entirely.
+- **Bar colours:** Speaker `#f2a541`, Attendee `#a8d5c8`, Staff `#14263b`, Sponsor `#e2725b`. Volunteer (row 7) uses the Attendee colour and prints "VOLUNTEER".
+- **Bar text and contrast (WCAG, from `vixl_color contrast`):** Bar text is navy `#14263b` on amber (7.47:1), sea-foam (9.5:1) and coral (4.96:1), and white on navy (15.33:1).
+- **Names:** Every name prints exactly as written in the file, accents included. The PDF text extraction (`pdftotext`) matches the CSV for all 10 rows, including Zoë, Ångström-Okonkwo, O'Brien, Ana Lucía, Gómez, 花子 and 山田.
 
-## Differences from the brief and open questions
-- **The PDF is raster, not vector.** Each badge sits in the PDF as a 300 dpi PNG (the export reports 0 embedded fonts). This keeps each badge identical to its PNG, but the text in the PDF is not selectable vector text.
-- **The badges are butted together.** Badges touch inside the grid, so there is no bleed and no gutter. A slightly-off cut will show a sliver of the next badge's cream or bar color.
-- **The Japanese names are not bold.** 花子 山田 render through the Noto Sans JP fallback, and they look regular weight rather than bold. I set the bold fallback, but the renderer may have picked the 400 weight instead.
-- **Fonts had to be set with `vixl_text_add`.** The MCP rejects the `font` field in `text` and `text-set` operations, so I added each text layer with `vixl_text_add(font=...)`.
-- **Short names leave a larger gap.** The fit boxes have fixed positions, so for short names (Jo / Li) the space between the first-name and last-name lines is larger. Nothing overlaps.
-- **Check results.** `vixl_check` (40 px safe area) found no errors. It gave three warnings: the full-width bar leaves the safe area, which is intended, and the event and date lines are small at thumbnail width. Those lines are about 8 pt at print size, which I chose on purpose.
-- **I only ran the check once.** It ran on the template's default values (the longest row, row 4). The other nine rows I checked by looking at the renders, not with the automatic check.
+## Departures, choices and uncertainties
+
+1. **I added columns to the CSV with a script.** Vixl's merge maps CSV columns to template variables directly. It has no lookup from role to colour and no upper-casing, so I generated `badges-data.csv` with the derived columns. It is data preparation, not drawing, but it is outside Vixl.
+   - To add a role or change a colour, edit the mapping in `prepare_data.py`, regenerate the CSV and rerun the merge.
+   - The original `role` column is kept but unused; the merge was run with `unknown: ignore`.
+2. **Japanese glyphs share one fallback weight.** Montserrat and Open Sans have no CJK glyphs, so Noto Sans JP is set as a fallback font.
+   - In Vixl, `font-fallbacks` is a single setting for the whole document. My second call (Noto Sans JP 500) replaced the first (700).
+   - As a result, both 花子 and 山田 render in Noto Sans JP Medium. 花子 is therefore lighter than the Latin first names, though it is still the largest line.
+   - Noto Sans JP 700 is still embedded in the template but unused, which is most of the template's 6.9 MB size.
+   - The merge logged "uses fallback glyphs" warnings for row 5. That is expected: no character prints as tofu.
+3. **One check warning left on purpose.** The last `vixl_check` passed with one legibility warning: `event-dates` is small at a 320 px thumbnail width. That check targets screen thumbnails. At print size the dates are 32 px = about 7.7 pt, which fits "small" in the brief. I accepted it.
+4. **No bleed and no gutter.** The badges are flat colour with no bleed, so the six badges butt together and share cut lines. Crop marks are in the margins only, with none inside the sheet. Background areas meet exactly at the shared trim lines.
+5. **Badge background.** The badge background is a warm off-white `#fbf8f2`, not pure white, so the PNGs and the PDF cells show it up to the trim.
+6. **PDF colour.** The PDF is RGB, which is the merge-impose default. I did not make a CMYK version, since the brief didn't ask for one.
