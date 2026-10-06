@@ -108,10 +108,10 @@ AI:        ask PROMPT [--apply], generate --prompt TEXT --provider NAME,
            select object LABEL --provider NAME, ai remove|content-aware-fill|select-subject
 Updates:   update [--check | --rollback], updates [on | off | status]
 Services:  serve | view [--host 127.0.0.1] [--port 8765], notes list|add|resolve
-           mcp [--workspace DIR] [--http] [--tools core|ai|compact] [--schema slim] [--planner]
+           mcp [--workspace DIR] [--http] [--tools core|ai|compact] [--schema slim] [--planner] [--require-document]
 Import:    import FILE.svg [--svg-mode editable|appearance|auto] | FILE.pdf [--page 1] [--dpi 144]
 
-Options: --project/-p FILE, --json, --allow-linked, --plugins, --max-pixels N, --detail compact|full, --version
+Options: --project/-p FILE, --json, --allow-linked, --plugins, --max-pixels N, --detail brief|compact|full, --version
 Use vixl commands --json for a complete inventory; vixl COMMAND --help works without a document. See docs/commands.md.
 """
 
@@ -248,7 +248,7 @@ def dispatch(argv):
     global_parser.add_argument("--allow-linked", action="store_true")
     global_parser.add_argument("--plugins", action="store_true")
     global_parser.add_argument("--max-pixels", type=int, default=40_000_000)
-    global_parser.add_argument("--detail", choices=["compact", "full"], default="compact")
+    global_parser.add_argument("--detail", choices=["brief", "compact", "full"], default="compact")
     global_parser.add_argument("--version", action="store_true")
     global_parser.add_argument("--runtime-info", action="store_true")
     options, tokens = global_parser.parse_known_args(argv)
@@ -468,6 +468,13 @@ def dispatch(argv):
             default=os.environ.get("VIXL_MCP_TOOLS", "all"),
             help="core: all editing tools; compact: 12 document/workflow tools; ai: provider-backed tools",
         )
+        p.add_argument(
+            "--require-document",
+            action="store_true",
+            default=None,
+            help="Every document tool call must pass document= (no shared active document); "
+            "also VIXL_REQUIRE_DOCUMENT=1",
+        )
         p.add_argument("--http", action="store_true", help="Serve Streamable HTTP at /mcp")
         p.add_argument("--host", default="127.0.0.1")
         p.add_argument("--port", type=int, default=8766)
@@ -475,7 +482,8 @@ def dispatch(argv):
         a = p.parse_args(args)
         # Explicit workspaces can start empty. Existing --project configurations still work.
         path = current_path(options.project) if options.project or not a.workspace else None
-        server = mcp_server(path, limits, workspace=a.workspace, schema=a.schema, planner=a.planner, tools=a.tools)
+        server = mcp_server(path, limits, workspace=a.workspace, schema=a.schema, planner=a.planner, tools=a.tools,
+                            require_document=a.require_document)
         if a.http:
             from .interfaces import serve_mcp
             serve_mcp(server, a.host, a.port, os.environ.get(a.token_env))

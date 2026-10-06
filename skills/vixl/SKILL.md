@@ -218,7 +218,8 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
 - **Always pass the project explicitly in the CLI** (`-p file.vixl`). `vixl open` stores a
   per-directory default in `.vixl-session.json`, which is fragile across concurrent work.
 - **CLI edits default to compact output** with changed values and layer IDs. Use `--detail full`
-  for complete before/after snapshots. MCP/REST also default to `detail:"compact"`.
+  for complete before/after snapshots. REST also defaults to `detail:"compact"`; MCP defaults to the
+  leaner `detail:"brief"` (IDs, names and bounds of changed layers, plus `warnings`).
 - **CLI JSON is ASCII-escaped UTF-8**, so Unicode names and normalization notes survive Windows
   redirected output. Parse JSON normally; escapes decode to the original text.
 - **Errors are structured.** MCP tool errors and CLI `--json` failures are
@@ -254,8 +255,22 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
   seen by the other on its next call.
 - **Several documents can be open over MCP.** Pass `document="other.vixl"` to any tool to address one
   without changing the active document.
-- **MCP paths are relative to the server's `--workspace`**, must stay inside it, and subdirectories
-  must already exist. Exports refuse to overwrite unless `overwrite: true`, and never overwrite `.vixl`.
+- **MCP paths are relative to the server's `--workspace`** and must stay inside it; missing
+  subdirectories are created by `vixl_document_create` and the exports. Exports refuse to overwrite
+  unless `overwrite: true`, and never overwrite `.vixl`. `vixl_export_batch` writes several files
+  (sizes, formats, documents) in one call.
+- **Subagents sharing one MCP server share its active document**: pass `document=` on every call
+  (results echo `document`). A slow call returns a `job` id instead of timing out: poll
+  `vixl_job(action="result", id, wait=30)` and never resend it; use `request_id` on mutating calls so
+  a retry cannot apply twice.
+- **Many similar layers, or another size, are one call each**: `edit-layers` applies an operation to every
+  layer matching a `where` selector (`name` glob, `kind`, `role`, `tag`, `group`, `text_contains`, `page`;
+  add `expect: N` to guard the count); `adapt-layout` (without `targets`) re-lays out a document at a new
+  size and reports where each layer went; `vixl_adapt_layout` does it for a list of sizes and saves/exports
+  each copy. MCP apply results are `brief` by default: pass `detail: "compact"` for new field values.
+- **Read `warnings` in apply results**: text cut off by the canvas or its box, and fields that were
+  accepted but change nothing (`radius` on a plain rectangle). Unknown fields are errors with the
+  accepted field names and a `vixl_operation_schema(types=[…])` pointer.
 - **CLI `new` and `export`/`render --out` refuse existing destinations** in batch/data/animation
   workflows; choose fresh names.
 - **Pixel art:** export with `--sampling nearest` (`sampling:"nearest"` in MCP) or it will be smoothed.

@@ -12,7 +12,7 @@ from pathlib import Path
 import re
 import zipfile
 
-from . import __version__
+from . import __version__, calls
 from .assets import decode, read_bounded
 from .errors import VixlError, require
 from .history import diff, patch
@@ -285,7 +285,7 @@ class Project:
         )
 
     def apply(self, operations, *, dry_run=False, detail="full", check=None):
-        require(detail in ("compact", "full"), "Unknown response detail")
+        require(detail in ("brief", "compact", "full"), "Unknown response detail; use brief, compact or full")
         from .operations import execute
 
         if isinstance(operations, dict):
@@ -317,8 +317,11 @@ class Project:
         from . import notices
 
         notices.start(candidate)
+        candidate._reports = {}  # What operations such as edit-layers and adapt-layout report back.
         before = candidate.inspect()
         for index, operation in enumerate(operations):
+            calls.check_cancelled()  # A cancelled batch leaves the document untouched: nothing is committed yet.
+            calls.progress(index, len(operations), operation["type"])
             try:
                 if "page" in operation and operation["type"] != "page":
                     from .pages import select
@@ -340,6 +343,7 @@ class Project:
             except (KeyError, TypeError, ValueError, OverflowError) as exc:
                 error = VixlError("invalid_operation", f"Malformed operation: {exc}")
                 raise located(error, index, operation, len(operations)) from exc
+        calls.progress(len(operations), len(operations), "checking")
         from .validation import check_state
 
         try:
@@ -351,16 +355,17 @@ class Project:
             raise
         candidate.__dict__.pop("_resource_budget", None)
         warned, interpreted = notices.finish(candidate)
+        reports = candidate.__dict__.pop("_reports", {})
         after = candidate.inspect()  # Also resolves constraints, rejecting cycles atomically.
         changes = {
             key: {"before": before.get(key), "after": after.get(key)}
             for key in candidate.state
             if before.get(key) != after.get(key)
         }
-        if detail == "compact":
-            from .changes import compact_changes
+        if detail in ("brief", "compact"):
+            from .changes import brief_changes, compact_changes
 
-            changes = compact_changes(before, after)
+            changes = (brief_changes if detail == "brief" else compact_changes)(before, after)
         if not dry_run:
             if candidate.transaction is not None:
                 candidate.transaction["operations"].extend(deepcopy(operations))
@@ -370,6 +375,9 @@ class Project:
         result = {"success": True, "dry_run": dry_run, "operations": len(operations), "changes": changes}
         if any(op["type"] == "layout-apply" for op in operations):
             result["layout"] = deepcopy(candidate.state.get("layout", {}))
+            if detail == "brief":
+                for key in ("layers", "principles"):
+                    result["layout"].pop(key, None)
             result["unfilled_slots"] = list(dict.fromkeys(b["slot"] for b in result["layout"].get("blanks", [])))
         if any(op["type"] == "paint" for op in operations):
             from .brushes import stroke_diagnostics
@@ -381,10 +389,15 @@ class Project:
                                for layer in painted]
             if any(not item["visible_pixels"] for item in result["paint"]):
                 result["warnings"] = ["Paint has no visible pixels; check --space canvas versus --space layer and resolved bounds."]
-        if warned:
-            result["warnings"] = [*result.get("warnings", []), *warned]
-        if notes or interpreted:
-            result["normalized"] = [*notes, *interpreted]
+        from .advisories import advise
+
+        warnings = [*warned, *reports.pop("warnings", []), *advise(candidate, before, after, operations)]
+        if warnings:
+            result["warnings"] = [*result.get("warnings", []), *warnings]
+        notes = [*notes, *interpreted, *reports.pop("normalized", [])]
+        result.update(reports)
+        if notes:
+            result["normalized"] = notes
         return result
 
     def undo(self, count=1):

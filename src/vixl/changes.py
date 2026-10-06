@@ -97,6 +97,34 @@ def compact_changes(before, after):
     return changes
 
 
+def brief_changes(before, after):
+    """The leanest summary: which layers were added, removed or changed and where they ended up
+    (``bounds``), without new field values. The caller knows what it asked for; read a layer
+    with vixl_document_inspect, or use detail=compact for the new values."""
+    changes, other = {}, []
+    for key, value in compact_changes(before, after).items():
+        if key == "layers":
+            layers = {}
+            for ident, delta in value.items():
+                if delta.get("added"):
+                    layers[ident] = {k: delta[k] for k in ("added", "name", "type", "bounds") if k in delta}
+                elif delta.get("removed"):
+                    layers[ident] = delta
+                else:
+                    layers[ident] = {"changed": sorted(k for k in delta if k != "bounds"),
+                                     **({"bounds": delta["bounds"]} if "bounds" in delta else {})}
+            changes["layers"] = layers
+        elif key in ("canvas", "active_layer", "page", "selection"):
+            changes[key] = value
+        elif key == "layer_order":
+            changes[key] = "changed"
+        else:
+            other.append(key)
+    if other:
+        changes["also_changed"] = sorted(other)
+    return changes
+
+
 def _stroke(stroke):
     return {
         "brush": stroke["brush"],

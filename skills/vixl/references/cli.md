@@ -292,7 +292,7 @@ vixl ai remove --as removed ; vixl ai content-aware-fill --prompt '…' ; vixl a
 
 ```bash
 vixl -p F.vixl serve [--host 127.0.0.1] [--port 8765] [--token-env VIXL_API_TOKEN]
-vixl mcp --workspace DIR [--tools core|ai]   # MCP over stdio; core + ai run as two servers (default all)
+vixl mcp --workspace DIR [--tools core|ai] [--require-document]   # MCP over stdio; core + ai run as two servers (default all); --require-document (or VIXL_REQUIRE_DOCUMENT=1) makes document= mandatory
 vixl update --check | vixl update | vixl update --rollback ; vixl updates status|on|off   # Windows installer only
 ```
 

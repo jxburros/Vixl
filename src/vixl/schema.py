@@ -332,6 +332,8 @@ def _operation_schema():
     form_schemas(add)
     from .drawing import schemas as drawing_schemas
     drawing_schemas(add)
+    from .selectors import schemas as selector_schemas
+    selector_schemas(add)
     add(
         "palette-generate",
         {"name": S, "color": S, "scheme": S, "count": {"type": "integer", "minimum": 2, "maximum": 12}},
@@ -384,7 +386,8 @@ def validate_operation(operation, notes=None, index=None):
         raise VixlError(
             "unknown_operation",
             f"Unknown operation type {result['type']!r}"
-            + (f"; did you mean {' or '.join(map(repr, close))}?" if close else "; see the operation schema"),
+            + (f"; did you mean {' or '.join(map(repr, close))}?" if close else "; see the operation schema")
+            + " Fields of any type: vixl_operation_schema(types=[...])",
             field="type",
             suggestions=close,
         )
@@ -456,5 +459,11 @@ def schema_error(error, operation, allowed):
         details["limit"] = error.validator_value
     else:
         message = f"{field + ': ' if field else ''}{error.message}"
-    return VixlError("invalid_operation", message, **details)
+    # Point at the exact contract so one lookup, not a guess, fixes the next attempt.
+    hint = f"vixl_operation_schema(types=[{kind!r}])"
+    details.setdefault("fields", allowed)
+    if validator == "type" and isinstance(error.schema, dict):
+        details["expected"] = {k: v for k, v in error.schema.items() if k != "description"}
+    details["schema"] = hint
+    return VixlError("invalid_operation", f"{message} (see {hint})", **details)
 

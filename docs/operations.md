@@ -106,3 +106,53 @@ New document state: `canvas.size`, `canvas.dpi`, `canvas.physical`, `canvas.blee
 
 Every operation also accepts `page` (a page name or number) in a multi-page document.
 
+## Bulk edits and resizing a whole layout (unreleased)
+
+Repetitive work (menus, badge sheets, price tags, a campaign in six sizes) should not cost one call per layer.
+
+| Operation | Fields |
+| --- | --- |
+| edit-layers | `where` (selector), `do` (an operation or a list of up to 20), `dry_run`, `expect` |
+| adapt-layout | without `targets`: `size` **or** `width` + `height`, `orientation`/`dpi`/`bleed` (named print sizes), `scale` (`fit`, `fill`, `width`, `height` or a number), `anchors`, `where`, `text` (`scale`/`keep`), `report`; with `targets`: the existing vertical reflow (`targets`, `width`, `height`, `margin`, `gap`) |
+
+**`edit-layers`** runs `do` once for every layer on the active page that matches `where`, with `target` set to the layer, atomically with the rest of the batch. Every key of `where` must match; values may be lists (any of):
+
+| Key | Matches |
+| --- | --- |
+| `role` | the layer's intent role (`content`, `decoration`, `background`) or a named role bound with `role-set` |
+| `name`, `name_regex` | a case-insensitive glob (`badge-*`, `price-?`) or a regular expression on the layer name |
+| `kind` (or `type`) | the layer type: `text`, `shape`, `raster` (`image`), `group`, `solid`, `gradient`, `frame`, … |
+| `shape` | the shape kind of shape layers (`ellipse`, `rounded-rectangle`, …) |
+| `tag` | a label set with `layer-intent` `tags` |
+| `group` | every descendant of that group |
+| `text_contains`, `text_regex` | text layers whose text contains / matches (regexes read the first 2,000 characters) |
+| `id` | exact layer IDs or names |
+| `visible` | `true` / `false` |
+| `page` | a page number or name, a list, or `"all"` (default: the active page; the active page is restored afterwards) |
+| `not` | a `where` object to exclude |
+
+```json
+{"type":"edit-layers","where":{"kind":"text","name":"price-*"},"do":{"type":"text-set","color":"#c0392b","size":28}}
+{"type":"edit-layers","where":{"tag":"badge"},"do":[{"type":"layer-style","name":"drop-shadow","settings":{"blur":6}},{"type":"opacity","value":0.9}]}
+```
+
+Unknown `where` keys, unknown kinds and invalid regexes are errors with suggestions; `do` operations are validated (and normalized) once up front, so a typo fails before anything is applied. `do` cannot create layers or change the whole document (`text`, `shape`, `canvas`, `layout-apply`, …) and must not name a `target` or `page`. The result reports `edit_layers: [{matched, layers, pages?, dry_run?}]` (one entry per `edit-layers` operation, in order); a selector that matches nothing adds a warning. `expect: N` fails the batch unless exactly N layers match, which guards a selector against being too wide or too narrow; `dry_run` on the operation only counts and names the matches, and the batch-level `dry_run` (`vixl_operations_apply(dry_run=true)`) previews the whole edit without saving. `layer-intent` also takes `tags` (replacing the layer's labels), so a pattern can tag layers once and later edits select them by tag.
+
+**`adapt-layout`** (proportional mode) resizes the canvas, then re-lays out every top-level layer, so one design can be carried to another size and the result checked at once:
+
+- sizes scale uniformly by `scale` (default `fit`, the smaller of the two ratios, so nothing leaves the canvas); text scales its font size and the box of wrapping text; `text: "keep"` leaves font sizes alone;
+- along each axis a layer is anchored from where it sat in the old canvas: in the first or last third it keeps its (scaled) margin to that edge, in the middle third it keeps its relative position, and a layer spanning at least 90% of the axis stretches with the canvas. Groups, rotated layers and auto-sized text are never stretched; a full-canvas photo is scaled to cover instead of distorted;
+- `anchors` overrides this for layers named by glob, `role:NAME`, `kind:TYPE` or `tag:NAME` (first match wins) with `top-left`, `top`, `top-right`, `left`, `center`, `right`, `bottom-left`, `bottom`, `bottom-right`, `stretch`, `stretch-x`, `stretch-y`, `cover` or `keep`; `where` limits the layers that are adapted;
+- layers with constraints keep them: numeric values follow the axis ratio and `canvas.edge±N` offsets follow the scale, so constraint-driven layouts stay constraint-driven;
+- pixel and field layers keep their size (reported under `skipped`). Multi-page documents are not supported yet. Guides that are not part of a named size stay where they are.
+
+The result adds `adapt_layout: [{canvas: {from, to}, scale, adapted, moved, layers: [{layer, from, to, anchor, font_size?}], skipped?}]` (up to 60 layers; `report: false` omits the list), and the usual `warnings` flag layers that ended up cut off or overflowing. Adapt a document to several sizes in one call with `vixl_adapt_layout(sizes, directory, name, options, formats)`: each size becomes a saved (and optionally exported) copy, the source is untouched, and the reply lists per size the new canvas, scale, moved count and warnings.
+
+Without `targets` the verb is proportional; with `targets` it keeps its earlier meaning (vertical reflow in priority order that refuses content that cannot fit, see [production](production.md)). Mixing the two option sets is an error that says which mode each option belongs to. `vixl apply` (JSON) runs both modes from the CLI.
+
+## What an apply result contains
+
+`success`, `dry_run`, `operations` and `changes`, plus when relevant `warnings`, `normalized`, `layout`/`unfilled_slots` (layout-apply), `paint`, `edit_layers` and `adapt_layout`. `detail` is `brief` (MCP default: per layer ID only `added`/`name`/`type`/`bounds`, or `changed` field names and `bounds`, or `removed`), `compact` (REST and CLI default: the new values of changed fields) or `full` (before/after snapshots; the Python default).
+
+`warnings` lists problems with the layers this call added or changed: text or artwork cut off by the canvas edge (a bleed of up to a quarter of a non-text layer is ignored), text that does not fit its `text-layout` box or spills out of its group, and fields the engine accepted that change nothing for that operation (`radius` on a plain rectangle, `sides` or `inner_radius` on other shapes, `stroke_width` without `stroke`, `angle` on a non-angled gradient, `start`/`end` next to `stops`, `margin` on a centring `align`, unknown keys in an `adjustment`'s `effects`, `preset-apply` overrides naming no effect of the preset). They never fail an edit; `vixl_check` audits the whole document.
+

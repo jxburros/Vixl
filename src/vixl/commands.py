@@ -92,6 +92,10 @@ def compile_command(tokens):
     automation = compile_automation(cmd, args)
     if automation is not None:
         return automation
+    from .selectors import compile_command as compile_selectors
+    selector = compile_selectors(cmd, args)
+    if selector is not None:
+        return selector
     from .pixel_schema import compile_pixel
 
     pixel = compile_pixel(cmd, args)

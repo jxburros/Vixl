@@ -7,7 +7,6 @@ structured code/field/suggestions, and every document tool accepts an optional `
 import base64
 import binascii
 from copy import deepcopy
-import functools
 from io import BytesIO
 import json
 import os
@@ -18,8 +17,10 @@ from .fileio import file_lock
 from PIL import Image as PILImage
 from pydantic import Field, WithJsonSchema
 
+from . import calls
 from .assets import read_bounded
 from .errors import VixlError, require
+from .mcp_runtime import Runtime
 from .schema import operation_schema
 
 COORDINATE_NOTE = (
@@ -148,6 +149,7 @@ def slim_schema(schema, in_properties=False):
 
 Positive = Annotated[int, Field(ge=1)]
 Detail = Literal["compact", "full"]
+ApplyDetail = Literal["brief", "compact", "full"]
 Document = Annotated[str | None, Field(description=".vixl path; default: active document")]
 
 
@@ -210,18 +212,20 @@ def preview(
         return encode_png(image, max_bytes)
 
 
+EXPORT_SUFFIXES = (".png", ".jpg", ".jpeg", ".webp", ".tif", ".tiff", ".avif", ".svg", ".pdf", ".ico", ".html", ".htm", ".pptx")
+
+
 def export_file(session, path, overwrite=False, document=None, **options):
     from .fileio import temporary
 
     with session._mutex:
         destination = session.resolve(path)
         require(
-            destination.suffix.lower()
-            in (".png", ".jpg", ".jpeg", ".webp", ".tif", ".tiff", ".avif", ".svg", ".pdf", ".ico", ".html", ".htm", ".pptx"),
+            destination.suffix.lower() in EXPORT_SUFFIXES,
             "Choose a PNG, JPEG, WEBP, TIFF, AVIF, SVG, PDF, ICO, HTML or PPTX filename",
             field="path",
         )
-        require(destination.parent.is_dir(), "Destination directory must exist", field="path")
+        session.make_parent(destination)
         with file_lock(str(destination)):
             require(
                 overwrite or not destination.exists(),
@@ -297,7 +301,7 @@ def typed_ai(session, command, words=(), document=None, **options):
 
 
 # Tools both split servers need: the AI server addresses layers by name and checks its results.
-SHARED_TOOLS = {"vixl_workspace_list", "vixl_document_open", "vixl_document_inspect", "vixl_render_preview"}
+SHARED_TOOLS = {"vixl_workspace_list", "vixl_document_open", "vixl_document_inspect", "vixl_render_preview", "vixl_job"}
 AI_INSTRUCTIONS = (
     "Provider-backed AI editing for Vixl documents in the configured workspace: generate, inpaint, extend, "
     "upscale, remove objects or backgrounds, select subjects/objects, and describe/detect/OCR. Each tool takes "
@@ -350,28 +354,20 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
 
     def selected(name):
         if tools == "compact":
-            return name in SHARED_TOOLS | {"vixl_document_create", "vixl_operations_apply", "vixl_operation_schema",
+            # The compact set stays at 12 tools: job ids are polled through vixl_workflow instead of vixl_job.
+            return name in (SHARED_TOOLS - {"vixl_job"}) | {"vixl_document_create", "vixl_operations_apply", "vixl_operation_schema",
                 "vixl_workflow", "vixl_workflow_schema", "vixl_export_file", "vixl_import_image", "vixl_import_document"}
         if tools == "all" or name in SHARED_TOOLS:
             return True
         return is_ai_tool(name) == (tools == "ai")
 
+    runtime = Runtime(session, compact_json, ToolError, poll_with_workflow=tools == "compact")
+    server.vixl_runtime = runtime
+
     def tool(fn):
-        """Register a tool returning minified JSON, with structured errors."""
-
-        @functools.wraps(fn)
-        def wrapper(*args, **kwargs):
-            try:
-                result = fn(*args, **kwargs)
-            except VixlError as exc:
-                raise ToolError(compact_json(exc.as_dict())) from exc
-            if isinstance(result, dict):
-                return compact_json(result)
-            return result
-
-        wrapper.__annotations__ = {**fn.__annotations__}
-        if wrapper.__annotations__.get("return") is dict:
-            wrapper.__annotations__["return"] = str
+        """Register a tool returning minified JSON, with structured errors. It runs in a worker
+        thread with progress, background jobs and retry ids (mcp_runtime.py)."""
+        wrapper = runtime.wrap(fn)
         if selected(fn.__name__):
             server.tool(structured_output=False)(wrapper)
         return wrapper
@@ -398,10 +394,16 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         branch/merge collaboration, production, libraries and jobs. Discover action fields with vixl_workflow_schema.
         Paths stay in workspace. Branch merge and group apply default to dry_run=true.
 
-        Long jobs: submit with start=true, then status. AI jobs require an explicit configured provider.
+        Long jobs: submit with start=true, then status. A call that returned {job: job_…} is followed with
+        action status/cancel and request {id, wait?}. AI jobs require an explicit configured provider.
         Repairs preserve test suites. Unknown/unmeasurable checks report needs_review.
         """
         from .workflows import dispatch
+
+        if action in ("status", "cancel") and str(request.get("id", "")).startswith("job_"):
+            # A call that became a job (see vixl_job); the compact tool set polls it here.
+            return runtime.job("result" if action == "status" else action, request["id"],
+                               min(float(request.get("wait", 0)), 25))
         return dispatch(session, action, request, document)
 
     @tool
@@ -427,10 +429,8 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
 
         with session._mutex:
             destination = session.resolve(path)
-            require(
-                destination.suffix.lower() == ".vixl" and destination.parent.is_dir(),
-                "Use a .vixl path in an existing workspace directory",
-            )
+            require(destination.suffix.lower() == ".vixl", "Use a .vixl path in the workspace", field="path")
+            session.make_parent(destination)
             with file_lock(str(destination)):
                 require(not destination.exists(), "Destination already exists")
                 project = create_template(name, variables, limits=session.limits, workspace=session.workspace)
@@ -469,7 +469,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
             if font:
                 require(font in project.state.get("fonts", {}), "Import/register this font first")
                 op["font"] = project.state["fonts"][font]
-            return project.apply(op, detail="compact")
+            return project.apply(op, detail="brief")
 
     @tool
     def vixl_models_list(
@@ -567,12 +567,14 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
     def vixl_operations_apply(
         operations: Annotated[list[Operation], Field(min_length=1, max_length=1000)],
         dry_run: bool = False,
-        detail: Detail = "compact",
+        detail: ApplyDetail = "brief",
         document: Document = None,
     ) -> dict:
-        """Apply operations atomically (all or none) and autosave. compact returns new values of changed
-        fields by layer ID, and new layers as name/type/bounds; full adds before/after snapshots.
-        dry_run validates and previews the changes without saving. Omit target to use the active layer.
+        """Apply operations atomically (all or none) and autosave. brief (default) returns the ID, name and
+        resulting bounds of each changed layer plus warnings (off-canvas or overflowing text, ignored fields);
+        compact adds the new values of changed fields; full adds before/after snapshots. dry_run validates and
+        previews the changes without saving. Omit target to use the active layer; edit-layers changes every
+        layer matching a selector in one operation.
         font (text, text-set, rich-text spans, layout-apply, fields) takes a registered font name or a role
         (heading, body), as vixl_text_add does; install fonts first with vixl_font_pair or vixl_font_install.
         text-set changes a whole text layer (content, color, size, font; rich-text formatting is kept where it
@@ -682,6 +684,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
             image, summary = compare(
                 project, before, after, max_width=max_width, max_height=max_height, mode=mode
             )
+            summary["document"] = session.relative(project.path)
         return [compact_json(summary), Image(data=encode_png(image, 2_097_152), format="png")]
 
     @tool
@@ -854,6 +857,71 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
             alpha=alpha,
             presenter=presenter,
         )
+
+    @tool
+    def vixl_export_batch(
+        targets: Annotated[
+            list[dict],
+            Field(
+                min_length=1,
+                max_length=64,
+                description="Outputs to write: {path, document?, overwrite?, ...any vixl_export_file option} "
+                "(scale, profile, artboard, page, quality, color_space, …); one entry per file",
+            ),
+        ],
+        defaults: Annotated[dict | None, Field(description="Options shared by every target; a target's own win")] = None,
+        overwrite: bool = False,
+        stop_on_error: bool = False,
+        document: Document = None,
+    ) -> dict:
+        """Export several files in one call: several sizes, formats or artboards of one document, or
+        several documents. Every target is checked first (unknown options, duplicate or existing paths), then
+        written in order; each reports its own file metadata or error. Missing directories are created."""
+        from .export_batch import export_batch
+
+        return export_batch(session, export_file, targets, defaults, overwrite, stop_on_error, document)
+
+    @tool
+    def vixl_adapt_layout(
+        sizes: Annotated[
+            list[str | dict],
+            Field(
+                min_length=1,
+                max_length=16,
+                description="Target sizes: a named size ('story', 'a4'), 'WIDTHxHEIGHT', or {size | width+height, "
+                "orientation?, dpi?, bleed?, name?}",
+            ),
+        ],
+        directory: str = ".",
+        name: Annotated[str, Field(description="File name template for each adapted copy: {name} {size} {index}")] = "{name}-{size}",
+        options: Annotated[dict | None, Field(description="adapt-layout settings for every size: scale, anchors, where, text")] = None,
+        formats: Annotated[list[str] | None, Field(description="Also export each copy, e.g. ['png']")] = None,
+        overwrite: bool = False,
+        report: Literal["summary", "layers"] = "summary",
+        document: Document = None,
+    ) -> dict:
+        """Adapt one document to several sizes in one call (a campaign: square, story, banner, print). Each size is
+        a saved copy re-laid out by the adapt-layout operation (sizes scale, each layer keeps its anchor to an edge
+        or its relative place, backgrounds stretch, photos cover) and optionally exported. Returns per size the
+        new file, canvas, scale, how many layers moved and any warnings; report='layers' lists where each layer
+        went. The source document is not changed; refine a copy with vixl_operations_apply."""
+        from .adapt import adapt_copies
+
+        return adapt_copies(session, export_file, sizes, directory, name, options, document, overwrite, formats, report)
+
+    @tool
+    def vixl_job(
+        action: Literal["status", "result", "cancel", "list"] = "status",
+        id: str | None = None,
+        wait: Annotated[float, Field(ge=0, le=50, description="Seconds to wait for the job to finish")] = 0,
+    ) -> dict:
+        """Follow a long call. A call still running after about 40 s (VIXL_MCP_INLINE_SECONDS), or one sent
+        with as_job=true, returns {status: running, job: ID} while it carries on. status reports
+        progress (wait= blocks until it ends or the time is up), result returns the call's normal result, cancel
+        stops a queued job or a running one at its next checkpoint, list shows recent jobs. Also accepts the ID
+        of a durable workflow job. A call that timed out on your side is in list: read its result instead
+        of sending it again (or retry with the same request_id)."""
+        return runtime.job(action, id, wait)
 
     @tool
     def vixl_measure_spacing(
@@ -1163,6 +1231,8 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
                 quality=quality,
                 colors=colors,
                 overwrite=overwrite,
+                progress=calls.progress_dict,
+                cancelled=calls.cancelled,
             )
             result["output"] = session.relative(destination)
             if "metadata" in result:
@@ -1406,6 +1476,15 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
     def operations_reference() -> str:
         return json.dumps(operation_schema())
 
+    poll = "vixl_workflow (action status, request {id})" if tools == "compact" else "vixl_job"
+    server._mcp_server.instructions += (
+        f" Results name their document. A call still running after ~40 s returns a job: poll {poll} and do not "
+        "resend it (heavy calls can also pass as_job=true; mutating calls take request_id so a retry never "
+        "applies twice)."
+    )
+    if session.require_document:
+        server._mcp_server.instructions += " Every document tool needs document= on every call."
     for registered in server._tool_manager.list_tools():
         registered.parameters = slim_schema(registered.parameters)
+        runtime.watch_arguments(registered)
     return server
