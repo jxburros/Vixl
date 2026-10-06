@@ -125,8 +125,6 @@ class Builder:
         if self.display_font and self.display_font not in project.state.get("fonts", {}):
             self.display_font = resolve_font(project, self.display_font)[0]
 
-    # -- helpers ---------------------------------------------------------------------------
-
     def name(self, base):
         return f"{self.prefix}{base}"
 
@@ -371,10 +369,6 @@ class Builder:
         return label.upper() if label and self.op.get("uppercase_labels", True) else label
 
 
-# ---------------------------------------------------------------------------------------------
-# Color roles
-
-
 ROLES = ("background", "surface", "ink", "muted", "accent", "accent-text", "on-accent")
 
 
@@ -494,8 +488,7 @@ def assign_roles(op, rng):
     return roles
 
 
-# ---------------------------------------------------------------------------------------------
-# Layouts. Each receives a Builder; geometry is derived from the canvas, never fixed pixels.
+# Each layout receives a Builder; geometry is derived from the canvas, never fixed pixels.
 
 
 def _hero_statement(b):

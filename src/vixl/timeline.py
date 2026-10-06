@@ -605,10 +605,6 @@ def _apply_preset(project, timeline, target, op, written):
     return mirror
 
 
-# ---------------------------------------------------------------------------------------------
-# Sampling
-
-
 def _segment(keys, time):
     if time <= keys[0]["time"]:
         return keys[0], keys[0], 0.0
@@ -831,9 +827,6 @@ def frame_times(project, fps=None, start=0, end=None, streamed=False):
     return [start + i * 1000 / fps for i in range(count)], fps
 
 
-# ---------------------------------------------------------------------------------------------
-# Loops: seam detection, closing keys, repeats
-
 def _snapshot(timeline, target):
     return {t["property"]: deepcopy(t["keys"]) for t in timeline["tracks"] if t["target"] == target}
 
@@ -1035,10 +1028,6 @@ def poster_findings(project, time=0):
             for layer in at_end.state["layers"] if layer["type"] == "text" and layer["id"] in resting and layer["id"] not in shown]
 
 
-# ---------------------------------------------------------------------------------------------
-# Validation and inspection
-
-
 def validate_timeline(project, state):
     if "timeline" not in state:
         return
@@ -1167,9 +1156,6 @@ def _text_animations(project, timeline):
 
     return inspect(project, timeline)
 
-
-# ---------------------------------------------------------------------------------------------
-# Export
 
 FORMATS = ("gif", "apng", "webp", "sheet", "frames", "mp4", "webm")
 

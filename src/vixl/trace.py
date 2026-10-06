@@ -13,10 +13,6 @@ from .errors import require
 from .geometry import compact_number
 
 
-# ---------------------------------------------------------------------------------------------
-# Polygons and polylines
-
-
 def area(points):
     """Signed area (positive when the points run clockwise on a y-down screen)."""
     p = np.asarray(points, dtype=float)
@@ -131,10 +127,6 @@ def chaikin(points, iterations=1, closed=True):
     return p
 
 
-# ---------------------------------------------------------------------------------------------
-# SVG path output
-
-
 def path_data(points, closed=False, smooth=True, precision=2, tension=1.0):
     """An SVG path for one polyline or loop. ``smooth`` passes a Catmull–Rom spline through the
     points (as cubic Béziers); otherwise straight segments join them."""
@@ -169,10 +161,6 @@ def elements_path(elements, precision=2):
     parts = [path_data(e["points"], e.get("closed", True), e.get("smooth", True), precision)
              for e in elements if len(e["points"])]
     return " ".join(part for part in parts if part)
-
-
-# ---------------------------------------------------------------------------------------------
-# Contours of a scalar field
 
 
 def contours(field, level=0.5, *, min_points=3):

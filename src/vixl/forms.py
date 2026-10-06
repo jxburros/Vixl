@@ -53,10 +53,6 @@ MARK_PATHS = {
 }
 
 
-# ---------------------------------------------------------------------------------------------
-# Units and records
-
-
 def px_per_pt(state):
     dpi = state["canvas"].get("dpi")
     return dpi / 72 if dpi else 1.0
@@ -91,10 +87,6 @@ def has_fields(project):
 
 def form_settings(state):
     return {"tab_order": "reading", "entry_font": "standard", **(state.get("form") or {})}
-
-
-# ---------------------------------------------------------------------------------------------
-# Operations
 
 
 def schemas(add):
@@ -314,10 +306,6 @@ def _apply_settings(project, layer, op):
     validate_field(layer, project.state)
 
 
-# ---------------------------------------------------------------------------------------------
-# Validation
-
-
 def validate_settings(settings):
     require(isinstance(settings, dict) and not set(settings) - set(FORM_SETTINGS), "Invalid form settings",
             "invalid_project")
@@ -494,10 +482,6 @@ def validate_form(project, state):
             item = index.get(item["parent"]) or {}
         require(not (ancestors & set(symbols.values())), "Fields cannot be part of a symbol master", "invalid_operation",
                 field="target")
-
-
-# ---------------------------------------------------------------------------------------------
-# Values
 
 
 class FieldValueError(Exception):
@@ -794,10 +778,6 @@ def split_values(project, pairs):
     values = {k: v for k, v in (pairs or {}).items() if k in keys}
     variables = {k: v for k, v in (pairs or {}).items() if k not in keys}
     return values, variables
-
-
-# ---------------------------------------------------------------------------------------------
-# Drawing
 
 
 def _text_layer(layer, text, size, *, width=None, height=None, align=None):
@@ -1167,10 +1147,6 @@ def pdf_field_appearance(builder, layer, w, h):
         builder.ops.append("Q")
 
 
-# ---------------------------------------------------------------------------------------------
-# Geometry, tab order and summaries
-
-
 def field_geometry(view):
     """[(resolved field layer, canvas bounds, matrix)] for the visible fields of a page view."""
     from .checks import canvas_projection
@@ -1316,10 +1292,6 @@ def draw_overlay(image, project, scale=1.0, offset=(0, 0)):
         draw.rectangle(tag, fill=color)
         draw.text((tag[0] + 3, tag[1] + 1), text, fill=(255, 255, 255, 255), font=font)
     return image
-
-
-# ---------------------------------------------------------------------------------------------
-# Checks
 
 
 def winansi(text):
@@ -1601,10 +1573,6 @@ def overflow_report(view, *, reveal=False, suggest=False):
     return reports
 
 
-# ---------------------------------------------------------------------------------------------
-# Filling
-
-
 def read_rows(path, limit=10000):
     """CSV rows for filling (shared with ``render --data``): UTF-8 with an optional BOM, unique
     non-empty headers, at most ``limit`` rows and 8 MiB."""
@@ -1787,10 +1755,6 @@ def fill_data(project, csv_path, directory=None, *, combine=None, name="{row}", 
         shutil.rmtree(staging, ignore_errors=True)
     report["outputs"] = outputs
     return report
-
-
-# ---------------------------------------------------------------------------------------------
-# CLI
 
 
 def compile_command(cmd, args):

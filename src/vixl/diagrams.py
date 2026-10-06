@@ -85,10 +85,6 @@ OPTION_KEYS = ("layout", "direction", "routing", "lanes", "columns", "theme", "f
                "edge_color", "stroke_width", "node_gap", "rank_gap", "margin", "fit", "background", "arrows")
 
 
-# ---------------------------------------------------------------------------------------------
-# Operations and schemas
-
-
 def schemas(add):
     from .schema import S, N, B, POSITIVE_INT, enum
 
@@ -169,10 +165,6 @@ def _delete(project, name):
         apply(project, {"type": "remove", "target": rec["group"]})
     if not project.state["diagrams"]:
         project.state.pop("diagrams")
-
-
-# ---------------------------------------------------------------------------------------------
-# The specification: nodes, edges and options
 
 
 def _id(value, what):
@@ -402,10 +394,6 @@ def _validate_spec(spec):
             cursor = ids[cursor].get("group")
 
 
-# ---------------------------------------------------------------------------------------------
-# Text format
-
-
 FLOW_OPERATORS = re.compile(
     r"(?P<dboth><-\.->)"
     r"|(?P<dashed>-\.+->|\.\.+>|-\.+>)"
@@ -554,10 +542,6 @@ def _flow_line(body, number, ensure, edges):
         edges.append(edge)
 
 
-# ---------------------------------------------------------------------------------------------
-# Measuring text and sizing nodes
-
-
 class _Text:
     """Measures label text through the document's own text engine, with a cache."""
 
@@ -674,10 +658,6 @@ def _node_geometry(kind, text_w, text_h, style, icon, explicit):
         else:
             w, h = explicit[0] * s, explicit[1] * s
     return _even(w), _even(h), shape, inset
-
-
-# ---------------------------------------------------------------------------------------------
-# Build: layout inputs -> geometry -> layer parts
 
 
 Build = SimpleNamespace  # one layout of a diagram: sizes, geometry and what the layers will be
@@ -800,7 +780,6 @@ def _parts(project, name, spec, b):
         parts.append({"key": "bg", "rank": RANKS["background"], "type": "shape", "name": f"{name}/background", "x": 0, "y": 0,
                       "width": math.ceil(b.size[0]), "height": math.ceil(b.size[1]),
                       "fields": {"shape": "rectangle", "fill": spec["background"], "stroke": "transparent", "stroke_width": 0}})
-    # lanes and clusters
     for gid, (gx, gy, gw, gh, tx, ty) in result.groups.items():
         info = b.info[gid]
         fill, stroke, text_color = _colors(project, spec, nodes[gid], style)
@@ -823,7 +802,6 @@ def _parts(project, name, spec, b):
         else:
             text_part(f"g:{gid}:title", RANKS["title"], f"{name}/{gid}.title", title, style.size, text_color,
                       x + 16 * s + info["tw"] / 2, y + 8 * s + info["th"] / 2)
-    # edges
     obstacles = [result.nodes[i] for i in result.nodes if b.info[i]["kind"] != "group"]
     b.labels = {}
     for e in spec["edges"]:
@@ -845,7 +823,6 @@ def _parts(project, name, spec, b):
             color = spec.get("text_color") or style.theme["text"]
             text_part(f"e:{e['id']}:label", RANKS["edge_label"], f"{name}/{e['id']}.label", label_info["text"], style.label_size, color,
                       label_at[0] + PAD, label_at[1] + PAD)
-    # nodes
     for n in spec["nodes"]:
         info = b.info[n["id"]]
         if info["kind"] == "group":
@@ -1018,10 +995,6 @@ def _edge_geometry(route, edge, style, label_box, obstacles, margin):
     return x0, y0, w, h, d.strip(), label_at, {"fill": color if filled else "transparent", "stroke": color, "width": sw}
 
 
-# ---------------------------------------------------------------------------------------------
-# Writing the layers
-
-
 def _layout_into_document(project, name, rec):
     """Lay the diagram out (shrinking to fit its area) and write or update its layers."""
     spec = rec["spec"]
@@ -1145,10 +1118,6 @@ def _embed_font(project, layer):
     embed_font_file(project, layer)
 
 
-# ---------------------------------------------------------------------------------------------
-# Keeping records and layers consistent, reporting, validation
-
-
 def _all_layers(state):
     """Every layer of the document, on the active page and on the others."""
     for layer in state.get("layers", []):
@@ -1267,10 +1236,6 @@ def validate(state):
         require(isinstance(layout, dict), "Invalid diagram layout record", "invalid_project")
 
 
-# ---------------------------------------------------------------------------------------------
-# Checks: overlapping nodes, edges through nodes, unreadable labels
-
-
 def _rect_overlap(a, b):
     w = min(a[0] + a[2], b[0] + b[2]) - max(a[0], b[0])
     h = min(a[1] + a[3], b[1] + b[3]) - max(a[1], b[1])
@@ -1384,10 +1349,6 @@ def check_diagrams(project, resolved, local_bounds, projection, issue, targets=N
         if layout.get("too_small"):
             issue("diagram", "warning", f"Diagram {name!r} was scaled down to {layout['font_size']} px labels to fit; "
                   "enlarge the canvas, widen its area, or show fewer nodes", [group])
-
-
-# ---------------------------------------------------------------------------------------------
-# Command line
 
 
 def compile_command(cmd, args):

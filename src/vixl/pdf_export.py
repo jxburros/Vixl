@@ -119,8 +119,6 @@ class PageBuilder:
         self.fallbacks = []
         self.jpeg_quality = None  # set: raster images are written as JPEG at this quality
 
-    # -- resources ----------------------------------------------------------------------------
-
     def alpha(self, fill=1.0, stroke=1.0):
         fill, stroke = round(fill, 4), round(stroke, 4)
         if fill >= 1 and stroke >= 1:
@@ -182,8 +180,6 @@ class PageBuilder:
         name = f"Sh{len(self.shadings) + 1}"
         self.shadings[name] = self.writer.add(shading)
         return name
-
-    # -- drawing ------------------------------------------------------------------------------
 
     def fallback(self, layer, reason):
         if layer["type"] not in ("raster", "frame") or reason != "image":  # an image layer is an image anyway

@@ -31,10 +31,6 @@ SEVERITIES = ("error", "warning", "info")
 WEIGHT_NAME = re.compile(r"^(.+?)(?:-(\d{3}))?(-italic)?$")
 
 
-# ---------------------------------------------------------------------------------------------
-# Catalog access
-
-
 def names():
     return sorted(STYLES)
 
@@ -129,10 +125,6 @@ def apply_operations(name, palette=False, guidance=True):
     return ops
 
 
-# ---------------------------------------------------------------------------------------------
-# The document tag
-
-
 def schemas(add):
     from .schema import S
 
@@ -210,10 +202,6 @@ def compile_command(cmd, args):
             **({"options": a.options} if a.options else {})}
 
 
-# ---------------------------------------------------------------------------------------------
-# Measurements
-
-
 def _rgb(value):
     from .render import color
 
@@ -244,7 +232,6 @@ class Facts:
             self._memo[key] = make()
         return self._memo[key]
 
-    # -- text
     def texts(self):
         return [item for item in self.leaves if item["type"] == "text" and item.get("text", "").strip()]
 
@@ -283,7 +270,6 @@ class Facts:
         entry = typefaces.find_font(family)
         return entry["category"] if entry else None
 
-    # -- color
     def colors(self, distance=30):
         """Clusters of the declared colors: ``[{"rgb", "hex", "layers", "count"}]``, merged within ``distance``."""
         def build():
@@ -339,7 +325,6 @@ class Facts:
         """Colors that read as a hue (not black, white or gray)."""
         return [c for c in self.colors(distance) if self.hsv(c["rgb"])[1] >= 0.25 and self.hsv(c["rgb"])[2] >= 0.15]
 
-    # -- render
     def image(self):
         def build():
             from .proxy import render_preview
@@ -388,7 +373,6 @@ class Facts:
         both = ink & other & similar
         return float(both.sum() / max(1, (ink | other).sum()))
 
-    # -- shapes and effects
     def shapes(self):
         return [item for item in self.leaves if item["type"] == "shape"]
 
@@ -400,7 +384,6 @@ class Facts:
         return [(item, e["name"]) for item in self.layers for e in item.get("effects", []) if e.get("enabled", True)]
 
 
-# ---------------------------------------------------------------------------------------------
 # Rule evaluators: (facts, params) -> {"status": passed|failed|skipped, "measured": {...}, "detail": str, "layers": [names]}
 
 
@@ -862,10 +845,6 @@ def rule_min_text_size(f, p):
 
 
 RULES = {name[5:]: fn for name, fn in globals().items() if name.startswith("rule_")}
-
-
-# ---------------------------------------------------------------------------------------------
-# Evaluation and the check hook
 
 
 def selected(style, state):

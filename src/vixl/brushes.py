@@ -168,10 +168,6 @@ def validate_brushes(state):
         brush_settings(state, name)
 
 
-# ---------------------------------------------------------------------------------------------
-# Geometry
-
-
 def _catmull_rom(points, steps=6):
     """Smooth a polyline through its points; pressure is interpolated alongside."""
     if len(points) < 3:
@@ -208,10 +204,6 @@ def _resample(points, step):
 def _smoothstep(v):
     v = np.clip(v, 0, 1)
     return v * v * (3 - 2 * v)
-
-
-# ---------------------------------------------------------------------------------------------
-# Rendering
 
 
 @lru_cache(maxsize=8)
@@ -418,10 +410,6 @@ def paint_image(project, layer):
     out[:, :, :3] = np.where(visible, premultiplied[:, :, :3] / np.maximum(premultiplied[:, :, 3:4], 1e-6), 0)
     out[:, :, 3] = premultiplied[:, :, 3]
     return Image.fromarray(np.uint8(np.clip(out, 0, 1) * 255 + 0.5), "RGBA")
-
-
-# ---------------------------------------------------------------------------------------------
-# Operations
 
 
 def _new_paint_layer(project, op, default_name="paint"):

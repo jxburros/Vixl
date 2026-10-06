@@ -46,10 +46,6 @@ def statuses(project, style):
     return {rule["id"].split("/", 1)[1]: rule["status"] for rule in report["rules"]}
 
 
-# ---------------------------------------------------------------------------------------------
-# Catalog
-
-
 def test_catalog_has_a_curated_set_of_complete_styles():
     assert 20 <= len(STYLES) <= 30
     required = {"title", "summary", "era", "keywords", "best_for", "principles", "palettes", "palette_names", "type",
@@ -115,7 +111,6 @@ def test_listing_search_and_get():
     assert caught.value.code == "unknown_style" and "swiss" in caught.value.details["suggestions"]
 
 
-# ---------------------------------------------------------------------------------------------
 # Every rule evaluates, on empty, text-only and rich documents
 
 
@@ -155,7 +150,6 @@ def test_every_rule_of_every_style_evaluates(fonts, name):
         assert sum(report["summary"].values()) == len(report["rules"])
 
 
-# ---------------------------------------------------------------------------------------------
 # A compliant and a non-compliant document per style
 
 
@@ -320,10 +314,6 @@ def test_neo_brutalist_needs_hard_shadows_and_outlines(fonts):
     assert got["shadows"] == "failed" and got["min-stroke-width"] == "failed"
 
 
-# ---------------------------------------------------------------------------------------------
-# The style-set tag
-
-
 def test_style_set_tags_validates_clears_and_persists(fonts, tmp_path):
     project = doc(fonts)
     result = project.apply({"type": "style-set", "style": "Swiss"}, detail="compact")
@@ -392,10 +382,6 @@ def test_apply_stores_the_brief_and_palette_as_ordinary_operations(fonts):
     assert project.state["palette_roles"]["roles"][0]["role"] == "background"
     roles = styles.palette_roles(["#0b0b0d", "#d4af37", "#f5e6b3", "#1c1c21"])
     assert roles["background"] == "#0b0b0d" and roles["ink"] == "#f5e6b3" and roles["accent"] == "#d4af37"
-
-
-# ---------------------------------------------------------------------------------------------
-# Interfaces
 
 
 def call(server, tool, **arguments):

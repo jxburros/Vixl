@@ -121,10 +121,6 @@ def test_look_catalog_is_described_and_matches_the_operation_enum():
         assert row["summary"] and row["svg"] in ("native", "raster") and row["best_for"], name
 
 
-# ---------------------------------------------------------------------------------------------
-# Radial repeat
-
-
 def centers(project, names):
     """Canvas-space centers of layers (layout bounds are local to a layer's group)."""
     from vixl.checks import canvas_projection

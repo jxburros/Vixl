@@ -29,10 +29,6 @@ MAX_GUIDES = 1024
 PHI = (1 + 5 ** 0.5) / 2
 
 
-# ---------------------------------------------------------------------------------------------
-# Guide records
-
-
 def kind_of(guide):
     return guide.get("kind", "axis")
 
@@ -94,10 +90,6 @@ def make_guide(op):
     missing = [key for key in needs if key not in op]
     require(not missing, f"A {kind} guide needs {', '.join(needs)}", field=missing[0] if missing else None)
     return {"kind": kind, **{key: deepcopy(op[key]) for key in needs}}
-
-
-# ---------------------------------------------------------------------------------------------
-# Geometry
 
 
 def _clip_line(px, py, dx, dy, box, ray=False):
@@ -283,10 +275,6 @@ def angle_of(guide):
         (x1, y1), (x2, y2) = guide["points"]
         return math.degrees(math.atan2(y2 - y1, x2 - x1)) % 180
     return None
-
-
-# ---------------------------------------------------------------------------------------------
-# Generated systems
 
 
 def _region(op, canvas):
@@ -483,10 +471,6 @@ def generate(op, canvas):
     return guides
 
 
-# ---------------------------------------------------------------------------------------------
-# Layer geometry
-
-
 def _layer_frame(project, target):
     """(layer, resolved layer, local bounds, group matrix, inverse) for a target."""
     from .checks import group_matrix
@@ -552,10 +536,6 @@ def move_anchor_to(project, target, fraction, point, rotation=None):
     tw, th = transformed_size(layer)
     layer["x"], layer["y"] = stored_origin(layer, (cx - tw / 2, cy - th / 2))
     layer["constraints"] = {}
-
-
-# ---------------------------------------------------------------------------------------------
-# Operations
 
 
 def _guide(project, name, field="guide"):
@@ -733,10 +713,6 @@ def schemas(add):
                  "anchors": {"type": "array", "items": {"enum": [*ANCHORS, BASELINE]}, "minItems": 1,
                              "description": "Which anchors may snap (default: the nine box anchors). 'baseline' snaps a "
                              "text layer's first baseline, e.g. onto a baseline grid; other layers reject it."}})
-
-
-# ---------------------------------------------------------------------------------------------
-# Checks and overlay
 
 
 def check_guides(candidate, resolved, local_bounds, projection, layers, issue, tolerance=6.0, angle_tolerance=4.0):

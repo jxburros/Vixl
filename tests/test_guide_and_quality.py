@@ -19,7 +19,6 @@ from vixl.style_catalog import STYLES
 ROOT = Path(__file__).resolve().parents[1]
 
 
-# ---------------------------------------------------------------------------------------------
 # #79 (1) and #88: the guide and the start-here recipe
 
 
@@ -135,7 +134,6 @@ def test_skill_and_docs_carry_the_start_here_recipe():
         assert (ROOT / path).exists()
 
 
-# ---------------------------------------------------------------------------------------------
 # #79 (3): layouts with image slots explain how to fill them
 
 
@@ -187,7 +185,6 @@ def test_text_slots_get_a_reapply_hint_and_the_documented_fill_works():
     assert not blanks
 
 
-# ---------------------------------------------------------------------------------------------
 # #79 (4): palette roles are explained and can keep the order given
 
 ORDER = ["#0f172a", "#1e293b", "#38bdf8", "#f472b6"]
@@ -269,7 +266,6 @@ def test_palette_generate_never_assigns_roles_and_reports_its_swatches():
     assert "background" not in project.state["swatches"] and "palette_roles" not in project.state
 
 
-# ---------------------------------------------------------------------------------------------
 # #79 (5): findings grouped by action, intentional crops marked
 
 

@@ -26,7 +26,7 @@ def _slide_xml(project):
     return zipfile.ZipFile(io.BytesIO(project.export(format="PPTX"))).read("ppt/slides/slide1.xml").decode()
 
 
-# -- #201 ---------------------------------------------------------------------------------------
+# #201
 
 
 def test_vector_pdf_of_blend_mode_page_falls_back_to_an_image():
@@ -46,7 +46,7 @@ def test_vector_pdf_of_adjustment_layer_page_falls_back_to_an_image():
     assert p.export(format="PDF").startswith(b"%PDF")
 
 
-# -- #198 ---------------------------------------------------------------------------------------
+# #198
 
 
 def test_pptx_plain_text_in_a_bold_registered_face_is_bold():
@@ -61,7 +61,7 @@ def test_pptx_plain_text_in_a_bold_registered_face_is_bold():
     assert not re.search(r'<a:rPr[^>]* i="1"', xml)
 
 
-# -- #202 ---------------------------------------------------------------------------------------
+# #202
 
 
 def _photo_project():
@@ -82,7 +82,7 @@ def test_pdf_quality_applies_to_images(content):
     assert len(low) < len(default)
 
 
-# -- #209 / #220 --------------------------------------------------------------------------------
+# #209 / #220
 
 
 def _poster():
@@ -124,7 +124,7 @@ def test_layer_role_title_is_explicit():
     assert title_layer(p)["name"] == "small"
 
 
-# -- #199 / #200 / #228 -------------------------------------------------------------------------
+# #199 / #200 / #228
 
 
 def _stroke_only_path():
@@ -174,7 +174,7 @@ def test_text_svg_omits_noop_stroke_attributes():
     assert "stroke-width" in p.export(format="SVG").decode()
 
 
-# -- #223 ---------------------------------------------------------------------------------------
+# #223
 
 
 def test_none_colour_is_transparent():
@@ -194,7 +194,7 @@ def test_irregular_accepts_fill_none():
     p.apply({"type": "irregular", "target": "s", "seed": 3})
 
 
-# -- #190 ---------------------------------------------------------------------------------------
+# #190
 
 
 def test_png_size_warning_names_texture_looks_and_max_bytes_warns():
@@ -211,7 +211,7 @@ def test_png_size_warning_names_texture_looks_and_max_bytes_warns():
     assert "warnings" not in quiet
 
 
-# -- #194 ---------------------------------------------------------------------------------------
+# #194
 
 
 def test_cmyk_jpeg_with_a_profile_imports_through_the_profile():

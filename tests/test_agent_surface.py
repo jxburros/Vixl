@@ -41,7 +41,6 @@ def server(tmp_path):
     return server
 
 
-# ---------------------------------------------------------------------------------------------
 # #180: one call applies, checks and previews
 
 
@@ -148,7 +147,6 @@ def test_rest_and_cli_apply_return_findings_and_a_preview(tmp_path):
     assert (tmp_path / "p.png").read_bytes().startswith(b"\x89PNG") and Project.load(path).layer("box")
 
 
-# ---------------------------------------------------------------------------------------------
 # #236 / #255: one guidance registry
 
 
@@ -198,7 +196,6 @@ def test_tool_list_has_no_duplicate_text_tool_and_names_the_split_tools(server):
     assert {"check", "preview"} <= set(tools["vixl_operations_apply"].inputSchema["properties"])
 
 
-# ---------------------------------------------------------------------------------------------
 # #236, #185, #216, #256: the starting points
 
 

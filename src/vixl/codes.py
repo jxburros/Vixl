@@ -39,10 +39,6 @@ EAN_R = tuple(code.translate(str.maketrans("01", "10")) for code in EAN_L)
 EAN_PARITY = ("LLLLLL", "LLGLGG", "LLGGLG", "LLGGGL", "LGLLGG", "LGGLLG", "LGGGLL", "LGLGLG", "LGLGGL", "LGGLGL")
 
 
-# ---------------------------------------------------------------------------------------------
-# Encoders
-
-
 def code128_values(data):
     """Symbol values for ``data`` (printable ASCII): set C for runs of four or more digits (or an all-digit
     even-length string), set B otherwise, with the start, check and stop values."""
@@ -114,10 +110,6 @@ def qr_matrix(data, error):
     except (ValueError, segno.DataOverflowError) as exc:
         raise VixlError("invalid_code", f"Cannot encode a QR code: {exc}", field="data") from None
     return [[bool(cell) for cell in row] for row in code.matrix], code.version
-
-
-# ---------------------------------------------------------------------------------------------
-# Geometry
 
 
 def outline(matrix, offset=0):
@@ -225,10 +217,6 @@ def resolve(layer, variables):
     if "${" not in record["data"]:
         return
     layer["path"], layer["path_view"], _ = geometry(record, substitute(record["data"], variables))
-
-
-# ---------------------------------------------------------------------------------------------
-# Operations
 
 
 def schemas(add):
@@ -405,10 +393,6 @@ def validate(layer):
     require(record.get("error", "M") in ERRORS, "Invalid QR error correction", "invalid_project")
     quiet = record.get("quiet")
     require(quiet is None or (isinstance(quiet, int) and 0 <= quiet <= 40), "Invalid code quiet zone", "invalid_project")
-
-
-# ---------------------------------------------------------------------------------------------
-# Checks
 
 
 MIN_MM = {"qr": 0.33, "code128": 0.19, "ean13": 0.264}

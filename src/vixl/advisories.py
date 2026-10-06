@@ -1,10 +1,9 @@
 """Advisories: problems an apply call can see cheaply, returned under ``warnings`` (never errors).
 
-A successful apply used to say nothing about text that spills off the canvas or out of its box, or
-about a valid field that changes nothing for this shape, so a wrong guess looked like success.
-Unknown fields and invalid values are errors (schema.py, normalize.py), never advisories. These
-checks look only at the layers and operations of this one call, so they add no noise about
-pre-existing problems. ``vixl_check`` remains the complete audit.
+They cover text that spills off the canvas or out of its box and a valid field that changes nothing
+for this shape, so a wrong guess does not look like success. Unknown fields and invalid values are
+errors (schema.py, normalize.py), never advisories. These checks look only at the layers and
+operations of this one call, so they add no noise about pre-existing problems. ``vixl_check`` remains the complete audit.
 """
 
 MAX_WARNINGS = 12

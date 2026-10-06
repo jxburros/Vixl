@@ -399,10 +399,6 @@ def compile_command(cmd, args):
     return {"type": "page", **data}
 
 
-# ---------------------------------------------------------------------------------------------
-# Views
-
-
 def page_content(project, page):
     """The scoped content of a page record (the live state for the active page)."""
     state = project.state
@@ -502,10 +498,6 @@ def summary(project):
                       "active": state.get("page") == MASTER_PREFIX + name}
                for name in state.get("masters", {})}
     return {"pages": pages, "masters": masters, "active": state.get("page")}
-
-
-# ---------------------------------------------------------------------------------------------
-# Validation
 
 
 def validate_pages(project, state):

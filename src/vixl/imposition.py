@@ -72,10 +72,6 @@ FIELD_TYPES = {
 }
 
 
-# ---------------------------------------------------------------------------------------------
-# The sheet spec
-
-
 def sheet_spec(spec):
     """A validated sheet spec with defaults filled in. Errors name the offending key."""
     require(spec is None or isinstance(spec, dict), "sheet must be an object", field="sheet")
@@ -156,10 +152,6 @@ def _edges(value):
     else:
         edges = [value] * 4
     return [finite(v, "margin", 0, 10000) for v in edges]
-
-
-# ---------------------------------------------------------------------------------------------
-# Geometry
 
 
 def layout(canvas, spec):
@@ -327,10 +319,6 @@ def mark_shapes(plan, used_cols, used_rows):
     return shapes
 
 
-# ---------------------------------------------------------------------------------------------
-# The data
-
-
 def template_variables(view):
     """(used, defaults, images, fields) for a template view: the variable names it draws, the ones it defines,
     its image variables and its form field keys."""
@@ -376,10 +364,6 @@ def _constants(variables):
         isinstance(k, str) and NAME.fullmatch(k) and isinstance(v, (str, int, float, bool)) for k, v in variables.items())),
         "variables maps names to text, numbers or true/false", field="variables")
     return {key: value if isinstance(value, str) else str(value) for key, value in (variables or {}).items()}
-
-
-# ---------------------------------------------------------------------------------------------
-# Validation
 
 
 class Preflight:
@@ -500,10 +484,6 @@ class Preflight:
         return errors, notes
 
 
-# ---------------------------------------------------------------------------------------------
-# Building the sheet document
-
-
 def build_sheet(session, plan, items, source, revision, size, page, artboard, path=None):
     """The sheet document in memory: one page per sheet, a ``link`` layer per copy, marks and slug text.
     ``items`` is [(row number, copy number, variables)]. With ``path`` (where the sheet document will be saved)
@@ -582,10 +562,6 @@ def build_sheet(session, plan, items, source, revision, size, page, artboard, pa
         record["content"] = content
     set_builtins(state)
     return project
-
-
-# ---------------------------------------------------------------------------------------------
-# Running a merge
 
 
 def run(session, template, request):
@@ -733,10 +709,6 @@ def _host(session):
     host = Project(8, 8, limits=session.limits)
     host._workspace = session.workspace
     return host
-
-
-# ---------------------------------------------------------------------------------------------
-# Workflow action and CLI
 
 
 def dispatch(session, request, document=None):

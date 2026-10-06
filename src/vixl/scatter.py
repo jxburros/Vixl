@@ -48,10 +48,6 @@ def stream(seed, *keys):
     return np.random.default_rng([int(seed), *keys])
 
 
-# ---------------------------------------------------------------------------------------------
-# Schema
-
-
 def schemas(add):
     from .schema import S, N, B, field
 
@@ -110,10 +106,6 @@ def schemas(add):
         "background": field(S, "Tile background color (a rectangle at the bottom of the tile); omit for transparent."),
         "pattern": field(S, "Also save the tile as a document pattern of this name, for pattern-fill."),
     }, anyOf=[{"required": ["source"]}, {"required": ["mark"]}, {"required": ["target"]}])
-
-
-# ---------------------------------------------------------------------------------------------
-# Geometry
 
 
 def _matrices(project):
@@ -237,10 +229,6 @@ def toroidal_poisson(rng, width, height, spacing, count):
         else:
             active.remove(k)
     return points[:count]
-
-
-# ---------------------------------------------------------------------------------------------
-# Copies and merged paths
 
 
 def up_vector(rotation):
@@ -446,10 +434,6 @@ def recolor_group(project, group_id, fill_fn):
             item["fill"] = fill_fn(item["fill"])
 
 
-# ---------------------------------------------------------------------------------------------
-# Motifs, tones and jitter
-
-
 def _mark_layer(project, spec, namer, default_fill="#2f2f2f"):
     """A motif from a ``mark`` spec: a built-in mark or a shape spec (validated by the shape operation)."""
     from .model import new_layer
@@ -575,10 +559,6 @@ def finish_copies(project, variation, ids, entries):
         if recolor:
             color, step = recolor
             recolor_group(project, ident, lambda value: variation.fill(color or value, step))
-
-
-# ---------------------------------------------------------------------------------------------
-# scatter
 
 
 def _clear(project, op, region, cache, into_parent):
@@ -785,10 +765,6 @@ def place_result(project, entries, variation, name, explicit, parent, region, me
     return [label]
 
 
-# ---------------------------------------------------------------------------------------------
-# pattern-scatter
-
-
 def ghosts(bounds, width, height):
     """The (dx, dy) shifts that bring a copy with box ``bounds`` back into the W x H tile from
     across an edge (its wrapped ghosts)."""
@@ -942,10 +918,6 @@ def execute(project, op):
     if op["type"] == "scatter":
         return execute_scatter(project, op)
     return execute_pattern_scatter(project, op)
-
-
-# ---------------------------------------------------------------------------------------------
-# Per-step transforms for repeat and radial-repeat
 
 
 def step_schema():

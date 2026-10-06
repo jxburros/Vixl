@@ -1,8 +1,7 @@
 """Proportional re-layout of a document at another size: ``adapt-layout`` without ``targets``.
 
-Resizing a canvas used to leave every layer where it was. ``adapt-layout`` resizes the canvas (to a
-named size or a width and height) and re-lays out each top-level layer by simple anchoring rules,
-then reports where every layer went:
+``adapt-layout`` resizes the canvas (to a named size or a width and height) and re-lays out each
+top-level layer by simple anchoring rules, then reports where every layer went:
 
 * sizes scale uniformly (``scale``: ``fit`` keeps everything inside, ``fill`` covers, ``width`` or
   ``height`` follows one axis, or a number); text scales its font size and wrapping boxes;

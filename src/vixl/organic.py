@@ -38,10 +38,6 @@ RECIPE_KEYS = ("preset", "parts", "params", "colors", "seed", "naturalness", "pa
 UNFILLED = ("transparent", "none")
 
 
-# ---------------------------------------------------------------------------------------------
-# Geometry containers
-
-
 def element(points, closed=True, smooth=True):
     return {"points": np.asarray(points, dtype=float), "closed": closed, "smooth": smooth}
 
@@ -183,10 +179,6 @@ def ribbon(spine, widths, cap=True):
     return np.vstack(points)
 
 
-# ---------------------------------------------------------------------------------------------
-# Parameters
-
-
 class Params:
     """Validated generator/rule parameters with defaults and ranges."""
 
@@ -242,10 +234,6 @@ class Params:
         unknown = sorted(set(self.values) - self.used - set(allowed))
         require(not unknown, f"Unknown {self.where} setting(s) {', '.join(unknown)}; allowed: "
                 f"{', '.join(sorted(self.used | set(allowed)))}", field=f"{self.where}.{unknown[0]}" if unknown else None)
-
-
-# ---------------------------------------------------------------------------------------------
-# Generators
 
 
 def gen_superformula(p, ctx):
@@ -1103,10 +1091,6 @@ GENERATORS = {
 }
 
 
-# ---------------------------------------------------------------------------------------------
-# Rules
-
-
 def rule_transform(shape, r, ctx):
     scale = r.pair("scale", 1, -100, 100)
     sx = r.number("scale_x", 1, -100, 100) * scale[0]
@@ -1498,10 +1482,6 @@ RULES = {
     "occlude": (check_post, "Paint-order occlusion: later elements cover earlier ones, edges kept with a gap"),
     "intersect": (check_post, "Keep what lies inside another part, a circle or square fitted to this part, and/or one half of it"),
 }
-
-
-# ---------------------------------------------------------------------------------------------
-# Presets
 
 
 def _p(values, key, default):
@@ -1952,10 +1932,6 @@ def catalog():
     }
 
 
-# ---------------------------------------------------------------------------------------------
-# Building parts
-
-
 def build_parts(parts, seed, naturalness):
     """Generate every part in unit coordinates. Returns [(spec, Shape)]."""
     require(isinstance(parts, list) and 1 <= len(parts) <= MAX_PARTS, f"An organic form needs 1–{MAX_PARTS} parts", field="parts")
@@ -2203,10 +2179,6 @@ def render_paths(built, width, height, padding, preserve=True, strokes=None):
             if d:
                 results.append((spec["name"], tag, d))
     return results
-
-
-# ---------------------------------------------------------------------------------------------
-# Operation
 
 
 def schemas(add):

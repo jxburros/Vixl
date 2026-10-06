@@ -43,10 +43,6 @@ def lnodes(p, name="d"):
     return {k: L.LNode(k, w, h, *layout["shapes"].get(k, ["rect", 0.0]), x=x, y=y) for k, (x, y, w, h) in layout["nodes"].items()}
 
 
-# ---------------------------------------------------------------------------------------------
-# Text format
-
-
 def test_text_format_chains_labels_kinds_and_attributes():
     parsed = parse_text(
         "# a comment\n"
@@ -91,10 +87,6 @@ def test_text_format_errors_name_the_line():
         with pytest.raises(VixlError) as error:
             parse_text(bad)
         assert needle in str(error.value)
-
-
-# ---------------------------------------------------------------------------------------------
-# Layers
 
 
 def test_a_diagram_is_ordinary_named_layers_in_one_group():
@@ -211,10 +203,6 @@ def test_layer_budget_is_checked_up_front():
         p.apply([{"type": "diagram", "name": "d", "nodes": nodes, "edges": [[a, b] for a, b in zip(nodes, nodes[1:])]}])
     assert error.value.code == "resource_limit" and "split it into several diagrams" in str(error.value)
     assert p.state["layers"] == []
-
-
-# ---------------------------------------------------------------------------------------------
-# Layout engines
 
 
 GRAPH_EDGES = [("a", "b"), ("a", "c"), ("b", "d"), ("c", "d"), ("a", "e"), ("e", "f"), ("d", "f"), ("f", "g"), ("b", "g"),
@@ -420,10 +408,6 @@ def test_light_fill_gets_dark_text_and_dark_fill_gets_light_text():
         assert contrast_ratio(parse(fill), parse(p.layer(f"d/{node}.label")["color"])) >= 4.5
 
 
-# ---------------------------------------------------------------------------------------------
-# Checks
-
-
 def issues(p, *checks):
     return p.check(checks=list(checks or ["diagram"]))["issues"]
 
@@ -476,10 +460,6 @@ def test_diagram_checks_are_part_of_the_default_check_set():
     report = p.check()
     assert any(i["check"] == "diagram" for i in report["issues"])
     assert "diagram" in report["checked"]["checks"]
-
-
-# ---------------------------------------------------------------------------------------------
-# Pages, exports, interfaces
 
 
 def test_diagram_on_a_page_is_found_from_another_page():
