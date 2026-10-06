@@ -1,10 +1,5 @@
 [
  {
-  "type": "text",
-  "target": "box-label",
-  "color": "#4a2c12"
- },
- {
   "type": "timeline-set",
   "duration": 12000,
   "fps": 15,
@@ -18,26 +13,67 @@
    "ear-r",
    "ear-l-in",
    "ear-r-in",
+   "ear-tuft-0",
+   "ear-tuft-1",
+   "ear-tuft-2",
+   "ear-tuft-3",
    "head",
+   "head-fur-0",
+   "head-fur-1",
+   "head-fur-2",
+   "head-fur-3",
+   "head-fur-4",
+   "head-fur-5",
+   "head-fur-6",
+   "head-fur-7",
+   "head-fur-8",
+   "head-fur-9",
+   "head-fur-10",
+   "head-fur-11",
+   "head-fur-12",
+   "head-fur-13",
+   "head-fur-14",
+   "head-fur-15",
+   "head-fur-16",
+   "head-fur-17",
    "blaze",
+   "muzzle-shade",
    "eye-l",
    "pupil-l",
    "shine-l",
+   "shine2-l",
    "lid-l",
+   "lidline-l",
    "eye-r",
    "pupil-r",
    "shine-r",
+   "shine2-r",
    "lid-r",
+   "lidline-r",
+   "brow-0",
+   "brow-1",
+   "brow-2",
+   "brow-3",
    "nose",
-   "stache-mid",
+   "nose-shine",
+   "nose-spot",
    "stache-l",
    "stache-r",
+   "pad-dot-0",
+   "pad-dot-1",
+   "pad-dot-2",
+   "pad-dot-3",
+   "pad-dot-4",
+   "pad-dot-5",
    "mouth",
    "blep",
-   "wl1",
-   "wl2",
-   "wr1",
-   "wr2"
+   "blep-line",
+   "whisker-0",
+   "whisker-1",
+   "whisker-2",
+   "whisker-3",
+   "whisker-4",
+   "whisker-5"
   ]
  },
  {
@@ -45,7 +81,9 @@
   "name": "ear-l-group",
   "targets": [
    "ear-l",
-   "ear-l-in"
+   "ear-l-in",
+   "ear-tuft-0",
+   "ear-tuft-1"
   ]
  },
  {
@@ -53,7 +91,9 @@
   "name": "ear-r-group",
   "targets": [
    "ear-r",
-   "ear-r-in"
+   "ear-r-in",
+   "ear-tuft-2",
+   "ear-tuft-3"
   ]
  },
  {
@@ -61,6 +101,7 @@
   "name": "tail-group",
   "targets": [
    "tail",
+   "tail-fur",
    "tail-tip"
   ]
  },
@@ -758,6 +799,86 @@
  },
  {
   "type": "keyframes",
+  "target": "lidline-l",
+  "property": "translate-y",
+  "keys": [
+   {
+    "time": 0,
+    "value": 0
+   },
+   {
+    "time": 1400,
+    "value": 0,
+    "easing": "ease-in"
+   },
+   {
+    "time": 1500,
+    "value": 32,
+    "easing": "ease-out"
+   },
+   {
+    "time": 1650,
+    "value": 0
+   },
+   {
+    "time": 6000,
+    "value": 0,
+    "easing": "ease-out"
+   },
+   {
+    "time": 6300,
+    "value": 10
+   },
+   {
+    "time": 7600,
+    "value": 10,
+    "easing": "ease-in"
+   },
+   {
+    "time": 7700,
+    "value": 32,
+    "easing": "ease-out"
+   },
+   {
+    "time": 7850,
+    "value": 10
+   },
+   {
+    "time": 8800,
+    "value": 10,
+    "easing": "ease-in-out"
+   },
+   {
+    "time": 9100,
+    "value": -4
+   },
+   {
+    "time": 10500,
+    "value": -4,
+    "easing": "ease-in"
+   },
+   {
+    "time": 10600,
+    "value": 32,
+    "easing": "ease-out"
+   },
+   {
+    "time": 10750,
+    "value": -4
+   },
+   {
+    "time": 11700,
+    "value": -4,
+    "easing": "ease-in-out"
+   },
+   {
+    "time": 12000,
+    "value": 0
+   }
+  ]
+ },
+ {
+  "type": "keyframes",
   "target": "lid-r",
   "property": "height",
   "keys": [
@@ -838,6 +959,86 @@
  },
  {
   "type": "keyframes",
+  "target": "lidline-r",
+  "property": "translate-y",
+  "keys": [
+   {
+    "time": 0,
+    "value": 0
+   },
+   {
+    "time": 1400,
+    "value": 0,
+    "easing": "ease-in"
+   },
+   {
+    "time": 1500,
+    "value": 32,
+    "easing": "ease-out"
+   },
+   {
+    "time": 1650,
+    "value": 0
+   },
+   {
+    "time": 6000,
+    "value": 0,
+    "easing": "ease-out"
+   },
+   {
+    "time": 6300,
+    "value": 10
+   },
+   {
+    "time": 7600,
+    "value": 10,
+    "easing": "ease-in"
+   },
+   {
+    "time": 7700,
+    "value": 32,
+    "easing": "ease-out"
+   },
+   {
+    "time": 7850,
+    "value": 10
+   },
+   {
+    "time": 8800,
+    "value": 10,
+    "easing": "ease-in-out"
+   },
+   {
+    "time": 9100,
+    "value": -4
+   },
+   {
+    "time": 10500,
+    "value": -4,
+    "easing": "ease-in"
+   },
+   {
+    "time": 10600,
+    "value": 32,
+    "easing": "ease-out"
+   },
+   {
+    "time": 10750,
+    "value": -4
+   },
+   {
+    "time": 11700,
+    "value": -4,
+    "easing": "ease-in-out"
+   },
+   {
+    "time": 12000,
+    "value": 0
+   }
+  ]
+ },
+ {
+  "type": "keyframes",
   "target": "pupil-l",
   "property": "translate-y",
   "keys": [
@@ -852,11 +1053,11 @@
    },
    {
     "time": 3900,
-    "value": -20
+    "value": -14
    },
    {
     "time": 5000,
-    "value": -20,
+    "value": -14,
     "easing": "ease-in-out"
    },
    {
@@ -885,11 +1086,44 @@
    },
    {
     "time": 3900,
-    "value": -20
+    "value": -14
    },
    {
     "time": 5000,
-    "value": -20,
+    "value": -14,
+    "easing": "ease-in-out"
+   },
+   {
+    "time": 5400,
+    "value": 0
+   },
+   {
+    "time": 12000,
+    "value": 0
+   }
+  ]
+ },
+ {
+  "type": "keyframes",
+  "target": "shine2-l",
+  "property": "translate-y",
+  "keys": [
+   {
+    "time": 0,
+    "value": 0
+   },
+   {
+    "time": 3500,
+    "value": 0,
+    "easing": "ease-in-out"
+   },
+   {
+    "time": 3900,
+    "value": -14
+   },
+   {
+    "time": 5000,
+    "value": -14,
     "easing": "ease-in-out"
    },
    {
@@ -918,11 +1152,11 @@
    },
    {
     "time": 3900,
-    "value": -20
+    "value": -14
    },
    {
     "time": 5000,
-    "value": -20,
+    "value": -14,
     "easing": "ease-in-out"
    },
    {
@@ -951,11 +1185,44 @@
    },
    {
     "time": 3900,
-    "value": -20
+    "value": -14
    },
    {
     "time": 5000,
-    "value": -20,
+    "value": -14,
+    "easing": "ease-in-out"
+   },
+   {
+    "time": 5400,
+    "value": 0
+   },
+   {
+    "time": 12000,
+    "value": 0
+   }
+  ]
+ },
+ {
+  "type": "keyframes",
+  "target": "shine2-r",
+  "property": "translate-y",
+  "keys": [
+   {
+    "time": 0,
+    "value": 0
+   },
+   {
+    "time": 3500,
+    "value": 0,
+    "easing": "ease-in-out"
+   },
+   {
+    "time": 3900,
+    "value": -14
+   },
+   {
+    "time": 5000,
+    "value": -14,
     "easing": "ease-in-out"
    },
    {
@@ -1109,6 +1376,33 @@
  {
   "type": "keyframes",
   "target": "blep",
+  "property": "opacity",
+  "keys": [
+   {
+    "time": 0,
+    "value": 0
+   },
+   {
+    "time": 9300,
+    "value": 0
+   },
+   {
+    "time": 9400,
+    "value": 1
+   },
+   {
+    "time": 11700,
+    "value": 1
+   },
+   {
+    "time": 11800,
+    "value": 0
+   }
+  ]
+ },
+ {
+  "type": "keyframes",
+  "target": "blep-line",
   "property": "opacity",
   "keys": [
    {
