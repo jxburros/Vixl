@@ -97,6 +97,11 @@ def _operation_schema():
         "color": S,
         "align": enum("left", "center", "right"),
         "spacing": {"type": "integer", "minimum": 0},
+        "hide_if_empty": {
+            "type": "boolean",
+            "description": "Do not draw the text (and take no space in a stack) while it is empty or blank "
+            "after ${variable} substitution.",
+        },
     }
     add(
         "text",
@@ -286,6 +291,8 @@ def _operation_schema():
     authoring_schemas(add)
     from .containers import schemas as container_schemas
     container_schemas(add)
+    from .stacks import schemas as stack_schemas
+    stack_schemas(add)
     from .organic import schemas as organic_schemas
     organic_schemas(add)
     from .guides import schemas as guide_schemas

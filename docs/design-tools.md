@@ -97,6 +97,17 @@ CSV requires unique headers and at least one complete row. Each row becomes rend
 
 Python exposes `project.render(artboard=..., comp=..., variables=...)`, `project.render_data(csv_path, directory, ...)`, and `project.export_screens(directory, scales=(1, 2), ...)`. REST POST `/render` and MCP previews accept `artboard` and `comp`; local-directory batch exports remain CLI/Python operations.
 
+## Empty content and stacks
+
+A template filled from data meets empty fields: a badge row with no company, a card with no subtitle. Fixed text frames leave a hole where the empty line was. Two features let the layout react instead:
+
+- **`hide_if_empty`** on a text layer (`text`, `text-set`, `vixl text add --hide-if-empty`, MCP `vixl_text_add`): while the text is empty or blank after `${variable}` substitution, the layer is not drawn, not checked, not exported and takes no space in a stack. `inspect` marks it `collapsed: true`; the layer and its settings stay, so a later non-empty value brings it back.
+- **`stack`** turns a group into an auto-layout column or row. `{"type":"stack","name":"names","targets":["first","last","company"],"direction":"vertical","gap":20,"align":"center","justify":"center","width":1000,"height":400}` groups the layers and lays them out in the group's box; `{"type":"stack","target":"names","gap":12}` changes an existing stack. `direction` is `vertical` (default) or `horizontal`; `gap` and `padding` are pixels; `align` places members across the stack and `justify` along it (`start`, `center` or `end`); `width`/`height` set the box (pixels or `N%`). Members are laid out in document order. Members that are hidden (`hide`) or collapsed by `hide_if_empty` take no space, so the others reflow and, with `justify: "center"`, stay centred. A stack with `hide_if_empty: true` collapses when all its members do, so stacks nest. `stack` with `remove: true` releases the members at their current positions.
+
+Stacks are resolved whenever the document is laid out (render, export, check, `inspect`), so `render --data rows.csv`, `--set company=` and export-time `variables` re-centre each row; only the settings are stored. A stack positions its members, so `move`, `align`, `distribute`, `constrain` and `unconstrain` on a member fail with `stack_managed` and say what to use; resize and reorder members, or move the stack. A group's box is fixed (members may overflow it), and members are positioned individually, so put overlapping artwork (a pill behind its label) in a sub-group and stack the sub-group.
+
+Template containers stay static: `container-reflow` and the container check skip hidden and empty members, so hiding one and reflowing closes the gap, and container placement leaves no gap for an empty `hide_if_empty` member. For a container that follows variables at export time, add a `stack` to it (set its `padding`/`gap` to the container's rules); the stack then replaces the container's layout rule.
+
 ## Measuring the rendered image
 
 ```bash

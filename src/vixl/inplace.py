@@ -38,7 +38,7 @@ USE_INSTEAD = {
     "field": ("field-set", "change the form field with field-set"),
 }
 SHAPE_FIELDS = ("shape", "path", "fill", "stroke", "stroke_width", "radius", "sides", "inner_radius")
-TEXT_FIELDS = ("text", "size", "color", "align", "spacing", "font")
+TEXT_FIELDS = ("text", "size", "color", "align", "spacing", "font", "hide_if_empty")
 
 
 def target_schema(kind):
@@ -59,7 +59,8 @@ def wrong_target(kind, layer):
             field="target",
             suggestions=["replace-contents" if kind in ("add", "frame") else "effect-set"],
         )
-    operation, advice = USE_INSTEAD.get(layer["type"], (None, "see vixl_operation_schema for the operations that edit it"))
+    fallback = (None, "see vixl_operation_schema for the operations that edit it")
+    operation, advice = USE_INSTEAD.get(layer["type"], fallback)
     return VixlError(
         "invalid_operation",
         f"{kind} with a target edits an existing {EDITS[kind]} layer, but {layer['name']!r} is a "

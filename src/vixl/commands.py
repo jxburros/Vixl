@@ -56,6 +56,10 @@ def compile_command(tokens):
     authoring = compile_authoring(cmd, args)
     if authoring is not None:
         return authoring
+    from .stacks import compile_command as compile_stack
+    stack = compile_stack(cmd, args)
+    if stack is not None:
+        return stack
     from .richtext import compile_command as compile_rich
     rich = compile_rich(cmd, args)
     if rich is not None:
@@ -152,6 +156,8 @@ def compile_command(tokens):
             p.add_argument("--size", type=int)
             p.add_argument("--align", choices=["left", "center", "right"])
             p.add_argument("--spacing", type=int)
+            p.add_argument("--hide-if-empty", action=argparse.BooleanOptionalAction, default=None,
+                           help="do not draw the text while it is empty after ${variable} substitution")
         elif cmd == "gradient":
             p.add_argument("--start", default="black")
             p.add_argument("--end", default="white")
@@ -174,6 +180,8 @@ def compile_command(tokens):
         p.add_argument("--font", help="registered font name, heading, body, or a font file")
         for key in ("size", "spacing", "stroke-width"):
             p.add_argument(f"--{key}", type=int)
+        p.add_argument("--hide-if-empty", action=argparse.BooleanOptionalAction, default=None,
+                       help="do not draw the text while it is empty after ${variable} substitution")
     elif cmd in (
         "remove",
         "hide",

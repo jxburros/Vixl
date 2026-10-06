@@ -452,11 +452,15 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         color: str = "white",
         x: float = 0,
         y: float = 0,
+        hide_if_empty: bool = False,
         document: Document = None,
     ) -> dict:
-        """Add editable text with the bundled font or a previously imported registered font name."""
+        """Add editable text with the bundled font or a previously imported registered font name.
+        hide_if_empty: do not draw it (and take no space in a stack) while its ${variable} text is empty."""
         with session.project(write=True, document=document) as project:
             op = {"type": "text", "text": text, "name": name, "size": size, "color": color, "x": x, "y": y}
+            if hide_if_empty:
+                op["hide_if_empty"] = True
             if font:
                 require(font in project.state.get("fonts", {}), "Import/register this font first")
                 op["font"] = project.state["fonts"][font]

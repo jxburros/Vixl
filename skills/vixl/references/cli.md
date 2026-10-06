@@ -106,6 +106,9 @@ vixl opacity portrait 0.75               # or 75 (1–100 = percent)
 vixl blend portrait multiply             # normal multiply screen overlay darken lighten difference add subtract
 vixl rasterize title
 vixl group stripes stripe1 stripe2 ; vixl ungroup stripes
+vixl stack names --targets first last company --gap 20 --align center --justify center --width 1000 --height 400   # auto-layout; empty hide_if_empty text collapses
+vixl stack names --direction horizontal --gap 8 ; vixl stack names --remove ; vixl text first --hide-if-empty
+vixl shape --target bar --fill '#6b3f69'    # solid/gradient/shape/text add --target edit a layer in place
 vixl clip TARGET BASE ; vixl clip TARGET --release
 ```
 

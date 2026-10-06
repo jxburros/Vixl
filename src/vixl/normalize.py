@@ -97,6 +97,7 @@ FIELD_ALIASES = {
         "line_spacing": "spacing",
         "outline_width": "stroke_width",
         "outline_color": "stroke_color",
+        **{key: "hide_if_empty" for key in ("hide_when_empty", "collapse_if_empty", "collapse_when_empty", "hide_empty")},
     },
     "shape": {
         "color": "fill",
@@ -145,6 +146,7 @@ GEOMETRY_TYPES = {
     "text-layout",
     "pen",
     "field",
+    "stack",
 }
 CENTER_TYPES = {"solid", "gradient", "shape", "add", "frame", "symbol-instance", "move", "field"}
 
@@ -329,9 +331,9 @@ def resolve_geometry(project, op):
     width, height = c["width"], c["height"]
     from .inplace import IN_PLACE_TYPES
 
-    if kind in ("move", "resize", "text-layout") or (kind in IN_PLACE_TYPES and op.get("target")):
+    if kind in ("move", "resize", "text-layout", "stack") or (kind in IN_PLACE_TYPES and op.get("target")):
         try:
-            layer = project.layer(op.get("target"))
+            layer = project.layer(op["targets"][0] if kind == "stack" and op.get("targets") else op.get("target"))
         except Exception:
             layer = None
         if layer and layer.get("parent"):

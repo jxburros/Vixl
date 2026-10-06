@@ -34,7 +34,8 @@ Organic:   organics (presets, generators, rules), organic PRESET [--set petals=8
            organic --parts JSON, organic --target NAME --seed N (regrow)
 Design:    pen, shape, shape-place, container-place, container-swap, container-reflow, group, ungroup, clip, layer-style, distribute, style-define,
            style-apply, swatch, artboard, frame, replace-contents, repeat, repeat-blend,
-           adjustment, lut, lookup, comp-save, comp-apply, text-layout, pathfinder, symbol, symbol-instance
+           adjustment, lut, lookup, comp-save, comp-apply, text-layout, pathfinder, symbol, symbol-instance,
+           stack GROUP [--direction vertical|horizontal] [--gap N] [--align A] [--justify J] [--hide-if-empty] (auto-layout)
 Guides:    guide NAME x|y POS | guide NAME --kind line|ray|segment|point|circle|path …, guides,
            grid NAME [--kind columns|baseline|thirds|golden|armature|golden-spiral|polar|isometric|triangular|hex|oblique|perspective],
            place LAYER… --guide NAME [--at F | --start F --end F | --spacing PX | --with GUIDE] [--orient tangent],

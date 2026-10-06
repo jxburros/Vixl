@@ -275,10 +275,10 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
 | Need | Operations / commands |
 | --- | --- |
 | Start | named sizes (`canvas` `size`, `vixl new NAME`, `vixl_document_create(size=)`), `layout-apply`, `type-scale`, `palette-generate`, `guidance` |
-| New layers | `add` (image), `solid`, `gradient` (linear/angled/radial, multi-stop), `text`, `shape`, `frame` (image box with fill/fit), `pixel-art`, `paint-layer`, `adjustment`, `symbol-instance` |
+| New layers | `add` (image), `solid`, `gradient` (linear/angled/radial, multi-stop), `text`, `shape` (`solid`/`gradient`/`shape`/`text` with `target` edit that layer in place instead of adding one), `frame` (image box with fill/fit), `pixel-art`, `paint-layer`, `adjustment`, `symbol-instance` |
 | Transform | `move`, `resize`, `scale`, `rotate`, `flip`, `crop`, `opacity`, `blend`, `hide`/`show` |
 | Stacking | `raise`, `lower`, `top`, `bottom`, `reorder` (`above`/`below`), `group`/`ungroup`, `clip` |
-| Layout | `align` (to canvas/selection/layer), `distribute`, `constrain`/`unconstrain`, `guide`, `grid`, `canvas` (resize/preset), `artboard` |
+| Layout | `align` (to canvas/selection/layer), `distribute`, `constrain`/`unconstrain`, `stack` (auto-layout column/row that re-flows around hidden or empty members; text `hide_if_empty`), `guide`, `grid`, `canvas` (resize/preset), `artboard` |
 | Color & filters | 25 built-in effects (brightness … auto-contrast), `effect-set/enable/disable/remove`, `lut` + `lookup`, `preset-save/apply` |
 | Selections & masks | `select` (rect/ellipse/color/alpha/all/none/invert, add/subtract/intersect, feather), `mask` (create/from-selection/import/invert/enable/disable/delete) |
 | Typography | `text`, `text-set`, `text-layout` (box, fit, warp, path), `style-define`/`style-apply`, `swatch` |

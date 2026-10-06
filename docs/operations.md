@@ -31,9 +31,10 @@ Common operation fields:
 | --- | --- |
 | add | path **or** embedded asset; name, x, y, linked |
 | solid / gradient | name, width, height, color **or** start/end/direction/stops/angle; `target` edits an existing layer |
-| text | text, name, font, size, color, align, spacing, x/y; `target` edits an existing text layer |
+| text | text, name, font, size, color, align, spacing, hide_if_empty, x/y; `target` edits an existing text layer |
 | shape | shape, name, width, height, x/y, fill, stroke, stroke_width, radius, sides, inner_radius, path; `target` edits an existing shape |
-| text-set | target; text, size, color, align, spacing, stroke_width/stroke_color |
+| text-set | target; text, size, color, align, spacing, stroke_width/stroke_color, hide_if_empty |
+| stack | target (a group) **or** name + targets; direction, gap, padding, align, justify, width/height, hide_if_empty; `remove` releases it |
 | move / resize / scale | target; x/y/relative **or** width/height (+ `keep_aspect`; one side alone leaves the other except on imported images) **or** value factor |
 | rotate / opacity / blend | target, value |
 | align | target, alignment, margin |

@@ -296,6 +296,9 @@ def resolved_layers(project, variables=None):
         if layer["type"] == "field":
             layer["value"] = list(fields.get(layer["field"]["key"], (None, "")))
         project.limits.size(layer["width"], layer["height"])
+    from .stacks import collapse
+
+    collapse(layers)
     return layers
 
 
