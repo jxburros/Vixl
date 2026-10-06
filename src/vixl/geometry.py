@@ -87,6 +87,26 @@ def parse_path(path):
     return commands
 
 
+def compact_number(value, digits):
+    """``value`` with at most ``digits`` decimals and no trailing zeros ('-0' reads '0'): path-data numbers."""
+    text = f"{value:.{digits}f}"
+    if "." in text:
+        text = text.rstrip("0").rstrip(".")
+    return "0" if text in ("", "-0") else text
+
+
+def bezier_points(controls, ts):
+    """Points of the Bézier curve with the given control points (any degree) at parameters ``ts``
+    (de Casteljau), as an (n, 2) float array. The one curve evaluator for path flattening."""
+    import numpy as np
+
+    t = np.asarray(ts, dtype=float).reshape(-1, 1)
+    work = [np.tile(np.asarray(p, dtype=float), (len(t), 1)) for p in controls]
+    while len(work) > 1:
+        work = [(1 - t) * a + t * b for a, b in zip(work, work[1:])]
+    return work[0]
+
+
 def path_polygons(path):
     polygons, points, current = [], [], (0, 0)
     for command, values in parse_path(path):
@@ -104,15 +124,7 @@ def path_polygons(path):
             points.append(current)
         else:
             controls = [current, *zip(values[::2], values[1::2])]
-            for step in range(1, 49):
-                t = step / 48
-                working = controls
-                while len(working) > 1:
-                    working = [
-                        (a[0] * (1 - t) + b[0] * t, a[1] * (1 - t) + b[1] * t)
-                        for a, b in zip(working, working[1:])
-                    ]
-                points.append(working[0])
+            points.extend(map(tuple, bezier_points(controls, [step / 48 for step in range(1, 49)]).tolist()))
             current = tuple(values[-2:])
     if points:
         polygons.append(points)

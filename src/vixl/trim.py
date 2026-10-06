@@ -58,8 +58,9 @@ def validate_trim(layer):
 
 
 def _num(value):
-    text = f"{value:.3f}".rstrip("0").rstrip(".")
-    return "0" if text in ("", "-0") else text
+    from .geometry import compact_number
+
+    return compact_number(value, 3)
 
 
 def _d(commands):

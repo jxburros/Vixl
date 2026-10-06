@@ -114,17 +114,10 @@ def correlated_noise(rng, arc, length, total, closed, octaves=1, persistence=0.5
     return np.clip(out / norm * 1.6, -1, 1)
 
 
-def _bezier(controls, t):
-    work = [np.tile(p, (len(t), 1)) for p in controls]
-    while len(work) > 1:
-        work = [(1 - t) * a + t * b for a, b in zip(work, work[1:])]
-    return work[0]
-
-
 def flatten(path, scale=(1.0, 1.0), offset=(0.0, 0.0)):
     """Subpaths of SVG path data as ``[(points, nodes, closed)]``; curves are sampled, and
     ``nodes`` marks the points that were the path's own vertices."""
-    from .geometry import parse_path
+    from .geometry import bezier_points, parse_path
 
     sx, sy = scale
     subs, pts, nodes = [], [], []
@@ -154,7 +147,7 @@ def flatten(path, scale=(1.0, 1.0), offset=(0.0, 0.0)):
             controls = [current, *v]
             length = sum(np.hypot(*(b - a)) for a, b in zip(controls, controls[1:]))
             steps = int(np.clip(math.ceil(length / 5), 6, 96))
-            curve = _bezier(controls, np.linspace(0, 1, steps + 1)[1:, None])
+            curve = bezier_points(controls, np.linspace(0, 1, steps + 1)[1:])
             pts.extend(curve)
             nodes.extend([False] * (steps - 1) + [True])
             current = curve[-1]
@@ -258,8 +251,9 @@ def roughen_path(path, seed, *, wobble=2.0, length=24.0, jitter=0.0, roughness=0
 
 
 def _fmt(value):
-    text = f"{value:.2f}".rstrip("0").rstrip(".")
-    return "0" if text in ("", "-0") else text
+    from .geometry import compact_number
+
+    return compact_number(value, 2)
 
 
 def emit(subs):
