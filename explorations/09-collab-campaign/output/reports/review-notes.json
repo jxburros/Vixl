@@ -9,11 +9,11 @@
           "cta-button",
           "cta"
         ],
-        "message": "'cta-button' and 'cta' overlap by 1240 px (87.7% of the smaller layer)",
+        "message": "'cta-button' and 'cta' overlap by 1314 px (92.9% of the smaller layer)",
         "region": [
           107,
           1169,
-          184,
+          205,
           29
         ],
         "action": "review"
@@ -33,6 +33,91 @@
         ],
         "contrast": 1.474,
         "required": 4.5,
+        "action": "fix"
+      },
+      {
+        "check": "safe_area",
+        "severity": "warning",
+        "layers": [
+          "image"
+        ],
+        "message": "'image' extends outside the safe area",
+        "bounds": [
+          0,
+          0,
+          1080,
+          834
+        ],
+        "safe_area": [
+          60,
+          60,
+          960,
+          1230
+        ],
+        "action": "review"
+      },
+      {
+        "check": "safe_area",
+        "severity": "warning",
+        "layers": [
+          "golden-division"
+        ],
+        "message": "'golden-division' extends outside the safe area",
+        "bounds": [
+          0,
+          834,
+          1080,
+          7
+        ],
+        "safe_area": [
+          60,
+          60,
+          960,
+          1230
+        ],
+        "action": "review"
+      },
+      {
+        "check": "safe_area",
+        "severity": "info",
+        "layers": [
+          "direction-motif"
+        ],
+        "message": "'direction-motif' extends outside the safe area (intentional crop or bleed)",
+        "bounds": [
+          990,
+          38,
+          14,
+          3
+        ],
+        "safe_area": [
+          60,
+          60,
+          960,
+          1230
+        ],
+        "intentional": true,
+        "action": "informational"
+      },
+      {
+        "check": "safe_area",
+        "severity": "error",
+        "layers": [
+          "stat"
+        ],
+        "message": "'stat' extends outside the safe area",
+        "bounds": [
+          700,
+          1010,
+          333,
+          127
+        ],
+        "safe_area": [
+          60,
+          60,
+          960,
+          1230
+        ],
         "action": "fix"
       },
       {
@@ -80,28 +165,113 @@
   "notes_opened": {
     "notes": [
       {
-        "id": "ca6d9a352efe4420800d1223ed3a4d14",
+        "id": "27bb9a17caac4ea5b8a589f863c04f4e",
         "text": "Merged headline 'Your city, on a Loop' now runs into the 400 stat — move the stat down/right.",
         "resolved": false,
-        "created": "2026-10-06T15:06:56.986817+00:00"
+        "created": "2026-10-06T18:39:44.409268+00:00"
       },
       {
-        "id": "9549b373b8924d7886c99c431eeaafa5",
+        "id": "3af9f39d40d24ca298d0422e3f80495a",
         "text": "CTA 'Download Loop' is wider than its button (check: cta contrast error where it spills). Resize the button.",
         "resolved": false,
-        "created": "2026-10-06T15:06:57.465494+00:00"
+        "created": "2026-10-06T18:39:44.702709+00:00"
       },
       {
-        "id": "c1219e407dba4bcdbbebcb5f79ba44e4",
+        "id": "1d957947a31248c9a860480e0471beea",
         "text": "Stat caption reads well; keep '1 city'.",
         "resolved": false,
-        "created": "2026-10-06T15:06:57.945654+00:00"
+        "created": "2026-10-06T18:39:45.056462+00:00"
       }
     ]
   },
   "after_fix_check": {
-    "passed": true,
+    "passed": false,
     "issues": [
+      {
+        "check": "safe_area",
+        "severity": "warning",
+        "layers": [
+          "image"
+        ],
+        "message": "'image' extends outside the safe area",
+        "bounds": [
+          0,
+          0,
+          1080,
+          834
+        ],
+        "safe_area": [
+          60,
+          60,
+          960,
+          1230
+        ],
+        "action": "review"
+      },
+      {
+        "check": "safe_area",
+        "severity": "warning",
+        "layers": [
+          "golden-division"
+        ],
+        "message": "'golden-division' extends outside the safe area",
+        "bounds": [
+          0,
+          834,
+          1080,
+          7
+        ],
+        "safe_area": [
+          60,
+          60,
+          960,
+          1230
+        ],
+        "action": "review"
+      },
+      {
+        "check": "safe_area",
+        "severity": "info",
+        "layers": [
+          "direction-motif"
+        ],
+        "message": "'direction-motif' extends outside the safe area (intentional crop or bleed)",
+        "bounds": [
+          990,
+          38,
+          14,
+          3
+        ],
+        "safe_area": [
+          60,
+          60,
+          960,
+          1230
+        ],
+        "intentional": true,
+        "action": "informational"
+      },
+      {
+        "check": "safe_area",
+        "severity": "error",
+        "layers": [
+          "stat-caption"
+        ],
+        "message": "'stat-caption' extends outside the safe area",
+        "bounds": [
+          726,
+          1238,
+          300,
+          27
+        ],
+        "safe_area": [
+          60,
+          60,
+          960,
+          1230
+        ],
+        "action": "fix"
+      },
       {
         "check": "legibility",
         "severity": "warning",
@@ -147,22 +317,22 @@
   "notes_final": {
     "notes": [
       {
-        "id": "ca6d9a352efe4420800d1223ed3a4d14",
+        "id": "27bb9a17caac4ea5b8a589f863c04f4e",
         "text": "Merged headline 'Your city, on a Loop' now runs into the 400 stat — move the stat down/right.",
         "resolved": true,
-        "created": "2026-10-06T15:06:56.986817+00:00"
+        "created": "2026-10-06T18:39:44.409268+00:00"
       },
       {
-        "id": "9549b373b8924d7886c99c431eeaafa5",
+        "id": "3af9f39d40d24ca298d0422e3f80495a",
         "text": "CTA 'Download Loop' is wider than its button (check: cta contrast error where it spills). Resize the button.",
         "resolved": true,
-        "created": "2026-10-06T15:06:57.465494+00:00"
+        "created": "2026-10-06T18:39:44.702709+00:00"
       },
       {
-        "id": "c1219e407dba4bcdbbebcb5f79ba44e4",
+        "id": "1d957947a31248c9a860480e0471beea",
         "text": "Stat caption reads well; keep '1 city'.",
         "resolved": false,
-        "created": "2026-10-06T15:06:57.945654+00:00"
+        "created": "2026-10-06T18:39:45.056462+00:00"
       }
     ]
   }

@@ -13,6 +13,27 @@
       "action": "informational",
       "layer": null,
       "message": "'glow' bleeds off the canvas edge (marked as an intentional crop)"
+    },
+    {
+      "check": "safe_area",
+      "severity": "info",
+      "action": "informational",
+      "layer": null,
+      "message": "'glow' extends outside the safe area (intentional crop or bleed)"
+    },
+    {
+      "check": "safe_area",
+      "severity": "info",
+      "action": "informational",
+      "layer": null,
+      "message": "'grid' extends outside the safe area (intentional crop or bleed)"
+    },
+    {
+      "check": "safe_area",
+      "severity": "info",
+      "action": "informational",
+      "layer": null,
+      "message": "'grid-row' extends outside the safe area (intentional crop or bleed)"
     }
   ]
 }

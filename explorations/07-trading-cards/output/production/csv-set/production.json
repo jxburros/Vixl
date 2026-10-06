@@ -29,8 +29,8 @@
       },
       "artboard": null,
       "status": "completed",
-      "output": "0001-091581c3feaaa336.webp",
-      "fingerprint": "091581c3feaaa3367d960b580896f6eeacf792ea2bf4b5299df88fcd30689386",
+      "output": "0001-8e1eab3434f6c69f.webp",
+      "fingerprint": "8e1eab3434f6c69f61983ddb25e87d31b1be42482771a34df1105a3e1738e32a",
       "sha256": "fd16d1b012f2b9f264a5ee5c5e25280d4c40b843e91061fb4aba4a583d63b325",
       "checks": {
         "card-qa": {
@@ -165,7 +165,8 @@
                   "contrast",
                   "bounds"
                 ],
-                "layers": 2,
+                "layers_checked": 2,
+                "layers_total": 2,
                 "text_layers": 2
               }
             }
@@ -204,7 +205,8 @@
                 "checks": [
                   "blanks"
                 ],
-                "layers": 26,
+                "layers_checked": 26,
+                "layers_total": 27,
                 "text_layers": 13
               }
             }
@@ -213,8 +215,8 @@
       },
       "repairs": [],
       "cache": {
-        "hits": 1,
-        "misses": 30
+        "hits": 5,
+        "misses": 28
       }
     },
     {
@@ -242,8 +244,8 @@
       },
       "artboard": null,
       "status": "completed",
-      "output": "0002-5792ddc22fdda135.webp",
-      "fingerprint": "5792ddc22fdda135e9a6157d18de44384254c2019f8d999c36a7aab919abdc84",
+      "output": "0002-161518da5085af5e.webp",
+      "fingerprint": "161518da5085af5e4a0f0c835772c216a7a6a2107195a4b656d9867426900839",
       "sha256": "546392b6e2df929d72fc4d9a57c124b12bc3b4f5f3229062c8527c8a7963048e",
       "checks": {
         "card-qa": {
@@ -378,7 +380,8 @@
                   "contrast",
                   "bounds"
                 ],
-                "layers": 2,
+                "layers_checked": 2,
+                "layers_total": 2,
                 "text_layers": 2
               }
             }
@@ -417,7 +420,8 @@
                 "checks": [
                   "blanks"
                 ],
-                "layers": 26,
+                "layers_checked": 26,
+                "layers_total": 27,
                 "text_layers": 13
               }
             }
@@ -426,8 +430,8 @@
       },
       "repairs": [],
       "cache": {
-        "hits": 5,
-        "misses": 28
+        "hits": 1,
+        "misses": 30
       }
     },
     {
@@ -455,9 +459,9 @@
       },
       "artboard": null,
       "status": "completed",
-      "output": "0003-5dd323f0fd790f87.webp",
-      "fingerprint": "5dd323f0fd790f873e49b10930eea34549f956faa21a5e739803bcf411c146bf",
-      "sha256": "febffbb3e4122ecabd9e1078dbb8d2deaf89585f225a3c6f02b41a885a024373",
+      "output": "0003-d1d4d823e967f09e.webp",
+      "fingerprint": "d1d4d823e967f09ebd6cb932638914641dad558d99d42d1c5a0b1b7748d3b995",
+      "sha256": "b3efbee62e58890f038f5af3894212c71bc688eef7ce81d75300b0a9b5422ba9",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -591,7 +595,8 @@
                   "contrast",
                   "bounds"
                 ],
-                "layers": 2,
+                "layers_checked": 2,
+                "layers_total": 2,
                 "text_layers": 2
               }
             }
@@ -630,7 +635,8 @@
                 "checks": [
                   "blanks"
                 ],
-                "layers": 26,
+                "layers_checked": 26,
+                "layers_total": 27,
                 "text_layers": 13
               }
             }
@@ -668,9 +674,9 @@
       },
       "artboard": null,
       "status": "completed",
-      "output": "0004-2c57bf2e72ae49e7.webp",
-      "fingerprint": "2c57bf2e72ae49e7964e611264ba7ba8c8cca9340dd767a41d98cc121fab1227",
-      "sha256": "62f87e7968f1a57211bbc2eb75e719a2021db0c1538d23a73d57771dd3d67dcb",
+      "output": "0004-ca0a6cd4858b4e6c.webp",
+      "fingerprint": "ca0a6cd4858b4e6c39d46244029c81f4d6d4fdad8e4e98632a805262ccfac598",
+      "sha256": "d5dff34ab9953e662daf4d90607f6b0aa3c0a17f5a238780c6ae8c08e6939175",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -803,7 +809,8 @@
                   "contrast",
                   "bounds"
                 ],
-                "layers": 2,
+                "layers_checked": 2,
+                "layers_total": 2,
                 "text_layers": 2
               }
             }
@@ -842,7 +849,8 @@
                 "checks": [
                   "blanks"
                 ],
-                "layers": 26,
+                "layers_checked": 26,
+                "layers_total": 27,
                 "text_layers": 13
               }
             }
@@ -880,9 +888,9 @@
       },
       "artboard": null,
       "status": "completed",
-      "output": "0005-7bd32dc1d7025ff6.webp",
-      "fingerprint": "7bd32dc1d7025ff63b2dc181a8f4bd86a3dd692eb274d3ccee8427a31e21a613",
-      "sha256": "22b22f3217fdc9de795abbc2f76343c81067b4b0a9ecd1a4f700a04f4e987741",
+      "output": "0005-3f8539e374b10b09.webp",
+      "fingerprint": "3f8539e374b10b09589e3a7fce68bcdf28e0f2ab57918b74bb50a958a22ebdfe",
+      "sha256": "25cd95af294f05615a9fb253a3589ee3e124abc913128b6be42ab63e95299eda",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -1015,7 +1023,8 @@
                   "contrast",
                   "bounds"
                 ],
-                "layers": 2,
+                "layers_checked": 2,
+                "layers_total": 2,
                 "text_layers": 2
               }
             }
@@ -1054,7 +1063,8 @@
                 "checks": [
                   "blanks"
                 ],
-                "layers": 26,
+                "layers_checked": 26,
+                "layers_total": 27,
                 "text_layers": 13
               }
             }
@@ -1095,7 +1105,7 @@
       "error": {
         "error": "text_overflow",
         "message": "Text cannot fit at the minimum size",
-        "target": "lyr_58498aaf9b9f41d7",
+        "target": "lyr_bb00b0dc9e3c4a34",
         "minimum": 22,
         "operation_index": 0,
         "operation_type": "action-apply"
@@ -1126,9 +1136,9 @@
       },
       "artboard": null,
       "status": "completed",
-      "output": "0007-9d0235826794e1c1.webp",
-      "fingerprint": "9d0235826794e1c1034230be6332e87d06998ce38ab1e0850e2629144178e06c",
-      "sha256": "aacf625fa0a53570f96febdb2d4f2955ab301088fa8972226d6e86d85b1a7a95",
+      "output": "0007-12a25df2aa80ff31.webp",
+      "fingerprint": "12a25df2aa80ff314cfde7b3f5be3d6dd52723f45b28eca128c77cb6c7164978",
+      "sha256": "a1053b4a262b6e34f74fc4a92c088e2a409935a1b538a91aafa141efe6b6e378",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -1261,7 +1271,8 @@
                   "contrast",
                   "bounds"
                 ],
-                "layers": 2,
+                "layers_checked": 2,
+                "layers_total": 2,
                 "text_layers": 2
               }
             }
@@ -1300,7 +1311,8 @@
                 "checks": [
                   "blanks"
                 ],
-                "layers": 26,
+                "layers_checked": 26,
+                "layers_total": 27,
                 "text_layers": 13
               }
             }
@@ -1471,7 +1483,8 @@
                   "contrast",
                   "bounds"
                 ],
-                "layers": 2,
+                "layers_checked": 2,
+                "layers_total": 2,
                 "text_layers": 2
               }
             }
@@ -1510,7 +1523,8 @@
                 "checks": [
                   "blanks"
                 ],
-                "layers": 26,
+                "layers_checked": 26,
+                "layers_total": 27,
                 "text_layers": 13
               }
             }
@@ -1699,7 +1713,8 @@
                   "contrast",
                   "bounds"
                 ],
-                "layers": 2,
+                "layers_checked": 2,
+                "layers_total": 2,
                 "text_layers": 2
               }
             },
@@ -1818,7 +1833,8 @@
                 "checks": [
                   "blanks"
                 ],
-                "layers": 26,
+                "layers_checked": 26,
+                "layers_total": 27,
                 "text_layers": 13
               }
             },
@@ -2024,7 +2040,8 @@
                   "contrast",
                   "bounds"
                 ],
-                "layers": 2,
+                "layers_checked": 2,
+                "layers_total": 2,
                 "text_layers": 2
               }
             }
@@ -2063,7 +2080,8 @@
                 "checks": [
                   "blanks"
                 ],
-                "layers": 26,
+                "layers_checked": 26,
+                "layers_total": 27,
                 "text_layers": 13
               }
             }
@@ -2100,9 +2118,9 @@
       },
       "artboard": null,
       "status": "completed",
-      "output": "0011-172c66dce52aaaf9.webp",
-      "fingerprint": "172c66dce52aaaf96fbe61932222a8529e642277cabd5b9732dd923a6ccea96f",
-      "sha256": "b0f87f3fc775d7712d6d3c85650337092b1946b83e5e1693cb251384ea140fb1",
+      "output": "0011-b60184028e86363b.webp",
+      "fingerprint": "b60184028e86363b7a8dad86430fab034cbcff2916d1b9263526132c907e2f28",
+      "sha256": "78100041cbf97dcd5069a9b66abaada78a6ecf471ff2e0d833cc21f4c49dacda",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -2235,7 +2253,8 @@
                   "contrast",
                   "bounds"
                 ],
-                "layers": 2,
+                "layers_checked": 2,
+                "layers_total": 2,
                 "text_layers": 2
               }
             }
@@ -2274,7 +2293,8 @@
                 "checks": [
                   "blanks"
                 ],
-                "layers": 26,
+                "layers_checked": 26,
+                "layers_total": 27,
                 "text_layers": 13
               }
             }
@@ -2312,9 +2332,9 @@
       },
       "artboard": null,
       "status": "completed",
-      "output": "0012-1c5c95d2a022861c.webp",
-      "fingerprint": "1c5c95d2a022861ccffd77f7b08cd36a79ae3447e2e778e63c1ef2fb05a29b26",
-      "sha256": "14f11f92d830e054619ddbcf6e301ea1a218fbb8c756e50e23e7341c65473db1",
+      "output": "0012-ddb6acee97e0ae55.webp",
+      "fingerprint": "ddb6acee97e0ae55a827f6d2ca13e1ba14d8034948c4f9e6f0baad3ed0f6f95c",
+      "sha256": "2f3ce66e23f25010688f4b71d1c6171d76df2f34bb5468290c98d2121d4a4ee6",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -2448,7 +2468,8 @@
                   "contrast",
                   "bounds"
                 ],
-                "layers": 2,
+                "layers_checked": 2,
+                "layers_total": 2,
                 "text_layers": 2
               }
             }
@@ -2487,7 +2508,8 @@
                 "checks": [
                   "blanks"
                 ],
-                "layers": 26,
+                "layers_checked": 26,
+                "layers_total": 27,
                 "text_layers": 13
               }
             }
@@ -2527,9 +2549,9 @@
       },
       "artboard": null,
       "status": "completed",
-      "output": "0013-cdf8c0392795f818.webp",
-      "fingerprint": "cdf8c0392795f8183d5ba2894e16bf16de58d1a4e400cd468e2962b9aec23dce",
-      "sha256": "77f3afcc37a04c88de4d9182facce0cbae814d6015da4bde6bb64aca1b0a616e",
+      "output": "0013-a65f39ad0c0c406e.webp",
+      "fingerprint": "a65f39ad0c0c406e8c54b7d3fa3e3dadb117939d0bda4c50ab114f53fb57143d",
+      "sha256": "07b5b1412a1194034209c3a1c0baacfdf83965040b3e0d849d1a25570fde9335",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -2663,7 +2685,8 @@
                   "contrast",
                   "bounds"
                 ],
-                "layers": 2,
+                "layers_checked": 2,
+                "layers_total": 2,
                 "text_layers": 2
               }
             }
@@ -2702,7 +2725,8 @@
                 "checks": [
                   "blanks"
                 ],
-                "layers": 26,
+                "layers_checked": 26,
+                "layers_total": 27,
                 "text_layers": 13
               }
             }

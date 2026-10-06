@@ -177,3 +177,13 @@ def test_moved_path_with_box_partly_off_canvas_but_visible_geometry_is_fine():  
     assert [i for i in p.check()["issues"] if i["check"] == "bounds"] == []
     p.apply({"type": "move", "target": "boat", "x": -450})
     assert [i for i in p.check()["issues"] if i["check"] == "bounds" and "boat" in i["layers"]]
+
+
+@pytest.mark.parametrize("size", [14, 16, 30])
+@pytest.mark.parametrize("x, y", [(40.5, 100), (40, 100.5), (40, 100.75)])
+def test_contrast_coverage_lines_up_with_ink_at_fractional_positions(size, x, y):
+    """Dark text on a light page passes however the box sits on a pixel: the glyph coverage mask
+    is placed where the compositor draws the ink, not one pixel off."""
+    p = Project(500, 300, "#f6f3ec")
+    p.apply([{"type": "text", "name": "t", "text": "Brazil", "x": x, "y": y, "size": size, "color": "#14161a"}])
+    assert contrast_issues(p.check(checks=["contrast"])) == []

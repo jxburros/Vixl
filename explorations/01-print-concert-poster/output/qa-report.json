@@ -9,8 +9,8 @@
       "role": "heading",
       "source": {
         "origin": "cache",
-        "cache_file": "/home/user/Vixl/explorations/01-print-concert-poster/.work/fonts/syne-800.ttf",
-        "cache_dir": "/home/user/Vixl/explorations/01-print-concert-poster/.work/fonts",
+        "cache_file": "/home/user/Vixl/.claude/worktrees/agent-aa5dda75eb6019910/explorations/01-print-concert-poster/.work/fonts/syne-800.ttf",
+        "cache_dir": "/home/user/Vixl/.claude/worktrees/agent-aa5dda75eb6019910/explorations/01-print-concert-poster/.work/fonts",
         "cache_dir_from": "VIXL_FONT_CACHE",
         "bundled_fallback": false
       },
@@ -28,8 +28,8 @@
       "role": "body",
       "source": {
         "origin": "cache",
-        "cache_file": "/home/user/Vixl/explorations/01-print-concert-poster/.work/fonts/dm-sans-400.ttf",
-        "cache_dir": "/home/user/Vixl/explorations/01-print-concert-poster/.work/fonts",
+        "cache_file": "/home/user/Vixl/.claude/worktrees/agent-aa5dda75eb6019910/explorations/01-print-concert-poster/.work/fonts/dm-sans-400.ttf",
+        "cache_dir": "/home/user/Vixl/.claude/worktrees/agent-aa5dda75eb6019910/explorations/01-print-concert-poster/.work/fonts",
         "cache_dir_from": "VIXL_FONT_CACHE",
         "bundled_fallback": false
       },
@@ -55,8 +55,8 @@
     "italic": false,
     "source": {
       "origin": "cache",
-      "cache_file": "/home/user/Vixl/explorations/01-print-concert-poster/.work/fonts/dm-sans-700.ttf",
-      "cache_dir": "/home/user/Vixl/explorations/01-print-concert-poster/.work/fonts",
+      "cache_file": "/home/user/Vixl/.claude/worktrees/agent-aa5dda75eb6019910/explorations/01-print-concert-poster/.work/fonts/dm-sans-700.ttf",
+      "cache_dir": "/home/user/Vixl/.claude/worktrees/agent-aa5dda75eb6019910/explorations/01-print-concert-poster/.work/fonts",
       "cache_dir_from": "VIXL_FONT_CACHE",
       "bundled_fallback": false
     },
@@ -68,24 +68,40 @@
   },
   "apply_normalized": null,
   "check_print_colorvision": {
-    "passed": true,
-    "errors": 0,
-    "warnings": 8,
-    "info": 1,
+    "passed": false,
+    "errors": 2,
+    "warnings": 15,
+    "info": 7,
     "by_action": {
-      "fix": [],
+      "fix": [
+        22,
+        23
+      ],
       "review": [
         1,
         2,
         3,
         4,
-        5,
         6,
         7,
-        8
+        8,
+        9,
+        10,
+        11,
+        16,
+        17,
+        18,
+        19,
+        21
       ],
       "informational": [
-        0
+        0,
+        5,
+        12,
+        13,
+        14,
+        15,
+        20
       ]
     },
     "issues": [
@@ -166,18 +182,34 @@
         "action": "review"
       },
       {
+        "check": "bounds",
+        "severity": "info",
+        "layers": [
+          "rays"
+        ],
+        "message": "'rays' bleeds off the canvas edge (artwork running past two edges)",
+        "bounds": [
+          -1858.3,
+          1503.5,
+          5404.6,
+          1086.0
+        ],
+        "intentional": true,
+        "action": "informational"
+      },
+      {
         "check": "overlap",
         "severity": "warning",
         "layers": [
           "sun",
           "badge-text"
         ],
-        "message": "'sun' and 'badge-text' overlap by 1798 px (22.8% of the smaller layer)",
+        "message": "'sun' and 'badge-text' overlap by 4304 px (54.5% of the smaller layer)",
         "region": [
-          1268,
-          1324,
-          76,
-          151
+          1250,
+          1325,
+          253,
+          149
         ],
         "action": "review"
       },
@@ -190,10 +222,26 @@
         ],
         "message": "'sun' and 'headliners' overlap by 35004 px (69.6% of the smaller layer)",
         "region": [
-          344,
+          232,
           1711,
-          1000,
+          1224,
           131
+        ],
+        "action": "review"
+      },
+      {
+        "check": "overlap",
+        "severity": "warning",
+        "layers": [
+          "sun",
+          "support"
+        ],
+        "message": "'sun' and 'support' overlap by 3026 px (9.5% of the smaller layer)",
+        "region": [
+          234,
+          1882,
+          1220,
+          112
         ],
         "action": "review"
       },
@@ -204,12 +252,12 @@
           "slice",
           "badge-text"
         ],
-        "message": "'slice' and 'badge-text' overlap by 1221 px (15.5% of the smaller layer)",
+        "message": "'slice' and 'badge-text' overlap by 1318 px (16.7% of the smaller layer)",
         "region": [
-          1268,
-          1324,
-          96,
-          151
+          1250,
+          1325,
+          114,
+          149
         ],
         "action": "review"
       },
@@ -222,12 +270,284 @@
         ],
         "message": "'sparkle-2' and 'subtitle' overlap by 549 px (100.0% of the smaller layer)",
         "region": [
-          1240,
-          470,
-          60,
-          60
+          1168,
+          398,
+          204,
+          204
         ],
         "action": "review"
+      },
+      {
+        "check": "safe_area",
+        "severity": "warning",
+        "layers": [
+          "sky"
+        ],
+        "message": "'sky' extends outside the safe area",
+        "bounds": [
+          0,
+          0,
+          1688,
+          1545
+        ],
+        "safe_area": [
+          57,
+          57,
+          1574,
+          2474
+        ],
+        "action": "review"
+      },
+      {
+        "check": "safe_area",
+        "severity": "info",
+        "layers": [
+          "haze"
+        ],
+        "message": "'haze' extends outside the safe area (intentional crop or bleed)",
+        "bounds": [
+          -6,
+          355,
+          1700,
+          1700
+        ],
+        "safe_area": [
+          57,
+          57,
+          1574,
+          2474
+        ],
+        "intentional": true,
+        "action": "informational"
+      },
+      {
+        "check": "safe_area",
+        "severity": "info",
+        "layers": [
+          "peak-far-l"
+        ],
+        "message": "'peak-far-l' extends outside the safe area (intentional crop or bleed)",
+        "bounds": [
+          -180,
+          1130,
+          900,
+          380
+        ],
+        "safe_area": [
+          57,
+          57,
+          1574,
+          2474
+        ],
+        "intentional": true,
+        "action": "informational"
+      },
+      {
+        "check": "safe_area",
+        "severity": "info",
+        "layers": [
+          "peak-far-r"
+        ],
+        "message": "'peak-far-r' extends outside the safe area (intentional crop or bleed)",
+        "bounds": [
+          980,
+          1070,
+          1000,
+          440
+        ],
+        "safe_area": [
+          57,
+          57,
+          1574,
+          2474
+        ],
+        "intentional": true,
+        "action": "informational"
+      },
+      {
+        "check": "safe_area",
+        "severity": "info",
+        "layers": [
+          "peak-near-r"
+        ],
+        "message": "'peak-near-r' extends outside the safe area (intentional crop or bleed)",
+        "bounds": [
+          1180,
+          1290,
+          620,
+          220
+        ],
+        "safe_area": [
+          57,
+          57,
+          1574,
+          2474
+        ],
+        "intentional": true,
+        "action": "informational"
+      },
+      {
+        "check": "safe_area",
+        "severity": "warning",
+        "layers": [
+          "mountains"
+        ],
+        "message": "'mountains' extends outside the safe area",
+        "bounds": [
+          -180,
+          1070,
+          2160,
+          440
+        ],
+        "safe_area": [
+          57,
+          57,
+          1574,
+          2474
+        ],
+        "action": "review"
+      },
+      {
+        "check": "safe_area",
+        "severity": "warning",
+        "layers": [
+          "ground"
+        ],
+        "message": "'ground' extends outside the safe area",
+        "bounds": [
+          0,
+          1505,
+          1688,
+          1083
+        ],
+        "safe_area": [
+          57,
+          57,
+          1574,
+          2474
+        ],
+        "action": "review"
+      },
+      {
+        "check": "safe_area",
+        "severity": "warning",
+        "layers": [
+          "horizon-line"
+        ],
+        "message": "'horizon-line' extends outside the safe area",
+        "bounds": [
+          0,
+          1505,
+          1688,
+          4
+        ],
+        "safe_area": [
+          57,
+          57,
+          1574,
+          2474
+        ],
+        "action": "review"
+      },
+      {
+        "check": "safe_area",
+        "severity": "warning",
+        "layers": [
+          "rung"
+        ],
+        "message": "'rung' extends outside the safe area",
+        "bounds": [
+          0,
+          1523,
+          1688,
+          1021
+        ],
+        "safe_area": [
+          57,
+          57,
+          1574,
+          2474
+        ],
+        "action": "review"
+      },
+      {
+        "check": "safe_area",
+        "severity": "info",
+        "layers": [
+          "rays"
+        ],
+        "message": "'rays' extends outside the safe area (intentional crop or bleed)",
+        "bounds": [
+          -1859,
+          1503,
+          5406,
+          1087
+        ],
+        "safe_area": [
+          57,
+          57,
+          1574,
+          2474
+        ],
+        "intentional": true,
+        "action": "informational"
+      },
+      {
+        "check": "safe_area",
+        "severity": "warning",
+        "layers": [
+          "grid"
+        ],
+        "message": "'grid' extends outside the safe area",
+        "bounds": [
+          0,
+          1505,
+          1688,
+          1083
+        ],
+        "safe_area": [
+          57,
+          57,
+          1574,
+          2474
+        ],
+        "action": "review"
+      },
+      {
+        "check": "safe_area",
+        "severity": "error",
+        "layers": [
+          "title"
+        ],
+        "message": "'title' extends outside the safe area",
+        "bounds": [
+          54,
+          127,
+          1580,
+          330
+        ],
+        "safe_area": [
+          57,
+          57,
+          1574,
+          2474
+        ],
+        "action": "fix"
+      },
+      {
+        "check": "print",
+        "severity": "error",
+        "layers": [
+          "title"
+        ],
+        "message": "'title' is outside the live area (57px from the edge) and may be trimmed",
+        "live_area": [
+          57,
+          57,
+          1574,
+          2474
+        ],
+        "action": "fix"
       }
     ],
     "checked": {
@@ -239,116 +559,76 @@
         "print",
         "color_vision"
       ],
-      "layers": 47,
+      "layers_checked": 47,
+      "layers_total": 47,
       "text_layers": 13
     }
   },
   "check_contrast_all": {
     "passed": true,
     "errors": 0,
-    "warnings": 5,
+    "warnings": 0,
     "info": 0,
     "by_action": {
       "fix": [],
-      "review": [
-        0,
-        1,
-        2,
-        3,
-        4
-      ],
+      "review": [],
       "informational": []
     },
-    "issues": [
-      {
-        "check": "contrast",
-        "severity": "warning",
-        "layers": [
-          "eyebrow"
-        ],
-        "message": "Could not measure 'eyebrow': boolean index did not match indexed array along axis 1; size of axis is 604 but size of corresponding boolean axis is 602",
-        "action": "review"
-      },
-      {
-        "check": "contrast",
-        "severity": "warning",
-        "layers": [
-          "headliners"
-        ],
-        "message": "Could not measure 'headliners': boolean index did not match indexed array along axis 1; size of axis is 1224 but size of corresponding boolean axis is 1222",
-        "action": "review"
-      },
-      {
-        "check": "contrast",
-        "severity": "warning",
-        "layers": [
-          "extras"
-        ],
-        "message": "Could not measure 'extras': boolean index did not match indexed array along axis 1; size of axis is 848 but size of corresponding boolean axis is 846",
-        "action": "review"
-      },
-      {
-        "check": "contrast",
-        "severity": "warning",
-        "layers": [
-          "cta-text"
-        ],
-        "message": "Could not measure 'cta-text': boolean index did not match indexed array along axis 0; size of axis is 30 but size of corresponding boolean axis is 28",
-        "action": "review"
-      },
-      {
-        "check": "contrast",
-        "severity": "warning",
-        "layers": [
-          "fineprint"
-        ],
-        "message": "Could not measure 'fineprint': boolean index did not match indexed array along axis 1; size of axis is 796 but size of corresponding boolean axis is 794",
-        "action": "review"
-      }
-    ],
+    "issues": [],
     "checked": {
       "checks": [
         "contrast"
       ],
-      "layers": 47,
+      "layers_checked": 47,
+      "layers_total": 47,
       "text_layers": 13
     }
   },
   "icc_profile": "default_cmyk.icc",
   "export_png": {
-    "output": "/home/user/Vixl/explorations/01-print-concert-poster/output/poster-rgb.png",
-    "bytes": 2282301
+    "output": "/home/user/Vixl/.claude/worktrees/agent-aa5dda75eb6019910/explorations/01-print-concert-poster/output/poster-rgb.png",
+    "bytes": 2278137,
+    "warnings": [
+      "PNG is 2.2 MB; messaging apps often recompress or reject images this large. Texture looks (grain) add noise that PNG cannot compress: lower their amount, or export JPEG or WebP."
+    ]
   },
   "export_pdf": {
-    "output": "/home/user/Vixl/explorations/01-print-concert-poster/output/poster-cmyk.pdf",
-    "bytes": 7461369,
+    "output": "/home/user/Vixl/.claude/worktrees/agent-aa5dda75eb6019910/explorations/01-print-concert-poster/output/poster-cmyk.pdf",
+    "bytes": 2352950,
     "pages": 1,
-    "content": "raster",
+    "content": "vector",
     "color_space": "cmyk",
-    "raster_fallbacks": {},
+    "raster_fallbacks": {
+      "1": [
+        {
+          "layer": "page",
+          "reason": "blend modes or adjustment layers depend on the backdrop"
+        }
+      ]
+    },
     "fonts": 0,
     "page_size": {
       "width": 11.25,
       "height": 17.25,
       "unit": "in"
     },
-    "content_reason": "requested with pdf_content"
+    "content_reason": "default: vector, with images only for what PDF cannot draw (see raster_fallbacks)"
   },
   "export_jpg": {
-    "output": "/home/user/Vixl/explorations/01-print-concert-poster/output/poster-cmyk-swop.jpg",
-    "bytes": 2570341
+    "output": "/home/user/Vixl/.claude/worktrees/agent-aa5dda75eb6019910/explorations/01-print-concert-poster/output/poster-cmyk-swop.jpg",
+    "bytes": 2564667
   },
   "export_svg": {
-    "output": "/home/user/Vixl/explorations/01-print-concert-poster/output/poster.svg",
-    "bytes": 289955,
+    "output": "/home/user/Vixl/.claude/worktrees/agent-aa5dda75eb6019910/explorations/01-print-concert-poster/output/poster.svg",
+    "bytes": 249029,
     "svg": {
       "vector_only": true,
       "raster_fallbacks": []
     }
   },
   "export_svg_full_comp": {
-    "output": "/home/user/Vixl/explorations/01-print-concert-poster/.work/poster-fullcomp.svg",
-    "bytes": 10878661,
+    "output": "/home/user/Vixl/.claude/worktrees/agent-aa5dda75eb6019910/explorations/01-print-concert-poster/.work/poster-fullcomp.svg",
+    "bytes": 10852273,
     "svg": {
       "vector_only": false,
       "raster_fallbacks": [
@@ -394,17 +674,17 @@
       150,
       150
     ],
-    "max_total_ink_pct": 340.0,
+    "max_total_ink_pct": 339.6,
     "p99_total_ink_pct": 302.4
   },
   "pdf": {
     "header": "%PDF-1.7",
     "DeviceCMYK": true,
-    "DCTDecode": false,
+    "DCTDecode": true,
     "MediaBox": "/MediaBox [0 0 810 1242] /Resources <</X"
   },
   "svg": {
-    "bytes": 289955,
+    "bytes": 249029,
     "image_elements": 0,
     "path_elements": 486
   },
@@ -416,7 +696,7 @@
     },
     "swop_icc_perceptual": {
       "mean_abs_rgb": 13.32,
-      "max_abs_rgb": 70,
+      "max_abs_rgb": 68,
       "pct_pixels_changed_gt8": 91.4
     }
   }

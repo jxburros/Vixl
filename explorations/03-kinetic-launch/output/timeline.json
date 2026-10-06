@@ -14,7 +14,7 @@
  },
  "tracks": [
   {
-   "target": "lyr_7b0a49379aff42d8",
+   "target": "lyr_f65e97faa9ac43f7",
    "layer": "word-0",
    "property": "translate-y",
    "keys": [
@@ -39,7 +39,7 @@
    ]
   },
   {
-   "target": "lyr_7b0a49379aff42d8",
+   "target": "lyr_f65e97faa9ac43f7",
    "layer": "word-0",
    "property": "opacity",
    "keys": [
@@ -64,7 +64,7 @@
    ]
   },
   {
-   "target": "lyr_affa35af9b914f94",
+   "target": "lyr_fb0456853fcf41fd",
    "layer": "word-1",
    "property": "translate-y",
    "keys": [
@@ -89,7 +89,7 @@
    ]
   },
   {
-   "target": "lyr_affa35af9b914f94",
+   "target": "lyr_fb0456853fcf41fd",
    "layer": "word-1",
    "property": "opacity",
    "keys": [
@@ -114,7 +114,7 @@
    ]
   },
   {
-   "target": "lyr_a4a27aed0de04ba0",
+   "target": "lyr_47cc28197e614f19",
    "layer": "word-2",
    "property": "translate-y",
    "keys": [
@@ -139,7 +139,7 @@
    ]
   },
   {
-   "target": "lyr_a4a27aed0de04ba0",
+   "target": "lyr_47cc28197e614f19",
    "layer": "word-2",
    "property": "opacity",
    "keys": [
@@ -164,7 +164,7 @@
    ]
   },
   {
-   "target": "lyr_2d2ec2f5f66144d8",
+   "target": "lyr_3c9b1bb59eb9485f",
    "layer": "letter-H",
    "property": "translate-y",
    "keys": [
@@ -180,7 +180,7 @@
    ]
   },
   {
-   "target": "lyr_a3949b23c87a4c42",
+   "target": "lyr_4b2cd75c75474946",
    "layer": "letter-A",
    "property": "translate-y",
    "keys": [
@@ -196,7 +196,7 @@
    ]
   },
   {
-   "target": "lyr_700df3fea76b4612",
+   "target": "lyr_b4d609b8f3934674",
    "layer": "letter-L",
    "property": "translate-y",
    "keys": [
@@ -212,7 +212,7 @@
    ]
   },
   {
-   "target": "lyr_7531f64cf4cd40ff",
+   "target": "lyr_2b95d0958d2f4b17",
    "layer": "letter-O",
    "property": "translate-y",
    "keys": [
@@ -228,7 +228,7 @@
    ]
   },
   {
-   "target": "lyr_2d2ec2f5f66144d8",
+   "target": "lyr_3c9b1bb59eb9485f",
    "layer": "letter-H",
    "property": "opacity",
    "keys": [
@@ -244,7 +244,7 @@
    ]
   },
   {
-   "target": "lyr_a3949b23c87a4c42",
+   "target": "lyr_4b2cd75c75474946",
    "layer": "letter-A",
    "property": "opacity",
    "keys": [
@@ -260,7 +260,7 @@
    ]
   },
   {
-   "target": "lyr_700df3fea76b4612",
+   "target": "lyr_b4d609b8f3934674",
    "layer": "letter-L",
    "property": "opacity",
    "keys": [
@@ -276,7 +276,7 @@
    ]
   },
   {
-   "target": "lyr_7531f64cf4cd40ff",
+   "target": "lyr_2b95d0958d2f4b17",
    "layer": "letter-O",
    "property": "opacity",
    "keys": [
@@ -292,7 +292,7 @@
    ]
   },
   {
-   "target": "lyr_820d73452e6a4b40",
+   "target": "lyr_f3cede0bc1664c0c",
    "layer": "chip-0",
    "property": "scale",
    "keys": [
@@ -308,7 +308,7 @@
    ]
   },
   {
-   "target": "lyr_820d73452e6a4b40",
+   "target": "lyr_f3cede0bc1664c0c",
    "layer": "chip-0",
    "property": "opacity",
    "keys": [
@@ -324,7 +324,7 @@
    ]
   },
   {
-   "target": "lyr_6fd3401ed788449a",
+   "target": "lyr_bae1991681b84c27",
    "layer": "chip-1",
    "property": "scale",
    "keys": [
@@ -340,7 +340,7 @@
    ]
   },
   {
-   "target": "lyr_6fd3401ed788449a",
+   "target": "lyr_bae1991681b84c27",
    "layer": "chip-1",
    "property": "opacity",
    "keys": [
@@ -356,7 +356,7 @@
    ]
   },
   {
-   "target": "lyr_dbef9f920fd84f97",
+   "target": "lyr_2a1c9019ad5b4f1e",
    "layer": "chip-2",
    "property": "scale",
    "keys": [
@@ -372,7 +372,7 @@
    ]
   },
   {
-   "target": "lyr_dbef9f920fd84f97",
+   "target": "lyr_2a1c9019ad5b4f1e",
    "layer": "chip-2",
    "property": "opacity",
    "keys": [
@@ -388,7 +388,7 @@
    ]
   },
   {
-   "target": "lyr_24e55d8fa6cd4adc",
+   "target": "lyr_9a4f6fd83db141a0",
    "layer": "spark-0",
    "property": "translate-y",
    "keys": [
@@ -433,7 +433,7 @@
    ]
   },
   {
-   "target": "lyr_7a320c1921a941d5",
+   "target": "lyr_7b1c2a26192a42c9",
    "layer": "spark-1",
    "property": "translate-y",
    "keys": [
@@ -482,7 +482,7 @@
    ]
   },
   {
-   "target": "lyr_9c8360ad872c4daa",
+   "target": "lyr_4c37cda70b5b41ed",
    "layer": "spark-2",
    "property": "translate-y",
    "keys": [
@@ -531,7 +531,7 @@
    ]
   },
   {
-   "target": "lyr_3d8f92fbea774293",
+   "target": "lyr_d12ecd9f5104432f",
    "layer": "spark-3",
    "property": "translate-y",
    "keys": [
@@ -580,7 +580,7 @@
    ]
   },
   {
-   "target": "lyr_e7733d85494f48aa",
+   "target": "lyr_a3c2c35e53c94d06",
    "layer": "spark-4",
    "property": "translate-y",
    "keys": [
@@ -629,7 +629,7 @@
    ]
   },
   {
-   "target": "lyr_d693ed2e589b40dd",
+   "target": "lyr_5b225442cea7410e",
    "layer": "spark-5",
    "property": "translate-y",
    "keys": [
@@ -678,7 +678,7 @@
    ]
   },
   {
-   "target": "lyr_9258ba28709f49b8",
+   "target": "lyr_e1b81e9075b74f51",
    "layer": "spark-6",
    "property": "translate-y",
    "keys": [
@@ -727,7 +727,7 @@
    ]
   },
   {
-   "target": "lyr_a741935a2c02472f",
+   "target": "lyr_aeeb8473d0da4702",
    "layer": "spark-7",
    "property": "translate-y",
    "keys": [
@@ -796,7 +796,7 @@
    ]
   },
   {
-   "target": "lyr_714d7d93b90a43dc",
+   "target": "lyr_33ec6e0ef8ad4826",
    "layer": "kicker",
    "property": "text",
    "keys": [
@@ -915,7 +915,7 @@
    ]
   },
   {
-   "target": "lyr_714d7d93b90a43dc",
+   "target": "lyr_33ec6e0ef8ad4826",
    "layer": "kicker",
    "property": "opacity",
    "keys": [
@@ -931,7 +931,7 @@
    ]
   },
   {
-   "target": "lyr_a132d659c73a42d8",
+   "target": "lyr_9bd74dbe7bea4fdd",
    "layer": "sweep",
    "property": "scale-x",
    "keys": [
@@ -956,7 +956,7 @@
    ]
   },
   {
-   "target": "lyr_a132d659c73a42d8",
+   "target": "lyr_9bd74dbe7bea4fdd",
    "layer": "sweep",
    "property": "fill",
    "keys": [
@@ -972,7 +972,7 @@
    ]
   },
   {
-   "target": "lyr_affa35af9b914f94",
+   "target": "lyr_fb0456853fcf41fd",
    "layer": "word-1",
    "property": "color",
    "keys": [
@@ -988,7 +988,7 @@
    ]
   },
   {
-   "target": "lyr_a4a27aed0de04ba0",
+   "target": "lyr_47cc28197e614f19",
    "layer": "word-2",
    "property": "size",
    "keys": [
@@ -1004,7 +1004,7 @@
    ]
   },
   {
-   "target": "lyr_ae718195bacf46ec",
+   "target": "lyr_6ce2bff9f92a49dc",
    "layer": "glow",
    "property": "opacity",
    "keys": [
@@ -1020,7 +1020,7 @@
    ]
   },
   {
-   "target": "lyr_ae718195bacf46ec",
+   "target": "lyr_6ce2bff9f92a49dc",
    "layer": "glow",
    "property": "scale",
    "keys": [
@@ -1041,7 +1041,7 @@
    ]
   },
   {
-   "target": "lyr_9434c9c0e65b4694",
+   "target": "lyr_ae7c7b6ac40941cf",
    "layer": "ring",
    "property": "opacity",
    "keys": [
@@ -1057,7 +1057,7 @@
    ]
   },
   {
-   "target": "lyr_9434c9c0e65b4694",
+   "target": "lyr_ae7c7b6ac40941cf",
    "layer": "ring",
    "property": "scale",
    "keys": [
@@ -1073,7 +1073,7 @@
    ]
   },
   {
-   "target": "lyr_9434c9c0e65b4694",
+   "target": "lyr_ae7c7b6ac40941cf",
    "layer": "ring",
    "property": "effect:1",
    "keys": [
@@ -1089,7 +1089,7 @@
    ]
   },
   {
-   "target": "lyr_9434c9c0e65b4694",
+   "target": "lyr_ae7c7b6ac40941cf",
    "layer": "ring",
    "property": "stroke",
    "keys": [
@@ -1105,7 +1105,7 @@
    ]
   },
   {
-   "target": "lyr_acd2a18f0d0341c2",
+   "target": "lyr_dea327bc3de44e22",
    "layer": "ticks",
    "property": "opacity",
    "keys": [
@@ -1121,7 +1121,7 @@
    ]
   },
   {
-   "target": "lyr_acd2a18f0d0341c2",
+   "target": "lyr_dea327bc3de44e22",
    "layer": "ticks",
    "property": "rotation",
    "keys": [
@@ -1136,7 +1136,7 @@
    ]
   },
   {
-   "target": "lyr_cd62d801e8844b25",
+   "target": "lyr_f71d677f3d4949cd",
    "layer": "satellite",
    "property": "opacity",
    "keys": [
@@ -1152,7 +1152,7 @@
    ]
   },
   {
-   "target": "lyr_cd62d801e8844b25",
+   "target": "lyr_f71d677f3d4949cd",
    "layer": "satellite",
    "property": "rotation",
    "keys": [
@@ -1168,7 +1168,7 @@
    ]
   },
   {
-   "target": "lyr_777b5ac47e354af0",
+   "target": "lyr_dcb5e160dca041bb",
    "layer": "wordmark",
    "property": "effect:1",
    "keys": [
@@ -1184,7 +1184,7 @@
    ]
   },
   {
-   "target": "lyr_b4367e196eb948cd",
+   "target": "lyr_c0fc4a5b8866444e",
    "layer": "chip-label-0",
    "property": "color",
    "keys": [
@@ -1205,7 +1205,7 @@
    ]
   },
   {
-   "target": "lyr_4f2d00f0fef249e0",
+   "target": "lyr_5325b55e507f4e21",
    "layer": "chip-label-1",
    "property": "color",
    "keys": [
@@ -1226,7 +1226,7 @@
    ]
   },
   {
-   "target": "lyr_58ebbce2cf5f4ff9",
+   "target": "lyr_278adf0229bc437f",
    "layer": "chip-label-2",
    "property": "color",
    "keys": [
@@ -1247,7 +1247,7 @@
    ]
   },
   {
-   "target": "lyr_1b8edf70d9c04e85",
+   "target": "lyr_e968c653b5164aa8",
    "layer": "badge",
    "property": "scale",
    "keys": [
@@ -1263,7 +1263,7 @@
    ]
   },
   {
-   "target": "lyr_1b8edf70d9c04e85",
+   "target": "lyr_e968c653b5164aa8",
    "layer": "badge",
    "property": "opacity",
    "keys": [
@@ -1279,7 +1279,7 @@
    ]
   },
   {
-   "target": "lyr_1b8edf70d9c04e85",
+   "target": "lyr_e968c653b5164aa8",
    "layer": "badge",
    "property": "rotation",
    "keys": [
@@ -1295,7 +1295,7 @@
    ]
   },
   {
-   "target": "lyr_1b8edf70d9c04e85",
+   "target": "lyr_e968c653b5164aa8",
    "layer": "badge",
    "property": "translate-y",
    "keys": [
@@ -1311,7 +1311,7 @@
    ]
   },
   {
-   "target": "lyr_eeb048969a5842bd",
+   "target": "lyr_47f7c61c8c554d1e",
    "layer": "tagline",
    "property": "text",
    "keys": [
@@ -1434,7 +1434,7 @@
    ]
   },
   {
-   "target": "lyr_eeb048969a5842bd",
+   "target": "lyr_47f7c61c8c554d1e",
    "layer": "tagline",
    "property": "translate-y",
    "keys": [
@@ -1450,7 +1450,7 @@
    ]
   },
   {
-   "target": "lyr_eeb048969a5842bd",
+   "target": "lyr_47f7c61c8c554d1e",
    "layer": "tagline",
    "property": "opacity",
    "keys": [
@@ -1466,7 +1466,7 @@
    ]
   },
   {
-   "target": "lyr_b4367e196eb948cd",
+   "target": "lyr_c0fc4a5b8866444e",
    "layer": "chip-label-0",
    "property": "text",
    "keys": [
@@ -1501,7 +1501,7 @@
    ]
   },
   {
-   "target": "lyr_3baa1c01f9b741db",
+   "target": "lyr_cd8d768bcc164993",
    "layer": "cta-pill",
    "property": "translate-y",
    "keys": [
@@ -1517,7 +1517,7 @@
    ]
   },
   {
-   "target": "lyr_3baa1c01f9b741db",
+   "target": "lyr_cd8d768bcc164993",
    "layer": "cta-pill",
    "property": "opacity",
    "keys": [
@@ -1533,7 +1533,7 @@
    ]
   },
   {
-   "target": "lyr_edfd888db2424304",
+   "target": "lyr_1471233a1a4d49c8",
    "layer": "cta-label",
    "property": "translate-y",
    "keys": [
@@ -1549,7 +1549,7 @@
    ]
   },
   {
-   "target": "lyr_edfd888db2424304",
+   "target": "lyr_1471233a1a4d49c8",
    "layer": "cta-label",
    "property": "opacity",
    "keys": [
@@ -1565,7 +1565,7 @@
    ]
   },
   {
-   "target": "lyr_3baa1c01f9b741db",
+   "target": "lyr_cd8d768bcc164993",
    "layer": "cta-pill",
    "property": "scale",
    "keys": [
@@ -1586,7 +1586,7 @@
    ]
   },
   {
-   "target": "lyr_edfd888db2424304",
+   "target": "lyr_1471233a1a4d49c8",
    "layer": "cta-label",
    "property": "scale",
    "keys": [
@@ -1607,7 +1607,7 @@
    ]
   },
   {
-   "target": "lyr_3baa1c01f9b741db",
+   "target": "lyr_cd8d768bcc164993",
    "layer": "cta-pill",
    "property": "fill",
    "keys": [
@@ -1623,7 +1623,7 @@
    ]
   },
   {
-   "target": "lyr_ba3ab0112bb94d49",
+   "target": "lyr_606e48d9377b4830",
    "layer": "progress",
    "property": "scale-x",
    "keys": [
@@ -1639,7 +1639,7 @@
    ]
   },
   {
-   "target": "lyr_96675756f48b48c5",
+   "target": "lyr_517465d825e4489e",
    "layer": "timecode",
    "property": "text",
    "keys": [
@@ -1778,7 +1778,7 @@
    ]
   },
   {
-   "target": "lyr_552e57c5df4b4370",
+   "target": "lyr_f94529a9b4884e23",
    "layer": "finish",
    "property": "effect:1",
    "keys": [

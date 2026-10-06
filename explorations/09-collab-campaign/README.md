@@ -115,7 +115,7 @@ step. Each document defines its own `fit-headline` action.
 | pale accent | headline "Your city, on a Loop", accent `#7FC8D0` | blocked by `flyer.vixl`: contrast 1.90:1 on date/CTA, brand palette, logo/headline overlap |
 | long headline | 7-word headline, accent `#B83512` | blocked: `fit-headline` raised `text_overflow` ("Text cannot fit at the minimum size") |
 | final (after brand v2) | headline "Your city, on a Loop", accent `#B83512` | blocked by `flyer.vixl`: headline now runs under the logo (overlap rule) |
-| final, flyer refit | same values, flyer's action box narrowed to stop before the logo | **published to all 7 documents**; all 4 suites pass on all of them (in 0.20.0 only after the half-pixel workaround below) |
+| final, flyer refit | same values, flyer's action box narrowed to stop before the logo | **published to all 7 documents**; all 4 suites pass on all of them (in 0.20.0 only after a half-pixel workaround, no longer needed) |
 
 No documents were written by any blocked attempt.
 
@@ -147,7 +147,7 @@ No documents were written by any blocked attempt.
 
 > **Status in 0.20.0:** Bugs 1–3 are fixed (0.18.0): the `bounds` check reports text that no longer fits its `text-layout` box, with the size it needs, and unnamed layers are numbered (`shape`, `shape 2`, …) instead of colliding. `build.py` no longer passes `--size` to the roll preview (the preview and `--apply` agree, which the build asserts), and `text-fit` rules now cover auto-sized text as well as boxed text; all suites still pass on all seven sizes. The rough edges below are as recorded; the check still doesn't flag the merged headline touching the stat.
 >
-> **New in 0.20.0:** the final `group-apply` was blocked by `yt-thumb.vixl`: `loop-accessible` reported `needs_review` because contrast `Could not measure 'cta': boolean index did not match indexed array along axis 0; size of axis is 28 but size of corresponding boolean axis is 26`. The CTA label is centred on its button by constraints, the size difference is odd, and 0.20.0 keeps the fractional position (x 666.5, y 602.5); the contrast measurement then misaligns its masks. `snap_centred_text()` in `build.py` adds half a pixel to such centre constraints before the suites are attached, which moves those labels by 0.5 px. The final images otherwise match the 0.16.0 ones, apart from small text-rendering differences and the roll motif.
+> **0.20.0 bug, since fixed:** the final `group-apply` was blocked because contrast could not measure `cta` (a label centred on its button by an odd size difference lands on a half pixel). Fixed in 0.21, so `build.py` no longer nudges centred labels by half a pixel; all four suites pass on all seven sizes.
 
 ### Bugs
 

@@ -21,9 +21,9 @@
       },
       "artboard": "common",
       "status": "completed",
-      "output": "0001-cc64c15e14493ec7.webp",
-      "fingerprint": "cc64c15e14493ec7c8c87ea5d9496d10adcb36e278dfa12298e18a60f7ef94ca",
-      "sha256": "2d2e2cc87871eb5b29bedad7bec9cd343c51029d2344d632e671dc112f5a9bcf",
+      "output": "0001-d97c364befa0b788.webp",
+      "fingerprint": "d97c364befa0b78800f4809fa215b6272d5da1e6b83f00df440a4ba0aad696df",
+      "sha256": "0e535d64c3c222031aa46f14c3ce4f6b1a255e1f90a33f249b8dc0dba60b3ea8",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -156,7 +156,8 @@
                   "contrast",
                   "bounds"
                 ],
-                "layers": 2,
+                "layers_checked": 2,
+                "layers_total": 2,
                 "text_layers": 2
               }
             }
@@ -195,7 +196,8 @@
                 "checks": [
                   "blanks"
                 ],
-                "layers": 26,
+                "layers_checked": 26,
+                "layers_total": 27,
                 "text_layers": 13
               }
             }
@@ -204,8 +206,8 @@
       },
       "repairs": [],
       "cache": {
-        "hits": 2,
-        "misses": 56
+        "hits": 38,
+        "misses": 31
       }
     },
     {
@@ -225,9 +227,9 @@
       },
       "artboard": "rare",
       "status": "completed",
-      "output": "0002-e505118a8077541d.webp",
-      "fingerprint": "e505118a8077541d46f12f5cef0d21cdd82a54325f45e2d36f93c35ed4818276",
-      "sha256": "02d53e7d4ff9e0573c3caee9c3506c46b57be358ea9d0fbaeca05dc7dece4b1c",
+      "output": "0002-7e8dc3177fa69c3f.webp",
+      "fingerprint": "7e8dc3177fa69c3f4cd1e2ce7d613399eff199089abe7c9b03e0c30c8f376a55",
+      "sha256": "6f69b64c2b63119faaf71a6ffb92ef373da3ca7d0882cc303c3e008db205d0eb",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -360,7 +362,8 @@
                   "contrast",
                   "bounds"
                 ],
-                "layers": 2,
+                "layers_checked": 2,
+                "layers_total": 2,
                 "text_layers": 2
               }
             }
@@ -399,7 +402,8 @@
                 "checks": [
                   "blanks"
                 ],
-                "layers": 26,
+                "layers_checked": 26,
+                "layers_total": 27,
                 "text_layers": 13
               }
             }
@@ -408,8 +412,8 @@
       },
       "repairs": [],
       "cache": {
-        "hits": 59,
-        "misses": 20
+        "hits": 21,
+        "misses": 45
       }
     },
     {
@@ -429,9 +433,9 @@
       },
       "artboard": "epic",
       "status": "completed",
-      "output": "0003-9536c414fc945815.webp",
-      "fingerprint": "9536c414fc9458152cc6b38d6f919756550e129e05484cd3e3eb03c62b5de1e6",
-      "sha256": "43ab790d39333793caaba453e9ef5ae902d01af270a7cd0824f0dadfe2fff881",
+      "output": "0003-06397a631fe41b14.webp",
+      "fingerprint": "06397a631fe41b1413b9887eb9dec2ca13f2b53ede7799489cd4351f47bd57ed",
+      "sha256": "232838f947f5916c3308d735c45b9836da6166e63895fc93d2db5e4076ef483e",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -564,7 +568,8 @@
                   "contrast",
                   "bounds"
                 ],
-                "layers": 2,
+                "layers_checked": 2,
+                "layers_total": 2,
                 "text_layers": 2
               }
             }
@@ -603,7 +608,8 @@
                 "checks": [
                   "blanks"
                 ],
-                "layers": 26,
+                "layers_checked": 26,
+                "layers_total": 27,
                 "text_layers": 13
               }
             }
@@ -633,9 +639,9 @@
       },
       "artboard": "legendary",
       "status": "completed",
-      "output": "0004-89a8ffb8c81189d5.webp",
-      "fingerprint": "89a8ffb8c81189d550113ae45fec9c7fc7dac75a7513c169bb91ca95f3f801d2",
-      "sha256": "f1e868732277de26cc83cbfef65ea76bb47de7dc8252363b17f3ead3d2a4f42a",
+      "output": "0004-06cad562a3f735e2.webp",
+      "fingerprint": "06cad562a3f735e2c68cf3b031ecbeb06424bf09eead480a858d9386357bb998",
+      "sha256": "4fa6ada5fa5f68481db52c06c52077be11e7e4793e4c2cb97dfb71d011350480",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -768,7 +774,8 @@
                   "contrast",
                   "bounds"
                 ],
-                "layers": 2,
+                "layers_checked": 2,
+                "layers_total": 2,
                 "text_layers": 2
               }
             }
@@ -807,7 +814,8 @@
                 "checks": [
                   "blanks"
                 ],
-                "layers": 26,
+                "layers_checked": 26,
+                "layers_total": 27,
                 "text_layers": 13
               }
             }
@@ -837,9 +845,9 @@
       },
       "artboard": "common",
       "status": "completed",
-      "output": "0005-e9e6a373b085aa4c.webp",
-      "fingerprint": "e9e6a373b085aa4c03fd94843ab1a7117de9fc92f68a149789d780c5dca5090d",
-      "sha256": "afdfb80394d91436e095057be138954fa23a565ab6584907755124583e257206",
+      "output": "0005-8542e318506a27ae.webp",
+      "fingerprint": "8542e318506a27ae310fe9f2f519ab6f14551ac5237772d444742742df75b4f7",
+      "sha256": "6b18b5f993b842a30278ff55354294ce7efc0d7cc7b6156286ee47e01798cdb8",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -972,7 +980,8 @@
                   "contrast",
                   "bounds"
                 ],
-                "layers": 2,
+                "layers_checked": 2,
+                "layers_total": 2,
                 "text_layers": 2
               }
             }
@@ -1011,7 +1020,8 @@
                 "checks": [
                   "blanks"
                 ],
-                "layers": 26,
+                "layers_checked": 26,
+                "layers_total": 27,
                 "text_layers": 13
               }
             }
@@ -1041,9 +1051,9 @@
       },
       "artboard": "rare",
       "status": "completed",
-      "output": "0006-c2088836bd2c69ec.webp",
-      "fingerprint": "c2088836bd2c69ec5bae5acafb7decaf579382c32980f8ca36f0bdbbdf6591a1",
-      "sha256": "54407cc46c88701c3224eaa63517155e14756cfc27e885391329d1caa7da1114",
+      "output": "0006-619e9626f5275013.webp",
+      "fingerprint": "619e9626f527501364faaf3ac58f49090d3b2f934f15fa539271899646a3f893",
+      "sha256": "ae7a8a08367bf591e6771b704f65a93ab4b2f343d08eaa8caae81d9a1d836835",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -1176,7 +1186,8 @@
                   "contrast",
                   "bounds"
                 ],
-                "layers": 2,
+                "layers_checked": 2,
+                "layers_total": 2,
                 "text_layers": 2
               }
             }
@@ -1215,7 +1226,8 @@
                 "checks": [
                   "blanks"
                 ],
-                "layers": 26,
+                "layers_checked": 26,
+                "layers_total": 27,
                 "text_layers": 13
               }
             }
@@ -1224,8 +1236,8 @@
       },
       "repairs": [],
       "cache": {
-        "hits": 83,
-        "misses": 4
+        "hits": 86,
+        "misses": 2
       }
     },
     {
@@ -1245,9 +1257,9 @@
       },
       "artboard": "epic",
       "status": "completed",
-      "output": "0007-a6671d736bb1284b.webp",
-      "fingerprint": "a6671d736bb1284b3c1767cdcef7b94b39fadf2d2092907e1bc76ac274310175",
-      "sha256": "e0157e597d34217da689497d1bdfeaad3878ee06c53a7950da805db630048ac5",
+      "output": "0007-cae4abd356842fc0.webp",
+      "fingerprint": "cae4abd356842fc02c68861d3b028b43d8bce268c07cfa4c94ce389a9d428864",
+      "sha256": "635bac0220128b3878f4dd8a484571b1d70863141d2b2e8bd050583351ba1a52",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -1380,7 +1392,8 @@
                   "contrast",
                   "bounds"
                 ],
-                "layers": 2,
+                "layers_checked": 2,
+                "layers_total": 2,
                 "text_layers": 2
               }
             }
@@ -1419,7 +1432,8 @@
                 "checks": [
                   "blanks"
                 ],
-                "layers": 26,
+                "layers_checked": 26,
+                "layers_total": 27,
                 "text_layers": 13
               }
             }
@@ -1449,9 +1463,9 @@
       },
       "artboard": "legendary",
       "status": "completed",
-      "output": "0008-d6a476394f4f672d.webp",
-      "fingerprint": "d6a476394f4f672d9f626fdbdb9a2c58698367085fa577cd2fe1a918137c72b8",
-      "sha256": "41ffc8e4662e4d6b14a0e899dffbb0894c221d98495a37a2c1b37459986730ef",
+      "output": "0008-3b5cdca9bff9fc8a.webp",
+      "fingerprint": "3b5cdca9bff9fc8ad90e752f8ca1b2d8f0275aacd0111bce90f3680293012907",
+      "sha256": "e2ab1bfcdee28269c614d38d94647cd5c30a26c6b747c691321396832d0838e8",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -1584,7 +1598,8 @@
                   "contrast",
                   "bounds"
                 ],
-                "layers": 2,
+                "layers_checked": 2,
+                "layers_total": 2,
                 "text_layers": 2
               }
             }
@@ -1623,7 +1638,8 @@
                 "checks": [
                   "blanks"
                 ],
-                "layers": 26,
+                "layers_checked": 26,
+                "layers_total": 27,
                 "text_layers": 13
               }
             }
@@ -1653,9 +1669,9 @@
       },
       "artboard": "common",
       "status": "completed",
-      "output": "0009-36b53d8a18b83630.webp",
-      "fingerprint": "36b53d8a18b83630cd0684cbe5461ad0d2c08e6946e09a745756c0f3ebcd9899",
-      "sha256": "a5941f6f8eb321b901c768dd4a791f582e60b8da0cf5bc8cad0767b145f026e3",
+      "output": "0009-98d80f45540d6000.webp",
+      "fingerprint": "98d80f45540d60000ca28b6316fe149be13e5f9a4c7f643f8cac931033977d0d",
+      "sha256": "3d7b1dd3552c8bbd3e39e3a056decac2a8cc7191fc03ec33e255a164714a7229",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -1789,7 +1805,8 @@
                   "contrast",
                   "bounds"
                 ],
-                "layers": 2,
+                "layers_checked": 2,
+                "layers_total": 2,
                 "text_layers": 2
               }
             }
@@ -1828,7 +1845,8 @@
                 "checks": [
                   "blanks"
                 ],
-                "layers": 26,
+                "layers_checked": 26,
+                "layers_total": 27,
                 "text_layers": 13
               }
             }
@@ -1837,8 +1855,8 @@
       },
       "repairs": [],
       "cache": {
-        "hits": 28,
-        "misses": 38
+        "hits": 38,
+        "misses": 32
       }
     },
     {
@@ -1858,9 +1876,9 @@
       },
       "artboard": "rare",
       "status": "completed",
-      "output": "0010-1aec67da04fb68c9.webp",
-      "fingerprint": "1aec67da04fb68c93cf12fe3fc8434b370afddb3b725388aa345247bfa4f7fd8",
-      "sha256": "adecec878f226e18408bf8251f26c26ac4a11499f13e7d8435cba42255dcb2df",
+      "output": "0010-32375ee4f2e6e08c.webp",
+      "fingerprint": "32375ee4f2e6e08c6633412eabe228f1c517a54d0ba75dc025f7f4008e981c1b",
+      "sha256": "162d9f8399df2910e05b3c3f5723bf7964f41db844e6780704a9dcc9db878d81",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -1994,7 +2012,8 @@
                   "contrast",
                   "bounds"
                 ],
-                "layers": 2,
+                "layers_checked": 2,
+                "layers_total": 2,
                 "text_layers": 2
               }
             }
@@ -2033,7 +2052,8 @@
                 "checks": [
                   "blanks"
                 ],
-                "layers": 26,
+                "layers_checked": 26,
+                "layers_total": 27,
                 "text_layers": 13
               }
             }
@@ -2042,8 +2062,8 @@
       },
       "repairs": [],
       "cache": {
-        "hits": 66,
-        "misses": 17
+        "hits": 54,
+        "misses": 23
       }
     },
     {
@@ -2063,9 +2083,9 @@
       },
       "artboard": "epic",
       "status": "completed",
-      "output": "0011-8f744079e5aeb77e.webp",
-      "fingerprint": "8f744079e5aeb77e1a1391a1db45c3c85fc2d7c9da8614c6c973cbb1a6ce931a",
-      "sha256": "3d03cc2bbd9de39d7b5576ea3a8259cbd187db4d737d5d324379f83694fcb7af",
+      "output": "0011-846f8d9d4044dda8.webp",
+      "fingerprint": "846f8d9d4044dda865b4fedb07646fea8c6117decb91df2f1abe67232823b0df",
+      "sha256": "828c409028c60ca737ad78f1fcb13b4deb01a852c5fa815392e4659738e5b41a",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -2199,7 +2219,8 @@
                   "contrast",
                   "bounds"
                 ],
-                "layers": 2,
+                "layers_checked": 2,
+                "layers_total": 2,
                 "text_layers": 2
               }
             }
@@ -2238,7 +2259,8 @@
                 "checks": [
                   "blanks"
                 ],
-                "layers": 26,
+                "layers_checked": 26,
+                "layers_total": 27,
                 "text_layers": 13
               }
             }
@@ -2268,9 +2290,9 @@
       },
       "artboard": "legendary",
       "status": "completed",
-      "output": "0012-08b8073d2439c959.webp",
-      "fingerprint": "08b8073d2439c959241334adb8ce17b8533c6e3e5bbddf5f35f22bb8cf28e10c",
-      "sha256": "93d0344450bacc8038a42bc3fb76e973bbff953493e920c86b6260af7ad00e4d",
+      "output": "0012-0b824d3275d125da.webp",
+      "fingerprint": "0b824d3275d125da7de046f76fbffba4b09114ca91187f930e8be93399aa5593",
+      "sha256": "6181717007b092821c52c633e04002fa4cb2591400c200387874332d89d59c51",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -2404,7 +2426,8 @@
                   "contrast",
                   "bounds"
                 ],
-                "layers": 2,
+                "layers_checked": 2,
+                "layers_total": 2,
                 "text_layers": 2
               }
             }
@@ -2443,7 +2466,8 @@
                 "checks": [
                   "blanks"
                 ],
-                "layers": 26,
+                "layers_checked": 26,
+                "layers_total": 27,
                 "text_layers": 13
               }
             }
@@ -2473,9 +2497,9 @@
       },
       "artboard": "common",
       "status": "completed",
-      "output": "0013-59d25b1db30922fd.webp",
-      "fingerprint": "59d25b1db30922fd9c757e32d6fab1825418ad4a33f3ad9a178a9d9b0e358d66",
-      "sha256": "f081652adae3ca9cb3a1e6c39fef05904814ee4f58d13388fe65250fb12cd1ac",
+      "output": "0013-bd219454109ce85a.webp",
+      "fingerprint": "bd219454109ce85a4cf25b13b13788b8de2387692e696fcc1c52307a7e3bc16c",
+      "sha256": "301ecd6d1a1622a765195741c7867893fd348eba312d083a2fe2d10b2be62df3",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -2609,7 +2633,8 @@
                   "contrast",
                   "bounds"
                 ],
-                "layers": 2,
+                "layers_checked": 2,
+                "layers_total": 2,
                 "text_layers": 2
               }
             }
@@ -2648,7 +2673,8 @@
                 "checks": [
                   "blanks"
                 ],
-                "layers": 26,
+                "layers_checked": 26,
+                "layers_total": 27,
                 "text_layers": 13
               }
             }
@@ -2678,9 +2704,9 @@
       },
       "artboard": "rare",
       "status": "completed",
-      "output": "0014-d5f4e8d1c06f6fbd.webp",
-      "fingerprint": "d5f4e8d1c06f6fbdec3a5197f0c12c280ddde0d97248368b87a297ee9f8f390f",
-      "sha256": "2d73709c0b5e68e71eaff5a2380f8ae1f65069919c3979827d36fb08049632db",
+      "output": "0014-83888d8c6c4f12d7.webp",
+      "fingerprint": "83888d8c6c4f12d745ec709943a176451d93304aad339b0c1445866e5a10f0b0",
+      "sha256": "20207dccd0d0f1571050b87a0e7ffe6cc136d6aae200ca6f7a163df300dff364",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -2814,7 +2840,8 @@
                   "contrast",
                   "bounds"
                 ],
-                "layers": 2,
+                "layers_checked": 2,
+                "layers_total": 2,
                 "text_layers": 2
               }
             }
@@ -2853,7 +2880,8 @@
                 "checks": [
                   "blanks"
                 ],
-                "layers": 26,
+                "layers_checked": 26,
+                "layers_total": 27,
                 "text_layers": 13
               }
             }
@@ -2883,9 +2911,9 @@
       },
       "artboard": "epic",
       "status": "completed",
-      "output": "0015-d7828866117bcea0.webp",
-      "fingerprint": "d7828866117bcea0af0d59cb63eaa6037c73b6ceb8d0836612b6863f2c2c6a00",
-      "sha256": "3809d47f043d849cf03c5d8175b5ef5a343421ca7673386b32552e0722e85a1b",
+      "output": "0015-9efa5a2e04a6423f.webp",
+      "fingerprint": "9efa5a2e04a6423f04b213764f7694553afe668dc52139a35d32f30417c66a6f",
+      "sha256": "17fbca92336d073faeb3c2e71de24be44792509ca642372b24376bc000c3da32",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -3019,7 +3047,8 @@
                   "contrast",
                   "bounds"
                 ],
-                "layers": 2,
+                "layers_checked": 2,
+                "layers_total": 2,
                 "text_layers": 2
               }
             }
@@ -3058,7 +3087,8 @@
                 "checks": [
                   "blanks"
                 ],
-                "layers": 26,
+                "layers_checked": 26,
+                "layers_total": 27,
                 "text_layers": 13
               }
             }
@@ -3088,9 +3118,9 @@
       },
       "artboard": "legendary",
       "status": "completed",
-      "output": "0016-029a2957306c7a8b.webp",
-      "fingerprint": "029a2957306c7a8b0557a2c0cdded7625acd675e6ec995ff0b170a20bf3fd813",
-      "sha256": "d3d667d7b246fc824fa83f198edd067fafce7f441e0b793a55fad4498c3d5f19",
+      "output": "0016-3b6ec7e21001d091.webp",
+      "fingerprint": "3b6ec7e21001d09173d16a1036fa4b488f071cf944ac292d8de4004966130cb9",
+      "sha256": "b62cff7fbe40f6c520fa5ea948d4ea18829dd711a40cb0aa3535d571443f9290",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -3224,7 +3254,8 @@
                   "contrast",
                   "bounds"
                 ],
-                "layers": 2,
+                "layers_checked": 2,
+                "layers_total": 2,
                 "text_layers": 2
               }
             }
@@ -3263,7 +3294,8 @@
                 "checks": [
                   "blanks"
                 ],
-                "layers": 26,
+                "layers_checked": 26,
+                "layers_total": 27,
                 "text_layers": 13
               }
             }
@@ -3293,9 +3325,9 @@
       },
       "artboard": "common",
       "status": "completed",
-      "output": "0017-c39d18b2392d7c22.webp",
-      "fingerprint": "c39d18b2392d7c220fccf8b5688822fd14b39f67be0ae04f7b1165f3f51a1c0e",
-      "sha256": "c580b55ee1100d553428cc064cc8411f3eb5c5ea3254e81226fcfbdb8212962c",
+      "output": "0017-2d8b5aa6f8122bba.webp",
+      "fingerprint": "2d8b5aa6f8122bbae900fac3bbab72a87eac1b8e65d0fc2703b7266d257940f1",
+      "sha256": "a777261566f5232a28f7d9ca18016ba5d6d8ee500c7aecf559381711d0f42990",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -3427,7 +3459,8 @@
                   "contrast",
                   "bounds"
                 ],
-                "layers": 2,
+                "layers_checked": 2,
+                "layers_total": 2,
                 "text_layers": 2
               }
             }
@@ -3466,7 +3499,8 @@
                 "checks": [
                   "blanks"
                 ],
-                "layers": 26,
+                "layers_checked": 26,
+                "layers_total": 27,
                 "text_layers": 13
               }
             }
@@ -3475,8 +3509,8 @@
       },
       "repairs": [],
       "cache": {
-        "hits": 28,
-        "misses": 38
+        "hits": 43,
+        "misses": 29
       }
     },
     {
@@ -3496,9 +3530,9 @@
       },
       "artboard": "rare",
       "status": "completed",
-      "output": "0018-6eed365fae77131d.webp",
-      "fingerprint": "6eed365fae77131dad8be5e8452e6aa7452b46fe103c058cc3c450ce496a66a0",
-      "sha256": "e5dddd09bbe5f5c47ed97642ec35644a8f2310c3ed323866c4a285cc831c4be8",
+      "output": "0018-05e839b9a1c05e8b.webp",
+      "fingerprint": "05e839b9a1c05e8bbf0a19bc3fb45b07007ef5c52e1bc05bc57087ce06a69444",
+      "sha256": "0421ee0eb0d81a6c3acf18e5f11ba0c5570d321fb87592fb0144bb498e47f537",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -3630,7 +3664,8 @@
                   "contrast",
                   "bounds"
                 ],
-                "layers": 2,
+                "layers_checked": 2,
+                "layers_total": 2,
                 "text_layers": 2
               }
             }
@@ -3669,7 +3704,8 @@
                 "checks": [
                   "blanks"
                 ],
-                "layers": 26,
+                "layers_checked": 26,
+                "layers_total": 27,
                 "text_layers": 13
               }
             }
@@ -3678,8 +3714,8 @@
       },
       "repairs": [],
       "cache": {
-        "hits": 71,
-        "misses": 14
+        "hits": 44,
+        "misses": 29
       }
     },
     {
@@ -3699,9 +3735,9 @@
       },
       "artboard": "epic",
       "status": "completed",
-      "output": "0019-c1f04b9c9fbf1f6a.webp",
-      "fingerprint": "c1f04b9c9fbf1f6a39c7118599a59aa1c4822ed7ca1f3eade4a0f8c7f2958378",
-      "sha256": "29fc14ab8823f09b495132f274e5cdd5ff1a6c97986a9b7382123c8875f65383",
+      "output": "0019-46bcdd5e577f1273.webp",
+      "fingerprint": "46bcdd5e577f1273f5ad47c43e68183766ce131df87a0e2d8ad7dc79257b34be",
+      "sha256": "495463243d690cca3395b4c4a5b728d5ea7bec4945458a5d7d4f4d25097879df",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -3833,7 +3869,8 @@
                   "contrast",
                   "bounds"
                 ],
-                "layers": 2,
+                "layers_checked": 2,
+                "layers_total": 2,
                 "text_layers": 2
               }
             }
@@ -3872,7 +3909,8 @@
                 "checks": [
                   "blanks"
                 ],
-                "layers": 26,
+                "layers_checked": 26,
+                "layers_total": 27,
                 "text_layers": 13
               }
             }
@@ -3902,9 +3940,9 @@
       },
       "artboard": "legendary",
       "status": "completed",
-      "output": "0020-06eb7a1ab65ce0cb.webp",
-      "fingerprint": "06eb7a1ab65ce0cbae7d1f64c4e4774f4db1a2bfbbb2eda496cb7234e89c8c84",
-      "sha256": "ed22da91d9a9505adc6df807b5a0c3bbb9b28900d8709655a6a8c29c756944e8",
+      "output": "0020-ac0261606e53082d.webp",
+      "fingerprint": "ac0261606e53082db84e8fbbf207c3c3726d4c20bd15157fbecb5d394d4e51ab",
+      "sha256": "fa0f34797a4a2982cfb6430ff461c56712c3ebf298e3e4d0d2df477a96920f5a",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -4036,7 +4074,8 @@
                   "contrast",
                   "bounds"
                 ],
-                "layers": 2,
+                "layers_checked": 2,
+                "layers_total": 2,
                 "text_layers": 2
               }
             }
@@ -4075,7 +4114,8 @@
                 "checks": [
                   "blanks"
                 ],
-                "layers": 26,
+                "layers_checked": 26,
+                "layers_total": 27,
                 "text_layers": 13
               }
             }
@@ -4105,9 +4145,9 @@
       },
       "artboard": "common",
       "status": "completed",
-      "output": "0021-514f676db4f7549e.webp",
-      "fingerprint": "514f676db4f7549e4acacbe04a83ea8e9bbc575353d9eaa751549bd0b7a17b37",
-      "sha256": "c3b6479c301e7c8c5878b433259fc105655daff804ec650e47138ee33fb50912",
+      "output": "0021-63a50648e227232f.webp",
+      "fingerprint": "63a50648e227232f9923dbda6f4eaf471bca97bbf009deba2c27ec55e5c9c742",
+      "sha256": "56216fb865f65d3087b020d530452592e9cdd231c72ef4d972440bc3262dc050",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -4239,7 +4279,8 @@
                   "contrast",
                   "bounds"
                 ],
-                "layers": 2,
+                "layers_checked": 2,
+                "layers_total": 2,
                 "text_layers": 2
               }
             }
@@ -4278,7 +4319,8 @@
                 "checks": [
                   "blanks"
                 ],
-                "layers": 26,
+                "layers_checked": 26,
+                "layers_total": 27,
                 "text_layers": 13
               }
             }
@@ -4308,9 +4350,9 @@
       },
       "artboard": "rare",
       "status": "completed",
-      "output": "0022-ae3e176f28f25ced.webp",
-      "fingerprint": "ae3e176f28f25ced5ace2ad5dd977a54fa66cf88035bf13702c17daa4d4868e1",
-      "sha256": "5c32a369d777598bd07a0d15f44f8d9120b8c45b1436e09c57826dbd81466909",
+      "output": "0022-b2d1afffef3c90c7.webp",
+      "fingerprint": "b2d1afffef3c90c7145297757b89099f5b108f9561a6d04026f30089653f07fb",
+      "sha256": "a9716430818fa7cd22ea0b29917bd59f88e4fea0a71b6224dd282c2cc47c4470",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -4442,7 +4484,8 @@
                   "contrast",
                   "bounds"
                 ],
-                "layers": 2,
+                "layers_checked": 2,
+                "layers_total": 2,
                 "text_layers": 2
               }
             }
@@ -4481,7 +4524,8 @@
                 "checks": [
                   "blanks"
                 ],
-                "layers": 26,
+                "layers_checked": 26,
+                "layers_total": 27,
                 "text_layers": 13
               }
             }
@@ -4511,9 +4555,9 @@
       },
       "artboard": "epic",
       "status": "completed",
-      "output": "0023-82f1505591fc6bb1.webp",
-      "fingerprint": "82f1505591fc6bb1635e332c27fc64d8e8a4edf6b62fc733a8dfeef8ef28ce4c",
-      "sha256": "73b816a1082bda68fc5a3c6b2052a2aa237500eabf864a13d42c0761b894b488",
+      "output": "0023-27b2b21d4b6d35cb.webp",
+      "fingerprint": "27b2b21d4b6d35cba38c0e6847ca5e44515aa9f46832be3b80813ffc1b1811ba",
+      "sha256": "d11979b963fb9d7a8ce8260c5e8811f591de5162e57fc5ccaabeb3bf834a511e",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -4645,7 +4689,8 @@
                   "contrast",
                   "bounds"
                 ],
-                "layers": 2,
+                "layers_checked": 2,
+                "layers_total": 2,
                 "text_layers": 2
               }
             }
@@ -4684,7 +4729,8 @@
                 "checks": [
                   "blanks"
                 ],
-                "layers": 26,
+                "layers_checked": 26,
+                "layers_total": 27,
                 "text_layers": 13
               }
             }
@@ -4714,9 +4760,9 @@
       },
       "artboard": "legendary",
       "status": "completed",
-      "output": "0024-4395c5b13825c3f6.webp",
-      "fingerprint": "4395c5b13825c3f6d19c6076f08dea324057edbffc6c1d4d4e78132cbdd6bdae",
-      "sha256": "0a979e1ee86791da5b4c305f053ea9de62d3445f41af9df80225b21671d73245",
+      "output": "0024-554c8b3bfa5d944a.webp",
+      "fingerprint": "554c8b3bfa5d944a1490113dd18d81f7c29de1995e47205ae70b820c58b95c70",
+      "sha256": "ba1809758e7aaffa779884ef1e153b30e939acdc13a42c8ea0a3a502b32734b0",
       "checks": {
         "card-qa": {
           "version": 1,
@@ -4848,7 +4894,8 @@
                   "contrast",
                   "bounds"
                 ],
-                "layers": 2,
+                "layers_checked": 2,
+                "layers_total": 2,
                 "text_layers": 2
               }
             }
@@ -4887,7 +4934,8 @@
                 "checks": [
                   "blanks"
                 ],
-                "layers": 26,
+                "layers_checked": 26,
+                "layers_total": 27,
                 "text_layers": 13
               }
             }

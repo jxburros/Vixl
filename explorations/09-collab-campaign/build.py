@@ -100,32 +100,6 @@ def apply(doc, ops, **kw):
     return SESSION.apply(ops, document=doc, **kw)
 
 
-def snap_centred_text(doc):
-    """Workaround for a Vixl 0.20.0 bug: contrast cannot measure text whose box lands on a half
-    pixel ("Could not measure 'cta': boolean index did not match ..."), which a suite reports as
-    needs_review. Labels centred on a button with an odd size difference land there, so nudge
-    their centre constraints by half a pixel onto whole pixels."""
-    with SESSION.project(document=doc) as p:
-        layers = p.inspect()["layers"]
-    names = {l["id"]: l["name"] for l in layers}
-    ops = []
-    for layer in layers:
-        cons = layer.get("constraints") or {}
-        x, y = (layer.get("resolved_bounds") or [0, 0])[:2]
-        if layer["type"] != "text" or (x == int(x) and y == int(y)) or not {"center-x", "center-y"} & set(cons):
-            continue
-        fixed = {}
-        for axis, value in cons.items():
-            ref, _, edge = value.partition(".")
-            off = "+0.5" if axis in ("center-x", "center-y") and (x if axis == "center-x" else y) != int(
-                x if axis == "center-x" else y) else ""
-            fixed[axis] = f"{names.get(ref, ref)}.{edge}{off}"
-        ops += [{"type": "unconstrain", "target": layer["name"]},
-                {"type": "constrain", "target": layer["name"], "constraints": fixed}]
-    if ops:
-        apply(doc, ops)
-
-
 def cli_apply(doc, ops):
     """`vixl -p DOC apply ops.json` — the CLI path accepts registered `font` names, which the
     Session/MCP/REST service boundary rejects (see README findings)."""
@@ -740,7 +714,6 @@ def phase4():
     docs = [f"{k}.vixl" for k in SIZES]
     for key in SIZES:
         doc = f"{key}.vixl"
-        snap_centred_text(doc)
         wf("suite-use", {"name": "loop-accessible"}, document=doc)
         wf("suite-use", {"name": "loop-delivery"}, document=doc)
         wf("suite-use", {"name": "no-placeholders"}, document=doc)
