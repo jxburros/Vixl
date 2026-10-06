@@ -11,12 +11,21 @@ from .automation import TYPES as AUTOMATION_TYPES
 from .authoring import TYPES as AUTHORING_TYPES
 from .creative import TYPES as CREATIVE_TYPES
 from .containers import TYPES as CONTAINER_TYPES
+from .inplace import IN_PLACE_TYPES
+from .stacks import TYPES as STACK_TYPES, POSITIONING as STACK_POSITIONING
 from .organic import TYPES as ORGANIC_TYPES
+from .irregular import TYPES as IRREGULAR_TYPES
 from .guides import TYPES as GUIDE_TYPES
 from .richtext import TYPES as RICH_TYPES
 from .pages import TYPES as PAGE_TYPES
 from .forms import TYPES as FORM_TYPES
 from .drawing import TYPES as DRAWING_TYPES
+from .selectors import TYPES as SELECTOR_TYPES
+from .links import TYPES as LINK_TYPES
+from .charts import TYPES as CHART_TYPES
+from .finishing import TYPES as FINISHING_TYPES
+from .diagrams import TYPES as DIAGRAM_TYPES
+from .textflow import TYPES as FLOW_TYPES
 
 from copy import deepcopy
 import hashlib
@@ -27,6 +36,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageOps
 
 from .assets import add_encoded, add_image, decode, read_bounded
+from .denoise import KEYS as DENOISE_KEYS, validate as denoise_valid
 from .errors import VixlError, require
 from .model import finite, new_layer, uid
 from .render import (
@@ -57,7 +67,7 @@ ALIASES = {
     "make_selection": "select",
 }
 
-OPERATION_TYPES = list(DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_TYPES + BRUSH_TYPES + TIMELINE_TYPES + LAYOUT_TYPES + COLOR_TYPES + AUTOMATION_TYPES + CREATIVE_TYPES + CONTAINER_TYPES + AUTHORING_TYPES + ORGANIC_TYPES + GUIDE_TYPES + RICH_TYPES + PAGE_TYPES + FORM_TYPES + DRAWING_TYPES) + [
+OPERATION_TYPES = list(DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_TYPES + BRUSH_TYPES + TIMELINE_TYPES + LAYOUT_TYPES + COLOR_TYPES + AUTOMATION_TYPES + CREATIVE_TYPES + CONTAINER_TYPES + AUTHORING_TYPES + ORGANIC_TYPES + IRREGULAR_TYPES + GUIDE_TYPES + RICH_TYPES + PAGE_TYPES + FORM_TYPES + DRAWING_TYPES + STACK_TYPES + SELECTOR_TYPES + LINK_TYPES + CHART_TYPES + FINISHING_TYPES + DIAGRAM_TYPES + FLOW_TYPES) + [
     "add",
     "solid",
     "gradient",
@@ -133,6 +143,8 @@ def effect_valid(effect):
         finite(value, "radius", 0, 1000)
     elif name == "sharpen":
         finite(value, "amount", 0, 100)
+    elif name == "denoise":
+        denoise_valid(effect)
     elif name == "gamma":
         finite(value, "gamma", 0.01, 100)
     elif name == "exposure":
@@ -259,15 +271,45 @@ def execute(project, op):
     kind = ALIASES.get(kind, kind)
     require(isinstance(kind, str), "Operation requires a type")
     target = op.get("target", op.get("layer"))
+    if target is not None and kind in IN_PLACE_TYPES:
+        from .inplace import execute as execute_in_place
+
+        return execute_in_place(project, {**op, "type": kind, "target": target})
+    if kind in STACK_POSITIONING:
+        from .stacks import guard
+
+        guard(project, op, target)
+    if kind in STACK_TYPES:
+        from .stacks import execute as execute_stack
+
+        return execute_stack(project, op)
+    if kind in SELECTOR_TYPES:
+        from .selectors import execute as execute_selectors
+        return execute_selectors(project, op)
+    if kind in CHART_TYPES:
+        from .charts import execute as execute_charts
+        return execute_charts(project, op)
     if kind in PAGE_TYPES:
         from .pages import execute as execute_pages
         return execute_pages(project, op)
     if kind in FORM_TYPES:
         from .forms import execute as execute_forms
         return execute_forms(project, op)
+    if kind in LINK_TYPES:
+        from .links import execute as execute_links
+        return execute_links(project, op)
+    if kind in FINISHING_TYPES:
+        from .finishing import execute as execute_finishing
+        return execute_finishing(project, op)
     if kind in DRAWING_TYPES:
         from .drawing import execute as execute_drawing
         return execute_drawing(project, op)
+    if kind in DIAGRAM_TYPES:
+        from .diagrams import execute as execute_diagram
+        return execute_diagram(project, op)
+    if kind in FLOW_TYPES:
+        from .textflow import execute as execute_flow
+        return execute_flow(project, op)
     if kind in RICH_TYPES:
         from .richtext import execute as execute_rich
         return execute_rich(project, op)
@@ -277,6 +319,9 @@ def execute(project, op):
     if kind in ORGANIC_TYPES:
         from .organic import execute as execute_organic
         return execute_organic(project, op)
+    if kind in IRREGULAR_TYPES:
+        from .irregular import execute as execute_irregular
+        return execute_irregular(project, op)
     if kind in AUTHORING_TYPES:
         from .authoring import execute as execute_authoring
         return execute_authoring(project, op)
@@ -388,6 +433,8 @@ def execute(project, op):
             )
             if role:
                 layer["font_role"] = role
+            if op.get("hide_if_empty"):
+                layer["hide_if_empty"] = True
             embed_font_file(project, layer)
             layer["width"], layer["height"], _ = text_metrics(project, layer)
             color(resolve_color(layer["color"], project.state))
@@ -503,10 +550,12 @@ def execute(project, op):
             project.state["active_layer"] = duplicate["id"]
     elif kind == "text-set":
         require(layer["type"] == "text", "Layer is not editable text")
+        dropped = []
         if "text" in op and layer.get("rich") and op["text"] != layer["text"]:
-            # New plain text replaces the styled spans; restyle it with text-style or rich-text.
-            layer.pop("rich")
-        for key in ("text", "size", "color", "align", "spacing", "stroke_width", "stroke_color"):
+            from .richedit import replace_text
+
+            dropped = replace_text(layer, op["text"])  # keeps list, alignment and span formatting that still apply
+        for key in ("text", "size", "color", "align", "spacing", "stroke_width", "stroke_color", "hide_if_empty"):
             if key in op:
                 layer[key] = op[key]
         if "font" in op:
@@ -519,6 +568,10 @@ def execute(project, op):
         finite(layer.get("spacing", 4), "spacing", 0, 1000)
         finite(layer.get("stroke_width", 0), "stroke_width", 0, 100)
         color(resolve_color(layer["color"], project.state))
+        if layer.get("rich"):
+            from .richedit import override_warnings, report
+
+            report(project, layer, dropped, override_warnings(layer, op))
         box = layer.get("text_layout") or {}
         if "width" not in box and "height" not in box:
             # A text-layout box keeps its wrapping dimensions; plain text re-fits its content.
@@ -537,12 +590,34 @@ def execute(project, op):
     elif kind in ("resize", "scale"):
         w, h = layer["width"], layer["height"]
         if kind == "scale":
-            factor = finite(op["value"], "scale", 0.001, 100)
-            w, h = max(1, round(w * factor)), max(1, round(h * factor))
+            # A negative factor mirrors that axis (value: both axes) and scales by its size.
+            require(any(key in op for key in ("value", "x", "y")), "Scale requires value, x or y", field="value")
+            both = op.get("value", 1)
+            factors = {"value": both, "x": op.get("x", both), "y": op.get("y", both)}
+            for name, factor in factors.items():
+                finite(factor, f"scale {name}")
+                require(0.001 <= abs(factor) <= 100, f"scale {name} must be 0.001–100 in size (negative mirrors); got {factor}", field=name)
+            if factors["x"] < 0 or factors["y"] < 0:
+                require(layer["type"] != "field", "Negative scale mirrors the layer; PDF form fields are upright rectangles", field="target")
+            for axis, key in (("x", "flip_x"), ("y", "flip_y")):
+                if factors[axis] < 0:
+                    layer[key] = not layer[key]
+            w, h = max(1, round(w * abs(factors["x"]))), max(1, round(h * abs(factors["y"])))
         else:
             require("width" in op or "height" in op, "Resize requires width or height")
-            w = op.get("width", max(1, round(w * op.get("height", h) / h)))
-            h = op.get("height", max(1, round(h * w / layer["width"])))
+            one_side = ("width" in op) != ("height" in op)
+            require(one_side or not op.get("keep_aspect"),
+                    "keep_aspect scales the other side proportionally: give width or height, not both",
+                    field="keep_aspect")
+            # A side that is not given keeps its size, except on photos, where stretching one axis is
+            # rarely meant: image layers scale proportionally unless keep_aspect is false.
+            if one_side and op.get("keep_aspect", layer["type"] == "raster"):
+                if "width" in op:
+                    w, h = op["width"], max(1, round(h * op["width"] / w))
+                else:
+                    w, h = max(1, round(w * op["height"] / h)), op["height"]
+            else:
+                w, h = op.get("width", w), op.get("height", h)
         project.limits.size(w, h)
         layer.update(width=w, height=h, auto_size=False)
     elif kind in ("rotate", "pivot", "flip") and layer["type"] == "field":
@@ -724,7 +799,8 @@ def execute(project, op):
             "enabled": True,
             "selection": project.state["selection"],
         }
-        for key in ("seed", "radius", "strength", "black", "white", "points", "shadow_color", "highlight_color"):
+        for key in ("seed", "radius", "strength", "black", "white", "points", "shadow_color", "highlight_color",
+                    *DENOISE_KEYS):
             if key in op:
                 effect[key] = op[key]
         effect_valid(effect)
@@ -749,7 +825,8 @@ def execute(project, op):
         elif kind == "effect-set":
             if "value" in op and "amount" not in op:
                 op["amount"] = op["value"]
-            for key in ("amount", "seed", "radius", "strength", "black", "white", "points", "shadow_color", "highlight_color"):
+            for key in ("amount", "seed", "radius", "strength", "black", "white", "points", "shadow_color", "highlight_color",
+                        *DENOISE_KEYS):
                 if key in op:
                     effect[key] = op[key]
             effect_valid(effect)

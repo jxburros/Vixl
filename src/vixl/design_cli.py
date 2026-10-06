@@ -11,12 +11,14 @@ def compile_design(cmd, args):
         return None
     p = Parser(prog=f"vixl {cmd}")
     if cmd == "shape":
-        p.add_argument("shape")
+        p.add_argument("shape", nargs="?", help="rectangle, ellipse, …; optional with --target")
+        p.add_argument("--target", help="edit this existing shape layer in place instead of adding one")
         p.add_argument("--path")
         for key in ("fill", "stroke"):
             p.add_argument("--" + key)
-        for key in ("stroke-width", "radius", "inner-radius"):
+        for key in ("stroke-width", "radius", "inner-radius", "start-angle", "end-angle", "trim-start", "trim-end"):
             p.add_argument("--" + key, type=float)
+        p.add_argument("--line-cap", choices=["butt", "round", "square"])
         p.add_argument("--sides", type=int)
     elif cmd in ("group", "pathfinder"):
         p.add_argument("name")

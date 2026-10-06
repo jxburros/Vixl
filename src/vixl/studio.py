@@ -85,6 +85,8 @@ def dispatch(session, action, request, document=None):
                 "radius",
                 "sides",
                 "inner_radius",
+                "start_angle",
+                "end_angle",
             }
             value = {"type": "shape", **{k: deepcopy(v) for k, v in layer.items() if k in fields}}
             if layer["shape"] == "path":

@@ -275,6 +275,10 @@ def resolved_layers(project, variables=None):
         for key in ("text", "asset"):
             if key in layer:
                 layer[key] = substitute(layer[key], variables)
+        if layer["type"] == "text" and layer.get("rich"):
+            from .richtext import fill_variables
+
+            fill_variables(layer["rich"], variables)  # keeps the record matching the substituted text
         if layer.get("asset_variable"):
             name = layer["asset_variable"]
             require(name in variables, f"Undefined image variable: {name}", "missing_variable")
@@ -296,6 +300,9 @@ def resolved_layers(project, variables=None):
         if layer["type"] == "field":
             layer["value"] = list(fields.get(layer["field"]["key"], (None, "")))
         project.limits.size(layer["width"], layer["height"])
+    from .stacks import collapse
+
+    collapse(layers)
     return layers
 
 
@@ -381,6 +388,10 @@ def resolve_layout(project, variables=None, layers=None):
 def apply_effect(image, effect):
     from .constants import ARTISTIC_DEFAULTS
 
+    if effect["name"] == "denoise":
+        from .denoise import denoise_image
+
+        return denoise_image(image, effect)
     if effect["name"] in ARTISTIC_DEFAULTS:
         from .artistic import artistic_filter
 
@@ -642,7 +653,7 @@ def layer_ink(project, layer, bounds):
         dependencies.append(project.state.get("brushes", {}))
     key = hashlib.sha256(json.dumps(dependencies, sort_keys=True).encode()).hexdigest()
     linked = layer.get("linked")
-    cacheable = not linked and not layer.get("lookup") and layer["type"] not in ("group", "pathfinder")
+    cacheable = not linked and not layer.get("lookup") and layer["type"] not in ("group", "pathfinder", "link")
     cache = project._cache = project._cache if isinstance(project._cache, LayerCache) else LayerCache()
     if cacheable:
         cached = cache.image(key)
@@ -699,6 +710,10 @@ def layer_ink(project, layer, bounds):
         from .forms import field_image
 
         image = field_image(project, layer)
+    elif kind == "link":
+        from .links import link_image
+
+        image = link_image(project, layer)
     elif kind == "gradient":
         from .design_render import gradient_image
 
@@ -1141,6 +1156,7 @@ def export(
     values=None,
     fill_mode="flatten",
     alpha="keep",
+    presenter=None,
 ):
     """Render and encode. ``color_space='cmyk'`` separates JPEG/TIFF/PDF output (ICC profile
     bytes in ``icc_profile`` for press-accurate separation, else device-naive GCR with
@@ -1148,7 +1164,12 @@ def export(
     through that separation; ``simulate`` previews a color-vision deficiency. ``alpha`` sets the
     channels of PNG, WEBP, TIFF and AVIF output: ``keep`` always writes RGBA, ``auto`` writes RGB
     when every pixel is opaque and RGBA otherwise (the file export default), and ``flatten``
-    composites onto ``background`` and writes RGB (as JPEG and PDF always do)."""
+    composites onto ``background`` and writes RGB (as JPEG and PDF always do). PDF is vector by
+    default, RGB or CMYK: ``pdf_content='raster'`` writes one image per page instead, and ``report``
+    receives ``content``, ``content_reason``, ``raster_fallbacks`` and ``page_size``. HTML output of a
+    multi-page document is a self-contained slide presentation (see ``presenter.py``): ``presenter``
+    is ``False`` for the plain single-image HTML, ``True`` for a presentation of any document, or
+    a dict of options (theme, notes, slide_images, start, title)."""
     require(alpha in ("auto", "keep", "flatten"), "alpha must be auto, keep or flatten", field="alpha")
     require(sampling in ("smooth", "nearest"), "Sampling must be smooth or nearest")
     require(color_space in ("rgb", "cmyk"), "Color space must be rgb or cmyk")
@@ -1191,16 +1212,38 @@ def export(
         project = with_values(project, values)
         if (format or "").upper() == "PDF" or suffix == ".pdf":
             pdf_content = pdf_content or "vector"
+    from .presenter import export_presenter, wants_presenter
+
+    html_name = (format or (suffix[1:] if suffix in (".html", ".htm") else "")).upper() in ("HTML", "HTM")
+    # Options a presentation cannot honor keep a paged document's HTML export the single artwork page.
+    artwork = bool(profile or artboard or comp or proof or simulate or icc_profile) or color_space != "rgb"
+    if wants_presenter(False if presenter is None and artwork else presenter, html=html_name,
+                       paged=bool(project.state.get("pages")), page=page):
+        require(not artwork, "A presentation shows pages in RGB; profile, artboard, comp, proof, simulate and CMYK do not apply")
+        require(page is None or not pages, "Pass page or pages, not both")
+        data = export_presenter(project, pages=pages or ([page] if page is not None else None), options=presenter,
+                                variables=variables, svg_policy=svg_policy, scale=scale, report=report)
+        if path:
+            Path(path).write_bytes(data)
+        return data
     if (format or "").upper() == "PPTX" or suffix == ".pptx":
         from .pptx_export import export_pptx
 
-        return export_pptx(project, path, pages=pages, report=report)
+        return export_pptx(project, path, pages=pages, dpi=dpi, report=report)
     wants_pdf = (format or "").upper() == "PDF" or suffix == ".pdf"
     paged = bool(project.state.get("pages"))
-    print_size = bool(project.state["canvas"].get("physical")) and scale == 1
-    if wants_pdf and (paged or pdf_content or pages or print_size) and not (profile or artboard or comp or proof or simulate):
-        # Multi-page documents, print sizes (exact physical page, TrimBox and BleedBox) and explicit
-        # vector/raster requests use Vixl's own PDF writer.
+    requested_scale = scale
+    raster_only = [name for name, used in (("profile", profile), ("artboard", artboard), ("comp", comp), ("proof", proof),
+                                           ("simulate", simulate)) if used]
+    if wants_pdf:
+        require(pdf_content in (None, "vector", "raster"), "pdf_content must be vector or raster", field="pdf_content")
+        require(not (raster_only and pdf_content == "vector"),
+                f"pdf_content=vector cannot be combined with {', '.join(raster_only)}: those export the page as an image",
+                field="pdf_content")
+    if wants_pdf and not raster_only and (pdf_content or scale == 1):
+        # Every PDF is written by Vixl's own writer: vector unless raster is asked for (exact physical
+        # print pages, TrimBox and BleedBox, selectable text, CMYK). A scaled export is a larger
+        # raster, so it keeps the image path below unless pdf_content says otherwise.
         require(page is None or not pages, "Pass page or pages, not both")
         from .pdf_export import export_pdf
 
@@ -1211,9 +1254,13 @@ def export(
             separation = dict(profile=colors.load_profile(icc_profile) if icc_profile is not None else None,
                               intent=intent, black=finite(black_generation, "black_generation", 0, 1),
                               ink_limit=None if ink_limit is None else ink_limit / 100, background=background)
-        content = pdf_content or ("raster" if color_space == "cmyk" else "vector")
-        return export_pdf(project, path, pages=pages or ([page] if page is not None else None), content=content,
+        content = pdf_content or "vector"
+        data = export_pdf(project, path, pages=pages or ([page] if page is not None else None), content=content,
                           dpi=dpi, background=background, color_space=color_space, separation=separation, report=report)
+        if report is not None:
+            report["content_reason"] = ("requested with pdf_content" if pdf_content else
+                                        "default: vector, with images only for what PDF cannot draw (see raster_fallbacks)")
+        return data
     if page is not None or paged:
         project = view_page(project, page)
     resample = Image.Resampling.NEAREST if sampling == "nearest" else Image.Resampling.LANCZOS
@@ -1342,6 +1389,10 @@ def export(
     except (OSError, KeyError) as exc:
         raise VixlError("codec_error", str(exc)) from exc
     data = stream.getvalue()
+    if fmt == "PDF" and report is not None:
+        report.update(content="raster", color_space=color_space, content_reason=(
+            f"{', '.join(raster_only)} export the page as an image" if raster_only else
+            f"scale {requested_scale:g} exports a larger image; pass pdf_content for a vector or raster PDF at its natural size"))
     if path:
         Path(path).write_bytes(data)
     return data

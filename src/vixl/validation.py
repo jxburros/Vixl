@@ -63,6 +63,7 @@ def check_state(project, state):
                 finite(value, "pen origin", -1e6, 1e6)
         allowed = layer.get("allow_overlap", [])
         require(isinstance(allowed, list) and len(allowed) <= 512 and all(isinstance(x, str) for x in allowed), "Invalid overlap intent", "invalid_project")
+        require(isinstance(layer.get("allow_crop", False), bool), "Invalid crop intent", "invalid_project")
         ids.add(layer["id"])
         names.add(layer["name"])
         require(
@@ -81,6 +82,7 @@ def check_state(project, state):
                 "pixel",
                 "paint",
                 "field",
+                "link",
             ),
             "Invalid layer type",
             "invalid_project",
@@ -114,6 +116,14 @@ def check_state(project, state):
             from .forms import validate_field
 
             validate_field(layer, state)
+        if layer["type"] == "link":
+            from .links import validate as validate_link
+
+            validate_link(layer, state)
+        if "chart" in layer:
+            from .charts import validate_chart
+
+            validate_chart(layer, state)
         if "drawing" in layer or "drawing_strokes" in layer:
             from .drawing import validate as validate_drawing
 
@@ -150,8 +160,17 @@ def check_state(project, state):
     from .layouts import validate_layout_record
 
     validate_layout_record(state)
+    from .styles import validate_style_tag
+
+    validate_style_tag(state)
     from .automation import validate_state
     validate_state(state)
+    from .diagrams import validate as validate_diagrams
+
+    validate_diagrams(state)
+    from .textflow import validate as validate_flows
+
+    validate_flows(state)
     from .pages import validate_pages
 
     validate_pages(project, state)

@@ -41,6 +41,9 @@ Checked automation and production: `workflow schema` lists the actions accepted 
 check suites, recipes, matrices, libraries, jobs and films. New editing commands include
 `suite-set`, `suite-capture`, `role-set`, `motion-define`, `motion-apply`, `action-define`,
 `action-apply`, `fit-text`, `arrange-grid`, `adapt-layout` and `recipe-set`; each has `--help`.
+`edit-layers --where JSON --do JSON [--expect N] [--dry-run]` runs an operation on every layer matching a selector, and
+`adapt-layout --size story [--scale fit|fill|width|height|N] [--anchors JSON] [--where JSON] [--text keep]` (without
+`--targets`) resizes the canvas and re-lays out every layer; see [operations](operations.md#bulk-edits-and-resizing-a-whole-layout-unreleased).
 
 Vixl is a headless application designed for autonomous AI agents; humans can use the same interfaces.
 
@@ -103,8 +106,10 @@ vixl move portrait 100 200
 vixl move portrait --x 100 --y 200
 vixl move x +20
 vixl scale portrait 80%
+vixl scale portrait --x -1              # negative factors mirror: --x/--y per axis, -1 both
 vixl resize portrait 800x600
 vixl resize portrait --width 800
+vixl resize portrait --width 800 --keep-aspect       # explicit; --no-keep-aspect stretches one side of an image
 vixl rotate portrait 15
 vixl flip portrait horizontal
 vixl crop portrait 0 0 300 400
@@ -113,7 +118,7 @@ vixl blend portrait multiply
 vixl align logo top-right --margin 40
 ```
 
-`layer` is an optional namespace. `rm` aliases remove and `mv` aliases move. Rotation is clockwise, expands the layer bounds, and anchors the expanded bounding box at its x/y position. Crop coordinates refer to the original embedded raster. Resize with one dimension preserves aspect ratio; with two, it stretches. Numeric scale values are factors; `80%` is `0.8`. The CLI accepts opacity `75` as 75%; canonical JSON always requires 0–1.
+`layer` is an optional namespace. `rm` aliases remove and `mv` aliases move. Rotation is clockwise, expands the layer bounds, and anchors the expanded bounding box at its x/y position. Crop coordinates refer to the original embedded raster. Resize with one dimension changes only that dimension of a shape, text box, group or solid (the other side keeps its size, and the result reports it under `normalized`), but scales an imported image (raster layer) proportionally so a photo is not stretched. `--keep-aspect` (JSON `keep_aspect: true`) scales the other side proportionally on any layer; `--no-keep-aspect` (`keep_aspect: false`) changes just the given side of an image; give both dimensions to stretch. Numeric scale values are factors; `80%` is `0.8`; a negative factor (`-1`, or `--x -1` for one axis) mirrors the layer as `flip` does and scales by its size. The CLI accepts opacity `75` as 75%; canonical JSON always requires 0–1.
 
 Alignment supports center, center-x/y, left/right/top/bottom and corner pairs. Absolute moves and alignment clear constraints. `move x +20` and `--relative` add offsets.
 
@@ -162,6 +167,7 @@ vixl shadows 15
 vixl highlights -10
 vixl blur 8
 vixl sharpen 2
+vixl denoise photo --luminance 40 --chroma 60
 vixl grayscale
 vixl invert
 vixl posterize 6
@@ -175,7 +181,9 @@ vixl effect set portrait 2 --amount 20
 vixl effect remove portrait 3
 ```
 
-Effect indices start at 1; stable effect IDs also work. Curves use JSON `points: [[0,0],[128,160],[255,255]]`. Brightness/contrast/saturation are percentages relative to neutral; exposure is stops; gamma must be positive; hue is degrees; sharpen is a factor (1 is neutral); noise/grain are 0–1 standard deviations; posterize is 1–8 bits. Temperature/tint and shadows/highlights are simple channel/tonal adjustments, not camera-calibrated or color-managed controls. Noise is seeded (default 0).
+Effect indices start at 1; stable effect IDs also work. Curves use JSON `points: [[0,0],[128,160],[255,255]]`. Brightness/contrast/saturation are percentages relative to neutral; exposure is stops; gamma must be positive; hue is degrees; sharpen is a factor (1 is neutral); denoise takes `--luminance` and `--chroma` strengths 0–100 (see below); noise/grain are 0–1 standard deviations; posterize is 1–8 bits. Temperature/tint and shadows/highlights are simple channel/tonal adjustments, not camera-calibrated or color-managed controls. Noise is seeded (default 0).
+
+**Denoise** (`denoise`) is an edge-preserving, non-destructive noise reduction for photos. Luminance (grain) is cleaned with non-local means: each pixel is averaged with the pixels around it whose 5 × 5 neighbourhoods look like its own, so flat areas and skies smooth out while edges and fine lines stay sharp (a Gaussian blur that removes as much grain flattens them). Chroma (colour blotches) is smoothed at reduced resolution, guided by the cleaned luminance, so colour does not bleed across an edge, and colour edges and fine colour detail stay as drawn. `--luminance` and `--chroma` are 0–100 strengths (default 50 each; a positional value or `amount` sets both) and are relative to the noise measured in the image itself, so one setting suits a clean and a grainy photo; 0 leaves that part alone. `--search` (1–10 px, default 5) is the search window radius. Cost: time grows with the number of window positions tried (every position within 2 px, then every other one farther out: 72 at the default, 124 at 7, at most 232 at 10); at the default it is about 1 second per megapixel (four threads, the same result whatever the thread count), so `--search 3` (36 positions) halves the cost on large photos. Previews render a reduced copy, so they are quick. It needs no dependencies beyond NumPy and Pillow, and exports to SVG rasterize the layer as for other pixel effects.
 
 Blend modes: normal, multiply, screen, overlay, darken, lighten, difference, add, subtract.
 
@@ -199,7 +207,7 @@ vixl validate --rules 'text.title.font-size >= 120' --rules 'layer.logo.bounds w
 
 A constraint uses `canvas` or a layer plus `.left`, `.right`, `.top`, `.bottom`, `.center-x`, `.center-y`, optionally followed by a numeric `+offset` or `-offset`. One constraint per axis is supported: `constrain` adds to a layer's existing constraints, so switching an axis from `left` to `center-x` needs `unconstrain` first (the error names both anchors). Cycles and dangling references fail atomically. Layer references become stable IDs, so renames do not break them. Delete dependents' constraints before deleting their target.
 
-Variables use `${name}` interpolation in text, colors, gradient fills, and raster asset identifiers. Asset variables must refer to **embedded asset IDs**; render overrides never load arbitrary files. Text dimensions are recomputed when variables change. Undefined variables fail explicitly.
+Variables use `${name}` interpolation in text, colors, gradient fills, and raster asset identifiers. Asset variables must refer to **embedded asset IDs**; render overrides never load arbitrary files. Text dimensions are recomputed when variables change. Undefined variables fail explicitly. Text with `hide_if_empty` is not drawn while it is empty after substitution, and a `stack` group re-flows around it ([empty content and stacks](design-tools.md#empty-content-and-stacks)).
 
 Validation profiles: instagram-post / instagram-square (1:1; Instagram also checks PNG under 8 MB), story (9:16), youtube-thumbnail (16:9). All check layer bounds; artwork marked `layer-intent NAME --role decoration` that bleeds off the edge on purpose is a warning, not an error (unless it is text or entirely off the canvas). Text under 24 px is a warning. Font sizes, here and in `text.NAME.font-size` assertions, are the sizes text renders at: a linked character style's size takes precedence. Visible text with characters no font can draw fails validation. Rules files are JSON arrays of assertion strings; `--rules` also takes a single assertion and can repeat. Comparisons support `==`, `!=`, `>`, `<`, `>=`, `<=`; quote shell operators. Assertions are parsed, never evaluated as Python.
 
@@ -239,6 +247,23 @@ Use `palette list|show|add|apply`, `template list|show|add|new|apply`, `guidance
 `check` inspects visible group descendants, including nested text. Selecting a group includes its descendants; selecting a child checks that child. Bounds and safe areas use canvas coordinates (`bounds` also reports boxed text, with a `text-layout` width and height, that no longer fits its box and is cut off), overlap uses rendered coverage, and thumbnail legibility accounts for ancestor scaling. Contrast compares grouped text with its backdrop through ancestor transforms and opacity. Hidden or fully transparent ancestors exclude their children. Characters that no font can draw (they render as empty boxes) are a `fonts` error in every `check`, whichever checks are selected, and an automatic `missing-glyphs` result in every suite, so checked production and gated group edits catch them. Top-level text is contrast-checked from one shared render; grouped text renders its own backdrop. Outlined text (a `stroke` style at least 3 px wide and 2% of its font size) passes when either its fill or its outline contrasts with the backdrop. Text fails when a tenth of its glyph pixels fall below the required ratio; the issue's `region` (and `weakest_region` in `measure --target`) is where those weakest pixels are, often where the text crosses an outline or edge. Repeated groups emit a coverage warning because geometry checks assess the base instance; visually inspect the repeated copies. Unmeasurable text produces a warning; `passed` means no errors, so also inspect `warnings` and `issues` and visually review the result.
 
 Saved SVG exports report `svg.vector_only` and `svg.raster_fallbacks` in the CLI result so embedded bitmaps are visible without opening the SVG metadata. Use `export logo.svg --svg-policy strict` to reject all embedded raster content. Exporting to `-` still writes only SVG bytes. Supported grouped shapes and outlined text remain vectors; unsupported appearances may rasterize in the default appearance policy.
+
+## Finish, styles and the guide
+
+```bash
+vixl guide                               # start-here recipe and every kind of work
+vixl guide a mascot for a coffee brand   # approach, operations, layouts, looks, styles, example
+vixl guide operations                    # every operation by purpose, with summaries
+vixl looks                               # the finishing looks
+vixl look LAYER glow [--color C] [--amount 0-1] [--remove]
+vixl radial-repeat LAYER --count 12 [--cx 50%] [--cy 50%] [--sweep 360] [--start-angle D] [--mirror] [--no-group] [--name N]
+vixl layer-intent LAYER --allow-crop     # a deliberate edge crop: checks report it as informational
+vixl layout apply NAME --palette '["#0f172a","#1e293b","#38bdf8"]' --keep-order
+vixl palette apply NAME --keep-order | --roles '{"background": 0, "accent": "#e11d48"}'
+vixl styles [list [QUERY] | show NAME] | styles apply NAME [--palette] | styles check [NAME…]
+vixl style-set NAME… [--options JSON]    # tag the document ('none' clears)
+vixl check --checks style [--style NAME…]
+```
 
 ## Sizes, layouts, color, print, brushes and timelines (0.13)
 
@@ -284,3 +309,24 @@ vixl export-timeline --out FILE.gif|.png|.webp|.zip|.mp4|.webm [--format sheet] 
 ```
 
 Times are milliseconds or `1.5s`, `250ms`, `50%` or a marker name. Details: [sizes and layouts](sizes-and-layouts.md), [color and print](color-and-print.md), [brushes and animation](brushes-and-animation.md).
+
+## Linked documents and print merge (unreleased)
+
+```bash
+vixl link FILE.vixl [--name N] [--x X] [--y Y] [--width W] [--height H] [--fit fill|fit|stretch]
+    [--position top-left|0.5,0.5] [--crop X,Y,W,H] [--artboard NAME] [--source-page P] [--set NAME=VALUE]…
+vixl link-set LAYER [--source F] [--fit …] [--position …] [--crop …] [--artboard …] [--source-page …]
+    [--set NAME=VALUE]… [--clear artboard|source_page|variables|crop]…
+vixl link-refresh [LAYER] | link-embed LAYER | links          # links: every link, ok / stale / missing / cycle
+
+vixl merge [TEMPLATE.vixl] --data rows.csv --out sheets.pdf [--sheet-document sheets.vixl]
+    [--size letter] [--cols 2] [--rows 3] [--gutter 0.125] [--margin 0.5] [--bleed template|0.125]
+    [--no-crop-marks] [--registration] [--slug TEXT] [--copies N] [--set NAME=VALUE]…
+    [--unknown warn|error|ignore] [--defaults error|warn|ignore] [--check design]
+    [--skip-invalid] [--dry-run] [--replace]
+vixl merge --rerun sheets.vixl [--data new.csv] [--out new.pdf]
+```
+
+[Linked documents](linked-documents.md) render another `.vixl` live (`--allow-linked` for sources outside the current
+folder); [imposition](imposition.md) lays CSV rows out on print sheets with crop marks, as a vector-text PDF and an editable
+sheet of links.

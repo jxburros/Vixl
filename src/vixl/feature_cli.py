@@ -152,6 +152,8 @@ def compile_feature(cmd, args):
         p.add_argument("--colors", type=json.loads)
         p.add_argument("--mode", choices=["inherit", "light", "dark"])
         p.add_argument("--predictable", action="store_true", default=None)
+        p.add_argument("--keep-order", action="store_true", default=None,
+                       help="Use --palette colors as given: background, surface, then accents (no light/dark reassignment)")
         p.add_argument("--type-scale")
         p.add_argument("--base-size", type=float)
         p.add_argument("--density", choices=["airy", "balanced", "dense"])
@@ -219,6 +221,7 @@ def compile_feature(cmd, args):
         p.add_argument("time", type=_time)
         p.add_argument("value", type=_value)
         p.add_argument("--easing")
+        p.add_argument("--no-extend", dest="extend", action="store_false", default=None, help="Keep the timeline duration when the key lies past its end")
     elif cmd == "keyframe-remove":
         p.add_argument("target")
         p.add_argument("--property")
@@ -231,6 +234,7 @@ def compile_feature(cmd, args):
         for key in ("start", "end", "duration"):
             p.add_argument("--" + key, type=_time)
         p.add_argument("--easing")
+        p.add_argument("--no-extend", dest="extend", action="store_false", default=None, help="Keep the timeline duration when the key lies past its end")
         data = vars(p.parse_args(args))
         if data.get("from_") is not None:
             data["from"] = data.pop("from_")
@@ -246,6 +250,7 @@ def compile_feature(cmd, args):
         p.add_argument("--distance", type=float)
         p.add_argument("--to")
         p.add_argument("--no-fade", dest="fade", action="store_false", default=None)
+        p.add_argument("--no-extend", dest="extend", action="store_false", default=None, help="Keep the timeline duration when a key lies past its end")
     elif cmd == "marker":
         p.add_argument("name")
         p.add_argument("time", nargs="?", type=_time)
@@ -284,6 +289,11 @@ def project_feature(project, cmd, args):
         return {"fields": summary(project), "form": form_settings(project.state)}, False
     if cmd == "form" and args[:1] == ["fill"]:
         return form_fill(project, args[1:]), False
+    if cmd == "links":
+        from .links import report
+
+        require(not args, "Use links to list the linked documents and their state (link-refresh updates them)")
+        return report(project), False
     if cmd == "drawing" and args[:1] in (["report"], ["compare"]):
         from .drawing import compare, report
 

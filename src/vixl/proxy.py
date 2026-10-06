@@ -10,7 +10,10 @@ from copy import copy, deepcopy
 import re
 
 from .constants import ARTISTIC_DEFAULTS
+from .design_render import repeat_items
 
+# Layer types drawn into a box of their own size, whose edges can sit on whole preview pixels.
+SNAPPED = ("raster", "solid", "gradient", "shape", "frame", "group")
 CONSTRAINT = re.compile(r"^(.+\.(?:left|right|top|bottom|center-x|center-y))([+-]\d+(?:\.\d+)?)?$")
 
 
@@ -27,6 +30,10 @@ def _scale_layer(layer, s):
             layer[key] = _size(layer[key], s)
     if "size" in layer and layer.get("type") == "text":
         layer["size"] = _size(layer["size"], s)
+    if layer.get("type") == "field":
+        from .forms import scale_field
+
+        scale_field(layer, s)
     for key in ("spacing", "radius"):
         if key in layer and isinstance(layer[key], (int, float)):
             layer[key] = layer[key] * s
@@ -88,6 +95,35 @@ def _scale_layer(layer, s):
         _scale_layer(operand, s)
 
 
+def _snap_edges(layer, source, s):
+    """Put the edges of a scaled layer on whole pixels of the scaled canvas.
+
+    Rounding a layer's position and its size separately leaves a one-pixel gap (or overlap)
+    between layers that meet at an edge, which shows as a faint seam the full-size render does
+    not have (tiles placed side by side, bands, grids). Each edge goes to the nearest pixel
+    instead, so two layers that share an edge still share it."""
+    if source.get("pivot") is not None or source.get("rotation", 0) % 360 or source["type"] not in SNAPPED:
+        return
+    numeric = all(isinstance(source.get(key), (int, float)) for key in ("x", "y", "width", "height"))
+    if not numeric:
+        return
+    if "repeat" in source:
+        # Each copy's edges too, measured from the layer's own snapped corner, so the copies of a
+        # repeated tile still meet.
+        x0, y0 = round(source["x"] * s), round(source["y"] * s)
+        layer["x"], layer["y"] = x0, y0
+        layer["repeat"]["snapped"] = [
+            [round((source["x"] + x) * s) - x0, round((source["y"] + y) * s) - y0,
+             round((source["x"] + x + item["width"]) * s) - round((source["x"] + x) * s),
+             round((source["y"] + y + item["height"]) * s) - round((source["y"] + y) * s)]
+            for item, x, y in repeat_items(source, colors=False)
+        ]
+        return
+    for position, size in (("x", "width"), ("y", "height")):
+        start = round(source[position] * s)
+        layer[position], layer[size] = start, max(1, round((source[position] + source[size]) * s) - start)
+
+
 def supported(state):
     for layer in state["layers"]:
         if any(effect.get("selection") for effect in layer.get("effects", [])):
@@ -105,8 +141,12 @@ def scaled_project(project, s):
     state = deepcopy(project.state)
     canvas = state["canvas"]
     canvas["width"], canvas["height"] = _size(canvas["width"], s), _size(canvas["height"], s)
-    for layer in state["layers"]:
+    if canvas.get("dpi") and any(layer.get("type") == "field" for layer in state["layers"]):
+        # Fields size their values in points (dpi / 72): keep a point the same fraction of the page.
+        canvas["dpi"] = canvas["dpi"] * s
+    for layer, source in zip(state["layers"], project.state["layers"]):
         _scale_layer(layer, s)
+        _snap_edges(layer, source, s)
     from .guides import transform_guide
 
     for guide in state.get("guides", {}).values():

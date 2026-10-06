@@ -12,8 +12,8 @@ A document can hold several pages: slides in a deck, frames of a social carousel
 booklet or a multi-page form. Each page has its own layers; the canvas size, fonts, swatches,
 styles, palettes, brushes, guides and variables are shared. Master pages hold layers drawn under
 every page that uses them (a footer band, a logo, a page number). Pages carry speaker notes, and
-the whole document exports as a multi-page vector PDF with selectable text or as an editable
-PowerPoint deck.
+the whole document exports as a multi-page vector PDF with selectable text, as an editable
+PowerPoint deck or as a self-contained HTML presentation you can present from any browser.
 
 ```bash
 vixl new 1920x1080 -o deck.vixl --background '#ffffff'
@@ -30,6 +30,7 @@ vixl render --page all --out sheet.png                         # every page on o
 vixl check --checks deck                                       # every page + deck-wide checks
 vixl export deck.pdf                                           # vector PDF, one page per page
 vixl export deck.pptx                                          # editable slides with speaker notes
+vixl export deck.html                                          # one-file slide show with speaker view
 ```
 
 ```json
@@ -62,9 +63,10 @@ Page settings:
   notes and counted by the deck checks, never drawn.
 - `background` — overrides the canvas (or master) background for this page.
 - `variables` — page-specific values for `${name}` text, on top of the document's variables.
-- `hidden` — left out of PDF export, previews of `all` pages, the deck checks and per-page image
-  export; exported to PowerPoint as a hidden slide.
-- `transition` — `fade`, `push`, `wipe`, `cover`, `split` or `zoom` in PowerPoint.
+- `hidden` — left out of PDF export, the HTML presentation, previews of `all` pages, the deck
+  checks and per-page image export; exported to PowerPoint as a hidden slide.
+- `transition` — `fade`, `push`, `wipe`, `cover`, `split` or `zoom` in PowerPoint and in the HTML
+  presentation.
 
 Built-in variables: `${page}` (the page number), `${pages}` (the page count) and `${page_name}`.
 
@@ -90,18 +92,25 @@ as `master:NAME/layer` in renders and checks.
 
 `export deck.pdf` writes every shown page (or `--pages …`) to one PDF:
 
-- **Vector content** (default): solids, shapes and paths, gradients (PDF shadings), plain groups
-  and text become PDF graphics. Text — plain and rich — is real text in embedded TrueType subsets
+- **Vector content** (default, for every document and also with `--cmyk`): solids, shapes and paths, pathfinder booleans (one compound path),
+  gradients (PDF shadings), plain groups and text become PDF graphics. Text — plain and rich — is real text in embedded TrueType subsets
   with Unicode maps, so it can be selected, searched and read aloud. Synthetic bold and italic
   are drawn as stroked and slanted text. Image layers are images. Anything PDF cannot draw the
   same way (effects, layer styles, masks, clipping, blend modes, adjustment layers, paint and
   pixel art, warped text) is embedded as an image of exactly what Vixl renders and listed under
   `raster_fallbacks` with the reason, so nothing changes appearance silently.
-- `--pdf-content raster` writes each page as one image; CMYK PDF (`--cmyk`) is always raster.
+- `--pdf-content raster` writes each page as one image. The export result says which mode was
+  written: `content` (`vector` or `raster`) and `content_reason` (`default…` or `requested with
+  pdf_content`; scaled, proofed and profile exports are raster, with that as the reason). The
+  default never depends on the kind of document, so re-exporting an edited copy gives the same kind
+  of PDF as the first export.
+- **Page size.** Pages of a multi-page document are the size of its PowerPoint slides: a canvas
+  with a `dpi` keeps its physical size, a screen canvas is 7.5 inches tall, so 1920×1080 is
+  13.33 × 7.5 in in both formats (`page_size` in the result shows it). `dpi` (`--dpi 96`) sets the
+  pixels per inch of the PDF and of the slides alike (1920×1080 at 96 is 20 × 11.25 in). A single
+  screen page is not a deck: its PDF keeps 1 pixel = 1 point unless `dpi` is given.
 - Documents with bleed get a TrimBox and BleedBox. The file is byte-for-byte deterministic: the
   same document always produces the same PDF.
-
-Single-page documents keep their existing PDF export unless pages or `--pdf-content` are given.
 
 ## PowerPoint
 
@@ -116,14 +125,34 @@ slides) that opens in PowerPoint, Keynote, Google Slides and LibreOffice:
 - Rectangles, rounded rectangles, ellipses and lines become preset shapes; polygons, stars and
   paths become custom geometry; solid and linear/radial gradient fills and outlines carry over.
   Plain groups become groups.
+- A [chart](charts.md) becomes a native chart with its data table embedded, so *Edit Data* works.
+  A rotated or flipped chart is exported as its shapes, and the report lists each chart under `charts`.
 - Image layers become pictures. Layers PowerPoint cannot draw the same way become pictures of
   exactly what Vixl renders and are listed under `raster_fallbacks`.
 - Master layers are drawn on each slide (as ordinary shapes, so every slide matches the
   render). Speaker notes become the slide notes; transitions carry over.
 - Slide size: canvases with a `dpi` keep their physical size; screen canvases become 7.5 inches
-  tall (PowerPoint's standard height), so 1920×1080 is the usual 13.33 × 7.5 in 16:9 slide.
-- Fonts are referenced by family name and listed under `fonts` in the result: install the same
-  fonts wherever the deck is presented (PowerPoint substitutes missing ones).
+  tall (PowerPoint's standard height), so 1920×1080 is the usual 13.33 × 7.5 in 16:9 slide. The
+  PDF of the same deck has the same page size; `dpi` overrides both (see [PDF](#pdf)).
+- **Fonts are referenced by family name, not embedded.** PowerPoint embeds fonts as Embedded
+  OpenType parts (`ppt/fonts/*.fntdata`); only PowerPoint itself can confirm such a part is
+  acceptable, and a malformed one makes it offer to repair the file, so Vixl does not write them.
+  The result lists every family under `fonts` and, for each one that is not a font every Office
+  installation has (Arial, Calibri, Times New Roman …), a `warnings` entry and the family under
+  `fonts_not_embedded`: install those fonts wherever the deck is opened or presented (PowerPoint,
+  Keynote and Google Slides otherwise substitute another font and the layout shifts), or share the
+  PDF, which embeds its fonts. In PowerPoint, *File → Options → Save → Embed fonts in the file*
+  embeds them once they are installed.
+
+## HTML presentation
+
+`export deck.html` writes the deck as a single web page that presents with no server or network:
+vector slides scaled to the window, keyboard, click, swipe and `#3` navigation, an overview grid,
+the pages' transitions, one slide per printed page, and a speaker view (notes, next slide, timer)
+in a second window. Hidden pages are left out; `--pages` picks pages, `--presenter-theme`,
+`--slide-images png`, `--start-slide` and `--no-notes` adjust it, and `--no-presenter` gives the
+old single-image page back. Speaker notes are inside the file, so export with `--no-notes` for the
+copy you share. See [presenter](presenter.md).
 
 ## Deck checks
 

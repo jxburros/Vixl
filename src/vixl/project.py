@@ -12,7 +12,7 @@ from pathlib import Path
 import re
 import zipfile
 
-from . import __version__
+from . import __version__, calls
 from .assets import decode, read_bounded
 from .errors import VixlError, require
 from .history import diff, patch
@@ -163,8 +163,11 @@ class Project:
         layers = resolved_layers(self)
         resolved = resolve_layout(self, layers=layers)
         children, memo = child_index(layers), {}
+        shown = {item["id"]: item["visible"] for item in layers}
         for layer in state["layers"]:
             box = layer["resolved_bounds"] = resolved[layer["id"]]
+            if layer["visible"] and not shown[layer["id"]]:
+                layer["collapsed"] = True  # Hidden by hide_if_empty or an empty stack, not by the user.
             left, top, right, bottom = extent(layer, resolved, children, memo)
             left, top = math.floor(left + 1e-6), math.floor(top + 1e-6)
             drawn = (left, top, math.ceil(right - 1e-6) - left, math.ceil(bottom - 1e-6) - top)
@@ -180,6 +183,10 @@ class Project:
             from .forms import summary as field_summary
 
             state["fields"] = field_summary(self)
+        from .links import link_layers, status as link_status
+
+        if link_layers(self.state):
+            state["links"] = link_status(self)
         return {
             **state,
             "version": __version__,
@@ -282,11 +289,13 @@ class Project:
         )
 
     def apply(self, operations, *, dry_run=False, detail="full", check=None):
-        require(detail in ("compact", "full"), "Unknown response detail")
+        require(detail in ("brief", "compact", "full"), "Unknown response detail; use brief, compact or full")
         from .operations import execute
 
         if isinstance(operations, dict):
-            operations = operations.get("operations", [operations])
+            # A {"operations": [...]} wrapper; one operation may carry its own list (frames-edit).
+            single = "type" in operations or "operation" in operations
+            operations = [operations] if single else operations.get("operations", [operations])
         require(isinstance(operations, list) and operations, "Expected a nonempty list of operations")
         require(
             len(operations) <= self.limits.max_operations,
@@ -309,8 +318,14 @@ class Project:
         operations = validated
         candidate = self.clone()
         candidate._resource_budget = self.limits.max_operations - len(operations)
+        from . import notices
+
+        notices.start(candidate)
+        candidate._reports = {}  # What operations such as edit-layers and adapt-layout report back.
         before = candidate.inspect()
         for index, operation in enumerate(operations):
+            calls.check_cancelled()  # A cancelled batch leaves the document untouched: nothing is committed yet.
+            calls.progress(index, len(operations), operation["type"])
             try:
                 if "page" in operation and operation["type"] != "page":
                     from .pages import select
@@ -332,6 +347,16 @@ class Project:
             except (KeyError, TypeError, ValueError, OverflowError) as exc:
                 error = VixlError("invalid_operation", f"Malformed operation: {exc}")
                 raise located(error, index, operation, len(operations)) from exc
+        calls.progress(len(operations), len(operations), "checking")
+        if candidate.state.get("diagrams"):
+            from .diagrams import refresh as refresh_diagrams
+
+            refresh_diagrams(candidate)
+        reflowed = []
+        if candidate.state.get("flows"):
+            from .textflow import refresh as refresh_flows
+
+            reflowed = refresh_flows(candidate)
         from .validation import check_state
 
         try:
@@ -342,16 +367,18 @@ class Project:
                 raise located(exc, index, operations[index], len(operations)) from exc
             raise
         candidate.__dict__.pop("_resource_budget", None)
+        warned, interpreted = notices.finish(candidate)
+        reports = candidate.__dict__.pop("_reports", {})
         after = candidate.inspect()  # Also resolves constraints, rejecting cycles atomically.
         changes = {
             key: {"before": before.get(key), "after": after.get(key)}
             for key in candidate.state
             if before.get(key) != after.get(key)
         }
-        if detail == "compact":
-            from .changes import compact_changes
+        if detail in ("brief", "compact"):
+            from .changes import brief_changes, compact_changes
 
-            changes = compact_changes(before, after)
+            changes = (brief_changes if detail == "brief" else compact_changes)(before, after)
         if not dry_run:
             if candidate.transaction is not None:
                 candidate.transaction["operations"].extend(deepcopy(operations))
@@ -361,7 +388,24 @@ class Project:
         result = {"success": True, "dry_run": dry_run, "operations": len(operations), "changes": changes}
         if any(op["type"] == "layout-apply" for op in operations):
             result["layout"] = deepcopy(candidate.state.get("layout", {}))
+            if detail == "brief":
+                for key in ("layers", "principles"):
+                    result["layout"].pop(key, None)
             result["unfilled_slots"] = list(dict.fromkeys(b["slot"] for b in result["layout"].get("blanks", [])))
+            from .layouts import next_steps
+
+            if result["unfilled_slots"]:
+                result["next_steps"] = next_steps(candidate)
+        if any(op["type"].startswith("diagram") for op in operations):
+            from .diagrams import report as diagram_report
+
+            result["diagram"] = diagram_report(candidate, operations)
+        if candidate.state.get("flows") and (reflowed or any(op["type"] == "text-flow" for op in operations)):
+            from .textflow import report as flow_report, warnings as flow_warnings
+
+            result["text_flow"] = flow_report(candidate, operations, reflowed)
+            if flow_warnings(candidate, result["text_flow"]):
+                result.setdefault("warnings", []).extend(flow_warnings(candidate, result["text_flow"]))
         if any(op["type"] == "paint" for op in operations):
             from .brushes import stroke_diagnostics
             from .render import layer_image, resolve_layout
@@ -372,6 +416,13 @@ class Project:
                                for layer in painted]
             if any(not item["visible_pixels"] for item in result["paint"]):
                 result["warnings"] = ["Paint has no visible pixels; check --space canvas versus --space layer and resolved bounds."]
+        from .advisories import advise
+
+        warnings = [*warned, *reports.pop("warnings", []), *advise(candidate, before, after, operations)]
+        if warnings:
+            result["warnings"] = [*result.get("warnings", []), *warnings]
+        notes = [*notes, *interpreted, *reports.pop("normalized", [])]
+        result.update(reports)
         if notes:
             result["normalized"] = notes
         return result

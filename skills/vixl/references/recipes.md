@@ -33,6 +33,7 @@ YouTube add `avoid=[["85%","85%","15%","15%"]]` for the timestamp), then
 ```json
 [
   {"type":"select","shape":"none"},
+  {"type":"denoise","target":"photo","luminance":50,"chroma":60},
   {"type":"auto-tone","target":"photo"},
   {"type":"contrast","target":"photo","amount":8},
   {"type":"saturation","target":"photo","amount":-5},
@@ -41,7 +42,7 @@ YouTube add `avoid=[["85%","85%","15%","15%"]]` for the timestamp), then
 ]
 ```
 
-Tweak later with `effect-set` (`effect` = index or `fx_` ID from `inspect`), toggle with
+`denoise` is a real edge-preserving denoise (non-local means), not a blur: use it for grain and colour noise before sharpening, and keep `search` at 3 for very large photos. Tweak later with `effect-set` (`effect` = index or `fx_` ID from `inspect`), toggle with
 `effect-disable`. Save the stack as a preset (`preset-save`) and reuse it (`preset-apply`) — or for
 a folder: `vixl batch './in/*.jpg' --run cleanup.vixlscript --output ./out`.
 
@@ -139,6 +140,22 @@ Inspect as text with `vixl_pixels_inspect("coin")`; preview `vixl_animation_prev
 export `vixl_export_animation(path="coin.gif", format="gif", scale=8)` or `format="sheet"` for a game
 engine (writes `coin.png` + `coin.json`). Static enlargements: `sampling="nearest"`.
 
+Several animations in one document: save every pose with `frame-save`, then give each cycle its own
+subset, order and timing, and export them separately. Recolour all poses at once with `frames-edit`
+(add `"scene": true` to keep the working scene in step so the next `frame-save` stays consistent):
+
+```json
+[
+  {"type":"animation-set","name":"idle","order":["idle1","idle2"]},
+  {"type":"animation-set","name":"walk","order":["walk1","walk2","walk3","walk2"],"duration":120},
+  {"type":"frames-edit","scene":true,"operations":[
+    {"type":"pixel-palette","target":"upper","colors":{"Y":"#d93a2b"}}]}
+]
+```
+
+`vixl_export_animation(path="keeper-walk.gif", animation="walk", scale=8)` (likewise `.webp`/`.mp4`), and
+`format="sheet"` once for a sprite sheet whose JSON lists every frame rectangle plus the animations.
+
 ## Explore alternatives safely
 
 ```text
@@ -226,3 +243,32 @@ vixl_operations_apply(operations=[
 vixl_timeline_preview(count=8)
 vixl_export_timeline(path="post.mp4")          # needs ffmpeg; otherwise post.webp or post.gif
 ```
+
+
+## Character, scene and mandala (no text layout)
+
+Open brief, no copy to set: ask `vixl_guide(brief="a mascot for a coffee brand")` first. It returns the approach,
+operations, looks and a runnable example for the kind of work (character, scene, pattern, mandala, icon, logo …).
+
+```json
+{"operations":[
+  {"type":"shape","shape":"ellipse","name":"body","x":140,"y":160,"width":240,"height":260,"fill":"#ffd23f"},
+  {"type":"shape","shape":"ellipse","name":"eye-left","x":200,"y":250,"width":34,"height":44,"fill":"#222"},
+  {"type":"shape","shape":"ellipse","name":"eye-right","x":286,"y":250,"width":34,"height":44,"fill":"#222"},
+  {"type":"group","name":"mascot","targets":["body","eye-left","eye-right"]},
+  {"type":"look","target":"mascot","look":"soft-shadow"}
+]}
+```
+
+A mandala is one petal and `radial-repeat`, then a glow:
+
+```json
+{"operations":[
+  {"type":"shape","shape":"ellipse","name":"petal","x":380,"y":120,"width":40,"height":150,"fill":"#7c3aed"},
+  {"type":"radial-repeat","target":"petal","count":12,"cx":"50%","cy":"50%","mirror":true,"name":"ring"},
+  {"type":"look","target":"ring","look":"glow","color":"#c4b5fd"}
+]}
+```
+
+A scene stacks a gradient sky, a glowing sun, hills (`allow_crop` for the bleed) and an `organic` tree, then
+`look grain`. Tag a style with `vixl_styles(action="apply", name="retro-futurism")` and run `check --checks style`.

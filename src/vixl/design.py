@@ -418,7 +418,8 @@ def validate_gradient(data, state):
         require(isinstance(stops, list) and 2 <= len(stops) <= 64, "Gradients require 2–64 stops")
         last = -1
         for stop in stops:
-            require(isinstance(stop, dict) and set(stop) == {"offset", "color"}, "Invalid gradient stop")
+            require(isinstance(stop, dict) and set(stop) == {"offset", "color"},
+                    f"Invalid gradient stop {stop!r}: each stop is exactly {{offset: 0–1, color}}", field="stops")
             finite(stop["offset"], "stop offset", 0, 1)
             require(stop["offset"] > last, "Gradient offsets must strictly increase")
             last = stop["offset"]
@@ -545,6 +546,11 @@ def validate_design(project, state):
     def check_layer(layer, depth=0):
         require(depth <= 16, "Design nesting exceeds 16 levels", "resource_limit")
         kind = layer["type"]
+        for record in ("irregular", "tear"):
+            if record in layer:
+                import json
+                require(isinstance(layer[record], dict) and len(json.dumps(layer[record])) <= 1_000_000,
+                        f"Invalid {record} record", "invalid_project")
         if kind == "shape":
             require(layer["shape"] in SHAPES, "Invalid shape")
             if layer["shape"] == "path":
@@ -555,13 +561,21 @@ def validate_design(project, state):
             finite(layer.get("radius", 0), "radius", 0, 16384)
             finite(layer.get("stroke_width", 1), "stroke width", 0, 1024)
             require(layer.get("line_cap", "butt") in ("butt", "round", "square"), "line_cap must be butt, round or square")
+            from .trim import validate_trim
+
+            validate_trim(layer)
             if "organic" in layer:
                 import json
                 require(isinstance(layer["organic"], dict) and len(json.dumps(layer["organic"])) <= 131072,
                         "Invalid organic recipe", "invalid_project")
             sides = layer.get("sides", 5)
             require(isinstance(sides, int) and 3 <= sides <= 128, "Polygons/stars require 3–128 sides")
-            finite(layer.get("inner_radius", 0.5), "inner radius", 0.01, 1)
+            if layer["shape"] == "arc":
+                from .wedge import check_arc
+
+                check_arc(layer)
+            else:
+                finite(layer.get("inner_radius", 0.5), "inner radius", 0.01, 1)
         if kind == "gradient":
             validate_gradient(layer, state)
         if kind == "frame":
@@ -587,6 +601,10 @@ def validate_design(project, state):
                     layer[category + "_style"] in state.get(category + "_styles", {}),
                     "Missing named text style",
                 )
+        if "stack" in layer or "hide_if_empty" in layer:
+            from .stacks import validate_layer
+
+            validate_layer(layer)
         for key in ("fill", "color", "stroke", "stroke_color"):
             if key in layer:
                 color(resolve_color(layer[key], state))

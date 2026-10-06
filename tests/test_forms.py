@@ -248,7 +248,11 @@ def test_fillable_pdf_structure():
     assert rect == pytest.approx([54.0, 792 - (580 + 125) * 0.24, (225 + 2100) * 0.24, 792 - 580 * 0.24], abs=0.01)
     keys = set()
     walk(reader.trailer, set(), keys)
-    assert not keys & {"/A", "/AA", "/OpenAction", "/JS", "/JavaScript", "/URI", "/SubmitForm", "/Launch"}
+    # The only actions are the validate script of the one field with a rule (the email format).
+    assert not keys & {"/A", "/OpenAction", "/URI", "/SubmitForm", "/Launch"}
+    scripted = [a["/T"] for a in annots if "/AA" in a]
+    assert scripted == ["email"] and list(annots[1]["/AA"]) == ["/V"]
+    assert all(page["/Tabs"] == "/S" for page in reader.pages)
 
 
 def test_hostile_strings_round_trip():

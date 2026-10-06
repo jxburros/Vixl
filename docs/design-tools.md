@@ -19,11 +19,65 @@ vixl clip stripes sun
 
 The stripe stays one editable layer. Repeat counts include the original; `dx/dy` are nonnegative offsets between copies and `dw/dh` change each copy's size. `repeat-blend stripe --count 16 --dy 37 --end '{"height":21,"fill":"#4853a4"}'` interpolates size and RGBA color to the last copy. Reapplying repeat replaces its settings; `--count 1` leaves only the original. Counts are bounded to 512 and all resulting dimensions are checked before allocation.
 
-Shapes support `rectangle`, `rounded-rectangle`, `ellipse`, `polygon`, `star`, and `line`; options include `--fill`, `--stroke`, `--stroke-width`, `--radius`, `--sides`, and star `--inner-radius` (0.01–1). Geometry is retained and redrawn at the layer's current size with bounded antialiasing. Version 0.11.0 adds named shape shortcuts and editable single-contour Bézier paths, plus SVG export of simple geometry. See [design resources and vector export](agent-resources.md) for syntax and raster fallback limits.
+Shapes support `rectangle`, `rounded-rectangle`, `ellipse`, `polygon`, `star`, `arc`, and `line`; `vixl shape --target NAME --fill COLOR` (JSON `{"type":"shape","target":"NAME",…}`) changes the fill, stroke or geometry of an existing shape in place, keeping its layer ID; options include `--fill`, `--stroke`, `--stroke-width`, `--line-cap`, `--trim-start`/`--trim-end` (draw only part of the stroke, 0–100 %, animatable: see [Drawing a line on](brushes-and-animation.md#drawing-a-line-on)), `--radius`, `--sides`, and star `--inner-radius` (0.01–1). Geometry is retained and redrawn at the layer's current size with bounded antialiasing. Version 0.11.0 adds named shape shortcuts and editable single-contour Bézier paths, plus SVG export of simple geometry. See [design resources and vector export](agent-resources.md) for syntax and raster fallback limits.
+
+### Arcs, pie wedges and donut segments
+
+`shape: "arc"` draws a slice of the ellipse that fills the layer box. `start_angle` and `end_angle`
+are degrees, 0 at 3 o'clock and growing clockwise (as SVG and gradient angles do), so -90 is 12
+o'clock; the wedge runs clockwise from start to end, an `end_angle` below the start wraps around,
+and 360° or more past the start is the full disc or ring (the default when you give no angles).
+`inner_radius` (0–0.99, a fraction of the outer radius, default 0) cuts the hole: 0 is a pie wedge,
+0.6 a donut segment. Wedges that share one box and differ only in their angles make a pie or donut
+chart:
+
+```bash
+vixl shape arc --name flat-white --width 300 --height 300 --x 50 --y 50 --start-angle -90 --end-angle 70.6 --fill '#14263b'
+vixl shape arc --name drip --width 300 --height 300 --x 50 --y 50 --start-angle 70.6 --end-angle 192 --inner-radius 0.55 --fill '#f2a541'
+```
+
+Each wedge is one editable layer; a visible stroke is drawn inside the box, so strokes of
+neighbouring wedges meet cleanly. A non-square box gives elliptical wedges. SVG, vector PDF
+(`pdf_content: vector`, the default for paged documents) and PowerPoint exports write native curves
+(no arc commands, no raster), and the spellings `pie`, `wedge`, `donut`, `ring` and `sector` are
+accepted for `shape` (`donut`/`ring` start with an inner radius of 0.6/0.8).
+`vixl.wedge.wedge_path(cx, cy, radius, start, end, inner=0, aspect=1)` returns the same outline as
+SVG path data for code that draws its own wedges, such as chart layers.
 
 Groups preserve member stacking order and use local child coordinates. Moving, hiding, masking, styling, or changing the opacity of a group affects its combined contents once. Groups nest to 16 dependency levels and duplicate with independent child IDs; edits address children by their existing names or IDs. A group's layout box is the union of member bounds at creation; constraints, alignment, `resize` and `canvas` inside the group use that box. Groups do not clip: members that later move, grow or rotate past the box (an animated limb, a resized sprite) still draw, and scale, flip and rotate with the group. `inspect` adds `drawn_bounds` to a layer that draws past its box. Resizing transforms the combined group raster; a group holding only pixel layers resamples nearest-neighbor, so scaled sprites stay crisp. Constraints between layers and clipping references must stay among siblings; `canvas` inside a group means the group's local content box. Grouping nonadjacent layers places the group at the highest selected slot.
 
 `clip TARGET BASE` multiplies TARGET's rendered alpha by the sibling BASE's alpha. It follows base transforms and masks, works on groups, and rejects cycles. The base remains an ordinary visible layer. `clip TARGET --release` removes the relationship. `ungroup NAME` restores local members to their parent; reset group appearance and transforms first when ungrouping would discard those settings. `remove GROUP` removes its descendants. Reordering always stays among siblings.
+
+## Examples: gradients, glows, shadows and radial repeats
+
+Shapes take a flat `fill`. Gradients, glows and shadows are layer styles or looks on the same layer, so one shape stays one
+editable layer. `vixl_operation_schema(types=[...])` returns these (and more) as `examples` next to each operation's fields.
+
+```json
+{"type":"gradient","name":"sky","start":"#1e3a8a","end":"#7dd3fc","direction":"vertical"}
+{"type":"gradient","name":"sunset","direction":"angled","angle":35,"stops":[{"offset":0,"color":"#f97316"},{"offset":0.55,"color":"#db2777"},{"offset":1,"color":"#4c1d95"}]}
+{"type":"gradient","name":"glow-disc","width":400,"height":400,"start":"#fde68a","end":"#00000000","direction":"radial"}
+{"type":"layer-style","target":"card","name":"gradient-overlay","settings":{"start":"#6366f1","end":"#ec4899","direction":"angled","angle":45}}
+{"type":"layer-style","target":"badge","name":"outer-glow","settings":{"color":"#fde047","blur":18,"opacity":0.9}}
+{"type":"layer-style","target":"card","name":"drop-shadow","settings":{"color":"#00000066","dx":0,"dy":12,"blur":24}}
+{"type":"radial-repeat","target":"petal","count":12,"cx":"50%","cy":"50%","mirror":true,"name":"mandala"}
+```
+
+`look` wraps the common finishes in one operation (`{"type":"look","target":"badge","look":"glow"}`); see [looks](looks.md).
+
+## Radial repeat
+
+`repeat` steps a layer along a line. `radial-repeat` turns it about a point: `count` copies spread over `sweep` degrees
+(default 360) around `cx`, `cy` (pixels, `"50%"` or `"center"`; default the canvas, or the parent group, center), each turned
+to face outward, starting at `start_angle`. `mirror: true` adds a reflection of every copy across the vertical axis through
+the center (the symmetry of a kaleidoscope: `count` 6 makes 12 copies). Copies are ordinary layers (turned about their own
+centers and moved onto the circle) inside one group named `name` (default `<layer>-radial`); `group: false` leaves them
+loose. At most 360 copies including mirrors. The group records its `radial` settings.
+
+```bash
+vixl shape ellipse --name petal --x 380 --y 120 --width 40 --height 150 --fill '#7c3aed'
+vixl radial-repeat petal --count 12 --cx 50% --cy 50% --mirror --name rosette
+```
 
 ## Attached layer styles
 
@@ -34,6 +88,9 @@ vixl layer-style logo outer-glow --settings '{"color":"#80cfff","blur":12}'
 vixl layer-style logo color-overlay --settings '{"color":"@brand"}'
 vixl layer-style title drop-shadow --remove
 ```
+
+Looks (`look`) are named recipes over these styles and the effect stack; a layer remembers which looks it carries so that
+`remove` takes one off without touching hand-made styles.
 
 Styles are editable settings, one per kind, applied after effects and masks. `enabled` and `opacity` are shared settings. Shadow, glow, and outer stroke sit behind the content; color and gradient overlays recolor it while preserving alpha. Overlays use the visible silhouette's bounding box. Group/layer opacity is applied to the styled result, then it is composited with the selected blend mode. Shadows and glows extend past the layer's geometric bounds and past a parent group's box. Inspection/alignment report geometry bounds; `inspect` adds `drawn_bounds` when styles, blur or group members reach further. Rasterizing a styled or externally clipped layer requires removing those attachments first.
 
@@ -99,6 +156,17 @@ CSV requires unique headers and at least one complete row. Each row becomes rend
 
 Python exposes `project.render(artboard=..., comp=..., variables=...)`, `project.render_data(csv_path, directory, ...)`, and `project.export_screens(directory, scales=(1, 2), ...)`. REST POST `/render` and MCP previews accept `artboard` and `comp`; local-directory batch exports remain CLI/Python operations.
 
+## Empty content and stacks
+
+A template filled from data meets empty fields: a badge row with no company, a card with no subtitle. Fixed text frames leave a hole where the empty line was. Two features let the layout react instead:
+
+- **`hide_if_empty`** on a text layer (`text`, `text-set`, `vixl text add --hide-if-empty`, MCP `vixl_text_add`): while the text is empty or blank after `${variable}` substitution, the layer is not drawn, not checked, not exported and takes no space in a stack. `inspect` marks it `collapsed: true`; the layer and its settings stay, so a later non-empty value brings it back.
+- **`stack`** turns a group into an auto-layout column or row. `{"type":"stack","name":"names","targets":["first","last","company"],"direction":"vertical","gap":20,"align":"center","justify":"center","width":1000,"height":400}` groups the layers and lays them out in the group's box; `{"type":"stack","target":"names","gap":12}` changes an existing stack. `direction` is `vertical` (default) or `horizontal`; `gap` and `padding` are pixels; `align` places members across the stack and `justify` along it (`start`, `center` or `end`); `width`/`height` set the box (pixels or `N%`). Members are laid out in document order. Members that are hidden (`hide`) or collapsed by `hide_if_empty` take no space, so the others reflow and, with `justify: "center"`, stay centred. A stack with `hide_if_empty: true` collapses when all its members do, so stacks nest. `stack` with `remove: true` releases the members at their current positions.
+
+Stacks are resolved whenever the document is laid out (render, export, check, `inspect`), so `render --data rows.csv`, `--set company=` and export-time `variables` re-centre each row; only the settings are stored. A stack positions its members, so `move`, `align`, `distribute`, `constrain` and `unconstrain` on a member fail with `stack_managed` and say what to use; resize and reorder members, or move the stack. A group's box is fixed (members may overflow it), and members are positioned individually, so put overlapping artwork (a pill behind its label) in a sub-group and stack the sub-group.
+
+Template containers stay static: `container-reflow` and the container check skip hidden and empty members, so hiding one and reflowing closes the gap, and container placement leaves no gap for an empty `hide_if_empty` member. For a container that follows variables at export time, add a `stack` to it (set its `padding`/`gap` to the container's rules); the stack then replaces the container's layout rule.
+
 ## Measuring the rendered image
 
 ```bash
@@ -160,6 +228,8 @@ Text boxes wrap paragraphs and oversized words; `fit` shrinks from the configure
 Guides are named absolute x/y positions used in constraint expressions such as `guide:left-margin.left+8`. Angled lines, rays, points, circles and curves, generated grid systems (thirds, golden, armature, polar, isometric, perspective …), `place` and `snap` are described in [guides](guides.md). Grids generate guides `NAME-x1-start`, `NAME-x1-end`, `NAME-y1-start`, etc.; redefining the grid replaces its generated guides. Guides/grids are document metadata, never painted into output, and remain absolute when the canvas changes.
 
 Pathfinder combines procedural shape silhouettes by union, subtraction in target order, or intersection. It retains procedural operand snapshots for resizing, hides the originals, and uses the first operand's fill. It does not rewrite editable vector paths or track subsequent edits to the original operands.
+
+**In SVG, PDF and PowerPoint a pathfinder layer is real geometry**: one compound path (a contour for the outline and one for each hole, wound in opposite directions and never overlapping, so even-odd and nonzero fills agree), computed exactly from the operands' lines and Bézier curves. Curves stay curves, edges where operands touch or coincide are handled, and the file renders the same in browsers, Inkscape, resvg, PDF viewers and PowerPoint. No alpha masks are written. A pathfinder whose pixels are not just the combined coverage of its operands' outlines (a stroked, translucent, line, masked or effect/style-carrying operand, curves that overlap along part of their length, or more than 1200 segments) cannot be geometry: the SVG draws it as an image and lists the reason under `raster_fallbacks`, `svg_policy="strict"` rejects the export naming the layer and the reason, and PDF and PowerPoint draw the layer as an image with the same reason. Draw a stroke as its own layer, or use fills only, to keep a boolean as geometry.
 
 Symbols refer to a drawable master by immutable ID. Instances follow the master's content, styles and effects, with independent placement, size, opacity, blend, visibility and transforms. Group/adjustment/instance masters are excluded. Removing a master still used by instances is rejected atomically; update the master layer normally to refresh its instances.
 

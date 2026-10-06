@@ -32,9 +32,15 @@ Layers:    add FILE --name NAME, solid --color COLOR, gradient --start A --end B
            remove, rename, duplicate, hide, show, raise, lower, top, bottom, reorder
 Organic:   organics (presets, generators, rules), organic PRESET [--set petals=8] [--color petals=#fff] [--seed N],
            organic --parts JSON, organic --target NAME --seed N (regrow)
+Imperfect: irregular TARGET --seed N [--strength subtle|natural|rough] (wobble, stroke weight, color drift, micro placement),
+           tear TARGET --seed N [--edges bottom] (torn edge as a mask; --as path for layers), --remove undoes either
+Charts:    chart bar|stacked-bar|percent-bar|horizontal-bar|line|area|pie|donut --name N (--csv FILE | --categories JSON --series JSON)
+           [--title T] [--legend bottom] [--value-labels true] [--number-format '#,##0'], chart line --target N (restyle, resize, change kind),
+           chart-data --target N --set DEC=3330 | --append 'JAN=1,2' | --remove-category C | --reload; exports to .pptx as a native chart
 Design:    pen, shape, shape-place, container-place, container-swap, container-reflow, group, ungroup, clip, layer-style, distribute, style-define,
            style-apply, swatch, artboard, frame, replace-contents, repeat, repeat-blend,
-           adjustment, lut, lookup, comp-save, comp-apply, text-layout, pathfinder, symbol, symbol-instance
+           adjustment, lut, lookup, comp-save, comp-apply, text-layout, pathfinder, symbol, symbol-instance,
+           stack GROUP [--direction vertical|horizontal] [--gap N] [--align A] [--justify J] [--hide-if-empty] (auto-layout)
 Guides:    guide NAME x|y POS | guide NAME --kind line|ray|segment|point|circle|path …, guides,
            grid NAME [--kind columns|baseline|thirds|golden|armature|golden-spiral|polar|isometric|triangular|hex|oblique|perspective],
            place LAYER… --guide NAME [--at F | --start F --end F | --spacing PX | --with GUIDE] [--orient tangent],
@@ -42,7 +48,12 @@ Guides:    guide NAME x|y POS | guide NAME --kind line|ray|segment|point|circle|
 Pages:     page add NAME [--master M] [--after P] [--duplicate P] [--notes TEXT], page select|remove P, page move P --index N,
            page set P [--rename N] [--notes TEXT] [--hidden] [--transition fade], master add NAME [--from P], pages,
            render --page 2 | --page all (contact sheet), export deck.pdf|deck.pptx [--pages 1-3,5] [--pdf-content raster],
+           export deck.html [--presenter-theme dark|light|auto] [--slide-images svg|png] [--start-slide N] [--no-notes],
            check --checks deck [--min-font 18] [--max-words 60]; any operation accepts "page": P
+Diagrams:  diagram-from-text "A -> B -> C" --name NAME [--layout layered|tree|radial|mindmap|grid] [--direction TB|LR] [--routing orthogonal|curved|straight],
+           diagram NAME --nodes JSON --edges JSON, diagram-set NAME [--text TEXT] [--nodes JSON] [--remove-nodes ID…] [--delete], check --checks diagram
+Text flow: text-flow create NAME --text TEXT --x N --y N --width N --height N [--columns 2 --gutter 24] [--keep-together --orphans 2 --widows 2],
+           text-flow add-frame|link|unlink|reflow|set|style|delete NAME …, check --checks flow
 Forms:     field add KEY --kind text|multiline|number|date|checkbox|radio|dropdown|signature --label TEXT [--required] …,
            field set LAYER …, field list, form settings [--tab-order reading|explicit] [--title T] [--lang en-US],
            check --checks form [--sample worst|rows.csv], render --out F --show-fields [--set KEY=VALUE],
@@ -50,6 +61,11 @@ Forms:     field add KEY --kind text|multiline|number|date|checkbox|radio|dropdo
 Drawings:  drawing import sketch.jpg --name house [--settings '{"ink": "original"}'], drawing clean|vectorize|straighten|smooth house,
            drawing fill house --points '[[x, y, "#fc0"]]', drawing stroke house --points '[[x, y], …]', drawing restyle house,
            drawing report house, drawing compare house --out c.png, check --checks drawing, ai drawing-color house --prompt TEXT
+Linked:    link FILE.vixl [--name N] [--width W] [--fit fill|fit|stretch] [--position top-left] [--crop X,Y,W,H] [--artboard A] [--page P]
+           [--set NAME=VALUE], link-set LAYER … (changes a link), link-refresh [LAYER], link-embed LAYER, links (each link: ok, stale or missing)
+Merge:     merge [TEMPLATE.vixl] --data rows.csv --out sheets.pdf [--sheet-document sheets.vixl] [--size letter] [--cols 2 --rows 3]
+           [--gutter 0.125] [--margin 0.5] [--bleed template|0.125] [--no-crop-marks] [--registration] [--slug TEXT] [--copies N]
+           [--dry-run] [--skip-invalid] [--unknown warn|error|ignore] [--replace], merge --rerun sheets.vixl [--data new.csv]
 Measure:   info, sample X Y, histogram [--region X Y W H], info --target TEXT,
            spacing --targets A B C --axis vertical [--expected N] [--tolerance N] [--check],
            spacing --around BODY --before HEADER --after FOOTER,
@@ -58,11 +74,14 @@ Measure:   info, sample X Y, histogram [--region X Y W H], info --target TEXT,
 Pixels:    pixel-art, pixel-draw, pixel-palette, pixels [LAYER],
            frame-save NAME [--duration MS], frame-apply NAME, frame-delete NAME,
            animation, animation-set --loop N --order FRAME FRAME,
-           export-animation --out FILE --format gif|apng|sheet [--scale N] [--sampling nearest|smooth] [--colors N]
+           animation-set --name walk --order FRAME FRAME [--duration MS | --durations MS MS] [--loop N] | --name walk --delete,
+           frames-edit --operations JSON [--animation NAME | --frames FRAME FRAME] [--scene],
+           export-animation --out FILE --format gif|apng|webp|mp4|webm|sheet [--animation NAME] [--scale N]
+                            [--sampling nearest|smooth] [--colors N] [--quality N]
 Editing:   move, resize, scale, rotate, pivot, flip, crop, opacity, blend, align,
            select-layer, select wand|lasso|path|rect|ellipse|color, mask, filter, effect, rasterize
 Effects:   brightness, contrast, saturation, hue, exposure, gamma, temperature,
-           tint, shadows, highlights, blur, sharpen, grayscale, invert,
+           tint, shadows, highlights, blur, sharpen, denoise, grayscale, invert,
            posterize, threshold, noise, grain, vignette, auto-tone, auto-color, auto-contrast
 Layout:    canvas resize SIZE, canvas size NAME [--landscape] [--bleed], canvas dpi N, constrain, unconstrain,
            variable set NAME VALUE
@@ -78,7 +97,14 @@ Resources: commands, shapes, sizes [--category print], palette list|show|add|app
 Type:      fonts [--category serif] [--mood M], font show FAMILY, font pairings [--mood M] [--for poster],
            font pairing NAME, font principles, font install FAMILY [--weight 700] [--role heading|body], font pair NAME|random,
            font use NAME --role heading|body, font list|import
+Finish:    look LAYER NAME [--color C] [--amount 0-1] [--remove]  (glow, neon, soft-shadow, hard-shadow, outline, gradient, grain,
+           paper, film, duotone, risograph, sketch, watercolor, halftone), looks (catalog),
+           radial-repeat LAYER --count N [--cx 50%] [--cy 50%] [--sweep 360] [--start-angle D] [--mirror] [--name N],
+           guide [BRIEF] (what to make: icons, characters, scenes, patterns … with the operations, layouts and looks that suit it)
+Styles:    styles [list [QUERY] | show NAME | apply NAME [--palette] | check [NAME]], style-set NAME… [--options JSON],
+           check --checks style [--style NAME…] (premade rules for swiss, brutalist, minimalist, art-deco …)
 Dice:      roll [--apply] [--set title=…] [--for poster] [--mood M] [--size NAME] [--seed N|random] [--lock palette=sage]
+           [--unfilled omit|blank]
 Color:     color [info] COLOR…, color convert COLOR --to oklch|cmyk|…, color harmony COLOR --scheme triadic,
            color scale COLOR, color mix A B, color contrast FG BG, color names QUERY,
            palette-generate NAME COLOR [--scheme scale|triadic|…], type-scale --base 16 --ratio golden
@@ -100,10 +126,10 @@ AI:        ask PROMPT [--apply], generate --prompt TEXT --provider NAME,
            select object LABEL --provider NAME, ai remove|content-aware-fill|select-subject
 Updates:   update [--check | --rollback], updates [on | off | status]
 Services:  serve | view [--host 127.0.0.1] [--port 8765], notes list|add|resolve
-           mcp [--workspace DIR] [--http] [--tools core|ai|compact] [--schema slim] [--planner]
+           mcp [--workspace DIR] [--http] [--tools core|ai|compact] [--schema slim] [--planner] [--require-document]
 Import:    import FILE.svg [--svg-mode editable|appearance|auto] | FILE.pdf [--page 1] [--dpi 144]
 
-Options: --project/-p FILE, --json, --allow-linked, --plugins, --max-pixels N, --detail compact|full, --version
+Options: --project/-p FILE, --json, --allow-linked, --plugins, --max-pixels N, --detail brief|compact|full, --version
 Use vixl commands --json for a complete inventory; vixl COMMAND --help works without a document. See docs/commands.md.
 """
 
@@ -190,7 +216,14 @@ def output_options(args, command):
     p.add_argument("--show-guides", action="store_true", help="Draw the document's guides over a raster render")
     p.add_argument("--page", help="Page name or number of a multi-page document; 'all' renders a contact sheet")
     p.add_argument("--pages", help="PDF/PowerPoint pages: numbers, ranges and names, e.g. 1-3,5,intro")
-    p.add_argument("--pdf-content", choices=["vector", "raster"], help="PDF pages as vector text and shapes, or images")
+    p.add_argument("--pdf-content", choices=["vector", "raster"], help="PDF pages as vector text and shapes (default, also CMYK) or one image per page")
+    p.add_argument("--presenter", action="store_true", default=None,
+                   help="HTML: a self-contained slide presentation (the default for multi-page documents)")
+    p.add_argument("--no-presenter", dest="presenter", action="store_false", help="HTML: one static image, not a presentation")
+    p.add_argument("--presenter-theme", choices=["dark", "light", "auto"], help="Presentation surround and controls")
+    p.add_argument("--slide-images", choices=["svg", "png"], help="Presentation slides as inline vectors (default) or PNGs")
+    p.add_argument("--start-slide", help="Presentation: slide number or page name shown first")
+    p.add_argument("--no-notes", action="store_true", help="Presentation: leave the speaker notes out of the file")
     p.add_argument("--columns", type=int, help="Contact sheet columns with --page all")
     p.add_argument("--fillable", action="store_true", help="PDF with fillable form fields")
     p.add_argument("--fill-mode", choices=["flatten", "editable"], default="flatten",
@@ -199,6 +232,15 @@ def output_options(args, command):
     p.add_argument("--alpha", choices=["auto", "keep", "flatten"], default="auto",
                    help="PNG/WEBP/TIFF/AVIF: RGB when opaque (auto), always RGBA (keep), or RGB on --background (flatten)")
     return p.parse_args(args)
+
+
+def presenter_options(a):
+    """``--presenter``/``--no-presenter`` and the presenter flags as the export's ``presenter`` option."""
+    options = {"theme": a.presenter_theme, "slide_images": a.slide_images,
+               "start": int(a.start_slide) if a.start_slide and a.start_slide.isdigit() else a.start_slide,
+               "notes": False if a.no_notes else None}
+    options = {key: value for key, value in options.items() if value is not None}
+    return a.presenter if options == {} or a.presenter is False else options
 
 
 def print_options(a, limits):
@@ -224,7 +266,7 @@ def dispatch(argv):
     global_parser.add_argument("--allow-linked", action="store_true")
     global_parser.add_argument("--plugins", action="store_true")
     global_parser.add_argument("--max-pixels", type=int, default=40_000_000)
-    global_parser.add_argument("--detail", choices=["compact", "full"], default="compact")
+    global_parser.add_argument("--detail", choices=["brief", "compact", "full"], default="compact")
     global_parser.add_argument("--version", action="store_true")
     global_parser.add_argument("--runtime-info", action="store_true")
     options, tokens = global_parser.parse_known_args(argv)
@@ -251,6 +293,9 @@ def dispatch(argv):
     if cmd == "workflow":
         from .workflows import cli
         return cli(args, options, limits), options.json
+    if cmd == "merge":
+        from .imposition import cli as merge_cli
+        return merge_cli(args, options, limits), options.json
     if cmd in ("open", "schema") and any(arg in ("--help", "-h") for arg in args):
         return command_help(cmd, args), options.json
     if cmd in ("commands", "shapes"):
@@ -281,11 +326,17 @@ def dispatch(argv):
                     | {"filter"}
                     | {"workflow"}
                     | set(
-                        "new session open save status inspect describe layers effects manifest dependencies reproduce schema check batch convert render export export-screens export-animation spacing pixels animation info sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert validate preset ai ask generate detect ocr serve view notes import mcp update updates commands shapes palette template guidance font fonts roll providers models color sizes layout layouts brushes organics easings timeline export-timeline timeline-sheet export-icons pages guides".split()
+                        "new session open save status inspect describe layers effects manifest dependencies reproduce schema check batch convert render export export-screens export-animation spacing pixels animation info sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert validate preset ai ask generate detect ocr serve view notes import mcp update updates commands shapes palette template guidance font fonts roll providers models color sizes layout layouts brushes organics easings timeline export-timeline timeline-sheet export-icons pages guides links merge styles looks guide".split()
                     )
                 )
             }
         ), options.json
+    if "--help" not in args and "-h" not in args and (
+        cmd in ("guide", "looks") or (cmd == "styles" and not (args and args[0] in ("apply", "check")))
+    ):
+        from .finishing_cli import standalone as finishing_standalone
+
+        return finishing_standalone(cmd, args), options.json
     # A roll preview reads the document --apply would use (its canvas and brand), so both pick
     # the same direction; without a document it rolls standalone.
     standalone_roll = cmd == "roll" and "--apply" not in args and not has_document(options.project)
@@ -444,6 +495,13 @@ def dispatch(argv):
             default=os.environ.get("VIXL_MCP_TOOLS", "all"),
             help="core: all editing tools; compact: 12 document/workflow tools; ai: provider-backed tools",
         )
+        p.add_argument(
+            "--require-document",
+            action="store_true",
+            default=None,
+            help="Every document tool call must pass document= (no shared active document); "
+            "also VIXL_REQUIRE_DOCUMENT=1",
+        )
         p.add_argument("--http", action="store_true", help="Serve Streamable HTTP at /mcp")
         p.add_argument("--host", default="127.0.0.1")
         p.add_argument("--port", type=int, default=8766)
@@ -451,7 +509,8 @@ def dispatch(argv):
         a = p.parse_args(args)
         # Explicit workspaces can start empty. Existing --project configurations still work.
         path = current_path(options.project) if options.project or not a.workspace else None
-        server = mcp_server(path, limits, workspace=a.workspace, schema=a.schema, planner=a.planner, tools=a.tools)
+        server = mcp_server(path, limits, workspace=a.workspace, schema=a.schema, planner=a.planner, tools=a.tools,
+                            require_document=a.require_document)
         if a.http:
             from .interfaces import serve_mcp
             serve_mcp(server, a.host, a.port, os.environ.get(a.token_env))
@@ -518,13 +577,17 @@ def command_help(cmd, args):
         "preset": "preset save|apply|show NAME [--set KEY=VALUE]",
         "fonts": "fonts [--category serif] [--role heading] [--mood elegant] [--query TEXT]",
         "view": "view [--host HOST] [--port PORT] [--token-env ENV] (serve and open live review)",
-        "roll": "roll [--apply] [--set title=TEXT] [--for poster] [--mood playful] [--size NAME|WxH] [--seed N|random] [--lock palette=sage]",
+        "roll": "roll [--apply] [--set title=TEXT] [--for poster] [--mood playful] [--size NAME|WxH] [--seed N|random] [--lock palette=sage] [--unfilled omit|blank]",
         "layout": "layout list | show NAME | preview NAME | apply NAME [--seed N|random] [--set title=TEXT] [--unfilled blank|omit] [--palette NAME] "
         "[--mode inherit|light|dark] [--predictable] [--type-scale golden] [--density airy|balanced|dense] [--align left|center|right] "
         "[--accent rule|bar|dot|block|outline|none] [--prefix P] [--replace]",
         "timeline": "timeline (inspect) | timeline set [--duration 3s] [--fps 30] [--loop N] [--clear]",
         "pages": "pages (list pages and masters of a multi-page document)",
+        "styles": "styles [list [QUERY] | show NAME] | styles apply NAME [--palette] | styles check [NAME…]",
+        "guide": "guide [BRIEF]  (e.g. guide a mascot for a coffee brand; guide operations)",
+        "looks": "looks  (the finishing looks; apply with look LAYER NAME)",
         "guides": "guides (list guides and grids)",
+        "links": "links (list the linked documents and their state: ok, stale, missing, cycle)",
     }
     if cmd in manual:
         return "Usage: vixl " + manual[cmd]
@@ -535,6 +598,10 @@ def command_help(cmd, args):
 def project_command(project, cmd, args, *, detail="compact"):
     from .validation import assert_rule, dependencies, validate
 
+    if cmd == "styles":
+        from .finishing_cli import bound as styles_bound
+
+        return styles_bound(project, args)
     if cmd == "roll":
         from .resource_cli import font_standalone
         return font_standalone(cmd, args, project), "--apply" in args
@@ -675,7 +742,7 @@ def project_command(project, cmd, args, *, detail="compact"):
         from .pages import parse_pages
 
         fmt = (a.format or Path(destination).suffix.lstrip(".")).upper()
-        if a.pages and fmt not in ("PDF", "PPTX"):
+        if a.pages and fmt not in ("PDF", "PPTX") and not (fmt in ("HTML", "HTM") and a.presenter is not False):
             # Raster and SVG pages export as numbered files: carousel.png → carousel-01.png …
             from .pages import find_page, page_list
 
@@ -712,6 +779,7 @@ def project_command(project, cmd, args, *, detail="compact"):
             values=values if (a.fillable or a.fill_mode == "editable") else None,
             pages=None if a.pages == "all" else parse_pages(a.pages),
             pdf_content=a.pdf_content,
+            presenter=presenter_options(a),
             report=report,
             **print_options(a, project.limits),
         )
@@ -748,8 +816,10 @@ def project_command(project, cmd, args, *, detail="compact"):
             "--checks",
             nargs="+",
             choices=["bounds", "overlap", "contrast", "safe_area", "legibility", "print", "color_vision", "content", "fonts", "blanks", "brand", "guides", "alignment",
-                     "deck", "title_position", "type_scale", "words", "min_font", "notes", "empty", "form", "drawing"],
+                     "deck", "title_position", "type_scale", "words", "min_font", "notes", "empty", "form", "drawing", "links", "style",
+                     "diagram", "flow"],
         )
+        p.add_argument("--style", nargs="+", help="style checks: evaluate this style (or styles) instead of the document's tag")
         p.add_argument("--page", help="Check one page of a multi-page document (default: the active page)")
         p.add_argument("--pages", help="deck checks: the pages to check, e.g. 1-3,5 (default: every shown page)")
         p.add_argument("--min-font", type=float, help="deck checks: smallest projected text in points (default 18)")
@@ -798,14 +868,16 @@ def project_command(project, cmd, args, *, detail="compact"):
     if cmd == "export-animation":
         p = Parser(prog="vixl export-animation")
         p.add_argument("--out", required=True)
-        p.add_argument("--format", choices=["gif", "apng", "sheet"])
-        p.add_argument("--scale", type=float, default=1, help="Integer 1–32 with nearest sampling; 0.05–32 with smooth")
+        p.add_argument("--format", choices=["gif", "apng", "webp", "mp4", "webm", "sheet"])
+        p.add_argument("--animation", help="Export this named animation instead of every saved frame")
+        p.add_argument("--scale", type=float, default=1.0, help="Integer 1–32 with nearest sampling; 0.05–32 with smooth")
         p.add_argument("--sampling", choices=["nearest", "smooth"], default="nearest")
         p.add_argument("--colors", type=int, default=256, help="GIF palette size 2–256")
+        p.add_argument("--quality", type=int, default=90, help="WebP (smooth) and MP4/WebM quality 1–100")
         p.add_argument("--columns", type=int)
         a = p.parse_args(args)
         scale = int(a.scale) if a.scale.is_integer() else a.scale
-        return project.export_animation(a.out, format=a.format, scale=scale, columns=a.columns, sampling=a.sampling, colors=a.colors), False
+        return project.export_animation(a.out, format=a.format, scale=scale, columns=a.columns, sampling=a.sampling, colors=a.colors, animation=a.animation, quality=a.quality), False
     if cmd == "export-screens":
         from .exports import export_screens
 

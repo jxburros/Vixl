@@ -34,16 +34,20 @@ STYLES = ("drop-shadow", "stroke", "outer-glow", "color-overlay", "gradient-over
 
 
 def schemas(add):
+    from .inplace import target_schema
     from .schema import S, N, B, POSITIVE_INT, COORD, SIZE, enum
 
     refs = {"type": "array", "items": S, "minItems": 1, "maxItems": 512, "uniqueItems": True}
     obj = {"type": "object"}
     geometry = {"name": S, "width": SIZE, "height": SIZE, "x": COORD, "y": COORD}
     board = {"name": S, "width": POSITIVE_INT, "height": POSITIVE_INT, "x": N, "y": N}
+    from .trim import schema as trim_schema
+
     add(
         "shape",
         {
             **geometry,
+            "target": target_schema("shape"),
             "shape": enum(*SHAPES),
             "path": S,
             "fill": S,
@@ -51,9 +55,21 @@ def schemas(add):
             "stroke_width": N,
             "radius": N,
             "sides": POSITIVE_INT,
-            "inner_radius": N,
+            "inner_radius": {
+                **N,
+                "description": "star: inner point radius 0.01–1; arc: hole radius 0 (pie wedge) to 0.99 (thin ring), as a fraction of the outer radius.",
+            },
+            "start_angle": {
+                **N,
+                "description": "arc: start angle in degrees, 0 at 3 o'clock, clockwise (-90 is 12 o'clock). Default 0.",
+            },
+            "end_angle": {
+                **N,
+                "description": "arc: end angle in degrees, clockwise from start_angle; 360 or more past it is the full circle/ring. Default start_angle + 360.",
+            },
+            **trim_schema(),
         },
-        ["shape"],
+        anyOf=[{"required": ["shape"]}, {"required": ["target"]}],
     )
     add("group", {"name": S, "targets": refs}, ["name", "targets"])
     add("ungroup")

@@ -25,10 +25,10 @@ record the Git commit when using a source checkout.
 
 | Goal | Examples and guides |
 | --- | --- |
-| Posters, social graphics and branded variants | [Campaign tutorial](docs/tutorials/campaign.md), [sizes/layouts](docs/sizes-and-layouts.md), [brands](docs/brands.md) |
-| Charts, diagrams and infographics | [Editable chart tutorial](docs/tutorials/charts.md), [design tools](docs/design-tools.md) |
-| Photo edits, drawings and painted artwork | [Filters](docs/artistic-filters.md), [drawing cleanup](docs/drawing.md), [brushes](docs/brushes-and-animation.md), [organic shapes](docs/organic.md) |
-| Presentations, carousels and booklets | [Forms and decks tutorial](docs/tutorials/forms-and-decks.md), [slides/pages](docs/slides.md), [rich text](docs/rich-text.md) |
+| Posters, social graphics and branded variants | [Campaign tutorial](docs/tutorials/campaign.md), [sizes/layouts](docs/sizes-and-layouts.md), [brands](docs/brands.md), [design styles](docs/styles.md), [finishing looks](docs/looks.md), [CSV merge to print sheets](docs/imposition.md), [linked documents](docs/linked-documents.md) |
+| Charts, diagrams and infographics | [Editable chart tutorial](docs/tutorials/charts.md), [data-bound charts](docs/charts.md), [flowcharts and diagrams](docs/diagrams.md), [design tools](docs/design-tools.md) |
+| Photo edits, drawings and painted artwork | [Filters](docs/artistic-filters.md), [drawing cleanup](docs/drawing.md), [brushes](docs/brushes-and-animation.md), [organic shapes](docs/organic.md), [irregularity and torn edges](docs/irregular.md) |
+| Presentations, carousels and booklets | [Forms and decks tutorial](docs/tutorials/forms-and-decks.md), [slides/pages](docs/slides.md), [HTML presenter](docs/presenter.md), [rich text](docs/rich-text.md), [text flow](docs/text-flow.md) |
 | Registration forms and filled copies | [Forms](docs/forms.md), including fillable PDFs and CSV-driven output |
 | Motion, sprites and lyric videos | [Motion tutorial](docs/tutorials/motion.md), [pixel animation](docs/pixel-animation-spacing.md), [lyric videos](docs/lyric-video.md) |
 | Checked production and collaboration | [Production workflows](docs/production.md), [studio](docs/studio.md), [agent resources](docs/agent-resources.md) |

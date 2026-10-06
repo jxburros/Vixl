@@ -3,6 +3,7 @@
 from copy import deepcopy
 from functools import lru_cache
 
+from .inplace import target_schema
 from .render import EFFECTS, BLENDS
 
 S = {"type": "string"}
@@ -19,6 +20,11 @@ SIZE = {
     "description": "Pixels or a percentage of the canvas/parent such as '25%'.",
 }
 COORD_FIELDS = ("x", "y", "width", "height")
+FONT = {
+    "type": "string",
+    "description": "Registered font name or role (heading, body); install with font install / font pair / font import. "
+    "File paths work only in the CLI and Python API, not over MCP or REST.",
+}
 
 
 def enum(*values):
@@ -65,10 +71,14 @@ def _operation_schema():
         },
         anyOf=[{"required": ["path"]}, {"required": ["asset"]}],
     )
-    add("solid", {"name": S, "width": SIZE, "height": SIZE, "color": S, "x": COORD, "y": COORD})
+    add(
+        "solid",
+        {"target": target_schema("solid"), "name": S, "width": SIZE, "height": SIZE, "color": S, "x": COORD, "y": COORD},
+    )
     add(
         "gradient",
         {
+            "target": target_schema("gradient"),
             "name": S,
             "width": SIZE,
             "height": SIZE,
@@ -82,7 +92,10 @@ def _operation_schema():
         },
     )
     add("palette-define", {"name": S, "colors": {"type": "array", "items": S, "minItems": 2, "maxItems": 256}}, ["name", "colors"])
-    add("palette-apply", {"name": S, "prefix": S, "roles": B, "policy": enum("strict", "accessible")}, ["name"])
+    from .palette_roles import role_schema
+
+    add("palette-apply", {"name": S, "prefix": S, "roles": {"anyOf": [B, role_schema()]}, "keep_order": B,
+                          "policy": enum("strict", "accessible")}, ["name"])
     add("template-apply", {"name": S, "variables": {"type": "object"}, "seed": {"type": ["integer", "string"]}}, ["name"])
     add("guidance", {"name": S, "text": S, "style": S, "delete": B}, ["name"])
     add("font-register", {"name": S, "asset": S, "role": S}, ["name"])
@@ -92,19 +105,40 @@ def _operation_schema():
         "color": S,
         "align": enum("left", "center", "right"),
         "spacing": {"type": "integer", "minimum": 0},
+        "hide_if_empty": {
+            "type": "boolean",
+            "description": "Do not draw the text (and take no space in a stack) while it is empty or blank "
+            "after ${variable} substitution.",
+        },
     }
     add(
         "text",
         {
             **text,
+            "target": target_schema("text"),
             "name": S,
-            "font": S,
+            "font": FONT,
             "x": COORD,
             "y": COORD,
         },
-        ["text"],
+        anyOf=[{"required": ["text"]}, {"required": ["target"]}],
     )
-    add("text-set", {**text, "font": S, "stroke_width": {"type": "integer", "minimum": 0}, "stroke_color": S})
+    add(
+        "text-set",
+        {
+            **text,
+            "text": {**S, "description": "New plain text for the whole layer. On rich text, lines and words are matched so "
+                     "lists, spacing and span styles carry over where they still apply (the result's warnings list what "
+                     "was dropped); use rich-text to rebuild formatted content."},
+            "color": {**S, "description": "Layer text color. Spans of rich text that set their own color keep it; "
+                      "use text-style to recolor those."},
+            "font": FONT,
+            "stroke_width": {"type": "integer", "minimum": 0},
+            "stroke_color": S,
+        },
+        description="Change a whole text layer: content, color, size, font, alignment, spacing or stroke. To style only "
+        "part of the text (a phrase, a character range, a paragraph, bold/italic/tracking) use text-style.",
+    )
     for kind in (
         "remove",
         "hide",
@@ -123,10 +157,24 @@ def _operation_schema():
     add("move", {"x": COORD, "y": COORD, "relative": B}, anyOf=[{"required": ["x"]}, {"required": ["y"]}])
     add(
         "resize",
-        {"width": SIZE, "height": SIZE},
+        {
+            "width": SIZE,
+            "height": SIZE,
+            "keep_aspect": {
+                "type": "boolean",
+                "description": "With only width or only height: true scales the other side to keep the aspect "
+                "ratio; false changes just the given side. Default: true for image (raster) layers, false for "
+                "everything else.",
+            },
+        },
         anyOf=[{"required": ["width"]}, {"required": ["height"]}],
     )
-    add("scale", {"value": {"type": "number", "exclusiveMinimum": 0}}, ["value"])
+    # A negative factor mirrors: value flips both axes, x or y just that one (scale x: -1 = flip horizontal).
+    scale = {"type": "number", "description": "Size factor, 0.001-100 (0.8 = 80%). Negative values mirror the layer on that axis."}
+    add("scale", {"value": {**scale, "description": "Size factor for both axes, 0.001-100 (0.8 = 80%). Negative mirrors both axes."},
+                  "x": {**scale, "description": "Horizontal factor, overriding value. Negative mirrors horizontally, like flip."},
+                  "y": {**scale, "description": "Vertical factor, overriding value. Negative mirrors vertically."}},
+        anyOf=[{"required": ["value"]}, {"required": ["x"]}, {"required": ["y"]}])
     add("rotate", {"value": N}, ["value"])
     # value: [x, y] fractions of the unrotated box (0.5, 0.5 = center) or an anchor such as "top-left".
     add("pivot", {"value": {"type": ["array", "string"], "items": N}, "units": enum("fraction", "px"), "clear": B})
@@ -226,6 +274,12 @@ def _operation_schema():
         "highlight_color": S,
         "black": N,
         "white": N,
+        "luminance": {"type": "number", "minimum": 0, "maximum": 100,
+                      "description": "denoise: luminance (grain) strength 0-100, relative to the noise measured in the image; default 50."},
+        "chroma": {"type": "number", "minimum": 0, "maximum": 100,
+                   "description": "denoise: colour-noise strength 0-100, smoothing blotches without bleeding across edges; default 50."},
+        "search": {"type": "integer", "minimum": 1, "maximum": 10,
+                   "description": "denoise: search window radius in pixels, default 5; render time grows with its square (about 1 s per megapixel at 5)."},
         "points": {
             "type": "array",
             "items": {"type": "array", "items": N, "minItems": 2, "maxItems": 2},
@@ -271,8 +325,12 @@ def _operation_schema():
     authoring_schemas(add)
     from .containers import schemas as container_schemas
     container_schemas(add)
+    from .stacks import schemas as stack_schemas
+    stack_schemas(add)
     from .organic import schemas as organic_schemas
     organic_schemas(add)
+    from .irregular import schemas as irregular_schemas
+    irregular_schemas(add)
     from .guides import schemas as guide_schemas
     guide_schemas(add)
     from .richtext import schemas as rich_schemas
@@ -283,11 +341,26 @@ def _operation_schema():
     form_schemas(add)
     from .drawing import schemas as drawing_schemas
     drawing_schemas(add)
+    from .selectors import schemas as selector_schemas
+    selector_schemas(add)
+    from .links import schemas as link_schemas
+    link_schemas(add)
+    from .charts import schemas as chart_schemas
+    chart_schemas(add)
+    from .finishing import schemas as finishing_schemas
+    finishing_schemas(add)
+    from .diagrams import schemas as diagram_schemas
+    diagram_schemas(add)
+    from .textflow import schemas as flow_schemas
+    flow_schemas(add)
     add(
         "palette-generate",
         {"name": S, "color": S, "scheme": S, "count": {"type": "integer", "minimum": 2, "maximum": 12}},
         ["name", "color"],
     )
+    from .schema_docs import enrich
+
+    enrich(variants)
     return {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "title": "Vixl operation batch",
@@ -335,7 +408,8 @@ def validate_operation(operation, notes=None, index=None):
         raise VixlError(
             "unknown_operation",
             f"Unknown operation type {result['type']!r}"
-            + (f"; did you mean {' or '.join(map(repr, close))}?" if close else "; see the operation schema"),
+            + (f"; did you mean {' or '.join(map(repr, close))}?" if close else "; see the operation schema")
+            + " Fields of any type: vixl_operation_schema(types=[...])",
             field="type",
             suggestions=close,
         )
@@ -373,6 +447,9 @@ def schema_error(error, operation, allowed):
         message = f"Unknown field(s) {', '.join(map(repr, extras))}{where}. Allowed: {', '.join(sorted(known))}"
         if hints:
             message += f". Did you mean {', '.join(hints)}?"
+        from .richtext import field_hint
+
+        message += field_hint(kind, extras)
         details.update(field=field or extras[0], allowed=sorted(known), suggestions={k: v[0] for k, v in suggestions.items() if v})
     elif validator == "enum":
         options = error.validator_value
@@ -404,5 +481,11 @@ def schema_error(error, operation, allowed):
         details["limit"] = error.validator_value
     else:
         message = f"{field + ': ' if field else ''}{error.message}"
-    return VixlError("invalid_operation", message, **details)
+    # Point at the exact contract so one lookup, not a guess, fixes the next attempt.
+    hint = f"vixl_operation_schema(types=[{kind!r}])"
+    details.setdefault("fields", allowed)
+    if validator == "type" and isinstance(error.schema, dict):
+        details["expected"] = {k: v for k, v in error.schema.items() if k != "description"}
+    details["schema"] = hint
+    return VixlError("invalid_operation", f"{message} (see {hint})", **details)
 

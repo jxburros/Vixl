@@ -38,6 +38,7 @@ EFFECTS = (
     "blur",
     "gaussian-blur",
     "sharpen",
+    "denoise",
     "grayscale",
     "invert",
     "posterize",

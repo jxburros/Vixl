@@ -1,5 +1,6 @@
 """Project-independent resource discovery and explicit user-library imports."""
 
+import json
 from pathlib import Path
 
 from .assets import read_bounded
@@ -24,6 +25,8 @@ def resource_options(cmd, args):
     p.add_argument("--prefix")
     p.add_argument("--set", action="append")
     p.add_argument("--out", "-o")
+    p.add_argument("--keep-order", action="store_true", help="palette apply: colors as background, surface, accents")
+    p.add_argument("--roles", help='palette apply: JSON role map, e.g. {"background": 0, "accent": "#e11d48"}')
     return p.parse_args(args)
 
 
@@ -84,6 +87,8 @@ def font_standalone(cmd, args, project=None):
         p.add_argument("--apply", action="store_true", help="Apply the direction and fonts to the current document")
         p.add_argument("--set", action="append", help="Fill a layout slot: title=…")
         p.add_argument("--lock", action="append", help="Keep a choice: layout=…, pairing=…, palette=…, mode=…")
+        p.add_argument("--unfilled", choices=["omit", "blank"],
+                       help="Unfilled slots: leave out (default with --set) or show as [Label] blanks")
         a = p.parse_args(args)
         canvas = None
         if a.size:
@@ -95,7 +100,8 @@ def font_standalone(cmd, args, project=None):
         locks = pairs(a.lock)
         if "layout_seed" in locks:
             locks["layout_seed"] = int(locks["layout_seed"])
-        return typefaces.roll_document(project, seed=a.seed, purpose=a.purpose, mood=a.mood, canvas=canvas, locks=locks, apply=a.apply, slots=pairs(a.set))
+        return typefaces.roll_document(project, seed=a.seed, purpose=a.purpose, mood=a.mood, canvas=canvas, locks=locks, apply=a.apply,
+                                     slots=pairs(a.set), unfilled=a.unfilled)
     p = Parser(prog="vixl font")
     p.add_argument("action", choices=FONT_STANDALONE)
     p.add_argument("family", nargs="?")
@@ -153,6 +159,10 @@ def project_command(project, cmd, args):
             op = {"type": "palette-apply", "name": a.name}
             if a.prefix:
                 op["prefix"] = a.prefix
+            if a.keep_order:
+                op["keep_order"] = True
+            if a.roles:
+                op["roles"] = json.loads(a.roles)
         else:
             op = {"type": "template-apply", "name": a.name, "variables": pairs(a.set)}
     elif cmd == "guidance" and a.action == "import":

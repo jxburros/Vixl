@@ -49,6 +49,20 @@ TYPE_ALIASES = {
     "set-field": "field-set",
     "field-update": "field-set",
     "sketch": "drawing",
+    "roughen": "irregular",
+    "distress": "irregular",
+    "imperfect": "irregular",
+    "torn-edge": "tear",
+    "rip": "tear",
+    "torn": "tear",
+    "add-chart": "chart",
+    "graph": "chart",
+    "update-chart": "chart",
+    "set-chart-data": "chart-data",
+    "update-chart-data": "chart-data",
+    "flowchart": "diagram",
+    "flow-chart": "diagram",
+    "diagram-text": "diagram-from-text",
 }
 SHAPE_TYPES = {
     "rect": ("rectangle", {}),
@@ -70,6 +84,12 @@ SHAPE_TYPES = {
     "polygon": ("polygon", {}),
     "star": ("star", {}),
     "line": ("line", {}),
+    "arc": ("arc", {}),
+    "pie": ("arc", {}),
+    "wedge": ("arc", {}),
+    "sector": ("arc", {}),
+    "donut": ("arc", {"inner_radius": 0.6}),
+    "ring": ("arc", {"inner_radius": 0.8}),
 }
 STYLE_ALIASES = {
     "shadow": "drop-shadow",
@@ -97,6 +117,7 @@ FIELD_ALIASES = {
         "line_spacing": "spacing",
         "outline_width": "stroke_width",
         "outline_color": "stroke_color",
+        **{key: "hide_if_empty" for key in ("hide_when_empty", "collapse_if_empty", "collapse_when_empty", "hide_empty")},
     },
     "shape": {
         "color": "fill",
@@ -112,6 +133,12 @@ FIELD_ALIASES = {
         "border_radius": "radius",
         "type_of_shape": "shape",
         "kind": "shape",
+        "start": "start_angle",
+        "end": "end_angle",
+        "angle_start": "start_angle",
+        "angle_end": "end_angle",
+        "hole": "inner_radius",
+        "inner": "inner_radius",
     },
     "solid": {"fill": "color", "colour": "color", "fill_color": "color"},
     "gradient": {"from": "start", "to": "end", "start_color": "start", "end_color": "end"},
@@ -124,6 +151,14 @@ FIELD_ALIASES = {
     "canvas": {"color": "background", "fill": "background"},
     "variable": {"key": "name"},
     "align": {"align": "alignment", "position": "alignment", "relativeTo": "relative_to"},
+    "animation-set": {"frames": "order", "sequence": "order"},
+    "frames-edit": {"ops": "operations", "edits": "operations"},
+    "resize": {
+        key: "keep_aspect"
+        for key in ("lock_aspect", "lock_aspect_ratio", "keep_aspect_ratio", "preserve_aspect", "proportional",
+                    "maintain_aspect", "keep_ratio")
+    },
+    "link": {"path": "source", "file": "source", "src": "source", "document": "source", "doc": "source"},
 }
 FIELD_ALIASES["text-set"] = FIELD_ALIASES["text"]
 GEOMETRY_TYPES = {
@@ -140,8 +175,11 @@ GEOMETRY_TYPES = {
     "text-layout",
     "pen",
     "field",
+    "stack",
+    "link",
+    "chart",
 }
-CENTER_TYPES = {"solid", "gradient", "shape", "add", "frame", "symbol-instance", "move", "field"}
+CENTER_TYPES = {"solid", "gradient", "shape", "add", "frame", "symbol-instance", "move", "field", "link", "chart"}
 
 
 def _snake(key):
@@ -221,6 +259,10 @@ def normalize_operation(operation, properties, known_types, effects, notes, inde
         from .forms import normalize as normalize_field
 
         op = normalize_field(op, note)
+    if kind in ("chart", "chart-data"):
+        from .charts import normalize as normalize_chart
+
+        op = normalize_chart(op, note)
     if kind == "shape" and isinstance(op.get("shape"), str) and op["shape"] not in SHAPES:
         guess = op["shape"].lower().replace("_", "-").replace(" ", "-")
         if guess not in SHAPE_TYPES:
@@ -283,6 +325,12 @@ def normalize_operation(operation, properties, known_types, effects, notes, inde
                     value = value / 100
                 fixed[key] = value
             op["settings"] = fixed
+    if kind == "resize" and ("width" in op) != ("height" in op) and "keep_aspect" not in op:
+        given, other = ("width", "height") if "width" in op else ("height", "width")
+        note(
+            f"only {given} given, so {other} is unchanged, except on image (raster) layers, which keep their "
+            "aspect ratio; set keep_aspect to true (scale proportionally) or false (change one side) to choose"
+        )
     if kind == "move" and "x" not in op and "y" not in op and ("dx" in op or "dy" in op):
         op["x"], op["y"] = op.pop("dx", 0), op.pop("dy", 0)
         op["relative"] = True
@@ -316,9 +364,11 @@ def resolve_geometry(project, op):
         return op, {}
     c = project.state["canvas"]
     width, height = c["width"], c["height"]
-    if kind in ("move", "resize", "text-layout"):
+    from .inplace import IN_PLACE_TYPES
+
+    if kind in ("move", "resize", "text-layout", "stack") or (kind in IN_PLACE_TYPES and op.get("target")):
         try:
-            layer = project.layer(op.get("target"))
+            layer = project.layer(op["targets"][0] if kind == "stack" and op.get("targets") else op.get("target"))
         except Exception:
             layer = None
         if layer and layer.get("parent"):
@@ -348,7 +398,11 @@ def apply_centering(project, centered, operation):
         return
     from .render import resolve_layout, stored_origin
 
-    layer = project.layer(operation.get("target") if operation.get("type") == "move" else None)
+    from .inplace import IN_PLACE_TYPES
+
+    # A creation operation given a target edits that layer, so the target is what gets centered.
+    edits = operation.get("type") == "move" or operation.get("type") in IN_PLACE_TYPES
+    layer = project.layer(operation.get("target") if edits else None)
     bounds = resolve_layout(project)[layer["id"]]
     if layer.get("parent"):
         parent = project.layer(layer["parent"])

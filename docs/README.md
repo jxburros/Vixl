@@ -36,11 +36,13 @@ offline with `python examples/build_documentation.py`.
 | Area | Guides and references |
 | --- | --- |
 | Documents and authoring | [Concepts](concepts.md), [authoring](authoring.md), [commands](commands.md), [operation semantics](operations.md) |
-| Starting points | [Sizes and layouts](sizes-and-layouts.md), [palettes, templates and resources](agent-resources.md), [brands](brands.md) |
-| Text | [Typography](typography.md), [rich text](rich-text.md) |
-| Shapes and layout | [Design tools](design-tools.md), [organic shapes](organic.md), [guides and grids](guides.md), [spacing](pixel-animation-spacing.md) |
+| Starting points | [Sizes and layouts](sizes-and-layouts.md), [palettes, templates and resources](agent-resources.md), [brands](brands.md), [design styles](styles.md) |
+| Text | [Typography](typography.md), [rich text](rich-text.md), [text flow](text-flow.md) |
+| Shapes and layout | [Design tools](design-tools.md), [organic shapes](organic.md), [diagrams and flowcharts](diagrams.md), [guides and grids](guides.md), [spacing](pixel-animation-spacing.md) |
+| Finishing and imperfection | [Looks](looks.md), [irregularity and torn edges](irregular.md) |
 | Images and drawing | [Drawing cleanup](drawing.md), [artistic filters](artistic-filters.md), [brushes](brushes-and-animation.md) |
-| Output | [Export guide](exporting.md), [color and print](color-and-print.md), [slides](slides.md), [forms](forms.md) |
+| Output | [Export guide](exporting.md), [color and print](color-and-print.md), [slides](slides.md), [HTML presenter](presenter.md), [forms](forms.md) |
+| Data and reuse | [Charts](charts.md), [linked documents](linked-documents.md), [data merge and print imposition](imposition.md) |
 | Motion | [Brushes and timelines](brushes-and-animation.md), [pixel animation](pixel-animation-spacing.md), [lyric video](lyric-video.md) |
 | Automation and collaboration | [Production workflows](production.md), [studio and custom tests](studio.md) |
 | AI | [Provider setup and capability matrix](providers.md) |

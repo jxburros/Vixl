@@ -6,7 +6,7 @@ in the order they were added, and a file ``/ID`` derived from a hash of the cont
 
 Every text string is written as hex UTF-16BE with a byte-order mark (``<FEFF…>``) and every byte
 string as hex, so user text can never escape into PDF syntax. Names use ``#xx`` escaping.
-The writer emits no actions, JavaScript or links of any kind.
+The writer adds no actions, JavaScript or links of its own (``pdf_forms`` supplies field validation scripts).
 """
 
 import hashlib
@@ -139,21 +139,23 @@ class Writer:
 # Images
 
 
-def image_xobject(writer, image, *, jpeg_quality=None):
-    """An image XObject (with an SMask for transparency). RGB(A), L, LA and CMYK images."""
+def image_xobject(writer, image, *, jpeg_quality=None, alpha=None):
+    """An image XObject (with an SMask for transparency). RGB(A), L, LA and CMYK images; ``alpha``
+    (an L image) is the transparency of an image that has no alpha channel of its own, such as a
+    separated CMYK tile."""
 
     mode = image.mode
     smask = None
     if mode in ("RGBA", "LA", "PA") or (mode == "P" and "transparency" in image.info):
         rgba = image.convert("RGBA")
         alpha = rgba.getchannel("A")
-        if alpha.getextrema() != (255, 255):
-            smask = writer.add_stream({"Type": Name("XObject"), "Subtype": Name("Image"), "Width": alpha.width,
-                                       "Height": alpha.height, "ColorSpace": Name("DeviceGray"), "BitsPerComponent": 8},
-                                      alpha.tobytes())
         image = rgba.convert("RGB")
     elif mode not in ("RGB", "L", "CMYK"):
         image = image.convert("RGB")
+    if alpha is not None and alpha.getextrema() != (255, 255):
+        smask = writer.add_stream({"Type": Name("XObject"), "Subtype": Name("Image"), "Width": alpha.width,
+                                   "Height": alpha.height, "ColorSpace": Name("DeviceGray"), "BitsPerComponent": 8},
+                                  alpha.tobytes())
     space = {"RGB": "DeviceRGB", "L": "DeviceGray", "CMYK": "DeviceCMYK"}[image.mode]
     dictionary = {"Type": Name("XObject"), "Subtype": Name("Image"), "Width": image.width, "Height": image.height,
                   "ColorSpace": Name(space), "BitsPerComponent": 8, "SMask": smask}
@@ -172,6 +174,18 @@ def image_xobject(writer, image, *, jpeg_quality=None):
 
 # ---------------------------------------------------------------------------------------------
 # Fonts
+
+
+_DIGESTS = {}  # id(data) -> (data, sha256): a few font programs are used for every glyph, so each is hashed once
+
+
+def font_digest(data):
+    held = _DIGESTS.get(id(data))
+    if held is None or held[0] is not data:
+        if len(_DIGESTS) > 64:
+            _DIGESTS.clear()
+        held = _DIGESTS[id(data)] = (data, hashlib.sha256(data).hexdigest())
+    return held[1]
 
 
 class FontSet:
@@ -196,7 +210,7 @@ class FontSet:
         """Register a glyph; returns (resource name, glyph id)."""
         from .text import face
 
-        key = hashlib.sha256(data).hexdigest()
+        key = font_digest(data)
         entry = self.fonts.get(key)
         if entry is None:
             entry = self.fonts[key] = {"data": data, "name": f"F{len(self.fonts) + 1}", "glyphs": {}, "ref": writer.reserve()}

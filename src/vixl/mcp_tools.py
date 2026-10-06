@@ -7,7 +7,6 @@ structured code/field/suggestions, and every document tool accepts an optional `
 import base64
 import binascii
 from copy import deepcopy
-import functools
 from io import BytesIO
 import json
 import os
@@ -18,8 +17,10 @@ from .fileio import file_lock
 from PIL import Image as PILImage
 from pydantic import Field, WithJsonSchema
 
+from . import calls
 from .assets import read_bounded
 from .errors import VixlError, require
+from .mcp_runtime import Runtime
 from .schema import operation_schema
 
 COORDINATE_NOTE = (
@@ -33,6 +34,22 @@ COORDINATE_NOTE = (
 
 def compact_json(value):
     return json.dumps(value, separators=(",", ":"), ensure_ascii=False, default=str)
+
+
+def strip_prose(schema):
+    """Remove descriptions and examples from a schema and the schemas nested in it, in place."""
+    if isinstance(schema, list):
+        for item in schema:
+            strip_prose(item)
+    elif isinstance(schema, dict):
+        schema.pop("description", None)
+        schema.pop("examples", None)
+        for key, value in schema.items():
+            if key in ("properties", "$defs", "definitions", "patternProperties"):
+                for sub in value.values():
+                    strip_prose(sub)
+            elif key not in ("enum", "const", "default"):
+                strip_prose(value)
 
 
 def service_operation_schema(slim=False):
@@ -56,23 +73,35 @@ def service_operation_schema(slim=False):
         kind = props.pop("type")["const"]
         if kind in EFFECTS:
             continue  # All effects use the canonical {type: effect, name: ...} form.
-        for field in ("path", "linked", "font"):
+        for field in ("path", "linked"):  # font stays: a registered font name or role (service_fonts)
             if kind not in ("text-layout", "shape", "select") or field != "path":
                 props.pop(field, None)
         if kind in ("add", "frame"):
             variant.pop("anyOf")
             variant["required"].append("asset")
+        if kind in ("shape", "text"):
+            # shape/text also edit an existing layer through target; the full schema says what is required.
+            variant.pop("anyOf")
         if kind == "replace-contents":
             variant["anyOf"] = [{"required": ["asset"]}, {"required": ["variable"]}]
         if kind == "mask":
             props["action"]["enum"].remove("import")
         if kind == "effect":
             props["name"] = {"type": "string", "enum": sorted(EFFECTS)}
-        # Detailed field prose remains available through vixl_operation_schema.
-        # Avoid repeating it in every tools/list response as the operation catalog grows.
-        for constraint in props.values():
-            constraint.pop("description", None)
-        if kind in ("field-set", "form"):
+        # Detailed field prose, summaries and examples remain available through vixl_operation_schema.
+        # Avoid repeating them in every tools/list response as the operation catalog grows.
+        variant.pop("description", None)
+        variant.pop("examples", None)
+        for key, constraint in props.items():
+            strip_prose(constraint)
+            if kind in ("suite-set", "recipe-set") and "properties" in constraint:
+                # The suite and recipe objects are typed in vixl_operation_schema and validated when applied.
+                props[key] = {"type": "object"}
+        if kind in ("diagram", "diagram-set", "text-flow"):
+            for key in ("nodes", "edges", "frames"):
+                if key in props:  # item fields are checked on apply; vixl_operation_schema lists them
+                    props[key] = {"type": "array"}
+        if kind in ("field-set", "form", "chart", "chart-data"):
             # Nullable copies of the field settings: names only here, types via vixl_operation_schema.
             props.update({key: {} for key in props if key not in ("target", "kind")})
         # Coordinates/sizes also accept "center" and "N%" (see the tool description). A short,
@@ -144,6 +173,7 @@ def slim_schema(schema, in_properties=False):
 
 Positive = Annotated[int, Field(ge=1)]
 Detail = Literal["compact", "full"]
+ApplyDetail = Literal["brief", "compact", "full"]
 Document = Annotated[str | None, Field(description=".vixl path; default: active document")]
 
 
@@ -206,18 +236,20 @@ def preview(
         return encode_png(image, max_bytes)
 
 
+EXPORT_SUFFIXES = (".png", ".jpg", ".jpeg", ".webp", ".tif", ".tiff", ".avif", ".svg", ".pdf", ".ico", ".html", ".htm", ".pptx")
+
+
 def export_file(session, path, overwrite=False, document=None, **options):
     from .fileio import temporary
 
     with session._mutex:
         destination = session.resolve(path)
         require(
-            destination.suffix.lower()
-            in (".png", ".jpg", ".jpeg", ".webp", ".tif", ".tiff", ".avif", ".svg", ".pdf", ".ico", ".html", ".htm", ".pptx"),
+            destination.suffix.lower() in EXPORT_SUFFIXES,
             "Choose a PNG, JPEG, WEBP, TIFF, AVIF, SVG, PDF, ICO, HTML or PPTX filename",
             field="path",
         )
-        require(destination.parent.is_dir(), "Destination directory must exist", field="path")
+        session.make_parent(destination)
         with file_lock(str(destination)):
             require(
                 overwrite or not destination.exists(),
@@ -293,7 +325,7 @@ def typed_ai(session, command, words=(), document=None, **options):
 
 
 # Tools both split servers need: the AI server addresses layers by name and checks its results.
-SHARED_TOOLS = {"vixl_workspace_list", "vixl_document_open", "vixl_document_inspect", "vixl_render_preview"}
+SHARED_TOOLS = {"vixl_workspace_list", "vixl_document_open", "vixl_document_inspect", "vixl_render_preview", "vixl_job"}
 AI_INSTRUCTIONS = (
     "Provider-backed AI editing for Vixl documents in the configured workspace: generate, inpaint, extend, "
     "upscale, remove objects or backgrounds, select subjects/objects, and describe/detect/OCR. Each tool takes "
@@ -323,21 +355,28 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
     server = FastMCP(
         "Vixl AI" if tools == "ai" else "Vixl",
         instructions=AI_INSTRUCTIONS if tools == "ai" else (
-            "Edit layered image documents in the configured workspace. Typical loop: vixl_document_create/open → "
+            "Edit layered image documents in the configured workspace. START HERE (open-ended briefs default to this path, "
+            "not freehand shapes): "
+            + ("" if tools == "compact" else "vixl_guide(brief) says what to make and with which tools (icons, characters, scenes, "
+               "patterns, mandalas, logos, diagrams, social cards, slides, posters); ")
+            + "1) vixl_sizes_list → vixl_document_create(size=…); 2) text work: vixl_layouts_list → layout-apply, filling every "
+            "slot it lists (art with no text frame: shape/organic/pathfinder/radial-repeat); 3) type: vixl_fonts → vixl_font_pair "
+            "(the bundled font is a proofing fallback); 4) finish with look (glow, soft-shadow, gradient, grain, paper …) and, "
+            "when the brief names a style, vixl_styles; 5) vixl_check → fix the 'fix' findings, glance at 'review' → "
+            "vixl_render_preview (region= to zoom) → vixl_export_file. Typical loop: vixl_document_create/open → "
             "vixl_operations_apply (atomic batches; dry_run to test) → vixl_check (overlap, contrast, safe area, "
-            "thumbnail legibility) → vixl_render_preview (region= to zoom) → vixl_export_file. Use layer IDs or "
+            "thumbnail legibility) → vixl_render_preview → vixl_export_file. Use layer IDs or "
             "names from results. " + COORDINATE_NOTE + " Errors are JSON with error, message, field, "
             "operation_index and suggestions. Paths are relative to the workspace; imports accept a path or "
-            "base64 bytes. Several documents can be open: pass document= to address one. Start from a named size "
-            "(vixl_sizes_list) and, when given open-ended briefs, a principled layout (vixl_layouts_list → "
-            "layout-apply, filling every slot it lists) instead of improvising; then refine. Choose type with "
-            "vixl_fonts → vixl_font_pair (the bundled font is a proofing fallback), and when a brief leaves the "
+            "base64 bytes. Several documents can be open: pass document= to address one. When a brief leaves the "
             "look open, vixl_roll a few directions and compare previews. Paint with brushes (vixl_brushes_list), animate "
             "with keyframes (keyframe/animate/animate-preset → vixl_timeline_preview → vixl_export_timeline), and "
             "export print-ready CMYK PDF/TIFF/JPEG with vixl_export_file. Slides and carousels are pages (page "
-            "operation; preview page='all'; export .pdf or .pptx); forms are field layers (field operation; check "
-            "form; export_file fillable=true, or values= to fill); hand drawings are drawing operations (import, "
-            "clean, vectorize, straighten, fill) checked with check drawing. "
+            "operation; preview page='all'; export .pdf, .pptx or .html, a self-contained presentation); forms "
+            "are field layers (field operation; check form; export_file fillable=true, or values= to fill); hand "
+            "drawings are drawing operations (import, clean, vectorize, straighten, fill) checked with check "
+            "drawing; a design derived from another is a live link layer, and print "
+            "sheets from a CSV are vixl_workflow merge-impose. "
             + ("AI tools need a configured provider." if tools == "all" else
                "Provider-backed AI tools are served separately by vixl mcp --tools ai.")
         ),
@@ -345,28 +384,20 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
 
     def selected(name):
         if tools == "compact":
-            return name in SHARED_TOOLS | {"vixl_document_create", "vixl_operations_apply", "vixl_operation_schema",
+            # The compact set stays at 12 tools: job ids are polled through vixl_workflow instead of vixl_job.
+            return name in (SHARED_TOOLS - {"vixl_job"}) | {"vixl_document_create", "vixl_operations_apply", "vixl_operation_schema",
                 "vixl_workflow", "vixl_workflow_schema", "vixl_export_file", "vixl_import_image", "vixl_import_document"}
         if tools == "all" or name in SHARED_TOOLS:
             return True
         return is_ai_tool(name) == (tools == "ai")
 
+    runtime = Runtime(session, compact_json, ToolError, poll_with_workflow=tools == "compact")
+    server.vixl_runtime = runtime
+
     def tool(fn):
-        """Register a tool returning minified JSON, with structured errors."""
-
-        @functools.wraps(fn)
-        def wrapper(*args, **kwargs):
-            try:
-                result = fn(*args, **kwargs)
-            except VixlError as exc:
-                raise ToolError(compact_json(exc.as_dict())) from exc
-            if isinstance(result, dict):
-                return compact_json(result)
-            return result
-
-        wrapper.__annotations__ = {**fn.__annotations__}
-        if wrapper.__annotations__.get("return") is dict:
-            wrapper.__annotations__["return"] = str
+        """Register a tool returning minified JSON, with structured errors. It runs in a worker
+        thread with progress, background jobs and retry ids (mcp_runtime.py)."""
+        wrapper = runtime.wrap(fn)
         if selected(fn.__name__):
             server.tool(structured_output=False)(wrapper)
         return wrapper
@@ -390,13 +421,20 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         request: dict, document: Document = None,
     ) -> dict:
         """Unified workflows: resources, palettes, saved shapes, suites, effects, plugin packs, project groups,
-        branch/merge collaboration, production, libraries and jobs. Discover action fields with vixl_workflow_schema.
+        branch/merge collaboration, production, libraries, jobs, linked-document status (links) and print merge
+        (merge-impose). Discover action fields with vixl_workflow_schema.
         Paths stay in workspace. Branch merge and group apply default to dry_run=true.
 
-        Long jobs: submit with start=true, then status. AI jobs require an explicit configured provider.
+        Long jobs: submit with start=true, then status. A call that returned {job: job_…} is followed with
+        action status/cancel and request {id, wait?}. AI jobs require an explicit configured provider.
         Repairs preserve test suites. Unknown/unmeasurable checks report needs_review.
         """
         from .workflows import dispatch
+
+        if action in ("status", "cancel") and str(request.get("id", "")).startswith("job_"):
+            # A call that became a job (see vixl_job); the compact tool set polls it here.
+            return runtime.job("result" if action == "status" else action, request["id"],
+                               min(float(request.get("wait", 0)), 25))
         return dispatch(session, action, request, document)
 
     @tool
@@ -422,10 +460,8 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
 
         with session._mutex:
             destination = session.resolve(path)
-            require(
-                destination.suffix.lower() == ".vixl" and destination.parent.is_dir(),
-                "Use a .vixl path in an existing workspace directory",
-            )
+            require(destination.suffix.lower() == ".vixl", "Use a .vixl path in the workspace", field="path")
+            session.make_parent(destination)
             with file_lock(str(destination)):
                 require(not destination.exists(), "Destination already exists")
                 project = create_template(name, variables, limits=session.limits, workspace=session.workspace)
@@ -452,15 +488,19 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         color: str = "white",
         x: float = 0,
         y: float = 0,
+        hide_if_empty: bool = False,
         document: Document = None,
     ) -> dict:
-        """Add editable text with the bundled font or a previously imported registered font name."""
+        """Add editable text with the bundled font or a previously imported registered font name.
+        hide_if_empty: do not draw it (and take no space in a stack) while its ${variable} text is empty."""
         with session.project(write=True, document=document) as project:
             op = {"type": "text", "text": text, "name": name, "size": size, "color": color, "x": x, "y": y}
+            if hide_if_empty:
+                op["hide_if_empty"] = True
             if font:
                 require(font in project.state.get("fonts", {}), "Import/register this font first")
                 op["font"] = project.state["fonts"][font]
-            return project.apply(op, detail="compact")
+            return project.apply(op, detail="brief")
 
     @tool
     def vixl_models_list(
@@ -558,12 +598,20 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
     def vixl_operations_apply(
         operations: Annotated[list[Operation], Field(min_length=1, max_length=1000)],
         dry_run: bool = False,
-        detail: Detail = "compact",
+        detail: ApplyDetail = "brief",
         document: Document = None,
     ) -> dict:
-        """Apply operations atomically (all or none) and autosave. compact returns new values of changed
-        fields by layer ID, and new layers as name/type/bounds; full adds before/after snapshots.
-        dry_run validates and previews the changes without saving. Omit target to use the active layer."""
+        """Apply operations atomically (all or none) and autosave. brief (default) returns the ID, name and
+        resulting bounds of each changed layer plus warnings (off-canvas or overflowing text, ignored fields);
+        compact adds the new values of changed fields; full adds before/after snapshots. dry_run validates and
+        previews the changes without saving. Omit target to use the active layer; edit-layers changes every
+        layer matching a selector in one operation.
+        font (text, text-set, rich-text spans, layout-apply, fields) takes a registered font name or a role
+        (heading, body), as vixl_text_add does; install fonts first with vixl_font_pair or vixl_font_install.
+        text-set changes a whole text layer (content, color, size, font; rich-text formatting is kept where it
+        still applies); text-style styles a phrase, character range or paragraphs inside it.
+        shape/solid/gradient/text add a layer, but with target they edit that existing layer in place
+        (keeping its ID), e.g. {type: shape, target: bar, fill: "#6b3f69"}."""
         return session.apply(operations, dry_run, detail, document)
 
     @tool
@@ -589,7 +637,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
                 result[kind] = {"error": "unknown operation type", "suggestions": close}
                 continue
             variant = deepcopy(variants[canonical])
-            for field in ("path", "linked", "font"):
+            for field in ("path", "linked"):
                 if field != "path" or canonical not in ("text-layout", "shape", "select"):
                     variant["properties"].pop(field, None)
             if canonical == "effect":
@@ -667,12 +715,14 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
             image, summary = compare(
                 project, before, after, max_width=max_width, max_height=max_height, mode=mode
             )
+            summary["document"] = session.relative(project.path)
         return [compact_json(summary), Image(data=encode_png(image, 2_097_152), format="png")]
 
     @tool
     def vixl_check(
         checks: list[Literal["bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "fonts", "brand", "print", "color_vision", "guides", "alignment",
-                             "deck", "title_position", "type_scale", "words", "min_font", "notes", "empty", "form", "drawing"]]
+                             "deck", "title_position", "type_scale", "words", "min_font", "notes", "empty", "form", "drawing", "links", "style",
+                             "diagram", "flow"]]
         | None = None,
         targets: list[str] | None = None,
         safe_area: Annotated[
@@ -693,6 +743,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         page: Annotated[int | str | None, Field(description="Page to check (default: the active page)")] = None,
         deck: Annotated[dict | None, Field(description="deck checks: {min_font (pt), max_words, pages, include_hidden}")] = None,
         sample: Annotated[str | None, Field(description="form checks: 'worst' (worst-case values) or a workspace CSV of rows")] = None,
+        style: Annotated[str | list[str] | None, Field(description="style check: evaluate this style (or list) instead of the document's style tag")] = None,
         document: Document = None,
     ) -> dict:
         """Find design problems without looking: content cut off by the canvas, overlapping text, low WCAG
@@ -701,7 +752,10 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         type in points and backgrounds that stop short of the bleed; color_vision (opt-in) finds text whose
         contrast collapses for color-blind readers; deck checks every page plus title placement, type
         scale, words per page, projected type size and speaker notes; form checks fields (names, overlap, tab
-        order, sizes, contrast) and with sample finds values that overflow. Reports only problems."""
+        order, sizes, contrast) and with sample finds values that overflow; style (opt-in) evaluates the document's
+        style tag rule by rule. Each issue has a severity (error, warning, info) and an action: fix (needs a design
+        change), review (look and decide) or informational (expected, such as a crop marked with layer-intent
+        allow_crop); by_action lists the issue indexes under each. Reports only problems."""
         return session.check(
             document=document,
             checks=checks,
@@ -718,6 +772,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
             page=page,
             deck=deck,
             sample=sample if sample in (None, "worst") else str(session.resolve(sample)),
+            style=style,
         )
 
     @tool
@@ -782,22 +837,32 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         time: float | str | None = None,
         page: Annotated[int | str | None, Field(description="One page of a multi-page document")] = None,
         pages: Annotated[list[int | str] | str | None, Field(description="PDF/PPTX pages: [1, 3] or '1-3,intro'")] = None,
-        pdf_content: Literal["vector", "raster"] | None = None,
+        pdf_content: Annotated[Literal["vector", "raster"] | None, Field(
+            description="PDF pages as vector text and shapes (the default, RGB or CMYK) or as one image per page; "
+                        "the result's content and content_reason say which was written")] = None,
         fillable: Annotated[bool, Field(description="PDF with fillable form fields")] = False,
         values: Annotated[dict | None, Field(description="Form field values by key: a filled copy (nothing is saved)")] = None,
         fill_mode: Literal["flatten", "editable"] = "flatten",
         alpha: Annotated[Literal["auto", "keep", "flatten"], Field(
             description="PNG/WEBP/TIFF/AVIF channels: auto writes RGB when the image is fully opaque, keep always "
                         "RGBA, flatten composites onto background and writes RGB")] = "auto",
+        presenter: Annotated[bool | dict | None, Field(
+            description=".html of a multi-page document is a self-contained slide presentation; false writes one "
+                        "static image instead, true presents any document. Options: {theme: dark|light|auto, "
+                        "slide_images: svg|png, notes: bool, start: slide number or page name, title}")] = None,
         document: Document = None,
     ) -> dict:
         """Export to a workspace file, format from extension (PNG/JPEG/WEBP/TIFF/AVIF/SVG/PDF/ICO/PPTX), full
         size by default. color_space=cmyk separates JPEG/TIFF/PDF for print (with an ICC profile for press
         accuracy, else device-naive GCR with black_generation and ink_limit); dpi defaults to the canvas
-        dpi. SVG policy strict rejects any embedded raster fallback. time exports one timeline frame. A
-        multi-page document exports every shown page to PDF (vector text) or PowerPoint (editable slides
-        with speaker notes). fillable writes PDF form fields; values fills them (flatten draws them into the
-        artwork, editable prefills a fillable PDF). PNG and other alpha formats are RGB when the image is opaque;
+        dpi (a multi-page screen document is a 7.5 in tall slide, as in PPTX; dpi sizes both). SVG policy strict
+        rejects any embedded raster fallback. time exports one timeline frame. PDF is vector by default, CMYK
+        too: real text, vector shapes and colours in DeviceCMYK, with images only for effects and the like
+        (see raster_fallbacks). A multi-page document exports every shown page to PDF or PowerPoint (editable
+        slides with speaker notes; its warnings name fonts to install) or HTML (a self-contained
+        presentation: keyboard, overview, transitions, speaker view; pages= picks pages). fillable writes PDF form fields; values
+        fills them (flatten draws them into the artwork, editable prefills a fillable PDF). PNG and other alpha
+        formats are RGB when the image is opaque;
         alpha=flatten forces RGB on background, alpha=keep forces RGBA. Print-size PDFs measure exactly trim +
         bleed with TrimBox and BleedBox. Returns file metadata, never image bytes."""
         profile_bytes = read_bounded(session.resolve(icc_profile), 16 * 1024 * 1024) if icc_profile else None
@@ -832,7 +897,73 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
             values=values,
             fill_mode=fill_mode,
             alpha=alpha,
+            presenter=presenter,
         )
+
+    @tool
+    def vixl_export_batch(
+        targets: Annotated[
+            list[dict],
+            Field(
+                min_length=1,
+                max_length=64,
+                description="Outputs to write: {path, document?, overwrite?, ...any vixl_export_file option} "
+                "(scale, profile, artboard, page, quality, color_space, …); one entry per file",
+            ),
+        ],
+        defaults: Annotated[dict | None, Field(description="Options shared by every target; a target's own win")] = None,
+        overwrite: bool = False,
+        stop_on_error: bool = False,
+        document: Document = None,
+    ) -> dict:
+        """Export several files in one call: several sizes, formats or artboards of one document, or
+        several documents. Every target is checked first (unknown options, duplicate or existing paths), then
+        written in order; each reports its own file metadata or error. Missing directories are created."""
+        from .export_batch import export_batch
+
+        return export_batch(session, export_file, targets, defaults, overwrite, stop_on_error, document)
+
+    @tool
+    def vixl_adapt_layout(
+        sizes: Annotated[
+            list[str | dict],
+            Field(
+                min_length=1,
+                max_length=16,
+                description="Target sizes: a named size ('story', 'a4'), 'WIDTHxHEIGHT', or {size | width+height, "
+                "orientation?, dpi?, bleed?, name?}",
+            ),
+        ],
+        directory: str = ".",
+        name: Annotated[str, Field(description="File name template for each adapted copy: {name} {size} {index}")] = "{name}-{size}",
+        options: Annotated[dict | None, Field(description="adapt-layout settings for every size: scale, anchors, where, text")] = None,
+        formats: Annotated[list[str] | None, Field(description="Also export each copy, e.g. ['png']")] = None,
+        overwrite: bool = False,
+        report: Literal["summary", "layers"] = "summary",
+        document: Document = None,
+    ) -> dict:
+        """Adapt one document to several sizes in one call (a campaign: square, story, banner, print). Each size is
+        a saved copy re-laid out by the adapt-layout operation (sizes scale, each layer keeps its anchor to an edge
+        or its relative place, backgrounds stretch, photos cover) and optionally exported. Returns per size the
+        new file, canvas, scale, how many layers moved and any warnings; report='layers' lists where each layer
+        went. The source document is not changed; refine a copy with vixl_operations_apply."""
+        from .adapt import adapt_copies
+
+        return adapt_copies(session, export_file, sizes, directory, name, options, document, overwrite, formats, report)
+
+    @tool
+    def vixl_job(
+        action: Literal["status", "result", "cancel", "list"] = "status",
+        id: str | None = None,
+        wait: Annotated[float, Field(ge=0, le=50, description="Seconds to wait for the job to finish")] = 0,
+    ) -> dict:
+        """Follow a long call. A call still running after about 40 s (VIXL_MCP_INLINE_SECONDS), or one sent
+        with as_job=true, returns {status: running, job: ID} while it carries on. status reports
+        progress (wait= blocks until it ends or the time is up), result returns the call's normal result, cancel
+        stops a queued job or a running one at its next checkpoint, list shows recent jobs. Also accepts the ID
+        of a durable workflow job. A call that timed out on your side is in list: read its result instead
+        of sending it again (or retry with the same request_id)."""
+        return runtime.job(action, id, wait)
 
     @tool
     def vixl_measure_spacing(
@@ -870,7 +1001,8 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
 
     @tool
     def vixl_animation_inspect(document: Document = None) -> dict:
-        """List saved animation frame names, sizes and durations without full snapshots."""
+        """List saved animation frame names, sizes and durations, plus any named animations (frame order,
+        timing, loop), without full snapshots."""
         with session.project(document=document) as project:
             return project.inspect_animation()
 
@@ -893,24 +1025,33 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
     @tool
     def vixl_export_animation(
         path: str,
-        format: Literal["gif", "apng", "sheet"] = "gif",
+        format: Literal["gif", "apng", "webp", "mp4", "webm", "sheet"] | None = None,
+        animation: str | None = None,
         scale: Annotated[float, Field(ge=0.05, le=32)] = 1,
         sampling: Literal["nearest", "smooth"] = "nearest",
         colors: Annotated[int, Field(ge=2, le=256)] = 256,
+        quality: Annotated[int, Field(ge=1, le=100)] = 90,
         columns: Positive | None = None,
         document: Document = None,
     ) -> dict:
-        """Write saved frames as GIF, APNG or PNG sprite sheet plus JSON timing metadata in the workspace.
+        """Write saved frames as GIF, APNG, animated WebP, MP4/WebM (needs ffmpeg) or a PNG sprite sheet plus
+        JSON timing metadata in the workspace. Format follows the extension. animation=NAME exports one named
+        animation (a subset of the saved frames with its own order, timing and loop; define it with the
+        animation-set operation, see vixl_animation_inspect); omit it to export every saved frame in saved
+        order. A sheet holds every saved frame (or the animation's) and its JSON lists the named animations.
         Never overwrites files. sampling="nearest" (integer scale 1–32) keeps pixel art crisp; "smooth"
-        re-renders at any scale 0.05–32 for illustrations. colors caps the GIF palette; sheets keep every frame."""
+        re-renders at any scale 0.05–32 for illustrations. colors caps the GIF palette; quality applies to
+        MP4/WebM and smooth WebP (nearest WebP is lossless)."""
         with session.project(document=document) as project:
             destination = session.resolve(path)
             result = project.export_animation(
                 destination,
                 format=format,
+                animation=animation,
                 scale=int(scale) if float(scale).is_integer() else scale,
                 sampling=sampling,
                 colors=colors,
+                quality=quality,
                 columns=columns,
             )
             result["output"] = session.relative(destination)
@@ -965,13 +1106,56 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         slots render as [Label] blanks that vixl_check rejects, and a slot the layout does not use is an
         error. Unspecified choices are rolled from the seed. Layouts produce editable layers, role swatches
         (@background @ink @accent …), a type scale and guides, and use the document typography. Pass name
-        for one layout's principles and each slot's meaning."""
+        for one layout's principles and each slot's meaning. Layouts are text compositions; for icons, characters, scenes
+        and patterns call vixl_guide. An unfilled image slot gets next_steps in the layout-apply result (import, resource,
+        draw, AI)."""
         from .layouts import LAYOUTS, catalog, describe
 
         if name:
             require(name in LAYOUTS, f"Unknown layout {name!r}", field="name")
             return {"name": name, **describe(name), "options": catalog()["options"]}
         return catalog()
+
+    @tool
+    def vixl_guide(
+        brief: Annotated[str | None, Field(description="A kind of work (icon, character, scene, pattern, mandala, logo, diagram, "
+                                                      "poster …), a free-text brief such as 'a mascot for a coffee brand', "
+                                                      "'operations' or 'looks'")] = None,
+    ) -> dict:
+        """What to make and how. No brief: the start-here recipe and every kind of work (poster, social card, logo, icon,
+        character, scene, pattern, mandala, diagram, slides, stationery, form, animation, pixel art …). A kind or free-text
+        brief: the approach, the operations, layouts, looks and styles that suit it, and a working example. brief=operations
+        lists every operation by purpose with a one-line summary; brief=looks lists the finishing looks (glow, soft-shadow,
+        grain, paper …). Use it before improvising: layouts are text compositions, so non-poster work starts here."""
+        from .briefs import guide
+
+        return guide(brief)
+
+    @tool
+    def vixl_styles(
+        action: Literal["list", "get", "apply", "check"] = "list",
+        name: Annotated[str | None, Field(description="Style name (get, apply) or style to check against (check; default the document's tag)")] = None,
+        query: Annotated[str | None, Field(description="list: words to find in names, summaries, keywords and uses")] = None,
+        palette: Annotated[bool, Field(description="apply: also define and apply the style's first palette")] = False,
+        document: Document = None,
+    ) -> dict:
+        """Design style catalog (swiss, brutalist, neo-brutalist, minimalist, scandinavian, bauhaus, art-deco,
+        mid-century-modern, memphis, retro-futurism, vaporwave, y2k, editorial, corporate-flat, material, glassmorphism,
+        grunge-zine, japanese-minimal, vintage-letterpress, hand-drawn, maximalist, cyberpunk, kawaii, line-art, risograph,
+        data-viz, art-nouveau, pixel-art). list searches them; get returns principles, palettes, type, layout, imagery,
+        do/don't and the premade checks; apply tags the document (style-set), stores the brief as design guidance and
+        optionally applies the palette; check evaluates the style's rules on the document (same as vixl_check
+        checks=['style'])."""
+        from . import styles
+
+        if action == "list":
+            return styles.listing(query)
+        if action == "check":
+            return session.check(document=document, checks=["style"], style=name)
+        require(name, f"{action} needs a style name (vixl_styles lists them)", field="name")
+        if action == "get":
+            return styles.describe(name)
+        return session.apply(styles.apply_operations(name, palette=palette), False, "compact", document)
 
     @tool
     def vixl_fonts(
@@ -1011,7 +1195,9 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
     ) -> dict:
         """Download (or reuse from cache), embed and register a curated pairing's heading and body fonts and
         make them the document typography that layouts use by default. pairing='random' rolls one among
-        those matching mood/best_for (seed reproduces it)."""
+        those matching mood/best_for (seed reproduces it). The result's origin (cache, download or mixed) and
+        each font's source (download URL, cache file, VIXL_FONT_CACHE) and embedded file show where they came from;
+        the bundled fallback is never substituted for a failed download."""
         from .typefaces import pair_fonts
 
         with session.project(write=True, document=document) as project:
@@ -1027,7 +1213,8 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         document: Document = None,
     ) -> dict:
         """Download one style of any Google Fonts family, embed and register it (default name
-        family-weight); role makes it the document's heading or body font."""
+        family-weight); role makes it the document's heading or body font. The result's source says whether
+        it came from the cache (cache_file, VIXL_FONT_CACHE) or a download (url), and file the embedded asset."""
         from .typefaces import install_font
 
         with session.project(write=True, document=document) as project:
@@ -1041,16 +1228,19 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         locks: dict | None = None,
         apply: bool = False,
         slots: dict | None = None,
+        unfilled: Literal["omit", "blank"] | None = None,
         document: Document = None,
     ) -> dict:
         """Roll a coherent direction honoring workspace brand.json. apply=true installs fonts and
         applies the layout in one undo step; slots fills its content (e.g. {title: Launch}).
-        locks fixes choices such as palette or layout. Missing slots are returned immediately."""
+        locks fixes choices such as palette or layout. unfilled: slots you did not fill are left out
+        (omit, the default when slots is given) so the result passes vixl_check, or shown as [Label]
+        placeholders to fill (blank, the default without slots). The result lists what is missing."""
         from .typefaces import roll_document
         if document or session.path or apply:
             with session.project(write=apply, document=document) as project:
                 return roll_document(project, seed=seed, purpose=purpose, mood=mood, locks=locks,
-                                     apply=apply, slots=slots)
+                                     apply=apply, slots=slots, unfilled=unfilled)
         return roll_document(workspace=session.workspace, seed=seed, purpose=purpose, mood=mood, locks=locks)
 
     @tool
@@ -1126,6 +1316,8 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
                 quality=quality,
                 colors=colors,
                 overwrite=overwrite,
+                progress=calls.progress_dict,
+                cancelled=calls.cancelled,
             )
             result["output"] = session.relative(destination)
             if "metadata" in result:
@@ -1369,6 +1561,15 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
     def operations_reference() -> str:
         return json.dumps(operation_schema())
 
+    poll = "vixl_workflow (action status, request {id})" if tools == "compact" else "vixl_job"
+    server._mcp_server.instructions += (
+        f" Results name their document. A call still running after ~40 s returns a job: poll {poll} and do not "
+        "resend it (heavy calls can also pass as_job=true; mutating calls take request_id so a retry never "
+        "applies twice)."
+    )
+    if session.require_document:
+        server._mcp_server.instructions += " Every document tool needs document= on every call."
     for registered in server._tool_manager.list_tools():
         registered.parameters = slim_schema(registered.parameters)
+        runtime.watch_arguments(registered)
     return server

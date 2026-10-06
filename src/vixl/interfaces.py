@@ -4,7 +4,9 @@ from contextlib import contextmanager
 import hmac
 from pathlib import Path
 from threading import RLock
+from weakref import WeakKeyDictionary
 
+from .calls import current_client, note_document
 from .fileio import file_lock
 
 from .assets import add_encoded
@@ -15,22 +17,30 @@ from .project import Project
 from .validation import validate
 
 
-def service_check(operation):
+def service_check(operation, fonts=None):
     """Restrictions for remote/agent callers, applied after normalization so aliases such as
     ``font_family`` cannot bypass them. Service clients import images explicitly; they cannot
-    read arbitrary server files, enable plugins, or resolve linked assets or fonts."""
+    read arbitrary server files, enable plugins, or resolve linked assets or font files.
+    ``fonts`` (the names a document allows, see ``service_fonts``) lets operations on a document
+    name a registered font or role; without it any ``font`` is refused."""
     from .render import EFFECTS
     from .operations import OPERATION_TYPES
 
     kind = operation.get("type")
+    blocked = ("linked",) if fonts is not None else ("linked", "font", "display_font")
     require(
-        not any(k in operation for k in ("linked", "font", "display_font"))
+        not any(k in operation for k in blocked)
         and ("path" not in operation or (kind in ("text-layout", "shape") or (kind == "select" and operation.get("shape") == "path"))),
-        "Filesystem fields (path, linked, font) are unavailable through services; "
-        "import images with vixl_import_image and reference the returned asset",
+        "Filesystem fields (path, linked, font files) are unavailable through services; "
+        "import images with vixl_import_image and reference the returned asset"
+        + ("" if fonts is not None else "; fonts are named only in operations applied to a document, by registered name or role"),
         "forbidden",
-        field=next((k for k in ("path", "linked", "font", "display_font") if k in operation), None),
+        field=next((k for k in ("path", *blocked) if k in operation), None),
     )
+    if fonts is not None:
+        from .service_fonts import check_fonts
+
+        check_fonts(operation, fonts)
     require(kind in set(OPERATION_TYPES) | set(EFFECTS), "Unsupported service operation", field="type")
     if kind == "effect":
         import difflib
@@ -61,19 +71,48 @@ class Session:
     """Workspace-scoped documents kept loaded between calls.
 
     Several documents can be open at once (bounded LRU); every method takes an optional
-    ``document`` path and otherwise uses the active document."""
+    ``document`` path and otherwise uses the active document. The active document belongs to
+    one MCP client session (see ``calls.py``), so clients sharing a server cannot redirect each
+    other's edits; with ``require_document`` there is no active document and ``document`` is
+    mandatory."""
 
     MAX_OPEN = 8
 
-    def __init__(self, path=None, limits=None, *, workspace=None):
+    def __init__(self, path=None, limits=None, *, workspace=None, require_document=False):
         self.limits = limits or Limits()
         self.workspace = Path(workspace or (Path(path).resolve().parent if path else Path.cwd())).resolve()
         require(self.workspace.is_dir(), "Workspace must be an existing directory")
-        self.path = None
+        self.require_document = require_document
+        self._path = None  # The server-wide default: the document it started with, or set outside MCP.
+        self._client_paths = WeakKeyDictionary()
         self.documents = {}
         self._mutex = RLock()
         if path:
             self.open(path if workspace else Path(path).resolve())
+
+    @property
+    def path(self):
+        client = current_client()
+        return self._path if client is None else self._client_paths.get(client, self._path)
+
+    @path.setter
+    def path(self, value):
+        client = current_client()
+        if client is None:
+            self._path = value
+        else:
+            self._client_paths[client] = value
+
+    def active(self):
+        """The calling client's active document, unless the server insists on ``document=``."""
+        require(
+            not self.require_document,
+            "document= is required on this server (started with --require-document); pass the .vixl path",
+            "document_required",
+            field="document",
+        )
+        require(self.path is not None, "Create or open a document first", "no_project")
+        return self.path
 
     def resolve(self, path):
         resolved = (self.workspace / path).resolve()
@@ -81,7 +120,8 @@ class Session:
         return resolved
 
     def relative(self, path):
-        return str(Path(path).relative_to(self.workspace))
+        # Reported paths use "/" on every platform (Windows accepts it when a client passes one back).
+        return Path(path).relative_to(self.workspace).as_posix()
 
     @staticmethod
     def stamp(path):
@@ -98,6 +138,7 @@ class Session:
                 break
             del self.documents[oldest]  # Everything is already saved; reopening reloads it.
         self.path = path
+        note_document(path)
 
     def open(self, path):
         with self._mutex:
@@ -113,8 +154,8 @@ class Session:
         with self._mutex:
             resolved = self.resolve(path)
             require(resolved.suffix.lower() == ".vixl", "Document path must end in .vixl", field="path")
-            require(resolved.parent.is_dir(), "Destination directory must exist", field="path")
             require((size is None) != (width is None or height is None), "Provide width and height, or a named size", field="size")
+            self.make_parent(resolved)
             with file_lock(str(resolved)):
                 require(not resolved.exists(), "Destination already exists; open it instead", field="path")
                 if size is not None:
@@ -128,13 +169,24 @@ class Session:
                 self._remember(resolved, project, self.stamp(resolved))
             return self.summary(project)
 
+    def make_parent(self, path):
+        """Create the missing directories above ``path`` (always inside the workspace: ``resolve``
+        has already rejected anything else, symlinks included)."""
+        require(
+            not path.parent.exists() or path.parent.is_dir(),
+            f"{self.relative(path.parent)} exists and is not a directory", field="path",
+        )
+        path.parent.mkdir(parents=True, exist_ok=True)
+
     def close(self, document=None):
         with self._mutex:
-            path = self.resolve(document) if document else self.path
+            path = self.resolve(document) if document else self.active()
             require(path in self.documents, "Document is not open", "no_project", field="document")
+            note_document(path)
             del self.documents[path]
             if self.path == path:
-                self.path = next(reversed(self.documents), None)
+                # Another client's document must not become this client's active one.
+                self.path = next(reversed(self.documents), None) if current_client() is None else None
             return self.open_documents()
 
     def open_documents(self):
@@ -161,8 +213,8 @@ class Session:
                 if path not in self.documents:
                     require(path.is_file(), f"Document does not exist: {document}", "not_found", field="document")
             else:
-                require(self.path is not None, "Create or open a document first", "no_project")
-                path = self.path
+                path = self.active()
+            note_document(path)
             with file_lock(str(path)):
                 entry = self.documents.get(path)
                 try:
@@ -198,10 +250,13 @@ class Session:
 
     def apply(self, operations, dry_run=False, detail="compact", document=None):
         if isinstance(operations, dict):
-            operations = operations.get("operations", [operations])
+            single = "type" in operations or "operation" in operations
+            operations = [operations] if single else operations.get("operations", [operations])
         require(isinstance(operations, list), "Expected operation array")
         with self.project(write=not dry_run, document=document) as p:
-            return p.apply(operations, dry_run=dry_run, detail=detail, check=service_check)
+            from .service_fonts import checker
+
+            return p.apply(operations, dry_run=dry_run, detail=detail, check=checker(p, service_check))
 
     def render(self, variables=None, artboard=None, comp=None, document=None):
         with self.project(document=document) as p:
@@ -360,7 +415,7 @@ def create_app(path, *, token=None, limits=None):
         from .workflows import dispatch
         # REST remains scoped to its active project. Other document/library/job I/O is MCP/CLI only.
         from .studio import REST_ACTIONS
-        require(action in {"check", "act", "plan", "film-plan", "lyric-video-plan", "organic-catalog", "form-fill", "drawing-report"} | REST_ACTIONS,
+        require(action in {"check", "act", "plan", "film-plan", "lyric-video-plan", "organic-catalog", "form-fill", "drawing-report", "links"} | REST_ACTIONS,
                 "This workflow needs a workspace CLI/MCP session", "forbidden")
         return dispatch(session, action, body)
 
@@ -412,6 +467,7 @@ def create_app(path, *, token=None, limits=None):
             "values",
             "fill_mode",
             "alpha",
+            "presenter",
         }
         require(set(body) <= allowed, "Unknown export option")
         fmt = body.get("format", "PNG").upper()
@@ -448,6 +504,24 @@ def create_app(path, *, token=None, limits=None):
         from .layouts import catalog
 
         return catalog()
+
+    @app.get("/guide")
+    def guide(brief: str | None = None):
+        from .briefs import guide as make_guide
+
+        return make_guide(brief)
+
+    @app.get("/styles")
+    def style_catalog(query: str | None = None, name: str | None = None):
+        from . import styles
+
+        return styles.describe(name) if name else styles.listing(query)
+
+    @app.get("/looks")
+    def look_catalog():
+        from .looks import catalog
+
+        return {"looks": catalog()}
 
     @app.get("/typefaces")
     def typeface_catalog(category: str | None = None, role: str | None = None, mood: str | None = None):
@@ -635,16 +709,25 @@ def create_app(path, *, token=None, limits=None):
 
     @app.post("/animation/export")
     def animation_export(body: dict):
-        from .animation import animation_bytes
+        import tempfile
 
-        allowed = {"format", "scale", "sampling", "colors", "columns"}
+        from .animation import VIDEO, animation_bytes, export_animation
+
+        allowed = {"format", "scale", "sampling", "colors", "columns", "animation", "quality"}
         require(set(body) <= allowed, f"Animation export accepts {sorted(allowed)}", field="body")
         if isinstance(body.get("scale"), float) and body["scale"].is_integer():
             body["scale"] = int(body["scale"])
         fmt = body.get("format", "gif")
+        media = {"gif": "image/gif", "apng": "image/apng", "webp": "image/webp", "mp4": "video/mp4", "webm": "video/webm"}
+        if fmt in VIDEO:
+            with tempfile.TemporaryDirectory(prefix="vixl-animation-") as staging:
+                path = Path(staging) / ("animation." + fmt)
+                with session.project() as p:
+                    export_animation(p, path, **body)
+                return Response(path.read_bytes(), media_type=media[fmt])
         with session.project() as p:
             data, _ = animation_bytes(p, **body)
-        return Response(data, media_type={"gif": "image/gif", "apng": "image/apng"}.get(fmt, "image/png"))
+        return Response(data, media_type=media.get(fmt, "image/png"))
 
     @app.post("/measure")
     def measure(body: dict):
@@ -713,14 +796,25 @@ def serve(path, host="127.0.0.1", port=8765, token=None, limits=None, *, open_br
         uvicorn.run(app, host=host, port=port)
 
 
-def mcp_server(path=None, limits=None, *, workspace=None, schema="full", planner=False, tools="all"):
+def require_document_default():
+    """``VIXL_REQUIRE_DOCUMENT=1`` makes every document call name its document (see Session)."""
+    import os
+
+    return os.environ.get("VIXL_REQUIRE_DOCUMENT", "").strip().lower() in ("1", "true", "yes", "on")
+
+
+def mcp_server(path=None, limits=None, *, workspace=None, schema="full", planner=False, tools="all",
+               require_document=None):
     try:
         from .mcp_tools import build_server
         import mcp.server.fastmcp  # noqa: F401
     except ImportError as exc:
         raise VixlError("missing_dependency", "Install vixl-engine[mcp]") from exc
 
-    return build_server(Session(path, limits, workspace=workspace), schema=schema, planner=planner, tools=tools)
+    if require_document is None:
+        require_document = require_document_default()
+    session = Session(path, limits, workspace=workspace, require_document=require_document)
+    return build_server(session, schema=schema, planner=planner, tools=tools)
 
 
 def mcp_http_app(server, *, token=None):

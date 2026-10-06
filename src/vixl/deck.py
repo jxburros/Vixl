@@ -295,11 +295,10 @@ def check_deck(project, *, checks=None, safe_area=None, min_contrast=None, pages
                   f"{len(missing)} of {len(notes)} pages have no speaker notes ({', '.join(missing[:12])})", None,
                   pages=missing)
 
-    errors = sum(1 for item in issues if item["severity"] == "error")
+    from .checks import tally
+
     return {
-        "passed": errors == 0,
-        "errors": errors,
-        "warnings": len(issues) - errors,
+        **tally(issues),
         "issues": issues,
         "checked": {"checks": checks, "pages": len(records), "min_font_pt": min_font, "max_words": max_words,
                     "points_per_pixel": round(pt, 4)},

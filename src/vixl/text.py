@@ -82,7 +82,19 @@ def primary_font_data(project, layer):
         return project.assets[name]
     font = font_for(project, layer)
     path = font.path
-    return path.getvalue() if hasattr(path, "getvalue") else Path(path).read_bytes()
+    return path.getvalue() if hasattr(path, "getvalue") else file_bytes(path)
+
+
+def file_bytes(path):
+    """A font file's bytes, the same object on every call while the file is unchanged, so the caches keyed by font data
+    (coverage, parsed faces, PDF font programs) are hit by identity instead of by hashing the whole file again."""
+    stat = Path(path).stat()
+    return _file_bytes(str(path), stat.st_mtime_ns, stat.st_size)
+
+
+@lru_cache(maxsize=16)
+def _file_bytes(path, mtime, size):
+    return Path(path).read_bytes()
 
 
 @lru_cache(maxsize=32)

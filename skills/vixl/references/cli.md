@@ -77,13 +77,17 @@ vixl solid --name panel --width 400 --height 200 --color '#26344e' [--x --y]
 vixl gradient --name sky --start '#152641' --end '#635e83' --direction vertical|horizontal|radial|angled [--angle 35]
 vixl gradient --name sky --direction angled --angle 35 --stops '[{"offset":0,"color":"#152235"},{"offset":1,"color":"#e8885c"}]'
 vixl text add 'Hello' --name title --size 96 --color white [--font path.ttf] [--align center] [--spacing 8] [--x center --y 120]
-vixl shape rectangle|rounded-rectangle|ellipse|polygon|star|line --name s --width W --height H [--x --y] \
-     [--fill C] [--stroke C] [--stroke-width N] [--radius N] [--sides N] [--inner-radius 0.4]
+vixl shape rectangle|rounded-rectangle|ellipse|polygon|star|arc|line --name s --width W --height H [--x --y] \
+     [--fill C] [--stroke C] [--stroke-width N] [--radius N] [--sides N] [--inner-radius 0.4] \
+     [--line-cap butt|round|square] [--trim-start PCT] [--trim-end PCT]
+     [--start-angle -90 --end-angle 70]   # arc: pie wedge / donut segment (0 = 3 o'clock, clockwise)
 vixl frame --path portrait.jpg --name photo --width 400 --height 500 --fit fill|fit [--asset ID]
 vixl pixel-art --name sprite --width 16 --height 16 [--palette '{".":"transparent","g":"#ffc44d"}'] [--background .]
 vixl pixel-art --name spark --rows '[".w.","www",".w."]' --palette '{".":"transparent","w":"#fff"}'
 vixl adjustment warmth --effects '[{"name":"temperature","amount":500},{"name":"contrast","amount":10}]'
 vixl symbol-instance Brandmark --name footer-logo --x 100 --y 800 --width 100 --height 100
+vixl irregular hero eyes --seed 7 [--strength subtle|natural|rough] [--only wobble color] [--remove]  # opt-in imperfection
+vixl tear photo --seed 3 --edges bottom [--as mask|clip|path] [--strength rough] [--rim-width 5]      # torn edge
 ```
 
 ## Layer management and transforms
@@ -97,15 +101,19 @@ vixl raise|lower|top|bottom portrait
 vixl reorder logo --above portrait       # or --below
 vixl move portrait 100 200 ; vixl move portrait --x 100 ; vixl move portrait 20 0 --relative   # mv = move
 vixl scale portrait 80%                  # or 0.8
-vixl resize portrait 800x600 ; vixl resize portrait --width 800
+vixl resize portrait 800x600 ; vixl resize portrait --width 800 [--keep-aspect]   # one side alone leaves the other (images scale proportionally); --no-keep-aspect to stretch
 vixl rotate portrait 15                  # clockwise degrees about the pivot (default: center)
 vixl pivot arm 0.5 0.05                  # fractions of the box; pivot arm top | pivot arm 8 2 --px | pivot arm --clear
 vixl flip portrait horizontal|vertical
+vixl scale beam --x -1                   # negative factors mirror (--x/--y per axis, or a bare -1 for both)
 vixl crop portrait 0 0 300 400           # X Y W H in the source raster
 vixl opacity portrait 0.75               # or 75 (1–100 = percent)
 vixl blend portrait multiply             # normal multiply screen overlay darken lighten difference add subtract
 vixl rasterize title
 vixl group stripes stripe1 stripe2 ; vixl ungroup stripes
+vixl stack names --targets first last company --gap 20 --align center --justify center --width 1000 --height 400   # auto-layout; empty hide_if_empty text collapses
+vixl stack names --direction horizontal --gap 8 ; vixl stack names --remove ; vixl text first --hide-if-empty
+vixl shape --target bar --fill '#6b3f69'    # solid/gradient/shape/text add --target edit a layer in place
 vixl clip TARGET BASE ; vixl clip TARGET --release
 ```
 
@@ -153,7 +161,7 @@ vixl mask import LAYER --path mask.png
 # Effects: vixl EFFECT [LAYER] AMOUNT
 vixl brightness portrait +20 ; vixl contrast -10 ; vixl saturation +15 ; vixl hue 30
 vixl exposure 0.5 ; vixl gamma 1.1 ; vixl temperature 300 ; vixl tint 10
-vixl shadows 15 ; vixl highlights -10 ; vixl blur 8 ; vixl sharpen 2
+vixl shadows 15 ; vixl highlights -10 ; vixl blur 8 ; vixl sharpen 2 ; vixl denoise photo --luminance 40 --chroma 60
 vixl grayscale ; vixl invert ; vixl posterize 6 ; vixl threshold 128
 vixl auto-tone photo ; vixl auto-color photo ; vixl auto-contrast photo
 vixl filter noise --amount 0.08 --seed 42
@@ -210,8 +218,10 @@ vixl export out.png|.jpg|.webp|.tiff|.avif [--quality 90] [--scale 2x] [--profil
 vixl render [F.vixl] --out preview.png [--set title=Hello]      # same options; never persists overrides
 vixl render --data rows.csv --out campaign_dir [--no-check]     # one PNG per CSV row: 0001.png …; rows with design problems carry a "check" report
 vixl export-screens --out screens --scales 1 2 [--artboards square story]   # NAME@2x.png
-vixl export-animation --out sprite.gif --format gif|apng|sheet [--scale 8] [--columns 3] [--colors 64] \
-     [--sampling nearest|smooth]          # smooth: any scale (0.5, 1.5 …) re-rendered crisply
+vixl export-animation --out sprite.gif --format gif|apng|webp|mp4|webm|sheet [--scale 8] [--columns 3] [--colors 64] \
+     [--sampling nearest|smooth] [--animation NAME] [--quality 90]
+     # smooth: any scale (0.5, 1.5 …) re-rendered crisply; format follows the extension; --animation exports one
+     # named animation (default: every saved frame); mp4/webm need ffmpeg
 vixl export - --format PNG > preview.png                        # to stdout
 cat photo.png | vixl convert --grayscale [--format PNG] > gray.png
 vixl compare REF_A REF_B --out comparison.png                   # side-by-side history states
@@ -257,7 +267,12 @@ vixl pixel-draw sprite rect 4 4 --width 8 --height 8 --color s
 vixl pixel-draw sprite fill 0 0 --color .
 vixl pixel-palette sprite --colors '{"g":"#ffdd66"}'
 vixl frame-save idle [--duration 150] ; vixl frame-apply idle ; vixl frame-delete idle
-vixl animation-set --order idle blink --loop 0
+vixl animation-set --order idle blink --loop 0       # default animation: lists every saved frame
+vixl animation-set --name walk --order w1 w2 w3 w2 [--duration 100 | --durations 100 100 100 100] [--loop 0]
+vixl animation-set --name walk --delete              # named animations are subsets; the frames stay
+vixl frames-edit --operations '[{"type":"pixel-palette","target":"upper","colors":{"Y":"#d93a2b"}}]' \
+     [--animation walk | --frames w1 w2] [--scene]   # same edit on every saved frame, atomically
+vixl export-animation --out walk.gif --animation walk --scale 8
 ```
 
 ## AI (needs a configured provider — see ai.md)
@@ -277,7 +292,7 @@ vixl ai remove --as removed ; vixl ai content-aware-fill --prompt '…' ; vixl a
 
 ```bash
 vixl -p F.vixl serve [--host 127.0.0.1] [--port 8765] [--token-env VIXL_API_TOKEN]
-vixl mcp --workspace DIR [--tools core|ai]   # MCP over stdio; core + ai run as two servers (default all)
+vixl mcp --workspace DIR [--tools core|ai] [--require-document]   # MCP over stdio; core + ai run as two servers (default all); --require-document (or VIXL_REQUIRE_DOCUMENT=1) makes document= mandatory
 vixl update --check | vixl update | vixl update --rollback ; vixl updates status|on|off   # Windows installer only
 ```
 

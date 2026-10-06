@@ -47,6 +47,12 @@ Attach a suite with an explicit `suite-set` operation:
 }}
 ```
 
+The tool surface describes this object, so no repository docs are needed to write one:
+`vixl_operation_schema(types=["suite-set"])` and `vixl_workflow_schema().definitions.suite` give every
+rule field a type, enum and one-line description (with an example), and `vixl_workflow_schema` does the
+same for every action's request fields and for the `job`, `spec`, `recipe` and plugin `manifest` objects.
+The `check` action also accepts an inline suite object instead of a name.
+
 Run `project.check_suite("delivery")` or workflow `check` with
 `{"suite":"delivery"}`. Results include the suite hash, actual measurements,
 rule IDs, times, and `passed`, `failed`, or `needs_review`. Missing/unmeasurable
@@ -101,8 +107,10 @@ Higher-level operations:
   so fitting one item does not resize every use of a shared style.
 - `arrange-grid`: targets, columns, gap, x/y. Places unique sibling layers in cells
   sized for the largest item; it does not resize content.
-- `adapt-layout`: targets, width, height, margin/gap. Explicit vertical reflow in the
+- `adapt-layout` with `targets`: targets, width, height, margin/gap. Explicit vertical reflow in the
   given priority order. Refuses content that cannot fit; this is not a general constraint solver.
+  Without `targets` the same verb re-lays out every layer proportionally at another size and reports
+  where each layer moved (see [operations](operations.md#bulk-edits-and-resizing-a-whole-layout-unreleased)).
 - Existing `replace-contents` preserves a frame's placement, effects and identity.
 
 An `action-define` stores bounded canonical operations under a name; `action-apply`
@@ -202,6 +210,12 @@ unrelated files are never overwritten. A contact sheet includes up to 100 raster
 Keep output order stable when resuming: variant IDs derive from row/matrix/board order.
 Completed files are published atomically; a crash before recording completion can require
 rerendering that one variant. Old output versions are retained.
+
+## Print merge
+
+`merge-impose` merges a template and a CSV into print sheets (n-up, crop marks, bleed) with vector text, validating every row
+first; see [imposition](imposition.md). Variant production fingerprints include the revisions of any documents a design
+[links](linked-documents.md), so a changed source re-renders the variants that use it.
 
 ## Persistent rendering cache and library
 

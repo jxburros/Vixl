@@ -12,9 +12,14 @@ import numpy as np
 from .errors import require
 from .model import finite
 
-CHECKS = ("bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "fonts", "brand", "content", "form")
+CHECKS = ("bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "fonts", "brand", "content", "form",
+          "links", "diagram", "flow")
 FALLBACK_FONT = "DejaVuSans.ttf"
-OPTIONAL_CHECKS = ("print", "color_vision", "guides", "alignment", "drawing")
+OPTIONAL_CHECKS = ("print", "color_vision", "guides", "alignment", "drawing", "style")
+# What to do about a finding. Errors and the warnings below need a design change ("fix"); other warnings
+# are worth a look ("review"); notes and deliberate choices the document marked are "informational".
+ACTIONS = ("fix", "review", "informational")
+FIX_WARNINGS = ("legibility", "fonts", "content", "guides", "alignment", "blanks", "brand")
 PERCENT = re.compile(r"^(-?\d+(?:\.\d+)?)%$")
 
 
@@ -45,6 +50,32 @@ def _box(value, width, height, name):
     return x, y, w, h
 
 
+def classify(item):
+    """``fix``, ``review`` or ``informational`` for one finding."""
+    if item.get("action") in ACTIONS:
+        return item["action"]
+    if item.get("intentional") or item["severity"] == "info" or item["check"] == "coverage":
+        return "informational"
+    if item["severity"] == "error" or item["check"] in FIX_WARNINGS:
+        return "fix"
+    return "review"
+
+
+def tally(issues):
+    """Counts by severity and the indexes of the findings grouped by action. Every finding gets an
+    ``action``; ``passed`` ignores warnings and notes."""
+    for item in issues:
+        item["action"] = classify(item)
+    errors = sum(1 for x in issues if x["severity"] == "error")
+    return {
+        "passed": errors == 0,
+        "errors": errors,
+        "warnings": sum(1 for x in issues if x["severity"] == "warning"),
+        "info": sum(1 for x in issues if x["severity"] == "info"),
+        "by_action": {action: [i for i, x in enumerate(issues) if x["action"] == action] for action in ACTIONS},
+    }
+
+
 def where(region):
     x, y, w, h = region
     return f"x {x}–{x + w - 1}, y {y}–{y + h - 1}"
@@ -68,9 +99,11 @@ def glyph_reports(project, layers):
     fallback font or that no available font covers. Text is read with the project's variables."""
     from .text import glyph_coverage
     from .render import document_variables, substitute
+    from .richtext import active, glyph_coverage as rich_coverage
 
     for item in layers:
-        report = glyph_coverage(project, {**item, "text": substitute(item["text"], document_variables(project))})
+        view = {**item, "text": substitute(item["text"], document_variables(project))}
+        report = (rich_coverage if active(view) else glyph_coverage)(project, view)
         if report["missing"] or report["fallback"]:
             yield item, report
 
@@ -179,12 +212,17 @@ def check_design(
     page=None,
     deck=None,
     sample=None,
+    style=None,
 ):
-    """Return ``{"passed", "errors", "warnings", "issues", "checked"}`` for the rendered design.
+    """Return ``{"passed", "errors", "warnings", "info", "issues", "by_action", "checked"}`` for the rendered
+    design. Each issue has a ``severity`` (error, warning, info) and an ``action`` (fix, review or
+    informational); ``by_action`` lists the issue indexes under each action. Layers marked as intentional
+    crops (``layer-intent`` ``allow_crop``, or non-text decoration) report edge crops as info.
     In a multi-page document ``page`` picks the page (default: the active page); the ``deck``
     check family reviews every page and the deck as a whole (``deck`` holds its settings:
     ``min_font``, ``max_words``, ``pages``, ``include_hidden``). ``sample`` (``"worst"`` or a CSV
-    path) fills the form's fields to find values that overflow their boxes."""
+    path) fills the form's fields to find values that overflow their boxes. The ``style`` check
+    evaluates the document's style tag (or ``style``, a name or list of names) rule by rule."""
     from .design_render import artboard_project
     from .render import layer_canvas_surface, resolve_layout, resolved_layers
 
@@ -236,6 +274,12 @@ def check_design(
         wanted = {candidate.layer(t)["id"] for t in targets}
         layers = [item for item in layers if any(x["id"] in wanted for x in (item, *ancestors(item)))]
 
+    from .links import broken_links, check_links
+
+    # A link whose source cannot be drawn is reported by the links check and left out of the rest.
+    unreadable = broken_links(candidate, {item["id"] for item in layers if item["type"] == "link"})
+    layers = [item for item in layers if item["id"] not in unreadable]
+
     def background(item):
         return item["type"] != "text" and _contains(bounds[item["id"]], (0, 0, width, height))
 
@@ -244,6 +288,13 @@ def check_design(
 
     def is_text(item):
         return resolved[item["id"]]["type"] == "text"
+
+    def intentional_crop(item):
+        """A deliberate edge crop: the layer (or a group above it) is marked allow_crop, or it is non-text decoration."""
+        chain = (item, *ancestors(item))
+        return any(x.get("allow_crop") for x in chain) or (
+            not is_text(item) and next((x["role"] for x in chain if x.get("role")), "content") == "decoration"
+        )
 
 
     def issue(check, severity, message, layers=(), **extra):
@@ -263,8 +314,14 @@ def check_design(
             if x >= width or y >= height or x + w <= 0 or y + h <= 0:
                 issue("bounds", "error", f"{item['name']!r} is entirely outside the canvas", [item], bounds=[x, y, w, h])
             elif x < 0 or y < 0 or x + w > width or y + h > height:
-                severity = "error" if is_text(item) else "warning"
-                issue("bounds", severity, f"{item['name']!r} is cut off by the canvas edge", [item], bounds=[x, y, w, h])
+                if intentional_crop(item):
+                    issue("bounds", "info", f"{item['name']!r} bleeds off the canvas edge (marked as an intentional crop)",
+                          [item], bounds=[x, y, w, h], intentional=True)
+                else:
+                    severity = "error" if is_text(item) else "warning"
+                    issue("bounds", severity, f"{item['name']!r} is cut off by the canvas edge"
+                          + ("" if is_text(item) else "; if the crop is deliberate, mark it with layer-intent allow_crop"),
+                          [item], bounds=[x, y, w, h])
         for item in content:
             needed = boxed_text_overflow(candidate, resolved[item["id"]])
             if needed:
@@ -364,6 +421,9 @@ def check_design(
             measured = top_level_contrast(candidate, top) if top else {}
         except Exception:  # noqa: BLE001 - measure each layer separately and report its own failure.
             measured = {}
+        from .charts import chart_contrast
+
+        measured.update(chart_contrast(candidate, resolved, local_bounds, bounds, [x for x in texts if x.get("parent")]))
         for item in texts:
             try:
                 result = measured.get(item["id"]) or measure(candidate, target=item["id"])["contrast"]
@@ -397,13 +457,15 @@ def check_design(
             safe = (left, top, width - left - right, height - top - bottom)
             for item in content:
                 if not _contains(safe, bounds[item["id"]]):
+                    crop = intentional_crop(item)
                     issue(
                         "safe_area",
-                        "error" if is_text(item) else "warning",
-                        f"{item['name']!r} extends outside the safe area",
+                        "info" if crop else "error" if is_text(item) else "warning",
+                        f"{item['name']!r} extends outside the safe area" + (" (marked as an intentional crop)" if crop else ""),
                         [item],
                         bounds=list(bounds[item["id"]]),
                         safe_area=[round(v, 2) for v in safe],
+                        **({"intentional": True} if crop else {}),
                     )
         for zone in avoid or []:
             box = _box(zone, width, height, "avoid")
@@ -469,7 +531,10 @@ def check_design(
                 )
 
     if "fonts" in checks:
-        fallback = [item for item in texts if resolved[item["id"]].get("font", FALLBACK_FONT) == FALLBACK_FONT]
+        from .richtext import fonts_used
+
+        # The font each run of text is drawn in, so rich text with a font on every span is not flagged.
+        fallback = [item for item in texts if FALLBACK_FONT in fonts_used(resolved[item["id"]], FALLBACK_FONT)]
         if fallback:
             names = ", ".join(repr(x["name"]) for x in fallback[:5]) + (" …" if len(fallback) > 5 else "")
             issue(
@@ -493,6 +558,12 @@ def check_design(
         if "alignment" in checks:
             check_alignment(candidate, resolved, local_bounds, projection, content, issue)
 
+    style_report = None
+    if "style" in checks:
+        from .styles import check_style
+
+        style_report = check_style(candidate, resolved, projection, layers, content, issue, style=style)
+
     if brand and "brand" in checks:
         from .brand import check as check_brand
         check_brand(candidate, brand, issue)
@@ -502,18 +573,30 @@ def check_design(
 
         check_drawings(candidate, list(resolved.values()), issue)
 
+    if "diagram" in checks and candidate.state.get("diagrams"):
+        from .diagrams import check_diagrams
+
+        check_diagrams(candidate, resolved, local_bounds, projection, issue)
+
+    if "flow" in checks and candidate.state.get("flows"):
+        from .textflow import check_flows
+
+        check_flows(candidate, resolved, issue)
+
     if "form" in checks:
         from .forms import check_form
 
         check_form(candidate, resolved, local_bounds, projection, layers, issue, sample=sample)
 
-    errors = sum(1 for x in issues if x["severity"] == "error")
+    if "links" in checks:
+        check_links(candidate, [resolved[i] for i in resolved if resolved[i]["type"] == "link" and visible(resolved[i])],
+                    issue)
+
     return {
-        "passed": errors == 0,
-        "errors": errors,
-        "warnings": len(issues) - errors,
+        **tally(issues),
         "issues": issues,
         "checked": {"checks": checks, "layers": len(content), "text_layers": len(texts)},
+        **({"style": style_report} if style_report is not None else {}),
     }
 
 

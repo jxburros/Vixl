@@ -31,11 +31,23 @@ Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/mai
    markers) and a template document with a `lyric` text layer (optional `lyric-next`,
    `section-label`, `intro`, `bg-<section>` and `cue-<words>` layers) and reports the timed lines;
    `lyric-video-build` writes an editable keyframed document; `lyric-video-export` renders the
-   MP4/WebM with the song as audio. Long songs run as the `lyric-video` job kind. See
+   MP4/WebM with the song as audio, rendering an existing hand-edited build as it is (`rebuild: true`
+   rebuilds; `build_stale` if the settings changed under edits). An empty timestamp clears the lyric and the
+   preview, a line sung twice in a row holds instead of re-fading, and `cue_animation` (`in`/`out`,
+   `motion: "sweep"`) animates `cue-*` layers. Long songs run as the `lyric-video` job kind. See
    `docs/lyric-video.md`.
 10. Form filling: `form-fill` fills the open form from `values` (one copy) or a `data` CSV (one
    file per row, or `combine` into one PDF); the `form-fill` job kind freezes the form and the data
    and deletes the data copy when done. See `docs/forms.md`.
+
+11. Print merge: `merge-impose` (`vixl_workflow("merge-impose", {template, data, sheet, output, sheet_document}, document=)`)
+   imposes a template and a CSV on print sheets: a vector-text PDF (selectable text) and/or an editable sheet `.vixl` of live
+   `link` layers. Run it with `dry_run` first: the report names missing/unknown columns, overflowing text, tofu glyphs and the
+   grid. `{"rerun": "sheet.vixl"}` repeats it after the data changes. See `docs/imposition.md`.
+12. Linked documents: a `link` layer shows another `.vixl` live (`fit`, `position`, `crop`, `artboard`, `source_page`,
+   `variables`); `vixl_workflow("links", {})` reports ok/stale/missing, `link-refresh` records the seen revision,
+   `link-embed` freezes it. Use it instead of exporting a PNG and importing it into a derived design. See
+   `docs/linked-documents.md`.
 
 MCP paths must remain inside the workspace. REST exposes check/act/plan/film-plan for
 its single project; filesystem, library and queue operations use CLI/Python/MCP.

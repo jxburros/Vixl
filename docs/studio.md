@@ -60,6 +60,8 @@ segments) or explicit anchor nodes. Handle coordinates are absolute in the path'
 ],"stroke":"#006d77","stroke_width":4,"fill":"transparent"}
 ```
 
+`stroke_width`, `line_cap`, `trim_start` and `trim_end` apply to the pen's stroke; the trim (0–100 % of the path's length) is animatable, which draws the path on over time (see [animation](brushes-and-animation.md#drawing-a-line-on)).
+
 Without `width` and `height`, node coordinates are canvas positions (offset by `x`/`y` when
 given) and the layer's box fits the drawn path, its stroke and its handles, so `inspect` and the
 layout checks see the shape where it is; `x:"center"` centers that fitted box. With `width` and
@@ -172,13 +174,13 @@ Custom container resources contain `width`, `height`, `operations`, optional `de
 and `rules`: `layout` free/vertical/horizontal/grid, `padding`, `gap`, `columns`, `max_items`,
 `contain`. Content is self-contained text, shape, pen, solid or gradient operations, with
 unique local names. Placed names become `container-name/local-name`. Use `${variable}`
-placeholders and supply `variables` when placing/swapping. File reads and recursive content
+placeholders and supply `variables` when placing/swapping (a `hide_if_empty` text member whose text is empty takes no space). File reads and recursive content
 are excluded. Placement and swaps enforce bounds and layout rules atomically.
 
 After text/geometry edits, run `container-reflow`; it refuses overflow so content can be
 resized or fitted explicitly. Each modular template includes the `container-layout` suite,
 which detects later rule violations without silently moving artwork. Rules measure geometry,
-not the visual spread of effects such as glows. Containers do not provide a live CSS engine.
+not the visual spread of effects such as glows. Containers do not provide a live CSS engine: `container-reflow` and the check skip hidden and empty members, and a `stack` on the container group makes its members follow variables at export time.
 
 Save a shape using workflow `shape-save`, `{"target":"my-shape","name":"brand-mark"}`.
 Reuse it with `{"type":"shape-place","resource":"brand-mark","name":"mark","x":20,"y":20}`.
@@ -260,7 +262,9 @@ Text uses the bundled fallback font; arbitrary browser CSS/fonts are not reprodu
 HTML export is a standalone responsive artwork page with a self-contained SVG image, escaped
 accessible text and restrictive CSP. It needs no server, JavaScript or external assets. It is
 an artwork export, not conversion into editable HTML layout components. CLI, Python, MCP
-file export and REST `POST /export` (`format:"HTML"`) share the implementation.
+file export and REST `POST /export` (`format:"HTML"`) share the implementation. A document with
+pages exports as a slide presentation instead (see [presenter](presenter.md)); `--no-presenter`
+(`presenter=false`) keeps the single artwork page.
 
 ## Plugin packs and trusted Python extensions
 

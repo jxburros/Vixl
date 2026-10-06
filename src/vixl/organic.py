@@ -32,6 +32,10 @@ MAX_COPIES = 2000
 MAX_COMMANDS = 8192
 GOLDEN_ANGLE = 137.50776405003785
 POST_RULES = ("blend", "occlude", "intersect")
+# Operation fields stored in a form's recipe, so a regrow starts from what was last asked for.
+RECIPE_KEYS = ("preset", "parts", "params", "colors", "seed", "naturalness", "padding", "stretch", "fill", "stroke",
+               "stroke_width")
+UNFILLED = ("transparent", "none")
 
 
 # ---------------------------------------------------------------------------------------------
@@ -2194,8 +2198,9 @@ def schemas(add):
         "y": COORD,
         "padding": {"type": "number", "minimum": 0},
         "stretch": {"type": "boolean"},
-        "stroke": S,
-        "stroke_width": N,
+        "fill": {**S, "description": "Fill for every filled part; colors names single parts and wins over it."},
+        "stroke": {**S, "description": "Line color for every part, extra line outputs such as chambers and veins included."},
+        "stroke_width": {**N, "description": "Line width for every part and extra line output."},
     }, anyOf=[{"required": ["preset"]}, {"required": ["parts"]}, {"required": ["target"]}])
 
 
@@ -2211,6 +2216,21 @@ def recipe_parts(recipe):
     return PRESETS[preset][0](dict(params))
 
 
+def regrown_style(kept, derived, op):
+    """Style for a regrown layer: its current look, except what this operation sets again.
+
+    ``colors``/``fill`` restore the recipe's fill, ``stroke`` and ``stroke_width`` their own
+    field, and a new ``preset`` or ``parts`` list restyles everything. Anything else (a plain
+    new seed) keeps the colors and widths the user has since edited on the layer.
+    """
+    fresh = bool({"preset", "parts"} & set(op))
+    result = dict(kept)
+    for key, fields in (("fill", ("colors", "fill")), ("stroke", ("stroke",)), ("stroke_width", ("stroke_width",))):
+        if fresh or any(field in op for field in fields):
+            result[key] = derived[key]
+    return result
+
+
 def execute(project, op):
     from .operations import append_layer, default_name, execute as apply
     from .model import new_layer
@@ -2219,7 +2239,7 @@ def execute(project, op):
     recipe = deepcopy(target.get("organic", {})) if target else {}
     if target is not None:
         require(recipe, f"{target['name']!r} was not made by organic; target an organic layer or group", field="target")
-    for key in ("preset", "parts", "params", "colors", "seed", "naturalness", "padding", "stretch", "stroke", "stroke_width"):
+    for key in RECIPE_KEYS:
         if key in op:
             recipe[key] = deepcopy(op[key])
     if "preset" in op and "parts" not in op:
@@ -2231,6 +2251,11 @@ def execute(project, op):
     parts = recipe_parts(recipe)
     colors = recipe.get("colors", {})
     require(isinstance(colors, dict), "colors maps part names to fill colors", field="colors")
+    if "fill" in recipe:
+        # One fill for the whole form; line-only parts (a fern, its veins) stay unfilled.
+        for spec in parts:
+            if str(spec.get("fill", "")).strip().lower() not in UNFILLED:
+                spec["fill"] = recipe["fill"]
     for spec in parts:
         if spec.get("name") in colors:
             spec["fill"] = colors[spec["name"]]
@@ -2257,7 +2282,8 @@ def execute(project, op):
         width, height = natural_size(built, op.get("width"), op.get("height"))
     project.limits.size(width, height)
     widest = max([spec.get("stroke_width", 0) for spec, _ in built if spec.get("stroke", "transparent") != "transparent"]
-                 + [style.get("stroke_width", 1) for spec, _ in built for style in (spec.get("styles") or {}).values()] + [0])
+                 + [recipe.get("stroke_width", style.get("stroke_width", 1))
+                    for spec, _ in built for style in (spec.get("styles") or {}).values()] + [0])
     padding = finite(recipe.get("padding", 2 + widest / 2), "padding", 0, min(width, height) / 2 - 1)
     paths = render_paths(built, width, height, padding, not recipe.get("stretch", False))
     styles = {spec["name"]: spec for spec, _ in built}
@@ -2266,16 +2292,15 @@ def execute(project, op):
         spec = styles[name]
         style = {"fill": spec.get("fill", "#5c8f4a"), "stroke": spec.get("stroke", "transparent"),
                  "stroke_width": spec.get("stroke_width", 1)}
+        # What the operation sets outranks the preset's own line styling for an output.
+        extra = {k: v for k, v in (spec.get("styles") or {}).get(tag, {}).items() if k not in recipe}
         if tag != "shape":
             style = {"fill": "transparent", "stroke": spec.get("stroke", "rgba(0, 0, 0, 0.45)"),
                      "stroke_width": spec.get("stroke_width", 1)}
-            style.update((spec.get("styles") or {}).get(tag, {}))
-        elif "styles" in spec and "shape" in spec["styles"]:
-            style.update(spec["styles"]["shape"])
+        style.update(extra)
         layers.append((name if tag == "shape" else f"{name}-{tag}", d, style, spec.get("opacity", 1)))
     require(layers, "The organic form drew nothing", field="parts")
-    stored = {k: v for k, v in recipe.items() if k in ("preset", "parts", "params", "colors", "seed", "naturalness",
-                                                       "padding", "stretch", "stroke", "stroke_width")}
+    stored = {k: v for k, v in recipe.items() if k in RECIPE_KEYS}
 
     def path_layer(label, d, style, opacity, x=0, y=0):
         layer = new_layer(label, "shape", width, height, shape="path", path=d, path_view=[width, height],
@@ -2309,9 +2334,10 @@ def execute(project, op):
         require(len(layers) == 1, f"{target['name']!r} is a single path; this recipe draws {len(layers)} parts. "
                 "Remove it and create the form again", field="target")
         label, d, style, opacity = layers[0]
+        kept = {"fill": target["fill"], "stroke": target.get("stroke", "transparent"),
+                "stroke_width": target.get("stroke_width", 1)}
         target.update(path=d, path_view=[width, height], width=width, height=height, line_cap="round",
-                      fill=style["fill"] if "colors" in op or "preset" in op or "parts" in op else target["fill"],
-                      stroke=style["stroke"] if "parts" in op or "preset" in op else target.get("stroke", "transparent"))
+                      **regrown_style(kept, style, op))
         target["organic"] = stored
         return
     require(target["type"] == "group", "Organic regeneration needs the organic group or path", field="target")
@@ -2324,10 +2350,12 @@ def execute(project, op):
     created = []
     for label, d, style, opacity in layers:
         previous = keep_styles.get(label)
-        if previous is not None and not any(k in op for k in ("colors", "preset", "parts")):
-            style = {"fill": previous["fill"], "stroke": previous.get("stroke", "transparent"),
-                     "stroke_width": previous.get("stroke_width", 1)}
-            opacity = previous["opacity"]
+        if previous is not None:
+            kept = {"fill": previous["fill"], "stroke": previous.get("stroke", "transparent"),
+                    "stroke_width": previous.get("stroke_width", 1)}
+            style = regrown_style(kept, style, op)
+            if not {"preset", "parts"} & set(op):
+                opacity = previous["opacity"]
         layer = path_layer(default_name(project, f"{target['name']}/{label}"), d, style, opacity)
         layer.update(parent=target["id"], width=width, height=height)
         created.append(layer)
@@ -2359,6 +2387,7 @@ def compile_command(cmd, args):
     for key in ("x", "y", "padding", "stroke-width"):
         p.add_argument("--" + key, type=float)
     p.add_argument("--stroke")
+    p.add_argument("--fill", help="Fill for every filled part (--color names single parts)")
     p.add_argument("--set", action="append", help="Preset parameter KEY=VALUE (JSON values allowed), e.g. petals=8")
     p.add_argument("--color", action="append", help="Part fill PART=COLOR, e.g. petals=#fff")
     p.add_argument("--parts", type=json.loads, help="JSON list of parts (instead of a preset)")

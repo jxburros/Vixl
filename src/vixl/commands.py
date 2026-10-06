@@ -56,10 +56,26 @@ def compile_command(tokens):
     authoring = compile_authoring(cmd, args)
     if authoring is not None:
         return authoring
+    from .stacks import compile_command as compile_stack
+    stack = compile_stack(cmd, args)
+    if stack is not None:
+        return stack
+    from .finishing import compile_command as compile_finishing
+    finishing = compile_finishing(cmd, args)
+    if finishing is not None:
+        return finishing
     from .richtext import compile_command as compile_rich
     rich = compile_rich(cmd, args)
     if rich is not None:
         return rich
+    from .diagrams import compile_command as compile_diagram
+    diagram = compile_diagram(cmd, args)
+    if diagram is not None:
+        return diagram
+    from .textflow import compile_command as compile_flow
+    flow = compile_flow(cmd, args)
+    if flow is not None:
+        return flow
     from .drawing import compile_command as compile_drawing
     sketch = compile_drawing(cmd, args)
     if sketch is not None:
@@ -68,6 +84,10 @@ def compile_command(tokens):
     form = compile_forms(cmd, args)
     if form is not None:
         return form
+    from .links import compile_command as compile_links
+    linked = compile_links(cmd, args)
+    if linked is not None:
+        return linked
     from .pages import compile_command as compile_pages
     paged = compile_pages(cmd, args)
     if paged is not None:
@@ -76,14 +96,26 @@ def compile_command(tokens):
     guided = compile_guides(cmd, args)
     if guided is not None:
         return guided
+    from .charts import compile_command as compile_charts
+    charted = compile_charts(cmd, args)
+    if charted is not None:
+        return charted
     from .organic import compile_command as compile_organic
     organic = compile_organic(cmd, args)
     if organic is not None:
         return organic
+    from .irregular import compile_command as compile_irregular
+    irregular = compile_irregular(cmd, args)
+    if irregular is not None:
+        return irregular
     from .automation import compile_command as compile_automation
     automation = compile_automation(cmd, args)
     if automation is not None:
         return automation
+    from .selectors import compile_command as compile_selectors
+    selector = compile_selectors(cmd, args)
+    if selector is not None:
+        return selector
     from .pixel_schema import compile_pixel
 
     pixel = compile_pixel(cmd, args)
@@ -123,6 +155,9 @@ def compile_command(tokens):
             p.add_argument("--tension", type=float)
             p.add_argument("--corners", type=json.loads)
             p.add_argument("--stroke-width", type=float)
+            p.add_argument("--trim-start", type=float, help="Draw the stroke from this percent of its length (animatable)")
+            p.add_argument("--trim-end", type=float, help="Draw the stroke up to this percent of its length (animatable)")
+            p.add_argument("--line-cap", choices=["butt", "round", "square"])
         else:
             p.add_argument("resource")
             p.add_argument("--target", required=cmd == "container-swap")
@@ -145,12 +180,15 @@ def compile_command(tokens):
         p.add_argument("--x", type=float)
         p.add_argument("--y", type=float)
     elif cmd in ("solid", "gradient", "text"):
+        p.add_argument("--target", help=f"edit this existing {cmd} layer in place instead of adding one")
         if cmd == "text":
-            p.add_argument("text")
+            p.add_argument("text", nargs="?", help="the text; optional with --target")
             p.add_argument("--font", help="registered font name, heading, body, or a font file")
             p.add_argument("--size", type=int)
             p.add_argument("--align", choices=["left", "center", "right"])
             p.add_argument("--spacing", type=int)
+            p.add_argument("--hide-if-empty", action=argparse.BooleanOptionalAction, default=None,
+                           help="do not draw the text while it is empty after ${variable} substitution")
         elif cmd == "gradient":
             p.add_argument("--start", default="black")
             p.add_argument("--end", default="white")
@@ -173,6 +211,8 @@ def compile_command(tokens):
         p.add_argument("--font", help="registered font name, heading, body, or a font file")
         for key in ("size", "spacing", "stroke-width"):
             p.add_argument(f"--{key}", type=int)
+        p.add_argument("--hide-if-empty", action=argparse.BooleanOptionalAction, default=None,
+                       help="do not draw the text while it is empty after ${variable} substitution")
     elif cmd in (
         "remove",
         "hide",
@@ -213,9 +253,14 @@ def compile_command(tokens):
         p.add_argument("values", nargs="*")
         p.add_argument("--width", type=int)
         p.add_argument("--height", type=int)
+        p.add_argument("--keep-aspect", action=argparse.BooleanOptionalAction, default=None,
+                       help="with one dimension: scale the other side proportionally, or (--no-keep-aspect) leave it; "
+                       "default: proportional for images, leave it for everything else")
+        p.add_argument("--x", type=float, help="scale: horizontal factor; negative mirrors (scale beam --x -1)")
+        p.add_argument("--y", type=float, help="scale: vertical factor; negative mirrors")
         data = vars(p.parse_args(args))
         values = data.pop("values")
-        if values and not re.fullmatch(r"\d+(?:\.\d+)?%|\d+[x×]\d+|\d+(?:\.\d+)?", values[0]):
+        if values and not re.fullmatch(r"-?\d+(?:\.\d+)?%|\d+[x×]\d+|-?\d+(?:\.\d+)?", values[0]):
             data["target"] = values.pop(0)
         if values:
             require(len(values) in (1, 2), "Invalid resize arguments")
@@ -226,8 +271,12 @@ def compile_command(tokens):
             else:
                 data["value"] = float(values[0].rstrip("%")) / (100 if values[0].endswith("%") else 1)
                 op["type"] = "scale"
+        if data.get("x") is not None or data.get("y") is not None:
+            op["type"] = "scale"
         if data.get("width") is not None or data.get("height") is not None:
             op["type"] = "resize"
+        if op["type"] != "resize":
+            data.pop("keep_aspect", None)
         return {**op, **{k: v for k, v in data.items() if v is not None}}
     elif cmd in ("rotate", "opacity", "blend", "flip", *EFFECTS):
         p.add_argument("values", nargs="*")
@@ -236,9 +285,12 @@ def compile_command(tokens):
         p.add_argument("--strength", type=float)
         p.add_argument("--shadow-color")
         p.add_argument("--highlight-color")
+        p.add_argument("--luminance", type=float)
+        p.add_argument("--chroma", type=float)
+        p.add_argument("--search", type=int)
         data = vars(p.parse_args(args))
         values = data.pop("values")
-        if cmd in ARTISTIC_DEFAULTS:
+        if cmd in ARTISTIC_DEFAULTS or cmd == "denoise":
             require(len(values) <= 2, "Expected [LAYER] [VALUE]")
             if len(values) == 2:
                 data["target"], data["value"] = values[0], float(values[1])
@@ -367,9 +419,10 @@ def compile_command(tokens):
     elif cmd == "filter":
         p.add_argument("name")
         p.add_argument("--target")
-        for key in ("amount", "radius", "strength", "black", "white"):
+        for key in ("amount", "radius", "strength", "black", "white", "luminance", "chroma"):
             p.add_argument(f"--{key}", type=float)
         p.add_argument("--seed", type=int)
+        p.add_argument("--search", type=int)
         p.add_argument("--shadow-color")
         p.add_argument("--highlight-color")
         data = {k: v for k, v in vars(p.parse_args(args)).items() if v is not None}
@@ -380,9 +433,10 @@ def compile_command(tokens):
         p.add_argument("action", choices=["disable", "enable", "remove", "set"])
         p.add_argument("target")
         p.add_argument("effect")
-        for key in ("amount", "radius", "strength", "black", "white"):
+        for key in ("amount", "radius", "strength", "black", "white", "luminance", "chroma"):
             p.add_argument(f"--{key}", type=float)
         p.add_argument("--seed", type=int)
+        p.add_argument("--search", type=int)
         p.add_argument("--shadow-color")
         p.add_argument("--highlight-color")
         data = vars(p.parse_args(args))

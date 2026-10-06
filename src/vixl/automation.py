@@ -288,6 +288,22 @@ def execute(project, op):
     from .design import named
 
     kind = op["type"]
+    if kind == "adapt-layout":
+        # One verb, two behaviours: targets reflow vertically (below); without them every layer is re-laid out.
+        mode = op.get("mode") or ("stack" if "targets" in op else "proportional")
+        if mode == "proportional":
+            require("targets" not in op and "margin" not in op and "gap" not in op,
+                    "targets, margin and gap belong to mode 'stack'; proportional adapts every layer "
+                    "(restrict it with where)", field="mode")
+            from .adapt import execute as adapt
+
+            return adapt(project, op)
+        from .adapt import OPTIONS
+
+        require("targets" in op and "width" in op and "height" in op,
+                "mode 'stack' needs targets, width and height", field="targets")
+        extra = [key for key in OPTIONS if key in op and key not in ("width", "height")]
+        require(not extra, f"{', '.join(extra)} belong to mode 'proportional' (leave out targets)", field=extra[0] if extra else "mode")
     if kind in MACROS or kind == "action-apply":
         if kind == "fit-text":
             # Fitting one headline must not resize every use of a shared typography style.
@@ -344,10 +360,11 @@ def execute(project, op):
 
 def schemas(add):
     from .schema import S, N, POSITIVE_INT
+    from .workflow_schema import RECIPE, SUITE
 
     obj = {"type": "object"}
     targets = {"type": "array", "items": S, "minItems": 1, "maxItems": 512}
-    add("suite-set", {"name": S, "suite": obj}, ["name", "suite"])
+    add("suite-set", {"name": S, "suite": SUITE}, ["name", "suite"])
     add(
         "suite-capture",
         {"name": S, "targets": targets, "regions": {"type": "array", "maxItems": 100}},
@@ -362,7 +379,7 @@ def schemas(add):
     )
     add("action-define", {"name": S, "action": obj}, ["name", "action"])
     add("action-apply", {"name": S}, ["name"])
-    add("recipe-set", {"recipe": obj}, ["recipe"])
+    add("recipe-set", {"recipe": RECIPE}, ["recipe"])
     add(
         "fit-text",
         {"width": POSITIVE_INT, "height": POSITIVE_INT, "minimum": POSITIVE_INT, "maximum": POSITIVE_INT},
@@ -373,6 +390,8 @@ def schemas(add):
         {"targets": targets, "columns": POSITIVE_INT, "gap": N, "x": N, "y": N},
         ["targets", "columns"],
     )
+    from .adapt import SCHEMA as adapt_fields
+
     add(
         "adapt-layout",
         {
@@ -381,8 +400,9 @@ def schemas(add):
             "height": POSITIVE_INT,
             "margin": {"type": "number", "minimum": 0},
             "gap": {"type": "number", "minimum": 0},
+            **adapt_fields,
         },
-        ["targets", "width", "height"],
+        anyOf=[{"required": ["targets", "width", "height"]}, {"required": ["size"]}, {"required": ["width", "height"]}],
     )
 
 
@@ -406,13 +426,14 @@ def compile_command(cmd, args):
     if cmd == "fit-text":
         parser.add_argument("target")
     if cmd in ("fit-text", "adapt-layout"):
-        parser.add_argument("--width", type=int, required=True)
-        parser.add_argument("--height", type=int, required=True)
+        # adapt-layout needs targets (vertical reflow) or a size (proportional); the operation checks which.
+        parser.add_argument("--width", type=int, required=cmd == "fit-text")
+        parser.add_argument("--height", type=int, required=cmd == "fit-text")
     if cmd == "fit-text":
         parser.add_argument("--minimum", type=int, default=12)
         parser.add_argument("--maximum", type=int)
     if cmd in ("suite-capture", "role-set", "arrange-grid", "adapt-layout"):
-        parser.add_argument("--targets", nargs="+", required=cmd != "suite-capture")
+        parser.add_argument("--targets", nargs="+", required=cmd not in ("suite-capture", "adapt-layout"))
     if cmd == "arrange-grid":
         parser.add_argument("--columns", type=int, required=True)
         parser.add_argument("--x", type=float)
@@ -421,6 +442,15 @@ def compile_command(cmd, args):
         parser.add_argument("--gap", type=float)
     if cmd == "adapt-layout":
         parser.add_argument("--margin", type=float)
+        parser.add_argument("--size", help="Proportional mode: named target size instead of --width/--height")
+        parser.add_argument("--orientation", choices=["portrait", "landscape"])
+        parser.add_argument("--dpi", type=float)
+        parser.add_argument("--scale", type=lambda v: float(v) if v.replace(".", "", 1).isdigit() else v,
+                            help="fit, fill, width, height or a factor")
+        parser.add_argument("--anchors", type=json.loads, help='JSON, e.g. \'{"logo": "bottom-right"}\'')
+        parser.add_argument("--where", type=json.loads, help="edit-layers selector limiting the adapted layers")
+        parser.add_argument("--text", choices=["scale", "keep"])
+        parser.add_argument("--no-report", dest="report", action="store_false", default=None)
     if cmd == "suite-capture":
         parser.add_argument("--regions", type=json.loads)
     if cmd == "motion-apply":

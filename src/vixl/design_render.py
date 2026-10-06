@@ -40,10 +40,15 @@ def gradient_image(project, layer, size):
 
 def shape_image(project, layer):
     from .render import color
+    from .trim import trim_range, trimmed_image
 
+    if trim_range(layer):
+        return trimmed_image(project, layer)
     w, h = layer["width"], layer["height"]
-    if layer["shape"] == "path":
-        # SVG's nonzero winding preserves holes in compound imported logo paths.
+    from .geometry import PATH_SHAPES
+
+    if layer["shape"] in PATH_SHAPES:
+        # SVG's nonzero winding preserves holes in compound imported logo paths (and donut rings).
         import io
         import xml.etree.ElementTree as ET
         import resvg_py
@@ -440,6 +445,7 @@ def repeat_items(layer, state=None, colors=True):
     layer and its blend endpoint; ``colors=False`` skips the color interpolation (sizes only)."""
     settings = layer["repeat"]
     count = settings["count"]
+    snapped = settings.get("snapped")
 
     def literal(value):
         return resolve_color(value, state) if state is not None else value
@@ -460,7 +466,12 @@ def repeat_items(layer, state=None, colors=True):
 
                 a, b = color(literal(layer.get(key, "white"))), color(literal(end))
                 item[key] = "#" + "".join(f"{round(x * (1 - t) + y * t):02x}" for x, y in zip(a, b))
-        yield item, round(i * settings.get("dx", 0)), round(i * settings.get("dy", 0))
+        if snapped:
+            # A reduced preview puts every copy's edges on whole pixels, so copies that meet stay met.
+            x, y, item["width"], item["height"] = snapped[i]
+        else:
+            x, y = round(i * settings.get("dx", 0)), round(i * settings.get("dy", 0))
+        yield item, x, y
 
 
 def repeat_bounds(layer):

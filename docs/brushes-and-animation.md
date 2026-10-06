@@ -46,13 +46,24 @@ vixl brush-define soft-ink --base ink --settings '{"hardness": 0.4, "taper": [0.
 
 A timeline animates ordinary document layers over time. Each track targets one property of one layer (or the canvas background) and holds keyframes `{time, value, easing}`. The easing on a key shapes the segment that starts at that key. Rendering a time copies the document, applies the interpolated values and renders it normally, so every layer type, effect, style, mask and constraint is animatable. The pixel-art frame snapshots (`frame-save` …) remain available for sprite work.
 
-Animatable properties: `x`, `y`, `translate-x`, `translate-y`, `opacity`, `rotation`, `scale`, `scale-x`, `scale-y` (about the layer's pivot, by default its center), `width`, `height`, `size` (font size), `spacing`, colors `color`, `fill`, `start`, `end`, `stroke_color`, `stroke` (mixed in OKLab), `text` and `visible` (stepped), `effect:ID` (an effect's amount; also `effect:1` for the first effect), and the canvas `background` (`target: "canvas"`). Animating position, rotation or scale freezes that layer's constraints for the frame; layers anchored to it still follow. An animated rotation keeps the center of the layer's document pose, so spins do not drift as the rotated bounds grow.
+Animatable properties: `x`, `y`, `translate-x`, `translate-y`, `opacity`, `rotation`, `scale`, `scale-x`, `scale-y` (about the layer's pivot, by default its center; negative values mirror, see below), `width`, `height`, `size` (font size), `spacing`, `trim_start` and `trim_end` (0–100 %, the stroke of a shape or path; see [Drawing a line on](#drawing-a-line-on)), colors `color`, `fill`, `start`, `end`, `stroke_color`, `stroke` (mixed in OKLab), `text` and `visible` (stepped), `effect:ID` (an effect's amount; also `effect:1` for the first effect), and the canvas `background` (`target: "canvas"`). Animating position, rotation or scale freezes that layer's constraints for the frame; layers anchored to it still follow. An animated rotation keeps the center of the layer's document pose, so spins do not drift as the rotated bounds grow.
+
+**Mirroring and flips.** `scale`, `scale-x` and `scale-y` accept negative values (down to -100000). A negative factor sizes the layer by its absolute value and mirrors it on that axis, about the pivot (the center without one), on top of any flip the layer already has (`flip`, or a negative static `scale`): `-1` on a flipped layer flips it back. Animating `scale-x` from `1` to `-1` swings a layer over like a turning card: it narrows to nothing (nothing is drawn at exactly 0), then widens mirrored. On a pivoted layer the pivot is a point of the artwork, so it moves to the other side of the box while staying fixed on the canvas; later rotation still turns about it. Stills, timeline frames, GIF/WebP/MP4 exports, SVG, PDF and PowerPoint all see the same flipped layer. PDF form fields cannot be mirrored.
+
+```json
+{"type": "pivot", "target": "beam", "value": "left"}
+{"type": "keyframe", "target": "beam", "property": "scale-x", "time": 0, "value": 1, "easing": "ease-in-out-sine"}
+{"type": "keyframe", "target": "beam", "property": "scale-x", "time": "1.4s", "value": -1}
+{"type": "scale", "target": "beam", "x": -1}
+```
+
+The static `scale` operation takes `value` (both axes) or per-axis `x` and `y`; negative factors mirror (`scale x: -1` is `flip horizontal`, `value: -1` flips both axes) and sizes are 0.001–100. CLI: `vixl scale beam --x -1`, `vixl scale beam -0.5`, `vixl keyframe beam scale-x 1.4s -1`.
 
 Times are milliseconds or strings: `"1.5s"`, `"250ms"`, `"50%"` of the duration, or a marker name.
 
 Easings: `linear`, `hold`, `ease`, `ease-in`, `ease-out`, `ease-in-out`, `ease-in/out/in-out-sine|quad|cubic|quart|expo|back`, `bounce-in`, `bounce-out`, `elastic-out`, `spring`, `cubic-bezier(x1, y1, x2, y2)`, `steps(n)`.
 
-Presets (`animate-preset`): `fade-in`, `fade-out`, `slide-in-left|right|up|down`, `slide-out-left|right|up|down` (fade by default), `pop-in`, `pop-out`, `zoom-in`, `zoom-out`, `spin`, `pulse`, `shake`, `bounce`, `float`, `blink`, `typewriter`, `color-shift` (`to`). `amount` and `distance` tune them.
+Presets (`animate-preset`): `fade-in`, `fade-out`, `slide-in-left|right|up|down`, `slide-out-left|right|up|down` (fade by default), `pop-in`, `pop-out`, `zoom-in`, `zoom-out`, `spin`, `pulse`, `shake`, `bounce`, `float`, `blink`, `typewriter`, `color-shift` (`to`), `draw-on` and `draw-off` (stroke trim, below). `amount` and `distance` tune them.
 
 ```bash
 vixl timeline set --duration 3s --fps 30 --loop 0
@@ -80,7 +91,24 @@ vixl export-timeline --out sheet.png --format sheet --columns 6
 
 `targets: ["arm-left", "arm-right"]` on `animate`, `animate-preset` or `keyframe` (CLI: `arm-left,arm-right`) applies the same keys to every listed layer in one call.
 
-`animate` without `from` starts from the current animated (or static) value; it sets keys at `start` and `end` (or `start + duration`). The timeline duration grows to fit new keys. Removing a layer removes its tracks.
+`animate` without `from` starts from the current animated (or static) value; it sets keys at `start` and `end` (or `start + duration`). Removing a layer removes its tracks.
+
+**Keys past the end.** A key placed past the timeline end lengthens the timeline, and the operation result says so in `warnings` (`timeline duration changed 8000 -> 8400 ms: a keyframe on 'beam' sits at 8400 ms, past the end…`). Only the keys the operation just set count: a key left past the end earlier never stretches a duration you set back with `timeline-set` (which itself notes how many keys now lie past the end). Pass `extend: false` on `keyframe`, `animate` or `animate-preset` (CLI `--no-extend`) to keep the duration instead: the key stays past the end, so the last played frame is still on its way to it, but its own moment is not played. This is how to ease a loop through a key that sits just beyond the final frame.
+
+### Drawing a line on
+
+`trim_start` and `trim_end` are percentages (0–100) of the length of a shape's or path's outline: only the stroke between them is drawn. They are properties of `shape` and `pen` layers (set when the layer is made, default 0 and 100) and animatable like any other number, so animating `trim_end` from 0 to 100 draws a line on from its start to its end, the way After Effects' Trim Paths does. Only the stroke is trimmed; the fill stays whole. A start past the end swaps the two, so crossing animated values stay continuous; equal values draw no stroke. A path with several contours trims each by the same percentages. Closed shapes start at the top-left corner of a rectangle and at the top of an ellipse (12 o'clock) and run clockwise; paths and polygons run in the order they were written. `line_cap` (`butt`, `round`, `square`) shapes the ends of a trimmed stroke, so `round` gives the rounded tip of a line being drawn.
+
+```json
+{"type": "pen", "name": "wave", "points": [[20, 80], [100, 20], [180, 80]], "stroke": "#10b4a0", "stroke_width": 6, "line_cap": "round", "fill": "transparent"}
+{"type": "animate-preset", "target": "wave", "preset": "draw-on", "duration": "1.2s"}
+{"type": "animate", "target": "wave", "property": "trim_start", "from": 0, "to": 100, "start": "3s", "duration": "1s"}
+{"type": "keyframe", "target": "ring", "property": "trim_end", "time": 0, "value": 0}
+```
+
+`animate-preset draw-on` runs `trim_end` from 0 to 100 (`ease-in-out` unless `easing` says otherwise); `draw-off` runs `trim_start` from 0 to 100, erasing the line the way it was drawn. Animate both for a worm of stroke that travels along the outline. CLI: `vixl shape path --path 'M20 50 L180 50' --stroke black --stroke-width 8 --line-cap round --trim-end 0`, then `vixl animate-preset wave draw-on --duration 1s` or `vixl animate wave trim_end --to 100 --duration 1s`. The hyphenated names `trim-start` and `trim-end` also work as timeline properties.
+
+Stills, timeline frames, GIF/WebP/MP4 exports and SVG draw the same trim: the visible part is one dash of the stroke (`stroke-dasharray` and `stroke-dashoffset` in the outline's own units), so the SVG stays a vector and plays the same in any viewer. PDF and PowerPoint exports draw a trimmed layer as a picture of what Vixl renders and list it under `raster_fallbacks` as `trimmed stroke`. Trimming applies to shape and path layers (including `pen` paths); text, groups and raster layers have no stroke to trim.
 
 ### Characters: pivots and groups
 

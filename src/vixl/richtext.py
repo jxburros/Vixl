@@ -24,6 +24,7 @@ import xml.etree.ElementTree as ET
 
 from .errors import require
 from .model import finite
+from .notices import note
 
 STYLE_KEYS = ("bold", "italic", "underline", "strike", "color", "size", "font", "highlight", "baseline", "tracking")
 PARAGRAPH_KEYS = ("list", "level", "align", "space_before", "space_after", "indent", "line_height", "start")
@@ -674,9 +675,42 @@ def render(project, layer):
 
 def active(layer):
     """Whether a text layer draws its rich record: the record must still match the text (a
-    timeline or text-set that replaced the text falls back to plain drawing)."""
+    timeline that replaced the text falls back to plain drawing; text-set rewrites the record)."""
     rich = layer.get("rich")
     return bool(rich) and plain(rich) == layer.get("text")
+
+
+def fonts_used(layer, fallback="DejaVuSans.ttf"):
+    """The stored font of each run of visible text a text layer draws: the layer font for plain
+    text, and for rich text each span's own font (``font`` on the span) or else the layer font."""
+    base = layer.get("font", fallback)
+    if not active(layer):
+        return [base]
+    used = [span.get("font", base) for span in layer["rich"]["spans"] if span["text"].strip()]
+    return used or [base]
+
+
+def glyph_coverage(project, layer):
+    """``text.glyph_coverage`` for rich text: each span is checked against its own font, then the
+    document and bundled fallbacks, the way it is drawn."""
+    from .text import glyph_coverage as span_coverage
+
+    missing, fallback = set(), set()
+    for span in styled_spans(project, layer):
+        report = span_coverage(project, {"font": span["font"], "text": span["text"]})
+        missing.update(report["missing"])
+        fallback.update(report["fallback"])
+    return {"missing": sorted(missing), "fallback": sorted(fallback - missing)}
+
+
+def fill_variables(rich, variables):
+    """Fill ``${variable}`` references inside the spans of a resolved layer's rich record. The
+    resolver substitutes the layer text the same way, so the record keeps matching it (``active``)
+    and each substituted value inherits the formatting of the span it sits in."""
+    from .render import substitute
+
+    for span in rich["spans"]:
+        span["text"] = substitute(span["text"], variables)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -687,25 +721,30 @@ TYPES = ("rich-text", "text-style")
 
 
 def schemas(add):
-    from .schema import S, N, B, COORD, SIZE
+    from .schema import S, N, B, COORD, SIZE, FONT
 
-    style = {"bold": B, "italic": B, "underline": B, "strike": B, "color": S, "size": N, "font": S, "highlight": S,
+    style = {"bold": B, "italic": B, "underline": B, "strike": B, "color": S, "size": N, "font": FONT, "highlight": S,
              "baseline": {"enum": ["super", "sub", "normal"]}, "tracking": N}
     para = {"list": {"enum": ["none", "bullet", "number"]}, "level": {"type": "integer", "minimum": 0, "maximum": 8},
             "align": {"enum": ["left", "center", "right", "justify"]}, "space_before": N, "space_after": N, "indent": N,
             "line_height": N, "start": {"type": "integer", "minimum": 0}}
     obj = {"type": "object"}
     add("rich-text", {"name": S, "markdown": S, "spans": {"type": "array", "items": obj, "maxItems": MAX_SPANS},
-                      "paragraphs": {"type": "array", "items": obj}, "font": S, "size": N, "color": S,
+                      "paragraphs": {"type": "array", "items": obj}, "font": FONT, "size": N, "color": S,
                       "align": {"enum": ["left", "center", "right", "justify"]}, "line_height": N, "paragraph_spacing": N,
                       "list_indent": N, "font_variants": obj, "width": SIZE, "height": SIZE, "fit": B, "x": COORD,
                       "y": COORD}, anyOf=[{"required": ["markdown"]}, {"required": ["spans"]}])
-    add("text-style", {"match": S, "occurrence": {"anyOf": [{"type": "integer", "minimum": 1}, {"enum": ["all"]}]},
-                       "start": {"type": "integer", "minimum": 0}, "end": {"type": "integer", "minimum": 0},
+    add("text-style", {"match": {**S, "description": "Style every occurrence of this text (see occurrence)."},
+                       "occurrence": {"anyOf": [{"type": "integer", "minimum": 1}, {"enum": ["all"]}]},
+                       "start": {"type": "integer", "minimum": 0, "description": "First character of a range (with end)."},
+                       "end": {"type": "integer", "minimum": 0},
                        "paragraphs": {"anyOf": [{"type": "array", "items": {"type": "integer", "minimum": 0}}, {"enum": ["all"]}]},
                        "clear": B, **style, **{{"align": "paragraph_align", "start": "number_start"}.get(k, k): v
                                                for k, v in para.items()},
-                       "paragraph_spacing": N, "list_indent": N, "font_variants": obj})
+                       "paragraph_spacing": N, "list_indent": N, "font_variants": obj},
+        description="Style part of a text layer: a matched phrase, a start/end character range or paragraphs. With no range "
+        "it styles all the text; on a plain layer, color/size/font alone act as text-set. To change the layer's content "
+        "or overall color/size/font use text-set. Plain text becomes rich text the first time.")
 
 
 def _resolve_span_fonts(project, spans):
@@ -807,6 +846,15 @@ def execute(project, op):
         return
     layer = project.layer(op.get("target"))
     require(layer["type"] == "text", "text-style needs a text layer", field="target")
+    whole = whole_layer_style(op) if not active(layer) else None
+    if whole:
+        # No range and nothing that needs spans: this is a layer-level change, which text-set makes
+        # without turning the layer into rich text (where text-set could no longer recolour it).
+        validate_style(whole, project.state)
+        apply(project, {"type": "text-set", "target": layer["id"], **whole})
+        note(project, f"text-style on {layer['name']!r} had no match, start/end or paragraphs, so it set the layer's "
+                      f"{', '.join(whole)} as text-set does; give a range to style part of the text")
+        return
     if not layer.get("rich") or plain(layer["rich"]) != layer["text"]:
         layer["rich"] = {"spans": [{"text": layer["text"]}], "paragraphs": [{} for _ in range(paragraph_count(layer["text"]))]}
     rich = layer["rich"]
@@ -873,6 +921,33 @@ def execute(project, op):
         rich["font_variants"] = _resolve_variants(project, op["font_variants"])
     if layer.get("auto_size", True) and not (layer.get("text_layout") or {}).get("width"):
         layer["width"], layer["height"], _ = measure(project, layer)
+
+
+TEXT_STYLE_FIELDS = ("match", "occurrence", "start", "end", "paragraphs", "clear", "bold", "italic", "underline", "strike",
+                     "highlight", "baseline", "tracking", "list", "level", "paragraph_align", "space_before", "space_after",
+                     "indent")
+TEXT_SET_FIELDS = ("text", "spacing", "stroke_width", "stroke_color", "align", "content")
+
+
+def field_hint(kind, extras):
+    """A sentence (empty when none applies) steering a text-set or text-style that was given the other's fields."""
+    if kind == "text-set" and any(k in TEXT_STYLE_FIELDS for k in extras):
+        return (". text-set changes a whole layer (text, color, size, font, align, spacing, stroke); to style part of the "
+                "text or set bold, italic, tracking, highlight or paragraph settings use text-style")
+    if kind == "text-style" and any(k in TEXT_SET_FIELDS for k in extras):
+        return (". text-style styles ranges and paragraphs of rich text; use text-set to change the layer's text, spacing, "
+                "stroke or alignment, or rich-text to replace formatted content")
+    return ""
+
+
+def whole_layer_style(op):
+    """The color, size and font of a text-style that styles a whole plain layer and nothing else
+    (what text-set sets), or None when the operation needs rich text."""
+    layer_level = {k: op[k] for k in ("color", "size", "font") if k in op}
+    others = set(op) - {"type", "target", *layer_level}
+    if not layer_level or others or ("size" in layer_level and layer_level["size"] != int(layer_level["size"])):
+        return None
+    return {k: int(v) if k == "size" else v for k, v in layer_level.items()}
 
 
 def compile_command(cmd, args):

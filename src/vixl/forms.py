@@ -15,11 +15,14 @@ values, drawing, the ``form`` checks and filling.
 
 from copy import deepcopy
 import datetime
+from functools import lru_cache
+import io
 import math
 from pathlib import Path
 import re
 
 from .errors import VixlError, require
+from .form_rules import EMAIL, MAX_MESSAGE, MAX_PATTERN, check_pattern, date_picture, pattern_matches
 from .model import finite, new_layer
 
 TYPES = ("field", "field-set", "form")
@@ -37,7 +40,8 @@ MAX_LABEL = 500
 MAX_VALUE = 10000
 KEY = re.compile(r"[\w-]{1,64}")
 FIELD_SETTINGS = ("key", "kind", "label", "label_layer", "group_label", "required", "read_only", "default", "max_length",
-                  "comb", "format", "options", "editable", "option", "on_value", "tab", "overflow", "min_size")
+                  "comb", "format", "pattern", "message", "options", "editable", "option", "on_value", "tab", "overflow",
+                  "min_size")
 APPEARANCE = ("style", "fill", "stroke", "stroke_width", "radius", "mark", "mark_color")
 VALUE_STYLE = ("font", "size", "color", "align", "padding")
 FORM_SETTINGS = ("tab_order", "entry_font", "title", "lang")
@@ -121,13 +125,19 @@ def schemas(add):
         "label": d(S, f"Accessible name, up to {MAX_LABEL} characters (label or label_layer is required)."),
         "label_layer": d(S, "ID or name of a text layer whose text names the field."),
         "group_label": d(S, "Radio only: accessible name of the radio group."),
-        "required": d(B, "The value must be filled (not for signature)."),
+        "required": d(B, "The value must be filled. A required signature is flagged for the viewer and signed there."),
         "read_only": d(B, "Locked in the fillable PDF."),
         "default": d({"type": ["string", "number", "boolean"]}, "Initial value (checkbox: true/false)."),
-        "max_length": d(INT, f"Text/number only: maximum characters, 1–{MAX_VALUE}."),
+        "max_length": d(INT, f"Text, multiline and number: maximum characters, 1–{MAX_VALUE}."),
         "comb": d(B, "Text with max_length only: one box per character."),
         "format": d({"anyOf": [{"type": "string", "enum": ["email", "digits"]}, {"type": "object"}]},
-                    "Text: 'email' or 'digits'; number: {decimals, min, max}; date: {display: 'DD/MM/YYYY'}."),
+                    "Text: 'email' or 'digits'; number: {decimals, min, max}; date: {display: 'DD/MM/YYYY'}. "
+                    "A fillable PDF enforces it in the viewer."),
+        "pattern": d(S, f"Text only: a regular expression the whole value must match (up to {MAX_PATTERN} characters; "
+                     "classes, groups, alternation and {n,m} counts; no flags, look-around or back-references). "
+                     "A fillable PDF enforces it in the viewer."),
+        "message": d(S, f"Text shown when a value breaks the email, digits, pattern or number-range rule, up to "
+                     f"{MAX_MESSAGE} characters."),
         "options": d({"type": "array", "items": {"type": ["string", "object"]}},
                      f"Dropdown only: 1–{MAX_OPTIONS} choices as strings or {{value, label}}."),
         "editable": d(B, "Dropdown only: allow typed values outside options."),
@@ -350,10 +360,10 @@ def validate_field(layer, state):
     for name in ("required", "read_only", "comb", "editable"):
         if name in record:
             require(isinstance(record[name], bool), f"{name} must be true or false", field=name)
-    require(not record.get("required") or kind != "signature", "A signature field cannot be required", field="required")
     if "max_length" in record:
-        require(kind in ("text", "number") and isinstance(record["max_length"], int) and 1 <= record["max_length"] <= MAX_VALUE,
-                f"max_length is a whole number 1–{MAX_VALUE} for text and number fields", field="max_length")
+        require(kind in ("text", "multiline", "number") and isinstance(record["max_length"], int)
+                and not isinstance(record["max_length"], bool) and 1 <= record["max_length"] <= MAX_VALUE,
+                f"max_length is a whole number 1–{MAX_VALUE} for text, multiline and number fields", field="max_length")
     if record.get("comb"):
         require(kind == "text" and "max_length" in record, "comb needs a text field with max_length", field="comb")
     if "format" in record:
@@ -374,6 +384,12 @@ def validate_field(layer, state):
                     and len(fmt.get("display", "")) <= 40, "A date format is {display: 'DD/MM/YYYY'}", field="format")
         else:
             raise VixlError("invalid_operation", f"A {kind} field has no format", field="format")
+    if "pattern" in record:
+        require(kind == "text", "pattern is for text fields", field="pattern")
+        check_pattern(record["pattern"])
+    if "message" in record:
+        require(isinstance(record["message"], str) and 0 < len(record["message"]) <= MAX_MESSAGE,
+                f"message is text of 1–{MAX_MESSAGE} characters", field="message")
     if kind == "dropdown":
         options = record.get("options")
         require(isinstance(options, list) and 1 <= len(options) <= MAX_OPTIONS,
@@ -489,9 +505,10 @@ class FieldValueError(Exception):
         self.code, self.message = code, message
 
 
-def coerce(record, raw, group=None):
+def coerce(record, raw, group=None, rules=True):
     """(value, display text) for a field's raw value; raises FieldValueError. ``group`` is the
-    radio group's option values."""
+    radio group's option values; ``rules`` False skips the text ``pattern`` (worst-case samples
+    are not written to match one)."""
     kind = record["kind"]
     if kind == "signature":
         if raw in (None, ""):
@@ -564,8 +581,10 @@ def coerce(record, raw, group=None):
     fmt = record.get("format")
     if fmt == "digits" and not text.isdigit():
         raise FieldValueError("invalid_format", "Only the digits 0–9 are allowed")
-    if fmt == "email" and not re.fullmatch(r"[^@\s]+@[^@\s]+", text):
+    if fmt == "email" and not re.fullmatch(EMAIL, text):
         raise FieldValueError("invalid_format", "The value is not an email address")
+    if rules and record.get("pattern") and not pattern_matches(record["pattern"], text):
+        raise FieldValueError("invalid_format", "The value does not match the field's pattern")
     return text, text
 
 
@@ -578,11 +597,13 @@ def groups(fields):
     return result
 
 
-def check_values(project, values, row=None, unknown="error", complete=True):
+def check_values(project, values, row=None, unknown="error", complete=True, rules=True):
     """Validate input values against the document's fields. Returns (fields, variables, errors):
     ``fields`` maps keys to coerced values (only those supplied), ``variables`` holds keys that
     name document variables, ``errors`` lists ``{row, key, code, message}``. ``complete``
-    also requires every required field (a fill); previews check only the values given."""
+    also requires every required field (a fill); previews check only the values given.
+    ``rules`` False skips text patterns. A required signature is signed in a viewer, so a fill
+    never needs it."""
     require(isinstance(values, dict), "values must be an object of field keys and values", field="values")
     require(unknown in ("error", "ignore"), "unknown must be error or ignore", field="unknown")
     fields = all_fields(project)
@@ -600,7 +621,7 @@ def check_values(project, values, row=None, unknown="error", complete=True):
     for key, raw in values.items():
         if key in records:
             try:
-                filled[key] = coerce(records[key], raw, options.get(key))[0]
+                filled[key] = coerce(records[key], raw, options.get(key), rules)[0]
             except FieldValueError as exc:
                 error(key, exc.code, exc.message)
         elif key in variables_known:
@@ -608,7 +629,8 @@ def check_values(project, values, row=None, unknown="error", complete=True):
         elif unknown == "error":
             error(key, "unknown_key", "No field or variable has this key")
     for key, record in records.items():
-        if not complete or not record.get("required") or any(e["key"] == key for e in errors):
+        if (not complete or not record.get("required") or record["kind"] == "signature"
+                or any(e["key"] == key for e in errors)):
             continue
         value = filled.get(key) if key in values else current_default(record, fields)
         if record["kind"] == "checkbox":
@@ -648,17 +670,21 @@ def current_values(project):
             continue
         value = filled[key] if key in filled else current_default(record, fields)
         try:
-            result[key] = coerce(record, value, options.get(key)) if value not in (None, "") else (None, "")
+            # Filled values were validated by with_values; only defaults are checked against the pattern.
+            result[key] = (coerce(record, value, options.get(key), key not in filled) if value not in (None, "")
+                           else (None, ""))
         except FieldValueError:
             result[key] = (None, "")
     return result
 
 
-def with_values(project, values=None, *, unknown="error", row=None, complete=True):
+def with_values(project, values=None, *, unknown="error", row=None, complete=True, rules=True):
     """A render-only copy of the document showing ``values`` (validated; ``complete`` requires
-    every required field). Raises ``form_values_invalid`` listing every problem. The copy never
-    uses the persistent render cache, so personal data is not written to disk."""
-    filled, variables, errors = check_values(project, values or {}, row=row, unknown=unknown, complete=complete)
+    every required field; ``rules`` False skips text patterns). Raises ``form_values_invalid``
+    listing every problem. The copy never uses the persistent render cache, so personal data is
+    not written to disk."""
+    filled, variables, errors = check_values(project, values or {}, row=row, unknown=unknown, complete=complete,
+                                             rules=rules)
     if errors:
         raise VixlError("form_values_invalid", f"{len(errors)} value problem(s): " + "; ".join(e["message"] for e in errors[:5]),
                         errors=errors)
@@ -713,44 +739,175 @@ def _longest_word(project, layer, text, size):
     return max(shape(data, word, size)[1] for word in words)
 
 
-def fit_value(project, layer, text):
-    """(size, status) for drawing ``text`` in the field: status ``ok``, ``shrunk``, ``clipped``
-    or ``overflow`` following the field's overflow setting."""
+def scale_field(layer, s):
+    """Scale a field's value styling (size, padding, border, ``min_size``) by ``s`` for a reduced
+    or enlarged render-only copy; the caller scales the box. Without this a proxy preview draws
+    values at full-size type inside a shrunken box."""
+    for key in ("size", "padding"):
+        if key in layer:
+            layer[key] = layer[key] * s
+    appearance = layer.get("appearance") or {}
+    for key in ("stroke_width", "radius"):
+        if key in appearance:
+            appearance[key] = appearance[key] * s
+    record = layer.get("field") or {}
+    if "min_size" in record:
+        record["min_size"] = record["min_size"] * s
+
+
+def _inner(layer):
+    pad = float(layer.get("padding", 0))
+    return max(1.0, layer["width"] - 2 * pad), max(1.0, layer["height"] - 2 * pad)
+
+
+def _fits(project, layer, text, size):
+    """(fits, measured) for ``text`` drawn at ``size`` in the field's box. ``measured`` is what was
+    compared, in document pixels: a single line's ``width`` and ``height``, or a multiline value's
+    wrapped ``height``, ``lines`` and ``longest_word`` width."""
+    inner_w, inner_h = _inner(layer)
+    if layer["field"]["kind"] == "multiline":
+        result = _measure(project, layer, text, size, inner_w)
+        word = _longest_word(project, layer, text, size)
+        return (result.height <= inner_h + 0.5 and word <= inner_w + 0.5,
+                {"height": result.height, "lines": len(result.lines), "longest_word": word})
+    result = _measure(project, layer, text, size)
+    return (result.box[2] <= inner_w + 0.5 and result.height <= inner_h * 1.2 + 0.5,
+            {"width": result.box[2], "height": result.height})
+
+
+def smallest_size(project, layer):
+    """The smallest size ``shrink`` may use: ``min_size`` (default 70% of the size), never below 6 pt."""
+    unit = px_per_pt(project.state)
+    size = float(layer.get("size", 16))
+    return max(float(layer["field"].get("min_size", size * 0.7)), 6 * unit if project.state["canvas"].get("dpi") else 6)
+
+
+def _fit(project, layer, text):
+    """(size, status, tried) for drawing ``text`` in the field: ``tried`` is the smallest size that
+    was measured (the size when nothing shrank), the one an explanation should quote."""
     record = layer["field"]
     size = float(layer.get("size", 16))
     if not text or record["kind"] not in TEXT_KINDS or record.get("comb"):
-        return size, "ok"
-    pad = float(layer.get("padding", 0))
-    inner_w = max(1.0, layer["width"] - 2 * pad)
-    inner_h = max(1.0, layer["height"] - 2 * pad)
-    multiline = record["kind"] == "multiline"
-
-    def fits(s):
-        if multiline:
-            result = _measure(project, layer, text, s, inner_w)
-            return result.height <= inner_h + 0.5 and _longest_word(project, layer, text, s) <= inner_w + 0.5
-        result = _measure(project, layer, text, s)
-        return result.box[2] <= inner_w + 0.5 and result.height <= inner_h * 1.2 + 0.5
-
-    if fits(size):
-        return size, "ok"
+        return size, "ok", size
+    if _fits(project, layer, text, size)[0]:
+        return size, "ok", size
     mode = record.get("overflow", "shrink")
     if mode == "clip":
-        return size, "clipped"
+        return size, "clipped", size
     if mode == "error":
-        return size, "overflow"
-    unit = px_per_pt(project.state)
-    floor = max(float(record.get("min_size", size * 0.7)), 6 * unit if project.state["canvas"].get("dpi") else 6)
-    if floor >= size or not fits(floor):
-        return size, "overflow"
+        return size, "overflow", size
+    floor = smallest_size(project, layer)
+    if floor >= size:
+        return size, "overflow", size
+    if not _fits(project, layer, text, floor)[0]:
+        return size, "overflow", floor
     low, high = floor, size
     for _ in range(12):
         middle = (low + high) / 2
-        if fits(middle):
+        if _fits(project, layer, text, middle)[0]:
             low = middle
         else:
             high = middle
-    return math.floor(low * 4) / 4, "shrunk"
+    best = math.floor(low * 4) / 4
+    return best, "shrunk", best
+
+
+def fit_value(project, layer, text):
+    """(size, status) for drawing ``text`` in the field: status ``ok``, ``shrunk``, ``clipped``
+    or ``overflow`` following the field's overflow setting."""
+    return _fit(project, layer, text)[:2]
+
+
+@lru_cache(maxsize=16)
+def _font_names(data):
+    from fontTools.ttLib import TTFont
+
+    names = TTFont(io.BytesIO(data))["name"]
+    return names.getBestFamilyName() or "", names.getBestSubFamilyName() or ""
+
+
+def font_label(project, layer, text=""):
+    """The font a field draws with, in words: family and style, the name it is registered under,
+    and whether it is the bundled proofing fallback or other fonts fill in missing glyphs."""
+    from .richtext import _registered_name, style_font_data
+    from .text import primary_font_data
+
+    font = layer.get("font", "DejaVuSans.ttf")
+    family, style = _font_names(primary_font_data(project, {"font": font, "size": 12}))
+    label = f"{family} {style}".strip() or font
+    registered = _registered_name(project.state, font)
+    if registered:
+        label += f" (registered as {registered})"
+    elif font == "DejaVuSans.ttf":
+        label += " (the bundled proofing fallback)"
+    if text and isinstance(style_font_data(project, font, text), tuple):
+        label += ", with fallback fonts for glyphs it lacks"
+    return label
+
+
+def fit_details(project, layer, text, status, tried, *, reveal=False, suggest=False):
+    """What a fit measured, so a result can be explained: the font, the sizes (configured and
+    measured), the box and the rendered width (or a multiline value's wrapped height). ``reveal``
+    adds an excerpt of the value (worst-case samples only: filled values are personal data);
+    ``suggest`` adds the largest ``max_length`` whose worst-case value would fit."""
+    record = layer["field"]
+    inner_w, inner_h = _inner(layer)
+    measured = _fits(project, layer, text, tried)[1]
+    details = {"key": record["key"], "kind": record["kind"], "status": status, "characters": len(text),
+               "font": font_label(project, layer, text), "size": float(layer.get("size", 16)),
+               "size_measured": round(tried, 2), "overflow": record.get("overflow", "shrink"),
+               "box_width": layer["width"], "box_height": layer["height"], "padding": float(layer.get("padding", 0)),
+               "inner_width": round(inner_w, 2), "inner_height": round(inner_h, 2)}
+    if details["overflow"] == "shrink":
+        details["min_size"] = round(smallest_size(project, layer), 2)
+    if reveal:
+        details["sample"] = text if len(text) <= 40 else text[:40] + "…"
+    if record["kind"] == "multiline":
+        details.update(wrapped_height=round(measured["height"], 1), lines=measured["lines"],
+                       longest_word_width=round(measured["longest_word"], 1))
+    else:
+        details["rendered_width"] = round(measured["width"], 1)
+    if suggest and record["kind"] in ("text", "multiline") and record.get("format") != "email":
+        details["max_length_that_fits"] = _longest_fit(project, layer, record, tried)
+    return details
+
+
+def _longest_fit(project, layer, record, size):
+    """The largest ``max_length`` whose worst-case value fits the field at ``size`` (the smallest
+    size its overflow setting allows; 0 when not even one character fits)."""
+    low, high = 0, record.get("max_length", default_length(record))
+    while low < high:
+        middle = (low + high + 1) // 2
+        if _fits(project, layer, worst_text(record, middle), size)[0]:
+            low = middle
+        else:
+            high = middle - 1
+    return low
+
+
+def explain_fit(details):
+    """One sentence for ``fit_details``: what was measured against what the box holds."""
+    tried, size = details["size_measured"], details["size"]
+    at = f"{tried:g} px"
+    if tried < size:
+        at += " (the smallest size shrink may use)"
+    elif details["overflow"] == "shrink" and details.get("min_size", 0) >= size:
+        at += f" (no room to shrink: min_size {details['min_size']:g} is not below the size)"
+    elif details["overflow"] != "shrink":
+        at += f" (overflow: {details['overflow']})"
+    count = f"{details['characters']} characters" + (f" ({details['sample']!r})" if "sample" in details else "")
+    if details["kind"] == "multiline":
+        sentence = (f"{count} wrap to {details['lines']} lines and {details['wrapped_height']:g} px tall at {at} in "
+                    f"{details['font']}; the box is {details['inner_width']:g} px wide and holds "
+                    f"{details['inner_height']:g} px of height (longest word {details['longest_word_width']:g} px)")
+    else:
+        sentence = (f"{count} measure {details['rendered_width']:g} px at {at} in {details['font']}; the box holds "
+                    f"{details['inner_width']:g} px ({details['box_width']:g} px wide, {details['padding']:g} px padding "
+                    "each side)")
+    if "max_length_that_fits" in details:
+        fits = details["max_length_that_fits"]
+        sentence += (f". A max_length of {fits} would fit" if fits else ". Not even one character fits; make the box larger")
+    return sentence
 
 
 def parts(project, layer, *, values=True):
@@ -1061,20 +1218,33 @@ def winansi(text):
         return False
 
 
+def default_length(record):
+    """How many characters the worst-case sample has when a text field sets no ``max_length``."""
+    return 12 if record.get("format") == "digits" else 40 if record["kind"] == "text" else 400
+
+
+def worst_text(record, length):
+    """The widest text of ``length`` characters a text field can hold: W's, 8's for digits and a
+    long address for email. A multiline value wraps, so its W's come in words of seven (one
+    unbroken word could never fit by shortening it)."""
+    if record.get("format") == "digits":
+        return "8" * length
+    if record.get("format") == "email":
+        return "w" * max(1, min(length, 64) - 12) + "@example.com"
+    if record["kind"] == "multiline":
+        return " ".join(["W" * 7] * (length // 8 + 1))[:length]
+    return "W" * length
+
+
 def worst_values(project):
-    """The longest values each field allows: ``max_length`` W's, the longest option label, the
-    largest number."""
+    """The longest values each field allows: ``max_length`` W's (see ``worst_text``), the longest
+    option label, the largest number."""
     values = {}
     for _, layer in all_fields(project):
         record = layer["field"]
         kind = record["kind"]
         if kind in ("text", "multiline"):
-            if record.get("format") == "digits":
-                values[record["key"]] = "8" * record.get("max_length", 12)
-            elif record.get("format") == "email":
-                values[record["key"]] = "w" * max(1, min(record.get("max_length", 40), 64) - 12) + "@example.com"
-            else:
-                values[record["key"]] = "W" * record.get("max_length", 40 if kind == "text" else 400)
+            values[record["key"]] = worst_text(record, record.get("max_length", default_length(record)))
         elif kind == "number":
             fmt = record.get("format") or {}
             values[record["key"]] = fmt.get("max", 10 ** min(record.get("max_length", 9), 15) - 1)
@@ -1164,6 +1334,9 @@ def check_form(candidate, resolved, local_bounds, projection, layers, issue, sam
                       f"{math.ceil(1.2 * size + 2 * item.get('padding', 0))} px tall", [item])
             if size < 8 * unit:
                 issue("form", "warning", f"{item['name']!r} draws values at {size / unit:.1f} pt (below 8 pt)", [item])
+        if record["kind"] == "date" and not date_picture((record.get("format") or {}).get("display", "YYYY-MM-DD")):
+            issue("form", "warning", f"{item['name']!r} draws dates with literal text a PDF viewer cannot enforce; the "
+                  "fillable PDF accepts any text there (use only YYYY, MM, M, DD, D and - / . , or space)", [item])
         if record["kind"] in ("checkbox", "radio") and min(box[2], box[3]) < 10 * unit:
             issue("form", "warning", f"{item['name']!r} is smaller than 10 pt; it is hard to hit", [item])
         if item["opacity"] < 1 or item.get("blend", "normal") != "normal" or item.get("effects"):
@@ -1212,14 +1385,14 @@ def check_form(candidate, resolved, local_bounds, projection, layers, issue, sam
             label = "worst-case values" if sample == "worst" else f"row {number}"
             try:
                 view = with_values(candidate, row, unknown="ignore", row=None if sample == "worst" else number,
-                                   complete=sample != "worst")
+                                   complete=sample != "worst", rules=sample != "worst")
             except VixlError as exc:
                 for error in exc.details.get("errors", []):
                     issue("form", "error", f"Sample {label}: {error['message']}", [], key=error["key"], code=error["code"])
                 continue
-            for report in overflow_report(view):
+            for report in overflow_report(view, reveal=sample == "worst", suggest=sample == "worst"):
                 issue("form", "error" if report["code"] == "overflow" else "warning", f"Sample {label}: {report['message']}",
-                      [], key=report["key"], code=report["code"])
+                      [], key=report["key"], code=report["code"], measured=report.get("measured"))
 
 
 def _ancestors(item, resolved):
@@ -1279,9 +1452,11 @@ def _contrast_issues(candidate, entries, issue, color, np):
                   contrast=round(max(ratios), 2))
 
 
-def overflow_report(view):
-    """[{key, code, message}] for values that overflow their boxes (``overflow``) or are clipped
-    (``clipped``) in a view with values."""
+def overflow_report(view, *, reveal=False, suggest=False):
+    """[{key, code, message, measured}] for values that overflow their boxes (``overflow``) or are
+    clipped (``clipped``) in a view with values. ``measured`` is ``fit_details`` and the message
+    ends with what it says (sizes, rendered width, box, font); ``reveal`` and ``suggest`` are for
+    worst-case samples, which are not personal data."""
     from .render import view_page
 
     reports = []
@@ -1293,17 +1468,16 @@ def overflow_report(view):
             value, display = item.get("value", (None, ""))
             if not display or item["field"]["kind"] not in TEXT_KINDS:
                 continue
+            key = item["field"]["key"]
             if item["field"].get("comb") and len(display) > item["field"]["max_length"]:
-                reports.append({"key": item["field"]["key"], "code": "too_long", "message": f"{item['field']['key']}: "
-                                "the value has more characters than cells"})
+                reports.append({"key": key, "code": "too_long", "message": f"{key}: the value has more characters than cells"})
                 continue
-            _, status = fit_value(page, item, display)
-            if status == "overflow":
-                reports.append({"key": item["field"]["key"], "code": "overflow",
-                                "message": f"{item['field']['key']}: the value does not fit its box"})
-            elif status == "clipped":
-                reports.append({"key": item["field"]["key"], "code": "clipped",
-                                "message": f"{item['field']['key']}: the value is clipped by its box"})
+            _, status, tried = _fit(page, item, display)
+            if status in ("overflow", "clipped"):
+                details = fit_details(page, item, display, status, tried, reveal=reveal, suggest=suggest)
+                said = "does not fit its box" if status == "overflow" else "is clipped by its box"
+                reports.append({"key": key, "code": status, "message": f"{key}: the value {said}. {explain_fit(details)}",
+                                "measured": details})
     return reports
 
 
@@ -1404,7 +1578,8 @@ def fill_data(project, csv_path, directory=None, *, combine=None, name="{row}", 
         problems = overflow_report(view)
         for problem in problems:
             entry = {"row": number, "key": problem["key"], "code": problem["code"],
-                     "message": f"Row {number}, {problem['message']}"}
+                     "message": f"Row {number}, {problem['message']}", **({"measured": problem["measured"]}
+                                                                          if "measured" in problem else {})}
             if problem["code"] in ("overflow", "too_long"):
                 report["errors"].append(entry)
             else:
@@ -1524,7 +1699,7 @@ def compile_command(cmd, args):
     p.add_argument("--kind")
     p.add_argument("--name", help="add: a layer name other than the key")
     for key in ("label", "label-layer", "group-label", "option", "on-value", "font", "color", "fill", "stroke", "mark-color",
-                "default"):
+                "default", "pattern", "message"):
         p.add_argument("--" + key)
     for key in ("x", "y", "width", "height"):
         p.add_argument("--" + key)

@@ -5,6 +5,8 @@ from .studio import ACTIONS as STUDIO_ACTIONS
 
 from .automation import bounded_object
 from .errors import require, VixlError
+from .imposition import ACTIONS as IMPOSITION_ACTIONS, FIELD_TYPES as IMPOSITION_FIELD_TYPES
+from .links import ACTIONS as LINK_ACTIONS
 from .lyrics import REQUEST_FIELDS as LYRIC_FIELDS
 
 ACTIONS = {
@@ -38,22 +40,14 @@ ACTIONS = {
 
 
 ACTIONS.update(STUDIO_ACTIONS)
+ACTIONS.update(LINK_ACTIONS)
+ACTIONS.update(IMPOSITION_ACTIONS)
 FILL_FORMATS = ("pdf", "png", "jpeg", "jpg", "webp", "tiff", "svg")
 
 PATH = {"type": "string", "description": "Workspace-relative path."}
-# Field types shown by describe(). FIELD_TYPES covers names that mean the same thing in every
-# action; ACTION_FIELD_TYPES adds or overrides per action.
-FIELD_TYPES = {
-    "dry_run": {"type": "boolean", "description": "Validate and report without writing."},
-    "replace": {"type": "boolean"},
-    "workers": {"type": "integer", "minimum": 1, "maximum": 4},
-    "output": PATH,
-    "directory": PATH,
-    "spec": {"type": "object"},
-    "job": {"type": "object"},
-    "operations": {"type": "array", "items": {"type": "object"}},
-    "id": {"type": "string"},
-}
+# Field types shown by describe(). workflow_schema holds every action's typed, described fields
+# (shared names, per-action overrides, the check-suite object); ACTION_FIELD_TYPES below also
+# drives form-fill's type checks, and takes precedence there.
 ACTION_FIELD_TYPES = {
     "form-fill": {
         "values": {"type": "object", "description": "One copy: {field key: value}. Needs output (a file path). "
@@ -80,21 +74,44 @@ ACTION_FIELD_TYPES = {
     },
 }
 
+ACTION_FIELD_TYPES["merge-impose"] = IMPOSITION_FIELD_TYPES
+
+
+LYRIC_TYPES = {
+    "build": {**PATH, "description": "The built timeline document (.vixl); an editable keyframed copy of the template. "
+              "Export renders an existing build as it is, hand edits included, while it still matches the request."},
+    "rebuild": {"type": "boolean", "description": "Export only: build the document again from the template and LRC, "
+                "replacing an existing build and discarding hand edits in it."},
+    "animation": {"type": "object", "description": "Lyric entry and exit: in, out, duration (ms), distance (px)."},
+    "cue_animation": {"type": "object", "description": "How cue-* layers enter, leave and move while their words are sung: "
+                      "in, out (as animation; default none, a cut), duration, distance, motion (none or sweep: a swing about "
+                      "the layer's pivot), amount (degrees, default 12), period (ms for a back-and-forth, default 2800)."},
+}
+for _action in ("lyric-video-plan", "lyric-video-build", "lyric-video-export"):
+    ACTION_FIELD_TYPES[_action] = LYRIC_TYPES
+
 
 def field_types(action):
+    from .workflow_schema import properties
+
     fields = ACTIONS[action][0]
-    types = {**FIELD_TYPES, **ACTION_FIELD_TYPES.get(action, {})}
+    types = {**properties(action, fields), **ACTION_FIELD_TYPES.get(action, {})}
     return {field: types[field] for field in sorted(fields) if field in types}
 
 
 def describe():
+    from .workflow_schema import SUITE, summary
+
     return {
         "version": 1,
         "actions": {
-            k: {"fields": sorted(v[0]), "required": sorted(v[1]), "properties": field_types(k)}
+            k: {"summary": summary(k), "fields": sorted(v[0]), "required": sorted(v[1]), "properties": field_types(k)}
             for k, v in ACTIONS.items()
         },
-        "help": "docs/production.md; all paths are workspace-relative; submit + start runs durable background work",
+        "definitions": {"suite": SUITE},
+        "help": "docs/production.md; all paths are workspace-relative; submit + start runs durable background work. "
+                "definitions.suite is the check-suite object (attach it with the suite-set operation, or pass it "
+                "inline to check).",
     }
 
 
@@ -108,6 +125,14 @@ def dispatch(session, action, request, document=None):
     for field in ("dry_run", "replace"):
         if field in request:
             require(type(request[field]) is bool, f"{field} must be boolean")
+    if action in LINK_ACTIONS:
+        from .links import dispatch as links_dispatch
+
+        return links_dispatch(session, request, document)
+    if action in IMPOSITION_ACTIONS:
+        from .imposition import dispatch as merge_dispatch
+
+        return merge_dispatch(session, request, document)
     if action in STUDIO_ACTIONS:
         from .studio import dispatch as studio_dispatch
         try:

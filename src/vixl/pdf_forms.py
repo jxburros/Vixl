@@ -3,14 +3,17 @@
 Vixl draws each field's box into the page (exactly as in the PNG); the PDF field on top is
 transparent and draws only the value — typed text, the check mark, the radio dot or the selected
 option. Every widget gets a generated appearance (``NeedAppearances`` is never set), an
-accessible name (``/TU``) and a place in the tab order (the order of the page's ``/Annots``).
-Text is typed in Helvetica (``/DA``); defaults are laid out with Helvetica's metrics.
+accessible name (``/TU``) and a place in the tab order (the order of the page's ``/Annots``,
+which each page declares with ``/Tabs /S``). Text is typed in Helvetica (``/DA``); defaults are
+laid out with Helvetica's metrics.
 
-The file contains no actions of any kind, every string is hex, and output is byte-identical for
-identical input (``pdf_writer``).
+The only actions in the file are the JavaScript field actions that enforce a field's validation
+rules (``form_rules``): no links, submit, launch or open actions. Every string is hex, and
+output is byte-identical for identical input (``pdf_writer``).
 """
 
 from .errors import VixlError, require
+from .form_rules import actions
 from .pdf_writer import Name, Text
 
 # Helvetica advance widths (1/1000 em) for WinAnsiEncoding codes 32–255, from Adobe's Core 14
@@ -254,12 +257,15 @@ class FormWriter:
                 if "max_length" in record:
                     field["MaxLen"] = record["max_length"]
                 field["DA"] = Text(f"/Helv {_num(size)} Tf {_rgb(rgba)} rg")
+                field["AA"] = actions(record)
                 if display:
                     field["V"] = field["DV"] = Text(display)
                 field["AP"] = {"N": self.text_appearance(item, width, height, display, size, rgba)}
             ref = self.writer.add(field)
             self.fields.append(ref)
             refs.append(ref)
+        if refs:
+            builder.page_extra = {"Tabs": Name("S")}  # visit widgets in /Annots order
         return refs
 
     def acroform(self, writer):

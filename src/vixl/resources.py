@@ -281,12 +281,20 @@ def execute_resource(project, op):
             from .colors import parse, relative_luminance
             from .layouts import ROLES, assign_roles
 
-            # Keep the document's light or dark mode.
-            mode = "light"
+            # Keep the document's light or dark mode, unless the palette's own order is kept.
+            mode, mode_source = "light", "default (no @background swatch yet)"
             if "background" in swatches:
                 mode = "dark" if relative_luminance(parse(swatches["background"])[:3]) < 0.2 else "light"
-            roles = assign_roles({"palette": colors, "mode": mode, "policy": op.get("policy", "strict")}, random.Random(name))
+                mode_source = "the document's @background swatch"
+            keep_order = bool(op.get("keep_order"))
+            explicit = op["roles"] if isinstance(op.get("roles"), dict) else {}
+            roles = assign_roles({"palette": colors, "policy": op.get("policy", "strict"), "keep_order": keep_order,
+                                  "role_map": explicit, **({} if keep_order else {"mode": mode, "_mode_source": mode_source})},
+                                 random.Random(name))
             swatches.update({role: roles[role] for role in ROLES})
+            # Echoed in the apply result: which color became which role, from where, and why.
+            project.state["palette_roles"] = {"palette": name, "mode": roles["_mode"], "mode_source": roles["_mode_source"],
+                                              "keep_order": keep_order, "roles": roles["_explain"], "notes": roles["_notes"]}
     elif kind == "guidance":
         key = op.get("style", "overall")
         named(key)

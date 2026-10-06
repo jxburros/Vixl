@@ -26,6 +26,10 @@ The result is one `shape` path layer when the form has one visible part, otherwi
 path layers named `NAME/part` (plus `NAME/part-veins`, `-chambers` … for extra outputs). The top
 layer stores the recipe under `organic`; `organic --target NAME` with a new `seed`, `params`,
 `colors` or `parts` regrows it in place, keeping its ID, position and any colors you changed.
+A regrow restyles only what the operation names: `fill` or `colors` reset fills, `stroke` and
+`stroke_width` reset lines (the same result as creating the form with them), and a new `preset` or
+`parts` restyles everything. A plain new `seed` keeps the colors on the layers. When none of
+`fill`, `colors`, `stroke` is given, each preset keeps its default colors.
 Leaving out `height` (or `width`) sizes the box to the form's own proportions. Output is pure
 vector: SVG export writes native paths.
 
@@ -37,7 +41,8 @@ vector: SVG export writes native paths.
 | `colors` | Fill per part name, such as `{"petals": "#fff", "center": "@accent"}`. |
 | `seed` | Integer. The same seed always gives the same form. |
 | `naturalness` | 0–1 (default 0.5). Scales jitter, asymmetry and wobble in every rule that uses it. 0 is perfectly regular. |
-| `stroke`, `stroke_width` | Applied to every part. |
+| `fill` | One fill for every filled part, so a form stays inside a palette. `colors` names single parts and wins over it; line-only parts (a fern, veins) stay unfilled. |
+| `stroke`, `stroke_width` | Applied to every part and to every extra line output (shell chambers, leaf veins, feather barbs), so the preset's own line colors never show through. |
 | `padding` | Pixels between the form and its box. |
 | `stretch` | Fill the box without keeping proportions. |
 | `target` | Regrow an existing organic layer or group. |
