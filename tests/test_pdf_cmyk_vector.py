@@ -131,3 +131,20 @@ def test_multi_page_cmyk_deck_keeps_every_page_vector():
     reader = pypdf.PdfReader(io.BytesIO(p.export(format="PDF", color_space="cmyk")))
     assert len(reader.pages) == 2
     assert "First slide" in reader.pages[0].extract_text() and "Second slide" in reader.pages[1].extract_text()
+
+
+def test_image_layers_become_cmyk_images_with_their_transparency():
+    from vixl.assets import add_image
+
+    p = Project(300, 200, "white")
+    photo = Image.new("RGBA", (120, 80), (200, 40, 40, 255))
+    photo.paste((0, 0, 0, 0), (0, 0, 60, 80))  # the left half is transparent
+    p.apply([{"type": "add", "asset": add_image(p, photo), "name": "photo", "x": 20, "y": 20},
+             {"type": "text", "name": "caption", "text": "Caption stays text", "size": 24, "x": 20, "y": 130, "color": "black"}])
+    report = {}
+    data = p.export(format="PDF", color_space="cmyk", report=report)
+    page = _page(data)
+    image = next(iter(page["/Resources"]["/XObject"].values())).get_object()
+    assert image["/ColorSpace"] == "/DeviceCMYK" and "/SMask" in image
+    assert report["raster_fallbacks"] == {}, "an image layer is an image anyway, not a fallback"
+    assert "Caption stays text" in page.extract_text()

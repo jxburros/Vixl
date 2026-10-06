@@ -800,8 +800,9 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         rejects any embedded raster fallback. time exports one timeline frame. PDF is vector by default, CMYK
         too: real text, vector shapes and colours in DeviceCMYK, with images only for effects and the like
         (see raster_fallbacks). A multi-page document exports every shown page to PDF or PowerPoint (editable
-        slides with speaker notes; its warnings name fonts to install). fillable writes PDF form fields; values fills them (flatten draws them into the
-        artwork, editable prefills a fillable PDF). PNG and other alpha formats are RGB when the image is opaque;
+        slides with speaker notes; its warnings name fonts to install). fillable writes PDF form fields; values
+        fills them (flatten draws them into the artwork, editable prefills a fillable PDF). PNG and other alpha
+        formats are RGB when the image is opaque;
         alpha=flatten forces RGB on background, alpha=keep forces RGBA. Print-size PDFs measure exactly trim +
         bleed with TrimBox and BleedBox. Returns file metadata, never image bytes."""
         profile_bytes = read_bounded(session.resolve(icc_profile), 16 * 1024 * 1024) if icc_profile else None

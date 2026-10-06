@@ -477,10 +477,9 @@ class Exporter:
         """(families, warnings) for the fonts a deck needs that its viewers may not have.
 
         PowerPoint embeds fonts as Embedded OpenType parts (``ppt/fonts/*.fntdata`` listed in
-        ``p:embeddedFontLst``). Vixl does not write them: only PowerPoint itself accepts or rejects
-        such a part (python-pptx and the free converters neither read nor validate it), and a
-        malformed one makes PowerPoint offer to repair the file. A missing font is substituted,
-        which moves text, so each one is named."""
+        ``p:embeddedFontLst``). Vixl does not write them: only PowerPoint itself decides whether such
+        a part is acceptable (python-pptx ignores it), and a malformed one makes PowerPoint offer to
+        repair the file. A missing font is substituted, which moves text, so each one is named."""
         families = sorted(self.fonts_used - COMMON_FONTS)
         return families, [
             f"Font {family!r} is not embedded in the PPTX (Vixl cannot embed fonts in PowerPoint files): install it "
