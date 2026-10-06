@@ -123,6 +123,47 @@ def test_text_never_wraps_right_after_a_separator_and_event_poster_headline_domi
     assert sizes["headline"] >= 1.5 * sizes["date"]
 
 
+def test_octopus_is_one_connected_shape_for_seeds_0_to_50():  # #225
+    import io
+    from collections import deque
+
+    import numpy as np
+    from PIL import Image
+
+    for seed in range(51):
+        p = Project(240, 240, "white")
+        p.apply([{"type": "organic", "preset": "octopus", "name": "o", "seed": seed, "width": 220, "height": 220,
+                  "x": 10, "y": 10}])
+        mask = np.abs(np.asarray(Image.open(io.BytesIO(p.export(format="PNG"))).convert("RGB")).astype(int) - 255).sum(axis=2) > 30
+        seen, parts = np.zeros_like(mask), 0
+        for y, x in zip(*np.nonzero(mask)):
+            if seen[y, x]:
+                continue
+            parts += 1
+            seen[y, x] = True
+            queue = deque([(y, x)])
+            while queue:
+                cy, cx = queue.popleft()
+                for ny, nx in ((cy + 1, cx), (cy - 1, cx), (cy, cx + 1), (cy, cx - 1)):
+                    if 0 <= ny < 240 and 0 <= nx < 240 and mask[ny, nx] and not seen[ny, nx]:
+                        seen[ny, nx] = True
+                        queue.append((ny, nx))
+        assert parts == 1, f"seed {seed}: octopus came apart into {parts} pieces"
+
+
+def test_project_shows_itself_in_notebooks():  # #176
+    import io
+
+    from PIL import Image
+
+    p = Project(120, 80, "red")
+    assert Image.open(io.BytesIO(p._repr_png_())).size == (120, 80)
+    assert p.show().size == (120, 80)
+    assert p.show(region=[10, 10, 30, 20]).size == (30, 20)
+    with pytest.raises(VixlError):
+        p.show(region=[1, 2, 3])
+
+
 def test_operations_path_over_mcp_json_and_jsonl(tmp_path):  # #184
     server = mcp_server(workspace=tmp_path)
     (tmp_path / "ops.json").write_text(json.dumps([{"type": "solid", "name": "bg", "color": "red"}]))
