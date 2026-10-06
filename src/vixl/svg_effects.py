@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from .render import color
+from .render import channel_gains, color
 from .design import resolve_color
 from .constants import ARTISTIC_DEFAULTS
 
@@ -23,6 +23,7 @@ NATIVE_EFFECTS = {
     "gamma",
     "temperature",
     "tint",
+    "white-balance",
     "shadows",
     "highlights",
     "levels",
@@ -142,10 +143,8 @@ def effect_filter(exporter, effects, bounds):
                     t *= 2**amount
                 elif name == "gamma":
                     t = t ** (1 / amount)
-                elif name == "temperature":
-                    t += [amount / 10000, 0, -amount / 10000][i]
-                elif name == "tint":
-                    t += [amount / 200, -amount / 100, amount / 200][i]
+                elif name in ("temperature", "tint", "white-balance"):
+                    t *= channel_gains(effect)[i]
                 elif name == "shadows":
                     t += amount / 100 * (1 - t) ** 2
                 elif name == "highlights":

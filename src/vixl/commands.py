@@ -1,6 +1,7 @@
 """Human command syntax compiles into canonical operation dictionaries."""
 
 import argparse
+import json
 import re
 import shlex
 from pathlib import Path
@@ -138,7 +139,6 @@ def compile_command(tokens):
     )
     op = {"type": cmd}
     if cmd in ("pen", "container-place", "container-swap", "container-reflow", "shape-place", "palette-define"):
-        import json
         if cmd == "palette-define":
             p.add_argument("name")
             p.add_argument("colors", type=json.loads, help='JSON colors, e.g. ["black", "white"]')
@@ -194,8 +194,6 @@ def compile_command(tokens):
             p.add_argument("--end", default="white")
             p.add_argument("--direction", choices=["vertical", "horizontal", "radial", "angled"])
             p.add_argument("--angle", type=float)
-            import json
-
             p.add_argument("--stops", type=json.loads)
         p.add_argument("--name")
         if cmd != "text":
@@ -288,9 +286,11 @@ def compile_command(tokens):
         p.add_argument("--luminance", type=float)
         p.add_argument("--chroma", type=float)
         p.add_argument("--search", type=int)
+        p.add_argument("--gains", type=json.loads, help="white-balance: channel gains as JSON [r, g, b]")
+        p.add_argument("--neutral", help="white-balance: a color that should become neutral grey")
         data = vars(p.parse_args(args))
         values = data.pop("values")
-        if cmd in ARTISTIC_DEFAULTS or cmd == "denoise":
+        if cmd in ARTISTIC_DEFAULTS or cmd in ("denoise", "white-balance"):
             require(len(values) <= 2, "Expected [LAYER] [VALUE]")
             if len(values) == 2:
                 data["target"], data["value"] = values[0], float(values[1])
@@ -404,7 +404,6 @@ def compile_command(tokens):
             require(len(values) == 2, "Wand needs X Y")
             data.update(zip(("x", "y"), map(int, values)))
         elif data["shape"] in ("lasso", "path"):
-            import json
             require(len(values) == 1, "Provide a quoted JSON point list or SVG path")
             data["points" if data["shape"] == "lasso" else "path"] = json.loads(values[0]) if data["shape"] == "lasso" else values[0]
         elif data["shape"] in ("alpha", "color"):
@@ -433,9 +432,12 @@ def compile_command(tokens):
             data["amount"] = data.pop("radius")
         return {"type": "effect", **data}
     elif cmd == "effect":
-        p.add_argument("action", choices=["disable", "enable", "remove", "set"])
+        p.add_argument("action", choices=["disable", "enable", "remove", "set", "move"])
         p.add_argument("target")
         p.add_argument("effect")
+        p.add_argument("--to", help="move: new 1-based position, top or bottom")
+        p.add_argument("--before", help="move: place before this effect")
+        p.add_argument("--after", help="move: place after this effect")
         for key in ("amount", "radius", "strength", "black", "white", "luminance", "chroma"):
             p.add_argument(f"--{key}", type=float)
         p.add_argument("--seed", type=int)
@@ -500,7 +502,6 @@ def compile_script(path):
 
 def compile_schema_command(kind, args):
     """Compile catalog extensions directly from the public schema, without a second field registry."""
-    import json
     from .schema import operation_schema, validate_operation
 
     variants = operation_schema()["properties"]["operations"]["items"]["oneOf"]

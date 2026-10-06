@@ -313,16 +313,20 @@ def _operation_schema():
             "items": {"type": "array", "items": N, "minItems": 2, "maxItems": 2},
             "minItems": 2,
         },
+        "gains": {"type": "array", "items": N, "minItems": 3, "maxItems": 3},
+        "neutral": S,
     }
-    add("effect", {"name": S, **effect}, ["name"])
+    add("effect", {"name": S, "lut": S, **effect}, ["name"])
     for kind in EFFECTS:
         add(kind, deepcopy(effect))
+    ref = {"type": ["integer", "string"]}
     for kind in ("effect-disable", "effect-enable", "effect-remove", "effect-set"):
         add(
             kind,
-            {"effect": {"type": ["integer", "string"]}, **(effect if kind == "effect-set" else {})},
+            {"effect": ref, **({"lut": S, **effect} if kind == "effect-set" else {})},
             ["effect"],
         )
+    add("effect-move", {"effect": ref, "to": ref, "before": ref, "after": ref}, ["effect"])
     add("variable", {"name": S, "value": {"type": ["string", "number", "boolean"]}, "delete": B}, ["name"])
     add("preset-save", {"name": S}, ["name"])
     add(

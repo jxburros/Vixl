@@ -246,8 +246,6 @@ class PageBuilder:
             return "mask"
         if layer.get("clip"):
             return "clipping"
-        if layer.get("lookup"):
-            return "lookup table"
         if layer.get("repeat"):
             return "repeat"
         if layer["type"] == "group":

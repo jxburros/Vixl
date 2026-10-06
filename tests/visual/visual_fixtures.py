@@ -222,6 +222,45 @@ def raster_rotated_scaled():
 
 
 @fixture
+def effect_white_balance():
+    # A neutral picked from a cast, explicit gains, and the effect at half strength.
+    p = doc(width=192, height=96, background="#000000")
+    left, middle, right = (add_image(p, photo(64)) for _ in range(3))
+    p.apply([
+        {"type": "add", "asset": left, "name": "neutral", "x": 0, "y": 16},
+        {"type": "white-balance", "target": "neutral", "neutral": "#6a7cb4"},
+        {"type": "add", "asset": middle, "name": "gains", "x": 64, "y": 16},
+        {"type": "white-balance", "target": "gains", "gains": [1.3, 1.0, 0.7]},
+        {"type": "add", "asset": right, "name": "half", "x": 128, "y": 16},
+        {"type": "white-balance", "target": "half", "gains": [1.3, 1.0, 0.7], "amount": 50},
+    ])
+    return p
+
+
+@fixture
+def effect_stack_rotated():
+    # Effects run in the layer's frame before it turns: a LUT moved first, blur spreading past the
+    # turned box, and an emboss whose light stays at the canvas's top left.
+    p = doc(width=200, height=120, background="#20242c")
+    asset = add_image(p, checker(48))
+    values = [[g * 0.9 + 0.1, b * 0.8, r] for b in (0, 1) for g in (0, 1) for r in (0, 1)]
+    p.apply([
+        {"type": "lut", "name": "swap", "size": 2, "values": values},
+        {"type": "add", "asset": asset, "name": "soft", "x": 20, "y": 30},
+        {"type": "resize", "target": "soft", "width": 60, "height": 60},
+        {"type": "rotate", "target": "soft", "value": 25},
+        {"type": "blur", "target": "soft", "amount": 2},
+        {"type": "lookup", "target": "soft", "name": "swap"},
+        {"type": "effect-move", "target": "soft", "effect": "lookup", "to": "top"},
+        {"type": "add", "asset": asset, "name": "relief", "x": 120, "y": 30},
+        {"type": "resize", "target": "relief", "width": 60, "height": 60},
+        {"type": "rotate", "target": "relief", "value": -40},
+        {"type": "emboss", "target": "relief", "amount": 60},
+    ])
+    return p
+
+
+@fixture
 def raster_on_dark_halo():
     # Rotating a light-edged raster over a dark background exposes fringing at the resampled edge.
     p = doc(width=160, height=160, background="#101820")

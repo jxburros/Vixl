@@ -819,6 +819,7 @@ SAFE_PLAN = (set(DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES) - {"frame", "repl
     "effect-disable",
     "effect-enable",
     "effect-remove",
+    "effect-move",
     "text-set",
     "canvas",
     "variable",

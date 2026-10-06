@@ -55,7 +55,7 @@ def fallback_reason(layer):
         return "linked documents are exported as images"
     if layer.get("repeat"):
         return "repeat is not exported as vectors"
-    if layer.get("lookup"):
+    if any(e["name"] == "lookup" and e.get("enabled", True) for e in layer.get("effects") or []):
         return "lookup tables are not exported as vectors"
     if layer.get("mask") and layer["mask"].get("enabled", True):
         return "raster masks are not exported as vectors"
@@ -352,7 +352,6 @@ class Exporter:
         b = self.bounds[layer["id"]]
         simple = (
             not (layer.get("mask") and layer["mask"].get("enabled", True))
-            and not layer.get("lookup")
             and not layer.get("cut_paper")
             and not layer.get("export_fallback")
             and supported(layer)
@@ -492,7 +491,6 @@ def export_svg(project, *, scale=1, variables=None, artboard=None, comp=None, sv
                     not supported(item)
                     or item["opacity"] != 1
                     or item.get("mask")
-                    or item.get("lookup")
                     or item.get("clip")
                     or any(e["name"] == "contrast" and e.get("enabled", True) for e in item["effects"])
                 )

@@ -59,8 +59,10 @@ Common operation fields:
 | constrain | target, constraints object |
 | select | shape, shape-specific coordinates/color/target/asset; mode, feather |
 | mask | target, action; path for import |
-| effect | target, name, amount; seed, radius, strength, black/white, points, shadow_color/highlight_color; luminance, chroma, search (denoise) |
-| effect-set / enable / disable / remove | target, effect ID or 1-based index; amount etc. for set |
+| effect | target, name, amount; seed, radius, strength, black/white, points, shadow_color/highlight_color; luminance, chroma, search (denoise); gains or neutral (white-balance); lut (lookup) |
+| effect-set / enable / disable / remove | target, effect ID, 1-based index or (when used once in the stack) name; amount etc. for set |
+| effect-move | target, effect; **one of** `to` (1-based position, `top` or `bottom`), `before` or `after` (another effect). One history entry; renders exactly as removing and re-adding in the new order |
+| lookup | target, name (a LUT defined with `lut`), amount 0–1: adds a `lookup` entry to the effect stack, which toggles, reorders, takes a selection and is removed like any effect |
 | variable | name, value; or delete: true |
 | preset-save / preset-apply | name, target; overrides for apply |
 | canvas | width, height, background; or `size`/`preset` (named size) with orientation, bleed, dpi; or dpi alone |

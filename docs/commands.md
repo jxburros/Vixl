@@ -161,8 +161,10 @@ vixl saturation +15
 vixl hue 30
 vixl exposure 0.5
 vixl gamma 1.1
-vixl temperature 300
+vixl temperature 30
 vixl tint 10
+vixl white-balance photo --neutral '#a08070'
+vixl white-balance photo --gains '[1.1, 1, 0.9]'
 vixl shadows 15
 vixl highlights -10
 vixl blur 8
@@ -179,9 +181,13 @@ vixl effects portrait
 vixl effect disable portrait 1
 vixl effect set portrait 2 --amount 20
 vixl effect remove portrait 3
+vixl effect move portrait grain --to top
+vixl effect move portrait 3 --before blur
 ```
 
-Effect indices start at 1; stable effect IDs also work. Curves use JSON `points: [[0,0],[128,160],[255,255]]`. Brightness/contrast/saturation are percentages relative to neutral; exposure is stops; gamma must be positive; hue is degrees; sharpen is a factor (1 is neutral); denoise takes `--luminance` and `--chroma` strengths 0–100 (see below); noise/grain are 0–1 standard deviations; posterize is 1–8 bits. Temperature/tint and shadows/highlights are simple channel/tonal adjustments, not camera-calibrated or color-managed controls. Noise is seeded (default 0).
+Effect indices start at 1; stable effect IDs also work, and so does an effect's name when the stack holds it once. Effects apply in stack order (top first); `effect move` reorders them (`--to N|top|bottom`, `--before EFFECT` or `--after EFFECT`), and a LUT added with `vixl lookup LAYER LUT` is an entry in the same stack. Curves use JSON `points: [[0,0],[128,160],[255,255]]`. Brightness/contrast/saturation are percentages relative to neutral; exposure is stops; gamma must be positive; hue is degrees; sharpen is a factor (1 is neutral); denoise takes `--luminance` and `--chroma` strengths 0–100 (see below); noise/grain are 0–1 standard deviations; posterize is 1–8 bits. Temperature, tint and white-balance multiply the channels, so black stays black: temperature (−100…100) moves the white point along the blackbody locus, 0.75 mired per unit (100 ≈ 6500 K → 4400 K, a strong warm cast; 10–30 is subtle), tint (−100…100, magenta positive) is the matching green–magenta shift (tint 100 is as strong as temperature 100), and both keep a grey's brightness. `white-balance` corrects a cast: `--neutral COLOR` turns that color grey (keeping its luma) or `--gains '[r, g, b]'` sets the multipliers; its amount (0–100, default 100) scales the correction. These are encoded-sRGB adjustments, not camera-calibrated raw controls; shadows/highlights are simple tonal curves.
+
+Effects run on the layer in its own frame, at its box size, before it is flipped, rotated or skewed, so a blur, denoise, grain or vignette behaves the same at any angle and turns with the layer. Selections stay in canvas coordinates (mapped onto the turned layer), blur still spreads past the turned box, and emboss keeps its light at the canvas's top left. Scaled and rotated layers are resampled without the overshoot rim of Lanczos/bicubic filters: each resampled pixel stays within the colours and alpha of the source pixels under it. Noise is seeded (default 0).
 
 **Denoise** (`denoise`) is an edge-preserving, non-destructive noise reduction for photos. Luminance (grain) is cleaned with non-local means: each pixel is averaged with the pixels around it whose 5 × 5 neighbourhoods look like its own, so flat areas and skies smooth out while edges and fine lines stay sharp (a Gaussian blur that removes as much grain flattens them). Chroma (colour blotches) is smoothed at reduced resolution, guided by the cleaned luminance, so colour does not bleed across an edge, and colour edges and fine colour detail stay as drawn. `--luminance` and `--chroma` are 0–100 strengths (default 50 each; a positional value or `amount` sets both) and are relative to the noise measured in the image itself, so one setting suits a clean and a grainy photo; 0 leaves that part alone. `--search` (1–10 px, default 5) is the search window radius. Cost: time grows with the number of window positions tried (every position within 2 px, then every other one farther out: 72 at the default, 124 at 7, at most 232 at 10); at the default it is about 1 second per megapixel (four threads, the same result whatever the thread count), so `--search 3` (36 positions) halves the cost on large photos. Previews render a reduced copy, so they are quick. It needs no dependencies beyond NumPy and Pillow, and exports to SVG rasterize the layer as for other pixel effects.
 

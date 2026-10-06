@@ -115,8 +115,9 @@ Add with `{"type":"effect","name":NAME,...}` or the shorthand `{"type":NAME,...}
 | `hue` | degrees |
 | `exposure` | stops (−32…32) |
 | `gamma` | > 0 (1 = none) |
-| `temperature` | warm(+)/cool(−), e.g. 300 |
-| `tint` | magenta(+)/green(−), e.g. 10 |
+| `temperature` | warm(+)/cool(−) white-point shift, −100…100 (100 ≈ 6500 K → 4400 K; 10–30 subtle); multiplicative, black stays black |
+| `tint` | magenta(+)/green(−), −100…100, matched to temperature |
+| `white-balance` | strength 0–100 (default 100) of `gains` `[r,g,b]` **or** `neutral` (a color to turn grey) |
 | `shadows`, `highlights` | % lift(+)/cut(−) |
 | `blur`, `gaussian-blur` | **radius in px via `amount`** (0–1000). `radius` is normalized to `amount` and reported |
 | `sharpen` | factor (1 = none, 0–100) |
@@ -130,16 +131,18 @@ Add with `{"type":"effect","name":NAME,...}` or the shorthand `{"type":NAME,...}
 | `curves` | `points`: `[[0,0],[128,160],[255,255]]` |
 | `auto-tone`, `auto-color`, `auto-contrast` | — (percentile stretch) |
 
-Manage the stack (effect = stable `fx_…` ID **or** 1-based index):
+Effects run in stack order on the layer's own frame (before rotation/flip/skew; selections stay in canvas space).
+Manage the stack (effect = stable `fx_…` ID, 1-based index, **or** its name when used once):
 
 | type | fields |
 | --- | --- |
 | `effect-set` | `target`, **`effect`**, `amount`/`value`, `seed`, `radius`, `strength`, `black`, `white`, `points`, `luminance`, `chroma`, `search` |
 | `effect-enable` / `effect-disable` / `effect-remove` | `target`, **`effect`** |
+| `effect-move` | `target`, **`effect`**, one of `to` (1-based position, `top`, `bottom`), `before`, `after` (another effect) |
 | `preset-save` | **`name`**, `target` — saves the layer's effect stack |
 | `preset-apply` | **`name`**, `target`, `overrides` |
 | `lut` | **`name`**, **`size`** (2–33), **`values`** (`size³` RGB triples 0–1, red fastest) |
-| `lookup` | `target`, **`name`** (LUT), `amount` (0–1 mix) |
+| `lookup` | `target`, **`name`** (LUT), `amount` (0–1 mix) — adds a `lookup` entry to the effect stack (toggle/move/remove like any effect; `{"type":"effect","name":"lookup","lut":…}` also works) |
 
 Plugin filters (enabled with `--plugins`) are also addressed by `name`.
 

@@ -184,7 +184,7 @@ Use `project.measure(...)`, REST POST `/measure`, or MCP `vixl_measure` for the 
 
 ```bash
 vixl gradient --name sky --direction angled --angle 35 --stops '[{"offset":0,"color":"#152235"},{"offset":0.4,"color":"#b36881"},{"offset":1,"color":"#e8885c"}]'
-vixl adjustment warmth --effects '[{"name":"temperature","amount":500},{"name":"contrast","amount":10}]'
+vixl adjustment warmth --effects '[{"name":"temperature","amount":40},{"name":"contrast","amount":10}]'
 vixl auto-tone photo
 vixl auto-color photo
 vixl auto-contrast photo
@@ -200,7 +200,7 @@ Named 3D LUTs are embedded, shareable JSON resources:
 {"type":"lut","name":"look","size":2,"values":[[0,0,0],[1,0,0],[0,1,0],[1,1,0],[0,0,1],[1,0,1],[0,1,1],[1,1,1]]}
 ```
 
-This is an identity table. Sizes 2–33 require exactly `size³` normalized RGB triples, with red varying fastest, then green, then blue (cube ordering). `vixl lookup photo look --amount 0.8` attaches the named look, using trilinear interpolation and preserving alpha. Redefining the table updates all uses. Share the `lut` operation through JSON; native `.cube` parsing is not included.
+This is an identity table. Sizes 2–33 require exactly `size³` normalized RGB triples, with red varying fastest, then green, then blue (cube ordering). `vixl lookup photo look --amount 0.8` adds the named look to the layer's effect stack as a `lookup` effect (trilinear interpolation, alpha preserved): it applies in stack order, can be disabled, removed, reordered with `effect-move` or limited to the current selection, and works on adjustment layers. Redefining the table updates all uses. Documents that stored a LUT as a layer's `lookup` field open with it converted to a `lookup` effect at the end of the stack. Share the `lut` operation through JSON; native `.cube` parsing is not included.
 
 ## Comps, text layout, guides, pathfinder, and symbols
 

@@ -155,8 +155,8 @@ def check_operand(item, state):
         raise Unsupported("an operand has a mask")
     if any(style.get("enabled", True) for style in (item.get("styles") or {}).values()):
         raise Unsupported("an operand has layer styles")
-    if item.get("repeat") or item.get("lookup"):
-        raise Unsupported("an operand has a repeat or lookup table")
+    if item.get("repeat"):
+        raise Unsupported("an operand has a repeat")
     if item["type"] == "shape":
         if item.get("shape") == "line":
             raise Unsupported("an operand is a line, which has no area")

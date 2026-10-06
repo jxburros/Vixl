@@ -469,7 +469,6 @@ def repeat_items(layer, state=None, colors=True):
         item = deepcopy(layer)
         item.pop("repeat")
         item.update(rotation=0, flip_x=False, flip_y=False, effects=[], mask=None, opacity=1)
-        item.pop("lookup", None)
         item["width"] = layer["width"] + i * settings.get("dw", 0)
         item["height"] = layer["height"] + i * settings.get("dh", 0)
         for key, end in settings.get("end", {}).items():

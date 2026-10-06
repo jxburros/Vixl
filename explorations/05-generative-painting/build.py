@@ -531,7 +531,7 @@ def paint_landscape():
     FINISH.extend([
         {"type": "adjustment", "name": "grade", "effects": [
             {"name": "curves", "points": [[0, 12], [70, 58], [150, 160], [255, 250]]},
-            {"name": "temperature", "amount": 140},
+            {"name": "temperature", "amount": 16},
             {"name": "saturation", "amount": 8},
             {"name": "vignette", "strength": 0.38, "radius": 0.85},
             {"name": "grain", "amount": 0.035, "seed": 7},

@@ -235,8 +235,11 @@ def check_document(project):
     if project.transaction:
         check_state(project, project.transaction["state"])
         require(isinstance(project.transaction["operations"], list), "Invalid transaction")
+    from copy import deepcopy
+    from .project import upgrade_state
+
     head = project._state_at(project.head)
-    check_state(project, head)
+    check_state(project, upgrade_state(deepcopy(head)))
     project._head_state = head
     project._verified = {project.head}
     resolve_layout(project)
