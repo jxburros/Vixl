@@ -21,6 +21,7 @@ import math
 import numpy as np
 
 from .errors import require
+from .geometry import compact_number
 from .model import finite, uid
 
 TYPES = ("scatter", "pattern-scatter")
@@ -280,12 +281,6 @@ def placed(source, cx, cy, rotation=0.0, scale=1.0, flip_x=None, opacity=None, f
     return item, (item["x"], item["y"], tw, th)
 
 
-def _number(value):
-    from .geometry import compact_number
-
-    return compact_number(value, 2)
-
-
 def item_commands(project, layer, bounds):
     """``layer``'s outline as path commands ``[(letter, [x, y, ...])]`` in its parent's pixels."""
     from .affine import layer_matrix
@@ -349,7 +344,7 @@ def merged(project, entries, name):
             for commands in chunk:
                 for letter, vals in commands:
                     shifted = [v - (x0 if i % 2 == 0 else y0) for i, v in enumerate(vals)]
-                    parts.append(letter + " ".join(_number(v) for v in shifted))
+                    parts.append(letter + " ".join(compact_number(v, 2) for v in shifted))
             layer = deepcopy(template)
             for key in ("pivot", "skew_x", "skew_y", "affine", "radius", "sides", "inner_radius", "irregular", "organic",
                         "scatter", "pattern_scatter", "radial", "repeat", "looks", "part_of", "parent", "path_nodes"):
