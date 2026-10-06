@@ -23,6 +23,8 @@ can substitute fonts, emphasize form fields or handle animation differently.
 | Motion | WebP, GIF, APNG, sheet or frame ZIP | Offline timeline export; GIF has limited colors |
 | Encoded video / audio workflows | MP4 / WebM | ffmpeg required; external generated video also needs a configured gateway |
 | Browser presentation of artwork | HTML | Standalone appearance export; see [studio](studio.md#svg-import-and-html-export) |
+| Logo hand-off | The `logo-package` workflow | Variants, lockups, SVG/PDF/PNG 1x–3x, icons, social images, usage sheet, zip; see [logo packages](production.md#logo-packages) |
+| Legacy print (EPS) | Not produced | Vixl does not write EPS; give the printer the PDF (or the SVG) |
 
 The authoritative options are `vixl export --help`, `vixl export-timeline --help` and
 the [interface reference](interfaces.md). Export format support can depend on installed codecs.
@@ -134,7 +136,9 @@ channels) that opens in Photoshop, Photopea, GIMP, Affinity and Krita:
 - Record version, source revision when applicable, export settings and font/source licenses.
 
 For repeated output families, use [production workflows](production.md) to retain manifests,
-checks, render decisions and resume information.
+checks, render decisions and resume information. To send a set of exports for sign-off, write a
+[proof page](production.md#proof-pages): one offline HTML file with thumbnails, metadata, findings and
+approve/reject decisions; `vixl diff A B` shows what changed between two exports.
 # Python export consistency
 
 `Project.export`, `Project.export_animation`, `export_timeline` and the MCP export

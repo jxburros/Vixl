@@ -4,6 +4,8 @@ Start with `vixl_capabilities(topic="animation", fields=true)` for operations, f
 
 All interfaces normalize operation aliases with the same registry and validate against the same operation schema. MCP restricts filesystem access and accepts registered font names and roles. SVG path coordinates are literal local pixels, not percentages or normalized coordinates; `path-fit` fits a path into its layer box. Grouped positions are parent-relative unless `move` uses `space: "canvas"`.
 
+For a new piece whose size, layout copy, look and operations are known, `vixl_compose` runs create → font pairing → layout → style → look → operations → check → preview → save → exports in one atomic call; errors carry `step` (see [interfaces](interfaces.md#build-a-piece-in-one-call)). Keep refining with `vixl_operations_apply`. Before handing off, a `proof` workflow page (or `logo-package` for a logo) packages the review; see [production](production.md#proof-pages).
+
 An atomic batch holds up to 10,000 operations. Generated motion and compact `keyframes` can replace hundreds of handwritten operations. For larger edits use history `begin`, several batches, then `commit`; `rollback` discards the group. A failed batch applies nothing. Explicit `Limits(max_operations=...)` still enforces a lower application limit.
 
 `vixl_validate` defaults to a summary with up to 50 failed checks. `detail="full"` includes passes; `targets` accepts layer-name globs, `severity` selects error/warning/info, and `offset`/`limit` paginate. Filters never hide an error from the overall `valid` result. `suppress` explicitly omits named rules or rule globs. Mark intentional bleed with `layer-intent` `allow_crop: true` or a background/decoration role; it then reports informational crop findings.

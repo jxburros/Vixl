@@ -51,6 +51,7 @@ Default binding is `127.0.0.1:8765`. OpenAPI is at `/docs`. To bind beyond loopb
 | `POST /history/{action}` | `{ref: "name", count: 1}`; undo/redo/branch/checkpoint/checkout/begin/commit/rollback |
 | `POST /assets?name=photo` | Raw image bytes → imported layer; or an empty body with `url=https://…` to download one. `credit` and `license` are recorded in provenance |
 | `POST /ai/{command}` | `{args: ["--prompt", "forest", "--provider", "local"]}`; uses locally configured providers |
+| `POST /compose` | `vixl_compose` fields without `path`, `exports` or `operations_path` → a dry run: steps, findings, `preview_base64` |
 
 ```bash
 curl http://127.0.0.1:8765/document
@@ -123,7 +124,7 @@ Existing `vixl --project /absolute/path/poster.vixl mcp` configurations still wo
 
 ### Tools and workflow
 
-Vixl is designed to be driven mainly by agents. The intended loop is: create or open a document → `vixl_operations_apply` in atomic batches (use `dry_run` to test) → `vixl_check` to find problems without looking → `vixl_render_preview` (with `region` to zoom) → fix → `vixl_export_file`.
+Vixl is designed to be driven mainly by agents. The intended loop is: create or open a document → `vixl_operations_apply` in atomic batches (use `dry_run` to test) → `vixl_check` to find problems without looking → `vixl_render_preview` (with `region` to zoom) → fix → `vixl_export_file`. For a new piece whose content is known, `vixl_compose` runs that whole chain in one atomic call.
 
 | Tool | Purpose |
 | --- | --- |
@@ -141,6 +142,7 @@ Vixl is designed to be driven mainly by agents. The intended loop is: create or 
 | `vixl_render_compare(before, after, mode, isolate)` | Side-by-side or red-highlight diff of two revisions (`previous`, `head~N`, branch, checkpoint, ID) plus the changed region; `isolate` compares one object alone, both sides cropped to its ink (`region` in the summary) |
 | `vixl_export_file(path, quality, title, max_bytes, scale, profile, variables, background, overwrite, color_space, icc_profile, intent, black_generation, ink_limit, proof, simulate, dpi, icon_sizes, time)` | Save full-resolution PNG/JPEG/WEBP/TIFF/AVIF/SVG/PDF/ICO, CMYK for print; return only file metadata |
 | `vixl_export_batch(targets, defaults?, overwrite, stop_on_error)` | Several files in one call: sizes, formats or artboards of a document, or several documents |
+| `vixl_compose(path, size? \| width/height, font_pairing?, layout?, style?, look?, operations? \| operations_path?, check, strict, preview?, exports?, overwrite, dry_run)` | A new piece in one atomic call: create → fonts → layout → style → look → operations → check → preview → save → exports; see [below](#build-a-piece-in-one-call) |
 | `vixl_adapt_layout(sizes, directory?, name?, options?, formats?, overwrite?, report?)` | Adapt one document to several sizes in one call: each size is a saved (optionally exported) copy re-laid out by the proportional `adapt-layout` operation, with per-size canvas, scale, moved layers and warnings ([operations](operations.md#bulk-edits-and-resizing-a-whole-layout-unreleased)) |
 | `vixl_job(action, id?, wait?)` | Follow a long call: `status` (optionally waiting), `result`, `cancel`, `list`; see [long calls](#long-calls-retries-and-progress). The `--tools compact` set has no `vixl_job`; it polls through `vixl_workflow` (`action: "status"`, `request: {id}`) |
 | `vixl_sizes_list`, `vixl_layouts_list`, `vixl_brushes_list` | Named sizes, principled layouts, brushes (no document needed) |
@@ -164,6 +166,33 @@ Every document tool accepts an optional `document` path. Up to 8 documents stay 
 For example, create `poster.vixl` at 4000×3000, import `photo.jpg` as `photo`, apply `[{"type":"move","target":"photo","x":20}]`, run `vixl_check`, request a preview, then export `poster.png`. File paths refer to the machine running Vixl; a client without access to that file system can send image bytes with `data_base64` instead.
 
 Relative and absolute paths are accepted within the workspace. Paths escaping it, including symlinks to outside directories, are rejected. Export refuses existing files unless `overwrite: true` is supplied, and cannot overwrite `.vixl` documents. `vixl_document_create`, `vixl_template_create` and the export tools create missing directories inside the workspace (nothing outside it is ever created). Operation `path` and `linked` fields remain unavailable (checked after alias normalization); use the import tool. `font` (and `display_font`, rich-text span fonts and `font=` in rich-text Markdown) is accepted in `vixl_operations_apply` batches: a font registered in the document (`vixl_font_pair`, `vixl_font_install`, `vixl_import_font`, or a `font-register` earlier in the same batch) or a role. A file path or an unregistered name is refused with `forbidden`/`missing_font`, listing the registered names and the install tools. Services do not enable third-party plugins or linked-file reads.
+
+### Build a piece in one call
+
+When the agent already knows the size, the layout and its copy, the look and the operations, `vixl_compose` replaces
+the create → apply → check → preview → export round trips:
+
+```json
+{"path": "launch/card.vixl", "size": "instagram-post", "font_pairing": "ibm-plex-serif-sans",
+ "layout": {"name": "hero-statement", "title": "Ship it", "subtitle": "Release notes inside", "seed": 7},
+ "look": {"look": "grain", "target": "background"}, "style": "swiss",
+ "operations": [{"type": "shape", "shape": "ellipse", "name": "dot", "x": 900, "y": 80, "width": 60, "height": 60, "fill": "@accent"}],
+ "check": true, "preview": true, "exports": ["launch/card.png", {"path": "launch/card.pdf", "color_space": "cmyk"}]}
+```
+
+The steps run in that order on an unsaved document. The `.vixl` is written only when every step succeeded and the
+exports only after it; a failed export removes the document and the files the call wrote. Export targets (the
+`vixl_export_batch` options) are validated before anything is built, so an existing file fails at once. An error keeps
+the normal schema (`error`, `message`, `field`, `operation_index` …) and adds `step`: `request`, `create`, `fonts`,
+`layout`, `style`, `look`, `operations`, `check`, `preview`, `save` or `export`. `strict: true` turns `fix` findings into
+a `check` failure (nothing saved); `dry_run: true` builds, checks and previews without writing (`path` optional). The
+result lists `steps`, the layout's seed, blanks and notes, the check findings, the saved `document` and the `exports`,
+followed by the preview image. Like other heavy tools it becomes a job after ~40 s (or at once with `as_job`) and takes
+`request_id`. It is in the core and compact toolsets.
+
+The same request works as `vixl compose --request req.json [--preview p.png]`, as `vixl.compose.run(workspace, **request)`
+in Python, and as `POST /compose` on REST, where it is a dry run (no `path`, `exports` or `operations_path`: that server
+serves one fixed document) returning the findings and `preview_base64`.
 
 ### Forgiving input and actionable errors
 

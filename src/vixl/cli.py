@@ -89,9 +89,10 @@ Effects:   brightness, contrast, saturation, hue, exposure, gamma, temperature,
 Layout:    canvas resize SIZE, canvas size NAME [--landscape] [--bleed], canvas dpi N, constrain, unconstrain,
            variable set NAME VALUE
 History:   undo [N], redo [N], history, checkpoint NAME, branch NAME,
-           checkout REF, branches, compare REF REF --out FILE [--isolate LAYER…]
+           checkout REF, branches, compare REF REF --out FILE [--isolate LAYER…], diff A B [--out D.png] (two documents or images)
 Automate:  apply FILE|- [--dry-run] [--check [CHECK…]] [--preview PNG [--isolate LAYER…]], run SCRIPT, batch GLOB --run SCRIPT --output DIR,
-           workflow ACTION --request FILE [--workspace DIR] (workflow schema lists actions),
+           workflow ACTION --request FILE [--workspace DIR] (workflow schema lists actions; proof, logo-package …),
+           compose --request FILE [--preview P.png] (create → layout → look → operations → check → exports, atomic),
            each layer --name PATTERN -- COMMAND, preset save|apply|show NAME,
            transaction begin|commit|rollback, assert RULE, validate [PROFILE]
 Resources: commands, shapes, sizes [--category print], palette list|show|add|apply,
@@ -308,6 +309,12 @@ def dispatch(argv):
     if cmd == "merge":
         from .imposition import cli as merge_cli
         return merge_cli(args, options, limits), options.json
+    if cmd == "diff":
+        from .image_diff import cli as diff_cli
+        return diff_cli(args, limits), options.json
+    if cmd == "compose":
+        from .compose import cli as compose_cli
+        return compose_cli(args, options, limits), options.json
     if cmd in ("open", "schema", "upgrade") and any(arg in ("--help", "-h") for arg in args):
         return command_help(cmd, args), options.json
     if cmd in ("commands", "shapes"):
@@ -339,7 +346,7 @@ def dispatch(argv):
                     | {"filter"}
                     | {"workflow"}
                     | set(
-                        "new session open upgrade save status inspect describe layers effects manifest dependencies reproduce schema check batch convert render export export-screens export-animation spacing pixels animation info sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert validate preset ai ask generate detect ocr serve view notes import mcp update updates commands shapes palette template guidance font fonts roll providers models color sizes layout layouts brushes organics easings timeline export-timeline timeline-sheet export-icons pages guides links merge styles looks guide".split()
+                        "new session open upgrade save status inspect describe layers effects manifest dependencies reproduce schema check batch convert render export export-screens export-animation spacing pixels animation info sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert validate preset ai ask generate detect ocr serve view notes import mcp update updates commands shapes palette template guidance font fonts roll providers models color sizes layout layouts brushes organics easings timeline export-timeline timeline-sheet export-icons pages guides links merge styles looks guide diff compose".split()
                     )
                 )
             }

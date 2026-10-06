@@ -207,10 +207,13 @@ vixl assert canvas.width == 1920
 vixl assert layer.logo.exists
 vixl assert layer.logo.bounds within canvas
 vixl assert text.title.font-size '>=' 48
+vixl diff before.vixl after.png [--out diff.png] [--mode diff|side-by-side] [--threshold 8] [--max-fraction 0.01]
 ```
 
 All accept `--artboard NAME` / `--comp NAME` where relevant. `--check` (spacing), `check --strict`
-and failing `validate`/`assert` exit nonzero with details (`--json` shows every check).
+and failing `validate`/`assert` exit nonzero with details (`--json` shows every check). `diff` needs no open
+document: it compares two `.vixl` documents or images (PNG, JPEG, WEBP, TIFF, SVG, PDF) and reports `changed_pixels`,
+`changed_fraction` and `changed_region`; `--max-fraction` makes it exit nonzero above that share.
 
 ## Output
 
@@ -244,6 +247,7 @@ JPEG flattens transparency onto `--background` (white).
 vixl apply ops.json [--dry-run]          # or: cat ops.json | vixl apply -
 vixl apply ops.json --check --preview p.png   # also check the result and write a 512 px preview
 vixl run script.vixlscript               # one editing command per line, # comments; atomic
+vixl compose --request req.json [--preview p.png] [--workspace DIR]   # vixl_compose: create → … → exports, atomic
 vixl batch './photos/*.jpg' --run cleanup.vixlscript --output ./processed [--format png]
 vixl each layer --type raster --name 'card-*' -- saturation -10
 vixl transaction begin ; …edits… ; vixl transaction commit   # or rollback; one undo step

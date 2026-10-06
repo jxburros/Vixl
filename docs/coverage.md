@@ -58,4 +58,4 @@ The exact supported operation syntax is discoverable through `vixl schema` and d
 
 ## Studio additions
 
-See [studio.md](studio.md) for wand/lasso and pen tools; custom palette tests; modular templates with container rules/reflow; saved shapes/effects/suites; project groups with recovery; repository-style agent branch/merge; versioned plugin packs; complex static SVG appearance import and HTML export. The compact MCP profile exposes 12 tools. Collaboration uses shared-filesystem locks and independent project files, not a network synchronization service.
+See [studio.md](studio.md) for wand/lasso and pen tools; custom palette tests; modular templates with container rules/reflow; saved shapes/effects/suites; project groups with recovery; repository-style agent branch/merge; versioned plugin packs; complex static SVG appearance import and HTML export. The compact MCP profile exposes 13 tools. Collaboration uses shared-filesystem locks and independent project files, not a network synchronization service.
