@@ -1,5 +1,5 @@
-"""Form regressions from the T06 evaluation: preview/export parity (#82), worst-case check
-explanations (#81) and field rules (#77)."""
+"""Preview/export parity for filled forms (T06 evaluation, #82): the reduced-resolution preview draws
+values with the same size, padding and shrink rules as the filled export."""
 
 import numpy as np
 import pytest

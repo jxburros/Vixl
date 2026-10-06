@@ -161,7 +161,8 @@ cache**, the document, its history or error messages (which name rows and keys, 
   `retain_inputs`).
 
 Previews show values too: `render --set KEY=VALUE` and `vixl_render_preview(values=…)` draw the
-values you pass without requiring the rest.
+values you pass without requiring the rest. A preview, a filled PNG and a flattened PDF draw a
+value the same way (size, padding, shrinking and clipping), at any preview size.
 
 ## Checks
 
@@ -176,8 +177,25 @@ the page, layers drawn above a field, fields with opacity, blend modes or effect
 showing a field value (they stay static in the fillable PDF), a canvas with no physical size, and
 radio option values that are not words.
 
-`--sample worst` fills every field with worst-case values (`max_length` W's, the longest option,
-the largest number) and reports values that would not fit; `--sample rows.csv` uses real rows.
+`--sample worst` fills every field with worst-case values and reports values that would not fit;
+`--sample rows.csv` uses real rows. A worst-case value has `max_length` characters (40 for text
+and 400 for multiline when unset) of the widest letter, W (8 for digits, a long address for
+email); a multiline value is words of seven W's so it can wrap; a dropdown shows its longest
+label; a number its largest value. The check is deterministic: the same document always gives the
+same report, and a field's result depends only on that field's own box, size, `min_size`,
+`overflow`, `max_length` and font (not on other fields).
+
+Each overflow or clip names what was measured, so a result can be explained: for example
+`performer_name: the value does not fit its box. 80 characters ('WWWW…') measure 2150.4 px at 28 px
+(the smallest size shrink may use) in Figtree Regular (registered as figtree-400); the box holds
+2064 px (2100 px wide, 18 px padding each side). A max_length of 76 would fit`. The issue also
+carries `measured`: `font`, `size`, `size_measured`, `min_size`, `overflow`, `box_width`,
+`padding`, `inner_width`, `rendered_width` (a multiline value's `wrapped_height`, `lines` and
+`longest_word_width` instead), the `sample` excerpt and `max_length_that_fits` (the largest limit
+whose worst-case value fits; setting it clears the error). `font` shows when a field draws with
+the bundled proofing fallback or with fallback glyphs. Rows from a CSV and fills report the same
+numbers but never the value. The measurement uses the field's own font, as filled copies do;
+people typing into a fillable PDF get Helvetica.
 
 `inspect`, `field list` and `vixl_document_inspect` list each field's key, kind, required flag,
 tab stop and rectangle in PDF points.
