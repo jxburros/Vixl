@@ -1,35 +1,49 @@
-# T09 round 2: copy changes (lane V, Vixl MCP)
-
-**Timing:** 22:34 to about 22:36 UTC on 2026-10-05 (about 3 minutes).
-**Tool calls:** 57 in total: 49 Vixl MCP calls, 4 Bash, 3 ToolSearch and 1 SubagentHandback.
-The Vixl calls were 6 document_open, 10 document_inspect, 1 operation_schema, 8 operations_apply, 6 check, 6 render_preview, 6 export_file and 6 document_close.
+# T09 round 2 · Tidewick Café winter menu (lane V: Vixl)
 
 ## What changed
-1. **Headline:** "The Winter Menu is here" became **"Winter Menu: now pouring"** in all six files.
-   - "Winter Menu" stays in lamp amber, as in round 1. The colon and "now pouring" are cream.
-   - Square, story, X and Facebook break it onto two lines: "Winter Menu:" / "now pouring". The leading is still 0.75.
-   - Leaderboard and email header keep it on one line.
-2. **Menu line:** "Smoked maple latte" became **"Spiced honey cortado"**. The line now reads "Gingerbread flat white · Spiced honey cortado · Cardamom bun" in the four sizes that have a menu line: square, story, X and Facebook.
-   - **Leaderboard and email header have no menu line, so there was nothing to replace.** In round 1 they dropped copy lines 2 and 4, as the brief allows. I did not add a menu line to them, because it would be new copy in two very small formats. If the cortado has to appear in all six, a menu line must be added to those two files.
 
-## Size changes needed to keep the layouts clean
-The new item name is longer, and so is the one-line headline.
-- **Square:** the menu line went from 33 px to 31 px. Without that change it would have ended at x=1043 of 1080. It now ends at x=985.
-- **Story:** the menu line went from 34 px to 32 px, so it keeps a margin of about 73 px.
-- **Email header:** the headline went from 38 px to 34 px. At 38 px the longer headline ran under the lamp (x=500). It now ends at x=490.
-- **X, Facebook and leaderboard:** no size changes were needed.
+| Change | Where |
+| --- | --- |
+| Headline "The Winter Menu is here" → "Winter Menu: now pouring" | All six sizes |
+| Menu item "Smoked maple latte" → "Spiced honey cortado" | The four sizes that carry the menu line (square, story, X post, Facebook event). The leaderboard and email header had no menu line in round 1, so there is nothing to replace there |
 
-Nothing else changed: no positions, colors, fonts, motif, label, date or CTA.
+The rest of the menu line is unchanged: "Gingerbread flat white · Spiced honey cortado · Cardamom bun"
+(same `·` separators). The date and URL lines, palette, fonts, lamp, halo, rule and tide lines are
+unchanged in every file.
 
 ## How
-- I copied the six round-1 `.vixl` files into `round2/` with Bash and edited only those copies. Nothing outside `round2/` was touched.
-- Each copy was opened in Vixl with an explicit `document=` path.
-- **Headline:** one `rich-text` operation per file on the existing `headline` layer. It rewrote the spans and kept the layer's embedded Young Serif font and paragraph settings.
-- **Menu:** `text-set` on the `menu` layer, with a size change where listed above.
-- I ran `vixl_check` on all six. Every file passed with 0 errors. On the story I reused the round-1 reserved zones (top and bottom 250 px) for the text layers, and the result was clean.
-- The remaining warnings are the same kinds as in round 1: the lamp glow is cut off by the canvas edge on purpose, and small Rubik lines warn about legibility at 320 px thumbnail width. On the square and story, the shrunk menu line now also warns at 9.2 px and 9.5 px, against a 10 px target.
-- I looked at a render preview of every file, then used `vixl_export_file` to write the full-size PNGs.
-- A Python check confirmed the PNG sizes: 1080×1080, 1080×1920, 1600×900, 1920×1005, 728×90 and 600×200, all RGBA.
 
-## Files in round2/
-instagram-square, instagram-story, x-post, facebook-event, leaderboard and email-header, each as `.png` plus its editable `.vixl` source.
+All edits were made with the Vixl MCP tools. No pixels, SVG or HTML were drawn by hand.
+
+1. I copied the six round-1 `.vixl` sources into `round2/`. The round-1 files outside `round2/` were not touched.
+2. I opened each copy and ran `vixl_operations_apply` with `text-set` on the existing `headline` and
+   `menu` text layers. The layers kept their IDs, positions, fonts, sizes and colors.
+   - In the four large sizes, the headline keeps the round-1 two-line break: "Winter Menu:" / "now pouring".
+   - In the leaderboard and email header it stays on one line.
+3. I checked each file with `vixl_render_preview` and `vixl_check`, then exported the PNGs with
+   `vixl_export_batch`. A Python/PIL read-back confirmed the sizes: 1080×1080, 1080×1920,
+   1600×900, 1920×1005, 728×90 and 600×200, all RGB.
+
+## Layout adjustments (only where the new copy needed them)
+
+- **Email header:** at the old 36 px size the new headline ran to x≈519, into the lamp (x 500–560).
+  I reduced it to 32 px and moved it down 4 px (y 30→34) so its baseline stays at ≈57, where it was.
+  The headline now ends at x≈465.
+- **Leaderboard:** at the old 32 px size the new headline ran to x≈521, touching the tide lines that
+  start at x=520. I reduced it to 29 px and moved it down 3 px (y 15→18) so its baseline stays at ≈39.
+  It now ends at x≈481, about where the old headline ended (x≈482), and lines up with the date line below.
+- **Square, story, X post, Facebook event:** no size or position changes.
+  - The headline is a little wider than before. Its widest line, "Winter Menu:", stays clear of the
+    lamp in every size.
+  - The menu line rewraps the same way as in round 1: two lines on the square, story and X post, one
+    line on Facebook. As before, line 1 ends with "·".
+
+## Checks
+
+- `vixl_check` reports no overlaps, no contrast problems and no new issues.
+- The square, story text and email header are clean.
+- The remaining warnings are thumbnail-legibility warnings that round 1 already had and accepted:
+  - X post and Facebook: the menu, date and URL lines.
+  - Leaderboard: the 18 px date line.
+- Story: running `vixl_check` with the top and bottom 250 px reserved, on the text layers and the
+  rule, found nothing. Text runs from y=680 to y≈1288.
