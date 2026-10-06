@@ -142,16 +142,22 @@ def substitute(value, variables):
     return PLACEHOLDER.sub(replace, value)
 
 
+# Geometry that can hold hundreds of thousands of numbers and never holds placeholders.
+GEOMETRY_KEYS = frozenset({"strokes", "points", "path", "nodes", "path_view"})
+
+
 def strings(value):
-    """Every string inside a JSON-like value."""
+    """Every string inside a JSON-like value (geometry lists are skipped)."""
     if isinstance(value, str):
         yield value
     elif isinstance(value, dict):
-        for item in value.values():
-            yield from strings(item)
+        for key, item in value.items():
+            if key not in GEOMETRY_KEYS:
+                yield from strings(item)
     elif isinstance(value, list):
         for item in value:
-            yield from strings(item)
+            if not isinstance(item, (int, float)):
+                yield from strings(item)
 
 
 def validate_maps(maps):
