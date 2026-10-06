@@ -14,6 +14,14 @@ EFFECT_FIELDS = {"name", "amount", "value", "seed", "radius", "strength", "shado
                  "black", "white", "points", "enabled"}
 
 
+# Shapes that read inner_radius: a star's inner points and an arc's hole (donut/ring/pie share arc).
+INNER_RADIUS_SHAPES = ("star", "arc")
+
+
+def _names(shapes):
+    return " and ".join(repr(shape) for shape in shapes)
+
+
 def advise(candidate, before, after, operations):
     """Warnings for what ``operations`` changed in ``candidate`` (``before``/``after`` are inspect() states)."""
     warnings = []
@@ -36,13 +44,18 @@ def ignored_fields(candidate, op):
     found = []
     if kind == "shape":
         shape, name = op.get("shape"), repr(op.get("name", "shape"))
+        if shape is None:  # editing an existing layer: its own shape decides what each field does
+            try:
+                shape = candidate.layer(op.get("target", op.get("layer"))).get("shape")
+            except Exception:  # noqa: BLE001 - an unresolvable target is reported by the operation itself
+                return found
         if "radius" in op and shape not in ("rounded-rectangle", "capsule"):
             found.append(f"shape {name}: radius only rounds 'rounded-rectangle' and 'capsule'; it does nothing "
                          f"for {shape!r}")
         if "sides" in op and shape not in ("polygon", "star"):
             found.append(f"shape {name}: sides only applies to 'polygon' and 'star', not {shape!r}")
-        if "inner_radius" in op and shape != "star":
-            found.append(f"shape {name}: inner_radius only applies to 'star', not {shape!r}")
+        if "inner_radius" in op and shape not in INNER_RADIUS_SHAPES:
+            found.append(f"shape {name}: inner_radius only applies to {_names(INNER_RADIUS_SHAPES)}, not {shape!r}")
         if "path" in op and shape != "path":
             found.append(f"shape {name}: path is only drawn for shape 'path', not {shape!r}")
         if "stroke_width" in op and "stroke" not in op and shape != "line":

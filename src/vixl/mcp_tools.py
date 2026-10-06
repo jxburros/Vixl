@@ -593,10 +593,25 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         bleed: Annotated[bool | float, Field(description="Print sizes: true adds standard bleed")] = False,
         seed: int | None = None,
         variety: Literal["low", "medium", "high", "fixed"] | None = None,
+        font_pairing: Annotated[
+            str | None,
+            Field(description="Also install and apply this curated pairing (a vixl_font_pair name, or 'random') as "
+                              "the document typography; needs the font cache or network"),
+        ] = None,
     ) -> dict:
         """Create and activate a new .vixl file from width/height or a named size (print sizes record dpi,
-        bleed, safe area and trim/safe guides). Never overwrites an existing file."""
-        return session.create(path, width, height, background, size=size, dpi=dpi, orientation=orientation, bleed=bleed, seed=seed, variety=variety)
+        bleed, safe area and trim/safe guides). Never overwrites an existing file. font_pairing replaces
+        a separate vixl_font_pair call, so heading/body roles resolve to real typefaces, not the proofing fallback."""
+        created = session.create(path, width, height, background, size=size, dpi=dpi, orientation=orientation, bleed=bleed, seed=seed, variety=variety)
+        if font_pairing:
+            from .typefaces import pair_fonts
+
+            try:
+                with session.project(write=True, document=path) as project:
+                    created["typography"] = pair_fonts(project, font_pairing)
+            except VixlError as exc:  # the document exists; say the pairing did not apply instead of hiding it
+                created["font_pairing_error"] = str(exc)
+        return created
 
     @tool
     def vixl_document_open(path: str) -> dict:
@@ -623,12 +638,18 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
 
     @tool
     def vixl_operations_apply(
-        operations: Annotated[list[Operation], Field(min_length=1, max_length=Limits().max_operations)],
+        operations: Annotated[list[Operation] | None, Field(min_length=1, max_length=Limits().max_operations)] = None,
         dry_run: bool = False,
         detail: ApplyDetail = "brief",
         document: Document = None,
+        operations_path: Annotated[
+            str | None,
+            Field(description="Workspace-relative .json (array) or .jsonl (one operation per line) file to apply "
+                              "instead of operations; JSONL errors cite the line number"),
+        ] = None,
     ) -> dict:
-        """Apply operations atomically (all or none) and autosave. brief (default) returns the ID, name and
+        """Apply operations atomically (all or none) and autosave. Give operations inline, or operations_path
+        for a large batch kept in a workspace file. brief (default) returns the ID, name and
         resulting bounds of each changed layer plus warnings (off-canvas or overflowing text, ignored fields);
         compact adds the new values of changed fields; full adds before/after snapshots. dry_run validates and
         previews the changes without saving. Omit target to use the active layer; edit-layers changes every
@@ -639,7 +660,9 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         still applies); text-style styles a phrase, character range or paragraphs inside it.
         shape/solid/gradient/text add a layer, but with target they edit that existing layer in place
         (keeping its ID), e.g. {type: shape, target: bar, fill: "#6b3f69"}."""
-        return session.apply(operations, dry_run, detail, document)
+        require(operations is not None or operations_path is not None, "Pass operations or operations_path",
+                field="operations")
+        return session.apply(operations, dry_run, detail, document, operations_path=operations_path)
 
     @tool
     def vixl_operation_schema(types: list[str]) -> dict:
