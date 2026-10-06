@@ -87,7 +87,10 @@ Rules agents trip over:
 - Keys are 1–64 of `[A-Za-z0-9_-]` (no dots) and cannot equal a variable name.
 - Fields cannot be rotated or flipped.
 - `required` works on every kind (a required `signature` is signed in the viewer; fills never need
-  it). `max_length` works on `text`, `multiline` and `number`.
+  it). `max_length` works on `text`, `multiline` and `number`. Flattened fills and previews accept a
+  signature sample (text, or a `data:image/png;base64,` URI); fillable exports refuse one.
+- `{"type": "form", "entry_font": "embed"}` embeds each field's TrueType font so people type in it
+  (WinAnsi characters); restricted or non-TrueType fonts fall back to Helvetica with a warning.
 - Validation rules reach the fillable PDF as standard field actions a viewer enforces: `format`
   `email`/`digits`, number `{decimals, min, max}`, the date `format.display`, and `pattern` (a
   regex the whole value must match; no flags, look-around, back-references or `(a+)+`), with
