@@ -158,6 +158,16 @@ def test_skew_matrix_native_render_and_timeline(tmp_path):
     assert mid.layer("a")["skew_y"] == pytest.approx(10)
 
 
+def test_matrix_transform_stores_plain_values_and_saves(tmp_path):
+    p = Project(300, 300)
+    shape(p, x=100, y=100, w=50, h=30)
+    p.apply({"type": "transform", "target": "a", "matrix": [0.866, 0.5, 0, 1, 20, 10]})
+    layer = p.layer("a")
+    assert type(layer["flip_y"]) is bool and type(layer["rotation"]) is float
+    p.save(tmp_path / "matrix.vixl")
+    assert Project.load(tmp_path / "matrix.vixl").layer("a")["skew_x"] == pytest.approx(layer["skew_x"])
+
+
 def test_relationships_grid_guides_composition_hits_free_and_snaps():
     p = Project(300, 200)
     shape(p, "a", x=20, y=30, w=40, h=20)

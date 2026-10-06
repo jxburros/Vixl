@@ -171,17 +171,20 @@ def measure(
             region = [box[0], box[1], box[2] - box[0], box[3] - box[1]]
         # Exclude overlays above the target at every level of the group tree,
         # retaining the ancestors and siblings below it as the actual backdrop.
+        # Zero opacity rather than hiding: a hidden member would reflow its stack,
+        # moving a hug background out from under the very text being measured.
         branch = layer
         while branch:
             position = candidate.state["layers"].index(branch)
             for other in candidate.state["layers"][position + 1:]:
                 if other.get("parent") == branch.get("parent"):
-                    other["visible"] = False
+                    other["opacity"] = 0
             branch = candidate.layer(branch["parent"]) if branch.get("parent") else None
-        layer["visible"] = False
+        opacity = layer.get("opacity", 1)
+        layer["opacity"] = 0
         image = candidate.render()
         if foreground is None:
-            layer["visible"] = True
+            layer["opacity"] = opacity
             target_image = candidate.render()
             from .render import layer_image
 

@@ -47,6 +47,18 @@ def layer_matrix(layer, bounds):
     return shared_matrix(layer, bounds)
 
 
+def generated_path_ops(path):
+    """PDF operators for an engine-generated path, such as an outlined stroke.
+
+    Outlined dashes and flattened curve strokes routinely exceed the caps that guard
+    user-supplied paths (a dotted page border is ~300 kB), while raster and SVG export draw
+    the same primitives without them.
+    """
+    from .geometry import parse_path
+
+    return path_ops(parse_path(path, bounded=False))
+
+
 def path_ops(commands):
     """PDF path operators for parsed SVG path commands (M L C Q Z)."""
     out, current = [], (0.0, 0.0)
@@ -333,7 +345,7 @@ class PageBuilder:
         if catalog_active(layer) or stroke_active(layer) or layer.get("distort") or layer.get("_distort_groups"):
             for path, paint in primitives(layer, self.view):
                 if path:
-                    self.fill_ops(path_ops(parse_path(path)), color(resolve_color(paint, state)), opacity)
+                    self.fill_ops(generated_path_ops(path), color(resolve_color(paint, state)), opacity)
             return
         fill = color(resolve_color(layer.get("fill", "white"), state))
         stroke = color(resolve_color(layer.get("stroke", "transparent"), state))

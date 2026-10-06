@@ -138,7 +138,12 @@ def execute(project, op):
             bg = project.layer()
             bg.update(parent=group["id"], stack_background=group["id"])
             project.state["layers"].remove(bg)
-            project.state["layers"].insert(project.state["layers"].index(group), bg)
+            # Children draw in list order, so the background goes before the first member, not
+            # just before the group (which would paint it over members grouped by this call).
+            layers = project.state["layers"]
+            first = next((i for i, item in enumerate(layers) if item.get("parent") == group["id"]),
+                         layers.index(group))
+            layers.insert(first, bg)
         bg.update(fill=group["stack"].get("background", "transparent"), radius=group["stack"].get("radius", 0),
                   stroke=group["stack"].get("stroke", "transparent"), stroke_width=group["stack"].get("stroke_width", 1))
         project.state["active_layer"] = group["id"]

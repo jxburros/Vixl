@@ -64,6 +64,20 @@ def schema():
         "marker_size": {"type": "number", "exclusiveMinimum": 0, "maximum": 4096},
         "marker_style": enum("triangle", "open", "concave", "round"),
     }
+    descriptions = {
+        "dash": "Dash/gap pixel lengths or dashed/dotted preset; separate from trim_start/trim_end reveal.",
+        "width_profile": "Ordered [fraction along path, width multiplier] control points; endpoints 0 and 1.",
+        "strokes": "Additional strokes painted in array order after the base stroke.",
+        "taper_start": "Width multiplier at the start; reaches full width at the middle.",
+        "taper_end": "Width multiplier at the end; starts tapering from the middle.",
+    }
+
+    def describe(key, value):
+        # A copy: values such as N are shared schema fragments, and writing into them relabelled
+        # every other numeric field in the schema (x, y, amount …) as "Dash offset.".
+        return {**value, "description": descriptions.get(key, key.replace("_", " ").capitalize() + ".")}
+
+    props = {key: describe(key, value) for key, value in props.items()}
     props["strokes"] = {
         "type": "array",
         "maxItems": 16,
@@ -82,14 +96,7 @@ def schema():
             "additionalProperties": False,
         },
     }
-    for key, value in props.items():
-        value["description"] = {
-            "dash": "Dash/gap pixel lengths or dashed/dotted preset; separate from trim_start/trim_end reveal.",
-            "width_profile": "Ordered [fraction along path, width multiplier] control points; endpoints 0 and 1.",
-            "strokes": "Additional strokes painted in array order after the base stroke.",
-            "taper_start": "Width multiplier at the start; reaches full width at the middle.",
-            "taper_end": "Width multiplier at the end; starts tapering from the middle.",
-        }.get(key, key.replace("_", " ").capitalize() + ".")
+    props["strokes"] = describe("strokes", props["strokes"])
     return props
 
 

@@ -189,6 +189,29 @@ def _state_key(project):
     return hashlib.sha256(json.dumps(project.state, sort_keys=True, default=str).encode()).digest()
 
 
+def _caption_fonts(spec, settings, root, limits):
+    """Fonts registered in the film's document shots, so a caption can name one like a shot does.
+
+    Only loaded when a caption asks for a font; a seeked preview may never open the shot that
+    registered it, so every document shot is scanned rather than the ones on screen.
+    """
+    from .project import Project
+
+    fonts, assets = {}, {}
+    if not any(caption.get("font") for caption in spec.get("captions", [])):
+        return fonts, assets
+    for shot in settings["shots"]:
+        path = local_path(root, shot["source"])
+        if path.suffix.lower() != ".vixl":
+            continue
+        project = Project.load(path, limits=limits)
+        for name, asset in (project.state.get("fonts") or {}).items():
+            if isinstance(asset, str) and asset in project.assets:
+                fonts.setdefault(name, asset)
+                assets.setdefault(asset, project.assets[asset])
+    return fonts, assets
+
+
 def frames(spec, root, *, limits=None, cancelled=lambda: False, streamed=False,
            start_frame=0, end_frame=None, region=None):
     from .project import Project
@@ -208,6 +231,7 @@ def frames(spec, root, *, limits=None, cancelled=lambda: False, streamed=False,
             0 <= start_frame < end_frame <= settings["frames"], "Invalid film frame interval")
     crop = preview_region(region, settings, size)
     sources, clips = {}, {}
+    caption_fonts = _caption_fonts(spec, settings, root, limits)
     # The last rendered frame per document shot: a frame whose animated state is unchanged
     # (a lyric held on screen, a pause) reuses it instead of rendering again.
     memo = {}
@@ -275,6 +299,8 @@ def frames(spec, root, *, limits=None, cancelled=lambda: False, streamed=False,
             captions = [c for c in spec.get("captions", []) if c["start"] <= now < c["end"]]
             if captions:
                 overlay = Project(*size, limits=limits)
+                overlay.state["fonts"] = dict(caption_fonts[0])
+                overlay.assets.update(caption_fonts[1])
                 scale = size[0] / settings["width"]
                 from .captions import apply_caption
                 for j, caption in enumerate(captions):

@@ -296,3 +296,19 @@ def test_caption_overflow_checks_transformed_parent_canvas_space():
     p = Project(300, 200)
     p.apply([{'type': 'caption', 'name': 'subtitle', 'text': 'Inside initially', 'x': 10, 'y': 10, 'size': 16, 'max_width': 140}, {'type': 'group', 'name': 'wrapper', 'targets': ['subtitle']}, {'type': 'move', 'target': 'wrapper', 'x': 260, 'y': 30}])
     assert any(finding['code'] == 'text-overflow' for finding in findings(p))
+
+
+def test_film_caption_uses_a_font_registered_in_a_shot(tmp_path):
+    from pathlib import Path
+    from vixl.film import frames
+    from vixl.fonts import import_font
+
+    import vixl
+    font = Path(vixl.__file__).parent / 'data' / 'DejaVuSans.ttf'
+    shot = Project(120, 80, '#203040')
+    import_font(shot, str(font), 'brand')
+    shot.save(tmp_path / 'shot.vixl')
+    spec = {'width': 120, 'height': 80, 'fps': 10, 'shots': [{'source': 'shot.vixl', 'duration': 200}],
+            'captions': [{'text': 'Hi', 'start': 0, 'end': 200, 'x': 5, 'y': 10, 'size': 14, 'font': 'brand'}]}
+    images = list(frames(spec, tmp_path))  # used to fail: the caption overlay had no registered fonts
+    assert len(images) == 2 and np.asarray(images[0].convert('L')).max() > 200

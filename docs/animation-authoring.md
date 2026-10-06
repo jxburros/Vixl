@@ -42,7 +42,7 @@ Natural movement has a cause: prepare a large action with a small opposite actio
 
 ## Captions and dialogue
 
-`speech-bubble` sizes and wraps editable rich text, adds a speech/thought/shout/whisper body, and aims its tail at `anchor` each render, including transformed nested targets. Fonts, size, color, fill, stroke, padding and maximum width are editable. `caption` supports font and character `style` (bold/italic/underline/tracking/alignment/stroke), a configurable `box`, start/end times and `none`, `fade` or `typewriter` animation. The same caption fields work in film specs. `captions` checks report measured text clipping, canvas overflow and missing anchors.
+`speech-bubble` sizes and wraps editable rich text, adds a speech/thought/shout/whisper body, and aims its tail at `anchor` each render, including transformed nested targets. Fonts, size, color, fill, stroke, padding and maximum width are editable. `caption` supports font and character `style` (bold/italic/underline/tracking/alignment/stroke), a configurable `box`, start/end times and `none`, `fade` or `typewriter` animation. The same caption fields work in film specs, where `font` names a font registered in any of the film's `.vixl` shots (or a font file path). `captions` checks report measured text clipping, canvas overflow and missing anchors.
 
 ## Built-in score and SFX
 

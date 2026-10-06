@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### Fixes found by the 0.20 explorations (11–14)
+
+- A matrix `transform` stores plain floats and bools; it used to store a numpy `bool_` that made `save()` fail.
+- Vector PDF export parses engine-generated stroke outlines without the user-path size and command caps, so dotted borders and smoothed, stroked paths export (PNG and SVG already did).
+- Hug-stack backgrounds created with `stack targets=…` are inserted behind the grouped members instead of over them.
+- The contrast check measures a text layer's backdrop with the layer at zero opacity instead of hidden, so hug stacks no longer reflow out from under the text being measured.
+- Stroke field descriptions no longer leak into the shared numeric schema fragment, which had labelled `x`, `y`, `amount` and 280 other fields "Dash offset.".
+- Film captions can name any font registered in the film's `.vixl` shots; previously only the fallback font worked.
+- Docs: spatial hit tests verify rendered alpha only with `bounds: "ink"`. Film caption fonts are documented, and the film cache's usage file is gitignored.
+
 ## 0.20.0
 
 ### Editable vector drawing and placement

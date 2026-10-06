@@ -443,3 +443,33 @@ def test_path_and_warp_records_survive_save_load(tmp_path):
     restored = Project.load(file)
     assert restored.inspect("s")["path_nodes"] == p.inspect("s")["path_nodes"]
     assert np.array_equal(before, np.asarray(restored.render()))
+
+
+def test_pdf_exports_generated_strokes_beyond_user_path_limits(tmp_path):
+    # A dotted page border (~900 round-capped dashes) and a smoothed path's flattened stroke
+    # both outline to more than parse_path accepts from users; raster and SVG drew them already.
+    p = Project(1800, 2400)
+    p.apply([
+        {"type": "shape", "shape": "rectangle", "name": "dots", "x": 84, "y": 84, "width": 1632, "height": 2232,
+         "fill": "transparent", "stroke": "black", "stroke_width": 1, "dash": [2, 6], "line_cap": "round"},
+        {"type": "shape", "shape": "squircle", "name": "lens", "x": 300, "y": 300, "width": 180, "height": 220,
+         "fill": "red", "stroke": "black", "stroke_width": 3},
+        {"type": "shape-to-path", "target": "lens"},
+        {"type": "path-smooth", "target": "lens", "amount": 0.4, "iterations": 1},
+    ])
+    p.export(tmp_path / "long.pdf", pdf_content="vector")
+    assert (tmp_path / "long.pdf").stat().st_size > 0
+
+
+def test_stroke_descriptions_do_not_leak_into_shared_schema_fragments():
+    from vixl.schema import operation_schema
+
+    variants = {
+        item["properties"]["type"]["const"]: item["properties"]
+        for item in operation_schema()["properties"]["operations"]["items"]["oneOf"]
+    }
+    assert variants["shape"]["dash_offset"]["description"] == "Dash offset."
+    assert variants["text-layout"]["amount"].get("description") != "Dash offset."
+    assert all(branch.get("description") != "Dash offset." for branch in variants["move"]["x"]["anyOf"])
+    stroke = variants["shape"]["strokes"]["items"]["properties"]
+    assert stroke["dash"]["description"].startswith("Dash/gap")

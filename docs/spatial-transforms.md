@@ -57,7 +57,9 @@ Use `Project.spatial(...)` or `vixl_spatial`. All returned geometry is in canvas
 by `target` name/ID/glob, `targets` list, `group:name` descendants, or selector objects in a
 `targets` list. `page` and `artboard` scope the query; `bounds` is `box` (default) or `ink`.
 The ink mode uses glyph outline bounds for text and rich-text, transformed into canvas
-coordinates, and includes conservative effects/overflow extents. Hit queries verify actual rendered alpha.
+coordinates, and includes conservative effects/overflow extents. With `bounds: "ink"`, hit queries
+verify actual rendered alpha; with the default `box` they test layout boxes, so an L-shaped or
+stepped shape also hits in its empty corner.
 Queries do not mutate the document.
 
 - `relations`: compare selected layers, optionally to a separate `to` selector. Returns
@@ -76,7 +78,7 @@ Queries do not mutate the document.
 - `composition`: distances to thirds/golden-ratio lines and intersection points, plus
   canvas center axes and point.
 - `hit`: `point: [x,y]` or `region: [x,y,w,h]`, topmost first, reporting inherited visibility
-  and opacity. Hidden/transparent layers are omitted unless `include_hidden` is true.
+  and opacity. Pass `bounds: "ink"` to count only rendered pixels. Hidden/transparent layers are omitted unless `include_hidden` is true.
 - `free`: largest maximal empty rectangles in a region (canvas by default), excluding
   selected visible bounds. Results sort by area; `limit` defaults to 20. Use targets to
   exclude intentional background panels from the obstacles.

@@ -39,6 +39,43 @@ def populated(name, *, variant=None, size=(480, 320)):
     return p
 
 
+def test_hug_background_paints_behind_members_grouped_by_the_stack():
+    p = Project(300, 120, "#000000")
+    p.apply(
+        [
+            {"type": "shape", "shape": "rectangle", "name": "chip", "width": 60, "height": 40, "fill": "#ffffff"},
+            {"type": "stack", "name": "pill", "targets": ["chip"], "size": "hug", "background": "#ff0000",
+             "padding": 10},
+        ]
+    )
+    names = [layer["name"] for layer in p.state["layers"]]
+    assert names.index("pill/background") < names.index("chip")
+    image = render(p).convert("RGB")
+    assert image.getpixel((40, 30)) == (255, 255, 255)  # member, not covered by the background
+    assert image.getpixel((4, 4)) == (255, 0, 0)  # the padding shows the background
+
+
+def test_contrast_of_stack_text_is_measured_on_its_own_background():
+    # The stripe sits under the second line once the stack is laid out; hiding the line being
+    # measured used to reflow the stack and leave that line over the stripe instead of the pill.
+    from vixl.checks import check_design
+
+    p = Project(400, 200, "#0e2a47")
+    p.apply(
+        [
+            {"type": "shape", "shape": "rectangle", "name": "stripe", "x": 0, "y": 44, "width": 400, "height": 30,
+             "fill": "#f2c14e"},
+            {"type": "text", "name": "first", "text": "FIRST LINE", "size": 24, "color": "#e8f1ff"},
+            {"type": "text", "name": "second", "text": "second line", "size": 24, "color": "#e8f1ff"},
+            {"type": "stack", "name": "pill", "targets": ["first", "second"], "size": "hug",
+             "background": "#0a1f36", "padding": 8},
+            {"type": "move", "target": "pill", "x": 20, "y": 10},
+        ]
+    )
+    issues = check_design(p, checks=["contrast"])["issues"]
+    assert not [issue for issue in issues if issue["check"] == "contrast"]
+
+
 def test_hug_background_remeasures_variable_content_and_nested_stacks():
     p = Project(600, 300)
     p.apply(

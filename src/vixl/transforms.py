@@ -226,7 +226,8 @@ def execute(project, op):
             if op.get("relative"):
                 m = m @ linear(layer)
             # QR decomposition stores an editable rotation, x shear and dimensions.
-            a, b, c, d, e, f = m[0, 0], m[1, 0], m[0, 1], m[1, 1], m[0, 2], m[1, 2]
+            # Plain floats: numpy scalars (np.bool_ in particular) would make the document unsaveable.
+            a, b, c, d, e, f = (float(v) for v in (m[0, 0], m[1, 0], m[0, 1], m[1, 1], m[0, 2], m[1, 2]))
             sx = math.hypot(a, b)
             sy = (a * d - b * c) / sx
             layer["rotation"] = math.degrees(math.atan2(b, a)) % 360
