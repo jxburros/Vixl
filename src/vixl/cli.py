@@ -93,6 +93,12 @@ Resources: commands, shapes, sizes [--category print], palette list|show|add|app
 Type:      fonts [--category serif] [--mood M], font show FAMILY, font pairings [--mood M] [--for poster],
            font pairing NAME, font principles, font install FAMILY [--weight 700] [--role heading|body], font pair NAME|random,
            font use NAME --role heading|body, font list|import
+Finish:    look LAYER NAME [--color C] [--amount 0-1] [--remove]  (glow, neon, soft-shadow, hard-shadow, outline, gradient, grain,
+           paper, film, duotone, risograph, sketch, watercolor, halftone), looks (catalog),
+           radial-repeat LAYER --count N [--cx 50%] [--cy 50%] [--sweep 360] [--start-angle D] [--mirror] [--name N],
+           guide [BRIEF] (what to make: icons, characters, scenes, patterns … with the operations, layouts and looks that suit it)
+Styles:    styles [list [QUERY] | show NAME | apply NAME [--palette] | check [NAME]], style-set NAME… [--options JSON],
+           check --checks style [--style NAME…] (premade rules for swiss, brutalist, minimalist, art-deco …)
 Dice:      roll [--apply] [--set title=…] [--for poster] [--mood M] [--size NAME] [--seed N|random] [--lock palette=sage]
            [--unfilled omit|blank]
 Color:     color [info] COLOR…, color convert COLOR --to oklch|cmyk|…, color harmony COLOR --scheme triadic,
@@ -316,11 +322,17 @@ def dispatch(argv):
                     | {"filter"}
                     | {"workflow"}
                     | set(
-                        "new session open save status inspect describe layers effects manifest dependencies reproduce schema check batch convert render export export-screens export-animation spacing pixels animation info sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert validate preset ai ask generate detect ocr serve view notes import mcp update updates commands shapes palette template guidance font fonts roll providers models color sizes layout layouts brushes organics easings timeline export-timeline timeline-sheet export-icons pages guides links merge".split()
+                        "new session open save status inspect describe layers effects manifest dependencies reproduce schema check batch convert render export export-screens export-animation spacing pixels animation info sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert validate preset ai ask generate detect ocr serve view notes import mcp update updates commands shapes palette template guidance font fonts roll providers models color sizes layout layouts brushes organics easings timeline export-timeline timeline-sheet export-icons pages guides links merge styles looks guide".split()
                     )
                 )
             }
         ), options.json
+    if "--help" not in args and "-h" not in args and (
+        cmd in ("guide", "looks") or (cmd == "styles" and not (args and args[0] in ("apply", "check")))
+    ):
+        from .finishing_cli import standalone as finishing_standalone
+
+        return finishing_standalone(cmd, args), options.json
     # A roll preview reads the document --apply would use (its canvas and brand), so both pick
     # the same direction; without a document it rolls standalone.
     standalone_roll = cmd == "roll" and "--apply" not in args and not has_document(options.project)
@@ -567,6 +579,9 @@ def command_help(cmd, args):
         "[--accent rule|bar|dot|block|outline|none] [--prefix P] [--replace]",
         "timeline": "timeline (inspect) | timeline set [--duration 3s] [--fps 30] [--loop N] [--clear]",
         "pages": "pages (list pages and masters of a multi-page document)",
+        "styles": "styles [list [QUERY] | show NAME] | styles apply NAME [--palette] | styles check [NAME…]",
+        "guide": "guide [BRIEF]  (e.g. guide a mascot for a coffee brand; guide operations)",
+        "looks": "looks  (the finishing looks; apply with look LAYER NAME)",
         "guides": "guides (list guides and grids)",
         "links": "links (list the linked documents and their state: ok, stale, missing, cycle)",
     }
@@ -579,6 +594,10 @@ def command_help(cmd, args):
 def project_command(project, cmd, args, *, detail="compact"):
     from .validation import assert_rule, dependencies, validate
 
+    if cmd == "styles":
+        from .finishing_cli import bound as styles_bound
+
+        return styles_bound(project, args)
     if cmd == "roll":
         from .resource_cli import font_standalone
         return font_standalone(cmd, args, project), "--apply" in args
@@ -793,8 +812,9 @@ def project_command(project, cmd, args, *, detail="compact"):
             "--checks",
             nargs="+",
             choices=["bounds", "overlap", "contrast", "safe_area", "legibility", "print", "color_vision", "content", "fonts", "blanks", "brand", "guides", "alignment",
-                     "deck", "title_position", "type_scale", "words", "min_font", "notes", "empty", "form", "drawing", "links"],
+                     "deck", "title_position", "type_scale", "words", "min_font", "notes", "empty", "form", "drawing", "links", "style"],
         )
+        p.add_argument("--style", nargs="+", help="style checks: evaluate this style (or styles) instead of the document's tag")
         p.add_argument("--page", help="Check one page of a multi-page document (default: the active page)")
         p.add_argument("--pages", help="deck checks: the pages to check, e.g. 1-3,5 (default: every shown page)")
         p.add_argument("--min-font", type=float, help="deck checks: smallest projected text in points (default 18)")

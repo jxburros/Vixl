@@ -60,6 +60,10 @@ def compile_command(tokens):
     stack = compile_stack(cmd, args)
     if stack is not None:
         return stack
+    from .finishing import compile_command as compile_finishing
+    finishing = compile_finishing(cmd, args)
+    if finishing is not None:
+        return finishing
     from .richtext import compile_command as compile_rich
     rich = compile_rich(cmd, args)
     if rich is not None:

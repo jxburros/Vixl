@@ -383,6 +383,10 @@ class Project:
                 for key in ("layers", "principles"):
                     result["layout"].pop(key, None)
             result["unfilled_slots"] = list(dict.fromkeys(b["slot"] for b in result["layout"].get("blanks", [])))
+            from .layouts import next_steps
+
+            if result["unfilled_slots"]:
+                result["next_steps"] = next_steps(candidate)
         if any(op["type"] == "paint" for op in operations):
             from .brushes import stroke_diagnostics
             from .render import layer_image, resolve_layout

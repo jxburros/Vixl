@@ -212,6 +212,23 @@ Use `palette list|show|add|apply`, `template list|show|add|new|apply`, `guidance
 
 Saved SVG exports report `svg.vector_only` and `svg.raster_fallbacks` in the CLI result so embedded bitmaps are visible without opening the SVG metadata. Use `export logo.svg --svg-policy strict` to reject all embedded raster content. Exporting to `-` still writes only SVG bytes. Supported grouped shapes and outlined text remain vectors; unsupported appearances may rasterize in the default appearance policy.
 
+## Finish, styles and the guide
+
+```bash
+vixl guide                               # start-here recipe and every kind of work
+vixl guide a mascot for a coffee brand   # approach, operations, layouts, looks, styles, example
+vixl guide operations                    # every operation by purpose, with summaries
+vixl looks                               # the finishing looks
+vixl look LAYER glow [--color C] [--amount 0-1] [--remove]
+vixl radial-repeat LAYER --count 12 [--cx 50%] [--cy 50%] [--sweep 360] [--start-angle D] [--mirror] [--no-group] [--name N]
+vixl layer-intent LAYER --allow-crop     # a deliberate edge crop: checks report it as informational
+vixl layout apply NAME --palette '["#0f172a","#1e293b","#38bdf8"]' --keep-order
+vixl palette apply NAME --keep-order | --roles '{"background": 0, "accent": "#e11d48"}'
+vixl styles [list [QUERY] | show NAME] | styles apply NAME [--palette] | styles check [NAME…]
+vixl style-set NAME… [--options JSON]    # tag the document ('none' clears)
+vixl check --checks style [--style NAME…]
+```
+
 ## Sizes, layouts, color, print, brushes and timelines (0.13)
 
 ```bash

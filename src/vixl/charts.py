@@ -1507,9 +1507,7 @@ def schemas(add):
              "name": d(S, "Group name; the layers inside are named NAME/part."), "x": COORD, "y": COORD,
              "width": d(SIZE, "Chart width (default: the canvas)."), "height": d(SIZE, "Chart height (default: the canvas).")}
     add("chart", {**frame, **data, **{k: (v if k == "kind" else nullable(v)) for k, v in options.items()}},
-        description="Draw or update a data-bound chart as a group of ordinary vector layers. Without target it creates "
-                    "one from categories + series, a table or a csv; with target it restyles or resizes that chart. "
-                    "Exports to PPTX as a native chart.")
+        description="Draw a data-bound chart (bars, lines, areas, pie, donut) as vector layers, or restyle one with target.")
     add("chart-data", {
         "target": d(S, "Chart group ID or name (default: the active layer)."),
         "set": d({"type": "array", "items": {"type": "object", "properties": {

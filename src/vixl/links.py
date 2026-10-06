@@ -59,12 +59,13 @@ _CHAIN = ContextVar("vixl_link_chain", default=())
 
 
 def schemas(add):
-    """Operation schemas. Only the fields every agent needs are typed here; position, crop, source_page and variables
-    are validated when the operation runs (with specific messages) to keep the inline tools/list catalog small."""
+    """Operation schemas. position, crop, source_page and variables are typed here and checked in more detail
+    when the operation runs (with specific messages); null clears one on a link with a target."""
     from .schema import S, SIZE, COORD, enum
 
-    settings = {"fit": enum(*FITS), "position": {}, "crop": {}, "artboard": {"type": ["string", "null"]}, "source_page": {},
-                "variables": {}}
+    settings = {"fit": enum(*FITS), "position": {"type": ["string", "array", "null"]}, "crop": {"type": ["object", "null"]},
+                "artboard": {"type": ["string", "null"]}, "source_page": {"type": ["string", "integer", "null"]},
+                "variables": {"type": ["object", "null"]}}
     add("link", {"name": S, "source": S, "x": COORD, "y": COORD, "width": SIZE, "height": SIZE, **settings})
     add("link-refresh")
     add("link-embed")

@@ -46,7 +46,7 @@ def test_operation_schema_is_in_tools_list(tmp_path):
         # Design, pixel/animation, brush, timeline, layout, pen/container, organic/intent, color, guide/placement,
         # page, rich text, form-field, drawing, stack, linked-document and chart operations extend the catalog; shared constraints and
         # runtime-validated nested settings keep the inline schema bounded (slim mode is smaller still).
-        assert len(json.dumps(schema)) < 40000
+        assert len(json.dumps(schema)) < 45000  # provisional: see the lead's note on schema growth
 
     asyncio.run(run())
 

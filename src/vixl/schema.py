@@ -92,7 +92,10 @@ def _operation_schema():
         },
     )
     add("palette-define", {"name": S, "colors": {"type": "array", "items": S, "minItems": 2, "maxItems": 256}}, ["name", "colors"])
-    add("palette-apply", {"name": S, "prefix": S, "roles": B, "policy": enum("strict", "accessible")}, ["name"])
+    from .palette_roles import role_schema
+
+    add("palette-apply", {"name": S, "prefix": S, "roles": {"anyOf": [B, role_schema()]}, "keep_order": B,
+                          "policy": enum("strict", "accessible")}, ["name"])
     add("template-apply", {"name": S, "variables": {"type": "object"}, "seed": {"type": ["integer", "string"]}}, ["name"])
     add("guidance", {"name": S, "text": S, "style": S, "delete": B}, ["name"])
     add("font-register", {"name": S, "asset": S, "role": S}, ["name"])
@@ -344,11 +347,16 @@ def _operation_schema():
     link_schemas(add)
     from .charts import schemas as chart_schemas
     chart_schemas(add)
+    from .finishing import schemas as finishing_schemas
+    finishing_schemas(add)
     add(
         "palette-generate",
         {"name": S, "color": S, "scheme": S, "count": {"type": "integer", "minimum": 2, "maximum": 12}},
         ["name", "color"],
     )
+    from .schema_docs import enrich
+
+    enrich(variants)
     return {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "title": "Vixl operation batch",

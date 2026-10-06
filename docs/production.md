@@ -45,6 +45,12 @@ Attach a suite with an explicit `suite-set` operation:
 }}
 ```
 
+The tool surface describes this object, so no repository docs are needed to write one:
+`vixl_operation_schema(types=["suite-set"])` and `vixl_workflow_schema().definitions.suite` give every
+rule field a type, enum and one-line description (with an example), and `vixl_workflow_schema` does the
+same for every action's request fields and for the `job`, `spec`, `recipe` and plugin `manifest` objects.
+The `check` action also accepts an inline suite object instead of a name.
+
 Run `project.check_suite("delivery")` or workflow `check` with
 `{"suite":"delivery"}`. Results include the suite hash, actual measurements,
 rule IDs, times, and `passed`, `failed`, or `needs_review`. Missing/unmeasurable

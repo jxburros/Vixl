@@ -92,6 +92,16 @@ Edits use `vixl_operations_apply` with `pixel-art`, `pixel-draw`, `pixel-palette
 `frame-apply`, `frame-delete`, `animation-set` (`name`+`order` defines a named animation) and
 `frames-edit` (the same operations applied to every saved frame, or an animation's, atomically).
 
+### Guide, looks and styles
+
+`vixl_guide(brief?)` is the first call for an open brief: with no argument it returns the start-here recipe and every
+kind of work; with a kind or free text ("a mascot for a coffee brand") it returns the approach, operations, layouts,
+looks, styles and a working example (`brief="operations"` and `brief="looks"` list those catalogs).
+`vixl_styles(action="list|get|apply|check", name?, query?, palette?)` serves the 28 design styles; `apply` tags the
+document (`style-set`), stores the brief as guidance and optionally applies the palette; `check` is
+`vixl_check(checks=["style"])`. `vixl_check` also takes `style=` and returns `by_action` (fix / review /
+informational) with every issue's `action`.
+
 ### Sizes, layouts, color, timelines and icons (0.13)
 
 | Tool | Parameters | Notes |
@@ -174,7 +184,7 @@ Non-loopback hosts require a bearer token from `VIXL_API_TOKEN` (or `--token-env
 | `POST /assets?name=photo` | raw image bytes | New layer |
 | `POST /ai/{command}` | `{"args":["--prompt","forest","--provider","local"]}` | CLI-style AI call |
 | `POST /export` | `{"format":"PDF","color_space":"cmyk","ink_limit":300}`, `ICO`+`icon_sizes`, `icc_profile_base64`, `proof`, `simulate`, `dpi`, `time` | File bytes |
-| `GET /sizes?category=` · `GET /layouts` · `GET /brushes` | | Catalogs |
+| `GET /sizes?category=` · `GET /layouts` · `GET /brushes` · `GET /guide?brief=` · `GET /styles?query=\|name=` · `GET /looks` | | Catalogs |
 | `POST /color` | `{"action":"harmony","colors":["#2563eb"],"scheme":"triadic"}` | Color tools |
 | `GET /timeline` · `GET /timeline/frame?time=1.5s` | | Tracks · PNG frame |
 | `POST /timeline/export` | `{"format":"gif","fps":15,"scale":0.5}` | Animation bytes |

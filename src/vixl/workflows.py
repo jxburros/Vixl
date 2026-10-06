@@ -45,19 +45,9 @@ ACTIONS.update(IMPOSITION_ACTIONS)
 FILL_FORMATS = ("pdf", "png", "jpeg", "jpg", "webp", "tiff", "svg")
 
 PATH = {"type": "string", "description": "Workspace-relative path."}
-# Field types shown by describe(). FIELD_TYPES covers names that mean the same thing in every
-# action; ACTION_FIELD_TYPES adds or overrides per action.
-FIELD_TYPES = {
-    "dry_run": {"type": "boolean", "description": "Validate and report without writing."},
-    "replace": {"type": "boolean"},
-    "workers": {"type": "integer", "minimum": 1, "maximum": 4},
-    "output": PATH,
-    "directory": PATH,
-    "spec": {"type": "object"},
-    "job": {"type": "object"},
-    "operations": {"type": "array", "items": {"type": "object"}},
-    "id": {"type": "string"},
-}
+# Field types shown by describe(). workflow_schema holds every action's typed, described fields
+# (shared names, per-action overrides, the check-suite object); ACTION_FIELD_TYPES below also
+# drives form-fill's type checks, and takes precedence there.
 ACTION_FIELD_TYPES = {
     "form-fill": {
         "values": {"type": "object", "description": "One copy: {field key: value}. Needs output (a file path). "
@@ -102,19 +92,26 @@ for _action in ("lyric-video-plan", "lyric-video-build", "lyric-video-export"):
 
 
 def field_types(action):
+    from .workflow_schema import properties
+
     fields = ACTIONS[action][0]
-    types = {**FIELD_TYPES, **ACTION_FIELD_TYPES.get(action, {})}
+    types = {**properties(action, fields), **ACTION_FIELD_TYPES.get(action, {})}
     return {field: types[field] for field in sorted(fields) if field in types}
 
 
 def describe():
+    from .workflow_schema import SUITE, summary
+
     return {
         "version": 1,
         "actions": {
-            k: {"fields": sorted(v[0]), "required": sorted(v[1]), "properties": field_types(k)}
+            k: {"summary": summary(k), "fields": sorted(v[0]), "required": sorted(v[1]), "properties": field_types(k)}
             for k, v in ACTIONS.items()
         },
-        "help": "docs/production.md; all paths are workspace-relative; submit + start runs durable background work",
+        "definitions": {"suite": SUITE},
+        "help": "docs/production.md; all paths are workspace-relative; submit + start runs durable background work. "
+                "definitions.suite is the check-suite object (attach it with the suite-set operation, or pass it "
+                "inline to check).",
     }
 
 

@@ -27,6 +27,8 @@ def compact_changes(before, after):
         "template",
         "brushes",
         "form",
+        "palette_roles",
+        "style",
     ):
         if before.get(key) != after.get(key):
             changes[key] = after.get(key)

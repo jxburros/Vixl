@@ -161,6 +161,10 @@ deletes it. One style per kind; all accept `enabled` (bool) and `opacity` (0–1
 | `pathfinder` | **`name`**, **`targets`** (shapes), **`mode`** (`union`/`subtract`/`intersect`) | New layer; hides originals; uses first operand's fill. Exports to SVG/PDF/PPTX as one compound path (real geometry, no masks); a stroked, translucent or effect-carrying operand cannot be geometry and becomes a listed raster fallback (rejected by `svg_policy="strict"`). |
 | `repeat` | `target`, **`count`** (≤512, includes original), `dx`, `dy` (≥0), `dw`, `dh` | Stays one layer; re-applying replaces settings. |
 | `repeat-blend` | as `repeat` plus **`end`** `{width,height,fill,color}` | Interpolates size/color to the last copy. |
+| `radial-repeat` | `target`, **`count`** (2–360), `cx`, `cy` (pixels, `"50%"`, `"center"`; default canvas center), `sweep` (degrees, default 360), `start_angle`, `mirror`, `group` (default true), `name` | N copies of a layer around a center, each turned to face outward; `mirror` adds a reflection of every copy (kaleidoscope symmetry). Copies are ordinary layers inside one group. |
+| `look` | **`look`** (`glow`, `neon`, `soft-shadow`, `hard-shadow`, `outline`, `gradient`, `grain`, `paper`, `film`, `duotone`, `risograph`, `sketch`, `watercolor`, `halftone`), `target`/`targets`, `color`, `amount` (0–1, default 0.5), `remove` | One-step finish built from layer styles and effects; reapplying replaces, `remove` takes only that look off. Styles and blur-like looks export as native SVG filters; grain/paper/film/etc. use the raster fallback under `svg_policy`. |
+| `layer-intent` | `target`, `role` (`content`/`decoration`/`background`), `allow_overlap`, `allow_crop` | `allow_crop: true` marks a deliberate edge crop or bleed: checks report it as informational. |
+| `style-set` | **`style`** (name, up to three names, or `null` to clear), `options` (`{rule: false | {param: value, severity, enabled}}`) | Tags the document with a design style; `check --checks style` evaluates its premade rules. See [styles](../../../docs/styles.md). |
 
 ## Pixel art and animation
 
@@ -180,7 +184,7 @@ deletes it. One style per kind; all accept `enabled` (bool) and `opacity` (0–1
 | type | fields | notes |
 | --- | --- | --- |
 | `canvas` | **`size`** (or `preset`), `orientation`, `bleed` (true/amount), `dpi`, `background` — or `width`/`height` — or `dpi` | Named sizes record dpi/bleed/safe and `trim-*`/`safe-*` guides. |
-| `layout-apply` | **`name`**, `title`, `subtitle`, `body`, `label`, `cta`, `caption`, `items`, `image` (asset), `seed`, `palette`, `colors`, `mode`, `type_scale`, `base_size`, `density`, `align`, `accent`, `mark`, `font`, `display_font`, `transparent`, `uppercase_labels`, `prefix`, `replace` | Creates layers, role swatches, type scale and grid. See design-system.md. |
+| `layout-apply` | **`name`**, `title`, `subtitle`, `body`, `label`, `cta`, `caption`, `items`, `image` (asset), `seed`, `palette`, `colors`, `keep_order`, `mode`, `type_scale`, `base_size`, `density`, `align`, `accent`, `mark`, `font`, `display_font`, `transparent`, `uppercase_labels`, `prefix`, `replace` | Creates layers, role swatches, type scale and grid. The result lists `unfilled_slots` and `next_steps` (how to fill an image slot) and `layout.roles` (which color became which role, and why). `keep_order: true` uses `palette` as background, surface, accents. See design-system.md. |
 | `type-scale` | `base` (px, default 16), `ratio` (name or 1.05–2), `prefix`, `color` | Character styles caption/body/lead/subhead/title/headline/display. |
 | `palette-generate` | **`name`**, **`color`**, `scheme` (`scale` default or a harmony), `count` | Swatches `NAME-50…950` or `NAME-1…n`. |
 
@@ -213,6 +217,9 @@ with only `added`/`name`/`type`/`bounds`, or `changed` field names and `bounds`,
 `detail:"compact"` (CLI/REST default; `Project.apply(..., detail="compact")`) gives the new values of changed
 fields; added layers include name, type and bounds. `detail:"full"` (Python default, CLI `--detail full`)
 includes complete before/after layer snapshots.
+`vixl_operation_schema(types=[…])` returns each operation's JSON Schema with a one-line `description`, a typed and described
+field list and, for the common ones, `examples` (gradients, glows, shadows, radial repeats …). `vixl_guide(brief="operations")`
+lists every operation by purpose.
 
 ## Newer operation families
 
