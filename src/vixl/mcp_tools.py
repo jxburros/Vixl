@@ -335,9 +335,10 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
             "look open, vixl_roll a few directions and compare previews. Paint with brushes (vixl_brushes_list), animate "
             "with keyframes (keyframe/animate/animate-preset → vixl_timeline_preview → vixl_export_timeline), and "
             "export print-ready CMYK PDF/TIFF/JPEG with vixl_export_file. Slides and carousels are pages (page "
-            "operation; preview page='all'; export .pdf, .pptx or .html, a self-contained presentation); forms are field layers (field operation; check "
-            "form; export_file fillable=true, or values= to fill); hand drawings are drawing operations (import, "
-            "clean, vectorize, straighten, fill) checked with check drawing. "
+            "operation; preview page='all'; export .pdf, .pptx or .html, a self-contained presentation); forms "
+            "are field layers (field operation; check form; export_file fillable=true, or values= to fill); hand "
+            "drawings are drawing operations (import, clean, vectorize, straighten, fill) checked with check "
+            "drawing. "
             + ("AI tools need a configured provider." if tools == "all" else
                "Provider-backed AI tools are served separately by vixl mcp --tools ai.")
         ),

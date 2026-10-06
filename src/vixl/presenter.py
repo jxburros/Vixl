@@ -112,13 +112,13 @@ def inline_svg(data, prefix):
     return ET.tostring(root, encoding="unicode").replace(f' xmlns="{SVG_NS}"', "", 1), fallbacks
 
 
-def reading_text(view):
+def reading_text(view, variables=None):
     """(title, other lines) of a page as a reader meets it: its title, then the rest of its own text from
     top to bottom. Master layers and footer-like layers are chrome and are left out."""
     from .deck import CHROME_NAME, _master_ids, _visible, title_layer
     from .render import resolve_layout, resolved_layers
 
-    layers = resolved_layers(view)
+    layers = resolved_layers(view, variables)
     resolved = {item["id"]: item for item in layers}
     bounds = resolve_layout(view, layers=layers)
     title = title_layer(view, layers)
@@ -135,10 +135,10 @@ def reading_text(view):
     return (" ".join(title["text"].split()) if title else ""), [line for _, _, line in lines]
 
 
-def slide_markup(number, total, record, view, media, notes, current):
+def slide_markup(number, total, record, view, media, notes, current, variables=None):
     """(the slide's ``<section>``, its title text): the picture, a visually hidden text layer for screen
     readers, and the speaker notes."""
-    title, lines = reading_text(view)
+    title, lines = reading_text(view, variables)
     transition = record.get("transition", "none")
     name = record["name"]
     caption = title or ("" if GENERIC_PAGE.fullmatch(name) or name == "1" else name)
@@ -196,7 +196,7 @@ def export_presenter(project, *, pages=None, options=None, variables=None, svg_p
                 fallbacks[str(number)] = problems
         notes = (record.get("notes") or "") if opts["notes"] else ""
         noted += bool(notes)
-        markup, title = slide_markup(number, len(records), record, view, media, notes, number == start)
+        markup, title = slide_markup(number, len(records), record, view, media, notes, number == start, variables)
         slides.append(markup)
         titles.append(title)
         size += len(markup)

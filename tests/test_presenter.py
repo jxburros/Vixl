@@ -97,6 +97,25 @@ def test_screen_readers_get_a_hidden_text_layer_without_master_chrome():
     assert 'aria-hidden="true"' in second and 'focusable="false"' in second
 
 
+def test_variables_reach_the_slides_and_their_hidden_text():
+    p = deck()
+    p.apply([{"type": "variable", "name": "who", "value": "nobody"}, {"type": "page", "action": "select", "page": "cover"},
+             {"type": "text", "text": "Prepared for ${who}", "name": "byline", "size": 24, "x": 60, "y": 300, "color": "#111"}])
+    assert "<p>Prepared for nobody</p>" in export(p)[0]
+    html, _ = export(p, variables={"who": "Ada <Lovelace>"})
+    assert "<p>Prepared for Ada &lt;Lovelace&gt;</p>" in html and "${who}" not in html
+    assert "${" not in export(p, variables={"who": "Ada"}, presenter={"slide_images": "png"})[0].split("<aside")[0]
+
+
+def test_unusual_text_and_page_names_cannot_break_out_of_the_markup():
+    p = Project(400, 200, "white")
+    p.apply([{"type": "page", "action": "add", "name": "x-1", "notes": "</script><script>alert(1)</script> \u0000 ‮"},
+             {"type": "text", "text": "Café 日本語 שלום", "name": "title", "size": 30, "x": 10, "y": 10}])
+    html, _ = export(p, presenter={"title": '"><img src=x onerror=alert(1)>'})
+    assert html.count("<script") == 1 and "<img src=x" not in html and "&lt;/script&gt;" in html
+    assert "\u0000" not in html and "<h2>Café 日本語 שלום</h2>" in html
+
+
 def test_speaker_notes_are_embedded_escaped_and_optional():
     html, report = export(deck())
     notes = re.findall(r'<aside class="notes" hidden>(.*?)</aside>', html, re.S)
@@ -168,10 +187,13 @@ def test_when_html_is_a_presentation():
     single = Project(200, 100, "white")
     assert "<script" not in single.export(format="HTML").decode()
     assert "aria-roledescription" in single.export(format="HTML", presenter=True).decode()
-    with pytest.raises(VixlError, match="presenter applies to HTML"):
-        p.export(format="PNG", presenter=True)
-    with pytest.raises(VixlError, match="CMYK"):
-        p.export(format="HTML", color_space="cmyk")
+    for fmt in ("PNG", "PDF", "PPTX"):
+        with pytest.raises(VixlError, match="presenter applies to HTML"):
+            p.export(format=fmt, presenter=True)
+    with pytest.raises(VixlError, match="presentation shows pages in RGB"):
+        p.export(format="HTML", color_space="cmyk", presenter=True)
+    with pytest.raises(VixlError, match="SVG export is RGB"):
+        p.export(format="HTML", color_space="cmyk")  # not asked for: the single-image page's own rules apply
 
 
 def test_effects_svg_cannot_express_fall_back_per_layer_and_are_listed():
@@ -494,6 +516,19 @@ def test_browser_slides_render_and_the_screen_reader_text_is_not_visible(viewer)
     assert v.page.evaluate("document.querySelector('#slide-3').getAttribute('aria-label')") == "Slide 3 of 3: Thanks"
     hidden = v.page.evaluate("getComputedStyle(document.querySelector('#slide-3')).visibility")
     assert hidden == "hidden", "slides that are not showing are out of the accessibility tree"
+
+
+def test_browser_draws_the_slide_like_vixl_does(viewer):
+    np = pytest.importorskip("numpy")
+    v = viewer("#2")
+    v.page.set_viewport_size({"width": 960, "height": 540})
+    v.page.evaluate("for (const s of ['.bar', '.progress']) document.querySelector(s).style.display = 'none'")
+    v.page.mouse.move(900, 10)
+    shot = np.asarray(Image.open(io.BytesIO(v.page.screenshot())).convert("RGB"), dtype=int)
+    reference = np.asarray(deck().render(page="results").convert("RGB"), dtype=int)
+    difference = np.abs(shot - reference)
+    assert shot.shape == reference.shape
+    assert difference.mean() < 1 and (difference.max(axis=2) > 96).mean() < 0.001
 
 
 def test_browser_speaker_view_shows_notes_and_stays_in_sync(viewer):

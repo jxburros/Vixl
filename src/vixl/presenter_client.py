@@ -17,7 +17,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--
 button{font:inherit}
 .sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0;user-select:text}
 .deck{position:fixed;inset:0;display:grid;place-items:center;overflow:hidden}
-.stage{position:relative;width:min(100vw,calc(100vh*var(--aw)/var(--ah)));width:min(100vw,calc(100dvh*var(--aw)/var(--ah)));aspect-ratio:var(--aw)/var(--ah);overflow:hidden;background:#fff;user-select:none;-webkit-user-select:none;touch-action:pan-y pinch-zoom}
+.stage{position:relative;width:min(100vw,calc(100vh*var(--aw)/var(--ah)));width:min(100vw,calc(100dvh*var(--aw)/var(--ah)));aspect-ratio:var(--aw)/var(--ah);overflow:hidden;background:#fff;box-shadow:0 0 0 1px var(--line);user-select:none;-webkit-user-select:none;touch-action:pan-y pinch-zoom}
 body.idle .stage{cursor:none}
 .slide{position:absolute;inset:0;visibility:hidden;overflow:hidden;background:#fff}
 .slide.is-cur,.slide.is-out{visibility:visible}
@@ -53,7 +53,7 @@ button:focus-visible,.slide:focus-visible,.sp-notes:focus-visible{outline:2px so
 .help dt{font-weight:600;white-space:nowrap}
 .help dd{margin:0}
 body.overview .deck{place-items:start;overflow:auto}
-body.overview .stage{width:100%;height:auto;aspect-ratio:auto;overflow:visible;background:none;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(var(--cell),100%),1fr));gap:20px;padding:24px 24px 72px;touch-action:auto}
+body.overview .stage{width:100%;height:auto;aspect-ratio:auto;overflow:visible;background:none;box-shadow:none;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(var(--cell),100%),1fr));gap:20px;padding:24px 24px 72px;touch-action:auto}
 body.overview .slide{position:relative;inset:auto;z-index:auto;visibility:visible;aspect-ratio:var(--aw)/var(--ah);cursor:pointer;outline:2px solid var(--line);border-radius:3px}
 body.overview .slide.is-cur{outline:4px solid var(--accent)}
 body.overview .slide::after{content:attr(data-n);position:absolute;left:6px;bottom:6px;min-width:1.8em;padding:1px 6px;border-radius:999px;background:var(--chrome);color:var(--fg);font-size:12px;text-align:center}
@@ -107,7 +107,7 @@ body[data-blank=b] .sp-flag,body[data-blank=w] .sp-flag{display:inline-block}
 html,body{height:auto;overflow:visible;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .bar,.progress,.blank,.toast,.help,.speaker,.zone,.status{display:none!important}
 .deck,body.overview .deck{position:static;display:block;place-items:normal;overflow:visible}
-.stage,body.overview .stage{display:block;width:auto;height:auto;aspect-ratio:auto;overflow:visible;padding:0;background:none}
+.stage,body.overview .stage{display:block;width:auto;height:auto;aspect-ratio:auto;overflow:visible;padding:0;background:none;box-shadow:none}
 .slide,body.overview .slide{position:relative;inset:auto;display:block;visibility:visible;width:@@PW@@in;height:@@PH@@in;overflow:hidden;outline:0;border-radius:0;break-after:page;page-break-after:always}
 .slide:last-of-type{break-after:auto;page-break-after:auto}
 .slide::after{display:none}
@@ -115,7 +115,7 @@ html,body{height:auto;overflow:visible;background:#fff;-webkit-print-color-adjus
 @media (scripting:none){
 html,body{height:auto;overflow:auto}
 .deck{position:static;display:block;place-items:normal;padding:16px;overflow:visible}
-.stage{width:auto;height:auto;aspect-ratio:auto;overflow:visible;background:none}
+.stage{width:auto;height:auto;aspect-ratio:auto;overflow:visible;background:none;box-shadow:none}
 .slide{position:relative;inset:auto;visibility:visible;width:min(100%,1100px);aspect-ratio:var(--aw)/var(--ah);margin:0 auto 16px;outline:1px solid var(--line)}
 .bar,.progress,.zone,.speaker{display:none}
 }

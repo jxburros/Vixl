@@ -1195,22 +1195,24 @@ def export(
         project = with_values(project, values)
         if (format or "").upper() == "PDF" or suffix == ".pdf":
             pdf_content = pdf_content or "vector"
-    if (format or "").upper() == "PPTX" or suffix == ".pptx":
-        from .pptx_export import export_pptx
-
-        return export_pptx(project, path, pages=pages, report=report)
     from .presenter import export_presenter, wants_presenter
 
     html_name = (format or (suffix[1:] if suffix in (".html", ".htm") else "")).upper() in ("HTML", "HTM")
-    if wants_presenter(presenter, html=html_name, paged=bool(project.state.get("pages")), page=page):
-        require(not (profile or artboard or comp or proof or simulate or icc_profile) and color_space == "rgb",
-                "A presentation shows pages in RGB; profile, artboard, comp, proof, simulate and CMYK do not apply")
+    # Options a presentation cannot honor keep a paged document's HTML export the single artwork page.
+    artwork = bool(profile or artboard or comp or proof or simulate or icc_profile) or color_space != "rgb"
+    if wants_presenter(False if presenter is None and artwork else presenter, html=html_name,
+                       paged=bool(project.state.get("pages")), page=page):
+        require(not artwork, "A presentation shows pages in RGB; profile, artboard, comp, proof, simulate and CMYK do not apply")
         require(page is None or not pages, "Pass page or pages, not both")
         data = export_presenter(project, pages=pages or ([page] if page is not None else None), options=presenter,
                                 variables=variables, svg_policy=svg_policy, scale=scale, report=report)
         if path:
             Path(path).write_bytes(data)
         return data
+    if (format or "").upper() == "PPTX" or suffix == ".pptx":
+        from .pptx_export import export_pptx
+
+        return export_pptx(project, path, pages=pages, report=report)
     wants_pdf = (format or "").upper() == "PDF" or suffix == ".pdf"
     paged = bool(project.state.get("pages"))
     print_size = bool(project.state["canvas"].get("physical")) and scale == 1
