@@ -87,7 +87,7 @@ Layout:    canvas resize SIZE, canvas size NAME [--landscape] [--bleed], canvas 
            variable set NAME VALUE
 History:   undo [N], redo [N], history, checkpoint NAME, branch NAME,
            checkout REF, branches, compare REF REF --out FILE
-Automate:  apply FILE|- [--dry-run], run SCRIPT, batch GLOB --run SCRIPT --output DIR,
+Automate:  apply FILE|- [--dry-run] [--check [CHECK…]] [--preview PNG], run SCRIPT, batch GLOB --run SCRIPT --output DIR,
            workflow ACTION --request FILE [--workspace DIR] (workflow schema lists actions),
            each layer --name PATTERN -- COMMAND, preset save|apply|show NAME,
            transaction begin|commit|rollback, assert RULE, validate [PROFILE]
@@ -100,7 +100,8 @@ Type:      fonts [--category serif] [--mood M], font show FAMILY, font pairings 
 Finish:    look LAYER NAME [--color C] [--amount 0-1] [--remove]  (glow, neon, soft-shadow, hard-shadow, outline, gradient, grain,
            paper, film, duotone, risograph, sketch, watercolor, halftone), looks (catalog),
            radial-repeat LAYER --count N [--cx 50%] [--cy 50%] [--sweep 360] [--start-angle D] [--mirror] [--name N],
-           guide [BRIEF] (what to make: icons, characters, scenes, patterns … with the operations, layouts and looks that suit it)
+           guide [BRIEF|GUIDANCE] (what to make: icons, characters, scenes, patterns … with the operations, layouts and looks that
+           suit it; or a guidance text such as natural-motion), capabilities [TOPIC] (fields, gotchas and guidance per topic)
 Styles:    styles [list [QUERY] | show NAME | apply NAME [--palette] | check [NAME]], style-set NAME… [--options JSON],
            check --checks style [--style NAME…] (premade rules for swiss, brutalist, minimalist, art-deco …)
 Dice:      roll [--apply] [--set title=…] [--for poster] [--mood M] [--size NAME] [--seed N|random] [--lock palette=sage]
@@ -335,7 +336,7 @@ def dispatch(argv):
             }
         ), options.json
     if "--help" not in args and "-h" not in args and (
-        cmd in ("guide", "looks") or (cmd == "styles" and not (args and args[0] in ("apply", "check")))
+        cmd in ("guide", "looks", "capabilities") or (cmd == "styles" and not (args and args[0] in ("apply", "check")))
     ):
         from .finishing_cli import standalone as finishing_standalone
 
@@ -587,7 +588,8 @@ def command_help(cmd, args):
         "timeline": "timeline (inspect) | timeline set [--duration 3s] [--fps 30] [--loop N] [--clear]",
         "pages": "pages (list pages and masters of a multi-page document)",
         "styles": "styles [list [QUERY] | show NAME] | styles apply NAME [--palette] | styles check [NAME…]",
-        "guide": "guide [BRIEF]  (e.g. guide a mascot for a coffee brand; guide operations)",
+        "guide": "guide [BRIEF|GUIDANCE]  (e.g. guide a mascot for a coffee brand; guide operations; guide natural-motion)",
+        "capabilities": "capabilities [TOPIC]  (e.g. capabilities animation: operations with fields, workflows, gotchas, guidance)",
         "looks": "looks  (the finishing looks; apply with look LAYER NAME)",
         "guides": "guides (list guides and grids)",
         "links": "links (list the linked documents and their state: ok, stale, missing, cycle)",
@@ -922,9 +924,21 @@ def project_command(project, cmd, args, *, detail="compact"):
         p = Parser(prog=f"vixl {cmd}")
         p.add_argument("file")
         p.add_argument("--dry-run", action="store_true")
+        p.add_argument("--check", nargs="*", metavar="CHECK",
+                       help="also check the result (default checks, or these): fix findings and those on touched layers")
+        p.add_argument("--preview", metavar="PNG", help="also write a small preview of the result to this PNG file")
+        p.add_argument("--preview-width", type=int, default=512)
         a = p.parse_args(args)
         ops = read_json(a.file) if cmd == "apply" else compile_script(a.file)
-        return project.apply(ops, dry_run=a.dry_run, detail=detail), not a.dry_run
+        from .checks import apply_reviewed
+
+        check = None if a.check is None else (a.check or True)
+        result, image = apply_reviewed(project, ops, dry_run=a.dry_run, detail=detail, check=check,
+                                       preview={"max_width": a.preview_width} if a.preview else None)
+        if image is not None:
+            Path(a.preview).write_bytes(image)
+            result["preview"] = a.preview
+        return result, not a.dry_run
     if cmd == "each":
         import fnmatch
 

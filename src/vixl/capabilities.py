@@ -4,26 +4,25 @@ import re
 
 from .model import Limits
 
+# topic -> (words that select it and its operations, guidance names readable with vixl_guide(brief=NAME))
 TOPICS = {
-    "text": (
-        "text rich font layout stack container caption bubble",
-        ["docs/text-flow.md", "docs/containers-and-templates.md"],
-    ),
+    "text": ("text rich font layout stack container caption bubble", ["typography", "layout"]),
     "drawing": (
-        "shape pen path stroke distort organic irregular tear pattern texture clone paint",
-        ["docs/drawing.md"],
+        "shape pen path stroke distort organic irregular tear pattern texture clone paint repeat scatter",
+        ["imperfection", "drawn-textures", "illustration-perspective", "brush"],
     ),
     "animation": (
-        "motion animate keyframe timeline character rig ik scene camera particle cut-paper viseme",
-        ["docs/animation-authoring.md"],
+        "motion animate keyframe keyframes timeline character rig ik pivot loop stagger cycle scene camera particle "
+        "cut-paper viseme",
+        ["looping-motion", "natural-motion", "character-rigging", "motion", "cut-paper", "audio-composition"],
     ),
-    "film": ("film video audio caption", ["docs/production.md"]),
+    "film": ("film video audio caption", ["film-review", "audio-composition"]),
     "layout": (
         "layout container template stack fit align distribute spatial grid snap guide comic",
-        ["docs/sizes-and-layouts.md"],
+        ["layout", "overall"],
     ),
-    "color": ("palette color swatch look style lighting", ["docs/color-and-print.md"]),
-    "export": ("export film merge form", ["docs/releases.md"]),
+    "color": ("palette color swatch look style lighting", ["color", "natural-color-light", "accessibility"]),
+    "export": ("export film merge form", ["print"]),
 }
 GOTCHAS = [
     "x/y are parent-local pixels unless move uses space=canvas. Width/height percentages use the parent box.",
@@ -32,6 +31,8 @@ GOTCHAS = [
     "Batches are atomic; dry_run validates without changing the document. Use history begin/commit for several batches.",
     "Use layer-intent allow_crop=true for intentional bleed. Summary diagnostics offer bounded full detail with pagination.",
     "For motion, check sampled frames and film-preview with the camera before a full export; start at draft quality.",
+    "Loops: motion recipes take period, stagger and many targets in one operation; a duration that is a whole number of "
+    "periods returns every track to its frame-0 value.",
 ]
 
 
@@ -73,7 +74,8 @@ def lookup(topic=None, *, fields=False):
         "topics": chosen,
         "operations": operations,
         "workflows": {name: spec["summary"] for name, spec in workflows.items() if relevant(name)},
-        "guidance": sorted({path for name in chosen for path in TOPICS[name][1]}),
+        "guidance": list(dict.fromkeys(name for topic in chosen for name in TOPICS[topic][1])),
+        "read_guidance": "vixl_guide(brief=NAME) returns a guidance text",
         "gotchas": GOTCHAS,
         "limits": {"operations_per_batch": Limits().max_operations},
         "next": "vixl_operation_schema(types=[...]) returns exact constraints and examples.",

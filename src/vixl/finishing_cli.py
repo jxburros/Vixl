@@ -1,14 +1,20 @@
-"""CLI for the guide, looks and styles catalogs (``vixl guide``, ``vixl looks``, ``vixl styles``)."""
+"""CLI for the guide, capabilities, looks and styles catalogs (``vixl guide``, ``vixl capabilities``, ``vixl looks``,
+``vixl styles``)."""
 
 from .errors import require
 
 
 def standalone(cmd, args):
-    """Commands that need no document: ``guide [BRIEF…]``, ``looks``, ``styles [list [QUERY…] | show NAME]``."""
+    """Commands that need no document: ``guide [BRIEF…]``, ``capabilities [TOPIC…]``, ``looks``,
+    ``styles [list [QUERY…] | show NAME]``."""
     if cmd == "guide":
         from .briefs import guide
 
         return guide(" ".join(args) if args else None)
+    if cmd == "capabilities":
+        from .capabilities import lookup
+
+        return lookup(" ".join(args) or None, fields=True)
     if cmd == "looks":
         from .looks import catalog
 

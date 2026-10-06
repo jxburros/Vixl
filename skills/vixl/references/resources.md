@@ -124,9 +124,9 @@ Python can use `vixl.resources.catalog/get/register/create_template` and `vixl.f
 ]}
 ```
 
-Guidance texts are not separate tools: list them with `vixl_resources_list(kind="guidance")` and read one with `vixl_resource_get(kind="guidance", name="overall")` (CLI `vixl guidance list`).
+Guidance texts are not separate tools. They live in one registry (`vixl/guidance.py`, plus user additions): list them with `vixl_resources_list(kind="guidance")` or `vixl_guide()`, and read one with `vixl_guide(brief="natural-motion")` or `vixl_resource_get(kind="guidance", name="overall")` (CLI `vixl guidance list`, `vixl guide natural-motion`). Besides the design principles (overall, typography, color, layout, print …) it holds craft references: `natural-motion`, `looping-motion`, `character-rigging`, `cut-paper`, `audio-composition`, `anatomy-proportions`, `natural-color-light`, `illustration-perspective`, `drawn-textures`, `film-review` and `imperfection` (when to use `irregular` and `tear`). The guide's kinds and `vixl_capabilities` topics name the entries that apply.
 
-MCP exposes `vixl_resources_list`, `vixl_resource_get`, `vixl_resource_add`, `vixl_template_create`, `vixl_import_font`, `vixl_text_add`, and `vixl_models_list`. Font file paths and template destinations stay inside the server workspace. Use `vixl_text_add(font="brand", ...)` for a registered font; generic service operations continue to reject arbitrary filesystem font paths. REST adds GET/POST `/resources/{kind}/{name}`, GET `/resources/{kind}`, POST `/fonts?name=brand` with raw font bytes, and POST `/export` with JSON options such as `{"format":"SVG"}`. REST font uploads are limited to 16 MiB.
+MCP exposes `vixl_resources_list`, `vixl_resource_get`, `vixl_resource_add`, `vixl_template_create`, `vixl_import_font`, and `vixl_models_list`. Font file paths and template destinations stay inside the server workspace. Use a registered font by name in an operation (`{"type": "text", "font": "brand", ...}`); generic service operations continue to reject arbitrary filesystem font paths. REST adds GET/POST `/resources/{kind}/{name}`, GET `/resources/{kind}`, POST `/fonts?name=brand` with raw font bytes, and POST `/export` with JSON options such as `{"format":"SVG"}`. REST font uploads are limited to 16 MiB.
 
 ## Sizes, layouts and new guidance (0.13)
 

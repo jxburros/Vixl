@@ -240,6 +240,7 @@ JPEG flattens transparency onto `--background` (white).
 
 ```bash
 vixl apply ops.json [--dry-run]          # or: cat ops.json | vixl apply -
+vixl apply ops.json --check --preview p.png   # also check the result and write a 512 px preview
 vixl run script.vixlscript               # one editing command per line, # comments; atomic
 vixl batch './photos/*.jpg' --run cleanup.vixlscript --output ./processed [--format png]
 vixl each layer --type raster --name 'card-*' -- saturation -10

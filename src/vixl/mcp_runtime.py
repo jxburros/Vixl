@@ -47,7 +47,7 @@ MAX_REMEMBERED_BYTES = 262_144
 
 # Tools that change documents or files, or spend provider calls: safe to retry with request_id.
 RETRYABLE = {
-    "vixl_operations_apply", "vixl_import_image", "vixl_import_document", "vixl_import_font", "vixl_text_add",
+    "vixl_operations_apply", "vixl_import_image", "vixl_import_document", "vixl_import_font",
     "vixl_document_create", "vixl_document_close", "vixl_template_create", "vixl_export_file",
     "vixl_export_batch", "vixl_export_timeline", "vixl_export_animation", "vixl_export_icons",
     "vixl_font_pair", "vixl_font_install", "vixl_history", "vixl_workflow", "vixl_roll", "vixl_adapt_layout",
@@ -304,6 +304,12 @@ class Runtime:
             except VixlError as exc:
                 raise self.tool_error(self.compact_json(exc.as_dict())) from exc
             warning = self.ignored(fn.__name__, state)
+            if isinstance(result, list) and result and isinstance(result[0], dict):
+                # A JSON result with images after it (vixl_operations_apply preview=…): shape the JSON part.
+                self.label(result[0], state)
+                if warning:
+                    result[0]["warnings"] = [*result[0].get("warnings", []), warning]
+                return [self.compact_json(result[0]), *result[1:]]
             if isinstance(result, dict):
                 self.label(result, state)
                 if warning:
@@ -329,6 +335,8 @@ class Runtime:
         if entry is not None:
             if isinstance(result, str):
                 self.log.finish(entry, result)
+            elif isinstance(result, list) and result and isinstance(result[0], str):
+                self.log.finish(entry, result[0])  # A replay returns the JSON; the edit must not run twice.
             else:
                 self.log.discard(request_id, entry)
         return result
@@ -480,6 +488,12 @@ class Runtime:
         if job.future.cancelled():
             return summary
         value = job.future.result()
+        if isinstance(value, list):
+            # JSON followed by images: a job result is JSON only, so say where the images went.
+            images = sum(1 for part in value if not isinstance(part, str))
+            value = next((part for part in value if isinstance(part, str)), "{}")
+            if images:
+                summary["note"] = f"{images} image(s) are not kept with a job result; call vixl_render_preview."
         try:
             summary["result"] = json.loads(value)
         except (TypeError, ValueError):
