@@ -275,6 +275,17 @@ def test_a_primitive_becomes_a_path_that_looks_like_it_did():
         assert (after & original).sum() > 0.85 * original.sum(), shape
 
 
+def test_a_path_whose_box_comes_from_its_curves_can_be_made_irregular():
+    # Without width/height the box is the path's reach, which is fractional for curves.
+    p = Project(300, 300, "white")
+    p.apply({"type": "shape", "shape": "path", "name": "blob", "path": "M10 10 C80 0 130 40 121.7 90 Z",
+             "fill": "#000000", "stroke": "#ff0000", "stroke_width": 4})
+    assert p.layer("blob")["width"] != int(p.layer("blob")["width"])
+    p.apply({"type": "irregular", "target": "blob", "seed": 3, "strength": "natural",
+             "only": ["wobble", "pressure", "width"]})
+    assert p.layer("blob")["irregular"]["recipe"]["seed"] == 3
+
+
 def test_pressure_turns_a_stroke_into_a_ribbon_with_varying_width():
     p = sketch()
     p.apply({"type": "irregular", "target": "line", "seed": 2, "wobble": 0, "pressure": 0.6, "only": []})

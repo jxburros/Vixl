@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixes
+
+- `irregular` no longer fails with "Dimensions must be integers" on a `path` shape created without width/height; its box comes from the path's reach, which is fractional for curves.
+
 ## 0.21.0
 
 A breaking "correctness and consolidation" release. Duplicate concepts are gone (one opacity scale, one anchor table, one guidance registry, one place for LUTs), checks report what is actually drawn, and renderers agree with each other. Old saved documents, field names and render output may change; forgiving input aliases (camelCase, `rect`, `font_size`, `"50%"`) stay.
