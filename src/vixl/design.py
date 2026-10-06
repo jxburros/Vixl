@@ -587,6 +587,10 @@ def validate_design(project, state):
                     layer[category + "_style"] in state.get(category + "_styles", {}),
                     "Missing named text style",
                 )
+        if "stack" in layer or "hide_if_empty" in layer:
+            from .stacks import validate_layer
+
+            validate_layer(layer)
         for key in ("fill", "color", "stroke", "stroke_color"):
             if key in layer:
                 color(resolve_color(layer[key], state))

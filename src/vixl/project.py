@@ -163,8 +163,11 @@ class Project:
         layers = resolved_layers(self)
         resolved = resolve_layout(self, layers=layers)
         children, memo = child_index(layers), {}
+        shown = {item["id"]: item["visible"] for item in layers}
         for layer in state["layers"]:
             box = layer["resolved_bounds"] = resolved[layer["id"]]
+            if layer["visible"] and not shown[layer["id"]]:
+                layer["collapsed"] = True  # Hidden by hide_if_empty or an empty stack, not by the user.
             left, top, right, bottom = extent(layer, resolved, children, memo)
             left, top = math.floor(left + 1e-6), math.floor(top + 1e-6)
             drawn = (left, top, math.ceil(right - 1e-6) - left, math.ceil(bottom - 1e-6) - top)

@@ -69,6 +69,7 @@ vixl move x +20
 vixl scale portrait 80%
 vixl resize portrait 800x600
 vixl resize portrait --width 800
+vixl resize portrait --width 800 --keep-aspect       # explicit; --no-keep-aspect stretches one side of an image
 vixl rotate portrait 15
 vixl flip portrait horizontal
 vixl crop portrait 0 0 300 400
@@ -77,7 +78,7 @@ vixl blend portrait multiply
 vixl align logo top-right --margin 40
 ```
 
-`layer` is an optional namespace. `rm` aliases remove and `mv` aliases move. Rotation is clockwise, expands the layer bounds, and anchors the expanded bounding box at its x/y position. Crop coordinates refer to the original embedded raster. Resize with one dimension preserves aspect ratio; with two, it stretches. Numeric scale values are factors; `80%` is `0.8`. The CLI accepts opacity `75` as 75%; canonical JSON always requires 0–1.
+`layer` is an optional namespace. `rm` aliases remove and `mv` aliases move. Rotation is clockwise, expands the layer bounds, and anchors the expanded bounding box at its x/y position. Crop coordinates refer to the original embedded raster. Resize with one dimension changes only that dimension of a shape, text box, group or solid (the other side keeps its size, and the result reports it under `normalized`), but scales an imported image (raster layer) proportionally so a photo is not stretched. `--keep-aspect` (JSON `keep_aspect: true`) scales the other side proportionally on any layer; `--no-keep-aspect` (`keep_aspect: false`) changes just the given side of an image; give both dimensions to stretch. Numeric scale values are factors; `80%` is `0.8`. The CLI accepts opacity `75` as 75%; canonical JSON always requires 0–1.
 
 Alignment supports center, center-x/y, left/right/top/bottom and corner pairs. Absolute moves and alignment clear constraints. `move x +20` and `--relative` add offsets.
 
@@ -163,7 +164,7 @@ vixl validate --rules 'text.title.font-size >= 120' --rules 'layer.logo.bounds w
 
 A constraint uses `canvas` or a layer plus `.left`, `.right`, `.top`, `.bottom`, `.center-x`, `.center-y`, optionally followed by a numeric `+offset` or `-offset`. One constraint per axis is supported: `constrain` adds to a layer's existing constraints, so switching an axis from `left` to `center-x` needs `unconstrain` first (the error names both anchors). Cycles and dangling references fail atomically. Layer references become stable IDs, so renames do not break them. Delete dependents' constraints before deleting their target.
 
-Variables use `${name}` interpolation in text, colors, gradient fills, and raster asset identifiers. Asset variables must refer to **embedded asset IDs**; render overrides never load arbitrary files. Text dimensions are recomputed when variables change. Undefined variables fail explicitly.
+Variables use `${name}` interpolation in text, colors, gradient fills, and raster asset identifiers. Asset variables must refer to **embedded asset IDs**; render overrides never load arbitrary files. Text dimensions are recomputed when variables change. Undefined variables fail explicitly. Text with `hide_if_empty` is not drawn while it is empty after substitution, and a `stack` group re-flows around it ([empty content and stacks](design-tools.md#empty-content-and-stacks)).
 
 Validation profiles: instagram-post / instagram-square (1:1; Instagram also checks PNG under 8 MB), story (9:16), youtube-thumbnail (16:9). All check layer bounds; artwork marked `layer-intent NAME --role decoration` that bleeds off the edge on purpose is a warning, not an error (unless it is text or entirely off the canvas). Text under 24 px is a warning. Font sizes, here and in `text.NAME.font-size` assertions, are the sizes text renders at: a linked character style's size takes precedence. Visible text with characters no font can draw fails validation. Rules files are JSON arrays of assertion strings; `--rules` also takes a single assertion and can repeat. Comparisons support `==`, `!=`, `>`, `<`, `>=`, `<=`; quote shell operators. Assertions are parsed, never evaluated as Python.
 

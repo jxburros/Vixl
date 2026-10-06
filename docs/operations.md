@@ -11,7 +11,7 @@ See [design tools and template production](design-tools.md) for groups, clipping
 ```json
 {"operations":[
   {"type":"add","path":"portrait.png","name":"portrait"},
-  {"type":"resize","target":"portrait","width":800},
+  {"type":"resize","target":"portrait","width":800,"keep_aspect":true},
   {"type":"align","target":"portrait","alignment":"top-right","margin":40},
   {"type":"select","shape":"rect","x":0,"y":0,"width":500,"height":300},
   {"type":"effect","target":"portrait","name":"brightness","amount":15},
@@ -23,15 +23,19 @@ See [design tools and template production](design-tools.md) for groups, clipping
 
 Operations are normalized before validation (see [interfaces](interfaces.md#forgiving-input-and-actionable-errors)): legacy `operation`/`layer` keys, type aliases (`set_opacity`, `rect`, `circle`, `add-text`, `drop_shadow`, …), camelCase keys, field aliases (`font_size`, `fill`/`color`), opacity percentages and CSS colors. Each rewrite is reported in the result's `normalized` list. Geometry fields `x`/`y` accept pixels, `"center"` or `"N%"`; `width`/`height` accept pixels or `"N%"`, relative to the canvas or the target's parent group. Unknown fields, malformed dimensions, nonfinite numbers, and unknown types are still rejected, with the failing operation index, field, allowed values and suggestions in the error.
 
+**Editing an existing layer.** `shape`, `solid`, `gradient` and `text` add a layer, unless `target` names an existing layer of the same kind: then they change that layer in place and only the fields you pass change, so its ID, stacking order, effects, masks and constraints stay put. `{"type":"shape","target":"bar","fill":"#6b3f69"}` recolours a bar; `{"type":"shape","target":"bar","height":120}` changes its height (width untouched); `{"type":"gradient","target":"sky","start":"#01030a","end":"#3a3058"}` recolours a gradient (on a multi-stop gradient `start`/`end` recolour the first and last stop; pass `stops` to replace them all); `{"type":"text","target":"headline","size":190}` resizes text (same as `text-set`). `name` renames the layer and `x`/`y` move it. A target of another kind, or `target` on `add`, `frame`, `adjustment` or `symbol-instance`, is rejected with the operation to use (`text-set`, `replace-contents`, `effect-set`, …) rather than silently adding a layer. From the CLI use `--target`, e.g. `vixl shape --target bar --fill '#6b3f69'`.
+
 Common operation fields:
 
 | Type | Fields |
 | --- | --- |
 | add | path **or** embedded asset; name, x, y, linked |
-| solid / gradient | name, width, height, color **or** start/end/direction |
-| text | text, name, font, size, color, align, spacing, x/y |
-| text-set | target; text, size, color, align, spacing, stroke_width/stroke_color, font — the whole layer; on rich text keeps formatting that still applies and reports what it drops under `warnings` ([rich text](rich-text.md#editing)) |
-| move / resize / scale | target; x/y/relative **or** width/height **or** value factor |
+| solid / gradient | name, width, height, color **or** start/end/direction/stops/angle; `target` edits an existing layer |
+| text | text, name, font, size, color, align, spacing, hide_if_empty, x/y; `target` edits an existing text layer |
+| shape | shape, name, width, height, x/y, fill, stroke, stroke_width, radius, sides, inner_radius, path; `target` edits an existing shape |
+| text-set | target; text, size, color, align, spacing, stroke_width/stroke_color, hide_if_empty, font — the whole layer; on rich text keeps formatting that still applies and reports what it drops under `warnings` ([rich text](rich-text.md#editing)) |
+| stack | target (a group) **or** name + targets; direction, gap, padding, align, justify, width/height, hide_if_empty; `remove` releases it |
+| move / resize / scale | target; x/y/relative **or** width/height (+ `keep_aspect`; one side alone leaves the other except on imported images) **or** value factor |
 | rotate / opacity / blend | target, value |
 | align | target, alignment, margin |
 | constrain | target, constraints object |

@@ -97,7 +97,7 @@ vixl raise|lower|top|bottom portrait
 vixl reorder logo --above portrait       # or --below
 vixl move portrait 100 200 ; vixl move portrait --x 100 ; vixl move portrait 20 0 --relative   # mv = move
 vixl scale portrait 80%                  # or 0.8
-vixl resize portrait 800x600 ; vixl resize portrait --width 800
+vixl resize portrait 800x600 ; vixl resize portrait --width 800 [--keep-aspect]   # one side alone leaves the other (images scale proportionally); --no-keep-aspect to stretch
 vixl rotate portrait 15                  # clockwise degrees about the pivot (default: center)
 vixl pivot arm 0.5 0.05                  # fractions of the box; pivot arm top | pivot arm 8 2 --px | pivot arm --clear
 vixl flip portrait horizontal|vertical
@@ -106,6 +106,9 @@ vixl opacity portrait 0.75               # or 75 (1–100 = percent)
 vixl blend portrait multiply             # normal multiply screen overlay darken lighten difference add subtract
 vixl rasterize title
 vixl group stripes stripe1 stripe2 ; vixl ungroup stripes
+vixl stack names --targets first last company --gap 20 --align center --justify center --width 1000 --height 400   # auto-layout; empty hide_if_empty text collapses
+vixl stack names --direction horizontal --gap 8 ; vixl stack names --remove ; vixl text first --hide-if-empty
+vixl shape --target bar --fill '#6b3f69'    # solid/gradient/shape/text add --target edit a layer in place
 vixl clip TARGET BASE ; vixl clip TARGET --release
 ```
 

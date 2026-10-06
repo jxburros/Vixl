@@ -4,6 +4,7 @@ from copy import deepcopy
 
 from .errors import require
 from .model import finite, new_layer, Limits
+from .stacks import collapsed
 
 TYPES = ("container-place", "container-swap", "container-reflow", "shape-place")
 CONTENT = {"text", "solid", "gradient", "shape", "pen"}
@@ -93,7 +94,9 @@ def execute(project, op):
         operation = {**item, **{k: v for k, v in op.items() if k in ("name", "x", "y", "fill", "stroke")}}
         apply(project, operation)
         if "width" in op or "height" in op:
-            apply(project, {"type": "resize", **{k: op[k] for k in ("width", "height") if k in op}})
+            # A library shape given one dimension keeps its proportions.
+            apply(project, {"type": "resize", "keep_aspect": ("width" in op) != ("height" in op),
+                            **{k: op[k] for k in ("width", "height") if k in op}})
         return
     item = get("containers", op["resource"], workspace=workspace)
     width, height = item["width"], item["height"]
@@ -140,6 +143,10 @@ def execute(project, op):
         apply(project, operation)
         layer = project.layer()
         layer["parent"] = group["id"]
+        if layer["id"] in collapsed(project):
+            # An empty hide_if_empty text takes no space; reflow closes the gap if it fills later.
+            children.append(layer["id"])
+            continue
         if layout in ("vertical", "horizontal"):
             layer["x"], layer["y"] = (padding, cursor) if layout == "vertical" else (cursor, padding)
             cursor += layer["height" if layout == "vertical" else "width"] + gap
@@ -278,6 +285,7 @@ def measure(project, target=None):
         "No template containers to check",
     )
     bounds = resolve_layout(project)
+    hidden = collapsed(project)
     violations = []
     for group in groups:
         width, height = group["container"]["size"]
@@ -286,7 +294,9 @@ def measure(project, target=None):
         children = [layer for layer in project.state["layers"] if layer.get("parent") == group["id"]]
         if len(children) > rules.get("max_items", 100):
             violations.append({"container": group["name"], "rule": "max_items"})
-        layout, cursor = rules.get("layout", "free"), padding
+        # Hidden and empty members take no space; a stack positions its members itself.
+        children = [layer for layer in children if layer["id"] not in hidden]
+        layout, cursor = "free" if "stack" in group else rules.get("layout", "free"), padding
         columns = rules.get("columns", 2)
         rows = max(1, (len(children) + columns - 1) // columns)
         for index, layer in enumerate(children):
@@ -330,10 +340,15 @@ def reflow(project, target):
 
     group = project.layer(target)
     require(group["type"] == "group" and "container" in group, "Reflow needs a template container")
+    require("stack" not in group, f"{group['name']!r} is a stack, so its members follow the stack settings "
+            "(change them with the stack operation)")
     rules = group["container"]["rules"]
     width, height = group["container"]["size"]
     layout, padding, gap = rules.get("layout", "free"), rules.get("padding", 0), rules.get("gap", 0)
-    children = [layer for layer in project.state["layers"] if layer.get("parent") == group["id"]]
+    hidden = collapsed(project)
+    # Hidden and empty members take no space, so reflow closes the gap they leave.
+    children = [layer for layer in project.state["layers"]
+                if layer.get("parent") == group["id"] and layer["id"] not in hidden]
     cursor, columns = padding, rules.get("columns", 2)
     rows = max(1, (len(children) + columns - 1) // columns)
     bounds = resolve_layout(project)

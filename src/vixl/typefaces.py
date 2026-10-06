@@ -389,8 +389,15 @@ def pair_fonts(project, pairing=None, *, seed=None, mood=None, best_for=None, cl
 
 
 def roll_document(project=None, *, workspace=None, seed=None, purpose=None, mood=None, canvas=None,
-                  locks=None, apply=False, slots=None):
-    """Choose brand defaults and optionally commit the whole direction in one undo step."""
+                  locks=None, apply=False, slots=None, unfilled=None):
+    """Choose brand defaults and optionally commit the whole direction in one undo step.
+
+    ``unfilled`` says what an unfilled layout slot becomes: ``omit`` leaves it out, so the applied
+    direction is final and passes ``check``; ``blank`` shows a ``[Label]`` placeholder that ``check``
+    rejects until it is filled. The default is ``omit`` when ``slots`` supplies copy and ``blank``
+    when it supplies none (an all-omitted layout would be empty, so the placeholders show what to fill).
+    """
+    require(unfilled in (None, "blank", "omit"), "unfilled must be blank or omit", field="unfilled")
     from .brand import for_project, load
     kit = for_project(project) if project else load(workspace)
     choices = dict(locks or {})
@@ -405,6 +412,9 @@ def roll_document(project=None, *, workspace=None, seed=None, purpose=None, mood
     result = roll(seed, purpose=purpose, mood=mood, canvas=canvas, locks=choices)
     if kit.get("palette") and not (locks or {}).get("palette"):
         result["operation"]["colors"] = kit["palette"]
+    unfilled = unfilled or ("omit" if slots else "blank")
+    if unfilled == "omit":
+        result["operation"]["unfilled"] = unfilled
     embedded_pair = bool(kit.get("fonts")) and "pairing" not in (locks or {})
     if embedded_pair:
         result["brand_fonts"] = {role: spec["name"] for role, spec in kit["fonts"].items()}

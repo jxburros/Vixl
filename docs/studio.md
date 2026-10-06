@@ -170,13 +170,13 @@ Custom container resources contain `width`, `height`, `operations`, optional `de
 and `rules`: `layout` free/vertical/horizontal/grid, `padding`, `gap`, `columns`, `max_items`,
 `contain`. Content is self-contained text, shape, pen, solid or gradient operations, with
 unique local names. Placed names become `container-name/local-name`. Use `${variable}`
-placeholders and supply `variables` when placing/swapping. File reads and recursive content
+placeholders and supply `variables` when placing/swapping (a `hide_if_empty` text member whose text is empty takes no space). File reads and recursive content
 are excluded. Placement and swaps enforce bounds and layout rules atomically.
 
 After text/geometry edits, run `container-reflow`; it refuses overflow so content can be
 resized or fitted explicitly. Each modular template includes the `container-layout` suite,
 which detects later rule violations without silently moving artwork. Rules measure geometry,
-not the visual spread of effects such as glows. Containers do not provide a live CSS engine.
+not the visual spread of effects such as glows. Containers do not provide a live CSS engine: `container-reflow` and the check skip hidden and empty members, and a `stack` on the container group makes its members follow variables at export time.
 
 Save a shape using workflow `shape-save`, `{"target":"my-shape","name":"brand-mark"}`.
 Reuse it with `{"type":"shape-place","resource":"brand-mark","name":"mark","x":20,"y":20}`.

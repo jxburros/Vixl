@@ -62,6 +62,9 @@ def service_operation_schema(slim=False):
         if kind in ("add", "frame"):
             variant.pop("anyOf")
             variant["required"].append("asset")
+        if kind in ("shape", "text"):
+            # shape/text also edit an existing layer through target; the full schema says what is required.
+            variant.pop("anyOf")
         if kind == "replace-contents":
             variant["anyOf"] = [{"required": ["asset"]}, {"required": ["variable"]}]
         if kind == "mask":
@@ -454,11 +457,15 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         color: str = "white",
         x: float = 0,
         y: float = 0,
+        hide_if_empty: bool = False,
         document: Document = None,
     ) -> dict:
-        """Add editable text with the bundled font or a previously imported registered font name."""
+        """Add editable text with the bundled font or a previously imported registered font name.
+        hide_if_empty: do not draw it (and take no space in a stack) while its ${variable} text is empty."""
         with session.project(write=True, document=document) as project:
             op = {"type": "text", "text": text, "name": name, "size": size, "color": color, "x": x, "y": y}
+            if hide_if_empty:
+                op["hide_if_empty"] = True
             if font:
                 require(font in project.state.get("fonts", {}), "Import/register this font first")
                 op["font"] = project.state["fonts"][font]
@@ -569,7 +576,9 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         font (text, text-set, rich-text spans, layout-apply, fields) takes a registered font name or a role
         (heading, body), as vixl_text_add does; install fonts first with vixl_font_pair or vixl_font_install.
         text-set changes a whole text layer (content, color, size, font; rich-text formatting is kept where it
-        still applies); text-style styles a phrase, character range or paragraphs inside it."""
+        still applies); text-style styles a phrase, character range or paragraphs inside it.
+        shape/solid/gradient/text add a layer, but with target they edit that existing layer in place
+        (keeping its ID), e.g. {type: shape, target: bar, fill: "#6b3f69"}."""
         return session.apply(operations, dry_run, detail, document)
 
     @tool
@@ -1066,16 +1075,19 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         locks: dict | None = None,
         apply: bool = False,
         slots: dict | None = None,
+        unfilled: Literal["omit", "blank"] | None = None,
         document: Document = None,
     ) -> dict:
         """Roll a coherent direction honoring workspace brand.json. apply=true installs fonts and
         applies the layout in one undo step; slots fills its content (e.g. {title: Launch}).
-        locks fixes choices such as palette or layout. Missing slots are returned immediately."""
+        locks fixes choices such as palette or layout. unfilled: slots you did not fill are left out
+        (omit, the default when slots is given) so the result passes vixl_check, or shown as [Label]
+        placeholders to fill (blank, the default without slots). The result lists what is missing."""
         from .typefaces import roll_document
         if document or session.path or apply:
             with session.project(write=apply, document=document) as project:
                 return roll_document(project, seed=seed, purpose=purpose, mood=mood, locks=locks,
-                                     apply=apply, slots=slots)
+                                     apply=apply, slots=slots, unfilled=unfilled)
         return roll_document(workspace=session.workspace, seed=seed, purpose=purpose, mood=mood, locks=locks)
 
     @tool

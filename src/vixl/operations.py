@@ -11,6 +11,8 @@ from .automation import TYPES as AUTOMATION_TYPES
 from .authoring import TYPES as AUTHORING_TYPES
 from .creative import TYPES as CREATIVE_TYPES
 from .containers import TYPES as CONTAINER_TYPES
+from .inplace import IN_PLACE_TYPES
+from .stacks import TYPES as STACK_TYPES, POSITIONING as STACK_POSITIONING
 from .organic import TYPES as ORGANIC_TYPES
 from .guides import TYPES as GUIDE_TYPES
 from .richtext import TYPES as RICH_TYPES
@@ -57,7 +59,7 @@ ALIASES = {
     "make_selection": "select",
 }
 
-OPERATION_TYPES = list(DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_TYPES + BRUSH_TYPES + TIMELINE_TYPES + LAYOUT_TYPES + COLOR_TYPES + AUTOMATION_TYPES + CREATIVE_TYPES + CONTAINER_TYPES + AUTHORING_TYPES + ORGANIC_TYPES + GUIDE_TYPES + RICH_TYPES + PAGE_TYPES + FORM_TYPES + DRAWING_TYPES) + [
+OPERATION_TYPES = list(DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_TYPES + BRUSH_TYPES + TIMELINE_TYPES + LAYOUT_TYPES + COLOR_TYPES + AUTOMATION_TYPES + CREATIVE_TYPES + CONTAINER_TYPES + AUTHORING_TYPES + ORGANIC_TYPES + GUIDE_TYPES + RICH_TYPES + PAGE_TYPES + FORM_TYPES + DRAWING_TYPES + STACK_TYPES) + [
     "add",
     "solid",
     "gradient",
@@ -259,6 +261,18 @@ def execute(project, op):
     kind = ALIASES.get(kind, kind)
     require(isinstance(kind, str), "Operation requires a type")
     target = op.get("target", op.get("layer"))
+    if target is not None and kind in IN_PLACE_TYPES:
+        from .inplace import execute as execute_in_place
+
+        return execute_in_place(project, {**op, "type": kind, "target": target})
+    if kind in STACK_POSITIONING:
+        from .stacks import guard
+
+        guard(project, op, target)
+    if kind in STACK_TYPES:
+        from .stacks import execute as execute_stack
+
+        return execute_stack(project, op)
     if kind in PAGE_TYPES:
         from .pages import execute as execute_pages
         return execute_pages(project, op)
@@ -388,6 +402,8 @@ def execute(project, op):
             )
             if role:
                 layer["font_role"] = role
+            if op.get("hide_if_empty"):
+                layer["hide_if_empty"] = True
             embed_font_file(project, layer)
             layer["width"], layer["height"], _ = text_metrics(project, layer)
             color(resolve_color(layer["color"], project.state))
@@ -508,7 +524,7 @@ def execute(project, op):
             from .richedit import replace_text
 
             dropped = replace_text(layer, op["text"])  # keeps list, alignment and span formatting that still apply
-        for key in ("text", "size", "color", "align", "spacing", "stroke_width", "stroke_color"):
+        for key in ("text", "size", "color", "align", "spacing", "stroke_width", "stroke_color", "hide_if_empty"):
             if key in op:
                 layer[key] = op[key]
         if "font" in op:
@@ -547,8 +563,19 @@ def execute(project, op):
             w, h = max(1, round(w * factor)), max(1, round(h * factor))
         else:
             require("width" in op or "height" in op, "Resize requires width or height")
-            w = op.get("width", max(1, round(w * op.get("height", h) / h)))
-            h = op.get("height", max(1, round(h * w / layer["width"])))
+            one_side = ("width" in op) != ("height" in op)
+            require(one_side or not op.get("keep_aspect"),
+                    "keep_aspect scales the other side proportionally: give width or height, not both",
+                    field="keep_aspect")
+            # A side that is not given keeps its size, except on photos, where stretching one axis is
+            # rarely meant: image layers scale proportionally unless keep_aspect is false.
+            if one_side and op.get("keep_aspect", layer["type"] == "raster"):
+                if "width" in op:
+                    w, h = op["width"], max(1, round(h * op["width"] / w))
+                else:
+                    w, h = max(1, round(w * op["height"] / h)), op["height"]
+            else:
+                w, h = op.get("width", w), op.get("height", h)
         project.limits.size(w, h)
         layer.update(width=w, height=h, auto_size=False)
     elif kind in ("rotate", "pivot", "flip") and layer["type"] == "field":

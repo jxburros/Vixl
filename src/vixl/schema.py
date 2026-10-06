@@ -3,6 +3,7 @@
 from copy import deepcopy
 from functools import lru_cache
 
+from .inplace import target_schema
 from .render import EFFECTS, BLENDS
 
 S = {"type": "string"}
@@ -70,10 +71,14 @@ def _operation_schema():
         },
         anyOf=[{"required": ["path"]}, {"required": ["asset"]}],
     )
-    add("solid", {"name": S, "width": SIZE, "height": SIZE, "color": S, "x": COORD, "y": COORD})
+    add(
+        "solid",
+        {"target": target_schema("solid"), "name": S, "width": SIZE, "height": SIZE, "color": S, "x": COORD, "y": COORD},
+    )
     add(
         "gradient",
         {
+            "target": target_schema("gradient"),
             "name": S,
             "width": SIZE,
             "height": SIZE,
@@ -97,17 +102,23 @@ def _operation_schema():
         "color": S,
         "align": enum("left", "center", "right"),
         "spacing": {"type": "integer", "minimum": 0},
+        "hide_if_empty": {
+            "type": "boolean",
+            "description": "Do not draw the text (and take no space in a stack) while it is empty or blank "
+            "after ${variable} substitution.",
+        },
     }
     add(
         "text",
         {
             **text,
+            "target": target_schema("text"),
             "name": S,
             "font": FONT,
             "x": COORD,
             "y": COORD,
         },
-        ["text"],
+        anyOf=[{"required": ["text"]}, {"required": ["target"]}],
     )
     add(
         "text-set",
@@ -143,7 +154,16 @@ def _operation_schema():
     add("move", {"x": COORD, "y": COORD, "relative": B}, anyOf=[{"required": ["x"]}, {"required": ["y"]}])
     add(
         "resize",
-        {"width": SIZE, "height": SIZE},
+        {
+            "width": SIZE,
+            "height": SIZE,
+            "keep_aspect": {
+                "type": "boolean",
+                "description": "With only width or only height: true scales the other side to keep the aspect "
+                "ratio; false changes just the given side. Default: true for image (raster) layers, false for "
+                "everything else.",
+            },
+        },
         anyOf=[{"required": ["width"]}, {"required": ["height"]}],
     )
     add("scale", {"value": {"type": "number", "exclusiveMinimum": 0}}, ["value"])
@@ -291,6 +311,8 @@ def _operation_schema():
     authoring_schemas(add)
     from .containers import schemas as container_schemas
     container_schemas(add)
+    from .stacks import schemas as stack_schemas
+    stack_schemas(add)
     from .organic import schemas as organic_schemas
     organic_schemas(add)
     from .guides import schemas as guide_schemas

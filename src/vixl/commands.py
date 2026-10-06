@@ -56,6 +56,10 @@ def compile_command(tokens):
     authoring = compile_authoring(cmd, args)
     if authoring is not None:
         return authoring
+    from .stacks import compile_command as compile_stack
+    stack = compile_stack(cmd, args)
+    if stack is not None:
+        return stack
     from .richtext import compile_command as compile_rich
     rich = compile_rich(cmd, args)
     if rich is not None:
@@ -145,12 +149,15 @@ def compile_command(tokens):
         p.add_argument("--x", type=float)
         p.add_argument("--y", type=float)
     elif cmd in ("solid", "gradient", "text"):
+        p.add_argument("--target", help=f"edit this existing {cmd} layer in place instead of adding one")
         if cmd == "text":
-            p.add_argument("text")
+            p.add_argument("text", nargs="?", help="the text; optional with --target")
             p.add_argument("--font", help="registered font name, heading, body, or a font file")
             p.add_argument("--size", type=int)
             p.add_argument("--align", choices=["left", "center", "right"])
             p.add_argument("--spacing", type=int)
+            p.add_argument("--hide-if-empty", action=argparse.BooleanOptionalAction, default=None,
+                           help="do not draw the text while it is empty after ${variable} substitution")
         elif cmd == "gradient":
             p.add_argument("--start", default="black")
             p.add_argument("--end", default="white")
@@ -173,6 +180,8 @@ def compile_command(tokens):
         p.add_argument("--font", help="registered font name, heading, body, or a font file")
         for key in ("size", "spacing", "stroke-width"):
             p.add_argument(f"--{key}", type=int)
+        p.add_argument("--hide-if-empty", action=argparse.BooleanOptionalAction, default=None,
+                       help="do not draw the text while it is empty after ${variable} substitution")
     elif cmd in (
         "remove",
         "hide",
@@ -213,6 +222,9 @@ def compile_command(tokens):
         p.add_argument("values", nargs="*")
         p.add_argument("--width", type=int)
         p.add_argument("--height", type=int)
+        p.add_argument("--keep-aspect", action=argparse.BooleanOptionalAction, default=None,
+                       help="with one dimension: scale the other side proportionally, or (--no-keep-aspect) leave it; "
+                       "default: proportional for images, leave it for everything else")
         data = vars(p.parse_args(args))
         values = data.pop("values")
         if values and not re.fullmatch(r"\d+(?:\.\d+)?%|\d+[x×]\d+|\d+(?:\.\d+)?", values[0]):
@@ -228,6 +240,8 @@ def compile_command(tokens):
                 op["type"] = "scale"
         if data.get("width") is not None or data.get("height") is not None:
             op["type"] = "resize"
+        if op["type"] != "resize":
+            data.pop("keep_aspect", None)
         return {**op, **{k: v for k, v in data.items() if v is not None}}
     elif cmd in ("rotate", "opacity", "blend", "flip", *EFFECTS):
         p.add_argument("values", nargs="*")
