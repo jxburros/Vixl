@@ -4,7 +4,7 @@ Vixl is headless and designed for autonomous AI agents; humans can use the same 
 
 ## MCP server
 
-Start: `vixl mcp --workspace DIR` (stdio; requires the `mcp` extra or the Windows installer).
+Start: `vixl mcp --workspace DIR` (stdio; MCP support is part of the base `vixl-engine` package and the Windows installer).
 Legacy form `vixl --project /abs/poster.vixl mcp` opens that document and uses its folder as the
 workspace. Client config:
 
