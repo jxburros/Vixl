@@ -902,17 +902,22 @@ def _color_vision(candidate, resolved, bounds, texts, min_contrast, text_scales,
                 )
 
 
-def compare(project, before="previous", after="head", *, max_width=1024, max_height=1024, mode="side-by-side"):
-    """Render two revisions for an at-a-glance review. Returns ``(image, summary)``."""
+def compare(project, before="previous", after="head", *, max_width=1024, max_height=1024, mode="side-by-side",
+            isolate=None):
+    """Render two revisions for an at-a-glance review. Returns ``(image, summary)``. ``isolate`` (layer
+    IDs or names) shows only those layers, both sides cropped to the same box around their ink."""
     from PIL import Image, ImageChops
 
-    from .proxy import render_preview
+    from .proxy import isolated_pair, render_preview
 
     require(mode in ("side-by-side", "diff"), "mode must be side-by-side or diff", field="mode")
     left_project, right_project = project.at(before), project.at(after)
     half = max_width // 2 if mode == "side-by-side" else max_width
-    left = render_preview(left_project, half, max_height).convert("RGBA")
-    right = render_preview(right_project, half, max_height).convert("RGBA")
+    region = None
+    if isolate is not None:
+        left_project, right_project, region = isolated_pair(left_project, right_project, isolate)
+    left = render_preview(left_project, half, max_height, region=region).convert("RGBA")
+    right = render_preview(right_project, half, max_height, region=region).convert("RGBA")
     if left.size != right.size:
         right = right.resize(left.size, Image.Resampling.LANCZOS) if mode == "diff" else right
     summary = {"before": project.resolve_ref(before), "after": project.resolve_ref(after)}
@@ -920,13 +925,17 @@ def compare(project, before="previous", after="head", *, max_width=1024, max_hei
         difference = ImageChops.difference(left, right).convert("L").point(lambda v: 255 if v > 8 else 0)
         box = difference.getbbox()
         changed = int(np.count_nonzero(np.asarray(difference)))
-        scale = project.at(after).state["canvas"]["width"] / right.width
+        origin = region[:2] if region else (0, 0)
+        scale = (region[2] if region else project.at(after).state["canvas"]["width"]) / right.width
         summary.update(
             changed_fraction=round(changed / (right.width * right.height), 4),
-            changed_region=[round(v * scale) for v in (box[0], box[1], box[2] - box[0], box[3] - box[1])]
+            changed_region=[round(origin[0] + box[0] * scale), round(origin[1] + box[1] * scale),
+                            round((box[2] - box[0]) * scale), round((box[3] - box[1]) * scale)]
             if box
             else None,
         )
+        if region:
+            summary["region"] = region
     else:
         difference = None
         summary["changed_region"] = "canvas size changed"
@@ -941,7 +950,7 @@ def compare(project, before="previous", after="head", *, max_width=1024, max_hei
 
 
 APPLY_ISSUES = 20  # Findings an apply call returns; vixl_check lists them all.
-APPLY_PREVIEW = ("page", "region", "max_width", "max_height", "time")
+APPLY_PREVIEW = ("page", "region", "max_width", "max_height", "time", "isolate")
 
 
 def _apply_options(check, preview):

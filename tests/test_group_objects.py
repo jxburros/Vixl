@@ -126,6 +126,46 @@ def test_attach_without_anchor_keeps_the_current_offset_and_can_stay_upright():
     assert "attachments" not in inspect_timeline(p)
 
 
+def scene():
+    p = Project(400, 300, "#ffffff")
+    p.apply([
+        {"type": "shape", "name": "ground", "shape": "rectangle", "width": 400, "height": 100, "x": 0, "y": 200, "fill": "#00aa00"},
+        {"type": "shape", "name": "head", "shape": "ellipse", "width": 40, "height": 40, "x": 100, "y": 60, "fill": "#ff0000"},
+        {"type": "shape", "name": "body", "shape": "rectangle", "width": 30, "height": 60, "x": 105, "y": 95, "fill": "#0000ff"},
+        {"type": "group", "name": "figure", "targets": ["head", "body"]},
+        {"type": "shape", "name": "tree", "shape": "ellipse", "width": 60, "height": 60, "x": 300, "y": 100, "fill": "#005500"},
+    ])
+    return p
+
+
+def test_isolate_previews_one_object_cropped_to_its_ink():
+    from vixl.proxy import render_preview
+
+    p = scene()
+    image = render_preview(p, 512, 512, isolate=["figure"]).convert("RGB")
+    # The figure's ink is 40 x 95 px; a small margin, then enlarged for detail.
+    assert 0.4 < image.width / image.height < 0.5
+    colours = {colour for _, colour in image.getcolors(1 << 20)}
+    assert (255, 0, 0) in colours and (0, 0, 255) in colours
+    assert (0, 170, 0) not in colours and (0, 85, 0) not in colours  # ground and tree are hidden
+    full = render_preview(p, 400, 300, isolate=["figure"], region=[0, 0, 400, 300]).convert("RGB")
+    assert full.size == (400, 300) and full.getpixel((330, 130)) == (255, 255, 255)
+    with pytest.raises(VixlError):
+        render_preview(p, 512, 512, isolate=["nothing"])
+
+
+def test_compare_can_isolate_an_object():
+    from vixl.checks import compare
+
+    p = scene()
+    p.apply({"type": "move", "target": "head", "x": 4, "y": 0})
+    image, summary = compare(p, "previous", "head", isolate=["figure"])
+    x, y, w, h = summary["region"]
+    assert x < 100 and y < 60 and x + w > 140 and y + h > 155 and w < 80
+    cx, cy, cw, ch = summary["changed_region"]
+    assert x <= cx and cx + cw <= x + w and 50 <= cy <= 65
+
+
 def test_group_result_lists_member_offsets_and_brief_edits_name_the_group():
     p = Project(300, 200)
     p.apply([{"type": "shape", "name": "a", "shape": "rectangle", "width": 20, "height": 20, "x": 100, "y": 50},

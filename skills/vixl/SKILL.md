@@ -190,7 +190,8 @@ If found, prepend its folder to PATH for this session — see
    overlapping text, low WCAG contrast, safe-area or reserved-zone violations (`safe_area="5%"`,
    `avoid=[[x,y,w,h]]`) and text too small at thumbnail width (on print sizes: below 6 pt). It lists only problems.
 6. **Look at the result.** MCP: `vixl_render_preview()` returns an image (≤1024 px, ≤1 MiB by
-   default; `region=[x,y,w,h]` zooms in). `vixl_render_compare()` shows previous vs current.
+   default; `region=[x,y,w,h]` zooms in; `isolate=["mascot"]` shows one object alone, cropped to it).
+   `vixl_render_compare()` shows previous vs current (also with `isolate`).
    CLI: `vixl render --out /tmp/preview.png` then view the file. Never declare a visual
    task done without looking.
 7. **Measure, don't eyeball,** when precision matters: `vixl_measure` / `vixl info` (colors,

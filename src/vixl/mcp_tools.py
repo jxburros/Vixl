@@ -207,11 +207,12 @@ def preview(
     page=None,
     values=None,
     show_fields=False,
+    isolate=None,
 ):
     with session.project(document=document) as project:
         return preview_png(project, max_width, max_height, max_bytes, region=region, variables=variables,
                            artboard=artboard, comp=comp, time=time, proof=proof, simulate=simulate, guides=guides,
-                           page=page, values=values, show_fields=show_fields)
+                           page=page, values=values, show_fields=show_fields, isolate=isolate)
 
 
 EXPORT_SUFFIXES = (".png", ".jpg", ".jpeg", ".webp", ".tif", ".tiff", ".avif", ".svg", ".pdf", ".ico", ".html", ".htm", ".pptx")
@@ -599,7 +600,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         ] = None,
         preview: Annotated[
             bool | dict | None,
-            Field(description="Also return a small preview PNG: true, or {page, region, max_width (512), max_height, time}"),
+            Field(description="Also return a small preview PNG: true, or {page, region, max_width (512), max_height, time, isolate}"),
         ] = None,
     ) -> dict:
         """Apply operations atomically (all or none) and autosave. Give operations inline, or operations_path
@@ -683,11 +684,14 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         page: Annotated[int | str | None, Field(description="Page number or name; 'all' shows every page on one sheet")] = None,
         values: Annotated[dict | None, Field(description="Form field values to show, by field key")] = None,
         show_fields: Annotated[bool, Field(description="Outline form fields with their keys and tab order")] = False,
+        isolate: Annotated[list[str] | None, Field(description="Show only these layers (a group with all its parts) on the "
+                           "canvas background, zoomed to their ink with a small margin unless region is given")] = None,
         document: Document = None,
     ) -> Image:
         """Return an aspect-preserving PNG capped in dimensions and bytes, rendered at preview resolution.
         region zooms into part of the canvas and may enlarge it up to 8x for detail checks. time previews
-        an animation frame; proof shows print (CMYK) color; simulate checks color-blind legibility."""
+        an animation frame; proof shows print (CMYK) color; simulate checks color-blind legibility.
+        isolate shows one object (a group or layers) alone, to judge its parts without the scene around it."""
         return Image(
             data=preview(
                 session,
@@ -706,6 +710,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
                 page=page,
                 values=values,
                 show_fields=show_fields,
+                isolate=isolate,
             ),
             format="png",
         )
@@ -717,16 +722,18 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         mode: Literal["side-by-side", "diff"] = "side-by-side",
         max_width: Annotated[int, Field(ge=64, le=4096)] = 1024,
         max_height: Annotated[int, Field(ge=64, le=4096)] = 768,
+        isolate: Annotated[list[str] | None, Field(description="Compare only these layers (a group with all its parts), "
+                           "zoomed to their ink in either revision")] = None,
         document: Document = None,
     ) -> list:
         """Compare two revisions (head, previous, head~N, branch, checkpoint or revision ID).
         side-by-side shows before|after; diff highlights changed pixels in red. Also returns the
-        changed fraction and changed region in document pixels."""
+        changed fraction and changed region in document pixels. isolate compares one object alone."""
         from .checks import compare
 
         with session.project(document=document) as project:
             image, summary = compare(
-                project, before, after, max_width=max_width, max_height=max_height, mode=mode
+                project, before, after, max_width=max_width, max_height=max_height, mode=mode, isolate=isolate
             )
             summary["document"] = session.relative(project.path)
         return [compact_json(summary), Image(data=encode_png(image, 2_097_152), format="png")]
