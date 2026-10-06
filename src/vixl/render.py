@@ -405,9 +405,46 @@ def resolve_layout(project, variables=None, layers=None):
     return {k: v for k, v in bounds.items() if k != "canvas"}
 
 
-def apply_effect(image, effect):
+# Rec. 709 luma weights: temperature, tint and white balance keep a grey's luma as they shift it.
+LUMA = np.array([0.2126, 0.7152, 0.0722])
+# ln(gain) per mired of white-point shift, fitted to the blackbody locus near daylight (blue fixed).
+MIRED_SLOPE = np.array([0.0045, 0.0025, 0.0])
+
+
+def channel_gains(effect):
+    """Per-channel multipliers for temperature, tint and white-balance, applied to encoded sRGB.
+
+    Gains scale toward black, so shadows stay neutral. temperature moves the white point along
+    the blackbody locus, 0.75 mired per unit: 100 is about 6500 K → 4400 K (warmer), -100 about
+    6500 K → 12700 K (cooler). tint is the matching green–magenta shift: tint 100 reaches the same
+    OKLab chroma on grey as temperature 100. Both keep a grey's luma. white-balance takes explicit
+    ``gains`` [r, g, b] or a ``neutral`` color to turn grey (keeping its luma), and ``amount``
+    (0–100, default 100) scales the correction."""
+    from .constants import EFFECT_DEFAULTS
+
+    name, value = effect["name"], effect.get("amount", EFFECT_DEFAULTS.get(effect["name"], 0))
+    if name == "white-balance":
+        if effect.get("gains") is not None:
+            gains = np.array(effect["gains"], dtype=np.float64)
+        elif effect.get("neutral") is not None:
+            neutral = np.maximum(np.array(color(effect["neutral"])[:3], dtype=np.float64), 1) / 255
+            gains = (LUMA @ neutral) / neutral
+        else:
+            gains = np.ones(3)
+        return gains ** (value / 100)
+    log = MIRED_SLOPE * 0.75 * value if name == "temperature" else np.array([0.0017, 0.0, 0.0017]) * value
+    gains = np.exp(log)
+    return gains / (LUMA @ gains)
+
+
+def apply_effect(image, effect, project=None):
     from .constants import ARTISTIC_DEFAULTS
 
+    if effect["name"] == "lookup":
+        from .design_render import apply_lookup
+
+        require(project is not None, "A lookup effect needs its document's LUTs")
+        return apply_lookup(project, image, {"name": effect["lut"], "amount": effect.get("amount", 1)})
     if effect["name"] == "denoise":
         from .denoise import denoise_image
 
@@ -465,10 +502,8 @@ def apply_effect(image, effect):
             a *= 2**value
         elif name == "gamma":
             a = np.power(a, 1 / value)
-        elif name == "temperature":
-            a += np.array([value / 10000, 0, -value / 10000])
-        elif name == "tint":
-            a += np.array([value / 200, -value / 100, value / 200])
+        elif name in ("temperature", "tint", "white-balance"):
+            a *= channel_gains(effect)
         elif name == "shadows":
             a += value / 100 * (1 - a) ** 2
         elif name == "highlights":
@@ -500,8 +535,8 @@ BLURS = ("blur", "gaussian-blur")
 # Effects that change each pixel on its own, so giving a blur room around the layer leaves their
 # result inside the layer's box unchanged.
 PER_PIXEL = BLURS + (
-    "brightness", "saturation", "hue", "exposure", "gamma", "temperature", "tint", "shadows",
-    "highlights", "levels", "curves", "grayscale", "invert", "posterize", "threshold",
+    "brightness", "saturation", "hue", "exposure", "gamma", "temperature", "tint", "white-balance",
+    "shadows", "highlights", "levels", "curves", "grayscale", "invert", "posterize", "threshold", "lookup",
 )
 
 
@@ -674,7 +709,8 @@ def layer_ink(project, layer, bounds):
         dependencies.append(project.state.get("brushes", {}))
     key = hashlib.sha256(json.dumps(dependencies, sort_keys=True).encode()).hexdigest()
     linked = layer.get("linked")
-    cacheable = not linked and not layer.get("lookup") and not layer.get("_distort_groups") and layer["type"] not in ("group", "pathfinder", "link")
+    # A lookup effect reads its table from the document, which the key does not cover.
+    cacheable = not linked and not any(e["name"] == "lookup" for e in layer.get("effects") or []) and not layer.get("_distort_groups") and layer["type"] not in ("group", "pathfinder", "link")
     cache = project._cache = project._cache if isinstance(project._cache, LayerCache) else LayerCache()
     if cacheable:
         cached = cache.image(key)
@@ -763,25 +799,26 @@ def transform_layer_image(project, layer, bounds, image):
         # without the overflow, which only adds whole output pixels around it.
         image = group_overflow_resize(layer, image, sampling)
     elif not layer.get("repeat") and not image.info.get("vixl_vector_overflow"):
-        image = image.resize((max(1, math.ceil(layer["width"])), max(1, math.ceil(layer["height"]))), sampling)
+        image = resize(image, (max(1, math.ceil(layer["width"])), max(1, math.ceil(layer["height"]))), sampling)
     from .affine import linear, precise
+    # Effects run on the layer in its own frame, at its box size, before it is flipped, turned or
+    # skewed: a blur, denoise or grain treats the content the same at any angle. Canvas-space
+    # inputs (selections, the emboss light, canvas-edge blur room) are mapped into this frame.
+    unturned = image.size
+    image = layer_effects(project, layer, bounds, image)
+    turn = Image.Resampling.NEAREST if crisp else Image.Resampling.BICUBIC
     if precise(layer):
         transform = linear(layer)
         out = np.abs(transform[:2, :2]) @ [image.width, image.height]
         size = tuple(max(1, math.ceil(v)) for v in out)
         transform[:2, 2] += np.array(size) / 2 - transform[:2, :2] @ [image.width / 2, image.height / 2]
-        inverse = np.linalg.inv(transform)
-        image = image.transform(size, Image.Transform.AFFINE, tuple(inverse[:2].ravel()), Image.Resampling.NEAREST if crisp else Image.Resampling.BICUBIC)
+        image = warp(image, size, tuple(np.linalg.inv(transform)[:2].ravel()), turn)
     if not precise(layer) and layer.get("flip_x"):
         image = ImageOps.mirror(image)
     if not precise(layer) and layer.get("flip_y"):
         image = ImageOps.flip(image)
     if not precise(layer) and layer.get("rotation", 0) % 360:
-        image = image.rotate(
-            -layer["rotation"],
-            Image.Resampling.NEAREST if crisp else Image.Resampling.BICUBIC,
-            expand=True,
-        )
+        image = rotate(image, -layer["rotation"], turn)
         # Match conservative layout bounds consistently, keeping anything drawn past them.
         target = (max(math.ceil(bounds[2]), image.width), max(math.ceil(bounds[3]), image.height))
         if image.size != target:
@@ -790,23 +827,16 @@ def transform_layer_image(project, layer, bounds, image):
                 image, ((padded.width - image.width) // 2, (padded.height - image.height) // 2)
             )
             image = padded
-    spread = effect_margin(layer)
-    for effect in layer["effects"]:
-        if not effect.get("enabled", True):
-            continue
-        if any(spread) and effect["name"] in BLURS:
-            image, spread = blur_room(project, layer, bounds, image, spread), (0, 0)
-        changed = apply_effect(image, effect)
-        if effect.get("selection"):
-            x, y = ink_origin(image, bounds)
-            mask = project.image(effect["selection"], "L").crop((x, y, x + image.width, y + image.height))
-            image = Image.composite(changed, image, mask)
-        else:
-            image = changed
-    if layer.get("lookup"):
-        from .design_render import apply_lookup
-
-        image = apply_lookup(project, image, layer["lookup"])
+    if any(effect_margin(layer)) and (precise(layer) or layer.get("rotation", 0) % 360):
+        # Blur room added in the layer's frame turns into wider corners than the spread needs: the
+        # blur reaches its margin past the turned box, which lies inside its bounds widened by it.
+        m = effect_margin(layer)[0]
+        reach = np.abs(linear(layer)[:2, :2]) @ unturned
+        limit = [max(math.ceil(bounds[2 + i]), math.ceil(reach[i])) + 2 * m for i in (0, 1)]
+        limit = [v + (image.size[i] - v) % 2 for i, v in enumerate(limit)]
+        if limit[0] < image.width or limit[1] < image.height:
+            left, top = max(0, (image.width - limit[0]) // 2), max(0, (image.height - limit[1]) // 2)
+            image = image.crop((left, top, image.width - left, image.height - top))
     mask = layer.get("mask")
     if mask and mask.get("enabled", True):
         m = project.image(mask["asset"], "L").resize(tuple(math.ceil(v) for v in bounds[2:]), Image.Resampling.LANCZOS)
@@ -832,8 +862,125 @@ def transform_layer_image(project, layer, bounds, image):
     if not crisp and (fx > 1e-8 or fy > 1e-8):
         padded = Image.new("RGBA", (image.width + 2, image.height + 2))
         padded.paste(image, (1, 1))
-        image = padded.transform(padded.size, Image.Transform.AFFINE, (1, 0, -fx, 0, 1, -fy), Image.Resampling.BICUBIC)
+        image = warp(padded, padded.size, (1, 0, -fx, 0, 1, -fy), Image.Resampling.BICUBIC)
     return image
+
+
+def layer_effects(project, layer, bounds, image):
+    """Run a layer's enabled effects, in stack order, on its image before the layer is flipped,
+    turned or skewed. The image is centred on the layer's box."""
+    from .affine import linear
+
+    frame = linear(layer)[:2, :2]
+    turned = not np.allclose(frame, np.eye(2))
+    spread = effect_margin(layer)
+    for effect in layer["effects"]:
+        if not effect.get("enabled", True):
+            continue
+        if any(spread) and effect["name"] in BLURS:
+            image, spread = blur_room(project, layer, bounds, image, spread), (0, 0)
+        if effect["name"] == "emboss" and turned:
+            # Keep the emboss light where it is on an upright layer, however this one is turned:
+            # pass the canvas offset of the neighbour it subtracts (down-left) in the layer's frame.
+            effect = {**effect, "_light": tuple(np.linalg.solve(frame, [-1.0, 1.0]))}
+        changed = apply_effect(image, effect, project)
+        if effect.get("selection"):
+            mask = project.image(effect["selection"], "L")
+            if turned:
+                # Sample the canvas selection where each pixel of the layer's frame lands.
+                centre = np.array([bounds[0] + bounds[2] / 2, bounds[1] + bounds[3] / 2])
+                offset = centre - frame @ [image.width / 2, image.height / 2]
+                data = (frame[0, 0], frame[0, 1], offset[0], frame[1, 0], frame[1, 1], offset[1])
+                mask = mask.transform(image.size, Image.Transform.AFFINE, data, Image.Resampling.BILINEAR)
+            else:
+                x, y = ink_origin(image, bounds)
+                mask = mask.crop((x, y, x + image.width, y + image.height))
+            image = Image.composite(changed, image, mask)
+        else:
+            image = changed
+    return image
+
+
+def resize(image, size, sampling, box=None):
+    """``Image.resize`` without the overshoot rim of Lanczos at hard edges (see ``antiring``)."""
+    box = tuple(box or (0, 0, *image.size))
+    result = image.resize(size, sampling, box=box)
+    if sampling == Image.Resampling.NEAREST or result.size == image.size and box == (0, 0, *image.size):
+        return result
+    sx, sy = (box[2] - box[0]) / size[0], (box[3] - box[1]) / size[1]
+    return antiring(image, result, (sx, 0, box[0], 0, sy, box[1]), max(sx, sy))
+
+
+def warp(image, size, data, sampling):
+    """An affine ``Image.transform`` (``data`` maps output to source) without overshoot."""
+    result = image.transform(size, Image.Transform.AFFINE, data, sampling)
+    if sampling == Image.Resampling.NEAREST:
+        return result
+    scale = float(np.linalg.svd(np.array(data).reshape(2, 3)[:, :2], compute_uv=False).max())
+    return antiring(image, result, data, scale)
+
+
+def rotate(image, angle, sampling):
+    """``image.rotate(angle, sampling, expand=True)`` without overshoot: the same matrix and size."""
+    w, h = image.size
+    a = -math.radians(angle)
+    co, si = round(math.cos(a), 15), round(math.sin(a), 15)
+
+    def apply(x, y, c=0.0, f=0.0):
+        return co * x + si * y + c, -si * x + co * y + f
+
+    c, f = apply(-w / 2, -h / 2)
+    c, f = c + w / 2, f + h / 2
+    xs, ys = zip(*(apply(x, y, c, f) for x, y in ((0, 0), (w, 0), (w, h), (0, h))))
+    nw, nh = math.ceil(max(xs)) - math.floor(min(xs)), math.ceil(max(ys)) - math.floor(min(ys))
+    c, f = apply(-(nw - w) / 2, -(nh - h) / 2, c, f)
+    return warp(image, (nw, nh), (co, si, c, -si, co, f), sampling)
+
+
+def antiring(source, result, data, scale=1.0):
+    """Clamp a resampled RGBA image to the colours and alphas of the source pixels under each
+    output pixel's main kernel lobe. Lanczos and bicubic weights go negative beside a hard edge, so
+    a flat shape gains a light or dark rim (in colours found nowhere in the source), and its
+    translucent edge pixels, unpremultiplied, can come out brighter than the shape. ``data`` maps
+    output pixels to source pixels; ``scale`` is source pixels per output pixel."""
+    if source.mode != "RGBA" or result.mode != "RGBA":
+        return result
+    # Downscaling pools blocks of source pixels first, so the window stays a few cells wide.
+    pool = max(1, int(scale))
+    reach = max(1, math.ceil(scale / pool))
+    pixels = np.asarray(source)
+    # A transparent margin of cells (colour unknown: low 255, high 0) lets edges dilate outward.
+    margin = reach + 2
+    opaque = bool(pixels[..., 3].min())
+    envelopes = []
+    for blank, reduce in ((255, np.minimum), (0, np.maximum)):
+        values = pixels
+        if not opaque:
+            values = pixels.copy()
+            values[pixels[..., 3] == 0, :3] = blank
+        for axis in (0, 1):
+            pooled = values[::pool] if axis == 0 else values[:, ::pool]
+            pooled = pooled.copy() if pool > 1 else pooled
+            for k in range(1, pool):
+                part = values[k::pool] if axis == 0 else values[:, k::pool]
+                head = pooled[: len(part)] if axis == 0 else pooled[:, : part.shape[1]]
+                reduce(head, part, out=head)
+            values = pooled
+        grid = np.full((values.shape[0] + 2 * margin, values.shape[1] + 2 * margin, 4), blank, np.uint8)
+        grid[..., 3] = 0
+        grid[margin:-margin, margin:-margin] = values
+        spread = grid.copy()
+        for axis in (0, 1):
+            base = spread.copy()
+            for step in range(1, reach + 1):
+                spread = reduce(spread, np.roll(base, step, axis))
+                spread = reduce(spread, np.roll(base, -step, axis))
+        a, b, c, d, e, f = data
+        cell = (a / pool, b / pool, c / pool + margin, d / pool, e / pool, f / pool + margin)
+        envelopes.append(np.asarray(Image.fromarray(spread, "RGBA").transform(
+            result.size, Image.Transform.AFFINE, cell, Image.Resampling.NEAREST, fillcolor=(blank, blank, blank, 0))))
+    low, high = envelopes
+    return Image.fromarray(np.minimum(np.maximum(np.asarray(result), low), high), "RGBA")
 
 
 def blur_room(project, layer, bounds, image, margin):
@@ -844,13 +991,20 @@ def blur_room(project, layer, bounds, image, margin):
     project.limits.size(image.width + 2 * mx, image.height + 2 * my)
     x, y = ink_origin(image, bounds)
     canvas = project.state["canvas"]
-    edges = (
+    from .affine import precise
+
+    # The image is in the layer's own frame: a turned layer's edges are not the canvas's, and a
+    # flipped layer's left edge lands on the right.
+    left, top, right, bottom = (
         (x <= 0, y <= 0, x + image.width >= canvas["width"], y + image.height >= canvas["height"])
-        if not layer.get("parent")
+        if not layer.get("parent") and not precise(layer) and not layer.get("rotation", 0) % 360
         else (False, False, False, False)
     )
+    if layer.get("flip_x"):
+        left, right = right, left
+    if layer.get("flip_y"):
+        top, bottom = bottom, top
     pixels = np.pad(np.asarray(image), ((my, my), (mx, mx), (0, 0)))
-    left, top, right, bottom = edges
     if left and mx:
         pixels[:, :mx] = pixels[:, mx : mx + 1]
     if right and mx:
@@ -879,7 +1033,7 @@ def group_overflow_resize(layer, image, sampling):
         padded.paste(image, (px, py))
         image, mx, my = padded, mx + px, my + py
     box = (mx - ox / sx, my - oy / sy, mx + cw + ox / sx, my + ch + oy / sy)
-    return image.resize((math.ceil(w + 2 * ox), math.ceil(h + 2 * oy)), sampling, box=box)
+    return resize(image, (math.ceil(w + 2 * ox), math.ceil(h + 2 * oy)), sampling, box=box)
 
 
 def pixel_group(project, group):
@@ -1011,8 +1165,6 @@ def layer_canvas_surface(project, layer, bounds=None, index=None):
 def render_layers(project, parent=None, size=None, background="transparent", observe=None):
     """Composite the layers of ``parent`` (the canvas when None). ``observe`` maps layer IDs to
     callbacks that receive the layer's box region just before and just after it is drawn."""
-    from .design_render import apply_lookup
-
     # Groups render their children through nested calls; resolve the document once per render.
     shared = getattr(project, "_resolution", None)
     if shared is not None and shared[0] is project.state:
@@ -1023,13 +1175,13 @@ def render_layers(project, parent=None, size=None, background="transparent", obs
         bounds = resolve_layout(project, layers=layers)
         project._resolution, outermost = (project.state, layers, bounds), True
     try:
-        return _render_layers(project, layers, bounds, parent, size, background, observe, apply_lookup)
+        return _render_layers(project, layers, bounds, parent, size, background, observe)
     finally:
         if outermost:
             project._resolution = None
 
 
-def _render_layers(project, layers, bounds, parent, size, background, observe, apply_lookup):
+def _render_layers(project, layers, bounds, parent, size, background, observe):
     c = project.state["canvas"]
     size = size or (c["width"], c["height"])
     index = {item["id"]: item for item in layers}
@@ -1081,7 +1233,7 @@ def _render_layers(project, layers, bounds, parent, size, background, observe, a
             changed = image
             for effect in layer["effects"]:
                 if effect.get("enabled", True):
-                    filtered = apply_effect(changed, effect)
+                    filtered = apply_effect(changed, effect, project)
                     changed = (
                         Image.composite(
                             filtered, changed, project.image(effect["selection"], "L").resize(size)
@@ -1089,8 +1241,6 @@ def _render_layers(project, layers, bounds, parent, size, background, observe, a
                         if effect.get("selection")
                         else filtered
                     )
-            if layer.get("lookup"):
-                changed = apply_lookup(project, changed, layer["lookup"])
             mask = Image.new("L", size, round(255 * layer["opacity"]))
             if layer.get("mask") and layer["mask"].get("enabled", True):
                 from PIL import ImageChops

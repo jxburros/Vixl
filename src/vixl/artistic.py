@@ -25,6 +25,24 @@ def edge_filter(image, kernel):
     return padded.filter(kernel).crop((1, 1, image.width + 1, image.height + 1))
 
 
+def emboss_kernel(offset):
+    """Pillow's EMBOSS (each pixel minus its down-left neighbour, on mid grey) with the neighbour
+    at ``offset`` (dx, dy, y down) instead, spread bilinearly over the 3×3 ring."""
+    dx, dy = offset
+    reach = max(abs(dx), abs(dy), 1e-9)
+    dx, dy = dx / reach, dy / reach
+    weights = [0.0] * 9
+    weights[4] = 1.0
+    x0, y0 = math.floor(dx), math.floor(dy)
+    for x in (x0, x0 + 1):
+        for y in (y0, y0 + 1):
+            share = max(0.0, 1 - abs(dx - x)) * max(0.0, 1 - abs(dy - y))
+            if share and -1 <= x <= 1 and -1 <= y <= 1:
+                # Pillow's kernel rows run bottom to top.
+                weights[(1 - y) * 3 + x + 1] -= share
+    return ImageFilter.Kernel((3, 3), weights, 1, 128)
+
+
 def mode_colors(rgb, radius):
     """Each pixel takes the color of a nearby pixel with the most common brightness in its
     (2r+1)² window, nearest first. A mode filter run on each channel separately can combine red
@@ -190,7 +208,8 @@ def artistic_filter(image, effect):
             )
         result = blend(rgb, changed, amount)
     elif name in ("find-edges", "emboss"):
-        changed = edge_filter(rgb, ImageFilter.FIND_EDGES if name == "find-edges" else ImageFilter.EMBOSS)
+        kernel = ImageFilter.FIND_EDGES if name == "find-edges" else emboss_kernel(effect.get("_light", (-1, 1)))
+        changed = edge_filter(rgb, kernel)
         result = blend(rgb, changed, amount)
     elif name == "oil-paint":
         result = ImageOps.posterize(mode_colors(rgb, int(amount)), 5)

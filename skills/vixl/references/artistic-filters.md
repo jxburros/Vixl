@@ -48,13 +48,13 @@ Amount has filter-specific units. Values outside these ranges are rejected atomi
 
 Duotone CLI colors use `--shadow-color` and `--highlight-color`; JSON uses underscores. `effect set` accepts amount, radius, seed and the duotone colors. Settings and seeds are saved in `.vixl` projects. Glass/watercolor reproduce the same output for a fixed seed and imaging-library environment. These are Vixl treatments, not replicas of proprietary Photoshop algorithms.
 
-Color treatments preserve source alpha. Pixelate and distortions transform alpha with the artwork; their sampling uses premultiplied color to avoid transparent-pixel fringes. Distortions clamp sampling at image edges. Filters run in stack order, after layer resizing/rotation and before layer styles. Render at final dimensions before choosing pixel-based filter sizes.
+Color treatments preserve source alpha. Pixelate and distortions transform alpha with the artwork; their sampling uses premultiplied color to avoid transparent-pixel fringes. Distortions clamp sampling at image edges. Filters run in stack order on the layer at its box size, after resizing and before it is flipped, rotated or skewed (so patterns such as halftone, wave and pixelate turn with the layer, while emboss keeps its light at the canvas's top left and selections stay in canvas space), and before layer styles. Render at final dimensions before choosing pixel-based filter sizes.
 
 ## Shaped text and scalable SVG effects
 
 PNG and SVG now share HarfBuzz shaping, bidirectional/script runs, line wrapping/fitting, glyph placement and font outlines. Ligatures, combining marks, supported Unicode scripts, multiline text, text on polylines and arc/flag/bulge warps export as paths. Use a font containing the needed glyphs. Exported outlines require no font installation; editable text remains in the Vixl project. Shared outline rendering can slightly change text metrics/antialiasing from earlier Pillow-only versions; inspect older designs after updating.
 
-SVG preserves blur, brightness/contrast/saturation, grayscale, invert, sepia, duotone, solarize, posterize, threshold, exposure/gamma, temperature/tint, shadows/highlights, levels and curves as SVG filters. Drop shadows, outer glow, stroke and color overlays also retain geometry. Full-strength opaque gradient overlays, vector clipping masks and supported full-opacity adjustment layers remain native. SVG filters may look slightly different across viewers and are rendered into image buffers at display time.
+SVG preserves blur, brightness/contrast/saturation, grayscale, invert, sepia, duotone, solarize, posterize, threshold, exposure/gamma, temperature/tint/white-balance, shadows/highlights, levels and curves as SVG filters. Drop shadows, outer glow, stroke and color overlays also retain geometry. Full-strength opaque gradient overlays, vector clipping masks and supported full-opacity adjustment layers remain native. SVG filters may look slightly different across viewers and are rendered into image buffers at display time.
 
 ```text
 vixl export artwork.svg --svg-policy strict

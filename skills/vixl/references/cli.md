@@ -84,7 +84,7 @@ vixl shape rectangle|rounded-rectangle|ellipse|polygon|star|arc|line --name s --
 vixl frame --path portrait.jpg --name photo --width 400 --height 500 --fit fill|fit [--asset ID]
 vixl pixel-art --name sprite --width 16 --height 16 [--palette '{".":"transparent","g":"#ffc44d"}'] [--background .]
 vixl pixel-art --name spark --rows '[".w.","www",".w."]' --palette '{".":"transparent","w":"#fff"}'
-vixl adjustment warmth --effects '[{"name":"temperature","amount":500},{"name":"contrast","amount":10}]'
+vixl adjustment warmth --effects '[{"name":"temperature","amount":40},{"name":"contrast","amount":10}]'
 vixl symbol-instance Brandmark --name footer-logo --x 100 --y 800 --width 100 --height 100
 vixl irregular hero eyes --seed 7 [--strength subtle|natural|rough] [--only wobble color] [--remove]  # opt-in imperfection
 vixl tear photo --seed 3 --edges bottom [--as mask|clip|path] [--strength rough] [--rim-width 5]      # torn edge
@@ -160,7 +160,7 @@ vixl mask import LAYER --path mask.png
 
 # Effects: vixl EFFECT [LAYER] AMOUNT
 vixl brightness portrait +20 ; vixl contrast -10 ; vixl saturation +15 ; vixl hue 30
-vixl exposure 0.5 ; vixl gamma 1.1 ; vixl temperature 300 ; vixl tint 10
+vixl exposure 0.5 ; vixl gamma 1.1 ; vixl temperature 30 ; vixl tint 10 ; vixl white-balance photo --neutral '#a08070'
 vixl shadows 15 ; vixl highlights -10 ; vixl blur 8 ; vixl sharpen 2 ; vixl denoise photo --luminance 40 --chroma 60
 vixl grayscale ; vixl invert ; vixl posterize 6 ; vixl threshold 128
 vixl auto-tone photo ; vixl auto-color photo ; vixl auto-contrast photo
@@ -168,10 +168,11 @@ vixl filter noise --amount 0.08 --seed 42
 vixl filter vignette --radius 0.7 --strength 0.4
 vixl filter levels --black 15 --white 240
 vixl filter blur --radius 4 --target photo
-vixl effect disable|enable|remove LAYER EFFECT        # EFFECT = 1-based index or fx_ ID
+vixl effect disable|enable|remove LAYER EFFECT        # EFFECT = 1-based index, fx_ ID or unique name
+vixl effect move LAYER EFFECT --to top|bottom|N       # or --before EFFECT / --after EFFECT
 vixl effect set LAYER EFFECT --amount 20
 vixl preset save gritty portrait ; vixl preset show gritty ; vixl preset apply gritty other --set noise=0.03
-vixl lookup photo look --amount 0.8                  # LUT defined via a `lut` operation in apply
+vixl lookup photo look --amount 0.8                  # LUT (from a `lut` operation) added to the effect stack
 vixl layer-style title drop-shadow|stroke|outer-glow|color-overlay|gradient-overlay --settings '{...}'
 vixl layer-style title drop-shadow --remove
 ```

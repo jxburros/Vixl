@@ -27,6 +27,19 @@ NODE_KEYS = {"id", "parent", "operations", "label", "state", "delta", "squashed"
 ASSET_REFERENCE = re.compile(rb"(?:assets|masks|fonts|sources)/[0-9a-f]{64}\.[a-z0-9]{2,5}")
 
 
+def upgrade_state(state):
+    """Bring a state saved by an earlier Vixl up to date in place (and return it): a layer's
+    ``lookup`` field becomes a ``lookup`` entry at the end of its effect stack, where it rendered."""
+    for layer in state.get("layers", []):
+        old = layer.pop("lookup", None)
+        if old:
+            layer.setdefault("effects", []).append({
+                "id": f"fx_lut_{layer['id']}", "name": "lookup", "lut": old["name"],
+                "amount": old.get("amount", 1), "enabled": True, "selection": None,
+            })
+    return state
+
+
 def swatch_user(error, operations, index):
     """For an unknown-swatch error, the first operation that uses the swatch: colors resolve when
     a later operation (or the final state check) reads them, not where the reference was written."""
@@ -481,7 +494,10 @@ class Project:
             self._restore(self.redo_stack.pop())
 
     def _restore(self, node):
-        state = self._state_at(node)
+        # The head state stays as stored, so new deltas patch the stored revisions; the live state
+        # is brought up to date.
+        stored = self._state_at(node)
+        state = upgrade_state(deepcopy(stored))
         if node not in self._verified:
             # Archived history is untrusted until a revision is actually used.
             from .validation import check_state
@@ -493,7 +509,7 @@ class Project:
             self._verified.add(node)
         self.head = node
         self.state = state
-        self._head_state = deepcopy(state)
+        self._head_state = stored
         if self.current_branch:
             self.branches[self.current_branch] = node
 
@@ -527,7 +543,7 @@ class Project:
         if node == self.head:
             return self
         view = copy(self)
-        view.state = self._state_at(node)
+        view.state = upgrade_state(self._state_at(node))
         if node not in self._verified:
             from .validation import check_state
 
@@ -818,6 +834,7 @@ class Project:
                 project.path = path
                 project._head_state = None
                 project._verified = set()
+                upgrade_state(project.state)
                 check_document(project)
                 project._revision = revision
                 return project

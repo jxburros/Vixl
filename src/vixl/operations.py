@@ -100,6 +100,7 @@ OPERATION_TYPES = list(DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_T
     "effect-disable",
     "effect-enable",
     "effect-remove",
+    "effect-move",
     "rasterize",
     "variable",
     "preset-save",
@@ -113,6 +114,29 @@ def embed_font_file(project, layer):
         name = f"fonts/{hashlib.sha256(data).hexdigest()}.ttf"
         project.assets[name] = data
         layer["font"] = name
+
+
+# Settings an effect operation copies onto the stack entry (amount and value are handled apart).
+EFFECT_KEYS = ("seed", "radius", "strength", "black", "white", "points", "shadow_color", "highlight_color",
+               "gains", "neutral", "lut", *DENOISE_KEYS)
+
+
+def effect_ref(layer, ref, field):
+    """The effect in ``layer``'s stack named by ``ref``: a position starting at 1, an effect ID, or
+    an effect name used once in the stack."""
+    effects = layer["effects"]
+    if isinstance(ref, int) and not isinstance(ref, bool) or str(ref).isdigit():
+        index = int(ref) - 1
+        require(0 <= index < len(effects), "Effect index out of range (starts at 1)", field=field)
+        return effects[index]
+    found = next((x for x in effects if x["id"] == ref), None)
+    if found is None:
+        named = [x for x in effects if x["name"] == ref]
+        require(len(named) < 2, f"{len(named)} effects are named {ref}; use a position or ID", field=field)
+        found = named[0] if named else None
+    require(found, "Effect not found", field=field,
+            allowed=[f"{i}: {x['name']} ({x['id']})" for i, x in enumerate(effects, 1)])
+    return found
 
 
 def effect_valid(effect):
@@ -141,6 +165,22 @@ def effect_valid(effect):
         finite(value, "amount", 0, 100)
     elif name == "denoise":
         denoise_valid(effect)
+    elif name in ("temperature", "tint"):
+        finite(value, name, -100, 100)
+    elif name == "white-balance":
+        finite(value, "amount", 0, 100)
+        require(not ("gains" in effect and "neutral" in effect), "white-balance takes gains or neutral, not both",
+                field="gains")
+        if "gains" in effect:
+            gains = effect["gains"]
+            require(isinstance(gains, (list, tuple)) and len(gains) == 3, "gains is [red, green, blue]", field="gains")
+            for gain in gains:
+                finite(gain, "gain", 0, 16)
+        if "neutral" in effect:
+            color(effect["neutral"])
+    elif name == "lookup":
+        finite(value, "amount", 0, 1)
+        require(isinstance(effect.get("lut"), str), "A lookup effect names its LUT in lut", field="lut")
     elif name == "gamma":
         finite(value, "gamma", 0.01, 100)
     elif name == "exposure":
@@ -787,48 +827,68 @@ def execute(project, op):
             else:
                 raise VixlError("invalid_mask", f"Unknown mask action: {action}")
     elif kind in ("effect", *EFFECTS):
-        from .constants import ARTISTIC_DEFAULTS
+        from .constants import EFFECT_DEFAULTS, STACK_EFFECTS
 
         name = op["name"] if kind == "effect" else kind
         require(len(layer["effects"]) < 256, "Effect limit reached", "resource_limit")
         effect = {
             "id": uid("fx"),
             "name": name,
-            "amount": op.get("amount", op.get("value", ARTISTIC_DEFAULTS.get(name, 0))),
+            "amount": op.get("amount", op.get("value", EFFECT_DEFAULTS.get(name, 0))),
             "enabled": True,
             "selection": project.state["selection"],
         }
-        for key in ("seed", "radius", "strength", "black", "white", "points", "shadow_color", "highlight_color",
-                    *DENOISE_KEYS):
+        for key in EFFECT_KEYS:
             if key in op:
                 effect[key] = op[key]
         effect_valid(effect)
-        if name not in EFFECTS:
+        if name == "lookup":
+            require("lut" in effect, "A lookup effect names its LUT in lut", field="lut")
+            require(effect["lut"] in project.state.get("luts", {}), f"Unknown LUT: {effect['lut']}", field="lut")
+        if name not in STACK_EFFECTS:
             from .plugins import filter_plugin
 
             filter_plugin(name)
         layer["effects"].append(effect)
     elif kind.startswith("effect-"):
-        ref = op["effect"]
-        if isinstance(ref, int) or str(ref).isdigit():
-            index = int(ref) - 1
-            require(0 <= index < len(layer["effects"]), "Effect index out of range (starts at 1)")
-            effect = layer["effects"][index]
-        else:
-            effect = next((x for x in layer["effects"] if x["id"] == ref), None)
-            require(effect, "Effect not found")
+        effect = effect_ref(layer, op["effect"], "effect")
         if kind == "effect-remove":
             layer["effects"].remove(effect)
+        elif kind == "effect-move":
+            effects = layer["effects"]
+            places = [key for key in ("to", "before", "after") if key in op]
+            require(len(places) == 1, "effect-move takes exactly one of to, before or after", field="to")
+            effects.remove(effect)
+            if "to" in op:
+                to = op["to"]
+                if to in ("top", "first"):
+                    index = 0
+                elif to in ("bottom", "last"):
+                    index = len(effects)
+                else:
+                    require(
+                        isinstance(to, int) and not isinstance(to, bool) or str(to).isdigit(),
+                        "to is a position (starting at 1), top or bottom",
+                        field="to",
+                    )
+                    index = int(to) - 1
+                    require(0 <= index <= len(effects), "Effect position out of range (starts at 1)", field="to")
+            else:
+                place = places[0]
+                anchor = effect_ref({"effects": effects}, op[place], place)
+                index = effects.index(anchor) + (place == "after")
+            effects.insert(index, effect)
         elif kind in ("effect-enable", "effect-disable"):
             effect["enabled"] = kind == "effect-enable"
         elif kind == "effect-set":
             if "value" in op and "amount" not in op:
                 op["amount"] = op["value"]
-            for key in ("amount", "seed", "radius", "strength", "black", "white", "points", "shadow_color", "highlight_color",
-                        *DENOISE_KEYS):
+            for key in ("amount", *EFFECT_KEYS):
                 if key in op:
                     effect[key] = op[key]
             effect_valid(effect)
+            if effect["name"] == "lookup":
+                require(effect["lut"] in project.state.get("luts", {}), f"Unknown LUT: {effect['lut']}", field="lut")
         else:
             raise VixlError("unknown_operation", f"Unknown operation: {kind}")
     elif kind == "rasterize":
@@ -861,7 +921,7 @@ def execute(project, op):
 
             removed = descendants(project, layer["id"])
             layers[:] = [item for item in layers if item["id"] not in removed]
-        for key in ("text", "font", "size", "auto_size", "crop", "linked", "repeat", "lookup"):
+        for key in ("text", "font", "size", "auto_size", "crop", "linked", "repeat"):
             layer.pop(key, None)
     elif kind == "preset-save":
         project.state["presets"][op["name"]] = deepcopy(layer["effects"])

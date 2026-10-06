@@ -888,7 +888,7 @@ Example workflow:
 ```bash
 vixl contrast +12
 vixl saturation -8
-vixl temperature +300
+vixl temperature +30
 vixl grain 0.07
 vixl vignette 0.15
 

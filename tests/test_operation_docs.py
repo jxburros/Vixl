@@ -98,6 +98,8 @@ def test_every_example_validates_and_applies(stage, kind, index, op):
             candidate.apply({"type": "remove", "target": created})
     if kind == "palette-apply":
         candidate.apply({"type": "palette-define", "name": op["name"], "colors": ["#0b132b", "#1c2541", "#3a506b", "#5bc0be"]})
+    if kind == "effect-move":
+        candidate.apply([{"type": name, "target": "photo"} for name in ("blur", "brightness", "grain")])
     result = candidate.apply(op, detail="compact")
     assert result["success"]
 
