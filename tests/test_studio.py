@@ -469,8 +469,8 @@ def test_compact_mcp_has_small_complete_workflow_surface(session):
     server = build_server(session, tools="compact", schema="slim")
     tools = asyncio.run(server.list_tools())
     names = {tool.name for tool in tools}
-    assert len(names) <= 12
-    assert {"vixl_operations_apply", "vixl_workflow", "vixl_workflow_schema", "vixl_export_file"} <= names
+    assert len(names) <= 13
+    assert {"vixl_operations_apply", "vixl_workflow", "vixl_workflow_schema", "vixl_export_file", "vixl_compose"} <= names
     result = asyncio.run(
         server.call_tool("vixl_workflow", {"action": "resource-list", "request": {"kind": "workflows"}})
     )

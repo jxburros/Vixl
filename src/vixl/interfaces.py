@@ -158,19 +158,28 @@ class Session:
             self.make_parent(resolved)
             with file_lock(str(resolved)):
                 require(not resolved.exists(), "Destination already exists; open it instead", field="path")
-                if size is not None:
-                    project = Project.sized(size, background, limits=self.limits, dpi=dpi, orientation=orientation, bleed=bleed)
-                else:
-                    require(not (orientation or bleed), "orientation and bleed need a named size", field="size")
-                    project = Project(width, height, background, limits=self.limits)
-                    if dpi:
-                        project.apply({"type": "canvas", "dpi": dpi})
-                from .variety import document_defaults
-
-                document_defaults(project, seed=seed, variety=variety, workspace=self.workspace)
+                project = self.new_project(width, height, background, size=size, dpi=dpi, orientation=orientation,
+                                           bleed=bleed, seed=seed, variety=variety)
                 project.save(resolved)
                 self._remember(resolved, project, self.stamp(resolved))
             return self.summary(project)
+
+    def new_project(self, width=None, height=None, background="transparent", *, size=None, dpi=None, orientation=None,
+                    bleed=False, seed=None, variety=None):
+        """An unsaved document as ``create`` makes it: from a named size or width/height, with the workspace's
+        design defaults."""
+        require((size is None) != (width is None or height is None), "Provide width and height, or a named size", field="size")
+        if size is not None:
+            project = Project.sized(size, background, limits=self.limits, dpi=dpi, orientation=orientation, bleed=bleed)
+        else:
+            require(not (orientation or bleed), "orientation and bleed need a named size", field="size")
+            project = Project(width, height, background, limits=self.limits)
+            if dpi:
+                project.apply({"type": "canvas", "dpi": dpi})
+        from .variety import document_defaults
+
+        document_defaults(project, seed=seed, variety=variety, workspace=self.workspace)
+        return project
 
     def make_parent(self, path):
         """Create the missing directories above ``path`` (always inside the workspace: ``resolve``
@@ -719,6 +728,22 @@ def create_app(path, *, token=None, limits=None):
                    "guides", "page", "values", "show_fields"}
         require(not set(options) - allowed, f"Preview accepts {sorted(allowed)}", field="body")
         return Response(preview(session, **options), media_type="image/png")
+
+    @app.post("/compose")
+    def compose_piece(body: dict):
+        """vixl_compose as a dry run: this server serves one fixed document, so it builds, checks and previews the
+        piece without saving it (use MCP or the CLI to write it)."""
+        import base64
+        from .compose import compose
+
+        options = fixed(body)
+        require(not options.get("exports") and options.get("dry_run", True) is True
+                and not {"path", "operations_path"} & set(options),
+                "REST compose is a dry run (no path or exports); use vixl_compose or vixl compose to save", "forbidden")
+        result, image = compose(session, **{**options, "dry_run": True})
+        if image is not None:
+            result["preview_base64"] = base64.b64encode(image).decode()
+        return result
 
     @app.post("/compare")
     def compare_revisions(body: dict):

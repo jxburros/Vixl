@@ -343,7 +343,8 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
             "when the brief names a style, vixl_styles; 5) vixl_check → fix the 'fix' findings, glance at 'review' → "
             "vixl_render_preview (region= to zoom) → vixl_export_file. Typical loop: vixl_document_create/open → "
             "vixl_operations_apply (atomic batches; dry_run to test; check=true and preview=true return the vixl_check "
-            "findings and a small preview in the same call) → vixl_export_file. Use layer IDs or "
+            "findings and a small preview in the same call) → vixl_export_file; vixl_compose runs that whole chain for a new "
+            "piece in one atomic call. Use layer IDs or "
             "names from results. Batches accept up to 10,000 operations atomically. Path coordinates are literal local pixels; "
             "use path-fit to scale geometry into its box. vixl_capabilities(topic) lists relevant fields and gotchas. " + COORDINATE_NOTE + " Errors are JSON with error, message, field, "
             "operation_index and suggestions; a batch with several invalid operations lists them all under errors. Paths are relative to the workspace; imports accept a path or "
@@ -364,9 +365,10 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
 
     def selected(name):
         if tools == "compact":
-            # The compact set stays at 12 tools: job ids are polled through vixl_workflow instead of vixl_job.
+            # The compact set stays at 13 tools: job ids are polled through vixl_workflow instead of vixl_job.
             return name in (SHARED_TOOLS - {"vixl_job"}) | {"vixl_document_create", "vixl_operations_apply", "vixl_operation_schema",
-                "vixl_workflow", "vixl_workflow_schema", "vixl_export_file", "vixl_import_image", "vixl_import_document"}
+                "vixl_workflow", "vixl_workflow_schema", "vixl_export_file", "vixl_import_image", "vixl_import_document",
+                "vixl_compose"}
         if tools == "all" or name in SHARED_TOOLS:
             return True
         return is_ai_tool(name) == (tools == "ai")
@@ -939,6 +941,43 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         from .export_batch import export_batch
 
         return export_batch(session, export_file, targets, defaults, overwrite, stop_on_error, document)
+
+    @tool
+    def vixl_compose(
+        path: Annotated[str | None, Field(description="New .vixl to write (omit with dry_run)")] = None,
+        size: Annotated[str | None, Field(description="Named size (vixl_sizes_list), or give width and height")] = None,
+        width: Positive | None = None,
+        height: Positive | None = None,
+        background: str = "transparent",
+        font_pairing: Annotated[str | None, Field(description="vixl_font_pair name or 'random'")] = None,
+        layout: Annotated[dict | None, Field(description="layout-apply fields: {name, seed?, title, subtitle, …}")] = None,
+        style: Annotated[str | None, Field(description="Style to tag (vixl_styles)")] = None,
+        look: Annotated[dict | list[dict] | None, Field(description="{look, target?, color?, amount?} or a list")] = None,
+        operations: Annotated[list[Operation] | None, Field(max_length=Limits().max_operations)] = None,
+        operations_path: Annotated[str | None, Field(description="Workspace .json/.jsonl of operations")] = None,
+        check: Annotated[bool | list[str], Field(description="vixl_check the result (true, or check names)")] = True,
+        strict: Annotated[bool, Field(description="Fail, saving nothing, when check has 'fix' findings")] = False,
+        preview: Annotated[bool | dict | None, Field(description="true or {page, region, max_width, max_height, time}")] = None,
+        exports: Annotated[list[str | dict] | None, Field(description="Paths or vixl_export_batch targets", max_length=64)] = None,
+        overwrite: Annotated[bool, Field(description="Exports may replace files")] = False,
+        dry_run: bool = False,
+        dpi: Annotated[float | None, Field(ge=36, le=2400)] = None,
+        orientation: Literal["portrait", "landscape"] | None = None,
+        bleed: bool | float = False,
+        seed: int | None = None,
+    ) -> dict | list:
+        """Build a whole piece in one call: create → font pairing → layout → style → look → operations → check →
+        preview → save → exports. Atomic: nothing is saved or exported unless every step succeeds; an error
+        names its step. Use it for a new piece; edit existing documents with vixl_operations_apply."""
+        from .compose import compose
+
+        create = {key: value for key, value in (("size", size), ("width", width), ("height", height),
+                  ("background", background), ("dpi", dpi), ("orientation", orientation), ("bleed", bleed),
+                  ("seed", seed)) if value is not None}
+        result, image = compose(session, path=path, font_pairing=font_pairing, layout=layout, style=style, look=look,
+                                operations=operations, operations_path=operations_path, check=check, strict=strict,
+                                preview=preview, exports=exports, overwrite=overwrite, dry_run=dry_run, **create)
+        return result if image is None else [result, Image(data=image, format="png")]
 
     @tool
     def vixl_adapt_layout(

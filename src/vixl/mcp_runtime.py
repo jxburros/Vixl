@@ -51,12 +51,14 @@ RETRYABLE = {
     "vixl_document_create", "vixl_document_close", "vixl_template_create", "vixl_export_file",
     "vixl_export_batch", "vixl_export_timeline", "vixl_export_animation", "vixl_export_icons",
     "vixl_font_pair", "vixl_font_install", "vixl_history", "vixl_workflow", "vixl_roll", "vixl_adapt_layout",
+    "vixl_compose",
 }
 # Tools worth running as a job: heavy renders, exports, imports, large batches and provider calls.
 JOB_TOOLS = {
     "vixl_operations_apply", "vixl_import_image", "vixl_import_document", "vixl_export_file",
     "vixl_export_batch", "vixl_export_timeline", "vixl_export_animation", "vixl_export_icons",
     "vixl_font_pair", "vixl_font_install", "vixl_workflow", "vixl_roll", "vixl_check", "vixl_adapt_layout",
+    "vixl_compose",
 }
 NO_EXTRAS = {"vixl_job"}
 
