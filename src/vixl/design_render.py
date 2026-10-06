@@ -40,7 +40,10 @@ def gradient_image(project, layer, size):
 
 def shape_image(project, layer):
     from .render import color
+    from .trim import trim_range, trimmed_image
 
+    if trim_range(layer):
+        return trimmed_image(project, layer)
     w, h = layer["width"], layer["height"]
     if layer["shape"] == "path":
         # SVG's nonzero winding preserves holes in compound imported logo paths.

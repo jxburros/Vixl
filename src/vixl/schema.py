@@ -166,7 +166,12 @@ def _operation_schema():
         },
         anyOf=[{"required": ["width"]}, {"required": ["height"]}],
     )
-    add("scale", {"value": {"type": "number", "exclusiveMinimum": 0}}, ["value"])
+    # A negative factor mirrors: value flips both axes, x or y just that one (scale x: -1 = flip horizontal).
+    scale = {"type": "number", "description": "Size factor, 0.001-100 (0.8 = 80%). Negative values mirror the layer on that axis."}
+    add("scale", {"value": {**scale, "description": "Size factor for both axes, 0.001-100 (0.8 = 80%). Negative mirrors both axes."},
+                  "x": {**scale, "description": "Horizontal factor, overriding value. Negative mirrors horizontally, like flip."},
+                  "y": {**scale, "description": "Vertical factor, overriding value. Negative mirrors vertically."}},
+        anyOf=[{"required": ["value"]}, {"required": ["x"]}, {"required": ["y"]}])
     add("rotate", {"value": N}, ["value"])
     # value: [x, y] fractions of the unrotated box (0.5, 0.5 = center) or an anchor such as "top-left".
     add("pivot", {"value": {"type": ["array", "string"], "items": N}, "units": enum("fraction", "px"), "clear": B})

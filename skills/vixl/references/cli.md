@@ -78,7 +78,8 @@ vixl gradient --name sky --start '#152641' --end '#635e83' --direction vertical|
 vixl gradient --name sky --direction angled --angle 35 --stops '[{"offset":0,"color":"#152235"},{"offset":1,"color":"#e8885c"}]'
 vixl text add 'Hello' --name title --size 96 --color white [--font path.ttf] [--align center] [--spacing 8] [--x center --y 120]
 vixl shape rectangle|rounded-rectangle|ellipse|polygon|star|line --name s --width W --height H [--x --y] \
-     [--fill C] [--stroke C] [--stroke-width N] [--radius N] [--sides N] [--inner-radius 0.4]
+     [--fill C] [--stroke C] [--stroke-width N] [--radius N] [--sides N] [--inner-radius 0.4] \
+     [--line-cap butt|round|square] [--trim-start PCT] [--trim-end PCT]
 vixl frame --path portrait.jpg --name photo --width 400 --height 500 --fit fill|fit [--asset ID]
 vixl pixel-art --name sprite --width 16 --height 16 [--palette '{".":"transparent","g":"#ffc44d"}'] [--background .]
 vixl pixel-art --name spark --rows '[".w.","www",".w."]' --palette '{".":"transparent","w":"#fff"}'
@@ -101,6 +102,7 @@ vixl resize portrait 800x600 ; vixl resize portrait --width 800 [--keep-aspect] 
 vixl rotate portrait 15                  # clockwise degrees about the pivot (default: center)
 vixl pivot arm 0.5 0.05                  # fractions of the box; pivot arm top | pivot arm 8 2 --px | pivot arm --clear
 vixl flip portrait horizontal|vertical
+vixl scale beam --x -1                   # negative factors mirror (--x/--y per axis, or a bare -1 for both)
 vixl crop portrait 0 0 300 400           # X Y W H in the source raster
 vixl opacity portrait 0.75               # or 75 (1–100 = percent)
 vixl blend portrait multiply             # normal multiply screen overlay darken lighten difference add subtract

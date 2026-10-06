@@ -106,8 +106,33 @@ class Exporter:
             stroke_width=layer.get("stroke_width", 1),
         )
 
+    def trimmed(self, parent, layer, attrs):
+        """A shape whose stroke is trimmed: the fill whole, and one dashed stroke per contour."""
+        from .trim import trim_geometry
+
+        geometry = trim_geometry(layer, attrs["stroke_opacity"] > 0)
+        view = geometry["view"]
+        target = parent
+        if view:
+            target = node(parent, "svg", width=layer["width"], height=layer["height"], viewBox=f"0 0 {view[0]} {view[1]}",
+                          preserveAspectRatio="none")
+        if geometry["fill"] and attrs["fill_opacity"] > 0:
+            node(target, "path", d=geometry["fill"], fill=attrs["fill"], fill_opacity=attrs["fill_opacity"], stroke="none")
+        stroke, opacity = attrs["stroke"], attrs["stroke_opacity"]
+        if geometry["line"] and not opacity:
+            stroke, opacity = attrs["fill"], attrs["fill_opacity"]
+        if opacity > 0 and geometry["width"] > 0:
+            for d, dash, offset in geometry["strokes"]:
+                node(target, "path", d=d, fill="none", stroke=stroke, stroke_opacity=opacity, stroke_width=geometry["width"],
+                     stroke_dasharray=dash, stroke_dashoffset=offset, stroke_linecap=geometry["cap"],
+                     stroke_linejoin=geometry["join"])
+
     def shape(self, parent, layer):
+        from .trim import trim_range
+
         attrs = self.attrs(layer)
+        if trim_range(layer):
+            return self.trimmed(parent, layer, attrs)
         sw, sh = layer["width"], layer["height"]
         shape = layer.get("shape", "rectangle")
         if shape in ("rectangle", "rounded-rectangle", "capsule"):

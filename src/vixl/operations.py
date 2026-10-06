@@ -559,8 +559,19 @@ def execute(project, op):
     elif kind in ("resize", "scale"):
         w, h = layer["width"], layer["height"]
         if kind == "scale":
-            factor = finite(op["value"], "scale", 0.001, 100)
-            w, h = max(1, round(w * factor)), max(1, round(h * factor))
+            # A negative factor mirrors that axis (value: both axes) and scales by its size.
+            require(any(key in op for key in ("value", "x", "y")), "Scale requires value, x or y", field="value")
+            both = op.get("value", 1)
+            factors = {"value": both, "x": op.get("x", both), "y": op.get("y", both)}
+            for name, factor in factors.items():
+                finite(factor, f"scale {name}")
+                require(0.001 <= abs(factor) <= 100, f"scale {name} must be 0.001–100 in size (negative mirrors); got {factor}", field=name)
+            if factors["x"] < 0 or factors["y"] < 0:
+                require(layer["type"] != "field", "Negative scale mirrors the layer; PDF form fields are upright rectangles", field="target")
+            for axis, key in (("x", "flip_x"), ("y", "flip_y")):
+                if factors[axis] < 0:
+                    layer[key] = not layer[key]
+            w, h = max(1, round(w * abs(factors["x"]))), max(1, round(h * abs(factors["y"])))
         else:
             require("width" in op or "height" in op, "Resize requires width or height")
             one_side = ("width" in op) != ("height" in op)

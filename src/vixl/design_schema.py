@@ -41,6 +41,8 @@ def schemas(add):
     obj = {"type": "object"}
     geometry = {"name": S, "width": SIZE, "height": SIZE, "x": COORD, "y": COORD}
     board = {"name": S, "width": POSITIVE_INT, "height": POSITIVE_INT, "x": N, "y": N}
+    from .trim import schema as trim_schema
+
     add(
         "shape",
         {
@@ -54,6 +56,7 @@ def schemas(add):
             "radius": N,
             "sides": POSITIVE_INT,
             "inner_radius": N,
+            **trim_schema(),
         },
         anyOf=[{"required": ["shape"]}, {"required": ["target"]}],
     )

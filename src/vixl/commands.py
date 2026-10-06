@@ -127,6 +127,9 @@ def compile_command(tokens):
             p.add_argument("--tension", type=float)
             p.add_argument("--corners", type=json.loads)
             p.add_argument("--stroke-width", type=float)
+            p.add_argument("--trim-start", type=float, help="Draw the stroke from this percent of its length (animatable)")
+            p.add_argument("--trim-end", type=float, help="Draw the stroke up to this percent of its length (animatable)")
+            p.add_argument("--line-cap", choices=["butt", "round", "square"])
         else:
             p.add_argument("resource")
             p.add_argument("--target", required=cmd == "container-swap")
@@ -225,9 +228,11 @@ def compile_command(tokens):
         p.add_argument("--keep-aspect", action=argparse.BooleanOptionalAction, default=None,
                        help="with one dimension: scale the other side proportionally, or (--no-keep-aspect) leave it; "
                        "default: proportional for images, leave it for everything else")
+        p.add_argument("--x", type=float, help="scale: horizontal factor; negative mirrors (scale beam --x -1)")
+        p.add_argument("--y", type=float, help="scale: vertical factor; negative mirrors")
         data = vars(p.parse_args(args))
         values = data.pop("values")
-        if values and not re.fullmatch(r"\d+(?:\.\d+)?%|\d+[x×]\d+|\d+(?:\.\d+)?", values[0]):
+        if values and not re.fullmatch(r"-?\d+(?:\.\d+)?%|\d+[x×]\d+|-?\d+(?:\.\d+)?", values[0]):
             data["target"] = values.pop(0)
         if values:
             require(len(values) in (1, 2), "Invalid resize arguments")
@@ -238,6 +243,8 @@ def compile_command(tokens):
             else:
                 data["value"] = float(values[0].rstrip("%")) / (100 if values[0].endswith("%") else 1)
                 op["type"] = "scale"
+        if data.get("x") is not None or data.get("y") is not None:
+            op["type"] = "scale"
         if data.get("width") is not None or data.get("height") is not None:
             op["type"] = "resize"
         if op["type"] != "resize":

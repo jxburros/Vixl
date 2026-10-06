@@ -16,8 +16,9 @@ def compile_design(cmd, args):
         p.add_argument("--path")
         for key in ("fill", "stroke"):
             p.add_argument("--" + key)
-        for key in ("stroke-width", "radius", "inner-radius"):
+        for key in ("stroke-width", "radius", "inner-radius", "trim-start", "trim-end"):
             p.add_argument("--" + key, type=float)
+        p.add_argument("--line-cap", choices=["butt", "round", "square"])
         p.add_argument("--sides", type=int)
     elif cmd in ("group", "pathfinder"):
         p.add_argument("name")

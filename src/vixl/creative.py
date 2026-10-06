@@ -7,10 +7,12 @@ from .errors import require
 from .model import finite
 
 TYPES = ("pen",)
+TRIM_FIELDS = ("trim_start", "trim_end", "line_cap")  # Stroke trim and caps, shared with shape.
 
 
 def schemas(add):
     from .schema import S, N, B, SIZE, COORD
+    from .trim import schema as trim_schema
 
     point = {"type": "array", "items": N, "minItems": 2, "maxItems": 2}
     node = {
@@ -32,6 +34,7 @@ def schemas(add):
             "fill": S,
             "stroke": S,
             "stroke_width": N,
+            **trim_schema(),
             "width": SIZE,
             "height": SIZE,
             "x": COORD,
@@ -183,7 +186,7 @@ def execute(project, op):
     if op.get("target"):
         layer = project.layer(op["target"])
         require(layer["type"] == "shape" and layer["shape"] == "path", "Pen editing needs a path layer")
-        for key in ("fill", "stroke", "stroke_width"):
+        for key in ("fill", "stroke", "stroke_width", *TRIM_FIELDS):
             if key in op:
                 layer[key] = op[key]
         if "pen_origin" in layer and "width" not in op and "height" not in op:
@@ -203,7 +206,7 @@ def execute(project, op):
             require_inside(op, *layer["path_view"])
             layer["pen_origin"] = [0, 0]
         return
-    fields = {k: op[k] for k in ("name", "fill", "stroke", "stroke_width", "x", "y", "width", "height") if k in op}
+    fields = {k: op[k] for k in ("name", "fill", "stroke", "stroke_width", *TRIM_FIELDS, "x", "y", "width", "height") if k in op}
     boxed = "width" in op or "height" in op
     if boxed:
         path, origin = pen_path(op), (0, 0)
