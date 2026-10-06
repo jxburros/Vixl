@@ -1142,9 +1142,10 @@ def label_text(view, layer, resolved=None):
         if target is None:
             target = next((item for item in view.state["layers"] if item["id"] == record["label_layer"]), None)
         if target and target.get("type") == "text":
-            from .render import substitute
+            from .variables import substitute, with_maps
 
-            return plain_label(substitute(target.get("text", ""), view.state.get("variables", {})))
+            return plain_label(substitute(target.get("text", ""), with_maps(view.state.get("variables", {}),
+                                                                            view.state.get("maps"))))
     return ""
 
 

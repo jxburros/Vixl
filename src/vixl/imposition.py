@@ -32,7 +32,6 @@ MARK_KEYS = ("length", "offset", "weight")
 UNITS = ("in", "mm", "cm", "pt")
 MAX_ITEMS = 5000
 MAX_PAGES = 500
-VARIABLE = re.compile(r"\$\{([\w-]+)\}")
 NAME = re.compile(r"[\w-]+")
 BUILTINS = ("page", "pages", "page_name")
 SCANNED = ("layers", "swatches", "character_styles", "paragraph_styles", "canvas")
@@ -339,7 +338,9 @@ def template_variables(view):
     from .forms import all_fields, has_fields
 
     state = view.state
-    used = set(VARIABLE.findall(json.dumps({key: state.get(key) for key in SCANNED}, default=str)))
+    from .variables import names, strings
+
+    used = {name for key in SCANNED for text in strings(state.get(key)) for name in names(text)}
     images = {layer["asset_variable"] for layer in state.get("layers", []) if layer.get("asset_variable")}
     defaults = set(state.get("variables", {})) - set(BUILTINS)
     fields = {layer["field"]["key"] for _, layer in all_fields(view)} if has_fields(view) else set()

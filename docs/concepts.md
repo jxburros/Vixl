@@ -73,6 +73,15 @@ allow content changes without rebuilding geometry; render overrides leave the sa
 unchanged. Undefined variables fail rather than silently becoming blank. Font roles,
 linked text styles and palettes let repeated elements follow shared choices.
 
+Placeholders take filters, applied left to right: `${name|upper}`, `lower`, `title`,
+`${company|default:Independent}` (used when the variable is undefined or empty),
+`${state|map:states}` (looks the value up in a document map defined with `variable-map`; a `"*"`
+entry catches values the map does not list), `${price|number:2}` (thousands separators, 2
+decimals) and `${seat|format:03d}` (a Python format spec). An unknown filter or an undefined map is a
+validation error. Text, colours (`${tier|map:tier_colors}`), link variables and merge-impose
+templates all substitute the same way, and `inspect` lists every placeholder with its filters under
+`placeholders`.
+
 Pages share canvas dimensions and resources but have their own layers and settings.
 Masters draw underneath pages that use them. Artboards offer alternate canvases or subsets;
 timeline frames are poses over time; pixel frames are saved sprite states. Choose the model

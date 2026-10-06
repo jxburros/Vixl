@@ -43,7 +43,6 @@ MAX_RENDER_SCALE = 8
 OK, STALE, MISSING, ERROR, CYCLE, FORBIDDEN = "ok", "stale", "missing", "error", "cycle", "forbidden"
 BROKEN = (MISSING, ERROR, CYCLE, FORBIDDEN)
 
-VARIABLE = re.compile(r"\$\{([\w-]+)\}")
 _LOCK = threading.RLock()
 _SOURCES = OrderedDict()  # (path, allow_linked) -> (stamp, revision, Project, asset bytes)
 _RENDERS = []  # one LayerCache of drawn sources, created on first use (render.py imports this module lazily)
@@ -212,10 +211,11 @@ def _variables(value):
 
 def _references(project, values):
     from .render import document_variables
+    from .variables import required_names
 
     known = document_variables(project)
     for name, value in values.items():
-        for reference in VARIABLE.findall(value) if isinstance(value, str) else ():
+        for reference in required_names(value):
             require(reference in known, f"Undefined variable: {reference} (in the link variable {name!r})", "missing_variable",
                     field="variables")
 

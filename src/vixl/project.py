@@ -241,6 +241,11 @@ class Project:
 
         if link_layers(self.state):
             state["links"] = link_status(self)
+        from .variables import listing as placeholder_listing
+
+        placeholders = placeholder_listing(self)
+        if placeholders:
+            state["placeholders"] = placeholders
         return {
             **state,
             "version": __version__,

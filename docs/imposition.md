@@ -27,6 +27,11 @@ sample value for each variable (that is how it measures and previews); they are 
 refuses to print them by accident (see [Validation](#validation)). Use `page`/`artboard` to merge one page or
 artboard of a larger document; an artboard is then the item, with no bleed.
 
+Placeholders may carry filters (`${first_name|upper}`, `${company|default:Independent}`,
+`${state|map:states}`; see [concepts](concepts.md#variables-swatches-and-styles)). The column is matched by
+the name before the first `|`, and the filters run on each copy's value, so one CSV can feed upper-case name
+lines and a mapped colour.
+
 Image variables (`replace-contents --variable photo`) take a file name in the CSV: an image next to the CSV
 or in the workspace, never outside it.
 

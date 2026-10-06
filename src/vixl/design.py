@@ -397,7 +397,9 @@ def resolve_color(value, state, variables=None):
 
     from .colors import MAX_DEPTH, resolve_expression
 
-    variables = {**state["variables"], **(variables or {})}
+    from .variables import with_maps
+
+    variables = with_maps({**state["variables"], **(variables or {})}, state.get("maps"))
     swatches = state.get("swatches", {})
     # A swatch may be defined from a variable (${brand}) and a variable may name a swatch, so
     # expand both until neither is left.

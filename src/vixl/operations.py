@@ -103,6 +103,7 @@ OPERATION_TYPES = list(DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_T
     "effect-move",
     "rasterize",
     "variable",
+    "variable-map",
     "preset-save",
     "preset-apply",
 ]
@@ -581,6 +582,11 @@ def execute(project, op):
         else:
             require(isinstance(op["value"], (str, int, float, bool)), "Variables must be scalar values")
             project.state["variables"][op["name"]] = op["value"]
+        return
+    if kind == "variable-map":
+        from .variables import execute_map
+
+        execute_map(project, op)
         return
     layer = project.layer(target)
     layers = project.state["layers"]

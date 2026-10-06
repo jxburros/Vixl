@@ -328,6 +328,8 @@ def _operation_schema():
         )
     add("effect-move", {"effect": ref, "to": ref, "before": ref, "after": ref}, ["effect"])
     add("variable", {"name": S, "value": {"type": ["string", "number", "boolean"]}, "delete": B}, ["name"])
+    add("variable-map", {"name": S, "values": {"type": "object", "additionalProperties": {"type": ["string", "number", "boolean"]}},
+                         "merge": B, "delete": B}, ["name"])
     add("preset-save", {"name": S}, ["name"])
     add(
         "preset-apply",

@@ -16,6 +16,7 @@ from .assets import decode, read_bounded
 from .constants import EFFECTS as EFFECTS
 from .errors import VixlError, require
 from .model import finite
+from .variables import substitute as substitute, with_maps
 
 BLENDS = ("normal", "multiply", "screen", "overlay", "darken", "lighten", "difference", "add", "subtract")
 CANVAS_PRESETS = {
@@ -74,17 +75,6 @@ def color(value):
             "color(display-p3 …), color-mix() or a function such as lighten(@swatch, 10%)",
             requested=value,
         ) from exc
-
-
-def substitute(value, variables):
-    if isinstance(value, str):
-
-        def replace(match):
-            require(match[1] in variables, f"Undefined variable: {match[1]}", "missing_variable")
-            return str(variables[match[1]])
-
-        return re.sub(r"\$\{([\w-]+)\}", replace, value)
-    return value
 
 
 def font_for(project, layer):
@@ -154,10 +144,12 @@ def document_variables(project):
     """The document's variables, plus each form field's current value under its key."""
     from .forms import current_values, has_fields
 
+    maps = project.state.get("maps")
     if not has_fields(project):
-        return project.state.get("variables", {})
+        return with_maps(project.state.get("variables", {}), maps)
     fields = current_values(project)
-    return {**{key: display for key, (_, display) in fields.items()}, **project.state.get("variables", {})}
+    return with_maps({**{key: display for key, (_, display) in fields.items()}, **project.state.get("variables", {})},
+                     maps)
 
 
 def text_metrics(project, layer, variables=None):

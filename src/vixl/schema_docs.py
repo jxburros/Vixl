@@ -95,7 +95,8 @@ SUMMARIES = {
     "effect-move": "Reorder a layer's effect stack: move one effect to a position, to the top or bottom, or before/after another.",
     "preset-save": "Save a layer's effect stack as a named preset.",
     "preset-apply": "Add a saved effect preset to a layer, optionally overriding amounts.",
-    "variable": "Set or delete a document variable used as ${name} in text, colors and images.",
+    "variable": "Set or delete a document variable used as ${name} (or ${name|upper|default:TEXT|map:NAME ...}) in text, colors and images.",
+    "variable-map": "Define, extend or delete a named value map that ${name|map:NAME} placeholders look values up in.",
     "swatch": "Define a named color (used as @name) that can build on other swatches.",
     "palette-define": "Define a named palette of 2-256 colors.",
     "palette-apply": "Apply a palette: adds numbered swatches and assigns role swatches (background, ink, accent …).",
@@ -433,6 +434,10 @@ OVERRIDES = {
                     "before": "Place it just before this effect (ID, position or name).",
                     "after": "Place it just after this effect (ID, position or name)."},
     "variable": {"name": "Variable name (letters, digits, - and _).", "value": "String, number or boolean value."},
+    "variable-map": {"name": "Map name (letters, digits, - and _), used as ${variable|map:NAME}.",
+                     "values": "{value: replacement} entries; a '*' entry is used for values the map does not list.",
+                     "merge": "true adds to or overrides the existing entries instead of replacing the map.",
+                     "delete": "true removes the map (placeholders that still use it become an error)."},
     "preset-save": {"name": "Preset name."},
     "preset-apply": {"name": "Saved preset.", "overrides": "{effect name: amount} replacements."},
     "shape": {"shape": "rectangle, rounded-rectangle, ellipse, polygon, star, line, triangle, right-triangle, "
@@ -656,6 +661,9 @@ OVERRIDES = {
 }
 
 EXAMPLES = {
+    "variable-map": [
+        {"type": "variable-map", "name": "state", "values": {"NY": "New York", "CA": "California", "*": "Elsewhere"}},
+    ],
     "gradient": [
         {"type": "gradient", "name": "sky", "start": "#1e3a8a", "end": "#7dd3fc", "direction": "vertical"},
         {"type": "gradient", "name": "glow-disc", "width": 400, "height": 400, "start": "#fde68a",
