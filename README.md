@@ -136,6 +136,10 @@ python -m pip install -e '.[dev]'
 python examples/build_documentation.py
 python examples/build_poster.py --output examples/output
 python examples/build_sprite.py --output examples/output/sprite
+python examples/build_filter_gallery.py
+python examples/build_organic_gallery.py
+python examples/build_irregular_gallery.py
+python examples/build_drawing_pipeline.py
 python -m pytest -q
 ```
 

@@ -13,9 +13,10 @@ brush work: watercolor sky washes, dry-brush and ink grass tufts, chalk pebbles,
 grime clipped to Pip's torso. The script exports the walk as a GIF and a sprite sheet. It then uses
 the production `film-plan` / `film-export` workflow to cut an establishing shot, the walk and a
 soft-focus wave close-up into an MP4. The film has camera moves, crossfades, captions and a
-synthesized sine-wave score with footstep ticks.
+synthesized sine-wave score with footstep ticks. The project was first built with Vixl 0.16.0; the
+committed outputs are rebuilt with 0.20.0.
 
-Run from the repo root (took about 9–12 minutes, mostly the film render; about 2 minutes with the fixes in the [changelog](../../CHANGELOG.md)):
+Run from the repo root (about 2 min 5 s with 0.20.0 on a shared 4-core container, 100 s of it the film render; about 9–12 minutes with 0.16.0):
 
 ```bash
 python explorations/10-character-film/build.py            # everything
@@ -78,7 +79,7 @@ The editable shot documents and the score are in `output/work/` (`walk.vixl`, `e
 
 ## Findings
 
-> **Status:** Bugs 1 (nested rigs cropping moving limbs), 2 (effects clipped to the layer box) and 3 (timeline export repainting strokes every frame) are fixed. The transparent "reach" squares and the oversized blur backdrop in `build.py` are no longer needed. See the Unreleased section of the [changelog](../../CHANGELOG.md).
+> **Status in 0.20.0:** Bugs 1–3 are fixed (0.18.0), and finding 4 with them: the 260-frame film renders in about 100 s instead of 7–9.5 minutes. `build.py` keeps the transparent "reach" squares, because they also put each joint at its limb group's centre so the pivot is `[0.5, 0.5]`; groups no longer need them to avoid cropping. The close-up still blurs one backdrop group for depth of field; the blur now spreads past the group's box, and the oversized sky only keeps its soft edge off-frame. The rebuilt film and contact sheets match the 0.16.0 outputs; the second caption sits a few pixels lower. Camera zoom still crops and enlarges with bicubic resampling. 0.20.0 adds a caption font and style (changelog), which this build does not use. A shot longer than its timeline still holds the last frame. `build.py` now also deletes the render cache's `.vixl-cache.usage.json` from `output/work/`.
 
 **Bugs and rough edges (reproduced)**
 
@@ -88,7 +89,7 @@ The editable shot documents and the score are in `output/work/` (`walk.vixl`, `e
    joint") breaks as soon as a child limb rotates. Repro: put a forearm and hand in group
    `forearm`, put `upper` and `forearm` in group `arm`, pivot both at their joints, then animate
    `forearm` rotation to 90°. The forearm and hand are clipped by `arm`'s original 34×184 box and
-   vanish within a few frames. Workaround used here: every limb group carries a fully transparent
+   vanish within a few frames. Workaround used in 0.16.0 (and still in `build.py`, for the pivots): every limb group carries a fully transparent
    "reach" square centred on its joint. The square makes the group's box cover the limb's whole
    range of motion, and it also puts the joint at the group's centre, so the pivot is just
    `[0.5, 0.5]`. Transparent shapes count toward bounds and groups may overhang the canvas, so this
@@ -104,7 +105,7 @@ The editable shot documents and the score are in `output/work/` (`walk.vixl`, `e
    12.8 s and later frames took 0.6–0.9 s. The in-memory `_cache` did not help between frames.
    Turning 110 tiled grass strokes into one 75 px tile plus the `repeat` op also cut the first
    frame cost a lot.
-4. **Film rendering is slow.** The 260 frames at 960×540 took 7–9.5 minutes across runs (about 1.7–2.2 s per
+4. **Film rendering was slow in 0.16.0.** The 260 frames at 960×540 took 7–9.5 minutes across runs (about 1.7–2.2 s per
    frame) even with the cache warm from the GIF export.
 
 **Surprising behaviour and documentation gaps**
@@ -113,7 +114,7 @@ The editable shot documents and the score are in `output/work/` (`walk.vixl`, `e
   it with bicubic resampling (`film.py`), so a 1.25–1.35× push-in looks visibly soft. Scaled
   timeline export, by contrast, re-renders vectors crisply. That is why the close-up is a separate
   document drawn at 2.1× rather than a camera zoom.
-- **Captions have no font field.** Captions accept only `text/start/end/x/y/size/color` and always
+- **Captions have no font field (0.16.0; 0.20.0 adds one).** Captions accept only `text/start/end/x/y/size/color` and always
   render in the bundled proofing font, which `check` itself warns about. Text that has to match
   the film (the title, "Hi!") was put in the shot documents in Fredoka.
 - **A shot longer than its timeline freezes.** `project_at` holds the last key, so a film shot

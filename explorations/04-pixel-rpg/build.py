@@ -193,14 +193,10 @@ HERO_FRAMES = [
 ]
 
 
-def clip(project, keep, path, **options):
-    """Export a subset of frames. animation-set must list *every* frame, so we clone the
-    project and frame-delete the others."""
-    c = project.clone()
-    names = [f["name"] for f in c.inspect_animation()["frames"]]
-    c.apply([{"type": "frame-delete", "name": n} for n in names if n not in keep], detail="compact")
-    c.apply({"type": "animation-set", "order": list(keep), "loop": 0}, detail="compact")
-    return c.export_animation(path, **options)
+def animations(project, **clips):
+    """Define named animations (subsets of the saved frames) that export on their own."""
+    ops(project, *[{"type": "animation-set", "name": name, "order": list(frames), "loop": 0}
+                   for name, frames in clips.items()])
 
 
 def build_hero():
@@ -209,15 +205,14 @@ def build_hero():
     for name, duration, kw in HERO_FRAMES:
         ops(p, *pose(p, "hero", **kw), {"type": "frame-save", "name": name, "duration": duration})
     ops(p, {"type": "frame-apply", "name": "idle-1"})
+    animations(p, walk=[f"walk-{i}" for i in range(1, 5)], idle=["idle-1", "idle-2"],
+               attack=[f"attack-{i}" for i in range(1, 5)] + ["idle-1"])
     p.save(OUT / "hero.vixl")
-    walk = [f"walk-{i}" for i in range(1, 5)]
-    idle = ["idle-1", "idle-2"]
-    attack = [f"attack-{i}" for i in range(1, 5)]
-    clip(p, walk, OUT / "hero-walk.gif", scale=8)
-    clip(p, walk, OUT / "hero-walk.apng", format="apng", scale=8)
-    clip(p, idle, OUT / "hero-idle.gif", scale=8)
-    clip(p, attack + ["idle-1"], OUT / "hero-attack.gif", scale=8)
-    clip(p, attack + ["idle-1"], OUT / "hero-attack.apng", format="apng", scale=8)
+    p.export_animation(OUT / "hero-walk.gif", animation="walk", scale=8)
+    p.export_animation(OUT / "hero-walk.apng", animation="walk", format="apng", scale=8)
+    p.export_animation(OUT / "hero-idle.gif", animation="idle", scale=8)
+    p.export_animation(OUT / "hero-attack.gif", animation="attack", scale=8)
+    p.export_animation(OUT / "hero-attack.apng", animation="attack", format="apng", scale=8)
     p.export_animation(OUT / "hero-sheet.png", format="sheet", columns=len(HERO_FRAMES))
     p.export_animation(OUT / "hero-sheet@6x.png", format="sheet", columns=5, scale=6)
     return p
@@ -368,9 +363,10 @@ def build_enemies():
         ops(h, *[o for i, (variant, _) in enumerate(HERO_SWAPS) for o in pose(h, variant, x=i * 24, **kw)],
             {"type": "frame-save", "name": name, "duration": duration})
     ops(h, {"type": "frame-apply", "name": "idle-1"})
+    animations(h, walk=[f"walk-{i}" for i in range(1, 5)], attack=[f"attack-{i}" for i in range(1, 5)] + ["idle-1"])
     h.save(OUT / "hero-variants.vixl")
-    clip(h, [f"walk-{i}" for i in range(1, 5)], OUT / "hero-variants-walk.gif", scale=6)
-    clip(h, [f"attack-{i}" for i in range(1, 5)] + ["idle-1"], OUT / "hero-variants-attack.gif", scale=6)
+    h.export_animation(OUT / "hero-variants-walk.gif", animation="walk", scale=6)
+    h.export_animation(OUT / "hero-variants-attack.gif", animation="attack", scale=6)
     h.export_animation(OUT / "hero-variants-sheet.png", format="sheet", columns=1)
     return p, h
 
@@ -868,22 +864,13 @@ CASTLE = grid("""
 
 
 def scale_pixel_group(p, group, factor, x, y):
-    """Nearest-neighbour scale a group of pixel layers to canvas position x, y.
+    """Scale a group of pixel layers by an integer factor from its top-left corner to x, y.
 
-    `scale` on the group resamples with LANCZOS (blurry), and resizing children inside the group
-    clips them to the group's old box, so: ungroup, resize/move each pixel layer, regroup.
+    Group scaling stays nearest-neighbour for pixel layers, so the sprite stays crisp.
     """
-    gid = p.layer(group)["id"]
-    kids = [c["id"] for c in p.state["layers"] if c.get("parent") == gid]
-    ops(p, {"type": "ungroup", "target": group})
-    x0 = min(p.layer(k)["x"] for k in kids)
-    y0 = min(p.layer(k)["y"] for k in kids)
-    batch = []
-    for k in kids:
-        c = p.layer(k)
-        batch += [{"type": "resize", "target": k, "width": c["width"] * factor, "height": c["height"] * factor},
-                  {"type": "move", "target": k, "x": x + (c["x"] - x0) * factor, "y": y + (c["y"] - y0) * factor}]
-    ops(p, *batch, {"type": "group", "name": group, "targets": kids})
+    ops(p, {"type": "pivot", "target": group, "value": "top-left"},
+        {"type": "scale", "target": group, "value": factor},
+        {"type": "move", "target": group, "x": x, "y": y})
 
 
 def build_title(enemies, tileset):
@@ -937,8 +924,6 @@ def build_title(enemies, tileset):
     king = enemies.inspect_pixels("slime-king-up")
     ops(p, *hero_layers(p, x=0, y=0, prefix="hero"))
     ops(p, *pose(p, "hero", sword="fwd", legs="stride-a"))
-    # Workaround: `scale` on a *group* of pixel layers resamples with LANCZOS (blurry), so scale
-    # each pixel child (nearest) and its group-local position instead.
     scale_pixel_group(p, "hero", 2, 26, 122)
     ops(p,
         {"type": "pixel-art", "name": "king", "rows": king["rows"], "palette": king["palette"], "x": 0, "y": 0},

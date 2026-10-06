@@ -2,6 +2,14 @@
   "passed": true,
   "errors": 0,
   "warnings": 1,
+  "info": 0,
+  "by_action": {
+    "fix": [],
+    "review": [
+      0
+    ],
+    "informational": []
+  },
   "issues": [
     {
       "check": "print",
@@ -10,7 +18,8 @@
         "hero"
       ],
       "message": "'hero' prints at about 152 ppi (aim for 200+); use a larger image or place it smaller",
-      "effective_ppi": 152
+      "effective_ppi": 152,
+      "action": "review"
     }
   ],
   "checked": {

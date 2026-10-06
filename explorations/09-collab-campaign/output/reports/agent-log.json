@@ -9,27 +9,27 @@
   },
   {
     "agent": "art-director",
-    "what": "roll seed 11: thumbnail-bold / poppins-lora / ocean / dark"
+    "what": "roll seed 11: right-margin / lora-source-sans / sky-umber / light"
   },
   {
     "agent": "art-director",
-    "what": "roll seed 23: big-number / young-serif-rubik / autumn / dark"
+    "what": "roll seed 23: soft-panel / rubik-karla / chalk-indigo / light"
   },
   {
     "agent": "art-director",
-    "what": "roll seed 42: centered-axis / lora-source-sans / autumn / dark"
+    "what": "roll seed 42: asymmetric-note / roboto-material / cream-marigold / light"
   },
   {
     "agent": "art-director",
-    "what": "roll seed 57: quote-card / roboto-slab-roboto / sunset / dark"
+    "what": "roll seed 57: gallery-label / roboto-slab-roboto / porcelain-ink / dark"
   },
   {
     "agent": "art-director",
-    "what": "roll seed 64: centered-axis / poppins-lora / rose / dark"
+    "what": "roll seed 64: balanced-announcement / lora-source-sans / porcelain-ink / light"
   },
   {
     "agent": "art-director",
-    "what": "roll seed 88: golden-section / rubik-karla / pastel / light"
+    "what": "roll seed 88: wide-statement / lexend-atkinson / cream-marigold / dark"
   },
   {
     "agent": "art-director",
@@ -37,19 +37,19 @@
   },
   {
     "agent": "art-director",
-    "what": "locked re-roll 101: golden-section / perfect-fourth / rule"
+    "what": "locked re-roll 101: offset-column / perfect-fourth / rule"
   },
   {
     "agent": "art-director",
-    "what": "locked re-roll 202: rule-of-thirds / perfect-fifth / bar"
+    "what": "locked re-roll 202: quiet-invitation / major-third / none"
   },
   {
     "agent": "art-director",
-    "what": "locked re-roll 303: bento-grid / major-third / outline"
+    "what": "locked re-roll 303: asymmetric-note / minor-third / outline"
   },
   {
     "agent": "art-director",
-    "what": "locked re-roll 404: big-number / minor-third / rule"
+    "what": "locked re-roll 404: balanced-announcement / golden / none"
   },
   {
     "agent": "art-director",
@@ -157,23 +157,23 @@
     "agent": "art-director",
     "what": "preview copy-agent merge: 1 conflict(s)",
     "paths": [
-      "/layers/lyr_df7015b3b3bf496c/text"
+      "/layers/lyr_1135ecdf68a84398/text"
     ]
   },
   {
     "agent": "art-director",
     "what": "merged copy-agent",
     "resolutions": {
-      "/layers/lyr_df7015b3b3bf496c/text": "theirs"
+      "/layers/lyr_1135ecdf68a84398/text": "theirs"
     }
   },
   {
     "agent": "art-director",
     "what": "preview design-agent merge: 3 conflict(s)",
     "paths": [
-      "/layers/lyr_11e4722039ea4571/text",
-      "/layers/lyr_11e4722039ea4571/width",
-      "/layers/lyr_dda8aaab1d25454a/text"
+      "/layers/lyr_482b5ae001024618/text",
+      "/layers/lyr_482b5ae001024618/width",
+      "/layers/lyr_e88cd3a113874aa0/text"
     ]
   },
   {
@@ -184,9 +184,9 @@
     "agent": "art-director",
     "what": "merged design-agent",
     "resolutions": {
-      "/layers/lyr_11e4722039ea4571/text": "ours",
-      "/layers/lyr_11e4722039ea4571/width": "ours",
-      "/layers/lyr_dda8aaab1d25454a/text": "ours"
+      "/layers/lyr_482b5ae001024618/text": "ours",
+      "/layers/lyr_482b5ae001024618/width": "ours",
+      "/layers/lyr_e88cd3a113874aa0/text": "ours"
     }
   },
   {

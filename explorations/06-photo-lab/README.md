@@ -14,7 +14,7 @@ and uses checkpoints, undo/redo, a branch and revision comparison. The last outp
 contact sheet of all 19 artistic filters plus the 5 effect workflows, and before/after numbers
 from Vixl's own `measure()`.
 
-Run from the repo root: `python explorations/06-photo-lab/build.py` (≈2 min when it was built; about 35 s with the fixes in the [changelog](../../CHANGELOG.md)). It wipes and
+Run from the repo root: `python explorations/06-photo-lab/build.py` (40 s with Vixl 0.20.0 on a shared 4-core container; ≈2 min with 0.16.0, which it was first built with). It wipes and
 recreates `output/` and sets `VIXL_RESOURCES` and `VIXL_FONT_CACHE` inside this folder.
 
 ## Before / after
@@ -123,7 +123,7 @@ JPEG renders above, `before.jpg`, `after.jpg`, `after-mono.jpg`, `metrics.json` 
 
 ## Findings
 
-> **Status:** Finding 6 is fixed: characters that no font can draw are an error in every `check`, every suite and `validate`. The other findings are still open. See the Unreleased section of the [changelog](../../CHANGELOG.md).
+> **Status in 0.20.0:** Finding 6 is fixed (0.18.0): characters that no font can draw are an error in every `check`, every suite and `validate`. Findings 1–5 and 7–10 are as recorded below: there is still no effect-reorder operation and `lookup` is still a layer property rather than an effect. `build.py` needed no changes. The rebuilt images match the 0.16.0 outputs (the diptych, selection map and contact sheet differ only by JPEG noise), and every number in `metrics.json` is unchanged apart from revision IDs.
 
 **Rough edges and surprises (verified in this build):**
 

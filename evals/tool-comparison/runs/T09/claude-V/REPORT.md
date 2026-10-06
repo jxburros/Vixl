@@ -1,41 +1,65 @@
-# T09 · Tidewick Café winter menu campaign (lane V: Vixl MCP)
+# T09 · Tidewick Café winter menu campaign (lane V: Vixl)
 
-**Timing:** start 22:19:25 UTC, end 22:33:37 UTC on 2026-10-05 (about 14 minutes). About 96 tool calls in total: roughly 75 Vixl MCP calls, plus Bash, Read and ToolSearch.
+All visual work was done with the Vixl MCP tools (`vixl_document_create`, `vixl_font_pair`,
+`vixl_font_install`, `vixl_operations_apply`, `vixl_adapt_layout`, `vixl_check`,
+`vixl_render_preview`, `vixl_export_batch`). No pixels, SVG or HTML were drawn by hand. The only
+script was a Python/PIL check that read back the exported PNG sizes.
 
 ## Files
 
-| File | Size | Editable source | How it was made |
-| --- | --- | --- | --- |
-| `instagram-square.png` | 1080×1080 | `instagram-square.vixl` | Vixl MCP: document_create, font_pair, text_add ×5, operations_apply (shapes, gradient, text-style, moves), check, render_preview, export_file |
-| `instagram-story.png` | 1080×1920 | `instagram-story.vixl` | same steps; centred vertical layout, text placed with `constrain center-x` |
-| `x-post.png` | 1600×900 | `x-post.vixl` | same steps; text on the left, lamp on the right |
-| `facebook-event.png` | 1920×1005 | `facebook-event.vixl` | same steps; text on the left, larger lamp on the right |
-| `leaderboard.png` | 728×90 | `leaderboard.vixl` | same steps; one row: lamp, two-line text stack, coral divider, café name |
-| `email-header.png` | 600×200 | `email-header.vixl` | same steps; café name, one-line headline, date line, lamp on the right |
-
-A Python check confirmed every PNG has the exact pixel size above (all are RGBA).
+| File | Size | How it was made |
+| --- | --- | --- |
+| `instagram-square.png` | 1080 × 1080 | Exported from `instagram-square.vixl`, the master design built from scratch with Vixl operations |
+| `instagram-story.png` | 1080 × 1920 | `vixl_adapt_layout` copy of the master, then re-laid out by hand for the tall format: larger type, lamp higher, five tide lines instead of three |
+| `x-post.png` | 1600 × 900 | Adapted copy, re-laid out for landscape: text on the left, lamp at top right, wider tide lines |
+| `facebook-event.png` | 1920 × 1005 | Adapted copy, re-laid out for landscape. Here the menu line fits on one line |
+| `leaderboard.png` | 728 × 90 | Adapted copy, rebuilt as a single strip: lamp on the left, headline and date in the middle, a short stack of tide lines on the right |
+| `email-header.png` | 600 × 200 | Adapted copy, rebuilt: headline on one line, coral rule, date, lamp at top right, tide lines across the bottom |
+| `instagram-square.vixl`, `instagram-story.vixl`, `x-post.vixl`, `facebook-event.vixl`, `leaderboard.vixl`, `email-header.vixl` | — | The editable Vixl sources, one per size. Text stays live text, shapes stay vector, and the fonts are embedded |
 
 ## Shared system (the same in all six)
-- **Palette:** only the five brand colors. Navy `#14263b` background; cream `#f7f1e5` for the headline and date line; lamp amber `#f2a541` for "Winter Menu", the lamp, the café-name label and the URL line; sea-foam `#a8d5c8` for the menu line and a wave band; coral `#e2725b` for a short accent rule (vertical in the leaderboard). The back wave band is a tint, `mix(#a8d5c8, #14263b, 45%)`. The lamp glow is a radial gradient from amber to transparent.
-- **Type:** Vixl's curated "young-serif-rubik" pairing. Headline in Young Serif 400. Everything else in Rubik 400. Both are embedded in each .vixl file.
-- **Motif:** a "harbor lamp" (an amber disc with a soft glow) and three layered wave bands along the bottom edge (muted teal, sea-foam, cream foam). They are vector path shapes, and each size has its own amplitude and wavelength. A small Python helper in my scratchpad only computed the numbers for those path strings; Vixl drew everything.
-- Every layout was placed for its own canvas. Nothing is scaled, stretched or letterboxed.
+
+- **Palette:** only the five brand colors, saved as swatches: navy `#14263b` (background), cream
+  `#f7f1e5` (headline and URL), sea-foam `#a8d5c8` (menu line), amber `#f2a541` (date line and
+  lamp), coral `#e2725b` (rule under the headline).
+- **Type:** Fraunces 700 for the headline. Work Sans 400 for the menu and URL lines, Work Sans 600
+  for the date line. All are open-licensed Google Fonts, installed and embedded through
+  `vixl_font_pair` (pairing `fraunces-work-sans`) and `vixl_font_install`.
+- **Motif:**
+  - A glowing amber "harbor lamp" disc: an ellipse with Vixl's `glow` look, over a soft amber
+    radial halo.
+  - Parallel wavy "tide lines" (Vixl `wave` shapes with round caps) in sea-foam, coral and amber.
+  - A short coral rule under the headline (left out of the leaderboard only, for lack of room).
 
 ## Copy
-- Square, story, X and Facebook use all four lines, character for character. The headline wraps onto two lines: "The Winter Menu / is here", or "The Winter / Menu is here" in the story.
-- The leaderboard and email header (the two smallest) drop lines 2 and 4, as the brief allows. They show the headline on one line plus "From Tuesday, December 1 at Tidewick Café".
-- **Added text:** every size also has a small "TIDEWICK CAFÉ" label. This is brand-name text that is not in the copy block. Remove the `label` layer if only the given copy is allowed.
 
-## Checks
-- Story: `vixl_check` with reserved zones [0,0,1080,250] and [0,1670,1080,250] on all text layers found no problems. Text runs from y=380 to about y=1387. Only the lamp glow and the waves (not text) enter those zones.
-- All sizes: no errors for bounds, overlap or contrast.
-- The only remaining warnings are "legibility at 320 px thumbnail width" for the small Rubik lines on the X, Facebook, email and leaderboard files. I left them, because those formats are shown much larger than 320 px (the leaderboard and email at full size).
-- On the square, the lamp glow is cut off by the canvas edge on purpose.
+The text strings are the four brief lines exactly, including the `·` separators and "Café".
 
-## Choices and caveats
-- The menu line is never broken into a stacked list, so the copy stays exact. On the square it runs close to the right margin (it ends at x=1012 of 1080).
-- I chose separate .vixl files per size over one file with artboards, because each layout is designed independently. The layer names are the same in every file (headline, label, menu, date, cta, rule, lamp, lamp-glow, wave-back/mid/front).
-- Through MCP, text fonts can only be set with `vixl_text_add(font=...)`; the `font` field is rejected in operations. So text layers were added one by one per document.
-- In Young Serif, the headline's line-height had to be set to 0.75 to get tight leading. Rich-text spans (the amber "Winter Menu") give the text box extra height, so spacing was set by eye from previews.
-- One `operations_apply` call on the email header timed out (60 s) but had applied. I confirmed this with a fresh preview and the exported PNG.
-- Unsure: Facebook event covers are cropped differently on different devices. The key text sits in the left and middle area, but the lamp is near the right edge.
+- The square, story, X post and Facebook event use all four lines. In the square, story and X post
+  the menu line wraps onto two lines inside its text box, but the stored text is a single line.
+- The leaderboard and the email header use only the headline and the date line (lines 1 and 3).
+  The brief allows dropping lines 2 and 4 in the two smallest sizes.
+- In the leaderboard and the email header the headline is on one line. In the four larger sizes it
+  breaks after "Winter" (a line break inside the headline text layer).
+
+## Deviations and things I'm unsure about
+
+- **Story safe zones:** no text is in the top 250 px or the bottom 250 px. Text runs from y≈680
+  (headline) to y≈1288 (URL). The decoration does enter those zones: the lamp halo starts at y=50,
+  and tide lines 3–5 sit at y≈1660–1890. Running `vixl_check` with those zones marked as reserved
+  flags these decoration layers. I kept them on purpose, because the brief restricts only text.
+- **Thumbnail-legibility warnings left in place:** `vixl_check` scores text by how it reads when
+  the whole image is shrunk to 320 px wide.
+  - The X post and Facebook event still get warnings for the menu, date and URL lines (44–50 px
+    type). Reaching the tool's target would need about 50–60 px type, which would crowd the layouts.
+    Both formats are normally shown much wider than 320 px.
+  - The leaderboard date (18 px) still gets one. Banner ads are shown at their real size.
+  - The email header date was raised to 19 px, as the check asked. The square passes with no
+    warnings.
+- **Starting point for the other sizes:** `vixl_adapt_layout` made the first version of the other
+  five sizes. I then moved, resized and re-set every layer in each one, so no layout is a stretched
+  or letterboxed copy. The tide lines were redrawn with their own wavelength and amplitude for each
+  width.
+- There are no images or logos, and the brief supplied none. The lamp and tide lines are my own
+  graphic interpretation of "warm, coastal, unfussy".
+- The PNGs are opaque RGB at exactly the sizes the brief lists (checked with PIL).

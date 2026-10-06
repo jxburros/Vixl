@@ -14,10 +14,11 @@ as stale on purpose. Review notes drive a repair. A *producer* attaches four cus
 every document, defines the campaign as a project group, and pushes a shared headline and accent
 swatch with `group-apply`. The suites gate that publication: three attempts are blocked before one
 publishes. The run finishes with checkpoints, undo/redo, an in-document "night edition" branch,
-revision compares, the final exports and an overview sheet.
+revision compares, the final exports and an overview sheet. It was first built with Vixl 0.16.0;
+the committed outputs are rebuilt with 0.20.0.
 
 ```bash
-python explorations/09-collab-campaign/build.py   # from the repo root, ~3 min when built (~1.5 min with the changelog fixes), rewrites output/
+python explorations/09-collab-campaign/build.py   # from the repo root; 2 min 7 s with 0.20.0 (~3 min with 0.16.0); rewrites output/
 ```
 
 ## Results
@@ -26,7 +27,16 @@ python explorations/09-collab-campaign/build.py   # from the repo root, ~3 min w
 
 **Art direction.** Here are six rolls (`vixl roll --for social --mood friendly --seed N`, every slot filled).
 After that come four re-rolls with `--lock pairing=poppins-lora --lock palette=ocean --lock mode=light`.
-The team chose seed 101 (golden-section).
+The team chose seed 101, and its ocean/light palette with the Poppins/Lora pairing became brand v1.
+
+0.20.0 rolls from a new curated catalogue, so the same seeds give different directions than in
+0.16.0: right-margin, soft-panel, asymmetric-note, gallery-label, balanced-announcement and
+wide-statement, then offset-column, quiet-invitation, asymmetric-note and balanced-announcement for
+the locked re-rolls (0.16.0 rolled thumbnail-bold, big-number, centered-axis and so on). None of the
+new directions uses the hero image, several leave a single word ("city.") on its own line, and the
+brand logo, still placed at a fixed 240 px at (40, 40), touches the copy in some of them. The
+campaign itself uses fixed layouts, so it is unaffected. `roll --apply` now also adds a small
+`direction-motif` shape (a short rule at the top right of the instagram-portrait master).
 
 ![Rolled directions](output/01-contact-sheet.png)
 ![Locked re-rolls](output/02-locked-rerolls.png)
@@ -93,7 +103,7 @@ to every size:
 - `loop-delivery`: bounds, blanks, fonts and brand checks; `layer.logo.bounds within canvas`; a
   logo/headline overlap check; and `alpha maximum 0`.
 - `loop-legible` (per document): legibility at that format's viewing width, `text-fit` on the
-  headline and on every boxed text, and, on the YouTube banner, the 1546×423 mobile-safe zone
+  headline and on every other text layer (only boxed text in 0.16.0, see bug 1), and, on the YouTube banner, the 1546×423 mobile-safe zone
   expressed as `avoid` rectangles.
 - the built-in `no-placeholders`.
 
@@ -105,7 +115,7 @@ step. Each document defines its own `fit-headline` action.
 | pale accent | headline "Your city, on a Loop", accent `#7FC8D0` | blocked by `flyer.vixl`: contrast 1.90:1 on date/CTA, brand palette, logo/headline overlap |
 | long headline | 7-word headline, accent `#B83512` | blocked: `fit-headline` raised `text_overflow` ("Text cannot fit at the minimum size") |
 | final (after brand v2) | headline "Your city, on a Loop", accent `#B83512` | blocked by `flyer.vixl`: headline now runs under the logo (overlap rule) |
-| final, flyer refit | same values, flyer's action box narrowed to stop before the logo | **published to all 7 documents**; all 4 suites pass on all of them |
+| final, flyer refit | same values, flyer's action box narrowed to stop before the logo | **published to all 7 documents**; all 4 suites pass on all of them (in 0.20.0 only after the half-pixel workaround below) |
 
 No documents were written by any blocked attempt.
 
@@ -135,7 +145,9 @@ No documents were written by any blocked attempt.
 
 ## Findings
 
-> **Status:** Bugs 1 (`text-fit` always failing on auto-sized text), 2 (`roll` previews ignoring the document) and 3 (boxed text clipped without `check` noticing) are fixed: the `bounds` check reports text that no longer fits its `text-layout` box, with the size it needs. Unnamed layers are now numbered (`shape`, `shape 2`, …) instead of colliding. See the Unreleased section of the [changelog](../../CHANGELOG.md).
+> **Status in 0.20.0:** Bugs 1–3 are fixed (0.18.0): the `bounds` check reports text that no longer fits its `text-layout` box, with the size it needs, and unnamed layers are numbered (`shape`, `shape 2`, …) instead of colliding. `build.py` no longer passes `--size` to the roll preview (the preview and `--apply` agree, which the build asserts), and `text-fit` rules now cover auto-sized text as well as boxed text; all suites still pass on all seven sizes. The rough edges below are as recorded; the check still doesn't flag the merged headline touching the stat.
+>
+> **New in 0.20.0:** the final `group-apply` was blocked by `yt-thumb.vixl`: `loop-accessible` reported `needs_review` because contrast `Could not measure 'cta': boolean index did not match indexed array along axis 0; size of axis is 28 but size of corresponding boolean axis is 26`. The CTA label is centred on its button by constraints, the size difference is odd, and 0.20.0 keeps the fractional position (x 666.5, y 602.5); the contrast measurement then misaligns its masks. `snap_centred_text()` in `build.py` adds half a pixel to such centre constraints before the suites are attached, which moves those labels by 0.5 px. The final images otherwise match the 0.16.0 ones, apart from small text-rendering differences and the roll motif.
 
 ### Bugs
 
@@ -148,14 +160,14 @@ No documents were written by any blocked attempt.
    p.check_suite("s")["results"]  # -> status "failed", fits: False
    ```
    In this project it failed every CTA label that layouts create (they are auto-sized). The build
-   therefore only applies `text-fit` to boxed text (`assurance.py` measures the stored
+   therefore only applied `text-fit` to boxed text in 0.16.0 (`assurance.py` measures the stored
    `width/height` rather than the auto-size bounds).
 2. **`vixl -p DOC roll` without `--apply` ignores the document canvas.** With the same seed, it
    can pick a different layout from `roll --apply`. `cli.py` routes non-apply rolls to the
    standalone path, while `--apply` passes the document size into `roll()` and so filters the
    layout pool differently. Repro on an `instagram-portrait` doc:
    `roll --for social --mood friendly --seed 42` predicts `big-number`, but the same command with
-   `--apply` applies `centered-axis`. Workaround: always pass `--size` to the preview.
+   `--apply` applies `centered-axis`. Workaround in 0.16.0: always pass `--size` to the preview.
 3. **`text-set size` on boxed layout text clips glyphs, and nothing in `check` notices.** Layout
    text has a fixed `text_layout` box. On the medium rectangle, raising the 7 px kicker to 10 px
    left the box 6 px tall, so the top of the caps and the caption's descenders were cut off. The

@@ -1,7 +1,8 @@
 # Vixl Quest — a pixel-art RPG asset pack
 
 A small, complete game asset pack built only with Vixl operations through the Python API
-(`build.py`, no external art). It has a 16×16 side-view hero rigged from swappable pixel layers:
+(`build.py`, no external art). It was first built with Vixl 0.16.0; the committed outputs are
+rebuilt with 0.20.0. It has a 16×16 side-view hero rigged from swappable pixel layers:
 a body, four leg poses, three sword poses and a slash arc. The hero has a 4-frame walk, a 2-frame
 idle and a 4-frame attack, saved with `frame-save`/`frame-apply`. There are palette-swapped
 monsters and hero variants made with `pixel-palette`. A 13-tile Sweetie-16 tileset is drawn only
@@ -13,7 +14,7 @@ in whole pixels. A title screen mixes dithered pixel art with Press Start 2P and
 integer upscale.
 
 Rebuild from the repo root: `python explorations/04-pixel-rpg/build.py` (it wipes and recreates
-`output/`; ~2 min CPU when it was built, mostly the timeline export; about 25 s with the fixes in the [changelog](../../CHANGELOG.md)).
+`output/`; 36 s with 0.20.0 on a shared 4-core container; about 2 min CPU with 0.16.0, mostly the timeline export).
 
 ## Title screen and HUD
 
@@ -50,7 +51,7 @@ Variants (one rig, recolored with `pixel-palette`):
 | File | What |
 | --- | --- |
 | `hero.vixl`, `hero-walk.gif/.apng`, `hero-idle.gif`, `hero-attack.gif/.apng` | 24×24 hero clips, 8x nearest |
-| `hero-sheet.png/.json`, `hero-sheet@6x.png/.json` | All 10 frames as a sprite sheet with frame rectangles and durations |
+| `hero-sheet.png/.json`, `hero-sheet@6x.png/.json` | All 10 frames as a sprite sheet with frame rectangles and durations, plus the named `walk`/`idle`/`attack` animations |
 | `hero-variants.vixl`, `hero-variants-*.gif`, `hero-variants-sheet.png/.json` | hero / ranger / shadow / paladin palette swaps |
 | `enemies.vixl`, `enemies.gif`, `enemies@6x.png`, `enemies-sheet.png/.json` | 4 slimes and 4 bats, 2 frames each |
 | `tileset.vixl`, `tileset.png`, `tileset@4x.png` | 13 tiles (grass, flowers, bush, path, sand, wall, rock, chest, water×2, shore, bridge, 16×32 tree) |
@@ -63,17 +64,17 @@ Variants (one rig, recolored with `pixel-palette`):
 - `pixel-art` from `rows` (hero, monsters, icons, castle, generated dithered sky and mountain ridges) and as blank `width`/`height`/`background` grids.
 - `pixel-draw` with all four tools: `line` (swords, slash arc, outlines), `rect` (bricks, cobbles, chest), `pixel` (tufts, flowers, crown), `fill` (canopy, bush and moon interiors, tree shadow).
 - `pixel-palette`: monster and hero variants, the night-time forest on the title, props recolored to stand on sand, and adding *new* symbols (the king slime's crown colors).
-- `frame-save`/`frame-apply`/`frame-delete`/`animation-set` (order + loop), plus `export_animation` to GIF/APNG/sheet, `scale` up to 8 with nearest sampling, `sampling="smooth"` for the title GIF, and `colors=64`.
+- `frame-save`/`frame-apply`, named animations (`animation-set` with `name`, `order` and `loop`; `export_animation(animation=…)`), plus `export_animation` to GIF/APNG/sheet, `scale` up to 8 with nearest sampling, `sampling="smooth"` for the title GIF, and `colors=64`.
 - `repeat` on pixel layers (grass row, road, bridge, river columns, hearts, merlons, tree line, mountains, forest) and on **groups** (`ground` 20×12, castle wall, sand yard).
-- `group`/`ungroup`, `show`/`hide`, `move`, `flip`, `rotate` (90° cursor), `resize` (integer 2× of the sky, castle, king slime and hero), `opacity`, `solid`, `layer-style gradient-overlay`.
+- `group`, `show`/`hide`, `move`, `flip`, `rotate` (90° cursor), `resize` (integer 2× of the sky, castle and king slime), `pivot` + `scale` of the hero group (2×, nearest), `opacity`, `solid`, `layer-style gradient-overlay`.
 - `comp-save`/`comp-apply` and `export(comp=…)`.
 - `text` with font roles after `pair_fonts(project, "press-start-space-mono")`; `text-set`.
 - Timeline: `timeline-set`, `keyframe` on `visible`, `translate-y` (hold) and `text`, `animate` with `steps(n)` easing, `export_timeline` to GIF and MP4, and `contact_sheet`.
-- `Project.clone()`, `inspect_pixels()` to copy tile rows between documents, `inspect_animation()`.
+- `Project.clone()` (the timeline map starts from a copy of the map), `inspect_pixels()` to copy tile rows between documents, `inspect_animation()`.
 
 ## Findings
 
-> **Status:** Bugs 1 (group `scale` smoothing pixel art) and 2 (a resized child clipped to its group's old box) are fixed: groups no longer clip, so the `ungroup`/`group` workaround in `scale_pixel_group()` is no longer needed. Bug 4 is fixed too: the error names the ragged row and both widths (`row 1 (counting from 0) has 3 characters but row 0 has 2`). Bug 3 (frame subsets) is still open. See the Unreleased section of the [changelog](../../CHANGELOG.md).
+> **Status in 0.20.0:** Bugs 1, 2 and 4 are fixed (0.18.0) and bug 3 is fixed in 0.19.0 (named animations). `build.py` now scales the title hero by scaling its group (`pivot` top-left, `scale` 2, `move`) instead of ungrouping and resizing each layer, and exports the walk, idle and attack clips as named animations of one document instead of cloning it and deleting frames. Every PNG and every GIF/APNG frame is pixel-identical to the 0.16.0 output. The sheet JSON now also lists the named animations, and the timeline GIF's frame durations alternate 80/90 ms to keep the requested 12 fps (0.17.0).
 
 **Bugs and real rough edges**
 
@@ -86,12 +87,13 @@ Variants (one rig, recolored with `pixel-palette`):
 2. **Resizing a child inside a group clips it to the group's old box.** The group's bounds are
    not recomputed. Repro: a 2×2 layer `a` and a 1×1 layer `b` at (2,2), grouped as `g` → `resize a
    8×8`. The child reports bounds `(0,0,8,8)`, but the group stays `(0,0,3,3)` and only 9 pixels
-   render. Combined with (1), the only way to make a crisp 2× copy of a grouped sprite was
-   `ungroup` → resize/move each child → `group` again (`scale_pixel_group()` in `build.py`).
+   render. Combined with (1), the only way to make a crisp 2× copy of a grouped sprite in 0.16.0 was
+   `ungroup` → resize/move each child → `group` again.
 3. **`animation-set` cannot choose a subset of frames.** `order` must list every frame ("Order
    must list every frame exactly once"), and export always uses all frames. One document holding
-   walk + idle + attack therefore can't export a "walk.gif" directly. Workaround: `Project.clone()`
-   then `frame-delete` the other frames (`clip()` in `build.py`). Named clips/tags would help a lot.
+   walk + idle + attack therefore can't export a "walk.gif" directly. The 0.16.0 workaround was
+   `Project.clone()` then `frame-delete` the other frames. Named clips/tags would help a lot; 0.19.0
+   added them as named animations, which `build.py` now uses.
 4. **Ragged `rows` give no location.** The error is just `Pixel rows need equal widths of
    1–256`, with no row index or expected/actual width. `build.py` validates rows itself
    (`grid()`) before calling Vixl.
@@ -117,7 +119,7 @@ Variants (one rig, recolored with `pixel-palette`):
   proxy, and pixel layers inside it still come out crisp (27 colors in a 2× frame, no
   blur). Its stepped `visible` keys and `steps(n)` easing worked well for sprite switching and
   whole-pixel motion. It was the slowest step, though: 58 frames of a ~120-layer 320×192 scene,
-  plus MP4, dominated a full build of ~2 min CPU (6 min wall time on the shared machine).
+  plus MP4, dominated a full build of ~2 min CPU (6 min wall time on the shared machine) in 0.16.0; the whole 0.20.0 build takes 36 s.
 - Space Mono at 11 px is antialiased at native resolution, so a `sampling="nearest"` upscale
   makes it mushy (`title@4x-nearest.png`). `sampling="smooth"` (`title@4x.png`, `title.gif`)
   re-renders text crisply while pixel layers stay blocky. That's the right way to pair a pixel

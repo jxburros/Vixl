@@ -45,9 +45,10 @@ CODE_NUM = "#FFC37A"
 LOGOS = "assets/brand/digital-shift/Editable-Vixl"
 HEAD, BODY, SEMI, MONO = "inter-tight-800", "inter-400", "inter-600", "jetbrains-mono-500"
 
-# Facts used in the copy (counted from the 0.19.0 source; see README.md in this folder).
-VERSION = "0.19.0"
-FACTS = {"operations": 138, "sizes": 150, "layouts": 32, "styles": 28, "looks": 14, "brushes": 17}
+# Facts used in the copy (counted from the 0.20.0 source; see README.md in this folder).
+VERSION = "0.20.0"
+FACTS = {"operations": 179, "sizes": 150, "layouts": 47, "styles": 28, "looks": 17, "brushes": 17,
+         "templates": 40, "containers": 19, "batch": "10,000"}
 INTERFACES = ["MCP", "CLI", "Python", "REST"]
 FORMATS = ["PNG", "JPEG", "WEBP", "TIFF", "AVIF", "SVG", "PDF", "PPTX", "HTML", "ICO", "GIF", "MP4"]
 TAGLINE = "The image editor your AI agent can actually use."
@@ -129,6 +130,7 @@ def dot_grid(name, x, y, width, height, step, color="#FFFFFF14", dot=3):
         {"type": "repeat", "target": name, "count": max(1, width // step), "dx": step, "dy": 0},
         {"type": "group", "name": f"{name}-row", "targets": [name]},
         {"type": "repeat", "target": f"{name}-row", "count": max(1, height // step), "dx": 0, "dy": step},
+        {"type": "layer-intent", "target": f"{name}-row", "role": "decoration"},
     ]
 
 
@@ -224,7 +226,7 @@ def save_and_export(p, folder, stem, exports, check=True, **check_options):
         (folder / f"{stem}.check.json").write_text(json.dumps(report, indent=2) + "\n")
     for ext, options in exports:
         path = folder / f"{stem}.{ext}"
-        p.export(str(path), **options)
+        p.export(str(path), overwrite=True, **options)
         print("  wrote", path.relative_to(ROOT))
     return report
 
@@ -305,7 +307,7 @@ def glow(name, x, y, size, color=BLUE, strength="55"):
                       {"offset": 1, "color": f"{color}00"}]}
 
 
-LOOP = [("Inspect", "Read layers, bounds and fonts"), ("Apply", "Atomic batches of operations"),
+LOOP = [("Inspect", "Read layers, bounds and fonts"), ("Apply", "Atomic batches, up to 10,000 ops"),
         ("Check", "Contrast, overlap, bounds, print"), ("Preview", "Render and look"),
         ("Export", "PNG, SVG, PDF, PPTX, MP4 ...")]
 
@@ -411,7 +413,7 @@ def build_linkedin():
         headline("headline", "Design work, as\noperations your agent runs.", 470, 92, 58, "operations"),
         logo("logo", "horizontal-reverse", W - 262, 60, width=230),
     ], detail="brief")
-    chips_row(p, "fmt", ["PNG", "SVG", "PDF", "PPTX", "HTML", "GIF", "MP4", "CMYK"], 470, bottom(p, "headline") + 40,
+    chips_row(p, "fmt", ["PNG", "SVG", "PDF", "PPTX", "HTML", "GIF", "MP4", "WAV", "CMYK"], 470, bottom(p, "headline") + 40,
               size=20, fg=WHITE, bg=PANEL)
     p.apply(text("url", REPO, W - 70, 316, 22, MUTED, MONO), detail="brief")
     x, y, w, h = bounds(p, "url")
@@ -439,18 +441,18 @@ def build_carousel():
         glow("c-glow", -200, -200, 1400),
         logo("c-mark", "mark-reverse", W - 470, 150, width=400),
         text("c-kicker", "VIXL  /  " + VERSION, M, 180, 26, SKY, MONO),
-        headline("c-head", "Design is\nnow an\nAPI call.", M, 520, 150, "API call."),
+        headline("c-title", "Design is\nnow an\nAPI call.", M, 520, 150, "API call."),
     ], detail="brief")
     p.apply([para("c-sub", "An editable image-document engine for AI agents. Swipe to see how it works.", M,
-                  bottom(p, "c-head") + 44, 34, 760, MUTED)], detail="brief")
+                  bottom(p, "c-title") + 44, 34, 760, MUTED)], detail="brief")
 
     # 2 - the problem
     page("problem")
     p.apply([
         text("p-kicker", "THE PROBLEM", M, 150, 26, SKY, MONO),
-        headline("p-head", "Design tools are\nbuilt for hands,\nnot agents.", M, 220, 92, "not agents."),
+        headline("p-title", "Design tools are\nbuilt for hands,\nnot agents.", M, 220, 92, "not agents."),
     ], detail="brief")
-    y = bottom(p, "p-head") + 80
+    y = bottom(p, "p-title") + 80
     points = [("Click-only editors", "An agent cannot drag a slider it cannot see."),
               ("Flattened exports", "One PNG back, and every layer is gone."),
               ("Guess-and-hope", "No way to know the text overflowed until a human looks.")]
@@ -466,14 +468,14 @@ def build_carousel():
     # 3 - the loop
     page("loop")
     p.apply([text("l-kicker", "HOW IT WORKS", M, 150, 26, SKY, MONO),
-             headline("l-head", "One loop.\nEvery design.", M, 220, 92, "Every design.")], detail="brief")
-    loop_steps(p, "l", M, bottom(p, "l-head") + 60, W - 2 * M, size=40, vertical=True, step_h=122)
+             headline("l-title", "One loop.\nEvery design.", M, 220, 92, "Every design.")], detail="brief")
+    loop_steps(p, "l", M, bottom(p, "l-title") + 60, W - 2 * M, size=40, vertical=True, step_h=122)
 
     # 4 - what you can make (real outputs)
     page("gallery")
     p.apply([text("g-kicker", "MADE WITH VIXL", M, 150, 26, SKY, MONO),
-             headline("g-head", "Not a toy.\nA whole studio.", M, 220, 92, "A whole studio.")], detail="brief")
-    top = bottom(p, "g-head") + 60
+             headline("g-title", "Not a toy.\nA whole studio.", M, 220, 92, "A whole studio.")], detail="brief")
+    top = bottom(p, "g-title") + 60
     gw, gh, gap = (W - 2 * M - 24) // 2, 214, 24
     keys = ["poster", "painting", "pixel", "donut", "film", "photo"]
     ops = []
@@ -484,17 +486,17 @@ def build_carousel():
     ops = []
     for i, key in enumerate(keys):
         cx, cy = M + (i % 2) * (gw + gap), top + (i // 2) * (gh + gap)
-        ops.append(chip_ops(f"g-lab{i}", SHOW[key][0], cx + 14, cy + gh - 54))
+        ops.append(chip_ops(f"g-lab{i}", SHOW[key][0], cx + 14, cy + gh - 60, size=24))
     for o in ops:
         chip(p, *o)
 
     # 5 - numbers
     page("numbers")
     p.apply([text("n-kicker", "IN THE BOX", M, 150, 26, SKY, MONO),
-             headline("n-head", "Batteries,\nincluded.", M, 220, 92, "included.")], detail="brief")
-    top = bottom(p, "n-head") + 70
+             headline("n-title", "Batteries,\nincluded.", M, 220, 92, "included.")], detail="brief")
+    top = bottom(p, "n-title") + 70
     stats = [(FACTS["operations"], "operations"), (FACTS["sizes"], "named sizes"), (FACTS["layouts"], "layouts"),
-             (FACTS["styles"], "design styles"), (FACTS["looks"], "finishing looks"), (FACTS["brushes"], "brushes")]
+             (FACTS["templates"], "templates"), (FACTS["styles"], "design styles"), (FACTS["looks"], "finishing looks")]
     ops = []
     for i, (n, label) in enumerate(stats):
         cx, cy = M + (i % 2) * 460, top + (i // 2) * 200
@@ -506,9 +508,9 @@ def build_carousel():
     page("start")
     p.apply([glow("s-glow", 100, 300, 1200, BLUE, "66"),
              text("s-kicker", "GET STARTED", M, 150, 26, SKY, MONO),
-             headline("s-head", "Give your agent\na design studio.", M, 220, 92, "a design studio."),
+             headline("s-title", "Give your agent\na design studio.", M, 220, 92, "a design studio."),
              ], detail="brief")
-    top = bottom(p, "s-head") + 70
+    top = bottom(p, "s-title") + 70
     cmd = [(0, [("$ ", SKY), ("pip install -e '.[server,pdf]'", WHITE)]),
            (0, [("$ ", SKY), ("vixl mcp --workspace . \\", WHITE)]),
            (2, [("--tools core --schema slim", WHITE)]),
@@ -519,15 +521,15 @@ def build_carousel():
     p.apply([text("s-url", REPO, M, bottom(p, "s-code") + 60, 40, WHITE, SEMI)], detail="brief")
 
     report = save_and_export(p, "carousel", "carousel-1080x1350", [("pdf", {})], thumbnail_width=540,
-                             checks=["bounds", "overlap", "contrast", "fonts", "deck"])
+                             checks=["bounds", "overlap", "contrast", "fonts", "deck"], deck={"profile": "phone"})
     for i, name in enumerate(["cover", "problem", "loop", "gallery", "numbers", "start"], 1):
-        p.export(str(OUT / "carousel" / f"slide-{i}-{name}.png"), page=name)
+        p.export(str(OUT / "carousel" / f"slide-{i}-{name}.png"), page=name, overwrite=True)
     sheet(p, OUT / "carousel" / "contact-sheet.png", width=360, columns=6)
     return report
 
 
-def chip_ops(name, label, x, y):
-    return (name, label, x, y, 20, WHITE, "#1A1F2BD9")
+def chip_ops(name, label, x, y, size=20):
+    return (name, label, x, y, size, WHITE, "#1A1F2BD9")
 
 
 def build_story():
@@ -570,10 +572,10 @@ def build_poster():
     ], detail="brief")
     top = bottom(p, "head") + 70
     p.apply([para("sub", "Layered designs your AI agent can build, measure and fix, then export to PNG, SVG, "
-                  "vector PDF, PowerPoint, HTML, GIF or MP4. Text, masks, effects and pages stay editable.",
+                  "vector PDF, PowerPoint, HTML, GIF or MP4. Text, vector paths, masks and pages stay editable.",
                   M, top, 44, W - 2 * M - 60, MUTED, line_height=1.35)], detail="brief")
     top = bottom(p, "sub") + 80
-    cols = [("For agents", "MCP server with 138 atomic operations and structured errors."),
+    cols = [("For agents", f"MCP server with {FACTS['operations']} operations, atomic batches and structured errors."),
             ("For checks", "Contrast, overlap, bounds, safe areas, fonts and print ink, before export."),
             ("For print", "Bleed, trim, CMYK PDF and TIFF with TrimBox and BleedBox.")]
     cw = (W - 2 * M - 80) / 3
@@ -623,12 +625,12 @@ def build_onepager():
               "before export."),
              ("Speaks every interface", "MCP for agents, a CLI for scripts, a Python API and REST, all sharing "
               "one set of operations."),
-             ("Ships real files", "PNG, SVG, vector PDF, CMYK print, editable PPTX, HTML decks, GIF, WebP and "
-              "MP4."),
-             ("Knows design", f"{FACTS['layouts']} layouts, {FACTS['styles']} styles, {FACTS['looks']} finishing "
-              "looks, curated font pairings and brand kits."),
-             ("Goes beyond posters", "Charts from data, diagrams from text, fillable forms, pixel art, brushes and "
-              "keyframe animation.")]
+             ("Ships real files", "PNG, SVG, vector PDF, CMYK print, editable PPTX, HTML decks, GIF, WebP, "
+              "MP4 and WAV."),
+             ("Knows design", f"{FACTS['layouts']} layouts, {FACTS['templates']} templates, {FACTS['styles']} "
+              f"styles, {FACTS['looks']} finishing looks, safe palettes and font pairings."),
+             ("Goes beyond posters", "Editable vector paths, charts, diagrams, fillable forms, pixel art, "
+              "character animation and sound.")]
     cw = (W - 2 * M - 50) / 2
     ops = []
     for i, (t, d) in enumerate(feats):
@@ -706,8 +708,8 @@ def build_deck():
     y = title("so", "THE SOLUTION", "Design as atomic,\ncheckable operations.", "checkable")
     p.apply(code_card("so-code", W - M - 700, y + 70, 700, SNIPPET, size=26), detail="brief")
     fit_code(p, "so-code")
-    pts = ["Editable .vixl masters: text, masks, effects, pages",
-           f"{FACTS['operations']} operations, applied all-or-nothing",
+    pts = ["Editable .vixl masters: text, vector paths, masks, pages",
+           f"{FACTS['operations']} operations, up to {FACTS['batch']} per atomic batch",
            "Structured errors with suggestions",
            "Undo, branches, checkpoints and diffs"]
     ops = []
@@ -734,9 +736,9 @@ def build_deck():
     p.apply(ops, detail="brief")
     for i, key in enumerate(keys):
         chip(p, *chip_ops(f"ga-lab{i}", SHOW[key][0], M + (i % 4) * (gw + gap) + 14,
-                          y + 70 + (i // 4) * (gh + gap) + gh - 56))
+                          y + 70 + (i // 4) * (gh + gap) + gh - 58, size=22))
 
-    slide("quality", "Real timings from the exploration projects, before and after the performance fixes.")
+    slide("quality", "Real timings from the exploration projects, before and after the 0.18.0 performance fixes.")
     y = title("qa", "FAST WHERE IT MATTERS", "Seconds, not minutes.", "Seconds,")
     rows = [("Full design check, 11 x 17 poster", "10+ min", "17 s"),
             ("Paint 400 brush strokes", "9.8 s", "1.6 s"),
@@ -746,7 +748,7 @@ def build_deck():
     for i, (label, before, after) in enumerate(rows):
         cx = round(M + i * (cw + 40))
         ops += [{"type": "shape", "shape": "rounded-rectangle", "name": f"qa-card{i}", "x": cx, "y": y + 90,
-                 "width": round(cw), "height": 370, "radius": 24, "fill": PANEL},
+                 "width": round(cw), "height": 420, "radius": 24, "fill": PANEL},
                 text(f"qa-before{i}", before, cx + 44, y + 140, 44, MUTED, HEAD),
                 {"type": "shape", "shape": "rectangle", "name": f"qa-strike{i}", "x": cx + 44, "y": y + 172,
                  "width": 10, "height": 4, "fill": MUTED},
@@ -755,10 +757,12 @@ def build_deck():
     p.apply(ops, detail="brief")
     for i in range(3):
         bx, by, bw, bh = bounds(p, f"qa-before{i}")
-        p.apply({"type": "shape", "target": f"qa-strike{i}", "width": bw + 8, "x": bx - 4,
-                 "y": round(by + bh / 2 - 2)}, detail="brief")
+        p.apply([{"type": "shape", "target": f"qa-strike{i}", "width": bw + 8, "x": bx - 4,
+                  "y": round(by + bh / 2 - 2)},
+                 {"type": "layer-intent", "target": f"qa-strike{i}", "allow_overlap": [f"qa-before{i}"]}],
+                detail="brief")
     p.apply([para("qa-note", "Timings from the repository's exploration projects (explorations/README.md), "
-                  "before and after the recent performance work.", M, y + 520, 28, W - 2 * M, MUTED)],
+                  "before and after the performance fixes in Vixl 0.18.0.", M, y + 550, 28, W - 2 * M, MUTED)],
             detail="brief")
 
     slide("interfaces", "Same operations everywhere: an agent over MCP, a shell script, a notebook or a web service.")
@@ -778,9 +782,9 @@ def build_deck():
                 para(f"if-d{i}", d, cx + 40, y + 340, 28, round(cw - 80), MUTED)]
     p.apply(ops, detail="brief")
 
-    slide("outputs", "One master, every format. CMYK print and editable PowerPoint included.")
+    slide("outputs", "One master, every format. CMYK print, editable PowerPoint and mixed WAV audio included.")
     y = title("ou", "OUTPUTS", "One master. Every format.", "Every format.")
-    fm = FORMATS + ["CMYK", "WebM", "APNG", "Sprite sheets"]
+    fm = FORMATS + ["CMYK", "WebM", "APNG", "WAV audio"]
     ops = []
     cw, chh = (W - 2 * M - 3 * 28) / 4, 120
     for i, f in enumerate(fm):
@@ -804,9 +808,9 @@ def build_deck():
              text("st-url", REPO, M + 360, H - 160, 40, WHITE, MONO)], detail="brief")
 
     save_and_export(p, "deck", "vixl-pitch-deck", [("pdf", {}), ("pptx", {}), ("html", {})],
-                    checks=["bounds", "overlap", "contrast", "fonts", "deck"])
-    sheet(p, OUT / "deck" / "contact-sheet.png", width=640, columns=3)
-    p.export(str(OUT / "deck" / "vixl-pitch-deck.png"), page="title", scale=0.5)  # >= 1/3 scale: see README
+                    checks=["bounds", "overlap", "contrast", "fonts", "deck"], deck={"profile": "screen"})
+    sheet(p, OUT / "deck" / "contact-sheet.png", width=480, columns=3)
+    p.export(str(OUT / "deck" / "vixl-pitch-deck.png"), page="title", scale=0.5, overwrite=True)
 
 
 def build_teaser():
@@ -924,7 +928,8 @@ def build_overview():
     p.apply({"type": "look", "targets": [f"t{i}-base" for i in range(len(tiles))], "look": "soft-shadow",
              "color": "#000000", "amount": 0.4}, detail="brief")
     for i, (path, x, y, w, h, label) in enumerate(tiles):
-        ly = y + h + 8 if h < 150 else y + h - 46  # below a short banner, inside everything else
+        below = h < 150 or label == "GitHub social preview"  # short banner; card whose chips sit at the bottom
+        ly = y + h + 8 if below else y + h - 46
         chip(p, f"lab{i}", label, x + 10, ly, 18, WHITE, "#1A1F2BE0", pad=(12, 8))
     save_and_export(p, ".", "kit-overview", [("png", {"scale": 0.75})], checks=["bounds", "fonts"])
 

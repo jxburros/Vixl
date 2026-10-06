@@ -1,44 +1,51 @@
-# T14 · Lyric video — claude-V, round 2
+# T14 Lyric video, round 2: Vixl lane (claude-V)
 
-Changes asked for: every lyric 0.25 s earlier (the title card still starts at 0), and chorus lines 25 % larger.
-Nothing outside `round2/` was changed. The fixtures (`lighthouse.wav`, `lighthouse.lrc`) were not edited.
+## What changed
 
-## Files
+1. **Every lyric is 0.25 s earlier.** Each line, the section labels, the backgrounds, the "Lighthouse" beam cue and the instrumental-break clear now start 250 ms sooner:
+   - lines at 1.75, 5.25, 8.75, 12.25, 17.75, 21.25, 24.75 and 28.25 s;
+   - the break clears the screen from 15.75 to 17.75 s.
 
-| File | What it is | How it was made |
-| --- | --- | --- |
-| `lighthouse.mp4` | 1280×720 H.264 + AAC (192 kb/s), 24 fps, 32.000 s (ffprobe: video 32.000, audio 32.000, container 32.000) | Vixl `vixl_export_timeline` (mp4, silent) from `round2/lighthouse-lyrics.vixl`, then ffmpeg mux with the fixture WAV (`-c:v copy -c:a aac -b:a 192k`). The picture was not re-encoded. |
-| `lighthouse-lyrics.vixl` | Editable timeline document | Rebuilt with `vixl_workflow lyric-video-build` (same settings as round 1 plus `offset: 250`), then the round-1 hand edit was redone and the chorus-size keys added (see below). |
-| `lyric-style.vixl` | Template | Copied unchanged from round 1. The size change depends on time, so it lives in the built timeline, not in the template. |
+   The title card still starts at 0 s. It now runs to 1.75 s, where the first line appears. The video is still 32.000 s long, with the song unchanged.
+2. **Chorus lines are 25 % larger.** The current-line text (`lyric`) is 80 px during the four chorus lines (8.75–15.75 s and 24.75–32 s), up from 64 px. Verse lines stay at 64 px. The small next-line preview, the section labels and the title card are unchanged.
 
-## 1. Lyrics 0.25 s earlier
+## How
 
-- Rebuilt from the template with `offset: 250` (in Vixl a positive offset shows lyrics earlier), keeping `lead: 0`, fps 24 and 250 ms fade in/out. The LRC file was not touched.
-- New line show times: 1.75, 5.25, 8.75, 12.25, 17.75, 21.25, 24.75, 28.25 s (were 2.0, 5.5, 9.0, 12.5, 18.0, 21.5, 25.0, 28.5). The instrumental-break clear moved from 16.0 to 15.75 s.
-- Everything tied to lyric timing moves with the lines: section label, background switches (chorus 8.75–17.75 s and 24.75 s to the end, verse 2 17.75–24.75 s), the lighthouse cue (8.75–12.25 s and 24.75–32.0 s), and the markers.
-- Title card: still visible from 0, now until 1.75 s, when the first lyric fades in (the build ends `intro` at the first lyric's show time).
-- I redid round 1's hand edit at the shifted times: `lyric-next` `visible` = false at 15750 ms and true at 17750 ms, so the screen is clear during the break.
-- The video still ends at 32.0 s. The last line now stays up 0.25 s longer (28.25–32.0 s).
+All of this was done through the Vixl MCP tools. No pixels were drawn by hand.
 
-## 2. Chorus lines 25 % larger
+- `round2/lighthouse-template.vixl` is a byte copy of the round-1 template. The size change depends on time, so it belongs in the timeline, not the template.
+- `round2/request.json` is the round-1 request with two changes: the paths point into `round2/`, and it adds `"offset": 250`. In Vixl, as in the LRC convention, a positive offset shows lyrics earlier.
+- `round2/lighthouse-lyrics.vixl` was produced in two steps:
+  - `vixl_workflow lyric-video-build` built it from that request. The plan reports the shifted times and no warnings.
+  - `vixl_operations_apply` then added four hold keyframes on `lyric.size`: 64 at 0 s, 80 at 8.75 s, 64 at 17.75 s and 80 at 24.75 s. Each size switch lands while the lyric is fully transparent (between lines, or during the break), so a size jump never shows on screen.
+- `round2/lighthouse.mp4` was rendered by `vixl_workflow lyric-video-export` as a job. It reused the edited build (`build_reused: true`).
 
-- I added stepped (`hold`) keyframes to the `lyric` layer's `size`: 50 px at 0, 62.5 px at 8750 ms, 50 px at 17750 ms, and 62.5 px at 24750 ms. That makes all four chorus lines (lines 3, 4, 7, 8) 1.25× the verse size.
-- The text box is 1160 px wide and set to fit, and at 62.5 px the chorus lines are too wide for one line. My first export showed the box shrinking them to only about 1.10–1.15×. To fix this I also keyframed the box `height`: 120 px outside choruses and 170 px during them. The chorus lines now wrap onto two lines at the full 62.5 px instead of being shrunk. `lyric-next` sits lower by about 26 px while a chorus line is up. The size keys change only while the lyric is hidden between lines, so nothing jumps on screen.
-- Only the current-line `lyric` layer changes size. `lyric-next` stays at 30 px even when the line it previews is a chorus line. That is how I read "chorus lines": the large current line.
+The round-1 build had no hand edits that needed redoing: the build itself clears both the lyric and the next-line preview at the empty timestamp.
 
 ## Checks
 
-- `lyric-video-build`: 8 lines, 3 sections, no warnings.
-- Previewed the timeline at 7.0 s (verse) and 13.5 s (chorus). I also pulled frames from the final MP4 at 1.0, 1.70, 1.80, 5.10, 5.40, 7.0, 8.60, 9.2, 10.5, 13.5, 15.9, 17.9, 20.0, 26.5, 28.4 and 30.0 s and measured the white text rows with a small PIL script:
-  - The title card still shows at 1.70 s. At 1.80 s it is gone and the first lyric is fading in; round 1 started it at 2.0 s. The screen is empty at 5.10 s (fade-out before 5.25 s) and at 15.9 s (the break).
-  - Chorus glyph height for "Turn your golden eye…" is 57 px, against 46 px in round 1, so 1.24×. Verse frames at 7.0 s are pixel-identical in layout to round 1 (same text row: 47 px tall, 784 px wide).
-- I did not re-run the round-1 `vixl_check` contrast pass. Colours and styles are unchanged.
+- **ffprobe:** h264 1280x720 at 24 fps, plus AAC. Video, audio and container are each 32.000 s. volumedetect gives mean -18.8 dB and max -9.6 dB, the same as round 1.
+- **Timing (frame-difference pass on both MP4s):**
+  - Every scene change is exactly 6 frames (0.250 s) earlier: 2.0/9.0/18.0/25.0 s became 1.75/8.75/17.75/24.75 s.
+  - Round-2 verse frames match round-1 frames from 6 frames later (mean grey difference 0.00–0.03).
+  - The title frame at 1.0 s is identical in both rounds.
+  - The fade at the very end (31.83 s) is unchanged, because the last line hides when the song ends.
+- **Size:** I measured rendered frames.
+  - "Turn your golden eye and bring the ships to me": the glyph height from ascender to descender went from 60 px to 75 px (1.25x), and the line pitch from 89 to 110 px.
+  - The two wrapped lines (descenders reaching y=427) still fit inside the 1000x190 fitted box at y=240. The box's fit-to-box therefore did not shrink the text back down, and the next-line preview below is not overlapped.
+  - Verse frames (20.0 s) are pixel-identical to round 1 at 20.25 s.
+- **Visual check:** a 16-frame contact sheet. At 80 px the chorus lines wrap into balanced pairs, with no orphaned word:
+  - "Lighthouse, lighthouse, / sweep across the sea"
+  - "Turn your golden eye and / bring the ships to me"
 
-## Unsure
+## Files
 
-- The larger chorus lines now wrap onto two lines; for example "Lighthouse, lighthouse, sweep across the / sea". Keeping them on one line at 1.25× would need about 1240–1300 px, which is wider than the 1280 px frame for the longest line.
-- Section changes and background cuts moved 0.25 s earlier along with the lyrics, since they are timed by the same LRC timestamps. They are not anchored to the original music times.
+| File | |
+| --- | --- |
+| `lighthouse.mp4` | The updated video |
+| `lighthouse-lyrics.vixl` | The updated editable timeline (offset build plus the chorus size keys) |
+| `lighthouse-template.vixl` | Unchanged copy of the template |
+| `request.json` | Round-1 request plus `offset: 250`, with paths pointing into `round2/` |
+| `REPORT.md` | This file |
 
-## Tool calls
-
-21 tool calls in this round: Vixl MCP 12 (one `lyric-video-build` timed out on the shared server, then the retry succeeded), Bash 7, ToolSearch 1, plus the final hand-back.
+Nothing outside `round2/` was modified.

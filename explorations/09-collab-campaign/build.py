@@ -100,6 +100,32 @@ def apply(doc, ops, **kw):
     return SESSION.apply(ops, document=doc, **kw)
 
 
+def snap_centred_text(doc):
+    """Workaround for a Vixl 0.20.0 bug: contrast cannot measure text whose box lands on a half
+    pixel ("Could not measure 'cta': boolean index did not match ..."), which a suite reports as
+    needs_review. Labels centred on a button with an odd size difference land there, so nudge
+    their centre constraints by half a pixel onto whole pixels."""
+    with SESSION.project(document=doc) as p:
+        layers = p.inspect()["layers"]
+    names = {l["id"]: l["name"] for l in layers}
+    ops = []
+    for layer in layers:
+        cons = layer.get("constraints") or {}
+        x, y = (layer.get("resolved_bounds") or [0, 0])[:2]
+        if layer["type"] != "text" or (x == int(x) and y == int(y)) or not {"center-x", "center-y"} & set(cons):
+            continue
+        fixed = {}
+        for axis, value in cons.items():
+            ref, _, edge = value.partition(".")
+            off = "+0.5" if axis in ("center-x", "center-y") and (x if axis == "center-x" else y) != int(
+                x if axis == "center-x" else y) else ""
+            fixed[axis] = f"{names.get(ref, ref)}.{edge}{off}"
+        ops += [{"type": "unconstrain", "target": layer["name"]},
+                {"type": "constrain", "target": layer["name"], "constraints": fixed}]
+    if ops:
+        apply(doc, ops)
+
+
 def cli_apply(doc, ops):
     """`vixl -p DOC apply ops.json` — the CLI path accepts registered `font` names, which the
     Session/MCP/REST service boundary rejects (see README findings)."""
@@ -311,17 +337,15 @@ def apply_all_slots(doc, args, layout, *, image=True):
     return out, sets, dropped
 
 
-def roll_into(doc, seed, locks=(), purpose="social", mood="friendly", size="instagram-portrait"):
+def roll_into(doc, seed, locks=(), purpose="social", mood="friendly"):
     """Preview with `vixl roll`, then commit with `vixl roll --apply`, every slot filled.
 
-    NOTE: `--size` is passed to the preview on purpose. `vixl -p DOC roll` *without* --apply takes
-    the standalone path and ignores the document canvas, so the same seed can pick a different
-    layout than `--apply` does (see README findings).
+    The preview reads the document's canvas and brand, so it picks the same layout as `--apply`.
     """
     base = ["roll", "--for", purpose, "--mood", mood, "--seed", seed]
     for lock in locks:
         base += ["--lock", lock]
-    preview, _ = vixl(*base, "--size", size, doc=doc)
+    preview, _ = vixl(*base, doc=doc)
     layout = preview["direction"]["layout"]
     applied, sets, dropped = apply_all_slots(doc, base + ["--apply"], layout)
     got = applied["applied"]["layout"]["name"]
@@ -716,6 +740,7 @@ def phase4():
     docs = [f"{k}.vixl" for k in SIZES]
     for key in SIZES:
         doc = f"{key}.vixl"
+        snap_centred_text(doc)
         wf("suite-use", {"name": "loop-accessible"}, document=doc)
         wf("suite-use", {"name": "loop-delivery"}, document=doc)
         wf("suite-use", {"name": "no-placeholders"}, document=doc)
@@ -723,13 +748,10 @@ def phase4():
         if VIEW_WIDTH[key]:
             legible["thumbnail_width"] = VIEW_WIDTH[key]
         with SESSION.project(document=doc) as p:
-            # text-fit is only meaningful for boxed text: on auto-sized text it always reports
-            # fits=false (bug, see README), so boxed layers only.
-            texts = [l["name"] for l in p.state["layers"] if l["type"] == "text" and l["name"] != "headline"
-                     and l.get("text_layout") and not l.get("auto_size")]
+            texts = [l["name"] for l in p.state["layers"] if l["type"] == "text" and l["name"] != "headline"]
         rules = [{"id": "legible", "kind": "design", "options": legible},
                  {"id": "headline-size", "kind": "text-fit", "target": "headline", "minimum": 18}]
-        # every other text layer must fit its own box too (plain `check` does not see box clipping)
+        # every other text layer must fit too
         rules += [{"id": f"fit-{t}", "kind": "text-fit", "target": t, "minimum": 8} for t in texts]
         if key == "yt-banner":
             rules.append({"id": "mobile-safe", "kind": "design", "options": {

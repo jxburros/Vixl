@@ -2,7 +2,7 @@
  "steps": [
   {
    "step": "scaffold",
-   "operations": 17,
+   "operations": 14,
    "normalized": []
   },
   {
@@ -32,7 +32,7 @@
   },
   {
    "step": "scene B",
-   "operations": 14,
+   "operations": 12,
    "normalized": []
   },
   {
@@ -72,7 +72,7 @@
   },
   {
    "step": "timeline tracks",
-   "operations": 81,
+   "operations": 78,
    "normalized": []
   },
   {
@@ -82,10 +82,10 @@
   }
  ],
  "sizes": {
-  "halo-launch.mp4": 645647,
-  "halo-launch.gif": 897179,
-  "halo-launch.webp": 759336,
-  "halo-reveal-apng.png": 1027649,
-  "halo-sprites.png": 446405
+  "halo-launch.mp4": 650843,
+  "halo-launch.gif": 932035,
+  "halo-launch.webp": 763806,
+  "halo-reveal-apng.png": 1046282,
+  "halo-sprites.png": 477081
  }
 }

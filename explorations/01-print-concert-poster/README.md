@@ -1,6 +1,6 @@
 # SOLSTICE SIGNAL: print-ready festival poster
 
-A poster for a made-up three-night desert music festival, built entirely with Vixl 0.16.0. The canvas is the named `tabloid` size (11 × 17 in) with 1/8 in bleed. The look is retro-synthwave: a multi-stop dusk sky, a sliced gradient sun clipped to its disc, glowing sparkles, a perspective grid drawn as one multi-contour path, warped Syne 800 headlines, a line of DM Sans text set on an arc concentric with the sun, a lineup panel and a sunburst date badge. Footer, title and badge positions are constraints anchored to the generated `guide:safe-*` guides. After the design, `build.py` runs print QA (`check` with `print` and `color_vision`, plus targeted contrast), renders two soft proofs and three colour-blindness simulations, and exports a CMYK PDF with a 300% ink limit, a CMYK JPEG separated with an ICC profile, an RGB PNG and an SVG.
+A poster for a made-up three-night desert music festival, built entirely with Vixl. It was first built with 0.16.0; the committed outputs are rebuilt with 0.20.0. The canvas is the named `tabloid` size (11 × 17 in) with 1/8 in bleed. The look is retro-synthwave: a multi-stop dusk sky, a sliced gradient sun clipped to its disc, glowing sparkles, a perspective grid drawn as one multi-contour path, warped Syne 800 headlines, a line of DM Sans text set on an arc concentric with the sun, a lineup panel and a sunburst date badge. Footer, title and badge positions are constraints anchored to the generated `guide:safe-*` guides. After the design, `build.py` runs print QA (`check` with `print` and `color_vision`, plus contrast on every text layer), renders two soft proofs and three colour-blindness simulations, and exports a CMYK PDF with a 300% ink limit, a CMYK JPEG separated with an ICC profile, an RGB PNG and an SVG.
 
 ![SOLSTICE SIGNAL poster](output/poster-rgb.png)
 
@@ -10,9 +10,9 @@ A poster for a made-up three-night desert music festival, built entirely with Vi
 
 Run it from the repo root with `python explorations/01-print-concert-poster/build.py`. It needs network access for Google Fonts and the ICC profile.
 
-On a busy shared machine the build took about 10 minutes, most of it in `check --checks contrast` (see Findings); with the fixes in the [changelog](../../CHANGELOG.md) it takes about 2 minutes. `QUICK=1` stops after the document and writes a preview to `.work/quick.png`. `FULL_CHECK=1` contrast-checks every text layer instead of the five smallest; that took 30 to 40 minutes and now adds well under a minute.
+With 0.20.0 the build takes about 2 minutes (1 min 56 s on a shared 4-core container, fonts and ICC profile cached), and the contrast check now covers every text layer. With 0.16.0 it took about 10 minutes while checking only the five smallest text layers; checking all of them took 30 to 40 minutes (see Findings). `QUICK=1` stops after the document and writes a preview to `.work/quick.png`.
 
-## Outputs (`output/`, about 10.8 MB)
+## Outputs (`output/`, about 15.4 MB)
 
 | File | What |
 | --- | --- |
@@ -21,9 +21,9 @@ On a busy shared machine the build took about 10 minutes, most of it in `check -
 | `poster-softproof-swop.png` | Soft proof through the Artifex SWOP CMYK ICC profile (perceptual). |
 | `compare-rgb-vs-proof.jpg` | RGB, GCR proof and SWOP proof side by side. |
 | `colorvision-sims.jpg` | Deuteranopia, protanopia and tritanopia simulations (`--simulate`). |
-| `poster-cmyk.pdf` | CMYK PDF with GCR separation and `--ink-limit 300`. Full size 1688 × 2588 px at 150 dpi; MediaBox is 11.25 × 17.25 in including bleed. |
+| `poster-cmyk.pdf` | CMYK PDF with GCR separation and `--ink-limit 300`: one 1688 × 2588 px DeviceCMYK image at 150 dpi. The MediaBox is 11.25 × 17.25 in including bleed, with a TrimBox and BleedBox. 7.5 MB, because 0.20.0 stores the image with Flate and ignores `--quality` (0.16.0 wrote a 2.4 MB JPEG page). |
 | `poster-cmyk-swop.jpg` | CMYK JPEG separated with `--icc default_cmyk.icc --intent relative`. |
-| `poster.svg` | SVG of the `vector` comp: 486 paths, with only the two `repeat` layers left as images. |
+| `poster.svg` | SVG of the `vector` comp: 486 paths and no images (the two `repeat` layers were images in 0.16.0). |
 | `qa-report.json` | Raw output of every `check`, the export metadata, the ink-coverage numbers and the proof difference stats. |
 
 `DPI = 150` is set at the top of `build.py` so the deliverables stay inside the size budget. Every hand-tuned coordinate scales with the canvas, so `DPI = 300` produces a press-resolution document.
@@ -60,10 +60,10 @@ On a busy shared machine the build took about 10 minutes, most of it in `check -
 - **Dry runs.** `apply(..., dry_run=True)` measures text widths without touching the document. It drives the auto-fit for the Syne headings and the arc length.
 - **QA.**
   - `vixl check --checks bounds overlap safe_area legibility print color_vision --ink-limit 300`
-  - `vixl check --checks contrast --targets …`
+  - `vixl check --checks contrast` on all 13 text layers.
 - **Proofs and simulations.** `export --proof` (GCR, and with `--icc`); `export --simulate deuteranopia|protanopia|tritanopia`.
 - **Exports.**
-  - `export --cmyk --ink-limit 300 --quality 75` to PDF.
+  - `export --cmyk --ink-limit 300 --quality 75 --pdf-content raster` to PDF.
   - `export --cmyk --icc … --intent relative` to JPEG.
   - `export --scale` to PNG.
   - `export --comp vector` to SVG.
@@ -71,7 +71,12 @@ On a busy shared machine the build took about 10 minutes, most of it in `check -
 
 ## Findings
 
-> **Status:** Bugs 1–3 are fixed: `@swatch` works in repeats, `fit` shrinks a word instead of breaking it, and warped text is moved back inside its box instead of losing its top (the transparent-stroke workaround is no longer needed). `--ink-limit` now applies with `--icc` as well. The full `check` on this poster takes seconds instead of more than 10 minutes and passes: the outlined SIGNAL headline, whose dark fill blends into the sky, is read through its yellow outline. See the Unreleased section of the [changelog](../../CHANGELOG.md).
+> **Status in 0.20.0:** Bugs 1–3 are fixed (0.18.0): `@swatch` works in repeats, `fit` shrinks a word instead of breaking it, and warped text is moved back inside its box. `build.py` no longer resolves swatches to literals for the repeats or pads the warped headlines with a transparent stroke, and the rebuilt headlines look the same. `--ink-limit` now applies with `--icc` too (this build's SWOP JPEG doesn't pass one). The full contrast check takes seconds and is now the default. The CMYK PDF has a TrimBox and BleedBox (0.19.0). Blend modes still rasterize the whole SVG.
+>
+> **New in 0.20.0:**
+> - Exporting this poster to a CMYK PDF with the default vector content crashes with `KeyError: 'type'` (`pdf_export.py`, the page fallback for blend modes and adjustment layers passes a layer dict without `type`). The page would be one image anyway, so `build.py` passes `--pdf-content raster`.
+> - `--quality` is ignored for PDF export, so the PDF is a 7.5 MB Flate image instead of a JPEG.
+> - The contrast check cannot measure 5 of the 13 text layers (`eyebrow`, `headliners`, `extras`, `cta-text`, `fineprint`): `Could not measure 'fineprint': boolean index did not match indexed array along axis 1; size of axis is 796 but size of corresponding boolean axis is 794`. These layers are centred by constraints and land on half-pixel positions (`fineprint` is at x 446.5); the coverage mask and the backdrop crop then differ by a pixel or two. The check reports them as warnings and passes, so it says nothing about their contrast.
 
 ### Bugs
 
@@ -84,24 +89,24 @@ On a busy shared machine the build took about 10 minutes, most of it in `check -
    # VixlError invalid_color: Invalid color '@a'; use a name, #hex, ... or a function such as lighten(@swatch, 10%)
    ```
    **Cause:** `design_render.repeat_items()` and the validator in `design.py` call `render.color()` directly, without `colors.resolve_expression()`. A plain `"@a"` fill works on every other layer.
-   **Workaround:** `build.py` resolves the swatches to literal `#rrggbbaa` (`lit()`) before using them in a repeat.
+   **Workaround (0.16.0):** `build.py` resolved the swatches to literal `#rrggbbaa` before using them in a repeat. Removed for 0.20.0.
 
 2. **Warped text is clipped at the top of its box.** `text.plan()` places the glyphs flush with the top of the `text-layout` box. `warped()` then shifts them by `amount * box_height * f(t)`:
    - `flag` lifts the left half above y = 0.
    - `arc` lifts the middle above y = 0.
 
    So the tops of the glyphs get cut off: SIGNAL lost its top, and the middle letters of SOLSTICE were flattened. The docs say to "allow room for curvature", but a taller box makes it worse, because the displacement grows with the box height. Repro: `text "SIGNAL" size 140` + `text-layout width 800 height 300 warp flag amount 0.16`. A leading `\n` doesn't help either: blank lines have no glyph bounds.
-   **Workaround:** a transparent text stroke pads the glyph box (`text-set stroke_width 42, stroke_color transparent`), and the visible outline is drawn with a `stroke` layer style.
+   **Workaround (0.16.0):** a transparent text stroke padded the glyph box (`text-set stroke_width 42, stroke_color transparent`), and the visible outline is drawn with a `stroke` layer style. The padding is removed for 0.20.0.
 
-3. **`fit: true` breaks a single word across lines instead of shrinking it.** `text "SOLSTICE"` (Syne 800, size 270) with `text-layout width 1560 height 420 fit true` rendered as "SOLSTI / CE". The fit search accepts any size whose wrapped block fits, and oversized words wrap mid-word. I measured with a dry run and set the size myself instead.
+3. **`fit: true` breaks a single word across lines instead of shrinking it.** `text "SOLSTICE"` (Syne 800, size 270) with `text-layout width 1560 height 420 fit true` rendered as "SOLSTI / CE". The fit search accepts any size whose wrapped block fits, and oversized words wrap mid-word. I measured with a dry run and set the size myself instead, and `build.py` still does.
 
 ### Rough edges and surprises
 
-- **`check` contrast is very slow at print sizes.** `measure(target=…)` renders the full document 3 times per text layer. On this 1688 × 2588 canvas one layer took 45 to 137 s under load (profiled: `render_layers`, `composite`, `styled_image`), so the default `vixl check` (13 text layers) ran for more than 10 minutes before I stopped it. The other checks together took about 3 minutes.
+- **`check` contrast was very slow at print sizes (fixed).** `measure(target=…)` renders the full document 3 times per text layer. On this 1688 × 2588 canvas one layer took 45 to 137 s under load (profiled: `render_layers`, `composite`, `styled_image`), so the default `vixl check` (13 text layers) ran for more than 10 minutes before I stopped it. The other checks together took about 3 minutes.
 - **Without an ICC profile, `--proof` is a no-op for in-gamut documents.** The GCR separation round-trips exactly to RGB, so the GCR proof was byte-identical to the RGB render (`mean_abs_rgb 0.0`). It only changes where the ink limit or `--black-generation` bites; for example, `#1a0530` with `--ink-limit 200` becomes `(29,10,48)`. Vixl bundles no CMYK profile, so the build downloads Artifex's free `default_cmyk.icc` (SWOP). With it the proof differs on 91% of pixels.
-- **`--ink-limit` is silently ignored when `--icc` is given.** I got the same CMYK values with and without `--ink-limit 240`, and no warning. The SWOP JPEG reaches 340% total ink coverage (p99 303%), while `check --checks print` (which models the GCR separation) reported no ink problems.
-- **The CMYK PDF has no `TrimBox` or `BleedBox`.** The MediaBox is the full bleed size, so a printer has to be told the trim.
-- **SVG export rasterizes the whole document when backdrop-dependent layers are present.** Any `screen`/`multiply`/`overlay` blend or adjustment layer turns the SVG into a single 10.8 MB `<image>` (`raster_fallbacks` names them clearly). A comp that hides those layers and resets the blends to `normal` produced a 0.3 MB SVG with 486 paths. Only the two `repeat` layers stayed raster, which is documented.
+- **`--ink-limit` was silently ignored when `--icc` was given (fixed).** I got the same CMYK values with and without `--ink-limit 240`, and no warning. The SWOP JPEG reaches 340% total ink coverage (p99 303%), while `check --checks print` (which models the GCR separation) reported no ink problems.
+- **The CMYK PDF had no `TrimBox` or `BleedBox` (fixed in 0.19.0).** The MediaBox was the full bleed size, so a printer had to be told the trim. The 0.20.0 PDF has `TrimBox [9 9 801 1233]` and `BleedBox [0 0 810 1242]`.
+- **SVG export rasterizes the whole document when backdrop-dependent layers are present.** Any `screen`/`multiply`/`overlay` blend or adjustment layer turns the SVG into a single 10.8 MB `<image>` (`raster_fallbacks` names them clearly). A comp that hides those layers and resets the blends to `normal` produced a 0.3 MB SVG with 486 paths. Only the two `repeat` layers stayed raster in 0.16.0; since 0.17.0 they are vectors too. The full comp is still one image in 0.20.0.
 - **The overlap check counts occluded and clipped geometry.** It warns that `sun` overlaps `headliners` (the lower half of the sun is hidden under the ground) and `slice` overlaps `badge-text`. The bounds check also warns about the mountains and haze that deliberately run into the bleed. All were warnings, not errors.
 - **CLI `check --checks` is missing three checks.** It only offers `bounds overlap contrast safe_area legibility print color_vision`; `fonts`, `blanks` and `brand` exist in `checks.CHECKS` but can't be selected one at a time from the CLI.
 - **`text` `spacing` has a minimum of 0**, so leading tighter than the default line gap is impossible (`spacing -6 is less than the minimum of 0`).
@@ -119,4 +124,4 @@ On a busy shared machine the build took about 10 minutes, most of it in `check -
 - **Text on a path.** The polyline produced clean, evenly spaced glyphs along the arc.
 - **Colour-vision QA.** The `color_vision` check passed, and the simulations confirm the hierarchy survives all three deficiencies, because the type contrast is carried by lightness.
 - **What the SWOP proof showed.** The out-of-gamut indigo night sky turns into flat charcoal, and the electric cyan badge and magenta grid lose most of their punch. The sun, the yellow type and the overall hierarchy hold up. For press, the sky should be rebuilt from in-gamut purples, or the client warned.
-- **CMYK files are correct.** The PDF is `DeviceCMYK`/`DCTDecode` at the correct physical size, and the JPEG is a real 4-channel CMYK file with dpi metadata.
+- **CMYK files are correct.** The PDF is `DeviceCMYK` at the correct physical size (`DCTDecode` in 0.16.0, Flate in 0.20.0), and the JPEG is a real 4-channel CMYK file with dpi metadata.

@@ -83,5 +83,55 @@
       "width": 96,
       "height": 24
     }
-  ]
+  ],
+  "animations": {
+    "walk": {
+      "loop": 0,
+      "total_duration": 560,
+      "frames": [
+        {
+          "name": "walk-1",
+          "duration": 140
+        },
+        {
+          "name": "walk-2",
+          "duration": 140
+        },
+        {
+          "name": "walk-3",
+          "duration": 140
+        },
+        {
+          "name": "walk-4",
+          "duration": 140
+        }
+      ]
+    },
+    "attack": {
+      "loop": 0,
+      "total_duration": 980,
+      "frames": [
+        {
+          "name": "attack-1",
+          "duration": 120
+        },
+        {
+          "name": "attack-2",
+          "duration": 60
+        },
+        {
+          "name": "attack-3",
+          "duration": 200
+        },
+        {
+          "name": "attack-4",
+          "duration": 200
+        },
+        {
+          "name": "idle-1",
+          "duration": 400
+        }
+      ]
+    }
+  }
 }

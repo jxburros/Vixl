@@ -14,7 +14,7 @@
  },
  "tracks": [
   {
-   "target": "lyr_fb61d0ee7bec44d7",
+   "target": "lyr_7b0a49379aff42d8",
    "layer": "word-0",
    "property": "translate-y",
    "keys": [
@@ -39,7 +39,7 @@
    ]
   },
   {
-   "target": "lyr_fb61d0ee7bec44d7",
+   "target": "lyr_7b0a49379aff42d8",
    "layer": "word-0",
    "property": "opacity",
    "keys": [
@@ -64,7 +64,7 @@
    ]
   },
   {
-   "target": "lyr_d107d304ce614682",
+   "target": "lyr_affa35af9b914f94",
    "layer": "word-1",
    "property": "translate-y",
    "keys": [
@@ -89,7 +89,7 @@
    ]
   },
   {
-   "target": "lyr_d107d304ce614682",
+   "target": "lyr_affa35af9b914f94",
    "layer": "word-1",
    "property": "opacity",
    "keys": [
@@ -114,7 +114,7 @@
    ]
   },
   {
-   "target": "lyr_4a618638af224ebf",
+   "target": "lyr_a4a27aed0de04ba0",
    "layer": "word-2",
    "property": "translate-y",
    "keys": [
@@ -139,7 +139,7 @@
    ]
   },
   {
-   "target": "lyr_4a618638af224ebf",
+   "target": "lyr_a4a27aed0de04ba0",
    "layer": "word-2",
    "property": "opacity",
    "keys": [
@@ -164,7 +164,7 @@
    ]
   },
   {
-   "target": "lyr_20f4fce9218c4d35",
+   "target": "lyr_2d2ec2f5f66144d8",
    "layer": "letter-H",
    "property": "translate-y",
    "keys": [
@@ -180,7 +180,7 @@
    ]
   },
   {
-   "target": "lyr_173d4cec7bad42ff",
+   "target": "lyr_a3949b23c87a4c42",
    "layer": "letter-A",
    "property": "translate-y",
    "keys": [
@@ -196,7 +196,7 @@
    ]
   },
   {
-   "target": "lyr_a32a4fa2b3ef4964",
+   "target": "lyr_700df3fea76b4612",
    "layer": "letter-L",
    "property": "translate-y",
    "keys": [
@@ -212,7 +212,7 @@
    ]
   },
   {
-   "target": "lyr_a6e6e2e142224f2c",
+   "target": "lyr_7531f64cf4cd40ff",
    "layer": "letter-O",
    "property": "translate-y",
    "keys": [
@@ -228,7 +228,7 @@
    ]
   },
   {
-   "target": "lyr_20f4fce9218c4d35",
+   "target": "lyr_2d2ec2f5f66144d8",
    "layer": "letter-H",
    "property": "opacity",
    "keys": [
@@ -244,7 +244,7 @@
    ]
   },
   {
-   "target": "lyr_173d4cec7bad42ff",
+   "target": "lyr_a3949b23c87a4c42",
    "layer": "letter-A",
    "property": "opacity",
    "keys": [
@@ -260,7 +260,7 @@
    ]
   },
   {
-   "target": "lyr_a32a4fa2b3ef4964",
+   "target": "lyr_700df3fea76b4612",
    "layer": "letter-L",
    "property": "opacity",
    "keys": [
@@ -276,7 +276,7 @@
    ]
   },
   {
-   "target": "lyr_a6e6e2e142224f2c",
+   "target": "lyr_7531f64cf4cd40ff",
    "layer": "letter-O",
    "property": "opacity",
    "keys": [
@@ -292,7 +292,7 @@
    ]
   },
   {
-   "target": "lyr_d9f8c214e2de4ec6",
+   "target": "lyr_820d73452e6a4b40",
    "layer": "chip-0",
    "property": "scale",
    "keys": [
@@ -308,7 +308,7 @@
    ]
   },
   {
-   "target": "lyr_d9f8c214e2de4ec6",
+   "target": "lyr_820d73452e6a4b40",
    "layer": "chip-0",
    "property": "opacity",
    "keys": [
@@ -324,7 +324,7 @@
    ]
   },
   {
-   "target": "lyr_a0aba7cec0e04c75",
+   "target": "lyr_6fd3401ed788449a",
    "layer": "chip-1",
    "property": "scale",
    "keys": [
@@ -340,7 +340,7 @@
    ]
   },
   {
-   "target": "lyr_a0aba7cec0e04c75",
+   "target": "lyr_6fd3401ed788449a",
    "layer": "chip-1",
    "property": "opacity",
    "keys": [
@@ -356,7 +356,7 @@
    ]
   },
   {
-   "target": "lyr_4aaa7bba821b4923",
+   "target": "lyr_dbef9f920fd84f97",
    "layer": "chip-2",
    "property": "scale",
    "keys": [
@@ -372,7 +372,7 @@
    ]
   },
   {
-   "target": "lyr_4aaa7bba821b4923",
+   "target": "lyr_dbef9f920fd84f97",
    "layer": "chip-2",
    "property": "opacity",
    "keys": [
@@ -388,7 +388,7 @@
    ]
   },
   {
-   "target": "lyr_05d78573d5014a63",
+   "target": "lyr_24e55d8fa6cd4adc",
    "layer": "spark-0",
    "property": "translate-y",
    "keys": [
@@ -433,7 +433,7 @@
    ]
   },
   {
-   "target": "lyr_5f6803f1b3bc41c8",
+   "target": "lyr_7a320c1921a941d5",
    "layer": "spark-1",
    "property": "translate-y",
    "keys": [
@@ -482,7 +482,7 @@
    ]
   },
   {
-   "target": "lyr_53520adc26d247d8",
+   "target": "lyr_9c8360ad872c4daa",
    "layer": "spark-2",
    "property": "translate-y",
    "keys": [
@@ -531,7 +531,7 @@
    ]
   },
   {
-   "target": "lyr_4356af98032144b2",
+   "target": "lyr_3d8f92fbea774293",
    "layer": "spark-3",
    "property": "translate-y",
    "keys": [
@@ -580,7 +580,7 @@
    ]
   },
   {
-   "target": "lyr_2c795d751c2946b5",
+   "target": "lyr_e7733d85494f48aa",
    "layer": "spark-4",
    "property": "translate-y",
    "keys": [
@@ -629,7 +629,7 @@
    ]
   },
   {
-   "target": "lyr_10302d06b0c644cb",
+   "target": "lyr_d693ed2e589b40dd",
    "layer": "spark-5",
    "property": "translate-y",
    "keys": [
@@ -678,7 +678,7 @@
    ]
   },
   {
-   "target": "lyr_26a3f57775254b39",
+   "target": "lyr_9258ba28709f49b8",
    "layer": "spark-6",
    "property": "translate-y",
    "keys": [
@@ -727,7 +727,7 @@
    ]
   },
   {
-   "target": "lyr_7d6eac02dcd1413a",
+   "target": "lyr_a741935a2c02472f",
    "layer": "spark-7",
    "property": "translate-y",
    "keys": [
@@ -796,7 +796,7 @@
    ]
   },
   {
-   "target": "lyr_8da55807ebd84f98",
+   "target": "lyr_714d7d93b90a43dc",
    "layer": "kicker",
    "property": "text",
    "keys": [
@@ -915,7 +915,7 @@
    ]
   },
   {
-   "target": "lyr_8da55807ebd84f98",
+   "target": "lyr_714d7d93b90a43dc",
    "layer": "kicker",
    "property": "opacity",
    "keys": [
@@ -931,7 +931,7 @@
    ]
   },
   {
-   "target": "lyr_7f72f364fcc64b9e",
+   "target": "lyr_a132d659c73a42d8",
    "layer": "sweep",
    "property": "scale-x",
    "keys": [
@@ -956,28 +956,7 @@
    ]
   },
   {
-   "target": "lyr_7f72f364fcc64b9e",
-   "layer": "sweep",
-   "property": "opacity",
-   "keys": [
-    {
-     "time": 0,
-     "value": 0,
-     "easing": "hold"
-    },
-    {
-     "time": 700,
-     "value": 1,
-     "easing": "hold"
-    },
-    {
-     "time": 2100,
-     "value": 0
-    }
-   ]
-  },
-  {
-   "target": "lyr_7f72f364fcc64b9e",
+   "target": "lyr_a132d659c73a42d8",
    "layer": "sweep",
    "property": "fill",
    "keys": [
@@ -993,7 +972,7 @@
    ]
   },
   {
-   "target": "lyr_d107d304ce614682",
+   "target": "lyr_affa35af9b914f94",
    "layer": "word-1",
    "property": "color",
    "keys": [
@@ -1009,7 +988,7 @@
    ]
   },
   {
-   "target": "lyr_4a618638af224ebf",
+   "target": "lyr_a4a27aed0de04ba0",
    "layer": "word-2",
    "property": "size",
    "keys": [
@@ -1025,7 +1004,7 @@
    ]
   },
   {
-   "target": "lyr_bbfcbd1f6ef84400",
+   "target": "lyr_ae718195bacf46ec",
    "layer": "glow",
    "property": "opacity",
    "keys": [
@@ -1041,7 +1020,7 @@
    ]
   },
   {
-   "target": "lyr_bbfcbd1f6ef84400",
+   "target": "lyr_ae718195bacf46ec",
    "layer": "glow",
    "property": "scale",
    "keys": [
@@ -1062,7 +1041,7 @@
    ]
   },
   {
-   "target": "lyr_a82d0983af2c453f",
+   "target": "lyr_9434c9c0e65b4694",
    "layer": "ring",
    "property": "opacity",
    "keys": [
@@ -1078,13 +1057,13 @@
    ]
   },
   {
-   "target": "lyr_a82d0983af2c453f",
+   "target": "lyr_9434c9c0e65b4694",
    "layer": "ring",
    "property": "scale",
    "keys": [
     {
      "time": 2200,
-     "value": 0.12,
+     "value": 0,
      "easing": "elastic-out"
     },
     {
@@ -1094,8 +1073,8 @@
    ]
   },
   {
-   "target": "lyr_a7d2be5f72634755",
-   "layer": "ring-blur",
+   "target": "lyr_9434c9c0e65b4694",
+   "layer": "ring",
    "property": "effect:1",
    "keys": [
     {
@@ -1110,7 +1089,7 @@
    ]
   },
   {
-   "target": "lyr_a82d0983af2c453f",
+   "target": "lyr_9434c9c0e65b4694",
    "layer": "ring",
    "property": "stroke",
    "keys": [
@@ -1126,7 +1105,7 @@
    ]
   },
   {
-   "target": "lyr_3e8a27753d5e4a55",
+   "target": "lyr_acd2a18f0d0341c2",
    "layer": "ticks",
    "property": "opacity",
    "keys": [
@@ -1142,7 +1121,7 @@
    ]
   },
   {
-   "target": "lyr_3e8a27753d5e4a55",
+   "target": "lyr_acd2a18f0d0341c2",
    "layer": "ticks",
    "property": "rotation",
    "keys": [
@@ -1157,7 +1136,7 @@
    ]
   },
   {
-   "target": "lyr_4aacd3ecde9245f1",
+   "target": "lyr_cd62d801e8844b25",
    "layer": "satellite",
    "property": "opacity",
    "keys": [
@@ -1173,7 +1152,7 @@
    ]
   },
   {
-   "target": "lyr_4aacd3ecde9245f1",
+   "target": "lyr_cd62d801e8844b25",
    "layer": "satellite",
    "property": "rotation",
    "keys": [
@@ -1189,7 +1168,7 @@
    ]
   },
   {
-   "target": "lyr_e7a9104d8c1d47cc",
+   "target": "lyr_777b5ac47e354af0",
    "layer": "wordmark",
    "property": "effect:1",
    "keys": [
@@ -1205,7 +1184,7 @@
    ]
   },
   {
-   "target": "lyr_1f6e4b3d6d24425a",
+   "target": "lyr_b4367e196eb948cd",
    "layer": "chip-label-0",
    "property": "color",
    "keys": [
@@ -1226,7 +1205,7 @@
    ]
   },
   {
-   "target": "lyr_517ad1e3c84f40b8",
+   "target": "lyr_4f2d00f0fef249e0",
    "layer": "chip-label-1",
    "property": "color",
    "keys": [
@@ -1247,7 +1226,7 @@
    ]
   },
   {
-   "target": "lyr_6df85e9b7b164a49",
+   "target": "lyr_58ebbce2cf5f4ff9",
    "layer": "chip-label-2",
    "property": "color",
    "keys": [
@@ -1268,7 +1247,7 @@
    ]
   },
   {
-   "target": "lyr_ece3327346924ca0",
+   "target": "lyr_1b8edf70d9c04e85",
    "layer": "badge",
    "property": "scale",
    "keys": [
@@ -1284,7 +1263,7 @@
    ]
   },
   {
-   "target": "lyr_ece3327346924ca0",
+   "target": "lyr_1b8edf70d9c04e85",
    "layer": "badge",
    "property": "opacity",
    "keys": [
@@ -1300,7 +1279,7 @@
    ]
   },
   {
-   "target": "lyr_ece3327346924ca0",
+   "target": "lyr_1b8edf70d9c04e85",
    "layer": "badge",
    "property": "rotation",
    "keys": [
@@ -1316,7 +1295,7 @@
    ]
   },
   {
-   "target": "lyr_ece3327346924ca0",
+   "target": "lyr_1b8edf70d9c04e85",
    "layer": "badge",
    "property": "translate-y",
    "keys": [
@@ -1332,7 +1311,7 @@
    ]
   },
   {
-   "target": "lyr_7821a12933ca408e",
+   "target": "lyr_eeb048969a5842bd",
    "layer": "tagline",
    "property": "text",
    "keys": [
@@ -1455,7 +1434,7 @@
    ]
   },
   {
-   "target": "lyr_7821a12933ca408e",
+   "target": "lyr_eeb048969a5842bd",
    "layer": "tagline",
    "property": "translate-y",
    "keys": [
@@ -1471,7 +1450,7 @@
    ]
   },
   {
-   "target": "lyr_7821a12933ca408e",
+   "target": "lyr_eeb048969a5842bd",
    "layer": "tagline",
    "property": "opacity",
    "keys": [
@@ -1487,7 +1466,7 @@
    ]
   },
   {
-   "target": "lyr_1f6e4b3d6d24425a",
+   "target": "lyr_b4367e196eb948cd",
    "layer": "chip-label-0",
    "property": "text",
    "keys": [
@@ -1522,7 +1501,7 @@
    ]
   },
   {
-   "target": "lyr_7acba7b3511e4bd2",
+   "target": "lyr_3baa1c01f9b741db",
    "layer": "cta-pill",
    "property": "translate-y",
    "keys": [
@@ -1538,7 +1517,7 @@
    ]
   },
   {
-   "target": "lyr_7acba7b3511e4bd2",
+   "target": "lyr_3baa1c01f9b741db",
    "layer": "cta-pill",
    "property": "opacity",
    "keys": [
@@ -1554,7 +1533,7 @@
    ]
   },
   {
-   "target": "lyr_b4a01b2237ab4415",
+   "target": "lyr_edfd888db2424304",
    "layer": "cta-label",
    "property": "translate-y",
    "keys": [
@@ -1570,7 +1549,7 @@
    ]
   },
   {
-   "target": "lyr_b4a01b2237ab4415",
+   "target": "lyr_edfd888db2424304",
    "layer": "cta-label",
    "property": "opacity",
    "keys": [
@@ -1586,7 +1565,7 @@
    ]
   },
   {
-   "target": "lyr_7acba7b3511e4bd2",
+   "target": "lyr_3baa1c01f9b741db",
    "layer": "cta-pill",
    "property": "scale",
    "keys": [
@@ -1607,7 +1586,7 @@
    ]
   },
   {
-   "target": "lyr_b4a01b2237ab4415",
+   "target": "lyr_edfd888db2424304",
    "layer": "cta-label",
    "property": "scale",
    "keys": [
@@ -1628,7 +1607,7 @@
    ]
   },
   {
-   "target": "lyr_7acba7b3511e4bd2",
+   "target": "lyr_3baa1c01f9b741db",
    "layer": "cta-pill",
    "property": "fill",
    "keys": [
@@ -1644,7 +1623,7 @@
    ]
   },
   {
-   "target": "lyr_8833bede9be642f6",
+   "target": "lyr_ba3ab0112bb94d49",
    "layer": "progress",
    "property": "scale-x",
    "keys": [
@@ -1660,7 +1639,7 @@
    ]
   },
   {
-   "target": "lyr_7455aa7e8c534bbd",
+   "target": "lyr_96675756f48b48c5",
    "layer": "timecode",
    "property": "text",
    "keys": [
@@ -1799,7 +1778,7 @@
    ]
   },
   {
-   "target": "lyr_fc33f20a88414017",
+   "target": "lyr_552e57c5df4b4370",
    "layer": "finish",
    "property": "effect:1",
    "keys": [

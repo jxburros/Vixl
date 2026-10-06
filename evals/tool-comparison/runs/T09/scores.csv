@@ -1,3 +1,3 @@
 test,lane,agent,model,date,blind_code,r1_minutes,r1_nudges,hard_passed,hard_total,fidelity,craft,report_honest,r2_minutes,r2_nudges,editability,revision,notes
-T09,V,claude-code-subagent,claude-opus-5-5,2026-10-05,AVLB,,0,6,6,5,4,yes,,0,5,5,clean family; extra TIDEWICK CAFE label added (disclosed); r2 edited layers in place with small font shrinks to fit
+T09,V,claude-code-subagent,claude-opus-5-5,2026-10-06,9UC2,,0,6,6,5,3,yes,,0,5,5,Vixl 0.20.0; clean but plainer look (Fraunces + Work Sans; lamp + line waves); copy strictly the brief; r2 text-set in place with two disclosed headline shrinks; adapt-layout output needed manual re-layout of every layer in all five sizes
 T09,W,claude-code-subagent,claude-opus-5-5,2026-10-05,ILEV,,0,6,6,5,4,yes,,0,5,4,richer look; r2 two-constant edit but square headline colon now collides with lamp halo rings

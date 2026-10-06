@@ -2,6 +2,20 @@
   "passed": false,
   "errors": 1,
   "warnings": 5,
+  "info": 0,
+  "by_action": {
+    "fix": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "review": [
+      0
+    ],
+    "informational": []
+  },
   "issues": [
     {
       "check": "overlap",
@@ -10,13 +24,14 @@
         "cta-button",
         "cta"
       ],
-      "message": "'cta-button' and 'cta' overlap by 1264 px (88.6% of the smaller layer)",
+      "message": "'cta-button' and 'cta' overlap by 1240 px (87.7% of the smaller layer)",
       "region": [
-        113,
-        1175,
-        183,
+        107,
+        1169,
+        184,
         29
-      ]
+      ],
+      "action": "review"
     },
     {
       "check": "contrast",
@@ -24,9 +39,16 @@
       "layers": [
         "cta"
       ],
-      "message": "'cta' contrast is 1.52:1 for most glyph pixels (minimum 1.18:1); needs 4.5:1",
-      "contrast": 1.516,
-      "required": 4.5
+      "message": "'cta' contrast is 1.47:1 or lower for a tenth of its glyph pixels (minimum 1.17:1, weakest at x 298–309, y 1176–1196); needs 4.5:1",
+      "region": [
+        298,
+        1176,
+        12,
+        21
+      ],
+      "contrast": 1.474,
+      "required": 4.5,
+      "action": "fix"
     },
     {
       "check": "legibility",
@@ -35,7 +57,8 @@
         "label"
       ],
       "message": "'label' is 6.2 px tall at 320 px wide; aim for at least 10 px (font size 34+)",
-      "thumbnail_size": 6.22
+      "thumbnail_size": 6.22,
+      "action": "fix"
     },
     {
       "check": "legibility",
@@ -44,7 +67,8 @@
         "body"
       ],
       "message": "'body' is 8.3 px tall at 320 px wide; aim for at least 10 px (font size 34+)",
-      "thumbnail_size": 8.3
+      "thumbnail_size": 8.3,
+      "action": "fix"
     },
     {
       "check": "legibility",
@@ -53,7 +77,8 @@
         "cta"
       ],
       "message": "'cta' is 8.3 px tall at 320 px wide; aim for at least 10 px (font size 34+)",
-      "thumbnail_size": 8.3
+      "thumbnail_size": 8.3,
+      "action": "fix"
     },
     {
       "check": "legibility",
@@ -62,7 +87,8 @@
         "stat-caption"
       ],
       "message": "'stat-caption' is 7.7 px tall at 320 px wide; aim for at least 10 px (font size 34+)",
-      "thumbnail_size": 7.7
+      "thumbnail_size": 7.7,
+      "action": "fix"
     }
   ],
   "checked": {
@@ -74,9 +100,14 @@
       "legibility",
       "blanks",
       "fonts",
-      "brand"
+      "brand",
+      "content",
+      "form",
+      "links",
+      "diagram",
+      "flow"
     ],
-    "layers": 10,
+    "layers": 11,
     "text_layers": 6
   }
 }

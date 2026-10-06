@@ -1,6 +1,6 @@
 # Vixl marketing kit
 
-Marketing material for Vixl, made with Vixl. One script, [`build.py`](build.py), builds every
+Marketing material for Vixl, made with Vixl 0.20.0. One script, [`build.py`](build.py), builds every
 piece through the Python API: layouts, rich text, linked logo masters, framed images, pages,
 keyframes, checks and exports. Nothing was drawn by hand or in another app.
 
@@ -29,7 +29,7 @@ the `vixl check` findings it was released with (see below).
 From the repository root, with Vixl installed (`python -m pip install -e '.[pdf]'`):
 
 ```bash
-python marketing/build.py                 # everything (about 2 minutes)
+python marketing/build.py                 # everything (about 1½ minutes with 0.20.0)
 python marketing/build.py og deck teaser  # just some pieces
 ```
 
@@ -46,28 +46,46 @@ so the logo links resolve.
 - **Showcase images** (the gallery tiles in the GitHub card, story, carousel and deck) are real
   outputs from [`explorations/`](../explorations/) and [`docs/assets/generated/`](../docs/assets/generated/),
   all made with Vixl, placed with `frame` and clipped to rounded `shape`s.
-- **Copy facts** were counted from the 0.19.0 source: 138 operation types, 150 named sizes,
-  32 layouts, 28 styles, 14 looks and 17 brushes. The "Seconds, not minutes" deck slide quotes the
-  before/after timings in [explorations/README.md](../explorations/README.md#performance).
+- **Copy facts** were counted from the 0.20.0 source by taking the length of each registry:
+  179 operation types (`vixl.operations.OPERATION_TYPES`), 150 named sizes (`vixl.sizes.SIZES`),
+  47 layouts (`vixl.layouts.LAYOUTS`), 40 templates and 19 containers (`vixl.resources.TEMPLATES`
+  and `CONTAINERS`), 28 styles (`vixl.style_catalog.STYLES`), 17 looks (`vixl.looks.LOOKS`) and
+  17 brushes (`vixl.brushes.BRUSHES`). The 10,000-operation batch limit is `vixl.model.Limits().max_operations`.
+  The same rule applied to the 0.19.0 source reproduces the numbers the 0.19.0 kit quoted
+  (138 operations, 150 sizes, 32 layouts, 28 styles, 14 looks, 17 brushes; it also gives
+  14 templates, 6 containers and a 1,000-operation batch limit).
+  To recount after a release:
+
+  ```bash
+  python -c "from vixl.operations import OPERATION_TYPES; from vixl.sizes import SIZES; \
+  from vixl.layouts import LAYOUTS; from vixl.resources import TEMPLATES, CONTAINERS; \
+  from vixl.style_catalog import STYLES; from vixl.looks import LOOKS; from vixl.brushes import BRUSHES; \
+  print(*map(len, (OPERATION_TYPES, SIZES, LAYOUTS, TEMPLATES, CONTAINERS, STYLES, LOOKS, BRUSHES)))"
+  ```
+
+  The "Seconds, not minutes" deck slide quotes the before/after timings in
+  [explorations/README.md](../explorations/README.md#performance).
   If those numbers change, edit `FACTS` and the slide in `build.py`.
 - **No licence claim.** The repository has no licence file, so nothing says "open source". Add it
   to the chips in `build_og` once a licence is chosen.
 
 ## Checks
 
-Each piece runs `vixl check` before export and has no remaining `fix` findings. What's left in the
+Each piece runs `vixl check` before export and has no remaining `fix` findings. The carousel is
+checked with the `phone` deck profile and the pitch deck with the `screen` profile (it is read on a
+laptop or shared as a PDF, not projected). The dot grids are marked `layer-intent role=decoration`
+and the strikethrough bars over the "before" timings may overlap their numbers. What's left in the
 `.check.json` files is deliberate:
 
-- Glow gradients cropped by the canvas edge, and decoration overlapping them.
-- The strikethrough bars over the "before" timings in the deck.
-- Deck-review notes (type scale, words per page, projected type size), which suit conference
-  projection rather than a pitch read on screen.
-- The carousel skips the 320 px thumbnail-legibility check: only the cover is seen as a grid
-  thumbnail, and its headline passes. The inner slides are read full-screen.
+- Informational notes: glow gradients cropped by the canvas edge, and dot grids built from
+  `repeat`, which the checks measure by their first instance.
+- The deck title slide's headline sits lower than the other slide titles.
+- The "MCP" sticker's pixel stair runs into the word, by design.
 
-## Engine issue found while building this
+## Engine issue found while building this (fixed in 0.20.0)
 
-`vixl.deck.contact_sheet` (and MCP `vixl_render_preview(page="all")`) fails with
-`Dimensions must be 1–16384` when the sheet scales a page by less than about 1/3 and the page has
-a `repeat` of a very small shape: the 3 px dots of the background grid round to 0 px. `build.py`
-avoids it by rendering the deck sheet at 640 px per slide.
+With 0.19.0, `vixl.deck.contact_sheet` (and MCP `vixl_render_preview(page="all")`) failed with
+`Dimensions must be 1–16384` when the sheet scaled a page by less than about 1/3 and the page had
+a `repeat` of a very small shape (the 3 px dots of the background grid rounded to 0 px), so the
+deck sheet had to be rendered at 640 px per slide. 0.20.0 prevents those zero-size allocations;
+the deck sheet now renders at 480 px per slide (1/4 scale).

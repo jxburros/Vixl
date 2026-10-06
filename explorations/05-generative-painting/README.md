@@ -11,9 +11,10 @@ grade. The script also renders a labelled brush specimen sheet and four artistic
 timelapse brings in the layers (and the pines one tree at a time) in painting order as a GIF and an MP4.
 The final document holds **3,723 strokes on 26 paint layers**. 3,072 of them are authored strokes; the
 other 651 are copies made when the mountain layers are duplicated for the reflections. All of it stays
-editable in `output/painting.vixl`.
+editable in `output/painting.vixl`. The project was first built with Vixl 0.16.0; the committed outputs
+are rebuilt with 0.20.0.
 
-Run from the repo root: `python explorations/05-generative-painting/build.py` (about 13 minutes when it was built; about 4 minutes with the fixes in the [changelog](../../CHANGELOG.md)).
+Run from the repo root: `python explorations/05-generative-painting/build.py` (3 min 55 s with 0.20.0 on a shared 4-core container; about 13 minutes with 0.16.0).
 
 ![The finished painting](output/painting.jpg)
 
@@ -69,7 +70,11 @@ Outputs: `painting.jpg`, `painting.vixl` (editable, 333 KB), `brush-specimens.pn
 
 ## Findings
 
-> **Status:** Real problems 1–4 are fixed: painting is linear in strokes (a paint operation validates only its new stroke, layout no longer copies strokes, and adding strokes renders only the new ones), strokes rasterize over their own footprint, the in-memory cache is least-recently-used and sized for documents like this one, and moving layers reuse their cached image between timeline frames. The branch-per-layer and plate workarounds in `build.py` are no longer needed for speed. Problem 5 (`oil-paint` fringes) is fixed as well: `oil-paint` takes the mode of a luminance key and copies that pixel's RGB, so it only produces colours already in the image. The batch-limit error now gives the limit and the batch size. See the Unreleased section of the [changelog](../../CHANGELOG.md).
+> **Status in 0.20.0:** Real problems 1–5 are fixed (0.18.0). Painting is linear in strokes (a paint operation validates only its new stroke, layout no longer copies strokes, and adding strokes renders only the new ones), strokes rasterize over their own footprint, the in-memory cache is least-recently-used and sized for documents like this one, and moving layers reuse their cached image between timeline frames. `oil-paint` takes the mode of a luminance key and copies that pixel's RGB, so it only produces colours already in the image; the rebuilt `variant-oil-paint.jpg` has no green, magenta or blue fringes on the reeds and the sun glitter. The batch-limit error gives the limit and the batch size. The painting, the timelapse and the other three variants are byte-identical to the 0.16.0 outputs, and the specimen sheet differs only in a few antialiased pixels.
+>
+> `build.py` still paints each layer on its own branch in 4 processes and builds the timelapse from per-layer plates. Both were introduced for speed and are no longer needed for it, but they are kept: the branch workflow is one of the features this project exercises, and the plates let the timelapse bring the pines in one tree at a time.
+>
+> 0.20.0 timings for the same run (shared 4-core container, no other build running): fork 6 s, paint 32 s, merge 35 s; first full render 79 s; second render 0.08 s; specimen sheet 6 s; each variant 2–4 s; plates 20 s; contact sheet 2 s; GIF 10 s; MP4 30 s. The 0.16.0 timings follow.
 
 Timings come from the final run on a shared 4-core container, with other agents' builds running
 (load average 1–3). An earlier run under load ~8 took 731 s for the same cold render.

@@ -36,18 +36,65 @@
     "output": "/home/user/Vixl/explorations/07-trading-cards/output/set/standard/0009.png",
     "check": {
       "passed": false,
-      "errors": 1,
+      "errors": 3,
       "warnings": 0,
       "issues": [
+        {
+          "check": "fonts",
+          "severity": "error",
+          "layers": [
+            "card-name"
+          ],
+          "message": "'card-name' has characters no font can draw (✨の光狐); they render as empty boxes. Import a font that covers them and add it with font-fallbacks",
+          "missing": [
+            "✨",
+            "の",
+            "光",
+            "狐"
+          ],
+          "fallback": [],
+          "action": "fix"
+        },
+        {
+          "check": "fonts",
+          "severity": "error",
+          "layers": [
+            "flavor"
+          ],
+          "message": "'flavor' has characters no font can draw (、「」うにはを光影者迷追); they render as empty boxes. Import a font that covers them and add it with font-fallbacks",
+          "missing": [
+            "、",
+            "「",
+            "」",
+            "う",
+            "に",
+            "は",
+            "を",
+            "光",
+            "影",
+            "者",
+            "迷",
+            "追"
+          ],
+          "fallback": [],
+          "action": "fix"
+        },
         {
           "check": "contrast",
           "severity": "error",
           "layers": [
             "spd-value"
           ],
-          "message": "'spd-value' contrast is 1.73:1 for most glyph pixels (minimum 1.73:1); needs 3:1",
+          "message": "'spd-value' contrast is 1.73:1 or lower for a tenth of its glyph pixels (minimum 1.73:1, weakest at x 590–609, y 931–931); needs 3:1",
+          "region": [
+            590,
+            931,
+            20,
+            1
+          ],
           "contrast": 1.73,
-          "required": 3.0
+          "required": 3.0,
+          "action": "fix"
         }
       ]
     }
@@ -74,9 +121,16 @@
           "layers": [
             "atk-value"
           ],
-          "message": "'atk-value' contrast is 2.59:1 for most glyph pixels (minimum 2.59:1); needs 3:1",
+          "message": "'atk-value' contrast is 2.59:1 or lower for a tenth of its glyph pixels (minimum 2.59:1, weakest at x 198–217, y 931–931); needs 3:1",
+          "region": [
+            198,
+            931,
+            20,
+            1
+          ],
           "contrast": 2.593,
-          "required": 3.0
+          "required": 3.0,
+          "action": "fix"
         },
         {
           "check": "contrast",
@@ -84,9 +138,16 @@
           "layers": [
             "def-value"
           ],
-          "message": "'def-value' contrast is 2.59:1 for most glyph pixels (minimum 2.59:1); needs 3:1",
+          "message": "'def-value' contrast is 2.59:1 or lower for a tenth of its glyph pixels (minimum 2.59:1, weakest at x 394–413, y 931–931); needs 3:1",
+          "region": [
+            394,
+            931,
+            20,
+            1
+          ],
           "contrast": 2.593,
-          "required": 3.0
+          "required": 3.0,
+          "action": "fix"
         }
       ]
     }

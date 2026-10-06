@@ -15,6 +15,13 @@ Every tool here is free or comes with Claude and ChatGPT/Codex. Nothing needs a 
 | [`inspect_outputs.py`](inspect_outputs.py) | Measurable facts about any tool's outputs, and blind copies for judging |
 | [`scoresheet.csv`](scoresheet.csv) | One row per run |
 
+## Results
+
+- [2026-10-06](../../eval-results/2026-10-06-vixl-0.20-tool-comparison.md): the Vixl lane re-run on
+  Vixl 0.20.0 (the current scores in `scoresheet.csv` and `runs/`).
+- [2026-10-05](../../eval-results/2026-10-05-full-evaluation.md#2-tool-comparison): the first full
+  run, every agent lane, with the Vixl lane on 0.18.0.
+
 ## The tests
 
 | # | Makes | What it probes | Compared with |
@@ -90,10 +97,9 @@ Paste the rule for the lane into the kickoff prompt (below).
 
 ## Setup (once)
 
-1. **Vixl from this checkout.** Decks, forms, hand drawings, lyric videos and organic shapes are
-   still unreleased, so the `v0.17.0` server in the project's `.mcp.json` doesn't have them. Point
-   both agents at the checkout, with the repository root as the workspace (the briefs use paths
-   from there):
+1. **Vixl.** The project's `.mcp.json` runs the released v0.20.0 server with the repository root
+   as the workspace (the briefs use paths from there), which is what the latest results used. To
+   test unreleased changes instead, point both agents at the checkout:
 
    ```bash
    # Claude Code

@@ -1,75 +1,53 @@
-# T02 round 2 · Social post revisions (lane V, Vixl MCP)
+# T02 round 2 · Lane V (Vixl)
 
-## Files in round2/
+## Files in `round2/`
 
-| File | What it is | How it was made |
-| --- | --- | --- |
-| `post.vixl` | Editable source for the updated post | `cp ../post.vixl` with Bash, then edited with `vixl_operations_apply` |
-| `post.png` | 1080 × 1350 px updated post | `vixl_export_file` from `round2/post.vixl` |
-| `story.vixl` | Editable source for the story | `cp round2/post.vixl` (after the edits above), then the canvas was resized and the layout redone with `vixl_operations_apply` |
-| `story.png` | 1080 × 1920 px story | `vixl_export_file` from `round2/story.vixl` |
-| `REPORT.md` | This report | written with a Bash heredoc |
+| File | What it is |
+| --- | --- |
+| `post.png` | Updated Instagram post, 1080 × 1350, RGB |
+| `post.vixl` | Editable source for the post. It started as a byte copy of round 1's `post.vixl` and was then edited with Vixl |
+| `story.png` | New story version, 1080 × 1920, RGB |
+| `story.vixl` | Editable source for the story, made from the updated `post.vixl` |
+| `REPORT.md` | This report |
 
-I changed nothing outside round2/. The original `post.png`, `post.vixl` and `REPORT.md` are untouched.
+Nothing outside `round2/` was changed. The only file operation outside Vixl was `cp post.vixl round2/post.vixl`, so that round 1 stays untouched.
 
-## Changes to post.png / post.vixl
+## What changed in the post (all with `vixl_operations_apply`)
 
-1. **Date:** used `text-set` on the `date` layer to change it to "Thursday, November 19 · 7–10 pm". It keeps the en dash and middle dot, Rubik 50 px, amber.
-2. **Host line:** made the new text layer `host` by duplicating `address` (so it has the same Rubik font), then `text-set` to "Hosted by Mara Quinn" at 38 px in coral `#e2725b`. It is centred and constrained to top y=820, just under the headline, whose layer box ends at y=800.
-3. **Reflow:** moved the lower text down to make room:
-   - coral divider: y=838 → 888
-   - date: 888 → 930
-   - address: 968 → 1006
-   - details: 1032 → 1066 (bottom edge 1100, still clear of the coral wave at about y=1140)
+- **Date.** `text-set` on the `date-time` layer, now `Thursday, November 19 · 7–10 pm` (U+00B7 middle dot, U+2013 en dash). The font, size and colour are unchanged.
+- **Host line.** I added a new text layer, `host`, reading `Hosted by Mara Quinn`. It's set in Work Sans 400 (the body role), 44 px, sea-foam `#a8d5c8`, at x 90, y 674. That puts it directly under the headline: the headline's ink ends at y ≈ 637. It's one step below the date in weight and colour, so the headline still leads.
+- **Reflow to make room.** The lower block moved down: rule +17 px, date and address +15, pill and button text +12, URL +8. The URL now ends at y 1154, still above the waves at 1210.
+- The kicker, headline, lamp, waves and background did not move. A pixel diff of round 1 against round 2 `post.png` shows changes only inside x 90–967, y 674–1154.
+- **Checks.** `vixl_check(safe_area=60)` passed with 0 errors and 0 warnings. The only findings are informational, about the decoration I marked as bleeding off the edge on purpose in round 1. I also looked at the result with `vixl_render_preview`.
 
-   The kicker, headline, URL and all decoration did not move.
+## Story version (1080 × 1920)
+
+1. `vixl_adapt_layout(sizes=[1080x1920])` made `story.vixl` from the updated post. It stretched the background and kept the waves anchored to the bottom (now y 1780–1910). It left the kicker at y 130, inside the top band, and spaced the rest unevenly, so I re-placed the text by hand.
+2. I edited the text with `vixl_operations_apply`:
+   - **Headline:** 188 px, up from 176, in a 900 × 470 box. It still breaks "Open Mic" / "Night" by wrapping, and the stored text is still the exact single string.
+   - **Host, address, button text and URL:** 48 / 48 / 40 / 40 px.
+   - **Date:** stays at 54 px. I tried 58 px, but at that size the line ran past the 60 px side margin and `vixl_check` flagged it, so I went back.
+   - **Pill:** widened to 745 × 92 to fit the larger button text.
+   - **Stack:** kicker 420, headline 530 (ink to 943), host 1000, rule 1108, date 1152, address 1236, pill 1366–1458, URL 1518–1555. The block is roughly centred in the band between the two reserved strips.
+3. The lamp now hangs lower: the cord runs 0–350, the shade sits at 340 and the bulb ends at 428. The glow moved with it. It's decoration only, with no text, and it sits above and to the right of the headline.
 4. **Checks:**
-   - `vixl_check(safe_area=60)` on all 7 text layers passed, with 0 errors and 0 warnings (bounds, overlap, contrast, safe area, legibility, fonts).
-   - I looked at the full render preview.
-   - PIL confirms the PNG is 1080 × 1350.
+   - `vixl_check(safe_area={left:60, right:60, top:250, bottom:250})` passed with 0 errors and 0 warnings. Only the decoration findings remain, all informational.
+   - All text sits in **y 420–1555**, well clear of the top 250 px (0–250) and the bottom 250 px (1670–1920).
+   - The only things in those bands are the lamp cord, shade and glow, the background and the waves, and none of them contain text.
+   - Contrast passed for every text layer.
+5. Exported with `vixl_export_file`. I checked the size and mode with PIL: 1080 × 1920, RGB.
 
-## story.png / story.vixl (1080 × 1920)
+## Copy in both pieces (one text layer per line)
 
-**Copy:** exactly the same seven lines and styling as the updated post.
+1. `TIDEWICK CAFÉ PRESENTS`
+2. `Open Mic Night`
+3. `Hosted by Mara Quinn`
+4. `Thursday, November 19 · 7–10 pm`
+5. `12 Quay Street, Port Ellery`
+6. `Free entry · Sign up at the counter`
+7. `tidewick.example`
 
-**Layout:**
-- **Canvas:** changed from 1080×1350 to 1080×1920 with the `canvas` operation. That operation keeps the top-left corner fixed.
-- **Lamps:** the festoon lamps and the glow stay at the top, inside the top 250 px. They are decoration, not text.
-- **Waves:** the coral wave and the sea-foam band moved down 570 px, so the band still runs off the bottom edge.
-- **Headline:** enlarged from 180 to 200 px, because the taller canvas has room. It is still two lines, with bounds x=66–1013.
-- **Text block positions (top edges):**
+## Notes
 
-  | Line | Top edge |
-  | --- | --- |
-  | kicker | 440 |
-  | headline | 510–992 |
-  | host | 1030 |
-  | divider (shape, not text) | 1102 |
-  | date | 1150 |
-  | address | 1234 |
-  | details | 1300–1334 |
-  | URL | 1530–1567 |
-
-- **URL:** in the post, the URL sits on the sea-foam band. In the story the band is inside the bottom 250 px, so I moved the URL up into the navy area above the wave. I changed its colour to sea-foam `#a8d5c8` (it was navy) and its size from 38 to 40 px. The sea-foam band is now decoration only.
-- **Margins:** all text is between y=440 and y=1567, which is well inside the 250–1670 band, and at least 60 px from the left and right edges.
-
-**Checks:**
-- `vixl_check(safe_area={left:60, right:60, top:250, bottom:250})` on all 7 text layers passed, with 0 errors and 0 warnings.
-- I viewed two render previews. After the first, I moved the text block down 40 px (the URL down 10 px) to balance the empty space.
-- PIL confirms the PNG is 1080 × 1920.
-
-## Notes / deviations
-
-- The host line uses coral, a brand colour. The contrast check passes on navy.
-- In the story the URL is a different colour and size from the post, for the reason given above. Everything else matches.
-- The headline layer still holds "Open Mic\nNight" (a line break instead of the space), the same as in round 1.
-
-## Tool calls
-
-25 tool calls in total, counting this report, the edit that fixed this count, and the hand-back:
-- Vixl MCP: 16 (2 open, 1 inspect, 4 operations_apply, 3 check, 3 render_preview, 2 export_file, 1 operation_schema)
-- ToolSearch: 2
-- Bash: 6 (setup, copies, size check, writing this report, fixing this count)
-- SubagentHandback: 1
-
-Start: 22:25 UTC; end: about 22:27 UTC (by `date`).
+- I treated "directly under the headline" as the next line of text, set above the amber rule, so the rule still introduces the event details.
+- The host line uses sea-foam, the same as the URL. That keeps it apart from the amber date and the cream address.

@@ -160,7 +160,7 @@ lint = {k: v for k, v in lint.items() if v}
 
 # ---------------------------------------------------------------- 4. render the set from CSV (CLI)
 # The holo set skips Vixl's per-row design check; the standard set keeps it (default) and runs in the
-# background because a full design check of this 13-text-layer card is slow (see README).
+# background while the rest of the build continues.
 standard_dir, holo_dir = OUT / "set" / "standard", OUT / "set" / "holo"
 standard_proc = subprocess.Popen(
     ["vixl", "--json", "-p", str(template_path), "render", "--data", str(csv_path), "--out", str(standard_dir)],
@@ -213,10 +213,10 @@ recipe = {
         "element_dark": {"type": "color", "default": "#2a0905"},
         "element_light": {"type": "color", "default": "#ffd166"},
         "kind": text_input("Spirit — Wisp", 60),
-        # rarity inputs have no default so artboard variables can supply them
-        "rarity": {"type": "string", "enum": list(RARITY), "required": False},
-        "rarity_color": {"type": "color", "required": False},
-        "rarity_pips": text_input(None, 8, required=False),
+        # artboard variables beat these defaults, so each rarity board supplies its own
+        "rarity": {"type": "string", "default": "Common", "enum": list(RARITY)},
+        "rarity_color": {"type": "color", "default": RARITY["Common"][0]},
+        "rarity_pips": text_input(RARITY["Common"][1], 8),
         "ability_name": text_input("Kindle", 40),
         "ability": text_input(None, 600, required=False),
         "flavor": text_input(None, 600, required=False),
@@ -278,8 +278,7 @@ for i, row in enumerate(rows):
     values["art"] = asset_ids[i]
     csv_rows.append(values)
 job_spec = {
-    # workers=1: with 2 workers a fresh worker process races on the shared font cache (see README)
-    "version": 1, "rows": csv_rows, "quality": "final", "format": "webp", "workers": 1,
+    "version": 1, "rows": csv_rows, "quality": "final", "format": "webp", "workers": 2,
     "suites": ["card-qa", "no-placeholders"], "repair_actions": ["fit-name", "fit-rules"],
 }
 submitted = dispatch(recipe_session, "submit", {
@@ -304,21 +303,8 @@ def wait_for_job():
 
 
 status = wait_for_job()
-# With workers=2 the first two variants can race on a cold font cache inside the worker process
-# (fontTools "illegal use of getGlyphOrder()", surfaced only as {"error": "AttributeError"}).
-# Such crashes are not design failures: resume the job; production reuses verified outputs.
-crashed = [r for r in status.get("result", {}).get("results", [])
-           if r["status"] == "failed" and r.get("error", {}).get("error") in ("AttributeError", "TTLibError",
-                                                                             "KeyError")]
-resumed = None
-if crashed:
-    log("job: retrying", [r["id"] for r in crashed], "after worker crash", [r["error"] for r in crashed])
-    resumed = dispatch(recipe_session, "resume", {"id": job_id})
-    dispatch(recipe_session, "start", {"workers": 1})
-    status = wait_for_job()
 write_json(OUT / "production" / "csv-job-status.json",
            {"submitted": {k: v for k, v in submitted.items() if k != "payload"}, "trace": status_trace,
-            "crashed_first_pass": crashed, "resumed": bool(resumed),
             "final": {k: v for k, v in status.items() if k not in ("payload", "result")}})
 
 # ---------------------------------------------------------------- 8. collect QA results
@@ -457,6 +443,8 @@ log("print sheet:", pc["width"], "x", pc["height"], "px; imposed rows", [i + 1 f
 for junk in (OUT / "production" / "matrix" / ".cache", OUT / "production" / "csv-set" / ".cache",
              OUT / ".vixl-cache"):
     shutil.rmtree(junk, ignore_errors=True)
+for usage in OUT.glob("production/*/.cache.usage.json"):  # cache bookkeeping written next to .cache/
+    usage.unlink()
 for snapshot in (OUT / ".vixl-jobs").glob("**/*.vixl"):
     snapshot.unlink()
 (OUT / "template" / "recipe-source.vixl").unlink()

@@ -416,11 +416,10 @@ class Poster:
         path2 = f"M0 {ph} " + " ".join(f"L{x:.1f} {y:.1f}" for x, y in pts2) + f" L{pw} {ph} Z"
         self.op(type="shape", shape="path", name="b-area2", width=pw, height=ph, x=px, y=top, path=path2,
                 fill="mix(@solar, @background, 45%)")
-        # lines drawn with the pen (padded so the stroke is not clipped at the layer edge)
-        pad = 8
+        # lines drawn with the pen; without width/height the box fits the points and the stroke
         for nm, series, colr in (("b-line", pts, "@renewable"), ("b-line2", pts2, "@solar")):
-            self.op(type="pen", name=nm, points=[[x + pad, y + pad] for x, y in series], smooth=False,
-                    stroke=colr, stroke_width=5, fill="transparent", x=px - pad, y=top - pad, width=pw + 2 * pad, height=ph + 2 * pad)
+            self.op(type="pen", name=nm, points=[[x, y] for x, y in series], smooth=False,
+                    stroke=colr, stroke_width=5, fill="transparent", x=px, y=top)
         # end-point dots and direct labels (instead of a separate legend for this chart)
         for nm, series, colr, label, vals in (("b-end", pts, "@renewable", "All renewables", d["renewables"]),
                                               ("b-end2", pts2, "@solar", "Solar + wind", d["solar_wind"])):
@@ -667,13 +666,9 @@ def qa(p, slug, n_rows, report, height):
     r["check"] = p.check(checks=["bounds", "overlap", "safe_area", "legibility", "color_vision"], safe_area=64,
                          thumbnail_width=1080)
     timings["check_without_contrast"] = round(time.time() - t, 1)
-    # Contrast measures each text layer against a fresh render (~10-20 s per layer on this
-    # 1600 px-wide poster), so it is run on a representative subset of text layers.
-    contrast_targets = ["eyebrow", "title", "deck", "kpi0-cap", "a-sub", "a-name0", "a-ref-t", "b-yl0",
-                        "b-n0-t", "c-lg0-l", "d-note", "f-note"]
     t = time.time()
-    r["check_contrast"] = p.check(checks=["contrast"], targets=contrast_targets)
-    timings["contrast_subset"] = round(time.time() - t, 1)
+    r["check_contrast"] = p.check(checks=["contrast"])
+    timings["contrast_all_text"] = round(time.time() - t, 1)
     t = time.time()
     r["check_social"] = p.check(artboard="social", comp="social", checks=["bounds", "overlap", "color_vision"])
     timings["check_social"] = round(time.time() - t, 1)
@@ -765,15 +760,16 @@ def main():
         exports["svg_strict"] = {"error": info.get("error"), "message": info.get("message"),
                                  "fallbacks": (info.get("details") or info).get("fallbacks")}
     p.export(OUT / "infographic-world.svg")
-    # Same poster with repeats expanded into ordinary shapes: strict SVG then succeeds.
-    vec = Poster(DATASETS["world"], expand_repeats=True).build()
-    try:
-        vec.export(OUT / "infographic-world-strict.svg", svg_policy="strict")
-        exports["svg_strict_expanded"] = "ok"
-    except VixlError as e:
-        exports["svg_strict_expanded"] = e.as_dict()
-    exports["layer_count"] = {"repeat": len(p.state["layers"]), "expanded": len(vec.state["layers"])}
-    print("  strict SVG (expanded repeats):", exports["svg_strict_expanded"], exports["layer_count"])
+    if exports["svg_strict"] != "ok":
+        # Same poster with repeats expanded into ordinary shapes: strict SVG then succeeds.
+        vec = Poster(DATASETS["world"], expand_repeats=True).build()
+        try:
+            vec.export(OUT / "infographic-world-strict.svg", svg_policy="strict")
+            exports["svg_strict_expanded"] = "ok"
+        except VixlError as e:
+            exports["svg_strict_expanded"] = e.as_dict()
+        exports["layer_count"] = {"repeat": len(p.state["layers"]), "expanded": len(vec.state["layers"])}
+        print("  strict SVG (expanded repeats):", exports["svg_strict_expanded"], exports["layer_count"])
     p.export(OUT / "infographic-world.html")
     p.export(OUT / "infographic-world.pdf")
     p.export(OUT / "infographic-world-cmyk.pdf", color_space="cmyk", ink_limit=300)
@@ -782,21 +778,23 @@ def main():
     print("  strict SVG:", json.dumps(exports["svg_strict"])[:600])
     print("  colour separation:", report["series_separation"])
 
-    # The same assertions through the CLI (rules must be a JSON file; spacing --check exits non-zero on mismatch)
+    # The same assertions through the CLI (inline --rules, repeated; spacing --check exits non-zero on mismatch)
     import subprocess
 
-    rules_file = OUT / "qa-rules.json"
-    rules_file.write_text(json.dumps(["layer.kpis.bounds within canvas", "layer.donut-block.bounds within canvas",
-                                      "text.title.font-size >= 120"]))
+    rules = ["layer.kpis.bounds within canvas", "layer.donut-block.bounds within canvas", "text.title.font-size >= 120"]
     cli = {}
     for label, args in {
-        "validate": ["validate", "--rules", str(rules_file)],
+        "validate": ["validate", *[a for rule in rules for a in ("--rules", rule)]],
         "spacing_bars": ["spacing", "--targets", *[f"a-bar{i}" for i in range(poster.n_rows)], "--axis", "vertical",
                          "--expected", "18", "--tolerance", "0", "--check"],
         "spacing_kpis": ["spacing", "--targets", "kpi0", "kpi1", "kpi2", "--axis", "horizontal", "--expected", "32", "--check"],
     }.items():
         res = subprocess.run(["vixl", "--json", "-p", str(OUT / "infographic-world.vixl"), *args], capture_output=True, text=True)
-        cli[label] = {"exit": res.returncode, "passed": '"passed": false' not in res.stdout and res.returncode == 0}
+        if label == "validate":  # info-level rules (the decorative sun) report passed:false but keep it valid
+            passed = res.returncode == 0 and json.loads(res.stdout).get("valid") is True
+        else:
+            passed = '"passed": false' not in res.stdout and res.returncode == 0
+        cli[label] = {"exit": res.returncode, "passed": passed}
     report["cli"] = cli
     print("  CLI QA:", cli)
     (OUT / "qa-report.json").write_text(json.dumps(report, indent=2, default=str))

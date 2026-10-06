@@ -1,5 +1,10 @@
 # Vixl evaluation run · 2026-10-05
 
+> **Update:** the Vixl lane of the tool comparison was re-run on Vixl 0.20.0 on 2026-10-06; see
+> [2026-10-06-vixl-0.20-tool-comparison.md](2026-10-06-vixl-0.20-tool-comparison.md). The scores in
+> `evals/tool-comparison/runs/` and `scoresheet.csv` now hold that run's V rows. The V numbers below
+> are the 0.18.0 run, kept as the record.
+
 Everything in `evals/` that can run in a cloud Claude Code session was run against Vixl 0.18.0:
 
 1. the **agent eval suite** (`evals/tasks`, 18 tasks): reference replay in all four schema/tool modes,

@@ -1,27 +1,53 @@
-# T13 round 2: claude-V (Vixl lane)
+# T13 round 2: Vixl lane (claude-V)
 
-Changes asked for: make the raincoat red, and add a 2-frame `wave` animation (250 ms per frame) after the walk frames. The sheet becomes 256x32, the JSON lists the new frames, and there is a new `keeper-wave.gif`. Everything is in `round2/`. Nothing outside it was changed: `keeper.vixl` was copied in with `cp` and edited there.
+Changes asked for: make the raincoat red, and add a 2-frame `wave` animation (250 ms per frame) after
+the walk frames. The sheet becomes 256x32, the JSON lists the new frames, and there is a new
+`keeper-wave.gif`. Everything here was made with the Vixl MCP tools. I did not draw any pixels outside
+Vixl, and nothing outside `round2/` was changed.
 
-Tool calls: 21 in total, counting this REPORT write and the handback. One `vixl_operations_apply` call timed out on the MCP side after 60 s. Its edit had still been saved, and I confirmed that by reading the file.
+## What I did
 
-## Files
-| File | How it was made |
-| --- | --- |
-| `keeper.vixl` | A copy of the round-1 master, edited with one atomic `vixl_operations_apply` batch of 29 operations. For each of the 6 existing frames the batch did `frame-apply`, then `pixel-palette` on the `upper` layer, then `frame-save` under the same name and duration. The palette change was Y #f5c518 to #d93a2b (coat), y #c88a12 to #9c2320 (shade) and h #fff08a to #f58a6e (highlight). The batch then restored idle1 and added two `pixel-art` layers, `wave-a` and `wave-b` (7x14 at x=21, y=2), each with `reorder` below `upper`. It saved `wave1` (wave-a showing) and `wave2` (wave-b showing) at 250 ms, and set `animation-set` to the order idle1, idle2, walk1-4, wave1, wave2 with loop 0. |
-| `keeper-sheet.png` / `keeper-sheet.json` | `vixl_export_animation(format="sheet", columns=8, scale=1, sampling="nearest")`. The sheet is 256x32. The JSON adds wave1 at x=192 and wave2 at x=224, each 32x32 with 250 ms. |
-| `keeper-idle.gif`, `keeper-walk.gif`, `keeper-wave.gif` | `vixl_export_animation(format="gif", scale=8, sampling="nearest")`, each from its own per-animation copy. |
-| `keeper-idle-anim.vixl`, `keeper-walk-anim.vixl`, `keeper-wave-anim.vixl` | `cp` copies of the new master. In each copy the other animations' frames were removed with `frame-delete`, then `animation-set` set the order. The round-1 workaround was needed again: `animation-set` must list every saved frame. |
+1. I copied `../keeper.vixl` to `round2/keeper.vixl` and opened the copy, so the round-1 source stays as it was.
+2. **Red raincoat:** I ran one `frames-edit` (with `scene: true`) that wraps a `pixel-palette` on the
+   `body` layer. This recolours the coat in all six saved frames and in the working scene, and the
+   pixel grid stays the same.
+   - coat `Y` #f4c430 -> **#d23a2c**
+   - coat shadow `y` #c98e16 -> **#8e1f1c**
+   - coat highlight `L` #fff09a -> **#f47a5e**
+   - The outline, skin, trousers, boots and lantern colours are unchanged.
+3. **Wave:**
+   - I used `frame-apply idle1` to start from the standing pose.
+   - I added two new `pixel-art` layers, `arm-wave-a` and `arm-wave-b`. Each one is a raised back arm
+     (dark red sleeve and a skin-tone hand), and I used `reorder` to put both behind `body`.
+     - In `a`, the arm angles up and out behind the hood.
+     - In `b`, the arm is more upright.
+   - Switching between the two layers makes the side-to-side wave. The keeper still holds the lantern
+     in the front hand, and the legs stay in the standing pose.
+   - I saved the frames with `frame-save` as `wave1` and `wave2`, each 250 ms. I then defined
+     `animation-set name=wave order=[wave1,wave2] duration=250 loop=0`.
+4. **Exports** (`vixl_export_animation`, sampling=nearest):
+   - `keeper-sheet.png` + `keeper-sheet.json`: format=sheet, columns=8, scale 1. The sheet is 256x32.
+     Frames from left to right are idle1, idle2, walk1-4, wave1 (x=192) and wave2 (x=224). The JSON
+     lists all 8 frames with their durations, and its `animations` object now has `wave`
+     (total 500 ms) next to `idle` and `walk`.
+   - `keeper-wave.gif`: animation=wave, scale 8. It is 256x256, 2 frames of 250 ms each, and loops forever.
+   - `keeper-idle.gif` and `keeper-walk.gif`: re-exported at scale 8 so they have the red coat. Their
+     timing is the same as in round 1 (2x400 ms and 4x120 ms).
+   - `keeper.vixl`: the updated editable source. It has the 2 new layers, frames wave1/wave2 and the named animation `wave`.
 
-## Wave design
-The keeper keeps the idle1 body, legs and lantern, and raises the far arm, which sits behind the body layer. The arm is a red sleeve with an outline and a skin-toned mitten hand above the hood. In wave1 the hand leans out to the right (x 24-27). In wave2 the arm is upright and the hand is 2 px further left (x 22-25), so the hand swings side to side. The wave arm uses only colors already in the palette.
+## Checks (read-only Pillow script plus an 8x preview I looked at)
 
-## Checks (PIL, reading outputs only)
-- Sheet: 256x32. Alpha values are only {0, 255}. There are 15 opaque colors; the red coat replaces the 3 yellows, so the count is unchanged.
-- Recolor: in the first 192 columns, the alpha mask is identical to the round-1 sheet. The only color changes are the 3 coat remaps listed above, so the poses are unchanged.
-- Baseline: the bounding-box bottom is row 30 in all 8 frames.
-- GIFs: idle has 2 frames at 400 ms, walk 4 at 120 ms, wave 2 at 250 ms. All are 256x256 with loop=0. Each GIF frame downsampled by 8 equals its sheet frame exactly, and scaling it back up 8x with nearest-neighbor reproduces it exactly, so nothing was smoothed.
-- I viewed the sheet at 4x.
+- The sheet is 256x32 RGBA, and every alpha value is 0 or 255.
+- The sheet has 13 opaque colours, and none of the old yellows are left.
+- For each of the six old frames, the alpha mask is identical to the round-1 sheet. Only the colour changed.
+- In all 8 frames the lowest opaque row is row 30, so the baseline is the same as before.
+- I checked the three GIFs: loop=0, durations [400,400], [120x4] and [250,250]. When I downsample
+  each GIF frame to 32x32, it matches the matching sheet frame exactly.
 
-## Unsure about
-- The raised arm is thin (2 px of sleeve), and the hand is a small 2x3 mitten, so at 1x the wave reads mainly as a stick-like arm swinging.
-- The lantern base (#b5402e) is now close in hue to the red coat. They do not touch: the lantern sits below the coat hem.
+## Notes / unsure about
+
+- At 32 px the wave is a simple two-pose flick of a raised back arm. In `wave2` the arm's outline
+  sits next to the hood's outline for a few rows, so that part reads as a slightly thicker dark edge.
+- The wave frames use the idle1 body position, so there is no breathing bob while waving.
+- One Vixl detail: `pixel-art` refuses `width` when `rows` are given, because the rows set the size.
+  The sheet export result again reports `"size":[32,32]` (the frame size), but the file itself is 256x32.

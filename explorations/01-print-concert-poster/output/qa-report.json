@@ -6,14 +6,38 @@
       "family": "Syne",
       "weight": 800,
       "italic": false,
-      "role": "heading"
+      "role": "heading",
+      "source": {
+        "origin": "cache",
+        "cache_file": "/home/user/Vixl/explorations/01-print-concert-poster/.work/fonts/syne-800.ttf",
+        "cache_dir": "/home/user/Vixl/explorations/01-print-concert-poster/.work/fonts",
+        "cache_dir_from": "VIXL_FONT_CACHE",
+        "bundled_fallback": false
+      },
+      "file": {
+        "asset": "fonts/f37df4c4dbb0b722d4b462aa2c5e1ad246abdb7fcdc736ae0867bc84cc66da34.ttf",
+        "bytes": 52868,
+        "sha256": "f37df4c4dbb0b722d4b462aa2c5e1ad246abdb7fcdc736ae0867bc84cc66da34"
+      }
     },
     "body": {
       "name": "dm-sans-400",
       "family": "DM Sans",
       "weight": 400,
       "italic": false,
-      "role": "body"
+      "role": "body",
+      "source": {
+        "origin": "cache",
+        "cache_file": "/home/user/Vixl/explorations/01-print-concert-poster/.work/fonts/dm-sans-400.ttf",
+        "cache_dir": "/home/user/Vixl/explorations/01-print-concert-poster/.work/fonts",
+        "cache_dir_from": "VIXL_FONT_CACHE",
+        "bundled_fallback": false
+      },
+      "file": {
+        "asset": "fonts/b0ae3e89a7d3ef2b1838bb4b1ceb0b17cc3435af061eee809d76aa623ff116e9.ttf",
+        "bytes": 48280,
+        "sha256": "b0ae3e89a7d3ef2b1838bb4b1ceb0b17cc3435af061eee809d76aa623ff116e9"
+      }
     },
     "why": "Syne's heavy, widened display weights are deliberately eccentric; a clean geometric body sans keeps information readable.",
     "caution": "Syne's width changes with weight; test heading line breaks.",
@@ -21,33 +45,65 @@
       "heading": "syne-800",
       "body": "dm-sans-400"
     },
+    "origin": "cache",
     "note": "Layouts now use these fonts by default; pass font/display_font to override."
   },
   "font_install": {
     "name": "dm-sans-700",
     "family": "DM Sans",
     "weight": 700,
-    "italic": false
+    "italic": false,
+    "source": {
+      "origin": "cache",
+      "cache_file": "/home/user/Vixl/explorations/01-print-concert-poster/.work/fonts/dm-sans-700.ttf",
+      "cache_dir": "/home/user/Vixl/explorations/01-print-concert-poster/.work/fonts",
+      "cache_dir_from": "VIXL_FONT_CACHE",
+      "bundled_fallback": false
+    },
+    "file": {
+      "asset": "fonts/2a8e7f713ee79fbccdef3cef5c787aff47580299f7da60144961e7db2ec08211.ttf",
+      "bytes": 48200,
+      "sha256": "2a8e7f713ee79fbccdef3cef5c787aff47580299f7da60144961e7db2ec08211"
+    }
   },
   "apply_normalized": null,
   "check_print_colorvision": {
     "passed": true,
     "errors": 0,
-    "warnings": 9,
+    "warnings": 8,
+    "info": 1,
+    "by_action": {
+      "fix": [],
+      "review": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "informational": [
+        0
+      ]
+    },
     "issues": [
       {
         "check": "bounds",
-        "severity": "warning",
+        "severity": "info",
         "layers": [
           "haze"
         ],
-        "message": "'haze' is cut off by the canvas edge",
+        "message": "'haze' bleeds off the canvas edge (marked as an intentional crop)",
         "bounds": [
-          -6,
-          355,
-          1700,
-          1700
-        ]
+          -6.0,
+          355.0,
+          1700.0,
+          1700.0
+        ],
+        "intentional": true,
+        "action": "informational"
       },
       {
         "check": "bounds",
@@ -55,13 +111,14 @@
         "layers": [
           "peak-far-l"
         ],
-        "message": "'peak-far-l' is cut off by the canvas edge",
+        "message": "'peak-far-l' is cut off by the canvas edge; if the crop is deliberate, mark it with layer-intent allow_crop",
         "bounds": [
-          -180,
-          1130,
-          900,
-          380
-        ]
+          -180.0,
+          1130.0,
+          900.0,
+          380.0
+        ],
+        "action": "review"
       },
       {
         "check": "bounds",
@@ -69,13 +126,14 @@
         "layers": [
           "peak-far-r"
         ],
-        "message": "'peak-far-r' is cut off by the canvas edge",
+        "message": "'peak-far-r' is cut off by the canvas edge; if the crop is deliberate, mark it with layer-intent allow_crop",
         "bounds": [
-          980,
-          1070,
-          1000,
-          440
-        ]
+          980.0,
+          1070.0,
+          1000.0,
+          440.0
+        ],
+        "action": "review"
       },
       {
         "check": "bounds",
@@ -83,13 +141,14 @@
         "layers": [
           "peak-near-r"
         ],
-        "message": "'peak-near-r' is cut off by the canvas edge",
+        "message": "'peak-near-r' is cut off by the canvas edge; if the crop is deliberate, mark it with layer-intent allow_crop",
         "bounds": [
-          1180,
-          1290,
-          620,
-          220
-        ]
+          1180.0,
+          1290.0,
+          620.0,
+          220.0
+        ],
+        "action": "review"
       },
       {
         "check": "bounds",
@@ -97,13 +156,14 @@
         "layers": [
           "mountains"
         ],
-        "message": "'mountains' is cut off by the canvas edge",
+        "message": "'mountains' is cut off by the canvas edge; if the crop is deliberate, mark it with layer-intent allow_crop",
         "bounds": [
-          -180,
-          1070,
-          2160,
-          440
-        ]
+          -180.0,
+          1070.0,
+          2160.0,
+          440.0
+        ],
+        "action": "review"
       },
       {
         "check": "overlap",
@@ -112,13 +172,14 @@
           "sun",
           "badge-text"
         ],
-        "message": "'sun' and 'badge-text' overlap by 1848 px (23.9% of the smaller layer)",
+        "message": "'sun' and 'badge-text' overlap by 1798 px (22.8% of the smaller layer)",
         "region": [
           1268,
-          1325,
+          1324,
           76,
-          149
-        ]
+          151
+        ],
+        "action": "review"
       },
       {
         "check": "overlap",
@@ -127,13 +188,14 @@
           "sun",
           "headliners"
         ],
-        "message": "'sun' and 'headliners' overlap by 35417 px (68.7% of the smaller layer)",
+        "message": "'sun' and 'headliners' overlap by 35004 px (69.6% of the smaller layer)",
         "region": [
           344,
           1711,
           1000,
-          132
-        ]
+          131
+        ],
+        "action": "review"
       },
       {
         "check": "overlap",
@@ -142,13 +204,14 @@
           "slice",
           "badge-text"
         ],
-        "message": "'slice' and 'badge-text' overlap by 1212 px (15.6% of the smaller layer)",
+        "message": "'slice' and 'badge-text' overlap by 1221 px (15.5% of the smaller layer)",
         "region": [
           1268,
-          1325,
+          1324,
           96,
-          149
-        ]
+          151
+        ],
+        "action": "review"
       },
       {
         "check": "overlap",
@@ -163,7 +226,8 @@
           470,
           60,
           60
-        ]
+        ],
+        "action": "review"
       }
     ],
     "checked": {
@@ -179,56 +243,112 @@
       "text_layers": 13
     }
   },
-  "check_contrast_small_text": {
+  "check_contrast_all": {
     "passed": true,
     "errors": 0,
-    "warnings": 0,
-    "issues": [],
+    "warnings": 5,
+    "info": 0,
+    "by_action": {
+      "fix": [],
+      "review": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "informational": []
+    },
+    "issues": [
+      {
+        "check": "contrast",
+        "severity": "warning",
+        "layers": [
+          "eyebrow"
+        ],
+        "message": "Could not measure 'eyebrow': boolean index did not match indexed array along axis 1; size of axis is 604 but size of corresponding boolean axis is 602",
+        "action": "review"
+      },
+      {
+        "check": "contrast",
+        "severity": "warning",
+        "layers": [
+          "headliners"
+        ],
+        "message": "Could not measure 'headliners': boolean index did not match indexed array along axis 1; size of axis is 1224 but size of corresponding boolean axis is 1222",
+        "action": "review"
+      },
+      {
+        "check": "contrast",
+        "severity": "warning",
+        "layers": [
+          "extras"
+        ],
+        "message": "Could not measure 'extras': boolean index did not match indexed array along axis 1; size of axis is 848 but size of corresponding boolean axis is 846",
+        "action": "review"
+      },
+      {
+        "check": "contrast",
+        "severity": "warning",
+        "layers": [
+          "cta-text"
+        ],
+        "message": "Could not measure 'cta-text': boolean index did not match indexed array along axis 0; size of axis is 30 but size of corresponding boolean axis is 28",
+        "action": "review"
+      },
+      {
+        "check": "contrast",
+        "severity": "warning",
+        "layers": [
+          "fineprint"
+        ],
+        "message": "Could not measure 'fineprint': boolean index did not match indexed array along axis 1; size of axis is 796 but size of corresponding boolean axis is 794",
+        "action": "review"
+      }
+    ],
     "checked": {
       "checks": [
         "contrast"
       ],
-      "layers": 5,
-      "text_layers": 5
+      "layers": 47,
+      "text_layers": 13
     }
   },
   "icc_profile": "default_cmyk.icc",
   "export_png": {
     "output": "/home/user/Vixl/explorations/01-print-concert-poster/output/poster-rgb.png",
-    "bytes": 2489001
+    "bytes": 2282301
   },
   "export_pdf": {
     "output": "/home/user/Vixl/explorations/01-print-concert-poster/output/poster-cmyk.pdf",
-    "bytes": 2360524
+    "bytes": 7461369,
+    "pages": 1,
+    "content": "raster",
+    "color_space": "cmyk",
+    "raster_fallbacks": {},
+    "fonts": 0,
+    "page_size": {
+      "width": 11.25,
+      "height": 17.25,
+      "unit": "in"
+    },
+    "content_reason": "requested with pdf_content"
   },
   "export_jpg": {
     "output": "/home/user/Vixl/explorations/01-print-concert-poster/output/poster-cmyk-swop.jpg",
-    "bytes": 2575287
+    "bytes": 2570341
   },
   "export_svg": {
     "output": "/home/user/Vixl/explorations/01-print-concert-poster/output/poster.svg",
-    "bytes": 297331,
+    "bytes": 289955,
     "svg": {
-      "vector_only": false,
-      "raster_fallbacks": [
-        {
-          "layer": "slice",
-          "reason": "repeat is not exported as vectors",
-          "effects": [],
-          "styles": []
-        },
-        {
-          "layer": "rung",
-          "reason": "repeat is not exported as vectors",
-          "effects": [],
-          "styles": []
-        }
-      ]
+      "vector_only": true,
+      "raster_fallbacks": []
     }
   },
   "export_svg_full_comp": {
     "output": "/home/user/Vixl/explorations/01-print-concert-poster/.work/poster-fullcomp.svg",
-    "bytes": 10854369,
+    "bytes": 10878661,
     "svg": {
       "vector_only": false,
       "raster_fallbacks": [
@@ -274,18 +394,18 @@
       150,
       150
     ],
-    "max_total_ink_pct": 340.4,
-    "p99_total_ink_pct": 302.7
+    "max_total_ink_pct": 340.0,
+    "p99_total_ink_pct": 302.4
   },
   "pdf": {
-    "header": "%PDF-1.4",
+    "header": "%PDF-1.7",
     "DeviceCMYK": true,
-    "DCTDecode": true,
-    "MediaBox": "/MediaBox [ 0 0 810.24 1242.24 ]\n/Conten"
+    "DCTDecode": false,
+    "MediaBox": "/MediaBox [0 0 810 1242] /Resources <</X"
   },
   "svg": {
-    "bytes": 297331,
-    "image_elements": 2,
+    "bytes": 289955,
+    "image_elements": 0,
     "path_elements": 486
   },
   "proof_vs_rgb": {
@@ -297,7 +417,7 @@
     "swop_icc_perceptual": {
       "mean_abs_rgb": 13.32,
       "max_abs_rgb": 70,
-      "pct_pixels_changed_gt8": 91.3
+      "pct_pixels_changed_gt8": 91.4
     }
   }
 }

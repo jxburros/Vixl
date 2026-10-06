@@ -98,12 +98,8 @@ def build():
          "x": 260, "y": 100, "fill": "transparent", "stroke": LIME, "stroke_width": 26},
         {"type": "layer-style", "target": "ring", "name": "outer-glow",
          "settings": {"color": LIME, "blur": 28, "opacity": 0.55}},
-        # Blur lives on a padded group (see the wordmark note below for why).
-        {"type": "solid", "name": "ring-pad", "color": "#00000000"},
-        {"type": "lower", "target": "ring-pad"},
-        {"type": "group", "name": "ring-blur", "targets": ["ring-pad", "ring"]},
         {"type": "select", "shape": "none"},
-        {"type": "effect", "target": "ring-blur", "name": "blur", "amount": 0},
+        {"type": "effect", "target": "ring", "name": "blur", "amount": 0},
         # A small satellite that orbits on the ring.
         {"type": "shape", "shape": "ellipse", "name": "satellite", "width": 36, "height": 36,
          "x": 522, "y": 95, "fill": CORAL},
@@ -172,11 +168,8 @@ def build():
                     "color": PAPER, "x": x0 + offset, "y": letter_y})
     ops += [
         {"type": "layer-style", "target": "letter-O", "name": "color-overlay", "settings": {"color": LIME}},
-        # A blur effect is clipped to its layer's box (a blurred glyph turns into a soft rectangle),
-        # so the letters share a group padded by a transparent full-canvas solid and blur that.
-        {"type": "solid", "name": "wordmark-pad", "color": "#00000000"},
-        {"type": "lower", "target": "wordmark-pad"},
-        {"type": "group", "name": "wordmark", "targets": ["wordmark-pad"] + [f"letter-{c}" for c in word]},
+        # The letters share a group so one blur effect covers the whole word.
+        {"type": "group", "name": "wordmark", "targets": [f"letter-{c}" for c in word]},
         {"type": "select", "shape": "none"},
         {"type": "effect", "target": "wordmark", "name": "blur", "amount": 0},
         # "GEN 1" badge
@@ -194,10 +187,9 @@ def build():
     apply(p, [
         {"type": "text", "name": "tagline", "text": "Your whole day, in one ring.", "font": "body",
          "size": 44, "color": PAPER, "x": 0, "y": 0},
-        # Constraints may only reference siblings, and the ring now lives in a padded group, so the
-        # tagline hangs off the canvas centre instead; chips and CTA chain off the tagline/canvas.
+        # The tagline hangs off the ring; chips and CTA chain off the tagline/canvas.
         {"type": "constrain", "target": "tagline",
-         "constraints": {"center-x": "canvas.center-x", "top": "canvas.center-y+166"}},
+         "constraints": {"center-x": "canvas.center-x", "top": "ring.bottom+46"}},
     ], "tagline")
 
     chips = ["7-DAY BATTERY", "TITANIUM", "2.4 G"]
@@ -315,11 +307,6 @@ def build():
         {"type": "keyframe", "target": "sweep", "property": "scale-x", "time": "1.5s", "value": 1,
          "easing": "steps(6)"},
         {"type": "keyframe", "target": "sweep", "property": "scale-x", "time": "2.1s", "value": 0},
-        # scale 0 still leaves a 1-px sliver, so the sweep is also hidden by opacity outside its life.
-        {"type": "keyframe", "target": "sweep", "property": "opacity", "time": 0, "value": 0, "easing": "hold"},
-        {"type": "keyframe", "target": "sweep", "property": "opacity", "time": "700ms", "value": 1,
-         "easing": "hold"},
-        {"type": "keyframe", "target": "sweep", "property": "opacity", "time": "2.1s", "value": 0},
         {"type": "animate", "target": "sweep", "property": "fill", "from": LIME, "to": CORAL,
          "start": "1.2s", "duration": "600ms", "easing": "ease-in-out-sine"},
         # Word 2 changes colour while holding; word 3 gets a letter-spacing squeeze via `size`.
@@ -332,11 +319,10 @@ def build():
          "duration": "1.2s", "easing": "ease-out-sine"},
         {"type": "animate-preset", "target": "glow", "preset": "pulse", "start": "4.4s",
          "duration": "1.8s", "amount": 1.08},
-        # (scale can't start at 0: a stroke wider than the shrunken box crashes the shape renderer)
         {"type": "animate-preset", "target": "ring", "preset": "fade-in", "start": "reveal", "duration": "250ms"},
-        {"type": "animate", "target": "ring", "property": "scale", "from": 0.12, "to": 1, "start": "reveal",
+        {"type": "animate", "target": "ring", "property": "scale", "from": 0, "to": 1, "start": "reveal",
          "duration": "1.4s", "easing": "elastic-out"},
-        {"type": "animate", "target": "ring-blur", "property": "effect:1", "from": 40, "to": 0,
+        {"type": "animate", "target": "ring", "property": "effect:1", "from": 40, "to": 0,
          "start": "reveal", "duration": "900ms", "easing": "ease-out-cubic"},
         {"type": "animate", "target": "ring", "property": "stroke", "to": LAVENDER, "start": "hero",
          "duration": "700ms"},

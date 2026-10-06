@@ -6,7 +6,7 @@
     "repairs": [],
     "problems": [],
     "placeholder_lint": [],
-    "output": "0001-4f56b3b1b19b0245.webp"
+    "output": "0001-091581c3feaaa336.webp"
   },
   {
     "row": 2,
@@ -15,7 +15,7 @@
     "repairs": [],
     "problems": [],
     "placeholder_lint": [],
-    "output": "0002-8e64d533f50c6992.webp"
+    "output": "0002-5792ddc22fdda135.webp"
   },
   {
     "row": 3,
@@ -24,7 +24,7 @@
     "repairs": [],
     "problems": [],
     "placeholder_lint": [],
-    "output": "0003-82b6e72abe15ca36.webp"
+    "output": "0003-5dd323f0fd790f87.webp"
   },
   {
     "row": 4,
@@ -33,7 +33,7 @@
     "repairs": [],
     "problems": [],
     "placeholder_lint": [],
-    "output": "0004-de33d9ad0bdedbf6.webp"
+    "output": "0004-2c57bf2e72ae49e7.webp"
   },
   {
     "row": 5,
@@ -42,7 +42,7 @@
     "repairs": [],
     "problems": [],
     "placeholder_lint": [],
-    "output": "0005-6aa955bde3abc4c7.webp"
+    "output": "0005-7bd32dc1d7025ff6.webp"
   },
   {
     "row": 6,
@@ -62,7 +62,7 @@
     "repairs": [],
     "problems": [],
     "placeholder_lint": [],
-    "output": "0007-9ebdf89b4f91b457.webp"
+    "output": "0007-9d0235826794e1c1.webp"
   },
   {
     "row": 8,
@@ -81,15 +81,23 @@
   {
     "row": 9,
     "name": "光の狐 Hikari-no-Kitsune ✨",
-    "status": "completed",
+    "status": "needs_review",
     "repairs": [
-      "fit-name"
+      "fit-name",
+      "fit-rules"
     ],
-    "problems": [],
+    "problems": [
+      "card-qa/name-contrast: failed {}",
+      "card-qa/missing-glyphs: failed {\"message\": \"Text has characters no font can draw; import a covering font and add it with font-fallbacks\"}",
+      "no-placeholders/copy: failed {}",
+      "no-placeholders/missing-glyphs: failed {\"message\": \"Text has characters no font can draw; import a covering font and add it with font-fallbacks\"}"
+    ],
     "placeholder_lint": [],
-    "output": "0009-8dbb471cef60b63d.webp",
+    "output": null,
     "render_data_check": [
-      "contrast/error: 'spd-value' contrast is 1.73:1 for most glyph pixels (minimum 1.73:1); needs 3:1"
+      "fonts/error: 'card-name' has characters no font can draw (✨の光狐); they render as empty boxes. Import a font that covers them and add it with font-fallbacks",
+      "fonts/error: 'flavor' has characters no font can draw (、「」うにはを光影者迷追); they render as empty boxes. Import a font that covers them and add it with font-fallbacks",
+      "contrast/error: 'spd-value' contrast is 1.73:1 or lower for a tenth of its glyph pixels (minimum 1.73:1, weakest at x 590–609, y 931–931); needs 3:1"
     ]
   },
   {
@@ -119,7 +127,7 @@
       "kind",
       "name"
     ],
-    "output": "0011-f73164e8d67d0326.webp"
+    "output": "0011-172c66dce52aaaf9.webp"
   },
   {
     "row": 12,
@@ -130,10 +138,10 @@
     ],
     "problems": [],
     "placeholder_lint": [],
-    "output": "0012-c42f378c86e75db9.webp",
+    "output": "0012-1c5c95d2a022861c.webp",
     "render_data_check": [
-      "contrast/error: 'atk-value' contrast is 2.59:1 for most glyph pixels (minimum 2.59:1); needs 3:1",
-      "contrast/error: 'def-value' contrast is 2.59:1 for most glyph pixels (minimum 2.59:1); needs 3:1"
+      "contrast/error: 'atk-value' contrast is 2.59:1 or lower for a tenth of its glyph pixels (minimum 2.59:1, weakest at x 198–217, y 931–931); needs 3:1",
+      "contrast/error: 'def-value' contrast is 2.59:1 or lower for a tenth of its glyph pixels (minimum 2.59:1, weakest at x 394–413, y 931–931); needs 3:1"
     ]
   },
   {
@@ -143,6 +151,6 @@
     "repairs": [],
     "problems": [],
     "placeholder_lint": [],
-    "output": "0013-3aac106d53aad2d0.webp"
+    "output": "0013-cdf8c0392795f818.webp"
   }
 ]

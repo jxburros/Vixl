@@ -51,5 +51,43 @@
       "width": 32,
       "height": 32
     }
-  ]
+  ],
+  "animations": {
+    "idle": {
+      "loop": 0,
+      "total_duration": 800,
+      "frames": [
+        {
+          "name": "idle1",
+          "duration": 400
+        },
+        {
+          "name": "idle2",
+          "duration": 400
+        }
+      ]
+    },
+    "walk": {
+      "loop": 0,
+      "total_duration": 480,
+      "frames": [
+        {
+          "name": "walk1",
+          "duration": 120
+        },
+        {
+          "name": "walk2",
+          "duration": 120
+        },
+        {
+          "name": "walk3",
+          "duration": 120
+        },
+        {
+          "name": "walk4",
+          "duration": 120
+        }
+      ]
+    }
+  }
 }
