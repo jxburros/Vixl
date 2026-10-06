@@ -174,8 +174,8 @@ small for their text, checkboxes under 10 pt, values under 8 pt, a border or und
 contrast with its surroundings (sampled from one render without the fields), `style: none` with
 nothing drawn under it, a label layer far from its field, an explicit tab order that jumps back up
 the page, layers drawn above a field, fields with opacity, blend modes or effects, text layers
-showing a field value (they stay static in the fillable PDF), a canvas with no physical size, and
-radio option values that are not words.
+showing a field value (they stay static in the fillable PDF), a canvas with no physical size, a
+date display with literal text a viewer cannot enforce, and radio option values that are not words.
 
 `--sample worst` fills every field with worst-case values and reports values that would not fit;
 `--sample rows.csv` uses real rows. A worst-case value has `max_length` characters (40 for text

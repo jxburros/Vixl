@@ -1,6 +1,8 @@
 """Preview/export parity for filled forms (T06 evaluation, #82): the reduced-resolution preview draws
 values with the same size, padding and shrink rules as the filled export."""
 
+import io
+
 import numpy as np
 import pytest
 from PIL import Image
@@ -76,3 +78,15 @@ def test_enlarged_and_default_values_follow_the_same_rules():
     small = render_preview(p, 600, 600).convert("RGB")  # a default value, drawn from a proxy
     full = p.render().convert("RGB").resize(small.size, Image.Resampling.LANCZOS)
     assert_same_ink(small, full, BOXES["name"], small.width / 2550, "name")
+
+
+def test_enlarged_exports_follow_the_same_rules():
+    # sampling="smooth" enlarges by re-rendering a scaled copy, which must scale the fields too.
+    p = Project.sized("letter", "#ffffff", dpi=72)
+    p.apply({"type": "field", "name": "short", "kind": "text", "label": "Short", "size": 10.5, "x": 54, "y": 100,
+             "width": 168, "height": 26, "min_size": 6})
+    view = with_values(p, {"short": "A value that is far too long for this small box"})
+    big = Image.open(io.BytesIO(view.export(format="PNG", scale=2, sampling="smooth"))).convert("RGB")
+    base = view.render().convert("RGB").resize(big.size, Image.Resampling.LANCZOS)
+    assert big.width == 1224
+    assert_same_ink(big, base, (44, 90, 188, 46), 2, "short", tolerance=4)
