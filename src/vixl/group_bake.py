@@ -147,7 +147,9 @@ def ungroup_tracks(project, group, children, offset):
                 shift = offset[0 if track["property"] == "x" else 1]
                 for key in track["keys"]:
                     key["value"] += shift
-        timeline["tracks"][:] = [t for t in timeline["tracks"] if t["target"] != group["id"]]
+        from .timeline import prune_targets
+
+        prune_targets(project.state, {group["id"]})
         if not keyed:
             return
         from .timeline import project_at
@@ -200,3 +202,91 @@ def ungroup_tracks(project, group, children, offset):
               f"{len(ids)} child layer(s) as per-frame keys")
 
     return finish
+
+
+def _anchor_point(op, rest):
+    """The attach point in the followed layer's own box: an anchor name, [fx, fy] fractions of its
+    box (units: fraction, the default) or [x, y] pixels from its top-left corner (units: px)."""
+    from .errors import require
+    from .geometry import ANCHORS, canonical_anchor
+    from .model import finite
+
+    value = op["anchor"]
+    if isinstance(value, str):
+        name = canonical_anchor(value)
+        require(name, f"Unknown anchor {value!r}; use {', '.join(ANCHORS)} or [x, y]", field="anchor")
+        value, units = list(ANCHORS[name]), "fraction"
+    else:
+        require(isinstance(value, list) and len(value) == 2, "anchor is [x, y] or an anchor name", field="anchor")
+        units = op.get("units", "fraction")
+        require(units in ("fraction", "px"), "attach units are fraction or px", field="units")
+    x, y = (finite(v, "anchor", -1e6, 1e6) for v in value)
+    return (x * rest[0], y * rest[1]) if units == "fraction" else (x, y)
+
+
+def _held_point(frame, ident, rest):
+    """Where a follower is held: its pivot when it has one, else its centre (in its own box)."""
+    pivot = frame.layer(ident).get("pivot")
+    return (pivot[0] * rest[0], pivot[1] * rest[1]) if pivot is not None else (rest[0] / 2, rest[1] / 2)
+
+
+def attach(project, op, layer, follow, start, length):
+    """The ``attach`` motion recipe: keys that keep ``layer`` (its pivot, else its centre) on a point
+    of ``follow`` in every frame from ``start`` for ``length`` ms, through the groups both sit in,
+    and, with ``rotation``, turning as ``follow`` turns. Returns the attachment record."""
+    from .errors import require
+    from .model import finite
+    from .timeline import _timeline, _track, execute_timeline, project_at
+
+    require(follow != layer["id"], "A layer cannot attach to itself", field="follow")
+    settings = _timeline(project)
+    end = start + length
+    if "samples" in op:
+        times = sorted({start + round(length * i / op["samples"]) for i in range(op["samples"] + 1)})
+    else:
+        step = 1000 / settings["fps"]
+        times = sorted({*(start + round(i * step) for i in range(int(length / step) + 1)), end})
+    require(len(times) <= 4096, "attach would write too many keys; shorten it or pass samples", "resource_limit")
+    original = snapshot(project)
+    frame = project_at(original, start)
+    _, followed, frest, _ = placement(frame, follow)
+    _, held, hrest, _ = placement(frame, layer["id"])
+    if "anchor" in op:
+        anchor = _anchor_point(op, frest)
+    else:
+        # Without an anchor the layer stays where it is now, relative to what it follows.
+        anchor = apply_point(np.linalg.inv(followed), apply_point(held, _held_point(frame, layer["id"], hrest)))
+    offset = op.get("offset", [0, 0])
+    require(isinstance(offset, list) and len(offset) == 2, "offset is [dx, dy] pixels", field="offset")
+    anchor = (anchor[0] + finite(offset[0], "offset", -1e6, 1e6), anchor[1] + finite(offset[1], "offset", -1e6, 1e6))
+    turn = op.get("rotation", True)
+    require(isinstance(turn, bool), "rotation is true or false", field="rotation")
+    relative = angle(held) - angle(followed)
+    keys = {"translate-x": [], "translate-y": [], **({"rotation": []} if turn else {})}
+    previous = None
+    for time in times:
+        frame = project_at(original, time)
+        parent, held, hrest, _ = placement(frame, layer["id"])
+        _, followed, _, _ = placement(frame, follow)
+        want, have = apply_point(followed, anchor), apply_point(held, _held_point(frame, layer["id"], hrest))
+        dx, dy = np.linalg.inv(parent[:2, :2]) @ np.array([want[0] - have[0], want[1] - have[1]])
+        keys["translate-x"].append((time, track_value(original, layer["id"], "translate-x", time) + float(dx)))
+        keys["translate-y"].append((time, track_value(original, layer["id"], "translate-y", time) + float(dy)))
+        if turn:
+            delta = (angle(followed) + relative - angle(held) + 180) % 360 - 180
+            value = track_value(original, layer["id"], "rotation", time) + delta
+            if previous is not None:
+                value += 360 * round((previous - value) / 360)  # Keep turning the short way between keys.
+            keys["rotation"].append((time, value))
+            previous = value
+    record = {"to": follow, "anchor": [round(float(v), 3) for v in anchor], "rotation": turn, "start": start, "end": end}
+    timeline = project.state["timeline"]
+    for prop, values in keys.items():
+        track = _track(timeline, layer["id"], prop, create=False)
+        if track:
+            track["keys"] = [k for k in track["keys"] if not start <= k["time"] <= end]
+        for time, value in values:
+            execute_timeline(project, {"type": "keyframe", "target": layer["id"], "property": prop, "time": time,
+                                       "value": value, "extend": op.get("extend", True)})
+        _track(timeline, layer["id"], prop)["attach"] = record
+    return record
