@@ -32,6 +32,9 @@ Layers:    add FILE --name NAME, solid --color COLOR, gradient --start A --end B
            remove, rename, duplicate, hide, show, raise, lower, top, bottom, reorder
 Organic:   organics (presets, generators, rules), organic PRESET [--set petals=8] [--color petals=#fff] [--seed N],
            organic --parts JSON, organic --target NAME --seed N (regrow)
+Charts:    chart bar|stacked-bar|percent-bar|horizontal-bar|line|area|pie|donut --name N (--csv FILE | --categories JSON --series JSON)
+           [--title T] [--legend bottom] [--value-labels true] [--number-format '#,##0'], chart line --target N (restyle, resize, change kind),
+           chart-data --target N --set DEC=3330 | --append 'JAN=1,2' | --remove-category C | --reload; exports to .pptx as a native chart
 Design:    pen, shape, shape-place, container-place, container-swap, container-reflow, group, ungroup, clip, layer-style, distribute, style-define,
            style-apply, swatch, artboard, frame, replace-contents, repeat, repeat-blend,
            adjustment, lut, lookup, comp-save, comp-apply, text-layout, pathfinder, symbol, symbol-instance

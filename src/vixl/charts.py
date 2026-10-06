@@ -948,9 +948,10 @@ class Cartesian:
                     else:
                         run.append((self.center(i), self.vp(v)))
                 runs.append(run)
-                for r_index, run in enumerate(r for r in runs if len(r) > 1):
-                    segment(self.project, parts, "line", f"line-{s_index}-{r_index}", f"line {name}", run, "transparent",
-                            color, width, Z_LINES)
+                for r_index, run in enumerate(runs):
+                    if len(run) > 1:
+                        segment(self.project, parts, "line", f"line-{s_index}-{r_index}", f"line {name}", run, "transparent",
+                                color, width, Z_LINES)
                 points = [(self.center(i), self.vp(v)) if v is not None else None for i, v in enumerate(s["values"])]
             for i, point in enumerate(points):
                 if point is None:
@@ -1391,9 +1392,11 @@ def check_options(state, recipe):
 
 
 def validate_chart(layer, state):
-    """A loaded chart group: a group carrying a well-formed recipe."""
-    require(layer["type"] == "group" and isinstance(layer["chart"], dict) and len(json.dumps(layer["chart"])) <= 4_000_000,
-            "Invalid chart recipe", "invalid_project")
+    """A loaded chart group: a group carrying a well-formed recipe (a rasterized chart keeps its recipe inertly)."""
+    if layer["type"] != "group":
+        return
+    require(isinstance(layer["chart"], dict) and len(json.dumps(layer["chart"])) <= 4_000_000, "Invalid chart recipe",
+            "invalid_project")
     check_options(state, layer["chart"])
 
 
@@ -1477,13 +1480,15 @@ def schemas(add):
         "center_text": d(S, "Donut: text in the hole; {total} becomes the sum."),
         "padding": d(N, "Space between the chart's edge and its content in pixels."),
     }
-    frame = {"name": d(S, "Group name; the layers inside are named NAME/part."), "x": COORD, "y": COORD,
+    frame = {"target": d(S, "Existing chart group to restyle, resize or give new data; omit to draw a new chart."),
+             "name": d(S, "Group name; the layers inside are named NAME/part."), "x": COORD, "y": COORD,
              "width": d(SIZE, "Chart width (default: the canvas)."), "height": d(SIZE, "Chart height (default: the canvas).")}
     add("chart", {**frame, **data, **{k: (v if k == "kind" else nullable(v)) for k, v in options.items()}},
         description="Draw or update a data-bound chart as a group of ordinary vector layers. Without target it creates "
                     "one from categories + series, a table or a csv; with target it restyles or resizes that chart. "
                     "Exports to PPTX as a native chart.")
     add("chart-data", {
+        "target": d(S, "Chart group ID or name (default: the active layer)."),
         "set": d({"type": "array", "items": {"type": "object", "properties": {
             "category": d({"type": ["string", "number"]}, "Category label."),
             "series": d(S, "Series name (optional on one-series charts)."),
@@ -1499,7 +1504,7 @@ def schemas(add):
         "remove_series": d({"type": "array", "items": S, "minItems": 1}, "Series to drop."),
         "reload": d(B, "Re-read the CSV the chart is bound to."),
         **data,
-    }, ["target"], description="Edit a chart's data in place: cell edits, new or removed categories and series, a CSV "
+    }, description="Edit a chart's data in place: cell edits, new or removed categories and series, a CSV "
                                "reload, or a new table. The chart redraws with the same layer IDs and reports its totals under chart.summary.")
 
 
