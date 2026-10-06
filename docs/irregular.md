@@ -95,7 +95,9 @@ side, so a thin line still gets visible waves. A 200 px layer at `natural` wobbl
   is cut off.
 * With `pressure`, a stroke is redrawn as a filled ribbon whose width varies. A stroke-only layer
   becomes the ribbon; a layer with a fill keeps its fill and gains a sibling `NAME-ink` layer just
-  above it that holds the outline. Both are ordinary editable path layers.
+  above it that holds the outline. Both are ordinary editable path layers. Because that doubles the
+  layer count of a filled set, pass `pressure: 0` for big sets (hundreds of leaves) and keep it for
+  characters and focal shapes.
 * Color drift moves the fill and stroke together (one drift per layer) in OKLab, with swatches and
   variables resolved first. Constrained axes keep their position.
 * Rotation, position and color drift change the layer's own `rotation`, `x`, `y`, `fill` and

@@ -524,7 +524,8 @@ def make_irregular(project, layer, recipe, index):
                 ink[key] = deepcopy(layer[key])
         order = project.state["layers"]
         order.insert(order.index(layer) + 1, ink)
-        require(len(order) <= project.limits.max_layers, "Layer limit reached", "resource_limit")
+        require(len(order) <= project.limits.max_layers, "Layer limit reached: the stroke ribbon of each filled "
+                "shape is a layer of its own; set pressure to 0 for a big set", "resource_limit", field="pressure")
         ink["part_of"] = layer["id"]
     project.limits.size(layer["width"], layer["height"])
     return {"recipe": recipe, "source": source, **({"ink": ink["id"]} if ink is not None else {})}

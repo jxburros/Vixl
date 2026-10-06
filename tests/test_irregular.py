@@ -303,6 +303,19 @@ def test_pressure_turns_a_stroke_into_a_ribbon_with_varying_width():
     assert p.layer("box")["stroke"] == "#14263b" and p.layer("box")["shape"] == "rectangle"
 
 
+def test_stroke_ribbons_respect_the_layer_limit_and_say_how_to_avoid_it():
+    from vixl.model import Limits
+
+    p = Project(900, 500, "white", limits=Limits(max_layers=30))
+    p.apply([{"type": "shape", "shape": "path", "name": f"leaf{i}", "path": LEAF, "width": 80, "height": 100,
+              "x": i * 30, "fill": "#4f8a3b", "stroke": "#1d3b14", "stroke_width": 3} for i in range(20)])
+    with pytest.raises(VixlError) as error:
+        p.apply({"type": "irregular", "targets": [f"leaf{i}" for i in range(20)], "seed": 1})
+    assert "pressure" in str(error.value) and len(p.state["layers"]) == 20
+    p.apply({"type": "irregular", "targets": [f"leaf{i}" for i in range(20)], "seed": 1, "pressure": 0})
+    assert len(p.state["layers"]) == 20 and p.layer("leaf3")["stroke"] != "transparent"
+
+
 def test_regrow_starts_from_the_source_and_remove_restores_it_exactly():
     p = sketch()
     original = snapshot(p)
