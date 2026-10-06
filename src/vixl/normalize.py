@@ -24,6 +24,8 @@ TYPE_ALIASES = {
     "update-text": "text-set",
     "delete": "remove",
     "delete-layer": "remove",
+    "merge": "merge-layers",
+    "flatten-image": "flatten",
     "translate": "move",
     "set-position": "move",
     "set-opacity": "opacity",

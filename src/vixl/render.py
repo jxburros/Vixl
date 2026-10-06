@@ -1183,13 +1183,62 @@ def render_layers(project, parent=None, size=None, background="transparent", obs
             project._resolution = None
 
 
-def _render_layers(project, layers, bounds, parent, size, background, observe):
+def render_members(project, members, region=None, background="transparent", include_hidden=False):
+    """Composite the layers ``members`` (IDs sharing a parent) in document order, as the renderer
+    draws them (styles, clipping, masks, opacity and blend modes among themselves), onto a tile.
+
+    ``region`` is (left, top, width, height) in their parent's space, whole pixels; by default it is
+    everything the members draw. Returns the tile and its (left, top). ``include_hidden`` draws
+    hidden members too."""
+    layers = resolved_layers(project)
+    bounds = resolve_layout(project, layers=layers)
+    members = set(members)
+    picked = [item for item in layers if item["id"] in members]
+    require(picked, "Nothing to draw")
+    parent = picked[0].get("parent")
+    require(all(item.get("parent") == parent for item in picked), "Layers must share a parent")
+    if include_hidden:
+        for item in picked:
+            item["visible"] = True
+    if region is None:
+        children, memo, edges = child_index(layers), {}, []
+        for item in picked:
+            x, y, w, h = bounds[item["id"]]
+            mx, my = ink_margin(item, bounds, children, memo)
+            edges.append((x - mx, y - my, x + w + mx, y + h + my))
+        # Two spare pixels hold antialiasing and rounding at the edges of styles and strokes.
+        left, top = math.floor(min(e[0] for e in edges)) - 2, math.floor(min(e[1] for e in edges)) - 2
+        right, bottom = math.ceil(max(e[2] for e in edges)) + 2, math.ceil(max(e[3] for e in edges)) + 2
+        region = (left, top, right - left, bottom - top)
+    left, top, width, height = region
+    if parent is None and (left, top) != (0, 0) and any(
+        any(effect_margin(item)) or any(effect.get("selection") for effect in item.get("effects") or []) for item in picked
+    ):
+        # Canvas-edge blur and selection-masked effects depend on where the layer sits on the canvas:
+        # draw them in place, keeping what lies on the canvas.
+        left, top = max(0, left), max(0, top)
+        c = project.state["canvas"]
+        right, bottom = min(c["width"], region[0] + width), min(c["height"], region[1] + height)
+        require(left < right and top < bottom, "The layers draw nothing on the canvas")
+        image, _ = render_members(project, [item["id"] for item in picked], (0, 0, right, bottom), background, include_hidden)
+        return image.crop((left, top, right, bottom)), (left, top)
+    placed = shift(bounds, [item for item in layers if item.get("parent") == parent], -left, -top)
+    shared = getattr(project, "_resolution", None)
+    project._resolution = (project.state, layers, bounds)
+    try:
+        image = _render_layers(project, layers, placed, parent, (width, height), background, None, members)
+    finally:
+        project._resolution = shared
+    return image, (left, top)
+
+
+def _render_layers(project, layers, bounds, parent, size, background, observe, members=None):
     c = project.state["canvas"]
     size = size or (c["width"], c["height"])
     index = {item["id"]: item for item in layers}
     children, memo = child_index(layers), {}
     ax = ay = 0
-    if parent is not None:
+    if parent is not None and members is None:
         # A group's tile also holds whatever its children draw outside its box.
         ax, ay = overflow(index[parent], bounds, children, memo)
         if ax or ay:
@@ -1258,7 +1307,7 @@ def _render_layers(project, layers, bounds, parent, size, background, observe):
         return image
 
     for layer in layers:
-        if layer.get("parent") != parent or not layer["visible"]:
+        if layer.get("parent") != parent or not layer["visible"] or (members is not None and layer["id"] not in members):
             continue
         if observe and layer["id"] in observe:
             box = pixel_box(bounds[layer["id"]], image.size)

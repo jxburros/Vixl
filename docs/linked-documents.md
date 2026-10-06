@@ -60,8 +60,8 @@ so you can tell what changed behind your back:
 `link-embed TARGET` replaces the link with an ordinary image layer holding exactly what the link drew
 (its fit, crop, rotation, effects and opacity, at the layer's size). The source path, hash and variables
 are kept as `provenance`. Use it before sending a document without its sources, or to stop following a
-source. Embedding needs the layer's styles and clipping removed, like `rasterize` (use `link-embed`
-rather than `rasterize` on a link: it also drops the link's fields).
+source. Embedding needs the layer's styles and clipping removed (`rasterize` bakes them into the pixels instead;
+use `link-embed` rather than `rasterize` on a link: it also drops the link's fields).
 
 ## Where links resolve
 

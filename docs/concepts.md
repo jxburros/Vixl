@@ -63,8 +63,9 @@ photo is not overwritten. Linked files are a separate, explicitly trusted mode; 
 
 Effects remain in a stack that can be edited, disabled or removed. A mask controls layer
 visibility: white reveals, black hides. Selection state affects an effect **when it is
-added**; clear the selection for whole-layer effects. Flattening or rasterizing a layer
-bakes editable detail into pixels; keep a checkpoint first.
+added**; clear the selection for whole-layer effects. Rasterizing, merging or flattening layers
+bakes editable detail into pixels (the originals stay in the new layer's `provenance`, and undo
+restores them); keep a checkpoint first.
 
 ## Variables, swatches and styles
 

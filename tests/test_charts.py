@@ -12,6 +12,7 @@ from vixl import Project
 from vixl.charts import format_number, nice_scale
 from vixl.commands import compile_command
 from vixl.errors import VixlError
+from vixl.model import Limits
 from vixl.schema import operation_schema, validate_operation
 
 MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"]
@@ -486,7 +487,7 @@ def test_unknown_category_suggests_the_closest():
 
 def test_a_chart_too_big_for_the_layer_limit_is_refused():
     categories = [f"c{i}" for i in range(200)]
-    p = Project(2000, 600)
+    p = Project(2000, 600, limits=Limits(max_layers=512))
     with pytest.raises(VixlError) as caught:
         p.apply({"type": "chart", "categories": categories, "series": [{"name": s, "values": [1] * 200} for s in "abc"]})
     assert caught.value.code == "resource_limit"

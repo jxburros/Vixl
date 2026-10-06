@@ -396,6 +396,9 @@ def _operation_schema():
     from .captions import schemas as caption_schemas
 
     caption_schemas(add)
+    from .merging import schemas as merge_schemas
+
+    merge_schemas(add)
     from .vector_paths import schemas as vector_schemas
 
     vector_schemas(add)

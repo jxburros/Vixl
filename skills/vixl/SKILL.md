@@ -13,8 +13,9 @@ JSON operations**, so anything you learn in one transfers to the others.
 
 Key properties to rely on:
 
-- **Everything stays editable.** Text is text until `rasterize`; effects are a stack you can
-  disable/edit/remove; masks and styles are attachments. Prefer editing over re-creating.
+- **Everything stays editable.** Text is text until `rasterize` (or `merge-layers` / `flatten`, which
+  bake several layers into one); effects are a stack you can disable/edit/remove; masks and styles are
+  attachments. Prefer editing over re-creating.
 - **Batches are atomic.** A list of operations either fully applies or changes nothing.
 - **Every successful edit autosaves** and is undoable (CLI and MCP).
 - **Layers are addressed by unique name or immutable ID** (`lyr_…`). IDs survive renames;
