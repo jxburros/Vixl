@@ -111,8 +111,10 @@ def test_variables_override_source_variables_and_read_host_variables(tmp_path):
     reference.state["variables"]["who"] = "Vixl"
     assert np.abs(pixels(host.render().crop((0, 0, 200, 100))) - pixels(reference.render())).max() <= 1
     assert host.render(variables={"greeting": "Other"}).crop((0, 0, 200, 100)).tobytes() != host.render().crop((0, 0, 200, 100)).tobytes()
-    with pytest.raises(VixlError, match="Undefined variable"):
+    with pytest.raises(VixlError, match="Undefined variable: nope"):
         host.apply({"type": "link-set", "target": "a", "variables": {"who": "${nope}"}})
+    host.state["layers"][0]["variables"] = {"who": "${nope}"}  # edited behind the engine's back: still an error
+    with pytest.raises(VixlError, match="Undefined variable: nope"):
         host.render()
 
 
@@ -414,6 +416,7 @@ def test_link_commands_compile_and_run_from_the_cli(tmp_path):
     assert done.returncode == 0, done.stderr
     listing = json.loads(run("links").stdout)
     assert listing["count"] == 1 and listing["links"][0]["state"] == "ok"
+    assert run("check", "--checks", "links").returncode == 0
     assert run("export", "out.png").returncode == 0 and Image.open(tmp_path / "out.png").size == (400, 200)
     make_tile(tmp_path / "tile.vixl", fill="#ff0000")
     assert json.loads(run("links").stdout)["stale"] == 1
@@ -444,8 +447,14 @@ def test_workflow_links_action_over_mcp_and_rest(tmp_path):
     asyncio.run(call("vixl_operations_apply", {"operations": [{"type": "link", "source": "tile.vixl", "name": "t"}]}))
     listing = asyncio.run(call("vixl_workflow", {"action": "links", "request": {}}))
     assert listing["count"] == 1 and listing["links"][0]["state"] == "ok"
+    summary = asyncio.run(call("vixl_document_inspect", {}))
+    assert summary["layers"][0]["source"] == "tile.vixl" and summary["links"] == {"count": 1}
     make_tile(tmp_path / "tile.vixl", fill="#112233")
     assert asyncio.run(call("vixl_workflow", {"action": "links", "request": {}}))["stale"] == 1
+    summary = asyncio.run(call("vixl_document_inspect", {}))
+    assert summary["links"]["stale"] == 1 and summary["links"]["problems"][0]["layer"] == "t"
+    checked = asyncio.run(call("vixl_check", {"checks": ["links"]}))
+    assert checked["passed"] and checked["warnings"] == 1 and checked["issues"][0]["check"] == "links"
     assert asyncio.run(call("vixl_operations_apply", {"operations": [{"type": "link-refresh"}]}))["success"]
     assert asyncio.run(call("vixl_workflow", {"action": "links", "request": {}}))["links"][0]["state"] == "ok"
 

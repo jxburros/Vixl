@@ -5,6 +5,7 @@ from .studio import ACTIONS as STUDIO_ACTIONS
 
 from .automation import bounded_object
 from .errors import require, VixlError
+from .imposition import ACTIONS as IMPOSITION_ACTIONS, FIELD_TYPES as IMPOSITION_FIELD_TYPES
 from .links import ACTIONS as LINK_ACTIONS
 from .lyrics import REQUEST_FIELDS as LYRIC_FIELDS
 
@@ -40,6 +41,7 @@ ACTIONS = {
 
 ACTIONS.update(STUDIO_ACTIONS)
 ACTIONS.update(LINK_ACTIONS)
+ACTIONS.update(IMPOSITION_ACTIONS)
 FILL_FORMATS = ("pdf", "png", "jpeg", "jpg", "webp", "tiff", "svg")
 
 PATH = {"type": "string", "description": "Workspace-relative path."}
@@ -82,6 +84,8 @@ ACTION_FIELD_TYPES = {
     },
 }
 
+ACTION_FIELD_TYPES["merge-impose"] = IMPOSITION_FIELD_TYPES
+
 
 def field_types(action):
     fields = ACTIONS[action][0]
@@ -114,6 +118,10 @@ def dispatch(session, action, request, document=None):
         from .links import dispatch as links_dispatch
 
         return links_dispatch(session, request, document)
+    if action in IMPOSITION_ACTIONS:
+        from .imposition import dispatch as merge_dispatch
+
+        return merge_dispatch(session, request, document)
     if action in STUDIO_ACTIONS:
         from .studio import dispatch as studio_dispatch
         try:

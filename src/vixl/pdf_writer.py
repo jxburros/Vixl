@@ -174,6 +174,18 @@ def image_xobject(writer, image, *, jpeg_quality=None):
 # Fonts
 
 
+_DIGESTS = {}  # id(data) -> (data, sha256): a few font programs are used for every glyph, so each is hashed once
+
+
+def font_digest(data):
+    held = _DIGESTS.get(id(data))
+    if held is None or held[0] is not data:
+        if len(_DIGESTS) > 64:
+            _DIGESTS.clear()
+        held = _DIGESTS[id(data)] = (data, hashlib.sha256(data).hexdigest())
+    return held[1]
+
+
 class FontSet:
     """Embedded TrueType fonts for one document: each font file becomes a Type0/CIDFontType2 font
     with Identity encoding (codes are glyph IDs), a subset font program and a ToUnicode map."""
@@ -196,7 +208,7 @@ class FontSet:
         """Register a glyph; returns (resource name, glyph id)."""
         from .text import face
 
-        key = hashlib.sha256(data).hexdigest()
+        key = font_digest(data)
         entry = self.fonts.get(key)
         if entry is None:
             entry = self.fonts[key] = {"data": data, "name": f"F{len(self.fonts) + 1}", "glyphs": {}, "ref": writer.reserve()}

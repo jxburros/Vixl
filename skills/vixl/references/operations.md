@@ -32,6 +32,7 @@ The authoritative schema is always `vixl schema` / `GET /schema` / `vixl://opera
 | `adjustment` | **`effects`** (list of effect objects), `name` | Adjustment layer: filters the composited stack *below it* in its parent. |
 | `symbol-instance` | **`symbol`**, `name`, `x`, `y`, `width`, `height` | Live copy of a symbol master. |
 | `duplicate` | `target`, `name` | |
+| `link` | **`source`** (workspace `.vixl`), `name`, `x`, `y`, `width`, `height`, `fit` (`fill`/`fit`/`stretch`), `position`, `crop` `{x,y,width,height}`, `artboard`, `source_page`, `variables` | Another document, drawn live: edits to the source show at the next render. Sources stay in the workspace; cycles and depth > 4 are errors. `link-set` edits it (`null` clears), `link-refresh` records the seen revision (see `links` in `vixl_workflow`), `link-embed` freezes it into an image. |
 
 ## Layer management
 

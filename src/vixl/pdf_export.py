@@ -19,7 +19,7 @@ import numpy as np
 from .errors import require
 from .model import finite
 from .links import pdf_link
-from .pdf_writer import FontSet, Name, Text, Writer, image_xobject
+from .pdf_writer import FontSet, Name, Text, Writer, font_digest, image_xobject
 
 VECTOR_LEAVES = ("solid", "shape", "gradient", "text")
 
@@ -523,9 +523,7 @@ class Fonts(FontSet):
         return round(outline["hmtx"][name][0] * 1000 / outline["head"].unitsPerEm)
 
     def embeddable_cached(self, data):
-        import hashlib
-
-        key = hashlib.sha256(data).hexdigest()
+        key = font_digest(data)
         if key not in self._embeddable:
             self._embeddable[key] = self.embeddable(data)
         return self._embeddable[key]

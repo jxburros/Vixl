@@ -232,6 +232,12 @@ Python: `project.export("deck.pptx")`, `project.export("form.pdf", fillable=True
 `contact_sheet`, `vixl.drawing` (`clean`, `report`, `compare`, `ai_color`), `vixl.lyrics`
 (`parse_lrc`, `plan`, `build`, `export`).
 
+Linked documents and print merge are ordinary operations and one workflow action each: `link`, `link-set`, `link-refresh` and
+`link-embed` go through `vixl_operations_apply` / `POST /operations`; `vixl_workflow("links", {})` (also `POST /workflow/links`) lists
+each link's state; `vixl_workflow("merge-impose", request, document=template)` merges a CSV into print sheets (MCP and CLI only:
+it writes files). Link sources and merge paths stay inside the workspace. See [linked documents](linked-documents.md) and
+[imposition](imposition.md).
+
 ### Streamable HTTP and live review
 
 ```bash

@@ -47,6 +47,7 @@ ANCHORS = {
 OK, STALE, MISSING, ERROR, CYCLE, FORBIDDEN = "ok", "stale", "missing", "error", "cycle", "forbidden"
 BROKEN = (MISSING, ERROR, CYCLE, FORBIDDEN)
 
+VARIABLE = re.compile(r"\$\{([\w-]+)\}")
 _LOCK = threading.RLock()
 _SOURCES = OrderedDict()  # (path, allow_linked) -> (stamp, revision, Project)
 _RENDERS = []  # one LayerCache of drawn sources, created on first use (render.py imports this module lazily)
@@ -101,7 +102,7 @@ def _add(project, op):
     from .operations import append_layer, default_name
 
     path = locate(project, op["source"])
-    settings = _settings(op)
+    settings = _settings(op, project=project)
     child, revision = open_source(project, path, op["source"])
     size = _canvas_size(child, settings.get("source_page"), settings.get("artboard"), op["source"])
     check_cycle(project, path, op["source"])
@@ -124,7 +125,7 @@ def _add(project, op):
 
 
 def _set(project, layer, op):
-    settings = _settings(op, nullable=True)
+    settings = _settings(op, nullable=True, project=project)
     require(settings or "source" in op or "fit" in op, "link-set needs something to change: source, artboard, "
             "source_page, variables, fit, position or crop", field="source")
     if "source" in op:
@@ -183,9 +184,9 @@ def _embed(project, layer):
         layer.pop(key, None)
 
 
-def _settings(op, nullable=False):
+def _settings(op, nullable=False, project=None):
     """The validated page, artboard, variables, position and crop of a link operation. ``None`` (when
-    ``nullable``) clears a setting."""
+    ``nullable``) clears a setting. Given the ``project``, ``${name}`` references must name its variables."""
     settings = {}
     for key in ("artboard", "source_page", "variables", "position", "crop"):
         if key not in op:
@@ -202,6 +203,8 @@ def _settings(op, nullable=False):
                     "source_page must be a name or number", field=key)
         elif key == "variables":
             value = _variables(value)
+            if project is not None:
+                _references(project, value)
         elif key == "position":
             value = _position(value)
         else:
@@ -219,6 +222,16 @@ def _variables(value):
         if isinstance(item, float):
             finite(item, key)
     return deepcopy(value)
+
+
+def _references(project, values):
+    from .render import document_variables
+
+    known = document_variables(project)
+    for name, value in values.items():
+        for reference in VARIABLE.findall(value) if isinstance(value, str) else ():
+            require(reference in known, f"Undefined variable: {reference} (in the link variable {name!r})", "missing_variable",
+                    field="variables")
 
 
 def _position(value):
