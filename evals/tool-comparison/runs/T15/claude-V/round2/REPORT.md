@@ -1,45 +1,61 @@
-# T15 · Seamless pattern, round 2 (lane V, Vixl MCP)
+# T15 · Seamless pattern, round 2 (lane V, Vixl)
 
-Requested changes: **make every shell amber** and **cut the motifs by about a third**. Every file was made again. Round-1 files outside `round2/` are untouched.
+Requested changes: make every shell amber, and cut the number of motifs by about a third. All six
+deliverables were regenerated into this folder under the same names. Nothing outside `round2/` was changed.
 
-Tool calls: **43** in total (Vixl MCP, Bash, ToolSearch, Read, plus the final hand-back). Two of them failed and were retried (see "Notes").
+## How
 
-## What changed in the tile (`tile.vixl`)
-I copied `../tile.vixl` into `round2/` and edited it with `vixl_operations_apply`. Its layers are still live vectors.
-
-**Motif count: 39 → 26 (−13, exactly one third).** Wrap copies are not counted.
-
-| Motif | Round 1 | Round 2 | Removed |
-| --- | --- | --- | --- |
-| Kelp fronds | 4 (K1–K4) | 3 (K2, K3, K4) | K1 |
-| Spiral shells | 7 (S1–S7) | 5 (S1, S2, S3, S4, S6) | S5, S7 |
-| Waves | 5 (W1–W5) | 3 (W1, W3, W4) | W2 and its wrap copy W2_wx, W5 |
-| Dots | 23 (D01–D23) | 15 | D02, D06, D09, D11, D13, D15, D19, D22 |
-
-- I removed with `remove` ops. No wrap copy is left without its original, so the tile still repeats seamlessly. The kept edge pairs are K3/K3_wx, K4/K4_wy, S4 plus its three copies, W4/W4_wx, D16, D17 and D18 with their copies.
-- To even out the spacing after the removals, I moved two shells: S1 from (320,370) to (190,560), filling the space K1 left, and S2 from (800,360) to (830,470).
-
-**All shells amber.** Every shell was regrown with an `organic` op on its own layer (`preset: shell`, same seed, `params.color: #f2a541`, `stroke: #14263b`, `stroke_width: 1.5`): S1 (seed 2) and S3 (seed 9), which were coral, plus S2, S4, S4_wx, S4_wy, S4_wxy and S6. Rotations and positions stayed the same, apart from the two moves above.
-- Side effect: regrowing with `stroke` set also gave the shells **navy outlines and chamber lines**. Round 1 had an off-palette brown (`#8a5a3b` / `#9b6b47`) there. The shells now use only brief colours (amber body, navy linework).
-- Coral is still in the pattern, but only as dots (D04, D07, D17 and its copy D17_wy).
+All edits were made with Vixl MCP tools (`vixl_operations_apply`, `vixl_export_batch`,
+`vixl_render_preview`, `vixl_check`). I didn't draw any pixels, SVG or HTML by hand.
+1. I copied the three round-1 `.vixl` sources into `round2/` with `cp` and opened `round2/tile.vixl` in Vixl.
+2. I made one atomic batch of 29 operations on the tile. A dry run came first.
+   - **Shells to amber:** a `shape` fill edit to amber `#f2a541` on the shell body of every coral shell left
+     in the tile (i12, i13, the i13 wrap copy and i18). I also recoloured the hidden coral master. The navy
+     chamber and spiral lines are unchanged. These groups were renamed `*_shell_amber`. Their child layers
+     still carry their old `i13_shell_coral/...` names, which is cosmetic only. All 5 shells in the tile are now amber.
+   - **About a third fewer motifs:** `remove` on 7 of the 20 main motifs (20 → 13), keeping the mix of motif types:
+     - kelp 6 → 4 (removed navy i03 and its wrap copy, and sea-foam i05 and its wrap copy; this also eases
+       the round-1 left-heavy navy kelp)
+     - waves 6 → 4 (removed sea-foam i06 and navy i19)
+     - shells 8 → 5 (removed i15, i16, i17)
+   - **Dots:** I also removed every third filler dot, 34 → 23 (dot02, 05, 08 … 32). The brief didn't ask for
+     this. I did it so the filler density drops in step with the motifs. If you count only the 20 main
+     motifs, the reduction is 35 %.
+   - Remaining motifs, positions, sizes and rotations are untouched. No new layout was generated.
+3. I exported `tile.png` and `tile.svg` (strict SVG policy, no embedded raster).
+4. In `round2/preview-3x3.vixl` (9 links) and `round2/mug-wrap.vixl` (6 links), I repointed each `link` layer
+   with a `link` operation, from `../tile.vixl` to `round2/tile.vixl`. Then I exported `preview-3x3.png` and
+   `mug-wrap.png`. The mug label, wordmark, 850 px tile scale and 300 dpi are unchanged.
 
 ## Files
-| File | Check | How |
-| --- | --- | --- |
-| `tile.vixl` | 1024×1024, editable | Edited as described above |
-| `tile.png` | 1024×1024 RGBA, fully opaque | `vixl_export_file` |
-| `tile.svg` | viewBox 0 0 1024 1024, 0 `<image>` elements | `vixl_export_file`, `svg_policy=strict` |
-| `preview-3x3.vixl` / `.png` | 3072×3072 | New document (cream background). Imported the new `tile.png`, then `repeat` (count 3, dx 1024), then `duplicate` + `move` for rows at y=1024 and y=2048. Exported as PNG. |
-| `mug-wrap.vixl` / `.png` | 2550×1050, 300 dpi in the PNG metadata | New document, 300 dpi. New `tile.png` repeated 3 across and 2 down (anchored top-left, cropped by the canvas). Centered 600×300 cream `#f7f1e5` rounded rectangle at (975,375), radius 44, 4 px navy stroke. "Tidewick" in Young Serif 100 px navy `#14263b` (pairing `young-serif-rubik` added with `vixl_font_pair`; text added with `vixl_text_add`). The text is centered on the label with a `constrain` (center-x / center-y set to the label's centre). |
 
-## Checks (script, on exported files)
-- `preview-3x3.png` is exactly `tile.png` tiled 3×3 (max pixel difference 0).
-- Wrap seams look like interior seams. Pixel pairs that differ strongly: 18 across the x seam against 0–6 for interior columns, and 7 across the y seam against 5–13 for interior rows. The extra pairs at the x seam come from shape outlines crossing the edge (K3, W4, D16), not from breaks.
-- `mug-wrap.png` is 2550×1050 at about 300 dpi. The new `tile.png` (sha256 `0a136dc2…`) is the same asset embedded in both new `.vixl` files.
-- I looked at the tile and the mug wrap: shells are amber with navy outlines, and the label and text are centered.
+| File | Notes |
+| --- | --- |
+| `tile.vixl` | Editable tile, 1024 × 1024. It has 13 motifs and 23 dots, plus 5 wrap copies (i00, i01, i10, i13, dot01). |
+| `tile.png` | 1024 × 1024 RGB |
+| `tile.svg` | Vector, valid XML, 0 `<image>` elements |
+| `preview-3x3.vixl` / `.png` | 3072 × 3072, 9 live links to `round2/tile.vixl` |
+| `mug-wrap.vixl` / `.png` | 2550 × 1050 at 300 dpi, 6 live links to `round2/tile.vixl` |
 
-## Notes and deviations
-- A `shape` op with `target` doesn't edit an existing layer; it adds a new one (found in a dry run, not applied). That is why I recoloured the shells with `organic` regrow ops.
-- Two calls failed and were retried. `vixl_text_add` failed until the font was registered in the new document with `vixl_font_pair`. The first `constrain` expression (`"label"`) was rejected; `"label.center-x"` / `"label.center-y"` worked.
-- These still apply from round 1: the mug wrap (2550 px) is not a multiple of 1024 px, so its two ends don't join on a mug. The label stroke was not in the brief. The 3×3 and mug `.vixl` files embed `tile.png` and won't update by themselves if `tile.vixl` changes.
-- With fewer motifs, the tile has more open cream space, which is the intended effect. Spacing is still hand-placed and not on a grid.
+## Checks (scripts read the exported files only)
+
+- **Preview:** each of the 9 cells is pixel-identical to `tile.png` (max difference 0).
+- **Tile seams:** mean edge difference is 1.87 left/right and 1.43 top/bottom. An ordinary interior column
+  step is about 1.3, so the seams look like any other step. The wrap copies of the removed motifs were removed
+  with them, so no orphaned half-motifs remain at the edges.
+- **Mug:** the mean difference between its left and right ends is 0.28, so it wraps seamlessly. In the
+  downscaled preview the tile joins looked like faint lines. In the full-size PNG they aren't there: the
+  columns at the joins match their neighbours.
+- **Colour:** pixels close to coral fell from 5975 to 866. What's left is the coral wave i10 and the coral
+  dots, which aren't shells. Cream background now covers about 95 % of the tile, up from 92 %.
+- **`vixl_check`:** links are current in both derived documents. The mug check has no fix or review
+  findings. Only its intentional `allow_crop` bleeds are listed.
+
+## Notes
+
+- With the shells now amber, coral survives only in one wave and a few dots, so the palette leans
+  navy, amber and sea-foam.
+- Removing motifs left some airier spots: bottom-centre, and the gap between the top-left kelp and the
+  centre. I didn't move the remaining motifs, so the rest of the layout matches round 1.
+- The `.vixl` links are workspace-relative paths to `round2/tile.vixl`. If the folder is moved, the links
+  need refreshing. The PNGs are unaffected.
