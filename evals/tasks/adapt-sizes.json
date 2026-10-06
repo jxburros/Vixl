@@ -1,0 +1,29 @@
+{
+  "prompt": "promo.vixl is a finished 1080x1080 promo. Make two more versions of it without changing the original: promo-story.vixl at 1080x1920 and promo-banner.vixl at 1200x628, with the title, button and logo still on the canvas in each. Export promo-story.png and promo-banner.png.",
+  "document": "promo.vixl",
+  "setup": {
+    "documents": [
+      {"path": "promo.vixl", "width": 1080, "height": 1080, "background": "#1d3557", "batches": [[
+        {"type": "text", "name": "title", "text": "Summer Sale", "size": 120, "color": "white", "x": 140, "y": 380},
+        {"type": "shape", "shape": "rectangle", "name": "button", "x": 390, "y": 640, "width": 300, "height": 90, "fill": "#e63946"},
+        {"type": "shape", "shape": "ellipse", "name": "logo", "x": 960, "y": 60, "width": 80, "height": 80, "fill": "#f1faee"}
+      ]]}
+    ]
+  },
+  "checks": [
+    {"type": "canvas", "name": "original untouched", "width": 1080, "height": 1080},
+    {"type": "canvas", "name": "story size", "document": "promo-story.vixl", "width": 1080, "height": 1920},
+    {"type": "canvas", "name": "banner size", "document": "promo-banner.vixl", "width": 1200, "height": 628},
+    {"type": "assert", "name": "story keeps its layers on canvas", "document": "promo-story.vixl",
+     "rules": ["layer.title.bounds within canvas", "layer.button.bounds within canvas", "layer.logo.bounds within canvas"]},
+    {"type": "assert", "name": "banner keeps its layers on canvas", "document": "promo-banner.vixl",
+     "rules": ["layer.title.bounds within canvas", "layer.button.bounds within canvas", "layer.logo.bounds within canvas"]},
+    {"type": "file", "path": "promo-story.png", "image_size": [1080, 1920]},
+    {"type": "file", "path": "promo-banner.png", "image_size": [1200, 628]}
+  ],
+  "reference": [
+    {"tool": "vixl_document_open", "arguments": {"path": "promo.vixl"}},
+    {"tool": "vixl_adapt_layout", "arguments": {"sizes": [{"width": 1080, "height": 1920, "name": "story"}, {"width": 1200, "height": 628, "name": "banner"}],
+                                                "name": "{name}-{size}", "formats": ["png"]}}
+  ]
+}

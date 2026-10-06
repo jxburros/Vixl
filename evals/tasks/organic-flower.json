@@ -1,0 +1,19 @@
+{
+  "prompt": "Create garden.vixl at 600x600 on a pale green (#eef6e8) background. Grow a natural-looking six-petal pink flower named bloom, about 400 px wide, centred on the canvas, using Vixl's organic shapes rather than hand-placed ellipses. Export garden.png.",
+  "document": "garden.vixl",
+  "checks": [
+    {"type": "canvas", "width": 600, "height": 600},
+    {"type": "layer_field", "name": "organic flower recipe", "layer": "bloom", "field": ["organic", "preset"], "equals": "flower"},
+    {"type": "centered", "name": "bloom centred", "layer": "bloom", "tolerance": 12},
+    {"type": "file", "path": "garden.png", "image_size": [600, 600]}
+  ],
+  "reference": [
+    {"tool": "vixl_document_create", "arguments": {"path": "garden.vixl", "width": 600, "height": 600, "background": "#eef6e8"}},
+    {"tool": "vixl_operations_apply", "arguments": {"operations": [
+      {"type": "organic", "preset": "flower", "name": "bloom", "seed": 3, "params": {"petals": 6}, "colors": {"petals": "#f2a1b8"},
+       "width": 400, "x": 100, "y": 100},
+      {"type": "align", "target": "bloom", "alignment": "center"}
+    ]}},
+    {"tool": "vixl_export_file", "arguments": {"path": "garden.png"}}
+  ]
+}
