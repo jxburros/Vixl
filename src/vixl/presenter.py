@@ -38,8 +38,7 @@ def parse_options(value):
         value = {}
     require(isinstance(value, dict), "presenter is true, false or an object of options", field="presenter")
     unknown = sorted(set(value) - set(OPTIONS))
-    require(not unknown, f"Unknown presenter option {unknown[0] if unknown else ''!r}; options: {', '.join(OPTIONS)}",
-            field="presenter")
+    require(not unknown, f"Unknown presenter option {', '.join(unknown)}; options: {', '.join(OPTIONS)}", field="presenter")
     options = {"theme": "dark", "notes": True, "slide_images": "svg", "start": 1, "title": None, **value}
     require(options["theme"] in THEMES, f"theme must be one of {', '.join(THEMES)}", field="presenter")
     require(options["slide_images"] in SLIDE_IMAGES, "slide_images must be svg or png", field="presenter")
@@ -145,7 +144,7 @@ def slide_markup(number, total, record, view, media, notes, current, variables=N
     label = f"Slide {number} of {total}" + (f": {caption}" if caption else "")
     readable = ([f"<h2>{text(title)}</h2>"] if title else [])
     readable += [f"<p>{text(line)}</p>" for chunk in lines for line in chunk.splitlines() if line.strip()]
-    attrs = (f'id="slide-{number}" data-n="{number}" data-name="{text(name)}" data-transition="{transition}" '
+    attrs = (f'id="slide-{number}" data-n="{number}" data-name="{text(name)}" data-transition="{text(transition)}" '
              f'role="group" aria-roledescription="slide" aria-label="{text(label)}"')
     note = f'<aside class="notes" hidden>{text(notes)}</aside>' if notes else ""
     return (f'<section class="slide{" is-cur" if current else ""}" {attrs}>{media}'
