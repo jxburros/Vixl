@@ -1243,14 +1243,19 @@ def _frames(project, times, scale, preview=False, cancelled=None, progress=None)
         yield image if image.size == size else image.resize(size, Image.Resampling.LANCZOS)
 
 
-def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=None, end=None, background=None, columns=None, quality=90, colors=256, overwrite=False, preview=False, cancelled=None, progress=None, dither="auto", max_bytes=None, poster=None):
+def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=None, end=None, background=None, columns=None, quality=90, colors=256, overwrite=False, preview=False, cancelled=None, progress=None, dither="auto", max_bytes=None, poster=None, sample_rate=None, target_bytes=None, preset=None):
     """Write the timeline as an animation, sheet or frame sequence. Never clobbers by default.
     Frames render at the target resolution (``scale`` 0.05–16, bounded by the pixel budget);
     ``colors`` (2–256) caps the GIF palette and ``dither`` ("auto", "none", "ordered", "floyd") sets how
     it is quantized. ``max_bytes`` is a soft size target: the result warns when the file is over it.
     ``poster`` (a time, marker, "end", or percentage) rotates a GIF/WebP/APNG so that frame comes first,
-    which is what many apps show; a looping animation still loops without a jump."""
-    from .animation import check_colors, check_dither, encoded_frames, gif_bytes, has_gradients, size_warnings
+    which is what many apps show; a looping animation still loops without a jump. ``sample_rate`` sets
+    the MP4/WebM audio rate (default: the highest source rate up to 48 kHz; 48 kHz for synthesized sound).
+    ``target_bytes`` (GIF/WebP/APNG) encodes, measures and steps down colors (WebP quality), then fps, then
+    scale until the file fits, reporting the settings it chose; ``preset`` ("chat", "web", "email") fills in
+    fps, size, colors and target_bytes left at their defaults."""
+    from .animation import (PRESETS, check_colors, check_dither, encoded_frames, fit_encode, fit_steps, gif_bytes,
+                            has_gradients, size_warnings, webp_trial)
 
     project = cached(project)
     path = Path(path)
@@ -1266,6 +1271,23 @@ def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=No
     require(dither == "auto" or format == "gif", "dither applies to GIF export", field="dither")
     require(max_bytes is None or (isinstance(max_bytes, int) and not isinstance(max_bytes, bool) and max_bytes > 0), "max_bytes must be a positive whole number", field="max_bytes")
     require(poster is None or format in ("gif", "apng", "webp"), "poster applies to gif, apng and webp exports", field="poster")
+    if preset is not None:
+        require(preset in PRESETS, f"preset must be one of {', '.join(PRESETS)}", field="preset", allowed=list(PRESETS))
+        require(format in ("gif", "apng", "webp"), "preset applies to gif, apng and webp exports", field="preset")
+        defaults = PRESETS[preset]
+        fps = defaults["fps"] if fps is None else fps
+        if scale == 1.0:
+            scale = min(1.0, defaults["width"] / project.state["canvas"]["width"])
+        if format == "gif" and colors == 256:
+            colors = defaults.get("colors", 256)
+        target_bytes = defaults["target_bytes"] if target_bytes is None else target_bytes
+    require(target_bytes is None or (isinstance(target_bytes, int) and not isinstance(target_bytes, bool) and target_bytes > 0),
+            "target_bytes must be a positive whole number", field="target_bytes")
+    require(target_bytes is None or format in ("gif", "apng", "webp"), "target_bytes applies to gif, apng and webp exports",
+            field="target_bytes")
+    from .audio import check_rate
+    check_rate(sample_rate)
+    require(sample_rate is None or format in ("mp4", "webm"), "sample_rate applies to MP4/WebM exports with audio", field="sample_rate")
     timeline = project.state.get("timeline") or default_timeline()
     markers = timeline.get("markers", {})
     first = parse_time(start, timeline["duration"], markers) if start is not None else 0
@@ -1297,6 +1319,10 @@ def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=No
     if format in ("gif", "apng", "webp"):
         shown = times[0] if poster_info is None else poster_info["time"]
         warnings += [message for _, message, _ in poster_findings(project, shown)]
+        if start is None and end is None:
+            from .motion import seam_value_findings
+
+            warnings += [item["message"] for item in seam_value_findings(project, timeline) if item["severity"] == "warning"]
     frames = _frames(project, times, scale, preview, cancelled, progress)
     if background is not None:
         from .render import color
@@ -1313,22 +1339,26 @@ def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=No
     metadata = None
     if format in ("mp4", "webm"):
         if project.state.get("audio_tracks"):
-            from .audio import mix_tracks, wav_bytes, RATE
+            from .audio import mix_tracks, plan_mix, wav_bytes
             from .production import publish_file
+            chosen = plan_mix(project.state["audio_tracks"], project=project, sample_rate=sample_rate,
+                              encoder="opus" if format == "webm" else None)
+            rate = chosen["sample_rate"]
             with tempfile.TemporaryDirectory(prefix="vixl-score-") as staging:
                 silent = Path(staging) / ("silent." + format)
                 result = _video(silent, frames, fps, format, quality, False, len(times), (w, h))
                 audio_path = Path(staging) / "score.wav"
-                samples = mix_tracks(project.state["audio_tracks"], timeline["duration"], project=project)
-                samples = samples[round(first * RATE / 1000):round(last * RATE / 1000)]
-                audio_path.write_bytes(wav_bytes(samples))
+                samples = mix_tracks(project.state["audio_tracks"], timeline["duration"], project=project, rate=rate,
+                                     channels=chosen["channels"])
+                samples = samples[round(first * rate / 1000):round(last * rate / 1000)]
+                audio_path.write_bytes(wav_bytes(samples, rate))
                 mixed = Path(staging) / ("mixed." + format)
-                command = [shutil.which("ffmpeg"), "-v", "error", "-i", str(silent), "-i", str(audio_path), "-map", "0:v:0", "-map", "1:a:0", "-c:v", "copy", "-c:a", "aac" if format == "mp4" else "libopus", "-t", str((last - first) / 1000), str(mixed)]
+                command = [shutil.which("ffmpeg"), "-v", "error", "-i", str(silent), "-i", str(audio_path), "-map", "0:v:0", "-map", "1:a:0", "-c:v", "copy", "-c:a", "aac" if format == "mp4" else "libopus", "-ar", str(rate), "-t", str((last - first) / 1000), str(mixed)]
                 encoded = subprocess.run(command, capture_output=True, timeout=600)
                 require(encoded.returncode == 0, "Timeline audio mux failed", "codec_error")
                 size_bytes = mixed.stat().st_size
                 publish_file(path, mixed, replace=overwrite)
-                return {**result, "output": str(path), "bytes": size_bytes, "audio_tracks": len(project.state["audio_tracks"])}
+                return {**result, "output": str(path), "bytes": size_bytes, "audio_tracks": len(project.state["audio_tracks"]), **chosen}
         return _video(path, frames, fps, format, quality, overwrite, len(times), (w, h))
     stream = io.BytesIO()
     if format == "frames":
@@ -1352,12 +1382,30 @@ def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=No
         sheet.save(stream, format="PNG")
     else:
         images = list(frames)
-        if format == "gif":
-            stream.write(gif_bytes(images, durations, loop, colors, dither))
-        elif format == "apng":
-            images[0].save(stream, format="PNG", save_all=True, append_images=images[1:], duration=durations, loop=loop + 1 if loop else 0, disposal=0, blend=0)
+
+        def encode(frames, durations, tone):
+            buffer = io.BytesIO()
+            if format == "gif":
+                buffer.write(gif_bytes(frames, durations, loop, tone, dither))
+            elif format == "apng":
+                frames[0].save(buffer, format="PNG", save_all=True, append_images=frames[1:], duration=durations, loop=loop + 1 if loop else 0, disposal=0, blend=0)
+            else:
+                frames[0].save(buffer, format="WEBP", save_all=True, append_images=frames[1:], duration=durations, loop=loop, quality=tone, method=4)
+            return buffer.getvalue()
+
+        tone = colors if format == "gif" else quality if format == "webp" else None
+        if target_bytes:
+            data, images, durations, chosen = fit_encode(
+                images, durations, encode, target_bytes, fit_steps(format, fps, colors, quality), fps,
+                {"gif": "colors", "webp": "quality"}.get(format), cancelled)
+            colors = chosen.get("colors", colors)
+            fps, w, h = chosen["fps"], images[0].width, images[0].height
+            if not chosen["fits"]:
+                warnings.append(f"target_bytes {target_bytes:,} not reached after {chosen['tries']} tries; wrote the smallest "
+                                f"({chosen['bytes']:,} bytes). Shorten the range or crop the canvas.")
         else:
-            images[0].save(stream, format="WEBP", save_all=True, append_images=images[1:], duration=durations, loop=loop, quality=quality, method=4)
+            data = encode(images, durations, tone)
+        stream.write(data)
     data = stream.getvalue()
     gradients = format == "gif" and has_gradients(images, colors)
     mode = "wb" if overwrite else "xb"
@@ -1368,7 +1416,7 @@ def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=No
             json.dump(metadata, output, indent=2)
     # Report what was written: the sheet's own size, and (GIF/WebP/APNG) the frames and timing left
     # after the encoder merged identical neighbours.
-    rendered = len(times)
+    rendered = len(images) if format in ("gif", "apng", "webp") else len(times)
     size = [metadata["width"], metadata["height"]] if metadata is not None else [w, h]
     if format in ("gif", "apng", "webp"):
         count, written = encoded_frames(data)
@@ -1376,7 +1424,9 @@ def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=No
             durations = written
     else:
         count = rendered
-    warnings += size_warnings(format, data, max_bytes, gradients)
+    warnings += size_warnings(format, data, max_bytes or target_bytes, gradients,
+                              webp=lambda: webp_trial(images, durations, loop) if format == "gif" else None,
+                              label="max_bytes" if max_bytes else "target_bytes")
     return {
         "output": str(path),
         "format": format,
@@ -1391,6 +1441,8 @@ def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=No
         "bytes": len(data),
         **({"dither": "ordered" if dither == "auto" and gradients else "none" if dither == "auto" else dither} if format == "gif" else {}),
         **({"poster": poster_info} if poster_info else {}),
+        **({"preset": preset} if preset else {}),
+        **({"chosen": chosen} if target_bytes and format in ("gif", "apng", "webp") else {}),
         **({"metadata": str(destinations[1])} if metadata is not None else {}),
         **({"warnings": warnings} if warnings else {}),
     }

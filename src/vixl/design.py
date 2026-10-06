@@ -1,6 +1,7 @@
 """Editable design operations. References are immutable IDs; groups use local coordinates."""
 
 from copy import deepcopy
+import math
 import re
 
 from .errors import require
@@ -447,6 +448,66 @@ def validate_text_style(kind, settings, state):
         require(settings["align"] in ("left", "center", "right"), "Invalid paragraph alignment")
 
 
+GRADIENT_FALLOFFS = ("linear", "smooth", "ease", "quadratic", "gaussian")
+FALLOFF_SAMPLES = 24
+
+
+def _falloff(name, t):
+    """How far along the stops (0–1) a gradient is at position ``t`` (0 at its start, 1 at its end)."""
+    if name == "smooth":
+        return t * t * (3 - 2 * t)
+    if name == "ease":
+        return 1 - (1 - t) ** 2
+    if name == "quadratic":
+        return t * t
+    if name == "gaussian":
+        return (1 - math.exp(-4.5 * t * t)) / (1 - math.exp(-4.5))
+    return t
+
+
+def gradient_stops(settings, state):
+    """The stops every renderer draws. A ``falloff`` other than linear is expanded into extra stops
+    (colours mixed with premultiplied alpha), so raster, SVG, PDF and PPTX draw the same curve."""
+    stops = settings.get("stops") or [{"offset": 0, "color": settings.get("start", "black")},
+                                      {"offset": 1, "color": settings.get("end", "white")}]
+    name = settings.get("falloff", "linear")
+    if name == "linear":
+        return stops
+    from .render import color
+
+    offsets = [stop["offset"] for stop in stops]
+    rgba = [color(resolve_color(stop["color"], state)) for stop in stops]
+    premultiplied = [[c[0] * c[3] / 255, c[1] * c[3] / 255, c[2] * c[3] / 255, c[3]] for c in rgba]
+
+    def inverse(value):
+        low, high = 0.0, 1.0
+        for _ in range(40):
+            middle = (low + high) / 2
+            low, high = (middle, high) if _falloff(name, middle) < value else (low, middle)
+        return (low + high) / 2
+
+    positions = {i / FALLOFF_SAMPLES for i in range(FALLOFF_SAMPLES + 1)}
+    positions |= {inverse(offset) for offset in offsets}
+    result = []
+    for t in sorted(positions):
+        p = min(1.0, max(0.0, _falloff(name, t)))
+        if p <= offsets[0]:
+            mixed = premultiplied[0]
+        elif p >= offsets[-1]:
+            mixed = premultiplied[-1]
+        else:
+            i = next(i for i in range(1, len(offsets)) if p <= offsets[i])
+            u = (p - offsets[i - 1]) / (offsets[i] - offsets[i - 1])
+            mixed = [a + (b - a) * u for a, b in zip(premultiplied[i - 1], premultiplied[i])]
+        alpha = mixed[3]
+        rgb = [round(min(255, v * 255 / alpha)) if alpha > 0 else 0 for v in mixed[:3]]
+        offset = round(t, 6)
+        if result and offset <= result[-1]["offset"]:
+            continue
+        result.append({"offset": offset, "color": "#{:02x}{:02x}{:02x}{:02x}".format(*rgb, round(alpha))})
+    return result
+
+
 def validate_gradient(data, state):
     from .render import color
 
@@ -469,6 +530,8 @@ def validate_gradient(data, state):
         "Invalid gradient direction",
     )
     finite(data.get("angle", 0), "angle", -36000, 36000)
+    require(data.get("falloff", "linear") in GRADIENT_FALLOFFS,
+            f"falloff must be one of {', '.join(GRADIENT_FALLOFFS)}", field="falloff", allowed=list(GRADIENT_FALLOFFS))
 
 
 def validate_style(name, settings, state):
@@ -486,7 +549,7 @@ def validate_style(name, settings, state):
         "outer-glow": {"color", "blur"},
         "stroke": {"color", "width"},
         "color-overlay": {"color"},
-        "gradient-overlay": {"start", "end", "stops", "direction", "angle"},
+        "gradient-overlay": {"start", "end", "stops", "direction", "angle", "falloff"},
     }[name] | common
     unknown = sorted(set(settings) - allowed)
     require(

@@ -188,7 +188,7 @@ def test_styled_caption_typing_and_overflow_review():
 
 
 def test_audio_synthesis_frequency_fades_and_seed():
-    from vixl.audio import synthesize, mix_tracks, wav_bytes, read_audio, RATE
+    from vixl.audio import synthesize, mix_tracks, wav_bytes, read_audio, DEFAULT_RATE as RATE
     tone = synthesize({'synth': {'instrument': 'sine', 'frequency': 440}, 'duration': 1000})
     spectrum = np.abs(np.fft.rfft(tone[:, 0]))
     assert np.argmax(spectrum) == 440

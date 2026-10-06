@@ -145,6 +145,16 @@ LYRIC = {
     "replace": {"type": "boolean", "default": False, "description": "Overwrite an existing build or output."},
     "width": {"type": "integer", "minimum": 16, "maximum": 4096, "description": "Video width (default template)."},
     "height": {"type": "integer", "minimum": 16, "maximum": 4096, "description": "Video height (default template)."},
+    "sample_rate": {"type": "integer", "minimum": 8000, "maximum": 96000,
+                    "description": "Audio rate in Hz (default the song's own, up to 48000)."},
+    "section_styles": {"type": "object", "description": "Restyle the lyric layers per section: {section or 'default': "
+                                                       "{size, color, x, y}}, e.g. {chorus: {size: 72, color: '#ffd166'}}. "
+                                                       "Fonts change with lyric-<section> template layers instead.",
+                       "additionalProperties": {"type": "object", "description": "Styles for one section.", "properties": {
+                           "size": {"type": "integer", "minimum": 1, "maximum": 4096, "description": "Text size, px."},
+                           "color": {"type": "string", "description": "Text color."},
+                           "x": {"type": "number", "description": "Left edge, px."},
+                           "y": {"type": "number", "description": "Top edge, px."}}}},
 }
 
 PRODUCTION_SPEC = {
@@ -193,6 +203,9 @@ FILM_SPEC = {
                      "items": {"type": "object", "required": ["text", "start", "end"]}},
         "audio": {"type": "array", "maxItems": 8, "description": "Audio tracks {source, start, trim, volume}.",
                   "items": {"type": "object", "required": ["source"]}},
+        "sample_rate": {"type": "integer", "minimum": 8000, "maximum": 96000,
+                        "description": "Audio rate in Hz; default the highest source rate up to 48000 (48000 for "
+                                       "synthesized sound). WebM (Opus) uses the nearest Opus rate at or above it."},
     },
     "required": ["width", "height", "shots"],
 }

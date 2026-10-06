@@ -151,8 +151,9 @@ class PageBuilder:
         from .render import color
 
         state = self.view.state
-        stops = layer.get("stops") or [{"offset": 0, "color": layer.get("start", "black")},
-                                       {"offset": 1, "color": layer.get("end", "white")}]
+        from .design import gradient_stops
+
+        stops = gradient_stops(layer, state)
         colors = [(s["offset"], color(resolve_color(s["color"], state))) for s in stops]
         if any(rgba[3] < 255 for _, rgba in colors):
             return None

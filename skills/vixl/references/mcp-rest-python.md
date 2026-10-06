@@ -115,7 +115,7 @@ informational) with every issue's `action`.
 | `vixl_color` | **`action`** `info\|convert\|harmony\|scale\|mix\|contrast\|names`, **`colors`**, `to`, `scheme`, `count`, `amount`, `space` | Color language tools |
 | `vixl_timeline_inspect` | `detail="summary"\|"full"`, `targets`, `properties`, `start`, `end`, `offset`, `limit=50`, `key_offset`, `key_limit=50` (limits ≤200) | Bounded track/key counts and ranges; full adds paginated keys |
 | `vixl_timeline_preview` | `time` **or** `count=8`, `columns`, `max_width=1600` | One frame or a labelled contact sheet |
-| `vixl_export_timeline` | **`path`** (.gif/.png/.webp/.zip/.mp4/.webm), `format` (`sheet`), `fps`, `scale`, `start`, `end`, `background`, `columns`, `quality`, `overwrite` | Never overwrites unless asked |
+| `vixl_export_timeline` | **`path`** (.gif/.png/.webp/.zip/.mp4/.webm), `format` (`sheet`), `fps`, `scale`, `start`, `end`, `background`, `columns`, `quality`, `colors`, `dither`, `max_bytes`, `target_bytes` (fit GIF/WebP/APNG to a size; reports `chosen`), `preset` (`chat`/`web`/`email`), `poster`, `sample_rate` (MP4/WebM audio Hz), `overwrite` | Never overwrites unless asked |
 | `vixl_export_icons` | **`directory`**, `icon_set` `web\|apple\|android\|windows\|all`, `sampling` | favicon.ico, PNG sizes, site.webmanifest |
 
 `vixl_render_preview` also takes `time`, `proof`, `simulate`; `vixl_export_file` also takes `.pdf`/`.ico`
@@ -126,7 +126,7 @@ paths, `color_space="cmyk"`, `icc_profile` (workspace path), `intent`, `black_ge
 ### Character, audio and spatial authoring
 
 `vixl_export_character(target, output)` saves reusable character artwork and rigs as a portable `.vixl`.
-`vixl_export_audio(path)` writes timeline score, sound effects and imported audio to WAV.
+`vixl_export_audio(path, sample_rate=None)` writes timeline score, sound effects and imported audio to WAV at the highest source rate (up to 48 kHz; 48 kHz for synthesized sound), mono when every source is mono and unpanned; it reports `sample_rate` and `channels`.
 Use `vixl_spatial` for bounds, nearest/between/relative queries, free regions, snap candidates, grid cells, guides and hit tests.
 Fetch exact operations with `vixl_capabilities(topic="animation")` and `vixl_operation_schema(types=[...])`.
 

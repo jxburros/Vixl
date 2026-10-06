@@ -289,11 +289,18 @@ class Slide:
                 f'</a:pathLst></a:custGeom>')
 
     def gradient(self, layer, opacity):
-        stops = layer.get("stops") or [{"offset": 0, "color": layer.get("start", "black")},
-                                       {"offset": 1, "color": layer.get("end", "white")}]
+        from .design import gradient_stops
+
+        stops = gradient_stops(layer, self.view.state)
+        direction = layer.get("direction", "vertical")
+        if direction == "radial":
+            # A circle path gradient reaches 100% at the ellipse through the box corners, which is
+            # sqrt(2) times the inscribed ellipse every other renderer ends at (for any aspect ratio).
+            # Scaling the stops in and padding with the last color makes PowerPoint end where they do.
+            stops = [{**stop, "offset": stop["offset"] / math.sqrt(2)} for stop in stops]
+            stops.append({"offset": 1, "color": stops[-1]["color"]})
         items = "".join(f'<a:gs pos="{round(stop["offset"] * 100000)}">{self.color(stop["color"], opacity)[0]}</a:gs>'
                         for stop in stops)
-        direction = layer.get("direction", "vertical")
         if direction == "radial":
             shade = '<a:path path="circle"><a:fillToRect l="50000" t="50000" r="50000" b="50000"/></a:path>'
         else:

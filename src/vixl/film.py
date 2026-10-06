@@ -64,7 +64,7 @@ def plan(spec, limits=None, streamed=False):
     limits = limits or Limits()
     bounded_object(
         spec,
-        {"version", "width", "height", "fps", "shots", "captions", "audio", "quality"},
+        {"version", "width", "height", "fps", "shots", "captions", "audio", "quality", "sample_rate"},
         "Unknown film field",
     )
     require(spec.get("version", 1) == 1, "Unsupported film version")
@@ -130,6 +130,8 @@ def plan(spec, limits=None, streamed=False):
         validate_track(track)
         require("asset" not in track, "Film audio uses source paths or synth; embedded assets need a timeline project")
         finite(track.get("start", 0), "audio start", 0, 600000)
+    from .audio import check_rate
+    check_rate(spec.get("sample_rate"))
     return {
         "version": 1,
         "width": width,
@@ -182,6 +184,61 @@ def clip_frames(path, shot, size, fps):
             process.wait(timeout=10)
 
 
+MAX_SUPERSAMPLE = 4
+
+
+def supersample(shot, size, limits):
+    """How many times larger than the output a camera shot's source is drawn: its closest zoom, so a
+    2x zoom crops a 2x render instead of enlarging output pixels; bounded by MAX_SUPERSAMPLE and the
+    pixel budget."""
+    camera = shot.get("camera")
+    if not camera:
+        return 1.0
+    zoom = max(camera.get(key, [0.5, 0.5, 1])[2] for key in ("from", "to"))
+    budget = math.sqrt(limits.max_pixels / (size[0] * size[1]))
+    return max(1.0, min(zoom, MAX_SUPERSAMPLE, budget))
+
+
+def _scaled(size, factor):
+    return size if factor <= 1 else (round(size[0] * factor), round(size[1] * factor))
+
+
+def _native_factor(source, size, cover=False):
+    """The most a raster source can be supersampled before it is only being enlarged."""
+    if not source:
+        return 1.0
+    ratios = (source[0] / size[0], source[1] / size[1])
+    return max(1.0, min(ratios) if cover else max(ratios))
+
+
+def _video_size(path):
+    try:
+        from .media_analysis import probe
+
+        info, _ = probe(path)
+    except VixlError:
+        return None
+    stream = next((s for s in info.get("streams", []) if s.get("codec_type") == "video"), None)
+    return (stream["width"], stream["height"]) if stream and stream.get("width") and stream.get("height") else None
+
+
+def _render_document(candidate, target, size, shot):
+    """A .vixl frame covering ``target``. A supersampled camera shot renders the document scaled up
+    (a geometric copy, so text and vectors stay sharp) instead of enlarging a native render."""
+    from .design_render import artboard_project
+    from .proxy import render_preview, scaled_project
+
+    if target != size:
+        document = artboard_project(candidate, shot.get("artboard"), None, shot.get("variables"))
+        canvas = document.state["canvas"]
+        scale = max(target[0] / canvas["width"], target[1] / canvas["height"])
+        if scale > 1:
+            scaled = scaled_project(document, scale)
+            if scaled is not None:
+                return scaled.render()
+    return render_preview(candidate, *target, variables=shot.get("variables"), artboard=shot.get("artboard"))
+
+
 def _state_key(project):
     import hashlib
     import json
@@ -194,7 +251,6 @@ def frames(spec, root, *, limits=None, cancelled=lambda: False, streamed=False,
     from .project import Project
     from .render_cache import enable
     from .timeline import animated as timeline_animated, project_at
-    from .proxy import render_preview
     from .assets import decode, read_bounded
 
     settings = plan(spec, limits, streamed)
@@ -207,7 +263,7 @@ def frames(spec, root, *, limits=None, cancelled=lambda: False, streamed=False,
     require(isinstance(start_frame, int) and isinstance(end_frame, int) and
             0 <= start_frame < end_frame <= settings["frames"], "Invalid film frame interval")
     crop = preview_region(region, settings, size)
-    sources, clips = {}, {}
+    sources, clips, targets = {}, {}, {}
     # The last rendered frame per document shot: a frame whose animated state is unchanged
     # (a lyric held on screen, a pause) reuses it instead of rendering again.
     memo = {}
@@ -224,18 +280,24 @@ def frames(spec, root, *, limits=None, cancelled=lambda: False, streamed=False,
                 local = frame - shot["start_frame"]
                 path = local_path(root, shot["source"])
                 if i not in sources:
+                    factor = supersample(shot, size, limits)
                     if path.suffix.lower() == ".vixl":
                         sources[i] = enable(Project.load(path, limits=limits), Path(root) / ".vixl-cache")
                     elif path.suffix.lower() in (".mp4", ".webm", ".mov"):
+                        factor = min(factor, _native_factor(_video_size(path) if factor > 1 else None, size))
+                        targets[i] = _scaled(size, factor)
                         clips[i] = clip_frames(path, {**shot, "trim": shot.get("trim", 0) + local * 1000 / settings["fps"],
-                                                     "frames": shot["frames"] - local}, size, settings["fps"])
+                                                     "frames": shot["frames"] - local}, targets[i], settings["fps"])
                         stack.callback(clips[i].close)
                         sources[i] = None
                     else:
                         from PIL import ImageOps
-                        sources[i] = ImageOps.fit(decode(read_bounded(path, limits.max_asset_bytes), limits),
-                                                 size, method=Image.Resampling.LANCZOS)
-                source = sources[i]
+                        decoded = decode(read_bounded(path, limits.max_asset_bytes), limits)
+                        factor = min(factor, _native_factor(decoded.size, size, cover=True))
+                        targets[i] = _scaled(size, factor)
+                        sources[i] = ImageOps.fit(decoded, targets[i], method=Image.Resampling.LANCZOS)
+                    targets.setdefault(i, _scaled(size, factor))
+                source, target = sources[i], targets[i]
                 if i in clips:
                     image = next(clips[i])
                 elif isinstance(source, Project):
@@ -247,15 +309,13 @@ def frames(spec, root, *, limits=None, cancelled=lambda: False, streamed=False,
                     if i in memo and memo[i][0] == key:
                         image = memo[i][1].copy()
                     else:
-                        image = render_preview(
-                            candidate, *size, variables=shot.get("variables"), artboard=shot.get("artboard")
-                        )
+                        image = _render_document(candidate, target, size, shot)
                         memo[i] = (key, image.copy())
                 else:
                     image = source.copy()
                 from PIL import ImageOps
 
-                image = ImageOps.fit(image, size, method=Image.Resampling.LANCZOS)
+                image = ImageOps.fit(image, target, method=Image.Resampling.LANCZOS)
                 if shot.get("camera"):
                     poses = shot["camera"]
                     start, end = poses.get("from", [0.5, 0.5, 1]), poses.get("to", [0.5, 0.5, 1])
@@ -264,7 +324,13 @@ def frames(spec, root, *, limits=None, cancelled=lambda: False, streamed=False,
                     w, h = size[0] / zoom, size[1] / zoom
                     left = min(max(0, x * size[0] - w / 2), size[0] - w)
                     top = min(max(0, y * size[1] - h / 2), size[1] - h)
-                    image = image.resize(size, Image.Resampling.BICUBIC, box=(left, top, left + w, top + h))
+                    # The source was drawn ``target / size`` times larger, so the window is cut from
+                    # real detail instead of enlarging output-size pixels.
+                    sx, sy = target[0] / size[0], target[1] / size[1]
+                    image = image.resize(size, Image.Resampling.BICUBIC,
+                                         box=(left * sx, top * sy, (left + w) * sx, (top + h) * sy))
+                elif image.size != size:
+                    image = image.resize(size, Image.Resampling.LANCZOS)
                 images.append(image)
             image = images[0]
             if len(images) == 2:
@@ -286,6 +352,7 @@ def frames(spec, root, *, limits=None, cancelled=lambda: False, streamed=False,
                 shot = settings["shots"][i]
                 if frame + 1 >= shot["start_frame"] + shot["frames"]:
                     sources.pop(i)
+                    targets.pop(i, None)
                     memo.pop(i, None)
                     if i in clips:
                         clips.pop(i).close()
@@ -306,6 +373,7 @@ def export(spec, root, output, *, limits=None, cancelled=lambda: False, progress
     require(not output.exists(), "Film output already exists")
     require(output.suffix != ".zip" or not spec.get("audio"), "Audio requires MP4/WebM output")
     output.parent.mkdir(parents=True, exist_ok=True)
+    sound = None
     with tempfile.TemporaryDirectory(dir=output.parent, prefix=".film-") as temp:
         staged = Path(temp) / output.name
         stream = frames(spec, root, limits=limits, cancelled=cancelled, streamed=streamed or selected,
@@ -345,7 +413,9 @@ def export(spec, root, output, *, limits=None, cancelled=lambda: False, progress
                 mixed = Path(temp) / ("mixed" + output.suffix)
                 command = [shutil.which("ffmpeg"), "-v", "error", "-i", str(staged)]
                 from .audio import prepare_tracks
-                tracks = prepare_tracks(spec["audio"], temp, settings["duration"], root=root)
+                tracks, sound = prepare_tracks(spec["audio"], temp, settings["duration"], root=root,
+                                               sample_rate=spec.get("sample_rate"),
+                                               encoder="opus" if output.suffix.lower() == ".webm" else None)
                 filters = []
                 for i, track in enumerate(tracks, 1):
                     path = Path(track["source"])
@@ -366,6 +436,8 @@ def export(spec, root, output, *, limits=None, cancelled=lambda: False, progress
                         "copy",
                         "-c:a",
                         "aac" if output.suffix == ".mp4" else "libopus",
+                        "-ar",
+                        str(sound["sample_rate"]),
                         "-t",
                         str(count / settings["fps"]),
                         str(mixed),
@@ -383,6 +455,7 @@ def export(spec, root, output, *, limits=None, cancelled=lambda: False, progress
         "duration": count * 1000 / settings["fps"],
         "start": first * 1000 / settings["fps"],
         "quality": spec.get("quality", "final"),
+        **(sound or {}),
     }
 
 

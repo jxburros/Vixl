@@ -24,6 +24,7 @@ CLI: `vixl look LAYER NAME [--color C] [--amount A] [--remove]`, `vixl looks` fo
 | `hard-shadow` | solid offset shadow, no blur (sticker, neo-brutalist) | native |
 | `outline` | clean stroke around the shape or text | native |
 | `gradient` | vertical light-to-dark gradient from the layer's color (or `color`) | native |
+| `soft-halo` | on a gradient layer: a radial fade from its first color (or `color`) to transparent with a `gaussian` falloff, ending at the inscribed ellipse so the box never shows; on other layers a wide soft glow | native |
 | `grain` | fine film grain | raster fallback |
 | `paper` | warm tint, fibre grain and soft edge darkening (use on a full-canvas background) | raster fallback |
 | `film` | sepia, grain and vignette | raster fallback |
@@ -43,7 +44,7 @@ and `sketch` fades it out.
   same look suits an icon and a poster. `color` is the main color of the look (glow color, shadow color, ink); it may be an `@swatch`.
 - **Replace, don't stack.** Applying a look again replaces it. A style belongs to one look: `hard-shadow` after `soft-shadow` takes the
   `drop-shadow` over. Looks never remove styles or effects you added by hand; `remove: true` takes off exactly what that look added.
-- **Records.** The layer keeps `looks` (`{name: {styles, effects, amount, color}}`). The styles and effects themselves are the normal ones: `layer-style`
+- **Records.** The layer keeps `looks` (`{name: {styles, effects, amount, color}}`; `soft-halo` on a gradient also keeps the `fields` it changed, which `remove` puts back). The styles and effects themselves are the normal ones: `layer-style`
   and `effect-*` operations edit them, and `inspect` shows them.
 - **PNG and SVG.** Styles (`drop-shadow`, `outer-glow`, `stroke`, `gradient-overlay`) and blur-like effects are native SVG filters. Grain, sepia, vignette,
   duotone, halftone and the artistic filters are raster effects: SVG export embeds a raster fallback under `svg_policy: appearance` and

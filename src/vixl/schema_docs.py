@@ -371,7 +371,10 @@ OVERRIDES = {
             "license": "License or usage terms kept with the image (provenance.license), e.g. 'CC BY 4.0'."},
     "solid": {"color": "Fill color.", "name": "Layer name (default 'solid')."},
     "gradient": {"start": "Start color (the first stop).", "end": "End color (the last stop).",
-                 "direction": "horizontal and vertical run edge to edge, radial from the center, angled uses angle.",
+                 "direction": "horizontal and vertical run edge to edge, radial from the center to the inscribed ellipse "
+                              "(the box's corners lie past the last stop and take its color), angled uses angle.",
+                 "falloff": "Curve between the stops: linear (default), smooth, ease (soft outer edge), quadratic or "
+                            "gaussian (soft halo). Drawn the same in raster, SVG, PDF and PPTX.",
                  "stops": "2-64 color stops [{offset: 0-1 (strictly increasing), color}], used instead of start/end.",
                  "angle": "Degrees for direction 'angled'."},
     "palette-define": {"name": "Palette name.", "colors": "2-256 colors."},

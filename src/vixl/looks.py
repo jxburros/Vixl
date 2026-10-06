@@ -82,6 +82,22 @@ def _gradient(layer, state, color, a):
                                  "end": f"darken({base}, {round(8 + 25 * a)}%)", "direction": "vertical"}}, []
 
 
+def _soft_halo(layer, state, color, a):
+    """A gradient layer becomes a radial fade with a gaussian falloff that reaches transparency at its
+    inscribed ellipse, so its box never shows; other layers get a wide, soft glow."""
+    base = color or _base(layer, state)
+    if layer["type"] != "gradient":
+        ref = _reference(layer)
+        return {"outer-glow": {"color": base, "blur": round(_clamp(ref * (0.15 + 0.3 * a), 8, 100)),
+                               "opacity": round(0.45 + 0.4 * a, 2)}}, []
+    if layer.get("stops"):
+        base = color or layer["stops"][0]["color"]
+    core = round(0.55 + 0.45 * a, 2)
+    return {}, [], {"direction": "radial", "falloff": "gaussian", "stops": [
+        {"offset": 0, "color": f"color-mix(in srgb, {base} {round(core * 100)}%, transparent)" if core < 1 else base},
+        {"offset": 1, "color": f"color-mix(in srgb, {base} 0%, transparent)"}]}
+
+
 def _effect(name, amount, **extra):
     return {"name": name, "amount": amount, **extra}
 
@@ -139,6 +155,7 @@ LOOKS = {
     "hard-shadow": (_hard_shadow, "Solid offset shadow with no blur (sticker and neo-brutalist look).", "native", ["stickers", "neo-brutalism", "badges"]),
     "outline": (_outline, "Clean outline around the shape or text.", "native", ["stickers", "text on photos", "badges"]),
     "gradient": (_gradient, "Vertical light-to-dark gradient over a flat fill, from its own color (or color).", "native", ["buttons", "icons", "backgrounds"]),
+    "soft-halo": (_soft_halo, "Soft light halo: a gradient layer becomes a radial gaussian fade to transparent (no visible box); other layers get a wide soft glow.", "native", ["glows behind subjects", "light sources", "backgrounds"]),
     "grain": (_grain, "Fine film grain that breaks up flat color.", "raster", ["backgrounds", "posters", "textures"]),
     "paper": (_paper, "Warm paper: slight warm tint, fibre grain and soft edge darkening.", "raster", ["full-canvas backgrounds", "letterpress", "zines"]),
     "film": (_film, "Faded film: sepia, grain and vignette.", "raster", ["photos", "vintage"]),
@@ -176,6 +193,11 @@ def _strip(layer, name):
         return False
     for style in record.get("styles", []):
         layer.get("styles", {}).pop(style, None)
+    for key, value in record.get("fields", {}).items():
+        if value is None:
+            layer.pop(key, None)
+        else:
+            layer[key] = deepcopy(value)
     gone = set(record.get("effects", []))
     layer["effects"] = [effect for effect in layer["effects"] if effect["id"] not in gone]
     if not layer["looks"]:
@@ -193,8 +215,16 @@ def apply_look(project, layer, name, color=None, amount=0.5, remove=False):
         return
     builder = LOOKS[name][0]
     _strip(layer, name)
-    styles, effects = builder(layer, state, color, amount)
+    styles, effects, *rest = builder(layer, state, color, amount)
+    fields = rest[0] if rest else {}
     record = {"styles": [], "effects": [], "amount": amount, **({"color": color} if color else {})}
+    if fields:
+        # The layer's own values, put back when the look is removed.
+        record["fields"] = {key: deepcopy(layer.get(key)) for key in fields}
+        candidate = {**layer, **deepcopy(fields)}
+        from .design import validate_gradient
+        validate_gradient(candidate, state)
+        layer.update(deepcopy(fields))
     for style, settings in styles.items():
         validate_style(style, settings, state)
         # A style belongs to one look: applying this one takes it over from any other.
