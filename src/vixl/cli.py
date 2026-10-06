@@ -32,6 +32,8 @@ Layers:    add FILE --name NAME, solid --color COLOR, gradient --start A --end B
            remove, rename, duplicate, hide, show, raise, lower, top, bottom, reorder
 Organic:   organics (presets, generators, rules), organic PRESET [--set petals=8] [--color petals=#fff] [--seed N],
            organic --parts JSON, organic --target NAME --seed N (regrow)
+Imperfect: irregular TARGET --seed N [--strength subtle|natural|rough] (wobble, stroke weight, color drift, micro placement),
+           tear TARGET --seed N [--edges bottom] (torn edge as a mask; --as path for layers), --remove undoes either
 Design:    pen, shape, shape-place, container-place, container-swap, container-reflow, group, ungroup, clip, layer-style, distribute, style-define,
            style-apply, swatch, artboard, frame, replace-contents, repeat, repeat-blend,
            adjustment, lut, lookup, comp-save, comp-apply, text-layout, pathfinder, symbol, symbol-instance

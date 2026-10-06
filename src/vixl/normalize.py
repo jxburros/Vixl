@@ -49,6 +49,12 @@ TYPE_ALIASES = {
     "set-field": "field-set",
     "field-update": "field-set",
     "sketch": "drawing",
+    "roughen": "irregular",
+    "distress": "irregular",
+    "imperfect": "irregular",
+    "torn-edge": "tear",
+    "rip": "tear",
+    "torn": "tear",
 }
 SHAPE_TYPES = {
     "rect": ("rectangle", {}),

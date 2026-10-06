@@ -12,6 +12,7 @@ from .authoring import TYPES as AUTHORING_TYPES
 from .creative import TYPES as CREATIVE_TYPES
 from .containers import TYPES as CONTAINER_TYPES
 from .organic import TYPES as ORGANIC_TYPES
+from .irregular import TYPES as IRREGULAR_TYPES
 from .guides import TYPES as GUIDE_TYPES
 from .richtext import TYPES as RICH_TYPES
 from .pages import TYPES as PAGE_TYPES
@@ -57,7 +58,7 @@ ALIASES = {
     "make_selection": "select",
 }
 
-OPERATION_TYPES = list(DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_TYPES + BRUSH_TYPES + TIMELINE_TYPES + LAYOUT_TYPES + COLOR_TYPES + AUTOMATION_TYPES + CREATIVE_TYPES + CONTAINER_TYPES + AUTHORING_TYPES + ORGANIC_TYPES + GUIDE_TYPES + RICH_TYPES + PAGE_TYPES + FORM_TYPES + DRAWING_TYPES) + [
+OPERATION_TYPES = list(DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_TYPES + BRUSH_TYPES + TIMELINE_TYPES + LAYOUT_TYPES + COLOR_TYPES + AUTOMATION_TYPES + CREATIVE_TYPES + CONTAINER_TYPES + AUTHORING_TYPES + ORGANIC_TYPES + IRREGULAR_TYPES + GUIDE_TYPES + RICH_TYPES + PAGE_TYPES + FORM_TYPES + DRAWING_TYPES) + [
     "add",
     "solid",
     "gradient",
@@ -277,6 +278,9 @@ def execute(project, op):
     if kind in ORGANIC_TYPES:
         from .organic import execute as execute_organic
         return execute_organic(project, op)
+    if kind in IRREGULAR_TYPES:
+        from .irregular import execute as execute_irregular
+        return execute_irregular(project, op)
     if kind in AUTHORING_TYPES:
         from .authoring import execute as execute_authoring
         return execute_authoring(project, op)

@@ -48,6 +48,9 @@ agent, edit independently, preview branch-merge, resolve conflicts explicitly, t
   lines and measure it with `drawing-report` (`preserved`) and `drawing-compare`.
 - **Rich text** — `rich-text` (Markdown) and `text-style` for mixed styles and lists in one box.
 - **Organic shapes** — `organic` presets and composable generators for living things.
+- **Imperfection** — opt-in `irregular` (seeded wobble, stroke weight, color drift, micro placement)
+  and `tear` (torn edges) for characters, hand-made looks and ripped paper; never for logos,
+  charts, text or anything that must align. `arc` shapes draw pie wedges and donut segments.
 - **Guides beyond right angles** — angled/curved guides, compositional and perspective grids,
   `place`, `snap`, `guides`/`alignment` checks.
 - **Lyric videos** — `lyric-video-plan/build/export` workflow actions (song + LRC + template).

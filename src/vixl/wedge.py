@@ -75,7 +75,8 @@ def wedge_path(cx, cy, radius, start, end, inner=0.0, *, aspect=1.0, digits=3):
     """
     finite(radius, "radius", 0)
     finite(inner, "inner radius", 0)
-    require(inner < radius or radius == 0, "The inner radius must be smaller than the outer radius", field="inner_radius")
+    require(inner < radius or radius == 0, "The inner radius must be smaller than the outer radius",
+            field="inner_radius")
     sweep = sweep_of(start, end)
     if sweep <= 0 or radius <= 0:
         return ""

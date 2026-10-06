@@ -86,6 +86,8 @@ New document state: `canvas.size`, `canvas.dpi`, `canvas.physical`, `canvas.blee
 
 | Operation | Fields |
 | --- | --- |
+| irregular | **`seed`** (or `remove`), `target`/`targets`, `strength`, `amount`, `only`, `wobble`, `wobble_length`, `jitter`, `roughness`, `width_variation`, `pressure`, `lightness_drift`, `chroma_drift`, `hue_drift`, `rotation_jitter`, `scale_jitter`, `position_jitter` — [irregularity](irregular.md) |
+| tear | **`seed`** (or `remove`), `target`, `as`, `edges`, `strength`, `depth`, `length`, `roughness`, `rim_width`, `rim_color`, `fibres`, `fibre_width`, `fill`, `name`, `x`, `y`, `width`, `height` — [torn edges](irregular.md#tear) |
 | organic | `preset` or `parts`, `params`, `colors`, `fill`, `stroke`, `stroke_width`, `seed`, `naturalness`, `name`, `x`, `y`, `width`, `height`, `target` (regrow) — [organic shapes](organic.md) |
 | guide | `name`, `kind` (`axis`, `line`, `ray`, `segment`, `point`, `circle`, `path`) and its geometry, `delete` — [guides](guides.md) |
 | grid | `name`, `kind` (`columns`, `baseline`, `thirds`, `golden`, `armature`, `golden-spiral`, `polar`, `isometric`, `triangular`, `hex`, `oblique`, `perspective`), kind settings, `region`, `delete` |

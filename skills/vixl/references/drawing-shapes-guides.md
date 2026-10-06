@@ -1,4 +1,4 @@
-# Hand drawings, organic shapes, guides
+# Hand drawings, organic shapes, imperfection, guides
 
 ## Building on a hand drawing
 
@@ -37,6 +37,31 @@ form inside a brand palette pass `fill` (every filled part), `stroke` and `strok
 line, extra outputs such as shell chambers and leaf veins included); `colors` names single
 parts and wins over `fill`. A regrow with `stroke`/`fill` restyles the same way as creating
 with them. Full reference: `docs/organic.md`.
+
+## Imperfection: irregular and tear
+
+Opt-in, for chosen things: an original character, hand-inked outlines, a set of copies that must
+not look identical, ripped paper. **Do not use it** on logos, icons, UI, charts or diagrams, on
+anything that must align or measure (grids, form fields, barcodes, bleed), on text (refused), on
+tiny elements, or as a finish over the whole document.
+
+```json
+{"type": "irregular", "targets": ["hero", "leaves"], "seed": 7, "strength": "natural"}
+{"type": "irregular", "target": "hero", "seed": 8}          # regrow: new seed, same recipe, from the source
+{"type": "irregular", "target": "hero", "remove": true}      # exact source back
+{"type": "tear", "target": "photo", "seed": 3, "edges": ["bottom"], "strength": "rough"}   # mask + rim + fibres
+{"type": "tear", "name": "scrap", "as": "path", "seed": 9, "width": 600, "height": 400, "edges": ["all"]}
+```
+
+`seed` is required and decides everything; each layer of a group gets its own stream. `strength`
+is `subtle`, `natural` or `rough` (start at `subtle`; magnitudes scale with each layer's size),
+`amount` scales it, `only` picks effects (`wobble`, `jitter`, `width`, `pressure`, `color`,
+`placement`), and explicit fields (`wobble` px, `wobble_length` px, `pressure`, `lightness_drift`,
+`rotation_jitter`…) set exact bounds. Shapes become path layers (a stroke with `pressure` becomes a
+ribbon, a `NAME-ink` sibling when the layer has a fill); regrow or `remove` always start from the
+kept source, so edits made since are replaced. `tear` `as`: `mask` (default with a target), `clip`
+(vector face the target is clipped to), `path` (free rim, face and fibre layers); regrow by
+targeting the torn layer (the `-face` layer for a free sheet). Reference: `docs/irregular.md`.
 
 ## Guides, grids and placement
 

@@ -545,6 +545,11 @@ def validate_design(project, state):
     def check_layer(layer, depth=0):
         require(depth <= 16, "Design nesting exceeds 16 levels", "resource_limit")
         kind = layer["type"]
+        for record in ("irregular", "tear"):
+            if record in layer:
+                import json
+                require(isinstance(layer[record], dict) and len(json.dumps(layer[record])) <= 1_000_000,
+                        f"Invalid {record} record", "invalid_project")
         if kind == "shape":
             require(layer["shape"] in SHAPES, "Invalid shape")
             if layer["shape"] == "path":
