@@ -480,18 +480,11 @@ def warped(paths, width, height, settings):
             self.commands.append("L" + self.point(p))
 
         def _curveToOne(self, p1, p2, p3):
+            from .geometry import bezier_points
+
             p0 = self._getCurrentPoint()
-            for i in range(1, 25):
-                t = i / 24
-                self._lineTo(
-                    tuple(
-                        (1 - t) ** 3 * p0[j]
-                        + 3 * (1 - t) ** 2 * t * p1[j]
-                        + 3 * (1 - t) * t * t * p2[j]
-                        + t**3 * p3[j]
-                        for j in (0, 1)
-                    )
-                )
+            for point in bezier_points((p0, p1, p2, p3), [i / 24 for i in range(1, 25)]).tolist():
+                self._lineTo(tuple(point))
 
         def _qCurveToOne(self, p1, p2):
             p0 = self._getCurrentPoint()

@@ -24,6 +24,7 @@ from PIL import Image, ImageFilter, ImageOps
 
 from .errors import require
 from .gaps import close_gaps
+from .geometry import bezier_points
 from .model import finite, new_layer
 
 DEFAULT_INK = "#1d1d1f"  # near-black, a printed pen line; set `ink` on import (or `color` on vectorize/restyle) for pure black
@@ -807,8 +808,8 @@ def _spline(points, step=2.0):
     for i in range(len(p) - 1):
         p0, p1, p2, p3 = p[max(i - 1, 0)], p[i], p[i + 1], p[min(i + 2, len(p) - 1)]
         c1, c2 = p1 + (p2 - p0) / 6, p2 - (p3 - p1) / 6
-        t = np.linspace(0, 1, max(1, math.ceil(np.linalg.norm(p2 - p1) / step)) + 1)[1:, None]
-        out.append((1 - t) ** 3 * p1 + 3 * (1 - t) ** 2 * t * c1 + 3 * (1 - t) * t ** 2 * c2 + t ** 3 * p2)
+        t = np.linspace(0, 1, max(1, math.ceil(np.linalg.norm(p2 - p1) / step)) + 1)[1:]
+        out.append(bezier_points((p1, c1, c2, p2), t))
     return np.vstack(out)
 
 

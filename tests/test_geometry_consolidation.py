@@ -1,10 +1,13 @@
 """The shared anchor table, curve evaluator and number formatter reproduce the per-module copies they replaced."""
 
 import math
+from pathlib import Path
+import re
 
 import numpy as np
 import pytest
 
+import vixl
 from vixl import adapt, guides, links, transforms
 from vixl.geometry import ANCHORS, bezier_points, compact_number, parse_path, path_polygons
 from vixl.irregular import flatten
@@ -90,3 +93,27 @@ def test_every_module_uses_the_one_anchor_table():
 def test_compact_number(value, digits, expected):
     assert compact_number(value, digits) == expected
     assert math.isfinite(float(expected))
+
+
+# A hand-written cubic (Bernstein form) or a function named like one, instead of geometry.bezier_points.
+LOCAL_EVALUATOR = re.compile(r"\(1 ?- ?t\) ?\*\* ?3|\bu ?\*\* ?3 ?\*|def \w*bezier_point\b")
+# The trailing-zero trimming that geometry.compact_number does.
+LOCAL_FORMATTER = re.compile(r"""\.rstrip\(["']0["']\)\.rstrip\(["']\.["']\)""")
+# A function whose whole body is one compact_number call: call compact_number directly.
+WRAPPER = re.compile(r"def (\w+)\([^)]*\):\n(?:[ \t]+\"\"\"[^\n]*\"\"\"\n)?(?:[ \t]+from \.geometry import compact_number\n\n?)?"
+                     r"[ \t]+return compact_number\(")
+# Fixed-precision helpers that many PDF writers share (and other modules import).
+NAMED_PRECISIONS = {("pdf_export.py", "_fmt"), ("pdf_color.py", "_num")}
+
+
+def test_no_module_grows_its_own_curve_evaluator_or_number_formatter():
+    found = []
+    for path in sorted(Path(vixl.__file__).parent.rglob("*.py")):
+        if path.name == "geometry.py":
+            continue
+        text = path.read_text(encoding="utf-8")
+        for pattern, use in ((LOCAL_EVALUATOR, "geometry.bezier_points"), (LOCAL_FORMATTER, "geometry.compact_number")):
+            found += [f"{path.name}: {m.group(0)!r} (use {use})" for m in pattern.finditer(text)]
+        found += [f"{path.name}: {m.group(1)}() only wraps compact_number; call it directly"
+                  for m in WRAPPER.finditer(text) if (path.name, m.group(1)) not in NAMED_PRECISIONS]
+    assert not found, "\n".join(found)

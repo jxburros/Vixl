@@ -19,6 +19,7 @@ import xml.etree.ElementTree as ET
 import numpy as np
 
 from .errors import require
+from .geometry import bezier_points, compact_number
 from .model import finite
 
 TRIM = ("trim_start", "trim_end")
@@ -57,14 +58,8 @@ def validate_trim(layer):
             finite(layer[key], key, 0, 100)
 
 
-def _num(value):
-    from .geometry import compact_number
-
-    return compact_number(value, 3)
-
-
 def _d(commands):
-    return " ".join(letter + " ".join(_num(v) for v in values) for letter, values in commands)
+    return " ".join(letter + " ".join(compact_number(v, 3) for v in values) for letter, values in commands)
 
 
 def _arc_path(kind, x0, y0, x1, y1, radius):
@@ -96,12 +91,7 @@ def _contours(commands):
 
 
 def _curve(points, steps=CURVE_STEPS):
-    t = np.linspace(0.0, 1.0, steps + 1)[:, None]
-    pts = np.asarray(points, dtype=float)
-    if len(pts) == 3:
-        curve = (1 - t) ** 2 * pts[0] + 2 * (1 - t) * t * pts[1] + t**2 * pts[2]
-    else:
-        curve = (1 - t) ** 3 * pts[0] + 3 * (1 - t) ** 2 * t * pts[1] + 3 * (1 - t) * t**2 * pts[2] + t**3 * pts[3]
+    curve = bezier_points(np.asarray(points, dtype=float), np.linspace(0.0, 1.0, steps + 1))
     return float(np.hypot(*np.diff(curve, axis=0).T).sum())
 
 
@@ -187,7 +177,7 @@ def trim_geometry(layer, stroke_visible=True):
             visible += length * 0.01  # Rounding in the length must not leave the end of the stroke undrawn.
         period = visible + length
         offset = (period - start * length) % period if start > 0 else 0.0
-        strokes.append((_d(commands), f"{_num(visible)} {_num(length)}", _num(offset)))
+        strokes.append((_d(commands), f"{compact_number(visible, 3)} {compact_number(length, 3)}", compact_number(offset, 3)))
     cap = layer.get("line_cap", "butt")
     return {
         "view": view,
@@ -229,7 +219,7 @@ def trimmed_image(project, layer):
         for d, dash, offset in geometry["strokes"]:
             ET.SubElement(root, "path", {
                 "d": d, "fill": "none", "stroke": stroke, "stroke-opacity": stroke_opacity,
-                "stroke-width": _num(geometry["width"]), "stroke-dasharray": dash, "stroke-dashoffset": offset,
+                "stroke-width": compact_number(geometry["width"], 3), "stroke-dasharray": dash, "stroke-dashoffset": offset,
                 "stroke-linecap": geometry["cap"], "stroke-linejoin": geometry["join"],
             })
     data = resvg_py.svg_to_bytes(svg_string=ET.tostring(root, encoding="unicode"))

@@ -22,6 +22,7 @@ from types import SimpleNamespace
 
 from . import diagram_layout as L
 from .errors import VixlError, require
+from .geometry import compact_number
 from .model import finite, new_layer
 
 TYPES = ("diagram", "diagram-set", "diagram-from-text")
@@ -901,23 +902,17 @@ def _shape_fields(info, w, h, style, s):
     return fields
 
 
-def _num(value):
-    from .geometry import compact_number
-
-    return compact_number(value, 2)
-
-
 def _path_d(chains, close_heads=()):
     pieces = []
     for chain in chains:
         if not chain:
             continue
-        pieces.append(f"M{_num(chain[0][1][0])} {_num(chain[0][1][1])}")
+        pieces.append(f"M{compact_number(chain[0][1][0], 2)} {compact_number(chain[0][1][1], 2)}")
         for seg in chain:
             if seg[0] == "L":
-                pieces.append(f"L{_num(seg[2][0])} {_num(seg[2][1])}")
+                pieces.append(f"L{compact_number(seg[2][0], 2)} {compact_number(seg[2][1], 2)}")
             else:
-                pieces.append("C" + " ".join(f"{_num(p[0])} {_num(p[1])}" for p in seg[2:]))
+                pieces.append("C" + " ".join(f"{compact_number(p[0], 2)} {compact_number(p[1], 2)}" for p in seg[2:]))
     return " ".join(pieces)
 
 
@@ -1018,8 +1013,8 @@ def _edge_geometry(route, edge, style, label_box, obstacles, margin):
     shifted = [[(seg[0], *[(p[0] - x0, p[1] - y0) for p in seg[1:]]) for seg in chain] for chain in chains]
     d = _path_d(shifted)
     for (a, tip, c) in head_points:
-        d += " M{} {} L{} {} L{} {} Z".format(_num(a[0] - x0), _num(a[1] - y0), _num(tip[0] - x0), _num(tip[1] - y0),
-                                              _num(c[0] - x0), _num(c[1] - y0))
+        d += " M{} {} L{} {} L{} {} Z".format(*(compact_number(v, 2) for v in (
+            a[0] - x0, a[1] - y0, tip[0] - x0, tip[1] - y0, c[0] - x0, c[1] - y0)))
     return x0, y0, w, h, d.strip(), label_at, {"fill": color if filled else "transparent", "stroke": color, "width": sw}
 
 

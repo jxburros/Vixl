@@ -35,6 +35,7 @@ import math
 import numpy as np
 
 from .errors import VixlError, require
+from .geometry import compact_number
 
 TYPES = ("irregular", "tear")
 EFFECTS = ("wobble", "jitter", "width", "pressure", "color", "placement")
@@ -250,18 +251,12 @@ def roughen_path(path, seed, *, wobble=2.0, length=24.0, jitter=0.0, roughness=0
     return emit(roughen(subs, seed, wobble=wobble, length=length, jitter=jitter, roughness=roughness))
 
 
-def _fmt(value):
-    from .geometry import compact_number
-
-    return compact_number(value, 2)
-
-
 def emit(subs):
     """SVG path data for ``[(points, closed)]`` as polylines."""
     parts = []
     for points, closed in subs:
         if len(points) >= 2:
-            parts.append("M" + " L".join(f"{_fmt(x)} {_fmt(y)}" for x, y in points) + (" Z" if closed else ""))
+            parts.append("M" + " L".join(f"{compact_number(x, 2)} {compact_number(y, 2)}" for x, y in points) + (" Z" if closed else ""))
     return " ".join(parts)
 
 
@@ -636,7 +631,7 @@ def polygon_path(points):
 
 
 def fibre_path(hairs):
-    return " ".join(f"M{_fmt(a[0])} {_fmt(a[1])} Q{_fmt(c[0])} {_fmt(c[1])} {_fmt(b[0])} {_fmt(b[1])}"
+    return " ".join("M{} {} Q{} {} {} {}".format(*(compact_number(v, 2) for v in (*a, *c, *b)))
                     for a, c, b in hairs)
 
 
