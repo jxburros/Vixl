@@ -4,8 +4,10 @@ Vixl draws each field's box into the page (exactly as in the PNG); the PDF field
 transparent and draws only the value — typed text, the check mark, the radio dot or the selected
 option. Every widget gets a generated appearance (``NeedAppearances`` is never set), an
 accessible name (``/TU``) and a place in the tab order (the order of the page's ``/Annots``,
-which each page declares with ``/Tabs /S``). Text is typed in Helvetica (``/DA``); defaults are
-laid out with Helvetica's metrics.
+which each page declares with ``/Tabs /S``). Text is typed in Helvetica (``/DA``) unless the form's
+``entry_font`` is ``embed``: then each field's own font is embedded as a WinAnsi TrueType font
+(the whole Western European character set, since viewers type with it) and named in ``/DA`` and
+``/DR``. Values in the appearance streams are laid out with the metrics of the font typed in.
 
 The only actions in the file are the JavaScript field actions that enforce a field's validation
 rules (``form_rules``): no links, submit, launch or open actions. Every string is hex, and
@@ -36,40 +38,116 @@ FLAGS = {"read_only": 1, "required": 2, "multiline": 1 << 12, "no_toggle_off": 1
 CAPTIONS = {"check": "4", "cross": "8", "dot": "l"}  # ZapfDingbats
 
 
+class EntryFont:
+    """The font a viewer types a field's entries in: its resource name, WinAnsi advance widths and
+    vertical metrics (1/1000 em)."""
+
+    def __init__(self, resource, widths, ascent, descent, default_width=278, family="Helvetica"):
+        self.resource, self.widths, self.ascent, self.descent = resource, widths, ascent, descent
+        self.default_width, self.family = default_width, family
+
+
+HELV = EntryFont("Helv", HELVETICA, ASCENT, DESCENT)
+
+
 def encode(text):
-    """WinAnsi bytes for Helvetica text; raises when a character is outside it."""
+    """WinAnsi bytes for typed-entry text; raises when a character is outside it."""
     try:
         return text.encode("cp1252")
     except UnicodeEncodeError as exc:
-        raise VixlError("invalid_format", "The standard entry font (Helvetica) cannot show some characters; fill with "
-                        "mode flatten instead", field="values") from exc
+        raise VixlError("invalid_format", "The entry font (Western European characters) cannot show some characters; "
+                        "fill with mode flatten instead", field="values") from exc
 
 
-def text_width(data, size):
-    return sum(HELVETICA.get(byte, 278) for byte in data) * size / 1000
+def text_width(data, size, font=HELV):
+    return sum(font.widths.get(byte, font.default_width) for byte in data) * size / 1000
 
 
-def wrap(text, size, width):
-    """Break ``text`` into lines that fit ``width`` points in Helvetica (words longer than a
+def wrap(text, size, width, font=HELV):
+    """Break ``text`` into lines that fit ``width`` points in ``font`` (words longer than a
     line are broken)."""
     lines = []
     for paragraph in text.split("\n"):
         current = ""
         for word in paragraph.split(" "):
             candidate = word if not current else current + " " + word
-            if text_width(encode(candidate), size) <= width or not current:
+            if text_width(encode(candidate), size, font) <= width or not current:
                 current = candidate
             else:
                 lines.append(current)
                 current = word
-            while text_width(encode(current), size) > width and len(current) > 1:
+            while text_width(encode(current), size, font) > width and len(current) > 1:
                 cut = len(current)
-                while cut > 1 and text_width(encode(current[:cut]), size) > width:
+                while cut > 1 and text_width(encode(current[:cut]), size, font) > width:
                     cut -= 1
                 lines.append(current[:cut])
                 current = current[cut:]
         lines.append(current)
     return lines
+
+
+def entry_font_problem(data):
+    """Why a font file cannot be embedded for typed entries, or None when it can."""
+    from .fonts import embedding
+    from .pdf_writer import FontSet
+
+    if not FontSet.embeddable(data):
+        return "it is not a TrueType (glyf) font"
+    permission = embedding(data)
+    if permission in ("restricted", "preview-print"):
+        return f"its embedding permission is {permission}"
+    return None
+
+
+def embed_entry_font(writer, data, resource):
+    """Write ``data`` as a simple TrueType font with WinAnsiEncoding (subset to the WinAnsi
+    characters, which is what a viewer can type with it); returns (EntryFont, font ref)."""
+    import io
+    import logging
+
+    from fontTools import subset
+    from fontTools.ttLib import TTFont
+
+    from .pdf_writer import _postscript_name
+
+    logging.getLogger("fontTools.subset").setLevel(logging.WARNING)
+    chars = {code: bytes([code]).decode("cp1252", "ignore") for code in range(32, 256)}
+    chars = {code: char for code, char in chars.items() if char}
+    font = TTFont(io.BytesIO(data), recalcTimestamp=False)
+    options = subset.Options()
+    options.notdef_outline = True
+    options.name_IDs = ["*"]
+    options.layout_features = []
+    options.drop_tables += ["GSUB", "GPOS", "GDEF", "DSIG", "FFTM"]
+    subsetter = subset.Subsetter(options)
+    subsetter.populate(unicodes=[ord(c) for c in chars.values()])
+    subsetter.subset(font)
+    buffer = io.BytesIO()
+    font.save(buffer)
+    program = buffer.getvalue()
+    head, hhea, hmtx = font["head"], font["hhea"], font["hmtx"]
+    scale = 1000 / head.unitsPerEm
+    cmap = font.getBestCmap() or {}
+    missing = round(hmtx[".notdef"][0] * scale) if ".notdef" in hmtx.metrics else 0
+    widths = {code: round(hmtx[cmap[ord(char)]][0] * scale) if ord(char) in cmap else missing
+              for code, char in chars.items()}
+    os2 = font["OS/2"] if "OS/2" in font else None
+    base = _postscript_name(font)
+    file_ref = writer.add_stream({"Length1": len(program)}, program)
+    descriptor = writer.add({
+        "Type": Name("FontDescriptor"), "FontName": Name(base), "Flags": 32,
+        "FontBBox": [round(head.xMin * scale), round(head.yMin * scale), round(head.xMax * scale), round(head.yMax * scale)],
+        "ItalicAngle": float(font["post"].italicAngle) if "post" in font else 0,
+        "Ascent": round(hhea.ascent * scale), "Descent": round(hhea.descent * scale),
+        "CapHeight": round((getattr(os2, "sCapHeight", 0) or hhea.ascent * 0.7) * scale),
+        "StemV": 80, "FontFile2": file_ref, "MissingWidth": missing,
+    })
+    ref = writer.add({"Type": Name("Font"), "Subtype": Name("TrueType"), "BaseFont": Name(base), "FirstChar": 32,
+                      "LastChar": 255, "Widths": [widths.get(code, missing) for code in range(32, 256)],
+                      "Encoding": Name("WinAnsiEncoding"), "FontDescriptor": descriptor})
+    family = font["name"].getDebugName(16) or font["name"].getDebugName(1) or base
+    entry = EntryFont(resource, widths, round(hhea.ascent * scale), round(hhea.descent * scale), missing, family)
+    return entry, ref
 
 
 def _num(value):
@@ -93,8 +171,41 @@ class FormWriter:
         self.fonts = {}
         self.writer = None
         self.k = 1.0
+        self.entry_fonts = {}   # font digest -> EntryFont (embedded) or the reason it cannot be
+        self.embedded = []      # families embedded for typed entries
+        self.fallbacks = []     # {"field", "reason"} for fields typed in Helvetica instead
+        from .forms import form_settings
+
+        self.embed = form_settings(project.state).get("entry_font") == "embed"
 
     # -- resources ----------------------------------------------------------------------------
+
+    def entry_font(self, view, item):
+        """The EntryFont a field's entries are typed in (Helvetica unless ``entry_font`` is embed)."""
+        if not self.embed:
+            return HELV
+        from .forms import _text_layer
+        from .pdf_writer import font_digest
+        from .text import primary_font_data
+
+        data = primary_font_data(view, _text_layer(item, "", float(item.get("size", 16))))
+        data = data[0] if isinstance(data, tuple) else data
+        key = font_digest(data)
+        if key not in self.entry_fonts:
+            problem = entry_font_problem(data)
+            if problem:
+                self.entry_fonts[key] = problem
+            else:
+                resource = f"VxE{sum(isinstance(v, EntryFont) for v in self.entry_fonts.values()) + 1}"
+                font, ref = embed_entry_font(self.writer, data, resource)
+                self.fonts[resource] = ref
+                self.entry_fonts[key] = font
+                self.embedded.append(font.family)
+        found = self.entry_fonts[key]
+        if isinstance(found, EntryFont):
+            return found
+        self.fallbacks.append({"field": item["name"], "reason": found})
+        return HELV
 
     def font(self, name):
         if name not in self.fonts:
@@ -112,39 +223,40 @@ class FormWriter:
 
     # -- appearances --------------------------------------------------------------------------
 
-    def text_appearance(self, item, w, h, display, size, rgba):
+    def text_appearance(self, item, w, h, display, size, rgba, font=HELV):
         record = item["field"]
         pad = float(item.get("padding", 0)) * self.k
+        ascent, descent = font.ascent, font.descent
         ops = ["/Tx BMC"]
         if display:
             ops += ["q", f"{_num(pad)} {_num(pad)} {_num(max(0.0, w - 2 * pad))} {_num(max(0.0, h - 2 * pad))} re W n",
-                    "BT", f"/Helv {_num(size)} Tf", f"{_rgb(rgba)} rg"]
+                    "BT", f"/{font.resource} {_num(size)} Tf", f"{_rgb(rgba)} rg"]
             align = item.get("align", "left")
             if record.get("comb"):
                 cells = record["max_length"]
                 for i, char in enumerate(display[:cells]):
                     data = encode(char)
-                    x = w * (i + 0.5) / cells - text_width(data, size) / 2
-                    y = (h - (ASCENT - DESCENT) * size / 1000) / 2 - DESCENT * size / 1000
+                    x = w * (i + 0.5) / cells - text_width(data, size, font) / 2
+                    y = (h - (ascent - descent) * size / 1000) / 2 - descent * size / 1000
                     ops += [f"1 0 0 1 {_num(x)} {_num(y)} Tm", f"<{data.hex().upper()}> Tj"]
             else:
                 inner = max(1.0, w - 2 * pad)
                 multiline = record["kind"] == "multiline"
-                lines = wrap(display, size, inner) if multiline else [display]
-                natural = (ASCENT - DESCENT) * size / 1000
+                lines = wrap(display, size, inner, font) if multiline else [display]
+                natural = (ascent - descent) * size / 1000
                 leading = natural * 1.2  # the line pitch of Vixl's own layout
                 if multiline:
-                    top = h - pad - ASCENT * size / 1000 - natural * 0.1
+                    top = h - pad - ascent * size / 1000 - natural * 0.1
                 else:
-                    top = (h - (ASCENT - DESCENT) * size / 1000) / 2 - DESCENT * size / 1000
+                    top = (h - (ascent - descent) * size / 1000) / 2 - descent * size / 1000
                 for number, line in enumerate(lines):
                     data = encode(line)
-                    width = text_width(data, size)
+                    width = text_width(data, size, font)
                     x = pad + ((inner - width) / 2 if align == "center" else inner - width if align == "right" else 0)
                     ops += [f"1 0 0 1 {_num(x)} {_num(top - number * leading)} Tm", f"<{data.hex().upper()}> Tj"]
             ops += ["ET", "Q"]
         ops.append("EMC")
-        return self.xobject(w, h, ops, ["Helv"] if display else [])
+        return self.xobject(w, h, ops, [font.resource] if display else [])
 
     def mark_appearance(self, item, w, h, rgba):
         from .forms import MARK_PATHS, default_appearance
@@ -244,10 +356,11 @@ class FormWriter:
                 field["FT"] = Name("Ch")
                 field["Ff"] = flags | FLAGS["combo"] | (FLAGS["edit"] if record.get("editable") else 0)
                 field["Opt"] = [[Text(v), Text(str(option_label(record, v)))] for v in option_values(record)]
-                field["DA"] = Text(f"/Helv {_num(size)} Tf {_rgb(rgba)} rg")
+                font = self.entry_font(view, item)
+                field["DA"] = Text(f"/{font.resource} {_num(size)} Tf {_rgb(rgba)} rg")
                 if value not in (None, ""):
                     field["V"] = field["DV"] = Text(str(value))
-                field["AP"] = {"N": self.text_appearance(item, width, height, display, size, rgba)}
+                field["AP"] = {"N": self.text_appearance(item, width, height, display, size, rgba, font)}
             else:
                 field["FT"] = Name("Tx")
                 if kind == "multiline":
@@ -256,11 +369,12 @@ class FormWriter:
                     field["Ff"] = flags | FLAGS["comb"]
                 if "max_length" in record:
                     field["MaxLen"] = record["max_length"]
-                field["DA"] = Text(f"/Helv {_num(size)} Tf {_rgb(rgba)} rg")
+                font = self.entry_font(view, item)
+                field["DA"] = Text(f"/{font.resource} {_num(size)} Tf {_rgb(rgba)} rg")
                 field["AA"] = actions(record)
                 if display:
                     field["V"] = field["DV"] = Text(display)
-                field["AP"] = {"N": self.text_appearance(item, width, height, display, size, rgba)}
+                field["AP"] = {"N": self.text_appearance(item, width, height, display, size, rgba, font)}
             ref = self.writer.add(field)
             self.fields.append(ref)
             refs.append(ref)
@@ -278,20 +392,30 @@ class FormWriter:
             value = group["value"]
             writer.add({"FT": Name("Btn"), "T": Text(key), "TU": Text(group["label"]) if group["label"] else None,
                         "Ff": flags, "V": Name(value) if value else Name("Off"), "Kids": group["kids"]}, group["ref"])
-        resources = {"Font": {"Helv": self.font("Helv"), "ZaDb": self.font("ZaDb")}}
+        self.font("Helv"), self.font("ZaDb")
+        resources = {"Font": dict(self.fonts)}
         return {"Fields": self.fields, "DR": resources, "DA": Text("/Helv 0 Tf 0 g")}
 
 
 def export_fillable(project, path=None, *, pages=None, values=None, dpi=None, content="vector", background="white",
                     report=None, title=None, lang=None, views=None):
     """A fillable PDF of the document (``values`` prefill it: editable filling)."""
-    from .forms import form_settings, has_fields, with_values
+    from .forms import form_settings, has_fields, reject_signature_samples, with_values
     from .pdf_export import export_pdf
 
     require(has_fields(project), "This document has no fields; add some with the field operation", field="fillable")
+    reject_signature_samples(project, values)
     source = with_values(project, values) if values else project
     settings = form_settings(project.state)
     form = FormWriter(source)
-    return export_pdf(source, path, pages=pages, content=content, dpi=dpi, background=background,
+    data = export_pdf(source, path, pages=pages, content=content, dpi=dpi, background=background,
                       title=title if title is not None else settings.get("title"), lang=lang or settings.get("lang"),
                       annotations=form.annotations, acroform=form.acroform, fillable=True, report=report, views=views)
+    if report is not None and form.embed:
+        report["entry_font"] = {"mode": "embed", "embedded": sorted(set(form.embedded)),
+                                **({"helvetica_fallback": form.fallbacks} if form.fallbacks else {})}
+        if form.fallbacks:
+            report.setdefault("warnings", []).extend(
+                f"Field {item['field']!r} is typed in Helvetica: its font cannot be embedded ({item['reason']})"
+                for item in form.fallbacks)
+    return data

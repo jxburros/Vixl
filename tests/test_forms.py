@@ -116,7 +116,7 @@ def test_coercion(record, raw, expected):
     ({"kind": "checkbox"}, "maybe", "invalid_format"),
     ({"kind": "dropdown", "options": ["S"]}, "XL", "invalid_option"),
     ({"kind": "radio", "option": "a"}, "b", "invalid_option"),
-    ({"kind": "signature"}, "Ada", "invalid_format"),
+    ({"kind": "signature"}, "Ada\nLovelace", "invalid_format"),
 ])
 def test_coercion_errors(record, raw, code):
     with pytest.raises(FieldValueError) as error:

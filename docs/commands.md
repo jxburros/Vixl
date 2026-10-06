@@ -254,9 +254,13 @@ vixl checkout clean
 vixl history
 vixl branches
 vixl compare vivid clean --out comparison.png
+vixl compact --dry-run   # what compacting would drop
+vixl compact             # drop undo history and unused embedded files
 ```
 
 Presets save the active/target layer's complete effect stack. Applying one assigns fresh effect IDs and captures the current selection. Branches name movable tips; checkpoints are fixed. Checking out a checkpoint detaches history; create a branch to name subsequent work. Undo/redo moves the current branch tip; alternate history nodes remain available by ID. Transactions allow provisional edits across processes and commit as one undoable history entry. They do not hide provisional state from other clients of the same project.
+
+A document keeps every embedded file that some revision uses, so undo can restore a replaced image or an earlier font pairing; saving drops only files no revision references. `check` reports the files the current design does not use (an `info` finding of the `fonts` check, with `unused_assets`: each file's `asset`, `kind`, `bytes`, and `fonts` for a registered font no text, role or fallback uses). `vixl compact` (MCP `vixl_history(action="compact")`, REST `POST /history/compact`, Python `project.compact()`) is the explicit way to shed them: it discards all undo history, the redo stack, branches and checkpoints, unregisters unused fonts (`--keep-fonts` keeps them), and drops every embedded file the current design does not use. The design does not change. The result lists what went (`revisions_dropped`, `branches_dropped`, `checkpoints_dropped`, `fonts_unregistered`, `assets_dropped` with bytes, `bytes_dropped`); `--dry-run` (`dry_run: true`) reports without changing anything. Nothing compacts implicitly, and an open transaction must be committed or rolled back first.
 
 `batch` refuses output collisions and existing destinations, reports each input's result, and exits nonzero if any fail. Earlier successful outputs remain if a later item fails.
 

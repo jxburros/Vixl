@@ -142,7 +142,14 @@ slides) that opens in PowerPoint, Keynote, Google Slides and LibreOffice:
   `fonts_not_embedded`: install those fonts wherever the deck is opened or presented (PowerPoint,
   Keynote and Google Slides otherwise substitute another font and the layout shifts), or share the
   PDF, which embeds its fonts. In PowerPoint, *File → Options → Save → Embed fonts in the file*
-  embeds them once they are installed.
+  embeds them once they are installed. Full font embedding is not planned for Vixl's PPTX writer.
+- `font_embedding` gives each of those families its OS/2 `fsType` permission
+  (`installable`, `editable`, `preview-print` or `restricted`; `unknown` when unreadable), which
+  tells you whether PowerPoint may embed it later, and its `license` when the font declares the SIL
+  Open Font License (`OFL`, every Google Fonts family Vixl installs) or Apache 2.0. Open-licensed
+  fonts can be installed freely on the presenting machine; a `restricted` font cannot be embedded
+  by any application, so share the PDF instead (Vixl's PDF embeds a subset of each TrueType font
+  it uses and draws other fonts as outlines).
 
 ## HTML presentation
 

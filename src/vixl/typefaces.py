@@ -439,6 +439,42 @@ def pair_fonts(project, pairing=None, *, seed=None, mood=None, best_for=None, cl
     return result
 
 
+
+def pair_workspace(workspace, pairing=None, *, seed=None, mood=None, best_for=None, client=None):
+    """Make a pairing the workspace default (``brand.json``) that new documents embed at creation.
+    Both styles are fetched now, so a missing font fails here instead of at creation."""
+    from .brand import save_font_default
+
+    rolled = None
+    if pairing in (None, "random"):
+        item, rolled = roll_pairing(seed, mood, best_for)
+    else:
+        item = get_pairing(pairing)
+    fonts = {}
+    for role in ("heading", "body"):
+        found = {}
+        fetch_font(item[role]["family"], item[role]["weight"], client=client, source=found)
+        fonts[role] = {"family": item[role]["family"], "weight": item[role]["weight"], "source": found}
+    result = {"pairing": item["name"], **fonts, "why": item.get("why"), "caution": item.get("caution"),
+              "workspace": save_font_default(workspace, pairing=item["name"])}
+    if rolled is not None:
+        result["seed"] = rolled
+    return result
+
+
+def install_workspace(workspace, family, weight=400, italic=False, name=None, role=None, *, client=None):
+    """Make one style the workspace default font for ``role``: embedded in ``brand.json`` and in
+    every document created afterwards."""
+    from .brand import save_font_default
+    from .design import named
+
+    require(role in ("heading", "body"), "scope workspace needs role heading or body", field="role")
+    found = {}
+    data, family = fetch_font(family, weight, italic, client=client, source=found)
+    name = named(name or f"{slug(family)}-{weight}{'-italic' if italic else ''}")
+    return {"name": name, "family": family, "weight": weight, "italic": italic, "role": role, "source": found,
+            "file": {"bytes": len(data)}, "workspace": save_font_default(workspace, role=role, name=name, data=data)}
+
 def roll_document(project=None, *, workspace=None, seed=None, purpose=None, mood=None, canvas=None,
                   locks=None, apply=False, slots=None, unfilled=None, variety=None):
     """Choose brand defaults and optionally commit the whole direction in one undo step.

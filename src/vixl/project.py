@@ -742,7 +742,19 @@ class Project:
     def check(self, **options):
         from .checks import check_design
 
-        return check_design(self, **options)
+        report = check_design(self, **options)
+        if not options.get("checks") or "fonts" in options["checks"]:
+            from .compaction import check_note
+
+            check_note(self, report)
+        return report
+
+    def compact(self, *, fonts=True, dry_run=False):
+        """Drop undo history and the embedded files the current design does not use (see
+        ``compaction.compact``); returns what was dropped. Save afterwards to shrink the file."""
+        from .compaction import compact
+
+        return compact(self, fonts=fonts, dry_run=dry_run)
 
     def check_suite(self, suite, **options):
         from .assurance import run_suite

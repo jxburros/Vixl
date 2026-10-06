@@ -128,7 +128,7 @@ Vixl is designed to be driven mainly by agents. The intended loop is: create or 
 | Tool | Purpose |
 | --- | --- |
 | `vixl_workspace_list(directory, offset, limit)` | Discover workspace paths and the open documents |
-| `vixl_document_create(path, width?, height?, background, size?, dpi?, orientation?, bleed?, font_pairing?)` | Create and activate a new `.vixl` from pixels or a named size; creates missing directories; refuses overwrites; `font_pairing` also installs a pairing as the document typography (same as `vixl_font_pair`) |
+| `vixl_document_create(path, width?, height?, background, size?, dpi?, orientation?, bleed?, font_pairing?)` | Create and activate a new `.vixl` from pixels or a named size; creates missing directories; refuses overwrites; `font_pairing` also installs a pairing as the document typography (same as `vixl_font_pair`); otherwise the workspace default fonts from `brand.json` are embedded and reported under `workspace_fonts` (`workspace_fonts: false` skips them) |
 | `vixl_document_open(path, upgrade?)` / `vixl_document_close(document)` | Activate an existing document / drop one from the session; edits are already saved. A document saved before 0.21 lists the layers that render differently under `upgrade`; `upgrade="accept"` stops the notice and `"pin-fills"` also restores the white fill of open stroked shapes (CLI: `vixl upgrade`) |
 | `vixl_document_inspect(target?, detail)` | `compact` (default): canvas plus one line per layer with resolved `[x, y, w, h]` bounds; `full`: every stored field |
 | `vixl_import_image(path? \| data_base64? \| url?, name, credit?, license?)` | Embed a workspace file, base64/data-URL bytes or a public `https://` image as a layer; returns id, size, bounds and `source` (final `url`, `bytes`, `sha256`, `fetched_at`). `credit`/`license` are kept in the layer's provenance and shown by inspect |
@@ -148,7 +148,7 @@ Vixl is designed to be driven mainly by agents. The intended loop is: create or 
 | `vixl_timeline_inspect`, `vixl_timeline_preview(time \| count)`, `vixl_export_timeline(path, format, fps, scale, …)` | Keyframe timelines: inspect, preview a frame or contact sheet, export GIF/APNG/WebP/sheet/PNG ZIP/MP4/WebM |
 | `vixl_export_icons(directory, icon_set)` | Standard icon sets (web favicons and manifest, Apple, Android, Windows) |
 | `vixl_measure`, `vixl_measure_spacing`, `vixl_validate` | Samples, channel statistics, contrast; spacing intent; assertions and profiles |
-| `vixl_history(action, ref, count, offset, limit)` | Undo/redo/transactions/branches/checkpoints; newest-first summaries |
+| `vixl_history(action, ref, count, offset, limit, dry_run, fonts)` | Undo/redo/transactions/branches/checkpoints; newest-first summaries; `compact` discards undo history and drops embedded files the design does not use (`dry_run` reports first; see [commands](commands.md#scripts-presets-history)) |
 
 The server instructions carry the start-here recipe: `vixl_guide` for the kind of work, then `vixl_sizes_list` → `vixl_document_create(size=…)`,
 `vixl_layouts_list` → `layout-apply` (all slots filled; art with no text frame is built from `shape`/`organic`/`pathfinder`/`radial-repeat`),
@@ -273,7 +273,7 @@ kinds.
 
 PDF export is vector by default (also with `color_space="cmyk"`); the export result reports `content`, `content_reason`,
 `color_space` and `page_size`, and `dpi` sizes PDF pages and PowerPoint slides alike. A PPTX result's `warnings`
-name the fonts that are not embedded and must be installed where the deck is opened (`fonts_not_embedded`).
+name the fonts that are not embedded and must be installed where the deck is opened (`fonts_not_embedded`, with each one's fsType permission and license under `font_embedding`).
 
 REST: `POST /export` accepts `page`, `pages`, `pdf_content`, `fillable`, `values`, `fill_mode` and
 `presenter` (HTML slide presentation options) and formats `PPTX` and `PSD` (layered, see [exporting](exporting.md#layered-psd-for-designer-handoff)); `POST /preview` accepts `guides`, `page`, `values` and `show_fields`; the fixed

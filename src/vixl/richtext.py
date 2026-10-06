@@ -282,17 +282,13 @@ def variant_font(project, base_font, bold, italic, rich):
 
 def style_font_data(project, font, text):
     """Font bytes for a font value, with document and bundled fallbacks when ``text`` needs them."""
-    from .text import coverage, primary_font_data, visible_char
+    from .text import coverage, fallback_chain, primary_font_data, visible_char
 
     primary = primary_font_data(project, {"font": font, "size": 12})
     if all(not visible_char(c) or ord(c) in coverage(primary) for c in text):
         return primary
-    fonts = [primary]
-    for name in [*project.state.get("font_fallbacks", []), "DejaVuSans.ttf"]:
-        data = primary_font_data(project, {"font": name, "size": 12})
-        if data not in fonts:
-            fonts.append(data)
-    return tuple(fonts)
+    names = [*project.state.get("font_fallbacks", []), "DejaVuSans.ttf"]
+    return fallback_chain(primary, [primary_font_data(project, {"font": name, "size": 12}) for name in names])
 
 
 # ---------------------------------------------------------------------------------------------

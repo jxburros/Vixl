@@ -59,7 +59,7 @@ the right size. Letter at 300 dpi is 2550 × 3300 px, so 125 px is 30 pt.
 | `checkbox` | a box to tick | `yes`/`no`, `true`/`false`, `1`/`0`, `x` (exported as `on_value`, default `Yes`) |
 | `radio` | one of a group | buttons share a `key`; each has its own `option`; the value is the chosen option |
 | `dropdown` | a list | one of `options` (strings or `{value, label}`); `editable` allows other values |
-| `signature` | an empty box | none — a viewer signs it. It can be `required`; fills never need it |
+| `signature` | an empty box | none in a fillable PDF — a viewer signs it. It can be `required`; fills never need it. Flattened fills accept a [sample](#signature-samples) |
 
 Aliases: `input` and `form-field` are `field`; kinds `textbox` → `text`, `textarea` →
 `multiline`, `select`/`combo` → `dropdown`, `tickbox` → `checkbox`.
@@ -82,7 +82,8 @@ Aliases: `input` and `form-field` are `field`; kinds `textbox` → `text`, `text
 | `appearance` | The box drawn into the artwork: `style` (`box`, `underline`, `none`), `fill`, `stroke`, `stroke_width`, `radius`, `mark` (`check`, `cross`, `dot`) and `mark_color`. A top-level `fill` or `stroke` on the operation goes here. |
 
 `field-set` changes any of these on an existing field (`target` plus settings). `form` sets the
-document's `tab_order` (`reading` or `explicit`), `title` and `lang` (written to the PDF).
+document's `tab_order` (`reading` or `explicit`), `entry_font` (`standard` or `embed`, see
+[entry fonts](#entry-fonts)), `title` and `lang` (written to the PDF).
 Fields cannot be rotated or flipped (PDF fields are upright rectangles); duplicating a field
 gives the copy a new key (`email-2`), or a radio button a new option in the same group; removing
 a field's label layer clears `label_layer`. Fields cannot be inside repeats or symbols, nor on
@@ -97,8 +98,9 @@ with a transparent PDF field over each field layer, so the PDF looks exactly lik
 - Text kinds are text fields, checkboxes and radio groups are buttons, dropdowns are combo boxes
   and signatures are signature fields; defaults are set and drawn.
 - Every widget has a generated appearance, so viewers show it as designed and never ask to save
-  on close. People type in Helvetica (Western European characters); values Vixl draws itself
-  (defaults, flattened fills) use the field's own font.
+  on close. People type in Helvetica (Western European characters) unless the form sets
+  `entry_font: "embed"` ([entry fonts](#entry-fonts)); values Vixl draws itself (defaults,
+  flattened fills) use the field's own font.
 - Tab order is the order of the page's fields: **reading** order sorts fields into rows by their
   vertical centre (two fields share a row when their centres are within half the smaller
   field's height), top to bottom, left to right, with a radio group as one stop; **explicit**
@@ -112,6 +114,22 @@ with a transparent PDF field over each field layer, so the PDF looks exactly lik
   documents ([pages](slides.md)) get fields on every page.
 
 Viewers can add their own field highlight; that is a viewer preference. Fillable PDFs are RGB.
+
+### Entry fonts
+
+`{"type": "form", "entry_font": "embed"}` makes people type in each field's own font instead of
+Helvetica. Every text, multiline, number, date and dropdown field's font is embedded once as a
+TrueType font with the Western European (WinAnsi) character set (a subset of the font file holding
+those characters, because a viewer types with it), named in the field's `/DA` and in the form's
+`/DR` resources. Prefilled values and defaults are laid out with that font's own metrics, so a
+prefilled PDF matches the PNG preview. Entries are still limited to Western European characters.
+
+A font is embedded only when it is TrueType (`glyf` outlines) and its OS/2 `fsType` permits
+editing (`installable` or `editable`). A CFF/OpenType-PostScript font, or one marked `restricted`
+or `preview-print`, falls back to Helvetica for that field: the export result's `entry_font`
+lists the embedded families and the `helvetica_fallback` fields with the reason, `warnings` says
+so, and `check` warns about such fields beforehand. The default, `standard`, keeps Helvetica and
+embeds nothing.
 
 ### Validation rules
 
@@ -163,10 +181,23 @@ cache**, the document, its history or error messages (which name rows and keys, 
   page per row (up to 1,000 rows). `--format` picks PDF (default), PNG, JPEG, WebP, TIFF or SVG.
 - `--mode editable` writes fillable PDFs with the values already set (prefilled, still
   editable); values must then be Western European characters.
+- Signature fields take a **sample** in flattened fills only; see below.
 - Big batches can run as durable jobs: submit `{"kind": "form-fill", "source": "form.vixl",
   "output": "filled.zip" or "all.pdf", "request": {"data": "rows.csv", …}}`. The job freezes the
   form and the data, and deletes its copy of the data when it completes or is cancelled (unless
   `retain_inputs`).
+
+### Signature samples
+
+A flattened fill, a preview or `vixl_export_file(values=…)` can draw a sample into a signature
+field: text such as `"Ada Lovelace"` (one line, up to 200 characters) or an image as a
+`data:image/png;base64,…` URI (PNG, JPEG or WebP, up to 4 MB). Text is drawn in the field's
+`font` when one was set on the field, otherwise in a registered handwriting font if the document
+has one (a catalog `handwriting` family such as Dancing Script or Caveat, installed with
+`vixl_font_install`, or a family named script, hand or signature), otherwise in the field's
+default font; it is sized to the box. An image is scaled to fit inside the padding, following
+`align`. A sample is never written as a PDF field value: a fillable export (`fillable: true`) or
+an editable fill with a signature value is refused, because a signature field is for the viewer to sign.
 
 Previews show values too: `render --set KEY=VALUE` and `vixl_render_preview(values=…)` draw the
 values you pass without requiring the rest. A preview, a filled PNG and a flattened PDF draw a
@@ -177,7 +208,9 @@ value the same way (size, padding, shrinking and clipping), at any preview size.
 `form` is one of the default checks and does nothing without fields. **Errors:** radio groups
 with fewer than two options, an incomplete or repeated explicit tab order, rotated or flipped
 fields, fields off the page or across the trim line, overlapping fields, a missing accessible name
-(or radio group question), and defaults or options Helvetica cannot show. **Warnings:** boxes too
+(or radio group question), and defaults or options the entry font (Helvetica, or the embedded
+WinAnsi font) cannot show. **Warnings:** fields whose font cannot be embedded with `entry_font:
+"embed"` (they are typed in Helvetica), boxes too
 small for their text, checkboxes under 10 pt, values under 8 pt, a border or underline below 3:1
 contrast with its surroundings (sampled from one render without the fields), `style: none` with
 nothing drawn under it, a label layer far from its field, an explicit tab order that jumps back up
@@ -203,7 +236,7 @@ carries `measured`: `font`, `size`, `size_measured`, `min_size`, `overflow`, `bo
 whose worst-case value fits; setting it clears the error). `font` shows when a field draws with
 the bundled proofing fallback or with fallback glyphs. Rows from a CSV and fills report the same
 numbers but never the value. The measurement uses the field's own font, as filled copies do;
-people typing into a fillable PDF get Helvetica.
+people typing into a fillable PDF get Helvetica unless the form embeds entry fonts.
 
 `inspect`, `field list` and `vixl_document_inspect` list each field's key, kind, required flag,
 tab stop and rectangle in PDF points.

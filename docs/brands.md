@@ -50,6 +50,10 @@ with embedded fonts:
 }
 ```
 
+An embedded font wins for its role and the pairing supplies the other, so a kit can embed only a
+heading font. `vixl_font_pair`/`vixl_font_install` with `scope: "workspace"` write these fields for you,
+and new documents embed the workspace fonts at creation (see [Typography](typography.md#workspace-default-fonts)).
+
 Only data is accepted; brand files cannot name server filesystem paths. JSON is limited to 16 MiB.
 The policy stays in the workspace while fonts, logos and colors are embedded in each document.
 Moving a document without `brand.json` preserves its appearance but stops workspace policy checks.

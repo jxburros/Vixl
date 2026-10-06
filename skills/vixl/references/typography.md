@@ -46,6 +46,12 @@ Each install reports where the font came from, so agents and CI can verify offli
 
 Text can also follow a role: `text`/`text-set` accept `font: "heading"` or `"body"` (CLI `--font heading`), and built-in templates give their largest text the heading role and the rest body. Changing a role (`font pair`, `font install --role`, `font use --role`) re-fonts every text layer with that role; before any typography is set they use the proofing fallback. `text-set` also accepts a registered font name to change one layer's face. An unknown font fails with `missing_font`, listing the registered fonts and roles.
 
+### Workspace default fonts
+
+A workspace can give every new document the same typography. `vixl_font_pair(pairing=..., scope="workspace")` (CLI `vixl font pair NAME --scope workspace`, REST `POST /typefaces/pair` with `"scope": "workspace"`) writes `pairing` into the workspace `brand.json`; `vixl_font_install(family=..., role="heading"|"body", scope="workspace")` (CLI `vixl font install FAMILY --role heading --scope workspace`) embeds that one style in `brand.json` under `fonts.<role>`, overriding the pairing for that role. A workspace pairing replaces embedded `fonts` entries, and the result lists them under `workspace.replaced`. Both fetch the fonts immediately, so an unknown family fails at once, and neither changes existing documents.
+
+`vixl_document_create`, `Session.create` and `vixl new` then download (or reuse from the cache) and embed the workspace fonts as part of the creation step, and report them under `workspace_fonts` (`pairing`, and `applied.heading`/`applied.body` with each font's `name` and whether it came `from` the pairing or `fonts`). Fonts are embedded in each document, so files stay portable. Passing `font_pairing` to `vixl_document_create`, `workspace_fonts: false` (CLI `--no-workspace-fonts`) skips them. When a pairing cannot be fetched (offline, empty cache), the document is still created and `workspace_fonts.error` says why; run `vixl_font_pair` later. The CLI uses the `brand.json` beside the new document (`--scope workspace` writes it in the current directory).
+
 MCP: `vixl_fonts` (views `fonts`, `font`, `pairings`, `pairing`, `principles`), `vixl_font_pair`, `vixl_font_install`. REST: `GET /typefaces`, `GET /typefaces/pairings`, `POST /typefaces/pair`, `POST /typefaces/install`.
 
 ## Rolling a direction

@@ -61,7 +61,8 @@ A document becomes multi-page with the first `page add`; each page has its own l
   the file, so pass `notes: false` for a copy to share; `presenter: false` gives a single image.
   Details: `docs/presenter.md`.
   A PPTX does not embed fonts: its `warnings` name each font to install where the deck is shown
-  (or send the PDF, which embeds them).
+  (or send the PDF, which embeds them); `font_embedding` gives each one's fsType permission
+  (`installable`, `editable`, `preview-print`, `restricted`) and `license` (`OFL` fonts install freely).
   The deck's PDF pages and PPTX slides are the same size (7.5 in tall for a screen canvas, so
   1920×1080 is 13.33 × 7.5 in); `dpi` sets both. The result's `page_size` shows it.
 - Name each slide's title layer `title` so it becomes the PowerPoint title placeholder.
@@ -86,7 +87,10 @@ Rules agents trip over:
 - Keys are 1–64 of `[A-Za-z0-9_-]` (no dots) and cannot equal a variable name.
 - Fields cannot be rotated or flipped.
 - `required` works on every kind (a required `signature` is signed in the viewer; fills never need
-  it). `max_length` works on `text`, `multiline` and `number`.
+  it). `max_length` works on `text`, `multiline` and `number`. Flattened fills and previews accept a
+  signature sample (text, or a `data:image/png;base64,` URI); fillable exports refuse one.
+- `{"type": "form", "entry_font": "embed"}` embeds each field's TrueType font so people type in it
+  (WinAnsi characters); restricted or non-TrueType fonts fall back to Helvetica with a warning.
 - Validation rules reach the fillable PDF as standard field actions a viewer enforces: `format`
   `email`/`digits`, number `{decimals, min, max}`, the date `format.display`, and `pattern` (a
   regex the whole value must match; no flags, look-around, back-references or `(a+)+`), with

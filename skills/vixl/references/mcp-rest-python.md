@@ -65,7 +65,7 @@ result (`"replayed": true`) instead of applying twice.
 | `vixl_operation_schema` | **`types`** (1–20 names) | Exact JSON Schema for those operation types (needed with `vixl mcp --schema slim`) |
 | `vixl_render_preview` | `variables`, `max_width=1024`, `max_height=1024` (≤4096), `max_bytes=1048576` (64 KiB–4 MiB), `region=[x,y,w,h]` (px or %), `artboard`, `comp`, `isolate=[layer…]` | PNG at preview resolution (fast); `region` zooms in up to 8×; `isolate` shows one object (a group with its parts) alone, cropped to its ink |
 | `vixl_render_compare` | `before="previous"`, `after="head"`, `mode="side-by-side"\|"diff"`, `max_width`, `max_height`, `isolate=[layer…]` | Summary (`changed_fraction`, `changed_region`) + image; refs: `head`, `previous`, `head~N`, branch, checkpoint, revision ID |
-| `vixl_history` | `action="list"\|"undo"\|"redo"\|"branch"\|"checkpoint"\|"checkout"\|"begin"\|"commit"\|"rollback"`, `ref`, `count=1`, `offset`, `limit=20` | `list` → paginated node summaries; others → new head/branch |
+| `vixl_history` | `action="list"\|"undo"\|"redo"\|"branch"\|"checkpoint"\|"checkout"\|"begin"\|"commit"\|"rollback"\|"compact"`, `ref`, `count=1`, `offset`, `limit=20`, `dry_run`, `fonts=true` | `list` → paginated node summaries; others → new head/branch; `compact` → what it dropped (all undo history, unused fonts and files; try `dry_run` first) |
 
 Transactions: `vixl_history(action="begin")` → several `vixl_operations_apply` calls →
 `commit` (one undo step) or `rollback`. Name branches/checkpoints with `ref`.

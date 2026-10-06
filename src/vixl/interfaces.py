@@ -164,7 +164,9 @@ class Session:
                 summary["upgrade"] = notice
             return summary
 
-    def create(self, path, width=None, height=None, background="transparent", *, size=None, dpi=None, orientation=None, bleed=False, seed=None, variety=None):
+    def create(self, path, width=None, height=None, background="transparent", *, size=None, dpi=None, orientation=None, bleed=False, seed=None, variety=None, workspace_fonts=True):
+        """``workspace_fonts`` embeds the workspace's default fonts (``brand.json`` pairing/fonts);
+        the summary reports them under ``workspace_fonts``."""
         with self._mutex:
             resolved = self.resolve(path)
             require(resolved.suffix.lower() == ".vixl", "Document path must end in .vixl", field="path")
@@ -179,12 +181,17 @@ class Session:
                     project = Project(width, height, background, limits=self.limits)
                     if dpi:
                         project.apply({"type": "canvas", "dpi": dpi})
+                fonts = None
+                if workspace_fonts:
+                    from .brand import apply_workspace_fonts
+
+                    fonts = apply_workspace_fonts(project, self.workspace)
                 from .variety import document_defaults
 
                 document_defaults(project, seed=seed, variety=variety, workspace=self.workspace)
                 project.save(resolved)
                 self._remember(resolved, project, self.stamp(resolved))
-            return self.summary(project)
+            return {**self.summary(project), **({"workspace_fonts": fonts} if fonts else {})}
 
     def make_parent(self, path):
         """Create the missing directories above ``path`` (always inside the workspace: ``resolve``
@@ -337,14 +344,17 @@ class Session:
         with self.project(document=document) as p:
             return validate(p, profile, rules, **options)
 
-    def history(self, action="list", ref=None, count=1, document=None):
+    def history(self, action="list", ref=None, count=1, document=None, *, dry_run=False, fonts=True):
+        """Navigate history. ``compact`` squashes it to the current state and drops unused embedded
+        files (``dry_run`` reports what it would drop; ``fonts`` False keeps unused registered fonts)."""
         require(
             action
-            in ("list", "undo", "redo", "branch", "checkpoint", "checkout", "begin", "commit", "rollback"),
+            in ("list", "undo", "redo", "branch", "checkpoint", "checkout", "begin", "commit", "rollback", "compact"),
             "Unknown history action",
             field="action",
         )
-        with self.project(write=action != "list", document=document) as p:
+        with self.project(write=action != "list" and not (action == "compact" and dry_run), document=document) as p:
+            compacted = p.compact(fonts=fonts, dry_run=dry_run) if action == "compact" else None
             if action in ("undo", "redo"):
                 getattr(p, action)(count)
             elif action in ("branch", "checkpoint", "checkout"):
@@ -358,6 +368,7 @@ class Session:
                 "branches": p.branches,
                 "checkpoints": p.checkpoints,
                 "nodes": [{k: v for k, v in node.items() if k not in ("state", "delta")} for node in p.nodes.values()],
+                **({"compact": compacted} if compacted else {}),
             }
 
     def import_image(self, data=None, name="image", document=None, *, url=None, source=None, credit=None,
@@ -595,16 +606,22 @@ def create_app(path, *, token=None, limits=None):
 
     @app.post("/typefaces/pair")
     def typeface_pair(body: dict):
-        from .typefaces import pair_fonts
+        from .typefaces import pair_fonts, pair_workspace
 
+        if body.get("scope") == "workspace":
+            return pair_workspace(session.workspace, body.get("pairing", "random"), seed=body.get("seed"), mood=body.get("mood"), best_for=body.get("best_for"))
+        require(body.get("scope", "document") == "document", "scope must be document or workspace", field="scope")
         with session.project(write=True) as project:
             return pair_fonts(project, body.get("pairing", "random"), seed=body.get("seed"), mood=body.get("mood"), best_for=body.get("best_for"))
 
     @app.post("/typefaces/install")
     def typeface_install(body: dict):
-        from .typefaces import install_font
+        from .typefaces import install_font, install_workspace
 
         require(isinstance(body.get("family"), str), "family is required", field="family")
+        if body.get("scope") == "workspace":
+            return install_workspace(session.workspace, body["family"], body.get("weight", 400), body.get("italic", False), body.get("name"), body.get("role"))
+        require(body.get("scope", "document") == "document", "scope must be document or workspace", field="scope")
         with session.project(write=True) as project:
             return install_font(project, body["family"], body.get("weight", 400), body.get("italic", False), body.get("name"), body.get("role"))
 
@@ -808,7 +825,8 @@ def create_app(path, *, token=None, limits=None):
 
     @app.post("/history/{action}")
     def history_action(action: str, body: dict):
-        return session.history(action, body.get("ref"), body.get("count", 1))
+        return session.history(action, body.get("ref"), body.get("count", 1), dry_run=bool(body.get("dry_run", False)),
+                               fonts=bool(body.get("fonts", True)))
 
     @app.post("/import")
     async def import_document(request: Request, format: str, name: str = "import", page: int = 1, dpi: int = 144, svg_mode: str = "editable"):

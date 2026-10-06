@@ -162,7 +162,9 @@ def schemas(add):
                       **{k: nullable(v) for k, v in settings.items() if k != "kind"}}, ["target"])
     add("form", {k: nullable(v) for k, v in {
         "tab_order": d({"type": "string", "enum": ["reading", "explicit"]}, "Tab order: reading or by tab."),
-        "entry_font": d({"type": "string", "enum": ["standard", "embed"]}, "Font viewers use for typed entries."),
+        "entry_font": d({"type": "string", "enum": ["standard", "embed"]},
+                        "Font viewers use for typed entries in a fillable PDF: standard (Helvetica) or embed "
+                        "(each field's own font, Western European characters)."),
         "title": d(S, "PDF document title."), "lang": d(S, "Document language tag such as 'en-GB'.")}.items()}, [])
 
 
@@ -322,9 +324,6 @@ def validate_settings(settings):
     require(settings.get("tab_order", "reading") in ("reading", "explicit"), "tab_order must be reading or explicit",
             field="tab_order")
     require(settings.get("entry_font", "standard") in ("standard", "embed"), "entry_font must be standard or embed",
-            field="entry_font")
-    require(settings.get("entry_font", "standard") == "standard",
-            "entry_font embed is not available yet; typed text uses Helvetica (flattened fills use the field font)",
             field="entry_font")
     if "title" in settings:
         require(isinstance(settings["title"], str) and len(settings["title"]) <= 500, "title is up to 500 characters",
@@ -515,7 +514,14 @@ def coerce(record, raw, group=None, rules=True):
     if kind == "signature":
         if raw in (None, ""):
             return None, ""
-        raise FieldValueError("invalid_format", "A signature field takes no value")
+        if not isinstance(raw, str):
+            raise FieldValueError("invalid_format", "A signature sample is text or a data:image/png;base64,... image")
+        if raw.startswith("data:"):
+            signature_image(raw)
+            return raw, ""
+        if "\n" in raw or "\r" in raw or len(raw) > MAX_SIGNATURE:
+            raise FieldValueError("invalid_format", f"A signature sample is one line of up to {MAX_SIGNATURE} characters")
+        return raw, raw
     if kind == "checkbox":
         if isinstance(raw, bool):
             value = raw
@@ -588,6 +594,90 @@ def coerce(record, raw, group=None, rules=True):
     if rules and record.get("pattern") and not pattern_matches(record["pattern"], text):
         raise FieldValueError("invalid_format", "The value does not match the field's pattern")
     return text, text
+
+
+MAX_SIGNATURE = 200
+MAX_SIGNATURE_IMAGE = 4 * 1024 * 1024
+
+
+@lru_cache(maxsize=8)
+def signature_image(uri):
+    """The RGBA image of a ``data:image/...;base64,`` signature sample; raises FieldValueError."""
+    import base64
+    import binascii
+
+    from PIL import Image
+
+    match = re.fullmatch(r"data:image/(png|jpeg|jpg|webp);base64,([A-Za-z0-9+/=\s]+)", uri)
+    if not match or len(match[2]) > MAX_SIGNATURE_IMAGE * 4 // 3 + 4:
+        raise FieldValueError("invalid_format", "A signature image is a data:image/png (or jpeg, webp) base64 URI of up "
+                              "to 4 MB")
+    try:
+        image = Image.open(io.BytesIO(base64.b64decode(match[2], validate=False)))
+        require(image.width * image.height <= 25_000_000, "Signature image is too large")
+        image.load()
+        return image.convert("RGBA")
+    except (binascii.Error, OSError, ValueError, VixlError, Image.DecompressionBombError) as exc:
+        raise FieldValueError("invalid_format", "The signature image cannot be read") from exc
+
+
+def reject_signature_samples(project, values):
+    """Signature samples are drawn into flattened fills only; a fillable PDF leaves signing to the viewer."""
+    signed = {layer["field"]["key"] for _, layer in all_fields(project) if layer["field"]["kind"] == "signature"}
+    keys = sorted(key for key, value in (values or {}).items() if key in signed and value not in (None, ""))
+    require(not keys, f"{', '.join(keys)}: a signature sample is drawn only in flattened fills (mode flatten, or "
+            "values= without fillable); a fillable PDF leaves signature fields for the viewer to sign", field="values")
+
+
+def signature_font(project, layer):
+    """The font a text signature sample is drawn in: the field's font when one was set on it,
+    otherwise a registered handwriting/script font (catalog category, or a family named script,
+    hand or signature) if the document has one, otherwise the field's font."""
+    if not layer.get("font_role"):
+        return layer["font"]
+    from .typefaces import find_font
+
+    for name, asset in sorted(project.state.get("fonts", {}).items()):
+        data = project.assets.get(asset)
+        if not data:
+            continue
+        try:
+            family = _font_names(data)[0]
+        except Exception:  # noqa: BLE001 - an unreadable font is simply not a candidate
+            continue
+        entry = find_font(family)
+        if (entry and entry["category"] == "handwriting") or re.search(r"script|hand|signature", family, re.I):
+            return name
+    return layer["font"]
+
+
+def _signature_parts(project, layer, value, display):
+    """The sample drawn in a signature field: an image fitted into the box, or text in
+    ``signature_font`` sized to the box."""
+    w, h = layer["width"], layer["height"]
+    pad = float(layer.get("padding", 0))
+    inner_w, inner_h = max(1.0, w - 2 * pad), max(1.0, h - 2 * pad)
+    if not display:
+        image = signature_image(value)
+        scale = min(inner_w / image.width, inner_h / image.height)
+        fitted = image.resize((max(1, round(image.width * scale)), max(1, round(image.height * scale))))
+        part = {"type": "sample-image", "image": fitted, "width": fitted.width, "height": fitted.height}
+        spare = inner_w - fitted.width
+        x = pad + {"center": spare / 2, "right": spare}.get(layer.get("align", "left"), 0)
+        return [(part, x, pad + (inner_h - fitted.height) / 2, None)]
+    styled = {**layer, "font": signature_font(project, layer)}
+    if styled["font"] != layer["font"]:
+        styled.pop("font_role", None)
+    size = max(1.0, min(inner_h * 0.75, float(layer.get("size", 16)) * 2.5))
+    measured = _measure(project, styled, display, size)
+    if measured.width > inner_w:
+        size = max(1.0, size * inner_w / measured.width)
+        measured = _measure(project, styled, display, size)
+    text = _text_layer(styled, display, size)
+    text.update(width=max(1, round(measured.width)), height=max(1, round(measured.height)))
+    align = layer.get("align", "left")
+    x = pad + ((inner_w - measured.width) / 2 if align == "center" else inner_w - measured.width if align == "right" else 0)
+    return [(text, x, (h - measured.height) / 2, (pad, pad, inner_w, inner_h))]
 
 
 def groups(fields):
@@ -973,7 +1063,9 @@ def parts(project, layer, *, values=True):
                                   path_view=[100, 100], fill="transparent", stroke=mark_color, stroke_width=12, line_cap="round")
                 result.append((glyph, (w - glyph["width"]) / 2, (h - glyph["height"]) / 2, None))
         return result
-    if not display or kind == "signature":
+    if kind == "signature":
+        return result + (_signature_parts(project, layer, value, display) if value not in (None, "") else [])
+    if not display:
         return result
     clip = (pad, pad, max(1.0, w - 2 * pad - chevron), max(1.0, h - 2 * pad))
     if record.get("comb"):
@@ -1013,7 +1105,10 @@ def field_image(project, layer):
     project.limits.size(w, h)
     image = Image.new("RGBA", (w, h))
     for part, x, y, clip in parts(project, layer):
-        tile = shape_image(project, part) if part["type"] == "shape" else text_image(project, part)
+        if part["type"] == "sample-image":
+            tile = part["image"]
+        else:
+            tile = shape_image(project, part) if part["type"] == "shape" else text_image(project, part)
         canvas = Image.new("RGBA", (w, h))
         _composite(canvas, tile, round(x), round(y))
         if clip:
@@ -1035,7 +1130,7 @@ def _composite(canvas, tile, x, y):
 
 def svg_field(exporter, parent, layer):
     """Static vector appearance of a field (with its current value) for SVG and HTML export."""
-    from .svg import node
+    from .svg import bitmap, node
 
     for part, x, y, clip in parts(exporter.project, layer):
         target = parent
@@ -1044,7 +1139,9 @@ def svg_field(exporter, parent, layer):
             target = node(parent, "svg", x=cx, y=cy, width=cw, height=ch, viewBox=f"{cx} {cy} {cw} {ch}", overflow="hidden")
         holder = node(target, "svg", x=x, y=y, width=part["width"], height=part["height"],
                       viewBox=f"0 0 {part['width']} {part['height']}", overflow="visible")
-        if not exporter.geometry(holder, part):
+        if part["type"] == "sample-image":
+            bitmap(holder, part["image"])
+        elif not exporter.geometry(holder, part):
             return False
     return True
 
@@ -1061,7 +1158,9 @@ def pdf_field_appearance(builder, layer, w, h):
             cx, cy, cw, ch = clip
             builder.ops.append(f"{_fmt(cx)} {_fmt(cy)} {_fmt(cw)} {_fmt(ch)} re W n")
         builder.ops.append(matrix_ops(affine(1, 0, 0, 1, x, y)))
-        if part["type"] == "shape":
+        if part["type"] == "sample-image":
+            builder.place_image(part["image"], affine(), (0, 0, part["width"], part["height"]))
+        elif part["type"] == "shape":
             builder.shape(part, part["width"], part["height"], layer["opacity"])
         else:
             builder.text(part, layer["opacity"])
@@ -1333,12 +1432,20 @@ def check_form(candidate, resolved, local_bounds, projection, layers, issue, sam
                   "with text", [item])
         if record["kind"] == "radio" and not any(m["field"].get("group_label") for m in all_group(candidate, record["key"])):
             issue("form", "error", f"Radio group {record['key']!r} needs a group_label (the question it asks)", [item])
-        if settings["entry_font"] == "standard":
-            texts = [str(record["default"])] if "default" in record and isinstance(record["default"], str) else []
-            texts += [str(option_label(record, v)) for v in option_values(record)] + option_values(record)
-            if any(not winansi(text) for text in texts):
-                issue("form", "error", f"{item['name']!r} has a default or option the standard entry font (Helvetica, "
-                      "Western European characters) cannot show", [item])
+        texts = [str(record["default"])] if "default" in record and isinstance(record["default"], str) else []
+        texts += [str(option_label(record, v)) for v in option_values(record)] + option_values(record)
+        if any(not winansi(text) for text in texts):
+            entry = "standard entry font (Helvetica" if settings["entry_font"] == "standard" else "embedded entry font ("
+            issue("form", "error", f"{item['name']!r} has a default or option the {entry}"
+                  "Western European characters) cannot show", [item])
+        if settings["entry_font"] == "embed" and record["kind"] in TEXT_KINDS + ("dropdown",):
+            from .pdf_forms import entry_font_problem
+            from .text import primary_font_data
+
+            problem = entry_font_problem(primary_font_data(candidate, _text_layer(item, "", 16)))
+            if problem:
+                issue("form", "warning", f"{item['name']!r} will be typed in Helvetica in the fillable PDF: its font "
+                      f"cannot be embedded ({problem})", [item])
         size = float(item.get("size", 16)) * projection["scales"][item["id"]]
         if record["kind"] in TEXT_KINDS + ("dropdown",):
             inner = box[3] - 2 * float(item.get("padding", 0)) * projection["scales"][item["id"]]
