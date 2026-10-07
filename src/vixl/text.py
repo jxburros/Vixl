@@ -268,10 +268,13 @@ def bidi_runs(text):
     return [(result[i][0], "".join(c["ch"] for c in result[i][1])) for i in order]
 
 
+char_script = lru_cache(maxsize=4096)(script)  # One lookup per distinct character, not per character.
+
+
 def script_tags(chars):
     """Each character's script; common and inherited characters (spaces, digits, marks) take the script before
     them, or after them at the start, or Latin."""
-    tags = [script(char) for char in chars]
+    tags = [char_script(char) for char in chars]
     for i, tag in enumerate(tags):
         if tag in INHERITED_SCRIPTS:
             # Everything before i is resolved already, so the nearest script on the left is the previous one.

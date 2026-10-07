@@ -83,6 +83,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | BLK-16 | Relink the links in a copied `.vixl` | `links-relink {from, to}` | 1 · <1 | E | Since 0.22; sources beside the document are stored relative to it. |
 | DOC-31 | Import an image from a URL with its credit and licence | `vixl_import_image(url=…, credit, license)` | 1 · <1 | E | Since 0.22; https only, private hosts refused. |
 | DOC-32 | Merge layers into one, or flatten the page | `merge-layers`, `flatten` | 1 · <1 | E | Since 0.22; undo restores the originals. |
+| DOC-33 | Edit a document of thousands of layers one operation at a time, or send a 10,000-operation batch | `vixl_operations_apply` | 1 · <1 | E | Since 0.23 an edit lays out only the layers it depends on; was seconds per edit and minutes per batch (#284, #300). |
 
 ### Text and typography
 
@@ -97,6 +98,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | TXT-07 | Read text metrics (ink box, baseline, cap height, x-height) | `vixl_measure`, `info --target TEXT` | 1 · <1 | E | |
 | TXT-08 | Warp text (arc, flag, wave …) or set it along a path | `text` with `warp` / polyline placement | 1 · <1 | E | Outlined warp presets export as vectors. |
 | TXT-09 | Define and apply a linked character/paragraph style | `style-define`, `style-apply` | 2 · <1 | E | |
+| TXT-10 | Flow a very long text (100,000 characters, even one unbroken word) through columns | `text-flow` | 1 · <1 | E | Since 0.23; a 100,000-character word took about 6 minutes (#335). |
 | BLK-08 | Place text by its baseline | `baseline_y` on text/move, `align` `baseline`, `snap` to a baseline grid | 1 · <1 | E | Since 0.22. |
 
 ### Color

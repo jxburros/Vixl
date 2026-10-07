@@ -14,3 +14,7 @@ Commit messages, generated pull requests, issue text and generated artwork shoul
 - Update after an intended render change: `VIXL_UPDATE_GOLDEN=1 pytest tests/visual`, review the changed files in `tests/visual/golden` (`git diff --stat`, open the PNGs), and commit them in the same commit as the change. Do not update references to silence an unexplained difference.
 - New fixtures: add a builder to `tests/visual/visual_fixtures.py` (canvas at most 256 px), then generate its references as above.
 - References are generated on Linux, because text rasterization differs across operating systems and FreeType versions. The suite is skipped on other platforms; set `VIXL_VISUAL=1` to run it anyway (expect text differences). CI runs it in a dedicated Linux job.
+
+## Performance tests
+
+`tests/test_perf.py` (marker `perf`, so `pytest -m perf` runs only these) gives the paths that once grew with the document a time budget: one move on 4,096 layers, a batch of moves, the overlap check on dense text and a 100,000-character text flow. They run in the default suite and take a few seconds each. A budget is several times what the code needs on a loaded CI runner and far below what the old behaviour took; when a speed claim goes into the changelog, add or tighten a budget here instead of quoting a number. Caches that make these fast need a test that changes each input the cached value reads (see `tests/test_apply_speed.py`).
