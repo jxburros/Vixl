@@ -483,10 +483,38 @@ def entry(kind):
 
 
 def _directed(result, kind, seed, variety, workspace):
+    """Attach a rolled direction drawn with the kind's recommendations, and say which choices are in them.
+
+    The roll favours the kind's layouts, looks and styles where the variety level allows their tier
+    (at ``low`` only safe entries roll), so a recommendation outside the roll is an opt-in alternative,
+    and ``recommendations`` says so for each list instead of leaving two directions to reconcile."""
     if kind not in NO_DIRECTION:
+        from .house_style import tier_of
         from .typefaces import roll_document
 
-        result["direction"] = roll_document(workspace=workspace, seed=seed, variety=variety, purpose=kind)
+        item = KINDS[kind]
+        recommend = {"layouts": item["layouts"], "looks": item["looks"], "styles": item["styles"]}
+        direction = roll_document(workspace=workspace, seed=seed, variety=variety, kind=kind, recommend=recommend)
+        result["direction"] = direction
+        if direction.get("house_style_version", 1) > 1:
+            chosen = direction["direction"]
+            purpose = direction.get("purpose")
+            notes = {}
+            for key, kind_name in (("layouts", "layout"), ("looks", "look"), ("styles", "style")):
+                pick = chosen.get(kind_name)
+                notes[key] = {
+                    "rolled": pick,
+                    "in_recommendations": pick in recommend[key],
+                    "alternatives": [{"name": name, "tier": tier_of(key, name, purpose)}
+                                     for name in recommend[key] if name != pick],
+                }
+            result["recommendations"] = {
+                "note": "The direction is one seeded roll from the house style for this purpose and variety level, "
+                        "favouring the recommended layouts, looks and styles where the level allows their tier. "
+                        "The other recommendations are opt-in alternatives: lock one (locks={layout: NAME}) or raise "
+                        "the variety level to roll bolder tiers.",
+                **notes,
+            }
     return result
 
 

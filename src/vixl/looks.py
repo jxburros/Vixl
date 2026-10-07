@@ -230,9 +230,10 @@ LOOKS = {
 
 
 def catalog():
-    from .safe_catalog import SAFE_LOOKS
+    from .house_style import tier_of
 
-    return {name: {"summary": summary, "svg": svg, "best_for": best, "safe": name in SAFE_LOOKS}
+    return {name: {"summary": summary, "svg": svg, "best_for": best, "tier": tier_of("looks", name),
+                   "safe": tier_of("looks", name) == "safe"}
             for name, (_, summary, svg, best) in LOOKS.items()}
 
 

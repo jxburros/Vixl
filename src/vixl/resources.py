@@ -15,7 +15,7 @@ from .assets import read_bounded
 from .design import named
 from .errors import require
 from .guidance import GUIDANCE
-from .safe_catalog import SAFE_PALETTES
+from . import house_style
 
 PALETTES = {
     "midnight": ["#101828", "#344054", "#667085", "#e4e7ec", "#f9fafb"],
@@ -51,7 +51,8 @@ PALETTES = {
     "peach": ["#5c374c", "#985277", "#ce6a85", "#ff8c61", "#ffd6a5"],
     "sage": ["#344e41", "#3a5a40", "#588157", "#a3b18a", "#dad7cd"],
 }
-PALETTES.update({name: colors for name, (_, colors) in SAFE_PALETTES.items()})
+# The house-style palettes (safe, dark, saturated, duotone, earthy, bold and avant-garde) by name.
+PALETTES.update(house_style.palette_colors())
 
 
 def template(width, height, operations, description):

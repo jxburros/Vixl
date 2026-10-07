@@ -480,8 +480,14 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         return result
 
     @tool
-    def vixl_resource_get(kind: Literal["palettes", "templates", "guidance"], name: str) -> dict:
-        """Read a named palette, template or guidance text (also vixl_guide(brief=NAME)) before applying it."""
+    def vixl_resource_get(kind: Literal["palettes", "templates", "guidance", "house-style"], name: str) -> dict:
+        """Read a named palette, template or guidance text (also vixl_guide(brief=NAME)) before applying it.
+        kind house-style reads the built-in default brand: name 'all' for craft rules, tiers and levels, or a
+        purpose (poster, social, slides, document, form, diagram, logo, motion) for its profile."""
+        if kind == "house-style":
+            from .house_style import show
+
+            return {"name": name, "value": show(None if name in ("", "all", "default") else name)}
         from .resources import get
 
         return {"name": name, "value": get(kind, name)}

@@ -1,34 +1,14 @@
-"""Curated broad-use defaults. Specialized catalog entries remain available explicitly."""
+"""Curated broad-use defaults, read from the house style (``house_style``). Specialized entries remain available by name."""
 
-SAFE_PALETTES = {
-    "chalk-indigo": ("cool", ["#f7f8fc", "#e6e9f4", "#20283d", "#5267aa", "#9faed5"]),
-    "linen-teal": ("calm", ["#faf7f0", "#e8e2d7", "#203c3b", "#247b78", "#aacac2"]),
-    "clay-navy": ("warm", ["#faf5ef", "#eedbcc", "#243649", "#a75c45", "#c99b85"]),
-    "cloud-blue": ("corporate", ["#f8fbfd", "#e2edf5", "#193b57", "#346f9f", "#a0c0d7"]),
-    "oat-olive": ("natural", ["#faf8ed", "#e5e2c8", "#303a27", "#687746", "#b5be96"]),
-    "rose-charcoal": ("soft", ["#fff8f8", "#f1dddd", "#393239", "#9b5369", "#d3a1b0"]),
-    "mist-pine": ("calm", ["#f3f9f6", "#dce9e2", "#1f3830", "#38745e", "#9ebfac"]),
-    "ivory-cobalt": ("modern", ["#fffdf4", "#eeeadc", "#233048", "#375ead", "#abbce0"]),
-    "sand-terracotta": ("earthy", ["#fcf7ef", "#eee0cc", "#433326", "#a4593c", "#cd9b7b"]),
-    "pearl-plum": ("elegant", ["#fbf9fc", "#e9e1ed", "#35283e", "#785687", "#bea7c8"]),
-    "frost-slate": ("minimal", ["#f9fbfc", "#e5ebef", "#28343d", "#536f85", "#adbfca"]),
-    "warm-graphite": ("neutral", ["#fbf9f5", "#eae5dd", "#333230", "#796c5a", "#c4b8a5"]),
-    "cream-marigold": ("friendly", ["#fffbed", "#f4e9c2", "#423b25", "#927019", "#ddbd62"]),
-    "sea-glass": ("fresh", ["#f6fbfa", "#dcedea", "#214441", "#408980", "#a7cfca"]),
-    "quiet-lilac": ("soft", ["#faf9ff", "#e9e5f5", "#353049", "#776b9f", "#beb5d8"]),
-    "paper-rust": ("crafted", ["#fcf8f1", "#eee3d3", "#3c3028", "#955431", "#cba181"]),
-    "porcelain-ink": ("editorial", ["#fffffb", "#eeeee7", "#23252b", "#485667", "#a9b2b8"]),
-    "sky-umber": ("clean", ["#f6fafc", "#dfeaf1", "#32393e", "#826149", "#bec9cf"]),
-    "stone-berry": ("modern", ["#faf8f6", "#e8e4e0", "#343039", "#895a73", "#c1a6b5"]),
-    "almond-forest": ("natural", ["#fcf8ef", "#eae0cd", "#26372c", "#507157", "#aab99b"]),
-}
-SAFE_STYLES = {"minimalist", "corporate-flat", "editorial", "swiss", "material", "line-art"}
-SAFE_LOOKS = {"soft-shadow", "grain", "paper", "outline", "gradient", "clean-flat", "subtle-grain", "light-paper"}
-SAFE_PAIRINGS = {"source-serif-sans", "ibm-plex-serif-sans", "inter-single-ui", "public-sans-single",
-                 "inter-tight-inter", "roboto-slab-roboto", "roboto-material", "work-sans-bitter",
-                 "montserrat-open-sans", "rubik-karla", "poppins-lora", "lexend-atkinson",
-                 "merriweather-source-sans-civic", "lora-source-sans", "zilla-slab-fira-sans",
-                 "noto-serif-sans-global", "literata-single-reading", "eb-garamond-single"}
+from . import house_style
+
+# Version 1 safe palettes (name: (mood, colors)): the pool that layout-apply without a palette, templates
+# and house-style version 1 rolls draw from. Version 2 rolls draw from the tiered pools in the house style.
+SAFE_PALETTES = {name: (house_style.entries("palettes")[name]["mood"][0], house_style.palette_colors()[name])
+                 for name in house_style.legacy(1)["palettes"]}
+SAFE_STYLES = set(house_style.names("styles", "safe"))
+SAFE_LOOKS = set(house_style.names("looks", "safe"))
+SAFE_PAIRINGS = set(house_style.names("pairings", "safe"))
 
 
 def safe_pairing(entry):
@@ -39,10 +19,16 @@ def safe_pairing(entry):
 def palette_metadata():
     from .resources import PALETTES
 
-    return {name: {"safe": name in SAFE_PALETTES,
-                   "mood": [SAFE_PALETTES[name][0]] if name in SAFE_PALETTES else [],
-                   "criteria": "Restrained color roles; ink contrast verified after role assignment"}
-            for name in PALETTES}
+    meta = house_style.entries("palettes")
+    rows = {}
+    for name in PALETTES:
+        item = meta.get(name, {})
+        tier = item.get("tier", "explicit")
+        rows[name] = {"tier": tier, "safe": tier == "safe", "mood": item.get("mood", []),
+                      **({"family": item["family"]} if "family" in item else {}),
+                      "modes": list(house_style.palette_modes(name)),
+                      "criteria": "Color roles assigned with contrast checks: ink 7:1, muted and accent text 4.5:1"}
+    return rows
 
 
 def catalog():
@@ -58,5 +44,9 @@ def catalog():
                            for name, item in resources("containers").items()},
             "templates": {name: {"safe": item.get("safe", False), "description": item.get("description")}
                           for name, item in resources("templates").items()},
+            "tiers": {tier: house_style.data()["taste"]["tier_notes"][tier] for tier in (*house_style.TIERS, "explicit")},
+            "levels": {name: house_style.level(name)["summary"] for name in ("low", "medium", "high", "fixed")},
             "policy": "Fresh seeds by default; explicit seed reproduces choices and ignores recent history. "
-                      "Explicit choices and brand defaults win. Fonts are recommended; installation remains explicit."}
+                      "Precedence: explicit field > brand.json > purpose profile > document design_defaults > seeded roll. "
+                      "The variety level gates the tiers (low: safe only; medium: mostly safe; high: every tier). "
+                      "Fonts are recommended; installation remains explicit."}

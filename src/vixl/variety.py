@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import random
 
+from . import house_style
 from .errors import require
 from .safe_catalog import SAFE_PALETTES
 
@@ -32,9 +33,30 @@ def settings(workspace=None):
     from .assets import read_bounded
 
     result = json.loads(read_bounded(path, 16384))
-    require(isinstance(result, dict) and set(result) <= {"variety", "seed"}, "Variety settings accept variety and seed")
+    require(isinstance(result, dict) and set(result) <= {"variety", "seed", "house_style"},
+            "Variety settings accept variety, seed and house_style")
     require(result.get("variety", "medium") in VARIETIES, "Invalid workspace variety")
+    from .house_style import versions
+
+    require(result.get("house_style", versions()[-1]) in versions(),
+            f"house_style must be one of {versions()} (the house-style version new documents use)")
     return result
+
+
+def house_style_version(project=None, version=None, workspace=None):
+    """The house-style version to roll with: an explicit one, then the document's stored one, then the
+    workspace setting (``.vixl/variety.json`` ``house_style``), then the current version."""
+    from . import house_style
+
+    if version is None and project is not None:
+        version = project.state.get("design_defaults", {}).get("house_style_version")
+    if version is None:
+        workspace = workspace or (getattr(project, "_workspace", None) if project else None)
+        version = settings(workspace).get("house_style")
+    version = version or house_style.VERSION
+    require(version in house_style.versions(), f"house_style_version must be one of {house_style.versions()}",
+            field="house_style_version")
+    return version
 
 
 def seed_for(project=None, seed=None, variety=None, workspace=None):
@@ -90,41 +112,125 @@ def remember(workspace, result):
                 os.unlink(staged)
 
 
-def choose(rng, pool, recent, key):
+def choose(rng, pool, recent, key, weights=None):
+    """A weighted pick that avoids repeating recent choices. ``weights`` (name: weight) defaults to 1."""
     pool = list(pool)
     counts = Counter(str(row.get(key)) for row in recent)
     # Never repeat the immediately preceding choice when another safe choice is available.
     previous = str(recent[-1].get(key)) if recent else None
     available = [x for x in pool if str(x) != previous] or pool
-    return rng.choices(available, weights=[1 / (1 + counts[str(x)]) ** 2 for x in available], k=1)[0]
+    base = weights or {}
+    return rng.choices(available, weights=[base.get(x, 1) / (1 + counts[str(x)]) ** 2 for x in available], k=1)[0]
 
 
-def dimensions(rng, pairing, variety="medium"):
+def orientation(width, height):
+    """The canvas shape the layouts use: wide, landscape, square, portrait or tall."""
+    aspect = width / height
+    return ("wide" if aspect >= 2.2 else "tall" if aspect <= 0.45 else "landscape" if aspect > 1.15
+            else "portrait" if aspect < 0.87 else "square")
+
+
+def tier_weights(variety, moods=()):
+    """Tier weights for a variety level; expressive moods lean bold, quiet moods lean safe."""
+    from . import house_style
+
+    weights = dict(house_style.level(variety)["tiers"])
+    tuning = house_style.moods()
+    moods = set(moods or ())
+    for group in ("expressive", "quiet"):
+        if moods & set(tuning[group]):
+            scale = tuning[f"{group}_tier_scale"]
+            weights = {tier: value * scale.get(tier, 1) for tier, value in weights.items()}
+    return {tier: value for tier, value in weights.items() if value > 0}
+
+
+def pick_tier(rng, variety, moods=()):
+    weights = tier_weights(variety, moods)
+    tiers = [tier for tier in ("safe", "bold", "avant-garde") if tier in weights]
+    return rng.choices(tiers, weights=[weights[tier] for tier in tiers], k=1)[0]
+
+
+def tier_pool(kind, tier, purpose, fits=lambda name: True):
+    """Sorted entries of ``kind`` in ``tier`` (as ``purpose`` sees them) that ``fits`` accepts. When the tier
+    has none, the next quieter tier is used, then the bolder ones; ``explicit`` entries are never rolled."""
+    from . import house_style
+
+    order = {"safe": ("safe", "bold", "avant-garde"), "bold": ("bold", "safe", "avant-garde"),
+             "avant-garde": ("avant-garde", "bold", "safe")}[tier]
+    names = house_style.entries(kind)
+    for candidate in order:
+        pool = sorted(name for name in names if house_style.tier_of(kind, name, purpose) == candidate and fits(name))
+        if pool:
+            return pool
+    return []
+
+
+def _weighted(rng, weights):
+    names = sorted(name for name, value in weights.items() if value > 0)
+    return rng.choices(names, weights=[weights[name] for name in names], k=1)[0]
+
+
+def dimensions(rng, pairing, variety="medium", *, tier="safe", purpose=None, moods=(), recommend=None):
+    """The finishing choices of a roll: component, motif, look and its amount, style, corner, margin and
+    background treatment, from the house style for this tier, level and purpose."""
+    from . import house_style
     from .resources import catalog
 
+    recommend = recommend or {}
     entries = catalog("containers")
     containers = sorted(name for name, item in entries.items() if item.get("safe")) or sorted(entries)
-    editorial = bool({"editorial", "academic", "classic"} & set(pairing.get("mood", [])))
     container = rng.choice(containers)
     variants = entries[container].get("variants") or {"default": {}}
+    settings = house_style.level(variety)
+    profile = house_style.profile(purpose)
+    tuning = house_style.moods()
+    rank = {"safe": 0, "bold": 1, "avant-garde": 2}
+
+    def mood_weight(meta):
+        return tuning["match_weight"] if set(moods) & set(meta.get("mood", [])) else 1
+
+    look_meta = house_style.entries("looks")
+    looks = {name: weight * mood_weight(look_meta.get(name, {})) * (3 if name in recommend.get("looks", []) else 1)
+             for name, weight in profile["look"]["weights"].items()
+             if name == "none" or rank.get(house_style.tier_of("looks", name, purpose), 9) <= rank[tier]}
+    look = _weighted(rng, looks or {"none": 1})
+    amount = 0 if look == "none" else round(profile["look"]["amount"] * settings["look_scale"], 3)
+    style_meta = house_style.entries("styles")
+    styles = tier_pool("styles", tier, purpose)
+    prefer = set(profile["styles"]["prefer"]) | set(recommend.get("styles", []))
+    editorial = bool({"editorial", "academic", "classic"} & set(pairing.get("mood", [])))
+    style = _weighted(rng, {name: (profile["styles"]["weight"] if name in prefer else 1) * mood_weight(style_meta[name])
+                            * (3 if editorial and name == "editorial" else 1) for name in styles})
+    treatments = profile["treatments"].get(variety if variety != "fixed" else "medium") or settings["treatments"]
+    craft = house_style.craft()
     return {"container": container, "container_variant": rng.choice(sorted(variants)),
-            "motif": rng.choice(["none", "rule", "ellipse", "rectangle"] if variety == "high" else ["none", "rule", "ellipse"]),
-            "look": rng.choice(["none", "soft-shadow"] if variety in ("low", "fixed") else ["none", "soft-shadow", "subtle-grain", "light-paper"]),
-            "style": "editorial" if editorial else rng.choice(["minimalist", "corporate-flat"]),
+            "motif": _weighted(rng, settings["motifs"]),
+            "look": look,
+            "look_amount": amount,
+            "style": style,
             "weight_contrast": "strong" if pairing["heading"]["weight"] - pairing["body"]["weight"] >= 300 else "moderate",
-            "margin": rng.choice([0.07, 0.085, 0.10]),
-            "corner": rng.choice(["sharp", "soft"] if editorial else ["sharp", "soft", "round", "pill"]),
-            "background_treatment": rng.choice(["flat", "gradient"] if variety != "high" else ["flat", "gradient", "split", "pattern"]),
-            "color_assignment": rng.choice(["light", "light", "dark"])}
+            "margin": rng.choice(craft["margins"]),
+            "corner": style_meta[style].get("corner", craft["corner"]),
+            "background_treatment": _weighted(rng, treatments),
+            "color_assignment": "light"}
 
 
-def document_defaults(project, *, seed=None, variety=None, workspace=None):
+def document_defaults(project, *, seed=None, variety=None, workspace=None, purpose=None, house_style_version=None):
+    """Roll and store a new document's ``design_defaults``: the seed, variety level, purpose (explicit, else
+    from the named size), the rolled direction and the ``house_style_version`` that made it. The stored
+    direction is what later layouts inherit, so a changed house style never reaches existing documents."""
+    from .house_style import resolve_purpose
     from .typefaces import roll_document
 
     if workspace is not None:
         project._workspace = str(Path(workspace).resolve())
-    result = roll_document(project, workspace=workspace, seed=seed, variety=variety)
+    purpose, source = resolve_purpose(purpose, size=project.state.get("canvas", {}).get("size"))
+    result = roll_document(project, workspace=workspace, seed=seed, variety=variety, purpose=purpose,
+                           house_style_version=house_style_version)
     project.state["design_defaults"] = {"seed": result["seed"], "variety": result["variety"],
+                                        "house_style_version": result["house_style_version"],
+                                        **({"purpose": result.get("purpose") or purpose} if purpose else {}),
+                                        **({"purpose_source": source} if purpose else {}),
                                         "direction": deepcopy(result["direction"])}
     record_as_creation(project, "Choose reproducible design defaults")
     return project.state["design_defaults"]
@@ -200,10 +306,11 @@ def apply_direction(project, builder, direction):
         project.state["layers"].insert(project.state["layers"].index(background) + 1, detail)
         builder.created.append(name)
     corner = direction.get("corner", "soft")
-    require(corner in ("sharp", "soft", "round", "pill"), "Unknown corner style", field="direction")
+    scale = house_style.craft("corner_scale")
+    require(corner in scale, "Unknown corner style", field="direction")
     for layer in own:
         if layer.get("shape") in ("rectangle", "rounded-rectangle") and layer is not background:
-            amount = {"sharp": 0, "soft": 0.08, "round": 0.25, "pill": 0.5}[corner]
+            amount = scale[corner]
             radius = min(layer["width"], layer["height"]) * amount
             layer.update(shape="rounded-rectangle" if radius else "rectangle", radius=radius)
     motif = direction.get("motif", "none")
@@ -218,14 +325,33 @@ def apply_direction(project, builder, direction):
         builder.created.append(name)
     look = direction.get("look", "none")
     if look != "none":
-        targets = ([background] if look in ("grain", "paper", "subtle-grain", "light-paper") else
-                   [layer for layer in own if layer.get("shape") == "rounded-rectangle"])
-        for layer in targets:
-            if layer:
-                execute(project, {"type": "look", "target": layer["id"], "look": look, "amount": 0.1})
+        # Directions rolled before house-style version 2 carry no amount and keep their faint 0.1.
+        amount = direction.get("look_amount", house_style.legacy(1)["look_amount"])
+        for layer, color in _look_targets(project, builder, own, background, look):
+            execute(project, {"type": "look", "target": layer["id"], "look": look, "amount": amount,
+                              **({"color": color} if color else {})})
     if direction.get("style"):
         for operation in apply_operations(direction["style"], palette=False):
             execute(project, operation)
+
+
+def _look_targets(project, builder, own, background, look):
+    """Where a rolled look goes: texture looks on the background; shadow, outline and glow looks on the solid
+    shapes (buttons, panels, blocks; not hairline rules or full-canvas fields), where they read as a finish
+    without touching the text."""
+    from . import house_style
+
+    meta = house_style.entries("looks").get(look, {})
+    if meta.get("target", "background" if look in ("grain", "paper", "subtle-grain", "light-paper") else "shapes") == "background":
+        return [(background, None)] if background else []
+    minimum = max(4, builder.unit)
+    shapes = [layer for layer in own if layer.get("type") == "shape" and layer is not background
+              and layer.get("shape") in ("rectangle", "rounded-rectangle", "ellipse")
+              and min(layer.get("width", 0), layer.get("height", 0)) >= minimum
+              and layer.get("width", 0) * layer.get("height", 0) < builder.W * builder.H * 0.6]
+    # The house shadow is a solid offset in the ink colour, so it reads in light and dark mode alike.
+    color = "@ink" if look in ("hard-shadow", "outline") else None
+    return [(layer, color) for layer in shapes]
 
 
 def _compose_component(project, builder, direction):
