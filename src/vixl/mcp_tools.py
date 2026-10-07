@@ -1048,7 +1048,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         size: Annotated[str | None, Field(description="Named size (vixl_sizes_list), or give width and height")] = None,
         width: Positive | None = None,
         height: Positive | None = None,
-        background: str = "transparent",
+        background: Annotated[str | None, Field(description="Canvas color (default transparent); a layout keeps it")] = None,
         font_pairing: Annotated[str | None, Field(description="vixl_font_pair name or 'random'")] = None,
         layout: Annotated[dict | None, Field(description="layout-apply fields: {name, seed?, title, subtitle, …}")] = None,
         style: Annotated[str | None, Field(description="Style to tag (vixl_styles)")] = None,

@@ -97,8 +97,10 @@ passing suite proves only its own rules. Rule fields: `vixl_workflow_schema().de
 check=true, preview=true, exports=[…])` (CLI `vixl compose --request req.json --preview p.png`) runs steps 1–5
 atomically: nothing is saved or exported unless every step succeeds, and an error carries `step`
 (request, create, fonts, layout, style, look, operations, check, preview, save, export). `strict=true` refuses to
-save while `check` has `fix` findings; `dry_run=true` builds, checks and previews without writing. Keep editing the
-result with `vixl_operations_apply`.
+save while `check` has `fix` findings; `dry_run=true` builds, checks and previews without writing. Layout `image`/`images`
+take workspace paths or https URLs (one-call memes); `background` survives the layout; `style` sets the layout's
+alignment and palette and installs its font pairing where you left them open. Keep editing the result with
+`vixl_operations_apply`.
 
 ## Creative and collaborative studio
 

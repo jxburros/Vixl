@@ -128,7 +128,8 @@ rearranged, `layout.notes` says how to take control:
   `@accent`). Nothing is lightened or darkened to suit a mode; mode follows the first color. `@ink` is not part of that
   order, so it is derived from the background hue for 7:1 contrast, and `@muted`, `@accent-text` and `@on-accent` are derived
   from it.
-- `colors: {background: "#0f172a", accent: "#38bdf8"}` sets individual roles and wins over everything else.
+- `colors: {background: "#0f172a", accent: "#38bdf8"}` sets individual roles and wins over everything else. A given
+  `background` also sets the mode (dark or light from its lightness), and the other roles are chosen to read on it.
 
 `palette-apply` works the same way (`roles` true/false or `{role: color-or-palette-index}`, `keep_order`) and records the
 mapping as `palette_roles` in the apply result. `palette-generate` never assigns roles; it only adds numbered swatches.

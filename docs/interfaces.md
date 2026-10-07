@@ -180,6 +180,17 @@ the create → apply → check → preview → export round trips:
  "check": true, "preview": true, "exports": ["launch/card.png", {"path": "launch/card.pdf", "color_space": "cmyk"}]}
 ```
 
+The `layout`'s `image` and `images` slots take a workspace path or an `https://` URL as well as an asset id, so a
+meme or photo card is one call (`{"name": "meme-top-bottom", "image": "memes/cat.jpg", "title": "…"}`). Paths stay
+inside the workspace and URLs go through the same fetch policy and byte and pixel limits as `vixl_import_image`; the
+layout step lists what it embedded under `imported` (path or url, sha256). A `background` is kept when a layout runs:
+it becomes the layout's background role, with the text and accents chosen to read on it (`transparent` keeps the
+layout from painting one); a layout's own `colors.background` or `transparent` wins. A `style` shapes what the call
+leaves open: the alignment its text-align rule asks for, its first palette (unless the workspace brand sets one), a
+dark mode when it asks for a dark background, and, without `font_pairing`, workspace fonts or a layout `font`, its
+first font pairing (a pairing that cannot be downloaded is noted under `fonts` and the call goes on). The layout step
+reports these under `from_style`, so `check` with the style's rules passes on the result.
+
 The steps run in that order on an unsaved document. The `.vixl` is written only when every step succeeded and the
 exports only after it; a failed export removes the document and the files the call wrote. Export targets (the
 `vixl_export_batch` options) are validated before anything is built, so an existing file fails at once. An error keeps
