@@ -632,7 +632,7 @@ Each decision above is tracked in #388.
 | D7 | #397 (comment) | Diagrams follow the palette and mode |
 | E7 | #398 (comment) | Templates proportional to the canvas |
 | G1 | #366 (comment) | Keep the chart defaults; fix uneven auto labels |
-| G3 | #396 (comment) | Alpha  everywhere; quality 90 |
+| G3 | #396 (comment) | Alpha `auto` everywhere; quality 90 |
 | C8, D4, D6, F2 | none | Kept as they are: heading weights and uppercase labels, the AA contrast floor with the ink nudge, palette-first chart colours, look amount 0.5 |
 
 ---
