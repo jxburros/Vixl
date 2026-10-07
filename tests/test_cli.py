@@ -128,6 +128,31 @@ def test_check_command_reports_and_strict_mode_fails(tmp_path):
     assert strict.returncode != 0 and json.loads(strict.stderr)["error"] == "design_check_failed"
 
 
+def test_dry_run_reports_the_ids_the_apply_creates(tmp_path, monkeypatch, capsys):
+    from vixl.cli import main
+
+    monkeypatch.chdir(tmp_path)
+    Project(200, 100, "white").save(tmp_path / "batch.vixl")
+    ops = [{"type": "text", "text": "Hello", "name": "hello"}, {"type": "solid", "name": "bg", "color": "#eee"},
+           {"type": "duplicate", "target": "hello"}]
+    (tmp_path / "ops.json").write_text(json.dumps(ops))
+    capsys.readouterr()
+
+    def created(*extra):
+        assert main(["-p", "batch.vixl", "--detail", "brief", "apply", "ops.json", *extra]) == 0
+        return set(json.loads(capsys.readouterr().out)["changes"]["layers"])
+
+    planned = created("--dry-run")
+    assert len(planned) == 3 and created() == planned
+    assert {layer["id"] for layer in Project.load(tmp_path / "batch.vixl").state["layers"]} == planned
+    p = Project(100, 100)
+    unnamed = [{"type": "solid", "color": "#eee"}]
+    first, second = (set(p.apply(unnamed, detail="brief")["changes"]["layers"]) for _ in range(2))
+    assert first and second and not first & second  # the same batch on a new revision gets new IDs
+    assert set(p.apply(ops, dry_run=True, detail="brief")["changes"]["layers"]) == set(
+        p.apply(ops, detail="brief")["changes"]["layers"])
+
+
 def test_layers_listing_abbreviates_path_data(tmp_path, monkeypatch, capsys):
     from vixl.cli import main
 

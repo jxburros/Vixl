@@ -21,7 +21,9 @@ See [design tools and template production](design-tools.md) for groups, clipping
 ]}
 ```
 
-`Project.apply` accepts a single operation, an array, or an `operations` envelope. The complete batch succeeds or none of its state/assets/history changes do. File reads may occur during validation; dry-run never saves or changes the live project. Dry-run returns the same before/after document changes that a real apply would make. Generated IDs in separate dry-run and apply calls need not match.
+`Project.apply` accepts a single operation, an array, or an `operations` envelope. The complete batch succeeds or none of its state/assets/history changes do. File reads may occur during validation; dry-run never saves or changes the live project. Dry-run returns the same before/after document changes that a real apply would make. A dry run reports the layer, page and effect IDs the apply then creates, as long as the document and the batch are
+the same (IDs are drawn from the revision, the existing layers and the batch); the same batch on a later revision gets
+new IDs.
 
 Operations are normalized before validation (see [interfaces](interfaces.md#forgiving-input-and-actionable-errors)): legacy `operation`/`layer` keys, type aliases (`set_opacity`, `rect`, `circle`, `add-text`, `drop_shadow`, …), camelCase keys, field aliases (`font_size`, `fill`/`color`), opacity percentage strings and CSS colors. Each rewrite is reported in the result's `normalized` list. Geometry fields `x`/`y` accept pixels, `"center"` or `"N%"`; `width`/`height` accept pixels or `"N%"`, relative to the canvas or the target's parent group. Unknown fields (also inside an `adjustment`'s `effects`), invalid values, malformed dimensions, nonfinite numbers, and unknown types are rejected, with the failing operation index, field, allowed values and suggestions in the error.
 

@@ -10,6 +10,7 @@ import math
 import os
 from pathlib import Path
 import re
+import uuid
 import zipfile
 
 from . import __version__, calls
@@ -343,7 +344,7 @@ class Project:
     def _record(self, operations, label=None):
         if len(self.nodes) >= self.limits.max_history:
             self._prune()
-        ident = uid("rev")
+        ident = uid("rev", fresh=True)
         self.nodes[ident] = self._node(ident, self.head, operations, label, self.state, self._head_state)
         self.head = ident
         self._head_state = deepcopy(self.state)
@@ -396,6 +397,24 @@ class Project:
         )
 
     def apply(self, operations, *, dry_run=False, detail="full", check=None):
+        from .model import seeded_ids
+
+        with seeded_ids(self._id_seed(operations)):
+            return self._apply(operations, dry_run=dry_run, detail=detail, check=check)
+
+    def _id_seed(self, operations):
+        """The same for a dry run and the apply that follows it: the revision, the layers that exist, the open
+        transaction and the batch. A document never saved gets a nonce of its own instead of a revision."""
+        digest = hashlib.sha256()
+        anchor = self.head or self.__dict__.setdefault("_id_nonce", uuid.uuid4().hex)
+        pending = len(self.transaction["operations"]) if self.transaction else -1
+        digest.update(f"{anchor}:{pending}:".encode())
+        for layer in self.state.get("layers", []):
+            digest.update(layer["id"].encode())
+        digest.update(json.dumps(operations, sort_keys=True, default=str).encode())
+        return digest.hexdigest()
+
+    def _apply(self, operations, *, dry_run=False, detail="full", check=None):
         require(detail in ("brief", "compact", "full"), "Unknown response detail; use brief, compact or full")
         from .operations import execute
 
