@@ -80,7 +80,7 @@ tiny elements, or as a finish over the whole document.
 ```
 
 `seed` is required and decides everything; each layer of a group gets its own stream. `strength`
-is `subtle`, `natural` or `rough` (start at `subtle`; magnitudes scale with each layer's size),
+is `subtle` (the default), `natural` or `rough` (magnitudes scale with each layer's size),
 `amount` scales it, `only` picks effects (`wobble`, `jitter`, `width`, `pressure`, `color`,
 `placement`), and explicit fields (`wobble` px, `wobble_length` px, `pressure`, `lightness_drift`,
 `rotation_jitter`…) set exact bounds. Shapes become path layers (a stroke with `pressure` becomes a

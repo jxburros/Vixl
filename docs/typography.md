@@ -33,6 +33,27 @@ The guide, `vixl font principles` (MCP: `vixl_fonts view=principles`), covers:
 - **Where faces stop working:** display and script faces only at size, thumbnail legibility, and multilingual coverage.
 - **Choosing at random:** pick the pairing first, then a palette whose mood fits it.
 
+## Default size and leading
+
+Text without a `size` uses the body size of the document's type scale (the `body` character style that `type-scale`
+and layouts define), else about 2.6% of the canvas short side on screen, or a readable point size in print: 28 px on
+1080×1080, 104 px on 4000×4000. The apply result lists filled-in values under `defaults`.
+
+Leading is one rule everywhere (plain text, rich text, text flows, layouts and diagram labels): a line height as a
+multiple of the font size, by text stage.
+
+| Stage | Line height | Used for |
+| --- | --- | --- |
+| display | 1.0 | Display type, about 2.8 × body and up |
+| heading | 1.1 | Headlines and titles |
+| lead | 1.35 | Subtitles and lead paragraphs |
+| body | 1.45 | Running text |
+| caption | 1.3 | Captions, labels, footnotes |
+
+Plain text stores it as `line_height` and the matching `spacing` (pixels added to the font's own line pitch, which is
+negative for tight display type); a later size or font change keeps the multiple. `spacing` in pixels overrides it.
+Layers saved before 0.23 keep their stored spacing.
+
 ## Installing
 
 ```bash

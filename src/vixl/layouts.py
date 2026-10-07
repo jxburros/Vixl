@@ -17,6 +17,7 @@ import secrets
 
 from PIL import Image, ImageDraw
 
+from .craft import LINE_HEIGHT, base_size
 from .errors import VixlError, require
 from .safe_catalog import SAFE_PALETTES
 from .sizes import safe_sides
@@ -31,6 +32,9 @@ RATIOS = {
     "golden": 1.618,
 }
 ROLE_STEPS = {"caption": -1, "body": 0, "lead": 1, "subhead": 2, "title": 3, "headline": 4, "display": 5}
+# The line-height stage (craft.LINE_HEIGHT) each type-scale role sets in.
+ROLE_STAGES = {"caption": "caption", "body": "body", "lead": "lead", "subhead": "lead", "title": "heading",
+               "headline": "heading", "display": "display"}
 CONTENT_KEYS = ("title", "subtitle", "body", "label", "cta", "caption", "image", "images", "items")
 IMAGE_KEYS = ("image", "images")
 DENSITY_MARGIN = {"airy": 0.095, "balanced": 0.072, "dense": 0.05}
@@ -69,6 +73,8 @@ class Builder:
         require(density in DENSITY_MARGIN, "density must be airy, balanced or dense")
         self.density = density
         inset = c.get("bleed", 0) + max(safe_sides(c))
+        # The canvas safe area as (left, top, right, bottom) insets from the canvas edge.
+        self.safe = tuple(c.get("bleed", 0) + side for side in safe_sides(c))
         margin = max(short * DENSITY_MARGIN[density], inset + short * 0.02 if inset else 0)
         if "margin" in op.get("direction", {}):
             fraction = op["direction"]["margin"]
@@ -90,12 +96,7 @@ class Builder:
         self.ratio_name = ratio if isinstance(ratio, str) else f"{ratio:g}"
         self.ratio = RATIOS.get(ratio, ratio) if isinstance(ratio, str) else ratio
         require(isinstance(self.ratio, (int, float)) and 1.05 <= self.ratio <= 2, "type_scale must be a ratio name or 1.05–2")
-        if self.dpi:
-            points = min(max(short / self.dpi * 1.25, 7.5), 60)
-            base = points * self.dpi / 72
-        else:
-            base = max(short * 0.026, 10)
-        base = op.get("base_size", base * fit)
+        base = op.get("base_size", base_size(c) * fit)
         if layout.get("safe") and layout.get("safe_composition"):
             base = op.get("base_size", max(short * 0.04, 14) * fit)
         require(isinstance(base, (int, float)) and 4 <= base <= 1000, "base_size must be 4–1000 pixels")
@@ -176,9 +177,12 @@ class Builder:
         width = max(1, int(width))
         heavy = (role in ("display", "headline", "title")) if isinstance(role, str) else display
         font = self.display_font if heavy else self.font
+        # ``line`` is a line-height multiple; by default the craft table's value for the role's stage.
+        multiple = line if line is not None else LINE_HEIGHT[ROLE_STAGES.get(role, "heading" if heavy else "body")
+                                                             if isinstance(role, str) else "heading" if heavy else "body"]
 
         def spacing_for(s):
-            return round(s * (line if line is not None else (0.1 if heavy else 0.45)))
+            return self.leading(s, multiple, font)
 
         if heavy and isinstance(role, str):
             # Keep a readable measure: a heavy line should hold ~10–14 characters, never one word.
@@ -192,7 +196,7 @@ class Builder:
             size = max(6, int(size * 0.92))
             w, h = self.measure(content, size, width, spacing_for(size), align, font)
         layer = self.name(name or role)
-        op = {"type": "text", "name": layer, "text": content, "size": size, "color": color, "align": align, "spacing": spacing_for(size), "x": round(x), "y": round(y)}
+        op = {"type": "text", "name": layer, "text": content, "size": size, "color": color, "align": align, "line_height": multiple, "x": round(x), "y": round(y)}
         if font:
             op["font"] = font
         self.add(op)
@@ -204,13 +208,21 @@ class Builder:
         self.created.append(layer)
         return (round(x), round(y), width, h)
 
-    def measure_box(self, size, content, width, max_height):
+    def leading(self, size, multiple, font=None):
+        """Pixel spacing that puts baselines ``multiple`` × ``size`` apart in ``font`` (see craft.spacing_for)."""
+        from .craft import spacing_for
+
+        return spacing_for(self.project, self.project.state.get("fonts", {}).get(font, font or "DejaVuSans.ttf"),
+                           size, multiple)
+
+    def measure_box(self, size, content, width, max_height, multiple=None):
         """The size text() settles on for heavy ``content`` in a ``width`` × ``max_height`` box, and its extent."""
-        spacing = round(size * 0.15)
+        multiple = LINE_HEIGHT["heading"] if multiple is None else multiple
+        spacing = self.leading(size, multiple, self.display_font)
         w, h = self.measure(content, size, width, spacing, "left", self.display_font)
         while size > 6 and (w > width or h > max_height):
             size = max(6, int(size * 0.92))
-            spacing = round(size * 0.15)
+            spacing = self.leading(size, multiple, self.display_font)
             w, h = self.measure(content, size, width, spacing, "left", self.display_font)
         return size, spacing, w, h
 
@@ -256,9 +268,10 @@ class Builder:
         self.add({"type": "solid", "name": self.name("background"), "color": fill, "width": self.W, "height": self.H, "x": 0, "y": 0})
         self.created.append(self.name("background"))
 
-    def image(self, name, x, y, w, h, asset=None, slot="image"):
+    def image(self, name, x, y, w, h, asset=None, slot="image", bleed=False):
         """A frame holding the supplied image asset, or an editable placeholder to replace. ``slot`` images
-        takes ``asset`` (one entry of the images list) instead of reading the image slot."""
+        takes ``asset`` (one entry of the images list) instead of reading the image slot. ``bleed`` marks a
+        full-bleed picture as an intentional crop, so it may run past the safe area."""
         from .assets import add_image
         from .render import color as rgba
         from .design import resolve_color
@@ -288,6 +301,8 @@ class Builder:
             draw.polygon([(cx - s * 0.36, cy + s * 0.22), (cx - s * 0.1, cy - s * 0.12), (cx + s * 0.06, cy + s * 0.08), (cx + s * 0.16, cy - s * 0.02), (cx + s * 0.36, cy + s * 0.22)], fill=ink)
             asset = add_image(self.project, image)
         self.add({"type": "frame", "name": layer, "asset": asset, "x": round(x), "y": round(y), "width": w, "height": h, "fit": "fill"})
+        if bleed:
+            self.add({"type": "layer-intent", "target": layer, "allow_crop": True})
         self.created.append(layer)
         return (round(x), round(y), w, h)
 
@@ -367,7 +382,9 @@ class Builder:
                 if heavy:
                     chars = min(10 if role == "display" else 14, len(text))
                     size = min(size, max(6, int(width / (chars * 0.56))))
-                _, h = self.measure(text, size, width, round(size * (0.1 if heavy else 0.45)), self.align)
+                _, h = self.measure(text, size, width, self.leading(size, LINE_HEIGHT[ROLE_STAGES[role]],
+                                                                    self.display_font if heavy else self.font),
+                                    self.align, self.display_font if heavy else self.font)
                 if heavy:
                     h = min(h, self.ch * 0.55)
                 total += h + gap
@@ -705,9 +722,14 @@ def _golden_section(b):
         text_box = (big, 0, b.W - big, b.H) if image_box[0] == 0 else (0, 0, b.W - big, b.H)
     else:
         big = round(b.H * phi)
+        # The copy below the picture stays inside the canvas: the picture gives up height when it must.
+        entries = [("caption", b.label_text(), "label"), ("title", b.get("title"), "headline"),
+                   ("body", b.get("subtitle") or b.get("body"), "body"), ("button", b.get("cta"), "cta")]
+        needed = b.stack_height(entries, b.W - 2 * b.m) + 2 * b.m + max(0, b.safe[3] - b.m)
+        big = max(round(b.H * 0.4), min(big, b.H - needed))
         image_box = (0, 0, b.W, big)
         text_box = (0, big, b.W, b.H - big)
-    b.image("image", *image_box)
+    b.image("image", *image_box, bleed=True)
     line = max(2, round(b.unit / 2))
     if text_box[2] < b.W:
         edge = text_box[0] if text_box[0] else text_box[2] - line
@@ -729,7 +751,7 @@ def _big_number(b):
     y += h + b.unit * 2
     title = b.get("title")
     size = round(min(b.ch * 0.4, width / max(len(title), 1) * 1.55))
-    _, _, _, h = b.text(size, title, b.L, y, width, name="number", align=align, color="@accent", max_height=b.ch * 0.5, display=True, line=0.0)
+    _, _, _, h = b.text(size, title, b.L, y, width, name="number", align=align, color="@accent", max_height=b.ch * 0.5, display=True, line=LINE_HEIGHT["display"])
     y += h + b.unit * 3
     b.accent_device(b.L, y + b.unit * 4, width, 0)
     y += b.unit * 4
@@ -746,9 +768,9 @@ def _quote_card(b):
     mark = round(min(b.sizes["display"] * 2.6, b.ch * 0.3))
     entries_h = b.stack_height([("title", b.get("title"), "quote"), ("body", b.get("subtitle"), "attribution")], width) + mark * 0.55
     y = b.T + max(0, (b.ch - entries_h) * 0.45)
-    b.text(mark, "“", x if align == "left" else b.W / 2 - mark * 0.3, y - mark * 0.25, mark, name="quote-mark", color="@accent", align="left", display=True, line=0)
+    b.text(mark, "“", x if align == "left" else b.W / 2 - mark * 0.3, y - mark * 0.25, mark, name="quote-mark", color="@accent", align="left", display=True, line=LINE_HEIGHT["display"])
     y += mark * 0.55
-    _, _, _, h = b.text("title", b.get("title"), x, y, width, name="quote", align=align, max_height=b.B - y - b.sizes["body"] * 3, line=0.25)
+    _, _, _, h = b.text("title", b.get("title"), x, y, width, name="quote", align=align, max_height=b.B - y - b.sizes["body"] * 3, line=LINE_HEIGHT["lead"])
     y += h + b.unit * 4
     b.text("body", ("— " + b.get("subtitle")) if b.get("subtitle") and not b.get("subtitle").startswith("—") else b.get("subtitle"), x, y, width, name="attribution", align=align, color="@muted")
 
@@ -901,7 +923,8 @@ def _banner(b):
         cta_w = tw + b.sizes["body"] * 2.2
     text_w = b.cw - cta_w - b.unit * 6
     title_size = b.sizes["title"]
-    _, th = b.measure(b.get("title"), title_size, text_w, round(title_size * 0.1))
+    _, th = b.measure(b.get("title"), title_size, text_w, b.leading(title_size, LINE_HEIGHT["heading"], b.display_font),
+                      "left", b.display_font)
     entries = [("title", b.get("title"), "headline"), ("body", b.get("subtitle"), "subtitle")]
     height = b.stack_height(entries, text_w, b.unit * 1.5)
     y = b.T + max(0, (b.ch - height) / 2)
@@ -945,7 +968,8 @@ def _business_card(b):
     y = b.T
     y = b.stack(entries, b.L, y, b.cw - mark - b.unit * 2, gap=b.unit, align="left")
     contact = str(b.get("body")).replace(" | ", "\n")
-    _, ch = b.measure(contact, b.sizes["caption"], b.cw, round(b.sizes["caption"] * 0.45))
+    _, ch = b.measure(contact, b.sizes["caption"], b.cw, b.leading(b.sizes["caption"], LINE_HEIGHT["caption"], b.font),
+                      "left", b.font)
     b.text("caption", contact, b.L, b.B - ch, b.cw, name="contact", align="left", color="@muted")
 
 
@@ -1033,9 +1057,9 @@ def _logo_stacked(b):
     y = (b.H - total) / 2
     _mark(b, mark, (b.W - mark) / 2, y)
     y += mark + gap
-    b.text(name_size, b.get("title"), b.L, y, b.cw, name="wordmark", align="center", display=True, line=0)
+    b.text(name_size, b.get("title"), b.L, y, b.cw, name="wordmark", align="center", display=True, line=LINE_HEIGHT["display"])
     if tagline:
-        b.text(tag_size, tagline, b.L, y + nh + b.unit * 2, b.cw, name="tagline", color="@muted", align="center", line=0)
+        b.text(tag_size, tagline, b.L, y + nh + b.unit * 2, b.cw, name="tagline", color="@muted", align="center", line=LINE_HEIGHT["caption"])
 
 
 def _emblem(b):
@@ -1101,7 +1125,7 @@ def _thumbnail_bold(b):
     size = round(b.H * 0.2)
     words = b.get("title")
     reserve = b.sizes["subhead"] * 2.4 if b.get("label") else 0
-    _, _, w, h = b.text(size, words, x, b.T, width, name="headline", align="left", max_height=max(b.unit * 4, b.ch * 0.78 - reserve), display=True, line=0.02)
+    _, _, w, h = b.text(size, words, x, b.T, width, name="headline", align="left", max_height=max(b.unit * 4, b.ch * 0.78 - reserve), display=True, line=LINE_HEIGHT["display"])
     if b.accent in ("block", "bar", "rule"):
         b.rect("highlight", x - b.unit, b.T + h + b.unit * 2, width * 0.6, max(4, round(size * 0.18)), "@accent")
     if b.get("label"):
@@ -1157,7 +1181,7 @@ def _price_list(b):
 
 
 def _photo_caption(b):
-    b.image("image", 0, 0, b.W, b.H)
+    b.image("image", 0, 0, b.W, b.H, bleed=True)
     entries = [("caption", b.label_text(), "label"), ("headline", b.get("title"), "headline"), ("body", b.get("subtitle"), "subtitle")]
     width = b.cw * 0.86
     height = b.stack_height(entries, width)
@@ -1225,13 +1249,19 @@ def _meme_text(b, text, x, y, width, max_height, name, anchor="top", stroked=Tru
         return (x, y, 0, 0)
     if stroked and b.op.get("uppercase", True):
         text = text.upper()
+    # The picture bleeds, but the caption stays inside the canvas safe area.
+    left, top, right, bottom = b.safe
+    x0, x1 = max(x, left), min(x + width, b.W - right)
+    if x1 - x0 >= width * 0.5:
+        x, width = x0, x1 - x0
+    y = min(y, b.H - bottom) if anchor == "bottom" else max(y, top)
     size = max(8, round(min(b.W, b.H) * 0.11))
     # Never break a word: shrink until the longest word fits the line.
     longest = max(text.split(), key=len)
     while size > 8 and b.measure(longest, size, None, 0, "left", b.display_font)[0] > width:
         size = max(8, int(size * 0.92))
     x, top, w, h = b.text(size, text, x, y, width, name=name, align="center", color=color, max_height=max_height,
-                          display=True, line=0.04)
+                          display=True, line=LINE_HEIGHT["display"])
     layer = b.name(name)
     op = next(op for op in b.ops if op.get("name") == layer and op["type"] == "text")
     if stroked:
@@ -1257,30 +1287,30 @@ def _meme_images(b, count):
 
 def _meme_top_bottom(b):
     b.background("#000000")
-    b.image("image", 0, 0, b.W, b.H)
+    b.image("image", 0, 0, b.W, b.H, bleed=True)
     pad = round(min(b.W, b.H) * 0.04)
     _meme_text(b, b.get("title"), pad, pad, b.W - 2 * pad, b.H * 0.3, "top-text")
     _meme_text(b, b.get("caption"), pad, b.H - pad, b.W - 2 * pad, b.H * 0.3, "bottom-text", anchor="bottom")
 
 
 def _meme_caption_above(b):
-    pad = round(min(b.W, b.H) * 0.05)
+    pad = max(round(min(b.W, b.H) * 0.05), *b.safe)
     b.background("#ffffff")
     size = max(8, round(min(b.W, b.H) * 0.065))
     _, _, _, h = b.text(size, b.get("title"), pad, pad, b.W - 2 * pad, name="caption", align="left", color="#111111",
-                        max_height=b.H * 0.3, display=True, line=0.2)
+                        max_height=b.H * 0.3, display=True, line=LINE_HEIGHT["heading"])
     band = max(round(b.H * 0.16), h + 2 * pad)
-    b.image("image", 0, band, b.W, b.H - band)
+    b.image("image", 0, band, b.W, b.H - band, bleed=True)
 
 
 def _meme_comparison(b):
     b.background("#ffffff")
     images, lines = _meme_images(b, 2), _meme_lines(b, 2)
     split = round(b.W * 0.5)
-    pad = round(min(b.W, b.H) * 0.04)
+    pad = max(round(min(b.W, b.H) * 0.04), *b.safe)
     for index in range(2):
         top, height = round(b.H * index / 2), round(b.H / 2)
-        b.image(f"panel-{index + 1}", 0, top, split, height, asset=images[index], slot="images")
+        b.image(f"panel-{index + 1}", 0, top, split, height, asset=images[index], slot="images", bleed=True)
         text = lines[index]
         if not text:
             continue
@@ -1288,26 +1318,30 @@ def _meme_comparison(b):
         size, _, _, h = b.measure_box(size, text, b.W - split - 2 * pad, height - 2 * pad)
         b.text(size, text, split + pad, top + max(pad, (height - h) / 2), b.W - split - 2 * pad,
                name=f"label-{index + 1}", align="left", color="#111111", max_height=height - 2 * pad, display=True,
-               line=0.15)
+               line=LINE_HEIGHT["heading"])
     b.rect("divider", 0, round(b.H / 2) - 1, b.W, 2, "#000000")
+    b.add({"type": "layer-intent", "target": b.name("divider"), "allow_crop": True})
 
 
 def _meme_labelled(b):
     b.background("#000000")
-    b.image("image", 0, 0, b.W, b.H)
+    b.image("image", 0, 0, b.W, b.H, bleed=True)
     lines = [line for line in _meme_lines(b, 6) if line]
-    width = b.W / max(1, len(lines))
+    left, _, right, _ = b.safe
+    width = (b.W - left - right) / max(1, len(lines))
     for index, text in enumerate(lines):
-        _meme_text(b, text, index * width + width * 0.06, b.H * 0.62, width * 0.88, b.H * 0.25, f"label-{index + 1}")
+        _meme_text(b, text, left + index * width + width * 0.06, b.H * 0.62, width * 0.88, b.H * 0.25,
+                   f"label-{index + 1}")
 
 
 def _meme_reaction(b):
     b.background("#000000")
-    pad = round(min(b.W, b.H) * 0.05)
-    reserve = round(b.H * 0.22)
-    b.image("image", 0, 0, b.W, b.H - reserve)
-    _meme_text(b, b.get("caption"), pad, b.H - reserve + pad / 2, b.W - 2 * pad, reserve - pad, "caption",
-               stroked=False)
+    left, top, right, bottom = b.safe
+    pad = max(round(min(b.W, b.H) * 0.05), left, right)
+    reserve = max(round(b.H * 0.22), bottom + round(b.H * 0.1))
+    b.image("image", 0, 0, b.W, b.H - reserve, bleed=True)
+    _meme_text(b, b.get("caption"), pad, b.H - reserve + pad / 2, b.W - 2 * pad,
+               reserve - pad / 2 - max(pad / 2, bottom), "caption", stroked=False)
 
 
 def _meme_four_panel(b):
@@ -1318,7 +1352,7 @@ def _meme_four_panel(b):
     pad = round(min(w, h) * 0.05)
     for index in range(4):
         x, y = (index % 2) * (w + gutter), (index // 2) * (h + gutter)
-        b.image(f"panel-{index + 1}", x, y, w, h, asset=images[index], slot="images")
+        b.image(f"panel-{index + 1}", x, y, w, h, asset=images[index], slot="images", bleed=True)
         _meme_text(b, lines[index], x + pad, y + h - pad, w - 2 * pad, h * 0.4, f"caption-{index + 1}", anchor="bottom")
 
 

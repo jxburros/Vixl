@@ -45,7 +45,7 @@ the viewer expects a person, a material or an accident, and hurts where they exp
 ## `irregular`
 
 ```bash
-vixl irregular hero --seed 7                              # natural strength, every effect
+vixl irregular hero --seed 7                              # subtle strength, every effect
 vixl irregular hero eyes mouth --seed 7 --strength rough
 vixl irregular hero --seed 8                              # regrow with another seed (same recipe)
 vixl irregular hero --remove                              # back to the exact source
@@ -65,7 +65,7 @@ fields with their bounds and descriptions.
 | Field | Meaning |
 | --- | --- |
 | `seed` | **Required** (except with `remove`). Whole number; the same seed always gives the same result. |
-| `strength` | `subtle`, `natural` (default) or `rough`: preset magnitudes, scaled to each layer's size. |
+| `strength` | `subtle` (default), `natural` or `rough`: preset magnitudes, scaled to each layer's size. Layers made irregular before 0.23 keep `natural` when regrown. |
 | `amount` | 0–2 multiplier for the preset's magnitudes (default 1). It does not scale fields you set yourself. |
 | `only` | Switch on only these effects from the preset: `wobble`, `jitter`, `width`, `pressure`, `color`, `placement`. `[]` switches all off, leaving just the fields you set. |
 | `wobble` | Largest outline displacement in pixels, along the outline's normals. 0 turns it off. |
@@ -141,7 +141,7 @@ Seeds are not keyframable, so the boil is built from copies: it multiplies the t
 ## `tear`
 
 ```bash
-vixl tear photo --seed 3 --edges bottom                   # mask on the photo, natural strength
+vixl tear photo --seed 3 --edges bottom                   # mask on the photo, subtle strength
 vixl tear photo --seed 3 --edges top bottom --strength rough --as clip
 vixl tear --name scrap --as path --seed 9 --width 600 --height 400 --edges all --fill '#f7f1e5'
 vixl tear photo --seed 4                                  # regrow the same tear with a new seed
@@ -160,7 +160,7 @@ with the paper beneath showing as a pale **rim** and a few loose **fibres** on t
 | Field | Meaning |
 | --- | --- |
 | `seed` | **Required** (except with `remove`). |
-| `strength` | `subtle`, `natural` (default) or `rough`; sets the defaults below from the box size. |
+| `strength` | `subtle` (default), `natural` or `rough`; sets the defaults below from the box size. Tears made before 0.23 keep `natural`. |
 | `edges` | Any of `top`, `right`, `bottom`, `left`, or `all`. Default `bottom`. Two torn edges that meet cut each other cleanly at the corner. |
 | `depth` | Deepest bite in pixels (kept under 45% of the shorter side). Default 1.5% / 3.5% / 7.5% of it. |
 | `length` | Width of the widest bays in pixels; finer octaves halve it. |
