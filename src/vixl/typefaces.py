@@ -196,7 +196,7 @@ def roll(seed=None, *, purpose=None, mood=None, canvas=None, locks=None, variety
     Every field that ``locks`` fixes is kept; the rest come from the seed, which is returned so
     a direction worth keeping can be reproduced exactly.
     """
-    from .layouts import ACCENTS, DENSITY_MARGIN, LAYOUTS, RATIOS
+    from .layouts import ACCENTS, DENSITY_CHOICES, LAYOUTS, RATIOS
     from .resources import PALETTES
     from .safe_catalog import SAFE_PALETTES
     from .variety import VARIETIES, choose, dimensions
@@ -245,7 +245,7 @@ def roll(seed=None, *, purpose=None, mood=None, canvas=None, locks=None, variety
         "palette": choose(rng, fitting or palettes, recent, "palette"),
         "mode": rng.choice(["light", "light", "dark"]),
         "type_scale": rng.choice([k for k in RATIOS if k != "augmented-fourth"]),
-        "density": rng.choice(list(DENSITY_MARGIN)),
+        "density": rng.choice(DENSITY_CHOICES),
         "accent": rng.choice(ACCENTS),
         "layout_seed": rng.randrange(2**32),
         **dimensions(rng, pairing, variety),
