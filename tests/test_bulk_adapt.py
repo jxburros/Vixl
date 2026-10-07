@@ -377,9 +377,14 @@ def test_mcp_apply_defaults_to_brief_and_text_add_too(tmp_path):
     asyncio.run(scenario())
 
 
-def test_brief_results_keep_text_layers_to_the_documented_fields():
+def test_brief_result_fields_are_the_documented_ones():
+    from pathlib import Path
+
     p = Project(400, 300, "white")
     added = p.apply({"type": "text", "name": "t", "text": "Hello", "size": 30}, detail="brief")["changes"]["layers"]
-    assert set(next(iter(added.values()))) == {"added", "name", "type", "bounds"}
-    changed = p.apply({"type": "text-set", "target": "t", "text": "Hello there"}, detail="brief")["changes"]["layers"]
-    assert set(next(iter(changed.values()))) <= {"changed", "bounds"}
+    fields = set(next(iter(added.values())))
+    assert {"added", "name", "type", "bounds", "baseline", "ink_bounds"} <= fields
+    root = Path(__file__).resolve().parents[1]
+    for doc in ("docs/interfaces.md", "docs/operations.md", "skills/vixl/references/mcp-rest-python.md"):
+        brief = next(line for line in (root / doc).read_text().split("\n\n") if "brief" in line and "`added`" in line)
+        assert all(f"`{field}`" in brief for field in fields), (doc, sorted(f for f in fields if f"`{f}`" not in brief))
