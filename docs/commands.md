@@ -290,6 +290,8 @@ vixl guide                               # start-here recipe and every kind of w
 vixl guide a mascot for a coffee brand   # approach, operations, layouts, looks, styles, example
 vixl guide operations                    # every operation by purpose, with summaries
 vixl looks                               # the finishing looks
+vixl house [show PURPOSE]                # the house style: craft, tiers, levels; or one purpose's profile
+vixl roll --for slides --variety high --lock tier=bold [--house-style 1]   # a tiered, purpose-weighted direction
 vixl look LAYER glow [--color C] [--amount 0-1] [--remove]
 vixl radial-repeat LAYER --count 12 [--cx 50%] [--cy 50%] [--sweep 360] [--start-angle D] [--mirror] [--no-group] [--name N]
 vixl layer-intent LAYER --allow-crop     # a deliberate edge crop: checks report it as informational
