@@ -51,7 +51,7 @@ Full reference: `docs/drawing.md`.
   `@color=… @icon=check @group=…`, `group Lane: A, B`, indentation for hierarchies, `direction: LR`.
 - `layout`: `layered` (flows, dependencies), `tree`, `radial`, `mindmap`, `grid`; `direction` TB/LR/BT/RL; `routing`
   orthogonal/curved/straight; `lanes: true` for swimlanes. The diagram shrinks to fit the canvas (`fit`, `x/y/width/height`).
-- Check with `vixl_check(checks=["diagram"])`: overlapping nodes, edges through nodes, labels that do not fit or lack
+- Check with `vixl_check(checks=["diagram"])`: overlapping nodes, edges through nodes or drawn on top of each other, labels that do not fit or lack
   contrast, text scaled below 9 px. Full reference: `docs/diagrams.md`.
 
 ## Organic shapes

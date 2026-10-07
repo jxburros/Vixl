@@ -1284,6 +1284,27 @@ def check_diagrams(project, resolved, local_bounds, projection, issue, targets=N
         stale = bool(moved)
         outlines = {i: L.LNode(i, boxes[i][2], boxes[i][3], *layout.get("shapes", {}).get(i, ["rect", 0.0]), x=boxes[i][0], y=boxes[i][1])
                     for i in real}
+        runs = {}
+        for edge in spec["edges"]:
+            geometry = layout.get("edges", {}).get(edge["id"])
+            if geometry and not stale:
+                points = [tuple(p) for p in geometry["points"]]
+                runs[edge["id"]] = list(zip(points, points[1:]))
+        ordered = list(runs)
+        ends = {edge["id"]: (edge["from"], edge["to"]) for edge in spec["edges"]}
+        for i, a in enumerate(ordered):
+            for b in ordered[i + 1:]:
+                if ends[a][0] == ends[b][0] or ends[a][1] == ends[b][1]:
+                    continue  # Edges from one source (or into one target) may share a trunk, as orthogonal routing draws.
+                if any(outlines[n].shape in ("diamond", "ellipse", "cylinder") for n in set(ends[a]) & set(ends[b])
+                       if n in outlines):
+                    continue  # These shapes take connectors at one point per side, so edges meeting there share it.
+                shared = sum(L.overlap_length(s, t) for s in runs[a] for t in runs[b])
+                if shared > 8:
+                    issue("diagram", "error", f"Edges {a!r} and {b!r} of diagram {name!r} run on top of each other for "
+                          f"{shared:.0f} px, so they read as one line (or a two-headed arrow); give one of them ports "
+                          "(from_port/to_port), or use the layered layout", [x for x in (layer(f"e:{a}"), layer(f"e:{b}")) if x],
+                          edges=[a, b])
         for edge in spec["edges"]:
             geometry = layout.get("edges", {}).get(edge["id"])
             if not geometry or stale:
