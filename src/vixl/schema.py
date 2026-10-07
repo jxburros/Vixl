@@ -478,6 +478,35 @@ def _required():
     return {v["properties"]["type"]["const"]: frozenset(v["required"]) for v in variants}
 
 
+@lru_cache(maxsize=1)
+def _integer_fields():
+    """Top-level fields whose schema accepts integers but not other numbers, per operation type."""
+    variants = _operation_schema()["properties"]["operations"]["items"]["oneOf"]
+
+    def integer_only(spec):
+        options = spec.get("anyOf") or spec.get("oneOf") or [spec]
+        types = set()
+        for option in options:
+            kind = option.get("type")
+            types.update(kind if isinstance(kind, list) else [kind])
+        return "integer" in types and "number" not in types
+
+    return {v["properties"]["type"]["const"]: frozenset(k for k, spec in v["properties"].items() if integer_only(spec))
+            for v in variants}
+
+
+def round_integers(op, notes, where):
+    """Round fractional values given for integer fields (a computed 25.6 font size) and report it."""
+    import math
+
+    for key in _integer_fields().get(op.get("type"), ()):
+        value = op.get(key)
+        if isinstance(value, float) and math.isfinite(value):
+            op[key] = round(value)
+            if op[key] != value:
+                notes.append(f"{where}: {key} {value!r} → {op[key]}")
+
+
 def validate_operation(operation, notes=None, index=None):
     """Normalize common spellings, then validate before doing any I/O."""
     import json
@@ -499,6 +528,7 @@ def validate_operation(operation, notes=None, index=None):
         required=lambda k: _required().get(k, frozenset()),
     )
     require(isinstance(result.get("type"), str), "Operation requires a string type", field="type")
+    round_integers(result, [] if notes is None else notes, f"operations[{index}]" if index is not None else "operation")
     validator = _validators().get(result["type"])
     if validator is None:
         import difflib

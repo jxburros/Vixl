@@ -1507,6 +1507,8 @@ def export(
 
         return export_psd(project, path, page=page, variables=variables, report=report)
     if (format or "").upper() == "PPTX" or suffix == ".pptx":
+        require(not artwork, "PPTX keeps editable RGB slides; profile, artboard, comp, proof, simulate and CMYK do not "
+                "apply (export a PNG or PDF to preview them)", field="format")
         from .pptx_export import export_pptx
 
         return export_pptx(project, path, pages=pages, dpi=dpi, report=report)

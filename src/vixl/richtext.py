@@ -660,6 +660,7 @@ def render(project, layer):
 
     result = fitted(project, layer)
     width, height = (layer["width"], layer["height"]) if layer.get("text_layout") else (result.width, result.height)
+    width, height = math.ceil(width), math.ceil(height)
     if layer.get("_kinetic"):
         from .kinetic import padding, rich_motion, svg_canvas
 

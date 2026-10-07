@@ -120,7 +120,7 @@ class Exporter:
         target = parent
         if view:
             target = node(parent, "svg", width=layer["width"], height=layer["height"], viewBox=f"0 0 {view[0]} {view[1]}",
-                          preserveAspectRatio="none")
+                          preserveAspectRatio="none", overflow="visible")
         if geometry["fill"] and attrs["fill_opacity"] > 0:
             node(target, "path", d=geometry["fill"], fill=attrs["fill"], fill_opacity=attrs["fill_opacity"], stroke="none")
         stroke, opacity = attrs["stroke"], attrs["stroke_opacity"]
@@ -176,6 +176,8 @@ class Exporter:
                 height=sh,
                 viewBox=f"0 0 {view[0]} {view[1]}",
                 preserveAspectRatio="none",
+                # Strokes (caps, miter joins) reach past the geometry box, as in the other renderers.
+                overflow="visible",
             )
             if layer.get("line_cap"):
                 attrs.update(stroke_linecap=layer["line_cap"],

@@ -49,6 +49,7 @@ from PIL import Image, ImageDraw, ImageOps
 from .assets import add_encoded, add_image, decode, read_bounded
 from .denoise import KEYS as DENOISE_KEYS, validate as denoise_valid
 from .errors import VixlError, require
+from .geometry import compact_number
 from .model import finite, new_layer, uid
 from .render import (
     BLENDS,
@@ -276,7 +277,16 @@ def append_layer(project, layer):
     require(len(project.state["layers"]) < project.limits.max_layers, "Layer limit reached", "resource_limit")
     unique_name(project, layer["name"])
     from .transforms import VECTOR_TYPES
-    project.limits.size(layer["width"], layer["height"], vector=layer["type"] in VECTOR_TYPES)
+    try:
+        project.limits.size(layer["width"], layer["height"], vector=layer["type"] in VECTOR_TYPES)
+    except VixlError as exc:
+        if exc.code != "resource_limit":
+            raise
+        hint = ("; wrap it with text-layout, flow it with text-flow, or use a smaller size"
+                if layer["type"] in ("text", "rich-text") else "")
+        raise VixlError("resource_limit", f"{layer['type'].capitalize()} layer {layer['name']!r} would be "
+                        f"{compact_number(layer['width'], 1)}×{compact_number(layer['height'], 1)} px. {exc}{hint}",
+                        field="text" if hint else "width") from exc
     project.state["layers"].append(layer)
     if hasattr(project, "_indexed"):
         project._indexed(layer)
@@ -554,7 +564,9 @@ def execute(project, op):
                 "checksum": hashlib.sha256(data).hexdigest(),
             }
         original_size = image.size
-        width, height = op.get("width", image.width), op.get("height", image.height)
+        # Raster boxes are whole pixels; fractional sizes from layout arithmetic round to the nearest one.
+        width, height = (max(1, round(finite(v, k))) for v, k in ((op.get("width", image.width), "width"),
+                                                                  (op.get("height", image.height), "height")))
         if op.get("max_pixels") is not None or op.get("downsample"):
             require(not op.get("linked"), "Downsampling requires an embedded image, not linked=True", field="downsample")
             require(op.get("downsample") in (None, "placed@2x"), "downsample must be placed@2x", field="downsample")
@@ -962,6 +974,7 @@ def execute(project, op):
 
             filter_plugin(name)
         layer["effects"].append(effect)
+        blur_budget(project, layer, effect)
     elif kind.startswith("effect-"):
         effect = effect_ref(layer, op["effect"], "effect")
         if kind == "effect-remove":
@@ -999,6 +1012,7 @@ def execute(project, op):
                 if key in op:
                     effect[key] = op[key]
             effect_valid(effect)
+            blur_budget(project, layer, effect)
             if effect["name"] == "lookup":
                 require(effect["lut"] in project.state.get("luts", {}), f"Unknown LUT: {effect['lut']}", field="lut")
         else:
@@ -1062,3 +1076,26 @@ def execute(project, op):
         require(len(layer["effects"]) <= 256, "Effect limit reached", "resource_limit")
     else:
         raise VixlError("unknown_operation", f"Unknown operation: {kind}")
+
+
+def blur_budget(project, layer, effect):
+    """Refuse a blur whose padded working image could never render, instead of saving a document that
+    no longer renders, checks or exports."""
+    import math
+
+    from .render import effect_margin
+
+    mx, my = effect_margin(layer)
+    if not (mx or my):
+        return
+    w = math.ceil(layer.get("width") or project.state["canvas"]["width"]) + 2 * mx
+    h = math.ceil(layer.get("height") or project.state["canvas"]["height"]) + 2 * my
+    limits = project.limits
+    if w <= limits.max_dimension and h <= limits.max_dimension and w * h <= limits.max_pixels:
+        return
+    raise VixlError(
+        "resource_limit",
+        f"A {effect['name']} of {effect.get('amount')} on {layer['name']!r} needs a {w}×{h} px working image, over "
+        f"the {limits.max_pixels:,}-pixel / {limits.max_dimension} px limit; lower the amount or blur a smaller layer",
+        field="amount",
+    )

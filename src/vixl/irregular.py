@@ -36,6 +36,7 @@ import numpy as np
 
 from .errors import VixlError, require
 from .geometry import compact_number
+from .geometry import default_fill
 from .model import MAX_LAYERS
 
 TYPES = ("irregular", "tear")
@@ -440,7 +441,7 @@ def make_irregular(project, layer, recipe, index):
     seed = recipe["seed"]
     line = layer.get("shape") == "line"
     stroke_seen = visible(layer.get("stroke", "transparent"), project)
-    fill_on = visible(layer.get("fill", "white"), project) and not line
+    fill_on = visible(default_fill(layer), project) and not line
     sw = layer.get("stroke_width", 1)
     stroke_on = (stroke_seen or line) and sw > 0
     ink_color = layer.get("stroke") if stroke_seen else layer.get("fill", "white")
@@ -511,7 +512,7 @@ def make_irregular(project, layer, recipe, index):
         require(len(order) <= project.limits.max_layers, "Layer limit reached: the stroke ribbon of each filled "
                 "shape is a layer of its own; set pressure to 0 for a big set", "resource_limit", field="pressure")
         ink["part_of"] = layer["id"]
-    project.limits.size(layer["width"], layer["height"])
+    project.limits.size(layer["width"], layer["height"], vector=True)
     return {"recipe": recipe, "source": source, **({"ink": ink["id"]} if ink is not None else {})}
 
 
