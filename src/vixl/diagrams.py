@@ -32,7 +32,9 @@ ARROWS = ("end", "start", "both", "none")
 PORTS = ("top", "right", "bottom", "left")
 LAYOUTS = ("auto", *L.ALGORITHMS)
 FITS = ("shrink", "contain", "none")
-THEMES = ("light", "dark", "mono")
+THEMES = ("palette", "light", "dark", "mono")
+# The swatches the palette theme draws with (see PALETTES["palette"]).
+PALETTE_ROLES = {"background", "surface", "ink", "muted", "accent"}
 ICONS = {
     "check": "M4 12.5 L6.6 9.9 L10 13.3 L17.4 5.9 L20 8.5 L10 18.5 Z",
     "cross": "M6 8.6 L8.6 6 L12 9.4 L15.4 6 L18 8.6 L14.6 12 L18 15.4 L15.4 18 L12 14.6 L8.6 18 L6 15.4 L9.4 12 Z",
@@ -69,6 +71,15 @@ PALETTES = {
         "io": ("#3b2a63", "#a98be6"), "note": ("#4a4720", "#cfc769"), "database": ("#174b4c", "#5cc3c4"),
         "circle": ("#5b1f2d", "#f08aa0"), "group": ("#1b2230", "#566275"), "lane_header": "#273146",
         "text": "#f1f5f9", "edge": "#9fb0c6",
+    },
+    # Follows the document palette (and so its light or dark mode): surfaces for nodes, ink for text and lines,
+    # the accent for highlights. Colours stay swatch references, so the diagram retints with the palette.
+    "palette": {
+        "process": ("@surface", "@accent"), "decision": ("color-mix(in oklab, @accent 22%, @surface)", "@accent"),
+        "terminator": ("color-mix(in oklab, @accent 35%, @surface)", "@accent"), "io": ("@surface", "@muted"),
+        "note": ("@background", "@muted"), "database": ("@surface", "@ink"), "circle": ("@accent", "@accent"),
+        "group": ("color-mix(in oklab, @surface 50%, @background)", "@muted"), "lane_header": "@surface",
+        "text": "@ink", "edge": "@ink",
     },
     "mono": {
         "process": ("#ffffff", "#222222"), "decision": ("#ffffff", "#222222"), "terminator": ("#ffffff", "#222222"),
@@ -266,6 +277,9 @@ def _options(project, op, spec):
             require(value in L.ROUTINGS, f"routing must be one of {', '.join(L.ROUTINGS)}", field=key)
         elif key == "theme":
             require(value in THEMES, f"theme must be one of {', '.join(THEMES)}", field=key)
+            missing = sorted(PALETTE_ROLES - set(project.state.get("swatches") or {})) if value == "palette" else []
+            require(not missing, f"theme palette needs the document's palette swatches; missing {', '.join(missing)} "
+                    "(apply a palette with palette-apply, or choose light, dark or mono)", field=key)
         elif key == "fit":
             require(value in FITS, f"fit must be one of {', '.join(FITS)}", field=key)
         elif key in ("size", "stroke_width", "node_gap", "rank_gap", "margin"):
@@ -301,10 +315,30 @@ def _check_color(project, value):
 
 
 def _new_spec(project, op):
+    from .craft import LINE_HEIGHT
+
     spec = {"nodes": [], "edges": []}
     _options(project, op, spec)
     _merge(project, spec, op, None)
+    # New diagrams record their look, so a later diagram-set keeps it: the document palette and mode unless a
+    # theme was chosen, and label leading from the line-height table. Older specs keep the light theme.
+    spec.setdefault("theme", default_theme(project))
+    spec.setdefault("line_height", LINE_HEIGHT["caption"])
     return spec
+
+
+def default_theme(project):
+    """``palette`` when the document defines the palette roles, else ``dark`` or ``light`` by its background."""
+    from .colors import parse
+    from .design import resolve_color
+
+    if PALETTE_ROLES <= set(project.state.get("swatches") or {}):
+        return "palette"
+    try:
+        r, g, b, a = parse(resolve_color(project.state["canvas"].get("background", "transparent"), project.state))
+    except VixlError:
+        return "light"
+    return "dark" if a > 0.5 and 0.2126 * r + 0.7152 * g + 0.0722 * b < 0.35 else "light"
 
 
 def _merge(project, spec, op, rec):
@@ -545,11 +579,19 @@ def _flow_line(body, number, ensure, edges):
 class _Text:
     """Measures label text through the document's own text engine, with a cache."""
 
-    def __init__(self, project, font):
-        self.project, self.font, self.cache = project, font, {}
+    def __init__(self, project, font, line_height=None):
+        self.project, self.font, self.cache, self.line_height = project, font, {}, line_height
+
+    def spacing(self, size):
+        """Label leading: the spec's line-height multiple (diagrams made since 0.23), else the older fixed rule."""
+        if self.line_height is None:
+            return max(0, round(size * 0.18))
+        from .craft import spacing_for
+
+        return spacing_for(self.project, self.font, size, self.line_height)
 
     def layer(self, text, size):
-        return {"text": text, "font": self.font, "size": size, "spacing": max(0, round(size * 0.18)), "align": "center"}
+        return {"text": text, "font": self.font, "size": size, "spacing": self.spacing(size), "align": "center"}
 
     def measure(self, text, size):
         key = (text, size)
@@ -699,7 +741,7 @@ def _build(project, spec, scale, area, name):
         from .render import resolve_font
 
         font, _ = resolve_font(project, "body")
-    measure = _Text(project, font)
+    measure = _Text(project, font, spec.get("line_height"))
     layout_name = spec.get("layout", "auto")
     if layout_name == "auto":
         layout_name = _auto_layout(spec)
@@ -773,7 +815,7 @@ def _parts(project, name, spec, b):
         parts.append({"key": key, "rank": rank, "type": "text", "name": layer_name, "x": round(cx - w / 2), "y": round(cy - h / 2 + extra_dy),
                       "width": w, "height": h,
                       "fields": {"text": text, "font": b.font, "size": size, "color": color, "align": "center",
-                                 "spacing": max(0, round(size * 0.18)), "auto_size": True},
+                                 "spacing": b.measure.spacing(size), "auto_size": True},
                       "font_role": spec.get("font_role")})
 
     if spec.get("background"):

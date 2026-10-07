@@ -131,7 +131,11 @@ The diagram is placed in an *area*: the canvas minus `margin` (default 4%), or t
 
 ### Style
 
-`theme` is `light` (default), `dark` or `mono`; `node_color`, `edge_color`, `text_color`, `stroke_width`, `font`
+`theme` is `palette`, `light`, `dark` or `mono`. Without one, a new diagram follows the document like a chart: `palette`
+(surfaces for nodes, `@ink` for text and lines, `@accent` for highlights, as swatch references, so it retints and
+follows dark mode) when the document has its palette role swatches, else `dark` on a dark canvas and `light`
+otherwise. The choice is stored, so later `diagram-set` calls keep it; diagrams made before 0.23 keep `light`. Pass
+`theme: "light"` for the old look. Labels use the caption line height (1.3); `node_color`, `edge_color`, `text_color`, `stroke_width`, `font`
 (a role, registered font or, from the CLI, a file; defaults to the document's `body` font), `background` (adds a backdrop
 layer) and `arrows: false` adjust it.
 
