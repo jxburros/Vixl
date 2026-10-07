@@ -68,7 +68,9 @@ Page settings:
 - `transition` — `fade`, `push`, `wipe`, `cover`, `split` or `zoom` in PowerPoint and in the HTML
   presentation.
 
-Built-in variables: `${page}` (the page number), `${pages}` (the page count) and `${page_name}`.
+Built-in variables: `${page}` (the page number), `${pages}` (the page count) and `${page_name}`. Hidden pages are
+not counted, so a deck with one hidden page among four reads 1 / 3 to 3 / 3 in every format; a hidden page itself
+shows the number the next shown page has.
 
 ## Masters
 
