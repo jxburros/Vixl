@@ -21,18 +21,27 @@ The purpose comes from an explicit `purpose` (`vixl roll --for slides`, `vixl_ro
 the brief kind (`vixl_guide("social-card")`), else the purpose stored in the document, else its
 named size (`instagram-post` is social, `letter` is document, `favicon` is logo). Roll and creation
 results report `purpose` and `purpose_source` (`explicit`, `brief kind`, `document` or `size`).
+
+Creation (`vixl new --purpose`, `vixl_document_create(purpose=…)`, `Project(purpose=…)`) and rolls
+(`vixl roll --for`, `vixl_roll(purpose=…)`) accept the same names: the eight purposes and their aliases
+(`story`, `web`, `email`, `flyer`, `print`, `invitation`, `deck`, `video`, `icon`, `mark`, `emblem`,
+`favicon` …), as well as brief kinds, named sizes and size categories. Each name maps to one purpose
+profile; creation refuses an unknown name with suggestions, while a roll treats one as a free-text hint.
 Each purpose weights the taste:
 
-| Purpose | Dark mode | Type scale | Pairings it favours | Finishing look |
-|---|---|---|---|---|
-| poster | about half | 1.5–1.618 | display and slab faces | visible (amount 0.25) |
-| social | about half | 1.333–1.5 | bold sans and display | visible (amount 0.25) |
-| motion | about half | 1.333–1.618 | display sans | visible (amount 0.25) |
-| slides | 1 in 4 | 1.2–1.25 | UI sans | none |
-| diagram | 1 in 5 | 1.2–1.25 | UI and data faces | none |
-| document | 1 in 10 | 1.2–1.333 | editorial serifs | none |
-| form | 1 in 10 | 1.2–1.25 | civic and UI faces | none |
-| logo | light only | 1.333–1.5 | geometric sans and display | none |
+| Purpose | Dark mode | Type scale | Pairings it favours | Density | Finishing look |
+|---|---|---|---|---|---|
+| poster | about half | 1.5–1.618 | display and slab faces | balanced | visible (amount 0.25) |
+| social | about half | 1.333–1.5 | bold sans and display | balanced | visible (amount 0.25) |
+| motion | about half | 1.333–1.618 | display sans | balanced | visible (amount 0.25) |
+| slides | 1 in 4 | 1.2–1.25 | UI sans | balanced | none |
+| diagram | 1 in 5 | 1.2–1.25 | UI and data faces | dense | none |
+| document | 1 in 10 | 1.2–1.333 | editorial serifs | airy | none |
+| form | 1 in 10 | 1.2–1.25 | civic and UI faces | balanced | none |
+| logo | light only | 1.333–1.5 | geometric sans and display | balanced | none |
+
+Density follows the purpose seven rolls in ten and deviates the rest of the time (decision E4); without
+a purpose the roll picks balanced twice as often as airy or dense.
 
 `vixl house show PURPOSE` (MCP `vixl_resource_get(kind="house-style", name=PURPOSE)`) prints a
 profile; `vixl house` prints the craft rules, the tiers and the levels.
@@ -67,8 +76,12 @@ its tier, moods and modes.
 
 `vixl_roll(variety="low"|"medium"|"high"|"fixed")` chooses the font pairing, palette, light or dark
 mode, layout, type scale, density, margin, accent motif, background treatment, style, finishing look
-and its amount, and a recommended container/variant. Corners follow the house craft (sharp) unless
-the rolled style has its own (material and glassmorphism round, kawaii and y2k pill). The rolled
+and its amount, a headline treatment, and a recommended container/variant. Corners follow the house
+craft (sharp) unless the rolled style has its own (material and glassmorphism round, kawaii and y2k
+pill), and layout buttons, panels and placed containers take the document's corner style. A bold or
+avant-garde roll, or one with an expressive mood (playful, bold, loud …), sets `headline: large`: the
+headline holds about 8 characters a line instead of 14, so it fills the canvas; quiet rolls keep
+`headline: measured`. Lock it like any other choice (`--lock headline=measured`). The rolled
 look lands where it shows: texture looks on the background, the house offset shadow and other
 shadow, outline and glow looks on the solid shapes (buttons, panels, blocks), never on hairline
 rules. Weight contrast describes the actual heading/body weights in the chosen pairing. A roll
@@ -80,15 +93,16 @@ whose image slot nobody fills.
 Every surface creates documents the same way: `vixl new`, Python `Project()`, `Project.sized()` and
 `Project.new()`, `vixl_document_create`, `vixl_compose` and REST compose. Each new document:
 
-- **Size.** Uses the given size. Without one, it uses the purpose's size (`purpose`: social 1080×1350,
-  story 1080×1920, poster 18×24 in, print/document/form/flyer Letter or A4 by locale, slides and diagram
-  1920×1080, web 1200×630, motion 1920×1080, logo 1000×1000, icon 1024×1024, favicon 512×512). With neither,
-  it is 1080×1080.
+- **Size.** Uses the given size. Without one, it uses the purpose's size, from the purpose profile's `size`
+  and its aliases' `sizes` in the house-style data (social 1080×1350, story 1080×1920, poster 18×24 in,
+  print/document/form/flyer Letter or A4 by locale, slides and diagram 1920×1080, web 1200×630, email
+  600×300, motion 1920×1080, logo 1000×1000, icon 1024×1024, favicon 512×512). A named size given as the
+  purpose (`purpose: "a4"`) is used as is. With neither, it is the general profile's 1080×1080.
 - **Design defaults.** Rolls and stores `design_defaults` (seed, variety, purpose and the whole direction).
   `--seed`/`--variety` on the CLI, and `seed`/`variety` in Python and MCP, reproduce them exactly.
 - **Background.** Without `background`, the canvas takes the rolled palette's background role. Logo, icon and
-  favicon sizes and mark purposes (logo, mark, emblem, badge, monogram, icon, app-icon, favicon) stay
-  transparent. `background="transparent"` (`--background transparent`) keeps the old default.
+  favicon sizes and mark purposes (the `logo` profile is flagged `mark`; its aliases mark, emblem, badge,
+  monogram, icon, app-icon and favicon with it) stay transparent. `background="transparent"` (`--background transparent`) keeps the old default.
 - **Fonts.** Embeds the workspace default fonts (`brand.json`). Otherwise it installs the rolled pairing, from
   the font cache first and then the network. Offline, creation stays fast: it reports the pairing under
   `creation.fonts` with a `next_step`, warns once, and does not retry the network in that process.
@@ -106,8 +120,8 @@ margin, corner, look, style, motif and background treatment. Fields you pass win
 `seed` asks for a fresh choice instead of the stored direction.
 
 The rolled density changes the result: airy widens and dense tightens the rolled margin (×1.25 and ×0.75)
-and the spacing unit behind gaps, and both the roll and the builder choose balanced twice as often as airy
-or dense. The rolled accent (rule, bar, dot, block or outline) is drawn in the safe compositions next to
+and the spacing unit behind gaps (half the body size, craft `spacing.unit`). The roll weights density by
+purpose (above); the builder, given no density, chooses balanced twice as often as airy or dense. The rolled accent (rule, bar, dot, block or outline) is drawn in the safe compositions next to
 their own device.
 
 `vixl_roll(apply=True, slots={"title": "Launch"})` installs its selected fonts,
@@ -160,5 +174,8 @@ them, and scores diversity (entropy of palette, layout, mode, pairing, look and 
 pairwise distance of renders) and quality (no `fix` findings, fonts installed, contrast). See
 [the eval README](../evals/README.md#house-style-eval). The acceptance matrix also renders every safe
 palette and composition at Open Graph, portrait social, and slide sizes, then checks contrast and text
-legibility at their reading widths. Longer copy and custom overrides can still require adjustment; the
+legibility at their reading widths, and every layout a social roll can pick is applied at every named
+social and web size and must pass its own safe-area check: text and buttons stay inside the canvas
+safe area (on a 3:1 banner a safe composition sets its copy in two columns), while decoration and
+full-bleed pictures are marked as such. Longer copy and custom overrides can still require adjustment; the
 applied roll returns the measured findings.

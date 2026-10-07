@@ -44,7 +44,8 @@ Fixed templates make every adopter look alike. A layout is a composition system 
 
 - **Color roles** — swatches `@background`, `@surface`, `@ink`, `@muted`, `@accent`, `@accent-text` and `@on-accent`, assigned from a palette with checked contrast: ink at least 7:1 on the background, muted and accent text at least 4.5:1 on the background and surface panels, the accent at least 3:1. Retint a whole layout by editing one swatch.
 - **Type scale** — character styles `caption`, `body`, `lead`, `subhead`, `title`, `headline` and `display` from a medium-appropriate base size and a modular ratio (`minor-third` 1.2 … `golden` 1.618). Print bases are set in points at the canvas dpi.
-- **Spacing** — margins from the density (`airy`, `balanced`, `dense`), never inside the safe area, and gaps on a spacing unit.
+- **Spacing** — margins from the density (`airy`, `balanced`, `dense`), never inside the safe area, and gaps on a spacing unit (half the body size). Text and buttons stay inside the canvas safe area: type shrinks until they fit, and on a 3:1 banner the safe compositions set their copy in two columns. Rails, panels, accents and full-bleed pictures are marked as decoration or intentional crop.
+- **Corners** — buttons, panels and rounded parts of placed containers take the document's corner style (the rolled `corner`, else the house corner, sharp).
 - **Composition** — alignment, focal placement, split proportions, accent device (`rule`, `bar`, `dot`, `block`, `outline`, `none`) and button shape.
 
 Explicit seeds are deterministic. Without one, sparse designs get a fresh seed unless the document or workspace sets `variety: "fixed"`. The applied choices are recorded in `state.layout` (and reported in the change summary), so you can reproduce a result with its returned seed or pin any choice explicitly. See [safe variety](safe-variety.md) for safe pools, expanded roll dimensions and workspace history.
