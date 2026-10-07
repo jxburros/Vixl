@@ -256,3 +256,18 @@ def test_irregularity_is_recommended_where_it_belongs():
 def KIND_OPERATIONS(kind):
     entry = briefs.KINDS[kind]
     return set(entry["operations"]) | {op["type"] for op in entry["example"]}
+
+
+def test_capabilities_list_the_asked_for_operation_first_and_pen_help_names_the_handle_space(capsys):
+    """#324: `vixl capabilities pen` led with oil-paint (matched only through the drawing topic's "paint"), and the
+    pen --nodes help did not say that in/out handles are positions, not offsets from the anchor."""
+    from vixl.cli import main
+
+    names = list(lookup("pen")["operations"])
+    assert names[0] == "pen"
+    assert names.index("shape") < names.index("path-edit") < names.index("oil-paint")
+    assert list(lookup("scatter")["operations"])[0] == "scatter"
+    with pytest.raises(SystemExit):
+        main(["pen", "--help"])
+    help_text = " ".join(capsys.readouterr().out.split())
+    assert "same coordinates as point, not offsets" in help_text

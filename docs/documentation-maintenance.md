@@ -38,11 +38,31 @@ previews so readers can learn by inspecting and editing actual layers. Documenta
 charts must identify illustrative data; diagrams should explain a real workflow and
 avoid implying capabilities the engine does not implement.
 
+## Executable examples
+
+`tests/test_docs_executable.py` (`pytest -m docs`, also part of the normal run) runs the
+`vixl …` lines of every `bash`/`sh` block in `docs/` and `skills/` in a fresh temporary
+workspace, and validates every JSON operation block against the operation schema before
+applying it to a new document. New and edited blocks are picked up automatically.
+
+- A command on a document the block made with `vixl new` must succeed. Other snippets run
+  against a stand-in document and may fail only for missing context (a layer or file the
+  reader supplies), never with an unknown command, option, field or value.
+- Synopsis lines (`[--flag]`, `a|b`, `…`, `NAME` placeholders), servers, AI providers,
+  downloads and, without ffmpeg, video commands are not run.
+- Steer a block with an HTML comment on the line before its fence:
+  `<!-- docs-test: continue -->` runs a shell block after the page's previous shell block in the
+  same workspace (walkthroughs); `<!-- docs-test: save hello-ops.json -->` writes a block's text
+  to that file for the page's shell blocks; `<!-- docs-test: skip REASON -->` leaves a block out.
+- Write examples a reader can run top to bottom: give repeated exports different file names
+  and remove a feature before switching its mode.
+
 ## Verify changes
 
 1. Rebuild assets into a temporary directory and inspect the changed scenes.
-2. Run tutorial commands in a fresh directory with explicit project paths. Verify the
-   JSON recipes replay against the current runtime.
+2. Run tutorial commands in a fresh directory with explicit project paths (the executable
+   examples test does this for every block). Verify the JSON recipes replay against the
+   current runtime.
 3. Open exported PDF/PPTX/animation files or inspect their structure: field names, page
    counts, editable objects and frame counts matter as well as screenshots.
 4. Check local Markdown links and anchors, including images and editable downloads.

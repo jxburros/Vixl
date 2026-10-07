@@ -22,7 +22,7 @@ def make_tile(path, text="Tile", fill="#336699", size=(200, 100)):
         {"type": "solid", "name": "bg", "color": fill},
         {"type": "text", "name": "t", "text": text + " ${who}", "size": 28, "color": "white", "x": 8, "y": 30},
     ])
-    tile.save(path)
+    tile.save(path, overwrite=True)
     return tile
 
 

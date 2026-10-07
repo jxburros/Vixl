@@ -202,6 +202,17 @@ def has_document(explicit=None):
         return False
 
 
+GUIDE_OPTIONS = {"--kind", "--x", "--y", "--angle", "--radius", "--points", "--d", "--delete"}
+
+
+def guide_operation(args):
+    """`vixl guide` is both the craft guide (free text) and the guide operation. The operation is
+    `guide NAME x|y POSITION` or `guide NAME` with a guide option such as --kind or --delete."""
+    if any(arg.split("=", 1)[0] in GUIDE_OPTIONS for arg in args):
+        return True
+    return len(args) == 3 and args[1] in ("x", "y") and re.fullmatch(r"-?\d+(\.\d+)?", args[2]) is not None
+
+
 def read_json(path):
     text = sys.stdin.read(1024 * 1024 + 1) if path == "-" else read_bounded(path, 1024 * 1024).decode()
     require(len(text) <= 1024 * 1024, "JSON input exceeds limit", "resource_limit")
@@ -367,7 +378,8 @@ def dispatch(argv):
             }
         ), options.json
     if "--help" not in args and "-h" not in args and (
-        cmd in ("guide", "looks", "capabilities", "house") or (cmd == "styles" and not (args and args[0] in ("apply", "check")))
+        (cmd == "guide" and not guide_operation(args)) or cmd in ("looks", "capabilities", "house")
+        or (cmd == "styles" and not (args and args[0] in ("apply", "check")))
     ):
         from .finishing_cli import standalone as finishing_standalone
 
@@ -470,7 +482,7 @@ def dispatch(argv):
                          dpi=a.dpi, orientation=a.orientation, bleed=a.bleed or False, seed=a.seed, variety=a.variety,
                          workspace=Path(a.out).resolve().parent, remember=True, workspace_fonts=a.workspace_fonts,
                          limits=limits, report=report)
-        project.save(a.out)
+        project.save(a.out, overwrite=a.overwrite)
         remember(a.out)
         return (
             project.inspect()
@@ -660,7 +672,8 @@ def command_help(cmd, args):
         "timeline": "timeline (inspect) | timeline set [--duration 3s] [--fps 30] [--loop N] [--clear]",
         "pages": "pages (list pages and masters of a multi-page document)",
         "styles": "styles [list [QUERY] | show NAME] | styles apply NAME [--palette] | styles check [NAME…]",
-        "guide": "guide [BRIEF|GUIDANCE]  (e.g. guide a mascot for a coffee brand; guide operations; guide natural-motion)",
+        "guide": "guide [BRIEF|GUIDANCE]  (e.g. guide a mascot for a coffee brand; guide operations; guide natural-motion); "
+                 "guide NAME x|y POSITION or guide NAME --kind KIND … adds a guide line",
         "capabilities": "capabilities [TOPIC]  (e.g. capabilities animation: operations with fields, workflows, gotchas, guidance)",
         "looks": "looks  (the finishing looks; apply with look LAYER NAME)",
         "house": "house [show [PURPOSE]]  (the house style: craft rules, tiered pools, variety levels; or one purpose's profile)",

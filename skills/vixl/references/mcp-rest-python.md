@@ -229,7 +229,7 @@ p.inspect()                 # dict; p.inspect("title") for one layer
 p.layer("title")            # live layer dict (read-only use)
 img = p.render(variables={"title": "Hello"}, artboard=None, comp=None)   # Pillow RGBA
 data = p.export("out.png", quality=90, scale=2, profile=None, sampling="smooth")  # bytes, writes path
-p.save() ; p.save("copy.vixl")
+p.save() ; p.save("copy.vixl")   # another existing file needs overwrite=True
 
 p.undo(1); p.redo(1); p.checkpoint("clean"); p.branch("vivid"); p.checkout("clean")
 p.begin(); ...; p.commit()  # or p.rollback()

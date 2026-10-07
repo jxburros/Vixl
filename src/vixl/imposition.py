@@ -647,7 +647,7 @@ def run(session, template, request):
         write_bytes(outputs["pdf"], data, replace=request.get("replace", False))
         report["output"] = session.relative(outputs["pdf"])
     if "sheet_document" in outputs:
-        sheet.save(outputs["sheet_document"])
+        sheet.save(outputs["sheet_document"], overwrite=bool(request.get("replace", False)))
         report["sheet_document"] = session.relative(outputs["sheet_document"])
     return report
 
