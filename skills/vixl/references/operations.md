@@ -171,7 +171,7 @@ deletes it. One style per kind; all accept `enabled` (bool) and `opacity` (0–1
 | `swatch` | **`name`**, **`color`** | Use as `@name`; redefining updates every use. |
 | `style-define` | **`name`**, **`settings`**, `kind` | `character`: `size`, `color`, `stroke_width`, `stroke_color` (ints). `paragraph`: `align`, `spacing`. |
 | `style-apply` | **`name`**, `target`, `kind` | Linked: redefining the style updates layers. |
-| `variable` | **`name`**, `value`, or `delete: true` | `${name}` in text/colors/gradients/asset IDs. Filters: `${name|upper}`, `lower`, `title`, `default:TEXT`, `map:NAME`, `number[:DECIMALS]`, `format:SPEC`, chained left to right; unknown filters are errors. |
+| `variable` | **`name`**, `value`, or `delete: true` | `${name}` in text/colors/gradients/asset IDs. Filters: `${name|upper}`, `lower`, `title`, `default:TEXT`, `map:NAME`, `number[:DECIMALS]`, `format:SPEC`, chained left to right; unknown filters are errors. `$${name}` is a literal `${name}`. |
 | `variable-map` | **`name`**, **`values`** (`{value: replacement}`, `"*"` = fallback), `merge`, or `delete: true` | Named lookup table for `${var|map:NAME}` (e.g. state codes to names, tiers to colours). |
 | `stack` | `target` (a group) *or* **`name`** + **`targets`**, `direction` (`vertical`/`horizontal`), `gap`, `padding`, `align`, `justify` (`start`/`center`/`end`), `width`, `height`, `hide_if_empty`, `remove` | Auto-layout: lays the group's members out in a column or row inside its box, re-flowing around members that are hidden or empty (see below). Members cannot be moved/aligned/constrained by hand (`stack_managed`). |
 | `comp-save` | **`name`** | Captures visibility/position/rotation/opacity/blend/constraints/styles. |

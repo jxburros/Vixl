@@ -167,6 +167,7 @@ agent, edit independently, preview branch-merge, resolve conflicts explicitly, t
   stale/missing sources, `link-embed` freezes one. See [production](references/production.md).
 - **Print merge** — `merge-impose` lays CSV rows out on print sheets with crop marks: vector-text PDF plus an editable sheet.
   Placeholders take filters: `${name|upper}`, `${company|default:Independent}`, `${state|map:states}` (`variable-map`).
+  `$${name}` writes a literal `${name}`.
 - **QR codes and barcodes** — `qr` and `barcode` (Code 128, EAN-13) are vector shapes in every export; `data` may use
   `${variables}` for merges; `check codes` flags small modules, low contrast and ink in the quiet zone.
 

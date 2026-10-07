@@ -322,13 +322,14 @@ def styled_spans(project, layer, variables=None):
     """Spans with every style resolved against the layer: font value, size, color and flags."""
     from .design import resolve_color
     from .render import color, document_variables, substitute
+    from .variables import RESOLVED
 
     rich = layer["rich"]
     variables = {**document_variables(project), **(variables or {})}
     base_font = layer.get("font", "DejaVuSans.ttf")
     result = []
     for span in rich["spans"]:
-        text = substitute(span["text"], variables)
+        text = span["text"] if layer.get(RESOLVED) else substitute(span["text"], variables)
         font = span.get("font", base_font)
         font, fake_bold, fake_italic = variant_font(project, font, span.get("bold", False), span.get("italic", False), rich)
         result.append({

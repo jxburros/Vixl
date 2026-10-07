@@ -164,9 +164,10 @@ def text_fits(project, layer, size, width, height, wrap=True):
     """Whether the text set at ``size`` fits ``width`` × ``height``; ``wrap=False`` measures it as
     unwrapped lines, the way text without a text-layout box is drawn."""
     from .text import measure, font_data
-    from .render import document_variables, substitute
+    from .render import document_variables
+    from .variables import layer_text
 
-    text = substitute(layer["text"], document_variables(project))
+    text = layer_text(layer, document_variables(project))
     _, box = measure(
         font_data(project, layer),
         text,
