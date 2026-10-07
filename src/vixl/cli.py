@@ -421,41 +421,40 @@ def dispatch(argv):
         except updater.UpdateError as exc:
             raise VixlError("update_error", str(exc)) from exc
     if cmd == "new":
-        p = Parser(prog="vixl new", description="SIZE is WIDTHxHEIGHT or a named size (vixl sizes)")
-        p.add_argument("size")
+        p = Parser(prog="vixl new", description="SIZE is WIDTHxHEIGHT or a named size (vixl sizes). Without it the "
+                   "purpose's size applies, else 1080x1080")
+        p.add_argument("size", nargs="?")
+        p.add_argument("--purpose", help="What the piece is for: social, poster, slides, print, logo, icon, favicon … "
+                       "(picks the size when none is given, keeps marks transparent, weights the rolled defaults)")
         p.add_argument("--overwrite", action="store_true", help="Replace an existing document explicitly")
-        p.add_argument("--background", default="transparent")
+        p.add_argument("--background", help="Canvas colour (default: the rolled palette background; transparent "
+                       "for logos, icons and favicons)")
         p.add_argument("--out", "-o", default=options.project or "untitled.vixl")
         p.add_argument("--dpi", type=float)
+        p.add_argument("--seed", type=int, help="Reproduce the design defaults of an earlier roll")
+        p.add_argument("--variety", choices=["low", "medium", "high", "fixed"])
         orientation = p.add_mutually_exclusive_group()
         orientation.add_argument("--landscape", dest="orientation", action="store_const", const="landscape")
         orientation.add_argument("--portrait", dest="orientation", action="store_const", const="portrait")
         p.add_argument("--bleed", nargs="?", const=True, type=float, help="Add standard bleed, or an amount in the size's unit")
-        p.add_argument("--no-workspace-fonts", dest="workspace_fonts", action="store_false",
-                       help="Do not embed the workspace default fonts (brand.json pairing/fonts beside the document)")
+        p.add_argument("--no-fonts", "--no-workspace-fonts", dest="workspace_fonts", action="store_false",
+                       help="Embed no fonts at creation: neither the workspace default fonts (brand.json beside the "
+                       "document) nor the rolled pairing")
         negative = next((arg for arg in args if re.fullmatch(r"-\d+(\.\d+)?[xX×]-?\d+(\.\d+)?", arg)), None)
         require(negative is None, f"Dimensions must be 1–16384 pixels; got {negative}", "resource_limit", field="size")
         a = p.parse_args(args)
         require(not Path(a.out).exists() or a.overwrite, "Project already exists; use --overwrite to replace it")
         require(not Path(a.out).is_dir(), "Output must be a file")
-        named_size = not re.fullmatch(r"\d+[xX×]\d+", a.size.strip())
+        named_size = a.size is not None and not re.fullmatch(r"\d+[xX×]\d+", a.size.strip())
         require(named_size or not (a.orientation or a.bleed), "orientation and bleed need a named size")
-        if named_size:
-            project = Project.sized(
-                a.size, a.background, limits=limits, dpi=a.dpi, orientation=a.orientation, bleed=a.bleed or False
-            )
-        else:
-            project = Project(*dimensions(a.size), a.background, limits=limits)
-            if a.dpi is not None:
-                require(36 <= a.dpi <= 2400, "dpi must be 36–2400", field="dpi")
-                project.state["canvas"]["dpi"] = a.dpi
-                project.nodes, project.head, project._head_state, project.branches = {}, None, None, {}
-                project._record([], "Create document")
-        fonts = None
-        if a.workspace_fonts:
-            from .brand import apply_workspace_fonts
+        width, height = dimensions(a.size) if a.size is not None and not named_size else (None, None)
+        from .creation import create
 
-            fonts = apply_workspace_fonts(project, Path(a.out).resolve().parent)
+        report = {}
+        project = create(width, height, a.background, size=a.size if named_size else None, purpose=a.purpose,
+                         dpi=a.dpi, orientation=a.orientation, bleed=a.bleed or False, seed=a.seed, variety=a.variety,
+                         workspace=Path(a.out).resolve().parent, remember=True, workspace_fonts=a.workspace_fonts,
+                         limits=limits, report=report)
         project.save(a.out)
         remember(a.out)
         return (
@@ -466,7 +465,8 @@ def dispatch(argv):
                 "canvas": project.state["canvas"],
                 "layers": len(project.state["layers"]),
                 "head": project.head,
-                **({"workspace_fonts": fonts} if fonts else {}),
+                "design_defaults": project.state["design_defaults"],
+                **report,
             }
         ), options.json
     if cmd == "open":

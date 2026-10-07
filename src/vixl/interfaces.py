@@ -164,48 +164,37 @@ class Session:
                 summary["upgrade"] = notice
             return summary
 
-    def create(self, path, width=None, height=None, background="transparent", *, size=None, dpi=None, orientation=None, bleed=False, seed=None, variety=None, workspace_fonts=True):
-        """``workspace_fonts`` embeds the workspace's default fonts (``brand.json`` pairing/fonts);
-        the summary reports them under ``workspace_fonts``."""
+    def create(self, path, width=None, height=None, background=None, *, size=None, purpose=None, dpi=None,
+               orientation=None, bleed=False, seed=None, variety=None, workspace_fonts=True):
+        """Create and save a document through ``creation.create``; the summary adds ``creation`` (size,
+        background and fonts chosen, and why) and ``workspace_fonts`` (the ``brand.json`` fonts embedded)."""
         with self._mutex:
             resolved = self.resolve(path)
             require(resolved.suffix.lower() == ".vixl", "Document path must end in .vixl", field="path")
-            require((size is None) != (width is None or height is None), "Provide width and height, or a named size", field="size")
+            from .creation import resolve_size
+
+            resolve_size(width, height, size, purpose)  # a bad request must not leave directories behind
             self.make_parent(resolved)
             with file_lock(str(resolved)):
                 require(not resolved.exists(), "Destination already exists; open it instead", field="path")
                 report = {}
-                project = self.new_project(width, height, background, size=size, dpi=dpi, orientation=orientation,
-                                           bleed=bleed, seed=seed, variety=variety, workspace_fonts=workspace_fonts,
-                                           report=report)
-                fonts = report.get("workspace_fonts")
+                project = self.new_project(width, height, background, size=size, purpose=purpose, dpi=dpi,
+                                           orientation=orientation, bleed=bleed, seed=seed, variety=variety,
+                                           workspace_fonts=workspace_fonts, report=report)
                 project.save(resolved)
                 self._remember(resolved, project, self.stamp(resolved))
-            return {**self.summary(project), **({"workspace_fonts": fonts} if fonts else {})}
+            return {**self.summary(project), **report}
 
-    def new_project(self, width=None, height=None, background="transparent", *, size=None, dpi=None, orientation=None,
-                    bleed=False, seed=None, variety=None, workspace_fonts=False, report=None):
-        """An unsaved document as ``create`` makes it: from a named size or width/height, with the workspace's
-        design defaults. ``workspace_fonts`` embeds the ``brand.json`` default fonts and records what it
-        applied in ``report["workspace_fonts"]``."""
-        require((size is None) != (width is None or height is None), "Provide width and height, or a named size", field="size")
-        if size is not None:
-            project = Project.sized(size, background, limits=self.limits, dpi=dpi, orientation=orientation, bleed=bleed)
-        else:
-            require(not (orientation or bleed), "orientation and bleed need a named size", field="size")
-            project = Project(width, height, background, limits=self.limits)
-            if dpi:
-                project.apply({"type": "canvas", "dpi": dpi})
-        if workspace_fonts:
-            from .brand import apply_workspace_fonts
+    def new_project(self, width=None, height=None, background=None, *, size=None, purpose=None, dpi=None,
+                    orientation=None, bleed=False, seed=None, variety=None, workspace_fonts=False, report=None):
+        """An unsaved document as ``create`` makes it (``creation.create``): from a named size, width/height,
+        a purpose or nothing (1080×1080), with the workspace's design defaults. ``report`` receives
+        ``creation`` and ``workspace_fonts``."""
+        from .creation import create
 
-            fonts = apply_workspace_fonts(project, self.workspace)
-            if report is not None and fonts:
-                report["workspace_fonts"] = fonts
-        from .variety import document_defaults
-
-        document_defaults(project, seed=seed, variety=variety, workspace=self.workspace)
-        return project
+        return create(width, height, background, size=size, purpose=purpose, dpi=dpi, orientation=orientation,
+                      bleed=bleed, seed=seed, variety=variety, workspace=self.workspace, remember=True,
+                      workspace_fonts=workspace_fonts, limits=self.limits, report=report)
 
     def make_parent(self, path):
         """Create the missing directories above ``path`` (always inside the workspace: ``resolve``

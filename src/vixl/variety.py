@@ -118,13 +118,14 @@ def dimensions(rng, pairing, variety="medium"):
             "color_assignment": rng.choice(["light", "light", "dark"])}
 
 
-def document_defaults(project, *, seed=None, variety=None, workspace=None):
+def document_defaults(project, *, seed=None, variety=None, workspace=None, purpose=None):
     from .typefaces import roll_document
 
     if workspace is not None:
         project._workspace = str(Path(workspace).resolve())
-    result = roll_document(project, workspace=workspace, seed=seed, variety=variety)
+    result = roll_document(project, workspace=workspace, seed=seed, variety=variety, purpose=purpose)
     project.state["design_defaults"] = {"seed": result["seed"], "variety": result["variety"],
+                                        **({"purpose": purpose} if purpose else {}),
                                         "direction": deepcopy(result["direction"])}
     record_as_creation(project, "Choose reproducible design defaults")
     return project.state["design_defaults"]

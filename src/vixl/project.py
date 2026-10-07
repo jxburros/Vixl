@@ -89,7 +89,39 @@ class Project:
     # (vixl upgrade); see upgrade.py.
     upgraded_from = None
 
-    def __init__(self, width=1920, height=1080, background="#00000000", *, limits=None, workspace=None):
+    def __init__(self, width=None, height=None, background=None, *, purpose=None, seed=None, variety=None,
+                 workspace_fonts=True, limits=None, workspace=None):
+        """A new document.
+
+        ``Project(width, height)`` alone is a plain transparent canvas, as before. Leaving out the size, or
+        passing ``purpose``, ``seed`` or ``variety``, creates a design document exactly as ``vixl new`` and
+        ``vixl_document_create`` do (``creation.py``): the purpose's size (else 1080×1080), rolled
+        ``design_defaults``, the palette background (transparent for marks) and the rolled font pairing
+        (``workspace_fonts=False`` skips fonts). An unseeded roll is recorded in the workspace history
+        only when ``workspace`` is given."""
+        designed = (width is None and height is None) or any(v is not None for v in (purpose, seed, variety))
+        size, source = None, "argument"
+        if designed:
+            from .creation import resolve_size
+
+            width, height, size, source = resolve_size(width, height, None, purpose)
+            if size is not None:
+                from .sizes import resolve
+
+                info = resolve(size)
+                width, height = info["width"], info["height"]
+        require(width is not None and height is not None, "Give width and height together", field="width")
+        self._init_blank(width, height, "transparent" if background is None else background, limits, workspace)
+        if designed:
+            from .creation import design
+
+            if size is not None:
+                self._apply_size({"type": "canvas", "size": size}, f"Create {size} document")
+            design(self, size=size, size_from=source, purpose=purpose, background=background, seed=seed,
+                   variety=variety, workspace=workspace, remember=workspace is not None,
+                   workspace_fonts=workspace_fonts)
+
+    def _init_blank(self, width, height, background, limits, workspace):
         self.limits = limits or Limits()
         self.limits.size(width, height)
         from .render import color
@@ -116,22 +148,48 @@ class Project:
         self._record([], "Create document")
 
     @classmethod
-    def sized(cls, size, background="transparent", *, limits=None, dpi=None, orientation=None, bleed=False, workspace=None):
+    def sized(cls, size, background=None, *, limits=None, dpi=None, orientation=None, bleed=False, workspace=None,
+              purpose=None, seed=None, variety=None, workspace_fonts=True, design=True):
         """Create a document from a named size (``letter``, ``instagram-portrait``, ``favicon`` …),
-        recording its dpi, bleed, safe area and trim/safe guides in the first revision."""
-        from .operations import execute
+        recording its dpi, bleed, safe area and trim/safe guides in the first revision.
+
+        Like ``vixl new SIZE`` it rolls ``design_defaults`` and, without ``background``, uses the palette
+        background (transparent for logo and icon sizes) and installs the rolled pairing. ``design=False``
+        gives a plain canvas (transparent unless ``background`` is given)."""
         from .sizes import resolve
-        from .validation import check_state
 
         info = resolve(size, dpi=dpi, orientation=orientation, bleed=bleed)
-        project = cls(info["width"], info["height"], background, limits=limits, workspace=workspace)
+        blank = "transparent" if background is None or design else background
+        project = cls(info["width"], info["height"], blank, limits=limits, workspace=workspace)
         op = {"type": "canvas", "size": info["size"], "orientation": orientation, "dpi": dpi, "bleed": bleed}
-        execute(project, {k: v for k, v in op.items() if v not in (None, False)})
-        check_state(project, project.state)
-        project.nodes, project.head, project._head_state, project.branches = {}, None, None, {}
-        project._verified = set()
-        project._record([], f"Create {info['size']} document")
+        project._apply_size({k: v for k, v in op.items() if v not in (None, False)}, f"Create {info['size']} document")
+        if design:
+            from .creation import design as finish
+
+            finish(project, size=info["size"], purpose=purpose, background=background, seed=seed, variety=variety,
+                   workspace=workspace, remember=workspace is not None, workspace_fonts=workspace_fonts)
         return project
+
+    @classmethod
+    def new(cls, size=None, *, width=None, height=None, purpose=None, background=None, dpi=None, orientation=None,
+            bleed=False, seed=None, variety=None, workspace=None, workspace_fonts=True, limits=None, report=None):
+        """The one creation path with every option ``vixl new`` and ``vixl_document_create`` take; ``report``
+        receives what creation chose (``creation``, ``workspace_fonts``)."""
+        from .creation import create
+
+        return create(width, height, background, size=size, purpose=purpose, dpi=dpi, orientation=orientation,
+                      bleed=bleed, seed=seed, variety=variety, workspace=workspace, remember=workspace is not None,
+                      workspace_fonts=workspace_fonts, limits=limits, report=report)
+
+    def _apply_size(self, op, label):
+        from .operations import execute
+        from .validation import check_state
+
+        execute(self, op)
+        check_state(self, self.state)
+        self.nodes, self.head, self._head_state, self.branches = {}, None, None, {}
+        self._verified = set()
+        self._record([], label)
 
     def find_layer(self, target):
         """The layer whose ID or name is ``target``, or None.

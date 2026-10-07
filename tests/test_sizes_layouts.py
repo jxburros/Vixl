@@ -98,7 +98,7 @@ def test_every_layout_builds_editable_layers_on_varied_canvases(name):
 
 def test_layouts_vary_by_seed_and_content_but_repeat_for_the_same_inputs():
     def apply(seed=None, title="A headline"):
-        p = Project.sized("instagram-portrait")
+        p = Project.sized("instagram-portrait", design=False)
         op = {"type": "layout-apply", "name": "hero-statement", "title": title}
         if seed is not None:
             op["seed"] = seed
