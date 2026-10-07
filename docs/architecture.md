@@ -77,7 +77,7 @@ Per-operation caps, each refused with `resource_limit` or `invalid_operation` na
 | Document dpi | 36–2,400, and the page must still fit the pixel budget (Letter at 1,200 dpi does not) |
 | Polygon and star `sides` | 3–128 |
 
-`--max-pixels` adjusts the pixel budget; Python APIs can pass a complete `Limits` instance. These are input/allocation bounds, **not a hard resident-memory or CPU quota**. Float blending and snapshot copies can use multiples of image size. Use operating-system/container limits for untrusted workloads and reduce pixel/layer/history limits on small machines. CLI processes do not share render caches; caching benefits a reused Python `Project` instance. REST/MCP cache the active document, reloading when the on-disk file changes, and serialize read/write requests for persistence/concurrency correctness.
+`--max-pixels` adjusts the pixel budget (image imports may read sources up to four times it when they downsample); Python APIs can pass a complete `Limits` instance. These are input/allocation bounds, **not a hard resident-memory or CPU quota**. Float blending and snapshot copies can use multiples of image size. Use operating-system/container limits for untrusted workloads and reduce pixel/layer/history limits on small machines. CLI processes do not share render caches; caching benefits a reused Python `Project` instance. REST/MCP cache the active document, reloading when the on-disk file changes, and serialize read/write requests for persistence/concurrency correctness.
 
 ## Trust and security
 
