@@ -291,6 +291,27 @@ def test_added_strokes_restyle_and_preservation_check(sketch):
     assert image.mode == "RGB" and image.size == (p.layer("art")["content_width"], p.layer("art")["content_height"])
 
 
+def test_smooth_keeps_straightened_corners_and_the_check_notices_rounding(sketch):
+    p = built(sketch)
+
+    def strokes():
+        return [r for layer in p.state["layers"] if layer["name"].startswith("art/s") for r in layer["drawing_strokes"]]
+
+    straight = [r for r in strokes() if r.get("kind") in ("line", "polyline")]
+    assert straight, "the sketch's box, line and zigzag straighten"
+    before = deepcopy(strokes())
+    p.apply({"type": "drawing", "action": "smooth", "target": "art"})
+    after = strokes()
+    for old, new in zip(before, after):
+        if old.get("kind") in ("line", "polyline"):
+            assert new == old, "straightened sides and corners are kept"
+    assert not any("rounded" in i["message"] for i in p.check(checks=["drawing"])["issues"])
+    p.apply({"type": "drawing", "action": "smooth", "target": "art", "settings": {"corners": "round"}})
+    assert any(r.get("rounded") for r in strokes())
+    issues = [i for i in p.check(checks=["drawing"])["issues"] if "corners are curves" in i["message"]]
+    assert issues and issues[0]["severity"] == "warning"
+
+
 def test_reclean_keeps_strokes_aligned_and_outline_mode(sketch):
     p = built(sketch)
     group = deepcopy(p.layer("art"))

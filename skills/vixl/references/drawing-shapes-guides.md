@@ -22,7 +22,8 @@ When a person gives you a photo or scan of their drawing, keep their lines and b
   weight (a number sets it). `straighten` (only the strokes the user asked about — pass `strokes`), `smooth`, `restyle`
   and `stroke` change them. `straighten` keeps each line at the angle it was drawn at; add `angles: "axes"` to square up
   walls and floors or `"45"` for diagonals only when asked, and `close_gaps: 30` (or `"auto"`) to close corner and
-  T gaps (corners get sharp, lines keep their angles).
+  T gaps (corners get sharp, lines keep their angles). `smooth` leaves straightened lines and polylines alone
+  (`corners: "round"` smooths them too, and the drawing check then warns).
 - Before `fill`, call `vixl_workflow("drawing-report", {"target": "house"})`: it lists closed
   regions with a point inside each (`point` on the canvas, `group_point` in the drawing's own
   coordinates), the drawing group's `offset`, `scale` and `rotation`, and how much of the original line
