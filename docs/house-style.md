@@ -588,6 +588,53 @@ Today nothing measures either.
 
 Decision:
 
+
+## Decisions → issues
+
+Each decision above is tracked in #388.
+
+| Decisions | Issue | Title |
+|---|---|---|
+| H1, A1, A2 | #401 | House style as data: a built-in default brand with purpose profiles, fixed craft rules and a craft signature |
+| A3 | #403 | Add a purpose tier to the defaults precedence |
+| A4, A5, C2, D1, F3 | #405 | Three-tier taste pools (safe, bold, avant-garde) gated by variety level and weighted by purpose |
+| B2 (developer addition) | #406 | Text stage roles (display, h1–h3, subtitle, lead, body, caption, citation, label) mapped onto 2–4 fonts |
+| B3 | #408 | Default text size comes from the document's type scale |
+| B4, B6, B7, E8 | #410 | Primitive defaults derive from the document direction (fills, strokes, corners) |
+| B5 | #411 | Canvas background defaults to the palette background; transparent for marks |
+| B8 | #413 | Purpose-based default document size, with a 1080×1080 fallback |
+| C1, C6 | #414 | Font pairing and type scale weighted by purpose |
+| C2 | #416 | Expand the pairing pool: +4 safe, +8 bold, +4 avant-garde pairings |
+| C3 | #418 | Install the rolled font pairing automatically at document creation |
+| C4 | #419 | Replace the DejaVu fallback with a bundled broad-coverage open font (Latin, Greek, Cyrillic and symbols) |
+| C5 | #421 | One line-height rule everywhere (body 1.45, lead 1.35, headings 1.1, display 1.0, captions 1.3) |
+| C7 | #423 | Cap body line length at 75 characters in layouts, plus a soft check |
+| C9 | #424 | One scale-aware minimum text size rule, with weight-aware large text |
+| D1, D8 | #426 | Palette pools: dark, saturated, duotone and earthy safe palettes; new bold and avant-garde tiers; curate the legacy palettes |
+| D2 | #400 | Light/dark mode chosen by purpose |
+| D3 | #402 | Reduce background washing so saturated colour fields can be backgrounds |
+| D5 | #404 | Accent count distribution: one accent usually, two often, zero or three rarely |
+| E1 | #407 | One spacing scale used by layouts, stacks, charts and templates |
+| E2 | #409 | Default safe area of 5% for sizes that define none |
+| E3, E4 | #412 | Expressive layouts at medium variety; density follows purpose but may deviate |
+| E5 | #415 | Alignment distribution: design 75% left / 25% right; data 75% left / 25% centre; marks centred |
+| E6 | #417 | Every layout emits its grid as guides (columns plus a baseline grid) |
+| F1 | #420 | Finishing look varies by purpose (off for documents, forms, charts and logos; subtle and visible for posters and social) |
+| F3 | #422 | Style pools: more safe styles, plus bold and avant-garde styles, all rollable |
+| F4 | #425 | Irregularity strength defaults to subtle |
+| F5 | #427 | Illustration house style: flat vector, part lines, offset shadows, thin lines (sometimes double or triple), slight imperfections |
+| F6 | #428 | Split and pattern background treatments at medium variety for social and posters |
+| G2 | #429 | House easing table and seamless short-form loops by default |
+| H2 | #430 | Default-change policy: new documents only, changelog notes with a restore path |
+| H3 | #431 | Diversity and quality eval for sparse briefs, gating changes to defaults |
+| A6 | #394 (comment) | Unify document creation across surfaces |
+| B1 | #283 (comment) | Text without a colour always uses the contrast pick |
+| D7 | #397 (comment) | Diagrams follow the palette and mode |
+| E7 | #398 (comment) | Templates proportional to the canvas |
+| G1 | #366 (comment) | Keep the chart defaults; fix uneven auto labels |
+| G3 | #396 (comment) | Alpha  everywhere; quality 90 |
+| C8, D4, D6, F2 | none | Kept as they are: heading weights and uppercase labels, the AA contrast floor with the ink nudge, palette-first chart colours, look amount 0.5 |
+
 ---
 
 ## Bugs that hide or contradict the current defaults
