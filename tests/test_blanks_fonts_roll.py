@@ -233,7 +233,8 @@ def test_roll_is_reproducible_lockable_and_applicable():
     with pytest.raises(VixlError):
         typefaces.roll(1, locks={"colour": "red"})
     posters = {typefaces.roll(seed, purpose="poster")["direction"]["layout"] for seed in range(30)}
-    assert all("poster" in " ".join(LAYOUTS[name]["best_for"]) for name in posters)
+    from vixl.house_style import entries
+    assert all("poster" in entries("layouts")[name]["purposes"] for name in posters)
     tall = {typefaces.roll(seed, canvas=(1080, 1920))["direction"]["layout"] for seed in range(40)}
     assert "banner" not in tall
     p = Project(1080, 1080)

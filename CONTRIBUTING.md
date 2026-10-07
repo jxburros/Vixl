@@ -6,6 +6,10 @@ Run `pytest -q` and build the distributions before submitting a release change. 
 
 Commit messages, generated pull requests, issue text and generated artwork should describe the work without model signatures or authorship trailers. Keep comments that explain constraints, tradeoffs or non-obvious behavior; remove comments that only repeat the next statement. Provider configuration identifiers are functional data and should remain intact.
 
+## Changing a default
+
+Defaults for sparse briefs live in the house style (`src/vixl/data/house-style.json`, read through `src/vixl/house_style.py`); read values from there instead of adding constants. A changed default affects new documents only: documents store their rolled `design_defaults` with the `house_style_version` that made them. Bump the version when a change alters what a seed rolls, keep what the old version rolled from under `legacy`, and add a changelog line under **Changed defaults** naming the override that restores the old result (an explicit field, a lock, or `house_style_version: 1`). Compare `python -m evals.house_style --compare evals/house-style-baseline.json` before and after; quality must not fall. See [house style](docs/house-style.md#changing-defaults-h2).
+
 ## Visual regression tests
 
 `tests/visual` renders a small set of fixture documents (shapes, paths, text, gradients, effects, raster resampling, blends, groups, charts, organic shapes) and compares them with reference files in `tests/visual/golden`: PNG renders for every fixture, SVG and PPTX structural text snapshots, and PDF exports rendered to PNG with pypdfium2. Image comparison has a tolerance (a pixel differs when a channel moves by more than 3; the test fails when more than 0.05% of pixels differ or any channel moves by more than 48), so anti-aliasing noise does not fail the suite but a changed colour, shape or position does.

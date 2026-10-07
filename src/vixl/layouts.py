@@ -10,6 +10,7 @@ and grid guides, so an agent can keep refining instead of starting from a fixed 
 """
 
 from copy import deepcopy
+from functools import lru_cache
 import math
 import random
 import re
@@ -17,6 +18,7 @@ import secrets
 
 from PIL import Image, ImageDraw
 
+from . import house_style
 from .craft import LINE_HEIGHT, base_size
 from .errors import VixlError, require
 from .safe_catalog import SAFE_PALETTES
@@ -102,8 +104,11 @@ class Builder:
         require(isinstance(base, (int, float)) and 4 <= base <= 1000, "base_size must be 4–1000 pixels")
         self.base = base
         self.sizes = {role: max(6, round(base * self.ratio**step)) for role, step in ROLE_STEPS.items()}
-        if layout.get("safe_composition"):
-            thumbnail = 600 if self.W / self.H > 1.6 else 320
+        if layout.get("safe_composition") or op.get("direction"):
+            # Safe compositions and rolled directions keep minor text readable at thumbnail size, judged
+            # at the width the legibility check uses for this canvas.
+            named = c.get("size")
+            thumbnail = 600 if named in ("og-image", "x-post") or (not named and self.W / self.H > 1.6) else 320
             minimum = math.ceil(self.W / thumbnail * 10)
             self.sizes = {role: max(minimum, value) for role, value in self.sizes.items()}
         self.unit = max(2, round(base / 2 * DENSITY_SPACING[density]))
@@ -464,7 +469,7 @@ def assign_roles(op, rng):
     if given_background is not None and parse(given_background)[3] > 0:
         background = parse(given_background)[:3] + (1.0,)
     for step in range(12):
-        if contrast_ratio(ink[:3], background[:3]) >= 7.1:
+        if contrast_ratio(ink[:3], background[:3]) >= house_style.craft("contrast")["ink_target"]:
             break
         ink = mix(ink, extreme, 0.25)
 
@@ -477,13 +482,15 @@ def assign_roles(op, rng):
     else:
         candidates = [c for c in parsed if c not in (background, ink)] or [ink]
         accent = max(candidates, key=lambda c: chroma(c) + rng.random() * 0.02)
+        surface = mix(background, ink, 0.07 if mode == "light" else 0.12)
+        # Accent fills and large accent type sit on the background and on surface panels and gradients.
+        fill = house_style.craft("contrast")["fill"]
         for step in range(12):
-            if contrast_ratio(accent[:3], background[:3]) >= 3:
+            if min(contrast_ratio(accent[:3], background[:3]), contrast_ratio(accent[:3], surface[:3])) >= fill:
                 break
             accent = mix(accent, extreme, 0.18)
-        surface = mix(background, ink, 0.07 if mode == "light" else 0.12)
 
-    def readable(c, target=4.6):  # margin for hex rounding
+    def readable(c, target=house_style.craft("contrast")["secondary_text_target"]):  # margin for hex rounding
         return min(contrast_ratio(c[:3], background[:3]), contrast_ratio(c[:3], surface[:3])) >= target
 
     # Secondary and small accent text must read on the background and on surface panels (4.5:1);
@@ -1588,7 +1595,9 @@ for _name, _composition in SAFE_COMPOSITIONS.items():
                             ["poster", "social", "web", "slides", "print"], COPY,
                             safe=True, safe_composition=_composition, aligns=[_composition[2]], accents=["none"])
 for _name, _layout_entry in LAYOUTS.items():
-    _layout_entry.setdefault("safe", False)
+    # The tier comes from the house style; "safe" stays as an alias for tier safe.
+    _layout_entry["tier"] = house_style.tier_of("layouts", _name)
+    _layout_entry["safe"] = _layout_entry["tier"] == "safe"
 
 
 IMAGE_OPTIONS = [
@@ -1638,6 +1647,7 @@ def describe(name):
     extra = sorted(set(OPTIONAL_READS.get(name, ())) - set(spec))
     return {
         "description": item["description"],
+        "tier": item["tier"],
         "safe": item.get("safe", False),
         "principles": item["principles"],
         "best_for": item["best_for"],
@@ -1655,6 +1665,7 @@ def catalog():
         "layouts": {
             name: {
                 "description": item["description"],
+                "tier": item["tier"],
                 "safe": item.get("safe", False),
                 "best_for": item["best_for"],
                 "slots": {k: v["label"] for k, v in slot_spec(item).items()},
@@ -1884,6 +1895,28 @@ def _record_blanks(state, builder, layout_name, created):
             found.append({"slot": slot, "layer": name, "hint": f"pass {slot}=" + ("ASSET_ID" if slot == "image" else "[ASSET_ID, …]")
                           + ", or fill the frame later (see next_steps)"})
     return found
+
+
+PROBE_CANVAS = {"wide": (1500, 500), "landscape": (1200, 800), "square": (900, 900), "portrait": (800, 1000),
+                "tall": (500, 1200)}
+
+
+@lru_cache(maxsize=1024)
+def places(name, shape, keys):
+    """Whether layout ``name`` places every copy slot in ``keys`` on a canvas of this ``shape`` (a roll
+    only picks layouts that use all the copy it was given). Probed once per combination."""
+    from .project import Project
+
+    width, height = PROBE_CANVAS.get(shape, PROBE_CANVAS["square"])
+    project = Project(width, height)
+    project._resource_budget = project.limits.max_operations
+    op = {"type": "layout-apply", "name": name, "palette": PALETTE_POOL[0], "unfilled": "omit",
+          **{key: "Sample copy" for key in keys}}
+    try:
+        builder = _build(project, LAYOUTS[name], op, 0, 1.0)
+    except Exception:  # noqa: BLE001 - any failure to build this copy means the roll must not pick the layout
+        return False
+    return set(keys) <= builder.read
 
 
 def _build(project, layout, op, seed, fit):

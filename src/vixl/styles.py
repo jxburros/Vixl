@@ -20,10 +20,11 @@ import numpy as np
 
 from .errors import VixlError, require
 from .style_catalog import STYLES
-from .safe_catalog import SAFE_STYLES
+from .house_style import tier_of
 
 for _name, _style in STYLES.items():
-    _style["safe"] = _name in SAFE_STYLES
+    _style["tier"] = tier_of("styles", _name)
+    _style["safe"] = _style["tier"] == "safe"
 
 TYPES = ("style-set",)
 MAX_NAMES = 3
@@ -61,7 +62,7 @@ def listing(query=None):
         text = " ".join([name, entry["title"], entry["summary"], *entry["keywords"], *entry["best_for"]]).lower()
         if all(w in text for w in words):
             rows.append({"name": name, "title": entry["title"], "summary": entry["summary"], "era": entry["era"],
-                         "safe": entry["safe"],
+                         "tier": entry["tier"], "safe": entry["safe"],
                          "keywords": entry["keywords"], "best_for": entry["best_for"],
                          "checks": [rule["id"] for rule in entry["checks"]]})
     return {"count": len(rows), "styles": rows,
