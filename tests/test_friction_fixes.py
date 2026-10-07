@@ -87,7 +87,7 @@ def test_render_data_reports_per_row_checks(tmp_path):
     p.apply(
         [
             {"type": "variable", "name": "ink", "value": "#111111"},
-            {"type": "text", "name": "t", "text": "Readable", "size": 40, "color": "${ink}", "font": "brand"},
+            {"type": "text", "name": "t", "text": "Readable", "size": 40, "x": 40, "y": 40, "color": "${ink}", "font": "brand"},
         ]
     )
     data = tmp_path / "rows.csv"

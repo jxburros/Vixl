@@ -41,7 +41,9 @@ def test_cli_python_mcp_and_session_roll_identical_design_defaults(tmp_path, mon
     assert by_cli["seed"] == 41 and by_cli["variety"] == "low"
     assert Project.load("cli.vixl").state["design_defaults"] == by_cli
     sized = Project.sized("instagram-portrait", seed=41, variety="low").state["design_defaults"]
-    assert sized == by_cli
+    # A named size implies its purpose, which weights the roll (house style purpose tier).
+    assert sized["purpose"] == "social" and sized["purpose_source"] == "size"
+    assert (sized["seed"], sized["variety"]) == (41, "low")
 
 
 def test_creation_is_one_revision_and_plain_canvas_keeps_the_old_result(tmp_path, monkeypatch):
