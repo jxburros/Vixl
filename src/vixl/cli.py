@@ -144,6 +144,21 @@ Use vixl commands --json for a complete inventory; vixl COMMAND --help works wit
 """
 
 
+# Geometry that can run to thousands of numbers; `layers` abbreviates it (inspect LAYER and `layers --full` keep it).
+BULKY = ("path", "path_view", "path_nodes", "points", "nodes", "strokes", "pixels", "mesh")
+
+
+def listing_layer(layer):
+    """A layer for the `layers` listing: long path data and point lists become a short note."""
+    result = {}
+    for key, value in layer.items():
+        if key in BULKY and not isinstance(value, (int, float)) and len(json.dumps(value, default=str)) > 160:
+            size = f"{len(value):,} characters" if isinstance(value, str) else f"{len(json.dumps(value, default=str)):,} bytes"
+            value = f"<{size}; vixl inspect {layer['name']} shows it>"
+        result[key] = value
+    return result
+
+
 def emit(value, machine=False):
     if value is None:
         return
@@ -616,7 +631,7 @@ def command_help(cmd, args):
         "status": "status",
         "session": "session --project FILE (NDJSON operations or command argv requests on stdin)",
         "describe": "describe [image]",
-        "layers": "layers",
+        "layers": "layers [--full] (list layers; long path data is abbreviated unless --full)",
         "effects": "effects [LAYER]",
         "manifest": "manifest",
         "dependencies": "dependencies",
@@ -714,7 +729,9 @@ def project_command(project, cmd, args, *, detail="compact"):
         require(len(args) <= 1, f"Usage: vixl {cmd} [LAYER] (or --target LAYER)")
         return project.inspect(args[0] if args else None), False
     if cmd == "layers":
-        return project.inspect()["layers"], False
+        require(args in ([], ["--full"]), "Use layers [--full]")
+        layers = project.inspect()["layers"]
+        return layers if args else [listing_layer(layer) for layer in layers], False
     if cmd == "effects":
         return deepcopy(project.layer(args[0] if args else None)["effects"]), False
     if cmd == "manifest":

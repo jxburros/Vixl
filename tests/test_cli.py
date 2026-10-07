@@ -126,3 +126,22 @@ def test_check_command_reports_and_strict_mode_fails(tmp_path):
     assert {issue["check"] for issue in report["issues"]} == {"contrast", "safe_area", "fonts"}
     strict = cli(tmp_path, "--json", "check", "--checks", "contrast", "--strict")
     assert strict.returncode != 0 and json.loads(strict.stderr)["error"] == "design_check_failed"
+
+
+def test_layers_listing_abbreviates_path_data(tmp_path, monkeypatch, capsys):
+    from vixl.cli import main
+
+    monkeypatch.chdir(tmp_path)
+    p = Project(300, 200)
+    path = "M 0 0 " + " ".join(f"L {i} {i % 7}" for i in range(400)) + " Z"
+    p.apply([{"type": "shape", "shape": "path", "name": "torn", "path": path, "fill": "#333"},
+             {"type": "shape", "shape": "rectangle", "name": "box", "width": 20, "height": 20}])
+    p.save(tmp_path / "s.vixl")
+    capsys.readouterr()
+    assert main(["-p", "s.vixl", "layers"]) == 0
+    listing = json.loads(capsys.readouterr().out)
+    torn = next(layer for layer in listing if layer["name"] == "torn")
+    assert torn["path"].startswith("<") and "vixl inspect torn" in torn["path"]
+    assert len(json.dumps(listing)) < 6000
+    assert main(["-p", "s.vixl", "layers", "--full"]) == 0
+    assert next(layer for layer in json.loads(capsys.readouterr().out) if layer["name"] == "torn")["path"] == path
