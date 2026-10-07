@@ -12,6 +12,7 @@ from vixl.ai import (
     AnthropicProvider,
     BFLProvider,
     GeminiProvider,
+    MetaProvider,
     OpenAIProvider,
     encoded,
     generate,
@@ -48,6 +49,32 @@ def test_openai_defaults_and_arbitrary_sizes(monkeypatch):
     )
     backend.invoke("describe", {"source_image": "abc"})
     assert calls[-1]["json"]["model"] == "gpt-5-mini" and "temperature" not in calls[-1]["json"]
+
+
+def test_meta_model_api_defaults_muse_models_and_preset_sizes(monkeypatch):
+    monkeypatch.setenv("MODEL_API_KEY", "m-key")
+    backend = provider("meta")
+    assert isinstance(backend, MetaProvider) and backend.fit_output
+    assert backend.url == "https://api.meta.ai/v1" and backend.headers["Authorization"] == "Bearer m-key"
+    calls = []
+    monkeypatch.setattr(backend, "json", lambda method, route, **kw: calls.append((route, kw)) or {"data": [{"b64_json": "YWJj"}]})
+    backend.invoke("generate", {"width": 1280, "height": 720, "prompt": "x"})
+    route, kw = calls[-1]
+    assert route == "/images/generations"
+    assert kw["json"]["model"] == "muse-image-1.0" and kw["json"]["size"] == "1536x1024"
+    assert kw["json"]["output_format"] == "png" and kw["json"]["response_format"] == "b64_json"
+    monkeypatch.setattr(
+        backend, "json", lambda method, route, **kw: calls.append((route, kw)) or {"choices": [{"message": {"content": "{}"}}]}
+    )
+    backend.invoke("describe", {"source_image": "abc"})
+    assert calls[-1][0] == "/chat/completions" and calls[-1][1]["json"]["model"] == "muse-spark-1.3"
+
+
+def test_retired_llama_api_endpoint_fails_with_migration_hint(monkeypatch):
+    monkeypatch.setenv("LLAMA_API_KEY", "old")
+    with pytest.raises(VixlError, match="MODEL_API_KEY") as error:
+        MetaProvider("meta", {"type": "meta", "url": "https://api.llama.com/v1", "key_env": "LLAMA_API_KEY"})
+    assert error.value.code == "provider_not_configured"
 
 
 def test_generated_images_are_fitted_for_preset_size_providers(tmp_path):
@@ -91,7 +118,7 @@ def test_gemini_generation_editing_and_detection(monkeypatch):
         "generate", {"prompt": "sky", "width": 1280, "height": 720, "source_image": png(), "mask": png()}
     )
     request, body = requests[-1]
-    assert request.url.path.endswith("/models/gemini-3.1-flash-image:generateContent")
+    assert request.url.path.endswith("/models/gemini-nano-banana-2.1:generateContent")
     assert body["generationConfig"]["imageConfig"] == {"aspectRatio": "16:9", "imageSize": "2K"}
     assert len(body["contents"][0]["parts"]) == 3 and "mask" in body["contents"][0]["parts"][2]["text"]
     assert result["image"] == png()

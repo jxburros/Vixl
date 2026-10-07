@@ -15,7 +15,7 @@ DEFAULTS = {
     "openai": {"type": "openai", "url": "https://api.openai.com/v1", "key_env": "OPENAI_API_KEY"},
     "anthropic": {"type": "anthropic", "key_env": "ANTHROPIC_API_KEY"},
     "mistral": {"type": "mistral", "url": "https://api.mistral.ai/v1", "key_env": "MISTRAL_API_KEY"},
-    "meta": {"type": "meta", "url": "https://api.llama.com/v1", "key_env": "LLAMA_API_KEY"},
+    "meta": {"type": "meta", "url": "https://api.meta.ai/v1", "key_env": "MODEL_API_KEY"},
     "gemini": {
         "type": "gemini",
         "url": "https://generativelanguage.googleapis.com/v1beta",
@@ -81,7 +81,7 @@ def model_capabilities(kind, item):
                 return ["plan"]
             return (
                 ["plan", "describe", "detect", "ocr", "generate"]
-                if "image" in ident
+                if "image" in ident or "nano-banana" in ident
                 else ["plan", "describe", "detect", "ocr"]
             )
         return []
@@ -109,6 +109,10 @@ def model_capabilities(kind, item):
                 return ["plan"]
             return ["plan", "describe", "detect", "ocr"]
         return []
+    if kind == "meta" and ident.startswith("muse-"):
+        if ident.startswith("muse-image"):
+            return ["generate"]
+        return ["plan", "describe", "detect", "ocr"] if ident.startswith("muse-spark") else []
     if kind in ("mistral", "meta"):
         result = ["plan"] if caps.get("completion_chat", kind == "meta") else []
         if caps.get("vision") or (
