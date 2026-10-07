@@ -138,7 +138,7 @@ New document state: `canvas.size`, `canvas.dpi`, `canvas.physical`, `canvas.blee
 | radial-repeat | `target`, `count`, `cx`, `cy`, `sweep`, `start_angle`, `mirror`, `group`, `name` — [radial repeat](design-tools.md#radial-repeat) |
 | look | `look`, `target`/`targets`, `color`, `amount`, `remove` — [looks](looks.md) |
 | style-set | `style` (name, names or null), `options` — [styles](styles.md) |
-| layer-intent | `target`, `role`, `allow_overlap`, `allow_crop` |
+| layer-intent | `target`, `role` (`content`, `decoration`, `background`, `title`), `allow_overlap`, `allow_crop`, `tags`, `color_vision_safe`, `detached_ok` |
 | palette-apply | `name`, `prefix`, `roles` (true/false or `{role: color-or-index}`), `keep_order`, `policy` |
 | diagram / diagram-from-text | `name`, `nodes` (`id`, `label`, `kind`, `color`, `text_color`, `icon`, `size`, `group`), `edges` (`from`, `to`, `label`, `kind`, `from_port`, `to_port`, `color`, `arrow`, `id`) or `text`, `layout` (`auto`, `layered`, `tree`, `radial`, `mindmap`, `grid`), `direction`, `routing`, `lanes`, `columns`, `theme`, `font`, `size`, `fit`, `x`, `y`, `width`, `height`, `margin`, `replace` — [diagrams](diagrams.md) |
 | diagram-set | `name`, the diagram fields, `remove_nodes`, `remove_edges`, `delete`; lays the diagram out again in place |

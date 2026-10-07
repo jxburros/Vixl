@@ -293,6 +293,8 @@ vixl looks                               # the finishing looks
 vixl look LAYER glow [--color C] [--amount 0-1] [--remove]
 vixl radial-repeat LAYER --count 12 [--cx 50%] [--cy 50%] [--sweep 360] [--start-angle D] [--mirror] [--no-group] [--name N]
 vixl layer-intent LAYER --allow-crop     # a deliberate edge crop: checks report it as informational
+vixl layer-intent LAYER [--role content|decoration|background|title] [--allow-overlap L…] [--tags T…]
+                        [--[no-]detached-ok] [--[no-]color-vision-safe]   # compact inspect shows what is set
 vixl layout apply NAME --palette '["#0f172a","#1e293b","#38bdf8"]' --keep-order
 vixl palette apply NAME --keep-order | --roles '{"background": 0, "accent": "#e11d48"}'
 vixl styles [list [QUERY] | show NAME] | styles apply NAME [--palette] | styles check [NAME…]
