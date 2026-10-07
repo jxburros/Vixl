@@ -551,7 +551,7 @@ OVERRIDES = {
                 "targets": "Layers to animate."},
     "animate-preset": {"preset": "Motion: fade-in/out, slide-in/out-left|right|up|down, pop-in/out, zoom-in/out, spin, pulse, shake, bounce, float, blink, typewriter or color-shift.",
                        "start": "When it begins.", "duration": "How long it runs.",
-                       "distance": "Travel distance in pixels for slides.", "amount": "Strength of the motion.",
+                       "distance": "Travel distance in pixels for slides.", "amount": "Means something per preset: pulse and zoom-in/out the peak scale (1.08 = 8% larger, not 0.08); spin turns; shake, bounce and float pixels; blink the number of blinks.",
                        "fade": "true adds a fade.", "to": "Final value for presets that animate to one.",
                        "targets": "Layers to animate."},
     "marker": {"name": "Marker name.", "time": "Time of the marker.", "delete": "true removes it."},

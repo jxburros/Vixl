@@ -599,3 +599,20 @@ def test_section_text_layers_must_be_text():
     p = Project(50, 50)
     p.apply([{"type": "text", "name": "lyric", "text": "x"}, {"type": "solid", "name": "lyric-chorus"}])
     assert "'lyric-chorus' must be a text layer" in validate_template(p)["errors"][0]["message"]
+
+
+def test_plan_warns_about_lines_too_wide_for_an_unwrapped_lyric(tmp_path):
+    from vixl.lyrics import plan
+
+    (tmp_path / "song.lrc").write_text(LRC, encoding="utf-8")
+    write_audio(tmp_path / "song.wav")
+    p = Project(160, 90, "#101018")
+    p.apply([{"type": "solid", "name": "bg-default", "color": "#203040"},
+             {"type": "text", "name": "lyric", "text": "Lyric", "size": 12, "color": "white", "x": 8, "y": 30}])
+    p.save(tmp_path / "style.vixl")
+    report = plan(request(), tmp_path)
+    wide = [w for w in report["warnings"] if w["code"] == "lyric_too_wide"]
+    assert wide and "text-layout" in wide[0]["message"]
+    # The fixture template wraps in a text-layout box, so it does not warn.
+    template(tmp_path / "boxed.vixl")
+    assert not [w for w in plan(request(template="boxed.vixl"), tmp_path)["warnings"] if w["code"] == "lyric_too_wide"]

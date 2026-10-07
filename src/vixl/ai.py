@@ -775,7 +775,7 @@ def make_provider(name, settings):
 
 
 def provider(name=None):
-    from .models import load_config, DEFAULTS
+    from .models import BUILTIN, load_config
 
     config = load_config()
     name = name or os.environ.get("VIXL_AI_PROVIDER") or config.get("default")
@@ -784,9 +784,11 @@ def provider(name=None):
         "Configure a provider in ~/.config/vixl/providers.json or set VIXL_AI_PROVIDER",
         "provider_not_configured",
     )
-    builtin = {**DEFAULTS, "flux": {"type": "bfl"}}
-    settings = config.get("providers", {}).get(name, builtin.get(name))
-    require(settings is not None, f"Unknown provider: {name}", "provider_not_configured")
+    configured = config.get("providers", {})
+    settings = configured.get(name, BUILTIN.get(name))
+    require(settings is not None, f"Unknown provider: {name}; configured: {', '.join(sorted(configured)) or 'none'}; "
+            f"built in: {', '.join(BUILTIN)}", "provider_not_configured", field="provider",
+            allowed=sorted({*configured, *BUILTIN}))
     return make_provider(name, settings)
 
 

@@ -177,3 +177,21 @@ def test_compact_toolset_texts_only_name_served_tools(tmp_path):
     served = {tool.name for tool in listed}
     text = server.instructions + " ".join((tool.description or "") + json.dumps(tool.inputSchema) for tool in listed)
     assert set(re.findall(r"vixl_[a-z_]+", text)) <= served
+
+
+def test_rest_routes_name_unknown_fields_and_ask_for_a_bearer_token(tmp_path):
+    from fastapi.testclient import TestClient
+
+    from vixl.interfaces import create_app
+
+    path = tmp_path / "doc.vixl"
+    Project(40, 30).save(path)
+    with TestClient(create_app(path, token="secret")) as client:
+        denied = client.post("/export", json={})
+        assert denied.status_code == 401 and denied.headers["WWW-Authenticate"] == "Bearer"
+        client.headers["Authorization"] = "Bearer secret"
+        for route, body in (("/export", {"format": "PNG", "bogus": 1}), ("/compare", {"bogus": "x"}),
+                            ("/preview", {"bogus": 1})):
+            response = client.post(route, json=body)
+            assert response.status_code == 400 and "'bogus'" in response.json()["message"], route
+            assert response.json()["field"] == "bogus"

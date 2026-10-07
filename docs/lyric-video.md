@@ -127,7 +127,11 @@ An ordinary Vixl document designed with the usual tools. Only `lyric` is require
 
 A line belongs to the section its timestamp falls in. The variant switches when that line shows, after the previous line's exit, so a line is never restyled while it is on screen.
 
-The template may use `${title}`, `${artist}` and `${album}` wherever variables work. Its own
+The template may use `${title}`, `${artist}` and `${album}` wherever variables work. Define them in
+the template first (`vixl variable set title 'Song'`, or `{"type": "variable", "name": "title", "value": "Song"}`):
+a text that names an undefined variable is refused with `missing_variable`. The build fills them from the LRC
+tags. `lyric-video-plan` warns (`lyric_too_wide`) when a line is wider than the canvas in an unwrapped `lyric`
+layer; give `lyric` a `text-layout` box so long lines wrap. Its own
 timeline is replaced. The video is the template's canvas size unless the request sets `width` and
 `height`; a different aspect ratio is cropped from the centre with a `size_mismatch` warning.
 

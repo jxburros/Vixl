@@ -15,7 +15,7 @@ can substitute fonts, emphasize form fields or handle animation differently.
 | Smaller web artwork | WebP; AVIF where supported | Encoded image; confirm support in the consuming system |
 | Print raster | TIFF or JPEG with CMYK | Supply the printer's ICC profile for controlled separations |
 | Scalable supported geometry | SVG | Shapes/text/gradients and supported effects; appearance policy may embed raster fallbacks |
-| Print or selectable-text pages | PDF | Vector pages where supported; effects can fall back to raster; CMYK PDF is raster |
+| Print or selectable-text pages | PDF | Vector pages where supported; effects can fall back to raster; CMYK PDF stays vector (DeviceCMYK) |
 | Editable presentation | PPTX | Real text, supported shapes, images, notes; unsupported appearances become pictures |
 | Layered handoff to Photoshop and similar editors | PSD | One 8-bit RGBA pixel layer per layer with names, opacity, visibility, blend modes and layer groups, plus the flattened composite; text is pixels, not editable type |
 | Interactive form | Fillable PDF | AcroForm widgets over artwork; RGB output; verify target PDF viewer |

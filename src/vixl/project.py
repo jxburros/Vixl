@@ -901,6 +901,8 @@ class Project:
                 )
                 names = [x.filename for x in entries]
                 require(len(set(names)) == len(names), "Duplicate archive members", "invalid_project")
+                require("project.json" in names, "Not a Vixl document: the archive has no project.json",
+                        "invalid_project")
                 require(
                     all(
                         n == "project.json"
@@ -969,5 +971,10 @@ class Project:
                 check_document(project)
                 project._revision = revision
                 return project
-        except (KeyError, TypeError, ValueError, RecursionError, zipfile.BadZipFile) as exc:
+        except KeyError as exc:
+            raise VixlError("invalid_project", f"Malformed Vixl archive: a record is missing its {exc.args[0]!r} "
+                            "field") from exc
+        except zipfile.BadZipFile as exc:
+            raise VixlError("invalid_project", "Not a Vixl document: the file is not a ZIP archive") from exc
+        except (TypeError, ValueError, RecursionError) as exc:
             raise VixlError("invalid_project", f"Malformed Vixl archive: {exc}") from exc

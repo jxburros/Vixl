@@ -63,7 +63,18 @@ Times are milliseconds or strings: `"1.5s"`, `"250ms"`, `"50%"` of the duration,
 
 Easings: `linear`, `hold`, `ease`, `ease-in`, `ease-out`, `ease-in-out`, `ease-in/out/in-out-sine|quad|cubic|quart|expo|back`, `bounce-in`, `bounce-out`, `elastic-out`, `spring`, `cubic-bezier(x1, y1, x2, y2)`, `steps(n)`.
 
-Presets (`animate-preset`): `fade-in`, `fade-out`, `slide-in-left|right|up|down`, `slide-out-left|right|up|down` (fade by default), `pop-in`, `pop-out`, `zoom-in`, `zoom-out`, `spin`, `pulse`, `shake`, `bounce`, `float`, `blink`, `typewriter`, `color-shift` (`to`), `draw-on` and `draw-off` (stroke trim, below). `amount` and `distance` tune them.
+Presets (`animate-preset`): `fade-in`, `fade-out`, `slide-in-left|right|up|down`, `slide-out-left|right|up|down` (fade by default), `pop-in`, `pop-out`, `zoom-in`, `zoom-out`, `spin`, `pulse`, `shake`, `bounce`, `float`, `blink`, `typewriter`, `color-shift` (`to`), `draw-on` and `draw-off` (stroke trim, below). `distance` is the slides' travel in pixels. `amount` means
+something different per preset:
+
+| Preset | `amount` | Default |
+| --- | --- | --- |
+| `pulse` | peak scale (1.08 grows 8%; 0.08 would shrink the layer to 8%) | 1.08 |
+| `zoom-in`, `zoom-out` | the scale zoomed to or from | 1.15 |
+| `spin` | turns (negative turns the other way) | 1 |
+| `shake` | pixels left and right | 12 |
+| `bounce` | jump height in pixels | 60 |
+| `float` | pixels up | 10 |
+| `blink` | number of blinks | 3 |
 
 ```bash
 vixl timeline set --duration 3s --fps 30 --loop 0

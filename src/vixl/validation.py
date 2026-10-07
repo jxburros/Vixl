@@ -50,11 +50,8 @@ def check_state(project, state):
             isinstance(layer["id"], str) and isinstance(layer["name"], str) and layer["name"],
             "Invalid layer identifier",
         )
-        require(
-            layer["id"] not in ids and layer["name"] not in names,
-            "Duplicate layer identifier",
-            "invalid_project",
-        )
+        require(layer["id"] not in ids, f"Duplicate layer id {layer['id']!r}", "invalid_project")
+        require(layer["name"] not in names, f"Duplicate layer name {layer['name']!r}", "invalid_project")
         require(layer.get("role", "content") in ("content", "decoration", "background", "title"), "Invalid layer role", "invalid_project")
         if "pen_origin" in layer:
             origin = layer["pen_origin"]

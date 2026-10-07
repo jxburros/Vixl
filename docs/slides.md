@@ -18,7 +18,7 @@ PowerPoint deck or as a self-contained HTML presentation you can present from an
 ```bash
 vixl new 1920x1080 -o deck.vixl --background '#ffffff'
 vixl master add std --background '#f6f4ef'                     # edit the master …
-vixl shape --shape rectangle --name band --width 1920 --height 24 --x 0 --y 1056 --fill '#1d3557'
+vixl shape rectangle --name band --width 1920 --height 24 --x 0 --y 1056 --fill '#1d3557'
 vixl text add '${page} / ${pages}' --name num --size 24 --x 1780 --y 1010
 vixl page add cover --master std                               # … then the pages
 vixl text add 'Quarterly Review' --name title --size 120 --x 140 --y 380

@@ -339,8 +339,9 @@ HTTP MCP uses the official SDK's Streamable HTTP transport. Stdio remains the de
 HTTP and REST use `Authorization: Bearer TOKEN`, with `VIXL_API_TOKEN` (or `--token-env`)
 and reject remote binds without it. Use a TLS reverse proxy for remote access. OAuth discovery
 is not implemented: clients that require OAuth, including some hosted connector setups, need
-an OAuth-capable gateway. A shared server has one active-document selection; concurrent
-agents should pass `document` explicitly on every document tool. Access covers the entire
+an OAuth-capable gateway. Each connected client has its own active document (see
+[several agents on one server](#several-agents-on-one-server)); agents that share one stdio connection should
+still pass `document` explicitly on every document tool. Access covers the entire
 configured workspace and any locally configured provider accounts.
 
 The viewer polls once per second, showing the current PNG, layers, history, and review notes.
