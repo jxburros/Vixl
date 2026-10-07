@@ -363,10 +363,12 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
             + "1) vixl_sizes_list → vixl_document_create(size=…); 2) text work: vixl_layouts_list → layout-apply, filling every "
             "slot it lists (art with no text frame: shape/organic/pathfinder/radial-repeat); 3) type: vixl_fonts → vixl_font_pair "
             "(the bundled font is a proofing fallback); 4) finish with look (glow, soft-shadow, gradient, grain, paper …) and, "
-            "when the brief names a style, vixl_styles; 5) vixl_check → fix the 'fix' findings, glance at 'review' → "
-            "vixl_render_preview (region= to zoom) → vixl_export_file. Typical loop: vixl_document_create/open → "
-            "vixl_operations_apply (atomic batches; dry_run to test; check=true and preview=true return the vixl_check "
-            "findings and a small preview in the same call) → vixl_export_file; vixl_compose runs that whole chain for a new "
+            "when the brief names a style, vixl_styles; 5) test before you look: vixl_check plus your own check suite "
+            "(suite-set: the brief's requirements as rules, e.g. contrast, spacing, relation, hierarchy, balance) → fix "
+            "the 'fix' findings and failing rules, glance at 'review' → vixl_render_preview (region= to zoom) → "
+            "vixl_export_file. Typical loop: vixl_document_create/open → "
+            "vixl_operations_apply (atomic batches; dry_run to test; check=true, suites=true and preview=true return the "
+            "vixl_check findings, failing suite rules and a small preview in the same call) → vixl_export_file; vixl_compose runs that whole chain for a new "
             "piece in one atomic call. Use layer IDs or "
             "names from results. Batches accept up to 10,000 operations atomically. Path coordinates are literal local pixels; "
             "use path-fit to scale geometry into its box. vixl_capabilities(topic) lists relevant fields and gotchas. " + COORDINATE_NOTE + " Errors are JSON with error, message, field, "
@@ -661,6 +663,11 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
             bool | dict | None,
             Field(description="Also return a small preview PNG: true, or {page, region, max_width (512), max_height, time, isolate}"),
         ] = None,
+        suites: Annotated[
+            bool | str | list[str] | None,
+            Field(description="Also run the document's check suites (your own tests, attached with suite-set): true "
+                              "for all, or names. Lists each suite's status and the rules that did not pass"),
+        ] = None,
     ) -> dict:
         """Apply operations atomically (all or none) and autosave. Give operations inline, or operations_path
         for a large batch kept in a workspace file. brief (default) returns the ID, name and
@@ -674,15 +681,16 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         still applies); text-style styles a phrase, character range or paragraphs inside it.
         shape/solid/gradient/text add a layer, but with target they edit that existing layer in place
         (keeping its ID), e.g. {type: shape, target: bar, fill: "#6b3f69"}.
-        check and preview save the vixl_check and vixl_render_preview round trips (also with dry_run); they are
+        check, suites and preview save the vixl_check, vixl_workflow check and vixl_render_preview round trips
+        (also with dry_run); run check and suites while building, before asking for a preview. They are
         skipped, with a note, when the edit itself took more than half the inline time limit."""
         require(operations is not None or operations_path is not None, "Pass operations or operations_path",
                 field="operations")
-        if not check and not preview:
+        if not check and not preview and not suites:
             return session.apply(operations, dry_run, detail, document, operations_path=operations_path)
         budget = runtime.inline_seconds / 2 if runtime.inline_seconds else None
         result, image = session.apply_reviewed(operations, dry_run, detail, document, operations_path=operations_path,
-                                               check=check, preview=preview, budget=budget)
+                                               check=check, preview=preview, budget=budget, suites=suites)
         return result if image is None else [result, Image(data=image, format="png")]
 
     @tool
@@ -750,7 +758,8 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         """Return an aspect-preserving PNG capped in dimensions and bytes, rendered at preview resolution.
         region zooms into part of the canvas and may enlarge it up to 8x for detail checks. time previews
         an animation frame; proof shows print (CMYK) color; simulate checks color-blind legibility.
-        isolate shows one object (a group or layers) alone, to judge its parts without the scene around it."""
+        isolate shows one object (a group or layers) alone, to judge its parts without the scene around it.
+        Test first: vixl_check and the document's suites catch what a small preview hides; preview for taste."""
         return Image(
             data=preview(
                 session,

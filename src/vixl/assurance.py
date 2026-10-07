@@ -3,6 +3,7 @@
 from copy import deepcopy
 import hashlib
 import json
+import math
 
 import numpy as np
 
@@ -25,7 +26,19 @@ RULE_FIELDS = {
     "pixels": {"region", "asset", "tolerance"},
     "text-fit": {"target", "minimum"},
     "alpha": {"minimum", "maximum"},
+    "spacing": {"targets", "axis", "expected", "tolerance"},
+    "relation": {"target", "to", "position", "align", "minimum", "maximum", "tolerance", "bounds"},
+    "contrast": {"target", "minimum"},
+    "color": {"point", "region", "expected", "tolerance"},
+    "ink": {"region", "background", "tolerance", "minimum", "maximum"},
+    "balance": {"expected", "tolerance", "region", "background"},
+    "hierarchy": {"targets", "ratio"},
+    "count": {"target", "layer_type", "minimum", "maximum"},
+    "focal": {"target", "grid", "tolerance"},
 }
+POSITIONS = ("left-of", "right-of", "above", "below", "inside", "contains", "overlapping", "apart")
+EDGES = ("left", "center-x", "right", "top", "center-y", "bottom")
+GRIDS = ("thirds", "golden", "center")
 
 
 def validate_suite(suite):
@@ -46,6 +59,7 @@ def validate_suite(suite):
         require(rule.get("severity", "error") in ("error", "warning"), "Invalid check severity")
         if "tolerance" in rule:
             finite(rule["tolerance"], "tolerance", 0, 1e9)
+        _validate_fields(rule)
     sampling = suite.get("sampling", {"mode": "still"})
     require(isinstance(sampling, dict) and set(sampling) <= {"mode", "count", "times"}, "Invalid sampling")
     require(sampling.get("mode", "still") in ("still", "sampled", "all", "times"), "Invalid sampling mode")
@@ -57,6 +71,48 @@ def validate_suite(suite):
             "Explicit sampling needs 1–3600 times",
         )
     require(len(json.dumps(suite, allow_nan=False)) <= 1024 * 1024, "Suite too large", "resource_limit")
+
+
+def _validate_fields(rule):
+    """Shape checks for the measured rule kinds, so a malformed rule fails when the suite is attached
+    rather than reading as needs_review on every run."""
+    kind, where = rule["kind"], f"rule {rule.get('id')!r}"
+    for name in ("minimum", "maximum", "ratio"):
+        if name in rule:
+            finite(rule[name], f"{where}: {name}", 0, 1e9)
+    if kind in ("spacing", "hierarchy"):
+        targets = rule.get("targets")
+        require(isinstance(targets, list) and len(targets) >= 2 and all(isinstance(t, str) for t in targets),
+                f"{where}: targets needs two or more layer names", field="targets")
+    if kind in ("relation", "contrast", "focal"):
+        require(isinstance(rule.get("target"), str), f"{where}: needs a target layer", field="target")
+    if kind == "relation":
+        require(isinstance(rule.get("to"), str), f"{where}: needs to (a layer or 'canvas')", field="to")
+        require(rule.get("position", "apart") in POSITIONS, f"{where}: position is one of {', '.join(POSITIONS)}",
+                field="position")
+        align = rule.get("align", [])
+        require(isinstance(align, list) and set(align) <= set(EDGES),
+                f"{where}: align lists edges from {', '.join(EDGES)}", field="align")
+        require(rule.get("bounds", "box") in ("box", "ink"), f"{where}: bounds is box or ink", field="bounds")
+    if kind == "spacing":
+        require(rule.get("axis", "vertical") in ("horizontal", "vertical"), f"{where}: axis is horizontal or vertical",
+                field="axis")
+    if kind == "color":
+        require(("point" in rule) != ("region" in rule), f"{where}: give point or region", field="point")
+        require(isinstance(rule.get("expected"), str), f"{where}: expected is a color", field="expected")
+    if kind == "balance" and "expected" in rule:
+        point = rule["expected"]
+        require(isinstance(point, list) and len(point) == 2 and all(type(v) in (int, float) and 0 <= v <= 1 for v in point),
+                f"{where}: expected is [x, y] as fractions of the canvas (0-1)", field="expected")
+    if kind == "focal":
+        require(rule.get("grid", "thirds") in GRIDS, f"{where}: grid is one of {', '.join(GRIDS)}", field="grid")
+    if kind == "relation":
+        require(any(name in rule for name in ("position", "align", "minimum", "maximum")),
+                f"{where}: set position, align, minimum or maximum", field="position")
+    if kind in ("ink", "count"):
+        require("minimum" in rule or "maximum" in rule, f"{where}: set minimum or maximum", field="minimum")
+    if kind == "count":
+        require(isinstance(rule.get("target", "*"), str), f"{where}: target is a layer name or glob", field="target")
 
 
 def capture(project, targets=(), regions=()):
@@ -183,9 +239,213 @@ def rule_result(project, rule):
         require(current.size == baseline.size, "Baseline region size changed")
         delta = int(np.abs(np.asarray(current).astype(int) - np.asarray(baseline).astype(int)).max())
         return delta <= rule.get("tolerance", 0), {"actual": delta, "expected": rule.get("tolerance", 0)}
-    alpha = np.asarray(project.render().getchannel("A"))
-    actual = float((alpha < 255).mean())
-    return rule.get("minimum", 0) <= actual <= rule.get("maximum", 1), {"nonopaque_fraction": actual}
+    if kind == "alpha":
+        alpha = np.asarray(project.render().getchannel("A"))
+        actual = float((alpha < 255).mean())
+        return rule.get("minimum", 0) <= actual <= rule.get("maximum", 1), {"nonopaque_fraction": actual}
+    return MEASURED[kind](project, rule)
+
+
+def _within(value, rule):
+    return rule.get("minimum", -math.inf) <= value <= rule.get("maximum", math.inf)
+
+
+def _spacing(project, rule):
+    from .spacing import measure_spacing
+
+    report = measure_spacing(project, targets=rule["targets"], axis=rule.get("axis", "vertical"),
+                             expected=rule.get("expected"), tolerance=rule.get("tolerance", 1))
+    return report["passed"], {"gaps": [round(gap["pixels"], 2) for gap in report["gaps"]],
+                              "spread": round(report["spread"], 2), "expected": rule.get("expected"),
+                              "tolerance": report["tolerance"]}
+
+
+def _relation(project, rule):
+    from .spatial import _distances, canvas_boxes, relation
+
+    boxes = canvas_boxes(project, rule.get("bounds", "box"))
+    canvas = project.state["canvas"]
+    a = boxes[project.layer(rule["target"])["id"]]
+    b = (0, 0, canvas["width"], canvas["height"]) if rule["to"] == "canvas" else boxes[project.layer(rule["to"])["id"]]
+    found = relation(a, b, rule.get("tolerance", 1))
+    positions, detail = found["positions"], {"positions": found["positions"], "alignments": found["alignments"]}
+    passed = True
+    if "position" in rule:
+        wanted = rule["position"]
+        passed = "overlapping" not in positions if wanted == "apart" else wanted in positions
+    missing = [edge for edge in rule.get("align", []) if edge not in found["alignments"]]
+    if missing:
+        passed = False
+        detail["missing_alignments"] = missing
+    if "minimum" in rule or "maximum" in rule:
+        if "inside" in positions:
+            # Inside its container the distance that matters is the smallest margin to the container's edges.
+            margins = _distances(a, b)
+            distance = min(margins.values())
+            detail["margins"] = {side: round(value, 2) for side, value in margins.items()}
+        else:
+            distance = found["nearest_edge_distance"]
+        detail["distance"] = round(distance, 2)
+        passed = passed and _within(distance, rule)
+    return passed, detail
+
+
+def _contrast(project, rule):
+    from .measure import measure
+
+    report = measure(project, target=rule["target"], histogram="none")["contrast"]
+    need = rule.get("minimum", 4.5)
+    # The tenth-percentile glyph pixel, as the contrast design check reads it; an outline counts when it carries the text.
+    outline = (report.get("outline") or {}).get("p10")
+    detail = {"expected": need, "actual": report["p10"], "weakest_region": report["weakest_region"]}
+    if outline is not None:
+        detail["outline"] = outline
+    return max(report["p10"], outline or 0) >= need, detail
+
+
+def _hex(rgb):
+    return "#" + "".join(f"{round(v):02x}" for v in rgb)
+
+
+def _color(project, rule):
+    from .design import resolve_color
+    from .render import color
+
+    image = project.render()
+    if "point" in rule:
+        point = rule["point"]
+        require(isinstance(point, list) and len(point) == 2 and all(type(v) is int for v in point),
+                "point needs integer [x, y]", field="point")
+        require(0 <= point[0] < image.width and 0 <= point[1] < image.height, "point must be inside the canvas")
+        actual = np.asarray(image.getpixel(tuple(point))[:3], dtype=float)
+    else:
+        x, y, w, h = region_box(project, rule["region"])
+        pixels = np.asarray(image.crop((x, y, x + w, y + h))).reshape(-1, 4).astype(float)
+        weight = pixels[:, 3] / 255
+        require(weight.sum() > 0, "Nothing is drawn in the region")
+        actual = (pixels[:, :3] * weight[:, None]).sum(axis=0) / weight.sum()
+    expected = np.asarray(color(resolve_color(rule["expected"], project.state))[:3], dtype=float)
+    distance = float(np.abs(actual - expected).max())
+    return distance <= rule.get("tolerance", 12), {"expected": _hex(expected), "actual": _hex(actual),
+                                                   "distance": round(distance, 2)}
+
+
+def _backdrop(project, layer, boxes):
+    """A layer that is the page rather than content: marked role background, or a top-level solid,
+    gradient, image or rectangle covering the whole canvas."""
+    if layer.get("role") == "background":
+        return True
+    canvas = project.state["canvas"]
+    x, y, w, h = boxes[layer["id"]]
+    covers = x <= 0 and y <= 0 and x + w >= canvas["width"] and y + h >= canvas["height"]
+    plain = layer["type"] in ("solid", "gradient", "image") or (
+        layer["type"] == "shape" and layer.get("shape") in ("rectangle", "rounded-rectangle"))
+    return covers and plain and not layer.get("parent")
+
+
+def _ink_weights(project, rule):
+    """Per-pixel visual weight (0-1) in the rule's region: how far each pixel is from ``background``, or,
+    without one, the coverage of the content drawn without the canvas colour and backdrop layers."""
+    from .design import resolve_color
+    from .render import color
+    from .spatial import canvas_boxes
+
+    if rule.get("background"):
+        pixels = np.asarray(project.render()).astype(float)
+        base = np.asarray(color(resolve_color(rule["background"], project.state))[:3], dtype=float)
+        weights = np.abs(pixels[:, :, :3] - base).max(axis=2) / 255 * pixels[:, :, 3] / 255
+    else:
+        candidate = project.clone()
+        candidate.state["canvas"]["background"] = "transparent"
+        boxes = canvas_boxes(candidate)
+        for layer in candidate.state["layers"]:
+            if _backdrop(candidate, layer, boxes):
+                layer["visible"] = False
+        weights = np.asarray(candidate.render().getchannel("A")).astype(float) / 255
+    if "region" in rule:
+        x, y, w, h = region_box(project, rule["region"])
+        weights = weights[y:y + h, x:x + w]
+    return weights
+
+
+def _ink(project, rule):
+    weights = _ink_weights(project, rule)
+    actual = float((weights > rule.get("tolerance", 24) / 255).mean())
+    return _within(actual, rule), {"ink_fraction": round(actual, 4), "minimum": rule.get("minimum"),
+                                   "maximum": rule.get("maximum")}
+
+
+def _balance(project, rule):
+    weights = _ink_weights(project, rule)
+    total = weights.sum()
+    require(total > 0, "Nothing is drawn to balance")
+    height, width = weights.shape
+    center = [float((weights.sum(axis=0) * (np.arange(width) + 0.5)).sum() / total / width),
+              float((weights.sum(axis=1) * (np.arange(height) + 0.5)).sum() / total / height)]
+    expected = rule.get("expected", [0.5, 0.5])
+    offset = [center[0] - expected[0], center[1] - expected[1]]
+    tolerance = rule.get("tolerance", 0.1)
+    return max(map(abs, offset)) <= tolerance, {"center": [round(v, 4) for v in center], "expected": expected,
+                                                "offset": [round(v, 4) for v in offset], "tolerance": tolerance}
+
+
+def _rendered_size(project, layer):
+    from .richtext import active, fitted
+    from .text import plan
+
+    require(layer["type"] == "text", f"{layer['name']!r} is not text")
+    if active(layer):
+        return layer["size"] * fitted(project, layer).size_scale
+    return plan(project, layer).size
+
+
+def _hierarchy(project, rule):
+    from .render import resolved_layers
+
+    resolved = {item["id"]: item for item in resolved_layers(project)}
+    sizes = [_rendered_size(project, resolved[project.layer(ref)["id"]]) for ref in rule["targets"]]
+    ratio = rule.get("ratio", 1.2)
+    steps = [a / b if b else math.inf for a, b in zip(sizes, sizes[1:])]
+    return all(step >= ratio - 1e-9 for step in steps), {
+        "sizes": [round(v, 2) for v in sizes], "ratios": [round(v, 3) for v in steps], "expected": ratio}
+
+
+def _count(project, rule):
+    from .spatial import _select
+
+    index = {layer["id"]: layer for layer in project.state["layers"]}
+
+    def shown(layer):
+        while layer:
+            if not layer["visible"] or layer["opacity"] <= 0:
+                return False
+            layer = index.get(layer.get("parent"))
+        return True
+
+    try:
+        chosen = _select(project, rule.get("target", "*"))
+    except VixlError:
+        chosen = []
+    names = [layer["name"] for layer in chosen
+             if shown(layer) and rule.get("layer_type", layer["type"]) == layer["type"]]
+    return _within(len(names), rule), {"count": len(names), "layers": names[:20],
+                                       "minimum": rule.get("minimum"), "maximum": rule.get("maximum")}
+
+
+def _focal(project, rule):
+    from .spatial import _composition, canvas_boxes
+
+    box = canvas_boxes(project)[project.layer(rule["target"])["id"]]
+    grid = rule.get("grid", "thirds")
+    nearest = min(_composition(project, box)[grid]["points"], key=lambda item: item["distance"])
+    canvas = project.state["canvas"]
+    tolerance = rule.get("tolerance", 0.05 * min(canvas["width"], canvas["height"]))
+    return nearest["distance"] <= tolerance, {"nearest_point": [round(v, 1) for v in nearest["point"]],
+                                              "distance": round(nearest["distance"], 1), "tolerance": tolerance}
+
+
+MEASURED = {"spacing": _spacing, "relation": _relation, "contrast": _contrast, "color": _color, "ink": _ink,
+            "balance": _balance, "hierarchy": _hierarchy, "count": _count, "focal": _focal}
 
 
 def run_suite(project, suite, *, variables=None, artboard=None, mode=None):

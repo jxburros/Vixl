@@ -1122,18 +1122,47 @@ def batch_findings(project, names, touched):
     return summary
 
 
+def suite_summary(project, suites):
+    """Run attached check suites (``True`` for all of them, a name or a list) and report each one's status
+    with only the rules that did not pass, so a batch's result stays small."""
+    attached = project.state.get("suites", {})
+    if suites is True:
+        names = list(attached)
+    else:
+        names = [suites] if isinstance(suites, str) else suites
+        require(isinstance(names, list) and all(isinstance(name, str) for name in names),
+                "suites is true, a suite name or a list of names", field="suites")
+        missing = [name for name in names if name not in attached]
+        require(not missing, f"No attached suite named {missing}; attached: {', '.join(attached) or 'none'}",
+                field="suites")
+    if not names:
+        return {"note": "No suites are attached. Write one for this document's requirements with suite-set "
+                        "(vixl_guide('testing') explains how) or attach a starter with workflow suite-use."}
+    summary = {}
+    for name in names:
+        report = project.check_suite(name)
+        open_rules = [item for item in report["results"] if item["status"] != "passed"]
+        summary[name] = {"status": report["status"], "errors": report["errors"],
+                         "needs_review": report["needs_review"], "rules": len(attached[name]["rules"]),
+                         "not_passed": open_rules[:APPLY_ISSUES]}
+        if len(open_rules) > APPLY_ISSUES:
+            summary[name]["omitted"] = len(open_rules) - APPLY_ISSUES
+    return summary
+
+
 def apply_reviewed(project, operations, *, dry_run=False, detail="brief", check=None, preview=None, validate=None,
-                   budget=None):
+                   budget=None, suites=None):
     """Apply a batch and, on request, check and preview the result in the same call: one round trip instead of
     apply, vixl_check and vixl_render_preview. ``check`` is true (the default checks), a check name or a list;
     ``preview`` is true or {page, region, max_width (default 512), max_height, time}. A dry run checks and previews
     the candidate without saving it. ``budget`` (seconds) skips the review when the edit alone used it up, so a slow
-    batch never also waits for a check. ``validate`` is Project.apply's per-operation ``check``.
-    Returns ``(result, PNG bytes or None)``."""
+    batch never also waits for a check. ``validate`` is Project.apply's per-operation ``check``. ``suites`` (true,
+    a name or a list) also runs the document's attached check suites (``suite_summary``), including any the
+    batch itself attached. Returns ``(result, PNG bytes or None)``."""
     import time
     from copy import deepcopy
 
-    if not check and not preview:
+    if not check and not preview and not suites:
         return project.apply(operations, dry_run=dry_run, detail=detail, check=validate), None
     names, options = _apply_options(check, preview)
     started = time.monotonic()
@@ -1142,18 +1171,20 @@ def apply_reviewed(project, operations, *, dry_run=False, detail="brief", check=
     result = target.apply(operations, detail=detail, check=validate)
     result["dry_run"] = dry_run
     skipped, image = [], None
-    for part, wanted in (("check", check), ("preview", preview)):
+    for part, wanted in (("check", check), ("suites", suites), ("preview", preview)):
         if not wanted:
             continue
         if budget is not None and time.monotonic() - started > budget:
             skipped.append(part)
         elif part == "check":
             result["check"] = batch_findings(target, names, _touched(before, target))
+        elif part == "suites":
+            result["suites"] = suite_summary(target, suites)
         else:
             from .proxy import preview_png
 
             image = preview_png(target, max_bytes=524_288, **options)
     if skipped:
         result["review_skipped"] = (f"The edit took {time.monotonic() - started:.0f} s, so {' and '.join(skipped)} did not run; "
-                                    "call vixl_check or vixl_render_preview.")
+                                    "call vixl_check, vixl_workflow check or vixl_render_preview.")
     return result, image

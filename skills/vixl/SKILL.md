@@ -47,10 +47,50 @@ instead of improvising freehand shapes:
 4. **Finish** — apply a `look` (glow, soft-shadow, hard-shadow, gradient, grain, paper …) so flat shapes
    read as finished work; when the brief names a style (swiss, brutalist, art-deco, kawaii …) use
    `vixl_styles` and `style-set`, then `check --checks style`.
-5. **Check** — `vixl_check`: fix the `fix` findings, glance at `review`, accept `informational` ones
-   (mark a deliberate edge crop with `layer-intent` `allow_crop`); then `vixl_render_preview` →
-   `vixl_export_file`. `vixl_operations_apply(..., check=true, preview=true)` returns the findings
-   (the batch's layers plus every `fix`) and a small preview with the edit itself, so the loop is one call.
+5. **Test, then look** — write the brief's requirements as a check suite before you build (below), run
+   it with `vixl_check` while you build, and only preview a design that passes: `vixl_check` (fix the
+   `fix` findings, glance at `review`, accept `informational` ones; mark a deliberate edge crop with
+   `layer-intent` `allow_crop`) plus your suite, then `vixl_render_preview` → `vixl_export_file`.
+   `vixl_operations_apply(..., check=true, suites=true, preview=true)` returns the findings (the
+   batch's layers plus every `fix`), the suite rules that did not pass and a small preview with the edit
+   itself, so the loop is one call.
+
+## Tests: why, when and how
+
+A preview is a small, downsampled picture; you cannot see a 1 px crop, a 4.2:1 contrast or gaps of 20
+and 24 px in it, and the next batch can quietly undo a fix. Tests measure those exactly and keep
+measuring as edits pile up. Use them for what can be measured and the preview for what cannot (taste,
+likeness, mood). `vixl_guide("testing")` is the full method; every `vixl_guide(kind)` answer has a
+`tests` plan (a starter suite and rules to adapt).
+
+1. **Before building**, turn each requirement of the brief into a rule and attach the suite in the
+   first batch (`suite-set`), or start from a starter suite (`vixl_workflow("suite-use", {name})`):
+   `social-card`, `composition`, `slide-deck`, `logo`, `motion-loop`, `character`, `fillable-form`,
+   `diagram`, `print-ready`, `accessible`, `delivery`, `palette`, `opaque`, `no-placeholders`, `containers`.
+2. **While building**, pass `check=true, suites=true` to `vixl_operations_apply`; fix failures as they appear.
+3. **Before every preview and export**, run `vixl_check` and `vixl_workflow("check", {suite: NAME})`
+   (or an inline suite object); preview once they pass.
+4. **A failing rule means change the design.** Never loosen a rule or its tolerance to pass; pick
+   tolerances when you write the rule. Use `severity: "warning"` for preferences.
+
+| Requirement | Rule |
+| --- | --- |
+| Headline clearly dominates | `{kind: hierarchy, targets: [title, subtitle, body], ratio: 1.25}` |
+| Text readable | `{kind: contrast, target: title, minimum: 4.5}`, `{kind: text-fit, target, minimum}` |
+| Evenly spaced cards | `{kind: spacing, targets: [card-1, card-2, card-3], axis: horizontal}` (`expected` for an exact gap) |
+| Logo 48 px from the edges | `{kind: relation, target: logo, to: canvas, position: inside, minimum: 48}` |
+| Caption under the photo, left-aligned | `{kind: relation, target: caption, to: photo, position: below, align: [left], maximum: 24}` |
+| Price never touches the product | `{kind: relation, target: price, to: product, position: apart, minimum: 8}` |
+| Quiet area for the headline | `{kind: ink, region: [x, y, w, h], maximum: 0.02}` |
+| Balanced / subject on a thirds point | `{kind: balance, tolerance: 0.1}`, `{kind: focal, target: subject, grid: thirds}` |
+| Brand colour exact | `{kind: color, point: [x, y], expected: "@brand"}` or `palette` |
+| Exactly three bullets, no text on an icon | `{kind: count, target: "bullet-*", minimum: 3, maximum: 3}`, `{kind: count, layer_type: text, maximum: 0}` |
+| A finished part must not change | `suite-capture` (unchanged and pixels rules) |
+| Holds through an animation | add `sampling: {mode: sampled, count: 8}` |
+
+Each result carries the measurement (gaps, margins, ratio, centre, colour), so a failure says what to
+change. A rule that cannot be measured (a missing layer) is `needs_review`, never a pass, and a
+passing suite proves only its own rules. Rule fields: `vixl_workflow_schema().definitions.suite`.
 
 **One call for a new piece.** When you already know the size, layout slots, look and operations,
 `vixl_compose(path, size=…, font_pairing=…, layout={name, …slots}, style=…, look={…}, operations=[…],
@@ -69,7 +109,8 @@ Use `vixl_workflow_schema` to discover the consolidated resource/test/effect/gro
 For small tool context use `--tools compact --schema slim` (13 tools).
 
 For each new brief, inspect starter suites with resource-list/get and create a custom suite
-for its actual requirements. Run it after edits and before export. Freeze allowed colors in
+for its actual requirements (see Tests above). Run it with every batch (`suites=true`), before every
+preview and before export. Freeze allowed colors in
 palette regression rules; choose antialias tolerances before checking, not to hide violations.
 Use container-reflow after changing copy, then check container-layout. Fork one document per
 agent, edit independently, preview branch-merge, resolve conflicts explicitly, then merge.
@@ -229,6 +270,8 @@ If found, prepend its folder to PATH for this session — see
 5. **Check without looking:** `vixl_check` / `vixl check` reports content cut off by the canvas,
    overlapping text, low WCAG contrast, safe-area or reserved-zone violations (`safe_area="5%"`,
    `avoid=[[x,y,w,h]]`) and text too small at thumbnail width (on print sizes: below 6 pt). It lists only problems.
+   Then run your own suite (`vixl_workflow("check", {suite: NAME})`, or `suites=true` on the apply) for
+   this brief's requirements; see "Tests: why, when and how" above. Fix failures before step 6.
 6. **Look at the result.** MCP: `vixl_render_preview()` returns an image (≤1024 px, ≤1 MiB by
    default; `region=[x,y,w,h]` zooms in; `isolate=["mascot"]` shows one object alone, cropped to it).
    `vixl_render_compare()` shows previous vs current (also with `isolate`).

@@ -117,8 +117,11 @@ palette definition. Checks never recolor the artwork or change expectations.
 
 ## Make a custom test part of each brief
 
-Seven ready-to-use suites are discoverable through workflow `resource-list`, kind `suites`:
-`delivery`, `palette`, `opaque`, `print-ready`, `accessible`, `no-placeholders`, `containers`.
+Fifteen ready-to-use suites are discoverable through workflow `resource-list`, kind `suites`:
+`delivery`, `palette`, `opaque`, `print-ready`, `accessible`, `no-placeholders`, `containers`, and per
+document type `social-card`, `composition` (balance, breathing room, overlap, contrast), `slide-deck`,
+`logo`, `motion-loop` (sampled over the timeline), `character`, `fillable-form` and `diagram`.
+`vixl_guide(kind)` names the one that suits a kind of work under `tests`.
 Read one with `resource-get`, then attach it with `suite-use`, e.g. `{"name":"palette"}`.
 Run `check` with `{"suite":"palette"}`. Warnings and unmeasurable rules count as needs-review.
 
@@ -132,9 +135,12 @@ vixl -p campaign.vixl workflow check --request checks.json --workspace .
 ```
 
 Edit the generated rules to express the brief. Use `property` for dimensions and exact
-content, `gap` for spacing, `text-fit` for readable text, `palette` for rendered colors,
-`container` for modular rules, and `suite-capture` for intentional structural/pixel
-baselines. Rules, animation sampling and checked production are described in
+content, `spacing` (or `gap` for two siblings) for spacing, `text-fit` and `contrast` for readable
+text, `hierarchy` for type that steps down, `relation` for placement, alignment and margins,
+`ink`, `balance` and `focal` for composition, `color` and `palette` for rendered colors, `count`
+for how many of something, `container` for modular rules, and `suite-capture` for intentional
+structural/pixel baselines. Run the suite with every batch (`suites=true` on apply) and before
+every preview: `vixl_guide("testing")` explains why and how. Rules, animation sampling and checked production are described in
 [production.md](production.md). Never weaken expectations to repair a failing picture.
 An existing check is a starting point, not a substitute for the brief or visual inspection.
 

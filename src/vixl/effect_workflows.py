@@ -117,6 +117,55 @@ SUITES = {
         "description": "Catch unfinished template copy.",
         "rules": [{"id": "copy", "kind": "design", "options": {"checks": ["blanks"]}}],
     },
+    "social-card": {
+        "description": "Feed-ready card: nothing cut off, no overlapping or unreadable text at thumbnail size, "
+                       "content inside a 5% safe area, no proofing font or template copy.",
+        "rules": [
+            {"id": "card", "kind": "design", "options": {
+                "checks": ["bounds", "overlap", "contrast", "legibility", "blanks", "fonts", "safe_area"],
+                "safe_area": "5%"}},
+            {"id": "balance", "kind": "balance", "tolerance": 0.15, "severity": "warning"},
+        ],
+    },
+    "composition": {
+        "description": "Layout health: visual weight near the centre, room to breathe, readable contrast.",
+        "rules": [
+            {"id": "balance", "kind": "balance", "tolerance": 0.12, "severity": "warning"},
+            {"id": "not-crowded", "kind": "ink", "maximum": 0.7, "severity": "warning"},
+            {"id": "not-empty", "kind": "ink", "minimum": 0.02},
+            {"id": "layout", "kind": "design", "options": {"checks": ["bounds", "overlap", "contrast"]}},
+        ],
+    },
+    "slide-deck": {
+        "description": "Every page of a deck: titles in place, a type scale, word counts, minimum font, notes.",
+        "rules": [{"id": "deck", "kind": "design", "options": {"checks": ["deck"]}}],
+    },
+    "logo": {
+        "description": "A mark on a transparent canvas that survives colour-vision deficiencies and is not cut off.",
+        "rules": [
+            {"id": "transparent", "kind": "alpha", "minimum": 0.05},
+            {"id": "mark", "kind": "design", "options": {"checks": ["bounds", "color_vision", "fonts"]}},
+            {"id": "centred", "kind": "balance", "tolerance": 0.08, "severity": "warning"},
+        ],
+    },
+    "motion-loop": {
+        "description": "Animation checked across the timeline: loop seam, poster frame and nothing cut off "
+                       "at any sampled time.",
+        "sampling": {"mode": "sampled", "count": 8},
+        "rules": [{"id": "frames", "kind": "design", "options": {"checks": ["bounds", "overlap", "motion"]}}],
+    },
+    "character": {
+        "description": "Rigged characters and multi-part objects: no parts floating free, rig and pose sanity.",
+        "rules": [{"id": "parts", "kind": "design", "options": {"checks": ["connected", "character"]}}],
+    },
+    "fillable-form": {
+        "description": "Form fields: worst-case values fit their boxes and the form reads in order.",
+        "rules": [{"id": "form", "kind": "design", "options": {"checks": ["form", "contrast"], "sample": "worst"}}],
+    },
+    "diagram": {
+        "description": "Diagrams: connectors, labels and nodes readable and not colliding.",
+        "rules": [{"id": "diagram", "kind": "design", "options": {"checks": ["diagram", "overlap", "contrast"]}}],
+    },
 }
 
 

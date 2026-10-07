@@ -20,31 +20,67 @@ LOGO_PACKAGE_TYPES = _logo_package_types()
 
 # Check suite (assert-rule format). Rule fields per kind live in assurance.RULE_FIELDS; each
 # rule needs a unique id and a kind, and may set severity.
-RULE_KINDS = ("container", "palette", "assert", "design", "property", "gap", "unchanged", "pixels", "text-fit", "alpha")
+RULE_KINDS = ("container", "palette", "assert", "design", "property", "gap", "unchanged", "pixels", "text-fit", "alpha",
+              "spacing", "relation", "contrast", "color", "ink", "balance", "hierarchy", "count", "focal")
 RULE_PROPERTIES = {
     "id": {"type": "string", "description": "Unique rule ID within the suite; shown in results."},
     "kind": {"type": "string", "enum": list(RULE_KINDS),
              "description": "What the rule measures: assert (expression), property, gap, text-fit, design "
-                            "(checks.py options), palette, container, unchanged, pixels or alpha."},
+                            "(checks.py options), palette, container, unchanged, pixels, alpha, spacing (equal "
+                            "gaps), relation (position, alignment, distance or margin), contrast (one layer's "
+                            "text contrast), color (pixel or region colour), ink (how much of a region is drawn), "
+                            "balance (visual centre of mass), hierarchy (type sizes step down), count (layers "
+                            "matching a name) or focal (on a thirds/golden/centre point)."},
     "severity": {"type": "string", "enum": ["error", "warning"], "default": "error",
                  "description": "A failed warning needs review instead of failing the suite."},
     "expression": {"type": "string",
                    "description": "assert: bounded assertion, e.g. 'layer.logo.bounds within canvas', "
                                   "'canvas.width >= 1080', 'text.title.font-size >= 24', 'layer.logo.opacity == 1'."},
-    "target": {"type": "string", "description": "Layer ID or name (property and text-fit; container may omit it)."},
+    "target": {"type": "string", "description": "Layer ID or name (property, text-fit, relation, contrast, focal; "
+                                                 "container may omit it); count: a name, glob ('bullet-*') or "
+                                                 "'group:NAME' (default '*')."},
+    "targets": {"type": "array", "items": STR, "minItems": 2,
+                "description": "spacing: sibling layers whose gaps should be equal (or expected); hierarchy: text "
+                               "layers from most to least important."},
+    "to": {"type": "string", "description": "relation: the other layer, or 'canvas'."},
+    "position": {"type": "string", "enum": ["left-of", "right-of", "above", "below", "inside", "contains",
+                                            "overlapping", "apart"],
+                 "description": "relation: where target must sit relative to to (apart: not overlapping)."},
+    "align": {"type": "array", "items": {"type": "string", "enum": ["left", "center-x", "right", "top", "center-y",
+                                                                   "bottom"]},
+              "description": "relation: edges target and to must share (within tolerance)."},
+    "bounds": {"type": "string", "enum": ["box", "ink"], "default": "box",
+               "description": "relation: compare layer boxes or drawn ink."},
+    "point": {"type": "array", "items": {"type": "integer"}, "minItems": 2, "maxItems": 2,
+              "description": "color: integer [x, y] canvas pixel to sample (or give region for an average)."},
+    "background": {**COLOR, "description": "ink/balance: count pixels that differ from this colour. Omitted: "
+                                            "everything except the canvas colour and backdrop layers (role "
+                                            "background, or a full-canvas solid, gradient, image or rectangle)."},
+    "ratio": {"type": "number", "minimum": 1, "default": 1.2,
+              "description": "hierarchy: each rendered font size must be at least this many times the next."},
+    "layer_type": {"type": "string", "description": "count: only layers of this type (text, shape, image …)."},
+    "grid": {"type": "string", "enum": ["thirds", "golden", "center"], "default": "thirds",
+             "description": "focal: the composition points target's centre should sit near."},
     "field": {"type": "string", "description": "property: the layer field to read, e.g. 'color', 'x', 'opacity'."},
     "expected": {"type": ["string", "number", "boolean", "array", "object", "null"],
-                 "description": "property: required value; gap: required distance in pixels."},
+                 "description": "property: required value; gap/spacing: required distance in pixels; color: the "
+                                "colour; balance: [x, y] centre as fractions of the region (default [0.5, 0.5])."},
     "tolerance": {"type": "number", "minimum": 0,
-                  "description": "Allowed difference: numbers for property/gap (default gap 1 px), 0–255 colour "
-                                 "distance for palette, 0–255 channel difference for pixels."},
+                  "description": "Allowed difference: numbers for property/gap/spacing/relation (default 1 px), "
+                                 "0–255 colour distance for palette, 0–255 channel difference for pixels and color "
+                                 "(default 12), 0–255 level counted as ink (default 24), a fraction of the region "
+                                 "for balance (default 0.1), pixels for focal (default 5% of the shorter side)."},
     "before": {"type": "string", "description": "gap: the first sibling layer."},
     "after": {"type": "string", "description": "gap: the second sibling layer."},
     "axis": {"type": "string", "enum": ["horizontal", "vertical"], "default": "vertical",
-             "description": "gap: direction of the distance."},
+             "description": "gap/spacing: direction of the distance."},
     "minimum": {"type": "number", "description": "text-fit: smallest allowed font size; alpha: lowest fraction "
-                                                  "of non-opaque pixels."},
-    "maximum": {"type": "number", "description": "alpha: highest fraction (0–1) of pixels with alpha below 255."},
+                                                  "of non-opaque pixels; contrast: lowest ratio (default 4.5); "
+                                                  "relation: smallest gap, or smallest margin when inside; ink: "
+                                                  "lowest drawn fraction (0–1); count: fewest layers."},
+    "maximum": {"type": "number", "description": "alpha: highest fraction (0–1) of pixels with alpha below 255; "
+                                                  "relation: largest gap or margin; ink: highest drawn fraction "
+                                                  "(0–1); count: most layers."},
     "options": {"type": "object", "description": "design: arguments for the design check, e.g. {checks: "
                                                   "['bounds', 'contrast'], safe_area: '5%', min_contrast: 4.5}."},
     "palette": {"type": "string", "description": "palette: name of a palette (defaults to the applied one)."},
@@ -54,7 +90,8 @@ RULE_PROPERTIES = {
                      "description": "palette: share of pixels allowed outside the palette."},
     "alpha_min": {"type": "integer", "minimum": 1, "maximum": 255, "default": 1,
                   "description": "palette: lowest alpha that counts as drawn."},
-    "region": {**REGION, "description": "palette/pixels: [x, y, width, height] to measure (default whole canvas)."},
+    "region": {**REGION, "description": "palette/pixels/color/ink/balance: [x, y, width, height] to measure "
+                                        "(default whole canvas)."},
     "snapshot": {"type": "object", "description": "unchanged: captured layer (written by suite-capture)."},
     "asset": {"type": "string", "description": "pixels: embedded baseline image asset (written by suite-capture)."},
 }
@@ -86,6 +123,10 @@ SUITE = {
     "examples": [{"version": 1, "rules": [
         {"id": "logo-inside", "kind": "assert", "expression": "layer.logo.bounds within canvas"},
         {"id": "title-fits", "kind": "text-fit", "target": "title", "minimum": 24},
+        {"id": "title-over-body", "kind": "hierarchy", "targets": ["title", "body"], "ratio": 1.5},
+        {"id": "cta-margin", "kind": "relation", "target": "cta", "to": "canvas", "position": "inside",
+         "minimum": 48},
+        {"id": "quiet-corner", "kind": "ink", "region": [0, 0, 300, 200], "maximum": 0.02},
     ]}],
 }
 

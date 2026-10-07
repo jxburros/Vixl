@@ -320,8 +320,9 @@ class Session:
         return self.apply_reviewed(operations, dry_run, detail, document, operations_path)[0]
 
     def apply_reviewed(self, operations, dry_run=False, detail="compact", document=None, operations_path=None,
-                       check=None, preview=None, budget=None):
-        """apply, plus the optional ``check`` findings and ``preview`` PNG of the result (checks.apply_reviewed):
+                       check=None, preview=None, budget=None, suites=None):
+        """apply, plus the optional ``check`` findings, attached ``suites`` and ``preview`` PNG of the result
+        (checks.apply_reviewed):
         returns ``(result, PNG bytes or None)``."""
         from .checks import apply_reviewed
 
@@ -336,7 +337,7 @@ class Session:
             from .service_fonts import checker
 
             return apply_reviewed(p, operations, dry_run=dry_run, detail=detail, check=check, preview=preview,
-                                  validate=checker(p, service_check), budget=budget)
+                                  validate=checker(p, service_check), budget=budget, suites=suites)
 
     def render(self, variables=None, artboard=None, comp=None, document=None):
         with self.project(document=document) as p:
@@ -725,6 +726,7 @@ def create_app(path, *, token=None, limits=None):
         result, image = session.apply_reviewed(
             body.get("operations"), bool(body.get("dry_run", False)), body.get("detail", "compact"),
             operations_path=body.get("operations_path"), check=body.get("check"), preview=body.get("preview"),
+            suites=body.get("suites"),
         )
         if image is not None:
             result["preview_base64"] = base64.b64encode(image).decode()

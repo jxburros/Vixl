@@ -43,7 +43,7 @@ Default binding is `127.0.0.1:8765`. OpenAPI is at `/docs`. To bind beyond loopb
 | `GET /document` | Inspected state |
 | `GET /layers` | Layer list |
 | `GET /schema` | Canonical operation batch JSON Schema |
-| `POST /operations` | `{operations: [...] or operations_path: "ops.jsonl", dry_run: false, detail: "compact", check?, preview?}` → change summary (use `full` for snapshots); `check`/`preview` as for `vixl_operations_apply`, the preview as `preview_base64` |
+| `POST /operations` | `{operations: [...] or operations_path: "ops.jsonl", dry_run: false, detail: "compact", check?, suites?, preview?}` → change summary (use `full` for snapshots); `check`/`suites`/`preview` as for `vixl_operations_apply`, the preview as `preview_base64` |
 | `GET /render` | PNG bytes |
 | `POST /render` | `{variables: {title: "Hello"}}` → PNG bytes |
 | `POST /validate` | `{profile: "instagram-post", rules: [...]}` → checks |

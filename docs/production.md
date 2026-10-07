@@ -77,8 +77,27 @@ Rules:
 | `pixels` | `region` [x,y,w,h], embedded baseline `asset`, `tolerance` (maximum RGBA channel difference, 0–255) |
 | `text-fit` | `target`, `minimum`; measures unwarped text with baked font size (a text-layout box wraps it; auto-sized text is measured as drawn, unwrapped); use `fit-text` first |
 | `alpha` | `minimum`/`maximum`: permitted fraction of pixels with alpha below 255 |
+| `spacing` | `targets` (2+ siblings), `axis`, optional `expected`, `tolerance` (default 1px); equal or exact gaps, as `vixl_measure_spacing` |
+| `relation` | `target`, `to` (a layer or `canvas`), and any of `position` (`left-of`, `right-of`, `above`, `below`, `inside`, `contains`, `overlapping`, `apart`), `align` (edges such as `left`, `center-x`, `top`), `minimum`/`maximum` (the gap, or the smallest margin when inside), `tolerance`, `bounds` box/ink |
+| `contrast` | `target`, `minimum` (default 4.5); WCAG ratio of the tenth-percentile glyph pixel against what is drawn under it (an outline style counts), as the `contrast` design check reads it |
+| `color` | `point` [x,y] or `region`, `expected` colour (any Vixl colour, including `@swatch`), `tolerance` (largest RGB channel difference, default 12) |
+| `ink` | `minimum`/`maximum` drawn fraction of `region` (default canvas); `tolerance` 0–255 (default 24); without `background`, the canvas colour and backdrop layers (role `background`, or a top-level full-canvas solid, gradient, image or rectangle) do not count |
+| `balance` | optional `expected` [x,y] as fractions (default centre), `tolerance` (default 0.1), `region`, `background`; the ink-weighted visual centre |
+| `hierarchy` | `targets` (text, most to least important), `ratio` (default 1.2); each rendered font size (after fitting) is at least `ratio` times the next |
+| `count` | `target` name, glob or `group:NAME` (default `*`), optional `layer_type`, `minimum`/`maximum`; counts visible layers |
+| `focal` | `target`, `grid` thirds/golden/center, `tolerance` px (default 5% of the shorter side); the layer's centre is near a power point |
 
-Every rule has a unique `id` and optional `severity` (`error` or `warning`).
+Every rule has a unique `id` and optional `severity` (`error` or `warning`). Each result carries what
+it measured (gaps, margins, ratios, the visual centre, the sampled colour), so a failure says what to change.
+
+### When to test
+
+A preview is a small downsampled picture; tests measure what it hides and keep measuring as edits accumulate.
+Write the brief's requirements as a suite before building (each `vixl_guide(kind)` answer lists a starter
+suite and rules to adapt under `tests`; `vixl_guide("testing")` is the method), run it with every batch
+(`vixl_operations_apply(..., check=true, suites=true)`, CLI `vixl apply ops.json --check --suites`, REST
+`POST /operations` with `"suites": true`), and run `vixl_check` plus the suites before every preview and
+export. Fix the design when a rule fails; never loosen the rule.
 `suite-capture` creates an initial structural/pixel baseline, refusing to replace one:
 
 ```json
