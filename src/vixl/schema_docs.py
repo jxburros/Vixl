@@ -596,7 +596,8 @@ OVERRIDES = {
                      "x": "Grid origin x.", "y": "Grid origin y."},
     "adapt-layout": {"targets": "Layers in priority order.", "width": "New width.", "height": "New height.",
                      "margin": "Outer margin.", "gap": "Gap between layers."},
-    "pen": {"nodes": "Anchors [{point: [x, y], in: [x, y], out: [x, y]}] for a Bezier path.",
+    "pen": {"nodes": "Anchors [{point: [x, y], in: [x, y], out: [x, y]}] for a Bezier path; in/out are handle "
+                     "positions in the same coordinates as point, not offsets from it.",
             "points": "Freehand points [[x, y] …] smoothed into a path.", "closed": "Close the path.",
             "smooth": "Smooth freehand points (default true).", "tension": "Handle length for smoothed points (default 1; 0 gives straight segments).",
             "corners": "Indexes of points kept sharp."},
