@@ -597,8 +597,14 @@ def execute(project, op):
         w, h = op.get("width", c["width"]), op.get("height", c["height"])
         layer = new_layer(op["name"] if "name" in op else default_name(project, kind), kind, w, h)
         if kind == "solid":
-            color(resolve_color(op.get("color", "white"), project.state))
-            layer["fill"] = op.get("color", "white")
+            from .craft import SOLID_FILL_ROLE, fill_for
+            from .selectors import record
+
+            fill = op["color"] if "color" in op else fill_for(project, SOLID_FILL_ROLE)
+            color(resolve_color(fill, project.state))
+            layer["fill"] = fill
+            if "color" not in op:
+                record(project, "defaults", {"layer": layer["name"], "color": fill})
         elif kind == "gradient":
             for key, default in (("start", "black"), ("end", "white")):
                 color(resolve_color(op.get(key, default), project.state))
@@ -606,21 +612,22 @@ def execute(project, op):
             layer["direction"] = op.get("direction", "vertical")
             layer.update({k: deepcopy(op[k]) for k in ("stops", "angle", "falloff") if k in op})
         else:
+            from .craft import text_defaults
+
             font, role = resolve_font(project, op.get("font", "body" if (project.state.get("typography") or {})
                                                      .get("body") else None))
             layer.update(
                 {
                     "text": op["text"],
                     "font": font,
-                    "size": op.get("size", 48),
                     "color": op.get("color") or default_ink(project),
                     "align": op.get("align", "left"),
-                    "spacing": op.get("spacing", 4),
                     "auto_size": True,
                 }
             )
             if role:
                 layer["font_role"] = role
+            text_defaults(project, layer, op)
             if op.get("hide_if_empty"):
                 layer["hide_if_empty"] = True
             embed_font_file(project, layer)
@@ -653,11 +660,15 @@ def execute(project, op):
             background = op.get("background", c["background"])
             color(resolve_color(background, project.state))
             if (w, h) != (c["width"], c["height"]):
-                # A custom size no longer matches the named size's trim, bleed and safe area.
+                # A custom size no longer matches the named size's trim, bleed and safe area; it gets the
+                # craft default safe area, as a new custom-size document does.
                 for key in ("size", "bleed", "safe", "physical"):
                     c.pop(key, None)
+                from .craft import safe_area
                 from .sizes import replace_generated_guides
 
+                if safe_area(w, h):
+                    c["safe"] = safe_area(w, h)
                 replace_generated_guides(project.state, {})
             c.update(width=w, height=h, background=background)
         if "dpi" in op:
@@ -739,17 +750,32 @@ def execute(project, op):
             from .richedit import replace_text
 
             dropped = replace_text(layer, op["text"])  # keeps list, alignment and span formatting that still apply
-        for key in ("text", "size", "color", "align", "spacing", "stroke_width", "stroke_color", "hide_if_empty"):
+        for key in ("text", "size", "color", "align", "spacing", "line_height", "stroke_width", "stroke_color",
+                    "hide_if_empty"):
             if key in op:
                 layer[key] = op[key]
+        if "spacing" in op:
+            layer.pop("line_height", None)
         if "font" in op:
             layer["font"], role = resolve_font(project, op["font"])
             layer.pop("font_role", None)
             if role:
                 layer["font_role"] = role
             embed_font_file(project, layer)
+        if layer.get("rich") and "line_height" in op:
+            from .richtext import size_leading
+
+            size_leading(project, layer, layer["rich"], op["line_height"])
+        elif "line_height" in layer and "spacing" not in op and {"size", "font", "line_height"} & set(op):
+            from .craft import spacing_for
+
+            # Leading set as a multiple of the size follows the new size or font.
+            layer["spacing"] = spacing_for(project, layer["font"], layer["size"],
+                                           finite(layer["line_height"], "line_height", 0.5, 5))
         require(layer["align"] in ("left", "center", "right"), "Invalid text alignment")
-        finite(layer.get("spacing", 4), "spacing", 0, 1000)
+        from .craft import check_spacing
+
+        check_spacing(layer)
         finite(layer.get("stroke_width", 0), "stroke_width", 0, 100)
         color(resolve_color(layer["color"], project.state))
         if layer.get("rich"):

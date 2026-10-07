@@ -156,7 +156,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | DAT-01 | Bar, stacked, 100 %, horizontal, line, area, pie or donut chart from inline data | `chart` | 1 · <1 | E | One editable vector group with axes and legend. |
 | DAT-02 | Chart straight from a CSV in the workspace | `chart --csv` | 1 · <1 | E | |
 | DAT-03 | Change one value, add a row or reload the CSV | `chart-data` | 1 · <1 | M:T08 R2 | Same layer IDs survive. |
-| DAT-04 | Flowchart from a line of text (`A -> B -> C`) | `diagram-from-text` | 1 · <1 | E | Layered, tree, radial, mindmap and grid layouts. |
+| DAT-04 | Flowchart from a line of text (`A -> B -> C`) | `diagram-from-text` | 1 · <1 | E | Layered, tree, radial, mindmap and grid layouts. Since 0.23 it follows the document palette and dark mode. |
 
 ### Export
 
@@ -245,7 +245,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | SOC-19 | Event promo from the social-event-promo template | `vixl_template_create` | 4–6 · 1–2 | E | |
 | SOC-20 | Watermark or logo stamp on a photo | import, `opacity`, `align` | 4–5 · 1 | E | |
 | SOC-82 | A finished card in one call (create, layout, fonts, look, check, export) | `vixl_compose` | 1–3 · 1 | E | Since 0.22; atomic, errors name the step. |
-| SOC-83 | Meme from your own image (top/bottom, comparison, four-panel, reaction GIF) | `layout-apply` meme layouts with `images` | 3–6 · 1–2 | E | Since 0.22; bring your own images. |
+| SOC-83 | Meme from your own image (top/bottom, comparison, four-panel, reaction GIF) | `layout-apply` meme layouts with `images` | 3–6 · 1–2 | E | Since 0.22; bring your own images. Since 0.23 the pictures bleed (`allow_crop`) and the captions stay in the safe area, so `check` passes on sized canvases. |
 
 ### Print and stationery
 

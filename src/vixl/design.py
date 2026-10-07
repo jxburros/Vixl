@@ -63,10 +63,11 @@ def execute_design(project, op):
             reach = path_box(op["path"])
             width, height = op.get("width", reach[0]), op.get("height", reach[1])
             fields["path_view"] = [width, height]
-        append_layer(
-            project,
-            new_layer(op["name"] if "name" in op else default_name(project, "shape"), "shape", width, height, **fields),
-        )
+        from .craft import shape_defaults
+
+        name = op["name"] if "name" in op else default_name(project, "shape")
+        shape_defaults(project, {**op, "name": name}, fields, width, height)
+        append_layer(project, new_layer(name, "shape", width, height, **fields))
     elif kind == "group":
         children = selected(project, op["targets"])
         # Refuse an over-deep nest here, before the layout work, so a runaway chain fails at its first bad step.
@@ -454,7 +455,7 @@ def validate_text_style(kind, settings, state):
     for key in ("color", "stroke_color"):
         if key in settings:
             color(resolve_color(settings[key], state))
-    for key, low, high in (("size", 1, 4096), ("stroke_width", 0, 100), ("spacing", 0, 1000)):
+    for key, low, high in (("size", 1, 4096), ("stroke_width", 0, 100), ("spacing", -1000, 1000)):
         if key in settings:
             finite(settings[key], key, low, high)
             require(isinstance(settings[key], int), f"{key} must be an integer")

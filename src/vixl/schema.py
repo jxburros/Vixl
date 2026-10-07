@@ -137,7 +137,10 @@ def _operation_schema():
         "size": POSITIVE_INT,
         "color": S,
         "align": enum("left", "center", "right"),
-        "spacing": {"type": "integer", "minimum": 0},
+        "spacing": {"type": "integer", "minimum": -4096, "maximum": 1000},
+        "line_height": {"type": "number", "minimum": 0.5, "maximum": 5,
+                        "description": "Distance between baselines as a multiple of the size (1.45 body, 1.1 headings, "
+                        "1.0 display). Kept when the size or font changes; spacing in pixels overrides it."},
         "hide_if_empty": {
             "type": "boolean",
             "description": "Do not draw the text (and take no space in a stack) while it is empty or blank "

@@ -65,8 +65,10 @@ long ones in the middle), with `mode: "inscribed"` one frame fills the largest r
 `inset` keeps text away from the edge. At the top level of the operation, `x`, `y`, `width`, `height`, `columns`, `gutter`
 and `page` are a shorthand for one frame.
 
-**Style**: `font`, `size`, `color`, `align` (`left`, `center`, `right`, or `justify`, which makes the story rich), `spacing` (extra
-leading in px) or `line_height` (a factor), `stroke_width`, `stroke_color`, and for rich text `paragraph_spacing`, `list_indent`.
+**Style**: `font`, `size` (default: the body size of the document's type scale, proportional to the canvas), `color`, `align`
+(`left`, `center`, `right`, or `justify`, which makes the story rich), `spacing` (pixels added to the font's own line pitch;
+negative tightens) or `line_height` (a multiple of the size; default from the line-height table, 1.45 for body text),
+`stroke_width`, `stroke_color`, and for rich text `paragraph_spacing`, `list_indent`.
 A flow's frames share the style; a frame layer's own font or size, if you change them, are respected by the flow.
 
 **Paragraph rules**: `keep_together` (a paragraph that fits one frame is never split between two), `orphans` and `widows` (the

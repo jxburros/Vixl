@@ -404,7 +404,8 @@ class Slide:
         rich = layer["rich"]
         base = float(layer.get("size", 48)) * scale
         list_indent = float(rich["list_indent"]) * scale if rich.get("list_indent") else base * 1.4
-        gap = float(layer.get("spacing", 0)) * scale
+        # Size-based leading (line_basis "size") is the whole pitch; the layer's pixel spacing does not add.
+        gap = 0.0 if rich.get("line_basis") == "size" else float(layer.get("spacing", 0)) * scale
         out = []
         counters = {}
         for index, paragraph in enumerate(_paragraphs(spans)):

@@ -488,11 +488,14 @@ def execute_brush(project, op):
                 [round(sw - x if layer.get("flip_x") else x, 2), round(sh - y if layer.get("flip_y") else y, 2), *rest]
                 for x, y, *rest in points
             ]
+        from .craft import stroke_color, stroke_width
+
+        # Without a size or colour a brush draws like a default stroke: proportional to the layer, in @ink.
         stroke = {
             "brush": op.get("brush", "round"),
             "points": points,
-            "size": op.get("size", 12),
-            "color": op.get("color", "black"),
+            "size": op["size"] if "size" in op else stroke_width(layer["width"], layer["height"]),
+            "color": op["color"] if "color" in op else stroke_color(project),
         }
         for key in ("opacity", "mode", "seed"):
             if key in op:

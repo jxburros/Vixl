@@ -371,7 +371,7 @@ OVERRIDES = {
             "provenance": "Record of where the image came from.",
             "credit": "Attribution kept with the image (provenance.credit), e.g. 'Photo: Ana Ruiz / Unsplash'.",
             "license": "License or usage terms kept with the image (provenance.license), e.g. 'CC BY 4.0'."},
-    "solid": {"color": "Fill color.", "name": "Layer name (default 'solid')."},
+    "solid": {"color": "Fill color (default @surface, else a neutral grey).", "name": "Layer name (default 'solid')."},
     "gradient": {"start": "Start color (the first stop).", "end": "End color (the last stop).",
                  "direction": "horizontal and vertical run edge to edge, radial from the center to the inscribed ellipse "
                               "(the box's corners lie past the last stop and take its color), angled uses angle.",
@@ -395,10 +395,13 @@ OVERRIDES = {
                  "text": "Guidance text to store.", "style": "Slot to store it in (default 'overall')."},
     "font-register": {"name": "Name to register the font under.", "asset": "Imported font asset ID.",
                       "role": "heading or body: make it the document's heading or body font."},
-    "text": {"size": "Font size in pixels.", "color": "Text color. Without one, the document @ink swatch, else black or white, whichever reads on the canvas background.", "align": "Alignment within the text box.",
-             "spacing": "Line spacing in pixels (default 4)."},
+    "text": {"size": "Font size in pixels. Without one, the body size of the document's type scale (about 2.6% of "
+                     "the canvas short side when it has none).", "color": "Text color. Without one, the document @ink swatch, else black or white, whichever reads on the canvas background.", "align": "Alignment within the text box.",
+             "spacing": "Pixels added to the font's own line pitch; negative tightens display type. Without spacing "
+                        "or line_height, the line-height table sets it (body 1.45, lead 1.35, headings 1.1, display "
+                        "1.0, captions 1.3 times the size)."},
     "text-set": {"stroke_width": "Outline thickness in pixels (0 removes it).", "size": "Font size in pixels.",
-                 "spacing": "Line spacing in pixels."},
+                 "spacing": "Pixels added to the font's own line pitch (may be negative); replaces line_height."},
     "rename": {"name": "New unique layer name."},
     "duplicate": {"name": "Name for the copy (default '<name> copy')."},
     "move": {"x": "New x in pixels, 'center' or a percentage; with relative, a shift.",
@@ -463,9 +466,14 @@ OVERRIDES = {
                       "path's farthest point (never the whole canvas); with them, that is the box it is drawn in. "
                       "Negative coordinates draw outside the box. Later resizes scale the path; path-fit scales "
                       "geometry into a box.",
-              "radius": "Corner radius in pixels (rounded-rectangle).", "sides": "Polygon side count.",
+              "radius": "Corner radius in pixels (rounded-rectangle; default from the document corner style, soft "
+                        "when that is sharp).", "sides": "Polygon side count.",
               "inner_radius": "Star inner radius as a fraction of the outer radius.",
-              "fill": "Fill color; use a gradient-overlay layer-style (or the look operation) for gradients."},
+              "fill": "Fill color (default @accent, else a neutral grey; open stroked shapes stay unfilled); use a "
+                      "gradient-overlay layer-style (or the look operation) for gradients.",
+              "stroke": "Outline color; omit for no outline. A stroke_width alone draws in @ink, and an open shape "
+                        "(line, wave, open path) with neither fill nor stroke is drawn as an @ink line.",
+              "stroke_width": "Outline thickness in pixels (default about 1.5% of the shape's short side)."},
     "group": {"name": "Group name.", "targets": "Layers to group (must share a parent)."},
     "clip": {"base": "Layer that supplies the clipping shape.", "release": "true removes the clip."},
     "layer-style": {"name": "drop-shadow, stroke, outer-glow, color-overlay or gradient-overlay.",
@@ -536,8 +544,8 @@ OVERRIDES = {
     "paint-layer": {"name": "Layer name.", "width": "Surface width.", "height": "Surface height."},
     "paint": {"brush": "Brush name from vixl_brushes_list.", "points": "Stroke points [[x, y, pressure?] …].",
               "path": "Stroke along an SVG path instead of points.", "pressure": "Pressure per point, 0-1.",
-              "space": "canvas (default) or layer coordinates.", "size": "Brush size in pixels.",
-              "color": "Paint color.", "opacity": "Stroke opacity, 0-1.", "mode": "paint or erase.",
+              "space": "canvas (default) or layer coordinates.", "size": "Brush size in pixels (default 1.5% of the layer's short side).",
+              "color": "Paint color (default @ink, else black or white for the canvas).", "opacity": "Stroke opacity, 0-1.", "mode": "paint or erase.",
               "seed": "Seed for textured brushes.", "settings": "Brush overrides (hardness, spacing, flow …)."},
     "paint-clear": {"last": "Remove the last N strokes (default all)."},
     "brush-define": {"name": "New brush name.", "base": "Built-in brush to start from.",
