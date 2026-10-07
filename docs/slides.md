@@ -129,8 +129,9 @@ slides) that opens in PowerPoint, Keynote, Google Slides and LibreOffice:
   Plain groups become groups.
 - A [chart](charts.md) becomes a native chart with its data table embedded, so *Edit Data* works.
   A rotated or flipped chart is exported as its shapes, and the report lists each chart under `charts`.
-- Image layers become pictures. Layers PowerPoint cannot draw the same way become pictures of
-  exactly what Vixl renders and are listed under `raster_fallbacks`.
+- Image layers become pictures. Layers PowerPoint cannot draw the same way (effects, masks, blend modes, and
+  `skew` or `affine` transforms, which DrawingML cannot hold) become pictures of exactly what Vixl renders and are
+  listed under `raster_fallbacks` with the reason (`skew`, `affine transform`, ...).
 - Master layers are drawn on each slide (as ordinary shapes, so every slide matches the
   render). Speaker notes become the slide notes; transitions carry over.
 - Slide size: canvases with a `dpi` keep their physical size; screen canvases become 7.5 inches

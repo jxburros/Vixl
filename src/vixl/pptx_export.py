@@ -4,8 +4,8 @@ Shapes become native PowerPoint shapes (preset geometry where it matches, custom
 polygons, stars and paths), solid and gradient fills and outlines; text becomes text boxes with
 real runs (font, size, color, bold, italic, underline, strike, highlight, super/subscript),
 paragraph alignment and spacing, and bullets or numbering; plain groups become groups. Layers
-PowerPoint cannot draw the same way (effects, styles, masks, clipping, blend modes, paint and pixel
-art) become pictures of exactly what Vixl renders, listed under ``raster_fallbacks``; image layers
+PowerPoint cannot draw the same way (effects, styles, masks, clipping, blend modes, skew and affine
+transforms, paint and pixel art) become pictures of exactly what Vixl renders, listed under ``raster_fallbacks``; image layers
 are pictures anyway.
 Master-page layers are drawn on every slide that uses them. Fonts are referenced by family name and
 are not embedded (see ``Exporter.font_warnings``); the report lists them, and warns about each one
@@ -114,9 +114,13 @@ class Slide:
         for layer in layers:
             if layer.get("parent") != parent or not layer["visible"] or layer["opacity"] <= 0:
                 continue
+            from .affine import precise
             from .pdf_export import PageBuilder
 
             reason = PageBuilder.raster_reason(layer)
+            if reason is None and precise(layer):
+                # DrawingML transforms hold only rotation and flips; a skewed or affine layer is drawn as a picture.
+                reason = "skew" if layer.get("skew_x") or layer.get("skew_y") else "affine transform"
             if reason is None and layer["type"] == "group":
                 if "chart" in layer:
                     from .chart_pptx import shapes as chart_shapes
