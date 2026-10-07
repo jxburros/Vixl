@@ -10,6 +10,23 @@ from vixl.errors import VixlError
 from vixl.guides import GRID_KINDS, intersections, nearest, point_at
 
 
+def test_cli_guide_with_an_axis_or_guide_options_adds_a_guide_instead_of_craft_guidance(tmp_path, monkeypatch):
+    """`vixl guide margin x 64` (docs/guides.md) was answered by the craft guide (`vixl guide BRIEF`)."""
+    from vixl.cli import dispatch
+
+    monkeypatch.chdir(tmp_path)
+    dispatch(["new", "400x300", "-o", "g.vixl"])
+    dispatch(["-p", "g.vixl", "guide", "left-margin", "x", "64"])
+    dispatch(["-p", "g.vixl", "guide", "horizon", "--kind", "segment", "--points", "[[0, 40], [400, 38]]"])
+    guides = Project.load(tmp_path / "g.vixl").state["guides"]
+    assert guides["left-margin"] == {"axis": "x", "position": 64.0}
+    assert guides["horizon"]["kind"] == "segment"
+    dispatch(["-p", "g.vixl", "guide", "horizon", "--delete"])
+    assert set(Project.load(tmp_path / "g.vixl").state["guides"]) == {"left-margin"}
+    advice, _ = dispatch(["guide", "a", "poster", "for", "a", "jazz", "night"])
+    assert "success" not in advice  # still the craft guide, not an operation
+
+
 def center(project, name):
     x, y, w, h = project.inspect(name)["resolved_bounds"]
     return x + w / 2, y + h / 2
