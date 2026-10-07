@@ -587,19 +587,19 @@ Decision:
 
 ## Bugs that hide or contradict the current defaults
 
-These are tracked as sub-issues of the house-style tracking issue. Fix them whatever the decisions above turn out to be.
+These are tracked in #388. Fix them whatever the decisions above turn out to be.
 
-- The rolled `accent` is never drawn in safe compositions (`src/vixl/layouts.py:1488-1508`).
-- The rolled `density` has no effect, because the rolled `margin` and `type_scale` override it (`src/vixl/layouts.py:65-80`).
-- The roll's aspect and purpose filters never match the safe pool, and palette moods describe only the legacy palettes (`src/vixl/typefaces.py:227-241`).
-- `layout-apply` inherits only part of the document's `design_defaults` (`src/vixl/layouts.py:1661-1666`).
-- Variety levels `low` and `medium` are nearly identical, the rolled look is applied at an invisible amount, and only 3 of the 6 safe styles are ever rolled (`src/vixl/variety.py:102-119,225`).
-- Document creation differs by surface: CLI `vixl new` and Python don't roll `design_defaults` (`src/vixl/cli.py:423-468`).
-- Plain `text` ignores the document's typography and renders in the fallback font (`src/vixl/render.py:114-115`).
-- Python `render.export` defaults to `alpha="keep"`; the CLI and MCP default to `auto` (`src/vixl/render.py:1410`).
-- Diagrams ignore the palette and dark mode (`src/vixl/diagrams.py:35,60-79`).
-- Simple templates use fixed text sizes and positions on every canvas (`src/vixl/resources.py:80-98`).
-- Brief recommendations name expressive options while the attached roll is safe-only (`src/vixl/briefs.py:414-419`).
+- #389: The rolled `accent` is never drawn in safe compositions (`src/vixl/layouts.py:1488-1508`).
+- #390: The rolled `density` has no effect, because the rolled `margin` and `type_scale` override it (`src/vixl/layouts.py:65-80`).
+- #391: The roll's aspect and purpose filters never match the safe pool, and palette moods describe only the legacy palettes (`src/vixl/typefaces.py:227-241`).
+- #392: `layout-apply` inherits only part of the document's `design_defaults` (`src/vixl/layouts.py:1661-1666`).
+- #393: Variety levels `low` and `medium` are nearly identical, the rolled look is applied at an invisible amount, and only 3 of the 6 safe styles are ever rolled (`src/vixl/variety.py:102-119,225`).
+- #394: Document creation differs by surface: CLI `vixl new` and Python don't roll `design_defaults` (`src/vixl/cli.py:423-468`).
+- #395: Plain `text` ignores the document's typography and renders in the fallback font (`src/vixl/render.py:114-115`).
+- #396: Python `render.export` defaults to `alpha="keep"`; the CLI and MCP default to `auto` (`src/vixl/render.py:1410`).
+- #397: Diagrams ignore the palette and dark mode (`src/vixl/diagrams.py:35,60-79`).
+- #398: Simple templates use fixed text sizes and positions on every canvas (`src/vixl/resources.py:80-98`).
+- #399: Brief recommendations name expressive options while the attached roll is safe-only (`src/vixl/briefs.py:414-419`).
 
 Related issues already filed: #283 (white default text), #282 (loose layout leading), #285 (playful rolls stay quiet)
 and #370 (layouts fail their own safe-area check).
