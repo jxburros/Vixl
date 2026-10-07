@@ -58,6 +58,8 @@ Defaults (`vixl.model.Limits`):
   references (`targets`) take up to the same number. Earlier releases allowed 512 layers and refuse to open a
   document with more.
 - 64 MiB per imported asset/provider response.
+- REST request bodies: 1 MiB, or the asset limit for `/assets` and `/import` (16 MiB for `/fonts`). A larger
+  `Content-Length` gets `413 resource_limit` before the body is read; a body without one is cut off at the limit.
 - 256 MiB per archive and its expanded contents.
 - 10,000 operations per submitted batch; 2,000 history revisions (older ones are squashed, not refused).
 - At most 10,000 archive entries.

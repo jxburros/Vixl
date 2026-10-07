@@ -439,11 +439,18 @@ def create_app(path, *, token=None, limits=None):
         maximum = session.limits.max_asset_bytes if request.url.path in ("/assets", "/fonts", "/import") else 1024 * 1024
         if request.url.path == "/fonts":
             maximum = min(maximum, 16 * 1024 * 1024)
+        too_large = VixlError("resource_limit", f"The request body is larger than {maximum:,} bytes; send a smaller body "
+                              "(downsample images, split operations into several batches)",
+                              limit=maximum).as_dict()
+        declared = request.headers.get("content-length", "")
+        if declared.isdigit() and int(declared) > maximum:
+            # Refuse before reading: the body is never buffered.
+            return JSONResponse(too_large, status_code=413, headers={"Connection": "close"})
         body = bytearray()
         async for chunk in request.stream():
             body.extend(chunk)
             if len(body) > maximum:
-                return JSONResponse({"error": "resource_limit"}, status_code=413)
+                return JSONResponse(too_large, status_code=413, headers={"Connection": "close"})
         request._body = bytes(body)
         return await call_next(request)
 
