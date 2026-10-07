@@ -217,7 +217,7 @@ def test_cli_spacing_and_pixel_animation(tmp_path, monkeypatch):
     from vixl.cli import dispatch
 
     monkeypatch.chdir(tmp_path)
-    dispatch(["new", "4x4", "-o", "sprite.vixl"])
+    dispatch(["new", "4x4", "--background", "transparent", "-o", "sprite.vixl"])
     dispatch(["pixel-art", "--name", "sprite", "--width", "4", "--height", "4"])
     dispatch(["pixel-draw", "sprite", "pixel", "0", "0", "--color", "#"])
     dispatch(["frame-save", "idle", "--duration", "100"])

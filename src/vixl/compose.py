@@ -12,7 +12,7 @@ from pathlib import Path
 
 from .errors import VixlError, require
 
-CREATE = ("width", "height", "background", "size", "dpi", "orientation", "bleed", "seed", "variety")
+CREATE = ("width", "height", "background", "size", "purpose", "dpi", "orientation", "bleed", "seed", "variety")
 FIELDS = {"path", *CREATE, "font_pairing", "layout", "style", "look", "operations", "operations_path", "check",
           "strict", "preview", "exports", "overwrite", "dry_run"}
 
@@ -131,7 +131,7 @@ def compose(session, *, path=None, operations=None, operations_path=None, layout
         project = session.new_project(**create, workspace_fonts=not font_pairing, report=report)
         project._workspace = session.workspace
         validate = checker(project, service_check)
-    steps = {}
+    steps = {"creation": report["creation"]} if report.get("creation") else {}
     if report.get("workspace_fonts"):
         steps["workspace_fonts"] = report["workspace_fonts"]
     if font_pairing:

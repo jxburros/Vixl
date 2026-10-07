@@ -46,7 +46,7 @@ result (`"replayed": true`) instead of applying twice.
 | Tool | Parameters | Returns / notes |
 | --- | --- | --- |
 | `vixl_workspace_list` | `directory="."`, `offset=0`, `limit=100` (≤200) | `entries[{path,directory?}]`, `active`, `open`, `next_offset` |
-| `vixl_document_create` | **`path`**, **`width`**, **`height`**, `background="transparent"` | Creates + activates (and creates missing directories); refuses existing files |
+| `vixl_document_create` | **`path`**, `width`+`height` or `size` or `purpose` (none: 1080×1080), `background`, `seed`, `variety`, `workspace_fonts=true` | Creates + activates (and creates missing directories); refuses existing files. Rolls `design_defaults`; without `background` the canvas is the palette background (transparent for logo/icon/favicon sizes and mark purposes); installs the rolled font pairing (cache, then network). `creation` reports the choices |
 | `vixl_document_open` | **`path`**, `upgrade` | Activates an existing `.vixl`; other open documents stay open (up to 8). A document saved before 0.21 lists affected layers under `upgrade` (effects on rotated layers, temperature/tint, open stroked shapes no longer white); pass `upgrade="pin-fills"` to restore the white fills or `"accept"` to keep the new look |
 | `vixl_document_close` | `document` | Drops a document from the session (edits are already saved) |
 | `vixl_document_inspect` | `target=None`, `detail="compact"\|"full"` | Compact: canvas + one entry per layer with `bounds`; full: every field (with `resolved_bounds`) |
@@ -110,7 +110,7 @@ informational) with every issue's `action`.
 
 | Tool | Parameters | Notes |
 | --- | --- | --- |
-| `vixl_document_create` | `path`, `width`+`height` **or** `size`, `background`, `dpi`, `orientation`, `bleed` | Named sizes: `vixl_sizes_list(category, search)` |
+| `vixl_document_create` | `path`, `width`+`height` **or** `size` **or** `purpose`, `background`, `dpi`, `orientation`, `bleed`, `seed`, `variety` | Named sizes: `vixl_sizes_list(category, search)`; purposes: social, story, poster, print, document, form, slides, diagram, web, motion, logo, icon, favicon … |
 | `vixl_layouts_list` | — | Layout names, principles, content keys and options (apply with `layout-apply`) |
 | `vixl_brushes_list` | — | Brushes and settings (paint with the `paint` operation) |
 | `vixl_color` | **`action`** `info\|convert\|harmony\|scale\|mix\|contrast\|names`, **`colors`**, `to`, `scheme`, `count`, `amount`, `space` | Color language tools |
@@ -217,7 +217,9 @@ curl -s -X POST 'http://127.0.0.1:8765/assets?name=photo' --data-binary @photo.j
 from vixl import Project, VixlError
 from vixl.model import Limits
 
-p = Project(1080, 1080, background="#101828")              # new, unsaved
+p = Project(1080, 1080, background="#101828")              # new, unsaved plain canvas
+p = Project(purpose="social", seed=7)    # design document as vixl new/vixl_document_create make it
+p = Project.new("letter", seed=7, report=info)             # every creation option; info["creation"]
 p = Project.load("poster.vixl", limits=Limits(max_pixels=16_000_000), allow_linked=False)
 
 p.apply([{"type": "text", "name": "title", "text": "Hi", "size": 64}], dry_run=False, detail="compact")

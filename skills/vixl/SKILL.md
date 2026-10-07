@@ -40,10 +40,12 @@ instead of improvising freehand shapes:
    are `motion` recipes (`period`, several `targets`, `stagger`). A kind names the guidance to read:
    `vixl_guide(brief="looping-motion")` (or `natural-motion`, `character-rigging`, `imperfection` …)
    returns the text.
-2. **Layout** — `vixl_sizes_list` → `vixl_document_create(size=…)`. For anything with text,
+2. **Layout** — `vixl_sizes_list` → `vixl_document_create(size=…)` (or `purpose="social"|"slides"|"logo"…`, which
+   picks the size; with neither it is 1080×1080). For anything with text,
    `vixl_layouts_list` → `layout-apply`, filling every slot it lists. An unfilled image slot comes back
    with `next_steps` (import, resource, draw, or AI) and its bounds.
-3. **Fonts** — `vixl_fonts` → `vixl_font_pair` (the bundled font is a proofing fallback).
+3. **Fonts** — creation installs the rolled pairing when the font cache or network is available (`creation.fonts`
+   says so); otherwise, or to choose, `vixl_fonts` → `vixl_font_pair` (the bundled font is a proofing fallback).
 4. **Finish** — apply a `look` (glow, soft-shadow, hard-shadow, gradient, grain, paper …) so flat shapes
    read as finished work; when the brief names a style (swiss, brutalist, art-deco, kawaii …) use
    `vixl_styles` and `style-set`, then `check --checks style`.
@@ -187,6 +189,7 @@ Use submit/start/status for long jobs. An uncertain external generation request 
 not be blindly repeated; preserve its remote job identity.
 
 - **Named sizes** — `vixl_document_create(size="letter", bleed=true)` / `vixl new business-card --bleed`; 150 print, social, web, ad, video, slide, icon and logo sizes with dpi, bleed, safe area and guides.
+- **New documents** — every surface (`vixl new`, `Project()`, `vixl_document_create`, compose) rolls and stores `design_defaults` (`seed`/`--seed`, `variety`/`--variety` reproduce them), gives the canvas the palette background (transparent for logos, icons and favicons; pass `background` to choose) and installs the rolled pairing. A `layout-apply` without `seed` then follows the whole stored direction.
 - **Layouts** — 53 principled, seed-varied layouts (`layout-apply`) that adapt to the canvas and set up contrast-checked color roles, a type scale and grids. Use them when a brief gives you free rein. They are fill-in-the-blank forms: `vixl layout show NAME` / `vixl_layouts_list` lists each layout's slots and what each needs. Fill them all; an unfilled slot renders as a `[Label]` blank that `check` reports as an error, and a slot the layout doesn't use is rejected rather than silently dropped. Templates work the same way.
 - **Typefaces** — the bundled font is a proofing fallback (`check` warns about it). Pick real type from a researched catalog of open-licensed families and curated heading/body pairings: `vixl font pairings --mood editorial` / `vixl_fonts`, then `vixl font pair NAME|random` / `vixl_font_pair` downloads, embeds and sets them as the document typography that layouts use; the result's `source` says whether each font came from the cache or a download (URL). `vixl font principles` explains how to combine fonts. Text without `font` uses the body face once the document has typography, and text without `color` uses `@ink` (or black or white, whichever reads on the canvas).
 - **Dice** — when the brief is thin, roll instead of defaulting: `vixl roll --for poster` / `vixl_roll` picks a pairing, a mood-consistent palette, a layout and its parameters from one seed; layouts and templates accept `seed: "random"`. Roll a few, preview, keep the seed you like, and `--lock` choices you want fixed.

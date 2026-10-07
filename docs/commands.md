@@ -305,7 +305,9 @@ vixl check --checks style [--style NAME…]
 ```bash
 vixl sizes [--category print|stationery|social|icons|logos|…] [--search TEXT]
 vixl sizes show NAME [--dpi N] [--landscape|--portrait] [--bleed]
-vixl new NAME [--dpi N] [--landscape|--portrait] [--bleed [AMOUNT]] [-o FILE]   # e.g. new letter --bleed
+vixl new [NAME|WxH] [--purpose social|poster|slides|print|logo|icon|favicon|…] [--seed N]
+    [--variety low|medium|high|fixed] [--background COLOR] [--no-fonts] [--dpi N] [--landscape|--portrait]
+    [--bleed [AMOUNT]] [-o FILE]   # e.g. new letter --bleed; no size: the purpose's size, else 1080x1080
 vixl canvas size NAME [--dpi N] [--landscape] [--bleed] | canvas dpi N
 
 vixl layout list | layout show NAME

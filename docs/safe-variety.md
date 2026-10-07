@@ -18,6 +18,41 @@ Editorial directions avoid pill corners. Weight contrast describes the actual
 heading/body weights in the chosen pairing. Higher variety expands the background
 and finishing choices while staying in the curated pools.
 
+## New documents
+
+Every surface creates documents the same way: `vixl new`, Python `Project()`, `Project.sized()` and
+`Project.new()`, `vixl_document_create`, `vixl_compose` and REST compose. Each new document:
+
+- **Size.** Uses the given size. Without one, it uses the purpose's size (`purpose`: social 1080×1350,
+  story 1080×1920, poster 18×24 in, print/document/form/flyer Letter or A4 by locale, slides and diagram
+  1920×1080, web 1200×630, motion 1920×1080, logo 1000×1000, icon 1024×1024, favicon 512×512). With neither,
+  it is 1080×1080.
+- **Design defaults.** Rolls and stores `design_defaults` (seed, variety, purpose and the whole direction).
+  `--seed`/`--variety` on the CLI, and `seed`/`variety` in Python and MCP, reproduce them exactly.
+- **Background.** Without `background`, the canvas takes the rolled palette's background role. Logo, icon and
+  favicon sizes and mark purposes (logo, mark, emblem, badge, monogram, icon, app-icon, favicon) stay
+  transparent. `background="transparent"` (`--background transparent`) keeps the old default.
+- **Fonts.** Embeds the workspace default fonts (`brand.json`). Otherwise it installs the rolled pairing, from
+  the font cache first and then the network. Offline, creation stays fast: it reports the pairing under
+  `creation.fonts` with a `next_step`, warns once, and does not retry the network in that process.
+  `workspace_fonts=false` (`--no-fonts`) embeds no fonts. The environment variable `VIXL_AUTO_FONTS=cache`
+  never downloads, and `VIXL_AUTO_FONTS=off` skips the pairing.
+
+The result's `creation` says what was chosen and why (`size_from`: argument, purpose or default;
+`background_from`: argument, palette or mark). `Project(width, height)` on its own is still a plain
+transparent canvas with no `design_defaults`; pass `seed`, `variety` or `purpose` (or leave out the size) for a
+design document, and `Project.sized(size, design=False)` for a plain named-size canvas.
+
+A `layout-apply` without `seed` on such a document uses the whole stored direction, as
+`vixl_roll(apply=true)` does: the layout seed, palette, mode, type scale, density and accent, and the
+margin, corner, look, style, motif and background treatment. Fields you pass win one by one. Passing
+`seed` asks for a fresh choice instead of the stored direction.
+
+The rolled density changes the result: airy widens and dense tightens the rolled margin (×1.25 and ×0.75)
+and the spacing unit behind gaps, and both the roll and the builder choose balanced twice as often as airy
+or dense. The rolled accent (rule, bar, dot, block or outline) is drawn in the safe compositions next to
+their own device.
+
 `vixl_roll(apply=True, slots={"title": "Launch"})` installs its selected fonts,
 builds the editable design in one undo step, and returns contrast/legibility checks.
 Ordinary layout/template calls do not download fonts: their `font_choice` result

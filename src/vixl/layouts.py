@@ -34,7 +34,15 @@ ROLE_STEPS = {"caption": -1, "body": 0, "lead": 1, "subhead": 2, "title": 3, "he
 CONTENT_KEYS = ("title", "subtitle", "body", "label", "cta", "caption", "image", "images", "items")
 IMAGE_KEYS = ("image", "images")
 DENSITY_MARGIN = {"airy": 0.095, "balanced": 0.072, "dense": 0.05}
+# Rolls and the builder pick density from this one weighted pool: balanced twice as often.
+DENSITY_CHOICES = ("airy", "balanced", "balanced", "dense")
+# How density scales a rolled margin and the spacing unit (gaps), relative to balanced.
+DENSITY_SPACING = {"airy": 1.25, "balanced": 1.0, "dense": 0.75}
 ACCENTS = ("rule", "bar", "dot", "block", "outline", "none")
+# A stored design direction: these keys are layout-apply fields; the rest (except the skipped ones) are
+# its ``direction`` (margin, corner, look, style, motif, background treatment ...).
+DIRECTION_OPTIONS = ("palette", "mode", "type_scale", "density", "accent")
+DIRECTION_SKIP = ("layout", "layout_seed", "pairing", *DIRECTION_OPTIONS)
 PALETTE_POOL = tuple(SAFE_PALETTES)
 
 
@@ -57,7 +65,7 @@ class Builder:
         self.ops = []
         self.created = []
         self.prefix = op.get("prefix", "")
-        density = op.get("density") or self.rng.choice(["airy", "balanced", "balanced", "dense"])
+        density = op.get("density") or self.rng.choice(DENSITY_CHOICES)
         require(density in DENSITY_MARGIN, "density must be airy, balanced or dense")
         self.density = density
         inset = c.get("bleed", 0) + max(safe_sides(c))
@@ -65,7 +73,8 @@ class Builder:
         if "margin" in op.get("direction", {}):
             fraction = op["direction"]["margin"]
             require(isinstance(fraction, (int, float)) and 0.02 <= fraction <= 0.2, "direction.margin must be 0.02–0.2")
-            margin = max(inset, short * fraction)
+            # A rolled margin is the balanced value; density still widens or tightens it.
+            margin = max(inset, short * fraction * DENSITY_SPACING[density])
         if self.orientation == "wide":
             margin = max(short * 0.12, inset)
         self.m = round(margin)
@@ -96,7 +105,7 @@ class Builder:
             thumbnail = 600 if self.W / self.H > 1.6 else 320
             minimum = math.ceil(self.W / thumbnail * 10)
             self.sizes = {role: max(minimum, value) for role, value in self.sizes.items()}
-        self.unit = max(2, round(base / 2))
+        self.unit = max(2, round(base / 2 * DENSITY_SPACING[density]))
         # Color roles with contrast guarantees.
         self.colors = assign_roles(op, self.rng)
         self.contrast = round(contrast_ratio(parse(self.colors["ink"])[:3], parse(self.colors["background"])[:3]), 2)
@@ -1505,6 +1514,9 @@ def _safe_composition(b):
         b.rect("quiet-panel", b.L / 2, b.T / 2, b.W - b.L, b.H - b.T, "@surface", radius=b.unit)
     elif device == "footer":
         b.rect("quiet-footer", b.L, b.B - b.unit / 4, b.cw, max(2, b.unit / 4), "@accent")
+    if not (b.accent == "rule" and device == "rule"):
+        # A chosen (or rolled) accent joins the composition's own device; "none", the default, adds nothing.
+        b.accent_device(x, y, width, height)
     b.stack(entries, x, y, width, gap=b.unit * 2, align=b.align)
 
 
@@ -1660,10 +1672,16 @@ def execute_layout(project, op):
 
     defaults = state.get("design_defaults", {})
     if "seed" not in op:
-        op["seed"], _ = seed_for(project, defaults.get("seed"), op.get("variety"))
-        for key, value in defaults.get("direction", {}).items():
-            if key in ("palette", "mode", "type_scale", "density", "accent"):
+        # A sparse apply takes the document's whole stored direction, as vixl_roll(apply=true) does;
+        # explicit fields win key by key, and an explicit seed asks for a fresh choice instead.
+        direction = defaults.get("direction", {})
+        op["seed"], _ = seed_for(project, direction.get("layout_seed", defaults.get("seed")), op.get("variety"))
+        for key, value in direction.items():
+            if key in DIRECTION_OPTIONS:
                 op.setdefault(key, deepcopy(value))
+        inherited = {key: deepcopy(value) for key, value in direction.items() if key not in DIRECTION_SKIP}
+        if inherited:
+            op["direction"] = {**inherited, **op.get("direction", {})}
     kit = for_project(project)
     if kit.get("palette") and not explicit_palette:
         op["colors"] = kit["palette"]
