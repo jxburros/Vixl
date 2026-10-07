@@ -121,6 +121,14 @@ def _file_bytes(path, mtime, size):
 
 
 @lru_cache(maxsize=32)
+def font_sha256(data):
+    """Hex SHA-256 of one font file, computed once per font instead of once per drawn layer."""
+    import hashlib
+
+    return hashlib.sha256(data).hexdigest()
+
+
+@lru_cache(maxsize=32)
 def coverage(data):
     return frozenset(TTFont(io.BytesIO(data)).getBestCmap() or {})
 
@@ -349,7 +357,7 @@ def lines(data, text, size, width=None):
     return result
 
 
-@lru_cache(maxsize=1024)
+@lru_cache(maxsize=4096)
 def measure(data, text, size, spacing=4, align="left", width=None):
     """Glyph paths and ink box of shaped text. Cached: every render and check re-measures each
     text layer (auto-sized boxes, constraints), usually with the same font, text and size."""

@@ -192,7 +192,9 @@ def text_metrics(project, layer, variables=None):
     from .text import measure, font_data, UnsupportedText
 
     try:
-        _, box = measure(font_data(project, layer), text, layer["size"], layer.get("spacing", 4), layer.get("align", "left"))
+        # The same arguments as text.plan, so drawing the layer reuses this cached measurement.
+        _, box = measure(font_data(project, layer), text, layer["size"], layer.get("spacing", 4),
+                         layer.get("align", "left"), None)
         stroke = layer.get("stroke_width", 0)
         box = (box[0] - stroke, box[1] - stroke, box[2] + stroke, box[3] + stroke)
         return max(1, math.ceil(box[2] - box[0])), max(1, math.ceil(box[3] - box[1])), box
@@ -790,9 +792,9 @@ def layer_ink(project, layer, bounds):
     extent_key = [*extent_key, bounds[0] % 1, bounds[1] % 1]
     dependencies = [content, extent_key]
     if layer["type"] == "text":
-        from .text import font_data
+        from .text import font_data, font_sha256
         data = font_data(project, layer)
-        dependencies.append([hashlib.sha256(f).hexdigest() for f in (data if isinstance(data, tuple) else (data,))])
+        dependencies.append([font_sha256(f) for f in (data if isinstance(data, tuple) else (data,))])
     elif layer["type"] == "paint":
         dependencies.append(project.state.get("brushes", {}))
     key = hashlib.sha256(json.dumps(dependencies, sort_keys=True).encode()).hexdigest()
@@ -1189,6 +1191,31 @@ def layer_surface(project, layer, bounds, size, index, visiting=None):
             tile.putalpha(tile.getchannel("A").point(lambda a: round(a * layer["opacity"])))
     visiting.remove(ident)
     return tile
+
+
+def layer_canvas_alpha(project, layer, box, bounds, index):
+    """``layer_canvas_surface(...).getchannel("A").crop(box)`` for ``box`` inside the canvas, without drawing a
+    canvas-sized surface when the layer is drawn straight onto the canvas (no group, styles or clipping): the
+    overlap check asks this of every text layer, and a full-canvas surface each made it slow on large canvases."""
+    if layer.get("parent") or layer.get("styles") or layer.get("clip"):
+        return layer_canvas_surface(project, layer, bounds, index).getchannel("A").crop(box)
+    left, top, right, bottom = box
+    alpha = Image.new("L", (right - left, bottom - top))
+    if not layer["visible"]:
+        return alpha
+    b = bounds[layer["id"]]
+    source = layer_ink(project, {**layer, "opacity": 1}, b)
+    x, y = ink_origin(source, b)
+    # The part of the source inside the box, where the full surface would have composited it.
+    crop = (max(left, x), max(top, y), min(right, x + source.width), min(bottom, y + source.height))
+    if crop[0] < crop[2] and crop[1] < crop[3]:
+        # Composited over transparent pixels, the surface's alpha is the source's own.
+        part = source.crop((crop[0] - x, crop[1] - y, crop[2] - x, crop[3] - y))
+        alpha.paste(part.getchannel("A") if part.mode == "RGBA" else part.convert("RGBA").getchannel("A"),
+                    (crop[0] - left, crop[1] - top))
+    if layer["opacity"] != 1:
+        alpha = alpha.point(lambda a: round(a * layer["opacity"]))
+    return alpha
 
 
 def layer_canvas_surface(project, layer, bounds=None, index=None):
