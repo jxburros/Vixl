@@ -28,10 +28,11 @@ Lightness and saturation modifiers work in OKLCH, so they look even across hues.
 
 ```bash
 vixl color '#2563eb'                          # hex, rgb, hsl, hwb, oklch, lab, cmyk, names, contrast
-vixl color convert 'oklch(0.7 0.15 30)' --to cmyk
+vixl color convert 'oklch(0.7 0.15 30)' --to cmyk   # a colour outside sRGB reports `clipped` and a warning
 vixl color harmony '#2563eb' --scheme triadic  # complementary, analogous, triadic, split-complementary,
                                                # tetradic, square, monochromatic, tints, shades, tones
 vixl color scale '#2563eb'                     # 50–950 ramp; the base keeps its own step
+vixl color scale '#1f6f50' '#f4efe6' --count 5 --space oklch  # 5 steps from the first colour to the last
 vixl color mix '#2563eb' white --amount 0.3 --space oklch
 vixl color contrast white '#2563eb'            # WCAG ratio with AA/AAA verdicts
 vixl color names sage                          # search names

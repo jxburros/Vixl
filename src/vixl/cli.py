@@ -114,7 +114,7 @@ Styles:    styles [list [QUERY] | show NAME | apply NAME [--palette] | check [NA
 Dice:      roll [--apply] [--set title=…] [--for poster] [--mood M] [--size NAME] [--seed N|random] [--lock palette=sage]
            [--unfilled omit|blank]
 Color:     color [info] COLOR…, color convert COLOR --to oklch|cmyk|…, color harmony COLOR --scheme triadic,
-           color scale COLOR, color mix A B, color contrast FG BG, color names QUERY,
+           color scale COLOR | A B [--count N], color mix A B, color contrast FG BG, color names QUERY,
            palette-generate NAME COLOR [--scheme scale|triadic|…], type-scale --base 16 --ratio golden
 Paint:     brushes, paint-layer [--name N], paint [LAYER] --brush ink --points JSON | --path SVG
            [--size N] [--color C] [--erase], paint-clear [LAYER] [--last N], brush-define NAME --base B

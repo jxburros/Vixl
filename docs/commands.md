@@ -318,7 +318,7 @@ vixl type-scale [--base PX] [--ratio golden|perfect-fourth|…|1.3] [--prefix P]
 
 vixl color [info] COLOR… [--ink-limit 300] | color convert COLOR --to hex|rgb|hsl|hsv|hwb|cmyk|lab|lch|oklab|oklch|css
 vixl color harmony COLOR --scheme complementary|analogous|triadic|split-complementary|tetradic|square|monochromatic|tints|shades|tones [--count N]
-vixl color scale COLOR | color mix A B [--amount 0.5] [--space oklab] | color contrast FG BG | color names QUERY
+vixl color scale COLOR | color scale A B [C…] [--count 5] [--space oklab] | color mix A B [--amount 0.5] [--space oklab] | color contrast FG BG | color names QUERY
 vixl palette-generate NAME COLOR [--scheme scale|HARMONY] [--count N]
 
 vixl export FILE.pdf|.tif|.jpg --cmyk [--icc PROFILE.icc] [--intent perceptual|relative|saturation|absolute]

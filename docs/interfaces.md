@@ -201,7 +201,7 @@ serves one fixed document) returning the findings and `preview_base64`.
 Model-written operations are normalized before validation, the same way in every interface, and each rewrite is reported under `normalized` in the result so the agent learns the canonical form:
 
 - type and key spellings: `rect`/`circle`/`triangle` (→ `shape`), `add-text`, `drop_shadow`, camelCase and kebab-case keys, `font_size`, `fill`/`color`, `layer`/`layer_id` → `target`;
-- values: opacity is 0–1 everywhere and `"70%"` is read as 0.7 (a bare `70` is an error suggesting both spellings); CSS `rgb()`/`rgba()` with 0–1 alpha; style setting aliases (`offsetX` → `dx`);
+- values: opacity is 0–1 everywhere and `"70%"` is read as 0.7 (a bare `70` is an error suggesting both spellings); CSS `rgb()`/`rgba()` with 0–1 alpha, and with channels outside 0–255 clamped as CSS does (`rgb(300, 0, 0)` → `#ff0000`); style setting aliases (`offsetX` → `dx`);
 - geometry: `x`/`y` accept `"center"` and `"N%"`, `width`/`height` accept `"N%"` (of the canvas, or of the parent group);
 - layers: `targets` with one entry on a single-layer operation → `target`; a lone `target` on `group`/`distribute`/`pathfinder` → `targets`.
 

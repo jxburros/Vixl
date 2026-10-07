@@ -113,7 +113,7 @@ informational) with every issue's `action`.
 | `vixl_document_create` | `path`, `width`+`height` **or** `size`, `background`, `dpi`, `orientation`, `bleed` | Named sizes: `vixl_sizes_list(category, search)` |
 | `vixl_layouts_list` | — | Layout names, principles, content keys and options (apply with `layout-apply`) |
 | `vixl_brushes_list` | — | Brushes and settings (paint with the `paint` operation) |
-| `vixl_color` | **`action`** `info\|convert\|harmony\|scale\|mix\|contrast\|names`, **`colors`**, `to`, `scheme`, `count`, `amount`, `space` | Color language tools |
+| `vixl_color` | **`action`** `info\|convert\|harmony\|scale\|mix\|contrast\|names`, **`colors`**, `to`, `scheme`, `count`, `amount`, `space` | Color language tools. `scale` with one colour is the 50–950 ramp; with two or more it is `count` steps (default 5) between them, mixed in `space`. A colour outside sRGB reports `clipped` (`chroma` or `clamp`) and a warning |
 | `vixl_timeline_inspect` | `detail="summary"\|"full"`, `targets`, `properties`, `start`, `end`, `offset`, `limit=50`, `key_offset`, `key_limit=50` (limits ≤200) | Bounded track/key counts and ranges; full adds paginated keys |
 | `vixl_timeline_preview` | `time` **or** `count=8`, `columns`, `max_width=1600` | One frame or a labelled contact sheet |
 | `vixl_export_timeline` | **`path`** (.gif/.png/.webp/.zip/.mp4/.webm), `format` (`sheet`), `fps`, `scale`, `start`, `end`, `background`, `columns`, `quality`, `colors`, `dither`, `max_bytes`, `target_bytes` (fit GIF/WebP/APNG to a size; reports `chosen`), `preset` (`chat`/`web`/`email`), `poster`, `sample_rate` (MP4/WebM audio Hz), `overwrite` | Never overwrites unless asked |
