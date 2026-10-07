@@ -230,3 +230,24 @@ def test_multi_part_object_guidance_points_at_isolate_and_connected():
     text = GUIDANCE["multi-part-objects"]
     assert "isolate" in text and "connected" in text and "detached_ok" in text and "silhouette" in text
     assert "multi-part-objects" in TOPICS["drawing"][1]
+
+
+def test_layer_intent_cli_covers_every_field_and_compact_inspect_shows_them():
+    from vixl.changes import summarize
+    from vixl.commands import compile_command
+    from vixl.schema import _properties
+
+    op = compile_command("layer-intent tail --role title --allow-overlap body --tags paw fur --allow-crop "
+                         "--color-vision-safe --detached-ok")
+    fields = set(_properties()["layer-intent"]) - {"type", "targets"}
+    assert fields <= set(op), sorted(fields - set(op))
+    assert op["role"] == "title"
+    assert compile_command("layer-intent tail --no-detached-ok")["detached_ok"] is False
+    p = Project(200, 100, "#ffffff")
+    p.apply([{"type": "shape", "name": "body", "shape": "rectangle", "width": 40, "height": 20, "fill": "red"},
+             {"type": "shape", "name": "tail", "shape": "rectangle", "width": 10, "height": 5, "x": 80, "fill": "red"},
+             {**op, "role": "decoration"}])
+    brief = summarize(p, "tail")
+    assert brief["role"] == "decoration" and brief["tags"] == ["fur", "paw"]
+    assert brief["detached_ok"] and brief["allow_crop"] and brief["color_vision_safe"]
+    assert "detached_ok" not in summarize(p, "body")

@@ -74,6 +74,8 @@ SUMMARIES = {
     "distribute": "Space three or more layers evenly along an axis.",
     "group": "Group layers into one transformable layer.",
     "ungroup": "Dissolve a group, keeping its children in place.",
+    "reparent": "Move layers into a group, to another group or out to the page without ungrouping; they keep "
+                "where they appear on the canvas.",
     "clip": "Clip a layer to the shape of a base layer beneath it (or release it).",
     "repeat": "Repeat a layer N times with a per-copy offset and size change; per-step turn/scale/opacity, jitter or merge make real copies.",
     "repeat-blend": "Repeat a layer N times while blending its size and color to an end state.",
@@ -331,6 +333,12 @@ _DIAGRAM_FIELDS = {
     "node_gap": "Space between nodes in the same rank, in pixels at scale 1 (default 44).",
     "rank_gap": "Space between ranks (rows or columns of the layout), in pixels at scale 1 (default 68).",
     "arrows": "Draw arrowheads on edges (default true).",
+    "fit": "shrink scales down to fit the area, contain also scales up (default when width and height are given), none "
+           "keeps the natural size.",
+    "direction": "Flow direction TB, BT, LR or RL; without it, a diagram that would shrink runs along the longer side "
+                 "of its area.",
+    "width": "Width of the area the diagram is placed in (default: the canvas minus the margin).",
+    "height": "Height of the area the diagram is placed in (default: the canvas minus the margin).",
 }
 
 OVERRIDES = {
@@ -475,6 +483,7 @@ OVERRIDES = {
                         "(line, wave, open path) with neither fill nor stroke is drawn as an @ink line.",
               "stroke_width": "Outline thickness in pixels (default about 1.5% of the shape's short side)."},
     "group": {"name": "Group name.", "targets": "Layers to group (must share a parent)."},
+    "reparent": {"targets": "Layers (or groups) to move; they may come from different parents."},
     "clip": {"base": "Layer that supplies the clipping shape.", "release": "true removes the clip."},
     "layer-style": {"name": "drop-shadow, stroke, outer-glow, color-overlay or gradient-overlay.",
                     "settings": "drop-shadow {color, dx, dy, blur, opacity}; outer-glow {color, blur, opacity}; "
@@ -507,7 +516,7 @@ OVERRIDES = {
     "lut": {"name": "LUT name.", "size": "Cube size, 2-33.", "values": "size³ RGB triplets in 0-1."},
     "lookup": {"name": "Defined LUT name.", "amount": "Blend with the original, 0-1 (default 1)."},
     "comp-save": {"name": "Comp name."}, "comp-apply": {"name": "Saved comp name."},
-    "text-layout": {"width": "Wrapping box width in pixels or a percentage.", "height": "Box height.",
+    "text-layout": {"width": "Wrapping box width in pixels or a percentage.", "height": "Box height; omit it with a width and the box grows to the wrapped lines.",
                     "fit": "true shrinks the text to fit the box.", "warp": "none, arc, flag or bulge.",
                     "amount": "Warp strength as a fraction of the box height (default 0.2; negative bends the other way).", "path": "Points [[x, y] …] the text follows."},
     "guide": {"name": "Guide name.", "axis": "x (vertical line) or y (horizontal line) for an axis guide.",

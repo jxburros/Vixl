@@ -190,11 +190,15 @@ def compile_command(cmd, args):
         p.add_argument("--stretch", dest="preserve_aspect", action="store_false", default=None)
     elif cmd == "layer-intent":
         p.add_argument("target")
-        p.add_argument("--role", choices=["content", "decoration", "background"])
+        p.add_argument("--role", choices=["content", "decoration", "background", "title"])
         p.add_argument("--allow-overlap", nargs="*")
-        p.add_argument("--tags", nargs="*")
+        p.add_argument("--tags", nargs="*", help="labels that replace the layer's tags (none clears them)")
         p.add_argument("--allow-crop", action=argparse.BooleanOptionalAction, default=None,
                        help="mark a deliberate edge crop or bleed (checks report it as informational)")
+        p.add_argument("--color-vision-safe", action=argparse.BooleanOptionalAction, default=None,
+                       help="series also differ by labels or patterns: the color-vision check skips this chart")
+        p.add_argument("--detached-ok", action=argparse.BooleanOptionalAction, default=None,
+                       help="a part that floats on purpose: the connected check skips it")
     else:
         p.add_argument("fonts", nargs="*")
     return {"type": cmd, **{k: v for k, v in vars(p.parse_args(args)).items() if v is not None}}

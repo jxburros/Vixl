@@ -111,10 +111,10 @@ def glyph_reports(project, layers):
             yield item, report
 
 
-def boxed_text_overflow(project, layer):
-    """For text set in a text-layout box, the (width, height) its wrapped lines need when that is
-    more than the box (they are cut off), else None. Fitted, warped and path text are skipped:
-    fit shrinks to the box, and warps and paths are laid out differently."""
+def boxed_text_need(project, layer):
+    """For text set in a text-layout box, the (width, height) its lines need when wrapped at the
+    box width, else None. Fitted, warped and path text are skipped: fit shrinks to the box, and
+    warps and paths are laid out differently."""
     from .text import measure, font_data, UnsupportedText
     from .render import document_variables, substitute
 
@@ -127,8 +127,7 @@ def boxed_text_overflow(project, layer):
         from .richtext import layout as rich_layout
 
         result = rich_layout(project, layer)
-        need = (math.ceil(result.box[2]), math.ceil(result.box[3]))
-        return need if need[0] > layer["width"] + 1 or need[1] > layer["height"] + 1 else None
+        return math.ceil(result.box[2]), math.ceil(result.box[3])
     if settings.get("warp", "none") != "none":
         return None
     text = substitute(layer["text"], document_variables(project))
@@ -138,9 +137,15 @@ def boxed_text_overflow(project, layer):
     except UnsupportedText:
         return None
     stroke = 2 * layer.get("stroke_width", 0)
-    need = (math.ceil(box[2] - box[0] + stroke), math.ceil(box[3] - box[1] + stroke))
+    return math.ceil(box[2] - box[0] + stroke), math.ceil(box[3] - box[1] + stroke)
+
+
+def boxed_text_overflow(project, layer):
+    """For text set in a text-layout box, the (width, height) its wrapped lines need when that is
+    more than the box (they are cut off), else None."""
+    need = boxed_text_need(project, layer)
     # A pixel of slack keeps antialiased glyph edges from counting as clipping.
-    return need if need[0] > layer["width"] + 1 or need[1] > layer["height"] + 1 else None
+    return need if need and (need[0] > layer["width"] + 1 or need[1] > layer["height"] + 1) else None
 
 
 def missing_glyphs(project):

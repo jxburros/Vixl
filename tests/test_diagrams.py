@@ -384,6 +384,26 @@ def test_area_margin_and_contain():
     assert max(box[2] / 400, box[3] / 300) > 0.6, "contain scales a small diagram up to fill its area"
 
 
+def test_a_diagram_given_a_box_fills_it_and_runs_along_a_wide_band():
+    # A wide, short box (#351): the chain runs left to right and fills the band instead of shrinking to a sliver.
+    p = Project(1200, 1400, "white")
+    result = p.apply([{"type": "diagram-from-text", "name": "d", "text": "Research -> Design -> Build -> Launch",
+                       "x": 60, "y": 1060, "width": 1080, "height": 220}], detail="compact")
+    x, y, w, h = p.inspect()["layers"][0]["resolved_bounds"]
+    assert 60 <= x and x + w <= 1140 and 1060 <= y and y + h <= 1280
+    assert w > 0.9 * 1080, (x, y, w, h)
+    layout = p.state["diagrams"]["d"]["layout"]
+    assert layout["direction"] == "LR" and layout["font_size"] >= 18 and "warnings" not in result["diagram"]["d"]
+    # An explicit direction and fit are kept.
+    p.apply([{"type": "diagram-set", "name": "d", "direction": "TB", "fit": "shrink"}])
+    assert p.state["diagrams"]["d"]["layout"]["direction"] == "TB"
+    assert p.state["diagrams"]["d"]["layout"]["scale"] < 1
+    # Sized by the canvas alone, a diagram that fits keeps its natural size and direction.
+    q, _ = make("A -> B -> C", size=(1200, 900))
+    assert q.state["diagrams"]["d"]["layout"]["scale"] == 1.0
+    assert q.state["diagrams"]["d"]["layout"]["direction"] == "TB"
+
+
 def test_theme_colors_and_icons():
     p = Project(1000, 600, "white")
     p.apply([{"type": "diagram", "name": "d", "theme": "dark", "background": "#0f172a", "nodes": [{"id": "A", "icon": "bolt"}, "B"],

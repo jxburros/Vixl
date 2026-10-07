@@ -123,6 +123,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | SHP-05 | Distribute layers with equal gaps | `distribute` | 1 · <1 | E | |
 | SHP-06 | Move, resize, scale, rotate, flip or skew a layer | transform operations | 1 · <1 | E | Fractional sizes, named pivots, affine matrices. |
 | SHP-07 | Group, ungroup, clip one layer to another | `group`, `ungroup`, `clip` | 1 · <1 | E | |
+| SHP-23 | Add a part drawn later to an existing (rotated, scaled) group, or lift a part out | `reparent` | 1 · <1 | E | Since 0.23 (#382); keeps the render and the group's settings. |
 | SHP-08 | Combine shapes (union, subtract, intersect, exclude) | `pathfinder` | 1 · <1 | E | |
 | SHP-09 | Add guides, a column grid, baseline grid, golden or thirds grid | `guide`, `grid` | 1 · <1 | E | Polar, isometric, hex, oblique and perspective grids too. |
 | SHP-10 | Place or snap layers onto a guide | `place`, `snap` | 1 · <1 | E | |
@@ -246,7 +247,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | SOC-19 | Event promo from the social-event-promo template | `vixl_template_create` | 4–6 · 1–2 | E | |
 | SOC-20 | Watermark or logo stamp on a photo | import, `opacity`, `align` | 4–5 · 1 | E | |
 | SOC-82 | A finished card in one call (create, layout, fonts, look, check, export) | `vixl_compose` | 1–3 · 1 | E | Since 0.22; atomic, errors name the step. |
-| SOC-83 | Meme from your own image (top/bottom, comparison, four-panel, reaction GIF) | `layout-apply` meme layouts with `images` | 3–6 · 1–2 | E | Since 0.22; bring your own images. Since 0.23 the pictures bleed (`allow_crop`) and the captions stay in the safe area, so `check` passes on sized canvases. |
+| SOC-83 | Meme from your own image (top/bottom, comparison, four-panel, reaction GIF) | `vixl_compose` with a meme layout and `image`/`images` paths or URLs (or `layout-apply` with imported assets) | 1 · 1 | E | Since 0.22; bring your own images. One call since 0.23 (#368); the pictures bleed (`allow_crop`) and the captions stay in the safe area, so `check` passes on sized canvases. |
 
 ### Print and stationery
 

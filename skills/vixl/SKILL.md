@@ -99,8 +99,10 @@ passing suite proves only its own rules. Rule fields: `vixl_workflow_schema().de
 check=true, preview=true, exports=[…])` (CLI `vixl compose --request req.json --preview p.png`) runs steps 1–5
 atomically: nothing is saved or exported unless every step succeeds, and an error carries `step`
 (request, create, fonts, layout, style, look, operations, check, preview, save, export). `strict=true` refuses to
-save while `check` has `fix` findings; `dry_run=true` builds, checks and previews without writing. Keep editing the
-result with `vixl_operations_apply`.
+save while `check` has `fix` findings; `dry_run=true` builds, checks and previews without writing. Layout `image`/`images`
+take workspace paths or https URLs (one-call memes); `background` survives the layout; `style` sets the layout's
+alignment and palette and installs its font pairing where you left them open. Keep editing the result with
+`vixl_operations_apply`.
 
 ## Creative and collaborative studio
 
@@ -372,7 +374,7 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
   and `font pair` updates text whose `font` is `heading`/`body` (templates use roles). Literal colors
   and named fonts stay as they are.
 - **Text auto-sizes** to its rendered bounds; an explicit `resize` turns that off, editing text turns it back on.
-  For wrapping use `text-layout` with `width`/`height` (optionally `fit: true`).
+  For wrapping use `text-layout` with `width` (the height grows to the wrapped lines) or `width`/`height` (optionally `fit: true`).
 - **Variables:** `${name}` works in text, colors, gradient fills and image-asset IDs. Undefined
   variables are errors. Swatches are `@name` in color fields.
 - **Through MCP/REST, operation `path` and `linked` fields are rejected, and `font` takes only a registered
@@ -441,7 +443,7 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
 | Start | named sizes (`canvas` `size`, `vixl new NAME`, `vixl_document_create(size=)`), `layout-apply`, `type-scale`, `palette-generate`, `guidance` |
 | New layers | `add` (image), `solid`, `gradient` (linear/angled/radial, multi-stop, `falloff` curves for soft halos), `text`, `shape` (`solid`/`gradient`/`shape`/`text` with `target` edit that layer in place instead of adding one), `frame` (image box with fill/fit), `pixel-art`, `paint-layer`, `adjustment`, `symbol-instance` |
 | Transform | `move`, `resize`, `scale`, `rotate`, `flip`, `crop`, `opacity`, `blend`, `hide`/`show` |
-| Stacking | `raise`, `lower`, `top`, `bottom`, `reorder` (`above`/`below`), `group`/`ungroup`, `clip` |
+| Stacking | `raise`, `lower`, `top`, `bottom`, `reorder` (`above`/`below`), `group`/`ungroup`, `reparent` (into/out of a group, keeps position), `clip` |
 | Layout | `align` (to canvas/selection/layer), `distribute`, `constrain`/`unconstrain`, `stack` (auto-layout column/row that re-flows around hidden or empty members; text `hide_if_empty`), `guide`, `grid`, `canvas` (resize/preset), `artboard` |
 | Color & filters | 27 built-in effects (brightness … white-balance … auto-contrast), `effect-set/enable/disable/remove/move`, `lut` + `lookup` (a stack effect), `preset-save/apply` |
 | Selections & masks | `select` (rect/ellipse/color/alpha/all/none/invert, add/subtract/intersect, feather), `mask` (create/from-selection/import/invert/enable/disable/delete) |

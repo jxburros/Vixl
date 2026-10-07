@@ -65,6 +65,8 @@ TYPE_ALIASES = {
     "flowchart": "diagram",
     "flow-chart": "diagram",
     "diagram-text": "diagram-from-text",
+    "move-into": "reparent",
+    "adopt": "reparent",
 }
 SHAPE_TYPES = {
     "rect": ("rectangle", {}),

@@ -729,7 +729,7 @@ def _auto_layout(spec):
     return "tree" if forest and plain and not any(n.get("group") for n in spec["nodes"]) and nodes else "layered"
 
 
-def _build(project, spec, scale, area, name):
+def _build(project, spec, scale, area, name, direction=None):
     """Lay the spec out at ``scale``; returns a ``Build`` with node/edge geometry and layer parts."""
     style = _Style(project, spec, scale, (area[2], area[3]))
     font = spec.get("font", "DejaVuSans.ttf")
@@ -745,7 +745,7 @@ def _build(project, spec, scale, area, name):
     layout_name = spec.get("layout", "auto")
     if layout_name == "auto":
         layout_name = _auto_layout(spec)
-    direction = spec.get("direction", "LR" if layout_name == "mindmap" else "TB")
+    direction = direction or spec.get("direction", "LR" if layout_name == "mindmap" else "TB")
     routing = spec.get("routing") or ("curved" if layout_name in ("mindmap",) else "orthogonal")
     lanes = bool(spec.get("lanes")) and layout_name == "layered"
     b = Build(style=style, font=font, layout_name=layout_name, direction=direction, routing=routing, scale=scale, notes=[])
@@ -1041,12 +1041,23 @@ def _layout_into_document(project, name, rec):
     """Lay the diagram out (shrinking to fit its area) and write or update its layers."""
     spec = rec["spec"]
     area = _canvas_area(project, spec)
-    fit = spec.get("fit", "shrink")
+    box = spec.get("area") or {}
+    # A diagram given its own box fills it; one sized by the canvas only shrinks to fit.
+    fit = spec.get("fit", "contain" if "width" in box and "height" in box else "shrink")
     scale = 1.0
     b = None
     natural = None
+    direction = None
+    first = _build(project, spec, scale, area, name)
+    if "direction" not in spec and first.layout_name in ("layered", "tree"):
+        # Without a direction, a diagram that would have to shrink to fit its box runs the way the box is longer.
+        down = min(area[2] / first.size[0], area[3] / first.size[1])
+        if down < 1:
+            across = _build(project, spec, scale, area, name, direction="LR")
+            if min(area[2] / across.size[0], area[3] / across.size[1]) > down * 1.05:
+                direction, first = "LR", across
     for attempt in range(5):
-        b = _build(project, spec, scale, area, name)
+        b = first if attempt == 0 else _build(project, spec, scale, area, name, direction)
         if natural is None:
             natural = list(b.size)
         if fit == "none":

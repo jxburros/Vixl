@@ -49,7 +49,7 @@ Full reference: `docs/drawing.md`.
 - Text format: `A -> B -> C`, `A -> B: label`, `A{Question?}` (decision), `A([x])` terminator, `A[/x/]` io, `A[(x)]` database,
   `@color=… @icon=check @group=…`, `group Lane: A, B`, indentation for hierarchies, `direction: LR`.
 - `layout`: `layered` (flows, dependencies), `tree`, `radial`, `mindmap`, `grid`; `direction` TB/LR/BT/RL; `routing`
-  orthogonal/curved/straight; `lanes: true` for swimlanes. The diagram shrinks to fit the canvas (`fit`, `x/y/width/height`).
+  orthogonal/curved/straight; `lanes: true` for swimlanes. The diagram shrinks to fit the canvas (`fit`, `x/y/width/height`); given both `width` and `height` it fills that box (`fit: contain`), and without a `direction` a wide box gets a left-to-right flow.
 - Check with `vixl_check(checks=["diagram"])`: overlapping nodes, edges through nodes, labels that do not fit or lack
   contrast, text scaled below 9 px. Full reference: `docs/diagrams.md`.
 

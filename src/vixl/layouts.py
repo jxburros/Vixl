@@ -423,6 +423,13 @@ def assign_roles(op, rng):
     else:
         mode = op.get("mode") or rng.choice(["light", "light", "dark"])
     require(mode in ("light", "dark"), "mode must be light or dark")
+    # A background given as a role is what the other roles must read on, so the mode follows it.
+    given_background = (op.get("colors") or {}).get("background") if isinstance(op.get("colors"), dict) else None
+    if given_background is not None:
+        given = parse(given_background)
+        if given[3] > 0:
+            mode = "dark" if relative_luminance(given[:3]) < 0.18 else "light"
+            mode_source = "taken from colors.background"
     background = parsed[0] if keep_order else by_light[-1] if mode == "light" else by_light[0]
     ink = by_light[0] if mode == "light" else by_light[-1]
     label = palette if isinstance(palette, str) else "custom"
@@ -454,6 +461,8 @@ def assign_roles(op, rng):
             background = mix(background, white, 0.82)
         if mode == "dark" and relative_luminance(background[:3]) > 0.08:
             background = mix(background, black, 0.75)
+    if given_background is not None and parse(given_background)[3] > 0:
+        background = parse(given_background)[:3] + (1.0,)
     for step in range(12):
         if contrast_ratio(ink[:3], background[:3]) >= 7.1:
             break
@@ -1376,8 +1385,10 @@ SLOT_TEXT = {
     "caption": ("Caption", "A small supporting note"),
     "items": ("Items", "One item per line"),
     "images": ("Images", "A list of embedded image asset ids, one per panel in reading order (vixl_import_image returns "
-               "them). Panels left empty get placeholder frames to fill later"),
-    "image": ("Image", "An embedded image asset id (vixl_import_image returns one). Left empty, a placeholder frame is drawn; "
+               "them; vixl_compose also takes workspace paths and https URLs). Panels left empty get placeholder frames "
+               "to fill later"),
+    "image": ("Image", "An embedded image asset id (vixl_import_image returns one; vixl_compose also takes a workspace "
+              "path or https URL). Left empty, a placeholder frame is drawn; "
               "fill it later by importing a file, placing a saved resource, drawing it with shape/organic/paint operations, "
               "or generating it with an AI tool: see next_steps in the layout-apply result"),
 }

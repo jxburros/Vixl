@@ -35,7 +35,7 @@ EACH = frozenset({
 OWN_EACH = frozenset({"keyframe", "animate", "animate-preset", "look", "irregular", "cut-paper", "motion", "snap",
                       "match-size"})
 # Operations that act on the listed layers together.
-JOINT = frozenset({"align", "group", "distribute", "artboard", "pathfinder", "suite-capture", "role-set",
+JOINT = frozenset({"align", "group", "reparent", "distribute", "artboard", "pathfinder", "suite-capture", "role-set",
                    "arrange-grid", "adapt-layout", "stack", "place", "merge-layers"})
 
 DESCRIPTION = ("Several layer IDs or names: the operation is applied to each in turn, in this order, within the "

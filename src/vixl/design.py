@@ -104,6 +104,10 @@ def execute_design(project, op):
         record(project, "groups", {"id": group["id"], "name": group["name"], "bounds": [x, y, w, h],
                                    "members": {child["name"]: [bounds[child["id"]][0] - x, bounds[child["id"]][1] - y]
                                                for child in children}})
+    elif kind == "reparent":
+        from .reparent import execute as reparent
+
+        reparent(project, op)
     elif kind == "ungroup":
         group = project.layer(op.get("target"))
         require(group["type"] == "group", "Target must be a group")
@@ -309,6 +313,8 @@ def execute_design(project, op):
     elif kind == "text-layout":
         layer = project.layer(op.get("target"))
         require(layer["type"] == "text", "Text layout requires a text layer")
+        previous = layer.get("text_layout")
+        grown = layer.get("auto_size", True) or (bool(previous) and "height" not in previous)
         layer["text_layout"] = {k: deepcopy(v) for k, v in op.items() if k not in ("type", "target")}
         if "width" in op or "height" in op:
             layer.update(
@@ -316,6 +322,14 @@ def execute_design(project, op):
                 height=op.get("height", layer["height"]),
                 auto_size=False,
             )
+        if "width" in op and "height" not in op:
+            from .checks import boxed_text_need
+
+            # With only a width, the box is as tall as the wrapped lines, so nothing is cut off.
+            # A box whose height was set explicitly before only grows.
+            need = boxed_text_need(project, layer)
+            if need:
+                layer["height"] = max(1, need[1]) if grown else max(layer["height"], need[1])
     elif kind == "guide":
         from .guides import make_guide
 

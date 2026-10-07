@@ -253,6 +253,26 @@ def test_mcp_rest_and_cli_url_imports(served, tmp_path):
     assert project.layer("photo")["provenance"]["source"]["sha256"] == result["source"]["sha256"]
 
 
+def test_compose_image_slots_download_urls_under_the_same_policy(served, tmp_path):
+    from vixl.compose import compose
+    from vixl.interfaces import Session
+
+    seen, routes = served
+    data = png("blue", (40, 30))
+    routes["/meme.png"] = httpx.Response(200, content=data, headers={"content-type": "image/png"})
+    session = Session(workspace=tmp_path)
+    result, _ = compose(session, path="m.vixl", width=200, height=200,
+                        layout={"name": "meme-top-bottom", "image": "https://images.example/meme.png", "title": "Top"})
+    entry = result["layout"]["imported"][0]
+    assert entry["url"] == "https://images.example/meme.png" and entry["sha256"] == hashlib.sha256(data).hexdigest()
+    assert len(seen) == 1
+    with pytest.raises(VixlError) as caught:
+        compose(session, path="bad.vixl", width=200, height=200,
+                layout={"name": "meme-top-bottom", "image": "https://internal.example/x.png"})
+    assert caught.value.code == "unsafe_url" and caught.value.details["step"] == "layout" and len(seen) == 1
+    assert not (tmp_path / "bad.vixl").exists()
+
+
 def test_font_url_import_uses_the_same_guard(served):
     from vixl.fonts import import_font
 
