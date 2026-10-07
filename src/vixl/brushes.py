@@ -56,7 +56,7 @@ BRUSHES = {
     "fineliner": {"description": "Even technical pen with no taper", "hardness": 1.0, "spacing": 0.04, "pressure_size": False},
     "brush-pen": {"description": "Brush pen with strong thick-thin contrast", "hardness": 0.95, "spacing": 0.035, "taper": [0.25, 0.45], "roundness": 0.8, "angle": 35},
     "marker": {"description": "Chisel marker; overlaps darken slightly", "hardness": 0.85, "spacing": 0.05, "roundness": 0.55, "angle": 30, "blend": "multiply", "pressure_size": False},
-    "highlighter": {"description": "Flat translucent highlighter", "hardness": 0.9, "spacing": 0.05, "roundness": 0.3, "angle": 0, "blend": "multiply", "pressure_size": False},
+    "highlighter": {"description": "Flat translucent highlighter; what is below shows through", "hardness": 0.9, "spacing": 0.05, "flow": 0.4, "roundness": 0.3, "angle": 0, "blend": "multiply", "pressure_size": False},
     "calligraphy": {"description": "Broad 45° nib: thick downstrokes, thin hairlines", "hardness": 1.0, "spacing": 0.03, "roundness": 0.14, "angle": 45, "pressure_size": False},
     "chalk": {"description": "Dry chalk with broken, grainy coverage", "hardness": 0.7, "spacing": 0.06, "texture": "grain", "texture_strength": 0.85, "jitter": 0.06, "size_jitter": 0.08},
     "charcoal": {"description": "Charcoal stick with paper tooth", "hardness": 0.5, "spacing": 0.06, "texture": "paper", "texture_strength": 0.75, "size_jitter": 0.12, "roundness": 0.7, "angle": 20, "pressure_opacity": True},

@@ -15,7 +15,7 @@ Paint layers store strokes, not pixels: each stroke keeps its points, optional p
 | --- | --- |
 | `round`, `soft-round`, `airbrush` | Clean, soft or build-up strokes |
 | `pencil`, `ink`, `fineliner`, `brush-pen`, `calligraphy` | Line work: graphite grain, pressure tapers, even technical lines, thick–thin contrast, broad 45° nib |
-| `marker`, `highlighter` | Chisel strokes that darken on overlap (multiply) |
+| `marker`, `highlighter` | Chisel strokes that darken on overlap (multiply); the highlighter paints at 40% flow, so what is below shows through (`settings: {"flow": 1}` for an opaque stroke) |
 | `chalk`, `charcoal`, `crayon` | Dry media with paper tooth and broken coverage |
 | `watercolor` | Translucent washes with darker pooled edges |
 | `dry-brush` | Bristle streaks that follow the stroke direction |
