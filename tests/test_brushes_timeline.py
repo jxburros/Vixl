@@ -25,6 +25,20 @@ def test_every_brush_paints_deterministically(brush):
     assert (first[:, :, :3] < 200).any(), brush
 
 
+def test_highlighter_is_translucent_and_overlaps_darken():
+    p = Project(200, 100, "white")
+    p.apply({"type": "rect", "name": "word", "x": 60, "y": 40, "width": 20, "height": 20, "fill": "black"})
+    p.apply({"type": "paint-layer", "name": "hl"})
+    p.apply({"type": "paint", "target": "hl", "brush": "highlighter", "points": [[10, 50], [190, 50]], "size": 40, "color": "navy"})
+    image = np.asarray(p.render())[:, :, :3].astype(int)
+    # The stroke tints the paper without hiding it; what lies below stays readable.
+    paper = image[50, 30]
+    assert 90 < paper.mean() < 230, paper
+    assert image[50, 70].mean() < 40
+    p.apply({"type": "paint", "target": "hl", "brush": "highlighter", "points": [[10, 50], [190, 50]], "size": 40, "color": "navy"})
+    assert np.asarray(p.render())[50, 30, :3].astype(int).mean() < paper.mean() - 10
+
+
 def test_paint_layers_keep_editable_strokes_and_erase():
     p = Project(120, 80, "white")
     p.apply({"type": "paint-layer", "name": "sketch"})

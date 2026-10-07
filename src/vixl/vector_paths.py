@@ -560,6 +560,38 @@ def execute(project, op):
     _store(layer, contours)
 
 
+SEAM_OVERLAP = 1.0
+
+
+def underlap(pieces, combine_outlines):
+    """Pieces that abut, each lower one reaching ``SEAM_OVERLAP`` px under the pieces stacked above it.
+
+    Two antialiased edges on the same line each cover about half of the pixels along it, so the background
+    shows through as a hairline seam. A lower piece extended under its neighbours (and only under them, so
+    the outline of the whole stays exact) leaves the upper piece's edge over solid paint. The reach is the
+    piece moved by the overlap in four directions, so it stays exact Bezier geometry."""
+    from .booleans import Unsupported
+
+    def moved(outline, dx, dy):
+        return [[tuple((x + dx, y + dy) for x, y in seg) for seg in contour] for contour in outline]
+
+    result = []
+    for k, (outline, owner) in enumerate(pieces):
+        above = [other for other, _ in pieces[k + 1:]]
+        if above:
+            d = SEAM_OVERLAP
+            shifted = [moved(outline, dx, dy) for dx, dy in ((d, 0), (-d, 0), (0, d), (0, -d))]
+            count = len(above)
+            try:
+                grown = combine_outlines([outline, *above, *shifted],
+                                         lambda own, *rest: own or (any(rest[:count]) and any(rest[count:])))
+            except Unsupported:
+                grown = None
+            outline = grown or outline
+        result.append((outline, owner))
+    return result
+
+
 def pathfinder_parts(project, op, children, bounds):
     """Divide into independently editable faces; trim/merge retain foreground paints."""
     from .pathfinder_geometry import (
@@ -619,6 +651,7 @@ def pathfinder_parts(project, op, children, bounds):
                 for group in paints.values()
             ]
     require(pieces, "Pathfinder result is empty")
+    pieces = underlap(pieces, combine_outlines)
     group = new_layer(
         op["name"],
         "group",

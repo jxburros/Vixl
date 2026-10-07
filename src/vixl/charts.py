@@ -706,6 +706,7 @@ class Cartesian:
         self.point_labels = self.shown and not (self.area and not forced)
         self.totals_shown = bool(recipe.get("total_labels")) and self.stacked and not self.percent
         self.crowd = Collider()
+        self.pending = []
         self.cap = kit.make("0", style.fs, style.ink)["cap"]
         self.value_size = max(8, style.snap(style.fs * 0.85))
         self.value_cap = kit.make("0", self.value_size, style.ink)["cap"]
@@ -717,6 +718,7 @@ class Cartesian:
         self.frame()
         self.axes()
         (self.draw_bars if self.bars else self.draw_lines)()
+        self.place_labels()
         self.draw_legend()
         self.stats.update(scale={"min": self.lo, "max": self.hi, "step": self.step, "ticks": self.ticks, "format": self.tick_format},
                           label_format=self.label_format, colors=self.colors, legend=self.position)
@@ -826,18 +828,89 @@ class Cartesian:
             return b0, a0, max(1, b1 - b0), max(1, a1 - a0)
         return a0, b0, max(1, a1 - a0), max(1, b1 - b0)
 
-    def label(self, key, name, value, x, y, anchor, color, at="base", fit=None):
-        """A data label; automatic labels are skipped when they do not fit their mark or would crowd another."""
-        lab = self.kit.make(format_number(value, self.label_format), self.value_size, color)
-        left, top = spot(lab, x, y, anchor, at)
-        box = (round(left), round(top), lab["width"], lab["height"])
+    def label(self, key, name, value, x, y, anchor, color, at="base", fit=None, drop=0):
+        """A data label at (x, y + ``drop`` cap heights). Forced labels are placed at once; automatic ones wait
+        for ``place_labels``, which decides for the chart as a whole."""
+        entry = {"key": key, "name": name, "text": format_number(value, self.label_format), "x": x, "y": y,
+                 "anchor": anchor, "color": color, "at": at, "fit": fit, "drop": drop}
         if self.auto:
-            if fit and ((fit[0] is not None and lab["width"] > fit[0]) or (fit[1] is not None and lab["height"] > fit[1])):
-                return
-            if not self.crowd.free(box) or box[0] < 0 or box[0] + box[2] > self.W or box[1] < 0 or box[1] + box[3] > self.H:
-                return
-        self.crowd.take(box)
+            self.pending.append(entry)
+            return
+        lab = self.kit.make(entry["text"], self.value_size, color)
+        left, top = spot(lab, x, y + drop * self.value_cap, anchor, at)
+        self.crowd.take((round(left), round(top), lab["width"], lab["height"]))
         self.parts.text(key, name, lab, left, top, Z_VALUES)
+
+    def layout_labels(self, entries, size):
+        """``[(entry, lab, left, top)]`` for ``entries`` at ``size``, or None when one of them does not fit its
+        mark, leaves the chart or crowds another."""
+        crowd, placed = Collider(), []
+        cap = self.kit.make("0", size, self.style.ink)["cap"]
+        for entry in entries:
+            lab = self.kit.make(entry["text"], size, entry["color"])
+            fit = entry["fit"]
+            if fit and ((fit[0] is not None and lab["width"] > fit[0]) or (fit[1] is not None and lab["height"] > fit[1])):
+                return None
+            left, top = spot(lab, entry["x"], entry["y"] + entry["drop"] * cap, entry["anchor"], entry["at"])
+            box = (round(left), round(top), lab["width"], lab["height"])
+            if not crowd.free(box) or box[0] < 0 or box[0] + box[2] > self.W or box[1] < 0 or box[1] + box[3] > self.H:
+                return None
+            crowd.take(box)
+            placed.append((entry, lab, left, top))
+        return placed
+
+    def place_labels(self):
+        """Automatic labels, decided for the whole chart so they thin evenly: every label (at a smaller size if
+        that is what fits), else whole series from the largest down, else every k-th label of the largest
+        series, else none. A series never loses labels from some of its marks only."""
+        if not self.pending:
+            return
+        floor = max(8, self.style.snap(self.style.fs * 0.6))
+        sizes = sorted({self.value_size, *(max(floor, self.style.snap(self.value_size * f)) for f in (0.85, 0.7))},
+                       reverse=True)
+        sizes = [size for size in sizes if size <= self.value_size]
+        groups = {}
+        for entry in self.pending:
+            groups.setdefault(entry["key"].rsplit("-", 1)[0], []).append(entry)
+
+        def weight(name):
+            if name == "total":
+                return math.inf  # asked for explicitly
+            values = self.series[int(name.split("-")[1])]["values"]
+            return sum(abs(v) for v in values if v is not None)
+
+        order = sorted(groups, key=weight, reverse=True)
+        chosen = None
+        for size in sizes:
+            chosen = self.layout_labels([e for name in order for e in groups[name]], size)
+            if chosen:
+                break
+        if not chosen:
+            best = None
+            for size in sizes:
+                if not self.layout_labels(groups[order[0]], size):
+                    continue
+                kept = []
+                for name in order:
+                    if self.layout_labels(kept + groups[name], size):
+                        kept += groups[name]
+                if best is None or len(kept) > len(best[0]):
+                    best = (kept, size)
+            if best:
+                chosen = self.layout_labels(*best)
+        if not chosen:
+            first = groups[order[0]]
+            for stride in range(2, len(first)):
+                for size in sizes:
+                    chosen = self.layout_labels(first[::stride], size)
+                    if chosen:
+                        break
+                if chosen:
+                    break
+        for entry, lab, left, top in chosen or []:
+            self.crowd.take((round(left), round(top), lab["width"], lab["height"]))
+            self.parts.text(entry["key"], entry["name"], lab, left, top, Z_VALUES)
+        self.pending = []
 
     def axes(self):
         parts, style, gap = self.parts, self.style, self.gap
@@ -900,16 +973,16 @@ class Cartesian:
                     continue
                 key, name = f"value-{s_index}-{i}", f"value {s['name']} {self.categories[i]}"
                 if self.stacked:
-                    self.label(key, name, v, x + w / 2, y + h / 2 + self.value_cap / 2, "center", style.on(self.colors[s_index]),
-                               fit=(w - 4, h - 2))
+                    self.label(key, name, v, x + w / 2, y + h / 2, "center", style.on(self.colors[s_index]),
+                               fit=(w - 4, h - 2), drop=0.5)
                 elif self.horizontal:
                     forward = v > 0
-                    self.label(key, name, v, x + w + gap if forward else x - gap, y + h / 2 + self.value_cap / 2,
-                               "left" if forward else "right", style.ink, fit=(None, h * 1.3))
+                    self.label(key, name, v, x + w + gap if forward else x - gap, y + h / 2,
+                               "left" if forward else "right", style.ink, fit=(None, h * 1.3), drop=0.5)
                 elif v > 0:
-                    self.label(key, name, v, x + w / 2, y - gap, "center", style.ink, fit=(w * 1.3, None))
+                    self.label(key, name, v, x + w / 2, y - gap, "center", style.ink, fit=(max(w * 1.3, self.band / m), None))
                 else:
-                    self.label(key, name, v, x + w / 2, y + h + gap + self.value_cap, "center", style.ink, fit=(w * 1.3, None))
+                    self.label(key, name, v, x + w / 2, y + h + gap, "center", style.ink, fit=(max(w * 1.3, self.band / m), None), drop=1)
         if not self.totals_shown:
             return
         for i, category in enumerate(self.categories):
@@ -919,12 +992,12 @@ class Cartesian:
             end = self.vp(positive[i] if up else negative[i])
             key, name = f"total-{i}", f"total {category}"
             if self.horizontal:
-                self.label(key, name, total, end + gap if up else end - gap, self.center(i) + self.value_cap / 2,
-                           "left" if up else "right", style.ink)
+                self.label(key, name, total, end + gap if up else end - gap, self.center(i),
+                           "left" if up else "right", style.ink, drop=0.5)
             elif up:
                 self.label(key, name, total, self.center(i), end - gap, "center", style.ink)
             else:
-                self.label(key, name, total, self.center(i), end + gap + self.value_cap, "center", style.ink)
+                self.label(key, name, total, self.center(i), end + gap, "center", style.ink, drop=1)
 
     def draw_lines(self):
         parts, style, gap, n = self.parts, self.style, self.gap, self.n
@@ -970,7 +1043,7 @@ class Cartesian:
                     if value >= 0:
                         self.label(key, label, value, x, y - reach, "center", style.ink)
                     else:
-                        self.label(key, label, value, x, y + reach + self.value_cap, "center", style.ink)
+                        self.label(key, label, value, x, y + reach, "center", style.ink, drop=1)
 
     def draw_legend(self):
         legend, W, H, pad = self.legend, self.W, self.H, self.style.pad
@@ -1193,6 +1266,16 @@ def sync(project, group, parts):
         if part["kind"] == "text" and "font_role" not in fields:
             layer.pop("font_role", None)
         kept.append(layer)
+    # A value label is set against the marks by design (a line runs through it, an area lies under it, it sits on
+    # its bar): those pairs are not overlap findings. Labels against each other still are.
+    marks = [(x["chart_part"], x["id"]) for x in kept if x["type"] != "text"]
+    for layer in kept:
+        key = layer["chart_part"]
+        if key.startswith(("value-", "total-")):
+            category = key.rsplit("-", 1)[1]
+            own = [ident for part, ident in marks if part.startswith(("line-", "area-"))
+                   or (part.startswith(("bar-", "marker-")) and part.rsplit("-", 1)[1] == category)]
+            layer["allow_overlap"] = own[:512]
     ids = {x["id"] for x in kept}
     foreign = [x for x in layers if x.get("parent") == group["id"] and x["id"] not in ids]
     rest = [x for x in layers if x["id"] not in ids and x not in foreign]

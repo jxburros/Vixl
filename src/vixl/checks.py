@@ -454,7 +454,11 @@ def check_design(
                 issue("bounds", "error", f"{item['name']!r} is entirely outside the canvas", [item], bounds=[x, y, w, h])
             elif x < -1e-8 or y < -1e-8 or x + w > width + 1e-8 or y + h > height + 1e-8:
                 crossed = sum((x < -1e-8, y < -1e-8, x + w > width + 1e-8, y + h > height + 1e-8))
-                if intentional_crop(item) or (item["type"] in ("shape", "gradient") and crossed >= 2):
+                if any(parent.get("pattern_scatter") for parent in ancestors(item)):
+                    # A seamless tile's motifs cross its edge on purpose: the wrapped copy completes them.
+                    issue("bounds", "info", f"{item['name']!r} wraps across the edge of a seamless pattern tile",
+                          [item], bounds=[x, y, w, h], intentional=True)
+                elif intentional_crop(item) or (item["type"] in ("shape", "gradient") and crossed >= 2):
                     # Artwork that runs past two or more edges (a hill, a glow) is bleed by design.
                     issue("bounds", "info", f"{item['name']!r} bleeds off the canvas edge (" + (
                               "marked as an intentional crop)" if intentional_crop(item) else "artwork running past two edges)"),
@@ -677,6 +681,7 @@ def check_design(
             thumbnail_width = 600 if c.get("size") in ("og-image", "x-post") else 320
         finite(thumbnail_width, "thumbnail_width", 16, 16384)
         scale = thumbnail_width / width
+        small = []
         for item in texts:
             size = resolved[item["id"]].get("size", 0)
             if item.get("text_layout", {}).get("fit"):
@@ -684,15 +689,40 @@ def check_design(
                 size = min(size, local_bounds[item["id"]][3] / lines)
             effective = size * text_scales[item["id"]] * scale
             if effective < min_thumbnail_text:
-                issue(
-                    "legibility",
-                    "warning" if thumbnail_piece else "info",
-                    f"{item['name']!r} is {effective:.1f} px tall at {thumbnail_width} px wide; "
-                    f"aim for at least {min_thumbnail_text} px (font size {size * min_thumbnail_text / effective:.0f}+)"
-                    + ("" if thumbnail_piece else "; only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)"),
-                    [item],
-                    thumbnail_size=round(effective, 2),
-                )
+                small.append((item, size, effective))
+        # One finding per chart: its labels share one size, so they are one fix (the chart's font_size).
+        charts, single = {}, []
+        for entry in small:
+            chart = next((x for x in ancestors(entry[0]) if x.get("chart")), None)
+            if chart is not None:
+                charts.setdefault(chart["id"], (chart, []))[1].append(entry)
+            else:
+                single.append(entry)
+        hint = "" if thumbnail_piece else "; only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)"
+        severity = "warning" if thumbnail_piece else "info"
+        for chart, entries in charts.values():
+            least = min(effective for _, _, effective in entries)
+            issue("legibility", severity,
+                  f"chart {chart['name']!r}: {len(entries)} label(s) are {least:.1f} px tall or less at {thumbnail_width} px "
+                  f"wide; aim for at least {min_thumbnail_text} px (raise the chart's font_size){hint}",
+                  [item for item, _, _ in entries], thumbnail_size=round(least, 2), chart=chart["name"])
+        if not thumbnail_piece and len(single) > 3:
+            # Not a thumbnail piece: one note for the whole document rather than one per text layer.
+            least = min(single, key=lambda entry: entry[2])
+            issue("legibility", "info",
+                  f"{len(single)} text layers are under {min_thumbnail_text} px tall at {thumbnail_width} px wide "
+                  f"(the smallest, {least[0]['name']!r}, is {least[2]:.1f} px){hint}",
+                  [item for item, _, _ in single], thumbnail_size=round(least[2], 2))
+            single = []
+        for item, size, effective in single:
+            issue(
+                "legibility",
+                severity,
+                f"{item['name']!r} is {effective:.1f} px tall at {thumbnail_width} px wide; "
+                f"aim for at least {min_thumbnail_text} px (font size {size * min_thumbnail_text / effective:.0f}+){hint}",
+                [item],
+                thumbnail_size=round(effective, 2),
+            )
 
     if "blanks" in checks:
         registry = candidate.state.get("blanks", {})
