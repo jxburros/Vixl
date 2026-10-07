@@ -158,4 +158,4 @@ Fonts and contrast pass everywhere. On the 0.22.1 code itself one brief (a Linke
 legibility check at every level (no-fix share 0.979); the rolled-layout thumbnail fix brings it to 1.0.
 Mode and look entropy fall on purpose: documents, forms, slides and logos are mostly light and carry no
 finishing look (decisions D2 and F1), which also lowers the raw image distance. Within a mode, designs
-are about twice as far apart, and every measure but mode rises from low to high.
+are about twice as far apart, and the entropies, same-mode and structure distances rise from low to high.
