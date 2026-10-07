@@ -642,14 +642,23 @@ Each decision above is tracked in #388.
 The house style is one data file, `src/vixl/data/house-style.json`, shaped like a brand, read through
 one module, `src/vixl/house_style.py`. A workspace `brand.json` and explicit fields override it.
 
-- **`craft`** is fixed and the same everywhere: contrast floors and targets, the spacing scale, the
-  line-height table, line length, minimum text sizes, the corner scale, margins, outline and shadow
-  treatment, and label case.
+- **`craft`** is fixed and the same everywhere: contrast floors and targets, the spacing scale (unit =
+  half the body size), the line-height table, line length, minimum text sizes, the base-size rule, the
+  headline measure, the default safe area (5%) and stroke width (1.5%), the neutral fill and the palette
+  roles fills and strokes take, the house corner and corner scale, the irregularity strength, margins,
+  outline and shadow treatment, and label case. `src/vixl/craft.py` holds the helpers that apply them
+  (text, shape and stroke defaults) and read-only names (`LINE_HEIGHT`, `CORNERS`, `SAFE_AREA` …) that
+  always reflect the data; layouts, rich text, text flow, charts, diagrams, templates and containers
+  read the same values.
 - **`taste`** holds the pools a roll draws from (palettes, pairings, layouts, styles, looks), each entry
   with a `tier` and moods, and the variety `levels` that gate the tiers.
 - **`purposes`** holds one profile per purpose (poster, social, slides, document, form, diagram, logo,
-  motion): the brief kinds and size categories that map to it, the dark-mode share, type-scale ratios,
-  preferred pairings, layouts and styles, the finishing look and its amount, and background treatments.
+  motion): the brief kinds, size categories and aliases that map to it, the default document `size`
+  (and `sizes` for aliases with their own, such as `story`, `icon` or `favicon`), whether it is a `mark`
+  (a transparent canvas), the density weights, the dark-mode share, type-scale ratios, preferred
+  pairings, layouts and styles, the finishing look and its amount, and background treatments.
+  `default_profile` is the general profile, with the 1080×1080 size for a document given nothing.
+  Creation and rolls read this one vocabulary.
 - **`legacy`** records what earlier versions rolled from, so pinned documents and tests reproduce.
 
 Read it, never copy it. The API:
@@ -659,7 +668,9 @@ Read it, never copy it. The API:
 | `house_style.profile(purpose)` | the merged profile for a purpose (or the general profile for `None`) |
 | `house_style.purpose_for(value)` | a purpose from a purpose, alias, brief kind, named size or size category, or `None` |
 | `house_style.resolve_purpose(purpose, project=, kind=, size=)` | `(purpose, source)`, source `explicit`, `brief kind`, `document` or `size` |
-| `house_style.craft(key=None)` | the craft rules, or one of them (`line_height`, `contrast`, `corner_scale` …) |
+| `house_style.craft(key=None)`, `rule(key)` | the craft rules, or one of them (`line_height`, `contrast`, `corner_scale` …); `rule` reads without copying |
+| `house_style.canonical_purpose(value)`, `purpose_names()` | the purpose for creation and rolls (an error with suggestions when unknown), and every accepted name |
+| `house_style.purpose_size(value)`, `is_mark(purpose, size)` | the size a purpose implies, and whether a document is a mark |
 | `house_style.tier_of(kind, name, purpose=None)`, `entries(kind)`, `names(kind, tier)` | tiers and metadata of the pools |
 | `house_style.level(variety)` | a variety level's tier weights, look scale, motifs and treatments |
 | `house_style.VERSION`, `versions()`, `legacy(version)` | the current and earlier house-style versions |

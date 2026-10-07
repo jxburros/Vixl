@@ -24,7 +24,9 @@ This module only reads the data. The rolls that use it live in ``typefaces.roll`
 ``profile(purpose)``          the merged profile for a purpose (or the general one for None)
 ``purpose_for(value)``        a purpose from a purpose name, alias, brief kind, size name or size category
 ``resolve_purpose(...)``      the purpose plus where it came from (explicit, brief kind, size)
-``craft(key=None)``           the fixed craft rules
+``craft(key=None)``           the fixed craft rules (a copy); ``rule(key)`` reads one without copying
+``canonical_purpose(value)``  the purpose for creation and rolls, or an error naming the purposes
+``purpose_size(value)`` and ``is_mark(...)``  the size a purpose implies and whether it is a mark
 ``tier_of(kind, name, purpose=None)`` and ``entries(kind)``  tier and metadata of pool entries
 ``level(variety)``            the settings of a variety level
 """
@@ -57,6 +59,12 @@ def craft(key=None):
     """The fixed craft rules, or one of them (``contrast``, ``line_height``, ``corner_scale`` …)."""
     rules = _data()["craft"]
     return deepcopy(rules if key is None else rules[key])
+
+
+def rule(key):
+    """One craft rule, read live and not copied: callers must not change it. Use this in code that runs
+    often (text defaults, layout sizing); ``craft`` returns a copy."""
+    return _data()["craft"][key]
 
 
 def level(variety):
@@ -154,6 +162,67 @@ def purpose_for(value):
     if key.endswith("s") and key[:-1] in PURPOSES:
         return key[:-1]
     return None
+
+
+def purpose_names():
+    """Every word ``canonical_purpose`` accepts as a purpose name: the purposes and their aliases (brief
+    kinds, named sizes and size categories are accepted too)."""
+    purposes = _data()["purposes"]
+    return [*PURPOSES, *sorted({alias for item in purposes.values() for alias in item.get("aliases", [])})]
+
+
+def canonical_purpose(value):
+    """The purpose ``value`` names (``purpose_for``), for document creation: None for None, else an
+    ``invalid_property`` error with suggestions. Creation and rolls share this vocabulary."""
+    if value is None:
+        return None
+    from difflib import get_close_matches
+
+    from .errors import VixlError, require
+
+    require(isinstance(value, str) and value.strip(), "purpose is a word such as social, poster or slides",
+            field="purpose")
+    found = purpose_for(value)
+    if found is None:
+        choices = purpose_names()
+        close = get_close_matches(_key(value), choices, 3, 0.6)
+        raise VixlError("invalid_property", f"Unknown purpose {value!r}"
+                        + (f"; did you mean {', '.join(close)}?" if close else "")
+                        + f". Purposes: {', '.join(PURPOSES)} (or an alias such as {', '.join(choices[len(PURPOSES):][:6])})",
+                        field="purpose", suggestions=close, allowed=choices)
+    return found
+
+
+def purpose_size(value):
+    """The size a purpose implies when no size is given: the alias's own size (``story`` → story, ``icon``
+    → app-icon), else a named size given as the purpose, else the profile's ``size``. ``paper`` means
+    the locale's paper size (``sizes.paper_size``); a ``[width, height]`` list is a custom size. None
+    gives the general profile's size (1080×1080)."""
+    from .sizes import SIZES
+
+    if value is None:
+        return deepcopy(_data()["default_profile"]["size"])
+    purpose = canonical_purpose(value)
+    key = _key(value)
+    item = _data()["purposes"][purpose]
+    size = item.get("sizes", {}).get(key) or (key if key in SIZES else None) or item["size"]
+    return deepcopy(size)
+
+
+def mark_categories():
+    """Size categories whose documents are marks (logos, icons): the categories of the mark purposes."""
+    return frozenset(category for item in _data()["purposes"].values() if item.get("mark")
+                     for category in item.get("size_categories", []))
+
+
+def is_mark(purpose=None, size=None):
+    """True for logos, icons and favicons: a purpose whose profile is a ``mark``, or a named size in one of
+    their size categories. Marks keep a transparent canvas."""
+    from .sizes import SIZES, canonical
+
+    if purpose is not None and _data()["purposes"].get(canonical_purpose(purpose), {}).get("mark"):
+        return True
+    return size is not None and SIZES[canonical(size)]["category"] in mark_categories()
 
 
 def resolve_purpose(purpose=None, *, project=None, kind=None, size=None):

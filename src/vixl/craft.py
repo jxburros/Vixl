@@ -1,35 +1,94 @@
-"""Fixed craft defaults that every feature shares (house style decisions B3, B4, B6, B7, C5, E2, E8, F4).
+"""Fixed craft defaults that every feature shares (house style decisions B3, B4, B6, B7, C5, E1, E2, E8, F4).
 
-These are the values a field falls back to when an operation leaves it out. They are resolved when an
-operation runs and stored on the layer or canvas, so changing one here never changes a saved document;
-only new layers and new documents pick it up.
+The values live in the ``craft`` section of ``data/house-style.json`` and are read through ``vixl.house_style``;
+this module holds the helpers that apply them, plus thin read-only names for the values (``LINE_HEIGHT``,
+``CORNERS``, ``SAFE_AREA`` …) that always reflect the data. Defaults are resolved when an operation runs and
+stored on the layer or canvas, so changing the data never changes a saved document; only new layers and new
+documents pick it up.
 """
 
+from collections.abc import Mapping
+
+from . import house_style
+
+
+class _Rule(Mapping):
+    """A read-only view of one craft table in the house-style data (never a copy, so it cannot go stale)."""
+
+    def __init__(self, key):
+        self._key = key
+
+    def __getitem__(self, name):
+        return house_style.rule(self._key)[name]
+
+    def __iter__(self):
+        return iter(house_style.rule(self._key))
+
+    def __len__(self):
+        return len(house_style.rule(self._key))
+
+    def __repr__(self):
+        return repr(dict(self))
+
+
 # Line height as a multiple of the font size (distance between baselines / size), per text stage.
-LINE_HEIGHT = {"display": 1.0, "heading": 1.1, "lead": 1.35, "body": 1.45, "caption": 1.3}
-# Safe area for a document whose size defines none, as a fraction of the canvas short side.
-SAFE_AREA = 0.05
-# Stroke width for a stroke given without a width, as a fraction of the shape's short side.
-STROKE_WIDTH = 0.015
-# Fill for shapes and solids when the document has no palette role to use.
-NEUTRAL_FILL = "#8c8c8c"
+LINE_HEIGHT = _Rule("line_height")
+# Corner radius per corner style, as a fraction of the shape's short side.
+CORNERS = _Rule("corner_scale")
+# Single values: the house corner style, the safe area for a size that defines none and the stroke width
+# (fractions of the short side), the fill without a palette, and the irregular/tear strength.
+_SCALARS = {"CORNER": "corner", "SAFE_AREA": "safe_area", "STROKE_WIDTH": "stroke_width",
+            "NEUTRAL_FILL": "neutral_fill", "IRREGULAR_STRENGTH": "irregular_strength"}
 # Palette roles that shapes and solids take their fill from, and strokes their colour from.
-SHAPE_FILL_ROLE, SOLID_FILL_ROLE, STROKE_ROLE = "accent", "surface", "ink"
-# Corner radius per corner style, as a fraction of the shape's short side; the house style is sharp.
-CORNERS = {"sharp": 0, "soft": 0.08, "round": 0.25, "pill": 0.5}
-CORNER = "sharp"
-# Strength of irregular and tear when none is given.
-IRREGULAR_STRENGTH = "subtle"
+_ROLES = {"SHAPE_FILL_ROLE": "shape", "SOLID_FILL_ROLE": "solid", "STROKE_ROLE": "stroke"}
+
+
+def __getattr__(name):
+    if name in _SCALARS:
+        return house_style.rule(_SCALARS[name])
+    if name in _ROLES:
+        return house_style.rule("fill_roles")[_ROLES[name]]
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def line_height(stage):
+    """The line-height multiple for a text stage (display, heading, lead, body, caption)."""
+    return house_style.rule("line_height")[stage]
+
+
+def corner():
+    """The house corner style (decision E8: sharp)."""
+    return house_style.rule("corner")
+
+
+def fill_role(kind):
+    """The palette role a ``shape``/``solid`` fill or a ``stroke`` takes."""
+    return house_style.rule("fill_roles")[kind]
+
+
+def spacing_unit(body):
+    """The spacing unit for a body size: half the body (craft ``spacing.unit``), never under the minimum."""
+    rule = house_style.rule("spacing")
+    return max(rule["minimum_unit"], round(body * rule["unit"]))
+
+
+def measure_chars(stage, large=False):
+    """Characters a heavy line should hold at least (``display`` or ``heading``), and the glyph width as a
+    share of the size, from craft ``headline_measure``; ``large`` is the expressive measure of bold rolls."""
+    rule = house_style.rule("headline_measure")
+    return rule[("large_" if large else "") + stage], rule["glyph_width"]
 
 
 def base_size(canvas):
     """The body text size for a canvas with no type scale: about 2.6% of the short side on screen, and a
     readable point size (7.5–60 pt, growing with the page) for print."""
+    rule = house_style.rule("base_size")
     short = min(canvas["width"], canvas["height"])
     if canvas.get("dpi"):
-        points = min(max(short / canvas["dpi"] * 1.25, 7.5), 60)
+        points = min(max(short / canvas["dpi"] * rule["print_points_per_inch_of_short_side"],
+                         rule["print_minimum_points"]), rule["print_maximum_points"])
         return points * canvas["dpi"] / 72
-    return max(short * 0.026, 10)
+    return max(short * rule["screen_share_of_short_side"], rule["screen_minimum_px"])
 
 
 def body_size(project):
@@ -77,29 +136,30 @@ def spacing_for(project, font, size, multiple):
 
 def corner_style(project):
     """The document's corner style: its rolled direction's ``corner``, else the house default."""
-    corner = ((project.state.get("design_defaults") or {}).get("direction") or {}).get("corner")
-    return corner if corner in CORNERS else CORNER
+    style = ((project.state.get("design_defaults") or {}).get("direction") or {}).get("corner")
+    return style if style in CORNERS else corner()
 
 
 def fill_for(project, role):
     """A palette role reference when the document defines that swatch, else the neutral fill."""
-    return f"@{role}" if role in (project.state.get("swatches") or {}) else NEUTRAL_FILL
+    return f"@{role}" if role in (project.state.get("swatches") or {}) else house_style.rule("neutral_fill")
 
 
 def stroke_color(project):
-    if STROKE_ROLE in (project.state.get("swatches") or {}):
-        return f"@{STROKE_ROLE}"
+    role = fill_role("stroke")
+    if role in (project.state.get("swatches") or {}):
+        return f"@{role}"
     from .operations import default_ink
 
     return default_ink(project)
 
 
 def stroke_width(width, height):
-    return max(1, round(min(width, height) * STROKE_WIDTH))
+    return max(1, round(min(width, height) * house_style.rule("stroke_width")))
 
 
 def safe_area(width, height):
-    return round(min(width, height) * SAFE_AREA)
+    return round(min(width, height) * house_style.rule("safe_area"))
 
 
 def _visible(value):
@@ -125,14 +185,14 @@ def shape_defaults(project, op, fields, width, height):
         fields["stroke"] = filled["stroke"] = stroke_color(project)
         stroked = True
     elif "fill" not in op and not (open_shape and stroked):
-        fields["fill"] = filled["fill"] = fill_for(project, SHAPE_FILL_ROLE)
+        fields["fill"] = filled["fill"] = fill_for(project, fill_role("shape"))
     if stroked and "stroke_width" not in op:
-        fields["stroke_width"] = filled["stroke_width"] = max(1, round(reference * STROKE_WIDTH))
+        fields["stroke_width"] = filled["stroke_width"] = max(1, round(reference * house_style.rule("stroke_width")))
     elif "stroke" not in op and "stroke" not in fields and op.get("stroke_width", 0) > 0:
         fields["stroke"] = filled["stroke"] = stroke_color(project)
     if op.get("shape") == "rounded-rectangle" and "radius" not in op:
-        corner = corner_style(project)
-        fields["radius"] = filled["radius"] = round(short * CORNERS[corner if CORNERS[corner] else "soft"], 2)
+        style = corner_style(project)
+        fields["radius"] = filled["radius"] = round(short * CORNERS[style if CORNERS[style] else "soft"], 2)
     if filled:
         record(project, "defaults", {"layer": op.get("name"), **filled})
 
@@ -162,7 +222,7 @@ def text_defaults(project, layer, op):
         multiple = op.get("line_height")
         if multiple is None:
             stage = stage_for(layer["size"], body)
-            multiple = filled["line_height"] = LINE_HEIGHT[stage]
+            multiple = filled["line_height"] = line_height(stage)
             filled["stage"] = stage
         layer["line_height"] = finite(multiple, "line_height", 0.5, 5)
         layer["spacing"] = spacing_for(project, layer["font"], layer["size"], multiple)

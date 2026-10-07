@@ -459,58 +459,19 @@ def validate_canvas(canvas):
         require(isinstance(physical, dict) and set(physical) <= {"width", "height", "unit", "bleed"} and physical.get("unit") in UNIT_INCHES, "Invalid physical canvas size", "invalid_project")
 
 
-# What a new document is for, when the caller names a purpose instead of a size. This table and the set of
-# marks are the only places these creation defaults live (docs/house-style.md, decisions B5 and B8).
-PURPOSE_SIZES = {
-    "social": "instagram-portrait",
-    "story": "story",
-    "poster": "poster-18x24",
-    "flyer": "paper",
-    "print": "paper",
-    "document": "paper",
-    "form": "paper",
-    "invitation": "invitation",
-    "slides": "slide",
-    "diagram": "slide",
-    "web": "og-image",
-    "email": "email-banner",
-    "motion": "video-1080p",
-    "video": "video-1080p",
-    "logo": "logo",
-    "mark": "logo-mark",
-    "emblem": "logo-badge",
-    "badge": "logo-badge",
-    "monogram": "logo-mark",
-    "icon": "app-icon",
-    "app-icon": "app-icon",
-    "favicon": "favicon",
-}
-PURPOSE_ALIASES = {"slide": "slides", "presentation": "slides", "deck": "slides", "posters": "poster",
-                   "logos": "logo", "icons": "icon", "documents": "document", "forms": "form",
-                   "animation": "motion", "diagrams": "diagram", "stories": "story", "instagram": "social"}
-# Marks are placed on other people's backgrounds, so their canvas stays transparent.
-MARK_PURPOSES = frozenset({"logo", "mark", "emblem", "badge", "monogram", "icon", "app-icon", "favicon"})
-MARK_CATEGORIES = frozenset({"icons", "logos"})
-DEFAULT_SIZE = (1080, 1080)
+# What a new document is for, when the caller names a purpose instead of a size, lives in the house style
+# (data/house-style.json: each purpose profile's ``size``, its aliases' ``sizes`` and the ``mark`` flag;
+# docs/house-style.md, decisions B5 and B8). The helpers below read it through ``vixl.house_style``.
 # Countries whose locales use US Letter paper; everywhere else uses A4.
 LETTER_COUNTRIES = frozenset({"US", "CA", "MX", "PH", "CL", "CO", "VE", "PR", "GT", "CR", "PA", "DO", "SV", "NI", "BO"})
 
 
 def purpose_name(purpose):
-    """The canonical purpose name (``slides``, ``social``, ``logo`` …), or None."""
-    if purpose is None:
-        return None
-    require(isinstance(purpose, str) and purpose.strip(), "purpose is a word such as social, poster or slides",
-            field="purpose")
-    key = purpose.strip().lower().replace("_", "-").replace(" ", "-")
-    key = PURPOSE_ALIASES.get(key, key)
-    if key not in PURPOSE_SIZES:
-        close = get_close_matches(key, list(PURPOSE_SIZES) + list(PURPOSE_ALIASES), 3, 0.6)
-        raise VixlError("invalid_property", f"Unknown purpose {purpose!r}"
-                        + (f"; did you mean {', '.join(close)}?" if close else "")
-                        + f". Purposes: {', '.join(PURPOSE_SIZES)}", field="purpose", suggestions=close,
-                        allowed=list(PURPOSE_SIZES))
-    return key
+    """The canonical purpose (``slides``, ``social``, ``logo`` …) a purpose name, alias, brief kind or named
+    size means, or None. Creation and rolls share this vocabulary (``house_style.canonical_purpose``)."""
+    from .house_style import canonical_purpose
+
+    return canonical_purpose(purpose)
 
 
 def paper_size(environ=None):
@@ -525,17 +486,27 @@ def paper_size(environ=None):
     return "letter"
 
 
+def default_size():
+    """``(width, height)`` of a new document given neither a size nor a purpose (the general profile's size)."""
+    from .house_style import purpose_size as size_of
+
+    return tuple(size_of(None))
+
+
 def purpose_size(purpose):
-    """The named size a purpose implies when no size is given, or None (then ``DEFAULT_SIZE``)."""
-    key = purpose_name(purpose)
-    if key is None:
+    """The named size a purpose implies when no size is given, or None (then ``default_size()``)."""
+    from .house_style import purpose_size as size_of
+
+    if purpose is None:
         return None
-    size = PURPOSE_SIZES[key]
+    size = size_of(purpose)
+    if isinstance(size, list):
+        return None
     return paper_size() if size == "paper" else size
 
 
 def is_mark(purpose=None, size=None):
     """True for logos, icons and favicons, by purpose or by the named size's category."""
-    if purpose is not None and purpose_name(purpose) in MARK_PURPOSES:
-        return True
-    return size is not None and SIZES[canonical(size)]["category"] in MARK_CATEGORIES
+    from .house_style import is_mark as mark
+
+    return mark(purpose, size)

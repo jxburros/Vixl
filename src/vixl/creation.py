@@ -2,7 +2,8 @@
 MCP ``vixl_document_create``, compose and the REST session all come here.
 
 A new document gets, in this order:
-1. its size: the given width/height or named size, else the purpose's size (``sizes.purpose_size``), else 1080×1080;
+1. its size: the given width/height or named size, else the purpose's size (the house-style profile's ``size``),
+   else the general profile's 1080×1080;
 2. the workspace default fonts (``brand.json``), when ``workspace_fonts``;
 3. reproducible ``design_defaults`` rolled from ``seed``/``variety`` (and ``purpose``);
 4. a canvas background: the given one, else transparent for marks (logos, icons, favicons), else the rolled
@@ -28,7 +29,7 @@ CONNECT_TIMEOUT = 3
 def resolve_size(width=None, height=None, size=None, purpose=None):
     """``(width, height, size, source)``: exactly one of width/height or size, with ``source`` one of
     ``argument``, ``purpose`` or ``default``."""
-    from .sizes import DEFAULT_SIZE, purpose_size
+    from .sizes import default_size, purpose_size
 
     require((width is None) == (height is None), "Give width and height together, or a named size", field="width")
     require(size is None or width is None, "Give width and height, or a named size, not both", field="size")
@@ -37,7 +38,7 @@ def resolve_size(width=None, height=None, size=None, purpose=None):
     size = purpose_size(purpose)
     if size is not None:
         return None, None, size, "purpose"
-    return *DEFAULT_SIZE, None, "default"
+    return *default_size(), None, "default"
 
 
 def create(width=None, height=None, background=None, *, size=None, purpose=None, dpi=None, orientation=None,
