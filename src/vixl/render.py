@@ -1407,7 +1407,7 @@ def export(
     fillable=False,
     values=None,
     fill_mode="flatten",
-    alpha="keep",
+    alpha="auto",
     presenter=None,
     overwrite=False,
     width=480,

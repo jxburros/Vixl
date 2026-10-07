@@ -606,13 +606,14 @@ def execute(project, op):
             layer["direction"] = op.get("direction", "vertical")
             layer.update({k: deepcopy(op[k]) for k in ("stops", "angle", "falloff") if k in op})
         else:
-            font, role = resolve_font(project, op.get("font"))
+            font, role = resolve_font(project, op.get("font", "body" if (project.state.get("typography") or {})
+                                                     .get("body") else None))
             layer.update(
                 {
                     "text": op["text"],
                     "font": font,
                     "size": op.get("size", 48),
-                    "color": op.get("color", "white"),
+                    "color": op.get("color") or default_ink(project),
                     "align": op.get("align", "left"),
                     "spacing": op.get("spacing", 4),
                     "auto_size": True,
@@ -1099,3 +1100,22 @@ def blur_budget(project, layer, effect):
         f"the {limits.max_pixels:,}-pixel / {limits.max_dimension} px limit; lower the amount or blur a smaller layer",
         field="amount",
     )
+
+
+def default_ink(project):
+    """The text colour used when none is given: the document's @ink swatch, else black or white, whichever
+    reads on the canvas background (a transparent canvas is judged over white, as the contrast check is)."""
+    from .colors import contrast_ratio
+    from .design import resolve_color
+
+    if "ink" in project.state.get("swatches", {}):
+        return "@ink"
+    background = project.state["canvas"].get("background", "transparent")
+    try:
+        rgba = color(resolve_color(background, project.state))
+    except VixlError:
+        return "#111111"
+    if rgba[3] < 128:
+        return "#111111"
+    rgb = [v / 255 for v in rgba[:3]]
+    return "#ffffff" if contrast_ratio(rgb, [1, 1, 1]) > contrast_ratio(rgb, [17 / 255] * 3) else "#111111"

@@ -175,7 +175,7 @@ def test_amount_sets_both_strengths_and_bad_values_are_refused():
     assert denoise.settings({"name": "denoise", "amount": 30, "chroma": 80, "search": 3}) == (30.0, 80.0, 3)
     p = Project(32, 32)
     p.apply({"type": "solid", "name": "ground", "color": "#808080"})
-    for bad in ({"luminance": 120}, {"chroma": -5}, {"search": 0}, {"search": 11}, {"search": 2.5}, {"amount": 400}):
+    for bad in ({"luminance": 120}, {"chroma": -5}, {"search": 0}, {"search": 11}, {"search": 10.6}, {"amount": 400}):
         with pytest.raises(VixlError):
             p.apply({"type": "denoise", "target": "ground", **bad})
 

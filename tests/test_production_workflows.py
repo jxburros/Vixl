@@ -452,7 +452,7 @@ def test_row_inputs_override_artboard_defaults(tmp_path):
 
     expected = artboard_project(p, "square", variables={"title": "Row"}).render()
     with Image.open(tmp_path / report["results"][0]["output"]) as actual:
-        assert actual.tobytes() == expected.tobytes()
+        assert actual.convert("RGBA").tobytes() == expected.convert("RGBA").tobytes()
 
 
 def test_film_camera_captions_and_video_audio_codec(tmp_path, monkeypatch):

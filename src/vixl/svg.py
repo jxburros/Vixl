@@ -176,8 +176,9 @@ class Exporter:
                 height=sh,
                 viewBox=f"0 0 {view[0]} {view[1]}",
                 preserveAspectRatio="none",
-                # Strokes (caps, miter joins) reach past the geometry box, as in the other renderers.
-                overflow="visible",
+                # Strokes (caps, miter joins) reach past the geometry box, as in the other renderers; a fill alone
+                # stays clipped to the box like its raster tile.
+                **({"overflow": "visible"} if attrs["stroke_opacity"] > 0 and layer.get("stroke_width", 1) > 0 else {}),
             )
             if layer.get("line_cap"):
                 attrs.update(stroke_linecap=layer["line_cap"],

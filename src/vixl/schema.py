@@ -38,7 +38,8 @@ FINISH_FIELDS = {
 FONT = {
     "type": "string",
     "description": "Registered font name or role (heading, body); install with font install / font pair / font import. "
-    "File paths work only in the CLI and Python API, not over MCP or REST.",
+    "File paths work only in the CLI and Python API, not over MCP or REST. A new text layer without one uses the "
+    "body face once the document has typography.",
 }
 
 

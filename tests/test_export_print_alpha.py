@@ -63,8 +63,8 @@ def test_pdf_without_bleed_has_no_print_boxes_and_explicit_dpi_still_maps_pixels
 def test_png_alpha_modes():
     opaque = Project(20, 10, "white")
     opaque.apply({"type": "solid", "name": "fill", "color": "tomato", "width": 10, "height": 10})
-    assert Image.open(io.BytesIO(opaque.export(format="PNG"))).mode == "RGBA"  # library default keeps RGBA
-    auto = Image.open(io.BytesIO(opaque.export(format="PNG", alpha="auto")))
+    assert Image.open(io.BytesIO(opaque.export(format="PNG", alpha="keep"))).mode == "RGBA"
+    auto = Image.open(io.BytesIO(opaque.export(format="PNG")))  # auto is the default on every interface
     assert auto.mode == "RGB" and auto.getpixel((2, 2)) == (255, 99, 71)
 
     clear = Project(20, 10, "transparent")

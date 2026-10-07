@@ -45,7 +45,7 @@ for supported native effects and fallback behavior.
 **Since 0.19.0:** CLI/MCP image exports default to `alpha=auto`, producing RGB
 when every pixel is opaque and RGBA when needed. `--alpha keep` forces RGBA;
 `--alpha flatten --background '#ffffff'` composites onto white. Applies to PNG, WebP,
-TIFF and AVIF. Python `Project.export` retains `alpha="keep"` by default for compatibility.
+TIFF and AVIF. Since 0.22.1 Python `Project.export` defaults to `alpha="auto"` too; pass `alpha="keep"` for RGBA.
 These options are available in [0.19.0](../CHANGELOG.md#0190) and later.
 
 ```python

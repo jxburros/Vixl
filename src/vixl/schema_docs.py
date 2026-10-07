@@ -395,7 +395,7 @@ OVERRIDES = {
                  "text": "Guidance text to store.", "style": "Slot to store it in (default 'overall')."},
     "font-register": {"name": "Name to register the font under.", "asset": "Imported font asset ID.",
                       "role": "heading or body: make it the document's heading or body font."},
-    "text": {"size": "Font size in pixels.", "color": "Text color.", "align": "Alignment within the text box.",
+    "text": {"size": "Font size in pixels.", "color": "Text color. Without one, the document @ink swatch, else black or white, whichever reads on the canvas background.", "align": "Alignment within the text box.",
              "spacing": "Line spacing in pixels (default 4)."},
     "text-set": {"stroke_width": "Outline thickness in pixels (0 removes it).", "size": "Font size in pixels.",
                  "spacing": "Line spacing in pixels."},
