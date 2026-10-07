@@ -125,8 +125,10 @@ process flows.
 ### Fit to the canvas
 
 The diagram is placed in an *area*: the canvas minus `margin` (default 4%), or the `x`, `y`, `width`, `height` you pass.
-`fit` is `shrink` (default: scale everything, including the text, down until it fits), `contain` (also scale up) or
-`none`. Text is never scaled below 6 px; below 9 px the result carries a warning and the check reports it.
+`fit` is `shrink` (scale everything, including the text, down until it fits), `contain` (also scale up, at most 3×)
+or `none`. The default is `contain` when you pass both `width` and `height`, so the diagram fills the box you gave it,
+and `shrink` otherwise. Without a `direction`, a tree or layered diagram that would have to shrink to fit its area
+runs left to right when that fits better (a wide band gets a horizontal flow); pass `direction: TB` to keep it vertical. Text is never scaled below 6 px; below 9 px the result carries a warning and the check reports it.
 `size` sets the label size (px at scale 1); the default follows the canvas.
 
 ### Style

@@ -331,6 +331,12 @@ _DIAGRAM_FIELDS = {
     "node_gap": "Space between nodes in the same rank, in pixels at scale 1 (default 44).",
     "rank_gap": "Space between ranks (rows or columns of the layout), in pixels at scale 1 (default 68).",
     "arrows": "Draw arrowheads on edges (default true).",
+    "fit": "shrink scales down to fit the area, contain also scales up (default when width and height are given), none "
+           "keeps the natural size.",
+    "direction": "Flow direction TB, BT, LR or RL; without it, a diagram that would shrink runs along the longer side "
+                 "of its area.",
+    "width": "Width of the area the diagram is placed in (default: the canvas minus the margin).",
+    "height": "Height of the area the diagram is placed in (default: the canvas minus the margin).",
 }
 
 OVERRIDES = {
