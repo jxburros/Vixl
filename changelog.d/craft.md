@@ -1,6 +1,6 @@
 ### Changed defaults
 
-These apply to new layers and new documents. Every value is resolved when the operation runs and stored on the layer, canvas or recipe, so saved documents render exactly as before. The fixed values live in one module, `vixl.craft`.
+These apply to new layers and new documents. Every value is resolved when the operation runs and stored on the layer, canvas or recipe, so saved documents render exactly as before. The fixed values live in the house style data (`src/vixl/data/house-style.json`).
 
 - **Text without a size** uses the body size of the document's type scale (the `body` character style), else about 2.6% of the canvas short side on screen or a readable point size in print: 28 px on 1080×1080, 104 px on 4000×4000. It was 48 px on every canvas. The result lists filled-in values under `defaults`. Pass `size: 48` for the old result (#408).
 - **One line-height table everywhere**: plain text, rich text, text flows, layouts and diagram labels set leading as a multiple of the font size by stage (body 1.45, lead 1.35, headings 1.1, display 1.0, captions 1.3). Plain text stored a fixed 4 px over the font's own pitch, rich text 1.2 × that pitch, layouts added 0.45 × size to body text (about 1.6–1.9 × in all) and flows 4 px. Text and text flows take `line_height` (a size multiple that follows later size or font changes), and `spacing` may now be negative for tight display type. Pass `spacing: 4` on text and text flows for the old leading (#421, #282).
