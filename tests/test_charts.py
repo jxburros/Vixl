@@ -201,6 +201,25 @@ def value_labels(p):
     return {layer["chart_part"]: layer for layer in children(p) if layer["chart_part"].startswith("value-")}
 
 
+def test_chart_text_uses_the_line_height_table():  # #421
+    from vixl.craft import LINE_HEIGHT, natural_height
+    from vixl.text import font_data
+
+    two = {"categories": MONTHS, "series": [{"name": "Espresso\nsingle origin", "values": [1, 2, 3, 4, 5, 6]},
+                                            {"name": "Latte\nwith oat milk", "values": [2, 3, 4, 5, 6, 7]}]}
+    p = make("bar", two, legend="right", title="Cups sold\nby month")
+    parts = {layer["chart_part"]: layer for layer in children(p)}
+
+    def pitch(layer):
+        return natural_height(font_data(p, layer), layer["size"]) + layer["spacing"]
+
+    assert pitch(parts["title"]) == pytest.approx(LINE_HEIGHT["heading"] * parts["title"]["size"], abs=1)
+    first, second = parts["legend-label-0"], parts["legend-label-1"]
+    assert pitch(first) == pytest.approx(LINE_HEIGHT["body"] * first["size"], abs=1)
+    # A two-line legend label takes two rows: the next entry starts below it.
+    assert second["y"] >= first["y"] + first["height"]
+
+
 def test_automatic_value_labels_label_every_bar_or_whole_series_largest_first():  # #366
     p = make("bar", CHANNELS, legend="bottom")
     labels = value_labels(p)
