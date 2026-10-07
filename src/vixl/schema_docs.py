@@ -74,6 +74,8 @@ SUMMARIES = {
     "distribute": "Space three or more layers evenly along an axis.",
     "group": "Group layers into one transformable layer.",
     "ungroup": "Dissolve a group, keeping its children in place.",
+    "reparent": "Move layers into a group, to another group or out to the page without ungrouping; they keep "
+                "where they appear on the canvas.",
     "clip": "Clip a layer to the shape of a base layer beneath it (or release it).",
     "repeat": "Repeat a layer N times with a per-copy offset and size change; per-step turn/scale/opacity, jitter or merge make real copies.",
     "repeat-blend": "Repeat a layer N times while blending its size and color to an end state.",
@@ -473,6 +475,7 @@ OVERRIDES = {
               "inner_radius": "Star inner radius as a fraction of the outer radius.",
               "fill": "Fill color; use a gradient-overlay layer-style (or the look operation) for gradients."},
     "group": {"name": "Group name.", "targets": "Layers to group (must share a parent)."},
+    "reparent": {"targets": "Layers (or groups) to move; they may come from different parents."},
     "clip": {"base": "Layer that supplies the clipping shape.", "release": "true removes the clip."},
     "layer-style": {"name": "drop-shadow, stroke, outer-glow, color-overlay or gradient-overlay.",
                     "settings": "drop-shadow {color, dx, dy, blur, opacity}; outer-glow {color, blur, opacity}; "

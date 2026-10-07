@@ -103,6 +103,10 @@ def execute_design(project, op):
         record(project, "groups", {"id": group["id"], "name": group["name"], "bounds": [x, y, w, h],
                                    "members": {child["name"]: [bounds[child["id"]][0] - x, bounds[child["id"]][1] - y]
                                                for child in children}})
+    elif kind == "reparent":
+        from .reparent import execute as reparent
+
+        reparent(project, op)
     elif kind == "ungroup":
         group = project.layer(op.get("target"))
         require(group["type"] == "group", "Target must be a group")

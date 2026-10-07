@@ -46,6 +46,22 @@ SVG path data for code that draws its own wedges, such as chart layers.
 
 Groups preserve member stacking order and use local child coordinates. Moving, hiding, masking, styling, or changing the opacity of a group affects its combined contents once. Groups nest to 16 dependency levels and duplicate with independent child IDs; edits address children by their existing names or IDs. A group's layout box is the union of member bounds at creation; constraints, alignment, `resize` and `canvas` inside the group use that box. Groups do not clip: members that later move, grow or rotate past the box (an animated limb, a resized sprite) still draw, and scale, flip and rotate with the group. `inspect` adds `drawn_bounds` to a layer that draws past its box. Resizing transforms the combined group raster; a group holding only pixel layers resamples nearest-neighbor, so scaled sprites stay crisp. Constraints between layers and clipping references must stay among siblings; `canvas` inside a group means the group's local content box. Grouping nonadjacent layers places the group at the highest selected slot.
 
+`reparent LAYER… --into GROUP` (`{type: reparent, targets, into}`; aliases `move-into`, `adopt`) moves existing
+layers or groups into a group, between groups, or out to the top level with `into: null` (CLI `--into page`), without
+ungrouping, so the group keeps its rotation, scale, flips, effects and other settings. With `keep: appearance` (the
+default) every target stays where it is drawn: its transform is converted into the new parent's space (a turn or
+mirror of the new parent becomes the layer's own rotation and flips; uneven scaling or skew is held in its `affine`
+matrix, which goes away again when it moves back), so moving into an unscaled group, or one turned by a right angle or
+mirrored, leaves the render pixel-identical, and into a scaled or freely rotated group the geometry is exact up to
+resampling. `keep: local` keeps the stored x, y and transform instead. The targets stack on top of the new parent's
+children unless `above`/`below` (a child of the new parent) or `index` (0 at the bottom) says otherwise; lifted to the
+top level they sit directly above the group they left. The group's content box grows to include them (its size and
+position change so nothing moves on the canvas) unless `fit: false`; an animated or constrained group is left as it is,
+with a note (groups do not clip). Moving a group into its own descendant, a layer into a non-group or a repeating group,
+or a clip pair apart is refused. Animated targets keep their tracks: position keys are shifted when the new parent is
+only translated, rotation and scale tracks carry over through any parent, and position or size tracks under a turned or
+scaled parent are refused with the tracks named. The whole call is one undoable step.
+
 `clip TARGET BASE` multiplies TARGET's rendered alpha by the sibling BASE's alpha. It follows base transforms and masks, works on groups, and rejects cycles. The base remains an ordinary visible layer. `clip TARGET --release` removes the relationship. `ungroup NAME` restores local members to their parent; reset group appearance and transforms first when ungrouping would discard those settings. A group's timeline tracks (position, rotation, scale, size, visibility, and opacity on a one-layer group) move onto its children as per-frame keys, so the animation looks the same; tracks that cannot be rewritten exactly (effects, mirroring, opacity over several overlapping children, uneven scaling of a rotated child) refuse the ungroup and are named in the error. `remove GROUP` removes its descendants. Reordering always stays among siblings.
 
 ## Examples: gradients, glows, shadows and radial repeats

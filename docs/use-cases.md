@@ -122,6 +122,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | SHP-05 | Distribute layers with equal gaps | `distribute` | 1 · <1 | E | |
 | SHP-06 | Move, resize, scale, rotate, flip or skew a layer | transform operations | 1 · <1 | E | Fractional sizes, named pivots, affine matrices. |
 | SHP-07 | Group, ungroup, clip one layer to another | `group`, `ungroup`, `clip` | 1 · <1 | E | |
+| SHP-23 | Add a part drawn later to an existing (rotated, scaled) group, or lift a part out | `reparent` | 1 · <1 | E | Since 0.23 (#382); keeps the render and the group's settings. |
 | SHP-08 | Combine shapes (union, subtract, intersect, exclude) | `pathfinder` | 1 · <1 | E | |
 | SHP-09 | Add guides, a column grid, baseline grid, golden or thirds grid | `guide`, `grid` | 1 · <1 | E | Polar, isometric, hex, oblique and perspective grids too. |
 | SHP-10 | Place or snap layers onto a guide | `place`, `snap` | 1 · <1 | E | |

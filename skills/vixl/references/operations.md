@@ -65,6 +65,7 @@ The authoritative schema is always `vixl schema` / `GET /schema` / `vixl://opera
 | `flatten` | `name` (default `flattened`), `keep_hidden` — the page's visible top-level layers become one canvas-size raster layer |
 | `group` | **`name`**, **`targets`** (list), `above`/`below` (a layer: the new group's z-slot; default its topmost member's) — children keep local coordinates; nest ≤16. Edit a member by canvas coordinates with `space: "canvas"` on `move` or `shape`/`text` with `target`. |
 | `ungroup` | `target` |
+| `reparent` (aliases `move-into`, `adopt`) | **`targets`**, **`into`** (a group, or `null`/`"page"` for the top level), `above`/`below` (a child of the new parent) or `index` (0 = bottom; default on top), `keep` (`appearance` default: stays where drawn, transform converted into the new parent, uneven scale held in `affine`; `local`), `fit` (default true: the group's content box grows, nothing moves) | Move layers into or out of a group without ungrouping; groups keep their transforms and effects. Refuses cycles, non-group or repeating `into`, split clip pairs, and position/size tracks under a turned or scaled parent (names them). |
 | `clip` | `target`, `base` (sibling) — multiplies target alpha by base alpha; `release: true` removes |
 
 ## Transform and appearance
