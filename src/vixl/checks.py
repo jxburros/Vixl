@@ -454,7 +454,11 @@ def check_design(
                 issue("bounds", "error", f"{item['name']!r} is entirely outside the canvas", [item], bounds=[x, y, w, h])
             elif x < -1e-8 or y < -1e-8 or x + w > width + 1e-8 or y + h > height + 1e-8:
                 crossed = sum((x < -1e-8, y < -1e-8, x + w > width + 1e-8, y + h > height + 1e-8))
-                if intentional_crop(item) or (item["type"] in ("shape", "gradient") and crossed >= 2):
+                if any(parent.get("pattern_scatter") for parent in ancestors(item)):
+                    # A seamless tile's motifs cross its edge on purpose: the wrapped copy completes them.
+                    issue("bounds", "info", f"{item['name']!r} wraps across the edge of a seamless pattern tile",
+                          [item], bounds=[x, y, w, h], intentional=True)
+                elif intentional_crop(item) or (item["type"] in ("shape", "gradient") and crossed >= 2):
                     # Artwork that runs past two or more edges (a hill, a glow) is bleed by design.
                     issue("bounds", "info", f"{item['name']!r} bleeds off the canvas edge (" + (
                               "marked as an intentional crop)" if intentional_crop(item) else "artwork running past two edges)"),

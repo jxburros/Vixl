@@ -134,7 +134,9 @@ reports `pattern_scatter: [{name, copies, ghosts, spacing, seed, seam}]`, where 
 seam). The recipe stays on the tile group (`pattern_scatter`): after editing a motif, `{"type":
 "pattern-scatter", "target": "tile"}` rebuilds it with the same seed, so the tile re-wraps; any field passed
 with it changes the recipe. The group shows wrapped copies past its box on the canvas; the saved pattern is the
-cropped tile. Hide the tile once the pattern is saved.
+cropped tile. Hide the tile once the pattern is saved. When the tile fills the canvas, `check` reports its
+wrapped copies at the canvas edge as intentional (`info`, "wraps across the edge of a seamless pattern tile"),
+not as cut off.
 
 ```json
 {"type": "pattern-scatter", "source": ["leaf", "dot"], "width": 200, "height": 200, "count": 14, "seed": 11, "rotation_jitter": 180, "background": "#fff7ed", "pattern": "leaves", "name": "tile"}
