@@ -140,8 +140,36 @@ def resolve_font(project, name):
     return font, role
 
 
+class resolving:
+    """A read-only pass over the document (inspect, check, a full resolve): the document's variables are
+    computed once for the whole pass instead of once per text layer, which scanned every layer for form
+    fields and made measuring N text layers cost O(N²). Nothing may edit the document inside the pass."""
+
+    def __init__(self, project):
+        self.project = project
+
+    def __enter__(self):
+        self.owner = getattr(self.project, "_resolving", None) is None
+        if self.owner:
+            self.project._resolving = {}
+        return self.project
+
+    def __exit__(self, *exc):
+        if self.owner:
+            self.project.__dict__.pop("_resolving", None)
+
+
 def document_variables(project):
     """The document's variables, plus each form field's current value under its key."""
+    memo = getattr(project, "_resolving", None)
+    if memo is None:
+        return _document_variables(project)
+    if "variables" not in memo:
+        memo["variables"] = _document_variables(project)
+    return dict(memo["variables"])
+
+
+def _document_variables(project):
     from .forms import current_values, has_fields
 
     maps = project.state.get("maps")
@@ -232,19 +260,39 @@ def transformed_size(layer):
 
 
 def resolved_layers(project, variables=None):
+    with resolving(project):
+        return _resolved_layers(project, variables)
+
+
+COLOR_KEYS = ("color", "fill", "start", "end", "stroke_color", "stroke")
+
+
+def _needs_variables(layer):
+    """Whether resolving ``layer`` can read the document's variables or form fields."""
+    return (layer["type"] in ("text", "field", "symbol") or layer.get("code") or layer.get("asset_variable")
+            or layer.get("character_style") or layer.get("paragraph_style")
+            or any(isinstance(layer.get(key), str) and "${" in layer[key] for key in ("asset", *COLOR_KEYS))
+            or (layer.get("repeat") and "${" in repr(layer["repeat"])))
+
+
+def _resolved_layers(project, variables=None, subset=None):
     from .design import resolve_color
     from .forms import current_values, has_fields
 
-    fields = current_values(project) if has_fields(project) else {}
-    # Each field's current value (its default, or a filled value) is also a ${key} variable.
-    variables = {**document_variables(project), **(variables or {})}
+    stored = project.state["layers"] if subset is None else subset
+    if subset is None or variables or any(_needs_variables(layer) for layer in stored):
+        fields = current_values(project) if has_fields(project) else {}
+        # Each field's current value (its default, or a filled value) is also a ${key} variable.
+        variables = {**document_variables(project), **(variables or {})}
+    else:
+        fields, variables = {}, {}
     # Paint strokes can hold hundreds of thousands of points and are only read while rendering
     # and laying out, so the resolved copies share them instead of copying them each time.
     # Scalars are immutable, so only containers are copied (this runs for every layer on every resolve).
     layers = [
         {key: deepcopy(value) if key != "strokes" and isinstance(value, (dict, list, tuple)) else value
          for key, value in layer.items()}
-        for layer in project.state["layers"]
+        for layer in stored
     ]
     originals = {item["id"]: item for item in layers}
     for index, layer in enumerate(layers):
@@ -300,7 +348,7 @@ def resolved_layers(project, variables=None):
                 "Image variables must reference embedded assets",
                 "missing_asset",
             )
-        for key in ("color", "fill", "start", "end", "stroke_color", "stroke"):
+        for key in COLOR_KEYS:
             if key in layer:
                 layer[key] = resolve_color(layer[key], project.state, variables)
         blend = (layer.get("repeat") or {}).get("end", {})
@@ -320,6 +368,48 @@ def resolved_layers(project, variables=None):
     from .vector_paths import attach_ancestors
     attach_ancestors(layers)
     return layers
+
+
+CONSTRAINT_REF = re.compile(r"(.+)\.(?:left|right|top|bottom|center-x|center-y)(?:[+-]\d+(?:\.\d+)?)?")
+
+
+def layer_box(project, layer):
+    """``resolve_layout(project)[layer["id"]]`` without resolving unrelated layers: only the layer, the layers its
+    constraints refer to (and theirs), its parent when it is placed against the parent's canvas, and a symbol's
+    master. A stack lays out its whole group, so a stack or a stack member among those resolves the document in
+    full. Per-layer edits (move, resize, rotate ...) call this once per operation, so a batch no longer costs
+    operations × layers."""
+    layers = project.state["layers"]
+    symbols = project.state.get("symbols", {})
+    wanted, pending = {}, [layer]
+    while pending:
+        item = pending.pop()
+        if item["id"] in wanted:
+            continue
+        wanted[item["id"]] = item
+        parent = project.find_layer(item["parent"]) if item.get("parent") else None
+        if "stack" in item or (parent is not None and "stack" in parent):
+            return resolve_layout(project)[layer["id"]]
+        refs = []
+        for expression in item.get("constraints", {}).values():
+            match = CONSTRAINT_REF.fullmatch(expression) if isinstance(expression, str) else None
+            if match is None or match[1].startswith("guide:"):
+                continue
+            if match[1] != "canvas":
+                refs.append(match[1])
+            elif item.get("parent"):
+                refs.append(item["parent"])  # canvas.* inside a group is the parent's content box.
+        if item["type"] == "symbol":
+            refs.append(symbols.get(item.get("symbol")))
+        for ref in refs:
+            found = project.find_layer(ref) if isinstance(ref, str) else None
+            if found is None:
+                return resolve_layout(project)[layer["id"]]  # Reports the broken reference as before.
+            pending.append(found)
+    subset = [item for item in layers if item["id"] in wanted] if len(wanted) > 1 else [layer]
+    with resolving(project):
+        resolved = _resolved_layers(project, subset=subset)
+    return resolve_layout(project, layers=resolved)[layer["id"]]
 
 
 def resolve_layout(project, variables=None, layers=None):

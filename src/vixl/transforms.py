@@ -132,7 +132,7 @@ def _relative(value, current):
 
 
 def execute(project, op):
-    from .render import resolve_layout, stored_origin
+    from .render import layer_box, resolve_layout, stored_origin
 
     kind = op["type"]
     if kind == "match-size":
@@ -160,7 +160,7 @@ def execute(project, op):
             for key in ("x", "y", "width", "height"):
                 layer[key] = max(1, round(layer[key])) if key in ("width", "height") else round(layer[key])
         return
-    box = resolve_layout(project)[layer["id"]]
+    box = layer_box(project, layer)
     if kind == "move":
         space = op.get("space", "canvas" if op.get("absolute") else "parent")
         origin = np.array(box[:2], dtype=float)
@@ -201,7 +201,7 @@ def execute(project, op):
                     value = finite(op[axis], key) + (layer.get(key, 0) if op.get("relative") else 0)
                     layer[key] = finite(value, key, -89, 89)
             require(abs(np.linalg.det(linear(layer))) > 1e-8, "Skew must not collapse the layer")
-            after_box = resolve_layout(project)[layer["id"]]
+            after_box = layer_box(project, layer)
             after = layer_matrix(layer, after_box) @ [
                 fixed[0] * layer["width"],
                 fixed[1] * layer["height"],
@@ -306,7 +306,7 @@ def execute(project, op):
     else:
         layer.update(width=nw, height=nh, auto_size=False)
     if "anchor" in op:
-        after_box = resolve_layout(project)[layer["id"]]
+        after_box = layer_box(project, layer)
         after = layer_matrix(layer, after_box) @ [fixed[0] * nw, fixed[1] * nh, 1]
         layer["x"], layer["y"] = stored_origin(
             layer, (after_box[0] + before[0] - after[0], after_box[1] + before[1] - after[1])

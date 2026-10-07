@@ -227,6 +227,7 @@ class Project:
         clone.redo_stack = list(self.redo_stack)
         clone.transaction = deepcopy(self.transaction)
         clone._verified = set(self._verified)
+        clone.__dict__.pop("_resolving", None)
         return clone
 
     def spatial(self, **options):
@@ -236,6 +237,12 @@ class Project:
         return query(self, **options)
 
     def inspect(self, target=None):
+        from .render import resolving
+
+        with resolving(self):
+            return self._inspect(target)
+
+    def _inspect(self, target=None):
         from .render import child_index, extent, resolve_layout, resolved_layers
 
         state = {key: deepcopy(value) for key, value in self.state.items() if key not in ("pages", "masters")}
@@ -249,9 +256,10 @@ class Project:
         from .spatial import canvas_boxes
 
         content_bounds = {}
-        canvas_bounds = canvas_boxes(self, content=content_bounds)
+        canvas_bounds = canvas_boxes(self, content=content_bounds, layers=layers, local=resolved)
         children, memo = child_index(layers), {}
         shown = {item["id"]: item["visible"] for item in layers}
+        effective = {item["id"]: item for item in layers}
         for layer in state["layers"]:
             box = layer["resolved_bounds"] = resolved[layer["id"]]
             layer["canvas_bounds"] = canvas_bounds[layer["id"]]
@@ -266,8 +274,7 @@ class Project:
             if layer["type"] == "text":
                 from .text_metrics import inspect_text
 
-                effective = next(item for item in layers if item["id"] == layer["id"])
-                layer.update(inspect_text(self, effective, box))
+                layer.update(inspect_text(self, effective[layer["id"]], box))
             if layer["visible"] and not shown[layer["id"]]:
                 layer["collapsed"] = True  # Hidden by hide_if_empty or an empty stack, not by the user.
             left, top, right, bottom = extent(layer, resolved, children, memo)
@@ -302,6 +309,29 @@ class Project:
             "history_count": len(self.nodes),
             "transaction": self.transaction is not None,
         }
+
+    def _inspect_context(self):
+        """What ``inspect`` reads besides the state: embedded assets (fonts, images) and filled form values.
+        Linked documents are read from disk, so a document with links is never remembered (None)."""
+        from .links import link_layers
+
+        if link_layers(self.state):
+            return None
+        return (tuple(self.assets), tuple(map(id, self.assets.values())),
+                repr(getattr(self, "_form_values", None)))
+
+    def _remembered_inspect(self):
+        """The inspection the last apply made of the current state, while the state, the assets and the history
+        head are unchanged; None otherwise. Saves one of the two whole-document inspections per apply."""
+        memo = self.__dict__.get("_inspected")
+        if memo is None or self.transaction is not None:
+            return None
+        snapshot, result, context = memo
+        if (context is None or snapshot is not self._head_state or context != self._inspect_context()
+                or self.state != snapshot):
+            return None
+        return {**result, "head": self.head, "branch": self.current_branch, "history_count": len(self.nodes),
+                "transaction": False}
 
     def _delta_depth(self, ident):
         depth = 0
@@ -437,7 +467,8 @@ class Project:
         notices.start(candidate)
         candidate._reports = {}  # What operations such as edit-layers and adapt-layout report back.
         candidate._name_hints = {}  # Default layer names handed out in this batch (operations.default_name).
-        before = candidate.inspect()
+        remembered = self._remembered_inspect()
+        before = remembered or candidate.inspect()
         for index, operation in enumerate(operations):
             calls.check_cancelled()  # A cancelled batch leaves the document untouched: nothing is committed yet.
             calls.progress(index, len(operations), operation["type"])
@@ -497,12 +528,17 @@ class Project:
             from .changes import brief_changes, compact_changes
 
             changes = (brief_changes if detail == "brief" else compact_changes)(before, after)
+        candidate._inspected = None
         if not dry_run:
             if candidate.transaction is not None:
                 candidate.transaction["operations"].extend(deepcopy(operations))
             else:
                 candidate._record(operations)
+                # The next apply starts from this state: remember its inspection instead of repeating it.
+                candidate._inspected = (candidate._head_state, after, candidate._inspect_context())
             self.__dict__.update(candidate.__dict__)
+        if remembered is not None or candidate._inspected is not None:
+            changes = deepcopy(changes)  # They share values with the remembered inspections; keep those private.
         result = {"success": True, "dry_run": dry_run, "operations": len(operations), "changes": changes}
         if any(op["type"] == "template-apply" for op in operations):
             result["template"] = deepcopy(candidate.state.get("template", {}))

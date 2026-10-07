@@ -80,9 +80,32 @@ def primary_font_data(project, layer):
     name = project.state.get("fonts", {}).get(layer.get("font"), layer.get("font"))
     if name in project.assets:
         return project.assets[name]
+    path = _font_path(name or "DejaVuSans.ttf") if 1 <= int(layer.get("size", 48)) <= 4096 else None
+    if path is not None:
+        try:
+            return file_bytes(path)
+        except OSError:
+            _font_path.cache_clear()  # Uninstalled since it was found: font_for reports it.
     font = font_for(project, layer)
     path = font.path
     return path.getvalue() if hasattr(path, "getvalue") else file_bytes(path)
+
+
+@lru_cache(maxsize=64)
+def _font_path(font):
+    """The file behind a bundled or system font name, found once instead of opening the font on every
+    measurement; None when ``font_for`` must decide (and report) instead."""
+    if font == "DejaVuSans.ttf":
+        return str(Path(__file__).parent / "data" / font)
+    if "/" in font or "\\" in font:
+        return None
+    from PIL import ImageFont
+
+    try:
+        path = ImageFont.truetype(font, 12).path
+    except OSError:
+        return None
+    return path if isinstance(path, str) else None
 
 
 def file_bytes(path):

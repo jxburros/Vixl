@@ -504,14 +504,14 @@ def apply_centering(project, centered, operation):
 
 
 def _center(project, centered, operation):
-    from .render import resolve_layout, stored_origin
+    from .render import layer_box, stored_origin
 
     from .inplace import IN_PLACE_TYPES
 
     # A creation operation given a target edits that layer, so the target is what gets centered.
     edits = operation.get("type") == "move" or operation.get("type") in IN_PLACE_TYPES
     layer = project.layer(operation.get("target") if edits else None)
-    bounds = resolve_layout(project)[layer["id"]]
+    bounds = layer_box(project, layer)
     if edits and (operation.get("space") == "canvas" or operation.get("absolute")):
         from .spatial import canvas_boxes
         from .transforms import execute

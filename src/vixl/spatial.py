@@ -23,15 +23,16 @@ def content_rect(layer, transform):
     return envelope(corners(box, transform))
 
 
-def canvas_boxes(project, bounds="box", content=None):
+def canvas_boxes(project, bounds="box", content=None, *, layers=None, local=None):
     """Canvas-space boxes of every layer. With a ``content`` dict, also fills it with the canvas-space
-    content box of each shape whose inner area is smaller than its box (see content_rect)."""
+    content box of each shape whose inner area is smaller than its box (see content_rect). A caller that
+    already resolved the document passes its ``layers`` and their ``local`` layout instead of resolving again."""
     from .render import resolved_layers, resolve_layout, rest_size, extent, child_index
     from .checks import group_matrix
 
-    layers = resolved_layers(project)
+    layers = layers if layers is not None else resolved_layers(project)
     index = {v["id"]: v for v in layers}
-    local = resolve_layout(project, layers=layers)
+    local = local if local is not None else resolve_layout(project, layers=layers)
     result = {}
     children = child_index(layers)
     memo = {}
