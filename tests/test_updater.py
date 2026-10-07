@@ -258,8 +258,9 @@ def test_cli_management_without_project(install, monkeypatch):
     value, _ = dispatch(["update", "--check"])
     assert value["status"] == "available"
     monkeypatch.delenv("VIXL_MANAGED_ROOT")
-    with pytest.raises(VixlError, match="Windows installer"):
+    with pytest.raises(VixlError, match="Windows installer") as caught:
         dispatch(["update"])
+    assert "pip install -U vixl-engine" in str(caught.value)
 
 
 def test_probe_checks_real_version_and_health_result(install, monkeypatch):

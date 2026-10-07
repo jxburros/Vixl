@@ -398,6 +398,10 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
             return True
         return is_ai_tool(name) == (tools == "ai")
 
+    from . import __version__
+
+    # serverInfo.version names the engine, not the MCP SDK.
+    server._mcp_server.version = __version__
     runtime = Runtime(session, compact_json, ToolError, poll_with_workflow=tools == "compact")
     server.vixl_runtime = runtime
     defined = set()

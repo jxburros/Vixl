@@ -84,6 +84,13 @@ jobs:
         with:
           name: windows-release
           path: release
+      - name: Checksum every release asset
+        # The Windows job's SHA256SUMS covers only its own files; this one covers the wheel, sdist, .mcpb and plugin too.
+        working-directory: release
+        run: |
+          rm -f SHA256SUMS.txt
+          sha256sum -- * > SHA256SUMS.txt
+          cat SHA256SUMS.txt
       - name: Publish an immutable, fully uploaded stable release
         id: release
         env:

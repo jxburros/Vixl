@@ -195,3 +195,19 @@ def test_rest_routes_name_unknown_fields_and_ask_for_a_bearer_token(tmp_path):
             response = client.post(route, json=body)
             assert response.status_code == 400 and "'bogus'" in response.json()["message"], route
             assert response.json()["field"] == "bogus"
+
+
+def test_mcp_server_info_reports_the_vixl_version(tmp_path):
+    from vixl import __version__
+
+    server = mcp_server(workspace=tmp_path)
+    assert server._mcp_server.create_initialization_options().server_version == __version__
+
+
+def test_release_checksums_cover_every_published_asset():
+    from pathlib import Path
+
+    workflow = (Path(__file__).resolve().parent.parent / ".github/workflows/release.yml").read_text()
+    publish = workflow.split("\n  publish:", 1)[1]
+    checksum = publish.index("sha256sum -- * > SHA256SUMS.txt")
+    assert publish.index("name: windows-release") < checksum < publish.index("gh release upload")

@@ -1,5 +1,54 @@
 # Changelog
 
+## 0.22.1
+
+A bug-fix release from the 0.22.0 QA pass (#276): exports agree with the raster renderer, documents that apply can always render again, the logo package ships usable files, new text is readable by default, and errors name what to do on the interface you are using. The house-style decision record (`docs/house-style.md`), the 0.22.0 QA report (`qa-reports/v0.22.0/`) and a development plan (`docs/roadmap.md`) are now on main.
+
+### Changed defaults
+
+- **Text without a colour** uses the document's `@ink` swatch, else black or white, whichever reads on the canvas background (a transparent canvas counts as white). It was always white, which vanished on light canvases. Pass `color: "white"` for the old result (#283).
+- **Text without a font** uses the document's body face once typography is set (`vixl_font_pair`, brand fonts), instead of the proofing fallback (#395).
+- **Python `Project.export` defaults to `alpha="auto"`**, like the CLI and MCP: an opaque PNG, WebP, TIFF or AVIF is written as RGB. Pass `alpha="keep"` for RGBA (#396, #315).
+- **Logo packages are transparent**: the source document's canvas colour is no longer baked into PNG and SVG variants, and on-light/on-dark contrast is judged by the logo's ink. Mono-white files were white on white, and a dark wordmark was kept on the dark background (#287, #291).
+- Fractional values for integer fields (a computed font size of 25.6) are rounded and reported under `normalized` instead of refused (#281).
+- Undo and redo with a count larger than the history go as far as they can and report the steps (`undo`/`redo` in CLI and MCP results); redo of many steps restores once (#277, #349).
+
+### Fixes
+
+- Open stroked paths no longer fill white in PNG and previews when their size is derived or fractional, also with `irregular` (#279).
+- SVG strokes (caps, miter joins) reach past the layer box as in the other renderers (#305).
+- PDF and PPTX raster fallbacks (masks, effects) apply layer opacity once instead of twice (#309).
+- PPTX writes bold and italic for faces imported under any name, read from the font file (#318).
+- PPTX refuses `simulate`, `proof`, profiles and CMYK instead of ignoring them (#330).
+- Fractional `add` image sizes and rich-text boxes render; documents with them no longer fail to render after saving (#289, #295).
+- A blur whose working image could never render is refused at apply time instead of saving a document that no longer renders (#331).
+- Text too large for a layer names the layer, its size and the remedy (#371).
+- `vixl check --checks motion|character|captions` works; the CLI takes its check names from the engine (#278).
+- Shape typos (`trianglee`) are errors with a suggestion instead of becoming a polygon (#299).
+- `vixl export FILE.wav` writes the audio mix; Python `export_audio` refuses to overwrite with `output_exists` and takes `overwrite` (#308).
+- `vixl new --dpi 0`, `-10x10`, `10X10` and an empty size give clear answers (#310, #345).
+- The compact MCP toolset's instructions and descriptions name only tools it serves (#314).
+- MCP argument errors use the JSON error shape (`invalid_arguments`, `field`) instead of pydantic text (#316).
+- MCP `serverInfo.version` is the Vixl version (#317).
+- Did-you-mean suggestions consider aliases (`colr` suggests `fill` on shapes); `width` on plain text points to `text-layout` (#320, #336).
+- Hints name MCP tools over MCP and CLI commands on the CLI; unknown layouts list the layouts under `allowed` (#321, #353).
+- Polygon `sides` is 3–128 everywhere (#322).
+- REST `/export`, `/compare` and `/preview` name unknown fields; 401 responses carry `WWW-Authenticate: Bearer` (#328, #319).
+- Piping CLI output to `head` exits quietly (#326).
+- Undecodable images, missing files, non-UTF-8 JSON, non-ZIP or incomplete `.vixl` archives and duplicate layer names give plain messages without Python reprs (#329, #356).
+- Over-deep group chains fail at the first bad step, naming the limit (15 nested groups) (#342).
+- Unsupported export formats list the supported ones; CMYK with `--proof` on PNG explains the soft-proof route (#364, #367).
+- Lists over their limit (`pen` points) report the limit and the size given instead of echoing the input (#369).
+- `vixl providers` lists every built-in provider (FLUX included); an unknown provider names the configured and built-in ones (#350).
+- `lyric-video-plan` warns (`lyric_too_wide`) when a line is wider than the canvas in an unwrapped `lyric` layer (#343).
+- `vixl update` on a pip install says to update with pip instead of pointing to the Windows installer (#333).
+- Release `SHA256SUMS.txt` covers every published asset, not only the Windows files (#286).
+
+### Documentation
+
+- Per-operation caps (nested groups, repeat, scatter, pen points, effects, frames, timeline, dpi, sides) in [architecture](docs/architecture.md#resource-policy) (#348).
+- `animate-preset` `amount` per preset (#340); lyric templates define their variables first (#343); CMYK PDF is vector (#337); the active document is per client on Streamable HTTP (#344); the slides quickstart's `shape` command (#373).
+
 ## 0.22.0
 
 Bigger documents, layer merging, scatter and pattern tiles, kinetic type, QR codes, merge-field filters, logo packages, proof pages, one-call builds, layered PSD export, and a leaner default MCP server.
