@@ -25,7 +25,7 @@ fixing a number is one operation and nothing is recomputed by hand. Full referen
   data or options, not their geometry; effects, styles and opacity you add to them survive.
 - Colors and fonts come from the document: `colors` / `@swatch`, the active palette, `@accent`/`@ink`,
   the heading and body font roles. Set `number_format` (`#,##0`, `0.0%`, `$#,##0`) once for ticks,
-  labels and the PPTX chart. `value_labels: "auto"` labels what fits; `true` labels everything.
+  labels and the PPTX chart. `value_labels: "auto"` labels every value if the labels fit (shrinking them if needed), else whole series largest first, else every k-th value of the largest series; `true` labels everything.
 - `check` sees inside the chart (contrast, overlap, legibility). Raise `font_size` when the chart sits
   on a large canvas and the legibility check complains.
 - Export: PNG/SVG/PDF are vector layers as usual; **`.pptx` writes a native chart with the table

@@ -190,6 +190,55 @@ def test_dense_charts_thin_their_labels_and_skip_automatic_value_labels():
     assert p.check(checks=["overlap"])["passed"]
 
 
+CHANNELS = {"categories": MONTHS, "series": [
+    {"name": "Retail", "values": [12000, 13500, 12800, 15000, 16200, 17000]},
+    {"name": "Online", "values": [18000, 19500, 21000, 22800, 24000, 25100]},
+    {"name": "Wholesale", "values": [6000, 6400, 7000, 6600, 7500, 8000]},
+]}
+
+
+def value_labels(p):
+    return {layer["chart_part"]: layer for layer in children(p) if layer["chart_part"].startswith("value-")}
+
+
+def test_automatic_value_labels_label_every_bar_or_whole_series_largest_first():  # #366
+    p = make("bar", CHANNELS, legend="bottom")
+    labels = value_labels(p)
+    # Five-character labels are wider than a bar at the default size: all 18 get a smaller size, not just
+    # the series with the shortest numbers.
+    assert len(labels) == 18 and len({layer["size"] for layer in labels.values()}) == 1
+    p.apply({"type": "chart-data", "target": "Sales", "set": [{"category": "Jun", "series": "Online", "value": 26000}]})
+    assert len(value_labels(p)) == 18
+    # Two lines whose labels land on each other: the larger series keeps every label, the other gives way whole.
+    close = {"categories": MONTHS, "series": [{"name": "A", "values": [100, 104, 108, 112, 116, 120]},
+                                              {"name": "B", "values": [99, 103, 107, 111, 115, 119]}]}
+    keys = set(value_labels(make("line", close)))
+    assert keys == {f"value-0-{i}" for i in range(6)}, keys
+
+
+def test_chart_internals_give_one_legibility_finding_and_no_mark_overlaps():  # #360
+    data = {"categories": MONTHS, "series": [{"name": "Retail", "values": [120, 300, 90, 280, 100, 310]},
+                                             {"name": "Online", "values": [200, 150, 260, 140, 270, 150]}]}
+    for kind in ("line", "area", "bar"):
+        p = make(kind, data, value_labels=True)
+        report = p.check(checks=["overlap", "legibility"])
+        assert not [x for x in report["issues"] if x["check"] == "overlap"], (kind, report["issues"])
+        legibility = [x for x in report["issues"] if x["check"] == "legibility"]
+        assert len(legibility) == 1 and legibility[0]["chart"] == "Sales" and len(legibility[0]["layers"]) > 10
+    # On a piece seen as a thumbnail the chart's one finding is a warning.
+    p.apply({"type": "canvas", "size": "instagram-post"})
+    legibility = [x for x in p.check(checks=["legibility"])["issues"] if x["check"] == "legibility"]
+    assert len(legibility) == 1 and legibility[0]["severity"] == "warning"
+
+
+def test_small_text_on_a_large_non_thumbnail_piece_is_one_note():  # #360
+    p = Project(3000, 2000, "#ffffff")
+    p.apply([{"type": "text", "name": f"note {i}", "text": "fine print", "size": 24, "color": "#000000", "x": 40,
+              "y": 40 + 60 * i} for i in range(6)])
+    legibility = [x for x in p.check(checks=["legibility"])["issues"] if x["check"] == "legibility"]
+    assert len(legibility) == 1 and legibility[0]["severity"] == "info" and len(legibility[0]["layers"]) == 6
+
+
 def test_fixing_one_number_is_one_operation_with_stable_layer_ids():
     p = make("bar", SALES, value_labels=True)
     before = ids(p)
