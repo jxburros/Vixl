@@ -52,7 +52,8 @@ Operations that store colors in the document:
 Start print work from a physical size so the canvas carries dpi, bleed and a safe area:
 
 ```bash
-vixl new letter --bleed -o flyer.vixl          # 2626 × 3376 px: 8.5 × 11 in at 300 dpi + ⅛ in bleed
+vixl new letter --bleed -o flyer.vixl          # 2625 × 3375 px: 8.5 × 11 in at 300 dpi + ⅛ in (37.5 px) bleed
+# The bleed is kept to the half pixel, so trim + 2 × bleed is exactly the physical size.
 vixl new business-card --bleed --landscape -o card.vixl
 ```
 
@@ -65,7 +66,7 @@ Export formats:
 | CMYK PDF as one image per page | `vixl export flyer.pdf --cmyk --pdf-content raster` |
 | Press separation with the printer's profile | `vixl export flyer.pdf --cmyk --icc ISOcoated_v2.icc --intent relative` |
 | Soft proof (how print will look) | `vixl export proof.png --proof [--icc PROFILE.icc]` |
-| Explicit resolution metadata | `--dpi 300` (defaults to the canvas dpi × scale) |
+| Explicit resolution metadata | `--dpi 300` (defaults to the canvas dpi × scale; a TIFF of a canvas without a dpi gets 72 dpi × scale) |
 
 Without a profile, CMYK uses a predictable device-naive separation with gray-component replacement: `--black-generation` (0–1, default 1, full GCR) and `--ink-limit` (total area coverage in percent) control it. With `--icc`, LittleCMS converts sRGB to the profile's CMYK with the chosen rendering intent (`perceptual`, `relative`, `saturation`, `absolute`) and embeds the profile in TIFF and JPEG files; the profile decides black generation, and `--ink-limit`, when given, still caps total coverage by reducing C, M and Y. Vixl does not bundle press profiles; use the one your printer supplies. Alpha is flattened onto `--background` (white by default).
 

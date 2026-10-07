@@ -1645,7 +1645,11 @@ def export(
     canvas_dpi = project.state["canvas"].get("dpi")
     if dpi is not None:
         finite(dpi, "dpi", 36, 2400)
-    effective_dpi = dpi or (canvas_dpi * scale if canvas_dpi else None)
+    # requested_scale: a crisp enlargement re-renders at full size and resets ``scale`` to 1.
+    effective_dpi = dpi or (canvas_dpi * requested_scale if canvas_dpi else None)
+    if not effective_dpi and fmt == "TIFF":
+        # TIFF is a print format and readers assume 1 dpi without resolution tags; use the 72 dpi a PDF export assumes.
+        effective_dpi = 72 * requested_scale
     if effective_dpi and "dpi" not in settings:
         settings["dpi"] = (round(effective_dpi, 3), round(effective_dpi, 3))
     if color_space == "cmyk":

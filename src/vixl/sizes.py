@@ -278,6 +278,13 @@ def to_pixels(value, unit, dpi):
     return value * UNIT_INCHES[unit] * dpi
 
 
+def bleed_pixels(amount, unit, dpi):
+    """A bleed in pixels, to the nearest half pixel, so trim + 2 × bleed is a whole number of pixels that matches the
+    physical size (0.125 in at 300 dpi is 37.5 px, and a business card with bleed is 1125 px wide, not 1126)."""
+    value = round(to_pixels(amount, unit, dpi) * 2) / 2
+    return int(value) if value.is_integer() else value
+
+
 def resolve(name, *, dpi=None, orientation=None, bleed=False):
     """Pixel dimensions and print metadata for a named size.
 
@@ -307,7 +314,7 @@ def resolve(name, *, dpi=None, orientation=None, bleed=False):
         bleed_amount = 0
     trim_w = round(to_pixels(w, unit, dpi or 1))
     trim_h = round(to_pixels(h, unit, dpi or 1))
-    bleed_px = round(to_pixels(bleed_amount, unit, dpi or 1))
+    bleed_px = bleed_pixels(bleed_amount, unit, dpi or 1)
     safe = entry.get("safe", 0)
     safe_px = ({side: round(to_pixels(safe.get(side, 0), unit, dpi or 1)) for side in SIDES}
                if isinstance(safe, dict) else round(to_pixels(safe, unit, dpi or 1)))
@@ -315,8 +322,8 @@ def resolve(name, *, dpi=None, orientation=None, bleed=False):
         "size": key,
         "category": entry["category"],
         "description": entry["description"],
-        "width": trim_w + 2 * bleed_px,
-        "height": trim_h + 2 * bleed_px,
+        "width": int(trim_w + 2 * bleed_px),
+        "height": int(trim_h + 2 * bleed_px),
         "trim": [trim_w, trim_h],
         "bleed": bleed_px,
         "safe": safe_px,
@@ -442,6 +449,9 @@ def validate_canvas(canvas):
             if key == "safe" and isinstance(value, dict):
                 require(set(value) <= set(SIDES) and all(isinstance(v, int) and 0 <= v < limit for v in value.values()),
                         "Invalid canvas safe", "invalid_project")
+            elif key == "bleed":  # whole or half pixels (bleed_pixels)
+                require(isinstance(value, (int, float)) and not isinstance(value, bool) and (value * 2).is_integer()
+                        and 0 <= value < limit, "Invalid canvas bleed", "invalid_project")
             else:
                 require(isinstance(value, int) and 0 <= value < limit, f"Invalid canvas {key}", "invalid_project")
     if "physical" in canvas:

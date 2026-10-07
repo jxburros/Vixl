@@ -127,6 +127,13 @@ def _document():
     return p
 
 
+def test_tiff_of_a_canvas_without_dpi_has_resolution_tags():
+    p = Project(120, 80, "white")
+    assert Image.open(io.BytesIO(p.export(format="TIFF"))).info["dpi"] == (72, 72)
+    assert Image.open(io.BytesIO(p.export(format="TIFF", scale=2))).info["dpi"] == (144, 144)
+    assert "dpi" not in Image.open(io.BytesIO(p.export(format="PNG"))).info
+
+
 def test_cmyk_export_pdf_tiff_jpeg_and_dpi():
     p = _document()
     tiff = Image.open(io.BytesIO(p.export(format="TIFF", color_space="cmyk", ink_limit=300)))
