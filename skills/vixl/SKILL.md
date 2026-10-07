@@ -369,7 +369,7 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
   and `font pair` updates text whose `font` is `heading`/`body` (templates use roles). Literal colors
   and named fonts stay as they are.
 - **Text auto-sizes** to its rendered bounds; an explicit `resize` turns that off, editing text turns it back on.
-  For wrapping use `text-layout` with `width`/`height` (optionally `fit: true`).
+  For wrapping use `text-layout` with `width` (the height grows to the wrapped lines) or `width`/`height` (optionally `fit: true`).
 - **Variables:** `${name}` works in text, colors, gradient fills and image-asset IDs. Undefined
   variables are errors. Swatches are `@name` in color fields.
 - **Through MCP/REST, operation `path` and `linked` fields are rejected, and `font` takes only a registered

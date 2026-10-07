@@ -499,7 +499,7 @@ OVERRIDES = {
     "lut": {"name": "LUT name.", "size": "Cube size, 2-33.", "values": "size³ RGB triplets in 0-1."},
     "lookup": {"name": "Defined LUT name.", "amount": "Blend with the original, 0-1 (default 1)."},
     "comp-save": {"name": "Comp name."}, "comp-apply": {"name": "Saved comp name."},
-    "text-layout": {"width": "Wrapping box width in pixels or a percentage.", "height": "Box height.",
+    "text-layout": {"width": "Wrapping box width in pixels or a percentage.", "height": "Box height; omit it with a width and the box grows to the wrapped lines.",
                     "fit": "true shrinks the text to fit the box.", "warp": "none, arc, flag or bulge.",
                     "amount": "Warp strength as a fraction of the box height (default 0.2; negative bends the other way).", "path": "Points [[x, y] …] the text follows."},
     "guide": {"name": "Guide name.", "axis": "x (vertical line) or y (horizontal line) for an axis guide.",

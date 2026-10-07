@@ -81,7 +81,7 @@ The authoritative schema is always `vixl schema` / `GET /schema` / `vixl://opera
 | `opacity` | `target`/`targets`, **`value`** | 0–1, or `"N%"`; a bare number above 1 is an error. |
 | `blend` | `target`, **`value`** | `normal`, `multiply`, `screen`, `overlay`, `darken`, `lighten`, `difference`, `add`, `subtract`. |
 | `text-set` | `target`, `text`, `size`, `color`, `align`, `spacing`, `stroke_width`, `stroke_color`, `font`, `baseline_y` | Edit a whole text layer (content, colour, size, font); keeps a `text-layout` box and, on rich text, the formatting that still applies (`warnings` lists what was dropped). Partial styling is `text-style`. `font`: registered name, `heading`/`body` role, or a file (CLI/Python). |
-| `text-layout` | `target`, `width`, `height`, `fit`, `warp`, `amount`, `path` | Box wrapping; `fit: true` shrinks font to fit; `warp`: `none`/`arc`/`flag`/`bulge` with `amount` −1..1; `path`: polyline `[[x,y],…]` in local px. Replaces previous layout. |
+| `text-layout` | `target`, `width`, `height`, `fit`, `warp`, `amount`, `path` | Box wrapping; with only `width` the height grows to the wrapped lines; `fit: true` shrinks font to fit; `warp`: `none`/`arc`/`flag`/`bulge` with `amount` −1..1; `path`: polyline `[[x,y],…]` in local px. Replaces previous layout. |
 | `layer-style` | `target`, **`name`**, `settings`, `remove` | See *Layer styles*. |
 | `replace-contents` | `target`, `path` *or* `asset` *or* `variable`, `fit` | Swap image, keep ID/box/effects/mask/styles. |
 
