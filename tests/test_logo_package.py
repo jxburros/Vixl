@@ -110,3 +110,24 @@ def test_logo_package_schema_is_described():
     assert action["required"] == ["output"]
     assert set(action["properties"]) == set(action["fields"])
     assert "EPS" in action["summary"]
+
+
+def test_logo_files_drop_the_source_canvas_colour_and_judge_contrast_by_ink(tmp_path):
+    session = Session(workspace=tmp_path)
+    session.create("fern.vixl", 800, 400, background="#ffffff")
+    session.apply([
+        {"type": "shape", "shape": "ellipse", "name": "mark", "x": 40, "y": 100, "width": 200, "height": 200,
+         "fill": "#163d2e"},
+        {"type": "text", "name": "word", "text": "Fernhill", "x": 300, "y": 160, "size": 90, "color": "#163d2e"},
+    ])
+    result = dispatch(session, "logo-package", {"output": "pkg", "mark": "mark", "wordmark": "word", "png_sizes": [128],
+                                                "social": False, "icons": False, "proof": False})
+    root = tmp_path / "pkg"
+    white = Image.open(root / "png/mark-mono-white-128w@1x.png")
+    assert white.mode == "RGBA" and white.getchannel("A").getextrema()[0] == 0
+    assert colors(root / "png/mark-mono-white-128w@1x.png") == {(255, 255, 255)}
+    assert b"rgb(255,255,255)" not in (root / "svg/horizontal-full-color.svg").read_bytes()
+    variants = result["report"]["variants"]
+    # Dark green ink reads on the light background, so on-light keeps full colour; on-dark switches to white.
+    assert "reversed" not in variants["horizontal-on-light"] and variants["horizontal-on-light"]["contrast"] > 7
+    assert "reversed" in variants["horizontal-on-dark"]

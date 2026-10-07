@@ -202,6 +202,10 @@ def lockups(base, mark=None, wordmark=None, wanted=None, clear_space=0.25):
     ``wordmark``, the mark alone and the horizontal and stacked lockups."""
     require(isinstance(clear_space, (int, float)) and 0 <= clear_space <= 2, "clear_space must be 0-2 (a fraction "
             "of the mark's height)", field="clear_space")
+    # Logo files sit on whatever surface they are placed on: the source document's canvas colour is not part of
+    # the logo, so every lockup (and the full-colour and one-colour variants made from it) is transparent.
+    base = base.clone()
+    base.state["canvas"]["background"] = "transparent"
     if not (mark or wordmark):
         require(not wanted or wanted == ["logo"], "lockups need mark and wordmark layers", field="lockups")
         project = base.clone()
@@ -256,7 +260,9 @@ def _mean_ink(project):
 
     from .render import render
 
-    pixels = np.asarray(render(project).convert("RGBA")).reshape(-1, 4)
+    trial = project.clone()
+    trial.state["canvas"]["background"] = "transparent"
+    pixels = np.asarray(render(trial).convert("RGBA")).reshape(-1, 4)
     pixels = pixels[pixels[:, 3] > 128]
     return tuple(int(v) for v in pixels[:, :3].mean(axis=0)) if len(pixels) else (0, 0, 0)
 
