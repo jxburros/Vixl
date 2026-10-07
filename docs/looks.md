@@ -28,17 +28,18 @@ CLI: `vixl look LAYER NAME [--color C] [--amount A] [--remove]`, `vixl looks` fo
 | `grain` | fine film grain | raster fallback |
 | `paper` | warm tint, fibre grain and soft edge darkening (use on a full-canvas background) | raster fallback |
 | `film` | sepia, grain and vignette | raster fallback |
-| `duotone` | map to two tones of `color` | raster fallback |
-| `risograph` | one ink on warm paper with grain | raster fallback |
-| `sketch` | pencil-sketch rendering | raster fallback |
-| `watercolor` | soft watercolor wash | raster fallback |
+| `duotone` | two tones of one ink: `color`, else the layer's own hue, else the palette's `@accent`; the ink's own brightness maps back to the ink | raster fallback |
+| `risograph` | one ink (chosen like `duotone`'s) on warm paper with grain; lighter tones print as tints of it | raster fallback |
+| `sketch` | graphite: edge lines and hatching that follows the tone, plus a pencil `stroke` on shapes, text and groups | raster fallback |
+| `watercolor` | a lighter, blotchy wash with pigment pooled in a darker rim inside every edge | raster fallback |
 | `halftone` | print-style dot screen | raster fallback |
 | `hand-made` | hand-drawn wobble of a vector layer's outlines and line weight (`irregular`, seeded from the layer's name) | native |
 | `plush` | fur tufts along a shape's edge (behind it), inner flicks (above it) and a soft gradient | native |
 
-The raster looks split in two. `grain`, `paper` and `film` suit anything, flat shapes included. `duotone`, `risograph`, `sketch`, `watercolor` and
-`halftone` render tone and edges, so they are for photographs and illustrations: on a flat fill there is only one tone, so `duotone` turns it gray
-and `sketch` fades it out.
+`grain`, `paper` and `film` suit anything, flat shapes included. `duotone`, `risograph`, `sketch`, `watercolor` and `halftone` render tone and
+edges, so they show most on photographs and illustrations, but they also read on a flat vector shape: `duotone` and `risograph` keep a flat
+fill in its own hue when no `color` is given, `sketch` draws a pencil outline and hatches the fill by its tone, and `watercolor` pools pigment
+along the shape's edge. Pixels outside a layer's box count as paper, so a shape that fills its box still gets its edge.
 
 ## Behaviour
 

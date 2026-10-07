@@ -35,12 +35,12 @@ Amount has filter-specific units. Values outside these ranges are rejected atomi
 | ink-blot | Softened threshold with joined ink regions | 128 (0–255 cutoff) | `radius` 2 (0–20 pixels, rounded) |
 | stamp | Crisp black-and-white threshold | 128 (0–255 cutoff) | — |
 | photocopy | Contrast-heavy black-and-white edges | 160 (0–255 cutoff) | — |
-| pencil-sketch | Grayscale dodge-style sketch | 100 (0–100% mix) | `radius` 12 (0–20 pixels) |
+| pencil-sketch | Grayscale dodge-style edge lines plus hatching that follows the tone; transparent pixels count as white paper, so a flat shape keeps an outline and its value | 100 (0–100% mix) | `radius` 12 (0–20 pixels) |
 | charcoal | Dark edges and shaded paper | 100 (0–100% mix) | `radius` 2 (0–20 pixels) |
 | find-edges | Colored edge detection on black | 100 (0–100% mix) | — |
 | emboss | Raised relief appearance | 100 (0–100% mix) | — |
 | oil-paint | Local mode smoothing and reduced colors | 3 (1–6 integer neighborhood radius) | — |
-| watercolor | Smoothed reduced colors with paper variation | 100 (0–100% mix) | `seed` 0 |
+| watercolor | Smoothed, reduced and lightened colors with blotchy density, a darker rim inside every edge and paper variation | 100 (0–100% mix) | `seed` 0 |
 | swirl | Twist around the image center | 90 (−720–720 degrees) | `radius` 0.8 (0.01–1 fraction of the shorter dimension) |
 | ripple | Concentric displacement waves | 8 (0–64 pixels) | `radius` 32 (1–256 pixel wavelength) |
 | wave | Horizontal sinusoidal displacement | 8 (0–64 pixels) | `radius` 32 (1–256 pixel wavelength) |
