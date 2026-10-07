@@ -1407,7 +1407,7 @@ def export(
     fillable=False,
     values=None,
     fill_mode="flatten",
-    alpha="keep",
+    alpha="auto",
     presenter=None,
     overwrite=False,
     width=480,
@@ -1507,6 +1507,8 @@ def export(
 
         return export_psd(project, path, page=page, variables=variables, report=report)
     if (format or "").upper() == "PPTX" or suffix == ".pptx":
+        require(not artwork, "PPTX keeps editable RGB slides; profile, artboard, comp, proof, simulate and CMYK do not "
+                "apply (export a PNG or PDF to preview them)", field="format")
         from .pptx_export import export_pptx
 
         return export_pptx(project, path, pages=pages, dpi=dpi, report=report)
@@ -1559,7 +1561,7 @@ def export(
         require(not profile, "SVG export does not use raster export profiles")
         require(
             color_space == "rgb" and not (proof or simulate or icc_profile),
-            "SVG export is RGB; use PDF, TIFF or JPEG for CMYK and proofing",
+            "SVG export is RGB; use PDF, TIFF or JPEG for CMYK, and a raster or PDF export for proof and simulate",
         )
         from .svg import export_svg
 
@@ -1616,7 +1618,11 @@ def export(
             else "PNG"
         )
     )
-    require(fmt in ("PNG", "JPEG", "WEBP", "TIFF", "AVIF", "PDF", "ICO"), "Specify a supported export format")
+    require(fmt in ("PNG", "JPEG", "WEBP", "TIFF", "AVIF", "PDF", "ICO"),
+            f"Unsupported export format {(Path(path).suffix if path and not format else format) or '(none)'!r}; use png, "
+            "jpg, webp, tiff, avif, pdf, ico, svg, pptx, psd or html (audio: vixl_export_audio, or a .wav path on the "
+            "CLI; animation: export-timeline)",
+            field="format")
     from . import colors
 
     cms = None
@@ -1641,7 +1647,9 @@ def export(
     if effective_dpi and "dpi" not in settings:
         settings["dpi"] = (round(effective_dpi, 3), round(effective_dpi, 3))
     if color_space == "cmyk":
-        require(fmt in ("JPEG", "TIFF", "PDF"), "CMYK export supports JPEG, TIFF and PDF")
+        require(fmt in ("JPEG", "TIFF", "PDF"), "CMYK export supports JPEG, TIFF and PDF" + (
+            "; for an RGB soft proof of print colours drop --cmyk (color_space) and keep --proof" if proof else ""),
+            field="color_space")
         require(not proof, "Choose either a CMYK separation or an RGB soft proof")
         image = colors.cmyk_image(image, **separation)
         if cms is not None:

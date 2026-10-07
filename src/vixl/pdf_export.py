@@ -222,8 +222,6 @@ class PageBuilder:
                     self.place_image(crop, matrix, (box[0], box[1], crop.width, crop.height))
             else:
                 image = layer_ink(self.view, layer, b)
-                if layer["opacity"] != 1:
-                    image.putalpha(image.getchannel("A").point(lambda a: round(a * layer["opacity"])))
                 x, y = ink_origin(image, b)
                 self.place_image(image, matrix, (x, y, image.width, image.height))
 

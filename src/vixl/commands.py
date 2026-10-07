@@ -16,7 +16,7 @@ class Parser(argparse.ArgumentParser):
 
 
 def dimensions(value):
-    match = re.fullmatch(r"(\d+)[x×](\d+)", value)
+    match = re.fullmatch(r"(\d+)[xX×](\d+)", value.strip())
     require(match, "Size must look like 1920x1080", "usage_error")
     return tuple(map(int, match.groups()))
 

@@ -1,6 +1,6 @@
 # Motion, reusable characters, compositing and sound
 
-All operation times are milliseconds. Motion coordinates are pixels; velocities and gravity use seconds. These operations work through the same `vixl_operations_apply`, CLI batch and Python `Project.apply` boundary. Read the `looping-motion`, `natural-motion`, `character-rigging`, `cut-paper` and `audio-composition` guidance before planning a sequence: `vixl_guide(brief="natural-motion")` (or `vixl_resource_get(kind="guidance", name=…)`, CLI `vixl guide natural-motion`) returns the text, and `vixl_guide("animation")` gives the checklist and a worked example. Run `vixl_check` with `motion`, `character`, `anatomy` and `captions` checks and inspect important frames, then play the export.
+All operation times are milliseconds. Motion coordinates are pixels; velocities and gravity use seconds. These operations work through the same `vixl_operations_apply`, CLI batch and Python `Project.apply` boundary. Read the `looping-motion`, `natural-motion`, `character-rigging`, `cut-paper` and `audio-composition` guidance before planning a sequence: `vixl_guide(brief="natural-motion")` (or `vixl_resource_get(kind="guidance", name=…)`, CLI `vixl guide natural-motion`) returns the text, and `vixl_guide("animation")` gives the checklist and a worked example. Run `vixl_check` with the `motion`, `character` and `captions` checks (CLI `vixl check --checks motion character captions`) and inspect important frames, then play the export.
 
 ## Bouncing ball → walk → reaction
 

@@ -8,6 +8,7 @@ import math
 
 from .errors import require
 from .geometry import OPEN_SHAPES
+from .geometry import default_fill
 
 FIELDS = (
     "dash",
@@ -412,7 +413,7 @@ def primitives(layer, project=None):
     result = []
     open_kind = layer.get("shape") in OPEN_SHAPES
     if not open_kind:
-        result.append((path, layer.get("fill", "white")))
+        result.append((path, default_fill(layer)))
     stroke_path = path
     if layer.get("shape") == "star-rating":
         stroke_path = pixel_path({**layer, "rating": layer.get("count", 5)})

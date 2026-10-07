@@ -429,7 +429,14 @@ def plan(project, layer):
     paths, box = measure(data, layer["text"], size, spacing, align, width)
     box = (box[0] - stroke, box[1] - stroke, box[2] + stroke, box[3] + stroke)
     tw, th = max(1, math.ceil(box[2] - box[0])), max(1, math.ceil(box[3] - box[1]))
-    project.limits.size(tw, th)
+    limits = project.limits
+    require(
+        tw <= limits.max_dimension and th <= limits.max_dimension and tw * th <= limits.max_pixels,
+        f"Text {layer.get('name', '')!r} at size {size} measures {tw}×{th} px, over the {limits.max_dimension} px / "
+        f"{limits.max_pixels:,}-pixel limit; wrap it with text-layout, flow it with text-flow, or use a smaller size",
+        "resource_limit",
+        field="text",
+    )
     target_w, target_h = (layer["width"], layer["height"]) if settings else (tw, th)
     offset = (target_w - tw) / 2 if align == "center" else target_w - tw if align == "right" else 0
     positioned = [(p, (*m[:4], m[4] - box[0] + (offset if settings else 0), m[5] - box[1])) for p, m in paths]

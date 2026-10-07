@@ -45,10 +45,18 @@ def version(value):
 
 def root_path():
     value = os.environ.get("VIXL_MANAGED_ROOT")
-    require(
-        value,
-        "Automatic updates require the Windows installer. Python/pip installs remain managed by pip; download Vixl-Setup from https://github.com/jxburros/Vixl/releases/latest",
-    )
+    if not value:
+        import sys
+
+        try:  # the stable launcher imports this module on its own, outside the vixl package
+            from vixl import __version__
+        except ImportError:
+            __version__ = "(unknown version)"
+        message = (f"This is Vixl {__version__} installed with pip (or from source); update it with "
+                   "`python -m pip install -U vixl-engine`. Automatic updates are for the Windows installer")
+        if sys.platform == "win32":
+            message += " (Vixl-Setup from https://github.com/jxburros/Vixl/releases/latest)"
+        require(False, message + ".")
     root = Path(value).resolve()
     require(
         (root / "install.json").is_file(),

@@ -152,7 +152,7 @@ def test_icc_profile_separation_embeds_profile_and_soft_proof():
     image = Image.open(io.BytesIO(data))
     assert image.mode == "CMYK" and image.info.get("icc_profile")
     proof = Image.open(io.BytesIO(p.export(format="PNG", proof=True, icc_profile=profile)))
-    assert proof.mode == "RGBA"
+    assert proof.mode == "RGB"  # an opaque proof drops alpha, as every interface does by default
     with pytest.raises(VixlError, match="not CMYK|readable ICC"):
         p.export(format="TIFF", color_space="cmyk", icc_profile=b"not a profile")
 

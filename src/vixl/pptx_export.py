@@ -160,8 +160,6 @@ class Slide:
             image, (x, y) = tile.crop(box), box[:2]
         else:
             image = layer_ink(self.view, layer, bounds[layer["id"]])
-            if layer["opacity"] != 1:
-                image.putalpha(image.getchannel("A").point(lambda a: round(a * layer["opacity"])))
             x, y = ink_origin(image, bounds[layer["id"]])
         rid = self.exporter.media(self, image)
         ident = self.ident()
@@ -535,14 +533,33 @@ class Exporter:
 
         return _registered_name(self.project.state, font) or ""
 
+    def face_style(self, font):
+        """(weight, italic) read from the font file itself, for faces imported under any name."""
+        from .text import face, primary_font_data
+
+        try:
+            outline = face(primary_font_data(self.project, {"font": font}))[0]
+        except Exception:  # noqa: BLE001 - an unreadable face is treated as regular
+            return 400, False
+        if "OS/2" in outline:
+            return outline["OS/2"].usWeightClass, bool(outline["OS/2"].fsSelection & 1)
+        return 400, bool("post" in outline and outline["post"].italicAngle)
+
     def is_bold(self, span):
         import re
 
         match = re.fullmatch(r".+-(\d{3})(-italic)?", self._registered(span["font"]))
-        return bool(match) and int(match[1]) >= 600
+        if match:
+            return int(match[1]) >= 600
+        return self.face_style(span["font"])[0] >= 600
 
     def is_italic(self, span):
-        return self._registered(span["font"]).endswith("-italic")
+        import re
+
+        name = self._registered(span["font"])
+        if re.fullmatch(r".+-\d{3}(-italic)?", name):
+            return name.endswith("-italic")
+        return self.face_style(span["font"])[1]
 
     def base_font(self, font):
         """The regular face of a registered bold/italic variant (PowerPoint applies b/i itself)."""

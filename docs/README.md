@@ -15,7 +15,7 @@ the result and export. Text, geometry, masks, effects and history stay in the `.
 4. [Choose an export format](exporting.md): images, vectors, print, decks, forms and motion.
 5. [Resolve common problems](troubleshooting.md): installation, text, checks, imports and providers.
 
-Current tagged release: **0.22.0**. See the [release notes](../CHANGELOG.md#0220)
+Current tagged release: **0.22.1**. See the [release notes](../CHANGELOG.md#0221)
 for the features and behavior changes in this version.
 See [installation and updating](releases.md) for Windows, source and agent bundles.
 
@@ -37,7 +37,7 @@ offline with `python examples/build_documentation.py`.
 | Area | Guides and references |
 | --- | --- |
 | Documents and authoring | [Concepts](concepts.md), [authoring](authoring.md), [commands](commands.md), [operation semantics](operations.md) |
-| Starting points | [Safe design variety](safe-variety.md), [Containers and templates](containers-and-templates.md), [Sizes and layouts](sizes-and-layouts.md), [palettes, templates and resources](agent-resources.md), [brands](brands.md), [design styles](styles.md) |
+| Starting points | [Safe design variety](safe-variety.md), [House style decisions](house-style.md), [Development plan](roadmap.md), [Containers and templates](containers-and-templates.md), [Sizes and layouts](sizes-and-layouts.md), [palettes, templates and resources](agent-resources.md), [brands](brands.md), [design styles](styles.md) |
 | Text | [Typography](typography.md), [rich text](rich-text.md), [text flow](text-flow.md) |
 | Shapes and layout | [Vector paths and strokes](vector-paths.md), [Spatial queries and transforms](spatial-transforms.md), [Design tools](design-tools.md), [organic shapes](organic.md), [diagrams and flowcharts](diagrams.md), [guides and grids](guides.md), [spacing](pixel-animation-spacing.md) |
 | Finishing and imperfection | [Looks](looks.md), [irregularity and torn edges](irregular.md) |

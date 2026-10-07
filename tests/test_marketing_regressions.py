@@ -133,7 +133,7 @@ def test_python_raster_page_selection_exports_contact_sheet(tmp_path):
     original_page = p.state["page"]
     data = p.export(tmp_path / "sheet.png", page="all", width=120, columns=1, labels=False)
     expected = contact_sheet(p, width=120, columns=1, labels=False)
-    assert np.array_equal(np.asarray(Image.open(io.BytesIO(data))), np.asarray(expected))
+    assert np.array_equal(np.asarray(Image.open(io.BytesIO(data)).convert("RGBA")), np.asarray(expected.convert("RGBA")))
     data = p.export(format="PNG", pages=["two"], width=100)
     assert Image.open(io.BytesIO(data)).size == contact_sheet(p, pages=["two"], width=100).size
     assert p.state["page"] == original_page

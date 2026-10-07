@@ -400,12 +400,14 @@ def execute(project, op):
     tracks.append(track)
 
 
-def export_audio(project, path, sample_rate=None):
+def export_audio(project, path, sample_rate=None, overwrite=False):
     duration = project.state.get("timeline", {}).get("duration", 1000)
     tracks = project.state.get("audio_tracks", [])
     chosen = plan_mix(tracks, project=project, sample_rate=sample_rate)
     samples = mix_tracks(tracks, duration, project=project, rate=chosen["sample_rate"], channels=chosen["channels"])
     clipped = int(np.count_nonzero(np.abs(samples) > 1))
-    with Path(path).open("xb") as stream:
+    require(overwrite or not Path(path).exists(), f"{path} already exists; pass overwrite=True to replace it",
+            "output_exists", field="path")
+    with Path(path).open("wb" if overwrite else "xb") as stream:
         stream.write(wav_bytes(samples, chosen["sample_rate"]))
     return {"output": str(path), "duration": duration, **chosen, "clipped_samples": clipped}

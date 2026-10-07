@@ -398,6 +398,10 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
             return True
         return is_ai_tool(name) == (tools == "ai")
 
+    from . import __version__
+
+    # serverInfo.version names the engine, not the MCP SDK.
+    server._mcp_server.version = __version__
     runtime = Runtime(session, compact_json, ToolError, poll_with_workflow=tools == "compact")
     server.vixl_runtime = runtime
     defined = set()
@@ -407,7 +411,14 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
     async def call_tool(name, arguments, context=None, convert_result=False):
         if manager.get_tool(name) is None:
             raise ToolError(unknown_tool_message(name, tools, defined))
-        return await serve_call(name, arguments, context=context, convert_result=convert_result)
+        try:
+            return await serve_call(name, arguments, context=context, convert_result=convert_result)
+        except ToolError as exc:
+            from pydantic import ValidationError
+
+            if isinstance(exc.__cause__, ValidationError):
+                raise ToolError(compact_json(argument_error(name, exc.__cause__))) from exc
+            raise
 
     manager.call_tool = call_tool
 
@@ -1844,4 +1855,66 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
     for registered in server._tool_manager.list_tools():
         registered.parameters = slim_schema(registered.parameters)
         runtime.watch_arguments(registered)
+    if tools == "compact":
+        served = {registered.name for registered in server._tool_manager.list_tools()}
+        server._mcp_server.instructions = compact_text(server._mcp_server.instructions, served)
+        for registered in server._tool_manager.list_tools():
+            registered.description = compact_text(registered.description or "", served)
+            registered.parameters = compact_text(registered.parameters, served)
     return server
+
+
+def argument_error(tool, error):
+    """A tool-argument validation failure in the same JSON shape as every other Vixl error."""
+    problems = []
+    for item in error.errors():
+        where = ".".join(str(part) for part in item.get("loc", ()) if part != tool + "Arguments")
+        text = "missing" if item.get("type") == "missing" else item.get("msg", "invalid")
+        problems.append((where, text))
+    field = problems[0][0] if problems else None
+    message = "; ".join(f"{where}: {text}" if where else text for where, text in problems) or "Invalid arguments"
+    return {"error": "invalid_arguments", "message": f"{tool}: {message}", "field": field,
+            "fields": [where for where, _ in problems if where]}
+
+
+# What the compact toolset offers in place of a tool it does not serve, so its texts never send an agent to a
+# missing tool.
+COMPACT_STAND_INS = {
+    "vixl_check": "check=true on vixl_operations_apply",
+    "vixl_job": "vixl_workflow (action status)",
+    "vixl_sizes_list": "a named size (instagram-post, a4, slides-16x9 …)",
+    "vixl_layouts_list": "layout-apply (an unknown name lists the layouts)",
+    "vixl_fonts": "vixl_compose fonts",
+    "vixl_font_pair": "vixl_compose fonts",
+    "vixl_font_install": "vixl_compose fonts",
+    "vixl_styles": "a style name",
+    "vixl_capabilities": "vixl_operation_schema",
+    "vixl_roll": "layout-apply with a seed",
+    "vixl_brushes_list": "a brush name",
+    "vixl_timeline_preview": "vixl_render_preview",
+    "vixl_export_timeline": "vixl_workflow",
+    "vixl_export_batch": "several vixl_export_file calls",
+}
+
+
+def compact_text(value, served):
+    """``value`` (a string, or a schema of them) with each unserved tool, and its call arguments, replaced."""
+    import re
+
+    if isinstance(value, dict):
+        return {key: compact_text(item, served) for key, item in value.items()}
+    if isinstance(value, list):
+        return [compact_text(item, served) for item in value]
+    if not isinstance(value, str):
+        return value
+
+    def replace(match):
+        name = match[1]
+        return match[0] if name in served else COMPACT_STAND_INS.get(name, "another toolset (vixl mcp --tools core)")
+
+    text = re.sub(r"\b(vixl_[a-z_]+)(?:\([^()]*\))?", replace, value)
+    # Two steps that collapse into one stand-in ("vixl_fonts → vixl_font_pair") read as that stand-in once.
+    for stand_in in set(COMPACT_STAND_INS.values()):
+        text = text.replace(f"{stand_in} → {stand_in}", stand_in)
+    return text.replace("layout-apply (an unknown name lists the layouts) → layout-apply",
+                        "layout-apply (an unknown name lists the layouts)")

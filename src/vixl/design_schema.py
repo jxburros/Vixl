@@ -57,7 +57,7 @@ def schemas(add):
             "stroke": S,
             "stroke_width": N,
             "radius": N,
-            "sides": POSITIVE_INT,
+            "sides": {"type": "integer", "minimum": 3, "maximum": 128},
             "inner_radius": {
                 **N,
                 "description": "star: inner point radius 0.01–1; arc: hole radius 0 (pie wedge) to 0.99 (thin ring), as a fraction of the outer radius.",

@@ -320,8 +320,10 @@ def normalize_operation(operation, properties, known_types, effects, notes, inde
     if kind == "shape" and isinstance(op.get("shape"), str) and op["shape"] not in SHAPES:
         guess = op["shape"].lower().replace("_", "-").replace(" ", "-")
         if guess not in SHAPE_TYPES:
-            # "hexagonal", "circular", "rectangular", "stars" → their base shape.
-            guess = next((name for name in SHAPE_TYPES if len(name) > 3 and guess.startswith(name)), guess)
+            # "hexagonal", "circular", "rectangular", "stars" → their base shape. A single extra letter other than a
+            # plural "s" is a typo ("trianglee"), which the schema answers with a did-you-mean instead.
+            guess = next((name for name in SHAPE_TYPES if len(name) > 3 and guess.startswith(name)
+                          and (guess[len(name):] == "s" or len(guess) - len(name) >= 2)), guess)
         if guess in SHAPE_TYPES and SHAPE_TYPES[guess][0] != op["shape"]:
             shape, extra = SHAPE_TYPES[guess]
             note(f"shape {op['shape']!r} → {shape!r}")

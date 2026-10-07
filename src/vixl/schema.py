@@ -38,7 +38,8 @@ FINISH_FIELDS = {
 FONT = {
     "type": "string",
     "description": "Registered font name or role (heading, body); install with font install / font pair / font import. "
-    "File paths work only in the CLI and Python API, not over MCP or REST.",
+    "File paths work only in the CLI and Python API, not over MCP or REST. A new text layer without one uses the "
+    "body face once the document has typography.",
 }
 
 
@@ -478,6 +479,35 @@ def _required():
     return {v["properties"]["type"]["const"]: frozenset(v["required"]) for v in variants}
 
 
+@lru_cache(maxsize=1)
+def _integer_fields():
+    """Top-level fields whose schema accepts integers but not other numbers, per operation type."""
+    variants = _operation_schema()["properties"]["operations"]["items"]["oneOf"]
+
+    def integer_only(spec):
+        options = spec.get("anyOf") or spec.get("oneOf") or [spec]
+        types = set()
+        for option in options:
+            kind = option.get("type")
+            types.update(kind if isinstance(kind, list) else [kind])
+        return "integer" in types and "number" not in types
+
+    return {v["properties"]["type"]["const"]: frozenset(k for k, spec in v["properties"].items() if integer_only(spec))
+            for v in variants}
+
+
+def round_integers(op, notes, where):
+    """Round fractional values given for integer fields (a computed 25.6 font size) and report it."""
+    import math
+
+    for key in _integer_fields().get(op.get("type"), ()):
+        value = op.get(key)
+        if isinstance(value, float) and math.isfinite(value):
+            op[key] = round(value)
+            if op[key] != value:
+                notes.append(f"{where}: {key} {value!r} → {op[key]}")
+
+
 def validate_operation(operation, notes=None, index=None):
     """Normalize common spellings, then validate before doing any I/O."""
     import json
@@ -499,6 +529,7 @@ def validate_operation(operation, notes=None, index=None):
         required=lambda k: _required().get(k, frozenset()),
     )
     require(isinstance(result.get("type"), str), "Operation requires a string type", field="type")
+    round_integers(result, [] if notes is None else notes, f"operations[{index}]" if index is not None else "operation")
     validator = _validators().get(result["type"])
     if validator is None:
         import difflib
@@ -540,7 +571,17 @@ def schema_error(error, operation, allowed):
     if validator == "additionalProperties":
         known = set(error.schema.get("properties", {}))
         extras = sorted(set(error.instance) - known)
-        suggestions = {k: difflib.get_close_matches(k, sorted(known), 1, 0.5) for k in extras}
+        from .normalize import FIELD_ALIASES
+
+        # Aliases count as spellings of their field: 'colr' is close to 'color', which a shape reads as 'fill'.
+        aliases = {alias: canonical for alias, canonical in FIELD_ALIASES.get(kind, {}).items() if canonical in known}
+        spellings = sorted(known | set(aliases))
+        suggestions = {}
+        for k in extras:
+            close = difflib.get_close_matches(k, spellings, 1, 0.5)
+            suggestions[k] = [aliases.get(close[0], close[0])] if close else []
+        if kind in ("text", "text-set") and "width" in extras:
+            suggestions["width"] = []
         hints = [f"{v[0]!r} instead of {k!r}" for k, v in suggestions.items() if v]
         where = f" in {field}" if field else f" for {kind!r}"
         message = f"Unknown field(s) {', '.join(map(repr, extras))}{where}. Allowed: {', '.join(sorted(known))}"
@@ -577,6 +618,13 @@ def schema_error(error, operation, allowed):
         message = f"{field} must be {error.validator_value}; got {type(error.instance).__name__} {error.instance!r}"
     elif validator in ("minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum"):
         message = f"{field} {error.message}"
+        details["limit"] = error.validator_value
+    elif validator in ("maxItems", "minItems", "maxLength", "minLength"):
+        # Name the bound and the size given; never echo the (possibly huge) value back.
+        most = validator.startswith("max")
+        unit = "entries" if validator.endswith("Items") else "characters"
+        message = (f"{field or kind} holds {'at most' if most else 'at least'} {error.validator_value} {unit}; "
+                   f"got {len(error.instance)}")
         details["limit"] = error.validator_value
     else:
         message = f"{field + ': ' if field else ''}{error.message}"

@@ -502,6 +502,7 @@ def _prepare(request, root, limits=None):
         warnings.append({"code": "size_mismatch",
                          "message": f"The template is {canvas['width']}×{canvas['height']} but the video is "
                                     f"{settings['width']}×{settings['height']}; frames are cropped from the centre"})
+    warnings += fit_warnings(template, contract["roles"], timed["lines"])
     length = timed["end"] - timed["start"]
     frames = max(1, math.ceil(length * settings["fps"] / 1000))
     shown = [line for line in timed["lines"] if line["hide"] > timed["start"] and line["show"] < timed["end"]]
@@ -1001,3 +1002,30 @@ def export(request, root, limits=None, *, cancelled=lambda: False, progress=lamb
         project = Project.load(local_path(root, request["build"]), limits=limits)
         response["checks"] = check_lines(project, report, _animation(request)["duration"])
     return response
+
+
+def fit_warnings(template, roles, lines, limit=5):
+    """Lines wider than the canvas in the lyric layer's own font and size (an unwrapped lyric is clipped)."""
+    from .render import text_metrics
+
+    if not roles.get("lyric"):
+        return []
+    lyric = template.layer(roles["lyric"])
+    if lyric.get("text_layout"):
+        return []  # a wrapping box: long lines wrap instead of running off the canvas
+    width = template.state["canvas"]["width"]
+    room = width - max(0, lyric.get("x", 0)) if lyric.get("x") not in (None, "center") else width
+    found = []
+    for line in lines:
+        try:
+            measured = text_metrics(template, {**lyric, "text": line["text"]}, variables={})[0]
+        except VixlError:
+            continue
+        if measured > room:
+            found.append({"code": "lyric_too_wide", "source_line": line.get("source_line"),
+                          "message": f"Lyric line {line.get('source_line')} is {round(measured)} px wide in the 'lyric' "
+                                     f"layer's font and size, but {round(room)} px fit; it will be clipped. Use a "
+                                     "smaller size, or give 'lyric' a text-layout box so lines wrap"})
+            if len(found) >= limit:
+                break
+    return found

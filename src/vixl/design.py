@@ -69,6 +69,15 @@ def execute_design(project, op):
         )
     elif kind == "group":
         children = selected(project, op["targets"])
+        # Refuse an over-deep nest here, before the layout work, so a runaway chain fails at its first bad step.
+        below = max(nest_depth(state, child["id"]) for child in children)
+        above = 0
+        cursor = children[0].get("parent")
+        while cursor:
+            above += 1
+            cursor = project.layer(cursor).get("parent")
+        require(above + below + 1 <= 16, f"Grouping here would nest {above + below} groups inside each other; the "
+                "limit is 15 nested groups", "resource_limit", field="targets")
         bounds = resolve_layout(project)
         x, y, w, h = union_bounds([bounds[item["id"]] for item in children])
         parent = children[0].get("parent")
@@ -682,7 +691,7 @@ def validate_design(project, state):
                 require(isinstance(layer["organic"], dict) and len(json.dumps(layer["organic"])) <= 131072,
                         "Invalid organic recipe", "invalid_project")
             sides = layer.get("sides", 5)
-            require(isinstance(sides, int) and 3 <= sides <= 128, "Polygons/stars require 3–128 sides")
+            require(isinstance(sides, int) and 3 <= sides <= 128, "sides must be 3–128", field="sides")
             if layer["shape"] == "arc":
                 from .wedge import check_arc
 
@@ -820,3 +829,16 @@ def validate_design(project, state):
 
     for ident in index:
         visit(ident)
+
+
+def nest_depth(state, ident):
+    """Levels of groups at and below layer ``ident`` (1 for a layer that is not a group)."""
+    children = {}
+    for layer in state["layers"]:
+        if layer.get("parent"):
+            children.setdefault(layer["parent"], []).append(layer["id"])
+    depth, level = 1, children.get(ident, [])
+    while level:
+        depth += 1
+        level = [child for item in level for child in children.get(item, [])]
+    return depth

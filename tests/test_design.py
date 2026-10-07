@@ -195,7 +195,7 @@ def test_frame_replace_and_data_rows_without_mutation(tmp_path):
     csv.write_text("image\n" + red + "\n" + blue + "\n")
     result = p.render_data(csv, tmp_path / "out")
     assert len(result) == 2
-    assert Image.open(result[1]["output"]).getpixel((10, 10)) == (0, 0, 255, 255)
+    assert Image.open(result[1]["output"]).convert("RGBA").getpixel((10, 10)) == (0, 0, 255, 255)
     assert p.state == before
     with pytest.raises(VixlError):
         p.render_data(csv, tmp_path / "out")
@@ -294,7 +294,7 @@ def test_measurement_histogram_contrast_and_services(tmp_path):
     session = Session(tmp_path / "p.vixl")
     assert session.measure(point=[2, 2])["sample"] == result["sample"]
     session.apply([{"type": "group", "name": "g", "targets": ["s"]}])
-    assert Image.open(io.BytesIO(session.render())).getpixel((2, 2)) == (0, 0, 0, 255)
+    assert Image.open(io.BytesIO(session.render())).convert("RGBA").getpixel((2, 2)) == (0, 0, 0, 255)
     with pytest.raises(VixlError):
         session.apply([{"type": "frame", "path": "/etc/passwd"}])
 

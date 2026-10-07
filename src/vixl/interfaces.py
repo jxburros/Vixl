@@ -370,14 +370,18 @@ class Session:
         )
         with self.project(write=action != "list" and not (action == "compact" and dry_run), document=document) as p:
             compacted = p.compact(fonts=fonts, dry_run=dry_run) if action == "compact" else None
+            steps = None
             if action in ("undo", "redo"):
-                getattr(p, action)(count)
+                steps = getattr(p, action)(count)
             elif action in ("branch", "checkpoint", "checkout"):
                 require(ref, f"History {action} requires ref", field="ref")
                 getattr(p, action)(ref)
             elif action in ("begin", "commit", "rollback"):
                 getattr(p, action)()
             return {
+                **({action: steps} if steps is not None else {}),
+                **({"notes": [f"{action} {count}: only {steps} step(s) were available"]}
+                   if steps is not None and steps < count else {}),
                 "head": p.head,
                 "branch": p.current_branch,
                 "branches": p.branches,
@@ -428,7 +432,7 @@ def create_app(path, *, token=None, limits=None):
     @app.middleware("http")
     async def guard(request: Request, call_next):
         if request.url.path != "/view" and token and not hmac.compare_digest(request.headers.get("authorization", ""), "Bearer " + token):
-            return JSONResponse({"error": "unauthorized"}, status_code=401)
+            return JSONResponse({"error": "unauthorized"}, status_code=401, headers={"WWW-Authenticate": "Bearer"})
         origin = request.headers.get("origin")
         if origin and origin != str(request.base_url).rstrip("/"):
             return JSONResponse({"error": "cross_origin_forbidden"}, status_code=403)
@@ -552,7 +556,7 @@ def create_app(path, *, token=None, limits=None):
             "alpha",
             "presenter",
         }
-        require(set(body) <= allowed, "Unknown export option")
+        known_fields(body, allowed, "export")
         fmt = body.get("format", "PNG").upper()
         media = {
             "PNG": "image/png",
@@ -763,7 +767,7 @@ def create_app(path, *, token=None, limits=None):
         options = fixed(body)
         allowed = {"variables", "max_width", "max_height", "max_bytes", "artboard", "comp", "region", "time", "proof", "simulate",
                    "guides", "page", "values", "show_fields", "isolate"}
-        require(not set(options) - allowed, f"Preview accepts {sorted(allowed)}", field="body")
+        known_fields(options, allowed, "preview")
         return Response(preview(session, **options), media_type="image/png")
 
     @app.post("/compose")
@@ -789,6 +793,7 @@ def create_app(path, *, token=None, limits=None):
         from .checks import compare
 
         options = fixed(body)
+        known_fields(options, {"before", "after", "mode", "isolate"}, "compare")
         with session.project() as p:
             image, summary = compare(
                 p,
@@ -951,7 +956,7 @@ def mcp_http_app(server, *, token=None):
 
     async def guard(request, call_next):
         if token and not hmac.compare_digest(request.headers.get("authorization", ""), "Bearer " + token):
-            return JSONResponse({"error": "unauthorized"}, status_code=401)
+            return JSONResponse({"error": "unauthorized"}, status_code=401, headers={"WWW-Authenticate": "Bearer"})
         origin = request.headers.get("origin")
         if origin and origin != str(request.base_url).rstrip("/"):
             return JSONResponse({"error": "cross_origin_forbidden"}, status_code=403)
@@ -969,3 +974,16 @@ def serve_mcp(server, host="127.0.0.1", port=8766, token=None):
     import uvicorn
     uvicorn.run(mcp_http_app(server, token=token), host=host, port=port)
 
+
+
+def known_fields(body, allowed, route):
+    """Refuse a REST body with fields the route does not read, naming them and the accepted ones."""
+    import difflib
+
+    unknown = sorted(set(body) - set(allowed))
+    if unknown:
+        close = {key: difflib.get_close_matches(key, sorted(allowed), 1, 0.6) for key in unknown}
+        hints = [f"{match[0]!r} instead of {key!r}" for key, match in close.items() if match]
+        raise VixlError("invalid_operation", f"Unknown {route} field(s) {', '.join(map(repr, unknown))}; accepted: "
+                        f"{', '.join(sorted(allowed))}" + (f". Did you mean {', '.join(hints)}?" if hints else ""),
+                        field=unknown[0], allowed=sorted(allowed))

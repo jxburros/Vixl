@@ -78,9 +78,11 @@ def test_history_branches_and_transactions_survive_restart(tmp_path):
     assert q.layer()["y"] == 0 and q.layer()["opacity"] == 1
     q.checkout("muted")
     assert q.layer()["x"] == 20
-    with pytest.raises(VixlError):
-        q.undo(999)
-    assert q.layer()["x"] == 20
+    # A count past the start of history undoes as far as it goes and says how far; then there is nothing left.
+    assert q.undo(999) >= 1
+    with pytest.raises(VixlError, match="Nothing more to undo"):
+        q.undo()
+    assert q.redo(999) >= 1 and q.layer()["x"] == 20
 
 
 def test_selection_effect_is_local_and_persistent(tmp_path):
