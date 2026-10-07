@@ -48,7 +48,7 @@ Today the taste is neutral and "safe", with no stated identity.
 **Recommendation:** purpose-driven. A signature look makes every agent's output identifiable as "made by Vixl",
 which users of a design engine rarely want.
 
-Decision:
+Decision: craft signature (clarified). The signature lives only in the fixed craft (sharp corners, thin part lines, offset shadows, uppercase labels, the line-height rule); fonts, palettes and layouts vary by purpose.
 
 ### A2. What varies between unspecified runs, and what never varies?
 Today every taste dimension is rolled, and the craft rules are scattered across modules (see C5 and E1).
@@ -186,7 +186,7 @@ Today CLI and MCP require a size, and Python `Project()` uses 1920×1080 (`src/v
 
 **Recommendation:** keep it required. It is an explicit choice that agents handle well.
 
-Decision:
+Decision: purpose default sizes; with neither a size nor a purpose, 1080×1080 (clarified).
 
 ---
 
@@ -231,7 +231,7 @@ Today the fallback is DejaVu Sans, documented as "proofing only". It has no emoj
 
 **Recommendation:** keep DejaVu once C3 makes it rare. Decide separately whether to add a CJK fallback.
 
-Decision:
+Decision: bundle Latin, Greek, Cyrillic and symbols coverage (for example Noto Sans plus Symbols); CJK and emoji come from the font cache on demand (clarified).
 
 ### C5. Line spacing (leading)
 Today there are four conventions:
@@ -426,6 +426,7 @@ Today the default is left; each safe composition fixes its own alignment.
 **Recommendation:** left, with centred by purpose.
 
 Decision: It should usually favor 75% left/25% right for design, 75% left/25% center for data.
+Clarified: marks (logos, emblems, monograms, app icons) stay centred; invitations, quotes and covers follow the 75/25 rule.
 
 ### E6. Grid guides
 Today only `editorial-grid` emits grid guides, although the layouts module promises them
