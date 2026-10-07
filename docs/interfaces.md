@@ -187,7 +187,9 @@ the normal schema (`error`, `message`, `field`, `operation_index` …) and adds 
 `layout`, `style`, `look`, `operations`, `check`, `preview`, `save` or `export`. `strict: true` turns `fix` findings into
 a `check` failure (nothing saved); `dry_run: true` builds, checks and previews without writing (`path` optional). The
 result lists `steps`, the layout's seed, blanks and notes, the check findings, the saved `document` and the `exports`,
-followed by the preview image. Like other heavy tools it becomes a job after ~40 s (or at once with `as_job`) and takes
+followed by the preview image. Like `vixl_document_create`, a saved compose makes the new document the active one
+(`active_document: true`); when another document was active, a warning names it, since later calls without
+`document=` now edit and export the composed piece. Like other heavy tools it becomes a job after ~40 s (or at once with `as_job`) and takes
 `request_id`. It is in the core and compact toolsets.
 
 The same request works as `vixl compose --request req.json [--preview p.png]`, as `vixl.compose.run(workspace, **request)`
