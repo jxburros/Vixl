@@ -5,7 +5,11 @@ Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/mai
 
 1. Inspect the base document and create explicit `suite-set` rules for its requirements.
    Use `suite-capture` for protected layer structures/pixel regions. Do not overwrite
-   baselines during an ordinary repair.
+   baselines during an ordinary repair. Rule kinds: `assert`, `property`, `gap`, `spacing`,
+   `relation`, `text-fit`, `contrast`, `hierarchy`, `color`, `palette`, `ink`, `balance`, `focal`,
+   `count`, `alpha`, `design`, `container`, `unchanged`, `pixels` (fields:
+   `vixl_workflow_schema().definitions.suite`; method: `vixl_guide("testing")`). Run suites with each
+   batch (`vixl_operations_apply(suites=true)`) and before every preview.
 2. Use `fit-text`, `arrange-grid`, or `adapt-layout` for predictable layout tasks;
    save a bounded sequence with `action-define`. `role-set`, `motion-define`, and
    `motion-apply` produce editable staggered/relative animation tracks.

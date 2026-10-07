@@ -246,6 +246,7 @@ A `.vixlscript` contains one editing command per line; blank lines and `#` comme
 vixl run cleanup.vixlscript
 vixl apply operations.json --dry-run
 vixl apply operations.json --check bounds contrast --preview preview.png   # findings and a preview in the same call
+vixl apply operations.json --check --suites brief                         # also run the attached suite 'brief'
 vixl each layer --type raster --name 'card-*' -- saturation -10
 vixl preset save gritty portrait
 vixl preset show gritty

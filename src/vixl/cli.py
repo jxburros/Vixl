@@ -999,14 +999,17 @@ def project_command(project, cmd, args, *, detail="compact"):
         p.add_argument("--preview", metavar="PNG", help="also write a small preview of the result to this PNG file")
         p.add_argument("--preview-width", type=int, default=512)
         p.add_argument("--isolate", nargs="+", metavar="LAYER", help="preview only these layers, zoomed to their ink")
+        p.add_argument("--suites", nargs="*", metavar="SUITE",
+                       help="also run the attached check suites (all, or these) and report rules that did not pass")
         a = p.parse_args(args)
         ops = read_json(a.file) if cmd == "apply" else compile_script(a.file)
         from .checks import apply_reviewed
 
         check = None if a.check is None else (a.check or True)
         preview = {"max_width": a.preview_width, **({"isolate": a.isolate} if a.isolate else {})}
+        suites = None if a.suites is None else (a.suites or True)
         result, image = apply_reviewed(project, ops, dry_run=a.dry_run, detail=detail, check=check,
-                                       preview=preview if a.preview else None)
+                                       preview=preview if a.preview else None, suites=suites)
         if image is not None:
             Path(a.preview).write_bytes(image)
             result["preview"] = a.preview

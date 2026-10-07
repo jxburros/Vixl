@@ -21,8 +21,12 @@ START_HERE = [
     "Type: vixl_fonts then vixl_font_pair (the bundled font is a proofing fallback).",
     "Finish: apply a look (glow, soft-shadow, hard-shadow, gradient, grain, paper …) so flat shapes read as finished; "
     "tag a style (vixl_styles) when the brief names a look.",
-    "Check: vixl_check, fix the 'fix' findings, glance at 'review', then vixl_render_preview and vixl_export_file. "
-    "vixl_operations_apply(check=true, preview=true) returns the findings and a small preview with the edit itself.",
+    "Tests: before building, write the brief's requirements as a check suite (suite-set; the kind's 'tests' lists a "
+    "starter suite and rules to adapt; vixl_guide('testing') explains why and how) and keep it attached.",
+    "Check while building: vixl_operations_apply(check=true, suites=true) reports findings and failing rules with each "
+    "batch; fix them as you go.",
+    "Preview after tests pass: vixl_check and the suites clean (fix the 'fix' findings, glance at 'review'), then "
+    "vixl_render_preview for what tests cannot judge, then vixl_export_file.",
 ]
 # Art without a text frame: a rolled direction (palette, layout-apply steps) would steer these toward a poster.
 NO_DIRECTION = {"character", "scene", "pattern", "mandala", "animation", "pixel-art", "hand-drawing"}
@@ -395,6 +399,72 @@ def match(text):
     return [kind for score, kind in sorted(scored, key=lambda s: (-s[0], s[1]))]
 
 
+# Per kind: the starter suite to attach (workflow suite-use) and requirement rules to adapt to the brief's
+# layer names. vixl_guide('testing') is the full method.
+TESTS = {
+    "comic": ("composition", [{"id": "panels", "kind": "count", "target": "panel-*", "minimum": 2},
+                              {"id": "bubbles-apart", "kind": "relation", "target": "bubble-1", "to": "bubble-2",
+                               "position": "apart"}]),
+    "poster": ("composition", [{"id": "headline-dominates", "kind": "hierarchy", "targets": ["title", "subtitle", "body"],
+                                "ratio": 1.25},
+                               {"id": "title-contrast", "kind": "contrast", "target": "title", "minimum": 4.5}]),
+    "social-card": ("social-card", [{"id": "title-reads", "kind": "contrast", "target": "title", "minimum": 4.5},
+                                    {"id": "logo-margin", "kind": "relation", "target": "logo", "to": "canvas",
+                                     "position": "inside", "minimum": 32}]),
+    "banner-ad": ("social-card", [{"id": "cta-apart", "kind": "relation", "target": "cta", "to": "headline",
+                                   "position": "apart", "minimum": 12},
+                                  {"id": "cta-contrast", "kind": "contrast", "target": "cta-label", "minimum": 4.5}]),
+    "meme": ("social-card", [{"id": "caption-contrast", "kind": "contrast", "target": "top-caption", "minimum": 4.5}]),
+    "logo": ("logo", [{"id": "wordmark-under-mark", "kind": "relation", "target": "wordmark", "to": "mark",
+                       "position": "below", "align": ["center-x"]},
+                      {"id": "brand-color", "kind": "color", "region": [0, 0, 64, 64], "expected": "@brand",
+                       "tolerance": 16, "severity": "warning"}]),
+    "app-icon": ("logo", [{"id": "centred", "kind": "balance", "tolerance": 0.05},
+                          {"id": "no-text", "kind": "count", "target": "*", "layer_type": "text", "maximum": 0}]),
+    "character": ("character", [{"id": "head-above-body", "kind": "relation", "target": "head", "to": "body",
+                                 "position": "above", "maximum": 0},
+                                {"id": "centred", "kind": "balance", "tolerance": 0.15, "severity": "warning"}]),
+    "scene": ("composition", [{"id": "subject-on-thirds", "kind": "focal", "target": "subject", "grid": "thirds"},
+                              {"id": "sky-quiet", "kind": "ink", "region": [0, 0, 400, 120], "maximum": 0.2,
+                               "severity": "warning"}]),
+    "pattern": ("palette", [{"id": "covered", "kind": "ink", "minimum": 0.3}]),
+    "mandala": ("composition", [{"id": "centred", "kind": "balance", "tolerance": 0.02}]),
+    "diagram": ("diagram", [{"id": "steps-even", "kind": "spacing", "targets": ["step-1", "step-2", "step-3"],
+                             "axis": "horizontal"}]),
+    "slides": ("slide-deck", [{"id": "title-over-body", "kind": "hierarchy", "targets": ["title", "body"],
+                               "ratio": 1.5}]),
+    "stationery": ("print-ready", [{"id": "name-over-details", "kind": "hierarchy", "targets": ["name", "details"],
+                                    "ratio": 1.3},
+                                   {"id": "logo-margin", "kind": "relation", "target": "logo", "to": "canvas",
+                                    "position": "inside", "minimum": 24}]),
+    "form": ("fillable-form", [{"id": "labels-aligned", "kind": "relation", "target": "label-name",
+                                "to": "label-email", "align": ["left"]}]),
+    "animation": ("motion-loop", [{"id": "title-stays-inside", "kind": "relation", "target": "title", "to": "canvas",
+                                   "position": "inside", "minimum": 16}]),
+    "pixel-art": ("palette", [{"id": "sprite-transparent", "kind": "alpha", "minimum": 0.1}]),
+    "hand-drawing": ("composition", [{"id": "drawing-kept", "kind": "design", "options": {"checks": ["drawing"]}}]),
+    "photo-composition": ("composition", [{"id": "caption-contrast", "kind": "contrast", "target": "caption",
+                                           "minimum": 4.5},
+                                          {"id": "caption-below", "kind": "relation", "target": "caption",
+                                           "to": "photo", "position": "below", "align": ["left"]}]),
+}
+
+
+def tests(kind):
+    """The test plan vixl_guide returns with a kind: why, the starter suite and rules to adapt (rename their
+    targets to the document's layers before attaching them)."""
+    starter, rules = TESTS[kind]
+    return {"why": "Tests measure what a small preview hides and keep holding as edits pile up; write them from the "
+                   "brief before building, run them with every batch and before every preview.",
+            "starter_suite": starter,
+            "attach": {"workflow": "suite-use", "request": {"name": starter}},
+            "rules_to_adapt": rules,
+            "add_with": {"type": "suite-set", "name": "brief", "suite": {"rules": rules}},
+            "run": "vixl_operations_apply(check=true, suites=true) while building; vixl_workflow('check', "
+                   "{suite: NAME}) before vixl_render_preview",
+            "read": "vixl_guide('testing')"}
+
+
 def entry(kind):
     from .layouts import LAYOUTS
 
@@ -408,6 +478,7 @@ def entry(kind):
         result["principles"] = GUIDANCE[kind]
     if item.get("guidance"):
         result["read_guidance"] = "vixl_guide(brief=NAME) returns each guidance text"
+    result["tests"] = tests(kind)
     return result
 
 

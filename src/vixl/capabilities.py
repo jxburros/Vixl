@@ -25,6 +25,7 @@ TOPICS = {
     ),
     "color": ("palette color swatch look style lighting", ["color", "natural-color-light", "accessibility"]),
     "export": ("export film merge form", ["print"]),
+    "testing": ("test tests testing suite suites check assert verify qa baseline capture", ["testing", "accessibility"]),
 }
 GOTCHAS = [
     "x/y are parent-local pixels unless move (or shape/text/solid/gradient with target) uses space=canvas; "
@@ -89,6 +90,15 @@ def lookup(topic=None, *, fields=False):
             "Centre text there with text within=SHAPE, place within=SHAPE (anchor, margin) or align "
             "relative_to=SHAPE box=content."
         )
+    if "testing" in chosen:
+        from .effect_workflows import SUITES
+        from .workflow_schema import RULE_KINDS
+
+        extra["suite_rules"] = list(RULE_KINDS)
+        extra["starter_suites"] = {name: suite["description"] for name, suite in SUITES.items()}
+        extra["testing"] = ("Attach suites with suite-set (or workflow suite-use for a starter), run them with "
+                            "vixl_operations_apply(suites=true) or vixl_workflow('check', {suite}), and before every "
+                            "preview. vixl_workflow_schema().definitions.suite types every rule field.")
     return {
         "topic": topic,
         "topics": chosen,

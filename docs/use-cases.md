@@ -227,6 +227,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | MOT-01 | Ball moving across the canvas over one second, exported as GIF | `timeline-set`, `animate`, `vixl_export_timeline` | 7 · 2 | M:eval:timeline-motion | |
 | PRD-01 | Banner with a variable-driven headline, rendered for several cities | `variable set`, `render --set` | 6 · 2 | M:eval:variable-variants | |
 | QA-11 | Save a check suite and make an edit that only commits if it passes | `vixl_workflow` act | 8 · 2 | M:eval:workflow-checked-edit | |
+| QA-24 | Turn a brief into tests (hierarchy, spacing, margins, contrast, balance) and run them with every batch before previewing | `suite-set`, `vixl_operations_apply(suites=true)`, `vixl_guide("testing")` | 3–5 · 1 | E | Starter suites per kind of work; `vixl_guide(kind)` lists one under `tests`. |
 
 ### Social, web and simple graphics
 
