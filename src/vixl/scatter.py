@@ -594,6 +594,16 @@ def scatter_points(project, op, region, subs, blocked, rng, variation):
         if blocked is not None:
             area = area.difference(blocked)
         require(not area.is_empty, "The exclude layers cover the whole target", field="exclude")
+        # Copies are centred on the samples, so keep the centres a motif's half-size inside the outline: the
+        # copies then stay inside it instead of hanging over the edge. A region too small for that keeps
+        # as much clearance as it can.
+        reach = 0.5 * max(max(s["width"], s["height"]) for s in variation.sources) * variation.scale \
+            * (1 + variation.scale_jitter) + variation.position_jitter
+        for share in (1, 0.5, 0.25, 0):
+            inner = area.buffer(-reach * share) if share and reach else area
+            if not inner.is_empty and inner.area > 0:
+                area = inner
+                break
         if spacing is None:
             if count is not None:
                 spacing = math.sqrt(0.68 * area.area / count)

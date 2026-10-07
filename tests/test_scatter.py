@@ -152,6 +152,26 @@ def test_pattern_scatter_is_seamless_reports_its_seam_and_rewraps_after_a_motif_
     assert all(x["type"] == "shape" for x in project.state["layers"] if x.get("parent") == tile["id"])
 
 
+def test_scatter_inside_keeps_whole_motifs_inside_the_outline():  # #362
+    project = Project(400, 300, "#ffffff")
+    project.apply([
+        {"type": "shape", "shape": "rounded-rectangle", "name": "card", "x": 40, "y": 40, "width": 320, "height": 220,
+         "radius": 40, "fill": "#f3e9d2"},
+        {"type": "shape", "shape": "ellipse", "name": "dot", "x": 0, "y": 0, "width": 30, "height": 30, "fill": "#223355"},
+    ])
+    project.apply({"type": "scatter", "target": "card", "source": ["dot"], "count": 30, "seed": 2, "scale_jitter": 0.3,
+                   "name": "dots"})
+    region = Polygon(outline(project, project.layer("card"))[0][0])
+    bounds = resolve_layout(project)
+    origin = bounds[project.layer("dots")["id"]]
+    copies = [x for x in project.state["layers"] if x.get("parent") == project.layer("dots")["id"]]
+    assert len(copies) >= 10
+    for copy in copies:
+        x, y, w, h = bounds[copy["id"]]
+        disc = Point(origin[0] + x + w / 2, origin[1] + y + h / 2).buffer(max(w, h) / 2)
+        assert region.buffer(0.5).contains(disc), copy["name"]
+
+
 def test_wrapped_motifs_of_a_canvas_sized_tile_are_not_reported_as_cut_off():  # #354
     project = Project(160, 160, "#ffffff")
     project.apply([

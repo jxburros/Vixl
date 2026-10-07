@@ -178,7 +178,9 @@ handles equal in length. `path-simplify` reduces nodes by a pixel `tolerance`;
 - `pathfinder`: adds `exclude` (XOR), `minus-back` (last operand minus earlier operands),
   `divide` (independent faces), `trim` (remove covered portions), and `merge` (trim then
   combine pieces of the same fill). Divide/trim/merge return a group of editable paths;
-  originals are preserved and hidden, as with existing pathfinder modes. Divide is limited
+  originals are preserved and hidden, as with existing pathfinder modes. Each piece reaches 1 px under the
+  pieces stacked above it (never past the outline of the whole), so abutting pieces render without a hairline
+  seam. Divide is limited
   to 256 faces, and the established boolean engine's geometry limits still apply.
 
 Repeats and blends remain the existing `repeat`, `repeat-blend`, and `organic` `along`
