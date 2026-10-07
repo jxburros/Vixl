@@ -285,19 +285,60 @@ def gif_bytes(images, duration, loop, colors=256, dither="none"):
     return stream.getvalue()
 
 
+def webp_plays(loop):
+    """The WebP ANIM loop count for a Vixl ``loop`` (additional repetitions, 0 = forever): WebP counts
+    total plays, as APNG does, while GIF's NETSCAPE count is the repetitions."""
+    return loop + 1 if loop else 0
+
+
+def save_webp(images, durations, loop, **options):
+    """Encode an animated WebP. libwebp merges identical neighbours and writes a still image when only
+    one frame is left; that file has no duration, so it is rewrapped as a one-frame animation that keeps
+    the whole length, as GIF and APNG do."""
+    stream = io.BytesIO()
+    images[0].save(stream, format="WEBP", save_all=True, append_images=images[1:], duration=durations,
+                   loop=webp_plays(loop), **options)
+    data = stream.getvalue()
+    if data[12:16] == b"VP8X" and data[20] & 0x02:
+        return data
+    durations = durations if isinstance(durations, (list, tuple)) else [durations] * len(images)
+    return _one_frame_webp(data, images[0].size, sum(durations), webp_plays(loop))
+
+
+def _one_frame_webp(data, size, duration, plays):
+    chunks, offset = [], 12
+    while offset + 8 <= len(data):
+        fourcc, length = data[offset:offset + 4], int.from_bytes(data[offset + 4:offset + 8], "little")
+        chunks.append((fourcc, data[offset:offset + 8 + length + (length & 1)]))
+        offset += 8 + length + (length & 1)
+    image = b"".join(chunk for fourcc, chunk in chunks if fourcc in (b"ALPH", b"VP8 ", b"VP8L"))
+    require(image, "WebP encoder wrote no image data", "codec_error")
+    alpha = any(fourcc in (b"ALPH", b"VP8L") for fourcc, _ in chunks)
+
+    def u24(value):
+        return int(value).to_bytes(3, "little")
+
+    def chunk(fourcc, payload):
+        return fourcc + len(payload).to_bytes(4, "little") + payload + b"\0" * (len(payload) & 1)
+
+    w, h = size
+    header = chunk(b"VP8X", bytes([0x02 | (0x10 if alpha else 0)]) + b"\0\0\0" + u24(w - 1) + u24(h - 1))
+    anim = chunk(b"ANIM", b"\0\0\0\0" + int(plays).to_bytes(2, "little"))
+    frame = chunk(b"ANMF", u24(0) + u24(0) + u24(w - 1) + u24(h - 1) + u24(min(duration, 0xFFFFFF)) + b"\x02" + image)
+    body = b"WEBP" + header + anim + frame
+    return b"RIFF" + len(body).to_bytes(4, "little") + body
+
+
 def webp_trial(images, durations, loop=0):
     """Bytes of a quick lossy animated WebP of the same frames, or ``None`` when Pillow has no WebP."""
     from PIL import features
 
     if not images or not features.check("webp"):
         return None
-    stream = io.BytesIO()
     try:
-        images[0].save(stream, format="WEBP", save_all=True, append_images=images[1:], duration=durations,
-                       loop=loop, quality=75, method=0)
+        return len(save_webp(images, durations, loop, quality=75, method=0))
     except (OSError, ValueError):
         return None
-    return len(stream.getvalue())
 
 
 def decoded_frames(data):
@@ -311,34 +352,41 @@ def decoded_frames(data):
     return frames, durations
 
 
-def _alternatives(size, webp=None):
-    """What to export instead of a big GIF, with the WebP size measured when it can be."""
+def alternatives(size, webp=None):
+    """What to export instead of a big GIF, as a clause after "or", with the WebP size measured when it can be."""
     measured = webp() if webp is not None else None
     if measured is None:
         return "export MP4 or WebP, which are usually several times smaller"
     if measured < size:
         return (f"export WebP ({measured:,} bytes for these frames, measured: {size / measured:.1f}x smaller) "
                 "or MP4")
-    return f"WebP measured no smaller here ({measured:,} bytes); export MP4"
+    return f"export MP4 (a WebP of these frames measured no smaller: {measured:,} bytes)"
 
 
-def size_warnings(format, data, max_bytes=None, gradients=False, webp=None, label="max_bytes"):
+def size_warnings(format, data, max_bytes=None, gradients=False, webp=None, label="max_bytes", dither=None, budget=None):
     """Warnings for an encoded animation: a GIF over 1 MB (or ``max_bytes``) and gradient-heavy GIFs steer
     to MP4/WebP. ``webp`` is a callable returning the size of a trial WebP of the same frames, called only
-    when a warning needs it. The export never fails over size."""
+    when a warning needs it. ``budget`` is a size target the export already fitted to (``target_bytes``):
+    the generic 1 MB note is left out, since the caller chose the size and a miss is reported where the
+    fit happened. ``dither`` is the dither the GIF used, so its advice is not repeated. The export never
+    fails over size."""
     warnings = []
     size = len(data)
     if max_bytes is not None and size > max_bytes:
         warnings.append(f"{format.upper()} is {size:,} bytes, over the {label} target of {max_bytes:,}. Lower fps, colors or scale, "
-                        "or shorten the range" + (f"; or {_alternatives(size, webp)}." if format == "gif" else "."))
-    elif format == "gif" and size > GIF_WARN_BYTES:
+                        "or shorten the range" + (f"; or {alternatives(size, webp)}." if format == "gif" else "."))
+    elif format == "gif" and size > GIF_WARN_BYTES and max_bytes is None and budget is None:
         warnings.append(
             f"GIF is {size / 1048576:.1f} MB; ad networks and chat apps often cap GIFs near 150 KB–1 MB. "
-            f"Lower fps, colors or scale, shorten the range, pass target_bytes, or {_alternatives(size, webp)}."
+            f"Lower fps, colors or scale, shorten the range or pass target_bytes; or {alternatives(size, webp)}."
         )
     if format == "gif" and gradients and size > GIF_WARN_BYTES // 4 and not any("MP4" in w for w in warnings):
-        warnings.append("This GIF has gradients or soft glows, which band in 256 colors: export MP4 or WebP for clean results, "
-                        "or pass dither: 'ordered'.")
+        if dither in ("ordered", "floyd"):
+            warnings.append(f"This GIF has gradients or soft glows, which band in 256 colors even with dither {dither!r}: "
+                            "export MP4 or WebP for clean results.")
+        else:
+            warnings.append("This GIF has gradients or soft glows, which band in 256 colors: export MP4 or WebP for clean "
+                            "results, or pass dither: 'ordered'.")
     return warnings
 
 
@@ -404,6 +452,7 @@ def encoded_frames(data):
         durations = []
         for index in range(count):
             image.seek(index)
+            image.load()  # WebP reads a frame's duration only when it decodes the frame.
             durations.append(image.info.get("duration", 0))
     return count, durations
 
@@ -527,15 +576,7 @@ def animation_bytes(
         elif format == "webp":
             # Crisp (nearest) pixel art is stored losslessly; smooth renders use `quality`.
             options = {"lossless": True} if sampling == "nearest" else {"quality": quality, "method": 4}
-            images[0].save(
-                stream,
-                format="WEBP",
-                save_all=True,
-                append_images=images[1:],
-                duration=durations,
-                loop=loop + 1 if loop else 0,
-                **options,
-            )
+            stream.write(save_webp(images, durations, loop, **options))
         else:
             images[0].save(
                 stream,
@@ -658,5 +699,6 @@ def export_animation(
         **({"animation": animation} if animation is not None else {}),
         **({"metadata": str(destinations[1])} if metadata is not None else {}),
         **({"warnings": warnings} if (warnings := size_warnings(
-            format, data, max_bytes, gradients, webp=lambda: webp_trial(*decoded_frames(data)))) else {}),
+            format, data, max_bytes, gradients, webp=lambda: webp_trial(*decoded_frames(data)),
+            dither=("ordered" if gradients else "none") if dither == "auto" else dither)) else {}),
     }
