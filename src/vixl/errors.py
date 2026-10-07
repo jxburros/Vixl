@@ -46,6 +46,25 @@ def for_surface(value, surface):
     return value
 
 
+OUT_OF_MEMORY = "Not enough memory for this operation; use a smaller canvas, scale or batch"
+
+
+def memory_guard(function):
+    """Report running out of memory (a large canvas, a numpy allocation) as a ``resource_limit`` VixlError. The
+    error is raised after the failed call's frames are released, so the memory they held is free again."""
+    import functools
+
+    @functools.wraps(function)
+    def guarded(*args, **kwargs):
+        try:
+            return function(*args, **kwargs)
+        except MemoryError:
+            pass
+        raise VixlError("resource_limit", OUT_OF_MEMORY)
+
+    return guarded
+
+
 def friendly(exc):
     """A VixlError for an exception raised by the OS, the JSON decoder or Python itself, with a message a person
     can act on instead of a Python repr. VixlErrors pass through."""
@@ -66,5 +85,5 @@ def friendly(exc):
     if isinstance(exc, OSError):
         return VixlError("io_error", exc.strerror or str(exc))
     if isinstance(exc, MemoryError):
-        return VixlError("resource_limit", "Not enough memory for this operation; use a smaller canvas, scale or batch")
+        return VixlError("resource_limit", OUT_OF_MEMORY)
     return VixlError("invalid_input", str(exc))

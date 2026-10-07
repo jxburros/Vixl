@@ -40,7 +40,7 @@ import uuid
 from pydantic import Field
 
 from .calls import CALL, UNKNOWN, CallState
-from .errors import VixlError, for_surface, require
+from .errors import VixlError, for_surface, memory_guard, require
 
 DEFAULT_INLINE_SECONDS = 40
 DEFAULT_WORKERS = 32
@@ -309,7 +309,7 @@ class Runtime:
         token = CALL.set(state)
         try:
             try:
-                result = fn(*args, **kwargs)
+                result = memory_guard(fn)(*args, **kwargs)
             except VixlError as exc:
                 raise self.tool_error(self.compact_json(for_surface(exc.as_dict(), "mcp"))) from exc
             warning = self.ignored(fn.__name__, state)

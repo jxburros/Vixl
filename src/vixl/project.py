@@ -14,7 +14,7 @@ import zipfile
 
 from . import __version__, calls
 from .assets import decode, read_bounded
-from .errors import VixlError, require
+from .errors import VixlError, memory_guard, require
 from .history import diff, patch
 from .model import Limits, new_state, uid
 from .render import LayerCache
@@ -425,6 +425,7 @@ class Project:
             "resource_limit",
         )
 
+    @memory_guard
     def apply(self, operations, *, dry_run=False, detail="full", check=None):
         require(detail in ("brief", "compact", "full"), "Unknown response detail; use brief, compact or full")
         from .operations import execute
@@ -721,11 +722,13 @@ class Project:
         self.state = self.transaction["state"]
         self.transaction = None
 
+    @memory_guard
     def render(self, variables=None, *, artboard=None, comp=None, page=None):
         from .render import render
 
         return render(self, variables, artboard, comp, page=page)
 
+    @memory_guard
     def show(self, page=None, region=None):
         """The rendered document as a PIL image, for notebooks and scripts. ``page`` is a page number or name;
         ``region`` crops to ``[x, y, width, height]`` in document pixels."""
@@ -745,6 +748,7 @@ class Project:
         self.render().save(buffer, "PNG")
         return buffer.getvalue()
 
+    @memory_guard
     def export(self, path=None, **options):
         from .render import export
 
@@ -762,6 +766,7 @@ class Project:
 
         return import_image_from(self, path=path, url=url, data=data, name=name, credit=credit, license=license)
 
+    @memory_guard
     def inspect_pixels(self, target=None):
         from .pixel import inspect_pixels
 
@@ -772,16 +777,19 @@ class Project:
 
         return inspect_animation(self)
 
+    @memory_guard
     def render_frame(self, name, scale=1, sampling="nearest"):
         from .animation import render_frame
 
         return render_frame(self, name, scale, sampling)
 
+    @memory_guard
     def export_animation(self, path, **options):
         from .animation import export_animation
 
         return export_animation(self, path, **options)
 
+    @memory_guard
     def check(self, **options):
         from .checks import check_design
 
@@ -799,10 +807,12 @@ class Project:
 
         return compact(self, fonts=fonts, dry_run=dry_run)
 
+    @memory_guard
     def check_suite(self, suite, **options):
         from .assurance import run_suite
         return run_suite(self, suite, **options)
 
+    @memory_guard
     def act(self, operations, *, suites=None, dry_run=False, check=None):
         """Apply and measure one candidate. Failed contracts leave the document unchanged."""
         candidate = self.clone()
@@ -816,16 +826,19 @@ class Project:
         return {**result, "success": accepted, "dry_run": dry_run, "committed": accepted and not dry_run,
                 "checks": reports, "bounds": {x["name"]: x["resolved_bounds"] for x in candidate.inspect()["layers"]}}
 
+    @memory_guard
     def measure(self, **options):
         from .measure import measure
 
         return measure(self, **options)
 
+    @memory_guard
     def export_screens(self, directory, **options):
         from .exports import export_screens
 
         return export_screens(self, directory, **options)
 
+    @memory_guard
     def render_data(self, csv_path, directory, **options):
         from .exports import render_data
 

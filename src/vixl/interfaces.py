@@ -451,6 +451,12 @@ def create_app(path, *, token=None, limits=None):
     async def vixl_error(request: Request, exc: VixlError):
         return JSONResponse(exc.as_dict(), status_code=403 if exc.code == "forbidden" else 400)
 
+    @app.exception_handler(MemoryError)
+    async def out_of_memory(request: Request, exc: MemoryError):
+        from .errors import friendly
+
+        return JSONResponse(friendly(exc).as_dict(), status_code=400)
+
     @app.get("/view")
     def viewer():
         from fastapi.responses import HTMLResponse
