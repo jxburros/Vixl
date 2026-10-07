@@ -34,7 +34,7 @@ the bundled Windows updater is a separate installation mechanism.
 For reproducible work, install a tag rather than tracking `main`:
 
 ```bash
-python -m pip install 'https://github.com/jxburros/Vixl/archive/refs/tags/v0.22.1.tar.gz'
+python -m pip install 'https://github.com/jxburros/Vixl/archive/refs/tags/v0.23.0.tar.gz'
 ```
 
 Latest `main` may include changes beyond the tagged release while reporting the same

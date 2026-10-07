@@ -2,7 +2,7 @@
 
 [Documentation home](README.md) · [House style decisions](house-style.md) · [Releases](releases.md) · [Changelog](../CHANGELOG.md)
 
-This plan orders the open issues after 0.22.1. Each issue was rated for **complexity** (C1 a few hours, C2 about a
+This plan orders the open issues after 0.23.0. Each issue was rated for **complexity** (C1 a few hours, C2 about a
 day, C3 several days, C4 one to two weeks, C5 several weeks or open-ended) and **payoff** (P1 cosmetic or rare, P2 a
 narrow workflow, P3 a common workflow, P4 changes results for most agents, P5 first impression or correctness of
 output). Issues that share a cause or a code path are grouped so they ship together, and each group names one
@@ -19,93 +19,34 @@ The order is a recommendation. Re-rate an issue when it is picked up; move it wh
 (#337, #340, #343, #344, #348, #350, #373). It also brought the house-style decision record and the 0.22.0 QA report
 onto main, and closed the feature requests that 0.22.0 had already shipped.
 
+## What 0.23.0 settled
+
+0.23.0 shipped the whole "defaults and speed" plan:
+
+- **House-style foundation:** the default-change policy and `house_style_version` stamp (#430), the sparse-brief
+  diversity and quality eval (#431), house style as data in `src/vixl/data/house-style.json` (#401), the purpose tier
+  (#403) and safe, bold and avant-garde tiers gated by variety level (#405).
+- **Rolled defaults made visible:** #389, #390, #391, #392, #393, #394, #397, #398, #399 and #285.
+- **Craft defaults:** #408, #409 + #370, #410, #411, #418, #421 + #282, #426, #420, #425, #428, #400, #413 and #414,
+  plus density by purpose from #412 (decision E4).
+- **Speed:** #284 + #300, #327, #335 and #341, held by `pytest -m perf` time budgets.
+- **Common agent paths:** #339, #351, #368, #357, #358, #382 (the `part:` field waits for #374) and #385.
+- **QA findings:** #290, #294, #296, #297, #298, #301, #303, #304, #372, #280, #293, #347, #311, #338, #306, #288,
+  #352, #354, #355, #360, #361, #362, #366, #323, #325, #292, #302, #307, #312, #346, #359, #363 and #365, plus #313
+  and #324.
+- **Executable docs:** `tests/test_docs_executable.py` runs the `vixl` commands and JSON operation blocks in `docs/`
+  and `skills/`.
+
 ## Rules for every release below
 
-- **Default changes follow #430**: they apply to new documents only, and each changelog line gives the override that
-  restores the old result. Before the first house-style default changes, stamp a `house_style_version` in
-  `design_defaults` so old documents keep their defaults and tests can pin a version.
-- **Default changes are gated by #431**: the diversity and quality eval runs before and after, and a change may not
-  lower quality or diversity at any variety level.
-- **Speed claims are tested**: add `pytest -m perf` with time budgets (one move on 4,096 layers, the overlap check on
-  dense text, a 100k-character text flow) when #284 lands, so a changelog figure is a test, not an assertion.
-- **Docs are executable**: add a test that runs the `vixl …` commands and JSON operation blocks in `docs/` and
-  `skills/` in a temporary workspace. #373 and #343 would have failed it.
-
-## 0.23.0: defaults and speed
-
-Theme: what Vixl produces from a sparse brief looks designed, and edits on large documents stay fast.
-
-### 1. House-style foundation (do first)
-
-| Issue | What | C | P |
-| --- | --- | --- | --- |
-| #430 | Default-change policy, plus the `house_style_version` stamp | 1 | 3 |
-| #431 | Diversity and quality eval for sparse briefs (gates the rest) | 3 | 4 |
-| #401 | House style as data (`house-style.json`, one loader) | 4 | 5 |
-| #403 | Purpose tier in the defaults precedence | 3 | 4 |
-| #405 | Safe, bold and avant-garde tiers gated by variety level | 3 | 4 |
-
-### 2. Make today's rolled defaults visible (bugs under #388)
-
-| Issue | What | C | P |
-| --- | --- | --- | --- |
-| #389 | Rolled accent is drawn in safe compositions | 2 | 3 |
-| #390 | Rolled density changes margins and scale | 2 | 3 |
-| #391 | Roll filters act on the pools actually rolled | 2 | 3 |
-| #392 | `layout-apply` inherits the whole stored direction | 2 | 3 |
-| #393 | Variety levels differ; rolled looks are visible; all safe styles roll | 2 | 4 |
-| #394 | One creation path for CLI, Python and MCP (`--seed`, `--variety`) | 2 | 4 |
-| #397 | Diagrams follow the palette and dark mode | 2 | 3 |
-| #398 | Simple templates scale with the canvas | 2 | 3 |
-| #399 | Brief recommendations agree with the attached roll | 2 | 3 |
-| #285 | Playful rolls look playful (closes with #391, #393, #405) | 3 | 4 |
-
-### 3. Craft defaults
-
-| Issue | What | C | P |
-| --- | --- | --- | --- |
-| #408 | Default text size from the type scale | 1 | 4 |
-| #409 + #370 | 5% default safe area; layouts pass their own check (full-bleed uses `allow_crop`) | 2 | 4 |
-| #410 | Primitive fills, strokes and corners from the palette roles | 2 | 4 |
-| #411 | Palette background by default; transparent for marks | 2 | 3 |
-| #418 | Install the rolled pairing at creation | 2 | 5 |
-| #421 + #282 | One line-height table; negative spacing for display type | 2 | 4 |
-| #426 | Dark, saturated, duotone and earthy safe palettes | 2 | 4 |
-| #420, #425, #428 | Look by purpose, subtle irregularity, split and pattern backgrounds | 1 each | 2–3 |
-| #400, #413, #414 | Mode, size and pairing weighted by purpose | 1–2 | 2–3 |
-
-### 4. Speed
-
-| Issue | What | C | P |
-| --- | --- | --- | --- |
-| #284 + #300 | Apply cost independent of unrelated layers: incremental inspect, cached text metrics | 4 | 5 |
-| #327 | Overlap check without a full-canvas surface per text candidate | 3 | 3 |
-| #335 | Linear long-word breaking in text-flow | 2 | 2 |
-| #341 | A clean `resource_limit` on memory pressure; smaller full-canvas buffers | 4 | 2 |
-
-### 5. Common agent paths
-
-| Issue | What | C | P |
-| --- | --- | --- | --- |
-| #339 | `text-layout` with only a width grows its height | 2 | 4 |
-| #351 | `diagram-from-text` fits its box | 2 | 4 |
-| #368 | Compose image slots accept paths and URLs (one-call memes) | 2 | 4 |
-| #357, #358 | Compose background and style shape the layout | 1–3 | 3–4 |
-| #382 | `reparent` layers into or out of a group (independent object groundwork) | 3 | 5 |
-| #385 | `layer-intent` CLI flags and inspect fields | 1 | 2 |
-
-### 6. Remaining QA findings
-
-Small, independent fixes; take them alongside the bundle whose code they touch.
-
-| Area | Issues |
-| --- | --- |
-| Motion | #290, #294, #296, #297, #298, #301, #303, #304, #372 |
-| Text and pages | #280, #293, #347 |
-| Export | #311 (PPTX skew), #338 (TIFF dpi), #306 (bleed rounding) |
-| Looks and checks | #288, #352, #354, #355, #360, #361, #362, #366 |
-| Import and limits | #323 (very large images), #325 (early 413) |
-| Other | #292, #302, #307, #312, #346, #359, #363, #365 |
+- **Default changes follow #430**: they apply to new documents only (new `design_defaults` carry
+  `house_style_version`), and each changelog line gives the override that restores the old result.
+- **Default changes are gated by #431**: `python -m evals.house_style --compare evals/house-style-baseline.json` runs
+  before and after, and a change may not lower quality or diversity at any variety level.
+- **Speed claims are tested**: a changelog figure is a `pytest -m perf` time budget (`tests/test_perf.py`), not an
+  assertion.
+- **Docs are executable**: `tests/test_docs_executable.py` runs the `vixl …` commands and JSON operation blocks in
+  `docs/` and `skills/`; new blocks are picked up automatically.
 
 ## 0.24.0: objects, data and documents
 
@@ -170,13 +111,11 @@ change (C2 + C4, P3–P4). Make the fonts check name uncovered characters now; e
 | #334 | Editable round trip of Vixl's own SVG | 4 | 2 | #305 removed one blocker |
 | #177 | Lottie export | 5 | 3 | After motion features settle |
 | #166 | PPTX font embedding | 4 | 3 | Re-scope: warnings and licences shipped; PDF is the fidelity route |
-| #214, #230, #237 | Remainders of partly shipped issues | 2–4 | 2–3 | Split each remainder into its own issue |
+| #214 | Remainder of a partly shipped issue: bind chart data across charts and into text | 3 | 3 | |
 
 ## Needs a decision or a spec
 
 - **#179** (more video templates), **#258** (paint physics): name the concrete templates or effects and their
   acceptance before scheduling.
-- **#194** (full CMYK): CMYK import and CMYK PDF, TIFF and JPEG export exist; say what is still missing, or close.
-- **#256** (irregularity engine): fold the remaining intent into #425 and #427, then close.
 - **#259** (screen capture): out of scope for a document engine and raises permission questions; importing a
   screenshot file already works. Suggest closing.
