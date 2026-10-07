@@ -404,7 +404,27 @@ def normalize_operation(operation, properties, known_types, effects, notes, inde
         if isinstance(op.get(key), str) and op[key].strip().lower() == "none":
             op[key] = "transparent"
             note(f"{key} 'none' → 'transparent'")
+        elif isinstance(op.get(key), str) and RGB_FUNCTION.match(op[key]):
+            op[key] = _clamped_rgb(op[key], key, note)
     return op
+
+
+RGB_FUNCTION = re.compile(r"\s*rgba?\(", re.IGNORECASE)
+
+
+def _clamped_rgb(value, key, note):
+    """``rgb(300, 0, 0)`` → ``#ff0000``, noted, as CSS clamps it; colours in range and invalid ones are left alone."""
+    from .colors import clipped
+    from .errors import VixlError
+
+    try:
+        clip = clipped(value)
+    except VixlError:
+        return value  # validation reports the invalid colour
+    if clip is None or clip["how"] != "clamp":
+        return value
+    note(f"{key} {value!r} has channels outside 0–255; clamped to {clip['to']}")
+    return clip["to"]
 
 
 def opacity(value, field, note):

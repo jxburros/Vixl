@@ -1089,7 +1089,8 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
     ) -> dict | list:
         """Build a whole piece in one call: create → font pairing → layout → style → look → operations → check →
         preview → save → exports. Atomic: nothing is saved or exported unless every step succeeds; an error
-        names its step. Use it for a new piece; edit existing documents with vixl_operations_apply."""
+        names its step. Use it for a new piece; edit existing documents with vixl_operations_apply. Like
+        vixl_document_create it makes the new document active (pass document= to keep editing another)."""
         from .compose import compose
 
         create = {key: value for key, value in (("size", size), ("width", width), ("height", height),

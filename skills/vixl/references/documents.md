@@ -49,6 +49,7 @@ A document becomes multi-page with the first `page add`; each page has its own l
 ```
 
 - Any operation takes `"page"` (name or number) to edit that page; `page select` switches.
+- `${page}` / `${pages}` count shown pages only; `hidden` pages are skipped in the numbering.
 - Preview every page at once: `vixl_render_preview(page="all")` / `render --page all`.
 - `vixl_check(checks=["deck"])` checks every page plus title placement, type scale, words per
   page, projected type size (points) and speaker notes.

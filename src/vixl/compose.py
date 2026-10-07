@@ -299,10 +299,17 @@ def compose(session, *, path=None, operations=None, operations_path=None, layout
             session.make_parent(resolved)
             with file_lock(str(resolved)):
                 require(not resolved.exists(), f"{path} appeared while composing; nothing was saved", field="path")
+                previous = session.path
                 project.save(resolved)
                 session._remember(resolved, project, session.stamp(resolved))
         result.update(document=session.relative(resolved), canvas=project.state["canvas"],
-                      layer_count=len(project.state["layers"]), head=project.head)
+                      layer_count=len(project.state["layers"]), head=project.head, active_document=True)
+        if previous and previous != resolved and Path(previous).is_relative_to(session.workspace):
+            # Like vixl_document_create, compose activates the new document; say so, since later calls without
+            # document= now edit and export it rather than the one that was active.
+            result.setdefault("warnings", []).append(
+                f"{session.relative(resolved)} is now the active document; calls without document= use it. Pass "
+                f"document={session.relative(previous)!r} to keep working on the previous one.")
     if targets:
         written = []
         try:

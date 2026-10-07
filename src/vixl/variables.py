@@ -12,7 +12,8 @@ Text, image assets, colours, link variables and imposition templates all substit
 - ``format:SPEC``: a Python format spec applied to the number (``format:08.3f``) or, for text, to
   the string (``format:>10``).
 
-Variable names are ``[\\w-]+``; an argument runs to the next ``|`` or ``}``.
+Variable names are ``[\\w-]+``; an argument runs to the next ``|`` or ``}``. ``$${name}`` is the escape: it draws
+the literal text ``${name}`` and needs no variable.
 """
 
 import math
@@ -21,7 +22,9 @@ import re
 from .errors import VixlError, require
 
 NAME = re.compile(r"[\w-]+")
-PLACEHOLDER = re.compile(r"\$\{([\w-]+)((?:\|[^|{}]*)*)\}")
+PLACEHOLDER = re.compile(r"(?<!\$)\$\{([\w-]+)((?:\|[^|{}]*)*)\}")
+# ``$${name}`` writes a literal ``${name}``; substitution drops one dollar sign.
+_SUBSTITUTION = re.compile(r"\$(\$\{[\w-]+(?:\|[^|{}]*)*\})|\$\{([\w-]+)((?:\|[^|{}]*)*)\}")
 FILTERS = {"upper": False, "lower": False, "title": False, "default": True, "map": True, "number": None, "format": True}
 # Maps travel with the variables under a key no ${name} can spell, so merged dicts keep them.
 MAPS = "|maps"
@@ -126,7 +129,8 @@ def _apply(name, value, filters, maps):
             except (ValueError, TypeError) as exc:
                 raise VixlError("invalid_filter", f"format:{argument} cannot format {text!r}: {exc}",
                                 field="text") from None
-    require(not missing, f"Undefined variable: {name}", "missing_variable")
+    require(not missing, f"Undefined variable: {name}. Define it with a variable operation, add |default:TEXT, or write "
+            f"$${{{name}}} for the literal text ${{{name}}}", "missing_variable")
     return str(text)
 
 
@@ -137,9 +141,22 @@ def substitute(value, variables):
     maps = variables.get(MAPS) or {}
 
     def replace(match):
-        return _apply(match[1], variables.get(match[1]), parse_filters(match[2]), maps)
+        if match[1] is not None:
+            return match[1]
+        return _apply(match[2], variables.get(match[2]), parse_filters(match[3]), maps)
 
-    return PLACEHOLDER.sub(replace, value)
+    return _SUBSTITUTION.sub(replace, value)
+
+
+# Resolved layers carry this flag once their text (and rich spans) hold the final, substituted text; substituting
+# again would expand a literal ``${name}`` written as ``$${name}``.
+RESOLVED = "_text_resolved"
+
+
+def layer_text(layer, variables, key="text"):
+    """A layer's display text: substituted, unless the layer is a resolved copy that already is."""
+    value = layer.get(key, "")
+    return value if layer.get(RESOLVED) else substitute(value, variables)
 
 
 # Geometry that can hold hundreds of thousands of numbers and never holds placeholders.

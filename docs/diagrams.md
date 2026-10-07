@@ -106,13 +106,15 @@ CEO
 | --- | --- | --- |
 | `layered` | flowcharts, dependency graphs, pipelines | Sugiyama style: layers by longest path, crossing minimisation, straightened long edges, labels on tracks between layers |
 | `tree` | org charts, hierarchies, taxonomies | contour-packed tidy tree; several roots sit side by side; extra (non-tree) edges are routed around nodes |
-| `radial` | one root with many branches | concentric rings, angles shared by subtree size |
-| `mindmap` | brainstorms | two balanced horizontal trees left and right of the root; curved connectors |
+| `radial` | one root with many branches | concentric rings, angles shared by subtree size; a back edge (a cycle) is routed around the nodes |
+| `mindmap` | brainstorms | two balanced horizontal trees left and right of the root; curved connectors; extra edges are routed around nodes |
 | `grid` | inventories, architecture blocks | row-major in input order (`columns`); connectors avoid the boxes |
 
 `direction` is `TB` (default), `LR`, `BT` or `RL` for layered and tree layouts. `routing` is `orthogonal` (right
 angles with bends on non-overlapping tracks), `curved` (cubic S-curves) or `straight`.
-`node_gap` and `rank_gap` (px at scale 1) loosen or tighten the spacing.
+`node_gap` and `rank_gap` (px at scale 1) loosen or tighten the spacing. Extra edges (a cycle's back edge, edges the
+layout did not place) attach beside the connectors already on a side, so a pair such as `A -> B` and `B -> A` draws as
+two lines rather than one two-headed arrow.
 
 ### Groups, lanes and clusters
 
@@ -167,6 +169,7 @@ same spec gives the same geometry.
 | --- | --- |
 | two nodes overlap | error |
 | an edge passes through a node (its own or another) | error |
+| two edges run on top of each other, so they read as one line or a two-headed arrow (edges from one source or into one target may share a trunk) | error |
 | a label does not fit inside its node, or an edge label overlaps a node | error |
 | a label has less than 4.5:1 contrast with its node's fill | error |
 | a label is under 9 px on the canvas; the diagram was scaled down to unreadable text | warning |

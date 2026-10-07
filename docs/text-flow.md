@@ -55,7 +55,8 @@ unbroken text would, and every character of the story lands in exactly one frame
 
 **The story**: `text` (plain), `markdown` or `spans` + `paragraphs` (rich, same syntax as `rich-text`), or `target`: an
 existing text layer whose text and style become the story and which becomes the first frame. Tabs become spaces.
-`${variables}` are not expanded while flowing, so write literal text. The story holds up to 100,000 characters.
+`${variables}` are filled in when the frames draw, but the flow measures the story as written, so prefer literal text;
+write `$${name}` for a literal `${name}`. The story holds up to 100,000 characters.
 
 **Frames**: `{x, y, width, height}` makes one frame. Add `columns` and `gutter` (default 1.5× the font size) to split the
 frame into equal columns; each column is a text layer and one link in the chain. `page` puts the frame on another page of a

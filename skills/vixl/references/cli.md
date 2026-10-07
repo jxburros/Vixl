@@ -61,7 +61,7 @@ set "PATH=%LOCALAPPDATA%\Programs\Vixl\bin;%PATH%"
 | `save [COPY.vixl]` | Save / save-as |
 | `status` | Canvas, active layer, head, branch, transaction flag |
 | `inspect [LAYER]` | Full JSON state (or one layer) incl. `resolved_bounds` |
-| `layers` | Layer list |
+| `layers [--full]` | Layer list (long path data abbreviated unless `--full`) |
 | `describe` | Document description |
 | `effects [LAYER]` | Effect stack with IDs/indices |
 | `manifest`, `dependencies`, `reproduce --check` | Assets, fonts, providers; can it re-render? |

@@ -16,7 +16,7 @@ from .assets import decode, read_bounded
 from .constants import EFFECTS as EFFECTS
 from .errors import VixlError, require
 from .model import MAX_LAYERS, finite
-from .variables import substitute as substitute, with_maps
+from .variables import RESOLVED, layer_text, substitute as substitute, with_maps
 
 BLENDS = ("normal", "multiply", "screen", "overlay", "darken", "lighten", "difference", "add", "subtract")
 CANVAS_PRESETS = {
@@ -153,7 +153,7 @@ def document_variables(project):
 
 
 def text_metrics(project, layer, variables=None):
-    text = substitute(layer["text"], variables if variables is not None else document_variables(project))
+    text = layer_text(layer, variables if variables is not None else document_variables(project))
     require(len(text) <= 100000, "Text exceeds length limit", "resource_limit")
     from .richtext import active
 
@@ -291,6 +291,8 @@ def resolved_layers(project, variables=None):
             from .richtext import fill_variables
 
             fill_variables(layer["rich"], variables)  # keeps the record matching the substituted text
+        if layer["type"] == "text":
+            layer[RESOLVED] = True
         if layer.get("asset_variable"):
             name = layer["asset_variable"]
             require(name in variables, f"Undefined image variable: {name}", "missing_variable")
@@ -1643,7 +1645,11 @@ def export(
     canvas_dpi = project.state["canvas"].get("dpi")
     if dpi is not None:
         finite(dpi, "dpi", 36, 2400)
-    effective_dpi = dpi or (canvas_dpi * scale if canvas_dpi else None)
+    # requested_scale: a crisp enlargement re-renders at full size and resets ``scale`` to 1.
+    effective_dpi = dpi or (canvas_dpi * requested_scale if canvas_dpi else None)
+    if not effective_dpi and fmt == "TIFF":
+        # TIFF is a print format and readers assume 1 dpi without resolution tags; use the 72 dpi a PDF export assumes.
+        effective_dpi = 72 * requested_scale
     if effective_dpi and "dpi" not in settings:
         settings["dpi"] = (round(effective_dpi, 3), round(effective_dpi, 3))
     if color_space == "cmyk":

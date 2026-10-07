@@ -11,7 +11,11 @@ def test_named_print_sizes_resolve_with_dpi_bleed_and_orientation():
     letter = resolve("letter")
     assert (letter["width"], letter["height"], letter["dpi"]) == (2550, 3300, 300)
     bled = resolve("letter", bleed=True)
-    assert bled["bleed"] == 38 and bled["width"] == 2550 + 76 and bled["trim"] == [2550, 3300]
+    assert bled["bleed"] == 37.5 and bled["width"] == 2550 + 75 and bled["trim"] == [2550, 3300]
+    # Trim + 2 x bleed is the physical size, not one pixel more from rounding each side (#306).
+    assert (resolve("business-card", bleed=True)["width"], resolve("business-card", bleed=True)["height"]) == (1125, 675)
+    a4 = resolve("a4", bleed=True, orientation="landscape", dpi=72)
+    assert (a4["width"], a4["height"], a4["bleed"]) == (859, 612, 8.5)
     landscape = resolve("a4", orientation="landscape", dpi=150)
     assert landscape["width"] > landscape["height"] and landscape["dpi"] == 150
     assert resolve("instagram-portrait")["width"] == 1080 and "dpi" not in resolve("instagram-portrait")
@@ -35,12 +39,12 @@ def test_every_catalog_size_fits_default_limits():
 def test_sized_documents_record_print_metadata_and_guides(tmp_path):
     p = Project.sized("business-card", bleed=True)
     c = p.state["canvas"]
-    assert c["size"] == "business-card" and c["dpi"] == 300 and c["bleed"] == 38 and c["safe"] > 0
+    assert c["size"] == "business-card" and c["dpi"] == 300 and c["bleed"] == 37.5 and c["safe"] > 0
     assert {"trim-left", "safe-right"} <= set(p.state["guides"])
     assert len(p.nodes) == 1  # metadata belongs to the first revision
     p.apply({"type": "text", "name": "name", "text": "Name"})
     p.apply({"type": "constrain", "target": "name", "constraints": {"left": "guide:safe-left.left"}})
-    assert p.inspect("name")["resolved_bounds"][0] == round(p.state["guides"]["safe-left"]["position"])
+    assert p.inspect("name")["resolved_bounds"][0] == pytest.approx(p.state["guides"]["safe-left"]["position"], abs=0.5)
     p.save(tmp_path / "card.vixl")
     loaded = Project.load(tmp_path / "card.vixl")
     assert loaded.state["canvas"]["physical"]["unit"] == "in"
@@ -73,7 +77,7 @@ def test_cli_new_with_named_size(tmp_path, monkeypatch, capsys):
     canvas = json.loads(capsys.readouterr().out)["canvas"]
     assert canvas["size"] == "a5" and canvas["width"] > canvas["height"] and canvas["dpi"] == 150
     assert main(["sizes", "show", "letter", "--bleed"]) == 0
-    assert json.loads(capsys.readouterr().out)["bleed"] == 38
+    assert json.loads(capsys.readouterr().out)["bleed"] == 37.5
     assert main(["canvas", "size", "instagram-story"]) == 0
     capsys.readouterr()
     assert main(["layout", "show", "golden-section"]) == 0

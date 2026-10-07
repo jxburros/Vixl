@@ -87,7 +87,8 @@ restores them); keep a checkpoint first.
 
 Use `${headline}` for variable text, and `@accent` for a named color swatch. Variables
 allow content changes without rebuilding geometry; render overrides leave the saved master
-unchanged. Undefined variables fail rather than silently becoming blank. Font roles,
+unchanged. Undefined variables fail rather than silently becoming blank; write `$${headline}` for the literal
+text `${headline}`. Font roles,
 linked text styles and palettes let repeated elements follow shared choices.
 
 Placeholders take filters, applied left to right: `${name|upper}`, `lower`, `title`,

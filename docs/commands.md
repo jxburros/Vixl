@@ -79,7 +79,7 @@ Set `VIXL_NO_UPDATE=1` to suppress both automatic checks and pending activation 
 | `open poster.vixl` | Select an existing project for this directory. A document saved before 0.21 reports, under `upgrade`, the layers that render differently now (effects on rotated/flipped/skewed layers, `temperature`/`tint`, open stroked shapes that were filled white) |
 | `upgrade [poster.vixl] [--report] [--pin-fills]` | Accept the 0.21 rendering for an older document and stop the notice; `--pin-fills` first gives open stroked shapes the explicit white fill they used to render with (one undoable revision); `--report` only lists the affected layers |
 | `save [copy.vixl]` | Save, or save as a new selected project |
-| `status`, `inspect [LAYER]`, `describe`, `layers` | JSON state, including resolved bounds |
+| `status`, `inspect [LAYER]`, `describe`, `layers [--full]` | JSON state, including resolved bounds; `layers` abbreviates long path data and point lists (`--full` or `inspect LAYER` shows them) |
 | `manifest`, `dependencies`, `reproduce --check` | List assets/fonts/providers; check current renderability |
 | `render [project.vixl] --out preview.png --set title=Hello` | Render without persisting overrides |
 | `export image.jpg --quality 90 --scale 2x` | Export, preserving the editable document. `--quality` also compresses PDF images; `--title` sets the PDF title (default: the title layer, then the file name); `--max-bytes N` warns when a raster file is larger, and a PNG over 1 MB warns, naming texture looks (grain, paper, film) as the likely cause |
@@ -234,7 +234,7 @@ vixl validate --rules 'text.title.font-size >= 120' --rules 'layer.logo.bounds w
 
 A constraint uses `canvas` or a layer plus `.left`, `.right`, `.top`, `.bottom`, `.center-x`, `.center-y`, optionally followed by a numeric `+offset` or `-offset`. One constraint per axis is supported: `constrain` adds to a layer's existing constraints, so switching an axis from `left` to `center-x` needs `unconstrain` first (the error names both anchors). Cycles and dangling references fail atomically. Layer references become stable IDs, so renames do not break them. Delete dependents' constraints before deleting their target.
 
-Variables use `${name}` interpolation in text, colors, gradient fills, and raster asset identifiers. Asset variables must refer to **embedded asset IDs**; render overrides never load arbitrary files. Text dimensions are recomputed when variables change. Undefined variables fail explicitly. Text with `hide_if_empty` is not drawn while it is empty after substitution, and a `stack` group re-flows around it ([empty content and stacks](design-tools.md#empty-content-and-stacks)).
+Variables use `${name}` interpolation in text, colors, gradient fills, and raster asset identifiers. Asset variables must refer to **embedded asset IDs**; render overrides never load arbitrary files. Text dimensions are recomputed when variables change. Undefined variables fail explicitly; `$${name}` draws the literal text `${name}`. Text with `hide_if_empty` is not drawn while it is empty after substitution, and a `stack` group re-flows around it ([empty content and stacks](design-tools.md#empty-content-and-stacks)).
 
 Validation profiles: instagram-post / instagram-square (1:1; Instagram also checks PNG under 8 MB), story (9:16), youtube-thumbnail (16:9). All check layer bounds; artwork marked `layer-intent NAME --role decoration` that bleeds off the edge on purpose is a warning, not an error (unless it is text or entirely off the canvas). Text under 24 px is a warning. Font sizes, here and in `text.NAME.font-size` assertions, are the sizes text renders at: a linked character style's size takes precedence. Visible text with characters no font can draw fails validation. Rules files are JSON arrays of assertion strings; `--rules` also takes a single assertion and can repeat. Comparisons support `==`, `!=`, `>`, `<`, `>=`, `<=`; quote shell operators. Assertions are parsed, never evaluated as Python.
 
@@ -324,7 +324,7 @@ vixl type-scale [--base PX] [--ratio golden|perfect-fourth|…|1.3] [--prefix P]
 
 vixl color [info] COLOR… [--ink-limit 300] | color convert COLOR --to hex|rgb|hsl|hsv|hwb|cmyk|lab|lch|oklab|oklch|css
 vixl color harmony COLOR --scheme complementary|analogous|triadic|split-complementary|tetradic|square|monochromatic|tints|shades|tones [--count N]
-vixl color scale COLOR | color mix A B [--amount 0.5] [--space oklab] | color contrast FG BG | color names QUERY
+vixl color scale COLOR | color scale A B [C…] [--count 5] [--space oklab] | color mix A B [--amount 0.5] [--space oklab] | color contrast FG BG | color names QUERY
 vixl palette-generate NAME COLOR [--scheme scale|HARMONY] [--count N]
 
 vixl export FILE.pdf|.tif|.jpg --cmyk [--icc PROFILE.icc] [--intent perceptual|relative|saturation|absolute]

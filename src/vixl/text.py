@@ -147,8 +147,9 @@ def fallback_chain(primary, fallbacks):
 
 def font_data(project, layer):
     primary = primary_font_data(project, layer)
-    from .render import document_variables, substitute
-    text = substitute(layer.get("text", ""), document_variables(project))
+    from .render import document_variables
+    from .variables import layer_text
+    text = layer_text(layer, document_variables(project))
     if all(not visible_char(c) or ord(c) in coverage(primary) for c in text):
         return primary
     names = [*project.state.get("font_fallbacks", []), "DejaVuSans.ttf"]

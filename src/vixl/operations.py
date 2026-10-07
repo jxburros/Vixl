@@ -46,7 +46,7 @@ import re
 import numpy as np
 from PIL import Image, ImageDraw, ImageOps
 
-from .assets import add_encoded, add_image, decode, read_bounded
+from .assets import add_encoded, add_image, decode, image_size, read_bounded
 from .denoise import KEYS as DENOISE_KEYS, validate as denoise_valid
 from .errors import VixlError, require
 from .geometry import compact_number
@@ -556,17 +556,19 @@ def execute(project, op):
         else:
             source = Path(op["path"]).resolve()
             data = read_bounded(source, project.limits.max_asset_bytes)
-            asset, image = add_encoded(project, data)
+            # A downsampled add decodes once, below, so a source above the pixel limit can still be imported.
+            downsampled = op.get("max_pixels") is not None or op.get("downsample")
+            asset, image = (None, None) if downsampled else add_encoded(project, data)
             provenance = {
                 "type": "imported",
                 "original_filename": source.name,
                 "original_path": str(source),
                 "checksum": hashlib.sha256(data).hexdigest(),
             }
-        original_size = image.size
+        original_size = image.size if image is not None else image_size(data, project.limits)
         # Raster boxes are whole pixels; fractional sizes from layout arithmetic round to the nearest one.
-        width, height = (max(1, round(finite(v, k))) for v, k in ((op.get("width", image.width), "width"),
-                                                                  (op.get("height", image.height), "height")))
+        width, height = (max(1, round(finite(v, k))) for v, k in ((op.get("width", original_size[0]), "width"),
+                                                                  (op.get("height", original_size[1]), "height")))
         if op.get("max_pixels") is not None or op.get("downsample"):
             require(not op.get("linked"), "Downsampling requires an embedded image, not linked=True", field="downsample")
             require(op.get("downsample") in (None, "placed@2x"), "downsample must be placed@2x", field="downsample")
@@ -575,6 +577,11 @@ def execute(project, op):
                                        fit=op.get("fit", "fill"))
             provenance.update(original_size=list(original_size), embedded_size=list(image.size))
             provenance.update({key: op[key] for key in ("downsample", "max_pixels") if key in op})
+            limits = project.limits
+            if ("width" not in op and "height" not in op
+                    and (width * height > limits.max_pixels or max(width, height) > limits.max_dimension)):
+                # A source above the pixel limit cannot keep its own size as the layer box; use the embedded size.
+                width, height = image.size
         from .image_import import attribution
 
         provenance.update(attribution(op.get("credit"), op.get("license")))

@@ -461,6 +461,28 @@ def test_check_reports_edges_through_nodes():
     assert any("passes through" in i["message"] and "'B'" in i["message"] for i in found if i["severity"] == "error")
 
 
+CYCLE = "Idea -> Sketch -> Prototype -> Test\nTest -> Prototype: iterate\nTest -> Launch\nLaunch -> Measure -> Idea"
+
+
+@pytest.mark.parametrize("layout", ["radial", "mindmap", "tree", "layered"])
+def test_cycle_back_edges_go_around_nodes_and_beside_their_tree_edges(layout):
+    p = Project(1200, 900, "white")
+    p.apply({"type": "diagram-from-text", "name": "d", "text": CYCLE, "layout": layout})
+    found = [i["message"] for i in issues(p)]
+    assert not [m for m in found if "passes through" in m or "on top of each other" in m], found
+
+
+def test_check_reports_edges_drawn_on_top_of_each_other():
+    p = Project(1000, 800, "white")
+    p.apply([{"type": "diagram", "name": "d", "nodes": ["A", "B"], "edges": [["A", "B"], ["B", "A"]], "layout": "tree"}])
+    assert not [i for i in issues(p) if "on top of each other" in i["message"]]
+    record = p.state["diagrams"]["d"]["layout"]["edges"]
+    # the back edge laid over the forward one, as the tree layout drew it before (a two-headed arrow)
+    record["B->A"]["points"] = list(reversed(record["A->B"]["points"]))
+    found = [i for i in issues(p) if "on top of each other" in i["message"]]
+    assert found and found[0]["severity"] == "error" and "'A->B'" in found[0]["message"]
+
+
 def test_check_reports_unreadable_labels():
     p, _ = make("A -> B")
     p.apply([{"type": "text-set", "target": "d/A.label", "color": "#f4f4f4"}])

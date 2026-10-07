@@ -33,6 +33,16 @@ def test_compose_builds_saves_and_exports_in_one_call(tmp_path):
     assert project.layer("dot") and project.state.get("style")
 
 
+def test_compose_says_when_it_replaces_the_active_document(tmp_path):
+    session = Session(workspace=tmp_path)
+    first, _ = compose(session, path="first.vixl", width=200, height=100)
+    assert first["active_document"] is True and not first.get("warnings")
+    session.create(tmp_path / "jazz.vixl", 300, 200)
+    result, _ = compose(session, path="card.vixl", width=200, height=100)
+    assert session.path == tmp_path / "card.vixl" and result["active_document"] is True
+    assert any("card.vixl is now the active document" in w and "document='jazz.vixl'" in w for w in result["warnings"])
+
+
 def test_a_failing_step_is_named_and_nothing_is_written(tmp_path):
     session = Session(workspace=tmp_path)
     with pytest.raises(VixlError) as caught:

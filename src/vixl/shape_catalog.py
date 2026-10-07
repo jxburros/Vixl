@@ -114,6 +114,7 @@ SHAPE_PARAMETERS = {
     "cylinder": ("depth",),
     "cube": ("depth",),
     "star-rating": ("count", "rating"),
+    "confetti": ("count", "seed", "radius"),
 }
 # New per-shape parameters: a shape that does not read one of these ignores it (reported as an advisory).
 SHAPE_ONLY = ("cleft", "tip", "body", "pointer_side", "slant")
@@ -166,6 +167,35 @@ def rounded_polygon(points, radii=0, style="round"):
             q = (a[0] + b[0] - p[0], a[1] + b[1] - p[1]) if style == "inverted" else p
             output.append(f"Q{q[0]:g} {q[1]:g} {b[0]:g} {b[1]:g}")
     return " ".join(output) + " Z"
+
+
+def confetti(w, h, count, seed=0):
+    """``count`` small rounded slips scattered over the box at seeded positions and angles, kept apart so they do
+    not overlap (a dense count shrinks the slips)."""
+    import random
+
+    rng = random.Random(f"confetti:{seed}")
+    count = max(1, min(int(count), 128))
+    size = math.sqrt(w * h / count) * 0.5
+    placed, pieces = [], []
+    for _ in range(count):
+        long, short = size * rng.uniform(0.8, 1.2), size * rng.uniform(0.35, 0.5)
+        reach = math.hypot(long, short) / 2
+        if 2 * reach > min(w, h):
+            long, short = min(w, h) * 0.9, min(w, h) * 0.4
+            reach = math.hypot(long, short) / 2
+        for _attempt in range(40):
+            cx, cy = rng.uniform(reach, w - reach), rng.uniform(reach, h - reach)
+            if all(math.dist((cx, cy), (x, y)) >= reach + r for x, y, r in placed):
+                break
+        else:
+            continue
+        placed.append((cx, cy, reach))
+        angle = rng.uniform(0, math.pi)
+        co, si = math.cos(angle), math.sin(angle)
+        corners = [(-long / 2, -short / 2), (long / 2, -short / 2), (long / 2, short / 2), (-long / 2, short / 2)]
+        pieces.append(rounded_polygon([(cx + x * co - y * si, cy + x * si + y * co) for x, y in corners], short * 0.25))
+    return " ".join(pieces)
 
 
 def rectangle(w, h, radius=0, style="round"):
@@ -669,7 +699,9 @@ def path(layer):
                     pts.append([(q * w, d), (w - d, q * h), ((1 - q) * w, h - d), (d, (1 - q) * h)][side])
             return poly(pts)
         if k == "confetti":
-            return rectangle(w, h, p.get("radius", mn * 0.15))
+            if p.get("count") is None:
+                return rectangle(w, h, p.get("radius", mn * 0.15))
+            return confetti(w, h, int(p["count"]), p.get("seed", 0))
         return rectangle(w, h, p.get("notch", mn * 0.15), "inverted" if k == "ticket" else "chamfer")
     if k == "callout":
         s = length(p.get("pointer_size"), mn, mn * 0.2)

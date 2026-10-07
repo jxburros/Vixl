@@ -114,7 +114,7 @@ Styles:    styles [list [QUERY] | show NAME | apply NAME [--palette] | check [NA
 Dice:      roll [--apply] [--set title=…] [--for poster] [--mood M] [--size NAME] [--seed N|random] [--lock palette=sage]
            [--variety low|medium|high] [--unfilled omit|blank] [--house-style 1], house [show PURPOSE] (the house style)
 Color:     color [info] COLOR…, color convert COLOR --to oklch|cmyk|…, color harmony COLOR --scheme triadic,
-           color scale COLOR, color mix A B, color contrast FG BG, color names QUERY,
+           color scale COLOR | A B [--count N], color mix A B, color contrast FG BG, color names QUERY,
            palette-generate NAME COLOR [--scheme scale|triadic|…], type-scale --base 16 --ratio golden
 Paint:     brushes, paint-layer [--name N], paint [LAYER] --brush ink --points JSON | --path SVG
            [--size N] [--color C] [--erase], paint-clear [LAYER] [--last N], brush-define NAME --base B
@@ -142,6 +142,21 @@ Import:    import FILE.svg [--svg-mode editable|appearance|auto] | FILE.pdf [--p
 Options: --project/-p FILE, --json, --allow-linked, --plugins, --max-pixels N, --detail brief|compact|full, --version
 Use vixl commands --json for a complete inventory; vixl COMMAND --help works without a document. See docs/commands.md.
 """
+
+
+# Geometry that can run to thousands of numbers; `layers` abbreviates it (inspect LAYER and `layers --full` keep it).
+BULKY = ("path", "path_view", "path_nodes", "points", "nodes", "strokes", "pixels", "mesh")
+
+
+def listing_layer(layer):
+    """A layer for the `layers` listing: long path data and point lists become a short note."""
+    result = {}
+    for key, value in layer.items():
+        if key in BULKY and not isinstance(value, (int, float)) and len(json.dumps(value, default=str)) > 160:
+            size = f"{len(value):,} characters" if isinstance(value, str) else f"{len(json.dumps(value, default=str)):,} bytes"
+            value = f"<{size}; vixl inspect {layer['name']} shows it>"
+        result[key] = value
+    return result
 
 
 def emit(value, machine=False):
@@ -616,7 +631,7 @@ def command_help(cmd, args):
         "status": "status",
         "session": "session --project FILE (NDJSON operations or command argv requests on stdin)",
         "describe": "describe [image]",
-        "layers": "layers",
+        "layers": "layers [--full] (list layers; long path data is abbreviated unless --full)",
         "effects": "effects [LAYER]",
         "manifest": "manifest",
         "dependencies": "dependencies",
@@ -715,7 +730,9 @@ def project_command(project, cmd, args, *, detail="compact"):
         require(len(args) <= 1, f"Usage: vixl {cmd} [LAYER] (or --target LAYER)")
         return project.inspect(args[0] if args else None), False
     if cmd == "layers":
-        return project.inspect()["layers"], False
+        require(args in ([], ["--full"]), "Use layers [--full]")
+        layers = project.inspect()["layers"]
+        return layers if args else [listing_layer(layer) for layer in layers], False
     if cmd == "effects":
         return deepcopy(project.layer(args[0] if args else None)["effects"]), False
     if cmd == "manifest":

@@ -101,11 +101,12 @@ def glyph_reports(project, layers):
     """``(layer, {"missing", "fallback"})`` for resolved text layers whose characters need a
     fallback font or that no available font covers. Text is read with the project's variables."""
     from .text import glyph_coverage
-    from .render import document_variables, substitute
+    from .render import document_variables
     from .richtext import active, glyph_coverage as rich_coverage
+    from .variables import layer_text
 
     for item in layers:
-        view = {**item, "text": substitute(item["text"], document_variables(project))}
+        view = {**item, "text": layer_text(item, document_variables(project))}
         report = (rich_coverage if active(view) else glyph_coverage)(project, view)
         if report["missing"] or report["fallback"]:
             yield item, report
@@ -116,7 +117,8 @@ def boxed_text_need(project, layer):
     box width, else None. Fitted, warped and path text are skipped: fit shrinks to the box, and
     warps and paths are laid out differently."""
     from .text import measure, font_data, UnsupportedText
-    from .render import document_variables, substitute
+    from .render import document_variables
+    from .variables import layer_text
 
     settings = layer.get("text_layout") or {}
     if layer["type"] != "text" or "width" not in settings or settings.get("fit") or settings.get("path"):
@@ -130,7 +132,7 @@ def boxed_text_need(project, layer):
         return math.ceil(result.box[2]), math.ceil(result.box[3])
     if settings.get("warp", "none") != "none":
         return None
-    text = substitute(layer["text"], document_variables(project))
+    text = layer_text(layer, document_variables(project))
     try:
         _, box = measure(font_data(project, layer), text, layer["size"], layer.get("spacing", 4),
                          layer.get("align", "left"), layer["width"])

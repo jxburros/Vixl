@@ -68,7 +68,9 @@ Page settings:
 - `transition` — `fade`, `push`, `wipe`, `cover`, `split` or `zoom` in PowerPoint and in the HTML
   presentation.
 
-Built-in variables: `${page}` (the page number), `${pages}` (the page count) and `${page_name}`.
+Built-in variables: `${page}` (the page number), `${pages}` (the page count) and `${page_name}`. Hidden pages are
+not counted, so a deck with one hidden page among four reads 1 / 3 to 3 / 3 in every format; a hidden page itself
+shows the number the next shown page has.
 
 ## Masters
 
@@ -127,8 +129,9 @@ slides) that opens in PowerPoint, Keynote, Google Slides and LibreOffice:
   Plain groups become groups.
 - A [chart](charts.md) becomes a native chart with its data table embedded, so *Edit Data* works.
   A rotated or flipped chart is exported as its shapes, and the report lists each chart under `charts`.
-- Image layers become pictures. Layers PowerPoint cannot draw the same way become pictures of
-  exactly what Vixl renders and are listed under `raster_fallbacks`.
+- Image layers become pictures. Layers PowerPoint cannot draw the same way (effects, masks, blend modes, and
+  `skew` or `affine` transforms, which DrawingML cannot hold) become pictures of exactly what Vixl renders and are
+  listed under `raster_fallbacks` with the reason (`skew`, `affine transform`, ...).
 - Master layers are drawn on each slide (as ordinary shapes, so every slide matches the
   render). Speaker notes become the slide notes; transitions carry over.
 - Slide size: canvases with a `dpi` keep their physical size; screen canvases become 7.5 inches

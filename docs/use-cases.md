@@ -84,6 +84,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | BLK-16 | Relink the links in a copied `.vixl` | `links-relink {from, to}` | 1 · <1 | E | Since 0.22; sources beside the document are stored relative to it. |
 | DOC-31 | Import an image from a URL with its credit and licence | `vixl_import_image(url=…, credit, license)` | 1 · <1 | E | Since 0.22; https only, private hosts refused. |
 | DOC-32 | Merge layers into one, or flatten the page | `merge-layers`, `flatten` | 1 · <1 | E | Since 0.22; undo restores the originals. |
+| DOC-33 | Import a camera photo above the pixel limit (108 MP) | `vixl_import_image`, or `add` with `max_pixels` | 1 · <2 | E | Since 0.23; downsampled to the limit, sources up to 4× it. |
 
 ### Text and typography
 
