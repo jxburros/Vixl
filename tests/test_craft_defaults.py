@@ -147,6 +147,45 @@ def test_memes_pass_their_own_safe_area_check(size, name, slots, count):
     assert not issues, [i["message"] for i in issues]
 
 
+def _social_sizes():
+    from vixl.sizes import SIZES
+
+    return [name for name, entry in SIZES.items() if entry["category"] in ("social", "web")]
+
+
+def _rollable_on(size):
+    """Layouts a social roll can pick for this size (tier, purpose, orientation), plus app-icon."""
+    from vixl import house_style
+    from vixl.sizes import SIZES
+    from vixl.variety import orientation
+
+    shape = orientation(SIZES[size]["width"], SIZES[size]["height"])
+    for name, meta in sorted(house_style.entries("layouts").items()):
+        rollable = meta["tier"] != "explicit" and "social" in meta.get("purposes", [])
+        if (rollable or name == "app-icon") and shape in meta.get("orientations", [shape]):
+            yield name, shape
+
+
+@pytest.mark.parametrize("size", _social_sizes())
+def test_layouts_pass_their_own_safe_area_check_on_social_and_web_sizes(size):  # #409, #370
+    from vixl.layouts import places
+
+    copy = {"title": "Summer Night Market", "subtitle": "Food, music and late shopping", "label": "June 21",
+            "cta": "Free entry"}
+    failures = []
+    for index, (name, shape) in enumerate(_rollable_on(size)):
+        # A roll only picks a layout that places all the copy it was given; try the full brief, then less.
+        slots = next((dict((k, copy[k]) for k in keys) for keys in (("cta", "label", "subtitle", "title"),
+                      ("subtitle", "title"), ("title",)) if places(name, shape, keys)), None)
+        if slots is None:
+            continue
+        project = Project.sized(size, design=False)
+        project.apply({"type": "layout-apply", "name": name, "seed": index % 3, "unfilled": "omit", **slots})
+        failures += [f"{name}: {i['message']}" for i in project.check(checks=["safe_area"])["issues"]
+                     if i["check"] == "safe_area" and i["severity"] != "info"]
+    assert not failures, failures
+
+
 # Primitive fills, strokes and corners (#410)
 
 def test_primitives_use_the_palette_roles():
@@ -192,6 +231,40 @@ def test_new_rounded_shapes_inherit_the_document_corner_style():
     project.state["design_defaults"] = {"seed": 1, "variety": "medium", "direction": {"corner": "round"}}
     project.apply({"type": "shape", "shape": "rounded-rectangle", "name": "round", "width": 200, "height": 100})
     assert project.layer("round")["radius"] == 25
+
+
+@pytest.mark.parametrize("corner, radius", [(None, 0), ("pill", 0.5), ("soft", 0.08)])
+def test_layout_buttons_inherit_the_document_corner_style(corner, radius):
+    project = Project.sized("instagram-portrait", design=False)
+    if corner:
+        project.state["design_defaults"] = {"seed": 1, "variety": "medium", "direction": {"corner": corner}}
+    for seed in range(4):
+        trial = project.clone()
+        trial.apply({"type": "layout-apply", "name": "quiet-editorial", "seed": seed, "title": "Open studio",
+                     "cta": "Book a visit", "unfilled": "omit"})
+        button = trial.layer("cta-button")
+        # Without a stored direction the house corner (sharp) applies, not a random pill/rounded/square.
+        assert button.get("radius", 0) == pytest.approx(button["height"] * radius, abs=1)
+
+
+def test_containers_and_directions_inherit_the_corner_style():
+    project = Project(1200, 900)
+    project.apply([{"type": "swatch", "name": role, "color": value} for role, value in
+                   (("ink", "#111111"), ("accent", "#c0392b"), ("on-accent", "#ffffff"), ("muted", "#555555"))])
+    project.state["design_defaults"] = {"seed": 1, "variety": "medium", "direction": {"corner": "sharp"}}
+    project.apply({"type": "container-place", "name": "card", "resource": "cta", "variant": "default",
+                   "width": 600, "height": 300})
+    part = project.layer("card/button-background")
+    assert part["shape"] == "rectangle" and not part.get("radius")
+    project.state["design_defaults"]["direction"]["corner"] = "pill"
+    project.apply({"type": "container-place", "name": "pill", "resource": "cta", "variant": "default",
+                   "width": 600, "height": 300})
+    assert project.layer("pill/button-background")["radius"] == pytest.approx(300 * 0.27 * 0.5, abs=1)
+    # A direction without a corner falls back to the house corner, sharp (E8), not soft.
+    plain = Project(800, 800)
+    plain.apply({"type": "layout-apply", "name": "soft-panel", "seed": 2, "title": "Hello", "unfilled": "omit",
+                 "direction": {"look": "none"}})
+    assert plain.layer("quiet-panel")["shape"] == "rectangle" and not plain.layer("quiet-panel").get("radius")
 
 
 def test_brush_defaults_follow_the_stroke_rule():

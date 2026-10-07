@@ -329,3 +329,71 @@ def test_house_style_eval_subset_scores_quality_and_diversity():
         assert quality["fonts_installed"] == 1.0 and quality["contrast_pass"] == 1.0
         assert quality["min_ink_contrast"] >= 7
     assert {row["tier"] for row in runs if row["level"] == "low"} == {"safe"}
+
+
+# --- one data file for craft and purposes (#401) ------------------------------------------------
+
+
+def test_craft_values_come_from_the_data(monkeypatch):
+    # Changing a craft value in the data changes text, layouts, charts and new documents alike.
+    from vixl.craft import natural_height
+    from vixl.layouts import Builder
+    from vixl.text import font_data
+
+    craft = house_style._data()["craft"]
+    monkeypatch.setitem(craft, "line_height", {**craft["line_height"], "body": 2.0, "heading": 1.6})
+    monkeypatch.setitem(craft, "safe_area", 0.1)
+    monkeypatch.setitem(craft, "neutral_fill", "#123456")
+    monkeypatch.setitem(craft, "spacing", {**craft["spacing"], "unit": 1.0})
+    p = Project(1000, 1000)
+    assert p.state["canvas"]["safe"] == 100
+    p.apply([{"type": "text", "name": "t", "text": "Body copy"},
+             {"type": "shape", "shape": "rectangle", "name": "box", "width": 100, "height": 100}])
+    assert p.layer("t")["line_height"] == 2.0 and p.layer("box")["fill"] == "#123456"
+    builder = Builder(p, LAYOUTS["quiet-editorial"], {"density": "balanced", "base_size": 40}, 1)
+    assert builder.unit == 40
+    p.apply({"type": "chart", "name": "c", "kind": "bar", "title": "A title that wraps\nover two lines",
+             "categories": ["a", "b"], "series": [{"name": "s", "values": [1, 2]}]})
+    title = next(layer for layer in p.state["layers"] if layer.get("chart_part") == "title")
+    pitch = natural_height(font_data(p, title), title["size"]) + title["spacing"]
+    assert pitch == pytest.approx(1.6 * title["size"], abs=1)
+
+
+def test_creation_and_rolls_share_one_purpose_vocabulary():
+    from vixl.sizes import SIZES, is_mark, purpose_name, purpose_size
+
+    data = house_style.data()
+    for purpose in house_style.PURPOSES:
+        assert data["purposes"][purpose]["size"] in (*SIZES, "paper"), purpose
+    for name in house_style.purpose_names():
+        purpose = purpose_name(name)
+        assert purpose == house_style.purpose_for(name) == roll(1, purpose=name)["purpose"], name
+        assert purpose_size(name) in SIZES, name
+        assert is_mark(name) == bool(data["purposes"][purpose].get("mark")), name
+    assert {purpose for purpose in house_style.PURPOSES if data["purposes"][purpose].get("mark")} == {"logo"}
+    assert purpose_size("story") == "story" and purpose_size("icon") == "app-icon" and purpose_size("web") == "og-image"
+    with pytest.raises(Exception, match="Unknown purpose"):
+        purpose_name("slids")
+
+
+def test_density_follows_the_purpose_but_may_deviate():  # E4
+    counts = {purpose: Counter(r["direction"]["density"] for r in _rolls(150, purpose=purpose))
+              for purpose in ("document", "diagram", "slides")}
+    assert counts["document"].most_common(1)[0][0] == "airy"
+    assert counts["diagram"].most_common(1)[0][0] == "dense"
+    assert counts["slides"].most_common(1)[0][0] == "balanced"
+    assert all(len(counter) == 3 for counter in counts.values())
+
+
+def test_playful_and_bold_rolls_get_large_headlines():  # #285
+    assert all(r["direction"]["headline"] == "large" for r in _rolls(40, purpose="poster", mood="playful"))
+    assert all(r["direction"]["headline"] == "measured" for r in _rolls(40, purpose="poster", variety="low"))
+    sizes = {}
+    for headline in ("measured", "large"):
+        p = Project.sized("instagram-portrait", design=False)
+        p.apply({"type": "layout-apply", "name": "calm-cover", "seed": 4, "title": "Summer Night Market",
+                 "subtitle": "Food and music", "unfilled": "omit", "type_scale": "perfect-fifth",
+                 "direction": {"headline": headline, "look": "none"}})
+        sizes[headline] = p.layer("headline")["size"]
+    # The measured headline holds 14 characters a line; a large one holds 8, so it fills the canvas.
+    assert sizes["large"] >= sizes["measured"] * 1.5

@@ -160,6 +160,11 @@ def roll_pairing(seed=None, mood=None, best_for=None):
     return random.Random(seed).choice(pool), seed
 
 
+def _weighted_choice(rng, weights):
+    names = sorted(name for name, value in weights.items() if value > 0)
+    return rng.choices(names, weights=[weights[name] for name in names], k=1)[0]
+
+
 def roll(seed=None, *, purpose=None, mood=None, canvas=None, locks=None, variety="medium", recent=None,
          house_style_version=None, recommend=None, content=None):
     """Roll a coherent design direction from the house style: a tier, then pairing, mode, palette and layout.
@@ -263,13 +268,17 @@ def roll(seed=None, *, purpose=None, mood=None, canvas=None, locks=None, variety
         "palette": choose(rng, palettes, recent, "palette", palette_weights),
         "mode": mode,
         "type_scale": rng.choice([name for name in profile["type_scales"] if name in RATIOS]),
-        "density": rng.choice(DENSITY_CHOICES),
+        # Density usually follows the purpose (its profile's weights) but may deviate (decision E4).
+        "density": _weighted_choice(rng, profile["density"]) if profile.get("density") else rng.choice(DENSITY_CHOICES),
         "accent": rng.choice(ACCENTS),
         "layout_seed": rng.randrange(2**32),
         **dimensions(rng, pairing, variety, tier=tier, purpose=goal, moods=wanted, recommend=recommend),
         "tier": tier,
         "purpose": goal,
     }
+    # Bold and expressive rolls set the headline large; quiet ones keep the measured headline (#285).
+    expressive = bool(wanted & {slug(m) for m in tuning["expressive"]})
+    direction["headline"] = "large" if direction["tier"] != "safe" or expressive else "measured"
     unknown = set(locks) - set(direction)
     require(not unknown, f"Unknown lock(s) {sorted(unknown)}; lockable: {', '.join(direction)}", field="locks")
     direction.update(locks)

@@ -19,7 +19,7 @@ import secrets
 from PIL import Image, ImageDraw
 
 from . import house_style
-from .craft import LINE_HEIGHT, base_size
+from .craft import CORNERS, LINE_HEIGHT, base_size, corner_style, measure_chars, spacing_unit
 from .errors import VixlError, require
 from .safe_catalog import SAFE_PALETTES
 from .sizes import safe_sides
@@ -111,7 +111,13 @@ class Builder:
             thumbnail = 600 if named in ("og-image", "x-post") or (not named and self.W / self.H > 1.6) else 320
             minimum = math.ceil(self.W / thumbnail * 10)
             self.sizes = {role: max(minimum, value) for role, value in self.sizes.items()}
-        self.unit = max(2, round(base / 2 * DENSITY_SPACING[density]))
+        # The spacing unit: half the body size (craft spacing), scaled by density.
+        self.unit = spacing_unit(base * DENSITY_SPACING[density])
+        direction = op.get("direction") or {}
+        # Corners follow the rolled direction, else the document's stored direction, else the house corner.
+        self.corner = direction.get("corner") if direction.get("corner") in CORNERS else corner_style(project)
+        # A bold or expressive roll sets headlines large (#285); quiet rolls keep the measured headline.
+        self.large = direction.get("headline") == "large"
         # Color roles with contrast guarantees.
         self.colors = assign_roles(op, self.rng)
         self.contrast = round(contrast_ratio(parse(self.colors["ink"])[:3], parse(self.colors["background"])[:3]), 2)
@@ -190,9 +196,7 @@ class Builder:
             return self.leading(s, multiple, font)
 
         if heavy and isinstance(role, str):
-            # Keep a readable measure: a heavy line should hold ~10–14 characters, never one word.
-            chars = min(10 if role == "display" else 14, len(content))
-            size = min(size, max(6, int(width / (chars * 0.56))))
+            size = self.measure_cap(role, content, size, width)
         if heavy and max_height is None:
             max_height = self.ch * 0.55
 
@@ -212,6 +216,14 @@ class Builder:
         self.add({"type": "text-layout", "target": layer, "width": width, "height": max(1, h)})
         self.created.append(layer)
         return (round(x), round(y), width, h)
+
+    def measure_cap(self, role, content, size, width):
+        """Keep a readable measure: a heavy line holds at least ~10 (display) or 14 (headings) characters,
+        never one word, so a headline is at most ``width / (chars × glyph width)``. Large headlines (bold
+        and expressive rolls) hold 8, so they can fill the canvas (craft ``headline_measure``)."""
+        chars, glyph = measure_chars("display" if role == "display" else "heading", self.large)
+        chars = min(chars, len(content))
+        return min(size, max(6, int(width / (chars * glyph))))
 
     def leading(self, size, multiple, font=None):
         """Pixel spacing that puts baselines ``multiple`` × ``size`` apart in ``font`` (see craft.spacing_for)."""
@@ -239,7 +251,10 @@ class Builder:
         self.created.append(layer)
         return (round(cx - w / 2), round(cy - h / 2), w, h)
 
-    def rect(self, name, x, y, w, h, fill="@accent", radius=0, opacity=None, stroke=None, stroke_width=None, shape=None):
+    def rect(self, name, x, y, w, h, fill="@accent", radius=0, opacity=None, stroke=None, stroke_width=None, shape=None,
+             decoration=False):
+        """A shape layer. ``decoration`` marks framing and accents (rails, panels, rules) as decoration, so
+        the safe-area check lets them run into the margin."""
         layer = self.name(name)
         op = {
             "type": "shape",
@@ -258,6 +273,8 @@ class Builder:
         self.add(op)
         if opacity is not None:
             self.add({"type": "opacity", "target": layer, "value": opacity})
+        if decoration:
+            self.add({"type": "layer-intent", "target": layer, "role": "decoration"})
         self.created.append(layer)
         return (round(x), round(y), max(1, round(w)), max(1, round(h)))
 
@@ -282,6 +299,8 @@ class Builder:
         from .design import resolve_color
 
         w, h = max(1, round(w)), max(1, round(h))
+        # A picture that reaches the canvas edge is full-bleed by design.
+        bleed = bleed or x <= 0 or y <= 0 or x + w >= self.W or y + h >= self.H
         if slot == "image":
             asset = self.get("image", None)
         layer = self.name(name)
@@ -323,8 +342,10 @@ class Builder:
             x = x - w / 2
         elif align == "right":
             x = x - w
-        style = self.layout.get("button") or self.rng.choice(["pill", "rounded", "square"])
-        radius = h / 2 if style == "pill" else round(size * 0.35) if style == "rounded" else 0
+        # A layout's own button style wins; otherwise the button takes the document corner style (#410).
+        style = self.layout.get("button")
+        radius = (h / 2 if style == "pill" else round(size * 0.35) if style == "rounded" else 0) if style \
+            else h * CORNERS[self.corner]
         self.rect(name + "-button", x, y, w, h, fill, radius=radius)
         self.add({"type": "text", "name": self.name(name), "text": label, "size": size, "color": ink, "x": round(x + pad_x), "y": round(y + pad_y), **({"font": self.font} if self.font else {})})
         self.created.append(self.name(name))
@@ -337,23 +358,23 @@ class Builder:
             length = max(size * 8, round(width * 0.18))
             ax = x if self.align == "left" else x + width - length if self.align == "right" else x + (width - length) / 2
             ay = y - size * 4 if near == "top" else y + height + size * 3
-            return self.rect("accent", ax, ay, length, size, "@accent")
+            return self.rect("accent", ax, ay, length, size, "@accent", decoration=True)
         if self.accent == "bar":
             bx = x - size * 5 if self.align != "right" else x + width + size * 4
-            return self.rect("accent", bx, y, size * 1.5, max(height, size * 6), "@accent")
+            return self.rect("accent", bx, y, size * 1.5, max(height, size * 6), "@accent", decoration=True)
         if self.accent == "dot":
             d = size * 4
             ax = x if self.align == "left" else x + width - d if self.align == "right" else x + (width - d) / 2
-            return self.ellipse("accent", ax, y - d * 2, d, d, "@accent")
+            return self.ellipse("accent", ax, y - d * 2, d, d, "@accent", decoration=True)
         if self.accent == "block":
             bw, bh = self.W * 0.22, self.H * 0.22
             corner = self.rng.choice(["tl", "tr", "bl", "br"])
             bx = -bw * 0.3 if corner in ("tl", "bl") else self.W - bw * 0.7
             by = -bh * 0.3 if corner in ("tl", "tr") else self.H - bh * 0.7
-            return self.rect("accent", bx, by, bw, bh, "@accent", opacity=0.9)
+            return self.rect("accent", bx, by, bw, bh, "@accent", opacity=0.9, decoration=True)
         if self.accent == "outline":
             inset = self.m * 0.45
-            return self.rect("accent", inset, inset, self.W - 2 * inset, self.H - 2 * inset, "transparent", stroke="@accent", stroke_width=size)
+            return self.rect("accent", inset, inset, self.W - 2 * inset, self.H - 2 * inset, "transparent", stroke="@accent", stroke_width=size, decoration=True)
         return None
 
     def stack(self, entries, x, y, width, gap=None, align=None):
@@ -385,8 +406,7 @@ class Builder:
                 size = self.sizes[role]
                 heavy = role in ("display", "headline", "title")
                 if heavy:
-                    chars = min(10 if role == "display" else 14, len(text))
-                    size = min(size, max(6, int(width / (chars * 0.56))))
+                    size = self.measure_cap(role, text, size, width)
                 _, h = self.measure(text, size, width, self.leading(size, LINE_HEIGHT[ROLE_STAGES[role]],
                                                                     self.display_font if heavy else self.font),
                                     self.align, self.display_font if heavy else self.font)
@@ -650,7 +670,7 @@ def _asymmetric_balance(b):
     cx = b.W * (0.78 if left else 0.22)
     cy = b.H * b.rng.choice([0.22, 0.3])
     shape = b.rng.choice(["ellipse", "rectangle", "ellipse"])
-    b.rect("counterweight", cx - d / 2, cy - d / 2, d, d, "@accent", shape=shape, opacity=0.92)
+    b.rect("counterweight", cx - d / 2, cy - d / 2, d, d, "@accent", shape=shape, opacity=0.92, decoration=True)
     gap = b.unit * 4
     beside = (b.R - (cx + d / 2 + gap)) if not left else ((cx - d / 2 - gap) - b.L)
     below = b.B - (cy + d / 2 + gap)
@@ -712,8 +732,10 @@ def _rule_of_thirds(b):
     b.background()
     ix = b.rng.choice([1, 2])
     iy = b.rng.choice([1, 2])
-    fx, fy = b.W * ix / 3, b.H * iy / 3
     d = min(b.W, b.H) * 0.42
+    left, top, right, bottom = b.safe
+    fx = min(max(b.W * ix / 3, left + d / 2), b.W - right - d / 2)
+    fy = min(max(b.H * iy / 3, top + d / 2), b.H - bottom - d / 2)
     if b.get("image") or b.rng.random() < 0.6:
         b.image("image", fx - d / 2, fy - d / 2, d, d)
     else:
@@ -814,7 +836,11 @@ def _diagonal_band(b):
     width = b.cw * 0.9
     _, _, _, h = b.text("headline", b.get("title"), b.L, b.T + b.ch * 0.05, width, name="headline", align="left", max_height=b.ch * 0.32)
     if b.get("subtitle"):
-        sw = b.W * 0.8
+        sw = min(b.W * 0.8, b.cw)
+        # On wide canvases a long line tilted at the band's angle would leave the safe area: tilt less.
+        limit = math.degrees(math.asin(min(1, b.ch * 0.3 / sw)))
+        angle = math.copysign(min(abs(angle), limit), angle)
+        next(op for op in reversed(b.ops) if op["type"] == "rotate" and op["target"] == b.name("band"))["value"] = angle
         _, _, _, sh = b.text("subhead", b.get("subtitle"), (b.W - sw) / 2, b.H * 0.52, sw, name="subtitle", color="@on-accent", align="center", max_height=band_h * 0.6)
         # Center the text block on the band so both rotate about the same point.
         next(op for op in reversed(b.ops) if op.get("name") == b.name("subtitle") and op["type"] == "text")["y"] = round(b.H * 0.52 - sh / 2)
@@ -1126,6 +1152,10 @@ def _app_icon(b):
     glyph = b.get("label") or initials_of(b.get("title"))[:1]
     if glyph:
         size = round(keyline * (0.82 if len(glyph) == 1 else 0.5))
+        # A longer label shrinks to the keyline, so it stays on the icon and inside the safe area.
+        room = min(keyline, b.W - b.safe[0] - b.safe[2], b.H - b.safe[1] - b.safe[3])
+        while size > 6 and max(b.measure(glyph, size, None, 0, "left", b.display_font)) > room:
+            size = max(6, int(size * 0.92))
         b.glyphs(size, glyph, b.W / 2, b.H / 2, "glyph")
     else:
         b.ellipse("glyph", (b.W - keyline * 0.6) / 2, (b.H - keyline * 0.6) / 2, keyline * 0.6, keyline * 0.6, "@on-accent")
@@ -1143,7 +1173,7 @@ def _thumbnail_bold(b):
     reserve = b.sizes["subhead"] * 2.4 if b.get("label") else 0
     _, _, w, h = b.text(size, words, x, b.T, width, name="headline", align="left", max_height=max(b.unit * 4, b.ch * 0.78 - reserve), display=True, line=LINE_HEIGHT["display"])
     if b.accent in ("block", "bar", "rule"):
-        b.rect("highlight", x - b.unit, b.T + h + b.unit * 2, width * 0.6, max(4, round(size * 0.18)), "@accent")
+        b.rect("highlight", x - b.unit, b.T + h + b.unit * 2, width * 0.6, max(4, round(size * 0.18)), "@accent", decoration=True)
     if b.get("label"):
         b.button(b.get("label"), x, b.B - b.sizes["subhead"] * 1.8, align="left")
 
@@ -1557,19 +1587,44 @@ def _safe_composition(b):
                ("lead", b.get("subtitle"), "subtitle"), ("body", b.get("body"), "body"),
                ("button", b.get("cta"), "cta"), ("caption", b.get("caption"), "caption")]
     height = b.stack_height(entries, width, gap=b.unit * 2)
+    if b.orientation == "wide" and height > b.ch:
+        # A banner too shallow for one column: the label and headline on the left, the rest beside them.
+        return _two_columns(b, entries, vertical, device)
     y = b.T + max(0, b.ch - height) * vertical
     if device == "rule":
         b.rect("quiet-rule", b.L, b.T, b.cw, max(2, b.unit / 4), "@accent")
     elif device == "rail":
-        b.rect("quiet-rail", b.L / 2, b.T, max(2, b.unit / 4), b.ch, "@accent")
+        b.rect("quiet-rail", b.L / 2, b.T, max(2, b.unit / 4), b.ch, "@accent", decoration=True)
     elif device == "panel":
-        b.rect("quiet-panel", b.L / 2, b.T / 2, b.W - b.L, b.H - b.T, "@surface", radius=b.unit)
+        b.rect("quiet-panel", b.L / 2, b.T / 2, b.W - b.L, b.H - b.T, "@surface", radius=b.unit, decoration=True)
     elif device == "footer":
         b.rect("quiet-footer", b.L, b.B - b.unit / 4, b.cw, max(2, b.unit / 4), "@accent")
     if not (b.accent == "rule" and device == "rule"):
         # A chosen (or rolled) accent joins the composition's own device; "none", the default, adds nothing.
         b.accent_device(x, y, width, height)
     b.stack(entries, x, y, width, gap=b.unit * 2, align=b.align)
+
+
+def _two_columns(b, entries, vertical, device):
+    lead, rest = entries[:2], entries[2:]
+    gap = b.unit * 4
+    left_w = (b.cw - gap) * 0.56
+    right_w = b.cw - gap - left_w
+    if device == "rule":
+        b.rect("quiet-rule", b.L, b.T, b.cw, max(2, b.unit / 4), "@accent")
+    elif device == "rail":
+        b.rect("quiet-rail", b.L / 2, b.T, max(2, b.unit / 4), b.ch, "@accent", decoration=True)
+    elif device == "panel":
+        b.rect("quiet-panel", b.L / 2, b.T / 2, b.W - b.L, b.H - b.T, "@surface", radius=b.unit, decoration=True)
+    elif device == "footer":
+        b.rect("quiet-footer", b.L, b.B - b.unit / 4, b.cw, max(2, b.unit / 4), "@accent")
+    align = "left" if b.align == "right" else b.align
+    for index, (column, x, width) in enumerate(((lead, b.L, left_w), (rest, b.L + left_w + gap, right_w))):
+        height = b.stack_height(column, width, gap=b.unit * 2)
+        y = b.T + max(0, b.ch - height) * vertical
+        if index == 0 and not (b.accent == "rule" and device == "rule"):
+            b.accent_device(x, y, width, height)
+        b.stack(column, x, y, width, gap=b.unit * 2, align=align)
 
 
 SAFE_COMPOSITIONS = {
@@ -1955,21 +2010,26 @@ def _build(project, layout, op, seed, fit):
     for layer in state["layers"]:
         if layer["name"] in set(builder.created) and layer["type"] != "text":
             x, y, w, h = bounds[layer["id"]]
-            if x < 0 or y < 0 or x + w > canvas["width"] or y + h > canvas["height"]:
+            if x <= 0 or y <= 0 or x + w >= canvas["width"] or y + h >= canvas["height"]:
                 layer["allow_crop"] = True
     return builder
 
 
 def _overflows(project, builder):
+    """Whether copy leaves the canvas, or the safe area when the canvas has one: text, and the buttons
+    behind it, must sit inside it (#409, #370), while decoration and full-bleed art may run past it."""
     from .render import resolve_layout
 
     c = project.state["canvas"]
     names = set(builder.created)
     bounds = resolve_layout(project)
+    left, top, right, bottom = builder.safe
     for layer in project.state["layers"]:
-        if layer["name"] in names and layer["type"] == "text":
+        if layer["name"] not in names or layer.get("allow_crop") or layer.get("role") == "decoration":
+            continue
+        if layer["type"] == "text" or layer["name"].endswith("-button"):
             x, y, w, h = bounds[layer["id"]]
-            if x < -1 or y < -1 or x + w > c["width"] + 1 or y + h > c["height"] + 1:
+            if x < left - 1 or y < top - 1 or x + w > c["width"] - right + 1 or y + h > c["height"] - bottom + 1:
                 return True
     return False
 

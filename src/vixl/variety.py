@@ -305,8 +305,9 @@ def apply_direction(project, builder, direction):
         project.state["layers"].remove(detail)
         project.state["layers"].insert(project.state["layers"].index(background) + 1, detail)
         builder.created.append(name)
-    corner = direction.get("corner", "soft")
-    scale = house_style.craft("corner_scale")
+    # A direction without a corner (an older or hand-written one) takes the house corner, sharp (E8).
+    corner = direction.get("corner") or house_style.rule("corner")
+    scale = house_style.rule("corner_scale")
     require(corner in scale, "Unknown corner style", field="direction")
     for layer in own:
         if layer.get("shape") in ("rectangle", "rounded-rectangle") and layer is not background:
