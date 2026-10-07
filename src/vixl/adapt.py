@@ -305,7 +305,7 @@ def adapt_copies(session, export_file, sizes, directory=".", name="{name}-{size}
         outcome = candidate.apply([{"type": "adapt-layout", **spec, **options}], detail="brief", check=service_check)
         report_row = outcome["adapt_layout"][0]
         session.make_parent(destination)
-        candidate.save(destination)
+        candidate.save(destination, overwrite=overwrite)
         item = {"size": label, "path": session.relative(destination), "canvas": report_row["canvas"]["to"],
                 "scale": report_row["scale"], "moved": report_row["moved"]}
         if report == "layers":

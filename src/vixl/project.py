@@ -827,13 +827,19 @@ class Project:
         finally:
             self.path = previous
 
-    def save(self, path=None):
+    def save(self, path=None, *, overwrite=False):
+        """Write the project. Saving to the file it was loaded from or last saved to always works; any
+        other existing file is refused unless ``overwrite=True`` (as ``vixl new``/``save`` and exports do)."""
         from .fileio import file_lock
         from .fileio import temporary
 
         require(path or self.path, "Provide a .vixl project path")
+        require(isinstance(overwrite, bool), "overwrite must be true or false", field="overwrite")
         path = Path(path or self.path).resolve()
         require(path.suffix == ".vixl", "Project filenames must end in .vixl")
+        require(overwrite or path == self.path or not path.exists(),
+                f"Project file already exists: {path.name}; pass overwrite=True to replace it", "output_exists",
+                field="path")
         self._rebase_links(path)
         path.parent.mkdir(parents=True, exist_ok=True)
         with file_lock(str(path)):

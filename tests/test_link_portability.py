@@ -15,7 +15,7 @@ from vixl.workflows import dispatch
 def tile(path, fill):
     path.parent.mkdir(parents=True, exist_ok=True)
     source = Project(100, 50, fill)
-    source.save(path)
+    source.save(path, overwrite=True)
 
 
 def host(path, workspace, size=(200, 100)):

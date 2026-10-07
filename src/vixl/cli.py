@@ -456,7 +456,7 @@ def dispatch(argv):
             from .brand import apply_workspace_fonts
 
             fonts = apply_workspace_fonts(project, Path(a.out).resolve().parent)
-        project.save(a.out)
+        project.save(a.out, overwrite=a.overwrite)
         remember(a.out)
         return (
             project.inspect()

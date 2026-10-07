@@ -46,7 +46,7 @@ def template(path, **extra):
         {"type": "shape", "shape": "star", "name": "cue-fire", "width": 16, "height": 16, "x": 140, "y": 2, "fill": "orange"},
         *extra.get("operations", []),
     ])
-    p.save(path)
+    p.save(path, overwrite=True)
     return p
 
 

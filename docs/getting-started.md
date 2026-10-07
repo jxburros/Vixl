@@ -109,7 +109,8 @@ project.save("python-hello.vixl")
 project.export("python-hello.png")
 ```
 
-Python edits remain in memory until you call `save`; `render()` returns a Pillow RGBA image.
+Python edits remain in memory until you call `save` (which, like exports, refuses to replace another existing file
+unless you pass `overwrite=True`); `render()` returns a Pillow RGBA image.
 The [interface reference](interfaces.md) documents loading, history, errors and services.
 
 ## Continue
