@@ -1618,7 +1618,11 @@ def export(
             else "PNG"
         )
     )
-    require(fmt in ("PNG", "JPEG", "WEBP", "TIFF", "AVIF", "PDF", "ICO"), "Specify a supported export format")
+    require(fmt in ("PNG", "JPEG", "WEBP", "TIFF", "AVIF", "PDF", "ICO"),
+            f"Unsupported export format {(Path(path).suffix if path and not format else format) or '(none)'!r}; use png, "
+            "jpg, webp, tiff, avif, pdf, ico, svg, pptx, psd or html (audio: vixl_export_audio, or a .wav path on the "
+            "CLI; animation: export-timeline)",
+            field="format")
     from . import colors
 
     cms = None

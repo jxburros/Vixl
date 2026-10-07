@@ -723,7 +723,8 @@ def check_design(
                 "fonts",
                 "warning",
                 f"{len(fallback)} text layer(s) use the bundled fallback font, which is for proofing only ({names}). "
-                "Choose typefaces: vixl font pairings / font pair, or font install.",
+                "Choose typefaces: a font pairing (vixl_fonts and vixl_font_pair over MCP; vixl font pairings and "
+                "vixl font pair on the CLI), or install a font.",
                 fallback,
             )
 

@@ -63,6 +63,20 @@ Defaults (`vixl.model.Limits`):
 - At most 10,000 archive entries.
 - Layer-render cache: 16 entries / 64 MiB, with entries under 32 MiB; decoded-asset cache: 256 MiB.
 
+Per-operation caps, each refused with `resource_limit` or `invalid_operation` naming the field:
+
+| What | Cap |
+| --- | --- |
+| Nested groups (a layer inside groups inside groups) | 15 groups |
+| `repeat` copies / `radial-repeat` copies | 512 / 360 |
+| `scatter` copies | 5,000 |
+| `pen` points, nodes or corners | 512 |
+| Effects per layer | 256 |
+| Frame (pixel) animation frames | 256 |
+| Timeline length / rendered frames | 600 s / 3,600 frames |
+| Document dpi | 36–2,400, and the page must still fit the pixel budget (Letter at 1,200 dpi does not) |
+| Polygon and star `sides` | 3–128 |
+
 `--max-pixels` adjusts the pixel budget; Python APIs can pass a complete `Limits` instance. These are input/allocation bounds, **not a hard resident-memory or CPU quota**. Float blending and snapshot copies can use multiples of image size. Use operating-system/container limits for untrusted workloads and reduce pixel/layer/history limits on small machines. CLI processes do not share render caches; caching benefits a reused Python `Project` instance. REST/MCP cache the active document, reloading when the on-disk file changes, and serialize read/write requests for persistence/concurrency correctness.
 
 ## Trust and security

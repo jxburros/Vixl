@@ -571,7 +571,17 @@ def schema_error(error, operation, allowed):
     if validator == "additionalProperties":
         known = set(error.schema.get("properties", {}))
         extras = sorted(set(error.instance) - known)
-        suggestions = {k: difflib.get_close_matches(k, sorted(known), 1, 0.5) for k in extras}
+        from .normalize import FIELD_ALIASES
+
+        # Aliases count as spellings of their field: 'colr' is close to 'color', which a shape reads as 'fill'.
+        aliases = {alias: canonical for alias, canonical in FIELD_ALIASES.get(kind, {}).items() if canonical in known}
+        spellings = sorted(known | set(aliases))
+        suggestions = {}
+        for k in extras:
+            close = difflib.get_close_matches(k, spellings, 1, 0.5)
+            suggestions[k] = [aliases.get(close[0], close[0])] if close else []
+        if kind in ("text", "text-set") and "width" in extras:
+            suggestions["width"] = []
         hints = [f"{v[0]!r} instead of {k!r}" for k, v in suggestions.items() if v]
         where = f" in {field}" if field else f" for {kind!r}"
         message = f"Unknown field(s) {', '.join(map(repr, extras))}{where}. Allowed: {', '.join(sorted(known))}"
@@ -608,6 +618,13 @@ def schema_error(error, operation, allowed):
         message = f"{field} must be {error.validator_value}; got {type(error.instance).__name__} {error.instance!r}"
     elif validator in ("minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum"):
         message = f"{field} {error.message}"
+        details["limit"] = error.validator_value
+    elif validator in ("maxItems", "minItems", "maxLength", "minLength"):
+        # Name the bound and the size given; never echo the (possibly huge) value back.
+        most = validator.startswith("max")
+        unit = "entries" if validator.endswith("Items") else "characters"
+        message = (f"{field or kind} holds {'at most' if most else 'at least'} {error.validator_value} {unit}; "
+                   f"got {len(error.instance)}")
         details["limit"] = error.validator_value
     else:
         message = f"{field + ': ' if field else ''}{error.message}"

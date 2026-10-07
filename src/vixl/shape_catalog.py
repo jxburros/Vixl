@@ -1309,8 +1309,9 @@ def validate(layer):
         require(
             count >= 3 and count % 2 == 1, "Reuleaux polygons require an odd number of sides (at least 3)"
         )
-    for key in ("count", "teeth", "petals", "arms", "sides"):
-        require(1 <= layer.get(key, 6) <= 128, f"{key} must be 1–128")
+    for key in ("count", "teeth", "petals", "arms"):
+        require(1 <= layer.get(key, 6) <= 128, f"{key} must be 1–128", field=key)
+    require(3 <= layer.get("sides", 6) <= 128, "sides must be 3–128", field="sides")
 
 
 def hole_path(path):

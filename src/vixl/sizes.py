@@ -257,7 +257,8 @@ UNIT_INCHES = {IN: 1.0, MM: 1 / 25.4, "cm": 1 / 2.54, "pt": 1 / 72}
 
 
 def canonical(name):
-    require(isinstance(name, str) and name, "Size name must be a string")
+    require(isinstance(name, str) and name.strip(), "Give a size: a name from vixl sizes (instagram-post, a4 …) or "
+            "WIDTHxHEIGHT in pixels", field="size")
     key = name.strip().lower().replace("_", "-").replace(" ", "-")
     key = ALIASES.get(key, key)
     if key not in SIZES:

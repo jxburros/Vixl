@@ -937,6 +937,9 @@ def field_hint(kind, extras):
     if kind == "text-set" and any(k in TEXT_STYLE_FIELDS for k in extras):
         return (". text-set changes a whole layer (text, color, size, font, align, spacing, stroke); to style part of the "
                 "text or set bold, italic, tracking, highlight or paragraph settings use text-style")
+    if kind in ("text", "text-set") and any(k in ("width", "height") for k in extras):
+        return (". A text box's size is set with text-layout (target, width, height: text then wraps inside it), or "
+                "use rich-text, which takes width and height")
     if kind == "text-style" and any(k in TEXT_SET_FIELDS for k in extras):
         return (". text-style styles ranges and paragraphs of rich text; use text-set to change the layer's text, spacing, "
                 "stroke or alignment, or rich-text to replace formatted content")

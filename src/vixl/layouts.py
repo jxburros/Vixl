@@ -1683,7 +1683,9 @@ def execute_layout(project, op):
         import difflib
 
         close = difflib.get_close_matches(name, list(LAYOUTS), 3, 0.5)
-        raise VixlError("unknown_layout", f"Unknown layout {name!r}" + (f"; did you mean {', '.join(close)}?" if close else "; see vixl layout list"), suggestions=close)
+        raise VixlError("unknown_layout", f"Unknown layout {name!r}" + (f"; did you mean {', '.join(close)}?" if close else
+                        "; the layouts are listed under allowed (vixl layout list)"), field="name", suggestions=close,
+                        allowed=sorted(LAYOUTS))
     layout = LAYOUTS[name]
     if op.get("replace") and state.get("layout"):
         previous = set(state["layout"].get("layers", []))

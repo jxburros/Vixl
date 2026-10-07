@@ -30,7 +30,7 @@ def decode(data, limits, mode="RGBA", size_hint=None):
                 image = to_srgb(image)
                 return image.convert(mode) if image.mode != mode else image.copy()
     except (OSError, ValueError, Image.DecompressionBombError, Image.DecompressionBombWarning) as exc:
-        raise VixlError("invalid_image", f"Cannot decode image: {exc}") from exc
+        raise VixlError("invalid_image", decode_message(exc)) from exc
 
 
 def to_srgb(image):
@@ -96,7 +96,7 @@ def add_encoded(project, data, category="assets", *, max_pixels=None, placed_siz
             fmt = probe.format
             frames = getattr(probe, "n_frames", 1)
     except (OSError, ValueError) as exc:
-        raise VixlError("invalid_image", f"Cannot decode image: {exc}") from exc
+        raise VixlError("invalid_image", decode_message(exc)) from exc
     if image.size != original_size:
         stream = io.BytesIO()
         if fmt == "JPEG":
@@ -121,3 +121,12 @@ def add_image(project, image, category="assets"):
     name = f"{category}/{hashlib.sha256(data).hexdigest()}.png"
     project.assets[name] = data
     return name
+
+
+def decode_message(exc):
+    """What went wrong decoding image bytes, without the decoder's object reprs."""
+    import re
+
+    if isinstance(exc, Image.UnidentifiedImageError):
+        return "Cannot decode image: not a supported image format (PNG, JPEG, WebP, GIF, TIFF, AVIF, BMP or ICO)"
+    return "Cannot decode image: " + re.sub(r"\s*<[^<>]* at 0x[0-9a-f]+>", "", str(exc)).strip()

@@ -40,7 +40,7 @@ import uuid
 from pydantic import Field
 
 from .calls import CALL, UNKNOWN, CallState
-from .errors import VixlError, require
+from .errors import VixlError, for_surface, require
 
 DEFAULT_INLINE_SECONDS = 40
 DEFAULT_WORKERS = 32
@@ -311,7 +311,7 @@ class Runtime:
             try:
                 result = fn(*args, **kwargs)
             except VixlError as exc:
-                raise self.tool_error(self.compact_json(exc.as_dict())) from exc
+                raise self.tool_error(self.compact_json(for_surface(exc.as_dict(), "mcp"))) from exc
             warning = self.ignored(fn.__name__, state)
             if isinstance(result, list) and result and isinstance(result[0], dict):
                 # A JSON result with images after it (vixl_operations_apply preview=…): shape the JSON part.

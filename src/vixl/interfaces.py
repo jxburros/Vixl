@@ -370,14 +370,18 @@ class Session:
         )
         with self.project(write=action != "list" and not (action == "compact" and dry_run), document=document) as p:
             compacted = p.compact(fonts=fonts, dry_run=dry_run) if action == "compact" else None
+            steps = None
             if action in ("undo", "redo"):
-                getattr(p, action)(count)
+                steps = getattr(p, action)(count)
             elif action in ("branch", "checkpoint", "checkout"):
                 require(ref, f"History {action} requires ref", field="ref")
                 getattr(p, action)(ref)
             elif action in ("begin", "commit", "rollback"):
                 getattr(p, action)()
             return {
+                **({action: steps} if steps is not None else {}),
+                **({"notes": [f"{action} {count}: only {steps} step(s) were available"]}
+                   if steps is not None and steps < count else {}),
                 "head": p.head,
                 "branch": p.current_branch,
                 "branches": p.branches,

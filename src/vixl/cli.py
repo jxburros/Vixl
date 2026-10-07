@@ -15,7 +15,7 @@ from .fileio import file_lock
 from . import __version__
 from .assets import read_bounded
 from .commands import Parser, compile_command, compile_script, dimensions, normalize, pairs
-from .errors import VixlError, require
+from .errors import VixlError, for_surface, friendly, require
 from .model import Limits
 
 HELP = """Vixl — headless design engine for autonomous AI agents
@@ -433,10 +433,12 @@ def dispatch(argv):
         p.add_argument("--bleed", nargs="?", const=True, type=float, help="Add standard bleed, or an amount in the size's unit")
         p.add_argument("--no-workspace-fonts", dest="workspace_fonts", action="store_false",
                        help="Do not embed the workspace default fonts (brand.json pairing/fonts beside the document)")
+        negative = next((arg for arg in args if re.fullmatch(r"-\d+(\.\d+)?[xX×]-?\d+(\.\d+)?", arg)), None)
+        require(negative is None, f"Dimensions must be 1–16384 pixels; got {negative}", "resource_limit", field="size")
         a = p.parse_args(args)
         require(not Path(a.out).exists() or a.overwrite, "Project already exists; use --overwrite to replace it")
         require(not Path(a.out).is_dir(), "Output must be a file")
-        named_size = not re.fullmatch(r"\d+[x×]\d+", a.size)
+        named_size = not re.fullmatch(r"\d+[xX×]\d+", a.size.strip())
         require(named_size or not (a.orientation or a.bleed), "orientation and bleed need a named size")
         if named_size:
             project = Project.sized(
@@ -444,8 +446,8 @@ def dispatch(argv):
             )
         else:
             project = Project(*dimensions(a.size), a.background, limits=limits)
-            if a.dpi:
-                require(36 <= a.dpi <= 2400, "dpi must be 36–2400")
+            if a.dpi is not None:
+                require(36 <= a.dpi <= 2400, "dpi must be 36–2400", field="dpi")
                 project.state["canvas"]["dpi"] = a.dpi
                 project.nodes, project.head, project._head_state, project.branches = {}, None, None, {}
                 project._record([], "Create document")
@@ -752,6 +754,10 @@ def project_command(project, cmd, args, *, detail="compact"):
             destination == "-" or Path(destination).resolve() != project.path,
             "Cannot export over the project",
         )
+        if destination != "-" and Path(destination).suffix.lower() == ".wav" and not a.data:
+            from .audio import export_audio
+
+            return export_audio(project, destination, overwrite=a.overwrite), False
         if a.data:
             require(a.svg_policy == "appearance", "Strict SVG policy requires SVG output")
             from .exports import render_data
@@ -890,9 +896,7 @@ def project_command(project, cmd, args, *, detail="compact"):
         p.add_argument(
             "--checks",
             nargs="+",
-            choices=["bounds", "overlap", "contrast", "safe_area", "legibility", "print", "color_vision", "content", "fonts", "blanks", "brand", "guides", "alignment",
-                     "deck", "title_position", "type_scale", "words", "min_font", "notes", "empty", "form", "drawing", "links", "style",
-                     "diagram", "flow", "codes", "connected"],
+            choices=check_names(),
         )
         p.add_argument("--connect-tolerance", type=float, default=2,
                        help="connected check: pixels of gap still counted as touching (default 2)")
@@ -1034,8 +1038,14 @@ def project_command(project, cmd, args, *, detail="compact"):
         return project.apply(ops, detail=detail) if ops else {"operations": 0}, bool(ops)
     if cmd in ("undo", "redo"):
         require(len(args) <= 1, "Expected optional count")
-        getattr(project, cmd)(int(args[0]) if args else 1)
-        return project.inspect(), True
+        require(not args or args[0].isdigit(), f"{cmd} takes a whole number of steps; got {args[0] if args else ''!r}",
+                field="count")
+        requested = int(args[0]) if args else 1
+        done = getattr(project, cmd)(requested)
+        result = project.inspect()
+        if done < requested:
+            result["notes"] = [*result.get("notes", []), f"{cmd} {requested}: only {done} step(s) were available"]
+        return {cmd: done, **result}, True
     if cmd in ("checkpoint", "branch", "checkout"):
         require(len(args) == 1, "Expected a history name")
         getattr(project, cmd)(args[0])
@@ -1189,7 +1199,15 @@ def shell(options):
         except KeyboardInterrupt:
             print()
         except (VixlError, OSError, ValueError) as exc:
-            print(f"ERROR: {exc}", file=sys.stderr)
+            print(f"ERROR: {for_surface(str(friendly(exc)), 'cli')}", file=sys.stderr)
+
+
+def check_names():
+    """Every check the engine runs, from its own registries, so the CLI never falls behind them."""
+    from .checks import CHECKS, OPTIONAL_CHECKS
+    from .deck import DECK_CHECKS
+
+    return list(dict.fromkeys([*CHECKS, *OPTIONAL_CHECKS, "deck", *DECK_CHECKS]))
 
 
 def main(argv=None):
@@ -1206,12 +1224,15 @@ def main(argv=None):
             if result.get("passed") is False or result.get("success") is False or result.get("status") in ("failed", "needs_review", "cancelled"):
                 return 1
         return 0
-    except (VixlError, OSError, ValueError, TimeoutError) as exc:
-        payload = (
-            exc.as_dict()
-            if isinstance(exc, VixlError)
-            else {"error": "io_error" if isinstance(exc, OSError) else "invalid_input", "message": str(exc)}
-        )
+    except BrokenPipeError:
+        # The reader (head, less) closed the pipe: stop quietly, as other command-line tools do.
+        try:
+            sys.stdout = open(os.devnull, "w")
+        except OSError:
+            pass
+        return 0
+    except (VixlError, OSError, ValueError, TimeoutError, MemoryError) as exc:
+        payload = for_surface(friendly(exc).as_dict(), "cli")
         print(json.dumps(payload) if "--json" in argv else f"ERROR: {payload['message']}", file=sys.stderr)
         return 1
     except KeyboardInterrupt:

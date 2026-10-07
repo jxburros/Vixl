@@ -553,27 +553,34 @@ class Project:
         return result
 
     def undo(self, count=1):
+        """Step back ``count`` revisions, or as far as the history goes; returns how many steps were undone."""
         require(self.transaction is None, "Commit or roll back the transaction first")
-        require(isinstance(count, int) and count > 0, "Undo count must be positive")
+        require(isinstance(count, int) and not isinstance(count, bool) and count > 0, "Undo count must be a positive "
+                "whole number", field="count")
         cursor = self.head
         stack = list(self.redo_stack)
-        for _ in range(count):
-            parent = self.nodes[cursor]["parent"]
-            require(parent is not None, "Nothing more to undo", "history_boundary")
+        done = 0
+        while done < count and self.nodes[cursor]["parent"] is not None:
             stack.append(cursor)
-            cursor = parent
+            cursor = self.nodes[cursor]["parent"]
+            done += 1
+        require(done, "Nothing more to undo", "history_boundary")
         self.redo_stack = stack
         self._restore(cursor)
+        return done
 
     def redo(self, count=1):
+        """Step forward ``count`` undone revisions, or as many as there are; returns how many were redone."""
         require(self.transaction is None, "Commit or roll back the transaction first")
-        require(
-            isinstance(count, int) and 0 < count <= len(self.redo_stack),
-            "Nothing more to redo",
-            "history_boundary",
-        )
-        for _ in range(count):
-            self._restore(self.redo_stack.pop())
+        require(isinstance(count, int) and not isinstance(count, bool) and count > 0, "Redo count must be a positive "
+                "whole number", field="count")
+        require(self.redo_stack, "Nothing more to redo", "history_boundary")
+        done = min(count, len(self.redo_stack))
+        target = self.redo_stack[-done]
+        del self.redo_stack[-done:]
+        # Only the revision landed on is restored, so redoing many steps costs one restore, as undo does.
+        self._restore(target)
+        return done
 
     def _restore(self, node):
         # The head state stays as stored, so new deltas patch the stored revisions; the live state
