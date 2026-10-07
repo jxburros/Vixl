@@ -4,7 +4,7 @@ from collections import OrderedDict
 from functools import lru_cache
 import threading
 
-from .text import face, font_data, glyph_outline, lines, plan, shape
+from .text import advance, face, font_data, glyph_outline, lines, plan
 
 
 @lru_cache(maxsize=256)
@@ -24,6 +24,18 @@ def font_metrics(data, size):
     return {"ascent": outline["hhea"].ascent * factor,
             "descent": -outline["hhea"].descent * factor,
             "cap_height": height("sCapHeight", "H"), "x_height": height("sxHeight", "x")}
+
+
+@lru_cache(maxsize=4096)
+def path_commands(path):
+    """The pen calls an SVG glyph path makes, parsed once per glyph: replaying them draws exactly what parsing the
+    path again would, and a long text repeats the same few glyphs thousands of times."""
+    from fontTools.pens.recordingPen import RecordingPen
+    from fontTools.svgLib.path import parse_path
+
+    pen = RecordingPen()
+    parse_path(path, pen)
+    return tuple(pen.value)
 
 
 def inspect_text(project, layer, bounds):
@@ -66,20 +78,21 @@ def inspect_text(project, layer, bounds):
             from fontTools.misc.transform import Transform
             from fontTools.pens.boundsPen import BoundsPen
             from fontTools.pens.transformPen import TransformPen
-            from fontTools.svgLib.path import parse_path
 
             result = plan(project, layer)
             metrics = font_metrics(primary, result.size)
             for path, matrix in result.paths:
                 pen = BoundsPen(None)
-                parse_path(path, TransformPen(pen, Transform(*matrix)))
+                transformed = TransformPen(pen, Transform(*matrix))
+                for command, points in path_commands(path):
+                    getattr(transformed, command)(*points)
                 if pen.bounds:
                     boxes.append(pen.bounds)
             wrapped = lines(data, layer["text"], result.size,
                             layer["width"] if "width" in layer.get("text_layout", {}) else None)
             step = metrics["ascent"] + metrics["descent"] + layer.get("spacing", 4)
             baselines = [metrics["ascent"] + index * step - result.box[1] for index in range(len(wrapped))]
-            width = max((shape(data, line, result.size)[1] for line in wrapped), default=0)
+            width = max((advance(data, line, result.size) for line in wrapped), default=0)
             line_box = (result.offset - result.box[0], -result.box[1], width,
                         len(wrapped) * step - layer.get("spacing", 4))
         if boxes:
