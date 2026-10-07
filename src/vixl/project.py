@@ -15,7 +15,7 @@ import zipfile
 
 from . import __version__, calls
 from .assets import decode, read_bounded
-from .errors import VixlError, require
+from .errors import VixlError, memory_guard, require
 from .history import diff, patch
 from .model import Limits, new_state, uid
 from .render import LayerCache
@@ -286,6 +286,7 @@ class Project:
         clone.redo_stack = list(self.redo_stack)
         clone.transaction = deepcopy(self.transaction)
         clone._verified = set(self._verified)
+        clone.__dict__.pop("_resolving", None)
         return clone
 
     def spatial(self, **options):
@@ -295,6 +296,12 @@ class Project:
         return query(self, **options)
 
     def inspect(self, target=None):
+        from .render import resolving
+
+        with resolving(self):
+            return self._inspect(target)
+
+    def _inspect(self, target=None):
         from .render import child_index, extent, resolve_layout, resolved_layers
 
         state = {key: deepcopy(value) for key, value in self.state.items() if key not in ("pages", "masters")}
@@ -308,9 +315,10 @@ class Project:
         from .spatial import canvas_boxes
 
         content_bounds = {}
-        canvas_bounds = canvas_boxes(self, content=content_bounds)
+        canvas_bounds = canvas_boxes(self, content=content_bounds, layers=layers, local=resolved)
         children, memo = child_index(layers), {}
         shown = {item["id"]: item["visible"] for item in layers}
+        effective = {item["id"]: item for item in layers}
         for layer in state["layers"]:
             box = layer["resolved_bounds"] = resolved[layer["id"]]
             layer["canvas_bounds"] = canvas_bounds[layer["id"]]
@@ -325,8 +333,7 @@ class Project:
             if layer["type"] == "text":
                 from .text_metrics import inspect_text
 
-                effective = next(item for item in layers if item["id"] == layer["id"])
-                layer.update(inspect_text(self, effective, box))
+                layer.update(inspect_text(self, effective[layer["id"]], box))
             if layer["visible"] and not shown[layer["id"]]:
                 layer["collapsed"] = True  # Hidden by hide_if_empty or an empty stack, not by the user.
             left, top, right, bottom = extent(layer, resolved, children, memo)
@@ -361,6 +368,29 @@ class Project:
             "history_count": len(self.nodes),
             "transaction": self.transaction is not None,
         }
+
+    def _inspect_context(self):
+        """What ``inspect`` reads besides the state: embedded assets (fonts, images) and filled form values.
+        Linked documents are read from disk, so a document with links is never remembered (None)."""
+        from .links import link_layers
+
+        if link_layers(self.state):
+            return None
+        return (tuple(self.assets), tuple(map(id, self.assets.values())),
+                repr(getattr(self, "_form_values", None)))
+
+    def _remembered_inspect(self):
+        """The inspection the last apply made of the current state, while the state, the assets and the history
+        head are unchanged; None otherwise. Saves one of the two whole-document inspections per apply."""
+        memo = self.__dict__.get("_inspected")
+        if memo is None or self.transaction is not None:
+            return None
+        snapshot, result, context = memo
+        if (context is None or snapshot is not self._head_state or context != self._inspect_context()
+                or self.state != snapshot):
+            return None
+        return {**result, "head": self.head, "branch": self.current_branch, "history_count": len(self.nodes),
+                "transaction": False}
 
     def _delta_depth(self, ident):
         depth = 0
@@ -454,6 +484,7 @@ class Project:
             "resource_limit",
         )
 
+    @memory_guard
     def apply(self, operations, *, dry_run=False, detail="full", check=None):
         from .model import seeded_ids
 
@@ -514,7 +545,8 @@ class Project:
         notices.start(candidate)
         candidate._reports = {}  # What operations such as edit-layers and adapt-layout report back.
         candidate._name_hints = {}  # Default layer names handed out in this batch (operations.default_name).
-        before = candidate.inspect()
+        remembered = self._remembered_inspect()
+        before = remembered or candidate.inspect()
         for index, operation in enumerate(operations):
             calls.check_cancelled()  # A cancelled batch leaves the document untouched: nothing is committed yet.
             calls.progress(index, len(operations), operation["type"])
@@ -574,12 +606,17 @@ class Project:
             from .changes import brief_changes, compact_changes
 
             changes = (brief_changes if detail == "brief" else compact_changes)(before, after)
+        candidate._inspected = None
         if not dry_run:
             if candidate.transaction is not None:
                 candidate.transaction["operations"].extend(deepcopy(operations))
             else:
                 candidate._record(operations)
+                # The next apply starts from this state: remember its inspection instead of repeating it.
+                candidate._inspected = (candidate._head_state, after, candidate._inspect_context())
             self.__dict__.update(candidate.__dict__)
+        if remembered is not None or candidate._inspected is not None:
+            changes = deepcopy(changes)  # They share values with the remembered inspections; keep those private.
         result = {"success": True, "dry_run": dry_run, "operations": len(operations), "changes": changes}
         if any(op["type"] == "template-apply" for op in operations):
             result["template"] = deepcopy(candidate.state.get("template", {}))
@@ -762,11 +799,13 @@ class Project:
         self.state = self.transaction["state"]
         self.transaction = None
 
+    @memory_guard
     def render(self, variables=None, *, artboard=None, comp=None, page=None):
         from .render import render
 
         return render(self, variables, artboard, comp, page=page)
 
+    @memory_guard
     def show(self, page=None, region=None):
         """The rendered document as a PIL image, for notebooks and scripts. ``page`` is a page number or name;
         ``region`` crops to ``[x, y, width, height]`` in document pixels."""
@@ -786,6 +825,7 @@ class Project:
         self.render().save(buffer, "PNG")
         return buffer.getvalue()
 
+    @memory_guard
     def export(self, path=None, **options):
         from .render import export
 
@@ -803,6 +843,7 @@ class Project:
 
         return import_image_from(self, path=path, url=url, data=data, name=name, credit=credit, license=license)
 
+    @memory_guard
     def inspect_pixels(self, target=None):
         from .pixel import inspect_pixels
 
@@ -813,16 +854,19 @@ class Project:
 
         return inspect_animation(self)
 
+    @memory_guard
     def render_frame(self, name, scale=1, sampling="nearest"):
         from .animation import render_frame
 
         return render_frame(self, name, scale, sampling)
 
+    @memory_guard
     def export_animation(self, path, **options):
         from .animation import export_animation
 
         return export_animation(self, path, **options)
 
+    @memory_guard
     def check(self, **options):
         from .checks import check_design
 
@@ -840,10 +884,12 @@ class Project:
 
         return compact(self, fonts=fonts, dry_run=dry_run)
 
+    @memory_guard
     def check_suite(self, suite, **options):
         from .assurance import run_suite
         return run_suite(self, suite, **options)
 
+    @memory_guard
     def act(self, operations, *, suites=None, dry_run=False, check=None):
         """Apply and measure one candidate. Failed contracts leave the document unchanged."""
         candidate = self.clone()
@@ -857,16 +903,19 @@ class Project:
         return {**result, "success": accepted, "dry_run": dry_run, "committed": accepted and not dry_run,
                 "checks": reports, "bounds": {x["name"]: x["resolved_bounds"] for x in candidate.inspect()["layers"]}}
 
+    @memory_guard
     def measure(self, **options):
         from .measure import measure
 
         return measure(self, **options)
 
+    @memory_guard
     def export_screens(self, directory, **options):
         from .exports import export_screens
 
         return export_screens(self, directory, **options)
 
+    @memory_guard
     def render_data(self, csv_path, directory, **options):
         from .exports import render_data
 

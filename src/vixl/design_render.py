@@ -22,19 +22,32 @@ def gradient_image(project, layer, size):
     direction = layer.get("direction", "vertical")
     x = np.linspace(0, 1, w)[None, :]
     y = np.linspace(0, 1, h)[:, None]
-    if direction == "radial":
-        ramp = np.sqrt((2 * x - 1) ** 2 + (2 * y - 1) ** 2)
-    elif direction == "angled":
-        a = math.radians(layer.get("angle", 0))
-        dx, dy = math.cos(a), math.sin(a)
-        ramp = ((x - 0.5) * dx + (y - 0.5) * dy) / (abs(dx) + abs(dy)) + 0.5
-    else:
-        ramp = np.broadcast_to(x if direction == "horizontal" else y, (h, w))
     # Interpolate premultiplied alpha to avoid halos around transparent stops.
     colors[:, :3] *= colors[:, 3:] / 255
-    arr = np.stack([np.interp(ramp, offsets, colors[:, i]) for i in range(4)], axis=-1)
-    arr[:, :, :3] *= 255 / np.maximum(arr[:, :, 3:], 1)
-    return Image.fromarray(np.uint8(np.clip(arr, 0, 255) + 0.5))
+
+    def pixels(ramp):
+        arr = np.stack([np.interp(ramp, offsets, colors[:, i]) for i in range(4)], axis=-1)
+        arr[..., :3] *= 255 / np.maximum(arr[..., 3:], 1)
+        return np.uint8(np.clip(arr, 0, 255) + 0.5)
+
+    if direction not in ("radial", "angled"):
+        # A linear ramp repeats one row or column: compute that once and repeat its bytes.
+        line = pixels(x[0] if direction == "horizontal" else y[:, 0])
+        rows = np.broadcast_to(line[None, :, :] if direction == "horizontal" else line[:, None, :], (h, w, 4))
+        return Image.fromarray(np.ascontiguousarray(rows))
+    # Float work in bands of rows, so a large canvas never holds several float64 copies of itself.
+    result = np.empty((h, w, 4), dtype=np.uint8)
+    band = max(1, (1 << 18) // max(1, w))
+    for top in range(0, h, band):
+        rows = y[top:top + band]
+        if direction == "radial":
+            ramp = np.sqrt((2 * x - 1) ** 2 + (2 * rows - 1) ** 2)
+        else:
+            a = math.radians(layer.get("angle", 0))
+            dx, dy = math.cos(a), math.sin(a)
+            ramp = ((x - 0.5) * dx + (rows - 0.5) * dy) / (abs(dx) + abs(dy)) + 0.5
+        result[top:top + band] = pixels(ramp)
+    return Image.fromarray(result)
 
 
 def shape_image(project, layer):

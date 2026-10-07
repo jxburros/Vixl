@@ -140,8 +140,36 @@ def resolve_font(project, name):
     return font, role
 
 
+class resolving:
+    """A read-only pass over the document (inspect, check, a full resolve): the document's variables are
+    computed once for the whole pass instead of once per text layer, which scanned every layer for form
+    fields and made measuring N text layers cost O(N²). Nothing may edit the document inside the pass."""
+
+    def __init__(self, project):
+        self.project = project
+
+    def __enter__(self):
+        self.owner = getattr(self.project, "_resolving", None) is None
+        if self.owner:
+            self.project._resolving = {}
+        return self.project
+
+    def __exit__(self, *exc):
+        if self.owner:
+            self.project.__dict__.pop("_resolving", None)
+
+
 def document_variables(project):
     """The document's variables, plus each form field's current value under its key."""
+    memo = getattr(project, "_resolving", None)
+    if memo is None:
+        return _document_variables(project)
+    if "variables" not in memo:
+        memo["variables"] = _document_variables(project)
+    return dict(memo["variables"])
+
+
+def _document_variables(project):
     from .forms import current_values, has_fields
 
     maps = project.state.get("maps")
@@ -164,7 +192,9 @@ def text_metrics(project, layer, variables=None):
     from .text import measure, font_data, UnsupportedText
 
     try:
-        _, box = measure(font_data(project, layer), text, layer["size"], layer.get("spacing", 4), layer.get("align", "left"))
+        # The same arguments as text.plan, so drawing the layer reuses this cached measurement.
+        _, box = measure(font_data(project, layer), text, layer["size"], layer.get("spacing", 4),
+                         layer.get("align", "left"), None)
         stroke = layer.get("stroke_width", 0)
         box = (box[0] - stroke, box[1] - stroke, box[2] + stroke, box[3] + stroke)
         return max(1, math.ceil(box[2] - box[0])), max(1, math.ceil(box[3] - box[1])), box
@@ -232,19 +262,39 @@ def transformed_size(layer):
 
 
 def resolved_layers(project, variables=None):
+    with resolving(project):
+        return _resolved_layers(project, variables)
+
+
+COLOR_KEYS = ("color", "fill", "start", "end", "stroke_color", "stroke")
+
+
+def _needs_variables(layer):
+    """Whether resolving ``layer`` can read the document's variables or form fields."""
+    return (layer["type"] in ("text", "field", "symbol") or layer.get("code") or layer.get("asset_variable")
+            or layer.get("character_style") or layer.get("paragraph_style")
+            or any(isinstance(layer.get(key), str) and "${" in layer[key] for key in ("asset", *COLOR_KEYS))
+            or (layer.get("repeat") and "${" in repr(layer["repeat"])))
+
+
+def _resolved_layers(project, variables=None, subset=None):
     from .design import resolve_color
     from .forms import current_values, has_fields
 
-    fields = current_values(project) if has_fields(project) else {}
-    # Each field's current value (its default, or a filled value) is also a ${key} variable.
-    variables = {**document_variables(project), **(variables or {})}
+    stored = project.state["layers"] if subset is None else subset
+    if subset is None or variables or any(_needs_variables(layer) for layer in stored):
+        fields = current_values(project) if has_fields(project) else {}
+        # Each field's current value (its default, or a filled value) is also a ${key} variable.
+        variables = {**document_variables(project), **(variables or {})}
+    else:
+        fields, variables = {}, {}
     # Paint strokes can hold hundreds of thousands of points and are only read while rendering
     # and laying out, so the resolved copies share them instead of copying them each time.
     # Scalars are immutable, so only containers are copied (this runs for every layer on every resolve).
     layers = [
         {key: deepcopy(value) if key != "strokes" and isinstance(value, (dict, list, tuple)) else value
          for key, value in layer.items()}
-        for layer in project.state["layers"]
+        for layer in stored
     ]
     originals = {item["id"]: item for item in layers}
     for index, layer in enumerate(layers):
@@ -302,7 +352,7 @@ def resolved_layers(project, variables=None):
                 "Image variables must reference embedded assets",
                 "missing_asset",
             )
-        for key in ("color", "fill", "start", "end", "stroke_color", "stroke"):
+        for key in COLOR_KEYS:
             if key in layer:
                 layer[key] = resolve_color(layer[key], project.state, variables)
         blend = (layer.get("repeat") or {}).get("end", {})
@@ -322,6 +372,48 @@ def resolved_layers(project, variables=None):
     from .vector_paths import attach_ancestors
     attach_ancestors(layers)
     return layers
+
+
+CONSTRAINT_REF = re.compile(r"(.+)\.(?:left|right|top|bottom|center-x|center-y)(?:[+-]\d+(?:\.\d+)?)?")
+
+
+def layer_box(project, layer):
+    """``resolve_layout(project)[layer["id"]]`` without resolving unrelated layers: only the layer, the layers its
+    constraints refer to (and theirs), its parent when it is placed against the parent's canvas, and a symbol's
+    master. A stack lays out its whole group, so a stack or a stack member among those resolves the document in
+    full. Per-layer edits (move, resize, rotate ...) call this once per operation, so a batch no longer costs
+    operations × layers."""
+    layers = project.state["layers"]
+    symbols = project.state.get("symbols", {})
+    wanted, pending = {}, [layer]
+    while pending:
+        item = pending.pop()
+        if item["id"] in wanted:
+            continue
+        wanted[item["id"]] = item
+        parent = project.find_layer(item["parent"]) if item.get("parent") else None
+        if "stack" in item or (parent is not None and "stack" in parent):
+            return resolve_layout(project)[layer["id"]]
+        refs = []
+        for expression in item.get("constraints", {}).values():
+            match = CONSTRAINT_REF.fullmatch(expression) if isinstance(expression, str) else None
+            if match is None or match[1].startswith("guide:"):
+                continue
+            if match[1] != "canvas":
+                refs.append(match[1])
+            elif item.get("parent"):
+                refs.append(item["parent"])  # canvas.* inside a group is the parent's content box.
+        if item["type"] == "symbol":
+            refs.append(symbols.get(item.get("symbol")))
+        for ref in refs:
+            found = project.find_layer(ref) if isinstance(ref, str) else None
+            if found is None:
+                return resolve_layout(project)[layer["id"]]  # Reports the broken reference as before.
+            pending.append(found)
+    subset = [item for item in layers if item["id"] in wanted] if len(wanted) > 1 else [layer]
+    with resolving(project):
+        resolved = _resolved_layers(project, subset=subset)
+    return resolve_layout(project, layers=resolved)[layer["id"]]
 
 
 def resolve_layout(project, variables=None, layers=None):
@@ -702,9 +794,9 @@ def layer_ink(project, layer, bounds):
     extent_key = [*extent_key, bounds[0] % 1, bounds[1] % 1]
     dependencies = [content, extent_key]
     if layer["type"] == "text":
-        from .text import font_data
+        from .text import font_data, font_sha256
         data = font_data(project, layer)
-        dependencies.append([hashlib.sha256(f).hexdigest() for f in (data if isinstance(data, tuple) else (data,))])
+        dependencies.append([font_sha256(f) for f in (data if isinstance(data, tuple) else (data,))])
     elif layer["type"] == "paint":
         dependencies.append(project.state.get("brushes", {}))
     key = hashlib.sha256(json.dumps(dependencies, sort_keys=True).encode()).hexdigest()
@@ -1101,6 +1193,31 @@ def layer_surface(project, layer, bounds, size, index, visiting=None):
             tile.putalpha(tile.getchannel("A").point(lambda a: round(a * layer["opacity"])))
     visiting.remove(ident)
     return tile
+
+
+def layer_canvas_alpha(project, layer, box, bounds, index):
+    """``layer_canvas_surface(...).getchannel("A").crop(box)`` for ``box`` inside the canvas, without drawing a
+    canvas-sized surface when the layer is drawn straight onto the canvas (no group, styles or clipping): the
+    overlap check asks this of every text layer, and a full-canvas surface each made it slow on large canvases."""
+    if layer.get("parent") or layer.get("styles") or layer.get("clip"):
+        return layer_canvas_surface(project, layer, bounds, index).getchannel("A").crop(box)
+    left, top, right, bottom = box
+    alpha = Image.new("L", (right - left, bottom - top))
+    if not layer["visible"]:
+        return alpha
+    b = bounds[layer["id"]]
+    source = layer_ink(project, {**layer, "opacity": 1}, b)
+    x, y = ink_origin(source, b)
+    # The part of the source inside the box, where the full surface would have composited it.
+    crop = (max(left, x), max(top, y), min(right, x + source.width), min(bottom, y + source.height))
+    if crop[0] < crop[2] and crop[1] < crop[3]:
+        # Composited over transparent pixels, the surface's alpha is the source's own.
+        part = source.crop((crop[0] - x, crop[1] - y, crop[2] - x, crop[3] - y))
+        alpha.paste(part.getchannel("A") if part.mode == "RGBA" else part.convert("RGBA").getchannel("A"),
+                    (crop[0] - left, crop[1] - top))
+    if layer["opacity"] != 1:
+        alpha = alpha.point(lambda a: round(a * layer["opacity"]))
+    return alpha
 
 
 def layer_canvas_surface(project, layer, bounds=None, index=None):

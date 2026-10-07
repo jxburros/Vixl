@@ -331,7 +331,7 @@ def check_design(
     evaluates the document's style tag (or ``style``, a name or list of names) rule by rule. The ``connected``
     check reports parts of a group that float free of its main body (gaps above ``connect_tolerance`` px)."""
     from .design_render import artboard_project
-    from .render import layer_canvas_surface, resolve_layout, resolved_layers
+    from .render import layer_canvas_alpha, layer_canvas_surface, resolve_layout, resolved_layers, resolving
 
     from .brand import for_project
     brand = for_project(project)
@@ -514,10 +514,10 @@ def check_design(
 
     def alpha(item):
         if item["id"] not in alphas:
-            tile = layer_canvas_surface(candidate, resolved[item["id"]], local_bounds, resolved)
             x, y, w, h = ink(item)
             box = (max(0, x), max(0, y), min(width, x + w), min(height, y + h))
-            alphas[item["id"]] = np.asarray(tile.getchannel("A").crop(box)) > 32
+            alphas[item["id"]] = np.asarray(layer_canvas_alpha(candidate, resolved[item["id"]], box, local_bounds,
+                                                               resolved)) > 32
         return alphas[item["id"]]
 
     if "content" in checks:
@@ -538,53 +538,55 @@ def check_design(
                 issue("content", "warning", f"{item['name']!r} has no visible pixels", [item],
                       **({"strokes": stroke_diagnostics(item)} if item["type"] == "paint" else {}))
 
-    # Characters no font can draw render as empty boxes (tofu), so they are reported by every
-    # check run, whichever checks were selected; fallback-font warnings belong to "fonts".
-    for item, report in glyph_reports(candidate, [item for item in layers if item["type"] == "text"]):
-        if report["missing"]:
-            issue("fonts", "error", f"{item['name']!r} has characters no font can draw ({''.join(report['missing'][:12])}); "
-                  "they render as empty boxes. Import a font that covers them and add it with font-fallbacks", [item], **report)
-        elif report["fallback"] and "fonts" in checks:
-            issue("fonts", "warning", f"{item['name']!r} uses fallback glyphs", [item], **report)
+    # Text layers are measured and drawn many times below: compute the document variables once.
+    with resolving(candidate):
+        # Characters no font can draw render as empty boxes (tofu), so they are reported by every
+        # check run, whichever checks were selected; fallback-font warnings belong to "fonts".
+        for item, report in glyph_reports(candidate, [item for item in layers if item["type"] == "text"]):
+            if report["missing"]:
+                issue("fonts", "error", f"{item['name']!r} has characters no font can draw ({''.join(report['missing'][:12])}); "
+                      "they render as empty boxes. Import a font that covers them and add it with font-fallbacks", [item], **report)
+            elif report["fallback"] and "fonts" in checks:
+                issue("fonts", "warning", f"{item['name']!r} uses fallback glyphs", [item], **report)
 
-    if "overlap" in checks:
-        drawable = [item for item in content if item["type"] != "group"]
-        for i, j in overlap_candidates([ink(item) for item in drawable], [is_text(item) for item in drawable], width, height):
-            first, second = drawable[i], drawable[j]
-            if second["id"] in first.get("allow_overlap", []) or first["id"] in second.get("allow_overlap", []):
-                continue
-            if (role(first) == "decoration" and not is_text(first)) or (role(second) == "decoration" and not is_text(second)):
-                continue
-            a, b = ink(first), ink(second)
-            if not _intersects(a, b):
-                continue
-            texts = [x for x in (first, second) if is_text(x)]
-            if not texts:
-                continue  # Overlapping images and shapes are ordinary composition.
-            if len(texts) == 1:
-                other = second if texts[0] is first else first
-                if _contains(outward(geometry[other["id"]]), outward(geometry[texts[0]["id"]])):
-                    continue  # A label inside its button or panel.
-            left, top = max(0, a[0], b[0]), max(0, a[1], b[1])
-            right = min(width, a[0] + a[2], b[0] + b[2])
-            bottom = min(height, a[1] + a[3], b[1] + b[3])
-            if left >= right or top >= bottom:
-                continue
-            ax, ay, bx, by = max(0, a[0]), max(0, a[1]), max(0, b[0]), max(0, b[1])
-            ma = alpha(first)[top - ay:bottom - ay, left - ax:right - ax]
-            mb = alpha(second)[top - by:bottom - by, left - bx:right - bx]
-            pixels = int(np.logical_and(ma, mb).sum())
-            smaller = max(1, min(int(alpha(first).sum()), int(alpha(second).sum())))
-            if pixels > 4 and pixels / smaller > 0.005:
-                severity = "error" if len(texts) == 2 else "warning"
-                issue(
-                    "overlap",
-                    severity,
-                    f"{first['name']!r} and {second['name']!r} overlap by {pixels} px "
-                    f"({pixels / smaller:.1%} of the smaller layer)",
-                    [first, second],
-                    region=[left, top, right - left, bottom - top],
-                )
+        if "overlap" in checks:
+            drawable = [item for item in content if item["type"] != "group"]
+            for i, j in overlap_candidates([ink(item) for item in drawable], [is_text(item) for item in drawable], width, height):
+                first, second = drawable[i], drawable[j]
+                if second["id"] in first.get("allow_overlap", []) or first["id"] in second.get("allow_overlap", []):
+                    continue
+                if (role(first) == "decoration" and not is_text(first)) or (role(second) == "decoration" and not is_text(second)):
+                    continue
+                a, b = ink(first), ink(second)
+                if not _intersects(a, b):
+                    continue
+                texts = [x for x in (first, second) if is_text(x)]
+                if not texts:
+                    continue  # Overlapping images and shapes are ordinary composition.
+                if len(texts) == 1:
+                    other = second if texts[0] is first else first
+                    if _contains(outward(geometry[other["id"]]), outward(geometry[texts[0]["id"]])):
+                        continue  # A label inside its button or panel.
+                left, top = max(0, a[0], b[0]), max(0, a[1], b[1])
+                right = min(width, a[0] + a[2], b[0] + b[2])
+                bottom = min(height, a[1] + a[3], b[1] + b[3])
+                if left >= right or top >= bottom:
+                    continue
+                ax, ay, bx, by = max(0, a[0]), max(0, a[1]), max(0, b[0]), max(0, b[1])
+                ma = alpha(first)[top - ay:bottom - ay, left - ax:right - ax]
+                mb = alpha(second)[top - by:bottom - by, left - bx:right - bx]
+                pixels = int(np.logical_and(ma, mb).sum())
+                smaller = max(1, min(int(alpha(first).sum()), int(alpha(second).sum())))
+                if pixels > 4 and pixels / smaller > 0.005:
+                    severity = "error" if len(texts) == 2 else "warning"
+                    issue(
+                        "overlap",
+                        severity,
+                        f"{first['name']!r} and {second['name']!r} overlap by {pixels} px "
+                        f"({pixels / smaller:.1%} of the smaller layer)",
+                        [first, second],
+                        region=[left, top, right - left, bottom - top],
+                    )
 
     # Empty text (a lyric between lines, a cleared label) draws nothing to measure.
     texts = [item for item in content if is_text(item) and resolved[item["id"]].get("text", "").strip()]

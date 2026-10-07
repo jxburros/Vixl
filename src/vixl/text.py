@@ -80,9 +80,32 @@ def primary_font_data(project, layer):
     name = project.state.get("fonts", {}).get(layer.get("font"), layer.get("font"))
     if name in project.assets:
         return project.assets[name]
+    path = _font_path(name or "DejaVuSans.ttf") if 1 <= int(layer.get("size", 48)) <= 4096 else None
+    if path is not None:
+        try:
+            return file_bytes(path)
+        except OSError:
+            _font_path.cache_clear()  # Uninstalled since it was found: font_for reports it.
     font = font_for(project, layer)
     path = font.path
     return path.getvalue() if hasattr(path, "getvalue") else file_bytes(path)
+
+
+@lru_cache(maxsize=64)
+def _font_path(font):
+    """The file behind a bundled or system font name, found once instead of opening the font on every
+    measurement; None when ``font_for`` must decide (and report) instead."""
+    if font == "DejaVuSans.ttf":
+        return str(Path(__file__).parent / "data" / font)
+    if "/" in font or "\\" in font:
+        return None
+    from PIL import ImageFont
+
+    try:
+        path = ImageFont.truetype(font, 12).path
+    except OSError:
+        return None
+    return path if isinstance(path, str) else None
 
 
 def file_bytes(path):
@@ -95,6 +118,14 @@ def file_bytes(path):
 @lru_cache(maxsize=16)
 def _file_bytes(path, mtime, size):
     return Path(path).read_bytes()
+
+
+@lru_cache(maxsize=32)
+def font_sha256(data):
+    """Hex SHA-256 of one font file, computed once per font instead of once per drawn layer."""
+    import hashlib
+
+    return hashlib.sha256(data).hexdigest()
 
 
 @lru_cache(maxsize=32)
@@ -165,6 +196,8 @@ def glyph_coverage(project, layer):
 
 
 def font_runs(fonts, content):
+    if len(fonts) == 1:
+        return [(fonts[0], content)] if content else []  # One font draws every cluster.
     # Keep combining marks, selectors and joiner sequences with their base glyph.
     clusters = []
     for char in content:
@@ -182,10 +215,30 @@ def font_runs(fonts, content):
     return result
 
 
+# Bidi classes that can put a character above level 0 or remove it from the text (explicit controls and boundary
+# neutrals are dropped by rule X9). Text without any of them is one left-to-right level, so runs() can skip the
+# bidi algorithm, which is written in Python and dominated the cost of shaping long lines.
+LEVEL_CHANGING = frozenset(("R", "AL", "AN", "RLE", "RLO", "LRE", "LRO", "PDF", "RLI", "LRI", "FSI", "PDI", "BN"))
+INHERITED_SCRIPTS = ("Zyyy", "Zinh", "Zzzz")
+
+
 def runs(text):
     """Resolve bidi levels, shape logical script runs, then order runs visually."""
     if not text:
         return []
+    if not any(unicodedata.bidirectional(char) in LEVEL_CHANGING for char in text):
+        result = []
+        for char, tag in zip(text, script_tags(text)):
+            if result and result[-1][0][1] == tag:
+                result[-1][1].append(char)
+            else:
+                result.append(((0, tag), [char]))
+        return [(key, "".join(chars)) for key, chars in result]
+    return bidi_runs(text)
+
+
+def bidi_runs(text):
+    """``runs`` through the full bidi algorithm."""
     storage = bidi.get_empty_storage()
     storage["base_level"] = bidi.get_base_level(text)
     storage["base_dir"] = ("L", "R")[storage["base_level"]]
@@ -203,16 +256,7 @@ def runs(text):
     except AssertionError as exc:
         raise UnsupportedText("Unicode isolate controls require raster text layout") from exc
     logical = list(storage["chars"])
-    tags = [script(char["ch"]) for char in logical]
-    for i, tag in enumerate(tags):
-        if tag in ("Zyyy", "Zinh", "Zzzz"):
-            left = next(
-                (tags[j] for j in range(i - 1, -1, -1) if tags[j] not in ("Zyyy", "Zinh", "Zzzz")), None
-            )
-            right = next(
-                (tags[j] for j in range(i + 1, len(tags)) if tags[j] not in ("Zyyy", "Zinh", "Zzzz")), None
-            )
-            tags[i] = left or right or "Latn"
+    tags = script_tags([char["ch"] for char in logical])
     result = []
     for char, tag in zip(logical, tags):
         key = (char["level"], tag)
@@ -223,6 +267,22 @@ def runs(text):
     bidi.reorder_resolved_levels(storage, False)
     order = list(dict.fromkeys(char["run"] for char in storage["chars"]))
     return [(result[i][0], "".join(c["ch"] for c in result[i][1])) for i in order]
+
+
+char_script = lru_cache(maxsize=4096)(script)  # One lookup per distinct character, not per character.
+
+
+def script_tags(chars):
+    """Each character's script; common and inherited characters (spaces, digits, marks) take the script before
+    them, or after them at the start, or Latin."""
+    tags = [char_script(char) for char in chars]
+    for i, tag in enumerate(tags):
+        if tag in INHERITED_SCRIPTS:
+            # Everything before i is resolved already, so the nearest script on the left is the previous one.
+            left = tags[i - 1] if i else None
+            tags[i] = left or next((tags[j] for j in range(i + 1, len(tags)) if tags[j] not in INHERITED_SCRIPTS),
+                                   None) or "Latn"
+    return tags
 
 
 def shape(data, text, size):
@@ -264,6 +324,9 @@ def glyph_outline(data, name):
     return pen.getCommands(), bounds.bounds
 
 
+UNSAFE_TO_BREAK = int(hb.GlyphFlags.UNSAFE_TO_BREAK)  # As a plain int: enum arithmetic per glyph is slow.
+
+
 def clusters(data, word):
     """Wrap only at safe shaping boundaries, preserving marks and conjuncts."""
     if not word:
@@ -274,7 +337,7 @@ def clusters(data, word):
     hb.shape(face(data)[1], buffer)
     boundaries = sorted(
         {0, len(word)}
-        | {info.cluster for info in buffer.glyph_infos if not info.flags & hb.GlyphFlags.UNSAFE_TO_BREAK}
+        | {info.cluster for info in buffer.glyph_infos if not int(info.flags) & UNSAFE_TO_BREAK}
     )
     return [word[a:b] for a, b in zip(boundaries, boundaries[1:])]
 
@@ -307,7 +370,7 @@ def lines(data, text, size, width=None):
         line = ""
         for word in words_of(paragraph):
             proposed = line + word
-            if shape(data, proposed, size)[1] <= width:
+            if advance(data, proposed, size) <= width:
                 line = proposed
                 continue
             if word.isspace():
@@ -317,17 +380,85 @@ def lines(data, text, size, width=None):
                 continue
             if line:
                 result.append(line.rstrip(" "))
-            line = ""
-            for char in clusters(data, word):
-                if line and shape(data, line + char, size)[1] > width:
-                    result.append(line)
-                    line = ""
-                line += char
+            line = break_word(data, clusters(data, word), size, width, result)
         result.append(line)
     return result
 
 
-@lru_cache(maxsize=1024)
+def break_word(data, pieces, size, width, result):
+    """Break a word wider than ``width`` between its clusters: each line takes clusters while the line still fits,
+    and always at least one. Full lines go to ``result``; the unfinished last line is returned.
+
+    Measuring every candidate line again made a long word cost its length times the line length, so a
+    100,000-character word took minutes. A line's prefixes are measured from one shaping of a window of clusters
+    instead, which gives exactly the widths ``shape`` gives each prefix when the window is one left-to-right run in
+    one font (clusters are safe break points, so shaping a prefix does not change its glyphs). Each line's break is
+    checked against ``shape`` itself, and any other text is measured cluster by cluster as before."""
+    start, window, line = 0, 64, ""
+    while start < len(pieces):
+        end = min(len(pieces), start + window)
+        offsets, total = [], 0
+        for piece in pieces[start:end]:
+            total += len(piece)
+            offsets.append(total)
+        text = "".join(pieces[start:end])
+        widths = _prefix_widths(data, text, size, tuple(offsets))
+        if widths is None:
+            break
+        # widths[m - 1] is the width of the first m clusters; the line ends before the first one that overflows.
+        overflow = next((m for m in range(2, len(widths) + 1) if widths[m - 1] > width), None)
+        if overflow is None:
+            if end < len(pieces):
+                window *= 2
+                continue
+            return text
+        fitted, spill = text[:offsets[overflow - 2]], text[:offsets[overflow - 1]]
+        if advance(data, fitted, size) != widths[overflow - 2] or advance(data, spill, size) != widths[overflow - 1]:
+            break
+        result.append(fitted)
+        start += overflow - 1
+        window = max(64, 2 * (overflow - 1))
+    for char in pieces[start:]:
+        if line and advance(data, line + char, size) > width:
+            result.append(line)
+            line = ""
+        line += char
+    return line
+
+
+@lru_cache(maxsize=8192)
+def advance(data, text, size):
+    """``shape(data, text, size)[1]``, cached: wrapping measures each candidate line, and text-flow wraps the same
+    lines again for every slice of the story it tries in a frame."""
+    return shape(data, text, size)[1]
+
+
+@lru_cache(maxsize=4096)
+def _prefix_widths(data, text, size, offsets):
+    """``shape(data, text[:b], size)[1]`` for each cluster boundary ``b`` in ``offsets`` (increasing, ending at
+    ``len(text)``), from a single shaping of ``text``; None unless ``text`` is one left-to-right run in one font."""
+    fonts = data if isinstance(data, tuple) else (data,)
+    found = runs(text)
+    if len(found) != 1 or found[0][0][0] % 2 or len(font_runs(fonts, found[0][1])) != 1:
+        return None
+    glyphs, _ = shape(data, text, size)
+    widths, cursor, start, index = [], 0.0, 0, 0
+    for glyph in [*glyphs, None]:
+        if glyph is None or glyph.text:
+            # A glyph that starts a cluster: every boundary up to here is complete.
+            while index < len(offsets) and offsets[index] <= start:
+                if offsets[index] != start:
+                    return None  # A boundary inside a cluster of this shaping.
+                widths.append(cursor)
+                index += 1
+            if glyph is None:
+                break
+            start += len(glyph.text)
+        cursor += glyph.advance
+    return tuple(widths) if index == len(offsets) else None
+
+
+@lru_cache(maxsize=4096)
 def measure(data, text, size, spacing=4, align="left", width=None):
     """Glyph paths and ink box of shaped text. Cached: every render and check re-measures each
     text layer (auto-sized boxes, constraints), usually with the same font, text and size."""

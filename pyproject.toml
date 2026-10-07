@@ -57,6 +57,7 @@ testpaths = ["tests"]
 markers = [
     "docs: run the vixl commands and JSON operation blocks in docs/ and skills/ (tests/test_docs_executable.py; part of the default run)",
     "visual: golden-image render tests in tests/visual (references generated on Linux; skipped elsewhere unless VIXL_VISUAL=1)",
+    "perf: time budgets for large documents in tests/test_perf.py (part of the default run; each takes a few seconds)",
 ]
 
 [tool.ruff]
