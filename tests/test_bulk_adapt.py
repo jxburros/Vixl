@@ -375,3 +375,11 @@ def test_mcp_apply_defaults_to_brief_and_text_add_too(tmp_path):
             assert next(iter(added["changes"]["layers"].values()))["name"] == "hi"
 
     asyncio.run(scenario())
+
+
+def test_brief_results_keep_text_layers_to_the_documented_fields():
+    p = Project(400, 300, "white")
+    added = p.apply({"type": "text", "name": "t", "text": "Hello", "size": 30}, detail="brief")["changes"]["layers"]
+    assert set(next(iter(added.values()))) == {"added", "name", "type", "bounds"}
+    changed = p.apply({"type": "text-set", "target": "t", "text": "Hello there"}, detail="brief")["changes"]["layers"]
+    assert set(next(iter(changed.values()))) <= {"changed", "bounds"}

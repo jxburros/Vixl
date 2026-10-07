@@ -112,14 +112,13 @@ def brief_changes(before, after):
             layers = {}
             for ident, delta in value.items():
                 if delta.get("added"):
-                    layers[ident] = {k: delta[k] for k in ("added", "name", "type", "bounds", "content_bounds", *TEXT_METRICS)
-                                     if k in delta}
+                    layers[ident] = {k: delta[k] for k in ("added", "name", "type", "bounds", "content_bounds") if k in delta}
                 elif delta.get("removed"):
                     layers[ident] = delta
                 else:
                     layers[ident] = {"changed": sorted(k for k in delta if k not in ("bounds", "canvas_bounds", "content_bounds",
                                                                                      "path_nodes", *TEXT_METRICS)),
-                                     **{key: delta[key] for key in (*TEXT_METRICS, "content_bounds") if key in delta},
+                                     **({"content_bounds": delta["content_bounds"]} if "content_bounds" in delta else {}),
                                      **({"bounds": delta["bounds"]} if "bounds" in delta else {})}
                 layers[ident].update(_grouped(current.get(ident), current))
             changes["layers"] = layers
