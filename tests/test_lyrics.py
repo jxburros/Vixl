@@ -601,7 +601,21 @@ def test_section_text_layers_must_be_text():
     assert "'lyric-chorus' must be a text layer" in validate_template(p)["errors"][0]["message"]
 
 
-def test_plan_warns_about_lines_too_wide_for_an_unwrapped_lyric(tmp_path):
+def test_fit_warnings_flag_lines_too_wide_for_an_unwrapped_lyric():
+    from vixl.lyrics import fit_warnings
+
+    lines = parse_lrc(LRC)["lines"]
+    p = Project(160, 90, "#101018")
+    p.apply({"type": "text", "name": "lyric", "text": "Lyric", "size": 12, "color": "white", "x": 8, "y": 30})
+    wide = fit_warnings(p, {"lyric": p.layer("lyric")["id"]}, lines)
+    assert wide and wide[0]["code"] == "lyric_too_wide" and "text-layout" in wide[0]["message"]
+    # A lyric with a text-layout box wraps long lines instead, so it does not warn.
+    p.apply({"type": "text-layout", "target": "lyric", "width": 144, "height": 36, "fit": True})
+    assert fit_warnings(p, {"lyric": p.layer("lyric")["id"]}, lines) == []
+
+
+@needs_ffmpeg
+def test_plan_reports_lines_too_wide_for_an_unwrapped_lyric(tmp_path):
     from vixl.lyrics import plan
 
     (tmp_path / "song.lrc").write_text(LRC, encoding="utf-8")
@@ -610,9 +624,4 @@ def test_plan_warns_about_lines_too_wide_for_an_unwrapped_lyric(tmp_path):
     p.apply([{"type": "solid", "name": "bg-default", "color": "#203040"},
              {"type": "text", "name": "lyric", "text": "Lyric", "size": 12, "color": "white", "x": 8, "y": 30}])
     p.save(tmp_path / "style.vixl")
-    report = plan(request(), tmp_path)
-    wide = [w for w in report["warnings"] if w["code"] == "lyric_too_wide"]
-    assert wide and "text-layout" in wide[0]["message"]
-    # The fixture template wraps in a text-layout box, so it does not warn.
-    template(tmp_path / "boxed.vixl")
-    assert not [w for w in plan(request(template="boxed.vixl"), tmp_path)["warnings"] if w["code"] == "lyric_too_wide"]
+    assert [w for w in plan(request(), tmp_path)["warnings"] if w["code"] == "lyric_too_wide"]
