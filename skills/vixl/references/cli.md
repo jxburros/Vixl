@@ -140,10 +140,10 @@ vixl distribute horizontal a b c [--gap 24]
 vixl constrain title --center-x canvas --center-y canvas
 vixl constrain logo --right canvas.right-40 --top canvas.top+40
 vixl constrain caption --center-x canvas --below title 24  # top = title.bottom+24
-vixl constrain title --left guide:left-margin.left
+vixl guide left-margin x 64                               # a vertical guide at x = 64
+vixl constrain badge --left guide:left-margin.left        # one constraint per axis: unconstrain to switch
 vixl unconstrain logo
 vixl canvas resize 1080x1080 ; vixl canvas preset story ; vixl canvas background transparent
-vixl guide left-margin x 64
 vixl grid editorial --columns 3 --rows 2 --margin 64 --gutter 24
 vixl artboard story --preset story ; vixl artboard banner --width 1600 --height 600
 ```

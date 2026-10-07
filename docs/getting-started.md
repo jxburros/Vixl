@@ -64,6 +64,7 @@ font with `vixl font pairings` and install a pairing or import your licensed fon
 
 Editing commands autosave. To revise the headline and undo the change:
 
+<!-- docs-test: continue -->
 ```bash
 vixl -p hello.vixl text title --text 'Ready to create'
 vixl -p hello.vixl render --out revised.png
@@ -75,6 +76,7 @@ vixl -p hello.vixl undo
 Save this as `hello-ops.json`. Names allow later operations to address layers created
 earlier in the same batch.
 
+<!-- docs-test: save hello-ops.json -->
 ```json
 {"operations": [
   {"type": "text", "name": "title", "text": "Hello, Vixl", "size": 64, "color": "#ffffff"},

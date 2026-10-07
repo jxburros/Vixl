@@ -142,10 +142,10 @@ Seeds are not keyframable, so the boil is built from copies: it multiplies the t
 
 ```bash
 vixl tear photo --seed 3 --edges bottom                   # mask on the photo, natural strength
+vixl tear photo --seed 4                                  # regrow the same tear with a new seed
+vixl tear photo --remove                                  # remove it before switching to a clip
 vixl tear photo --seed 3 --edges top bottom --strength rough --as clip
 vixl tear --name scrap --as path --seed 9 --width 600 --height 400 --edges all --fill '#f7f1e5'
-vixl tear photo --seed 4                                  # regrow the same tear with a new seed
-vixl tear photo --remove
 ```
 
 A torn edge is a fractal rough line along any sides of a layer's box (or a free-standing sheet),

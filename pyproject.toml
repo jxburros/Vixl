@@ -55,6 +55,7 @@ packages = ["src/vixl"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = [
+    "docs: run the vixl commands and JSON operation blocks in docs/ and skills/ (tests/test_docs_executable.py; part of the default run)",
     "visual: golden-image render tests in tests/visual (references generated on Linux; skipped elsewhere unless VIXL_VISUAL=1)",
 ]
 

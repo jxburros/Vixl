@@ -8,14 +8,14 @@ email it, or put it on a USB stick.
 
 ```bash
 vixl export deck.html                                    # the whole deck, hidden pages left out
-vixl export deck.html --pages 1-3,5 --presenter-theme light
-vixl export deck.html --slide-images png --start-slide results --no-notes
-vixl export deck.html --no-presenter                     # the old one-image artwork page instead
+vixl export short-deck.html --pages 1-3,5 --presenter-theme light
+vixl export png-deck.html --slide-images png --start-slide results --no-notes
+vixl export artwork.html --no-presenter                  # the old one-image artwork page instead
 ```
 
 ```python
 project.export("deck.html")                                   # bytes, and a file when given a path
-project.export("deck.html", presenter={"theme": "auto", "notes": False}, pages="1-3")
+project.export("short-deck.html", presenter={"theme": "auto", "notes": False}, pages="1-3")
 ```
 
 HTML export of a document with pages is the presenter. A single-page document, `--page N`
