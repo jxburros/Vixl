@@ -36,6 +36,7 @@ import numpy as np
 
 from .errors import VixlError, require
 from .geometry import compact_number
+from .craft import IRREGULAR_STRENGTH
 from .geometry import default_fill
 from .model import MAX_LAYERS
 
@@ -527,8 +528,10 @@ def execute_irregular(project, op):
         return
     require("seed" in op, "irregular needs a seed: the same seed always gives the same result", field="seed")
     for index, layer in enumerate(layers):
-        recipe = {**(layer.get("irregular") or {}).get("recipe", {}),
-                  **{k: deepcopy(op[k]) for k in RECIPE_KEYS if k in op}}
+        before = (layer.get("irregular") or {}).get("recipe")
+        recipe = {**(before or {}), **{k: deepcopy(op[k]) for k in RECIPE_KEYS if k in op}}
+        # A new recipe records the strength it starts at; one made before that default keeps "natural".
+        recipe.setdefault("strength", "natural" if before else IRREGULAR_STRENGTH)
         restore(project, layer)
         layer["irregular"] = make_irregular(project, layer, recipe, index)
 
@@ -701,6 +704,7 @@ def execute_tear(project, op):
         return
     require("seed" in op, "tear needs a seed: the same seed always gives the same edge", field="seed")
     recipe = {**(previous or {}).get("recipe", {}), **{k: deepcopy(op[k]) for k in TEAR_KEYS if k in op}}
+    recipe.setdefault("strength", "natural" if previous else IRREGULAR_STRENGTH)
     mode = previous["mode"] if previous else recipe.get("as") or ("mask" if layer else "path")
     require(not previous or op.get("as", mode) == mode, f"This tear is a {mode}; remove it before switching",
             field="as")
@@ -802,7 +806,8 @@ def schemas(add):
     seed = {"type": "integer", "minimum": 0,
             "description": "Required. The same seed always gives the same result; a new seed regrows it."}
     strength = {**enum("subtle", "natural", "rough"),
-                "description": "Preset magnitudes, scaled to each layer's size. Default natural."}
+                "description": "Preset magnitudes, scaled to each layer's size. Default subtle (layers irregular "
+                               "or torn before 0.23 keep natural)."}
     unit = {"type": "number", "minimum": 0, "maximum": 1}
     add("irregular", {
         "targets": {"type": "array", "items": S, "minItems": 1, "maxItems": MAX_LAYERS,
