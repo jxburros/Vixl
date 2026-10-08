@@ -4,6 +4,7 @@ import base64
 from copy import deepcopy
 import io
 import json
+from pathlib import Path
 import re
 import zipfile
 
@@ -49,10 +50,19 @@ def svg_pixels(p):
     )
 
 
-def test_complete_stable_unicode_catalog_includes_every_qualified_sequence_and_component():
+def test_complete_stable_unicode_catalog_includes_every_qualified_sequence_and_component(monkeypatch):
+    # Exercise Windows' default text encoding on every CI platform.
+    native_open = Path.open
+
+    def windows_locale_open(path, mode="r", buffering=-1, encoding=None, errors=None, newline=None):
+        if "b" not in mode and encoding is None:
+            encoding = "cp1252"
+        return native_open(path, mode, buffering, encoding, errors, newline)
+
+    monkeypatch.setattr(Path, "open", windows_locale_open)
     data = emojis._catalog()
     expected = []
-    for line in (emojis.DATA / "emoji-test.txt").read_text().splitlines():
+    for line in (emojis.DATA / "emoji-test.txt").read_text(encoding="utf-8").splitlines():
         m = re.match(r"([0-9A-F ]+)\s*;\s*(fully-qualified|component)\s*#", line)
         if m:
             expected.append("-".join(m[1].split()))

@@ -302,9 +302,9 @@ def write(z, name, data):
 
 def build(sources, output):
     output.mkdir(parents=True, exist_ok=True)
-    tests = (sources / "emoji-test.txt").read_text()
+    tests = (sources / "emoji-test.txt").read_text(encoding="utf-8")
     assert "# Version: 17.0" in tests, "Pin Unicode 17.0, not a moving latest URL"
-    meta = {e["hexcode"]: e for e in json.loads((sources / "openmoji.json").read_text())}
+    meta = {e["hexcode"]: e for e in json.loads((sources / "openmoji.json").read_text(encoding="utf-8"))}
     entries, aliases, canonical = [], {}, {}
     group = subgroup = ""
     for line in tests.splitlines():
@@ -339,7 +339,7 @@ def build(sources, output):
         aliases[emoji] = normalized
     aliases = {emoji: canonical[n] for emoji, n in aliases.items() if n in canonical}
     reaction_sources = Path(__file__).resolve().parents[1] / "assets/emojis/reactions"
-    reactions = json.loads((reaction_sources / "catalog.json").read_text())
+    reactions = json.loads((reaction_sources / "catalog.json").read_text(encoding="utf-8"))
     assert len({e["id"] for e in reactions}) == len(reactions)
     entries += [{k: v for k, v in e.items() if k != "file"} for e in reactions]
     aliases.update({e["emoji"]: e["id"] for e in reactions})
@@ -386,7 +386,8 @@ def build(sources, output):
             },
             ensure_ascii=False,
             separators=(",", ":"),
-        )
+        ),
+        encoding="utf-8",
     )
     for name in ("LICENSE.txt", "UNICODE-LICENSE.txt"):
         (output / name).write_bytes((sources / name).read_bytes())
