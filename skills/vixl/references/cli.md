@@ -61,7 +61,7 @@ set "PATH=%LOCALAPPDATA%\Programs\Vixl\bin;%PATH%"
 | `save [COPY.vixl]` | Save / save-as |
 | `status` | Canvas, active layer, head, branch, transaction flag |
 | `inspect [LAYER]` | Full JSON state (or one layer) incl. `resolved_bounds` |
-| `layers` | Layer list |
+| `layers [--full]` | Layer list (long path data abbreviated unless `--full`) |
 | `describe` | Document description |
 | `effects [LAYER]` | Effect stack with IDs/indices |
 | `manifest`, `dependencies`, `reproduce --check` | Assets, fonts, providers; can it re-render? |
@@ -76,7 +76,7 @@ vixl add photo.jpg --name hero [--x 0 --y 0] [--linked]         # alias: layer a
 vixl solid --name panel --width 400 --height 200 --color '#26344e' [--x --y]
 vixl gradient --name sky --start '#152641' --end '#635e83' --direction vertical|horizontal|radial|angled [--angle 35]
 vixl gradient --name sky --direction angled --angle 35 --stops '[{"offset":0,"color":"#152235"},{"offset":1,"color":"#e8885c"}]'
-vixl text add 'Hello' --name title --size 96 --color white [--font path.ttf] [--align center] [--spacing 8] [--x center --y 120]
+vixl text add 'Hello' --name title --size 96 --color white [--font path.ttf] [--align center] [--spacing 8 | --line-height 1.1] [--x center --y 120]
 vixl shape rectangle|rounded-rectangle|ellipse|polygon|star|arc|line --name s --width W --height H [--x --y] \
      [--fill C] [--stroke C] [--stroke-width N] [--radius N] [--sides N] [--inner-radius 0.4] \
      [--line-cap butt|round|square] [--trim-start PCT] [--trim-end PCT]
@@ -112,6 +112,7 @@ vixl blend portrait multiply             # normal multiply screen overlay darken
 vixl rasterize title                     # bakes effects, styles and clipping into pixels
 vixl merge-layers back disc --name art   # one raster layer at the topmost's slot ; vixl flatten [--keep-hidden]
 vixl group stripes stripe1 stripe2 [--above LAYER|--below LAYER] ; vixl ungroup stripes
+vixl reparent tail --into dog [--above L|--below L|--index N] [--keep appearance|local] [--no-fit] ; vixl reparent tail --into page
 vixl stack names --targets first last company --gap 20 --align center --justify center --width 1000 --height 400   # auto-layout; empty hide_if_empty text collapses
 vixl stack names --direction horizontal --gap 8 ; vixl stack names --remove ; vixl text first --hide-if-empty
 vixl shape --target bar --fill '#6b3f69'    # solid/gradient/shape/text add --target edit a layer in place
@@ -140,10 +141,10 @@ vixl distribute horizontal a b c [--gap 24]
 vixl constrain title --center-x canvas --center-y canvas
 vixl constrain logo --right canvas.right-40 --top canvas.top+40
 vixl constrain caption --center-x canvas --below title 24  # top = title.bottom+24
-vixl constrain title --left guide:left-margin.left
+vixl guide left-margin x 64                               # a vertical guide at x = 64
+vixl constrain badge --left guide:left-margin.left        # one constraint per axis: unconstrain to switch
 vixl unconstrain logo
 vixl canvas resize 1080x1080 ; vixl canvas preset story ; vixl canvas background transparent
-vixl guide left-margin x 64
 vixl grid editorial --columns 3 --rows 2 --margin 64 --gutter 24
 vixl artboard story --preset story ; vixl artboard banner --width 1600 --height 600
 ```
@@ -312,6 +313,7 @@ vixl upgrade old.vixl [--report] [--pin-fills]   # document saved before 0.21: l
 ```bash
 vixl sizes --category print                         # also: social stationery icons logos ads email video slides …
 vixl new letter --bleed -o flyer.vixl               # named size; --landscape, --dpi 150
+vixl new --purpose slides --seed 7 -o deck.vixl     # purpose size; --variety, --background, --no-fonts
 vixl canvas size instagram-story                    # resize to a named size; canvas dpi 300
 vixl layout list ; vixl layout show editorial-grid
 vixl -p flyer.vixl layout apply editorial-grid --set title='Annual report' --set body='…' --palette slate --seed 3

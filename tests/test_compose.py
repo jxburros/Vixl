@@ -22,13 +22,25 @@ def test_compose_builds_saves_and_exports_in_one_call(tmp_path):
                             operations=[{"type": "shape", "shape": "ellipse", "name": "dot", "x": 10, "y": 10,
                                          "width": 40, "height": 40, "fill": "red"}],
                             preview=True, exports=["out/card.png", {"path": "out/card.pdf"}])
-    assert result["steps"] == ["request", "create", "layout", "style", "look", "operations", "check", "preview",
-                               "save", "export"]
+    # The style's own font pairing is installed when the call names none (or noted when it cannot be fetched).
+    assert result["steps"] == ["request", "create", "fonts", "layout", "style", "look", "operations", "check",
+                               "preview", "save", "export"]
+    assert result["fonts"]["pairing"] == "inter-single-ui"
     assert result["document"] == "card.vixl" and result["layout"]["seed"] == 3
     assert "issues" in result["check"] and image[:8] == b"\x89PNG\r\n\x1a\n"
     assert Image.open(tmp_path / "out/card.png").size == (1080, 1080) and (tmp_path / "out/card.pdf").is_file()
     project = Project.load(tmp_path / "card.vixl")
     assert project.layer("dot") and project.state.get("style")
+
+
+def test_compose_says_when_it_replaces_the_active_document(tmp_path):
+    session = Session(workspace=tmp_path)
+    first, _ = compose(session, path="first.vixl", width=200, height=100)
+    assert first["active_document"] is True and not first.get("warnings")
+    session.create(tmp_path / "jazz.vixl", 300, 200)
+    result, _ = compose(session, path="card.vixl", width=200, height=100)
+    assert session.path == tmp_path / "card.vixl" and result["active_document"] is True
+    assert any("card.vixl is now the active document" in w and "document='jazz.vixl'" in w for w in result["warnings"])
 
 
 def test_a_failing_step_is_named_and_nothing_is_written(tmp_path):
@@ -61,6 +73,71 @@ def test_strict_check_and_dry_run_save_nothing(tmp_path):
     assert caught.value.details["step"] == "check" and caught.value.details["report"]["issues"]
     result, _ = compose(session, width=300, height=100, background="white", operations=operations, dry_run=True)
     assert result["dry_run"] and result["check"]["errors"] and not (tmp_path / "s.vixl").exists()
+
+
+def test_image_slots_take_workspace_paths_in_one_call(tmp_path):
+    (tmp_path / "memes").mkdir()
+    Image.new("RGB", (64, 48), "#2266aa").save(tmp_path / "memes/img0.png")
+    Image.new("RGB", (64, 48), "#aa6622").save(tmp_path / "memes/img1.png")
+    session = Session(workspace=tmp_path)
+    result, _ = compose(session, path="meme.vixl", width=400, height=400,
+                        layout={"name": "meme-top-bottom", "image": "memes/img0.png", "title": "Top", "caption": "Bottom"})
+    imported = result["layout"]["imported"]
+    assert [entry["path"] for entry in imported] == ["memes/img0.png"] and imported[0]["sha256"]
+    project = Project.load(tmp_path / "meme.vixl")
+    frames = [layer for layer in project.state["layers"] if layer.get("asset") == imported[0]["asset"]]
+    assert frames and "image" not in project.state["layout"].get("blanks", [])
+    assert project.render().getpixel((200, 200))[:3] == (0x22, 0x66, 0xAA)
+    result, _ = compose(session, path="pair.vixl", width=400, height=400,
+                        layout={"name": "meme-comparison", "images": ["memes/img0.png", "memes/img1.png"],
+                                "items": "No\nYes"})
+    assert len(result["layout"]["imported"]) == 2
+    # Paths stay inside the workspace, and a missing file names the slot.
+    for bad, code in (("../outside.png", "forbidden"), ("memes/none.png", "not_found")):
+        with pytest.raises(VixlError) as caught:
+            compose(session, path="bad.vixl", width=200, height=200, layout={"name": "meme-top-bottom", "image": bad})
+        assert caught.value.code == code and caught.value.details["step"] == "layout"
+    assert not (tmp_path / "bad.vixl").exists()
+
+
+def test_the_compose_background_survives_a_layout(tmp_path):
+    session = Session(workspace=tmp_path)
+    layout = {"name": "event-poster", "title": "Night Market", "label": "Fri 12 June", "body": "6 pm\nPier 9",
+              "cta": "RSVP", "caption": "example.org", "seed": 4}
+    result, _ = compose(session, path="p.vixl", width=600, height=800, background="#10131c", layout=layout)
+    assert result["layout"]["background"].startswith("#10131c")
+    project = Project.load(tmp_path / "p.vixl")
+    assert project.render().getpixel((2, 2))[:3] == (0x10, 0x13, 0x1C)
+    assert project.state["layout"]["mode"] == "dark"
+    assert not project.check(checks=["contrast"])["errors"]
+    # A layout that names its own background role keeps it; transparent keeps the layout from painting one.
+    result, _ = compose(session, path="q.vixl", width=600, height=800, background="#10131c",
+                        layout={**layout, "colors": {"background": "#fafafa"}})
+    assert "background" not in result["layout"]
+    assert Project.load(tmp_path / "q.vixl").render().getpixel((2, 2))[:3] == (0xFA, 0xFA, 0xFA)
+    compose(session, path="t.vixl", width=600, height=800, background="transparent", layout=layout)
+    assert Project.load(tmp_path / "t.vixl").render().getpixel((2, 2))[3] == 0
+
+
+def test_a_style_shapes_the_layout_and_fonts_so_its_own_check_passes(tmp_path, monkeypatch):
+    from vixl import typefaces
+
+    def offline(*args, **kwargs):
+        raise VixlError("font_download_failed", "Font download failed (ConnectError); check network access")
+
+    monkeypatch.setattr(typefaces, "fetch_font", offline)
+    session = Session(workspace=tmp_path)
+    for seed in range(6):
+        result, _ = compose(session, dry_run=True, size="instagram-post", style="swiss", check=["style"],
+                            layout={"name": "big-number", "title": "87%", "label": "Retention", "seed": seed,
+                                    "subtitle": "of users came back within a week", "body": "Source: survey"})
+        assert result["layout"]["from_style"]["align"] == "left" and result["layout"]["from_style"]["palette"]
+        assert not [issue for issue in result["check"]["issues"] if "swiss" in issue["message"]], result["check"]
+        assert result["fonts"]["pairing"] == "inter-single-ui" and result["fonts"]["installed"] is False
+    # What the caller chose wins over the style.
+    result, _ = compose(session, dry_run=True, size="instagram-post", style="swiss", font_pairing=None,
+                        layout={"name": "big-number", "title": "87%", "align": "center", "palette": "mono", "seed": 1})
+    assert "from_style" not in result["layout"]
 
 
 def test_compose_through_mcp_cli_rest_and_python(tmp_path):

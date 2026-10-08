@@ -46,7 +46,7 @@ import re
 import numpy as np
 from PIL import Image, ImageDraw, ImageOps
 
-from .assets import add_encoded, add_image, decode, read_bounded
+from .assets import add_encoded, add_image, decode, image_size, read_bounded
 from .denoise import KEYS as DENOISE_KEYS, validate as denoise_valid
 from .errors import VixlError, require
 from .geometry import compact_number
@@ -556,17 +556,19 @@ def execute(project, op):
         else:
             source = Path(op["path"]).resolve()
             data = read_bounded(source, project.limits.max_asset_bytes)
-            asset, image = add_encoded(project, data)
+            # A downsampled add decodes once, below, so a source above the pixel limit can still be imported.
+            downsampled = op.get("max_pixels") is not None or op.get("downsample")
+            asset, image = (None, None) if downsampled else add_encoded(project, data)
             provenance = {
                 "type": "imported",
                 "original_filename": source.name,
                 "original_path": str(source),
                 "checksum": hashlib.sha256(data).hexdigest(),
             }
-        original_size = image.size
+        original_size = image.size if image is not None else image_size(data, project.limits)
         # Raster boxes are whole pixels; fractional sizes from layout arithmetic round to the nearest one.
-        width, height = (max(1, round(finite(v, k))) for v, k in ((op.get("width", image.width), "width"),
-                                                                  (op.get("height", image.height), "height")))
+        width, height = (max(1, round(finite(v, k))) for v, k in ((op.get("width", original_size[0]), "width"),
+                                                                  (op.get("height", original_size[1]), "height")))
         if op.get("max_pixels") is not None or op.get("downsample"):
             require(not op.get("linked"), "Downsampling requires an embedded image, not linked=True", field="downsample")
             require(op.get("downsample") in (None, "placed@2x"), "downsample must be placed@2x", field="downsample")
@@ -575,6 +577,11 @@ def execute(project, op):
                                        fit=op.get("fit", "fill"))
             provenance.update(original_size=list(original_size), embedded_size=list(image.size))
             provenance.update({key: op[key] for key in ("downsample", "max_pixels") if key in op})
+            limits = project.limits
+            if ("width" not in op and "height" not in op
+                    and (width * height > limits.max_pixels or max(width, height) > limits.max_dimension)):
+                # A source above the pixel limit cannot keep its own size as the layer box; use the embedded size.
+                width, height = image.size
         from .image_import import attribution
 
         provenance.update(attribution(op.get("credit"), op.get("license")))
@@ -597,8 +604,14 @@ def execute(project, op):
         w, h = op.get("width", c["width"]), op.get("height", c["height"])
         layer = new_layer(op["name"] if "name" in op else default_name(project, kind), kind, w, h)
         if kind == "solid":
-            color(resolve_color(op.get("color", "white"), project.state))
-            layer["fill"] = op.get("color", "white")
+            from .craft import SOLID_FILL_ROLE, fill_for
+            from .selectors import record
+
+            fill = op["color"] if "color" in op else fill_for(project, SOLID_FILL_ROLE)
+            color(resolve_color(fill, project.state))
+            layer["fill"] = fill
+            if "color" not in op:
+                record(project, "defaults", {"layer": layer["name"], "color": fill})
         elif kind == "gradient":
             for key, default in (("start", "black"), ("end", "white")):
                 color(resolve_color(op.get(key, default), project.state))
@@ -606,21 +619,22 @@ def execute(project, op):
             layer["direction"] = op.get("direction", "vertical")
             layer.update({k: deepcopy(op[k]) for k in ("stops", "angle", "falloff") if k in op})
         else:
+            from .craft import text_defaults
+
             font, role = resolve_font(project, op.get("font", "body" if (project.state.get("typography") or {})
                                                      .get("body") else None))
             layer.update(
                 {
                     "text": op["text"],
                     "font": font,
-                    "size": op.get("size", 48),
                     "color": op.get("color") or default_ink(project),
                     "align": op.get("align", "left"),
-                    "spacing": op.get("spacing", 4),
                     "auto_size": True,
                 }
             )
             if role:
                 layer["font_role"] = role
+            text_defaults(project, layer, op)
             if op.get("hide_if_empty"):
                 layer["hide_if_empty"] = True
             embed_font_file(project, layer)
@@ -653,11 +667,15 @@ def execute(project, op):
             background = op.get("background", c["background"])
             color(resolve_color(background, project.state))
             if (w, h) != (c["width"], c["height"]):
-                # A custom size no longer matches the named size's trim, bleed and safe area.
+                # A custom size no longer matches the named size's trim, bleed and safe area; it gets the
+                # craft default safe area, as a new custom-size document does.
                 for key in ("size", "bleed", "safe", "physical"):
                     c.pop(key, None)
+                from .craft import safe_area
                 from .sizes import replace_generated_guides
 
+                if safe_area(w, h):
+                    c["safe"] = safe_area(w, h)
                 replace_generated_guides(project.state, {})
             c.update(width=w, height=h, background=background)
         if "dpi" in op:
@@ -739,17 +757,32 @@ def execute(project, op):
             from .richedit import replace_text
 
             dropped = replace_text(layer, op["text"])  # keeps list, alignment and span formatting that still apply
-        for key in ("text", "size", "color", "align", "spacing", "stroke_width", "stroke_color", "hide_if_empty"):
+        for key in ("text", "size", "color", "align", "spacing", "line_height", "stroke_width", "stroke_color",
+                    "hide_if_empty"):
             if key in op:
                 layer[key] = op[key]
+        if "spacing" in op:
+            layer.pop("line_height", None)
         if "font" in op:
             layer["font"], role = resolve_font(project, op["font"])
             layer.pop("font_role", None)
             if role:
                 layer["font_role"] = role
             embed_font_file(project, layer)
+        if layer.get("rich") and "line_height" in op:
+            from .richtext import size_leading
+
+            size_leading(project, layer, layer["rich"], op["line_height"])
+        elif "line_height" in layer and "spacing" not in op and {"size", "font", "line_height"} & set(op):
+            from .craft import spacing_for
+
+            # Leading set as a multiple of the size follows the new size or font.
+            layer["spacing"] = spacing_for(project, layer["font"], layer["size"],
+                                           finite(layer["line_height"], "line_height", 0.5, 5))
         require(layer["align"] in ("left", "center", "right"), "Invalid text alignment")
-        finite(layer.get("spacing", 4), "spacing", 0, 1000)
+        from .craft import check_spacing
+
+        check_spacing(layer)
         finite(layer.get("stroke_width", 0), "stroke_width", 0, 100)
         color(resolve_color(layer["color"], project.state))
         if layer.get("rich"):

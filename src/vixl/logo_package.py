@@ -302,7 +302,7 @@ def _plan_social(primary, mark, light):
 
     plans = {}
     for name, size, source, share in (("avatar", "logo-avatar", mark, 0.62), ("og-image", "og-image", primary, 0.6)):
-        project = Project.sized(size, light)
+        project = Project.sized(size, light, design=False)
         canvas = project.state["canvas"]
         logo = source.state["canvas"]
         scale = min(canvas["width"] * share / logo["width"], canvas["height"] * share / logo["height"])

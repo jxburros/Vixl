@@ -67,6 +67,21 @@ def test_pptx_fallback_image_carries_opacity_once(tmp_path):
     assert alpha.getextrema() == (128, 128)
 
 
+def test_pptx_draws_a_skewed_layer_as_a_listed_picture(tmp_path):
+    project = Project(400, 300, background="#ffffff")
+    project.apply([{"type": "shape", "shape": "rectangle", "name": "r", "width": 60, "height": 60, "x": 200, "y": 220,
+                    "fill": "#ff0000"}, {"type": "skew", "target": "r", "x": 30}])
+    report = {}
+    project.export(tmp_path / "s.pptx", report=report)
+    assert report["raster_fallbacks"] == {"1": [{"layer": "r", "reason": "skew"}]}
+    xml = zipfile.ZipFile(tmp_path / "s.pptx").read("ppt/slides/slide1.xml").decode()
+    assert "<p:pic>" in xml and 'prst="rect"' in xml.split("<p:pic>")[1]
+    emu = int(re.search(r'sldSz cx="(\d+)"', zipfile.ZipFile(tmp_path / "s.pptx").read("ppt/presentation.xml").decode())[1]) / 400
+    left, top = (int(v) / emu for v in re.search(r'<a:off x="(\d+)" y="(\d+)"/>', xml.split("<p:pic>")[1]).groups())
+    box = project.render().convert("RGB").point(lambda v: 255 - v).getbbox()
+    assert abs(left - box[0]) <= 1 and abs(top - box[1]) <= 1
+
+
 def test_pptx_marks_bold_and_italic_faces_imported_under_any_name(tmp_path):
     from vixl.fonts import import_font
 

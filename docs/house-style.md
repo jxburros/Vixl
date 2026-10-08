@@ -637,6 +637,73 @@ Each decision above is tracked in #388.
 
 ---
 
+## Where the house style lives (H1)
+
+The house style is one data file, `src/vixl/data/house-style.json`, shaped like a brand, read through
+one module, `src/vixl/house_style.py`. A workspace `brand.json` and explicit fields override it.
+
+- **`craft`** is fixed and the same everywhere: contrast floors and targets, the spacing scale (unit =
+  half the body size), the line-height table, line length, minimum text sizes, the base-size rule, the
+  headline measure, the default safe area (5%) and stroke width (1.5%), the neutral fill and the palette
+  roles fills and strokes take, the house corner and corner scale, the irregularity strength, margins,
+  outline and shadow treatment, and label case. `src/vixl/craft.py` holds the helpers that apply them
+  (text, shape and stroke defaults) and read-only names (`LINE_HEIGHT`, `CORNERS`, `SAFE_AREA` …) that
+  always reflect the data; layouts, rich text, text flow, charts, diagrams, templates and containers
+  read the same values.
+- **`taste`** holds the pools a roll draws from (palettes, pairings, layouts, styles, looks), each entry
+  with a `tier` and moods, and the variety `levels` that gate the tiers.
+- **`purposes`** holds one profile per purpose (poster, social, slides, document, form, diagram, logo,
+  motion): the brief kinds, size categories and aliases that map to it, the default document `size`
+  (and `sizes` for aliases with their own, such as `story`, `icon` or `favicon`), whether it is a `mark`
+  (a transparent canvas), the density weights, the dark-mode share, type-scale ratios, preferred
+  pairings, layouts and styles, the finishing look and its amount, and background treatments.
+  `default_profile` is the general profile, with the 1080×1080 size for a document given nothing.
+  Creation and rolls read this one vocabulary.
+- **`legacy`** records what earlier versions rolled from, so pinned documents and tests reproduce.
+
+Read it, never copy it. The API:
+
+| Call | Returns |
+|---|---|
+| `house_style.profile(purpose)` | the merged profile for a purpose (or the general profile for `None`) |
+| `house_style.purpose_for(value)` | a purpose from a purpose, alias, brief kind, named size or size category, or `None` |
+| `house_style.resolve_purpose(purpose, project=, kind=, size=)` | `(purpose, source)`, source `explicit`, `brief kind`, `document` or `size` |
+| `house_style.craft(key=None)`, `rule(key)` | the craft rules, or one of them (`line_height`, `contrast`, `corner_scale` …); `rule` reads without copying |
+| `house_style.canonical_purpose(value)`, `purpose_names()` | the purpose for creation and rolls (an error with suggestions when unknown), and every accepted name |
+| `house_style.purpose_size(value)`, `is_mark(purpose, size)` | the size a purpose implies, and whether a document is a mark |
+| `house_style.tier_of(kind, name, purpose=None)`, `entries(kind)`, `names(kind, tier)` | tiers and metadata of the pools |
+| `house_style.level(variety)` | a variety level's tier weights, look scale, motifs and treatments |
+| `house_style.VERSION`, `versions()`, `legacy(version)` | the current and earlier house-style versions |
+
+People and agents read it with `vixl house [show PURPOSE]` or
+`vixl_resource_get(kind="house-style", name="all"|PURPOSE)`.
+
+### The craft signature (A1)
+
+Vixl is recognisable by its craft only: **sharp corners, thin part lines, offset shadows, uppercase
+labels and one line-height rule**. Fonts, palettes and layouts vary by purpose and seed. In rolls this
+means corners are sharp unless the rolled style has its own corner (material, glassmorphism, kawaii,
+y2k, memphis), and the house shadow is the solid offset (`hard-shadow`) in the ink colour.
+
+## Changing defaults (H2)
+
+A changed default affects **new documents only**:
+
+- A new document stores its rolled direction in `design_defaults`, with the `house_style_version` that
+  made it. Later layouts and rolls in that document use the stored direction and version, so an
+  existing document never changes because the house style did.
+- Bump `version` in `house-style.json` when a change alters what a seed rolls, and record what the
+  previous version rolled from under `legacy` (version 1 is kept as code in `src/vixl/legacy_roll.py`).
+- Every changed default gets a changelog line under **Changed defaults** that names the override
+  restoring the old result: an explicit field (`strength: "natural"`), a lock (`--lock mode=light`), or the
+  version pin (`house_style_version: 1`, `vixl roll --house-style 1`, or `{"house_style": 1}` in
+  `.vixl/variety.json`).
+- Run the house-style eval (`python -m evals.house_style --compare evals/house-style-baseline.json`)
+  before and after: quality must not fall, and diversity may fall only on purpose, with the baseline
+  updated in the same change.
+
+---
+
 ## Bugs that hide or contradict the current defaults
 
 These are tracked in #388. Fix them whatever the decisions above turn out to be.

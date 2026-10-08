@@ -154,8 +154,10 @@ def compile_command(tokens):
             p.add_argument("--name")
             p.add_argument("--target")
             group = p.add_mutually_exclusive_group(required=True)
-            group.add_argument("--nodes", type=json.loads, help="JSON anchors with point, in and out control handles")
-            group.add_argument("--points", type=json.loads, help="JSON freehand points")
+            group.add_argument("--nodes", type=json.loads,
+                               help='JSON anchors [{"point": [x, y], "in": [x, y], "out": [x, y]}]; in and out are '
+                                    "handle positions in the same coordinates as point, not offsets from it")
+            group.add_argument("--points", type=json.loads, help="JSON freehand points [[x, y], ...]")
             p.add_argument("--closed", action="store_true")
             p.add_argument("--no-smooth", dest="smooth", action="store_false")
             p.add_argument("--tension", type=float)
@@ -194,7 +196,8 @@ def compile_command(tokens):
             p.add_argument("--font", help="registered font name, heading, body, or a font file")
             p.add_argument("--size", type=int)
             p.add_argument("--align", choices=["left", "center", "right"])
-            p.add_argument("--spacing", type=int)
+            p.add_argument("--spacing", type=int, help="pixels added to the font's line pitch (may be negative)")
+            p.add_argument("--line-height", type=float, help="baseline distance as a multiple of the size")
             p.add_argument("--within", help="centre the text in this shape's content box (instead of --x/--y)")
             p.add_argument("--hide-if-empty", action=argparse.BooleanOptionalAction, default=None,
                            help="do not draw the text while it is empty after ${variable} substitution")
@@ -218,6 +221,7 @@ def compile_command(tokens):
         p.add_argument("--font", help="registered font name, heading, body, or a font file")
         for key in ("size", "spacing", "stroke-width"):
             p.add_argument(f"--{key}", type=int)
+        p.add_argument("--line-height", type=float, help="baseline distance as a multiple of the size")
         p.add_argument("--hide-if-empty", action=argparse.BooleanOptionalAction, default=None,
                        help="do not draw the text while it is empty after ${variable} substitution")
     elif cmd in (

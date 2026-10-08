@@ -509,7 +509,7 @@ def _default_color(state):
     return "#111111" if (0.2126 * background[0] + 0.7152 * background[1] + 0.0722 * background[2]) > 0.45 else "#ffffff"
 
 
-def _style_from(project, op, rec_style=None):
+def _style_from(project, op, rec_style=None, new=False):
     """The shared look of the frames: font, size, colour, alignment, leading, outline."""
     from .render import resolve_font
 
@@ -533,12 +533,22 @@ def _style_from(project, op, rec_style=None):
             style["font"], style["font_role"] = font, role
         else:
             style["font"] = "DejaVuSans.ttf"
+    if new:
+        from .craft import LINE_HEIGHT, body_size, stage_for
+
+        # A new flow takes its size from the type scale and its leading from the line-height table; flows
+        # saved before these defaults keep what they stored.
+        body = body_size(project)
+        style.setdefault("size", body)
+        if "spacing" not in style:
+            style.setdefault("line_height", LINE_HEIGHT[stage_for(style["size"], body)])
+        style["line_basis"] = "size"
     style.setdefault("size", 18)
     style.setdefault("color", _default_color(project.state))
     style.setdefault("align", "left")
     finite(style["size"], "size", 1, 4096)
     if "spacing" in style:
-        finite(style["spacing"], "spacing", 0, 1000)
+        finite(style["spacing"], "spacing", -style["size"], 1000)
     if "line_height" in style:
         finite(style["line_height"], "line_height", 0.5, 5)
     if "stroke_width" in style:
@@ -555,12 +565,11 @@ def _plain_spacing(project, style):
     if "spacing" in style:
         return style["spacing"]
     if "line_height" in style:
-        from .text import face, font_data
+        from .craft import spacing_for
 
-        data = font_data(project, {"font": style["font"], "text": "x"})
-        outline = face(data)[0]
-        natural = (outline["hhea"].ascent - outline["hhea"].descent) * style["size"] / outline["head"].unitsPerEm
-        return max(0, round(style["size"] * style["line_height"] - natural))
+        spacing = spacing_for(project, style["font"], style["size"], style["line_height"])
+        # Flows made before 0.23 never tightened below the font's own pitch.
+        return spacing if style.get("line_basis") == "size" else max(0, spacing)
     return 4
 
 
@@ -768,6 +777,8 @@ def _apply_rich_options(rec, op):
             rich[key] = op[key]
     if "line_height" in style and "line_height" not in rich:
         rich["line_height"] = style["line_height"]
+    if style.get("line_basis") == "size":
+        rich["line_basis"] = "size"
     if style.get("align") == "justify":
         for item in rich["paragraphs"]:
             item.setdefault("align", "justify")
@@ -828,7 +839,7 @@ def _create(project, name, op):
     base = {}
     if adopted is not None:
         base = {k: adopted[k] for k in ("font", "size", "color", "align", "spacing", "stroke_width", "stroke_color", "font_role") if k in adopted}
-    style = _style_from(project, op, base)
+    style = _style_from(project, op, base, new=True)
     story = _story_from(project, op, style, adopted=adopted)
     require(story is not None, "Pass the story as text, markdown or spans (or target: an existing text layer)", field="text")
     rec = {"text": story[0], "style": style, "frames": [], "keep_together": False, "orphans": 1, "widows": 1}

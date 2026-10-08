@@ -280,3 +280,39 @@ def test_cli_align_place_and_text_take_content_boxes():
     assert compile_command("text add Hi --within bubble") == {"type": "text", "text": "Hi", "within": "bubble"}
     with pytest.raises(VixlError):
         compile_command("place line --within bubble --guide g")
+
+
+def _pieces(image):
+    """Separate filled regions in an image (4-connected)."""
+    mask = np.asarray(image.getchannel("A")) > 128
+    seen, pieces = np.zeros_like(mask), 0
+    for start in zip(*np.nonzero(mask)):
+        if seen[start]:
+            continue
+        pieces += 1
+        stack = [start]
+        seen[start] = True
+        while stack:
+            y, x = stack.pop()
+            for ny, nx in ((y + 1, x), (y - 1, x), (y, x + 1), (y, x - 1)):
+                if 0 <= ny < mask.shape[0] and 0 <= nx < mask.shape[1] and mask[ny, nx] and not seen[ny, nx]:
+                    seen[ny, nx] = True
+                    stack.append((ny, nx))
+    return pieces
+
+
+def test_confetti_scatters_count_seeded_pieces():
+    p = Project(300, 300, "transparent")
+    result = p.apply({"type": "shape", "shape": "confetti", "name": "c", "x": 10, "y": 10, "width": 250,
+                      "height": 250, "fill": "orange", "count": 40, "seed": 3})
+    assert not result.get("warnings")
+    assert _pieces(p.render()) == 40
+    again = Project(300, 300, "transparent")
+    again.apply({"type": "shape", "shape": "confetti", "name": "c", "x": 10, "y": 10, "width": 250, "height": 250,
+                 "fill": "orange", "count": 40, "seed": 3})
+    assert again.render().tobytes() == p.render().tobytes()
+    p.apply({"type": "shape", "target": "c", "seed": 4})
+    assert p.render().tobytes() != again.render().tobytes()
+    single = Project(300, 300, "transparent")
+    single.apply({"type": "shape", "shape": "confetti", "name": "c", "width": 60, "height": 20, "fill": "orange"})
+    assert _pieces(single.render()) == 1  # without count, one slip as before

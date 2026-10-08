@@ -101,22 +101,24 @@ def glyph_reports(project, layers):
     """``(layer, {"missing", "fallback"})`` for resolved text layers whose characters need a
     fallback font or that no available font covers. Text is read with the project's variables."""
     from .text import glyph_coverage
-    from .render import document_variables, substitute
+    from .render import document_variables
     from .richtext import active, glyph_coverage as rich_coverage
+    from .variables import layer_text
 
     for item in layers:
-        view = {**item, "text": substitute(item["text"], document_variables(project))}
+        view = {**item, "text": layer_text(item, document_variables(project))}
         report = (rich_coverage if active(view) else glyph_coverage)(project, view)
         if report["missing"] or report["fallback"]:
             yield item, report
 
 
-def boxed_text_overflow(project, layer):
-    """For text set in a text-layout box, the (width, height) its wrapped lines need when that is
-    more than the box (they are cut off), else None. Fitted, warped and path text are skipped:
-    fit shrinks to the box, and warps and paths are laid out differently."""
+def boxed_text_need(project, layer):
+    """For text set in a text-layout box, the (width, height) its lines need when wrapped at the
+    box width, else None. Fitted, warped and path text are skipped: fit shrinks to the box, and
+    warps and paths are laid out differently."""
     from .text import measure, font_data, UnsupportedText
-    from .render import document_variables, substitute
+    from .render import document_variables
+    from .variables import layer_text
 
     settings = layer.get("text_layout") or {}
     if layer["type"] != "text" or "width" not in settings or settings.get("fit") or settings.get("path"):
@@ -127,20 +129,25 @@ def boxed_text_overflow(project, layer):
         from .richtext import layout as rich_layout
 
         result = rich_layout(project, layer)
-        need = (math.ceil(result.box[2]), math.ceil(result.box[3]))
-        return need if need[0] > layer["width"] + 1 or need[1] > layer["height"] + 1 else None
+        return math.ceil(result.box[2]), math.ceil(result.box[3])
     if settings.get("warp", "none") != "none":
         return None
-    text = substitute(layer["text"], document_variables(project))
+    text = layer_text(layer, document_variables(project))
     try:
         _, box = measure(font_data(project, layer), text, layer["size"], layer.get("spacing", 4),
                          layer.get("align", "left"), layer["width"])
     except UnsupportedText:
         return None
     stroke = 2 * layer.get("stroke_width", 0)
-    need = (math.ceil(box[2] - box[0] + stroke), math.ceil(box[3] - box[1] + stroke))
+    return math.ceil(box[2] - box[0] + stroke), math.ceil(box[3] - box[1] + stroke)
+
+
+def boxed_text_overflow(project, layer):
+    """For text set in a text-layout box, the (width, height) its wrapped lines need when that is
+    more than the box (they are cut off), else None."""
+    need = boxed_text_need(project, layer)
     # A pixel of slack keeps antialiased glyph edges from counting as clipping.
-    return need if need[0] > layer["width"] + 1 or need[1] > layer["height"] + 1 else None
+    return need if need and (need[0] > layer["width"] + 1 or need[1] > layer["height"] + 1) else None
 
 
 def missing_glyphs(project):
@@ -324,7 +331,7 @@ def check_design(
     evaluates the document's style tag (or ``style``, a name or list of names) rule by rule. The ``connected``
     check reports parts of a group that float free of its main body (gaps above ``connect_tolerance`` px)."""
     from .design_render import artboard_project
-    from .render import layer_canvas_surface, resolve_layout, resolved_layers
+    from .render import layer_canvas_alpha, layer_canvas_surface, resolve_layout, resolved_layers, resolving
 
     from .brand import for_project
     brand = for_project(project)
@@ -454,7 +461,11 @@ def check_design(
                 issue("bounds", "error", f"{item['name']!r} is entirely outside the canvas", [item], bounds=[x, y, w, h])
             elif x < -1e-8 or y < -1e-8 or x + w > width + 1e-8 or y + h > height + 1e-8:
                 crossed = sum((x < -1e-8, y < -1e-8, x + w > width + 1e-8, y + h > height + 1e-8))
-                if intentional_crop(item) or (item["type"] in ("shape", "gradient") and crossed >= 2):
+                if any(parent.get("pattern_scatter") for parent in ancestors(item)):
+                    # A seamless tile's motifs cross its edge on purpose: the wrapped copy completes them.
+                    issue("bounds", "info", f"{item['name']!r} wraps across the edge of a seamless pattern tile",
+                          [item], bounds=[x, y, w, h], intentional=True)
+                elif intentional_crop(item) or (item["type"] in ("shape", "gradient") and crossed >= 2):
                     # Artwork that runs past two or more edges (a hill, a glow) is bleed by design.
                     issue("bounds", "info", f"{item['name']!r} bleeds off the canvas edge (" + (
                               "marked as an intentional crop)" if intentional_crop(item) else "artwork running past two edges)"),
@@ -503,10 +514,10 @@ def check_design(
 
     def alpha(item):
         if item["id"] not in alphas:
-            tile = layer_canvas_surface(candidate, resolved[item["id"]], local_bounds, resolved)
             x, y, w, h = ink(item)
             box = (max(0, x), max(0, y), min(width, x + w), min(height, y + h))
-            alphas[item["id"]] = np.asarray(tile.getchannel("A").crop(box)) > 32
+            alphas[item["id"]] = np.asarray(layer_canvas_alpha(candidate, resolved[item["id"]], box, local_bounds,
+                                                               resolved)) > 32
         return alphas[item["id"]]
 
     if "content" in checks:
@@ -527,53 +538,55 @@ def check_design(
                 issue("content", "warning", f"{item['name']!r} has no visible pixels", [item],
                       **({"strokes": stroke_diagnostics(item)} if item["type"] == "paint" else {}))
 
-    # Characters no font can draw render as empty boxes (tofu), so they are reported by every
-    # check run, whichever checks were selected; fallback-font warnings belong to "fonts".
-    for item, report in glyph_reports(candidate, [item for item in layers if item["type"] == "text"]):
-        if report["missing"]:
-            issue("fonts", "error", f"{item['name']!r} has characters no font can draw ({''.join(report['missing'][:12])}); "
-                  "they render as empty boxes. Import a font that covers them and add it with font-fallbacks", [item], **report)
-        elif report["fallback"] and "fonts" in checks:
-            issue("fonts", "warning", f"{item['name']!r} uses fallback glyphs", [item], **report)
+    # Text layers are measured and drawn many times below: compute the document variables once.
+    with resolving(candidate):
+        # Characters no font can draw render as empty boxes (tofu), so they are reported by every
+        # check run, whichever checks were selected; fallback-font warnings belong to "fonts".
+        for item, report in glyph_reports(candidate, [item for item in layers if item["type"] == "text"]):
+            if report["missing"]:
+                issue("fonts", "error", f"{item['name']!r} has characters no font can draw ({''.join(report['missing'][:12])}); "
+                      "they render as empty boxes. Import a font that covers them and add it with font-fallbacks", [item], **report)
+            elif report["fallback"] and "fonts" in checks:
+                issue("fonts", "warning", f"{item['name']!r} uses fallback glyphs", [item], **report)
 
-    if "overlap" in checks:
-        drawable = [item for item in content if item["type"] != "group"]
-        for i, j in overlap_candidates([ink(item) for item in drawable], [is_text(item) for item in drawable], width, height):
-            first, second = drawable[i], drawable[j]
-            if second["id"] in first.get("allow_overlap", []) or first["id"] in second.get("allow_overlap", []):
-                continue
-            if (role(first) == "decoration" and not is_text(first)) or (role(second) == "decoration" and not is_text(second)):
-                continue
-            a, b = ink(first), ink(second)
-            if not _intersects(a, b):
-                continue
-            texts = [x for x in (first, second) if is_text(x)]
-            if not texts:
-                continue  # Overlapping images and shapes are ordinary composition.
-            if len(texts) == 1:
-                other = second if texts[0] is first else first
-                if _contains(outward(geometry[other["id"]]), outward(geometry[texts[0]["id"]])):
-                    continue  # A label inside its button or panel.
-            left, top = max(0, a[0], b[0]), max(0, a[1], b[1])
-            right = min(width, a[0] + a[2], b[0] + b[2])
-            bottom = min(height, a[1] + a[3], b[1] + b[3])
-            if left >= right or top >= bottom:
-                continue
-            ax, ay, bx, by = max(0, a[0]), max(0, a[1]), max(0, b[0]), max(0, b[1])
-            ma = alpha(first)[top - ay:bottom - ay, left - ax:right - ax]
-            mb = alpha(second)[top - by:bottom - by, left - bx:right - bx]
-            pixels = int(np.logical_and(ma, mb).sum())
-            smaller = max(1, min(int(alpha(first).sum()), int(alpha(second).sum())))
-            if pixels > 4 and pixels / smaller > 0.005:
-                severity = "error" if len(texts) == 2 else "warning"
-                issue(
-                    "overlap",
-                    severity,
-                    f"{first['name']!r} and {second['name']!r} overlap by {pixels} px "
-                    f"({pixels / smaller:.1%} of the smaller layer)",
-                    [first, second],
-                    region=[left, top, right - left, bottom - top],
-                )
+        if "overlap" in checks:
+            drawable = [item for item in content if item["type"] != "group"]
+            for i, j in overlap_candidates([ink(item) for item in drawable], [is_text(item) for item in drawable], width, height):
+                first, second = drawable[i], drawable[j]
+                if second["id"] in first.get("allow_overlap", []) or first["id"] in second.get("allow_overlap", []):
+                    continue
+                if (role(first) == "decoration" and not is_text(first)) or (role(second) == "decoration" and not is_text(second)):
+                    continue
+                a, b = ink(first), ink(second)
+                if not _intersects(a, b):
+                    continue
+                texts = [x for x in (first, second) if is_text(x)]
+                if not texts:
+                    continue  # Overlapping images and shapes are ordinary composition.
+                if len(texts) == 1:
+                    other = second if texts[0] is first else first
+                    if _contains(outward(geometry[other["id"]]), outward(geometry[texts[0]["id"]])):
+                        continue  # A label inside its button or panel.
+                left, top = max(0, a[0], b[0]), max(0, a[1], b[1])
+                right = min(width, a[0] + a[2], b[0] + b[2])
+                bottom = min(height, a[1] + a[3], b[1] + b[3])
+                if left >= right or top >= bottom:
+                    continue
+                ax, ay, bx, by = max(0, a[0]), max(0, a[1]), max(0, b[0]), max(0, b[1])
+                ma = alpha(first)[top - ay:bottom - ay, left - ax:right - ax]
+                mb = alpha(second)[top - by:bottom - by, left - bx:right - bx]
+                pixels = int(np.logical_and(ma, mb).sum())
+                smaller = max(1, min(int(alpha(first).sum()), int(alpha(second).sum())))
+                if pixels > 4 and pixels / smaller > 0.005:
+                    severity = "error" if len(texts) == 2 else "warning"
+                    issue(
+                        "overlap",
+                        severity,
+                        f"{first['name']!r} and {second['name']!r} overlap by {pixels} px "
+                        f"({pixels / smaller:.1%} of the smaller layer)",
+                        [first, second],
+                        region=[left, top, right - left, bottom - top],
+                    )
 
     # Empty text (a lyric between lines, a cleared label) draws nothing to measure.
     texts = [item for item in content if is_text(item) and resolved[item["id"]].get("text", "").strip()]
@@ -677,6 +690,7 @@ def check_design(
             thumbnail_width = 600 if c.get("size") in ("og-image", "x-post") else 320
         finite(thumbnail_width, "thumbnail_width", 16, 16384)
         scale = thumbnail_width / width
+        small = []
         for item in texts:
             size = resolved[item["id"]].get("size", 0)
             if item.get("text_layout", {}).get("fit"):
@@ -684,15 +698,40 @@ def check_design(
                 size = min(size, local_bounds[item["id"]][3] / lines)
             effective = size * text_scales[item["id"]] * scale
             if effective < min_thumbnail_text:
-                issue(
-                    "legibility",
-                    "warning" if thumbnail_piece else "info",
-                    f"{item['name']!r} is {effective:.1f} px tall at {thumbnail_width} px wide; "
-                    f"aim for at least {min_thumbnail_text} px (font size {size * min_thumbnail_text / effective:.0f}+)"
-                    + ("" if thumbnail_piece else "; only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)"),
-                    [item],
-                    thumbnail_size=round(effective, 2),
-                )
+                small.append((item, size, effective))
+        # One finding per chart: its labels share one size, so they are one fix (the chart's font_size).
+        charts, single = {}, []
+        for entry in small:
+            chart = next((x for x in ancestors(entry[0]) if x.get("chart")), None)
+            if chart is not None:
+                charts.setdefault(chart["id"], (chart, []))[1].append(entry)
+            else:
+                single.append(entry)
+        hint = "" if thumbnail_piece else "; only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)"
+        severity = "warning" if thumbnail_piece else "info"
+        for chart, entries in charts.values():
+            least = min(effective for _, _, effective in entries)
+            issue("legibility", severity,
+                  f"chart {chart['name']!r}: {len(entries)} label(s) are {least:.1f} px tall or less at {thumbnail_width} px "
+                  f"wide; aim for at least {min_thumbnail_text} px (raise the chart's font_size){hint}",
+                  [item for item, _, _ in entries], thumbnail_size=round(least, 2), chart=chart["name"])
+        if not thumbnail_piece and len(single) > 3:
+            # Not a thumbnail piece: one note for the whole document rather than one per text layer.
+            least = min(single, key=lambda entry: entry[2])
+            issue("legibility", "info",
+                  f"{len(single)} text layers are under {min_thumbnail_text} px tall at {thumbnail_width} px wide "
+                  f"(the smallest, {least[0]['name']!r}, is {least[2]:.1f} px){hint}",
+                  [item for item, _, _ in single], thumbnail_size=round(least[2], 2))
+            single = []
+        for item, size, effective in single:
+            issue(
+                "legibility",
+                severity,
+                f"{item['name']!r} is {effective:.1f} px tall at {thumbnail_width} px wide; "
+                f"aim for at least {min_thumbnail_text} px (font size {size * min_thumbnail_text / effective:.0f}+){hint}",
+                [item],
+                thumbnail_size=round(effective, 2),
+            )
 
     if "blanks" in checks:
         registry = candidate.state.get("blanks", {})

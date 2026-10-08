@@ -30,7 +30,11 @@ vixl canvas dpi 300
 
 Operations: `{"type": "canvas", "size": "a4", "orientation": "landscape", "bleed": true, "dpi": 300}`; `canvas.preset` and `artboard.preset` accept the same names (older preset names still work). MCP: `vixl_document_create(path, size="letter", bleed=true)` and `vixl_sizes_list`.
 
-A sized canvas records `size`, `dpi`, `physical`, `bleed` and `safe` (pixels; print sizes default to a quarter inch, story sizes to 250 px at the top and bottom and 60 px at the sides, as a `{left, top, right, bottom}` object when the sides differ), and generated guides `trim-*` and `safe-*`, so layers can be anchored with constraints such as `{"left": "guide:safe-left.left"}`. A custom canvas resize drops the size metadata and generated guides but keeps `dpi` and any guide a layer is anchored to. Export uses the canvas dpi for PNG/JPEG/TIFF/PDF metadata, and `vixl check` tests text and artwork against the safe area by default (`--checks print` also uses the bleed).
+A sized canvas records `size`, `dpi`, `physical`, `bleed` and `safe` (pixels; print sizes default to a quarter inch, story sizes to 250 px at the top and bottom and 60 px at the sides, as a `{left, top, right, bottom}` object when the sides differ), and generated guides `trim-*` and `safe-*`, so layers can be anchored with constraints such as `{"left": "guide:safe-left.left"}`. A document made at a custom size (`vixl new --width/--height`, `Project(w, h)`) or resized to one gets the craft default
+safe area, 5% of the short side (50 px on 1000×1000); a named size keeps its own, including an explicit none (favicons,
+sprites, wallpapers). A custom canvas resize drops the size metadata and generated guides but keeps `dpi` and any guide a
+layer is anchored to. Full-bleed pictures in layouts (memes, photo captions, split images) are marked `allow_crop`, so
+only their copy has to sit inside the safe area. Export uses the canvas dpi for PNG/JPEG/TIFF/PDF metadata, and `vixl check` tests text and artwork against the safe area by default (`--checks print` also uses the bleed).
 
 Icon sets: design on `favicon` (or any square canvas) and run `vixl export-icons --out icons --set web|apple|android|windows|all`, or export `favicon.ico` directly (`--icon-sizes 16 32 48`).
 
@@ -40,7 +44,8 @@ Fixed templates make every adopter look alike. A layout is a composition system 
 
 - **Color roles** — swatches `@background`, `@surface`, `@ink`, `@muted`, `@accent`, `@accent-text` and `@on-accent`, assigned from a palette with checked contrast: ink at least 7:1 on the background, muted and accent text at least 4.5:1 on the background and surface panels, the accent at least 3:1. Retint a whole layout by editing one swatch.
 - **Type scale** — character styles `caption`, `body`, `lead`, `subhead`, `title`, `headline` and `display` from a medium-appropriate base size and a modular ratio (`minor-third` 1.2 … `golden` 1.618). Print bases are set in points at the canvas dpi.
-- **Spacing** — margins from the density (`airy`, `balanced`, `dense`), never inside the safe area, and gaps on a spacing unit.
+- **Spacing** — margins from the density (`airy`, `balanced`, `dense`), never inside the safe area, and gaps on a spacing unit (half the body size). Text and buttons stay inside the canvas safe area: type shrinks until they fit, and on a 3:1 banner the safe compositions set their copy in two columns. Rails, panels, accents and full-bleed pictures are marked as decoration or intentional crop.
+- **Corners** — buttons, panels and rounded parts of placed containers take the document's corner style (the rolled `corner`, else the house corner, sharp).
 - **Composition** — alignment, focal placement, split proportions, accent device (`rule`, `bar`, `dot`, `block`, `outline`, `none`) and button shape.
 
 Explicit seeds are deterministic. Without one, sparse designs get a fresh seed unless the document or workspace sets `variety: "fixed"`. The applied choices are recorded in `state.layout` (and reported in the change summary), so you can reproduce a result with its returned seed or pin any choice explicitly. See [safe variety](safe-variety.md) for safe pools, expanded roll dimensions and workspace history.
@@ -128,7 +133,8 @@ rearranged, `layout.notes` says how to take control:
   `@accent`). Nothing is lightened or darkened to suit a mode; mode follows the first color. `@ink` is not part of that
   order, so it is derived from the background hue for 7:1 contrast, and `@muted`, `@accent-text` and `@on-accent` are derived
   from it.
-- `colors: {background: "#0f172a", accent: "#38bdf8"}` sets individual roles and wins over everything else.
+- `colors: {background: "#0f172a", accent: "#38bdf8"}` sets individual roles and wins over everything else. A given
+  `background` also sets the mode (dark or light from its lightness), and the other roles are chosen to read on it.
 
 `palette-apply` works the same way (`roles` true/false or `{role: color-or-palette-index}`, `keep_order`) and records the
 mapping as `palette_roles` in the apply result. `palette-generate` never assigns roles; it only adds numbered swatches.

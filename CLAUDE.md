@@ -6,6 +6,8 @@ user docs in `docs/`, the agent skill in `skills/vixl/`. `CONTRIBUTING.md` has t
 ## Running tests
 - `pytest -n auto` runs the whole suite (about 2,250 tests). Iterate on one file first: `pytest -q tests/test_x.py`.
 - If `vixl` is editable-installed from another checkout, set `PYTHONPATH=$PWD/src` on the same command line.
+- `pytest -m perf` holds the speed claims as time budgets (`tests/test_perf.py`); `tests/test_docs_executable.py`
+  (marker `docs`) runs the `vixl` commands and JSON blocks in `docs/` and `skills/`.
 - `pytest -m visual` runs the golden-image suite in `tests/visual` (Linux only; references in
   `tests/visual/golden`). After an intended render change, regenerate with
   `VIXL_UPDATE_GOLDEN=1 pytest tests/visual`, review `git diff --stat` and the PNGs, and commit them with the change.

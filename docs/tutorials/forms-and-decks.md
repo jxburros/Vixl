@@ -29,6 +29,7 @@ tabbing; viewers can add their own field highlight. The
 
 ![The form filled for Ada Lovelace with the newsletter checkbox selected](../assets/generated/registration-filled.png)
 
+<!-- docs-test: continue -->
 ```bash
 vixl -p registration.vixl form fill --set full_name='Ada Lovelace' --set email=ada@example.com --set newsletter=yes --out ada.pdf
 ```
@@ -37,12 +38,14 @@ Required values and formats are validated. This writes a flattened copy; the mas
 its blank fields. Use `--mode editable` to prefill a PDF whose fields remain interactive.
 For multiple attendees, make `attendees.csv`:
 
+<!-- docs-test: save attendees.csv -->
 ```csv
 full_name,email,newsletter
 Ada Lovelace,ada@example.com,yes
 Grace Hopper,grace@example.com,no
 ```
 
+<!-- docs-test: continue -->
 ```bash
 vixl -p registration.vixl form fill --data attendees.csv --dry-run
 vixl -p registration.vixl form fill --data attendees.csv --combine attendees.pdf

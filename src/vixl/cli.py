@@ -38,7 +38,7 @@ Imperfect: irregular TARGET --seed N [--strength subtle|natural|rough] (wobble, 
 Charts:    chart bar|stacked-bar|percent-bar|horizontal-bar|line|area|pie|donut --name N (--csv FILE | --categories JSON --series JSON)
            [--title T] [--legend bottom] [--value-labels true] [--number-format '#,##0'], chart line --target N (restyle, resize, change kind),
            chart-data --target N --set DEC=3330 | --append 'JAN=1,2' | --remove-category C | --reload; exports to .pptx as a native chart
-Design:    pen, shape, shape-place, container-place, container-swap, container-reflow, group, ungroup, clip, layer-style, distribute, style-define,
+Design:    pen, shape, shape-place, container-place, container-swap, container-reflow, group, ungroup, reparent LAYER… --into GROUP|page, clip, layer-style, distribute, style-define,
            style-apply, swatch, artboard, frame, replace-contents, repeat, repeat-blend,
            adjustment, lut, lookup, comp-save, comp-apply, text-layout, pathfinder, symbol, symbol-instance,
            stack GROUP [--direction vertical|horizontal] [--gap N] [--align A] [--justify J] [--hide-if-empty] (auto-layout)
@@ -112,9 +112,9 @@ Finish:    look LAYER NAME [--color C] [--amount 0-1] [--remove]  (glow, neon, s
 Styles:    styles [list [QUERY] | show NAME | apply NAME [--palette] | check [NAME]], style-set NAME… [--options JSON],
            check --checks style [--style NAME…] (premade rules for swiss, brutalist, minimalist, art-deco …)
 Dice:      roll [--apply] [--set title=…] [--for poster] [--mood M] [--size NAME] [--seed N|random] [--lock palette=sage]
-           [--unfilled omit|blank]
+           [--variety low|medium|high] [--unfilled omit|blank] [--house-style 1], house [show PURPOSE] (the house style)
 Color:     color [info] COLOR…, color convert COLOR --to oklch|cmyk|…, color harmony COLOR --scheme triadic,
-           color scale COLOR, color mix A B, color contrast FG BG, color names QUERY,
+           color scale COLOR | A B [--count N], color mix A B, color contrast FG BG, color names QUERY,
            palette-generate NAME COLOR [--scheme scale|triadic|…], type-scale --base 16 --ratio golden
 Paint:     brushes, paint-layer [--name N], paint [LAYER] --brush ink --points JSON | --path SVG
            [--size N] [--color C] [--erase], paint-clear [LAYER] [--last N], brush-define NAME --base B
@@ -142,6 +142,21 @@ Import:    import FILE.svg [--svg-mode editable|appearance|auto] | FILE.pdf [--p
 Options: --project/-p FILE, --json, --allow-linked, --plugins, --max-pixels N, --detail brief|compact|full, --version
 Use vixl commands --json for a complete inventory; vixl COMMAND --help works without a document. See docs/commands.md.
 """
+
+
+# Geometry that can run to thousands of numbers; `layers` abbreviates it (inspect LAYER and `layers --full` keep it).
+BULKY = ("path", "path_view", "path_nodes", "points", "nodes", "strokes", "pixels", "mesh")
+
+
+def listing_layer(layer):
+    """A layer for the `layers` listing: long path data and point lists become a short note."""
+    result = {}
+    for key, value in layer.items():
+        if key in BULKY and not isinstance(value, (int, float)) and len(json.dumps(value, default=str)) > 160:
+            size = f"{len(value):,} characters" if isinstance(value, str) else f"{len(json.dumps(value, default=str)):,} bytes"
+            value = f"<{size}; vixl inspect {layer['name']} shows it>"
+        result[key] = value
+    return result
 
 
 def emit(value, machine=False):
@@ -185,6 +200,17 @@ def has_document(explicit=None):
         return current_path(explicit).is_file()
     except VixlError:
         return False
+
+
+GUIDE_OPTIONS = {"--kind", "--x", "--y", "--angle", "--radius", "--points", "--d", "--delete"}
+
+
+def guide_operation(args):
+    """`vixl guide` is both the craft guide (free text) and the guide operation. The operation is
+    `guide NAME x|y POSITION` or `guide NAME` with a guide option such as --kind or --delete."""
+    if any(arg.split("=", 1)[0] in GUIDE_OPTIONS for arg in args):
+        return True
+    return len(args) == 3 and args[1] in ("x", "y") and re.fullmatch(r"-?\d+(\.\d+)?", args[2]) is not None
 
 
 def read_json(path):
@@ -346,13 +372,14 @@ def dispatch(argv):
                     | {"filter"}
                     | {"workflow"}
                     | set(
-                        "new session open upgrade save status inspect describe layers effects manifest dependencies reproduce schema check batch convert render export export-screens export-animation spacing pixels animation info sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert validate preset ai ask generate detect ocr serve view notes import mcp update updates commands shapes palette template guidance font fonts roll providers models color sizes layout layouts brushes organics easings timeline export-timeline timeline-sheet export-icons pages guides links merge styles looks guide diff compose".split()
+                        "new session open upgrade save status inspect describe layers effects manifest dependencies reproduce schema check batch convert render export export-screens export-animation spacing pixels animation info sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert validate preset ai ask generate detect ocr serve view notes import mcp update updates commands shapes palette template guidance font fonts roll providers models color sizes layout layouts brushes organics easings timeline export-timeline timeline-sheet export-icons pages guides links merge styles looks guide diff compose house".split()
                     )
                 )
             }
         ), options.json
     if "--help" not in args and "-h" not in args and (
-        cmd in ("guide", "looks", "capabilities") or (cmd == "styles" and not (args and args[0] in ("apply", "check")))
+        (cmd == "guide" and not guide_operation(args)) or cmd in ("looks", "capabilities", "house")
+        or (cmd == "styles" and not (args and args[0] in ("apply", "check")))
     ):
         from .finishing_cli import standalone as finishing_standalone
 
@@ -421,42 +448,41 @@ def dispatch(argv):
         except updater.UpdateError as exc:
             raise VixlError("update_error", str(exc)) from exc
     if cmd == "new":
-        p = Parser(prog="vixl new", description="SIZE is WIDTHxHEIGHT or a named size (vixl sizes)")
-        p.add_argument("size")
+        p = Parser(prog="vixl new", description="SIZE is WIDTHxHEIGHT or a named size (vixl sizes). Without it the "
+                   "purpose's size applies, else 1080x1080")
+        p.add_argument("size", nargs="?")
+        p.add_argument("--purpose", help="What the piece is for: social, poster, slides, print, logo, icon, favicon … "
+                       "(picks the size when none is given, keeps marks transparent, weights the rolled defaults)")
         p.add_argument("--overwrite", action="store_true", help="Replace an existing document explicitly")
-        p.add_argument("--background", default="transparent")
+        p.add_argument("--background", help="Canvas colour (default: the rolled palette background; transparent "
+                       "for logos, icons and favicons)")
         p.add_argument("--out", "-o", default=options.project or "untitled.vixl")
         p.add_argument("--dpi", type=float)
+        p.add_argument("--seed", type=int, help="Reproduce the design defaults of an earlier roll")
+        p.add_argument("--variety", choices=["low", "medium", "high", "fixed"])
         orientation = p.add_mutually_exclusive_group()
         orientation.add_argument("--landscape", dest="orientation", action="store_const", const="landscape")
         orientation.add_argument("--portrait", dest="orientation", action="store_const", const="portrait")
         p.add_argument("--bleed", nargs="?", const=True, type=float, help="Add standard bleed, or an amount in the size's unit")
-        p.add_argument("--no-workspace-fonts", dest="workspace_fonts", action="store_false",
-                       help="Do not embed the workspace default fonts (brand.json pairing/fonts beside the document)")
+        p.add_argument("--no-fonts", "--no-workspace-fonts", dest="workspace_fonts", action="store_false",
+                       help="Embed no fonts at creation: neither the workspace default fonts (brand.json beside the "
+                       "document) nor the rolled pairing")
         negative = next((arg for arg in args if re.fullmatch(r"-\d+(\.\d+)?[xX×]-?\d+(\.\d+)?", arg)), None)
         require(negative is None, f"Dimensions must be 1–16384 pixels; got {negative}", "resource_limit", field="size")
         a = p.parse_args(args)
         require(not Path(a.out).exists() or a.overwrite, "Project already exists; use --overwrite to replace it")
         require(not Path(a.out).is_dir(), "Output must be a file")
-        named_size = not re.fullmatch(r"\d+[xX×]\d+", a.size.strip())
+        named_size = a.size is not None and not re.fullmatch(r"\d+[xX×]\d+", a.size.strip())
         require(named_size or not (a.orientation or a.bleed), "orientation and bleed need a named size")
-        if named_size:
-            project = Project.sized(
-                a.size, a.background, limits=limits, dpi=a.dpi, orientation=a.orientation, bleed=a.bleed or False
-            )
-        else:
-            project = Project(*dimensions(a.size), a.background, limits=limits)
-            if a.dpi is not None:
-                require(36 <= a.dpi <= 2400, "dpi must be 36–2400", field="dpi")
-                project.state["canvas"]["dpi"] = a.dpi
-                project.nodes, project.head, project._head_state, project.branches = {}, None, None, {}
-                project._record([], "Create document")
-        fonts = None
-        if a.workspace_fonts:
-            from .brand import apply_workspace_fonts
+        width, height = dimensions(a.size) if a.size is not None and not named_size else (None, None)
+        from .creation import create
 
-            fonts = apply_workspace_fonts(project, Path(a.out).resolve().parent)
-        project.save(a.out)
+        report = {}
+        project = create(width, height, a.background, size=a.size if named_size else None, purpose=a.purpose,
+                         dpi=a.dpi, orientation=a.orientation, bleed=a.bleed or False, seed=a.seed, variety=a.variety,
+                         workspace=Path(a.out).resolve().parent, remember=True, workspace_fonts=a.workspace_fonts,
+                         limits=limits, report=report)
+        project.save(a.out, overwrite=a.overwrite)
         remember(a.out)
         return (
             project.inspect()
@@ -466,7 +492,8 @@ def dispatch(argv):
                 "canvas": project.state["canvas"],
                 "layers": len(project.state["layers"]),
                 "head": project.head,
-                **({"workspace_fonts": fonts} if fonts else {}),
+                "design_defaults": project.state["design_defaults"],
+                **report,
             }
         ), options.json
     if cmd == "open":
@@ -616,7 +643,7 @@ def command_help(cmd, args):
         "status": "status",
         "session": "session --project FILE (NDJSON operations or command argv requests on stdin)",
         "describe": "describe [image]",
-        "layers": "layers",
+        "layers": "layers [--full] (list layers; long path data is abbreviated unless --full)",
         "effects": "effects [LAYER]",
         "manifest": "manifest",
         "dependencies": "dependencies",
@@ -638,16 +665,18 @@ def command_help(cmd, args):
         "preset": "preset save|apply|show NAME [--set KEY=VALUE]",
         "fonts": "fonts [--category serif] [--role heading] [--mood elegant] [--query TEXT]",
         "view": "view [--host HOST] [--port PORT] [--token-env ENV] (serve and open live review)",
-        "roll": "roll [--apply] [--set title=TEXT] [--for poster] [--mood playful] [--size NAME|WxH] [--seed N|random] [--lock palette=sage] [--unfilled omit|blank]",
+        "roll": "roll [--apply] [--set title=TEXT] [--for poster] [--mood playful] [--size NAME|WxH] [--seed N|random] [--variety low|medium|high|fixed] [--lock palette=sage] [--unfilled omit|blank] [--house-style 1|2]",
         "layout": "layout list | show NAME | preview NAME | apply NAME [--seed N|random] [--set title=TEXT] [--unfilled blank|omit] [--palette NAME] "
         "[--mode inherit|light|dark] [--predictable] [--type-scale golden] [--density airy|balanced|dense] [--align left|center|right] "
         "[--accent rule|bar|dot|block|outline|none] [--prefix P] [--replace]",
         "timeline": "timeline (inspect) | timeline set [--duration 3s] [--fps 30] [--loop N] [--clear]",
         "pages": "pages (list pages and masters of a multi-page document)",
         "styles": "styles [list [QUERY] | show NAME] | styles apply NAME [--palette] | styles check [NAME…]",
-        "guide": "guide [BRIEF|GUIDANCE]  (e.g. guide a mascot for a coffee brand; guide operations; guide natural-motion)",
+        "guide": "guide [BRIEF|GUIDANCE]  (e.g. guide a mascot for a coffee brand; guide operations; guide natural-motion); "
+                 "guide NAME x|y POSITION or guide NAME --kind KIND … adds a guide line",
         "capabilities": "capabilities [TOPIC]  (e.g. capabilities animation: operations with fields, workflows, gotchas, guidance)",
         "looks": "looks  (the finishing looks; apply with look LAYER NAME)",
+        "house": "house [show [PURPOSE]]  (the house style: craft rules, tiered pools, variety levels; or one purpose's profile)",
         "guides": "guides (list guides and grids)",
         "links": "links (list the linked documents and their state: ok, stale, missing, cycle)",
     }
@@ -714,7 +743,9 @@ def project_command(project, cmd, args, *, detail="compact"):
         require(len(args) <= 1, f"Usage: vixl {cmd} [LAYER] (or --target LAYER)")
         return project.inspect(args[0] if args else None), False
     if cmd == "layers":
-        return project.inspect()["layers"], False
+        require(args in ([], ["--full"]), "Use layers [--full]")
+        layers = project.inspect()["layers"]
+        return layers if args else [listing_layer(layer) for layer in layers], False
     if cmd == "effects":
         return deepcopy(project.layer(args[0] if args else None)["effects"]), False
     if cmd == "manifest":

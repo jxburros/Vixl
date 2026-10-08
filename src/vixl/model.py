@@ -1,7 +1,10 @@
 """JSON document model and resource policy; no interface dependencies."""
 
+from contextlib import contextmanager
+import contextvars
 from dataclasses import dataclass, asdict
 import math
+import random
 import uuid
 
 from .errors import require
@@ -35,8 +38,23 @@ class Limits:
         require(width * height <= self.max_pixels, "Image exceeds pixel limit", "resource_limit")
 
 
-def uid(prefix):
-    return f"{prefix}_{uuid.uuid4().hex[:16]}"
+# Inside Project.apply IDs come from a generator seeded by the document and the batch, so a dry run reports the IDs
+# the real apply then creates.
+_IDS = contextvars.ContextVar("vixl_ids", default=None)
+
+
+def uid(prefix, *, fresh=False):
+    source = None if fresh else _IDS.get()
+    return f"{prefix}_{source.getrandbits(64):016x}" if source else f"{prefix}_{uuid.uuid4().hex[:16]}"
+
+
+@contextmanager
+def seeded_ids(seed):
+    token = _IDS.set(random.Random(seed))
+    try:
+        yield
+    finally:
+        _IDS.reset(token)
 
 
 def finite(value, name="value", low=None, high=None):
@@ -50,8 +68,14 @@ def finite(value, name="value", low=None, high=None):
 
 
 def new_state(width, height, background):
+    from .craft import safe_area
+
+    canvas = {"width": width, "height": height, "background": background, "color_mode": "rgba8"}
+    # A size that defines no safe area gets the craft default; a named size replaces it with its own.
+    if safe_area(width, height):
+        canvas["safe"] = safe_area(width, height)
     return {
-        "canvas": {"width": width, "height": height, "background": background, "color_mode": "rgba8"},
+        "canvas": canvas,
         "layers": [],
         "active_layer": None,
         "selection": None,

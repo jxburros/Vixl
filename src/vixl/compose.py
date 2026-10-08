@@ -12,7 +12,7 @@ from pathlib import Path
 
 from .errors import VixlError, require
 
-CREATE = ("width", "height", "background", "size", "dpi", "orientation", "bleed", "seed", "variety")
+CREATE = ("width", "height", "background", "size", "purpose", "dpi", "orientation", "bleed", "seed", "variety")
 FIELDS = {"path", *CREATE, "font_pairing", "layout", "style", "look", "operations", "operations_path", "check",
           "strict", "preview", "exports", "overwrite", "dry_run"}
 
@@ -81,6 +81,96 @@ def _brief(result):
     return keep
 
 
+def _slot_images(session, project, layout):
+    """``layout`` with its ``image``/``images`` slots embedded: an entry that is not already an asset of the
+    document is a workspace file or an https URL, imported through the same limits as vixl_import_image
+    (workspace containment, the fetch policy, byte and pixel limits). Returns ``(layout, {asset: source})``."""
+    import hashlib
+
+    from .assets import add_encoded, read_bounded
+    from .image_import import fetch_image
+
+    sources = {}
+
+    def embed(value, field):
+        if not isinstance(value, str) or not value or value in project.assets:
+            return value
+        limit = project.limits.max_asset_bytes
+        if value.lower().startswith(("http://", "https://")):
+            data, source = fetch_image(value, project.limits)
+        else:
+            resolved = session.resolve(value)
+            require(resolved.is_file(), f"{field}: no image file at {value!r} in the workspace (give a workspace "
+                    "path, an https URL or an asset id from vixl_import_image)", "not_found", field=f"layout.{field}")
+            data, source = read_bounded(resolved, limit), {"path": value}
+        asset, _ = add_encoded(project, data)
+        sources[asset] = {**source, "sha256": hashlib.sha256(data).hexdigest()}
+        return asset
+
+    layout = dict(layout)
+    if "image" in layout:
+        layout["image"] = embed(layout["image"], "image")
+    if isinstance(layout.get("images"), list):
+        layout["images"] = [embed(item, f"images[{index}]") for index, item in enumerate(layout["images"])]
+    return layout, sources
+
+
+def _keep_background(layout, background):
+    """``layout`` set to keep the compose ``background``: an opaque colour becomes the layout's background role
+    (the other roles are chosen to read on it), and ``transparent`` keeps the layout from painting one. A layout
+    that names its own background role or ``transparent`` is left as given. Returns ``(layout, note or None)``."""
+    from .render import color
+
+    if background is None or "transparent" in layout or "background" in (layout.get("colors") or {}):
+        return layout, None
+    if not isinstance(layout.get("colors", {}), dict):
+        return layout, None
+    if color(background)[3] == 0:
+        return {**layout, "transparent": True}, "transparent: the layout paints no background of its own"
+    return ({**layout, "colors": {**layout.get("colors", {}), "background": background}},
+            f"{background}: the layout's background role, with text and accents chosen to read on it")
+
+
+def _style_layout(project, key, layout):
+    """``layout`` with the choices a style's own checks expect, where the caller left them open: the alignment
+    its text-align rule allows, its first palette (unless the workspace brand sets one) and a dark mode when it asks
+    for a dark background. Returns
+    ``(layout, {field: value})`` with what was set."""
+    from .brand import for_project
+    from .style_catalog import STYLES
+
+    entry = STYLES[key]
+    rules = {rule["kind"]: rule for rule in entry["checks"]}
+    shaped = {}
+    allowed = rules.get("text_align", {}).get("params", {}).get("allowed") or []
+    if "align" not in layout and allowed and allowed[0] in ("left", "center", "right"):
+        shaped["align"] = allowed[0]
+    if "palette" not in layout and not isinstance(layout.get("colors"), list) and entry.get("palettes") \
+            and not for_project(project).get("palette"):
+        shaped["palette"] = list(entry["palettes"][0]["swatches"])
+    if "mode" not in layout and "dark_background" in rules:
+        shaped["mode"] = "dark"
+    return {**layout, **shaped}, shaped
+
+
+def _style_fonts(project, key):
+    """Install the style's first font pairing. A download that fails leaves the fonts as they were and says
+    so, since the style tag itself does not depend on it."""
+    from .style_catalog import STYLES
+    from .typefaces import pair_fonts
+
+    pairings = STYLES[key].get("type", {}).get("pairings") or []
+    if not pairings:
+        return None
+    try:
+        installed = pair_fonts(project, pairings[0])
+    except VixlError as exc:
+        return {"pairing": pairings[0], "installed": False,
+                "note": f"{exc.args[0] if exc.args else exc.code}; text keeps the current fonts, pass font_pairing "
+                        "to choose another"}
+    return {"pairing": installed["pairing"], "installed": True, "typography": installed.get("typography")}
+
+
 def compose(session, *, path=None, operations=None, operations_path=None, layout=None, style=None, look=None,
             font_pairing=None, check=True, strict=False, preview=None, exports=None, overwrite=False,
             dry_run=False, **create):
@@ -131,18 +221,41 @@ def compose(session, *, path=None, operations=None, operations_path=None, layout
         project = session.new_project(**create, workspace_fonts=not font_pairing, report=report)
         project._workspace = session.workspace
         validate = checker(project, service_check)
-    steps = {}
+    steps = {"creation": report["creation"]} if report.get("creation") else {}
     if report.get("workspace_fonts"):
         steps["workspace_fonts"] = report["workspace_fonts"]
+    style_key = None
+    if style:
+        with _Step("style", []):
+            from .styles import resolve
+
+            style_key = resolve(style)
     if font_pairing:
         with _Step("fonts", done):
             from .typefaces import pair_fonts
 
             typography = pair_fonts(project, font_pairing)
             steps["fonts"] = {key: typography.get(key) for key in ("pairing", "typography")}
+    elif style_key and not report.get("workspace_fonts") and not (layout and ("font" in layout or "display_font" in layout)):
+        # A style names its typefaces; without a pairing of the caller's own, use the style's.
+        with _Step("fonts", done):
+            fonts = _style_fonts(project, style_key)
+            if fonts:
+                steps["fonts"] = fonts
     if layout:
         with _Step("layout", done):
+            layout, sources = _slot_images(session, project, layout)
+            layout, kept = _keep_background(layout, create.get("background"))
+            shaped = {}
+            if style_key:
+                layout, shaped = _style_layout(project, style_key, layout)
             steps["layout"] = _brief(_apply(project, [{**layout, "type": "layout-apply"}], validate)) or {}
+            if sources:
+                steps["layout"]["imported"] = [{"asset": asset, **source} for asset, source in sources.items()]
+            if kept:
+                steps["layout"]["background"] = kept
+            if shaped:
+                steps["layout"]["from_style"] = shaped
             record = project.state.get("layout") or {}
             for key in ("name", "seed", "blanks", "omitted", "notes"):
                 if record.get(key):
@@ -186,10 +299,17 @@ def compose(session, *, path=None, operations=None, operations_path=None, layout
             session.make_parent(resolved)
             with file_lock(str(resolved)):
                 require(not resolved.exists(), f"{path} appeared while composing; nothing was saved", field="path")
+                previous = session.path
                 project.save(resolved)
                 session._remember(resolved, project, session.stamp(resolved))
         result.update(document=session.relative(resolved), canvas=project.state["canvas"],
-                      layer_count=len(project.state["layers"]), head=project.head)
+                      layer_count=len(project.state["layers"]), head=project.head, active_document=True)
+        if previous and previous != resolved and Path(previous).is_relative_to(session.workspace):
+            # Like vixl_document_create, compose activates the new document; say so, since later calls without
+            # document= now edit and export it rather than the one that was active.
+            result.setdefault("warnings", []).append(
+                f"{session.relative(resolved)} is now the active document; calls without document= use it. Pass "
+                f"document={session.relative(previous)!r} to keep working on the previous one.")
     if targets:
         written = []
         try:

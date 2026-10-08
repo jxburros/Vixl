@@ -58,6 +58,8 @@ Defaults (`vixl.model.Limits`):
   references (`targets`) take up to the same number. Earlier releases allowed 512 layers and refuse to open a
   document with more.
 - 64 MiB per imported asset/provider response.
+- REST request bodies: 1 MiB, or the asset limit for `/assets` and `/import` (16 MiB for `/fonts`). A larger
+  `Content-Length` gets `413 resource_limit` before the body is read; a body without one is cut off at the limit.
 - 256 MiB per archive and its expanded contents.
 - 10,000 operations per submitted batch; 2,000 history revisions (older ones are squashed, not refused).
 - At most 10,000 archive entries.
@@ -77,7 +79,18 @@ Per-operation caps, each refused with `resource_limit` or `invalid_operation` na
 | Document dpi | 36–2,400, and the page must still fit the pixel budget (Letter at 1,200 dpi does not) |
 | Polygon and star `sides` | 3–128 |
 
-`--max-pixels` adjusts the pixel budget; Python APIs can pass a complete `Limits` instance. These are input/allocation bounds, **not a hard resident-memory or CPU quota**. Float blending and snapshot copies can use multiples of image size. Use operating-system/container limits for untrusted workloads and reduce pixel/layer/history limits on small machines. CLI processes do not share render caches; caching benefits a reused Python `Project` instance. REST/MCP cache the active document, reloading when the on-disk file changes, and serialize read/write requests for persistence/concurrency correctness.
+`--max-pixels` adjusts the pixel budget (image imports may read sources up to four times it when they downsample); Python APIs can pass a complete `Limits` instance. These are input/allocation bounds, **not a hard resident-memory or CPU quota**. Float blending and snapshot copies can use multiples of image size. Use operating-system/container limits for untrusted workloads and reduce pixel/layer/history limits on small machines. Running out of memory is reported as a `resource_limit` error (“Not enough memory for this operation …”) by the Python API, the CLI, MCP and REST, after the failed call's memory is released; the document is unchanged. CLI processes do not share render caches; caching benefits a reused Python `Project` instance. REST/MCP cache the active document, reloading when the on-disk file changes, and serialize read/write requests for persistence/concurrency correctness.
+
+### Cost of an edit
+
+An apply validates and inspects the whole document once (the result's `changes` compare the state before and after), so its cost grows with the document, but not with the document times the operations:
+
+- A per-layer edit (`move`, `resize`, `rotate`, `scale`, centering …) lays out only that layer and what it depends on: the layers its constraints name, its parent for `canvas.*` constraints inside a group, and a symbol's master. A stack, or a member of one, lays out the whole document as before.
+- Text measurements (ink and line boxes, baselines) are cached by everything they read: the font file and its fallback chain, every layer field except its position, and the size limits. Rich text is measured each time. The document's variables and form values are computed once per inspection, check or layout.
+- The inspection an apply ends with is kept for the next apply, while the state, the embedded assets and the history head are unchanged. Documents with linked layers are always inspected afresh.
+- The overlap check reads each text layer's coverage only inside the box it compares; wrapping measures each line from one shaping, so a 100,000-character word flows in seconds.
+
+On a 4-core machine one `move` on a 4,096-layer document (1,024 of them text) takes well under a second, and the 10,000-operation batch limit finishes in a few seconds. `pytest -m perf` (`tests/test_perf.py`) holds these as time budgets.
 
 ## Trust and security
 

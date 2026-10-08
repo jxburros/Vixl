@@ -74,6 +74,8 @@ SUMMARIES = {
     "distribute": "Space three or more layers evenly along an axis.",
     "group": "Group layers into one transformable layer.",
     "ungroup": "Dissolve a group, keeping its children in place.",
+    "reparent": "Move layers into a group, to another group or out to the page without ungrouping; they keep "
+                "where they appear on the canvas.",
     "clip": "Clip a layer to the shape of a base layer beneath it (or release it).",
     "repeat": "Repeat a layer N times with a per-copy offset and size change; per-step turn/scale/opacity, jitter or merge make real copies.",
     "repeat-blend": "Repeat a layer N times while blending its size and color to an end state.",
@@ -205,12 +207,12 @@ EFFECT_SUMMARIES = {
     "ink-blot": ("Two-tone ink blot.", "Threshold, 0-255."),
     "stamp": ("Bold single-ink rubber-stamp look.", "Threshold, 0-255."),
     "photocopy": ("High-contrast photocopy look.", "Threshold, 0-255."),
-    "pencil-sketch": ("Pencil drawing from edges and tones.", "Strength, 0-100."),
+    "pencil-sketch": ("Pencil drawing: edge lines and tone hatching.", "Strength, 0-100."),
     "charcoal": ("Smudged charcoal drawing.", "Strength, 0-100."),
     "find-edges": ("Outline edges on a dark field.", "Strength, 0-100."),
     "emboss": ("Raised relief from edges.", "Strength, 0-100."),
     "oil-paint": ("Painterly oil strokes.", "Brush size, integer 1-6."),
-    "watercolor": ("Soft washed watercolor.", "Strength, 0-100."),
+    "watercolor": ("Watercolor wash with darker pooled edges.", "Strength, 0-100."),
     "swirl": ("Twirl the image around its center.", "Twist in degrees, -720 to 720."),
     "ripple": ("Sine ripples across the layer.", "Amplitude in pixels, 0-64."),
     "wave": ("Wavy distortion.", "Amplitude in pixels, 0-64."),
@@ -331,6 +333,12 @@ _DIAGRAM_FIELDS = {
     "node_gap": "Space between nodes in the same rank, in pixels at scale 1 (default 44).",
     "rank_gap": "Space between ranks (rows or columns of the layout), in pixels at scale 1 (default 68).",
     "arrows": "Draw arrowheads on edges (default true).",
+    "fit": "shrink scales down to fit the area, contain also scales up (default when width and height are given), none "
+           "keeps the natural size.",
+    "direction": "Flow direction TB, BT, LR or RL; without it, a diagram that would shrink runs along the longer side "
+                 "of its area.",
+    "width": "Width of the area the diagram is placed in (default: the canvas minus the margin).",
+    "height": "Height of the area the diagram is placed in (default: the canvas minus the margin).",
 }
 
 OVERRIDES = {
@@ -371,7 +379,7 @@ OVERRIDES = {
             "provenance": "Record of where the image came from.",
             "credit": "Attribution kept with the image (provenance.credit), e.g. 'Photo: Ana Ruiz / Unsplash'.",
             "license": "License or usage terms kept with the image (provenance.license), e.g. 'CC BY 4.0'."},
-    "solid": {"color": "Fill color.", "name": "Layer name (default 'solid')."},
+    "solid": {"color": "Fill color (default @surface, else a neutral grey).", "name": "Layer name (default 'solid')."},
     "gradient": {"start": "Start color (the first stop).", "end": "End color (the last stop).",
                  "direction": "horizontal and vertical run edge to edge, radial from the center to the inscribed ellipse "
                               "(the box's corners lie past the last stop and take its color), angled uses angle.",
@@ -395,10 +403,13 @@ OVERRIDES = {
                  "text": "Guidance text to store.", "style": "Slot to store it in (default 'overall')."},
     "font-register": {"name": "Name to register the font under.", "asset": "Imported font asset ID.",
                       "role": "heading or body: make it the document's heading or body font."},
-    "text": {"size": "Font size in pixels.", "color": "Text color. Without one, the document @ink swatch, else black or white, whichever reads on the canvas background.", "align": "Alignment within the text box.",
-             "spacing": "Line spacing in pixels (default 4)."},
+    "text": {"size": "Font size in pixels. Without one, the body size of the document's type scale (about 2.6% of "
+                     "the canvas short side when it has none).", "color": "Text color. Without one, the document @ink swatch, else black or white, whichever reads on the canvas background.", "align": "Alignment within the text box.",
+             "spacing": "Pixels added to the font's own line pitch; negative tightens display type. Without spacing "
+                        "or line_height, the line-height table sets it (body 1.45, lead 1.35, headings 1.1, display "
+                        "1.0, captions 1.3 times the size)."},
     "text-set": {"stroke_width": "Outline thickness in pixels (0 removes it).", "size": "Font size in pixels.",
-                 "spacing": "Line spacing in pixels."},
+                 "spacing": "Pixels added to the font's own line pitch (may be negative); replaces line_height."},
     "rename": {"name": "New unique layer name."},
     "duplicate": {"name": "Name for the copy (default '<name> copy')."},
     "move": {"x": "New x in pixels, 'center' or a percentage; with relative, a shift.",
@@ -463,10 +474,16 @@ OVERRIDES = {
                       "path's farthest point (never the whole canvas); with them, that is the box it is drawn in. "
                       "Negative coordinates draw outside the box. Later resizes scale the path; path-fit scales "
                       "geometry into a box.",
-              "radius": "Corner radius in pixels (rounded-rectangle).", "sides": "Polygon side count.",
+              "radius": "Corner radius in pixels (rounded-rectangle; default from the document corner style, soft "
+                        "when that is sharp).", "sides": "Polygon side count.",
               "inner_radius": "Star inner radius as a fraction of the outer radius.",
-              "fill": "Fill color; use a gradient-overlay layer-style (or the look operation) for gradients."},
+              "fill": "Fill color (default @accent, else a neutral grey; open stroked shapes stay unfilled); use a "
+                      "gradient-overlay layer-style (or the look operation) for gradients.",
+              "stroke": "Outline color; omit for no outline. A stroke_width alone draws in @ink, and an open shape "
+                        "(line, wave, open path) with neither fill nor stroke is drawn as an @ink line.",
+              "stroke_width": "Outline thickness in pixels (default about 1.5% of the shape's short side)."},
     "group": {"name": "Group name.", "targets": "Layers to group (must share a parent)."},
+    "reparent": {"targets": "Layers (or groups) to move; they may come from different parents."},
     "clip": {"base": "Layer that supplies the clipping shape.", "release": "true removes the clip."},
     "layer-style": {"name": "drop-shadow, stroke, outer-glow, color-overlay or gradient-overlay.",
                     "settings": "drop-shadow {color, dx, dy, blur, opacity}; outer-glow {color, blur, opacity}; "
@@ -499,7 +516,7 @@ OVERRIDES = {
     "lut": {"name": "LUT name.", "size": "Cube size, 2-33.", "values": "size³ RGB triplets in 0-1."},
     "lookup": {"name": "Defined LUT name.", "amount": "Blend with the original, 0-1 (default 1)."},
     "comp-save": {"name": "Comp name."}, "comp-apply": {"name": "Saved comp name."},
-    "text-layout": {"width": "Wrapping box width in pixels or a percentage.", "height": "Box height.",
+    "text-layout": {"width": "Wrapping box width in pixels or a percentage.", "height": "Box height; omit it with a width and the box grows to the wrapped lines.",
                     "fit": "true shrinks the text to fit the box.", "warp": "none, arc, flag or bulge.",
                     "amount": "Warp strength as a fraction of the box height (default 0.2; negative bends the other way).", "path": "Points [[x, y] …] the text follows."},
     "guide": {"name": "Guide name.", "axis": "x (vertical line) or y (horizontal line) for an axis guide.",
@@ -536,8 +553,8 @@ OVERRIDES = {
     "paint-layer": {"name": "Layer name.", "width": "Surface width.", "height": "Surface height."},
     "paint": {"brush": "Brush name from vixl_brushes_list.", "points": "Stroke points [[x, y, pressure?] …].",
               "path": "Stroke along an SVG path instead of points.", "pressure": "Pressure per point, 0-1.",
-              "space": "canvas (default) or layer coordinates.", "size": "Brush size in pixels.",
-              "color": "Paint color.", "opacity": "Stroke opacity, 0-1.", "mode": "paint or erase.",
+              "space": "canvas (default) or layer coordinates.", "size": "Brush size in pixels (default 1.5% of the layer's short side).",
+              "color": "Paint color (default @ink, else black or white for the canvas).", "opacity": "Stroke opacity, 0-1.", "mode": "paint or erase.",
               "seed": "Seed for textured brushes.", "settings": "Brush overrides (hardness, spacing, flow …)."},
     "paint-clear": {"last": "Remove the last N strokes (default all)."},
     "brush-define": {"name": "New brush name.", "base": "Built-in brush to start from.",
@@ -596,7 +613,8 @@ OVERRIDES = {
                      "x": "Grid origin x.", "y": "Grid origin y."},
     "adapt-layout": {"targets": "Layers in priority order.", "width": "New width.", "height": "New height.",
                      "margin": "Outer margin.", "gap": "Gap between layers."},
-    "pen": {"nodes": "Anchors [{point: [x, y], in: [x, y], out: [x, y]}] for a Bezier path.",
+    "pen": {"nodes": "Anchors [{point: [x, y], in: [x, y], out: [x, y]}] for a Bezier path; in/out are handle "
+                     "positions in the same coordinates as point, not offsets from it.",
             "points": "Freehand points [[x, y] …] smoothed into a path.", "closed": "Close the path.",
             "smooth": "Smooth freehand points (default true).", "tension": "Handle length for smoothed points (default 1; 0 gives straight segments).",
             "corners": "Indexes of points kept sharp."},

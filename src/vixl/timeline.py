@@ -440,8 +440,12 @@ def execute_timeline(project, op):
         stagger = finite(op.get("stagger", 0), "stagger", 0, 600000)
         for index, target in enumerate(targets):
             each = {k: v for k, v in op.items() if k not in ("targets", "stagger")}
-            if stagger and index:
-                each = _shifted(each, round(stagger * index), duration, markers)
+            delay = round(stagger * index)
+            if delay and timeline.get("loop_mode") == "seamless" and kind != "keyframe":
+                _staggered_in_loop(project, timeline, {**each, "target": target}, delay)
+                continue
+            if delay:
+                each = _shifted(each, delay, duration, markers)
             execute_timeline(project, {**each, "target": target})
         return
     require("stagger" not in op, "stagger offsets each of several targets: pass targets (a list of layers)", field="stagger")
@@ -899,6 +903,78 @@ def _shifted(op, delta, duration, markers):
     return shifted
 
 
+def _staggered_in_loop(project, timeline, op, delay):
+    """One target of a staggered operation in a seamless loop. Delayed as usual when that fits the loop;
+    when the delayed keys would run past the loop end (a repeat that fills the loop), the keys are written
+    undelayed and turned ``delay`` ms around the loop instead, so the timeline keeps its length and the
+    part past the end plays at the start."""
+    from . import notices
+
+    duration, markers = timeline["duration"], timeline.get("markers", {})
+    target = _target_id(project, op["target"])
+    saved = deepcopy(timeline), deepcopy(project.layer(target)) if target != "canvas" else None
+    queue = getattr(project, "_warnings", None)
+    told = len(queue) if queue is not None else 0
+
+    def restore():
+        timeline.clear()
+        timeline.update(deepcopy(saved[0]))
+        if saved[1] is not None:
+            layer = project.layer(target)
+            layer.clear()
+            layer.update(deepcopy(saved[1]))
+        if queue is not None:
+            del queue[told:]
+
+    execute_timeline(project, _shifted(op, delay, duration, markers))
+    touched = [t for t in timeline["tracks"] if t["target"] == target and t["keys"] != _snapshot(saved[0], target).get(t["property"])]
+    if timeline["duration"] == duration and all(t["keys"][-1]["time"] <= duration and seam_matches(project, t, timeline) for t in touched):
+        return
+    restore()
+    before = _snapshot(timeline, target)
+    execute_timeline(project, op)
+    touched = [t for t in timeline["tracks"] if t["target"] == target and t["keys"] != before.get(t["property"])]
+    if (timeline["duration"] == duration and touched and all(t["property"] not in before for t in touched)
+            and all(t["keys"][-1]["time"] <= duration and seam_matches(project, t, timeline) for t in touched)):
+        for track in touched:
+            track["keys"] = _turned(project, track, delay, duration, 1000 / timeline.get("fps", 30))
+        notices.note(project, f"{_track_name(project, touched[0])}: the {delay} ms stagger would run past the "
+                     f"{duration} ms loop, so its keys wrap around the loop instead")
+        return
+    restore()
+    execute_timeline(project, _shifted(op, delay, duration, markers))
+
+
+def _turned(project, track, delay, end, step):
+    """The keys of a closed track (value at ``end`` equals the value at 0) moved ``delay`` ms later around
+    the loop: what passes ``end`` plays from 0. The segment cut by the loop end is split exactly for
+    linear and held segments and sampled once per frame (linear keys) otherwise."""
+    keys = deepcopy(track["keys"])
+    if keys[0]["time"] > 0:
+        keys.insert(0, {"time": 0, "value": deepcopy(keys[0]["value"])})
+    if keys[-1]["time"] < end:
+        keys.append({"time": end, "value": deepcopy(keys[-1]["value"])})
+    cut = end - delay
+    index = bisect.bisect_left(keys, cut, key=lambda k: k["time"])
+    if keys[index]["time"] != cut:
+        left, right = keys[index - 1], keys[index]
+        easing = left.get("easing", "linear")
+        probe = {**track, "keys": [left, right]}
+        if _property_kind(track["property"]) == "step" or easing in ("hold", "step", "step-end"):
+            split = [{"time": cut, "value": deepcopy(left["value"]), **({"easing": easing} if easing != "linear" else {})}]
+        elif easing == "linear":
+            split = [{"time": cut, "value": sample_track(project, probe, cut)}]
+        else:
+            times = sorted({cut, *(round(left["time"] + i * step) for i in range(1, math.ceil((right["time"] - left["time"]) / step)))})
+            split = [{"time": t, "value": sample_track(project, probe, t)} for t in times if left["time"] < t < right["time"]]
+            left = {k: v for k, v in left.items() if k != "easing"}
+            keys[index - 1] = left
+        keys[index:index] = split
+    later = [{**k, "time": k["time"] - cut} for k in keys if k["time"] >= cut]
+    earlier = [{**k, "time": k["time"] + delay} for k in keys if k["time"] <= cut]
+    return [k for k in later if k["time"] < delay] + earlier
+
+
 def _repeat(project, timeline, op):
     """Play an animate/animate-preset ``repeat`` times (or ``until`` a time), one cycle every ``period``
     ms (default: the cycle's own length). A cycle that would abut the next one ends 1 ms early so the
@@ -952,7 +1028,13 @@ def seam_findings(project, timeline=None):
         start_speed = (sample_track(project, track, eps) - keys[0]["value"]) / eps
         end_speed = (last - sample_track(project, track, end - eps)) / eps
         top = max(abs(start_speed), abs(end_speed))
-        if top > 1e-3 and abs(start_speed - end_speed) > 0.5 * top:
+        # A track that turns around smoothly at the seam (a pendulum, a float, a baked attach track sampled
+        # per frame) has small, opposite speeds there: only a speed that is a real part of the track's own
+        # peak speed shows as a kink.
+        step = max(eps, end / 240)
+        values = [sample_track(project, track, min(end, i * step)) for i in range(math.ceil(end / step) + 1)]
+        peak = max((abs(b - a) / step for a, b in zip(values, values[1:])), default=0)
+        if top > 1e-3 and top > 0.25 * peak and abs(start_speed - end_speed) > 0.5 * top:
             result.append({"track": track, "kind": "speed", "first": round(start_speed * 1000, 3), "last": round(end_speed * 1000, 3)})
     return result
 
@@ -1240,8 +1322,8 @@ def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=No
     ``target_bytes`` (GIF/WebP/APNG) encodes, measures and steps down colors (WebP quality), then fps, then
     scale until the file fits, reporting the settings it chose; ``preset`` ("chat", "web", "email") fills in
     fps, size, colors and target_bytes left at their defaults."""
-    from .animation import (PRESETS, check_colors, check_dither, encoded_frames, fit_encode, fit_steps, gif_bytes,
-                            has_gradients, size_warnings, webp_trial)
+    from .animation import (PRESETS, alternatives, check_colors, check_dither, encoded_frames, fit_encode, fit_steps, gif_bytes,
+                            has_gradients, save_webp, size_warnings, webp_trial)
 
     project = cached(project)
     path = Path(path)
@@ -1376,7 +1458,7 @@ def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=No
             elif format == "apng":
                 frames[0].save(buffer, format="PNG", save_all=True, append_images=frames[1:], duration=durations, loop=loop + 1 if loop else 0, disposal=0, blend=0)
             else:
-                frames[0].save(buffer, format="WEBP", save_all=True, append_images=frames[1:], duration=durations, loop=loop, quality=tone, method=4)
+                buffer.write(save_webp(frames, durations, loop, quality=tone, method=4))
             return buffer.getvalue()
 
         tone = colors if format == "gif" else quality if format == "webp" else None
@@ -1387,8 +1469,10 @@ def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=No
             colors = chosen.get("colors", colors)
             fps, w, h = chosen["fps"], images[0].width, images[0].height
             if not chosen["fits"]:
+                instead = (f"; or {alternatives(chosen['bytes'], lambda: webp_trial(images, durations, loop))}"
+                           if format == "gif" else "")
                 warnings.append(f"target_bytes {target_bytes:,} not reached after {chosen['tries']} tries; wrote the smallest "
-                                f"({chosen['bytes']:,} bytes). Shorten the range or crop the canvas.")
+                                f"({chosen['bytes']:,} bytes). Shorten the range or crop the canvas{instead}.")
         else:
             data = encode(images, durations, tone)
         stream.write(data)
@@ -1410,9 +1494,10 @@ def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=No
             durations = written
     else:
         count = rendered
-    warnings += size_warnings(format, data, max_bytes or target_bytes, gradients,
+    used_dither = ("ordered" if gradients else "none") if dither == "auto" else dither
+    warnings += size_warnings(format, data, max_bytes, gradients,
                               webp=lambda: webp_trial(images, durations, loop) if format == "gif" else None,
-                              label="max_bytes" if max_bytes else "target_bytes")
+                              dither=used_dither, budget=target_bytes)
     return {
         "output": str(path),
         "format": format,
@@ -1425,7 +1510,7 @@ def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=No
         "size": size,
         **({"frame_size": [w, h]} if metadata is not None else {}),
         "bytes": len(data),
-        **({"dither": "ordered" if dither == "auto" and gradients else "none" if dither == "auto" else dither} if format == "gif" else {}),
+        **({"dither": used_dither} if format == "gif" else {}),
         **({"poster": poster_info} if poster_info else {}),
         **({"preset": preset} if preset else {}),
         **({"chosen": chosen} if target_bytes and format in ("gif", "apng", "webp") else {}),

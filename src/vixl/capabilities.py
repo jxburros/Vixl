@@ -62,22 +62,28 @@ def lookup(topic=None, *, fields=False):
             "limits": {"operations_per_batch": Limits().max_operations},
             "next": "vixl_capabilities(topic, fields=true), then vixl_operation_schema(types=[...]) for exact constraints.",
         }
-    requested = set(re.findall(r"[a-z]+", topic.lower()))
+    words = re.findall(r"[a-z]+", topic.lower())
+    requested = set(words)
     chosen = [
-        name for name, (words, _) in TOPICS.items() if name in requested or requested & set(words.split())
+        name for name, (vocabulary, _) in TOPICS.items() if name in requested or requested & set(vocabulary.split())
     ]
-    tokens = requested | {word for name in chosen for word in TOPICS[name][0].split()}
+    # Rank by the word that matched: the asked-for words first, then each topic's words in their listed order, so
+    # "pen" lists pen, shape and path operations before oil-paint (matched only through the topic's "paint").
+    order = list(dict.fromkeys(words + [word for name in chosen for word in TOPICS[name][0].split()]))
+    rank = {word: index for index, word in enumerate(order)}
 
     def relevant(name):
-        return bool(set(name.split("-")) & tokens)
+        return bool(set(name.split("-")) & rank.keys())
+
+    def score(name):
+        return (name not in requested, min(rank[part] for part in name.split("-") if part in rank))
 
     operations = {
         name: {
-            "summary": spec.get("description", ""),
-            **({"fields": list(spec["properties"]), "required": spec["required"]} if fields else {}),
+            "summary": catalog[name].get("description", ""),
+            **({"fields": list(catalog[name]["properties"]), "required": catalog[name]["required"]} if fields else {}),
         }
-        for name, spec in catalog.items()
-        if relevant(name)
+        for name in sorted((name for name in catalog if relevant(name)), key=score)
     }
     extra = {}
     if "shapes" in chosen:
@@ -104,7 +110,7 @@ def lookup(topic=None, *, fields=False):
         "topics": chosen,
         **extra,
         "operations": operations,
-        "workflows": {name: spec["summary"] for name, spec in workflows.items() if relevant(name)},
+        "workflows": {name: workflows[name]["summary"] for name in sorted(filter(relevant, workflows), key=score)},
         "guidance": list(dict.fromkeys(name for topic in chosen for name in TOPICS[topic][1])),
         "read_guidance": "vixl_guide(brief=NAME) returns a guidance text",
         "gotchas": GOTCHAS,

@@ -46,6 +46,22 @@ SVG path data for code that draws its own wedges, such as chart layers.
 
 Groups preserve member stacking order and use local child coordinates. Moving, hiding, masking, styling, or changing the opacity of a group affects its combined contents once. Groups nest to 16 dependency levels and duplicate with independent child IDs; edits address children by their existing names or IDs. A group's layout box is the union of member bounds at creation; constraints, alignment, `resize` and `canvas` inside the group use that box. Groups do not clip: members that later move, grow or rotate past the box (an animated limb, a resized sprite) still draw, and scale, flip and rotate with the group. `inspect` adds `drawn_bounds` to a layer that draws past its box. Resizing transforms the combined group raster; a group holding only pixel layers resamples nearest-neighbor, so scaled sprites stay crisp. Constraints between layers and clipping references must stay among siblings; `canvas` inside a group means the group's local content box. Grouping nonadjacent layers places the group at the highest selected slot.
 
+`reparent LAYER… --into GROUP` (`{type: reparent, targets, into}`; aliases `move-into`, `adopt`) moves existing
+layers or groups into a group, between groups, or out to the top level with `into: null` (CLI `--into page`), without
+ungrouping, so the group keeps its rotation, scale, flips, effects and other settings. With `keep: appearance` (the
+default) every target stays where it is drawn: its transform is converted into the new parent's space (a turn or
+mirror of the new parent becomes the layer's own rotation and flips; uneven scaling or skew is held in its `affine`
+matrix, which goes away again when it moves back), so moving into an unscaled group, or one turned by a right angle or
+mirrored, leaves the render pixel-identical, and into a scaled or freely rotated group the geometry is exact up to
+resampling. `keep: local` keeps the stored x, y and transform instead. The targets stack on top of the new parent's
+children unless `above`/`below` (a child of the new parent) or `index` (0 at the bottom) says otherwise; lifted to the
+top level they sit directly above the group they left. The group's content box grows to include them (its size and
+position change so nothing moves on the canvas) unless `fit: false`; an animated or constrained group is left as it is,
+with a note (groups do not clip). Moving a group into its own descendant, a layer into a non-group or a repeating group,
+or a clip pair apart is refused. Animated targets keep their tracks: position keys are shifted when the new parent is
+only translated, rotation and scale tracks carry over through any parent, and position or size tracks under a turned or
+scaled parent are refused with the tracks named. The whole call is one undoable step.
+
 `clip TARGET BASE` multiplies TARGET's rendered alpha by the sibling BASE's alpha. It follows base transforms and masks, works on groups, and rejects cycles. The base remains an ordinary visible layer. `clip TARGET --release` removes the relationship. `ungroup NAME` restores local members to their parent; reset group appearance and transforms first when ungrouping would discard those settings. A group's timeline tracks (position, rotation, scale, size, visibility, and opacity on a one-layer group) move onto its children as per-frame keys, so the animation looks the same; tracks that cannot be rewritten exactly (effects, mirroring, opacity over several overlapping children, uneven scaling of a rotated child) refuse the ungroup and are named in the error. `remove GROUP` removes its descendants. Reordering always stays among siblings.
 
 ## Examples: gradients, glows, shadows and radial repeats
@@ -101,7 +117,9 @@ of a motif drawn on the fly (`mark`: a shape spec such as `{"shape": "ellipse", 
 "#fff"}`, or a built-in `{"mark": "tuft"}`/`{"mark": "flick"}`) over a target layer's outline:
 
 - `placement: inside` (default): Poisson-disc samples inside the outline (holes and even-odd shapes respected),
-  at least `spacing` pixels apart; `count` alone sets the spacing from the area. No grid look.
+  at least `spacing` pixels apart; `count` alone sets the spacing from the area. No grid look. Centres keep half
+  the largest motif's size (with `scale`, `scale_jitter` and `position_jitter`) inside the outline, so whole copies
+  stay inside; a region too small for that keeps as much clearance as it can.
 - `placement: along`: evenly along the edge (`spacing` or `count`), pointing out along the normal
   (`direction: normal`), along the edge (`tangent`), in a cone of `spread` degrees around the normal (`cone`) or
   anywhere (`random`); `anchor: base` (the default here) puts each motif's bottom centre on the line, so blades
@@ -134,7 +152,9 @@ reports `pattern_scatter: [{name, copies, ghosts, spacing, seed, seam}]`, where 
 seam). The recipe stays on the tile group (`pattern_scatter`): after editing a motif, `{"type":
 "pattern-scatter", "target": "tile"}` rebuilds it with the same seed, so the tile re-wraps; any field passed
 with it changes the recipe. The group shows wrapped copies past its box on the canvas; the saved pattern is the
-cropped tile. Hide the tile once the pattern is saved.
+cropped tile. Hide the tile once the pattern is saved. When the tile fills the canvas, `check` reports its
+wrapped copies at the canvas edge as intentional (`info`, "wraps across the edge of a seamless pattern tile"),
+not as cut off.
 
 ```json
 {"type": "pattern-scatter", "source": ["leaf", "dot"], "width": 200, "height": 200, "count": 14, "seed": 11, "rotation_jitter": 180, "background": "#fff7ed", "pattern": "leaves", "name": "tile"}
@@ -289,7 +309,7 @@ vixl symbol-instance Brandmark --name footer-logo --x 100 --y 800 --width 100 --
 
 Comps capture visibility, position, rotation, opacity, blend, constraints, and layer styles by ID, without duplicating imagery or full document history. New layers are unaffected and deleted IDs are ignored. `render --comp` is read-only; `comp-apply` is an undoable edit.
 
-Text boxes wrap paragraphs and oversized words; `fit` shrinks from the configured font size until the text fits, and at least until its longest word fits on a line, so a word is broken across lines only when it cannot fit even at 1 px. Warps are `none`, `arc`, `flag`, and `bulge`, with amounts −1 to 1, applied inside the box. Paths are local pixel polylines: glyphs follow segment tangents and content beyond the path is omitted. This is basic glyph placement, not full shaping/kerning on Bézier paths. A warp moves glyphs up or down by a fraction of the box height; the warped line is moved back inside the box so lifted letters keep their tops. Content taller than the box keeps its top and is clipped at the bottom, so allow room for curvature. A new `text-layout` operation replaces the previous settings.
+Text boxes wrap paragraphs and oversized words. Given only a `width`, the box is as tall as the wrapped lines (a box whose height was set before only grows), so nothing is cut off; `fit` shrinks from the configured font size until the text fits, and at least until its longest word fits on a line, so a word is broken across lines only when it cannot fit even at 1 px. Warps are `none`, `arc`, `flag`, and `bulge`, with amounts −1 to 1, applied inside the box. Paths are local pixel polylines: glyphs follow segment tangents and content beyond the path is omitted. This is basic glyph placement, not full shaping/kerning on Bézier paths. A warp moves glyphs up or down by a fraction of the box height; the warped line is moved back inside the box so lifted letters keep their tops. Content taller than the box keeps its top and is clipped at the bottom, so allow room for curvature. A new `text-layout` operation replaces the previous settings.
 
 Guides are named absolute x/y positions used in constraint expressions such as `guide:left-margin.left+8`. Angled lines, rays, points, circles and curves, generated grid systems (thirds, golden, armature, polar, isometric, perspective …), `place` and `snap` are described in [guides](guides.md). Grids generate guides `NAME-x1-start`, `NAME-x1-end`, `NAME-y1-start`, etc.; redefining the grid replaces its generated guides. Guides/grids are document metadata, never painted into output, and remain absolute when the canvas changes.
 

@@ -270,7 +270,8 @@ def cell_geometry(plan, col, row, occupied):
     right = min(bleed, gx / 2) if (col + 1, row) in occupied else bleed
     top = min(bleed, gy / 2) if (col, row - 1) in occupied else bleed
     bottom = min(bleed, gy / 2) if (col, row + 1) in occupied else bleed
-    x0, y0, x1, y1 = round(x - left), round(y - top), round(x + tw + right), round(y + th + bottom)
+    # Half up on every edge (not round's half to even), so a box whose edges are a whole number apart keeps that size.
+    x0, y0, x1, y1 = (math.floor(v + 0.5) for v in (x - left, y - top, x + tw + right, y + th + bottom))
     scale, tb = plan["scale"], plan["bleed_t"]
     (trim_w, trim_h) = plan["trim_t"]
     crop = [max(0.0, tb + (x0 - x) / scale), max(0.0, tb + (y0 - y) / scale),
@@ -646,7 +647,7 @@ def run(session, template, request):
         write_bytes(outputs["pdf"], data, replace=request.get("replace", False))
         report["output"] = session.relative(outputs["pdf"])
     if "sheet_document" in outputs:
-        sheet.save(outputs["sheet_document"])
+        sheet.save(outputs["sheet_document"], overwrite=bool(request.get("replace", False)))
         report["sheet_document"] = session.relative(outputs["sheet_document"])
     return report
 

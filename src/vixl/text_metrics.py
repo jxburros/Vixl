@@ -1,8 +1,10 @@
 """Inspectable text geometry in unrotated parent coordinates, shared by both text kinds."""
 
+from collections import OrderedDict
 from functools import lru_cache
+import threading
 
-from .text import face, font_data, glyph_outline, lines, plan, shape
+from .text import advance, face, font_data, glyph_outline, lines, plan
 
 
 @lru_cache(maxsize=256)
@@ -24,6 +26,18 @@ def font_metrics(data, size):
             "cap_height": height("sCapHeight", "H"), "x_height": height("sxHeight", "x")}
 
 
+@lru_cache(maxsize=4096)
+def path_commands(path):
+    """The pen calls an SVG glyph path makes, parsed once per glyph: replaying them draws exactly what parsing the
+    path again would, and a long text repeats the same few glyphs thousands of times."""
+    from fontTools.pens.recordingPen import RecordingPen
+    from fontTools.svgLib.path import parse_path
+
+    pen = RecordingPen()
+    parse_path(path, pen)
+    return tuple(pen.value)
+
+
 def inspect_text(project, layer, bounds):
     """Return actual outline ink, typographic line boxes, and baseline(s), in pixels.
 
@@ -38,9 +52,18 @@ def inspect_text(project, layer, bounds):
     data = font_data(project, layer)
     primary = data[0] if isinstance(data, tuple) else data
     try:
+        rich = active(layer)
+        key = None if rich else _plain_key(project, layer, data)
+        with _LOCK:
+            cached = _PLAIN.get(key) if key is not None else None
+            if cached is not None:
+                _PLAIN.move_to_end(key)
+        if cached is not None:
+            metrics, ink_box, line_box, baselines = cached
+            return _placed(x, y, metrics, ink_box, line_box, baselines)
         metrics = font_metrics(primary, layer["size"])
         boxes = []
-        if active(layer):
+        if rich:
             result = fitted(project, layer)
             for glyph in result.glyphs:
                 box = glyph_outline(glyph.data, glyph.name)[1]
@@ -55,20 +78,21 @@ def inspect_text(project, layer, bounds):
             from fontTools.misc.transform import Transform
             from fontTools.pens.boundsPen import BoundsPen
             from fontTools.pens.transformPen import TransformPen
-            from fontTools.svgLib.path import parse_path
 
             result = plan(project, layer)
             metrics = font_metrics(primary, result.size)
             for path, matrix in result.paths:
                 pen = BoundsPen(None)
-                parse_path(path, TransformPen(pen, Transform(*matrix)))
+                transformed = TransformPen(pen, Transform(*matrix))
+                for command, points in path_commands(path):
+                    getattr(transformed, command)(*points)
                 if pen.bounds:
                     boxes.append(pen.bounds)
             wrapped = lines(data, layer["text"], result.size,
                             layer["width"] if "width" in layer.get("text_layout", {}) else None)
             step = metrics["ascent"] + metrics["descent"] + layer.get("spacing", 4)
             baselines = [metrics["ascent"] + index * step - result.box[1] for index in range(len(wrapped))]
-            width = max((shape(data, line, result.size)[1] for line in wrapped), default=0)
+            width = max((advance(data, line, result.size) for line in wrapped), default=0)
             line_box = (result.offset - result.box[0], -result.box[1], width,
                         len(wrapped) * step - layer.get("spacing", 4))
         if boxes:
@@ -76,12 +100,35 @@ def inspect_text(project, layer, bounds):
             ink_box = (left, top, max(b[2] for b in boxes) - left, max(b[3] for b in boxes) - top)
         else:
             ink_box = (0, 0, 0, 0)
-        return {**metrics, "ink_bounds": [x + ink_box[0], y + ink_box[1], *ink_box[2:]],
-                "line_bounds": [x + line_box[0], y + line_box[1], *line_box[2:]],
-                "baseline": y + baselines[0] if baselines else None,
-                "baselines": [y + b for b in baselines], "metrics_space": "unrotated-parent"}
+        if key is not None:
+            with _LOCK:
+                _PLAIN[key] = (dict(metrics), ink_box, tuple(line_box), tuple(baselines))
+                while len(_PLAIN) > PLAIN_ENTRIES:
+                    _PLAIN.popitem(last=False)
+        return _placed(x, y, metrics, ink_box, line_box, baselines)
     except UnsupportedText:
         return {"metrics_unavailable": "This font requires raster text layout"}
+
+
+# Plain-text measurements, keyed by everything they read: the font data (the primary font and its fallback chain,
+# so a changed font file, import or fallback list is a new key), every layer field except its position, and the
+# size limits ``plan`` enforces. Every inspect measures every text layer, so an edit to one layer of a large
+# document re-measures only that layer. Rich text reads styles and variables from the document and is not cached.
+PLAIN_ENTRIES = 8192
+_PLAIN = OrderedDict()
+_LOCK = threading.Lock()  # Production and job workers measure in parallel threads.
+
+
+def _plain_key(project, layer, data):
+    fields = repr(sorted((key, value) for key, value in layer.items() if key not in ("x", "y")))
+    return data, fields, project.limits.max_dimension, project.limits.max_pixels
+
+
+def _placed(x, y, metrics, ink_box, line_box, baselines):
+    return {**metrics, "ink_bounds": [x + ink_box[0], y + ink_box[1], *ink_box[2:]],
+            "line_bounds": [x + line_box[0], y + line_box[1], *line_box[2:]],
+            "baseline": y + baselines[0] if baselines else None,
+            "baselines": [y + b for b in baselines], "metrics_space": "unrotated-parent"}
 
 
 def first_baseline(project, layer):

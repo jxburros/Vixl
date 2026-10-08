@@ -65,6 +65,8 @@ TYPE_ALIASES = {
     "flowchart": "diagram",
     "flow-chart": "diagram",
     "diagram-text": "diagram-from-text",
+    "move-into": "reparent",
+    "adopt": "reparent",
 }
 SHAPE_TYPES = {
     "rect": ("rectangle", {}),
@@ -402,7 +404,27 @@ def normalize_operation(operation, properties, known_types, effects, notes, inde
         if isinstance(op.get(key), str) and op[key].strip().lower() == "none":
             op[key] = "transparent"
             note(f"{key} 'none' → 'transparent'")
+        elif isinstance(op.get(key), str) and RGB_FUNCTION.match(op[key]):
+            op[key] = _clamped_rgb(op[key], key, note)
     return op
+
+
+RGB_FUNCTION = re.compile(r"\s*rgba?\(", re.IGNORECASE)
+
+
+def _clamped_rgb(value, key, note):
+    """``rgb(300, 0, 0)`` → ``#ff0000``, noted, as CSS clamps it; colours in range and invalid ones are left alone."""
+    from .colors import clipped
+    from .errors import VixlError
+
+    try:
+        clip = clipped(value)
+    except VixlError:
+        return value  # validation reports the invalid colour
+    if clip is None or clip["how"] != "clamp":
+        return value
+    note(f"{key} {value!r} has channels outside 0–255; clamped to {clip['to']}")
+    return clip["to"]
 
 
 def opacity(value, field, note):
@@ -504,14 +526,14 @@ def apply_centering(project, centered, operation):
 
 
 def _center(project, centered, operation):
-    from .render import resolve_layout, stored_origin
+    from .render import layer_box, stored_origin
 
     from .inplace import IN_PLACE_TYPES
 
     # A creation operation given a target edits that layer, so the target is what gets centered.
     edits = operation.get("type") == "move" or operation.get("type") in IN_PLACE_TYPES
     layer = project.layer(operation.get("target") if edits else None)
-    bounds = resolve_layout(project)[layer["id"]]
+    bounds = layer_box(project, layer)
     if edits and (operation.get("space") == "canvas" or operation.get("absolute")):
         from .spatial import canvas_boxes
         from .transforms import execute

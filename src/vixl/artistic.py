@@ -91,6 +91,58 @@ def remap(image, coordinates):
     return Image.fromarray(output)
 
 
+def _blur(values, radius, pad=0):
+    """Gaussian blur of 0-255 values. ``pad`` is the value assumed beyond the edges (Pillow alone
+    repeats the edge pixels, which hides the boundary of a layer that fills its own box)."""
+    reach = math.ceil(3 * radius) + 1
+    padded = np.pad(np.uint8(np.clip(values, 0, 255) + 0.5), reach, mode="constant", constant_values=pad)
+    blurred = np.asarray(Image.fromarray(padded, "L").filter(ImageFilter.GaussianBlur(radius)), dtype=np.float32)
+    return blurred[reach:-reach, reach:-reach]
+
+
+def pencil_sketch(gray, alpha, radius):
+    """Graphite on paper: dodge lines along tone edges plus hatching whose weight follows the tone.
+
+    Transparent pixels count as white paper, so the outline of a flat shape draws, and the hatching
+    keeps the value of a flat fill instead of washing it out to white."""
+    coverage = np.asarray(alpha, dtype=np.float32) / 255
+    tone = np.asarray(gray, dtype=np.float32) * coverage + 255 * (1 - coverage)
+    blurred = _blur(tone, max(radius, 0.5), pad=255)
+    lines = np.clip(tone * 255 / np.maximum(blurred, 1), 0, 255)
+    h, w = tone.shape
+    spacing = max(4, min(10, round(min(w, h) / 30)))
+    y, x = np.arange(h, dtype=np.int32)[:, None], np.arange(w, dtype=np.int32)[None, :]
+    darkness = 1 - tone / 255
+    hatch = ((x + y) % spacing) < max(1, spacing * 0.25)
+    cross = (((x - y) % spacing) < max(1, spacing * 0.25)) & (darkness > 0.5)
+    grain = 0.75 + 0.5 * np.random.default_rng(0).random((h, w), dtype=np.float32)
+    shade = darkness * (0.15 + 0.6 * (hatch | cross) * grain)
+    return Image.fromarray(np.uint8(np.clip(lines * (1 - np.clip(shade, 0, 0.85)), 0, 255) + 0.5)).convert("RGB")
+
+
+def watercolor(rgb, alpha, seed):
+    """A translucent wash: simplified colors lifted toward the paper, pigment pooled in a darker rim
+    inside every edge (shape outlines and color boundaries), blotchy density and paper grain. Pixels
+    outside the layer's box count as paper, so a shape that fills its box still gets its rim."""
+    h, w = rgb.height, rgb.width
+    simple = ImageOps.posterize(rgb.filter(ImageFilter.MedianFilter(5)).filter(ImageFilter.SMOOTH_MORE), 4)
+    values = np.asarray(simple, dtype=np.float32)
+    reach = max(2.0, min(w, h) * 0.035)
+    opacity = np.asarray(alpha, dtype=np.float32)
+    rim = np.clip((opacity - _blur(opacity, reach)) / 255 * 2.5, 0, 1)
+    coverage = opacity / 255
+    lum = np.asarray(ImageOps.grayscale(simple), dtype=np.float32) * coverage + 255 * (1 - coverage)
+    rim = np.maximum(rim, np.clip((_blur(lum, reach, pad=255) - lum) / 64, 0, 1) * (coverage > 0))
+    rng = np.random.default_rng(seed)
+    cells = (max(2, h // 24 + 2), max(2, w // 24 + 2))
+    blots = Image.fromarray(rng.standard_normal(cells).astype(np.float32), "F").resize((w, h), Image.Resampling.BICUBIC)
+    density = 1 + 0.08 * np.asarray(blots, dtype=np.float32)
+    wash = values * 0.78 + 255 * 0.22
+    pigment = 255 - (255 - wash) * (density * (1 + 0.9 * rim))[..., None]
+    paper = rng.integers(-6, 7, (h, w, 1)).astype(np.float32)
+    return Image.fromarray(np.uint8(np.clip(pigment + paper, 0, 255) + 0.5))
+
+
 def artistic_filter(image, effect):
     name = effect["name"]
     amount = effect.get("amount", ARTISTIC_DEFAULTS[name])
@@ -194,18 +246,14 @@ def artistic_filter(image, effect):
             result = (
                 ImageChops.subtract(gray, edges).point(lambda p: 255 if p >= amount else 0).convert("RGB")
             )
-    elif name in ("pencil-sketch", "charcoal"):
-        blur = gray.filter(
-            ImageFilter.GaussianBlur(radius if radius is not None else (12 if name == "pencil-sketch" else 2))
-        )
-        a, b = np.asarray(gray, dtype=np.float32), np.asarray(blur, dtype=np.float32)
-        if name == "pencil-sketch":
-            changed = Image.fromarray(np.uint8(np.clip(a * 255 / np.maximum(b, 1), 0, 255))).convert("RGB")
-        else:
-            edge = np.asarray(edge_filter(gray, ImageFilter.FIND_EDGES), dtype=np.float32)
-            changed = Image.fromarray(np.uint8(np.clip(255 - edge * 2 - (255 - b) * 0.4, 0, 255))).convert(
-                "RGB"
-            )
+    elif name == "pencil-sketch":
+        changed = pencil_sketch(gray, alpha, radius if radius is not None else 12)
+        result = blend(rgb, changed, amount)
+    elif name == "charcoal":
+        blur = gray.filter(ImageFilter.GaussianBlur(radius if radius is not None else 2))
+        b = np.asarray(blur, dtype=np.float32)
+        edge = np.asarray(edge_filter(gray, ImageFilter.FIND_EDGES), dtype=np.float32)
+        changed = Image.fromarray(np.uint8(np.clip(255 - edge * 2 - (255 - b) * 0.4, 0, 255))).convert("RGB")
         result = blend(rgb, changed, amount)
     elif name in ("find-edges", "emboss"):
         kernel = ImageFilter.FIND_EDGES if name == "find-edges" else emboss_kernel(effect.get("_light", (-1, 1)))
@@ -214,14 +262,7 @@ def artistic_filter(image, effect):
     elif name == "oil-paint":
         result = ImageOps.posterize(mode_colors(rgb, int(amount)), 5)
     elif name == "watercolor":
-        changed = ImageOps.posterize(
-            rgb.filter(ImageFilter.MedianFilter(5)).filter(ImageFilter.SMOOTH_MORE), 4
-        )
-        rng = np.random.default_rng(effect.get("seed", 0))
-        a = np.asarray(changed, dtype=np.int16)
-        paper = rng.integers(-6, 7, (h, w, 1), dtype=np.int16)
-        changed = Image.fromarray(np.uint8(np.clip(a + paper, 0, 255)))
-        result = blend(rgb, changed, amount)
+        result = blend(rgb, watercolor(rgb, alpha, effect.get("seed", 0)), amount)
     else:
         raise ValueError(f"Unknown artistic filter: {name}")
     result = result.convert("RGBA")

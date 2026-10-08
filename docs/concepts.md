@@ -45,7 +45,7 @@ Stacking inside groups follows three rules:
   `lower`, `top`, `bottom` and `reorder` move a layer only among its siblings (the layers with the
   same parent); `reorder` refuses a layer from another group.
 - A layer cannot sit between two layers of another group. To put a part of one group in front
-  of a part of another, move it out of its group (or `ungroup`), or split the group in two.
+  of a part of another, move it out of its group (`reparent`, or `ungroup`), or split the group in two.
   `ungroup` keeps every child where it was drawn, also over time: a group's animation (position,
   rotation, scale, size, visibility, and opacity on a group of one) becomes per-frame keys on its
   children, and an animation that cannot be rewritten exactly is refused with the tracks named.
@@ -87,7 +87,8 @@ restores them); keep a checkpoint first.
 
 Use `${headline}` for variable text, and `@accent` for a named color swatch. Variables
 allow content changes without rebuilding geometry; render overrides leave the saved master
-unchanged. Undefined variables fail rather than silently becoming blank. Font roles,
+unchanged. Undefined variables fail rather than silently becoming blank; write `$${headline}` for the literal
+text `${headline}`. Font roles,
 linked text styles and palettes let repeated elements follow shared choices.
 
 Placeholders take filters, applied left to right: `${name|upper}`, `lower`, `title`,

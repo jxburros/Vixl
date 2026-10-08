@@ -25,6 +25,8 @@ project.save()
 
 `Project.import_image(path=None, *, url=None, data=None, name="image", credit=None, license=None)` embeds an image from a file, bytes or an `https://` URL as a new layer and returns its id, size, bounds, `asset` and `source` (see [Import existing artwork](#import-existing-artwork)).
 
+`Project.save(path=None, *, overwrite=False)` writes the document. Saving to the file it was loaded from or last saved to always works; another existing `.vixl` is refused with `output_exists` unless `overwrite=True`, as `vixl new`, `vixl save` and exports do.
+
 `Project.render()` returns a Pillow RGBA image. In a notebook a `Project` displays as its rendered PNG, and `Project.show(page=None, region=None)` returns the image (optionally one page, cropped to `[x, y, width, height]`). `Project.export()` returns encoded bytes, optionally writing to a path. `Project.inspect()` returns an independent JSON-serializable state description. History methods: `undo`, `redo`, `branch`, `checkpoint`, `checkout`, `begin`, `commit`, `rollback`.
 
 Loading does not implicitly trust linked image paths; use `allow_linked=True` only when those local file references are intended. Direct Python APIs are trusted local APIs and can import files. Exceptions expose `VixlError.code`, `.details`, and `.as_dict()`.
@@ -129,13 +131,13 @@ Vixl is designed to be driven mainly by agents. The intended loop is: create or 
 | Tool | Purpose |
 | --- | --- |
 | `vixl_workspace_list(directory, offset, limit)` | Discover workspace paths and the open documents |
-| `vixl_document_create(path, width?, height?, background, size?, dpi?, orientation?, bleed?, font_pairing?)` | Create and activate a new `.vixl` from pixels or a named size; creates missing directories; refuses overwrites; `font_pairing` also installs a pairing as the document typography (same as `vixl_font_pair`); otherwise the workspace default fonts from `brand.json` are embedded and reported under `workspace_fonts` (`workspace_fonts: false` skips them) |
+| `vixl_document_create(path, width?, height?, background?, purpose?, size?, dpi?, orientation?, bleed?, seed?, variety?, font_pairing?, workspace_fonts?)` | Create and activate a new `.vixl` from pixels, a named size or a `purpose` (else 1080×1080); creates missing directories; refuses overwrites. Like every surface it rolls and stores `design_defaults`, uses the palette background unless `background` is given (transparent for logos, icons and favicons), and embeds the workspace default fonts from `brand.json` (`workspace_fonts`) or else the rolled pairing from the font cache or network; `creation` reports the size, background and fonts chosen and why (see [Safe variety](safe-variety.md#new-documents)). `font_pairing` installs that pairing instead (same as `vixl_font_pair`); `workspace_fonts: false` embeds no fonts |
 | `vixl_document_open(path, upgrade?)` / `vixl_document_close(document)` | Activate an existing document / drop one from the session; edits are already saved. A document saved before 0.21 lists the layers that render differently under `upgrade`; `upgrade="accept"` stops the notice and `"pin-fills"` also restores the white fill of open stroked shapes (CLI: `vixl upgrade`) |
 | `vixl_document_inspect(target?, detail)` | `compact` (default): canvas plus one line per layer with resolved `[x, y, w, h]` bounds; `full`: every stored field |
 | `vixl_import_image(path? \| data_base64? \| url?, name, credit?, license?)` | Embed a workspace file, base64/data-URL bytes or a public `https://` image as a layer; returns id, size, bounds and `source` (final `url`, `bytes`, `sha256`, `fetched_at`). `credit`/`license` are kept in the layer's provenance and shown by inspect |
 | `vixl_operations_apply(operations or operations_path, dry_run, detail, check?, preview?, request_id?, as_job?)` | Atomic edits; `operations_path` is a workspace-relative `.json` array or `.jsonl` file (one operation per line, errors cite the line) used instead of inline `operations`; schemas are included directly in tools/list (or on demand in slim mode). `detail` is `brief` (default), `compact` or `full`; results carry `warnings`. `check` (true or check names) adds a `check` block shaped like `vixl_check`'s, listing every `fix` finding and the findings on the layers the batch touched (at most 20; `omitted` counts the rest); `preview` (true or `{page, region, max_width, max_height, time, isolate}`, 512 px by default) adds a PNG after the JSON. Both also work with `dry_run`, and are skipped with a `review_skipped` note when the edit itself took more than half of `VIXL_MCP_INLINE_SECONDS`. A call that became a job keeps the JSON only. |
 | `vixl_operation_schema(types)` | Exact JSON Schema for named operation types |
-| `vixl_check(checks, targets, safe_area, avoid, thumbnail_width, ..., ink_limit, min_ppi, style, connect_tolerance)` | Design problems: bounds, text overlap, WCAG contrast, safe area/reserved zones, thumbnail legibility, `diagram` (overlapping nodes, edges through nodes, unreadable labels) and `flow` (text-flow overflow); `codes` (QR/barcode module size, contrast and quiet zone); opt-in `print`, `color_vision`, `style` and `connected` (parts of a group that float free of its main body, gaps above `connect_tolerance` px, default 2). Every issue has a `severity` (error, warning, info) and an `action` (fix, review, informational); `by_action` lists the issue indexes under each. A layer marked `allow_crop` (`layer-intent`) reports its edge crop as informational; `thumbnail_width: null` turns the thumbnail test off, the canvas safe area is checked by default, and the summary reports `layers_checked` and `layers_total` |
+| `vixl_check(checks, targets, safe_area, avoid, thumbnail_width, ..., ink_limit, min_ppi, style, connect_tolerance)` | Design problems: bounds, text overlap, WCAG contrast, safe area/reserved zones, thumbnail legibility, `diagram` (overlapping nodes, edges through nodes or on top of each other, unreadable labels) and `flow` (text-flow overflow); `codes` (QR/barcode module size, contrast and quiet zone); opt-in `print`, `color_vision`, `style` and `connected` (parts of a group that float free of its main body, gaps above `connect_tolerance` px, default 2). Every issue has a `severity` (error, warning, info) and an `action` (fix, review, informational); `by_action` lists the issue indexes under each. A layer marked `allow_crop` (`layer-intent`) reports its edge crop as informational; `thumbnail_width: null` turns the thumbnail test off, the canvas safe area is checked by default, and the summary reports `layers_checked` and `layers_total` |
 | `vixl_guide(brief?)` | What to make: the start-here recipe and every kind of work, or the approach, operations, layouts, looks, styles and a working example for a kind or free-text brief; `brief=operations` and `brief=looks` list those catalogs |
 | `vixl_styles(action, name?, query?, palette?)` | 28 design styles: list/search, get (principles, palettes, type, layout, imagery, do/don't, checks), apply (tag the document, store the brief, optionally the palette), check (same as `vixl_check` `style`) |
 | `vixl_render_preview(variables, max_width, max_height, max_bytes, region, time, proof, simulate, isolate)` | Fast preview-resolution PNG; `region` zooms in (up to 8×); `time` shows a timeline frame; `proof` soft-proofs CMYK; `simulate` shows color-vision deficiency; `isolate` (layer IDs or names, a group with all its parts) shows only that object on the canvas background, zoomed to its ink with a small margin unless `region` is given |
@@ -180,6 +182,17 @@ the create → apply → check → preview → export round trips:
  "check": true, "preview": true, "exports": ["launch/card.png", {"path": "launch/card.pdf", "color_space": "cmyk"}]}
 ```
 
+The `layout`'s `image` and `images` slots take a workspace path or an `https://` URL as well as an asset id, so a
+meme or photo card is one call (`{"name": "meme-top-bottom", "image": "memes/cat.jpg", "title": "…"}`). Paths stay
+inside the workspace and URLs go through the same fetch policy and byte and pixel limits as `vixl_import_image`; the
+layout step lists what it embedded under `imported` (path or url, sha256). A `background` is kept when a layout runs:
+it becomes the layout's background role, with the text and accents chosen to read on it (`transparent` keeps the
+layout from painting one); a layout's own `colors.background` or `transparent` wins. A `style` shapes what the call
+leaves open: the alignment its text-align rule asks for, its first palette (unless the workspace brand sets one), a
+dark mode when it asks for a dark background, and, without `font_pairing`, workspace fonts or a layout `font`, its
+first font pairing (a pairing that cannot be downloaded is noted under `fonts` and the call goes on). The layout step
+reports these under `from_style`, so `check` with the style's rules passes on the result.
+
 The steps run in that order on an unsaved document. The `.vixl` is written only when every step succeeded and the
 exports only after it; a failed export removes the document and the files the call wrote. Export targets (the
 `vixl_export_batch` options) are validated before anything is built, so an existing file fails at once. An error keeps
@@ -187,7 +200,9 @@ the normal schema (`error`, `message`, `field`, `operation_index` …) and adds 
 `layout`, `style`, `look`, `operations`, `check`, `preview`, `save` or `export`. `strict: true` turns `fix` findings into
 a `check` failure (nothing saved); `dry_run: true` builds, checks and previews without writing (`path` optional). The
 result lists `steps`, the layout's seed, blanks and notes, the check findings, the saved `document` and the `exports`,
-followed by the preview image. Like other heavy tools it becomes a job after ~40 s (or at once with `as_job`) and takes
+followed by the preview image. Like `vixl_document_create`, a saved compose makes the new document the active one
+(`active_document: true`); when another document was active, a warning names it, since later calls without
+`document=` now edit and export the composed piece. Like other heavy tools it becomes a job after ~40 s (or at once with `as_job`) and takes
 `request_id`. It is in the core and compact toolsets.
 
 The same request works as `vixl compose --request req.json [--preview p.png]`, as `vixl.compose.run(workspace, **request)`
@@ -199,7 +214,7 @@ serves one fixed document) returning the findings and `preview_base64`.
 Model-written operations are normalized before validation, the same way in every interface, and each rewrite is reported under `normalized` in the result so the agent learns the canonical form:
 
 - type and key spellings: `rect`/`circle`/`triangle` (→ `shape`), `add-text`, `drop_shadow`, camelCase and kebab-case keys, `font_size`, `fill`/`color`, `layer`/`layer_id` → `target`;
-- values: opacity is 0–1 everywhere and `"70%"` is read as 0.7 (a bare `70` is an error suggesting both spellings); CSS `rgb()`/`rgba()` with 0–1 alpha; style setting aliases (`offsetX` → `dx`);
+- values: opacity is 0–1 everywhere and `"70%"` is read as 0.7 (a bare `70` is an error suggesting both spellings); CSS `rgb()`/`rgba()` with 0–1 alpha, and with channels outside 0–255 clamped as CSS does (`rgb(300, 0, 0)` → `#ff0000`); style setting aliases (`offsetX` → `dx`);
 - geometry: `x`/`y` accept `"center"` and `"N%"`, `width`/`height` accept `"N%"` (of the canvas, or of the parent group);
 - layers: `targets` with one entry on a single-layer operation → `target`; a lone `target` on `group`/`distribute`/`pathfinder` → `targets`.
 
@@ -211,7 +226,8 @@ A call that succeeds can still carry `warnings` (a list of strings) about the la
 
 Tool results are minified JSON text with no duplicated structured copy. Advertised schemas omit pydantic titles and collapse optional fields. `vixl mcp --schema slim` advertises only the operation type names (about half the tool-list size) and the agent fetches fields with `vixl_operation_schema`. The provider-backed planner (`vixl_ai_plan`) is hidden unless `--planner` is passed, because the calling agent already plans its own edits.
 
-The default `detail: "brief"` apply response over MCP returns, per stable layer ID, only what the caller cannot already know: new layers as `added`/`name`/`type`/`bounds`, changed layers as the list of changed field names plus their resolved `bounds`, removals, `warnings` and `normalized`; state other than layers is listed by name under `also_changed`. `detail: "compact"` (the REST/CLI default) returns the **new** values of changed fields and the main content of new layers; `detail: "full"` returns before/after snapshots. Python's `Project.apply` accepts all three. `vixl_measure` summarizes channels as percentiles unless `histogram: "full"`.
+The default `detail: "brief"` apply response over MCP returns, per stable layer ID, only what the caller cannot already know: new layers as `added`/`name`/`type`/`bounds` (plus a shape's `content_bounds`, and a text layer's metrics
+(`ink_bounds`, `line_bounds`, `baseline`, `baselines`, `ascent`, `descent`, `cap_height`, `x_height`, `metrics_space`) so text can be aligned without another call), changed layers as the list of changed field names plus their resolved `bounds`, removals, `warnings` and `normalized`; state other than layers is listed by name under `also_changed`. `detail: "compact"` (the REST/CLI default) returns the **new** values of changed fields and the main content of new layers; `detail: "full"` returns before/after snapshots. Python's `Project.apply` accepts all three. `vixl_measure` summarizes channels as percentiles unless `histogram: "full"`.
 
 Preview defaults: **1024×1024 maximum and 1 MiB of encoded PNG data**, preserving transparency and aspect ratio. Previews render a geometrically scaled copy of the document (JPEG sources decode at reduced scale), so a 24-megapixel document previews in a fraction of a second. Every layer edge (and every copy of a `repeat`) lands on a whole preview pixel, so layers or tiles that meet in the full render still meet in the preview and no seam appears between them; documents with canvas-sized effect selections fall back to a full render. `region: [x, y, w, h]` (pixels or percentages) zooms into part of the canvas. File export always uses full resolution unless a scale/profile is requested.
 

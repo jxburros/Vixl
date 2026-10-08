@@ -106,13 +106,15 @@ CEO
 | --- | --- | --- |
 | `layered` | flowcharts, dependency graphs, pipelines | Sugiyama style: layers by longest path, crossing minimisation, straightened long edges, labels on tracks between layers |
 | `tree` | org charts, hierarchies, taxonomies | contour-packed tidy tree; several roots sit side by side; extra (non-tree) edges are routed around nodes |
-| `radial` | one root with many branches | concentric rings, angles shared by subtree size |
-| `mindmap` | brainstorms | two balanced horizontal trees left and right of the root; curved connectors |
+| `radial` | one root with many branches | concentric rings, angles shared by subtree size; a back edge (a cycle) is routed around the nodes |
+| `mindmap` | brainstorms | two balanced horizontal trees left and right of the root; curved connectors; extra edges are routed around nodes |
 | `grid` | inventories, architecture blocks | row-major in input order (`columns`); connectors avoid the boxes |
 
 `direction` is `TB` (default), `LR`, `BT` or `RL` for layered and tree layouts. `routing` is `orthogonal` (right
 angles with bends on non-overlapping tracks), `curved` (cubic S-curves) or `straight`.
-`node_gap` and `rank_gap` (px at scale 1) loosen or tighten the spacing.
+`node_gap` and `rank_gap` (px at scale 1) loosen or tighten the spacing. Extra edges (a cycle's back edge, edges the
+layout did not place) attach beside the connectors already on a side, so a pair such as `A -> B` and `B -> A` draws as
+two lines rather than one two-headed arrow.
 
 ### Groups, lanes and clusters
 
@@ -125,13 +127,19 @@ process flows.
 ### Fit to the canvas
 
 The diagram is placed in an *area*: the canvas minus `margin` (default 4%), or the `x`, `y`, `width`, `height` you pass.
-`fit` is `shrink` (default: scale everything, including the text, down until it fits), `contain` (also scale up) or
-`none`. Text is never scaled below 6 px; below 9 px the result carries a warning and the check reports it.
+`fit` is `shrink` (scale everything, including the text, down until it fits), `contain` (also scale up, at most 3×)
+or `none`. The default is `contain` when you pass both `width` and `height`, so the diagram fills the box you gave it,
+and `shrink` otherwise. Without a `direction`, a tree or layered diagram that would have to shrink to fit its area
+runs left to right when that fits better (a wide band gets a horizontal flow); pass `direction: TB` to keep it vertical. Text is never scaled below 6 px; below 9 px the result carries a warning and the check reports it.
 `size` sets the label size (px at scale 1); the default follows the canvas.
 
 ### Style
 
-`theme` is `light` (default), `dark` or `mono`; `node_color`, `edge_color`, `text_color`, `stroke_width`, `font`
+`theme` is `palette`, `light`, `dark` or `mono`. Without one, a new diagram follows the document like a chart: `palette`
+(surfaces for nodes, `@ink` for text and lines, `@accent` for highlights, as swatch references, so it retints and
+follows dark mode) when the document has its palette role swatches, else `dark` on a dark canvas and `light`
+otherwise. The choice is stored, so later `diagram-set` calls keep it; diagrams made before 0.23 keep `light`. Pass
+`theme: "light"` for the old look. Labels use the caption line height (1.3); `node_color`, `edge_color`, `text_color`, `stroke_width`, `font`
 (a role, registered font or, from the CLI, a file; defaults to the document's `body` font), `background` (adds a backdrop
 layer) and `arrows: false` adjust it.
 
@@ -161,6 +169,7 @@ same spec gives the same geometry.
 | --- | --- |
 | two nodes overlap | error |
 | an edge passes through a node (its own or another) | error |
+| two edges run on top of each other, so they read as one line or a two-headed arrow (edges from one source or into one target may share a trunk) | error |
 | a label does not fit inside its node, or an edge label overlaps a node | error |
 | a label has less than 4.5:1 contrast with its node's fill | error |
 | a label is under 9 px on the canvas; the diagram was scaled down to unreadable text | warning |

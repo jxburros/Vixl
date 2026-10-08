@@ -260,6 +260,37 @@ def test_art_deco_symmetry_and_centered_text(fonts):
     assert got["symmetry"] == "failed" and got["text-align"] == "failed"
 
 
+def test_art_deco_sunburst_and_centred_type_pass_their_own_checks(fonts):  # #355
+    poster = doc(fonts, background="#0b0b0d")
+    poster.apply([
+        {"type": "shape", "shape": "rectangle", "name": "ray", "x": 534, "y": 260, "width": 12, "height": 300, "fill": "#d4af37"},
+        {"type": "radial-repeat", "target": "ray", "count": 32, "cx": 540, "cy": 560, "name": "sunburst"},
+        {"type": "text", "name": "title", "text": "THE GRAND BALLROOM", "size": 84, "color": "#f5e6b3", "x": "center",
+         "y": 920, "font": "cinzel-700", "align": "center"},
+        {"type": "text", "name": "date", "text": "Saturday the ninth of June", "size": 40, "color": "#d4af37", "x": "center",
+         "y": 1080, "font": "cinzel-700", "align": "center"},
+    ])
+    report = poster.check(checks=["style"], style="art-deco")["style"]
+    got = {rule["id"].split("/", 1)[1]: rule for rule in report["rules"]}
+    assert got["symmetry"]["status"] == "passed", got["symmetry"]
+    assert got["tilt"]["status"] == "passed", got["tilt"]
+    # A tilted headline still counts against "upright".
+    poster.apply({"type": "rotate", "target": "title", "value": 20})
+    poster.apply({"type": "rotate", "target": "date", "value": -15})
+    assert statuses(poster, "art-deco")["tilt"] == "failed"
+
+
+def test_single_weight_black_display_faces_count_as_heavy(fonts, tmp_path):  # #355
+    project = doc(fonts)
+    path = tmp_path / "archivo-black-400.ttf"
+    path.write_bytes(FONT.read_bytes() + b"\0" * 40)
+    import_font(project, path, "archivo-black-400")
+    project.apply({"type": "text", "name": "head", "text": "NO MERCY", "size": 130, "color": "#000000", "x": 60, "y": 100,
+                   "font": "archivo-black-400"})
+    rule = {r["id"].split("/", 1)[1]: r for r in project.check(checks=["style"], style="brutalist")["style"]["rules"]}
+    assert rule["min-weight"]["status"] == "passed", rule["min-weight"]
+
+
 def test_line_art_wants_outlined_shapes_with_one_stroke_weight(fonts):
     good = doc(fonts, background="#fbfaf7")
     good.apply([

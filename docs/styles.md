@@ -84,15 +84,15 @@ Rule kinds (each takes the parameters shown; the style fixes the values):
 | `max_typefaces` | `max` | Distinct type families (from registered font names such as `inter-700`) |
 | `type_categories` | `allowed`, `required` | Category (serif, sans-serif, display, monospace, handwriting) per the font catalog |
 | `text_align` | `allowed`, `scope` (`all`, `body`) | Alignment of text layers (`body` skips the headline) |
-| `min_weight`, `max_weight` | `weight`, `scope` | Weight of the headline (or all text) from the registered name |
+| `min_weight`, `max_weight` | `weight`, `scope` | Weight of the headline (or all text) from the registered name; a weight word in the family (`Archivo Black`, `... Heavy`, `... ExtraBold`) wins over a lower registered weight, so a single-weight black display face counts as black |
 | `type_scale_ratio` | `min`, `max` | Largest over smallest text size |
 | `min_text_size` | `size` | Smallest rendered text size in pixels |
 | `max_words` | `max` | Words across text layers |
 | `edge_alignment` | `min_fraction`, `tolerance` | Share of elements sharing a left, right, center, top or bottom edge |
 | `margins` | `min_fraction` | Smallest gap from content to the canvas edge, as a share of the short side |
 | `min_negative_space`, `max_negative_space` | `fraction` | Share of the render that is still ground when content layers are hidden |
-| `symmetry` | `axis`, `min` | How much of the drawn area mirrors across the axis |
-| `tilt` | `max_fraction`, `min_fraction` | Elements rotated off the 90-degree grid |
+| `symmetry` | `axis`, `min` | How much of the design mirrors across the axis: the better of the rendered pixels and the arrangement (the area share of elements whose mirrored box holds an element of the same kind and color, or that are centred on the axis), so centred type counts as symmetric |
+| `tilt` | `max_fraction`, `min_fraction` | Elements rotated off the 90-degree grid; copies in a `radial-repeat` group (a sunburst's rays) are ornament and do not count |
 | `max_colors`, `min_colors` | `max`/`min`, `distance` | Distinct declared colors, merged within `distance` |
 | `hue_count` | `min`, `max` | Distinct hue families among colorful colors |
 | `hue_range` | `hues`, `min_fraction` | Share of colorful colors inside hue ranges |

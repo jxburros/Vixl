@@ -4,6 +4,7 @@ Coordinates and gravity use pixels and seconds; operation times use milliseconds
 """
 import math
 from .errors import require
+from .geometry import compact_number
 from .model import MAX_LAYERS, finite
 
 TYPES = ("motion", "keyframes")
@@ -11,6 +12,8 @@ RECIPES = ("follow-path", "orbit", "bounce", "shake", "wiggle", "spring", "look-
            "attach", "line-boil")
 SAMPLE_FUNCTIONS = ("sin", "cos", "triangle", "saw", "square", "noise")
 BOIL_STRENGTHS = ("subtle", "natural", "rough")
+# Recipes whose duration defaults to the rest of the timeline rather than one second.
+FILL_RECIPES = ("spin", "attach", "wiggle", "line-boil")
 
 
 def schemas(add):
@@ -115,6 +118,18 @@ def line_boil(project, op, targets, start, length):
     strength = op.get("strength", "subtle")
     require(strength in BOIL_STRENGTHS, f"strength must be {', '.join(BOIL_STRENGTHS)}", field="strength")
     frames = max(1, math.ceil(length * fps / 1000 - 1e-9))
+    hold = 1000 / fps
+    settings = project.state["timeline"]
+    closes = settings.get("loop_mode") == "seamless" and start + length == settings["duration"]
+    if closes:
+        # The drawing after the last one is the first again, so the cycle closes the loop: a whole number
+        # of cycles, each drawing held for the same time, with the first drawing keyed again at the end.
+        frames = max(1, round(length * fps / 1000 / variants)) * variants
+        hold = length / frames
+        if abs(1000 / hold - fps) > 0.01:
+            from .timeline import _note
+            _note(project, f"line-boil holds each drawing {hold:.0f} ms ({1000 / hold:.2f} redraws per second, not {fps:g}) so "
+                  f"{frames // variants} whole cycle(s) of {variants} drawings close the {length} ms loop")
     require(frames * variants * len(targets) <= 8192, "line-boil would write too many keys; shorten duration or lower "
             "fps or variants", "resource_limit", field="fps")
     namer = Namer(project)
@@ -130,9 +145,9 @@ def line_boil(project, op, targets, start, length):
                             "only": ["wobble", "jitter", "width"]})
         apply(project, {"type": "group", "name": namer(f"{layer['name']}-boil"), "targets": copies})
         for k, ident in enumerate(copies):
-            for j in range(frames):
+            for j in range(frames + closes):
                 execute_timeline(project, {"type": "keyframe", "target": ident, "property": "visible",
-                                           "time": start + round(j * 1000 / fps), "value": j % variants == k,
+                                           "time": start + round(j * hold), "value": j % variants == k,
                                            "easing": "hold", "extend": op.get("extend", True)})
 
 
@@ -146,8 +161,9 @@ def execute(project, op):
         return
     settings = _timeline(project)
     start = parse_time(op.get("start", 0), settings["duration"], settings.get("markers"))
-    # A spin fills the rest of the timeline by default: one operation, one seamless loop.
-    length = parse_time(op.get("duration", settings["duration"] - start if op.get("recipe") in ("spin", "attach") else 1000), settings["duration"], settings.get("markers"))
+    # Spin, attach, wiggle and line boil fill the rest of the timeline by default: one operation, one loop.
+    rest = op.get("recipe") in FILL_RECIPES
+    length = parse_time(op.get("duration", settings["duration"] - start if rest else 1000), settings["duration"], settings.get("markers"))
     require(length >= 10, "Motion duration must be at least 10 ms")
     recipe = op["recipe"]
     require(recipe in RECIPES, "Unknown motion recipe")
@@ -195,6 +211,15 @@ def execute(project, op):
     amount = finite(op.get("amount", 12), "amount", -100000, 100000)
     period = finite(op.get("period", 1000), "period", 10, 600000)
     frequency = finite(op.get("frequency", 3), "frequency", 0.01, 60)
+    if (recipe == "wiggle" and settings.get("loop_mode") == "seamless" and not stagger
+            and start + length == settings["duration"]):
+        # A wiggle that runs to the loop end closes only after whole cycles.
+        cycles = max(1, round(frequency * length / 1000))
+        if abs(cycles * 1000 / length - frequency) > 1e-9:
+            from .timeline import _note
+            _note(project, f"wiggle frequency {frequency:g} -> {cycles * 1000 / length:g} per second, so {cycles} whole "
+                  f"cycle(s) close the {length} ms loop")
+            frequency = cycles * 1000 / length
     damping = finite(op.get("damping", 6), "damping", 0.01, 100)
     phase = finite(op.get("phase", 0), "phase", -10000, 10000)
     follow = project.layer(op["follow"])["id"] if "follow" in op else None
@@ -220,8 +245,17 @@ def execute(project, op):
         offset = start + round(stagger * index)
         prop = op.get("property", "rotation" if recipe in ("wiggle", "look-at") else "translate-x")
         base = static_value(project, layer["id"], prop) if recipe in ("spring", "wiggle") else 0
-        for i in range(samples + 1):
-            u, t = i / samples, length * i / samples / 1000
+        steps = [(i / samples, None) for i in range(samples + 1)]
+        if recipe == "bounce":
+            # A key on each contact, moved to the nearest frame, so the ball is seen touching down.
+            frame = 1000 / settings["fps"]
+            for contact in bounce_contacts(abs(amount), finite(op.get("gravity", 980), "gravity", 0.01, 1e6),
+                                           finite(op.get("restitution", 0.65), "restitution", 0, 0.99), length / 1000):
+                snapped = round((offset + contact * 1000) / frame) * frame - offset
+                if 0 <= snapped <= length:
+                    steps.append((snapped / length, {"translate-y": 0.0}))
+        for u, forced in steps:
+            t = length * u / 1000
             angle = math.tau * (t * 1000 / period + phase)
             values = {}
             if recipe == "follow-path":
@@ -252,7 +286,7 @@ def execute(project, op):
                         remaining -= flight
                         velocity *= restitution
                     y = min(0, -velocity * remaining + 0.5 * gravity * remaining * remaining)
-                values = {"translate-y": y}
+                values = forced or {"translate-y": y}
             elif recipe == "spring":
                 target = finite(op.get("to", base + amount), "to", -1e6, 1e6)
                 # Damped response has zero initial velocity. No forced discontinuity at the end.
@@ -298,6 +332,21 @@ def execute(project, op):
     _close_motion(project, settings, op, targets, before)
 
 
+def bounce_contacts(height, gravity, restitution, seconds, limit=64):
+    """Seconds at which the bounce recipe's ball touches the ground, up to ``seconds``."""
+    if height <= 0:
+        return []
+    time, velocity, contacts = math.sqrt(2 * height / gravity), math.sqrt(2 * gravity * height), []
+    while time <= seconds and len(contacts) < limit:
+        contacts.append(time)
+        velocity *= restitution
+        flight = 2 * velocity / gravity
+        if flight < 0.001:
+            break
+        time += flight
+    return contacts
+
+
 def _close_motion(project, timeline, op, targets, before):
     if op.get("close"):
         from .timeline import _close_touched
@@ -327,17 +376,38 @@ def seam_value_findings(project, timeline=None):
                                   "than at t=0, so the loop jumps when it restarts. Use text-animate mode: in-out (or a repeating "
                                   "wave whose period divides the timeline)."})
     for item in seam_findings(project, timeline):
-            track = item["track"]
-            name = f"{track['property']} on {track['target']}"
-            if item["kind"] == "value":
-                result.append({"check": "motion", "severity": "warning", "layer": track["target"], "code": "loop-seam",
-                               "message": f"Loop seam: {name} ends at {item['last']!r} but starts at {item['first']!r}, so the loop jumps when it restarts. "
-                                          "Add a closing key (close: true) or end the track where it began."})
-            else:
-                result.append({"check": "motion", "severity": "info", "layer": track["target"], "code": "loop-seam-speed",
-                               "message": f"Loop seam: {name} matches at the seam but its speed changes from {item['first']} to {item['last']} units/s there; "
-                                          "ease the first and last segments (ease-in-out) or use constant speed to hide the kink."})
+        track = item["track"]
+        name = f"{track['property']} on {layer_label(project, track['target'])}"
+        if item["kind"] == "value":
+            first, last = seam_value(track["property"], item["first"]), seam_value(track["property"], item["last"])
+            result.append({"check": "motion", "severity": "warning", "layer": track["target"], "code": "loop-seam",
+                           "property": track["property"],
+                           "message": f"Loop seam: {name} ends at {last} but starts at {first}, so the loop jumps when it restarts. "
+                                      "Add a closing key (close: true) or end the track where it began."})
+        else:
+            result.append({"check": "motion", "severity": "info", "layer": track["target"], "code": "loop-seam-speed",
+                           "property": track["property"],
+                           "message": f"Loop seam: {name} matches at the seam but its speed changes from {compact_number(item['first'], 1)} "
+                                      f"to {compact_number(item['last'], 1)} units/s there; ease the first and last segments "
+                                      "(ease-in-out) or use constant speed to hide the kink."})
     return result
+
+
+def layer_label(project, target):
+    """How findings name a track's target: the layer's name in quotes, or ``the canvas``."""
+    if target == "canvas":
+        return "the canvas"
+    layer = next((item for item in project.state["layers"] if item["id"] == target), None)
+    return repr(layer["name"]) if layer else target
+
+
+def seam_value(prop, value):
+    """A track value as findings print it: numbers to two decimals, visibility as shown/hidden."""
+    if isinstance(value, bool):
+        return "shown" if value else "hidden" if prop == "visible" else str(value).lower()
+    if isinstance(value, (int, float)):
+        return compact_number(value, 2)
+    return repr(value)
 
 
 def time_findings(project):
@@ -490,6 +560,17 @@ def rendered_seam_findings(project, timeline):
     return []
 
 
+def _full_turns(track):
+    """A rotation track that turns whole symmetry steps between its two keys: a spin, whose constant
+    speed is the point."""
+    keys = track["keys"]
+    if track["property"] != "rotation" or len(keys) != 2:
+        return False
+    step = 360 / max(1, track.get("symmetry", 1))
+    turns = abs(keys[1]["value"] - keys[0]["value"]) / step
+    return turns >= 1 - 1e-6 and abs(turns - round(turns)) < 1e-6
+
+
 def findings(project):
     """Heuristics only: constant speed can be intentional (camera travel/conveyors)."""
     result = []
@@ -497,13 +578,21 @@ def findings(project):
         if track["property"] not in ("x", "y", "translate-x", "translate-y", "rotation"):
             continue
         keys = track["keys"]
+        name = layer_label(project, track["target"])
         changed = [(a, b) for a, b in zip(keys, keys[1:]) if a["value"] != b["value"]]
-        if len(keys) == 2 and changed and keys[0].get("easing", "linear") == "linear":
-            result.append({"check": "motion", "severity": "warning", "layer": track["target"], "code": "linear-motion", "message": "Two-key linear movement starts and stops instantly; consider easing, anticipation and settling unless constant speed is intended."})
+        if len(keys) == 2 and changed and keys[0].get("easing", "linear") == "linear" and not _full_turns(track):
+            result.append({"check": "motion", "severity": "warning", "layer": track["target"], "code": "linear-motion",
+                           "property": track["property"],
+                           "message": f"Two-key linear {track['property']} on {name} starts and stops instantly; consider easing, "
+                                      "anticipation and settling unless constant speed is intended."})
         velocities = [(b["value"] - a["value"]) * 1000 / (b["time"] - a["time"]) for a, b in zip(keys, keys[1:])]
         for i, (a, b) in enumerate(zip(velocities, velocities[1:])):
             dt = (keys[i + 2]["time"] - keys[i]["time"]) / 2000
             if dt and abs(b - a) / dt > 100000:
-                result.append({"check": "motion", "severity": "warning", "layer": track["target"], "code": "high-acceleration", "message": "Abrupt acceleration exceeds 100,000 units/s²; inspect for a teleport or missing anticipation (impacts may be intentional)."})
+                result.append({"check": "motion", "severity": "warning", "layer": track["target"], "code": "high-acceleration",
+                               "property": track["property"],
+                               "message": f"Abrupt acceleration of {track['property']} on {name} exceeds 100,000 units/s² at "
+                                          f"{keys[i + 1]['time'] / 1000:g}s; inspect for a teleport or missing anticipation "
+                                          "(impacts may be intentional)."})
                 break
     return result + time_findings(project)

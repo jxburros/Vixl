@@ -190,6 +190,9 @@ def execute(project, op):
     require(budget >= 0, "Container expansion exceeds operation limit", "resource_limit")
     project._resource_budget = budget
     children = []
+    from .craft import CORNERS
+
+    corner = direction.get("corner")
     for original, operation in zip(selected["operations"], ops):
         operation = deepcopy(operation)
         local_name = operation.get("name", operation["type"])
@@ -202,6 +205,14 @@ def execute(project, op):
         if operation["type"] == "image-slot":
             slot = operation.get("slot", local_name)
             operation["asset"] = variables.get(slot, operation.get("asset", ""))
+        if operation["type"] == "shape" and operation.get("shape") == "rounded-rectangle" and corner in CORNERS:
+            # Rounded parts (buttons, cards) take the document's rolled corner style (#410).
+            frame = spec.get("frame")
+            short = min(width * frame[2], height * frame[3]) if frame else min(operation.get("width", width),
+                                                                                 operation.get("height", height))
+            operation["radius"] = round(short * CORNERS[corner], 2)
+            if not operation["radius"]:
+                operation["shape"] = "rectangle"
         apply(project, operation)
         layer = project.layer()
         layer.update(parent=group["id"], container_local=local_name)

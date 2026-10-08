@@ -22,7 +22,8 @@ When a person gives you a photo or scan of their drawing, keep their lines and b
   weight (a number sets it). `straighten` (only the strokes the user asked about — pass `strokes`), `smooth`, `restyle`
   and `stroke` change them. `straighten` keeps each line at the angle it was drawn at; add `angles: "axes"` to square up
   walls and floors or `"45"` for diagonals only when asked, and `close_gaps: 30` (or `"auto"`) to close corner and
-  T gaps (corners get sharp, lines keep their angles).
+  T gaps (corners get sharp, lines keep their angles). `smooth` leaves straightened lines and polylines alone
+  (`corners: "round"` smooths them too, and the drawing check then warns).
 - Before `fill`, call `vixl_workflow("drawing-report", {"target": "house"})`: it lists closed
   regions with a point inside each (`point` on the canvas, `group_point` in the drawing's own
   coordinates), the drawing group's `offset`, `scale` and `rotation`, and how much of the original line
@@ -49,8 +50,8 @@ Full reference: `docs/drawing.md`.
 - Text format: `A -> B -> C`, `A -> B: label`, `A{Question?}` (decision), `A([x])` terminator, `A[/x/]` io, `A[(x)]` database,
   `@color=… @icon=check @group=…`, `group Lane: A, B`, indentation for hierarchies, `direction: LR`.
 - `layout`: `layered` (flows, dependencies), `tree`, `radial`, `mindmap`, `grid`; `direction` TB/LR/BT/RL; `routing`
-  orthogonal/curved/straight; `lanes: true` for swimlanes. The diagram shrinks to fit the canvas (`fit`, `x/y/width/height`).
-- Check with `vixl_check(checks=["diagram"])`: overlapping nodes, edges through nodes, labels that do not fit or lack
+  orthogonal/curved/straight; `lanes: true` for swimlanes. The diagram shrinks to fit the canvas (`fit`, `x/y/width/height`); given both `width` and `height` it fills that box (`fit: contain`), and without a `direction` a wide box gets a left-to-right flow.
+- Check with `vixl_check(checks=["diagram"])`: overlapping nodes, edges through nodes or drawn on top of each other, labels that do not fit or lack
   contrast, text scaled below 9 px. Full reference: `docs/diagrams.md`.
 
 ## Organic shapes
@@ -80,7 +81,7 @@ tiny elements, or as a finish over the whole document.
 ```
 
 `seed` is required and decides everything; each layer of a group gets its own stream. `strength`
-is `subtle`, `natural` or `rough` (start at `subtle`; magnitudes scale with each layer's size),
+is `subtle` (the default), `natural` or `rough` (magnitudes scale with each layer's size),
 `amount` scales it, `only` picks effects (`wobble`, `jitter`, `width`, `pressure`, `color`,
 `placement`), and explicit fields (`wobble` px, `wobble_length` px, `pressure`, `lightness_drift`,
 `rotation_jitter`…) set exact bounds. Shapes become path layers (a stroke with `pressure` becomes a

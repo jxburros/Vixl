@@ -35,6 +35,8 @@ Custom palette files are JSON arrays of 2–256 color strings, for example `["#1
 ## Templates
 
 Built-in templates: `social-square`, `story`, `thumbnail`, `poster`, `business-card`, and transparent `logo`.
+Their sizes and positions are drawn for the template's own size and scale with the canvas they are applied to
+(one factor, so the copy keeps its relative size and place on any canvas).
 
 ```bash
 vixl template show social-square

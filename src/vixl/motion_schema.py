@@ -2,7 +2,7 @@
 FIELDS = {
     "name": "Unique name for the created layer, reusable template or audio track.", "recipe": "Higher-level motion generator to compile into editable keyframes.",
     "targets": "Layer names or IDs receiving the operation.", "start": "Start time in milliseconds; timeline operations also accept named markers when declared as strings.",
-    "duration": "Duration in milliseconds, up to ten minutes (spin and attach: default to the rest of the timeline).", "period": "Milliseconds per repeating motion cycle.", "amount": "Motion amplitude in pixels or degrees; breathing uses percent and overlap uses milliseconds.",
+    "duration": "Duration in milliseconds, up to ten minutes (default 1000; spin, attach, wiggle and line-boil: the rest of the timeline).", "period": "Milliseconds per repeating motion cycle.", "amount": "Motion amplitude in pixels or degrees; breathing uses percent and overlap uses milliseconds.",
     "frequency": "Oscillations per second.", "damping": "Exponential spring damping rate per second.", "gravity": "Vertical acceleration in pixels per second squared (positive is down).",
     "restitution": "Fraction of impact velocity retained by each bounce, from zero to below one.", "radius": "Radius in pixels.", "center": "Orbit center [x,y] in pixels.",
     "points": "Path vertices [x,y] in pixels, traversed at constant arc-length speed before easing.", "to": "End value or camera [x,y,zoom] pose.", "from": "Initial camera [x,y,zoom] pose; x/y are pixel offsets from the canvas center.",

@@ -1,5 +1,7 @@
 """Merge field filters: ${name|filter:arg|...} through one substitute() (#215)."""
 
+import io
+
 import pypdf
 import pytest
 
@@ -126,3 +128,24 @@ def test_link_variables_accept_filtered_references(tmp_path):
 
     layer = next(layer for layer in host.state["layers"] if layer["name"] == "l")
     assert overrides(host, layer) == {"who": "ZOË -"}
+
+
+def test_double_dollar_writes_a_literal_placeholder_in_text_rich_text_and_flows(tmp_path):
+    values = {"title": "Hello"}
+    assert substitute("$${title} is ${title}; $${x|upper} stays", values) == "${title} is Hello; ${x|upper} stays"
+    assert placeholders("$${title}") == []
+    p = Project(700, 400)
+    p.apply([
+        {"type": "text", "name": "plain", "text": "Write $${title}", "size": 20, "x": 10, "y": 10},
+        {"type": "rich-text", "name": "rich", "markdown": "Use **$${title}**", "size": 20, "x": 10, "y": 60},
+        {"type": "text-flow", "name": "flow", "markdown": "Use $${title} in templates",
+         "frames": [{"x": 10, "y": 120, "width": 500, "height": 200}]},
+    ])
+    shown = texts(p)
+    assert shown["plain"] == "Write ${title}" and shown["rich"] == "Use ${title}"
+    assert "Use ${title} in templates" in shown.values()
+    p.render()
+    text = "".join(page.extract_text() for page in pypdf.PdfReader(io.BytesIO(p.export(tmp_path / "t.pdf"))).pages)
+    assert "${title}" in text and "$$" not in text
+    with pytest.raises(VixlError, match=r"write \$\$\{nope\}"):
+        p.apply({"type": "text", "name": "bad", "text": "${nope}"})

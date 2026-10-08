@@ -6,6 +6,7 @@ TYPES = (
     "shape",
     "group",
     "ungroup",
+    "reparent",
     "clip",
     "layer-style",
     "distribute",
@@ -82,6 +83,9 @@ def schemas(add):
                   "below": {**S, "description": "Place the new group directly below this layer (same parent)."}},
         ["name", "targets"])
     add("ungroup")
+    from .reparent import schema as reparent_schema
+
+    reparent_schema(add)
     add("clip", {"base": S, "release": B})
     add("layer-style", {"name": enum(*STYLES), "settings": obj, "remove": B}, ["name"])
     add(

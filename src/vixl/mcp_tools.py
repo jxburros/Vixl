@@ -217,6 +217,12 @@ def preview(
 
 
 EXPORT_SUFFIXES = (".png", ".jpg", ".jpeg", ".webp", ".tif", ".tiff", ".avif", ".svg", ".pdf", ".ico", ".html", ".htm", ".pptx", ".psd")
+PURPOSE_HELP = ("What the piece is for: social, story, poster, flyer, print, document, form, invitation, slides, "
+                "diagram, web, email, motion, video, logo, mark, emblem, badge, monogram, icon, app-icon or favicon. "
+                "Without a size it picks the size (social 1080×1350, slides 1920×1080, print letter or A4 by locale, "
+                "icon 1024×1024); with neither, 1080×1080. It also weights the rolled defaults")
+BACKGROUND_HELP = ("Canvas colour. Omitted: the rolled palette's background, or transparent for logo, icon and "
+                   "favicon sizes and mark purposes; 'transparent' keeps the old default")
 
 
 def export_file(session, path, overwrite=False, document=None, **options):
@@ -480,8 +486,14 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         return result
 
     @tool
-    def vixl_resource_get(kind: Literal["palettes", "templates", "guidance"], name: str) -> dict:
-        """Read a named palette, template or guidance text (also vixl_guide(brief=NAME)) before applying it."""
+    def vixl_resource_get(kind: Literal["palettes", "templates", "guidance", "house-style"], name: str) -> dict:
+        """Read a named palette, template or guidance text (also vixl_guide(brief=NAME)) before applying it.
+        kind house-style reads the built-in default brand: name 'all' for craft rules, tiers and levels, or a
+        purpose (poster, social, slides, document, form, diagram, logo, motion) for its profile."""
+        if kind == "house-style":
+            from .house_style import show
+
+            return {"name": name, "value": show(None if name in ("", "all", "default") else name)}
         from .resources import get
 
         return {"name": name, "value": get(kind, name)}
@@ -585,7 +597,8 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         path: str,
         width: Positive | None = None,
         height: Positive | None = None,
-        background: str = "transparent",
+        background: Annotated[str | None, Field(description=BACKGROUND_HELP)] = None,
+        purpose: Annotated[str | None, Field(description=PURPOSE_HELP)] = None,
         size: Annotated[
             str | None,
             Field(description="Named size instead of width/height: letter, a4, business-card, instagram-portrait, story, youtube-thumbnail, favicon, logo-horizontal … (vixl_sizes_list)"),
@@ -602,16 +615,20 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         ] = None,
         workspace_fonts: Annotated[
             bool,
-            Field(description="Embed the workspace default fonts (brand.json pairing/fonts, set with "
-                              "vixl_font_pair or vixl_font_install scope='workspace'); ignored when font_pairing is given"),
+            Field(description="Embed fonts at creation: the workspace default fonts (brand.json pairing/fonts, set "
+                              "with vixl_font_pair or vixl_font_install scope='workspace'), else the rolled pairing "
+                              "from the font cache or network. false keeps the proofing fallback; ignored when "
+                              "font_pairing is given"),
         ] = True,
     ) -> dict:
-        """Create and activate a new .vixl file from width/height or a named size (print sizes record dpi,
-        bleed, safe area and trim/safe guides). Never overwrites an existing file. font_pairing replaces
-        a separate vixl_font_pair call, so heading/body roles resolve to real typefaces, not the proofing fallback.
-        Without it the workspace default fonts apply; the result's workspace_fonts says which."""
-        created = session.create(path, width, height, background, size=size, dpi=dpi, orientation=orientation, bleed=bleed,
-                                 seed=seed, variety=variety, workspace_fonts=workspace_fonts and not font_pairing)
+        """Create and activate a new .vixl file from width/height, a named size or a purpose (print sizes record
+        dpi, bleed, safe area and trim/safe guides). With none of them it is 1080×1080. Never overwrites an
+        existing file. The document gets reproducible design_defaults (seed, variety), the palette background
+        (transparent for marks) and the rolled font pairing; the result's creation says what was chosen and why.
+        font_pairing installs that pairing instead, so heading/body roles resolve to real typefaces."""
+        created = session.create(path, width, height, background, size=size, purpose=purpose, dpi=dpi,
+                                 orientation=orientation, bleed=bleed, seed=seed, variety=variety,
+                                 workspace_fonts=workspace_fonts and not font_pairing)
         if font_pairing:
             from .typefaces import pair_fonts
 
@@ -1048,7 +1065,8 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         size: Annotated[str | None, Field(description="Named size (vixl_sizes_list), or give width and height")] = None,
         width: Positive | None = None,
         height: Positive | None = None,
-        background: str = "transparent",
+        purpose: Annotated[str | None, Field(description=PURPOSE_HELP)] = None,
+        background: Annotated[str | None, Field(description=BACKGROUND_HELP)] = None,
         font_pairing: Annotated[str | None, Field(description="vixl_font_pair name or 'random'")] = None,
         layout: Annotated[dict | None, Field(description="layout-apply fields: {name, seed?, title, subtitle, …}")] = None,
         style: Annotated[str | None, Field(description="Style to tag (vixl_styles)")] = None,
@@ -1067,15 +1085,17 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         orientation: Literal["portrait", "landscape"] | None = None,
         bleed: bool | float = False,
         seed: int | None = None,
+        variety: Literal["low", "medium", "high", "fixed"] | None = None,
     ) -> dict | list:
         """Build a whole piece in one call: create → font pairing → layout → style → look → operations → check →
         preview → save → exports. Atomic: nothing is saved or exported unless every step succeeds; an error
-        names its step. Use it for a new piece; edit existing documents with vixl_operations_apply."""
+        names its step. Use it for a new piece; edit existing documents with vixl_operations_apply. Like
+        vixl_document_create it makes the new document active (pass document= to keep editing another)."""
         from .compose import compose
 
         create = {key: value for key, value in (("size", size), ("width", width), ("height", height),
-                  ("background", background), ("dpi", dpi), ("orientation", orientation), ("bleed", bleed),
-                  ("seed", seed)) if value is not None}
+                  ("purpose", purpose), ("background", background), ("dpi", dpi), ("orientation", orientation),
+                  ("bleed", bleed), ("seed", seed), ("variety", variety)) if value is not None}
         result, image = compose(session, path=path, font_pairing=font_pairing, layout=layout, style=style, look=look,
                                 operations=operations, operations_path=operations_path, check=check, strict=strict,
                                 preview=preview, exports=exports, overwrite=overwrite, dry_run=dry_run, **create)

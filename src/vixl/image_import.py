@@ -1,8 +1,9 @@
 """Image imports shared by MCP, REST, the CLI and the Python API, with provenance for attribution."""
 
 import hashlib
+import math
 
-from .assets import add_encoded
+from .assets import add_encoded, image_size
 from .errors import require
 
 ACCEPT = "image/avif,image/webp,image/png,image/jpeg,image/*;q=0.8,*/*;q=0.1"
@@ -37,7 +38,12 @@ def import_image(project, data, name="image", *, source=None, credit=None, licen
     extra = attribution(credit, license)
     source = {**(source or {}), "sha256": hashlib.sha256(data).hexdigest()}
     candidate = project.clone()
-    asset, _ = add_encoded(candidate, data)
+    width, height = image_size(data, project.limits)
+    limits = project.limits
+    fit = min(1.0, math.sqrt(limits.max_pixels / (width * height)), limits.max_dimension / max(width, height))
+    # A photo above the pixel limit (a 108 MP camera file) is downsampled to fit it, and the result says so.
+    target = max(1, math.floor(width * fit) * math.floor(height * fit)) if fit < 1 else None
+    asset, image = add_encoded(candidate, data, max_pixels=target)
     candidate.apply({"type": "add", "asset": asset, "name": name,
                      "provenance": {"type": "imported", "source": source}, **extra}, detail="compact")
     project.__dict__.update(candidate.__dict__)
@@ -51,6 +57,10 @@ def import_image(project, data, name="image", *, source=None, credit=None, licen
         "asset": asset,
         "source": source,
         **extra,
+        **({"downsampled": {"from": [width, height], "to": list(image.size)},
+            "warnings": [f"The image was {width}×{height}, above the {limits.max_pixels:,}-pixel limit, and was "
+                         f"downsampled to {image.width}×{image.height}; raise --max-pixels to keep it larger"]}
+           if target else {}),
     }
 
 

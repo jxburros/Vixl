@@ -18,7 +18,7 @@ inputs:
     description: "Fail the step at this level: error, warning, fix (any finding that needs a fix) or never."
     default: error
   vixl-version:
-    description: vixl-engine version to install from PyPI (for example 0.22.1); empty installs the version at this action's ref.
+    description: vixl-engine version to install from PyPI (for example 0.23.0); empty installs the version at this action's ref.
     default: ""
   compare-base:
     description: On pull requests, render each document's base-branch version and pixel-diff it (true or false).

@@ -39,7 +39,7 @@ parameters can be changed later. Paths and holes export as real vector geometry.
 | Mechanical | `gear`/`cog`, `ruler`/`tick-strip` | `teeth`, `depth`, `hole`; ruler `count`, `thickness` |
 | Structured lines | `wave`, `zigzag`, `sawtooth`, `square-wave`, `dashed-line`, `curve` section divider | `amplitude`, `wavelength`, `phase`, `count`; stroke controls below |
 | Symbols | `checkmark`, `x-mark`, `lightning`/`lightning-bolt`, `sun`, `flame`, `map-pin`, `house`, `bell`, `lock`, `magnifier`, `envelope`, `play`, `pause`, `stop`, `skip`, `info`, `question`, `warning`, `music-note`, `sparkle`, `star-rating` | `thickness` for line symbols; sun `count`/`ray_length`; rating `count`/`rating` with fractional stars |
-| Decoration | `flourish`, `swash-underline`, `scroll`, `laurel`/`wreath`, `divider`, `corner-ornament`, `sunburst`, `radial-burst`, `motion-lines`/`speed-lines`, `confetti`, `scribble`/`squiggle` | `count`, `thickness`; wave-like ornaments `amplitude`, `wavelength`, `phase` |
+| Decoration | `flourish`, `swash-underline`, `scroll`, `laurel`/`wreath`, `divider`, `corner-ornament`, `sunburst`, `radial-burst`, `motion-lines`/`speed-lines`, `confetti`, `scribble`/`squiggle` | `count`, `thickness`; wave-like ornaments `amplitude`, `wavelength`, `phase`; `confetti` with `count` scatters that many slips at `seed`-chosen places and angles (without `count` it is one rounded slip) |
 | Print/craft | `ticket`, `stamp`/`postmark`, `scalloped-border`, `sticker` | `notch`, edge `count`/`depth`, `thickness`, `peel` |
 
 Image content can be placed in UI frames with the existing image `frame`, `replace-contents`
@@ -178,7 +178,9 @@ handles equal in length. `path-simplify` reduces nodes by a pixel `tolerance`;
 - `pathfinder`: adds `exclude` (XOR), `minus-back` (last operand minus earlier operands),
   `divide` (independent faces), `trim` (remove covered portions), and `merge` (trim then
   combine pieces of the same fill). Divide/trim/merge return a group of editable paths;
-  originals are preserved and hidden, as with existing pathfinder modes. Divide is limited
+  originals are preserved and hidden, as with existing pathfinder modes. Each piece reaches 1 px under the
+  pieces stacked above it (never past the outline of the whole), so abutting pieces render without a hairline
+  seam. Divide is limited
   to 256 faces, and the established boolean engine's geometry limits still apply.
 
 Repeats and blends remain the existing `repeat`, `repeat-blend`, and `organic` `along`

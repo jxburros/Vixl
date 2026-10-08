@@ -974,7 +974,8 @@ def schemas(add):
     settings = ("Per-action settings (see docs/drawing.md). import/clean: ink (line colour, default #1d1d1f), sheet, "
                 "perspective, deskew, crop, weight, threshold. vectorize: mode, width (pixels or 'uniform'), color. "
                 "straighten: angles ('drawn' keeps each line's angle, 'axes', '45', 'guides' or degrees), tolerance, "
-                "close_gaps (pixels or 'auto'), circles, polylines. restyle: width (pixels or 'uniform'), width_scale. "
+                "close_gaps (pixels or 'auto'), circles, polylines. smooth: amount, corners (keep, the default, leaves "
+                "straightened lines and polylines as they are; round smooths them too). restyle: width (pixels or 'uniform'), width_scale. "
                 "fill: gap, min_area, under. stroke: width, smooth, closed.")
     add("drawing", {"action": {"enum": list(ACTIONS)}, "name": S, "target": S, "asset": S, "path": S, "x": {}, "y": {},
                     "width": {}, "height": {}, "settings": {"type": "object", "description": settings},
@@ -1320,7 +1321,7 @@ def _vectorize(project, group, op):
 # to horizontal/vertical or to 45° steps too; a list of degrees, or "guides", snaps to those.
 ANGLE_SETS = {"drawn": [], "none": [], "axes": [0, 90], "45": [0, 45, 90, 135]}
 STRAIGHTEN = {"tolerance": 4.0, "angles": "drawn", "angle_tolerance": 6.0, "circles": True, "close_gaps": 0.0,
-              "corner": 24.0, "polylines": True, "amount": 0.5}
+              "corner": 24.0, "polylines": True, "amount": 0.5, "corners": "keep"}
 
 
 def _snap_angles(project, value):
@@ -1355,13 +1356,20 @@ def _straighten(project, group, op, action):
         for record in layer["drawing_strokes"]:
             points = np.asarray(record["points"], float)
             if action == "smooth":
+                require(settings["corners"] in ("keep", "round"), "corners is keep (the default) or round",
+                        field="settings")
+                if record.get("kind") in ("line", "polyline") and settings["corners"] == "keep":
+                    # Straightened sides and corners are deliberate; smoothing them would round a window into a blob.
+                    records.append({**record})
+                    continue
                 amount = finite(settings["amount"], "amount", 0, 1)
                 passes = max(1, round(amount * 4))
                 smoothed = chaikin(points, passes, record["closed"])
                 if not record["closed"] and len(points) > 2:
                     smoothed = np.vstack([points[:1], smoothed, points[-1:]])
                 smoothed = simplify(smoothed, 0.5, record["closed"])
-                records.append({**record, "points": smoothed.tolist(), "kind": "smoothed", "smooth": True})
+                rounded = {"rounded": record["kind"]} if record.get("kind") in ("line", "polyline") else {}
+                records.append({**record, "points": smoothed.tolist(), "kind": "smoothed", "smooth": True, **rounded})
                 continue
             new, closed, kind = straighten_stroke(points, record["closed"], tolerance=finite(settings["tolerance"], "tolerance", 0, 1000),
                                                   angles=angles, angle_tolerance=finite(settings["angle_tolerance"], "angle_tolerance", 0, 45),
@@ -1370,8 +1378,8 @@ def _straighten(project, group, op, action):
             if kind is None:
                 records.append({**record})
             else:
-                records.append({**record, "points": np.asarray(new).tolist(), "closed": closed, "kind": kind,
-                                "smooth": kind == "circle"})
+                records.append({**{k: v for k, v in record.items() if k != "rounded"}, "points": np.asarray(new).tolist(),
+                                "closed": closed, "kind": kind, "smooth": kind == "circle"})
         updated[layer["id"]] = records
     if gap:
         # Gaps are closed once the sides are straight, so a corner is run on to where its lines cross.
@@ -1643,6 +1651,12 @@ def check_drawings(candidate, layers, issue):
         if info["added"] > 0.35:
             issue("drawing", "warning", f"{info['added']:.0%} of drawing {item['name']!r} is new line work", [item],
                   added=info["added"])
+        rounded = [layer["name"] for layer in _children(candidate, item)
+                   if any(record.get("rounded") for record in layer.get("drawing_strokes", []))]
+        if rounded:
+            issue("drawing", "warning", f"Drawing {item['name']!r} has straightened strokes that smooth rounded "
+                  f"({', '.join(rounded[:8])}): their corners are curves now. Undo, then smooth with "
+                  "settings.corners: keep (the default)", [item], strokes=rounded[:64])
 
 
 def line_art(project, group):

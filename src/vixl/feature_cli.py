@@ -113,12 +113,19 @@ def color_command(args):
         result = []
         for value in values:
             info = colors.describe(value)
-            result.append({"input": value, a.to: info["css"] if a.to == "css" else info[a.to]})
+            result.append({"input": value, a.to: info["css"] if a.to == "css" else info[a.to],
+                           **{key: info[key] for key in ("clipped", "warnings") if key in info}})
         return result[0] if len(result) == 1 else result
     if action == "harmony":
         return {"base": values[0], "scheme": a.scheme, "colors": colors.harmony(values[0], a.scheme, a.count)}
     if action == "scale":
-        return {"base": values[0], "scale": colors.scale(values[0])}
+        if len(values) == 1:
+            require(a.count is None, "--count sets the steps of a scale between two or more colours (color scale A B "
+                    "--count 5); a single colour gives the 50–950 ramp", field="count")
+            return {"base": values[0], "scale": colors.scale(values[0])}
+        count = a.count or 5
+        return {"stops": values, "space": a.space, "count": count,
+                "scale": colors.interpolate_scale(values, count, a.space)}
     if action == "mix":
         require(len(values) == 2, "Use color mix A B [--amount 0.5] [--space oklab]")
         mixed = colors.mix(colors.parse(values[0]), colors.parse(values[1]), a.amount, a.space)

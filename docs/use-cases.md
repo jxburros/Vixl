@@ -68,6 +68,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | ID | Use case | Main route | Calls · min | Ev. | Notes |
 | --- | --- | --- | --- | --- | --- |
 | DOC-01 | Create a blank document at a named size (letter, instagram-post, youtube-thumbnail …) | `vixl_document_create(size=…)`, `vixl new NAME` | 1 · <1 | E | 150 named sizes with trim/safe guides; `vixl_sizes_list` to browse. |
+| DOC-33 | Start a designed document from only a purpose (or nothing): size, palette background, design defaults and real fonts | `vixl_document_create(purpose=…)`, `vixl new --purpose slides`, `Project(purpose=…)` | 1 · <1 | E | Since 0.23; same result on every surface for the same `seed`. Fonts install from the cache or network. |
 | DOC-02 | Create a print document with bleed and dpi | `vixl new letter --bleed --dpi 300` | 1 · <1 | E | Print sizes carry physical units, bleed and safe area. |
 | DOC-03 | Open and inspect a `.vixl` (layers, bounds, fonts, effects) | `vixl_document_open`, `vixl_document_inspect` | 2 · <1 | E | `--detail brief|compact|full` controls response size. |
 | DOC-04 | Rename, hide, show, raise, lower, duplicate or delete a layer | `vixl_operations_apply` | 1 · <1 | E | Works on `targets` lists in one atomic batch. |
@@ -83,6 +84,8 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | BLK-16 | Relink the links in a copied `.vixl` | `links-relink {from, to}` | 1 · <1 | E | Since 0.22; sources beside the document are stored relative to it. |
 | DOC-31 | Import an image from a URL with its credit and licence | `vixl_import_image(url=…, credit, license)` | 1 · <1 | E | Since 0.22; https only, private hosts refused. |
 | DOC-32 | Merge layers into one, or flatten the page | `merge-layers`, `flatten` | 1 · <1 | E | Since 0.22; undo restores the originals. |
+| DOC-34 | Import a camera photo above the pixel limit (108 MP) | `vixl_import_image`, or `add` with `max_pixels` | 1 · <2 | E | Since 0.23; downsampled to the limit, sources up to 4× it. |
+| DOC-35 | Edit a document of thousands of layers one operation at a time, or send a 10,000-operation batch | `vixl_operations_apply` | 1 · <1 | E | Since 0.23 an edit lays out only the layers it depends on; was seconds per edit and minutes per batch (#284, #300). |
 
 ### Text and typography
 
@@ -91,12 +94,13 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | TXT-01 | Add a text layer with size, color and position | `text` operation | 1 · <1 | E | Registered font names work in the batch. |
 | TXT-02 | Change the words of an existing text layer | `text-set` | 1 · <1 | E | Keeps rich-text lists and spacing (fixed in 0.20). |
 | TXT-03 | Browse fonts by category or mood | `vixl_fonts` | 1 · <1 | E | |
-| TXT-04 | Install a curated heading/body font pairing | `vixl_font_pair` | 1–2 · <1 | E | Bundled DejaVu is a proofing fallback only. |
+| TXT-04 | Install a curated heading/body font pairing | `vixl_font_pair` | 1–2 · <1 | E | Bundled DejaVu is a proofing fallback only. Since 0.23 creation installs the rolled pairing (0 extra calls) when the font cache or network is available. |
 | TXT-05 | Install one Google font or import a local font file | `vixl_font_install`, `vixl_import_font` | 1 · <1 | E | |
 | TXT-06 | Generate a modular type scale | `type-scale --base 16 --ratio golden` | 1 · <1 | E | |
 | TXT-07 | Read text metrics (ink box, baseline, cap height, x-height) | `vixl_measure`, `info --target TEXT` | 1 · <1 | E | |
 | TXT-08 | Warp text (arc, flag, wave …) or set it along a path | `text` with `warp` / polyline placement | 1 · <1 | E | Outlined warp presets export as vectors. |
 | TXT-09 | Define and apply a linked character/paragraph style | `style-define`, `style-apply` | 2 · <1 | E | |
+| TXT-10 | Flow a very long text (100,000 characters, even one unbroken word) through columns | `text-flow` | 1 · <1 | E | Since 0.23; a 100,000-character word took about 6 minutes (#335). |
 | BLK-08 | Place text by its baseline | `baseline_y` on text/move, `align` `baseline`, `snap` to a baseline grid | 1 · <1 | E | Since 0.22. |
 
 ### Color
@@ -122,6 +126,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | SHP-05 | Distribute layers with equal gaps | `distribute` | 1 · <1 | E | |
 | SHP-06 | Move, resize, scale, rotate, flip or skew a layer | transform operations | 1 · <1 | E | Fractional sizes, named pivots, affine matrices. |
 | SHP-07 | Group, ungroup, clip one layer to another | `group`, `ungroup`, `clip` | 1 · <1 | E | |
+| SHP-23 | Add a part drawn later to an existing (rotated, scaled) group, or lift a part out | `reparent` | 1 · <1 | E | Since 0.23 (#382); keeps the render and the group's settings. |
 | SHP-08 | Combine shapes (union, subtract, intersect, exclude) | `pathfinder` | 1 · <1 | E | |
 | SHP-09 | Add guides, a column grid, baseline grid, golden or thirds grid | `guide`, `grid` | 1 · <1 | E | Polar, isometric, hex, oblique and perspective grids too. |
 | SHP-10 | Place or snap layers onto a guide | `place`, `snap` | 1 · <1 | E | |
@@ -156,7 +161,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | DAT-01 | Bar, stacked, 100 %, horizontal, line, area, pie or donut chart from inline data | `chart` | 1 · <1 | E | One editable vector group with axes and legend. |
 | DAT-02 | Chart straight from a CSV in the workspace | `chart --csv` | 1 · <1 | E | |
 | DAT-03 | Change one value, add a row or reload the CSV | `chart-data` | 1 · <1 | M:T08 R2 | Same layer IDs survive. |
-| DAT-04 | Flowchart from a line of text (`A -> B -> C`) | `diagram-from-text` | 1 · <1 | E | Layered, tree, radial, mindmap and grid layouts. |
+| DAT-04 | Flowchart from a line of text (`A -> B -> C`) | `diagram-from-text` | 1 · <1 | E | Layered, tree, radial, mindmap and grid layouts. Since 0.23 it follows the document palette and dark mode. |
 
 ### Export
 
@@ -191,6 +196,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | AGT-03 | Read the JSON schema of one operation | `vixl_operation_schema` | 1 · <1 | E | |
 | AGT-04 | Browse layouts, styles, brushes, resources or workflows | `vixl_layouts_list`, `vixl_styles`, `vixl_brushes_list`, `vixl_resources_list`, `vixl_workflow_schema` | 1 · <1 | E | |
 | AGT-05 | Check the installed version and update it | `vixl --version`, `vixl update` | 1 · <1 | E | Verified Windows updater with rollback. |
+| AGT-06 | Read the house style: craft rules, tiers, variety levels or one purpose's profile | `vixl_resource_get(kind="house-style")`, `vixl house show PURPOSE` | 1 · <1 | E | Purposes: poster, social, slides, document, form, diagram, logo, motion. |
 
 ### Provider-backed (one call each)
 
@@ -220,7 +226,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | SOC-01 | Fill a named layout (hero-statement) with given copy | `layout-apply` | 3 · 1 | M:eval:layout-filled | |
 | PHO-10 | Photo on top, caption panel below, for a 1080×1350 post | import, `scale`, `shape`, `text` | 7 · 2 | M:eval:photo-caption | |
 | COL-01 | Restore a mistakenly deleted layer without losing later edits | `vixl_history` | 5 · 1–2 | M:eval:restore-deleted | |
-| SOC-02 | Roll a design direction with locks and apply it | `vixl_roll` | 5 · 1–2 | M:eval:roll-applied | Use `unfilled=omit` for empty slots. |
+| SOC-02 | Roll a design direction with locks and apply it | `vixl_roll` | 5 · 1–2 | M:eval:roll-applied | Use `unfilled=omit` for empty slots. The roll is weighted by purpose (`purpose`, else the document size) and gated by `variety`; `locks={tier: "bold"}` explores one tier. |
 | SOC-03 | Story with gradient and an evenly spaced three-item list | `gradient`, `text` ×3, distribute | 5 · 1–2 | M:eval:story-list | |
 | BRD-01 | Import an SVG logo as editable geometry, edit and re-export | `vixl_import_document` svg editable | 4 · 1 | M:eval:svg-logo-import | |
 | SOC-04 | Start from a built-in template with title and subtitle | `vixl_template_create` | 4 · 1 | M:eval:template-creation | 40 templates. |
@@ -245,7 +251,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | SOC-19 | Event promo from the social-event-promo template | `vixl_template_create` | 4–6 · 1–2 | E | |
 | SOC-20 | Watermark or logo stamp on a photo | import, `opacity`, `align` | 4–5 · 1 | E | |
 | SOC-82 | A finished card in one call (create, layout, fonts, look, check, export) | `vixl_compose` | 1–3 · 1 | E | Since 0.22; atomic, errors name the step. |
-| SOC-83 | Meme from your own image (top/bottom, comparison, four-panel, reaction GIF) | `layout-apply` meme layouts with `images` | 3–6 · 1–2 | E | Since 0.22; bring your own images. |
+| SOC-83 | Meme from your own image (top/bottom, comparison, four-panel, reaction GIF) | `vixl_compose` with a meme layout and `image`/`images` paths or URLs (or `layout-apply` with imported assets) | 1 · 1 | E | Since 0.22; bring your own images. One call since 0.23 (#368); the pictures bleed (`allow_crop`) and the captions stay in the safe area, so `check` passes on sized canvases. |
 
 ### Print and stationery
 

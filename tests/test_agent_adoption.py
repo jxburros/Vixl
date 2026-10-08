@@ -49,6 +49,17 @@ def test_layout_reports_missing_slots_in_compact_and_dry_run():
     assert result["layout"]["blanks"] and p.head == head and not p.state["layers"]
 
 
+def test_rolled_shadow_look_keeps_to_the_brand_palette(tmp_path):
+    # Seed 16 rolls the soft-shadow look; its shadow used to be black, outside the brand palette.
+    brand(tmp_path)
+    session = Session(workspace=tmp_path)
+    session.create("design.vixl", 800, 800, seed=16)
+    session.apply([{"type": "layout-apply", "name": "hero-statement", "title": "Launch", "unfilled": "omit"}])
+    with session.project() as p:
+        assert p.state["design_defaults"]["direction"]["look"] == "soft-shadow"
+        assert not p.check(checks=["brand"])["issues"]
+
+
 def test_workspace_brand_layout_template_check_and_roll(tmp_path):
     kit = brand(tmp_path)
     (tmp_path / "nested").mkdir()
