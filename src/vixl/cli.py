@@ -95,6 +95,7 @@ Automate:  apply FILE|- [--dry-run] [--check [CHECK…]] [--preview PNG [--isola
            compose --request FILE [--preview P.png] (create → layout → look → operations → check → exports, atomic),
            each layer --name PATTERN -- COMMAND, preset save|apply|show NAME,
            transaction begin|commit|rollback, assert RULE, validate [PROFILE]
+Emoji:     emoji list|get|template|settings|replace|install|reset|destinations|requirements|export (emoji --help)
 Resources: commands, shapes, sizes [--category print], palette list|show|add|apply,
            template list|show|add|new|apply, layout list|show|apply NAME [--seed N|random] [--set title=…],
            guidance list|show|add|apply|import|remove, providers, models
@@ -329,6 +330,9 @@ def dispatch(argv):
     limits = Limits(max_pixels=options.max_pixels)
     tokens = normalize(tokens) if tokens[0] != "text" else tokens
     cmd, args = tokens[0], tokens[1:]
+    if cmd == "emoji":
+        from .emoji_workflows import cli as emoji_cli
+        return emoji_cli(args, options, limits), options.json
     if cmd == "workflow":
         from .workflows import cli
         return cli(args, options, limits), options.json
@@ -1251,7 +1255,7 @@ def main(argv=None):
     try:
         result, machine = dispatch(argv)
         emit(result, machine)
-        if "workflow" in argv and isinstance(result, dict):
+        if ("workflow" in argv or "emoji" in argv) and isinstance(result, dict):
             if result.get("passed") is False or result.get("success") is False or result.get("status") in ("failed", "needs_review", "cancelled"):
                 return 1
         return 0

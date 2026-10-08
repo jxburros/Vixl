@@ -33,6 +33,7 @@ record the Git commit when using a source checkout.
 | Motion, sprites and lyric videos | [Character rigs, audio and cameras](docs/animation-authoring.md), [Motion tutorial](docs/tutorials/motion.md), [pixel animation](docs/pixel-animation-spacing.md), [lyric videos](docs/lyric-video.md) |
 | Checked production and collaboration | [Production workflows](docs/production.md), [studio](docs/studio.md), [agent resources](docs/agent-resources.md) |
 | Reusable containers, templates and comics | [Container and template library](docs/containers-and-templates.md) |
+| Editable emoji libraries and custom packs | [Emoji catalog, templates, replacements and Discord/Slack exports](docs/emojis.md) |
 | Vector drawing and precise placement | [Vector paths and shape catalog](docs/vector-paths.md), [spatial queries and transforms](docs/spatial-transforms.md) |
 | Texture, lighting and media review | [Creative media workflows](docs/media-craft.md) |
 | Agent discovery and bounded diagnostics | [Agent workflow guide](docs/agent-discovery.md), [MCP toolset evaluation](docs/mcp-toolsets.md) |
@@ -166,4 +167,5 @@ companies need a commercial licence from the licensor. Copies of Vixl must carry
 its `Required Notice:` lines. If Vixl helped make your work, please credit it ("Made with Vixl").
 
 Bundled assets keep their own terms: DejaVu Sans ([font licence](src/vixl/data/FONT-LICENSE.txt))
-and the xkcd colour names (CC0).
+the xkcd colour names (CC0), and VIXL Line emoji artwork adapted from OpenMoji
+([CC BY-SA 4.0](src/vixl/data/emojis/LICENSE.txt); [Unicode data license](src/vixl/data/emojis/UNICODE-LICENSE.txt)).

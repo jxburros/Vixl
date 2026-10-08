@@ -412,6 +412,9 @@ class PageBuilder:
         self.ops.append(matrix_ops(affine(layer["width"] / max(1, layout.width), 0, 0, layer["height"] / max(1, layout.height))))
         glyphs = plan_glyphs(self.view, layer, layout)
         if glyphs is None:
+            from .emojis import EmojiArt
+            if any(isinstance(path, EmojiArt) for path, _ in layout.paths):
+                raise Unsupported("VIXL emoji artwork uses appearance-preserving raster export")
             # Warped or path text: its outlines, as filled paths.
             from .geometry import parse_path
 
@@ -428,6 +431,9 @@ class PageBuilder:
                         stroke_color)
 
     def glyph_runs(self, glyphs, opacity, stroke_width, stroke_color):
+        from .emojis import is_glyph
+        if any(is_glyph(g[0]) for g in glyphs):
+            raise Unsupported("VIXL emoji artwork uses appearance-preserving raster export")
         from .text import face, glyph_outline
         from .geometry import parse_path
 

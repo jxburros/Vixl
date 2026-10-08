@@ -119,6 +119,10 @@ palette regression rules; choose antialias tolerances before checking, not to hi
 Use container-reflow after changing copy, then check container-layout. Fork one document per
 agent, edit independently, preview branch-merge, resolve conflicts explicitly, then merge.
 
+## Emoji artwork
+
+Read [emoji workflows](references/emojis.md) for the offline Unicode 17 catalog, editable source masters, custom replacements and shortcodes, templates and destination-ready image packs. Use `vixl_workflow` actions `emoji-list`, `emoji-get`, `emoji-template`, `emoji-replace`, `emoji-pack-install`, `emoji-settings`, `emoji-reset`, `emoji-requirements` and `emoji-export`; their typed fields come from `vixl_workflow_schema`. VIXL artwork is the default; `emoji-mode` with `mode: font` prefers the font, with bundled art for unsupported sequences.
+
 ## New in this release
 
 - **`vixl_compose`** — the whole start-here chain in one atomic call (above); REST `POST /compose` is a dry run.

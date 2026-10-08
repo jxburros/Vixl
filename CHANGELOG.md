@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- **VIXL Line emoji library.** Complete offline Unicode Emoji 17.0 coverage: 3,953 SVG fallback images and editable VIXL vector masters, with 5,225 qualification variants. VIXL Line 2 adds softly geometric contours to the restrained palette and navy outlines adapted from OpenMoji 17, plus 100 originals: 24 faces and moods, 44 reactions and gestures, and 32 everyday symbols. Category packs and transparent 512 px images prepare artwork for messaging and future sticker integrations. Manifests separate Unicode mappings from custom shortcodes; editable masters retain attribution through pack installation and re-export. CC BY-SA 4.0 licenses are bundled in exports.
+- **Portable emoji customization.** Individual and whole-pack replacements, new `:custom_name:` shortcodes, undoable reset, and embedded source masters and appearances. `vixl emoji` and shared `emoji-*` workflows provide search, extraction, templates, requirements checks and PNG/SVG pack export with editable masters, an offline preview and Discord/Slack upload instructions.
+
+### Changed
+
+- **Emoji rendering defaults to bundled art.** Set `emoji-mode` to `font` (`vixl -p FILE.vixl emoji settings --mode font`) to prefer the configured font, with bundled fallback for missing complete sequences. Text-default symbols keep font rendering unless VS16 or an explicit replacement requests artwork. PNG/SVG share sequence-aware layout; PDF/PPTX preserve emoji text appearance through a reported raster fallback.
+
 ## 0.23.0
 
 Defaults and speed. What Vixl makes from a sparse brief now looks designed: the house style is data (`src/vixl/data/house-style.json`) with fixed craft rules and purpose profiles, rolls draw from safe, bold and avant-garde tiers gated by the variety level, every surface creates documents the same way, and new layers take their size, colour, leading and corners from the document. Edits on large documents stay fast. Default changes apply to new documents only (#430): each line below gives the override that restores the old result, and `house_style_version: 1` replays the 0.22 rolls.

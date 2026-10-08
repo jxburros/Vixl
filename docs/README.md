@@ -73,3 +73,5 @@ See the [provider matrix](providers.md#capability-matrix) before choosing a serv
 - [Original product specification](product-spec.md): design context; use coverage for implemented behavior.
 
 [Back to the project](../README.md)
+
+- [Emojis and custom packs](emojis.md): complete offline Unicode 17 art, editable sources, templates and destination exports.

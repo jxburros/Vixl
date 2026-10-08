@@ -2,6 +2,7 @@
 
 from pathlib import Path
 from .studio import ACTIONS as STUDIO_ACTIONS
+from .emoji_workflows import ACTIONS as EMOJI_ACTIONS
 
 from .automation import bounded_object
 from .errors import require, VixlError
@@ -43,6 +44,7 @@ ACTIONS = {
 }
 
 
+ACTIONS.update(EMOJI_ACTIONS)
 ACTIONS.update(natural_guidance.ACTIONS)
 ACTIONS.update(media_analysis.ACTIONS)
 ACTIONS.update(STUDIO_ACTIONS)
@@ -134,6 +136,9 @@ def dispatch(session, action, request, document=None):
     for field in ("dry_run", "replace"):
         if field in request:
             require(type(request[field]) is bool, f"{field} must be boolean")
+    if action in EMOJI_ACTIONS:
+        from .emoji_workflows import dispatch as emoji_dispatch
+        return emoji_dispatch(session, action, request, document)
     if action in natural_guidance.ACTIONS:
         return natural_guidance.dispatch(session, action, request, document)
     if action in media_analysis.ACTIONS:

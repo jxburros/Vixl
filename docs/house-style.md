@@ -225,13 +225,13 @@ next step and renders in the fallback font (`src/vixl/variety.py:16-24`).
 Decision:
 
 ### C4. The bundled fallback font
-Today the fallback is DejaVu Sans, documented as "proofing only". It has no emoji or CJK coverage.
+Today the fallback is DejaVu Sans, documented as "proofing only". Bundled VIXL Line artwork supplies complete Unicode 17 emoji coverage independently of fonts; CJK still needs additional fonts.
 - [ ] Keep it as a proofing-only font
 - [X] Bundle a broad-coverage open font (larger package, better first renders)
 
 **Recommendation:** keep DejaVu once C3 makes it rare. Decide separately whether to add a CJK fallback.
 
-Decision: bundle Latin, Greek, Cyrillic and symbols coverage (for example Noto Sans plus Symbols); CJK and emoji come from the font cache on demand (clarified).
+Decision: bundle Latin, Greek, Cyrillic and symbols coverage (for example Noto Sans plus Symbols); CJK comes from the font cache on demand. Emoji artwork is bundled, with an optional preference for supported font glyphs (see [Emojis](emojis.md)).
 
 ### C5. Line spacing (leading)
 Today there are four conventions:

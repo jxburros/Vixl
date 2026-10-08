@@ -277,13 +277,9 @@ def variant_font(project, base_font, bold, italic, rich):
 
 def style_font_data(project, font, text):
     """Font bytes for a font value, with document and bundled fallbacks when ``text`` needs them."""
-    from .text import coverage, fallback_chain, primary_font_data, visible_char
-
-    primary = primary_font_data(project, {"font": font, "size": 12})
-    if all(not visible_char(c) or ord(c) in coverage(primary) for c in text):
-        return primary
-    names = [*project.state.get("font_fallbacks", []), "DejaVuSans.ttf"]
-    return fallback_chain(primary, [primary_font_data(project, {"font": name, "size": 12}) for name in names])
+    from .text import font_data
+    from .variables import RESOLVED
+    return font_data(project, {"font": font, "size": 12, "text": text, RESOLVED: True})
 
 
 @dataclass
@@ -417,9 +413,9 @@ def _split_word(project, token, width):
     """Break a word wider than the line at safe shaping boundaries."""
     from .text import clusters, shape
 
-    primary = token["data"][0] if isinstance(token["data"], tuple) else token["data"]
+    token["data"][0] if isinstance(token["data"], tuple) else token["data"]
     pieces, current = [], ""
-    for cluster in clusters(primary, token["text"]):
+    for cluster in clusters(token["data"], token["text"]):
         if current and shape(token["data"], current + cluster, token["size"])[1] > width:
             pieces.append(current)
             current = ""
@@ -647,6 +643,13 @@ def append_svg(parent, result, layer, project, *, node=None, motion=None):
                 fill, alpha = paint(override)
             if opacity < 1:
                 extra["opacity"] = f"{opacity:.4f}"
+        from .emojis import EmojiArt, append_art
+        if isinstance(path, EmojiArt):
+            matrix = (f, 0, 0, -f, glyph.x, glyph.y)
+            if motion:
+                matrix = multiply(motion[index][0], matrix)
+            append_art(parent, path, matrix, float(extra.get("opacity", 1)))
+            continue
         attrs = {"d": path, "transform": transform, "fill": fill, "fill_opacity": alpha, **extra}
         width = 0.0
         stroke = fill

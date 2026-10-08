@@ -82,6 +82,12 @@ def inspect_text(project, layer, bounds):
             result = plan(project, layer)
             metrics = font_metrics(primary, result.size)
             for path, matrix in result.paths:
+                from .emojis import EmojiArt
+                if isinstance(path, EmojiArt):
+                    placed = [Transform(*matrix).transformPoint(p) for p in ((0,-14),(72,-14),(0,58),(72,58))]
+                    boxes.append((min(p[0] for p in placed), min(p[1] for p in placed),
+                                  max(p[0] for p in placed), max(p[1] for p in placed)))
+                    continue
                 pen = BoundsPen(None)
                 transformed = TransformPen(pen, Transform(*matrix))
                 for command, points in path_commands(path):

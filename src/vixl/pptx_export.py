@@ -307,6 +307,11 @@ class Slide:
         return f'<a:gradFill rotWithShape="1"><a:gsLst>{items}</a:gsLst>{shade}</a:gradFill>'
 
     def text(self, layer, bounds, emu, ident):
+        from .emojis import is_context
+        from .text import font_data
+        data = font_data(self.view, layer)
+        if isinstance(data, tuple) and is_context(data[-1]):
+            raise Unsupported("VIXL emoji artwork uses appearance-preserving raster export")
         from .richtext import active
 
         if (layer.get("text_layout") or {}).get("warp", "none") != "none" or (layer.get("text_layout") or {}).get("path"):
