@@ -1,0 +1,175 @@
+{
+  "package": "creative/logo-package",
+  "lockups": [
+    "mark",
+    "horizontal",
+    "stacked"
+  ],
+  "variants": [
+    "full-color",
+    "mono-black",
+    "mono-white",
+    "on-light",
+    "on-dark"
+  ],
+  "light": "#ffffff",
+  "dark": "#0d1030",
+  "png_sizes": [
+    256
+  ],
+  "files": [
+    "creative/logo-package/icons/android-chrome-192x192.png",
+    "creative/logo-package/icons/android-chrome-512x512.png",
+    "creative/logo-package/icons/apple-touch-icon.png",
+    "creative/logo-package/icons/favicon-16x16.png",
+    "creative/logo-package/icons/favicon-32x32.png",
+    "creative/logo-package/icons/favicon-48x48.png",
+    "creative/logo-package/icons/favicon.ico",
+    "creative/logo-package/icons/site.webmanifest",
+    "creative/logo-package/pdf/horizontal-full-color.pdf",
+    "creative/logo-package/pdf/horizontal-mono-black.pdf",
+    "creative/logo-package/pdf/horizontal-mono-white.pdf",
+    "creative/logo-package/pdf/horizontal-on-dark.pdf",
+    "creative/logo-package/pdf/horizontal-on-light.pdf",
+    "creative/logo-package/pdf/mark-full-color.pdf",
+    "creative/logo-package/pdf/mark-mono-black.pdf",
+    "creative/logo-package/pdf/mark-mono-white.pdf",
+    "creative/logo-package/pdf/mark-on-dark.pdf",
+    "creative/logo-package/pdf/mark-on-light.pdf",
+    "creative/logo-package/pdf/stacked-full-color.pdf",
+    "creative/logo-package/pdf/stacked-mono-black.pdf",
+    "creative/logo-package/pdf/stacked-mono-white.pdf",
+    "creative/logo-package/pdf/stacked-on-dark.pdf",
+    "creative/logo-package/pdf/stacked-on-light.pdf",
+    "creative/logo-package/png/horizontal-full-color-256w@1x.png",
+    "creative/logo-package/png/horizontal-full-color-256w@2x.png",
+    "creative/logo-package/png/horizontal-full-color-256w@3x.png",
+    "creative/logo-package/png/horizontal-mono-black-256w@1x.png",
+    "creative/logo-package/png/horizontal-mono-black-256w@2x.png",
+    "creative/logo-package/png/horizontal-mono-black-256w@3x.png",
+    "creative/logo-package/png/horizontal-mono-white-256w@1x.png",
+    "creative/logo-package/png/horizontal-mono-white-256w@2x.png",
+    "creative/logo-package/png/horizontal-mono-white-256w@3x.png",
+    "creative/logo-package/png/horizontal-on-dark-256w@1x.png",
+    "creative/logo-package/png/horizontal-on-dark-256w@2x.png",
+    "creative/logo-package/png/horizontal-on-dark-256w@3x.png",
+    "creative/logo-package/png/horizontal-on-light-256w@1x.png",
+    "creative/logo-package/png/horizontal-on-light-256w@2x.png",
+    "creative/logo-package/png/horizontal-on-light-256w@3x.png",
+    "creative/logo-package/png/mark-full-color-256w@1x.png",
+    "creative/logo-package/png/mark-full-color-256w@2x.png",
+    "creative/logo-package/png/mark-full-color-256w@3x.png",
+    "creative/logo-package/png/mark-mono-black-256w@1x.png",
+    "creative/logo-package/png/mark-mono-black-256w@2x.png",
+    "creative/logo-package/png/mark-mono-black-256w@3x.png",
+    "creative/logo-package/png/mark-mono-white-256w@1x.png",
+    "creative/logo-package/png/mark-mono-white-256w@2x.png",
+    "creative/logo-package/png/mark-mono-white-256w@3x.png",
+    "creative/logo-package/png/mark-on-dark-256w@1x.png",
+    "creative/logo-package/png/mark-on-dark-256w@2x.png",
+    "creative/logo-package/png/mark-on-dark-256w@3x.png",
+    "creative/logo-package/png/mark-on-light-256w@1x.png",
+    "creative/logo-package/png/mark-on-light-256w@2x.png",
+    "creative/logo-package/png/mark-on-light-256w@3x.png",
+    "creative/logo-package/png/stacked-full-color-256w@1x.png",
+    "creative/logo-package/png/stacked-full-color-256w@2x.png",
+    "creative/logo-package/png/stacked-full-color-256w@3x.png",
+    "creative/logo-package/png/stacked-mono-black-256w@1x.png",
+    "creative/logo-package/png/stacked-mono-black-256w@2x.png",
+    "creative/logo-package/png/stacked-mono-black-256w@3x.png",
+    "creative/logo-package/png/stacked-mono-white-256w@1x.png",
+    "creative/logo-package/png/stacked-mono-white-256w@2x.png",
+    "creative/logo-package/png/stacked-mono-white-256w@3x.png",
+    "creative/logo-package/png/stacked-on-dark-256w@1x.png",
+    "creative/logo-package/png/stacked-on-dark-256w@2x.png",
+    "creative/logo-package/png/stacked-on-dark-256w@3x.png",
+    "creative/logo-package/png/stacked-on-light-256w@1x.png",
+    "creative/logo-package/png/stacked-on-light-256w@2x.png",
+    "creative/logo-package/png/stacked-on-light-256w@3x.png",
+    "creative/logo-package/social/avatar.png",
+    "creative/logo-package/social/og-image.png",
+    "creative/logo-package/source/horizontal-full-color.vixl",
+    "creative/logo-package/source/horizontal-mono-black.vixl",
+    "creative/logo-package/source/horizontal-mono-white.vixl",
+    "creative/logo-package/source/horizontal-on-dark.vixl",
+    "creative/logo-package/source/horizontal-on-light.vixl",
+    "creative/logo-package/source/mark-full-color.vixl",
+    "creative/logo-package/source/mark-mono-black.vixl",
+    "creative/logo-package/source/mark-mono-white.vixl",
+    "creative/logo-package/source/mark-on-dark.vixl",
+    "creative/logo-package/source/mark-on-light.vixl",
+    "creative/logo-package/source/social-avatar.vixl",
+    "creative/logo-package/source/social-og-image.vixl",
+    "creative/logo-package/source/stacked-full-color.vixl",
+    "creative/logo-package/source/stacked-mono-black.vixl",
+    "creative/logo-package/source/stacked-mono-white.vixl",
+    "creative/logo-package/source/stacked-on-dark.vixl",
+    "creative/logo-package/source/stacked-on-light.vixl",
+    "creative/logo-package/svg/horizontal-full-color.svg",
+    "creative/logo-package/svg/horizontal-mono-black.svg",
+    "creative/logo-package/svg/horizontal-mono-white.svg",
+    "creative/logo-package/svg/horizontal-on-dark.svg",
+    "creative/logo-package/svg/horizontal-on-light.svg",
+    "creative/logo-package/svg/mark-full-color.svg",
+    "creative/logo-package/svg/mark-mono-black.svg",
+    "creative/logo-package/svg/mark-mono-white.svg",
+    "creative/logo-package/svg/mark-on-dark.svg",
+    "creative/logo-package/svg/mark-on-light.svg",
+    "creative/logo-package/svg/stacked-full-color.svg",
+    "creative/logo-package/svg/stacked-mono-black.svg",
+    "creative/logo-package/svg/stacked-mono-white.svg",
+    "creative/logo-package/svg/stacked-on-dark.svg",
+    "creative/logo-package/svg/stacked-on-light.svg"
+  ],
+  "usage": {
+    "full-color": "Primary logo. Use on white or light, plain backgrounds.",
+    "mono-black": "One-colour black: fax, stamps, engraving, single-ink print and light backgrounds.",
+    "mono-white": "Reversed (white): dark photos and dark brand colours. Transparent background.",
+    "on-light": "Logo on the light brand background, ready to place.",
+    "on-dark": "Logo on the dark brand background, ready to place."
+  },
+  "report": {
+    "variants": {
+      "mark-mono-black": {
+        "colors_replaced": 5
+      },
+      "mark-mono-white": {
+        "colors_replaced": 5
+      },
+      "mark-on-light": {
+        "contrast": 10.58
+      },
+      "mark-on-dark": {
+        "colors_replaced": 5,
+        "reversed": "the full-colour logo's average colour has only 1.7:1 contrast on #0d1030, so this variant uses the one-colour white logo"
+      },
+      "horizontal-mono-black": {
+        "colors_replaced": 8
+      },
+      "horizontal-mono-white": {
+        "colors_replaced": 8
+      },
+      "horizontal-on-light": {
+        "contrast": 12.22
+      },
+      "horizontal-on-dark": {
+        "colors_replaced": 8,
+        "reversed": "the full-colour logo's average colour has only 1.5:1 contrast on #0d1030, so this variant uses the one-colour white logo"
+      },
+      "stacked-mono-black": {
+        "colors_replaced": 8
+      },
+      "stacked-mono-white": {
+        "colors_replaced": 8
+      },
+      "stacked-on-light": {
+        "contrast": 12.22
+      },
+      "stacked-on-dark": {
+        "colors_replaced": 8,
+        "reversed": "the full-colour logo's average colour has only 1.5:1 contrast on #0d1030, so this variant uses the one-colour white logo"
+      }
+    },
+    "formats": "SVG (strict), PDF (RGB), PNG at 1x/2x/3x, icons and favicon, social avatar and Open Graph image. No EPS: use the PDF or SVG."
+  }
+}

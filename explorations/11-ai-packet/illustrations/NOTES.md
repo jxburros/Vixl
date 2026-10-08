@@ -23,7 +23,7 @@ names (`build.py mascot poses`) to rebuild one piece.
 | `illustrations/training-loop.{vixl,png,svg}` | "The training loop" around a brain made of circuits | `pathfinder` union + subtract (brain + fissure), `radial-repeat` (`merge`), SVG arc paths with `marker_end`, `look soft-halo/glow/hard-shadow`, icon shapes |
 | `creative/poster-ai-demystified.{vixl,png,pdf}` | Rolled poster (11×17 in) + hand finishing | `Project.new(purpose=poster)`, `roll_document(apply=True, locks=…)`, house-style tiers, `link` to the mascot |
 | `creative/poster-roll-comparison.jpg` | The 10 rolls compared before choosing seed 23 | `roll_document`, same seeds as the CLI |
-| `creative/myths-carousel.{vixl,pdf}`, `-1…-5.png`, `-sheet.jpg` | "5 AI myths, busted", instagram-portrait, 5 pages | `master` + `page`, `${page} / ${pages}`, `irregular` hand-drawn strikes, `stamp` shape, `link` (Byte on every page), `check(checks=["deck"])`, contact sheet export |
+| `creative/myths-carousel.{vixl,pdf}`, `-1…-5.png`, `-sheet.jpg` | "5 AI myths, busted", instagram-portrait, 5 pages | `master` + `page`, `${page} / ${pages}`, `irregular` hand-drawn strikes, `stamp` shape, `link` (Byte on every page), `constrain` (CTA box and Byte hang off the body text), per-page `check()` + `check(checks=["deck"])` |
 | `creative/logo.{vixl,png,svg}` + `creative/logo-package/` | "AI Explorers Club" mark + wordmark, full package | `pathfinder subtract` (mono-safe silhouette), `ring`, `star`, `radial-repeat`, strict SVG, `workflow logo-package` |
 | `creative/sticker-sheet.{vixl,png}` | Six habit stickers, each a different look | looks `risograph`, `duotone`, `watercolor`, `sketch`, `gradient`, `hand-made`; die-cut shapes; `link` + `layer-style stroke` |
 
@@ -170,6 +170,35 @@ operation (see the findings: `character` refuses nested parts).
 - **`within` text and `\n`**: worked, but there is no letter-spacing on plain text, so the logo's "C L U B" uses literal spaces.
 - **`logo-package` `usage.html` is 2.8 MB** (42 embedded PNGs, ~70 KB each), more than every other file in the package together; the per-variant
   `.vixl` sources were another 3.7 MB (each embeds the fonts, ~240 KB). I turned the proof off and dropped `source/` and `@3x` to keep this repo small.
+
+## Follow-up: carousel slide 4 "reflect them." clipped (coordinator review)
+
+- **Where it came from.** The page PNGs (`myths-carousel-4.png`) and the PDF were correct; the clipping was in
+  `myths-carousel-sheet.jpg`, made with the built-in contact sheet (`p.export(path, page="all", columns=5, width=400)`).
+  At thumbnail size the contact sheet re-wraps the body text differently ("reflect" drops to a third line) and clips it
+  to the text layer's fixed box, so the last line is cut in half and runs into the CTA box. Slide 1's last line
+  ("…or being right.") was clipped the same way. A plain scaled export of the same page
+  (`p.export(path, page="myth-4", scale=0.37)`) wraps and draws correctly, so it is the contact-sheet path
+  (`deck.contact_sheet`, which renders a scaled proxy) that re-wraps. Fix: the build now assembles the sheet from the
+  five page PNGs with Pillow.
+- **Did `vixl check` report it? No, and it could not have:** `check` measures the document at its real size, where the
+  copy fits; the contact sheet is an export artefact that no check looks at. To see what `check` does with a real
+  overlap I moved the CTA box and its text 70 px up over "them.": it reported only
+  `review overlap 'truth' and 'tip-box' overlap by 988 px (5.5% of the smaller layer)`, a **review**, not a fix, because the
+  text layer's bounds hug the ink and only the lower part of the last line was covered. (Separately, links are not in
+  the overlap check: Byte overlapping the tip box earlier gave no finding at all.)
+- **Reflow.** The CTA is no longer placed at a measured y: `tip-box` is constrained to `truth.bottom+44`, `tip` to
+  `tip-box.top+30` and Byte to `tip-box.top-40`. Tested: lengthening the body moved the box and Byte down 64 px.
+  Caveat found while testing: **`text-set` with longer copy does not grow a width-only `text-layout` box** (0.23 says
+  "`text-layout` with only a `width` grows its height"); it warns `'truth' does not fit its 930×144 text box at 42 px and is
+  cut off (it needs 926×152)`. Re-running `text-layout width: 930` after the `text-set` grows the box, and the
+  constraints then reflow.
+- **`check(checks=["deck"])` runs only the deck check.** My earlier "carousel: 0 fix" came from that call alone; a plain
+  `check()` per page found six `fix legibility` findings (`'truth-label' is 7.7 px tall at 320 px wide; aim for at least 10 px
+  (font size 34+)`, same for the series, counter, handle, swipe and myth labels at 24–30 px) plus header text 4 px inside
+  the 60 px safe area. All labels are now 34–36 px and the build runs both the deck check and a default check on every
+  page: 0 fix, 1 review (the full-bleed header band) per page. Nothing in the `checks` parameter's docs says that naming
+  one check drops the defaults.
 
 ## Features looked at but not used
 
