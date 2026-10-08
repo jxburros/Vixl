@@ -57,7 +57,8 @@
         "print",
         "color_vision"
       ],
-      "layers": 11,
+      "layers_checked": 11,
+      "layers_total": 12,
       "text_layers": 4
     }
   },
@@ -70,7 +71,7 @@
     "card-front/palette-check": true,
     "check:mark": true,
     "check:logo@horizontal": true,
-    "check:logo@stacked": true,
+    "check:logo@stacked": false,
     "check:card-front": true,
     "check:card-back": true,
     "check:app-icon": true,

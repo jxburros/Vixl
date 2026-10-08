@@ -81,7 +81,8 @@ def font_standalone(cmd, args, project=None):
 
         p = Parser(prog="vixl roll")
         p.add_argument("--variety", choices=["low", "medium", "high", "fixed"])
-        p.add_argument("--for", dest="purpose", help="What it is for: poster, social, slides, logos …")
+        p.add_argument("--for", dest="purpose", help="What it is for: poster, social, slides, document, form, diagram, logo, "
+                                                     "motion, or a brief kind or named size")
         p.add_argument("--mood")
         p.add_argument("--size", help="Named size or WxH, so the layout suits the canvas")
         p.add_argument("--seed", type=_seed, help="Integer or 'random' (default)")
@@ -90,6 +91,8 @@ def font_standalone(cmd, args, project=None):
         p.add_argument("--lock", action="append", help="Keep a choice: layout=…, pairing=…, palette=…, mode=…")
         p.add_argument("--unfilled", choices=["omit", "blank"],
                        help="Unfilled slots: leave out (default with --set) or show as [Label] blanks")
+        p.add_argument("--house-style", type=int, dest="house_style",
+                       help="House-style version to roll with; 1 restores the 0.20-0.22 rolls")
         a = p.parse_args(args)
         canvas = None
         if a.size:
@@ -104,7 +107,8 @@ def font_standalone(cmd, args, project=None):
         if "margin" in locks:
             locks["margin"] = float(locks["margin"])
         return typefaces.roll_document(project, seed=a.seed, purpose=a.purpose, mood=a.mood, canvas=canvas, locks=locks, apply=a.apply,
-                                     slots=pairs(a.set), unfilled=a.unfilled, variety=a.variety, workspace=Path.cwd())
+                                     slots=pairs(a.set), unfilled=a.unfilled, variety=a.variety, workspace=Path.cwd(),
+                                     house_style_version=a.house_style)
     p = Parser(prog="vixl font")
     p.add_argument("action", choices=FONT_STANDALONE)
     p.add_argument("family", nargs="?")
@@ -124,10 +128,19 @@ def font_standalone(cmd, args, project=None):
     return typefaces.list_pairings(a.mood, a.purpose, a.with_family, a.relationship)
 
 
+def workspace_scope(cmd, args):
+    """True for ``font install|pair ... --scope workspace``, which needs no document."""
+    if cmd != "font" or not args or args[0] not in ("install", "pair"):
+        return False
+    return "--scope=workspace" in args or any(a == "--scope" and b == "workspace" for a, b in zip(args, args[1:]))
+
+
 def project_command(project, cmd, args):
     if cmd == "font":
         p = Parser(prog="vixl font")
         p.add_argument("action", choices=["list", "import", "install", "pair", "use"])
+        p.add_argument("--scope", choices=["document", "workspace"], default="document",
+                       help="workspace: write the default into ./brand.json for new documents (install needs --role)")
         p.add_argument("source", nargs="?", help="File/HTTPS URL (import), family (install), pairing or 'random' (pair), font name (use)")
         p.add_argument("--name")
         p.add_argument("--weight", type=int, default=400)
@@ -137,6 +150,14 @@ def project_command(project, cmd, args):
         p.add_argument("--mood")
         p.add_argument("--for", dest="purpose")
         a = p.parse_args(args)
+        if a.scope == "workspace":
+            from . import typefaces
+
+            require(a.action in ("install", "pair"), "--scope workspace applies to font install and font pair")
+            if a.action == "install":
+                require(a.source, "Use font install FAMILY --role heading|body --scope workspace")
+                return typefaces.install_workspace(Path.cwd(), a.source, a.weight, a.italic, a.name, a.role), False
+            return typefaces.pair_workspace(Path.cwd(), a.source, seed=a.seed, mood=a.mood, best_for=a.purpose), False
         if a.action == "list":
             return {"fonts": project.state.get("fonts", {}), "typography": project.state.get("typography", {})}, False
         from . import typefaces

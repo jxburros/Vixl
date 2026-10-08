@@ -1,5 +1,351 @@
 # Changelog
 
+## 0.23.0
+
+Defaults and speed. What Vixl makes from a sparse brief now looks designed: the house style is data (`src/vixl/data/house-style.json`) with fixed craft rules and purpose profiles, rolls draw from safe, bold and avant-garde tiers gated by the variety level, every surface creates documents the same way, and new layers take their size, colour, leading and corners from the document. Edits on large documents stay fast. Default changes apply to new documents only (#430): each line below gives the override that restores the old result, and `house_style_version: 1` replays the 0.22 rolls.
+
+### Changed defaults
+
+**Rolls** change for **new** documents only: a document keeps the direction stored in its `design_defaults`, now stamped with `house_style_version`. To roll the 0.22 directions again, pin version 1: `vixl roll --house-style 1`, `roll(..., house_style_version=1)` / `roll_document(..., house_style_version=1)`, or `{"house_style": 1}` in `.vixl/variety.json` for every surface (#430).
+
+**Layer and canvas defaults** apply to new layers and new documents. Every value is resolved when the operation runs and stored on the layer, canvas or recipe, so saved documents render exactly as before. The fixed values live in the house style data (`src/vixl/data/house-style.json`).
+
+- **Rolls are weighted by purpose** (poster, social, slides, document, form, diagram, logo, motion), taken from an explicit `purpose`, else the brief kind, else the document's stored purpose, else its named size. Results and new `design_defaults` report `purpose` and `purpose_source`. Pass `purpose` explicitly, or pin `house_style_version: 1`, for the old purpose-blind roll (#403).
+- **Variety levels gate three tiers** (safe, bold, avant-garde): `low` is safe only, `medium` (default) is about 75/20/5, `high` about 45/35/20; expressive moods (playful, bold, loud …) lean bold and quiet moods lean safe. Rolls report `tier` and each choice's tier. `variety: "low"` or `--lock tier=safe` restores safe-only rolls (#405, #393, #285).
+- **Light or dark mode follows purpose**: documents and forms are dark one time in ten, slides one in four, diagrams one in five, posters, social and motion about half, logos never (marks sit on a transparent canvas). It was two light rolls in three for everything. Lock `mode` for a fixed mode (#400).
+- **Pairings and type scales follow purpose**: slides and forms favour UI sans and civic faces at 1.2–1.25, documents editorial serifs at 1.2–1.333, social 1.333–1.5, posters display faces at 1.5–1.618. Lock `pairing` or `type_scale`, or pass `type_scale` to `layout-apply`, for another (#414).
+- **The rolled finishing look is visible and follows purpose**: none for documents, forms, slides, diagrams and logos; about 0.25 for posters, social and motion, × 0.8 at `low` and × 1.5 at `high`. It was amount 0.1 for every purpose. Shadow, outline and glow looks now land on solid shapes (buttons, panels, blocks) instead of only rounded rectangles; the house shadow is the solid offset (`hard-shadow`) in the ink colour. Lock `look=none` or `look_amount`, or pin version 1 (#420, #393).
+- **Split and pattern backgrounds roll at medium** for posters and social (split for motion); other purposes keep flat or gradient below `high`. Lock `background_treatment=flat` for the old range (#428).
+- **All nine safe styles roll** (swiss, material, line-art, scandinavian, japanese-minimal and data-viz joined editorial, minimalist and corporate-flat), plus bold and avant-garde styles at higher tiers, weighted by purpose. Corners are sharp (the house craft) unless the style has its own (material and glassmorphism round, kawaii and y2k pill, memphis soft); `corner` was rolled. Lock `style` or `corner` for a fixed choice (#393).
+- **Rolled layouts only use the copy they are given**: a roll applied with `slots` picks layouts that place every supplied slot and skips layouts whose image slot nobody fills, and the purpose filter now acts on the pools actually rolled (logo purposes roll logo layouts; slides can roll slide layouts; canvas shape filters read each layout's orientations) (#391).
+- **Rolled and safe-composition layouts judge minor text at the check's thumbnail width** (320 px for named social sizes such as `linkedin-post` and `youtube-thumbnail`, 600 px only for `og-image` and `x-post`), so they no longer fail their own legibility check on wide social sizes. Pass `base_size` for smaller type.
+- **One creation path.** `vixl new`, Python `Project()`/`Project.sized()`/`Project.new()`, `vixl_document_create`, compose and REST compose now create documents the same way: they roll and store `design_defaults`, and the same `seed` and `variety` give identical defaults on every surface. `vixl new` gains `--seed`, `--variety`, `--purpose` and `--no-fonts`. `Project(width, height)` alone is still a plain canvas; `Project.sized(size, design=False)` gives a plain named-size canvas as before (#394).
+- **Default document size by purpose.** Size, width and height are optional on create and compose. Without them, the new `purpose` option picks the size (social 1080×1350, slides 1920×1080, print Letter or A4 by locale, icon 1024×1024 …), and with neither the document is 1080×1080. CLI and MCP used to require a size, and Python `Project()` was 1920×1080: pass `width=1920, height=1080` (`vixl new 1920x1080`) for the old Python default (#413).
+- **Canvas background from the palette.** A new design document without `background` gets the rolled palette's background role; logo, icon and favicon sizes and mark purposes (logo, emblem, monogram, icon, favicon …) stay transparent. Pass `background: "transparent"` (`--background transparent`) for the old result. Plain canvases are now stored as `transparent` rather than `#00000000` (#411).
+- **Fonts installed at creation.** New documents embed the workspace default fonts or, without them, install the rolled font pairing from the font cache, then the network, so text no longer starts in the proofing fallback. Offline, creation reports the pairing under `creation.fonts` with a next step and does not retry the network in that process. Pass `workspace_fonts: false` (`--no-fonts`) or set `VIXL_AUTO_FONTS=off` for the old result; `VIXL_AUTO_FONTS=cache` never downloads (#418).
+- **`layout-apply` follows the whole stored direction.** Without `seed`, it now uses the document's rolled layout seed, margin, corner, look, style, motif and background treatment as well as palette, mode, type scale, density and accent, matching `vixl_roll(apply=true)`; explicit fields still win. Pass `seed` for an independent choice (#392).
+- **Density shapes the spacing.** Airy and dense now widen and tighten a rolled `direction.margin` (×1.25 and ×0.75) and the spacing unit behind gaps, and rolls weight density like the layout builder (balanced twice as often). Pass `density: "balanced"` for the previous margins and gaps (#390).
+- **Text without a size** uses the body size of the document's type scale (the `body` character style), else about 2.6% of the canvas short side on screen or a readable point size in print: 28 px on 1080×1080, 104 px on 4000×4000. It was 48 px on every canvas. The result lists filled-in values under `defaults`. Pass `size: 48` for the old result (#408).
+- **One line-height table everywhere**: plain text, rich text, text flows, layouts and diagram labels set leading as a multiple of the font size by stage (body 1.45, lead 1.35, headings 1.1, display 1.0, captions 1.3). Plain text stored a fixed 4 px over the font's own pitch, rich text 1.2 × that pitch, layouts added 0.45 × size to body text (about 1.6–1.9 × in all) and flows 4 px. Text and text flows take `line_height` (a size multiple that follows later size or font changes), and `spacing` may now be negative for tight display type. Pass `spacing: 4` on text and text flows for the old leading (#421, #282).
+- **Rich text `line_height` is a multiple of the font size** (`line_basis: "size"` on new records), like CSS; rich text saved before keeps its natural-pitch rule and the layer's pixel `spacing`. Converting plain text to rich text keeps its line pitch (#421).
+- **Custom-size documents get a 5% safe area** (50 px on 1000×1000) when made or resized to a custom size; named sizes keep their own, including an explicit none. `check` and layouts respect it. Resize with a named size or set `safe_area: 0` on `check` for the old result (#409).
+- **Shapes without a fill** use `@accent`, solids `@surface`, and both a neutral grey (`#8c8c8c`) when the document has no palette; they were white. A `stroke` without a width is about 1.5% of the shape's short side (was 1 px), a `stroke_width` without a colour draws in `@ink`, and an open shape with neither fill nor stroke is drawn as an `@ink` line (open stroked shapes still stay unfilled everywhere). Pass `fill: "white"`, `color: "white"` or `stroke_width: 1` for the old result (#410).
+- **New rounded rectangles take the document's corner style** (`design_defaults.direction.corner`); the house style is sharp, so without a rolled corner a rounded rectangle is softly rounded (8% of the short side, was 20%). Pass `radius` for the old result (#410).
+- **Brush strokes without a size or colour** are 1.5% of the paint layer's short side in `@ink` (was 12 px black). Pass `size: 12, color: "black"` for the old result (#410).
+- **`irregular` and `tear` default to `strength: subtle`** (was `natural`); recipes made before keep `natural` when regrown. Pass `strength: "natural"` for the old result (#425).
+- **Diagrams follow the document palette and dark mode**: without a `theme`, a new diagram uses the new `palette` theme (surfaces for nodes, `@ink` for text and lines, `@accent` for highlights, as swatch references) when the document has its palette roles, else `dark` on a dark canvas and `light` otherwise. The theme is stored, so diagrams made before keep `light`. Pass `theme: "light"` for the old result (#397).
+- **Simple templates scale with the canvas** (`social-square`, `story`, `thumbnail`, `poster`, `business-card`, `logo`): sizes and positions were fixed at the native size. Apply on a canvas of the template's own size for the old result (#398).
+- **Layout buttons, panels and placed containers take the document corner style** (`design_defaults.direction.corner`, else the house corner, sharp). Layout buttons were randomly pill, rounded or square, and container buttons and cards kept their template radius. Lock `corner` (`--lock corner=pill`) or pass `direction: {"corner": "round"}` to `layout-apply` for rounded buttons (#410).
+- **A rolled direction without a corner is sharp** (decision E8), not soft, when `layout-apply` applies it. Add `corner: "soft"` to the direction for the old result (#410).
+- **Bold and expressive rolls set large headlines**: a roll drawn from the bold or avant-garde tier, or with an expressive mood (playful, bold, loud …), stores `headline: "large"`, and the headline then holds about 8 characters a line instead of 14, so `mood: playful` posters no longer get a small title on an empty canvas. Quiet rolls keep `headline: "measured"`. Lock `headline=measured` for the old size (#285).
+- **Rolled density follows the purpose but may deviate**: documents roll airy, diagrams dense and the other purposes balanced about seven times in ten, the rest of the time another density; without a purpose the roll keeps balanced twice as often as airy or dense. Lock `density` for a fixed one (decision E4, #412).
+- **Chart text uses the line-height table**: titles set at the heading line height (1.1), subtitles at the lead (1.35), labels at the caption (1.3) and legend entries at the body (1.45); a legend label of several lines takes as many rows as it needs instead of overlapping the next entry. The fixed 12% leading is gone; charts drawn before keep their stored spacing until redrawn (#421).
+- **Text and buttons in layouts stay inside the canvas safe area**: the fit pass that shrank type only when text left the canvas now shrinks it until copy and buttons sit inside the safe area, and on a 3:1 banner (`x-header`, `linkedin-cover`, `web-banner`) a safe composition sets its label and headline beside the rest of the copy instead of running past the bottom. Pass `base_size` to keep a fixed type size (#409, #370).
+- **`text-layout` with only a `width` grows its height** to the wrapped lines instead of keeping the one-line height, so wrapped text is no longer cut off; a box whose height was set before only grows. Pass `height` for a fixed box (#339).
+- **A diagram given both `width` and `height` fills that box** (`fit: contain`, scaling up to 3×) instead of only shrinking, and without a `direction` a tree or layered diagram that would have to shrink runs left to right when that fits its area better (a wide band gets a horizontal flow). Pass `fit: "shrink"` and `direction: "TB"` for the old result (#351).
+- **`vixl_compose` keeps its `background` when a layout runs**: an opaque colour becomes the layout's background role (text and accents are chosen to read on it) and `transparent` keeps the layout from painting one. A layout's own `colors.background` or `transparent` still wins; omit `background` for the layout's palette background. The MCP tool's `background` now defaults to unset instead of `"transparent"` (the canvas is still transparent) (#357).
+- **A `vixl_compose` `style` shapes the layout and fonts** where the call leaves them open: the alignment its text-align rule asks for, its first palette (unless the workspace brand sets one), dark mode when it asks for a dark background (reported as `from_style`), and, without `font_pairing`, workspace fonts or a layout `font`, its first font pairing (a pairing that cannot be downloaded is noted under `fonts` and the call goes on). Pass `align`, `palette` and `font_pairing` yourself for other choices (#358).
+- **`layout-apply` `colors.background`** also sets the mode (dark or light from its lightness), and the other roles are chosen to read on it instead of on the palette's background. Pass `mode` to choose it yourself (#357).
+- **The `highlighter` brush is translucent**: it paints at 40% flow, so text and shapes below show through, and overlapping strokes still darken. Pass `settings: {"flow": 1}` on the stroke for the old opaque stroke (#288).
+- **`duotone` and `risograph` looks take their ink from the layer** when no `color` is given: the layer's own hue, else the palette's `@accent`, else the old default ink; with or without `color`, the ink's own brightness now maps back onto the ink, so a flat coral or teal shape keeps its colour instead of turning grey-mauve. Pass `color: "#6366f1"` (duotone) or `color: "#ff4d8d"` (risograph) for the old inks; for the exact old duotone pair add the effect yourself (`effect duotone`, `shadow_color: "darken(#6366f1, 55%)"`, `highlight_color: "lighten(#6366f1, 60%)"`) (#352).
+- **The `sketch` look draws pencil lines**: the `pencil-sketch` effect counts transparent pixels as paper and hatches by tone, so a flat shape keeps an outline and its value instead of fading to a pale wash, and on shapes, text and groups the look adds a graphite `stroke` style. Remove the stroke with `layer-style name: stroke remove: true` to keep only the effect; the old near-white rendering of flat fills has no switch (#361).
+- **The `watercolor` effect and look show on flat shapes**: a lighter, blotchy wash with pigment pooled in a darker rim inside every edge; outside a layer's box counts as paper. The old flat posterize-and-grain result has no switch; lower the look's `amount` for a subtler wash (#352).
+- **Automatic chart value labels thin evenly**: every value is labelled when the labels fit (at a smaller size, down to about 0.6 × `font_size`, when that is what fits), else whole series from the largest down, else every k-th value of the largest series, else none. Before, the series with the longest numbers, usually the largest, was never labelled and labels dropped from single bars. `value_labels: true` labels every value at full size; `false` turns them off (#366).
+- **`scatter` with `placement: inside` keeps whole copies inside the outline**: centres stay half a motif inside it. Before, copies hung over the edge; there is no switch for the old placement (#362).
+- **`wiggle` and `line-boil` last the rest of the timeline** when `duration` is not given, as `spin` and `attach` do. They stopped after 1000 ms, so a longer loop froze for its remainder. Pass `duration: 1000` for the old result (#290).
+- **In a seamless loop, a `wiggle` or `line-boil` that runs to the loop end closes it**: wiggle rounds `frequency` to whole cycles and line boil holds each drawing for an equal share so a whole number of `variants` cycles fits; both say so in `warnings`. Pass a `duration` that ends before the loop end for the old timing (#290).
+- **The standard character walks like a front-facing figure**: `character-cycle` `walk` and `run` lift each foot in turn, bend the knee a little, open the opposite arm and bob the body, and `react` keeps the feet planted. The legs used to swing ±30 degrees in the picture plane, which read as the splits. Pass `view: "side"` on `character-cycle` for the old result; bound artwork (`parts`) keeps the side-view swing (#304).
+- **In a seamless loop, a staggered `animate`/`animate-preset` whose keys would run past the loop end wraps around it** instead of lengthening the timeline (2400 -> 2520 -> 2640 ms) and leaving tracks that cannot close; the result's `normalized` says so. A stagger that fits the loop is still a plain delay. Use a loop that is not seamless, or fewer repeats, for the old result (#294).
+- **`${page}` and `${pages}` skip hidden pages**, so a four-page deck with one hidden page reads 1 / 3 to 3 / 3 in PDF, HTML and PowerPoint; a hidden page shows the number the next shown page has. To count hidden pages again, give each page its own variable (`page set NAME --variables '{"n": 3}'`) and write `${n}` (#280).
+- **Print sizes with bleed keep their physical size**: the bleed is kept to the half pixel, so `vixl new business-card --bleed` is 1125 × 675 px (3.75 × 2.25 in at 300 dpi), not 1126 × 676, and the stored `bleed` can be fractional (37.5). Documents made before keep their canvas and still export at the exact page size. For the old canvas, pass a custom `bleed` that rounds up, or resize with `canvas` (#306).
+- **`drawing smooth` keeps the corners that `straighten` made**: lines and polylines from `straighten` are left as they are. Pass `settings: {"corners": "round"}` to smooth them as before; the `drawing` check then warns that their corners became curves (#312).
+- **A TIFF of a canvas without a dpi is tagged 72 dpi** (× the export scale), the resolution a PDF export assumes, instead of carrying no resolution tags. Pass `dpi` to choose another (#338).
+- **Diagram back edges go around nodes**: in `radial` and `mindmap` layouts a cycle's back edge that would run through nodes, or lie on its tree edge, is routed around them, and extra edges in every layout attach beside connectors already on a side. Give such an edge `from_port`/`to_port` to place it yourself (#346).
+- **Python `Project.save(path)` refuses to replace another existing `.vixl`** with `output_exists`, like `vixl new`, `vixl save` and every export. Saving to the document's own file (or the one it was loaded from) is unchanged. Pass `overwrite=True` for the old result (#313).
+
+### Added
+
+- **House style as data**: `src/vixl/data/house-style.json`, a built-in default brand with fixed craft rules (contrast, spacing, line height, line length, minimum sizes, sharp corners, offset shadows, uppercase labels), tiered taste pools and eight purpose profiles, read through one module, `vixl.house_style` (`profile(purpose)`, `purpose_for(value)`, `resolve_purpose(...)`, `craft()`, `tier_of(...)`, `level(variety)`). Read it with `vixl house [show PURPOSE]` or `vixl_resource_get(kind="house-style", name="all"|PURPOSE)` (#401).
+- **Tiers on every catalog entry**: palettes, pairings, layouts, styles and looks carry `tier` (`safe`, `bold`, `avant-garde`, or `explicit` for name-only entries); `safe` stays as an alias for tier safe (#405).
+- **22 new palettes**: dark (night-teal, ink-gold, midnight-coral, forest-night, plum-night, graphite-lime), saturated (cobalt-tangerine, tomato-sky, fuchsia-mint, lemon-ink), duotone (duo-blue-orange, duo-red-cream, duo-green-pink) and earthy (terracotta-sage, ochre-umber, moss-clay, rust-indigo) safe palettes; bold electric-sand and jade-night; avant-garde acid-violet, riso-pink-blue and vapor-night. The curated legacy palettes joined the tiers with mood metadata (midnight, slate, nordic … safe; sunset, coral, retro … bold; neon, candy, pastel … avant-garde). Every rollable palette passes the role-assignment contrast pass in each mode it rolls in (#426, #391).
+- **Brief recommendations agree with the attached roll**: `vixl_guide(kind)` rolls with the kind's recommended layouts, looks and styles favoured where the level allows their tier, and `recommendations` says what was rolled, whether it is recommended, and which recommendations are opt-in alternatives with their tiers (#399).
+- **House-style eval**: `python -m evals.house_style` rolls 48 sparse briefs across the eight purposes at each variety level and scores diversity (entropy per dimension, pairwise image and layout-structure distance) and quality (no `fix` findings, fonts installed, contrast); `--compare evals/house-style-baseline.json` fails on a regression, and `--house-style 1` measures the old rolls. A fast subset runs in the test suite (#431).
+- **Default-change policy** in CONTRIBUTING.md and docs/house-style.md: new documents only, a version stamp, and a restore path in the changelog (#430).
+- **`creation` in create results** (MCP, CLI, Python `report=`, compose): the size and why (`argument`, `purpose` or `default`), the background and why (`argument`, `palette` or `mark`), and whether the pairing was installed (#394, #411, #413, #418).
+- **Craft and purposes in one data file**: the craft defaults (line-height table, spacing unit, safe area, stroke width, neutral fill and fill roles, corner scale and house corner, irregularity strength, base-size rule, headline measure) and the purpose sizes, marks and aliases moved from `vixl/craft.py` and `vixl/sizes.py` into `src/vixl/data/house-style.json`, read through `vixl.house_style` (`rule`, `canonical_purpose`, `purpose_names`, `purpose_size`, `is_mark`). `vixl.craft` keeps its helpers and read-only names (`LINE_HEIGHT`, `CORNERS`, `SAFE_AREA` …) that reflect the data; `sizes.PURPOSE_SIZES`, `PURPOSE_ALIASES`, `MARK_PURPOSES`, `MARK_CATEGORIES` and `DEFAULT_SIZE` are gone (use `house_style.purpose_size`, `house_style.is_mark` and `sizes.default_size()`) (#401).
+- **One purpose vocabulary for creation and rolls**: `vixl new --purpose`, `vixl_document_create(purpose=…)` and `Project(purpose=…)` accept every name a roll does (the eight purposes, their aliases, brief kinds, named sizes and size categories) and map it to the same profile: `--purpose emblem` and `vixl roll --for emblem` both mean the logo profile, and creation reports the canonical `purpose`. Each profile carries its default `size`, aliases with their own size (`story`, `web`, `email`, `icon`, `favicon` …) and a `mark` flag; `thumbnail` and `banner` are new creation names (YouTube thumbnail and web banner sizes) (#401).
+- **`reparent`** (aliases `move-into`, `adopt`; CLI `vixl reparent LAYER… --into GROUP|page`) moves existing layers or groups into a group, between groups or out to the page without ungrouping, so the group keeps its rotation, scale, flips and effects. `keep: appearance` (default) keeps every target where it is drawn (a turn or mirror becomes the layer's rotation and flips, uneven scale is held in its `affine` matrix); `above`/`below`/`index` choose the stacking slot; the group's content box grows unless `fit: false`. Animated targets keep their tracks or are refused with the tracks named; cycles are refused. One undoable step (#382).
+- **Compose image slots take workspace paths and https URLs**: `layout: {name: "meme-top-bottom", image: "memes/cat.jpg", …}` builds a meme in one call. Files stay inside the workspace and URLs go through the `vixl_import_image` fetch policy and limits; the layout step lists what it embedded under `imported` (#368).
+- **`layer-intent` on the CLI** takes `--detached-ok`, `--color-vision-safe` and `--role title`, and compact inspect shows `role`, `tags`, `detached_ok`, `allow_crop` and `color_vision_safe` when they are set (#385).
+- `character-cycle` takes `view` (`front` or `side`), and the `character` check reports `front-view-leg-swing` when a front-facing character's upper legs swing more than 15 degrees in the picture plane (#304).
+- Motion findings carry the animated `property` next to `layer` (#298).
+- **`$${name}` writes a literal `${name}`** in text, rich text and text flows; the missing-variable error names the escape (#293).
+- **`confetti` with `count`** scatters that many non-overlapping slips at `seed`-chosen places and angles; without `count` it is one slip as before (#302).
+- **`color scale A B [C…] --count N --space S`** returns N steps between the colours; one colour still gives the 50–950 ramp, and `--count` with one colour is an error (#363).
+- **Colours outside sRGB are reported**: `color info`/`convert` (and `vixl_color`) add `clipped` (`chroma` or `clamp`) and a warning, for example for `oklch(70% 0.4 30)` (#363).
+- **The diagram check reports edges drawn on top of each other** (a pair that reads as one line or a two-headed arrow); edges from one source or into one target may still share a trunk (#346).
+- **`vixl layers --full`**: `vixl layers` now abbreviates long path data, path nodes and point lists to their size and a pointer to `vixl inspect LAYER`; `--full` prints them (#292).
+- **Executable documentation**: `tests/test_docs_executable.py` (`pytest -m docs`, part of the normal run) runs the `vixl …` commands of every shell block in `docs/` and `skills/` in a temporary workspace and validates, then applies, every JSON operation block. New blocks are picked up automatically; `<!-- docs-test: continue | save FILE | skip REASON -->` steers walkthroughs (see `docs/documentation-maintenance.md`).
+
+### Performance
+
+- **An edit's cost no longer depends on unrelated layers.** A per-layer edit (`move`, `resize`, `rotate`, centering …) lays out only the layers it depends on (constraint targets, the parent for `canvas.*` constraints in a group, a symbol's master; stacks still lay out in full). Text measurements are cached by everything they read (font file and fallback chain, layer fields except position, size limits); document variables are computed once per inspection instead of once per text layer, which scanned every layer for form fields; and the inspection an apply ends with is reused as the next apply's starting point while state, assets and history head are unchanged. One move on a 4,096-layer document (1,024 text) went from 8.8 s to 0.7 s; 1,000 shapes plus 3,000 moves in one batch from 52 s to 0.9 s; the QA report's 10,000-operation batch (2,000 adds, 8,000 moves) took 364 s there and takes about 2.5 s here (#284, #300).
+- **The overlap check reads text coverage only where it compares it**, instead of drawing a canvas-sized surface for every text layer: 300 overlapping labels on a 6000×6000 canvas went from 30 s to 1 s, and 4,000 labels on 4000×4000 from about 250 s (QA report) to about 16 s (#327).
+- **Long words and long texts wrap in linear time.** A word wider than its line is measured from one shaping per line instead of once per character, line widths are cached so `text-flow` does not re-wrap the same lines for every slice it tries, text without right-to-left or control characters skips the Python bidi pass, and common-script characters (digits, spaces) no longer rescan the rest of the text. A 100,000-character word in four columns went from 321 s to 6 s; 100,000 characters of prose from about 29 s (QA report) to under 3 s. Line breaks are unchanged (#335).
+- **Linear gradients compute one row or column and repeat it; radial and angled ones work in bands of rows.** Rendering a 40-megapixel canvas with a gradient, a blurred ellipse and text took 3.9 GB and 28.6 s in the QA report; it now peaks at about 650 MB and takes under 3 s. Output is byte-identical (#341).
+- `pytest -m perf` (`tests/test_perf.py`) holds these as time budgets in the default test run.
+
+### Fixes
+
+- **A rolled soft shadow keeps to a workspace brand**: with a `brand.json` palette the shadow takes the brand `@ink` instead of black, so `check --checks brand` passes on a rolled layout.
+- **Rolled accents show in safe compositions.** The accent a roll chooses (rule, bar, dot, block, outline) is drawn next to the composition's own device; before, it was recorded but never drawn. Pass `accent: "none"` for the old result (#389).
+- **Layouts pass their own safe-area check**: meme, photo-caption, split and golden-section pictures are marked `allow_crop` (intentional bleed), meme captions stay inside the safe area (including story and TikTok insets), and golden-section copy on tall canvases no longer runs below it (#370, #409).
+- Layout subtitles and body text no longer read as separate paragraphs: two-line subtitles were about 1.9 × the size apart (#282).
+- **Every layout a social roll can pick passes its own safe-area check on every named social and web size** (TikTok, stories, `x-header`, `linkedin-banner`, `facebook-cover`, `web-hero-wide` …): rails, panels, accent devices, counterweights and highlights are marked as decoration, pictures and drawn shapes that reach the canvas edge as intentional bleed, the diagonal band's subtitle tilts less on wide canvases, the rule-of-thirds picture stays inside the safe area, and the app-icon glyph shrinks to the keyline (#409, #370).
+- **Running out of memory is a `resource_limit` error** ("Not enough memory for this operation; use a smaller canvas, scale or batch") from the Python API (`apply`, `render`, `export`, `check` …), MCP tools and REST routes, raised after the failed call's memory is released, instead of a raw numpy `MemoryError` (#341).
+- **Pathfinder `divide`, `trim` and `merge` pieces abut without a hairline seam**: each piece reaches 1 px under the pieces stacked above it, never past the outline of the whole (#362).
+- **Seamless pattern tiles are not "cut off"**: wrapped copies of a `pattern-scatter` tile that cross the canvas edge are reported as intentional (`info`) (#354).
+- **Style checks accept the style's own signature moves**: `symmetry` also measures the arrangement, so centred type and a sunburst pass; copies in a `radial-repeat` group do not count as tilted; a weight word in the family (Archivo Black, Heavy, ExtraBold) counts over a lower registered weight (#355).
+- **Thumbnail legibility is one finding per chart**, and on pieces that are not shown as thumbnails more than three small text layers are one note; value labels may overlap the chart's own lines, areas, markers and bars without an overlap finding (#360).
+- **WebP loop count**: timeline WebP exports played one time fewer than GIF and APNG (`loop: 2` wrote a WebP loop count of 2, which is two plays in total). All three now play `loop + 1` times, as the pixel `export-animation` already did (#372).
+- A timeline whose frames are all identical exports as a one-frame animated WebP that lasts the whole range (`duration` 1000 for a 1000 ms timeline), as GIF does, instead of a still with duration 0. The same applies to pixel `export-animation` (#296).
+- The `bounce` recipe writes a key on the ground at each contact, on the nearest frame of the timeline's `fps`, so the ball is seen landing (it hovered 1.8 px above the ground at 20 fps) (#297).
+- Loop-seam and linear-motion findings name the layer and round values (`translate-y on 'ball' ends at -5.6 but starts at 0`) instead of printing layer ids and long floats; the two-key linear note is no longer raised for a `spin`, whose whole turns are constant speed by design (#298).
+- Size warnings agree with the settings in use: no 1 MB note when `target_bytes` or a `preset` set the size, no `dither: 'ordered'` advice when the GIF already used it, one warning when `target_bytes` is missed, and the WebP comparison reads as a sentence ("or export MP4 (a WebP of these frames measured no smaller: 3,463,542 bytes)") (#301).
+- `loop-seam-speed` is no longer raised for a track that turns around smoothly at the seam, such as a pendulum's baked `attach` track or a staggered float (#303).
+- PPTX draws skewed and affine-transformed layers as pictures of the render and lists them under `raster_fallbacks` (`skew`, `affine transform`), instead of writing them unskewed with no warning (#311).
+- Images above the pixel limit import: with `max_pixels` or `downsample` an `add` may read a source up to four times the limit (a 108 MP camera file under the default 40 MP) and shrinks it while decoding; `vixl import`, `vixl_import_image` and REST `/assets` downsample such a file on their own and report `downsampled` with a warning. Pillow's 89 MP guard no longer stops imports below Vixl's own limit, and a plain `add` of a too-large file names its size and both remedies (#323).
+- REST refuses a body whose `Content-Length` is over the route's limit with `413 resource_limit` before reading it, and the error names the limit (#325).
+- `vixl_compose` says when it makes the new document the active one: the result carries `active_document` and, when another document was active, a warning naming it; the docs describe the switch (#307).
+- `--dry-run` reports the layer, page and effect IDs the real apply then creates, also across CLI processes (#359).
+- `rgb()` colours with channels outside 0–255 are clamped to hex in operations and reported under `normalized` (#365).
+- The docs list the text metrics (`ink_bounds`, `baseline`, …) that `detail: "brief"` returns for new text layers (#347).
+- A crisp scaled raster export (`scale` above 1) records the dpi of the requested scale (canvas dpi × scale) rather than the canvas dpi.
+- **`vixl guide NAME x|y POSITION`** and `vixl guide NAME --kind …` add a guide again; since the craft guide took the `guide` command they returned "No kind of work matches" (docs/guides.md, docs/design-tools.md).
+- **`vixl capabilities pen`** lists `pen`, then shape and path operations, instead of leading with `oil-paint`: matches rank by the word that matched. The `pen --nodes` help and schema say that `in`/`out` handles are positions in the anchors' coordinates, not offsets (#324).
+- Documentation examples run top to bottom: the presenter export examples write different files, the `tear` examples remove a mask before switching to a clip, and the CLI reference creates a guide before constraining to it.
+
+## 0.22.1
+
+A bug-fix release from the 0.22.0 QA pass (#276): exports agree with the raster renderer, documents that apply can always render again, the logo package ships usable files, new text is readable by default, and errors name what to do on the interface you are using. The house-style decision record (`docs/house-style.md`), the 0.22.0 QA report (`qa-reports/v0.22.0/`) and a development plan (`docs/roadmap.md`) are now on main.
+
+### Changed defaults
+
+- **Text without a colour** uses the document's `@ink` swatch, else black or white, whichever reads on the canvas background (a transparent canvas counts as white). It was always white, which vanished on light canvases. Pass `color: "white"` for the old result (#283).
+- **Text without a font** uses the document's body face once typography is set (`vixl_font_pair`, brand fonts), instead of the proofing fallback (#395).
+- **Python `Project.export` defaults to `alpha="auto"`**, like the CLI and MCP: an opaque PNG, WebP, TIFF or AVIF is written as RGB. Pass `alpha="keep"` for RGBA (#396, #315).
+- **Logo packages are transparent**: the source document's canvas colour is no longer baked into PNG and SVG variants, and on-light/on-dark contrast is judged by the logo's ink. Mono-white files were white on white, and a dark wordmark was kept on the dark background (#287, #291).
+- Fractional values for integer fields (a computed font size of 25.6) are rounded and reported under `normalized` instead of refused (#281).
+- Undo and redo with a count larger than the history go as far as they can and report the steps (`undo`/`redo` in CLI and MCP results); redo of many steps restores once (#277, #349).
+
+### Fixes
+
+- Open stroked paths no longer fill white in PNG and previews when their size is derived or fractional, also with `irregular` (#279).
+- SVG strokes (caps, miter joins) reach past the layer box as in the other renderers (#305).
+- PDF and PPTX raster fallbacks (masks, effects) apply layer opacity once instead of twice (#309).
+- PPTX writes bold and italic for faces imported under any name, read from the font file (#318).
+- PPTX refuses `simulate`, `proof`, profiles and CMYK instead of ignoring them (#330).
+- Fractional `add` image sizes and rich-text boxes render; documents with them no longer fail to render after saving (#289, #295).
+- A blur whose working image could never render is refused at apply time instead of saving a document that no longer renders (#331).
+- Text too large for a layer names the layer, its size and the remedy (#371).
+- `vixl check --checks motion|character|captions` works; the CLI takes its check names from the engine (#278).
+- Shape typos (`trianglee`) are errors with a suggestion instead of becoming a polygon (#299).
+- `vixl export FILE.wav` writes the audio mix; Python `export_audio` refuses to overwrite with `output_exists` and takes `overwrite` (#308).
+- `vixl new --dpi 0`, `-10x10`, `10X10` and an empty size give clear answers (#310, #345).
+- The compact MCP toolset's instructions and descriptions name only tools it serves (#314).
+- MCP argument errors use the JSON error shape (`invalid_arguments`, `field`) instead of pydantic text (#316).
+- MCP `serverInfo.version` is the Vixl version (#317).
+- Did-you-mean suggestions consider aliases (`colr` suggests `fill` on shapes); `width` on plain text points to `text-layout` (#320, #336).
+- Hints name MCP tools over MCP and CLI commands on the CLI; unknown layouts list the layouts under `allowed` (#321, #353).
+- Polygon `sides` is 3–128 everywhere (#322).
+- REST `/export`, `/compare` and `/preview` name unknown fields; 401 responses carry `WWW-Authenticate: Bearer` (#328, #319).
+- Piping CLI output to `head` exits quietly (#326).
+- Undecodable images, missing files, non-UTF-8 JSON, non-ZIP or incomplete `.vixl` archives and duplicate layer names give plain messages without Python reprs (#329, #356).
+- Over-deep group chains fail at the first bad step, naming the limit (15 nested groups) (#342).
+- Unsupported export formats list the supported ones; CMYK with `--proof` on PNG explains the soft-proof route (#364, #367).
+- Lists over their limit (`pen` points) report the limit and the size given instead of echoing the input (#369).
+- `vixl providers` lists every built-in provider (FLUX included); an unknown provider names the configured and built-in ones (#350).
+- `lyric-video-plan` warns (`lyric_too_wide`) when a line is wider than the canvas in an unwrapped `lyric` layer (#343).
+- `vixl update` on a pip install says to update with pip instead of pointing to the Windows installer (#333).
+- Release `SHA256SUMS.txt` covers every published asset, not only the Windows files (#286).
+
+### Documentation
+
+- Per-operation caps (nested groups, repeat, scatter, pen points, effects, frames, timeline, dpi, sides) in [architecture](docs/architecture.md#resource-policy) (#348).
+- `animate-preset` `amount` per preset (#340); lyric templates define their variables first (#343); CMYK PDF is vector (#337); the active document is per client on Streamable HTTP (#344); the slides quickstart's `shape` command (#373).
+
+## 0.22.0
+
+Bigger documents, layer merging, scatter and pattern tiles, kinetic type, QR codes, merge-field filters, logo packages, proof pages, one-call builds, layered PSD export, and a leaner default MCP server.
+
+### Breaking changes
+
+- **`vixl mcp` defaults to `--tools core --schema slim`** (about 58k characters of tools/list instead of 147k). Pass `--tools all --schema full` (or `VIXL_MCP_TOOLS=all`, `VIXL_MCP_SCHEMA=full`) for the old default. `python -m evals.run` defaults to core/slim too.
+- **Documents can hold 4,096 layers** (was 512), and layer lists (`targets`, group/stack/look refs) take as many. Documents with more than 512 layers do not open in earlier releases (#263).
+- **Linked documents resolve relative sources beside the document first**, then the workspace, and a source inside the document's folder is stored relative to it; saving into another folder rewrites them (one `links-relink` history entry). Old documents still resolve through the workspace fallback; if one has the same relative name beside it and in the workspace, the file beside it now wins: use `links-relink` to point elsewhere (#212).
+- **Audio mixes keep their sources' quality** instead of 24 kHz stereo: the highest source rate capped at 48 kHz (48 kHz for synthesized-only mixes), mono when every source is mono and unpanned. Pass `sample_rate` to choose. In Python, `audio.RATE` is replaced by `DEFAULT_RATE`, `prepare_tracks` returns `(tracks, format)` and `mix_tracks` returns `(frames, channels)` (#207).
+- **PPTX radial gradients end at the inscribed ellipse** like the other renderers, so existing decks look tighter (#245).
+- `vixl_guide("capabilities …")` fails with a `moved` error pointing to `vixl_capabilities(topic)` instead of matching a kind of work.
+- A `brand.json` that embeds a font for one role now takes the other role from its `pairing` (before, `pairing` was ignored whenever `fonts` was present). Remove `pairing` or embed both roles to keep the old result (#183).
+- `codes` is a new default check; it only reports on documents with QR codes or barcodes (#168).
+- `vixl_render_compare`'s `changed_fraction` counts a pixel as changed when any RGBA channel moves by more than 8 (it was luminance), so values can be slightly higher.
+- Font URL imports follow the new fetch policy: private hosts are refused, up to 5 checked redirects are followed (previously none), and a refused URL is error `unsafe_url` (#265).
+
+### Building whole pieces
+
+- `vixl_compose` (MCP, CLI `vixl compose`, Python `vixl.compose.run`, REST `POST /compose` as a dry run) builds a piece in one atomic call: create, font pairing (or the workspace default fonts), layout, style, look, operations, check, preview, save and exports. Nothing is saved or exported unless every step succeeds; errors name the failing `step`. In the core and compact toolsets (compact now has 13 tools) (#181).
+- `logo-package` workflow: full-colour, mono black, mono white, on-light and on-dark variants, optional mark/horizontal/stacked lockups, strict SVG, RGB and optional CMYK PDF, PNG at 1x/2x/3x, an icon set with favicon, social avatar and Open Graph images, a usage sheet, editable sources and an optional zip. Raster logos can be traced. Recolouring is heuristic and reported; EPS is not produced (#260).
+- `proof` workflow: one self-contained offline HTML page with thumbnails, click-to-enlarge, format/size/colour metadata, `vixl_check` findings, optional before/after diffs, and approve/reject decisions downloaded as JSON (#173).
+- `vixl diff A B` pixel-diffs two documents or images (changed pixels, fraction, region), with an optional diff image and a `--max-fraction` exit code. A composite GitHub Action (`action.yml`, [docs/ci.md](docs/ci.md)) checks `.vixl` files in pull requests, diffs them against the base branch, writes a job summary and can upload a proof page (#174).
+- Meme layouts `meme-top-bottom`, `meme-caption-above`, `meme-comparison`, `meme-labelled`, `meme-reaction`, `meme-four-panel`; `layout-apply` takes `images` (one asset per panel) and `uppercase`; a `meme` brief and guidance with a GIF recipe (#193).
+- New documents embed the workspace default fonts from `brand.json` and report them under `workspace_fonts` (`workspace_fonts: false` / `--no-workspace-fonts` skips them); `vixl_font_pair` and `vixl_font_install` take `scope: "workspace"` to set them (#183).
+
+### Layers, objects and coordinates
+
+- `merge-layers` (alias `merge`; CLI `vixl merge-layers A B … [--name]`) merges sibling layers into one raster layer at the topmost one's place, compositing blend modes among them and keeping the originals in provenance. `flatten` (CLI `vixl flatten [--keep-hidden] [--name]`) draws the page's visible layers into one canvas-size raster layer. Both are one undoable step (#262).
+- Large documents are faster: indexed layer lookup and default names, an overlap check that no longer compares every pair (24 s → under 1 s at 4,000 layers), cached re-renders past 512 layers, and text measurement that no longer rescans for form fields (#263).
+- `ungroup` keeps a group's animation: position, rotation, scale, size, visibility and (single-child) opacity tracks become per-frame keys on its children; animation that cannot be rewritten exactly is refused with the tracks named (#244).
+- `group` results list each member's offset from the group box (`groups[].members`); brief edit results for grouped layers add `parent`, `parent_name`, `coordinate_space` and `canvas_bounds` (#244).
+- `drawing` stroke and fill take `space: "group"`; `drawing report` gives region points in both spaces and the group's offset, scale and rotation (#217).
+- `isolate` on `vixl_render_preview`, `vixl_render_compare`, apply's `preview`, REST `/preview` and `/compare`, and CLI `compare` / `apply --preview` shows one object alone, cropped to its ink. The opt-in `connected` check finds parts of a grouped object that float free of its body, also at sampled animation frames (`connect_tolerance`, layer intent `detached_ok`). New guidance `multi-part-objects` (#257).
+- Shape-specific parameters: heart `apex`/`cleft`/`tip`, speech-bubble `pointer_side`/`pointer_position`/`pointer_size`/`body`, shield and tag `depth`, chevron `thickness`, trapezoid/parallelogram `slant`, triangle `apex`; defaults keep the existing outlines and `vixl_capabilities("shapes")` lists every shape's parameters. Aliases `tail_side`, `tail_position`, `tail_size`/`tail_width`, `body_ratio`, `lobe_balance`, `points`, `arm_width`; a warning when a parameter does nothing for the chosen shape (#178).
+- Shapes report `content_bounds` (bubble body, badge or star centre, frame opening, device screen, largest inner rectangle of organic outlines); `text` `within`, `place` `within` (with `box`, `anchor`, `margin`) and `align` `box: "content"` position layers in it (#187).
+- `baseline_y` on `text`, `text-set` and `move` places the first baseline; `align` takes `alignment: "baseline"` and `snap` takes `anchors: ["baseline"]` for baseline grids (#186).
+
+### Scatter, patterns and generated geometry
+
+- `scatter`: Poisson-disc copies of motif layers or a mark inside or along a layer's outline, with seeded rotation/scale/position/tone jitter, exclusions, and `merge` into one path per tone; `preset: fur` (#256, #240).
+- `pattern-scatter`: a seamless toroidal scatter tile with wrapped copies, a stored recipe for rebuilds, a seam score in the result and an optional saved pattern. `pattern-define` reports its seam check, and `pattern-fill`/`pattern-stroke` take `tile_variation` (#216, #256).
+- `repeat` and `radial-repeat` take `rotation_step`, `scale_step`, `opacity_step`, seeded jitter and `merge`; `keyframes` takes `sample` (sin, cos, triangle, saw, square, noise) to generate keys without scripting (#247).
+- `hand-made` and `plush` looks, a `fur-blob` organic preset and a `line-boil` motion recipe (#256, #240).
+- `qr` and `barcode` (Code 128, EAN-13) draw codes as native vector paths in PNG, SVG, PDF and PPTX, with quiet zone, colours, size, in-place edits and `${variables}` re-encoded per merge row; the `codes` check covers module size at the export dpi, contrast and ink in the quiet zone. New dependency: `segno` (#168).
+
+### Text, data and fonts
+
+- Merge field filters `${name|upper|lower|title|default:TEXT|map:NAME|number:2|format:SPEC}` shared by text, colours, link variables and merge-impose; `variable-map` defines document maps (with a `"*"` fallback); unknown filters and undefined maps are validation errors; `inspect` lists placeholders under `placeholders` (#215).
+- `links-relink {from, to}` rewrites link source prefixes on every page (CLI `vixl links-relink FROM TO`); the links listing reports `resolved_from`, `check links` notes sources outside the document's folder, and merge-impose sheets store the template relative to themselves (#212).
+- Font fallbacks choose the face whose slope and weight match the text's font; PPTX runs name the fallback family (#206).
+- `vixl_check` reports embedded files the design does not use, with their sizes; `vixl compact` / `vixl_history(action="compact")` explicitly drops them together with the undo history (`dry_run` first) (#206).
+- PPTX font warnings give each font's embedding permission and licence (`font_embedding`) and point to installing OFL fonts or sharing the PDF; PPTX does not embed fonts (#166).
+- Forms: `entry_font: "embed"` embeds each field's TrueType font so people type in the design's font (Helvetica with a warning when a font cannot be embedded); signature fields accept a sample (text or a data-URI image) in flattened fills and previews, never as a fillable value (#222).
+
+### Images and imports
+
+- Import images from the web: `vixl_import_image(url=…)`, `vixl import https://…`, REST `POST /assets?url=…`, `Project.import_image(url=…)`. HTTPS only, no credentials in the URL, at most 5 re-validated redirects, byte and time caps; hosts resolving to private, loopback, link-local, multicast or reserved addresses are refused (`VIXL_ALLOW_PRIVATE_FETCH=1` for intranet hosts). The bytes must decode as an image whatever the Content-Type says (#265).
+- Imported layers record `source: {url, fetched_at, sha256}` and optional `credit`/`license` (all imports, the `add` operation and CLI `--credit`/`--license`); compact inspect shows them and `vixl dependencies` lists them under `attributions`. New guidance `image-rights`. `vixl_import_font` accepts an `https://` `url` (#265).
+
+### Animation, video and gradients
+
+- Kinetic type: `text-animate` animates the characters, words or lines of one editable text layer (fade, fade-up, fade-down, slide-left, slide-right, pop, wave, typewriter, color-sweep) with `stagger`, `direction` (forward/reverse/center/edges/random), `mode` in/out/in-out (in-out by default in seamless loops) and `repeat` for wave. Timeline renders animate; stills, SVG, PDF and PPTX show the resting text. `vixl timeline` lists `text_animations`, and motion and poster checks account for them. CLI `vixl text-animate`.
+- `motion` recipe `attach` keeps a layer on a point of another layer through nested groups, optionally turning with it; timeline inspect lists `attachments` (#239).
+- Sampled motion findings `moving-over-text`, `text-mostly-hidden`, `parts-drift` and `loop-seam-render`; timeline GIF/WebP/APNG exports warn about loop seams (#237).
+- `target_bytes` auto-fit and `preset` (`chat`/`web`/`email`) for timeline GIF/WebP/APNG export, reporting what was `chosen`; size warnings quote a measured WebP size (#246).
+- `sample_rate` on `vixl_export_audio`, timeline MP4/WebM export, film specs and lyric-video requests; results report `sample_rate` and `channels` (#207).
+- Lyric videos accept `lyric-<section>`/`next-<section>` template layers and `section_styles` (#221).
+- Gradient `falloff` (`smooth`, `ease`, `quadratic`, `gaussian`), identical in PNG, SVG, PDF and PPTX; a `soft-halo` look; a `gradient-edge` review finding for fades whose box edge still shows (#245).
+
+### Export
+
+- Layered PSD export: a `.psd` path in `vixl_export_file`, `vixl export` or REST writes one 8-bit RGBA pixel layer per layer (effects included), keeping names, opacity, visibility and blend modes (add → Linear Dodge, subtract → Subtract), groups as layer groups, plus the flattened composite. Groups transformed or filtered as a whole become single layers; text is pixels, not editable type, and the result says so.
+
+### Agents, upgrades and project hygiene
+
+- **Test before you preview.** Check suites gain nine measured rule kinds built on the existing measuring tools: `spacing` (equal or exact gaps), `relation` (above/below/inside/apart, shared edges, gaps and margins, also against the canvas), `contrast` (one layer's WCAG ratio), `color` (a pixel or region against a colour or `@swatch`), `ink` (how much of a region is drawn, ignoring the backdrop), `balance` (the visual centre), `hierarchy` (type sizes step down by a ratio), `count` (layers matching a name or glob) and `focal` (a layer on a thirds/golden/centre point). Each result reports what it measured, and malformed rules are refused when the suite is attached. Eight starter suites join the seven existing ones: `social-card`, `composition`, `slide-deck`, `logo`, `motion-loop`, `character`, `fillable-form` and `diagram`.
+- `vixl_operations_apply`, REST `POST /operations` and `vixl apply` take `suites` (`true`, a name or a list; CLI `--suites [NAME …]`) to run the document's attached suites with the batch, including one the batch attaches, and list each suite's status and the rules that did not pass.
+- `vixl_guide("testing")` explains why to test, when (before building, with every batch, before every preview and export), how to choose built-in checks and starter suites, and how to turn a brief's requirements into rules. Every `vixl_guide(kind)` answer has a `tests` plan (a starter suite and rules to adapt), the start-here recipe and server instructions test before previewing, and `vixl_capabilities("testing")` lists the rule kinds and starter suites.
+- Documents saved before 0.21 report under `upgrade` on open which layers render differently (effects on rotated/flipped/skewed layers, temperature/tint, open stroked shapes that used to be white). `vixl upgrade DOC [--report] [--pin-fills]` and `vixl_document_open(path, upgrade="accept"|"pin-fills")` accept the change or restore the white fills.
+- Unknown-tool errors name the replacement of removed tools (`vixl_text_add` → the `text` operation), the `--tools` mode that serves a tool, or the closest tool names.
+- MCP calls queued behind busy workers become jobs sooner under load; job pointers and `vixl_job` report `queued`, `wait_ms` and `queue_depth`. The docs recommend one `--http` server for many agents (#167).
+- Eight new agent eval briefs (charts, decks/PPTX, drawings, organic shapes, pathfinder, seamless loops, adapt-layout, `targets` fan-out) with per-task tool-call budgets and a mean ceiling in `evals/baseline.json`.
+- CI: a ruff lint job, parallel tests (`pytest-xdist` in the dev extra), ffmpeg-backed tests on Linux, a non-blocking pip-audit job and weekly Dependabot; installer builds on pull requests run only when packaging changes. Package metadata gains classifiers, keywords and project URLs.
+- Source comments: decorative section banners, label comments and history narrative are removed (#261).
+
+### Fixes
+
+- `organic` accepts `x`/`y` as `"center"` or a percentage (they were stored as text and layout crashed); regrowing with `target` moves the form when `x`/`y` are given instead of centring the active layer; CLI `--x`/`--y` accept `center` and `N%`.
+- `ungroup` on a group with keyframe tracks no longer fails with "Timeline track targets a missing layer", and children's own x/y keys move into the parent's space (#244).
+- `rasterize` bakes layer styles (drop shadow, glow, stroke, overlays) and clipping as its description says, instead of refusing, and no longer keeps skew/affine fields it has already baked (#262).
+- `point_radius` rounds triangle, chevron, trapezoid and parallelogram corners (it was ignored) (#178).
+- Zoomed film camera shots render at the zoom instead of enlarging output pixels (#232); imported and lyric-video audio is no longer resampled to 24 kHz with linear interpolation and forced to stereo (#207).
+- The pattern guide uses `pattern-scatter`, so motifs crossing a tile edge wrap (#216).
+- One parser for `${...}` placeholders replaces three copies; the remaining local Bezier evaluators and number formatters use `geometry.bezier_points` / `compact_number`, with a guard test (#215, #255).
+- docs/coverage.md covers 0.20 and 0.21 and no longer lists shipped skew/matrix transforms, form validation actions or font fallback as missing.
+
+## 0.21.0
+
+A breaking "correctness and consolidation" release. Duplicate concepts are gone (one opacity scale, one anchor table, one guidance registry, one place for LUTs), checks report what is actually drawn, and renderers agree with each other. Old saved documents, field names and render output may change; forgiving input aliases (camelCase, `rect`, `font_size`, `"50%"`) stay.
+
+### Breaking changes
+
+- **Opacity is 0-1 everywhere** (the `opacity` operation, creation fields, layer styles, captions, paint/pattern, keyframe/animate/motion values; CLI `opacity 75` too). Write `0.7` or `"70%"`; a bare number above 1 is an error with a suggestion instead of being guessed.
+- **`vixl_text_add` is removed.** Use the `text` operation in `vixl_operations_apply` (registered font names work there too).
+- **`vixl_guide("capabilities ...")` is removed.** Use `vixl_capabilities(topic)` or `vixl capabilities TOPIC`. `vixl_guide(brief=NAME)` for a guidance name returns `{guidance, text, kinds}`; art-kind guides no longer include `direction`.
+- **`temperature` and `tint` have a new scale.** Both are multiplicative, keep grey brightness and run -100...100 (100 is about 6500 K to 4400 K for temperature); out-of-range values from the old scale are rejected. The paper look is warmer, temperature is visible and tint is weaker. New `white-balance` effect (gains or a neutral colour).
+- **LUT lookups are ordinary stack effects.** The `lookup` operation appends a `lookup` effect that can be enabled, disabled, reordered, selected and removed; the old layer `lookup` field is converted on load.
+- **Effects apply before rotate, flip and skew** in the layer's own frame, so blur room, selections and spatial filters (halftone, wave, pixelate, vignette, grain) turn with the layer. Rotated layers render differently from before.
+- **Open paths and open shape kinds (line, wave, zigzag ...) with a stroke and no explicit fill render unfilled** in raster, SVG, PDF and PPTX (they were white). A `path` shape without width/height now gets its box from the path's reach from the layer origin, not the whole canvas.
+- **Checks:** `checked.layers` is replaced by `checked.layers_checked` and `layers_total`. A contrast the checker cannot measure is an error, not a warning. The canvas safe area is checked by default; story/reel presets use per-side bands and print presets default to 0.25 in (6 mm metric). Pass `safe_area=` to override.
+- **Batch errors:** a batch is validated as a whole and one error lists every invalid operation (`errors`, `error_count`). Unknown `adjustment` effect fields and unmatched `preset-apply` overrides are errors, not warnings. Passing both `target` and `targets` to a per-layer operation is an error, and single-layer operations reject `targets` with more than one entry.
+- **Export:** `quality` defaults to none; PDF images stay lossless unless it is given (other formats still default to 90). Sheet exports report the sheet's size as `size` and the cell size as `frame_size`. GIF dithering defaults to `auto`.
+- **Schema enums:** easing, `animate-preset` preset and pivot values are enums, so bad names fail validation; pivot arrays must have exactly two numbers. `operations.PIVOT_ANCHORS` and the per-module anchor tables are removed in favour of `geometry.ANCHORS`. `font-fallbacks` rejects `target` (fallbacks are document-wide).
+- Deck, PPTX and PDF title detection no longer matches layer-name substrings or the first text layer; see the new `title` role below.
+
+### Agent interface and validation
+
+- Every operation schema carries `x-targets`. About 90 per-layer operations take `targets` and fan out over them in one atomic batch with one history entry and the original `operation_index` on errors; group, align, distribute and pathfinder keep joint semantics (#188). The table in `docs/operations.md` is generated and tested.
+- `vixl_operations_apply`, REST `/operations` and the CLI take `operations_path` (a workspace-relative `.json` or `.jsonl`; JSONL errors cite line numbers), `check` and `preview` options, so one call can edit, check and look (#184, #180). Findings are bounded to fix-level findings and touched layers.
+- Schema descriptions are no longer overwritten by shared constants (#224). Anchor synonyms (`bottom-center`, `top-center`, `center-left` ...) normalize and are reported. `"none"` is accepted for fills, strokes and colours and stored as `transparent`.
+- New fields: `opacity` and `rotation` at creation and on edits of shape/text/solid/gradient/add; `space: "canvas"` on shape/text/solid/gradient edits of grouped layers; pivot `units: "canvas"`; group `above`/`below` (#244, partial).
+- `effect-move` reorders effects (`to`: position/top/bottom, `before`, `after`; CLI `vixl effect move`); effect operations accept an effect name (#164). Pixel-art with `rows` accepts a matching width/height (#227).
+- `vixl_document_create` takes `font_pairing`; applying heading/body roles without typography warns about the proofing fallback and points to `vixl_fonts` and `vixl_font_pair` (#248). Advisories resolve the shape from the targeted layer and stop firing radius/sides hints for shapes that read other fields (#229).
+- Tool descriptions are sharper where tools overlap (animation vs timeline, validate vs check, measure_spacing vs spatial, guide vs capabilities). Stale `vixl_*` names in docs and skills are fixed, and a test fails on unknown ones (#252).
+- `Project.show(page, region)` and `Project._repr_png_` display designs in notebooks (#176).
+
+### Checks you can trust
+
+- Contrast, before/after crops and coverage share one whole-pixel box, so half-pixel positions and odd widths are measured instead of failing (#195).
+- Background detection, bounds, safe area and overlap use tight drawn geometry (stroke included, in canvas space through groups and transforms) rather than layer boxes; `role: background` is honoured, and a canvas-spanning box must actually paint at least half the canvas to count (#196, #197). Overlap uses ink bounds widened by stroke, shadow and glow (#249). On the repo examples, fix-level findings dropped from 44 to 5 with errors unchanged.
+- Shapes and gradients crossing two or more canvas edges are intentional bleed (info) (#250). Thumbnail legibility is a warning only for social, icon and app-store sizes (info elsewhere); `thumbnail_width` null/`"off"` disables it (#219). Canvas `safe` may be given per side (#211).
+- `color_vision` compares chart series colours under protan/deutan/tritan simulation; the layer intent `color_vision_safe` opts a layer out (#230, partial).
+- `vixl_check` with no checks adds `motion` when a timeline exists: loop seams, seam speed, empty posters, text hidden at the poster frame, and legibility at frame 0 (#237, partial).
+
+### Rendering and effects
+
+- Resampling of rotated and scaled rasters is clamped to the colour and alpha range of the contributing pixels, which removes ringing and halos (#204). Denoise on a rotated layer matches the upright result within 15% (#203).
+- Text lines never end after a lone separator (`·`, `•`, `–`, `—`, `|`, `/`) (#226). The event-poster date is capped at 60% of the headline size; octopus arms are connected with tip widths (#225); chart axis maxima are tighter and a warning notes series colours that override `colors` (#214, partial).
+- Imported images honour embedded ICC profiles; CMYK JPEG/TIFF convert to sRGB (#194, partial).
+
+### Export
+
+- Vector PDF no longer fails on pages with blend modes or adjustment layers; the page is exported as a raster fallback with a complete descriptor (#201). PPTX plain text keeps bold and italic from the registered face (#198). SVG omits stroke attributes when width or alpha is 0 (#228).
+- PDF `quality` JPEG-compresses images when given (#202). PDF Title is the explicit `title` (export, CLI `--title`, MCP, batch), then the page's title layer, then the file stem (#209). Title detection uses `role: title`, then exact title/heading/headline names, then the largest top text; there is a new `title` layer-intent role (#220).
+- Still exports over 1 MB warn and name grain, paper, film, halftone and noise layers; an optional `max_bytes` budget (CLI `--max-bytes`) warns when exceeded (#190).
+- Form tooltips drop required markers (`*`, "(required)"), and a `tooltip` field sets one explicitly (#222, partial).
+
+### Animation and loops
+
+- `timeline-set loop_mode: "seamless"` and `close: true` / `loop_safe` on keyframe, animate, animate-preset and motion append the start value so loops close. Entrance/exit presets hold then play back in seamless timelines; seams are compared modulo 360 and symmetry, and speed jumps are reported as `loop-seam-speed` notes (#238).
+- `animate` and `animate-preset` take `repeat`/`until`, `period` and `stagger`; the `spin` motion recipe takes `turns` and `symmetry` (#185).
+- `export_timeline` takes `poster` (time, marker, `"end"` or a percentage) for GIF/APNG/WebP and rotates frames so the poster is first while the loop stays seamless (#189). `vixl_timeline_preview(times=[...], thumbnail=360)` shows poster, middle and last frames at phone width (#253); `timeline-sheet --thumbnail` on the CLI.
+- GIF `dither` (`auto`, `none`, `ordered`, `floyd`) on a shared palette and a soft `max_bytes`; big or gradient GIFs suggest MP4 or WebP (#246, partial). Sheet results report the real sheet size, and GIF/WebP/APNG report frames and durations read from the written file (#208).
+- Keyframe easing, extend, hold and trim semantics are documented in the schema descriptions and `docs/brushes-and-animation.md` (#254); easing and presets are enums (#243).
+
+### Guidance
+
+- Animation and character guides are rewritten as checklists (one gesture, loop first, readable at frame 0, joints with pivots, motion check, first/middle/last preview) with worked mascot and loop examples; art briefs no longer get the poster layout block (#236). Looping guidance covers period, stagger, seamless mode, close, spin and repeat, and `vixl_capabilities("loop")` lists it (#185).
+- The pattern recipe scatters motifs instead of tiling a grid (#216, partial). Irregular/tear edges are recommended in character, scene, pattern and hand-drawing guides, and a new `imperfection` entry covers hand-made looks (#256, phase 1).
+
+### Consolidation
+
+- One guidance registry (`guidance.py`) feeds `vixl_guide`, `vixl_resource_get` and `vixl_capabilities`. One anchor table, one Bezier evaluator and one number formatter replace several copies (#255, partial); open-shape fill rules come from `geometry.OPEN_SHAPES` and `default_fill`.
+- Operation classification lives in `targets.py`; shared schema constants are copied, never mutated.
+
+### Testing
+
+- A golden-image suite in `tests/visual` renders fixture documents (shapes, paths, text, gradients, effects, rotated rasters, blends, groups, charts, organic shapes) and compares PNG renders, SVG/PPTX structure snapshots and PDF renders with references. Run it with `pytest -m visual`; regenerate with `VIXL_UPDATE_GOLDEN=1`. A CI job runs it on Linux.
+- New regression suites cover the agent surface, check trust, effect stack, export correctness, geometry consolidation, loops and posters, the operation API and docs table, and schema descriptions.
+- `CLAUDE.md` gives agent contributors the test, schema and documentation conventions.
+
 ## 0.20.0
 
 ### Editable vector drawing and placement

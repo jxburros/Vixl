@@ -38,10 +38,6 @@ RECIPE_KEYS = ("preset", "parts", "params", "colors", "seed", "naturalness", "pa
 UNFILLED = ("transparent", "none")
 
 
-# ---------------------------------------------------------------------------------------------
-# Geometry containers
-
-
 def element(points, closed=True, smooth=True):
     return {"points": np.asarray(points, dtype=float), "closed": closed, "smooth": smooth}
 
@@ -183,10 +179,6 @@ def ribbon(spine, widths, cap=True):
     return np.vstack(points)
 
 
-# ---------------------------------------------------------------------------------------------
-# Parameters
-
-
 class Params:
     """Validated generator/rule parameters with defaults and ranges."""
 
@@ -242,10 +234,6 @@ class Params:
         unknown = sorted(set(self.values) - self.used - set(allowed))
         require(not unknown, f"Unknown {self.where} setting(s) {', '.join(unknown)}; allowed: "
                 f"{', '.join(sorted(self.used | set(allowed)))}", field=f"{self.where}.{unknown[0]}" if unknown else None)
-
-
-# ---------------------------------------------------------------------------------------------
-# Generators
 
 
 def gen_superformula(p, ctx):
@@ -1103,10 +1091,6 @@ GENERATORS = {
 }
 
 
-# ---------------------------------------------------------------------------------------------
-# Rules
-
-
 def rule_transform(shape, r, ctx):
     scale = r.pair("scale", 1, -100, 100)
     sx = r.number("scale_x", 1, -100, 100) * scale[0]
@@ -1500,10 +1484,6 @@ RULES = {
 }
 
 
-# ---------------------------------------------------------------------------------------------
-# Presets
-
-
 def _p(values, key, default):
     return values.get(key, default)
 
@@ -1649,6 +1629,34 @@ def preset_grass(v):
              "fill": _p(v, "color", "#5e9e3a")}]
 
 
+def preset_fur_blob(v):
+    """A furry body: tufts pointing out all round an ellipse, the body over them, inner flicks on top."""
+    count = int(_p(v, "tufts", 56))
+    aspect = float(_p(v, "aspect", 1.0))
+    color = _p(v, "color", "#b07848")
+    length = float(_p(v, "length", 0.22))
+
+    def ring(radius):
+        t = np.linspace(0, math.tau, 181)
+        return [[round(radius * aspect * math.cos(a), 4), round(radius * math.sin(a), 4)] for a in t]
+
+    def fur(spine, n, size, width):
+        # Along a clockwise ring, side "left" at 90 degrees points straight out.
+        return [{"rule": "warp", "kind": "bend", "amount": 0.25},
+                {"rule": "along", "spine": spine, "count": max(n, 1), "side": "left", "angle": 90,
+                 "scale": [size, size], "range": [0, 1 - 1 / max(n, 1)], "jitter": 1}], width
+
+    tuft_rules, _ = fur(ring(0.97), count, length, 0.3)
+    flick_rules, _ = fur(ring(0.86), count // 2, length * 0.55, 0.16)
+    return [
+        {"name": "tufts", "generator": "leaf", "params": {"shape": "lanceolate", "veins": "none", "width": 0.3},
+         "rules": tuft_rules, "fill": color},
+        {"name": "body", "generator": "ellipse", "params": {"aspect": aspect}, "fill": color},
+        {"name": "flicks", "generator": "leaf", "params": {"shape": "linear", "veins": "none", "width": 0.16},
+         "rules": flick_rules, "fill": _p(v, "flick_color", "rgba(60, 35, 20, 0.35)")},
+    ]
+
+
 def preset_starfish(v):
     return [
         {"name": "body", "generator": "superformula", "params": {"m": int(_p(v, "arms", 5)), "n1": 2, "n2": 7, "n3": 7},
@@ -1682,9 +1690,9 @@ def preset_octopus(v):
     color = _p(v, "color", "#c4456a")
     return [
         {"name": "arms", "generator": "tentacle", "params": {"length": 1.5, "width": 0.13, "taper": 1.1, "curl": 0.55,
-                                                             "wave": 1.0, "waves": 1.0},
+                                                             "wave": 1.0, "waves": 1.0, "tip_width": 0.03},
          "rules": [{"rule": "radial", "count": 8, "radius": 0.18, "start": 20, "spread": 140, "jitter": 0.6},
-                   {"rule": "noise", "amount": 0.015, "frequency": 2}],
+                   {"rule": "noise", "amount": 0.008, "frequency": 2}],
          "hidden": True},
         {"name": "head", "generator": "ellipse", "params": {"form": "egg", "aspect": 0.85},
          "rules": [{"rule": "transform", "scale": 0.62, "translate": [0, -0.62]}], "hidden": True},
@@ -1883,6 +1891,7 @@ PRESETS = {
     "branch": (preset_branch, "A leafy twig: alternate leaves along a curved stem", {"leaf_count": 9}),
     "vine": (preset_vine, "Curling vine with heart-shaped leaves and a tendril", {"leaf_count": 7}),
     "grass": (preset_grass, "A tuft of bending grass blades", {"blades": 14}),
+    "fur-blob": (preset_fur_blob, "A furry body: tufts all round an ellipse with inner flicks", {"tufts": 56, "aspect": 1.0}),
     "starfish": (preset_starfish, "Superformula starfish with tubercles", {"arms": 5}),
     "jellyfish": (preset_jellyfish, "Scalloped bell with waving tentacles", {"tentacles": 8}),
     "octopus": (preset_octopus, "Head and eight curling arms blended into one body", {}),
@@ -1921,10 +1930,6 @@ def catalog():
         "post_rules": list(POST_RULES),
         "docs": "docs/organic.md",
     }
-
-
-# ---------------------------------------------------------------------------------------------
-# Building parts
 
 
 def build_parts(parts, seed, naturalness):
@@ -2176,10 +2181,6 @@ def render_paths(built, width, height, padding, preserve=True, strokes=None):
     return results
 
 
-# ---------------------------------------------------------------------------------------------
-# Operation
-
-
 def schemas(add):
     from .schema import S, N, SIZE, COORD
 
@@ -2309,6 +2310,11 @@ def execute(project, op):
         layer["opacity"] = finite(opacity, "opacity", 0, 1)
         return layer
 
+    def place(layer):
+        for key in ("x", "y"):
+            if key in op:
+                layer[key] = finite(op[key], key)
+
     if target is None:
         name = op["name"] if "name" in op else default_name(project, recipe.get("preset", "organic"))
         x = op.get("x", 0)
@@ -2339,6 +2345,8 @@ def execute(project, op):
         target.update(path=d, path_view=[width, height], width=width, height=height, line_cap="round",
                       **regrown_style(kept, style, op))
         target["organic"] = stored
+        place(target)
+        project.state["active_layer"] = target["id"]
         return
     require(target["type"] == "group", "Organic regeneration needs the organic group or path", field="target")
     from .design import descendants
@@ -2366,6 +2374,7 @@ def execute(project, op):
     sy = target["height"] / target["content_height"]
     target.update(content_width=width, content_height=height, width=max(1, round(width * sx)), height=max(1, round(height * sy)))
     target["organic"] = stored
+    place(target)
     project.state["active_layer"] = target["id"]
 
 
@@ -2374,7 +2383,7 @@ def compile_command(cmd, args):
         return None
     import json
 
-    from .commands import Parser
+    from .commands import Parser, number_or_center
 
     p = Parser(prog="vixl organic", description="Composable organic shapes. vixl organics lists presets, generators and rules.")
     p.add_argument("preset", nargs="?", choices=list(PRESETS))
@@ -2384,7 +2393,9 @@ def compile_command(cmd, args):
     p.add_argument("--naturalness", type=float)
     for key in ("width", "height"):
         p.add_argument("--" + key, type=int)
-    for key in ("x", "y", "padding", "stroke-width"):
+    for key in ("x", "y"):
+        p.add_argument("--" + key, type=number_or_center)
+    for key in ("padding", "stroke-width"):
         p.add_argument("--" + key, type=float)
     p.add_argument("--stroke")
     p.add_argument("--fill", help="Fill for every filled part (--color names single parts)")

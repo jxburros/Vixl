@@ -20,11 +20,32 @@ def compile_design(cmd, args):
             p.add_argument("--" + key, type=float)
         p.add_argument("--line-cap", choices=["butt", "round", "square"])
         p.add_argument("--sides", type=int)
+        p.add_argument("--rotation", type=float, help="degrees clockwise")
+        p.add_argument("--opacity", type=lambda v: v if v.endswith("%") else float(v), help="0-1 or a percentage")
+        p.add_argument("--space", choices=["parent", "canvas"], help="with --target: how --x/--y read in a group")
     elif cmd in ("group", "pathfinder"):
         p.add_argument("name")
         p.add_argument("targets", nargs="+")
+        if cmd == "group":
+            where = p.add_mutually_exclusive_group()
+            where.add_argument("--above", help="place the new group directly above this layer")
+            where.add_argument("--below", help="place the new group directly below this layer")
         if cmd == "pathfinder":
             p.add_argument("--mode", choices=["union", "subtract", "intersect"], required=True)
+    elif cmd == "reparent":
+        p.add_argument("targets", nargs="+")
+        p.add_argument("--into", required=True, help="the group to move them into, or 'page' for the top level")
+        where = p.add_mutually_exclusive_group()
+        where.add_argument("--above", help="stack them directly above this child of the new parent")
+        where.add_argument("--below", help="stack them directly below this child of the new parent")
+        where.add_argument("--index", type=int, help="stacking position among the new parent's children, 0 at the bottom")
+        p.add_argument("--keep", choices=["appearance", "local"])
+        p.add_argument("--no-fit", dest="fit", action="store_false", default=None,
+                       help="do not grow the group's content box")
+        data = {k: v for k, v in vars(p.parse_args(args)).items() if v is not None}
+        if data["into"].lower() in ("page", "none", "root"):
+            data["into"] = None
+        return {"type": cmd, **data}
     elif cmd == "clip":
         p.add_argument("target")
         p.add_argument("base", nargs="?")
@@ -70,6 +91,11 @@ def compile_design(cmd, args):
             p.add_argument("--" + key, type=float)
         if cmd == "repeat-blend":
             p.add_argument("--end", type=json.loads, required=True)
+        else:
+            from .scatter import step_arguments
+
+            step_arguments(p)
+            p.add_argument("--name")
     elif cmd == "adjustment":
         p.add_argument("name")
         p.add_argument("--effects", type=json.loads, required=True)

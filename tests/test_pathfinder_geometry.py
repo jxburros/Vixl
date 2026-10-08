@@ -51,9 +51,6 @@ def svg_tree(project, **options):
     return ET.fromstring(project.export(format="SVG", **options))
 
 
-# -- SVG ------------------------------------------------------------------------------------------
-
-
 def test_subtract_is_one_compound_path_without_masks_and_matches_the_render():
     p = logo_mark()
     data = p.export(format="SVG", svg_policy="strict")  # strict accepts it: no raster fallback, no mask to fake a boolean
@@ -190,7 +187,7 @@ def test_empty_result_exports_nothing_and_does_not_fail():
     assert not ET.fromstring(data).findall(".//{*}path") and svg_alpha(data).max() == 0
 
 
-# -- what cannot be geometry ---------------------------------------------------------------------
+# what cannot be geometry
 
 
 def stroked_boolean():
@@ -228,9 +225,6 @@ def test_too_many_segments_are_refused_not_approximated():
     big = [[((x, 0.0), (x + 1.0, 0.0))] for x in range(MAX_SEGMENTS + 1)]
     with pytest.raises(Unsupported, match="segments"):
         combine_outlines([big], MODES["union"])
-
-
-# -- PDF and PPTX -----------------------------------------------------------------------------------
 
 
 def test_pdf_draws_the_boolean_as_one_vector_path():

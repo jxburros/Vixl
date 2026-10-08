@@ -15,6 +15,7 @@ most 90° each, so every exporter (SVG, PDF, PowerPoint, raster) draws them with
 import math
 
 from .errors import require
+from .geometry import compact_number
 from .model import finite
 
 MAX_ANGLE = 10000
@@ -37,11 +38,6 @@ def wedge_point(cx, cy, radius, angle, aspect=1.0):
 def wedge_centroid(cx, cy, radius, start, end, inner=0.0, aspect=1.0):
     """Where to put a label: the middle of the wedge, halfway between its inner and outer edge."""
     return wedge_point(cx, cy, (radius + inner) / 2, start + sweep_of(start, end) / 2, aspect)
-
-
-def _number(value, digits):
-    text = f"{value:.{digits}f}".rstrip("0").rstrip(".")
-    return "0" if text in ("", "-0") else text
 
 
 def _curves(cx, cy, rx, ry, start, sweep):
@@ -82,7 +78,7 @@ def wedge_path(cx, cy, radius, start, end, inner=0.0, *, aspect=1.0, digits=3):
         return ""
 
     def xy(point):
-        return f"{_number(point[0], digits)} {_number(point[1], digits)}"
+        return f"{compact_number(point[0], digits)} {compact_number(point[1], digits)}"
 
     def curves(r, first, span):
         return "".join(f" C{xy(a)} {xy(b)} {xy(c)}" for a, b, c in _curves(cx, cy, r, r * aspect, first, span))

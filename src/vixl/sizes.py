@@ -36,12 +36,25 @@ PX = "px"
 
 def _print(w, h, unit, description, dpi=300, category="print", bleed=None, safe=None):
     bleed = bleed if bleed is not None else (0.125 if unit == IN else 3)
-    safe = safe if safe is not None else (0.125 if unit == IN else 5)
+    # Most desktop printers cannot print within about a quarter inch of the page edge.
+    safe = safe if safe is not None else (0.25 if unit == IN else 6)
     return {"category": category, "width": w, "height": h, "unit": unit, "dpi": dpi, "bleed": bleed, "safe": safe, "description": description}
 
 
 def _px(w, h, category, description, safe=0):
     return {"category": category, "width": w, "height": h, "unit": PX, "safe": safe, "description": description}
+
+
+# Platform UI covers the top and bottom of a story; the sides only need a normal margin.
+STORY_SAFE = {"top": 250, "bottom": 250, "left": 60, "right": 60}
+
+SIDES = ("left", "top", "right", "bottom")
+
+
+def safe_sides(canvas):
+    """The canvas safe area as (left, top, right, bottom) pixel insets from the trim edge."""
+    safe = canvas.get("safe", 0)
+    return tuple(safe.get(side, 0) for side in SIDES) if isinstance(safe, dict) else (safe,) * 4
 
 
 SIZES = {
@@ -107,9 +120,9 @@ SIZES = {
     "instagram-post": _px(1080, 1080, "social", "Instagram square post (alias)", safe=60),
     "instagram-portrait": _px(1080, 1350, "social", "Instagram 4:5 portrait post", safe=60),
     "instagram-landscape": _px(1080, 566, "social", "Instagram 1.91:1 landscape post", safe=40),
-    "instagram-story": _px(1080, 1920, "social", "Instagram/Facebook story; keep text out of top/bottom 250px", safe=250),
-    "story": _px(1080, 1920, "social", "Vertical 9:16 story", safe=250),
-    "reel-cover": _px(1080, 1920, "social", "Reel/short cover; center 1080×1440 shows in grids", safe=240),
+    "instagram-story": _px(1080, 1920, "social", "Instagram/Facebook story; keep text out of top/bottom 250px", safe=STORY_SAFE),
+    "story": _px(1080, 1920, "social", "Vertical 9:16 story", safe=STORY_SAFE),
+    "reel-cover": _px(1080, 1920, "social", "Reel/short cover; center 1080×1440 shows in grids", safe={"top": 240, "bottom": 240, "left": 60, "right": 60}),
     "facebook-post": _px(1200, 630, "social", "Facebook link/feed image", safe=40),
     "facebook-cover": _px(1640, 624, "social", "Facebook page cover (high resolution)", safe=80),
     "facebook-event": _px(1920, 1005, "social", "Facebook event cover", safe=60),
@@ -244,7 +257,8 @@ UNIT_INCHES = {IN: 1.0, MM: 1 / 25.4, "cm": 1 / 2.54, "pt": 1 / 72}
 
 
 def canonical(name):
-    require(isinstance(name, str) and name, "Size name must be a string")
+    require(isinstance(name, str) and name.strip(), "Give a size: a name from vixl sizes (instagram-post, a4 …) or "
+            "WIDTHxHEIGHT in pixels", field="size")
     key = name.strip().lower().replace("_", "-").replace(" ", "-")
     key = ALIASES.get(key, key)
     if key not in SIZES:
@@ -262,6 +276,13 @@ def to_pixels(value, unit, dpi):
     if unit == PX:
         return value
     return value * UNIT_INCHES[unit] * dpi
+
+
+def bleed_pixels(amount, unit, dpi):
+    """A bleed in pixels, to the nearest half pixel, so trim + 2 × bleed is a whole number of pixels that matches the
+    physical size (0.125 in at 300 dpi is 37.5 px, and a business card with bleed is 1125 px wide, not 1126)."""
+    value = round(to_pixels(amount, unit, dpi) * 2) / 2
+    return int(value) if value.is_integer() else value
 
 
 def resolve(name, *, dpi=None, orientation=None, bleed=False):
@@ -293,14 +314,16 @@ def resolve(name, *, dpi=None, orientation=None, bleed=False):
         bleed_amount = 0
     trim_w = round(to_pixels(w, unit, dpi or 1))
     trim_h = round(to_pixels(h, unit, dpi or 1))
-    bleed_px = round(to_pixels(bleed_amount, unit, dpi or 1))
-    safe_px = round(to_pixels(entry.get("safe", 0), unit, dpi or 1))
+    bleed_px = bleed_pixels(bleed_amount, unit, dpi or 1)
+    safe = entry.get("safe", 0)
+    safe_px = ({side: round(to_pixels(safe.get(side, 0), unit, dpi or 1)) for side in SIDES}
+               if isinstance(safe, dict) else round(to_pixels(safe, unit, dpi or 1)))
     result = {
         "size": key,
         "category": entry["category"],
         "description": entry["description"],
-        "width": trim_w + 2 * bleed_px,
-        "height": trim_h + 2 * bleed_px,
+        "width": int(trim_w + 2 * bleed_px),
+        "height": int(trim_h + 2 * bleed_px),
         "trim": [trim_w, trim_h],
         "bleed": bleed_px,
         "safe": safe_px,
@@ -350,15 +373,17 @@ def size_guides(info):
         ):
             guides[name] = {"axis": axis, "position": position, "generated": "size"}
     if safe:
-        inset = bleed + safe
-        if 2 * inset < min(w, h):
-            for name, axis, position in (
-                ("safe-left", "x", inset),
-                ("safe-right", "x", w - inset),
-                ("safe-top", "y", inset),
-                ("safe-bottom", "y", h - inset),
-            ):
-                guides[name] = {"axis": axis, "position": position, "generated": "size"}
+        sides = safe_sides({"safe": safe})
+        left, top, right, bottom = (bleed + v for v in sides)
+        if left + right < w and top + bottom < h:
+            for (name, axis, position), side in zip((
+                ("safe-left", "x", left),
+                ("safe-top", "y", top),
+                ("safe-right", "x", w - right),
+                ("safe-bottom", "y", h - bottom),
+            ), sides):
+                if side:
+                    guides[name] = {"axis": axis, "position": position, "generated": "size"}
     return guides
 
 
@@ -419,7 +444,69 @@ def validate_canvas(canvas):
         finite(canvas["dpi"], "dpi", 36, 2400)
     for key in ("bleed", "safe"):
         if key in canvas:
-            require(isinstance(canvas[key], int) and 0 <= canvas[key] < min(canvas["width"], canvas["height"]), f"Invalid canvas {key}", "invalid_project")
+            value = canvas[key]
+            limit = min(canvas["width"], canvas["height"])
+            if key == "safe" and isinstance(value, dict):
+                require(set(value) <= set(SIDES) and all(isinstance(v, int) and 0 <= v < limit for v in value.values()),
+                        "Invalid canvas safe", "invalid_project")
+            elif key == "bleed":  # whole or half pixels (bleed_pixels)
+                require(isinstance(value, (int, float)) and not isinstance(value, bool) and (value * 2).is_integer()
+                        and 0 <= value < limit, "Invalid canvas bleed", "invalid_project")
+            else:
+                require(isinstance(value, int) and 0 <= value < limit, f"Invalid canvas {key}", "invalid_project")
     if "physical" in canvas:
         physical = canvas["physical"]
         require(isinstance(physical, dict) and set(physical) <= {"width", "height", "unit", "bleed"} and physical.get("unit") in UNIT_INCHES, "Invalid physical canvas size", "invalid_project")
+
+
+# What a new document is for, when the caller names a purpose instead of a size, lives in the house style
+# (data/house-style.json: each purpose profile's ``size``, its aliases' ``sizes`` and the ``mark`` flag;
+# docs/house-style.md, decisions B5 and B8). The helpers below read it through ``vixl.house_style``.
+# Countries whose locales use US Letter paper; everywhere else uses A4.
+LETTER_COUNTRIES = frozenset({"US", "CA", "MX", "PH", "CL", "CO", "VE", "PR", "GT", "CR", "PA", "DO", "SV", "NI", "BO"})
+
+
+def purpose_name(purpose):
+    """The canonical purpose (``slides``, ``social``, ``logo`` …) a purpose name, alias, brief kind or named
+    size means, or None. Creation and rolls share this vocabulary (``house_style.canonical_purpose``)."""
+    from .house_style import canonical_purpose
+
+    return canonical_purpose(purpose)
+
+
+def paper_size(environ=None):
+    """``letter`` in Letter-paper locales and when the locale names no country, else ``a4``."""
+    import os
+
+    environ = os.environ if environ is None else environ
+    for variable in ("LC_ALL", "LC_PAPER", "LANG"):
+        territory = environ.get(variable, "").split(".")[0].split("@")[0].partition("_")[2].upper()
+        if territory:
+            return "letter" if territory in LETTER_COUNTRIES else "a4"
+    return "letter"
+
+
+def default_size():
+    """``(width, height)`` of a new document given neither a size nor a purpose (the general profile's size)."""
+    from .house_style import purpose_size as size_of
+
+    return tuple(size_of(None))
+
+
+def purpose_size(purpose):
+    """The named size a purpose implies when no size is given, or None (then ``default_size()``)."""
+    from .house_style import purpose_size as size_of
+
+    if purpose is None:
+        return None
+    size = size_of(purpose)
+    if isinstance(size, list):
+        return None
+    return paper_size() if size == "paper" else size
+
+
+def is_mark(purpose=None, size=None):
+    """True for logos, icons and favicons, by purpose or by the named size's category."""
+    from .house_style import is_mark as mark
+
+    return mark(purpose, size)

@@ -15,7 +15,6 @@ Messages name rows and columns, never cell values.
 """
 
 import difflib
-import json
 import math
 from pathlib import Path
 import re
@@ -32,7 +31,6 @@ MARK_KEYS = ("length", "offset", "weight")
 UNITS = ("in", "mm", "cm", "pt")
 MAX_ITEMS = 5000
 MAX_PAGES = 500
-VARIABLE = re.compile(r"\$\{([\w-]+)\}")
 NAME = re.compile(r"[\w-]+")
 BUILTINS = ("page", "pages", "page_name")
 SCANNED = ("layers", "swatches", "character_styles", "paragraph_styles", "canvas")
@@ -72,10 +70,6 @@ FIELD_TYPES = {
     "rerun": {**PATH, "description": "A sheet document from an earlier merge: repeat it with its recorded template, "
               "data and sheet spec (request fields override), rewriting its outputs."},
 }
-
-
-# ---------------------------------------------------------------------------------------------
-# The sheet spec
 
 
 def sheet_spec(spec):
@@ -158,10 +152,6 @@ def _edges(value):
     else:
         edges = [value] * 4
     return [finite(v, "margin", 0, 10000) for v in edges]
-
-
-# ---------------------------------------------------------------------------------------------
-# Geometry
 
 
 def layout(canvas, spec):
@@ -280,7 +270,8 @@ def cell_geometry(plan, col, row, occupied):
     right = min(bleed, gx / 2) if (col + 1, row) in occupied else bleed
     top = min(bleed, gy / 2) if (col, row - 1) in occupied else bleed
     bottom = min(bleed, gy / 2) if (col, row + 1) in occupied else bleed
-    x0, y0, x1, y1 = round(x - left), round(y - top), round(x + tw + right), round(y + th + bottom)
+    # Half up on every edge (not round's half to even), so a box whose edges are a whole number apart keeps that size.
+    x0, y0, x1, y1 = (math.floor(v + 0.5) for v in (x - left, y - top, x + tw + right, y + th + bottom))
     scale, tb = plan["scale"], plan["bleed_t"]
     (trim_w, trim_h) = plan["trim_t"]
     crop = [max(0.0, tb + (x0 - x) / scale), max(0.0, tb + (y0 - y) / scale),
@@ -329,17 +320,15 @@ def mark_shapes(plan, used_cols, used_rows):
     return shapes
 
 
-# ---------------------------------------------------------------------------------------------
-# The data
-
-
 def template_variables(view):
     """(used, defaults, images, fields) for a template view: the variable names it draws, the ones it defines,
     its image variables and its form field keys."""
     from .forms import all_fields, has_fields
 
     state = view.state
-    used = set(VARIABLE.findall(json.dumps({key: state.get(key) for key in SCANNED}, default=str)))
+    from .variables import names, strings
+
+    used = {name for key in SCANNED for text in strings(state.get(key)) for name in names(text)}
     images = {layer["asset_variable"] for layer in state.get("layers", []) if layer.get("asset_variable")}
     defaults = set(state.get("variables", {})) - set(BUILTINS)
     fields = {layer["field"]["key"] for _, layer in all_fields(view)} if has_fields(view) else set()
@@ -376,10 +365,6 @@ def _constants(variables):
         isinstance(k, str) and NAME.fullmatch(k) and isinstance(v, (str, int, float, bool)) for k, v in variables.items())),
         "variables maps names to text, numbers or true/false", field="variables")
     return {key: value if isinstance(value, str) else str(value) for key, value in (variables or {}).items()}
-
-
-# ---------------------------------------------------------------------------------------------
-# Validation
 
 
 class Preflight:
@@ -500,13 +485,11 @@ class Preflight:
         return errors, notes
 
 
-# ---------------------------------------------------------------------------------------------
-# Building the sheet document
-
-
-def build_sheet(session, plan, items, source, revision, size, page, artboard):
+def build_sheet(session, plan, items, source, revision, size, page, artboard, path=None):
     """The sheet document in memory: one page per sheet, a ``link`` layer per copy, marks and slug text.
-    ``items`` is [(row number, copy number, variables)]."""
+    ``items`` is [(row number, copy number, variables)]. With ``path`` (where the sheet document will be saved)
+    the cells store the template relative to that folder when it lies inside it."""
+    from .links import stored_source
     from .pages import empty_content, put_content, set_builtins
     from .pages import MAX_PAGES as PAGE_LIMIT
     from .project import Project
@@ -518,6 +501,9 @@ def build_sheet(session, plan, items, source, revision, size, page, artboard):
             f"{min(MAX_PAGES, PAGE_LIMIT)} are supported", "resource_limit", field="rows")
     project = Project(plan["page"][0], plan["page"][1], spec["background"], limits=session.limits)
     project._workspace = session.workspace
+    if path is not None:
+        project.path = Path(path).resolve()
+    cell_source = stored_source(project, session.resolve(source))
     canvas = project.state["canvas"]
     canvas["dpi"] = plan["dpi"]
     canvas["physical"] = {"width": plan["page_unit"][0], "height": plan["page_unit"][1], "unit": plan["unit"], "bleed": 0}
@@ -534,7 +520,7 @@ def build_sheet(session, plan, items, source, revision, size, page, artboard):
         for col, row, (number, copy, variables) in entries:
             _, _, box, crop = cell_geometry(plan, col, row, occupied)
             layer = new_layer(f"row-{number}" if copy == 1 else f"row-{number}-copy-{copy}", "link", box[2], box[3],
-                              source=source, fit="stretch", crop=[int(v) if float(v).is_integer() else round(v, 6) for v in crop],
+                              source=cell_source, fit="stretch", crop=[int(v) if float(v).is_integer() else round(v, 6) for v in crop],
                               variables=dict(variables), source_hash=revision, source_size=list(size))
             layer["x"], layer["y"] = box[0], box[1]
             if page is not None:
@@ -577,10 +563,6 @@ def build_sheet(session, plan, items, source, revision, size, page, artboard):
         record["content"] = content
     set_builtins(state)
     return project
-
-
-# ---------------------------------------------------------------------------------------------
-# Running a merge
 
 
 def run(session, template, request):
@@ -650,7 +632,8 @@ def run(session, template, request):
                         "written (skip_invalid writes the valid rows)", report=report)
     require(valid, "No valid rows to write", "merge_invalid", report=report)
     require(len(expanded) <= MAX_ITEMS, f"At most {MAX_ITEMS} copies per merge", "resource_limit", field="copies")
-    sheet = build_sheet(session, plan, expanded, source, check.revision, check.size, request.get("page"), request.get("artboard"))
+    sheet = build_sheet(session, plan, expanded, source, check.revision, check.size, request.get("page"), request.get("artboard"),
+                        outputs.get("sheet_document"))
     sheet.state["merge"] = _record(request, source, data_source, plan)
     check_state(sheet, sheet.state)
     sheet.nodes, sheet.head, sheet._head_state, sheet.branches = {}, None, None, {}
@@ -664,7 +647,7 @@ def run(session, template, request):
         write_bytes(outputs["pdf"], data, replace=request.get("replace", False))
         report["output"] = session.relative(outputs["pdf"])
     if "sheet_document" in outputs:
-        sheet.save(outputs["sheet_document"])
+        sheet.save(outputs["sheet_document"], overwrite=bool(request.get("replace", False)))
         report["sheet_document"] = session.relative(outputs["sheet_document"])
     return report
 
@@ -727,10 +710,6 @@ def _host(session):
     host = Project(8, 8, limits=session.limits)
     host._workspace = session.workspace
     return host
-
-
-# ---------------------------------------------------------------------------------------------
-# Workflow action and CLI
 
 
 def dispatch(session, request, document=None):

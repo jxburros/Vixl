@@ -10,7 +10,7 @@ import json
 from pathlib import Path
 import sys
 
-from evals.harness import ClaudeAgent, ReferenceAgent, load_tasks, markdown, run
+from evals.harness import ClaudeAgent, ReferenceAgent, load_tasks, markdown, over_budget, run
 
 
 def main(argv=None):
@@ -18,8 +18,8 @@ def main(argv=None):
     parser.add_argument("--agent", choices=["reference", "claude"], default="reference")
     parser.add_argument("--model", default="claude-opus-5-5")
     parser.add_argument("--effort", choices=["low", "medium", "high", "xhigh", "max"])
-    parser.add_argument("--schema", choices=["full", "slim"], default="full", help="MCP schema mode under test")
-    parser.add_argument("--tools", choices=["all", "core"], default="all")
+    parser.add_argument("--schema", choices=["full", "slim"], default="slim", help="MCP schema mode under test")
+    parser.add_argument("--tools", choices=["all", "core"], default="core")
     parser.add_argument("--baseline", help="Stored task acceptance baseline to compare")
     parser.add_argument("--tasks", default="*", help="glob over task ids, e.g. 'photo-*'")
     parser.add_argument("--max-turns", type=int, default=40)
@@ -39,18 +39,23 @@ def main(argv=None):
     out.mkdir(parents=True, exist_ok=True)
     results, summary = run(tasks, agent, schema=args.schema, keep=out / "workspaces" if args.keep else None, tool_set=args.tools)
     meta = {"agent": args.agent, "model": args.model if args.agent == "claude" else None, "effort": args.effort, "schema": args.schema, "tools": args.tools}
-    (out / "results.json").write_text(json.dumps({"meta": meta, "summary": summary, "results": results}, indent=2, default=str))
+    (out / "results.json").write_text(json.dumps({"meta": meta, "summary": summary, "results": results}, indent=2, default=str), encoding="utf-8")
     regressions = []
     if args.baseline:
-        baseline = json.loads(Path(args.baseline).read_text())
+        baseline = json.loads(Path(args.baseline).read_text(encoding="utf-8"))
         by_task = {r["task"]: r for r in results}
         for name in baseline["required_passes"]:
             if name not in by_task or not by_task[name]["passed"]:
                 regressions.append(name)
+        # Calls per task are the cost measure: a task over its budget, or a higher mean, is a regression.
+        regressions += over_budget(results, baseline.get("tool_call_budgets", {}))
+        ceiling = baseline.get("max_mean_tool_calls")
+        if ceiling is not None and summary["mean_tool_calls"] > ceiling:
+            regressions.append(f"mean tool calls {summary['mean_tool_calls']} > {ceiling}")
     report = markdown(results, summary, meta)
     if args.baseline:
         report += "\nBaseline: " + ("regressions: " + ", ".join(regressions) if regressions else "all required tasks pass") + "\n"
-    (out / "report.md").write_text(report)
+    (out / "report.md").write_text(report, encoding="utf-8")
     print(report)
     return 0 if summary["passed"] == summary["tasks"] and not regressions else 1
 

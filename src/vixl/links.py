@@ -13,8 +13,13 @@ source's shapes and real text, not a picture.
 as ``stale`` (the source changed since) or ``missing``; ``link-embed`` freezes a link into an
 ordinary image layer.
 
-Links are opt-in and confined. A relative source resolves against the workspace (the service's
-workspace, or the CLI's folder), then the document's own folder. A source outside both needs
+Links are opt-in and confined. A relative source resolves against the document's own folder first,
+then the workspace (the service's workspace, or the CLI's folder), so a folder holding a document and
+its sources can be copied or moved as a whole. A source inside the document's folder is stored
+relative to it; other sources are stored relative to the workspace (documents saved before 0.22
+stored every source that way, and still resolve through the workspace fallback). Saving a document to
+another folder rewrites its relative sources so they keep pointing at the same files, and
+``links-relink`` rewrites a source prefix by hand. A source outside both needs
 ``--allow-linked`` (CLI/Python only: services never allow it, so REST and MCP links stay inside the
 workspace). A chain of links is limited to ``MAX_DEPTH`` levels, and a link back to a document that
 is being drawn is an error that names the chain.
@@ -31,31 +36,22 @@ import re
 import threading
 
 from .errors import VixlError, require
+from .geometry import ANCHORS, canonical_anchor
 from .model import finite, new_layer
 
-TYPES = ("link", "link-refresh", "link-embed")
+TYPES = ("link", "link-refresh", "link-embed", "links-relink")
 ACTIONS = {"links": (set(), set())}
 FITS = ("fill", "fit", "stretch")
 MAX_DEPTH = 4
 MAX_SOURCE_PATH = 500
 MAX_RENDER_SCALE = 8
-ANCHORS = {
-    "top-left": [0, 0], "top": [0.5, 0], "top-right": [1, 0],
-    "left": [0, 0.5], "center": [0.5, 0.5], "right": [1, 0.5],
-    "bottom-left": [0, 1], "bottom": [0.5, 1], "bottom-right": [1, 1],
-}
 OK, STALE, MISSING, ERROR, CYCLE, FORBIDDEN = "ok", "stale", "missing", "error", "cycle", "forbidden"
 BROKEN = (MISSING, ERROR, CYCLE, FORBIDDEN)
 
-VARIABLE = re.compile(r"\$\{([\w-]+)\}")
 _LOCK = threading.RLock()
 _SOURCES = OrderedDict()  # (path, allow_linked) -> (stamp, revision, Project, asset bytes)
 _RENDERS = []  # one LayerCache of drawn sources, created on first use (render.py imports this module lazily)
 _CHAIN = ContextVar("vixl_link_chain", default=())
-
-
-# ---------------------------------------------------------------------------------------------
-# Operations
 
 
 def schemas(add):
@@ -69,12 +65,15 @@ def schemas(add):
     add("link", {"name": S, "source": S, "x": COORD, "y": COORD, "width": SIZE, "height": SIZE, **settings})
     add("link-refresh")
     add("link-embed")
+    add("links-relink", {"from": S, "to": S}, ["from", "to"])
 
 
 def execute(project, op):
     kind = op["type"]
     if kind == "link-refresh":
         return _refresh(project, op)
+    if kind == "links-relink":
+        return relink(project, op["from"], op["to"])
     if kind == "link" and not op.get("target"):
         require("source" in op, "A link needs a source (or a target: the link layer to change)", field="source")
         return _add(project, op)
@@ -141,6 +140,54 @@ def _refresh(project, op):
         require(layers, "This document has no linked document layers to refresh")
     for layer in layers:
         _record(project, layer)
+
+
+def _clean(value, field):
+    require(isinstance(value, str) and value.strip() and len(value) <= MAX_SOURCE_PATH and "\0" not in value,
+            f"{field} is a source path or folder prefix", field=field)
+    return value.replace("\\", "/").rstrip("/") or "/"
+
+
+def relink(project, old, new):
+    """``links-relink``: replace the ``old`` prefix of every link source in the document (all pages and masters)
+    with ``new``, then record each moved link's revision. A prefix matches whole path segments."""
+    old, new = _clean(old, "from"), _clean(new, "to")
+    moved = []
+    for _, layer in link_layers(project.state):
+        source = layer["source"].replace("\\", "/")
+        if source == old or source.startswith(old + "/"):
+            moved.append((layer, new + source[len(old):]))
+    sources = sorted({layer["source"] for _, layer in link_layers(project.state)})
+    require(moved, f"No link source starts with {old!r}", "not_found", field="from", suggestions=sources)
+    for layer, source in moved:
+        path = locate(project, source)
+        layer["source"] = stored_source(project, path)
+        _record(project, layer)
+
+
+def rebase(project, new_path):
+    """``links-relink`` operations that keep every relative source pointing at the same file when the document is
+    saved as ``new_path`` (another folder); [] when nothing changes."""
+    current = Path(project.path).resolve() if getattr(project, "path", None) else None
+    new_path = Path(new_path).resolve()
+    if current is None or current.parent == new_path.parent:
+        return []
+    ops = {}
+    for _, layer in link_layers(project.state):
+        source = layer["source"]
+        if Path(source).is_absolute() or source in ops:
+            continue
+        try:
+            path = locate(project, source)
+        except VixlError:
+            continue
+        if not path.exists():
+            continue
+        workspace = getattr(project, "_workspace", None)
+        moved = _stored(path, [new_path.parent, *([Path(workspace).resolve()] if workspace else [])])
+        if moved != source:
+            ops[source] = {"type": "links-relink", "from": source, "to": moved}
+    return list(ops.values())
 
 
 def _record(project, layer, accept=True):
@@ -216,18 +263,20 @@ def _variables(value):
 
 def _references(project, values):
     from .render import document_variables
+    from .variables import required_names
 
     known = document_variables(project)
     for name, value in values.items():
-        for reference in VARIABLE.findall(value) if isinstance(value, str) else ():
+        for reference in required_names(value):
             require(reference in known, f"Undefined variable: {reference} (in the link variable {name!r})", "missing_variable",
                     field="variables")
 
 
 def _position(value):
     if isinstance(value, str):
-        require(value in ANCHORS, f"Unknown position {value!r}; use {', '.join(ANCHORS)} or [x, y] fractions", field="position")
-        return list(ANCHORS[value])
+        name = canonical_anchor(value)
+        require(name, f"Unknown position {value!r}; use {', '.join(ANCHORS)} or [x, y] fractions", field="position")
+        return list(ANCHORS[name])
     require(isinstance(value, list) and len(value) == 2, "position is [x, y] fractions or an anchor", field="position")
     return [finite(v, "position", 0, 1) for v in value]
 
@@ -279,18 +328,14 @@ def validate(layer, state):
                 "Invalid link source size", "invalid_project")
 
 
-# ---------------------------------------------------------------------------------------------
-# Finding and opening sources
-
-
 def bases(project):
-    """Folders a relative source resolves against, in order: the workspace, then the document's folder."""
+    """Folders a relative source resolves against, in order: the document's folder, then the workspace."""
     found = []
+    if getattr(project, "path", None):
+        found.append(Path(project.path).resolve().parent)
     workspace = getattr(project, "_workspace", None)
     if workspace:
         found.append(Path(workspace).resolve())
-    if getattr(project, "path", None):
-        found.append(Path(project.path).resolve().parent)
     return list(dict.fromkeys(found)) or [Path.cwd().resolve()]
 
 
@@ -313,13 +358,27 @@ def locate(project, source, suffix=".vixl"):
 
 
 def stored_source(project, path):
-    """A workspace-relative POSIX path when the file is inside a base folder, else the absolute path."""
-    for root in bases(project):
+    """A POSIX path relative to the document's folder when the file is inside it, else relative to the
+    workspace, else the absolute path."""
+    return _stored(path, bases(project))
+
+
+def _stored(path, roots):
+    for root in roots:
         try:
             return path.relative_to(root).as_posix()
         except ValueError:
             continue
     return str(path)
+
+
+def resolved_from(project, path):
+    """``document``, ``workspace`` or ``absolute``: which base folder a resolved source lies in."""
+    folder = Path(project.path).resolve().parent if getattr(project, "path", None) else None
+    if folder and path.is_relative_to(folder):
+        return "document"
+    workspace = getattr(project, "_workspace", None)
+    return "workspace" if workspace and path.is_relative_to(Path(workspace).resolve()) else "absolute"
 
 
 def open_source(project, path, source):
@@ -378,10 +437,6 @@ def _canvas_size(child, page, artboard, source):
                 field="artboard")
         return boards[artboard]["width"], boards[artboard]["height"]
     return state["canvas"]["width"], state["canvas"]["height"]
-
-
-# ---------------------------------------------------------------------------------------------
-# Cycles
 
 
 def link_layers(state):
@@ -450,10 +505,6 @@ def entering(project, path, source):
         yield
     finally:
         _CHAIN.reset(token)
-
-
-# ---------------------------------------------------------------------------------------------
-# Rendering
 
 
 class Prepared:
@@ -644,10 +695,6 @@ def pdf_link(builder, layer, bounds, matrix):
     return None
 
 
-# ---------------------------------------------------------------------------------------------
-# Status
-
-
 def status(project):
     """One record per link layer: its source, ``state`` (ok, stale, missing, error, cycle or forbidden) and
     what is wrong. ``stale`` means the source changed since ``link-refresh`` last recorded it; the layer
@@ -658,7 +705,7 @@ def status(project):
                 **({"on_page": where} if where else {})}
         try:
             path = locate(project, layer["source"])
-            item["path"] = str(path)
+            item.update(path=str(path), resolved_from=resolved_from(project, path))
             child, revision = open_source(project, path, layer["source"])
             size = _canvas_size(child, layer.get("source_page"), layer.get("artboard"), layer["source"])
             item.update(revision=revision[:12], size=list(size))
@@ -705,6 +752,10 @@ def check_links(project, layers, issue):
                   f"{item['message']}", [layer], source=item["source"])
         elif item["state"] == STALE:
             issue("links", "warning", f"{layer['name']!r}: {item['message']}", [layer], source=item["source"])
+        if item.get("resolved_from") in ("workspace", "absolute") and getattr(project, "path", None):
+            issue("links", "info", f"{layer['name']!r} links to {item['source']!r}, outside this document's folder; "
+                  "copying the folder elsewhere would break the link (keep sources beside the document, or relink "
+                  "with links-relink)", [layer], source=item["source"], path=item["path"])
         if item.get("size_changed"):
             issue("links", "warning", f"{layer['name']!r}: {item['source']!r} is now {item['size'][0]}×{item['size'][1]}, "
                   f"was {item['recorded_size'][0]}×{item['recorded_size'][1]}; check how it fits", [layer],
@@ -734,10 +785,6 @@ def fingerprint(project):
     return sorted(found.items())
 
 
-# ---------------------------------------------------------------------------------------------
-# Workflow action and CLI
-
-
 def dispatch(session, request, document=None):
     """The ``links`` workflow action: every link of the open document with its state."""
     with session.project(document=document) as project:
@@ -745,13 +792,18 @@ def dispatch(session, request, document=None):
 
 
 def compile_command(cmd, args):
-    """``vixl link SOURCE …``, ``link-set TARGET …`` (a ``link`` operation with a target), ``link-refresh [TARGET]``
-    and ``link-embed TARGET`` (``vixl links`` lists links and is a document command)."""
+    """``vixl link SOURCE …``, ``link-set TARGET …`` (a ``link`` operation with a target), ``link-refresh [TARGET]``,
+    ``link-embed TARGET`` and ``links-relink FROM TO`` (``vixl links`` lists links and is a document command)."""
     if cmd not in (*TYPES, "link-set"):
         return None
     from .commands import Parser, pairs
 
     p = Parser(prog=f"vixl {cmd}")
+    if cmd == "links-relink":
+        p.add_argument("old", metavar="FROM", help="The source prefix to replace (a file or folder)")
+        p.add_argument("new", metavar="TO", help="Its replacement")
+        a = p.parse_args(args)
+        return {"type": cmd, "from": a.old, "to": a.new}
     if cmd == "link":
         p.add_argument("source", help="The linked .vixl file (workspace-relative)")
         p.add_argument("--name")

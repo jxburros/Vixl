@@ -24,6 +24,8 @@ import math
 
 import numpy as np
 
+from .geometry import bezier_points
+
 EPS = 1e-6
 NORMALS = {"top": (0, -1), "right": (1, 0), "bottom": (0, 1), "left": (-1, 0)}
 OPPOSITE = {"top": "bottom", "bottom": "top", "left": "right", "right": "left"}
@@ -116,10 +118,6 @@ class Result:
     reversed: list = field(default_factory=list)  # ids of edges drawn against their direction
     header: float = 0.0  # lane header thickness (along the layers)
     notes: list = field(default_factory=list)
-
-
-# ---------------------------------------------------------------------------------------------
-# Shapes: where a connector meets a node
 
 
 def _polygon(node):
@@ -216,10 +214,6 @@ def _segment_distance(point, p, q):
     return math.hypot(point[0] - (p[0] + t * ex), point[1] - (p[1] + t * ey))
 
 
-# ---------------------------------------------------------------------------------------------
-# Routes: polylines and cubic curves
-
-
 def polyline(points):
     """Line segments through ``points``; repeated points and collinear middles are dropped."""
     cleaned = []
@@ -289,12 +283,9 @@ def end_direction(segments):
     return (0.0, 0.0)
 
 
-def bezier_point(p0, c1, c2, p1, t):
-    u = 1 - t
-    return (
-        u**3 * p0[0] + 3 * u * u * t * c1[0] + 3 * u * t * t * c2[0] + t**3 * p1[0],
-        u**3 * p0[1] + 3 * u * u * t * c1[1] + 3 * u * t * t * c2[1] + t**3 * p1[1],
-    )
+def curve_points(controls, ts):
+    """Points of a cubic segment's curve at ``ts`` as (x, y) tuples (geometry.bezier_points)."""
+    return [tuple(point) for point in bezier_points(controls, ts).tolist()]
 
 
 def split_bezier(p0, c1, c2, p1, t):
@@ -315,7 +306,7 @@ def flatten(segments, steps=24):
             points.append(segment[2])
         else:
             _, p0, c1, c2, p1 = segment
-            points.extend(bezier_point(p0, c1, c2, p1, i / steps) for i in range(1, steps + 1))
+            points.extend(curve_points((p0, c1, c2, p1), [i / steps for i in range(1, steps + 1)]))
     return points
 
 
@@ -450,7 +441,7 @@ def _cut_segment(segment, rect):
             pieces.append(("keep", ("L", at(t1), q)))
         return pieces
     _, p0, c1, c2, p1 = segment
-    samples = [bezier_point(p0, c1, c2, p1, i / 64) for i in range(65)]
+    samples = curve_points((p0, c1, c2, p1), [i / 64 for i in range(65)])
     inside = [i for i, s in enumerate(samples) if _inside(s, rect)]
     if not inside:
         return [("keep", segment)]
@@ -458,12 +449,12 @@ def _cut_segment(segment, rect):
     a, b = max(0, inside[0] - 1) / 64, inside[0] / 64
     for _ in range(22):
         m = (a + b) / 2
-        a, b = (m, b) if not _inside(bezier_point(p0, c1, c2, p1, m), rect) else (a, m)
+        a, b = (m, b) if not _inside(curve_points((p0, c1, c2, p1), [m])[0], rect) else (a, m)
     t_in = b
     a, b = inside[-1] / 64, min(64, inside[-1] + 1) / 64
     for _ in range(22):
         m = (a + b) / 2
-        a, b = (a, m) if not _inside(bezier_point(p0, c1, c2, p1, m), rect) else (m, b)
+        a, b = (a, m) if not _inside(curve_points((p0, c1, c2, p1), [m])[0], rect) else (m, b)
     t_out = a
     pieces = []
     head, rest = split_bezier(p0, c1, c2, p1, t_in)
@@ -517,6 +508,19 @@ def _segments_cross(a, b, c, d):
     return d1 * d2 < -EPS and d3 * d4 < -EPS
 
 
+def overlap_length(a, b, tolerance=1.5):
+    """How far two straight segments run along each other (collinear within ``tolerance`` px)."""
+    (p, q), (r, t) = a, b
+    length = math.hypot(q[0] - p[0], q[1] - p[1])
+    if length < EPS or math.hypot(t[0] - r[0], t[1] - r[1]) < EPS:
+        return 0.0
+    ux, uy = (q[0] - p[0]) / length, (q[1] - p[1]) / length
+    if any(abs((c[0] - p[0]) * uy - (c[1] - p[1]) * ux) > tolerance for c in (r, t)):
+        return 0.0
+    s0, s1 = sorted(((c[0] - p[0]) * ux + (c[1] - p[1]) * uy) for c in (r, t))
+    return max(0.0, min(length, s1) - max(0.0, s0))
+
+
 def count_crossings(routes):
     """How many pairs of connectors cross (shared endpoints and touching runs do not count)."""
     flat = []
@@ -538,10 +542,6 @@ def count_crossings(routes):
                     break
             total += hit
     return total
-
-
-# ---------------------------------------------------------------------------------------------
-# Obstacle-avoiding orthogonal router
 
 
 class Router:
@@ -725,10 +725,6 @@ def _loop(node, edge, side, o):
     return Route(segments, label)
 
 
-# ---------------------------------------------------------------------------------------------
-# Layered layout
-
-
 class _Dummy:
     """A point a long connector passes through in a layer."""
 
@@ -866,7 +862,7 @@ class _Layered:
         self.exit_side = EXIT[o.direction]
         self.entry_side = OPPOSITE[self.exit_side]
 
-    # -- sizes in the abstract frame: ``a`` runs across the layers, ``r`` along them
+    # Sizes in the abstract frame: ``a`` runs across the layers, ``r`` along them.
     def sa(self, n):
         return n.h if self.horizontal else n.w
 
@@ -930,7 +926,6 @@ class _Layered:
         self.assign_along()
         return self.build(loops)
 
-    # -- order within layers
     def order_layers(self):
         layers, up, down = self.layers, self.up, self.down
 
@@ -1013,7 +1008,6 @@ class _Layered:
         if count > best_count:
             self.layers = best
 
-    # -- coordinates across the layers
     def size_a(self, v):
         if v in self.nodes:
             return self.sa(self.nodes[v]) + 2 * self.loop_extra.get(v, 0.0)
@@ -1180,7 +1174,7 @@ class _Layered:
             cursor += width
         return bands
 
-    # -- coordinates along the layers; one track per horizontal run in each gap
+    # Coordinates along the layers: one track per horizontal run in each gap.
     def attach_offsets(self):
         """Offsets along the node sides at both ends of every hop, spread so connectors do not merge."""
         out_slots, in_slots = defaultdict(list), defaultdict(list)
@@ -1375,10 +1369,6 @@ class _Layered:
         return boxes
 
 
-# ---------------------------------------------------------------------------------------------
-# Trees: tidy, radial and mind map
-
-
 def _forest(ids, edges):
     """(parent map, children map, roots, edges left over) of a breadth-first spanning forest."""
     out = defaultdict(list)
@@ -1538,10 +1528,6 @@ class _Tree:
         return routes
 
 
-# ---------------------------------------------------------------------------------------------
-# Radial and mind map
-
-
 def _leaves(children, v, memo):
     if v not in memo:
         kids = children.get(v, [])
@@ -1603,10 +1589,6 @@ def _place_radial(nodes, edges, o):
     return parent, depth, (0.0, 0.0)
 
 
-# ---------------------------------------------------------------------------------------------
-# Entry point
-
-
 def layout(nodes, edges, groups=None, options=None):
     """Place ``nodes`` (LNode list), route ``edges`` (LEdge list) and return a ``Result`` whose
     coordinates start at (0, 0). ``groups`` are LGroup lanes and clusters (members via ``node.group``)."""
@@ -1641,7 +1623,9 @@ def layout(nodes, edges, groups=None, options=None):
 
 
 def _route_pending(result, nodes, pending, o):
-    """Route edges the main pass left to the obstacle-avoiding router (explicit ports, extra edges)."""
+    """Route edges the main pass left to the obstacle-avoiding router (explicit ports, extra edges such as a cycle's
+    back edge). They attach beside connectors already on a side, never on top of them, and a straight or curved
+    route that would cross another node goes around it instead."""
     if not pending:
         return
     boxes = [n.box() for n in nodes.values()]
@@ -1654,9 +1638,18 @@ def _route_pending(result, nodes, pending, o):
         sides[e.id] = (_port_side(a, b, e.from_port), _port_side(b, a, e.to_port))
         slots[(e.src, sides[e.id][0])].append((e.id, 0))
         slots[(e.dst, sides[e.id][1])].append((e.id, 1))
+    ends = [p for route in result.edges.values() if route.segments
+            for p in (route.segments[0][1], route.segments[-1][-1])]
     offsets = {}
     for (node_id, side), members in slots.items():
-        for member, off in zip(members, spread(len(members), attach_limit(nodes[node_id], side), 14.0)):
+        limit = attach_limit(nodes[node_id], side)
+        centre = side_point(nodes[node_id], side)
+        taken = limit > 0 and any(math.hypot(p[0] - centre[0], p[1] - centre[1]) < 1.5 for p in ends)
+        choices = spread(len(members) + taken, limit, 14.0)
+        if taken:
+            # A connector of the main pass already attaches at the centre: keep the offsets beside it.
+            choices.remove(min(choices, key=abs))
+        for member, off in zip(members, choices):
             offsets[member] = off
     anchors = []
     for e in pending:
@@ -1665,16 +1658,20 @@ def _route_pending(result, nodes, pending, o):
             anchors.append(_stub(side_point(nodes[node_id], side, offsets[(e.id, end)]), side, stub))
     bounds = (min(b[0] for b in boxes) - margin, min(b[1] for b in boxes) - margin,
               max(b[0] + b[2] for b in boxes) + margin, max(b[1] + b[3] for b in boxes) + margin)
-    router = Router(boxes, bounds, clearance, anchors) if o.routing == "orthogonal" else None
+    router = None
     for e in pending:
         a, b = nodes[e.src], nodes[e.dst]
         side_a, side_b = sides[e.id]
         off_a, off_b = offsets[(e.id, 0)], offsets[(e.id, 1)]
+        segments = None
         if o.routing == "straight":
             segments = straight_route(a, b, e, off_a, off_b)
         elif o.routing == "curved":
             segments = curved_route(a, b, e, off_a, off_b, sides=(side_a, side_b))
-        else:
+        if segments is not None and any(route_hits_node(segments, n) for n in nodes.values() if n.id not in (e.src, e.dst)):
+            segments = None
+        if segments is None:
+            router = router or Router(boxes, bounds, clearance, anchors)
             start, end = side_point(a, side_a, off_a), side_point(b, side_b, off_b)
             path = router.route(_stub(start, side_a, stub), _stub(end, side_b, stub), NORMALS[side_a],
                                 tuple(-v for v in NORMALS[side_b]))
@@ -1714,6 +1711,10 @@ def _radial_result(nodes, edges, o):
         if e.from_port in NORMALS or e.to_port in NORMALS:
             continue
         segments = straight_route(a, b, e)
+        if parent.get(e.dst) != e.src and (parent.get(e.src) == e.dst or any(
+                route_hits_node(segments, n) for n in nodes.values() if n.id not in (e.src, e.dst))):
+            # A back edge (a cycle) would lie on its tree edge or run through nodes: the router takes it around.
+            continue
         if o.routing == "curved":
             p, q = segments[0][1], segments[0][2]
             length = math.hypot(q[0] - p[0], q[1] - p[1])
@@ -1902,7 +1903,7 @@ def _normalise(result, nodes, edges):
             for p in (segment[1], segment[-1]):
                 add(p[0], p[1], p[0], p[1])
             if segment[0] == "C":
-                samples = [bezier_point(*segment[1:], i / 8) for i in range(9)]
+                samples = curve_points(segment[1:], [i / 8 for i in range(9)])
                 for p in samples:
                     add(p[0], p[1], p[0], p[1])
         if route.label and key in labels:

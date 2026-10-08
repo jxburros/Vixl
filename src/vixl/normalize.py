@@ -1,14 +1,14 @@
 """Forgiving input for model-written operations.
 
 Language models reliably guess a handful of spellings that differ from the canonical schema
-(``rect``, ``font_size``, ``opacity: 50``, camelCase keys, ``"50%"`` coordinates). Rejecting each
+(``rect``, ``font_size``, ``opacity: "50%"``, camelCase keys, ``"50%"`` coordinates). Rejecting each
 guess costs an agent a round trip, so every interface normalizes them here, the same way, and
 reports what changed so the caller can learn the canonical form.
 """
 
 import re
 
-from .errors import require
+from .errors import VixlError, require
 
 PERCENT = re.compile(r"^(-?\d+(?:\.\d+)?)%$")
 
@@ -24,6 +24,8 @@ TYPE_ALIASES = {
     "update-text": "text-set",
     "delete": "remove",
     "delete-layer": "remove",
+    "merge": "merge-layers",
+    "flatten-image": "flatten",
     "translate": "move",
     "set-position": "move",
     "set-opacity": "opacity",
@@ -63,6 +65,8 @@ TYPE_ALIASES = {
     "flowchart": "diagram",
     "flow-chart": "diagram",
     "diagram-text": "diagram-from-text",
+    "move-into": "reparent",
+    "adopt": "reparent",
 }
 SHAPE_TYPES = {
     "rect": ("rectangle", {}),
@@ -139,6 +143,16 @@ FIELD_ALIASES = {
         "angle_end": "end_angle",
         "hole": "inner_radius",
         "inner": "inner_radius",
+        "tail_position": "pointer_position",
+        "tail_size": "pointer_size",
+        "tail_width": "pointer_size",
+        "tail_side": "pointer_side",
+        "pointer": "pointer_side",
+        "body_ratio": "body",
+        "body_size": "body",
+        "lobe_balance": "apex",
+        "points": "sides",
+        "arm_width": "thickness",
     },
     "solid": {"fill": "color", "colour": "color", "fill_color": "color"},
     "gradient": {"from": "start", "to": "end", "start_color": "start", "end_color": "end"},
@@ -162,6 +176,8 @@ FIELD_ALIASES = {
 }
 FIELD_ALIASES["text-set"] = FIELD_ALIASES["text"]
 GEOMETRY_TYPES = {
+    "qr",
+    "barcode",
     "solid",
     "gradient",
     "shape",
@@ -178,8 +194,12 @@ GEOMETRY_TYPES = {
     "stack",
     "link",
     "chart",
+    "organic",
 }
-CENTER_TYPES = {"solid", "gradient", "shape", "add", "frame", "symbol-instance", "move", "field", "link", "chart"}
+CENTER_TYPES = {
+    "solid", "gradient", "shape", "add", "frame", "symbol-instance", "move", "field", "link", "chart", "organic", "qr",
+    "barcode",
+}
 
 
 def _snake(key):
@@ -199,7 +219,16 @@ def _canonical_type(kind, known):
     return candidates[-1] if candidates[-1] in SHAPE_TYPES or candidates[-1] in STYLE_ALIASES else kind
 
 
-def normalize_operation(operation, properties, known_types, effects, notes, index=None):
+# What an adjustment layer's effects entries may hold.
+ADJUSTMENT_FIELDS = frozenset({"name", "amount", "value", "seed", "radius", "strength", "shadow_color",
+                               "highlight_color", "black", "white", "points", "enabled", "luminance", "chroma",
+                               "search"})
+
+# Colour fields where "none" means no paint, spelled "transparent" from here on.
+COLOR_FIELDS = ("fill", "stroke", "color", "stroke_color", "background", "start", "end", "highlight")
+
+
+def normalize_operation(operation, properties, known_types, effects, notes, index=None, required=None):
     """Rewrite well-known guesses into canonical form. ``properties(kind)`` returns the schema's
     property names for a canonical operation type; the result is still schema-validated."""
     require(isinstance(operation, dict), "Each operation must be an object")
@@ -253,8 +282,35 @@ def normalize_operation(operation, properties, known_types, effects, notes, inde
             op[canonical] = op.pop(key)
             note(f"{key!r} → {canonical!r}")
 
-    from .design_schema import SHAPES
+    from .targets import normalize as normalize_targets
 
+    op = normalize_targets(op, kind, allowed, required(kind) if required else frozenset(), note)
+
+    from .design_schema import SHAPES
+    from .geometry import ANCHORS, canonical_anchor
+
+    if isinstance(op.get("easing"), str) and op["easing"] != op["easing"].strip().lower():
+        note(f"easing {op['easing']!r} → {op['easing'].strip().lower()!r}")
+        op["easing"] = op["easing"].strip().lower()
+    # Anchor synonyms (bottom-center, center-left, ...) → the canonical anchor names.
+    for key in ("anchor", "align", "position", *(("value",) if kind == "pivot" else ())):
+        name = canonical_anchor(op.get(key))
+        if name and name != op[key]:
+            note(f"{key} {op[key]!r} → {name!r}")
+            op[key] = name
+    if kind == "pivot" and isinstance(op.get("value"), str) and op["value"] not in ANCHORS:
+        raise VixlError("invalid_operation", f"Unknown pivot anchor {op['value']!r}; use {', '.join(ANCHORS)}", field="value",
+                        allowed=list(ANCHORS))
+    if kind == "snap" and isinstance(op.get("anchors"), list):
+        op["anchors"] = [canonical_anchor(v, baseline=True) or v for v in op["anchors"]]
+
+    if kind == "adjustment" and isinstance(op.get("effects"), list):
+        for number, effect in enumerate(op["effects"]):
+            extra = sorted(set(effect) - ADJUSTMENT_FIELDS) if isinstance(effect, dict) else []
+            if extra:
+                raise VixlError("invalid_operation", f"Unknown field(s) {', '.join(map(repr, extra))} in "
+                                f"effects[{number}]. Allowed: {', '.join(sorted(ADJUSTMENT_FIELDS))}",
+                                field=f"effects.{number}.{extra[0]}", allowed=sorted(ADJUSTMENT_FIELDS))
     if kind in ("field", "field-set"):
         from .forms import normalize as normalize_field
 
@@ -266,17 +322,17 @@ def normalize_operation(operation, properties, known_types, effects, notes, inde
     if kind == "shape" and isinstance(op.get("shape"), str) and op["shape"] not in SHAPES:
         guess = op["shape"].lower().replace("_", "-").replace(" ", "-")
         if guess not in SHAPE_TYPES:
-            # "hexagonal", "circular", "rectangular", "stars" → their base shape.
-            guess = next((name for name in SHAPE_TYPES if len(name) > 3 and guess.startswith(name)), guess)
+            # "hexagonal", "circular", "rectangular", "stars" → their base shape. A single extra letter other than a
+            # plural "s" is a typo ("trianglee"), which the schema answers with a did-you-mean instead.
+            guess = next((name for name in SHAPE_TYPES if len(name) > 3 and guess.startswith(name)
+                          and (guess[len(name):] == "s" or len(guess) - len(name) >= 2)), guess)
         if guess in SHAPE_TYPES and SHAPE_TYPES[guess][0] != op["shape"]:
             shape, extra = SHAPE_TYPES[guess]
             note(f"shape {op['shape']!r} → {shape!r}")
             op["shape"] = shape
             for key, value in extra.items():
                 op.setdefault(key, value)
-    if kind == "opacity" and _number(op.get("value")) and 1 < op["value"] <= 100:
-        note(f"opacity {op['value']} read as percent → {op['value'] / 100:g}")
-        op["value"] = op["value"] / 100
+    normalize_opacity(op, kind, note)
     if kind == "blend" and isinstance(op.get("value"), str) and op["value"] != op["value"].lower():
         op["value"] = op["value"].lower()
     if kind == "effect" and isinstance(op.get("name"), str):
@@ -294,7 +350,7 @@ def normalize_operation(operation, properties, known_types, effects, notes, inde
         kind == "effect" and op.get("name") in ("blur", "gaussian-blur")
     )
     if blur and "radius" in op and "amount" not in op and "value" not in op:
-        # Blur strength lives in amount; a radius field used to be accepted and silently ignored.
+        # Blur strength lives in amount, so a radius given for a blur is read as its amount.
         op["amount"] = op.pop("radius")
         note("blur 'radius' → 'amount'")
     if kind == "layer-style" and isinstance(op.get("name"), str):
@@ -320,9 +376,8 @@ def normalize_operation(operation, properties, known_types, effects, notes, inde
                 if canonical != key and canonical not in settings:
                     note(f"settings.{key} → settings.{canonical}")
                     key = canonical
-                if key == "opacity" and _number(value) and 1 < value <= 100:
-                    note(f"settings.opacity {value} read as percent → {value / 100:g}")
-                    value = value / 100
+                if key == "opacity":
+                    value = opacity(value, "settings.opacity", note)
                 fixed[key] = value
             op["settings"] = fixed
     if kind == "resize" and ("width" in op) != ("height" in op) and "keep_aspect" not in op:
@@ -345,7 +400,72 @@ def normalize_operation(operation, properties, known_types, effects, notes, inde
                 {"offset": round(i / (len(colors) - 1), 6), "color": c} for i, c in enumerate(colors)
             ]
         note("colors → start/end/stops")
+    for key in COLOR_FIELDS:
+        if isinstance(op.get(key), str) and op[key].strip().lower() == "none":
+            op[key] = "transparent"
+            note(f"{key} 'none' → 'transparent'")
+        elif isinstance(op.get(key), str) and RGB_FUNCTION.match(op[key]):
+            op[key] = _clamped_rgb(op[key], key, note)
     return op
+
+
+RGB_FUNCTION = re.compile(r"\s*rgba?\(", re.IGNORECASE)
+
+
+def _clamped_rgb(value, key, note):
+    """``rgb(300, 0, 0)`` → ``#ff0000``, noted, as CSS clamps it; colours in range and invalid ones are left alone."""
+    from .colors import clipped
+    from .errors import VixlError
+
+    try:
+        clip = clipped(value)
+    except VixlError:
+        return value  # validation reports the invalid colour
+    if clip is None or clip["how"] != "clamp":
+        return value
+    note(f"{key} {value!r} has channels outside 0–255; clamped to {clip['to']}")
+    return clip["to"]
+
+
+def opacity(value, field, note):
+    """One opacity scale everywhere: 0 (clear) to 1 (opaque). A percentage string such as "70%" is
+    read as 0.7 (and noted); a bare number above 1 is an error, never guessed to be a percentage."""
+    if isinstance(value, str):
+        match = PERCENT.match(value.strip())
+        if not match:
+            return value  # the schema or the operation reports the wrong type
+        number = float(match[1]) / 100
+        note(f"{field} {value!r} → {number:g}")
+        return number
+    if _number(value) and value > 1:
+        raise VixlError(
+            "invalid_operation",
+            f"{field if 'opacity' in field else 'opacity ' + field} is on a 0–1 scale (0 clear, 1 opaque); "
+            f"got {value:g}. For {value:g}% use {value / 100:g} or the string \"{value:g}%\"",
+            field=field,
+            suggestions=[value / 100, f"{value:g}%"],
+        )
+    return value
+
+
+def normalize_opacity(op, kind, note):
+    """Read every opacity an operation carries on the 0–1 scale (see ``opacity``)."""
+    if kind == "opacity" and "value" in op:
+        op["value"] = opacity(op["value"], "value", note)
+    if "opacity" in op:  # creation fields, paint, patterns ...
+        op["opacity"] = opacity(op["opacity"], "opacity", note)
+    if isinstance(op.get("box"), dict) and "opacity" in op["box"]:  # caption boxes
+        op["box"] = {**op["box"], "opacity": opacity(op["box"]["opacity"], "box.opacity", note)}
+    if op.get("property") != "opacity":
+        return
+    # Timeline values of the opacity property.
+    for key in {"keyframe": ("value",), "animate": ("from", "to"), "motion": ("to",)}.get(kind, ()):
+        if key in op:
+            op[key] = opacity(op[key], key, note)
+    if kind == "keyframes" and isinstance(op.get("keys"), list):
+        for number, key in enumerate(op["keys"]):
+            if isinstance(key, dict) and "value" in key:
+                key["value"] = opacity(key["value"], f"keys.{number}.value", note)
 
 
 def _number(value):
@@ -395,18 +515,26 @@ def resolve_geometry(project, op):
 
 
 def apply_centering(project, centered, operation):
-    """Center the created (or moved) layer within its canvas or parent group."""
-    if not centered:
-        return
-    from .render import resolve_layout, stored_origin
+    """Center the created (or moved) layer within its canvas or parent group, then place a text layer's first
+    baseline at ``baseline_y`` when the operation gives one."""
+    if centered:
+        _center(project, centered, operation)
+    if operation.get("baseline_y") is not None:
+        from .text_metrics import place_baseline
+
+        place_baseline(project, operation)
+
+
+def _center(project, centered, operation):
+    from .render import layer_box, stored_origin
 
     from .inplace import IN_PLACE_TYPES
 
     # A creation operation given a target edits that layer, so the target is what gets centered.
     edits = operation.get("type") == "move" or operation.get("type") in IN_PLACE_TYPES
     layer = project.layer(operation.get("target") if edits else None)
-    bounds = resolve_layout(project)[layer["id"]]
-    if operation.get("type") == "move" and (operation.get("space") == "canvas" or operation.get("absolute")):
+    bounds = layer_box(project, layer)
+    if edits and (operation.get("space") == "canvas" or operation.get("absolute")):
         from .spatial import canvas_boxes
         from .transforms import execute
         box = canvas_boxes(project)[layer["id"]]

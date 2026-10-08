@@ -15,7 +15,8 @@ from PIL import Image, ImageColor, ImageDraw, ImageEnhance, ImageFilter, ImageFo
 from .assets import decode, read_bounded
 from .constants import EFFECTS as EFFECTS
 from .errors import VixlError, require
-from .model import finite
+from .model import MAX_LAYERS, finite
+from .variables import RESOLVED, layer_text, substitute as substitute, with_maps
 
 BLENDS = ("normal", "multiply", "screen", "overlay", "darken", "lighten", "difference", "add", "subtract")
 CANVAS_PRESETS = {
@@ -76,17 +77,6 @@ def color(value):
         ) from exc
 
 
-def substitute(value, variables):
-    if isinstance(value, str):
-
-        def replace(match):
-            require(match[1] in variables, f"Undefined variable: {match[1]}", "missing_variable")
-            return str(variables[match[1]])
-
-        return re.sub(r"\$\{([\w-]+)\}", replace, value)
-    return value
-
-
 def font_for(project, layer):
     size = int(layer.get("size", 48))
     require(1 <= size <= 4096, "Font size must be 1–4096")
@@ -129,6 +119,11 @@ def resolve_font(project, name):
     if name in ("heading", "body"):
         # A role uses the proofing fallback until the document typography sets it.
         role, name = name, typography.get(name, "DejaVuSans.ttf")
+        if name == "DejaVuSans.ttf":
+            from .notices import warn
+
+            warn(project, f"font role {role!r} has no typeface in this document, so text uses the bundled proofing "
+                          "font (DejaVu Sans); choose type with vixl_fonts then vixl_font_pair (or vixl_font_install)")
     font = fonts.get(name, name)
     if font not in project.assets and Path(font).is_file():
         from .assets import read_bounded
@@ -145,18 +140,48 @@ def resolve_font(project, name):
     return font, role
 
 
+class resolving:
+    """A read-only pass over the document (inspect, check, a full resolve): the document's variables are
+    computed once for the whole pass instead of once per text layer, which scanned every layer for form
+    fields and made measuring N text layers cost O(N²). Nothing may edit the document inside the pass."""
+
+    def __init__(self, project):
+        self.project = project
+
+    def __enter__(self):
+        self.owner = getattr(self.project, "_resolving", None) is None
+        if self.owner:
+            self.project._resolving = {}
+        return self.project
+
+    def __exit__(self, *exc):
+        if self.owner:
+            self.project.__dict__.pop("_resolving", None)
+
+
 def document_variables(project):
     """The document's variables, plus each form field's current value under its key."""
+    memo = getattr(project, "_resolving", None)
+    if memo is None:
+        return _document_variables(project)
+    if "variables" not in memo:
+        memo["variables"] = _document_variables(project)
+    return dict(memo["variables"])
+
+
+def _document_variables(project):
     from .forms import current_values, has_fields
 
+    maps = project.state.get("maps")
     if not has_fields(project):
-        return project.state.get("variables", {})
+        return with_maps(project.state.get("variables", {}), maps)
     fields = current_values(project)
-    return {**{key: display for key, (_, display) in fields.items()}, **project.state.get("variables", {})}
+    return with_maps({**{key: display for key, (_, display) in fields.items()}, **project.state.get("variables", {})},
+                     maps)
 
 
 def text_metrics(project, layer, variables=None):
-    text = substitute(layer["text"], variables or document_variables(project))
+    text = layer_text(layer, variables if variables is not None else document_variables(project))
     require(len(text) <= 100000, "Text exceeds length limit", "resource_limit")
     from .richtext import active
 
@@ -167,7 +192,9 @@ def text_metrics(project, layer, variables=None):
     from .text import measure, font_data, UnsupportedText
 
     try:
-        _, box = measure(font_data(project, layer), text, layer["size"], layer.get("spacing", 4), layer.get("align", "left"))
+        # The same arguments as text.plan, so drawing the layer reuses this cached measurement.
+        _, box = measure(font_data(project, layer), text, layer["size"], layer.get("spacing", 4),
+                         layer.get("align", "left"), None)
         stroke = layer.get("stroke_width", 0)
         box = (box[0] - stroke, box[1] - stroke, box[2] + stroke, box[3] + stroke)
         return max(1, math.ceil(box[2] - box[0])), max(1, math.ceil(box[3] - box[1])), box
@@ -235,17 +262,39 @@ def transformed_size(layer):
 
 
 def resolved_layers(project, variables=None):
+    with resolving(project):
+        return _resolved_layers(project, variables)
+
+
+COLOR_KEYS = ("color", "fill", "start", "end", "stroke_color", "stroke")
+
+
+def _needs_variables(layer):
+    """Whether resolving ``layer`` can read the document's variables or form fields."""
+    return (layer["type"] in ("text", "field", "symbol") or layer.get("code") or layer.get("asset_variable")
+            or layer.get("character_style") or layer.get("paragraph_style")
+            or any(isinstance(layer.get(key), str) and "${" in layer[key] for key in ("asset", *COLOR_KEYS))
+            or (layer.get("repeat") and "${" in repr(layer["repeat"])))
+
+
+def _resolved_layers(project, variables=None, subset=None):
     from .design import resolve_color
     from .forms import current_values, has_fields
 
-    fields = current_values(project) if has_fields(project) else {}
-    # Each field's current value (its default, or a filled value) is also a ${key} variable.
-    variables = {**document_variables(project), **(variables or {})}
+    stored = project.state["layers"] if subset is None else subset
+    if subset is None or variables or any(_needs_variables(layer) for layer in stored):
+        fields = current_values(project) if has_fields(project) else {}
+        # Each field's current value (its default, or a filled value) is also a ${key} variable.
+        variables = {**document_variables(project), **(variables or {})}
+    else:
+        fields, variables = {}, {}
     # Paint strokes can hold hundreds of thousands of points and are only read while rendering
     # and laying out, so the resolved copies share them instead of copying them each time.
+    # Scalars are immutable, so only containers are copied (this runs for every layer on every resolve).
     layers = [
-        {key: value if key == "strokes" else deepcopy(value) for key, value in layer.items()}
-        for layer in project.state["layers"]
+        {key: deepcopy(value) if key != "strokes" and isinstance(value, (dict, list, tuple)) else value
+         for key, value in layer.items()}
+        for layer in stored
     ]
     originals = {item["id"]: item for item in layers}
     for index, layer in enumerate(layers):
@@ -284,10 +333,16 @@ def resolved_layers(project, variables=None):
         for key in ("text", "asset"):
             if key in layer:
                 layer[key] = substitute(layer[key], variables)
+        if layer.get("code"):
+            from .codes import resolve as resolve_code
+
+            resolve_code(layer, variables)
         if layer["type"] == "text" and layer.get("rich"):
             from .richtext import fill_variables
 
             fill_variables(layer["rich"], variables)  # keeps the record matching the substituted text
+        if layer["type"] == "text":
+            layer[RESOLVED] = True
         if layer.get("asset_variable"):
             name = layer["asset_variable"]
             require(name in variables, f"Undefined image variable: {name}", "missing_variable")
@@ -297,7 +352,7 @@ def resolved_layers(project, variables=None):
                 "Image variables must reference embedded assets",
                 "missing_asset",
             )
-        for key in ("color", "fill", "start", "end", "stroke_color", "stroke"):
+        for key in COLOR_KEYS:
             if key in layer:
                 layer[key] = resolve_color(layer[key], project.state, variables)
         blend = (layer.get("repeat") or {}).get("end", {})
@@ -317,6 +372,48 @@ def resolved_layers(project, variables=None):
     from .vector_paths import attach_ancestors
     attach_ancestors(layers)
     return layers
+
+
+CONSTRAINT_REF = re.compile(r"(.+)\.(?:left|right|top|bottom|center-x|center-y)(?:[+-]\d+(?:\.\d+)?)?")
+
+
+def layer_box(project, layer):
+    """``resolve_layout(project)[layer["id"]]`` without resolving unrelated layers: only the layer, the layers its
+    constraints refer to (and theirs), its parent when it is placed against the parent's canvas, and a symbol's
+    master. A stack lays out its whole group, so a stack or a stack member among those resolves the document in
+    full. Per-layer edits (move, resize, rotate ...) call this once per operation, so a batch no longer costs
+    operations × layers."""
+    layers = project.state["layers"]
+    symbols = project.state.get("symbols", {})
+    wanted, pending = {}, [layer]
+    while pending:
+        item = pending.pop()
+        if item["id"] in wanted:
+            continue
+        wanted[item["id"]] = item
+        parent = project.find_layer(item["parent"]) if item.get("parent") else None
+        if "stack" in item or (parent is not None and "stack" in parent):
+            return resolve_layout(project)[layer["id"]]
+        refs = []
+        for expression in item.get("constraints", {}).values():
+            match = CONSTRAINT_REF.fullmatch(expression) if isinstance(expression, str) else None
+            if match is None or match[1].startswith("guide:"):
+                continue
+            if match[1] != "canvas":
+                refs.append(match[1])
+            elif item.get("parent"):
+                refs.append(item["parent"])  # canvas.* inside a group is the parent's content box.
+        if item["type"] == "symbol":
+            refs.append(symbols.get(item.get("symbol")))
+        for ref in refs:
+            found = project.find_layer(ref) if isinstance(ref, str) else None
+            if found is None:
+                return resolve_layout(project)[layer["id"]]  # Reports the broken reference as before.
+            pending.append(found)
+    subset = [item for item in layers if item["id"] in wanted] if len(wanted) > 1 else [layer]
+    with resolving(project):
+        resolved = _resolved_layers(project, subset=subset)
+    return resolve_layout(project, layers=resolved)[layer["id"]]
 
 
 def resolve_layout(project, variables=None, layers=None):
@@ -400,9 +497,46 @@ def resolve_layout(project, variables=None, layers=None):
     return {k: v for k, v in bounds.items() if k != "canvas"}
 
 
-def apply_effect(image, effect):
+# Rec. 709 luma weights: temperature, tint and white balance keep a grey's luma as they shift it.
+LUMA = np.array([0.2126, 0.7152, 0.0722])
+# ln(gain) per mired of white-point shift, fitted to the blackbody locus near daylight (blue fixed).
+MIRED_SLOPE = np.array([0.0045, 0.0025, 0.0])
+
+
+def channel_gains(effect):
+    """Per-channel multipliers for temperature, tint and white-balance, applied to encoded sRGB.
+
+    Gains scale toward black, so shadows stay neutral. temperature moves the white point along
+    the blackbody locus, 0.75 mired per unit: 100 is about 6500 K → 4400 K (warmer), -100 about
+    6500 K → 12700 K (cooler). tint is the matching green–magenta shift: tint 100 reaches the same
+    OKLab chroma on grey as temperature 100. Both keep a grey's luma. white-balance takes explicit
+    ``gains`` [r, g, b] or a ``neutral`` color to turn grey (keeping its luma), and ``amount``
+    (0–100, default 100) scales the correction."""
+    from .constants import EFFECT_DEFAULTS
+
+    name, value = effect["name"], effect.get("amount", EFFECT_DEFAULTS.get(effect["name"], 0))
+    if name == "white-balance":
+        if effect.get("gains") is not None:
+            gains = np.array(effect["gains"], dtype=np.float64)
+        elif effect.get("neutral") is not None:
+            neutral = np.maximum(np.array(color(effect["neutral"])[:3], dtype=np.float64), 1) / 255
+            gains = (LUMA @ neutral) / neutral
+        else:
+            gains = np.ones(3)
+        return gains ** (value / 100)
+    log = MIRED_SLOPE * 0.75 * value if name == "temperature" else np.array([0.0017, 0.0, 0.0017]) * value
+    gains = np.exp(log)
+    return gains / (LUMA @ gains)
+
+
+def apply_effect(image, effect, project=None):
     from .constants import ARTISTIC_DEFAULTS
 
+    if effect["name"] == "lookup":
+        from .design_render import apply_lookup
+
+        require(project is not None, "A lookup effect needs its document's LUTs")
+        return apply_lookup(project, image, {"name": effect["lut"], "amount": effect.get("amount", 1)})
     if effect["name"] == "denoise":
         from .denoise import denoise_image
 
@@ -460,10 +594,8 @@ def apply_effect(image, effect):
             a *= 2**value
         elif name == "gamma":
             a = np.power(a, 1 / value)
-        elif name == "temperature":
-            a += np.array([value / 10000, 0, -value / 10000])
-        elif name == "tint":
-            a += np.array([value / 200, -value / 100, value / 200])
+        elif name in ("temperature", "tint", "white-balance"):
+            a *= channel_gains(effect)
         elif name == "shadows":
             a += value / 100 * (1 - a) ** 2
         elif name == "highlights":
@@ -495,8 +627,8 @@ BLURS = ("blur", "gaussian-blur")
 # Effects that change each pixel on its own, so giving a blur room around the layer leaves their
 # result inside the layer's box unchanged.
 PER_PIXEL = BLURS + (
-    "brightness", "saturation", "hue", "exposure", "gamma", "temperature", "tint", "shadows",
-    "highlights", "levels", "curves", "grayscale", "invert", "posterize", "threshold",
+    "brightness", "saturation", "hue", "exposure", "gamma", "temperature", "tint", "white-balance",
+    "shadows", "highlights", "levels", "curves", "grayscale", "invert", "posterize", "threshold", "lookup",
 )
 
 
@@ -613,7 +745,7 @@ class LayerCache(OrderedDict):
     Checks and timelines render a document many times; a cache smaller than the document's
     layers would evict each layer before it is reused."""
 
-    def __init__(self, entries=512, budget=384 * 1024 * 1024):
+    def __init__(self, entries=2 * MAX_LAYERS, budget=384 * 1024 * 1024):
         super().__init__()
         self.entries, self.budget, self.bytes = entries, budget, 0
 
@@ -662,14 +794,15 @@ def layer_ink(project, layer, bounds):
     extent_key = [*extent_key, bounds[0] % 1, bounds[1] % 1]
     dependencies = [content, extent_key]
     if layer["type"] == "text":
-        from .text import font_data
+        from .text import font_data, font_sha256
         data = font_data(project, layer)
-        dependencies.append([hashlib.sha256(f).hexdigest() for f in (data if isinstance(data, tuple) else (data,))])
+        dependencies.append([font_sha256(f) for f in (data if isinstance(data, tuple) else (data,))])
     elif layer["type"] == "paint":
         dependencies.append(project.state.get("brushes", {}))
     key = hashlib.sha256(json.dumps(dependencies, sort_keys=True).encode()).hexdigest()
     linked = layer.get("linked")
-    cacheable = not linked and not layer.get("lookup") and not layer.get("_distort_groups") and layer["type"] not in ("group", "pathfinder", "link")
+    # A lookup effect reads its table from the document, which the key does not cover.
+    cacheable = not linked and not any(e["name"] == "lookup" for e in layer.get("effects") or []) and not layer.get("_distort_groups") and layer["type"] not in ("group", "pathfinder", "link")
     cache = project._cache = project._cache if isinstance(project._cache, LayerCache) else LayerCache()
     if cacheable:
         cached = cache.image(key)
@@ -758,25 +891,26 @@ def transform_layer_image(project, layer, bounds, image):
         # without the overflow, which only adds whole output pixels around it.
         image = group_overflow_resize(layer, image, sampling)
     elif not layer.get("repeat") and not image.info.get("vixl_vector_overflow"):
-        image = image.resize((max(1, math.ceil(layer["width"])), max(1, math.ceil(layer["height"]))), sampling)
+        image = resize(image, (max(1, math.ceil(layer["width"])), max(1, math.ceil(layer["height"]))), sampling)
     from .affine import linear, precise
+    # Effects run on the layer in its own frame, at its box size, before it is flipped, turned or
+    # skewed: a blur, denoise or grain treats the content the same at any angle. Canvas-space
+    # inputs (selections, the emboss light, canvas-edge blur room) are mapped into this frame.
+    unturned = image.size
+    image = layer_effects(project, layer, bounds, image)
+    turn = Image.Resampling.NEAREST if crisp else Image.Resampling.BICUBIC
     if precise(layer):
         transform = linear(layer)
         out = np.abs(transform[:2, :2]) @ [image.width, image.height]
         size = tuple(max(1, math.ceil(v)) for v in out)
         transform[:2, 2] += np.array(size) / 2 - transform[:2, :2] @ [image.width / 2, image.height / 2]
-        inverse = np.linalg.inv(transform)
-        image = image.transform(size, Image.Transform.AFFINE, tuple(inverse[:2].ravel()), Image.Resampling.NEAREST if crisp else Image.Resampling.BICUBIC)
+        image = warp(image, size, tuple(np.linalg.inv(transform)[:2].ravel()), turn)
     if not precise(layer) and layer.get("flip_x"):
         image = ImageOps.mirror(image)
     if not precise(layer) and layer.get("flip_y"):
         image = ImageOps.flip(image)
     if not precise(layer) and layer.get("rotation", 0) % 360:
-        image = image.rotate(
-            -layer["rotation"],
-            Image.Resampling.NEAREST if crisp else Image.Resampling.BICUBIC,
-            expand=True,
-        )
+        image = rotate(image, -layer["rotation"], turn)
         # Match conservative layout bounds consistently, keeping anything drawn past them.
         target = (max(math.ceil(bounds[2]), image.width), max(math.ceil(bounds[3]), image.height))
         if image.size != target:
@@ -785,23 +919,16 @@ def transform_layer_image(project, layer, bounds, image):
                 image, ((padded.width - image.width) // 2, (padded.height - image.height) // 2)
             )
             image = padded
-    spread = effect_margin(layer)
-    for effect in layer["effects"]:
-        if not effect.get("enabled", True):
-            continue
-        if any(spread) and effect["name"] in BLURS:
-            image, spread = blur_room(project, layer, bounds, image, spread), (0, 0)
-        changed = apply_effect(image, effect)
-        if effect.get("selection"):
-            x, y = ink_origin(image, bounds)
-            mask = project.image(effect["selection"], "L").crop((x, y, x + image.width, y + image.height))
-            image = Image.composite(changed, image, mask)
-        else:
-            image = changed
-    if layer.get("lookup"):
-        from .design_render import apply_lookup
-
-        image = apply_lookup(project, image, layer["lookup"])
+    if any(effect_margin(layer)) and (precise(layer) or layer.get("rotation", 0) % 360):
+        # Blur room added in the layer's frame turns into wider corners than the spread needs: the
+        # blur reaches its margin past the turned box, which lies inside its bounds widened by it.
+        m = effect_margin(layer)[0]
+        reach = np.abs(linear(layer)[:2, :2]) @ unturned
+        limit = [max(math.ceil(bounds[2 + i]), math.ceil(reach[i])) + 2 * m for i in (0, 1)]
+        limit = [v + (image.size[i] - v) % 2 for i, v in enumerate(limit)]
+        if limit[0] < image.width or limit[1] < image.height:
+            left, top = max(0, (image.width - limit[0]) // 2), max(0, (image.height - limit[1]) // 2)
+            image = image.crop((left, top, image.width - left, image.height - top))
     mask = layer.get("mask")
     if mask and mask.get("enabled", True):
         m = project.image(mask["asset"], "L").resize(tuple(math.ceil(v) for v in bounds[2:]), Image.Resampling.LANCZOS)
@@ -827,8 +954,125 @@ def transform_layer_image(project, layer, bounds, image):
     if not crisp and (fx > 1e-8 or fy > 1e-8):
         padded = Image.new("RGBA", (image.width + 2, image.height + 2))
         padded.paste(image, (1, 1))
-        image = padded.transform(padded.size, Image.Transform.AFFINE, (1, 0, -fx, 0, 1, -fy), Image.Resampling.BICUBIC)
+        image = warp(padded, padded.size, (1, 0, -fx, 0, 1, -fy), Image.Resampling.BICUBIC)
     return image
+
+
+def layer_effects(project, layer, bounds, image):
+    """Run a layer's enabled effects, in stack order, on its image before the layer is flipped,
+    turned or skewed. The image is centred on the layer's box."""
+    from .affine import linear
+
+    frame = linear(layer)[:2, :2]
+    turned = not np.allclose(frame, np.eye(2))
+    spread = effect_margin(layer)
+    for effect in layer["effects"]:
+        if not effect.get("enabled", True):
+            continue
+        if any(spread) and effect["name"] in BLURS:
+            image, spread = blur_room(project, layer, bounds, image, spread), (0, 0)
+        if effect["name"] == "emboss" and turned:
+            # Keep the emboss light where it is on an upright layer, however this one is turned:
+            # pass the canvas offset of the neighbour it subtracts (down-left) in the layer's frame.
+            effect = {**effect, "_light": tuple(np.linalg.solve(frame, [-1.0, 1.0]))}
+        changed = apply_effect(image, effect, project)
+        if effect.get("selection"):
+            mask = project.image(effect["selection"], "L")
+            if turned:
+                # Sample the canvas selection where each pixel of the layer's frame lands.
+                centre = np.array([bounds[0] + bounds[2] / 2, bounds[1] + bounds[3] / 2])
+                offset = centre - frame @ [image.width / 2, image.height / 2]
+                data = (frame[0, 0], frame[0, 1], offset[0], frame[1, 0], frame[1, 1], offset[1])
+                mask = mask.transform(image.size, Image.Transform.AFFINE, data, Image.Resampling.BILINEAR)
+            else:
+                x, y = ink_origin(image, bounds)
+                mask = mask.crop((x, y, x + image.width, y + image.height))
+            image = Image.composite(changed, image, mask)
+        else:
+            image = changed
+    return image
+
+
+def resize(image, size, sampling, box=None):
+    """``Image.resize`` without the overshoot rim of Lanczos at hard edges (see ``antiring``)."""
+    box = tuple(box or (0, 0, *image.size))
+    result = image.resize(size, sampling, box=box)
+    if sampling == Image.Resampling.NEAREST or result.size == image.size and box == (0, 0, *image.size):
+        return result
+    sx, sy = (box[2] - box[0]) / size[0], (box[3] - box[1]) / size[1]
+    return antiring(image, result, (sx, 0, box[0], 0, sy, box[1]), max(sx, sy))
+
+
+def warp(image, size, data, sampling):
+    """An affine ``Image.transform`` (``data`` maps output to source) without overshoot."""
+    result = image.transform(size, Image.Transform.AFFINE, data, sampling)
+    if sampling == Image.Resampling.NEAREST:
+        return result
+    scale = float(np.linalg.svd(np.array(data).reshape(2, 3)[:, :2], compute_uv=False).max())
+    return antiring(image, result, data, scale)
+
+
+def rotate(image, angle, sampling):
+    """``image.rotate(angle, sampling, expand=True)`` without overshoot: the same matrix and size."""
+    w, h = image.size
+    a = -math.radians(angle)
+    co, si = round(math.cos(a), 15), round(math.sin(a), 15)
+
+    def apply(x, y, c=0.0, f=0.0):
+        return co * x + si * y + c, -si * x + co * y + f
+
+    c, f = apply(-w / 2, -h / 2)
+    c, f = c + w / 2, f + h / 2
+    xs, ys = zip(*(apply(x, y, c, f) for x, y in ((0, 0), (w, 0), (w, h), (0, h))))
+    nw, nh = math.ceil(max(xs)) - math.floor(min(xs)), math.ceil(max(ys)) - math.floor(min(ys))
+    c, f = apply(-(nw - w) / 2, -(nh - h) / 2, c, f)
+    return warp(image, (nw, nh), (co, si, c, -si, co, f), sampling)
+
+
+def antiring(source, result, data, scale=1.0):
+    """Clamp a resampled RGBA image to the colours and alphas of the source pixels under each
+    output pixel's main kernel lobe. Lanczos and bicubic weights go negative beside a hard edge, so
+    a flat shape gains a light or dark rim (in colours found nowhere in the source), and its
+    translucent edge pixels, unpremultiplied, can come out brighter than the shape. ``data`` maps
+    output pixels to source pixels; ``scale`` is source pixels per output pixel."""
+    if source.mode != "RGBA" or result.mode != "RGBA":
+        return result
+    # Downscaling pools blocks of source pixels first, so the window stays a few cells wide.
+    pool = max(1, int(scale))
+    reach = max(1, math.ceil(scale / pool))
+    pixels = np.asarray(source)
+    # A transparent margin of cells (colour unknown: low 255, high 0) lets edges dilate outward.
+    margin = reach + 2
+    opaque = bool(pixels[..., 3].min())
+    envelopes = []
+    for blank, reduce in ((255, np.minimum), (0, np.maximum)):
+        values = pixels
+        if not opaque:
+            values = pixels.copy()
+            values[pixels[..., 3] == 0, :3] = blank
+        for axis in (0, 1):
+            pooled = values[::pool] if axis == 0 else values[:, ::pool]
+            pooled = pooled.copy() if pool > 1 else pooled
+            for k in range(1, pool):
+                part = values[k::pool] if axis == 0 else values[:, k::pool]
+                head = pooled[: len(part)] if axis == 0 else pooled[:, : part.shape[1]]
+                reduce(head, part, out=head)
+            values = pooled
+        grid = np.full((values.shape[0] + 2 * margin, values.shape[1] + 2 * margin, 4), blank, np.uint8)
+        grid[..., 3] = 0
+        grid[margin:-margin, margin:-margin] = values
+        spread = grid.copy()
+        for axis in (0, 1):
+            base = spread.copy()
+            for step in range(1, reach + 1):
+                spread = reduce(spread, np.roll(base, step, axis))
+                spread = reduce(spread, np.roll(base, -step, axis))
+        a, b, c, d, e, f = data
+        cell = (a / pool, b / pool, c / pool + margin, d / pool, e / pool, f / pool + margin)
+        envelopes.append(np.asarray(Image.fromarray(spread, "RGBA").transform(
+            result.size, Image.Transform.AFFINE, cell, Image.Resampling.NEAREST, fillcolor=(blank, blank, blank, 0))))
+    low, high = envelopes
+    return Image.fromarray(np.minimum(np.maximum(np.asarray(result), low), high), "RGBA")
 
 
 def blur_room(project, layer, bounds, image, margin):
@@ -839,13 +1083,20 @@ def blur_room(project, layer, bounds, image, margin):
     project.limits.size(image.width + 2 * mx, image.height + 2 * my)
     x, y = ink_origin(image, bounds)
     canvas = project.state["canvas"]
-    edges = (
+    from .affine import precise
+
+    # The image is in the layer's own frame: a turned layer's edges are not the canvas's, and a
+    # flipped layer's left edge lands on the right.
+    left, top, right, bottom = (
         (x <= 0, y <= 0, x + image.width >= canvas["width"], y + image.height >= canvas["height"])
-        if not layer.get("parent")
+        if not layer.get("parent") and not precise(layer) and not layer.get("rotation", 0) % 360
         else (False, False, False, False)
     )
+    if layer.get("flip_x"):
+        left, right = right, left
+    if layer.get("flip_y"):
+        top, bottom = bottom, top
     pixels = np.pad(np.asarray(image), ((my, my), (mx, mx), (0, 0)))
-    left, top, right, bottom = edges
     if left and mx:
         pixels[:, :mx] = pixels[:, mx : mx + 1]
     if right and mx:
@@ -874,7 +1125,7 @@ def group_overflow_resize(layer, image, sampling):
         padded.paste(image, (px, py))
         image, mx, my = padded, mx + px, my + py
     box = (mx - ox / sx, my - oy / sy, mx + cw + ox / sx, my + ch + oy / sy)
-    return image.resize((math.ceil(w + 2 * ox), math.ceil(h + 2 * oy)), sampling, box=box)
+    return resize(image, (math.ceil(w + 2 * ox), math.ceil(h + 2 * oy)), sampling, box=box)
 
 
 def pixel_group(project, group):
@@ -944,6 +1195,31 @@ def layer_surface(project, layer, bounds, size, index, visiting=None):
     return tile
 
 
+def layer_canvas_alpha(project, layer, box, bounds, index):
+    """``layer_canvas_surface(...).getchannel("A").crop(box)`` for ``box`` inside the canvas, without drawing a
+    canvas-sized surface when the layer is drawn straight onto the canvas (no group, styles or clipping): the
+    overlap check asks this of every text layer, and a full-canvas surface each made it slow on large canvases."""
+    if layer.get("parent") or layer.get("styles") or layer.get("clip"):
+        return layer_canvas_surface(project, layer, bounds, index).getchannel("A").crop(box)
+    left, top, right, bottom = box
+    alpha = Image.new("L", (right - left, bottom - top))
+    if not layer["visible"]:
+        return alpha
+    b = bounds[layer["id"]]
+    source = layer_ink(project, {**layer, "opacity": 1}, b)
+    x, y = ink_origin(source, b)
+    # The part of the source inside the box, where the full surface would have composited it.
+    crop = (max(left, x), max(top, y), min(right, x + source.width), min(bottom, y + source.height))
+    if crop[0] < crop[2] and crop[1] < crop[3]:
+        # Composited over transparent pixels, the surface's alpha is the source's own.
+        part = source.crop((crop[0] - x, crop[1] - y, crop[2] - x, crop[3] - y))
+        alpha.paste(part.getchannel("A") if part.mode == "RGBA" else part.convert("RGBA").getchannel("A"),
+                    (crop[0] - left, crop[1] - top))
+    if layer["opacity"] != 1:
+        alpha = alpha.point(lambda a: round(a * layer["opacity"]))
+    return alpha
+
+
 def layer_canvas_surface(project, layer, bounds=None, index=None):
     """Render one drawable through its ancestors onto the document canvas.
 
@@ -1006,8 +1282,6 @@ def layer_canvas_surface(project, layer, bounds=None, index=None):
 def render_layers(project, parent=None, size=None, background="transparent", observe=None):
     """Composite the layers of ``parent`` (the canvas when None). ``observe`` maps layer IDs to
     callbacks that receive the layer's box region just before and just after it is drawn."""
-    from .design_render import apply_lookup
-
     # Groups render their children through nested calls; resolve the document once per render.
     shared = getattr(project, "_resolution", None)
     if shared is not None and shared[0] is project.state:
@@ -1018,19 +1292,68 @@ def render_layers(project, parent=None, size=None, background="transparent", obs
         bounds = resolve_layout(project, layers=layers)
         project._resolution, outermost = (project.state, layers, bounds), True
     try:
-        return _render_layers(project, layers, bounds, parent, size, background, observe, apply_lookup)
+        return _render_layers(project, layers, bounds, parent, size, background, observe)
     finally:
         if outermost:
             project._resolution = None
 
 
-def _render_layers(project, layers, bounds, parent, size, background, observe, apply_lookup):
+def render_members(project, members, region=None, background="transparent", include_hidden=False):
+    """Composite the layers ``members`` (IDs sharing a parent) in document order, as the renderer
+    draws them (styles, clipping, masks, opacity and blend modes among themselves), onto a tile.
+
+    ``region`` is (left, top, width, height) in their parent's space, whole pixels; by default it is
+    everything the members draw. Returns the tile and its (left, top). ``include_hidden`` draws
+    hidden members too."""
+    layers = resolved_layers(project)
+    bounds = resolve_layout(project, layers=layers)
+    members = set(members)
+    picked = [item for item in layers if item["id"] in members]
+    require(picked, "Nothing to draw")
+    parent = picked[0].get("parent")
+    require(all(item.get("parent") == parent for item in picked), "Layers must share a parent")
+    if include_hidden:
+        for item in picked:
+            item["visible"] = True
+    if region is None:
+        children, memo, edges = child_index(layers), {}, []
+        for item in picked:
+            x, y, w, h = bounds[item["id"]]
+            mx, my = ink_margin(item, bounds, children, memo)
+            edges.append((x - mx, y - my, x + w + mx, y + h + my))
+        # Two spare pixels hold antialiasing and rounding at the edges of styles and strokes.
+        left, top = math.floor(min(e[0] for e in edges)) - 2, math.floor(min(e[1] for e in edges)) - 2
+        right, bottom = math.ceil(max(e[2] for e in edges)) + 2, math.ceil(max(e[3] for e in edges)) + 2
+        region = (left, top, right - left, bottom - top)
+    left, top, width, height = region
+    if parent is None and (left, top) != (0, 0) and any(
+        any(effect_margin(item)) or any(effect.get("selection") for effect in item.get("effects") or []) for item in picked
+    ):
+        # Canvas-edge blur and selection-masked effects depend on where the layer sits on the canvas:
+        # draw them in place, keeping what lies on the canvas.
+        left, top = max(0, left), max(0, top)
+        c = project.state["canvas"]
+        right, bottom = min(c["width"], region[0] + width), min(c["height"], region[1] + height)
+        require(left < right and top < bottom, "The layers draw nothing on the canvas")
+        image, _ = render_members(project, [item["id"] for item in picked], (0, 0, right, bottom), background, include_hidden)
+        return image.crop((left, top, right, bottom)), (left, top)
+    placed = shift(bounds, [item for item in layers if item.get("parent") == parent], -left, -top)
+    shared = getattr(project, "_resolution", None)
+    project._resolution = (project.state, layers, bounds)
+    try:
+        image = _render_layers(project, layers, placed, parent, (width, height), background, None, members)
+    finally:
+        project._resolution = shared
+    return image, (left, top)
+
+
+def _render_layers(project, layers, bounds, parent, size, background, observe, members=None):
     c = project.state["canvas"]
     size = size or (c["width"], c["height"])
     index = {item["id"]: item for item in layers}
     children, memo = child_index(layers), {}
     ax = ay = 0
-    if parent is not None:
+    if parent is not None and members is None:
         # A group's tile also holds whatever its children draw outside its box.
         ax, ay = overflow(index[parent], bounds, children, memo)
         if ax or ay:
@@ -1076,7 +1399,7 @@ def _render_layers(project, layers, bounds, parent, size, background, observe, a
             changed = image
             for effect in layer["effects"]:
                 if effect.get("enabled", True):
-                    filtered = apply_effect(changed, effect)
+                    filtered = apply_effect(changed, effect, project)
                     changed = (
                         Image.composite(
                             filtered, changed, project.image(effect["selection"], "L").resize(size)
@@ -1084,8 +1407,6 @@ def _render_layers(project, layers, bounds, parent, size, background, observe, a
                         if effect.get("selection")
                         else filtered
                     )
-            if layer.get("lookup"):
-                changed = apply_lookup(project, changed, layer["lookup"])
             mask = Image.new("L", size, round(255 * layer["opacity"]))
             if layer.get("mask") and layer["mask"].get("enabled", True):
                 from PIL import ImageChops
@@ -1101,18 +1422,26 @@ def _render_layers(project, layers, bounds, parent, size, background, observe, a
         return image
 
     for layer in layers:
-        if layer.get("parent") != parent or not layer["visible"]:
+        if layer.get("parent") != parent or not layer["visible"] or (members is not None and layer["id"] not in members):
             continue
         if observe and layer["id"] in observe:
-            x, y, w, h = bounds[layer["id"]]
-            before = image.crop((x, y, x + w, y + h))
+            box = pixel_box(bounds[layer["id"]], image.size)
+            before = image.crop(box)
             image = draw(layer)
-            observe[layer["id"]](before, image.crop((x, y, x + w, y + h)))
+            observe[layer["id"]](before, image.crop(box))
         else:
             image = draw(layer)
     if ax or ay:
         image = trim_overflow(image, content, ax, ay)
     return image
+
+
+def pixel_box(bounds, size):
+    """The whole-pixel (left, top, right, bottom) box covering fractional layout ``bounds``, clamped
+    to an image of ``size``. Every crop of a layer's pixels uses it so the images stay the same shape."""
+    x, y, w, h = bounds
+    return (max(0, math.floor(x + 1e-8)), max(0, math.floor(y + 1e-8)),
+            min(size[0], math.ceil(x + w - 1e-8)), min(size[1], math.ceil(y + h - 1e-8)))
 
 
 def trim_overflow(image, content, ax, ay):
@@ -1170,7 +1499,7 @@ def export(
     project,
     path=None,
     *,
-    quality=90,
+    quality=None,
     scale=1,
     profile=None,
     variables=None,
@@ -1197,12 +1526,14 @@ def export(
     fillable=False,
     values=None,
     fill_mode="flatten",
-    alpha="keep",
+    alpha="auto",
     presenter=None,
     overwrite=False,
     width=480,
     columns=None,
     labels=True,
+    title=None,
+    max_bytes=None,
 ):
     """Render and encode. ``color_space='cmyk'`` separates JPEG/TIFF/PDF output (ICC profile
     bytes in ``icc_profile`` for press-accurate separation, else device-naive GCR with
@@ -1215,11 +1546,15 @@ def export(
     receives ``content``, ``content_reason``, ``raster_fallbacks`` and ``page_size``. HTML output of a
     multi-page document is a self-contained slide presentation (see ``presenter.py``): ``presenter``
     is ``False`` for the plain single-image HTML, ``True`` for a presentation of any document, or
-    a dict of options (theme, notes, slide_images, start, title)."""
+    a dict of options (theme, notes, slide_images, start, title). ``title`` is the PDF document title
+    (default: the page's title layer, then the file name). ``max_bytes`` is a size budget: when the
+    encoded file is larger, ``report['warnings']`` says so (the export still succeeds)."""
     require(isinstance(overwrite, bool), "overwrite must be true or false", field="overwrite")
     require(path is None or overwrite or not Path(path).exists(),
             "Export output already exists; pass overwrite=True to replace it", "output_exists", field="path")
     require(path is None or Path(path).suffix.lower() != ".vixl", "Cannot export over a Vixl project")
+    quality_given = quality is not None  # None: not given (PDF images stay lossless, others use 90)
+    quality = 90 if quality is None else quality
     require(alpha in ("auto", "keep", "flatten"), "alpha must be auto, keep or flatten", field="alpha")
     require(sampling in ("smooth", "nearest"), "Sampling must be smooth or nearest")
     require(color_space in ("rgb", "cmyk"), "Color space must be rgb or cmyk")
@@ -1284,7 +1619,15 @@ def export(
         if path:
             Path(path).write_bytes(data)
         return data
+    if (format or "").upper() == "PSD" or suffix == ".psd":
+        require(not (pages or artwork), "PSD export writes one page in RGB; profile, artboard, "
+                "comp, proof, simulate, CMYK and pages do not apply", field="format")
+        from .psd_export import export_psd
+
+        return export_psd(project, path, page=page, variables=variables, report=report)
     if (format or "").upper() == "PPTX" or suffix == ".pptx":
+        require(not artwork, "PPTX keeps editable RGB slides; profile, artboard, comp, proof, simulate and CMYK do not "
+                "apply (export a PNG or PDF to preview them)", field="format")
         from .pptx_export import export_pptx
 
         return export_pptx(project, path, pages=pages, dpi=dpi, report=report)
@@ -1314,7 +1657,8 @@ def export(
                               ink_limit=None if ink_limit is None else ink_limit / 100, background=background)
         content = pdf_content or "vector"
         data = export_pdf(project, path, pages=pages or ([page] if page is not None else None), content=content,
-                          dpi=dpi, background=background, color_space=color_space, separation=separation, report=report)
+                          dpi=dpi, background=background, color_space=color_space, separation=separation,
+                          jpeg_quality=int(quality) if quality_given else None, title=title, report=report)
         if report is not None:
             report["content_reason"] = ("requested with pdf_content" if pdf_content else
                                         "default: vector, with images only for what PDF cannot draw (see raster_fallbacks)")
@@ -1336,7 +1680,7 @@ def export(
         require(not profile, "SVG export does not use raster export profiles")
         require(
             color_space == "rgb" and not (proof or simulate or icc_profile),
-            "SVG export is RGB; use PDF, TIFF or JPEG for CMYK and proofing",
+            "SVG export is RGB; use PDF, TIFF or JPEG for CMYK, and a raster or PDF export for proof and simulate",
         )
         from .svg import export_svg
 
@@ -1393,7 +1737,11 @@ def export(
             else "PNG"
         )
     )
-    require(fmt in ("PNG", "JPEG", "WEBP", "TIFF", "AVIF", "PDF", "ICO"), "Specify a supported export format")
+    require(fmt in ("PNG", "JPEG", "WEBP", "TIFF", "AVIF", "PDF", "ICO"),
+            f"Unsupported export format {(Path(path).suffix if path and not format else format) or '(none)'!r}; use png, "
+            "jpg, webp, tiff, avif, pdf, ico, svg, pptx, psd or html (audio: vixl_export_audio, or a .wav path on the "
+            "CLI; animation: export-timeline)",
+            field="format")
     from . import colors
 
     cms = None
@@ -1414,11 +1762,17 @@ def export(
     canvas_dpi = project.state["canvas"].get("dpi")
     if dpi is not None:
         finite(dpi, "dpi", 36, 2400)
-    effective_dpi = dpi or (canvas_dpi * scale if canvas_dpi else None)
+    # requested_scale: a crisp enlargement re-renders at full size and resets ``scale`` to 1.
+    effective_dpi = dpi or (canvas_dpi * requested_scale if canvas_dpi else None)
+    if not effective_dpi and fmt == "TIFF":
+        # TIFF is a print format and readers assume 1 dpi without resolution tags; use the 72 dpi a PDF export assumes.
+        effective_dpi = 72 * requested_scale
     if effective_dpi and "dpi" not in settings:
         settings["dpi"] = (round(effective_dpi, 3), round(effective_dpi, 3))
     if color_space == "cmyk":
-        require(fmt in ("JPEG", "TIFF", "PDF"), "CMYK export supports JPEG, TIFF and PDF")
+        require(fmt in ("JPEG", "TIFF", "PDF"), "CMYK export supports JPEG, TIFF and PDF" + (
+            "; for an RGB soft proof of print colours drop --cmyk (color_space) and keep --proof" if proof else ""),
+            field="color_space")
         require(not proof, "Choose either a CMYK separation or an RGB soft proof")
         image = colors.cmyk_image(image, **separation)
         if cms is not None:
@@ -1455,6 +1809,11 @@ def export(
         report.update(content="raster", color_space=color_space, content_reason=(
             f"{', '.join(raster_only)} export the page as an image" if raster_only else
             f"scale {requested_scale:g} exports a larger image; pass pdf_content for a vector or raster PDF at its natural size"))
+    if report is not None and fmt in ("PNG", "JPEG", "WEBP", "TIFF", "AVIF"):
+        from .animation import still_size_warnings
+
+        if warnings := still_size_warnings(project, fmt, len(data), max_bytes):
+            report.setdefault("warnings", []).extend(warnings)
     if path:
         Path(path).write_bytes(data)
     return data

@@ -4,7 +4,7 @@ Vixl is headless and designed for autonomous AI agents; humans can use the same 
 
 ## MCP server
 
-Start: `vixl mcp --workspace DIR` (stdio; requires the `mcp` extra or the Windows installer).
+Start: `vixl mcp --workspace DIR` (stdio; MCP support is part of the base `vixl-engine` package and the Windows installer).
 Legacy form `vixl --project /abs/poster.vixl mcp` opens that document and uses its folder as the
 workspace. Client config:
 
@@ -18,7 +18,7 @@ catalogs; `--tools ai` serves the provider-backed `vixl_ai_*` tools and `vixl_mo
 `vixl_workspace_list`, `vixl_document_open`, `vixl_document_inspect` and `vixl_render_preview`.
 Register them as `vixl` and `vixl-ai` with the same workspace; skip `vixl-ai` when no provider is
 configured. Edits are saved at once and each server reloads a document that changed on disk, so
-the two see each other's work. The default `--tools all` serves everything from one server.
+the two see each other's work. `vixl mcp` defaults to `--tools core --schema slim`; `--tools all` serves everything from one server.
 
 Windows installer path if `vixl` is not on PATH: `%LOCALAPPDATA%\Programs\Vixl\bin\vixl.exe`
 (escape backslashes in JSON). Restart the client after install/config changes.
@@ -35,6 +35,8 @@ so switching documents never loses work. External edits to the file are detected
 
 **Long calls:** a call still running after ~40 s (`VIXL_MCP_INLINE_SECONDS`) returns
 `{"status":"running","job":"job_…"}` and carries on; `as_job: true` on heavy tools does so at once.
+Under load (more calls than `VIXL_MCP_WORKERS`) calls become jobs sooner; `queued: true` means it
+has not started yet.
 Follow it with `vixl_job(action="status"|"result"|"cancel"|"list", id, wait=…)`; never resend a call
 that timed out. Mutating tools take `request_id`: repeating a call with the same id returns the first
 result (`"replayed": true`) instead of applying twice.
@@ -44,13 +46,14 @@ result (`"replayed": true`) instead of applying twice.
 | Tool | Parameters | Returns / notes |
 | --- | --- | --- |
 | `vixl_workspace_list` | `directory="."`, `offset=0`, `limit=100` (≤200) | `entries[{path,directory?}]`, `active`, `open`, `next_offset` |
-| `vixl_document_create` | **`path`**, **`width`**, **`height`**, `background="transparent"` | Creates + activates (and creates missing directories); refuses existing files |
-| `vixl_document_open` | **`path`** | Activates an existing `.vixl`; other open documents stay open (up to 8) |
+| `vixl_document_create` | **`path`**, `width`+`height` or `size` or `purpose` (none: 1080×1080), `background`, `seed`, `variety`, `workspace_fonts=true` | Creates + activates (and creates missing directories); refuses existing files. Rolls `design_defaults`; without `background` the canvas is the palette background (transparent for logo/icon/favicon sizes and mark purposes); installs the rolled font pairing (cache, then network). `creation` reports the choices |
+| `vixl_document_open` | **`path`**, `upgrade` | Activates an existing `.vixl`; other open documents stay open (up to 8). A document saved before 0.21 lists affected layers under `upgrade` (effects on rotated layers, temperature/tint, open stroked shapes no longer white); pass `upgrade="pin-fills"` to restore the white fills or `"accept"` to keep the new look |
 | `vixl_document_close` | `document` | Drops a document from the session (edits are already saved) |
 | `vixl_document_inspect` | `target=None`, `detail="compact"\|"full"` | Compact: canvas + one entry per layer with `bounds`; full: every field (with `resolved_bounds`) |
-| `vixl_import_image` | `path` **or** `data_base64` (base64 or `data:` URL), `name="image"` | New layer; returns `{id, name, width, height, bounds, asset}` (≤64 MiB) |
-| `vixl_export_file` | **`path`**, `quality=90`, `scale=1` (0.01–16), `profile`, `variables`, `background="white"`, `overwrite=False`, `sampling="smooth"\|"nearest"`, `artboard`, `comp` | Writes PNG/JPEG/WEBP/TIFF/AVIF (by extension); returns `{path, format, bytes}` |
+| `vixl_import_image` | `path` **or** `data_base64` (base64 or `data:` URL) **or** `url` (public `https://`), `name="image"`, `credit`, `license` | New layer; returns `{id, name, width, height, bounds, asset, source}` (≤64 MiB); `source` has the final `url`, `bytes`, `sha256`, `fetched_at` |
+| `vixl_export_file` | **`path`**, `quality` (default 90 for raster formats; PDF images stay lossless unless given, then JPEG-compresses PDF images when given), `title` (PDF title), `max_bytes` (warn when a raster file is larger), `scale=1` (0.01–16), `profile`, `variables`, `background="white"`, `overwrite=False`, `sampling="smooth"\|"nearest"`, `artboard`, `comp` | Writes PNG/JPEG/WEBP/TIFF/AVIF (by extension); returns `{path, format, bytes}` |
 | `vixl_export_batch` | **`targets`** (1–64 of `{path, document?, overwrite?, …any export option}`), `defaults`, `overwrite=False`, `stop_on_error=False` | Several sizes/formats/artboards/documents in one call. Everything is validated before the first file is written; each target reports `{path, format, bytes, document}` or its own `error` |
+| `vixl_compose` | `path`, `size` or `width`/`height`, `background`, `dpi`, `orientation`, `bleed`, `seed`, `font_pairing`, `layout` ({name, …slots}), `style`, `look` ({look, target?, …} or a list), `operations` or `operations_path`, `check=True`, `strict=False`, `preview`, `exports` (paths or export targets), `overwrite`, `dry_run`, `request_id`, `as_job` | A whole new piece in one atomic call: create → fonts → layout → style → look → operations → check → preview → save → exports. Nothing is saved or exported unless every step succeeds; errors keep the normal schema plus `step`. Layout `image`/`images` accept workspace paths and https URLs (imported under `vixl_import_image` limits, listed as `imported`); `background` becomes the layout's background role; `style` fills open layout `align`/`palette`/`mode` (`from_style`) and, without `font_pairing`, installs the style's first pairing (`fonts`). Returns `steps`, per-step summaries (layout seed/blanks/notes), `check`, `document`, `exports` and the preview image. Like `vixl_document_create` it makes the new document active (`active_document: true`, with a warning naming the one it replaced); pass `document=` to keep editing another. In the core and compact toolsets |
 | `vixl_adapt_layout` | **`sizes`** (1–16: named size, `"1080x1920"` or `{size\|width+height, orientation, dpi, bleed, name}`), `directory`, `name="{name}-{size}"`, `options` (`scale`, `anchors`, `where`, `text`), `formats` (e.g. `["png"]`), `overwrite`, `report="summary"\|"layers"` | One call, a whole campaign: each size is a saved copy re-laid out by `adapt-layout` (optionally exported); the source is untouched; per size: file, canvas, scale, layers moved, warnings |
 | `vixl_job` | `action="status"\|"result"\|"cancel"\|"list"`, `id`, `wait` (≤50 s) | Follow a long call or durable workflow job; see Long calls above. The compact tool set polls through `vixl_workflow` (`action: "status"`, `request: {id}`) |
 
@@ -58,12 +61,12 @@ result (`"replayed": true`) instead of applying twice.
 
 | Tool | Parameters | Returns / notes |
 | --- | --- | --- |
-| `vixl_operations_apply` | **`operations`** (1–10000 operation objects), `dry_run=False`, `detail="brief"\|"compact"\|"full"`, `request_id`, `as_job` | Atomic. Brief (default): per layer ID, new layers as `{added, name, type, bounds}`, changed layers as `{changed: [fields], bounds}`; compact adds the new values of changed fields; full: before/after snapshots. `warnings` (text cut off or overflowing its box/group, fields that change nothing) and `normalized` (rewritten spellings) appear when relevant. |
+| `vixl_operations_apply` | **`operations`** (1–10000 operation objects) or `operations_path` (workspace `.json`/`.jsonl` file), `dry_run=False`, `detail="brief"\|"compact"\|"full"`, `check`, `suites`, `preview`, `request_id`, `as_job` | Atomic. `check=true` (or check names) adds vixl_check's findings for the touched layers plus every `fix`; `suites=true` (or suite names) runs the document's attached check suites, including one the batch attaches, and lists each suite's status and the rules that did not pass; `preview=true` (or `{page, region, max_width, time, isolate}`) adds a 512 px PNG, so one call replaces apply → check → preview. Brief (default): per layer ID, new layers as `added`, `name`, `type`, `bounds` (plus a shape's `content_bounds` and a text layer's metrics (`ink_bounds`, `line_bounds`, `baseline`, `baselines`, `ascent`, `descent`, `cap_height`, `x_height`, `metrics_space`)), changed layers as `{changed: [fields], bounds}` (plus `parent`, `canvas_bounds` inside a group); compact adds the new values of changed fields; full: before/after snapshots. `warnings` (text cut off or overflowing its box/group, fields that change nothing) and `normalized` (rewritten spellings) appear when relevant. |
 | `vixl_capabilities` | `topic`, `fields=False` | Task-specific operations, exact fields, limits and gotchas |
 | `vixl_operation_schema` | **`types`** (1–20 names) | Exact JSON Schema for those operation types (needed with `vixl mcp --schema slim`) |
-| `vixl_render_preview` | `variables`, `max_width=1024`, `max_height=1024` (≤4096), `max_bytes=1048576` (64 KiB–4 MiB), `region=[x,y,w,h]` (px or %), `artboard`, `comp` | PNG at preview resolution (fast); `region` zooms in up to 8× |
-| `vixl_render_compare` | `before="previous"`, `after="head"`, `mode="side-by-side"\|"diff"`, `max_width`, `max_height` | Summary (`changed_fraction`, `changed_region`) + image; refs: `head`, `previous`, `head~N`, branch, checkpoint, revision ID |
-| `vixl_history` | `action="list"\|"undo"\|"redo"\|"branch"\|"checkpoint"\|"checkout"\|"begin"\|"commit"\|"rollback"`, `ref`, `count=1`, `offset`, `limit=20` | `list` → paginated node summaries; others → new head/branch |
+| `vixl_render_preview` | `variables`, `max_width=1024`, `max_height=1024` (≤4096), `max_bytes=1048576` (64 KiB–4 MiB), `region=[x,y,w,h]` (px or %), `artboard`, `comp`, `isolate=[layer…]` | PNG at preview resolution (fast); `region` zooms in up to 8×; `isolate` shows one object (a group with its parts) alone, cropped to its ink |
+| `vixl_render_compare` | `before="previous"`, `after="head"`, `mode="side-by-side"\|"diff"`, `max_width`, `max_height`, `isolate=[layer…]` | Summary (`changed_fraction`, `changed_region`) + image; refs: `head`, `previous`, `head~N`, branch, checkpoint, revision ID |
+| `vixl_history` | `action="list"\|"undo"\|"redo"\|"branch"\|"checkpoint"\|"checkout"\|"begin"\|"commit"\|"rollback"\|"compact"`, `ref`, `count=1`, `offset`, `limit=20`, `dry_run`, `fonts=true` | `list` → paginated node summaries; others → new head/branch; `compact` → what it dropped (all undo history, unused fonts and files; try `dry_run` first) |
 
 Transactions: `vixl_history(action="begin")` → several `vixl_operations_apply` calls →
 `commit` (one undo step) or `rollback`. Name branches/checkpoints with `ref`.
@@ -72,7 +75,7 @@ Transactions: `vixl_history(action="begin")` → several `vixl_operations_apply`
 
 | Tool | Parameters | Returns |
 | --- | --- | --- |
-| `vixl_check` | `checks` (`bounds`,`overlap`,`contrast`,`safe_area`,`legibility`; default all), `targets`, `safe_area` (px, `"5%"` or `{left,top,right,bottom}`), `avoid` (reserved zones), `thumbnail_width=320`, `min_thumbnail_text=10`, `min_contrast`, `artboard`, `comp` | `{passed, errors, warnings, issues[{check,severity,layers,message,…}]}` — only problems |
+| `vixl_check` | `checks` (`bounds`,`overlap`,`contrast`,`safe_area`,`legibility`; default all), `targets`, `safe_area` (px, `"5%"` or `{left,top,right,bottom}`; default: the canvas's own safe area), `avoid` (reserved zones), `thumbnail_width=320` (null disables), `min_thumbnail_text=10`, `min_contrast`, `artboard`, `comp` | `{passed, errors, warnings, issues[{check,severity,layers,message,…}]}` — only problems |
 | `vixl_measure` | `point=[x,y]`, `region=[x,y,w,h]`, `foreground`, `target`, `histogram="summary"\|"full"\|"none"`, `artboard`, `comp` | RGBA/hex sample, alpha-weighted average, channel percentiles (or 256-bin histograms), WCAG contrast min/p10/mean/max |
 | `vixl_measure_spacing` | `targets`, `axis="vertical"`, `around`/`before`/`after`, `expected`, `tolerance=1`, `artboard`, `comp` | Per-gap pixels, overlap, min/max/mean/spread, `passed` |
 | `vixl_validate` | `profile`, `rules`, `detail="summary"\|"full"`, `targets`, `severity`, `suppress`, `offset`, `limit=50` (≤200) | Overall `valid`, counts and paginated findings; full includes passing checks. Layer intent can mark deliberate bleed. |
@@ -107,13 +110,13 @@ informational) with every issue's `action`.
 
 | Tool | Parameters | Notes |
 | --- | --- | --- |
-| `vixl_document_create` | `path`, `width`+`height` **or** `size`, `background`, `dpi`, `orientation`, `bleed` | Named sizes: `vixl_sizes_list(category, search)` |
+| `vixl_document_create` | `path`, `width`+`height` **or** `size` **or** `purpose`, `background`, `dpi`, `orientation`, `bleed`, `seed`, `variety` | Named sizes: `vixl_sizes_list(category, search)`; purposes: social, story, poster, print, document, form, slides, diagram, web, motion, logo, icon, favicon … |
 | `vixl_layouts_list` | — | Layout names, principles, content keys and options (apply with `layout-apply`) |
 | `vixl_brushes_list` | — | Brushes and settings (paint with the `paint` operation) |
-| `vixl_color` | **`action`** `info\|convert\|harmony\|scale\|mix\|contrast\|names`, **`colors`**, `to`, `scheme`, `count`, `amount`, `space` | Color language tools |
+| `vixl_color` | **`action`** `info\|convert\|harmony\|scale\|mix\|contrast\|names`, **`colors`**, `to`, `scheme`, `count`, `amount`, `space` | Color language tools. `scale` with one colour is the 50–950 ramp; with two or more it is `count` steps (default 5) between them, mixed in `space`. A colour outside sRGB reports `clipped` (`chroma` or `clamp`) and a warning |
 | `vixl_timeline_inspect` | `detail="summary"\|"full"`, `targets`, `properties`, `start`, `end`, `offset`, `limit=50`, `key_offset`, `key_limit=50` (limits ≤200) | Bounded track/key counts and ranges; full adds paginated keys |
 | `vixl_timeline_preview` | `time` **or** `count=8`, `columns`, `max_width=1600` | One frame or a labelled contact sheet |
-| `vixl_export_timeline` | **`path`** (.gif/.png/.webp/.zip/.mp4/.webm), `format` (`sheet`), `fps`, `scale`, `start`, `end`, `background`, `columns`, `quality`, `overwrite` | Never overwrites unless asked |
+| `vixl_export_timeline` | **`path`** (.gif/.png/.webp/.zip/.mp4/.webm), `format` (`sheet`), `fps`, `scale`, `start`, `end`, `background`, `columns`, `quality`, `colors`, `dither`, `max_bytes`, `target_bytes` (fit GIF/WebP/APNG to a size; reports `chosen`), `preset` (`chat`/`web`/`email`), `poster`, `sample_rate` (MP4/WebM audio Hz), `overwrite` | Never overwrites unless asked |
 | `vixl_export_icons` | **`directory`**, `icon_set` `web\|apple\|android\|windows\|all`, `sampling` | favicon.ico, PNG sizes, site.webmanifest |
 
 `vixl_render_preview` also takes `time`, `proof`, `simulate`; `vixl_export_file` also takes `.pdf`/`.ico`
@@ -124,7 +127,7 @@ paths, `color_space="cmyk"`, `icc_profile` (workspace path), `intent`, `black_ge
 ### Character, audio and spatial authoring
 
 `vixl_export_character(target, output)` saves reusable character artwork and rigs as a portable `.vixl`.
-`vixl_export_audio(path)` writes timeline score, sound effects and imported audio to WAV.
+`vixl_export_audio(path, sample_rate=None)` writes timeline score, sound effects and imported audio to WAV at the highest source rate (up to 48 kHz; 48 kHz for synthesized sound), mono when every source is mono and unpanned; it reports `sample_rate` and `channels`.
 Use `vixl_spatial` for bounds, nearest/between/relative queries, free regions, snap candidates, grid cells, guides and hit tests.
 Fetch exact operations with `vixl_capabilities(topic="animation")` and `vixl_operation_schema(types=[...])`.
 
@@ -155,9 +158,9 @@ because the schema is inline in `vixl_operations_apply`.
 
 - Operation fields `path` and `linked` are rejected → import with `vixl_import_image`; reference
   embedded images by `asset` ID (see `vixl_document_inspect`), e.g. in `frame`/`replace-contents`/`add`.
-- `font` works in batches (`text`, `text-set`, `rich-text` spans, `layout-apply`, fields) like `vixl_text_add`:
+- `font` works in batches (`text`, `text-set`, `rich-text` spans, `layout-apply`, fields):
   pass a registered font name or a role (`heading`, `body`). Install first with `vixl_font_pair` /
-  `vixl_font_install` / `vixl_import_font`; a file path or unregistered name is an error that lists the
+  `vixl_font_install` / `vixl_import_font` (`path` or `url`); a file path or unregistered name is an error that lists the
   registered names. No font files over MCP.
 - No plugins, no linked files. CSV `render --data` and `export-screens` are CLI/Python only.
 - Tool errors carry JSON: `{"error","message","field","operation_index","operation_type","allowed"?,"suggestions"?}`
@@ -183,13 +186,14 @@ Non-loopback hosts require a bearer token from `VIXL_API_TOKEN` (or `--token-env
 | `POST /spacing` | same keys as `vixl_measure_spacing` | Spacing report |
 | `POST /validate` | `{"profile":…,"rules":[…]}` | Checks |
 | `POST /check` | same keys as `vixl_check` | Design issues |
-| `POST /preview` | `{"max_width":…,"max_height":…,"max_bytes":…,"region":[…]}` | PNG |
-| `POST /compare` | `{"before":"previous","after":"head","mode":"side-by-side"}` | Summary + `image_base64` |
+| `POST /preview` | `{"max_width":…,"max_height":…,"max_bytes":…,"region":[…],"isolate":[…]}` | PNG |
+| `POST /compose` | vixl_compose fields without `path`, `exports` or `operations_path` | Dry run: steps, check findings, `preview_base64` (the server serves one fixed document, so nothing is saved) |
+| `POST /compare` | `{"before":"previous","after":"head","mode":"side-by-side","isolate":[…]}` | Summary + `image_base64` |
 | `GET /pixels/{target}` | | Pixel rows/palette |
 | `GET /animation` · `GET /animation/frame/{name}?scale=1` | | Frame list + named animations · PNG |
 | `POST /animation/export` | `{"format":"gif"\|"apng"\|"webp"\|"mp4"\|"webm"\|"sheet","animation":"walk","scale":8,"sampling":…,"colors":…,"quality":…,"columns":…}` | Animation bytes (mp4/webm need ffmpeg) |
 | `GET /history` · `POST /history/{action}` | `{"ref":…,"count":1}` | History graph / new head |
-| `POST /assets?name=photo` | raw image bytes | New layer |
+| `POST /assets?name=photo` | raw image bytes, or empty with `url=https://…`; optional `credit`, `license` | New layer |
 | `POST /ai/{command}` | `{"args":["--prompt","forest","--provider","local"]}` | CLI-style AI call |
 | `POST /export` | `{"format":"PDF","color_space":"cmyk","ink_limit":300}`, `ICO`+`icon_sizes`, `icc_profile_base64`, `proof`, `simulate`, `dpi`, `time` | File bytes |
 | `GET /sizes?category=` · `GET /layouts` · `GET /brushes` · `GET /guide?brief=` · `GET /styles?query=\|name=` · `GET /looks` | | Catalogs |
@@ -213,15 +217,19 @@ curl -s -X POST 'http://127.0.0.1:8765/assets?name=photo' --data-binary @photo.j
 from vixl import Project, VixlError
 from vixl.model import Limits
 
-p = Project(1080, 1080, background="#101828")              # new, unsaved
+p = Project(1080, 1080, background="#101828")              # new, unsaved plain canvas
+p = Project(purpose="social", seed=7)    # design document as vixl new/vixl_document_create make it
+p = Project.new("letter", seed=7, report=info)             # every creation option; info["creation"]
 p = Project.load("poster.vixl", limits=Limits(max_pixels=16_000_000), allow_linked=False)
 
 p.apply([{"type": "text", "name": "title", "text": "Hi", "size": 64}], dry_run=False, detail="compact")
+p.import_image("photo.jpg", name="hero", credit="Photo: Ana Ruiz", license="CC0")   # or data=bytes
+p.import_image(url="https://images.example.com/cat.jpg", name="cat", license="CC BY 4.0")  # https, public hosts only
 p.inspect()                 # dict; p.inspect("title") for one layer
 p.layer("title")            # live layer dict (read-only use)
 img = p.render(variables={"title": "Hello"}, artboard=None, comp=None)   # Pillow RGBA
 data = p.export("out.png", quality=90, scale=2, profile=None, sampling="smooth")  # bytes, writes path
-p.save() ; p.save("copy.vixl")
+p.save() ; p.save("copy.vixl")   # another existing file needs overwrite=True
 
 p.undo(1); p.redo(1); p.checkpoint("clean"); p.branch("vivid"); p.checkout("clean")
 p.begin(); ...; p.commit()  # or p.rollback()
@@ -236,6 +244,14 @@ p.export_animation("walk.gif", animation="walk", scale=8)    # one named animati
 p.export_screens("screens", scales=(1, 2))
 p.render_data("rows.csv", "campaign")
 p.manifest()
+
+from vixl.compose import run    # vixl_compose: a new piece in one atomic call, inside a workspace folder
+run("work", path="card.vixl", size="instagram-post", layout={"name": "hero-statement", "title": "Hi"},
+    exports=["card.png"], preview=True)   # result dict; preview PNG bytes under "preview_png"
+from vixl.image_diff import diff_files   # vixl diff
+diff_files("before.png", "after.vixl", "diff.png")     # changed_pixels, changed_fraction, changed_region
+from vixl.proof import proof_page        # workflow proof
+proof_page(["card.vixl", {"path": "card.png", "before": "old.png"}], "proof.html", decisions=True)
 
 try:
     p.apply({"type": "move", "target": "nope", "x": 1})

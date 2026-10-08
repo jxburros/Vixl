@@ -7,6 +7,8 @@ Widths and dash distances are measured in local pixels, independent of path view
 import math
 
 from .errors import require
+from .geometry import OPEN_SHAPES
+from .geometry import default_fill
 
 FIELDS = (
     "dash",
@@ -82,14 +84,14 @@ def schema():
             "additionalProperties": False,
         },
     }
-    for key, value in props.items():
-        value["description"] = {
+    for key, value in list(props.items()):
+        props[key] = {**value, "description": {
             "dash": "Dash/gap pixel lengths or dashed/dotted preset; separate from trim_start/trim_end reveal.",
             "width_profile": "Ordered [fraction along path, width multiplier] control points; endpoints 0 and 1.",
             "strokes": "Additional strokes painted in array order after the base stroke.",
             "taper_start": "Width multiplier at the start; reaches full width at the middle.",
             "taper_end": "Width multiplier at the end; starts tapering from the middle.",
-        }.get(key, key.replace("_", " ").capitalize() + ".")
+        }.get(key, key.replace("_", " ").capitalize() + ".")}
     return props
 
 
@@ -314,16 +316,7 @@ def expanded(layer, path):
         },
         *layer.get("strokes", []),
     ]
-    if layer.get("shape") == "line" or layer.get("shape") in (
-        "wave",
-        "zigzag",
-        "sawtooth",
-        "square-wave",
-        "dashed-line",
-        "scribble",
-        "squiggle",
-        "swash-underline",
-    ):
+    if layer.get("shape") in OPEN_SHAPES:
         if settings[0]["color"] == "transparent":
             settings[0]["color"] = layer.get("fill", "white")
     from .trim import trim_range
@@ -418,19 +411,9 @@ def primitives(layer, project=None):
 
         path = group_warp(path, layer, project)
     result = []
-    open_kind = layer.get("shape") in (
-        "line",
-        "wave",
-        "zigzag",
-        "sawtooth",
-        "square-wave",
-        "dashed-line",
-        "scribble",
-        "squiggle",
-        "swash-underline",
-    )
+    open_kind = layer.get("shape") in OPEN_SHAPES
     if not open_kind:
-        result.append((path, layer.get("fill", "white")))
+        result.append((path, default_fill(layer)))
     stroke_path = path
     if layer.get("shape") == "star-rating":
         stroke_path = pixel_path({**layer, "rating": layer.get("count", 5)})

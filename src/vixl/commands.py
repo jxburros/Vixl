@@ -1,6 +1,7 @@
 """Human command syntax compiles into canonical operation dictionaries."""
 
 import argparse
+import json
 import re
 import shlex
 from pathlib import Path
@@ -15,7 +16,7 @@ class Parser(argparse.ArgumentParser):
 
 
 def dimensions(value):
-    match = re.fullmatch(r"(\d+)[x×](\d+)", value)
+    match = re.fullmatch(r"(\d+)[xX×](\d+)", value.strip())
     require(match, "Size must look like 1920x1080", "usage_error")
     return tuple(map(int, match.groups()))
 
@@ -30,7 +31,9 @@ def pairs(values):
 
 
 def number_or_center(value):
-    return value if value == "center" else float(value)
+    from .normalize import PERCENT
+
+    return value if value == "center" or PERCENT.match(value) else float(value)
 
 
 def normalize(tokens):
@@ -56,6 +59,10 @@ def compile_command(tokens):
     authoring = compile_authoring(cmd, args)
     if authoring is not None:
         return authoring
+    from .merging import compile_command as compile_merge
+    merged = compile_merge(cmd, args)
+    if merged is not None:
+        return merged
     from .stacks import compile_command as compile_stack
     stack = compile_stack(cmd, args)
     if stack is not None:
@@ -138,7 +145,6 @@ def compile_command(tokens):
     )
     op = {"type": cmd}
     if cmd in ("pen", "container-place", "container-swap", "container-reflow", "shape-place", "palette-define"):
-        import json
         if cmd == "palette-define":
             p.add_argument("name")
             p.add_argument("colors", type=json.loads, help='JSON colors, e.g. ["black", "white"]')
@@ -148,8 +154,10 @@ def compile_command(tokens):
             p.add_argument("--name")
             p.add_argument("--target")
             group = p.add_mutually_exclusive_group(required=True)
-            group.add_argument("--nodes", type=json.loads, help="JSON anchors with point, in and out control handles")
-            group.add_argument("--points", type=json.loads, help="JSON freehand points")
+            group.add_argument("--nodes", type=json.loads,
+                               help='JSON anchors [{"point": [x, y], "in": [x, y], "out": [x, y]}]; in and out are '
+                                    "handle positions in the same coordinates as point, not offsets from it")
+            group.add_argument("--points", type=json.loads, help="JSON freehand points [[x, y], ...]")
             p.add_argument("--closed", action="store_true")
             p.add_argument("--no-smooth", dest="smooth", action="store_false")
             p.add_argument("--tension", type=float)
@@ -177,6 +185,8 @@ def compile_command(tokens):
         p.add_argument("path")
         p.add_argument("--name")
         p.add_argument("--linked", action="store_true")
+        p.add_argument("--credit", help="attribution kept with the image")
+        p.add_argument("--license", help="license or usage terms of the image")
         p.add_argument("--x", type=float)
         p.add_argument("--y", type=float)
     elif cmd in ("solid", "gradient", "text"):
@@ -186,7 +196,9 @@ def compile_command(tokens):
             p.add_argument("--font", help="registered font name, heading, body, or a font file")
             p.add_argument("--size", type=int)
             p.add_argument("--align", choices=["left", "center", "right"])
-            p.add_argument("--spacing", type=int)
+            p.add_argument("--spacing", type=int, help="pixels added to the font's line pitch (may be negative)")
+            p.add_argument("--line-height", type=float, help="baseline distance as a multiple of the size")
+            p.add_argument("--within", help="centre the text in this shape's content box (instead of --x/--y)")
             p.add_argument("--hide-if-empty", action=argparse.BooleanOptionalAction, default=None,
                            help="do not draw the text while it is empty after ${variable} substitution")
         elif cmd == "gradient":
@@ -194,8 +206,6 @@ def compile_command(tokens):
             p.add_argument("--end", default="white")
             p.add_argument("--direction", choices=["vertical", "horizontal", "radial", "angled"])
             p.add_argument("--angle", type=float)
-            import json
-
             p.add_argument("--stops", type=json.loads)
         p.add_argument("--name")
         if cmd != "text":
@@ -211,6 +221,7 @@ def compile_command(tokens):
         p.add_argument("--font", help="registered font name, heading, body, or a font file")
         for key in ("size", "spacing", "stroke-width"):
             p.add_argument(f"--{key}", type=int)
+        p.add_argument("--line-height", type=float, help="baseline distance as a multiple of the size")
         p.add_argument("--hide-if-empty", action=argparse.BooleanOptionalAction, default=None,
                        help="do not draw the text while it is empty after ${variable} substitution")
     elif cmd in (
@@ -288,9 +299,11 @@ def compile_command(tokens):
         p.add_argument("--luminance", type=float)
         p.add_argument("--chroma", type=float)
         p.add_argument("--search", type=int)
+        p.add_argument("--gains", type=json.loads, help="white-balance: channel gains as JSON [r, g, b]")
+        p.add_argument("--neutral", help="white-balance: a color that should become neutral grey")
         data = vars(p.parse_args(args))
         values = data.pop("values")
-        if cmd in ARTISTIC_DEFAULTS or cmd == "denoise":
+        if cmd in ARTISTIC_DEFAULTS or cmd in ("denoise", "white-balance"):
             require(len(values) <= 2, "Expected [LAYER] [VALUE]")
             if len(values) == 2:
                 data["target"], data["value"] = values[0], float(values[1])
@@ -308,22 +321,24 @@ def compile_command(tokens):
             if len(values) == 2:
                 data["target"] = values.pop(0)
             key = "direction" if cmd == "flip" else "value"
-            # Opacity 1–100 is read as a percentage by the shared normalizer.
-            data[key] = values[0] if cmd in ("flip", "blend") else float(values[0])
+            # Opacity is 0–1; "70%" stays a string for the shared normalizer to read as 0.7.
+            percent = cmd == "opacity" and values[0].endswith("%")
+            data[key] = values[0] if cmd in ("flip", "blend") or percent else float(values[0])
         return {**op, **{k: v for k, v in data.items() if v is not None}}
     elif cmd == "pivot":
         p.description = "Set the point a layer rotates and scales about: X Y fractions of its box (0 0 top-left, 0.5 0.5 center), --px for pixels from its top-left, or an anchor such as top-left."
         p.add_argument("values", nargs="*", metavar="[LAYER] X Y | [LAYER] ANCHOR")
         p.add_argument("--px", action="store_true", help="X Y are pixels from the layer box's top-left")
+        p.add_argument("--canvas", action="store_true", help="X Y are a document (canvas) point, through any groups")
         p.add_argument("--clear", action="store_true", help="Remove the pivot (rotate/scale about the center again)")
         data = vars(p.parse_args(args))
         values = data.pop("values")
-        from .operations import PIVOT_ANCHORS
+        from .geometry import canonical_anchor
 
         if data.pop("clear"):
             require(len(values) <= 1, "Use pivot [LAYER] --clear")
             return {**op, "clear": True, **({"target": values[0]} if values else {})}
-        if values and values[-1] in PIVOT_ANCHORS:
+        if values and canonical_anchor(values[-1]):
             require(len(values) <= 2, "Use pivot [LAYER] ANCHOR")
             return {**op, "value": values[-1], **({"target": values[0]} if len(values) == 2 else {})}
         require(len(values) in (2, 3), "Use pivot [LAYER] X Y, pivot [LAYER] ANCHOR or pivot [LAYER] --clear")
@@ -331,7 +346,8 @@ def compile_command(tokens):
             point = [float(values[-2]), float(values[-1])]
         except ValueError:
             raise VixlError("usage_error", "Pivot X and Y must be numbers") from None
-        return {**op, "value": point, **({"units": "px"} if data["px"] else {}), **({"target": values[0]} if len(values) == 3 else {})}
+        units = "canvas" if data["canvas"] else "px" if data["px"] else None
+        return {**op, "value": point, **({"units": units} if units else {}), **({"target": values[0]} if len(values) == 3 else {})}
     elif cmd == "crop":
         p.add_argument("target")
         for key in ("x", "y", "width", "height"):
@@ -341,6 +357,7 @@ def compile_command(tokens):
         p.add_argument("alignment")
         p.add_argument("--margin", type=float)
         p.add_argument("--relative-to")
+        p.add_argument("--box", choices=["bounds", "content"], help="content: align to the --relative-to layer's inner area")
         p.add_argument("--targets", nargs="+")
     elif cmd == "reorder":
         p.add_argument("target")
@@ -401,7 +418,6 @@ def compile_command(tokens):
             require(len(values) == 2, "Wand needs X Y")
             data.update(zip(("x", "y"), map(int, values)))
         elif data["shape"] in ("lasso", "path"):
-            import json
             require(len(values) == 1, "Provide a quoted JSON point list or SVG path")
             data["points" if data["shape"] == "lasso" else "path"] = json.loads(values[0]) if data["shape"] == "lasso" else values[0]
         elif data["shape"] in ("alpha", "color"):
@@ -430,9 +446,12 @@ def compile_command(tokens):
             data["amount"] = data.pop("radius")
         return {"type": "effect", **data}
     elif cmd == "effect":
-        p.add_argument("action", choices=["disable", "enable", "remove", "set"])
+        p.add_argument("action", choices=["disable", "enable", "remove", "set", "move"])
         p.add_argument("target")
         p.add_argument("effect")
+        p.add_argument("--to", help="move: new 1-based position, top or bottom")
+        p.add_argument("--before", help="move: place before this effect")
+        p.add_argument("--after", help="move: place after this effect")
         for key in ("amount", "radius", "strength", "black", "white", "luminance", "chroma"):
             p.add_argument(f"--{key}", type=float)
         p.add_argument("--seed", type=int)
@@ -497,7 +516,6 @@ def compile_script(path):
 
 def compile_schema_command(kind, args):
     """Compile catalog extensions directly from the public schema, without a second field registry."""
-    import json
     from .schema import operation_schema, validate_operation
 
     variants = operation_schema()["properties"]["operations"]["items"]["oneOf"]

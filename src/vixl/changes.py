@@ -106,18 +106,22 @@ def brief_changes(before, after):
     (``bounds``), without new field values. The caller knows what it asked for; read a layer
     with vixl_document_inspect, or use detail=compact for the new values."""
     changes, other = {}, []
+    current = {layer["id"]: layer for layer in after["layers"]}
     for key, value in compact_changes(before, after).items():
         if key == "layers":
             layers = {}
             for ident, delta in value.items():
                 if delta.get("added"):
-                    layers[ident] = {k: delta[k] for k in ("added", "name", "type", "bounds", *TEXT_METRICS) if k in delta}
+                    layers[ident] = {k: delta[k] for k in ("added", "name", "type", "bounds", "content_bounds", *TEXT_METRICS)
+                                     if k in delta}
                 elif delta.get("removed"):
                     layers[ident] = delta
                 else:
-                    layers[ident] = {"changed": sorted(k for k in delta if k not in ("bounds", "canvas_bounds", "path_nodes", *TEXT_METRICS)),
-                                     **{key: delta[key] for key in TEXT_METRICS if key in delta},
+                    layers[ident] = {"changed": sorted(k for k in delta if k not in ("bounds", "canvas_bounds", "content_bounds",
+                                                                                     "path_nodes", *TEXT_METRICS)),
+                                     **{key: delta[key] for key in (*TEXT_METRICS, "content_bounds") if key in delta},
                                      **({"bounds": delta["bounds"]} if "bounds" in delta else {})}
+                layers[ident].update(_grouped(current.get(ident), current))
             changes["layers"] = layers
         elif key in ("canvas", "active_layer", "page", "selection"):
             changes[key] = value
@@ -128,6 +132,15 @@ def brief_changes(before, after):
     if other:
         changes["also_changed"] = sorted(other)
     return changes
+
+
+def _grouped(layer, layers):
+    """A grouped layer's ``bounds`` are local to its group: name the group and add canvas bounds."""
+    if not layer or not layer.get("parent"):
+        return {}
+    parent = layers.get(layer["parent"])
+    return {"parent": layer["parent"], **({"parent_name": parent["name"]} if parent else {}), "coordinate_space": "parent",
+            **({"canvas_bounds": [round(v, 2) for v in layer["canvas_bounds"]]} if "canvas_bounds" in layer else {})}
 
 
 def _stroke(stroke):
@@ -154,6 +167,8 @@ def _brief(layer):
         result["size"] = layer.get("size")
     if layer["type"] == "shape":
         result["shape"] = layer.get("shape")
+        if "content_bounds" in layer:
+            result["content_bounds"] = layer["content_bounds"]
     if layer["type"] == "paint":
         result["strokes"] = len(layer.get("strokes", []))
     if layer["type"] == "link":
@@ -181,6 +196,17 @@ def _brief(layer):
         result["clip"] = layer["clip"]
     if layer.get("constraints"):
         result["constraints"] = layer["constraints"]
+    provenance = layer.get("provenance") or {}
+    source = provenance.get("source")
+    if isinstance(source, dict) and source.get("url"):
+        result["source_url"] = source["url"]
+    for key in ("credit", "license"):
+        if provenance.get(key):
+            result[key] = provenance[key]
+    # layer-intent settings, so an agent can see why a check exempts a layer.
+    for key in ("role", "tags", "detached_ok", "allow_crop", "color_vision_safe"):
+        if layer.get(key):
+            result[key] = layer[key]
     return result
 
 
@@ -211,9 +237,10 @@ def summarize(project, target=None):
             result[key] = sorted(state[key])
     if state.get("selection"):
         result["selection"] = True
-    if state.get("timeline", {}).get("tracks"):
+    if state.get("timeline", {}).get("tracks") or state.get("timeline", {}).get("text_animations"):
         timeline = state["timeline"]
-        result["timeline"] = {"duration": timeline["duration"], "fps": timeline["fps"], "tracks": len(timeline["tracks"])}
+        result["timeline"] = {"duration": timeline["duration"], "fps": timeline["fps"], "tracks": len(timeline["tracks"]),
+                              **({"text_animations": len(timeline["text_animations"])} if timeline.get("text_animations") else {})}
     if state.get("brushes"):
         result["brushes"] = sorted(state["brushes"])
     if state.get("animation", {}).get("frames"):

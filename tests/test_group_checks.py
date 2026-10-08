@@ -107,7 +107,7 @@ def test_text_moved_past_its_group_is_drawn_and_checked():
     result = p.check()
     assert not result["passed"]
     assert any(i["check"] == "bounds" and "outside the canvas" in i["message"] for i in result["issues"])
-    assert any(i["check"] == "contrast" and i["severity"] == "warning" for i in result["issues"])
+    assert any(i["check"] == "contrast" and i["severity"] == "error" for i in result["issues"])
     # Groups do not clip: text moved past the group's box still renders and is measured.
     p = logo()
     p.apply({"type": "move", "target": "label", "x": 100, "y": 10})

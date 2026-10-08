@@ -157,23 +157,23 @@
     "agent": "art-director",
     "what": "preview copy-agent merge: 1 conflict(s)",
     "paths": [
-      "/layers/lyr_1135ecdf68a84398/text"
+      "/layers/lyr_70b9fa29f3644657/text"
     ]
   },
   {
     "agent": "art-director",
     "what": "merged copy-agent",
     "resolutions": {
-      "/layers/lyr_1135ecdf68a84398/text": "theirs"
+      "/layers/lyr_70b9fa29f3644657/text": "theirs"
     }
   },
   {
     "agent": "art-director",
     "what": "preview design-agent merge: 3 conflict(s)",
     "paths": [
-      "/layers/lyr_482b5ae001024618/text",
-      "/layers/lyr_482b5ae001024618/width",
-      "/layers/lyr_e88cd3a113874aa0/text"
+      "/layers/lyr_a058058af08942e7/text",
+      "/layers/lyr_c4b873afb2e34bcf/text",
+      "/layers/lyr_c4b873afb2e34bcf/width"
     ]
   },
   {
@@ -184,9 +184,9 @@
     "agent": "art-director",
     "what": "merged design-agent",
     "resolutions": {
-      "/layers/lyr_482b5ae001024618/text": "ours",
-      "/layers/lyr_482b5ae001024618/width": "ours",
-      "/layers/lyr_e88cd3a113874aa0/text": "ours"
+      "/layers/lyr_a058058af08942e7/text": "ours",
+      "/layers/lyr_c4b873afb2e34bcf/text": "ours",
+      "/layers/lyr_c4b873afb2e34bcf/width": "ours"
     }
   },
   {
@@ -195,7 +195,7 @@
   },
   {
     "agent": "layout-agent",
-    "what": "fixed review notes; master check passed=True; resolved 2/3 notes"
+    "what": "fixed review notes; master check passed=False; resolved 2/3 notes"
   },
   {
     "agent": "producer",
@@ -224,7 +224,7 @@
   },
   {
     "agent": "producer",
-    "what": "redefined flyer fit-headline box to 2004px so the headline clears the logo"
+    "what": "redefined flyer fit-headline box to 1969px so the headline clears the logo"
   },
   {
     "agent": "producer",

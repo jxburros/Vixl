@@ -172,8 +172,8 @@ def main():
         {"type": "exposure", "target": "photo", "amount": 0.12},
         {"type": "shadows", "target": "photo", "amount": 5},
         {"type": "highlights", "target": "photo", "amount": -8},
-        {"type": "temperature", "target": "photo", "amount": 500},
-        {"type": "tint", "target": "photo", "amount": -1},
+        {"type": "temperature", "target": "photo", "amount": 60},
+        {"type": "tint", "target": "photo", "amount": -10},
         {"type": "saturation", "target": "photo", "amount": 12},
         {"type": "sharpen", "target": "photo", "amount": 1.4},
     ])
@@ -185,7 +185,7 @@ def main():
                                    "disabled": {k: v for k, v in without_auto_tone.items() if k != "_hist"}}
     ids = fx_ids(p, "photo")
     # Effect-stack management by stable fx_ ID and by 1-based index.
-    step(p, "effect-set temperature 500→700", {"type": "effect-set", "target": "photo", "effect": ids["temperature"], "amount": 700})
+    step(p, "effect-set temperature 60→80", {"type": "effect-set", "target": "photo", "effect": ids["temperature"], "amount": 80})
     step(p, "effect-disable sharpen (index 11)", {"type": "effect-disable", "target": "photo", "effect": 11})
     no_sharpen = p.render()
     step(p, "effect-enable sharpen", {"type": "effect-enable", "target": "photo", "effect": ids["sharpen"]})
@@ -216,9 +216,9 @@ def main():
     sky_mask = MASKS["sky: rect minus colour, feather 14"]
     select(p, "sun: ellipse, feather 60")
     step(p, "sun: warm bloom", [{"type": "exposure", "target": "photo", "amount": 0.35},
-                                {"type": "temperature", "target": "photo", "amount": 260}])
+                                {"type": "temperature", "target": "photo", "amount": 30}])
     select(p, "sea: lasso minus ellipse")
-    step(p, "sea: cool & deepen", [{"type": "temperature", "target": "photo", "amount": -900},
+    step(p, "sea: cool & deepen", [{"type": "temperature", "target": "photo", "amount": -100},
                                    {"type": "contrast", "target": "photo", "amount": 12},
                                    {"type": "exposure", "target": "photo", "amount": -0.15}])
     select(p, "land: wand + wand, x 2-subpath path")
@@ -240,7 +240,7 @@ def main():
         {"type": "select", "shape": "invert"},
         {"type": "select", "shape": "ellipse", "x": 160, "y": 420, "width": 280, "height": 300, "mode": "intersect", "feather": 40},
         {"type": "exposure", "target": "photo", "amount": 0.3},
-        {"type": "temperature", "target": "photo", "amount": 180},
+        {"type": "temperature", "target": "photo", "amount": 20},
         {"type": "select", "shape": "none"},
     ])
 
@@ -358,7 +358,7 @@ def main():
     q.state["presets"]["coastal-base"] = p.state["presets"]["coastal-base"]  # carried over explicitly (see README)
     step(q, "lake: preset-apply coastal-base", [{"type": "select", "shape": "none"},
                                                  {"type": "preset-apply", "name": "coastal-base", "target": "photo",
-                                                  "overrides": {"temperature": 900, "saturation": -10}}])
+                                                  "overrides": {"temperature": 100, "saturation": -10}}])
     q.save(OUT / "lake.vixl")
     img, summary = compare(q, "imported", "head", max_width=1600, max_height=560)
     img.convert("RGB").save(OUT / "preset-transfer.jpg", quality=85)

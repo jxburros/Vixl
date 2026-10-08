@@ -36,13 +36,20 @@ further. The source path, checksum, original size and embedded size are recorded
 in provenance; the original file remains untouched. Saving drops unreferenced
 assets, while assets referenced by retained history stay available for undo.
 
+**Sources above the pixel limit.** With `max_pixels` or `downsample`, the source may be up to four times the pixel
+limit (160 MP under the default 40 MP `--max-pixels`, so a 108 MP camera file imports); it is shrunk while it is
+decoded. Without a `width` and `height` such a layer takes the embedded size. `vixl import`, `vixl_import_image` and
+the REST import downsample a source above the limit to fit it on their own and report `downsampled` and a warning.
+A plain `add` of such a file fails with `resource_limit`, naming the size and both remedies (`max_pixels`, or a higher
+`--max-pixels`).
+
 ## Example: the marketing kit
 
-[`marketing/build.py`](../marketing/build.py) builds Vixl's own marketing kit with Vixl 0.20.0
-in about 1½ minutes on a 4-core machine. It checks the 1080 × 1350 carousel with
+[`marketing/build.py`](../marketing/build.py) builds Vixl's own marketing kit with Vixl 0.21.0
+in about a minute on a 4-core machine. It checks the 1080 × 1350 carousel with
 `deck={"profile": "phone"}` and the pitch deck, which is read on screen rather than projected,
 with `deck={"profile": "screen"}`. Its dot grids are marked `layer-intent role=decoration`, and
 the strikethrough bars on its timing slide use `allow_overlap`, so the remaining findings are
-informational or deliberate. Its copy quotes counts taken from the 0.20.0 registries:
-179 operation types, 150 named sizes, 47 layouts, 40 templates, 19 containers, 28 styles,
+informational or deliberate. Its copy quotes counts taken from the 0.21.0 registries:
+180 operation types, 150 named sizes, 53 layouts, 40 templates, 19 containers, 28 styles,
 17 looks and 17 brushes. [`marketing/README.md`](../marketing/README.md) says how to recount them.

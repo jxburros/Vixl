@@ -100,9 +100,9 @@ to clear it.
 | Option | Meaning |
 | --- | --- |
 | `title`, `subtitle` | Top-left, in the heading font and the muted text color. |
-| `colors` | Series (pie: slice) colors, any color or `@swatch`. A series' own `color` wins. Default: the document's active palette (colors that stand out from the background), then a color-blind-safe set; one series uses `@accent` when the document has it. |
+| `colors` | Series (pie: slice) colors, any color or `@swatch`. A series' own `color` wins, and an edit that sets `colors` warns which series it does not recolour. The value axis picks round maxima with little headroom (3,330 gives 0–3,500). Default: the document's active palette (colors that stand out from the background), then a color-blind-safe set; one series uses `@accent` when the document has it. |
 | `legend` | `auto` (default: for two or more series, and for pies), `none`, `top`, `bottom`, `left`, `right`. `legend_values` adds each total. |
-| `value_labels` | `auto` (default: label what fits its bar and does not collide, for charts of up to 60 values), `true` (label everything), `false`; pie/donut: `value`, `percent` (default) or `both`. Inside stacked segments the label color is chosen for contrast. |
+| `value_labels` | `auto` (default, for charts of up to 60 values: decided for the whole chart so labels thin evenly. Every value is labelled if the labels fit their marks without colliding, at a smaller size (down to about 0.6 × `font_size`) when that is what fits; otherwise whole series, the largest first; otherwise every second (third ...) value of the largest series; otherwise none. A series never keeps labels on only some of its marks. Value labels may overlap the chart's own lines, areas, markers and bars, which `check` does not report), `true` (label everything), `false`; pie/donut: `value`, `percent` (default) or `both`. Inside stacked segments the label color is chosen for contrast. |
 | `total_labels` | Stacked charts: each stack's total above it. |
 | `gridlines` | On by default. |
 | `number_format` | An Excel-style format for ticks and labels: `#,##0`, `0.0`, `0%`, `$#,##0.00`, `#,##0,"K"` (a trailing comma divides by 1,000). The same string is written to the PowerPoint chart. |
@@ -138,7 +138,7 @@ the chart; role swatches (`@accent`, `@ink`) recolor it without one.
 
 ## Limits
 
-A chart is at most 200 categories by 24 series and must fit the document's layer limit (512): a
+A chart is at most 200 categories by 24 series and must fit the document's layer limit (4,096): a
 12 × 4 stacked chart with every label is about 140 layers. Over the limit the operation fails and
 names the way out (fewer categories, or `value_labels: false`, `markers: false`). A chart that is too small
 for its labels says so; enlarge it or lower `font_size`.

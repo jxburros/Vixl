@@ -220,15 +220,15 @@ def test_layout_geometry_gutter_bleed_and_marks():
     card = Project.sized("business-card", "#ffffff", bleed=True)
     canvas = card.state["canvas"]
     plan = layout(canvas, {"size": "letter", "gutter": 0.25, "margin": 0.5})
-    assert (plan["cols"], plan["rows"]) == (2, 4) and plan["trim"] == (1050, 600) and plan["bleed"] == 38
+    assert (plan["cols"], plan["rows"]) == (2, 4) and plan["trim"] == (1050, 600) and plan["bleed"] == 37.5
     assert plan["origin"] == (187.5, 337.5)  # the 2175 × 2625 px grid centred inside the 0.5 in margins
     # A corner copy bleeds fully on its two outer sides; the sides it shares with neighbours get half the gutter.
     trim, bleeds, box, crop = cell_geometry(plan, 0, 0, {(0, 0), (1, 0), (0, 1)})
-    assert trim == (187.5, 337.5, 1050, 600) and bleeds == (38, 38, 37.5, 37.5) and box == (150, 300, 1125, 675)
-    # The crop maps the rounded box back onto the template, so the trim edge stays at the template's bleed offset.
-    assert crop == pytest.approx([0.5, 0.5, 1125.5, 675.5])
-    assert cell_geometry(plan, 0, 0, {(0, 0)})[1] == (38, 38, 38, 38)  # no neighbour: full bleed
-    with pytest.raises(VixlError, match="only 0.1267 in"):
+    assert trim == (187.5, 337.5, 1050, 600) and bleeds == (37.5, 37.5, 37.5, 37.5) and box == (150, 300, 1125, 675)
+    # The box is the whole template, so the crop is too and the trim edge stays at the template's bleed offset.
+    assert crop == pytest.approx([0, 0, 1125, 675])
+    assert cell_geometry(plan, 0, 0, {(0, 0)})[1] == (37.5, 37.5, 37.5, 37.5)  # no neighbour: full bleed
+    with pytest.raises(VixlError, match="only 0.125 in"):
         layout(canvas, {"bleed": 0.5})
     shapes = mark_shapes(plan, 2, 4)
     names = {shape[0] for shape in shapes}
@@ -314,14 +314,14 @@ def test_bleed_gutter_and_exact_page_boxes(tmp_path):
     report = dispatch(session, "merge-impose", {"template": "card.vixl", "data": "cards.csv", "output": "cards.pdf",
                                                 "sheet_document": "cards.vixl",
                                                 "sheet": {"size": "letter", "gutter": 0.5, "margin": 0.4}})
-    assert report["layout"]["item"]["bleed"] == pytest.approx(0.1267, abs=1e-3) and report["layout"]["grid"]["cols"] == 2
+    assert report["layout"]["item"]["bleed"] == pytest.approx(0.125, abs=1e-4) and report["layout"]["grid"]["cols"] == 2
     page = pdf_pages(tmp_path / "cards.pdf")[0]
     assert (float(page.mediabox.width), float(page.mediabox.height)) == (612, 792)
     assert "Ada Lovelace" in page.extract_text()
     sheet = Project.load(tmp_path / "cards.vixl")
     link = sheet.layer("row-1")
     # Each copy's box is trim plus bleed on every side (no neighbour closer than twice the bleed here).
-    assert (link["width"], link["height"]) == (1126, 676) and link["crop"] == [0, 0, 1126, 676]
+    assert (link["width"], link["height"]) == (1125, 675) and link["crop"] == [0.5, 0.5, 1125, 675]
     assert link["fit"] == "stretch"
     # With the bleed lowered, only part of the template's bleed is printed.
     narrow = dispatch(session, "merge-impose", {"template": "card.vixl", "data": "cards.csv", "sheet_document": "narrow.vixl",

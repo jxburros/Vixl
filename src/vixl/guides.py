@@ -18,7 +18,8 @@ import math
 import numpy as np
 
 from .errors import VixlError, require
-from .model import finite
+from .geometry import ANCHORS, BASELINE, canonical_anchor
+from .model import MAX_LAYERS, finite
 
 TYPES = ("place", "snap")
 KINDS = ("axis", "line", "ray", "segment", "point", "circle", "path")
@@ -26,15 +27,6 @@ GRID_KINDS = ("columns", "baseline", "thirds", "golden", "armature", "golden-spi
               "triangular", "hex", "oblique", "perspective")
 MAX_GUIDES = 1024
 PHI = (1 + 5 ** 0.5) / 2
-ANCHORS = {
-    "top-left": (0, 0), "top": (0.5, 0), "top-right": (1, 0),
-    "left": (0, 0.5), "center": (0.5, 0.5), "right": (1, 0.5),
-    "bottom-left": (0, 1), "bottom": (0.5, 1), "bottom-right": (1, 1),
-}
-
-
-# ---------------------------------------------------------------------------------------------
-# Guide records
 
 
 def kind_of(guide):
@@ -98,10 +90,6 @@ def make_guide(op):
     missing = [key for key in needs if key not in op]
     require(not missing, f"A {kind} guide needs {', '.join(needs)}", field=missing[0] if missing else None)
     return {"kind": kind, **{key: deepcopy(op[key]) for key in needs}}
-
-
-# ---------------------------------------------------------------------------------------------
-# Geometry
 
 
 def _clip_line(px, py, dx, dy, box, ray=False):
@@ -287,10 +275,6 @@ def angle_of(guide):
         (x1, y1), (x2, y2) = guide["points"]
         return math.degrees(math.atan2(y2 - y1, x2 - x1)) % 180
     return None
-
-
-# ---------------------------------------------------------------------------------------------
-# Generated systems
 
 
 def _region(op, canvas):
@@ -487,10 +471,6 @@ def generate(op, canvas):
     return guides
 
 
-# ---------------------------------------------------------------------------------------------
-# Layer geometry
-
-
 def _layer_frame(project, target):
     """(layer, resolved layer, local bounds, group matrix, inverse) for a target."""
     from .checks import group_matrix
@@ -503,8 +483,9 @@ def _layer_frame(project, target):
     return layer, resolved[layer["id"]], local[layer["id"]], matrix, np.linalg.inv(matrix)
 
 
-def anchor_points(layer, box, matrix, names=None):
-    """Canvas positions of a layer's anchors (corners, edge midpoints, centre) on its rotated box."""
+def anchor_points(layer, box, matrix, names=None, fractions=None):
+    """Canvas positions of a layer's anchors (corners, edge midpoints, centre; or the given ``fractions``) on its
+    rotated box."""
     from .render import rest_size
 
     x, y, w, h = box
@@ -513,7 +494,7 @@ def anchor_points(layer, box, matrix, names=None):
     a = math.radians(layer.get("rotation", 0))
     co, si = math.cos(a), math.sin(a)
     result = {}
-    for name, (fx, fy) in ANCHORS.items():
+    for name, (fx, fy) in (fractions or ANCHORS).items():
         if names and name not in names:
             continue
         ux, uy = (fx - 0.5) * rw * (-1 if layer.get("flip_x") else 1), (fy - 0.5) * rh * (-1 if layer.get("flip_y") else 1)
@@ -527,8 +508,9 @@ def _anchor(value):
     if value is None:
         return ANCHORS["center"]
     if isinstance(value, str):
-        require(value in ANCHORS, f"anchor must be one of {', '.join(ANCHORS)} or [fx, fy]", field="anchor", allowed=list(ANCHORS))
-        return ANCHORS[value]
+        name = canonical_anchor(value)
+        require(name, f"anchor must be one of {', '.join(ANCHORS)} or [fx, fy]", field="anchor", allowed=list(ANCHORS))
+        return ANCHORS[name]
     require(isinstance(value, list) and len(value) == 2, "anchor must be a name or [fx, fy]", field="anchor")
     return tuple(finite(v, "anchor", -10, 10) for v in value)
 
@@ -556,10 +538,6 @@ def move_anchor_to(project, target, fraction, point, rotation=None):
     layer["constraints"] = {}
 
 
-# ---------------------------------------------------------------------------------------------
-# Operations
-
-
 def _guide(project, name, field="guide"):
     guides = project.state.get("guides", {})
     require(isinstance(name, str) and name in guides, f"Unknown guide {name!r}" + (
@@ -572,7 +550,12 @@ def execute_place(project, op):
     """Put layers on a guide: at a position, distributed along it, or at intersections."""
     targets = op.get("targets") or [op.get("target") or project.state["active_layer"]]
     require(all(targets), "place needs target or targets", field="target")
-    require(len(targets) <= 512, "place moves at most 512 layers", field="targets")
+    require(len(targets) <= MAX_LAYERS, f"place moves at most {MAX_LAYERS} layers", field="targets")
+    if "within" in op:
+        require("guide" not in op, "place takes guide or within, not both", field="within")
+        for target in targets:
+            place_within(project, target, op["within"], op.get("box", "content"), op.get("anchor"), op.get("margin", 0))
+        return
     guide = _guide(project, op.get("guide"))
     canvas = project.state["canvas"]
     fraction = _anchor(op.get("anchor"))
@@ -628,6 +611,24 @@ def execute_place(project, op):
         move_anchor_to(project, target, fraction, point, rotation)
 
 
+def place_within(project, target, container, box="content", anchor=None, margin=0):
+    """Move ``target`` so its ``anchor`` point lands on the same point of ``container``'s content box (or
+    whole box), inset by ``margin``: centre text in a bubble's body or pin a label to a badge's corner."""
+    from .spatial import canvas_boxes
+
+    require(box in ("bounds", "content"), "box must be bounds or content", field="box")
+    other = project.layer(container)
+    layer = project.layer(target)
+    require(other["id"] != layer["id"], "within must name another layer", field="within")
+    content = {}
+    boxes = canvas_boxes(project, content=content if box == "content" else None)
+    x, y, w, h = content.get(other["id"], boxes[other["id"]])
+    margin = finite(margin, "margin", 0, 1e6)
+    x, y, w, h = x + margin, y + margin, max(0.0, w - 2 * margin), max(0.0, h - 2 * margin)
+    fraction = _anchor(anchor)
+    move_anchor_to(project, layer["id"], fraction, np.array([x + fraction[0] * w, y + fraction[1] * h]))
+
+
 def execute_snap(project, op):
     """Move layers whose anchors are within ``tolerance`` of a guide (or an intersection of two
     guides) exactly onto it; with ``angles``, also straighten near-miss rotations."""
@@ -656,7 +657,15 @@ def execute_snap(project, op):
             if 0 < gap <= angle_tolerance:
                 layer["rotation"] = (layer.get("rotation", 0) + ((best - current + 90) % 180 - 90)) % 360
                 layer, resolved, box, matrix, _ = _layer_frame(project, target)
-        anchors = anchor_points(resolved, box, matrix, wanted)
+        fractions = dict(ANCHORS)
+        boxed = [name for name in wanted if name != BASELINE] if wanted else None
+        anchors = anchor_points(resolved, box, matrix, boxed) if boxed is None or boxed else {}
+        if wanted and BASELINE in wanted:
+            from .render import rest_size
+            from .text_metrics import first_baseline
+
+            fractions[BASELINE] = (0.5, first_baseline(project, resolved) / rest_size(resolved)[1])
+            anchors.update(anchor_points(resolved, box, matrix, fractions={BASELINE: fractions[BASELINE]}))
         best = None
         for anchor, q in anchors.items():
             for p in points.values():
@@ -672,7 +681,7 @@ def execute_snap(project, op):
                     if d <= tolerance and (best is None or d < best[0] - 1e-9):
                         best = (d, anchor, p)
         if best is not None and best[0] > 1e-6:
-            move_anchor_to(project, target, ANCHORS[best[1]], best[2])
+            move_anchor_to(project, target, fractions[best[1]], best[2])
 
 
 def execute(project, op):
@@ -685,19 +694,25 @@ def execute(project, op):
 def schemas(add):
     from .schema import S, N, B
 
-    refs = {"type": "array", "items": S, "minItems": 1, "maxItems": 512, "uniqueItems": True}
+    refs = {"type": "array", "items": S, "minItems": 1, "maxItems": MAX_LAYERS, "uniqueItems": True}
     point = {"type": "array", "items": N, "minItems": 2, "maxItems": 2}
     anchor = {"anyOf": [{"enum": list(ANCHORS)}, point]}
     add("place", {"targets": refs, "guide": S, "with": S, "index": {"type": "integer", "minimum": 0}, "at": N, "start": N,
                   "end": N, "spacing": N, "angle": N, "anchor": anchor, "orient": {"enum": ["none", "tangent", "normal", "radial", "upright"]},
-                  "rotate": N, "offset": N}, ["guide"])
+                  "rotate": N, "offset": N,
+                  "within": {**S, "description": "Instead of a guide: a layer to place inside. Each target's anchor "
+                             "(default center) lands on the same point of that layer's content box, so text centres "
+                             "in a speech bubble's body, a badge or a device screen."},
+                  "box": {"enum": ["content", "bounds"], "description": "within: content (default) uses the layer's "
+                          "usable inner area (content_bounds in inspect); bounds uses its whole box."},
+                  "margin": {**N, "minimum": 0, "description": "within: inset from the box edges in pixels, for "
+                             "corner and edge anchors."}},
+        anyOf=[{"required": ["guide"]}, {"required": ["within"]}])
     add("snap", {"targets": refs, "guides": {"type": "array", "items": S, "maxItems": 1024}, "tolerance": N,
                  "angle_tolerance": N, "angles": B, "intersections": B,
-                 "anchors": {"type": "array", "items": {"enum": list(ANCHORS)}, "minItems": 1}})
-
-
-# ---------------------------------------------------------------------------------------------
-# Checks and overlay
+                 "anchors": {"type": "array", "items": {"enum": [*ANCHORS, BASELINE]}, "minItems": 1,
+                             "description": "Which anchors may snap (default: the nine box anchors). 'baseline' snaps a "
+                             "text layer's first baseline, e.g. onto a baseline grid; other layers reject it."}})
 
 
 def check_guides(candidate, resolved, local_bounds, projection, layers, issue, tolerance=6.0, angle_tolerance=4.0):
@@ -888,7 +903,11 @@ def compile_command(cmd, args):
     p = Parser(prog=f"vixl {cmd}")
     p.add_argument("targets", nargs="+")
     if cmd == "place":
-        p.add_argument("--guide", required=True)
+        where = p.add_mutually_exclusive_group(required=True)
+        where.add_argument("--guide")
+        where.add_argument("--within", help="place inside this layer's content box instead of on a guide")
+        p.add_argument("--box", choices=["content", "bounds"])
+        p.add_argument("--margin", type=float)
         p.add_argument("--with", dest="with_")
         p.add_argument("--index", type=int)
         for key in ("at", "start", "end", "spacing", "angle", "rotate", "offset"):
@@ -900,7 +919,7 @@ def compile_command(cmd, args):
         p.add_argument("--tolerance", type=float)
         p.add_argument("--angle-tolerance", type=float)
         p.add_argument("--no-angles", dest="angles", action="store_false", default=None)
-        p.add_argument("--anchors", nargs="+", choices=list(ANCHORS))
+        p.add_argument("--anchors", nargs="+", choices=[*ANCHORS, BASELINE])
     data = {k: v for k, v in vars(p.parse_args(args)).items() if v is not None}
     if "with_" in data:
         data["with"] = data.pop("with_")

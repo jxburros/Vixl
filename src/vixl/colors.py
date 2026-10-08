@@ -8,6 +8,7 @@ gamut-mapped to sRGB (chroma reduction in OKLCH), because documents stay RGBA8. 
 converted at export time (see :func:`cmyk_image`).
 """
 
+import contextvars
 from functools import lru_cache
 import json
 import math
@@ -16,8 +17,7 @@ import re
 
 from .errors import VixlError, require
 
-# ---------------------------------------------------------------------------------------------
-# Transfer functions and matrices (CSS Color 4 reference values)
+# Transfer functions and matrices use the CSS Color 4 reference values.
 
 SRGB_TO_XYZ = (
     (0.41239079926595934, 0.357584339383878, 0.1804807884018343),
@@ -170,8 +170,7 @@ def from_polar(lch):
     return L, C * math.cos(math.radians(H)), C * math.sin(math.radians(H))
 
 
-# ---------------------------------------------------------------------------------------------
-# Conversions from encoded sRGB floats (0–1), the canonical internal form
+# Encoded sRGB floats (0–1) are the canonical internal form.
 
 
 def srgb_to_linear(rgb):
@@ -299,11 +298,22 @@ def in_gamut(rgb, epsilon=1e-4):
     return all(-epsilon <= c <= 1 + epsilon for c in rgb)
 
 
+# While ``clipped`` parses a colour, the ways it was brought into sRGB.
+_GAMUT = contextvars.ContextVar("vixl_gamut", default=None)
+
+
+def _gamut_event(kind):
+    events = _GAMUT.get()
+    if events is not None:
+        events.append(kind)
+
+
 def gamut_map(oklab):
     """Map an OKLab color into sRGB by reducing chroma at constant lightness and hue."""
     rgb = oklab_to_srgb(oklab)
     if in_gamut(rgb):
         return tuple(min(max(c, 0.0), 1.0) for c in rgb)
+    _gamut_event("chroma")
     L, C, H = to_polar(oklab)
     if L >= 1:
         return 1.0, 1.0, 1.0
@@ -337,10 +347,6 @@ def kelvin_to_srgb(kelvin):
         g = 288.1221695283 * (t - 60) ** -0.0755148492
         b = 255
     return tuple(min(max(v, 0), 255) / 255 for v in (r, g, b))
-
-
-# ---------------------------------------------------------------------------------------------
-# Named colors
 
 
 @lru_cache(maxsize=1)
@@ -414,9 +420,6 @@ def nearest_names(rgb, count=3):
     )
     return [{"name": name, "hex": value, "distance": round(distance, 4)} for distance, name, value in scored[:count]]
 
-
-# ---------------------------------------------------------------------------------------------
-# Parser
 
 TOKEN = re.compile(
     r"\s*(?:(?P<hex>#[0-9a-fA-F]+)|(?P<num>[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?)(?P<unit>%|deg|grad|rad|turn)?"
@@ -571,6 +574,8 @@ def _function(name, tokens, depth):
     if name in ("rgb", "rgba"):
         (r, g, b), alpha = _channels(items, 3, name)
         rgb = tuple(_number(v, 1, 255, name) / 255 for v in (r, g, b))
+        if not in_gamut(rgb, 0.5 / 255):
+            _gamut_event("clamp")
         return (*(min(max(c, 0.0), 1.0) for c in rgb), _alpha(slash_alpha or alpha))
     if name in ("hsl", "hsla", "hsv", "hsb", "hwb"):
         (h, s, x), alpha = _channels(items, 3, name)
@@ -821,7 +826,7 @@ def parse(value):
     require(0 < len(text) <= 2048, "Color text must be 1–2048 characters", "invalid_color")
     if "(" not in text and not text.startswith("#"):
         found = lookup_name(text)
-        if text.lower() == "transparent":
+        if text.lower() in ("transparent", "none"):
             return (0.0, 0.0, 0.0, 0.0)
         if found is not None:
             return _hex(found)
@@ -829,6 +834,21 @@ def parse(value):
     result = _expression(tokens)
     require(tokens.peek()[0] is None, f"Unexpected trailing text in color {value!r}", "invalid_color")
     return tuple(float(min(max(c, 0.0), 1.0)) for c in result)
+
+
+def clipped(value):
+    """How ``value`` was brought into sRGB, or None when it was already inside: ``{"how", "to"}``, where ``how`` is
+    ``chroma`` (an oklch/lab colour beyond the gamut, its chroma reduced at the same lightness and hue) or ``clamp``
+    (``rgb(300 0 0)``: channels outside 0–255 clamped as CSS does)."""
+    token = _GAMUT.set([])
+    try:
+        rgba = parse.__wrapped__(value)  # uncached, so the parse runs and records what it did
+        events = _GAMUT.get()
+    finally:
+        _GAMUT.reset(token)
+    if not events:
+        return None
+    return {"how": "clamp" if "clamp" in events else "chroma", "to": hex_of(rgba)}
 
 
 def to_rgba8(value):
@@ -855,8 +875,10 @@ def describe(value, *, ink_limit=None, black=1.0):
     oklab = srgb_to_oklab(rgb)
     c, m, y, k = srgb_to_cmyk(rgb, black, ink_limit)
     white, dark = (1.0, 1.0, 1.0), (0.0, 0.0, 0.0)
+    clip = clipped(value)
     return {
         "input": value,
+        **({"clipped": clip, "warnings": [gamut_warning(value, clip)]} if clip else {}),
         "hex": hex_of(rgba),
         "rgb": [round(x * 255) for x in rgb],
         "alpha": round(rgba[3], 4),
@@ -881,6 +903,13 @@ def describe(value, *, ink_limit=None, black=1.0):
         "temperature": "warm" if (oklab[2] > 0.02 and oklab[1] > -0.05) else "cool" if oklab[2] < -0.02 else "neutral",
         "names": nearest_names(rgb),
     }
+
+
+def gamut_warning(value, clip):
+    if clip["how"] == "clamp":
+        return f"{value} has channels outside 0–255; clamped to {clip['to']}"
+    return (f"{value} is outside the sRGB gamut; shown as {clip['to']}, its chroma reduced at the same lightness and hue "
+            "(lower the chroma for a colour that displays as written)")
 
 
 def harmony(value, scheme="complementary", count=None):
@@ -926,9 +955,6 @@ def resolve_expression(value, swatches, depth=0):
 
     return re.sub(r"@([A-Za-z0-9_][\w-]*)", replace, value)
 
-
-# ---------------------------------------------------------------------------------------------
-# Images: CMYK separation, soft proofing and vision simulation
 
 INTENTS = ("perceptual", "relative", "saturation", "absolute")
 
@@ -1082,6 +1108,19 @@ def scale(value, steps=SCALE_STEPS):
         # Chroma tapers toward white and black, as real tints and shades do.
         taper = 1 - abs(lightness - L) / max(L if lightness < L else 1 - L, 1e-6) * 0.65
         result[str(step)] = hex_of((*gamut_map(from_polar((lightness, C * max(taper, 0.15), H))), 1.0))
+    return result
+
+
+def interpolate_scale(values, count, space="oklab"):
+    """``count`` colours from the first value to the last through the ones between, mixed in ``space``."""
+    require(isinstance(count, int) and 2 <= count <= 64, "A scale between colours has 2–64 steps (--count)",
+            "invalid_color", field="count")
+    stops = [parse(v) for v in values]
+    result = []
+    for i in range(count):
+        position = i / (count - 1) * (len(stops) - 1)
+        index = min(int(position), len(stops) - 2)
+        result.append(hex_of(mix(stops[index], stops[index + 1], position - index, space)))
     return result
 
 

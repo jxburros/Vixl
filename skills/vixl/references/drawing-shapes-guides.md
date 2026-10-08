@@ -22,9 +22,13 @@ When a person gives you a photo or scan of their drawing, keep their lines and b
   weight (a number sets it). `straighten` (only the strokes the user asked about — pass `strokes`), `smooth`, `restyle`
   and `stroke` change them. `straighten` keeps each line at the angle it was drawn at; add `angles: "axes"` to square up
   walls and floors or `"45"` for diagonals only when asked, and `close_gaps: 30` (or `"auto"`) to close corner and
-  T gaps (corners get sharp, lines keep their angles).
+  T gaps (corners get sharp, lines keep their angles). `smooth` leaves straightened lines and polylines alone
+  (`corners: "round"` smooths them too, and the drawing check then warns).
 - Before `fill`, call `vixl_workflow("drawing-report", {"target": "house"})`: it lists closed
-  regions with a point inside each, and how much of the original line work is kept.
+  regions with a point inside each (`point` on the canvas, `group_point` in the drawing's own
+  coordinates), the drawing group's `offset`, `scale` and `rotation`, and how much of the original line
+  work is kept. `fill` and `stroke` points are canvas positions by default, wherever the drawing has been
+  moved; pass `space: "group"` to give them in the drawing's own coordinates instead.
 - After edits, check `preserved` (aim for ≥ 0.9 unless told to redraw) and look at
   `vixl_workflow("drawing-compare", {"target": "house", "output": "compare.png"})` (original red,
   result blue). `vixl_check(checks=["drawing"])` warns when original lines were lost.
@@ -46,8 +50,8 @@ Full reference: `docs/drawing.md`.
 - Text format: `A -> B -> C`, `A -> B: label`, `A{Question?}` (decision), `A([x])` terminator, `A[/x/]` io, `A[(x)]` database,
   `@color=… @icon=check @group=…`, `group Lane: A, B`, indentation for hierarchies, `direction: LR`.
 - `layout`: `layered` (flows, dependencies), `tree`, `radial`, `mindmap`, `grid`; `direction` TB/LR/BT/RL; `routing`
-  orthogonal/curved/straight; `lanes: true` for swimlanes. The diagram shrinks to fit the canvas (`fit`, `x/y/width/height`).
-- Check with `vixl_check(checks=["diagram"])`: overlapping nodes, edges through nodes, labels that do not fit or lack
+  orthogonal/curved/straight; `lanes: true` for swimlanes. The diagram shrinks to fit the canvas (`fit`, `x/y/width/height`); given both `width` and `height` it fills that box (`fit: contain`), and without a `direction` a wide box gets a left-to-right flow.
+- Check with `vixl_check(checks=["diagram"])`: overlapping nodes, edges through nodes or drawn on top of each other, labels that do not fit or lack
   contrast, text scaled below 9 px. Full reference: `docs/diagrams.md`.
 
 ## Organic shapes
@@ -77,7 +81,7 @@ tiny elements, or as a finish over the whole document.
 ```
 
 `seed` is required and decides everything; each layer of a group gets its own stream. `strength`
-is `subtle`, `natural` or `rough` (start at `subtle`; magnitudes scale with each layer's size),
+is `subtle` (the default), `natural` or `rough` (magnitudes scale with each layer's size),
 `amount` scales it, `only` picks effects (`wobble`, `jitter`, `width`, `pressure`, `color`,
 `placement`), and explicit fields (`wobble` px, `wobble_length` px, `pressure`, `lightness_drift`,
 `rotation_jitter`…) set exact bounds. Shapes become path layers (a stroke with `pressure` becomes a
@@ -85,6 +89,26 @@ ribbon, a `NAME-ink` sibling when the layer has a fill); regrow or `remove` alwa
 kept source, so edits made since are replaced. `tear` `as`: `mask` (default with a target), `clip`
 (vector face the target is clipped to), `path` (free rim, face and fibre layers); regrow by
 targeting the torn layer (the `-face` layer for a free sheet). Reference: `docs/irregular.md`.
+
+## Scatter, seamless tiles and fur
+
+```json
+{"type": "scatter", "target": "hill", "source": ["leaf", "flower"], "count": 80, "seed": 3, "rotation_jitter": 40, "scale_jitter": 0.3, "tone_variation": 0.06, "merge": true}
+{"type": "scatter", "target": "card", "mark": {"shape": "ellipse", "width": 6, "height": 6, "fill": "#fff"}, "placement": "along", "spacing": 18}
+{"type": "scatter", "target": "bear", "preset": "fur", "seed": 2}
+{"type": "pattern-scatter", "source": ["leaf", "dot"], "width": 200, "height": 200, "count": 14, "seed": 11, "rotation_jitter": 180, "background": "#fff7ed", "pattern": "leaves", "name": "tile"}
+{"type": "pattern-scatter", "target": "tile"}                 # rebuild and re-wrap after editing a motif
+```
+
+`scatter` copies motifs inside a layer's outline (Poisson-disc, no grid look) or `along` its edge
+(`direction` normal/tangent/cone/random, `anchor: base` grows marks out of the line), with seeded
+jitter, `colors`/`tone_variation` and `exclude`. `merge: true` draws every copy as one path per tone
+(shape motifs), so large scatters stay within the layer limit. `pattern-scatter` makes a seamless
+tile: motifs crossing an edge get wrapped copies, the result reports `seam`, and `pattern` saves it
+for `pattern-fill` (`tile_variation` varies each repeat). Fur: `preset: fur`, the `plush` look or
+the organic `fur-blob` preset; the `hand-made` look applies a removable irregular wobble.
+`repeat`/`radial-repeat` take `rotation_step`, `scale_step`, `opacity_step`, seeded jitter and
+`merge`. Reference: `docs/design-tools.md#scatter-and-seamless-pattern-tiles`.
 
 ## Guides, grids and placement
 
@@ -96,7 +120,12 @@ perspective systems. Place layers exactly on them instead of computing coordinat
 {"type": "grid", "name": "dial", "kind": "polar", "rings": 3, "spokes": 12}
 {"type": "place", "targets": ["n1", "n2", "n3"], "guide": "dial-r3", "orient": "radial"}
 {"type": "snap", "targets": ["logo", "title"], "tolerance": 8}
+{"type": "snap", "targets": ["title", "body"], "anchors": ["baseline"]}
 ```
+
+`place` with `within` (instead of `guide`) puts each target's `anchor` on the same point of a
+shape's content box (`content_bounds`: a speech bubble's body, a badge, a frame opening), inset
+by `margin`; `text` with `within` centres new text there.
 
 `vixl_check(checks=["guides", "alignment"])` reports near misses with the fixing move;
 `vixl_render_preview(guides=true)` draws them. Full reference: `docs/guides.md`.

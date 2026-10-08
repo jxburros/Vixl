@@ -1,4 +1,5 @@
 import io
+import re
 import zipfile
 
 import pytest
@@ -119,6 +120,22 @@ def test_vector_pdf_has_one_page_per_page_with_selectable_text(tmp_path):
     assert report["pages"] == 3 and report["raster_fallbacks"] == {}
     subset = pypdf.PdfReader(io.BytesIO(p.export(format="PDF", pages="2-3")))
     assert len(subset.pages) == 2
+
+
+def test_page_numbers_skip_hidden_pages(tmp_path):
+    pypdf = pytest.importorskip("pypdf")
+    from vixl.render import view_page
+
+    p = deck()
+    p.apply([{"type": "page", "action": "add", "name": "appendix", "master": "std", "after": "results", "hidden": True},
+             {"type": "page", "action": "select", "page": "cover"}])
+    assert [page["name"] for page in p.state["pages"]] == ["cover", "results", "appendix", "close"]
+    reader = pypdf.PdfReader(io.BytesIO(p.export(tmp_path / "deck.pdf")))
+    numbers = [re.search(r"\d / \d", page.extract_text()).group() for page in reader.pages]
+    assert numbers == ["1 / 3", "2 / 3", "3 / 3"]
+    hidden = view_page(p, "appendix").state["variables"]
+    assert (hidden["page"], hidden["pages"]) == (3, 3)
+    assert (p.state["variables"]["page"], p.state["variables"]["pages"]) == (1, 3)
 
 
 def test_raster_pdf_pages():

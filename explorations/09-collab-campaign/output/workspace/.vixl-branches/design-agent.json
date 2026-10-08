@@ -3,9 +3,9 @@
   "branch": "design-agent",
   "source": "ig-portrait.vixl",
   "base": ".vixl-branches/design-agent.base.vixl",
-  "base_hash": "b2b009389191c99340a4c68f667b2d70e198887d0876be927cb0ac773ba128d6",
+  "base_hash": "2b1927c65ade4b40ab4d739baed44af7f6ccab43e53cd531c1954184600b26df",
   "output": "design-agent.vixl",
   "author": "design-agent",
   "status": "merged",
-  "head": "rev_54c99c9ceb1e4348"
+  "head": "rev_6e30ca240b1e49fe"
 }

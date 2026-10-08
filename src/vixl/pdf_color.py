@@ -8,13 +8,12 @@ a profile is used, as press people expect for text.
 """
 
 from . import colors
+from .geometry import compact_number
 from .pdf_writer import image_xobject
 
 
 def _num(value):
-    if abs(value - round(value)) < 1e-6:
-        return str(int(round(value)))
-    return f"{value:.4f}".rstrip("0").rstrip(".")
+    return compact_number(value, 4)  # Colour components: four decimals.
 
 
 class RGBPaint:
@@ -32,8 +31,8 @@ class RGBPaint:
     def stroke(self, rgba):
         return " ".join(_num(c) for c in self.components(rgba)) + " RG"
 
-    def image(self, writer, image):
-        return image_xobject(writer, image)
+    def image(self, writer, image, jpeg_quality=None):
+        return image_xobject(writer, image, jpeg_quality=jpeg_quality)
 
 
 class CMYKPaint(RGBPaint):
@@ -67,10 +66,10 @@ class CMYKPaint(RGBPaint):
     def stroke(self, rgba):
         return " ".join(_num(c) for c in self.components(rgba)) + " K"
 
-    def image(self, writer, image):
+    def image(self, writer, image, jpeg_quality=None):
         rgba = image.convert("RGBA")
         separated = colors.cmyk_image(rgba.convert("RGB"), **self.options, transform=self.transform)
-        return image_xobject(writer, separated, alpha=rgba.getchannel("A"))
+        return image_xobject(writer, separated, alpha=rgba.getchannel("A"), jpeg_quality=jpeg_quality)
 
 
 def ramp(paint, stops):

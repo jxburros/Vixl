@@ -8,7 +8,7 @@ import xml.etree.ElementTree as ET
 from .assets import png_bytes
 from .design import resolve_color
 from .design_render import artboard_project
-from .geometry import shape_path
+from .geometry import default_fill, shape_path
 from .render import color, effect_margin, ink_origin, layer_image, layer_ink, render, resolved_layers, resolve_layout
 from .errors import VixlError
 from .svg_effects import supported, native_styles, effect_filter, style_filter
@@ -55,7 +55,7 @@ def fallback_reason(layer):
         return "linked documents are exported as images"
     if layer.get("repeat"):
         return "repeat is not exported as vectors"
-    if layer.get("lookup"):
+    if any(e["name"] == "lookup" and e.get("enabled", True) for e in layer.get("effects") or []):
         return "lookup tables are not exported as vectors"
     if layer.get("mask") and layer["mask"].get("enabled", True):
         return "raster masks are not exported as vectors"
@@ -101,7 +101,7 @@ class Exporter:
         return "matrix(" + " ".join(format(v, ".12g") for v in values) + ")"
 
     def attrs(self, layer):
-        fill, alpha = paint(layer.get("fill", "white"), self.project.state)
+        fill, alpha = paint(default_fill(layer), self.project.state)
         stroke, sa = paint(layer.get("stroke", "transparent"), self.project.state)
         return dict(
             fill=fill,
@@ -120,7 +120,7 @@ class Exporter:
         target = parent
         if view:
             target = node(parent, "svg", width=layer["width"], height=layer["height"], viewBox=f"0 0 {view[0]} {view[1]}",
-                          preserveAspectRatio="none")
+                          preserveAspectRatio="none", overflow="visible")
         if geometry["fill"] and attrs["fill_opacity"] > 0:
             node(target, "path", d=geometry["fill"], fill=attrs["fill"], fill_opacity=attrs["fill_opacity"], stroke="none")
         stroke, opacity = attrs["stroke"], attrs["stroke_opacity"]
@@ -176,6 +176,9 @@ class Exporter:
                 height=sh,
                 viewBox=f"0 0 {view[0]} {view[1]}",
                 preserveAspectRatio="none",
+                # Strokes (caps, miter joins) reach past the geometry box, as in the other renderers; a fill alone
+                # stays clipped to the box like its raster tile.
+                **({"overflow": "visible"} if attrs["stroke_opacity"] > 0 and layer.get("stroke_width", 1) > 0 else {}),
             )
             if layer.get("line_cap"):
                 attrs.update(stroke_linecap=layer["line_cap"],
@@ -248,10 +251,9 @@ class Exporter:
                 x2=cx + qx / (2 * square),
                 y2=cy + qy / (2 * square),
             )
-        for stop in settings.get("stops") or [
-            {"offset": 0, "color": settings.get("start", "black")},
-            {"offset": 1, "color": settings.get("end", "white")},
-        ]:
+        from .design import gradient_stops
+
+        for stop in gradient_stops(settings, self.project.state):
             fill, alpha = paint(stop["color"], self.project.state)
             node(gradient, "stop", offset=stop["offset"], stop_color=fill, stop_opacity=alpha)
         return f"url(#{ident})"
@@ -352,7 +354,6 @@ class Exporter:
         b = self.bounds[layer["id"]]
         simple = (
             not (layer.get("mask") and layer["mask"].get("enabled", True))
-            and not layer.get("lookup")
             and not layer.get("cut_paper")
             and not layer.get("export_fallback")
             and supported(layer)
@@ -492,7 +493,6 @@ def export_svg(project, *, scale=1, variables=None, artboard=None, comp=None, sv
                     not supported(item)
                     or item["opacity"] != 1
                     or item.get("mask")
-                    or item.get("lookup")
                     or item.get("clip")
                     or any(e["name"] == "contrast" and e.get("enabled", True) for e in item["effects"])
                 )

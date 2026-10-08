@@ -1,5 +1,6 @@
 import asyncio
 from copy import deepcopy
+import json
 import os
 import sys
 
@@ -53,6 +54,28 @@ def test_rest_operations_preview_auth_and_sandbox(project_path):
     response = client.post("/assets?name=blue", headers=headers, content=data)
     assert response.status_code == 200, response.text
     assert Project.load(project_path).layer()["name"] == "blue"
+
+
+def test_rest_refuses_a_declared_oversized_body_without_reading_it(project_path):
+    app = create_app(project_path)
+    sent, received = [], []
+
+    async def receive():
+        received.append(True)
+        return {"type": "http.request", "body": b"x" * 65536, "more_body": True}
+
+    async def send(message):
+        sent.append(message)
+
+    scope = {"type": "http", "asgi": {"version": "3.0"}, "http_version": "1.1", "method": "POST", "scheme": "http",
+             "path": "/operations", "raw_path": b"/operations", "query_string": b"", "root_path": "",
+             "headers": [(b"host", b"testserver"), (b"content-type", b"application/json"),
+                         (b"content-length", str(200 * 1024 * 1024).encode())],
+             "client": ("127.0.0.1", 1), "server": ("testserver", 80)}
+    asyncio.run(app(scope, receive, send))
+    assert sent[0]["status"] == 413 and not received
+    body = json.loads(b"".join(message.get("body", b"") for message in sent[1:]))
+    assert body["error"] == "resource_limit" and "1,048,576 bytes" in body["message"]
 
 
 def test_rest_rebinding_body_limit_and_atomic_failure(project_path):

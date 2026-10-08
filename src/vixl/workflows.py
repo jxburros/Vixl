@@ -9,6 +9,7 @@ from .imposition import ACTIONS as IMPOSITION_ACTIONS, FIELD_TYPES as IMPOSITION
 from .links import ACTIONS as LINK_ACTIONS
 from .lyrics import REQUEST_FIELDS as LYRIC_FIELDS
 from . import media_analysis, natural_guidance
+from .logo_package import FIELDS as LOGO_PACKAGE_FIELDS
 
 ACTIONS = {
     "check": ({"suite", "mode", "variables", "artboard"}, {"suite"}),
@@ -37,6 +38,8 @@ ACTIONS = {
                    "unknown", "dpi"}, set()),
     "drawing-report": ({"target"}, {"target"}),
     "drawing-compare": ({"target", "output"}, {"target", "output"}),
+    "proof": ({"items", "output", "title", "check", "decisions", "max_size", "overwrite"}, {"items", "output"}),
+    "logo-package": (LOGO_PACKAGE_FIELDS, {"output"}),
 }
 
 
@@ -161,6 +164,21 @@ def dispatch(session, action, request, document=None):
         except (KeyError, TypeError, ValueError, OverflowError) as exc:
             raise VixlError("invalid_request", f"Invalid form-fill request: {exc}",
                             suggestions=["See vixl_workflow_schema actions['form-fill'].properties"]) from exc
+    if action == "proof":
+        from .proof import proof_page
+
+        for field in ("check", "decisions", "overwrite"):
+            require(type(request.get(field, False)) is bool, f"{field} must be boolean", field=field)
+        result = proof_page(request["items"], request["output"], resolve=session.resolve,
+                            title=request.get("title"), check=request.get("check", True),
+                            decisions=request.get("decisions", False), max_size=request.get("max_size", 1200),
+                            overwrite=request.get("overwrite", False), limits=session.limits)
+        result["output"] = session.relative(Path(result["output"]))
+        return result
+    if action == "logo-package":
+        from .logo_package import build
+
+        return build(session, request, document)
     if action in ("drawing-report", "drawing-compare"):
         from .drawing import compare, report
 

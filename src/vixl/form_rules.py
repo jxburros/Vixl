@@ -24,10 +24,6 @@ DATE_PICTURE = re.compile(r"(?:YYYY|MM|M|DD|D|[-/. ,])+")
 UNSAFE = ("ASSERT", "ASSERT_NOT", "GROUPREF", "GROUPREF_EXISTS", "ATOMIC_GROUP", "POSSESSIVE_REPEAT")
 
 
-# ---------------------------------------------------------------------------------------------
-# Patterns
-
-
 def check_pattern(pattern):
     """Raise unless ``pattern`` means the same to Python and to a viewer's JavaScript and cannot
     take exponential time. A pattern must match the whole value; it can use classes, groups,
@@ -76,10 +72,6 @@ def check_pattern(pattern):
 def pattern_matches(pattern, text):
     """Whether the whole of ``text`` matches ``pattern`` (ASCII classes, as in JavaScript)."""
     return re.fullmatch(pattern, text, re.ASCII) is not None
-
-
-# ---------------------------------------------------------------------------------------------
-# PDF actions
 
 
 def date_picture(display):

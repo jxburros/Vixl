@@ -20,19 +20,16 @@ import numpy as np
 
 from .errors import VixlError, require
 from .style_catalog import STYLES
-from .safe_catalog import SAFE_STYLES
+from .house_style import tier_of
 
 for _name, _style in STYLES.items():
-    _style["safe"] = _name in SAFE_STYLES
+    _style["tier"] = tier_of("styles", _name)
+    _style["safe"] = _style["tier"] == "safe"
 
 TYPES = ("style-set",)
 MAX_NAMES = 3
 SEVERITIES = ("error", "warning", "info")
 WEIGHT_NAME = re.compile(r"^(.+?)(?:-(\d{3}))?(-italic)?$")
-
-
-# ---------------------------------------------------------------------------------------------
-# Catalog access
 
 
 def names():
@@ -65,7 +62,7 @@ def listing(query=None):
         text = " ".join([name, entry["title"], entry["summary"], *entry["keywords"], *entry["best_for"]]).lower()
         if all(w in text for w in words):
             rows.append({"name": name, "title": entry["title"], "summary": entry["summary"], "era": entry["era"],
-                         "safe": entry["safe"],
+                         "tier": entry["tier"], "safe": entry["safe"],
                          "keywords": entry["keywords"], "best_for": entry["best_for"],
                          "checks": [rule["id"] for rule in entry["checks"]]})
     return {"count": len(rows), "styles": rows,
@@ -127,10 +124,6 @@ def apply_operations(name, palette=False, guidance=True):
         ops += [{"type": "palette-define", "name": key, "colors": swatches},
                 {"type": "palette-apply", "name": key, "roles": palette_roles(swatches)}]
     return ops
-
-
-# ---------------------------------------------------------------------------------------------
-# The document tag
 
 
 def schemas(add):
@@ -210,10 +203,6 @@ def compile_command(cmd, args):
             **({"options": a.options} if a.options else {})}
 
 
-# ---------------------------------------------------------------------------------------------
-# Measurements
-
-
 def _rgb(value):
     from .render import color
 
@@ -244,7 +233,6 @@ class Facts:
             self._memo[key] = make()
         return self._memo[key]
 
-    # -- text
     def texts(self):
         return [item for item in self.leaves if item["type"] == "text" and item.get("text", "").strip()]
 
@@ -283,7 +271,6 @@ class Facts:
         entry = typefaces.find_font(family)
         return entry["category"] if entry else None
 
-    # -- color
     def colors(self, distance=30):
         """Clusters of the declared colors: ``[{"rgb", "hex", "layers", "count"}]``, merged within ``distance``."""
         def build():
@@ -339,7 +326,6 @@ class Facts:
         """Colors that read as a hue (not black, white or gray)."""
         return [c for c in self.colors(distance) if self.hsv(c["rgb"])[1] >= 0.25 and self.hsv(c["rgb"])[2] >= 0.15]
 
-    # -- render
     def image(self):
         def build():
             from .proxy import render_preview
@@ -377,6 +363,37 @@ class Facts:
         return float(mask.mean())
 
     def symmetry(self, axis="vertical"):
+        """How well the design mirrors about the axis: the better of the rendered pixels and the arrangement.
+        Pixels alone call a centred headline asymmetric (its letters do not mirror), and thin rays of a
+        sunburst miss their mirror by a pixel at the preview size."""
+        pixels = self.pixel_symmetry(axis)
+        if pixels is None:
+            return None
+        return max(pixels, self.layout_symmetry(axis))
+
+    def layout_symmetry(self, axis="vertical"):
+        """Area share of the elements whose mirrored box is matched by an element of the same kind and color
+        (itself, when it is centred on the axis)."""
+        width, height = self.canvas["width"], self.canvas["height"]
+        tolerance = 0.02 * (width if axis == "vertical" else height)
+
+        def kind(item):
+            return (item["type"], item.get("shape"), item.get("fill") or item.get("color"))
+
+        boxes = [(item, self.bounds[item["id"]]) for item in self.leaves if item["id"] in self.bounds]
+        total = matched = 0.0
+        for item, (x, y, w, h) in boxes:
+            area = max(0.0, min(x + w, width) - max(x, 0)) * max(0.0, min(y + h, height) - max(y, 0))
+            if not area:
+                continue
+            mirror = (width - x - w, y, w, h) if axis == "vertical" else (x, height - y - h, w, h)
+            total += area
+            if any(kind(other) == kind(item) and all(abs(a - b) <= tolerance for a, b in zip(mirror, box))
+                   for other, box in boxes):
+                matched += area
+        return matched / total if total else 0.0
+
+    def pixel_symmetry(self, axis="vertical"):
         ground, mask = self.background()
         a = self.image()[:, :, :3]
         ink = ~mask
@@ -388,7 +405,6 @@ class Facts:
         both = ink & other & similar
         return float(both.sum() / max(1, (ink | other).sum()))
 
-    # -- shapes and effects
     def shapes(self):
         return [item for item in self.leaves if item["type"] == "shape"]
 
@@ -400,7 +416,6 @@ class Facts:
         return [(item, e["name"]) for item in self.layers for e in item.get("effects", []) if e.get("enabled", True)]
 
 
-# ---------------------------------------------------------------------------------------------
 # Rule evaluators: (facts, params) -> {"status": passed|failed|skipped, "measured": {...}, "detail": str, "layers": [names]}
 
 
@@ -486,7 +501,18 @@ def rule_edge_alignment(f, p):
 
 
 def rule_tilt(f, p):
-    items = [item for item in f.leaves if item["type"] != "adjustment"]
+    layers = {layer["id"]: layer for layer in f.state["layers"]}
+
+    def ornament(item):
+        """A copy in a radial-repeat group: its turn is the ornament (a sunburst's rays), not a tilt."""
+        parent = layers.get(item.get("parent"))
+        while parent is not None:
+            if parent.get("radial"):
+                return True
+            parent = layers.get(parent.get("parent"))
+        return False
+
+    items = [item for item in f.leaves if item["type"] != "adjustment" and not ornament(item)]
     if not items:
         return skipped("no elements")
     tolerance = p.get("tolerance", 2)
@@ -615,7 +641,7 @@ def _weight_rule(f, p, bad, wanted):
     pool = f.headline(p.get("scope", "headline"))
     if not pool:
         return skipped("no text")
-    known = [(item, f.font(item)[1]) for item in pool]
+    known = [(item, visual_weight(*f.font(item)[:2])) for item in pool]
     known = [(item, weight) for item, weight in known if weight]
     if not known:
         return skipped("font weights are unknown (register fonts with weights, e.g. vixl_font_install weight=700)")
@@ -624,6 +650,21 @@ def _weight_rule(f, p, bad, wanted):
     if off:
         return failed(f"text weights {measured['weights']}; this style wants {wanted}", _names(off), measured)
     return passed(measured)
+
+
+WEIGHT_WORDS = (("black", 900), ("heavy", 800), ("extrabold", 800), ("extra-bold", 800), ("ultrabold", 800),
+                ("semibold", 600), ("semi-bold", 600), ("bold", 700))
+
+
+def visual_weight(family, weight):
+    """The weight a face looks: a single-weight display face such as Archivo Black is registered at 400 but
+    draws black, so the weight named in its family wins over a lower registered one."""
+    words = str(family).lower().replace("_", "-").split("-")
+    joined = "-".join(words)
+    named = next((value for word, value in WEIGHT_WORDS if word in words or (("-" in word) and word in joined)), None)
+    if named is None:
+        return weight
+    return max(named, weight or 0)
 
 
 def rule_min_weight(f, p):
@@ -862,10 +903,6 @@ def rule_min_text_size(f, p):
 
 
 RULES = {name[5:]: fn for name, fn in globals().items() if name.startswith("rule_")}
-
-
-# ---------------------------------------------------------------------------------------------
-# Evaluation and the check hook
 
 
 def selected(style, state):

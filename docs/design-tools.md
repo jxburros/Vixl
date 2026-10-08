@@ -17,7 +17,7 @@ vixl group stripes stripe
 vixl clip stripes sun
 ```
 
-The stripe stays one editable layer. Repeat counts include the original; `dx/dy` are nonnegative offsets between copies and `dw/dh` change each copy's size. `repeat-blend stripe --count 16 --dy 37 --end '{"height":21,"fill":"#4853a4"}'` interpolates size and RGBA color to the last copy. Reapplying repeat replaces its settings; `--count 1` leaves only the original. Counts are bounded to 512 and all resulting dimensions are checked before allocation.
+The stripe stays one editable layer. Repeat counts include the original; `dx/dy` are nonnegative offsets between copies and `dw/dh` change each copy's size (per-step turns, scale, opacity, jitter and `merge` make real copies instead: see [below](#per-step-transforms-jitter-and-merged-repeats)). `repeat-blend stripe --count 16 --dy 37 --end '{"height":21,"fill":"#4853a4"}'` interpolates size and RGBA color to the last copy. Reapplying repeat replaces its settings; `--count 1` leaves only the original. Counts are bounded to 512 and all resulting dimensions are checked before allocation.
 
 Shapes support `rectangle`, `rounded-rectangle`, `ellipse`, `polygon`, `star`, `arc`, and `line`; `vixl shape --target NAME --fill COLOR` (JSON `{"type":"shape","target":"NAME",…}`) changes the fill, stroke or geometry of an existing shape in place, keeping its layer ID; options include `--fill`, `--stroke`, `--stroke-width`, `--line-cap`, `--trim-start`/`--trim-end` (draw only part of the stroke, 0–100 %, animatable: see [Drawing a line on](brushes-and-animation.md#drawing-a-line-on)), `--radius`, `--sides`, and star `--inner-radius` (0.01–1). Geometry is retained and redrawn at the layer's current size with bounded antialiasing. Version 0.11.0 adds named shape shortcuts and editable single-contour Bézier paths, plus SVG export of simple geometry. See [design resources and vector export](agent-resources.md) for syntax and raster fallback limits.
 
@@ -46,7 +46,23 @@ SVG path data for code that draws its own wedges, such as chart layers.
 
 Groups preserve member stacking order and use local child coordinates. Moving, hiding, masking, styling, or changing the opacity of a group affects its combined contents once. Groups nest to 16 dependency levels and duplicate with independent child IDs; edits address children by their existing names or IDs. A group's layout box is the union of member bounds at creation; constraints, alignment, `resize` and `canvas` inside the group use that box. Groups do not clip: members that later move, grow or rotate past the box (an animated limb, a resized sprite) still draw, and scale, flip and rotate with the group. `inspect` adds `drawn_bounds` to a layer that draws past its box. Resizing transforms the combined group raster; a group holding only pixel layers resamples nearest-neighbor, so scaled sprites stay crisp. Constraints between layers and clipping references must stay among siblings; `canvas` inside a group means the group's local content box. Grouping nonadjacent layers places the group at the highest selected slot.
 
-`clip TARGET BASE` multiplies TARGET's rendered alpha by the sibling BASE's alpha. It follows base transforms and masks, works on groups, and rejects cycles. The base remains an ordinary visible layer. `clip TARGET --release` removes the relationship. `ungroup NAME` restores local members to their parent; reset group appearance and transforms first when ungrouping would discard those settings. `remove GROUP` removes its descendants. Reordering always stays among siblings.
+`reparent LAYER… --into GROUP` (`{type: reparent, targets, into}`; aliases `move-into`, `adopt`) moves existing
+layers or groups into a group, between groups, or out to the top level with `into: null` (CLI `--into page`), without
+ungrouping, so the group keeps its rotation, scale, flips, effects and other settings. With `keep: appearance` (the
+default) every target stays where it is drawn: its transform is converted into the new parent's space (a turn or
+mirror of the new parent becomes the layer's own rotation and flips; uneven scaling or skew is held in its `affine`
+matrix, which goes away again when it moves back), so moving into an unscaled group, or one turned by a right angle or
+mirrored, leaves the render pixel-identical, and into a scaled or freely rotated group the geometry is exact up to
+resampling. `keep: local` keeps the stored x, y and transform instead. The targets stack on top of the new parent's
+children unless `above`/`below` (a child of the new parent) or `index` (0 at the bottom) says otherwise; lifted to the
+top level they sit directly above the group they left. The group's content box grows to include them (its size and
+position change so nothing moves on the canvas) unless `fit: false`; an animated or constrained group is left as it is,
+with a note (groups do not clip). Moving a group into its own descendant, a layer into a non-group or a repeating group,
+or a clip pair apart is refused. Animated targets keep their tracks: position keys are shifted when the new parent is
+only translated, rotation and scale tracks carry over through any parent, and position or size tracks under a turned or
+scaled parent are refused with the tracks named. The whole call is one undoable step.
+
+`clip TARGET BASE` multiplies TARGET's rendered alpha by the sibling BASE's alpha. It follows base transforms and masks, works on groups, and rejects cycles. The base remains an ordinary visible layer. `clip TARGET --release` removes the relationship. `ungroup NAME` restores local members to their parent; reset group appearance and transforms first when ungrouping would discard those settings. A group's timeline tracks (position, rotation, scale, size, visibility, and opacity on a one-layer group) move onto its children as per-frame keys, so the animation looks the same; tracks that cannot be rewritten exactly (effects, mirroring, opacity over several overlapping children, uneven scaling of a rotated child) refuse the ungroup and are named in the error. `remove GROUP` removes its descendants. Reordering always stays among siblings.
 
 ## Examples: gradients, glows, shadows and radial repeats
 
@@ -79,6 +95,76 @@ vixl shape ellipse --name petal --x 380 --y 120 --width 40 --height 150 --fill '
 vixl radial-repeat petal --count 12 --cx 50% --cy 50% --mirror --name rosette
 ```
 
+### Per-step transforms, jitter and merged repeats
+
+`repeat` and `radial-repeat` also take `rotation_step` (degrees each copy turns more than the one before),
+`scale_step` (a factor applied once more per copy, 0.9 = each copy 10% smaller), `opacity_step` (added per
+copy, clamped to 0-1), seeded `rotation_jitter`, `scale_jitter`, `position_jitter` and `opacity_jitter`
+(`seed`, default 0), and `merge: true`, which draws every copy as one path layer (one per color; shape layers
+only). A live `repeat` draws an unrotated strip, so with any of these fields `repeat` makes real copies
+instead: a group named `name` (default `<layer>-repeat`) holding the original and its copies, or one merged
+path. `dx`/`dy` may then be negative. Copies count against the document's layer limit; `merge` costs one layer.
+
+```json
+{"type": "repeat", "target": "badge", "count": 6, "dx": 50, "rotation_step": 15, "scale_step": 0.9, "opacity_step": -0.12, "name": "trail"}
+{"type": "radial-repeat", "target": "petal", "count": 16, "cx": "50%", "cy": "50%", "rotation_jitter": 6, "scale_jitter": 0.1, "seed": 3, "merge": true, "name": "bloom"}
+```
+
+## Scatter and seamless pattern tiles
+
+`scatter` places copies of one or more motif layers (`source`, a name or a list picked at random per copy) or
+of a motif drawn on the fly (`mark`: a shape spec such as `{"shape": "ellipse", "width": 8, "height": 8, "fill":
+"#fff"}`, or a built-in `{"mark": "tuft"}`/`{"mark": "flick"}`) over a target layer's outline:
+
+- `placement: inside` (default): Poisson-disc samples inside the outline (holes and even-odd shapes respected),
+  at least `spacing` pixels apart; `count` alone sets the spacing from the area. No grid look. Centres keep half
+  the largest motif's size (with `scale`, `scale_jitter` and `position_jitter`) inside the outline, so whole copies
+  stay inside; a region too small for that keeps as much clearance as it can.
+- `placement: along`: evenly along the edge (`spacing` or `count`), pointing out along the normal
+  (`direction: normal`), along the edge (`tangent`), in a cone of `spread` degrees around the normal (`cone`) or
+  anywhere (`random`); `anchor: base` (the default here) puts each motif's bottom centre on the line, so blades
+  and tufts grow out of it; `offset` moves the line out (positive) or in.
+- Each copy gets `scale` × (1 ± `scale_jitter`), `rotation` ± `rotation_jitter`, a move up to `position_jitter`
+  pixels, a fill from `colors`, and a lightness shift up to `tone_variation` (OKLab L) in `tones` steps.
+  `exclude` lists layers whose outlines stay clear (plus `exclude_margin`).
+- Output: a group named `name` (default `<target>-scatter`) right above the target, in the target's parent
+  group, with copies `NAME/1`, `NAME/2` …; or with `merge: true` one path layer per tone (a group of them when
+  there are several), so a thousand marks cost a few layers. Without `merge` the copies count against the
+  layer limit, and the error says so. Motif layers are hidden afterwards (`hide_source: false` keeps them).
+- `preset: fur` grows tufts in the target's fill along its edge, behind it, and a second merged layer of darker
+  inner flicks (`flicks` per tuft, default 0.5) above it; `length` sets the tuft length. The `plush` look does
+  the same with a soft gradient, and the organic `fur-blob` preset is a ready furry body.
+
+The result reports `scatter: [{name, copies, spacing, seed, layers}]`, and the first output layer keeps the
+recipe under `scatter`.
+
+```json
+{"type": "scatter", "target": "card", "source": ["dot", "star"], "count": 60, "seed": 4, "rotation_jitter": 180, "scale_jitter": 0.3, "tone_variation": 0.08, "exclude": ["title"], "merge": true, "name": "confetti"}
+{"type": "scatter", "target": "bear", "preset": "fur", "seed": 2}
+```
+
+`pattern-scatter` scatters motifs in a `width` × `height` tile (at `x`, `y`, default 0, 0) with toroidal
+Poisson-disc spacing: distances wrap across the edges, and a copy that crosses an edge gets a wrapped copy on the
+opposite side, so the tile repeats without a seam. `background` adds a colored rectangle under the motifs;
+`pattern: NAME` also saves the tile (cropped to its box) as a document pattern for `pattern-fill`. The result
+reports `pattern_scatter: [{name, copies, ghosts, spacing, seed, seam}]`, where `seam` is the same
+`seamless_check` report `pattern-define` gives (`edge_error` close to `interior_variation` means no visible
+seam). The recipe stays on the tile group (`pattern_scatter`): after editing a motif, `{"type":
+"pattern-scatter", "target": "tile"}` rebuilds it with the same seed, so the tile re-wraps; any field passed
+with it changes the recipe. The group shows wrapped copies past its box on the canvas; the saved pattern is the
+cropped tile. Hide the tile once the pattern is saved. When the tile fills the canvas, `check` reports its
+wrapped copies at the canvas edge as intentional (`info`, "wraps across the edge of a seamless pattern tile"),
+not as cut off.
+
+```json
+{"type": "pattern-scatter", "source": ["leaf", "dot"], "width": 200, "height": 200, "count": 14, "seed": 11, "rotation_jitter": 180, "background": "#fff7ed", "pattern": "leaves", "name": "tile"}
+{"type": "pattern-fill", "target": "ground", "pattern": "leaves", "tile_variation": 0.3}
+```
+
+`pattern-fill` and `pattern-stroke` take `tile_variation` (0-1): each repeat of the tile is lightened or darkened
+by its own seeded amount (up to 25%), so a large fill does not read as a grid. `pattern-define` reports its seam
+check under `patterns` in the result.
+
 ## Attached layer styles
 
 ```bash
@@ -103,7 +189,7 @@ vixl distribute horizontal title logo badge
 vixl distribute vertical first second third --gap 24
 ```
 
-`align` supports `targets` and `relative_to`: `canvas`, `selection` (the union of the selected bounds), or another sibling's name/ID. Multiple targets default to selection bounds; one target defaults to the canvas. Distribution sorts by current position. Without a gap it preserves the outer edges and computes equal edge-to-edge spacing, accounting for unequal sizes; with a gap it starts at the first layer. It requires at least three siblings. Both commands bake resolved positions and clear constraints on affected layers.
+`align` supports `targets` and `relative_to`: `canvas`, `selection` (the union of the selected bounds), or another sibling's name/ID; with a sibling, `box: "content"` (`--box content`) aligns to its content box, such as a speech bubble's body (see [content boxes](vector-paths.md#content-boxes)). Multiple targets default to selection bounds; one target defaults to the canvas. Distribution sorts by current position. Without a gap it preserves the outer edges and computes equal edge-to-edge spacing, accounting for unequal sizes; with a gap it starts at the first layer. It requires at least three siblings. Both commands bake resolved positions and clear constraints on affected layers.
 
 ## Named character styles, paragraph styles, and swatches
 
@@ -160,7 +246,7 @@ Python exposes `project.render(artboard=..., comp=..., variables=...)`, `project
 
 A template filled from data meets empty fields: a badge row with no company, a card with no subtitle. Fixed text frames leave a hole where the empty line was. Two features let the layout react instead:
 
-- **`hide_if_empty`** on a text layer (`text`, `text-set`, `vixl text add --hide-if-empty`, MCP `vixl_text_add`): while the text is empty or blank after `${variable}` substitution, the layer is not drawn, not checked, not exported and takes no space in a stack. `inspect` marks it `collapsed: true`; the layer and its settings stay, so a later non-empty value brings it back.
+- **`hide_if_empty`** on a text layer (`text`, `text-set`, `vixl text add --hide-if-empty`, or the `text` operation over MCP): while the text is empty or blank after `${variable}` substitution, the layer is not drawn, not checked, not exported and takes no space in a stack. `inspect` marks it `collapsed: true`; the layer and its settings stay, so a later non-empty value brings it back.
 - **`stack`** turns a group into an auto-layout column or row. `{"type":"stack","name":"names","targets":["first","last","company"],"direction":"vertical","gap":20,"align":"center","justify":"center","width":1000,"height":400}` groups the layers and lays them out in the group's box; `{"type":"stack","target":"names","gap":12}` changes an existing stack. `direction` is `vertical` (default) or `horizontal`; `gap` and `padding` are pixels; `align` places members across the stack and `justify` along it (`start`, `center` or `end`); `width`/`height` set the box (pixels or `N%`). Members are laid out in document order. Members that are hidden (`hide`) or collapsed by `hide_if_empty` take no space, so the others reflow and, with `justify: "center"`, stay centred. A stack with `hide_if_empty: true` collapses when all its members do, so stacks nest. `stack` with `remove: true` releases the members at their current positions.
 
 Stacks are resolved whenever the document is laid out (render, export, check, `inspect`), so `render --data rows.csv`, `--set company=` and export-time `variables` re-centre each row; only the settings are stored. A stack positions its members, so `move`, `align`, `distribute`, `constrain` and `unconstrain` on a member fail with `stack_managed` and say what to use; resize and reorder members, or move the stack. A group's box is fixed (members may overflow it), and members are positioned individually, so put overlapping artwork (a pill behind its label) in a sub-group and stack the sub-group.
@@ -184,13 +270,13 @@ Use `project.measure(...)`, REST POST `/measure`, or MCP `vixl_measure` for the 
 
 ```bash
 vixl gradient --name sky --direction angled --angle 35 --stops '[{"offset":0,"color":"#152235"},{"offset":0.4,"color":"#b36881"},{"offset":1,"color":"#e8885c"}]'
-vixl adjustment warmth --effects '[{"name":"temperature","amount":500},{"name":"contrast","amount":10}]'
+vixl adjustment warmth --effects '[{"name":"temperature","amount":40},{"name":"contrast","amount":10}]'
 vixl auto-tone photo
 vixl auto-color photo
 vixl auto-contrast photo
 ```
 
-Gradient directions are `vertical`, `horizontal`, `angled` (0° left-to-right, 90° top-to-bottom), and `radial` (center-to-edge). Supply 2–64 strictly increasing stops at offsets 0–1; start/end remain backward compatible. Transparency interpolates in premultiplied alpha. Gradient overlays use the same fields.
+Gradient directions are `vertical`, `horizontal`, `angled` (0° left-to-right, 90° top-to-bottom), and `radial` (center to the inscribed ellipse: the last stop sits where the ellipse touches the middle of each edge, and the corners beyond it take its color, so a radial fade to transparency leaves transparent corners). `falloff` shapes the curve between the stops: `linear` (default), `smooth` (smoothstep), `ease` (fast near the start, soft at the end), `quadratic` (a dome) or `gaussian` (a soft halo). A falloff is drawn as extra stops, so PNG, SVG, PDF and PPTX show the same curve; PPTX radial gradients are scaled to end at the inscribed ellipse too. The `bounds` check reports a fade-to-transparent gradient whose box edge is still painted inside the canvas (`code: gradient-edge`, review) because that edge shows as a hard rectangle. Supply 2–64 strictly increasing stops at offsets 0–1; start/end remain backward compatible. Transparency interpolates in premultiplied alpha. Gradient overlays use the same fields.
 
 Adjustment layers process the already-composited stack below them in their parent group. They accept built-in effects, opacity, masks and blend modes; layers above are unaffected. Auto Tone stretches channels independently between their visible-pixel 0.5th and 99.5th percentiles; Auto Contrast uses a shared range; Auto Color adds gray-world channel balancing. Alpha is preserved and flat ranges are handled without division by zero.
 
@@ -200,7 +286,7 @@ Named 3D LUTs are embedded, shareable JSON resources:
 {"type":"lut","name":"look","size":2,"values":[[0,0,0],[1,0,0],[0,1,0],[1,1,0],[0,0,1],[1,0,1],[0,1,1],[1,1,1]]}
 ```
 
-This is an identity table. Sizes 2–33 require exactly `size³` normalized RGB triples, with red varying fastest, then green, then blue (cube ordering). `vixl lookup photo look --amount 0.8` attaches the named look, using trilinear interpolation and preserving alpha. Redefining the table updates all uses. Share the `lut` operation through JSON; native `.cube` parsing is not included.
+This is an identity table. Sizes 2–33 require exactly `size³` normalized RGB triples, with red varying fastest, then green, then blue (cube ordering). `vixl lookup photo look --amount 0.8` adds the named look to the layer's effect stack as a `lookup` effect (trilinear interpolation, alpha preserved): it applies in stack order, can be disabled, removed, reordered with `effect-move` or limited to the current selection, and works on adjustment layers. Redefining the table updates all uses. Documents that stored a LUT as a layer's `lookup` field open with it converted to a `lookup` effect at the end of the stack. Share the `lut` operation through JSON; native `.cube` parsing is not included.
 
 ## Comps, text layout, guides, pathfinder, and symbols
 
@@ -223,7 +309,7 @@ vixl symbol-instance Brandmark --name footer-logo --x 100 --y 800 --width 100 --
 
 Comps capture visibility, position, rotation, opacity, blend, constraints, and layer styles by ID, without duplicating imagery or full document history. New layers are unaffected and deleted IDs are ignored. `render --comp` is read-only; `comp-apply` is an undoable edit.
 
-Text boxes wrap paragraphs and oversized words; `fit` shrinks from the configured font size until the text fits, and at least until its longest word fits on a line, so a word is broken across lines only when it cannot fit even at 1 px. Warps are `none`, `arc`, `flag`, and `bulge`, with amounts −1 to 1, applied inside the box. Paths are local pixel polylines: glyphs follow segment tangents and content beyond the path is omitted. This is basic glyph placement, not full shaping/kerning on Bézier paths. A warp moves glyphs up or down by a fraction of the box height; the warped line is moved back inside the box so lifted letters keep their tops. Content taller than the box keeps its top and is clipped at the bottom, so allow room for curvature. A new `text-layout` operation replaces the previous settings.
+Text boxes wrap paragraphs and oversized words. Given only a `width`, the box is as tall as the wrapped lines (a box whose height was set before only grows), so nothing is cut off; `fit` shrinks from the configured font size until the text fits, and at least until its longest word fits on a line, so a word is broken across lines only when it cannot fit even at 1 px. Warps are `none`, `arc`, `flag`, and `bulge`, with amounts −1 to 1, applied inside the box. Paths are local pixel polylines: glyphs follow segment tangents and content beyond the path is omitted. This is basic glyph placement, not full shaping/kerning on Bézier paths. A warp moves glyphs up or down by a fraction of the box height; the warped line is moved back inside the box so lifted letters keep their tops. Content taller than the box keeps its top and is clipped at the bottom, so allow room for curvature. A new `text-layout` operation replaces the previous settings.
 
 Guides are named absolute x/y positions used in constraint expressions such as `guide:left-margin.left+8`. Angled lines, rays, points, circles and curves, generated grid systems (thirds, golden, armature, polar, isometric, perspective …), `place` and `snap` are described in [guides](guides.md). Grids generate guides `NAME-x1-start`, `NAME-x1-end`, `NAME-y1-start`, etc.; redefining the grid replaces its generated guides. Guides/grids are document metadata, never painted into output, and remain absolute when the canvas changes.
 

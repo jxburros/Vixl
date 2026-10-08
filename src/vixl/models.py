@@ -22,6 +22,9 @@ DEFAULTS = {
         "key_env": "GEMINI_API_KEY",
     },
 }
+# Providers usable without a config entry once their key is set: the catalog defaults plus FLUX (Black Forest Labs),
+# whose image API has no model catalog to refresh.
+BUILTIN = {**DEFAULTS, "flux": {"type": "bfl", "key_env": "BFL_API_KEY"}}
 CAPABILITIES = ("plan", "describe", "detect", "ocr", "generate", "segment", "upscale", "background-remove")
 
 
@@ -297,7 +300,7 @@ def discovery_command(cmd, args):
                 }
                 for n, s in items.items()
             ],
-            "supported": list(DEFAULTS),
+            "supported": list(BUILTIN),
             "midjourney": "Requires a configured HTTP gateway; no supported public model API.",
         }
     names = [a.provider] if a.provider else list(items)

@@ -155,8 +155,8 @@ def check_operand(item, state):
         raise Unsupported("an operand has a mask")
     if any(style.get("enabled", True) for style in (item.get("styles") or {}).values()):
         raise Unsupported("an operand has layer styles")
-    if item.get("repeat") or item.get("lookup"):
-        raise Unsupported("an operand has a repeat or lookup table")
+    if item.get("repeat"):
+        raise Unsupported("an operand has a repeat")
     if item["type"] == "shape":
         if item.get("shape") == "line":
             raise Unsupported("an operand is a line, which has no area")
@@ -202,11 +202,9 @@ def pathfinder_commands(layer, state):
 
 def path_data(commands):
     """SVG path data for path commands."""
-    def number(value):
-        text = f"{value:.3f}".rstrip("0").rstrip(".")
-        return "0" if text in ("", "-0") else text
+    from .geometry import compact_number
 
     parts = []
     for command, values in commands:
-        parts.append(command + " ".join(number(v) for v in values) if values else command)
+        parts.append(command + " ".join(compact_number(v, 3) for v in values) if values else command)
     return " ".join(parts)

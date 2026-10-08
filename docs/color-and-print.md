@@ -28,10 +28,11 @@ Lightness and saturation modifiers work in OKLCH, so they look even across hues.
 
 ```bash
 vixl color '#2563eb'                          # hex, rgb, hsl, hwb, oklch, lab, cmyk, names, contrast
-vixl color convert 'oklch(0.7 0.15 30)' --to cmyk
+vixl color convert 'oklch(0.7 0.15 30)' --to cmyk   # a colour outside sRGB reports `clipped` and a warning
 vixl color harmony '#2563eb' --scheme triadic  # complementary, analogous, triadic, split-complementary,
                                                # tetradic, square, monochromatic, tints, shades, tones
 vixl color scale '#2563eb'                     # 50–950 ramp; the base keeps its own step
+vixl color scale '#1f6f50' '#f4efe6' --count 5 --space oklch  # 5 steps from the first colour to the last
 vixl color mix '#2563eb' white --amount 0.3 --space oklch
 vixl color contrast white '#2563eb'            # WCAG ratio with AA/AAA verdicts
 vixl color names sage                          # search names
@@ -52,7 +53,8 @@ Operations that store colors in the document:
 Start print work from a physical size so the canvas carries dpi, bleed and a safe area:
 
 ```bash
-vixl new letter --bleed -o flyer.vixl          # 2626 × 3376 px: 8.5 × 11 in at 300 dpi + ⅛ in bleed
+vixl new letter --bleed -o flyer.vixl          # 2625 × 3375 px: 8.5 × 11 in at 300 dpi + ⅛ in (37.5 px) bleed
+# The bleed is kept to the half pixel, so trim + 2 × bleed is exactly the physical size.
 vixl new business-card --bleed --landscape -o card.vixl
 ```
 
@@ -65,7 +67,7 @@ Export formats:
 | CMYK PDF as one image per page | `vixl export flyer.pdf --cmyk --pdf-content raster` |
 | Press separation with the printer's profile | `vixl export flyer.pdf --cmyk --icc ISOcoated_v2.icc --intent relative` |
 | Soft proof (how print will look) | `vixl export proof.png --proof [--icc PROFILE.icc]` |
-| Explicit resolution metadata | `--dpi 300` (defaults to the canvas dpi × scale) |
+| Explicit resolution metadata | `--dpi 300` (defaults to the canvas dpi × scale; a TIFF of a canvas without a dpi gets 72 dpi × scale) |
 
 Without a profile, CMYK uses a predictable device-naive separation with gray-component replacement: `--black-generation` (0–1, default 1, full GCR) and `--ink-limit` (total area coverage in percent) control it. With `--icc`, LittleCMS converts sRGB to the profile's CMYK with the chosen rendering intent (`perceptual`, `relative`, `saturation`, `absolute`) and embeds the profile in TIFF and JPEG files; the profile decides black generation, and `--ink-limit`, when given, still caps total coverage by reducing C, M and Y. Vixl does not bundle press profiles; use the one your printer supplies. Alpha is flattened onto `--background` (white by default).
 
@@ -81,7 +83,7 @@ Without a profile, CMYK uses a predictable device-naive separation with gray-com
 
 ## Accessibility and color vision
 
-`--simulate protanopia|deuteranopia|tritanopia|achromatopsia` (CLI export/render), `simulate=` (MCP preview/export) and `vixl check --checks color_vision` use Machado et al. (2009) matrices to show or detect text whose contrast collapses for color-blind readers. Fix such text with a lightness difference, not a different hue.
+`--simulate protanopia|deuteranopia|tritanopia|achromatopsia` (CLI export/render), `simulate=` (MCP preview/export) and `vixl check --checks color_vision` use Machado et al. (2009) matrices to show or detect text whose contrast collapses for color-blind readers, and chart series whose colors merge (mark a chart that also uses labels or patterns with `layer-intent color_vision_safe`). Fix such text with a lightness difference, not a different hue.
 
 ## Boundaries
 

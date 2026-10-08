@@ -1,6 +1,6 @@
 # Editable vector shapes, strokes and paths
 
-All examples are operations for `Project.apply`, the CLI edit command, or `vixl_edit`.
+All examples are operations for `Project.apply`, the CLI edit command, or `vixl_operations_apply`.
 Changes participate in the same validation, atomic batches, save/load and undo history as
 other edits. `shape` with `target` updates a recipe without changing the layer ID.
 
@@ -39,12 +39,65 @@ parameters can be changed later. Paths and holes export as real vector geometry.
 | Mechanical | `gear`/`cog`, `ruler`/`tick-strip` | `teeth`, `depth`, `hole`; ruler `count`, `thickness` |
 | Structured lines | `wave`, `zigzag`, `sawtooth`, `square-wave`, `dashed-line`, `curve` section divider | `amplitude`, `wavelength`, `phase`, `count`; stroke controls below |
 | Symbols | `checkmark`, `x-mark`, `lightning`/`lightning-bolt`, `sun`, `flame`, `map-pin`, `house`, `bell`, `lock`, `magnifier`, `envelope`, `play`, `pause`, `stop`, `skip`, `info`, `question`, `warning`, `music-note`, `sparkle`, `star-rating` | `thickness` for line symbols; sun `count`/`ray_length`; rating `count`/`rating` with fractional stars |
-| Decoration | `flourish`, `swash-underline`, `scroll`, `laurel`/`wreath`, `divider`, `corner-ornament`, `sunburst`, `radial-burst`, `motion-lines`/`speed-lines`, `confetti`, `scribble`/`squiggle` | `count`, `thickness`; wave-like ornaments `amplitude`, `wavelength`, `phase` |
+| Decoration | `flourish`, `swash-underline`, `scroll`, `laurel`/`wreath`, `divider`, `corner-ornament`, `sunburst`, `radial-burst`, `motion-lines`/`speed-lines`, `confetti`, `scribble`/`squiggle` | `count`, `thickness`; wave-like ornaments `amplitude`, `wavelength`, `phase`; `confetti` with `count` scatters that many slips at `seed`-chosen places and angles (without `count` it is one rounded slip) |
 | Print/craft | `ticket`, `stamp`/`postmark`, `scalloped-border`, `sticker` | `notch`, edge `count`/`depth`, `thickness`, `peel` |
 
 Image content can be placed in UI frames with the existing image `frame`, `replace-contents`
 and clipping operations; the decorative shape does not embed an additional hidden image slot.
-Speech bubbles use the existing bubble/container operations.
+The comic `speech-bubble` operation builds a bubble sized around its text; the `speech-bubble`
+shape below is a single outline whose body and tail you shape yourself.
+
+## Shape-specific parameters
+
+The shortcut shapes take parameters of their own. Without them each keeps its fixed outline;
+any of them makes the shape parametric (redrawn crisply in every output). Lengths accept pixels,
+a fraction up to 1 (of the dimension named) or a percentage.
+
+| Shape | Parameters (defaults) |
+| --- | --- |
+| `heart` | `apex` 0.5: where the cleft and tip sit across the width (below 0.5 the left lobe is smaller); `cleft` 0.2: how far the top notch dips; `tip` 0.95: how far down the point reaches (both of the height, from the top) |
+| `speech-bubble` | `pointer_side` `bottom` (`top`, `left`, `right`): the side the tail comes from; `pointer_position` 0.2: the tail tip along that side, 0-1 (at 0.2 or less the tail base runs from the tip toward the middle, at 0.5 it is centred, at 0.8 or more it runs back); `pointer_size` 0.25: tail base width, of the side; `body` 0.75: depth of the body, of the height (of the width for a left/right tail); the rest is tail |
+| `shield` | `depth` 0.55: depth of the point, of the height |
+| `chevron` | `thickness` 0.4: band thickness, of the width; `point_radius` |
+| `trapezoid`, `parallelogram` | `slant` 0.25: top-corner inset (trapezoid) or top-edge offset (parallelogram), of the width; `point_radius` |
+| `triangle` | `apex` 0.5: the top vertex across the width (0 is a right triangle); `point_radius` |
+| `tag` | `depth` 0.22: length of the point, of the width; `hole` |
+| `star`, `polygon`, `burst`, `seal` … | `sides`/`count`, `inner_radius`, `point_radius`, `valley_radius`, `rotation_offset` (see above) |
+| `ring`, `frame`, `plus`, `cross`, `minus` | `thickness`: band or arm thickness |
+| `arrow`, `callout` | `head_length`, `head_width`, `shaft_width` …; `pointer_position`, `pointer_size` |
+
+```json
+{"type":"shape","shape":"speech-bubble","name":"bubble","width":320,"height":200,"pointer_side":"left","pointer_position":0.7,"body":0.85,"fill":"white","stroke":"#17202a","stroke_width":3}
+{"type":"shape","shape":"heart","name":"heart","width":200,"height":180,"cleft":0.3,"tip":0.9,"apex":0.45,"fill":"crimson"}
+```
+
+`tail_side`, `tail_position`, `tail_size`/`tail_width`, `body_ratio`, `lobe_balance` (heart
+`apex`), `points` (star `sides`) and `arm_width` (`thickness`) are accepted spellings, reported
+under `normalized`. A parameter a shape does not read (`cleft` on a rectangle) is reported under
+`warnings`. `vixl_capabilities("shapes")` lists every shape's parameters.
+
+## Content boxes
+
+A shape's content box is its usable inner area: a speech bubble's body (without the tail and
+rounded corners), a tag without its point, the circle inside a star, badge, seal or polygon, the
+inscribed rectangle of an ellipse or rounded rectangle, a ring or frame opening, a device or
+browser screen, a banner between its folds, and the largest rectangle inside organic outlines
+(heart, shield, cloud, triangle, arrow …). `inspect` and apply results report it in canvas
+coordinates as `content_bounds` whenever it is smaller than the box (rotation and flips included;
+a rectangle, a line or an icon has none).
+
+Centre text in it, or pin it to a corner of it:
+
+```json
+{"type":"text","text":"Hello!","name":"line","size":28,"color":"#17202a","within":"bubble"}
+{"type":"place","targets":["line"],"within":"bubble","anchor":"top-left","margin":8}
+{"type":"align","targets":["line"],"relative_to":"bubble","box":"content","alignment":"center"}
+```
+
+`text` with `within` centres the text in the content box (no `x`/`y`). `place` with `within`
+instead of `guide` puts each target's `anchor` (default `center`) on the same point of the
+content box, inset by `margin`; `box: "bounds"` uses the whole box. Both work across groups.
+`align` with `box: "content"` aligns sibling layers to the content box of the `relative_to` layer.
 
 ## Strokes
 
@@ -66,6 +119,35 @@ These controls are shared by raster, SVG and PDF through filled vector stroke ou
 Outside strokes and rounded caps may extend beyond the layer's layout box. `dash_offset`
 and `stroke_width` are numeric timeline properties. `trim_start`/`trim_end` reveal a
 percentage of the contour; they compose with dashes, rather than replacing the dash pattern.
+
+## Path coordinates and the layer box
+
+`{"type":"shape","shape":"path","path":"…"}` draws SVG path data (`M L H V C S Q T A Z`,
+absolute or relative, several sub-paths `M…M…` in one layer). The contract:
+
+- **Coordinates are literal local pixels.** A path point `(px, py)` draws at
+  `(x + px, y + py)` in the layer's parent (the canvas, or the group's box), where `x`/`y` are the
+  layer's position (default `0, 0`). They are never normalized to the box.
+- **Without `width`/`height` the box reaches the path's farthest point:** `width` is the
+  largest x the drawn path reaches (curves included), `height` the largest y, so the box runs from
+  the layer origin to the path's far corner. It is never the whole canvas. Giving only one of them
+  sets that side; the other still comes from the path. The path text is kept exactly as written.
+- **With `width`/`height` at creation**, coordinates are still literal: the given size is the box
+  the path is drawn in (`path_view`), and geometry beyond it still draws (shapes do not clip).
+- **Resizing scales the path.** A later `resize`/`scale` (or `shape` with `target` and a new
+  `width`/`height`) scales the drawn path with the box. Replacing `path` with `target` keeps the
+  current box, so the new path is again read in literal pixels of that box.
+- **Negative coordinates** draw left of / above the layer origin, outside its box: the box (and so
+  alignment, `center`, pivots and checks) does not include them. Keep paths in positive
+  coordinates, move the layer with `x`/`y`, or use `path-fit` to scale geometry into a box.
+- An open path (no `Z`) with a `stroke` and no `fill` is stroked only; otherwise set
+  `fill: "none"` (read as `transparent`) for an outline.
+
+```json
+{"type":"shape","shape":"path","name":"flick","path":"M300 200 Q320 150 340 140 M310 210 Q330 170 352 165","stroke":"#5a3a1a","stroke_width":3}
+```
+
+This layer's box is `0, 0, 352, 210`: the strokes draw at their literal coordinates.
 
 ## Indexed path editing
 
@@ -96,7 +178,9 @@ handles equal in length. `path-simplify` reduces nodes by a pixel `tolerance`;
 - `pathfinder`: adds `exclude` (XOR), `minus-back` (last operand minus earlier operands),
   `divide` (independent faces), `trim` (remove covered portions), and `merge` (trim then
   combine pieces of the same fill). Divide/trim/merge return a group of editable paths;
-  originals are preserved and hidden, as with existing pathfinder modes. Divide is limited
+  originals are preserved and hidden, as with existing pathfinder modes. Each piece reaches 1 px under the
+  pieces stacked above it (never past the outline of the whole), so abutting pieces render without a hairline
+  seam. Divide is limited
   to 256 faces, and the established boolean engine's geometry limits still apply.
 
 Repeats and blends remain the existing `repeat`, `repeat-blend`, and `organic` `along`

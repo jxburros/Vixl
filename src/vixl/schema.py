@@ -3,7 +3,8 @@
 from copy import deepcopy
 from functools import lru_cache
 
-from .inplace import target_schema
+from .geometry import ANCHORS
+from .inplace import EDITS, target_schema
 from .model import Limits
 from .render import EFFECTS, BLENDS
 
@@ -21,15 +22,34 @@ SIZE = {
     "description": "Pixels or a percentage of the canvas/parent such as '25%'.",
 }
 COORD_FIELDS = ("x", "y", "width", "height")
+OPACITY = {
+    "type": "number", "minimum": 0, "maximum": 1,
+    "description": "0 (clear) to 1 (opaque); a percentage string such as '70%' is read as 0.7. A bare number above "
+    "1 is an error.",
+}
+# Layer-creating operations that also set the layer's opacity and rotation (the opacity and rotate
+# operations, in one step); with target they change the edited layer's.
+LAYER_FINISH = ("add", "solid", "gradient", "text", "shape")
+FINISH_FIELDS = {
+    "opacity": OPACITY,
+    "rotation": {"type": "number", "description": "Rotation in degrees, clockwise, around the layer's pivot "
+                 "(its center unless pivot moved it), as the rotate operation sets it."},
+}
 FONT = {
     "type": "string",
     "description": "Registered font name or role (heading, body); install with font install / font pair / font import. "
-    "File paths work only in the CLI and Python API, not over MCP or REST.",
+    "File paths work only in the CLI and Python API, not over MCP or REST. A new text layer without one uses the "
+    "body face once the document has typography.",
 }
 
 
 def enum(*values):
     return {"enum": list(values)}
+
+
+def field(base, description):
+    """A copy of a shared schema constant carrying its own description (shared constants are never mutated)."""
+    return {**base, "description": description}
 
 
 def operation_schema():
@@ -69,6 +89,8 @@ def _operation_schema():
             "x": COORD,
             "y": COORD,
             "provenance": {"type": "object"},
+            "credit": {"type": "string", "maxLength": 1000},
+            "license": {"type": "string", "maxLength": 1000},
             "width": SIZE,
             "height": SIZE,
             "max_pixels": {"type": "integer", "minimum": 1},
@@ -92,6 +114,7 @@ def _operation_schema():
             "direction": enum("horizontal", "vertical", "radial", "angled"),
             "stops": {"type": "array", "items": {"type": "object"}},
             "angle": N,
+            "falloff": enum("linear", "smooth", "ease", "quadratic", "gaussian"),
             "x": COORD,
             "y": COORD,
         },
@@ -106,12 +129,18 @@ def _operation_schema():
                            "mode": enum("light", "dark"), "columns": {"type": "integer", "minimum": 1, "maximum": 12}}, ["name"])
     add("guidance", {"name": S, "text": S, "style": S, "delete": B}, ["name"])
     add("font-register", {"name": S, "asset": S, "role": S}, ["name"])
+    baseline_y = {"type": "number", "description": "Place the text's first baseline at this y (instead of y, the top "
+                  "of its box), in the same coordinates as y. Multi-line text: the first line; mixed fonts: the measured "
+                  "first line."}
     text = {
         "text": S,
         "size": POSITIVE_INT,
         "color": S,
         "align": enum("left", "center", "right"),
-        "spacing": {"type": "integer", "minimum": 0},
+        "spacing": {"type": "integer", "minimum": -4096, "maximum": 1000},
+        "line_height": {"type": "number", "minimum": 0.5, "maximum": 5,
+                        "description": "Distance between baselines as a multiple of the size (1.45 body, 1.1 headings, "
+                        "1.0 display). Kept when the size or font changes; spacing in pixels overrides it."},
         "hide_if_empty": {
             "type": "boolean",
             "description": "Do not draw the text (and take no space in a stack) while it is empty or blank "
@@ -127,6 +156,10 @@ def _operation_schema():
             "font": FONT,
             "x": COORD,
             "y": COORD,
+            "within": field(S, "A layer to centre the text in instead of x/y: the middle of its content box (a "
+                            "speech bubble's body, a badge, a frame's opening; see content_bounds in inspect). "
+                            "Use place with within for other anchors or a margin."),
+            "baseline_y": baseline_y,
         },
         anyOf=[{"required": ["text"]}, {"required": ["target"]}],
     )
@@ -142,6 +175,7 @@ def _operation_schema():
             "font": FONT,
             "stroke_width": {"type": "integer", "minimum": 0},
             "stroke_color": S,
+            "baseline_y": baseline_y,
         },
         description="Change a whole text layer: content, color, size, font, alignment, spacing or stroke. To style only "
         "part of the text (a phrase, a character range, a paragraph, bold/italic/tracking) use text-style.",
@@ -161,7 +195,8 @@ def _operation_schema():
         add(kind)
     add("rename", {"name": S}, ["name"])
     add("duplicate", {"name": S})
-    add("move", {"x": COORD, "y": COORD, "relative": B}, anyOf=[{"required": ["x"]}, {"required": ["y"]}])
+    add("move", {"x": COORD, "y": COORD, "relative": B, "baseline_y": baseline_y},
+        anyOf=[{"required": ["x"]}, {"required": ["y"]}, {"required": ["baseline_y"]}])
     add(
         "resize",
         {
@@ -182,8 +217,12 @@ def _operation_schema():
                   "y": {**scale, "description": "Vertical factor, overriding value. Negative mirrors vertically."}},
         anyOf=[{"required": ["value"]}, {"required": ["x"]}, {"required": ["y"]}])
     add("rotate", {"value": N}, ["value"])
-    add("pivot", {"value": {"type": ["array", "string"], "items": N}, "units": enum("fraction", "px"), "clear": B})
-    add("opacity", {"value": {"type": "number", "minimum": 0, "maximum": 1}}, ["value"])
+    add("pivot", {"value": {"anyOf": [{"type": "array", "items": N, "minItems": 2, "maxItems": 2}, enum(*ANCHORS)],
+                            "description": "[x, y] as fractions of the layer box (0.5, 0.5 is the center; pixels from the "
+                            "top-left with units: px; a canvas point with units: canvas) or an anchor name: "
+                            + ", ".join(ANCHORS) + ". Synonyms such as bottom-center or center-left are accepted."},
+                  "units": enum("fraction", "px", "canvas"), "clear": B})
+    add("opacity", {"value": OPACITY}, ["value"])
     add("blend", {"value": enum(*BLENDS)}, ["value"])
     add("flip", {"direction": enum("horizontal", "vertical")}, ["direction"])
     add(
@@ -209,9 +248,14 @@ def _operation_schema():
                 "top-right",
                 "bottom-left",
                 "bottom-right",
+                "baseline",
             ),
             "margin": N,
             "relative_to": S,
+            "box": field(enum("bounds", "content"),
+                         "With relative_to a layer: bounds (default) aligns to its whole box; content aligns to its "
+                         "usable inner area (a speech bubble's body, a badge's centre, a frame's opening, a device "
+                         "screen), reported as content_bounds by inspect."),
             "targets": {"type": "array", "items": S, "minItems": 1, "uniqueItems": True},
         },
         ["alignment"],
@@ -290,17 +334,23 @@ def _operation_schema():
             "items": {"type": "array", "items": N, "minItems": 2, "maxItems": 2},
             "minItems": 2,
         },
+        "gains": {"type": "array", "items": N, "minItems": 3, "maxItems": 3},
+        "neutral": S,
     }
-    add("effect", {"name": S, **effect}, ["name"])
+    add("effect", {"name": S, "lut": S, **effect}, ["name"])
     for kind in EFFECTS:
         add(kind, deepcopy(effect))
+    ref = {"type": ["integer", "string"]}
     for kind in ("effect-disable", "effect-enable", "effect-remove", "effect-set"):
         add(
             kind,
-            {"effect": {"type": ["integer", "string"]}, **(effect if kind == "effect-set" else {})},
+            {"effect": ref, **({"lut": S, **effect} if kind == "effect-set" else {})},
             ["effect"],
         )
+    add("effect-move", {"effect": ref, "to": ref, "before": ref, "after": ref}, ["effect"])
     add("variable", {"name": S, "value": {"type": ["string", "number", "boolean"]}, "delete": B}, ["name"])
+    add("variable-map", {"name": S, "values": {"type": "object", "additionalProperties": {"type": ["string", "number", "boolean"]}},
+                         "merge": B, "delete": B}, ["name"])
     add("preset-save", {"name": S}, ["name"])
     add(
         "preset-apply",
@@ -350,6 +400,8 @@ def _operation_schema():
     selector_schemas(add)
     from .links import schemas as link_schemas
     link_schemas(add)
+    from .codes import schemas as code_schemas
+    code_schemas(add)
     from .charts import schemas as chart_schemas
     chart_schemas(add)
     from .finishing import schemas as finishing_schemas
@@ -369,6 +421,9 @@ def _operation_schema():
     from .captions import schemas as caption_schemas
 
     caption_schemas(add)
+    from .merging import schemas as merge_schemas
+
+    merge_schemas(add)
     from .vector_paths import schemas as vector_schemas
 
     vector_schemas(add)
@@ -389,9 +444,20 @@ def _operation_schema():
 
     transform_schemas(add)
     enrich_transform_schemas(variants)
+    for variant in variants:
+        if variant["properties"]["type"]["const"] in LAYER_FINISH:
+            variant["properties"].update(deepcopy(FINISH_FIELDS))
+        if variant["properties"]["type"]["const"] in EDITS:
+            variant["properties"]["space"] = {
+                "enum": ["parent", "canvas"],
+                "description": "With target: how x/y read for a layer inside a group. parent (default): local to the "
+                "group's box; canvas: document coordinates, as move's space: canvas.",
+            }
     from .schema_docs import enrich
+    from .targets import enrich as enrich_targets
 
     enrich(variants)
+    enrich_targets(variants)
     return {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "title": "Vixl operation batch",
@@ -408,6 +474,41 @@ def _operation_schema():
 def _properties():
     variants = _operation_schema()["properties"]["operations"]["items"]["oneOf"]
     return {v["properties"]["type"]["const"]: frozenset(v["properties"]) for v in variants}
+
+
+@lru_cache(maxsize=1)
+def _required():
+    variants = _operation_schema()["properties"]["operations"]["items"]["oneOf"]
+    return {v["properties"]["type"]["const"]: frozenset(v["required"]) for v in variants}
+
+
+@lru_cache(maxsize=1)
+def _integer_fields():
+    """Top-level fields whose schema accepts integers but not other numbers, per operation type."""
+    variants = _operation_schema()["properties"]["operations"]["items"]["oneOf"]
+
+    def integer_only(spec):
+        options = spec.get("anyOf") or spec.get("oneOf") or [spec]
+        types = set()
+        for option in options:
+            kind = option.get("type")
+            types.update(kind if isinstance(kind, list) else [kind])
+        return "integer" in types and "number" not in types
+
+    return {v["properties"]["type"]["const"]: frozenset(k for k, spec in v["properties"].items() if integer_only(spec))
+            for v in variants}
+
+
+def round_integers(op, notes, where):
+    """Round fractional values given for integer fields (a computed 25.6 font size) and report it."""
+    import math
+
+    for key in _integer_fields().get(op.get("type"), ()):
+        value = op.get(key)
+        if isinstance(value, float) and math.isfinite(value):
+            op[key] = round(value)
+            if op[key] != value:
+                notes.append(f"{where}: {key} {value!r} → {op[key]}")
 
 
 def validate_operation(operation, notes=None, index=None):
@@ -427,9 +528,11 @@ def validate_operation(operation, notes=None, index=None):
                 field="page")
     properties = _properties()
     result = normalize_operation(
-        result, lambda k: properties.get(k, frozenset()), properties, EFFECTS, [] if notes is None else notes, index
+        result, lambda k: properties.get(k, frozenset()), properties, EFFECTS, [] if notes is None else notes, index,
+        required=lambda k: _required().get(k, frozenset()),
     )
     require(isinstance(result.get("type"), str), "Operation requires a string type", field="type")
+    round_integers(result, [] if notes is None else notes, f"operations[{index}]" if index is not None else "operation")
     validator = _validators().get(result["type"])
     if validator is None:
         import difflib
@@ -471,7 +574,17 @@ def schema_error(error, operation, allowed):
     if validator == "additionalProperties":
         known = set(error.schema.get("properties", {}))
         extras = sorted(set(error.instance) - known)
-        suggestions = {k: difflib.get_close_matches(k, sorted(known), 1, 0.5) for k in extras}
+        from .normalize import FIELD_ALIASES
+
+        # Aliases count as spellings of their field: 'colr' is close to 'color', which a shape reads as 'fill'.
+        aliases = {alias: canonical for alias, canonical in FIELD_ALIASES.get(kind, {}).items() if canonical in known}
+        spellings = sorted(known | set(aliases))
+        suggestions = {}
+        for k in extras:
+            close = difflib.get_close_matches(k, spellings, 1, 0.5)
+            suggestions[k] = [aliases.get(close[0], close[0])] if close else []
+        if kind in ("text", "text-set") and "width" in extras:
+            suggestions["width"] = []
         hints = [f"{v[0]!r} instead of {k!r}" for k, v in suggestions.items() if v]
         where = f" in {field}" if field else f" for {kind!r}"
         message = f"Unknown field(s) {', '.join(map(repr, extras))}{where}. Allowed: {', '.join(sorted(known))}"
@@ -508,6 +621,13 @@ def schema_error(error, operation, allowed):
         message = f"{field} must be {error.validator_value}; got {type(error.instance).__name__} {error.instance!r}"
     elif validator in ("minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum"):
         message = f"{field} {error.message}"
+        details["limit"] = error.validator_value
+    elif validator in ("maxItems", "minItems", "maxLength", "minLength"):
+        # Name the bound and the size given; never echo the (possibly huge) value back.
+        most = validator.startswith("max")
+        unit = "entries" if validator.endswith("Items") else "characters"
+        message = (f"{field or kind} holds {'at most' if most else 'at least'} {error.validator_value} {unit}; "
+                   f"got {len(error.instance)}")
         details["limit"] = error.validator_value
     else:
         message = f"{field + ': ' if field else ''}{error.message}"

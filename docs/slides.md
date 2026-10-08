@@ -18,7 +18,7 @@ PowerPoint deck or as a self-contained HTML presentation you can present from an
 ```bash
 vixl new 1920x1080 -o deck.vixl --background '#ffffff'
 vixl master add std --background '#f6f4ef'                     # edit the master …
-vixl shape --shape rectangle --name band --width 1920 --height 24 --x 0 --y 1056 --fill '#1d3557'
+vixl shape rectangle --name band --width 1920 --height 24 --x 0 --y 1056 --fill '#1d3557'
 vixl text add '${page} / ${pages}' --name num --size 24 --x 1780 --y 1010
 vixl page add cover --master std                               # … then the pages
 vixl text add 'Quarterly Review' --name title --size 120 --x 140 --y 380
@@ -68,7 +68,9 @@ Page settings:
 - `transition` — `fade`, `push`, `wipe`, `cover`, `split` or `zoom` in PowerPoint and in the HTML
   presentation.
 
-Built-in variables: `${page}` (the page number), `${pages}` (the page count) and `${page_name}`.
+Built-in variables: `${page}` (the page number), `${pages}` (the page count) and `${page_name}`. Hidden pages are
+not counted, so a deck with one hidden page among four reads 1 / 3 to 3 / 3 in every format; a hidden page itself
+shows the number the next shown page has.
 
 ## Masters
 
@@ -127,8 +129,9 @@ slides) that opens in PowerPoint, Keynote, Google Slides and LibreOffice:
   Plain groups become groups.
 - A [chart](charts.md) becomes a native chart with its data table embedded, so *Edit Data* works.
   A rotated or flipped chart is exported as its shapes, and the report lists each chart under `charts`.
-- Image layers become pictures. Layers PowerPoint cannot draw the same way become pictures of
-  exactly what Vixl renders and are listed under `raster_fallbacks`.
+- Image layers become pictures. Layers PowerPoint cannot draw the same way (effects, masks, blend modes, and
+  `skew` or `affine` transforms, which DrawingML cannot hold) become pictures of exactly what Vixl renders and are
+  listed under `raster_fallbacks` with the reason (`skew`, `affine transform`, ...).
 - Master layers are drawn on each slide (as ordinary shapes, so every slide matches the
   render). Speaker notes become the slide notes; transitions carry over.
 - Slide size: canvases with a `dpi` keep their physical size; screen canvases become 7.5 inches
@@ -142,7 +145,14 @@ slides) that opens in PowerPoint, Keynote, Google Slides and LibreOffice:
   `fonts_not_embedded`: install those fonts wherever the deck is opened or presented (PowerPoint,
   Keynote and Google Slides otherwise substitute another font and the layout shifts), or share the
   PDF, which embeds its fonts. In PowerPoint, *File → Options → Save → Embed fonts in the file*
-  embeds them once they are installed.
+  embeds them once they are installed. Full font embedding is not planned for Vixl's PPTX writer.
+- `font_embedding` gives each of those families its OS/2 `fsType` permission
+  (`installable`, `editable`, `preview-print` or `restricted`; `unknown` when unreadable), which
+  tells you whether PowerPoint may embed it later, and its `license` when the font declares the SIL
+  Open Font License (`OFL`, every Google Fonts family Vixl installs) or Apache 2.0. Open-licensed
+  fonts can be installed freely on the presenting machine; a `restricted` font cannot be embedded
+  by any application, so share the PDF instead (Vixl's PDF embeds a subset of each TrueType font
+  it uses and draws other fonts as outlines).
 
 ## HTML presentation
 

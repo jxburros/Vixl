@@ -15,6 +15,12 @@ Template contract (layer names; only ``lyric`` is required):
 ``cue-<words>``    visible while the current line contains those words (``cue-fire``,
                    ``cue-city-lights``), so lyrics can drive graphics; it can fade, slide or
                    sweep instead of cutting on and off (``cue_animation``)
+``lyric-<section>`` an alternate ``lyric`` text layer (its own font, size, colour, place) shown
+                   instead of ``lyric`` for lines in that section (``lyric-chorus``)
+``next-<section>`` the same for ``lyric-next``
+
+``section_styles`` in the request restyles the lyric layers per section without alternate
+layers: ``{"chorus": {"size": 72, "color": "#ffd166"}}``.
 
 A built document records the options and sources it was built from (``state["lyric_build"]``), so
 ``export`` can render a hand-edited build as it is instead of rebuilding it from the template.
@@ -59,8 +65,9 @@ RECORD = "lyric_build"  # The document state key that records how a build was ma
 REQUEST_FIELDS = {
     "audio", "lyrics", "template", "build", "output", "fps", "quality", "offset", "lead", "gap",
     "max_hold", "animation", "cue_animation", "next_line", "camera", "start", "end", "check", "replace",
-    "rebuild", "width", "height",
+    "rebuild", "width", "height", "sample_rate", "section_styles",
 }
+SECTION_STYLE_FIELDS = ("size", "color", "x", "y")
 
 
 def _ms(minutes, seconds, fraction):
@@ -170,7 +177,7 @@ def parse_lrc(text):
 def validate_template(project, sections=()):
     """Check a template against the naming contract. Returns ``{"errors", "warnings", "roles"}``;
     errors use the ``template_invalid`` code."""
-    errors, warnings, roles = [], [], {"backgrounds": {}, "cues": {}}
+    errors, warnings, roles = [], [], {"backgrounds": {}, "cues": {}, "lyrics": {}, "nexts": {}}
     by_name = {layer["name"]: layer for layer in project.state["layers"]}
     lyric = by_name.get("lyric")
     if lyric is None:
@@ -193,14 +200,20 @@ def validate_template(project, sections=()):
     if "intro" in by_name:
         roles["intro"] = by_name["intro"]["id"]
     for name, layer in by_name.items():
-        for prefix, key in (("bg-", "backgrounds"), ("cue-", "cues")):
-            if name.startswith(prefix):
+        for prefix, key in (("bg-", "backgrounds"), ("cue-", "cues"), ("lyric-", "lyrics"), ("next-", "nexts")):
+            if name.startswith(prefix) and name != "lyric-next":
                 rest = name[len(prefix):]
                 if not SLUG.fullmatch(rest):
                     errors.append({"code": "template_invalid", "field": name,
                                    "message": f"{name!r} must be {prefix}<slug>: lower-case words joined by hyphens"})
+                elif key in ("lyrics", "nexts") and layer["type"] != "text":
+                    errors.append({"code": "template_invalid", "field": name,
+                                   "message": f"{name!r} must be a text layer, not {layer['type']}"})
                 else:
                     roles[key][rest] = layer["id"]
+    if roles["nexts"] and "lyric-next" not in roles:
+        warnings.append({"code": "next_without_lyric_next",
+                         "message": "next-<section> layers replace lyric-next for a section, but the template has no lyric-next"})
     for section in dict.fromkeys(s["name"] for s in sections):
         if background_for(roles["backgrounds"], section) is None:
             warnings.append({"code": "unmatched_section", "section": section,
@@ -208,16 +221,57 @@ def validate_template(project, sections=()):
     return {"errors": errors, "warnings": warnings, "roles": roles}
 
 
+def section_match(keys, section):
+    """The key for a section: an exact match, then the label without a trailing number
+    (``verse-2`` → ``verse``); ``None`` when neither exists."""
+    if section:
+        if section in keys:
+            return section
+        base = re.sub(r"-\d+$", "", section)
+        if base in keys:
+            return base
+    return None
+
+
 def background_for(backgrounds, section):
     """The background layer key for a section: an exact match, then the label without a trailing
     number (``verse-2`` → ``bg-verse``), then ``bg-default``."""
-    if section:
-        if section in backgrounds:
-            return section
-        base = re.sub(r"-\d+$", "", section)
-        if base in backgrounds:
-            return base
+    match = section_match(backgrounds, section)
+    if match is not None:
+        return match
     return "default" if "default" in backgrounds else None
+
+
+def _section_styles(request, template):
+    """``section_styles`` checked against the template: ``{section or "default": {size, color, x, y}}``."""
+    styles = request.get("section_styles")
+    if styles is None:
+        return None
+    require(isinstance(styles, dict) and len(styles) <= MAX_SECTIONS,
+            f"section_styles maps up to {MAX_SECTIONS} section names to styles", field="section_styles")
+    from .design import resolve_color
+    from .render import color
+
+    for section, style in styles.items():
+        field = f"section_styles.{section}"
+        require(isinstance(section, str) and SLUG.fullmatch(section),
+                f"{section!r} is not a section name: use the lower-case slug of an LRC section ('chorus', 'verse-2') or 'default'",
+                field="section_styles")
+        require(isinstance(style, dict) and style, f"{field} must be an object of styles", field=field)
+        if "font" in style:
+            raise VixlError("invalid_operation", "Fonts cannot change by keyframe; give the section its own text layer, "
+                            f"lyric-{section}, in the template's font of choice", field=f"{field}.font")
+        unknown = sorted(set(style) - set(SECTION_STYLE_FIELDS))
+        require(not unknown, f"{field} takes {', '.join(SECTION_STYLE_FIELDS)}", field=field, allowed=list(SECTION_STYLE_FIELDS))
+        if "size" in style:
+            require(isinstance(style["size"], int) and not isinstance(style["size"], bool) and 1 <= style["size"] <= 4096,
+                    f"{field}.size must be a whole number of pixels, 1–4096", field=f"{field}.size")
+        for axis in ("x", "y"):
+            if axis in style:
+                finite(style[axis], f"{field}.{axis}", -100000, 100000)
+        if "color" in style:
+            color(resolve_color(style["color"], template.state))
+    return styles
 
 
 def _animation(request):
@@ -413,6 +467,8 @@ def _settings(request, template):
         require(isinstance(value, int) and 16 <= value <= 4096, f"{key} must be 16–4096 pixels", field=key)
     for key in ("next_line", "check", "rebuild"):
         require(isinstance(request.get(key, True), bool), f"{key} must be true or false", field=key)
+    from .audio import check_rate
+    check_rate(request.get("sample_rate"))
     camera = request.get("camera")
     if camera is not None:
         require(isinstance(camera, dict) and set(camera) <= {"from", "to"}, "camera takes from and to poses", field="camera")
@@ -434,6 +490,7 @@ def _prepare(request, root, limits=None):
     limits = limits or Limits()
     paths, parsed, template, duration = _inputs(request, root, limits)
     settings = _settings(request, template)
+    _section_styles(request, template)
     timed = timing(parsed, request, duration)
     contract = validate_template(template, timed["sections"])
     if contract["errors"]:
@@ -445,6 +502,7 @@ def _prepare(request, root, limits=None):
         warnings.append({"code": "size_mismatch",
                          "message": f"The template is {canvas['width']}×{canvas['height']} but the video is "
                                     f"{settings['width']}×{settings['height']}; frames are cropped from the centre"})
+    warnings += fit_warnings(template, contract["roles"], timed["lines"])
     length = timed["end"] - timed["start"]
     frames = max(1, math.ceil(length * settings["fps"] / 1000))
     shown = [line for line in timed["lines"] if line["hide"] > timed["start"] and line["show"] < timed["end"]]
@@ -467,10 +525,6 @@ def _prepare(request, root, limits=None):
     sources = {"lyrics": hashlib.sha256(paths["lyrics"].read_bytes()).hexdigest(), "template": template._revision,
                "audio_ms": duration}
     return report, parsed, template, timed, contract, sources
-
-
-# ---------------------------------------------------------------------------------------------
-# Build
 
 
 
@@ -589,17 +643,16 @@ def write_timeline(project, timed, roles, request):
         # A later key at the same time replaces an earlier one, as keyframe does.
         tracks.setdefault((target, prop), {})[entry["time"]] = entry
 
-    lyric = roles["lyric"]
-    base = layers[lyric]["opacity"]
-    key(lyric, "text", 0, "")
-    key(lyric, "opacity", 0, 0.0, "hold")
+    # The lyric layer for each line: ``lyric-<section>`` when the template has one for the line's
+    # section, otherwise ``lyric``. Every variant carries the same keys; visibility picks one.
+    variants = {None: roles["lyric"], **roles.get("lyrics", {})}
+    chosen = [section_match(roles.get("lyrics", {}), line.get("section")) for line in lines]
     distance_x = animation["distance"] if animation["distance"] is not None else round(canvas["width"] * 0.06)
     distance_y = animation["distance"] if animation["distance"] is not None else round(canvas["height"] * 0.06)
     steps_budget = max(1, (MAX_KEYS - 2) // max(1, len(lines)) - 1)
-    rest = {"opacity": base, "translate-x": 0.0, "translate-y": 0.0, "scale": 1.0}
     # What the entry and exit move. Every entry puts back whatever it does not set itself, so a cut
     # after a slide-out does not start where the last line left off.
-    moved = set(_entry_keys(animation["in"], 0, 1000, base, 1)) | set(_exit_keys(animation["out"], 1000, 1000, base, 1))
+    moved = set(_entry_keys(animation["in"], 0, 1000, 1, 1)) | set(_exit_keys(animation["out"], 1000, 1000, 1, 1))
     plans = []
     for i, line in enumerate(lines):
         show, hide = line["show"], line["hide"]
@@ -618,36 +671,45 @@ def write_timeline(project, timed, roles, request):
         exit_end = min(hide, following - 1) if following is not None and following <= hide else hide
         exit_end = max(exit_end, show + entry_length)
         plans.append((entering, leaving, entry_length, exit_length, exit_end))
-    for i, line in enumerate(lines):
-        show = line["show"]
-        entering, leaving, entry_length, exit_length, exit_end = plans[i]
-        keys_here = []
-        if entering:
-            if animation["in"] == "typewriter":
-                text = line["text"]
-                steps = max(1, min(len(text), steps_budget, 24))
-                for step in range(steps + 1):
-                    key(lyric, "text", show + entry_length * step / steps, text[: round(len(text) * step / steps)])
-                entry = {"opacity": [(show, base, "hold")]}
-            else:
-                key(lyric, "text", show, line["text"])
-                distance = distance_x if animation["in"].endswith(("left", "right")) else distance_y
-                entry = _entry_keys(animation["in"], show, entry_length, base, distance)
-            for prop in moved - set(entry):
-                entry[prop] = [(show, rest[prop], "hold")]
-            keys_here.append(entry)
-        if leaving:
-            distance = distance_x if animation["out"].endswith(("left", "right")) else distance_y
-            keys_here.append(_exit_keys(animation["out"], exit_end, min(exit_length, exit_end - show - entry_length), base, distance))
-        for keys in keys_here:
-            for prop, values in keys.items():
-                for time, value, easing in values:
-                    key(lyric, prop, time, value, easing)
-    for prop in ("translate-x", "translate-y", "scale"):
-        if (lyric, prop) in tracks and 0 not in tracks[(lyric, prop)]:
-            key(lyric, prop, 0, 1.0 if prop == "scale" else 0.0, "hold")
+    for lyric in variants.values():
+        base = layers[lyric]["opacity"]
+        rest = {"opacity": base, "translate-x": 0.0, "translate-y": 0.0, "scale": 1.0}
+        key(lyric, "text", 0, "")
+        key(lyric, "opacity", 0, 0.0, "hold")
+        for i, line in enumerate(lines):
+            show = line["show"]
+            entering, leaving, entry_length, exit_length, exit_end = plans[i]
+            keys_here = []
+            if entering:
+                if animation["in"] == "typewriter":
+                    text = line["text"]
+                    steps = max(1, min(len(text), steps_budget, 24))
+                    for step in range(steps + 1):
+                        key(lyric, "text", show + entry_length * step / steps, text[: round(len(text) * step / steps)])
+                    entry = {"opacity": [(show, base, "hold")]}
+                else:
+                    key(lyric, "text", show, line["text"])
+                    distance = distance_x if animation["in"].endswith(("left", "right")) else distance_y
+                    entry = _entry_keys(animation["in"], show, entry_length, base, distance)
+                for prop in moved - set(entry):
+                    entry[prop] = [(show, rest[prop], "hold")]
+                keys_here.append(entry)
+            if leaving:
+                distance = distance_x if animation["out"].endswith(("left", "right")) else distance_y
+                keys_here.append(_exit_keys(animation["out"], exit_end, min(exit_length, exit_end - show - entry_length), base, distance))
+            for keys in keys_here:
+                for prop, values in keys.items():
+                    for time, value, easing in values:
+                        key(lyric, prop, time, value, easing)
+        for prop in ("translate-x", "translate-y", "scale"):
+            if (lyric, prop) in tracks and 0 not in tracks[(lyric, prop)]:
+                key(lyric, prop, 0, 1.0 if prop == "scale" else 0.0, "hold")
+    if len(variants) > 1:
+        _switch(key, variants, chosen, lines)
+    _style_keys(key, layers, list(variants.values()), lines, request.get("section_styles"))
     upcoming = roles.get("lyric-next")
-    if upcoming:
+    nexts = {None: upcoming, **roles.get("nexts", {})} if upcoming else {}
+    for upcoming in nexts.values():
         if request.get("next_line", True):
             key(upcoming, "text", 0, "")
             for i, line in enumerate(lines):
@@ -671,9 +733,10 @@ def write_timeline(project, timed, roles, request):
                         key(upcoming, "opacity", following["show"] + fade_in, base_next, "hold")
                     else:
                         key(upcoming, "opacity", following["show"], base_next, "hold")
-            key(upcoming, "visible", 0, True)
         else:
             key(upcoming, "visible", 0, False)
+    if nexts and request.get("next_line", True):
+        _switch(key, nexts, [section_match(roles.get("nexts", {}), line.get("section")) for line in lines], lines)
     label = roles.get("section-label")
     if label:
         key(label, "text", 0, "")
@@ -722,6 +785,38 @@ def write_timeline(project, timed, roles, request):
     return sum(len(track["keys"]) for track in timeline["tracks"])
 
 
+def _switch(key, variants, chosen, lines):
+    """Visibility keys that show one variant at a time: the one chosen for each line, from the moment
+    it shows (the previous line's exit has finished by then)."""
+    current = chosen[0] if lines else None
+    for name, ident in variants.items():
+        key(ident, "visible", 0, name == current)
+    for line, name in zip(lines, chosen):
+        if name != current:
+            key(variants[current], "visible", line["show"], False)
+            key(variants[name], "visible", line["show"], True)
+            current = name
+
+
+def _style_keys(key, layers, targets, lines, styles):
+    """Hold keys that restyle the lyric layers when a line from a differently styled section shows.
+    A section without a style (and no ``default`` style) gets the template's own values back."""
+    if not styles or not lines:
+        return
+    props = [prop for prop in SECTION_STYLE_FIELDS if any(prop in style for style in styles.values())]
+    previous = None
+    for i, line in enumerate(lines):
+        match = section_match(styles, line.get("section"))
+        style = styles.get(match if match is not None else "default", {})
+        if style == previous:
+            continue
+        time = 0 if i == 0 else line["show"]
+        for ident in targets:
+            for prop in props:
+                key(ident, prop, time, style.get(prop, layers[ident][prop]), "hold")
+        previous = style
+
+
 def _build_options(request, timed):
     """What shapes the built timeline. Rendering choices (quality, size, camera, the window start)
     are not part of it."""
@@ -735,6 +830,7 @@ def _build_options(request, timed):
         "cue_animation": timed["cue_animation"],
         "next_line": request.get("next_line", True),
         "end": None if request.get("end") is None else timed["end"],
+        "section_styles": request.get("section_styles"),
     }
 
 
@@ -852,6 +948,7 @@ def film_spec(request, report):
         "quality": request.get("quality", "final"),
         "shots": [shot],
         "audio": [{"source": request["audio"], "start": 0, "trim": report["start"], "volume": 1}],
+        **({"sample_rate": request["sample_rate"]} if request.get("sample_rate") is not None else {}),
     }
 
 
@@ -905,3 +1002,30 @@ def export(request, root, limits=None, *, cancelled=lambda: False, progress=lamb
         project = Project.load(local_path(root, request["build"]), limits=limits)
         response["checks"] = check_lines(project, report, _animation(request)["duration"])
     return response
+
+
+def fit_warnings(template, roles, lines, limit=5):
+    """Lines wider than the canvas in the lyric layer's own font and size (an unwrapped lyric is clipped)."""
+    from .render import text_metrics
+
+    if not roles.get("lyric"):
+        return []
+    lyric = template.layer(roles["lyric"])
+    if lyric.get("text_layout"):
+        return []  # a wrapping box: long lines wrap instead of running off the canvas
+    width = template.state["canvas"]["width"]
+    room = width - max(0, lyric.get("x", 0)) if lyric.get("x") not in (None, "center") else width
+    found = []
+    for line in lines:
+        try:
+            measured = text_metrics(template, {**lyric, "text": line["text"]}, variables={})[0]
+        except VixlError:
+            continue
+        if measured > room:
+            found.append({"code": "lyric_too_wide", "source_line": line.get("source_line"),
+                          "message": f"Lyric line {line.get('source_line')} is {round(measured)} px wide in the 'lyric' "
+                                     f"layer's font and size, but {round(room)} px fit; it will be clipped. Use a "
+                                     "smaller size, or give 'lyric' a text-layout box so lines wrap"})
+            if len(found) >= limit:
+                break
+    return found

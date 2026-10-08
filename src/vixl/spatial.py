@@ -9,13 +9,30 @@ from .affine import corners, envelope, layer_matrix
 MODES = ("relations", "canvas", "matrix", "grid", "guides", "composition", "hit", "free", "snap", "all")
 
 
-def canvas_boxes(project, bounds="box"):
+def content_rect(layer, transform):
+    """The shape's content box (shape_catalog.content_box) carried through ``transform`` as an axis-aligned
+    ``(x, y, width, height)``, or None when the content box is the whole layer box."""
+    from .render import rest_size
+    from .shape_catalog import content_box
+
+    if layer.get("type") != "shape" or layer.get("repeat"):
+        return None
+    box = content_box(layer)
+    if all(abs(a - b) < 1e-9 for a, b in zip(box, (0, 0, *rest_size(layer)))):
+        return None
+    return envelope(corners(box, transform))
+
+
+def canvas_boxes(project, bounds="box", content=None, *, layers=None, local=None):
+    """Canvas-space boxes of every layer. With a ``content`` dict, also fills it with the canvas-space
+    content box of each shape whose inner area is smaller than its box (see content_rect). A caller that
+    already resolved the document passes its ``layers`` and their ``local`` layout instead of resolving again."""
     from .render import resolved_layers, resolve_layout, rest_size, extent, child_index
     from .checks import group_matrix
 
-    layers = resolved_layers(project)
+    layers = layers if layers is not None else resolved_layers(project)
     index = {v["id"]: v for v in layers}
-    local = resolve_layout(project, layers=layers)
+    local = local if local is not None else resolve_layout(project, layers=layers)
     result = {}
     children = child_index(layers)
     memo = {}
@@ -55,6 +72,10 @@ def canvas_boxes(project, bounds="box"):
             result[layer["id"]] = envelope(
                 corners((0, 0, w, h), parent @ layer_matrix(layer, local[layer["id"]]))
             )
+        if content is not None and layer["type"] == "shape":
+            rect = content_rect(layer, parent @ layer_matrix(layer, local[layer["id"]]))
+            if rect is not None:
+                content[layer["id"]] = rect
     return result
 
 

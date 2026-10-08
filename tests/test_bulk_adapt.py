@@ -371,7 +371,20 @@ def test_mcp_apply_defaults_to_brief_and_text_add_too(tmp_path):
             full = await call("vixl_operations_apply", detail="compact", operations=[
                 {"type": "move", "target": "box", "x": 9}])
             assert next(iter(full["changes"]["layers"].values()))["x"] == 9
-            added = await call("vixl_text_add", text="Hi", name="hi")
+            added = await call("vixl_operations_apply", operations=[{"type": "text", "text": "Hi", "name": "hi"}])
             assert next(iter(added["changes"]["layers"].values()))["name"] == "hi"
 
     asyncio.run(scenario())
+
+
+def test_brief_result_fields_are_the_documented_ones():
+    from pathlib import Path
+
+    p = Project(400, 300, "white")
+    added = p.apply({"type": "text", "name": "t", "text": "Hello", "size": 30}, detail="brief")["changes"]["layers"]
+    fields = set(next(iter(added.values())))
+    assert {"added", "name", "type", "bounds", "baseline", "ink_bounds"} <= fields
+    root = Path(__file__).resolve().parents[1]
+    for doc in ("docs/interfaces.md", "docs/operations.md", "skills/vixl/references/mcp-rest-python.md"):
+        brief = next(line for line in (root / doc).read_text().split("\n\n") if "brief" in line and "`added`" in line)
+        assert all(f"`{field}`" in brief for field in fields), (doc, sorted(f for f in fields if f"`{f}`" not in brief))

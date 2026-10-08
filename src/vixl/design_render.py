@@ -13,29 +13,41 @@ from .design import resolve_color
 def gradient_image(project, layer, size):
     from .render import color
 
+    from .design import gradient_stops
+
     w, h = size
-    stops = layer.get("stops") or [
-        {"offset": 0, "color": layer.get("start", "black")},
-        {"offset": 1, "color": layer.get("end", "white")},
-    ]
+    stops = gradient_stops(layer, project.state)
     offsets = [s["offset"] for s in stops]
     colors = np.array([color(resolve_color(s["color"], project.state)) for s in stops], dtype=float)
     direction = layer.get("direction", "vertical")
     x = np.linspace(0, 1, w)[None, :]
     y = np.linspace(0, 1, h)[:, None]
-    if direction == "radial":
-        ramp = np.sqrt((2 * x - 1) ** 2 + (2 * y - 1) ** 2)
-    elif direction == "angled":
-        a = math.radians(layer.get("angle", 0))
-        dx, dy = math.cos(a), math.sin(a)
-        ramp = ((x - 0.5) * dx + (y - 0.5) * dy) / (abs(dx) + abs(dy)) + 0.5
-    else:
-        ramp = np.broadcast_to(x if direction == "horizontal" else y, (h, w))
     # Interpolate premultiplied alpha to avoid halos around transparent stops.
     colors[:, :3] *= colors[:, 3:] / 255
-    arr = np.stack([np.interp(ramp, offsets, colors[:, i]) for i in range(4)], axis=-1)
-    arr[:, :, :3] *= 255 / np.maximum(arr[:, :, 3:], 1)
-    return Image.fromarray(np.uint8(np.clip(arr, 0, 255) + 0.5))
+
+    def pixels(ramp):
+        arr = np.stack([np.interp(ramp, offsets, colors[:, i]) for i in range(4)], axis=-1)
+        arr[..., :3] *= 255 / np.maximum(arr[..., 3:], 1)
+        return np.uint8(np.clip(arr, 0, 255) + 0.5)
+
+    if direction not in ("radial", "angled"):
+        # A linear ramp repeats one row or column: compute that once and repeat its bytes.
+        line = pixels(x[0] if direction == "horizontal" else y[:, 0])
+        rows = np.broadcast_to(line[None, :, :] if direction == "horizontal" else line[:, None, :], (h, w, 4))
+        return Image.fromarray(np.ascontiguousarray(rows))
+    # Float work in bands of rows, so a large canvas never holds several float64 copies of itself.
+    result = np.empty((h, w, 4), dtype=np.uint8)
+    band = max(1, (1 << 18) // max(1, w))
+    for top in range(0, h, band):
+        rows = y[top:top + band]
+        if direction == "radial":
+            ramp = np.sqrt((2 * x - 1) ** 2 + (2 * rows - 1) ** 2)
+        else:
+            a = math.radians(layer.get("angle", 0))
+            dx, dy = math.cos(a), math.sin(a)
+            ramp = ((x - 0.5) * dx + (rows - 0.5) * dy) / (abs(dx) + abs(dy)) + 0.5
+        result[top:top + band] = pixels(ramp)
+    return Image.fromarray(result)
 
 
 def shape_image(project, layer):
@@ -61,14 +73,19 @@ def shape_image(project, layer):
         root = ET.Element("svg", xmlns="http://www.w3.org/2000/svg", width=str(w), height=str(h),
                           viewBox=f"0 0 {view[0]} {view[1]}", preserveAspectRatio="none")
         from .colors import parse, hex_of
-        attrs = {"d": path, "stroke-width": str(layer.get("stroke_width", 1))}
-        if layer.get("line_cap"):
-            attrs["stroke-linecap"] = layer["line_cap"]
-            attrs["stroke-linejoin"] = "round" if layer["line_cap"] == "round" else "miter"
-        for field in ("fill", "stroke"):
-            rgba = parse(resolve_color(layer.get(field, "white" if field == "fill" else "transparent"), project.state))
+        attrs = {"d": path}
+        from .geometry import default_fill
+        for field, value in (("fill", default_fill(layer)), ("stroke", layer.get("stroke", "transparent"))):
+            rgba = parse(resolve_color(value, project.state))
+            if field == "stroke" and (rgba[3] == 0 or layer.get("stroke_width", 1) <= 0):
+                continue
             attrs[field] = hex_of((*rgba[:3], 1))
             attrs[field + "-opacity"] = str(rgba[3])
+            if field == "stroke":
+                attrs["stroke-width"] = str(layer.get("stroke_width", 1))
+                if layer.get("line_cap"):
+                    attrs["stroke-linecap"] = layer["line_cap"]
+                    attrs["stroke-linejoin"] = "round" if layer["line_cap"] == "round" else "miter"
         ET.SubElement(root, "path", attrs)
         return Image.open(io.BytesIO(resvg_py.svg_to_bytes(svg_string=ET.tostring(root, encoding="unicode")))).convert("RGBA")
     # Supersample within the resource budget; geometry is re-evaluated at every size.
@@ -79,7 +96,9 @@ def shape_image(project, layer):
     )
     image = Image.new("RGBA", (w * factor, h * factor))
     draw = ImageDraw.Draw(image)
-    fill = color(resolve_color(layer.get("fill", "white"), project.state))
+    from .geometry import default_fill
+
+    fill = color(resolve_color(default_fill(layer), project.state))
     stroke = color(resolve_color(layer.get("stroke", "transparent"), project.state))
     width = round(layer.get("stroke_width", 1) * factor)
     pad = width / 2 if stroke[3] else 0
@@ -462,7 +481,6 @@ def repeat_items(layer, state=None, colors=True):
         item = deepcopy(layer)
         item.pop("repeat")
         item.update(rotation=0, flip_x=False, flip_y=False, effects=[], mask=None, opacity=1)
-        item.pop("lookup", None)
         item["width"] = layer["width"] + i * settings.get("dw", 0)
         item["height"] = layer["height"] + i * settings.get("dh", 0)
         for key, end in settings.get("end", {}).items():

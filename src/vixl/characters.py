@@ -10,6 +10,8 @@ PARTS = ("torso", "head", "left-eye", "right-eye", "left-brow", "right-brow", "m
          "left-upper-leg", "left-lower-leg", "left-foot", "right-upper-leg", "right-lower-leg", "right-foot", "accessories")
 REQUIRED = ("torso", "head", "left-eye", "right-eye", "mouth", "left-upper-arm", "left-lower-arm", "left-hand", "right-upper-arm", "right-lower-arm", "right-hand", "left-upper-leg", "left-lower-leg", "left-foot", "right-upper-leg", "right-lower-leg", "right-foot")
 VISEMES = ("rest", "A", "E", "O", "U", "M", "F", "L")
+VIEWS = ("front", "side")
+FRONT_SWING = 15  # degrees: a front-facing leg swinging further in the picture plane reads as a split
 
 
 def schemas(add):
@@ -24,7 +26,10 @@ def schemas(add):
     add("character-rig", {"bones": obj}, ["bones"])
     add("character-pose", {"angles": {"type": "object", "additionalProperties": N}}, ["angles"])
     add("character-ik", {"chain": {"type": "array", "items": S, "minItems": 2, "maxItems": 2}, "point": {"type": "array", "items": N, "minItems": 2, "maxItems": 2}, "bend": {"enum": [-1, 1]}}, ["chain", "point"])
-    add("character-cycle", {"cycle": {"enum": ["walk", "run", "idle", "ride", "react"]}, "start": time, "duration": time, "period": N, "amount": N, "samples": {"type": "integer", "minimum": 4, "maximum": 120}}, ["cycle"])
+    add("character-cycle", {"cycle": {"enum": ["walk", "run", "idle", "ride", "react"]}, "start": time, "duration": time, "period": N, "amount": N, "samples": {"type": "integer", "minimum": 4, "maximum": 120},
+        "view": {"enum": list(VIEWS), "description": "Which way the character faces: front (the standard character; walk and run "
+                 "lift the feet and bob the body, react keeps the legs planted) or side (limbs swing in the picture plane). "
+                 "Default: front for the standard character, side for bound artwork."}}, ["cycle"])
     add("character-lipsync", {"text": S, "start": time, "duration": time, "cues": {"type": "array", "maxItems": 1000, "items": {"type": "object", "properties": {"time": N, "viseme": {"enum": list(VISEMES)}}, "required": ["time", "viseme"], "additionalProperties": False}}}, anyOf=[{"required": ["text"]}, {"required": ["cues"]}])
 
 
@@ -228,6 +233,13 @@ def execute(project, op):
         lipsync(project, group, op)
 
 
+def facing(project, group):
+    """``front`` for the standard character (its parts carry colour roles), ``side`` for bound artwork."""
+    ids = set(group["character"].get("parts", {}).values())
+    standard_parts = any(layer.get("character_color") for layer in project.state["layers"] if layer["id"] in ids)
+    return "front" if standard_parts else "side"
+
+
 def cycle(project, group, op):
     from .timeline import _timeline, parse_time, execute_timeline
     timeline = _timeline(project)
@@ -236,33 +248,63 @@ def cycle(project, group, op):
     period = finite(op.get("period", 500 if op["cycle"] == "run" else 1000), "cycle period", 50, 600000)
     amplitude = finite(op.get("amount", 30), "cycle amplitude", 0, 90)
     count = op.get("samples", min(60, max(8, math.ceil(duration / period * 24))))
+    view = op.get("view", facing(project, group))
+    require(view in VIEWS, f"view must be {' or '.join(VIEWS)}", field="view")
     from copy import copy
     candidate = copy(project)
     candidate.state = deepcopy(project.state)
     cg = candidate.layer(group["id"])
     bones = cg["character"]["bones"]
     require(bones, "Character needs a rig before applying a cycle")
-    require((count + 1) * len(bones) * 3 <= 8192, "Cycle exceeds key budget; use fewer samples")
+    front_gait = view == "front" and op["cycle"] in ("walk", "run")
+    # Seen from the front, a step lifts the foot and the body rises over the planted leg; a leg swinging
+    # in the picture plane would read as the splits. Parts outside the rig (torso, head, face) bob.
+    body = [ident for part, ident in cg["character"]["parts"].items()
+            if ident not in {bone["layer"] for bone in bones.values()} and "leg" not in part and "foot" not in part] if front_gait else []
+    roots = {name: list(bone["origin"]) for name, bone in bones.items() if "origin" in bone}
+    rest = {ident: candidate.layer(ident)["y"] for ident in body}
+    height = max(1.0, group.get("height", 320))
+    require((count + 1) * (len(bones) * 3 + len(body)) <= 8192, "Cycle exceeds key budget; use fewer samples")
     for i in range(count + 1):
         phase = math.tau * duration * i / count / period
         angles = {}
+        lift = {"left": max(0.0, math.sin(phase)), "right": max(0.0, -math.sin(phase))}
+        bob = -height * (0.03 if op["cycle"] == "run" else 0.015) * abs(math.sin(phase)) if front_gait else 0
         for bone in bones:
             side = 1 if bone.startswith("left") else -1
-            if op["cycle"] in ("walk", "run"):
+            if front_gait:
+                limb = "left" if bone.startswith("left") else "right"
+                if "arm" in bone:
+                    # Arms swing mostly towards the viewer; each one opens a little opposite the lifted foot.
+                    other = "right" if limb == "left" else "left"
+                    angles[bone] = -side * amplitude * 0.2 * lift[other] if "upper" in bone else 0
+                elif "lower-leg" in bone:
+                    angles[bone] = side * amplitude * 0.15 * lift[limb]
+                else:
+                    angles[bone] = -side * amplitude * 0.1 * lift[limb] if "upper-leg" in bone else 0
+                if bone in roots:
+                    step = -height * (0.08 if op["cycle"] == "run" else 0.05) * lift[limb] if "leg" in bone else 0
+                    bones[bone]["origin"] = [roots[bone][0], roots[bone][1] + (step if "leg" in bone else bob)]
+            elif op["cycle"] in ("walk", "run"):
                 sign = -1 if "arm" in bone else 1
                 angles[bone] = sign * side * amplitude * math.sin(phase) if "upper" in bone else max(0, side * amplitude * math.sin(phase + 0.8)) if "lower" in bone else 0
             elif op["cycle"] == "idle":
                 angles[bone] = 2 * math.sin(phase + (0.5 if "lower" in bone else 0))
             elif op["cycle"] == "ride":
                 angles[bone] = (45 if "upper-leg" in bone else -70 if "lower-leg" in bone else 10) + 3 * math.sin(phase)
+            elif view == "front" and ("leg" in bone or "foot" in bone):
+                angles[bone] = 0  # A front-facing reaction keeps its feet planted instead of splaying them.
             else:
                 u = i / count
                 angles[bone] = side * amplitude * (-0.2 * math.sin(math.pi * u / 0.2) if u < 0.2 else math.sin(math.pi * (u - 0.2) / 0.8))
         pose(candidate, cg, angles)
+        time = start + round(duration * i / count)
         for bone in bones.values():
             layer = candidate.layer(bone["layer"])
             for prop in ("rotation", "x", "y"):
-                execute_timeline(project, {"type": "keyframe", "target": layer["id"], "property": prop, "time": start + round(duration * i / count), "value": layer[prop]})
+                execute_timeline(project, {"type": "keyframe", "target": layer["id"], "property": prop, "time": time, "value": layer[prop]})
+        for ident in body:
+            execute_timeline(project, {"type": "keyframe", "target": ident, "property": "y", "time": time, "value": rest[ident] + bob})
 
 
 def lipsync(project, group, op):
@@ -311,7 +353,27 @@ def findings(project):
             lo, hi = bone.get("limits", [-180, 180])
             if not lo <= bone.get("angle", 0) <= hi:
                 result.append({"check": "character", "severity": "error", "layer": layer["id"], "message": f"Bone {name} exceeds joint limits"})
+        result += _front_splits(project, layer)
     return result
+
+
+def _front_splits(project, group):
+    """A front-facing character whose upper legs swing far in the picture plane: the walk reads as the
+    splits (a side-view gait on a front view)."""
+    if facing(project, group) != "front":
+        return []
+    legs = {bone["layer"]: name for name, bone in group["character"].get("bones", {}).items() if "upper-leg" in name}
+    base = {ident: project.layer(ident).get("rotation", 0) for ident in legs}
+    swing = 0.0
+    for track in (project.state.get("timeline") or {}).get("tracks", []):
+        if track["target"] in legs and track["property"] == "rotation":
+            swing = max([swing] + [abs(key["value"] - base[track["target"]]) for key in track["keys"]])
+    if swing <= FRONT_SWING:
+        return []
+    return [{"check": "character", "severity": "warning", "layer": group["id"], "code": "front-view-leg-swing",
+             "message": f"{group['name']!r} faces the viewer, but its legs swing up to {swing:.0f} degrees in the picture plane, "
+                        "so the walk reads as the splits. Re-run character-cycle without view: side (a front view lifts the "
+                        "feet and bobs the body), or draw a side view and bind it with character parts."}]
 
 
 def export_character(project, target, path):

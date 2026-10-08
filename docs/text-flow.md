@@ -55,7 +55,8 @@ unbroken text would, and every character of the story lands in exactly one frame
 
 **The story**: `text` (plain), `markdown` or `spans` + `paragraphs` (rich, same syntax as `rich-text`), or `target`: an
 existing text layer whose text and style become the story and which becomes the first frame. Tabs become spaces.
-`${variables}` are not expanded while flowing, so write literal text. The story holds up to 100,000 characters.
+`${variables}` are filled in when the frames draw, but the flow measures the story as written, so prefer literal text;
+write `$${name}` for a literal `${name}`. The story holds up to 100,000 characters.
 
 **Frames**: `{x, y, width, height}` makes one frame. Add `columns` and `gutter` (default 1.5× the font size) to split the
 frame into equal columns; each column is a text layer and one link in the chain. `page` puts the frame on another page of a
@@ -65,8 +66,10 @@ long ones in the middle), with `mode: "inscribed"` one frame fills the largest r
 `inset` keeps text away from the edge. At the top level of the operation, `x`, `y`, `width`, `height`, `columns`, `gutter`
 and `page` are a shorthand for one frame.
 
-**Style**: `font`, `size`, `color`, `align` (`left`, `center`, `right`, or `justify`, which makes the story rich), `spacing` (extra
-leading in px) or `line_height` (a factor), `stroke_width`, `stroke_color`, and for rich text `paragraph_spacing`, `list_indent`.
+**Style**: `font`, `size` (default: the body size of the document's type scale, proportional to the canvas), `color`, `align`
+(`left`, `center`, `right`, or `justify`, which makes the story rich), `spacing` (pixels added to the font's own line pitch;
+negative tightens) or `line_height` (a multiple of the size; default from the line-height table, 1.45 for body text),
+`stroke_width`, `stroke_color`, and for rich text `paragraph_spacing`, `list_indent`.
 A flow's frames share the style; a frame layer's own font or size, if you change them, are respected by the flow.
 
 **Paragraph rules**: `keep_together` (a paragraph that fits one frame is never split between two), `orphans` and `widows` (the

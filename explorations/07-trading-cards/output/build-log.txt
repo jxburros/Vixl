@@ -1,35 +1,31 @@
-[  11.0s] art: painted 18 creature scenes with Vixl paint/pen/shape ops
-[  15.3s] template: saved output/template/aetherling-card.vixl with 30 layers
-[  15.3s] csv: wrote 13 rows -> output/data/cards.csv
-[  53.2s] render --data --comp holo: ok
-[  56.0s] capture: recipe/card-recipe.vixl inputs: 19
-[  58.4s] capture with a long-name example: VixlError: Recipe example failed suite card-qa
-[  58.5s] plan: matrix count = 24
-[  99.6s] run matrix: completed {'completed': 24}
-[  99.8s] submit: job 84420034a30540b2a34a254a0d208a7d status queued
-[  99.8s] status: {'status': 'queued', 'progress': {'done': 0}, 'attempts': 0}
-[ 102.8s] status: {'status': 'running', 'progress': {'done': 0}, 'attempts': 1}
-[ 105.8s] status: {'status': 'running', 'progress': {'done': 2, 'total': 13}, 'attempts': 1}
-[ 108.8s] status: {'status': 'running', 'progress': {'done': 4, 'total': 13}, 'attempts': 1}
-[ 111.8s] status: {'status': 'running', 'progress': {'done': 6, 'total': 13}, 'attempts': 1}
-[ 114.8s] status: {'status': 'running', 'progress': {'done': 7, 'total': 13}, 'attempts': 1}
-[ 120.8s] status: {'status': 'running', 'progress': {'done': 9, 'total': 13}, 'attempts': 1}
-[ 123.8s] status: {'status': 'running', 'progress': {'done': 10, 'total': 13}, 'attempts': 1}
-[ 126.8s] status: {'status': 'running', 'progress': {'done': 11, 'total': 13}, 'attempts': 1}
-[ 129.8s] status: {'status': 'needs_review', 'progress': {'done': 13, 'total': 13}, 'attempts': 1}
-[ 129.8s] render --data (standard, with checks): ok
-[ 129.8s] row  1 completed    repairs=[] 'Cinderwisp' 
-[ 129.8s] row  2 completed    repairs=[] 'Tidecaller Maru' 
-[ 129.8s] row  3 completed    repairs=[] 'Mossback Elder' 
-[ 129.8s] row  4 completed    repairs=[] 'Galvanir' 
-[ 129.8s] row  5 completed    repairs=[] 'Nyxshade' 
-[ 129.8s] row  6 failed       repairs=[] 'Archsovereign Pyrrhaxion, the Unquenchab' | error: text_overflow: Text cannot fit at the minimum size
-[ 129.8s] row  7 completed    repairs=[] 'Ætherwyrm Ölsén' 
-[ 129.8s] row  8 needs_review repairs=['fit-name', 'fit-rules'] 'Lantern Moth' | card-qa/flavor-fits: failed {"actual_size": 14, "fits": true}
-[ 129.8s] row  9 needs_review repairs=['fit-name', 'fit-rules'] '光の狐 Hikari-no-Kitsune ✨' | card-qa/name-contrast: failed {}; card-qa/missing-glyphs: failed {"message": "Text has characters no font can draw; import a covering font and a; no-placeholders/copy: failed {}; no-placeholders/missing-glyphs: failed {"message": "Text has characters no font can draw; import a covering fo
-[ 129.8s] row 10 needs_review repairs=['fit-name', 'fit-rules'] 'Grimward Sentinel' | card-qa/ability-fits: failed {"actual_size": 18, "fits": true}
-[ 129.8s] row 11 completed    repairs=[] '[CARD NAME]' 
-[ 129.8s] row 12 completed    repairs=['fit-name'] 'Seraphel, Dawn’s Last Light' 
-[ 129.8s] row 13 completed    repairs=[] 'Riftling' 
-[ 178.4s] contact sheet: arrange-grid of 13 cards
-[ 187.7s] print sheet: 2626 x 3376 px; imposed rows [1, 2, 3, 4, 5, 7, 11, 12, 13] ; print check errors: 0 warnings: 0
+[   7.2s] art: painted 18 creature scenes with Vixl paint/pen/shape ops
+[  10.4s] template: saved output/template/aetherling-card.vixl with 30 layers
+[  10.4s] csv: wrote 13 rows -> output/data/cards.csv
+[  27.4s] render --data --comp holo: ok
+[  29.0s] capture: recipe/card-recipe.vixl inputs: 19
+[  30.1s] capture with a long-name example: VixlError: Recipe example failed suite card-qa
+[  30.1s] plan: matrix count = 24
+[  47.1s] run matrix: completed {'completed': 24}
+[  47.2s] submit: job 7ae6a687f3034588802576ba820f2ddb status queued
+[  47.2s] status: {'status': 'queued', 'progress': {'done': 0}, 'attempts': 0}
+[  50.2s] status: {'status': 'running', 'progress': {'done': 2, 'total': 13}, 'attempts': 1}
+[  53.2s] status: {'status': 'running', 'progress': {'done': 5, 'total': 13}, 'attempts': 1}
+[  56.2s] status: {'status': 'running', 'progress': {'done': 7, 'total': 13}, 'attempts': 1}
+[  59.2s] status: {'status': 'running', 'progress': {'done': 10, 'total': 13}, 'attempts': 1}
+[  62.2s] status: {'status': 'needs_review', 'progress': {'done': 13, 'total': 13}, 'attempts': 1}
+[  62.2s] render --data (standard, with checks): ok
+[  62.2s] row  1 completed    repairs=[] 'Cinderwisp' 
+[  62.2s] row  2 completed    repairs=[] 'Tidecaller Maru' 
+[  62.2s] row  3 completed    repairs=[] 'Mossback Elder' 
+[  62.2s] row  4 completed    repairs=[] 'Galvanir' 
+[  62.2s] row  5 completed    repairs=[] 'Nyxshade' 
+[  62.2s] row  6 failed       repairs=[] 'Archsovereign Pyrrhaxion, the Unquenchab' | error: text_overflow: Text cannot fit at the minimum size
+[  62.2s] row  7 completed    repairs=[] 'Ætherwyrm Ölsén' 
+[  62.2s] row  8 needs_review repairs=['fit-name', 'fit-rules'] 'Lantern Moth' | card-qa/flavor-fits: failed {"actual_size": 14, "fits": true}
+[  62.2s] row  9 needs_review repairs=['fit-name', 'fit-rules'] '光の狐 Hikari-no-Kitsune ✨' | card-qa/name-contrast: failed {}; card-qa/missing-glyphs: failed {"message": "Text has characters no font can draw; import a covering font and a; no-placeholders/copy: failed {}; no-placeholders/missing-glyphs: failed {"message": "Text has characters no font can draw; import a covering fo
+[  62.2s] row 10 needs_review repairs=['fit-name', 'fit-rules'] 'Grimward Sentinel' | card-qa/ability-fits: failed {"actual_size": 18, "fits": true}
+[  62.2s] row 11 completed    repairs=[] '[CARD NAME]' 
+[  62.2s] row 12 completed    repairs=['fit-name'] 'Seraphel, Dawn’s Last Light' 
+[  62.2s] row 13 completed    repairs=[] 'Riftling' 
+[  95.2s] contact sheet: arrange-grid of 13 cards
+[ 102.1s] print sheet: 2626 x 3376 px; imposed rows [1, 2, 3, 4, 5, 7, 11, 12, 13] ; print check errors: 2 warnings: 12

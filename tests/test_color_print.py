@@ -93,6 +93,31 @@ def test_describe_harmony_scale_and_names():
     assert any(item["name"] == "sage" for item in search_names("sage"))
 
 
+def test_color_scale_between_colours_and_gamut_reports():
+    from vixl.feature_cli import color_command
+
+    result = color_command(["scale", "#1f6f50", "#f4efe6", "--count", "5", "--space", "oklch"])
+    assert result["count"] == 5 and len(result["scale"]) == 5
+    assert result["scale"][0] == "#1f6f50" and result["scale"][-1] == "#f4efe6"
+    assert len(color_command(["scale", "#000", "#888", "#fff", "--count", "7"])["scale"]) == 7
+    with pytest.raises(VixlError, match="--count"):
+        color_command(["scale", "#1f6f50", "--count", "5"])
+    converted = color_command(["convert", "oklch(70% 0.4 30)", "--to", "hex"])
+    assert converted["hex"] == "#ff6551" and converted["clipped"]["how"] == "chroma"
+    assert "outside the sRGB gamut" in converted["warnings"][0]
+    assert "warnings" not in color_command(["convert", "oklch(70% 0.1 30)", "--to", "hex"])
+    assert describe("rgb(300, 0, 0)")["clipped"] == {"how": "clamp", "to": "#ff0000"}
+
+
+def test_out_of_range_rgb_is_clamped_with_a_note():
+    p = Project(50, 50)
+    result = p.apply({"type": "solid", "name": "s2", "color": "rgb(300,0,0)"}, detail="compact")
+    assert p.layer("s2")["fill"] == "#ff0000"
+    assert any("clamped to #ff0000" in note for note in result["normalized"])
+    kept = p.apply({"type": "solid", "name": "s3", "color": "rgb(10 20 30 / 50%)"}, detail="compact")
+    assert p.layer("s3")["fill"] == "rgb(10 20 30 / 50%)" and not kept.get("normalized")
+
+
 def test_gcr_cmyk_and_ink_limit():
     assert srgb_to_cmyk((0, 0, 0)) == (0.0, 0.0, 0.0, 1.0)
     c, m, y, k = srgb_to_cmyk((0.2, 0.1, 0.1), black=0.5, ink_limit=2.5)
@@ -127,6 +152,13 @@ def _document():
     return p
 
 
+def test_tiff_of_a_canvas_without_dpi_has_resolution_tags():
+    p = Project(120, 80, "white")
+    assert Image.open(io.BytesIO(p.export(format="TIFF"))).info["dpi"] == (72, 72)
+    assert Image.open(io.BytesIO(p.export(format="TIFF", scale=2))).info["dpi"] == (144, 144)
+    assert "dpi" not in Image.open(io.BytesIO(p.export(format="PNG"))).info
+
+
 def test_cmyk_export_pdf_tiff_jpeg_and_dpi():
     p = _document()
     tiff = Image.open(io.BytesIO(p.export(format="TIFF", color_space="cmyk", ink_limit=300)))
@@ -152,7 +184,7 @@ def test_icc_profile_separation_embeds_profile_and_soft_proof():
     image = Image.open(io.BytesIO(data))
     assert image.mode == "CMYK" and image.info.get("icc_profile")
     proof = Image.open(io.BytesIO(p.export(format="PNG", proof=True, icc_profile=profile)))
-    assert proof.mode == "RGBA"
+    assert proof.mode == "RGB"  # an opaque proof drops alpha, as every interface does by default
     with pytest.raises(VixlError, match="not CMYK|readable ICC"):
         p.export(format="TIFF", color_space="cmyk", icc_profile=b"not a profile")
 

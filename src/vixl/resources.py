@@ -14,9 +14,8 @@ from .fileio import file_lock
 from .assets import read_bounded
 from .design import named
 from .errors import require
-from .natural_guidance import GUIDANCE as NATURAL_GUIDANCE
-from .motion import GUIDANCE as MOTION_GUIDANCE
-from .safe_catalog import SAFE_PALETTES
+from .guidance import GUIDANCE
+from . import house_style
 
 PALETTES = {
     "midnight": ["#101828", "#344054", "#667085", "#e4e7ec", "#f9fafb"],
@@ -52,24 +51,8 @@ PALETTES = {
     "peach": ["#5c374c", "#985277", "#ce6a85", "#ff8c61", "#ffd6a5"],
     "sage": ["#344e41", "#3a5a40", "#588157", "#a3b18a", "#dad7cd"],
 }
-PALETTES.update({name: colors for name, (_, colors) in SAFE_PALETTES.items()})
-
-GUIDANCE = {
-    "overall": "Choose a clear hierarchy, align related elements, use consistent spacing, preserve readable contrast, inspect at delivery size, and measure before exporting.",
-    "minimal": "Use generous negative space, a small palette, few type sizes, and a single focal point. Prefer simple geometry and deliberate alignment.",
-    "editorial": "Establish headline, body and caption hierarchy. Use a coherent grid, restrained accents, and consistent margins. Keep body text readable.",
-    "playful": "Use energetic accents and rounded forms while preserving hierarchy, contrast, and consistent spacing.",
-    "logo": "Start on a transparent canvas. Use simple silhouettes, test small sizes and monochrome, and export SVG when scalable geometry is needed.",
-    "pixel-art": "Use an intentional limited palette, integer positions and crisp nearest-neighbor exports. Keep sprite timing and silhouettes readable.",
-    "typography": "Pick a pairing before placing text (vixl font pairings; font pair NAME), never ship the proofing fallback, and use one or two families with fixed roles: contrast in classification or a superfamily, matched x-heights, heading 600–800 over body 400. Use a modular type scale (type-scale). Keep body lines 45–75 characters, line height about 1.4 for body and 1.1 for headlines, and create hierarchy with size and weight before color. Align text to a shared edge.",
-    "color": "Assign roles before picking hues: background, surface, ink, muted, accent. Keep body text at 4.5:1 or better, large text and graphics at 3:1, and use the accent sparingly for the one thing that matters. Check designs with color-vision simulation; never rely on hue alone.",
-    "layout": "Start from a grid or a proportional system (thirds, golden section, modular columns). Give each piece of content one job, group related items by proximity, align to edges, keep consistent margins on a spacing unit, and leave space empty on purpose.",
-    "accessibility": "Meet WCAG contrast (4.5:1 text, 3:1 large text and UI), keep text at legible sizes for the delivery medium, never encode meaning only in color, and keep important content inside safe areas.",
-    "print": "Design at the final physical size and resolution (300 dpi for most print). Extend backgrounds into the bleed, keep text inside the safe (live) area, keep total ink coverage under about 300%, avoid type below 6 pt, and export CMYK with the printer's ICC profile when one is provided.",
-    "icon": "Build on a square grid with a central keyline area, use one recognizable silhouette, test at 16–32 px and in monochrome, avoid fine detail and text, and export every required size from one master.",
-    "motion": "Animate to explain, not decorate. Use 150–500 ms for interface-scale moves and up to about 1 s for entrances, ease out when entering and ease in when leaving, stagger related elements, and keep a still frame that reads on its own.",
-    "brush": "Choose the brush for the medium: ink or fineliner for line art, marker for bold strokes, watercolor or airbrush for soft washes, chalk, charcoal or crayon for texture. Vary pressure and taper for life, and keep strokes on their own paint layers so they stay editable.",
-}
+# The house-style palettes (safe, dark, saturated, duotone, earthy, bold and avant-garde) by name.
+PALETTES.update(house_style.palette_colors())
 
 
 def template(width, height, operations, description):
@@ -82,8 +65,6 @@ def template(width, height, operations, description):
     }
 
 
-GUIDANCE.update(NATURAL_GUIDANCE)
-GUIDANCE.update(MOTION_GUIDANCE)
 
 TEMPLATES = {}
 for name, w, h in (
@@ -123,6 +104,8 @@ for name, w, h in (
     # the template fixes structure, not the content or the look.
     TEMPLATES[name]["blanks"] = {"title": "[Headline]", "subtitle": "[Subheading]"}
     TEMPLATES[name]["roll"] = {"background": "background", "foreground": "ink"}
+    # Sizes and positions are drawn for the native size and scale with the canvas it is applied to.
+    TEMPLATES[name]["proportional"] = True
 TEMPLATES["logo"] = template(
     512,
     512,
@@ -141,10 +124,33 @@ TEMPLATES["logo"] = template(
     "Transparent geometric logo starter.",
 )
 TEMPLATES["logo"]["roll"] = {"accent": "accent"}
+TEMPLATES["logo"]["proportional"] = True
 CONTAINERS, MODULAR_TEMPLATES = container_builtins()
 TEMPLATES.update(MODULAR_TEMPLATES)
 BUILTINS = {"palettes": PALETTES, "templates": TEMPLATES, "guidance": GUIDANCE,
             "containers": CONTAINERS, "shapes": {}, "suites": SUITES, "workflows": WORKFLOWS}
+
+
+def proportional(project, item, operations):
+    """Scale a proportional template's operations from its native size to the canvas: one factor for sizes and
+    offsets (so the copy keeps its relative size and place on any aspect ratio), and full-canvas backgrounds."""
+    if not item.get("proportional"):
+        return operations
+    c = project.state["canvas"]
+    w, h = item["width"], item["height"]
+    factor = min(c["width"] / w, c["height"] / h)
+    result = []
+    for operation in operations:
+        operation = dict(operation)
+        if operation.get("type") == "solid" and (operation.get("width"), operation.get("height")) == (w, h):
+            operation.update(width=c["width"], height=c["height"])
+        for key in ("x", "y", "width", "height"):
+            if isinstance(operation.get(key), (int, float)) and operation.get("type") != "solid":
+                operation[key] = round(operation[key] * factor)
+        if isinstance(operation.get("size"), (int, float)):
+            operation["size"] = max(6, round(operation["size"] * factor))
+        result.append(operation)
+    return result
 
 
 def resource_path(workspace=None):
@@ -397,7 +403,7 @@ def execute_resource(project, op):
             values = validate_inputs(item["inputs"], values)
             project.state["variables"].update(values)
         from .container_library import template_operations
-        expanded = substitute(template_operations(project, item, op, values), values)
+        expanded = substitute(proportional(project, item, template_operations(project, item, op, values)), values)
         # Template text follows the document typography: the largest text is the heading.
         texts = [o for o in expanded if o.get("type") == "text" and "font" not in o]
         largest = max((o.get("size", 48) for o in texts), default=None)

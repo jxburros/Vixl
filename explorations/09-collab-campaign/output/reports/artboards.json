@@ -5,47 +5,70 @@
     "check": {
       "passed": true,
       "errors": 0,
-      "warnings": 3,
-      "info": 0,
+      "warnings": 1,
+      "info": 3,
       "by_action": {
-        "fix": [
-          0,
-          1,
-          2
+        "fix": [],
+        "review": [
+          0
         ],
-        "review": [],
-        "informational": []
+        "informational": [
+          1,
+          2,
+          3
+        ]
       },
       "issues": [
         {
-          "check": "legibility",
+          "check": "safe_area",
           "severity": "warning",
+          "layers": [
+            "background"
+          ],
+          "message": "'background' extends outside the safe area",
+          "bounds": [
+            0,
+            0,
+            728,
+            90
+          ],
+          "safe_area": [
+            6,
+            6,
+            958,
+            78
+          ],
+          "action": "review"
+        },
+        {
+          "check": "legibility",
+          "severity": "info",
           "layers": [
             "headline"
           ],
-          "message": "'headline' is 6.6 px tall at 320 px wide; aim for at least 10 px (font size 30+)",
+          "message": "'headline' is 6.6 px tall at 320 px wide; aim for at least 10 px (font size 30+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
           "thumbnail_size": 6.6,
-          "action": "fix"
+          "action": "informational"
         },
         {
           "check": "legibility",
-          "severity": "warning",
+          "severity": "info",
           "layers": [
             "subtitle"
           ],
-          "message": "'subtitle' is 3.3 px tall at 320 px wide; aim for at least 10 px (font size 30+)",
+          "message": "'subtitle' is 3.3 px tall at 320 px wide; aim for at least 10 px (font size 30+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
           "thumbnail_size": 3.3,
-          "action": "fix"
+          "action": "informational"
         },
         {
           "check": "legibility",
-          "severity": "warning",
+          "severity": "info",
           "layers": [
             "cta"
           ],
-          "message": "'cta' is 3.3 px tall at 320 px wide; aim for at least 10 px (font size 30+)",
+          "message": "'cta' is 3.3 px tall at 320 px wide; aim for at least 10 px (font size 30+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
           "thumbnail_size": 3.3,
-          "action": "fix"
+          "action": "informational"
         }
       ],
       "checked": {
@@ -64,7 +87,8 @@
           "diagram",
           "flow"
         ],
-        "layers": 6,
+        "layers_checked": 6,
+        "layers_total": 6,
         "text_layers": 3
       }
     }
@@ -75,47 +99,70 @@
     "check": {
       "passed": true,
       "errors": 0,
-      "warnings": 3,
-      "info": 0,
+      "warnings": 1,
+      "info": 3,
       "by_action": {
-        "fix": [
-          0,
-          1,
-          2
+        "fix": [],
+        "review": [
+          0
         ],
-        "review": [],
-        "informational": []
+        "informational": [
+          1,
+          2,
+          3
+        ]
       },
       "issues": [
         {
-          "check": "legibility",
+          "check": "safe_area",
           "severity": "warning",
+          "layers": [
+            "background"
+          ],
+          "message": "'background' extends outside the safe area",
+          "bounds": [
+            0,
+            0,
+            728,
+            90
+          ],
+          "safe_area": [
+            6,
+            6,
+            958,
+            238
+          ],
+          "action": "review"
+        },
+        {
+          "check": "legibility",
+          "severity": "info",
           "layers": [
             "headline"
           ],
-          "message": "'headline' is 6.6 px tall at 320 px wide; aim for at least 10 px (font size 30+)",
+          "message": "'headline' is 6.6 px tall at 320 px wide; aim for at least 10 px (font size 30+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
           "thumbnail_size": 6.6,
-          "action": "fix"
+          "action": "informational"
         },
         {
           "check": "legibility",
-          "severity": "warning",
+          "severity": "info",
           "layers": [
             "subtitle"
           ],
-          "message": "'subtitle' is 3.3 px tall at 320 px wide; aim for at least 10 px (font size 30+)",
+          "message": "'subtitle' is 3.3 px tall at 320 px wide; aim for at least 10 px (font size 30+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
           "thumbnail_size": 3.3,
-          "action": "fix"
+          "action": "informational"
         },
         {
           "check": "legibility",
-          "severity": "warning",
+          "severity": "info",
           "layers": [
             "cta"
           ],
-          "message": "'cta' is 3.3 px tall at 320 px wide; aim for at least 10 px (font size 30+)",
+          "message": "'cta' is 3.3 px tall at 320 px wide; aim for at least 10 px (font size 30+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
           "thumbnail_size": 3.3,
-          "action": "fix"
+          "action": "informational"
         }
       ],
       "checked": {
@@ -134,7 +181,8 @@
           "diagram",
           "flow"
         ],
-        "layers": 6,
+        "layers_checked": 6,
+        "layers_total": 6,
         "text_layers": 3
       }
     }

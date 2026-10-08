@@ -35,11 +35,14 @@ import math
 import numpy as np
 
 from .errors import VixlError, require
+from .geometry import compact_number
+from .craft import IRREGULAR_STRENGTH
+from .geometry import default_fill
+from .model import MAX_LAYERS
 
 TYPES = ("irregular", "tear")
 EFFECTS = ("wobble", "jitter", "width", "pressure", "color", "placement")
 EDGES = ("top", "right", "bottom", "left")
-MAX_LAYERS = 256
 MAX_POINTS = 3500          # per outline after perturbing; a ribbon has two sides, and a path takes 8192 commands
 MAX_FIBRES = 1500
 # What a layer is restored from: every field the engine may change.
@@ -78,10 +81,6 @@ TEAR_KEYS = ("seed", "strength", "as", "edges", "depth", "length", "roughness", 
              "fibre_width", "fill")
 
 
-# ---------------------------------------------------------------------------------------------
-# Noise and outlines
-
-
 def stream(seed, *keys):
     """A random stream for a seed and any number of integer keys; the same arguments always give
     the same stream, and each key path gives an independent one."""
@@ -114,17 +113,10 @@ def correlated_noise(rng, arc, length, total, closed, octaves=1, persistence=0.5
     return np.clip(out / norm * 1.6, -1, 1)
 
 
-def _bezier(controls, t):
-    work = [np.tile(p, (len(t), 1)) for p in controls]
-    while len(work) > 1:
-        work = [(1 - t) * a + t * b for a, b in zip(work, work[1:])]
-    return work[0]
-
-
 def flatten(path, scale=(1.0, 1.0), offset=(0.0, 0.0)):
     """Subpaths of SVG path data as ``[(points, nodes, closed)]``; curves are sampled, and
     ``nodes`` marks the points that were the path's own vertices."""
-    from .geometry import parse_path
+    from .geometry import bezier_points, parse_path
 
     sx, sy = scale
     subs, pts, nodes = [], [], []
@@ -154,7 +146,7 @@ def flatten(path, scale=(1.0, 1.0), offset=(0.0, 0.0)):
             controls = [current, *v]
             length = sum(np.hypot(*(b - a)) for a, b in zip(controls, controls[1:]))
             steps = int(np.clip(math.ceil(length / 5), 6, 96))
-            curve = _bezier(controls, np.linspace(0, 1, steps + 1)[1:, None])
+            curve = bezier_points(controls, np.linspace(0, 1, steps + 1)[1:])
             pts.extend(curve)
             nodes.extend([False] * (steps - 1) + [True])
             current = curve[-1]
@@ -257,17 +249,12 @@ def roughen_path(path, seed, *, wobble=2.0, length=24.0, jitter=0.0, roughness=0
     return emit(roughen(subs, seed, wobble=wobble, length=length, jitter=jitter, roughness=roughness))
 
 
-def _fmt(value):
-    text = f"{value:.2f}".rstrip("0").rstrip(".")
-    return "0" if text in ("", "-0") else text
-
-
 def emit(subs):
     """SVG path data for ``[(points, closed)]`` as polylines."""
     parts = []
     for points, closed in subs:
         if len(points) >= 2:
-            parts.append("M" + " L".join(f"{_fmt(x)} {_fmt(y)}" for x, y in points) + (" Z" if closed else ""))
+            parts.append("M" + " L".join(f"{compact_number(x, 2)} {compact_number(y, 2)}" for x, y in points) + (" Z" if closed else ""))
     return " ".join(parts)
 
 
@@ -284,10 +271,6 @@ def ribbon(points, closed, widths):
     return [(np.vstack([left, right[::-1]]), True)]
 
 
-# ---------------------------------------------------------------------------------------------
-# Layers as outlines
-
-
 def visible(value, project):
     from .colors import parse
     from .design import resolve_color
@@ -301,6 +284,13 @@ def layer_outline(layer, project):
     Primitive shapes are drawn the way the renderer draws them, including the inset that keeps a
     stroke inside the box.
     """
+    path, scale, offset = layer_path(layer, project)
+    return flatten(path, scale, offset)
+
+
+def layer_path(layer, project):
+    """A shape layer's outline as SVG path data plus the ``(scale, offset)`` that maps it into the
+    layer's own pixel space; curves stay curves, so callers that transform it keep exact geometry."""
     from .geometry import shape_path
     from .wedge import wedge_path
 
@@ -309,26 +299,26 @@ def layer_outline(layer, project):
     width = layer.get("stroke_width", 1)
     pad = width / 2 if visible(layer.get("stroke", "transparent"), project) and width > 0 else 0
     pad = min(pad, (min(w, h) - 1) / 4) if min(w, h) > 1 else 0
+    unit = ((1.0, 1.0), (0.0, 0.0))
     if shape in ("rectangle", "rounded-rectangle", "capsule", "ellipse"):
         i = 2 * pad
         x0, y0, x1, y1 = i, i, w - i, h - i
         if shape == "rectangle":
-            return flatten(f"M{x0} {y0} L{x1} {y0} L{x1} {y1} L{x0} {y1} Z")
+            return (f"M{x0} {y0} L{x1} {y0} L{x1} {y1} L{x0} {y1} Z", *unit)
         if shape == "ellipse":
             aspect = (y1 - y0) / (x1 - x0)
-            return flatten(wedge_path((x0 + x1) / 2, (y0 + y1) / 2, (x1 - x0) / 2, 0, 360, aspect=aspect))
+            return (wedge_path((x0 + x1) / 2, (y0 + y1) / 2, (x1 - x0) / 2, 0, 360, aspect=aspect), *unit)
         r = min(layer.get("radius", min(w, h) / (2 if shape == "capsule" else 5)), (x1 - x0) / 2, (y1 - y0) / 2)
         k = r * 0.5523
-        return flatten(
-            f"M{x0 + r} {y0} L{x1 - r} {y0} C{x1 - r + k} {y0} {x1} {y0 + r - k} {x1} {y0 + r} L{x1} {y1 - r} "
-            f"C{x1} {y1 - r + k} {x1 - r + k} {y1} {x1 - r} {y1} L{x0 + r} {y1} C{x0 + r - k} {y1} {x0} {y1 - r + k} "
-            f"{x0} {y1 - r} L{x0} {y0 + r} C{x0} {y0 + r - k} {x0 + r - k} {y0} {x0 + r} {y0} Z")
+        return (f"M{x0 + r} {y0} L{x1 - r} {y0} C{x1 - r + k} {y0} {x1} {y0 + r - k} {x1} {y0 + r} L{x1} {y1 - r} "
+                f"C{x1} {y1 - r + k} {x1 - r + k} {y1} {x1 - r} {y1} L{x0 + r} {y1} C{x0 + r - k} {y1} {x0} {y1 - r + k} "
+                f"{x0} {y1 - r} L{x0} {y0 + r} C{x0} {y0 + r - k} {x0 + r - k} {y0} {x0 + r} {y0} Z", *unit)
     if shape == "line":
-        return flatten(f"M0 0 L{w} {h}")
+        return (f"M0 0 L{w} {h}", *unit)
     path, view = shape_path(layer)
     if shape in ("path", "arc"):
-        return flatten(path, (w / view[0], h / view[1]))
-    return flatten(path, ((w - 2 * pad) / view[0], (h - 2 * pad) / view[1]), (pad, pad))
+        return path, (w / view[0], h / view[1]), (0.0, 0.0)
+    return path, ((w - 2 * pad) / view[0], (h - 2 * pad) / view[1]), (pad, pad)
 
 
 def fit_box(layer, outlines, pad):
@@ -360,10 +350,6 @@ def drifted(value, project, u, lightness, chroma, hue):
     c = max(c * (1 + chroma * u[1]), 0.0)
     rgb = gamut_map(from_polar((light, c, h + hue * u[2])))
     return hex_of((*rgb, rgba[3]))
-
-
-# ---------------------------------------------------------------------------------------------
-# irregular
 
 
 def size_of(w, h):
@@ -456,7 +442,7 @@ def make_irregular(project, layer, recipe, index):
     seed = recipe["seed"]
     line = layer.get("shape") == "line"
     stroke_seen = visible(layer.get("stroke", "transparent"), project)
-    fill_on = visible(layer.get("fill", "white"), project) and not line
+    fill_on = visible(default_fill(layer), project) and not line
     sw = layer.get("stroke_width", 1)
     stroke_on = (stroke_seen or line) and sw > 0
     ink_color = layer.get("stroke") if stroke_seen else layer.get("fill", "white")
@@ -527,7 +513,7 @@ def make_irregular(project, layer, recipe, index):
         require(len(order) <= project.limits.max_layers, "Layer limit reached: the stroke ribbon of each filled "
                 "shape is a layer of its own; set pressure to 0 for a big set", "resource_limit", field="pressure")
         ink["part_of"] = layer["id"]
-    project.limits.size(layer["width"], layer["height"])
+    project.limits.size(layer["width"], layer["height"], vector=True)
     return {"recipe": recipe, "source": source, **({"ink": ink["id"]} if ink is not None else {})}
 
 
@@ -542,14 +528,12 @@ def execute_irregular(project, op):
         return
     require("seed" in op, "irregular needs a seed: the same seed always gives the same result", field="seed")
     for index, layer in enumerate(layers):
-        recipe = {**(layer.get("irregular") or {}).get("recipe", {}),
-                  **{k: deepcopy(op[k]) for k in RECIPE_KEYS if k in op}}
+        before = (layer.get("irregular") or {}).get("recipe")
+        recipe = {**(before or {}), **{k: deepcopy(op[k]) for k in RECIPE_KEYS if k in op}}
+        # A new recipe records the strength it starts at; one made before that default keeps "natural".
+        recipe.setdefault("strength", "natural" if before else IRREGULAR_STRENGTH)
         restore(project, layer)
         layer["irregular"] = make_irregular(project, layer, recipe, index)
-
-
-# ---------------------------------------------------------------------------------------------
-# tear
 
 
 MODES = ("mask", "clip", "path")
@@ -642,7 +626,7 @@ def polygon_path(points):
 
 
 def fibre_path(hairs):
-    return " ".join(f"M{_fmt(a[0])} {_fmt(a[1])} Q{_fmt(c[0])} {_fmt(c[1])} {_fmt(b[0])} {_fmt(b[1])}"
+    return " ".join("M{} {} Q{} {} {} {}".format(*(compact_number(v, 2) for v in (*a, *c, *b)))
                     for a, c, b in hairs)
 
 
@@ -720,6 +704,7 @@ def execute_tear(project, op):
         return
     require("seed" in op, "tear needs a seed: the same seed always gives the same edge", field="seed")
     recipe = {**(previous or {}).get("recipe", {}), **{k: deepcopy(op[k]) for k in TEAR_KEYS if k in op}}
+    recipe.setdefault("strength", "natural" if previous else IRREGULAR_STRENGTH)
     mode = previous["mode"] if previous else recipe.get("as") or ("mask" if layer else "path")
     require(not previous or op.get("as", mode) == mode, f"This tear is a {mode}; remove it before switching",
             field="as")
@@ -809,10 +794,6 @@ def execute_tear(project, op):
         project.state["active_layer"] = holder["id"]
 
 
-# ---------------------------------------------------------------------------------------------
-# Operations
-
-
 def execute(project, op):
     if op["type"] == "irregular":
         return execute_irregular(project, op)
@@ -825,7 +806,8 @@ def schemas(add):
     seed = {"type": "integer", "minimum": 0,
             "description": "Required. The same seed always gives the same result; a new seed regrows it."}
     strength = {**enum("subtle", "natural", "rough"),
-                "description": "Preset magnitudes, scaled to each layer's size. Default natural."}
+                "description": "Preset magnitudes, scaled to each layer's size. Default subtle (layers irregular "
+                               "or torn before 0.23 keep natural)."}
     unit = {"type": "number", "minimum": 0, "maximum": 1}
     add("irregular", {
         "targets": {"type": "array", "items": S, "minItems": 1, "maxItems": MAX_LAYERS,

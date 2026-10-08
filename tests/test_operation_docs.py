@@ -98,8 +98,27 @@ def test_every_example_validates_and_applies(stage, kind, index, op):
             candidate.apply({"type": "remove", "target": created})
     if kind == "palette-apply":
         candidate.apply({"type": "palette-define", "name": op["name"], "colors": ["#0b132b", "#1c2541", "#3a506b", "#5bc0be"]})
+    if kind == "effect-move":
+        candidate.apply([{"type": name, "target": "photo"} for name in ("blur", "brightness", "grain")])
     result = candidate.apply(op, detail="compact")
     assert result["success"]
+
+
+def test_docs_and_skills_name_only_real_mcp_tools():  # #252
+    import re
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parent.parent
+    real = {name for path in (root / "src" / "vixl").glob("*.py")
+            for name in re.findall(r"def (vixl_\w+)\(", path.read_text(encoding="utf-8"))}
+    assert "vixl_resource_get" in real and "vixl_operations_apply" in real
+    unknown = {}
+    for folder in ("docs", "skills"):
+        for path in (root / folder).rglob("*.md"):
+            for name in re.findall(r"\bvixl_\w+", path.read_text(encoding="utf-8")):
+                if name not in real and name != "vixl_ai_":  # `vixl_ai_*` is the provider tool family
+                    unknown.setdefault(name, set()).add(path.name)
+    assert not unknown, f"docs name MCP tools that do not exist: {unknown}"
 
 
 def test_operation_schema_tool_serves_summaries_and_examples_but_tools_list_stays_lean(tmp_path):

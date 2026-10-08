@@ -224,13 +224,8 @@
             "width": 1200,
             "height": 160
           }
-        ]
-      }
-    },
-    {
-      "tool": "vixl_check",
-      "arguments": {
-        "checks": [
+        ],
+        "check": [
           "form"
         ]
       }

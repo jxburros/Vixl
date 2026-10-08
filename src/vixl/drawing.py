@@ -24,6 +24,7 @@ from PIL import Image, ImageFilter, ImageOps
 
 from .errors import require
 from .gaps import close_gaps
+from .geometry import bezier_points
 from .model import finite, new_layer
 
 DEFAULT_INK = "#1d1d1f"  # near-black, a printed pen line; set `ink` on import (or `color` on vectorize/restyle) for pure black
@@ -33,10 +34,6 @@ CLEAN = {"threshold": "auto", "sensitivity": 0.0, "despeckle": "auto", "weight":
          "margin": 24, "soft": True, "ink": DEFAULT_INK, "flatten": True, "max_size": 2400, "sheet": True,
          "perspective": True}
 MAX_STROKES = 240
-
-
-# ---------------------------------------------------------------------------------------------
-# Raster helpers
 
 
 def label(mask):
@@ -382,10 +379,6 @@ def clean(image, settings=None, state=None, frame=None):
             "scale": scale, "sheet": sheet is not None or bool(frame), "perspective": frame or None}
 
 
-# ---------------------------------------------------------------------------------------------
-# Thinning and tracing
-
-
 def thin(mask):
     """Zhang–Suen thinning to a one-pixel skeleton."""
     image = np.pad(np.asarray(mask, np.uint8), 1)
@@ -593,10 +586,6 @@ def _widths(mask, strokes):
         # A stroke only a few widths long is mostly junction: keep the distance reading.
         widths.append(max(1.0, round(float(area[index] / span), 1)) if span >= 4 * stroke["width"] else stroke["width"])
     return widths
-
-
-# ---------------------------------------------------------------------------------------------
-# Straightening and smoothing
 
 
 def _fit_line(points):
@@ -807,8 +796,8 @@ def _spline(points, step=2.0):
     for i in range(len(p) - 1):
         p0, p1, p2, p3 = p[max(i - 1, 0)], p[i], p[i + 1], p[min(i + 2, len(p) - 1)]
         c1, c2 = p1 + (p2 - p0) / 6, p2 - (p3 - p1) / 6
-        t = np.linspace(0, 1, max(1, math.ceil(np.linalg.norm(p2 - p1) / step)) + 1)[1:, None]
-        out.append((1 - t) ** 3 * p1 + 3 * (1 - t) ** 2 * t * c1 + 3 * (1 - t) * t ** 2 * c2 + t ** 3 * p2)
+        t = np.linspace(0, 1, max(1, math.ceil(np.linalg.norm(p2 - p1) / step)) + 1)[1:]
+        out.append(bezier_points((p1, c1, c2, p2), t))
     return np.vstack(out)
 
 
@@ -950,10 +939,6 @@ def straighten_stroke(points, closed, *, tolerance, angles, angle_tolerance, cir
     return np.asarray(out, float), closed, "polyline"
 
 
-# ---------------------------------------------------------------------------------------------
-# Regions
-
-
 def regions(mask, gap=4, min_area=64):
     """Regions enclosed by the lines: (labels, info) where info lists each region's id, area,
     bounding box and an interior point. ``gap`` closes small breaks in the outlines first; the
@@ -974,9 +959,6 @@ def regions(mask, gap=4, min_area=64):
     return labels, info
 
 
-# ---------------------------------------------------------------------------------------------
-# Document model
-#
 # The drawing group's content space is the cleaned image's pixel grid. Its record:
 #   group["drawing"] = {"source": asset of the photo as imported, "reference": asset of the
 #   cleaned line mask (what preservation is measured against), "settings": clean settings,
@@ -992,11 +974,18 @@ def schemas(add):
     settings = ("Per-action settings (see docs/drawing.md). import/clean: ink (line colour, default #1d1d1f), sheet, "
                 "perspective, deskew, crop, weight, threshold. vectorize: mode, width (pixels or 'uniform'), color. "
                 "straighten: angles ('drawn' keeps each line's angle, 'axes', '45', 'guides' or degrees), tolerance, "
-                "close_gaps (pixels or 'auto'), circles, polylines. restyle: width (pixels or 'uniform'), width_scale. "
+                "close_gaps (pixels or 'auto'), circles, polylines. smooth: amount, corners (keep, the default, leaves "
+                "straightened lines and polylines as they are; round smooths them too). restyle: width (pixels or 'uniform'), width_scale. "
                 "fill: gap, min_area, under. stroke: width, smooth, closed.")
     add("drawing", {"action": {"enum": list(ACTIONS)}, "name": S, "target": S, "asset": S, "path": S, "x": {}, "y": {},
                     "width": {}, "height": {}, "settings": {"type": "object", "description": settings},
-                    "strokes": {"type": ["array", "string"], "items": S}, "points": {"type": "array"},
+                    "strokes": {"type": ["array", "string"], "items": S},
+                    "points": {"type": "array", "description": "stroke: [[x, y], …]; fill: [[x, y, color], …]. Canvas "
+                               "positions by default (where the drawing shows now, through moved, scaled or rotated "
+                               "groups); with space: group, the drawing's own coordinates (drawing report lists both)."},
+                    "space": {"enum": ["canvas", "group"], "description": "How stroke and fill points read: canvas "
+                              "(default) document pixels, or group: the drawing group's own coordinates, which move "
+                              "with the group."},
                     "color": {"type": "string", "description": "Line colour: strokes' colour for restyle/stroke, vectorize's "
                               "colour, or on import shorthand for settings.ink (default #1d1d1f)."}},
         ["action"])
@@ -1083,10 +1072,19 @@ def _content_matrix(project, group):
     return group_matrix(child, resolved, local)
 
 
-def _to_content(project, group, points):
+def _to_content(project, group, points, space="canvas"):
+    """Drawing content coordinates of ``points``: canvas positions (default), or already in the
+    drawing group's own coordinates with ``space: group``, which stay put when the group moves."""
+    require(space in ("canvas", "group"), "space is canvas or group", field="space")
+    try:
+        p = np.asarray(points, float)
+    except (TypeError, ValueError):
+        p = np.zeros((0,))
+    require(p.ndim == 2 and p.shape[1] >= 2 and len(p) <= 20000, f"points are [[x, y], …] {space} positions",
+            field="points")
+    if space == "group":
+        return p[:, :2]
     matrix = np.linalg.inv(_content_matrix(project, group))
-    p = np.asarray(points, float)
-    require(p.ndim == 2 and p.shape[1] >= 2 and len(p) <= 20000, "points are [[x, y], …] canvas positions", field="points")
     homogeneous = np.column_stack([p[:, :2], np.ones(len(p))])
     return (matrix @ homogeneous.T).T[:, :2]
 
@@ -1323,7 +1321,7 @@ def _vectorize(project, group, op):
 # to horizontal/vertical or to 45° steps too; a list of degrees, or "guides", snaps to those.
 ANGLE_SETS = {"drawn": [], "none": [], "axes": [0, 90], "45": [0, 45, 90, 135]}
 STRAIGHTEN = {"tolerance": 4.0, "angles": "drawn", "angle_tolerance": 6.0, "circles": True, "close_gaps": 0.0,
-              "corner": 24.0, "polylines": True, "amount": 0.5}
+              "corner": 24.0, "polylines": True, "amount": 0.5, "corners": "keep"}
 
 
 def _snap_angles(project, value):
@@ -1358,13 +1356,20 @@ def _straighten(project, group, op, action):
         for record in layer["drawing_strokes"]:
             points = np.asarray(record["points"], float)
             if action == "smooth":
+                require(settings["corners"] in ("keep", "round"), "corners is keep (the default) or round",
+                        field="settings")
+                if record.get("kind") in ("line", "polyline") and settings["corners"] == "keep":
+                    # Straightened sides and corners are deliberate; smoothing them would round a window into a blob.
+                    records.append({**record})
+                    continue
                 amount = finite(settings["amount"], "amount", 0, 1)
                 passes = max(1, round(amount * 4))
                 smoothed = chaikin(points, passes, record["closed"])
                 if not record["closed"] and len(points) > 2:
                     smoothed = np.vstack([points[:1], smoothed, points[-1:]])
                 smoothed = simplify(smoothed, 0.5, record["closed"])
-                records.append({**record, "points": smoothed.tolist(), "kind": "smoothed", "smooth": True})
+                rounded = {"rounded": record["kind"]} if record.get("kind") in ("line", "polyline") else {}
+                records.append({**record, "points": smoothed.tolist(), "kind": "smoothed", "smooth": True, **rounded})
                 continue
             new, closed, kind = straighten_stroke(points, record["closed"], tolerance=finite(settings["tolerance"], "tolerance", 0, 1000),
                                                   angles=angles, angle_tolerance=finite(settings["angle_tolerance"], "angle_tolerance", 0, 45),
@@ -1373,8 +1378,8 @@ def _straighten(project, group, op, action):
             if kind is None:
                 records.append({**record})
             else:
-                records.append({**record, "points": np.asarray(new).tolist(), "closed": closed, "kind": kind,
-                                "smooth": kind == "circle"})
+                records.append({**{k: v for k, v in record.items() if k != "rounded"}, "points": np.asarray(new).tolist(),
+                                "closed": closed, "kind": kind, "smooth": kind == "circle"})
         updated[layer["id"]] = records
     if gap:
         # Gaps are closed once the sides are straight, so a corner is run on to where its lines cross.
@@ -1412,7 +1417,7 @@ def _fill(project, group, op):
     mask = line_mask(project, group)
     gap = int(finite(settings["gap"], "gap", 0, 200))
     labels, info = regions(mask, gap, int(settings["min_area"]))
-    content = _to_content(project, group, [p[:2] for p in points])
+    content = _to_content(project, group, [p[:2] for p in points], op.get("space", "canvas"))
     count = len([layer for layer in _children(project, group) if layer.get("drawing_role") == "fill"])
     anchor = next((layer for layer in _children(project, group) if layer.get("drawing_role") in ("ink", "lines")
                    or "drawing_strokes" in layer), group)
@@ -1510,7 +1515,7 @@ STROKE = {"width": None, "smooth": True, "closed": False}
 
 def _add_stroke(project, group, op):
     settings = _settings(op.get("settings"), STROKE)
-    content = _to_content(project, group, op.get("points") or [])
+    content = _to_content(project, group, op.get("points") or [], op.get("space", "canvas"))
     require(len(content) >= 2, "stroke needs at least two points", field="points")
     existing = [r for layer in _children(project, group) for r in layer.get("drawing_strokes", [])]
     width = settings["width"] or (float(np.median([r["width"] for r in existing])) if existing else 4.0)
@@ -1547,10 +1552,6 @@ def _restyle(project, group, op):
                                    else record["width"] * finite(settings["width_scale"], "width_scale", 0.05, 20))
             layer["stroke_width"] = float(np.median([r["width"] for r in records]))
         _rebuild(layer, records)
-
-
-# ---------------------------------------------------------------------------------------------
-# Validation, reports and checks
 
 
 def validate(layer, state, project):
@@ -1597,6 +1598,8 @@ def report(project, target):
         x, y, _ = matrix @ np.array([point[0], point[1], 1.0])
         return [round(float(x), 1), round(float(y), 1)]
 
+    origin = canvas((0, 0))
+
     sizes = sorted(r["width"] for r in strokes)
     kinds = {}
     for r in strokes:
@@ -1605,7 +1608,14 @@ def report(project, target):
         "drawing": group["name"], "preserved": round(preserved, 4), "added": round(new, 4), "tolerance_px": tolerance,
         "strokes": len(strokes), "stroke_kinds": kinds,
         "stroke_width": {"min": sizes[0], "median": uniform_width(strokes), "max": sizes[-1]} if strokes else None,
-        "regions": [{"id": i["id"], "area": i["area"], "point": canvas(i["point"])} for i in info if not i["outside"]][:64],
+        # Region points work as fill points in either space: point with the default space canvas,
+        # group_point with space: group.
+        "space": "canvas",
+        "group": {"offset": origin, "scale": round(float(np.linalg.norm(matrix[:2, 0])), 4),
+                  "rotation": round(float(np.degrees(np.arctan2(matrix[1, 0], matrix[0, 0]))), 2)},
+        "regions": [{"id": i["id"], "area": i["area"], "point": canvas(i["point"]),
+                     "group_point": [round(float(i["point"][0]), 1), round(float(i["point"][1]), 1)]}
+                    for i in info if not i["outside"]][:64],
         "fills": [layer["name"] for layer in _children(project, group) if layer.get("drawing_role") == "fill"],
         "tilt_corrected": group["drawing"]["angle"],
         "perspective_corrected": bool(group["drawing"].get("perspective")),
@@ -1641,10 +1651,12 @@ def check_drawings(candidate, layers, issue):
         if info["added"] > 0.35:
             issue("drawing", "warning", f"{info['added']:.0%} of drawing {item['name']!r} is new line work", [item],
                   added=info["added"])
-
-
-# ---------------------------------------------------------------------------------------------
-# AI colouring
+        rounded = [layer["name"] for layer in _children(candidate, item)
+                   if any(record.get("rounded") for record in layer.get("drawing_strokes", []))]
+        if rounded:
+            issue("drawing", "warning", f"Drawing {item['name']!r} has straightened strokes that smooth rounded "
+                  f"({', '.join(rounded[:8])}): their corners are curves now. Undo, then smooth with "
+                  "settings.corners: keep (the default)", [item], strokes=rounded[:64])
 
 
 def line_art(project, group):
@@ -1695,10 +1707,6 @@ def ai_color(project, target, prompt, backend, *, strength=0.6, seed=None, model
         candidate._amend_head()
     project.__dict__.update(candidate.__dict__)
     return result
-
-
-# ---------------------------------------------------------------------------------------------
-# CLI
 
 
 def compile_command(cmd, args):

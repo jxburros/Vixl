@@ -12,6 +12,7 @@ from vixl import Project
 from vixl.charts import format_number, nice_scale
 from vixl.commands import compile_command
 from vixl.errors import VixlError
+from vixl.model import Limits
 from vixl.schema import operation_schema, validate_operation
 
 MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"]
@@ -44,8 +45,6 @@ def part(p, key, name="Sales"):
 def ids(p):
     return {layer["chart_part"]: layer["id"] for layer in children(p)}
 
-
-# -- drawing ---------------------------------------------------------------------------------------
 
 def test_chart_is_a_group_of_ordinary_vector_layers():
     p = make("bar", DRINKS)
@@ -191,7 +190,73 @@ def test_dense_charts_thin_their_labels_and_skip_automatic_value_labels():
     assert p.check(checks=["overlap"])["passed"]
 
 
-# -- editing in place ------------------------------------------------------------------------------
+CHANNELS = {"categories": MONTHS, "series": [
+    {"name": "Retail", "values": [12000, 13500, 12800, 15000, 16200, 17000]},
+    {"name": "Online", "values": [18000, 19500, 21000, 22800, 24000, 25100]},
+    {"name": "Wholesale", "values": [6000, 6400, 7000, 6600, 7500, 8000]},
+]}
+
+
+def value_labels(p):
+    return {layer["chart_part"]: layer for layer in children(p) if layer["chart_part"].startswith("value-")}
+
+
+def test_chart_text_uses_the_line_height_table():  # #421
+    from vixl.craft import LINE_HEIGHT, natural_height
+    from vixl.text import font_data
+
+    two = {"categories": MONTHS, "series": [{"name": "Espresso\nsingle origin", "values": [1, 2, 3, 4, 5, 6]},
+                                            {"name": "Latte\nwith oat milk", "values": [2, 3, 4, 5, 6, 7]}]}
+    p = make("bar", two, legend="right", title="Cups sold\nby month")
+    parts = {layer["chart_part"]: layer for layer in children(p)}
+
+    def pitch(layer):
+        return natural_height(font_data(p, layer), layer["size"]) + layer["spacing"]
+
+    assert pitch(parts["title"]) == pytest.approx(LINE_HEIGHT["heading"] * parts["title"]["size"], abs=1)
+    first, second = parts["legend-label-0"], parts["legend-label-1"]
+    assert pitch(first) == pytest.approx(LINE_HEIGHT["body"] * first["size"], abs=1)
+    # A two-line legend label takes two rows: the next entry starts below it.
+    assert second["y"] >= first["y"] + first["height"]
+
+
+def test_automatic_value_labels_label_every_bar_or_whole_series_largest_first():  # #366
+    p = make("bar", CHANNELS, legend="bottom")
+    labels = value_labels(p)
+    # Five-character labels are wider than a bar at the default size: all 18 get a smaller size, not just
+    # the series with the shortest numbers.
+    assert len(labels) == 18 and len({layer["size"] for layer in labels.values()}) == 1
+    p.apply({"type": "chart-data", "target": "Sales", "set": [{"category": "Jun", "series": "Online", "value": 26000}]})
+    assert len(value_labels(p)) == 18
+    # Two lines whose labels land on each other: the larger series keeps every label, the other gives way whole.
+    close = {"categories": MONTHS, "series": [{"name": "A", "values": [100, 104, 108, 112, 116, 120]},
+                                              {"name": "B", "values": [99, 103, 107, 111, 115, 119]}]}
+    keys = set(value_labels(make("line", close)))
+    assert keys == {f"value-0-{i}" for i in range(6)}, keys
+
+
+def test_chart_internals_give_one_legibility_finding_and_no_mark_overlaps():  # #360
+    data = {"categories": MONTHS, "series": [{"name": "Retail", "values": [120, 300, 90, 280, 100, 310]},
+                                             {"name": "Online", "values": [200, 150, 260, 140, 270, 150]}]}
+    for kind in ("line", "area", "bar"):
+        p = make(kind, data, value_labels=True)
+        report = p.check(checks=["overlap", "legibility"])
+        assert not [x for x in report["issues"] if x["check"] == "overlap"], (kind, report["issues"])
+        legibility = [x for x in report["issues"] if x["check"] == "legibility"]
+        assert len(legibility) == 1 and legibility[0]["chart"] == "Sales" and len(legibility[0]["layers"]) > 10
+    # On a piece seen as a thumbnail the chart's one finding is a warning.
+    p.apply({"type": "canvas", "size": "instagram-post"})
+    legibility = [x for x in p.check(checks=["legibility"])["issues"] if x["check"] == "legibility"]
+    assert len(legibility) == 1 and legibility[0]["severity"] == "warning"
+
+
+def test_small_text_on_a_large_non_thumbnail_piece_is_one_note():  # #360
+    p = Project(3000, 2000, "#ffffff")
+    p.apply([{"type": "text", "name": f"note {i}", "text": "fine print", "size": 24, "color": "#000000", "x": 40,
+              "y": 40 + 60 * i} for i in range(6)])
+    legibility = [x for x in p.check(checks=["legibility"])["issues"] if x["check"] == "legibility"]
+    assert len(legibility) == 1 and legibility[0]["severity"] == "info" and len(legibility[0]["layers"]) == 6
+
 
 def test_fixing_one_number_is_one_operation_with_stable_layer_ids():
     p = make("bar", SALES, value_labels=True)
@@ -285,8 +350,6 @@ def test_rasterizing_a_chart_leaves_a_valid_document():
         p.apply({"type": "chart-data", "target": "Sales", "set": [{"category": "Jan", "value": 1}]})
 
 
-# -- data sources ----------------------------------------------------------------------------------
-
 def test_csv_binds_a_chart_and_reload_follows_the_file(tmp_path):
     (tmp_path / "data").mkdir()
     csv = tmp_path / "data" / "cups.csv"
@@ -367,8 +430,6 @@ def test_table_rows_and_chartjs_spellings_are_accepted():
     assert (image == (255, 0, 0)).all(axis=2).any()
 
 
-# -- document styling ------------------------------------------------------------------------------
-
 def test_colors_fonts_and_text_follow_the_document():
     p = Project(900, 560, "#0f172a")
     p.apply([{"type": "palette-apply", "name": "neon"}])
@@ -429,12 +490,10 @@ def test_nice_scale_picks_round_steps():
     assert nice_scale(0, 12, 5)[:3] == (0, 12, 2)
     assert nice_scale(-90, 150, 5)[2] == 50
     assert nice_scale(0, 0, 5)[:2] == (0, 1)
-    assert nice_scale(0, 3330, 5)[1] == 4000
+    assert nice_scale(0, 3330, 5)[1] == 3500
     low, high, step, ticks = nice_scale(0, 10, 5, fixed_min=0, fixed_max=10)
     assert (low, high, ticks[-1]) == (0, 10, 10)
 
-
-# -- validation ------------------------------------------------------------------------------------
 
 @pytest.mark.parametrize("op, message", [
     ({"type": "chart"}, "needs data"),
@@ -486,7 +545,7 @@ def test_unknown_category_suggests_the_closest():
 
 def test_a_chart_too_big_for_the_layer_limit_is_refused():
     categories = [f"c{i}" for i in range(200)]
-    p = Project(2000, 600)
+    p = Project(2000, 600, limits=Limits(max_layers=512))
     with pytest.raises(VixlError) as caught:
         p.apply({"type": "chart", "categories": categories, "series": [{"name": s, "values": [1] * 200} for s in "abc"]})
     assert caught.value.code == "resource_limit"
@@ -496,8 +555,6 @@ def test_chart_is_too_small_for_its_labels():
     with pytest.raises(VixlError, match="too small"):
         make("bar", DRINKS, width=60, height=60)
 
-
-# -- checks and exports ----------------------------------------------------------------------------
 
 def test_checks_see_inside_the_chart():
     p = make("stacked-bar", DRINKS, value_labels=True, font_size=26)
@@ -553,8 +610,6 @@ def test_vector_exports_keep_the_chart_as_paths_and_text(tmp_path):
     png = p.export(tmp_path / "c.png", format="PNG")
     assert png.startswith(b"\x89PNG")
 
-
-# -- PowerPoint ------------------------------------------------------------------------------------
 
 def deck(kind="bar", data=DRINKS, **options):
     p = Project(1280, 720, "#ffffff")
@@ -682,8 +737,6 @@ def test_chart_with_effects_is_a_picture_like_any_other_group():
     data = p.export(format="PPTX", report=report)
     assert not chart_shapes(data) and report["raster_fallbacks"]["1"][0]["layer"] == "Sales"
 
-
-# -- interfaces ------------------------------------------------------------------------------------
 
 def test_operation_schema_documents_chart_operations():
     variants = {v["properties"]["type"]["const"]: v for v in operation_schema()["properties"]["operations"]["items"]["oneOf"]}

@@ -47,7 +47,8 @@
      "contrast",
      "safe_area"
     ],
-    "layers": 5,
+    "layers_checked": 5,
+    "layers_total": 5,
     "text_layers": 5
    }
   },
@@ -85,7 +86,8 @@
      "contrast",
      "safe_area"
     ],
-    "layers": 5,
+    "layers_checked": 5,
+    "layers_total": 5,
     "text_layers": 5
    }
   }

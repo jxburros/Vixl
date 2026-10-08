@@ -1,8 +1,7 @@
 """Proportional re-layout of a document at another size: ``adapt-layout`` without ``targets``.
 
-Resizing a canvas used to leave every layer where it was. ``adapt-layout`` resizes the canvas (to a
-named size or a width and height) and re-lays out each top-level layer by simple anchoring rules,
-then reports where every layer went:
+``adapt-layout`` resizes the canvas (to a named size or a width and height) and re-lays out each
+top-level layer by simple anchoring rules, then reports where every layer went:
 
 * sizes scale uniformly (``scale``: ``fit`` keeps everything inside, ``fill`` covers, ``width`` or
   ``height`` follows one axis, or a number); text scales its font size and wrapping boxes;
@@ -20,13 +19,13 @@ import difflib
 import re
 
 from .errors import VixlError, require
+from .geometry import ANCHORS as BOX_ANCHORS, canonical_anchor
 from .selectors import matcher, parse_where, record
 
 SCALES = ("fit", "fill", "width", "height")
+_MODE = {0: "start", 0.5: "center", 1: "end"}
 ANCHORS = {
-    "top-left": ("start", "start"), "top": ("center", "start"), "top-right": ("end", "start"),
-    "left": ("start", "center"), "center": ("center", "center"), "right": ("end", "center"),
-    "bottom-left": ("start", "end"), "bottom": ("center", "end"), "bottom-right": ("end", "end"),
+    **{name: (_MODE[fx], _MODE[fy]) for name, (fx, fy) in BOX_ANCHORS.items()},
     "stretch": ("stretch", "stretch"), "stretch-x": ("stretch", None), "stretch-y": (None, "stretch"),
     "keep": ("keep", "keep"), "cover": ("cover", "cover"),
 }
@@ -58,6 +57,10 @@ SCHEMA = {
 }
 
 
+def _anchor(value):
+    return canonical_anchor(value) or value
+
+
 def check_options(op):
     """Validate the proportional-mode fields; errors say what to change."""
     require(("size" in op) != ("width" in op or "height" in op),
@@ -71,7 +74,7 @@ def check_options(op):
     require(isinstance(anchors, dict) and len(anchors) <= 100, "anchors is an object of up to 100 entries",
             field="anchors")
     for key, value in anchors.items():
-        if value not in ANCHORS:
+        if _anchor(value) not in ANCHORS:
             close = difflib.get_close_matches(str(value), list(ANCHORS), 1, 0.5)
             raise VixlError("invalid_operation", f"anchors[{key!r}]: unknown anchor {value!r}; anchors: "
                             + ", ".join(ANCHORS) + (f". Did you mean {close[0]!r}?" if close else ""),
@@ -84,7 +87,7 @@ def anchor_rules(project, anchors):
     for key, value in anchors.items():
         prefix, _, rest = key.partition(":")
         where = {prefix: rest} if rest and prefix in ("role", "kind", "tag") else {"name": key}
-        rules.append((matcher(project, parse_where(where)), ANCHORS[value]))
+        rules.append((matcher(project, parse_where(where)), ANCHORS[_anchor(value)]))
     return rules
 
 
@@ -302,7 +305,7 @@ def adapt_copies(session, export_file, sizes, directory=".", name="{name}-{size}
         outcome = candidate.apply([{"type": "adapt-layout", **spec, **options}], detail="brief", check=service_check)
         report_row = outcome["adapt_layout"][0]
         session.make_parent(destination)
-        candidate.save(destination)
+        candidate.save(destination, overwrite=overwrite)
         item = {"size": label, "path": session.relative(destination), "canvas": report_row["canvas"]["to"],
                 "scale": report_row["scale"], "moved": report_row["moved"]}
         if report == "layers":

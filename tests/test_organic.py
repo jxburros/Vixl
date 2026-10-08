@@ -231,3 +231,36 @@ def test_fill_leaves_line_only_parts_unfilled_and_colors_win():
     assert p.layer("fn")["fill"] == "transparent"
     with pytest.raises(VixlError):
         p.apply([{"type": "organic", "preset": "flower", "fill": "not-a-color"}])
+
+
+@pytest.mark.parametrize("parts", [None, [{"name": "body", "generator": "blob"}]])
+def test_center_and_percent_coordinates_resolve_for_new_forms(parts):
+    p = Project(400, 300, "white")
+    recipe = {"parts": parts} if parts else {"preset": "flower"}
+    p.apply([{"type": "organic", "name": "a", **recipe, "width": 100, "height": 100, "x": "center", "y": "center"},
+             {"type": "organic", "name": "b", **recipe, "width": "25%", "height": 100, "x": "50%", "y": "10%"}])
+    a, b = p.layer("a"), p.layer("b")
+    assert (a["x"] + a["width"] / 2, a["y"] + a["height"] / 2) == (200, 150)
+    assert (b["x"], b["y"], b["width"]) == (200, 30, 100)
+    p.render()
+
+
+@pytest.mark.parametrize("parts", [None, [{"name": "body", "generator": "blob"}]])
+def test_regrowth_moves_the_target_not_the_active_layer(parts):
+    p = Project(400, 300, "white")
+    recipe = {"parts": parts} if parts else {"preset": "flower"}
+    p.apply([{"type": "organic", "name": "form", **recipe, "width": 100, "height": 100},
+             {"type": "shape", "name": "other", "shape": "rect", "width": 10, "height": 10, "x": 5, "y": 5}])
+    p.apply([{"type": "organic", "target": "form", "seed": 2, "x": "center", "y": 40}])
+    form = p.layer("form")
+    assert (form["x"] + form["width"] / 2, form["y"]) == (200, 40)
+    assert (p.layer("other")["x"], p.layer("other")["y"]) == (5, 5)
+    p.apply([{"type": "organic", "target": "form", "seed": 3}])
+    assert p.layer("form")["y"] == 40
+
+
+def test_cli_accepts_center_and_percent_coordinates():
+    from vixl.commands import compile_command
+
+    op = compile_command(["organic", "flower", "--x", "center", "--y", "25%", "--padding", "4"])
+    assert (op["x"], op["y"], op["padding"]) == ("center", "25%", 4.0)

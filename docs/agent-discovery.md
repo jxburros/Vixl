@@ -1,8 +1,10 @@
 # Efficient agent workflows
 
-Start with `vixl_capabilities(topic="animation", fields=true)` for operations, field names, workflows, guidance and gotchas relevant to a task. Topics include text, drawing, animation, film, layout, color and export. `vixl guide capabilities animation` provides the same discovery through the CLI; exact constraints and examples remain in `vixl_operation_schema(types=[...])`.
+Start with `vixl_capabilities(topic="animation", fields=true)` for operations, field names, workflows, guidance and gotchas relevant to a task. Topics include text, drawing, animation, film, layout, color and export. `vixl capabilities animation` provides the same discovery through the CLI; each `guidance` name it lists is readable with `vixl_guide(brief=NAME)` (CLI `vixl guide NAME`); exact constraints and examples remain in `vixl_operation_schema(types=[...])`.
 
 All interfaces normalize operation aliases with the same registry and validate against the same operation schema. MCP restricts filesystem access and accepts registered font names and roles. SVG path coordinates are literal local pixels, not percentages or normalized coordinates; `path-fit` fits a path into its layer box. Grouped positions are parent-relative unless `move` uses `space: "canvas"`.
+
+For a new piece whose size, layout copy, look and operations are known, `vixl_compose` runs create → font pairing → layout → style → look → operations → check → preview → save → exports in one atomic call; errors carry `step` (see [interfaces](interfaces.md#build-a-piece-in-one-call)). Keep refining with `vixl_operations_apply`. Before handing off, a `proof` workflow page (or `logo-package` for a logo) packages the review; see [production](production.md#proof-pages).
 
 An atomic batch holds up to 10,000 operations. Generated motion and compact `keyframes` can replace hundreds of handwritten operations. For larger edits use history `begin`, several batches, then `commit`; `rollback` discards the group. A failed batch applies nothing. Explicit `Limits(max_operations=...)` still enforces a lower application limit.
 

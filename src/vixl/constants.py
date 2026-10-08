@@ -31,6 +31,7 @@ EFFECTS = (
     "gamma",
     "temperature",
     "tint",
+    "white-balance",
     "shadows",
     "highlights",
     "levels",
@@ -50,3 +51,9 @@ EFFECTS = (
     "auto-color",
     "auto-contrast",
 ) + tuple(ARTISTIC_DEFAULTS)
+
+# Effect names a layer's stack can hold: the effect operations plus ``lookup`` (a LUT added by the
+# lookup operation, whose ``name`` field names the table rather than the effect).
+STACK_EFFECTS = EFFECTS + ("lookup",)
+# Amount used when an effect is added without one.
+EFFECT_DEFAULTS = {**ARTISTIC_DEFAULTS, "white-balance": 100, "lookup": 1}

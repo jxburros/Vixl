@@ -147,6 +147,24 @@ def test_new_requires_explicit_overwrite(tmp_path):
     assert Project.load(path).state["canvas"]["width"] == 40
 
 
+def test_python_save_refuses_to_replace_another_file_without_overwrite(tmp_path):
+    """#313: Project.save follows the same overwrite policy as `vixl new`, `vixl save` and exports."""
+    path = tmp_path / "hello.vixl"
+    Project(10, 10).save(path)
+    with pytest.raises(VixlError) as caught:
+        Project(20, 20).save(path)
+    assert caught.value.code == "output_exists"
+    assert Project.load(path).state["canvas"]["width"] == 10
+    Project(20, 20).save(path, overwrite=True)
+    assert Project.load(path).state["canvas"]["width"] == 20
+    # Saving a document to its own file, or back to the path it was loaded from, is an ordinary save.
+    loaded = Project.load(path)
+    loaded.apply({"type": "solid", "name": "bg", "color": "red"})
+    loaded.save()
+    loaded.save(path)
+    assert [layer["name"] for layer in Project.load(path).state["layers"]] == ["bg"]
+
+
 def test_explicit_overlap_intent_survives_rename():
     p = Project(240, 120)
     p.apply([{ "type": "text", "name": "a", "text": "FLOW", "size": 40, "x": 10, "y": 10},

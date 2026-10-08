@@ -3,8 +3,9 @@
 Layouts are text compositions, so "make ten cool things" drifts toward ten posters. This module is
 the other half: for each kind of brief (icon, character, scene, pattern, mandala, logo, diagram,
 social card, slides …) it names the approach, the operations that build it, the layouts, looks and
-styles that suit it, the checks to run, and a small working example. ``guide`` answers either a
-kind name or a free-text brief; with no argument it returns the start-here recipe and every kind.
+styles that suit it, the checks to run, and a small working example. ``guide`` answers a kind name, a
+guidance name (``guidance.py``: natural-motion, imperfection …) or a free-text brief; with no argument it
+returns the start-here recipe, every kind and every guidance name.
 """
 
 import re
@@ -20,8 +21,15 @@ START_HERE = [
     "Type: vixl_fonts then vixl_font_pair (the bundled font is a proofing fallback).",
     "Finish: apply a look (glow, soft-shadow, hard-shadow, gradient, grain, paper …) so flat shapes read as finished; "
     "tag a style (vixl_styles) when the brief names a look.",
-    "Check: vixl_check, fix the 'fix' findings, glance at 'review', then vixl_render_preview and vixl_export_file.",
+    "Tests: before building, write the brief's requirements as a check suite (suite-set; the kind's 'tests' lists a "
+    "starter suite and rules to adapt; vixl_guide('testing') explains why and how) and keep it attached.",
+    "Check while building: vixl_operations_apply(check=true, suites=true) reports findings and failing rules with each "
+    "batch; fix them as you go.",
+    "Preview after tests pass: vixl_check and the suites clean (fix the 'fix' findings, glance at 'review'), then "
+    "vixl_render_preview for what tests cannot judge, then vixl_export_file.",
 ]
+# Art without a text frame: a rolled direction (palette, layout-apply steps) would steer these toward a poster.
+NO_DIRECTION = {"character", "scene", "pattern", "mandala", "animation", "pixel-art", "hand-drawing"}
 
 KINDS = {
     "comic": {
@@ -44,6 +52,7 @@ KINDS = {
         "layouts": ["hero-statement", "typographic-poster", "event-poster", "big-number", "diagonal-band"],
         "looks": ["grain", "paper", "hard-shadow"], "styles": ["swiss", "brutalist", "editorial", "risograph"],
         "sizes": ["poster-18x24", "a3", "instagram-portrait"],
+        "guidance": ["typography", "layout"],
         "example": [{"type": "layout-apply", "name": "hero-statement", "title": "Make it simple", "subtitle": "One idea, said well.",
                      "label": "Open call", "cta": "Join in", "palette": "midnight", "seed": 7}],
     },
@@ -72,6 +81,21 @@ KINDS = {
         "example": [{"type": "layout-apply", "name": "banner", "title": "Your offer in one line", "subtitle": "A short detail",
                      "cta": "Get started", "palette": "ocean", "seed": 2}],
     },
+    "meme": {
+        "title": "Meme or reaction image",
+        "keywords": ["meme", "memes", "reaction", "caption", "top text", "bottom text", "four panel", "gif"],
+        "summary": "A picture with a few huge stroked words, or labelled panels; text fits its box and reads on any image.",
+        "approach": ["Create a social size (instagram-post, story).",
+                     "layout-apply a meme layout with image or images set to assets you may use, and short captions.",
+                     "Install an OFL Impact-style face (Anton) for the captions; check, preview small, export."],
+        "operations": ["layout-apply", "fit-text", "text-set", "animate-preset", "motion"],
+        "layouts": ["meme-top-bottom", "meme-caption-above", "meme-comparison", "meme-labelled", "meme-reaction",
+                    "meme-four-panel"],
+        "looks": ["outline"], "styles": [], "sizes": ["instagram-post", "story", "x-post"],
+        "guidance": ["meme"],
+        "example": [{"type": "layout-apply", "name": "meme-top-bottom", "title": "When the build passes",
+                     "caption": "On the first try", "seed": 1}],
+    },
     "logo": {
         "title": "Logo, wordmark or monogram",
         "keywords": ["logo", "wordmark", "monogram", "brand", "identity", "emblem", "badge", "mark", "lockup"],
@@ -82,6 +106,7 @@ KINDS = {
         "layouts": ["logo-horizontal", "logo-stacked", "monogram", "emblem", "minimal-mark"],
         "looks": ["outline", "gradient"], "styles": ["minimalist", "line-art", "bauhaus", "art-deco"],
         "sizes": ["logo", "logo-horizontal", "logo-stacked", "logo-badge"],
+        "guidance": ["logo"],
         "example": [{"type": "layout-apply", "name": "monogram", "title": "Northwind Studio", "palette": "midnight", "seed": 4}],
     },
     "app-icon": {
@@ -93,25 +118,39 @@ KINDS = {
         "operations": ["layout-apply", "shape", "pathfinder", "gradient", "layer-style", "look", "pixel-art"],
         "layouts": ["app-icon", "monogram", "minimal-mark"], "looks": ["gradient", "soft-shadow", "glow"],
         "styles": ["minimalist", "material", "glassmorphism", "pixel-art"], "sizes": ["app-icon", "favicon", "ios-app-icon"],
+        "guidance": ["icon"],
         "example": [{"type": "layout-apply", "name": "app-icon", "title": "Notes", "palette": "ocean", "seed": 5}],
     },
     "character": {
         "title": "Character or mascot",
-        "keywords": ["character", "mascot", "creature", "animal", "robot", "monster", "face", "cartoon", "avatar", "sticker"],
-        "summary": "A friendly figure assembled from ellipses and rounded shapes, with features that read at a glance.",
-        "approach": ["Square or sticker canvas.", "Block the body, head and limbs with ellipse and rounded-rectangle shapes.",
-                     "Add eyes, cheeks and mouth; merge shapes with pathfinder where outlines should be one piece.",
-                     "Outline and finish with a look; group the figure so it moves as one."],
-        "operations": ["shape", "pen", "pathfinder", "group", "organic", "look", "layer-style", "animate-preset"],
+        "keywords": ["character", "mascot", "creature", "animal", "robot", "monster", "face", "cartoon", "avatar", "sticker", "teddy"],
+        "summary": "A figure built from named, grouped parts with pivots at its joints, so it reads as one silhouette and can move.",
+        "approach": ["Square or sticker canvas; decide the silhouette and the one gesture it makes.",
+                     "character makes a standard rig (torso, head, eyes, mouth, segmented limbs with pivots) to restyle; or draw "
+                     "parts with shape, organic and pen, merging outlines with pathfinder.",
+                     "Group parts into joints (the head with its features, an arm with its hand) and set a pivot at each joint.",
+                     "Give it character: irregular strength subtle on the body parts (not the eyes), texture with drawn-texture "
+                     "or cut-paper, then a look.",
+                     "character-save keeps a reusable rig; to animate it, vixl_guide('animation')."],
+        "operations": ["character", "character-rig", "character-pose", "character-save", "character-load", "shape", "organic",
+                       "pen", "pathfinder", "group", "pivot", "irregular", "drawn-texture", "cut-paper", "look", "layer-style"],
         "layouts": ["emblem", "centered-axis"], "looks": ["outline", "soft-shadow", "hard-shadow"],
         "styles": ["kawaii", "neo-brutalist", "hand-drawn", "line-art"], "sizes": ["sticker", "profile-picture", "discord-emoji"],
+        "guidance": ["multi-part-objects", "character-rigging", "anatomy-proportions", "imperfection"],
         "example": [
-            {"type": "shape", "shape": "ellipse", "name": "body", "x": 140, "y": 160, "width": 240, "height": 260, "fill": "#ffd23f"},
-            {"type": "shape", "shape": "ellipse", "name": "eye-left", "x": 200, "y": 250, "width": 34, "height": 44, "fill": "#222222"},
-            {"type": "shape", "shape": "ellipse", "name": "eye-right", "x": 286, "y": 250, "width": 34, "height": 44, "fill": "#222222"},
-            {"type": "shape", "shape": "ellipse", "name": "cheek-left", "x": 170, "y": 300, "width": 42, "height": 26, "fill": "#ff8fab"},
-            {"type": "shape", "shape": "ellipse", "name": "cheek-right", "x": 308, "y": 300, "width": 42, "height": 26, "fill": "#ff8fab"},
-            {"type": "group", "name": "mascot", "targets": ["body", "eye-left", "eye-right", "cheek-left", "cheek-right"]},
+            {"type": "shape", "shape": "ellipse", "name": "body", "x": 290, "y": 270, "width": 220, "height": 240, "fill": "#c8925a"},
+            {"type": "shape", "shape": "ellipse", "name": "ear-left", "x": 300, "y": 90, "width": 64, "height": 64, "fill": "#b07a48"},
+            {"type": "shape", "shape": "ellipse", "name": "ear-right", "x": 436, "y": 90, "width": 64, "height": 64, "fill": "#b07a48"},
+            {"type": "shape", "shape": "ellipse", "name": "head", "x": 300, "y": 100, "width": 200, "height": 190, "fill": "#c8925a"},
+            {"type": "shape", "shape": "ellipse", "name": "muzzle", "x": 370, "y": 205, "width": 60, "height": 44, "fill": "#f1d2a8"},
+            {"type": "shape", "shape": "ellipse", "name": "eye-left", "x": 355, "y": 165, "width": 24, "height": 30, "fill": "#2b1d14"},
+            {"type": "shape", "shape": "ellipse", "name": "eye-right", "x": 421, "y": 165, "width": 24, "height": 30, "fill": "#2b1d14"},
+            {"type": "shape", "shape": "rounded-rectangle", "name": "arm", "x": 480, "y": 290, "width": 54, "height": 140,
+             "fill": "#b07a48"},
+            {"type": "pivot", "target": "arm", "value": "top"},
+            {"type": "group", "name": "head-group", "targets": ["ear-left", "ear-right", "head", "muzzle", "eye-left", "eye-right"]},
+            {"type": "group", "name": "mascot", "targets": ["arm", "body", "head-group"]},
+            {"type": "irregular", "targets": ["body", "head", "ear-left", "ear-right", "arm"], "seed": 7, "strength": "subtle"},
             {"type": "look", "target": "mascot", "look": "soft-shadow"},
         ],
     },
@@ -120,10 +159,14 @@ KINDS = {
         "keywords": ["scene", "illustration", "landscape", "sunset", "mountains", "forest", "sky", "city", "poster art", "background", "nature"],
         "summary": "Depth from layered flat shapes: sky gradient, sun, hills and foreground, with organic forms for plants.",
         "approach": ["Fill the canvas with a sky gradient.", "Stack hills and buildings back to front, darker toward the foreground.",
-                     "Add a sun or moon with a glow; plant organic trees, flowers or ferns.", "Finish with grain; check the preview."],
-        "operations": ["gradient", "shape", "pen", "organic", "organic-shape", "look", "layer-style", "paint", "radial-repeat"],
+                     "Add a sun or moon with a glow; plant organic trees, flowers or ferns.",
+                     "For an illustrated rather than computed feel, irregular (subtle) the drawn shapes and tear any paper; keep "
+                     "the sky and frame clean.", "Finish with grain; check the preview."],
+        "operations": ["gradient", "shape", "pen", "organic", "organic-shape", "irregular", "tear", "look", "layer-style", "paint",
+                       "radial-repeat"],
         "layouts": ["photo-caption", "rule-of-thirds"], "looks": ["glow", "grain", "paper", "watercolor", "gradient"],
         "styles": ["retro-futurism", "mid-century-modern", "hand-drawn", "risograph"], "sizes": ["instagram-post", "web-hero", "poster-18x24"],
+        "guidance": ["natural-color-light", "illustration-perspective", "imperfection"],
         "example": [
             {"type": "gradient", "name": "sky", "direction": "vertical", "start": "#1e3a8a", "end": "#fdba74"},
             {"type": "shape", "shape": "ellipse", "name": "sun", "x": 520, "y": 220, "width": 160, "height": 160, "fill": "#fde68a"},
@@ -135,18 +178,33 @@ KINDS = {
     },
     "pattern": {
         "title": "Pattern, texture or background",
-        "keywords": ["pattern", "texture", "tile", "wallpaper", "seamless", "repeat", "grid", "dots", "stripes", "background", "gradient"],
-        "summary": "A motif repeated on a grid, or a textured field: repeat for rows, group and repeat again for columns.",
-        "approach": ["Draw one motif.", "repeat it along x, group the row, then repeat the group along y.",
+        "keywords": ["pattern", "texture", "tile", "wallpaper", "seamless", "repeat", "grid", "dots", "stripes", "background", "gradient",
+                     "scatter", "confetti", "terrazzo"],
+        "summary": "Motifs scattered irregularly (an even grid reads as a table, not a pattern), or a textured field.",
+        "approach": ["Draw one or two motifs (shape, pen, or organic leaf, petal, blob) off to the side.",
+                     "Seamless tile: pattern-scatter {source: [motifs], width, height, count or spacing, seed, "
+                     "rotation_jitter, scale_jitter, background, pattern: NAME} scatters them with wrap-around "
+                     "Poisson-disc spacing; motifs crossing an edge get wrapped copies on the opposite edge, so the "
+                     "tile has no seam. The result reports a seam score; pattern-fill a layer with the saved pattern "
+                     "(tile_variation varies each repeat). After editing a motif, pattern-scatter {target: TILE} rebuilds it.",
+                     "Scatter over a shape instead: scatter {target: SHAPE, source: [motifs], count, seed, merge: true} "
+                     "(merge draws a thousand marks as one path per tone); exclude keeps areas clear. To vary a set of "
+                     "drawn copies by hand, use irregular with only [placement, color].",
+                     "Use repeat or arrange-grid only when the brief asks for a grid (stripes, checks, polka dots).",
                      "Or fill with gradient layers and apply grain, paper or halftone looks."],
-        "operations": ["shape", "repeat", "repeat-blend", "group", "arrange-grid", "gradient", "look", "radial-repeat"],
+        "operations": ["pattern-scatter", "scatter", "organic", "shape", "irregular", "group", "pattern-define",
+                       "pattern-fill", "repeat", "arrange-grid", "gradient", "look"],
         "layouts": [], "looks": ["grain", "paper", "halftone", "duotone"], "styles": ["memphis", "risograph", "minimalist"],
         "sizes": ["web-hero", "photo-square", "phone-wallpaper"],
+        "guidance": ["imperfection", "drawn-textures", "scatter"],
         "example": [
-            {"type": "shape", "shape": "ellipse", "name": "dot", "x": 20, "y": 20, "width": 40, "height": 40, "fill": "#f97316"},
-            {"type": "repeat", "target": "dot", "count": 8, "dx": 60, "dy": 0},
-            {"type": "group", "name": "row", "targets": ["dot"]},
-            {"type": "repeat", "target": "row", "count": 6, "dx": 0, "dy": 60},
+            {"type": "shape", "shape": "ellipse", "name": "dot", "x": 0, "y": 0, "width": 26, "height": 26, "fill": "#f97316"},
+            {"type": "organic", "preset": "leaf", "name": "leaf", "x": 0, "y": 0, "width": 34, "height": 56, "fill": "#3f7d4e"},
+            {"type": "pattern-scatter", "source": ["dot", "leaf"], "width": 200, "height": 200, "count": 14, "seed": 11,
+             "rotation_jitter": 180, "scale_jitter": 0.3, "background": "#fff7ed", "pattern": "leaves", "name": "tile"},
+            {"type": "hide", "target": "tile"},
+            {"type": "solid", "name": "ground", "color": "#fff7ed"},
+            {"type": "pattern-fill", "target": "ground", "pattern": "leaves", "tile_variation": 0.3, "name": "wallpaper"},
         ],
     },
     "mandala": {
@@ -197,6 +255,7 @@ KINDS = {
         "operations": ["layout-apply", "canvas", "text", "shape"],
         "layouts": ["business-card", "letterhead", "framed", "price-list", "centered-axis"], "looks": ["paper"],
         "styles": ["vintage-letterpress", "minimalist", "art-deco"], "sizes": ["business-card", "letterhead", "certificate", "menu"],
+        "guidance": ["print", "typography"],
         "example": [{"type": "layout-apply", "name": "business-card", "title": "Alex Morgan", "subtitle": "Creative Director",
                      "body": "alex@example.com | +1 555 0100", "palette": "slate", "seed": 6}],
     },
@@ -212,14 +271,37 @@ KINDS = {
     },
     "animation": {
         "title": "Animation, GIF or video",
-        "keywords": ["animation", "animate", "gif", "motion", "video", "loop", "lyric", "kinetic", "sprite", "timeline", "bounce"],
-        "summary": "Keyframes and presets on layers, previewed as a contact sheet and exported as GIF, MP4 or WebM.",
-        "approach": ["Build the still design first.", "animate-preset for entrances and loops; keyframe for custom motion.",
-                     "vixl_timeline_preview, then vixl_export_timeline."],
-        "operations": ["timeline-set", "animate-preset", "animate", "keyframe", "marker", "frame-save", "animation-set"],
+        "keywords": ["animation", "animate", "animated", "gif", "motion", "video", "loop", "looping", "lyric", "kinetic", "sprite",
+                     "timeline", "bounce", "pulse", "stagger", "typing", "idle", "wave", "e-card"],
+        "summary": "Motion recipes, character cycles and keyframes on a finished still, checked frame by frame, exported as GIF, MP4 or WebM.",
+        "approach": ["Build the still first and keep the whole message readable at frame 0; keep moving layers off the text.",
+                     "Decide the one gesture and design the loop first: every track returns to its frame-0 value, so the duration "
+                     "is a whole number of periods.",
+                     "Group parts into joints and set a pivot at each joint before rotating anything.",
+                     "Loops and staggered motion are one motion operation (hover, breathing, blink, wiggle, orbit, bounce) with "
+                     "period, several targets and stagger; character-cycle for walk/idle/react on a rig; keyframes for custom "
+                     "moves; animate-preset for entrances.",
+                     "Check: vixl_check(checks=[motion, character]), vixl_timeline_preview at the first, middle and last frames "
+                     "(the last should flow into the first), vixl_timeline_inspect for the tracks; then vixl_export_timeline."],
+        "operations": ["timeline-set", "motion", "character-cycle", "pivot", "group", "keyframes", "keyframe", "animate-preset",
+                       "animate", "marker", "character", "character-rig"],
         "layouts": [], "looks": ["glow"], "styles": ["pixel-art", "retro-futurism"], "sizes": ["video-1080p", "video-square", "story"],
-        "example": [{"type": "text", "text": "Hello", "name": "greeting", "size": 96, "color": "#111827", "x": "center", "y": "center"},
-                    {"type": "animate-preset", "targets": ["greeting"], "preset": "pop-in", "start": 0, "duration": "600ms"}],
+        "guidance": ["looping-motion", "natural-motion", "character-rigging", "motion"],
+        "example": [
+            {"type": "timeline-set", "duration": 2000, "fps": 24, "loop": 0},
+            {"type": "shape", "shape": "ellipse", "name": "body", "x": 320, "y": 230, "width": 160, "height": 180, "fill": "#c8925a"},
+            {"type": "shape", "shape": "rounded-rectangle", "name": "arm", "x": 460, "y": 250, "width": 40, "height": 110,
+             "fill": "#b07a48"},
+            {"type": "pivot", "target": "arm", "value": "top"},
+            {"type": "motion", "recipe": "wiggle", "targets": ["arm"], "amount": 25, "frequency": 1, "duration": 2000},
+            {"type": "motion", "recipe": "breathing", "targets": ["body"], "amount": 3, "period": 1000, "duration": 2000},
+            {"type": "shape", "shape": "ellipse", "name": "dot-1", "x": 340, "y": 450, "width": 24, "height": 24, "fill": "#111827"},
+            {"type": "shape", "shape": "ellipse", "name": "dot-2", "x": 388, "y": 450, "width": 24, "height": 24, "fill": "#111827"},
+            {"type": "shape", "shape": "ellipse", "name": "dot-3", "x": 436, "y": 450, "width": 24, "height": 24, "fill": "#111827"},
+            # Typing dots: phase (in cycles) offsets each dot inside the loop; stagger instead delays each start.
+            *({"type": "motion", "recipe": "hover", "targets": [f"dot-{n}"], "amount": 8, "period": 1000, "duration": 2000,
+               "phase": -0.15 * (n - 1)} for n in (1, 2, 3)),
+        ],
     },
     "pixel-art": {
         "title": "Pixel art or sprite",
@@ -229,6 +311,7 @@ KINDS = {
                      "frame-save per animation frame; export with sampling nearest."],
         "operations": ["pixel-art", "pixel-draw", "pixel-palette", "frame-save", "animation-set"],
         "layouts": [], "looks": [], "styles": ["pixel-art"], "sizes": ["sprite-32", "sprite-64", "icon-64"],
+        "guidance": ["pixel-art"],
         "example": [{"type": "pixel-art", "name": "heart", "x": 260, "y": 160, "palette": {".": "transparent", "#": "#e11d48"},
                      "rows": [".##.##.", "#######", "#######", ".#####.", "..###..", "...#..."]},
                     {"type": "resize", "target": "heart", "width": 280}],
@@ -237,9 +320,11 @@ KINDS = {
         "title": "Hand drawing or sketch cleanup",
         "keywords": ["sketch", "hand drawn", "drawing", "scan", "trace", "vectorize", "ink", "doodle", "line drawing"],
         "summary": "Import a scan, clean and vectorize it, straighten, then fill and restyle: all editable.",
-        "approach": ["drawing import, clean, vectorize.", "straighten or smooth strokes; fill regions with color points.", "Run check drawing."],
-        "operations": ["drawing", "paint-layer", "paint", "pen", "organic"],
+        "approach": ["drawing import, clean, vectorize.", "straighten or smooth strokes; fill regions with color points.",
+                     "Drawn from scratch? pen or paint, then irregular (subtle) so vector lines waver like ink.", "Run check drawing."],
+        "operations": ["drawing", "paint-layer", "paint", "pen", "organic", "irregular", "drawn-texture"],
         "layouts": [], "looks": ["sketch", "watercolor", "paper"], "styles": ["hand-drawn", "line-art"], "sizes": ["a4", "photo-square"],
+        "guidance": ["drawn-textures", "brush", "imperfection"],
         "example": [{"type": "paint-layer", "name": "ink"},
                     {"type": "paint", "brush": "ink", "size": 8, "color": "#111111",
                      "points": [[200, 300], [260, 220], [340, 200], [420, 240], [440, 320], [380, 380], [300, 380]]}],
@@ -264,7 +349,7 @@ OPERATION_GROUPS = {
     "Arrange and transform": ["move", "resize", "scale", "rotate", "pivot", "flip", "crop", "align", "distribute", "constrain", "unconstrain",
                               "reorder", "raise", "lower", "top", "bottom", "group", "ungroup", "clip", "duplicate", "rename", "remove",
                               "hide", "show", "select-layer", "arrange-grid", "adapt-layout", "fit-text", "text-layout"],
-    "Repeat and symmetry": ["repeat", "repeat-blend", "radial-repeat", "place", "snap", "guide", "grid", "pathfinder", "path-fit"],
+    "Repeat and symmetry": ["repeat", "repeat-blend", "radial-repeat", "scatter", "pattern-scatter", "place", "snap", "guide", "grid", "pathfinder", "path-fit"],
     "Finish and style": ["look", "layer-style", "effect", "style-set", "style-define", "style-apply", "type-scale", "swatch", "palette-apply",
                          "palette-generate", "palette-define", "opacity", "blend", "mask", "lookup", "lut"],
     "Compose from layouts": ["layout-apply", "template-apply", "container-place", "container-swap", "container-reflow", "container-variant", "container-fill", "image-slot", "shape-place"],
@@ -314,25 +399,151 @@ def match(text):
     return [kind for score, kind in sorted(scored, key=lambda s: (-s[0], s[1]))]
 
 
+# Per kind: the starter suite to attach (workflow suite-use) and requirement rules to adapt to the brief's
+# layer names. vixl_guide('testing') is the full method.
+TESTS = {
+    "comic": ("composition", [{"id": "panels", "kind": "count", "target": "panel-*", "minimum": 2},
+                              {"id": "bubbles-apart", "kind": "relation", "target": "bubble-1", "to": "bubble-2",
+                               "position": "apart"}]),
+    "poster": ("composition", [{"id": "headline-dominates", "kind": "hierarchy", "targets": ["title", "subtitle", "body"],
+                                "ratio": 1.25},
+                               {"id": "title-contrast", "kind": "contrast", "target": "title", "minimum": 4.5}]),
+    "social-card": ("social-card", [{"id": "title-reads", "kind": "contrast", "target": "title", "minimum": 4.5},
+                                    {"id": "logo-margin", "kind": "relation", "target": "logo", "to": "canvas",
+                                     "position": "inside", "minimum": 32}]),
+    "banner-ad": ("social-card", [{"id": "cta-apart", "kind": "relation", "target": "cta", "to": "headline",
+                                   "position": "apart", "minimum": 12},
+                                  {"id": "cta-contrast", "kind": "contrast", "target": "cta-label", "minimum": 4.5}]),
+    "meme": ("social-card", [{"id": "caption-contrast", "kind": "contrast", "target": "top-caption", "minimum": 4.5}]),
+    "logo": ("logo", [{"id": "wordmark-under-mark", "kind": "relation", "target": "wordmark", "to": "mark",
+                       "position": "below", "align": ["center-x"]},
+                      {"id": "brand-color", "kind": "color", "region": [0, 0, 64, 64], "expected": "@brand",
+                       "tolerance": 16, "severity": "warning"}]),
+    "app-icon": ("logo", [{"id": "centred", "kind": "balance", "tolerance": 0.05},
+                          {"id": "no-text", "kind": "count", "target": "*", "layer_type": "text", "maximum": 0}]),
+    "character": ("character", [{"id": "head-above-body", "kind": "relation", "target": "head", "to": "body",
+                                 "position": "above", "maximum": 0},
+                                {"id": "centred", "kind": "balance", "tolerance": 0.15, "severity": "warning"}]),
+    "scene": ("composition", [{"id": "subject-on-thirds", "kind": "focal", "target": "subject", "grid": "thirds"},
+                              {"id": "sky-quiet", "kind": "ink", "region": [0, 0, 400, 120], "maximum": 0.2,
+                               "severity": "warning"}]),
+    "pattern": ("palette", [{"id": "covered", "kind": "ink", "minimum": 0.3}]),
+    "mandala": ("composition", [{"id": "centred", "kind": "balance", "tolerance": 0.02}]),
+    "diagram": ("diagram", [{"id": "steps-even", "kind": "spacing", "targets": ["step-1", "step-2", "step-3"],
+                             "axis": "horizontal"}]),
+    "slides": ("slide-deck", [{"id": "title-over-body", "kind": "hierarchy", "targets": ["title", "body"],
+                               "ratio": 1.5}]),
+    "stationery": ("print-ready", [{"id": "name-over-details", "kind": "hierarchy", "targets": ["name", "details"],
+                                    "ratio": 1.3},
+                                   {"id": "logo-margin", "kind": "relation", "target": "logo", "to": "canvas",
+                                    "position": "inside", "minimum": 24}]),
+    "form": ("fillable-form", [{"id": "labels-aligned", "kind": "relation", "target": "label-name",
+                                "to": "label-email", "align": ["left"]}]),
+    "animation": ("motion-loop", [{"id": "title-stays-inside", "kind": "relation", "target": "title", "to": "canvas",
+                                   "position": "inside", "minimum": 16}]),
+    "pixel-art": ("palette", [{"id": "sprite-transparent", "kind": "alpha", "minimum": 0.1}]),
+    "hand-drawing": ("composition", [{"id": "drawing-kept", "kind": "design", "options": {"checks": ["drawing"]}}]),
+    "photo-composition": ("composition", [{"id": "caption-contrast", "kind": "contrast", "target": "caption",
+                                           "minimum": 4.5},
+                                          {"id": "caption-below", "kind": "relation", "target": "caption",
+                                           "to": "photo", "position": "below", "align": ["left"]}]),
+}
+
+
+def tests(kind):
+    """The test plan vixl_guide returns with a kind: why, the starter suite and rules to adapt (rename their
+    targets to the document's layers before attaching them)."""
+    starter, rules = TESTS[kind]
+    return {"why": "Tests measure what a small preview hides and keep holding as edits pile up; write them from the "
+                   "brief before building, run them with every batch and before every preview.",
+            "starter_suite": starter,
+            "attach": {"workflow": "suite-use", "request": {"name": starter}},
+            "rules_to_adapt": rules,
+            "add_with": {"type": "suite-set", "name": "brief", "suite": {"rules": rules}},
+            "run": "vixl_operations_apply(check=true, suites=true) while building; vixl_workflow('check', "
+                   "{suite: NAME}) before vixl_render_preview",
+            "read": "vixl_guide('testing')"}
+
+
 def entry(kind):
     from .layouts import LAYOUTS
 
     item = KINDS[kind]
-    return {"kind": kind, **{k: v for k, v in item.items() if k != "keywords"},
-            "layouts": [{"name": name, "description": LAYOUTS[name]["description"]} for name in item["layouts"]]}
+    result = {"kind": kind, **{k: v for k, v in item.items() if k != "keywords"},
+              "layouts": [{"name": name, "description": LAYOUTS[name]["description"]} for name in item["layouts"]]}
+    if kind in item.get("guidance", []):
+        # Guidance named like the kind (logo, pixel-art) cannot be asked for by name here, so it comes inline.
+        from .guidance import GUIDANCE
+
+        result["principles"] = GUIDANCE[kind]
+    if item.get("guidance"):
+        result["read_guidance"] = "vixl_guide(brief=NAME) returns each guidance text"
+    result["tests"] = tests(kind)
+    return result
+
+
+def _directed(result, kind, seed, variety, workspace):
+    """Attach a rolled direction drawn with the kind's recommendations, and say which choices are in them.
+
+    The roll favours the kind's layouts, looks and styles where the variety level allows their tier
+    (at ``low`` only safe entries roll), so a recommendation outside the roll is an opt-in alternative,
+    and ``recommendations`` says so for each list instead of leaving two directions to reconcile."""
+    if kind not in NO_DIRECTION:
+        from .house_style import tier_of
+        from .typefaces import roll_document
+
+        item = KINDS[kind]
+        recommend = {"layouts": item["layouts"], "looks": item["looks"], "styles": item["styles"]}
+        direction = roll_document(workspace=workspace, seed=seed, variety=variety, kind=kind, recommend=recommend)
+        result["direction"] = direction
+        if direction.get("house_style_version", 1) > 1:
+            chosen = direction["direction"]
+            purpose = direction.get("purpose")
+            notes = {}
+            for key, kind_name in (("layouts", "layout"), ("looks", "look"), ("styles", "style")):
+                pick = chosen.get(kind_name)
+                notes[key] = {
+                    "rolled": pick,
+                    "in_recommendations": pick in recommend[key],
+                    "alternatives": [{"name": name, "tier": tier_of(key, name, purpose)}
+                                     for name in recommend[key] if name != pick],
+                }
+            result["recommendations"] = {
+                "note": "The direction is one seeded roll from the house style for this purpose and variety level, "
+                        "favouring the recommended layouts, looks and styles where the level allows their tier. "
+                        "The other recommendations are opt-in alternatives: lock one (locks={layout: NAME}) or raise "
+                        "the variety level to roll bolder tiers.",
+                **notes,
+            }
+    return result
+
+
+def guidance(name, *, workspace=None):
+    """One named guidance text (built in or user-added) and the kinds of work that point at it, or None."""
+    from .resources import catalog
+
+    texts = catalog("guidance", workspace=workspace)
+    if name not in texts:
+        return None
+    result = {"guidance": name, "text": texts[name]}
+    kinds = [kind for kind, item in KINDS.items() if name in item.get("guidance", [])]
+    if kinds:
+        result["kinds"] = kinds
+    return result
 
 
 def guide(brief=None, *, seed=None, variety=None, workspace=None):
-    """The start-here recipe and kinds (no ``brief``), one kind, or the best match for a free-text brief."""
-    if brief and brief.strip().lower().startswith("capabilities"):
-        from .capabilities import lookup
-
-        return lookup(brief.strip()[len("capabilities"):].strip() or None, fields=True)
+    """The start-here recipe and kinds (no ``brief``), one kind, one guidance text, or the best match for a free-text brief."""
     if not brief or not brief.strip():
+        from .resources import catalog
+
         return {"start_here": START_HERE,
                 "kinds": {kind: {"title": e["title"], "summary": e["summary"]} for kind, e in KINDS.items()},
-                "also": "vixl_capabilities(topic) returns task-specific fields and gotchas; vixl_guide(brief='operations') lists every operation by purpose; vixl_styles lists design styles; "
-                        "vixl_layouts_list lists text layouts. A brief such as 'a mascot for a coffee brand' picks the closest kind.",
+                "guidance": sorted(catalog("guidance", workspace=workspace)),
+                "also": "vixl_guide(brief=<kind or guidance name>) returns it; vixl_capabilities(topic) returns task-specific "
+                        "fields and gotchas; vixl_guide(brief='operations') lists every operation by purpose; vixl_styles lists "
+                        "design styles; vixl_layouts_list lists text layouts. A brief such as 'a mascot for a coffee brand' picks "
+                        "the closest kind.",
                 "tip": "Open-ended brief with no text frame (icon, character, scene, pattern)? Start from shape, organic and radial-repeat, "
                        "then look: do not default to a poster layout."}
     key = re.sub(r"[\s_]+", "-", brief.strip().lower())
@@ -345,6 +556,12 @@ def guide(brief=None, *, seed=None, variety=None, workspace=None):
                 "next": "vixl_operation_schema(types=[…]) gives each operation's fields, a summary and examples"}
     if key in ("start-here", "start", "recipe"):
         return {"start_here": START_HERE}
+    if key == "capabilities" or key.startswith("capabilities-"):
+        topic = brief.strip()[len("capabilities"):].strip(" :")
+        call = f"vixl_capabilities(topic={topic!r})" if topic else "vixl_capabilities()"
+        raise VixlError("moved", f"vixl_guide('capabilities …') was removed in 0.21.0: call {call} (CLI: vixl "
+                                 f"capabilities {topic or 'TOPIC'}) for fields and gotchas; vixl_guide takes a kind of work "
+                                 "or a brief.", field="brief", suggestions=[call])
     if key == "looks":
         from .looks import catalog
 
@@ -356,16 +573,14 @@ def guide(brief=None, *, seed=None, variety=None, workspace=None):
 
         return listing()
     if key in KINDS:
-        from .typefaces import roll_document
-
-        return {**entry(key), "start_here": START_HERE,
-                "direction": roll_document(workspace=workspace, seed=seed, variety=variety, purpose=key)}
+        return _directed({**entry(key), "start_here": START_HERE}, key, seed, variety, workspace)
+    found = guidance(key, workspace=workspace)
+    if found:
+        return found
     ranked = match(brief)
     if not ranked:
         raise VixlError("no_match", f"No kind of work matches {brief!r}; kinds: {', '.join(KINDS)}. Call vixl_guide() for the start-here "
-                                    "recipe.", field="brief", suggestions=list(KINDS)[:6], allowed=list(KINDS))
+                                    "recipe and the guidance names.", field="brief", suggestions=list(KINDS)[:6], allowed=list(KINDS))
     best = ranked[0]
-    from .typefaces import roll_document
-
-    return {"matched": best, **entry(best), "alternatives": ranked[1:4], "start_here": START_HERE,
-            "direction": roll_document(workspace=workspace, seed=seed, variety=variety, purpose=best)}
+    return _directed({"matched": best, **entry(best), "alternatives": ranked[1:4], "start_here": START_HERE},
+                     best, seed, variety, workspace)

@@ -279,7 +279,6 @@ def test_mcp_and_rest_exports(tmp_path):
         assert client.post("/export", json={"format": "HTML", "presenter": {"start": 99}}).status_code == 400
 
 
-# ---------------------------------------------------------------------------------------------
 # The script, in a real browser. Skipped unless Playwright and a Chromium are available.
 
 

@@ -15,13 +15,16 @@ can substitute fonts, emphasize form fields or handle animation differently.
 | Smaller web artwork | WebP; AVIF where supported | Encoded image; confirm support in the consuming system |
 | Print raster | TIFF or JPEG with CMYK | Supply the printer's ICC profile for controlled separations |
 | Scalable supported geometry | SVG | Shapes/text/gradients and supported effects; appearance policy may embed raster fallbacks |
-| Print or selectable-text pages | PDF | Vector pages where supported; effects can fall back to raster; CMYK PDF is raster |
+| Print or selectable-text pages | PDF | Vector pages where supported; effects can fall back to raster; CMYK PDF stays vector (DeviceCMYK) |
 | Editable presentation | PPTX | Real text, supported shapes, images, notes; unsupported appearances become pictures |
+| Layered handoff to Photoshop and similar editors | PSD | One 8-bit RGBA pixel layer per layer with names, opacity, visibility, blend modes and layer groups, plus the flattened composite; text is pixels, not editable type |
 | Interactive form | Fillable PDF | AcroForm widgets over artwork; RGB output; verify target PDF viewer |
 | Icons | ICO or icon set | Multiple destination sizes; inspect the smallest icons |
 | Motion | WebP, GIF, APNG, sheet or frame ZIP | Offline timeline export; GIF has limited colors |
 | Encoded video / audio workflows | MP4 / WebM | ffmpeg required; external generated video also needs a configured gateway |
 | Browser presentation of artwork | HTML | Standalone appearance export; see [studio](studio.md#svg-import-and-html-export) |
+| Logo hand-off | The `logo-package` workflow | Variants, lockups, SVG/PDF/PNG 1x–3x, icons, social images, usage sheet, zip; see [logo packages](production.md#logo-packages) |
+| Legacy print (EPS) | Not produced | Vixl does not write EPS; give the printer the PDF (or the SVG) |
 
 The authoritative options are `vixl export --help`, `vixl export-timeline --help` and
 the [interface reference](interfaces.md). Export format support can depend on installed codecs.
@@ -42,7 +45,7 @@ for supported native effects and fallback behavior.
 **Since 0.19.0:** CLI/MCP image exports default to `alpha=auto`, producing RGB
 when every pixel is opaque and RGBA when needed. `--alpha keep` forces RGBA;
 `--alpha flatten --background '#ffffff'` composites onto white. Applies to PNG, WebP,
-TIFF and AVIF. Python `Project.export` retains `alpha="keep"` by default for compatibility.
+TIFF and AVIF. Since 0.22.1 Python `Project.export` defaults to `alpha="auto"` too; pass `alpha="keep"` for RGBA.
 These options are available in [0.19.0](../CHANGELOG.md#0190) and later.
 
 ```python
@@ -96,6 +99,34 @@ For motion, check time coverage and final playback. `render --time 1s` produces 
 `timeline-sheet` produces an overview; `export-timeline` produces the sequence. Pixel-frame
 animations use `export-animation` instead. See [motion tutorial](tutorials/motion.md).
 
+## Layered PSD for designer handoff
+
+```bash
+vixl -p poster.vixl export poster.psd
+```
+
+`vixl_export_file(path="poster.psd")`, `Project.export("poster.psd")` and the REST export
+(`format: "PSD"`) write an 8-bit RGB Photoshop file (version 1 PSD, PackBits-compressed
+channels) that opens in Photoshop, Photopea, GIMP, Affinity and Krita:
+
+- Each layer is one pixel layer, rendered in canvas space with its effects, layer styles,
+  mask and clipping, and cropped to what it draws. The layer keeps its name, opacity and
+  visibility (hidden layers are written hidden); blend modes map to Photoshop's (`normal`,
+  `multiply`, `screen`, `overlay`, `darken`, `lighten`, `difference`, `add` as Linear Dodge,
+  `subtract`). A non-transparent canvas background becomes a bottom `Background` layer.
+- Groups become layer groups with their children inside. A group Vixl transforms or filters
+  as a whole (rotation, flip, skew, a resized box, effects, styles, clip, mask, repeat,
+  distortion) cannot be expressed as a Photoshop group and is written as one pixel layer.
+- The file also carries the flattened composite, identical to the PNG render, which viewers
+  without layer support (and Pillow) show.
+- Not preserved: text is rasterized, not editable type (the result lists the layers under
+  `text_as_pixels` and in `warnings`); shapes and paths are pixels, not vector layers;
+  adjustment layers are applied in the composite only (`adjustments_in_composite_only`);
+  group-turned or filtered groups are listed under `flattened_groups`. Kinetic text and other
+  timeline motion export the resting document (or one frame with `time`).
+- One page of a multi-page document (`page`); CMYK, proofing, profiles, artboards and comps do
+  not apply. Each side is at most 30 000 px. Exports refuse to overwrite unless `overwrite` is set.
+
 ## Handoff checklist
 
 - Keep the master, final exports and content/source assets required for further editing.
@@ -105,7 +136,9 @@ animations use `export-animation` instead. See [motion tutorial](tutorials/motio
 - Record version, source revision when applicable, export settings and font/source licenses.
 
 For repeated output families, use [production workflows](production.md) to retain manifests,
-checks, render decisions and resume information.
+checks, render decisions and resume information. To send a set of exports for sign-off, write a
+[proof page](production.md#proof-pages): one offline HTML file with thumbnails, metadata, findings and
+approve/reject decisions; `vixl diff A B` shows what changed between two exports.
 # Python export consistency
 
 `Project.export`, `Project.export_animation`, `export_timeline` and the MCP export

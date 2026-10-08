@@ -50,12 +50,9 @@ def check_state(project, state):
             isinstance(layer["id"], str) and isinstance(layer["name"], str) and layer["name"],
             "Invalid layer identifier",
         )
-        require(
-            layer["id"] not in ids and layer["name"] not in names,
-            "Duplicate layer identifier",
-            "invalid_project",
-        )
-        require(layer.get("role", "content") in ("content", "decoration", "background"), "Invalid layer role", "invalid_project")
+        require(layer["id"] not in ids, f"Duplicate layer id {layer['id']!r}", "invalid_project")
+        require(layer["name"] not in names, f"Duplicate layer name {layer['name']!r}", "invalid_project")
+        require(layer.get("role", "content") in ("content", "decoration", "background", "title"), "Invalid layer role", "invalid_project")
         if "pen_origin" in layer:
             origin = layer["pen_origin"]
             require(isinstance(origin, list) and len(origin) == 2, "Invalid pen origin", "invalid_project")
@@ -64,6 +61,8 @@ def check_state(project, state):
         allowed = layer.get("allow_overlap", [])
         require(isinstance(allowed, list) and len(allowed) <= 512 and all(isinstance(x, str) for x in allowed), "Invalid overlap intent", "invalid_project")
         require(isinstance(layer.get("allow_crop", False), bool), "Invalid crop intent", "invalid_project")
+        require(isinstance(layer.get("color_vision_safe", False), bool), "Invalid color vision intent", "invalid_project")
+        require(isinstance(layer.get("detached_ok", False), bool), "Invalid detached intent", "invalid_project")
         ids.add(layer["id"])
         names.add(layer["name"])
         require(
@@ -121,6 +120,10 @@ def check_state(project, state):
             from .forms import validate_field
 
             validate_field(layer, state)
+        if layer.get("code") is not None:
+            from .codes import validate as validate_code
+
+            validate_code(layer)
         if layer["type"] == "link":
             from .links import validate as validate_link
 
@@ -234,8 +237,11 @@ def check_document(project):
     if project.transaction:
         check_state(project, project.transaction["state"])
         require(isinstance(project.transaction["operations"], list), "Invalid transaction")
+    from copy import deepcopy
+    from .project import upgrade_state
+
     head = project._state_at(project.head)
-    check_state(project, head)
+    check_state(project, upgrade_state(deepcopy(head)))
     project._head_state = head
     project._verified = {project.head}
     resolve_layout(project)
@@ -256,6 +262,11 @@ def dependencies(project):
         provenance = layer.get("provenance", {})
         if provenance.get("provider"):
             result["providers"].append(provenance["provider"])
+        source = provenance.get("source") if isinstance(provenance.get("source"), dict) else {}
+        if source.get("url") or provenance.get("credit") or provenance.get("license"):
+            result.setdefault("attributions", []).append({
+                "layer": layer["id"], **{key: source[key] for key in ("url", "fetched_at") if source.get(key)},
+                **{key: provenance[key] for key in ("credit", "license") if provenance.get(key)}})
     return result
 
 

@@ -72,11 +72,13 @@ synthetic oblique (a 12° slant). Install real styles for finished work:
 | `align` | `left`, `center`, `right` or `justify` (every line but a paragraph's last). `paragraph_align` in `text-style`. |
 | `space_before`, `space_after` | Pixels above and below the paragraph. |
 | `indent` | Pixels the whole paragraph moves right. |
-| `line_height` | Multiple of the line's natural height for this paragraph. |
+| `line_height` | Line height for this paragraph, as a multiple of the font size (see below). |
 
-Box-wide settings: `line_height` (1.2), `paragraph_spacing` (pixels after each paragraph, 0) and
+Box-wide settings: `line_height` (a multiple of the font size, the distance between baselines; by default the
+line-height table in [typography](typography.md#default-size-and-leading): 1.45 for body text, 1.1 for headings), `paragraph_spacing` (pixels after each paragraph, 0) and
 `list_indent` (pixels per list level and for the marker column, 1.4 × the size). Wrapped list
-lines hang under the text, not the marker.
+lines hang under the text, not the marker. Rich text made before 0.23 has no `line_basis` and keeps its
+old rule (1.2 times the font's own line pitch, plus the layer's `spacing`), so saved documents look the same.
 
 ## Boxes and fitting
 

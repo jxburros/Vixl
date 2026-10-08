@@ -6,6 +6,8 @@ alone. They are descriptive: ``workflows.dispatch`` and the owning modules still
 
 from copy import deepcopy
 
+from .logo_package import field_types as _logo_package_types
+
 STR = {"type": "string"}
 PATH = {"type": "string", "description": "Workspace-relative path."}
 COLOR = {"type": "string", "description": "Any Vixl color: name, #hex, rgb()/hsl()/…, or @swatch."}
@@ -14,33 +16,71 @@ REGION = {"type": "array", "items": {"type": "integer"}, "minItems": 4, "maxItem
           "description": "Integer [x, y, width, height] inside the canvas."}
 SCALAR = {"type": ["string", "number", "boolean"]}
 
+LOGO_PACKAGE_TYPES = _logo_package_types()
+
 # Check suite (assert-rule format). Rule fields per kind live in assurance.RULE_FIELDS; each
 # rule needs a unique id and a kind, and may set severity.
-RULE_KINDS = ("container", "palette", "assert", "design", "property", "gap", "unchanged", "pixels", "text-fit", "alpha")
+RULE_KINDS = ("container", "palette", "assert", "design", "property", "gap", "unchanged", "pixels", "text-fit", "alpha",
+              "spacing", "relation", "contrast", "color", "ink", "balance", "hierarchy", "count", "focal")
 RULE_PROPERTIES = {
     "id": {"type": "string", "description": "Unique rule ID within the suite; shown in results."},
     "kind": {"type": "string", "enum": list(RULE_KINDS),
              "description": "What the rule measures: assert (expression), property, gap, text-fit, design "
-                            "(checks.py options), palette, container, unchanged, pixels or alpha."},
+                            "(checks.py options), palette, container, unchanged, pixels, alpha, spacing (equal "
+                            "gaps), relation (position, alignment, distance or margin), contrast (one layer's "
+                            "text contrast), color (pixel or region colour), ink (how much of a region is drawn), "
+                            "balance (visual centre of mass), hierarchy (type sizes step down), count (layers "
+                            "matching a name) or focal (on a thirds/golden/centre point)."},
     "severity": {"type": "string", "enum": ["error", "warning"], "default": "error",
                  "description": "A failed warning needs review instead of failing the suite."},
     "expression": {"type": "string",
                    "description": "assert: bounded assertion, e.g. 'layer.logo.bounds within canvas', "
                                   "'canvas.width >= 1080', 'text.title.font-size >= 24', 'layer.logo.opacity == 1'."},
-    "target": {"type": "string", "description": "Layer ID or name (property and text-fit; container may omit it)."},
+    "target": {"type": "string", "description": "Layer ID or name (property, text-fit, relation, contrast, focal; "
+                                                 "container may omit it); count: a name, glob ('bullet-*') or "
+                                                 "'group:NAME' (default '*')."},
+    "targets": {"type": "array", "items": STR, "minItems": 2,
+                "description": "spacing: sibling layers whose gaps should be equal (or expected); hierarchy: text "
+                               "layers from most to least important."},
+    "to": {"type": "string", "description": "relation: the other layer, or 'canvas'."},
+    "position": {"type": "string", "enum": ["left-of", "right-of", "above", "below", "inside", "contains",
+                                            "overlapping", "apart"],
+                 "description": "relation: where target must sit relative to to (apart: not overlapping)."},
+    "align": {"type": "array", "items": {"type": "string", "enum": ["left", "center-x", "right", "top", "center-y",
+                                                                   "bottom"]},
+              "description": "relation: edges target and to must share (within tolerance)."},
+    "bounds": {"type": "string", "enum": ["box", "ink"], "default": "box",
+               "description": "relation: compare layer boxes or drawn ink."},
+    "point": {"type": "array", "items": {"type": "integer"}, "minItems": 2, "maxItems": 2,
+              "description": "color: integer [x, y] canvas pixel to sample (or give region for an average)."},
+    "background": {**COLOR, "description": "ink/balance: count pixels that differ from this colour. Omitted: "
+                                            "everything except the canvas colour and backdrop layers (role "
+                                            "background, or a full-canvas solid, gradient, image or rectangle)."},
+    "ratio": {"type": "number", "minimum": 1, "default": 1.2,
+              "description": "hierarchy: each rendered font size must be at least this many times the next."},
+    "layer_type": {"type": "string", "description": "count: only layers of this type (text, shape, image …)."},
+    "grid": {"type": "string", "enum": ["thirds", "golden", "center"], "default": "thirds",
+             "description": "focal: the composition points target's centre should sit near."},
     "field": {"type": "string", "description": "property: the layer field to read, e.g. 'color', 'x', 'opacity'."},
     "expected": {"type": ["string", "number", "boolean", "array", "object", "null"],
-                 "description": "property: required value; gap: required distance in pixels."},
+                 "description": "property: required value; gap/spacing: required distance in pixels; color: the "
+                                "colour; balance: [x, y] centre as fractions of the region (default [0.5, 0.5])."},
     "tolerance": {"type": "number", "minimum": 0,
-                  "description": "Allowed difference: numbers for property/gap (default gap 1 px), 0–255 colour "
-                                 "distance for palette, 0–255 channel difference for pixels."},
+                  "description": "Allowed difference: numbers for property/gap/spacing/relation (default 1 px), "
+                                 "0–255 colour distance for palette, 0–255 channel difference for pixels and color "
+                                 "(default 12), 0–255 level counted as ink (default 24), a fraction of the region "
+                                 "for balance (default 0.1), pixels for focal (default 5% of the shorter side)."},
     "before": {"type": "string", "description": "gap: the first sibling layer."},
     "after": {"type": "string", "description": "gap: the second sibling layer."},
     "axis": {"type": "string", "enum": ["horizontal", "vertical"], "default": "vertical",
-             "description": "gap: direction of the distance."},
+             "description": "gap/spacing: direction of the distance."},
     "minimum": {"type": "number", "description": "text-fit: smallest allowed font size; alpha: lowest fraction "
-                                                  "of non-opaque pixels."},
-    "maximum": {"type": "number", "description": "alpha: highest fraction (0–1) of pixels with alpha below 255."},
+                                                  "of non-opaque pixels; contrast: lowest ratio (default 4.5); "
+                                                  "relation: smallest gap, or smallest margin when inside; ink: "
+                                                  "lowest drawn fraction (0–1); count: fewest layers."},
+    "maximum": {"type": "number", "description": "alpha: highest fraction (0–1) of pixels with alpha below 255; "
+                                                  "relation: largest gap or margin; ink: highest drawn fraction "
+                                                  "(0–1); count: most layers."},
     "options": {"type": "object", "description": "design: arguments for the design check, e.g. {checks: "
                                                   "['bounds', 'contrast'], safe_area: '5%', min_contrast: 4.5}."},
     "palette": {"type": "string", "description": "palette: name of a palette (defaults to the applied one)."},
@@ -50,7 +90,8 @@ RULE_PROPERTIES = {
                      "description": "palette: share of pixels allowed outside the palette."},
     "alpha_min": {"type": "integer", "minimum": 1, "maximum": 255, "default": 1,
                   "description": "palette: lowest alpha that counts as drawn."},
-    "region": {**REGION, "description": "palette/pixels: [x, y, width, height] to measure (default whole canvas)."},
+    "region": {**REGION, "description": "palette/pixels/color/ink/balance: [x, y, width, height] to measure "
+                                        "(default whole canvas)."},
     "snapshot": {"type": "object", "description": "unchanged: captured layer (written by suite-capture)."},
     "asset": {"type": "string", "description": "pixels: embedded baseline image asset (written by suite-capture)."},
 }
@@ -82,6 +123,10 @@ SUITE = {
     "examples": [{"version": 1, "rules": [
         {"id": "logo-inside", "kind": "assert", "expression": "layer.logo.bounds within canvas"},
         {"id": "title-fits", "kind": "text-fit", "target": "title", "minimum": 24},
+        {"id": "title-over-body", "kind": "hierarchy", "targets": ["title", "body"], "ratio": 1.5},
+        {"id": "cta-margin", "kind": "relation", "target": "cta", "to": "canvas", "position": "inside",
+         "minimum": 48},
+        {"id": "quiet-corner", "kind": "ink", "region": [0, 0, 300, 200], "maximum": 0.02},
     ]}],
 }
 
@@ -145,6 +190,16 @@ LYRIC = {
     "replace": {"type": "boolean", "default": False, "description": "Overwrite an existing build or output."},
     "width": {"type": "integer", "minimum": 16, "maximum": 4096, "description": "Video width (default template)."},
     "height": {"type": "integer", "minimum": 16, "maximum": 4096, "description": "Video height (default template)."},
+    "sample_rate": {"type": "integer", "minimum": 8000, "maximum": 96000,
+                    "description": "Audio rate in Hz (default the song's own, up to 48000)."},
+    "section_styles": {"type": "object", "description": "Restyle the lyric layers per section: {section or 'default': "
+                                                       "{size, color, x, y}}, e.g. {chorus: {size: 72, color: '#ffd166'}}. "
+                                                       "Fonts change with lyric-<section> template layers instead.",
+                       "additionalProperties": {"type": "object", "description": "Styles for one section.", "properties": {
+                           "size": {"type": "integer", "minimum": 1, "maximum": 4096, "description": "Text size, px."},
+                           "color": {"type": "string", "description": "Text color."},
+                           "x": {"type": "number", "description": "Left edge, px."},
+                           "y": {"type": "number", "description": "Top edge, px."}}}},
 }
 
 PRODUCTION_SPEC = {
@@ -193,6 +248,9 @@ FILM_SPEC = {
                      "items": {"type": "object", "required": ["text", "start", "end"]}},
         "audio": {"type": "array", "maxItems": 8, "description": "Audio tracks {source, start, trim, volume}.",
                   "items": {"type": "object", "required": ["source"]}},
+        "sample_rate": {"type": "integer", "minimum": 8000, "maximum": 96000,
+                        "description": "Audio rate in Hz; default the highest source rate up to 48000 (48000 for "
+                                       "synthesized sound). WebM (Opus) uses the nearest Opus rate at or above it."},
     },
     "required": ["width", "height", "shots"],
 }
@@ -303,6 +361,27 @@ ACTION_FIELDS = {
     "drawing-report": {"target": {"type": "string", "description": "Drawing layer ID or name."}},
     "drawing-compare": {"target": {"type": "string", "description": "Drawing layer ID or name."},
                         "output": {**PATH, "description": "A new .png comparison image."}},
+    "proof": {
+        "items": {"type": "array", "minItems": 1, "maxItems": 200,
+                  "items": {"type": ["string", "object"], "properties": {
+                      "path": {**PATH, "description": "A .vixl document or an export (PNG, JPEG, WEBP, TIFF, GIF, "
+                               "SVG, PDF, ICO)."},
+                      "label": {"type": "string", "description": "Card title (default the file name)."},
+                      "before": {"type": "string", "description": "Before/after: another file, or a revision of a "
+                                 ".vixl item (previous, head~1, a checkpoint)."},
+                      "note": {"type": "string", "description": "Text shown on the card."}}},
+                  "description": "What to review: paths, or {path, label?, before?, note?}."},
+        "output": {**PATH, "description": "The .html page to write (self-contained, works offline)."},
+        "title": {"type": "string", "default": "Proof", "description": "Page heading."},
+        "check": {"type": "boolean", "default": True, "description": "Run vixl_check on .vixl items and show the "
+                  "findings."},
+        "decisions": {"type": "boolean", "default": False, "description": "Add approve/reject and a note per item, "
+                      "and a button that downloads them as <page>-decisions.json."},
+        "max_size": {"type": "integer", "minimum": 128, "maximum": 2400, "default": 1200,
+                     "description": "Longest side of each embedded image, px (shown small, enlarged on click)."},
+        "overwrite": {"type": "boolean", "default": False, "description": "Replace an existing page."},
+    },
+    "logo-package": LOGO_PACKAGE_TYPES,
     "resource-list": {},
     "resource-get": {"name": {"type": "string", "description": "Resource name from resource-list."}},
     "resource-save": {"name": {"type": "string", "description": "Name for the saved resource."},
@@ -403,6 +482,11 @@ SUMMARIES = {
     "form-fill": "Fill the open form with one set of values or a CSV of rows into PDFs or images.",
     "links": "List the open document's linked documents with their revision, whether each is stale or missing, and its size.",
     "merge-impose": "Merge a template and CSV rows onto print sheets (grid, gutters, bleed, crop marks) as a vector PDF or sheet document.",
+    "proof": "Write one self-contained offline HTML proof page: thumbnails, format/size/colour metadata, check "
+             "findings, optional before/after and approve/reject decisions downloaded as JSON.",
+    "logo-package": "Build a logo delivery folder: full-colour, mono and on-light/dark variants, optional mark/"
+                    "horizontal/stacked lockups, strict SVG, RGB/CMYK PDF, PNG 1x-3x, icons and favicon, social "
+                    "images, a usage sheet and an optional zip. No EPS.",
     "drawing-report": "Measure a hand-drawing layer: strokes, closures, straightness and cleanup suggestions.",
     "drawing-compare": "Write a before/after comparison PNG of a drawing layer.",
     "resource-list": "List built-in and user resources of one category.",

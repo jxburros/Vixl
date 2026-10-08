@@ -10,11 +10,12 @@ import math
 import os
 from pathlib import Path
 import re
+import uuid
 import zipfile
 
 from . import __version__, calls
 from .assets import decode, read_bounded
-from .errors import VixlError, require
+from .errors import VixlError, memory_guard, require
 from .history import diff, patch
 from .model import Limits, new_state, uid
 from .render import LayerCache
@@ -25,6 +26,19 @@ FORMAT_VERSION = 2
 DECODED_BUDGET = 256 * 1024 * 1024
 NODE_KEYS = {"id", "parent", "operations", "label", "state", "delta", "squashed"}
 ASSET_REFERENCE = re.compile(rb"(?:assets|masks|fonts|sources)/[0-9a-f]{64}\.[a-z0-9]{2,5}")
+
+
+def upgrade_state(state):
+    """Bring a state saved by an earlier Vixl up to date in place (and return it): a layer's
+    ``lookup`` field becomes a ``lookup`` entry at the end of its effect stack, where it rendered."""
+    for layer in state.get("layers", []):
+        old = layer.pop("lookup", None)
+        if old:
+            layer.setdefault("effects", []).append({
+                "id": f"fx_lut_{layer['id']}", "name": "lookup", "lut": old["name"],
+                "amount": old.get("amount", 1), "enabled": True, "selection": None,
+            })
+    return state
 
 
 def swatch_user(error, operations, index):
@@ -51,8 +65,64 @@ def located(error, index, operation, count):
     return error
 
 
+# Error codes of a malformed operation: the schema phase collects every one of them in a batch.
+INVALID_CODES = ("invalid_operation", "unknown_operation", "invalid_property", "invalid_path", "invalid_color")
+MAX_REPORTED = 50
+
+
+def batch_error(errors):
+    """One error for every invalid operation of a batch. The top-level fields describe the first
+    error; ``errors`` lists each one (operation_index, field, message, suggestions ...)."""
+    first = errors[0]
+    if len(errors) == 1:
+        return first
+    keep = ("operation_index", "operation_type", "field", "suggestions")  # long field lists stay on the first error
+    entries = [{"error": e.code, "message": str(e), **{k: e.details[k] for k in keep if k in e.details}}
+               for e in errors[:MAX_REPORTED]]
+    more = f"\n... and {len(errors) - MAX_REPORTED} more" if len(errors) > MAX_REPORTED else ""
+    message = (f"{len(errors)} operations are invalid; nothing was applied. Fix them all and resend:\n"
+               + "\n".join(f"- {entry['message']}" for entry in entries) + more)
+    return VixlError(first.code, message, **first.details, errors=entries, error_count=len(errors))
+
+
 class Project:
-    def __init__(self, width=1920, height=1080, background="#00000000", *, limits=None, workspace=None):
+    # The older Vixl version that saved this document, kept across saves until the upgrade is accepted
+    # (vixl upgrade); see upgrade.py.
+    upgraded_from = None
+
+    def __init__(self, width=None, height=None, background=None, *, purpose=None, seed=None, variety=None,
+                 workspace_fonts=True, limits=None, workspace=None):
+        """A new document.
+
+        ``Project(width, height)`` alone is a plain transparent canvas, as before. Leaving out the size, or
+        passing ``purpose``, ``seed`` or ``variety``, creates a design document exactly as ``vixl new`` and
+        ``vixl_document_create`` do (``creation.py``): the purpose's size (else 1080×1080), rolled
+        ``design_defaults``, the palette background (transparent for marks) and the rolled font pairing
+        (``workspace_fonts=False`` skips fonts). An unseeded roll is recorded in the workspace history
+        only when ``workspace`` is given."""
+        designed = (width is None and height is None) or any(v is not None for v in (purpose, seed, variety))
+        size, source = None, "argument"
+        if designed:
+            from .creation import resolve_size
+
+            width, height, size, source = resolve_size(width, height, None, purpose)
+            if size is not None:
+                from .sizes import resolve
+
+                info = resolve(size)
+                width, height = info["width"], info["height"]
+        require(width is not None and height is not None, "Give width and height together", field="width")
+        self._init_blank(width, height, "transparent" if background is None else background, limits, workspace)
+        if designed:
+            from .creation import design
+
+            if size is not None:
+                self._apply_size({"type": "canvas", "size": size}, f"Create {size} document")
+            design(self, size=size, size_from=source, purpose=purpose, background=background, seed=seed,
+                   variety=variety, workspace=workspace, remember=workspace is not None,
+                   workspace_fonts=workspace_fonts)
+
+    def _init_blank(self, width, height, background, limits, workspace):
         self.limits = limits or Limits()
         self.limits.size(width, height)
         from .render import color
@@ -79,28 +149,94 @@ class Project:
         self._record([], "Create document")
 
     @classmethod
-    def sized(cls, size, background="transparent", *, limits=None, dpi=None, orientation=None, bleed=False, workspace=None):
+    def sized(cls, size, background=None, *, limits=None, dpi=None, orientation=None, bleed=False, workspace=None,
+              purpose=None, seed=None, variety=None, workspace_fonts=True, design=True):
         """Create a document from a named size (``letter``, ``instagram-portrait``, ``favicon`` …),
-        recording its dpi, bleed, safe area and trim/safe guides in the first revision."""
-        from .operations import execute
+        recording its dpi, bleed, safe area and trim/safe guides in the first revision.
+
+        Like ``vixl new SIZE`` it rolls ``design_defaults`` and, without ``background``, uses the palette
+        background (transparent for logo and icon sizes) and installs the rolled pairing. ``design=False``
+        gives a plain canvas (transparent unless ``background`` is given)."""
         from .sizes import resolve
-        from .validation import check_state
 
         info = resolve(size, dpi=dpi, orientation=orientation, bleed=bleed)
-        project = cls(info["width"], info["height"], background, limits=limits, workspace=workspace)
+        blank = "transparent" if background is None or design else background
+        project = cls(info["width"], info["height"], blank, limits=limits, workspace=workspace)
         op = {"type": "canvas", "size": info["size"], "orientation": orientation, "dpi": dpi, "bleed": bleed}
-        execute(project, {k: v for k, v in op.items() if v not in (None, False)})
-        check_state(project, project.state)
-        project.nodes, project.head, project._head_state, project.branches = {}, None, None, {}
-        project._verified = set()
-        project._record([], f"Create {info['size']} document")
+        project._apply_size({k: v for k, v in op.items() if v not in (None, False)}, f"Create {info['size']} document")
+        if design:
+            from .creation import design as finish
+
+            finish(project, size=info["size"], purpose=purpose, background=background, seed=seed, variety=variety,
+                   workspace=workspace, remember=workspace is not None, workspace_fonts=workspace_fonts)
         return project
+
+    @classmethod
+    def new(cls, size=None, *, width=None, height=None, purpose=None, background=None, dpi=None, orientation=None,
+            bleed=False, seed=None, variety=None, workspace=None, workspace_fonts=True, limits=None, report=None):
+        """The one creation path with every option ``vixl new`` and ``vixl_document_create`` take; ``report``
+        receives what creation chose (``creation``, ``workspace_fonts``)."""
+        from .creation import create
+
+        return create(width, height, background, size=size, purpose=purpose, dpi=dpi, orientation=orientation,
+                      bleed=bleed, seed=seed, variety=variety, workspace=workspace, remember=workspace is not None,
+                      workspace_fonts=workspace_fonts, limits=limits, report=report)
+
+    def _apply_size(self, op, label):
+        from .operations import execute
+        from .validation import check_state
+
+        execute(self, op)
+        check_state(self, self.state)
+        self.nodes, self.head, self._head_state, self.branches = {}, None, None, {}
+        self._verified = set()
+        self._record([], label)
+
+    def find_layer(self, target):
+        """The layer whose ID or name is ``target``, or None.
+
+        IDs and names are unique across a page's layers, so a remembered position that still holds
+        a matching layer is the answer. Layers are edited in place everywhere, so the index is only
+        a hint: a stale entry rebuilds it, and a name it does not know is looked up in the list."""
+        layers = self.state["layers"]
+        if not isinstance(target, str):
+            return next((layer for layer in layers if target in (layer["id"], layer["name"])), None)
+        cached = getattr(self, "_layer_index", None)
+        if cached is None or cached[0] is not layers:
+            cached = self._index_layers()
+        position = cached[1].get(target)
+        if position is None:
+            position = next((i for i, layer in enumerate(layers) if target in (layer["id"], layer["name"])), None)
+            if position is None:
+                return None
+            cached[1][target] = position
+        elif position >= len(layers) or target not in (layers[position]["id"], layers[position]["name"]):
+            position = self._index_layers()[1].get(target)
+            if position is None:
+                return None
+        return layers[position]
+
+    def _index_layers(self):
+        layers, index = self.state["layers"], {}
+        for position, layer in enumerate(layers):
+            index.setdefault(layer["id"], position)
+            index.setdefault(layer["name"], position)
+        self._layer_index = (layers, index)
+        return self._layer_index
+
+    def _indexed(self, layer):
+        """Record a layer just appended to the list (see ``find_layer``)."""
+        cached = getattr(self, "_layer_index", None)
+        layers = self.state["layers"]
+        if cached is not None and cached[0] is layers and layers and layers[-1] is layer:
+            cached[1].setdefault(layer["id"], len(layers) - 1)
+            cached[1].setdefault(layer["name"], len(layers) - 1)
 
     def layer(self, target=None):
         target = target or self.state["active_layer"]
-        for layer in self.state["layers"]:
-            if target in (layer["id"], layer["name"]):
-                return layer
+        found = self.find_layer(target)
+        if found is not None:
+            return found
         names = [x["name"] for x in self.state["layers"]]
         folded = [name for name in names if name.casefold() == str(target).casefold()]
         suggestions = folded or difflib.get_close_matches(str(target), names, 3, 0.5)
@@ -150,6 +286,7 @@ class Project:
         clone.redo_stack = list(self.redo_stack)
         clone.transaction = deepcopy(self.transaction)
         clone._verified = set(self._verified)
+        clone.__dict__.pop("_resolving", None)
         return clone
 
     def spatial(self, **options):
@@ -159,6 +296,12 @@ class Project:
         return query(self, **options)
 
     def inspect(self, target=None):
+        from .render import resolving
+
+        with resolving(self):
+            return self._inspect(target)
+
+    def _inspect(self, target=None):
         from .render import child_index, extent, resolve_layout, resolved_layers
 
         state = {key: deepcopy(value) for key, value in self.state.items() if key not in ("pages", "masters")}
@@ -171,12 +314,17 @@ class Project:
         resolved = resolve_layout(self, layers=layers)
         from .spatial import canvas_boxes
 
-        canvas_bounds = canvas_boxes(self)
+        content_bounds = {}
+        canvas_bounds = canvas_boxes(self, content=content_bounds, layers=layers, local=resolved)
         children, memo = child_index(layers), {}
         shown = {item["id"]: item["visible"] for item in layers}
+        effective = {item["id"]: item for item in layers}
         for layer in state["layers"]:
             box = layer["resolved_bounds"] = resolved[layer["id"]]
             layer["canvas_bounds"] = canvas_bounds[layer["id"]]
+            if layer["id"] in content_bounds:
+                # The usable inner area of a shape (a bubble's body, a badge's centre, a device screen).
+                layer["content_bounds"] = [round(v, 2) for v in content_bounds[layer["id"]]]
             layer["coordinate_space"] = "parent" if layer.get("parent") else "canvas"
             if layer["type"] == "shape" and layer.get("shape") == "path":
                 from .vector_paths import inspect_nodes
@@ -185,8 +333,7 @@ class Project:
             if layer["type"] == "text":
                 from .text_metrics import inspect_text
 
-                effective = next(item for item in layers if item["id"] == layer["id"])
-                layer.update(inspect_text(self, effective, box))
+                layer.update(inspect_text(self, effective[layer["id"]], box))
             if layer["visible"] and not shown[layer["id"]]:
                 layer["collapsed"] = True  # Hidden by hide_if_empty or an empty stack, not by the user.
             left, top, right, bottom = extent(layer, resolved, children, memo)
@@ -208,6 +355,11 @@ class Project:
 
         if link_layers(self.state):
             state["links"] = link_status(self)
+        from .variables import listing as placeholder_listing
+
+        placeholders = placeholder_listing(self)
+        if placeholders:
+            state["placeholders"] = placeholders
         return {
             **state,
             "version": __version__,
@@ -216,6 +368,29 @@ class Project:
             "history_count": len(self.nodes),
             "transaction": self.transaction is not None,
         }
+
+    def _inspect_context(self):
+        """What ``inspect`` reads besides the state: embedded assets (fonts, images) and filled form values.
+        Linked documents are read from disk, so a document with links is never remembered (None)."""
+        from .links import link_layers
+
+        if link_layers(self.state):
+            return None
+        return (tuple(self.assets), tuple(map(id, self.assets.values())),
+                repr(getattr(self, "_form_values", None)))
+
+    def _remembered_inspect(self):
+        """The inspection the last apply made of the current state, while the state, the assets and the history
+        head are unchanged; None otherwise. Saves one of the two whole-document inspections per apply."""
+        memo = self.__dict__.get("_inspected")
+        if memo is None or self.transaction is not None:
+            return None
+        snapshot, result, context = memo
+        if (context is None or snapshot is not self._head_state or context != self._inspect_context()
+                or self.state != snapshot):
+            return None
+        return {**result, "head": self.head, "branch": self.current_branch, "history_count": len(self.nodes),
+                "transaction": False}
 
     def _delta_depth(self, ident):
         depth = 0
@@ -257,7 +432,7 @@ class Project:
     def _record(self, operations, label=None):
         if len(self.nodes) >= self.limits.max_history:
             self._prune()
-        ident = uid("rev")
+        ident = uid("rev", fresh=True)
         self.nodes[ident] = self._node(ident, self.head, operations, label, self.state, self._head_state)
         self.head = ident
         self._head_state = deepcopy(self.state)
@@ -309,7 +484,26 @@ class Project:
             "resource_limit",
         )
 
+    @memory_guard
     def apply(self, operations, *, dry_run=False, detail="full", check=None):
+        from .model import seeded_ids
+
+        with seeded_ids(self._id_seed(operations)):
+            return self._apply(operations, dry_run=dry_run, detail=detail, check=check)
+
+    def _id_seed(self, operations):
+        """The same for a dry run and the apply that follows it: the revision, the layers that exist, the open
+        transaction and the batch. A document never saved gets a nonce of its own instead of a revision."""
+        digest = hashlib.sha256()
+        anchor = self.head or self.__dict__.setdefault("_id_nonce", uuid.uuid4().hex)
+        pending = len(self.transaction["operations"]) if self.transaction else -1
+        digest.update(f"{anchor}:{pending}:".encode())
+        for layer in self.state.get("layers", []):
+            digest.update(layer["id"].encode())
+        digest.update(json.dumps(operations, sort_keys=True, default=str).encode())
+        return digest.hexdigest()
+
+    def _apply(self, operations, *, dry_run=False, detail="full", check=None):
         require(detail in ("brief", "compact", "full"), "Unknown response detail; use brief, compact or full")
         from .operations import execute
 
@@ -326,16 +520,22 @@ class Project:
         )
         from .schema import validate_operation
         from .normalize import apply_centering, resolve_geometry
+        from .targets import fan_out
 
         notes = []
         validated = []
+        invalid = []  # Every schema error of the batch, so one round trip fixes them all.
         for index, operation in enumerate(operations):
             try:
                 validated.append(validate_operation(operation, notes, index if len(operations) > 1 else None))
                 if check:
                     check(validated[-1])
             except VixlError as exc:
-                raise located(exc, index, operation, len(operations)) from exc
+                if exc.code not in INVALID_CODES:
+                    raise located(exc, index, operation, len(operations)) from exc
+                invalid.append(located(exc, index, operation, len(operations)))
+        if invalid:
+            raise batch_error(invalid)
         operations = validated
         candidate = self.clone()
         candidate._service = bool(check)
@@ -344,7 +544,9 @@ class Project:
 
         notices.start(candidate)
         candidate._reports = {}  # What operations such as edit-layers and adapt-layout report back.
-        before = candidate.inspect()
+        candidate._name_hints = {}  # Default layer names handed out in this batch (operations.default_name).
+        remembered = self._remembered_inspect()
+        before = remembered or candidate.inspect()
         for index, operation in enumerate(operations):
             calls.check_cancelled()  # A cancelled batch leaves the document untouched: nothing is committed yet.
             calls.progress(index, len(operations), operation["type"])
@@ -357,12 +559,13 @@ class Project:
                 if operation["type"] in ("layout-apply", "template-apply"):
                     from .brand import prepare
                     operation = prepare(candidate, operation)
-                resolved, centered = resolve_geometry(candidate, operation)
-                execute(candidate, deepcopy(resolved))
-                if operation["type"] in ("layout-apply", "template-apply"):
-                    from .brand import finish
-                    finish(candidate)
-                apply_centering(candidate, centered, operation)
+                for single in fan_out(operation):  # targets on a per-layer operation: once per layer
+                    resolved, centered = resolve_geometry(candidate, single)
+                    execute(candidate, deepcopy(resolved))
+                    if single["type"] in ("layout-apply", "template-apply"):
+                        from .brand import finish
+                        finish(candidate)
+                    apply_centering(candidate, centered, single)
             except VixlError as exc:
                 index = swatch_user(exc, operations, index)
                 raise located(exc, index, operations[index], len(operations)) from exc
@@ -389,6 +592,7 @@ class Project:
                 raise located(exc, index, operations[index], len(operations)) from exc
             raise
         candidate.__dict__.pop("_resource_budget", None)
+        candidate.__dict__.pop("_name_hints", None)
         candidate.__dict__.pop("_service", None)
         warned, interpreted = notices.finish(candidate)
         reports = candidate.__dict__.pop("_reports", {})
@@ -402,12 +606,17 @@ class Project:
             from .changes import brief_changes, compact_changes
 
             changes = (brief_changes if detail == "brief" else compact_changes)(before, after)
+        candidate._inspected = None
         if not dry_run:
             if candidate.transaction is not None:
                 candidate.transaction["operations"].extend(deepcopy(operations))
             else:
                 candidate._record(operations)
+                # The next apply starts from this state: remember its inspection instead of repeating it.
+                candidate._inspected = (candidate._head_state, after, candidate._inspect_context())
             self.__dict__.update(candidate.__dict__)
+        if remembered is not None or candidate._inspected is not None:
+            changes = deepcopy(changes)  # They share values with the remembered inspections; keep those private.
         result = {"success": True, "dry_run": dry_run, "operations": len(operations), "changes": changes}
         if any(op["type"] == "template-apply" for op in operations):
             result["template"] = deepcopy(candidate.state.get("template", {}))
@@ -458,30 +667,40 @@ class Project:
         return result
 
     def undo(self, count=1):
+        """Step back ``count`` revisions, or as far as the history goes; returns how many steps were undone."""
         require(self.transaction is None, "Commit or roll back the transaction first")
-        require(isinstance(count, int) and count > 0, "Undo count must be positive")
+        require(isinstance(count, int) and not isinstance(count, bool) and count > 0, "Undo count must be a positive "
+                "whole number", field="count")
         cursor = self.head
         stack = list(self.redo_stack)
-        for _ in range(count):
-            parent = self.nodes[cursor]["parent"]
-            require(parent is not None, "Nothing more to undo", "history_boundary")
+        done = 0
+        while done < count and self.nodes[cursor]["parent"] is not None:
             stack.append(cursor)
-            cursor = parent
+            cursor = self.nodes[cursor]["parent"]
+            done += 1
+        require(done, "Nothing more to undo", "history_boundary")
         self.redo_stack = stack
         self._restore(cursor)
+        return done
 
     def redo(self, count=1):
+        """Step forward ``count`` undone revisions, or as many as there are; returns how many were redone."""
         require(self.transaction is None, "Commit or roll back the transaction first")
-        require(
-            isinstance(count, int) and 0 < count <= len(self.redo_stack),
-            "Nothing more to redo",
-            "history_boundary",
-        )
-        for _ in range(count):
-            self._restore(self.redo_stack.pop())
+        require(isinstance(count, int) and not isinstance(count, bool) and count > 0, "Redo count must be a positive "
+                "whole number", field="count")
+        require(self.redo_stack, "Nothing more to redo", "history_boundary")
+        done = min(count, len(self.redo_stack))
+        target = self.redo_stack[-done]
+        del self.redo_stack[-done:]
+        # Only the revision landed on is restored, so redoing many steps costs one restore, as undo does.
+        self._restore(target)
+        return done
 
     def _restore(self, node):
-        state = self._state_at(node)
+        # The head state stays as stored, so new deltas patch the stored revisions; the live state
+        # is brought up to date.
+        stored = self._state_at(node)
+        state = upgrade_state(deepcopy(stored))
         if node not in self._verified:
             # Archived history is untrusted until a revision is actually used.
             from .validation import check_state
@@ -493,7 +712,7 @@ class Project:
             self._verified.add(node)
         self.head = node
         self.state = state
-        self._head_state = deepcopy(state)
+        self._head_state = stored
         if self.current_branch:
             self.branches[self.current_branch] = node
 
@@ -527,7 +746,7 @@ class Project:
         if node == self.head:
             return self
         view = copy(self)
-        view.state = self._state_at(node)
+        view.state = upgrade_state(self._state_at(node))
         if node not in self._verified:
             from .validation import check_state
 
@@ -580,11 +799,33 @@ class Project:
         self.state = self.transaction["state"]
         self.transaction = None
 
+    @memory_guard
     def render(self, variables=None, *, artboard=None, comp=None, page=None):
         from .render import render
 
         return render(self, variables, artboard, comp, page=page)
 
+    @memory_guard
+    def show(self, page=None, region=None):
+        """The rendered document as a PIL image, for notebooks and scripts. ``page`` is a page number or name;
+        ``region`` crops to ``[x, y, width, height]`` in document pixels."""
+        image = self.render(page=page)
+        if region is not None:
+            require(len(region) == 4, "region is [x, y, width, height]", field="region")
+            x, y, w, h = (float(v) for v in region)
+            require(w > 0 and h > 0, "region needs a positive width and height", field="region")
+            image = image.crop((round(x), round(y), round(x + w), round(y + h)))
+        return image
+
+    def _repr_png_(self):
+        """Jupyter shows a Project as its rendered PNG."""
+        import io
+
+        buffer = io.BytesIO()
+        self.render().save(buffer, "PNG")
+        return buffer.getvalue()
+
+    @memory_guard
     def export(self, path=None, **options):
         from .render import export
 
@@ -595,6 +836,14 @@ class Project:
 
         return measure_spacing(self, **options)
 
+    def import_image(self, path=None, *, url=None, data=None, name="image", credit=None, license=None):
+        """Embed an image from a file, bytes or an https URL as a new layer, recording its source
+        (url, fetched_at, sha256) and optional credit and license in the layer's provenance."""
+        from .image_import import import_image_from
+
+        return import_image_from(self, path=path, url=url, data=data, name=name, credit=credit, license=license)
+
+    @memory_guard
     def inspect_pixels(self, target=None):
         from .pixel import inspect_pixels
 
@@ -605,25 +854,42 @@ class Project:
 
         return inspect_animation(self)
 
+    @memory_guard
     def render_frame(self, name, scale=1, sampling="nearest"):
         from .animation import render_frame
 
         return render_frame(self, name, scale, sampling)
 
+    @memory_guard
     def export_animation(self, path, **options):
         from .animation import export_animation
 
         return export_animation(self, path, **options)
 
+    @memory_guard
     def check(self, **options):
         from .checks import check_design
 
-        return check_design(self, **options)
+        report = check_design(self, **options)
+        if not options.get("checks") or "fonts" in options["checks"]:
+            from .compaction import check_note
 
+            check_note(self, report)
+        return report
+
+    def compact(self, *, fonts=True, dry_run=False):
+        """Drop undo history and the embedded files the current design does not use (see
+        ``compaction.compact``); returns what was dropped. Save afterwards to shrink the file."""
+        from .compaction import compact
+
+        return compact(self, fonts=fonts, dry_run=dry_run)
+
+    @memory_guard
     def check_suite(self, suite, **options):
         from .assurance import run_suite
         return run_suite(self, suite, **options)
 
+    @memory_guard
     def act(self, operations, *, suites=None, dry_run=False, check=None):
         """Apply and measure one candidate. Failed contracts leave the document unchanged."""
         candidate = self.clone()
@@ -637,16 +903,19 @@ class Project:
         return {**result, "success": accepted, "dry_run": dry_run, "committed": accepted and not dry_run,
                 "checks": reports, "bounds": {x["name"]: x["resolved_bounds"] for x in candidate.inspect()["layers"]}}
 
+    @memory_guard
     def measure(self, **options):
         from .measure import measure
 
         return measure(self, **options)
 
+    @memory_guard
     def export_screens(self, directory, **options):
         from .exports import export_screens
 
         return export_screens(self, directory, **options)
 
+    @memory_guard
     def render_data(self, csv_path, directory, **options):
         from .exports import render_data
 
@@ -656,6 +925,7 @@ class Project:
         return {
             "format_version": FORMAT_VERSION,
             "vixl_version": __version__,
+            **({"upgraded_from": self.upgraded_from} if self.upgraded_from else {}),
             "state": self.state,
             "nodes": self.nodes,
             "head": self.head,
@@ -667,13 +937,36 @@ class Project:
             "asset_hashes": {k: hashlib.sha256(v).hexdigest() for k, v in self.assets.items()},
         }
 
-    def save(self, path=None):
+    def _rebase_links(self, path):
+        """Saving into another folder keeps relative link sources pointing at the same files (one history entry)."""
+        from .links import link_layers, rebase
+
+        if not self.path or not link_layers(self.state):
+            return
+        ops = rebase(self, path)
+        if not ops:
+            return
+        previous = self.path
+        self.path = path
+        try:
+            self.apply(ops)
+        finally:
+            self.path = previous
+
+    def save(self, path=None, *, overwrite=False):
+        """Write the project. Saving to the file it was loaded from or last saved to always works; any
+        other existing file is refused unless ``overwrite=True`` (as ``vixl new``/``save`` and exports do)."""
         from .fileio import file_lock
         from .fileio import temporary
 
         require(path or self.path, "Provide a .vixl project path")
+        require(isinstance(overwrite, bool), "overwrite must be true or false", field="overwrite")
         path = Path(path or self.path).resolve()
         require(path.suffix == ".vixl", "Project filenames must end in .vixl")
+        require(overwrite or path == self.path or not path.exists(),
+                f"Project file already exists: {path.name}; pass overwrite=True to replace it", "output_exists",
+                field="path")
+        self._rebase_links(path)
         path.parent.mkdir(parents=True, exist_ok=True)
         with file_lock(str(path)):
             if self.path == path and self._revision and path.exists():
@@ -740,6 +1033,8 @@ class Project:
                 )
                 names = [x.filename for x in entries]
                 require(len(set(names)) == len(names), "Duplicate archive members", "invalid_project")
+                require("project.json" in names, "Not a Vixl document: the archive has no project.json",
+                        "invalid_project")
                 require(
                     all(
                         n == "project.json"
@@ -772,6 +1067,11 @@ class Project:
                     "transaction",
                 ):
                     setattr(project, key, metadata[key])
+                from .upgrade import predates_render_changes
+
+                saved = metadata.get("vixl_version")
+                project.upgraded_from = metadata.get("upgraded_from") or (
+                    (saved or "unknown") if predates_render_changes(saved) else None)
                 project.assets = {n: archive.read(n) for n in names if n != "project.json"}
                 hashes = metadata["asset_hashes"]
                 require(set(hashes) == set(project.assets), "Asset manifest mismatch", "invalid_project")
@@ -799,8 +1099,14 @@ class Project:
                 project.path = path
                 project._head_state = None
                 project._verified = set()
+                upgrade_state(project.state)
                 check_document(project)
                 project._revision = revision
                 return project
-        except (KeyError, TypeError, ValueError, RecursionError, zipfile.BadZipFile) as exc:
+        except KeyError as exc:
+            raise VixlError("invalid_project", f"Malformed Vixl archive: a record is missing its {exc.args[0]!r} "
+                            "field") from exc
+        except zipfile.BadZipFile as exc:
+            raise VixlError("invalid_project", "Not a Vixl document: the file is not a ZIP archive") from exc
+        except (TypeError, ValueError, RecursionError) as exc:
             raise VixlError("invalid_project", f"Malformed Vixl archive: {exc}") from exc

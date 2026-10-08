@@ -1,0 +1,143 @@
+{
+  "description": "House-style eval baseline (python -m evals.house_style --compare evals/house-style-baseline.json). scores: the current house style; house_style_1: the same briefs pinned to version 1 (the 0.20-0.22 rolls), the before of the 0.23 changes. A comparison fails when a quality share falls, or when a level's diversity mean, image, same-mode or structure distance falls by more than diversity_tolerance.",
+  "briefs": 48,
+  "diversity_tolerance": 0.05,
+  "house_style_version": 2,
+  "scores": {
+    "low": {
+      "diversity": {
+        "palette": 4.986,
+        "layout": 3.898,
+        "mode": 0.871,
+        "pairing": 3.937,
+        "look": 1.559,
+        "style": 2.97,
+        "image_distance": 0.3761,
+        "structure_distance": 0.9697,
+        "same_mode_distance": 0.1047,
+        "mean": 3.423
+      },
+      "quality": {
+        "no_fix_findings": 1.0,
+        "fonts_installed": 1.0,
+        "contrast_pass": 1.0,
+        "min_ink_contrast": 9.25
+      },
+      "tiers": {
+        "safe": 48
+      }
+    },
+    "medium": {
+      "diversity": {
+        "palette": 5.194,
+        "layout": 4.155,
+        "mode": 0.871,
+        "pairing": 4.605,
+        "look": 1.52,
+        "style": 3.897,
+        "image_distance": 0.3665,
+        "structure_distance": 0.9676,
+        "same_mode_distance": 0.1102,
+        "mean": 3.706
+      },
+      "quality": {
+        "no_fix_findings": 1.0,
+        "fonts_installed": 1.0,
+        "contrast_pass": 1.0,
+        "min_ink_contrast": 7.46
+      },
+      "tiers": {
+        "avant-garde": 3,
+        "bold": 9,
+        "safe": 36
+      }
+    },
+    "high": {
+      "diversity": {
+        "palette": 5.194,
+        "layout": 4.207,
+        "mode": 0.871,
+        "pairing": 4.97,
+        "look": 1.653,
+        "style": 4.423,
+        "image_distance": 0.363,
+        "structure_distance": 0.9848,
+        "same_mode_distance": 0.1374,
+        "mean": 3.81
+      },
+      "quality": {
+        "no_fix_findings": 1.0,
+        "fonts_installed": 1.0,
+        "contrast_pass": 1.0,
+        "min_ink_contrast": 7.14
+      },
+      "tiers": {
+        "avant-garde": 7,
+        "bold": 19,
+        "safe": 22
+      }
+    }
+  },
+  "house_style_1": {
+    "low": {
+      "diversity": {
+        "palette": 3.83,
+        "layout": 3.657,
+        "mode": 0.98,
+        "pairing": 3.915,
+        "look": 0.995,
+        "style": 1.572,
+        "image_distance": 0.3721,
+        "structure_distance": 1.0056,
+        "same_mode_distance": 0.0563,
+        "mean": 3.095
+      },
+      "quality": {
+        "no_fix_findings": 1.0,
+        "fonts_installed": 1.0,
+        "contrast_pass": 1.0,
+        "min_ink_contrast": 10.76
+      }
+    },
+    "medium": {
+      "diversity": {
+        "palette": 3.83,
+        "layout": 3.657,
+        "mode": 0.98,
+        "pairing": 3.915,
+        "look": 1.933,
+        "style": 1.572,
+        "image_distance": 0.3716,
+        "structure_distance": 1.0054,
+        "same_mode_distance": 0.0571,
+        "mean": 3.095
+      },
+      "quality": {
+        "no_fix_findings": 1.0,
+        "fonts_installed": 1.0,
+        "contrast_pass": 1.0,
+        "min_ink_contrast": 10.76
+      }
+    },
+    "high": {
+      "diversity": {
+        "palette": 3.83,
+        "layout": 3.657,
+        "mode": 0.989,
+        "pairing": 3.915,
+        "look": 1.923,
+        "style": 1.579,
+        "image_distance": 0.3856,
+        "structure_distance": 1.0031,
+        "same_mode_distance": 0.0588,
+        "mean": 3.098
+      },
+      "quality": {
+        "no_fix_findings": 1.0,
+        "fonts_installed": 1.0,
+        "contrast_pass": 1.0,
+        "min_ink_contrast": 10.76
+      }
+    }
+  }
+}

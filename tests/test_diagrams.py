@@ -43,10 +43,6 @@ def lnodes(p, name="d"):
     return {k: L.LNode(k, w, h, *layout["shapes"].get(k, ["rect", 0.0]), x=x, y=y) for k, (x, y, w, h) in layout["nodes"].items()}
 
 
-# ---------------------------------------------------------------------------------------------
-# Text format
-
-
 def test_text_format_chains_labels_kinds_and_attributes():
     parsed = parse_text(
         "# a comment\n"
@@ -91,10 +87,6 @@ def test_text_format_errors_name_the_line():
         with pytest.raises(VixlError) as error:
             parse_text(bad)
         assert needle in str(error.value)
-
-
-# ---------------------------------------------------------------------------------------------
-# Layers
 
 
 def test_a_diagram_is_ordinary_named_layers_in_one_group():
@@ -211,10 +203,6 @@ def test_layer_budget_is_checked_up_front():
         p.apply([{"type": "diagram", "name": "d", "nodes": nodes, "edges": [[a, b] for a, b in zip(nodes, nodes[1:])]}])
     assert error.value.code == "resource_limit" and "split it into several diagrams" in str(error.value)
     assert p.state["layers"] == []
-
-
-# ---------------------------------------------------------------------------------------------
-# Layout engines
 
 
 GRAPH_EDGES = [("a", "b"), ("a", "c"), ("b", "d"), ("c", "d"), ("a", "e"), ("e", "f"), ("d", "f"), ("f", "g"), ("b", "g"),
@@ -396,6 +384,26 @@ def test_area_margin_and_contain():
     assert max(box[2] / 400, box[3] / 300) > 0.6, "contain scales a small diagram up to fill its area"
 
 
+def test_a_diagram_given_a_box_fills_it_and_runs_along_a_wide_band():
+    # A wide, short box (#351): the chain runs left to right and fills the band instead of shrinking to a sliver.
+    p = Project(1200, 1400, "white")
+    result = p.apply([{"type": "diagram-from-text", "name": "d", "text": "Research -> Design -> Build -> Launch",
+                       "x": 60, "y": 1060, "width": 1080, "height": 220}], detail="compact")
+    x, y, w, h = p.inspect()["layers"][0]["resolved_bounds"]
+    assert 60 <= x and x + w <= 1140 and 1060 <= y and y + h <= 1280
+    assert w > 0.9 * 1080, (x, y, w, h)
+    layout = p.state["diagrams"]["d"]["layout"]
+    assert layout["direction"] == "LR" and layout["font_size"] >= 18 and "warnings" not in result["diagram"]["d"]
+    # An explicit direction and fit are kept.
+    p.apply([{"type": "diagram-set", "name": "d", "direction": "TB", "fit": "shrink"}])
+    assert p.state["diagrams"]["d"]["layout"]["direction"] == "TB"
+    assert p.state["diagrams"]["d"]["layout"]["scale"] < 1
+    # Sized by the canvas alone, a diagram that fits keeps its natural size and direction.
+    q, _ = make("A -> B -> C", size=(1200, 900))
+    assert q.state["diagrams"]["d"]["layout"]["scale"] == 1.0
+    assert q.state["diagrams"]["d"]["layout"]["direction"] == "TB"
+
+
 def test_theme_colors_and_icons():
     p = Project(1000, 600, "white")
     p.apply([{"type": "diagram", "name": "d", "theme": "dark", "background": "#0f172a", "nodes": [{"id": "A", "icon": "bolt"}, "B"],
@@ -418,10 +426,6 @@ def test_light_fill_gets_dark_text_and_dark_fill_gets_light_text():
     fills = {"A": "#fde68a", "B": "#1e3a8a", "C": "#222222"}
     for node, fill in fills.items():
         assert contrast_ratio(parse(fill), parse(p.layer(f"d/{node}.label")["color"])) >= 4.5
-
-
-# ---------------------------------------------------------------------------------------------
-# Checks
 
 
 def issues(p, *checks):
@@ -457,6 +461,28 @@ def test_check_reports_edges_through_nodes():
     assert any("passes through" in i["message"] and "'B'" in i["message"] for i in found if i["severity"] == "error")
 
 
+CYCLE = "Idea -> Sketch -> Prototype -> Test\nTest -> Prototype: iterate\nTest -> Launch\nLaunch -> Measure -> Idea"
+
+
+@pytest.mark.parametrize("layout", ["radial", "mindmap", "tree", "layered"])
+def test_cycle_back_edges_go_around_nodes_and_beside_their_tree_edges(layout):
+    p = Project(1200, 900, "white")
+    p.apply({"type": "diagram-from-text", "name": "d", "text": CYCLE, "layout": layout})
+    found = [i["message"] for i in issues(p)]
+    assert not [m for m in found if "passes through" in m or "on top of each other" in m], found
+
+
+def test_check_reports_edges_drawn_on_top_of_each_other():
+    p = Project(1000, 800, "white")
+    p.apply([{"type": "diagram", "name": "d", "nodes": ["A", "B"], "edges": [["A", "B"], ["B", "A"]], "layout": "tree"}])
+    assert not [i for i in issues(p) if "on top of each other" in i["message"]]
+    record = p.state["diagrams"]["d"]["layout"]["edges"]
+    # the back edge laid over the forward one, as the tree layout drew it before (a two-headed arrow)
+    record["B->A"]["points"] = list(reversed(record["A->B"]["points"]))
+    found = [i for i in issues(p) if "on top of each other" in i["message"]]
+    assert found and found[0]["severity"] == "error" and "'A->B'" in found[0]["message"]
+
+
 def test_check_reports_unreadable_labels():
     p, _ = make("A -> B")
     p.apply([{"type": "text-set", "target": "d/A.label", "color": "#f4f4f4"}])
@@ -476,10 +502,6 @@ def test_diagram_checks_are_part_of_the_default_check_set():
     report = p.check()
     assert any(i["check"] == "diagram" for i in report["issues"])
     assert "diagram" in report["checked"]["checks"]
-
-
-# ---------------------------------------------------------------------------------------------
-# Pages, exports, interfaces
 
 
 def test_diagram_on_a_page_is_found_from_another_page():

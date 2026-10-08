@@ -88,6 +88,16 @@ def page_number(state, page):
     return state["pages"].index(page) + 1
 
 
+def numbering(state, page):
+    """``(page, pages)`` for the built-in variables. Hidden pages are left out of PDF, HTML and slideshow output, so
+    they are not counted; a hidden page itself reads the number the next shown page would have."""
+    shown = [record for record in state["pages"] if not record.get("hidden")]
+    if page is None:
+        return 0, len(shown)
+    before = state["pages"][:state["pages"].index(page)]
+    return sum(1 for record in before if not record.get("hidden")) + 1, len(shown)
+
+
 def set_builtins(state):
     """Keep ``${page}``, ``${pages}`` and ``${page_name}`` defined for the active page."""
     if not has_pages(state):
@@ -95,9 +105,10 @@ def set_builtins(state):
     page = active_page(state)
     variables = state.setdefault("variables", {})
     if page is None:
-        variables.update(page=0, pages=len(state["pages"]), page_name="")
+        variables.update(page=0, pages=numbering(state, None)[1], page_name="")
     else:
-        variables.update(page=page_number(state, page), pages=len(state["pages"]), page_name=page["name"])
+        number, count = numbering(state, page)
+        variables.update(page=number, pages=count, page_name=page["name"])
 
 
 def _store_active(state):
@@ -399,10 +410,6 @@ def compile_command(cmd, args):
     return {"type": "page", **data}
 
 
-# ---------------------------------------------------------------------------------------------
-# Views
-
-
 def page_content(project, page):
     """The scoped content of a page record (the live state for the active page)."""
     state = project.state
@@ -450,7 +457,8 @@ def page_project(project, page=None):
         view.state["canvas"] = {**view.state["canvas"], "background": background}
     variables = view.state.setdefault("variables", {})
     variables.update(record.get("variables", {}))
-    variables.update(page=page_number(state, record), pages=len(state["pages"]), page_name=record["name"])
+    number, count = numbering(state, record)
+    variables.update(page=number, pages=count, page_name=record["name"])
     from .render import LayerCache
 
     view._cache = project._cache if isinstance(project._cache, LayerCache) else LayerCache()
@@ -502,10 +510,6 @@ def summary(project):
                       "active": state.get("page") == MASTER_PREFIX + name}
                for name in state.get("masters", {})}
     return {"pages": pages, "masters": masters, "active": state.get("page")}
-
-
-# ---------------------------------------------------------------------------------------------
-# Validation
 
 
 def validate_pages(project, state):

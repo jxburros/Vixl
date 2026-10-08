@@ -15,7 +15,7 @@ with 0.20.0.
 > **The data is illustrative.** "Renewable share of electricity by country/region, 2015–2025"
 > numbers were invented to look plausible for a layout exploration. Do not cite them.
 
-Run from the repository root (needs network once for Google Fonts; 1 min 2 s with 0.20.0 on a
+Run from the repository root (needs network once for Google Fonts; 38 s with 0.21.0 on a
 shared 4-core container, now checking contrast on every text layer; ~8 min with 0.16.0, mostly the contrast check
 on 12 text layers):
 

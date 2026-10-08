@@ -9,7 +9,6 @@ from weakref import WeakKeyDictionary
 from .calls import current_client, note_document
 from .fileio import file_lock
 
-from .assets import add_encoded
 from .errors import VixlError, require
 from .model import Limits
 from . import __version__
@@ -140,37 +139,62 @@ class Session:
         self.path = path
         note_document(path)
 
-    def open(self, path):
+    def open(self, path, upgrade=None):
+        """Open a document. A document saved before the 0.21 rendering changes reports the affected
+        layers under ``upgrade``; ``upgrade="accept"`` records the new rendering as accepted and
+        ``"pin-fills"`` also restores the white fill of open shapes (see upgrade.py)."""
+        from .upgrade import report, upgrade as run_upgrade
+
+        require(upgrade in (None, "accept", "pin-fills"), "upgrade must be 'accept' or 'pin-fills'",
+                field="upgrade")
         with self._mutex:
             resolved = self.resolve(path)
             require(resolved.is_file(), f"Document does not exist: {path}", "not_found", field="path")
             with file_lock(str(resolved)):
-                stamp = self.stamp(resolved)
                 project = Project.load(resolved, limits=self.limits)
-                self._remember(resolved, project, stamp)
-            return self.summary(project)
+                done = None
+                if upgrade and project.upgraded_from:
+                    done = run_upgrade(project, pin_fills=upgrade == "pin-fills")
+                    project.save()
+                self._remember(resolved, project, self.stamp(resolved))
+            summary = self.summary(project)
+            if done:
+                summary["upgrade"] = done
+            elif project.upgraded_from and (notice := report(project.state, project.upgraded_from)):
+                summary["upgrade"] = notice
+            return summary
 
-    def create(self, path, width=None, height=None, background="transparent", *, size=None, dpi=None, orientation=None, bleed=False, seed=None, variety=None):
+    def create(self, path, width=None, height=None, background=None, *, size=None, purpose=None, dpi=None,
+               orientation=None, bleed=False, seed=None, variety=None, workspace_fonts=True):
+        """Create and save a document through ``creation.create``; the summary adds ``creation`` (size,
+        background and fonts chosen, and why) and ``workspace_fonts`` (the ``brand.json`` fonts embedded)."""
         with self._mutex:
             resolved = self.resolve(path)
             require(resolved.suffix.lower() == ".vixl", "Document path must end in .vixl", field="path")
-            require((size is None) != (width is None or height is None), "Provide width and height, or a named size", field="size")
+            from .creation import resolve_size
+
+            resolve_size(width, height, size, purpose)  # a bad request must not leave directories behind
             self.make_parent(resolved)
             with file_lock(str(resolved)):
                 require(not resolved.exists(), "Destination already exists; open it instead", field="path")
-                if size is not None:
-                    project = Project.sized(size, background, limits=self.limits, dpi=dpi, orientation=orientation, bleed=bleed)
-                else:
-                    require(not (orientation or bleed), "orientation and bleed need a named size", field="size")
-                    project = Project(width, height, background, limits=self.limits)
-                    if dpi:
-                        project.apply({"type": "canvas", "dpi": dpi})
-                from .variety import document_defaults
-
-                document_defaults(project, seed=seed, variety=variety, workspace=self.workspace)
+                report = {}
+                project = self.new_project(width, height, background, size=size, purpose=purpose, dpi=dpi,
+                                           orientation=orientation, bleed=bleed, seed=seed, variety=variety,
+                                           workspace_fonts=workspace_fonts, report=report)
                 project.save(resolved)
                 self._remember(resolved, project, self.stamp(resolved))
-            return self.summary(project)
+            return {**self.summary(project), **report}
+
+    def new_project(self, width=None, height=None, background=None, *, size=None, purpose=None, dpi=None,
+                    orientation=None, bleed=False, seed=None, variety=None, workspace_fonts=False, report=None):
+        """An unsaved document as ``create`` makes it (``creation.create``): from a named size, width/height,
+        a purpose or nothing (1080×1080), with the workspace's design defaults. ``report`` receives
+        ``creation`` and ``workspace_fonts``."""
+        from .creation import create
+
+        return create(width, height, background, size=size, purpose=purpose, dpi=dpi, orientation=orientation,
+                      bleed=bleed, seed=seed, variety=variety, workspace=self.workspace, remember=True,
+                      workspace_fonts=workspace_fonts, limits=self.limits, report=report)
 
     def make_parent(self, path):
         """Create the missing directories above ``path`` (always inside the workspace: ``resolve``
@@ -252,7 +276,48 @@ class Session:
         with self.project(document=document) as p:
             return p.inspect(target)
 
-    def apply(self, operations, dry_run=False, detail="compact", document=None):
+    def load_operations(self, path):
+        """Operations from a workspace JSON file (array, or an object with ``operations``) or a JSONL file
+        (one operation per line; a bad line is reported with its line number)."""
+        import json
+
+        from .assets import read_bounded
+
+        resolved = self.resolve(path)
+        require(resolved.is_file(), f"No operations file at {path!r}", "not_found", field="operations_path")
+        text = read_bounded(resolved, 8 * 1024 * 1024).decode("utf-8-sig", "replace")
+        if resolved.suffix.lower() in (".jsonl", ".ndjson"):
+            operations = []
+            for number, line in enumerate(text.splitlines(), 1):
+                if not line.strip():
+                    continue
+                try:
+                    item = json.loads(line)
+                except ValueError as exc:
+                    raise VixlError("invalid_json", f"{path} line {number}: {exc}", field="operations_path") from exc
+                require(isinstance(item, dict), f"{path} line {number}: expected one operation object per line",
+                        "invalid_json", field="operations_path")
+                operations.append(item)
+            return operations
+        try:
+            loaded = json.loads(text)
+        except ValueError as exc:
+            raise VixlError("invalid_json", f"{path}: {exc}", field="operations_path") from exc
+        return loaded
+
+    def apply(self, operations, dry_run=False, detail="compact", document=None, operations_path=None):
+        return self.apply_reviewed(operations, dry_run, detail, document, operations_path)[0]
+
+    def apply_reviewed(self, operations, dry_run=False, detail="compact", document=None, operations_path=None,
+                       check=None, preview=None, budget=None, suites=None):
+        """apply, plus the optional ``check`` findings, attached ``suites`` and ``preview`` PNG of the result
+        (checks.apply_reviewed):
+        returns ``(result, PNG bytes or None)``."""
+        from .checks import apply_reviewed
+
+        if operations_path is not None:
+            require(operations is None, "Pass operations or operations_path, not both", field="operations_path")
+            operations = self.load_operations(operations_path)
         if isinstance(operations, dict):
             single = "type" in operations or "operation" in operations
             operations = [operations] if single else operations.get("operations", [operations])
@@ -260,7 +325,8 @@ class Session:
         with self.project(write=not dry_run, document=document) as p:
             from .service_fonts import checker
 
-            return p.apply(operations, dry_run=dry_run, detail=detail, check=checker(p, service_check))
+            return apply_reviewed(p, operations, dry_run=dry_run, detail=detail, check=check, preview=preview,
+                                  validate=checker(p, service_check), budget=budget, suites=suites)
 
     def render(self, variables=None, artboard=None, comp=None, document=None):
         with self.project(document=document) as p:
@@ -282,42 +348,48 @@ class Session:
         with self.project(document=document) as p:
             return validate(p, profile, rules, **options)
 
-    def history(self, action="list", ref=None, count=1, document=None):
+    def history(self, action="list", ref=None, count=1, document=None, *, dry_run=False, fonts=True):
+        """Navigate history. ``compact`` squashes it to the current state and drops unused embedded
+        files (``dry_run`` reports what it would drop; ``fonts`` False keeps unused registered fonts)."""
         require(
             action
-            in ("list", "undo", "redo", "branch", "checkpoint", "checkout", "begin", "commit", "rollback"),
+            in ("list", "undo", "redo", "branch", "checkpoint", "checkout", "begin", "commit", "rollback", "compact"),
             "Unknown history action",
             field="action",
         )
-        with self.project(write=action != "list", document=document) as p:
+        with self.project(write=action != "list" and not (action == "compact" and dry_run), document=document) as p:
+            compacted = p.compact(fonts=fonts, dry_run=dry_run) if action == "compact" else None
+            steps = None
             if action in ("undo", "redo"):
-                getattr(p, action)(count)
+                steps = getattr(p, action)(count)
             elif action in ("branch", "checkpoint", "checkout"):
                 require(ref, f"History {action} requires ref", field="ref")
                 getattr(p, action)(ref)
             elif action in ("begin", "commit", "rollback"):
                 getattr(p, action)()
             return {
+                **({action: steps} if steps is not None else {}),
+                **({"notes": [f"{action} {count}: only {steps} step(s) were available"]}
+                   if steps is not None and steps < count else {}),
                 "head": p.head,
                 "branch": p.current_branch,
                 "branches": p.branches,
                 "checkpoints": p.checkpoints,
                 "nodes": [{k: v for k, v in node.items() if k not in ("state", "delta")} for node in p.nodes.values()],
+                **({"compact": compacted} if compacted else {}),
             }
 
-    def import_image(self, data, name="image", document=None):
+    def import_image(self, data=None, name="image", document=None, *, url=None, source=None, credit=None,
+                     license=None):
+        """Embed image bytes, or download ``url`` first (outside the document lock)."""
+        from .image_import import attribution, fetch_image, import_image
+
+        require((data is None) != (url is None), "Provide exactly one of image bytes or url", field="url")
+        attribution(credit, license)
+        if url is not None:
+            data, source = fetch_image(url, self.limits)
         with self.project(write=True, document=document) as p:
-            asset, _ = add_encoded(p, data)
-            p.apply({"type": "add", "asset": asset, "name": name})
-            layer = p.inspect(p.state["active_layer"])
-            return {
-                "id": layer["id"],
-                "name": layer["name"],
-                "width": layer["width"],
-                "height": layer["height"],
-                "bounds": layer["resolved_bounds"],
-                "asset": asset,
-            }
+            return import_image(p, data, name, source=source, credit=credit, license=license)
 
     def ai(self, command, args, document=None):
         from .ai import ai_command
@@ -349,24 +421,37 @@ def create_app(path, *, token=None, limits=None):
     @app.middleware("http")
     async def guard(request: Request, call_next):
         if request.url.path != "/view" and token and not hmac.compare_digest(request.headers.get("authorization", ""), "Bearer " + token):
-            return JSONResponse({"error": "unauthorized"}, status_code=401)
+            return JSONResponse({"error": "unauthorized"}, status_code=401, headers={"WWW-Authenticate": "Bearer"})
         origin = request.headers.get("origin")
         if origin and origin != str(request.base_url).rstrip("/"):
             return JSONResponse({"error": "cross_origin_forbidden"}, status_code=403)
         maximum = session.limits.max_asset_bytes if request.url.path in ("/assets", "/fonts", "/import") else 1024 * 1024
         if request.url.path == "/fonts":
             maximum = min(maximum, 16 * 1024 * 1024)
+        too_large = VixlError("resource_limit", f"The request body is larger than {maximum:,} bytes; send a smaller body "
+                              "(downsample images, split operations into several batches)",
+                              limit=maximum).as_dict()
+        declared = request.headers.get("content-length", "")
+        if declared.isdigit() and int(declared) > maximum:
+            # Refuse before reading: the body is never buffered.
+            return JSONResponse(too_large, status_code=413, headers={"Connection": "close"})
         body = bytearray()
         async for chunk in request.stream():
             body.extend(chunk)
             if len(body) > maximum:
-                return JSONResponse({"error": "resource_limit"}, status_code=413)
+                return JSONResponse(too_large, status_code=413, headers={"Connection": "close"})
         request._body = bytes(body)
         return await call_next(request)
 
     @app.exception_handler(VixlError)
     async def vixl_error(request: Request, exc: VixlError):
         return JSONResponse(exc.as_dict(), status_code=403 if exc.code == "forbidden" else 400)
+
+    @app.exception_handler(MemoryError)
+    async def out_of_memory(request: Request, exc: MemoryError):
+        from .errors import friendly
+
+        return JSONResponse(friendly(exc).as_dict(), status_code=400)
 
     @app.get("/view")
     def viewer():
@@ -473,7 +558,7 @@ def create_app(path, *, token=None, limits=None):
             "alpha",
             "presenter",
         }
-        require(set(body) <= allowed, "Unknown export option")
+        known_fields(body, allowed, "export")
         fmt = body.get("format", "PNG").upper()
         media = {
             "PNG": "image/png",
@@ -487,6 +572,7 @@ def create_app(path, *, token=None, limits=None):
             "PDF": "application/pdf",
             "ICO": "image/x-icon",
             "PPTX": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            "PSD": "image/vnd.adobe.photoshop",
         }
         require(fmt in media, "Unsupported export format")
         body = dict(body)
@@ -541,16 +627,22 @@ def create_app(path, *, token=None, limits=None):
 
     @app.post("/typefaces/pair")
     def typeface_pair(body: dict):
-        from .typefaces import pair_fonts
+        from .typefaces import pair_fonts, pair_workspace
 
+        if body.get("scope") == "workspace":
+            return pair_workspace(session.workspace, body.get("pairing", "random"), seed=body.get("seed"), mood=body.get("mood"), best_for=body.get("best_for"))
+        require(body.get("scope", "document") == "document", "scope must be document or workspace", field="scope")
         with session.project(write=True) as project:
             return pair_fonts(project, body.get("pairing", "random"), seed=body.get("seed"), mood=body.get("mood"), best_for=body.get("best_for"))
 
     @app.post("/typefaces/install")
     def typeface_install(body: dict):
-        from .typefaces import install_font
+        from .typefaces import install_font, install_workspace
 
         require(isinstance(body.get("family"), str), "family is required", field="family")
+        if body.get("scope") == "workspace":
+            return install_workspace(session.workspace, body["family"], body.get("weight", 400), body.get("italic", False), body.get("name"), body.get("role"))
+        require(body.get("scope", "document") == "document", "scope must be document or workspace", field="scope")
         with session.project(write=True) as project:
             return install_font(project, body["family"], body.get("weight", 400), body.get("italic", False), body.get("name"), body.get("role"))
 
@@ -601,7 +693,7 @@ def create_app(path, *, token=None, limits=None):
 
         from .timeline import export_timeline
 
-        allowed = {"format", "fps", "scale", "start", "end", "background", "columns", "quality", "colors"}
+        allowed = {"format", "fps", "scale", "start", "end", "background", "columns", "quality", "colors", "dither", "max_bytes", "poster", "sample_rate", "target_bytes", "preset"}
         require(set(body) <= allowed, f"Timeline export accepts {sorted(allowed)}", field="body")
         fmt = body.get("format", "gif")
         suffix = {"gif": ".gif", "apng": ".png", "webp": ".webp", "sheet": ".png", "frames": ".zip", "mp4": ".mp4", "webm": ".webm"}
@@ -635,9 +727,16 @@ def create_app(path, *, token=None, limits=None):
 
     @app.post("/operations")
     def operations(body: dict):
-        return session.apply(
-            body.get("operations"), bool(body.get("dry_run", False)), body.get("detail", "compact")
+        import base64
+
+        result, image = session.apply_reviewed(
+            body.get("operations"), bool(body.get("dry_run", False)), body.get("detail", "compact"),
+            operations_path=body.get("operations_path"), check=body.get("check"), preview=body.get("preview"),
+            suites=body.get("suites"),
         )
+        if image is not None:
+            result["preview_base64"] = base64.b64encode(image).decode()
+        return result
 
     @app.get("/render")
     def render():
@@ -669,9 +768,25 @@ def create_app(path, *, token=None, limits=None):
 
         options = fixed(body)
         allowed = {"variables", "max_width", "max_height", "max_bytes", "artboard", "comp", "region", "time", "proof", "simulate",
-                   "guides", "page", "values", "show_fields"}
-        require(not set(options) - allowed, f"Preview accepts {sorted(allowed)}", field="body")
+                   "guides", "page", "values", "show_fields", "isolate"}
+        known_fields(options, allowed, "preview")
         return Response(preview(session, **options), media_type="image/png")
+
+    @app.post("/compose")
+    def compose_piece(body: dict):
+        """vixl_compose as a dry run: this server serves one fixed document, so it builds, checks and previews the
+        piece without saving it (use MCP or the CLI to write it)."""
+        import base64
+        from .compose import compose
+
+        options = fixed(body)
+        require(not options.get("exports") and options.get("dry_run", True) is True
+                and not {"path", "operations_path"} & set(options),
+                "REST compose is a dry run (no path or exports); use vixl_compose or vixl compose to save", "forbidden")
+        result, image = compose(session, **{**options, "dry_run": True})
+        if image is not None:
+            result["preview_base64"] = base64.b64encode(image).decode()
+        return result
 
     @app.post("/compare")
     def compare_revisions(body: dict):
@@ -680,12 +795,14 @@ def create_app(path, *, token=None, limits=None):
         from .checks import compare
 
         options = fixed(body)
+        known_fields(options, {"before", "after", "mode", "isolate"}, "compare")
         with session.project() as p:
             image, summary = compare(
                 p,
                 options.get("before", "previous"),
                 options.get("after", "head"),
                 mode=options.get("mode", "side-by-side"),
+                isolate=options.get("isolate"),
             )
         stream = io.BytesIO()
         image.save(stream, format="PNG")
@@ -717,7 +834,7 @@ def create_app(path, *, token=None, limits=None):
 
         from .animation import VIDEO, animation_bytes, export_animation
 
-        allowed = {"format", "scale", "sampling", "colors", "columns", "animation", "quality"}
+        allowed = {"format", "scale", "sampling", "colors", "columns", "animation", "quality", "dither", "max_bytes"}
         require(set(body) <= allowed, f"Animation export accepts {sorted(allowed)}", field="body")
         if isinstance(body.get("scale"), float) and body["scale"].is_integer():
             body["scale"] = int(body["scale"])
@@ -747,7 +864,8 @@ def create_app(path, *, token=None, limits=None):
 
     @app.post("/history/{action}")
     def history_action(action: str, body: dict):
-        return session.history(action, body.get("ref"), body.get("count", 1))
+        return session.history(action, body.get("ref"), body.get("count", 1), dry_run=bool(body.get("dry_run", False)),
+                               fonts=bool(body.get("fonts", True)))
 
     @app.post("/import")
     async def import_document(request: Request, format: str, name: str = "import", page: int = 1, dpi: int = 144, svg_mode: str = "editable"):
@@ -760,10 +878,16 @@ def create_app(path, *, token=None, limits=None):
         return await run_in_threadpool(apply_import)
 
     @app.post("/assets")
-    async def assets(request: Request, name: str = "image"):
+    async def assets(request: Request, name: str = "image", url: str | None = None, credit: str | None = None,
+                     license: str | None = None):
+        from functools import partial
+
         from starlette.concurrency import run_in_threadpool
 
-        return await run_in_threadpool(session.import_image, await request.body(), name)
+        body = await request.body()
+        require(not (url and body), "Send image bytes or a url query parameter, not both", field="url")
+        return await run_in_threadpool(partial(session.import_image, None if url else body, name, url=url,
+                                               credit=credit, license=license))
 
     @app.post("/ai/{command}")
     def ai(command: str, body: dict):
@@ -834,7 +958,7 @@ def mcp_http_app(server, *, token=None):
 
     async def guard(request, call_next):
         if token and not hmac.compare_digest(request.headers.get("authorization", ""), "Bearer " + token):
-            return JSONResponse({"error": "unauthorized"}, status_code=401)
+            return JSONResponse({"error": "unauthorized"}, status_code=401, headers={"WWW-Authenticate": "Bearer"})
         origin = request.headers.get("origin")
         if origin and origin != str(request.base_url).rstrip("/"):
             return JSONResponse({"error": "cross_origin_forbidden"}, status_code=403)
@@ -852,3 +976,16 @@ def serve_mcp(server, host="127.0.0.1", port=8766, token=None):
     import uvicorn
     uvicorn.run(mcp_http_app(server, token=token), host=host, port=port)
 
+
+
+def known_fields(body, allowed, route):
+    """Refuse a REST body with fields the route does not read, naming them and the accepted ones."""
+    import difflib
+
+    unknown = sorted(set(body) - set(allowed))
+    if unknown:
+        close = {key: difflib.get_close_matches(key, sorted(allowed), 1, 0.6) for key in unknown}
+        hints = [f"{match[0]!r} instead of {key!r}" for key, match in close.items() if match]
+        raise VixlError("invalid_operation", f"Unknown {route} field(s) {', '.join(map(repr, unknown))}; accepted: "
+                        f"{', '.join(sorted(allowed))}" + (f". Did you mean {', '.join(hints)}?" if hints else ""),
+                        field=unknown[0], allowed=sorted(allowed))

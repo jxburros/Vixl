@@ -25,3 +25,5 @@ movie/.film-*/
 examples/output/
 !marketing/output/**/*.vixl
 
+tests/visual/_failures/
+!tests/fixtures/*.vixl

@@ -20,6 +20,13 @@
       "action": "informational",
       "layer": null,
       "message": "'s-glow' bleeds off the canvas edge (marked as an intentional crop)"
+    },
+    {
+      "check": "title_position",
+      "severity": "warning",
+      "action": "review",
+      "layer": null,
+      "message": "The title on page 'numbers' sits at y 499 where the other titles sit at 220"
     }
   ]
 }

@@ -10,6 +10,7 @@ and grid guides, so an agent can keep refining instead of starting from a fixed 
 """
 
 from copy import deepcopy
+from functools import lru_cache
 import math
 import random
 import re
@@ -17,8 +18,11 @@ import secrets
 
 from PIL import Image, ImageDraw
 
+from . import house_style
+from .craft import CORNERS, LINE_HEIGHT, base_size, corner_style, measure_chars, spacing_unit
 from .errors import VixlError, require
 from .safe_catalog import SAFE_PALETTES
+from .sizes import safe_sides
 
 LAYOUT_TYPES = ("layout-apply", "type-scale")
 RATIOS = {
@@ -30,9 +34,21 @@ RATIOS = {
     "golden": 1.618,
 }
 ROLE_STEPS = {"caption": -1, "body": 0, "lead": 1, "subhead": 2, "title": 3, "headline": 4, "display": 5}
-CONTENT_KEYS = ("title", "subtitle", "body", "label", "cta", "caption", "image", "items")
+# The line-height stage (craft.LINE_HEIGHT) each type-scale role sets in.
+ROLE_STAGES = {"caption": "caption", "body": "body", "lead": "lead", "subhead": "lead", "title": "heading",
+               "headline": "heading", "display": "display"}
+CONTENT_KEYS = ("title", "subtitle", "body", "label", "cta", "caption", "image", "images", "items")
+IMAGE_KEYS = ("image", "images")
 DENSITY_MARGIN = {"airy": 0.095, "balanced": 0.072, "dense": 0.05}
+# Rolls and the builder pick density from this one weighted pool: balanced twice as often.
+DENSITY_CHOICES = ("airy", "balanced", "balanced", "dense")
+# How density scales a rolled margin and the spacing unit (gaps), relative to balanced.
+DENSITY_SPACING = {"airy": 1.25, "balanced": 1.0, "dense": 0.75}
 ACCENTS = ("rule", "bar", "dot", "block", "outline", "none")
+# A stored design direction: these keys are layout-apply fields; the rest (except the skipped ones) are
+# its ``direction`` (margin, corner, look, style, motif, background treatment ...).
+DIRECTION_OPTIONS = ("palette", "mode", "type_scale", "density", "accent")
+DIRECTION_SKIP = ("layout", "layout_seed", "pairing", *DIRECTION_OPTIONS)
 PALETTE_POOL = tuple(SAFE_PALETTES)
 
 
@@ -55,15 +71,18 @@ class Builder:
         self.ops = []
         self.created = []
         self.prefix = op.get("prefix", "")
-        density = op.get("density") or self.rng.choice(["airy", "balanced", "balanced", "dense"])
+        density = op.get("density") or self.rng.choice(DENSITY_CHOICES)
         require(density in DENSITY_MARGIN, "density must be airy, balanced or dense")
         self.density = density
-        inset = c.get("bleed", 0) + c.get("safe", 0)
+        inset = c.get("bleed", 0) + max(safe_sides(c))
+        # The canvas safe area as (left, top, right, bottom) insets from the canvas edge.
+        self.safe = tuple(c.get("bleed", 0) + side for side in safe_sides(c))
         margin = max(short * DENSITY_MARGIN[density], inset + short * 0.02 if inset else 0)
         if "margin" in op.get("direction", {}):
             fraction = op["direction"]["margin"]
             require(isinstance(fraction, (int, float)) and 0.02 <= fraction <= 0.2, "direction.margin must be 0.02–0.2")
-            margin = max(inset, short * fraction)
+            # A rolled margin is the balanced value; density still widens or tightens it.
+            margin = max(inset, short * fraction * DENSITY_SPACING[density])
         if self.orientation == "wide":
             margin = max(short * 0.12, inset)
         self.m = round(margin)
@@ -79,22 +98,26 @@ class Builder:
         self.ratio_name = ratio if isinstance(ratio, str) else f"{ratio:g}"
         self.ratio = RATIOS.get(ratio, ratio) if isinstance(ratio, str) else ratio
         require(isinstance(self.ratio, (int, float)) and 1.05 <= self.ratio <= 2, "type_scale must be a ratio name or 1.05–2")
-        if self.dpi:
-            points = min(max(short / self.dpi * 1.25, 7.5), 60)
-            base = points * self.dpi / 72
-        else:
-            base = max(short * 0.026, 10)
-        base = op.get("base_size", base * fit)
+        base = op.get("base_size", base_size(c) * fit)
         if layout.get("safe") and layout.get("safe_composition"):
             base = op.get("base_size", max(short * 0.04, 14) * fit)
         require(isinstance(base, (int, float)) and 4 <= base <= 1000, "base_size must be 4–1000 pixels")
         self.base = base
         self.sizes = {role: max(6, round(base * self.ratio**step)) for role, step in ROLE_STEPS.items()}
-        if layout.get("safe_composition"):
-            thumbnail = 600 if self.W / self.H > 1.6 else 320
+        if layout.get("safe_composition") or op.get("direction"):
+            # Safe compositions and rolled directions keep minor text readable at thumbnail size, judged
+            # at the width the legibility check uses for this canvas.
+            named = c.get("size")
+            thumbnail = 600 if named in ("og-image", "x-post") or (not named and self.W / self.H > 1.6) else 320
             minimum = math.ceil(self.W / thumbnail * 10)
             self.sizes = {role: max(minimum, value) for role, value in self.sizes.items()}
-        self.unit = max(2, round(base / 2))
+        # The spacing unit: half the body size (craft spacing), scaled by density.
+        self.unit = spacing_unit(base * DENSITY_SPACING[density])
+        direction = op.get("direction") or {}
+        # Corners follow the rolled direction, else the document's stored direction, else the house corner.
+        self.corner = direction.get("corner") if direction.get("corner") in CORNERS else corner_style(project)
+        # A bold or expressive roll sets headlines large (#285); quiet rolls keep the measured headline.
+        self.large = direction.get("headline") == "large"
         # Color roles with contrast guarantees.
         self.colors = assign_roles(op, self.rng)
         self.contrast = round(contrast_ratio(parse(self.colors["ink"])[:3], parse(self.colors["background"])[:3]), 2)
@@ -113,6 +136,7 @@ class Builder:
         self.read = set()
         self.placeholders = {}
         self.image_blanks = []
+        self.blank_slots = {}
         typography = project.state.get("typography") or {}
         self.font = op.get("font") or typography.get("body")
         self.display_font = op.get("display_font") or typography.get("heading") or self.font
@@ -121,8 +145,6 @@ class Builder:
             self.font = resolve_font(project, self.font)[0]
         if self.display_font and self.display_font not in project.state.get("fonts", {}):
             self.display_font = resolve_font(project, self.display_font)[0]
-
-    # -- helpers ---------------------------------------------------------------------------
 
     def name(self, base):
         return f"{self.prefix}{base}"
@@ -133,7 +155,7 @@ class Builder:
             value = self.content[key]
             return value if value is not None else default
         slot = self.slots.get(key)
-        if key != "image" and slot and slot["blank"]:
+        if key not in IMAGE_KEYS and slot and slot["blank"]:
             if self.unfilled == "blank":
                 self.placeholders[key] = slot["placeholder"]
                 return slot["placeholder"]
@@ -166,14 +188,15 @@ class Builder:
         width = max(1, int(width))
         heavy = (role in ("display", "headline", "title")) if isinstance(role, str) else display
         font = self.display_font if heavy else self.font
+        # ``line`` is a line-height multiple; by default the craft table's value for the role's stage.
+        multiple = line if line is not None else LINE_HEIGHT[ROLE_STAGES.get(role, "heading" if heavy else "body")
+                                                             if isinstance(role, str) else "heading" if heavy else "body"]
 
         def spacing_for(s):
-            return round(s * (line if line is not None else (0.1 if heavy else 0.45)))
+            return self.leading(s, multiple, font)
 
         if heavy and isinstance(role, str):
-            # Keep a readable measure: a heavy line should hold ~10–14 characters, never one word.
-            chars = min(10 if role == "display" else 14, len(content))
-            size = min(size, max(6, int(width / (chars * 0.56))))
+            size = self.measure_cap(role, content, size, width)
         if heavy and max_height is None:
             max_height = self.ch * 0.55
 
@@ -182,7 +205,7 @@ class Builder:
             size = max(6, int(size * 0.92))
             w, h = self.measure(content, size, width, spacing_for(size), align, font)
         layer = self.name(name or role)
-        op = {"type": "text", "name": layer, "text": content, "size": size, "color": color, "align": align, "spacing": spacing_for(size), "x": round(x), "y": round(y)}
+        op = {"type": "text", "name": layer, "text": content, "size": size, "color": color, "align": align, "line_height": multiple, "x": round(x), "y": round(y)}
         if font:
             op["font"] = font
         self.add(op)
@@ -194,6 +217,32 @@ class Builder:
         self.created.append(layer)
         return (round(x), round(y), width, h)
 
+    def measure_cap(self, role, content, size, width):
+        """Keep a readable measure: a heavy line holds at least ~10 (display) or 14 (headings) characters,
+        never one word, so a headline is at most ``width / (chars × glyph width)``. Large headlines (bold
+        and expressive rolls) hold 8, so they can fill the canvas (craft ``headline_measure``)."""
+        chars, glyph = measure_chars("display" if role == "display" else "heading", self.large)
+        chars = min(chars, len(content))
+        return min(size, max(6, int(width / (chars * glyph))))
+
+    def leading(self, size, multiple, font=None):
+        """Pixel spacing that puts baselines ``multiple`` × ``size`` apart in ``font`` (see craft.spacing_for)."""
+        from .craft import spacing_for
+
+        return spacing_for(self.project, self.project.state.get("fonts", {}).get(font, font or "DejaVuSans.ttf"),
+                           size, multiple)
+
+    def measure_box(self, size, content, width, max_height, multiple=None):
+        """The size text() settles on for heavy ``content`` in a ``width`` × ``max_height`` box, and its extent."""
+        multiple = LINE_HEIGHT["heading"] if multiple is None else multiple
+        spacing = self.leading(size, multiple, self.display_font)
+        w, h = self.measure(content, size, width, spacing, "left", self.display_font)
+        while size > 6 and (w > width or h > max_height):
+            size = max(6, int(size * 0.92))
+            spacing = self.leading(size, multiple, self.display_font)
+            w, h = self.measure(content, size, width, spacing, "left", self.display_font)
+        return size, spacing, w, h
+
     def glyphs(self, size, content, cx, cy, name, color="@on-accent"):
         """Short centered text (initials, a glyph) as an unwrapped, auto-sized layer."""
         w, h = self.measure(content, size, None, 0, "left", self.display_font)
@@ -202,7 +251,10 @@ class Builder:
         self.created.append(layer)
         return (round(cx - w / 2), round(cy - h / 2), w, h)
 
-    def rect(self, name, x, y, w, h, fill="@accent", radius=0, opacity=None, stroke=None, stroke_width=None, shape=None):
+    def rect(self, name, x, y, w, h, fill="@accent", radius=0, opacity=None, stroke=None, stroke_width=None, shape=None,
+             decoration=False):
+        """A shape layer. ``decoration`` marks framing and accents (rails, panels, rules) as decoration, so
+        the safe-area check lets them run into the margin."""
         layer = self.name(name)
         op = {
             "type": "shape",
@@ -221,6 +273,8 @@ class Builder:
         self.add(op)
         if opacity is not None:
             self.add({"type": "opacity", "target": layer, "value": opacity})
+        if decoration:
+            self.add({"type": "layer-intent", "target": layer, "role": "decoration"})
         self.created.append(layer)
         return (round(x), round(y), max(1, round(w)), max(1, round(h)))
 
@@ -236,19 +290,25 @@ class Builder:
         self.add({"type": "solid", "name": self.name("background"), "color": fill, "width": self.W, "height": self.H, "x": 0, "y": 0})
         self.created.append(self.name("background"))
 
-    def image(self, name, x, y, w, h):
-        """A frame holding the supplied image asset, or an editable placeholder to replace."""
+    def image(self, name, x, y, w, h, asset=None, slot="image", bleed=False):
+        """A frame holding the supplied image asset, or an editable placeholder to replace. ``slot`` images
+        takes ``asset`` (one entry of the images list) instead of reading the image slot. ``bleed`` marks a
+        full-bleed picture as an intentional crop, so it may run past the safe area."""
         from .assets import add_image
         from .render import color as rgba
         from .design import resolve_color
 
         w, h = max(1, round(w)), max(1, round(h))
-        asset = self.get("image", None)
+        # A picture that reaches the canvas edge is full-bleed by design.
+        bleed = bleed or x <= 0 or y <= 0 or x + w >= self.W or y + h >= self.H
+        if slot == "image":
+            asset = self.get("image", None)
         layer = self.name(name)
         if asset:
             self.project.image(asset)
         else:
             self.image_blanks.append(layer)
+            self.blank_slots[layer] = slot
             scale = min(1, 800 / max(w, h))
             pw, ph = max(2, round(w * scale)), max(2, round(h * scale))
             top = rgba(resolve_color(self.colors["surface"], self.project.state))
@@ -265,6 +325,8 @@ class Builder:
             draw.polygon([(cx - s * 0.36, cy + s * 0.22), (cx - s * 0.1, cy - s * 0.12), (cx + s * 0.06, cy + s * 0.08), (cx + s * 0.16, cy - s * 0.02), (cx + s * 0.36, cy + s * 0.22)], fill=ink)
             asset = add_image(self.project, image)
         self.add({"type": "frame", "name": layer, "asset": asset, "x": round(x), "y": round(y), "width": w, "height": h, "fit": "fill"})
+        if bleed:
+            self.add({"type": "layer-intent", "target": layer, "allow_crop": True})
         self.created.append(layer)
         return (round(x), round(y), w, h)
 
@@ -280,8 +342,10 @@ class Builder:
             x = x - w / 2
         elif align == "right":
             x = x - w
-        style = self.layout.get("button") or self.rng.choice(["pill", "rounded", "square"])
-        radius = h / 2 if style == "pill" else round(size * 0.35) if style == "rounded" else 0
+        # A layout's own button style wins; otherwise the button takes the document corner style (#410).
+        style = self.layout.get("button")
+        radius = (h / 2 if style == "pill" else round(size * 0.35) if style == "rounded" else 0) if style \
+            else h * CORNERS[self.corner]
         self.rect(name + "-button", x, y, w, h, fill, radius=radius)
         self.add({"type": "text", "name": self.name(name), "text": label, "size": size, "color": ink, "x": round(x + pad_x), "y": round(y + pad_y), **({"font": self.font} if self.font else {})})
         self.created.append(self.name(name))
@@ -294,23 +358,23 @@ class Builder:
             length = max(size * 8, round(width * 0.18))
             ax = x if self.align == "left" else x + width - length if self.align == "right" else x + (width - length) / 2
             ay = y - size * 4 if near == "top" else y + height + size * 3
-            return self.rect("accent", ax, ay, length, size, "@accent")
+            return self.rect("accent", ax, ay, length, size, "@accent", decoration=True)
         if self.accent == "bar":
             bx = x - size * 5 if self.align != "right" else x + width + size * 4
-            return self.rect("accent", bx, y, size * 1.5, max(height, size * 6), "@accent")
+            return self.rect("accent", bx, y, size * 1.5, max(height, size * 6), "@accent", decoration=True)
         if self.accent == "dot":
             d = size * 4
             ax = x if self.align == "left" else x + width - d if self.align == "right" else x + (width - d) / 2
-            return self.ellipse("accent", ax, y - d * 2, d, d, "@accent")
+            return self.ellipse("accent", ax, y - d * 2, d, d, "@accent", decoration=True)
         if self.accent == "block":
             bw, bh = self.W * 0.22, self.H * 0.22
             corner = self.rng.choice(["tl", "tr", "bl", "br"])
             bx = -bw * 0.3 if corner in ("tl", "bl") else self.W - bw * 0.7
             by = -bh * 0.3 if corner in ("tl", "tr") else self.H - bh * 0.7
-            return self.rect("accent", bx, by, bw, bh, "@accent", opacity=0.9)
+            return self.rect("accent", bx, by, bw, bh, "@accent", opacity=0.9, decoration=True)
         if self.accent == "outline":
             inset = self.m * 0.45
-            return self.rect("accent", inset, inset, self.W - 2 * inset, self.H - 2 * inset, "transparent", stroke="@accent", stroke_width=size)
+            return self.rect("accent", inset, inset, self.W - 2 * inset, self.H - 2 * inset, "transparent", stroke="@accent", stroke_width=size, decoration=True)
         return None
 
     def stack(self, entries, x, y, width, gap=None, align=None):
@@ -342,9 +406,10 @@ class Builder:
                 size = self.sizes[role]
                 heavy = role in ("display", "headline", "title")
                 if heavy:
-                    chars = min(10 if role == "display" else 14, len(text))
-                    size = min(size, max(6, int(width / (chars * 0.56))))
-                _, h = self.measure(text, size, width, round(size * (0.1 if heavy else 0.45)), self.align)
+                    size = self.measure_cap(role, text, size, width)
+                _, h = self.measure(text, size, width, self.leading(size, LINE_HEIGHT[ROLE_STAGES[role]],
+                                                                    self.display_font if heavy else self.font),
+                                    self.align, self.display_font if heavy else self.font)
                 if heavy:
                     h = min(h, self.ch * 0.55)
                 total += h + gap
@@ -353,10 +418,6 @@ class Builder:
     def label_text(self):
         label = self.get("label")
         return label.upper() if label and self.op.get("uppercase_labels", True) else label
-
-
-# ---------------------------------------------------------------------------------------------
-# Color roles
 
 
 ROLES = ("background", "surface", "ink", "muted", "accent", "accent-text", "on-accent")
@@ -387,6 +448,13 @@ def assign_roles(op, rng):
     else:
         mode = op.get("mode") or rng.choice(["light", "light", "dark"])
     require(mode in ("light", "dark"), "mode must be light or dark")
+    # A background given as a role is what the other roles must read on, so the mode follows it.
+    given_background = (op.get("colors") or {}).get("background") if isinstance(op.get("colors"), dict) else None
+    if given_background is not None:
+        given = parse(given_background)
+        if given[3] > 0:
+            mode = "dark" if relative_luminance(given[:3]) < 0.18 else "light"
+            mode_source = "taken from colors.background"
     background = parsed[0] if keep_order else by_light[-1] if mode == "light" else by_light[0]
     ink = by_light[0] if mode == "light" else by_light[-1]
     label = palette if isinstance(palette, str) else "custom"
@@ -418,8 +486,10 @@ def assign_roles(op, rng):
             background = mix(background, white, 0.82)
         if mode == "dark" and relative_luminance(background[:3]) > 0.08:
             background = mix(background, black, 0.75)
+    if given_background is not None and parse(given_background)[3] > 0:
+        background = parse(given_background)[:3] + (1.0,)
     for step in range(12):
-        if contrast_ratio(ink[:3], background[:3]) >= 7.1:
+        if contrast_ratio(ink[:3], background[:3]) >= house_style.craft("contrast")["ink_target"]:
             break
         ink = mix(ink, extreme, 0.25)
 
@@ -432,13 +502,15 @@ def assign_roles(op, rng):
     else:
         candidates = [c for c in parsed if c not in (background, ink)] or [ink]
         accent = max(candidates, key=lambda c: chroma(c) + rng.random() * 0.02)
+        surface = mix(background, ink, 0.07 if mode == "light" else 0.12)
+        # Accent fills and large accent type sit on the background and on surface panels and gradients.
+        fill = house_style.craft("contrast")["fill"]
         for step in range(12):
-            if contrast_ratio(accent[:3], background[:3]) >= 3:
+            if min(contrast_ratio(accent[:3], background[:3]), contrast_ratio(accent[:3], surface[:3])) >= fill:
                 break
             accent = mix(accent, extreme, 0.18)
-        surface = mix(background, ink, 0.07 if mode == "light" else 0.12)
 
-    def readable(c, target=4.6):  # margin for hex rounding
+    def readable(c, target=house_style.craft("contrast")["secondary_text_target"]):  # margin for hex rounding
         return min(contrast_ratio(c[:3], background[:3]), contrast_ratio(c[:3], surface[:3])) >= target
 
     # Secondary and small accent text must read on the background and on surface panels (4.5:1);
@@ -478,8 +550,7 @@ def assign_roles(op, rng):
     return roles
 
 
-# ---------------------------------------------------------------------------------------------
-# Layouts. Each receives a Builder; geometry is derived from the canvas, never fixed pixels.
+# Each layout receives a Builder; geometry is derived from the canvas, never fixed pixels.
 
 
 def _hero_statement(b):
@@ -599,7 +670,7 @@ def _asymmetric_balance(b):
     cx = b.W * (0.78 if left else 0.22)
     cy = b.H * b.rng.choice([0.22, 0.3])
     shape = b.rng.choice(["ellipse", "rectangle", "ellipse"])
-    b.rect("counterweight", cx - d / 2, cy - d / 2, d, d, "@accent", shape=shape, opacity=0.92)
+    b.rect("counterweight", cx - d / 2, cy - d / 2, d, d, "@accent", shape=shape, opacity=0.92, decoration=True)
     gap = b.unit * 4
     beside = (b.R - (cx + d / 2 + gap)) if not left else ((cx - d / 2 - gap) - b.L)
     below = b.B - (cy + d / 2 + gap)
@@ -661,8 +732,10 @@ def _rule_of_thirds(b):
     b.background()
     ix = b.rng.choice([1, 2])
     iy = b.rng.choice([1, 2])
-    fx, fy = b.W * ix / 3, b.H * iy / 3
     d = min(b.W, b.H) * 0.42
+    left, top, right, bottom = b.safe
+    fx = min(max(b.W * ix / 3, left + d / 2), b.W - right - d / 2)
+    fy = min(max(b.H * iy / 3, top + d / 2), b.H - bottom - d / 2)
     if b.get("image") or b.rng.random() < 0.6:
         b.image("image", fx - d / 2, fy - d / 2, d, d)
     else:
@@ -687,9 +760,14 @@ def _golden_section(b):
         text_box = (big, 0, b.W - big, b.H) if image_box[0] == 0 else (0, 0, b.W - big, b.H)
     else:
         big = round(b.H * phi)
+        # The copy below the picture stays inside the canvas: the picture gives up height when it must.
+        entries = [("caption", b.label_text(), "label"), ("title", b.get("title"), "headline"),
+                   ("body", b.get("subtitle") or b.get("body"), "body"), ("button", b.get("cta"), "cta")]
+        needed = b.stack_height(entries, b.W - 2 * b.m) + 2 * b.m + max(0, b.safe[3] - b.m)
+        big = max(round(b.H * 0.4), min(big, b.H - needed))
         image_box = (0, 0, b.W, big)
         text_box = (0, big, b.W, b.H - big)
-    b.image("image", *image_box)
+    b.image("image", *image_box, bleed=True)
     line = max(2, round(b.unit / 2))
     if text_box[2] < b.W:
         edge = text_box[0] if text_box[0] else text_box[2] - line
@@ -711,7 +789,7 @@ def _big_number(b):
     y += h + b.unit * 2
     title = b.get("title")
     size = round(min(b.ch * 0.4, width / max(len(title), 1) * 1.55))
-    _, _, _, h = b.text(size, title, b.L, y, width, name="number", align=align, color="@accent", max_height=b.ch * 0.5, display=True, line=0.0)
+    _, _, _, h = b.text(size, title, b.L, y, width, name="number", align=align, color="@accent", max_height=b.ch * 0.5, display=True, line=LINE_HEIGHT["display"])
     y += h + b.unit * 3
     b.accent_device(b.L, y + b.unit * 4, width, 0)
     y += b.unit * 4
@@ -728,9 +806,9 @@ def _quote_card(b):
     mark = round(min(b.sizes["display"] * 2.6, b.ch * 0.3))
     entries_h = b.stack_height([("title", b.get("title"), "quote"), ("body", b.get("subtitle"), "attribution")], width) + mark * 0.55
     y = b.T + max(0, (b.ch - entries_h) * 0.45)
-    b.text(mark, "“", x if align == "left" else b.W / 2 - mark * 0.3, y - mark * 0.25, mark, name="quote-mark", color="@accent", align="left", display=True, line=0)
+    b.text(mark, "“", x if align == "left" else b.W / 2 - mark * 0.3, y - mark * 0.25, mark, name="quote-mark", color="@accent", align="left", display=True, line=LINE_HEIGHT["display"])
     y += mark * 0.55
-    _, _, _, h = b.text("title", b.get("title"), x, y, width, name="quote", align=align, max_height=b.B - y - b.sizes["body"] * 3, line=0.25)
+    _, _, _, h = b.text("title", b.get("title"), x, y, width, name="quote", align=align, max_height=b.B - y - b.sizes["body"] * 3, line=LINE_HEIGHT["lead"])
     y += h + b.unit * 4
     b.text("body", ("— " + b.get("subtitle")) if b.get("subtitle") and not b.get("subtitle").startswith("—") else b.get("subtitle"), x, y, width, name="attribution", align=align, color="@muted")
 
@@ -758,7 +836,11 @@ def _diagonal_band(b):
     width = b.cw * 0.9
     _, _, _, h = b.text("headline", b.get("title"), b.L, b.T + b.ch * 0.05, width, name="headline", align="left", max_height=b.ch * 0.32)
     if b.get("subtitle"):
-        sw = b.W * 0.8
+        sw = min(b.W * 0.8, b.cw)
+        # On wide canvases a long line tilted at the band's angle would leave the safe area: tilt less.
+        limit = math.degrees(math.asin(min(1, b.ch * 0.3 / sw)))
+        angle = math.copysign(min(abs(angle), limit), angle)
+        next(op for op in reversed(b.ops) if op["type"] == "rotate" and op["target"] == b.name("band"))["value"] = angle
         _, _, _, sh = b.text("subhead", b.get("subtitle"), (b.W - sw) / 2, b.H * 0.52, sw, name="subtitle", color="@on-accent", align="center", max_height=band_h * 0.6)
         # Center the text block on the band so both rotate about the same point.
         next(op for op in reversed(b.ops) if op.get("name") == b.name("subtitle") and op["type"] == "text")["y"] = round(b.H * 0.52 - sh / 2)
@@ -849,17 +931,20 @@ def _event_details(b, grow):
     y = b.T
     _, _, _, h = b.text(role("headline"), b.get("title"), b.L, y, b.cw, name="headline", align="left", max_height=b.ch * 0.38, display=True)
     y += h + b.unit * 4 * grow
+    headline_size = next(op["size"] for op in reversed(b.ops) if op.get("type") == "text")
     date = b.get("label")
     if date:
         pad = b.unit * 3 * min(grow, 1.5)
         bw = b.cw * (0.5 if b.orientation != "tall" else 0.8)
         # The block widens to hold the date on one line rather than wrapping it.
-        size = round(b.sizes["title"] * grow)
+        # The event name stays the dominant element: the date is at most ~60% of the headline as placed.
+        size = min(round(b.sizes["title"] * grow), round(headline_size * 0.6))
+        size = max(size, 6)
         bw = min(b.cw, max(bw, b.measure(date, size, None, round(size * 0.1), "left", b.display_font)[0] + pad * 2 + size * 0.3))
         b.rect("date-block", b.L, y, bw, 1, "@accent")
         block = b.ops[-1]
         # Size the block to the text as placed (heavy type may shrink to fit), not the nominal size.
-        _, _, _, th = b.text(role("title"), date, b.L + pad, y + pad, bw - pad * 2, name="date", color="@on-accent", align="left", display=True)
+        _, _, _, th = b.text(size, date, b.L + pad, y + pad, bw - pad * 2, name="date", color="@on-accent", align="left", display=True)
         block["height"] = round(th + pad * 2)
         y += th + pad * 2 + b.unit * 4 * grow
     details = [line for line in str(b.get("body")).split("\n") if line.strip()]
@@ -880,7 +965,8 @@ def _banner(b):
         cta_w = tw + b.sizes["body"] * 2.2
     text_w = b.cw - cta_w - b.unit * 6
     title_size = b.sizes["title"]
-    _, th = b.measure(b.get("title"), title_size, text_w, round(title_size * 0.1))
+    _, th = b.measure(b.get("title"), title_size, text_w, b.leading(title_size, LINE_HEIGHT["heading"], b.display_font),
+                      "left", b.display_font)
     entries = [("title", b.get("title"), "headline"), ("body", b.get("subtitle"), "subtitle")]
     height = b.stack_height(entries, text_w, b.unit * 1.5)
     y = b.T + max(0, (b.ch - height) / 2)
@@ -924,7 +1010,8 @@ def _business_card(b):
     y = b.T
     y = b.stack(entries, b.L, y, b.cw - mark - b.unit * 2, gap=b.unit, align="left")
     contact = str(b.get("body")).replace(" | ", "\n")
-    _, ch = b.measure(contact, b.sizes["caption"], b.cw, round(b.sizes["caption"] * 0.45))
+    _, ch = b.measure(contact, b.sizes["caption"], b.cw, b.leading(b.sizes["caption"], LINE_HEIGHT["caption"], b.font),
+                      "left", b.font)
     b.text("caption", contact, b.L, b.B - ch, b.cw, name="contact", align="left", color="@muted")
 
 
@@ -1012,9 +1099,9 @@ def _logo_stacked(b):
     y = (b.H - total) / 2
     _mark(b, mark, (b.W - mark) / 2, y)
     y += mark + gap
-    b.text(name_size, b.get("title"), b.L, y, b.cw, name="wordmark", align="center", display=True, line=0)
+    b.text(name_size, b.get("title"), b.L, y, b.cw, name="wordmark", align="center", display=True, line=LINE_HEIGHT["display"])
     if tagline:
-        b.text(tag_size, tagline, b.L, y + nh + b.unit * 2, b.cw, name="tagline", color="@muted", align="center", line=0)
+        b.text(tag_size, tagline, b.L, y + nh + b.unit * 2, b.cw, name="tagline", color="@muted", align="center", line=LINE_HEIGHT["caption"])
 
 
 def _emblem(b):
@@ -1065,6 +1152,10 @@ def _app_icon(b):
     glyph = b.get("label") or initials_of(b.get("title"))[:1]
     if glyph:
         size = round(keyline * (0.82 if len(glyph) == 1 else 0.5))
+        # A longer label shrinks to the keyline, so it stays on the icon and inside the safe area.
+        room = min(keyline, b.W - b.safe[0] - b.safe[2], b.H - b.safe[1] - b.safe[3])
+        while size > 6 and max(b.measure(glyph, size, None, 0, "left", b.display_font)) > room:
+            size = max(6, int(size * 0.92))
         b.glyphs(size, glyph, b.W / 2, b.H / 2, "glyph")
     else:
         b.ellipse("glyph", (b.W - keyline * 0.6) / 2, (b.H - keyline * 0.6) / 2, keyline * 0.6, keyline * 0.6, "@on-accent")
@@ -1080,9 +1171,9 @@ def _thumbnail_bold(b):
     size = round(b.H * 0.2)
     words = b.get("title")
     reserve = b.sizes["subhead"] * 2.4 if b.get("label") else 0
-    _, _, w, h = b.text(size, words, x, b.T, width, name="headline", align="left", max_height=max(b.unit * 4, b.ch * 0.78 - reserve), display=True, line=0.02)
+    _, _, w, h = b.text(size, words, x, b.T, width, name="headline", align="left", max_height=max(b.unit * 4, b.ch * 0.78 - reserve), display=True, line=LINE_HEIGHT["display"])
     if b.accent in ("block", "bar", "rule"):
-        b.rect("highlight", x - b.unit, b.T + h + b.unit * 2, width * 0.6, max(4, round(size * 0.18)), "@accent")
+        b.rect("highlight", x - b.unit, b.T + h + b.unit * 2, width * 0.6, max(4, round(size * 0.18)), "@accent", decoration=True)
     if b.get("label"):
         b.button(b.get("label"), x, b.B - b.sizes["subhead"] * 1.8, align="left")
 
@@ -1090,7 +1181,7 @@ def _thumbnail_bold(b):
 def _story_vertical(b):
     b.background()
     c = b.project.state["canvas"]
-    safe = max(c.get("safe", 0), round(b.H * 0.12))
+    safe = max(safe_sides(c)[1], safe_sides(c)[3], round(b.H * 0.12))
     top, bottom = safe, b.H - safe
     _, _, _, h = b.text("caption", b.label_text(), b.L, top, b.cw, name="label", color="@accent-text", align=b.align)
     y = top + h + b.unit * 3
@@ -1136,7 +1227,7 @@ def _price_list(b):
 
 
 def _photo_caption(b):
-    b.image("image", 0, 0, b.W, b.H)
+    b.image("image", 0, 0, b.W, b.H, bleed=True)
     entries = [("caption", b.label_text(), "label"), ("headline", b.get("title"), "headline"), ("body", b.get("subtitle"), "subtitle")]
     width = b.cw * 0.86
     height = b.stack_height(entries, width)
@@ -1194,6 +1285,123 @@ def _bento_grid(b):
     if b.get("cta"):
         b.button(b.get("cta"), info[0] + info[2] - pad, info[1] + info[3] - pad - b.sizes["body"] * 2.3, align="right")
 
+# Memes: image slots and caption rules only (no stock images). Captions are white with a black stroke and set
+# uppercase (uppercase=false keeps the case); they shrink to fit their box. Fonts follow the document typography
+# or display_font: an Impact-style OFL face such as Anton (vixl_font_install) suits them.
+
+
+def _meme_text(b, text, x, y, width, max_height, name, anchor="top", stroked=True, color="#ffffff"):
+    if not text:
+        return (x, y, 0, 0)
+    if stroked and b.op.get("uppercase", True):
+        text = text.upper()
+    # The picture bleeds, but the caption stays inside the canvas safe area.
+    left, top, right, bottom = b.safe
+    x0, x1 = max(x, left), min(x + width, b.W - right)
+    if x1 - x0 >= width * 0.5:
+        x, width = x0, x1 - x0
+    y = min(y, b.H - bottom) if anchor == "bottom" else max(y, top)
+    size = max(8, round(min(b.W, b.H) * 0.11))
+    # Never break a word: shrink until the longest word fits the line.
+    longest = max(text.split(), key=len)
+    while size > 8 and b.measure(longest, size, None, 0, "left", b.display_font)[0] > width:
+        size = max(8, int(size * 0.92))
+    x, top, w, h = b.text(size, text, x, y, width, name=name, align="center", color=color, max_height=max_height,
+                          display=True, line=LINE_HEIGHT["display"])
+    layer = b.name(name)
+    op = next(op for op in b.ops if op.get("name") == layer and op["type"] == "text")
+    if stroked:
+        # A stroke style (outside the glyphs) is the outline the contrast check reads text through.
+        b.add({"type": "layer-style", "target": layer, "name": "stroke",
+               "settings": {"color": "#000000", "width": max(3, round(op["size"] * 0.07))}})
+    if anchor == "bottom":
+        op["y"] = top = round(y - h)
+    return (x, top, w, h)
+
+
+def _meme_lines(b, count):
+    lines = [line.strip() for line in str(b.get("items") or "").splitlines() if line.strip()]
+    return (lines + [""] * count)[:count]
+
+
+def _meme_images(b, count):
+    images = b.get("images", None) or []
+    require(isinstance(images, list) and all(isinstance(item, str) for item in images) and len(images) <= count,
+            f"images is a list of up to {count} asset ids", field="images")
+    return images + [None] * (count - len(images))
+
+
+def _meme_top_bottom(b):
+    b.background("#000000")
+    b.image("image", 0, 0, b.W, b.H, bleed=True)
+    pad = round(min(b.W, b.H) * 0.04)
+    _meme_text(b, b.get("title"), pad, pad, b.W - 2 * pad, b.H * 0.3, "top-text")
+    _meme_text(b, b.get("caption"), pad, b.H - pad, b.W - 2 * pad, b.H * 0.3, "bottom-text", anchor="bottom")
+
+
+def _meme_caption_above(b):
+    pad = max(round(min(b.W, b.H) * 0.05), *b.safe)
+    b.background("#ffffff")
+    size = max(8, round(min(b.W, b.H) * 0.065))
+    _, _, _, h = b.text(size, b.get("title"), pad, pad, b.W - 2 * pad, name="caption", align="left", color="#111111",
+                        max_height=b.H * 0.3, display=True, line=LINE_HEIGHT["heading"])
+    band = max(round(b.H * 0.16), h + 2 * pad)
+    b.image("image", 0, band, b.W, b.H - band, bleed=True)
+
+
+def _meme_comparison(b):
+    b.background("#ffffff")
+    images, lines = _meme_images(b, 2), _meme_lines(b, 2)
+    split = round(b.W * 0.5)
+    pad = max(round(min(b.W, b.H) * 0.04), *b.safe)
+    for index in range(2):
+        top, height = round(b.H * index / 2), round(b.H / 2)
+        b.image(f"panel-{index + 1}", 0, top, split, height, asset=images[index], slot="images", bleed=True)
+        text = lines[index]
+        if not text:
+            continue
+        size = max(8, round(min(b.W, b.H) * 0.07))
+        size, _, _, h = b.measure_box(size, text, b.W - split - 2 * pad, height - 2 * pad)
+        b.text(size, text, split + pad, top + max(pad, (height - h) / 2), b.W - split - 2 * pad,
+               name=f"label-{index + 1}", align="left", color="#111111", max_height=height - 2 * pad, display=True,
+               line=LINE_HEIGHT["heading"])
+    b.rect("divider", 0, round(b.H / 2) - 1, b.W, 2, "#000000")
+    b.add({"type": "layer-intent", "target": b.name("divider"), "allow_crop": True})
+
+
+def _meme_labelled(b):
+    b.background("#000000")
+    b.image("image", 0, 0, b.W, b.H, bleed=True)
+    lines = [line for line in _meme_lines(b, 6) if line]
+    left, _, right, _ = b.safe
+    width = (b.W - left - right) / max(1, len(lines))
+    for index, text in enumerate(lines):
+        _meme_text(b, text, left + index * width + width * 0.06, b.H * 0.62, width * 0.88, b.H * 0.25,
+                   f"label-{index + 1}")
+
+
+def _meme_reaction(b):
+    b.background("#000000")
+    left, top, right, bottom = b.safe
+    pad = max(round(min(b.W, b.H) * 0.05), left, right)
+    reserve = max(round(b.H * 0.22), bottom + round(b.H * 0.1))
+    b.image("image", 0, 0, b.W, b.H - reserve, bleed=True)
+    _meme_text(b, b.get("caption"), pad, b.H - reserve + pad / 2, b.W - 2 * pad,
+               reserve - pad / 2 - max(pad / 2, bottom), "caption", stroked=False)
+
+
+def _meme_four_panel(b):
+    b.background("#000000")
+    images, lines = _meme_images(b, 4), _meme_lines(b, 4)
+    gutter = max(2, round(min(b.W, b.H) * 0.008))
+    w, h = (b.W - gutter) / 2, (b.H - gutter) / 2
+    pad = round(min(w, h) * 0.05)
+    for index in range(4):
+        x, y = (index % 2) * (w + gutter), (index // 2) * (h + gutter)
+        b.image(f"panel-{index + 1}", x, y, w, h, asset=images[index], slot="images", bleed=True)
+        _meme_text(b, lines[index], x + pad, y + h - pad, w - 2 * pad, h * 0.4, f"caption-{index + 1}", anchor="bottom")
+
+
 
 def _layout(fn, description, principles, best_for, examples, **extra):
     """``examples`` show the kind and length of copy each slot expects; they are never rendered."""
@@ -1213,7 +1421,11 @@ SLOT_TEXT = {
     "cta": ("Action", "A two- or three-word call to action, shown as a button"),
     "caption": ("Caption", "A small supporting note"),
     "items": ("Items", "One item per line"),
-    "image": ("Image", "An embedded image asset id (vixl_import_image returns one). Left empty, a placeholder frame is drawn; "
+    "images": ("Images", "A list of embedded image asset ids, one per panel in reading order (vixl_import_image returns "
+               "them; vixl_compose also takes workspace paths and https URLs). Panels left empty get placeholder frames "
+               "to fill later"),
+    "image": ("Image", "An embedded image asset id (vixl_import_image returns one; vixl_compose also takes a workspace "
+              "path or https URL). Left empty, a placeholder frame is drawn; "
               "fill it later by importing a file, placing a saved resource, drawing it with shape/organic/paint operations, "
               "or generating it with an AI tool: see next_steps in the layout-apply result"),
 }
@@ -1243,8 +1455,21 @@ SLOT_OVERRIDES = {
     "z-pattern": {"caption": ("Note", "A small note such as a deadline")},
     "editorial-grid": {"caption": ("Image caption", "Describes the image")},
     "diagonal-band": {"subtitle": ("Band text", "The offer or line set on the band")},
+    "meme-top-bottom": {"title": ("Top text", "The setup, a few words"), "caption": ("Bottom text", "The punchline"),
+                        "image": ("Image", "The picture: an asset you have the rights to use")},
+    "meme-caption-above": {"title": ("Caption", "One or two sentences set above the picture")},
+    "meme-comparison": {"items": ("Panel labels", "One per line: the rejected option, then the preferred one",
+                                  "[Rejected option]\n[Preferred option]"),
+                        "images": ("Panel images", "Two asset ids: the reaction to each option")},
+    "meme-labelled": {"items": ("Labels", "One label per line (up to 6); move each label layer onto its object",
+                                "[Label]\n[Label]\n[Label]")},
+    "meme-reaction": {"caption": ("Caption", "What the reaction answers, in a short line")},
+    "meme-four-panel": {"items": ("Panel captions", "One caption per line, four panels in reading order",
+                                  "[Caption]\n[Caption]\n[Caption]\n[Caption]"),
+                        "images": ("Panel images", "Up to four asset ids in reading order")},
 }
-IMAGE_LAYOUTS = {"bento-grid", "editorial-grid", "golden-section", "photo-caption", "product-card", "rule-of-thirds", "slide-content", "split-screen", "story-vertical", "thumbnail-bold"}
+MULTI_IMAGE_LAYOUTS = {"meme-comparison", "meme-four-panel"}
+IMAGE_LAYOUTS = {"meme-top-bottom", "meme-caption-above", "meme-labelled", "meme-reaction", "bento-grid", "editorial-grid", "golden-section", "photo-caption", "product-card", "rule-of-thirds", "slide-content", "split-screen", "story-vertical", "thumbnail-bold"}
 OPTIONAL_SLOTS = {"emblem": {"label"}, "monogram": {"label"}, "app-icon": {"label"}, "letterhead": {"body"}, "logo-horizontal": {"subtitle"}, "logo-stacked": {"subtitle"}}
 
 # Every slot each builder can read (some only on certain canvases); used for discovery only —
@@ -1282,6 +1507,12 @@ OPTIONAL_READS = {
     "thumbnail-bold": ('image', 'label', 'title'),
     "typographic-poster": ('caption', 'label', 'subtitle', 'title'),
     "z-pattern": ('body', 'caption', 'cta', 'label', 'subtitle', 'title'),
+    "meme-top-bottom": ('caption', 'image', 'title'),
+    "meme-caption-above": ('image', 'title'),
+    "meme-comparison": ('images', 'items'),
+    "meme-labelled": ('image', 'items'),
+    "meme-reaction": ('caption', 'image'),
+    "meme-four-panel": ('images', 'items'),
 }
 
 
@@ -1290,11 +1521,12 @@ def slot_spec(layout):
     name = next((key for key, value in LAYOUTS.items() if value is layout), None)
     overrides = SLOT_OVERRIDES.get(name, {})
     examples = layout["examples"]
-    keys = [k for k in CONTENT_KEYS if k in examples or k in overrides or (k == "image" and name in IMAGE_LAYOUTS)]
+    keys = [k for k in CONTENT_KEYS if k in examples or k in overrides or (k == "image" and name in IMAGE_LAYOUTS)
+            or (k == "images" and name in MULTI_IMAGE_LAYOUTS)]
     spec = {}
     for key in keys:
         label, hint, *placeholder = overrides.get(key, SLOT_TEXT[key])
-        blank = key not in OPTIONAL_SLOTS.get(name, ()) and (key == "image" or bool(examples.get(key)))
+        blank = key not in OPTIONAL_SLOTS.get(name, ()) and (key in IMAGE_KEYS or bool(examples.get(key)))
         spec[key] = {"label": label, "hint": hint, "placeholder": placeholder[0] if placeholder else f"[{label}]", "blank": blank}
         if examples.get(key):
             spec[key]["example"] = examples[key]
@@ -1335,6 +1567,12 @@ LAYOUTS = {
     "photo-caption": _layout(_photo_caption, "Full-bleed image with a gradient scrim keeping caption text legible.", ["figure first", "scrim for contrast", "caption hierarchy"], ["social", "web", "covers"], {"label": "Travel", "title": "A caption headline over the photo", "subtitle": "Keep text on the scrim, never on busy image areas."}),
     "minimal-mark": _layout(_minimal_mark, "Small text in a corner with vast negative space and one accent dot.", ["negative space", "restraint", "deliberate placement"], ["poster", "social", "covers"], {"title": "Less, but better", "subtitle": "A quiet line of context."}, accents=["none"]),
     "bento-grid": _layout(_bento_grid, "Rounded tiles of varied spans: message, stat, image and info.", ["modular tiles", "varied emphasis by span", "consistent gutters"], ["web", "social", "slides", "infographics"], {"title": "Everything in one place", "label": "3×", "caption": "faster setup", "subtitle": "Short supporting copy in its own tile.", "cta": "Try it"}, accents=["none"]),
+    "meme-top-bottom": _layout(_meme_top_bottom, "Classic meme: full-bleed picture with stroked uppercase top and bottom text.", ["text over image with a stroke for contrast", "setup and punchline", "few words, huge type"], ["memes", "social"], {"title": "When the build passes", "caption": "On the first try"}, accents=["none"]),
+    "meme-caption-above": _layout(_meme_caption_above, "Caption in a white band above the picture.", ["caption first, then image", "plain text on white", "image carries the joke"], ["memes", "social"], {"title": "Me explaining why the meeting could have been an email"}, accents=["none"]),
+    "meme-comparison": _layout(_meme_comparison, "Two-row comparison: a reaction image beside each labelled option.", ["contrast of two choices", "image–label pairs", "reading order top to bottom"], ["memes", "social"], {"items": "Writing docs by hand\nGenerating them from the schema"}, accents=["none"]),
+    "meme-labelled": _layout(_meme_labelled, "Picture with stroked labels for the objects in it.", ["labels as metaphor", "short labels", "label on its object"], ["memes", "social"], {"items": "Me\nNew framework\nWorking code"}, accents=["none"]),
+    "meme-reaction": _layout(_meme_reaction, "Reaction frame (GIF-ready): picture over a black subtitle bar.", ["one reaction", "subtitle-style caption", "loops cleanly"], ["memes", "gifs", "social"], {"caption": "Me reading my own code from last year"}, accents=["none"]),
+    "meme-four-panel": _layout(_meme_four_panel, "Four panels in a 2×2 grid, each with a stroked caption.", ["sequence in reading order", "escalation across panels", "one caption per panel"], ["memes", "comics", "social"], {"items": "Idea\nPrototype\nScope creep\nRewrite"}, accents=["none"]),
 }
 
 
@@ -1349,16 +1587,44 @@ def _safe_composition(b):
                ("lead", b.get("subtitle"), "subtitle"), ("body", b.get("body"), "body"),
                ("button", b.get("cta"), "cta"), ("caption", b.get("caption"), "caption")]
     height = b.stack_height(entries, width, gap=b.unit * 2)
+    if b.orientation == "wide" and height > b.ch:
+        # A banner too shallow for one column: the label and headline on the left, the rest beside them.
+        return _two_columns(b, entries, vertical, device)
     y = b.T + max(0, b.ch - height) * vertical
     if device == "rule":
         b.rect("quiet-rule", b.L, b.T, b.cw, max(2, b.unit / 4), "@accent")
     elif device == "rail":
-        b.rect("quiet-rail", b.L / 2, b.T, max(2, b.unit / 4), b.ch, "@accent")
+        b.rect("quiet-rail", b.L / 2, b.T, max(2, b.unit / 4), b.ch, "@accent", decoration=True)
     elif device == "panel":
-        b.rect("quiet-panel", b.L / 2, b.T / 2, b.W - b.L, b.H - b.T, "@surface", radius=b.unit)
+        b.rect("quiet-panel", b.L / 2, b.T / 2, b.W - b.L, b.H - b.T, "@surface", radius=b.unit, decoration=True)
     elif device == "footer":
         b.rect("quiet-footer", b.L, b.B - b.unit / 4, b.cw, max(2, b.unit / 4), "@accent")
+    if not (b.accent == "rule" and device == "rule"):
+        # A chosen (or rolled) accent joins the composition's own device; "none", the default, adds nothing.
+        b.accent_device(x, y, width, height)
     b.stack(entries, x, y, width, gap=b.unit * 2, align=b.align)
+
+
+def _two_columns(b, entries, vertical, device):
+    lead, rest = entries[:2], entries[2:]
+    gap = b.unit * 4
+    left_w = (b.cw - gap) * 0.56
+    right_w = b.cw - gap - left_w
+    if device == "rule":
+        b.rect("quiet-rule", b.L, b.T, b.cw, max(2, b.unit / 4), "@accent")
+    elif device == "rail":
+        b.rect("quiet-rail", b.L / 2, b.T, max(2, b.unit / 4), b.ch, "@accent", decoration=True)
+    elif device == "panel":
+        b.rect("quiet-panel", b.L / 2, b.T / 2, b.W - b.L, b.H - b.T, "@surface", radius=b.unit, decoration=True)
+    elif device == "footer":
+        b.rect("quiet-footer", b.L, b.B - b.unit / 4, b.cw, max(2, b.unit / 4), "@accent")
+    align = "left" if b.align == "right" else b.align
+    for index, (column, x, width) in enumerate(((lead, b.L, left_w), (rest, b.L + left_w + gap, right_w))):
+        height = b.stack_height(column, width, gap=b.unit * 2)
+        y = b.T + max(0, b.ch - height) * vertical
+        if index == 0 and not (b.accent == "rule" and device == "rule"):
+            b.accent_device(x, y, width, height)
+        b.stack(column, x, y, width, gap=b.unit * 2, align=align)
 
 
 SAFE_COMPOSITIONS = {
@@ -1384,7 +1650,9 @@ for _name, _composition in SAFE_COMPOSITIONS.items():
                             ["poster", "social", "web", "slides", "print"], COPY,
                             safe=True, safe_composition=_composition, aligns=[_composition[2]], accents=["none"])
 for _name, _layout_entry in LAYOUTS.items():
-    _layout_entry.setdefault("safe", False)
+    # The tier comes from the house style; "safe" stays as an alias for tier safe.
+    _layout_entry["tier"] = house_style.tier_of("layouts", _name)
+    _layout_entry["safe"] = _layout_entry["tier"] == "safe"
 
 
 IMAGE_OPTIONS = [
@@ -1409,19 +1677,19 @@ def next_steps(project):
     if not blanks:
         return []
     steps = []
-    text = list(dict.fromkeys(b["slot"] for b in blanks if b["slot"] != "image"))
+    text = list(dict.fromkeys(b["slot"] for b in blanks if b["slot"] not in IMAGE_KEYS))
     if text:
         steps.append({"slot": text, "action": "fill",
                       "how": f"Re-apply layout-apply with name={record.get('name')!r}, seed={record.get('seed')}, replace=true "
                              f"and the copy for: {', '.join(text)}"})
-    images = [b for b in blanks if b["slot"] == "image"]
+    images = [b for b in blanks if b["slot"] in IMAGE_KEYS]
     bounds = resolve_layout(project) if images else {}
     for blank in images:
         layer = next((x for x in project.state["layers"] if x["name"] == blank["layer"]), None)
         if layer is None:
             continue
         x, y, w, h = bounds[layer["id"]]
-        steps.append({"slot": "image", "layer": layer["name"], "bounds": [x, y, w, h], "aspect_ratio": round(w / max(h, 1), 3),
+        steps.append({"slot": blank["slot"], "layer": layer["name"], "bounds": [x, y, w, h], "aspect_ratio": round(w / max(h, 1), 3),
                       "action": "fill", "options": IMAGE_OPTIONS,
                       "note": "The placeholder is an editable frame; check reports it as an unfilled blank until it is replaced"})
     return steps
@@ -1434,12 +1702,13 @@ def describe(name):
     extra = sorted(set(OPTIONAL_READS.get(name, ())) - set(spec))
     return {
         "description": item["description"],
+        "tier": item["tier"],
         "safe": item.get("safe", False),
         "principles": item["principles"],
         "best_for": item["best_for"],
         "slots": {
             k: {"label": v["label"], "hint": v["hint"], "blank_if_unfilled": v["blank"], **({"example": v["example"]} if "example" in v else {}),
-                **({"fill_with": IMAGE_OPTIONS} if k == "image" else {})}
+                **({"fill_with": IMAGE_OPTIONS} if k in IMAGE_KEYS else {})}
             for k, v in spec.items()
         },
         **({"also_accepts": extra} if extra else {}),
@@ -1451,6 +1720,7 @@ def catalog():
         "layouts": {
             name: {
                 "description": item["description"],
+                "tier": item["tier"],
                 "safe": item.get("safe", False),
                 "best_for": item["best_for"],
                 "slots": {k: v["label"] for k, v in slot_spec(item).items()},
@@ -1513,10 +1783,16 @@ def execute_layout(project, op):
 
     defaults = state.get("design_defaults", {})
     if "seed" not in op:
-        op["seed"], _ = seed_for(project, defaults.get("seed"), op.get("variety"))
-        for key, value in defaults.get("direction", {}).items():
-            if key in ("palette", "mode", "type_scale", "density", "accent"):
+        # A sparse apply takes the document's whole stored direction, as vixl_roll(apply=true) does;
+        # explicit fields win key by key, and an explicit seed asks for a fresh choice instead.
+        direction = defaults.get("direction", {})
+        op["seed"], _ = seed_for(project, direction.get("layout_seed", defaults.get("seed")), op.get("variety"))
+        for key, value in direction.items():
+            if key in DIRECTION_OPTIONS:
                 op.setdefault(key, deepcopy(value))
+        inherited = {key: deepcopy(value) for key, value in direction.items() if key not in DIRECTION_SKIP}
+        if inherited:
+            op["direction"] = {**inherited, **op.get("direction", {})}
     kit = for_project(project)
     if kit.get("palette") and not explicit_palette:
         op["colors"] = kit["palette"]
@@ -1536,7 +1812,9 @@ def execute_layout(project, op):
         import difflib
 
         close = difflib.get_close_matches(name, list(LAYOUTS), 3, 0.5)
-        raise VixlError("unknown_layout", f"Unknown layout {name!r}" + (f"; did you mean {', '.join(close)}?" if close else "; see vixl layout list"), suggestions=close)
+        raise VixlError("unknown_layout", f"Unknown layout {name!r}" + (f"; did you mean {', '.join(close)}?" if close else
+                        "; the layouts are listed under allowed (vixl layout list)"), field="name", suggestions=close,
+                        allowed=sorted(LAYOUTS))
     layout = LAYOUTS[name]
     if op.get("replace") and state.get("layout"):
         previous = set(state["layout"].get("layers", []))
@@ -1667,9 +1945,33 @@ def _record_blanks(state, builder, layout_name, created):
     for name in builder.image_blanks:
         layer = by_name.get(name)
         if layer:
-            registry[layer["id"]] = {"slot": "image", "asset": layer["asset"], "hint": SLOT_TEXT["image"][1], "source": f"layout:{layout_name}"}
-            found.append({"slot": "image", "layer": name, "hint": "pass image=ASSET_ID, or fill the frame later (see next_steps)"})
+            slot = builder.blank_slots.get(name, "image")
+            registry[layer["id"]] = {"slot": slot, "asset": layer["asset"], "hint": SLOT_TEXT[slot][1], "source": f"layout:{layout_name}"}
+            found.append({"slot": slot, "layer": name, "hint": f"pass {slot}=" + ("ASSET_ID" if slot == "image" else "[ASSET_ID, …]")
+                          + ", or fill the frame later (see next_steps)"})
     return found
+
+
+PROBE_CANVAS = {"wide": (1500, 500), "landscape": (1200, 800), "square": (900, 900), "portrait": (800, 1000),
+                "tall": (500, 1200)}
+
+
+@lru_cache(maxsize=1024)
+def places(name, shape, keys):
+    """Whether layout ``name`` places every copy slot in ``keys`` on a canvas of this ``shape`` (a roll
+    only picks layouts that use all the copy it was given). Probed once per combination."""
+    from .project import Project
+
+    width, height = PROBE_CANVAS.get(shape, PROBE_CANVAS["square"])
+    project = Project(width, height)
+    project._resource_budget = project.limits.max_operations
+    op = {"type": "layout-apply", "name": name, "palette": PALETTE_POOL[0], "unfilled": "omit",
+          **{key: "Sample copy" for key in keys}}
+    try:
+        builder = _build(project, LAYOUTS[name], op, 0, 1.0)
+    except Exception:  # noqa: BLE001 - any failure to build this copy means the roll must not pick the layout
+        return False
+    return set(keys) <= builder.read
 
 
 def _build(project, layout, op, seed, fit):
@@ -1708,21 +2010,26 @@ def _build(project, layout, op, seed, fit):
     for layer in state["layers"]:
         if layer["name"] in set(builder.created) and layer["type"] != "text":
             x, y, w, h = bounds[layer["id"]]
-            if x < 0 or y < 0 or x + w > canvas["width"] or y + h > canvas["height"]:
+            if x <= 0 or y <= 0 or x + w >= canvas["width"] or y + h >= canvas["height"]:
                 layer["allow_crop"] = True
     return builder
 
 
 def _overflows(project, builder):
+    """Whether copy leaves the canvas, or the safe area when the canvas has one: text, and the buttons
+    behind it, must sit inside it (#409, #370), while decoration and full-bleed art may run past it."""
     from .render import resolve_layout
 
     c = project.state["canvas"]
     names = set(builder.created)
     bounds = resolve_layout(project)
+    left, top, right, bottom = builder.safe
     for layer in project.state["layers"]:
-        if layer["name"] in names and layer["type"] == "text":
+        if layer["name"] not in names or layer.get("allow_crop") or layer.get("role") == "decoration":
+            continue
+        if layer["type"] == "text" or layer["name"].endswith("-button"):
             x, y, w, h = bounds[layer["id"]]
-            if x < -1 or y < -1 or x + w > c["width"] + 1 or y + h > c["height"] + 1:
+            if x < left - 1 or y < top - 1 or x + w > c["width"] - right + 1 or y + h > c["height"] - bottom + 1:
                 return True
     return False
 
@@ -1765,7 +2072,10 @@ def schemas(add):
             "replace": B,
             "predictable": B,
             "keep_order": B,
-            **{key: S for key in CONTENT_KEYS},
+            **{key: S for key in CONTENT_KEYS if key != "images"},
+            "images": {"type": "array", "items": S, "maxItems": 8,
+                       "description": "Multi-panel layouts (meme-comparison, meme-four-panel): one image asset id per panel."},
+            "uppercase": {"type": "boolean", "description": "Meme layouts: set stroked captions uppercase (default true)."},
         },
         ["name"],
     )

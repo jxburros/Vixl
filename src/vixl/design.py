@@ -1,10 +1,11 @@
 """Editable design operations. References are immutable IDs; groups use local coordinates."""
 
 from copy import deepcopy
+import math
 import re
 
 from .errors import require
-from .model import new_layer, finite
+from .model import new_layer, finite, uid
 from .design_schema import SHAPES, STYLES
 
 
@@ -43,6 +44,7 @@ def union_bounds(bounds):
 
 def execute_design(project, op):
     from .operations import append_layer, default_name, execute
+    from .scatter import bake_repeat, stepped
     from .render import resolve_layout, color, stored_origin
 
     kind = op["type"]
@@ -52,20 +54,31 @@ def execute_design(project, op):
         fields = {
             k: deepcopy(v) for k, v in op.items() if k not in ("type", "target", "name", "width", "height")
         }
+        width, height = op.get("width", c["width"]), op.get("height", c["height"])
         if op["shape"] == "path":
-            fields["path_view"] = [op.get("width", c["width"]), op.get("height", c["height"])]
-        append_layer(
-            project,
-            new_layer(
-                op["name"] if "name" in op else default_name(project, "shape"),
-                "shape",
-                op.get("width", c["width"]),
-                op.get("height", c["height"]),
-                **fields,
-            ),
-        )
+            require(isinstance(op.get("path"), str), "A path shape needs a path", field="path")
+            from .geometry import path_box
+
+            # A missing size reaches the path's farthest point (see path_box), never the whole canvas.
+            reach = path_box(op["path"])
+            width, height = op.get("width", reach[0]), op.get("height", reach[1])
+            fields["path_view"] = [width, height]
+        from .craft import shape_defaults
+
+        name = op["name"] if "name" in op else default_name(project, "shape")
+        shape_defaults(project, {**op, "name": name}, fields, width, height)
+        append_layer(project, new_layer(name, "shape", width, height, **fields))
     elif kind == "group":
         children = selected(project, op["targets"])
+        # Refuse an over-deep nest here, before the layout work, so a runaway chain fails at its first bad step.
+        below = max(nest_depth(state, child["id"]) for child in children)
+        above = 0
+        cursor = children[0].get("parent")
+        while cursor:
+            above += 1
+            cursor = project.layer(cursor).get("parent")
+        require(above + below + 1 <= 16, f"Grouping here would nest {above + below} groups inside each other; the "
+                "limit is 15 nested groups", "resource_limit", field="targets")
         bounds = resolve_layout(project)
         x, y, w, h = union_bounds([bounds[item["id"]] for item in children])
         parent = children[0].get("parent")
@@ -80,6 +93,21 @@ def execute_design(project, op):
             child.update(parent=group["id"], constraints={})
             child["x"], child["y"] = stored_origin(child, (b[0] - x, b[1] - y))
         group["content_width"], group["content_height"] = w, h
+        if "above" in op or "below" in op:
+            require(not ("above" in op and "below" in op), "group takes above or below, not both", field="above")
+            where = "above" if "above" in op else "below"
+            require(project.layer(op[where])["id"] not in {item["id"] for item in children},
+                    f"group {where} must name a layer outside the group", field=where)
+            execute(project, {"type": "reorder", "target": group["id"], where: op[where]})
+        from .selectors import record
+
+        record(project, "groups", {"id": group["id"], "name": group["name"], "bounds": [x, y, w, h],
+                                   "members": {child["name"]: [bounds[child["id"]][0] - x, bounds[child["id"]][1] - y]
+                                               for child in children}})
+    elif kind == "reparent":
+        from .reparent import execute as reparent
+
+        reparent(project, op)
     elif kind == "ungroup":
         group = project.layer(op.get("target"))
         require(group["type"] == "group", "Target must be a group")
@@ -101,7 +129,10 @@ def execute_design(project, op):
         all_bounds = resolve_layout(project)
         b = all_bounds[group["id"]]
         children = [item for item in state["layers"] if item.get("parent") == group["id"]]
-        index = state["layers"].index(group)
+        from .group_bake import ungroup_tracks
+
+        # Sample the group's own animation before it is dissolved; refuses what cannot move.
+        finish = ungroup_tracks(project, group, children, b[:2])
         for child in children:
             require(child.get("clip") != group["id"], "Cannot ungroup referenced clipping base")
             local = all_bounds[child["id"]]
@@ -111,6 +142,7 @@ def execute_design(project, op):
         index = state["layers"].index(group)
         state["layers"][index : index + 1] = children
         state["active_layer"] = children[-1]["id"] if children else None
+        finish()
     elif kind == "clip":
         layer = project.layer(op.get("target"))
         if op.get("release"):
@@ -227,7 +259,11 @@ def execute_design(project, op):
                 layer["type"] = "frame"
             layer.pop("linked", None)
             layer.pop("crop", None)
+    elif kind == "repeat" and stepped(op):
+        bake_repeat(project, op)
     elif kind in ("repeat", "repeat-blend"):
+        require("name" not in op, "name names the copies made with per-step fields or merge; a live repeat keeps the "
+                "layer's name", field="name")
         layer = project.layer(op.get("target"))
         layer["repeat"] = {k: deepcopy(v) for k, v in op.items() if k not in ("type", "target")}
         validate_design(project, state)
@@ -253,11 +289,18 @@ def execute_design(project, op):
                 finite(value, "LUT channel", 0, 1)
         state.setdefault("luts", {})[named(op["name"])] = {"size": size, "values": deepcopy(op["values"])}
     elif kind == "lookup":
-        require(op["name"] in state.get("luts", {}), "Unknown LUT")
-        project.layer(op.get("target"))["lookup"] = {
-            "name": op["name"],
+        # A LUT is an ordinary entry in the layer's effect stack (toggle, reorder, select).
+        layer = project.layer(op.get("target"))
+        require(op["name"] in state.get("luts", {}), "Unknown LUT", field="name")
+        require(len(layer["effects"]) < 256, "Effect limit reached", "resource_limit")
+        layer["effects"].append({
+            "id": uid("fx"),
+            "name": "lookup",
+            "lut": op["name"],
             "amount": finite(op.get("amount", 1), "amount", 0, 1),
-        }
+            "enabled": True,
+            "selection": state["selection"],
+        })
     elif kind == "comp-save":
         fields = ("visible", "x", "y", "rotation", "opacity", "blend", "constraints", "styles")
         state.setdefault("comps", {})[named(op["name"])] = {
@@ -270,6 +313,8 @@ def execute_design(project, op):
     elif kind == "text-layout":
         layer = project.layer(op.get("target"))
         require(layer["type"] == "text", "Text layout requires a text layer")
+        previous = layer.get("text_layout")
+        grown = layer.get("auto_size", True) or (bool(previous) and "height" not in previous)
         layer["text_layout"] = {k: deepcopy(v) for k, v in op.items() if k not in ("type", "target")}
         if "width" in op or "height" in op:
             layer.update(
@@ -277,6 +322,14 @@ def execute_design(project, op):
                 height=op.get("height", layer["height"]),
                 auto_size=False,
             )
+        if "width" in op and "height" not in op:
+            from .checks import boxed_text_need
+
+            # With only a width, the box is as tall as the wrapped lines, so nothing is cut off.
+            # A box whose height was set explicitly before only grows.
+            need = boxed_text_need(project, layer)
+            if need:
+                layer["height"] = max(1, need[1]) if grown else max(layer["height"], need[1])
     elif kind == "guide":
         from .guides import make_guide
 
@@ -383,7 +436,9 @@ def resolve_color(value, state, variables=None):
 
     from .colors import MAX_DEPTH, resolve_expression
 
-    variables = {**state["variables"], **(variables or {})}
+    from .variables import with_maps
+
+    variables = with_maps({**state["variables"], **(variables or {})}, state.get("maps"))
     swatches = state.get("swatches", {})
     # A swatch may be defined from a variable (${brand}) and a variable may name a swatch, so
     # expand both until neither is left.
@@ -414,12 +469,72 @@ def validate_text_style(kind, settings, state):
     for key in ("color", "stroke_color"):
         if key in settings:
             color(resolve_color(settings[key], state))
-    for key, low, high in (("size", 1, 4096), ("stroke_width", 0, 100), ("spacing", 0, 1000)):
+    for key, low, high in (("size", 1, 4096), ("stroke_width", 0, 100), ("spacing", -1000, 1000)):
         if key in settings:
             finite(settings[key], key, low, high)
             require(isinstance(settings[key], int), f"{key} must be an integer")
     if "align" in settings:
         require(settings["align"] in ("left", "center", "right"), "Invalid paragraph alignment")
+
+
+GRADIENT_FALLOFFS = ("linear", "smooth", "ease", "quadratic", "gaussian")
+FALLOFF_SAMPLES = 24
+
+
+def _falloff(name, t):
+    """How far along the stops (0–1) a gradient is at position ``t`` (0 at its start, 1 at its end)."""
+    if name == "smooth":
+        return t * t * (3 - 2 * t)
+    if name == "ease":
+        return 1 - (1 - t) ** 2
+    if name == "quadratic":
+        return t * t
+    if name == "gaussian":
+        return (1 - math.exp(-4.5 * t * t)) / (1 - math.exp(-4.5))
+    return t
+
+
+def gradient_stops(settings, state):
+    """The stops every renderer draws. A ``falloff`` other than linear is expanded into extra stops
+    (colours mixed with premultiplied alpha), so raster, SVG, PDF and PPTX draw the same curve."""
+    stops = settings.get("stops") or [{"offset": 0, "color": settings.get("start", "black")},
+                                      {"offset": 1, "color": settings.get("end", "white")}]
+    name = settings.get("falloff", "linear")
+    if name == "linear":
+        return stops
+    from .render import color
+
+    offsets = [stop["offset"] for stop in stops]
+    rgba = [color(resolve_color(stop["color"], state)) for stop in stops]
+    premultiplied = [[c[0] * c[3] / 255, c[1] * c[3] / 255, c[2] * c[3] / 255, c[3]] for c in rgba]
+
+    def inverse(value):
+        low, high = 0.0, 1.0
+        for _ in range(40):
+            middle = (low + high) / 2
+            low, high = (middle, high) if _falloff(name, middle) < value else (low, middle)
+        return (low + high) / 2
+
+    positions = {i / FALLOFF_SAMPLES for i in range(FALLOFF_SAMPLES + 1)}
+    positions |= {inverse(offset) for offset in offsets}
+    result = []
+    for t in sorted(positions):
+        p = min(1.0, max(0.0, _falloff(name, t)))
+        if p <= offsets[0]:
+            mixed = premultiplied[0]
+        elif p >= offsets[-1]:
+            mixed = premultiplied[-1]
+        else:
+            i = next(i for i in range(1, len(offsets)) if p <= offsets[i])
+            u = (p - offsets[i - 1]) / (offsets[i] - offsets[i - 1])
+            mixed = [a + (b - a) * u for a, b in zip(premultiplied[i - 1], premultiplied[i])]
+        alpha = mixed[3]
+        rgb = [round(min(255, v * 255 / alpha)) if alpha > 0 else 0 for v in mixed[:3]]
+        offset = round(t, 6)
+        if result and offset <= result[-1]["offset"]:
+            continue
+        result.append({"offset": offset, "color": "#{:02x}{:02x}{:02x}{:02x}".format(*rgb, round(alpha))})
+    return result
 
 
 def validate_gradient(data, state):
@@ -444,6 +559,8 @@ def validate_gradient(data, state):
         "Invalid gradient direction",
     )
     finite(data.get("angle", 0), "angle", -36000, 36000)
+    require(data.get("falloff", "linear") in GRADIENT_FALLOFFS,
+            f"falloff must be one of {', '.join(GRADIENT_FALLOFFS)}", field="falloff", allowed=list(GRADIENT_FALLOFFS))
 
 
 def validate_style(name, settings, state):
@@ -461,7 +578,7 @@ def validate_style(name, settings, state):
         "outer-glow": {"color", "blur"},
         "stroke": {"color", "width"},
         "color-overlay": {"color"},
-        "gradient-overlay": {"start", "end", "stops", "direction", "angle"},
+        "gradient-overlay": {"start", "end", "stops", "direction", "angle", "falloff"},
     }[name] | common
     unknown = sorted(set(settings) - allowed)
     require(
@@ -489,7 +606,8 @@ def validate_style(name, settings, state):
 
 def validate_design(project, state):
     """Validate both live and historical state without trusting archive payloads."""
-    from .render import color, EFFECTS
+    from .render import color
+    from .constants import STACK_EFFECTS
     from .operations import effect_valid
     from .design_render import repeat_items, repeat_bounds
 
@@ -588,7 +706,7 @@ def validate_design(project, state):
                 require(isinstance(layer["organic"], dict) and len(json.dumps(layer["organic"])) <= 131072,
                         "Invalid organic recipe", "invalid_project")
             sides = layer.get("sides", 5)
-            require(isinstance(sides, int) and 3 <= sides <= 128, "Polygons/stars require 3–128 sides")
+            require(isinstance(sides, int) and 3 <= sides <= 128, "sides must be 3–128", field="sides")
             if layer["shape"] == "arc":
                 from .wedge import check_arc
 
@@ -631,9 +749,9 @@ def validate_design(project, state):
         require(isinstance(styles, dict) and len(styles) <= 5, "Invalid styles")
         for name, value in styles.items():
             validate_style(name, value, state)
-        if layer.get("lookup"):
-            require(layer["lookup"]["name"] in state.get("luts", {}), "Missing LUT")
-            finite(layer["lookup"].get("amount", 1), "LUT amount", 0, 1)
+        for effect in layer.get("effects") or []:
+            if effect.get("name") == "lookup":
+                require(effect.get("lut") in state.get("luts", {}), "Missing LUT")
         if layer.get("repeat"):
             r = layer["repeat"]
             require(isinstance(r["count"], int) and 1 <= r["count"] <= 512, "Repeat count must be 1–512")
@@ -658,7 +776,7 @@ def validate_design(project, state):
                 "Adjustment layers use effects, masks, blend and opacity",
             )
             for effect in layer["effects"]:
-                require(effect.get("name") in EFFECTS, "Adjustments require built-in effects")
+                require(effect.get("name") in STACK_EFFECTS, "Adjustments require built-in effects")
                 effect_valid(effect)
         layout = layer.get("text_layout", {})
         if layout:
@@ -726,3 +844,16 @@ def validate_design(project, state):
 
     for ident in index:
         visit(ident)
+
+
+def nest_depth(state, ident):
+    """Levels of groups at and below layer ``ident`` (1 for a layer that is not a group)."""
+    children = {}
+    for layer in state["layers"]:
+        if layer.get("parent"):
+            children.setdefault(layer["parent"], []).append(layer["id"])
+    depth, level = 1, children.get(ident, [])
+    while level:
+        depth += 1
+        level = [child for item in level for child in children.get(item, [])]
+    return depth

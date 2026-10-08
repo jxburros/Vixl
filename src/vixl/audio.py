@@ -11,7 +11,10 @@ from .model import finite
 
 TYPES = ("audio-track", "audio-remove")
 INSTRUMENTS = ("sine", "triangle", "square", "saw", "piano", "bell", "bass", "kick", "snare", "hihat", "noise", "whoosh", "pop", "click", "splash")
-RATE = 24000
+DEFAULT_RATE = 48000  # Synthesized-only mixes.
+MAX_DEFAULT_RATE = 48000  # The highest rate chosen automatically from sources.
+RATE_RANGE = (8000, 96000)
+OPUS_RATES = (8000, 12000, 16000, 24000, 48000)
 
 
 def schemas(add):
@@ -64,7 +67,7 @@ def validate_track(track):
             finite(value, key, 0, 1 if key == "sustain" else 600000)
 
 
-def _tone(instrument, frequency, duration, rng, envelope=None, rate=RATE):
+def _tone(instrument, frequency, duration, rng, envelope=None, rate=DEFAULT_RATE):
     n = max(1, round(duration * rate / 1000))
     t = np.arange(n, dtype=np.float64) / rate
     phase = math.tau * frequency * t
@@ -115,7 +118,7 @@ def _tone(instrument, frequency, duration, rng, envelope=None, rate=RATE):
     return (signal * gain * 0.7).astype(np.float32)
 
 
-def synthesize(track, rate=RATE):
+def synthesize(track, rate=DEFAULT_RATE):
     validate_track(track)
     settings = {"instrument": track["synth"]} if isinstance(track["synth"], str) else track["synth"]
     duration = track.get("duration", settings.get("duration", 1000))
@@ -133,7 +136,7 @@ def synthesize(track, rate=RATE):
     return np.column_stack([samples, samples])
 
 
-def wav_bytes(samples, rate=RATE):
+def wav_bytes(samples, rate=DEFAULT_RATE):
     stream = io.BytesIO()
     with wave.open(stream, "wb") as wav:
         wav.setnchannels(1 if samples.ndim == 1 else samples.shape[1])
@@ -143,73 +146,202 @@ def wav_bytes(samples, rate=RATE):
     return stream.getvalue()
 
 
-def read_audio(data, rate=RATE):
+def check_rate(value, field="sample_rate"):
+    """``None`` (choose from the sources) or a whole number of Hz in RATE_RANGE."""
+    if value is None:
+        return None
+    low, high = RATE_RANGE
+    require(isinstance(value, int) and not isinstance(value, bool) and low <= value <= high,
+            f"sample_rate must be a whole number of Hz from {low} to {high} (44100 and 48000 are usual)", field=field)
+    return value
+
+
+def wav_format(data):
+    """(sample rate, channels) from a WAV header."""
     try:
         with wave.open(io.BytesIO(data), "rb") as wav:
-            channels, width, source_rate, frames = wav.getnchannels(), wav.getsampwidth(), wav.getframerate(), wav.getnframes()
-            require(channels in (1, 2) and width in (1, 2, 3, 4), "WAV needs mono/stereo PCM")
-            require(frames / source_rate <= 600, "Audio exceeds 10 minutes", "resource_limit")
-            raw = wav.readframes(frames)
-            if width == 1:
-                values = (np.frombuffer(raw, dtype=np.uint8).astype(np.float32) - 128) / 128
-            elif width == 3:
-                b = np.frombuffer(raw, dtype=np.uint8).reshape(-1, 3).astype(np.int32)
-                integer = b[:, 0] | (b[:, 1] << 8) | (b[:, 2] << 16)
-                values = ((integer ^ 0x800000) - 0x800000).astype(np.float32) / 8388608
-            else:
-                values = np.frombuffer(raw, dtype=f"<i{width}").astype(np.float32) / 2 ** (8 * width - 1)
-            values = values.reshape(-1, channels)
-            if channels == 1:
-                values = np.repeat(values, 2, axis=1)
-            if source_rate != rate and len(values):
-                positions = np.arange(round(len(values) * rate / source_rate)) * source_rate / rate
-                values = np.column_stack([np.interp(positions, np.arange(len(values)), values[:, c]) for c in range(2)]).astype(np.float32)
-            return values
+            return wav.getframerate(), wav.getnchannels()
     except (wave.Error, EOFError, ValueError) as exc:
         raise VixlError("invalid_audio", "Audio must be a readable PCM WAV file") from exc
 
 
-def mix_tracks(tracks, duration, *, root=None, project=None, rate=RATE):
+def _kernel(offsets, cutoff, width, beta=8.6):
+    """Kaiser-windowed sinc low-pass at ``cutoff`` (fraction of the source Nyquist), ``offsets`` in
+    source samples."""
+    ratio = np.clip(offsets / width, -1, 1)
+    window = np.i0(beta * np.sqrt(1 - ratio ** 2)) / np.i0(beta)
+    return np.where(np.abs(offsets) < width, cutoff * np.sinc(cutoff * offsets) * window, 0)
+
+
+def _sinc_resample(values, source_rate, rate, half=16, chunk=1 << 15):
+    g = math.gcd(source_rate, rate)
+    up, down = rate // g, source_rate // g
+    # Below the lower Nyquist frequency, with a little room for the transition band.
+    cutoff = min(1.0, rate / source_rate) * 0.94
+    width = half / cutoff
+    taps = 2 * math.ceil(width)
+    offsets = np.arange(-taps // 2 + 1, taps // 2 + 1)
+    pad = np.zeros((taps, values.shape[1]), np.float32)
+    padded = np.concatenate([pad, values, pad])
+    count = round(len(values) * rate / source_rate)
+    table = _kernel(np.arange(up)[:, None] / up - offsets[None, :], cutoff, width) if up <= 4096 else None
+    out = np.empty((count, values.shape[1]), np.float32)
+    for first in range(0, count, chunk):
+        m = np.arange(first, min(count, first + chunk), dtype=np.int64)
+        base, phase = np.divmod(m * down, up)
+        weights = table[phase] if table is not None else _kernel(phase[:, None] / up - offsets[None, :], cutoff, width)
+        index = np.clip(base[:, None] + offsets[None, :] + taps, 0, len(padded) - 1)
+        for c in range(values.shape[1]):
+            out[m, c] = np.einsum("ij,ij->i", padded[index, c], weights)
+    return out
+
+
+def _ffmpeg_resample(values, source_rate, rate):
+    import shutil
+    ffmpeg = shutil.which("ffmpeg")
+    if not ffmpeg:
+        return None
+    channels = values.shape[1]
+    command = [ffmpeg, "-v", "error", "-f", "f32le", "-ar", str(source_rate), "-ac", str(channels), "-i", "pipe:0",
+               "-af", f"aresample={rate}", "-f", "f32le", "-ar", str(rate), "-ac", str(channels), "pipe:1"]
+    try:
+        done = subprocess.run(command, input=np.ascontiguousarray(values, dtype="<f4").tobytes(), capture_output=True, timeout=120)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if done.returncode:
+        return None
+    result = np.frombuffer(done.stdout, dtype="<f4").reshape(-1, channels)
+    count = round(len(values) * rate / source_rate)
+    if len(result) < count:
+        result = np.concatenate([result, np.zeros((count - len(result), channels), np.float32)])
+    return result[:count].copy()
+
+
+def resample(values, source_rate, rate, engine=None):
+    """Band-limited sample-rate conversion of (frames, channels) float samples: ffmpeg's resampler
+    when ffmpeg is on PATH, otherwise a windowed-sinc polyphase filter in numpy (``engine`` forces
+    one: "ffmpeg" or "numpy")."""
+    if source_rate == rate or not len(values):
+        return values
+    if engine != "numpy":
+        result = _ffmpeg_resample(values, source_rate, rate)
+        if result is not None or engine == "ffmpeg":
+            require(result is not None, "Resampling with ffmpeg failed", "codec_error")
+            return result
+    return _sinc_resample(values, source_rate, rate)
+
+
+def read_audio(data, rate=None, channels=None):
+    """(frames, channels) float samples from WAV bytes, converted to ``rate`` and ``channels`` when
+    given (the file's own when ``None``)."""
+    try:
+        with wave.open(io.BytesIO(data), "rb") as wav:
+            native, width, source_rate, frames = wav.getnchannels(), wav.getsampwidth(), wav.getframerate(), wav.getnframes()
+            require(native in (1, 2) and width in (1, 2, 3, 4), "WAV needs mono/stereo PCM")
+            require(frames / source_rate <= 600, "Audio exceeds 10 minutes", "resource_limit")
+            raw = wav.readframes(frames)
+    except (wave.Error, EOFError, ValueError) as exc:
+        raise VixlError("invalid_audio", "Audio must be a readable PCM WAV file") from exc
+    if width == 1:
+        values = (np.frombuffer(raw, dtype=np.uint8).astype(np.float32) - 128) / 128
+    elif width == 3:
+        b = np.frombuffer(raw, dtype=np.uint8).reshape(-1, 3).astype(np.int32)
+        integer = b[:, 0] | (b[:, 1] << 8) | (b[:, 2] << 16)
+        values = ((integer ^ 0x800000) - 0x800000).astype(np.float32) / 8388608
+    else:
+        values = np.frombuffer(raw, dtype=f"<i{width}").astype(np.float32) / 2 ** (8 * width - 1)
+    values = values.reshape(-1, native)
+    if channels == 2 and native == 1:
+        values = np.repeat(values, 2, axis=1)
+    elif channels == 1 and native == 2:
+        values = values.mean(axis=1, keepdims=True)
+    return resample(values, source_rate, rate or source_rate)
+
+
+def _source_format(track, root, project):
+    """(sample rate, or None for synthesized sound; channels) of one track's source."""
+    if "synth" in track:
+        return None, 1
+    if "asset" in track:
+        require(project is not None and track["asset"] in project.assets, "Missing audio asset")
+        return wav_format(project.assets[track["asset"]])
+    from .film import local_path
+    require(root is not None, "Audio sources need a workspace")
+    source = local_path(root, track["source"])
+    if source.suffix.lower() == ".wav":
+        try:
+            with wave.open(str(source), "rb") as wav:
+                return wav.getframerate(), wav.getnchannels()
+        except (wave.Error, EOFError, ValueError, OSError) as exc:
+            raise VixlError("invalid_audio", "Audio must be a readable PCM WAV file") from exc
+    import shutil
+    require(shutil.which("ffmpeg"), "Compressed audio import needs ffmpeg", "missing_dependency")
+    from .media_analysis import probe
+    info, _ = probe(source)
+    streams = [stream for stream in info.get("streams", []) if stream.get("codec_type") == "audio"]
+    require(streams, "Media has no audio stream")
+    try:
+        rate = int(streams[0].get("sample_rate") or 0) or None
+    except (TypeError, ValueError):
+        rate = None
+    return rate, min(2, streams[0].get("channels", 2))
+
+
+def plan_mix(tracks, *, root=None, project=None, sample_rate=None, encoder=None):
+    """The mix's sample rate and channel count. By default the highest source rate, capped at
+    MAX_DEFAULT_RATE (DEFAULT_RATE when every track is synthesized); mono when every source is mono
+    and no track is panned. ``encoder="opus"`` moves the rate to the nearest Opus rate at or above it."""
+    check_rate(sample_rate)
+    formats = [_source_format(track, root, project) for track in tracks]
+    rates = [rate for rate, _ in formats if rate]
+    rate = sample_rate or (min(MAX_DEFAULT_RATE, max(rates)) if rates else DEFAULT_RATE)
+    if encoder == "opus":
+        rate = next((r for r in OPUS_RATES if r >= rate), OPUS_RATES[-1])
+    mono = bool(tracks) and all(c == 1 for _, c in formats) and all(not track.get("pan", 0) for track in tracks)
+    return {"sample_rate": rate, "channels": 1 if mono else 2}
+
+
+def mix_tracks(tracks, duration, *, root=None, project=None, rate=None, channels=None):
+    """Mix ``tracks`` into (frames, channels) float samples. ``rate`` and ``channels`` default to
+    plan_mix's choice."""
     finite(duration, "audio duration", 10, 600000)
     require(len(tracks) <= 32, "At most 32 audio tracks")
-    result = np.zeros((round(duration * rate / 1000), 2), dtype=np.float32)
+    if rate is None or channels is None:
+        chosen = plan_mix(tracks, root=root, project=project, sample_rate=rate)
+        rate, channels = rate or chosen["sample_rate"], channels or chosen["channels"]
+    result = np.zeros((round(duration * rate / 1000), channels), dtype=np.float32)
     for track in tracks:
         validate_track(track)
         if "synth" in track:
-            data = synthesize(track, rate)
+            data = synthesize(track, rate)[:, :channels].copy()
         elif "asset" in track:
             require(project is not None and track["asset"] in project.assets, "Missing audio asset")
-            data = read_audio(project.assets[track["asset"]], rate)
+            data = read_audio(project.assets[track["asset"]], rate, channels)
         else:
             from .film import local_path
             from .assets import read_bounded
             require(root is not None, "Audio sources need a workspace")
             source = local_path(root, track["source"])
             if source.suffix.lower() == ".wav":
-                data = read_audio(read_bounded(source, 64 * 1024 * 1024), rate)
+                data = read_audio(read_bounded(source, 64 * 1024 * 1024), rate, channels)
             else:
                 import shutil
                 ffmpeg = shutil.which("ffmpeg")
                 require(ffmpeg, "Compressed audio import needs ffmpeg", "missing_dependency")
-                from .media_analysis import probe
-                info, _ = probe(source)
-                streams = [stream for stream in info.get("streams", []) if stream.get("codec_type") == "audio"]
-                require(streams, "Media has no audio stream")
-                channels = min(2, streams[0].get("channels", 2))
-                command = [ffmpeg, "-v", "error", "-i", str(source), "-vn", "-t", "600", "-ac", str(channels), "-ar", str(rate), "-f", "f32le", "pipe:1"]
+                command = [ffmpeg, "-v", "error", "-i", str(source), "-vn", "-t", "600", "-ac", str(channels), "-ar", str(rate),
+                           "-f", "f32le", "pipe:1"]
                 decoded = subprocess.run(command, capture_output=True, timeout=90)
                 require(decoded.returncode == 0, "Audio decode failed", "codec_error")
                 data = np.frombuffer(decoded.stdout, dtype="<f4").reshape(-1, channels).copy()
-                if channels == 1:
-                    data = np.repeat(data, 2, axis=1)
         trim = round(track.get("trim", 0) * rate / 1000)
         data = data[trim:].copy()
         if "duration" in track:
             data = data[:round(track["duration"] * rate / 1000)]
         data *= track.get("volume", 1)
         pan = track.get("pan", 0)
-        data[:, 0] *= min(1, 1 - pan)
-        data[:, 1] *= min(1, 1 + pan)
+        if channels == 2:
+            data[:, 0] *= min(1, 1 - pan)
+            data[:, 1] *= min(1, 1 + pan)
         for key, tail in (("fade_in", False), ("fade_out", True)):
             n = min(len(data), round(track.get(key, 0) * rate / 1000))
             if n:
@@ -227,12 +359,14 @@ def mix_tracks(tracks, duration, *, root=None, project=None, rate=RATE):
     return result
 
 
-def prepare_tracks(tracks, directory, duration, *, root=None, project=None):
-    """One pre-mixed legacy film track. Keeps root checks on imports and stages generated WAVs."""
-    mixed = mix_tracks(tracks, duration, root=root, project=project)
+def prepare_tracks(tracks, directory, duration, *, root=None, project=None, sample_rate=None, encoder=None):
+    """One pre-mixed legacy film track plus the mix format. Keeps root checks on imports and stages
+    generated WAVs."""
+    chosen = plan_mix(tracks, root=root, project=project, sample_rate=sample_rate, encoder=encoder)
+    mixed = mix_tracks(tracks, duration, root=root, project=project, rate=chosen["sample_rate"], channels=chosen["channels"])
     path = Path(directory) / "vixl-score.wav"
-    path.write_bytes(wav_bytes(mixed))
-    return [{"source": str(path), "start": 0, "trim": 0, "volume": 1}]
+    path.write_bytes(wav_bytes(mixed, chosen["sample_rate"]))
+    return [{"source": str(path), "start": 0, "trim": 0, "volume": 1}], chosen
 
 
 def execute(project, op):
@@ -266,10 +400,14 @@ def execute(project, op):
     tracks.append(track)
 
 
-def export_audio(project, path):
+def export_audio(project, path, sample_rate=None, overwrite=False):
     duration = project.state.get("timeline", {}).get("duration", 1000)
-    samples = mix_tracks(project.state.get("audio_tracks", []), duration, project=project)
+    tracks = project.state.get("audio_tracks", [])
+    chosen = plan_mix(tracks, project=project, sample_rate=sample_rate)
+    samples = mix_tracks(tracks, duration, project=project, rate=chosen["sample_rate"], channels=chosen["channels"])
     clipped = int(np.count_nonzero(np.abs(samples) > 1))
-    with Path(path).open("xb") as stream:
-        stream.write(wav_bytes(samples))
-    return {"output": str(path), "duration": duration, "sample_rate": RATE, "clipped_samples": clipped}
+    require(overwrite or not Path(path).exists(), f"{path} already exists; pass overwrite=True to replace it",
+            "output_exists", field="path")
+    with Path(path).open("wb" if overwrite else "xb") as stream:
+        stream.write(wav_bytes(samples, chosen["sample_rate"]))
+    return {"output": str(path), "duration": duration, **chosen, "clipped_samples": clipped}

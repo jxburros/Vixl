@@ -18,6 +18,7 @@ from pathlib import Path
 import numpy as np
 
 from .errors import require
+from .geometry import compact_number
 from .model import finite
 from .links import pdf_link
 from .pdf_color import CMYKPaint, RGBPaint, ramp
@@ -27,9 +28,8 @@ VECTOR_LEAVES = ("solid", "shape", "gradient", "text", "pathfinder")
 
 
 def _fmt(value):
-    if float(value).is_integer():
-        return str(int(value))
-    return f"{value:.12f}".rstrip("0").rstrip(".")
+    """A PDF content-stream coordinate (12 decimals, so vector geometry round-trips)."""
+    return compact_number(value, 12)
 
 
 def matrix_ops(m):
@@ -117,8 +117,7 @@ class PageBuilder:
         self.ops = []
         self.xobjects, self.states, self.shadings = {}, {}, {}
         self.fallbacks = []
-
-    # -- resources ----------------------------------------------------------------------------
+        self.jpeg_quality = None  # set: raster images are written as JPEG at this quality
 
     def alpha(self, fill=1.0, stroke=1.0):
         fill, stroke = round(fill, 4), round(stroke, 4)
@@ -136,7 +135,7 @@ class PageBuilder:
 
         key = hashlib.sha256(image.mode.encode() + str(image.size).encode() + image.tobytes()).hexdigest()
         if key not in self.images:
-            self.images[key] = self.paint.image(self.writer, image)
+            self.images[key] = self.paint.image(self.writer, image, self.jpeg_quality)
         name = next((n for n, ref in self.xobjects.items() if ref is self.images[key]), None)
         if name is None:
             name = f"Im{len(self.xobjects) + 1}"
@@ -150,8 +149,9 @@ class PageBuilder:
         from .render import color
 
         state = self.view.state
-        stops = layer.get("stops") or [{"offset": 0, "color": layer.get("start", "black")},
-                                       {"offset": 1, "color": layer.get("end", "white")}]
+        from .design import gradient_stops
+
+        stops = gradient_stops(layer, state)
         colors = [(s["offset"], color(resolve_color(s["color"], state))) for s in stops]
         if any(rgba[3] < 255 for _, rgba in colors):
             return None
@@ -180,8 +180,6 @@ class PageBuilder:
         name = f"Sh{len(self.shadings) + 1}"
         self.shadings[name] = self.writer.add(shading)
         return name
-
-    # -- drawing ------------------------------------------------------------------------------
 
     def fallback(self, layer, reason):
         if layer["type"] not in ("raster", "frame") or reason != "image":  # an image layer is an image anyway
@@ -224,8 +222,6 @@ class PageBuilder:
                     self.place_image(crop, matrix, (box[0], box[1], crop.width, crop.height))
             else:
                 image = layer_ink(self.view, layer, b)
-                if layer["opacity"] != 1:
-                    image.putalpha(image.getchannel("A").point(lambda a: round(a * layer["opacity"])))
                 x, y = ink_origin(image, b)
                 self.place_image(image, matrix, (x, y, image.width, image.height))
 
@@ -245,8 +241,6 @@ class PageBuilder:
             return "mask"
         if layer.get("clip"):
             return "clipping"
-        if layer.get("lookup"):
-            return "lookup table"
         if layer.get("repeat"):
             return "repeat"
         if layer["type"] == "group":
@@ -324,7 +318,7 @@ class PageBuilder:
 
     def shape(self, layer, w, h, opacity):
         from .design import resolve_color
-        from .geometry import PATH_SHAPES, parse_path, shape_path
+        from .geometry import PATH_SHAPES, default_fill, parse_path, shape_path
         from .render import color
 
         state = self.view.state
@@ -335,7 +329,7 @@ class PageBuilder:
                 if path:
                     self.fill_ops(path_ops(parse_path(path)), color(resolve_color(paint, state)), opacity)
             return
-        fill = color(resolve_color(layer.get("fill", "white"), state))
+        fill = color(resolve_color(default_fill(layer), state))
         stroke = color(resolve_color(layer.get("stroke", "transparent"), state))
         width = layer.get("stroke_width", 1)
         shape = layer["shape"]
@@ -572,19 +566,23 @@ def page_geometry(canvas, dpi):
     """(width, height, kx, ky, bleed) of a page in points for a canvas exported at ``dpi``.
 
     Print sizes keep their physical trim and bleed (``canvas.physical``), so the page measures
-    exactly trim + 2 × bleed even when the bleed is a fractional number of pixels (0.125 in at
-    300 dpi is 37.5 px, stored as 38): the pixels then stretch by a hair to fill the page. Other
-    canvases map pixels to points at ``dpi``."""
-    from .sizes import PX, UNIT_INCHES, to_pixels
+    exactly trim + 2 × bleed. Documents made before 0.23 stored a fractional bleed rounded up (0.125 in at 300 dpi
+    as 38 px instead of 37.5); their pixels stretch by a hair to fill the page. Other canvases map pixels to points
+    at ``dpi``."""
+    from .sizes import PX, UNIT_INCHES, bleed_pixels, to_pixels
 
     k = 72 / dpi
     w, h, bleed = canvas["width"], canvas["height"], canvas.get("bleed", 0)
     physical = canvas.get("physical")
     if physical and physical.get("unit", PX) != PX and canvas.get("dpi") == dpi:
         unit, amount = physical["unit"], physical.get("bleed", 0)
-        pixels = [round(to_pixels(physical[key], unit, dpi)) + 2 * round(to_pixels(amount, unit, dpi))
-                  for key in ("width", "height")]
-        if pixels == [w, h] and round(to_pixels(amount, unit, dpi)) == bleed:
+        for side in (bleed_pixels(amount, unit, dpi), round(to_pixels(amount, unit, dpi))):
+            pixels = [round(to_pixels(physical[key], unit, dpi)) + 2 * side for key in ("width", "height")]
+            if pixels == [w, h] and side == bleed:
+                break
+        else:
+            pixels = None
+        if pixels:
             points = 72 * UNIT_INCHES[unit]
             width, height = (physical["width"] + 2 * amount) * points, (physical["height"] + 2 * amount) * points
             return width, height, width / w, height / h, amount * points
@@ -631,6 +629,7 @@ def export_pdf(project, path=None, *, pages=None, content="vector", dpi=None, ba
             page_size = {"width": round(width / 72, 3), "height": round(height / 72, 3), "unit": "in"}
         builder = PageBuilder(project, view, writer, fonts, images, paint)
         builder.k, builder.ky, builder.fillable = kx, ky, fillable
+        builder.jpeg_quality = jpeg_quality
         builder.ops.append(f"{_fmt(kx)} 0 0 {_fmt(-ky)} 0 {_fmt(height)} cm")
         if content == "raster":
             image = render(view)
@@ -665,7 +664,7 @@ def export_pdf(project, path=None, *, pages=None, content="vector", dpi=None, ba
             if any(item["type"] == "adjustment" or item.get("blend", "normal") != "normal" for item in layers
                    if item["visible"]):
                 # Backdrop-dependent layers: the whole page as one image.
-                builder.fallback({"name": "page"}, "blend modes or adjustment layers depend on the backdrop")
+                builder.fallback({"type": "page", "name": "page"}, "blend modes or adjustment layers depend on the backdrop")
                 image = render(view)
                 builder.place_image(image, np.eye(3), (0, 0, image.width, image.height))
             else:
@@ -687,11 +686,15 @@ def export_pdf(project, path=None, *, pages=None, content="vector", dpi=None, ba
             fallbacks[label] = builder.fallbacks
     fonts.write(writer)
     writer.add({"Type": Name("Pages"), "Kids": kids, "Count": len(kids)}, pages_ref)
-    texts = []
     if title is None:
-        for _, view in views[:1]:
-            texts = [layer.get("text", "") for layer in view.state["layers"] if layer["type"] == "text" and layer["visible"]]
-        title = (texts[0] if texts else "")[:200]
+        # The first page's title layer (a role or an exact name, else the largest top text), then the file name.
+        from .deck import document_title
+
+        try:
+            title = document_title(views[0][1]) if views else None
+        except Exception:  # a title is a nicety; never fail an export over it
+            title = None
+        title = (title or (Path(path).stem if path else ""))[:200]
     info = writer.add({"Title": Text(title) if title else None, "Producer": Text("Vixl")})
     catalog = {"Type": Name("Catalog"), "Pages": pages_ref}
     if title:

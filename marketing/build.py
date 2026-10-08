@@ -45,9 +45,9 @@ CODE_NUM = "#FFC37A"
 LOGOS = "assets/brand/digital-shift/Editable-Vixl"
 HEAD, BODY, SEMI, MONO = "inter-tight-800", "inter-400", "inter-600", "jetbrains-mono-500"
 
-# Facts used in the copy (counted from the 0.20.0 source; see README.md in this folder).
-VERSION = "0.20.0"
-FACTS = {"operations": 179, "sizes": 150, "layouts": 47, "styles": 28, "looks": 17, "brushes": 17,
+# Facts used in the copy (counted from the 0.21.0 source; see README.md in this folder).
+VERSION = "0.21.0"
+FACTS = {"operations": 180, "sizes": 150, "layouts": 47, "styles": 28, "looks": 17, "brushes": 17,
          "templates": 40, "containers": 19, "batch": "10,000"}
 INTERFACES = ["MCP", "CLI", "Python", "REST"]
 FORMATS = ["PNG", "JPEG", "WEBP", "TIFF", "AVIF", "SVG", "PDF", "PPTX", "HTML", "ICO", "GIF", "MP4"]

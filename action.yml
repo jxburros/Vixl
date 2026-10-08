@@ -1,0 +1,89 @@
+name: Vixl document check
+description: Check .vixl documents with vixl check, optionally pixel-diff them against the base branch, and summarize the results.
+branding:
+  icon: image
+  color: purple
+
+inputs:
+  paths:
+    description: Globs of documents to check, separated by spaces or newlines.
+    default: "**/*.vixl"
+  checks:
+    description: vixl check names to run (space-separated); empty runs the standard checks.
+    default: ""
+  suite:
+    description: Path to a check-suite JSON file to run on every document as well (vixl workflow check).
+    default: ""
+  fail-on:
+    description: "Fail the step at this level: error, warning, fix (any finding that needs a fix) or never."
+    default: error
+  vixl-version:
+    description: vixl-engine version to install from PyPI (for example 0.23.0); empty installs the version at this action's ref.
+    default: ""
+  compare-base:
+    description: On pull requests, render each document's base-branch version and pixel-diff it (true or false).
+    default: "false"
+  proof:
+    description: Write a proof page (thumbnails, findings, before/after) and upload it as the vixl-proof artifact (true or false).
+    default: "false"
+  python-version:
+    description: Python version to run Vixl with.
+    default: "3.12"
+
+outputs:
+  summary:
+    description: Path of the Markdown summary file.
+    value: ${{ steps.check.outputs.summary }}
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+    - name: Install Vixl
+      shell: bash
+      env:
+        VIXL_VERSION: ${{ inputs.vixl-version }}
+      run: |
+        if [ -n "$VIXL_VERSION" ]; then
+          python -m pip install "vixl-engine[pdf]==$VIXL_VERSION"
+        else
+          python -m pip install "${{ github.action_path }}[pdf]"
+        fi
+    - name: Fetch the base revision
+      if: inputs.compare-base == 'true' && github.event_name == 'pull_request'
+      shell: bash
+      run: git fetch --no-tags --depth=1 origin "${{ github.event.pull_request.base.sha }}"
+    - name: Check documents
+      id: check
+      shell: bash
+      env:
+        VIXL_PATHS: ${{ inputs.paths }}
+        VIXL_CHECKS: ${{ inputs.checks }}
+        VIXL_SUITE: ${{ inputs.suite }}
+        VIXL_FAIL_ON: ${{ inputs.fail-on }}
+        VIXL_BASE: ${{ inputs.compare-base == 'true' && github.event.pull_request.base.sha || '' }}
+        VIXL_PROOF: ${{ inputs.proof == 'true' && '.vixl-ci/proof.html' || '' }}
+      run: |
+        set +e
+        python "${{ github.action_path }}/scripts/check_documents.py" --paths "$VIXL_PATHS" --checks "$VIXL_CHECKS" \
+          --suite "$VIXL_SUITE" --fail-on "$VIXL_FAIL_ON" --base "$VIXL_BASE" --proof "$VIXL_PROOF" \
+          --work .vixl-ci > .vixl-ci-summary.md
+        status=$?
+        cat .vixl-ci-summary.md
+        echo "summary=.vixl-ci-summary.md" >> "$GITHUB_OUTPUT"
+        echo "status=$status" >> "$GITHUB_OUTPUT"
+    - name: Upload proof page
+      if: always() && inputs.proof == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: vixl-proof
+        path: .vixl-ci/
+        if-no-files-found: ignore
+    - name: Report result
+      if: steps.check.outputs.status != '0'
+      shell: bash
+      run: |
+        echo "Vixl checks failed at level ${{ inputs.fail-on }}; see the job summary."
+        exit 1

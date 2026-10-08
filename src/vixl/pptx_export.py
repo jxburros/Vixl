@@ -4,8 +4,8 @@ Shapes become native PowerPoint shapes (preset geometry where it matches, custom
 polygons, stars and paths), solid and gradient fills and outlines; text becomes text boxes with
 real runs (font, size, color, bold, italic, underline, strike, highlight, super/subscript),
 paragraph alignment and spacing, and bullets or numbering; plain groups become groups. Layers
-PowerPoint cannot draw the same way (effects, styles, masks, clipping, blend modes, paint and pixel
-art) become pictures of exactly what Vixl renders, listed under ``raster_fallbacks``; image layers
+PowerPoint cannot draw the same way (effects, styles, masks, clipping, blend modes, skew and affine
+transforms, paint and pixel art) become pictures of exactly what Vixl renders, listed under ``raster_fallbacks``; image layers
 are pictures anyway.
 Master-page layers are drawn on every slide that uses them. Fonts are referenced by family name and
 are not embedded (see ``Exporter.font_warnings``); the report lists them, and warns about each one
@@ -67,8 +67,6 @@ class Slide:
         self.next_id += 1
         return self.next_id - 1
 
-    # -- color and geometry -------------------------------------------------------------------
-
     def color(self, value, opacity=1.0):
         from .design import resolve_color
         from .render import color
@@ -111,16 +109,18 @@ class Slide:
             inner += f'<a:chOff x="0" y="0"/><a:chExt cx="{max(1, round(child[0] * emu))}" cy="{max(1, round(child[1] * emu))}"/>'
         return f"<{tag}{attrs}>{inner}</{tag}>"
 
-    # -- layers -------------------------------------------------------------------------------
-
     def layers(self, layers, bounds, parent, emu, index):
         out = []
         for layer in layers:
             if layer.get("parent") != parent or not layer["visible"] or layer["opacity"] <= 0:
                 continue
+            from .affine import precise
             from .pdf_export import PageBuilder
 
             reason = PageBuilder.raster_reason(layer)
+            if reason is None and precise(layer):
+                # DrawingML transforms hold only rotation and flips; a skewed or affine layer is drawn as a picture.
+                reason = "skew" if layer.get("skew_x") or layer.get("skew_y") else "affine transform"
             if reason is None and layer["type"] == "group":
                 if "chart" in layer:
                     from .chart_pptx import shapes as chart_shapes
@@ -164,8 +164,6 @@ class Slide:
             image, (x, y) = tile.crop(box), box[:2]
         else:
             image = layer_ink(self.view, layer, bounds[layer["id"]])
-            if layer["opacity"] != 1:
-                image.putalpha(image.getchannel("A").point(lambda a: round(a * layer["opacity"])))
             x, y = ink_origin(image, bounds[layer["id"]])
         rid = self.exporter.media(self, image)
         ident = self.ident()
@@ -204,6 +202,7 @@ class Slide:
             fill = self.fill((*color(resolve_color(layer.get("fill", "white"), self.view.state))[:3], 255), opacity)
             line = "<a:ln><a:noFill/></a:ln>"
         else:
+            from .geometry import default_fill
             from .render import rest_size
 
             stroke_xml, stroke_alpha = self.color(layer.get("stroke", "transparent"), opacity)
@@ -218,7 +217,7 @@ class Slide:
             if inset and min(rw, rh) - 2 * inset >= 1:
                 frame = (inset, inset, rw - 2 * inset, rh - 2 * inset)
             geometry = self.geometry(layer, pad)
-            fill = self.fill(layer.get("fill", "white"), opacity)
+            fill = self.fill(default_fill(layer), opacity)
             if layer["shape"] == "line":
                 fill = "<a:noFill/>"
                 if stroke_alpha <= 0:
@@ -288,19 +287,24 @@ class Slide:
                 f'</a:pathLst></a:custGeom>')
 
     def gradient(self, layer, opacity):
-        stops = layer.get("stops") or [{"offset": 0, "color": layer.get("start", "black")},
-                                       {"offset": 1, "color": layer.get("end", "white")}]
+        from .design import gradient_stops
+
+        stops = gradient_stops(layer, self.view.state)
+        direction = layer.get("direction", "vertical")
+        if direction == "radial":
+            # A circle path gradient reaches 100% at the ellipse through the box corners, which is
+            # sqrt(2) times the inscribed ellipse every other renderer ends at (for any aspect ratio).
+            # Scaling the stops in and padding with the last color makes PowerPoint end where they do.
+            stops = [{**stop, "offset": stop["offset"] / math.sqrt(2)} for stop in stops]
+            stops.append({"offset": 1, "color": stops[-1]["color"]})
         items = "".join(f'<a:gs pos="{round(stop["offset"] * 100000)}">{self.color(stop["color"], opacity)[0]}</a:gs>'
                         for stop in stops)
-        direction = layer.get("direction", "vertical")
         if direction == "radial":
             shade = '<a:path path="circle"><a:fillToRect l="50000" t="50000" r="50000" b="50000"/></a:path>'
         else:
             angle = {"vertical": 90, "horizontal": 0}.get(direction, layer.get("angle", 0)) % 360
             shade = f'<a:lin ang="{round(angle * 60000)}" scaled="0"/>'
         return f'<a:gradFill rotWithShape="1"><a:gsLst>{items}</a:gsLst>{shade}</a:gradFill>'
-
-    # -- text ---------------------------------------------------------------------------------
 
     def text(self, layer, bounds, emu, ident):
         from .richtext import active
@@ -355,13 +359,21 @@ class Slide:
                 f'<a:latin typeface={face}/><a:ea typeface={face}/><a:cs typeface={face}/></a:rPr>'
                 f'<a:t>{_text(text)}</a:t></a:r>')
 
+    def font_runs(self, text, data, size_pt, rgba, style, opacity):
+        """Runs for ``text``, split where characters fall back to another font of ``data`` (a
+        fallback chain), so each run names the face that draws it, as PNG, SVG and PDF do."""
+        from .text import font_runs
+
+        pieces = font_runs(data, text) if isinstance(data, tuple) else [(data, text)]
+        return "".join(self.run(piece, size_pt, rgba, self.exporter.font(font), style, opacity) for font, piece in pieces)
+
     def plain_paragraphs(self, layer, pt):
         from .design import resolve_color
         from .render import color
         from .text import face, font_data, plan
 
         data = font_data(self.view, layer)
-        family = self.exporter.font(data)
+        self.exporter.font(data)
         rgba = color(resolve_color(layer.get("color", "white"), self.view.state))
         layout = plan(self.view, layer)
         size = layout.size
@@ -375,9 +387,13 @@ class Slide:
         first_top = -layout.box[1] - layer.get("spacing", 4)
         pen_left = layout.box[0] if layer.get("align", "left") == "left" else 0
         align = {"left": "l", "center": "ctr", "right": "r"}[layer.get("align", "left")]
+        # A bold or italic registered face (inter-700, inter-400-italic) is the style of plain text too.
+        font = layer.get("font", "DejaVuSans.ttf")
+        span = {"font": self.view.state.get("fonts", {}).get(font, font)}
+        style = {"bold": self.exporter.is_bold(span), "italic": self.exporter.is_italic(span)}
         out = []
         for text in layer["text"].split("\n"):
-            run = self.run(text, size * pt, rgba, family, {}, layer["opacity"]) if text else ""
+            run = self.font_runs(text, data, size * pt, rgba, style, layer["opacity"]) if text else ""
             out.append(f'<a:p><a:pPr algn="{align}"><a:lnSpc><a:spcPts val="{round(line * pt * 100)}"/></a:lnSpc>'
                        f'<a:buNone/></a:pPr>{run}<a:endParaRPr lang="en-US" sz="{round(size * pt * 100)}" dirty="0"/></a:p>')
         return out, first_top, pen_left
@@ -392,7 +408,8 @@ class Slide:
         rich = layer["rich"]
         base = float(layer.get("size", 48)) * scale
         list_indent = float(rich["list_indent"]) * scale if rich.get("list_indent") else base * 1.4
-        gap = float(layer.get("spacing", 0)) * scale
+        # Size-based leading (line_basis "size") is the whole pitch; the layer's pixel spacing does not add.
+        gap = 0.0 if rich.get("line_basis") == "size" else float(layer.get("spacing", 0)) * scale
         out = []
         counters = {}
         for index, paragraph in enumerate(_paragraphs(spans)):
@@ -430,8 +447,8 @@ class Slide:
                          "highlight": span["highlight"]}
                 from .richtext import style_font_data
 
-                family = self.exporter.font(style_font_data(self.view, self.exporter.base_font(span["font"]), span["text"]))
-                runs.append(self.run(span["text"], span["size"] * scale * pt, span["color"], family, style, layer["opacity"]))
+                data = style_font_data(self.view, self.exporter.base_font(span["font"]), span["text"])
+                runs.append(self.font_runs(span["text"], data, span["size"] * scale * pt, span["color"], style, layer["opacity"]))
             out.append(f'<a:p><a:pPr{attrs}>{spacing}{bullet}</a:pPr>{"".join(runs)}'
                        f'<a:endParaRPr lang="en-US" sz="{round(base * pt * 100)}" dirty="0"/></a:p>')
         first_top = 0.0
@@ -454,6 +471,7 @@ class Exporter:
         self.fonts_used = set()
         self.title_ids = {}
         self._families = {}
+        self._family_data = {}  # family name -> font bytes, for the embedding report
         self._styles = {}
 
     def media(self, slide, image):
@@ -487,6 +505,7 @@ class Exporter:
         key = hashlib.sha256(primary).hexdigest()
         if key not in self._families:
             self._families[key] = family_name(primary)
+            self._family_data.setdefault(self._families[key], primary)
         self.fonts_used.add(self._families[key])
         return self._families[key]
 
@@ -496,25 +515,56 @@ class Exporter:
         PowerPoint embeds fonts as Embedded OpenType parts (``ppt/fonts/*.fntdata`` listed in
         ``p:embeddedFontLst``). Vixl does not write them: only PowerPoint itself decides whether such
         a part is acceptable (python-pptx ignores it), and a malformed one makes PowerPoint offer to
-        repair the file. A missing font is substituted, which moves text, so each one is named."""
+        repair the file. A missing font is substituted, which moves text, so each one is named, with
+        its OS/2 embedding permission and, for open-licensed fonts, the license that allows installing it."""
+        from .fonts import embedding, license_name
+
         families = sorted(self.fonts_used - COMMON_FONTS)
-        return families, [
-            f"Font {family!r} is not embedded in the PPTX (Vixl cannot embed fonts in PowerPoint files): install it "
-            "wherever the deck is opened, or share the PDF, which embeds its fonts" for family in families]
+        details, warnings = {}, []
+        for family in families:
+            data = self._family_data.get(family)
+            info = {"embedding": embedding(data) if data else "unknown"}
+            if data and (found := license_name(data)):
+                info["license"] = found
+            details[family] = info
+            hint = ("it is open-licensed (" + info["license"] + "), so install it on the presenting machine (Google Fonts) "
+                    if "license" in info else "install it wherever the deck is opened ")
+            warnings.append(f"Font {family!r} is not embedded in the PPTX (Vixl cannot embed fonts in PowerPoint files; "
+                            f"embedding: {info['embedding']}): {hint}or share the PDF, which embeds its fonts")
+        return families, warnings, details
 
     def _registered(self, font):
         from .richtext import _registered_name
 
         return _registered_name(self.project.state, font) or ""
 
+    def face_style(self, font):
+        """(weight, italic) read from the font file itself, for faces imported under any name."""
+        from .text import face, primary_font_data
+
+        try:
+            outline = face(primary_font_data(self.project, {"font": font}))[0]
+        except Exception:  # noqa: BLE001 - an unreadable face is treated as regular
+            return 400, False
+        if "OS/2" in outline:
+            return outline["OS/2"].usWeightClass, bool(outline["OS/2"].fsSelection & 1)
+        return 400, bool("post" in outline and outline["post"].italicAngle)
+
     def is_bold(self, span):
         import re
 
         match = re.fullmatch(r".+-(\d{3})(-italic)?", self._registered(span["font"]))
-        return bool(match) and int(match[1]) >= 600
+        if match:
+            return int(match[1]) >= 600
+        return self.face_style(span["font"])[0] >= 600
 
     def is_italic(self, span):
-        return self._registered(span["font"]).endswith("-italic")
+        import re
+
+        name = self._registered(span["font"])
+        if re.fullmatch(r".+-\d{3}(-italic)?", name):
+            return name.endswith("-italic")
+        return self.face_style(span["font"])[1]
 
     def base_font(self, font):
         """The regular face of a registered bold/italic variant (PowerPoint applies b/i itself)."""
@@ -601,9 +651,9 @@ def export_pptx(project, path=None, *, pages=None, dpi=None, report=None):
                       fonts=sorted(exporter.fonts_used),
                       raster_fallbacks={str(i): s.fallbacks for i, (_, s) in enumerate(slides, 1) if s.fallbacks},
                       notes=sum(1 for n in notes if n))
-        families, warnings = exporter.font_warnings()
+        families, warnings, details = exporter.font_warnings()
         if warnings:
-            report.update(fonts_not_embedded=families, warnings=warnings)
+            report.update(fonts_not_embedded=families, font_embedding=details, warnings=warnings)
         charts = {str(i): s.chart_info for i, (_, s) in enumerate(slides, 1) if s.chart_info}
         if charts:
             report["charts"] = charts

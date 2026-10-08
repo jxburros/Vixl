@@ -30,7 +30,11 @@ vixl canvas dpi 300
 
 Operations: `{"type": "canvas", "size": "a4", "orientation": "landscape", "bleed": true, "dpi": 300}`; `canvas.preset` and `artboard.preset` accept the same names (older preset names still work). MCP: `vixl_document_create(path, size="letter", bleed=true)` and `vixl_sizes_list`.
 
-A sized canvas records `size`, `dpi`, `physical`, `bleed` and `safe` (pixels), and generated guides `trim-*` and `safe-*`, so layers can be anchored with constraints such as `{"left": "guide:safe-left.left"}`. A custom canvas resize drops the size metadata and generated guides but keeps `dpi` and any guide a layer is anchored to. Export uses the canvas dpi for PNG/JPEG/TIFF/PDF metadata, and `vixl check --checks print` uses the bleed and safe area.
+A sized canvas records `size`, `dpi`, `physical`, `bleed` and `safe` (pixels; print sizes default to a quarter inch, story sizes to 250 px at the top and bottom and 60 px at the sides, as a `{left, top, right, bottom}` object when the sides differ), and generated guides `trim-*` and `safe-*`, so layers can be anchored with constraints such as `{"left": "guide:safe-left.left"}`. A document made at a custom size (`vixl new --width/--height`, `Project(w, h)`) or resized to one gets the craft default
+safe area, 5% of the short side (50 px on 1000×1000); a named size keeps its own, including an explicit none (favicons,
+sprites, wallpapers). A custom canvas resize drops the size metadata and generated guides but keeps `dpi` and any guide a
+layer is anchored to. Full-bleed pictures in layouts (memes, photo captions, split images) are marked `allow_crop`, so
+only their copy has to sit inside the safe area. Export uses the canvas dpi for PNG/JPEG/TIFF/PDF metadata, and `vixl check` tests text and artwork against the safe area by default (`--checks print` also uses the bleed).
 
 Icon sets: design on `favicon` (or any square canvas) and run `vixl export-icons --out icons --set web|apple|android|windows|all`, or export `favicon.ico` directly (`--icon-sizes 16 32 48`).
 
@@ -40,7 +44,8 @@ Fixed templates make every adopter look alike. A layout is a composition system 
 
 - **Color roles** — swatches `@background`, `@surface`, `@ink`, `@muted`, `@accent`, `@accent-text` and `@on-accent`, assigned from a palette with checked contrast: ink at least 7:1 on the background, muted and accent text at least 4.5:1 on the background and surface panels, the accent at least 3:1. Retint a whole layout by editing one swatch.
 - **Type scale** — character styles `caption`, `body`, `lead`, `subhead`, `title`, `headline` and `display` from a medium-appropriate base size and a modular ratio (`minor-third` 1.2 … `golden` 1.618). Print bases are set in points at the canvas dpi.
-- **Spacing** — margins from the density (`airy`, `balanced`, `dense`), never inside the safe area, and gaps on a spacing unit.
+- **Spacing** — margins from the density (`airy`, `balanced`, `dense`), never inside the safe area, and gaps on a spacing unit (half the body size). Text and buttons stay inside the canvas safe area: type shrinks until they fit, and on a 3:1 banner the safe compositions set their copy in two columns. Rails, panels, accents and full-bleed pictures are marked as decoration or intentional crop.
+- **Corners** — buttons, panels and rounded parts of placed containers take the document's corner style (the rolled `corner`, else the house corner, sharp).
 - **Composition** — alignment, focal placement, split proportions, accent device (`rule`, `bar`, `dot`, `block`, `outline`, `none`) and button shape.
 
 Explicit seeds are deterministic. Without one, sparse designs get a fresh seed unless the document or workspace sets `variety: "fixed"`. The applied choices are recorded in `state.layout` (and reported in the change summary), so you can reproduce a result with its returned seed or pin any choice explicitly. See [safe variety](safe-variety.md) for safe pools, expanded roll dimensions and workspace history.
@@ -75,6 +80,8 @@ Explicit seeds are deterministic. Without one, sparse designs get a fresh seed u
 | `photo-caption` | scrim for contrast | social, covers |
 | `minimal-mark` | negative space, restraint | posters, covers |
 | `bento-grid` | modular tiles of varied span | web, slides, infographics |
+| `meme-top-bottom`, `meme-caption-above`, `meme-reaction` | text over or beside one picture, caption contrast | memes, social, GIFs |
+| `meme-comparison`, `meme-four-panel`, `meme-labelled` | panels in reading order, short labels | memes, social |
 
 ```bash
 vixl layout list
@@ -87,7 +94,7 @@ vixl check
 
 ### Slots: fill in the blanks
 
-Each layout is a form. `vixl layout show NAME` (or `vixl_layouts_list`) lists its slots, with a label and a hint for what each one means in that layout. In `event-poster`, for example, `label` is the date and `body` is one detail per line. Slot keys are `title`, `subtitle`, `body`, `label`, `cta`, `caption`, `items` (newline-separated; `Name | Price` rows for price lists, `Heading: text` for F-pattern) and `image` (an embedded asset ID).
+Each layout is a form. `vixl layout show NAME` (or `vixl_layouts_list`) lists its slots, with a label and a hint for what each one means in that layout. In `event-poster`, for example, `label` is the date and `body` is one detail per line. Slot keys are `title`, `subtitle`, `body`, `label`, `cta`, `caption`, `items` (newline-separated; `Name | Price` rows for price lists, `Heading: text` for F-pattern) and `image` (an embedded asset ID); multi-panel layouts take `images`, a list of asset IDs in reading order.
 
 - **Unfilled slots are blanks, not sample copy.** A slot the composition needs renders as a visible `[Label]` placeholder (`[Date]`, `[Time]`, `[Action]`) and is recorded in `state.blanks` and in the layout's `blanks` list. `check` reports every unfilled blank as an error, so placeholder text can never ship silently. An image slot without an asset draws a placeholder frame that is also a blank until you pass `image` or use `replace-contents`. Pass `unfilled: "omit"` to leave unfilled slots out instead: the layout is composed around the copy it has, passes `check`, and the layout record's `omitted` lists what was left out (supplying one later re-lays the layout out; text added by hand does not).
 - **Unfilled image slots say how to fill them.** `vixl layout show NAME` gives the `image` slot a `fill_with` list, and the
@@ -97,6 +104,17 @@ Each layout is a form. `vixl layout show NAME` (or `vixl_layouts_list`) lists it
   **draw** (build it from `shape`, `pen`, `pathfinder`, `organic` and `paint` inside the bounds, group it, remove the
   placeholder; `rasterize` the group to get an asset for `replace-contents`) and **AI** (`vixl_ai_generate`, which needs a
   configured provider). Text slots get a re-apply hint with the seed.
+- **Memes.** The six `meme-*` layouts are image slots plus caption rules; Vixl ships no meme images, so supply pictures
+  you may use. Stroked captions (`meme-top-bottom`, `meme-labelled`, `meme-four-panel`) are uppercase (`uppercase: false`
+  keeps the case), white with a black `stroke` style that the contrast check reads them through, and shrink until they
+  fit their box without breaking a word. `meme-caption-above` and `meme-comparison` set plain dark text on white;
+  `meme-reaction` sets a subtitle line on black. `items` holds one label or caption per line. For an Impact-style face
+  install an OFL font such as Anton (`vixl font install Anton --role heading`, or `display_font`).
+
+  GIF recipe: apply `meme-reaction` on `instagram-post`, then
+  `{type: animate-preset, target: caption, preset: pop-in, duration: 400}` (or a looping `motion`), set the timeline
+  (`timeline-set` 2–4 s, `loop: 0`), check a frame with `vixl_timeline_preview` and export with
+  `vixl_export_timeline(path="reaction.gif", fps=15)`. Keep GIFs short and small: 480–600 px wide and few colours.
 - **Unused slots are errors.** Copy for a slot the layout does not read on this canvas, such as `subtitle` on `event-poster`, fails with `unused_slot` and lists the slots it does use, instead of being dropped.
 - **Fill blanks by re-applying.** Re-apply with the copy, `replace: true` and the `seed` the first pass reported. The composition stays the same and type is sized for the real copy. Editing a blank layer's text directly also clears it.
 
@@ -115,7 +133,8 @@ rearranged, `layout.notes` says how to take control:
   `@accent`). Nothing is lightened or darkened to suit a mode; mode follows the first color. `@ink` is not part of that
   order, so it is derived from the background hue for 7:1 contrast, and `@muted`, `@accent-text` and `@on-accent` are derived
   from it.
-- `colors: {background: "#0f172a", accent: "#38bdf8"}` sets individual roles and wins over everything else.
+- `colors: {background: "#0f172a", accent: "#38bdf8"}` sets individual roles and wins over everything else. A given
+  `background` also sets the mode (dark or light from its lightness), and the other roles are chosen to read on it.
 
 `palette-apply` works the same way (`roles` true/false or `{role: color-or-palette-index}`, `keep_order`) and records the
 mapping as `palette_roles` in the apply result. `palette-generate` never assigns roles; it only adds numbered swatches.
@@ -131,7 +150,7 @@ Standalone design-system pieces:
 {"type": "guidance", "name": "typography", "style": "typography"}
 ```
 
-Built-in guidance now covers `overall`, `minimal`, `editorial`, `playful`, `logo`, `pixel-art`, `typography`, `color`, `layout`, `accessibility`, `print`, `icon`, `motion` and `brush`.
+Built-in guidance now covers `overall`, `minimal`, `editorial`, `playful`, `logo`, `pixel-art`, `typography`, `color`, `layout`, `accessibility`, `print`, `icon`, `motion`, `brush` and `image-rights`.
 
 Layouts are text compositions, which is why open requests drift toward posters. For icons, characters, scenes, patterns,
 mandalas and diagrams, `vixl_guide(brief)` (CLI `vixl guide BRIEF`) names the approach, operations, layouts, looks and

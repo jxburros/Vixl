@@ -112,6 +112,68 @@ def test_looks_survive_save_load_undo_and_the_svg_policy(tmp_path):
     assert "grain" not in project.layer("card")["looks"]
 
 
+def flat_stage():
+    project = Project(400, 240, "#f6efe3")
+    project.apply({"type": "rect", "name": "card", "x": 50, "y": 40, "width": 300, "height": 160, "fill": "#ff6f59"})
+    return project
+
+
+def gray(image):
+    return np.asarray(image.convert("L"), dtype=np.float32)
+
+
+def test_sketch_draws_a_pencil_outline_and_keeps_the_tone_of_a_flat_fill():  # #361
+    project = flat_stage()
+    plain = gray(project.render())
+    project.apply({"type": "look", "target": "card", "look": "sketch"})
+    sketched = gray(project.render())
+    # A graphite outline along the edge, darker than the flat fill was there ...
+    assert sketched[36:41, 100:300].min(axis=0).mean() < plain[41, 200] - 40
+    # ... and hatched shading inside rather than a faint wash.
+    inside = sketched[80:160, 100:300]
+    assert inside.mean() < 215 and inside.std() > 8
+
+
+def test_watercolor_pools_pigment_at_the_edges_of_a_flat_shape():  # #352
+    project = flat_stage()
+    plain = np.asarray(project.render().convert("RGB"), dtype=np.int16)
+    project.apply({"type": "look", "target": "card", "look": "watercolor"})
+    wet = np.asarray(project.render().convert("RGB"), dtype=np.int16)
+    edge, centre = wet[42, 100:300].mean(axis=0), wet[100:140, 150:250].reshape(-1, 3).mean(axis=0)
+    assert centre.sum() > edge.sum() + 60  # a darker rim around a lighter wash
+    assert wet[60:180, 70:330].reshape(-1, 3).std(axis=0).mean() > 4  # blotchy, not flat
+    assert np.abs(wet - plain).max(axis=2)[40:200, 50:350].mean() > 15
+
+
+@pytest.mark.parametrize("look", ["duotone", "risograph"])
+def test_print_looks_keep_a_flat_fill_in_its_own_hue(look):  # #352
+    from vixl.colors import srgb_to_hsl
+
+    project = flat_stage()
+    project.apply({"type": "look", "target": "card", "look": look})
+    r, g, b = np.asarray(project.render().convert("RGB"), dtype=np.float32)[110:130, 190:210].reshape(-1, 3).mean(axis=0) / 255
+    hue, saturation, _ = srgb_to_hsl((r, g, b))
+    assert saturation > 0.4 and (hue < 25 or hue > 340), (look, hue, saturation)
+
+
+def test_print_looks_on_a_photo_take_the_palette_accent():  # #352
+    from PIL import Image
+
+    from vixl.assets import add_image
+
+    project = Project(200, 100, "white")
+    ramp = Image.fromarray(np.tile(np.linspace(0, 255, 200, dtype=np.uint8), (100, 1))).convert("RGB")
+    asset = add_image(project, ramp)
+    project.apply([{"type": "swatch", "name": "accent", "color": "#0f9d58"},
+                   {"type": "add", "asset": asset, "name": "photo", "x": 0, "y": 0}])
+    project.apply({"type": "look", "target": "photo", "look": "duotone"})
+    effect = project.layer("photo")["effects"][0]
+    from vixl.colors import parse, srgb_to_hsl
+
+    hue = srgb_to_hsl(parse(effect["highlight_color"])[:3])[0]
+    assert 120 < hue < 170, effect
+
+
 def test_look_catalog_is_described_and_matches_the_operation_enum():
     from vixl.schema import operation_schema
 
@@ -119,10 +181,6 @@ def test_look_catalog_is_described_and_matches_the_operation_enum():
     assert set(variants["look"]["properties"]["look"]["enum"]) == set(LOOKS)
     for name, row in catalog().items():
         assert row["summary"] and row["svg"] in ("native", "raster") and row["best_for"], name
-
-
-# ---------------------------------------------------------------------------------------------
-# Radial repeat
 
 
 def centers(project, names):

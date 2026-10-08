@@ -53,6 +53,22 @@ def test_text_that_does_not_fit_its_box_or_group_warns():
     assert any("extends outside its group 'card'" in w for w in moved), moved
 
 
+def test_text_layout_with_only_a_width_grows_to_fit_the_wrapped_lines():
+    p = Project(400, 300, "white")
+    p.apply({"type": "text", "name": "t", "text": "a long paragraph that should wrap inside a narrow box", "size": 20})
+    one_line = p.layer("t")["height"]
+    result = p.apply({"type": "text-layout", "target": "t", "width": 200}, detail="compact")
+    tall = p.layer("t")["height"]
+    assert p.layer("t")["width"] == 200 and tall > 2 * one_line
+    assert not any("does not fit" in w for w in result.get("warnings", []))
+    # A wider box shrinks back to the lines it needs; an explicit height is kept and only grows.
+    p.apply({"type": "text-layout", "target": "t", "width": 380})
+    assert p.layer("t")["height"] < tall
+    p.apply({"type": "text-layout", "target": "t", "width": 380, "height": 200})
+    p.apply({"type": "text-layout", "target": "t", "width": 390})
+    assert p.layer("t")["height"] == 200
+
+
 def test_fields_that_change_nothing_are_reported():
     found = warnings([
         {"type": "shape", "shape": "rectangle", "name": "r", "width": 20, "height": 20, "radius": 5, "stroke_width": 2},
@@ -72,8 +88,10 @@ def test_fields_that_change_nothing_are_reported():
     ])
     p = document()
     p.apply([{"type": "effect", "target": "t", "name": "blur", "amount": 2}, {"type": "preset-save", "target": "t", "name": "soft"}])
-    stray = warnings([{"type": "preset-apply", "target": "t", "name": "soft", "overrides": {"sharpen": 3}}], p)
-    assert stray and "match no effect in preset 'soft'" in stray[0]
+    # An override that matches nothing is invalid input, so it fails the batch rather than warning.
+    with pytest.raises(VixlError, match="match no effect in preset 'soft'") as error:
+        p.apply([{"type": "preset-apply", "target": "t", "name": "soft", "overrides": {"sharpen": 3}}])
+    assert error.value.details["field"] == "overrides" and error.value.details["allowed"] == ["blur"]
 
 
 def test_validation_errors_point_at_the_schema_and_name_the_fields():

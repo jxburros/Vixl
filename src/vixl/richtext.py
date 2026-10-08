@@ -5,7 +5,9 @@ plain text (variables, search, checks and timelines read it); ``rich`` adds:
 
 ``spans``       ``[{"text", <character style overrides>}]`` whose texts concatenate to the text
 ``paragraphs``  one settings object per line of the text (lists, alignment, spacing, indent)
-``line_height`` (default 1.2), ``paragraph_spacing`` (px after each paragraph), ``list_indent`` (px)
+``line_height`` (a multiple of the font size, from the line-height table for new layers),
+``line_basis`` (``"size"`` on layers made since 0.23; older layers, without it, multiply the font's own
+line pitch and default to 1.2), ``paragraph_spacing`` (px after each paragraph), ``list_indent`` (px)
 ``font_variants`` ``{"bold", "italic", "bold_italic"}`` registered font names
 
 Character styles override the layer's own font, size and color: ``bold``, ``italic``,
@@ -28,15 +30,11 @@ from .notices import note
 
 STYLE_KEYS = ("bold", "italic", "underline", "strike", "color", "size", "font", "highlight", "baseline", "tracking")
 PARAGRAPH_KEYS = ("list", "level", "align", "space_before", "space_after", "indent", "line_height", "start")
-ROOT_KEYS = ("spans", "paragraphs", "line_height", "paragraph_spacing", "list_indent", "font_variants")
+ROOT_KEYS = ("spans", "paragraphs", "line_height", "line_basis", "paragraph_spacing", "list_indent", "font_variants")
 BULLETS = ("•", "◦", "▪", "‣")
 MAX_SPANS = 4000
 SYNTHETIC_SKEW = math.tan(math.radians(12))
 SVG = "{http://www.w3.org/2000/svg}"
-
-
-# ---------------------------------------------------------------------------------------------
-# Content: spans, paragraphs and Markdown
 
 
 def plain(rich):
@@ -198,6 +196,7 @@ def validate_rich(rich, state, text=None):
     for item in paragraphs:
         validate_paragraph(item)
     finite(rich.get("line_height", 1.2), "line_height", 0.5, 5)
+    require(rich.get("line_basis", "size") == "size", "Invalid rich text line_basis", "invalid_project")
     finite(rich.get("paragraph_spacing", 0), "paragraph_spacing", 0, 2000)
     finite(rich.get("list_indent", 0), "list_indent", 0, 2000)
     variants = rich.get("font_variants", {})
@@ -240,10 +239,6 @@ def validate_paragraph(item):
         require(isinstance(item["start"], int) and 0 <= item["start"] <= 999999, "start must be a whole number", field="start")
 
 
-# ---------------------------------------------------------------------------------------------
-# Fonts
-
-
 def _registered_name(state, font):
     for name, asset in state.get("fonts", {}).items():
         if asset == font:
@@ -282,21 +277,13 @@ def variant_font(project, base_font, bold, italic, rich):
 
 def style_font_data(project, font, text):
     """Font bytes for a font value, with document and bundled fallbacks when ``text`` needs them."""
-    from .text import coverage, primary_font_data, visible_char
+    from .text import coverage, fallback_chain, primary_font_data, visible_char
 
     primary = primary_font_data(project, {"font": font, "size": 12})
     if all(not visible_char(c) or ord(c) in coverage(primary) for c in text):
         return primary
-    fonts = [primary]
-    for name in [*project.state.get("font_fallbacks", []), "DejaVuSans.ttf"]:
-        data = primary_font_data(project, {"font": name, "size": 12})
-        if data not in fonts:
-            fonts.append(data)
-    return tuple(fonts)
-
-
-# ---------------------------------------------------------------------------------------------
-# Layout
+    names = [*project.state.get("font_fallbacks", []), "DejaVuSans.ttf"]
+    return fallback_chain(primary, [primary_font_data(project, {"font": name, "size": 12}) for name in names])
 
 
 @dataclass
@@ -338,13 +325,14 @@ def styled_spans(project, layer, variables=None):
     """Spans with every style resolved against the layer: font value, size, color and flags."""
     from .design import resolve_color
     from .render import color, document_variables, substitute
+    from .variables import RESOLVED
 
     rich = layer["rich"]
     variables = {**document_variables(project), **(variables or {})}
     base_font = layer.get("font", "DejaVuSans.ttf")
     result = []
     for span in rich["spans"]:
-        text = substitute(span["text"], variables)
+        text = span["text"] if layer.get(RESOLVED) else substitute(span["text"], variables)
         font = span.get("font", base_font)
         font, fake_bold, fake_italic = variant_font(project, font, span.get("bold", False), span.get("italic", False), rich)
         result.append({
@@ -460,7 +448,10 @@ def layout(project, layer, *, width=None, scale=1.0, variables=None):
     available = None if width is None else max(1.0, width - 2 * stroke)
     base_size = float(layer.get("size", 48)) * scale
     line_factor = float(rich.get("line_height", 1.2))
-    spacing = float(layer.get("spacing", 0)) * scale
+    # Since 0.23 line_height is a multiple of the font size and sets the whole pitch; older records multiply
+    # the font's own pitch and add the layer's pixel spacing.
+    by_size = rich.get("line_basis") == "size"
+    spacing = 0.0 if by_size else float(layer.get("spacing", 0)) * scale
     after_default = float(rich.get("paragraph_spacing", 0)) * scale
     list_indent = float(rich["list_indent"]) * scale if rich.get("list_indent") else base_size * 1.4
 
@@ -511,6 +502,7 @@ def layout(project, layer, *, width=None, scale=1.0, variables=None):
                 ascent, descent = a * base_size, d * base_size
             rows.append({
                 "tokens": line, "ascent": ascent, "descent": descent, "factor": factor,
+                "em": max((t["size"] for t in line), default=base_size) if line else base_size,
                 "marker": marker if number == 0 else None, "left": left, "text_left": text_left,
                 "align": para.get("align", layer.get("align", "left")), "limit": limit,
                 "last": number == len(lines) - 1, "before": before if number == 0 else 0.0,
@@ -524,12 +516,17 @@ def layout(project, layer, *, width=None, scale=1.0, variables=None):
 
     # Pass 3: place glyphs and decorations.
     result = Layout(0, 0, size_scale=scale)
-    y = float(stroke)
+    def overhang(row):
+        # Tight leading (a line height below the font's own pitch) lets the first line's ascenders and
+        # the last line's descenders reach past the line box; the layer box still holds them.
+        return max(0.0, (row["ascent"] - row["descent"]) - row["em"] * row["factor"]) / 2 if by_size else 0.0
+
+    y = float(stroke) + (overhang(rows[0]) if rows else 0.0)
     widest = 0.0
     for row, content in zip(rows, contents):
         y += row["before"]
         natural = row["ascent"] - row["descent"]
-        height = natural * row["factor"]
+        height = (row["em"] if by_size else natural) * row["factor"]
         baseline = y + row["ascent"] + (height - natural) / 2
         span_width = container - row["text_left"]
         extra, offset = 0.0, 0.0
@@ -572,6 +569,7 @@ def layout(project, layer, *, width=None, scale=1.0, variables=None):
         result.lines.append((y, baseline, height, row["paragraph"], row["descent"]))
         y += height + spacing + row["after"]
     y -= spacing if rows else 0
+    y += overhang(rows[-1]) if rows else 0.0
     result.width = int(width) if width is not None else max(1, math.ceil(widest))
     result.height = max(1, math.ceil(y + stroke))
     result.box = (0, 0, widest, y + stroke)
@@ -608,12 +606,9 @@ def measure(project, layer, variables=None):
     return result.width, result.height, (0, 0, result.width, result.height)
 
 
-# ---------------------------------------------------------------------------------------------
-# Drawing
-
-
-def append_svg(parent, result, layer, project, *, node=None):
-    """Add the layout's highlights, glyph paths and decorations to an SVG element."""
+def append_svg(parent, result, layer, project, *, node=None, motion=None):
+    """Add the layout's highlights, glyph paths and decorations to an SVG element. ``motion``
+    (kinetic type) gives each glyph a ``(matrix prefix, opacity, fill or None)``."""
     from .design import resolve_color
     from .render import color
     from .text import face, glyph_outline
@@ -633,7 +628,7 @@ def append_svg(parent, result, layer, project, *, node=None):
                          "fill_opacity": alpha})
     outline_width = layer.get("stroke_width", 0)
     outline_color = color(resolve_color(layer.get("stroke_color", "black"), project.state))
-    for glyph in result.glyphs:
+    for index, glyph in enumerate(result.glyphs):
         path, _ = glyph_outline(glyph.data, glyph.name)
         if not path:
             continue
@@ -641,8 +636,18 @@ def append_svg(parent, result, layer, project, *, node=None):
         f = glyph.size / upem
         skew = f * SYNTHETIC_SKEW if glyph.italic else 0
         fill, alpha = paint(glyph.color)
-        attrs = {"d": path, "transform": f"matrix({f:.6f} 0 {skew:.6f} {-f:.6f} {glyph.x:.3f} {glyph.y:.3f})",
-                 "fill": fill, "fill_opacity": alpha}
+        transform = f"matrix({f:.6f} 0 {skew:.6f} {-f:.6f} {glyph.x:.3f} {glyph.y:.3f})"
+        extra = {}
+        if motion:
+            from .kinetic import multiply
+
+            prefix, opacity, override = motion[index]
+            transform = "matrix(" + " ".join(f"{v:.6f}" for v in multiply(prefix, (f, 0, skew, -f, glyph.x, glyph.y))) + ")"
+            if override:
+                fill, alpha = paint(override)
+            if opacity < 1:
+                extra["opacity"] = f"{opacity:.4f}"
+        attrs = {"d": path, "transform": transform, "fill": fill, "fill_opacity": alpha, **extra}
         width = 0.0
         stroke = fill
         stroke_alpha = alpha
@@ -669,6 +674,19 @@ def render(project, layer):
 
     result = fitted(project, layer)
     width, height = (layer["width"], layer["height"]) if layer.get("text_layout") else (result.width, result.height)
+    width, height = math.ceil(width), math.ceil(height)
+    if layer.get("_kinetic"):
+        from .kinetic import padding, rich_motion, svg_canvas
+
+        moves, boxes = rich_motion(project, layer, result)
+        margin = padding(boxes, [m[0] for m in moves], width, height, layer.get("stroke_width", 0) + 0.05 * layer.get("size", 48))
+        size, attrs = svg_canvas(width, height, *margin)
+        project.limits.size(*size)
+        root = ET.Element(SVG + "svg", attrs)
+        append_svg(root, result, layer, project, motion=moves)
+        image = Image.open(io.BytesIO(resvg_py.svg_to_bytes(svg_string=ET.tostring(root, encoding="unicode")))).convert("RGBA")
+        image.info["vixl_vector_overflow"] = True
+        return image
     project.limits.size(width, height)
     root = ET.Element(SVG + "svg", {"width": str(width), "height": str(height), "viewBox": f"0 0 {width} {height}"})
     append_svg(root, result, layer, project)
@@ -714,10 +732,6 @@ def fill_variables(rich, variables):
 
     for span in rich["spans"]:
         span["text"] = substitute(span["text"], variables)
-
-
-# ---------------------------------------------------------------------------------------------
-# Operations
 
 
 TYPES = ("rich-text", "text-style")
@@ -801,6 +815,19 @@ def _make_rich(project, op, size):
     return rich
 
 
+def size_leading(project, layer, rich, multiple=None):
+    """Give a new rich record size-based leading: ``multiple`` × the font size between baselines, from the
+    line-height table when none is given. The layer's pixel spacing no longer applies."""
+    from .craft import LINE_HEIGHT, body_size, stage_for
+
+    if multiple is None:
+        multiple = layer.get("line_height") or LINE_HEIGHT[stage_for(float(layer.get("size", 48)), body_size(project))]
+    rich["line_height"] = finite(multiple, "line_height", 0.5, 5)
+    rich["line_basis"] = "size"
+    layer["spacing"] = 0
+    layer.pop("line_height", None)
+
+
 def execute(project, op):
     from .operations import execute as apply
 
@@ -820,6 +847,7 @@ def execute(project, op):
             if "font" in op:
                 apply(project, {"type": "text-set", "target": layer["id"], "font": op["font"]})
         rich = _make_rich(project, op, float(layer.get("size", 48)))
+        size_leading(project, layer, rich, op.get("line_height"))
         if "align" in op:
             for item in rich["paragraphs"]:
                 item.setdefault("align", op["align"])
@@ -859,7 +887,11 @@ def execute(project, op):
                       f"{', '.join(whole)} as text-set does; give a range to style part of the text")
         return
     if not layer.get("rich") or plain(layer["rich"]) != layer["text"]:
+        previous = layer.get("rich") or {}
         layer["rich"] = {"spans": [{"text": layer["text"]}], "paragraphs": [{} for _ in range(paragraph_count(layer["text"]))]}
+        if previous.get("line_basis") == "size" or (not previous and "line_height" in layer):
+            # Text whose leading is a multiple of its size keeps the same line pitch as rich text.
+            size_leading(project, layer, layer["rich"], previous.get("line_height", layer.get("line_height")))
     rich = layer["rich"]
     style = {k: op[k] for k in STYLE_KEYS if k in op}
     validate_style(style, project.state)
@@ -937,6 +969,9 @@ def field_hint(kind, extras):
     if kind == "text-set" and any(k in TEXT_STYLE_FIELDS for k in extras):
         return (". text-set changes a whole layer (text, color, size, font, align, spacing, stroke); to style part of the "
                 "text or set bold, italic, tracking, highlight or paragraph settings use text-style")
+    if kind in ("text", "text-set") and any(k in ("width", "height") for k in extras):
+        return (". A text box's size is set with text-layout (target, width, height: text then wraps inside it), or "
+                "use rich-text, which takes width and height")
     if kind == "text-style" and any(k in TEXT_SET_FIELDS for k in extras):
         return (". text-style styles ranges and paragraphs of rich text; use text-set to change the layer's text, spacing, "
                 "stroke or alignment, or rich-text to replace formatted content")

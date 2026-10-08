@@ -2,13 +2,16 @@
 FIELDS = {
     "name": "Unique name for the created layer, reusable template or audio track.", "recipe": "Higher-level motion generator to compile into editable keyframes.",
     "targets": "Layer names or IDs receiving the operation.", "start": "Start time in milliseconds; timeline operations also accept named markers when declared as strings.",
-    "duration": "Duration in milliseconds, up to ten minutes.", "period": "Milliseconds per repeating motion cycle.", "amount": "Motion amplitude in pixels or degrees; breathing uses percent and overlap uses milliseconds.",
+    "duration": "Duration in milliseconds, up to ten minutes (default 1000; spin, attach, wiggle and line-boil: the rest of the timeline).", "period": "Milliseconds per repeating motion cycle.", "amount": "Motion amplitude in pixels or degrees; breathing uses percent and overlap uses milliseconds.",
     "frequency": "Oscillations per second.", "damping": "Exponential spring damping rate per second.", "gravity": "Vertical acceleration in pixels per second squared (positive is down).",
     "restitution": "Fraction of impact velocity retained by each bounce, from zero to below one.", "radius": "Radius in pixels.", "center": "Orbit center [x,y] in pixels.",
     "points": "Path vertices [x,y] in pixels, traversed at constant arc-length speed before easing.", "to": "End value or camera [x,y,zoom] pose.", "from": "Initial camera [x,y,zoom] pose; x/y are pixel offsets from the canvas center.",
-    "property": "Animatable layer property to receive generated values.", "follow": "Layer name or ID to follow or face.", "stagger": "Milliseconds of additional delay between targets.",
-    "children": "Apply to child parts of the selected group(s).", "samples": "Bounded number of samples compiled into ordinary editable keys.", "phase": "Cycle offset in turns (radians for wiggle).", "easing": "Timeline easing function name.",
+    "property": "Animatable layer property to receive generated values.", "follow": "Layer name or ID to follow, face or (attach) ride on.", "stagger": "Milliseconds of additional delay between targets.",
+    "children": "Apply to child parts of the selected group(s).", "samples": "Bounded number of samples compiled into ordinary editable keys (attach: default one per frame).", "phase": "Cycle offset in turns (radians for wiggle).", "easing": "Timeline easing function name.",
     "extend": "Extend the timeline when generated keys lie beyond its end (default true).", "keys": "Keyframes with millisecond time, typed value and optional outgoing easing.",
+    "turns": "spin: turns of the loop (default 1). With symmetry n the layer turns turns/n of a full circle, so an n-fold symmetric shape (12 rays, 6 spokes) lands on itself and the loop is seamless. Use a whole number.",
+    "symmetry": "spin: the shape repeats every 360/symmetry degrees (12 for a 12-ray sun).",
+    "close": "Append each touched track's t=0 value at the timeline end so it ends where it began (a seamless loop).",
     "x": "Horizontal placement in pixels.", "y": "Vertical placement in pixels.", "height": "Character height in pixels.", "colors": "Character role-to-color overrides, including skin, outfit, hair and eyes.",
     "parts": "Map standard character part names to existing layer names or IDs.", "template": "Name previously stored with character-save in this portable document.", "scale": "Uniform character instance scale factor.", "outfit": "Standard part names mapped to replacement fill colors.",
     "bones": "Named bones with part/layer, parent, root origin, length, angle and [min,max] joint limits.", "angles": "Bone names mapped to local joint angles in degrees; limits clamp poses.", "chain": "Parent and child bone names forming a two-bone IK chain.", "point": "Desired end-effector [x,y] in character-local pixels.", "bend": "Elbow/knee bend sign: 1 or -1.",
@@ -21,7 +24,7 @@ FIELDS = {
     "preset": "Particle emitter appearance and physics defaults.", "count": "Number of particles, bounded by the project layer budget.", "spread": "Emitter [width,height] spread in pixels.", "velocity": "Initial [x,y] particle velocity in pixels per second.", "turbulence": "Deterministic lateral displacement amplitude in pixels.", "life": "Lifetime of each particle in milliseconds.", "grain": "Paper grain strength, 0–0.5.", "roughness": "Rough-cut edge erosion strength, 0–1.", "thickness": "Paper thickness/shadow offset in pixels.", "fps": "Held-frame stop-motion cadence, 1–60 frames per second.", "jitter": "Per-held-frame handmade position jitter in pixels.",
 }
 SUMMARIES = {
-    "motion": "Compile path, orbit, physics, follow-through or looping motion into editable timeline keys.", "keyframes": "Write a compact array of keys to one layer property.",
+    "motion": "Compile path, orbit, physics, follow-through, attach (ride on a point of another layer), looping motion or line boil into editable timeline keys.", "keyframes": "Write a compact array of keys to one layer property, or sample them from a wave (sin, triangle, noise …).",
     "character": "Create a standard articulated character or bind existing artwork to named standard parts.", "character-save": "Save a character and its rig as a reusable template inside the portable document.", "character-load": "Instantiate a saved character with independent IDs, colors, outfit and scale.", "character-rig": "Attach a parented skeleton with root origins, bone lengths and joint limits to character parts.", "character-pose": "Apply constrained joint angles and recompute connected limb positions.", "character-ik": "Solve a two-bone limb toward a local target with a chosen bend direction and joint limits.", "character-cycle": "Retarget a walk, run, idle, ride or reaction cycle to a character rig.", "character-lipsync": "Animate mouth visemes from approximate transcript timing or explicit audio-aligned cues.",
     "audio-track": "Add or replace a timeline score/SFX/imported audio track with level, pan, fades and marker sync.", "audio-remove": "Remove a named audio track from the document timeline.", "speech-bubble": "Create an editable, text-sized speech/thought/shout/whisper bubble whose tail follows a layer.", "caption": "Add a styled, wrapped caption with optional box, timing, fade or typewriter animation.",
     "layer-depth": "Set a layer's depth for camera parallax and depth of field.", "camera": "Author an eased pan/zoom/dolly, target follow, shake or rack-focus move.", "lighting": "Composite point lights, ambient light, shadows, vignette and color grading.", "particles": "Create a deterministic emitter with lifetime, velocity, gravity and turbulence.", "cut-paper": "Apply paper grain, rough edges, thickness shadows, layered depth and held-frame animation cadence.",
@@ -29,6 +32,7 @@ SUMMARIES = {
 
 def documented(add):
     def register(kind, properties=None, required=(), **extra):
-        props = {name: {"description": FIELDS[name], **schema} for name, schema in (properties or {}).items()}
+        props = {name: {**({"description": FIELDS[name]} if name in FIELDS else {}), **schema}
+                 for name, schema in (properties or {}).items()}
         add(kind, props, required, description=SUMMARIES[kind], **extra)
     return register

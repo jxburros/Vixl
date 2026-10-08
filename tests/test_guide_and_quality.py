@@ -19,7 +19,6 @@ from vixl.style_catalog import STYLES
 ROOT = Path(__file__).resolve().parents[1]
 
 
-# ---------------------------------------------------------------------------------------------
 # #79 (1) and #88: the guide and the start-here recipe
 
 
@@ -135,7 +134,6 @@ def test_skill_and_docs_carry_the_start_here_recipe():
         assert (ROOT / path).exists()
 
 
-# ---------------------------------------------------------------------------------------------
 # #79 (3): layouts with image slots explain how to fill them
 
 
@@ -187,7 +185,6 @@ def test_text_slots_get_a_reapply_hint_and_the_documented_fill_works():
     assert not blanks
 
 
-# ---------------------------------------------------------------------------------------------
 # #79 (4): palette roles are explained and can keep the order given
 
 ORDER = ["#0f172a", "#1e293b", "#38bdf8", "#f472b6"]
@@ -269,16 +266,16 @@ def test_palette_generate_never_assigns_roles_and_reports_its_swatches():
     assert "background" not in project.state["swatches"] and "palette_roles" not in project.state
 
 
-# ---------------------------------------------------------------------------------------------
 # #79 (5): findings grouped by action, intentional crops marked
 
 
 def crop_doc():
     project = Project(800, 600, "#ffffff")
+    project.state["canvas"]["size"] = "facebook-post"  # a social size: thumbnail legibility is a fix there
     project.apply([
         {"type": "text", "name": "small", "text": "tiny print", "size": 8, "color": "#111111", "x": 40, "y": 40},
-        {"type": "shape", "shape": "ellipse", "name": "sun", "x": -80, "y": 380, "width": 300, "height": 300, "fill": "#f97316"},
-        {"type": "shape", "shape": "ellipse", "name": "moon", "x": 600, "y": 450, "width": 300, "height": 300, "fill": "#94a3b8"},
+        {"type": "shape", "shape": "ellipse", "name": "sun", "x": -80, "y": 250, "width": 300, "height": 300, "fill": "#f97316"},
+        {"type": "shape", "shape": "ellipse", "name": "moon", "x": 600, "y": 250, "width": 300, "height": 300, "fill": "#94a3b8"},
         {"type": "text", "name": "word", "text": "BLEED", "size": 220, "color": "#111111", "x": -60, "y": 100},
     ])
     return project

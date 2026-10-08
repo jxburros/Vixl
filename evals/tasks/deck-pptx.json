@@ -1,0 +1,25 @@
+{
+  "prompt": "Make a three-slide presentation deck.vixl at 1280x720 on a dark navy background with white text. Slide 1 says 'Quarterly Review', slide 2 'Revenue up 12%' and slide 3 'Next steps'. Add the speaker note 'Thank the team' to slide 3. Export it as deck.pptx for PowerPoint and as deck.pdf.",
+  "document": "deck.vixl",
+  "checks": [
+    {"type": "pptx", "name": "pptx slides, text and notes", "path": "deck.pptx", "slides": 3,
+     "texts": ["Quarterly Review", "Revenue up 12%", "Next steps"], "notes": ["Thank the team"]},
+    {"type": "pdf_fields", "name": "pdf pages", "path": "deck.pdf", "pages": 3}
+  ],
+  "reference": [
+    {"tool": "vixl_document_create", "arguments": {"path": "deck.vixl", "width": 1280, "height": 720, "background": "navy"}},
+    {"tool": "vixl_operations_apply", "arguments": {"operations": [
+      {"type": "page", "action": "add", "name": "title"},
+      {"type": "solid", "name": "bg", "color": "navy", "page": "title"},
+      {"type": "text", "text": "Quarterly Review", "name": "heading", "size": 96, "color": "white", "x": "center", "y": 300, "page": "title"},
+      {"type": "page", "action": "add", "name": "revenue"},
+      {"type": "solid", "name": "bg", "color": "navy", "page": "revenue"},
+      {"type": "text", "text": "Revenue up 12%", "name": "heading", "size": 96, "color": "white", "x": "center", "y": 300, "page": "revenue"},
+      {"type": "page", "action": "add", "name": "next", "notes": "Thank the team"},
+      {"type": "solid", "name": "bg", "color": "navy", "page": "next"},
+      {"type": "text", "text": "Next steps", "name": "heading", "size": 96, "color": "white", "x": "center", "y": 300, "page": "next"}
+    ]}},
+    {"tool": "vixl_export_file", "arguments": {"path": "deck.pptx"}},
+    {"tool": "vixl_export_file", "arguments": {"path": "deck.pdf"}}
+  ]
+}

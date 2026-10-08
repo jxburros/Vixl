@@ -64,7 +64,7 @@ def timeline_report(
     key_offset=0,
     key_limit=50,
 ):
-    from .timeline import default_timeline, parse_time
+    from .timeline import attachment_report, default_timeline, parse_time
     import math
 
     require(detail in ("summary", "full"), "detail must be summary or full", field="detail")
@@ -94,6 +94,8 @@ def timeline_report(
             "start": keys[0]["time"],
             "end": keys[-1]["time"],
         }
+        if "attach" in track:
+            item["attached_to"] = names.get(track["attach"]["to"], track["attach"]["to"])
         if detail == "full":
             item["keys"], item["key_pagination"] = page(keys, key_offset, key_limit)
         tracks.append(item)
@@ -110,4 +112,5 @@ def timeline_report(
         "range": [start, end],
         "markers": dict(markers[:limit]),
         "marker_count": len(markers),
+        **({"attachments": attachments} if (attachments := attachment_report(project)) else {}),
     }

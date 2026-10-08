@@ -23,7 +23,7 @@ def _boxes(data):
 
 def _poster():
     p = Project.sized("poster-11x17", "white", bleed=True)
-    assert p.state["canvas"]["bleed"] == 38  # 0.125 in at 300 dpi is 37.5 px
+    assert p.state["canvas"]["bleed"] == 37.5  # 0.125 in at 300 dpi, kept to the half pixel (#306)
     p.apply({"type": "solid", "name": "panel", "color": "navy", "width": "100%", "height": "100%"})
     return p
 
@@ -35,6 +35,14 @@ def test_single_page_print_pdf_is_exact_trim_plus_bleed_with_boxes(options):
     assert boxes["bleedbox"] == [0, 0, 810, 1242]
     assert boxes["trimbox"] == [9, 9, 801, 1233]  # 11 × 17 in, 0.125 in in from every edge
     assert "/TrimBox" in page and "/BleedBox" in page
+
+
+def test_documents_with_the_old_rounded_up_bleed_still_export_at_the_physical_size():
+    p = _poster()
+    assert (p.state["canvas"]["width"], p.state["canvas"]["height"]) == (3375, 5175)
+    p.state["canvas"].update(width=3376, height=5176, bleed=38)  # as stored before 0.23
+    boxes, _ = _boxes(p.export(format="PDF"))
+    assert boxes["mediabox"] == [0, 0, 810, 1242] and boxes["trimbox"] == [9, 9, 801, 1233]
 
 
 def test_multi_page_and_metric_print_pdfs_are_exact():
@@ -63,8 +71,8 @@ def test_pdf_without_bleed_has_no_print_boxes_and_explicit_dpi_still_maps_pixels
 def test_png_alpha_modes():
     opaque = Project(20, 10, "white")
     opaque.apply({"type": "solid", "name": "fill", "color": "tomato", "width": 10, "height": 10})
-    assert Image.open(io.BytesIO(opaque.export(format="PNG"))).mode == "RGBA"  # library default keeps RGBA
-    auto = Image.open(io.BytesIO(opaque.export(format="PNG", alpha="auto")))
+    assert Image.open(io.BytesIO(opaque.export(format="PNG", alpha="keep"))).mode == "RGBA"
+    auto = Image.open(io.BytesIO(opaque.export(format="PNG")))  # auto is the default on every interface
     assert auto.mode == "RGB" and auto.getpixel((2, 2)) == (255, 99, 71)
 
     clear = Project(20, 10, "transparent")

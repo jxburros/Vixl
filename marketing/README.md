@@ -1,6 +1,6 @@
 # Vixl marketing kit
 
-Marketing material for Vixl, made with Vixl 0.20.0. One script, [`build.py`](build.py), builds every
+Marketing material for Vixl, made with Vixl 0.21.0. One script, [`build.py`](build.py), builds every
 piece through the Python API: layouts, rich text, linked logo masters, framed images, pages,
 keyframes, checks and exports. Nothing was drawn by hand or in another app.
 
@@ -29,7 +29,7 @@ the `vixl check` findings it was released with (see below).
 From the repository root, with Vixl installed (`python -m pip install -e '.[pdf]'`):
 
 ```bash
-python marketing/build.py                 # everything (about 1½ minutes with 0.20.0)
+python marketing/build.py                 # everything (about a minute with 0.21.0)
 python marketing/build.py og deck teaser  # just some pieces
 ```
 
@@ -46,8 +46,8 @@ so the logo links resolve.
 - **Showcase images** (the gallery tiles in the GitHub card, story, carousel and deck) are real
   outputs from [`explorations/`](../explorations/) and [`docs/assets/generated/`](../docs/assets/generated/),
   all made with Vixl, placed with `frame` and clipped to rounded `shape`s.
-- **Copy facts** were counted from the 0.20.0 source by taking the length of each registry:
-  179 operation types (`vixl.operations.OPERATION_TYPES`), 150 named sizes (`vixl.sizes.SIZES`),
+- **Copy facts** were counted from the 0.21.0 source by taking the length of each registry:
+  180 operation types (`vixl.operations.OPERATION_TYPES`), 150 named sizes (`vixl.sizes.SIZES`),
   47 layouts (`vixl.layouts.LAYOUTS`), 40 templates and 19 containers (`vixl.resources.TEMPLATES`
   and `CONTAINERS`), 28 styles (`vixl.style_catalog.STYLES`), 17 looks (`vixl.looks.LOOKS`) and
   17 brushes (`vixl.brushes.BRUSHES`). The 10,000-operation batch limit is `vixl.model.Limits().max_operations`.
@@ -66,8 +66,8 @@ so the logo links resolve.
   The "Seconds, not minutes" deck slide quotes the before/after timings in
   [explorations/README.md](../explorations/README.md#performance).
   If those numbers change, edit `FACTS` and the slide in `build.py`.
-- **No licence claim.** The repository has no licence file, so nothing says "open source". Add it
-  to the chips in `build_og` once a licence is chosen.
+- **Licence.** Vixl is source-available under PolyForm Small Business 1.0.0, not open source: never
+  say "open source". A licence chip in `build_og` waits for the next kit rebuild.
 
 ## Checks
 

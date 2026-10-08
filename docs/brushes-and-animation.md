@@ -15,7 +15,7 @@ Paint layers store strokes, not pixels: each stroke keeps its points, optional p
 | --- | --- |
 | `round`, `soft-round`, `airbrush` | Clean, soft or build-up strokes |
 | `pencil`, `ink`, `fineliner`, `brush-pen`, `calligraphy` | Line work: graphite grain, pressure tapers, even technical lines, thick–thin contrast, broad 45° nib |
-| `marker`, `highlighter` | Chisel strokes that darken on overlap (multiply) |
+| `marker`, `highlighter` | Chisel strokes that darken on overlap (multiply); the highlighter paints at 40% flow, so what is below shows through (`settings: {"flow": 1}` for an opaque stroke) |
 | `chalk`, `charcoal`, `crayon` | Dry media with paper tooth and broken coverage |
 | `watercolor` | Translucent washes with darker pooled edges |
 | `dry-brush` | Bristle streaks that follow the stroke direction |
@@ -63,7 +63,18 @@ Times are milliseconds or strings: `"1.5s"`, `"250ms"`, `"50%"` of the duration,
 
 Easings: `linear`, `hold`, `ease`, `ease-in`, `ease-out`, `ease-in-out`, `ease-in/out/in-out-sine|quad|cubic|quart|expo|back`, `bounce-in`, `bounce-out`, `elastic-out`, `spring`, `cubic-bezier(x1, y1, x2, y2)`, `steps(n)`.
 
-Presets (`animate-preset`): `fade-in`, `fade-out`, `slide-in-left|right|up|down`, `slide-out-left|right|up|down` (fade by default), `pop-in`, `pop-out`, `zoom-in`, `zoom-out`, `spin`, `pulse`, `shake`, `bounce`, `float`, `blink`, `typewriter`, `color-shift` (`to`), `draw-on` and `draw-off` (stroke trim, below). `amount` and `distance` tune them.
+Presets (`animate-preset`): `fade-in`, `fade-out`, `slide-in-left|right|up|down`, `slide-out-left|right|up|down` (fade by default), `pop-in`, `pop-out`, `zoom-in`, `zoom-out`, `spin`, `pulse`, `shake`, `bounce`, `float`, `blink`, `typewriter`, `color-shift` (`to`), `draw-on` and `draw-off` (stroke trim, below). `distance` is the slides' travel in pixels. `amount` means
+something different per preset:
+
+| Preset | `amount` | Default |
+| --- | --- | --- |
+| `pulse` | peak scale (1.08 grows 8%; 0.08 would shrink the layer to 8%) | 1.08 |
+| `zoom-in`, `zoom-out` | the scale zoomed to or from | 1.15 |
+| `spin` | turns (negative turns the other way) | 1 |
+| `shake` | pixels left and right | 12 |
+| `bounce` | jump height in pixels | 60 |
+| `float` | pixels up | 10 |
+| `blink` | number of blinks | 3 |
 
 ```bash
 vixl timeline set --duration 3s --fps 30 --loop 0
@@ -92,6 +103,30 @@ vixl export-timeline --out sheet.png --format sheet --columns 6
 `targets: ["arm-left", "arm-right"]` on `animate`, `animate-preset` or `keyframe` (CLI: `arm-left,arm-right`) applies the same keys to every listed layer in one call.
 
 `animate` without `from` starts from the current animated (or static) value; it sets keys at `start` and `end` (or `start + duration`). Removing a layer removes its tracks.
+
+### Kinetic type: per-character, per-word and per-line animation
+
+`text-animate` moves the letters, words or lines of one text layer on their own, staggered, while the layer stays a single editable text layer (its text, font, rich-text spans and styles are untouched; nothing is exploded into extra layers).
+
+```json
+{"type": "text-animate", "target": "headline", "preset": "fade-up", "unit": "char", "duration": "400ms", "stagger": "40ms"}
+{"type": "text-animate", "target": "tagline", "preset": "pop", "unit": "word", "start": "0.8s", "direction": "center"}
+{"type": "text-animate", "target": "ticker", "preset": "wave", "unit": "char", "duration": 600, "stagger": "15%", "repeat": true}
+```
+
+- `preset`: `fade`, `fade-up`, `fade-down` (`distance`, default 0.35 × font size), `slide-left` (units enter from the left) and `slide-right` (`distance`, default 1.5 × font size), `pop` (scale up from 0 with `ease-out-back`), `wave` (each unit rises by `amount`, default 0.3 × font size, and settles), `typewriter` (units appear one by one; without `stagger` the whole text types over `duration`), `color-sweep` (from `from`, default the text colour at 25 % opacity, to the text's own colour). `rotate` adds a turn (degrees) each unit settles out of.
+- `unit`: `char` (each visible character; a ligature or a base letter with its marks is one unit), `word`, or `line` (each rendered line, after wrapping).
+- Timing: `start` is when the first unit starts, `duration` how long each unit moves, `stagger` the delay between successive units (ms, `"80ms"`, `"0.1s"` or a percentage of `duration` such as `"30%"`; default 40 ms per character, 120 per word, 250 per line). `easing` takes every timeline easing. `direction`: `forward` (reading order), `reverse`, `center` (middle out), `edges` (both ends in) or `random` (`seed`).
+- `mode`: `in` (default) animates into the resting text, `out` out of it, and `in-out` plays in from `start` and out again so the last unit leaves at the timeline end. In a `loop_mode: "seamless"` timeline `in-out` is the default, so the loop closes; `vixl_check` reports a `loop-seam` for a text animation whose first and last frames differ. `wave` with `repeat: true` ripples for the whole timeline: make the timeline a whole number of `duration` cycles for a seamless loop.
+- If the last unit finishes past the timeline end, the timeline is lengthened and the result's `warnings` say so (`extend: false` keeps it). Applying the same preset and unit again replaces it; different presets on one layer combine (a `fade-up` per character with a `color-sweep` per word). `remove: true` deletes a layer's text animations (or only `preset`'s). `vixl timeline` / `vixl_timeline_inspect` list them under `text_animations` with the unit count, stagger and span.
+- Rendering: the poses are applied while the text is drawn, in the layer's own frame, so effects, layer opacity, layer tracks and an animated parent group all apply on top. Frames for GIF, APNG, WebP, sprite sheets, PNG sequences and MP4/WebM come from the normal timeline render. Stills and the vector exports (SVG, PDF, PPTX) show the resting text. The motion and poster checks see per-unit opacity: text whose letters are all transparent at frame 0 is `text-hidden-at-poster`.
+- Limits: warped text and text on a path bend their glyphs and are refused (animate the whole layer instead), as are fonts drawn by the bitmap fallback. Rich-text highlights, underlines and strikes stay in place while their glyphs move.
+
+CLI: `vixl text-animate headline fade-up --unit word --stagger 120ms --direction center [--mode in-out] [--remove]`.
+
+**Nested motion.** A group's tracks and its children's tracks compose: a child keyed with `translate-y` inside a group keyed with `translate-x` and `rotation` moves along the group's turned axes, and kinetic text inside an animated group moves with it. There is no separate composition (pre-comp) object with its own timeline, time remapping or looping; one document has one timeline.
+
+**Keyframe semantics.** A key's `easing` shapes the segment that *starts* at that key (from this key to the next), not the one arriving at it; the last key's easing has no effect, and `hold` keeps a key's value until the next key and then jumps. Before the first key and after the last key a track holds that key's value. The accepted easings are exactly those the schema lists (`vixl_operation_schema(["keyframe"])`): the named curves plus `cubic-bezier(x1,y1,x2,y2)` and `steps(n)`; animate presets are listed on `animate-preset`'s `preset` field, and pivot anchors on `pivot`'s `value` (synonyms such as `bottom-center` or `center-left` are accepted and reported under `normalized`). `trim_start` equal to `trim_end` draws nothing, so a draw-on can reset invisibly. Pass `extend` to decide whether a key past the end lengthens the timeline (below).
 
 **Keys past the end.** A key placed past the timeline end lengthens the timeline, and the operation result says so in `warnings` (`timeline duration changed 8000 -> 8400 ms: a keyframe on 'beam' sits at 8400 ms, past the end…`). Only the keys the operation just set count: a key left past the end earlier never stretches a duration you set back with `timeline-set` (which itself notes how many keys now lie past the end). Pass `extend: false` on `keyframe`, `animate` or `animate-preset` (CLI `--no-extend`) to keep the duration instead: the key stays past the end, so the last played frame is still on its way to it, but its own moment is not played. This is how to ease a loop through a key that sits just beyond the final frame.
 
@@ -136,7 +171,19 @@ vixl animate kid,shadow translate-x --to 120 --duration 2s    # shared timing fo
 
 Frames render at the target resolution: `scale` (0.05–16) re-renders vectors, text and shapes crisply instead of enlarging a bitmap; raster images resample with LANCZOS and effects driven by a fixed-size selection fall back to an enlarged render. Each frame must fit the pixel budget (`--max-pixels`).
 
-GIF size: results report `bytes`, and a GIF over 1 MB adds a `warnings` entry. Fully opaque animations are stored as frame differences (identical decoded frames, often 3–5× smaller); `colors` (2–256, default 256) shares one reduced palette across frames, and lower `fps` or `scale` shrink further. A 728×90, 4 s, 20 fps banner went from 0.93 MB to 190 KB at default settings, 76 KB with `--colors 64`, and 41 KB with `--colors 32 --fps 10`. For strict ad limits prefer WebP or MP4 when the network accepts them.
+Loop count: the timeline's `loop` is the number of repetitions after the first play (0 = forever), and GIF, APNG and WebP all play it `loop + 1` times (GIF stores the repetitions, APNG and WebP the total). A timeline whose frames are all identical is written as one frame that lasts the whole range, in WebP as in GIF and APNG.
+
+GIF size: results report `bytes`, and a GIF over 1 MB (or over the soft `max_bytes` target, which only warns) adds a `warnings` entry that suggests MP4 or WebP, quoting the size of a quick trial WebP encode of the same frames when Pillow has WebP ("export WebP (184,220 bytes for these frames, measured: 5.1x smaller) or MP4"); gradient-heavy GIFs get that suggestion at any size, since 256 colors band. With `target_bytes` (or a `preset`) the 1 MB note is left out: the file meets the size you chose, or one warning says it could not; and the banding note does not suggest `dither: "ordered"` when the export already used it (the result's `dither`). `dither` (`auto` default, `none`, `ordered`, `floyd`; CLI `--dither`) quantizes every frame to one shared palette: `ordered` uses a fixed Bayer pattern that never shimmers between frames (`auto` picks it when the frames hold gradients), `floyd` is smoother in stills but its error diffusion can shimmer around moving content. Fully opaque animations are stored as frame differences (identical decoded frames, often 3–5× smaller); `colors` (2–256, default 256) shares one reduced palette across frames, and lower `fps` or `scale` shrink further. A 728×90, 4 s, 20 fps banner went from 0.93 MB to 190 KB at default settings, 76 KB with `--colors 64`, and 41 KB with `--colors 32 --fps 10`. For strict ad limits prefer WebP or MP4 when the network accepts them.
+
+**Fitting a size.** `target_bytes` (timeline GIF, WebP and APNG export; CLI `--target-bytes`) encodes, measures and steps down until the file fits: GIF colors 256 → 128 → 64 (WebP quality → 75 → 60 → 45), then every 2nd and 3rd frame (while that stays at 5 fps or more), then 0.75, 0.56 and 0.42 of the size, at most 10 tries. The result reports `chosen: {fps, colors | quality, scale, bytes, tries, fits}` and the file holds the first setting that fits; when none does, the smallest is written with one warning. `preset` fills in what you leave at the defaults:
+
+| Preset | Width (at most) | fps | colors | target_bytes |
+| --- | --- | --- | --- | --- |
+| `chat` | 480 | 15 | 256 | 1,000,000 |
+| `web` | 800 | 20 | 256 | 2,000,000 |
+| `email` | 600 | 10 | 128 | 1,000,000 |
+
+A long fit runs past the MCP inline limit as a job like any heavy call (poll `vixl_job`).
 
 ```bash
 vixl export-timeline --out banner.gif --colors 64 --fps 12
@@ -145,4 +192,6 @@ vixl export-timeline --out hero@2x.webp --scale 2
 
 Exports: GIF, APNG and animated WebP hold frames in memory, bounded by four times the pixel budget (use `scale`, `fps` or `start`/`end` to shorten). PNG-sequence ZIPs (with `timing.json`) and MP4/WebM stream frames; MP4/WebM need `ffmpeg` on PATH. Limits: 10 minutes, 60 fps, 3 600 frames, 1 024 tracks, 2 048 keys per track.
 
-MCP: `vixl_timeline_inspect`, `vixl_timeline_preview(time=… | count=8)`, `vixl_export_timeline(scale=, colors=)`, and `time=` on `vixl_render_preview`/`vixl_export_file`. REST: `GET /timeline`, `GET /timeline/frame?time=1.5s`, `POST /timeline/export` (body fields as the CLI flags, including `colors`). Python: `vixl.timeline.export_timeline(project, path, scale=2, colors=64)`.
+Export results report what was written: for sheets `size` is the sheet's pixel size (`frame_size` the cell), and for GIF/WebP/APNG `frames` and `frame_durations` are the frames in the file after identical neighbours merged (`rendered_frames` is how many were rendered). `poster` (time, marker, `"end"`) puts that frame first in GIF/WebP/APNG and the result warns when it is empty; `export-timeline --poster end`. Loops, `repeat`/`stagger` and the time-aware checks are described in [animation-authoring.md](animation-authoring.md).
+
+MCP: `vixl_timeline_inspect`, `vixl_timeline_preview(time=… | count=8 | times=[…] | thumbnail=360)`, `vixl_export_timeline(scale=, colors=, dither=, max_bytes=, poster=)`, and `time=` on `vixl_render_preview`/`vixl_export_file`. REST: `GET /timeline`, `GET /timeline/frame?time=1.5s`, `POST /timeline/export` (body fields as the CLI flags, including `colors`). Python: `vixl.timeline.export_timeline(project, path, scale=2, colors=64)`.

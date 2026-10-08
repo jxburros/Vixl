@@ -105,7 +105,7 @@
   "normalized": null
  },
  {
-  "step": "effect-set temperature 500→700",
+  "step": "effect-set temperature 60→80",
   "operations": [
    "effect-set"
   ],

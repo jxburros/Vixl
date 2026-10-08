@@ -6,24 +6,15 @@ import numpy as np
 from .errors import require
 from .model import finite
 from .affine import layer_matrix, linear, matrix
+from .geometry import ANCHORS, canonical_anchor
 
 TYPES = ("skew", "transform", "match-size", "fit", "snap-to-pixel")
-ANCHORS = {
-    "top-left": [0, 0],
-    "top": [0.5, 0],
-    "top-right": [1, 0],
-    "left": [0, 0.5],
-    "center": [0.5, 0.5],
-    "right": [1, 0.5],
-    "bottom-left": [0, 1],
-    "bottom": [0.5, 1],
-    "bottom-right": [1, 1],
-}
 VECTOR_TYPES = ("shape", "pathfinder", "text", "solid", "gradient", "group", "symbol")
 
 
 def anchor(value):
-    value = ANCHORS.get(value, value) if isinstance(value, str) else value
+    if isinstance(value, str) and canonical_anchor(value):
+        value = list(ANCHORS[canonical_anchor(value)])
     require(
         isinstance(value, (list, tuple)) and len(value) == 2,
         "Anchor must be a named anchor or [x, y] fractions",
@@ -112,9 +103,9 @@ def enrich_transform_schemas(variants):
         kind, props = variant["properties"]["type"]["const"], variant["properties"]
         if kind in descriptions:
             variant["description"] = descriptions[kind]
-            for key, prop in props.items():
-                if key in fields:
-                    prop.setdefault("description", fields[key])
+            for key, prop in list(props.items()):
+                if key in fields and "description" not in prop:
+                    props[key] = {**prop, "description": fields[key]}
         if kind in ("resize", "scale"):
             props["anchor"] = {**anchors, "description": fields["anchor"]}
         if kind == "resize":
@@ -141,7 +132,7 @@ def _relative(value, current):
 
 
 def execute(project, op):
-    from .render import resolve_layout, stored_origin
+    from .render import layer_box, resolve_layout, stored_origin
 
     kind = op["type"]
     if kind == "match-size":
@@ -169,7 +160,7 @@ def execute(project, op):
             for key in ("x", "y", "width", "height"):
                 layer[key] = max(1, round(layer[key])) if key in ("width", "height") else round(layer[key])
         return
-    box = resolve_layout(project)[layer["id"]]
+    box = layer_box(project, layer)
     if kind == "move":
         space = op.get("space", "canvas" if op.get("absolute") else "parent")
         origin = np.array(box[:2], dtype=float)
@@ -210,7 +201,7 @@ def execute(project, op):
                     value = finite(op[axis], key) + (layer.get(key, 0) if op.get("relative") else 0)
                     layer[key] = finite(value, key, -89, 89)
             require(abs(np.linalg.det(linear(layer))) > 1e-8, "Skew must not collapse the layer")
-            after_box = resolve_layout(project)[layer["id"]]
+            after_box = layer_box(project, layer)
             after = layer_matrix(layer, after_box) @ [
                 fixed[0] * layer["width"],
                 fixed[1] * layer["height"],
@@ -315,7 +306,7 @@ def execute(project, op):
     else:
         layer.update(width=nw, height=nh, auto_size=False)
     if "anchor" in op:
-        after_box = resolve_layout(project)[layer["id"]]
+        after_box = layer_box(project, layer)
         after = layer_matrix(layer, after_box) @ [fixed[0] * nw, fixed[1] * nh, 1]
         layer["x"], layer["y"] = stored_origin(
             layer, (after_box[0] + before[0] - after[0], after_box[1] + before[1] - after[1])

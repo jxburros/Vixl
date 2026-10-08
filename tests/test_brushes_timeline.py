@@ -25,6 +25,20 @@ def test_every_brush_paints_deterministically(brush):
     assert (first[:, :, :3] < 200).any(), brush
 
 
+def test_highlighter_is_translucent_and_overlaps_darken():
+    p = Project(200, 100, "white")
+    p.apply({"type": "rect", "name": "word", "x": 60, "y": 40, "width": 20, "height": 20, "fill": "black"})
+    p.apply({"type": "paint-layer", "name": "hl"})
+    p.apply({"type": "paint", "target": "hl", "brush": "highlighter", "points": [[10, 50], [190, 50]], "size": 40, "color": "navy"})
+    image = np.asarray(p.render())[:, :, :3].astype(int)
+    # The stroke tints the paper without hiding it; what lies below stays readable.
+    paper = image[50, 30]
+    assert 90 < paper.mean() < 230, paper
+    assert image[50, 70].mean() < 40
+    p.apply({"type": "paint", "target": "hl", "brush": "highlighter", "points": [[10, 50], [190, 50]], "size": 40, "color": "navy"})
+    assert np.asarray(p.render())[50, 30, :3].astype(int).mean() < paper.mean() - 10
+
+
 def test_paint_layers_keep_editable_strokes_and_erase():
     p = Project(120, 80, "white")
     p.apply({"type": "paint-layer", "name": "sketch"})
@@ -137,7 +151,7 @@ def test_timeline_validation_and_layer_removal_prunes_tracks():
         p.apply({"type": "keyframe", "target": "ball", "property": "wobble", "time": 0, "value": 1})
     with pytest.raises(VixlError):
         p.apply({"type": "keyframe", "target": "ball", "property": "opacity", "time": 0, "value": 3})
-    with pytest.raises(VixlError, match="Unknown animation preset"):
+    with pytest.raises(VixlError, match="preset must be one of"):
         p.apply({"type": "animate-preset", "target": "ball", "preset": "explode"})
     p.apply({"type": "remove", "target": "ball"})
     assert all(track["target"] != "ball" for track in p.state["timeline"]["tracks"])
@@ -173,7 +187,7 @@ def test_timeline_exports_stream_formats(tmp_path):
     p_export(p, tmp_path / "a.png")
     assert Image.open(tmp_path / "a.png").n_frames == 10
     sheet = p_export(p, tmp_path / "s.png", format="sheet", columns=5)
-    assert json.loads((tmp_path / "s.json").read_text())["frames"][5]["y"] == 100 and sheet["size"] == [200, 100]
+    assert json.loads((tmp_path / "s.json").read_text())["frames"][5]["y"] == 100 and sheet["size"] == [1000, 200] and sheet["frame_size"] == [200, 100]
     p_export(p, tmp_path / "f.zip", scale=0.5)
     with zipfile.ZipFile(tmp_path / "f.zip") as archive:
         assert len([n for n in archive.namelist() if n.endswith(".png")]) == 10
@@ -244,7 +258,7 @@ def test_mcp_tools_cover_new_features(tmp_path):
             assert preview.content[0].type == "image"
             await call("vixl_render_preview", {"time": "0.25s", "simulate": "deuteranopia", "max_width": 200})
             exported = json.loads((await call("vixl_export_timeline", {"path": "post.gif", "scale": 0.2})).content[0].text)
-            assert exported["frames"] == 4
+            assert exported["frames"] <= exported.get("rendered_frames", 4) == 4  # Identical frames merge in the file.
             pdf = json.loads((await call("vixl_export_file", {"path": "post.pdf", "color_space": "cmyk", "ink_limit": 300})).content[0].text)
             assert pdf["format"] == "PDF"
             icons = json.loads((await call("vixl_export_icons", {"directory": "icons"})).content[0].text)

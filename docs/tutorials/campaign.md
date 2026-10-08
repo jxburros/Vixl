@@ -28,12 +28,14 @@ layers and adapt the canvas/panel to the destination's named size. The
 
 ## Change copy without changing the master
 
+<!-- docs-test: continue -->
 ```bash
 vixl -p campaign.vixl render --set headline='NIGHT SCHOOL' --set date='SATURDAY / 20:00' --out alternate.png
 ```
 
 Render overrides affect that output only. To make a permanent copy change:
 
+<!-- docs-test: continue -->
 ```bash
 vixl -p campaign.vixl variable set headline 'NIGHT SCHOOL'
 vixl -p campaign.vixl variable set date 'SATURDAY / 20:00'
@@ -55,12 +57,14 @@ copy length. Choose typography through [font pairings](../typography.md) for fin
 
 Create `campaigns.csv` with these exact headers (no `${}` in headers):
 
+<!-- docs-test: save campaigns.csv -->
 ```csv
 headline,date
 OPEN STUDIO,FRIDAY / 19:00
 NIGHT SCHOOL,SATURDAY / 20:00
 ```
 
+<!-- docs-test: continue -->
 ```bash
 vixl -p campaign.vixl render --data campaigns.csv --out campaign-output
 ```

@@ -255,6 +255,25 @@ def test_fill_regions_under_the_lines(sketch):
     assert fill["fill"] == "#ffcc00"
 
 
+def test_fill_and_stroke_points_in_group_space_follow_a_moved_drawing(sketch):
+    p = built(sketch)
+    p.apply({"type": "move", "target": "art", "x": p.layer("art")["x"] + 37, "y": p.layer("art")["y"] + 21})
+    report = drawing.report(p, "art")
+    assert report["space"] == "canvas" and report["group"]["offset"][0] == pytest.approx(p.layer("art")["x"], abs=0.1)
+    inside = max(report["regions"], key=lambda r: r["area"])
+    assert inside["point"][0] == pytest.approx(inside["group_point"][0] + report["group"]["offset"][0], abs=0.2)
+    p.apply({"type": "drawing", "action": "fill", "target": "art", "space": "group",
+             "points": [[*inside["group_point"], "#ffcc00"]]})
+    assert p.render().convert("RGB").getpixel(tuple(int(v) for v in inside["point"])) == (255, 204, 0)
+    p.apply({"type": "drawing", "action": "stroke", "target": "art", "space": "group", "name": "art/local",
+             "points": [[10, 10], [60, 10]], "settings": {"smooth": False}})
+    p.apply({"type": "drawing", "action": "stroke", "target": "art", "name": "art/canvas",
+             "points": [[10, 10], [60, 10]], "settings": {"smooth": False}})
+    local, canvas = (p.layer(name)["drawing_strokes"][0]["points"][0] for name in ("art/local", "art/canvas"))
+    assert local == [10, 10]
+    assert canvas[0] == pytest.approx(10 - report["group"]["offset"][0], abs=0.01)
+
+
 def test_added_strokes_restyle_and_preservation_check(sketch):
     p = built(sketch)
     p.apply({"type": "drawing", "action": "stroke", "target": "art", "points": [[100, 450], [300, 450], [300, 500]],
@@ -270,6 +289,27 @@ def test_added_strokes_restyle_and_preservation_check(sketch):
     assert issues and issues[0]["check"] == "drawing" and "original lines" in issues[0]["message"]
     image = drawing.compare(p, "art")
     assert image.mode == "RGB" and image.size == (p.layer("art")["content_width"], p.layer("art")["content_height"])
+
+
+def test_smooth_keeps_straightened_corners_and_the_check_notices_rounding(sketch):
+    p = built(sketch)
+
+    def strokes():
+        return [r for layer in p.state["layers"] if layer["name"].startswith("art/s") for r in layer["drawing_strokes"]]
+
+    straight = [r for r in strokes() if r.get("kind") in ("line", "polyline")]
+    assert straight, "the sketch's box, line and zigzag straighten"
+    before = deepcopy(strokes())
+    p.apply({"type": "drawing", "action": "smooth", "target": "art"})
+    after = strokes()
+    for old, new in zip(before, after):
+        if old.get("kind") in ("line", "polyline"):
+            assert new == old, "straightened sides and corners are kept"
+    assert not any("rounded" in i["message"] for i in p.check(checks=["drawing"])["issues"])
+    p.apply({"type": "drawing", "action": "smooth", "target": "art", "settings": {"corners": "round"}})
+    assert any(r.get("rounded") for r in strokes())
+    issues = [i for i in p.check(checks=["drawing"])["issues"] if "corners are curves" in i["message"]]
+    assert issues and issues[0]["severity"] == "warning"
 
 
 def test_reclean_keeps_strokes_aligned_and_outline_mode(sketch):

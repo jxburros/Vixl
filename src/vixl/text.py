@@ -80,9 +80,32 @@ def primary_font_data(project, layer):
     name = project.state.get("fonts", {}).get(layer.get("font"), layer.get("font"))
     if name in project.assets:
         return project.assets[name]
+    path = _font_path(name or "DejaVuSans.ttf") if 1 <= int(layer.get("size", 48)) <= 4096 else None
+    if path is not None:
+        try:
+            return file_bytes(path)
+        except OSError:
+            _font_path.cache_clear()  # Uninstalled since it was found: font_for reports it.
     font = font_for(project, layer)
     path = font.path
     return path.getvalue() if hasattr(path, "getvalue") else file_bytes(path)
+
+
+@lru_cache(maxsize=64)
+def _font_path(font):
+    """The file behind a bundled or system font name, found once instead of opening the font on every
+    measurement; None when ``font_for`` must decide (and report) instead."""
+    if font == "DejaVuSans.ttf":
+        return str(Path(__file__).parent / "data" / font)
+    if "/" in font or "\\" in font:
+        return None
+    from PIL import ImageFont
+
+    try:
+        path = ImageFont.truetype(font, 12).path
+    except OSError:
+        return None
+    return path if isinstance(path, str) else None
 
 
 def file_bytes(path):
@@ -98,6 +121,14 @@ def _file_bytes(path, mtime, size):
 
 
 @lru_cache(maxsize=32)
+def font_sha256(data):
+    """Hex SHA-256 of one font file, computed once per font instead of once per drawn layer."""
+    import hashlib
+
+    return hashlib.sha256(data).hexdigest()
+
+
+@lru_cache(maxsize=32)
 def coverage(data):
     return frozenset(TTFont(io.BytesIO(data)).getBestCmap() or {})
 
@@ -106,18 +137,54 @@ def visible_char(char):
     return not char.isspace() and unicodedata.category(char) not in ("Cf", "Cc") and not (0xFE00 <= ord(char) <= 0xFE0F)
 
 
+@lru_cache(maxsize=64)
+def font_style(data):
+    """(family, weight, italic) of a font file from its name and OS/2 tables."""
+    try:
+        font = TTFont(io.BytesIO(data), lazy=True)
+        names = font["name"]
+        family = names.getDebugName(16) or names.getDebugName(1) or ""
+        os2 = font["OS/2"] if "OS/2" in font else None
+        weight = getattr(os2, "usWeightClass", 400) or 400
+        italic = bool(os2 and os2.fsSelection & 1) or bool(font["head"].macStyle & 2)
+        return family, weight, italic
+    except Exception:  # noqa: BLE001 - unreadable metadata: treat as a regular face of its own family
+        return str(len(data)), 400, False
+
+
+def fallback_chain(primary, fallbacks):
+    """``primary`` followed by ``fallbacks`` with each family's faces ordered by how well they
+    match the primary's slope, then weight (as CSS font matching does), so a bold heading falls
+    back to the bold face of a fallback family. The order of families is kept."""
+    _, weight, italic = font_style(primary)
+    families, order = {}, []
+    for data in fallbacks:
+        if data == primary or data in families.get(font_style(data)[0], ()):
+            continue
+        family = font_style(data)[0]
+        if family not in families:
+            order.append(family)
+        families.setdefault(family, []).append(data)
+
+    def distance(data):
+        _, w, slanted = font_style(data)
+        return (slanted != italic) * 1000 + abs(w - weight)
+
+    chain = [primary]
+    for family in order:
+        chain += [data for data in sorted(families[family], key=distance) if data not in chain]
+    return tuple(chain)
+
+
 def font_data(project, layer):
     primary = primary_font_data(project, layer)
-    from .render import document_variables, substitute
-    text = substitute(layer.get("text", ""), document_variables(project))
+    from .render import document_variables
+    from .variables import layer_text
+    text = layer_text(layer, document_variables(project))
     if all(not visible_char(c) or ord(c) in coverage(primary) for c in text):
         return primary
-    fonts = [primary]
-    for name in [*project.state.get("font_fallbacks", []), "DejaVuSans.ttf"]:
-        fallback = primary_font_data(project, {**layer, "font": name})
-        if fallback not in fonts:
-            fonts.append(fallback)
-    return tuple(fonts)
+    names = [*project.state.get("font_fallbacks", []), "DejaVuSans.ttf"]
+    return fallback_chain(primary, [primary_font_data(project, {**layer, "font": name}) for name in names])
 
 
 def glyph_coverage(project, layer):
@@ -129,6 +196,8 @@ def glyph_coverage(project, layer):
 
 
 def font_runs(fonts, content):
+    if len(fonts) == 1:
+        return [(fonts[0], content)] if content else []  # One font draws every cluster.
     # Keep combining marks, selectors and joiner sequences with their base glyph.
     clusters = []
     for char in content:
@@ -146,10 +215,30 @@ def font_runs(fonts, content):
     return result
 
 
+# Bidi classes that can put a character above level 0 or remove it from the text (explicit controls and boundary
+# neutrals are dropped by rule X9). Text without any of them is one left-to-right level, so runs() can skip the
+# bidi algorithm, which is written in Python and dominated the cost of shaping long lines.
+LEVEL_CHANGING = frozenset(("R", "AL", "AN", "RLE", "RLO", "LRE", "LRO", "PDF", "RLI", "LRI", "FSI", "PDI", "BN"))
+INHERITED_SCRIPTS = ("Zyyy", "Zinh", "Zzzz")
+
+
 def runs(text):
     """Resolve bidi levels, shape logical script runs, then order runs visually."""
     if not text:
         return []
+    if not any(unicodedata.bidirectional(char) in LEVEL_CHANGING for char in text):
+        result = []
+        for char, tag in zip(text, script_tags(text)):
+            if result and result[-1][0][1] == tag:
+                result[-1][1].append(char)
+            else:
+                result.append(((0, tag), [char]))
+        return [(key, "".join(chars)) for key, chars in result]
+    return bidi_runs(text)
+
+
+def bidi_runs(text):
+    """``runs`` through the full bidi algorithm."""
     storage = bidi.get_empty_storage()
     storage["base_level"] = bidi.get_base_level(text)
     storage["base_dir"] = ("L", "R")[storage["base_level"]]
@@ -167,16 +256,7 @@ def runs(text):
     except AssertionError as exc:
         raise UnsupportedText("Unicode isolate controls require raster text layout") from exc
     logical = list(storage["chars"])
-    tags = [script(char["ch"]) for char in logical]
-    for i, tag in enumerate(tags):
-        if tag in ("Zyyy", "Zinh", "Zzzz"):
-            left = next(
-                (tags[j] for j in range(i - 1, -1, -1) if tags[j] not in ("Zyyy", "Zinh", "Zzzz")), None
-            )
-            right = next(
-                (tags[j] for j in range(i + 1, len(tags)) if tags[j] not in ("Zyyy", "Zinh", "Zzzz")), None
-            )
-            tags[i] = left or right or "Latn"
+    tags = script_tags([char["ch"] for char in logical])
     result = []
     for char, tag in zip(logical, tags):
         key = (char["level"], tag)
@@ -187,6 +267,22 @@ def runs(text):
     bidi.reorder_resolved_levels(storage, False)
     order = list(dict.fromkeys(char["run"] for char in storage["chars"]))
     return [(result[i][0], "".join(c["ch"] for c in result[i][1])) for i in order]
+
+
+char_script = lru_cache(maxsize=4096)(script)  # One lookup per distinct character, not per character.
+
+
+def script_tags(chars):
+    """Each character's script; common and inherited characters (spaces, digits, marks) take the script before
+    them, or after them at the start, or Latin."""
+    tags = [char_script(char) for char in chars]
+    for i, tag in enumerate(tags):
+        if tag in INHERITED_SCRIPTS:
+            # Everything before i is resolved already, so the nearest script on the left is the previous one.
+            left = tags[i - 1] if i else None
+            tags[i] = left or next((tags[j] for j in range(i + 1, len(tags)) if tags[j] not in INHERITED_SCRIPTS),
+                                   None) or "Latn"
+    return tags
 
 
 def shape(data, text, size):
@@ -228,6 +324,9 @@ def glyph_outline(data, name):
     return pen.getCommands(), bounds.bounds
 
 
+UNSAFE_TO_BREAK = int(hb.GlyphFlags.UNSAFE_TO_BREAK)  # As a plain int: enum arithmetic per glyph is slow.
+
+
 def clusters(data, word):
     """Wrap only at safe shaping boundaries, preserving marks and conjuncts."""
     if not word:
@@ -238,9 +337,28 @@ def clusters(data, word):
     hb.shape(face(data)[1], buffer)
     boundaries = sorted(
         {0, len(word)}
-        | {info.cluster for info in buffer.glyph_infos if not info.flags & hb.GlyphFlags.UNSAFE_TO_BREAK}
+        | {info.cluster for info in buffer.glyph_infos if not int(info.flags) & UNSAFE_TO_BREAK}
     )
     return [word[a:b] for a, b in zip(boundaries, boundaries[1:])]
+
+
+SEPARATORS = frozenset("·•–—|/")
+
+
+def words_of(paragraph):
+    """A paragraph's words and runs of spaces, with a lone separator (· – — | …) and the space after it glued to
+    the next word, so a line never ends in one."""
+    tokens = re.findall(r" +|[^ ]+", paragraph)
+    glued, i = [], 0
+    while i < len(tokens):
+        token = tokens[i]
+        if (not token.isspace() and set(token) <= SEPARATORS and i + 2 < len(tokens) and tokens[i + 1].isspace()
+                and not tokens[i + 2].isspace()):
+            token += tokens[i + 1] + tokens[i + 2]
+            i += 2
+        glued.append(token)
+        i += 1
+    return glued
 
 
 def lines(data, text, size, width=None):
@@ -250,9 +368,9 @@ def lines(data, text, size, width=None):
             result.append(paragraph)
             continue
         line = ""
-        for word in re.findall(r" +|[^ ]+", paragraph):
+        for word in words_of(paragraph):
             proposed = line + word
-            if shape(data, proposed, size)[1] <= width:
+            if advance(data, proposed, size) <= width:
                 line = proposed
                 continue
             if word.isspace():
@@ -262,17 +380,85 @@ def lines(data, text, size, width=None):
                 continue
             if line:
                 result.append(line.rstrip(" "))
-            line = ""
-            for char in clusters(data, word):
-                if line and shape(data, line + char, size)[1] > width:
-                    result.append(line)
-                    line = ""
-                line += char
+            line = break_word(data, clusters(data, word), size, width, result)
         result.append(line)
     return result
 
 
-@lru_cache(maxsize=1024)
+def break_word(data, pieces, size, width, result):
+    """Break a word wider than ``width`` between its clusters: each line takes clusters while the line still fits,
+    and always at least one. Full lines go to ``result``; the unfinished last line is returned.
+
+    Measuring every candidate line again made a long word cost its length times the line length, so a
+    100,000-character word took minutes. A line's prefixes are measured from one shaping of a window of clusters
+    instead, which gives exactly the widths ``shape`` gives each prefix when the window is one left-to-right run in
+    one font (clusters are safe break points, so shaping a prefix does not change its glyphs). Each line's break is
+    checked against ``shape`` itself, and any other text is measured cluster by cluster as before."""
+    start, window, line = 0, 64, ""
+    while start < len(pieces):
+        end = min(len(pieces), start + window)
+        offsets, total = [], 0
+        for piece in pieces[start:end]:
+            total += len(piece)
+            offsets.append(total)
+        text = "".join(pieces[start:end])
+        widths = _prefix_widths(data, text, size, tuple(offsets))
+        if widths is None:
+            break
+        # widths[m - 1] is the width of the first m clusters; the line ends before the first one that overflows.
+        overflow = next((m for m in range(2, len(widths) + 1) if widths[m - 1] > width), None)
+        if overflow is None:
+            if end < len(pieces):
+                window *= 2
+                continue
+            return text
+        fitted, spill = text[:offsets[overflow - 2]], text[:offsets[overflow - 1]]
+        if advance(data, fitted, size) != widths[overflow - 2] or advance(data, spill, size) != widths[overflow - 1]:
+            break
+        result.append(fitted)
+        start += overflow - 1
+        window = max(64, 2 * (overflow - 1))
+    for char in pieces[start:]:
+        if line and advance(data, line + char, size) > width:
+            result.append(line)
+            line = ""
+        line += char
+    return line
+
+
+@lru_cache(maxsize=8192)
+def advance(data, text, size):
+    """``shape(data, text, size)[1]``, cached: wrapping measures each candidate line, and text-flow wraps the same
+    lines again for every slice of the story it tries in a frame."""
+    return shape(data, text, size)[1]
+
+
+@lru_cache(maxsize=4096)
+def _prefix_widths(data, text, size, offsets):
+    """``shape(data, text[:b], size)[1]`` for each cluster boundary ``b`` in ``offsets`` (increasing, ending at
+    ``len(text)``), from a single shaping of ``text``; None unless ``text`` is one left-to-right run in one font."""
+    fonts = data if isinstance(data, tuple) else (data,)
+    found = runs(text)
+    if len(found) != 1 or found[0][0][0] % 2 or len(font_runs(fonts, found[0][1])) != 1:
+        return None
+    glyphs, _ = shape(data, text, size)
+    widths, cursor, start, index = [], 0.0, 0, 0
+    for glyph in [*glyphs, None]:
+        if glyph is None or glyph.text:
+            # A glyph that starts a cluster: every boundary up to here is complete.
+            while index < len(offsets) and offsets[index] <= start:
+                if offsets[index] != start:
+                    return None  # A boundary inside a cluster of this shaping.
+                widths.append(cursor)
+                index += 1
+            if glyph is None:
+                break
+            start += len(glyph.text)
+        cursor += glyph.advance
+    return tuple(widths) if index == len(offsets) else None
+
+
+@lru_cache(maxsize=4096)
 def measure(data, text, size, spacing=4, align="left", width=None):
     """Glyph paths and ink box of shaped text. Cached: every render and check re-measures each
     text layer (auto-sized boxes, constraints), usually with the same font, text and size."""
@@ -309,6 +495,12 @@ def plan_glyphs(project, layer, layout=None):
     """Positioned glyphs ``[(font data, glyph name, x, y, size, text)]`` in the layer image's
     pixels, exactly where ``plan`` draws them (baseline origin, y down). None for warped or path
     text, whose glyphs are bent."""
+    placed = placed_glyphs(project, layer, layout)
+    return None if placed is None else [item[:6] for item in placed]
+
+
+def placed_glyphs(project, layer, layout=None):
+    """``plan_glyphs`` with each glyph's line index appended: ``(data, name, x, y, size, text, line)``."""
     layout = layout or plan(project, layer)
     if not layout.shaped:
         return None
@@ -328,7 +520,7 @@ def plan_glyphs(project, layer, layout=None):
         for glyph in glyphs:
             x = glyph.x + offset - layout.box[0] + layout.offset
             y = glyph.y + ascent + i * line_height - layout.box[1]
-            result.append((glyph.data, glyph.name, x, y, size, glyph.text))
+            result.append((glyph.data, glyph.name, x, y, size, glyph.text, i))
     return result
 
 
@@ -369,7 +561,14 @@ def plan(project, layer):
     paths, box = measure(data, layer["text"], size, spacing, align, width)
     box = (box[0] - stroke, box[1] - stroke, box[2] + stroke, box[3] + stroke)
     tw, th = max(1, math.ceil(box[2] - box[0])), max(1, math.ceil(box[3] - box[1]))
-    project.limits.size(tw, th)
+    limits = project.limits
+    require(
+        tw <= limits.max_dimension and th <= limits.max_dimension and tw * th <= limits.max_pixels,
+        f"Text {layer.get('name', '')!r} at size {size} measures {tw}×{th} px, over the {limits.max_dimension} px / "
+        f"{limits.max_pixels:,}-pixel limit; wrap it with text-layout, flow it with text-flow, or use a smaller size",
+        "resource_limit",
+        field="text",
+    )
     target_w, target_h = (layer["width"], layer["height"]) if settings else (tw, th)
     offset = (target_w - tw) / 2 if align == "center" else target_w - tw if align == "right" else 0
     positioned = [(p, (*m[:4], m[4] - box[0] + (offset if settings else 0), m[5] - box[1])) for p, m in paths]
@@ -461,18 +660,11 @@ def warped(paths, width, height, settings):
             self.commands.append("L" + self.point(p))
 
         def _curveToOne(self, p1, p2, p3):
+            from .geometry import bezier_points
+
             p0 = self._getCurrentPoint()
-            for i in range(1, 25):
-                t = i / 24
-                self._lineTo(
-                    tuple(
-                        (1 - t) ** 3 * p0[j]
-                        + 3 * (1 - t) ** 2 * t * p1[j]
-                        + 3 * (1 - t) * t * t * p2[j]
-                        + t**3 * p3[j]
-                        for j in (0, 1)
-                    )
-                )
+            for point in bezier_points((p0, p1, p2, p3), [i / 24 for i in range(1, 25)]).tolist():
+                self._lineTo(tuple(point))
 
         def _qCurveToOne(self, p1, p2):
             p0 = self._getCurrentPoint()
@@ -496,7 +688,9 @@ def warped(paths, width, height, settings):
     return result
 
 
-def append_paths(parent, layout, layer, project):
+def append_paths(parent, layout, layer, project, motion=None):
+    """Glyph paths as SVG. ``motion`` (kinetic type) gives each path a ``(matrix prefix, opacity,
+    fill or None)`` applied on top of its own matrix."""
     from .render import color
     from .design import resolve_color
 
@@ -504,27 +698,40 @@ def append_paths(parent, layout, layer, project):
         color(resolve_color(layer.get(key, default), project.state))
         for key, default in (("color", "white"), ("stroke_color", "black"))
     ]
-    for path, matrix in layout.paths:
-        ET.SubElement(
-            parent,
-            "{http://www.w3.org/2000/svg}path",
-            {
-                "d": path,
-                "transform": "matrix(" + " ".join(map(str, matrix)) + ")",
-                "fill": f"rgb{fill[:3]}",
-                "fill-opacity": str(fill[3] / 255),
+    stroked = layer.get("stroke_width", 0) > 0 and stroke[3] > 0  # no-op stroke attributes are left out
+    for index, (path, matrix) in enumerate(layout.paths):
+        paint, extra = fill, {}
+        if motion:
+            from .kinetic import multiply
+
+            prefix, opacity, override = motion[index]
+            matrix = multiply(prefix, matrix)
+            paint = override or fill
+            if opacity < 1:
+                extra["opacity"] = f"{opacity:.4f}"
+        attrs = {
+            "d": path,
+            "transform": "matrix(" + " ".join(map(str, matrix)) + ")",
+            "fill": f"rgb{paint[:3]}",
+            "fill-opacity": str(paint[3] / 255),
+            **extra,
+        }
+        if stroked:
+            attrs.update({
                 "stroke": f"rgb{stroke[:3]}",
                 "stroke-opacity": str(stroke[3] / 255),
-                "stroke-width": str(
-                    2 * layer.get("stroke_width", 0) / max(1e-6, math.hypot(matrix[0], matrix[1]))
-                ),
+                "stroke-width": str(2 * layer.get("stroke_width", 0) / max(1e-6, math.hypot(matrix[0], matrix[1]))),
                 "paint-order": "stroke fill",
-            },
-        )
+            })
+        ET.SubElement(parent, "{http://www.w3.org/2000/svg}path", attrs)
 
 
 def render_text(project, layer):
     layout = plan(project, layer)
+    if layer.get("_kinetic") and layout.shaped:
+        from .kinetic import render_plain
+
+        return render_plain(project, layer, layout, placed_glyphs(project, layer, layout))
     root = ET.Element(
         "{http://www.w3.org/2000/svg}svg",
         {

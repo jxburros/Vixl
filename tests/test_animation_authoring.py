@@ -110,8 +110,13 @@ def test_retargeted_cycle_changes_limb_pose(cycle):
     p = hero()
     p.apply({'type': 'character-cycle', 'target': 'hero', 'cycle': cycle, 'duration': 1000, 'samples': 8})
     assert p.state['timeline']['tracks']
-    assert project_at(p, 250).layer('hero/left-upper-arm')['rotation'] != p.layer('hero/left-upper-arm')['rotation']
+    # The standard character faces the viewer: its walk lifts the feet rather than swinging the arms in the plane.
+    limbs = ('hero/left-upper-arm', 'hero/left-upper-leg', 'hero/right-upper-leg')
+    assert any(project_at(p, 125).layer(part)[prop] != p.layer(part)[prop] for part in limbs for prop in ('rotation', 'y'))
     render_at(p, 250)
+    side = hero()
+    side.apply({'type': 'character-cycle', 'target': 'hero', 'cycle': cycle, 'duration': 1000, 'samples': 8, 'view': 'side'})
+    assert project_at(side, 250).layer('hero/left-upper-arm')['rotation'] != side.layer('hero/left-upper-arm')['rotation']
 
 
 def test_visemes_differ_and_explicit_cues_win():
@@ -188,7 +193,7 @@ def test_styled_caption_typing_and_overflow_review():
 
 
 def test_audio_synthesis_frequency_fades_and_seed():
-    from vixl.audio import synthesize, mix_tracks, wav_bytes, read_audio, RATE
+    from vixl.audio import synthesize, mix_tracks, wav_bytes, read_audio, DEFAULT_RATE as RATE
     tone = synthesize({'synth': {'instrument': 'sine', 'frequency': 440}, 'duration': 1000})
     spectrum = np.abs(np.fft.rfft(tone[:, 0]))
     assert np.argmax(spectrum) == 440

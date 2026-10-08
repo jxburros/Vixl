@@ -6,6 +6,7 @@ import math
 import random
 
 from .errors import require
+from .model import MAX_LAYERS
 
 TYPES = ("organic-shape", "path-fit", "layer-intent", "font-fallbacks")
 KINDS = ("leaf", "petal", "blob", "rose")
@@ -21,11 +22,11 @@ def schemas(add):
         "x": COORD, "y": COORD,
     })
     add("path-fit", {"padding": {"type": "number", "minimum": 0}, "preserve_aspect": B}, ["target"])
-    add("layer-intent", {"role": {"enum": ["content", "decoration", "background"]},
-                         "allow_overlap": {"type": "array", "items": S, "maxItems": 512},
+    add("layer-intent", {"role": {"enum": ["content", "decoration", "background", "title"]},
+                         "allow_overlap": {"type": "array", "items": S, "maxItems": MAX_LAYERS},
                          "tags": {"type": "array", "items": S, "maxItems": 32,
                                   "description": "Labels (replacing the layer's tags) that edit-layers can select with where.tag"},
-                         "allow_crop": B}, ["target"])
+                         "allow_crop": B, "color_vision_safe": B, "detached_ok": B}, ["target"])
     add("font-fallbacks", {"fonts": {"type": "array", "items": S, "maxItems": 16}}, ["fonts"])
 
 
@@ -96,6 +97,8 @@ def execute(project, op):
     if kind == "font-fallbacks":
         from .render import resolve_font
         from .text import primary_font_data
+        require("target" not in op, "font-fallbacks is document-wide and takes no target: the list applies to "
+                "every text layer; pass fonts only", field="target")
         fonts = []
         for name in op["fonts"]:
             require(name in project.state.get("fonts", {}) or name in ("heading", "body", "DejaVuSans.ttf"), "Import fallback fonts with font import first; use their registered names")
@@ -124,6 +127,18 @@ def execute(project, op):
                 layer["tags"] = sorted(set(op["tags"]))
             else:
                 layer.pop("tags", None)
+        if "detached_ok" in op:
+            # A part meant to float (a spark, a thrown ball), or a group whose parts are separate on purpose.
+            if op["detached_ok"]:
+                layer["detached_ok"] = True
+            else:
+                layer.pop("detached_ok", None)
+        if "color_vision_safe" in op:
+            # Series that also differ by labels or patterns: the color-vision check skips this chart.
+            if op["color_vision_safe"]:
+                layer["color_vision_safe"] = True
+            else:
+                layer.pop("color_vision_safe", None)
         if "allow_crop" in op:
             # A deliberate bleed or crop: checks report it as informational instead of a problem.
             if op["allow_crop"]:
@@ -175,11 +190,15 @@ def compile_command(cmd, args):
         p.add_argument("--stretch", dest="preserve_aspect", action="store_false", default=None)
     elif cmd == "layer-intent":
         p.add_argument("target")
-        p.add_argument("--role", choices=["content", "decoration", "background"])
+        p.add_argument("--role", choices=["content", "decoration", "background", "title"])
         p.add_argument("--allow-overlap", nargs="*")
-        p.add_argument("--tags", nargs="*")
+        p.add_argument("--tags", nargs="*", help="labels that replace the layer's tags (none clears them)")
         p.add_argument("--allow-crop", action=argparse.BooleanOptionalAction, default=None,
                        help="mark a deliberate edge crop or bleed (checks report it as informational)")
+        p.add_argument("--color-vision-safe", action=argparse.BooleanOptionalAction, default=None,
+                       help="series also differ by labels or patterns: the color-vision check skips this chart")
+        p.add_argument("--detached-ok", action=argparse.BooleanOptionalAction, default=None,
+                       help="a part that floats on purpose: the connected check skips it")
     else:
         p.add_argument("fonts", nargs="*")
     return {"type": cmd, **{k: v for k, v in vars(p.parse_args(args)).items() if v is not None}}

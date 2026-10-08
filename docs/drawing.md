@@ -57,9 +57,9 @@ place and size it (default: centred, at most 90% of the canvas).
 | `clean` | Cleans again with other settings. Once there are strokes or fills, the tilt and crop stay as they are so everything stays aligned. | as `import` |
 | `vectorize` | Traces each line along its centre into a stroke with the line's width (`centerline`), or the lines' outlines into one filled shape that keeps every change of pressure (`outline`). | `mode`, `min_length` (6), `detail` (0.75 px of simplification), `max_strokes` (240; the rest share `NAME/detail`), `keep_ink`, `color` (default: the import's `ink`, `#1d1d1f`), `width` (default: each stroke keeps the width it was drawn with; a number in pixels, or `uniform` for the median width, so every stroke has one weight; centerline only) |
 | `straighten` | Lines that are nearly straight become straight, **at the angle they were drawn at**; shapes made of straight sides keep their corners where they were drawn but get sharp corners and straight sides; curves (lobes, arcs, waves, wide rounded corners) keep their drawn shape, so a cloud or a tree's canopy is left as drawn and in an arched window or a U only the straight sides change; nearly round closed shapes become circles; sides snap to fixed `angles` only when asked; gaps are closed when `close_gaps` says so. | `tolerance` (4 px: how far a line may wander and still count as straight), `angles` (`drawn`, the default: every side keeps its own angle; `axes`: snap to horizontal and vertical; `45`: snap to 45° steps; `guides` for the document's guide angles; or a list of degrees such as `[0, 90]`), `angle_tolerance` (6°: how close a side must be to a listed angle to snap), `circles` (true), `polylines` (true; false keeps everything but single lines and circles as drawn), `corner` (24 px: shorter sides are rounded corners, made sharp; a curve more than twice as long between two sides is kept), `close_gaps` (0: close gaps this wide; `auto` is 2% of the drawing's longer side, at least 8 px) |
-| `smooth` | Evens out shaky strokes, keeping their ends. | `amount` (0–1) |
-| `fill` | Colours the region around each point, under the lines. Small breaks in an outline are bridged; the fill reaches into every corner without crossing a line. | `points` [[x, y, colour], …] (canvas positions), `gap` (6 px of break to bridge), `min_area`, `under` (true) |
-| `stroke` | Adds a stroke in the drawing's hand: its width and colour, smoothed through the points. | `points` [[x, y], …] (canvas positions), `width`, `smooth` (true), `closed`, `color`, `name` |
+| `smooth` | Evens out shaky strokes, keeping their ends. Strokes `straighten` made into lines and polylines keep their straight sides and corners. | `amount` (0–1), `corners` (`keep`, the default, or `round` to smooth straightened strokes too; the `drawing` check then warns that their corners became curves) |
+| `fill` | Colours the region around each point, under the lines. Small breaks in an outline are bridged; the fill reaches into every corner without crossing a line. | `points` [[x, y, colour], …] (canvas positions; `space: "group"` for the drawing's own coordinates), `gap` (6 px of break to bridge), `min_area`, `under` (true) |
+| `stroke` | Adds a stroke in the drawing's hand: its width and colour, smoothed through the points. | `points` [[x, y], …] (canvas positions, or the drawing's own with `space: "group"`), `width`, `smooth` (true), `closed`, `color`, `name` |
 | `restyle` | Recolours strokes or changes their width. | `color`, `width` (pixels, or `uniform`: the median of the chosen strokes) or `width_scale` |
 
 `straighten`, `smooth` and `restyle` take `strokes` (layer names, or `all`, the default) so a
@@ -118,7 +118,15 @@ workflow action) returns:
 - `stroke_kinds` — how many strokes were straightened, rounded into circles, smoothed or added;
 - `stroke_width` — the thinnest, median and thickest stroke, in pixels;
 - `paper_found`, `perspective_corrected`, `tilt_corrected` — what `import` did to the photo;
-- `regions` — the closed regions with a point inside each, ready for `fill`.
+- `regions` — the closed regions with a point inside each, ready for `fill`: `point` on the
+  canvas and `group_point` in the drawing's own coordinates;
+- `space` (`canvas`, what `point` uses) and `group` — the `offset`, `scale` and `rotation` that take
+  the drawing's own coordinates to the canvas.
+
+`fill` and `stroke` read their points as canvas positions, through any move, scale or rotation of the
+drawing group, so they land where the drawing is shown now. Pass `space: "group"` to give them in the
+drawing's own coordinates instead (the `group_point` of a region), which stay valid wherever the
+drawing is moved.
 
 The `drawing` check (opt-in: `check --checks drawing`) warns when a drawing keeps less than 90% of
 its original lines (an error below 70%) or when more than a third of it is new. `drawing compare`

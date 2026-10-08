@@ -46,10 +46,6 @@ def statuses(project, style):
     return {rule["id"].split("/", 1)[1]: rule["status"] for rule in report["rules"]}
 
 
-# ---------------------------------------------------------------------------------------------
-# Catalog
-
-
 def test_catalog_has_a_curated_set_of_complete_styles():
     assert 20 <= len(STYLES) <= 30
     required = {"title", "summary", "era", "keywords", "best_for", "principles", "palettes", "palette_names", "type",
@@ -115,7 +111,6 @@ def test_listing_search_and_get():
     assert caught.value.code == "unknown_style" and "swiss" in caught.value.details["suggestions"]
 
 
-# ---------------------------------------------------------------------------------------------
 # Every rule evaluates, on empty, text-only and rich documents
 
 
@@ -155,7 +150,6 @@ def test_every_rule_of_every_style_evaluates(fonts, name):
         assert sum(report["summary"].values()) == len(report["rules"])
 
 
-# ---------------------------------------------------------------------------------------------
 # A compliant and a non-compliant document per style
 
 
@@ -266,6 +260,37 @@ def test_art_deco_symmetry_and_centered_text(fonts):
     assert got["symmetry"] == "failed" and got["text-align"] == "failed"
 
 
+def test_art_deco_sunburst_and_centred_type_pass_their_own_checks(fonts):  # #355
+    poster = doc(fonts, background="#0b0b0d")
+    poster.apply([
+        {"type": "shape", "shape": "rectangle", "name": "ray", "x": 534, "y": 260, "width": 12, "height": 300, "fill": "#d4af37"},
+        {"type": "radial-repeat", "target": "ray", "count": 32, "cx": 540, "cy": 560, "name": "sunburst"},
+        {"type": "text", "name": "title", "text": "THE GRAND BALLROOM", "size": 84, "color": "#f5e6b3", "x": "center",
+         "y": 920, "font": "cinzel-700", "align": "center"},
+        {"type": "text", "name": "date", "text": "Saturday the ninth of June", "size": 40, "color": "#d4af37", "x": "center",
+         "y": 1080, "font": "cinzel-700", "align": "center"},
+    ])
+    report = poster.check(checks=["style"], style="art-deco")["style"]
+    got = {rule["id"].split("/", 1)[1]: rule for rule in report["rules"]}
+    assert got["symmetry"]["status"] == "passed", got["symmetry"]
+    assert got["tilt"]["status"] == "passed", got["tilt"]
+    # A tilted headline still counts against "upright".
+    poster.apply({"type": "rotate", "target": "title", "value": 20})
+    poster.apply({"type": "rotate", "target": "date", "value": -15})
+    assert statuses(poster, "art-deco")["tilt"] == "failed"
+
+
+def test_single_weight_black_display_faces_count_as_heavy(fonts, tmp_path):  # #355
+    project = doc(fonts)
+    path = tmp_path / "archivo-black-400.ttf"
+    path.write_bytes(FONT.read_bytes() + b"\0" * 40)
+    import_font(project, path, "archivo-black-400")
+    project.apply({"type": "text", "name": "head", "text": "NO MERCY", "size": 130, "color": "#000000", "x": 60, "y": 100,
+                   "font": "archivo-black-400"})
+    rule = {r["id"].split("/", 1)[1]: r for r in project.check(checks=["style"], style="brutalist")["style"]["rules"]}
+    assert rule["min-weight"]["status"] == "passed", rule["min-weight"]
+
+
 def test_line_art_wants_outlined_shapes_with_one_stroke_weight(fonts):
     good = doc(fonts, background="#fbfaf7")
     good.apply([
@@ -318,10 +343,6 @@ def test_neo_brutalist_needs_hard_shadows_and_outlines(fonts):
     ])
     got = statuses(bad, "neo-brutalist")
     assert got["shadows"] == "failed" and got["min-stroke-width"] == "failed"
-
-
-# ---------------------------------------------------------------------------------------------
-# The style-set tag
 
 
 def test_style_set_tags_validates_clears_and_persists(fonts, tmp_path):
@@ -392,10 +413,6 @@ def test_apply_stores_the_brief_and_palette_as_ordinary_operations(fonts):
     assert project.state["palette_roles"]["roles"][0]["role"] == "background"
     roles = styles.palette_roles(["#0b0b0d", "#d4af37", "#f5e6b3", "#1c1c21"])
     assert roles["background"] == "#0b0b0d" and roles["ink"] == "#f5e6b3" and roles["accent"] == "#d4af37"
-
-
-# ---------------------------------------------------------------------------------------------
-# Interfaces
 
 
 def call(server, tool, **arguments):

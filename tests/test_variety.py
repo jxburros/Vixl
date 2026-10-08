@@ -138,7 +138,10 @@ def test_dimensions_apply_and_explicit_component_preserves_supplied_copy():
     assert p.layer("background")["type"] == "gradient"
     assert "subtle-grain" in p.layer("background")["looks"]
     assert p.layer("direction-motif")["shape"] == "ellipse"
-    assert p.state["layout"]["margin"] == 108
+    from vixl.layouts import DENSITY_SPACING
+
+    # The rolled margin is the balanced value; the rolled density scales it (#390).
+    assert p.state["layout"]["margin"] == round(1080 * 0.1 * DENSITY_SPACING[result["direction"]["density"]])
 
 
 def test_roll_apply_installs_chosen_pairing_and_returns_check(monkeypatch, tmp_path):

@@ -1,0 +1,208 @@
+{
+ "date": "7 October 2026",
+ "pairing": "ibm-plex-mono-sans",
+ "areas": {
+  "lead": {
+   "short": "Release",
+   "title": "Release, install and test suite",
+   "blurb": "Download of the published v0.22.0 assets, checksum and archive checks, install from the wheel, and the project's own test suite run against the installed wheel."
+  },
+  "core": {
+   "short": "Core/CLI",
+   "title": "Core document model and CLI",
+   "blurb": "Documents, layers, text, shapes, history, transactions, batches, the interactive shell, fuzzed input and hostile .vixl files."
+  },
+  "export": {
+   "short": "Export",
+   "title": "Export and import fidelity",
+   "blurb": "One rich document exported to every format, then re-opened and compared across renderers; imports including hostile SVGs and URLs."
+  },
+  "stress": {
+   "short": "Stress",
+   "title": "Stress and performance",
+   "blurb": "Layer and batch limits, huge canvases and texts, deep nesting, history growth, concurrency and save/open round trips."
+  },
+  "creative": {
+   "short": "Creative",
+   "title": "Creative features",
+   "blurb": "compose, roll, layouts, styles, looks, organic shapes, scatter and patterns, charts, diagrams, codes, workflows, colour tools and brushes."
+  },
+  "motion": {
+   "short": "Motion",
+   "title": "Motion, audio, pixels, forms and decks",
+   "blurb": "Timelines, kinetic type, GIF/WebP/APNG/MP4/WebM export, pixel art, audio, fillable forms, decks, drawings, text flow and linked documents."
+  },
+  "services": {
+   "short": "Services",
+   "title": "MCP, REST and security",
+   "blurb": "MCP over stdio and HTTP in every toolset, the REST server, path and SSRF probes, the updater and providers."
+  }
+ },
+ "cover": {
+  "kicker": "QA \u00b7 STRESS TEST \u00b7 EXPLORATION",
+  "title": "Vixl 0.22.0\n**Field report**",
+  "subtitle": "The published release installed from GitHub and put through 177 recorded checks in seven areas, including full-size documents, every export format and hostile input. This report was typeset by Vixl itself.",
+  "stats": [
+   [
+    "2,832",
+    "suite tests passed"
+   ],
+   [
+    "177",
+    "checks recorded"
+   ],
+   [
+    "100",
+    "issues logged"
+   ],
+   [
+    "0",
+    "crashes or hangs"
+   ]
+  ],
+  "footer": "Release v0.22.0 (commit fb8b92f) \u00b7 wheel vixl_engine-0.22.0-py3-none-any.whl \u00b7 Linux x86-64, Python 3.13 \u00b7 7 October 2026"
+ },
+ "summary": {
+  "title": "Solid core, sharp edges",
+  "verdict": "**Verdict: ready for everyday work, with known sharp edges.** The engine never crashed or hung in any test, and nothing unsafe got through. The project's 2,832 tests pass against the published wheel. Batches are truly atomic, documents survive 50 save/load round trips with no change, and every path-traversal, SSRF, zip-bomb and XXE probe was refused.\n\nThe defects cluster in four places:\n- **Raster fills:** the PNG/raster renderer fills open stroked paths white.\n- **Format parity:** SVG, PDF and PPTX diverge from the PNG output.\n- **Logo package:** the workflow produces wrong output.\n- **Performance on large documents:** every edit costs time in proportion to the layer count.\n\nMost other findings are ergonomics: white default text, raw Python text in some errors, and docs that drift from behaviour.",
+  "top": [
+   {
+    "sev": "high",
+    "id": "EXP-01",
+    "text": "Open stroked paths are filled white in PNG/raster output whenever the path has no explicit whole-number size (the common case). SVG, PDF and PPTX are correct."
+   },
+   {
+    "sev": "high",
+    "id": "CRE-01/02",
+    "text": "logo-package bakes the background into every PNG/SVG variant (mono-white is white on white), and its on-light/on-dark contrast logic is inverted."
+   },
+   {
+    "sev": "high",
+    "id": "STR-02",
+    "text": "Every apply costs O(layers): one move on a 4,096-layer document takes about 4 s, and a 10,000-op batch on 2,000 layers takes 6 minutes."
+   },
+   {
+    "sev": "medium",
+    "id": "LEAD-09 \u00b7 STR-03",
+    "text": "Some values are accepted, then make the saved document impossible to render, check or export: a fractional rich-text width, or a blur radius of 1000."
+   },
+   {
+    "sev": "medium",
+    "id": "EXP-02/03/06",
+    "text": "SVG clips strokes at the layer box. PDF and PPTX apply opacity twice on masked layers. One blend layer turns the whole SVG/PDF into a single image."
+   },
+   {
+    "sev": "medium",
+    "id": "EXP-04/05",
+    "text": "PPTX silently drops skew and the bold/italic of imported fonts."
+   },
+   {
+    "sev": "medium",
+    "id": "MOT-01/04",
+    "text": "Timeline WebP plays one loop fewer than GIF/APNG; page numbers count hidden pages."
+   },
+   {
+    "sev": "medium",
+    "id": "CRE-03/05",
+    "text": "Cyclic diagrams route edges through nodes, and the style checks flag each style's own signature moves."
+   },
+   {
+    "sev": "medium",
+    "id": "STR-01",
+    "text": "The overlap check takes about 250 s on 4,000 overlapping text labels; 4,000 shapes take 0.7 s."
+   },
+   {
+    "sev": "ux",
+    "id": "CORE-06 · MOT-03",
+    "text": "Text defaults to white, so the slides quickstart's text is invisible. Some errors leak Python internals."
+   }
+  ]
+ },
+ "numbers": {
+  "title": "Findings and measurements",
+  "left": "**Scale (stress)**\n- 4,096 layers: apply 4.2 s \u00b7 render 11.2 s \u00b7 save 0.24 s \u00b7 load 1.4 s \u00b7 check 24.8 s \u00b7 peak 228 MB\n- 4,097th layer, 10,001-op batch, 0 / negative / >16,384 px / >40 MP canvas: refused in milliseconds\n- 10,000-op batch: 3.9 s on 10 layers, 364 s on 2,000 layers\n- Maximum 40 MP canvas: render 28.6 s at 3.9 GB of memory\n- 50 save/load round trips: 0 state and 0 pixel drift\n- Concurrent writers: 120/120 CLI edits kept; Python gets write_conflict\n- MP4 of 18,000 frames (600 s at 30 fps): 411 s",
+  "right": "**Interfaces (services)**\n- MCP tools/list core/slim: 51 tools, 58,141 chars (claimed ~58k \u2713)\n- all/full: 62 tools, 146,671 chars (claimed 147k \u2713); compact: 13 tools \u2713\n- apply + check + preview 0.78 s \u00b7 compose + export 1.38 s\n- request_id retry 22 ms, applied once \u2713\n- 30+ path escapes, 10+ SSRF forms, XXE, zip-slip: all refused \u2713\n\n**Fidelity (export)**\n- SVG vs PNG mean difference 0.1/255; PDF vs PNG 0.9/255 (no blends)\n- PSD: 19 layers + 2 groups, composite equals PNG\n- CMYK PDF/TIFF/JPEG: real DeviceCMYK with ink limit"
+ },
+ "method": {
+  "title": "Download, install, attack",
+  "body": "# Download and install\nAll eight assets of the **v0.22.0** GitHub release were downloaded and their checksums verified where published (only 3 of 8 assets are covered). Every archive was checked for unsafe paths. The wheel was installed with the server and pdf extras into a fresh Python 3.13 virtual environment, and every test used only that installed copy (the vixl CLI, the Python API, vixl mcp and vixl serve). The Windows installer and runtime zip were inspected but cannot run on this Linux host.\n\n# The project's own test suite\nThe repository at the release commit (fb8b92f) was run against the installed wheel: **2,832 passed, 19 skipped, 0 failed** in 4 min 50 s on 4 CPUs.\n\n# Six parallel test areas\nEach area was tested independently, and suspected bugs were reproduced minimally before being logged.\n- **Core:** about 230 CLI calls and 15 scripts covering every layer type, text in many scripts, history, transactions, the interactive shell, fuzzed and hostile .vixl files.\n- **Export:** one rich document exported to 20 format variants, verified with PIL, pypdf, pdfium, resvg, python-pptx and LibreOffice.\n- **Stress:** 297 timed measurements up to the documented limits, plus concurrency and round trips.\n- **Creative:** compose, rolls, layouts, 17 brushes, 33 organic presets, 11 chart kinds, diagrams, QR codes and barcodes, logo-package, proof and merge-impose.\n- **Motion:** timelines, kinetic type, every animated format verified with ffprobe, audio, forms, decks, drawing, text flow and links.\n- **Services:** MCP in every toolset, --http, REST, path and SSRF probes, the updater.\n\n# Severity scale\n[**HIGH**]{color=#dc2626}: wrong output in a common case, or broken at a documented limit. [**MEDIUM**]{color=#ea580c}: wrong output in a specific case, or a document left in a broken state. [**LOW**]{color=#ca8a04}: minor defect. [**UX**]{color=#2563eb}: works, but is confusing. [**DOCS**]{color=#7c3aed}: docs disagree with behaviour. [**PASS**]{color=#059669}: verified behaviour worth recording.\n\n# Caveats\nA test suite ran alongside part of the stress testing, so absolute timings may be up to about 2x high (key timings were repeated). External HTTPS image fetches could not be tested because of the sandbox proxy. No AI providers were configured; their absence was handled cleanly."
+ },
+ "gallery": [
+  {
+   "path": "creative/hero-mandala.png",
+   "caption": "**Mandala**: radial-repeat rings, gradient petals and a glow core (creative)."
+  },
+  {
+   "path": "creative/hero-poster.png",
+   "caption": "**The Gilded Hour**: art-deco poster with a sunburst and a font pairing (creative)."
+  },
+  {
+   "path": "creative/hero-infographic.png",
+   "caption": "**Harvest infographic**: donut and line charts, diagram-from-text, organic plants. The small diagram shows CRE-04."
+  },
+  {
+   "path": "export/showcase-renderers.png",
+   "caption": "**One document, four renderers**: PNG, PDF (pdfium), SVG (resvg), PPTX (LibreOffice). The PPTX drops skew (EXP-04) and bold (EXP-05)."
+  },
+  {
+   "path": "creative/gallery/organic-presets.png",
+   "caption": "**All 33 organic presets**, each from a single operation (creative)."
+  },
+  {
+   "path": "creative/gallery/charts-all-kinds.png",
+   "caption": "**All 11 chart kinds** rendered from CSV (creative)."
+  },
+  {
+   "path": "core/showcase-shapes.png",
+   "caption": "**All 130 built-in shapes** (core). The confetti shape ignores count (CORE)."
+  },
+  {
+   "path": "creative/gallery/looks-all.png",
+   "caption": "**Finishing looks**: glow, neon, risograph, halftone, plush and more. Sketch is a faint wash (CRE-07)."
+  },
+  {
+   "path": "creative/gallery/pattern-tile-3x3.png",
+   "caption": "**pattern-scatter tile repeated 3x3**: no visible seams."
+  },
+  {
+   "path": "creative/gallery/merge-impose-badges.png",
+   "caption": "**merge-impose**: 7 badges from a CSV on A4 with crop marks and a QR code per row."
+  },
+  {
+   "path": "motion/showcase-sheet.png",
+   "caption": "**Seamless 2.4 s loop**: spinning sun, bouncing ball, line-boil and wave text (showcase.gif in the zip)."
+  },
+  {
+   "path": "creative/gallery/logo-package-variants.png",
+   "caption": "**logo-package variants**: background baked in and contrast logic inverted (CRE-01/02)."
+  },
+  {
+   "path": "creative/gallery/diagram-radial-mindmap.png",
+   "caption": "**Cyclic diagram layouts**: back-edges cross every node (CRE-03)."
+  },
+  {
+   "path": "stress/showcase-4096-layers.png",
+   "caption": "**4,096 layers**, the documented maximum: render 11.2 s, peak 228 MB (stress)."
+  },
+  {
+   "path": "core/showcase-compose.png",
+   "caption": "**Blend modes, pen paths, clipped gradients, rich and bidirectional text** (core)."
+  },
+  {
+   "path": "creative/gallery/brushes.png",
+   "caption": "**All 17 brushes**; the highlighter is opaque (creative)."
+  },
+  {
+   "path": "creative/gallery/style-brutalist.png",
+   "caption": "**Brutalist style**: the style check misreads Archivo Black as weight 400 (CRE-05)."
+  },
+  {
+   "path": "services/showcase-mcp.png",
+   "caption": "**Built entirely over MCP**: guide, create, apply, check, preview, export (services)."
+  }
+ ],
+ "closing": {
+  "title": "How this report was made",
+  "body": "# Made with Vixl\nThis report is a single **.vixl** document built with the release under test through its Python API (build_report.py, included in the zip):\n- one A4 canvas at 150 dpi;\n- a master page with the header strip, footer rule and the page-number variables;\n- the IBM Plex Mono and Sans font pairing;\n- native chart groups;\n- one text-flow story that adds pages until the flow stops overflowing;\n- an image grid.\n\nIt was exported to PDF, PPTX and HTML, and rendered as a contact sheet.\n\nBuilding it also turned up findings LEAD-07, LEAD-08 and LEAD-09: fractional widths and literal placeholders. Producing it took about two minutes, mostly in text-flow measurement.\n\n# What the zip contains\n- **report/**: this PDF, the editable .vixl master, the PPTX and HTML versions, the contact sheet and the build script.\n- **findings/**: all 177 findings as JSON plus a combined CSV.\n- **lead/**: release checks, test-suite log and the open-path repro renders.\n- **core/ export/ stress/ creative/ motion/ services/**: every document, render, export, animation, audio file, script and log each area produced, including the minimal repros under repro/.\n\n# Suggested fix order\n1. EXP-01: use geometry.default_fill in vector_strokes.py. It is a one-line fix and the most visible defect.\n2. Validate at apply time anything that later breaks rendering: fractional rich-text width, blur radius, and integer-only sizes generally.\n3. Make apply cost independent of unrelated layers: run inspect once and cache text metrics.\n4. Fix the logo-package background and contrast handling.\n5. Bring SVG, PDF and PPTX into line with the PNG output: overflow, masked opacity, skew, font style, blend modes.\n6. Default text colour, the slides quickstart, and the documentation drift listed under DOCS findings."
+ }
+}

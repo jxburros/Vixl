@@ -250,6 +250,23 @@ def test_new_pathfinder_modes_produce_real_geometry(mode):
     assert_svg_agreement(p)
 
 
+@pytest.mark.parametrize("mode", ["divide", "trim"])
+def test_pathfinder_pieces_abut_without_a_hairline_seam(mode):  # #362
+    p = Project(300, 240, "#ffffff")
+    p.apply([
+        {"type": "shape", "shape": "rectangle", "name": "sq", "x": 40, "y": 40, "width": 140, "height": 140, "fill": "#1d4ed8"},
+        {"type": "shape", "shape": "ellipse", "name": "ci", "x": 110, "y": 60, "width": 150, "height": 150, "fill": "#1d4ed8"},
+    ])
+    plain = np.asarray(p.render().convert("L"), dtype=int)
+    p.apply({"type": "pathfinder", "targets": ["sq", "ci"], "mode": mode, "name": "parts"})
+    image = np.asarray(p.render().convert("L"), dtype=int)
+    fill = plain[100, 60]
+    # Where the pieces meet the paint is solid; the white paper does not show through along the cut.
+    assert image[60:170, 120:175].max() <= fill + 8, image[60:170, 120:175].max()
+    # The pieces reach under each other only: no paint spreads past the outline of the whole.
+    assert image[plain == 255].min() >= 250
+
+
 @pytest.mark.parametrize(
     "kind",
     [
