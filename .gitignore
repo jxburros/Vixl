@@ -27,3 +27,4 @@ examples/output/
 
 tests/visual/_failures/
 !tests/fixtures/*.vixl
+!explorations/11-ai-packet/**/*.vixl
