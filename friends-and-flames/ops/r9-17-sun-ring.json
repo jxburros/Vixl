@@ -1,0 +1,1 @@
+[{"type": "shape", "shape": "ellipse", "name": "ring", "x": 1322, "y": 40, "width": 1020, "height": 1020, "fill": "#00000000", "stroke": "#141414", "stroke_width": 14}, {"type": "reorder", "target": "ring", "above": "sun"}]
