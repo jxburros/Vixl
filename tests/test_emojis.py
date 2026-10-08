@@ -55,11 +55,13 @@ def test_complete_stable_unicode_catalog_includes_every_qualified_sequence_and_c
     native_open = Path.open
 
     def windows_locale_open(path, mode="r", buffering=-1, encoding=None, errors=None, newline=None):
-        if "b" not in mode and encoding is None:
+        if "b" not in mode and encoding in (None, "locale"):
             encoding = "cp1252"
         return native_open(path, mode, buffering, encoding, errors, newline)
 
     monkeypatch.setattr(Path, "open", windows_locale_open)
+    with pytest.raises(UnicodeDecodeError):
+        (emojis.DATA / "emoji-test.txt").read_text()
     data = emojis._catalog()
     expected = []
     for line in (emojis.DATA / "emoji-test.txt").read_text(encoding="utf-8").splitlines():
