@@ -376,6 +376,8 @@ def _operation_schema():
     automation_schemas(add)
     from .creative import schemas as creative_schemas
     creative_schemas(add)
+    from .emojis import schemas as emoji_schemas
+    emoji_schemas(add)
     from .authoring import schemas as authoring_schemas
     authoring_schemas(add)
     from .containers import schemas as container_schemas

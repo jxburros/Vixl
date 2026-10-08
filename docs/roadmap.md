@@ -95,8 +95,9 @@ background mixing, C2 P3), #427 (illustration defaults, after #379 and #380, C3 
 
 ### Fonts (#191 phase 1 + #419)
 
-Replace the DejaVu fallback with a broad-coverage open font and fetch colour emoji and CJK faces on demand, in one
-change (C2 + C4, P3–P4). Make the fonts check name uncovered characters now; emoji phases 2–4 are a separate epic.
+Replace the DejaVu fallback with a broad-coverage open font and fetch CJK faces on demand (C2 + C4, P3–P4).
+Emoji artwork, editable masters, custom packs and destination exports are now implemented; see [Emojis](emojis.md).
+Color emoji font support remains subject to the text engine's font format limits.
 
 ## Later
 

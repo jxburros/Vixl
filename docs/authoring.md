@@ -53,7 +53,7 @@ uses the face that matches its own font best: the same slope (italic or upright)
 OS/2 weight, so a bold heading falls back to the bold face in PNG, SVG and PDF alike; a PPTX gives those
 characters their own runs naming the fallback family. Families keep their list order. QA identifies fallback characters
 and errors on characters unsupported by the entire stack. This is outline-font fallback;
-color emoji and complex joiner sequences retain the existing text-engine limitations.
+font-native color emoji retain the existing font-engine limitations. The [bundled emoji library](emojis.md) supplies complete Unicode 17 artwork by default, including joined sequences.
 
 ```sh
 vixl layout preview event-poster --set title=FLOWERS --predictable --font /path/to/font.ttf

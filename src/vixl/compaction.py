@@ -10,7 +10,7 @@ import json
 
 from .errors import require
 
-KINDS = {"fonts": "font", "assets": "image", "masks": "mask", "sources": "source"}
+KINDS = {"fonts": "font", "assets": "image", "masks": "mask", "sources": "source", "emoji-sources": "source"}
 
 
 def _current_references(state):

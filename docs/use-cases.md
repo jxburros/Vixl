@@ -697,3 +697,11 @@ Add new ideas here when you are unsure of the tier, then move them into a table.
 - Tarot or playing-card deck from a CSV
 - Album lyric booklet
 - Sign-up sheet or attendance form as a fillable PDF
+
+## Editable emoji libraries
+
+| Goal | Tools | Coverage |
+| --- | --- | --- |
+| Full offline emoji coverage, editable custom sets and platform delivery | `emoji` CLI; `emoji-*` workflows; `emoji-mode`, `emoji-set`, `emoji-reset` operations | Unicode 17, individual/pack overrides, shortcodes, templates, PNG/SVG/VIXL packs, Discord/Slack requirements |
+
+See [emoji workflows](emojis.md).

@@ -43,9 +43,9 @@ class Plan:
     height: int
     paths: list
     box: tuple
-    size: float = 0.0       # the size drawn (after fitting)
-    offset: float = 0.0     # horizontal alignment offset inside a text box
-    shaped: bool = True     # False for warped or path text (outlines only)
+    size: float = 0.0  # the size drawn (after fitting)
+    offset: float = 0.0  # horizontal alignment offset inside a text box
+    shaped: bool = True  # False for warped or path text (outlines only)
 
 
 _local = threading.local()
@@ -54,6 +54,10 @@ _local = threading.local()
 def face(data):
     """The parsed font and HarfBuzz font for ``data``. fontTools loads tables lazily and is not
     thread-safe, so each thread (production and job workers render in parallel) keeps its own."""
+    from .emojis import is_glyph, EMOJI_FACE
+
+    if is_glyph(data):
+        return EMOJI_FACE, None
     loader = getattr(_local, "face", None)
     if loader is None:
         loader = _local.face = lru_cache(maxsize=16)(_face)
@@ -134,7 +138,11 @@ def coverage(data):
 
 
 def visible_char(char):
-    return not char.isspace() and unicodedata.category(char) not in ("Cf", "Cc") and not (0xFE00 <= ord(char) <= 0xFE0F)
+    return (
+        not char.isspace()
+        and unicodedata.category(char) not in ("Cf", "Cc")
+        and not (0xFE00 <= ord(char) <= 0xFE0F)
+    )
 
 
 @lru_cache(maxsize=64)
@@ -180,19 +188,39 @@ def font_data(project, layer):
     primary = primary_font_data(project, layer)
     from .render import document_variables
     from .variables import layer_text
+
     text = layer_text(layer, document_variables(project))
     if all(not visible_char(c) or ord(c) in coverage(primary) for c in text):
-        return primary
+        from .emojis import with_emojis
+
+        return with_emojis(project, primary, text)
     names = [*project.state.get("font_fallbacks", []), "DejaVuSans.ttf"]
-    return fallback_chain(primary, [primary_font_data(project, {**layer, "font": name}) for name in names])
+    from .emojis import with_emojis
+
+    return with_emojis(
+        project,
+        fallback_chain(primary, [primary_font_data(project, {**layer, "font": name}) for name in names]),
+        text,
+    )
 
 
 def glyph_coverage(project, layer):
     data = font_data(project, layer)
-    fonts = data if isinstance(data, tuple) else (data,)
-    chars = sorted({c for c in layer.get("text", "") if visible_char(c)})
-    return {"missing": [c for c in chars if not any(ord(c) in coverage(f) for f in fonts)],
-            "fallback": [c for c in chars if ord(c) not in coverage(fonts[0]) and any(ord(c) in coverage(f) for f in fonts[1:])]}
+    from .emojis import is_context, scan
+
+    fonts = tuple(f for f in (data if isinstance(data, tuple) else (data,)) if not is_context(f))
+    text = layer.get("text", "")
+    spans = scan(text, project.state.get("emojis", {}).get("overrides"))
+    handled = {i for a, b, _ in spans for i in range(a, b)}
+    chars = sorted({c for i, c in enumerate(text) if i not in handled and visible_char(c)})
+    return {
+        "missing": [c for c in chars if not any(ord(c) in coverage(f) for f in fonts)],
+        "fallback": [
+            c
+            for c in chars
+            if ord(c) not in coverage(fonts[0]) and any(ord(c) in coverage(f) for f in fonts[1:])
+        ],
+    }
 
 
 def font_runs(fonts, content):
@@ -201,13 +229,20 @@ def font_runs(fonts, content):
     # Keep combining marks, selectors and joiner sequences with their base glyph.
     clusters = []
     for char in content:
-        if clusters and (unicodedata.combining(char) or char == "\u200d" or clusters[-1].endswith("\u200d") or 0xFE00 <= ord(char) <= 0xFE0F):
+        if clusters and (
+            unicodedata.combining(char)
+            or char == "\u200d"
+            or clusters[-1].endswith("\u200d")
+            or 0xFE00 <= ord(char) <= 0xFE0F
+        ):
             clusters[-1] += char
         else:
             clusters.append(char)
     result = []
     for cluster in clusters:
-        font = next((f for f in fonts if all(not visible_char(c) or ord(c) in coverage(f) for c in cluster)), fonts[0])
+        font = next(
+            (f for f in fonts if all(not visible_char(c) or ord(c) in coverage(f) for c in cluster)), fonts[0]
+        )
         if result and result[-1][0] == font:
             result[-1] = (font, result[-1][1] + cluster)
         else:
@@ -218,7 +253,9 @@ def font_runs(fonts, content):
 # Bidi classes that can put a character above level 0 or remove it from the text (explicit controls and boundary
 # neutrals are dropped by rule X9). Text without any of them is one left-to-right level, so runs() can skip the
 # bidi algorithm, which is written in Python and dominated the cost of shaping long lines.
-LEVEL_CHANGING = frozenset(("R", "AL", "AN", "RLE", "RLO", "LRE", "LRO", "PDF", "RLI", "LRI", "FSI", "PDI", "BN"))
+LEVEL_CHANGING = frozenset(
+    ("R", "AL", "AN", "RLE", "RLO", "LRE", "LRO", "PDF", "RLI", "LRI", "FSI", "PDI", "BN")
+)
 INHERITED_SCRIPTS = ("Zyyy", "Zinh", "Zzzz")
 
 
@@ -280,13 +317,46 @@ def script_tags(chars):
         if tag in INHERITED_SCRIPTS:
             # Everything before i is resolved already, so the nearest script on the left is the previous one.
             left = tags[i - 1] if i else None
-            tags[i] = left or next((tags[j] for j in range(i + 1, len(tags)) if tags[j] not in INHERITED_SCRIPTS),
-                                   None) or "Latn"
+            tags[i] = (
+                left
+                or next((tags[j] for j in range(i + 1, len(tags)) if tags[j] not in INHERITED_SCRIPTS), None)
+                or "Latn"
+            )
     return tags
 
 
 def shape(data, text, size):
-    fonts = data if isinstance(data, tuple) else (data,)
+    from .emojis import split_context
+
+    fonts, protected, placeholders = split_context(data, text)
+    if placeholders:
+        glyphs, cursor = [], 0.0
+        for (level, tag), content in runs(protected):
+            pieces, ordinary = [], ""
+            for char in content:
+                if char in placeholders:
+                    if ordinary:
+                        pieces.append(ordinary)
+                        ordinary = ""
+                    pieces.append(placeholders[char])
+                else:
+                    ordinary += char
+            if ordinary:
+                pieces.append(ordinary)
+            if level % 2:
+                pieces.reverse()
+            for piece in pieces:
+                if isinstance(piece, tuple):
+                    original, art = piece
+                    glyphs.append(Glyph("emoji", cursor, 0, size, art, original))
+                    cursor += size
+                else:
+                    found, width = shape(fonts, piece, size)
+                    for glyph in found:
+                        glyph.x += cursor
+                    glyphs.extend(found)
+                    cursor += width
+        return glyphs, cursor
     glyphs, cursor = [], 0.0
     for (level, tag), content in runs(text):
         segments = font_runs(fonts, content)
@@ -307,15 +377,26 @@ def shape(data, text, size):
             for info, pos in zip(buffer.glyph_infos, buffer.glyph_positions):
                 first = info.cluster not in seen
                 seen.add(info.cluster)
-                glyphs.append(Glyph(names[info.codepoint], cursor + pos.x_offset * factor,
-                                    -pos.y_offset * factor, pos.x_advance * factor, font_data,
-                                    segment[info.cluster:ends[info.cluster]] if first else ""))
+                glyphs.append(
+                    Glyph(
+                        names[info.codepoint],
+                        cursor + pos.x_offset * factor,
+                        -pos.y_offset * factor,
+                        pos.x_advance * factor,
+                        font_data,
+                        segment[info.cluster : ends[info.cluster]] if first else "",
+                    )
+                )
                 cursor += pos.x_advance * factor
     return glyphs, cursor
 
 
 @lru_cache(maxsize=2048)
 def glyph_outline(data, name):
+    from .emojis import is_glyph, GLYPH, EmojiArt
+
+    if is_glyph(data):
+        return EmojiArt(data[len(GLYPH) :].decode()), (0, -14, 72, 58)
     glyphs = face(data)[0].getGlyphSet()
     pen = SVGPathPen(glyphs)
     glyphs[name].draw(pen)
@@ -331,6 +412,23 @@ def clusters(data, word):
     """Wrap only at safe shaping boundaries, preserving marks and conjuncts."""
     if not word:
         return []
+    from .emojis import split_context
+
+    fonts, protected, placeholders = split_context(data, word)
+    if placeholders:
+        pieces, ordinary = [], ""
+        for char in protected:
+            if char in placeholders:
+                if ordinary:
+                    pieces.extend(clusters(fonts[0], ordinary))
+                    ordinary = ""
+                pieces.append(placeholders[char][0])
+            else:
+                ordinary += char
+        if ordinary:
+            pieces.extend(clusters(fonts[0], ordinary))
+        return pieces
+    data = fonts[0]
     buffer = hb.Buffer()
     buffer.add_str(word)
     buffer.guess_segment_properties()
@@ -352,8 +450,13 @@ def words_of(paragraph):
     glued, i = [], 0
     while i < len(tokens):
         token = tokens[i]
-        if (not token.isspace() and set(token) <= SEPARATORS and i + 2 < len(tokens) and tokens[i + 1].isspace()
-                and not tokens[i + 2].isspace()):
+        if (
+            not token.isspace()
+            and set(token) <= SEPARATORS
+            and i + 2 < len(tokens)
+            and tokens[i + 1].isspace()
+            and not tokens[i + 2].isspace()
+        ):
             token += tokens[i + 1] + tokens[i + 2]
             i += 2
         glued.append(token)
@@ -412,8 +515,11 @@ def break_word(data, pieces, size, width, result):
                 window *= 2
                 continue
             return text
-        fitted, spill = text[:offsets[overflow - 2]], text[:offsets[overflow - 1]]
-        if advance(data, fitted, size) != widths[overflow - 2] or advance(data, spill, size) != widths[overflow - 1]:
+        fitted, spill = text[: offsets[overflow - 2]], text[: offsets[overflow - 1]]
+        if (
+            advance(data, fitted, size) != widths[overflow - 2]
+            or advance(data, spill, size) != widths[overflow - 1]
+        ):
             break
         result.append(fitted)
         start += overflow - 1
@@ -437,7 +543,11 @@ def advance(data, text, size):
 def _prefix_widths(data, text, size, offsets):
     """``shape(data, text[:b], size)[1]`` for each cluster boundary ``b`` in ``offsets`` (increasing, ending at
     ``len(text)``), from a single shaping of ``text``; None unless ``text`` is one left-to-right run in one font."""
+    from .emojis import is_context
+
     fonts = data if isinstance(data, tuple) else (data,)
+    if is_context(fonts[-1]):
+        return None
     found = runs(text)
     if len(found) != 1 or found[0][0][0] % 2 or len(font_runs(fonts, found[0][1])) != 1:
         return None
@@ -575,6 +685,9 @@ def plan(project, layer):
     if settings.get("path"):
         positioned = path_layout(data, layer["text"], size, settings["path"])
     if settings.get("warp", "none") != "none":
+        from .emojis import EmojiArt
+        require(not any(isinstance(path, EmojiArt) for path, _ in positioned),
+                "Emoji artwork cannot be bent with text warp; use unwarped text or font mode", "unsupported_text")
         positioned = warped(positioned, target_w, target_h, settings)
         # A warp moves glyphs by a fraction of the box height, which can push them past the
         # top (flag, arc) or bottom of the box; move the warped line back inside it.
@@ -582,8 +695,15 @@ def plan(project, layer):
         if ys:
             dy = fit_span(min(ys) - stroke, max(ys) + stroke, target_h)
             positioned = [(path, (1, 0, 0, 1, 0, dy)) for path, _ in positioned]
-    return Plan(target_w, target_h, positioned, box, size, offset if settings else 0.0,
-                not settings.get("path") and settings.get("warp", "none") == "none")
+    return Plan(
+        target_w,
+        target_h,
+        positioned,
+        box,
+        size,
+        offset if settings else 0.0,
+        not settings.get("path") and settings.get("warp", "none") == "none",
+    )
 
 
 WARPED_Y = re.compile(r"[ML]-?[\d.]+,(-?[\d.]+)")
@@ -709,6 +829,11 @@ def append_paths(parent, layout, layer, project, motion=None):
             paint = override or fill
             if opacity < 1:
                 extra["opacity"] = f"{opacity:.4f}"
+        from .emojis import EmojiArt, append_art
+
+        if isinstance(path, EmojiArt):
+            append_art(parent, path, matrix, float(extra.get("opacity", 1)))
+            continue
         attrs = {
             "d": path,
             "transform": "matrix(" + " ".join(map(str, matrix)) + ")",
@@ -717,12 +842,16 @@ def append_paths(parent, layout, layer, project, motion=None):
             **extra,
         }
         if stroked:
-            attrs.update({
-                "stroke": f"rgb{stroke[:3]}",
-                "stroke-opacity": str(stroke[3] / 255),
-                "stroke-width": str(2 * layer.get("stroke_width", 0) / max(1e-6, math.hypot(matrix[0], matrix[1]))),
-                "paint-order": "stroke fill",
-            })
+            attrs.update(
+                {
+                    "stroke": f"rgb{stroke[:3]}",
+                    "stroke-opacity": str(stroke[3] / 255),
+                    "stroke-width": str(
+                        2 * layer.get("stroke_width", 0) / max(1e-6, math.hypot(matrix[0], matrix[1]))
+                    ),
+                    "paint-order": "stroke fill",
+                }
+            )
         ET.SubElement(parent, "{http://www.w3.org/2000/svg}path", attrs)
 
 
@@ -746,8 +875,8 @@ def render_text(project, layer):
     ).convert("RGBA")
 
 
-
 def font_digest(data):
     import hashlib
+
     fonts = data if isinstance(data, tuple) else (data,)
     return hashlib.sha256(b"".join(hashlib.sha256(f).digest() for f in fonts)).hexdigest()
