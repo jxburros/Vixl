@@ -97,6 +97,7 @@ Defaults and speed. What Vixl makes from a sparse brief now looks designed: the 
 
 ### Fixes
 
+- **A rolled soft shadow keeps to a workspace brand**: with a `brand.json` palette the shadow takes the brand `@ink` instead of black, so `check --checks brand` passes on a rolled layout.
 - **Rolled accents show in safe compositions.** The accent a roll chooses (rule, bar, dot, block, outline) is drawn next to the composition's own device; before, it was recorded but never drawn. Pass `accent: "none"` for the old result (#389).
 - **Layouts pass their own safe-area check**: meme, photo-caption, split and golden-section pictures are marked `allow_crop` (intentional bleed), meme captions stay inside the safe area (including story and TikTok insets), and golden-section copy on tall canvases no longer runs below it (#370, #409).
 - Layout subtitles and body text no longer read as separate paragraphs: two-line subtitles were about 1.9 × the size apart (#282).

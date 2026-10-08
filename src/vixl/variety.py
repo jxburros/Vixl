@@ -350,8 +350,12 @@ def _look_targets(project, builder, own, background, look):
               and layer.get("shape") in ("rectangle", "rounded-rectangle", "ellipse")
               and min(layer.get("width", 0), layer.get("height", 0)) >= minimum
               and layer.get("width", 0) * layer.get("height", 0) < builder.W * builder.H * 0.6]
-    # The house shadow is a solid offset in the ink colour, so it reads in light and dark mode alike.
-    color = "@ink" if look in ("hard-shadow", "outline") else None
+    # The house shadow is a solid offset in the ink colour, so it reads in light and dark mode alike. With a
+    # workspace brand every rolled shadow takes the brand ink, so the finish never adds an off-palette colour.
+    from .brand import for_project
+
+    branded = bool(for_project(project).get("palette"))
+    color = "@ink" if look in ("hard-shadow", "outline") or (branded and look == "soft-shadow") else None
     return [(layer, color) for layer in shapes]
 
 
