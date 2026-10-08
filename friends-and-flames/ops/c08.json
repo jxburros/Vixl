@@ -1,0 +1,325 @@
+[
+ {
+  "type": "remove",
+  "targets": [
+   "ambient",
+   "handlight",
+   "match-stick",
+   "match-char",
+   "match-head",
+   "flame-outer",
+   "flame-core",
+   "flame-blue",
+   "title",
+   "artist"
+  ]
+ },
+ {
+  "type": "effect-remove",
+  "target": "hand",
+  "effect": "temperature"
+ },
+ {
+  "type": "effect-remove",
+  "target": "hand",
+  "effect": "exposure"
+ },
+ {
+  "type": "effect-remove",
+  "target": "hand",
+  "effect": "contrast"
+ },
+ {
+  "type": "effect-remove",
+  "target": "hand",
+  "effect": "grain"
+ },
+ {
+  "type": "solid",
+  "name": "bg",
+  "color": "#a51d1d"
+ },
+ {
+  "type": "bottom",
+  "target": "bg"
+ },
+ {
+  "type": "shape",
+  "shape": "rectangle",
+  "name": "frame1",
+  "x": 70,
+  "y": 70,
+  "width": 2860,
+  "height": 2860,
+  "fill": "#00000000",
+  "stroke": "#f3e6c8",
+  "stroke_width": 22
+ },
+ {
+  "type": "shape",
+  "shape": "rectangle",
+  "name": "frame2",
+  "x": 120,
+  "y": 120,
+  "width": 2760,
+  "height": 2760,
+  "fill": "#00000000",
+  "stroke": "#d9a441",
+  "stroke_width": 6
+ },
+ {
+  "type": "shape",
+  "shape": "ellipse",
+  "name": "oval-rim",
+  "x": 480,
+  "y": 520,
+  "width": 2040,
+  "height": 2040,
+  "fill": "#d9a441"
+ },
+ {
+  "type": "shape",
+  "shape": "ellipse",
+  "name": "oval",
+  "x": 510,
+  "y": 550,
+  "width": 1980,
+  "height": 1980,
+  "fill": "#f3e6c8"
+ },
+ {
+  "type": "reorder",
+  "target": "frame1",
+  "above": "bg"
+ },
+ {
+  "type": "reorder",
+  "target": "frame2",
+  "above": "frame1"
+ },
+ {
+  "type": "reorder",
+  "target": "oval-rim",
+  "above": "frame2"
+ },
+ {
+  "type": "reorder",
+  "target": "oval",
+  "above": "oval-rim"
+ },
+ {
+  "type": "scale",
+  "target": "hand",
+  "value": 0.62,
+  "anchor": "top-left"
+ },
+ {
+  "type": "move",
+  "target": "hand",
+  "x": 326.96000000000004,
+  "y": 404.15999999999997
+ },
+ {
+  "type": "reorder",
+  "target": "hand",
+  "above": "oval"
+ },
+ {
+  "type": "clip",
+  "target": "hand",
+  "base": "oval"
+ },
+ {
+  "type": "effect",
+  "target": "hand",
+  "name": "levels",
+  "black": 30,
+  "white": 150
+ },
+ {
+  "type": "effect",
+  "target": "hand",
+  "name": "sepia",
+  "amount": 1
+ },
+ {
+  "type": "effect",
+  "target": "hand",
+  "name": "crosshatch",
+  "amount": 6
+ },
+ {
+  "type": "shape",
+  "shape": "rectangle",
+  "name": "stick",
+  "x": 1488,
+  "y": 970,
+  "width": 24,
+  "height": 250,
+  "fill": "#c99a5c",
+  "stroke": "#2b1a12",
+  "stroke_width": 4
+ },
+ {
+  "type": "shape",
+  "shape": "ellipse",
+  "name": "mhead",
+  "x": 1478,
+  "y": 930,
+  "width": 44,
+  "height": 64,
+  "fill": "#a51d1d",
+  "stroke": "#2b1a12",
+  "stroke_width": 4
+ },
+ {
+  "type": "shape",
+  "shape": "path",
+  "name": "fl",
+  "path": "M100 0 C 124 95 200 190 192 281 C 184 350 144 380 100 380 C 56 380 16 350 8 281 C 0 190 76 95 100 0 Z",
+  "x": 1400.0,
+  "y": 580,
+  "width": 200,
+  "height": 380,
+  "fill": "#e8572a",
+  "stroke": "#2b1a12",
+  "stroke_width": 6
+ },
+ {
+  "type": "shape",
+  "shape": "path",
+  "name": "flc",
+  "path": "M100 0 C 124 95 200 190 192 281 C 184 350 144 380 100 380 C 56 380 16 350 8 281 C 0 190 76 95 100 0 Z",
+  "x": 1446.0,
+  "y": 746.0,
+  "width": 108.0,
+  "height": 209.00000000000003,
+  "fill": "#ffd25a"
+ },
+ {
+  "type": "shape",
+  "shape": "sunburst",
+  "name": "rays",
+  "x": 800,
+  "y": 60,
+  "width": 1400,
+  "height": 1400,
+  "fill": "#e9d6ac",
+  "count": 32
+ },
+ {
+  "type": "reorder",
+  "target": "rays",
+  "above": "oval"
+ },
+ {
+  "type": "clip",
+  "target": "rays",
+  "base": "oval"
+ },
+ {
+  "type": "text",
+  "name": "title",
+  "text": "FRIENDS AND FLAMES",
+  "font": "western",
+  "size": 210,
+  "color": "#f3e6c8",
+  "x": "center",
+  "y": 215
+ },
+ {
+  "type": "text-layout",
+  "target": "title",
+  "warp": "arc",
+  "amount": 0.35
+ },
+ {
+  "type": "layer-style",
+  "target": "title",
+  "name": "drop-shadow",
+  "settings": {
+   "color": "#3a0a0a",
+   "dx": 8,
+   "dy": 10,
+   "blur": 0
+  }
+ },
+ {
+  "type": "shape",
+  "shape": "ribbon",
+  "name": "ribbon",
+  "x": 700,
+  "y": 2470,
+  "width": 1600,
+  "height": 230,
+  "fill": "#f3e6c8",
+  "stroke": "#2b1a12",
+  "stroke_width": 6
+ },
+ {
+  "type": "text",
+  "name": "artist",
+  "text": "JEFFREY X GUNTLY",
+  "font": "western",
+  "size": 92,
+  "color": "#a51d1d",
+  "x": 0,
+  "y": 0
+ },
+ {
+  "type": "place",
+  "target": "artist",
+  "within": "ribbon",
+  "anchor": "center"
+ },
+ {
+  "type": "text",
+  "name": "tag1",
+  "text": "STRIKE ANYWHERE",
+  "font": "grotesk",
+  "size": 54,
+  "color": "#f3e6c8",
+  "x": 200,
+  "y": 2800
+ },
+ {
+  "type": "text-style",
+  "target": "tag1",
+  "start": 0,
+  "end": 15,
+  "tracking": 14
+ },
+ {
+  "type": "text",
+  "name": "tag2",
+  "text": "LIGHT ONE FOR A FRIEND",
+  "font": "grotesk",
+  "size": 54,
+  "color": "#f3e6c8",
+  "x": 200,
+  "y": 170
+ },
+ {
+  "type": "text-style",
+  "target": "tag2",
+  "start": 0,
+  "end": 22,
+  "tracking": 14
+ },
+ {
+  "type": "resize",
+  "target": "parental-advisory",
+  "width": 380,
+  "keep_aspect": true
+ },
+ {
+  "type": "move",
+  "target": "parental-advisory",
+  "x": 2470,
+  "y": 2620
+ },
+ {
+  "type": "top",
+  "target": "parental-advisory"
+ }
+]

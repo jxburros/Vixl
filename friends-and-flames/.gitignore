@@ -1,0 +1,6 @@
+# Working documents embed the full-resolution photo (~10-20 MB each); kept local only.
+*.vixl
+!src/parental-advisory.vixl
+src/*.jpg
+src/*.png
+!src/pa-keyline.png

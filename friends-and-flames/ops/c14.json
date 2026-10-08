@@ -1,0 +1,509 @@
+[
+ {
+  "type": "remove",
+  "targets": [
+   "ambient",
+   "handlight",
+   "match-stick",
+   "match-char",
+   "match-head",
+   "flame-outer",
+   "flame-core",
+   "flame-blue",
+   "title",
+   "artist"
+  ]
+ },
+ {
+  "type": "remove",
+  "target": "hand"
+ },
+ {
+  "type": "solid",
+  "name": "bg",
+  "color": "#efc35a"
+ },
+ {
+  "type": "bottom",
+  "target": "bg"
+ },
+ {
+  "type": "shape",
+  "shape": "rectangle",
+  "name": "ground",
+  "x": 0,
+  "y": 2480,
+  "width": 3000,
+  "height": 520,
+  "fill": "#d9a23e"
+ },
+ {
+  "type": "shape",
+  "shape": "path",
+  "name": "sh0",
+  "path": "M578 2500 L622 2500 L922 2920 L878 2920 Z",
+  "x": 0,
+  "y": 0,
+  "fill": "#00000026"
+ },
+ {
+  "type": "shape",
+  "shape": "rounded-rectangle",
+  "name": "st0",
+  "x": 578,
+  "y": 1310,
+  "width": 44,
+  "height": 1190,
+  "radius": 6,
+  "fill": "#fbf1dc",
+  "stroke": "#2a2118",
+  "stroke_width": 8
+ },
+ {
+  "type": "shape",
+  "shape": "ellipse",
+  "name": "hd0",
+  "x": 558,
+  "y": 1200,
+  "width": 84,
+  "height": 150,
+  "fill": "#1f6f78",
+  "stroke": "#2a2118",
+  "stroke_width": 8
+ },
+ {
+  "type": "shape",
+  "shape": "path",
+  "name": "fo0",
+  "path": "M82.5 0 C 102.3 82.5 165.0 165.0 158.4 244.2 C 151.8 303.6 118.8 330.0 82.5 330.0 C 46.2 330.0 13.2 303.6 6.6 244.2 C 0 165.0 62.7 82.5 82.5 0 Z",
+  "x": 517.5,
+  "y": 920,
+  "width": 165.0,
+  "height": 330,
+  "fill": "#e4572e",
+  "stroke": "#2a2118",
+  "stroke_width": 8
+ },
+ {
+  "type": "shape",
+  "shape": "path",
+  "name": "fi0",
+  "path": "M42.9 0 C 53.2 41.2 85.8 82.5 82.4 122.1 C 78.9 151.8 61.8 165.0 42.9 165.0 C 24.0 165.0 6.9 151.8 3.4 122.1 C 0 82.5 32.6 41.2 42.9 0 Z",
+  "x": 557.1,
+  "y": 1075.0,
+  "width": 85.8,
+  "height": 165.0,
+  "fill": "#ffe08a"
+ },
+ {
+  "type": "shape",
+  "shape": "path",
+  "name": "sh1",
+  "path": "M878 2500 L922 2500 L1222 2920 L1178 2920 Z",
+  "x": 0,
+  "y": 0,
+  "fill": "#00000026"
+ },
+ {
+  "type": "shape",
+  "shape": "rounded-rectangle",
+  "name": "st1",
+  "x": 878,
+  "y": 1250,
+  "width": 44,
+  "height": 1250,
+  "radius": 6,
+  "fill": "#fbf1dc",
+  "stroke": "#2a2118",
+  "stroke_width": 8
+ },
+ {
+  "type": "shape",
+  "shape": "ellipse",
+  "name": "hd1",
+  "x": 858,
+  "y": 1140,
+  "width": 84,
+  "height": 150,
+  "fill": "#e4572e",
+  "stroke": "#2a2118",
+  "stroke_width": 8
+ },
+ {
+  "type": "shape",
+  "shape": "path",
+  "name": "fo1",
+  "path": "M82.5 0 C 102.3 82.5 165.0 165.0 158.4 244.2 C 151.8 303.6 118.8 330.0 82.5 330.0 C 46.2 330.0 13.2 303.6 6.6 244.2 C 0 165.0 62.7 82.5 82.5 0 Z",
+  "x": 817.5,
+  "y": 860,
+  "width": 165.0,
+  "height": 330,
+  "fill": "#e4572e",
+  "stroke": "#2a2118",
+  "stroke_width": 8
+ },
+ {
+  "type": "shape",
+  "shape": "path",
+  "name": "fi1",
+  "path": "M42.9 0 C 53.2 41.2 85.8 82.5 82.4 122.1 C 78.9 151.8 61.8 165.0 42.9 165.0 C 24.0 165.0 6.9 151.8 3.4 122.1 C 0 82.5 32.6 41.2 42.9 0 Z",
+  "x": 857.1,
+  "y": 1015.0,
+  "width": 85.8,
+  "height": 165.0,
+  "fill": "#ffe08a"
+ },
+ {
+  "type": "shape",
+  "shape": "path",
+  "name": "sh2",
+  "path": "M1178 2500 L1222 2500 L1522 2920 L1478 2920 Z",
+  "x": 0,
+  "y": 0,
+  "fill": "#00000026"
+ },
+ {
+  "type": "shape",
+  "shape": "rounded-rectangle",
+  "name": "st2",
+  "x": 1178,
+  "y": 1310,
+  "width": 44,
+  "height": 1190,
+  "radius": 6,
+  "fill": "#fbf1dc",
+  "stroke": "#2a2118",
+  "stroke_width": 8
+ },
+ {
+  "type": "shape",
+  "shape": "ellipse",
+  "name": "hd2",
+  "x": 1158,
+  "y": 1200,
+  "width": 84,
+  "height": 150,
+  "fill": "#22355e",
+  "stroke": "#2a2118",
+  "stroke_width": 8
+ },
+ {
+  "type": "shape",
+  "shape": "path",
+  "name": "fo2",
+  "path": "M82.5 0 C 102.3 82.5 165.0 165.0 158.4 244.2 C 151.8 303.6 118.8 330.0 82.5 330.0 C 46.2 330.0 13.2 303.6 6.6 244.2 C 0 165.0 62.7 82.5 82.5 0 Z",
+  "x": 1117.5,
+  "y": 920,
+  "width": 165.0,
+  "height": 330,
+  "fill": "#e4572e",
+  "stroke": "#2a2118",
+  "stroke_width": 8
+ },
+ {
+  "type": "shape",
+  "shape": "path",
+  "name": "fi2",
+  "path": "M42.9 0 C 53.2 41.2 85.8 82.5 82.4 122.1 C 78.9 151.8 61.8 165.0 42.9 165.0 C 24.0 165.0 6.9 151.8 3.4 122.1 C 0 82.5 32.6 41.2 42.9 0 Z",
+  "x": 1157.1,
+  "y": 1075.0,
+  "width": 85.8,
+  "height": 165.0,
+  "fill": "#ffe08a"
+ },
+ {
+  "type": "shape",
+  "shape": "path",
+  "name": "sh3",
+  "path": "M1478 2500 L1522 2500 L1822 2920 L1778 2920 Z",
+  "x": 0,
+  "y": 0,
+  "fill": "#00000026"
+ },
+ {
+  "type": "shape",
+  "shape": "rounded-rectangle",
+  "name": "st3",
+  "x": 1478,
+  "y": 1250,
+  "width": 44,
+  "height": 1250,
+  "radius": 6,
+  "fill": "#fbf1dc",
+  "stroke": "#2a2118",
+  "stroke_width": 8
+ },
+ {
+  "type": "shape",
+  "shape": "ellipse",
+  "name": "hd3",
+  "x": 1458,
+  "y": 1140,
+  "width": 84,
+  "height": 150,
+  "fill": "#8c2f39",
+  "stroke": "#2a2118",
+  "stroke_width": 8
+ },
+ {
+  "type": "shape",
+  "shape": "path",
+  "name": "fo3",
+  "path": "M105.0 0 C 130.2 105.0 210.0 210.0 201.6 310.8 C 193.2 386.4 151.2 420.0 105.0 420.0 C 58.8 420.0 16.8 386.4 8.4 310.8 C 0 210.0 79.8 105.0 105.0 0 Z",
+  "x": 1395.0,
+  "y": 770,
+  "width": 210.0,
+  "height": 420,
+  "fill": "#e4572e",
+  "stroke": "#2a2118",
+  "stroke_width": 8
+ },
+ {
+  "type": "shape",
+  "shape": "path",
+  "name": "fi3",
+  "path": "M54.6 0 C 67.7 52.5 109.2 105.0 104.8 155.4 C 100.5 193.2 78.6 210.0 54.6 210.0 C 30.6 210.0 8.7 193.2 4.4 155.4 C 0 105.0 41.5 52.5 54.6 0 Z",
+  "x": 1445.4,
+  "y": 970.0,
+  "width": 109.2,
+  "height": 210.0,
+  "fill": "#ffe08a"
+ },
+ {
+  "type": "shape",
+  "shape": "path",
+  "name": "sh4",
+  "path": "M1778 2500 L1822 2500 L2122 2920 L2078 2920 Z",
+  "x": 0,
+  "y": 0,
+  "fill": "#00000026"
+ },
+ {
+  "type": "shape",
+  "shape": "rounded-rectangle",
+  "name": "st4",
+  "x": 1778,
+  "y": 1310,
+  "width": 44,
+  "height": 1190,
+  "radius": 6,
+  "fill": "#fbf1dc",
+  "stroke": "#2a2118",
+  "stroke_width": 8
+ },
+ {
+  "type": "shape",
+  "shape": "ellipse",
+  "name": "hd4",
+  "x": 1758,
+  "y": 1200,
+  "width": 84,
+  "height": 150,
+  "fill": "#3e7c4a",
+  "stroke": "#2a2118",
+  "stroke_width": 8
+ },
+ {
+  "type": "shape",
+  "shape": "path",
+  "name": "fo4",
+  "path": "M82.5 0 C 102.3 82.5 165.0 165.0 158.4 244.2 C 151.8 303.6 118.8 330.0 82.5 330.0 C 46.2 330.0 13.2 303.6 6.6 244.2 C 0 165.0 62.7 82.5 82.5 0 Z",
+  "x": 1717.5,
+  "y": 920,
+  "width": 165.0,
+  "height": 330,
+  "fill": "#e4572e",
+  "stroke": "#2a2118",
+  "stroke_width": 8
+ },
+ {
+  "type": "shape",
+  "shape": "path",
+  "name": "fi4",
+  "path": "M42.9 0 C 53.2 41.2 85.8 82.5 82.4 122.1 C 78.9 151.8 61.8 165.0 42.9 165.0 C 24.0 165.0 6.9 151.8 3.4 122.1 C 0 82.5 32.6 41.2 42.9 0 Z",
+  "x": 1757.1,
+  "y": 1075.0,
+  "width": 85.8,
+  "height": 165.0,
+  "fill": "#ffe08a"
+ },
+ {
+  "type": "shape",
+  "shape": "path",
+  "name": "sh5",
+  "path": "M2078 2500 L2122 2500 L2422 2920 L2378 2920 Z",
+  "x": 0,
+  "y": 0,
+  "fill": "#00000026"
+ },
+ {
+  "type": "shape",
+  "shape": "rounded-rectangle",
+  "name": "st5",
+  "x": 2078,
+  "y": 1250,
+  "width": 44,
+  "height": 1250,
+  "radius": 6,
+  "fill": "#fbf1dc",
+  "stroke": "#2a2118",
+  "stroke_width": 8
+ },
+ {
+  "type": "shape",
+  "shape": "ellipse",
+  "name": "hd5",
+  "x": 2058,
+  "y": 1140,
+  "width": 84,
+  "height": 150,
+  "fill": "#6b3fa0",
+  "stroke": "#2a2118",
+  "stroke_width": 8
+ },
+ {
+  "type": "shape",
+  "shape": "path",
+  "name": "fo5",
+  "path": "M82.5 0 C 102.3 82.5 165.0 165.0 158.4 244.2 C 151.8 303.6 118.8 330.0 82.5 330.0 C 46.2 330.0 13.2 303.6 6.6 244.2 C 0 165.0 62.7 82.5 82.5 0 Z",
+  "x": 2017.5,
+  "y": 860,
+  "width": 165.0,
+  "height": 330,
+  "fill": "#e4572e",
+  "stroke": "#2a2118",
+  "stroke_width": 8
+ },
+ {
+  "type": "shape",
+  "shape": "path",
+  "name": "fi5",
+  "path": "M42.9 0 C 53.2 41.2 85.8 82.5 82.4 122.1 C 78.9 151.8 61.8 165.0 42.9 165.0 C 24.0 165.0 6.9 151.8 3.4 122.1 C 0 82.5 32.6 41.2 42.9 0 Z",
+  "x": 2057.1,
+  "y": 1015.0,
+  "width": 85.8,
+  "height": 165.0,
+  "fill": "#ffe08a"
+ },
+ {
+  "type": "shape",
+  "shape": "path",
+  "name": "sh6",
+  "path": "M2378 2500 L2422 2500 L2722 2920 L2678 2920 Z",
+  "x": 0,
+  "y": 0,
+  "fill": "#00000026"
+ },
+ {
+  "type": "shape",
+  "shape": "rounded-rectangle",
+  "name": "st6",
+  "x": 2378,
+  "y": 1310,
+  "width": 44,
+  "height": 1190,
+  "radius": 6,
+  "fill": "#fbf1dc",
+  "stroke": "#2a2118",
+  "stroke_width": 8
+ },
+ {
+  "type": "shape",
+  "shape": "ellipse",
+  "name": "hd6",
+  "x": 2358,
+  "y": 1200,
+  "width": 84,
+  "height": 150,
+  "fill": "#e07a5f",
+  "stroke": "#2a2118",
+  "stroke_width": 8
+ },
+ {
+  "type": "shape",
+  "shape": "path",
+  "name": "fo6",
+  "path": "M82.5 0 C 102.3 82.5 165.0 165.0 158.4 244.2 C 151.8 303.6 118.8 330.0 82.5 330.0 C 46.2 330.0 13.2 303.6 6.6 244.2 C 0 165.0 62.7 82.5 82.5 0 Z",
+  "x": 2317.5,
+  "y": 920,
+  "width": 165.0,
+  "height": 330,
+  "fill": "#e4572e",
+  "stroke": "#2a2118",
+  "stroke_width": 8
+ },
+ {
+  "type": "shape",
+  "shape": "path",
+  "name": "fi6",
+  "path": "M42.9 0 C 53.2 41.2 85.8 82.5 82.4 122.1 C 78.9 151.8 61.8 165.0 42.9 165.0 C 24.0 165.0 6.9 151.8 3.4 122.1 C 0 82.5 32.6 41.2 42.9 0 Z",
+  "x": 2357.1,
+  "y": 1075.0,
+  "width": 85.8,
+  "height": 165.0,
+  "fill": "#ffe08a"
+ },
+ {
+  "type": "text",
+  "name": "title",
+  "text": "Friends",
+  "font": "playfair-black-italic",
+  "size": 300,
+  "color": "#2a2118",
+  "x": 150,
+  "y": 150
+ },
+ {
+  "type": "text",
+  "name": "title2",
+  "text": "& Flames",
+  "font": "playfair-black-italic",
+  "size": 300,
+  "color": "#e4572e",
+  "x": 700,
+  "y": 470
+ },
+ {
+  "type": "text",
+  "name": "artist",
+  "text": "JEFFREY X GUNTLY",
+  "font": "grotesk",
+  "size": 64,
+  "color": "#2a2118",
+  "x": 150,
+  "y": 2620
+ },
+ {
+  "type": "text-style",
+  "target": "artist",
+  "start": 0,
+  "end": 16,
+  "tracking": 16
+ },
+ {
+  "type": "text",
+  "name": "ly",
+  "text": "we\u2019re catching all the flames.",
+  "font": "serif-italic",
+  "size": 70,
+  "color": "#2a2118",
+  "x": 150,
+  "y": 2720
+ },
+ {
+  "type": "resize",
+  "target": "parental-advisory",
+  "width": 400,
+  "keep_aspect": true
+ },
+ {
+  "type": "move",
+  "target": "parental-advisory",
+  "x": 2500,
+  "y": 2650
+ },
+ {
+  "type": "top",
+  "target": "parental-advisory"
+ }
+]

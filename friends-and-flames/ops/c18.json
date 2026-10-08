@@ -1,0 +1,439 @@
+[
+ {
+  "type": "remove",
+  "targets": [
+   "ambient",
+   "handlight",
+   "match-stick",
+   "match-char",
+   "match-head",
+   "flame-outer",
+   "flame-core",
+   "flame-blue",
+   "title",
+   "artist"
+  ]
+ },
+ {
+  "type": "remove",
+  "target": "hand"
+ },
+ {
+  "type": "gradient",
+  "name": "bgk",
+  "x": 0,
+  "y": 0,
+  "width": 3000,
+  "height": 3000,
+  "direction": "vertical",
+  "stops": [
+   {
+    "offset": 0,
+    "color": "#07040e"
+   },
+   {
+    "offset": 0.6,
+    "color": "#1b0b2a"
+   },
+   {
+    "offset": 1,
+    "color": "#2a0d12"
+   }
+  ]
+ },
+ {
+  "type": "bottom",
+  "target": "bgk"
+ },
+ {
+  "type": "shape",
+  "shape": "path",
+  "name": "beam0",
+  "path": "M560 -20 L640 -20 L1695.0 2100 L855.0 2100 Z",
+  "x": 0,
+  "y": 0,
+  "fill": "#8a5cff",
+  "opacity": 0.22
+ },
+ {
+  "type": "effect",
+  "target": "beam0",
+  "name": "gaussian-blur",
+  "amount": 30
+ },
+ {
+  "type": "blend",
+  "target": "beam0",
+  "value": "screen"
+ },
+ {
+  "type": "shape",
+  "shape": "path",
+  "name": "beam1",
+  "path": "M1460 -20 L1540 -20 L1920.0 2100 L1080.0 2100 Z",
+  "x": 0,
+  "y": 0,
+  "fill": "#fff1d0",
+  "opacity": 0.22
+ },
+ {
+  "type": "effect",
+  "target": "beam1",
+  "name": "gaussian-blur",
+  "amount": 30
+ },
+ {
+  "type": "blend",
+  "target": "beam1",
+  "value": "screen"
+ },
+ {
+  "type": "shape",
+  "shape": "path",
+  "name": "beam2",
+  "path": "M2360 -20 L2440 -20 L2145.0 2100 L1305.0 2100 Z",
+  "x": 0,
+  "y": 0,
+  "fill": "#ff4f9a",
+  "opacity": 0.22
+ },
+ {
+  "type": "effect",
+  "target": "beam2",
+  "name": "gaussian-blur",
+  "amount": 30
+ },
+ {
+  "type": "blend",
+  "target": "beam2",
+  "value": "screen"
+ },
+ {
+  "type": "shape",
+  "shape": "path",
+  "name": "stage",
+  "path": "M300 2000 L2700 2000 L3000 2350 L0 2350 Z",
+  "x": 0,
+  "y": 0,
+  "fill": "#140b10"
+ },
+ {
+  "type": "shape",
+  "shape": "rectangle",
+  "name": "stage-front",
+  "x": 0,
+  "y": 2350,
+  "width": 3000,
+  "height": 120,
+  "fill": "#0a0507"
+ },
+ {
+  "type": "shape",
+  "shape": "ellipse",
+  "name": "pool",
+  "x": 1050,
+  "y": 1900,
+  "width": 900,
+  "height": 200,
+  "fill": "#fff1d0",
+  "opacity": 0.35
+ },
+ {
+  "type": "effect",
+  "target": "pool",
+  "name": "gaussian-blur",
+  "amount": 40
+ },
+ {
+  "type": "shape",
+  "shape": "path",
+  "name": "mic",
+  "x": 0,
+  "y": 0,
+  "fill": "#050305",
+  "path": "M1490 1100 L1510 1100 L1512 2000 L1488 2000 Z M1500 1990 L1380 2060 L1390 2075 L1500 2010 L1610 2075 L1620 2060 Z M1486 1100 L1395 905 L1410 898 L1502 1092 Z"
+ },
+ {
+  "type": "shape",
+  "shape": "path",
+  "name": "mic-head",
+  "x": 0,
+  "y": 0,
+  "fill": "#1a1a1a",
+  "stroke": "#555",
+  "stroke_width": 6,
+  "path": "M1408 830 L1413 833 L1417 836 L1420 840 L1423 845 L1425 850 L1426 856 L1427 863 L1426 869 L1426 876 L1424 883 L1422 890 L1419 896 L1416 903 L1412 909 L1408 914 L1403 919 L1398 923 L1393 927 L1387 929 L1382 931 L1376 932 L1371 932 L1366 931 L1362 930 L1357 927 L1353 924 L1350 920 L1347 915 L1345 910 L1344 904 L1343 897 L1344 891 L1344 884 L1346 877 L1348 870 L1351 864 L1354 857 L1358 851 L1362 846 L1367 841 L1372 837 L1377 833 L1383 831 L1388 829 L1394 828 L1399 828 L1404 829 Z"
+ },
+ {
+  "type": "shape",
+  "shape": "path",
+  "name": "pyro0",
+  "path": "M420 1037 C 461 1281 590 1524 577 1757 C 563 1932 495 2010 420 2010 C 345 2010 277 1932 263 1757 C 250 1524 379 1281 420 1037 Z",
+  "x": 0,
+  "y": 0,
+  "fill": "#ff6a1a"
+ },
+ {
+  "type": "layer-style",
+  "target": "pyro0",
+  "name": "gradient-overlay",
+  "settings": {
+   "direction": "vertical",
+   "stops": [
+    {
+     "offset": 0,
+     "color": "#ff2a00"
+    },
+    {
+     "offset": 0.6,
+     "color": "#ff9a1f"
+    },
+    {
+     "offset": 1,
+     "color": "#fff3c0"
+    }
+   ]
+  }
+ },
+ {
+  "type": "layer-style",
+  "target": "pyro0",
+  "name": "outer-glow",
+  "settings": {
+   "color": "#ff5a00",
+   "blur": 100,
+   "opacity": 0.9
+  }
+ },
+ {
+  "type": "shape",
+  "shape": "path",
+  "name": "pyroc0",
+  "path": "M420 1562 C 438 1672 497 1781 490 1886 C 484 1965 454 2000 420 2000 C 386 2000 356 1965 350 1886 C 343 1781 402 1672 420 1562 Z",
+  "x": 0,
+  "y": 0,
+  "fill": "#fff6d0"
+ },
+ {
+  "type": "shape",
+  "shape": "path",
+  "name": "pyro1",
+  "path": "M980 845 C 1029 1137 1184 1428 1167 1707 C 1151 1917 1070 2010 980 2010 C 890 2010 809 1917 793 1707 C 776 1428 931 1137 980 845 Z",
+  "x": 0,
+  "y": 0,
+  "fill": "#ff6a1a"
+ },
+ {
+  "type": "layer-style",
+  "target": "pyro1",
+  "name": "gradient-overlay",
+  "settings": {
+   "direction": "vertical",
+   "stops": [
+    {
+     "offset": 0,
+     "color": "#ff2a00"
+    },
+    {
+     "offset": 0.6,
+     "color": "#ff9a1f"
+    },
+    {
+     "offset": 1,
+     "color": "#fff3c0"
+    }
+   ]
+  }
+ },
+ {
+  "type": "layer-style",
+  "target": "pyro1",
+  "name": "outer-glow",
+  "settings": {
+   "color": "#ff5a00",
+   "blur": 100,
+   "opacity": 0.9
+  }
+ },
+ {
+  "type": "shape",
+  "shape": "path",
+  "name": "pyroc1",
+  "path": "M980 1476 C 1002 1607 1072 1738 1064 1864 C 1057 1958 1020 2000 980 2000 C 940 2000 903 1958 896 1864 C 888 1738 958 1607 980 1476 Z",
+  "x": 0,
+  "y": 0,
+  "fill": "#fff6d0"
+ },
+ {
+  "type": "shape",
+  "shape": "path",
+  "name": "pyro2",
+  "path": "M2020 976 C 2063 1235 2201 1493 2186 1741 C 2172 1927 2100 2010 2020 2010 C 1940 2010 1868 1927 1854 1741 C 1839 1493 1977 1235 2020 976 Z",
+  "x": 0,
+  "y": 0,
+  "fill": "#ff6a1a"
+ },
+ {
+  "type": "layer-style",
+  "target": "pyro2",
+  "name": "gradient-overlay",
+  "settings": {
+   "direction": "vertical",
+   "stops": [
+    {
+     "offset": 0,
+     "color": "#ff2a00"
+    },
+    {
+     "offset": 0.6,
+     "color": "#ff9a1f"
+    },
+    {
+     "offset": 1,
+     "color": "#fff3c0"
+    }
+   ]
+  }
+ },
+ {
+  "type": "layer-style",
+  "target": "pyro2",
+  "name": "outer-glow",
+  "settings": {
+   "color": "#ff5a00",
+   "blur": 100,
+   "opacity": 0.9
+  }
+ },
+ {
+  "type": "shape",
+  "shape": "path",
+  "name": "pyroc2",
+  "path": "M2020 1535 C 2040 1651 2101 1767 2095 1879 C 2088 1963 2056 2000 2020 2000 C 1984 2000 1952 1963 1945 1879 C 1939 1767 2000 1651 2020 1535 Z",
+  "x": 0,
+  "y": 0,
+  "fill": "#fff6d0"
+ },
+ {
+  "type": "shape",
+  "shape": "path",
+  "name": "pyro3",
+  "path": "M2580 1031 C 2621 1276 2751 1520 2738 1755 C 2724 1932 2655 2010 2580 2010 C 2505 2010 2436 1932 2422 1755 C 2409 1520 2539 1276 2580 1031 Z",
+  "x": 0,
+  "y": 0,
+  "fill": "#ff6a1a"
+ },
+ {
+  "type": "layer-style",
+  "target": "pyro3",
+  "name": "gradient-overlay",
+  "settings": {
+   "direction": "vertical",
+   "stops": [
+    {
+     "offset": 0,
+     "color": "#ff2a00"
+    },
+    {
+     "offset": 0.6,
+     "color": "#ff9a1f"
+    },
+    {
+     "offset": 1,
+     "color": "#fff3c0"
+    }
+   ]
+  }
+ },
+ {
+  "type": "layer-style",
+  "target": "pyro3",
+  "name": "outer-glow",
+  "settings": {
+   "color": "#ff5a00",
+   "blur": 100,
+   "opacity": 0.9
+  }
+ },
+ {
+  "type": "shape",
+  "shape": "path",
+  "name": "pyroc3",
+  "path": "M2580 1559 C 2599 1670 2657 1780 2651 1885 C 2645 1965 2614 2000 2580 2000 C 2546 2000 2515 1965 2509 1885 C 2503 1780 2561 1670 2580 1559 Z",
+  "x": 0,
+  "y": 0,
+  "fill": "#fff6d0"
+ },
+ {
+  "type": "shape",
+  "shape": "path",
+  "name": "crowd",
+  "path": "M-79 2656 a49 49 0 1 0 98 0 a49 49 0 1 0 -98 0 Z M-153 3538 L-140 2779 Q-137 2717 -76 2713 L16 2713 Q78 2717 81 2779 L93 3538 Z M58 2723 a47 47 0 1 0 95 0 a47 47 0 1 0 -95 0 Z M-13 3573 L-1 2842 Q2 2782 61 2778 L150 2778 Q209 2782 212 2842 L224 3573 Z M163 2805 L222 2494 L270 2494 L211 2805 Z M214 2494 a33 38 0 1 0 65 0 a33 38 0 1 0 -65 0 Z M281 2720 a48 48 0 1 0 97 0 a48 48 0 1 0 -97 0 Z M208 3592 L220 2842 Q223 2781 284 2776 L375 2776 Q435 2781 438 2842 L450 3592 Z M222 2804 L161 2486 L210 2486 L270 2804 Z M152 2486 a33 39 0 1 0 67 0 a33 39 0 1 0 -67 0 Z M395 2659 a51 51 0 1 0 103 0 a51 51 0 1 0 -103 0 Z M318 3580 L331 2787 Q334 2723 398 2718 L494 2718 Q558 2723 561 2787 L574 3580 Z M332 2747 L268 2410 L319 2410 L384 2747 Z M259 2410 a35 42 0 1 0 71 0 a35 42 0 1 0 -71 0 Z M571 2682 a46 46 0 1 0 92 0 a46 46 0 1 0 -92 0 Z M502 3511 L513 2797 Q516 2739 574 2735 L661 2735 Q718 2739 721 2797 L733 3511 Z M736 2686 a52 52 0 1 0 103 0 a52 52 0 1 0 -103 0 Z M659 3613 L672 2815 Q675 2751 739 2746 L836 2746 Q900 2751 904 2815 L917 3613 Z M957 2689 a49 49 0 1 0 98 0 a49 49 0 1 0 -98 0 Z M883 3573 L895 2812 Q898 2750 960 2746 L1052 2746 Q1114 2750 1117 2812 L1129 3573 Z M1066 2774 L1127 2451 L1177 2451 L1115 2774 Z M1118 2451 a34 40 0 1 0 68 0 a34 40 0 1 0 -68 0 Z M1081 2675 a51 51 0 1 0 102 0 a51 51 0 1 0 -102 0 Z M1004 3596 L1017 2803 Q1020 2739 1084 2735 L1181 2735 Q1245 2739 1248 2803 L1261 3596 Z M1195 2763 L1259 2427 L1310 2427 L1246 2763 Z M1249 2427 a35 42 0 1 0 70 0 a35 42 0 1 0 -70 0 Z M1287 2700 a48 48 0 1 0 95 0 a48 48 0 1 0 -95 0 Z M1215 3557 L1227 2819 Q1230 2759 1290 2755 L1379 2755 Q1439 2759 1442 2819 L1454 3557 Z M1454 2715 a47 47 0 1 0 95 0 a47 47 0 1 0 -95 0 Z M1383 3567 L1395 2834 Q1398 2774 1457 2770 L1546 2770 Q1606 2774 1608 2834 L1620 3567 Z M1397 2797 L1337 2485 L1385 2485 L1444 2797 Z M1328 2485 a33 39 0 1 0 65 0 a33 39 0 1 0 -65 0 Z M1618 2720 a48 48 0 1 0 96 0 a48 48 0 1 0 -96 0 Z M1546 3585 L1558 2840 Q1561 2780 1621 2775 L1711 2775 Q1771 2780 1774 2840 L1786 3585 Z M1778 2640 a54 54 0 1 0 109 0 a54 54 0 1 0 -109 0 Z M1697 3617 L1710 2776 Q1714 2708 1782 2703 L1884 2703 Q1952 2708 1955 2776 L1969 3617 Z M1899 2733 L1967 2376 L2021 2376 L1953 2733 Z M1957 2376 a37 44 0 1 0 75 0 a37 44 0 1 0 -75 0 Z M1919 2661 a48 48 0 1 0 95 0 a48 48 0 1 0 -95 0 Z M1848 3517 L1860 2780 Q1863 2721 1922 2716 L2012 2716 Q2071 2721 2074 2780 L2086 3517 Z M2100 2646 a50 50 0 1 0 99 0 a50 50 0 1 0 -99 0 Z M2026 3539 L2038 2770 Q2041 2708 2103 2703 L2197 2703 Q2259 2708 2262 2770 L2274 3539 Z M2211 2731 L2273 2405 L2322 2405 L2260 2731 Z M2263 2405 a34 40 0 1 0 68 0 a34 40 0 1 0 -68 0 Z M2310 2685 a53 53 0 1 0 106 0 a53 53 0 1 0 -106 0 Z M2231 3639 L2244 2818 Q2247 2752 2314 2747 L2413 2747 Q2479 2752 2483 2818 L2496 3639 Z M2496 2630 a53 53 0 1 0 106 0 a53 53 0 1 0 -106 0 Z M2416 3585 L2429 2763 Q2433 2696 2499 2691 L2599 2691 Q2665 2696 2668 2763 L2682 3585 Z M2614 2721 L2680 2373 L2733 2373 L2667 2721 Z M2670 2373 a37 43 0 1 0 73 0 a37 43 0 1 0 -73 0 Z M2630 2713 a48 48 0 1 0 96 0 a48 48 0 1 0 -96 0 Z M2558 3575 L2570 2833 Q2573 2773 2633 2769 L2723 2769 Q2783 2773 2786 2833 L2798 3575 Z M2737 2796 L2797 2481 L2845 2481 L2785 2796 Z M2788 2481 a33 39 0 1 0 66 0 a33 39 0 1 0 -66 0 Z M2767 2677 a53 53 0 1 0 106 0 a53 53 0 1 0 -106 0 Z M2688 3630 L2701 2809 Q2704 2743 2771 2738 L2870 2738 Q2936 2743 2940 2809 L2953 3630 Z M2937 2638 a55 55 0 1 0 109 0 a55 55 0 1 0 -109 0 Z M2855 3621 L2868 2775 Q2872 2706 2940 2701 L3043 2701 Q3111 2706 3115 2775 L3128 3621 Z M3058 2732 L3127 2373 L3181 2373 L3113 2732 Z M3116 2373 a38 44 0 1 0 75 0 a38 44 0 1 0 -75 0 Z",
+  "x": 0,
+  "y": 0,
+  "fill": "#030203"
+ },
+ {
+  "type": "shape",
+  "shape": "rectangle",
+  "name": "crowd-floor",
+  "x": 0,
+  "y": 2900,
+  "width": 3000,
+  "height": 100,
+  "fill": "#030203"
+ },
+ {
+  "type": "text",
+  "name": "title",
+  "text": "FRIENDS AND FLAMES",
+  "font": "marker",
+  "size": 250,
+  "color": "#ffffff",
+  "x": "center",
+  "y": 160
+ },
+ {
+  "type": "layer-style",
+  "target": "title",
+  "name": "outer-glow",
+  "settings": {
+   "color": "#ff4f9a",
+   "blur": 40,
+   "opacity": 0.8
+  }
+ },
+ {
+  "type": "text",
+  "name": "artist",
+  "text": "JEFFREY X GUNTLY",
+  "font": "grotesk",
+  "size": 70,
+  "color": "#ffd6e8",
+  "x": "center",
+  "y": 470
+ },
+ {
+  "type": "text-style",
+  "target": "artist",
+  "start": 0,
+  "end": 16,
+  "tracking": 20
+ },
+ {
+  "type": "resize",
+  "target": "parental-advisory",
+  "width": 400,
+  "keep_aspect": true
+ },
+ {
+  "type": "move",
+  "target": "parental-advisory",
+  "x": 2500,
+  "y": 2650
+ },
+ {
+  "type": "top",
+  "target": "parental-advisory"
+ }
+]

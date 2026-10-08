@@ -1,0 +1,224 @@
+[
+ {
+  "type": "remove",
+  "targets": [
+   "ambient",
+   "handlight",
+   "match-stick",
+   "match-char",
+   "match-head",
+   "flame-outer",
+   "flame-core",
+   "flame-blue",
+   "title",
+   "artist"
+  ]
+ },
+ {
+  "type": "effect-remove",
+  "target": "hand",
+  "effect": "temperature"
+ },
+ {
+  "type": "effect-remove",
+  "target": "hand",
+  "effect": "exposure"
+ },
+ {
+  "type": "effect-remove",
+  "target": "hand",
+  "effect": "contrast"
+ },
+ {
+  "type": "effect-remove",
+  "target": "hand",
+  "effect": "grain"
+ },
+ {
+  "type": "solid",
+  "name": "paper",
+  "color": "#efe6d2"
+ },
+ {
+  "type": "bottom",
+  "target": "paper"
+ },
+ {
+  "type": "shape",
+  "shape": "rectangle",
+  "name": "bar",
+  "x": -600,
+  "y": 1350,
+  "width": 4200,
+  "height": 300,
+  "fill": "#141414",
+  "rotation": -32
+ },
+ {
+  "type": "shape",
+  "shape": "ellipse",
+  "name": "sun",
+  "x": 1312,
+  "y": -140,
+  "width": 1040,
+  "height": 1040,
+  "fill": "#d4241c"
+ },
+ {
+  "type": "reorder",
+  "target": "bar",
+  "above": "paper"
+ },
+ {
+  "type": "reorder",
+  "target": "sun",
+  "above": "bar"
+ },
+ {
+  "type": "effect",
+  "target": "hand",
+  "name": "grayscale"
+ },
+ {
+  "type": "effect",
+  "target": "hand",
+  "name": "levels",
+  "black": 40,
+  "white": 150
+ },
+ {
+  "type": "effect",
+  "target": "hand",
+  "name": "contrast",
+  "amount": 0.4
+ },
+ {
+  "type": "shape",
+  "shape": "rectangle",
+  "name": "stick",
+  "x": 1814,
+  "y": 560,
+  "width": 36,
+  "height": 330,
+  "fill": "#141414"
+ },
+ {
+  "type": "shape",
+  "shape": "path",
+  "name": "fl",
+  "path": "M150 0 L 300 347 L 240 560 L 60 560 L 0 347 Z",
+  "x": 1682.0,
+  "y": 20,
+  "width": 300,
+  "height": 560,
+  "fill": "#141414"
+ },
+ {
+  "type": "shape",
+  "shape": "path",
+  "name": "flc",
+  "path": "M150 0 L 300 347 L 240 560 L 60 560 L 0 347 Z",
+  "x": 1757.0,
+  "y": 300.0,
+  "width": 150.0,
+  "height": 280.0,
+  "fill": "#efe6d2"
+ },
+ {
+  "type": "text",
+  "name": "slogan",
+  "text": "WE ARE\nSTRONGER\nTHAN YOU\nALONE.",
+  "font": "anton",
+  "size": 150,
+  "color": "#141414",
+  "x": 110,
+  "y": 110,
+  "line_height": 0.95
+ },
+ {
+  "type": "text-style",
+  "target": "slogan",
+  "start": 0,
+  "end": 31,
+  "tracking": 2
+ },
+ {
+  "type": "shape",
+  "shape": "rectangle",
+  "name": "slog-rule",
+  "x": 110,
+  "y": 780,
+  "width": 420,
+  "height": 24,
+  "fill": "#d4241c"
+ },
+ {
+  "type": "text",
+  "name": "t1",
+  "text": "FRIENDS",
+  "font": "anton",
+  "size": 380,
+  "color": "#d4241c",
+  "x": 1180,
+  "y": 1880,
+  "rotation": -8
+ },
+ {
+  "type": "text-style",
+  "target": "t1",
+  "start": 0,
+  "end": 7,
+  "tracking": 4
+ },
+ {
+  "type": "text",
+  "name": "t2",
+  "text": "AND FLAMES",
+  "font": "anton",
+  "size": 300,
+  "color": "#141414",
+  "x": 1150,
+  "y": 2260,
+  "rotation": -8
+ },
+ {
+  "type": "text-style",
+  "target": "t2",
+  "start": 0,
+  "end": 10,
+  "tracking": 4
+ },
+ {
+  "type": "text",
+  "name": "artist",
+  "text": "JEFFREY X GUNTLY",
+  "font": "rubikmono",
+  "size": 64,
+  "color": "#141414",
+  "x": 1240,
+  "y": 2700
+ },
+ {
+  "type": "text-style",
+  "target": "artist",
+  "start": 0,
+  "end": 16,
+  "tracking": 6
+ },
+ {
+  "type": "resize",
+  "target": "parental-advisory",
+  "width": 400,
+  "keep_aspect": true
+ },
+ {
+  "type": "move",
+  "target": "parental-advisory",
+  "x": 2500,
+  "y": 2650
+ },
+ {
+  "type": "top",
+  "target": "parental-advisory"
+ }
+]

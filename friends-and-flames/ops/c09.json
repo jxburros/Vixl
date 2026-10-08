@@ -1,0 +1,202 @@
+[
+ {
+  "type": "remove",
+  "targets": [
+   "ambient",
+   "handlight",
+   "match-stick",
+   "match-char",
+   "match-head",
+   "flame-outer",
+   "flame-core",
+   "flame-blue",
+   "title",
+   "artist"
+  ]
+ },
+ {
+  "type": "remove",
+  "target": "hand"
+ },
+ {
+  "type": "solid",
+  "name": "bg",
+  "color": "#f1efe9"
+ },
+ {
+  "type": "bottom",
+  "target": "bg"
+ },
+ {
+  "type": "shape",
+  "shape": "rectangle",
+  "name": "v150",
+  "x": 150,
+  "y": 150,
+  "width": 3,
+  "height": 2700,
+  "fill": "#11111122"
+ },
+ {
+  "type": "shape",
+  "shape": "rectangle",
+  "name": "v1500",
+  "x": 1500,
+  "y": 150,
+  "width": 3,
+  "height": 2700,
+  "fill": "#11111122"
+ },
+ {
+  "type": "shape",
+  "shape": "rectangle",
+  "name": "v2850",
+  "x": 2850,
+  "y": 150,
+  "width": 3,
+  "height": 2700,
+  "fill": "#11111122"
+ },
+ {
+  "type": "shape",
+  "shape": "rectangle",
+  "name": "hr",
+  "x": 150,
+  "y": 1500,
+  "width": 2700,
+  "height": 6,
+  "fill": "#111111"
+ },
+ {
+  "type": "shape",
+  "shape": "rounded-rectangle",
+  "name": "stick",
+  "x": 2100,
+  "y": 700,
+  "width": 44,
+  "height": 1400,
+  "radius": 8,
+  "fill": "#d9b98a",
+  "rotation": 28
+ },
+ {
+  "type": "shape",
+  "shape": "ellipse",
+  "name": "head",
+  "x": 2406,
+  "y": 712,
+  "width": 90,
+  "height": 140,
+  "fill": "#3b1a10",
+  "rotation": 28
+ },
+ {
+  "type": "shape",
+  "shape": "path",
+  "name": "fl",
+  "path": "M95.0 0 C 117.8 105.0 190.0 210.0 182.4 310.8 C 174.8 386.4 136.8 420.0 95.0 420.0 C 53.2 420.0 15.2 386.4 7.6 310.8 C 0 210.0 72.2 105.0 95.0 0 Z",
+  "x": 2350.0,
+  "y": 325,
+  "width": 190,
+  "height": 420,
+  "fill": "#e4321b"
+ },
+ {
+  "type": "text",
+  "name": "t1",
+  "text": "Friends",
+  "font": "grotesk",
+  "size": 330,
+  "color": "#111111",
+  "x": 150,
+  "y": 1560
+ },
+ {
+  "type": "text-style",
+  "target": "t1",
+  "start": 0,
+  "end": 7,
+  "tracking": -10
+ },
+ {
+  "type": "text",
+  "name": "t2",
+  "text": "and",
+  "font": "grotesk",
+  "size": 330,
+  "color": "#111111",
+  "x": 150,
+  "y": 1900
+ },
+ {
+  "type": "text-style",
+  "target": "t2",
+  "start": 0,
+  "end": 3,
+  "tracking": -10
+ },
+ {
+  "type": "text",
+  "name": "t3",
+  "text": "Flames.",
+  "font": "grotesk",
+  "size": 330,
+  "color": "#e4321b",
+  "x": 150,
+  "y": 2240
+ },
+ {
+  "type": "text-style",
+  "target": "t3",
+  "start": 0,
+  "end": 7,
+  "tracking": -10
+ },
+ {
+  "type": "text",
+  "name": "artist",
+  "text": "Jeffrey X Guntly",
+  "font": "inter",
+  "size": 60,
+  "color": "#111111",
+  "x": 1530,
+  "y": 1560
+ },
+ {
+  "type": "text",
+  "name": "meta",
+  "text": "Single \u2014 2026\nLet\u2019s get all our friends.\nLet\u2019s start a little fire.",
+  "font": "inter",
+  "size": 44,
+  "color": "#555555",
+  "x": 1530,
+  "y": 1660,
+  "line_height": 1.4
+ },
+ {
+  "type": "text",
+  "name": "num",
+  "text": "01",
+  "font": "grotesk",
+  "size": 120,
+  "color": "#111111",
+  "x": 2650,
+  "y": 180
+ },
+ {
+  "type": "resize",
+  "target": "parental-advisory",
+  "width": 380,
+  "keep_aspect": true
+ },
+ {
+  "type": "move",
+  "target": "parental-advisory",
+  "x": 2470,
+  "y": 2620
+ },
+ {
+  "type": "top",
+  "target": "parental-advisory"
+ }
+]

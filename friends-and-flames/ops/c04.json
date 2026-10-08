@@ -1,0 +1,581 @@
+[
+ {
+  "type": "remove",
+  "targets": [
+   "ambient",
+   "handlight",
+   "match-stick",
+   "match-char",
+   "match-head",
+   "flame-outer",
+   "flame-core",
+   "flame-blue",
+   "title",
+   "artist"
+  ]
+ },
+ {
+  "type": "effect-remove",
+  "target": "hand",
+  "effect": "temperature"
+ },
+ {
+  "type": "effect-remove",
+  "target": "hand",
+  "effect": "exposure"
+ },
+ {
+  "type": "effect-remove",
+  "target": "hand",
+  "effect": "contrast"
+ },
+ {
+  "type": "effect-remove",
+  "target": "hand",
+  "effect": "grain"
+ },
+ {
+  "type": "solid",
+  "name": "paper",
+  "color": "#ece4d2"
+ },
+ {
+  "type": "bottom",
+  "target": "paper"
+ },
+ {
+  "type": "look",
+  "target": "paper",
+  "look": "paper",
+  "amount": 0.7
+ },
+ {
+  "type": "effect",
+  "target": "hand",
+  "name": "photocopy",
+  "amount": 0.8
+ },
+ {
+  "type": "shape",
+  "name": "stick",
+  "shape": "rectangle",
+  "x": 1814,
+  "y": 560,
+  "width": 36,
+  "height": 340,
+  "fill": "#111111"
+ },
+ {
+  "type": "shape",
+  "shape": "path",
+  "name": "f-red",
+  "path": "M170 0 C 211 112 324 198 334 372 C 341 527 266 620 170 620 C 68 620 0 527 10 384 C 20 279 75 236 102 136 C 123 223 143 248 157 260 C 143 155 157 62 170 0 Z",
+  "x": 1661.5,
+  "y": -20,
+  "width": 341.0,
+  "height": 620,
+  "fill": "#e0261b",
+  "rotation": -4
+ },
+ {
+  "type": "shape",
+  "shape": "path",
+  "name": "f-orange",
+  "path": "M118 0 C 147 77 225 138 232 258 C 237 366 184 430 118 430 C 47 430 0 366 7 267 C 14 194 52 163 71 95 C 85 155 99 172 109 181 C 99 108 109 43 118 0 Z",
+  "x": 1721.75,
+  "y": 170,
+  "width": 236.50000000000003,
+  "height": 430,
+  "fill": "#ff8a1c",
+  "rotation": 3
+ },
+ {
+  "type": "shape",
+  "shape": "path",
+  "name": "f-yellow",
+  "path": "M69 0 C 85 45 131 80 135 150 C 138 212 107 250 69 250 C 28 250 0 212 4 155 C 8 112 30 95 41 55 C 50 90 58 100 63 105 C 58 62 63 25 69 0 Z",
+  "x": 1763.25,
+  "y": 350,
+  "width": 137.5,
+  "height": 250,
+  "fill": "#ffd93a",
+  "rotation": -2
+ },
+ {
+  "type": "layer-style",
+  "target": "f-red",
+  "name": "drop-shadow",
+  "settings": {
+   "color": "#00000088",
+   "dx": 14,
+   "dy": 14,
+   "blur": 2
+  }
+ },
+ {
+  "type": "shape",
+  "shape": "rectangle",
+  "name": "bx0",
+  "x": 130,
+  "y": 141,
+  "width": 165,
+  "height": 200,
+  "fill": "#ffd93a",
+  "rotation": -0.29259339119568306,
+  "stroke": "#00000022",
+  "stroke_width": 2
+ },
+ {
+  "type": "text",
+  "name": "ch0",
+  "text": "F",
+  "font": "western",
+  "size": 131,
+  "color": "#111111",
+  "within": "bx0",
+  "rotation": -0.29259339119568306
+ },
+ {
+  "type": "shape",
+  "shape": "rectangle",
+  "name": "bx1",
+  "x": 311,
+  "y": 142,
+  "width": 200,
+  "height": 225,
+  "fill": "#ece4d2",
+  "rotation": 0.07117814858016303,
+  "stroke": "#00000022",
+  "stroke_width": 2
+ },
+ {
+  "type": "text",
+  "name": "ch1",
+  "text": "R",
+  "font": "typewriter",
+  "size": 147,
+  "color": "#e0261b",
+  "within": "bx1",
+  "rotation": 0.07117814858016303
+ },
+ {
+  "type": "shape",
+  "shape": "rectangle",
+  "name": "bx2",
+  "x": 527,
+  "y": 160,
+  "width": 142,
+  "height": 187,
+  "fill": "#ece4d2",
+  "rotation": -6.030293315433641,
+  "stroke": "#00000022",
+  "stroke_width": 2
+ },
+ {
+  "type": "text",
+  "name": "ch2",
+  "text": "I",
+  "font": "marker",
+  "size": 122,
+  "color": "#e0261b",
+  "within": "bx2",
+  "rotation": -6.030293315433641
+ },
+ {
+  "type": "shape",
+  "shape": "rectangle",
+  "name": "bx3",
+  "x": 685,
+  "y": 158,
+  "width": 186,
+  "height": 205,
+  "fill": "#111111",
+  "rotation": -0.8840171250264586,
+  "stroke": "#00000022",
+  "stroke_width": 2
+ },
+ {
+  "type": "text",
+  "name": "ch3",
+  "text": "E",
+  "font": "anton",
+  "size": 134,
+  "color": "#ffd93a",
+  "within": "bx3",
+  "rotation": -0.8840171250264586
+ },
+ {
+  "type": "shape",
+  "shape": "rectangle",
+  "name": "bx4",
+  "x": 887,
+  "y": 157,
+  "width": 188,
+  "height": 220,
+  "fill": "#111111",
+  "rotation": 0.5620910001228179,
+  "stroke": "#00000022",
+  "stroke_width": 2
+ },
+ {
+  "type": "text",
+  "name": "ch4",
+  "text": "N",
+  "font": "grotesk",
+  "size": 144,
+  "color": "#ece4d2",
+  "within": "bx4",
+  "rotation": 0.5620910001228179
+ },
+ {
+  "type": "shape",
+  "shape": "rectangle",
+  "name": "bx5",
+  "x": 1080,
+  "y": 161,
+  "width": 217,
+  "height": 238,
+  "fill": "#ffffff",
+  "rotation": -4.832617205572838,
+  "stroke": "#00000022",
+  "stroke_width": 2
+ },
+ {
+  "type": "text",
+  "name": "ch5",
+  "text": "D",
+  "font": "anton",
+  "size": 156,
+  "color": "#111111",
+  "within": "bx5",
+  "rotation": -4.832617205572838
+ },
+ {
+  "type": "shape",
+  "shape": "rectangle",
+  "name": "bx6",
+  "x": 1302,
+  "y": 158,
+  "width": 174,
+  "height": 196,
+  "fill": "#111111",
+  "rotation": -4.744619550347029,
+  "stroke": "#00000022",
+  "stroke_width": 2
+ },
+ {
+  "type": "text",
+  "name": "ch6",
+  "text": "S",
+  "font": "playfair-black-italic",
+  "size": 128,
+  "color": "#ece4d2",
+  "within": "bx6",
+  "rotation": -4.744619550347029
+ },
+ {
+  "type": "shape",
+  "shape": "rectangle",
+  "name": "bx7",
+  "x": 130,
+  "y": 421,
+  "width": 183,
+  "height": 218,
+  "fill": "#e0261b",
+  "rotation": -0.4208117565333991,
+  "stroke": "#00000022",
+  "stroke_width": 2
+ },
+ {
+  "type": "text",
+  "name": "ch7",
+  "text": "A",
+  "font": "anton",
+  "size": 143,
+  "color": "#ffffff",
+  "within": "bx7",
+  "rotation": -0.4208117565333991
+ },
+ {
+  "type": "shape",
+  "shape": "rectangle",
+  "name": "bx8",
+  "x": 320,
+  "y": 410,
+  "width": 170,
+  "height": 192,
+  "fill": "#e0261b",
+  "rotation": -5.285309807645367,
+  "stroke": "#00000022",
+  "stroke_width": 2
+ },
+ {
+  "type": "text",
+  "name": "ch8",
+  "text": "N",
+  "font": "abril",
+  "size": 126,
+  "color": "#ffffff",
+  "within": "bx8",
+  "rotation": -5.285309807645367
+ },
+ {
+  "type": "shape",
+  "shape": "rectangle",
+  "name": "bx9",
+  "x": 502,
+  "y": 425,
+  "width": 172,
+  "height": 217,
+  "fill": "#e0261b",
+  "rotation": -2.9121778673448606,
+  "stroke": "#00000022",
+  "stroke_width": 2
+ },
+ {
+  "type": "text",
+  "name": "ch9",
+  "text": "D",
+  "font": "marker",
+  "size": 142,
+  "color": "#ffffff",
+  "within": "bx9",
+  "rotation": -2.9121778673448606
+ },
+ {
+  "type": "shape",
+  "shape": "rectangle",
+  "name": "bx10",
+  "x": 130,
+  "y": 651,
+  "width": 186,
+  "height": 227,
+  "fill": "#ffd93a",
+  "rotation": -3.2801350476168163,
+  "stroke": "#00000022",
+  "stroke_width": 2
+ },
+ {
+  "type": "text",
+  "name": "ch10",
+  "text": "F",
+  "font": "marker",
+  "size": 149,
+  "color": "#111111",
+  "within": "bx10",
+  "rotation": -3.2801350476168163
+ },
+ {
+  "type": "shape",
+  "shape": "rectangle",
+  "name": "bx11",
+  "x": 321,
+  "y": 642,
+  "width": 174,
+  "height": 200,
+  "fill": "#ffd93a",
+  "rotation": -0.11844552322005697,
+  "stroke": "#00000022",
+  "stroke_width": 2
+ },
+ {
+  "type": "text",
+  "name": "ch11",
+  "text": "L",
+  "font": "anton",
+  "size": 131,
+  "color": "#111111",
+  "within": "bx11",
+  "rotation": -0.11844552322005697
+ },
+ {
+  "type": "shape",
+  "shape": "rectangle",
+  "name": "bx12",
+  "x": 508,
+  "y": 644,
+  "width": 207,
+  "height": 246,
+  "fill": "#ece4d2",
+  "rotation": 0.7908180186147362,
+  "stroke": "#00000022",
+  "stroke_width": 2
+ },
+ {
+  "type": "text",
+  "name": "ch12",
+  "text": "A",
+  "font": "grotesk",
+  "size": 161,
+  "color": "#e0261b",
+  "within": "bx12",
+  "rotation": 0.7908180186147362
+ },
+ {
+  "type": "shape",
+  "shape": "rectangle",
+  "name": "bx13",
+  "x": 720,
+  "y": 635,
+  "width": 174,
+  "height": 201,
+  "fill": "#111111",
+  "rotation": 4.671220369480777,
+  "stroke": "#00000022",
+  "stroke_width": 2
+ },
+ {
+  "type": "text",
+  "name": "ch13",
+  "text": "M",
+  "font": "grotesk",
+  "size": 132,
+  "color": "#ffd93a",
+  "within": "bx13",
+  "rotation": 4.671220369480777
+ },
+ {
+  "type": "shape",
+  "shape": "rectangle",
+  "name": "bx14",
+  "x": 903,
+  "y": 627,
+  "width": 211,
+  "height": 247,
+  "fill": "#ffffff",
+  "rotation": -5.554174793051975,
+  "stroke": "#00000022",
+  "stroke_width": 2
+ },
+ {
+  "type": "text",
+  "name": "ch14",
+  "text": "E",
+  "font": "rubikmono",
+  "size": 162,
+  "color": "#111111",
+  "within": "bx14",
+  "rotation": -5.554174793051975
+ },
+ {
+  "type": "shape",
+  "shape": "rectangle",
+  "name": "bx15",
+  "x": 1132,
+  "y": 646,
+  "width": 177,
+  "height": 201,
+  "fill": "#ffffff",
+  "rotation": 2.566925097359441,
+  "stroke": "#00000022",
+  "stroke_width": 2
+ },
+ {
+  "type": "text",
+  "name": "ch15",
+  "text": "S",
+  "font": "typewriter",
+  "size": 132,
+  "color": "#111111",
+  "within": "bx15",
+  "rotation": 2.566925097359441
+ },
+ {
+  "type": "look",
+  "targets": [
+   "bx0",
+   "bx1",
+   "bx2",
+   "bx3",
+   "bx4",
+   "bx5",
+   "bx6",
+   "bx7",
+   "bx8",
+   "bx9",
+   "bx10",
+   "bx11",
+   "bx12",
+   "bx13",
+   "bx14",
+   "bx15"
+  ],
+  "look": "hard-shadow",
+  "amount": 0.3,
+  "color": "#00000055"
+ },
+ {
+  "type": "shape",
+  "shape": "rectangle",
+  "name": "tape",
+  "x": 120,
+  "y": 930,
+  "width": 1020,
+  "height": 120,
+  "fill": "#f6e27ad9",
+  "rotation": -3
+ },
+ {
+  "type": "text",
+  "name": "artist",
+  "text": "JEFFREY X GUNTLY",
+  "font": "typewriter",
+  "size": 78,
+  "color": "#111111",
+  "within": "tape",
+  "rotation": -3
+ },
+ {
+  "type": "shape",
+  "shape": "rectangle",
+  "name": "strip",
+  "x": 1500,
+  "y": 2380,
+  "width": 1380,
+  "height": 200,
+  "fill": "#ffffff",
+  "rotation": 2
+ },
+ {
+  "type": "tear",
+  "target": "strip",
+  "seed": 3,
+  "edges": [
+   "left",
+   "right"
+  ]
+ },
+ {
+  "type": "text",
+  "name": "lyric",
+  "text": "let's get all our friends.\nlet's start a little fire.",
+  "font": "typewriter",
+  "size": 64,
+  "color": "#111111",
+  "within": "strip",
+  "rotation": 2,
+  "align": "left"
+ },
+ {
+  "type": "look",
+  "target": "strip",
+  "look": "soft-shadow",
+  "amount": 0.4
+ },
+ {
+  "type": "resize",
+  "target": "parental-advisory",
+  "width": 400,
+  "keep_aspect": true
+ },
+ {
+  "type": "move",
+  "target": "parental-advisory",
+  "x": 2500,
+  "y": 2650
+ },
+ {
+  "type": "top",
+  "target": "parental-advisory"
+ }
+]
