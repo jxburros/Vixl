@@ -16,6 +16,7 @@ Ten complex projects, each designed to stretch a different part of the engine. T
 | 08 | [The Great Green Switch infographic](08-infographic/) | Charts from data with shapes/paths/repeat, grids and constraints, spacing/validate QA, color-vision checks, SVG/HTML/PDF |
 | 09 | [Loop collaborative campaign](09-collab-campaign/) | brand.json, rolls, layouts across 7 sizes, adapt-layout, branch fork/merge with conflict resolution, group-apply gated by suites |
 | 10 | [Pip the robot film](10-character-film/) | Nested rig with pivots, walk/wave/jump, parallax, painted texture, film-plan with camera, crossfades, captions and audio to MP4 |
+| 11 | [AI literacy packet](11-ai-packet/) (0.23.0 field test) | Illustrations, rolled poster and carousel, logo package, deck/handout/form/CMYK/certificates, five animations, CSV cards, multi-size adaptation, suite-gated pipeline, proof page, house-style variety study; see its [REPORT.md](11-ai-packet/REPORT.md) |
 
 ## Caveats on the outputs
 

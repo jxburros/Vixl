@@ -1,0 +1,28 @@
+{
+ "new": [
+  0.57,
+  0.45
+ ],
+ "apply": [
+  2.31,
+  2.67
+ ],
+ "check": [
+  1.33
+ ],
+ "workflow": [
+  1.67,
+  13.07
+ ],
+ "render": [
+  11.05
+ ],
+ "render --data (12 rows)": 11.05,
+ "workflow run (12 rows, 2 workers)": 13.07,
+ "merge": [
+  1.15
+ ],
+ "export": [
+  1.75
+ ]
+}

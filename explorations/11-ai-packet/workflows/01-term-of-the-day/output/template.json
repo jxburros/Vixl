@@ -1,0 +1,832 @@
+[
+ {
+  "type": "variable",
+  "name": "NUM",
+  "value": "01"
+ },
+ {
+  "type": "variable",
+  "name": "term",
+  "value": "Artificial intelligence"
+ },
+ {
+  "type": "variable",
+  "name": "category",
+  "value": "The basics"
+ },
+ {
+  "type": "variable",
+  "name": "definition",
+  "value": "Computer systems that do tasks we usually link with human thinking, such as recognising speech, translating languages or spotting patterns."
+ },
+ {
+  "type": "variable",
+  "name": "tryit",
+  "value": "Name three apps on your phone that use AI. What does each one predict or recognise?"
+ },
+ {
+  "type": "swatch",
+  "name": "background",
+  "color": "#fbf7ef"
+ },
+ {
+  "type": "swatch",
+  "name": "surface",
+  "color": "#efe6d2"
+ },
+ {
+  "type": "swatch",
+  "name": "ink",
+  "color": "#15213b"
+ },
+ {
+  "type": "swatch",
+  "name": "muted",
+  "color": "#4a5568"
+ },
+ {
+  "type": "swatch",
+  "name": "accent",
+  "color": "#1d7a74"
+ },
+ {
+  "type": "swatch",
+  "name": "accent-text",
+  "color": "#1d7a74"
+ },
+ {
+  "type": "swatch",
+  "name": "on-accent",
+  "color": "#ffffff"
+ },
+ {
+  "type": "solid",
+  "name": "top-bar",
+  "x": 0,
+  "y": 0,
+  "width": 1080,
+  "height": 18,
+  "color": "@accent"
+ },
+ {
+  "type": "layer-intent",
+  "target": "top-bar",
+  "role": "decoration"
+ },
+ {
+  "type": "text",
+  "name": "label",
+  "text": "AI TERM OF THE DAY",
+  "font": "heading",
+  "size": 34,
+  "color": "@accent-text",
+  "x": 80,
+  "y": 88
+ },
+ {
+  "type": "text",
+  "name": "number",
+  "text": "No. ${NUM} / 12",
+  "font": "body",
+  "size": 34,
+  "color": "@muted",
+  "align": "right",
+  "baseline_y": 112
+ },
+ {
+  "type": "constrain",
+  "target": "number",
+  "constraints": {
+   "right": "canvas.right-80"
+  }
+ },
+ {
+  "type": "solid",
+  "name": "rule-top",
+  "x": 80,
+  "y": 146,
+  "width": 920,
+  "height": 3,
+  "color": "@ink"
+ },
+ {
+  "type": "solid",
+  "name": "category-dot",
+  "x": 80,
+  "y": 202,
+  "width": 22,
+  "height": 22,
+  "color": "@accent"
+ },
+ {
+  "type": "text",
+  "name": "category",
+  "text": "${category|upper}",
+  "font": "heading",
+  "size": 34,
+  "color": "@accent-text",
+  "x": 116,
+  "baseline_y": 225
+ },
+ {
+  "type": "text",
+  "name": "term",
+  "text": "${term}",
+  "font": "heading",
+  "size": 104,
+  "color": "@ink",
+  "x": 80,
+  "y": 262,
+  "line_height": 1.05
+ },
+ {
+  "type": "text-layout",
+  "target": "term",
+  "width": 920
+ },
+ {
+  "type": "text",
+  "name": "definition",
+  "text": "${definition}",
+  "font": "body",
+  "size": 44,
+  "color": "@ink",
+  "x": 80
+ },
+ {
+  "type": "text-layout",
+  "target": "definition",
+  "width": 920
+ },
+ {
+  "type": "constrain",
+  "target": "definition",
+  "constraints": {
+   "top": "term.bottom+56"
+  }
+ },
+ {
+  "type": "solid",
+  "name": "try-panel",
+  "x": 80,
+  "y": 880,
+  "width": 920,
+  "height": 290,
+  "color": "@surface"
+ },
+ {
+  "type": "text",
+  "name": "try-label",
+  "text": "TRY IT",
+  "font": "heading",
+  "size": 34,
+  "color": "@ink",
+  "x": 120,
+  "y": 920
+ },
+ {
+  "type": "text",
+  "name": "tryit",
+  "text": "${tryit}",
+  "font": "body",
+  "size": 36,
+  "color": "@ink",
+  "x": 120,
+  "y": 975
+ },
+ {
+  "type": "text-layout",
+  "target": "tryit",
+  "width": 600,
+  "height": 170
+ },
+ {
+  "type": "text",
+  "name": "footer",
+  "text": "AI Field Guide",
+  "font": "heading",
+  "size": 34,
+  "color": "@ink",
+  "x": 80,
+  "baseline_y": 1240
+ },
+ {
+  "type": "text",
+  "name": "footer-motto",
+  "text": "learn it \u00b7 try it \u00b7 question it",
+  "font": "body",
+  "size": 34,
+  "color": "@muted",
+  "align": "right",
+  "baseline_y": 1240
+ },
+ {
+  "type": "constrain",
+  "target": "footer-motto",
+  "constraints": {
+   "right": "canvas.right-80"
+  }
+ },
+ {
+  "type": "action-define",
+  "name": "reflow",
+  "action": {
+   "operations": [
+    {
+     "type": "text-layout",
+     "target": "term",
+     "width": 920
+    },
+    {
+     "type": "text-layout",
+     "target": "definition",
+     "width": 920
+    }
+   ]
+  }
+ },
+ {
+  "type": "pen",
+  "name": "motif-edge-0",
+  "points": [
+   [
+    790,
+    967
+   ],
+   [
+    875,
+    959
+   ]
+  ],
+  "stroke": "@muted",
+  "stroke_width": 2,
+  "line_cap": "round"
+ },
+ {
+  "type": "pen",
+  "name": "motif-edge-1",
+  "points": [
+   [
+    790,
+    967
+   ],
+   [
+    875,
+    1006
+   ]
+  ],
+  "stroke": "@muted",
+  "stroke_width": 2,
+  "line_cap": "round"
+ },
+ {
+  "type": "pen",
+  "name": "motif-edge-2",
+  "points": [
+   [
+    790,
+    967
+   ],
+   [
+    875,
+    1054
+   ]
+  ],
+  "stroke": "@muted",
+  "stroke_width": 2,
+  "line_cap": "round"
+ },
+ {
+  "type": "pen",
+  "name": "motif-edge-3",
+  "points": [
+   [
+    790,
+    967
+   ],
+   [
+    875,
+    1101
+   ]
+  ],
+  "stroke": "@muted",
+  "stroke_width": 2,
+  "line_cap": "round"
+ },
+ {
+  "type": "pen",
+  "name": "motif-edge-4",
+  "points": [
+   [
+    790,
+    1030
+   ],
+   [
+    875,
+    959
+   ]
+  ],
+  "stroke": "@muted",
+  "stroke_width": 2,
+  "line_cap": "round"
+ },
+ {
+  "type": "pen",
+  "name": "motif-edge-5",
+  "points": [
+   [
+    790,
+    1030
+   ],
+   [
+    875,
+    1006
+   ]
+  ],
+  "stroke": "@muted",
+  "stroke_width": 2,
+  "line_cap": "round"
+ },
+ {
+  "type": "pen",
+  "name": "motif-edge-6",
+  "points": [
+   [
+    790,
+    1030
+   ],
+   [
+    875,
+    1054
+   ]
+  ],
+  "stroke": "@accent",
+  "stroke_width": 5,
+  "line_cap": "round"
+ },
+ {
+  "type": "pen",
+  "name": "motif-edge-7",
+  "points": [
+   [
+    790,
+    1030
+   ],
+   [
+    875,
+    1101
+   ]
+  ],
+  "stroke": "@muted",
+  "stroke_width": 2,
+  "line_cap": "round"
+ },
+ {
+  "type": "pen",
+  "name": "motif-edge-8",
+  "points": [
+   [
+    790,
+    1093
+   ],
+   [
+    875,
+    959
+   ]
+  ],
+  "stroke": "@muted",
+  "stroke_width": 2,
+  "line_cap": "round"
+ },
+ {
+  "type": "pen",
+  "name": "motif-edge-9",
+  "points": [
+   [
+    790,
+    1093
+   ],
+   [
+    875,
+    1006
+   ]
+  ],
+  "stroke": "@muted",
+  "stroke_width": 2,
+  "line_cap": "round"
+ },
+ {
+  "type": "pen",
+  "name": "motif-edge-10",
+  "points": [
+   [
+    790,
+    1093
+   ],
+   [
+    875,
+    1054
+   ]
+  ],
+  "stroke": "@muted",
+  "stroke_width": 2,
+  "line_cap": "round"
+ },
+ {
+  "type": "pen",
+  "name": "motif-edge-11",
+  "points": [
+   [
+    790,
+    1093
+   ],
+   [
+    875,
+    1101
+   ]
+  ],
+  "stroke": "@muted",
+  "stroke_width": 2,
+  "line_cap": "round"
+ },
+ {
+  "type": "pen",
+  "name": "motif-edge-12",
+  "points": [
+   [
+    875,
+    959
+   ],
+   [
+    960,
+    982
+   ]
+  ],
+  "stroke": "@muted",
+  "stroke_width": 2,
+  "line_cap": "round"
+ },
+ {
+  "type": "pen",
+  "name": "motif-edge-13",
+  "points": [
+   [
+    875,
+    959
+   ],
+   [
+    960,
+    1078
+   ]
+  ],
+  "stroke": "@muted",
+  "stroke_width": 2,
+  "line_cap": "round"
+ },
+ {
+  "type": "pen",
+  "name": "motif-edge-14",
+  "points": [
+   [
+    875,
+    1006
+   ],
+   [
+    960,
+    982
+   ]
+  ],
+  "stroke": "@muted",
+  "stroke_width": 2,
+  "line_cap": "round"
+ },
+ {
+  "type": "pen",
+  "name": "motif-edge-15",
+  "points": [
+   [
+    875,
+    1006
+   ],
+   [
+    960,
+    1078
+   ]
+  ],
+  "stroke": "@muted",
+  "stroke_width": 2,
+  "line_cap": "round"
+ },
+ {
+  "type": "pen",
+  "name": "motif-edge-16",
+  "points": [
+   [
+    875,
+    1054
+   ],
+   [
+    960,
+    982
+   ]
+  ],
+  "stroke": "@accent",
+  "stroke_width": 5,
+  "line_cap": "round"
+ },
+ {
+  "type": "pen",
+  "name": "motif-edge-17",
+  "points": [
+   [
+    875,
+    1054
+   ],
+   [
+    960,
+    1078
+   ]
+  ],
+  "stroke": "@muted",
+  "stroke_width": 2,
+  "line_cap": "round"
+ },
+ {
+  "type": "pen",
+  "name": "motif-edge-18",
+  "points": [
+   [
+    875,
+    1101
+   ],
+   [
+    960,
+    982
+   ]
+  ],
+  "stroke": "@muted",
+  "stroke_width": 2,
+  "line_cap": "round"
+ },
+ {
+  "type": "pen",
+  "name": "motif-edge-19",
+  "points": [
+   [
+    875,
+    1101
+   ],
+   [
+    960,
+    1078
+   ]
+  ],
+  "stroke": "@muted",
+  "stroke_width": 2,
+  "line_cap": "round"
+ },
+ {
+  "type": "shape",
+  "shape": "ellipse",
+  "name": "motif-node-0-0",
+  "x": 776,
+  "y": 953,
+  "width": 28,
+  "height": 28,
+  "fill": "@ink"
+ },
+ {
+  "type": "shape",
+  "shape": "ellipse",
+  "name": "motif-node-0-1",
+  "x": 776,
+  "y": 1016,
+  "width": 28,
+  "height": 28,
+  "fill": "@accent"
+ },
+ {
+  "type": "shape",
+  "shape": "ellipse",
+  "name": "motif-node-0-2",
+  "x": 776,
+  "y": 1079,
+  "width": 28,
+  "height": 28,
+  "fill": "@ink"
+ },
+ {
+  "type": "shape",
+  "shape": "ellipse",
+  "name": "motif-node-1-0",
+  "x": 861,
+  "y": 945,
+  "width": 28,
+  "height": 28,
+  "fill": "@ink"
+ },
+ {
+  "type": "shape",
+  "shape": "ellipse",
+  "name": "motif-node-1-1",
+  "x": 861,
+  "y": 992,
+  "width": 28,
+  "height": 28,
+  "fill": "@ink"
+ },
+ {
+  "type": "shape",
+  "shape": "ellipse",
+  "name": "motif-node-1-2",
+  "x": 861,
+  "y": 1040,
+  "width": 28,
+  "height": 28,
+  "fill": "@accent"
+ },
+ {
+  "type": "shape",
+  "shape": "ellipse",
+  "name": "motif-node-1-3",
+  "x": 861,
+  "y": 1087,
+  "width": 28,
+  "height": 28,
+  "fill": "@ink"
+ },
+ {
+  "type": "shape",
+  "shape": "ellipse",
+  "name": "motif-node-2-0",
+  "x": 946,
+  "y": 968,
+  "width": 28,
+  "height": 28,
+  "fill": "@accent"
+ },
+ {
+  "type": "shape",
+  "shape": "ellipse",
+  "name": "motif-node-2-1",
+  "x": 946,
+  "y": 1064,
+  "width": 28,
+  "height": 28,
+  "fill": "@ink"
+ },
+ {
+  "type": "group",
+  "name": "motif",
+  "targets": [
+   "motif-edge-0",
+   "motif-edge-1",
+   "motif-edge-2",
+   "motif-edge-3",
+   "motif-edge-4",
+   "motif-edge-5",
+   "motif-edge-6",
+   "motif-edge-7",
+   "motif-edge-8",
+   "motif-edge-9",
+   "motif-edge-10",
+   "motif-edge-11",
+   "motif-edge-12",
+   "motif-edge-13",
+   "motif-edge-14",
+   "motif-edge-15",
+   "motif-edge-16",
+   "motif-edge-17",
+   "motif-edge-18",
+   "motif-edge-19",
+   "motif-node-0-0",
+   "motif-node-0-1",
+   "motif-node-0-2",
+   "motif-node-1-0",
+   "motif-node-1-1",
+   "motif-node-1-2",
+   "motif-node-1-3",
+   "motif-node-2-0",
+   "motif-node-2-1"
+  ]
+ },
+ {
+  "type": "layer-intent",
+  "target": "motif",
+  "role": "decoration"
+ },
+ {
+  "type": "suite-set",
+  "name": "card",
+  "suite": {
+   "version": 1,
+   "rules": [
+    {
+     "id": "term-dominates",
+     "kind": "hierarchy",
+     "targets": [
+      "term",
+      "definition",
+      "tryit"
+     ],
+     "ratio": 1.2
+    },
+    {
+     "id": "term-contrast",
+     "kind": "contrast",
+     "target": "term",
+     "minimum": 4.5
+    },
+    {
+     "id": "definition-contrast",
+     "kind": "contrast",
+     "target": "definition",
+     "minimum": 4.5
+    },
+    {
+     "id": "tryit-contrast",
+     "kind": "contrast",
+     "target": "tryit",
+     "minimum": 4.5
+    },
+    {
+     "id": "label-contrast",
+     "kind": "contrast",
+     "target": "label",
+     "minimum": 4.5
+    },
+    {
+     "id": "definition-readable",
+     "kind": "text-fit",
+     "target": "definition",
+     "minimum": 36
+    },
+    {
+     "id": "tryit-readable",
+     "kind": "text-fit",
+     "target": "tryit",
+     "minimum": 28
+    },
+    {
+     "id": "term-above-definition",
+     "kind": "relation",
+     "target": "term",
+     "to": "definition",
+     "position": "above",
+     "minimum": 8
+    },
+    {
+     "id": "definition-clear-of-panel",
+     "kind": "relation",
+     "target": "definition",
+     "to": "try-panel",
+     "position": "above",
+     "minimum": 24
+    },
+    {
+     "id": "motif-in-panel",
+     "kind": "relation",
+     "target": "motif",
+     "to": "try-panel",
+     "position": "inside",
+     "minimum": 16
+    },
+    {
+     "id": "tryit-clear-of-motif",
+     "kind": "relation",
+     "target": "tryit",
+     "to": "motif",
+     "position": "apart",
+     "minimum": 24
+    },
+    {
+     "id": "footer-inside",
+     "kind": "relation",
+     "target": "footer",
+     "to": "canvas",
+     "position": "inside",
+     "minimum": 60
+    },
+    {
+     "id": "nothing-cut-off",
+     "kind": "design",
+     "options": {
+      "checks": [
+       "bounds",
+       "overlap",
+       "contrast"
+      ]
+     }
+    },
+    {
+     "id": "one-term",
+     "kind": "count",
+     "target": "term",
+     "layer_type": "text",
+     "minimum": 1,
+     "maximum": 1
+    }
+   ]
+  }
+ }
+]

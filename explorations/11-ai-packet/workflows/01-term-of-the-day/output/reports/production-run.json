@@ -1,0 +1,2901 @@
+{
+ "version": 1,
+ "quality": "final",
+ "count": 12,
+ "status": "completed",
+ "results": [
+  {
+   "id": "0001",
+   "values": {
+    "NUM": "01",
+    "term": "Artificial intelligence",
+    "category": "The basics",
+    "definition": "Computer systems that do tasks we usually link with human thinking, such as recognising speech, translating languages or spotting patterns.",
+    "tryit": "Name three apps on your phone that use AI. What does each one predict or recognise?"
+   },
+   "artboard": null,
+   "status": "completed",
+   "output": "0001-ad1d40d9097d491f.png",
+   "fingerprint": "ad1d40d9097d491f15ef246c16b9b6d24dc574ece9287c70ab2f375ade1bc4f8",
+   "sha256": "3385c11f903fca637e45528b1fc3f2c33b9846035f02f8f6b5ee09ddf44e5937",
+   "checks": {
+    "card": {
+     "version": 1,
+     "suite_hash": "0fa1f015eb15af4460381fc936343a3cbf5a77b3148db1d6b11a05fbfb2ab547",
+     "passed": true,
+     "status": "passed",
+     "errors": 0,
+     "needs_review": 0,
+     "coverage": {
+      "mode": "still",
+      "times": [
+       null
+      ]
+     },
+     "results": [
+      {
+       "id": "term-dominates",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "sizes": [
+        104,
+        44,
+        36
+       ],
+       "ratios": [
+        2.364,
+        1.222
+       ],
+       "expected": 1.2
+      },
+      {
+       "id": "term-contrast",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "expected": 4.5,
+       "actual": 14.972,
+       "weakest_region": [
+        82,
+        262,
+        595,
+        215
+       ]
+      },
+      {
+       "id": "definition-contrast",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "expected": 4.5,
+       "actual": 14.972,
+       "weakest_region": [
+        81,
+        535,
+        909,
+        215
+       ]
+      },
+      {
+       "id": "tryit-contrast",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "expected": 4.5,
+       "actual": 12.89,
+       "weakest_region": [
+        122,
+        975,
+        576,
+        130
+       ]
+      },
+      {
+       "id": "label-contrast",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "expected": 4.5,
+       "actual": 4.807,
+       "weakest_region": [
+        81,
+        88,
+        364,
+        24
+       ]
+      },
+      {
+       "id": "definition-readable",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "actual_size": 44,
+       "fits": true
+      },
+      {
+       "id": "tryit-readable",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "actual_size": 36,
+       "fits": true
+      },
+      {
+       "id": "term-above-definition",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "above"
+       ],
+       "alignments": [
+        "left",
+        "center-x",
+        "right"
+       ],
+       "distance": 56.0
+      },
+      {
+       "id": "definition-clear-of-panel",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "above"
+       ],
+       "alignments": [
+        "left",
+        "center-x",
+        "right"
+       ],
+       "distance": 129.0
+      },
+      {
+       "id": "motif-in-panel",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "overlapping",
+        "inside"
+       ],
+       "alignments": [],
+       "margins": {
+        "left": 696.0,
+        "top": 65.0,
+        "right": 26.0,
+        "bottom": 55.0
+       },
+       "distance": 26.0
+      },
+      {
+       "id": "tryit-clear-of-motif",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "left-of"
+       ],
+       "alignments": [],
+       "distance": 56.0
+      },
+      {
+       "id": "footer-inside",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "overlapping",
+        "inside"
+       ],
+       "alignments": [],
+       "margins": {
+        "left": 80.0,
+        "top": 1213.07,
+        "right": 754.0,
+        "bottom": 108.93
+       },
+       "distance": 80.0
+      },
+      {
+       "id": "nothing-cut-off",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "passed": true,
+       "errors": 0,
+       "warnings": 0,
+       "info": 0,
+       "by_action": {
+        "fix": [],
+        "review": [],
+        "informational": []
+       },
+       "issues": [],
+       "checked": {
+        "checks": [
+         "bounds",
+         "overlap",
+         "contrast"
+        ],
+        "layers_checked": 43,
+        "layers_total": 43,
+        "text_layers": 9
+       }
+      },
+      {
+       "id": "one-term",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "count": 1,
+       "layers": [
+        "term"
+       ],
+       "minimum": 1,
+       "maximum": 1
+      }
+     ]
+    }
+   },
+   "repairs": [],
+   "cache": {
+    "hits": 74,
+    "misses": 23
+   }
+  },
+  {
+   "id": "0002",
+   "values": {
+    "NUM": "02",
+    "term": "Machine learning",
+    "category": "How it works",
+    "definition": "A way to build AI in which a computer learns patterns from examples (data) instead of following rules a person wrote by hand.",
+    "tryit": "Sort 10 photos into two groups and write down the rule you used. That rule is what a model tries to learn."
+   },
+   "artboard": null,
+   "status": "completed",
+   "output": "0002-aad253c4eaead4f0.png",
+   "fingerprint": "aad253c4eaead4f0103afee12d852ab4fa7517bcb72061123dc866571638e7a7",
+   "sha256": "cc34e79d324a805f926a06c2a0737a95476a9400cc96627f28f410bc33bbf5d4",
+   "checks": {
+    "card": {
+     "version": 1,
+     "suite_hash": "0fa1f015eb15af4460381fc936343a3cbf5a77b3148db1d6b11a05fbfb2ab547",
+     "passed": true,
+     "status": "passed",
+     "errors": 0,
+     "needs_review": 0,
+     "coverage": {
+      "mode": "still",
+      "times": [
+       null
+      ]
+     },
+     "results": [
+      {
+       "id": "term-dominates",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "sizes": [
+        104,
+        44,
+        36
+       ],
+       "ratios": [
+        2.364,
+        1.222
+       ],
+       "expected": 1.2
+      },
+      {
+       "id": "term-contrast",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "expected": 4.5,
+       "actual": 14.972,
+       "weakest_region": [
+        90,
+        262,
+        884,
+        106
+       ]
+      },
+      {
+       "id": "definition-contrast",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "expected": 4.5,
+       "actual": 14.972,
+       "weakest_region": [
+        81,
+        425,
+        856,
+        158
+       ]
+      },
+      {
+       "id": "tryit-contrast",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "expected": 4.5,
+       "actual": 12.89,
+       "weakest_region": [
+        121,
+        975,
+        551,
+        123
+       ]
+      },
+      {
+       "id": "label-contrast",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "expected": 4.5,
+       "actual": 4.807,
+       "weakest_region": [
+        81,
+        88,
+        364,
+        24
+       ]
+      },
+      {
+       "id": "definition-readable",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "actual_size": 44,
+       "fits": true
+      },
+      {
+       "id": "tryit-readable",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "actual_size": 36,
+       "fits": true
+      },
+      {
+       "id": "term-above-definition",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "above"
+       ],
+       "alignments": [
+        "left",
+        "center-x",
+        "right"
+       ],
+       "distance": 56.0
+      },
+      {
+       "id": "definition-clear-of-panel",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "above"
+       ],
+       "alignments": [
+        "left",
+        "center-x",
+        "right"
+       ],
+       "distance": 296.0
+      },
+      {
+       "id": "motif-in-panel",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "overlapping",
+        "inside"
+       ],
+       "alignments": [],
+       "margins": {
+        "left": 696.0,
+        "top": 65.0,
+        "right": 26.0,
+        "bottom": 55.0
+       },
+       "distance": 26.0
+      },
+      {
+       "id": "tryit-clear-of-motif",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "left-of"
+       ],
+       "alignments": [],
+       "distance": 56.0
+      },
+      {
+       "id": "footer-inside",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "overlapping",
+        "inside"
+       ],
+       "alignments": [],
+       "margins": {
+        "left": 80.0,
+        "top": 1213.07,
+        "right": 754.0,
+        "bottom": 108.93
+       },
+       "distance": 80.0
+      },
+      {
+       "id": "nothing-cut-off",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "passed": true,
+       "errors": 0,
+       "warnings": 0,
+       "info": 0,
+       "by_action": {
+        "fix": [],
+        "review": [],
+        "informational": []
+       },
+       "issues": [],
+       "checked": {
+        "checks": [
+         "bounds",
+         "overlap",
+         "contrast"
+        ],
+        "layers_checked": 43,
+        "layers_total": 43,
+        "text_layers": 9
+       }
+      },
+      {
+       "id": "one-term",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "count": 1,
+       "layers": [
+        "term"
+       ],
+       "minimum": 1,
+       "maximum": 1
+      }
+     ]
+    }
+   },
+   "repairs": [],
+   "cache": {
+    "hits": 23,
+    "misses": 56
+   }
+  },
+  {
+   "id": "0003",
+   "values": {
+    "NUM": "03",
+    "term": "Training data",
+    "category": "How it works",
+    "definition": "The examples a model learns from. What is in the data, and what is missing from it, shapes what the model can and cannot do.",
+    "tryit": "Pick an AI tool and ask: whose voices or pictures might be missing from its training data?"
+   },
+   "artboard": null,
+   "status": "completed",
+   "output": "0003-9b334fd66e00a0ba.png",
+   "fingerprint": "9b334fd66e00a0ba4fbbbb32cf6b7fd6db217f272f3a19110ff1367c27d09091",
+   "sha256": "1036dff5133ac3af5823c89bb5a4b240f31d23a2f57fe8fe56b4d330516d3115",
+   "checks": {
+    "card": {
+     "version": 1,
+     "suite_hash": "0fa1f015eb15af4460381fc936343a3cbf5a77b3148db1d6b11a05fbfb2ab547",
+     "passed": true,
+     "status": "passed",
+     "errors": 0,
+     "needs_review": 0,
+     "coverage": {
+      "mode": "still",
+      "times": [
+       null
+      ]
+     },
+     "results": [
+      {
+       "id": "term-dominates",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "sizes": [
+        104,
+        44,
+        36
+       ],
+       "ratios": [
+        2.364,
+        1.222
+       ],
+       "expected": 1.2
+      },
+      {
+       "id": "term-contrast",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "expected": 4.5,
+       "actual": 14.972,
+       "weakest_region": [
+        84,
+        262,
+        696,
+        106
+       ]
+      },
+      {
+       "id": "definition-contrast",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "expected": 4.5,
+       "actual": 14.972,
+       "weakest_region": [
+        81,
+        425,
+        880,
+        150
+       ]
+      },
+      {
+       "id": "tryit-contrast",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "expected": 4.5,
+       "actual": 12.89,
+       "weakest_region": [
+        121,
+        975,
+        588,
+        130
+       ]
+      },
+      {
+       "id": "label-contrast",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "expected": 4.5,
+       "actual": 4.807,
+       "weakest_region": [
+        81,
+        88,
+        364,
+        24
+       ]
+      },
+      {
+       "id": "definition-readable",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "actual_size": 44,
+       "fits": true
+      },
+      {
+       "id": "tryit-readable",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "actual_size": 36,
+       "fits": true
+      },
+      {
+       "id": "term-above-definition",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "above"
+       ],
+       "alignments": [
+        "left",
+        "center-x",
+        "right"
+       ],
+       "distance": 56.0
+      },
+      {
+       "id": "definition-clear-of-panel",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "above"
+       ],
+       "alignments": [
+        "left",
+        "center-x",
+        "right"
+       ],
+       "distance": 304.0
+      },
+      {
+       "id": "motif-in-panel",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "overlapping",
+        "inside"
+       ],
+       "alignments": [],
+       "margins": {
+        "left": 696.0,
+        "top": 65.0,
+        "right": 26.0,
+        "bottom": 55.0
+       },
+       "distance": 26.0
+      },
+      {
+       "id": "tryit-clear-of-motif",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "left-of"
+       ],
+       "alignments": [],
+       "distance": 56.0
+      },
+      {
+       "id": "footer-inside",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "overlapping",
+        "inside"
+       ],
+       "alignments": [],
+       "margins": {
+        "left": 80.0,
+        "top": 1213.07,
+        "right": 754.0,
+        "bottom": 108.93
+       },
+       "distance": 80.0
+      },
+      {
+       "id": "nothing-cut-off",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "passed": true,
+       "errors": 0,
+       "warnings": 0,
+       "info": 0,
+       "by_action": {
+        "fix": [],
+        "review": [],
+        "informational": []
+       },
+       "issues": [],
+       "checked": {
+        "checks": [
+         "bounds",
+         "overlap",
+         "contrast"
+        ],
+        "layers_checked": 43,
+        "layers_total": 43,
+        "text_layers": 9
+       }
+      },
+      {
+       "id": "one-term",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "count": 1,
+       "layers": [
+        "term"
+       ],
+       "minimum": 1,
+       "maximum": 1
+      }
+     ]
+    }
+   },
+   "repairs": [],
+   "cache": {
+    "hits": 115,
+    "misses": 16
+   }
+  },
+  {
+   "id": "0004",
+   "values": {
+    "NUM": "04",
+    "term": "Neural network",
+    "category": "How it works",
+    "definition": "A model built from layers of simple connected units. Training adjusts the strength of each connection until the outputs are useful.",
+    "tryit": "Draw three rows of dots and connect them. You have sketched the shape of a tiny neural network."
+   },
+   "artboard": null,
+   "status": "completed",
+   "output": "0004-a2ed540d968d71fc.png",
+   "fingerprint": "a2ed540d968d71fc9ac19bdb6b4f318e29ff749caecf90733adb977acce76a2b",
+   "sha256": "80f136347077293d2db912f8c069330e0ce11266b00f8e7a5c64cc1298928597",
+   "checks": {
+    "card": {
+     "version": 1,
+     "suite_hash": "0fa1f015eb15af4460381fc936343a3cbf5a77b3148db1d6b11a05fbfb2ab547",
+     "passed": true,
+     "status": "passed",
+     "errors": 0,
+     "needs_review": 0,
+     "coverage": {
+      "mode": "still",
+      "times": [
+       null
+      ]
+     },
+     "results": [
+      {
+       "id": "term-dominates",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "sizes": [
+        104,
+        44,
+        36
+       ],
+       "ratios": [
+        2.364,
+        1.222
+       ],
+       "expected": 1.2
+      },
+      {
+       "id": "term-contrast",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "expected": 4.5,
+       "actual": 14.972,
+       "weakest_region": [
+        90,
+        262,
+        796,
+        78
+       ]
+      },
+      {
+       "id": "definition-contrast",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "expected": 4.5,
+       "actual": 14.972,
+       "weakest_region": [
+        81,
+        396,
+        888,
+        157
+       ]
+      },
+      {
+       "id": "tryit-contrast",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "expected": 4.5,
+       "actual": 12.89,
+       "weakest_region": [
+        121,
+        975,
+        597,
+        129
+       ]
+      },
+      {
+       "id": "label-contrast",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "expected": 4.5,
+       "actual": 4.807,
+       "weakest_region": [
+        81,
+        88,
+        364,
+        24
+       ]
+      },
+      {
+       "id": "definition-readable",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "actual_size": 44,
+       "fits": true
+      },
+      {
+       "id": "tryit-readable",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "actual_size": 36,
+       "fits": true
+      },
+      {
+       "id": "term-above-definition",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "above"
+       ],
+       "alignments": [
+        "left",
+        "center-x",
+        "right"
+       ],
+       "distance": 56.0
+      },
+      {
+       "id": "definition-clear-of-panel",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "above"
+       ],
+       "alignments": [
+        "left",
+        "center-x",
+        "right"
+       ],
+       "distance": 326.0
+      },
+      {
+       "id": "motif-in-panel",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "overlapping",
+        "inside"
+       ],
+       "alignments": [],
+       "margins": {
+        "left": 696.0,
+        "top": 65.0,
+        "right": 26.0,
+        "bottom": 55.0
+       },
+       "distance": 26.0
+      },
+      {
+       "id": "tryit-clear-of-motif",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "left-of"
+       ],
+       "alignments": [],
+       "distance": 56.0
+      },
+      {
+       "id": "footer-inside",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "overlapping",
+        "inside"
+       ],
+       "alignments": [],
+       "margins": {
+        "left": 80.0,
+        "top": 1213.07,
+        "right": 754.0,
+        "bottom": 108.93
+       },
+       "distance": 80.0
+      },
+      {
+       "id": "nothing-cut-off",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "passed": true,
+       "errors": 0,
+       "warnings": 0,
+       "info": 0,
+       "by_action": {
+        "fix": [],
+        "review": [],
+        "informational": []
+       },
+       "issues": [],
+       "checked": {
+        "checks": [
+         "bounds",
+         "overlap",
+         "contrast"
+        ],
+        "layers_checked": 43,
+        "layers_total": 43,
+        "text_layers": 9
+       }
+      },
+      {
+       "id": "one-term",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "count": 1,
+       "layers": [
+        "term"
+       ],
+       "minimum": 1,
+       "maximum": 1
+      }
+     ]
+    }
+   },
+   "repairs": [],
+   "cache": {
+    "hits": 115,
+    "misses": 16
+   }
+  },
+  {
+   "id": "0005",
+   "values": {
+    "NUM": "05",
+    "term": "Large language model",
+    "category": "Tools",
+    "definition": "A neural network trained on huge amounts of text to predict the next word. That one skill lets it answer questions, summarise and draft.",
+    "tryit": "Ask a chatbot to finish a sentence three times. Notice how the predictions change."
+   },
+   "artboard": null,
+   "status": "completed",
+   "output": "0005-2a42868d1b4d2346.png",
+   "fingerprint": "2a42868d1b4d234695900a3606f0bd3b73354c46c0a6744d49351a0064c75de2",
+   "sha256": "3f1f13f39c0550edf3fab0097ba58fcde7141414b89c9c94501ba53aa64562be",
+   "checks": {
+    "card": {
+     "version": 1,
+     "suite_hash": "0fa1f015eb15af4460381fc936343a3cbf5a77b3148db1d6b11a05fbfb2ab547",
+     "passed": true,
+     "status": "passed",
+     "errors": 0,
+     "needs_review": 0,
+     "coverage": {
+      "mode": "still",
+      "times": [
+       null
+      ]
+     },
+     "results": [
+      {
+       "id": "term-dominates",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "sizes": [
+        104,
+        44,
+        36
+       ],
+       "ratios": [
+        2.364,
+        1.222
+       ],
+       "expected": 1.2
+      },
+      {
+       "id": "term-contrast",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "expected": 4.5,
+       "actual": 14.972,
+       "weakest_region": [
+        88,
+        262,
+        815,
+        187
+       ]
+      },
+      {
+       "id": "definition-contrast",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "expected": 4.5,
+       "actual": 14.972,
+       "weakest_region": [
+        81,
+        505,
+        905,
+        157
+       ]
+      },
+      {
+       "id": "tryit-contrast",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "expected": 4.5,
+       "actual": 12.89,
+       "weakest_region": [
+        121,
+        975,
+        533,
+        130
+       ]
+      },
+      {
+       "id": "label-contrast",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "expected": 4.5,
+       "actual": 4.807,
+       "weakest_region": [
+        81,
+        88,
+        364,
+        24
+       ]
+      },
+      {
+       "id": "definition-readable",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "actual_size": 44,
+       "fits": true
+      },
+      {
+       "id": "tryit-readable",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "actual_size": 36,
+       "fits": true
+      },
+      {
+       "id": "term-above-definition",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "above"
+       ],
+       "alignments": [
+        "left",
+        "center-x",
+        "right"
+       ],
+       "distance": 56.0
+      },
+      {
+       "id": "definition-clear-of-panel",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "above"
+       ],
+       "alignments": [
+        "left",
+        "center-x",
+        "right"
+       ],
+       "distance": 217.0
+      },
+      {
+       "id": "motif-in-panel",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "overlapping",
+        "inside"
+       ],
+       "alignments": [],
+       "margins": {
+        "left": 696.0,
+        "top": 65.0,
+        "right": 26.0,
+        "bottom": 55.0
+       },
+       "distance": 26.0
+      },
+      {
+       "id": "tryit-clear-of-motif",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "left-of"
+       ],
+       "alignments": [],
+       "distance": 56.0
+      },
+      {
+       "id": "footer-inside",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "overlapping",
+        "inside"
+       ],
+       "alignments": [],
+       "margins": {
+        "left": 80.0,
+        "top": 1213.07,
+        "right": 754.0,
+        "bottom": 108.93
+       },
+       "distance": 80.0
+      },
+      {
+       "id": "nothing-cut-off",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "passed": true,
+       "errors": 0,
+       "warnings": 0,
+       "info": 0,
+       "by_action": {
+        "fix": [],
+        "review": [],
+        "informational": []
+       },
+       "issues": [],
+       "checked": {
+        "checks": [
+         "bounds",
+         "overlap",
+         "contrast"
+        ],
+        "layers_checked": 43,
+        "layers_total": 43,
+        "text_layers": 9
+       }
+      },
+      {
+       "id": "one-term",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "count": 1,
+       "layers": [
+        "term"
+       ],
+       "minimum": 1,
+       "maximum": 1
+      }
+     ]
+    }
+   },
+   "repairs": [],
+   "cache": {
+    "hits": 107,
+    "misses": 18
+   }
+  },
+  {
+   "id": "0006",
+   "values": {
+    "NUM": "06",
+    "term": "Token",
+    "category": "How it works",
+    "definition": "A small chunk of text, such as a word, part of a word or a punctuation mark, that a language model reads and writes. Limits are counted in tokens.",
+    "tryit": "Paste a sentence into a tokenizer demo and count how many tokens it becomes."
+   },
+   "artboard": null,
+   "status": "completed",
+   "output": "0006-db2717c719d964ab.png",
+   "fingerprint": "db2717c719d964ab3d6825cd9dae7ceb8be7080b2f34b2bd272704103db21410",
+   "sha256": "e2d40181171bf76e05b32dded093dfe8a9500eb25d188ff6c843ae60acd11f6c",
+   "checks": {
+    "card": {
+     "version": 1,
+     "suite_hash": "0fa1f015eb15af4460381fc936343a3cbf5a77b3148db1d6b11a05fbfb2ab547",
+     "passed": true,
+     "status": "passed",
+     "errors": 0,
+     "needs_review": 0,
+     "coverage": {
+      "mode": "still",
+      "times": [
+       null
+      ]
+     },
+     "results": [
+      {
+       "id": "term-dominates",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "sizes": [
+        104,
+        44,
+        36
+       ],
+       "ratios": [
+        2.364,
+        1.222
+       ],
+       "expected": 1.2
+      },
+      {
+       "id": "term-contrast",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "expected": 4.5,
+       "actual": 14.972,
+       "weakest_region": [
+        84,
+        262,
+        296,
+        78
+       ]
+      },
+      {
+       "id": "definition-contrast",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "expected": 4.5,
+       "actual": 14.972,
+       "weakest_region": [
+        81,
+        396,
+        897,
+        209
+       ]
+      },
+      {
+       "id": "tryit-contrast",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "expected": 4.5,
+       "actual": 12.89,
+       "weakest_region": [
+        122,
+        975,
+        566,
+        123
+       ]
+      },
+      {
+       "id": "label-contrast",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "expected": 4.5,
+       "actual": 4.807,
+       "weakest_region": [
+        81,
+        88,
+        364,
+        24
+       ]
+      },
+      {
+       "id": "definition-readable",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "actual_size": 44,
+       "fits": true
+      },
+      {
+       "id": "tryit-readable",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "actual_size": 36,
+       "fits": true
+      },
+      {
+       "id": "term-above-definition",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "above"
+       ],
+       "alignments": [
+        "left",
+        "center-x",
+        "right"
+       ],
+       "distance": 56.0
+      },
+      {
+       "id": "definition-clear-of-panel",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "above"
+       ],
+       "alignments": [
+        "left",
+        "center-x",
+        "right"
+       ],
+       "distance": 274.0
+      },
+      {
+       "id": "motif-in-panel",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "overlapping",
+        "inside"
+       ],
+       "alignments": [],
+       "margins": {
+        "left": 696.0,
+        "top": 65.0,
+        "right": 26.0,
+        "bottom": 55.0
+       },
+       "distance": 26.0
+      },
+      {
+       "id": "tryit-clear-of-motif",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "left-of"
+       ],
+       "alignments": [],
+       "distance": 56.0
+      },
+      {
+       "id": "footer-inside",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "overlapping",
+        "inside"
+       ],
+       "alignments": [],
+       "margins": {
+        "left": 80.0,
+        "top": 1213.07,
+        "right": 754.0,
+        "bottom": 108.93
+       },
+       "distance": 80.0
+      },
+      {
+       "id": "nothing-cut-off",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "passed": true,
+       "errors": 0,
+       "warnings": 0,
+       "info": 0,
+       "by_action": {
+        "fix": [],
+        "review": [],
+        "informational": []
+       },
+       "issues": [],
+       "checked": {
+        "checks": [
+         "bounds",
+         "overlap",
+         "contrast"
+        ],
+        "layers_checked": 43,
+        "layers_total": 43,
+        "text_layers": 9
+       }
+      },
+      {
+       "id": "one-term",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "count": 1,
+       "layers": [
+        "term"
+       ],
+       "minimum": 1,
+       "maximum": 1
+      }
+     ]
+    }
+   },
+   "repairs": [],
+   "cache": {
+    "hits": 115,
+    "misses": 16
+   }
+  },
+  {
+   "id": "0007",
+   "values": {
+    "NUM": "07",
+    "term": "Prompt",
+    "category": "Use it well",
+    "definition": "The instructions and context you give an AI tool. A clear goal, an example and a few constraints usually get better results.",
+    "tryit": "Ask the same question twice: once in five words, once with a goal, an audience and an example."
+   },
+   "artboard": null,
+   "status": "completed",
+   "output": "0007-8ee0b66298313ec1.png",
+   "fingerprint": "8ee0b66298313ec11f5dae789f891767b431e79c63c200bae1cfe4bbd3dff301",
+   "sha256": "57d69f38f7c9618e544bf1603297b0b4a89dcb35d7f556f4fbfbe93050456f1c",
+   "checks": {
+    "card": {
+     "version": 1,
+     "suite_hash": "0fa1f015eb15af4460381fc936343a3cbf5a77b3148db1d6b11a05fbfb2ab547",
+     "passed": true,
+     "status": "passed",
+     "errors": 0,
+     "needs_review": 0,
+     "coverage": {
+      "mode": "still",
+      "times": [
+       null
+      ]
+     },
+     "results": [
+      {
+       "id": "term-dominates",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "sizes": [
+        104,
+        44,
+        36
+       ],
+       "ratios": [
+        2.364,
+        1.222
+       ],
+       "expected": 1.2
+      },
+      {
+       "id": "term-contrast",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "expected": 4.5,
+       "actual": 14.972,
+       "weakest_region": [
+        90,
+        262,
+        372,
+        95
+       ]
+      },
+      {
+       "id": "definition-contrast",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "expected": 4.5,
+       "actual": 14.972,
+       "weakest_region": [
+        81,
+        414,
+        833,
+        158
+       ]
+      },
+      {
+       "id": "tryit-contrast",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "expected": 4.5,
+       "actual": 12.89,
+       "weakest_region": [
+        121,
+        975,
+        583,
+        129
+       ]
+      },
+      {
+       "id": "label-contrast",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "expected": 4.5,
+       "actual": 4.807,
+       "weakest_region": [
+        81,
+        88,
+        364,
+        24
+       ]
+      },
+      {
+       "id": "definition-readable",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "actual_size": 44,
+       "fits": true
+      },
+      {
+       "id": "tryit-readable",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "actual_size": 36,
+       "fits": true
+      },
+      {
+       "id": "term-above-definition",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "above"
+       ],
+       "alignments": [
+        "left",
+        "center-x",
+        "right"
+       ],
+       "distance": 56.0
+      },
+      {
+       "id": "definition-clear-of-panel",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "above"
+       ],
+       "alignments": [
+        "left",
+        "center-x",
+        "right"
+       ],
+       "distance": 307.0
+      },
+      {
+       "id": "motif-in-panel",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "overlapping",
+        "inside"
+       ],
+       "alignments": [],
+       "margins": {
+        "left": 696.0,
+        "top": 65.0,
+        "right": 26.0,
+        "bottom": 55.0
+       },
+       "distance": 26.0
+      },
+      {
+       "id": "tryit-clear-of-motif",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "left-of"
+       ],
+       "alignments": [],
+       "distance": 56.0
+      },
+      {
+       "id": "footer-inside",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "overlapping",
+        "inside"
+       ],
+       "alignments": [],
+       "margins": {
+        "left": 80.0,
+        "top": 1213.07,
+        "right": 754.0,
+        "bottom": 108.93
+       },
+       "distance": 80.0
+      },
+      {
+       "id": "nothing-cut-off",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "passed": true,
+       "errors": 0,
+       "warnings": 0,
+       "info": 0,
+       "by_action": {
+        "fix": [],
+        "review": [],
+        "informational": []
+       },
+       "issues": [],
+       "checked": {
+        "checks": [
+         "bounds",
+         "overlap",
+         "contrast"
+        ],
+        "layers_checked": 43,
+        "layers_total": 43,
+        "text_layers": 9
+       }
+      },
+      {
+       "id": "one-term",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "count": 1,
+       "layers": [
+        "term"
+       ],
+       "minimum": 1,
+       "maximum": 1
+      }
+     ]
+    }
+   },
+   "repairs": [],
+   "cache": {
+    "hits": 107,
+    "misses": 18
+   }
+  },
+  {
+   "id": "0008",
+   "values": {
+    "NUM": "08",
+    "term": "Hallucination",
+    "category": "Use it wisely",
+    "definition": "When an AI produces something fluent and confident that is false or invented. Check important facts against a reliable source.",
+    "tryit": "Ask a chatbot for a source on a topic you know well, then open the link and check it."
+   },
+   "artboard": null,
+   "status": "completed",
+   "output": "0008-6c6f23c32442dc78.png",
+   "fingerprint": "6c6f23c32442dc78be8c01e7f0699262ffcd6f1d427a83c1ba5126b7f4ba126b",
+   "sha256": "f17fb1b52e92337b16013034391ea6131f0cb1555d2733f05ce26b4ed1c57ca6",
+   "checks": {
+    "card": {
+     "version": 1,
+     "suite_hash": "0fa1f015eb15af4460381fc936343a3cbf5a77b3148db1d6b11a05fbfb2ab547",
+     "passed": true,
+     "status": "passed",
+     "errors": 0,
+     "needs_review": 0,
+     "coverage": {
+      "mode": "still",
+      "times": [
+       null
+      ]
+     },
+     "results": [
+      {
+       "id": "term-dominates",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "sizes": [
+        104,
+        44,
+        36
+       ],
+       "ratios": [
+        2.364,
+        1.222
+       ],
+       "expected": 1.2
+      },
+      {
+       "id": "term-contrast",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "expected": 4.5,
+       "actual": 14.972,
+       "weakest_region": [
+        90,
+        262,
+        680,
+        83
+       ]
+      },
+      {
+       "id": "definition-contrast",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "expected": 4.5,
+       "actual": 14.972,
+       "weakest_region": [
+        81,
+        402,
+        836,
+        158
+       ]
+      },
+      {
+       "id": "tryit-contrast",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "expected": 4.5,
+       "actual": 12.89,
+       "weakest_region": [
+        121,
+        975,
+        589,
+        123
+       ]
+      },
+      {
+       "id": "label-contrast",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "expected": 4.5,
+       "actual": 4.807,
+       "weakest_region": [
+        81,
+        88,
+        364,
+        24
+       ]
+      },
+      {
+       "id": "definition-readable",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "actual_size": 44,
+       "fits": true
+      },
+      {
+       "id": "tryit-readable",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "actual_size": 36,
+       "fits": true
+      },
+      {
+       "id": "term-above-definition",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "above"
+       ],
+       "alignments": [
+        "left",
+        "center-x",
+        "right"
+       ],
+       "distance": 56.0
+      },
+      {
+       "id": "definition-clear-of-panel",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "above"
+       ],
+       "alignments": [
+        "left",
+        "center-x",
+        "right"
+       ],
+       "distance": 319.0
+      },
+      {
+       "id": "motif-in-panel",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "overlapping",
+        "inside"
+       ],
+       "alignments": [],
+       "margins": {
+        "left": 696.0,
+        "top": 65.0,
+        "right": 26.0,
+        "bottom": 55.0
+       },
+       "distance": 26.0
+      },
+      {
+       "id": "tryit-clear-of-motif",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "left-of"
+       ],
+       "alignments": [],
+       "distance": 56.0
+      },
+      {
+       "id": "footer-inside",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "overlapping",
+        "inside"
+       ],
+       "alignments": [],
+       "margins": {
+        "left": 80.0,
+        "top": 1213.07,
+        "right": 754.0,
+        "bottom": 108.93
+       },
+       "distance": 80.0
+      },
+      {
+       "id": "nothing-cut-off",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "passed": true,
+       "errors": 0,
+       "warnings": 0,
+       "info": 0,
+       "by_action": {
+        "fix": [],
+        "review": [],
+        "informational": []
+       },
+       "issues": [],
+       "checked": {
+        "checks": [
+         "bounds",
+         "overlap",
+         "contrast"
+        ],
+        "layers_checked": 43,
+        "layers_total": 43,
+        "text_layers": 9
+       }
+      },
+      {
+       "id": "one-term",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "count": 1,
+       "layers": [
+        "term"
+       ],
+       "minimum": 1,
+       "maximum": 1
+      }
+     ]
+    }
+   },
+   "repairs": [],
+   "cache": {
+    "hits": 107,
+    "misses": 18
+   }
+  },
+  {
+   "id": "0009",
+   "values": {
+    "NUM": "09",
+    "term": "Bias",
+    "category": "Use it wisely",
+    "definition": "A systematic unfairness in a model's results, often inherited from its training data or from choices made while building it.",
+    "tryit": "Ask an image tool for 'a scientist' four times. Who appears, and who never does?"
+   },
+   "artboard": null,
+   "status": "completed",
+   "output": "0009-fca0626f10f41b88.png",
+   "fingerprint": "fca0626f10f41b88cedf9b3902e55ef8c0d2576643e261bbb768246d0a3edb05",
+   "sha256": "4283a5fd882fbc5886320f0175f99f97513ff43b050b7fa359f221fda51378d6",
+   "checks": {
+    "card": {
+     "version": 1,
+     "suite_hash": "0fa1f015eb15af4460381fc936343a3cbf5a77b3148db1d6b11a05fbfb2ab547",
+     "passed": true,
+     "status": "passed",
+     "errors": 0,
+     "needs_review": 0,
+     "coverage": {
+      "mode": "still",
+      "times": [
+       null
+      ]
+     },
+     "results": [
+      {
+       "id": "term-dominates",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "sizes": [
+        104,
+        44,
+        36
+       ],
+       "ratios": [
+        2.364,
+        1.222
+       ],
+       "expected": 1.2
+      },
+      {
+       "id": "term-contrast",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "expected": 4.5,
+       "actual": 14.972,
+       "weakest_region": [
+        90,
+        262,
+        209,
+        83
+       ]
+      },
+      {
+       "id": "definition-contrast",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "expected": 4.5,
+       "actual": 14.972,
+       "weakest_region": [
+        81,
+        402,
+        851,
+        158
+       ]
+      },
+      {
+       "id": "tryit-contrast",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "expected": 4.5,
+       "actual": 12.89,
+       "weakest_region": [
+        121,
+        975,
+        589,
+        123
+       ]
+      },
+      {
+       "id": "label-contrast",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "expected": 4.5,
+       "actual": 4.807,
+       "weakest_region": [
+        81,
+        88,
+        364,
+        24
+       ]
+      },
+      {
+       "id": "definition-readable",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "actual_size": 44,
+       "fits": true
+      },
+      {
+       "id": "tryit-readable",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "actual_size": 36,
+       "fits": true
+      },
+      {
+       "id": "term-above-definition",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "above"
+       ],
+       "alignments": [
+        "left",
+        "center-x",
+        "right"
+       ],
+       "distance": 56.0
+      },
+      {
+       "id": "definition-clear-of-panel",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "above"
+       ],
+       "alignments": [
+        "left",
+        "center-x",
+        "right"
+       ],
+       "distance": 319.0
+      },
+      {
+       "id": "motif-in-panel",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "overlapping",
+        "inside"
+       ],
+       "alignments": [],
+       "margins": {
+        "left": 696.0,
+        "top": 65.0,
+        "right": 26.0,
+        "bottom": 55.0
+       },
+       "distance": 26.0
+      },
+      {
+       "id": "tryit-clear-of-motif",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "left-of"
+       ],
+       "alignments": [],
+       "distance": 56.0
+      },
+      {
+       "id": "footer-inside",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "overlapping",
+        "inside"
+       ],
+       "alignments": [],
+       "margins": {
+        "left": 80.0,
+        "top": 1213.07,
+        "right": 754.0,
+        "bottom": 108.93
+       },
+       "distance": 80.0
+      },
+      {
+       "id": "nothing-cut-off",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "passed": true,
+       "errors": 0,
+       "warnings": 0,
+       "info": 0,
+       "by_action": {
+        "fix": [],
+        "review": [],
+        "informational": []
+       },
+       "issues": [],
+       "checked": {
+        "checks": [
+         "bounds",
+         "overlap",
+         "contrast"
+        ],
+        "layers_checked": 43,
+        "layers_total": 43,
+        "text_layers": 9
+       }
+      },
+      {
+       "id": "one-term",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "count": 1,
+       "layers": [
+        "term"
+       ],
+       "minimum": 1,
+       "maximum": 1
+      }
+     ]
+    }
+   },
+   "repairs": [],
+   "cache": {
+    "hits": 115,
+    "misses": 16
+   }
+  },
+  {
+   "id": "0010",
+   "values": {
+    "NUM": "10",
+    "term": "Generative AI",
+    "category": "Tools",
+    "definition": "AI that creates new text, images, audio or code based on patterns it learned from its training data.",
+    "tryit": "Generate one paragraph, then rewrite it in your own words. What did you keep, and what did you fix?"
+   },
+   "artboard": null,
+   "status": "completed",
+   "output": "0010-98f650563b75bbf4.png",
+   "fingerprint": "98f650563b75bbf4e7753d9bda2e9338ad86951daf356024e3127a3253e523c0",
+   "sha256": "bca72d4ea80b1eea54a9f3428a557fde24c5185e3a24f2626dc81f578fa29f22",
+   "checks": {
+    "card": {
+     "version": 1,
+     "suite_hash": "0fa1f015eb15af4460381fc936343a3cbf5a77b3148db1d6b11a05fbfb2ab547",
+     "passed": true,
+     "status": "passed",
+     "errors": 0,
+     "needs_review": 0,
+     "coverage": {
+      "mode": "still",
+      "times": [
+       null
+      ]
+     },
+     "results": [
+      {
+       "id": "term-dominates",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "sizes": [
+        104,
+        44,
+        36
+       ],
+       "ratios": [
+        2.364,
+        1.222
+       ],
+       "expected": 1.2
+      },
+      {
+       "id": "term-contrast",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "expected": 4.5,
+       "actual": 14.972,
+       "weakest_region": [
+        85,
+        262,
+        719,
+        83
+       ]
+      },
+      {
+       "id": "definition-contrast",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "expected": 4.5,
+       "actual": 14.972,
+       "weakest_region": [
+        81,
+        403,
+        905,
+        149
+       ]
+      },
+      {
+       "id": "tryit-contrast",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "expected": 4.5,
+       "actual": 12.89,
+       "weakest_region": [
+        121,
+        976,
+        591,
+        128
+       ]
+      },
+      {
+       "id": "label-contrast",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "expected": 4.5,
+       "actual": 4.807,
+       "weakest_region": [
+        81,
+        88,
+        364,
+        24
+       ]
+      },
+      {
+       "id": "definition-readable",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "actual_size": 44,
+       "fits": true
+      },
+      {
+       "id": "tryit-readable",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "actual_size": 36,
+       "fits": true
+      },
+      {
+       "id": "term-above-definition",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "above"
+       ],
+       "alignments": [
+        "left",
+        "center-x",
+        "right"
+       ],
+       "distance": 56.0
+      },
+      {
+       "id": "definition-clear-of-panel",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "above"
+       ],
+       "alignments": [
+        "left",
+        "center-x",
+        "right"
+       ],
+       "distance": 327.0
+      },
+      {
+       "id": "motif-in-panel",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "overlapping",
+        "inside"
+       ],
+       "alignments": [],
+       "margins": {
+        "left": 696.0,
+        "top": 65.0,
+        "right": 26.0,
+        "bottom": 55.0
+       },
+       "distance": 26.0
+      },
+      {
+       "id": "tryit-clear-of-motif",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "left-of"
+       ],
+       "alignments": [],
+       "distance": 56.0
+      },
+      {
+       "id": "footer-inside",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "overlapping",
+        "inside"
+       ],
+       "alignments": [],
+       "margins": {
+        "left": 80.0,
+        "top": 1213.07,
+        "right": 754.0,
+        "bottom": 108.93
+       },
+       "distance": 80.0
+      },
+      {
+       "id": "nothing-cut-off",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "passed": true,
+       "errors": 0,
+       "warnings": 0,
+       "info": 0,
+       "by_action": {
+        "fix": [],
+        "review": [],
+        "informational": []
+       },
+       "issues": [],
+       "checked": {
+        "checks": [
+         "bounds",
+         "overlap",
+         "contrast"
+        ],
+        "layers_checked": 43,
+        "layers_total": 43,
+        "text_layers": 9
+       }
+      },
+      {
+       "id": "one-term",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "count": 1,
+       "layers": [
+        "term"
+       ],
+       "minimum": 1,
+       "maximum": 1
+      }
+     ]
+    }
+   },
+   "repairs": [],
+   "cache": {
+    "hits": 115,
+    "misses": 16
+   }
+  },
+  {
+   "id": "0011",
+   "values": {
+    "NUM": "11",
+    "term": "Context window",
+    "category": "How it works",
+    "definition": "The amount of text a model can consider at once, including your prompt and its reply. Anything outside it is not seen.",
+    "tryit": "In a long chat, ask the AI to repeat your first message. Does it still remember it exactly?"
+   },
+   "artboard": null,
+   "status": "completed",
+   "output": "0011-85dfffb30086d582.png",
+   "fingerprint": "85dfffb30086d58257ba7b93fcbfeba937a69543906d4bd288339d0d51cd9a1f",
+   "sha256": "78df215473364a93fafaeaf925bd730f8ee7bb2fed0e883a817746362b2f4cf4",
+   "checks": {
+    "card": {
+     "version": 1,
+     "suite_hash": "0fa1f015eb15af4460381fc936343a3cbf5a77b3148db1d6b11a05fbfb2ab547",
+     "passed": true,
+     "status": "passed",
+     "errors": 0,
+     "needs_review": 0,
+     "coverage": {
+      "mode": "still",
+      "times": [
+       null
+      ]
+     },
+     "results": [
+      {
+       "id": "term-dominates",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "sizes": [
+        104,
+        44,
+        36
+       ],
+       "ratios": [
+        2.364,
+        1.222
+       ],
+       "expected": 1.2
+      },
+      {
+       "id": "term-contrast",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "expected": 4.5,
+       "actual": 14.972,
+       "weakest_region": [
+        85,
+        262,
+        829,
+        83
+       ]
+      },
+      {
+       "id": "definition-contrast",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "expected": 4.5,
+       "actual": 14.972,
+       "weakest_region": [
+        81,
+        402,
+        839,
+        158
+       ]
+      },
+      {
+       "id": "tryit-contrast",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "expected": 4.5,
+       "actual": 12.89,
+       "weakest_region": [
+        121,
+        975,
+        549,
+        129
+       ]
+      },
+      {
+       "id": "label-contrast",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "expected": 4.5,
+       "actual": 4.807,
+       "weakest_region": [
+        81,
+        88,
+        364,
+        24
+       ]
+      },
+      {
+       "id": "definition-readable",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "actual_size": 44,
+       "fits": true
+      },
+      {
+       "id": "tryit-readable",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "actual_size": 36,
+       "fits": true
+      },
+      {
+       "id": "term-above-definition",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "above"
+       ],
+       "alignments": [
+        "left",
+        "center-x",
+        "right"
+       ],
+       "distance": 56.0
+      },
+      {
+       "id": "definition-clear-of-panel",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "above"
+       ],
+       "alignments": [
+        "left",
+        "center-x",
+        "right"
+       ],
+       "distance": 319.0
+      },
+      {
+       "id": "motif-in-panel",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "overlapping",
+        "inside"
+       ],
+       "alignments": [],
+       "margins": {
+        "left": 696.0,
+        "top": 65.0,
+        "right": 26.0,
+        "bottom": 55.0
+       },
+       "distance": 26.0
+      },
+      {
+       "id": "tryit-clear-of-motif",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "left-of"
+       ],
+       "alignments": [],
+       "distance": 56.0
+      },
+      {
+       "id": "footer-inside",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "overlapping",
+        "inside"
+       ],
+       "alignments": [],
+       "margins": {
+        "left": 80.0,
+        "top": 1213.07,
+        "right": 754.0,
+        "bottom": 108.93
+       },
+       "distance": 80.0
+      },
+      {
+       "id": "nothing-cut-off",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "passed": true,
+       "errors": 0,
+       "warnings": 0,
+       "info": 0,
+       "by_action": {
+        "fix": [],
+        "review": [],
+        "informational": []
+       },
+       "issues": [],
+       "checked": {
+        "checks": [
+         "bounds",
+         "overlap",
+         "contrast"
+        ],
+        "layers_checked": 43,
+        "layers_total": 43,
+        "text_layers": 9
+       }
+      },
+      {
+       "id": "one-term",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "count": 1,
+       "layers": [
+        "term"
+       ],
+       "minimum": 1,
+       "maximum": 1
+      }
+     ]
+    }
+   },
+   "repairs": [],
+   "cache": {
+    "hits": 115,
+    "misses": 16
+   }
+  },
+  {
+   "id": "0012",
+   "values": {
+    "NUM": "12",
+    "term": "Human in the loop",
+    "category": "Use it wisely",
+    "definition": "A way of working in which a person reviews, corrects or approves what an AI produces before it is used.",
+    "tryit": "Before you share AI-assisted work, list one thing you checked and one thing you changed."
+   },
+   "artboard": null,
+   "status": "completed",
+   "output": "0012-43d51b83888ca0db.png",
+   "fingerprint": "43d51b83888ca0db3373a3dece737559d179da333a6c3fb20042d707f58bc123",
+   "sha256": "573a584b53523f1ddc8c8c69195f9f69db65f2ac63d1d98111bef14db10cc0b1",
+   "checks": {
+    "card": {
+     "version": 1,
+     "suite_hash": "0fa1f015eb15af4460381fc936343a3cbf5a77b3148db1d6b11a05fbfb2ab547",
+     "passed": true,
+     "status": "passed",
+     "errors": 0,
+     "needs_review": 0,
+     "coverage": {
+      "mode": "still",
+      "times": [
+       null
+      ]
+     },
+     "results": [
+      {
+       "id": "term-dominates",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "sizes": [
+        104,
+        44,
+        36
+       ],
+       "ratios": [
+        2.364,
+        1.222
+       ],
+       "expected": 1.2
+      },
+      {
+       "id": "term-contrast",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "expected": 4.5,
+       "actual": 14.972,
+       "weakest_region": [
+        88,
+        262,
+        692,
+        214
+       ]
+      },
+      {
+       "id": "definition-contrast",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "expected": 4.5,
+       "actual": 14.972,
+       "weakest_region": [
+        81,
+        533,
+        838,
+        150
+       ]
+      },
+      {
+       "id": "tryit-contrast",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "expected": 4.5,
+       "actual": 12.89,
+       "weakest_region": [
+        121,
+        975,
+        550,
+        130
+       ]
+      },
+      {
+       "id": "label-contrast",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "expected": 4.5,
+       "actual": 4.807,
+       "weakest_region": [
+        81,
+        88,
+        364,
+        24
+       ]
+      },
+      {
+       "id": "definition-readable",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "actual_size": 44,
+       "fits": true
+      },
+      {
+       "id": "tryit-readable",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "actual_size": 36,
+       "fits": true
+      },
+      {
+       "id": "term-above-definition",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "above"
+       ],
+       "alignments": [
+        "left",
+        "center-x",
+        "right"
+       ],
+       "distance": 56.0
+      },
+      {
+       "id": "definition-clear-of-panel",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "above"
+       ],
+       "alignments": [
+        "left",
+        "center-x",
+        "right"
+       ],
+       "distance": 196.0
+      },
+      {
+       "id": "motif-in-panel",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "overlapping",
+        "inside"
+       ],
+       "alignments": [],
+       "margins": {
+        "left": 696.0,
+        "top": 65.0,
+        "right": 26.0,
+        "bottom": 55.0
+       },
+       "distance": 26.0
+      },
+      {
+       "id": "tryit-clear-of-motif",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "left-of"
+       ],
+       "alignments": [],
+       "distance": 56.0
+      },
+      {
+       "id": "footer-inside",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "positions": [
+        "overlapping",
+        "inside"
+       ],
+       "alignments": [],
+       "margins": {
+        "left": 80.0,
+        "top": 1213.07,
+        "right": 754.0,
+        "bottom": 108.93
+       },
+       "distance": 80.0
+      },
+      {
+       "id": "nothing-cut-off",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "passed": true,
+       "errors": 0,
+       "warnings": 0,
+       "info": 0,
+       "by_action": {
+        "fix": [],
+        "review": [],
+        "informational": []
+       },
+       "issues": [],
+       "checked": {
+        "checks": [
+         "bounds",
+         "overlap",
+         "contrast"
+        ],
+        "layers_checked": 43,
+        "layers_total": 43,
+        "text_layers": 9
+       }
+      },
+      {
+       "id": "one-term",
+       "status": "passed",
+       "severity": "error",
+       "time": null,
+       "count": 1,
+       "layers": [
+        "term"
+       ],
+       "minimum": 1,
+       "maximum": 1
+      }
+     ]
+    }
+   },
+   "repairs": [],
+   "cache": {
+    "hits": 115,
+    "misses": 16
+   }
+  }
+ ],
+ "contact_sheet": "contact-sheet.png"
+}

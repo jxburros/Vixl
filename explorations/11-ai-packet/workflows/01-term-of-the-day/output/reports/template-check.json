@@ -1,0 +1,279 @@
+{
+ "check": {
+  "passed": true,
+  "errors": 0,
+  "warnings": 0,
+  "info": 1,
+  "by_action": {
+   "fix": [],
+   "review": [],
+   "informational": [
+    0
+   ]
+  },
+  "issues": [
+   {
+    "check": "safe_area",
+    "severity": "info",
+    "layers": [
+     "top-bar"
+    ],
+    "message": "'top-bar' extends outside the safe area (intentional crop or bleed)",
+    "bounds": [
+     0,
+     0,
+     1080,
+     18
+    ],
+    "safe_area": [
+     60,
+     60,
+     960,
+     1230
+    ],
+    "intentional": true,
+    "action": "informational"
+   }
+  ],
+  "checked": {
+   "checks": [
+    "bounds",
+    "overlap",
+    "contrast",
+    "safe_area",
+    "legibility",
+    "blanks",
+    "fonts",
+    "brand",
+    "content",
+    "form",
+    "links",
+    "diagram",
+    "flow",
+    "codes"
+   ],
+   "layers_checked": 43,
+   "layers_total": 43,
+   "text_layers": 9
+  }
+ },
+ "suite": {
+  "version": 1,
+  "suite_hash": "0fa1f015eb15af4460381fc936343a3cbf5a77b3148db1d6b11a05fbfb2ab547",
+  "passed": true,
+  "status": "passed",
+  "errors": 0,
+  "needs_review": 0,
+  "coverage": {
+   "mode": "still",
+   "times": [
+    null
+   ]
+  },
+  "results": [
+   {
+    "id": "term-dominates",
+    "status": "passed",
+    "severity": "error",
+    "time": null,
+    "sizes": [
+     104,
+     44,
+     36
+    ],
+    "ratios": [
+     2.364,
+     1.222
+    ],
+    "expected": 1.2
+   },
+   {
+    "id": "term-contrast",
+    "status": "passed",
+    "severity": "error",
+    "time": null,
+    "expected": 4.5,
+    "actual": 14.972,
+    "weakest_region": [
+     82,
+     262,
+     595,
+     215
+    ]
+   },
+   {
+    "id": "definition-contrast",
+    "status": "passed",
+    "severity": "error",
+    "time": null,
+    "expected": 4.5,
+    "actual": 14.972,
+    "weakest_region": [
+     81,
+     535,
+     909,
+     215
+    ]
+   },
+   {
+    "id": "tryit-contrast",
+    "status": "passed",
+    "severity": "error",
+    "time": null,
+    "expected": 4.5,
+    "actual": 12.89,
+    "weakest_region": [
+     122,
+     975,
+     576,
+     130
+    ]
+   },
+   {
+    "id": "label-contrast",
+    "status": "passed",
+    "severity": "error",
+    "time": null,
+    "expected": 4.5,
+    "actual": 4.807,
+    "weakest_region": [
+     81,
+     88,
+     364,
+     24
+    ]
+   },
+   {
+    "id": "definition-readable",
+    "status": "passed",
+    "severity": "error",
+    "time": null,
+    "actual_size": 44,
+    "fits": true
+   },
+   {
+    "id": "tryit-readable",
+    "status": "passed",
+    "severity": "error",
+    "time": null,
+    "actual_size": 36,
+    "fits": true
+   },
+   {
+    "id": "term-above-definition",
+    "status": "passed",
+    "severity": "error",
+    "time": null,
+    "positions": [
+     "above"
+    ],
+    "alignments": [
+     "left",
+     "center-x",
+     "right"
+    ],
+    "distance": 56.0
+   },
+   {
+    "id": "definition-clear-of-panel",
+    "status": "passed",
+    "severity": "error",
+    "time": null,
+    "positions": [
+     "above"
+    ],
+    "alignments": [
+     "left",
+     "center-x",
+     "right"
+    ],
+    "distance": 129.0
+   },
+   {
+    "id": "motif-in-panel",
+    "status": "passed",
+    "severity": "error",
+    "time": null,
+    "positions": [
+     "overlapping",
+     "inside"
+    ],
+    "alignments": [],
+    "margins": {
+     "left": 696.0,
+     "top": 65.0,
+     "right": 26.0,
+     "bottom": 55.0
+    },
+    "distance": 26.0
+   },
+   {
+    "id": "tryit-clear-of-motif",
+    "status": "passed",
+    "severity": "error",
+    "time": null,
+    "positions": [
+     "left-of"
+    ],
+    "alignments": [],
+    "distance": 56.0
+   },
+   {
+    "id": "footer-inside",
+    "status": "passed",
+    "severity": "error",
+    "time": null,
+    "positions": [
+     "overlapping",
+     "inside"
+    ],
+    "alignments": [],
+    "margins": {
+     "left": 80.0,
+     "top": 1213.07,
+     "right": 754.0,
+     "bottom": 108.93
+    },
+    "distance": 80.0
+   },
+   {
+    "id": "nothing-cut-off",
+    "status": "passed",
+    "severity": "error",
+    "time": null,
+    "passed": true,
+    "errors": 0,
+    "warnings": 0,
+    "info": 0,
+    "by_action": {
+     "fix": [],
+     "review": [],
+     "informational": []
+    },
+    "issues": [],
+    "checked": {
+     "checks": [
+      "bounds",
+      "overlap",
+      "contrast"
+     ],
+     "layers_checked": 43,
+     "layers_total": 43,
+     "text_layers": 9
+    }
+   },
+   {
+    "id": "one-term",
+    "status": "passed",
+    "severity": "error",
+    "time": null,
+    "count": 1,
+    "layers": [
+     "term"
+    ],
+    "minimum": 1,
+    "maximum": 1
+   }
+  ]
+ }
+}

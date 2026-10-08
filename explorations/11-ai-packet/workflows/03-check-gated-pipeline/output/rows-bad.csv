@@ -1,0 +1,2 @@
+NUM,term,category,definition,tryit
+13,Retrieval-augmented generation,How it works,"A way of answering questions in which the system first searches a trusted collection of documents, then passes the most relevant passages to a language model together with your question, so that the answer can quote and point to real sources instead of relying only on what the model absorbed in training.","Ask a tool that cites sources a question, then open two of the citations."

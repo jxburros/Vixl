@@ -1,0 +1,14 @@
+{
+  "name": "AI Field Guide",
+  "palette": {
+    "background": "#fbf7ef",
+    "surface": "#efe6d2",
+    "ink": "#15213b",
+    "muted": "#4a5568",
+    "accent": "#1d7a74",
+    "accent-text": "#1d7a74",
+    "on-accent": "#ffffff"
+  },
+  "pairing": "lexend-atkinson",
+  "minimum_contrast": 4.5
+}

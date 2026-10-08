@@ -1,0 +1,39 @@
+{
+ "port": 49691,
+ "POST /check": {
+  "status": 200,
+  "s": 0.79,
+  "passed": true
+ },
+ "POST /render (variables)": {
+  "status": 200,
+  "s": 0.25,
+  "content_type": "image/png",
+  "bytes": 81448
+ },
+ "POST /compose (dry run)": {
+  "status": 200,
+  "s": 0.36,
+  "keys": [
+   "canvas",
+   "check",
+   "creation",
+   "dry_run",
+   "layer_count",
+   "layout",
+   "preview_base64",
+   "steps",
+   "workspace_fonts"
+  ],
+  "check_passed": true,
+  "error": null,
+  "message": null
+ },
+ "POST /preview": {
+  "status": 200,
+  "s": 0.13,
+  "content_type": "image/png",
+  "bytes": 70463
+ },
+ "server_log_tail": "INFO:     Started server process [13627]\nINFO:     Waiting for application startup.\nINFO:     Application startup complete.\nINFO:     Uvicorn running on http://127.0.0.1:49691 (Press CTRL+C to quit)\nINFO:     127.0.0.1:47194 - \"GET /document HTTP/1.1\" 200 OK\nINFO:     127.0.0.1:47200 - \"POST /check HTTP/1.1\" 200 OK\nINFO:     127.0.0.1:47216 - \"POST /render HTTP/1.1\" 200 OK\nINFO:     127.0.0.1:47226 - \"POST /compose HTTP/1.1\" 200 OK\nINFO:     127.0.0.1:47236 - \"POST /preview HTTP/1.1\" 200 OK\nINFO:     Shutting down\nINFO:     Waiting for application shutdown.\nINFO:     Application shutdown complete.\nINFO:     Finished server process [13627]\n"
+}

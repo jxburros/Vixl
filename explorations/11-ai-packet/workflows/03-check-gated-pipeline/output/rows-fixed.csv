@@ -1,0 +1,2 @@
+NUM,term,category,definition,tryit
+13,Retrieval (RAG),How it works,"The system first searches trusted documents, then gives the best passages to a language model with your question, so answers can cite real sources.","Ask a tool that cites sources a question, then open two of the citations."

@@ -1,0 +1,398 @@
+[
+ {
+  "row": 1,
+  "output": "quick-proof/0001.png",
+  "check": {
+   "passed": true,
+   "errors": 0,
+   "warnings": 0,
+   "issues": [
+    {
+     "check": "safe_area",
+     "severity": "info",
+     "layers": [
+      "top-bar"
+     ],
+     "message": "'top-bar' extends outside the safe area (intentional crop or bleed)",
+     "bounds": [
+      0,
+      0,
+      1080,
+      18
+     ],
+     "safe_area": [
+      60,
+      60,
+      960,
+      1230
+     ],
+     "intentional": true,
+     "action": "informational"
+    }
+   ]
+  }
+ },
+ {
+  "row": 2,
+  "output": "quick-proof/0002.png",
+  "check": {
+   "passed": true,
+   "errors": 0,
+   "warnings": 0,
+   "issues": [
+    {
+     "check": "safe_area",
+     "severity": "info",
+     "layers": [
+      "top-bar"
+     ],
+     "message": "'top-bar' extends outside the safe area (intentional crop or bleed)",
+     "bounds": [
+      0,
+      0,
+      1080,
+      18
+     ],
+     "safe_area": [
+      60,
+      60,
+      960,
+      1230
+     ],
+     "intentional": true,
+     "action": "informational"
+    }
+   ]
+  }
+ },
+ {
+  "row": 3,
+  "output": "quick-proof/0003.png",
+  "check": {
+   "passed": true,
+   "errors": 0,
+   "warnings": 0,
+   "issues": [
+    {
+     "check": "safe_area",
+     "severity": "info",
+     "layers": [
+      "top-bar"
+     ],
+     "message": "'top-bar' extends outside the safe area (intentional crop or bleed)",
+     "bounds": [
+      0,
+      0,
+      1080,
+      18
+     ],
+     "safe_area": [
+      60,
+      60,
+      960,
+      1230
+     ],
+     "intentional": true,
+     "action": "informational"
+    }
+   ]
+  }
+ },
+ {
+  "row": 4,
+  "output": "quick-proof/0004.png",
+  "check": {
+   "passed": true,
+   "errors": 0,
+   "warnings": 0,
+   "issues": [
+    {
+     "check": "safe_area",
+     "severity": "info",
+     "layers": [
+      "top-bar"
+     ],
+     "message": "'top-bar' extends outside the safe area (intentional crop or bleed)",
+     "bounds": [
+      0,
+      0,
+      1080,
+      18
+     ],
+     "safe_area": [
+      60,
+      60,
+      960,
+      1230
+     ],
+     "intentional": true,
+     "action": "informational"
+    }
+   ]
+  }
+ },
+ {
+  "row": 5,
+  "output": "quick-proof/0005.png",
+  "check": {
+   "passed": true,
+   "errors": 0,
+   "warnings": 0,
+   "issues": [
+    {
+     "check": "safe_area",
+     "severity": "info",
+     "layers": [
+      "top-bar"
+     ],
+     "message": "'top-bar' extends outside the safe area (intentional crop or bleed)",
+     "bounds": [
+      0,
+      0,
+      1080,
+      18
+     ],
+     "safe_area": [
+      60,
+      60,
+      960,
+      1230
+     ],
+     "intentional": true,
+     "action": "informational"
+    }
+   ]
+  }
+ },
+ {
+  "row": 6,
+  "output": "quick-proof/0006.png",
+  "check": {
+   "passed": true,
+   "errors": 0,
+   "warnings": 0,
+   "issues": [
+    {
+     "check": "safe_area",
+     "severity": "info",
+     "layers": [
+      "top-bar"
+     ],
+     "message": "'top-bar' extends outside the safe area (intentional crop or bleed)",
+     "bounds": [
+      0,
+      0,
+      1080,
+      18
+     ],
+     "safe_area": [
+      60,
+      60,
+      960,
+      1230
+     ],
+     "intentional": true,
+     "action": "informational"
+    }
+   ]
+  }
+ },
+ {
+  "row": 7,
+  "output": "quick-proof/0007.png",
+  "check": {
+   "passed": true,
+   "errors": 0,
+   "warnings": 0,
+   "issues": [
+    {
+     "check": "safe_area",
+     "severity": "info",
+     "layers": [
+      "top-bar"
+     ],
+     "message": "'top-bar' extends outside the safe area (intentional crop or bleed)",
+     "bounds": [
+      0,
+      0,
+      1080,
+      18
+     ],
+     "safe_area": [
+      60,
+      60,
+      960,
+      1230
+     ],
+     "intentional": true,
+     "action": "informational"
+    }
+   ]
+  }
+ },
+ {
+  "row": 8,
+  "output": "quick-proof/0008.png",
+  "check": {
+   "passed": true,
+   "errors": 0,
+   "warnings": 0,
+   "issues": [
+    {
+     "check": "safe_area",
+     "severity": "info",
+     "layers": [
+      "top-bar"
+     ],
+     "message": "'top-bar' extends outside the safe area (intentional crop or bleed)",
+     "bounds": [
+      0,
+      0,
+      1080,
+      18
+     ],
+     "safe_area": [
+      60,
+      60,
+      960,
+      1230
+     ],
+     "intentional": true,
+     "action": "informational"
+    }
+   ]
+  }
+ },
+ {
+  "row": 9,
+  "output": "quick-proof/0009.png",
+  "check": {
+   "passed": true,
+   "errors": 0,
+   "warnings": 0,
+   "issues": [
+    {
+     "check": "safe_area",
+     "severity": "info",
+     "layers": [
+      "top-bar"
+     ],
+     "message": "'top-bar' extends outside the safe area (intentional crop or bleed)",
+     "bounds": [
+      0,
+      0,
+      1080,
+      18
+     ],
+     "safe_area": [
+      60,
+      60,
+      960,
+      1230
+     ],
+     "intentional": true,
+     "action": "informational"
+    }
+   ]
+  }
+ },
+ {
+  "row": 10,
+  "output": "quick-proof/0010.png",
+  "check": {
+   "passed": true,
+   "errors": 0,
+   "warnings": 0,
+   "issues": [
+    {
+     "check": "safe_area",
+     "severity": "info",
+     "layers": [
+      "top-bar"
+     ],
+     "message": "'top-bar' extends outside the safe area (intentional crop or bleed)",
+     "bounds": [
+      0,
+      0,
+      1080,
+      18
+     ],
+     "safe_area": [
+      60,
+      60,
+      960,
+      1230
+     ],
+     "intentional": true,
+     "action": "informational"
+    }
+   ]
+  }
+ },
+ {
+  "row": 11,
+  "output": "quick-proof/0011.png",
+  "check": {
+   "passed": true,
+   "errors": 0,
+   "warnings": 0,
+   "issues": [
+    {
+     "check": "safe_area",
+     "severity": "info",
+     "layers": [
+      "top-bar"
+     ],
+     "message": "'top-bar' extends outside the safe area (intentional crop or bleed)",
+     "bounds": [
+      0,
+      0,
+      1080,
+      18
+     ],
+     "safe_area": [
+      60,
+      60,
+      960,
+      1230
+     ],
+     "intentional": true,
+     "action": "informational"
+    }
+   ]
+  }
+ },
+ {
+  "row": 12,
+  "output": "quick-proof/0012.png",
+  "check": {
+   "passed": true,
+   "errors": 0,
+   "warnings": 0,
+   "issues": [
+    {
+     "check": "safe_area",
+     "severity": "info",
+     "layers": [
+      "top-bar"
+     ],
+     "message": "'top-bar' extends outside the safe area (intentional crop or bleed)",
+     "bounds": [
+      0,
+      0,
+      1080,
+      18
+     ],
+     "safe_area": [
+      60,
+      60,
+      960,
+      1230
+     ],
+     "intentional": true,
+     "action": "informational"
+    }
+   ]
+  }
+ }
+]

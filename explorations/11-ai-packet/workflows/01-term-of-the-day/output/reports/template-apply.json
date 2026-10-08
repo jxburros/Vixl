@@ -1,0 +1,245 @@
+{
+ "success": true,
+ "dry_run": false,
+ "operations": 65,
+ "defaults": [
+  {
+   "layer": "label",
+   "line_height": 1.35,
+   "stage": "lead"
+  },
+  {
+   "layer": "number",
+   "line_height": 1.35,
+   "stage": "lead"
+  },
+  {
+   "layer": "category",
+   "line_height": 1.35,
+   "stage": "lead"
+  },
+  {
+   "layer": "definition",
+   "line_height": 1.35,
+   "stage": "lead"
+  },
+  {
+   "layer": "try-label",
+   "line_height": 1.35,
+   "stage": "lead"
+  },
+  {
+   "layer": "tryit",
+   "line_height": 1.35,
+   "stage": "lead"
+  },
+  {
+   "layer": "footer",
+   "line_height": 1.35,
+   "stage": "lead"
+  },
+  {
+   "layer": "footer-motto",
+   "line_height": 1.35,
+   "stage": "lead"
+  }
+ ],
+ "groups": [
+  {
+   "id": "lyr_55a3e16f9430fa9e",
+   "name": "motif",
+   "bounds": [
+    776,
+    945,
+    198,
+    170
+   ],
+   "members": {
+    "motif-edge-0": [
+     12,
+     12
+    ],
+    "motif-edge-1": [
+     12,
+     20
+    ],
+    "motif-edge-2": [
+     12,
+     20
+    ],
+    "motif-edge-3": [
+     12,
+     20
+    ],
+    "motif-edge-4": [
+     12,
+     12
+    ],
+    "motif-edge-5": [
+     12,
+     59
+    ],
+    "motif-edge-6": [
+     10,
+     81
+    ],
+    "motif-edge-7": [
+     12,
+     83
+    ],
+    "motif-edge-8": [
+     12,
+     12
+    ],
+    "motif-edge-9": [
+     12,
+     59
+    ],
+    "motif-edge-10": [
+     12,
+     107
+    ],
+    "motif-edge-11": [
+     12,
+     146
+    ],
+    "motif-edge-12": [
+     97,
+     12
+    ],
+    "motif-edge-13": [
+     97,
+     12
+    ],
+    "motif-edge-14": [
+     97,
+     35
+    ],
+    "motif-edge-15": [
+     97,
+     59
+    ],
+    "motif-edge-16": [
+     95,
+     33
+    ],
+    "motif-edge-17": [
+     97,
+     107
+    ],
+    "motif-edge-18": [
+     97,
+     35
+    ],
+    "motif-edge-19": [
+     97,
+     131
+    ],
+    "motif-node-0-0": [
+     0,
+     8
+    ],
+    "motif-node-0-1": [
+     0,
+     71
+    ],
+    "motif-node-0-2": [
+     0,
+     134
+    ],
+    "motif-node-1-0": [
+     85,
+     0
+    ],
+    "motif-node-1-1": [
+     85,
+     47
+    ],
+    "motif-node-1-2": [
+     85,
+     95
+    ],
+    "motif-node-1-3": [
+     85,
+     142
+    ],
+    "motif-node-2-0": [
+     170,
+     23
+    ],
+    "motif-node-2-1": [
+     170,
+     119
+    ]
+   }
+  }
+ ],
+ "check": {
+  "passed": true,
+  "errors": 0,
+  "warnings": 0,
+  "info": 1,
+  "issues": [
+   {
+    "check": "safe_area",
+    "severity": "info",
+    "layers": [
+     "top-bar"
+    ],
+    "message": "'top-bar' extends outside the safe area (intentional crop or bleed)",
+    "bounds": [
+     0,
+     0,
+     1080,
+     18
+    ],
+    "safe_area": [
+     60,
+     60,
+     960,
+     1230
+    ],
+    "intentional": true,
+    "action": "informational"
+   }
+  ],
+  "by_action": {
+   "fix": [],
+   "review": [],
+   "informational": [
+    0
+   ]
+  },
+  "checked": {
+   "checks": [
+    "bounds",
+    "overlap",
+    "contrast",
+    "safe_area",
+    "legibility",
+    "blanks",
+    "fonts",
+    "brand",
+    "content",
+    "form",
+    "links",
+    "diagram",
+    "flow",
+    "codes"
+   ],
+   "layers_checked": 43,
+   "layers_total": 43,
+   "text_layers": 9
+  }
+ },
+ "suites": {
+  "card": {
+   "status": "passed",
+   "errors": 0,
+   "needs_review": 0,
+   "rules": 14,
+   "not_passed": []
+  }
+ },
+ "preview": "template-preview.png"
+}

@@ -1,0 +1,417 @@
+[
+ {
+  "type": "swatch",
+  "name": "background",
+  "color": "#fbf7ef"
+ },
+ {
+  "type": "swatch",
+  "name": "surface",
+  "color": "#efe6d2"
+ },
+ {
+  "type": "swatch",
+  "name": "ink",
+  "color": "#15213b"
+ },
+ {
+  "type": "swatch",
+  "name": "muted",
+  "color": "#4a5568"
+ },
+ {
+  "type": "swatch",
+  "name": "accent",
+  "color": "#1d7a74"
+ },
+ {
+  "type": "swatch",
+  "name": "accent-text",
+  "color": "#1d7a74"
+ },
+ {
+  "type": "swatch",
+  "name": "on-accent",
+  "color": "#ffffff"
+ },
+ {
+  "type": "text",
+  "name": "sheet-title",
+  "text": "AI term of the day: 12 cards",
+  "font": "heading",
+  "size": 64,
+  "color": "@ink",
+  "x": 80,
+  "y": 70
+ },
+ {
+  "type": "text",
+  "name": "sheet-sub",
+  "text": "Built from terms.csv with one Vixl template. All 12 cards passed the 'card' check suite.",
+  "font": "body",
+  "size": 30,
+  "color": "@muted",
+  "x": 80,
+  "y": 158
+ },
+ {
+  "type": "frame",
+  "name": "card-01",
+  "path": "cards/01-artificial-intelligence.png",
+  "x": 80,
+  "y": 230,
+  "width": 400,
+  "height": 500,
+  "fit": "fill",
+  "downsample": "placed@2x"
+ },
+ {
+  "type": "layer-style",
+  "target": "card-01",
+  "name": "stroke",
+  "settings": {
+   "size": 2,
+   "color": "@surface"
+  }
+ },
+ {
+  "type": "text",
+  "name": "caption-01",
+  "text": "01 \u00b7 Artificial intelligence",
+  "font": "body",
+  "size": 28,
+  "color": "@ink",
+  "x": 80,
+  "y": 750
+ },
+ {
+  "type": "frame",
+  "name": "card-02",
+  "path": "cards/02-machine-learning.png",
+  "x": 520,
+  "y": 230,
+  "width": 400,
+  "height": 500,
+  "fit": "fill",
+  "downsample": "placed@2x"
+ },
+ {
+  "type": "layer-style",
+  "target": "card-02",
+  "name": "stroke",
+  "settings": {
+   "size": 2,
+   "color": "@surface"
+  }
+ },
+ {
+  "type": "text",
+  "name": "caption-02",
+  "text": "02 \u00b7 Machine learning",
+  "font": "body",
+  "size": 28,
+  "color": "@ink",
+  "x": 520,
+  "y": 750
+ },
+ {
+  "type": "frame",
+  "name": "card-03",
+  "path": "cards/03-training-data.png",
+  "x": 960,
+  "y": 230,
+  "width": 400,
+  "height": 500,
+  "fit": "fill",
+  "downsample": "placed@2x"
+ },
+ {
+  "type": "layer-style",
+  "target": "card-03",
+  "name": "stroke",
+  "settings": {
+   "size": 2,
+   "color": "@surface"
+  }
+ },
+ {
+  "type": "text",
+  "name": "caption-03",
+  "text": "03 \u00b7 Training data",
+  "font": "body",
+  "size": 28,
+  "color": "@ink",
+  "x": 960,
+  "y": 750
+ },
+ {
+  "type": "frame",
+  "name": "card-04",
+  "path": "cards/04-neural-network.png",
+  "x": 1400,
+  "y": 230,
+  "width": 400,
+  "height": 500,
+  "fit": "fill",
+  "downsample": "placed@2x"
+ },
+ {
+  "type": "layer-style",
+  "target": "card-04",
+  "name": "stroke",
+  "settings": {
+   "size": 2,
+   "color": "@surface"
+  }
+ },
+ {
+  "type": "text",
+  "name": "caption-04",
+  "text": "04 \u00b7 Neural network",
+  "font": "body",
+  "size": 28,
+  "color": "@ink",
+  "x": 1400,
+  "y": 750
+ },
+ {
+  "type": "frame",
+  "name": "card-05",
+  "path": "cards/05-large-language-model.png",
+  "x": 80,
+  "y": 822,
+  "width": 400,
+  "height": 500,
+  "fit": "fill",
+  "downsample": "placed@2x"
+ },
+ {
+  "type": "layer-style",
+  "target": "card-05",
+  "name": "stroke",
+  "settings": {
+   "size": 2,
+   "color": "@surface"
+  }
+ },
+ {
+  "type": "text",
+  "name": "caption-05",
+  "text": "05 \u00b7 Large language model",
+  "font": "body",
+  "size": 28,
+  "color": "@ink",
+  "x": 80,
+  "y": 1342
+ },
+ {
+  "type": "frame",
+  "name": "card-06",
+  "path": "cards/06-token.png",
+  "x": 520,
+  "y": 822,
+  "width": 400,
+  "height": 500,
+  "fit": "fill",
+  "downsample": "placed@2x"
+ },
+ {
+  "type": "layer-style",
+  "target": "card-06",
+  "name": "stroke",
+  "settings": {
+   "size": 2,
+   "color": "@surface"
+  }
+ },
+ {
+  "type": "text",
+  "name": "caption-06",
+  "text": "06 \u00b7 Token",
+  "font": "body",
+  "size": 28,
+  "color": "@ink",
+  "x": 520,
+  "y": 1342
+ },
+ {
+  "type": "frame",
+  "name": "card-07",
+  "path": "cards/07-prompt.png",
+  "x": 960,
+  "y": 822,
+  "width": 400,
+  "height": 500,
+  "fit": "fill",
+  "downsample": "placed@2x"
+ },
+ {
+  "type": "layer-style",
+  "target": "card-07",
+  "name": "stroke",
+  "settings": {
+   "size": 2,
+   "color": "@surface"
+  }
+ },
+ {
+  "type": "text",
+  "name": "caption-07",
+  "text": "07 \u00b7 Prompt",
+  "font": "body",
+  "size": 28,
+  "color": "@ink",
+  "x": 960,
+  "y": 1342
+ },
+ {
+  "type": "frame",
+  "name": "card-08",
+  "path": "cards/08-hallucination.png",
+  "x": 1400,
+  "y": 822,
+  "width": 400,
+  "height": 500,
+  "fit": "fill",
+  "downsample": "placed@2x"
+ },
+ {
+  "type": "layer-style",
+  "target": "card-08",
+  "name": "stroke",
+  "settings": {
+   "size": 2,
+   "color": "@surface"
+  }
+ },
+ {
+  "type": "text",
+  "name": "caption-08",
+  "text": "08 \u00b7 Hallucination",
+  "font": "body",
+  "size": 28,
+  "color": "@ink",
+  "x": 1400,
+  "y": 1342
+ },
+ {
+  "type": "frame",
+  "name": "card-09",
+  "path": "cards/09-bias.png",
+  "x": 80,
+  "y": 1414,
+  "width": 400,
+  "height": 500,
+  "fit": "fill",
+  "downsample": "placed@2x"
+ },
+ {
+  "type": "layer-style",
+  "target": "card-09",
+  "name": "stroke",
+  "settings": {
+   "size": 2,
+   "color": "@surface"
+  }
+ },
+ {
+  "type": "text",
+  "name": "caption-09",
+  "text": "09 \u00b7 Bias",
+  "font": "body",
+  "size": 28,
+  "color": "@ink",
+  "x": 80,
+  "y": 1934
+ },
+ {
+  "type": "frame",
+  "name": "card-10",
+  "path": "cards/10-generative-ai.png",
+  "x": 520,
+  "y": 1414,
+  "width": 400,
+  "height": 500,
+  "fit": "fill",
+  "downsample": "placed@2x"
+ },
+ {
+  "type": "layer-style",
+  "target": "card-10",
+  "name": "stroke",
+  "settings": {
+   "size": 2,
+   "color": "@surface"
+  }
+ },
+ {
+  "type": "text",
+  "name": "caption-10",
+  "text": "10 \u00b7 Generative AI",
+  "font": "body",
+  "size": 28,
+  "color": "@ink",
+  "x": 520,
+  "y": 1934
+ },
+ {
+  "type": "frame",
+  "name": "card-11",
+  "path": "cards/11-context-window.png",
+  "x": 960,
+  "y": 1414,
+  "width": 400,
+  "height": 500,
+  "fit": "fill",
+  "downsample": "placed@2x"
+ },
+ {
+  "type": "layer-style",
+  "target": "card-11",
+  "name": "stroke",
+  "settings": {
+   "size": 2,
+   "color": "@surface"
+  }
+ },
+ {
+  "type": "text",
+  "name": "caption-11",
+  "text": "11 \u00b7 Context window",
+  "font": "body",
+  "size": 28,
+  "color": "@ink",
+  "x": 960,
+  "y": 1934
+ },
+ {
+  "type": "frame",
+  "name": "card-12",
+  "path": "cards/12-human-in-the-loop.png",
+  "x": 1400,
+  "y": 1414,
+  "width": 400,
+  "height": 500,
+  "fit": "fill",
+  "downsample": "placed@2x"
+ },
+ {
+  "type": "layer-style",
+  "target": "card-12",
+  "name": "stroke",
+  "settings": {
+   "size": 2,
+   "color": "@surface"
+  }
+ },
+ {
+  "type": "text",
+  "name": "caption-12",
+  "text": "12 \u00b7 Human in the loop",
+  "font": "body",
+  "size": 28,
+  "color": "@ink",
+  "x": 1400,
+  "y": 1934
+ }
+]

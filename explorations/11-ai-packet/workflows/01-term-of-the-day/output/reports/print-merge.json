@@ -1,0 +1,93 @@
+{
+ "rows": 12,
+ "valid": 12,
+ "invalid": [],
+ "errors": [],
+ "warnings": [
+  {
+   "row": null,
+   "code": "template_dpi",
+   "message": "The template has no dpi, so it is placed at one pixel per sheet pixel; make it from a print size or give it a dpi for a predictable size"
+  }
+ ],
+ "unknown_columns": [],
+ "variables": {
+  "used": [
+   "NUM",
+   "category",
+   "definition",
+   "term",
+   "tryit"
+  ],
+  "defaults": [
+   "NUM",
+   "category",
+   "definition",
+   "term",
+   "tryit"
+  ],
+  "images": [],
+  "columns": [
+   "NUM",
+   "term",
+   "category",
+   "definition",
+   "tryit"
+  ]
+ },
+ "layout": {
+  "page": {
+   "size": "letter",
+   "width": 8.5,
+   "height": 11.0,
+   "unit": "in",
+   "pixels": [
+    2550,
+    3300
+   ],
+   "dpi": 300
+  },
+  "item": {
+   "trim": [
+    3.6,
+    4.5
+   ],
+   "bleed": 0.0,
+   "scale": 1.0
+  },
+  "grid": {
+   "cols": 2,
+   "rows": 2,
+   "per_page": 4,
+   "order": "rows",
+   "gutter": [
+    0.0,
+    0.0
+   ],
+   "margin": [
+    0.25,
+    0.25,
+    0.25,
+    0.25
+   ],
+   "origin": [
+    0.65,
+    1.0
+   ]
+  },
+  "marks": {
+   "crop_marks": true,
+   "registration": false,
+   "slug": false,
+   "crop_length": 0.125,
+   "crop_offset": 0.0625
+  },
+  "copies": 12,
+  "pages": 3
+ },
+ "pages": 3,
+ "fonts": 2,
+ "raster_fallbacks": {},
+ "bytes": 21135,
+ "output": "print-sheets.pdf"
+}

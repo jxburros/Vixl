@@ -1,0 +1,101 @@
+{
+ "output": "production",
+ "spec": {
+  "version": 1,
+  "rows": [
+   {
+    "NUM": "01",
+    "term": "Artificial intelligence",
+    "category": "The basics",
+    "definition": "Computer systems that do tasks we usually link with human thinking, such as recognising speech, translating languages or spotting patterns.",
+    "tryit": "Name three apps on your phone that use AI. What does each one predict or recognise?"
+   },
+   {
+    "NUM": "02",
+    "term": "Machine learning",
+    "category": "How it works",
+    "definition": "A way to build AI in which a computer learns patterns from examples (data) instead of following rules a person wrote by hand.",
+    "tryit": "Sort 10 photos into two groups and write down the rule you used. That rule is what a model tries to learn."
+   },
+   {
+    "NUM": "03",
+    "term": "Training data",
+    "category": "How it works",
+    "definition": "The examples a model learns from. What is in the data, and what is missing from it, shapes what the model can and cannot do.",
+    "tryit": "Pick an AI tool and ask: whose voices or pictures might be missing from its training data?"
+   },
+   {
+    "NUM": "04",
+    "term": "Neural network",
+    "category": "How it works",
+    "definition": "A model built from layers of simple connected units. Training adjusts the strength of each connection until the outputs are useful.",
+    "tryit": "Draw three rows of dots and connect them. You have sketched the shape of a tiny neural network."
+   },
+   {
+    "NUM": "05",
+    "term": "Large language model",
+    "category": "Tools",
+    "definition": "A neural network trained on huge amounts of text to predict the next word. That one skill lets it answer questions, summarise and draft.",
+    "tryit": "Ask a chatbot to finish a sentence three times. Notice how the predictions change."
+   },
+   {
+    "NUM": "06",
+    "term": "Token",
+    "category": "How it works",
+    "definition": "A small chunk of text, such as a word, part of a word or a punctuation mark, that a language model reads and writes. Limits are counted in tokens.",
+    "tryit": "Paste a sentence into a tokenizer demo and count how many tokens it becomes."
+   },
+   {
+    "NUM": "07",
+    "term": "Prompt",
+    "category": "Use it well",
+    "definition": "The instructions and context you give an AI tool. A clear goal, an example and a few constraints usually get better results.",
+    "tryit": "Ask the same question twice: once in five words, once with a goal, an audience and an example."
+   },
+   {
+    "NUM": "08",
+    "term": "Hallucination",
+    "category": "Use it wisely",
+    "definition": "When an AI produces something fluent and confident that is false or invented. Check important facts against a reliable source.",
+    "tryit": "Ask a chatbot for a source on a topic you know well, then open the link and check it."
+   },
+   {
+    "NUM": "09",
+    "term": "Bias",
+    "category": "Use it wisely",
+    "definition": "A systematic unfairness in a model's results, often inherited from its training data or from choices made while building it.",
+    "tryit": "Ask an image tool for 'a scientist' four times. Who appears, and who never does?"
+   },
+   {
+    "NUM": "10",
+    "term": "Generative AI",
+    "category": "Tools",
+    "definition": "AI that creates new text, images, audio or code based on patterns it learned from its training data.",
+    "tryit": "Generate one paragraph, then rewrite it in your own words. What did you keep, and what did you fix?"
+   },
+   {
+    "NUM": "11",
+    "term": "Context window",
+    "category": "How it works",
+    "definition": "The amount of text a model can consider at once, including your prompt and its reply. Anything outside it is not seen.",
+    "tryit": "In a long chat, ask the AI to repeat your first message. Does it still remember it exactly?"
+   },
+   {
+    "NUM": "12",
+    "term": "Human in the loop",
+    "category": "Use it wisely",
+    "definition": "A way of working in which a person reviews, corrects or approves what an AI produces before it is used.",
+    "tryit": "Before you share AI-assisted work, list one thing you checked and one thing you changed."
+   }
+  ],
+  "quality": "final",
+  "format": "png",
+  "workers": 2,
+  "actions": [
+   "reflow"
+  ],
+  "suites": [
+   "card"
+  ]
+ }
+}

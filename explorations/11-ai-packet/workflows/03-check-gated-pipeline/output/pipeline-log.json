@@ -1,0 +1,109 @@
+[
+ {
+  "step": "v1 baseline",
+  "document": "v1.vixl",
+  "pass": true,
+  "fix_findings": [],
+  "suite_failed": []
+ },
+ {
+  "step": "v2 act (requested change)",
+  "exit": 1,
+  "committed": false,
+  "failed": [
+   "term-dominates",
+   "definition-readable",
+   "tryit-clear-of-motif",
+   "nothing-cut-off"
+  ]
+ },
+ {
+  "step": "v2 forced",
+  "document": "v2-rejected.vixl",
+  "pass": false,
+  "fix_findings": [
+   "'try-label' contrast is 4.14:1 or lower for a tenth of its glyph pixels (minimum 4.14:1, weakest at x 121\u2013234, y 920\u2013942); needs 4.5:1",
+   "'definition' is 9.5 px tall at 320 px wide; aim for at least 10 px (font size 34+)"
+  ],
+  "suite_failed": [
+   {
+    "id": "term-dominates",
+    "expected": 1.2
+   },
+   {
+    "id": "definition-readable"
+   },
+   {
+    "id": "tryit-clear-of-motif",
+    "positions": [
+     "overlapping"
+    ],
+    "distance": -80.0
+   },
+   {
+    "id": "nothing-cut-off"
+   }
+  ]
+ },
+ {
+  "step": "v3a act (fix)",
+  "exit": 1,
+  "committed": false,
+  "failed": [
+   "motif-in-panel"
+  ]
+ },
+ {
+  "step": "v3b act (fix)",
+  "exit": 0,
+  "committed": true,
+  "failed": []
+ },
+ {
+  "step": "v3 fixed",
+  "document": "v3.vixl",
+  "pass": true,
+  "fix_findings": [],
+  "suite_failed": []
+ },
+ {
+  "step": "diff v1.vixl -> v2-rejected.vixl",
+  "exit": 0,
+  "changed_pixels": 71274,
+  "changed_fraction": 0.0489,
+  "changed_region": [
+   80,
+   534,
+   912,
+   611
+  ],
+  "passed": null
+ },
+ {
+  "step": "diff v1.vixl -> v3.vixl",
+  "exit": 0,
+  "changed_pixels": 50066,
+  "changed_fraction": 0.0343,
+  "changed_region": [
+   104,
+   906,
+   872,
+   214
+  ],
+  "passed": null
+ },
+ {
+  "step": "render --data rows-bad.csv",
+  "exit": 0,
+  "pass": false,
+  "fix_findings": [
+   "'definition' does not fit its 920\u00d7217 text box at 44 px and is cut off (it needs 916\u00d7396); enlarge the box with text-layout or shrink the text with fit-text"
+  ]
+ },
+ {
+  "step": "render --data rows-fixed.csv",
+  "exit": 0,
+  "pass": true,
+  "fix_findings": []
+ }
+]

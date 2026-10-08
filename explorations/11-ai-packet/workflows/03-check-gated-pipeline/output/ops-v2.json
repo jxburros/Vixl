@@ -1,0 +1,1 @@
+[{"type": "text-set", "target": "try-label", "color": "@accent-text"}, {"type": "text-set", "target": "definition", "size": 32}, {"type": "scale", "target": "motif", "value": 1.35}, {"type": "move", "target": "motif", "x": 640, "y": 915}]

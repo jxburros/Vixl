@@ -1,0 +1,26 @@
+{
+ "cards": 100,
+ "cpu_count": 4,
+ "render --data, checked": 81.8,
+ "render --data rows with fix findings": 0,
+ "render --data --no-check": 27.59,
+ "workflow run, 1 worker(s)": 126.68,
+ "workflow run, 1 worker(s), statuses": {
+  "completed": 100,
+  "needs_review": 0,
+  "failed": 0
+ },
+ "workflow run, 4 worker(s)": 68.6,
+ "workflow run, 4 worker(s), statuses": {
+  "completed": 100,
+  "needs_review": 0,
+  "failed": 0
+ },
+ "workflow run rerun (cached)": 47.7,
+ "python Project.render loop (JPEG)": 21.12,
+ "render --data, checked: ms per card": 818,
+ "render --data --no-check: ms per card": 276,
+ "workflow run, 1 worker(s): ms per card": 1267,
+ "workflow run, 4 worker(s): ms per card": 686,
+ "python Project.render loop (JPEG): ms per card": 211
+}

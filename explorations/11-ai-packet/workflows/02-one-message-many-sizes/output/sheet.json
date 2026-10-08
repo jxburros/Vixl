@@ -1,0 +1,487 @@
+[
+ {
+  "type": "swatch",
+  "name": "background",
+  "color": "#fbf7ef"
+ },
+ {
+  "type": "swatch",
+  "name": "surface",
+  "color": "#efe6d2"
+ },
+ {
+  "type": "swatch",
+  "name": "ink",
+  "color": "#15213b"
+ },
+ {
+  "type": "swatch",
+  "name": "muted",
+  "color": "#4a5568"
+ },
+ {
+  "type": "swatch",
+  "name": "accent",
+  "color": "#1d7a74"
+ },
+ {
+  "type": "swatch",
+  "name": "accent-text",
+  "color": "#1d7a74"
+ },
+ {
+  "type": "swatch",
+  "name": "on-accent",
+  "color": "#ffffff"
+ },
+ {
+  "type": "text",
+  "name": "sheet-title",
+  "text": "One message, six sizes",
+  "font": "heading",
+  "size": 60,
+  "color": "@ink",
+  "x": 70,
+  "y": 60
+ },
+ {
+  "type": "text",
+  "name": "col-a",
+  "text": "A \u00b7 adapt-layout (master rescaled)",
+  "font": "heading",
+  "size": 30,
+  "color": "@accent-text",
+  "x": 370,
+  "y": 150
+ },
+ {
+  "type": "text",
+  "name": "col-b",
+  "text": "B \u00b7 recompose (layout rebuilt per size)",
+  "font": "heading",
+  "size": 30,
+  "color": "@accent-text",
+  "x": 930,
+  "y": 150
+ },
+ {
+  "type": "text",
+  "name": "size-0",
+  "text": "instagram-square",
+  "font": "heading",
+  "size": 30,
+  "color": "@ink",
+  "x": 70,
+  "y": 220
+ },
+ {
+  "type": "solid",
+  "name": "well-0-0",
+  "x": 370,
+  "y": 210,
+  "width": 520,
+  "height": 380,
+  "color": "@surface"
+ },
+ {
+  "type": "frame",
+  "name": "img-0-0",
+  "path": "png/adapt-instagram-square.png",
+  "x": 380,
+  "y": 220,
+  "width": 500,
+  "height": 360,
+  "fit": "fit",
+  "downsample": "placed@2x"
+ },
+ {
+  "type": "text",
+  "name": "verdict-0-0",
+  "text": "2 fix finding(s), suite failed",
+  "font": "body",
+  "size": 26,
+  "color": "@accent-text",
+  "x": 370,
+  "y": 604
+ },
+ {
+  "type": "solid",
+  "name": "well-0-1",
+  "x": 930,
+  "y": 210,
+  "width": 520,
+  "height": 380,
+  "color": "@surface"
+ },
+ {
+  "type": "frame",
+  "name": "img-0-1",
+  "path": "png/recompose-instagram-square.png",
+  "x": 940,
+  "y": 220,
+  "width": 500,
+  "height": 360,
+  "fit": "fit",
+  "downsample": "placed@2x"
+ },
+ {
+  "type": "text",
+  "name": "verdict-0-1",
+  "text": "modern-bulletin: check ok, suite passed",
+  "font": "body",
+  "size": 26,
+  "color": "@ink",
+  "x": 930,
+  "y": 604
+ },
+ {
+  "type": "text",
+  "name": "size-1",
+  "text": "story",
+  "font": "heading",
+  "size": 30,
+  "color": "@ink",
+  "x": 70,
+  "y": 696
+ },
+ {
+  "type": "solid",
+  "name": "well-1-0",
+  "x": 370,
+  "y": 686,
+  "width": 520,
+  "height": 380,
+  "color": "@surface"
+ },
+ {
+  "type": "frame",
+  "name": "img-1-0",
+  "path": "png/adapt-story.png",
+  "x": 380,
+  "y": 696,
+  "width": 500,
+  "height": 360,
+  "fit": "fit",
+  "downsample": "placed@2x"
+ },
+ {
+  "type": "text",
+  "name": "verdict-1-0",
+  "text": "2 fix finding(s), suite passed",
+  "font": "body",
+  "size": 26,
+  "color": "@accent-text",
+  "x": 370,
+  "y": 1080
+ },
+ {
+  "type": "solid",
+  "name": "well-1-1",
+  "x": 930,
+  "y": 686,
+  "width": 520,
+  "height": 380,
+  "color": "@surface"
+ },
+ {
+  "type": "frame",
+  "name": "img-1-1",
+  "path": "png/recompose-story.png",
+  "x": 940,
+  "y": 696,
+  "width": 500,
+  "height": 360,
+  "fit": "fit",
+  "downsample": "placed@2x"
+ },
+ {
+  "type": "text",
+  "name": "verdict-1-1",
+  "text": "modern-bulletin +base_size 28: check ok, suite passed",
+  "font": "body",
+  "size": 26,
+  "color": "@ink",
+  "x": 930,
+  "y": 1080
+ },
+ {
+  "type": "text",
+  "name": "size-2",
+  "text": "linkedin-post",
+  "font": "heading",
+  "size": 30,
+  "color": "@ink",
+  "x": 70,
+  "y": 1172
+ },
+ {
+  "type": "solid",
+  "name": "well-2-0",
+  "x": 370,
+  "y": 1162,
+  "width": 520,
+  "height": 380,
+  "color": "@surface"
+ },
+ {
+  "type": "frame",
+  "name": "img-2-0",
+  "path": "png/adapt-linkedin-post.png",
+  "x": 380,
+  "y": 1172,
+  "width": 500,
+  "height": 360,
+  "fit": "fit",
+  "downsample": "placed@2x"
+ },
+ {
+  "type": "text",
+  "name": "verdict-2-0",
+  "text": "3 fix finding(s), suite passed",
+  "font": "body",
+  "size": 26,
+  "color": "@accent-text",
+  "x": 370,
+  "y": 1556
+ },
+ {
+  "type": "solid",
+  "name": "well-2-1",
+  "x": 930,
+  "y": 1162,
+  "width": 520,
+  "height": 380,
+  "color": "@surface"
+ },
+ {
+  "type": "frame",
+  "name": "img-2-1",
+  "path": "png/recompose-linkedin-post.png",
+  "x": 940,
+  "y": 1172,
+  "width": 500,
+  "height": 360,
+  "fit": "fit",
+  "downsample": "placed@2x"
+ },
+ {
+  "type": "text",
+  "name": "verdict-2-1",
+  "text": "offset-column: check ok, suite passed",
+  "font": "body",
+  "size": 26,
+  "color": "@ink",
+  "x": 930,
+  "y": 1556
+ },
+ {
+  "type": "text",
+  "name": "size-3",
+  "text": "x-header",
+  "font": "heading",
+  "size": 30,
+  "color": "@ink",
+  "x": 70,
+  "y": 1648
+ },
+ {
+  "type": "solid",
+  "name": "well-3-0",
+  "x": 370,
+  "y": 1638,
+  "width": 520,
+  "height": 380,
+  "color": "@surface"
+ },
+ {
+  "type": "frame",
+  "name": "img-3-0",
+  "path": "png/adapt-x-header.png",
+  "x": 380,
+  "y": 1648,
+  "width": 500,
+  "height": 360,
+  "fit": "fit",
+  "downsample": "placed@2x"
+ },
+ {
+  "type": "text",
+  "name": "verdict-3-0",
+  "text": "6 fix finding(s), suite passed",
+  "font": "body",
+  "size": 26,
+  "color": "@accent-text",
+  "x": 370,
+  "y": 2032
+ },
+ {
+  "type": "solid",
+  "name": "well-3-1",
+  "x": 930,
+  "y": 1638,
+  "width": 520,
+  "height": 380,
+  "color": "@surface"
+ },
+ {
+  "type": "frame",
+  "name": "img-3-1",
+  "path": "png/recompose-x-header.png",
+  "x": 940,
+  "y": 1648,
+  "width": 500,
+  "height": 360,
+  "fit": "fit",
+  "downsample": "placed@2x"
+ },
+ {
+  "type": "text",
+  "name": "verdict-3-1",
+  "text": "modern-bulletin: check ok, suite passed",
+  "font": "body",
+  "size": 26,
+  "color": "@ink",
+  "x": 930,
+  "y": 2032
+ },
+ {
+  "type": "text",
+  "name": "size-4",
+  "text": "slide",
+  "font": "heading",
+  "size": 30,
+  "color": "@ink",
+  "x": 70,
+  "y": 2124
+ },
+ {
+  "type": "solid",
+  "name": "well-4-0",
+  "x": 370,
+  "y": 2114,
+  "width": 520,
+  "height": 380,
+  "color": "@surface"
+ },
+ {
+  "type": "frame",
+  "name": "img-4-0",
+  "path": "png/adapt-slide.png",
+  "x": 380,
+  "y": 2124,
+  "width": 500,
+  "height": 360,
+  "fit": "fit",
+  "downsample": "placed@2x"
+ },
+ {
+  "type": "text",
+  "name": "verdict-4-0",
+  "text": "1 fix finding(s), suite failed",
+  "font": "body",
+  "size": 26,
+  "color": "@accent-text",
+  "x": 370,
+  "y": 2508
+ },
+ {
+  "type": "solid",
+  "name": "well-4-1",
+  "x": 930,
+  "y": 2114,
+  "width": 520,
+  "height": 380,
+  "color": "@surface"
+ },
+ {
+  "type": "frame",
+  "name": "img-4-1",
+  "path": "png/recompose-slide.png",
+  "x": 940,
+  "y": 2124,
+  "width": 500,
+  "height": 360,
+  "fit": "fit",
+  "downsample": "placed@2x"
+ },
+ {
+  "type": "text",
+  "name": "verdict-4-1",
+  "text": "modern-bulletin: check ok, suite passed",
+  "font": "body",
+  "size": 26,
+  "color": "@ink",
+  "x": 930,
+  "y": 2508
+ },
+ {
+  "type": "text",
+  "name": "size-5",
+  "text": "letter",
+  "font": "heading",
+  "size": 30,
+  "color": "@ink",
+  "x": 70,
+  "y": 2600
+ },
+ {
+  "type": "solid",
+  "name": "well-5-0",
+  "x": 370,
+  "y": 2590,
+  "width": 520,
+  "height": 380,
+  "color": "@surface"
+ },
+ {
+  "type": "frame",
+  "name": "img-5-0",
+  "path": "png/adapt-letter.png",
+  "x": 380,
+  "y": 2600,
+  "width": 500,
+  "height": 360,
+  "fit": "fit",
+  "downsample": "placed@2x"
+ },
+ {
+  "type": "text",
+  "name": "verdict-5-0",
+  "text": "check ok, suite passed",
+  "font": "body",
+  "size": 26,
+  "color": "@ink",
+  "x": 370,
+  "y": 2984
+ },
+ {
+  "type": "solid",
+  "name": "well-5-1",
+  "x": 930,
+  "y": 2590,
+  "width": 520,
+  "height": 380,
+  "color": "@surface"
+ },
+ {
+  "type": "frame",
+  "name": "img-5-1",
+  "path": "png/recompose-letter.png",
+  "x": 940,
+  "y": 2600,
+  "width": 500,
+  "height": 360,
+  "fit": "fit",
+  "downsample": "placed@2x"
+ },
+ {
+  "type": "text",
+  "name": "verdict-5-1",
+  "text": "modern-bulletin: check ok, suite passed",
+  "font": "body",
+  "size": 26,
+  "color": "@ink",
+  "x": 930,
+  "y": 2984
+ }
+]

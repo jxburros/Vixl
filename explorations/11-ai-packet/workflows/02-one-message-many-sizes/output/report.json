@@ -1,0 +1,216 @@
+{
+ "master": {
+  "compose_check": true,
+  "check_passed": true,
+  "fix": [],
+  "suite_status": "passed",
+  "suite_not_passed": []
+ },
+ "adapt": {
+  "instagram-square": {
+   "warnings": [
+    "'subtitle' does not fit its 674\u00d7248 text box at 52 px and is cut off (it needs 656\u00d7250); enlarge the box with text-layout or shrink the text with fit-text"
+   ],
+   "check_passed": false,
+   "fix": [
+    "'subtitle' does not fit its 674\u00d7248 text box at 52 px and is cut off (it needs 656\u00d7250); enlarge the box with text-layout or shrink the text with fit-text",
+    "'label' is 8.0 px tall at 320 px wide; aim for at least 10 px (font size 34+)"
+   ],
+   "suite_status": "failed",
+   "suite_not_passed": [
+    "no-overlap"
+   ]
+  },
+  "story": {
+   "warnings": null,
+   "check_passed": false,
+   "fix": [
+    "'label' extends outside the safe area",
+    "'headline' extends outside the safe area"
+   ],
+   "suite_status": "passed",
+   "suite_not_passed": []
+  },
+  "linkedin-post": {
+   "warnings": null,
+   "check_passed": true,
+   "fix": [
+    "'label' is 4.3 px tall at 320 px wide; aim for at least 10 px (font size 38+)",
+    "'subtitle' is 8.0 px tall at 320 px wide; aim for at least 10 px (font size 38+)",
+    "'cta' is 5.3 px tall at 320 px wide; aim for at least 10 px (font size 38+)"
+   ],
+   "suite_status": "passed",
+   "suite_not_passed": []
+  },
+  "x-header": {
+   "warnings": null,
+   "check_passed": false,
+   "fix": [
+    "'label' extends outside the safe area",
+    "'cta' extends outside the safe area",
+    "'label' is 2.8 px tall at 320 px wide; aim for at least 10 px (font size 47+)",
+    "'headline' is 8.5 px tall at 320 px wide; aim for at least 10 px (font size 47+)",
+    "'subtitle' is 5.1 px tall at 320 px wide; aim for at least 10 px (font size 47+)",
+    "'cta' is 3.4 px tall at 320 px wide; aim for at least 10 px (font size 47+)"
+   ],
+   "suite_status": "passed",
+   "suite_not_passed": []
+  },
+  "slide": {
+   "warnings": [
+    "'subtitle' does not fit its 674\u00d7248 text box at 52 px and is cut off (it needs 656\u00d7250); enlarge the box with text-layout or shrink the text with fit-text"
+   ],
+   "check_passed": false,
+   "fix": [
+    "'subtitle' does not fit its 674\u00d7248 text box at 52 px and is cut off (it needs 656\u00d7250); enlarge the box with text-layout or shrink the text with fit-text"
+   ],
+   "suite_status": "failed",
+   "suite_not_passed": [
+    "no-overlap"
+   ]
+  },
+  "letter": {
+   "warnings": null,
+   "check_passed": true,
+   "fix": [],
+   "suite_status": "passed",
+   "suite_not_passed": []
+  }
+ },
+ "recompose": {
+  "instagram-square": {
+   "layout": "modern-bulletin",
+   "check_passed": true,
+   "fix": [],
+   "suite_status": "passed",
+   "suite_not_passed": [],
+   "attempts": [
+    {
+     "layout": "modern-bulletin",
+     "check_passed": true,
+     "fix": [],
+     "suite_status": "passed",
+     "suite_not_passed": []
+    }
+   ]
+  },
+  "story": {
+   "layout": "modern-bulletin +base_size 28",
+   "check_passed": true,
+   "fix": [],
+   "suite_status": "passed",
+   "suite_not_passed": [],
+   "attempts": [
+    {
+     "layout": "modern-bulletin",
+     "check_passed": true,
+     "fix": [],
+     "suite_status": "failed",
+     "suite_not_passed": [
+      "title-dominates"
+     ]
+    },
+    {
+     "layout": "offset-column",
+     "check_passed": true,
+     "fix": [],
+     "suite_status": "failed",
+     "suite_not_passed": [
+      "title-dominates"
+     ]
+    },
+    {
+     "layout": "quiet-editorial",
+     "check_passed": true,
+     "fix": [],
+     "suite_status": "failed",
+     "suite_not_passed": [
+      "title-dominates"
+     ]
+    },
+    {
+     "layout": "modern-bulletin +base_size 28",
+     "check_passed": true,
+     "fix": [],
+     "suite_status": "passed",
+     "suite_not_passed": []
+    }
+   ]
+  },
+  "linkedin-post": {
+   "layout": "offset-column",
+   "check_passed": true,
+   "fix": [],
+   "suite_status": "passed",
+   "suite_not_passed": [],
+   "attempts": [
+    {
+     "layout": "modern-bulletin",
+     "check_passed": false,
+     "fix": [
+      "'label' contrast is 1.00:1 or lower for a tenth of its glyph pixels (minimum 1.00:1, weakest at x 63\u2013328, y 53\u201355); needs 4.5:1"
+     ],
+     "suite_status": "failed",
+     "suite_not_passed": [
+      "no-overlap"
+     ]
+    },
+    {
+     "layout": "offset-column",
+     "check_passed": true,
+     "fix": [],
+     "suite_status": "passed",
+     "suite_not_passed": []
+    }
+   ]
+  },
+  "x-header": {
+   "layout": "modern-bulletin",
+   "check_passed": true,
+   "fix": [],
+   "suite_status": "passed",
+   "suite_not_passed": [],
+   "attempts": [
+    {
+     "layout": "modern-bulletin",
+     "check_passed": true,
+     "fix": [],
+     "suite_status": "passed",
+     "suite_not_passed": []
+    }
+   ]
+  },
+  "slide": {
+   "layout": "modern-bulletin",
+   "check_passed": true,
+   "fix": [],
+   "suite_status": "passed",
+   "suite_not_passed": [],
+   "attempts": [
+    {
+     "layout": "modern-bulletin",
+     "check_passed": true,
+     "fix": [],
+     "suite_status": "passed",
+     "suite_not_passed": []
+    }
+   ]
+  },
+  "letter": {
+   "layout": "modern-bulletin",
+   "check_passed": true,
+   "fix": [],
+   "suite_status": "passed",
+   "suite_not_passed": [],
+   "attempts": [
+    {
+     "layout": "modern-bulletin",
+     "check_passed": true,
+     "fix": [],
+     "suite_status": "passed",
+     "suite_not_passed": []
+    }
+   ]
+  }
+ }
+}

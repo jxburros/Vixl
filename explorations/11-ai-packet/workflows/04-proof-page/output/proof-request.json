@@ -1,0 +1,130 @@
+{
+ "items": [
+  {
+   "path": "workflows/01-term-of-the-day/output/contact-sheet.jpg",
+   "label": "Term of the day: all 12 cards",
+   "note": "Production run: reflow action + 'card' suite on every card."
+  },
+  {
+   "path": "workflows/01-term-of-the-day/output/cards/08-hallucination.png",
+   "label": "Card 08 \u00b7 Hallucination"
+  },
+  {
+   "path": "workflows/01-term-of-the-day/output/card.vixl",
+   "label": "Card template (.vixl)"
+  },
+  {
+   "path": "workflows/03-check-gated-pipeline/output/v3.png",
+   "label": "Card after the gated change",
+   "before": "workflows/03-check-gated-pipeline/output/v1.png",
+   "note": "The requested change was refused by the suite; this accessible version was committed."
+  },
+  {
+   "path": "workflows/03-check-gated-pipeline/output/v2-rejected.png",
+   "label": "The refused change (for reference)",
+   "note": "4.14:1 label, 32 px definition, graphic over the text: refused by workflow act."
+  },
+  {
+   "path": "workflows/02-one-message-many-sizes/output/comparison-sheet.jpg",
+   "label": "One message, six sizes: adapt vs recompose"
+  },
+  {
+   "path": "workflows/02-one-message-many-sizes/output/recompose/linkedin-post.vixl",
+   "label": "LinkedIn post (.vixl)"
+  },
+  {
+   "path": "workflows/02-one-message-many-sizes/output/recompose/story.vixl",
+   "label": "Story (.vixl)",
+   "note": "Weakest size: the layout's column is 493 px wide on a 1080 px canvas."
+  },
+  {
+   "path": "workflows/05-variety-study/output/variety-sheet.jpg",
+   "label": "Variety study: house style 1 vs 2"
+  },
+  {
+   "path": "illustrations/mascot-poses.png",
+   "label": "illustrations / mascot-poses.png"
+  },
+  {
+   "path": "illustrations/mascot.png",
+   "label": "illustrations / mascot.png"
+  },
+  {
+   "path": "illustrations/mascot.svg",
+   "label": "illustrations / mascot.svg"
+  },
+  {
+   "path": "illustrations/neural-network.png",
+   "label": "illustrations / neural-network.png"
+  },
+  {
+   "path": "illustrations/neural-network.svg",
+   "label": "illustrations / neural-network.svg"
+  },
+  {
+   "path": "creative/myths-carousel-sheet.jpg",
+   "label": "creative / myths-carousel-sheet.jpg"
+  },
+  {
+   "path": "creative/sticker-sheet.png",
+   "label": "creative / sticker-sheet.png"
+  },
+  {
+   "path": "creative/logo.png",
+   "label": "creative / logo.png"
+  },
+  {
+   "path": "creative/logo.svg",
+   "label": "creative / logo.svg"
+  },
+  {
+   "path": "creative/myths-carousel-1.png",
+   "label": "creative / myths-carousel-1.png"
+  },
+  {
+   "path": "documents/out/_inspect/deck-sheet.png",
+   "label": "documents / deck-sheet.png"
+  },
+  {
+   "path": "documents/out/_inspect/handout-sheet.png",
+   "label": "documents / handout-sheet.png"
+  },
+  {
+   "path": "documents/out/ai-101-deck.pdf",
+   "label": "documents / ai-101-deck.pdf"
+  },
+  {
+   "path": "documents/out/_inspect/certificate-template.png",
+   "label": "documents / certificate-template.png"
+  },
+  {
+   "path": "documents/out/_inspect/certificates-p1.png",
+   "label": "documents / certificates-p1.png"
+  },
+  {
+   "path": "animations/out/ai-curious-sheet.jpg",
+   "label": "animations / ai-curious-sheet.jpg"
+  },
+  {
+   "path": "animations/out/contact-sheet.jpg",
+   "label": "animations / contact-sheet.jpg"
+  },
+  {
+   "path": "animations/out/kinetic-sheet.jpg",
+   "label": "animations / kinetic-sheet.jpg"
+  },
+  {
+   "path": "animations/out/neural-network-sheet.jpg",
+   "label": "animations / neural-network-sheet.jpg"
+  },
+  {
+   "path": "animations/out/next-word-sheet.jpg",
+   "label": "animations / next-word-sheet.jpg"
+  }
+ ],
+ "output": "workflows/04-proof-page/output/ai-packet-proof.html",
+ "title": "AI Field Guide packet: review",
+ "decisions": true,
+ "overwrite": true,
+ "max_size": 256
+}
