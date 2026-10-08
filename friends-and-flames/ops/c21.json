@@ -1,0 +1,153 @@
+[
+ {
+  "type": "remove",
+  "targets": [
+   "title",
+   "artist"
+  ]
+ },
+ {
+  "type": "shape",
+  "shape": "rectangle",
+  "name": "v150",
+  "x": 150,
+  "y": 150,
+  "width": 2,
+  "height": 2700,
+  "fill": "#efe6d826"
+ },
+ {
+  "type": "shape",
+  "shape": "rectangle",
+  "name": "v1500",
+  "x": 1500,
+  "y": 150,
+  "width": 2,
+  "height": 2700,
+  "fill": "#efe6d826"
+ },
+ {
+  "type": "shape",
+  "shape": "rectangle",
+  "name": "v2850",
+  "x": 2850,
+  "y": 150,
+  "width": 2,
+  "height": 2700,
+  "fill": "#efe6d826"
+ },
+ {
+  "type": "shape",
+  "shape": "rectangle",
+  "name": "hr",
+  "x": 150,
+  "y": 1960,
+  "width": 2700,
+  "height": 3,
+  "fill": "#efe6d880"
+ },
+ {
+  "type": "text",
+  "name": "num",
+  "text": "01",
+  "font": "grotesk",
+  "size": 110,
+  "color": "#efe6d8",
+  "x": 2660,
+  "y": 170
+ },
+ {
+  "type": "text",
+  "name": "t1",
+  "text": "Friends",
+  "font": "grotesk",
+  "size": 250,
+  "color": "#efe6d8",
+  "x": 140,
+  "y": 2000
+ },
+ {
+  "type": "text-style",
+  "target": "t1",
+  "start": 0,
+  "end": 7,
+  "tracking": -8
+ },
+ {
+  "type": "text",
+  "name": "t2",
+  "text": "and Flames.",
+  "font": "grotesk",
+  "size": 250,
+  "color": "#efe6d8",
+  "x": 140,
+  "y": 2260
+ },
+ {
+  "type": "text-style",
+  "target": "t2",
+  "start": 0,
+  "end": 11,
+  "tracking": -8
+ },
+ {
+  "type": "text-style",
+  "target": "t2",
+  "match": "Flames.",
+  "color": "#ff9a3c"
+ },
+ {
+  "type": "text",
+  "name": "artist",
+  "text": "Jeffrey X Guntly",
+  "font": "inter",
+  "size": 56,
+  "color": "#efe6d8",
+  "x": 1530,
+  "y": 2010
+ },
+ {
+  "type": "text",
+  "name": "meta",
+  "text": "Let\u2019s get all our friends.\nLet\u2019s start a little fire.",
+  "font": "inter",
+  "size": 42,
+  "color": "#bfb3a2",
+  "x": 1530,
+  "y": 2100,
+  "line_height": 1.4
+ },
+ {
+  "type": "text",
+  "name": "label",
+  "text": "SINGLE",
+  "font": "grotesk",
+  "size": 40,
+  "color": "#efe6d8",
+  "x": 160,
+  "y": 170
+ },
+ {
+  "type": "text-style",
+  "target": "label",
+  "start": 0,
+  "end": 6,
+  "tracking": 8
+ },
+ {
+  "type": "resize",
+  "target": "parental-advisory",
+  "width": 400,
+  "keep_aspect": true
+ },
+ {
+  "type": "move",
+  "target": "parental-advisory",
+  "x": 2500,
+  "y": 2650
+ },
+ {
+  "type": "top",
+  "target": "parental-advisory"
+ }
+]

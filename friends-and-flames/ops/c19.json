@@ -1,0 +1,554 @@
+[
+ {
+  "type": "remove",
+  "targets": [
+   "ambient",
+   "handlight",
+   "match-stick",
+   "match-char",
+   "match-head",
+   "flame-outer",
+   "flame-core",
+   "flame-blue",
+   "title",
+   "artist"
+  ]
+ },
+ {
+  "type": "effect-remove",
+  "target": "hand",
+  "effect": "temperature"
+ },
+ {
+  "type": "effect-remove",
+  "target": "hand",
+  "effect": "exposure"
+ },
+ {
+  "type": "effect-remove",
+  "target": "hand",
+  "effect": "contrast"
+ },
+ {
+  "type": "effect-remove",
+  "target": "hand",
+  "effect": "grain"
+ },
+ {
+  "type": "solid",
+  "name": "paper",
+  "color": "#f3ecdc"
+ },
+ {
+  "type": "bottom",
+  "target": "paper"
+ },
+ {
+  "type": "effect",
+  "target": "hand",
+  "name": "grayscale"
+ },
+ {
+  "type": "effect",
+  "target": "hand",
+  "name": "levels",
+  "black": 30,
+  "white": 150
+ },
+ {
+  "type": "effect",
+  "target": "hand",
+  "name": "halftone",
+  "amount": 22
+ },
+ {
+  "type": "effect",
+  "target": "hand",
+  "name": "duotone",
+  "shadow_color": "#00838a",
+  "highlight_color": "#f3ecdc"
+ },
+ {
+  "type": "blend",
+  "target": "hand",
+  "value": "multiply"
+ },
+ {
+  "type": "shape",
+  "shape": "rectangle",
+  "name": "stick",
+  "x": 1816,
+  "y": 560,
+  "width": 32,
+  "height": 330,
+  "fill": "#00838a"
+ },
+ {
+  "type": "shape",
+  "shape": "path",
+  "name": "f1",
+  "path": "M160.0 0 C 198.4 160.0 320.0 320.0 307.2 473.6 C 294.4 588.8 230.4 640.0 160.0 640.0 C 89.6 640.0 25.6 588.8 12.8 473.6 C 0 320.0 121.6 160.0 160.0 0 Z",
+  "x": 1680.0,
+  "y": -40,
+  "width": 320,
+  "height": 640,
+  "fill": "#ff4b3e"
+ },
+ {
+  "type": "shape",
+  "shape": "path",
+  "name": "f2",
+  "path": "M90.0 0 C 111.6 90.0 180.0 180.0 172.8 266.4 C 165.6 331.2 129.6 360.0 90.0 360.0 C 50.4 360.0 14.4 331.2 7.2 266.4 C 0 180.0 68.4 90.0 90.0 0 Z",
+  "x": 1732.0,
+  "y": 230,
+  "width": 180,
+  "height": 360,
+  "fill": "#ffd400"
+ },
+ {
+  "type": "blend",
+  "targets": [
+   "f1",
+   "f2",
+   "stick"
+  ],
+  "value": "multiply"
+ },
+ {
+  "type": "shape",
+  "shape": "rectangle",
+  "name": "bx0",
+  "x": 150,
+  "y": 2084,
+  "width": 253,
+  "height": 304,
+  "fill": "#ff4b3e",
+  "rotation": 4.8240671676844435
+ },
+ {
+  "type": "text",
+  "name": "ch0",
+  "text": "F",
+  "font": "grotesk",
+  "size": 203,
+  "color": "#f3ecdc",
+  "within": "bx0",
+  "rotation": 4.8240671676844435
+ },
+ {
+  "type": "blend",
+  "target": "bx0",
+  "value": "multiply"
+ },
+ {
+  "type": "shape",
+  "shape": "rectangle",
+  "name": "bx1",
+  "x": 423,
+  "y": 2096,
+  "width": 271,
+  "height": 328,
+  "fill": "#f3ecdc",
+  "rotation": -1.3974712325367253
+ },
+ {
+  "type": "text",
+  "name": "ch1",
+  "text": "R",
+  "font": "anton",
+  "size": 219,
+  "color": "#00838a",
+  "within": "bx1",
+  "rotation": -1.3974712325367253
+ },
+ {
+  "type": "blend",
+  "target": "bx1",
+  "value": "multiply"
+ },
+ {
+  "type": "shape",
+  "shape": "rectangle",
+  "name": "bx2",
+  "x": 712,
+  "y": 2069,
+  "width": 257,
+  "height": 294,
+  "fill": "#00838a",
+  "rotation": -0.7272658691879093
+ },
+ {
+  "type": "text",
+  "name": "ch2",
+  "text": "I",
+  "font": "abril",
+  "size": 196,
+  "color": "#f3ecdc",
+  "within": "bx2",
+  "rotation": -0.7272658691879093
+ },
+ {
+  "type": "blend",
+  "target": "bx2",
+  "value": "multiply"
+ },
+ {
+  "type": "shape",
+  "shape": "rectangle",
+  "name": "bx3",
+  "x": 986,
+  "y": 2097,
+  "width": 243,
+  "height": 300,
+  "fill": "#00838a",
+  "rotation": 2.294441576669225
+ },
+ {
+  "type": "text",
+  "name": "ch3",
+  "text": "E",
+  "font": "anton",
+  "size": 200,
+  "color": "#ffd400",
+  "within": "bx3",
+  "rotation": 2.294441576669225
+ },
+ {
+  "type": "blend",
+  "target": "bx3",
+  "value": "multiply"
+ },
+ {
+  "type": "shape",
+  "shape": "rectangle",
+  "name": "bx4",
+  "x": 1236,
+  "y": 2073,
+  "width": 290,
+  "height": 336,
+  "fill": "#ffd400",
+  "rotation": 4.402700389787796
+ },
+ {
+  "type": "text",
+  "name": "ch4",
+  "text": "N",
+  "font": "anton",
+  "size": 224,
+  "color": "#00838a",
+  "within": "bx4",
+  "rotation": 4.402700389787796
+ },
+ {
+  "type": "blend",
+  "target": "bx4",
+  "value": "multiply"
+ },
+ {
+  "type": "shape",
+  "shape": "rectangle",
+  "name": "bx5",
+  "x": 1543,
+  "y": 2061,
+  "width": 268,
+  "height": 303,
+  "fill": "#ff4b3e",
+  "rotation": 0.6628790500717434
+ },
+ {
+  "type": "text",
+  "name": "ch5",
+  "text": "D",
+  "font": "anton",
+  "size": 202,
+  "color": "#f3ecdc",
+  "within": "bx5",
+  "rotation": 0.6628790500717434
+ },
+ {
+  "type": "blend",
+  "target": "bx5",
+  "value": "multiply"
+ },
+ {
+  "type": "shape",
+  "shape": "rectangle",
+  "name": "bx6",
+  "x": 1818,
+  "y": 2080,
+  "width": 251,
+  "height": 286,
+  "fill": "#ff4b3e",
+  "rotation": -5.357645607004001
+ },
+ {
+  "type": "text",
+  "name": "ch6",
+  "text": "S",
+  "font": "abril",
+  "size": 191,
+  "color": "#f3ecdc",
+  "within": "bx6",
+  "rotation": -5.357645607004001
+ },
+ {
+  "type": "blend",
+  "target": "bx6",
+  "value": "multiply"
+ },
+ {
+  "type": "shape",
+  "shape": "rectangle",
+  "name": "bx7",
+  "x": 150,
+  "y": 2403,
+  "width": 240,
+  "height": 277,
+  "fill": "#ff4b3e",
+  "rotation": -0.7812371950345955
+ },
+ {
+  "type": "text",
+  "name": "ch7",
+  "text": "&",
+  "font": "typewriter",
+  "size": 184,
+  "color": "#f3ecdc",
+  "within": "bx7",
+  "rotation": -0.7812371950345955
+ },
+ {
+  "type": "blend",
+  "target": "bx7",
+  "value": "multiply"
+ },
+ {
+  "type": "shape",
+  "shape": "rectangle",
+  "name": "bx8",
+  "x": 402,
+  "y": 2431,
+  "width": 230,
+  "height": 286,
+  "fill": "#00838a",
+  "rotation": -1.1137063782064551
+ },
+ {
+  "type": "text",
+  "name": "ch8",
+  "text": "F",
+  "font": "playfair-black-italic",
+  "size": 191,
+  "color": "#f3ecdc",
+  "within": "bx8",
+  "rotation": -1.1137063782064551
+ },
+ {
+  "type": "blend",
+  "target": "bx8",
+  "value": "multiply"
+ },
+ {
+  "type": "shape",
+  "shape": "rectangle",
+  "name": "bx9",
+  "x": 644,
+  "y": 2425,
+  "width": 232,
+  "height": 292,
+  "fill": "#ff4b3e",
+  "rotation": -5.065596479915033
+ },
+ {
+  "type": "text",
+  "name": "ch9",
+  "text": "L",
+  "font": "rubikmono",
+  "size": 195,
+  "color": "#f3ecdc",
+  "within": "bx9",
+  "rotation": -5.065596479915033
+ },
+ {
+  "type": "blend",
+  "target": "bx9",
+  "value": "multiply"
+ },
+ {
+  "type": "shape",
+  "shape": "rectangle",
+  "name": "bx10",
+  "x": 890,
+  "y": 2429,
+  "width": 274,
+  "height": 332,
+  "fill": "#00838a",
+  "rotation": 4.564230681739588
+ },
+ {
+  "type": "text",
+  "name": "ch10",
+  "text": "A",
+  "font": "typewriter",
+  "size": 221,
+  "color": "#f3ecdc",
+  "within": "bx10",
+  "rotation": 4.564230681739588
+ },
+ {
+  "type": "blend",
+  "target": "bx10",
+  "value": "multiply"
+ },
+ {
+  "type": "shape",
+  "shape": "rectangle",
+  "name": "bx11",
+  "x": 1172,
+  "y": 2406,
+  "width": 254,
+  "height": 285,
+  "fill": "#00838a",
+  "rotation": -5.524844194628119
+ },
+ {
+  "type": "text",
+  "name": "ch11",
+  "text": "M",
+  "font": "marker",
+  "size": 190,
+  "color": "#ffd400",
+  "within": "bx11",
+  "rotation": -5.524844194628119
+ },
+ {
+  "type": "blend",
+  "target": "bx11",
+  "value": "multiply"
+ },
+ {
+  "type": "shape",
+  "shape": "rectangle",
+  "name": "bx12",
+  "x": 1443,
+  "y": 2405,
+  "width": 258,
+  "height": 285,
+  "fill": "#ffd400",
+  "rotation": 1.8652652540678218
+ },
+ {
+  "type": "text",
+  "name": "ch12",
+  "text": "E",
+  "font": "grotesk",
+  "size": 190,
+  "color": "#00838a",
+  "within": "bx12",
+  "rotation": 1.8652652540678218
+ },
+ {
+  "type": "blend",
+  "target": "bx12",
+  "value": "multiply"
+ },
+ {
+  "type": "shape",
+  "shape": "rectangle",
+  "name": "bx13",
+  "x": 1715,
+  "y": 2415,
+  "width": 266,
+  "height": 307,
+  "fill": "#00838a",
+  "rotation": 5.540132845516663
+ },
+ {
+  "type": "text",
+  "name": "ch13",
+  "text": "S",
+  "font": "abril",
+  "size": 204,
+  "color": "#f3ecdc",
+  "within": "bx13",
+  "rotation": 5.540132845516663
+ },
+ {
+  "type": "blend",
+  "target": "bx13",
+  "value": "multiply"
+ },
+ {
+  "type": "shape",
+  "shape": "rectangle",
+  "name": "strip",
+  "x": 120,
+  "y": 160,
+  "width": 1250,
+  "height": 330,
+  "fill": "#ffffff",
+  "rotation": -2
+ },
+ {
+  "type": "tear",
+  "target": "strip",
+  "seed": 7,
+  "edges": [
+   "left",
+   "right"
+  ]
+ },
+ {
+  "type": "text",
+  "name": "lyric",
+  "text": "if you start getting nervous,\nit\u2019s \u2019cause you\u2019re the one to blame.",
+  "font": "typewriter",
+  "size": 56,
+  "color": "#00838a",
+  "within": "strip",
+  "rotation": -2
+ },
+ {
+  "type": "shape",
+  "shape": "rectangle",
+  "name": "tape",
+  "x": 140,
+  "y": 560,
+  "width": 900,
+  "height": 110,
+  "fill": "#ff4b3e99",
+  "rotation": 2
+ },
+ {
+  "type": "text",
+  "name": "artist",
+  "text": "JEFFREY X GUNTLY",
+  "font": "typewriter",
+  "size": 70,
+  "color": "#1b1b1b",
+  "within": "tape",
+  "rotation": 2
+ },
+ {
+  "type": "look",
+  "target": "paper",
+  "look": "risograph",
+  "amount": 0.5
+ },
+ {
+  "type": "resize",
+  "target": "parental-advisory",
+  "width": 400,
+  "keep_aspect": true
+ },
+ {
+  "type": "move",
+  "target": "parental-advisory",
+  "x": 2500,
+  "y": 2650
+ },
+ {
+  "type": "top",
+  "target": "parental-advisory"
+ }
+]
