@@ -1,1 +1,0 @@
-[{"type": "text-set", "target": "artist", "color": "#d4241c"}, {"type": "shape", "targets": ["row0", "row1", "row2", "row3", "row4", "row5", "row6", "qdot"], "fill": "#141414"}, {"type": "text-set", "targets": ["q1", "q2"], "color": "#141414"}]

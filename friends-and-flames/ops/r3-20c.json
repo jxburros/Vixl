@@ -1,1 +1,0 @@
-[{"type": "text-set", "target": "artist", "size": 82}, {"type": "move", "target": "artist", "x": 160, "y": 1065}, {"type": "shape", "shape": "rectangle", "name": "arule", "x": 160, "y": 1190, "width": 420, "height": 10, "fill": "#d4241c"}]

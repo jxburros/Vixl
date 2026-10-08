@@ -1,1 +1,0 @@
-[{"type": "effect-set", "target": "hand", "effect": "halftone", "amount": 20}, {"type": "text-set", "target": "artist", "color": "#161210", "size": 96}, {"type": "move", "target": "artist", "x": 130, "y": 1080}]

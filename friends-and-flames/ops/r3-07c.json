@@ -1,1 +1,0 @@
-[{"type": "layer-style", "target": "t1", "name": "stroke", "settings": {"color": "#efe6d2", "width": 12}}, {"type": "layer-style", "target": "t1", "name": "drop-shadow", "settings": {"color": "#00000066", "dx": 10, "dy": 12, "blur": 0}}, {"type": "text-set", "target": "artist", "size": 66}, {"type": "move", "target": "parental-advisory", "x": 2500, "y": 2690}]
