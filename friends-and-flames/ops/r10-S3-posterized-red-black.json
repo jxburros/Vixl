@@ -1,0 +1,1 @@
+[{"type": "effect", "target": "hand", "name": "posterize", "amount": 2}, {"type": "effect", "target": "hand", "name": "duotone", "shadow_color": "#141414", "highlight_color": "#e8584e"}, {"type": "look", "target": "paper", "look": "paper", "amount": 0.6}]
