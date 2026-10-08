@@ -1,0 +1,1 @@
+[{"type": "look", "target": "paper", "look": "risograph", "amount": 0.25}, {"type": "text-set", "target": "lyric", "size": 72}, {"type": "move", "target": "lyric", "x": 100, "y": 230}, {"type": "text-set", "target": "artist", "size": 84}]

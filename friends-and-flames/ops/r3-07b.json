@@ -1,0 +1,1 @@
+[{"type": "shape", "target": "sun", "fill": "#141414"}, {"type": "shape", "target": "fl", "fill": "#d4241c"}, {"type": "shape", "target": "bar", "fill": "#d4241c"}, {"type": "text-set", "target": "t1", "color": "#141414"}, {"type": "shape", "target": "slog-rule", "fill": "#141414"}, {"type": "text-set", "target": "artist", "color": "#141414"}]
