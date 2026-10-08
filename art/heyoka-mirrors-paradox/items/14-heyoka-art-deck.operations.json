@@ -1,0 +1,638 @@
+[
+  [
+    {
+      "type": "text",
+      "name": "series",
+      "text": "HEYOKA / MODERN ARCHETYPE / 01",
+      "x": 65,
+      "y": 55,
+      "size": 21,
+      "font": "mono",
+      "color": "#9fecdf",
+      "line_height": 1.35
+    },
+    {
+      "type": "text",
+      "name": "title",
+      "text": "THE EMOTIONAL MIRROR",
+      "x": 60,
+      "y": 130,
+      "size": 66,
+      "font": "condensed",
+      "color": "#f1eaff",
+      "line_height": 1.35
+    },
+    {
+      "type": "add",
+      "path": "/workspace/heyoka-modern-studio/assets/heyoka-surreal-sheet.png",
+      "name": "art-0-surreal"
+    },
+    {
+      "type": "crop",
+      "target": "art-0-surreal",
+      "x": 0,
+      "y": 60,
+      "width": 512,
+      "height": 392
+    },
+    {
+      "type": "resize",
+      "target": "art-0-surreal",
+      "width": 705,
+      "height": 540
+    },
+    {
+      "type": "move",
+      "target": "art-0-surreal",
+      "x": 830,
+      "y": 310
+    },
+    {
+      "type": "layer-intent",
+      "target": "art-0-surreal",
+      "role": "decoration",
+      "allow_crop": true
+    },
+    {
+      "type": "shape",
+      "shape": "rectangle",
+      "name": "art-0-border",
+      "x": 830,
+      "y": 310,
+      "width": 705,
+      "height": 540,
+      "fill": "transparent",
+      "stroke": "#9fecdf",
+      "stroke_width": 1
+    },
+    {
+      "type": "layer-intent",
+      "target": "art-0-border",
+      "role": "decoration",
+      "allow_crop": true
+    },
+    {
+      "type": "text",
+      "name": "body",
+      "text": "In modern heyoka spirituality,\nthe mirror is the central image:\nsomeone whose presence is\nimagined to bring an unspoken\nfeeling into view.",
+      "x": 65,
+      "y": 330,
+      "size": 43,
+      "font": "serif",
+      "color": "#f1eaff",
+      "line_height": 1.3
+    },
+    {
+      "type": "text",
+      "name": "question",
+      "text": "What did I actually see—and what did I\nadd?",
+      "x": 65,
+      "y": 665,
+      "size": 31,
+      "font": "bold",
+      "color": "#9fecdf",
+      "line_height": 1.35
+    },
+    {
+      "type": "text",
+      "name": "footer",
+      "text": "HEYOKA / A contemporary spiritual interpretation • Companion booklet: Mirrors & Paradox",
+      "x": 65,
+      "y": 940,
+      "size": 19,
+      "font": "sans",
+      "color": "#f1eaff",
+      "line_height": 1.35
+    }
+  ],
+  [
+    {
+      "type": "text",
+      "name": "series",
+      "text": "HEYOKA / MODERN ARCHETYPE / 02",
+      "x": 65,
+      "y": 55,
+      "size": 21,
+      "font": "mono",
+      "color": "#f0c878",
+      "line_height": 1.35
+    },
+    {
+      "type": "text",
+      "name": "title",
+      "text": "THE LIVING PARADOX",
+      "x": 60,
+      "y": 130,
+      "size": 66,
+      "font": "condensed",
+      "color": "#fff0d0",
+      "line_height": 1.35
+    },
+    {
+      "type": "add",
+      "path": "/workspace/heyoka-modern-studio/assets/heyoka-surreal-sheet.png",
+      "name": "art-1-surreal"
+    },
+    {
+      "type": "crop",
+      "target": "art-1-surreal",
+      "x": 512,
+      "y": 60,
+      "width": 512,
+      "height": 392
+    },
+    {
+      "type": "resize",
+      "target": "art-1-surreal",
+      "width": 705,
+      "height": 540
+    },
+    {
+      "type": "move",
+      "target": "art-1-surreal",
+      "x": 830,
+      "y": 310
+    },
+    {
+      "type": "layer-intent",
+      "target": "art-1-surreal",
+      "role": "decoration",
+      "allow_crop": true
+    },
+    {
+      "type": "shape",
+      "shape": "rectangle",
+      "name": "art-1-border",
+      "x": 830,
+      "y": 310,
+      "width": 705,
+      "height": 540,
+      "fill": "transparent",
+      "stroke": "#f0c878",
+      "stroke_width": 1
+    },
+    {
+      "type": "layer-intent",
+      "target": "art-1-border",
+      "role": "decoration",
+      "allow_crop": true
+    },
+    {
+      "type": "text",
+      "name": "body",
+      "text": "The modern heyoka archetype\nholds opposites together:\nplayful and perceptive, soft and\nconfrontational, ridiculous and\nunexpectedly revealing.",
+      "x": 65,
+      "y": 330,
+      "size": 43,
+      "font": "serif",
+      "color": "#fff0d0",
+      "line_height": 1.3
+    },
+    {
+      "type": "text",
+      "name": "question",
+      "text": "Can two truths share the same frame?",
+      "x": 65,
+      "y": 665,
+      "size": 31,
+      "font": "bold",
+      "color": "#f0c878",
+      "line_height": 1.35
+    },
+    {
+      "type": "text",
+      "name": "footer",
+      "text": "HEYOKA / A contemporary spiritual interpretation • Companion booklet: Mirrors & Paradox",
+      "x": 65,
+      "y": 940,
+      "size": 19,
+      "font": "sans",
+      "color": "#fff0d0",
+      "line_height": 1.35
+    }
+  ],
+  [
+    {
+      "type": "text",
+      "name": "series",
+      "text": "HEYOKA / MODERN ARCHETYPE / 03",
+      "x": 65,
+      "y": 55,
+      "size": 21,
+      "font": "mono",
+      "color": "#ffb9d6",
+      "line_height": 1.35
+    },
+    {
+      "type": "text",
+      "name": "title",
+      "text": "HUMOR THAT REVEALS",
+      "x": 60,
+      "y": 130,
+      "size": 66,
+      "font": "condensed",
+      "color": "#fff0e1",
+      "line_height": 1.35
+    },
+    {
+      "type": "add",
+      "path": "/workspace/heyoka-modern-studio/assets/heyoka-surreal-sheet.png",
+      "name": "art-2-surreal"
+    },
+    {
+      "type": "crop",
+      "target": "art-2-surreal",
+      "x": 1024,
+      "y": 60,
+      "width": 512,
+      "height": 392
+    },
+    {
+      "type": "resize",
+      "target": "art-2-surreal",
+      "width": 705,
+      "height": 540
+    },
+    {
+      "type": "move",
+      "target": "art-2-surreal",
+      "x": 830,
+      "y": 310
+    },
+    {
+      "type": "layer-intent",
+      "target": "art-2-surreal",
+      "role": "decoration",
+      "allow_crop": true
+    },
+    {
+      "type": "shape",
+      "shape": "rectangle",
+      "name": "art-2-border",
+      "x": 830,
+      "y": 310,
+      "width": 705,
+      "height": 540,
+      "fill": "transparent",
+      "stroke": "#ffb9d6",
+      "stroke_width": 1
+    },
+    {
+      "type": "layer-intent",
+      "target": "art-2-border",
+      "role": "decoration",
+      "allow_crop": true
+    },
+    {
+      "type": "text",
+      "name": "body",
+      "text": "In the modern heyoka image,\nhumor works like a sideways\nentrance: the laugh arrives\nfirst, and recognition follows a\nmoment later.",
+      "x": 65,
+      "y": 330,
+      "size": 43,
+      "font": "serif",
+      "color": "#fff0e1",
+      "line_height": 1.3
+    },
+    {
+      "type": "text",
+      "name": "question",
+      "text": "Did the laugh reveal a pattern—or hide a\ncriticism?",
+      "x": 65,
+      "y": 665,
+      "size": 31,
+      "font": "bold",
+      "color": "#ffb9d6",
+      "line_height": 1.35
+    },
+    {
+      "type": "text",
+      "name": "footer",
+      "text": "HEYOKA / A contemporary spiritual interpretation • Companion booklet: Mirrors & Paradox",
+      "x": 65,
+      "y": 940,
+      "size": 19,
+      "font": "sans",
+      "color": "#fff0e1",
+      "line_height": 1.35
+    }
+  ],
+  [
+    {
+      "type": "text",
+      "name": "series",
+      "text": "HEYOKA / MODERN ARCHETYPE / 04",
+      "x": 65,
+      "y": 55,
+      "size": 21,
+      "font": "mono",
+      "color": "#e2aa91",
+      "line_height": 1.35
+    },
+    {
+      "type": "text",
+      "name": "title",
+      "text": "THE SHADOW MIRROR",
+      "x": 60,
+      "y": 130,
+      "size": 66,
+      "font": "condensed",
+      "color": "#eee3ed",
+      "line_height": 1.35
+    },
+    {
+      "type": "add",
+      "path": "/workspace/heyoka-modern-studio/assets/heyoka-surreal-sheet.png",
+      "name": "art-3-surreal"
+    },
+    {
+      "type": "crop",
+      "target": "art-3-surreal",
+      "x": 0,
+      "y": 572,
+      "width": 512,
+      "height": 392
+    },
+    {
+      "type": "resize",
+      "target": "art-3-surreal",
+      "width": 705,
+      "height": 540
+    },
+    {
+      "type": "move",
+      "target": "art-3-surreal",
+      "x": 830,
+      "y": 310
+    },
+    {
+      "type": "layer-intent",
+      "target": "art-3-surreal",
+      "role": "decoration",
+      "allow_crop": true
+    },
+    {
+      "type": "shape",
+      "shape": "rectangle",
+      "name": "art-3-border",
+      "x": 830,
+      "y": 310,
+      "width": 705,
+      "height": 540,
+      "fill": "transparent",
+      "stroke": "#e2aa91",
+      "stroke_width": 1
+    },
+    {
+      "type": "layer-intent",
+      "target": "art-3-border",
+      "role": "decoration",
+      "allow_crop": true
+    },
+    {
+      "type": "text",
+      "name": "body",
+      "text": "Modern spiritual language\nconnects heyoka with shadow\nwork: noticing qualities we\ndisown, project, or struggle to\nrecognize in ourselves.",
+      "x": 65,
+      "y": 330,
+      "size": 43,
+      "font": "serif",
+      "color": "#eee3ed",
+      "line_height": 1.3
+    },
+    {
+      "type": "text",
+      "name": "question",
+      "text": "Why did this particular moment stay with\nme?",
+      "x": 65,
+      "y": 665,
+      "size": 31,
+      "font": "bold",
+      "color": "#e2aa91",
+      "line_height": 1.35
+    },
+    {
+      "type": "text",
+      "name": "footer",
+      "text": "HEYOKA / A contemporary spiritual interpretation • Companion booklet: Mirrors & Paradox",
+      "x": 65,
+      "y": 940,
+      "size": 19,
+      "font": "sans",
+      "color": "#eee3ed",
+      "line_height": 1.35
+    }
+  ],
+  [
+    {
+      "type": "text",
+      "name": "series",
+      "text": "HEYOKA / MODERN ARCHETYPE / 05",
+      "x": 65,
+      "y": 55,
+      "size": 21,
+      "font": "mono",
+      "color": "#8fe0d2",
+      "line_height": 1.35
+    },
+    {
+      "type": "text",
+      "name": "title",
+      "text": "THE PATTERN BREAKER",
+      "x": 60,
+      "y": 130,
+      "size": 66,
+      "font": "condensed",
+      "color": "#e8f3ff",
+      "line_height": 1.35
+    },
+    {
+      "type": "add",
+      "path": "/workspace/heyoka-modern-studio/assets/heyoka-surreal-sheet.png",
+      "name": "art-4-surreal"
+    },
+    {
+      "type": "crop",
+      "target": "art-4-surreal",
+      "x": 512,
+      "y": 572,
+      "width": 512,
+      "height": 392
+    },
+    {
+      "type": "resize",
+      "target": "art-4-surreal",
+      "width": 705,
+      "height": 540
+    },
+    {
+      "type": "move",
+      "target": "art-4-surreal",
+      "x": 830,
+      "y": 310
+    },
+    {
+      "type": "layer-intent",
+      "target": "art-4-surreal",
+      "role": "decoration",
+      "allow_crop": true
+    },
+    {
+      "type": "shape",
+      "shape": "rectangle",
+      "name": "art-4-border",
+      "x": 830,
+      "y": 310,
+      "width": 705,
+      "height": 540,
+      "fill": "transparent",
+      "stroke": "#8fe0d2",
+      "stroke_width": 1
+    },
+    {
+      "type": "layer-intent",
+      "target": "art-4-border",
+      "role": "decoration",
+      "allow_crop": true
+    },
+    {
+      "type": "text",
+      "name": "body",
+      "text": "The modern heyoka archetype\nis imagined as a pattern\nbreaker: an unexpected\npresence that interrupts the\nusual script of a conversation.",
+      "x": 65,
+      "y": 330,
+      "size": 43,
+      "font": "serif",
+      "color": "#e8f3ff",
+      "line_height": 1.3
+    },
+    {
+      "type": "text",
+      "name": "question",
+      "text": "What became possible when the usual\nresponse stopped?",
+      "x": 65,
+      "y": 665,
+      "size": 31,
+      "font": "bold",
+      "color": "#8fe0d2",
+      "line_height": 1.35
+    },
+    {
+      "type": "text",
+      "name": "footer",
+      "text": "HEYOKA / A contemporary spiritual interpretation • Companion booklet: Mirrors & Paradox",
+      "x": 65,
+      "y": 940,
+      "size": 19,
+      "font": "sans",
+      "color": "#e8f3ff",
+      "line_height": 1.35
+    }
+  ],
+  [
+    {
+      "type": "text",
+      "name": "series",
+      "text": "HEYOKA / MODERN ARCHETYPE / 06",
+      "x": 65,
+      "y": 55,
+      "size": 21,
+      "font": "mono",
+      "color": "#efd09a",
+      "line_height": 1.35
+    },
+    {
+      "type": "text",
+      "name": "title",
+      "text": "THE GROUNDED MIRROR",
+      "x": 60,
+      "y": 130,
+      "size": 66,
+      "font": "condensed",
+      "color": "#f5eddb",
+      "line_height": 1.35
+    },
+    {
+      "type": "add",
+      "path": "/workspace/heyoka-modern-studio/assets/heyoka-surreal-sheet.png",
+      "name": "art-5-surreal"
+    },
+    {
+      "type": "crop",
+      "target": "art-5-surreal",
+      "x": 1024,
+      "y": 572,
+      "width": 512,
+      "height": 392
+    },
+    {
+      "type": "resize",
+      "target": "art-5-surreal",
+      "width": 705,
+      "height": 540
+    },
+    {
+      "type": "move",
+      "target": "art-5-surreal",
+      "x": 830,
+      "y": 310
+    },
+    {
+      "type": "layer-intent",
+      "target": "art-5-surreal",
+      "role": "decoration",
+      "allow_crop": true
+    },
+    {
+      "type": "shape",
+      "shape": "rectangle",
+      "name": "art-5-border",
+      "x": 830,
+      "y": 310,
+      "width": 705,
+      "height": 540,
+      "fill": "transparent",
+      "stroke": "#efd09a",
+      "stroke_width": 1
+    },
+    {
+      "type": "layer-intent",
+      "target": "art-5-border",
+      "role": "decoration",
+      "allow_crop": true
+    },
+    {
+      "type": "text",
+      "name": "body",
+      "text": "A grounded modern heyoka\ninterpretation keeps emotional\nmirroring connected to care:\nthe other person remains a\nperson, not material for a\nlesson.",
+      "x": 65,
+      "y": 330,
+      "size": 43,
+      "font": "serif",
+      "color": "#f5eddb",
+      "line_height": 1.3
+    },
+    {
+      "type": "text",
+      "name": "question",
+      "text": "Can I stay curious without deciding who\nsomeone is?",
+      "x": 65,
+      "y": 665,
+      "size": 31,
+      "font": "bold",
+      "color": "#efd09a",
+      "line_height": 1.35
+    },
+    {
+      "type": "text",
+      "name": "footer",
+      "text": "HEYOKA / A contemporary spiritual interpretation • Companion booklet: Mirrors & Paradox",
+      "x": 65,
+      "y": 940,
+      "size": 19,
+      "font": "sans",
+      "color": "#f5eddb",
+      "line_height": 1.35
+    }
+  ]
+]

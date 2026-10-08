@@ -1,0 +1,113 @@
+{
+  "design": {
+    "passed": true,
+    "errors": 0,
+    "warnings": 0,
+    "info": 1,
+    "by_action": {
+      "fix": [],
+      "review": [],
+      "informational": [
+        0
+      ]
+    },
+    "issues": [
+      {
+        "check": "fonts",
+        "severity": "info",
+        "layers": [],
+        "message": "2 embedded file(s), 1,153,224 bytes, are not used by the current design (fonts registered but unused: bold, italic); the rest are kept so undo can restore them. Compacting (vixl_history action='compact', CLI vixl compact) drops them together with the undo history.",
+        "unused_assets": [
+          {
+            "asset": "fonts/bc25600aa27cd409e1e5b3d86340df3a329bb860fcfbe57a03a95070b229e1b0.ttf",
+            "kind": "font",
+            "bytes": 637472,
+            "reason": "unused-font",
+            "fonts": [
+              "italic"
+            ]
+          },
+          {
+            "asset": "fonts/e83493c945848ecd4a9ad0f6d19164541a0d3e23a9c952304a00a46e00272ac5.ttf",
+            "kind": "font",
+            "bytes": 515752,
+            "reason": "unused-font",
+            "fonts": [
+              "bold"
+            ]
+          }
+        ],
+        "bytes": 1153224,
+        "action": "informational"
+      }
+    ],
+    "checked": {
+      "checks": [
+        "bounds",
+        "overlap",
+        "contrast",
+        "blanks",
+        "fonts"
+      ],
+      "layers_checked": 8,
+      "layers_total": 8,
+      "text_layers": 5
+    }
+  },
+  "readability": {
+    "version": 1,
+    "suite_hash": "5fb5639e37a5587299acfd9214254c0a4e92ac3915b4104bdd69b47028ceb8a7",
+    "passed": true,
+    "status": "passed",
+    "errors": 0,
+    "needs_review": 0,
+    "coverage": {
+      "mode": "still",
+      "times": [
+        null
+      ]
+    },
+    "results": [
+      {
+        "id": "fit-0",
+        "status": "passed",
+        "severity": "error",
+        "time": null,
+        "actual_size": 18,
+        "fits": true
+      },
+      {
+        "id": "fit-1",
+        "status": "passed",
+        "severity": "error",
+        "time": null,
+        "actual_size": 49,
+        "fits": true
+      },
+      {
+        "id": "fit-2",
+        "status": "passed",
+        "severity": "error",
+        "time": null,
+        "actual_size": 33,
+        "fits": true
+      },
+      {
+        "id": "fit-3",
+        "status": "passed",
+        "severity": "error",
+        "time": null,
+        "actual_size": 22,
+        "fits": true
+      },
+      {
+        "id": "fit-4",
+        "status": "passed",
+        "severity": "error",
+        "time": null,
+        "actual_size": 17,
+        "fits": true
+      }
+    ]
+  }
+}
