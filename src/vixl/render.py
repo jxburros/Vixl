@@ -1462,6 +1462,12 @@ def _render_layers(project, layers, bounds, parent, size, background, observe, m
     image = Image.new("RGBA", size, color(background))
 
     def patch_of(layer):
+        b = bounds[layer["id"]]
+        mx, my = ink_margin(layer, bounds, children, memo)
+        if layer.get("styles"):
+            mx, my = (m + 2 * s + 4 for m, s in zip((mx, my), style_margin(layer)))
+        if b[0] - mx >= size[0] or b[1] - my >= size[1] or b[0] + b[2] + mx <= 0 or b[1] + b[3] + my <= 0:
+            return None, (0, 0)  # Nothing it draws (its styles included) reaches the tile.
         patch, origin = layer_patch(project, layer, bounds, size, index, limit=limit)
         if patch is not None and drawn is not None:
             drawn[layer["id"]] = (*origin, origin[0] + patch.width, origin[1] + patch.height)

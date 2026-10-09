@@ -70,9 +70,7 @@ def shape_image(project, layer):
 
     if layer["shape"] in PATH_SHAPES:
         # SVG's nonzero winding preserves holes in compound imported logo paths (and donut rings).
-        import io
         import xml.etree.ElementTree as ET
-        import resvg_py
         from .geometry import shape_path
         path, view = shape_path(layer)
         root = ET.Element("svg", xmlns="http://www.w3.org/2000/svg", width=str(w), height=str(h),

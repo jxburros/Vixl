@@ -63,7 +63,7 @@ Defaults (`vixl.model.Limits`):
 - 256 MiB per archive and its expanded contents.
 - 10,000 operations per submitted batch; 2,000 history revisions (older ones are squashed, not refused).
 - At most 10,000 archive entries.
-- Layer-render cache: 16 entries / 64 MiB, with entries under 32 MiB; decoded-asset cache: 256 MiB.
+- Layer-render cache (layer images and styled patches): 8,192 entries / 384 MiB, with entries under 96 MiB; rasterised-SVG cache (text and path shapes, shared by all documents in a process): 96 MiB; last-render snapshot: one canvas per document view, for canvases up to 40 million pixels; decoded-asset cache: 256 MiB.
 
 Per-operation caps, each refused with `resource_limit` or `invalid_operation` naming the field:
 
@@ -88,6 +88,8 @@ An apply validates and inspects the whole document once (the result's `changes` 
 - A per-layer edit (`move`, `resize`, `rotate`, `scale`, centering …) lays out only that layer and what it depends on: the layers its constraints name, its parent for `canvas.*` constraints inside a group, and a symbol's master. A stack, or a member of one, lays out the whole document as before.
 - Text measurements (ink and line boxes, baselines) are cached by everything they read: the font file and its fallback chain, every layer field except its position, and the size limits. Rich text is measured each time. The document's variables and form values are computed once per inspection, check or layout.
 - The inspection an apply ends with is kept for the next apply, while the state, the embedded assets and the history head are unchanged. Documents with linked layers are always inspected afresh.
+- A render reuses what the previous render of the same document view drew. Each top-level layer has a fingerprint (its resolved fields, its descendants, their boxes and what it is clipped to), and only the box covering the layers that changed, where they drew and where they draw now, is composited again. Documents with scene lighting, adjustment layers, canvas-edge blur on a top-level layer or selection-masked effects read the whole canvas and render in full. `render(region=...)` uses the same path to draw only a region; styled and clipped layers are drawn on a patch around their ink, not a canvas-sized tile.
+- Text and single-colour path shapes are rasterised by content: the same label or outline in another layer, or recoloured, reuses the rasterised glyphs (a one-colour fill is a coverage stencil that is then painted).
 - The overlap check reads each text layer's coverage only inside the box it compares; wrapping measures each line from one shaping, so a 100,000-character word flows in seconds.
 
 On a 4-core machine one `move` on a 4,096-layer document (1,024 of them text) takes well under a second, and the 10,000-operation batch limit finishes in a few seconds. `pytest -m perf` (`tests/test_perf.py`) holds these as time budgets.

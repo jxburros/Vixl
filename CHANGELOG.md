@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+Faster rendering. Every shortcut draws the same pixels as a full render; `tests/test_render_speed.py` compares them.
+
+### Speed
+
+- A render reuses the previous canvas of the same document view and composites again only the area of the layers that changed. Edits, previews and timeline frames that move or restyle a few layers no longer cost the whole canvas. Documents with scene lighting, adjustment layers, canvas-edge blur or selection-masked effects still render in full.
+- Styled and clipped layers are drawn on a patch around their ink instead of a canvas-sized tile, and the styled patch is cached: on a 4000 × 4000 canvas, 80 soft-shadowed shapes render about 8 times faster the first time and redraw almost instantly after a move.
+- `Project.render(region=[x, y, w, h])` and region previews (`vixl_render_preview region=`) draw only the region.
+- Text and single-colour path shapes are rasterised once per outline: copies and recoloured versions reuse the glyphs.
+- Document variables and font lookups are computed once per render, not once per text layer. Outline-free rectangles are filled directly, without supersampling. Cache keys, opacity scaling, layers without effects, and preview and cache PNG encoding are cheaper. A 1,500-layer document renders about 3 times faster from cold.
+
 ## 0.24.0
 
 Authoring reliability and reusable delivery. This release fixes the field-report batch and adds source folders, app-animation packages and joint pose interpolation. The existing offline emoji work is also included.

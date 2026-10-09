@@ -15,8 +15,6 @@ from fontTools.pens.boundsPen import BoundsPen
 from fontTools.pens.svgPathPen import SVGPathPen
 from fontTools.ttLib import TTFont
 from fontTools.unicodedata import script
-from PIL import Image
-import resvg_py
 import uharfbuzz as hb
 
 from .errors import require
