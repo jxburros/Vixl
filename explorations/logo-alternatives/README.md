@@ -33,3 +33,17 @@ turned half a turn, like the original kit.
 | L · Half pixel X | B's dissolving arm on the top-left, mirrored to the bottom-right |
 | M · Reflection | Geometric "vixl" with one mirror line: x is a v plus its reflection, l is an i plus its reflection |
 | N · Water | "vi" on a waterline; with its reflection the pair reads "Xl" |
+
+## Round three: refining M
+
+`build_m.py` (same `PYTHONPATH`) builds these and `output/contact-sheet-m.png`. Any l with a detached
+square on top reads as an i, so every variant keeps the l one solid stroke.
+
+| Concept | Idea |
+| --- | --- |
+| M2 · Only the x | The reflection lives in the x; the l is a plain stem |
+| M7 · Waterline | x and l are cut at one waterline; everything under it is the blue reflection |
+| M8 · Seam | One colour; a hairline cut along the waterline (the l can read as "!") |
+| M9 · Both ways | v reflects down into the x; the i's stem reflects up into the l |
+| M10 · Ghost | Waterline with a faint same-ink reflection |
+| M11 · Lighter | Waterline with thinner strokes and more air |
