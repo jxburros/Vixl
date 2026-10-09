@@ -47,3 +47,18 @@ square on top reads as an i, so every variant keeps the l one solid stroke.
 | M9 · Both ways | v reflects down into the x; the i's stem reflects up into the l |
 | M10 · Ghost | Waterline with a faint same-ink reflection |
 | M11 · Lighter | Waterline with thinner strokes and more air |
+
+## Round four: M7 with a reflection that does more
+
+`build_r.py` builds these and `output/contact-sheet-r.png`. Above the waterline the letters are vectors;
+below it the reflection carries something of Vixl's own. Pixelating the reflection itself was tried and
+dropped: it fills the thin notch between the x's legs, and the x stops reading.
+
+| Concept | Idea |
+| --- | --- |
+| R1 · Pixel tail | The blue reflection runs out into fading pixels under the baseline |
+| R2 · Ripple | The reflection breaks into drifting bands, like water (the l can read as "!") |
+| R3 · Scanlines | The reflection drawn in thinning scanlines |
+| R4 · Shift | The reflection slips sideways, the offset of the original Digital Shift mark |
+| R5 · Symbol + wordmark | The x on its own, large, as the symbol and favicon |
+| R6 · On dark | R1 reversed out of charcoal |

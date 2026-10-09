@@ -208,7 +208,7 @@ def contact_sheet(made, name="contact-sheet", title="Vixl logo alternatives",
                   subtitle="Eight directions, each an editable .vixl document"):
     cols, cw, ch, gap, pad, head = 2, 900, 375, 40, 70, 190
     rows = (len(made) + cols - 1) // cols
-    sheet = Project(pad * 2 + cols * cw + (cols - 1) * gap, head + rows * (ch + 80 + gap) + pad - gap, background="#F3F2EE")
+    sheet = Project(pad * 2 + cols * cw + (cols - 1) * gap, head + rows * (ch + 110 + gap) + pad - gap, background="#F3F2EE")
     bold, body = fonts(sheet, ("Inter Tight", 800), ("Inter", 400))
     sheet.apply([
         {"type": "text", "name": "Title", "text": title, "font": bold, "size": 64, "color": INK, "x": pad, "y": 60},
@@ -217,14 +217,14 @@ def contact_sheet(made, name="contact-sheet", title="Vixl logo alternatives",
     ])
     for i, (slug, label, note, png) in enumerate(made):
         x = pad + (i % cols) * (cw + gap)
-        y = head + 40 + (i // cols) * (ch + 80 + gap)
+        y = head + 40 + (i // cols) * (ch + 110 + gap)
         sheet.apply([
-            rect(f"Card {slug}", x, y, cw, ch + 80, PAPER, radius=24),
+            rect(f"Card {slug}", x, y, cw, ch + 110, PAPER, radius=24),
             {"type": "add", "path": str(png), "name": f"Logo {slug}", "x": x, "y": y + 50},
             {"type": "resize", "target": f"Logo {slug}", "width": cw, "height": ch},
             {"type": "text", "name": f"Label {slug}", "text": label, "font": bold, "size": 28, "color": INK, "x": x + 30, "y": y + 26},
             {"type": "text", "name": f"Note {slug}", "text": note, "font": body, "size": 22, "color": "#6B7080",
-             "x": x + 30, "y": y + ch + 30},
+             "x": x + 30, "y": y + ch + 64},
         ])
     sheet.save(str(OUT / f"{name}.vixl"), overwrite=True)
     sheet.export(str(OUT / f"{name}.png"), overwrite=True)

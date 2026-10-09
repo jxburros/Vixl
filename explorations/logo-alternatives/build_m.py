@@ -26,13 +26,19 @@ def mirrored(points, axis_height):
 
 
 def wordmark(p, *, stroke=52, xh=190, gap=22, space=34, ink=INK, reflection=BLUE, reflection_opacity=1.0,
-             l_mode="reflect", seam=0, horizon=None, l_gap=None, vw=200, xw=190):
+             l_mode="reflect", seam=0, horizon=None, l_gap=None, vw=200, xw=190, reflect=None, bounds=None):
     """Lay out v, i, x, l on one baseline and return the layer names.
 
     l_mode: "plain" (one stem), "split" (one stem cut at the x's waterline), "up" (the i's stem with its
     reflection above it), "reflect" (half-height i over its reflection) or "joined" (an i whose reflection
     closes the dot's gap). "reflect" and "joined" keep a detached cap, so the l reads as a second i.
+    reflect(name, points, x, y, fill, extra) returns the operations that draw a reflection part (the x's
+    lower half and the split l's lower part); by default each is one flat path. `bounds`, if given, has
+    its extent (left, right, top, bottom) included when centring, for parts drawn outside the letters.
     """
+    if reflect is None:
+        def reflect(name, points, x, y, fill, extra):
+            return [path(name, poly(points), x, y, fill, **extra)]
     base = 0
     ops, x = [], 0
     v_arm = arm_for(stroke, vw, 2 * xh)
@@ -49,7 +55,7 @@ def wordmark(p, *, stroke=52, xh=190, gap=22, space=34, ink=INK, reflection=BLUE
     half, _ = x_top(xw, hh, x_arm)
     extra = {"opacity": reflection_opacity} if reflection_opacity < 1 else {}
     ops.append(path("x (v)", poly(half), x, base - xh, ink))
-    ops.append(path("x (reflected v)", poly(mirrored(half, hh)), x, base - hh, reflection, **extra))
+    ops += reflect("x (reflected v)", mirrored(half, hh), x, base - hh, reflection, extra)
     x_left = x
     x += xw + space
 
@@ -59,7 +65,8 @@ def wordmark(p, *, stroke=52, xh=190, gap=22, space=34, ink=INK, reflection=BLUE
     elif l_mode == "split":
         # Cut at the same waterline as the x: everything under it is reflection.
         ops += [rect("l (above)", x, base - full, stroke, full - xh / 2 - seam / 2, ink),
-                rect("l (reflection)", x, axis + seam / 2, stroke, xh / 2 - seam / 2, reflection, **extra)]
+                *reflect("l (reflection)", [(0, 0), (stroke, 0), (stroke, xh / 2 - seam / 2), (0, xh / 2 - seam / 2)],
+                         x, axis + seam / 2, reflection, extra)]
     elif l_mode == "up":
         # The i's stem reflected upwards from the x-height, cropped at the dot's height.
         ops += [rect("l (i stem)", x, base - xh, stroke, xh, ink),
@@ -83,7 +90,8 @@ def wordmark(p, *, stroke=52, xh=190, gap=22, space=34, ink=INK, reflection=BLUE
     if horizon:
         ops.insert(0, rect("Horizon", x_left - space / 2, axis - horizon / 2, x - x_left + space, horizon, SKY))
     # Centre the word on the canvas by optical height (x-height plus the dot).
-    dx, dy = (W - x) / 2, H / 2 + (xh + gap + stroke) / 2
+    left, right, top, bottom = bounds or (0, x, -(xh + gap + stroke), 0)
+    dx, dy = W / 2 - (min(left, 0) + max(right, x)) / 2, H / 2 - (min(top, -(xh + gap + stroke)) + max(bottom, 0)) / 2
     for op in ops:
         op["x"] = round(op["x"] + dx, 1)
         op["y"] = round(op["y"] + dy, 1)
