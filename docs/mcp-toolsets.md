@@ -2,20 +2,20 @@
 
 `vixl mcp` serves `--tools core --schema slim` by default, the recommended configuration for most agents; `--tools compact --schema slim` is the smallest surface when tool-discovery context matters most. Keep one atomic editing tool and load exact operation fields on demand. This avoids splitting an edit across several transaction boundaries, while task-aware `vixl_capabilities` supplies relevant operations and gotchas.
 
-Measured for 0.22.0 (with `vixl_compose` and the new operations) using serialized `tools/list` tool objects (compact JSON, including input schemas; characters, not model tokens):
+Measured for 0.24.0 using serialized `tools/list` tool objects (compact JSON, including input schemas; characters, not model tokens):
 
 | Toolset | Schema | Tools | Characters |
 | --- | --- | ---: | ---: |
-| all | full | 62 | 146,671 |
-| all | slim | 62 | 64,762 |
-| core | full | 51 | 140,050 |
-| core | slim | 51 | 58,141 |
-| compact | full | 13 | 103,562 |
-| compact | slim | 13 | 21,653 |
-| ai | full | 16 | 11,045 |
-| ai | slim | 16 | 11,045 |
+| all | full | 62 | 150,656 |
+| all | slim | 62 | 67,107 |
+| core | full | 51 | 144,035 |
+| core | slim | 51 | 60,486 |
+| compact | full | 13 | 107,674 |
+| compact | slim | 13 | 24,125 |
+| ai | full | 16 | 11,148 |
+| ai | slim | 16 | 11,148 |
 
-`vixl_compose` is in core and compact (about 2,700 characters): it runs create → fonts → layout → style → look → operations → check → preview → save → exports in one atomic call, so a new piece needs one tool call instead of five. Its `operations` are typed as plain objects (fields from `vixl_operation_schema`) so the operation schema is not advertised twice.
+`vixl_compose` is in core and compact (about 3,500 characters): it runs create → fonts → layout → style → look → operations → check → preview → save → exports in one atomic call, so a new piece needs one tool call instead of five. Its `operations` are typed as plain objects (fields from `vixl_operation_schema`) so the operation schema is not advertised twice.
 
 Reproduce by constructing `build_server(Session(workspace=...), tools=MODE, schema=SCHEMA)`, awaiting `list_tools()`, and measuring `json.dumps([t.model_dump(exclude_none=True) for t in tools], separators=(',', ':'))`. Values change as tools evolve; the schema size tests guard against unbounded growth.
 

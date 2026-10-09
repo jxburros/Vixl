@@ -33,6 +33,10 @@ project with appropriate layers or input files. See each guide for complete crea
 | Pixel diff of two files | `diff before.vixl after.png [--out diff.png] [--mode diff\|side-by-side] [--threshold 8] [--max-fraction F] [--overwrite]` | [CI](ci.md#the-same-checks-locally) |
 | Proof page | `workflow proof --request proof.json --workspace .` | [Proof pages](production.md#proof-pages) |
 | Logo package | `workflow logo-package --request logo.json --workspace .` | [Logo packages](production.md#logo-packages) |
+| App animation package | `workflow app-animation-package --request package.json --workspace .` | [App animation packages](animation-authoring.md#app-animation-packages) |
+| Six-second loop | `template new video-tip -o tip.vixl --set title=… --set subtitle=… --set cta=…` (also `video-launch`, `video-event`) | [Short templates](animation-authoring.md#joint-pose-keys-and-short-templates) |
+| Readable source folder | `unpack design.vixl design-source`, `pack design-source design.vixl [--overwrite]` | [Reviewing in Git](#reviewing-editable-projects-in-git) |
+| Emoji catalog and packs | `emoji list --query wave`, `emoji template face --out smile.vixl`, `emoji export --destination discord --emojis 👋 --out pack.zip` | [Emoji](#emoji-024) |
 
 Since 0.19.0, `export --alpha auto|keep|flatten` controls supported image formats.
 See [exporting](exporting.md#image-output-and-alpha) and the
@@ -75,7 +79,7 @@ Set `VIXL_NO_UPDATE=1` to suppress both automatic checks and pending activation 
 
 | Command | Behavior |
 | --- | --- |
-| `new 1920x1080 -o poster.vixl --background '#111111'` | Create a project; refuses existing files |
+| `new 1920x1080 -o poster.vixl --background '#111111'` | Create a project; refuses existing files unless `--overwrite` |
 | `open poster.vixl` | Select an existing project for this directory. A document saved before 0.21 reports, under `upgrade`, the layers that render differently now (effects on rotated/flipped/skewed layers, `temperature`/`tint`, open stroked shapes that were filled white) |
 | `upgrade [poster.vixl] [--report] [--pin-fills]` | Accept the 0.21 rendering for an older document and stop the notice; `--pin-fills` first gives open stroked shapes the explicit white fill they used to render with (one undoable revision); `--report` only lists the affected layers |
 | `save [copy.vixl]` | Save, or save as a new selected project |
@@ -291,7 +295,8 @@ vixl guide a mascot for a coffee brand   # approach, operations, layouts, looks,
 vixl guide operations                    # every operation by purpose, with summaries
 vixl looks                               # the finishing looks
 vixl house [show PURPOSE]                # the house style: craft, tiers, levels; or one purpose's profile
-vixl roll --for slides --variety high --lock tier=bold [--house-style 1]   # a tiered, purpose-weighted direction
+vixl roll --for slides --variety high --lock tier=bold [--house-style 1|2]   # a tiered, purpose-weighted direction;
+                                         # house style 3 by default, 2 replays 0.23 rolls, 1 the 0.20–0.22 rolls
 vixl look LAYER glow [--color C] [--amount 0-1] [--remove]
 vixl radial-repeat LAYER --count 12 [--cx 50%] [--cy 50%] [--sweep 360] [--start-angle D] [--mirror] [--no-group] [--name N]
 vixl layer-intent LAYER --allow-crop     # a deliberate edge crop: checks report it as informational
@@ -311,7 +316,7 @@ vixl sizes [--category print|stationery|social|icons|logos|…] [--search TEXT]
 vixl sizes show NAME [--dpi N] [--landscape|--portrait] [--bleed]
 vixl new [NAME|WxH] [--purpose social|poster|slides|print|logo|icon|favicon|…] [--seed N]
     [--variety low|medium|high|fixed] [--background COLOR] [--no-fonts] [--dpi N] [--landscape|--portrait]
-    [--bleed [AMOUNT]] [-o FILE]   # e.g. new letter --bleed; no size: the purpose's size, else 1080x1080
+    [--bleed [AMOUNT]] [-o FILE] [--overwrite]   # e.g. new letter --bleed; no size: the purpose's size, else 1080x1080
 vixl canvas size NAME [--dpi N] [--landscape] [--bleed] | canvas dpi N
 
 vixl layout list | layout show NAME
@@ -349,7 +354,8 @@ vixl text-animate TEXT PRESET [--unit char|word|line] [--start T] [--duration T]
 vixl marker NAME TIME | marker NAME --delete
 vixl render --time T --out FILE | timeline-sheet --out FILE [--count 8] [--columns N] [--times T…]
 vixl export-timeline --out FILE.gif|.png|.webp|.zip|.mp4|.webm [--format sheet] [--fps N] [--scale F]
-    [--start T] [--end T] [--background C] [--columns N] [--quality N] [--overwrite]
+    [--start T] [--end T] [--background C] [--columns N] [--quality N] [--colors N] [--dither auto|none|ordered|floyd]
+    [--max-bytes N] [--target-bytes N] [--preset chat|web|email] [--poster T] [--overwrite]
 ```
 
 Times are milliseconds or `1.5s`, `250ms`, `50%` or a marker name. Details: [sizes and layouts](sizes-and-layouts.md), [color and print](color-and-print.md), [brushes and animation](brushes-and-animation.md).
@@ -381,7 +387,7 @@ sheet of links.
 
 Workflow request arguments accept a JSON file, `-` for stdin, or an inline JSON object. CLI workspace resources resolve from the current directory. Add `.vixl-session.json` to your repository's `.gitignore`; it records the local current-document session and is not a project source file. Shared MCP servers require an explicit document when closing a session with several documents open.
 
-`vixl -p master.vixl adapt-layout --sizes instagram-post story --directory out --formats png` exports copies at several sizes. It does not overwrite the master. Inspect the adaptation reports and run checks on the copies; proportional adaptation is not a replacement for recomposing long copy into a radically different aspect ratio.
+`vixl -p master.vixl adapt-layout --sizes instagram-post story --directory out --formats png` exports copies at several sizes. It does not overwrite the master. Inspect the adaptation reports and run checks on the copies; proportional adaptation is not a replacement for recomposing long copy into a radically different aspect ratio. For a document built with `layout-apply`, `--options '{"recompose": true}'` (operation field `recompose: true`, for example `vixl apply` with `{"type": "adapt-layout", "size": "story", "recompose": true}`) instead reapplies the stored layout at each size; it rebuilds the generated layers, so manual edits to them and their IDs are replaced. Recomposition is never implicit.
 
 
 ## Reviewing editable projects in Git
@@ -389,6 +395,23 @@ Workflow request arguments accept a JSON file, `-` for stdin, or an inline JSON 
 Run `vixl unpack design.vixl design-source` to create a readable `project.json` with separate content-addressed assets. Commit that folder alongside application code. Edit a text string or layer property in `project.json`, review the ordinary Git diff, then run `vixl pack design-source reviewed.vixl`. Python exposes the same functions in `vixl.project_folder`.
 
 The source format stores only the current state, so undo history, branches and session timestamps do not bury copy edits in noise. Keep the original `.vixl` when history matters. Stable key order, indentation, asset hashes and ZIP timestamps make unchanged serialization deterministic. Packing checks file bounds, checksums, references and the full document schema and refuses missing assets, unsafe paths and symlinks. Linked external files remain external; links are rebased on conversion, so commit the linked source documents alongside the design as well. Packing never replays remote inference.
+
+## Emoji (0.24)
+
+```bash
+vixl emoji list [--query TEXT] [--group G] [--offset N] [--limit N]
+vixl emoji get EMOJI [--out FILE] [--format vixl|svg|png] [--overwrite]   # inspect, or extract the editable source
+vixl emoji template [blank|face|symbol|sheet] --out FILE [--destination images|discord|slack] [--overwrite]
+vixl emoji destinations | emoji requirements [--destination D] [--emojis E…]
+vixl emoji export [--destination images|discord|slack] [--emojis E…] --out FILE [--size N] [--no-sources] [--overwrite]
+vixl -p doc.vixl emoji settings [--mode vixl|font]          # bundled art (default) or the font first
+vixl -p doc.vixl emoji replace EMOJI|:custom_name: SOURCE [--name N] [--license L]
+vixl -p doc.vixl emoji install PACK | emoji reset [--emoji EMOJI]
+```
+
+`vixl emoji` takes `--workspace DIR` (default: the current directory). The document edits are the operations
+`emoji-mode`, `emoji-set` and `emoji-reset`, and every subcommand is also an `emoji-*` workflow action. See
+[emojis](emojis.md).
 
 ## Local desktop capture
 
