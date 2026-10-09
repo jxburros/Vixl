@@ -92,7 +92,7 @@ def font_standalone(cmd, args, project=None):
         p.add_argument("--unfilled", choices=["omit", "blank"],
                        help="Unfilled slots: leave out (default with --set) or show as [Label] blanks")
         p.add_argument("--house-style", type=int, dest="house_style",
-                       help="House-style version to roll with; 1 restores the 0.20-0.22 rolls")
+                       help="House-style version to roll with (default 3); 2 restores the 0.23 rolls, 1 the 0.20-0.22 rolls")
         a = p.parse_args(args)
         canvas = None
         if a.size:

@@ -253,7 +253,7 @@ def place(group, shown):
 def compile_command(cmd, args):
     if cmd not in TYPES:
         return None
-    from .commands import Parser
+    from .commands import Parser, spacing
 
     p = Parser(prog="vixl stack")
     p.add_argument("target", help="the group to stack, or the new group's name with --targets")
@@ -264,7 +264,7 @@ def compile_command(cmd, args):
     p.add_argument("--radius", type=float)
     p.add_argument("--stroke")
     p.add_argument("--stroke-width", type=float)
-    p.add_argument("--gap", type=float)
+    p.add_argument("--gap", type=spacing, help="pixels, or units such as 2u (one unit is half the body size)")
     p.add_argument("--padding", type=float)
     p.add_argument("--width", type=int, help="width of the stack's box in pixels")
     p.add_argument("--height", type=int, help="height of the stack's box in pixels")

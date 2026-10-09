@@ -344,9 +344,9 @@ vixl paint [LAYER] --brush NAME (--points JSON | --path SVG) [--pressure JSON] [
     [--opacity 0–1] [--erase] [--seed N] [--space canvas|layer] [--settings JSON]
 vixl paint-clear [LAYER] [--last N]
 
-vixl easings | timeline | timeline set [--duration T] [--fps N] [--loop N] [--clear]
+vixl easings | timeline | timeline set [--duration T] [--fps N] [--loop N] [--loop-mode seamless|off] [--close] [--clear]
 vixl keyframe LAYER|canvas PROPERTY TIME VALUE [--easing E] | keyframe-remove LAYER [--property P] [--time T]
-vixl animate LAYER PROPERTY --to V [--from V] [--start T] [--end T | --duration T] [--easing E]
+vixl animate LAYER PROPERTY --to V [--from V] [--start T] [--end T | --duration T] [--easing E] [--intent entrance|exit|loop|emphasis]
 vixl animate-preset LAYER|canvas PRESET [--start T] [--duration T] [--easing E] [--amount N] [--distance N] [--to C] [--no-fade]
 vixl text-animate TEXT PRESET [--unit char|word|line] [--start T] [--duration T] [--stagger T|N%] [--easing E]
     [--direction forward|reverse|center|edges|random] [--seed N] [--mode in|out|in-out] [--distance N] [--amount N]
@@ -387,7 +387,7 @@ sheet of links.
 
 Workflow request arguments accept a JSON file, `-` for stdin, or an inline JSON object. CLI workspace resources resolve from the current directory. Add `.vixl-session.json` to your repository's `.gitignore`; it records the local current-document session and is not a project source file. Shared MCP servers require an explicit document when closing a session with several documents open.
 
-`vixl -p master.vixl adapt-layout --sizes instagram-post story --directory out --formats png` exports copies at several sizes. It does not overwrite the master. Inspect the adaptation reports and run checks on the copies; proportional adaptation is not a replacement for recomposing long copy into a radically different aspect ratio. For a document built with `layout-apply`, `--options '{"recompose": true}'` (operation field `recompose: true`, for example `vixl apply` with `{"type": "adapt-layout", "size": "story", "recompose": true}`) instead reapplies the stored layout at each size; it rebuilds the generated layers, so manual edits to them and their IDs are replaced. Recomposition is never implicit.
+`vixl -p master.vixl adapt-layout --sizes instagram-post story --directory out --formats png` exports copies at several sizes. It does not overwrite the master. Inspect the adaptation reports and run checks on the copies; proportional adaptation is not a replacement for recomposing long copy into a radically different aspect ratio. For a document built with `layout-apply`, `--options '{"recompose": true}'` (single size: `vixl adapt-layout --size story --recompose`; operation field `recompose: true`) instead reapplies the stored layout at each size; it rebuilds the generated layers, so manual edits to them and their IDs are replaced. Recomposition is never implicit.
 
 
 ## Reviewing editable projects in Git

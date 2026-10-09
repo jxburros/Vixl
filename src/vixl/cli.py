@@ -42,7 +42,7 @@ Charts:    chart bar|stacked-bar|percent-bar|horizontal-bar|line|area|pie|donut 
 Design:    pen, shape, shape-place, container-place, container-swap, container-reflow, group, ungroup, reparent LAYER… --into GROUP|page, clip, layer-style, distribute, style-define,
            style-apply, swatch, artboard, frame, replace-contents, repeat, repeat-blend,
            adjustment, lut, lookup, comp-save, comp-apply, text-layout, pathfinder, symbol, symbol-instance,
-           stack GROUP [--direction vertical|horizontal] [--gap N] [--align A] [--justify J] [--hide-if-empty] (auto-layout)
+           stack GROUP [--direction vertical|horizontal] [--gap N|2u] [--align A] [--justify J] [--hide-if-empty] (auto-layout)
 Guides:    guide NAME x|y POS | guide NAME --kind line|ray|segment|point|circle|path …, guides,
            grid NAME [--kind columns|baseline|thirds|golden|armature|golden-spiral|polar|isometric|triangular|hex|oblique|perspective],
            place LAYER… --guide NAME [--at F | --start F --end F | --spacing PX | --with GUIDE] [--orient tangent],
@@ -103,8 +103,9 @@ Resources: commands, shapes, sizes [--category print], palette list|show|add|app
 Type:      fonts [--category serif] [--mood M], font show FAMILY, font pairings [--mood M] [--for poster],
            font pairing NAME, font principles, font install FAMILY [--weight 700] [--role heading|body], font pair NAME|random,
            font use NAME --role heading|body, font list|import, --scope workspace (install/pair: brand.json default for new documents)
-Finish:    look LAYER NAME [--color C] [--amount 0-1] [--remove]  (glow, neon, soft-shadow, hard-shadow, outline, gradient, grain,
-           paper, film, duotone, risograph, sketch, watercolor, halftone, hand-made, plush), looks (catalog),
+Finish:    look LAYER NAME [--color C] [--amount 0-1] [--remove]  (clean-flat, subtle-grain, light-paper, glow, neon,
+           soft-shadow, hard-shadow, outline, gradient, soft-halo, grain, paper, film, duotone, risograph, sketch,
+           watercolor, halftone, hand-made, plush), looks (catalog),
            radial-repeat LAYER --count N [--cx 50%] [--cy 50%] [--sweep 360] [--start-angle D] [--mirror] [--name N]
            [--rotation-step D] [--scale-step F] [--opacity-step F] [--rotation-jitter D] [--seed N] [--merge],
            scatter LAYER --source MOTIF… | --preset fur [--count N|--spacing PX] [--placement inside|along] [--merge],
@@ -114,14 +115,15 @@ Finish:    look LAYER NAME [--color C] [--amount 0-1] [--remove]  (glow, neon, s
 Styles:    styles [list [QUERY] | show NAME | apply NAME [--palette] | check [NAME]], style-set NAME… [--options JSON],
            check --checks style [--style NAME…] (premade rules for swiss, brutalist, minimalist, art-deco …)
 Dice:      roll [--apply] [--set title=…] [--for poster] [--mood M] [--size NAME] [--seed N|random] [--lock palette=sage]
-           [--variety low|medium|high] [--unfilled omit|blank] [--house-style 1], house [show PURPOSE] (the house style)
+           [--variety low|medium|high] [--unfilled omit|blank] [--house-style 1|2], house [show PURPOSE] (the house style)
 Color:     color [info] COLOR…, color convert COLOR --to oklch|cmyk|…, color harmony COLOR --scheme triadic,
            color scale COLOR | A B [--count N], color mix A B, color contrast FG BG, color names QUERY,
            palette-generate NAME COLOR [--scheme scale|triadic|…], type-scale --base 16 --ratio golden
 Paint:     brushes, paint-layer [--name N], paint [LAYER] --brush ink --points JSON | --path SVG
            [--size N] [--color C] [--erase], paint-clear [LAYER] [--last N], brush-define NAME --base B
-Motion:    timeline, timeline set --duration 3s --fps 30 [--loop N], keyframe LAYER PROP TIME VALUE,
-           animate LAYER PROP --to V [--from V] [--start T] [--duration T] [--easing E],
+Motion:    timeline, timeline set --duration 3s --fps 30 [--loop N] [--loop-mode seamless|off] [--close],
+           keyframe LAYER PROP TIME VALUE,
+           animate LAYER PROP --to V [--from V] [--start T] [--duration T] [--easing E] [--intent entrance|exit|loop|emphasis],
            animate-preset LAYER PRESET [--start T] [--duration T], marker NAME TIME, easings,
            text-animate TEXT PRESET [--unit char|word|line] [--stagger T] [--direction D] [--mode in|out|in-out],
            export-timeline --out FILE.gif|.webp|.png|.zip|.mp4 [--fps N] [--scale N] [--colors N],
@@ -406,7 +408,7 @@ def dispatch(argv):
                     | {"filter"}
                     | {"workflow"}
                     | set(
-                        "pack unpack new session open upgrade save status inspect describe layers effects manifest dependencies reproduce schema check batch convert render export export-screens export-animation spacing pixels animation info sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert validate preset ai ask generate detect ocr serve view notes import mcp update updates commands shapes palette template guidance font fonts roll providers models color sizes layout layouts brushes organics easings timeline export-timeline timeline-sheet export-icons pages guides links merge styles looks guide diff compose house".split()
+                        "pack unpack new session open upgrade save status inspect describe layers effects manifest dependencies reproduce schema check batch convert render export export-screens export-animation spacing pixels animation info sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert validate preset ai ask generate detect ocr serve view notes import mcp update updates commands shapes palette template guidance font fonts roll providers models color sizes layout layouts brushes organics easings timeline export-timeline timeline-sheet export-icons pages guides links merge styles looks guide diff compose house emoji capabilities".split()
                     )
                 )
             }
@@ -710,8 +712,8 @@ def command_help(cmd, args):
         "roll": "roll [--apply] [--set title=TEXT] [--for poster] [--mood playful] [--size NAME|WxH] [--seed N|random] [--variety low|medium|high|fixed] [--lock palette=sage] [--unfilled omit|blank] [--house-style 1|2]",
         "layout": "layout list | show NAME | preview NAME | apply NAME [--seed N|random] [--set title=TEXT] [--unfilled blank|omit] [--palette NAME] "
         "[--mode inherit|light|dark] [--predictable] [--type-scale golden] [--density airy|balanced|dense] [--align left|center|right] "
-        "[--accent rule|bar|dot|block|outline|none] [--prefix P] [--replace]",
-        "timeline": "timeline (inspect) | timeline set [--duration 3s] [--fps 30] [--loop N] [--clear]",
+        "[--accent rule|bar|dot|block|outline|none] [--gap N|2u] [--prefix P] [--replace]",
+        "timeline": "timeline (inspect) | timeline set [--duration 3s] [--fps 30] [--loop N] [--loop-mode seamless|off] [--close] [--clear]",
         "pages": "pages (list pages and masters of a multi-page document)",
         "styles": "styles [list [QUERY] | show NAME] | styles apply NAME [--palette] | styles check [NAME…]",
         "guide": "guide [BRIEF|GUIDANCE]  (e.g. guide a mascot for a coffee brand; guide operations; guide natural-motion); "

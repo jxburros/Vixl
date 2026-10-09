@@ -1627,7 +1627,7 @@ def schemas(add):
         "Easing of the move from the start key to the end key (the easing is stored on the start key and shapes the "
         "segment leaving it). Names: linear, hold, ease, ease-in, ease-out, ease-in-out, "
         "ease-{in,out,in-out}-{sine,quad,cubic,quart,expo,back}, bounce-out, bounce-in, elastic-out, spring; or "
-        "cubic-bezier(x1,y1,x2,y2) or steps(n). Default linear."
+        "cubic-bezier(x1,y1,x2,y2) or steps(n). Default ease-in-out, or the house easing for intent."
     )
     close = {"type": "boolean", "description": "Close the loop: append each touched track's t=0 value at the timeline end so the track ends where it began. "
              "Entrance/exit presets hold their final value and play back over the same length. Rotation is closed modulo 360. "

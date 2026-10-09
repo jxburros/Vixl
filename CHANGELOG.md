@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.24.1
+
+Command-line parity and documentation for the 0.24 features.
+
+### Added
+
+- CLI flags for fields that needed JSON before: `stack --gap 2u` and `layout apply --gap 1.5u` (pixels or spacing units), `adapt-layout --recompose`, `animate --intent entrance|exit|loop|emphasis`, `timeline set --loop-mode seamless|off --close`, and `frame --frame-shape` / `--outline`.
+
+### Fixed
+
+- Python source distributions exclude repository artwork and development assets to stay below PyPI's 100 MB file limit, while retaining all bundled runtime data.
+- `vixl --help` lists all 20 looks and `roll --house-style 1|2`; the `roll` help names house style 3 as the default and 2 as the 0.23 replay.
+- `vixl commands --json` includes `emoji` and `capabilities`.
+- The `vixl_check` description gives the weight-aware large-text threshold (24 px, or 18.66 px bold), and the `animate` easing description gives the real default (ease-in-out, or the house easing for `intent`).
+- Documentation brought up to 0.24: the CLI, MCP and REST references, the agent skill, the topical guides, the use-case catalog, the re-measured MCP toolset sizes and the development plan.
+
 ## 0.24.0
 
 Authoring reliability and reusable delivery. This release fixes the field-report batch and adds source folders, app-animation packages and joint pose interpolation. The existing offline emoji work is also included.
@@ -16,7 +32,6 @@ Authoring reliability and reusable delivery. This release fixes the field-report
 
 ### Fixed in this issue batch
 
-- Python source distributions exclude repository artwork and development assets to stay below PyPI's 100 MB file limit, while retaining all bundled runtime data.
 - Consistent path overflow and cell-effect previews, safer open-path joins and stroke bounds, trimmed arrowheads, local-pixel marker advisories, explicit scaling pivots, and tight endpoint-line geometry (#434, #435, #438, #447, #448, #457, #458, #485).
 - Width-only text boxes grow after edits and variable substitution; rich text flow keeps line-basis settings, generated labels preserve variable names, and compaction keeps implicit bold/italic font variants (#452, #453, #460, #475, #476, #478).
 - CLI schema filtering, inline/large JSON batches, workspace brand discovery, ambiguous shared-session close, bounded page numbering, multi-size layout adaptation and explicit layout recomposition (#439–#442, #455, #488, #500, #508).
