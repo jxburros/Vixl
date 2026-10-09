@@ -291,6 +291,8 @@ class Slide:
 
         stops = gradient_stops(layer, self.view.state)
         direction = layer.get("direction", "vertical")
+        if direction == "radial" and layer.get("center", [0.5, 0.5]) != [0.5, 0.5]:
+            raise Unsupported("off-centre radial gradient")
         if direction == "radial":
             # A circle path gradient reaches 100% at the ellipse through the box corners, which is
             # sqrt(2) times the inscribed ellipse every other renderer ends at (for any aspect ratio).

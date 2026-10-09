@@ -722,3 +722,11 @@ These are tracked in #388. Fix them whatever the decisions above turn out to be.
 
 Related issues already filed: #283 (white default text), #282 (loose layout leading), #285 (playful rolls stay quiet)
 and #370 (layouts fail their own safe-area check).
+
+## House style 3 (0.24)
+
+Version 3 adds sixteen pairings (4 safe, 8 bold, 4 avant-garde). The new fonts are existing open-font catalog families; display pairs carry small-size/long-copy cautions. New design rolls weight left/right alignment 75/25; data purposes use left/centre 75/25, and marks stay centred. Layout selection excludes arrangements that do not support the rolled alignment. Explicit alignment wins.
+
+Background mixing uses only the amount needed to make the ink contrast target possible, bounded by `craft.background_mix_max`; secondary roles are verified against background/surface. Saturated palettes can remain visibly saturated. New stacks default to two spacing units, chart padding to two label-size units and text-flow gutters to three text-size units. Explicit geometry wins. Stack/layout gaps accept a unit expression such as `2u`; a unit is half the body size, rounded with the existing minimum.
+
+Pin `house_style_version: 2` / `vixl roll --house-style 2` to replay 0.23 rolls. Version 1 remains available. Existing stored geometry is not recomposed implicitly. The version-2 regression fixture covers multiple seeds, purposes and variety levels.

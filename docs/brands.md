@@ -2,9 +2,7 @@
 
 [Documentation home](README.md) · [Getting started](getting-started.md) · [Visual gallery](gallery.md)
 
-Put `brand.json` in the MCP workspace root. CLI/Python document edits look beside the document;
-commands without a document, including template creation and standalone roll, use the current
-directory. With `-p DOC` or a current session document, `roll` previews read that document's canvas
+Put `brand.json` in the MCP workspace root. CLI commands use the current working directory as the workspace. Python uses an explicit workspace when supplied and otherwise resolves resources beside the saved document; commands without a document use the current directory. With `-p DOC` or a current session document, `roll` previews read that document's canvas
 and brand, so a preview picks the same direction as `roll --apply`. Use `create_template(..., workspace=...)` in Python to select it explicitly.
 The file is read on each operation/check, so a policy change takes effect without a restart.
 
@@ -67,3 +65,9 @@ vixl -p poster.vixl roll --apply --for poster --seed 42 \
 MCP uses `vixl_roll(apply=true, slots={...})`. Font downloads and the layout commit together as
 one undo step; failures leave the document unchanged. Layout application returns `unfilled_slots`
 and full layout notes immediately, including for compact responses and dry runs.
+
+## One brand across several documents
+
+Create all documents from the same workspace containing `brand.json`. Pin the pairing (or embed heading/body fonts) and all seven palette roles there. Keep those brand settings unchanged while rolling different layouts: the brand wins over the rolled pairing and palette, while explicit operation fields win over the brand. Use the same `mode`, font and palette overrides on `layout-apply` when an exact campaign direction matters; a shared seed alone is insufficient across different purposes and aspect ratios. `roll` previews report the selected direction before applying it. Check each result with the default checks and `check --checks brand`.
+
+Fresh documents install their selected colour roles as swatches. `palette-apply` updates a canvas that still uses its previous background role, while preserving a deliberately different canvas colour. Primitive and diagram operations can therefore resolve the same palette roles without applying a full layout first.

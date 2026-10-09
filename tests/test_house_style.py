@@ -397,3 +397,44 @@ def test_playful_and_bold_rolls_get_large_headlines():  # #285
         sizes[headline] = p.layer("headline")["size"]
     # The measured headline holds 14 characters a line; a large one holds 8, so it fills the canvas.
     assert sizes["large"] >= sizes["measured"] * 1.5
+
+
+def test_version_two_rolls_replay_before_pool_and_alignment_expansion():
+    import hashlib
+    from pathlib import Path
+    cases = json.loads((Path(__file__).parent / 'fixtures' / 'house-style-v2-rolls.json').read_text())
+    for case in cases:
+        result = roll(**case['options'])
+        assert hashlib.sha256(json.dumps(result, sort_keys=True).encode()).hexdigest() == case['sha256']
+
+
+def test_new_pairings_resolve_catalog_families_and_weights():
+    from vixl.typefaces import find_font
+    added = [p for p in pairings() if p.get('introduced') == 3]
+    assert Counter(p['tier'] for p in added) == {'safe': 4, 'bold': 8, 'avant-garde': 4}
+    for pairing in added:
+        for role in ('heading', 'body'):
+            font = find_font(pairing[role]['family'])
+            assert font and pairing[role]['weight'] in font['weights']
+        assert all(pairing[key] for key in ('relationship', 'mood', 'best_for', 'why', 'caution', 'source'))
+    selected = {roll(seed, variety='high')['pairing']['name'] for seed in range(500)}
+    assert selected & {p['name'] for p in added if p['tier'] == 'avant-garde'}
+
+
+def test_alignment_distribution_and_marks():
+    rows = [roll(seed, purpose='poster') for seed in range(200)]
+    counts = Counter(r['direction']['align'] for r in rows)
+    assert 35 <= counts['right'] <= 65 and counts['left'] + counts['right'] == 200
+    assert {roll(seed, purpose='logo')['direction']['align'] for seed in range(30)} == {'center'}
+    for row in rows:
+        assert row['operation']['align'] == row['direction']['align']
+
+
+def test_saturated_background_only_washes_as_needed():
+    from vixl.colors import contrast_ratio, parse
+    options = {'palette': ['#001122', '#0066aa', '#ee3388', '#33aa88'], 'mode': 'light'}
+    old = assign_roles(options, random.Random(1))
+    new = assign_roles({**options, 'direction': {'house_style_version': 3}}, random.Random(1))
+    assert sum(parse(new['background'])[:3]) < sum(parse(old['background'])[:3]) - 0.4
+    for role in ('ink', 'muted', 'accent-text'):
+        assert contrast_ratio(parse(new[role])[:3], parse(new['background'])[:3]) >= 4.5

@@ -211,21 +211,39 @@ def capture_recipe(project, recipe, bindings):
 
 
 def render_variant(project, spec, variant, directory, prior=None, cancelled=lambda: False):
-    from .render_cache import enable, environment
+    from .render_cache import enable, environment, user_cache_dir
     from .design_render import artboard_project
     from .timeline import export_timeline
 
     base = artboard_project(project.clone(), variant["artboard"], None, None)
     candidate = instantiate(base, variant["values"])
-    enable(candidate, directory / ".cache")
+    enable(candidate, user_cache_dir())
     for action in spec.get("actions", []):
         candidate.apply({"type": "action-apply", "name": action}, detail="compact")
     if spec.get("motion"):
         candidate.apply({"type": "motion-apply", "name": spec["motion"]}, detail="compact")
     if "fps" in spec:
         candidate.apply({"type": "timeline-set", "fps": spec["fps"]}, detail="compact")
+    from .links import fingerprint as link_fingerprint
+    from .text import font_data, font_digest
+
+    request_fingerprint = digest([
+        stable_state(candidate.state), environment(), spec,
+        [font_digest(font_data(candidate, layer)) for layer in candidate.state["layers"] if layer["type"] == "text"],
+        link_fingerprint(candidate),
+    ])
+    # Reuse only a previously approved, byte-verified output with identical inputs,
+    # contracts, repair policy, fonts, links and renderer environment.
+    if prior and prior.get("request_fingerprint") == request_fingerprint and prior.get("status") in ("completed", "reused"):
+        name = prior.get("output", "")
+        if name and Path(name).name == name:
+            output = directory / name
+            if output.is_file() and file_digest(output) == prior.get("sha256"):
+                return {**prior, "status": "reused"}
     suites = spec.get("suites", list(candidate.state.get("suites", {})))
     checks = {name: candidate.check_suite(name) for name in suites}
+    if not suites:
+        checks["design"] = candidate.check(checks=["bounds", "flow"])
     repairs = []
     for action in spec.get("repair_actions", []):
         if all(r["passed"] for r in checks.values()):
@@ -235,6 +253,8 @@ def render_variant(project, spec, variant, directory, prior=None, cancelled=lamb
         require(digest(candidate.state.get("suites", {})) == original_contract, "Repair changed contracts")
         repairs.append(action)
         checks = {name: candidate.check_suite(name) for name in suites}
+        if not suites:
+            checks["design"] = candidate.check(checks=["bounds", "flow"])
     if not all(r["passed"] for r in checks.values()):
         return {**variant, "status": "needs_review", "checks": checks, "repairs": repairs}
     settings = plan({k: v for k, v in spec.items() if k not in ("rows", "matrix", "artboards")})
@@ -302,6 +322,7 @@ def render_variant(project, spec, variant, directory, prior=None, cancelled=lamb
         "status": "completed",
         "output": filename,
         "fingerprint": fingerprint,
+        "request_fingerprint": request_fingerprint,
         "sha256": checksum,
         "checks": checks,
         "repairs": repairs,

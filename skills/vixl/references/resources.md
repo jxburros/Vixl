@@ -131,3 +131,8 @@ MCP exposes `vixl_resources_list`, `vixl_resource_get`, `vixl_resource_add`, `vi
 ## Sizes, layouts and new guidance (0.13)
 
 Named sizes (`vixl sizes`, `vixl_sizes_list`) and principled layouts (`vixl layout list`, `vixl_layouts_list`) complement palettes and templates: templates reproduce a fixed design, layouts generate a structured, seed-varied design for the actual canvas. Built-in guidance adds `typography`, `color`, `layout`, `accessibility`, `print`, `icon`, `motion`, `brush` and `image-rights` to `overall`, `minimal`, `editorial`, `playful`, `logo` and `pixel-art`; store one in the document with `{"type":"guidance","name":"print","style":"print"}` so planners and later edits follow it. See [design-system.md](design-system.md).
+
+
+### Field-report corrections
+
+Use one workspace brand.json with pinned fonts/pairing and all seven palette roles across independently rolled documents. A shared seed alone does not establish a shared brand. Workspace guidance resolves through the same resource catalog as palettes/templates.

@@ -329,3 +329,20 @@ vixl ai select-subject --provider vision
 ```
 
 Remove and Content-Aware Fill call the existing provider's inpainting capability, retain generation provenance, and insert an editable layer masked to the selection. Select Subject calls segmentation and stores the returned mask as the active selection. They use configured providers and make no claim of an offline content-aware algorithm. Provider errors and invalid responses leave the document unchanged. Contract tests use fixtures; live service/model quality requires configured credentials.
+
+## Pen edits, markers and radial gradients
+
+Edit a pen in place with `{"type":"pen","target":"vine","points":[[10,10],[90,40]],"smooth":true}` (or `nodes` with Bézier handles). The target keeps its ID, effects and timeline references. Omit width and height to refit an auto-fitted pen in its original coordinate frame. A path shape's width/height define its coordinate frame, not a clipping mask: fill and stroke may extend beyond it, consistently for integer and fractional dimensions.
+
+`marker_size` is the arrowhead's length and width in local pixels, not a stroke-width multiplier. Values of 1–5 are tiny and may be hidden within a thicker shaft; start with at least twice `stroke_width`. Markers follow the revealed endpoint when a stroke is trimmed.
+
+A radial gradient accepts `center: [x,y]` in fractions of its box, default `[0.5,0.5]`. For example `[0.25,0.3]` moves the highlight toward the upper left. PNG, SVG and PDF use that centre; PPTX uses an appearance-preserving fallback for off-centre radial gradients.
+
+
+Endpoint lines (`shape: line`, `from: [x,y]`, `to: [x,y]`) are stored as tightly bounded editable paths at those local coordinates plus any supplied x/y offset. The box no longer defaults to the canvas. For long paths authored in canvas coordinates, use `pen points=...` without width/height to obtain a fitted frame; a raw `shape path` preserves its authored coordinate frame, which can still be unnecessarily large for a small distant motif.
+
+## Irregular image frames and paint simulation
+
+`frame` accepts `frame_shape` (rectangle, ellipse, star, hexagon or heart), or an `outline` containing a closed SVG path in frame-local pixels. The silhouette becomes an embedded raster mask; replacing image contents retains it. Use a transparent canvas for die-cut or irregularly framed artwork. Files still have rectangular pixel dimensions, with transparency outside the silhouette; PNG/WebP and alpha-capable exports preserve it. SVG strict mode reports the mask fallback.
+
+Paint supports independent `settings.drip` (0–4, maximum trail length in brush sizes), `settings.relief` (0–1), and `settings.light_angle` (degrees, default -45). Use jitter/size_jitter for irregular lines and wet_edges for pooling. These are deterministic visual simulations, not a fluid solver, and can be enabled separately. Drips run downward in local paint-layer coordinates.

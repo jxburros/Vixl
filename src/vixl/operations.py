@@ -621,7 +621,7 @@ def execute(project, op):
                 color(resolve_color(op.get(key, default), project.state))
                 layer[key] = op.get(key, default)
             layer["direction"] = op.get("direction", "vertical")
-            layer.update({k: deepcopy(op[k]) for k in ("stops", "angle", "falloff") if k in op})
+            layer.update({k: deepcopy(op[k]) for k in ("stops", "angle", "falloff", "center") if k in op})
         else:
             from .craft import text_defaults
 
@@ -794,6 +794,12 @@ def execute(project, op):
 
             report(project, layer, dropped, override_warnings(layer, op))
         box = layer.get("text_layout") or {}
+        if "width" in box and "height" not in box:
+            from .checks import boxed_text_need
+
+            need = boxed_text_need(project, layer)
+            if need:
+                layer["height"] = max(1, need[1])
         if "width" not in box and "height" not in box:
             # A text-layout box keeps its wrapping dimensions; plain text re-fits its content.
             layer["width"], layer["height"], _ = text_metrics(project, layer)

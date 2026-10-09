@@ -47,7 +47,7 @@ DENSITY_SPACING = {"airy": 1.25, "balanced": 1.0, "dense": 0.75}
 ACCENTS = ("rule", "bar", "dot", "block", "outline", "none")
 # A stored design direction: these keys are layout-apply fields; the rest (except the skipped ones) are
 # its ``direction`` (margin, corner, look, style, motif, background treatment ...).
-DIRECTION_OPTIONS = ("palette", "mode", "type_scale", "density", "accent")
+DIRECTION_OPTIONS = ("palette", "mode", "type_scale", "density", "accent", "align")
 DIRECTION_SKIP = ("layout", "layout_seed", "pairing", *DIRECTION_OPTIONS)
 PALETTE_POOL = tuple(SAFE_PALETTES)
 
@@ -109,7 +109,11 @@ class Builder:
             # at the width the legibility check uses for this canvas.
             named = c.get("size")
             thumbnail = 600 if named in ("og-image", "x-post") or (not named and self.W / self.H > 1.6) else 320
-            minimum = math.ceil(self.W / thumbnail * 10)
+            from .house_style import purpose_for, rule
+            purpose = project.state.get("design_defaults", {}).get("purpose") or purpose_for(c.get("size"))
+            minimum = math.ceil(max(self.W / thumbnail * 10,
+                                    short * rule("minimum_text")["minor_share_of_short_side"]
+                                    if purpose in ("social", "poster") else 0))
             self.sizes = {role: max(minimum, value) for role, value in self.sizes.items()}
         # The spacing unit: half the body size (craft spacing), scaled by density.
         self.unit = spacing_unit(base * DENSITY_SPACING[density])
@@ -168,9 +172,11 @@ class Builder:
         return op
 
     def measure(self, text, size, width=None, spacing=0, align="left", font=None):
-        from .render import text_metrics
+        from .render import text_metrics, document_variables
+        from .variables import substitute
         from .text import UnsupportedText, font_data, measure
 
+        text = substitute(text, document_variables(self.project))
         layer = {"text": text, "size": size, "spacing": spacing, "align": align, "font": self.project.state.get("fonts", {}).get(font, font or "DejaVuSans.ttf")}
         try:
             _, box = measure(font_data(self.project, layer), text, size, spacing, align, width)
@@ -195,8 +201,21 @@ class Builder:
         def spacing_for(s):
             return self.leading(s, multiple, font)
 
+        if role == "body":
+            from .text import advance, font_data
+
+            sample = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+            data = font_data(self.project, {"font": self.project.state.get("fonts", {}).get(font, font or "DejaVuSans.ttf")})
+            width = min(width, max(1, int(advance(data, sample, size) / len(sample) * house_style.rule("line_length")["max"])))
         if heavy and isinstance(role, str):
             size = self.measure_cap(role, content, size, width)
+        if heavy:
+            from .render import document_variables
+            from .variables import substitute
+
+            words = substitute(content, document_variables(self.project)).split()
+            while size > 6 and any(self.measure(word, size, font=font)[0] > width for word in words):
+                size -= 1
         if heavy and max_height is None:
             max_height = self.ch * 0.55
 
@@ -380,6 +399,9 @@ class Builder:
     def stack(self, entries, x, y, width, gap=None, align=None):
         """Lay out (role, key|text, name) entries top-down with rhythm gaps; returns bottom y."""
         gap = gap if gap is not None else self.unit * 3
+        if "gap" in self.op:
+            from .craft import resolve_space
+            gap = resolve_space(self.op["gap"], self.base)
         for role, text, name in entries:
             if not text:
                 continue
@@ -395,6 +417,9 @@ class Builder:
 
     def stack_height(self, entries, width, gap=None):
         gap = gap if gap is not None else self.unit * 3
+        if "gap" in self.op:
+            from .craft import resolve_space
+            gap = resolve_space(self.op["gap"], self.base)
         total = 0
         for role, text, _ in entries:
             if not text:
@@ -417,7 +442,15 @@ class Builder:
 
     def label_text(self):
         label = self.get("label")
-        return label.upper() if label and self.op.get("uppercase_labels", True) else label
+        if not label or not self.op.get("uppercase_labels", True):
+            return label
+        from .variables import PLACEHOLDER
+
+        parts, cursor = [], 0
+        for match in PLACEHOLDER.finditer(label):
+            parts.extend((label[cursor:match.start()].upper(), match[0][:-1] + "|upper}"))
+            cursor = match.end()
+        return "".join(parts) + label[cursor:].upper()
 
 
 ROLES = ("background", "surface", "ink", "muted", "accent", "accent-text", "on-accent")
@@ -482,9 +515,24 @@ def assign_roles(op, rng):
         # order, so it is derived from the background hue.
         ink = mix(background, extreme, 0.9)
     else:
-        if mode == "light" and relative_luminance(background[:3]) < 0.6:
+        version = op.get("_house_style_version", op.get("direction", {}).get("house_style_version", 2))
+        if version >= 3:
+            # Preserve saturated fields when the strongest available ink can meet the target.
+            # Binary search only the necessary wash, bounded by the house-style data.
+            target = house_style.rule("contrast")["ink_target"]
+            if contrast_ratio(extreme[:3], background[:3]) < target:
+                low, high = 0.0, house_style.rule("background_mix_max")[mode]
+                wash = white if mode == "light" else black
+                for _ in range(20):
+                    middle = (low + high) / 2
+                    if contrast_ratio(extreme[:3], mix(background, wash, middle)[:3]) >= target:
+                        high = middle
+                    else:
+                        low = middle
+                background = mix(background, wash, high)
+        elif mode == "light" and relative_luminance(background[:3]) < 0.6:
             background = mix(background, white, 0.82)
-        if mode == "dark" and relative_luminance(background[:3]) > 0.08:
+        elif mode == "dark" and relative_luminance(background[:3]) > 0.08:
             background = mix(background, black, 0.75)
     if given_background is not None and parse(given_background)[3] > 0:
         background = parse(given_background)[:3] + (1.0,)
@@ -1592,7 +1640,7 @@ def _safe_composition(b):
         return _two_columns(b, entries, vertical, device)
     y = b.T + max(0, b.ch - height) * vertical
     if device == "rule":
-        b.rect("quiet-rule", b.L, b.T, b.cw, max(2, b.unit / 4), "@accent")
+        b.rect("quiet-rule", b.L, max(0, b.T - b.unit - max(2, b.unit / 4)), b.cw, max(2, b.unit / 4), "@accent", decoration=True)
     elif device == "rail":
         b.rect("quiet-rail", b.L / 2, b.T, max(2, b.unit / 4), b.ch, "@accent", decoration=True)
     elif device == "panel":
@@ -1611,7 +1659,7 @@ def _two_columns(b, entries, vertical, device):
     left_w = (b.cw - gap) * 0.56
     right_w = b.cw - gap - left_w
     if device == "rule":
-        b.rect("quiet-rule", b.L, b.T, b.cw, max(2, b.unit / 4), "@accent")
+        b.rect("quiet-rule", b.L, max(0, b.T - b.unit - max(2, b.unit / 4)), b.cw, max(2, b.unit / 4), "@accent", decoration=True)
     elif device == "rail":
         b.rect("quiet-rail", b.L / 2, b.T, max(2, b.unit / 4), b.ch, "@accent", decoration=True)
     elif device == "panel":
@@ -1867,6 +1915,7 @@ def execute_layout(project, op):
     fonts = {"heading": builder.display_font, "body": builder.font} if builder.font or builder.display_font else None
     state["layout"] = {
         "name": name,
+        "recipe": {key: deepcopy(value) for key, value in op.items() if not key.startswith("_")},
         "seed": seed,
         "palette": builder.colors["_palette"],
         "mode": builder.colors["_mode"],
@@ -1986,6 +2035,12 @@ def _build(project, layout, op, seed, fit):
         execute(project, {"type": "swatch", "name": role, "color": builder.colors[role]})
     execute(project, {"type": "type-scale", "base": round(builder.base, 2), "ratio": builder.ratio})
     layout["build"](builder)
+    column_ops = [item for item in builder.ops if item["type"] == "grid" and item.get("kind", "columns") == "columns"]
+    columns = column_ops[0].get("columns", 1) if column_ops else (2 if "column" in op["name"] or "split" in op["name"] else 1)
+    builder.add({"type": "grid", "name": builder.name("layout-columns"), "kind": "columns",
+                 "columns": columns, "margin": builder.m, "gutter": builder.unit * 2 if columns > 1 else 0})
+    builder.add({"type": "grid", "name": builder.name("layout-baseline"), "kind": "baseline",
+                 "spacing": max(builder.H / 500, builder.base * LINE_HEIGHT["body"]), "offset": builder.m})
     existing = {layer["name"] for layer in state["layers"]}
     clashes = sorted(set(builder.created) & existing)
     require(not clashes, f"Layer names already exist ({', '.join(clashes[:5])}); pass prefix or replace=true", "name_conflict")
@@ -2029,7 +2084,7 @@ def _overflows(project, builder):
             continue
         if layer["type"] == "text" or layer["name"].endswith("-button"):
             x, y, w, h = bounds[layer["id"]]
-            if x < left - 1 or y < top - 1 or x + w > c["width"] - right + 1 or y + h > c["height"] - bottom + 1:
+            if x < left or y < top or x + w > c["width"] - right or y + h > c["height"] - bottom:
                 return True
     return False
 
@@ -2063,6 +2118,8 @@ def schemas(add):
             **{key: S for key in ("mode", "density", "align", "accent")},
             "type_scale": {"type": ["string", "number"]},
             "base_size": N,
+            "gap": {"oneOf": [{"type": "number", "minimum": 0}, {"type": "string", "pattern": r"^\d+(?:\.\d+)?u$"}],
+                    "description": "Override content-stack gaps in pixels or shared spacing units, for example 2u."},
             "mark": S,
             "font": S,
             "display_font": S,

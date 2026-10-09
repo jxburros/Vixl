@@ -112,6 +112,8 @@ def _operation_schema():
             "start": S,
             "end": S,
             "direction": enum("horizontal", "vertical", "radial", "angled"),
+            "center": {"type": "array", "items": {"type": "number", "minimum": 0, "maximum": 1},
+                       "minItems": 2, "maxItems": 2, "description": "Radial centre [x,y] as fractions of the layer; default [0.5,0.5]."},
             "stops": {"type": "array", "items": {"type": "object"}},
             "angle": N,
             "falloff": enum("linear", "smooth", "ease", "quadratic", "gaussian"),

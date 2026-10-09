@@ -364,12 +364,21 @@ def seam_value_findings(project, timeline=None):
     """Loop-seam findings from the track values: a track that ends elsewhere than it starts, or
     changes speed there."""
     from .kinetic import seam_findings as text_seams
-    from .timeline import animated, is_looping, seam_findings
+    from .timeline import animated, is_looping, seam_findings, visible_content, project_at
 
     timeline = timeline or project.state.get("timeline")
     if not animated(timeline) or not is_looping(timeline):
         return []
     result = []
+    endpoints = [project_at(project, time) for time in (0, timeline["duration"])]
+    visible = set().union(*(visible_content(frame) for frame in endpoints))
+    for frame in endpoints:
+        by_id = {item["id"]: item for item in frame.state["layers"]}
+        for ident in list(visible):
+            item = by_id.get(ident, {})
+            while item.get("parent") in by_id:
+                visible.add(item["parent"])
+                item = by_id[item["parent"]]
     for layer in text_seams(project, timeline):
         result.append({"check": "motion", "severity": "warning", "layer": layer["id"], "code": "loop-seam",
                        "message": f"Loop seam: the text animation on {layer['name']!r} poses its letters differently at the loop end "
@@ -377,6 +386,8 @@ def seam_value_findings(project, timeline=None):
                                   "wave whose period divides the timeline)."})
     for item in seam_findings(project, timeline):
         track = item["track"]
+        if track["target"] != "canvas" and track["target"] not in visible:
+            continue
         name = f"{track['property']} on {layer_label(project, track['target'])}"
         if item["kind"] == "value":
             first, last = seam_value(track["property"], item["first"]), seam_value(track["property"], item["last"])

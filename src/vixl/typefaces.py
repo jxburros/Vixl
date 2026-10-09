@@ -209,6 +209,11 @@ def roll(seed=None, *, purpose=None, mood=None, canvas=None, locks=None, variety
     tuning = house_style.moods()
     wanted = {slug(m) for m in ([mood] if isinstance(mood, str) else mood or [])}
     tier = locks.get("tier") or pick_tier(rng, variety, wanted)
+    alignment = None
+    if version >= 3:
+        category = "mark" if goal == "logo" else "data" if goal in ("diagram", "form") else "design"
+        weights = house_style.data()["taste"]["alignment"][category]
+        alignment = locks.get("align") or random.Random(seed ^ 0xA11).choices(list(weights), weights=list(weights.values()))[0]
 
     def strength(meta):
         return tuning["match_weight"] if wanted & {slug(m) for m in meta.get("mood", [])} else 1
@@ -219,7 +224,7 @@ def roll(seed=None, *, purpose=None, mood=None, canvas=None, locks=None, variety
     if "pairing" in locks:
         pairing = get_pairing(locks.pop("pairing"))
     else:
-        by_name = {item["name"]: item for item in pairings()}
+        by_name = {item["name"]: item for item in pairings() if item.get("introduced", 1) <= version}
         fits = (lambda name: contrast_of(by_name[name]) == contrast) if contrast else (lambda name: True)
         pool = tier_pool("pairings", tier, goal, lambda name: name in by_name and fits(name))
         require(pool, "No rollable pairing has the requested weight contrast", field="locks")
@@ -242,6 +247,8 @@ def roll(seed=None, *, purpose=None, mood=None, canvas=None, locks=None, variety
     layout_meta = house_style.entries("layouts")
 
     def layout_fits(name):
+        if alignment and goal != "logo" and not LAYOUTS[name].get("safe_composition") and alignment not in LAYOUTS[name].get("aligns", ["left"]):
+            return False
         meta = layout_meta.get(name, {})
         purposes = meta.get("purposes", [])
         if goal and goal not in purposes:
@@ -255,6 +262,10 @@ def roll(seed=None, *, purpose=None, mood=None, canvas=None, locks=None, variety
         return not content or places(name, shape or "square", tuple(sorted(content)))
 
     layouts = tier_pool("layouts", tier, goal, lambda name: name in LAYOUTS and layout_fits(name))
+    if version >= 3 and recent and layouts == [recent[-1].get("layout")]:
+        alternatives = tier_pool("layouts", tier, goal, lambda name: name in LAYOUTS
+                                 and name != recent[-1].get("layout") and layout_fits(name))
+        layouts = alternatives or layouts
     require(layouts or "layout" in locks,
             f"No rollable layout{' for ' + goal if goal else ''} places all of {', '.join(content or ())} on this canvas; "
             "lock a layout (locks={layout: NAME}) or supply other slots", field="slots")
@@ -279,6 +290,8 @@ def roll(seed=None, *, purpose=None, mood=None, canvas=None, locks=None, variety
     # Bold and expressive rolls set the headline large; quiet ones keep the measured headline (#285).
     expressive = bool(wanted & {slug(m) for m in tuning["expressive"]})
     direction["headline"] = "large" if direction["tier"] != "safe" or expressive else "measured"
+    if version >= 3:
+        direction.update(align=alignment, house_style_version=version)
     unknown = set(locks) - set(direction)
     require(not unknown, f"Unknown lock(s) {sorted(unknown)}; lockable: {', '.join(direction)}", field="locks")
     direction.update(locks)
@@ -317,6 +330,8 @@ def roll(seed=None, *, purpose=None, mood=None, canvas=None, locks=None, variety
     }
     if "container" in locks:
         operation["direction"]["place_container"] = True
+    if version >= 3:
+        operation["align"] = direction["align"]
     tiers = {"pairing": house_style.tier_of("pairings", direction["pairing"], goal),
              "palette": house_style.tier_of("palettes", direction["palette"], goal),
              "layout": house_style.tier_of("layouts", direction["layout"], goal),

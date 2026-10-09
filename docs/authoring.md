@@ -99,3 +99,9 @@ frame counts to stderr, leaving stdout suitable for JSON processing.
 `vixl --runtime-info --json` shows the active version, module, Python executable, and managed
 installation root. Version/help and `VIXL_NO_UPDATE=1` launches read installation metadata
 without obtaining a write lock or activating pending updates.
+
+## Reading check results
+
+An explicit `checks` list **replaces** the default list. `check(checks=["deck"])` checks the deck family only. Run `check()` and then the specialised check, or combine them explicitly: `check(checks=[*vixl.checks.CHECKS, "deck"])`. A report is passed only when it has no errors and no findings whose action is `fix`; review findings remain visible without automatically failing it.
+
+A footer that intentionally lives outside the safe area can use `layer-intent target=footer allow_crop=true`. This records the exception and reports the safe-area crossing as informational. It does not exempt tiny text, low contrast or a wholly off-canvas ordinary layer. Wrapped copies in a generated pattern tile are intentional, including copies wholly beyond the canvas. Unmarked content still receives bounds findings.

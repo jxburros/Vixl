@@ -124,7 +124,7 @@ def execute(project, op):
 def edit_gradient(layer, op):
     """Colours and direction of an existing gradient. ``start``/``end`` recolour the first and last
     stop of a multi-stop gradient, so one call recolours it however it was built."""
-    for key in ("start", "end", "direction", "angle", "falloff"):
+    for key in ("start", "end", "direction", "angle", "falloff", "center"):
         if key in op:
             layer[key] = op[key]
     if "stops" in op:

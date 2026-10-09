@@ -11,7 +11,7 @@ Create, inspect, edit, measure and export layered designs through MCP, CLI, Pyth
 No graphical display is required. Text, shapes, masks, effects, variables, constraints,
 pages and history stay editable in a portable `.vixl` master.
 
-Current tagged release: **0.23.0**. See the [changelog](CHANGELOG.md#0230) for release notes.
+Current tagged release: **0.24.0**. See the [changelog](CHANGELOG.md#0240) for release notes.
 Run `vixl --version` to check your runtime;
 record the Git commit when using a source checkout.
 
@@ -95,7 +95,7 @@ vixl mcp --workspace . --tools core --schema slim
 For a pinned tagged runtime with uv:
 
 ```bash
-uvx --from https://github.com/jxburros/Vixl/archive/refs/tags/v0.23.0.tar.gz vixl mcp --workspace . --tools core --schema slim
+uvx --from https://github.com/jxburros/Vixl/archive/refs/tags/v0.24.0.tar.gz vixl mcp --workspace . --tools core --schema slim
 ```
 
 The workspace must exist. Use `--tools compact --schema slim` for consolidated workflow

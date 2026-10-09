@@ -166,7 +166,7 @@ def test_snap_and_near_miss_checks():
     assert "'box'" in messages and "off guide 'g-x1'" in messages
     assert "1.5° off guide 'slope'" in messages
     assert any(issue["check"] == "alignment" and set(issue["layers"]) == {"a", "b"} for issue in report["issues"])
-    assert report["passed"]  # near misses are warnings
+    assert not report["passed"]  # actionable near misses still require a fix
     p.apply([{"type": "snap", "targets": ["box", "bar"]}])
     assert p.layer("bar")["rotation"] == pytest.approx(330)
     remaining = p.check(checks=["guides"])["issues"]

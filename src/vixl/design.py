@@ -50,6 +50,15 @@ def execute_design(project, op):
     kind = op["type"]
     state = project.state
     if kind == "shape":
+        if op.get("shape") == "line" and ("from" in op or "to" in op):
+            require("from" in op and "to" in op, "A line needs both from and to endpoints")
+            start, end = op["from"], op["to"]
+            left, top = min(start[0], end[0]), min(start[1], end[1])
+            width, height = max(1, abs(end[0] - start[0])), max(1, abs(end[1] - start[1]))
+            fields = {key: value for key, value in op.items() if key not in ("from", "to", "width", "height")}
+            op = {**fields, "shape": "path", "x": op.get("x", 0) + left, "y": op.get("y", 0) + top,
+                  "width": width, "height": height,
+                  "path": f"M{start[0]-left:g} {start[1]-top:g} L{end[0]-left:g} {end[1]-top:g}"}
         c = state["canvas"]
         fields = {
             k: deepcopy(v) for k, v in op.items() if k not in ("type", "target", "name", "width", "height")
@@ -240,6 +249,20 @@ def execute_design(project, op):
                 height=op.get("height", layer["height"]),
                 fit=op.get("fit", "fill"),
             )
+            if op.get("outline") or op.get("frame_shape", "rectangle") != "rectangle":
+                from .project import Project
+                from .assets import add_image
+                import math
+                mask = Project(math.ceil(layer["width"]), math.ceil(layer["height"]), limits=project.limits)
+                shape = {"type": "shape", "shape": op.get("frame_shape", "rectangle"),
+                         "width": layer["width"], "height": layer["height"], "fill": "white", "stroke_width": 0}
+                if op.get("outline"):
+                    from .geometry import path_polygons
+                    polygons = path_polygons(op["outline"])
+                    require(polygons and all(len(points) >= 3 for points in polygons), "Frame outline needs a closed area")
+                    shape.update(shape="path", path=op["outline"])
+                mask.apply(shape)
+                layer["mask"] = {"asset": add_image(project, mask.render().getchannel("A"), "masks"), "enabled": True}
         else:
             layer = project.layer(op.get("target"))
             require(layer["type"] in ("raster", "frame"), "Replace Contents requires an image layer")
@@ -558,6 +581,10 @@ def validate_gradient(data, state):
         data.get("direction", "vertical") in ("vertical", "horizontal", "radial", "angled"),
         "Invalid gradient direction",
     )
+    if "center" in data:
+        require(isinstance(data["center"], (list, tuple)) and len(data["center"]) == 2, "center must be [x,y] fractions")
+        for value in data["center"]:
+            finite(value, "center", 0, 1)
     finite(data.get("angle", 0), "angle", -36000, 36000)
     require(data.get("falloff", "linear") in GRADIENT_FALLOFFS,
             f"falloff must be one of {', '.join(GRADIENT_FALLOFFS)}", field="falloff", allowed=list(GRADIENT_FALLOFFS))
@@ -578,7 +605,7 @@ def validate_style(name, settings, state):
         "outer-glow": {"color", "blur"},
         "stroke": {"color", "width"},
         "color-overlay": {"color"},
-        "gradient-overlay": {"start", "end", "stops", "direction", "angle", "falloff"},
+        "gradient-overlay": {"start", "end", "stops", "direction", "angle", "falloff", "center"},
     }[name] | common
     unknown = sorted(set(settings) - allowed)
     require(

@@ -163,7 +163,8 @@ class PageBuilder:
         space = Name(self.paint.space)
         direction = layer.get("direction", "vertical")
         if direction == "radial":
-            shading = {"ShadingType": 3, "ColorSpace": space, "Coords": [0.5, 0.5, 0, 0.5, 0.5, 0.5],
+            cx, cy = layer.get("center", (0.5, 0.5))
+            shading = {"ShadingType": 3, "ColorSpace": space, "Coords": [cx, cy, 0, cx, cy, 0.5],
                        "Function": function, "Extend": [True, True]}
         else:
             if direction == "horizontal":

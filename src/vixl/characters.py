@@ -24,9 +24,12 @@ def schemas(add):
     add("character-save", {"name": S}, ["name"])
     add("character-load", {"name": S, "template": S, "source": S, "x": N, "y": N, "scale": N, "colors": obj, "outfit": obj}, ["name"], anyOf=[{"required": ["template"]}, {"required": ["source"]}])
     add("character-rig", {"bones": obj}, ["bones"])
-    add("character-pose", {"angles": {"type": "object", "additionalProperties": N}}, ["angles"])
+    from .timeline import easing_schema
+    add("character-pose", {"angles": {"type": "object", "additionalProperties": N},
+                           "time": {**time, "description": "Optional pose key time; joint angles interpolate and the rig is solved on every frame."},
+                           "easing": easing_schema("Interpolation from this pose key to the next; default ease-in-out.")}, ["angles"])
     add("character-ik", {"chain": {"type": "array", "items": S, "minItems": 2, "maxItems": 2}, "point": {"type": "array", "items": N, "minItems": 2, "maxItems": 2}, "bend": {"enum": [-1, 1]}}, ["chain", "point"])
-    add("character-cycle", {"cycle": {"enum": ["walk", "run", "idle", "ride", "react"]}, "start": time, "duration": time, "period": N, "amount": N, "samples": {"type": "integer", "minimum": 4, "maximum": 120},
+    add("character-cycle", {"cycle": {"enum": ["walk", "run", "idle", "ride", "react", "wave"]}, "start": time, "duration": time, "period": N, "amount": N, "samples": {"type": "integer", "minimum": 4, "maximum": 120},
         "view": {"enum": list(VIEWS), "description": "Which way the character faces: front (the standard character; walk and run "
                  "lift the feet and bob the body, react keeps the legs planted) or side (limbs swing in the picture plane). "
                  "Default: front for the standard character, side for bound artwork."}}, ["cycle"])
@@ -205,11 +208,27 @@ def execute(project, op):
                 for value in bone["origin"]:
                     finite(value, "bone origin", -1e6, 1e6)
             require("length" in bone, "Bone needs length")
-            project.layer(bone["layer"])["pivot"] = [0.5, 0]
+            project.layer(bone["layer"]).setdefault("pivot", [0.5, 0])
         character["bones"] = bones
         pose(project, group, {})
     elif kind == "character-pose":
-        pose(project, group, op["angles"])
+        if "time" not in op:
+            pose(project, group, op["angles"])
+        else:
+            from .timeline import _timeline, _track, _set_key, parse_time, MAX_DURATION
+            timeline = _timeline(project)
+            time = parse_time(op["time"], timeline["duration"], timeline.get("markers"))
+            require(0 <= time <= MAX_DURATION, "Pose key time exceeds timeline limits")
+            bones = character["bones"]
+            require(set(op["angles"]) <= set(bones), "Pose references an unknown bone")
+            for name, angle in op["angles"].items():
+                angle = finite(angle, "joint angle", -3600, 3600)
+                lo, hi = bones[name].get("limits", [-180, 180])
+                track = _track(timeline, group["id"], "joint:" + name)
+                if time and not track["keys"]:
+                    _set_key(track, 0, bones[name].get("angle", 0), op.get("easing", "ease-in-out"))
+                _set_key(track, time, min(hi, max(lo, angle)), op.get("easing", "ease-in-out"))
+            timeline["duration"] = max(timeline["duration"], time)
     elif kind == "character-ik":
         upper, lower = op["chain"]
         bones = character["bones"]
@@ -285,6 +304,11 @@ def cycle(project, group, op):
                 if bone in roots:
                     step = -height * (0.08 if op["cycle"] == "run" else 0.05) * lift[limb] if "leg" in bone else 0
                     bones[bone]["origin"] = [roots[bone][0], roots[bone][1] + (step if "leg" in bone else bob)]
+            elif op["cycle"] == "wave":
+                angles[bone] = (-70 if bone == "right-upper-arm" else
+                                -90 + amplitude * math.sin(phase) if bone == "right-lower-arm" else
+                                amplitude * 0.25 * math.sin(phase) if bone == "right-hand" else
+                                bones[bone].get("angle", 0))
             elif op["cycle"] in ("walk", "run"):
                 sign = -1 if "arm" in bone else 1
                 angles[bone] = sign * side * amplitude * math.sin(phase) if "upper" in bone else max(0, side * amplitude * math.sin(phase + 0.8)) if "lower" in bone else 0

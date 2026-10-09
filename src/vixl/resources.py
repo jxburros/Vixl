@@ -125,6 +125,31 @@ TEMPLATES["logo"] = template(
 )
 TEMPLATES["logo"]["roll"] = {"accent": "accent"}
 TEMPLATES["logo"]["proportional"] = True
+for name, title, subtitle, cta, preset in (
+    ("video-tip", "One useful idea", "Explain it in one clear sentence.", "Save this tip", "slide-in-left"),
+    ("video-launch", "Meet your next favourite", "Show the benefit, then the next step.", "Explore the launch", "zoom-in"),
+    ("video-event", "Join the conversation", "Date · time · place", "Reserve your place", "fade-in"),
+):
+    item = template(1080, 1080, [
+        {"type": "solid", "name": "video-background", "color": "${background}", "width": 1080, "height": 1080},
+        {"type": "text", "name": "video-title", "text": "${title}", "size": 72,
+         "color": "${foreground}", "x": 80, "y": 230},
+        {"type": "text-layout", "width": 920},
+        {"type": "text", "name": "video-subtitle", "text": "${subtitle}", "size": 36,
+         "color": "${foreground}", "x": 80, "y": 500},
+        {"type": "text-layout", "width": 920},
+        {"type": "text", "name": "video-cta", "text": "${cta}", "size": 36,
+         "color": "${foreground}", "x": 80, "y": 810},
+        {"type": "text-layout", "width": 920},
+        {"type": "timeline-set", "duration": 6000, "fps": 30, "loop_mode": "seamless"},
+        {"type": "animate-preset", "target": "video-title", "preset": preset, "duration": 600, "easing": "ease-in-out"},
+        {"type": "animate-preset", "target": "video-subtitle", "preset": "fade-in", "start": 400, "duration": 600},
+        {"type": "animate-preset", "target": "video-cta", "preset": "fade-in", "start": 800, "duration": 600},
+    ], "Editable six-second square marketing/information loop; replace title, subtitle and cta before export.")
+    item["blanks"] = {"title": f"[{title}]", "subtitle": f"[{subtitle}]", "cta": f"[{cta}]"}
+    item["roll"] = {"background": "background", "foreground": "ink"}
+    item["proportional"] = True
+    TEMPLATES[name] = item
 CONTAINERS, MODULAR_TEMPLATES = container_builtins()
 TEMPLATES.update(MODULAR_TEMPLATES)
 BUILTINS = {"palettes": PALETTES, "templates": TEMPLATES, "guidance": GUIDANCE,
@@ -306,7 +331,10 @@ def execute_resource(project, op):
             roles = assign_roles({"palette": colors, "policy": op.get("policy", "strict"), "keep_order": keep_order,
                                   "role_map": explicit, **({} if keep_order else {"mode": mode, "_mode_source": mode_source})},
                                  random.Random(name))
+            previous_background = swatches.get("background")
             swatches.update({role: roles[role] for role in ROLES})
+            if project.state["canvas"].get("background") == previous_background:
+                project.state["canvas"]["background"] = roles["background"]
             # Echoed in the apply result: which color became which role, from where, and why.
             project.state["palette_roles"] = {"palette": name, "mode": roles["_mode"], "mode_source": roles["_mode_source"],
                                               "keep_order": keep_order, "roles": roles["_explain"], "notes": roles["_notes"]}
@@ -316,7 +344,8 @@ def execute_resource(project, op):
         if op.get("delete"):
             project.state.setdefault("design_guidance", {}).pop(key, None)
         else:
-            text = op.get("text") or get("guidance", name)
+            workspace = getattr(project, "_workspace", None) or (project.path.parent if project.path else None)
+            text = op.get("text") or get("guidance", name, workspace=workspace)
             validate("guidance", text)
             project.state.setdefault("design_guidance", {})[key] = text
     elif kind == "font-register":
@@ -355,7 +384,7 @@ def execute_resource(project, op):
         explicit_palette = "palette" in op
         op = sparse_options(project, op)
         # Every template receives a reproducible direction; explicit and brand roles win.
-        role_options = {k: op[k] for k in ("palette", "mode") if k in op}
+        role_options = {k: op[k] for k in ("palette", "mode", "direction", "_house_style_version") if k in op}
         if explicit_palette:
             role_options["policy"] = "strict"
         if kit.get("palette") and not explicit_palette:

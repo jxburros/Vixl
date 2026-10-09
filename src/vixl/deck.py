@@ -117,7 +117,6 @@ def contact_sheet(project, pages=None, *, width=480, columns=None, labels=True, 
     from PIL import Image, ImageDraw, ImageFont
 
     from .pages import find_page, page_list
-    from .proxy import scaled_project
     from .render import render, view_page
 
     require(project.state.get("pages"), "This document has no pages", field="page")
@@ -139,8 +138,7 @@ def contact_sheet(project, pages=None, *, width=480, columns=None, labels=True, 
         row, column = divmod(index, columns)
         x, y = gap + column * (width + gap), gap + row * (height + label + gap)
         view = view_page(project, record["id"])
-        proxy = scaled_project(view, width / canvas["width"]) if width < canvas["width"] * 0.75 else None
-        image = (render(proxy, variables) if proxy is not None else render(view, variables)).convert("RGBA")
+        image = render(view, variables).convert("RGBA")
         image = image.resize((width, height), Image.Resampling.LANCZOS)
         backdrop = Image.new("RGBA", image.size, (255, 255, 255, 255))
         sheet.paste(Image.alpha_composite(backdrop, image), (x, y + label))

@@ -340,3 +340,12 @@ vixl -p promo.vixl export-timeline --out banner.gif --colors 64 --fps 12   # sma
 ```
 
 Times: ms, `1.5s`, `250ms`, `50%`, or a marker (`vixl marker reveal 1.2s`).
+
+
+### Field-report corrections
+
+Use `schema text shape` for focused schemas, inline JSON or stdin for workflow requests, and batches up to 64 MiB. Workspace resources use the CLI current directory. Ignore `.vixl-session.json` in Git. Multi-size copies: `adapt-layout --sizes instagram-post story --directory out --formats png`; review each output.
+
+For Git review, `unpack design.vixl design-source` writes current state as stable JSON plus assets; `pack design-source reviewed.vixl` validates it and writes a portable archive. History is intentionally omitted. Keep the original for undo and commit external linked sources too.
+
+`screen-capture` is a shared workflow action with output PNG, optional desktop bbox, Windows window HWND/all_screens and overwrite. It needs an interactive desktop and any OS-required permission. `app-animation-package` takes named source states, a default state, themes, transitions and a new output directory; see production guidance.

@@ -41,6 +41,14 @@ def ignored_fields(candidate, op):
     kind = op.get("type")
     found = []
     if kind == "shape":
+        if "marker_size" in op:
+            try:
+                layer = candidate.layer(op.get("target") or op.get("name"))
+            except Exception:  # noqa: BLE001 - a later operation may have deleted this layer
+                layer = {}
+            if (layer.get("marker_start", "none") != "none" or layer.get("marker_end", "none") != "none") and op["marker_size"] < 2 * layer.get("stroke_width", 1):
+                found.append("marker_size is in local pixels, not a multiplier; use at least twice stroke_width "
+                             "so the shaft does not hide the arrowhead")
         shape, name = op.get("shape"), repr(op.get("name", "shape"))
         if shape is None:  # editing an existing layer: its own shape decides what each field does
             try:

@@ -191,9 +191,10 @@ margin:0;font-size:.85rem}dt{color:var(--muted)}dd{margin:0;overflow-wrap:anywhe
 .badge{display:inline-block;font-size:.78rem;font-weight:600;padding:1px 8px;border-radius:99px;border:1px solid}
 .pass{color:var(--ok)}.fail{color:var(--bad)}.warnc{color:var(--warn)}ul{margin:0;padding-left:18px;font-size:.84rem}
 .compare{display:grid;grid-template-columns:1fr 1fr;gap:6px}.compare img{width:100%}.compare figcaption{font-size:.75rem;
-color:var(--muted)}figure{margin:0}.zoom{display:none;position:fixed;inset:0;background:#000d;z-index:9;
-padding:24px;place-items:center}.zoom:target{display:grid}.zoom img{max-width:100%;max-height:calc(100vh - 80px);
-object-fit:contain;background:#fff}.zoom a{color:#fff;position:absolute;top:12px;right:20px;font-size:1.1rem}
+color:var(--muted)}figure{margin:0}.zoom .close{display:none}.zoom:target{display:grid;position:fixed;inset:0;background:#000d;z-index:9;
+padding:24px;place-items:center}.zoom:target .thumb{width:100%;height:calc(100vh - 80px)}
+.zoom:target img{max-width:100%;max-height:100%;object-fit:contain;background:#fff}
+.zoom:target .close{display:block;color:#fff;position:absolute;top:12px;right:20px;font-size:1.1rem}
 fieldset{border:1px solid var(--line);border-radius:8px;margin:0;padding:6px 10px;display:flex;gap:12px;flex-wrap:wrap}
 textarea{width:100%;min-height:48px;font:inherit;background:var(--bg);color:var(--ink);border:1px solid var(--line);
 border-radius:6px}button{font:inherit;padding:8px 16px;border-radius:8px;border:1px solid var(--line);cursor:pointer}
@@ -209,8 +210,9 @@ def _card(index, item, record, decisions):
                    for key, value in meta.items())
     parts = [f'<article id="{ident}" data-path="{escape(item["path"])}" data-label="{escape(label)}">']
     if record.get("image"):
-        parts.append(f'<a class="thumb" href="#zoom-{ident}" title="Enlarge"><img src="{record["image"]}" '
-                     f'alt="{escape(label)}"></a>')
+        parts.append(f'<div class="zoom" id="zoom-{ident}"><a class="close" href="#{ident}">Close ✕</a>'
+                     f'<a class="thumb" href="#zoom-{ident}" title="Enlarge"><img src="{record["image"]}" '
+                     f'alt="{escape(label)}"></a></div>')
     else:
         parts.append(f'<div class="thumb"><span class="note">{escape(record.get("note", "No preview"))}</span></div>')
     parts.append(f'<div class="body"><h2>{escape(label)}</h2><div class="note">{escape(item["path"])}</div>')
@@ -244,9 +246,6 @@ def _card(index, item, record, decisions):
             f'<label><input type="radio" name="{ident}" value="rejected"> Reject</label></fieldset>'
             f'<textarea aria-label="Note for {escape(label)}" placeholder="Note (optional)"></textarea>')
     parts.append("</div></article>")
-    if record.get("image"):
-        parts.append(f'<div class="zoom" id="zoom-{ident}"><a href="#{ident}">Close ✕</a>'
-                     f'<img src="{record["image"]}" alt="{escape(label)}, enlarged"></div>')
     return "".join(parts)
 
 
@@ -297,8 +296,9 @@ def proof_page(items, output, *, resolve=None, title=None, check=True, decisions
             record = describe(path, limits, check=check, max_size=max_size)
             if item.get("before") is not None:
                 record["compare"] = _before_after(path, item["before"], limits, resolve, max_size)
-        except VixlError as exc:
-            raise VixlError(exc.code, f"items[{index}] ({item['path']}): {exc}", **exc.details) from exc
+        except (VixlError, OSError) as exc:
+            record = {"meta": {"format": path.suffix.lstrip(".").upper()},
+                      "note": f"Unable to preview: {exc}", "error": str(exc)}
         records.append(record)
         calls.progress(index + 1, len(items), item["path"])
     page = render_page(items, records, title=title or "Proof", file_name=destination.name, decisions=decisions)
@@ -307,6 +307,8 @@ def proof_page(items, output, *, resolve=None, title=None, check=True, decisions
         stream.write(page)
     return {
         "output": str(destination), "items": len(items), "bytes": len(page), "decisions": decisions,
+        "failed": [{"path": item["path"], "error": record["error"]}
+                   for item, record in zip(items, records) if "error" in record],
         "checked": [{"path": item["path"], **{k: record["check"][k] for k in ("passed", "errors", "warnings")}}
                     for item, record in zip(items, records) if record.get("check") is not None],
         **({"decision_file": f"{destination.stem}-decisions.json"} if decisions else {}),

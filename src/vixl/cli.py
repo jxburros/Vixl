@@ -23,7 +23,8 @@ HELP = """Vixl — headless design engine for autonomous AI agents
 Usage: vixl [--project FILE] [--json] COMMAND ...
        vixl                         Interactive editing shell
 
-Documents: new SIZE|NAME [-o FILE] [--background COLOR] [--dpi N] [--landscape] [--bleed],
+Documents: pack SOURCE_FOLDER OUTPUT.vixl, unpack PROJECT.vixl SOURCE_FOLDER,
+           new SIZE|NAME [-o FILE] [--background COLOR] [--dpi N] [--landscape] [--bleed],
            open FILE, save [FILE]   (NAME: letter, a4, business-card, instagram-portrait, favicon …)
            upgrade FILE [--report] [--pin-fills]   (a document saved before 0.21: what renders differently)
 Inspect:   status, inspect [LAYER], describe, layers, effects [LAYER], manifest,
@@ -215,8 +216,10 @@ def guide_operation(args):
 
 
 def read_json(path):
-    text = sys.stdin.read(1024 * 1024 + 1) if path == "-" else read_bounded(path, 1024 * 1024).decode()
-    require(len(text) <= 1024 * 1024, "JSON input exceeds limit", "resource_limit")
+    limit = 64 * 1024 * 1024
+    inline = isinstance(path, str) and path.lstrip().startswith(("{", "["))
+    text = path if inline else sys.stdin.read(limit + 1) if path == "-" else read_bounded(path, limit).decode()
+    require(len(text.encode("utf-8")) <= limit, "JSON input exceeds the 64 MiB batch limit", "resource_limit")
     try:
         return json.loads(text)
     except ValueError as exc:
@@ -330,6 +333,33 @@ def dispatch(argv):
     limits = Limits(max_pixels=options.max_pixels)
     tokens = normalize(tokens) if tokens[0] != "text" else tokens
     cmd, args = tokens[0], tokens[1:]
+    if cmd == "adapt-layout" and "--sizes" in args:
+        from .adapt import adapt_copies
+        from .interfaces import Session
+        from .mcp_tools import export_file
+
+        p = Parser(prog="vixl adapt-layout")
+        p.add_argument("--sizes", nargs="+", required=True)
+        p.add_argument("--directory", default=".")
+        p.add_argument("--name", default="{name}-{size}")
+        p.add_argument("--formats", nargs="+")
+        p.add_argument("--options", help="Inline JSON, file, or - for stdin")
+        p.add_argument("--overwrite", action="store_true")
+        a = p.parse_args(args)
+        session = Session(current_path(options.project), limits, workspace=Path.cwd())
+        return adapt_copies(session, export_file, a.sizes, a.directory, a.name,
+                            read_json(a.options) if a.options else None,
+                            overwrite=a.overwrite, formats=a.formats), options.json
+    if cmd in ("pack", "unpack"):
+        from .project_folder import pack, unpack
+        parser = Parser(prog="vixl " + cmd)
+        parser.add_argument("source")
+        parser.add_argument("output")
+        if cmd == "pack":
+            parser.add_argument("--overwrite", action="store_true")
+        args = parser.parse_args(args)
+        return (pack(args.source, args.output, limits=limits, overwrite=args.overwrite) if cmd == "pack"
+                else unpack(args.source, args.output, limits=limits)), options.json
     if cmd == "emoji":
         from .emoji_workflows import cli as emoji_cli
         return emoji_cli(args, options, limits), options.json
@@ -376,7 +406,7 @@ def dispatch(argv):
                     | {"filter"}
                     | {"workflow"}
                     | set(
-                        "new session open upgrade save status inspect describe layers effects manifest dependencies reproduce schema check batch convert render export export-screens export-animation spacing pixels animation info sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert validate preset ai ask generate detect ocr serve view notes import mcp update updates commands shapes palette template guidance font fonts roll providers models color sizes layout layouts brushes organics easings timeline export-timeline timeline-sheet export-icons pages guides links merge styles looks guide diff compose house".split()
+                        "pack unpack new session open upgrade save status inspect describe layers effects manifest dependencies reproduce schema check batch convert render export export-screens export-animation spacing pixels animation info sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert validate preset ai ask generate detect ocr serve view notes import mcp update updates commands shapes palette template guidance font fonts roll providers models color sizes layout layouts brushes organics easings timeline export-timeline timeline-sheet export-icons pages guides links merge styles looks guide diff compose house".split()
                     )
                 )
             }
@@ -537,8 +567,16 @@ def dispatch(argv):
         return {"path": str(project.path), **result}, options.json
     if cmd == "schema":
         from .schema import operation_schema
+        schema = operation_schema()
+        if args:
+            from .normalize import _canonical_type
 
-        return operation_schema(), options.json
+            variants = {v["properties"]["type"]["const"]: v
+                        for v in schema["properties"]["operations"]["items"]["oneOf"]}
+            names = [_canonical_type(name, set(variants)) for name in args]
+            require(all(name in variants for name in names), "Unknown operation type; use vixl schema for the full list")
+            return {name: variants[name] for name in names}, options.json
+        return schema, options.json
     if cmd == "batch":
         return batch(args, limits, options.allow_linked), options.json
     if cmd == "convert":
@@ -1119,8 +1157,8 @@ def project_command(project, cmd, args, *, detail="compact"):
         p.add_argument("--isolate", nargs="+", metavar="LAYER", help="compare only these layers, cropped to their ink")
         a = p.parse_args(args)
         left, right = project.clone(), project.clone()
-        left.checkout(a.left)
-        right.checkout(a.right)
+        left.checkout(left.resolve_ref(a.left))
+        right.checkout(right.resolve_ref(a.right))
         if a.isolate:
             from .proxy import isolated_pair
 

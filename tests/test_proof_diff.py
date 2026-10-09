@@ -87,7 +87,8 @@ def test_proof_revision_compare_and_schema(tmp_path):
     session = Session(workspace=tmp_path)
     dispatch(session, "proof", {"items": [{"path": "a.vixl", "before": "previous"}], "output": "p.html"})
     assert "revision" in (tmp_path / "p.html").read_text(encoding="utf-8")
-    with pytest.raises(VixlError, match="not a file"):
-        dispatch(session, "proof", {"items": [{"path": "b.vixl", "before": "nope.png"}], "output": "q.html"})
+    result = dispatch(session, "proof", {"items": [{"path": "b.vixl", "before": "nope.png"}], "output": "q.html"})
+    assert result["failed"]
+    assert "not a file" in (tmp_path / "q.html").read_text()
     schema = describe()["actions"]["proof"]
     assert schema["required"] == ["items", "output"] and schema["properties"]["decisions"]["type"] == "boolean"

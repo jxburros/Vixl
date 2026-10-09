@@ -154,3 +154,11 @@ selects actual document pages.
 ```python
 p.export("overview.png", page="all", width=320, columns=3, overwrite=True)
 ```
+
+## Proof and export diagnostics
+
+A proof continues past a document that cannot render, recording its error alongside successful items. The report's `failed` list must be empty before approval. Preview images are embedded once and reused for the zoom view, reducing HTML size. Contact sheets downsample full page renders, so small previews preserve the page's actual wrapping.
+
+Python `Project.export(..., pages="all")` selects all visible pages; for a raster export it writes the contact sheet. CMYK PDF export without an ICC profile reports that conversion is unprofiled. Supply the intended printer profile for managed colour output.
+
+SVG export uses native browser `mix-blend-mode` for supported blend modes, keeping other shapes/text vector. Unsupported backdrop operations still report raster fallbacks; strict mode rejects them. Editable SVG import now accepts simple native gradient rectangles (translation-only linear/radial gradients with supported stops) and unclipped stroke paths. Arbitrary transforms, clipping, gradient-filled nonrectangular geometry and unsupported SVG features still require appearance/auto mode.

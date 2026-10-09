@@ -90,6 +90,7 @@ def schema():
             "width_profile": "Ordered [fraction along path, width multiplier] control points; endpoints 0 and 1.",
             "strokes": "Additional strokes painted in array order after the base stroke.",
             "taper_start": "Width multiplier at the start; reaches full width at the middle.",
+            "marker_size": "Arrowhead length and width in local pixels (not a multiplier). Use at least twice stroke_width for a visible head; 1–5 px heads may be hidden by a thick shaft.",
             "taper_end": "Width multiplier at the end; starts tapering from the middle.",
         }.get(key, key.replace("_", " ").capitalize() + ".")}
     return props
@@ -160,9 +161,12 @@ def _parallel(points, distances, closed, join, miter_limit):
         t = cross((b[0] - a[0], b[1] - a[1]), after) / turn
         intersection = (a[0] + before[0] * t, a[1] + before[1] * t)
         outer = turn * d < 0
-        if not outer or join == "miter" and math.dist(p, intersection) <= abs(d) * miter_limit:
+        reach = math.dist(p, intersection)
+        inner_limit = max(abs(d), min(math.dist(points[i - 1], p),
+                                     math.dist(p, points[(i + 1) % len(points)])))
+        if (not outer and reach <= inner_limit) or (outer and join == "miter" and reach <= abs(d) * miter_limit):
             out.append(intersection)
-        elif join == "round" and abs(d) > 1e-12:
+        elif outer and join == "round" and abs(d) > 1e-12:
             start, end = math.atan2(a[1] - p[1], a[0] - p[0]), math.atan2(b[1] - p[1], b[0] - p[0])
             delta = (end - start + math.pi) % math.tau - math.pi
             count = max(2, math.ceil(abs(delta) * max(3, math.sqrt(abs(d) * 2))))
@@ -377,7 +381,12 @@ def expanded(layer, path):
                         style.get("stroke_align", "center"),
                     )
                 )
-            if not closed and len(points) >= 2:
+            marker_points = points
+            if trim and not closed:
+                runs = list(dashed(points, None, 0))
+                marker_points = clip_run(*runs[0], *trim)[0] if runs else []
+            if not closed and len(marker_points) >= 2:
+                points = marker_points
                 for which, tip, tangent in [
                     ("start", points[0], (points[0][0] - points[1][0], points[0][1] - points[1][1])),
                     ("end", points[-1], (points[-1][0] - points[-2][0], points[-1][1] - points[-2][1])),
@@ -476,8 +485,11 @@ def margin(layer):
         return 0, 0
     from .shape_catalog import active as catalog_active
 
-    if not (active(layer) or catalog_active(layer) or layer.get("distort") or layer.get("_distort_groups")):
-        return 0, 0
+    from .geometry import path_overflows
+
+    if not (path_overflows(layer) or active(layer) or catalog_active(layer) or layer.get("distort") or layer.get("_distort_groups")):
+        width = layer.get("stroke_width", 0) if layer.get("stroke", "transparent") != "transparent" else 0
+        return math.ceil(width / 2), math.ceil(width / 2)
     mx, my = path_margin(primitives(layer), layer["width"], layer["height"])
     for parent in layer.get("_distort_groups", []):
         settings = parent["distort"]

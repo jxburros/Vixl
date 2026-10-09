@@ -207,6 +207,9 @@ class Session:
 
     def close(self, document=None):
         with self._mutex:
+            require(document is not None or current_client() is not None or len(self.documents) <= 1,
+                    "Several documents are open; pass document explicitly to close one", "ambiguous_document",
+                    field="document", documents=[self.relative(path) for path in self.documents])
             path = self.resolve(document) if document else self.active()
             require(path in self.documents, "Document is not open", "no_project", field="document")
             note_document(path)

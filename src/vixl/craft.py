@@ -72,6 +72,23 @@ def spacing_unit(body):
     return max(rule["minimum_unit"], round(body * rule["unit"]))
 
 
+def space(n, body):
+    """A number of shared spacing units (half the body size)."""
+    from .model import finite
+    return finite(n, "spacing units", 0, 10000) * spacing_unit(body)
+
+
+def resolve_space(value, body):
+    """Explicit pixels or a unit expression such as '2u'."""
+    import re
+    from .errors import require
+    from .model import finite
+    if isinstance(value, str):
+        require(re.fullmatch(r"\d+(?:\.\d+)?u", value), "Spacing is pixels or a unit expression such as 2u")
+        return space(float(value[:-1]), body)
+    return finite(value, "spacing", 0, 1000000)
+
+
 def measure_chars(stage, large=False):
     """Characters a heavy line should hold at least (``display`` or ``heading``), and the glyph width as a
     share of the size, from craft ``headline_measure``; ``large`` is the expressive measure of bold rolls."""

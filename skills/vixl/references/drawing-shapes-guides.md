@@ -129,3 +129,10 @@ by `margin`; `text` with `within` centres new text there.
 
 `vixl_check(checks=["guides", "alignment"])` reports near misses with the fixing move;
 `vixl_render_preview(guides=true)` draws them. Full reference: `docs/guides.md`.
+
+
+### Field-report corrections
+
+Edit pen target=NAME in place. marker_size is local pixels; choose at least twice the shaft width for a visible head. Radial gradients accept fractional center=[x,y]. Layouts emit layout-columns and layout-baseline guide grids. Path boxes are coordinate frames, not clips.
+
+Irregular frames: `frame_shape` selects rectangle/ellipse/star/hexagon/heart; `outline` supplies a closed SVG path in frame-local pixels. Both produce an embedded mask that survives `replace-contents`. Keep the canvas transparent for shaped image output; file dimensions remain rectangular.

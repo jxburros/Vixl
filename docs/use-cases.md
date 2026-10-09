@@ -705,3 +705,16 @@ Add new ideas here when you are unsure of the tier, then move them into a table.
 | Full offline emoji coverage, editable custom sets and platform delivery | `emoji` CLI; `emoji-*` workflows; `emoji-mode`, `emoji-set`, `emoji-reset` operations | Unicode 17, individual/pack overrides, shortcodes, templates, PNG/SVG/VIXL packs, Discord/Slack requirements |
 
 See [emoji workflows](emojis.md).
+
+## 0.24 authoring and delivery additions
+
+| Use case | Route | Cost | Limits |
+| --- | --- | --- | --- |
+| Review designs as readable Git changes | `vixl unpack` / `vixl pack` | 1 call each | Current state only; no undo history |
+| Package app animation states and theme variants | `app-animation-package` workflow | 1 call after masters exist | WebP/GIF/APNG plus static reduced-motion PNG; embedded sources |
+| Keep joints attached between poses | `character-pose` with `time` | 1 call per pose | Planar rig; do not combine with baked position/rotation keys on the same limbs |
+| Capture a desktop or Windows window | `screen-capture` workflow | 1 call | Interactive local desktop; OS permissions may apply |
+| Make a short informational or marketing loop | `video-tip`, `video-launch`, `video-event` templates | 1–3 calls | Replace blanks and inspect the poster before delivery |
+| Frame an image with an irregular silhouette | `frame` with `outline` or `frame_shape` | 1 call | Editable image with an embedded raster mask; rectangular file dimensions |
+| Add independently controlled paint drips and relief | `paint.settings` | 1 call | Deterministic visual simulation, not a fluid solver |
+| Recompose a generated design at a new aspect ratio | `adapt-layout` with `recompose: true` | 1 call | Rebuilds generated layers from the saved layout recipe |

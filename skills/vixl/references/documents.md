@@ -107,3 +107,8 @@ Rules agents trip over:
 - Filled values never touch the document; errors name rows and keys, never values.
 
 Full reference: `docs/forms.md`.
+
+
+### Field-report corrections
+
+Explicit checks replace defaults: run check() plus deck checks, or combine the lists. passed=false whenever fix findings remain. Mark an intentional safe-area footer with layer-intent allow_crop=true. Proof records failed items and continues; approve only when failed is empty.

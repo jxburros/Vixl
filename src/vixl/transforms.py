@@ -275,7 +275,7 @@ def execute(project, op):
         )
         return
     w, h = layer["width"], layer["height"]
-    fixed = anchor(op.get("anchor", "top-left"))
+    fixed = anchor(op["anchor"]) if "anchor" in op else layer.get("pivot", (0, 0)) if kind == "scale" else (0, 0)
     before = layer_matrix(layer, box) @ [fixed[0] * w, fixed[1] * h, 1]
     if kind == "scale":
         fx, fy = op.get("x", op.get("value", 1)), op.get("y", op.get("value", 1))
@@ -305,7 +305,7 @@ def execute(project, op):
         resize(project, layer, {**op, "width": nw, "height": nh, "keep_aspect": False})
     else:
         layer.update(width=nw, height=nh, auto_size=False)
-    if "anchor" in op:
+    if "anchor" in op or kind == "scale" and layer.get("pivot") is not None:
         after_box = layer_box(project, layer)
         after = layer_matrix(layer, after_box) @ [fixed[0] * nw, fixed[1] * nh, 1]
         layer["x"], layer["y"] = stored_origin(

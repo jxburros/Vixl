@@ -133,7 +133,8 @@ def _snap_edges(layer, source, s):
 
 def supported(state):
     for layer in state["layers"]:
-        if any(effect.get("selection") for effect in layer.get("effects", [])):
+        if any(effect.get("selection") or effect.get("name") in ("halftone", "crosshatch", "pixelate")
+               for effect in layer.get("effects", [])):
             return False
         if layer.get("linked"):
             return False

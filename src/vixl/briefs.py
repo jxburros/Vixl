@@ -32,6 +32,17 @@ START_HERE = [
 NO_DIRECTION = {"character", "scene", "pattern", "mandala", "animation", "pixel-art", "hand-drawing"}
 
 KINDS = {
+    "document": {
+        "title": "Report or multi-page document",
+        "keywords": ["document", "report", "multi-page", "qa", "findings", "executive summary"],
+        "summary": "A paged report with flowing prose, findings, charts and a consistent master.",
+        "approach": ["Create an A4 or letter document and add pages with page.",
+                     "Use a master for repeated headers and page numbers; text-flow for long prose and rich-text for short sections.",
+                     "Add chart groups for evidence, then run flow and print checks before exporting PDF."],
+        "operations": ["page", "master", "text-flow", "rich-text", "chart"],
+        "layouts": ["editorial-grid"], "looks": [], "styles": ["editorial"], "sizes": ["a4", "letter"],
+        "guidance": ["typography", "print"], "example": [{"type": "page", "action": "add", "name": "Findings"}],
+    },
     "comic": {
         "title": "Comic page or sequential panels",
         "keywords": ["comic", "manga", "panels", "storytelling", "speech bubble"],
@@ -402,6 +413,7 @@ def match(text):
 # Per kind: the starter suite to attach (workflow suite-use) and requirement rules to adapt to the brief's
 # layer names. vixl_guide('testing') is the full method.
 TESTS = {
+    "document": ("print-ready", [{"id": "body-readable", "kind": "contrast", "target": "body", "minimum": 4.5}]),
     "comic": ("composition", [{"id": "panels", "kind": "count", "target": "panel-*", "minimum": 2},
                               {"id": "bubbles-apart", "kind": "relation", "target": "bubble-1", "to": "bubble-2",
                                "position": "apart"}]),

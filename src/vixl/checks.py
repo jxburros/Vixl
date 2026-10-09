@@ -66,12 +66,12 @@ def classify(item):
 
 def tally(issues):
     """Counts by severity and the indexes of the findings grouped by action. Every finding gets an
-    ``action``; ``passed`` ignores warnings and notes."""
+    ``action``; ``passed`` requires no fix findings (review and informational findings do not fail)."""
     for item in issues:
         item["action"] = classify(item)
     errors = sum(1 for x in issues if x["severity"] == "error")
     return {
-        "passed": errors == 0,
+        "passed": errors == 0 and not any(x["action"] == "fix" for x in issues),
         "errors": errors,
         "warnings": sum(1 for x in issues if x["severity"] == "warning"),
         "info": sum(1 for x in issues if x["severity"] == "info"),
@@ -434,7 +434,7 @@ def check_design(
             return True
         if not _contains(outward(geometry[item["id"]]), (0, 0, width, height)):
             return False
-        if item["type"] == "shape" and item.get("shape") not in ("rectangle", "rounded-rectangle"):
+        if item["type"] == "link" or (item["type"] == "shape" and item.get("shape") not in ("rectangle", "rounded-rectangle")):
             # A path or ellipse can span the canvas and still paint a sliver (a diagonal line).
             tile = layer_canvas_surface(candidate, resolved[item["id"]], local_bounds, resolved)
             return float((np.asarray(tile.getchannel("A")) > 32).mean()) >= 0.5
@@ -458,7 +458,10 @@ def check_design(
         for item in content:
             x, y, w, h = geometry[item["id"]]
             if x >= width or y >= height or x + w <= 0 or y + h <= 0:
-                issue("bounds", "error", f"{item['name']!r} is entirely outside the canvas", [item], bounds=[x, y, w, h])
+                intentional = any(parent.get("pattern_scatter") for parent in ancestors(item))
+                issue("bounds", "info" if intentional else "error",
+                      f"{item['name']!r} is entirely outside the canvas" + (" (intentional crop or tile wrap)" if intentional else ""),
+                      [item], bounds=[x, y, w, h], **({"intentional": True} if intentional else {}))
             elif x < -1e-8 or y < -1e-8 or x + w > width + 1e-8 or y + h > height + 1e-8:
                 crossed = sum((x < -1e-8, y < -1e-8, x + w > width + 1e-8, y + h > height + 1e-8))
                 if any(parent.get("pattern_scatter") for parent in ancestors(item)):
@@ -523,6 +526,17 @@ def check_design(
     if "content" in checks:
         from .render import layer_image
         from .brushes import stroke_diagnostics
+        if height / width >= 1.6:
+            foreground = [item for item in content if item["type"] != "group" and role(item) == "content"]
+            if foreground:
+                boxes = [bounds[item["id"]] for item in foreground]
+                extent_w = max(x + w for x, y, w, h in boxes) - min(x for x, y, w, h in boxes)
+                extent_h = max(y + h for x, y, w, h in boxes) - min(y for x, y, w, h in boxes)
+                if extent_w < width * 0.55 and extent_h < height * 0.4:
+                    issue("content", "warning", "Content occupies a small block on this tall canvas; enlarge or "
+                          "recompose it for the target format, or review intentional whitespace", foreground,
+                          code="underfill", action="review", width_fraction=round(extent_w / width, 3),
+                          height_fraction=round(extent_h / height, 3))
         for item in layers:
             if item["type"] == "group" or (item["type"] == "paint" and not item.get("strokes")):
                 continue
@@ -611,7 +625,14 @@ def check_design(
             except Exception as exc:  # noqa: BLE001 - never a silent pass: an unmeasurable layer is an error.
                 issue("contrast", "error", f"Could not measure the contrast of {item['name']!r}: {exc}", [item])
                 continue
-            large = resolved[item["id"]].get("size", 0) * text_scales[item["id"]] >= 24
+            from .text import font_data, font_style
+            from .house_style import rule
+
+            data = font_data(candidate, resolved[item["id"]])
+            primary = data[0] if isinstance(data, tuple) else data
+            weight = font_style(primary)[1]
+            minimums = rule("minimum_text")
+            large = resolved[item["id"]].get("size", 0) * text_scales[item["id"]] >= minimums["large_bold_text_px" if weight >= 700 else "large_text_px"]
             threshold = min_contrast or (3.0 if large else 4.5)
             # Outlined text reads through its outline when the fill blends into the backdrop.
             outline = result.get("outline")
@@ -666,12 +687,33 @@ def check_design(
                         zone=[round(v, 2) for v in box],
                     )
 
+    if "legibility" in checks:
+        from .craft import body_size, stage_for
+        from .text import font_data, lines
+        from .house_style import rule
+
+        for item in texts:
+            effective = resolved[item["id"]]
+            if stage_for(effective.get("size", 0), body_size(candidate)) != "body":
+                continue
+            wrapped = lines(font_data(candidate, effective), effective.get("text", ""), effective["size"],
+                            (effective.get("text_layout") or {}).get("width"))
+            lengths = [len(line) for line in wrapped if line.strip()]
+            if lengths and (max(lengths) > rule("line_length")["max"] or (len(lengths) > 2 and max(lengths[:-1]) < 30)):
+                issue("legibility", "warning", f"{item['name']!r} body measure is {max(lengths)} characters; "
+                      "aim for 30–75 characters per line", [item], code="measure", action="review",
+                      characters=max(lengths))
+
     physical = c.get("physical") and c.get("dpi")
+    from .house_style import purpose_for, rule
+    purpose = candidate.state.get("design_defaults", {}).get("purpose") or purpose_for(c.get("size"))
+    scale_minimum = (rule("minimum_text")["minor_share_of_short_side"] * min(width, height)
+                     if purpose in ("social", "poster") and not physical else None)
     if "legibility" in checks and physical and thumbnail_width in ("auto", None):
         # Print is read at full size, not as a thumbnail: judge the printed point size.
         for item in texts:
             points = resolved[item["id"]].get("size", 0) * text_scales[item["id"]] * 72 / c["dpi"]
-            if points < 6:
+            if points < rule("minimum_text")["print_points"]:
                 issue(
                     "legibility",
                     "warning",
@@ -686,7 +728,13 @@ def check_design(
         # anywhere else small text at thumbnail size is worth a look, not a fix.
         category = SIZES.get(c.get("size"), {}).get("category")
         thumbnail_piece = category in ("social", "icons", "app-store")
-        if thumbnail_width == "auto":
+        if thumbnail_width == "auto" and scale_minimum:
+            # Use one canvas-relative minimum for social/poster work. Explicit thumbnail sizes
+            # retain the caller's stricter viewing-context test.
+            thumbnail_width = width
+            min_thumbnail_text = scale_minimum
+            thumbnail_piece = True
+        elif thumbnail_width == "auto":
             thumbnail_width = 600 if c.get("size") in ("og-image", "x-post") else 320
         finite(thumbnail_width, "thumbnail_width", 16, 16384)
         scale = thumbnail_width / width
