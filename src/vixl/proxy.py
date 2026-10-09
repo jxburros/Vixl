@@ -351,11 +351,13 @@ def encode_png(image, max_bytes):
     from PIL import Image
 
     while True:
-        stream = BytesIO()
-        image.save(stream, format="PNG")
-        data = stream.getvalue()
-        if len(data) <= max_bytes:
-            return data
+        # Previews are read once: try fast compression first, and the default level before shrinking.
+        for level in (1, 6):
+            stream = BytesIO()
+            image.save(stream, format="PNG", compress_level=level)
+            data = stream.getvalue()
+            if len(data) <= max_bytes:
+                return data
         image = image.resize(
             (max(1, image.width * 3 // 4), max(1, image.height * 3 // 4)), Image.Resampling.LANCZOS
         )
