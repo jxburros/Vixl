@@ -201,6 +201,8 @@ Bigger documents, layer merging, scatter and pattern tiles, kinetic type, QR cod
 - `codes` is a new default check; it only reports on documents with QR codes or barcodes (#168).
 - `vixl_render_compare`'s `changed_fraction` counts a pixel as changed when any RGBA channel moves by more than 8 (it was luminance), so values can be slightly higher.
 - Font URL imports follow the new fetch policy: private hosts are refused, up to 5 checked redirects are followed (previously none), and a refused URL is error `unsafe_url` (#265).
+- **The `meta` provider targets the Meta Model API** (`https://api.meta.ai/v1`, key in `MODEL_API_KEY`) because Meta retired the Llama API (`api.llama.com`) on 2026-07-06. Defaults are `muse-spark-1.3` (planning, description, detection, OCR) and `muse-image-1.0` (generation and edits). Migrate with `vixl providers add meta --type meta --key-env MODEL_API_KEY`; a saved provider that still points at `api.llama.com` fails with that hint. For Llama models, pass `--url` for a host that serves them.
+- The Gemini adapter's default image model is `gemini-nano-banana-2.1`: Google shuts down `gemini-3.1-flash-image` on 2026-10-29. Configurations that name the old model keep working until then; set `"model": "gemini-nano-banana-2.1"` to migrate. Discovery now marks Nano Banana models as image generators.
 
 ### Building whole pieces
 
