@@ -148,7 +148,8 @@ class RenderCache:
         temp = None
         try:
             buffer = io.BytesIO()
-            image.save(buffer, format="PNG")
+            # Cache entries are written once and only decoded later; fast compression keeps renders quick.
+            image.save(buffer, format="PNG", compress_level=1)
             data = buffer.getvalue()
             if len(data) > min(self.budget // 4, 64 * 1024 * 1024):
                 return

@@ -70,9 +70,7 @@ def shape_image(project, layer):
 
     if layer["shape"] in PATH_SHAPES:
         # SVG's nonzero winding preserves holes in compound imported logo paths (and donut rings).
-        import io
         import xml.etree.ElementTree as ET
-        import resvg_py
         from .geometry import shape_path
         path, view = shape_path(layer)
         root = ET.Element("svg", xmlns="http://www.w3.org/2000/svg", width=str(w), height=str(h),
@@ -91,8 +89,24 @@ def shape_image(project, layer):
                 if layer.get("line_cap"):
                     attrs["stroke-linecap"] = layer["line_cap"]
                     attrs["stroke-linejoin"] = "round" if layer["line_cap"] == "round" else "miter"
+        from .vector_raster import painted, rasterize
+
+        if "stroke" not in attrs and "fill" in attrs:
+            # One paint: a recoloured or duplicated shape reuses the rasterised geometry.
+            paint = parse(resolve_color(default_fill(layer), project.state))
+            attrs.update({"fill": "#000000", "fill-opacity": "1"})
+            ET.SubElement(root, "path", attrs)
+            return painted(ET.tostring(root, encoding="unicode"),
+                           tuple(round(min(max(c, 0.0), 1.0) * 255) for c in paint))
         ET.SubElement(root, "path", attrs)
-        return Image.open(io.BytesIO(resvg_py.svg_to_bytes(svg_string=ET.tostring(root, encoding="unicode")))).convert("RGBA")
+        return rasterize(ET.tostring(root, encoding="unicode"))
+    if layer["shape"] == "rectangle" and (
+        layer.get("stroke_width", 1) <= 0 or color(resolve_color(layer.get("stroke", "transparent"), project.state))[3] == 0
+    ):
+        # A whole-pixel box with no outline covers every pixel exactly: supersampling it only spends time.
+        from .geometry import default_fill
+
+        return Image.new("RGBA", (w, h), color(resolve_color(default_fill(layer), project.state)))
     # Supersample within the resource budget; geometry is re-evaluated at every size.
     factor = min(
         4,
@@ -371,7 +385,7 @@ def apply_lookup(project, image, settings):
 
 
 def styled_image(project, image, styles):
-    from .render import color
+    from .render import color, opacity_table, with_opacity
 
     alpha = image.getchannel("A")
     result = Image.new("RGBA", image.size)
@@ -396,7 +410,7 @@ def styled_image(project, image, styles):
             resolve_color(settings.get("color", "white" if name == "outer-glow" else "black"), project.state)
         )
         tile = Image.new("RGBA", image.size, rgba)
-        tile.putalpha(mask.point(lambda a: round(a * settings.get("opacity", 1) * rgba[3] / 255)))
+        tile.putalpha(mask.point(opacity_table(settings.get("opacity", 1) * rgba[3] / 255)))
         result.alpha_composite(tile)
     for name in ("color-overlay", "gradient-overlay"):
         settings = styles.get(name)
@@ -411,7 +425,7 @@ def styled_image(project, image, styles):
             tile = Image.new(
                 "RGBA", image.size, color(resolve_color(settings.get("color", "white"), project.state))
             )
-        tile.putalpha(tile.getchannel("A").point(lambda a: round(a * settings.get("opacity", 1))))
+        tile = with_opacity(tile, settings.get("opacity", 1))
         # Blend RGB within the original silhouette without making translucent edges opaque.
         rgb = Image.composite(tile.convert("RGB"), image.convert("RGB"), tile.getchannel("A"))
         overlay = rgb.convert("RGBA")

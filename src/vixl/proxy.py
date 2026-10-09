@@ -313,11 +313,15 @@ def render_preview(
     if scale < 0.75:
         proxy = scaled_project(candidate, scale)
         if proxy is not None:
-            image = proxy.render()
+            pc = proxy.state["canvas"]
             box = (round(x * scale), round(y * scale), round((x + w) * scale), round((y + h) * scale))
-            image = image.crop(box)
+            if box[0] < box[2] <= pc["width"] and box[1] < box[3] <= pc["height"]:
+                image = proxy.render(region=(box[0], box[1], box[2] - box[0], box[3] - box[1]))
+            else:
+                image = proxy.render().crop(box)
     if image is None:
-        image = candidate.render().crop((x, y, x + w, y + h))
+        # Only the region is drawn (layers outside it are skipped) when nothing reads the whole canvas.
+        image = candidate.render(region=(x, y, w, h))
     target = (max(1, min(max_width, round(w * fit))), max(1, min(max_height, round(h * fit))))
     if region is not None and fit > 1:
         target = (max(1, round(w * min(fit, 8))), max(1, round(h * min(fit, 8))))
@@ -351,11 +355,13 @@ def encode_png(image, max_bytes):
     from PIL import Image
 
     while True:
-        stream = BytesIO()
-        image.save(stream, format="PNG")
-        data = stream.getvalue()
-        if len(data) <= max_bytes:
-            return data
+        # Previews are read once: try fast compression first, and the default level before shrinking.
+        for level in (1, 6):
+            stream = BytesIO()
+            image.save(stream, format="PNG", compress_level=level)
+            data = stream.getvalue()
+            if len(data) <= max_bytes:
+                return data
         image = image.resize(
             (max(1, image.width * 3 // 4), max(1, image.height * 3 // 4)), Image.Resampling.LANCZOS
         )
