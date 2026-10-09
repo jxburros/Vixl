@@ -10,14 +10,15 @@ vixl COMMAND --help       # exact argument syntax for any editing command
 
 **Global options** (before or after the command): `--project/-p FILE`, `--json` (structured
 errors on stderr), `--allow-linked` (trust linked file references), `--plugins` (enable installed
-filter/provider entry points — trusted code), `--max-pixels N`, `--version`.
+filter/provider entry points — trusted code), `--max-pixels N`, `--detail brief|compact|full`, `--version`.
 
 Agent conventions:
 
 - Always pass `-p FILE.vixl`. Without it Vixl uses the project recorded by `vixl open` in
   `./.vixl-session.json`.
 - Add `--json` so errors are machine-readable: `{"error":"layer_not_found","message":…,"suggestions":[…]}`, exit 1.
-- Editing commands autosave and print a full before/after diff — redirect it if you don't need it.
+- Editing commands autosave and print a compact result (changed values keyed by layer ID); `--detail full` adds
+  before/after snapshots.
 - Quote `#` colors (`'#ff8800'`), JSON arguments, and text.
 - A target is a unique layer name or `lyr_…` ID; most commands default to the active layer when it is omitted.
 - Every editing command below compiles to a canonical operation (see `operations.md`), so
@@ -344,8 +345,10 @@ Times: ms, `1.5s`, `250ms`, `50%`, or a marker (`vixl marker reveal 1.2s`).
 
 ### Field-report corrections
 
-Use `schema text shape` for focused schemas, inline JSON or stdin for workflow requests, and batches up to 64 MiB. Workspace resources use the CLI current directory. Ignore `.vixl-session.json` in Git. Multi-size copies: `adapt-layout --sizes instagram-post story --directory out --formats png`; review each output.
+Use `schema text shape` for focused schemas, inline JSON or stdin for workflow requests, and batches up to 64 MiB. Workspace resources use the CLI current directory. Ignore `.vixl-session.json` in Git. Multi-size copies: `adapt-layout --sizes instagram-post story --directory out --formats png`; review each output. Layout recomposition has no CLI flag: `apply` an `adapt-layout` operation with `recompose: true`.
 
-For Git review, `unpack design.vixl design-source` writes current state as stable JSON plus assets; `pack design-source reviewed.vixl` validates it and writes a portable archive. History is intentionally omitted. Keep the original for undo and commit external linked sources too.
+For Git review, `unpack design.vixl design-source` writes current state as stable JSON (`project.json`, with asset hashes) plus asset files into a new folder; `pack design-source reviewed.vixl [--overwrite]` validates paths, sizes and hashes and writes a portable archive. History and history-only assets are intentionally omitted; registered fonts are kept. Keep the original for undo and commit external linked sources too.
+
+Emoji: `vixl emoji list|get|template|replace|install|settings|reset|requirements|destinations|export` (`vixl -p F.vixl emoji settings --mode font` prefers the font; bundled art is the default). House style: `vixl roll --house-style 2` replays a 0.23 roll (`1`: 0.20–0.22); documents keep the version they were created with.
 
 `screen-capture` is a shared workflow action with output PNG, optional desktop bbox, Windows window HWND/all_screens and overwrite. It needs an interactive desktop and any OS-required permission. `app-animation-package` takes named source states, a default state, themes, transitions and a new output directory; see production guidance.

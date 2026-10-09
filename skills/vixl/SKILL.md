@@ -121,9 +121,38 @@ agent, edit independently, preview branch-merge, resolve conflicts explicitly, t
 
 ## Emoji artwork
 
-Read [emoji workflows](references/emojis.md) for the offline Unicode 17 catalog, editable source masters, custom replacements and shortcodes, templates and destination-ready image packs. Use `vixl_workflow` actions `emoji-list`, `emoji-get`, `emoji-template`, `emoji-replace`, `emoji-pack-install`, `emoji-settings`, `emoji-reset`, `emoji-requirements` and `emoji-export`; their typed fields come from `vixl_workflow_schema`. VIXL artwork is the default; `emoji-mode` with `mode: font` prefers the font, with bundled art for unsupported sequences.
+Read [emoji workflows](references/emojis.md) for the offline Unicode 17 catalog, editable source masters, custom replacements and shortcodes, templates and destination-ready image packs. Use `vixl_workflow` actions `emoji-list`, `emoji-get`, `emoji-template`, `emoji-replace`, `emoji-pack-install`, `emoji-settings`, `emoji-reset`, `emoji-requirements`, `emoji-destinations` and `emoji-export`; their typed fields come from `vixl_workflow_schema`. Bundled VIXL artwork is the default; `mode: "font"` (operation `emoji-mode` or workflow `emoji-settings`) prefers the font, with bundled art for sequences it cannot shape.
 
-## New in this release
+## New in 0.24: reliability and reusable delivery
+
+- **Checks** — `passed` is false while any finding has action `fix`, warnings included; `by_action` lists the issue
+  indexes under fix / review / informational. An explicit `checks` list replaces the default set, so narrow it only on purpose.
+- **Text and layout** — width-only text boxes regrow after edits and variable substitution (fixed-height boxes still need
+  an overflow check). `adapt-layout` with `recompose: true` rebuilds a stored layout recipe at the new size and may
+  replace manual edits and generated layer IDs; proportional adaptation stays the default.
+- **Source folders** — `vixl unpack design.vixl design-source` writes the current state as stable JSON (`project.json`,
+  with asset hashes) plus asset files (no history; registered fonts kept); `vixl pack design-source out.vixl` validates and rebuilds it. See
+  [cli](references/cli.md).
+- **App delivery** — `vixl_workflow("app-animation-package", {states, default_state, output, themes?, transitions?, format?})`
+  writes named states, light/dark variables, transitions, reduced-motion PNGs, editable masters, a manifest and an HTML
+  consumer. `screen-capture` (`{output, bbox? | window?, all_screens?}`) is an explicit local desktop capture, not
+  rendering. See [production](references/production.md).
+- **Motion** — `character-pose` with `time` (and `easing`) keys joint angles and solves the rig every frame; don't add
+  separate limb x/y/rotation keys. In house-style-3 documents a new timeline of 10 s or less is a seamless loop: pass
+  `loop_mode: "off"` or `loop: 1` for play-once. `animate` `intent` (entrance, exit, loop, emphasis) picks the house
+  easing. Templates `video-tip`, `video-launch`, `video-event` build editable six-second loops (title/subtitle/cta).
+  See [brushes and timeline](references/brushes-timeline.md).
+- **House style 3** — 16 more font pairings (76), weighted alignment, saturated backgrounds kept. Documents keep the
+  version they were created with; replay 0.23 rolls with `vixl roll --house-style 2` or `{"house_style": 2}` in
+  `.vixl/variety.json`. Explicit fields and saved geometry win. Minor social/poster text must be at least 2.2 % of
+  the short side; bold text counts as large from 18.66 px (regular from 24 px).
+- **Spacing units** — `stack` and `layout-apply` `gap` accept `"2u"` (1u = half the body size); new house-style
+  stacks default to 2u.
+- **Brushes and frames** — paint `settings` `drip` (0–4 brush sizes), `relief` (0–1) and `light_angle` (degrees,
+  default -45); `frame` `frame_shape` (rectangle, ellipse, star, hexagon, heart) or a closed SVG `outline` in
+  frame-local pixels; keep the canvas transparent for a shaped image.
+
+## New in 0.22
 
 - **`vixl_compose`** — the whole start-here chain in one atomic call (above); REST `POST /compose` is a dry run.
 - **Logo packages** — `vixl_workflow("logo-package", {output, mark?, wordmark?, …})` turns a logo (open document,
@@ -228,8 +257,9 @@ documents embed its fonts at creation (`workspace_fonts` in the result; `workspa
 Set the workspace typography with `vixl_font_pair`/`vixl_font_install(role=...)` and `scope: "workspace"`.
 Use `vixl_roll(apply=true, slots={...})` or `roll --apply --set title=...` to apply a whole direction;
 `layout apply` returns unfilled slots immediately. Check and fill them before export. A roll with `slots` omits the slots you did not fill (`unfilled: "omit"`), so it passes `check`; pass `unfilled: "blank"` to keep `[Label]` placeholders instead.
-`vixl_import_document` imports editable SVG paths or a raster PDF page. Unsupported SVG
-features return an error; convert them to plain paths before retrying.
+`vixl_import_document` imports editable SVG paths or a raster PDF page. With the default
+`svg_mode="editable"` unsupported SVG features return an error; `"appearance"` keeps the look as a raster layer
+(with the SVG source stored) and `"auto"` falls back to it.
 
 ## 1. Pick the interface
 
@@ -363,7 +393,7 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
   or of the parent group).
 - **Blur strength is `amount`** (`{"type":"effect","name":"blur","amount":4}`); `radius` on blur is
   read as `amount`. `radius` is its own field for `vignette` (0–1.4) and `rounded-rectangle` corners.
-- **Opacity is 0–1; values from 1 to 100 are read as a percentage** in every interface (`50` = 0.5).
+- **Opacity is 0–1 everywhere**; `"50%"` is read as 0.5, and a bare number above 1 is an error (never guessed as a percentage).
 - **Scale `value` is a factor** (`0.8`); CLI accepts `80%`.
 - **Absolute `move` and `align`/`distribute` clear constraints** on that layer. Use `constrain`
   when layout should survive canvas resizes, artboards or text changes; use `align` for a one-off.
@@ -437,9 +467,9 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
   10 000 operations per batch. History keeps 2 000 revisions; older unreferenced ones are squashed
   automatically, so long sessions never lock. Pixel-art frames ≤ 256×256, ≤ 256 frames; timelines
   ≤ 10 min, 60 fps, 3 600 frames; 4 096 strokes per paint layer.
-- **Not supported** (don't promise them): arbitrary SVG import, path arcs/multiple contours,
-  skew/perspective, CMYK *editing* or spot colors, live tablet input, audio, RAW, PSD/XCF import (PSD *export*
-  is layered pixels: text is not editable type), GUI.
+- **Not supported** (don't promise them): editable import of arbitrary SVG (appearance import rasterizes it),
+  CMYK *editing* or spot colors, live tablet input, RAW, PSD/XCF import (PSD *export* is layered pixels: text is not
+  editable type), a GUI editor.
 
 ## 5. Feature map (where to look)
 
@@ -447,16 +477,16 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
 | --- | --- |
 | Start | named sizes (`canvas` `size`, `vixl new NAME`, `vixl_document_create(size=)`), `layout-apply`, `type-scale`, `palette-generate`, `guidance` |
 | New layers | `add` (image), `solid`, `gradient` (linear/angled/radial, multi-stop, `falloff` curves for soft halos), `text`, `shape` (`solid`/`gradient`/`shape`/`text` with `target` edit that layer in place instead of adding one), `frame` (image box with fill/fit), `pixel-art`, `paint-layer`, `adjustment`, `symbol-instance` |
-| Transform | `move`, `resize`, `scale`, `rotate`, `flip`, `crop`, `opacity`, `blend`, `hide`/`show` |
+| Transform | `move`, `resize`, `scale`, `rotate`, `skew`, `transform` (affine), `distort` (envelope, corner-pin), `flip`, `crop`, `opacity`, `blend`, `hide`/`show` |
 | Stacking | `raise`, `lower`, `top`, `bottom`, `reorder` (`above`/`below`), `group`/`ungroup`, `reparent` (into/out of a group, keeps position), `clip` |
 | Layout | `align` (to canvas/selection/layer), `distribute`, `constrain`/`unconstrain`, `stack` (auto-layout column/row that re-flows around hidden or empty members; text `hide_if_empty`), `guide`, `grid`, `canvas` (resize/preset), `artboard` |
 | Color & filters | 27 built-in effects (brightness … white-balance … auto-contrast), `effect-set/enable/disable/remove/move`, `lut` + `lookup` (a stack effect), `preset-save/apply` |
 | Selections & masks | `select` (rect/ellipse/color/alpha/all/none/invert, add/subtract/intersect, feather), `mask` (create/from-selection/import/invert/enable/disable/delete) |
 | Typography | `text`, `text-set`, `text-layout` (box, fit, warp, path), `style-define`/`style-apply`, `swatch` |
-| Decoration | `layer-style` (drop-shadow, stroke, outer-glow, color-overlay, gradient-overlay), `look` (named finishes: glow, neon, soft-shadow, hard-shadow, outline, gradient, soft-halo, grain, paper, film, duotone, risograph, sketch, watercolor, halftone, hand-made, plush), `repeat`, `repeat-blend`, `radial-repeat` (copies around a center, optional mirror, per-step/jitter, `merge`), `scatter`, `pattern-scatter`, `pathfinder` |
+| Decoration | `layer-style` (drop-shadow, stroke, outer-glow, color-overlay, gradient-overlay), `look` (named finishes: clean-flat, subtle-grain, light-paper, glow, neon, soft-shadow, hard-shadow, outline, gradient, soft-halo, grain, paper, film, duotone, risograph, sketch, watercolor, halftone, hand-made, plush), `repeat`, `repeat-blend`, `radial-repeat` (copies around a center, optional mirror, per-step/jitter, `merge`), `scatter`, `pattern-scatter`, `pathfinder` |
 | Templates | `variable`, `replace-contents`, `comp-save`/`comp-apply`, CSV `render --data`, `export-screens` |
 | Painting | `paint` (17 brushes, points or SVG path, pressure, erase), `paint-clear`, `brush-define` |
-| Motion | `timeline-set`, `keyframe`, `keyframes` (or `sample` a wave), `keyframe-remove`, `animate`, `animate-preset`, `text-animate` (per char/word/line), `motion` (wiggle, line-boil …), `marker`; `vixl_timeline_preview`, `vixl_export_timeline` |
+| Motion | `timeline-set` (`loop_mode`), `keyframe`, `keyframes` (or `sample` a wave), `keyframe-remove`, `animate`, `animate-preset`, `text-animate` (per char/word/line), `motion` (wiggle, line-boil …), `character-pose` (`time` keys), `audio-track`, `marker`; `vixl_timeline_preview`, `vixl_export_timeline` |
 | Pixel art & sprite frames | `pixel-art`, `pixel-draw`, `pixel-palette`, `frame-save/apply/delete`, `animation-set` (`name`+`order`: named animations, each exportable alone with `animation=`), `frames-edit` (one edit applied to every saved frame), `export-animation` (GIF/APNG/WebP/MP4/sheet) |
 | Color & print | color language in every color field, `vixl_color`, CMYK/PDF/ICO export, `vixl_export_icons`, proof/simulate previews, `print`/`color_vision` checks |
 | History | undo/redo (a count larger than the history goes as far as it can and says so), checkpoint, branch, checkout, compare, transactions |
@@ -467,13 +497,3 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
 When unsure of a field, get the authoritative schema: MCP embeds it in `vixl_operations_apply`'s
 input schema (also resource `vixl://operations`); CLI `vixl schema`; REST `GET /schema`; per-command
 syntax via `vixl COMMAND --help`.
-
-## Reliability and reusable delivery (0.24)
-
-Check `passed` and `by_action`: warnings with action `fix` block delivery. Use explicit check lists only when intentionally narrowing the audit. Width-only text boxes reflow after edits; fixed-height boxes still need overflow review. `adapt-layout` with `recompose: true` rebuilds a stored layout recipe and may replace manual layer changes.
-
-Use `pack`/`unpack` for Git-friendly current-state project folders. Use `app-animation-package` for named app states, theme variables, transitions, reduced-motion fallbacks and editable masters. See [production](references/production.md). `screen-capture` is an explicit local-desktop workflow, not part of rendering.
-
-For articulated motion, use `character-pose` with `time` and joint `angles`, rather than independent limb position keys. New house-style-3 short timelines are seamless; use `loop_mode: off` for open motion. See [brushes and timeline](references/brushes-timeline.md).
-
-House style 3 expands pairing choices, weights alignment and preserves saturated backgrounds. Pin house style 2 for the 0.23 roll. Shared gaps accept `2u`; explicit pixel geometry wins. Irregular frames accept `frame_shape` or a closed SVG `outline`; transparent canvases preserve the silhouette.
