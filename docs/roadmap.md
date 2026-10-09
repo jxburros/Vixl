@@ -2,7 +2,7 @@
 
 [Documentation home](README.md) · [House style decisions](house-style.md) · [Releases](releases.md) · [Changelog](../CHANGELOG.md)
 
-This plan orders the open issues after 0.23.0. Each issue was rated for **complexity** (C1 a few hours, C2 about a
+This plan orders the open issues after 0.24.0. Each issue was rated for **complexity** (C1 a few hours, C2 about a
 day, C3 several days, C4 one to two weeks, C5 several weeks or open-ended) and **payoff** (P1 cosmetic or rare, P2 a
 narrow workflow, P3 a common workflow, P4 changes results for most agents, P5 first impression or correctness of
 output). Issues that share a cause or a code path are grouped so they ship together, and each group names one
@@ -37,6 +37,23 @@ onto main, and closed the feature requests that 0.22.0 had already shipped.
 - **Executable docs:** `tests/test_docs_executable.py` runs the `vixl` commands and JSON operation blocks in `docs/`
   and `skills/`.
 
+## What 0.24.0 settled
+
+0.24.0 shipped authoring reliability and reusable delivery:
+
+- **Type and layout from the plan:** one spacing scale with `gap: "2u"` units (#407), weighted alignment (#415),
+  sixteen more font pairings in house style 3 (#416), the long-measure review finding (#423), one scale-aware minor
+  text minimum (#424), contrast-driven background mixing (#402) and easing by intent with seamless default loops
+  (#429), plus weight-aware large-text contrast and underfilled tall canvases (#499).
+- **Delivery:** deterministic `pack`/`unpack` project folders (#511), `app-animation-package` (#510) and
+  `screen-capture` (#259, which this plan had suggested closing).
+- **Items from the decision list and Later:** three video templates with character-pose `time` keyframes (#179,
+  #472), paint `drip`, `relief` and `light_angle` (#258), irregular image frames through `frame_shape` or an SVG
+  `outline` (#266, the frame part), browser blend modes in SVG (#231) and editable re-import of simple gradient
+  rectangles and stroked paths from Vixl's own SVG (#334, partly).
+- **Review semantics:** `check.passed` is false for any finding that needs a fix, grouped under `by_action` (#464).
+- **Emoji:** the offline VIXL Line library, custom packs and `emoji-*` workflows; see [Emojis](emojis.md).
+
 ## Rules for every release below
 
 - **Default changes follow #430**: they apply to new documents only (new `design_defaults` carry
@@ -48,7 +65,7 @@ onto main, and closed the feature requests that 0.22.0 had already shipped.
 - **Docs are executable**: `tests/test_docs_executable.py` runs the `vixl …` commands and JSON operation blocks in
   `docs/` and `skills/`; new blocks are picked up automatically.
 
-## 0.24.0: objects, data and documents
+## 0.25.0: objects, data and documents
 
 ### Objects (#257)
 
@@ -88,10 +105,8 @@ same workflow (pages, text flow, charts), which is what the `report` brief kind 
 
 ### Type and layout
 
-#406 (text stages, C4 P4), #412 (expressive layouts, C3 P4), #422 (tiered styles, C3 P3), #407 (one spacing scale,
-C3 P3), #415 (alignment distribution, C3 P2), #416 (more pairings, C2 P3), #417 (layout grids as guides, C2 P2), #423
-(75-character measure, C2 P3), #424 (one minimum text size, C2 P3), #404 (accent count, C3 P2), #402 (contrast-driven
-background mixing, C2 P3), #427 (illustration defaults, after #379 and #380, C3 P3), #429 (easing by intent, C2 P3).
+#406 (text stages, C4 P4), #412 (expressive layouts, C3 P4), #422 (tiered styles, C3 P3), #417 (layout grids as
+guides, C2 P2), #404 (accent count, C3 P2), #427 (illustration defaults, after #379 and #380, C3 P3).
 
 ### Fonts (#191 phase 1 + #419)
 
@@ -103,20 +118,17 @@ Color emoji font support remains subject to the text engine's font format limits
 
 | Issue | What | C | P | Note |
 | --- | --- | --- | --- | --- |
-| #210 | `adapt-layout` that needs no hand fixes | 4 | 4 | After #407, #409 and #424, which it should reuse |
+| #210 | `adapt-layout` that needs no hand fixes | 4 | 4 | Reuse #407, #409 and #424; 0.24.0 added explicit `recompose: true` |
 | #171 | Translated variants with an overflow check | 3 | 3 | |
 | #172 | Device and print mockups | 3 | 3 | Procedural, licence-clean templates |
-| #231 | Per-layer `mix-blend-mode` in SVG | 3 | 3 | |
-| #266 | Non-rectangular canvas | 3 | 3 | Needs a page clip shape in every exporter |
+| #266 | Non-rectangular canvas | 3 | 3 | Irregular image frames shipped in 0.24.0; a page clip shape in every exporter remains |
 | #218 | Drawing pipeline polish | 3 | 2 | Split into its six items first |
-| #334 | Editable round trip of Vixl's own SVG | 4 | 2 | #305 removed one blocker |
+| #334 | Editable round trip of Vixl's own SVG | 4 | 2 | 0.24.0 re-imports simple gradient rectangles and stroked paths |
 | #177 | Lottie export | 5 | 3 | After motion features settle |
 | #166 | PPTX font embedding | 4 | 3 | Re-scope: warnings and licences shipped; PDF is the fidelity route |
 | #214 | Remainder of a partly shipped issue: bind chart data across charts and into text | 3 | 3 | |
 
 ## Needs a decision or a spec
 
-- **#179** (more video templates), **#258** (paint physics): name the concrete templates or effects and their
-  acceptance before scheduling.
-- **#259** (screen capture): out of scope for a document engine and raises permission questions; importing a
-  screenshot file already works. Suggest closing.
+None open: #179 and #258 were specified and shipped in 0.24.0, and #259 shipped as an explicit local `screen-capture`
+workflow.
