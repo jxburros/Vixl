@@ -106,6 +106,8 @@ def schemas(add):
     add(
         "frame",
         {**geometry, "path": S, "asset": S, "fit": enum("fill", "fit"),
+         "frame_shape": {"enum": ["rectangle", "ellipse", "star", "hexagon", "heart"], "description": "Frame silhouette; default rectangle. A custom outline overrides it."},
+         "outline": {"type": "string", "maxLength": 32768, "description": "Closed SVG path in frame-local pixels, used as an irregular frame mask. Keep the canvas transparent for a shaped image."},
          "max_pixels": {"type": "integer", "minimum": 1}, "downsample": enum("placed@2x")},
         anyOf=[{"required": ["path"]}, {"required": ["asset"]}],
     )

@@ -1555,5 +1555,433 @@
   "caution": "Italic exists only at 400 and hairlines are thin on screens; set body ≥18px.",
   "source": "principle-derived",
   "safe": false
+ },
+ {
+  "name": "public-sans-source-serif",
+  "heading": {
+   "family": "Public Sans",
+   "weight": 700
+  },
+  "body": {
+   "family": "Source Serif 4",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "editorial",
+   "calm"
+  ],
+  "best_for": [
+   "reports",
+   "documentation"
+  ],
+  "why": "A sturdy sans heading above a calm serif reading face.",
+  "caution": "Keep sufficient size and weight contrast between heading and body.",
+  "source": "https://fonts.google.com/",
+  "safe": true,
+  "tier": "safe",
+  "introduced": 3
+ },
+ {
+  "name": "inter-tight-literata",
+  "heading": {
+   "family": "Inter Tight",
+   "weight": 600
+  },
+  "body": {
+   "family": "Literata",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "editorial",
+   "calm"
+  ],
+  "best_for": [
+   "reports",
+   "documentation"
+  ],
+  "why": "Compact headings leave room for spacious long-form copy.",
+  "caution": "Keep sufficient size and weight contrast between heading and body.",
+  "source": "https://fonts.google.com/",
+  "safe": true,
+  "tier": "safe",
+  "introduced": 3
+ },
+ {
+  "name": "schibsted-noto-serif",
+  "heading": {
+   "family": "Schibsted Grotesk",
+   "weight": 600
+  },
+  "body": {
+   "family": "Noto Serif",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "editorial",
+   "calm"
+  ],
+  "best_for": [
+   "reports",
+   "documentation"
+  ],
+  "why": "Clear news headings pair with restrained serif body text.",
+  "caution": "Keep sufficient size and weight contrast between heading and body.",
+  "source": "https://fonts.google.com/",
+  "safe": true,
+  "tier": "safe",
+  "introduced": 3
+ },
+ {
+  "name": "atkinson-source-serif",
+  "heading": {
+   "family": "Atkinson Hyperlegible Next",
+   "weight": 700
+  },
+  "body": {
+   "family": "Source Serif 4",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "editorial",
+   "calm"
+  ],
+  "best_for": [
+   "reports",
+   "documentation"
+  ],
+  "why": "Distinctive sans letterforms clarify headings over a readable serif body.",
+  "caution": "Keep sufficient size and weight contrast between heading and body.",
+  "source": "https://fonts.google.com/",
+  "safe": true,
+  "tier": "safe",
+  "introduced": 3
+ },
+ {
+  "name": "anton-libre-franklin",
+  "heading": {
+   "family": "Anton",
+   "weight": 400
+  },
+  "body": {
+   "family": "Libre Franklin",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "expressive",
+   "bold"
+  ],
+  "best_for": [
+   "posters",
+   "social",
+   "covers"
+  ],
+  "why": "Dense display capitals contrast with an open practical body face.",
+  "caution": "Use display only for short headings at 40 px or larger; keep the body face for captions and long copy.",
+  "source": "https://fonts.google.com/",
+  "safe": false,
+  "tier": "bold",
+  "introduced": 3
+ },
+ {
+  "name": "bebas-source-serif",
+  "heading": {
+   "family": "Bebas Neue",
+   "weight": 400
+  },
+  "body": {
+   "family": "Source Serif 4",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "expressive",
+   "bold"
+  ],
+  "best_for": [
+   "posters",
+   "social",
+   "covers"
+  ],
+  "why": "Tall narrow display type contrasts with an editorial serif.",
+  "caution": "Use display only for short headings at 40 px or larger; keep the body face for captions and long copy.",
+  "source": "https://fonts.google.com/",
+  "safe": false,
+  "tier": "bold",
+  "introduced": 3
+ },
+ {
+  "name": "oswald-public-sans",
+  "heading": {
+   "family": "Oswald",
+   "weight": 600
+  },
+  "body": {
+   "family": "Public Sans",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "expressive",
+   "bold"
+  ],
+  "best_for": [
+   "posters",
+   "social",
+   "covers"
+  ],
+  "why": "Condensed headlines leave a steady sans face for explanations.",
+  "caution": "Use display only for short headings at 40 px or larger; keep the body face for captions and long copy.",
+  "source": "https://fonts.google.com/",
+  "safe": false,
+  "tier": "bold",
+  "introduced": 3
+ },
+ {
+  "name": "bungee-figtree",
+  "heading": {
+   "family": "Bungee",
+   "weight": 400
+  },
+  "body": {
+   "family": "Figtree",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "expressive",
+   "bold"
+  ],
+  "best_for": [
+   "posters",
+   "social",
+   "covers"
+  ],
+  "why": "Sign-painting display forms anchor friendly readable body copy.",
+  "caution": "Use display only for short headings at 40 px or larger; keep the body face for captions and long copy.",
+  "source": "https://fonts.google.com/",
+  "safe": false,
+  "tier": "bold",
+  "introduced": 3
+ },
+ {
+  "name": "barlow-condensed-newsreader",
+  "heading": {
+   "family": "Barlow Condensed",
+   "weight": 700
+  },
+  "body": {
+   "family": "Newsreader",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "expressive",
+   "bold"
+  ],
+  "best_for": [
+   "posters",
+   "social",
+   "covers"
+  ],
+  "why": "Narrow industrial headings contrast with fluid editorial text.",
+  "caution": "Use display only for short headings at 40 px or larger; keep the body face for captions and long copy.",
+  "source": "https://fonts.google.com/",
+  "safe": false,
+  "tier": "bold",
+  "introduced": 3
+ },
+ {
+  "name": "big-shoulders-work-sans",
+  "heading": {
+   "family": "Big Shoulders Display",
+   "weight": 700
+  },
+  "body": {
+   "family": "Work Sans",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "expressive",
+   "bold"
+  ],
+  "best_for": [
+   "posters",
+   "social",
+   "covers"
+  ],
+  "why": "Strong vertical headlines pair with unobtrusive sans body copy.",
+  "caution": "Use display only for short headings at 40 px or larger; keep the body face for captions and long copy.",
+  "source": "https://fonts.google.com/",
+  "safe": false,
+  "tier": "bold",
+  "introduced": 3
+ },
+ {
+  "name": "fraunces-atkinson",
+  "heading": {
+   "family": "Fraunces",
+   "weight": 700
+  },
+  "body": {
+   "family": "Atkinson Hyperlegible Next",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "expressive",
+   "bold"
+  ],
+  "best_for": [
+   "posters",
+   "social",
+   "covers"
+  ],
+  "why": "Expressive soft serif headings sit above clear accessible body forms.",
+  "caution": "Use display only for short headings at 40 px or larger; keep the body face for captions and long copy.",
+  "source": "https://fonts.google.com/",
+  "safe": false,
+  "tier": "bold",
+  "introduced": 3
+ },
+ {
+  "name": "archivo-black-karla",
+  "heading": {
+   "family": "Archivo Black",
+   "weight": 400
+  },
+  "body": {
+   "family": "Karla",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "expressive",
+   "bold"
+  ],
+  "best_for": [
+   "posters",
+   "social",
+   "covers"
+  ],
+  "why": "Heavy compact headings contrast with a lightly textured sans body.",
+  "caution": "Use display only for short headings at 40 px or larger; keep the body face for captions and long copy.",
+  "source": "https://fonts.google.com/",
+  "safe": false,
+  "tier": "bold",
+  "introduced": 3
+ },
+ {
+  "name": "monoton-space-grotesk",
+  "heading": {
+   "family": "Monoton",
+   "weight": 400
+  },
+  "body": {
+   "family": "Space Grotesk",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "expressive",
+   "bold"
+  ],
+  "best_for": [
+   "posters",
+   "social",
+   "covers"
+  ],
+  "why": "Striped display lettering contrasts with a clean geometric body.",
+  "caution": "Use display only for short headings at 40 px or larger; keep the body face for captions and long copy.",
+  "source": "https://fonts.google.com/",
+  "safe": false,
+  "tier": "avant-garde",
+  "introduced": 3
+ },
+ {
+  "name": "grenze-ibm-plex-sans",
+  "heading": {
+   "family": "Grenze Gotisch",
+   "weight": 600
+  },
+  "body": {
+   "family": "IBM Plex Sans",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "expressive",
+   "bold"
+  ],
+  "best_for": [
+   "posters",
+   "social",
+   "covers"
+  ],
+  "why": "Blackletter headings meet a neutral contemporary reading voice.",
+  "caution": "Use display only for short headings at 40 px or larger; keep the body face for captions and long copy.",
+  "source": "https://fonts.google.com/",
+  "safe": false,
+  "tier": "avant-garde",
+  "introduced": 3
+ },
+ {
+  "name": "permanent-marker-geist",
+  "heading": {
+   "family": "Permanent Marker",
+   "weight": 400
+  },
+  "body": {
+   "family": "Geist",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "expressive",
+   "bold"
+  ],
+  "best_for": [
+   "posters",
+   "social",
+   "covers"
+  ],
+  "why": "Handmade marker headings contrast with precise interface text.",
+  "caution": "Use display only for short headings at 40 px or larger; keep the body face for captions and long copy.",
+  "source": "https://fonts.google.com/",
+  "safe": false,
+  "tier": "avant-garde",
+  "introduced": 3
+ },
+ {
+  "name": "shrikhand-source-code",
+  "heading": {
+   "family": "Shrikhand",
+   "weight": 400
+  },
+  "body": {
+   "family": "Source Code Pro",
+   "weight": 400
+  },
+  "relationship": "contrast",
+  "mood": [
+   "expressive",
+   "bold"
+  ],
+  "best_for": [
+   "posters",
+   "social",
+   "covers"
+  ],
+  "why": "Rounded exuberant display lettering contrasts with disciplined monospaced copy.",
+  "caution": "Use display only for short headings at 40 px or larger; keep the body face for captions and long copy.",
+  "source": "https://fonts.google.com/",
+  "safe": false,
+  "tier": "avant-garde",
+  "introduced": 3
  }
 ]

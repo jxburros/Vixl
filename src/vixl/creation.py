@@ -94,6 +94,18 @@ def design(project, *, size=None, size_from="argument", purpose=None, background
         canvas["background"], background_from = "transparent", "mark"
     else:
         canvas["background"], background_from = palette_background(project, defaults), "palette"
+    from .layouts import assign_roles, ROLES
+
+    direction = defaults.get("direction", {})
+    if direction.get("palette"):
+        settings = {"palette": direction["palette"], "mode": direction.get("mode", "light"),
+                    "_house_style_version": defaults.get("house_style_version", 2)}
+        if canvas["background"] != "transparent":
+            settings["colors"] = {"background": canvas["background"]}
+        roles = assign_roles(settings, random.Random(defaults["seed"]))
+        swatches = project.state.setdefault("swatches", {})
+        for role in ROLES:
+            swatches.setdefault(role, roles[role])
     created = {"size": canvas.get("size") or f"{canvas['width']}x{canvas['height']}", "size_from": size_from,
                **({"purpose": purpose} if purpose else {}), "background": canvas["background"],
                "background_from": background_from}
@@ -116,7 +128,8 @@ def palette_background(project, defaults):
     palette = direction.get("palette")
     if palette is None:
         return "transparent"
-    roles = assign_roles({"palette": palette, "mode": direction.get("mode", "light")}, random.Random(defaults["seed"]))
+    roles = assign_roles({"palette": palette, "mode": direction.get("mode", "light"),
+                          "_house_style_version": defaults.get("house_style_version", 2)}, random.Random(defaults["seed"]))
     return roles["background"]
 
 

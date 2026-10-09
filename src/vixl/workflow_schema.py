@@ -513,5 +513,9 @@ SUMMARIES = {
 
 
 def summary(action):
+    if action == "screen-capture":
+        return "Explicitly capture the local desktop, a pixel rectangle, or a Windows HWND to a PNG."
+    if action == "app-animation-package":
+        return "Package named animation states, theme variants, reduced-motion images, editable masters and a sample consumer."
     from .emoji_workflows import SUMMARIES as EMOJI_SUMMARIES
     return EMOJI_SUMMARIES.get(action, SUMMARIES.get(action, ""))

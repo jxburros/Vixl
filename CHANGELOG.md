@@ -1,6 +1,37 @@
 # Changelog
 
-## Unreleased
+## 0.24.0
+
+Authoring reliability and reusable delivery. This release fixes the field-report batch and adds source folders, app-animation packages and joint pose interpolation. The existing offline emoji work is also included.
+
+### Added in this issue batch
+
+- Readable, deterministic `pack`/`unpack` project folders with validated asset hashes; current state and registered fonts survive roundtrips without undo-history noise (#511).
+- `app-animation-package`: named states, light/dark variables, transition/playback rules, reduced-motion PNGs, included editable masters, a versioned manifest and a standalone HTML consumer (#510).
+- `screen-capture`: explicit local desktop, rectangle or Windows HWND capture to PNG through the shared workflow API (#259).
+- Six-second editable `video-tip`, `video-launch` and `video-event` templates; character-pose `time` keyframes solve the rig on every sampled frame (#179, #472).
+- Independent brush `drip`, `relief` and `light_angle` controls; irregular image frames through `frame_shape` or an SVG `outline` (#258, #266).
+- House style 3 adds 4 safe, 8 bold and 4 avant-garde font pairings, weighted alignment and minimally washed saturated backgrounds. Pin `house_style_version: 2` to replay 0.23 rolls. Explicit fields and saved geometry keep precedence (#402, #415, #416).
+- Shared spacing units (`gap: "2u"`), scale-aware social/poster minor text minimums, weight-aware large-text contrast, and review findings for narrow/long body measures and underfilled tall canvases (#407, #423, #424, #499).
+
+### Fixed in this issue batch
+
+- Consistent path overflow and cell-effect previews, safer open-path joins and stroke bounds, trimmed arrowheads, local-pixel marker advisories, explicit scaling pivots, and tight endpoint-line geometry (#434, #435, #438, #447, #448, #457, #458, #485).
+- Width-only text boxes grow after edits and variable substitution; rich text flow keeps line-basis settings, generated labels preserve variable names, and compaction keeps implicit bold/italic font variants (#452, #453, #460, #475, #476, #478).
+- CLI schema filtering, inline/large JSON batches, workspace brand discovery, ambiguous shared-session close, bounded page numbering, multi-size layout adaptation and explicit layout recomposition (#439–#442, #455, #488, #500, #508).
+- Chart tick robustness, diagram word wrapping and final area fitting, palette-role registration/recolouring, frame-mask background inference, and linked/grouped contrast measurement (#454, #479, #480, #482–#484, #492, #496).
+- Proof pages keep valid items after individual failures, reuse embedded images for zoom, and render full page contact sheets; Python export accepts all pages and warns for unprofiled CMYK conversion (#461–#463, #467, #507).
+- GIF timing, identical-frame budget warnings and small accent colours; shape stroke-colour animation; character rig pivots and wave cycles; invisible-endpoint seam checks and useful poster sampling (#450, #466, #471, #473, #486, #494, #497, #501).
+- SVG browser blend modes preserve vectors around blended layers. Simple native gradient rectangles and overflowing stroked paths re-import editably; unsupported SVG constructs still fail explicitly or use appearance import (#231, #334).
+- Production checks bounds/flow by default, verifies cached outputs before skipping repeated work, uses a user cache directory, and reuses compatible contact-sheet/export frames. Byte-pixel contrast uses an exact transfer lookup to reduce repeated work (#469, #502, #504–#506).
+
+### Migration and limits
+
+- `check.passed` is false for findings requiring a fix even if they are warnings. Review-only findings remain distinguishable through `by_action`; clients should inspect it (#464).
+- New house-style-3 short timelines default to seamless loops. Pass `loop_mode: "off"` or `loop: 1` for an open/play-once sequence. Legacy documents and explicit settings retain their behavior. `animate.intent` selects the house easing; fade-out now eases in (#429).
+- `adapt-layout` recomposition is explicit (`recompose: true`) because rebuilding generated layout layers can replace manual changes. The proportional default remains available.
+- Source-folder unpacking excludes history-only assets but retains registered fonts. Packing validates paths, sizes and hashes. App packages require embedded sources; freeze external links first.
+
 
 ### Added
 

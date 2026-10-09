@@ -112,3 +112,11 @@ A roll picks a pairing first, then a palette whose mood fits it, a layout suited
 ## Emoji artwork
 
 [Emojis and custom packs](emojis.md) describes default VIXL emoji rendering, opting into font rendering, portable replacements, editable masters and destination-ready exports. Text-default symbols remain font text unless VS16 requests emoji presentation.
+
+## Letter spacing and edits
+
+Use `text-style` tracking for extra local pixels between glyphs, for example `{"type":"text-style","target":"headline","tracking":2}`. Negative values tighten text. It works on an entire layer or on the operation's selected span; `tracking` is also available in rich-text spans. This is the letter-spacing control, distinct from `spacing` (vertical line spacing). Inspect and preview after tracking changes because the text may wrap differently.
+
+Width-only `text-layout` boxes grow vertically after `text-set` or variable substitution. Give both width and height to keep a fixed box and let overflow checks report copy that does not fit. Markdown text-flow retains its size-based line-height calculation when splitting across frames.
+
+For social and poster purposes, automatic legibility checking and generated layout minor text use the house minimum (2.2% of the short canvas side). Explicit thumbnail widths remain a caller-selected viewing-context check. Print keeps the 6-point minimum and decks keep their profile checks. The contrast check treats 19 px bold text (font weight 700+) as large; regular text needs 24 px. Shared spacing expressions such as `2u` use half the body size per unit.

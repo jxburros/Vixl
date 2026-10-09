@@ -374,3 +374,22 @@ vixl merge --rerun sheets.vixl [--data new.csv] [--out new.pdf]
 [Linked documents](linked-documents.md) render another `.vixl` live (`--allow-linked` for sources outside the current
 folder); [imposition](imposition.md) lays CSV rows out on print sheets with crop marks, as a vector-text PDF and an editable
 sheet of links.
+
+## Large batches and focused schemas
+
+`vixl apply operations.json` accepts JSON input up to 64 MiB; the same bound applies to inline JSON and stdin. Operation-count and document resource limits still apply, and a failing batch is atomic. `vixl --json schema text shape` returns only the requested operation schemas. Bare `schema` returns the full catalog.
+
+Workflow request arguments accept a JSON file, `-` for stdin, or an inline JSON object. CLI workspace resources resolve from the current directory. Add `.vixl-session.json` to your repository's `.gitignore`; it records the local current-document session and is not a project source file. Shared MCP servers require an explicit document when closing a session with several documents open.
+
+`vixl -p master.vixl adapt-layout --sizes instagram-post story --directory out --formats png` exports copies at several sizes. It does not overwrite the master. Inspect the adaptation reports and run checks on the copies; proportional adaptation is not a replacement for recomposing long copy into a radically different aspect ratio.
+
+
+## Reviewing editable projects in Git
+
+Run `vixl unpack design.vixl design-source` to create a readable `project.json` with separate content-addressed assets. Commit that folder alongside application code. Edit a text string or layer property in `project.json`, review the ordinary Git diff, then run `vixl pack design-source reviewed.vixl`. Python exposes the same functions in `vixl.project_folder`.
+
+The source format stores only the current state, so undo history, branches and session timestamps do not bury copy edits in noise. Keep the original `.vixl` when history matters. Stable key order, indentation, asset hashes and ZIP timestamps make unchanged serialization deterministic. Packing checks file bounds, checksums, references and the full document schema and refuses missing assets, unsafe paths and symlinks. Linked external files remain external; links are rebased on conversion, so commit the linked source documents alongside the design as well. Packing never replays remote inference.
+
+## Local desktop capture
+
+`vixl workflow screen-capture --request '{"output":"screen.png"}' --workspace .` captures the interactive local desktop explicitly. Optional `bbox` is `[left, top, right, bottom]`; negative monitor coordinates are allowed. On Windows, `window` is an HWND (for example a process's MainWindowHandle) and `all_screens` includes other monitors. Use `bbox` or `window`, not both. PNG output refuses replacement unless `overwrite: true`. Headless sessions or denied OS screen permissions return an actionable capture error; normal rendering never captures the desktop.

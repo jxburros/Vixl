@@ -41,6 +41,9 @@ BASE = {
     "pressure_size": True,
     "pressure_opacity": False,
     "wet_edges": False,
+    "drip": 0.0,
+    "relief": 0.0,
+    "light_angle": -45.0,
     "blend": "normal",
     "smoothing": True,
     "bristles": 0,
@@ -102,6 +105,9 @@ def validate_settings(settings):
         ("roundness", 0.05, 1),
         ("texture_strength", 0, 1),
         ("scatter", 0, 8),
+        ("drip", 0, 4),
+        ("relief", 0, 1),
+        ("light_angle", -360, 360),
     ):
         finite(settings[key], key, low, high)
     taper = settings["taper"]
@@ -305,6 +311,23 @@ def stroke_patch(stroke, settings, shape):
         positions = positions + settings["jitter"] * size * rng.standard_normal(positions.shape) * 0.5
     if settings["scatter"]:
         positions = positions + settings["scatter"] * size * (rng.random(positions.shape) - 0.5) * 2
+    if settings["drip"]:
+        # A bounded set of gravity trails. They are ordinary dabs, so alpha, erasure, clipping
+        # and wet-edge pooling use the same path as the painted stroke.
+        count = min(32, max(1, int(len(positions) * settings["spacing"] / 3)))
+        selected = np.linspace(0, len(positions) - 1, count, dtype=int)
+        tails, tail_radii, tail_alphas = [], [], []
+        for index in selected:
+            length = size * settings["drip"] * rng.uniform(0.4, 1)
+            radius = max(0.75, size * rng.uniform(0.04, 0.09))
+            steps = min(128, max(2, math.ceil(length / radius)))
+            for t in np.linspace(0, 1, steps):
+                tails.append(positions[index] + [0, length * t])
+                tail_radii.append(radius * (1 - 0.3 * t))
+                tail_alphas.append(alphas[index])
+        positions = np.concatenate([positions, np.asarray(tails)])
+        radii = np.concatenate([radii, tail_radii])
+        alphas = np.concatenate([alphas, tail_alphas])
     angles = np.full(len(positions), float(settings["angle"]))
     if settings["shape"] == "bristle" and len(positions) > 1:
         # Bristles trail behind the brush: spread them across the direction of travel.
@@ -397,6 +420,14 @@ def paint_image(project, layer):
             tinted = source * (existing * existing_alpha + (1 - existing_alpha))
         else:
             tinted = np.broadcast_to(source, (*alpha.shape, 3))
+        if settings["relief"]:
+            height = Image.fromarray(np.uint8(coverage * 255)).filter(
+                ImageFilter.GaussianBlur(max(0.5, stroke.get("size", 20) * 0.025)))
+            gy, gx = np.gradient(np.pad(np.asarray(height, dtype=np.float32) / 255, 1))
+            angle = math.radians(settings["light_angle"])
+            shade = np.clip(-(gx[1:-1, 1:-1] * math.cos(angle) + gy[1:-1, 1:-1] * math.sin(angle))
+                            * settings["relief"] * 6, -0.8, 0.8)[:, :, None]
+            tinted = np.where(shade > 0, tinted + (1 - tinted) * shade, tinted * (1 + shade))
         a3 = alpha[:, :, None]
         region[:, :, :3] = tinted * a3 + region[:, :, :3] * (1 - a3)
         region[:, :, 3] = alpha + region[:, :, 3] * (1 - alpha)

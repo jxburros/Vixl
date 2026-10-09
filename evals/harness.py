@@ -196,7 +196,7 @@ def grade(task, workspace):
                     forbidden = set(check.get("forbid", []))
                     detail = [issue["message"] for issue in report["issues"]
                               if issue["severity"] == "error" or issue.get("code") in forbidden]
-                    passed = report["passed"] and not any(issue.get("code") in forbidden for issue in report["issues"])
+                    passed = report["errors"] == 0 and not any(issue.get("code") in forbidden for issue in report["issues"])
                 elif kind == "spacing":
                     report = project.measure_spacing(**check["options"])
                     detail = [gap["pixels"] for gap in report["gaps"]]

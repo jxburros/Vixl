@@ -467,3 +467,13 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
 When unsure of a field, get the authoritative schema: MCP embeds it in `vixl_operations_apply`'s
 input schema (also resource `vixl://operations`); CLI `vixl schema`; REST `GET /schema`; per-command
 syntax via `vixl COMMAND --help`.
+
+## Reliability and reusable delivery (0.24)
+
+Check `passed` and `by_action`: warnings with action `fix` block delivery. Use explicit check lists only when intentionally narrowing the audit. Width-only text boxes reflow after edits; fixed-height boxes still need overflow review. `adapt-layout` with `recompose: true` rebuilds a stored layout recipe and may replace manual layer changes.
+
+Use `pack`/`unpack` for Git-friendly current-state project folders. Use `app-animation-package` for named app states, theme variables, transitions, reduced-motion fallbacks and editable masters. See [production](references/production.md). `screen-capture` is an explicit local-desktop workflow, not part of rendering.
+
+For articulated motion, use `character-pose` with `time` and joint `angles`, rather than independent limb position keys. New house-style-3 short timelines are seamless; use `loop_mode: off` for open motion. See [brushes and timeline](references/brushes-timeline.md).
+
+House style 3 expands pairing choices, weights alignment and preserves saturated backgrounds. Pin house style 2 for the 0.23 roll. Shared gaps accept `2u`; explicit pixel geometry wins. Irregular frames accept `frame_shape` or a closed SVG `outline`; transparent canvases preserve the silhouette.

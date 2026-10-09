@@ -65,3 +65,13 @@ def test_a_100k_character_text_flow():  # #335
                                         detail="brief"))
     assert len(p.state["layers"]) == 4
     assert elapsed < 40
+
+
+def test_poster_design_check_budget():  # #504
+    p = Project(1080, 1920, 'white')
+    p.apply({'type': 'layout-apply', 'name': 'quiet-editorial', 'seed': 1,
+             'title': 'One useful idea to share', 'subtitle': 'A clear explanation of the main point',
+             'body': 'Supporting information for everyone. ' * 8})
+    elapsed, report = timed(p.check)
+    assert 'contrast' in report['checked']['checks']
+    assert elapsed < 4

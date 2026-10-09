@@ -264,11 +264,28 @@ def gif_bytes(images, duration, loop, colors=256, dither="none"):
         # encoding stays small and dithering is stable from frame to frame.
         sample = images[:: max(1, len(images) // 16)][:16]
         step = max(1, math.ceil(math.sqrt(sample[0].width * sample[0].height / 65536)))
-        tiles = [image.convert("RGB").reduce(step) for image in sample]
+        tiles = [image.convert("RGB").resize((max(1, image.width // step), max(1, image.height // step)),
+                                               Image.Resampling.NEAREST) for image in sample]
+        # Reserve exact colours for flat artwork before sampling: tiny brand accents must
+        # not disappear into averaged neighbours. Bound the histogram for photographic frames.
+        exact = set()
+        for image in sample:
+            histogram = image.convert("RGB").getcolors(colors - 1)
+            if histogram is None:
+                exact = set()
+                break
+            exact.update(rgb for _, rgb in histogram)
+            if len(exact) >= colors:
+                exact = set()
+                break
         montage = Image.new("RGB", (tiles[0].width, tiles[0].height * len(tiles)))
         for i, tile in enumerate(tiles):
             montage.paste(tile, (0, i * tiles[0].height))
         palette = montage.quantize(colors=colors - 1, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE)
+        if exact:
+            entries = sorted(exact)
+            entries += [entries[-1]] * (256 - len(entries))
+            palette.putpalette([channel for rgb in entries for channel in rgb])
     frames = [gif_frame(image, colors, palette, dither) for image in images]
     stream = io.BytesIO()
     frames[0].save(

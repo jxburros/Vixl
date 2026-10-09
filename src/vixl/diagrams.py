@@ -606,13 +606,18 @@ class _Text:
         """``text`` with line breaks so no line is wider than ``width`` (words are never split)."""
         if "\n" not in text and self.measure(text, size)[0] <= width:
             return text
-        from .text import UnsupportedText, font_data, lines
-
-        try:
-            wrapped = lines(font_data(self.project, self.layer(text, size)), text, size, width)
-        except UnsupportedText:
-            wrapped = text.split("\n")
-        return "\n".join(line.rstrip() for line in wrapped)
+        wrapped = []
+        for paragraph in text.split("\n"):
+            line = ""
+            for word in paragraph.split():
+                proposed = f"{line} {word}" if line else word
+                if line and self.measure(proposed, size)[0] > width:
+                    wrapped.append(line)
+                    line = word
+                else:
+                    line = proposed
+            wrapped.append(line)
+        return "\n".join(wrapped)
 
 
 def _even(value):
@@ -767,6 +772,8 @@ def _build(project, spec, scale, area, name, direction=None):
             b.info[n["id"]] = {"kind": "group", "label": lines, "tw": tw, "th": th, "size": size}
             continue
         width = max_w * (0.8 if kind == "decision" else 1.0)
+        if isinstance(n.get("size"), list):
+            width = max(style.size, n["size"][0] * scale - 32 * scale)
         icon = n.get("icon")
         text = measure.wrap(label, style.size, width - (style.size * 1.1 + 8 * scale if icon else 0))
         tw, th = measure.measure(text, style.size)
@@ -1123,7 +1130,10 @@ def _sync(project, name, rec, b, parts, area):
     x = area[0] + (area[2] - width) / 2 if width <= area[2] else area[0]
     y = area[1] + (area[3] - height) / 2 if height <= area[3] else area[1]
     x, y = round(x + moved[0]), round(y + moved[1])
-    group.update(width=width, height=height, content_width=width, content_height=height, x=x, y=y)
+    fit = rec["spec"].get("fit", "contain" if "area" in rec["spec"] else "shrink")
+    final_scale = min(1, area[2] / width, area[3] / height) if fit != "none" else 1
+    group.update(width=width * final_scale, height=height * final_scale,
+                 content_width=width, content_height=height, x=x, y=y)
     rec["placement"] = [round(x - moved[0]), round(y - moved[1])]
     group["constraints"] = {} if not group.get("constraints") else group["constraints"]
     created = []

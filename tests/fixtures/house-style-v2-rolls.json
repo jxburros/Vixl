@@ -1,0 +1,650 @@
+[
+  {
+    "options": {
+      "seed": 0,
+      "purpose": "poster",
+      "variety": "low",
+      "house_style_version": 2
+    },
+    "sha256": "e8c0f6971c4352bdaa003219f21885bc8a7b35eceee79c9de064b9174ae9ebe8"
+  },
+  {
+    "options": {
+      "seed": 0,
+      "purpose": "poster",
+      "variety": "medium",
+      "house_style_version": 2
+    },
+    "sha256": "15d50936546aff60554c6c68316ecbc7c53e4a03a5cff835b5c0c0b070f42757"
+  },
+  {
+    "options": {
+      "seed": 0,
+      "purpose": "poster",
+      "variety": "high",
+      "house_style_version": 2
+    },
+    "sha256": "6de627077e2dd5f06f030a73f7bfd6ff8b2274048cceb09e8a5daca05eeda030"
+  },
+  {
+    "options": {
+      "seed": 0,
+      "purpose": "social",
+      "variety": "low",
+      "house_style_version": 2
+    },
+    "sha256": "2bce870957815ada591b6ad05b747a33c7952269f1fd5ca5416f979456e8d549"
+  },
+  {
+    "options": {
+      "seed": 0,
+      "purpose": "social",
+      "variety": "medium",
+      "house_style_version": 2
+    },
+    "sha256": "cf58f7841cd00246e9fa2831c905a7993668b474348adcfd841c2fabdc5a516e"
+  },
+  {
+    "options": {
+      "seed": 0,
+      "purpose": "social",
+      "variety": "high",
+      "house_style_version": 2
+    },
+    "sha256": "4d282b7d8fcb1dc46c8ce2f448eca4eb88b65592f334dcd5aea757cd11fd11c3"
+  },
+  {
+    "options": {
+      "seed": 0,
+      "purpose": "logo",
+      "variety": "low",
+      "house_style_version": 2
+    },
+    "sha256": "343347bbb7c950c03c3917c60e35a0cf65da993b37068883d2612e4708ad017f"
+  },
+  {
+    "options": {
+      "seed": 0,
+      "purpose": "logo",
+      "variety": "medium",
+      "house_style_version": 2
+    },
+    "sha256": "a76a6aac18a792f53f19daea6144853c6c7f8feaf7e411f72777d60ae9dd2b72"
+  },
+  {
+    "options": {
+      "seed": 0,
+      "purpose": "logo",
+      "variety": "high",
+      "house_style_version": 2
+    },
+    "sha256": "b83c916ecd50c45720c014787bd767695bf931c6f6644a617dc2b6499e3175e5"
+  },
+  {
+    "options": {
+      "seed": 1,
+      "purpose": "poster",
+      "variety": "low",
+      "house_style_version": 2
+    },
+    "sha256": "45f6e83604f7ccf99a0a4582012d28d24134d8f499519b93f98c43dd0f043307"
+  },
+  {
+    "options": {
+      "seed": 1,
+      "purpose": "poster",
+      "variety": "medium",
+      "house_style_version": 2
+    },
+    "sha256": "4aa00fbcd9c4472eabb4647ef8c0da27d99fb0c9fa072f3b872a9870c7ab7b92"
+  },
+  {
+    "options": {
+      "seed": 1,
+      "purpose": "poster",
+      "variety": "high",
+      "house_style_version": 2
+    },
+    "sha256": "ed3ba4fdc5b5a518ccff043fdbc0407df20cc19af531ce0c6ec31e496be9b287"
+  },
+  {
+    "options": {
+      "seed": 1,
+      "purpose": "social",
+      "variety": "low",
+      "house_style_version": 2
+    },
+    "sha256": "3c2ad336be95d83090ea9d678c1032cb4e8dfe05297af46a4cfa62236794b230"
+  },
+  {
+    "options": {
+      "seed": 1,
+      "purpose": "social",
+      "variety": "medium",
+      "house_style_version": 2
+    },
+    "sha256": "d809c1e41f426bf41f9a6a04f875625389431f8675cc7a20c0d6f6defe52130d"
+  },
+  {
+    "options": {
+      "seed": 1,
+      "purpose": "social",
+      "variety": "high",
+      "house_style_version": 2
+    },
+    "sha256": "2e9ed9818d8a5b2004ac8598345e10327fa993ffb3b189d69fa24517d3e38495"
+  },
+  {
+    "options": {
+      "seed": 1,
+      "purpose": "logo",
+      "variety": "low",
+      "house_style_version": 2
+    },
+    "sha256": "50b17c7bee6c99fc53f8ea885233fd6f25267f6ad2931a744094cd731540d035"
+  },
+  {
+    "options": {
+      "seed": 1,
+      "purpose": "logo",
+      "variety": "medium",
+      "house_style_version": 2
+    },
+    "sha256": "f20271cf9e9184dca2caf3fee722b36505aacfc435c7d902c9f01af4b91366b0"
+  },
+  {
+    "options": {
+      "seed": 1,
+      "purpose": "logo",
+      "variety": "high",
+      "house_style_version": 2
+    },
+    "sha256": "c7dcab0c69d8769503e416771550c0ec19276e45b09b661a63322a7ebab5df7c"
+  },
+  {
+    "options": {
+      "seed": 2,
+      "purpose": "poster",
+      "variety": "low",
+      "house_style_version": 2
+    },
+    "sha256": "298a7dd5a67ab034913c5f0958cc1dd73efc92c4cc3f823398a2cb60ce937fe2"
+  },
+  {
+    "options": {
+      "seed": 2,
+      "purpose": "poster",
+      "variety": "medium",
+      "house_style_version": 2
+    },
+    "sha256": "70f158d15c0da0a9c98270c0a0467aeacd20a78c09d6d2eb5d2d0002ac44422c"
+  },
+  {
+    "options": {
+      "seed": 2,
+      "purpose": "poster",
+      "variety": "high",
+      "house_style_version": 2
+    },
+    "sha256": "71a0eb4e733fcc098874f7d30dff896f650642f20c2096b458f05f4a60392e4c"
+  },
+  {
+    "options": {
+      "seed": 2,
+      "purpose": "social",
+      "variety": "low",
+      "house_style_version": 2
+    },
+    "sha256": "01d598833c74548d3980551c868e7f62cc222e440f08d1030245f0703eeebfc8"
+  },
+  {
+    "options": {
+      "seed": 2,
+      "purpose": "social",
+      "variety": "medium",
+      "house_style_version": 2
+    },
+    "sha256": "fc179541e6b2a4af0bff7050f4cd738391a0663fd999dbf824b70991b1043825"
+  },
+  {
+    "options": {
+      "seed": 2,
+      "purpose": "social",
+      "variety": "high",
+      "house_style_version": 2
+    },
+    "sha256": "d0847eacb3c44d6be0b8d064a459852407e82547603c4ea51553daa578b5969a"
+  },
+  {
+    "options": {
+      "seed": 2,
+      "purpose": "logo",
+      "variety": "low",
+      "house_style_version": 2
+    },
+    "sha256": "95d8b7d58e3cd0313a1b7eff3066613831d432533825422aa886b35a4ea27fd1"
+  },
+  {
+    "options": {
+      "seed": 2,
+      "purpose": "logo",
+      "variety": "medium",
+      "house_style_version": 2
+    },
+    "sha256": "ddda8eb2e4993b11a1a3744aa1d629aebe728da1043c6668e1b1d3730223599d"
+  },
+  {
+    "options": {
+      "seed": 2,
+      "purpose": "logo",
+      "variety": "high",
+      "house_style_version": 2
+    },
+    "sha256": "01e0f41c98779f9fd0af824a82099d9240c3a5dab54e513154dea682614b06c4"
+  },
+  {
+    "options": {
+      "seed": 3,
+      "purpose": "poster",
+      "variety": "low",
+      "house_style_version": 2
+    },
+    "sha256": "f09097c2fb48bf223518158f2387f6a6aac6b293b87a500c173fa964636327ba"
+  },
+  {
+    "options": {
+      "seed": 3,
+      "purpose": "poster",
+      "variety": "medium",
+      "house_style_version": 2
+    },
+    "sha256": "d37220821368556ef575c47e88f282027d2abff888d41f16eefb42e023455d2d"
+  },
+  {
+    "options": {
+      "seed": 3,
+      "purpose": "poster",
+      "variety": "high",
+      "house_style_version": 2
+    },
+    "sha256": "bd810cb5af82b27f3decc4b277c1fa5adbd4012351e56a4d4d183c4145d41d6a"
+  },
+  {
+    "options": {
+      "seed": 3,
+      "purpose": "social",
+      "variety": "low",
+      "house_style_version": 2
+    },
+    "sha256": "bc4a84745472d43b43f7015ac83ffd75414da3c83debd368b158eaafe390c4cd"
+  },
+  {
+    "options": {
+      "seed": 3,
+      "purpose": "social",
+      "variety": "medium",
+      "house_style_version": 2
+    },
+    "sha256": "5a449c12c024bdd52cc11eb3d8735a8d46b49e0f8c88b31d8b8fa5296a628a4b"
+  },
+  {
+    "options": {
+      "seed": 3,
+      "purpose": "social",
+      "variety": "high",
+      "house_style_version": 2
+    },
+    "sha256": "35876de786a24c127c2921b12d194fa975ecf5aaff8fa32264e9e3e79774f8dc"
+  },
+  {
+    "options": {
+      "seed": 3,
+      "purpose": "logo",
+      "variety": "low",
+      "house_style_version": 2
+    },
+    "sha256": "9b617df7cdb4cc715bfb8d16085a9d2f1e48fe261694b4b358345525ae7825a8"
+  },
+  {
+    "options": {
+      "seed": 3,
+      "purpose": "logo",
+      "variety": "medium",
+      "house_style_version": 2
+    },
+    "sha256": "d0348729bf1b27c203ebc6415a11c8ffc1482a49166ddf04ee0c65e7c79f8db0"
+  },
+  {
+    "options": {
+      "seed": 3,
+      "purpose": "logo",
+      "variety": "high",
+      "house_style_version": 2
+    },
+    "sha256": "597de1ed0e8908531982612168d9a0b1bde4ccf8bc8fc1cb96fd2e235ee46862"
+  },
+  {
+    "options": {
+      "seed": 4,
+      "purpose": "poster",
+      "variety": "low",
+      "house_style_version": 2
+    },
+    "sha256": "2341dbe3361e5a44b2cc6ae699e2f76c779ffbaa249c3ec3b89cb0a9ade45fc2"
+  },
+  {
+    "options": {
+      "seed": 4,
+      "purpose": "poster",
+      "variety": "medium",
+      "house_style_version": 2
+    },
+    "sha256": "80b3b7abad35c451c28b411b3452b88c0a6f9b4b8cd5cc37b9425aaa314ea90a"
+  },
+  {
+    "options": {
+      "seed": 4,
+      "purpose": "poster",
+      "variety": "high",
+      "house_style_version": 2
+    },
+    "sha256": "fdb2c7e9d9130fb661ab82be1a1c150fe0b36e19e20c7031f513d357273c4a6c"
+  },
+  {
+    "options": {
+      "seed": 4,
+      "purpose": "social",
+      "variety": "low",
+      "house_style_version": 2
+    },
+    "sha256": "d6654ff75b48d9cea0d5d3a21ad52822bb2949b84ea2171cbf84463cb6c7c77d"
+  },
+  {
+    "options": {
+      "seed": 4,
+      "purpose": "social",
+      "variety": "medium",
+      "house_style_version": 2
+    },
+    "sha256": "b577205344ca2ecb191c6679da05a5bdd038cc6e2daf9ae423be157fc045fe0d"
+  },
+  {
+    "options": {
+      "seed": 4,
+      "purpose": "social",
+      "variety": "high",
+      "house_style_version": 2
+    },
+    "sha256": "6d13ab9ec783cb5a530e8b21f17f01ccee54bf754ad03299990d89eebb29c2a8"
+  },
+  {
+    "options": {
+      "seed": 4,
+      "purpose": "logo",
+      "variety": "low",
+      "house_style_version": 2
+    },
+    "sha256": "fd59ae07715dd4ffe33e0a65958399b15073f8437c403af8bbe3b9ed364fe3f2"
+  },
+  {
+    "options": {
+      "seed": 4,
+      "purpose": "logo",
+      "variety": "medium",
+      "house_style_version": 2
+    },
+    "sha256": "1cc4649fc86071a168fe12a4892ca0b3fb16f77d700b7d5078de4e30bd6bd46c"
+  },
+  {
+    "options": {
+      "seed": 4,
+      "purpose": "logo",
+      "variety": "high",
+      "house_style_version": 2
+    },
+    "sha256": "d1210690f192f6370055c074656c39ca9a169dec76be6da3dbad79a44b9188f4"
+  },
+  {
+    "options": {
+      "seed": 5,
+      "purpose": "poster",
+      "variety": "low",
+      "house_style_version": 2
+    },
+    "sha256": "3b147fcf56188e4332375533dce7af51e4b731172825a811074f6c1706413baa"
+  },
+  {
+    "options": {
+      "seed": 5,
+      "purpose": "poster",
+      "variety": "medium",
+      "house_style_version": 2
+    },
+    "sha256": "dbfa13a1f0226a00b491b18c3634ced88843be0cad5cfb1fc7999cf7aaa9f735"
+  },
+  {
+    "options": {
+      "seed": 5,
+      "purpose": "poster",
+      "variety": "high",
+      "house_style_version": 2
+    },
+    "sha256": "f62d281f08726b44d53318446c09b573f2c64b442fea68732edb5c777f984c53"
+  },
+  {
+    "options": {
+      "seed": 5,
+      "purpose": "social",
+      "variety": "low",
+      "house_style_version": 2
+    },
+    "sha256": "71355fa234c7896343f715e8981eeaf643b0800a1fb182c71058afeb795388a9"
+  },
+  {
+    "options": {
+      "seed": 5,
+      "purpose": "social",
+      "variety": "medium",
+      "house_style_version": 2
+    },
+    "sha256": "2d12dc819685e31513a1b1b588966a697640b6214ba132f939a6433de7d24680"
+  },
+  {
+    "options": {
+      "seed": 5,
+      "purpose": "social",
+      "variety": "high",
+      "house_style_version": 2
+    },
+    "sha256": "443a46cebc207de7ec486b9fe0b27e746aab591bf64fab51af41180525170f8d"
+  },
+  {
+    "options": {
+      "seed": 5,
+      "purpose": "logo",
+      "variety": "low",
+      "house_style_version": 2
+    },
+    "sha256": "7be14b551ae5fd7a9fabb3bcb9d08ff1250b8266558889280c53b27482d4fba4"
+  },
+  {
+    "options": {
+      "seed": 5,
+      "purpose": "logo",
+      "variety": "medium",
+      "house_style_version": 2
+    },
+    "sha256": "a7f83cebedc0c52323ad8407c3af3225471d89d976395122abd540ba90dc6b15"
+  },
+  {
+    "options": {
+      "seed": 5,
+      "purpose": "logo",
+      "variety": "high",
+      "house_style_version": 2
+    },
+    "sha256": "8790bf411e224d3e48f7a76d74630b0020cd86db11e28077786ebce989cf1192"
+  },
+  {
+    "options": {
+      "seed": 6,
+      "purpose": "poster",
+      "variety": "low",
+      "house_style_version": 2
+    },
+    "sha256": "0f61f6ed6f0a90951bf8bea3db59d8ca04758aee44599dbf754c1c6255387ab6"
+  },
+  {
+    "options": {
+      "seed": 6,
+      "purpose": "poster",
+      "variety": "medium",
+      "house_style_version": 2
+    },
+    "sha256": "a3aabcce83f7ea02421a49e3b45946369d3105acdac36e1d158f8c58849d6c8f"
+  },
+  {
+    "options": {
+      "seed": 6,
+      "purpose": "poster",
+      "variety": "high",
+      "house_style_version": 2
+    },
+    "sha256": "86cafdaaca7c560e284ff6fbdd625261bcbdd050d9ca825da4307e40c51392b1"
+  },
+  {
+    "options": {
+      "seed": 6,
+      "purpose": "social",
+      "variety": "low",
+      "house_style_version": 2
+    },
+    "sha256": "aa377bfcecdfc41355da89f12fd00a4dc3fb84a9881cda40cc37f26f8875e9c7"
+  },
+  {
+    "options": {
+      "seed": 6,
+      "purpose": "social",
+      "variety": "medium",
+      "house_style_version": 2
+    },
+    "sha256": "8f4fe8ebfa3bbcfffca21117c7036f672111bfd36cd8eac5bdbc015869e51555"
+  },
+  {
+    "options": {
+      "seed": 6,
+      "purpose": "social",
+      "variety": "high",
+      "house_style_version": 2
+    },
+    "sha256": "c941f2ddbd4c839e1389ce3154f91eb8d8eafb5a6d29a4b1c16b7f240cb42485"
+  },
+  {
+    "options": {
+      "seed": 6,
+      "purpose": "logo",
+      "variety": "low",
+      "house_style_version": 2
+    },
+    "sha256": "27ba78e5518ca4ea714cfd1e6513ce21a005964768872fad0b276d9c37823969"
+  },
+  {
+    "options": {
+      "seed": 6,
+      "purpose": "logo",
+      "variety": "medium",
+      "house_style_version": 2
+    },
+    "sha256": "44fff449ac7813d715a882f0e13d7fa0ab8b613729deafaad48276a5d9be6309"
+  },
+  {
+    "options": {
+      "seed": 6,
+      "purpose": "logo",
+      "variety": "high",
+      "house_style_version": 2
+    },
+    "sha256": "2f15d1b0927dfe4f8b1e911f4c42f13cc9b3997237e633ef355c1a669e0cdb58"
+  },
+  {
+    "options": {
+      "seed": 7,
+      "purpose": "poster",
+      "variety": "low",
+      "house_style_version": 2
+    },
+    "sha256": "b72eb761789eaf584f82df2631508737a081aba9faeee569cbcc36e6927dcd25"
+  },
+  {
+    "options": {
+      "seed": 7,
+      "purpose": "poster",
+      "variety": "medium",
+      "house_style_version": 2
+    },
+    "sha256": "88fdb2237c45559f48b57cedfbb967081b9f9e40cea93005d6ae2e901bce907e"
+  },
+  {
+    "options": {
+      "seed": 7,
+      "purpose": "poster",
+      "variety": "high",
+      "house_style_version": 2
+    },
+    "sha256": "6ce1f4888c68422d156048db4fb68a3653f10fb986a1cb9ea332e61ce06d858a"
+  },
+  {
+    "options": {
+      "seed": 7,
+      "purpose": "social",
+      "variety": "low",
+      "house_style_version": 2
+    },
+    "sha256": "bb0da49506d58e4c9029af22669b1f3d931cf452a2020ab46435ee9169e69d96"
+  },
+  {
+    "options": {
+      "seed": 7,
+      "purpose": "social",
+      "variety": "medium",
+      "house_style_version": 2
+    },
+    "sha256": "fe2937b45e446919b81f922d8f612548fcc4f513bc10c143a4f2872c7398d7e3"
+  },
+  {
+    "options": {
+      "seed": 7,
+      "purpose": "social",
+      "variety": "high",
+      "house_style_version": 2
+    },
+    "sha256": "4f01a26cce0e23343d1c411658c25fa965a9e91de6db4e36aa67f4792ca5196f"
+  },
+  {
+    "options": {
+      "seed": 7,
+      "purpose": "logo",
+      "variety": "low",
+      "house_style_version": 2
+    },
+    "sha256": "582b36a6fd1b950ea412c2387fb65164604dd9cfa1ad5f522ef66f83becab0fe"
+  },
+  {
+    "options": {
+      "seed": 7,
+      "purpose": "logo",
+      "variety": "medium",
+      "house_style_version": 2
+    },
+    "sha256": "9524b4f7f92edd3321ae03e31128fa58e672065dede167e06d66b51323f946b7"
+  },
+  {
+    "options": {
+      "seed": 7,
+      "purpose": "logo",
+      "variety": "high",
+      "house_style_version": 2
+    },
+    "sha256": "f972d8b0a5ed37c83c5e3d614583d0e18e2def7e669ba875968d6afde9577042"
+  }
+]

@@ -7,8 +7,17 @@ from PIL import Image
 from .errors import require
 from .render import color, resolve_layout
 
+_CHANNEL = np.arange(256, dtype=float) / 255
+_LINEAR_CHANNEL = np.where(_CHANNEL <= 0.04045, _CHANNEL / 12.92, ((_CHANNEL + 0.055) / 1.055) ** 2.4)
+
 
 def luminance(rgb):
+    pixels = np.asarray(rgb)
+    if pixels.dtype == np.uint8:
+        # Rendered pixels have only 256 channel values. Reusing their exact transfer values
+        # avoids three full-image power operations for every contrast measurement.
+        return (_LINEAR_CHANNEL[pixels[..., 0]] * 0.2126 + _LINEAR_CHANNEL[pixels[..., 1]] * 0.7152
+                + _LINEAR_CHANNEL[pixels[..., 2]] * 0.0722)
     a = np.asarray(rgb, dtype=float) / 255
     linear = np.where(a <= 0.04045, a / 12.92, ((a + 0.055) / 1.055) ** 2.4)
     return linear @ np.array([0.2126, 0.7152, 0.0722])
@@ -22,8 +31,8 @@ def pixel_ratios(painted, backdrop, background="white"):
     below, above = base.copy(), base
     below.alpha_composite(backdrop)
     above.alpha_composite(painted)
-    a = luminance(np.asarray(above)[:, :, :3].astype(float))
-    b = luminance(np.asarray(below)[:, :, :3].astype(float))
+    a = luminance(np.asarray(above)[:, :, :3])
+    b = luminance(np.asarray(below)[:, :, :3])
     return (np.maximum(a, b) + 0.05) / (np.minimum(a, b) + 0.05)
 
 
@@ -169,7 +178,13 @@ def measure(
             layer["visible"] and layer["type"] != "adjustment", "Contrast target must be visible and drawable"
         )
         if layer.get("parent"):
-            coverage = layer_canvas_surface(candidate, effective).getchannel("A")
+            mask_view = candidate.clone()
+            ancestor = layer
+            while ancestor.get("parent"):
+                ancestor = mask_view.layer(ancestor["parent"])
+                ancestor["styles"] = {}
+                ancestor["effects"] = []
+            coverage = layer_canvas_surface(mask_view, effective).getchannel("A")
             box = coverage.getbbox()
             require(box is not None, "Target has no visible content")
             region = [box[0], box[1], box[2] - box[0], box[3] - box[1]]
@@ -187,12 +202,12 @@ def measure(
         if foreground is None:
             layer["visible"] = True
             target_image = candidate.render()
-            from .render import layer_image
-
             if coverage is None:
-                tile = layer_image(candidate, effective, b)
+                from .render import layer_ink, ink_origin
+
+                ink = layer_ink(candidate, effective, b).getchannel("A")
                 coverage = Image.new("L", image.size)
-                coverage.paste(tile.getchannel("A"), (math.floor(b[0]), math.floor(b[1])))
+                coverage.paste(ink, ink_origin(ink, b))
     if region is not None:
         require(
             len(region) == 4 and all(isinstance(v, int) for v in region),

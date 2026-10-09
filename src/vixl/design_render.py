@@ -41,7 +41,8 @@ def gradient_image(project, layer, size):
     for top in range(0, h, band):
         rows = y[top:top + band]
         if direction == "radial":
-            ramp = np.sqrt((2 * x - 1) ** 2 + (2 * rows - 1) ** 2)
+            cx, cy = layer.get("center", (0.5, 0.5))
+            ramp = np.sqrt((2 * (x - cx)) ** 2 + (2 * (rows - cy)) ** 2)
         else:
             a = math.radians(layer.get("angle", 0))
             dx, dy = math.cos(a), math.sin(a)
@@ -56,7 +57,11 @@ def shape_image(project, layer):
 
     from .shape_catalog import active as catalog_active
     from .vector_strokes import active as stroke_active, render as vector_render
-    if catalog_active(layer) or stroke_active(layer) or layer.get("distort") or layer.get("_distort_groups") or any(not isinstance(layer[k], int) for k in ("width", "height")):
+    from .geometry import path_overflows
+
+    filled_path = layer.get("shape") == "path" and (layer.get("stroke_width", 1) <= 0 or
+                  color(resolve_color(layer.get("stroke", "transparent"), project.state))[3] == 0)
+    if filled_path or path_overflows(layer) or catalog_active(layer) or stroke_active(layer) or layer.get("distort") or layer.get("_distort_groups") or (layer.get("shape") != "path" and any(not isinstance(layer[k], int) for k in ("width", "height"))):
         return vector_render(project, layer)
     if trim_range(layer):
         return trimmed_image(project, layer)

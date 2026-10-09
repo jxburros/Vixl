@@ -22,6 +22,14 @@ def _current_references(state):
     used = {name.decode() for name in ASSET_REFERENCE.findall(rest.encode())}
     # Layers name a font by its registered name (roles go through typography) or by its file.
     names = {name for name, asset in fonts.items() if json.dumps(name) in rest or asset in used}
+    # Rich text selects registered weight/slant siblings without storing their names in spans.
+    from types import SimpleNamespace
+    from .richtext import variant_font
+
+    view = SimpleNamespace(state=state)
+    variants = {variant_font(view, fonts[name], bold, italic, {})[0]
+                for name in names for bold, italic in ((True, False), (False, True), (True, True))}
+    names |= {name for name, asset in fonts.items() if asset in variants}
     used |= {fonts[name] for name in names}
     return used, names
 

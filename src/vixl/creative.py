@@ -28,6 +28,7 @@ def schemas(add):
         "pen",
         {
             "name": S,
+            "target": {**S, "description": "Existing pen/path layer to edit in place; preserves its ID and animation."},
             "nodes": {"type": "array", "items": node, "minItems": 2, "maxItems": 512},
             "points": {"type": "array", "items": point, "minItems": 2, "maxItems": 512},
             "closed": B,

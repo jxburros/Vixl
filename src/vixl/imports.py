@@ -69,6 +69,8 @@ def svg_operations(data, project, name):
         raise VixlError("invalid_svg", str(exc)) from exc
     require(root.tag in ("svg", "{http://www.w3.org/2000/svg}svg"), "Expected an SVG root")
     operations = []
+    gradients = {node.get("id"): node for node in root.iter()
+                 if node.tag.rsplit("}", 1)[-1] in ("linearGradient", "radialGradient") and node.get("id")}
     seen = 0
     base = Identity
     if "viewBox" in root.attrib:
@@ -173,6 +175,14 @@ def svg_operations(data, project, name):
                 walk(child, matrix, props, depth + 1, clips)
             return
         require(not len(node), "SVG shape children are unsupported", "unsupported_svg")
+        if props.get("fill", "").startswith("url("):
+            require(tag == "rect" and not clips, "Gradient fills on clipped/nonrectangular geometry require appearance import", "unsupported_svg")
+            try:
+                operations.append(_gradient_rect(attrs, props, matrix, gradients, f"{name}-{len(operations) + 1}", opacity))
+            except VixlError as exc:
+                raise VixlError(exc.code, str(exc) + "; use svg_mode='appearance' to preserve appearance", **exc.details) from exc
+            require(len(operations) <= project.limits.max_operations, "SVG has too many shapes", "resource_limit")
+            return
 
         def get(k, default=0):
             return length(attrs.get(k, str(default)))
@@ -298,6 +308,63 @@ def svg_operations(data, project, name):
     walk(root, base, {})
     require(operations, "SVG contains no visible geometry")
     return operations
+
+
+def _gradient_rect(attrs, props, matrix, gradients, name, opacity):
+    """Translate a native axis-aligned gradient rectangle without trusting private metadata."""
+    from .colors import parse, hex_of
+    ref = re.fullmatch(r"url\(#([^()]+)\)", props["fill"])
+    gradient = gradients.get(ref.group(1)) if ref else None
+    require(gradient is not None, "Unknown SVG gradient reference", "unsupported_svg")
+    require(gradient.get("gradientUnits") == "userSpaceOnUse" and gradient.get("spreadMethod", "pad") == "pad",
+            "Only user-space, padded gradients are editable", "unsupported_svg")
+    require(props.get("stroke", "none") == "none" or float(props.get("stroke-opacity", 1)) == 0,
+            "Stroked gradient rectangles require appearance import", "unsupported_svg")
+    require(length(attrs.get("rx", "0")) == 0 and length(attrs.get("ry", "0")) == 0,
+            "Rounded gradient rectangles require appearance import", "unsupported_svg")
+    a, b, c, d, e, f = matrix
+    require(abs(a - 1) < 1e-8 and abs(d - 1) < 1e-8 and abs(b) < 1e-8 and abs(c) < 1e-8,
+            "Transformed gradient rectangles require appearance import", "unsupported_svg")
+    x, y = length(attrs.get("x", "0")), length(attrs.get("y", "0"))
+    w, h = length(attrs.get("width", "0")), length(attrs.get("height", "0"))
+    require(w > 1 and h > 1, "Gradient rectangle must exceed one pixel", "unsupported_svg")
+    stops = []
+    for stop in gradient:
+        require(stop.tag.rsplit("}", 1)[-1] == "stop" and not len(stop)
+                and set(stop.attrib) <= {"offset", "stop-color", "stop-opacity"},
+                "Unsupported SVG gradient stop", "unsupported_svg")
+        offset = stop.get("offset", "0")
+        offset = float(offset[:-1]) / 100 if offset.endswith("%") else float(offset)
+        rgba = parse(stop.get("stop-color", "black"))
+        alpha = float(stop.get("stop-opacity", 1))
+        require(math.isfinite(offset) and 0 <= offset <= 1 and math.isfinite(alpha) and 0 <= alpha <= 1,
+                "Invalid SVG gradient stop", "unsupported_svg")
+        stops.append({"offset": offset, "color": hex_of((*rgba[:3], rgba[3] * alpha))})
+    require(2 <= len(stops) <= 32, "Editable gradients need 2–32 stops", "unsupported_svg")
+    result = {"type": "gradient", "name": attrs.get("id") or name + "-gradient", "x": x + e, "y": y + f,
+              "width": w, "height": h, "stops": stops,
+              "opacity": opacity * float(props.get("fill-opacity", 1))}
+    if gradient.tag.rsplit("}", 1)[-1] == "linearGradient":
+        require(set(gradient.attrib) <= {"id", "gradientUnits", "spreadMethod", "x1", "y1", "x2", "y2"},
+                "Unsupported linear gradient attributes", "unsupported_svg")
+        x1, y1, x2, y2 = [length(gradient.get(k, "0")) for k in ("x1", "y1", "x2", "y2")]
+        require(abs((x1 + x2) / 2 - x - (w - 1) / 2) < 1e-5
+                and abs((y1 + y2) / 2 - y - (h - 1) / 2) < 1e-5,
+                "Off-centre linear gradients require appearance import", "unsupported_svg")
+        square = (x2 - x1) ** 2 + (y2 - y1) ** 2
+        require(square > 0, "Degenerate SVG gradient", "unsupported_svg")
+        dx, dy = (x2 - x1) * (w - 1) / square, (y2 - y1) * (h - 1) / square
+        require(abs(abs(dx) + abs(dy) - 1) < 1e-5, "Unsupported gradient extent", "unsupported_svg")
+        result.update(direction="angled", angle=math.degrees(math.atan2(dy, dx)))
+    else:
+        require(set(gradient.attrib) <= {"id", "gradientUnits", "spreadMethod", "cx", "cy", "r", "gradientTransform"}
+                and length(gradient.get("cx", "0")) == 0 and length(gradient.get("cy", "0")) == 0
+                and length(gradient.get("r", "1")) == 1, "Unsupported radial gradient", "unsupported_svg")
+        ga, gb, gc, gd, gx, gy = transform(gradient.get("gradientTransform", ""))
+        require(abs(ga - w / 2) < 1e-5 and abs(gd - h / 2) < 1e-5 and abs(gb) < 1e-8 and abs(gc) < 1e-8,
+                "Unsupported radial gradient extent", "unsupported_svg")
+        result.update(direction="radial", center=[(gx - x) / w, (gy - y) / h])
+    return result
 
 
 def length(value):

@@ -95,7 +95,7 @@ def numbering(state, page):
     if page is None:
         return 0, len(shown)
     before = state["pages"][:state["pages"].index(page)]
-    return sum(1 for record in before if not record.get("hidden")) + 1, len(shown)
+    return min(sum(1 for record in before if not record.get("hidden")) + 1, len(shown)), len(shown)
 
 
 def set_builtins(state):

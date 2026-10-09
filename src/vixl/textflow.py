@@ -35,7 +35,7 @@ ACTIONS = ("create", "set", "add-frame", "link", "unlink", "reflow", "style", "d
 ALIGNS = ("left", "center", "right", "justify")
 SHAPE_MODES = ("bands", "inscribed")
 STYLE_KEYS = ("font", "size", "color", "align", "spacing", "line_height", "stroke_width", "stroke_color")
-RICH_KEYS = ("line_height", "paragraph_spacing", "list_indent", "font_variants")
+RICH_KEYS = ("line_height", "line_basis", "paragraph_spacing", "list_indent", "font_variants")
 FORMAT_KEYS = ("bold", "italic", "underline", "strike", "color", "size", "highlight", "baseline", "tracking", "list", "level",
                "align", "space_before", "space_after", "indent", "number_start", "line_height", "paragraph_spacing",
                "list_indent")
@@ -722,6 +722,9 @@ def _make_frames(project, name, rec, spec):
         require(key in spec, f"A frame needs {key} (or a layer or shape to follow)", field=key)
     columns = int(spec.get("columns", 1))
     gutter = float(spec.get("gutter", round(style["size"] * 1.5) if columns > 1 else 0))
+    if "gutter" not in spec and columns > 1 and state.get("design_defaults", {}).get("house_style_version", 2) >= 3:
+        from .craft import space
+        gutter = space(3, style["size"])
     rects = _column_rects(spec["x"], spec["y"], spec["width"], spec["height"], columns, gutter)
     ids = []
     with on_page(project, page):

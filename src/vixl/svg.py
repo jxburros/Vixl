@@ -14,6 +14,9 @@ from .errors import VixlError
 from .svg_effects import supported, native_styles, effect_filter, style_filter
 
 NS = "http://www.w3.org/2000/svg"
+NATIVE_BLENDS = frozenset(("normal", "multiply", "screen", "overlay", "darken", "lighten",
+                         "color-dodge", "color-burn", "hard-light", "soft-light", "difference", "exclusion",
+                         "hue", "saturation", "color", "luminosity"))
 ET.register_namespace("", NS)
 
 
@@ -168,6 +171,8 @@ class Exporter:
             )
             node(parent, "line", x1=0, y1=0, x2=sw, y2=sh, **attrs)
         else:
+            from .geometry import path_overflows
+
             path, view = shape_path(layer)
             nested = node(
                 parent,
@@ -176,9 +181,8 @@ class Exporter:
                 height=sh,
                 viewBox=f"0 0 {view[0]} {view[1]}",
                 preserveAspectRatio="none",
-                # Strokes (caps, miter joins) reach past the geometry box, as in the other renderers; a fill alone
-                # stays clipped to the box like its raster tile.
-                **({"overflow": "visible"} if attrs["stroke_opacity"] > 0 and layer.get("stroke_width", 1) > 0 else {}),
+                # Paths use their box as a coordinate frame, not a clip, for fill and stroke alike.
+                **({"overflow": "visible"} if path_overflows(layer) or (attrs["stroke_opacity"] > 0 and layer.get("stroke_width", 1) > 0) else {}),
             )
             if layer.get("line_cap"):
                 attrs.update(stroke_linecap=layer["line_cap"],
@@ -228,7 +232,7 @@ class Exporter:
                 cx=0,
                 cy=0,
                 r=1,
-                gradientTransform=f"translate({x + w / 2} {y + h / 2}) scale({w / 2} {h / 2})",
+                gradientTransform=f"translate({x + w * settings.get('center', [0.5, 0.5])[0]} {y + h * settings.get('center', [0.5, 0.5])[1]}) scale({w / 2} {h / 2})",
             )
         else:
             a = math.radians(settings.get("angle", 0))
@@ -327,7 +331,8 @@ class Exporter:
         elif kind == "group":
             # Groups do not clip their children, matching raster rendering.
             cw, ch = layer["content_width"], layer["content_height"]
-            group = node(parent, "g", transform=f"scale({layer['width'] / cw} {layer['height'] / ch})")
+            group = node(parent, "g", transform=f"scale({layer['width'] / cw} {layer['height'] / ch})",
+                         **({"style": "isolation:isolate"} if any(x["blend"] != "normal" for x in self.layers) else {}))
             for child in self.children.get(layer["id"], []):
                 self.layer(group, child)
         else:
@@ -351,6 +356,8 @@ class Exporter:
                     parent.remove(child)
                     wrapper.append(child)
             return
+        if layer.get("blend", "normal") != "normal":
+            parent = node(parent, "g", style=f"mix-blend-mode:{layer['blend']}")
         b = self.bounds[layer["id"]]
         simple = (
             not (layer.get("mask") and layer["mask"].get("enabled", True))
@@ -486,7 +493,7 @@ def export_svg(project, *, scale=1, variables=None, artboard=None, comp=None, sv
         for item in exporter.layers
         if exporter.visible(item)
         and (
-            item["blend"] != "normal"
+            item["blend"] not in NATIVE_BLENDS
             or (
                 item["type"] == "adjustment"
                 and (

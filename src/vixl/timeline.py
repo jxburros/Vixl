@@ -203,11 +203,16 @@ def default_timeline():
 
 
 def _timeline(project):
-    return project.state.setdefault("timeline", default_timeline())
+    if "timeline" not in project.state:
+        timeline = default_timeline()
+        if project.state.get("design_defaults", {}).get("house_style_version", 2) >= 3:
+            timeline["loop_mode"] = "seamless"
+        project.state["timeline"] = timeline
+    return project.state["timeline"]
 
 
 def _property_kind(name):
-    if name in NUMERIC or name.startswith("effect:"):
+    if name in NUMERIC or name.startswith(("effect:", "joint:")):
         return "number"
     if name in COLORS:
         return "color"
@@ -224,6 +229,8 @@ def _check_value(project, prop, value):
     kind = _property_kind(prop)
     if kind == "number":
         finite(value, prop, -1e6, 1e6)
+        if prop.startswith("joint:"):
+            finite(value, prop, -3600, 3600)
         if prop == "opacity":
             finite(value, "opacity", 0, 1)
         if prop in ("width", "height", "size"):
@@ -303,6 +310,12 @@ def static_value(project, target, prop):
         require(prop == "background", "The canvas animates only its background")
         return project.state["canvas"]["background"]
     layer = project.layer(target)
+    if prop.startswith("joint:"):
+        bones = layer.get("character", {}).get("bones", {})
+        require(prop[6:] in bones, f"Unknown character joint: {prop[6:]}")
+        return bones[prop[6:]].get("angle", 0)
+    if prop == "stroke_color" and layer["type"] == "shape":
+        prop = "stroke"
     if prop.startswith("effect:"):
         effect = _effect(layer, prop[7:])
         return effect.get("amount", 0)
@@ -353,6 +366,7 @@ def _effect(layer, ref):
 def execute_timeline(project, op):
     if op.get("property") in PROPERTY_ALIASES:
         op = {**op, "property": PROPERTY_ALIASES[op["property"]]}
+    fresh = "timeline" not in project.state
     timeline = _timeline(project)
     kind = op["type"]
     duration = timeline["duration"]
@@ -368,6 +382,8 @@ def execute_timeline(project, op):
         if "loop" in op:
             require(isinstance(op["loop"], int) and 0 <= op["loop"] <= 65535, "loop must be 0 (forever)–65535")
             timeline["loop"] = op["loop"]
+        if fresh and "loop_mode" not in op and (timeline["duration"] > 10000 or timeline["loop"] == 1):
+            timeline.pop("loop_mode", None)
         if "loop_mode" in op:
             require(op["loop_mode"] in ("seamless", "off"), "loop_mode must be 'seamless' or 'off'", field="loop_mode")
             if op["loop_mode"] == "seamless":
@@ -481,7 +497,9 @@ def execute_timeline(project, op):
         if prop in MIRRORING and target != "canvas":
             _check_mirror(project.layer(target), prop, min(begin, op["to"]))
         track = _track(timeline, target, prop)
-        _set_key(track, start, begin, op.get("easing", "ease-in-out"), written)
+        from .house_style import rule
+        default_easing = rule("easing")[op["intent"]] if op.get("intent") else "ease-in-out"
+        _set_key(track, start, begin, op.get("easing", default_easing), written)
         _set_key(track, end, op["to"], None, written)
     else:
         mirror = _apply_preset(project, timeline, target, op, written)
@@ -528,8 +546,9 @@ def _apply_preset(project, timeline, target, op, written):
             _set_key(track, time, value, ease if i < len(values) - 1 else None, written)
 
     if preset in ("fade-in", "fade-out"):
+        from .house_style import rule
         current = layer.get("opacity", 1)
-        keys("opacity", [0.0, current] if preset == "fade-in" else [current, 0.0], easing or "ease-out")
+        keys("opacity", [0.0, current] if preset == "fade-in" else [current, 0.0], easing or rule("easing")["entrance" if preset == "fade-in" else "exit"])
     elif preset.startswith(("slide-in", "slide-out")):
         # slide-in-left enters from the left edge; slide-in-up rises from below (animate.css
         # convention). slide-out-left leaves through the left edge; slide-out-up through the top.
@@ -552,12 +571,12 @@ def _apply_preset(project, timeline, target, op, written):
         keys(axis, values, easing or ("ease-out-cubic" if entering else "ease-in-cubic"))
         if op.get("fade", True):
             current = layer.get("opacity", 1)
-            keys("opacity", [0.0, current] if entering else [current, 0.0], "ease-out" if entering else "ease-in")
+            keys("opacity", [0.0, current] if entering else [current, 0.0], easing or ("ease-out" if entering else "ease-in"))
     elif preset in ("pop-in", "pop-out"):
         values = [0.6, 1.0] if preset == "pop-in" else [1.0, 0.6]
         keys("scale", values, easing or ("ease-out-back" if preset == "pop-in" else "ease-in-back"))
         current = layer.get("opacity", 1)
-        keys("opacity", [0.0, current] if preset == "pop-in" else [current, 0.0], "ease-out")
+        keys("opacity", [0.0, current] if preset == "pop-in" else [current, 0.0], easing or ("ease-out" if preset == "pop-in" else "ease-in"))
     elif preset in ("zoom-in", "zoom-out"):
         amount = op.get("amount", 1.15)
         finite(amount, "amount", 0.01, 100)
@@ -668,6 +687,7 @@ def project_at(project, time):
     state = candidate.state
     layers = {layer["id"]: layer for layer in state["layers"]}
     geometry = {}
+    poses = {}
     for track in timeline["tracks"]:
         if not track["keys"]:
             continue
@@ -679,7 +699,11 @@ def project_at(project, time):
         layer = layers.get(target)
         if layer is None:
             continue
-        if prop in ("x", "y", "translate-x", "translate-y", "scale", "scale-x", "scale-y"):
+        if prop == "stroke_color" and layer["type"] == "shape":
+            prop = "stroke"
+        if prop.startswith("joint:"):
+            poses.setdefault(target, {})[prop[6:]] = value
+        elif prop in ("x", "y", "translate-x", "translate-y", "scale", "scale-x", "scale-y"):
             geometry.setdefault(target, {})[prop] = value
         elif prop.startswith("distort:"):
             layer["distort"][prop.split(":", 1)[1]] = value
@@ -788,6 +812,10 @@ def project_at(project, time):
         from .kinetic import apply_frame
 
         apply_frame(candidate, timeline, time)
+    if poses:
+        from .characters import pose
+        for target, angles in poses.items():
+            pose(candidate, candidate.layer(target), angles)
     candidate._cache = project._cache
     return apply_at(candidate, time)
 
@@ -1097,16 +1125,17 @@ def poster_findings(project, time=0):
     timeline = project.state.get("timeline") or default_timeline()
     if not animated(timeline):
         return []
-    at_end = project_at(project, timeline["duration"])
+    samples = [project_at(project, timeline["duration"] * n / 8) for n in range(1, 9)]
+    at_end = max(samples, key=lambda frame: len(visible_content(frame)))
     resting = visible_content(at_end)
     shown = visible_content(project_at(project, time))
     seconds = f"{time / 1000:g}s"
     if resting and len(shown & resting) < 0.1 * len(resting):
         return [("empty-poster", f"The poster frame ({seconds}) shows {len(shown & resting)} of the {len(resting)} layers visible "
-                 "at the end: apps that show only the first frame will show an empty card. Export with poster: 'end', "
+                 "during the animation: apps that show only the first frame will show an empty card. Choose a visible poster time, "
                  "or keep the main content visible at t=0.", None)]
     return [("text-hidden-at-poster", f"Text {layer['name']!r} is hidden (transparent, empty, trimmed or off-canvas) at {seconds}, "
-             "the poster frame, although it is visible at the end.", layer["id"])
+             "the poster frame, although it is visible during the animation.", layer["id"])
             for layer in at_end.state["layers"] if layer["type"] == "text" and layer["id"] in resting and layer["id"] not in shown]
 
 
@@ -1155,7 +1184,7 @@ def validate_timeline(project, state):
         require((target, prop) not in seen, "Duplicate timeline track")
         seen.add((target, prop))
         _property_kind(prop)
-        if prop.startswith("distort:") or prop in ("dash_offset", "stroke_width"):
+        if prop.startswith(("distort:", "joint:")) or prop in ("dash_offset", "stroke_width"):
             static_value(candidate, target, prop)
         if prop.startswith("effect:"):
             _effect(ids[target], prop[7:])
@@ -1370,7 +1399,14 @@ def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=No
     quantum = 10 if format == "gif" else 1
     boundaries = [round((t - first) / quantum) * quantum for t in times] + [round((last - first) / quantum) * quantum]
     durations = [b - a for a, b in zip(boundaries, boundaries[1:])]
-    require(all(d >= quantum for d in durations), "Frame rate exceeds the animation format timing resolution; lower fps")
+    # A range may leave a sub-quantum final sample after timing quantization. Merge it
+    # into its predecessor instead of claiming the otherwise valid frame rate is too high.
+    if len(durations) > 1 and durations[-1] < quantum:
+        durations[-2] += durations.pop()
+        times = times[:-1]
+    require(all(d >= quantum for d in durations),
+            f"The range is shorter than {quantum} ms or its frame rate exceeds {1000 / quantum:g} fps; "
+            "extend the range or lower fps")
     loop = timeline.get("loop", 0)
     warnings = []
     poster_info = None
@@ -1488,6 +1524,7 @@ def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=No
     # after the encoder merged identical neighbours.
     rendered = len(images) if format in ("gif", "apng", "webp") else len(times)
     size = [metadata["width"], metadata["height"]] if metadata is not None else [w, h]
+    trial_durations = durations
     if format in ("gif", "apng", "webp"):
         count, written = encoded_frames(data)
         if count != rendered:
@@ -1496,7 +1533,7 @@ def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=No
         count = rendered
     used_dither = ("ordered" if gradients else "none") if dither == "auto" else dither
     warnings += size_warnings(format, data, max_bytes, gradients,
-                              webp=lambda: webp_trial(images, durations, loop) if format == "gif" else None,
+                              webp=lambda: webp_trial(images, trial_durations, loop) if format == "gif" else None,
                               dither=used_dither, budget=target_bytes)
     return {
         "output": str(path),
@@ -1571,7 +1608,7 @@ def schemas(add):
 
     time = {"type": ["number", "string"]}  # ms, "1.5s", "500ms", "50%" or a marker name
     value = {"type": ["number", "string", "boolean"]}
-    prop = {"type": "string", "description": "Animatable property: " + ", ".join(NUMERIC + COLORS + STEPPED) + ", or effect:ID. "
+    prop = {"type": "string", "description": "Animatable property: " + ", ".join(NUMERIC + COLORS + STEPPED) + ", or effect:ID or joint:BONE. "
             "scale, scale-x and scale-y accept negative values: -1 mirrors the layer on that axis, so animating "
             "scale-x from 1 to -1 swings it over about its pivot (center by default). trim_start and trim_end (0-100, percent of a "
             "shape's or path's outline) draw its stroke on or off: animate trim_end from 0 to 100. With trim_start equal to trim_end nothing is drawn, so a draw-on can reset invisibly. "
@@ -1606,7 +1643,7 @@ def schemas(add):
     targets = {"type": "array", "items": S, "minItems": 1, "uniqueItems": True}
     add("keyframe", {"property": prop, "time": time, "value": value, "easing": key_easing, "targets": targets, "extend": extend, "close": close}, ["property", "time", "value"])
     add("keyframe-remove", {"property": S, "time": time})
-    add("animate", {"property": prop, "from": value, "to": value, "start": time, "end": time, "duration": time, "easing": segment_easing, "targets": targets, "extend": extend, "close": close, "repeat": repeat, "until": until, "period": period, "stagger": stagger}, ["property", "to"])
+    add("animate", {"intent": {"enum": ["entrance", "exit", "loop", "emphasis"], "description": "Motion intent selects the house easing when easing is omitted."}, "property": prop, "from": value, "to": value, "start": time, "end": time, "duration": time, "easing": segment_easing, "targets": targets, "extend": extend, "close": close, "repeat": repeat, "until": until, "period": period, "stagger": stagger}, ["property", "to"])
     add("animate-preset", {"preset": {"enum": list(PRESETS), "description": "Ready-made motion: " + ", ".join(PRESETS) + ". draw-on/draw-off need a shape or path layer; color-shift also works on the canvas."}, "start": time, "duration": time, "easing": easing_schema("Override the preset's own easing (names as for keyframe easing, or cubic-bezier(...) / steps(n))."), "distance": N, "amount": N, "fade": B, "to": S, "targets": targets, "extend": extend, "close": close, "loop_safe": {"type": "boolean", "description": "Alias of close."}, "repeat": repeat, "until": until, "period": period, "stagger": stagger}, ["preset"])
     add("marker", {"name": S, "time": time, "delete": B}, ["name"], anyOf=[{"required": ["time"]}, {"required": ["delete"]}])
     from .kinetic import schemas as kinetic_schemas

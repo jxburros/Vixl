@@ -72,3 +72,10 @@ MCP paths must remain inside the workspace. REST exposes check/act/plan/film-pla
 its single project; filesystem, library and queue operations use CLI/Python/MCP.
 Checks certify only their declared rules and sampled times. Review the initial design,
 material visual changes and unresolved/unsupported measurements.
+
+
+### Field-report corrections
+
+Production without suites still checks bounds and flow; clipping returns needs_review. For variable reflow, define an action that reapplies the layout with replace=true and stable seed/prefix, then include it in recipe/actions. Generated layer IDs and manual edits can change. Unchanged, checksum-verified output can bypass repeated checks. See docs/production.md.
+
+For app delivery use `app-animation-package`: states map names to source .vixl files and optional loop/interruptible/on_complete/poster/variables/themes fields. Supply default_state and a new output directory. Global themes map names to variable overrides; transitions contain from/event/to. The package includes editable masters, animated WebP/GIF/APNG variants, static reduced-motion PNGs, a versioned manifest and an HTML consumer. Freeze external links and embed external fonts first. Missing states and ambiguous transitions fail before publication.

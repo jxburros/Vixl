@@ -62,3 +62,12 @@ vixl_export_timeline(path="sprites.png", format="sheet", columns=6)
 - Export results report the written file: sheet `size`, and GIF/WebP/APNG `frames` after identical frames merged (`rendered_frames` = rendered).
 - GIF: `dither` auto/none/ordered/floyd (shared palette; ordered never shimmers), `max_bytes` soft target. Results include `bytes` and a `warnings` entry above 1 MB (not when `target_bytes`/`preset` set the size) or max_bytes that suggests MP4/WebP with a measured WebP size (gradient GIFs get it at any size). `target_bytes` fits timeline GIF/WebP/APNG to a size (colors or WebP quality, then fps, then scale; reports `chosen`), and `preset` `chat`/`web`/`email` sets fps, width, colors and target_bytes. `colors=64` (2–256) plus lower `fps` shrink GIFs a lot (728×90, 4 s banner: 190 KB default → 41 KB with `colors=32, fps=10`); prefer WebP/MP4 where accepted.
 - Frame snapshots (`frame-save`, `vixl_export_animation`) work at any canvas size within the pixel budget; `sampling="smooth"` allows scales like 0.5 or 1.5 for illustrated (non-pixel-art) frames.
+
+
+### Field-report corrections
+
+Rig origins are character-local pixels; child origins come from the parent tip. Pivots are local fractions and explicit pivots survive rigging. wave is a character-cycle. Bind sibling part roots (each may be a group). For mixed entrances use text mode=in/preset close=false plus one shared parent fade-out. See docs/animation-authoring.md for WebP alpha and quality limits.
+
+`character-pose` can key joint angles with `time`/`easing`; the rig is solved per frame, so joints stay attached. Avoid baking separate limb x/y/rotation keys alongside pose tracks. House-style-3 short timelines are seamless unless overridden; `animate.intent` selects entrance/exit/loop/emphasis easing. Six-second `video-tip`, `video-launch` and `video-event` templates take title/subtitle/cta variables.
+
+Paint settings `drip` (0–4 brush sizes), `relief` (0–1) and `light_angle` (degrees, default -45) are independently optional. Existing jitter, size_jitter, wet_edges and texture controls remain independent. Drips follow gravity in local layer coordinates; rotate the paint layer to rotate the result.

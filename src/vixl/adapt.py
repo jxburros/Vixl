@@ -33,9 +33,10 @@ NAMES = {0: {"start": "left", "center": "center-x", "end": "right", "stretch": "
          1: {"start": "top", "center": "center-y", "end": "bottom", "stretch": "stretch-y"}}
 SPAN = 0.9  # A layer this large along an axis is treated as spanning it.
 MAX_REPORTED = 60
-OPTIONS = ("size", "width", "height", "orientation", "dpi", "bleed", "scale", "anchors", "where", "text", "report")
+OPTIONS = ("size", "width", "height", "orientation", "dpi", "bleed", "scale", "anchors", "where", "text", "report", "recompose")
 
 SCHEMA = {
+    "recompose": {"type": "boolean", "description": "Reapply a stored generated-layout recipe for this size (default false); replaces generated layer edits and IDs."},
     "size": {"type": "string", "description": "Named target size (vixl_sizes_list), e.g. story or a4; or give width "
              "and height."},
     "orientation": {"enum": ["portrait", "landscape"], "description": "With a named size."},
@@ -170,6 +171,20 @@ def execute(project, op):
     rules = anchor_rules(project, op.get("anchors", {}))
     apply_operation(project, {"type": "canvas", **{k: op[k] for k in ("size", "width", "height", "orientation", "dpi", "bleed")
                                                    if k in op}})
+    if op.get("recompose"):
+        from copy import deepcopy
+        from .layouts import execute_layout
+        from .schema import validate_operation
+
+        recipe = deepcopy((state.get("layout") or {}).get("recipe"))
+        require(recipe, "This document has no saved layout recipe; reapply layout-apply first", field="recompose")
+        recipe.update(type="layout-apply", replace=True)
+        # A target-specific size is derived afresh unless the recipe explicitly pinned it.
+        execute_layout(project, validate_operation(recipe))
+        record(project, "adapt_layout", {"mode": "recompose", "layout": recipe["name"],
+                                         "from": [old_w, old_h],
+                                         "to": [project.state["canvas"]["width"], project.state["canvas"]["height"]]})
+        return
     new_w, new_h = state["canvas"]["width"], state["canvas"]["height"]
     rx, ry = new_w / old_w, new_h / old_h
     scale = op.get("scale", "fit")
@@ -271,8 +286,8 @@ def adapt_copies(session, export_file, sizes, directory=".", name="{name}-{size}
     require(isinstance(sizes, list) and 0 < len(sizes) <= 16, "Give 1–16 sizes", field="sizes")
     require(report in ("summary", "layers"), "report is summary or layers", field="report")
     options = dict(options or {})
-    bad = sorted(set(options) - {"scale", "anchors", "where", "text"})
-    require(not bad, f"options accepts scale, anchors, where and text; got {', '.join(bad)}", field="options")
+    bad = sorted(set(options) - {"scale", "anchors", "where", "text", "recompose"})
+    require(not bad, f"options accepts scale, anchors, where, text and recompose; got {', '.join(bad)}", field="options")
     formats = [f.lower().lstrip(".") for f in (formats or [])]
     require(all(re.fullmatch(r"png|jpg|jpeg|webp|tif|tiff|avif|svg|pdf", f) for f in formats),
             "formats are png, jpg, webp, tiff, avif, svg or pdf", field="formats")

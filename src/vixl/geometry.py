@@ -173,6 +173,15 @@ def path_box(path):
     return max(1, x1), max(1, y1)
 
 
+def path_overflows(layer):
+    """Whether authored path geometry extends beyond its coordinate frame (stroke excluded)."""
+    if layer.get("shape") != "path":
+        return False
+    x0, y0, x1, y1 = path_extents(layer["path"])
+    w, h = layer.get("path_view", (layer["width"], layer["height"]))
+    return x0 < 0 or y0 < 0 or x1 > w or y1 > h
+
+
 def shape_path(layer):
     shape = layer["shape"]
     from .shape_catalog import active, path

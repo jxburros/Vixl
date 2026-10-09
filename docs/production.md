@@ -423,3 +423,15 @@ Tests use a fake gateway; live inference needs a configured service and is not e
 by the offline suite. Providers can vary in timing, output quality and consistency.
 
 See [the studio guide](studio.md) for starter suites, saved effects, modular containers, project groups, plugins and agent branch/merge actions.
+
+## Reflowing variable copy during production
+
+Changing variables updates text and width-only wrapping boxes. It does not rerun an entire layout automatically. For a template whose neighbouring layers must move, define an action containing `layout-apply` with `replace: true`, the same layout name, prefix, seed and `${variable}` copy slots. Name that action in the recipe's `actions` array or the production request's `actions` array. Production substitutes each row's variables before running the action, so layout measurement sees the actual copy. Prefer width-only text boxes when just the paragraph height should grow. An explicitly fixed height remains a constraint and may produce overflow.
+
+Recomposition replaces the layout-generated layers. Manual edits, layer IDs used by external bindings, custom animation tracks and adjustments to those generated layers may not survive. Store such content outside the generated prefix or rebuild it in the action. Check the longest row and every target size.
+
+Without named suites, production runs bounds and text-flow checks and returns `needs_review` for failures rather than publishing clipped text. Add suites for the rest of the design contract. Unchanged runs reuse an output only when inputs, fonts, linked sources, settings and checks match and the output's SHA-256 still agrees. Layer caches use the user cache directory, not the deliverables directory.
+
+The `app-animation-package` workflow packages named source documents, theme variables, explicit transitions, one-shot/looping behavior, reduced-motion PNGs and editable masters. Its generated manifest and standalone consumer are documented in [animation authoring](animation-authoring.md#app-animation-packages). Package outputs are new directories and external links must be frozen first.
+
+Contrast checks reuse exact byte-channel transfer values rather than recalculating the sRGB power function for every pixel. The poster performance regression exercises the complete design check; expensive effects and complex documents can still cost more.

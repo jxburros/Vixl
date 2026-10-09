@@ -1,9 +1,10 @@
 {
   "name": "vixl-house-style",
-  "version": 2,
+  "version": 3,
   "description": "Vixl's built-in default brand. Craft is fixed and the same everywhere; taste is rolled from tiered pools, gated by the variety level and weighted by purpose. A workspace brand.json and explicit fields override it. Changing a value here changes new documents only: documents store their rolled design_defaults with the house_style_version that made them.",
   "precedence": ["explicit field", "brand (brand.json)", "purpose profile", "document design_defaults", "seeded roll"],
   "craft": {
+    "easing": {"entrance": "ease-out", "exit": "ease-in", "loop": "ease-in-out", "emphasis": "ease-in-out"},
     "signature": [
       "sharp corners",
       "thin part lines",
@@ -11,6 +12,7 @@
       "uppercase labels",
       "one line-height rule"
     ],
+    "background_mix_max": {"light": 0.82, "dark": 0.75},
     "contrast": {"text": 4.5, "large_text": 3.0, "ink_target": 7.1, "secondary_text_target": 4.6, "fill": 3.0},
     "spacing": {"unit": 0.5, "unit_of": "body size", "minimum_unit": 2, "steps": [1, 2, 3, 4, 6, 8]},
     "line_height": {"display": 1.0, "heading": 1.1, "lead": 1.35, "body": 1.45, "caption": 1.3},
@@ -32,6 +34,7 @@
     "margins": [0.07, 0.085, 0.10]
   },
   "taste": {
+    "alignment": {"design": {"left": 0.75, "right": 0.25}, "data": {"left": 0.75, "center": 0.25}, "mark": {"center": 1}},
     "tiers": ["safe", "bold", "avant-garde"],
     "tier_notes": {
       "safe": "Broad-use choices that suit most briefs.",
@@ -152,17 +155,20 @@
       "safe": ["source-serif-sans", "ibm-plex-serif-sans", "inter-single-ui", "public-sans-single", "inter-tight-inter",
                "roboto-slab-roboto", "roboto-material", "work-sans-bitter", "montserrat-open-sans", "rubik-karla",
                "poppins-lora", "lexend-atkinson", "merriweather-source-sans-civic", "lora-source-sans",
-               "zilla-slab-fira-sans", "noto-serif-sans-global", "literata-single-reading", "eb-garamond-single"],
+               "zilla-slab-fira-sans", "noto-serif-sans-global", "literata-single-reading", "eb-garamond-single",
+               "public-sans-source-serif", "inter-tight-literata", "schibsted-noto-serif", "atkinson-source-serif"],
       "bold": ["dm-serif-dm-sans", "alegreya-sans-alegreya", "libre-franklin-libre-baskerville", "playfair-lato",
                "oswald-source-sans", "schibsted-newsreader", "fraunces-work-sans", "young-serif-rubik", "cormorant-jost",
                "bodoni-moda-inter", "bebas-neue-inter", "archivo-black-archivo", "league-gothic-libre-baskerville",
                "abril-fatface-pt-sans", "instrument-serif-sans", "league-spartan-libre-baskerville", "big-shoulders-barlow",
                "barlow-condensed-barlow", "plus-jakarta-single", "ibm-plex-mono-sans", "anton-roboto-thumbnail",
-               "josefin-sans-crimson-pro", "marcellus-lato"],
+               "josefin-sans-crimson-pro", "marcellus-lato",
+               "anton-libre-franklin", "bebas-source-serif", "oswald-public-sans", "bungee-figtree", "barlow-condensed-newsreader", "big-shoulders-work-sans", "fraunces-atkinson", "archivo-black-karla"],
       "avant-garde": ["syne-dm-sans", "unbounded-manrope", "space-mono-single-brutalist", "space-mono-space-grotesk",
                       "shrikhand-nunito", "fredoka-nunito", "bricolage-figtree", "alfa-slab-source-sans", "pacifico-lato",
                       "cinzel-eb-garamond", "great-vibes-eb-garamond", "caveat-karla", "unifraktur-libre-caslon",
-                      "press-start-space-mono"],
+                      "press-start-space-mono",
+               "monoton-space-grotesk", "grenze-ibm-plex-sans", "permanent-marker-geist", "shrikhand-source-code"],
       "explicit": ["noto-serif-jp-sans-jp", "noto-sans-arabic-single", "geist-dev", "jetbrains-mono-inter-docs",
                    "old-standard-single-academic"]
     },
@@ -438,6 +444,7 @@
     }
   },
   "legacy": {
+    "2": {"description": "0.23 roll: excludes pairings introduced in version 3 and keeps its original alignment and background mixing."},
     "1": {
       "summary": "The 0.20-0.22 rolls: safe pools only, two light rolls in three for every purpose, rolled looks at amount 0.1.",
       "palettes": ["chalk-indigo", "linen-teal", "clay-navy", "cloud-blue", "oat-olive", "rose-charcoal", "mist-pine", "ivory-cobalt",

@@ -192,7 +192,7 @@ def _watercolor(layer, state, color, a):
 
 
 def _halftone(layer, state, color, a):
-    return {}, [_effect("halftone", round(4 + 12 * a))]
+    return {}, [_effect("halftone", round(4 + 12 * a), color=_static(color or _base(layer, state), state))]
 
 
 def _hand_made(layer, state, color, a):

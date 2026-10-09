@@ -361,6 +361,12 @@ def _resolved_layers(project, variables=None, subset=None):
                 blend[key] = resolve_color(blend[key], project.state, variables)
         if layer["type"] == "text" and layer.get("auto_size", True):
             layer["width"], layer["height"], _ = text_metrics(project, layer, variables)
+        elif layer["type"] == "text" and "width" in layer.get("text_layout", {}) and "height" not in layer["text_layout"]:
+            from .checks import boxed_text_need
+
+            need = boxed_text_need(project, layer)
+            if need:
+                layer["height"] = max(1, need[1])
         if layer["type"] == "field":
             layer["value"] = list(fields.get(layer["field"]["key"], (None, "")))
         if layer.get("snap_to_pixel", project.state.get("snap_to_pixel", False)):
@@ -1567,12 +1573,13 @@ def export(
     require(svg_policy in ("appearance", "strict"), "SVG policy must be appearance or strict")
     from .pages import parse_pages
 
-    pages = parse_pages(pages)
+    all_pages = pages == "all"
+    pages = None if all_pages else parse_pages(pages)
     if isinstance(page, str) and page.isdigit():
         page = int(page)
     suffix = Path(path).suffix.lower() if path else ""
     requested = (format or suffix.lstrip(".") or "PNG").upper()
-    sheet = page == "all" or bool(pages) and requested not in ("PDF", "PPTX", "HTML", "HTM")
+    sheet = page == "all" or (all_pages or bool(pages)) and requested not in ("PDF", "PPTX", "HTML", "HTM")
     require(page is None or not pages, "Pass page or pages, not both")
     if sheet:
         require(requested in ("PNG", "JPG", "JPEG", "WEBP", "TIFF", "TIF", "AVIF"),
@@ -1652,6 +1659,10 @@ def export(
         if color_space == "cmyk":
             from . import colors
 
+            if icc_profile is None and report is not None:
+                report.setdefault("warnings", []).append(
+                    "CMYK conversion has no ICC profile; colors may shift or lose saturation. "
+                    "Supply icc_profile (CLI --icc) for the intended printer/paper.")
             separation = dict(profile=colors.load_profile(icc_profile) if icc_profile is not None else None,
                               intent=intent, black=finite(black_generation, "black_generation", 0, 1),
                               ink_limit=None if ink_limit is None else ink_limit / 100, background=background)

@@ -365,20 +365,9 @@ def finish_template(project, look, existing):
 
     if look == "none":
         return
-    require(
-        look
-        in (
-            "soft-shadow",
-            "paper",
-            "grain",
-            "outline",
-            "gradient",
-            "subtle-grain",
-            "light-paper",
-            "clean-flat",
-        ),
-        "Unknown template look",
-    )
+    from .looks import LOOKS
+
+    require(look in LOOKS, f"Unknown template look {look!r}; use look: 'none' to disable finishing")
     active = project.state.get("page")
     views = [active] + [page["id"] for page in project.state.get("pages", []) if page["id"] != active]
 

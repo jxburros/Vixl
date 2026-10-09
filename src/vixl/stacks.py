@@ -38,7 +38,8 @@ def schemas(add):
             "height": {**SIZE, "description": "Height of the stack's box: pixels or a percentage."},
             "direction": {**enum(*DIRECTIONS), "description": "vertical lays members out top to bottom (default), "
                           "horizontal left to right."},
-            "gap": {**amount, "description": "Pixels between members; hidden and empty members take none."},
+            "gap": {"oneOf": [amount, {"type": "string", "pattern": r"^\d+(?:\.\d+)?u$"}],
+                    "description": "Pixels or shared spacing units (2u); hidden and empty members take none. New house-style stacks default to 2u."},
             "padding": {"oneOf": [amount, {"type": "object", "properties": {k: amount for k in ("top", "right", "bottom", "left")}, "additionalProperties": False}], "description": "Uniform pixels or per-side padding."},
             "size": {**enum("fixed", "hug"), "description": "hug follows visible content and per-side padding on every render."},
             "background": {**S, "description": "Background fill color for a generated rectangle that follows the stack."},
@@ -125,7 +126,12 @@ def execute(project, op):
         width, height = op.get("width", group["width"]), op.get("height", group["height"])
         project.limits.size(width, height, vector=True)
         group.update(width=width, height=height, content_width=width, content_height=height)
-    group["stack"] = {**DEFAULTS, **group.get("stack", {}), **{k: op[k] for k in set(DEFAULTS) | EXTRAS if k in op}}
+    from .craft import body_size, resolve_space
+    defaults = dict(DEFAULTS)
+    if project.state.get("design_defaults", {}).get("house_style_version", 2) >= 3:
+        defaults["gap"] = resolve_space("2u", body_size(project))
+    group["stack"] = {**defaults, **group.get("stack", {}), **{k: op[k] for k in set(DEFAULTS) | EXTRAS if k in op}}
+    group["stack"]["gap"] = resolve_space(group["stack"]["gap"], body_size(project))
     if "hide_if_empty" in op:
         group["hide_if_empty"] = op["hide_if_empty"]
     validate_layer(group)

@@ -210,6 +210,9 @@ def artistic_filter(image, effect):
             .convert("RGBA")
         )
     elif name in ("halftone", "crosshatch"):
+        from .render import color
+
+        ink = color(effect.get("color", "black"))[:3]
         cell = int(amount)
         result = Image.new("RGB", image.size, "white")
         draw = ImageDraw.Draw(result)
@@ -221,7 +224,7 @@ def artistic_filter(image, effect):
                     r = cell * math.sqrt(darkness / math.pi)
                     cx, cy = x + cell / 2, y + cell / 2
                     if r:
-                        draw.ellipse((cx - r, cy - r, cx + r, cy + r), fill="black")
+                        draw.ellipse((cx - r, cy - r, cx + r, cy + r), fill=ink)
                 else:
                     if darkness > 0.2:
                         draw.line((x, y + cell - 1, x + cell - 1, y), fill="black")

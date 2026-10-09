@@ -312,7 +312,7 @@ def test_marked_crops_become_informational_and_the_report_groups_by_action():
     assert {issues[i]["check"] for i in by_action["fix"]} == {"legibility"}
     assert [issues[i]["layers"][0] for i in by_action["informational"]] == ["sun", "word"]
     assert [issues[i]["layers"][0] for i in by_action["review"]] == ["moon"]
-    assert (result["errors"], result["warnings"], result["info"]) == (0, 2, 2) and result["passed"]
+    assert (result["errors"], result["warnings"], result["info"]) == (0, 2, 2) and not result["passed"]
     assert sorted(i for ids in by_action.values() for i in ids) == list(range(len(issues)))
 
 

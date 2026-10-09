@@ -11,6 +11,8 @@ from .links import ACTIONS as LINK_ACTIONS
 from .lyrics import REQUEST_FIELDS as LYRIC_FIELDS
 from . import media_analysis, natural_guidance
 from .logo_package import FIELDS as LOGO_PACKAGE_FIELDS
+from .screen_capture import FIELDS as CAPTURE_FIELDS
+from .app_animation import FIELDS as APP_ANIMATION_FIELDS
 
 ACTIONS = {
     "check": ({"suite", "mode", "variables", "artboard"}, {"suite"}),
@@ -45,6 +47,8 @@ ACTIONS = {
 
 
 ACTIONS.update(EMOJI_ACTIONS)
+ACTIONS["screen-capture"] = (set(CAPTURE_FIELDS), {"output"})
+ACTIONS["app-animation-package"] = (set(APP_ANIMATION_FIELDS), {"states", "default_state", "output"})
 ACTIONS.update(natural_guidance.ACTIONS)
 ACTIONS.update(media_analysis.ACTIONS)
 ACTIONS.update(STUDIO_ACTIONS)
@@ -83,6 +87,8 @@ ACTION_FIELD_TYPES = {
 }
 
 ACTION_FIELD_TYPES["merge-impose"] = IMPOSITION_FIELD_TYPES
+ACTION_FIELD_TYPES["screen-capture"] = CAPTURE_FIELDS
+ACTION_FIELD_TYPES["app-animation-package"] = APP_ANIMATION_FIELDS
 for _module in (media_analysis, natural_guidance):
     for _action in _module.ACTIONS:
         ACTION_FIELD_TYPES[_action] = _module.FIELD_TYPES
@@ -133,6 +139,12 @@ def dispatch(session, action, request, document=None):
     allowed, required = ACTIONS[action]
     bounded_object(request, allowed, "Unknown workflow request field")
     require(required <= request.keys(), "Missing workflow fields", required=sorted(required))
+    if action == "screen-capture":
+        from .screen_capture import capture
+        return capture(session, request)
+    if action == "app-animation-package":
+        from .app_animation import package
+        return package(session, request)
     for field in ("dry_run", "replace"):
         if field in request:
             require(type(request[field]) is bool, f"{field} must be boolean")

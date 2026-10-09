@@ -89,3 +89,42 @@ layer's animation changes afterwards, run attach again. `vixl_timeline_inspect` 
 list each baked attachment under `attachments` (`layer`, `to`, `anchor` in pixels, `rotation`, `start`,
 `end`), and the tracks it wrote carry `attached_to`.
 
+
+## Rig coordinates and coordinated exits
+
+Root bone `origin: [x,y]` is in character-local pixels, independent of the part's width. Child bones attach at the parent's tip; their origin is derived. Angles are degrees relative to the parent, and length is in character-local pixels. A part's `pivot` is a fraction of its own box, for example `[0.5,0]` for the centre of a shoulder edge. Set that pivot before `character-rig`; rigging preserves explicit pivots. Moving the character group moves the rig with it. `character-cycle cycle=wave` supplies a waving right arm and keeps the feet still.
+
+When binding existing artwork with `character parts={...}`, the named part roots must be siblings. A part may itself be a group of shapes. Reparent the part roots into one common staging group with `keep: appearance`, then bind those siblings. Do not bind both an ancestor and its descendant as separate parts. Preview after reparenting; transformed parents can resample artwork. This is the supported structure for nested mascot artwork.
+
+For a common exit across mixed entrances, use `text-animate mode=in` and `animate-preset close=false` on the entrance operations. Group the entrance subjects, then animate the group's opacity from 1 to 0 over a shared final interval, with `easing: ease-in`. Begin with the group invisible, fade it in before its entrances, and end at opacity 0. Set `timeline-set loop_mode=seamless`; render the start, entrance, exit and loop boundary. `close=false` disables only the preset's automatic reverse exit, not other tracks or the shared parent fade. Layers invisible at both seam endpoints do not need matching off-screen positions.
+
+Animated WebP uses lossy colour encoding with `quality` and a losslessly encoded alpha channel. Lower colour quality cannot greatly compress a detailed transparency mask. Compare a flattened opaque version, simplify soft alpha edges, reduce pixel dimensions or frame rate, and use `target_bytes` for a bounded search. Pixel-frame animation with `sampling=nearest` deliberately uses lossless WebP; choose `sampling=smooth` to make quality control colour compression. GIF `dither=none` often preserves flat illustration best; ordered dithering is useful for gradients but can add texture and file size. Shared palettes preserve exact small colours when the sampled flat artwork fits the palette; reduced colour presets still discard colours when the artwork exceeds their budget.
+
+## Joint pose keys and short templates
+
+`character-pose` accepts `time` and `easing` alongside `angles`. It stores `joint:BONE` tracks and solves the complete rig at each sampled frame, preserving connected limb lengths between poses. With no `time`, it applies a static pose as before. Unspecified joints retain their rest angles. Use parent-group tracks to move the entire character; avoid combining pose keys with baked x/y/rotation tracks on the same limbs.
+
+House-style-3 documents start new short timelines in seamless mode. Explicit play-once (`loop: 1`) and `loop_mode: off` override this; an initially configured duration over ten seconds is open by default. Existing timelines are unchanged. `animate.intent` accepts entrance, exit, loop or emphasis and selects the house easing when `easing` is omitted. Fade-in eases out and fade-out eases in.
+
+The `video-tip`, `video-launch` and `video-event` templates build editable six-second square loops. Supply title, subtitle and cta variables; the three templates use slide, zoom and fade emphasis respectively. Check a contact sheet and choose a visible poster time before sharing.
+
+## App animation packages
+
+Run `vixl workflow app-animation-package --request package.json --workspace .`. The request contains `states`, `default_state`, `output`, optional `themes`, `transitions` and `format` (webp, gif or apng). A state supplies `source` and may set `loop`, `interruptible`, `on_complete`, `poster`, `variables` and per-theme variable overrides. Bind colours in the source to variables, such as `${ink}`. The package includes each editable master, theme animation, reduced-motion PNG, `manifest.json` and `index.html`.
+
+```json
+{
+  "default_state": "waiting",
+  "states": {
+    "waiting": {"source": "dots.vixl"},
+    "thinking": {"source": "thinking.vixl"},
+    "success": {"source": "success.vixl", "loop": false, "interruptible": false, "on_complete": "waiting"},
+    "error": {"source": "error.vixl", "loop": false, "on_complete": "waiting"}
+  },
+  "themes": {"light": {"ink": "#112233"}, "dark": {"ink": "#eeeeee"}},
+  "transitions": [{"from": "waiting", "event": "start", "to": "thinking"}, {"from": "thinking", "event": "done", "to": "success"}],
+  "output": "app-assets"
+}
+```
+
+Open `index.html` to exercise state selection and events. The example respects reduced-motion preferences, refuses interruption of protected one-shot states, and follows `on_complete` after playback. Reduced motion holds a static frame and permits explicit state changes. The sample API is `window.VixlAnimation.send(event)` or `.select(state)`. Missing/ambiguous transitions, invalid state names and missing masters fail before publication. Output directories must be new; freeze external linked artwork and embed external fonts first. A poster is selected from sampled visible content unless supplied explicitly.

@@ -130,6 +130,8 @@ def nice_scale(low, high, intervals, fixed_min=None, fixed_max=None):
     if fixed_max is None:
         high = round(math.ceil(high / step - 1e-9) * step, 12)
     ticks = [round(low + i * step, 12) for i in range(int((high - low) / step + 1e-9) + 1)]
+    if len(ticks) < 2:
+        ticks = [low, high]
     require(len(ticks) <= 60, "The value axis would have too many ticks; raise ticks' spacing with min, max or ticks",
             field="ticks")
     return low, high, step, ticks
@@ -438,6 +440,9 @@ class Style:
         self.scale = sorted({float(s["size"]) for s in state.get("character_styles", {}).values() if "size" in s})
         self.fs = int(round(recipe["font_size"])) if recipe.get("font_size") else self.snap(max(10, min(40, min(width, height) / 30)))
         self.pad = int(round(recipe["padding"] if "padding" in recipe else self.fs * 0.8))
+        if "padding" not in recipe and state.get("design_defaults", {}).get("house_style_version", 2) >= 3:
+            from .craft import space
+            self.pad = int(space(2, self.fs))
         override = recipe.get("background")
         self.surface = override or state["canvas"]["background"]
         surface = rgba(state, self.surface)
