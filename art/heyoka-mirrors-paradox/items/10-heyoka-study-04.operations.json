@@ -1,0 +1,122 @@
+[
+  {
+    "type": "text",
+    "name": "id",
+    "text": "HEYOKA / MODERN LENS 04",
+    "x": 45,
+    "y": 42,
+    "size": 18,
+    "font": "mono",
+    "color": "#e2aa91",
+    "line_height": 1.35
+  },
+  {
+    "type": "text",
+    "name": "title",
+    "text": "SHADOW WORK",
+    "x": 40,
+    "y": 105,
+    "size": 53,
+    "font": "condensed",
+    "color": "#eee3ed",
+    "line_height": 1.1
+  },
+  {
+    "type": "add",
+    "path": "/workspace/heyoka-modern-studio/assets/heyoka-surreal-sheet.png",
+    "name": "art-3-surreal"
+  },
+  {
+    "type": "crop",
+    "target": "art-3-surreal",
+    "x": 0,
+    "y": 605,
+    "width": 512,
+    "height": 325
+  },
+  {
+    "type": "resize",
+    "target": "art-3-surreal",
+    "width": 710,
+    "height": 450
+  },
+  {
+    "type": "move",
+    "target": "art-3-surreal",
+    "x": 45,
+    "y": 250
+  },
+  {
+    "type": "layer-intent",
+    "target": "art-3-surreal",
+    "role": "decoration",
+    "allow_crop": true
+  },
+  {
+    "type": "shape",
+    "shape": "rectangle",
+    "name": "art-3-border",
+    "x": 45,
+    "y": 250,
+    "width": 710,
+    "height": 450,
+    "fill": "transparent",
+    "stroke": "#e2aa91",
+    "stroke_width": 1
+  },
+  {
+    "type": "layer-intent",
+    "target": "art-3-border",
+    "role": "decoration",
+    "allow_crop": true
+  },
+  {
+    "type": "text",
+    "name": "body",
+    "text": "Modern spiritual language connects heyoka with shadow\nwork: noticing qualities we disown, project, or struggle to\nrecognize in ourselves.",
+    "x": 45,
+    "y": 749,
+    "size": 26,
+    "font": "sans",
+    "color": "#eee3ed",
+    "line_height": 1.43
+  },
+  {
+    "type": "shape",
+    "shape": "rectangle",
+    "name": "question-panel",
+    "x": 45,
+    "y": 965,
+    "width": 710,
+    "height": 135,
+    "fill": "#eee3ed"
+  },
+  {
+    "type": "layer-intent",
+    "target": "question-panel",
+    "role": "decoration",
+    "allow_crop": true
+  },
+  {
+    "type": "text",
+    "name": "question",
+    "text": "Why did this particular moment stay with me?",
+    "x": 65,
+    "y": 995,
+    "size": 27,
+    "font": "serif",
+    "color": "#17151e",
+    "line_height": 1.35
+  },
+  {
+    "type": "text",
+    "name": "footer",
+    "text": "HEYOKA / CONTEMPORARY INTERPRETATION",
+    "x": 45,
+    "y": 1147,
+    "size": 17,
+    "font": "mono",
+    "color": "#e2aa91",
+    "line_height": 1.35
+  }
+]

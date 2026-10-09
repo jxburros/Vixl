@@ -27,3 +27,6 @@ examples/output/
 
 tests/visual/_failures/
 !tests/fixtures/*.vixl
+
+# Preserve editable artwork references.
+!art/heyoka-mirrors-paradox/items/*.vixl

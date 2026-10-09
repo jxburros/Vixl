@@ -1,0 +1,184 @@
+{
+  "design": {
+    "passed": true,
+    "errors": 0,
+    "warnings": 0,
+    "info": 1,
+    "by_action": {
+      "fix": [],
+      "review": [],
+      "informational": [
+        0
+      ]
+    },
+    "issues": [
+      {
+        "check": "fonts",
+        "severity": "info",
+        "layers": [],
+        "message": "1 embedded file(s), 637,472 bytes, are not used by the current design (fonts registered but unused: italic); the rest are kept so undo can restore them. Compacting (vixl_history action='compact', CLI vixl compact) drops them together with the undo history.",
+        "unused_assets": [
+          {
+            "asset": "fonts/bc25600aa27cd409e1e5b3d86340df3a329bb860fcfbe57a03a95070b229e1b0.ttf",
+            "kind": "font",
+            "bytes": 637472,
+            "reason": "unused-font",
+            "fonts": [
+              "italic"
+            ]
+          }
+        ],
+        "bytes": 637472,
+        "action": "informational"
+      }
+    ],
+    "checked": {
+      "checks": [
+        "bounds",
+        "overlap",
+        "contrast",
+        "blanks",
+        "fonts"
+      ],
+      "layers_checked": 27,
+      "layers_total": 27,
+      "text_layers": 15
+    }
+  },
+  "readability": {
+    "version": 1,
+    "suite_hash": "80dc02be38467d654c8b215783b8960341eea712ed256d2f4d8c2e411c87f899",
+    "passed": true,
+    "status": "passed",
+    "errors": 0,
+    "needs_review": 0,
+    "coverage": {
+      "mode": "still",
+      "times": [
+        null
+      ]
+    },
+    "results": [
+      {
+        "id": "fit-0",
+        "status": "passed",
+        "severity": "error",
+        "time": null,
+        "actual_size": 20,
+        "fits": true
+      },
+      {
+        "id": "fit-1",
+        "status": "passed",
+        "severity": "error",
+        "time": null,
+        "actual_size": 68,
+        "fits": true
+      },
+      {
+        "id": "fit-2",
+        "status": "passed",
+        "severity": "error",
+        "time": null,
+        "actual_size": 28,
+        "fits": true
+      },
+      {
+        "id": "fit-3",
+        "status": "passed",
+        "severity": "error",
+        "time": null,
+        "actual_size": 25,
+        "fits": true
+      },
+      {
+        "id": "fit-4",
+        "status": "passed",
+        "severity": "error",
+        "time": null,
+        "actual_size": 28,
+        "fits": true
+      },
+      {
+        "id": "fit-5",
+        "status": "passed",
+        "severity": "error",
+        "time": null,
+        "actual_size": 25,
+        "fits": true
+      },
+      {
+        "id": "fit-6",
+        "status": "passed",
+        "severity": "error",
+        "time": null,
+        "actual_size": 28,
+        "fits": true
+      },
+      {
+        "id": "fit-7",
+        "status": "passed",
+        "severity": "error",
+        "time": null,
+        "actual_size": 25,
+        "fits": true
+      },
+      {
+        "id": "fit-8",
+        "status": "passed",
+        "severity": "error",
+        "time": null,
+        "actual_size": 28,
+        "fits": true
+      },
+      {
+        "id": "fit-9",
+        "status": "passed",
+        "severity": "error",
+        "time": null,
+        "actual_size": 25,
+        "fits": true
+      },
+      {
+        "id": "fit-10",
+        "status": "passed",
+        "severity": "error",
+        "time": null,
+        "actual_size": 28,
+        "fits": true
+      },
+      {
+        "id": "fit-11",
+        "status": "passed",
+        "severity": "error",
+        "time": null,
+        "actual_size": 25,
+        "fits": true
+      },
+      {
+        "id": "fit-12",
+        "status": "passed",
+        "severity": "error",
+        "time": null,
+        "actual_size": 28,
+        "fits": true
+      },
+      {
+        "id": "fit-13",
+        "status": "passed",
+        "severity": "error",
+        "time": null,
+        "actual_size": 25,
+        "fits": true
+      },
+      {
+        "id": "fit-14",
+        "status": "passed",
+        "severity": "error",
+        "time": null,
+        "actual_size": 18,
+        "fits": true
+      }
+    ]
+  }
+}

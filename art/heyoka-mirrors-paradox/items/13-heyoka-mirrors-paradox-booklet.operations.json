@@ -1,0 +1,892 @@
+[
+  [
+    {
+      "type": "text",
+      "name": "series",
+      "text": "HEYOKA / THE MODERN ARCHETYPE",
+      "x": 60,
+      "y": 52,
+      "size": 19,
+      "font": "mono",
+      "color": "#9fecdf",
+      "line_height": 1.35
+    },
+    {
+      "type": "text",
+      "name": "title",
+      "text": "MIRRORS\n& PARADOX",
+      "x": 50,
+      "y": 140,
+      "size": 88,
+      "font": "condensed",
+      "color": "#f1eaff",
+      "line_height": 1.08
+    },
+    {
+      "type": "add",
+      "path": "/workspace/heyoka-modern-studio/assets/heyoka-surreal-sheet.png",
+      "name": "art-0-surreal"
+    },
+    {
+      "type": "crop",
+      "target": "art-0-surreal",
+      "x": 0,
+      "y": 79,
+      "width": 512,
+      "height": 353
+    },
+    {
+      "type": "resize",
+      "target": "art-0-surreal",
+      "width": 900,
+      "height": 620
+    },
+    {
+      "type": "move",
+      "target": "art-0-surreal",
+      "x": 60,
+      "y": 435
+    },
+    {
+      "type": "layer-intent",
+      "target": "art-0-surreal",
+      "role": "decoration",
+      "allow_crop": true
+    },
+    {
+      "type": "shape",
+      "shape": "rectangle",
+      "name": "art-0-border",
+      "x": 60,
+      "y": 435,
+      "width": 900,
+      "height": 620,
+      "fill": "transparent",
+      "stroke": "#9fecdf",
+      "stroke_width": 1
+    },
+    {
+      "type": "layer-intent",
+      "target": "art-0-border",
+      "role": "decoration",
+      "allow_crop": true
+    },
+    {
+      "type": "text",
+      "name": "deck",
+      "text": "Six modern interpretations of heyoka:\nemotion, humor, shadow, disruption, and care.",
+      "x": 60,
+      "y": 1120,
+      "size": 28,
+      "font": "serif",
+      "color": "#f1eaff",
+      "line_height": 1.35
+    },
+    {
+      "type": "text",
+      "name": "footer",
+      "text": "A contemporary spiritual framework • Original editorial essays and artwork",
+      "x": 60,
+      "y": 1265,
+      "size": 17,
+      "font": "sans",
+      "color": "#9fecdf",
+      "line_height": 1.35
+    }
+  ],
+  [
+    {
+      "type": "text",
+      "name": "id",
+      "text": "HEYOKA / ESSAY 01 OF 06",
+      "x": 60,
+      "y": 52,
+      "size": 18,
+      "font": "mono",
+      "color": "#9fecdf",
+      "line_height": 1.35
+    },
+    {
+      "type": "text",
+      "name": "title",
+      "text": "THE EMOTIONAL MIRROR",
+      "x": 55,
+      "y": 123,
+      "size": 49,
+      "font": "serif",
+      "color": "#f1eaff",
+      "line_height": 1.1
+    },
+    {
+      "type": "add",
+      "path": "/workspace/heyoka-modern-studio/assets/heyoka-surreal-sheet.png",
+      "name": "art-0-surreal"
+    },
+    {
+      "type": "crop",
+      "target": "art-0-surreal",
+      "x": 69,
+      "y": 0,
+      "width": 373,
+      "height": 512
+    },
+    {
+      "type": "resize",
+      "target": "art-0-surreal",
+      "width": 350,
+      "height": 480
+    },
+    {
+      "type": "move",
+      "target": "art-0-surreal",
+      "x": 60,
+      "y": 280
+    },
+    {
+      "type": "layer-intent",
+      "target": "art-0-surreal",
+      "role": "decoration",
+      "allow_crop": true
+    },
+    {
+      "type": "shape",
+      "shape": "rectangle",
+      "name": "art-0-border",
+      "x": 60,
+      "y": 280,
+      "width": 350,
+      "height": 480,
+      "fill": "transparent",
+      "stroke": "#9fecdf",
+      "stroke_width": 1
+    },
+    {
+      "type": "layer-intent",
+      "target": "art-0-border",
+      "role": "decoration",
+      "allow_crop": true
+    },
+    {
+      "type": "text",
+      "name": "question",
+      "text": "What did I actually\nsee—and what did I\nadd?",
+      "x": 60,
+      "y": 820,
+      "size": 33,
+      "font": "serif",
+      "color": "#9fecdf",
+      "line_height": 1.25
+    },
+    {
+      "type": "rich-text",
+      "name": "essay-01",
+      "markdown": "The contemporary “heyoka empath” is frequently imagined as an emotional mirror: someone who reflects a feeling, contradiction, or defense back to another person. This is the organizing metaphor of the modern archetype. It gives a name to the experience of feeling seen, unsettled, or suddenly aware of a pattern.\n\nThe metaphor is compelling because recognition can arrive indirectly. A surprising question or a well-timed joke can reveal the distance between the story we tell about ourselves and the way we behave. The important event is the recognition, rather than the idea that one person has infallible access to another’s inner life.\n\nFor a modern reading, separate three things: the behavior you observed, your interpretation of it, and the other person’s account of their experience. That distinction does not empty the metaphor of meaning. It gives the encounter enough room to be explored instead of settled by a label.",
+      "x": 470,
+      "y": 280,
+      "width": 490,
+      "font": "sans",
+      "size": 22,
+      "line_height": 1.4,
+      "color": "#f1eaff"
+    },
+    {
+      "type": "shape",
+      "shape": "rectangle",
+      "name": "line",
+      "x": 60,
+      "y": 1240,
+      "width": 900,
+      "height": 2,
+      "fill": "#9fecdf"
+    },
+    {
+      "type": "layer-intent",
+      "target": "line",
+      "role": "decoration",
+      "allow_crop": true
+    },
+    {
+      "type": "text",
+      "name": "footer",
+      "text": "HEYOKA / MODERN INTERPRETATIONS • 02 / 08",
+      "x": 60,
+      "y": 1264,
+      "size": 17,
+      "font": "mono",
+      "color": "#f1eaff",
+      "line_height": 1.35
+    }
+  ],
+  [
+    {
+      "type": "text",
+      "name": "id",
+      "text": "HEYOKA / ESSAY 02 OF 06",
+      "x": 60,
+      "y": 52,
+      "size": 18,
+      "font": "mono",
+      "color": "#f0c878",
+      "line_height": 1.35
+    },
+    {
+      "type": "text",
+      "name": "title",
+      "text": "THE LIVING PARADOX",
+      "x": 55,
+      "y": 123,
+      "size": 49,
+      "font": "serif",
+      "color": "#fff0d0",
+      "line_height": 1.1
+    },
+    {
+      "type": "add",
+      "path": "/workspace/heyoka-modern-studio/assets/heyoka-surreal-sheet.png",
+      "name": "art-1-surreal"
+    },
+    {
+      "type": "crop",
+      "target": "art-1-surreal",
+      "x": 581,
+      "y": 0,
+      "width": 373,
+      "height": 512
+    },
+    {
+      "type": "resize",
+      "target": "art-1-surreal",
+      "width": 350,
+      "height": 480
+    },
+    {
+      "type": "move",
+      "target": "art-1-surreal",
+      "x": 60,
+      "y": 280
+    },
+    {
+      "type": "layer-intent",
+      "target": "art-1-surreal",
+      "role": "decoration",
+      "allow_crop": true
+    },
+    {
+      "type": "shape",
+      "shape": "rectangle",
+      "name": "art-1-border",
+      "x": 60,
+      "y": 280,
+      "width": 350,
+      "height": 480,
+      "fill": "transparent",
+      "stroke": "#f0c878",
+      "stroke_width": 1
+    },
+    {
+      "type": "layer-intent",
+      "target": "art-1-border",
+      "role": "decoration",
+      "allow_crop": true
+    },
+    {
+      "type": "text",
+      "name": "question",
+      "text": "Can two truths share\nthe same frame?",
+      "x": 60,
+      "y": 820,
+      "size": 33,
+      "font": "serif",
+      "color": "#f0c878",
+      "line_height": 1.25
+    },
+    {
+      "type": "rich-text",
+      "name": "essay-02",
+      "markdown": "The modern heyoka archetype is described through tensions: playful and serious, kind and unsettling, perceptive and unpredictable. The contradiction is not a flaw in the image. It is what makes the image attractive to people who feel constrained by a single description of themselves.\n\nParadox can open a useful space. A friend may care about you and challenge you. A joke may feel affectionate and still miss its mark. A person can be emotionally sensitive while misreading a situation. Holding both possibilities can produce a more precise conversation than assigning one fixed identity.\n\nAs a reflective practice, write two apparently conflicting statements about an encounter. Ask what each explains, and what each leaves out. The modern heyoka lens is useful when it loosens an assumption. It becomes less useful when contradiction is treated as proof that every action must contain special wisdom.",
+      "x": 470,
+      "y": 280,
+      "width": 490,
+      "font": "sans",
+      "size": 22,
+      "line_height": 1.4,
+      "color": "#fff0d0"
+    },
+    {
+      "type": "shape",
+      "shape": "rectangle",
+      "name": "line",
+      "x": 60,
+      "y": 1240,
+      "width": 900,
+      "height": 2,
+      "fill": "#f0c878"
+    },
+    {
+      "type": "layer-intent",
+      "target": "line",
+      "role": "decoration",
+      "allow_crop": true
+    },
+    {
+      "type": "text",
+      "name": "footer",
+      "text": "HEYOKA / MODERN INTERPRETATIONS • 03 / 08",
+      "x": 60,
+      "y": 1264,
+      "size": 17,
+      "font": "mono",
+      "color": "#fff0d0",
+      "line_height": 1.35
+    }
+  ],
+  [
+    {
+      "type": "text",
+      "name": "id",
+      "text": "HEYOKA / ESSAY 03 OF 06",
+      "x": 60,
+      "y": 52,
+      "size": 18,
+      "font": "mono",
+      "color": "#ffb9d6",
+      "line_height": 1.35
+    },
+    {
+      "type": "text",
+      "name": "title",
+      "text": "HUMOR THAT REVEALS",
+      "x": 55,
+      "y": 123,
+      "size": 49,
+      "font": "serif",
+      "color": "#fff0e1",
+      "line_height": 1.1
+    },
+    {
+      "type": "add",
+      "path": "/workspace/heyoka-modern-studio/assets/heyoka-surreal-sheet.png",
+      "name": "art-2-surreal"
+    },
+    {
+      "type": "crop",
+      "target": "art-2-surreal",
+      "x": 1093,
+      "y": 0,
+      "width": 373,
+      "height": 512
+    },
+    {
+      "type": "resize",
+      "target": "art-2-surreal",
+      "width": 350,
+      "height": 480
+    },
+    {
+      "type": "move",
+      "target": "art-2-surreal",
+      "x": 60,
+      "y": 280
+    },
+    {
+      "type": "layer-intent",
+      "target": "art-2-surreal",
+      "role": "decoration",
+      "allow_crop": true
+    },
+    {
+      "type": "shape",
+      "shape": "rectangle",
+      "name": "art-2-border",
+      "x": 60,
+      "y": 280,
+      "width": 350,
+      "height": 480,
+      "fill": "transparent",
+      "stroke": "#ffb9d6",
+      "stroke_width": 1
+    },
+    {
+      "type": "layer-intent",
+      "target": "art-2-border",
+      "role": "decoration",
+      "allow_crop": true
+    },
+    {
+      "type": "text",
+      "name": "question",
+      "text": "Did the laugh reveal a\npattern—or hide a\ncriticism?",
+      "x": 60,
+      "y": 820,
+      "size": 33,
+      "font": "serif",
+      "color": "#ffb9d6",
+      "line_height": 1.25
+    },
+    {
+      "type": "rich-text",
+      "name": "essay-03",
+      "markdown": "Modern descriptions of heyoka often give humor a disruptive role. A surprising response changes the emotional rhythm of an exchange. Irony makes a contradiction visible. Exaggeration enlarges a habit until the person who has it can finally recognize it.\n\nThe idea is more interesting than “funny people are wise.” A joke can create distance from a defensive story, but it can also create distance from another person. Its effect depends on timing, relationship, and whether the people involved experience it as an invitation or an attack.\n\nFor reflection, return to the exact joke or gesture. What assumption did it expose? Who was able to laugh? What happened afterward? A modern heyoka interpretation becomes concrete when it can describe those details, instead of using the archetype to turn every provocation into a lesson.",
+      "x": 470,
+      "y": 280,
+      "width": 490,
+      "font": "sans",
+      "size": 22,
+      "line_height": 1.4,
+      "color": "#fff0e1"
+    },
+    {
+      "type": "shape",
+      "shape": "rectangle",
+      "name": "line",
+      "x": 60,
+      "y": 1240,
+      "width": 900,
+      "height": 2,
+      "fill": "#ffb9d6"
+    },
+    {
+      "type": "layer-intent",
+      "target": "line",
+      "role": "decoration",
+      "allow_crop": true
+    },
+    {
+      "type": "text",
+      "name": "footer",
+      "text": "HEYOKA / MODERN INTERPRETATIONS • 04 / 08",
+      "x": 60,
+      "y": 1264,
+      "size": 17,
+      "font": "mono",
+      "color": "#fff0e1",
+      "line_height": 1.35
+    }
+  ],
+  [
+    {
+      "type": "text",
+      "name": "id",
+      "text": "HEYOKA / ESSAY 04 OF 06",
+      "x": 60,
+      "y": 52,
+      "size": 18,
+      "font": "mono",
+      "color": "#e2aa91",
+      "line_height": 1.35
+    },
+    {
+      "type": "text",
+      "name": "title",
+      "text": "THE SHADOW MIRROR",
+      "x": 55,
+      "y": 123,
+      "size": 49,
+      "font": "serif",
+      "color": "#eee3ed",
+      "line_height": 1.1
+    },
+    {
+      "type": "add",
+      "path": "/workspace/heyoka-modern-studio/assets/heyoka-surreal-sheet.png",
+      "name": "art-3-surreal"
+    },
+    {
+      "type": "crop",
+      "target": "art-3-surreal",
+      "x": 69,
+      "y": 512,
+      "width": 373,
+      "height": 512
+    },
+    {
+      "type": "resize",
+      "target": "art-3-surreal",
+      "width": 350,
+      "height": 480
+    },
+    {
+      "type": "move",
+      "target": "art-3-surreal",
+      "x": 60,
+      "y": 280
+    },
+    {
+      "type": "layer-intent",
+      "target": "art-3-surreal",
+      "role": "decoration",
+      "allow_crop": true
+    },
+    {
+      "type": "shape",
+      "shape": "rectangle",
+      "name": "art-3-border",
+      "x": 60,
+      "y": 280,
+      "width": 350,
+      "height": 480,
+      "fill": "transparent",
+      "stroke": "#e2aa91",
+      "stroke_width": 1
+    },
+    {
+      "type": "layer-intent",
+      "target": "art-3-border",
+      "role": "decoration",
+      "allow_crop": true
+    },
+    {
+      "type": "text",
+      "name": "question",
+      "text": "Why did this\nparticular moment\nstay with me?",
+      "x": 60,
+      "y": 820,
+      "size": 33,
+      "font": "serif",
+      "color": "#e2aa91",
+      "line_height": 1.25
+    },
+    {
+      "type": "rich-text",
+      "name": "essay-04",
+      "markdown": "In modern spiritual discussion, “shadow” often names qualities a person struggles to accept or notice in themselves. The heyoka mirror is sometimes imagined as a person who brings those qualities to the surface. The encounter may feel irritating, magnetic, or difficult to forget.\n\nA useful reflection starts with the reaction itself. What did I feel? What value, fear, or expectation seemed threatened? Does this resemble a pattern I know? These questions explore the experience without deciding in advance that the other person possesses a special ability to expose it.\n\nProjection is a possibility, not the automatic explanation for every disagreement. Sometimes a reaction reflects a real breach of trust or a boundary that needs attention. The modern shadow-mirror lens should help a person see more clearly, including when the clearest conclusion is that an interaction was simply unwelcome.",
+      "x": 470,
+      "y": 280,
+      "width": 490,
+      "font": "sans",
+      "size": 22,
+      "line_height": 1.4,
+      "color": "#eee3ed"
+    },
+    {
+      "type": "shape",
+      "shape": "rectangle",
+      "name": "line",
+      "x": 60,
+      "y": 1240,
+      "width": 900,
+      "height": 2,
+      "fill": "#e2aa91"
+    },
+    {
+      "type": "layer-intent",
+      "target": "line",
+      "role": "decoration",
+      "allow_crop": true
+    },
+    {
+      "type": "text",
+      "name": "footer",
+      "text": "HEYOKA / MODERN INTERPRETATIONS • 05 / 08",
+      "x": 60,
+      "y": 1264,
+      "size": 17,
+      "font": "mono",
+      "color": "#eee3ed",
+      "line_height": 1.35
+    }
+  ],
+  [
+    {
+      "type": "text",
+      "name": "id",
+      "text": "HEYOKA / ESSAY 05 OF 06",
+      "x": 60,
+      "y": 52,
+      "size": 18,
+      "font": "mono",
+      "color": "#8fe0d2",
+      "line_height": 1.35
+    },
+    {
+      "type": "text",
+      "name": "title",
+      "text": "THE PATTERN BREAKER",
+      "x": 55,
+      "y": 123,
+      "size": 49,
+      "font": "serif",
+      "color": "#e8f3ff",
+      "line_height": 1.1
+    },
+    {
+      "type": "add",
+      "path": "/workspace/heyoka-modern-studio/assets/heyoka-surreal-sheet.png",
+      "name": "art-4-surreal"
+    },
+    {
+      "type": "crop",
+      "target": "art-4-surreal",
+      "x": 581,
+      "y": 512,
+      "width": 373,
+      "height": 512
+    },
+    {
+      "type": "resize",
+      "target": "art-4-surreal",
+      "width": 350,
+      "height": 480
+    },
+    {
+      "type": "move",
+      "target": "art-4-surreal",
+      "x": 60,
+      "y": 280
+    },
+    {
+      "type": "layer-intent",
+      "target": "art-4-surreal",
+      "role": "decoration",
+      "allow_crop": true
+    },
+    {
+      "type": "shape",
+      "shape": "rectangle",
+      "name": "art-4-border",
+      "x": 60,
+      "y": 280,
+      "width": 350,
+      "height": 480,
+      "fill": "transparent",
+      "stroke": "#8fe0d2",
+      "stroke_width": 1
+    },
+    {
+      "type": "layer-intent",
+      "target": "art-4-border",
+      "role": "decoration",
+      "allow_crop": true
+    },
+    {
+      "type": "text",
+      "name": "question",
+      "text": "What became\npossible when the\nusual response\nstopped?",
+      "x": 60,
+      "y": 820,
+      "size": 33,
+      "font": "serif",
+      "color": "#8fe0d2",
+      "line_height": 1.25
+    },
+    {
+      "type": "rich-text",
+      "name": "essay-05",
+      "markdown": "Modern heyoka language often describes someone who does not follow the expected social script. A familiar response is replaced by an unexpected question, an absurd comparison, or a moment of silence. The break can make a routine reaction suddenly visible.\n\nThis image connects with a general creative technique: pattern interruption. Writers reverse an expected ending. Comedians change the premise. Designers alter scale or visual hierarchy. In each case, surprise draws attention to a structure the audience had stopped noticing.\n\nFor reflection, identify the old script before praising the interruption. What normally happens? What changed? Did the change produce a clearer understanding or only confusion? The modern heyoka lens becomes more specific when it explains what the interruption made possible.",
+      "x": 470,
+      "y": 280,
+      "width": 490,
+      "font": "sans",
+      "size": 22,
+      "line_height": 1.4,
+      "color": "#e8f3ff"
+    },
+    {
+      "type": "shape",
+      "shape": "rectangle",
+      "name": "line",
+      "x": 60,
+      "y": 1240,
+      "width": 900,
+      "height": 2,
+      "fill": "#8fe0d2"
+    },
+    {
+      "type": "layer-intent",
+      "target": "line",
+      "role": "decoration",
+      "allow_crop": true
+    },
+    {
+      "type": "text",
+      "name": "footer",
+      "text": "HEYOKA / MODERN INTERPRETATIONS • 06 / 08",
+      "x": 60,
+      "y": 1264,
+      "size": 17,
+      "font": "mono",
+      "color": "#e8f3ff",
+      "line_height": 1.35
+    }
+  ],
+  [
+    {
+      "type": "text",
+      "name": "id",
+      "text": "HEYOKA / ESSAY 06 OF 06",
+      "x": 60,
+      "y": 52,
+      "size": 18,
+      "font": "mono",
+      "color": "#efd09a",
+      "line_height": 1.35
+    },
+    {
+      "type": "text",
+      "name": "title",
+      "text": "THE GROUNDED MIRROR",
+      "x": 55,
+      "y": 123,
+      "size": 49,
+      "font": "serif",
+      "color": "#f5eddb",
+      "line_height": 1.1
+    },
+    {
+      "type": "add",
+      "path": "/workspace/heyoka-modern-studio/assets/heyoka-surreal-sheet.png",
+      "name": "art-5-surreal"
+    },
+    {
+      "type": "crop",
+      "target": "art-5-surreal",
+      "x": 1093,
+      "y": 512,
+      "width": 373,
+      "height": 512
+    },
+    {
+      "type": "resize",
+      "target": "art-5-surreal",
+      "width": 350,
+      "height": 480
+    },
+    {
+      "type": "move",
+      "target": "art-5-surreal",
+      "x": 60,
+      "y": 280
+    },
+    {
+      "type": "layer-intent",
+      "target": "art-5-surreal",
+      "role": "decoration",
+      "allow_crop": true
+    },
+    {
+      "type": "shape",
+      "shape": "rectangle",
+      "name": "art-5-border",
+      "x": 60,
+      "y": 280,
+      "width": 350,
+      "height": 480,
+      "fill": "transparent",
+      "stroke": "#efd09a",
+      "stroke_width": 1
+    },
+    {
+      "type": "layer-intent",
+      "target": "art-5-border",
+      "role": "decoration",
+      "allow_crop": true
+    },
+    {
+      "type": "text",
+      "name": "question",
+      "text": "Can I stay curious\nwithout deciding who\nsomeone is?",
+      "x": 60,
+      "y": 820,
+      "size": 33,
+      "font": "serif",
+      "color": "#efd09a",
+      "line_height": 1.25
+    },
+    {
+      "type": "rich-text",
+      "name": "essay-06",
+      "markdown": "The grounded version of the modern heyoka metaphor begins with relationship. Reflection is not something one person does to another from a position of unquestionable insight. It is an exchange in which both people can explain, disagree, correct, and choose their boundaries.\n\nA response may help someone notice a pattern. That does not make every response helpful, and it does not remove responsibility for its impact. A joke can be repaired. An assumption can be withdrawn. An interpretation can change after the other person speaks.\n\nUse the archetype as a lens that adds curiosity rather than a verdict that ends the conversation. “I noticed something—does it fit your experience?” offers a more grounded mirror than “I know the lesson you need.” Care gives the metaphor somewhere to stand.",
+      "x": 470,
+      "y": 280,
+      "width": 490,
+      "font": "sans",
+      "size": 22,
+      "line_height": 1.4,
+      "color": "#f5eddb"
+    },
+    {
+      "type": "shape",
+      "shape": "rectangle",
+      "name": "line",
+      "x": 60,
+      "y": 1240,
+      "width": 900,
+      "height": 2,
+      "fill": "#efd09a"
+    },
+    {
+      "type": "layer-intent",
+      "target": "line",
+      "role": "decoration",
+      "allow_crop": true
+    },
+    {
+      "type": "text",
+      "name": "footer",
+      "text": "HEYOKA / MODERN INTERPRETATIONS • 07 / 08",
+      "x": 60,
+      "y": 1264,
+      "size": 17,
+      "font": "mono",
+      "color": "#f5eddb",
+      "line_height": 1.35
+    }
+  ],
+  [
+    {
+      "type": "text",
+      "name": "series",
+      "text": "HEYOKA / CULTURAL ORIGIN + EDITORIAL SCOPE",
+      "x": 60,
+      "y": 55,
+      "size": 17,
+      "font": "mono",
+      "color": "#984632",
+      "line_height": 1.35
+    },
+    {
+      "type": "text",
+      "name": "title",
+      "text": "THE ORIGIN\nSTAYS IN VIEW.",
+      "x": 55,
+      "y": 132,
+      "size": 69,
+      "font": "serif",
+      "color": "#24302e",
+      "line_height": 1.1
+    },
+    {
+      "type": "text",
+      "name": "body",
+      "text": "The traditional Lakota heyoka role and the modern “heyoka empath”\narchetype are distinct contexts. This publication explores the latter:\na contemporary spiritual interpretation organized around emotional\nmirroring, paradox, humor, and reflection.\n\nThese essays are interpretive writing, not clinical findings. They do\nnot verify special powers or establish spiritual recognition. They\nexplore what the modern metaphors can mean in ordinary\nexperiences and relationships.\n\nFor cultural grounding, the WoLakota Project’s Lakota Pronunciation\nGlossary gives heyoka as “a sacred clown.” Black Elk Speaks (1932),\nchapter 16, “Heyoka Ceremony,” is a historical account to read in its\nown context. The WoLakota Project also offers Elder interviews and\nthe Oceti Sakowin Essential Understandings.",
+      "x": 60,
+      "y": 400,
+      "size": 28,
+      "font": "sans",
+      "color": "#24302e",
+      "line_height": 1.45
+    },
+    {
+      "type": "text",
+      "name": "sources",
+      "text": "Public cultural resources:\nwww.wolakotaproject.org/lakota-pronunciation-glossary/\nwww.wolakotaproject.org\nBlack Elk / John G. Neihardt, Black Elk Speaks, ch. 16.",
+      "x": 60,
+      "y": 1088,
+      "size": 20,
+      "font": "mono",
+      "color": "#24302e",
+      "line_height": 1.35
+    },
+    {
+      "type": "text",
+      "name": "footer",
+      "text": "Original artwork depicts modern editorial metaphors, not ceremonial objects or regalia.",
+      "x": 60,
+      "y": 1265,
+      "size": 17,
+      "font": "sans",
+      "color": "#984632",
+      "line_height": 1.35
+    }
+  ]
+]
