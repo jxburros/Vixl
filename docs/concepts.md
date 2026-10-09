@@ -10,6 +10,9 @@ The `.vixl` file is your editable master, a portable ZIP archive holding documen
 embedded assets and branching history. A PNG is a rendered deliverable; exporting it does
 not replace the master. Retain both when handing off a project. Supported SVG, PDF and
 PowerPoint exports preserve some geometry and text, with explicit appearance fallbacks.
+To review a master in Git, `vixl unpack design.vixl design-source` writes its current state as a
+readable `project.json` with content-addressed assets, and `vixl pack` rebuilds a `.vixl` from it;
+undo history is not kept ([commands](commands.md#reviewing-editable-projects-in-git)).
 
 The public interfaces share canonical JSON operations. A CLI command compiles to the same
 operation engine used by `Project.apply`, MCP and REST. Their persistence differs: CLI and
