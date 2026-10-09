@@ -18,3 +18,18 @@ them, each PNG, and `output/contact-sheet.png`.
 ```
 python explorations/logo-alternatives/build.py
 ```
+
+## Round two: two Vs that make an X, and reflections
+
+`build_x.py` (run with `PYTHONPATH=explorations/logo-alternatives`) builds these and `output/contact-sheet-x.png`.
+The X is two straight bars, so its top V and bottom V line up into one letter; the bottom V is the top V
+turned half a turn, like the original kit.
+
+| Concept | Idea |
+| --- | --- |
+| I · Clean X | The two Vs meet tip to tip; each has a pixel end, on opposite corners |
+| J · Overprint X | A straightened into a true X; each V runs past the waist and the overlap is light blue |
+| K · Shifted seam | The blue V slips one pixel sideways across a hairline gap (closest to the original) |
+| L · Half pixel X | B's dissolving arm on the top-left, mirrored to the bottom-right |
+| M · Reflection | Geometric "vixl" with one mirror line: x is a v plus its reflection, l is an i plus its reflection |
+| N · Water | "vi" on a waterline; with its reflection the pair reads "Xl" |

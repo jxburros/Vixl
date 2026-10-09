@@ -204,14 +204,15 @@ CONCEPTS = [
 ]
 
 
-def contact_sheet(made):
+def contact_sheet(made, name="contact-sheet", title="Vixl logo alternatives",
+                  subtitle="Eight directions, each an editable .vixl document"):
     cols, cw, ch, gap, pad, head = 2, 900, 375, 40, 70, 190
     rows = (len(made) + cols - 1) // cols
     sheet = Project(pad * 2 + cols * cw + (cols - 1) * gap, head + rows * (ch + 80 + gap) + pad - gap, background="#F3F2EE")
-    title, body = fonts(sheet, ("Inter Tight", 800), ("Inter", 400))
+    bold, body = fonts(sheet, ("Inter Tight", 800), ("Inter", 400))
     sheet.apply([
-        {"type": "text", "name": "Title", "text": "Vixl logo alternatives", "font": title, "size": 64, "color": INK, "x": pad, "y": 60},
-        {"type": "text", "name": "Subtitle", "text": "Eight directions, each an editable .vixl document", "font": body,
+        {"type": "text", "name": "Title", "text": title, "font": bold, "size": 64, "color": INK, "x": pad, "y": 60},
+        {"type": "text", "name": "Subtitle", "text": subtitle, "font": body,
          "size": 30, "color": "#6B7080", "x": pad, "y": 140},
     ])
     for i, (slug, label, note, png) in enumerate(made):
@@ -221,12 +222,12 @@ def contact_sheet(made):
             rect(f"Card {slug}", x, y, cw, ch + 80, PAPER, radius=24),
             {"type": "add", "path": str(png), "name": f"Logo {slug}", "x": x, "y": y + 50},
             {"type": "resize", "target": f"Logo {slug}", "width": cw, "height": ch},
-            {"type": "text", "name": f"Label {slug}", "text": label, "font": title, "size": 28, "color": INK, "x": x + 30, "y": y + 26},
+            {"type": "text", "name": f"Label {slug}", "text": label, "font": bold, "size": 28, "color": INK, "x": x + 30, "y": y + 26},
             {"type": "text", "name": f"Note {slug}", "text": note, "font": body, "size": 22, "color": "#6B7080",
              "x": x + 30, "y": y + ch + 30},
         ])
-    sheet.save(str(OUT / "contact-sheet.vixl"), overwrite=True)
-    sheet.export(str(OUT / "contact-sheet.png"), overwrite=True)
+    sheet.save(str(OUT / f"{name}.vixl"), overwrite=True)
+    sheet.export(str(OUT / f"{name}.png"), overwrite=True)
 
 
 def main():
