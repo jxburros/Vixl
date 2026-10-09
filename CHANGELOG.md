@@ -16,6 +16,7 @@ Authoring reliability and reusable delivery. This release fixes the field-report
 
 ### Fixed in this issue batch
 
+- Python source distributions exclude repository artwork and development assets to stay below PyPI's 100 MB file limit, while retaining all bundled runtime data.
 - Consistent path overflow and cell-effect previews, safer open-path joins and stroke bounds, trimmed arrowheads, local-pixel marker advisories, explicit scaling pivots, and tight endpoint-line geometry (#434, #435, #438, #447, #448, #457, #458, #485).
 - Width-only text boxes grow after edits and variable substitution; rich text flow keeps line-basis settings, generated labels preserve variable names, and compaction keeps implicit bold/italic font variants (#452, #453, #460, #475, #476, #478).
 - CLI schema filtering, inline/large JSON batches, workspace brand discovery, ambiguous shared-session close, bounded page numbering, multi-size layout adaptation and explicit layout recomposition (#439–#442, #455, #488, #500, #508).
