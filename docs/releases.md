@@ -136,6 +136,11 @@ No PyPI password belongs in the repository. A manual workflow run on a branch on
 artifacts; a manual run on a version tag also publishes. A version tag must match
 `src/vixl/__init__.py`; use a new version for a new release.
 Publication is an external release step, not something a source checkout can guarantee.
+The source distribution explicitly includes `src/vixl` (including bundled runtime data),
+`pyproject.toml`, `README.md` and `LICENSE`, plus Hatch's automatic metadata.
+Keep repository artwork, explorations and
+other development assets out of it so each Python distribution stays below PyPI's
+100 MB per-file limit.
 
 After the first successful PyPI release:
 

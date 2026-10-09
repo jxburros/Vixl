@@ -52,6 +52,9 @@ path = "src/vixl/__init__.py"
 [tool.hatch.build.targets.wheel]
 packages = ["src/vixl"]
 
+[tool.hatch.build.targets.sdist]
+include = ["/src/vixl", "/pyproject.toml", "/README.md", "/LICENSE"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = [
