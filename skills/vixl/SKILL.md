@@ -146,7 +146,7 @@ Read [emoji workflows](references/emojis.md) for the offline Unicode 17 catalog,
   version they were created with; replay 0.23 rolls with `vixl roll --house-style 2` or `{"house_style": 2}` in
   `.vixl/variety.json`. Explicit fields and saved geometry win. Minor social/poster text must be at least 2.2 % of
   the short side; bold text counts as large from 18.66 px (regular from 24 px).
-- **Spacing units** — `stack` and `layout-apply` `gap` accept `"2u"` (1u = half the body size); new house-style
+- **Spacing units** — `stack` and `layout-apply` `gap` accept `"2u"` in JSON operations (CLI flags take pixels) (1u = half the body size); new house-style
   stacks default to 2u.
 - **Brushes and frames** — paint `settings` `drip` (0–4 brush sizes), `relief` (0–1) and `light_angle` (degrees,
   default -45); `frame` `frame_shape` (rectangle, ellipse, star, hexagon, heart) or a closed SVG `outline` in

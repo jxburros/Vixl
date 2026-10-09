@@ -342,6 +342,11 @@ vixl -p promo.vixl export-timeline --out banner.gif --colors 64 --fps 12   # sma
 
 Times: ms, `1.5s`, `250ms`, `50%`, or a marker (`vixl marker reveal 1.2s`).
 
+`vixl new` documents roll house style 3, so a new timeline of 10 s or less loops seamlessly (and warns about loop
+seams); for a play-once sequence use `timeline set --duration 3s --loop 1`. `loop_mode`, `animate` `intent`,
+`frame_shape`/`outline` and `"2u"` gaps have no CLI flags (`stack --gap` takes pixels): pass them as JSON with
+`vixl apply`.
+
 
 ### Field-report corrections
 
