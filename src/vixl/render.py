@@ -1441,7 +1441,9 @@ def render_members(project, members, region=None, background="transparent", incl
     return image, (left, top)
 
 
-def _render_layers(project, layers, bounds, parent, size, background, observe, members=None, limit=None):
+def _render_layers(project, layers, bounds, parent, size, background, observe, members=None, limit=None, drawn=None):
+    """``drawn``, a dict, receives each layer's (left, top, right, bottom) tile box that it drew into, before
+    the tile's edge cut it."""
     c = project.state["canvas"]
     size = size or (c["width"], c["height"])
     index = {item["id"]: item for item in layers}
@@ -1461,6 +1463,8 @@ def _render_layers(project, layers, bounds, parent, size, background, observe, m
 
     def patch_of(layer):
         patch, origin = layer_patch(project, layer, bounds, size, index, limit=limit)
+        if patch is not None and drawn is not None:
+            drawn[layer["id"]] = (*origin, origin[0] + patch.width, origin[1] + patch.height)
         if patch is not None and limit:
             # Styled past the tile, as on the whole canvas; keep the part on the tile.
             left, top = max(0, origin[0]), max(0, origin[1])
@@ -1479,6 +1483,8 @@ def _render_layers(project, layers, bounds, parent, size, background, observe, m
             return image
         source = layer_ink(project, {**layer, "opacity": 1}, b)
         x, y = ink_origin(source, b)
+        if drawn is not None:
+            drawn[layer["id"]] = (x, y, x + source.width, y + source.height)
         left, top = max(0, x), max(0, y)
         right, bottom = min(size[0], x + source.width), min(size[1], y + source.height)
         if left >= right or top >= bottom:
@@ -1574,6 +1580,159 @@ def view_page(project, page=None):
     return project
 
 
+# Document state that does not change pixels: edits to it keep the previous canvas usable.
+UNDRAWN_STATE = {"layers", "timeline", "animation", "suites", "roles", "motions", "actions", "recipe", "active_layer",
+                 "design_guidance", "presets"}
+# Canvases up to this many pixels keep their last render for the next one.
+INCREMENTAL_PIXELS = 40_000_000
+
+
+class Snapshot:
+    """The last canvas a document view rendered, with what each top-level layer depended on and where it drew."""
+
+    def __init__(self, document, assets, order, layers, image):
+        self.document, self.assets, self.order, self.layers, self.image = document, assets, order, layers, image
+
+
+def layer_fingerprints(project, layers, bounds):
+    """Top-level layer ID → (digest of everything its pixels depend on, the canvas box it can draw in),
+    or None when some layer reads outside the document (linked files)."""
+    children, memo, index = child_index(layers), {}, {item["id"]: item for item in layers}
+    c = project.state["canvas"]
+    subtree = {}
+
+    def contents(item):
+        if item["id"] not in subtree:
+            nested = [contents(child) for child in children.get(item["id"], [])]
+            subtree[item["id"]] = [item, bounds.get(item["id"]), nested]
+        return subtree[item["id"]]
+
+    digests, visiting = {}, set()
+
+    def fingerprint(item):
+        if item["id"] not in digests:
+            require(item["id"] not in visiting, "Clipping contains a cycle")
+            visiting.add(item["id"])
+            clip = index.get(item.get("clip"))
+            digests[item["id"]] = digest([contents(item), fingerprint(clip) if clip else None])
+            visiting.discard(item["id"])
+        return digests[item["id"]]
+
+    result = {}
+    for item in layers:
+        if item.get("linked") or item["type"] == "link":
+            return None
+        if item.get("parent"):
+            continue
+        box = None
+        if item["visible"]:
+            x, y, w, h = bounds[item["id"]]
+            mx, my = ink_margin(item, bounds, children, memo)
+            # Styles are drawn on a patch reaching past their margin (layer_patch); two pixels hold
+            # antialiasing and fractional placement.
+            sx, sy = (2 * margin + 4 for margin in style_margin(item)) if item.get("styles") else (0, 0)
+            mx, my = mx + sx + 2, my + sy + 2
+            box = (max(0, math.floor(x - mx)), max(0, math.floor(y - my)),
+                   min(c["width"], math.ceil(x + w + mx)), min(c["height"], math.ceil(y + h + my)))
+            if box[0] >= box[2] or box[1] >= box[3]:
+                box = None
+        result[item["id"]] = (fingerprint(item), box)
+    return result
+
+
+def dirty_box(previous, current):
+    """The canvas box (left, top, right, bottom) to composite again so that a render whose top-level layers are
+    ``current`` matches a full one, starting from the ``previous`` snapshot: where changed layers drew, and where
+    they are estimated to draw now. (0, 0, 0, 0) when nothing changed, None when the stacking order did."""
+    shared = [ident for ident in previous.order if ident in current]
+    if shared != [ident for ident in current if ident in previous.layers]:
+        return None
+    boxes = []
+    for ident, (fingerprint, estimate) in current.items():
+        before = previous.layers.get(ident)
+        if before is None or before[0] != fingerprint:
+            boxes += [estimate, before[1] if before else None]
+    boxes += [previous.layers[ident][1] for ident in previous.order if ident not in current]
+    return union(boxes)
+
+
+def union(boxes):
+    boxes = [box for box in boxes if box]
+    if not boxes:
+        return (0, 0, 0, 0)
+    return (min(b[0] for b in boxes), min(b[1] for b in boxes), max(b[2] for b in boxes), max(b[3] for b in boxes))
+
+
+def render_incremental(project, background):
+    """``render_layers`` for a document whose regions render alone, reusing the canvas the same view drew last:
+    only the box covering the layers that changed (where they drew and where they draw now) is composited again.
+    Edits, previews and timeline frames that move or restyle a few layers stop costing the whole canvas."""
+    c = project.state["canvas"]
+    cache = layer_cache(project)
+    if c["width"] * c["height"] > INCREMENTAL_PIXELS:
+        return render_layers(project, background=background)
+
+    def on_canvas(box, left=0, top=0):
+        if box is None:
+            return None
+        box = (max(0, box[0] + left), max(0, box[1] + top), min(c["width"], box[2] + left), min(c["height"], box[3] + top))
+        return box if box[0] < box[2] and box[1] < box[3] else None
+
+    with resolving(project):
+        layers = resolved_layers(project)
+        bounds = resolve_layout(project, layers=layers)
+        project._resolution = (project.state, layers, bounds)
+        try:
+            try:
+                document = digest([{k: v for k, v in project.state.items() if k not in UNDRAWN_STATE}, background])
+                current = layer_fingerprints(project, layers, bounds)
+            except (TypeError, ValueError):
+                current = None
+            if current is None:
+                return _render_layers(project, layers, bounds, None, None, background, None)
+            assets = dict(project.assets)
+            previous = getattr(cache, "snapshot", None)
+            box = None
+            if (previous is not None and previous.document == document and previous.assets.keys() == assets.keys()
+                    and all(previous.assets[name] is data for name, data in assets.items())):
+                box = dirty_box(previous, current)
+            top_level = [item for item in layers if not item.get("parent")]
+            changed = {ident for ident, (fingerprint, _) in current.items()
+                       if previous is None or previous.layers.get(ident, (None,))[0] != fingerprint}
+            image = None
+            for _ in range(3):
+                if box is None:
+                    break
+                left, top, right, bottom = box
+                if left >= right or top >= bottom:
+                    # Only layers that draw nothing changed (hidden, or off the canvas).
+                    image, drawn = previous.image.copy(), {ident: None for ident in changed}
+                    break
+                drawn = {}
+                placed = shift(bounds, top_level, -left, -top)
+                tile = _render_layers(project, layers, placed, None, (right - left, bottom - top), background, None,
+                                      limit=(-left, -top, c["width"] - left, c["height"] - top), drawn=drawn)
+                # Estimates can fall short (kinetic glyphs draw past their layer's box): grow and draw again.
+                reach = union([box] + [on_canvas(drawn.get(ident), left, top) for ident in changed])
+                if reach == box:
+                    image = previous.image.copy()
+                    image.paste(tile, (left, top))
+                    drawn = {ident: on_canvas(drawn.get(ident), left, top) for ident in changed}
+                    break
+                box = reach
+            if image is None:
+                drawn = {}
+                image = _render_layers(project, layers, bounds, None, None, background, None, drawn=drawn)
+                drawn = {ident: on_canvas(drawn.get(ident)) for ident in current}
+            layers_now = {ident: (fingerprint, drawn[ident] if ident in drawn else previous.layers[ident][1])
+                          for ident, (fingerprint, _) in current.items()}
+            # The snapshot holds the asset bytes it compared, so an identical id cannot be a reused one.
+            cache.snapshot = Snapshot(document, assets, list(current), layers_now, image.copy())
+            return image
+        finally:
+            project._resolution = None
+
+
 def region_renders_alone(project):
     """Whether a region of the canvas can be drawn by itself, matching the same crop of a full render.
     Not when something reads the whole canvas: scene lighting, adjustment layers (their selections and
@@ -1638,9 +1797,11 @@ def render(project, variables=None, artboard=None, comp=None, page=None, region=
         cached = disk.get(key, project.limits)
         if cached is not None:
             return cached
-    image = render_layers(
-        candidate, background=resolve_color(candidate.state["canvas"]["background"], candidate.state)
-    )
+    background = resolve_color(candidate.state["canvas"]["background"], candidate.state)
+    if region_renders_alone(candidate):
+        image = render_incremental(candidate, background)
+    else:
+        image = render_layers(candidate, background=background)
     from .scene import composite
 
     image = composite(image, candidate)
