@@ -62,3 +62,9 @@ dropped: it fills the thin notch between the x's legs, and the x stops reading.
 | R4 · Shift | The reflection slips sideways, the offset of the original Digital Shift mark |
 | R5 · Symbol + wordmark | The x on its own, large, as the symbol and favicon |
 | R6 · On dark | R1 reversed out of charcoal |
+
+## Comparison with the current logo
+
+`compare.py` builds `output/compare-r2.png`: the Digital Shift logo, R2 and R2b side by side, on light and
+dark, and at 260, 140 and 80 px. R2b ripples only the x; rippling the l detaches its lower bands, and at
+small sizes the word reads "vix!".
