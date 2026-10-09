@@ -20,7 +20,7 @@ These commands work without an open document. CLI edits return compact new value
 
 ## Palettes
 
-The library includes 32 named palettes, from `midnight`, `ocean`, `forest`, `sunset`, and `pastel` to `mono`, `nordic`, and `accessible-blue`. Palette names describe starting points; measure actual foreground/background contrast for the combinations you choose.
+The library includes 74 named palettes, from `midnight`, `ocean`, `forest`, `sunset`, and `pastel` to `mono`, `nordic`, and `accessible-blue`. Palette names describe starting points; measure actual foreground/background contrast for the combinations you choose.
 
 ```bash
 vixl palette show ocean
@@ -34,9 +34,12 @@ Custom palette files are JSON arrays of 2–256 color strings, for example `["#1
 
 ## Templates
 
-Built-in templates: `social-square`, `story`, `thumbnail`, `poster`, `business-card`, and transparent `logo`.
+Simple built-in templates: `social-square`, `story`, `thumbnail`, `poster`, `business-card`, and transparent `logo`.
 Their sizes and positions are drawn for the template's own size and scale with the canvas they are applied to
-(one factor, so the copy keeps its relative size and place on any canvas).
+(one factor, so the copy keeps its relative size and place on any canvas). `vixl template list` also shows eight
+modular templates ([studio](studio.md)), 26 use-case templates for social, marketing, print, business and slides
+([containers and templates](containers-and-templates.md#use-case-templates)) and the six-second animated loops
+`video-tip`, `video-launch` and `video-event` ([animation authoring](animation-authoring.md#joint-pose-keys-and-short-templates)).
 
 ```bash
 vixl template show social-square
@@ -130,7 +133,7 @@ Python can use `vixl.resources.catalog/get/register/create_template` and `vixl.f
 
 Guidance texts are not separate tools. They live in one registry (`vixl/guidance.py`, plus user additions): list them with `vixl_resources_list(kind="guidance")` or `vixl_guide()`, and read one with `vixl_guide(brief="natural-motion")` or `vixl_resource_get(kind="guidance", name="overall")` (CLI `vixl guidance list`, `vixl guide natural-motion`). Besides the design principles (overall, typography, color, layout, print …) it holds craft references: `natural-motion`, `looping-motion`, `character-rigging`, `cut-paper`, `audio-composition`, `anatomy-proportions`, `natural-color-light`, `illustration-perspective`, `drawn-textures`, `film-review`, `imperfection` (when to use `irregular` and `tear`) and `multi-part-objects` (grouping, overlapping parts, consistent outlines, `isolate` previews and the `connected` check). The guide's kinds and `vixl_capabilities` topics name the entries that apply.
 
-MCP exposes `vixl_resources_list`, `vixl_resource_get`, `vixl_resource_add`, `vixl_template_create`, `vixl_import_font` (`path` or an `https://` `url`, under the same fetch policy as image URLs: no credentials, no private hosts, at most 5 redirects), and `vixl_models_list`. Font file paths and template destinations stay inside the server workspace. Use a registered font by name in an operation (`{"type": "text", "font": "brand", ...}`); generic service operations continue to reject arbitrary filesystem font paths. REST adds GET/POST `/resources/{kind}/{name}`, GET `/resources/{kind}`, POST `/fonts?name=brand` with raw font bytes, and POST `/export` with JSON options such as `{"format":"SVG"}`. REST font uploads are limited to 16 MiB.
+MCP exposes `vixl_resources_list`, `vixl_resource_get`, `vixl_resource_add`, `vixl_template_create`, `vixl_import_font` (`path` or an `https://` `url`, under the same fetch policy as image URLs: no credentials, no private hosts, at most 5 redirects), and, in the `--tools ai` set, `vixl_models_list`. Font file paths and template destinations stay inside the server workspace. Use a registered font by name in an operation (`{"type": "text", "font": "brand", ...}`); generic service operations continue to reject arbitrary filesystem font paths. REST adds GET/POST `/resources/{kind}/{name}`, GET `/resources/{kind}`, POST `/fonts?name=brand` with raw font bytes, and POST `/export` with JSON options such as `{"format":"SVG"}`. REST font uploads are limited to 16 MiB.
 
 ## Sizes, layouts and principle guidance (0.13)
 

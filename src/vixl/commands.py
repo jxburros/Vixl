@@ -30,6 +30,16 @@ def pairs(values):
     return result
 
 
+def spacing(value):
+    """Pixels, or a spacing-unit expression such as 2u (half the body size per unit)."""
+    if re.fullmatch(r"\d+(?:\.\d+)?u", value.strip()):
+        return value.strip()
+    try:
+        return float(value)
+    except ValueError:
+        raise VixlError("usage_error", f"Spacing must be pixels or units such as 2u, not {value!r}") from None
+
+
 def number_or_center(value):
     from .normalize import PERCENT
 

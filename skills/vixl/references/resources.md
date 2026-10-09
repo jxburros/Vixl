@@ -18,7 +18,7 @@ These commands work without an open document. CLI edits return compact new value
 
 ## Palettes
 
-The library includes 32 named palettes, from `midnight`, `ocean`, `forest`, `sunset`, and `pastel` to `mono`, `nordic`, and `accessible-blue`. Palette names describe starting points; measure actual foreground/background contrast for the combinations you choose.
+The library includes 74 named palettes, from `midnight`, `ocean`, `forest`, `sunset`, and `pastel` to `mono`, `nordic`, and `accessible-blue`. Palette names describe starting points; measure actual foreground/background contrast for the combinations you choose.
 
 ```bash
 vixl palette show ocean
@@ -32,7 +32,10 @@ Custom palette files are JSON arrays of 2–256 color strings, for example `["#1
 
 ## Templates
 
-Built-in templates: `social-square`, `story`, `thumbnail`, `poster`, `business-card`, and transparent `logo`.
+Simple built-in templates: `social-square`, `story`, `thumbnail`, `poster`, `business-card`, and transparent `logo`.
+`vixl template list` also shows eight modular templates ([studio](studio.md)), 26 use-case templates for social,
+marketing, print, business and slides, and the editable six-second animated loops `video-tip`, `video-launch` and
+`video-event` (title, subtitle and cta variables).
 
 ```bash
 vixl template show social-square
@@ -93,7 +96,7 @@ vixl shape heart --name mark --width 180 --height 180 --fill '#e76f51'
 vixl shape path --name curve --width 200 --height 100 --fill '#2563eb' --path 'M0 0 C0 100 200 100 200 0 L200 100 L0 100 Z'
 ```
 
-Paths retain a single editable contour with SVG `M L H V Q C Z` commands, including lowercase relative commands. Repeat the command before each coordinate set. Coordinates are in the layer's initial width/height; resizing scales that coordinate system. Arcs, shorthand commands, multiple contours and arbitrary SVG import are not supported. Raster previews sample curves with bounded antialiasing; SVG retains exact Bézier commands.
+Paths retain editable SVG geometry, including relative/repeated coordinates, arcs, smooth Bézier commands and multiple contours. Coordinates are in the layer's initial width/height; resizing scales that coordinate system. SVG files import editably only when every feature is supported; `svg_mode` `appearance`/`auto` keeps the rest as a raster layer (see [studio](studio.md)). Raster previews sample curves with bounded antialiasing; SVG retains exact Bézier commands.
 
 Positions refer to the top-left of the transformed bounding box. Rotation expands that box, so align/constrain after rotating, or inspect `resolved_bounds` before positioning. For clean logo joins, use a single path or a deliberate pathfinder union/subtraction rather than overlapping rotated bars by guesswork.
 

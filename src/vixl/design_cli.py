@@ -84,6 +84,9 @@ def compile_design(cmd, args):
         p.add_argument("--path")
         p.add_argument("--asset")
         p.add_argument("--fit", choices=["fill", "fit"])
+        if cmd == "frame":
+            p.add_argument("--frame-shape", dest="frame_shape", choices=["rectangle", "ellipse", "star", "hexagon", "heart"])
+            p.add_argument("--outline", help="Closed SVG path in frame-local pixels; overrides --frame-shape")
     elif cmd in ("repeat", "repeat-blend"):
         p.add_argument("target")
         p.add_argument("--count", type=int, required=True)

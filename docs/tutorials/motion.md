@@ -12,6 +12,7 @@ document retains its resting state and editable keyframe tracks.
 
 ```bash
 vixl new 1060x450 --background '#f5f3ec' -o motion.vixl
+vixl -p motion.vixl timeline set --loop 1
 vixl -p motion.vixl apply docs/assets/generated/motion.json
 vixl -p motion.vixl render --time 0s --out start.png
 vixl -p motion.vixl render --time 1s --out middle.png
@@ -26,6 +27,8 @@ The operation that adds the motion is:
 {"type": "animate", "target": "moving-card", "property": "translate-x",
  "to": 760, "duration": "2s", "easing": "ease-in-out"}
 ```
+
+New design documents start seamless loops; this card travels once, so `timeline set --loop 1` makes the timeline play once before any key exists. Without it, the `motion` check reports a `loop-seam` where the card jumps back.
 
 Translation adds to the resting layout, which makes it useful with constraints. Use a
 `pivot` at a joint before rotating a limb. Check start, midpoint and end, and inspect

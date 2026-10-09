@@ -139,7 +139,7 @@ Save a custom suite for future projects with `resource-save`:
 `{"kind":"suites","name":"my-contract","value":{"rules":[...]}}`.
 Resources live in workspace `.vixl-resources.json`; workspace entries override the user
 library, then built-ins. User CLI `palette add` / `template add` remains supported.
-The example [brand contract](../examples/studio/brand-suite.json) is ready to customize.
+The example [brand contract](../../../examples/studio/brand-suite.json) is ready to customize.
 
 Developers: `pytest tests/test_studio.py -q` covers pixel masks, geometry, palettes, templates,
 reuse, plugin lifecycle, real concurrent writers, conflict resolution, recovery and interfaces.
@@ -263,7 +263,7 @@ file export and REST `POST /export` (`format:"HTML"`) share the implementation.
 
 ## Plugin packs and trusted Python extensions
 
-`plugin-install` takes `{"manifest":{...}}`; see [the example pack](../examples/studio/plugin.json).
+`plugin-install` takes `{"manifest":{...}}`; see [the example pack](../../../examples/studio/plugin.json).
 Packs declare `api_version:1`, `name`, semantic `version`, optional exact-version `dependencies`,
 and `resources` grouped by category. Resource names must start with `plugin-name-`. Installation
 validates the whole manifest, dependencies and collisions, then atomically writes the workspace

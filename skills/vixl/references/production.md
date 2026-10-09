@@ -10,7 +10,8 @@ Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/mai
    `count`, `alpha`, `design`, `container`, `unchanged`, `pixels` (fields:
    `vixl_workflow_schema().definitions.suite`; method: `vixl_guide("testing")`). Run suites with each
    batch (`vixl_operations_apply(suites=true)`) and before every preview.
-2. Use `fit-text`, `arrange-grid`, or `adapt-layout` for predictable layout tasks;
+2. Use `fit-text`, `arrange-grid`, or `adapt-layout` (`recompose: true` rebuilds a stored layout recipe at the
+   new size and may replace manual edits) for predictable layout tasks;
    save a bounded sequence with `action-define`. `role-set`, `motion-define`, and
    `motion-apply` produce editable staggered/relative animation tracks.
 3. Workflow `act` accepts operations, suites and dry_run. It returns measurements and
@@ -67,6 +68,18 @@ Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/mai
    `vixl_check` findings; `before` (another file, or a revision such as `previous`) adds a diff; `decisions: true` adds
    approve/reject and a button that downloads `<page>-decisions.json`, which the reviewer sends back. `vixl diff A B
    --out d.png` gives the same pixel diff on the command line.
+15. App animation packages: `vixl_workflow("app-animation-package", {states, default_state, output, themes?, transitions?,
+   format?})`. `states` maps names to `{source: "x.vixl", loop?, interruptible?, on_complete?, poster?, variables?, themes?}`;
+   `themes` map names to variable overrides (default light and dark; bind colours in the sources to `${variables}`);
+   `transitions` are `{from, event, to}`; `format` is `webp` (default), `gif` or `apng`; `output` must be a new directory.
+   The package holds each editable master, an animation per state and theme, reduced-motion PNGs, a versioned
+   `manifest.json` and a standalone `index.html` consumer. Sources must be self-contained: freeze external links
+   (`link-embed`) and embed fonts first. Missing states and ambiguous transitions fail before anything is written.
+16. Screen capture: `vixl_workflow("screen-capture", {output: "shot.png", bbox?: [left, top, right, bottom], window?: HWND,
+   all_screens?, overwrite?})` grabs the local desktop (a rectangle, or a Windows window handle; not both) to a PNG. It
+   needs an interactive desktop and any OS permission; it is not part of rendering.
+17. Source folders for Git review: CLI `vixl unpack design.vixl design-source` and `vixl pack design-source reviewed.vixl`
+   (see [cli](cli.md)).
 
 MCP paths must remain inside the workspace. REST exposes check/act/plan/film-plan for
 its single project; filesystem, library and queue operations use CLI/Python/MCP.
@@ -77,5 +90,3 @@ material visual changes and unresolved/unsupported measurements.
 ### Field-report corrections
 
 Production without suites still checks bounds and flow; clipping returns needs_review. For variable reflow, define an action that reapplies the layout with replace=true and stable seed/prefix, then include it in recipe/actions. Generated layer IDs and manual edits can change. Unchanged, checksum-verified output can bypass repeated checks. See docs/production.md.
-
-For app delivery use `app-animation-package`: states map names to source .vixl files and optional loop/interruptible/on_complete/poster/variables/themes fields. Supply default_state and a new output directory. Global themes map names to variable overrides; transitions contain from/event/to. The package includes editable masters, animated WebP/GIF/APNG variants, static reduced-motion PNGs, a versioned manifest and an HTML consumer. Freeze external links and embed external fonts first. Missing states and ambiguous transitions fail before publication.

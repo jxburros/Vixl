@@ -36,6 +36,27 @@ CLI, Python or a workspace-scoped MCP session. This preserves REST's existing sc
 layout, style, look, operations, check, preview, save, exports); see [interfaces](interfaces.md#build-a-piece-in-one-call).
 To check documents in pull requests, see [CI](ci.md).
 
+### Source folders for Git review
+
+`vixl unpack design.vixl design-source` writes a readable, deterministic folder: `project.json`
+(`format: vixl-source`, the current state and a SHA-256 per asset) plus the assets under `assets/`,
+`fonts/`, `masks/`, `sources/` and `emoji-sources/`. It keeps registered fonts, drops undo history
+and assets only history referenced, and refuses an existing directory. Edit and review that folder
+as ordinary text, then `vixl pack design-source reviewed.vixl [--overwrite]` validates paths, sizes
+and hashes, loads the result as a project and writes it with one history entry. Python:
+`vixl.project_folder.pack` / `unpack`.
+
+### Screen capture
+
+`screen-capture` is an explicit workflow that saves the interactive local desktop to a PNG; rendering
+never captures the screen. Request fields: `output` (.png), optional `bbox` `[left, top, right, bottom]`
+(negative monitor coordinates allowed), or on Windows `window` (an HWND) and `all_screens`, and
+`overwrite`. Headless sessions or a denied OS screen-recording permission fail with `capture_unavailable`.
+
+```text
+vixl workflow screen-capture --request '{"output":"screen.png","bbox":[0,0,800,600]}' --workspace .
+```
+
 ## Design check suites
 
 Attach a suite with an explicit `suite-set` operation:
@@ -133,7 +154,9 @@ Higher-level operations:
 - `adapt-layout` with `targets`: targets, width, height, margin/gap. Explicit vertical reflow in the
   given priority order. Refuses content that cannot fit; this is not a general constraint solver.
   Without `targets` the same verb re-lays out every layer proportionally at another size and reports
-  where each layer moved (see [operations](operations.md#bulk-edits-and-resizing-a-whole-layout-unreleased)).
+  where each layer moved (see [operations](operations.md#bulk-edits-and-resizing-a-whole-layout-019)).
+  `recompose: true` instead re-applies the document's saved `layout-apply` recipe at the new size,
+  replacing the generated layers (and manual edits to them); it fails when there is no saved recipe.
 - Existing `replace-contents` preserves a frame's placement, effects and identity.
 
 An `action-define` stores bounded canonical operations under a name; `action-apply`
@@ -268,6 +291,10 @@ it downloads `<page>-decisions.json` (`{proof, page, generated, decided, items: 
 for the reviewer to send back. Without `decisions` the page has no script at all. An existing page is replaced only
 with `overwrite: true`.
 
+A missing file fails the call, but an item that cannot be previewed or checked becomes a card with its error and
+is listed in the result's `failed` (`[{path, error}]`); `checked` gives each document's `passed`, errors and
+warnings. Each thumbnail is embedded once and reused by the enlarged view (`max_size`, 128–2400 px, default 1200).
+
 ## Logo packages
 
 `logo-package` turns one logo into the folder a brand hand-off needs:
@@ -303,9 +330,9 @@ over the PDF (print) or SVG (web, sign makers).
 
 ## Persistent rendering cache and library
 
-Production, workflow previews, film document shots, and timeline exports and contact sheets of
-saved documents enable a bounded persistent PNG cache. Timelines use the per-user cache
-(`~/.cache/vixl/render`, or `VIXL_RENDER_CACHE`), so output folders stay clean. Direct Python callers may use `vixl.render_cache.enable(project, directory)`. Within a
+Production variants, timeline exports and contact sheets use a bounded persistent PNG cache in the
+per-user cache directory (`~/.cache/vixl/render`, or `VIXL_RENDER_CACHE`), so output folders stay clean.
+Workflow `preview` and film document shots cache in the workspace's `.vixl-cache`. Direct Python callers may use `vixl.render_cache.enable(project, directory)`. Within a
 session, rendered layers are also kept in a bounded in-memory cache keyed by content and size, so a
 layer that only moves between timeline frames is not redrawn.
 Keys include render dependencies, font bytes, engine source/version and imaging library

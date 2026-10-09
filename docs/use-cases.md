@@ -74,7 +74,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | DOC-04 | Rename, hide, show, raise, lower, duplicate or delete a layer | `vixl_operations_apply` | 1 · <1 | E | Works on `targets` lists in one atomic batch. |
 | DOC-05 | Change canvas size or switch to another preset (portrait ↔ landscape) | `canvas resize`, `canvas size NAME --landscape` | 1 · <1 | E | Constrained layers follow their anchors. |
 | DOC-06 | Add a solid or gradient background | `solid`, `gradient` operations | 1 · <1 | E | Linear, radial and multi-stop gradients. |
-| DOC-07 | Import an image, SVG or PDF page as a layer | `vixl_import_image`, `vixl_import_document` | 1 · <1 | E | PDF needs `[pdf]`; SVG editable or appearance mode. |
+| DOC-07 | Import an image, SVG or PDF page as a layer | `vixl_import_image`, `vixl_import_document` | 1 · <1 | E | PDF needs `[pdf]`; SVG editable or appearance mode. Since 0.24 Vixl's own simple gradient rectangles and stroked paths re-import editably (#334). |
 | DOC-08 | Undo, redo or jump back in history | `vixl_history`, `vixl undo N` | 1 · <1 | E | Delta history with checkpoints. |
 | DOC-09 | Save a named checkpoint before a risky edit | `vixl checkpoint NAME` | 1 · <1 | E | Restore with `checkout`. |
 | DOC-10 | Set a document variable and render with an override | `variable set`, `render --set NAME=VALUE` | 2 · <1 | E | |
@@ -86,6 +86,8 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | DOC-32 | Merge layers into one, or flatten the page | `merge-layers`, `flatten` | 1 · <1 | E | Since 0.22; undo restores the originals. |
 | DOC-34 | Import a camera photo above the pixel limit (108 MP) | `vixl_import_image`, or `add` with `max_pixels` | 1 · <2 | E | Since 0.23; downsampled to the limit, sources up to 4× it. |
 | DOC-35 | Edit a document of thousands of layers one operation at a time, or send a 10,000-operation batch | `vixl_operations_apply` | 1 · <1 | E | Since 0.23 an edit lays out only the layers it depends on; was seconds per edit and minutes per batch (#284, #300). |
+| DOC-36 | Unpack a `.vixl` into a readable source folder for Git review, and pack it back | `vixl unpack`, `vixl pack`, `vixl.project_folder` | 1–2 · <1 | E | Since 0.24 (#511); current state and registered fonts only, no undo history; packing validates paths, sizes and hashes. |
+| DOC-37 | Capture the desktop, a rectangle or a Windows window to PNG | `vixl_workflow` screen-capture | 1 · <1 | E | Since 0.24 (#259); interactive local desktop only; OS screen permission may be needed. |
 
 ### Text and typography
 
@@ -102,6 +104,8 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | TXT-09 | Define and apply a linked character/paragraph style | `style-define`, `style-apply` | 2 · <1 | E | |
 | TXT-10 | Flow a very long text (100,000 characters, even one unbroken word) through columns | `text-flow` | 1 · <1 | E | Since 0.23; a 100,000-character word took about 6 minutes (#335). |
 | BLK-08 | Place text by its baseline | `baseline_y` on text/move, `align` `baseline`, `snap` to a baseline grid | 1 · <1 | E | Since 0.22. |
+| TXT-11 | Use emoji in text with bundled, editable art (complete Unicode 17 sequences, joiners and flags) | `text`, `emoji-mode` | 1 · <1 | E | Since 0.24; bundled art by default, `emoji-mode font` prefers the font; PDF/PPTX use a reported raster fallback. |
+| TXT-12 | Find an emoji or extract it as an editable `.vixl` master | `vixl emoji list`/`get`, `vixl_workflow` emoji-list/emoji-get | 1 · <1 | E | Since 0.24; 3,953 Unicode sequences plus 100 originals. |
 
 ### Color
 
@@ -111,7 +115,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | CLR-02 | Measure contrast between two colors | `color contrast FG BG` | 1 · <1 | E | |
 | CLR-03 | Build a harmony (triadic, analogous …) or a tint/shade scale | `color harmony`, `color scale` | 1 · <1 | E | |
 | CLR-04 | Generate and register a palette from one seed color | `palette-generate NAME COLOR` | 1 · <1 | E | |
-| CLR-05 | Apply one of the 52 built-in palettes | `palette apply` | 1 · <1 | E | |
+| CLR-05 | Apply one of the 74 built-in palettes | `palette apply` | 1 · <1 | E | |
 | CLR-06 | Define brand swatches and use `@swatch` references | `swatch` | 1 · <1 | E | Modifiers like `lighten(@brand, 10%)`. |
 | CLR-07 | Find a color by name (CSS or xkcd) | `color names QUERY` | 1 · <1 | E | |
 
@@ -132,10 +136,12 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | SHP-10 | Place or snap layers onto a guide | `place`, `snap` | 1 · <1 | E | |
 | SHP-11 | Repeat a layer in a row/grid or blend between two | `repeat`, `repeat-blend` | 1 · <1 | E | |
 | SHP-12 | Repeat a motif around a centre (rosette, sunburst) | `radial-repeat` | 1 · <1 | E | `--mirror` for kaleidoscope symmetry. |
-| SHP-13 | Make a hug-content pill, badge, button or code window | `stack` with padding/background | 1 · <1 | E | |
+| SHP-13 | Make a hug-content pill, badge, button or code window | `stack` with padding/background | 1 · <1 | E | Since 0.24 `gap` also takes shared spacing units (`"2u"`). |
 | SHP-14 | Find empty space, margins or a hit-test point | `vixl_spatial` | 1 · <1 | E | |
 | SHP-15 | Set opacity or a blend mode | `opacity` (0–1), `blend` | 1 · <1 | E | |
 | SHP-16 | Pin a layer to an edge or another layer | `constrain` | 1 · <1 | E | One anchor per axis; cycles rejected. |
+| SHP-17 | Frame an image in an irregular silhouette (ellipse, star, hexagon, heart or an SVG outline) | `frame` with `frame_shape` or `outline` | 1 · <1 | E | Since 0.24 (#266); an embedded raster mask; the file stays rectangular with transparency outside. |
+| SHP-18 | Recompose a layout-generated design at a new aspect ratio | `adapt-layout` with `recompose: true` | 1 · <1 | E | Since 0.24; rebuilds generated layout layers from the saved recipe, replacing manual changes to them. |
 | SHP-21 | QR code or barcode (Code 128, EAN-13) as a vector layer | `qr`, `barcode` | 1 · <1 | E | Since 0.22; `${variables}` re-encode per merge row; `codes` check. |
 | SHP-22 | Center text in a shape's body (bubble, badge, frame) | `text` `within`, `place` `within`, `align` `box: "content"` | 1 · <1 | E | Since 0.22; shapes report `content_bounds`. |
 
@@ -149,10 +155,11 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | PHO-04 | Auto tone, auto color, auto contrast | `auto-tone` … | 1 · <1 | E | |
 | PHO-05 | Apply a LUT | `lookup` | 1 · <1 | E | An ordinary stack effect since 0.21. |
 | PHO-06 | Reorder, disable or remove an effect | `effect-move`, `effect disable` | 1 · <1 | E | |
-| ILL-01 | Add a finishing look: glow, neon, soft/hard shadow, outline, grain, paper, film, duotone, risograph, halftone, watercolor, sketch | `look` | 1 · <1 | E | 17 looks; some export to SVG as raster. |
+| ILL-01 | Add a finishing look: glow, neon, soft/hard shadow, outline, grain, paper, film, duotone, risograph, halftone, watercolor, sketch | `look` | 1 · <1 | E | 20 looks; some export to SVG as raster. |
 | ILL-02 | Apply one of 19 artistic filters (oil paint, mosaic …) | `filter` | 1 · <1 | E | Seeded and deterministic. |
 | ILL-03 | Make an edge look torn, or make vector art look hand-made | `tear`, `irregular` | 1 · <1 | E | `--remove` undoes. |
-| ILL-04 | Grow an organic form (flower, tree, fern, shell, coral, mushroom …) | `organic PRESET` | 1 · <1 | E | 32 presets, editable paths, reseedable. |
+| ILL-04 | Grow an organic form (flower, tree, fern, shell, coral, mushroom …) | `organic PRESET` | 1 · <1 | E | 33 presets, editable paths, reseedable. |
+| ILL-05 | Add paint drips and relief, each controlled on its own | `paint` with `settings.drip`, `relief`, `light_angle` | 1 · <1 | E | Since 0.24 (#258); deterministic visual simulation, not a fluid solver. |
 
 ### Data and diagrams
 
@@ -169,7 +176,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | --- | --- | --- | --- | --- | --- |
 | DOC-20 | Export PNG, JPEG, WebP or TIFF | `vixl_export_file` | 1 · <1 | E | RGB PNG by default since 0.20. |
 | DOC-21 | Export at 2× or 3× for screens | `export --scale 2x`, `export-screens` | 1 · <1 | E | |
-| DOC-22 | Export editable SVG | `vixl_export_file` `.svg` | 1 · <1 | E | Strict mode rejects raster content. |
+| DOC-22 | Export editable SVG | `vixl_export_file` `.svg` | 1 · <1 | E | Strict mode rejects raster content. Since 0.24 supported blend modes stay vector as `mix-blend-mode` (#231). |
 | DOC-23 | Export vector PDF with selectable text | `.pdf` | 1 · <1 | E | |
 | DOC-24 | Export a CMYK TIFF/JPEG/PDF for print | `export --cmyk [--icc …]` | 3 · <1 | M:eval:print-cmyk | |
 | DOC-25 | Soft-proof or simulate color-vision deficiency | `export --proof`, `--simulate deuteranopia` | 1 · <1 | E | |
@@ -183,7 +190,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 
 | ID | Use case | Main route | Calls · min | Ev. | Notes |
 | --- | --- | --- | --- | --- | --- |
-| QA-01 | Run design checks (bounds, overlap, contrast, safe area, legibility) | `vixl_check` | 1 · <1 | E | Fix-level vs review-level findings. |
+| QA-01 | Run design checks (bounds, overlap, contrast, safe area, legibility) | `vixl_check` | 1 · <1 | E | Fix-level vs review-level findings. Since 0.24 `passed` is false while any finding needs a fix, warnings included; `by_action` separates them (#464). |
 | QA-02 | Check spacing is equal or matches an expected gap | `vixl_measure_spacing` | 1 · <1 | E | |
 | QA-03 | Sample a pixel or read a histogram | `vixl_pixels_inspect`, `sample`, `histogram` | 1 · <1 | E | |
 | QA-04 | Validate against a named profile or inline assertions | `vixl_validate` | 1 · <1 | E | |
@@ -191,7 +198,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | QA-06 | Check print readiness (ink limit, effective ppi, bleed) | `check --checks print` | 1 · <1 | E | |
 | QA-07 | Check color-vision safety of text and chart series | `check --checks color_vision` | 1 · <1 | E | Other adjacent fills not compared yet. |
 | QA-08 | Check a design against a named style (Swiss, Bauhaus …) | `check --checks style` | 1 · <1 | E | 28 styles. |
-| AGT-01 | Ask what to make and with which tools for a brief | `vixl_guide(brief)` | 1 · <1 | E | 18 kinds: poster, logo, character, comic, form … |
+| AGT-01 | Ask what to make and with which tools for a brief | `vixl_guide(brief)` | 1 · <1 | E | 20 kinds: poster, logo, character, comic, form … |
 | AGT-02 | Look up fields and gotchas for a topic | `vixl_capabilities(topic)` | 1 · <1 | E | |
 | AGT-03 | Read the JSON schema of one operation | `vixl_operation_schema` | 1 · <1 | E | |
 | AGT-04 | Browse layouts, styles, brushes, resources or workflows | `vixl_layouts_list`, `vixl_styles`, `vixl_brushes_list`, `vixl_resources_list`, `vixl_workflow_schema` | 1 · <1 | E | |
@@ -229,7 +236,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | SOC-02 | Roll a design direction with locks and apply it | `vixl_roll` | 5 · 1–2 | M:eval:roll-applied | Use `unfilled=omit` for empty slots. The roll is weighted by purpose (`purpose`, else the document size) and gated by `variety`; `locks={tier: "bold"}` explores one tier. |
 | SOC-03 | Story with gradient and an evenly spaced three-item list | `gradient`, `text` ×3, distribute | 5 · 1–2 | M:eval:story-list | |
 | BRD-01 | Import an SVG logo as editable geometry, edit and re-export | `vixl_import_document` svg editable | 4 · 1 | M:eval:svg-logo-import | |
-| SOC-04 | Start from a built-in template with title and subtitle | `vixl_template_create` | 4 · 1 | M:eval:template-creation | 40 templates. |
+| SOC-04 | Start from a built-in template with title and subtitle | `vixl_template_create` | 4 · 1 | M:eval:template-creation | 43 templates. |
 | MOT-01 | Ball moving across the canvas over one second, exported as GIF | `timeline-set`, `animate`, `vixl_export_timeline` | 7 · 2 | M:eval:timeline-motion | |
 | PRD-01 | Banner with a variable-driven headline, rendered for several cities | `variable set`, `render --set` | 6 · 2 | M:eval:variable-variants | |
 | QA-11 | Save a check suite and make an edit that only commits if it passes | `vixl_workflow` act | 8 · 2 | M:eval:workflow-checked-edit | |
@@ -244,7 +251,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | SOC-12 | Open Graph / link preview image | size `og-image`, layout | 4–6 · 1–2 | E | |
 | SOC-13 | Profile picture or avatar with initials | `logo-avatar` size, `monogram` layout | 3–5 · 1 | E | |
 | SOC-14 | Email header or email signature banner | `email-header` size, `banner` layout | 4–6 · 1–2 | E | |
-| SOC-15 | Discord emoji or Twitch panel | named sizes, shape + text | 4–8 · 1–2 | E | |
+| SOC-15 | Discord emoji or Twitch panel | named sizes, shape + text | 4–8 · 1–2 | E | Whole emoji packs with platform checks: BRD-11. |
 | SOC-16 | Big-number stat card | `big-number` layout | 3–5 · 1 | E | |
 | SOC-17 | Phone or desktop wallpaper from gradients and organic forms | `gradient`, `organic`, look | 5–8 · 1–2 | E | |
 | SOC-18 | Text-only typographic poster for screen | `typographic-poster` layout, font pair | 5–8 · 2 | E | |
@@ -274,6 +281,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | CLR-10 | Recolor a design to a different palette | `palette apply`, swatch edits | 3–5 · 1 | E | |
 | CLR-11 | Check how much of a design stays inside a palette | `vixl_workflow` palette-check | 2–3 · <1 | E | |
 | BRD-51 | Logo package: colour/mono/reversed variants, lockups, SVG/PDF/PNG, icons, social images, usage sheet | `vixl_workflow` logo-package | 1–3 · 1–3 | E | Since 0.22; recolouring is heuristic and reported; no EPS. |
+| BRD-11 | Custom emoji pack: replace or add `:shortcodes:`, check platform requirements, export PNG/SVG with editable masters | `vixl emoji`, `emoji-replace`, `emoji-template`, `emoji-requirements`, `emoji-export` | 3–8 · 1–2 | E | Since 0.24; Discord/Slack upload instructions and an offline preview; CC BY-SA 4.0 licences travel with the pack. |
 
 ### Data and diagrams
 
@@ -316,6 +324,8 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | PIX-02 | Palette-swap an existing sprite | `pixel-palette` | 2 · <1 | E | |
 | PIX-03 | Export saved frames as GIF/APNG/sprite sheet at whole-number scale | `vixl_export_animation` | 1–2 · <1 | E | |
 | BLK-12 | Per-character, per-word or per-line text animation | `text-animate` | 2–4 · 1 | E | Since 0.22; text stays one editable layer. |
+| MOT-09 | Six-second square loop for a tip, launch or event | `vixl_template_create` video-tip/video-launch/video-event, `vixl_export_timeline` | 3–5 · 1 | E | Since 0.24 (#179); fill title, subtitle and cta, then check a contact sheet and pick the poster time. |
+| MOT-13 | Pose a character over time with its joints kept attached | `character-pose` with `time` | 3–6 · 1 | E | Since 0.24 (#472); the rig is solved on every frame; do not also key position/rotation on the same limbs. |
 
 ### Production, forms and review
 
@@ -473,6 +483,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | MOT-24 | Synthesize a beep/whoosh, mix it with music and export WAV | audio tracks, `vixl_export_audio` | 5–10 · 1–2 | E | |
 | MOT-25 | Character wave or nod using a reusable cycle | character cycles, pivots | 15–25 · 3 | E | |
 | MOT-26 | Brush-stroke timelapse of a painting | paint layer reveal, timeline | 10–20 · 2–3 | E | |
+| MOT-27 | App animation package: named states (idle, loading, success …) with light/dark themes for an app | state masters, `vixl_workflow` app-animation-package | 15–30 · 3–5 | E | Since 0.24 (#510); 1 call once the masters exist; WebP/GIF/APNG, reduced-motion PNGs, versioned manifest and HTML consumer; sources must be embedded. |
 
 ### Forms, production and review
 
@@ -630,7 +641,7 @@ note the version.
 | BLK-09 | Bind chart values into text, or one chart into another | Missing (T08) | Type totals and callouts by hand. |
 | BLK-13 | Motion-path editor, nested compositions with their own timelines | Not implemented (group and child tracks compose; `attach` follows a moving layer since 0.22) | Keyframes per property; markers. |
 | BLK-14 | Automatic discovery of fallback fonts for mixed scripts | Not implemented (fallbacks are listed by hand; weight- and slope-matched since 0.22) | Document-wide `font-fallbacks`. |
-| BLK-15 | Reliable multi-size adaptation from one master | Partial: `adapt-layout` leaves story text in bands, stretches decoration, can set banner text tiny (T02, T09) | Fix each size after adapting. |
+| BLK-15 | Reliable multi-size adaptation from one master | Partial: proportional `adapt-layout` leaves story text in bands, stretches decoration, can set banner text tiny (T02, T09); since 0.24 `recompose: true` rebuilds layout-generated designs (SHP-18) | Recompose layout-generated masters; fix other sizes after adapting. |
 | BLK-17 | Video generation | Needs an explicitly configured gateway; no bundled model | [AI] |
 | BLK-18 | Segmentation or background removal with OpenAI alone | Needs a mask-producing HTTP/ComfyUI provider | [AI] |
 | BLK-19 | Branch merging by replay or real-time collaboration | Not implemented; shared-filesystem locks only | Branch fork/merge with explicit resolutions. |
@@ -693,28 +704,6 @@ Add new ideas here when you are unsure of the tier, then move them into a table.
 - Map-style illustration with labelled regions
 - Infographic for accessibility (color-vision-safe palette)
 - Animated emoji or sticker pack
-- Loading spinner or UI micro-animation as APNG/WebP
 - Tarot or playing-card deck from a CSV
 - Album lyric booklet
 - Sign-up sheet or attendance form as a fillable PDF
-
-## Editable emoji libraries
-
-| Goal | Tools | Coverage |
-| --- | --- | --- |
-| Full offline emoji coverage, editable custom sets and platform delivery | `emoji` CLI; `emoji-*` workflows; `emoji-mode`, `emoji-set`, `emoji-reset` operations | Unicode 17, individual/pack overrides, shortcodes, templates, PNG/SVG/VIXL packs, Discord/Slack requirements |
-
-See [emoji workflows](emojis.md).
-
-## 0.24 authoring and delivery additions
-
-| Use case | Route | Cost | Limits |
-| --- | --- | --- | --- |
-| Review designs as readable Git changes | `vixl unpack` / `vixl pack` | 1 call each | Current state only; no undo history |
-| Package app animation states and theme variants | `app-animation-package` workflow | 1 call after masters exist | WebP/GIF/APNG plus static reduced-motion PNG; embedded sources |
-| Keep joints attached between poses | `character-pose` with `time` | 1 call per pose | Planar rig; do not combine with baked position/rotation keys on the same limbs |
-| Capture a desktop or Windows window | `screen-capture` workflow | 1 call | Interactive local desktop; OS permissions may apply |
-| Make a short informational or marketing loop | `video-tip`, `video-launch`, `video-event` templates | 1–3 calls | Replace blanks and inspect the poster before delivery |
-| Frame an image with an irregular silhouette | `frame` with `outline` or `frame_shape` | 1 call | Editable image with an embedded raster mask; rectangular file dimensions |
-| Add independently controlled paint drips and relief | `paint.settings` | 1 call | Deterministic visual simulation, not a fluid solver |
-| Recompose a generated design at a new aspect ratio | `adapt-layout` with `recompose: true` | 1 call | Rebuilds generated layers from the saved layout recipe |
