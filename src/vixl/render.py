@@ -1205,10 +1205,12 @@ def layer_surface(project, layer, bounds, size, index, visiting=None):
     return tile
 
 
-def layer_patch(project, layer, bounds, size, index, visiting=None):
+def layer_patch(project, layer, bounds, size, index, visiting=None, limit=None):
     """``layer_surface`` without the transparent rest of the tile: the part of a ``size`` tile the layer,
     its styles and its clipping can change, and its (left, top), or (None, None) when it draws nothing.
-    A full-size tile for each styled or clipped layer made them cost the whole canvas every time."""
+    A full-size tile for each styled or clipped layer made them cost the whole canvas every time.
+    ``limit`` (left, top, right, bottom) is where the tile's edge cuts the layer off when that is not the
+    tile itself: a region of the canvas is styled as the whole canvas would be, then cropped."""
     from .design_render import styled_image
     from PIL import ImageChops
 
@@ -1223,7 +1225,9 @@ def layer_patch(project, layer, bounds, size, index, visiting=None):
         source = layer_ink(project, {**layer, "opacity": 1}, b)
         x, y = ink_origin(source, b)
         mx, my = (2 * margin + 4 for margin in style_margin(layer)) if layer.get("styles") else (0, 0)
-        box = (max(0, x - mx), max(0, y - my), min(size[0], x + source.width + mx), min(size[1], y + source.height + my))
+        limit = limit or (0, 0, *size)
+        box = (max(limit[0], x - mx), max(limit[1], y - my),
+               min(limit[2], x + source.width + mx), min(limit[3], y + source.height + my))
         if box[0] >= box[2] or box[1] >= box[3]:
             return None, None
         if layer.get("styles"):
@@ -1240,7 +1244,7 @@ def layer_patch(project, layer, bounds, size, index, visiting=None):
             patch = Image.new("RGBA", (box[2] - box[0], box[3] - box[1]))
             patch.alpha_composite(source, (x - box[0], y - box[1]))
         if layer.get("clip"):
-            clip, at = layer_patch(project, index[layer["clip"]], bounds, size, index, visiting)
+            clip, at = layer_patch(project, index[layer["clip"]], bounds, size, index, visiting, limit)
             mask = Image.new("L", patch.size)
             if clip is not None:
                 mask.paste(clip.getchannel("A"), (at[0] - box[0], at[1] - box[1]))
@@ -1437,7 +1441,7 @@ def render_members(project, members, region=None, background="transparent", incl
     return image, (left, top)
 
 
-def _render_layers(project, layers, bounds, parent, size, background, observe, members=None):
+def _render_layers(project, layers, bounds, parent, size, background, observe, members=None, limit=None):
     c = project.state["canvas"]
     size = size or (c["width"], c["height"])
     index = {item["id"]: item for item in layers}
@@ -1456,7 +1460,15 @@ def _render_layers(project, layers, bounds, parent, size, background, observe, m
     image = Image.new("RGBA", size, color(background))
 
     def patch_of(layer):
-        patch, origin = layer_patch(project, layer, bounds, size, index)
+        patch, origin = layer_patch(project, layer, bounds, size, index, limit=limit)
+        if patch is not None and limit:
+            # Styled past the tile, as on the whole canvas; keep the part on the tile.
+            left, top = max(0, origin[0]), max(0, origin[1])
+            right, bottom = min(size[0], origin[0] + patch.width), min(size[1], origin[1] + patch.height)
+            if left >= right or top >= bottom:
+                return None, (0, 0)
+            patch = patch.crop((left - origin[0], top - origin[1], right - origin[0], bottom - origin[1]))
+            origin = (left, top)
         return (patch, origin) if patch is not None else (None, (0, 0))
 
     def direct(layer):
@@ -1562,7 +1574,43 @@ def view_page(project, page=None):
     return project
 
 
-def render(project, variables=None, artboard=None, comp=None, page=None):
+def region_renders_alone(project):
+    """Whether a region of the canvas can be drawn by itself, matching the same crop of a full render.
+    Not when something reads the whole canvas: scene lighting, adjustment layers (their selections and
+    masks cover the canvas, and their filters see past the region), canvas-edge blur on a top-level
+    layer, or an effect masked by a canvas selection."""
+    if project.state.get("lighting"):
+        return False
+    for layer in project.state["layers"]:
+        if layer.get("parent") or not layer.get("visible", True):
+            continue
+        if layer["type"] == "adjustment" or any(effect_margin(layer)) or any(
+            effect.get("selection") for effect in layer.get("effects") or []
+        ):
+            return False
+    return True
+
+
+def render_region(project, region, background="transparent"):
+    """Composite only ``region`` (left, top, width, height, whole pixels inside the canvas): layers that
+    miss it are skipped and every tile is region-sized. Same pixels as ``render_layers(...).crop``."""
+    left, top, width, height = region
+    c = project.state["canvas"]
+    with resolving(project):
+        layers = resolved_layers(project)
+        bounds = resolve_layout(project, layers=layers)
+        project._resolution = (project.state, layers, bounds)
+        try:
+            placed = shift(bounds, [item for item in layers if not item.get("parent")], -left, -top)
+            return _render_layers(project, layers, placed, None, (width, height), background, None,
+                                  limit=(-left, -top, c["width"] - left, c["height"] - top))
+        finally:
+            project._resolution = None
+
+
+def render(project, variables=None, artboard=None, comp=None, page=None, region=None):
+    """The document as an image; ``region`` (left, top, width, height, whole pixels inside the canvas)
+    returns that crop, drawing only that part when nothing in the document reads the whole canvas."""
     from .design_render import artboard_project
 
     project = view_page(project, page)
@@ -1572,6 +1620,16 @@ def render(project, variables=None, artboard=None, comp=None, page=None):
     candidate = prepare_bubbles(candidate)
     from .design import resolve_color
 
+    if region is not None:
+        left, top, width, height = (int(v) for v in region)
+        c = candidate.state["canvas"]
+        require(width > 0 and height > 0 and left >= 0 and top >= 0 and left + width <= c["width"]
+                and top + height <= c["height"], "Region must lie inside the canvas", field="region")
+        if (left, top, width, height) != (0, 0, c["width"], c["height"]):
+            if region_renders_alone(candidate):
+                return render_region(candidate, (left, top, width, height),
+                                     resolve_color(candidate.state["canvas"]["background"], candidate.state))
+            return render(project, variables, artboard, comp, page).crop((left, top, left + width, top + height))
     disk = getattr(project, "_disk_cache", None)
     key = None
     if disk:

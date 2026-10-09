@@ -91,8 +91,17 @@ def shape_image(project, layer):
                 if layer.get("line_cap"):
                     attrs["stroke-linecap"] = layer["line_cap"]
                     attrs["stroke-linejoin"] = "round" if layer["line_cap"] == "round" else "miter"
+        from .vector_raster import painted, rasterize
+
+        if "stroke" not in attrs and "fill" in attrs:
+            # One paint: a recoloured or duplicated shape reuses the rasterised geometry.
+            paint = parse(resolve_color(default_fill(layer), project.state))
+            attrs.update({"fill": "#000000", "fill-opacity": "1"})
+            ET.SubElement(root, "path", attrs)
+            return painted(ET.tostring(root, encoding="unicode"),
+                           tuple(round(min(max(c, 0.0), 1.0) * 255) for c in paint))
         ET.SubElement(root, "path", attrs)
-        return Image.open(io.BytesIO(resvg_py.svg_to_bytes(svg_string=ET.tostring(root, encoding="unicode")))).convert("RGBA")
+        return rasterize(ET.tostring(root, encoding="unicode"))
     if layer["shape"] == "rectangle" and (
         layer.get("stroke_width", 1) <= 0 or color(resolve_color(layer.get("stroke", "transparent"), project.state))[3] == 0
     ):

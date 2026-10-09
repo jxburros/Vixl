@@ -313,11 +313,15 @@ def render_preview(
     if scale < 0.75:
         proxy = scaled_project(candidate, scale)
         if proxy is not None:
-            image = proxy.render()
+            pc = proxy.state["canvas"]
             box = (round(x * scale), round(y * scale), round((x + w) * scale), round((y + h) * scale))
-            image = image.crop(box)
+            if box[0] < box[2] <= pc["width"] and box[1] < box[3] <= pc["height"]:
+                image = proxy.render(region=(box[0], box[1], box[2] - box[0], box[3] - box[1]))
+            else:
+                image = proxy.render().crop(box)
     if image is None:
-        image = candidate.render().crop((x, y, x + w, y + h))
+        # Only the region is drawn (layers outside it are skipped) when nothing reads the whole canvas.
+        image = candidate.render(region=(x, y, w, h))
     target = (max(1, min(max_width, round(w * fit))), max(1, min(max_height, round(h * fit))))
     if region is not None and fit > 1:
         target = (max(1, round(w * min(fit, 8))), max(1, round(h * min(fit, 8))))

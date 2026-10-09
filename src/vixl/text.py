@@ -185,11 +185,23 @@ def fallback_chain(primary, fallbacks):
 
 
 def font_data(project, layer):
-    primary = primary_font_data(project, layer)
     from .render import document_variables
     from .variables import layer_text
 
     text = layer_text(layer, document_variables(project))
+    memo = getattr(project, "_resolving", None)
+    if memo is None:
+        return _font_data(project, layer, text)
+    # Within a read-only pass the fonts, fallbacks and emoji settings are fixed: each layer that sets the
+    # same text in the same font shares one lookup (coverage scans and emoji spans) per render.
+    key = ("font_data", layer.get("font"), 1 <= int(layer.get("size", 48)) <= 4096, text)
+    if key not in memo:
+        memo[key] = _font_data(project, layer, text)
+    return memo[key]
+
+
+def _font_data(project, layer, text):
+    primary = primary_font_data(project, layer)
     if all(not visible_char(c) or ord(c) in coverage(primary) for c in text):
         from .emojis import with_emojis
 
@@ -869,10 +881,23 @@ def render_text(project, layer):
             "viewBox": f"0 0 {layout.width} {layout.height}",
         },
     )
+    from .emojis import EmojiArt
+    from .vector_raster import painted, rasterize
+
+    stroked = layer.get("stroke_width", 0) > 0 and color_of(project, layer, "stroke_color", "black")[3] > 0
+    if not stroked and not any(isinstance(path, EmojiArt) for path, _ in layout.paths):
+        # One paint: rasterise the glyphs once as a stencil and paint it, so a recoloured label reuses them.
+        append_paths(root, layout, {**layer, "color": "black"}, project)
+        return painted(ET.tostring(root, encoding="unicode"), color_of(project, layer, "color", "white"))
     append_paths(root, layout, layer, project)
-    return Image.open(
-        io.BytesIO(resvg_py.svg_to_bytes(svg_string=ET.tostring(root, encoding="unicode")))
-    ).convert("RGBA")
+    return rasterize(ET.tostring(root, encoding="unicode"))
+
+
+def color_of(project, layer, key, default):
+    from .render import color
+    from .design import resolve_color
+
+    return color(resolve_color(layer.get(key, default), project.state))
 
 
 def font_digest(data):

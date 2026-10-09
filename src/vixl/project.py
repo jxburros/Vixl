@@ -800,10 +800,12 @@ class Project:
         self.transaction = None
 
     @memory_guard
-    def render(self, variables=None, *, artboard=None, comp=None, page=None):
+    def render(self, variables=None, *, artboard=None, comp=None, page=None, region=None):
+        """The document as an image; ``region`` [x, y, width, height] (whole pixels inside the canvas)
+        draws only that crop."""
         from .render import render
 
-        return render(self, variables, artboard, comp, page=page)
+        return render(self, variables, artboard, comp, page=page, region=region)
 
     @memory_guard
     def show(self, page=None, region=None):
