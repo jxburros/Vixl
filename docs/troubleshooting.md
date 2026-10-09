@@ -29,8 +29,13 @@ document before changing anything.
 ## Interpret checks
 
 A passing report certifies its requested checks and samples. It does not certify all
-export formats, every animation frame or artistic quality. A warning about fallback fonts
-can be expected in a proof; replace them for final typography. A contrast check does not
+export formats, every animation frame or artistic quality. Every finding carries an
+`action`, and `by_action` lists the issue indexes under `fix`, `review` and `informational`.
+Since 0.24 `passed` is false whenever a `fix` finding remains, including warnings from the
+legibility, fonts, content, guides, alignment, blanks and brand checks unless the finding
+is marked `review` (such as a body-measure or underfilled-canvas note); `review` and
+`informational` findings do not fail it. A fallback-font finding is expected in an early
+proof, but replace the fonts before final delivery. A contrast check does not
 remove the need to inspect text over complex imagery.
 
 Use targeted checks to investigate a problem, and a broader suite before delivery:

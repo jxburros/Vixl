@@ -39,7 +39,7 @@ vixl brush-define soft-ink --base ink --settings '{"hardness": 0.4, "taper": [0.
 - Points are canvas pixels (`space: "layer"` for layer-local) as `[x, y]` or `[x, y, pressure]` (0–1); `pressure` may also be a parallel list. Without real pressure, presets simulate it with start/end tapers.
 - `path` strokes any single-contour SVG path (M, L, H, V, Q, C, Z).
 - Without `target`, `paint` uses the active paint layer or creates one named `paint`.
-- `settings` overrides any brush setting: `shape` (round, bristle, spray), `hardness`, `spacing`, `flow`, `build` (max or accumulate), `jitter`, `size_jitter`, `angle`, `roundness`, `texture` (none, grain, paper, canvas), `texture_strength`, `taper` [start, end], `pressure_size`, `pressure_opacity`, `wet_edges`, `blend` (normal, multiply), `smoothing`, `bristles`, `scatter`, `density`.
+- `settings` overrides any brush setting: `shape` (round, bristle, spray), `hardness`, `spacing`, `flow`, `build` (max or accumulate), `jitter`, `size_jitter`, `angle`, `roundness`, `texture` (none, grain, paper, canvas), `texture_strength`, `taper` [start, end], `pressure_size`, `pressure_opacity`, `wet_edges`, `drip` (0–4: downward trail length in brush sizes), `relief` (0–1: embossed paint thickness) and `light_angle` (degrees, default -45, the light for `relief`), `blend` (normal, multiply), `smoothing`, `bristles`, `scatter`, `density`. Drip and relief are independent, deterministic simulations, not fluid physics.
 - Limits: 4 096 strokes per layer, 10 000 points per stroke, 200 000 points per layer. SVG export embeds paint layers as raster images and reports them as fallbacks.
 
 ## Animation timelines
@@ -60,6 +60,8 @@ Animatable properties: `x`, `y`, `translate-x`, `translate-y`, `opacity`, `rotat
 The static `scale` operation takes `value` (both axes) or per-axis `x` and `y`; negative factors mirror (`scale x: -1` is `flip horizontal`, `value: -1` flips both axes) and sizes are 0.001–100. CLI: `vixl scale beam --x -1`, `vixl scale beam -0.5`, `vixl keyframe beam scale-x 1.4s -1`.
 
 Times are milliseconds or strings: `"1.5s"`, `"250ms"`, `"50%"` of the duration, or a marker name.
+
+A new timeline is 3 s at 30 fps, looping forever (`loop: 0`). In a document whose `design_defaults` record house style 3 (new design documents since 0.24) it is also a seamless loop (`loop_mode: "seamless"`); see [animation authoring](animation-authoring.md#joint-pose-keys-and-short-templates) to make it play once.
 
 Easings: `linear`, `hold`, `ease`, `ease-in`, `ease-out`, `ease-in-out`, `ease-in/out/in-out-sine|quad|cubic|quart|expo|back`, `bounce-in`, `bounce-out`, `elastic-out`, `spring`, `cubic-bezier(x1, y1, x2, y2)`, `steps(n)`.
 
@@ -102,7 +104,7 @@ vixl export-timeline --out sheet.png --format sheet --columns 6
 
 `targets: ["arm-left", "arm-right"]` on `animate`, `animate-preset` or `keyframe` (CLI: `arm-left,arm-right`) applies the same keys to every listed layer in one call.
 
-`animate` without `from` starts from the current animated (or static) value; it sets keys at `start` and `end` (or `start + duration`). Removing a layer removes its tracks.
+`animate` without `from` starts from the current animated (or static) value; it sets keys at `start` and `end` (or `start + duration`). Without `easing` it eases in-out, or uses the house easing for `intent` (`entrance` ease-out, `exit` ease-in, `loop` and `emphasis` ease-in-out). `fade-in` defaults to ease-out and `fade-out` to ease-in. Removing a layer removes its tracks.
 
 ### Kinetic type: per-character, per-word and per-line animation
 
