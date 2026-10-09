@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: jxburros/Vixl@v0.24.0   # pin a release tag (or a commit SHA)
+      - uses: jxburros/Vixl@v0.24.1   # pin a release tag (or a commit SHA)
         with:
           paths: designs/**/*.vixl
           fail-on: error          # error | warning | fix | never

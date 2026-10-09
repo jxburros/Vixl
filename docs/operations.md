@@ -159,7 +159,7 @@ Repetitive work (menus, badge sheets, price tags, a campaign in six sizes) shoul
 | Operation | Fields |
 | --- | --- |
 | edit-layers | `where` (selector), `do` (an operation or a list of up to 20), `dry_run`, `expect` |
-| adapt-layout | without `targets`: `size` **or** `width` + `height`, `orientation`/`dpi`/`bleed` (named print sizes), `scale` (`fit`, `fill`, `width`, `height` or a number), `anchors`, `where`, `text` (`scale`/`keep`), `report`; with `targets`: the existing vertical reflow (`targets`, `width`, `height`, `margin`, `gap`) |
+| adapt-layout | without `targets`: `size` **or** `width` + `height`, `orientation`/`dpi`/`bleed` (named print sizes), `scale` (`fit`, `fill`, `width`, `height` or a number), `anchors`, `where`, `text` (`scale`/`keep`), `report`, `recompose`; with `targets`: the existing vertical reflow (`targets`, `width`, `height`, `margin`, `gap`) |
 
 **`edit-layers`** runs `do` once for every layer on the active page that matches `where`, with `target` set to the layer, atomically with the rest of the batch. Every key of `where` must match; values may be lists (any of):
 
@@ -192,7 +192,7 @@ Unknown `where` keys, unknown kinds and invalid regexes are errors with suggesti
 - layers with constraints keep them: numeric values follow the axis ratio and `canvas.edge±N` offsets follow the scale, so constraint-driven layouts stay constraint-driven;
 - pixel and field layers keep their size (reported under `skipped`). Multi-page documents are not supported yet. Guides that are not part of a named size stay where they are.
 
-The result adds `adapt_layout: [{canvas: {from, to}, scale, adapted, moved, layers: [{layer, from, to, anchor, font_size?}], skipped?}]` (up to 60 layers; `report: false` omits the list), and the usual `warnings` flag layers that ended up cut off or overflowing. Adapt a document to several sizes in one call with `vixl_adapt_layout(sizes, directory, name, options, formats)`: each size becomes a saved (and optionally exported) copy, the source is untouched, and the reply lists per size the new canvas, scale, moved count and warnings.
+The result adds `adapt_layout: [{canvas: {from, to}, scale, adapted, moved, layers: [{layer, from, to, anchor, font_size?}], skipped?}]` (up to 60 layers; `report: false` omits the list), and the usual `warnings` flag layers that ended up cut off or overflowing. `recompose: true` (0.24) instead re-applies a stored generated-layout recipe at the new size; it replaces manual edits to the generated layers and their IDs, so it is never the default. Adapt a document to several sizes in one call with `vixl_adapt_layout(sizes, directory, name, options, formats)`: each size becomes a saved (and optionally exported) copy, the source is untouched, and the reply lists per size the new canvas, scale, moved count and warnings.
 
 Without `targets` the verb is proportional; with `targets` it keeps its earlier meaning (vertical reflow in priority order that refuses content that cannot fit, see [production](production.md)). Mixing the two option sets is an error that says which mode each option belongs to. `vixl apply` (JSON) runs both modes from the CLI.
 

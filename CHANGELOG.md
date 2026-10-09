@@ -11,6 +11,21 @@ Faster rendering. Every shortcut draws the same pixels as a full render; `tests/
 - `Project.render(region=[x, y, w, h])` and region previews (`vixl_render_preview region=`) draw only the region.
 - Text and single-colour path shapes are rasterised once per outline: copies and recoloured versions reuse the glyphs.
 - Document variables and font lookups are computed once per render, not once per text layer. Outline-free rectangles are filled directly, without supersampling. Cache keys, opacity scaling, layers without effects, and preview and cache PNG encoding are cheaper. A 1,500-layer document renders about 3 times faster from cold.
+## 0.24.1
+
+Command-line parity and documentation for the 0.24 features.
+
+### Added
+
+- CLI flags for fields that needed JSON before: `stack --gap 2u` and `layout apply --gap 1.5u` (pixels or spacing units), `adapt-layout --recompose`, `animate --intent entrance|exit|loop|emphasis`, `timeline set --loop-mode seamless|off --close`, and `frame --frame-shape` / `--outline`.
+
+### Fixed
+
+- Python source distributions exclude repository artwork and development assets to stay below PyPI's 100 MB file limit, while retaining all bundled runtime data.
+- `vixl --help` lists all 20 looks and `roll --house-style 1|2`; the `roll` help names house style 3 as the default and 2 as the 0.23 replay.
+- `vixl commands --json` includes `emoji` and `capabilities`.
+- The `vixl_check` description gives the weight-aware large-text threshold (24 px, or 18.66 px bold), and the `animate` easing description gives the real default (ease-in-out, or the house easing for `intent`).
+- Documentation brought up to 0.24: the CLI, MCP and REST references, the agent skill, the topical guides, the use-case catalog, the re-measured MCP toolset sizes and the development plan.
 
 ## 0.24.0
 

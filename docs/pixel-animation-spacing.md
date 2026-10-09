@@ -23,7 +23,7 @@ Results include each pair's stable IDs/names, exact gap in pixels, overlap flags
 
 The targets must be distinct visible siblings. Lists are sorted by position along the requested axis, accounting for unequal object sizes. The `before/around/after` form preserves and validates that explicit order. Bounds use resolved constraints and transformed geometry, excluding shadows/glows. Gaps inside groups use local coordinates; rotated objects use their axis-aligned bounds. A cross-axis overlap of zero is reported for context, not treated as an error. `--artboard` and `--comp` inspect a render variant without changing the document. An artboard's hidden targets cannot be checked.
 
-Python: `project.measure_spacing(targets=[...], axis="vertical", expected=24, tolerance=1)` or `project.measure_spacing(around="body", before="heading", after="footer")`. REST: POST `/spacing` with the same options. MCP: `vixl_measure_spacing`. Use `align` or `distribute` when you actually want to change spacing; measurement never edits the document.
+Python: `project.measure_spacing(targets=[...], axis="vertical", expected=24, tolerance=1)` or `project.measure_spacing(around="body", before="heading", after="footer")`. REST: POST `/spacing` with the same options. MCP: `vixl_measure_spacing`. Use `align` or `distribute` when you actually want to change spacing; measurement never edits the document. `stack` and `layout-apply` gaps also accept shared spacing units (`gap: "2u"`, where one unit is half the document's body size and at least 2 px), so related gaps stay on one scale.
 
 ## Make a compact pixel sprite
 

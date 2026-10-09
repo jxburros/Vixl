@@ -32,9 +32,9 @@ vixl_operations_apply(operations=[{"type":"layout-apply","name":"event-poster",
 vixl_check() ; vixl_render_preview()
 ```
 
-- Pick by medium: `hero-statement`, `split-screen`, `rule-of-thirds`, `asymmetric-balance` (social, posters); `editorial-grid`, `f-pattern`, `letterhead`, `framed` (documents); `banner`, `z-pattern` (wide ads); `story-vertical` (9:16); `thumbnail-bold` (YouTube); `slide-title`, `slide-content`; `logo-horizontal`, `logo-stacked`, `emblem`, `monogram`, `app-icon` (identity); `price-list`, `event-poster`, `product-card`, `big-number`, `quote-card`, `bento-grid`, `typographic-poster`, `minimal-mark`, `photo-caption`, `diagonal-band`, `golden-section`, `centered-axis`; `meme-top-bottom`, `meme-caption-above`, `meme-comparison`, `meme-labelled`, `meme-reaction`, `meme-four-panel` (memes: `image` or `images`, one asset per panel; bring your own pictures).
+- Pick by medium: `hero-statement`, `split-screen`, `rule-of-thirds`, `asymmetric-balance` (social, posters); `editorial-grid`, `f-pattern`, `letterhead`, `framed` (documents); `banner`, `z-pattern` (wide ads); `story-vertical` (9:16); `thumbnail-bold` (YouTube); `slide-title`, `slide-content`; `logo-horizontal`, `logo-stacked`, `emblem`, `monogram`, `app-icon` (identity); `price-list`, `event-poster`, `product-card`, `big-number`, `quote-card`, `bento-grid`, `typographic-poster`, `minimal-mark`, `photo-caption`, `diagonal-band`, `golden-section`, `centered-axis`; `meme-top-bottom`, `meme-caption-above`, `meme-comparison`, `meme-labelled`, `meme-reaction`, `meme-four-panel` (memes: `image` or `images`, one asset per panel; bring your own pictures); quieter compositions `calm-cover`, `quiet-editorial`, `inset-editorial`, `offset-column`, `right-margin`, `open-letter`, `centered-note`, `centered-rule`, `asymmetric-note`, `balanced-announcement`, `modern-bulletin`, `quiet-invitation`, `soft-panel`, `wide-statement`, `gallery-label`, `business-card` (53 in all; `vixl_layouts_list` has each one's `best_for`).
 - Content keys: `title`, `subtitle`, `body`, `label`, `cta`, `caption`, `items` (newline-separated; `Name | $9` rows for price lists; `Heading: text` for f-pattern; bullets for slides), `image` (an embedded asset ID; otherwise a placeholder frame named `image` you fill with `replace-contents`).
-- Variation: change `seed` to explore; pin `palette`, `mode` (light/dark), `type_scale` (`minor-third` … `golden` or a number), `density` (airy/balanced/dense), `align`, `accent` (rule/bar/dot/block/outline/none). The chosen system is in the result's `changes.layout` and in `state.layout`; a `notes` entry means type was shrunk to fit.
+- Variation: change `seed` to explore; pin `palette`, `mode` (light/dark), `type_scale` (`minor-third` … `golden` or a number), `density` (airy/balanced/dense), `align`, `accent` (rule/bar/dot/block/outline/none), `gap` (pixels or spacing units such as `"2u"`, 1u = half the body size). The chosen system is in the result's `changes.layout` and in `state.layout`; a `notes` entry means type was shrunk to fit.
 - Layouts create swatches `@background @surface @ink @muted @accent @accent-text @on-accent` (contrast-checked) and character styles `caption body lead subhead title headline display`. Edit a swatch to retint everything; use `@accent-text` (not `@accent`) for small accent-colored text.
 - Second layout in the same document: pass `prefix` (e.g. `"b-"`) or `replace: true`.
 - `type-scale` alone defines the styles: `{"type":"type-scale","base":18,"ratio":"golden"}`. Guidance resources `typography`, `color`, `layout`, `accessibility`, `print`, `icon`, `motion`, `brush` hold the principles in words (`{"type":"guidance","name":"print","style":"print"}`).
@@ -60,8 +60,8 @@ indexes or colors; `layout-apply colors: {…}`). `palette-generate` only adds n
 
 ## Finishing looks and styles
 
-`look` applies a named finish in one operation (glow, neon, soft-shadow, hard-shadow, outline, gradient, soft-halo, grain,
-paper, film, duotone, risograph, sketch, watercolor, halftone); `radial-repeat` makes rosettes and mandalas;
+`look` applies a named finish in one operation (clean-flat, subtle-grain, light-paper, glow, neon, soft-shadow, hard-shadow, outline, gradient, soft-halo, grain,
+paper, film, duotone, risograph, sketch, watercolor, halftone, hand-made, plush); `radial-repeat` makes rosettes and mandalas;
 `vixl_styles` serves 28 design styles with premade checks. See [looks](../../../docs/looks.md) and
 [styles](../../../docs/styles.md).
 
@@ -71,7 +71,7 @@ Every color field accepts names (CSS + survey names like `dusty rose`), hex, `rg
 
 Tools: `vixl_color(action="info"|"convert"|"harmony"|"scale"|"mix"|"contrast"|"names", colors=[…])`; CLI `vixl color …`. Palettes from one color: `{"type":"palette-generate","name":"brand","color":"#2563eb","scheme":"scale"}` (→ `@brand-50` … `@brand-950`) or a harmony scheme (`triadic`, `split-complementary` …).
 
-Contrast rules the checks enforce: body text ≥ 4.5:1, text ≥ 24 px ≥ 3:1. Prefer OKLCH lightness differences over hue differences; `simulate` previews color blindness and `vixl_check(checks=["color_vision"])` finds text that fails for color-blind readers.
+Contrast rules the checks enforce: body text ≥ 4.5:1; large text (24 px, or 18.66 px bold) ≥ 3:1. Prefer OKLCH lightness differences over hue differences; `simulate` previews color blindness and `vixl_check(checks=["color_vision"])` finds text that fails for color-blind readers.
 
 ## Print and file formats
 

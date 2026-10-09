@@ -77,5 +77,6 @@ use [checked production](../production.md), rather than an untracked shell loop.
 
 Share the [editable master](../assets/generated/campaign.vixl), a preview, required exports,
 fonts/license information and the content data. Keep source artwork and export settings
-alongside it. [Brands](../brands.md) shows how to reuse colors, logos, fonts and contrast rules
+alongside it. To review changes in Git, commit the folder that `vixl unpack campaign.vixl campaign-source`
+writes and rebuild with `vixl pack` ([source folders](../production.md#source-folders-for-git-review)). [Brands](../brands.md) shows how to reuse colors, logos, fonts and contrast rules
 across documents; [design tools](../design-tools.md) covers frames and image replacement.

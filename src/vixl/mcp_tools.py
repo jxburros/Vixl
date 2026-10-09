@@ -864,8 +864,8 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         document: Document = None,
     ) -> dict:
         """Find design problems without looking: content cut off by the canvas, overlapping text, low WCAG
-        text contrast (4.5:1, or 3:1 for 24px+), content outside a safe area or inside reserved zones, and
-        text too small at thumbnail width. print (opt-in) checks ink coverage, low-resolution images, tiny
+        text contrast (4.5:1, or 3:1 for 24px+ text or 18.66px+ bold), content outside a safe area or inside
+        reserved zones, and text too small at thumbnail width. print (opt-in) checks ink coverage, low-resolution images, tiny
         type in points and backgrounds that stop short of the bleed; color_vision (opt-in) finds text whose
         contrast collapses for color-blind readers; deck checks every page plus title placement, type
         scale, words per page, projected type size and speaker notes; form checks fields (names, overlap, tab

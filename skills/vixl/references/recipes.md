@@ -244,6 +244,9 @@ vixl_timeline_preview(count=8)
 vixl_export_timeline(path="post.mp4")          # needs ffmpeg; otherwise post.webp or post.gif
 ```
 
+In a house-style-3 document a new timeline of 10 s or less is a seamless loop, so entrances play back before the
+loop restarts; add `"loop_mode":"off"` (or `"loop":1`) to `timeline-set` for a post that plays once and holds.
+
 
 ## Character, scene and mandala (no text layout)
 

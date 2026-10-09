@@ -2,7 +2,7 @@
 
 [Documentation home](README.md) · [Getting started](getting-started.md) · [Visual gallery](gallery.md)
 
-Vixl bundles DejaVu Sans only as a proofing fallback, so text renders before anyone has chosen type. Design type comes from a researched catalog and is downloaded only when you ask. The default `fonts` check warns while any text still uses the fallback, and an apply that asks for the `heading` or `body` role before the document has typography says so in its `warnings`. Pass `font_pairing` to `vixl_document_create` (or call `vixl_font_pair`) to give the roles real typefaces.
+Vixl bundles DejaVu Sans only as a proofing fallback, so text renders before anyone has chosen type. Design type comes from a researched catalog and is downloaded only when you ask. The default `fonts` check warns while any text still uses the fallback (a fix-level finding, so `check.passed` stays false until real type is installed), and an apply that asks for the `heading` or `body` role before the document has typography says so in its `warnings`. Pass `font_pairing` to `vixl_document_create` (or call `vixl_font_pair`) to give the roles real typefaces.
 
 ## The catalog
 
@@ -16,7 +16,7 @@ vixl font show "Space Grotesk"         # full entry plus the pairings that use i
 
 ## Pairings
 
-60 curated heading/body pairings. They are described by their relationship (`contrast` of classification, `superfamily`, or `concord`), mood and best uses, a one-line reason they work, a caution and, where one exists, a published source. Single-family pairings get weight contrast from one family.
+76 curated heading/body pairings: the original 60 plus 16 tiered ones from house style 3 (4 safe, 8 bold, 4 avant-garde; `tier` in each entry). They are described by their relationship (`contrast` of classification, `superfamily`, or `concord`), mood and best uses, a one-line reason they work, a caution and, where one exists, a published source. Single-family pairings get weight contrast from one family.
 
 ```bash
 vixl font pairings --mood editorial --for reports
@@ -119,4 +119,4 @@ Use `text-style` tracking for extra local pixels between glyphs, for example `{"
 
 Width-only `text-layout` boxes grow vertically after `text-set` or variable substitution. Give both width and height to keep a fixed box and let overflow checks report copy that does not fit. Markdown text-flow retains its size-based line-height calculation when splitting across frames.
 
-For social and poster purposes, automatic legibility checking and generated layout minor text use the house minimum (2.2% of the short canvas side). Explicit thumbnail widths remain a caller-selected viewing-context check. Print keeps the 6-point minimum and decks keep their profile checks. The contrast check treats 19 px bold text (font weight 700+) as large; regular text needs 24 px. Shared spacing expressions such as `2u` use half the body size per unit.
+For social and poster purposes, automatic legibility checking and generated layout minor text use the house minimum (2.2% of the short canvas side). Explicit thumbnail widths remain a caller-selected viewing-context check. Print keeps the 6-point minimum and decks keep their profile checks. The contrast check treats bold text (font weight 700+) from 18.66 px (14 pt) as large, needing 3:1; regular text needs 24 px. Shared spacing expressions such as `2u` use half the body size per unit.

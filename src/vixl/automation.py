@@ -462,6 +462,8 @@ def compile_command(cmd, args):
         parser.add_argument("--where", type=json.loads, help="edit-layers selector limiting the adapted layers")
         parser.add_argument("--text", choices=["scale", "keep"])
         parser.add_argument("--no-report", dest="report", action="store_false", default=None)
+        parser.add_argument("--recompose", action="store_true", default=None,
+                            help="Reapply the stored layout-apply recipe at the new size; replaces edits to generated layers")
     if cmd == "suite-capture":
         parser.add_argument("--regions", type=json.loads)
     if cmd == "motion-apply":

@@ -67,6 +67,7 @@ Define the `action` variable before applying this example. Hug stacks measure vi
 - Print: `print-flyer`, `print-menu`, `print-certificate`, `print-invitation`, `print-postcard`, `print-poster`.
 - Business: `business-one-pager`, `business-case-study`, `business-invoice-header`, `business-report-cover`.
 - Slides: `slide-title`, `slide-section`, `slide-comparison`, `slide-timeline`, `slide-team`, `slide-stat`.
+- Short video: `video-tip`, `video-launch`, `video-event` (six-second seamless loops with `title`, `subtitle` and `cta` variables; see [animation authoring](animation-authoring.md#joint-pose-keys-and-short-templates)). They scale to any canvas and carry no container grid.
 
 Create the canvas at one of the template's declared sizes, then apply it. Its grid computes cells from the current canvas, including padding and gutters. `columns` changes the grid; cells smaller than a usable container are refused. Print canvas metadata is retained. Each template includes the `container-layout` check suite. Unfilled text remains an explicit placeholder.
 
