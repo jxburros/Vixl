@@ -1,0 +1,217 @@
+{
+ "passed": true,
+ "errors": 0,
+ "warnings": 2,
+ "info": 4,
+ "by_action": {
+  "fix": [],
+  "review": [
+   4,
+   5
+  ],
+  "informational": [
+   0,
+   1,
+   2,
+   3
+  ]
+ },
+ "issues": [
+  {
+   "check": "safe_area",
+   "severity": "info",
+   "layers": [
+    "art-disc"
+   ],
+   "message": "'art-disc' extends outside the safe area (intentional crop or bleed)",
+   "bounds": [
+    1080,
+    130,
+    820,
+    820
+   ],
+   "safe_area": [
+    76.8,
+    43.2,
+    1766.4,
+    993.6
+   ],
+   "intentional": true,
+   "action": "informational",
+   "pages": [
+    "01-cover"
+   ]
+  },
+  {
+   "check": "safe_area",
+   "severity": "info",
+   "layers": [
+    "art-ring"
+   ],
+   "message": "'art-ring' extends outside the safe area (intentional crop or bleed)",
+   "bounds": [
+    1500,
+    640,
+    360,
+    360
+   ],
+   "safe_area": [
+    76.8,
+    43.2,
+    1766.4,
+    993.6
+   ],
+   "intentional": true,
+   "action": "informational",
+   "pages": [
+    "01-cover"
+   ]
+  },
+  {
+   "check": "bounds",
+   "severity": "info",
+   "layers": [
+    "close-disc"
+   ],
+   "message": "'close-disc' bleeds off the canvas edge (marked as an intentional crop)",
+   "bounds": [
+    1400.0,
+    480.0,
+    860.0,
+    860.0
+   ],
+   "intentional": true,
+   "action": "informational",
+   "pages": [
+    "07-closing"
+   ]
+  },
+  {
+   "check": "safe_area",
+   "severity": "info",
+   "layers": [
+    "close-disc"
+   ],
+   "message": "'close-disc' extends outside the safe area (intentional crop or bleed)",
+   "bounds": [
+    1400,
+    480,
+    860,
+    860
+   ],
+   "safe_area": [
+    76.8,
+    43.2,
+    1766.4,
+    993.6
+   ],
+   "intentional": true,
+   "action": "informational",
+   "pages": [
+    "07-closing"
+   ]
+  },
+  {
+   "check": "title_position",
+   "severity": "warning",
+   "page": "01-cover",
+   "layers": [
+    "title"
+   ],
+   "message": "The title on page '01-cover' sits at y 310 where the other titles sit at 122",
+   "expected": 122,
+   "actual": 310,
+   "action": "review"
+  },
+  {
+   "check": "type_scale",
+   "severity": "warning",
+   "layers": [],
+   "message": "The deck uses 7 text sizes (24, 36, 44, 56, 68, 104, 190 px); five or six steps of one scale read as a system",
+   "sizes": [
+    24.0,
+    36.0,
+    44.0,
+    56.0,
+    68.0,
+    104.0,
+    190.0
+   ],
+   "action": "review"
+  }
+ ],
+ "checked": {
+  "checks": [
+   "bounds",
+   "overlap",
+   "contrast",
+   "safe_area",
+   "blanks",
+   "fonts",
+   "brand",
+   "content",
+   "form",
+   "links",
+   "diagram",
+   "flow",
+   "codes",
+   "title_position",
+   "type_scale",
+   "words",
+   "min_font",
+   "notes",
+   "empty"
+  ],
+  "pages": 7,
+  "profile": "projected",
+  "min_font_pt": 18,
+  "max_words": 60,
+  "thumbnail_width": null,
+  "display_width": 320,
+  "points_per_pixel": 0.5
+ },
+ "pages": [
+  {
+   "page": "01-cover",
+   "passed": true,
+   "errors": 0,
+   "warnings": 0
+  },
+  {
+   "page": "02-stats",
+   "passed": true,
+   "errors": 0,
+   "warnings": 0
+  },
+  {
+   "page": "03-cards",
+   "passed": true,
+   "errors": 0,
+   "warnings": 0
+  },
+  {
+   "page": "04-split",
+   "passed": true,
+   "errors": 0,
+   "warnings": 0
+  },
+  {
+   "page": "05-steps",
+   "passed": true,
+   "errors": 0,
+   "warnings": 0
+  },
+  {
+   "page": "06-compare",
+   "passed": true,
+   "errors": 0,
+   "warnings": 0
+  },
+  {
+   "page": "07-closing",
+   "passed": true,
+   "errors": 0,
+   "warnings": 0
+  }
+ ]
+}

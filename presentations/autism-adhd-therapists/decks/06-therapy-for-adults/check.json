@@ -1,0 +1,286 @@
+{
+ "passed": true,
+ "errors": 0,
+ "warnings": 1,
+ "info": 8,
+ "by_action": {
+  "fix": [],
+  "review": [
+   8
+  ],
+  "informational": [
+   0,
+   1,
+   2,
+   3,
+   4,
+   5,
+   6,
+   7
+  ]
+ },
+ "issues": [
+  {
+   "check": "safe_area",
+   "severity": "info",
+   "layers": [
+    "art-disc"
+   ],
+   "message": "'art-disc' extends outside the safe area (intentional crop or bleed)",
+   "bounds": [
+    1080,
+    130,
+    820,
+    820
+   ],
+   "safe_area": [
+    76.8,
+    43.2,
+    1766.4,
+    993.6
+   ],
+   "intentional": true,
+   "action": "informational",
+   "pages": [
+    "01-cover"
+   ]
+  },
+  {
+   "check": "safe_area",
+   "severity": "info",
+   "layers": [
+    "art-ring"
+   ],
+   "message": "'art-ring' extends outside the safe area (intentional crop or bleed)",
+   "bounds": [
+    1500,
+    640,
+    360,
+    360
+   ],
+   "safe_area": [
+    76.8,
+    43.2,
+    1766.4,
+    993.6
+   ],
+   "intentional": true,
+   "action": "informational",
+   "pages": [
+    "01-cover"
+   ]
+  },
+  {
+   "check": "bounds",
+   "severity": "info",
+   "layers": [
+    "idea-disc"
+   ],
+   "message": "'idea-disc' bleeds off the canvas edge (marked as an intentional crop)",
+   "bounds": [
+    -220.0,
+    620.0,
+    640.0,
+    640.0
+   ],
+   "intentional": true,
+   "action": "informational",
+   "pages": [
+    "02-idea"
+   ]
+  },
+  {
+   "check": "bounds",
+   "severity": "info",
+   "layers": [
+    "idea-disc-2"
+   ],
+   "message": "'idea-disc-2' bleeds off the canvas edge (marked as an intentional crop)",
+   "bounds": [
+    1560.0,
+    -160.0,
+    520.0,
+    520.0
+   ],
+   "intentional": true,
+   "action": "informational",
+   "pages": [
+    "02-idea"
+   ]
+  },
+  {
+   "check": "safe_area",
+   "severity": "info",
+   "layers": [
+    "idea-disc"
+   ],
+   "message": "'idea-disc' extends outside the safe area (intentional crop or bleed)",
+   "bounds": [
+    -220,
+    620,
+    640,
+    640
+   ],
+   "safe_area": [
+    76.8,
+    43.2,
+    1766.4,
+    993.6
+   ],
+   "intentional": true,
+   "action": "informational",
+   "pages": [
+    "02-idea"
+   ]
+  },
+  {
+   "check": "safe_area",
+   "severity": "info",
+   "layers": [
+    "idea-disc-2"
+   ],
+   "message": "'idea-disc-2' extends outside the safe area (intentional crop or bleed)",
+   "bounds": [
+    1560,
+    -160,
+    520,
+    520
+   ],
+   "safe_area": [
+    76.8,
+    43.2,
+    1766.4,
+    993.6
+   ],
+   "intentional": true,
+   "action": "informational",
+   "pages": [
+    "02-idea"
+   ]
+  },
+  {
+   "check": "bounds",
+   "severity": "info",
+   "layers": [
+    "close-disc"
+   ],
+   "message": "'close-disc' bleeds off the canvas edge (marked as an intentional crop)",
+   "bounds": [
+    1400.0,
+    480.0,
+    860.0,
+    860.0
+   ],
+   "intentional": true,
+   "action": "informational",
+   "pages": [
+    "06-closing"
+   ]
+  },
+  {
+   "check": "safe_area",
+   "severity": "info",
+   "layers": [
+    "close-disc"
+   ],
+   "message": "'close-disc' extends outside the safe area (intentional crop or bleed)",
+   "bounds": [
+    1400,
+    480,
+    860,
+    860
+   ],
+   "safe_area": [
+    76.8,
+    43.2,
+    1766.4,
+    993.6
+   ],
+   "intentional": true,
+   "action": "informational",
+   "pages": [
+    "06-closing"
+   ]
+  },
+  {
+   "check": "title_position",
+   "severity": "warning",
+   "page": "01-cover",
+   "layers": [
+    "title"
+   ],
+   "message": "The title on page '01-cover' sits at y 310 where the other titles sit at 122",
+   "expected": 122,
+   "actual": 310,
+   "action": "review"
+  }
+ ],
+ "checked": {
+  "checks": [
+   "bounds",
+   "overlap",
+   "contrast",
+   "safe_area",
+   "blanks",
+   "fonts",
+   "brand",
+   "content",
+   "form",
+   "links",
+   "diagram",
+   "flow",
+   "codes",
+   "title_position",
+   "type_scale",
+   "words",
+   "min_font",
+   "notes",
+   "empty"
+  ],
+  "pages": 6,
+  "profile": "projected",
+  "min_font_pt": 18,
+  "max_words": 60,
+  "thumbnail_width": null,
+  "display_width": 320,
+  "points_per_pixel": 0.5
+ },
+ "pages": [
+  {
+   "page": "01-cover",
+   "passed": true,
+   "errors": 0,
+   "warnings": 0
+  },
+  {
+   "page": "02-idea",
+   "passed": true,
+   "errors": 0,
+   "warnings": 0
+  },
+  {
+   "page": "03-cards",
+   "passed": true,
+   "errors": 0,
+   "warnings": 0
+  },
+  {
+   "page": "04-split",
+   "passed": true,
+   "errors": 0,
+   "warnings": 0
+  },
+  {
+   "page": "05-steps",
+   "passed": true,
+   "errors": 0,
+   "warnings": 0
+  },
+  {
+   "page": "06-closing",
+   "passed": true,
+   "errors": 0,
+   "warnings": 0
+  }
+ ]
+}
