@@ -173,6 +173,14 @@ handles equal in length. `path-simplify` reduces nodes by a pixel `tolerance`;
 ## Constructive paths
 
 - `offset-path`: positive/negative pixel `distance`, `join` and `miter_limit`.
+- `die-cut`: a sticker or label cut line around what `targets` draw (any layer type: text, images,
+  groups). Their ink is traced, holes are filled so the line follows the outer silhouette, and the
+  union is grown by `distance` (default 12 px) with `offset-path`'s buffering (`join`, default `round`).
+  The result is one new closed path layer (`name`, default `cut-line`) above the topmost target:
+  stroked (`stroke`, default `#ec008c`; `stroke_width`, default 1) with an explicit transparent fill,
+  so it stays unfilled in every render and export. Parts the distance does not join stay separate
+  contours; the result's `die_cut` report and the layer's `die_cut.pieces` count them. `threshold`
+  (0-1, default 0.5) sets which opacity counts as ink and `smooth` (default 1 px) rounds pixel steps.
 - `outline-stroke`: convert visible strokes into filled paths. Different paints produce separate layers.
 - `round-corners`: round every path corner with `radius`.
 - `pathfinder`: adds `exclude` (XOR), `minus-back` (last operand minus earlier operands),

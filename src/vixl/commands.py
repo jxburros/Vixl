@@ -113,6 +113,10 @@ def compile_command(tokens):
     guided = compile_guides(cmd, args)
     if guided is not None:
         return guided
+    from .diecut import compile_command as compile_diecut
+    diecut = compile_diecut(cmd, args)
+    if diecut is not None:
+        return diecut
     from .tables import compile_command as compile_tables
     tabled = compile_tables(cmd, args)
     if tabled is not None:
