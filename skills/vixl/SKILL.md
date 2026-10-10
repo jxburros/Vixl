@@ -251,9 +251,13 @@ When `vixl_document_open` returns `upgrade`, the document predates 0.21: review 
 open it again with `upgrade="pin-fills"` (old white fills) or `"accept"`.
 Humans can follow progress with `vixl -p DOCUMENT view`.
 
-Workspace `brand.json` provides default palette roles, pairing/embedded fonts, embedded logos,
-minimum contrast, and required layer names. Layouts, templates, rolls and checks honor it, and new
-documents embed its fonts at creation (`workspace_fonts` in the result; `workspace_fonts: false` skips).
+Workspace `brand.json` provides default palette roles (plus `palette.extra` approved colours), pairing/embedded
+fonts under any role name (`heading`, `body`, `hand` …) with `stages` mapping text stages onto them, embedded
+logos, minimum contrast, required layer names, compliance rules (`fonts.allowed`, `colors.strict`, `logo.clear_space`
+and `min_size`) and named `presets` (select one per document with `{"type": "brand-preset", "name": …}`).
+Layouts, templates, rolls and checks honor it, and new documents embed its fonts at creation (`workspace_fonts` in
+the result; `workspace_fonts: false` skips). `vixl brand validate` flags missing roles, fonts and logos; the
+`brand-board` workflow draws the brand as a guidelines PDF.
 Set the workspace typography with `vixl_font_pair`/`vixl_font_install(role=...)` and `scope: "workspace"`.
 Use `vixl_roll(apply=true, slots={...})` or `roll --apply --set title=...` to apply a whole direction;
 `layout apply` returns unfilled slots immediately. Check and fill them before export. A roll with `slots` omits the slots you did not fill (`unfilled: "omit"`), so it passes `check`; pass `unfilled: "blank"` to keep `[Label]` placeholders instead.

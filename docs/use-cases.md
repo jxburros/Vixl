@@ -106,6 +106,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | BLK-08 | Place text by its baseline | `baseline_y` on text/move, `align` `baseline`, `snap` to a baseline grid | 1 · <1 | E | Since 0.22. |
 | TXT-11 | Use emoji in text with bundled, editable art (complete Unicode 17 sequences, joiners and flags) | `text`, `emoji-mode` | 1 · <1 | E | Since 0.24; bundled art by default, `emoji-mode font` prefers the font; PDF/PPTX use a reported raster fallback. |
 | TXT-12 | Find an emoji or extract it as an editable `.vixl` master | `vixl emoji list`/`get`, `vixl_workflow` emoji-list/emoji-get | 1 · <1 | E | Since 0.24; 3,953 Unicode sequences plus 100 originals. |
+| TXT-13 | Set text on a stage (display, h1–h3, subtitle, lead, body, caption, citation, label) and spread 2–4 fonts across the stages | `text` with `stage`, `font-register` with a role or stage | 1–2 · <1 | E | Stages follow heading/body until a stage or brand role gets its own face. |
 
 ### Color
 
@@ -204,6 +205,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | AGT-04 | Browse layouts, styles, brushes, resources or workflows | `vixl_layouts_list`, `vixl_styles`, `vixl_brushes_list`, `vixl_resources_list`, `vixl_workflow_schema` | 1 · <1 | E | |
 | AGT-05 | Check the installed version and update it | `vixl --version`, `vixl update` | 1 · <1 | E | Verified Windows updater with rollback. |
 | AGT-06 | Read the house style: craft rules, tiers, variety levels or one purpose's profile | `vixl_resource_get(kind="house-style")`, `vixl house show PURPOSE` | 1 · <1 | E | Purposes: poster, social, slides, document, form, diagram, logo, motion. |
+| BRD-53 | Validate a brand kit: missing font roles, unreadable fonts or logos, palette roles left to derivation, guidance colours the palette does not approve | `vixl brand validate`, `vixl brand show` | 1 · <1 | E | |
 
 ### Provider-backed (one call each)
 
@@ -281,6 +283,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | CLR-10 | Recolor a design to a different palette | `palette apply`, swatch edits | 3–5 · 1 | E | |
 | CLR-11 | Check how much of a design stays inside a palette | `vixl_workflow` palette-check | 2–3 · <1 | E | |
 | BRD-51 | Logo package: colour/mono/reversed variants, lockups, SVG/PDF/PNG, icons, social images, usage sheet | `vixl_workflow` logo-package | 1–3 · 1–3 | E | Since 0.22; recolouring is heuristic and reported; no EPS. |
+| BRD-52 | Brand guidelines document: palette with contrast pairs, the text-stage ladder, logos with clear space, do/don't rules | `vixl_workflow` brand-board | 1–2 · <1 | E | Drawn from `brand.json` (or a preset); PDF, PPTX, HTML or editable `.vixl`. |
 | BRD-11 | Custom emoji pack: replace or add `:shortcodes:`, check platform requirements, export PNG/SVG with editable masters | `vixl emoji`, `emoji-replace`, `emoji-template`, `emoji-requirements`, `emoji-export` | 3–8 · 1–2 | E | Since 0.24; Discord/Slack upload instructions and an offline preview; CC BY-SA 4.0 licences travel with the pack. |
 
 ### Data and diagrams
@@ -337,6 +340,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | FRM-03 | Fill one form with values into a flattened or editable PDF | `form fill --set` | 1–2 · <1 | E | |
 | FRM-04 | Check a form with worst-case sample values | `check --checks form --sample worst` | 1–2 · <1 | E | |
 | QA-12 | Leave, list and resolve review notes | `vixl_review_notes` | 2–3 · <1 | E | |
+| QA-20 | Enforce a brand's rules (brand fonts only, palette within a tolerance, logo clear space and minimum size) | `brand.json` `fonts.allowed`, `colors.strict`, `logo`; `vixl_check` brand, or a suite `design` rule | 3–6 · 1 | E | Was 10–20 calls with hand-written suite rules. Approved logo variants on approved backgrounds are not checked. |
 | COL-02 | Fork a branch, edit it and see its status | `vixl_workflow` branch-fork/branch-status | 3–4 · 1 | E | |
 | AGT-10 | Connect an MCP client to a workspace | `vixl mcp --workspace . --tools core --schema slim` | config · 1–3 | E | |
 | AGT-11 | Display a design inline in a notebook | `Project.show()` | 1–2 · <1 | E | |
@@ -494,7 +498,6 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | PRD-20 | Capture a design as a recipe with typed inputs | `vixl_workflow` capture | 5–10 · 1–2 | E | |
 | PRD-21 | Plan a production spec and list its variants without rendering | `vixl_workflow` plan | 3–6 · 1 | E | |
 | PRD-22 | Save a design to a component library and reuse it elsewhere | library-save, library-search, library-place | 5–8 · 1–2 | E | Placement is a raster snapshot. |
-| QA-20 | Write a custom check suite for a brand (fonts, palette, logo clear space) | suite rules, `vixl_workflow` check | 10–20 · 2–3 | E | |
 | QA-21 | Live human review in a browser while an agent edits | `vixl view` | setup · 1–2 | E | [server] |
 | COL-10 | Three-way merge of a branch with explicit conflict resolution | branch-merge (dry run, then apply) | 5–12 · 2 | E | |
 | AGT-20 | Run a 1,000-operation batch from a JSONL file | `operations_path`, `--check`, `--preview` | 1–3 · 1–2 | E | Batches go up to 10,000 operations. |

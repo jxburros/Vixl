@@ -63,22 +63,26 @@ Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/mai
    `wordmark` layers. Mono variants turn every visible colour into one ink, drop shadows/effects and silhouette
    images; `on-light`/`on-dark` fall back to the one-colour logo when the colour logo lacks 3:1 contrast. Read
    `report` and preview before handing it over. No EPS. Existing files are never replaced without `overwrite`.
-14. Proof pages: `vixl_workflow("proof", {items: [path | {path, label?, before?, note?}], output: "proof.html",
+14. Brand boards: `vixl_workflow("brand-board", {output, preset?, title?, document?, overwrite?})` draws the
+   workspace `brand.json` (or a preset) as a guidelines document (.pdf, .pptx, .html or .vixl): cover, colour roles with
+   contrast pairs, the text-stage ladder, logos with clear space and do/don't rules. `vixl brand validate` checks the
+   brand first.
+15. Proof pages: `vixl_workflow("proof", {items: [path | {path, label?, before?, note?}], output: "proof.html",
    decisions?, check?, title?})` writes one self-contained HTML page (no network; strict CSP). `.vixl` items show their
    `vixl_check` findings; `before` (another file, or a revision such as `previous`) adds a diff; `decisions: true` adds
    approve/reject and a button that downloads `<page>-decisions.json`, which the reviewer sends back. `vixl diff A B
    --out d.png` gives the same pixel diff on the command line.
-15. App animation packages: `vixl_workflow("app-animation-package", {states, default_state, output, themes?, transitions?,
+16. App animation packages: `vixl_workflow("app-animation-package", {states, default_state, output, themes?, transitions?,
    format?})`. `states` maps names to `{source: "x.vixl", loop?, interruptible?, on_complete?, poster?, variables?, themes?}`;
    `themes` map names to variable overrides (default light and dark; bind colours in the sources to `${variables}`);
    `transitions` are `{from, event, to}`; `format` is `webp` (default), `gif` or `apng`; `output` must be a new directory.
    The package holds each editable master, an animation per state and theme, reduced-motion PNGs, a versioned
    `manifest.json` and a standalone `index.html` consumer. Sources must be self-contained: freeze external links
    (`link-embed`) and embed fonts first. Missing states and ambiguous transitions fail before anything is written.
-16. Screen capture: `vixl_workflow("screen-capture", {output: "shot.png", bbox?: [left, top, right, bottom], window?: HWND,
+17. Screen capture: `vixl_workflow("screen-capture", {output: "shot.png", bbox?: [left, top, right, bottom], window?: HWND,
    all_screens?, overwrite?})` grabs the local desktop (a rectangle, or a Windows window handle; not both) to a PNG. It
    needs an interactive desktop and any OS permission; it is not part of rendering.
-17. Source folders for Git review: CLI `vixl unpack design.vixl design-source` and `vixl pack design-source reviewed.vixl`
+18. Source folders for Git review: CLI `vixl unpack design.vixl design-source` and `vixl pack design-source reviewed.vixl`
    (see [cli](cli.md)).
 
 MCP paths must remain inside the workspace. REST exposes check/act/plan/film-plan for
