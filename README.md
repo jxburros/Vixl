@@ -17,7 +17,7 @@ record the Git commit when using a source checkout.
 
 **[Documentation home](docs/README.md)** · [Getting started](docs/getting-started.md) ·
 [Visual gallery](docs/gallery.md) · [Command reference](docs/commands.md) ·
-[Downloads](https://github.com/jxburros/Vixl/releases/latest)
+[Downloads](https://github.com/jxburros/Vixl/releases/latest) · [Marketing pack](marketing/README.md)
 
 ![A diagram created entirely with editable Vixl layers](docs/assets/generated/workflow.png)
 

@@ -1,91 +1,125 @@
-# Vixl marketing kit
+# Vixl marketing pack
 
-Marketing material for Vixl, made with Vixl 0.21.0. One script, [`build.py`](build.py), builds every
-piece through the Python API: layouts, rich text, linked logo masters, framed images, pages,
-keyframes, checks and exports. Nothing was drawn by hand or in another app.
+**Ideas become editable.** A programmable design studio for AI agents.
 
-![Kit overview](output/kit-overview.png)
+Ready-to-use graphics, documents and motion, authored with Vixl. The materials are also working
+examples: edit the chart's data in PowerPoint, type into the creative brief, generate campaign
+variants from a recipe, or try the animation family's states and themes. Every design includes
+an editable `.vixl` master with embedded fonts and content.
 
-## What's in it
+![Vixl marketing pack](output/kit-overview.png)
 
-| Piece | Files | Notes |
+## Choose a piece
+
+| Use | Ready-to-use files | What the piece demonstrates |
 | --- | --- | --- |
-| Open Graph / link card | [`social/og-card-1200x630.png`](output/social/og-card-1200x630.png) | Link previews on X, Slack, Discord and so on |
-| GitHub social preview | [`social/github-preview-1280x640.png`](output/social/github-preview-1280x640.png) | Upload under the repository's Settings → Social preview |
-| LinkedIn banner | [`social/linkedin-banner-1584x396.png`](output/social/linkedin-banner-1584x396.png) | Left fifth kept quiet for the profile picture |
-| Story | [`social/story-1080x1920.png`](output/social/story-1080x1920.png) | Top and bottom 250 px kept clear of platform UI |
-| Carousel, 6 slides | [`carousel/`](output/carousel/): PDF, one PNG per slide, contact sheet | 1080 × 1350 for Instagram or LinkedIn document posts |
-| Pitch deck, 9 slides | [`deck/`](output/deck/): PDF, editable PPTX, self-contained HTML presenter | Speaker notes on every slide; open the HTML in a browser to present |
-| Tabloid poster | [`print/poster-tabloid.pdf`](output/print/poster-tabloid.pdf) (CMYK, bleed, TrimBox/BleedBox) and PNG preview | 11 × 17 in at 150 dpi |
-| Product sheet | [`print/one-pager-letter.pdf`](output/print/one-pager-letter.pdf) (vector) and PNG | US Letter handout |
-| Sticker sheet | [`print/sticker-sheet-letter.pdf`](output/print/sticker-sheet-letter.pdf) and PNG | Six event stickers on US Letter |
-| Motion teaser | [`motion/teaser.mp4`](output/motion/teaser.mp4), [`teaser.gif`](output/motion/teaser.gif), contact sheet | 6.6 s, 1080 × 1080: logo, the five-step loop, end card |
+| Link previews | [Open Graph card, 1200 × 630](output/social/og-card-1200x630.png) | Rich type, syntax-colored text, vector branding |
+| Repository sharing | [GitHub preview, 1280 × 640](output/social/github-preview-1280x640.png) | Framed Vixl artwork, editable clipping |
+| Profile branding | [LinkedIn banner, 1584 × 396](output/social/linkedin-banner-1584x396.png) | Brand geometry; left area reserved for a profile image |
+| Vertical social | [Story, 1080 × 1920](output/social/story-1080x1920.png) | Image composition; top/bottom 250 px reserved for platform UI |
+| Product introduction | [Six-slide carousel PDF](output/carousel/carousel-1080x1350.pdf) · [PNG slides](output/carousel/) · [Contact sheet](output/carousel/contact-sheet.png) | Pages, shared master and phone-profile checks |
+| Product presentation | [12-slide PDF](output/deck/vixl-pitch-deck.pdf) · [Editable PPTX](output/deck/vixl-pitch-deck.pptx) · [HTML presenter](output/deck/vixl-pitch-deck.html) | Speaker notes, native chart with embedded data, screen-profile checks |
+| Product handout | [US Letter product sheet](output/print/one-pager-letter.pdf) | Vector PDF, typography and feature summaries |
+| Creative intake | [Fillable US Letter brief](output/print/creative-brief-letter.pdf) | Five text fields and a checkbox, accessible labels and tab order |
+| Event signage | [Tabloid CMYK poster](output/print/poster-tabloid.pdf) · [Preview](output/print/poster-tabloid.png) | 11 × 17 in trim, bleed, TrimBox/BleedBox and a vector QR code |
+| Event giveaway | [US Letter sticker handout](output/print/sticker-sheet-letter.pdf) | Editable vector marks and type; cut around the tiles |
+| Social campaign | [Three square posts](output/campaign/) · [Contact sheet](output/campaign/contact-sheet.png) | Typed recipe, variables, fitting, saved suites and production batches |
+| Feature overview | [Capability map PDF](output/showcase/capability-map.pdf) · [PNG](output/showcase/capability-map.png) · [SVG](output/showcase/capability-map.svg) | A vector infographic you can edit and reuse |
+| Data storytelling | [Chart PPTX](output/showcase/editable-chart.pptx) · [PNG](output/showcase/editable-chart.png) · [SVG](output/showcase/editable-chart.svg) | Data-bound chart; PPTX's Edit Data opens its native workbook |
+| Agent workflow | [Workflow PDF](output/showcase/agent-workflow.pdf) · [SVG](output/showcase/agent-workflow.svg) | Automatically routed diagram, editable shapes, paths and labels |
+| Motion post | [6.6-second MP4](output/motion/teaser.mp4) · [GIF](output/motion/teaser.gif) · [Still alternative](output/motion/teaser-frame.png) | Editable keyframes and a sampled motion suite; silent, play once |
+| App integration | [Animation family](output/app/package/index.html) · [Manifest](output/app/package/manifest.json) | Three states, light/dark themes, transitions, editable masters and reduced-motion PNGs |
+| Publishing copy | [Plain text](output/copy/marketing-copy.txt) · [JSON](output/copy/marketing-copy.json) | Descriptions, captions, alt text, licensing and a three-minute demo script |
+| Review | [Offline proof page](output/proof.html) | Vixl-generated previews with zoom and local decision download |
 
-Every piece also has its editable `.vixl` master next to the exports, and a `.check.json` with
-the `vixl check` findings it was released with (see below).
+Download HTML files before opening them in a browser; GitHub displays their source. The proof page
+embeds its previews and works offline. Keep the app package directory together: its HTML consumer
+loads adjacent assets. Use **create → deliver → reset**, switch the theme, or enable your OS reduced-motion
+preference. The pack supplies working artwork and a demo consumer; the host app owns its integration.
 
-## Rebuild
+## Rebuild and verify
 
-From the repository root, with Vixl installed (`python -m pip install -e '.[pdf]'`):
+From the repository root with Python 3.11+:
 
 ```bash
-python marketing/build.py                 # everything (about a minute with 0.21.0)
-python marketing/build.py og deck teaser  # just some pieces
+python -m pip install -e '.[dev,server,pdf]'
+python marketing/build.py
+python marketing/verify.py
 ```
 
-Fonts (Inter Tight 800, Inter 400/600, JetBrains Mono 500) download from Google Fonts on the first
-run and are embedded in each master. The MP4 needs `ffmpeg`. The script changes into the repo root
-so the logo links resolve.
+MP4 export and verification need `ffmpeg` and `ffprobe`. The first build downloads Inter Tight 800,
+Inter 400/600 and JetBrains Mono 500 through Vixl's font installer; subsequent builds use its cache.
+Fonts are embedded in the masters, so viewing and editing delivered files needs no font download.
+Font licence notices are included in `output/licenses/`.
 
-## How it's built
+Build selected pieces by name; dependencies are rebuilt automatically:
 
-- **Brand.** Colours and type come from the [Digital Shift kit](../assets/brand/digital-shift/START-HERE.md):
-  charcoal `#252B39`, blue `#3575EE`, `#6A9AFF` on dark, Inter Tight 800. The logo is a live `link`
-  layer to the masters in `assets/brand/digital-shift/Editable-Vixl/`, so a logo change flows into
-  every piece on the next build. The scattered and stepped squares pick up the mark's detached pixels.
-- **Showcase images** (the gallery tiles in the GitHub card, story, carousel and deck) are real
-  outputs from [`explorations/`](../explorations/) and [`docs/assets/generated/`](../docs/assets/generated/),
-  all made with Vixl, placed with `frame` and clipped to rounded `shape`s.
-- **Copy facts** were counted from the 0.21.0 source by taking the length of each registry:
-  180 operation types (`vixl.operations.OPERATION_TYPES`), 150 named sizes (`vixl.sizes.SIZES`),
-  47 layouts (`vixl.layouts.LAYOUTS`), 40 templates and 19 containers (`vixl.resources.TEMPLATES`
-  and `CONTAINERS`), 28 styles (`vixl.style_catalog.STYLES`), 17 looks (`vixl.looks.LOOKS`) and
-  17 brushes (`vixl.brushes.BRUSHES`). The 10,000-operation batch limit is `vixl.model.Limits().max_operations`.
-  The same rule applied to the 0.19.0 source reproduces the numbers the 0.19.0 kit quoted
-  (138 operations, 150 sizes, 32 layouts, 28 styles, 14 looks, 17 brushes; it also gives
-  14 templates, 6 containers and a 1,000-operation batch limit).
-  To recount after a release:
+```bash
+python marketing/build.py og github deck
+python marketing/build.py brief campaign app
+```
+
+Available names: `showcase`, `campaign`, `og`, `github`, `linkedin`, `story`, `carousel`, `poster`,
+`onepager`, `brief`, `stickers`, `deck`, `app`, `teaser`, `copy`, `overview`, `proof`.
+Run the complete build for a cohesive pack and its full proof page. The builder replaces only its
+own generated outputs; put edited copies outside `marketing/output/` before rebuilding. `verify.py`
+checks the complete delivered pack, rather than a selected-piece build.
+
+The script is the visual source; [`posts.csv`](posts.csv) supplies the campaign's rows and
+[`copy.json`](copy.json) supplies publishing copy. Public
+materials describe the product directly, without release labels or comparisons to previous versions.
+Registry counts are measured from the installed engine and recorded as build metadata in
+[`output/manifest.json`](output/manifest.json); they are not used as headline claims.
+
+## Try the working examples
+
+- **Chart:** open the deck or chart PPTX and use **Edit Data**. The workflow numbers are illustrative,
+  not customer metrics or performance results. In a `.vixl` master, use `chart-data` to revise the data.
+- **Brief:** open the PDF in a viewer supporting AcroForms, tab through the fields, and save a filled
+  copy. The `.vixl` master keeps the fields, layout and labels editable.
+- **Campaign:** inspect [`posts.csv`](output/campaign/posts.csv), the typed
+  [`campaign-recipe.vixl`](output/campaign/campaign-recipe.vixl), and
+  [`production.json`](output/campaign/production.json). Change rows and run production into a **new**
+  directory. The supplied rendered posts were generated with Vixl's checked production API.
 
   ```bash
-  python -c "from vixl.operations import OPERATION_TYPES; from vixl.sizes import SIZES; \
-  from vixl.layouts import LAYOUTS; from vixl.resources import TEMPLATES, CONTAINERS; \
-  from vixl.style_catalog import STYLES; from vixl.looks import LOOKS; from vixl.brushes import BRUSHES; \
-  print(*map(len, (OPERATION_TYPES, SIZES, LAYOUTS, TEMPLATES, CONTAINERS, STYLES, LOOKS, BRUSHES)))"
+  vixl -p marketing/output/campaign/campaign-recipe.vixl workflow run \
+    --request marketing/output/campaign/production.json --workspace .
   ```
 
-  The "Seconds, not minutes" deck slide quotes the before/after timings in
-  [explorations/README.md](../explorations/README.md#performance).
-  If those numbers change, edit `FACTS` and the slide in `build.py`.
-- **Licence.** Vixl is source-available under PolyForm Small Business 1.0.0, not open source: never
-  say "open source". A licence chip in `build_og` waits for the next kit rebuild.
+- **Git review:** [`campaign/source/project.json`](output/campaign/source/project.json) is the recipe's
+  readable current-state snapshot, with hashed assets and registered fonts. Repack it with:
 
-## Checks
+  ```bash
+  vixl pack marketing/output/campaign/source campaign-custom.vixl
+  ```
 
-Each piece runs `vixl check` before export and has no remaining `fix` findings. The carousel is
-checked with the `phone` deck profile and the pitch deck with the `screen` profile (it is read on a
-laptop or shared as a PDF, not projected). The dot grids are marked `layer-intent role=decoration`
-and the strikethrough bars over the "before" timings may overlap their numbers. What's left in the
-`.check.json` files is deliberate:
+- **Motion:** the teaser master has a play-once timeline; the app package uses looping states with
+  explicit theme variables and reduced-motion PNGs. See [app animation packages](../docs/animation-authoring.md#app-animation-packages).
 
-- Informational notes: glow gradients cropped by the canvas edge, and dot grids built from
-  `repeat`, which the checks measure by their first instance.
-- The deck title slide's headline sits lower than the other slide titles.
-- The "MCP" sticker's pixel stair runs into the word, by design.
+## Craft, checks and provenance
 
-## Engine issue found while building this (fixed in 0.20.0)
+The [Digital Shift identity](../assets/brand/digital-shift/START-HERE.md) supplies the palette and
+outlined logo geometry. The builder imports the brand SVGs as editable vector shapes, preserving
+proportions and internal spacing. It frames real Vixl outputs from `explorations/` and creates the
+chart, diagram and campaign directly through Vixl's Python API. No AI provider is used in the build.
 
-With 0.19.0, `vixl.deck.contact_sheet` (and MCP `vixl_render_preview(page="all")`) failed with
-`Dimensions must be 1–16384` when the sheet scaled a page by less than about 1/3 and the page had
-a `repeat` of a very small shape (the 3 px dots of the background grid rounded to 0 px), so the
-deck sheet had to be rendered at 640 px per slide. 0.20.0 prevents those zero-size allocations;
-the deck sheet now renders at 480 px per slide (1/4 scale).
+Each master has saved suites. Every release export is gated on the selected Vixl checks having
+**zero `fix` findings** and every attached suite passing. Reports sit alongside the masters as
+`.check.json`; the motion reports state their sampling coverage. Informational edge-cropped glows
+are intentional. Checks establish their selected rules; the exported previews also need visual review.
+The proof page is for visual review, while the per-piece reports carry the build's check results.
+
+`verify.py` also checks file hashes, portable masters, the source-folder render roundtrip, PDF fields
+and print boxes, native PPTX chart data and speaker notes, app variants, and video dimensions/duration.
+Supported vectors and text stay editable; showcase photographs/artwork remain embedded raster images.
+Format-specific fallbacks follow [Vixl's export behavior](../docs/exporting.md).
+
+The poster uses device-naive CMYK conversion at export; it is not a colour-managed press proof.
+Ask the printer for the required ICC profile and export with it for production. Sticker outlines are
+visual cut guides, not a spot-colour die-cut separation.
+
+Vixl is source-available under [PolyForm Small Business 1.0.0](../LICENSE). See the licence for eligibility
+and required notices. Bundled fonts retain their own terms in `output/licenses/`. Please credit work
+made with Vixl. AI generation and vision are optional provider-backed capabilities; core authoring,
+checks and rendering run locally.

@@ -1,39 +1,129 @@
 {
+  "passed": true,
+  "errors": 0,
+  "warnings": 0,
+  "info": 3,
+  "by_action": {
+    "fix": [],
+    "review": [],
+    "informational": [
+      0,
+      1,
+      2
+    ]
+  },
   "issues": [
-    {
-      "check": "coverage",
-      "severity": "warning",
-      "action": "informational",
-      "layer": null,
-      "message": "'grid' is inside a repeated group; geometry checks cover its base instance. Visually inspect the repeated instances."
-    },
     {
       "check": "bounds",
       "severity": "info",
-      "action": "informational",
-      "layer": null,
-      "message": "'glow' bleeds off the canvas edge (marked as an intentional crop)"
+      "layers": [
+        "glow"
+      ],
+      "message": "'glow' bleeds off the canvas edge (marked as an intentional crop)",
+      "bounds": [
+        -180.0,
+        820.0,
+        1400.0,
+        1400.0
+      ],
+      "intentional": true,
+      "action": "informational"
     },
     {
       "check": "safe_area",
       "severity": "info",
-      "action": "informational",
-      "layer": null,
-      "message": "'glow' extends outside the safe area (intentional crop or bleed)"
+      "layers": [
+        "glow"
+      ],
+      "message": "'glow' extends outside the safe area (intentional crop or bleed)",
+      "bounds": [
+        -180,
+        820,
+        1400,
+        1400
+      ],
+      "safe_area": [
+        60,
+        250,
+        960,
+        1420
+      ],
+      "intentional": true,
+      "action": "informational"
     },
     {
-      "check": "safe_area",
+      "check": "fonts",
       "severity": "info",
-      "action": "informational",
-      "layer": null,
-      "message": "'grid' extends outside the safe area (intentional crop or bleed)"
-    },
-    {
-      "check": "safe_area",
-      "severity": "info",
-      "action": "informational",
-      "layer": null,
-      "message": "'grid-row' extends outside the safe area (intentional crop or bleed)"
+      "layers": [],
+      "message": "1 embedded file(s), 112,204 bytes, are not used by the current design (fonts registered but unused: jetbrains-mono-500); the rest are kept so undo can restore them. Compacting (vixl_history action='compact', CLI vixl compact) drops them together with the undo history.",
+      "unused_assets": [
+        {
+          "asset": "fonts/3386a05f6ece969e4537de6be894170d20558e82f7d56c8c5d332972ef172160.ttf",
+          "kind": "font",
+          "bytes": 112204,
+          "reason": "unused-font",
+          "fonts": [
+            "jetbrains-mono-500"
+          ]
+        }
+      ],
+      "bytes": 112204,
+      "action": "informational"
     }
-  ]
+  ],
+  "checked": {
+    "checks": [
+      "bounds",
+      "overlap",
+      "contrast",
+      "safe_area",
+      "legibility",
+      "blanks",
+      "fonts",
+      "brand",
+      "content",
+      "form",
+      "links",
+      "diagram",
+      "flow",
+      "codes"
+    ],
+    "layers_checked": 34,
+    "layers_total": 34,
+    "text_layers": 6
+  },
+  "suites": {
+    "canvas": {
+      "version": 1,
+      "suite_hash": "edd4532ec9a46d44977411779f3a1e486e903930563cd1da5c0695ee96e744ee",
+      "passed": true,
+      "status": "passed",
+      "errors": 0,
+      "needs_review": 0,
+      "coverage": {
+        "mode": "still",
+        "times": [
+          null
+        ]
+      },
+      "results": [
+        {
+          "id": "width",
+          "status": "passed",
+          "severity": "error",
+          "time": null,
+          "expected": 1080,
+          "actual": 1080
+        },
+        {
+          "id": "height",
+          "status": "passed",
+          "severity": "error",
+          "time": null,
+          "expected": 1920,
+          "actual": 1920
+        }
+      ]
+    }
+  }
 }

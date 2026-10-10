@@ -1,0 +1,78 @@
+{
+  "passed": true,
+  "errors": 0,
+  "warnings": 0,
+  "info": 1,
+  "by_action": {
+    "fix": [],
+    "review": [],
+    "informational": [
+      0
+    ]
+  },
+  "issues": [
+    {
+      "check": "fonts",
+      "severity": "info",
+      "layers": [],
+      "message": "1 embedded file(s), 112,204 bytes, are not used by the current design (fonts registered but unused: jetbrains-mono-500); the rest are kept so undo can restore them. Compacting (vixl_history action='compact', CLI vixl compact) drops them together with the undo history.",
+      "unused_assets": [
+        {
+          "asset": "fonts/3386a05f6ece969e4537de6be894170d20558e82f7d56c8c5d332972ef172160.ttf",
+          "kind": "font",
+          "bytes": 112204,
+          "reason": "unused-font",
+          "fonts": [
+            "jetbrains-mono-500"
+          ]
+        }
+      ],
+      "bytes": 112204,
+      "action": "informational"
+    }
+  ],
+  "checked": {
+    "checks": [
+      "bounds",
+      "flow",
+      "fonts"
+    ],
+    "layers_checked": 4,
+    "layers_total": 4,
+    "text_layers": 1
+  },
+  "suites": {
+    "canvas": {
+      "version": 1,
+      "suite_hash": "94945f4afc4e3274c0c0ab930b77e3285baa5a9a9812ac8c78f9eb2b88a19b23",
+      "passed": true,
+      "status": "passed",
+      "errors": 0,
+      "needs_review": 0,
+      "coverage": {
+        "mode": "still",
+        "times": [
+          null
+        ]
+      },
+      "results": [
+        {
+          "id": "width",
+          "status": "passed",
+          "severity": "error",
+          "time": null,
+          "expected": 1800,
+          "actual": 1800
+        },
+        {
+          "id": "height",
+          "status": "passed",
+          "severity": "error",
+          "time": null,
+          "expected": 700,
+          "actual": 700
+        }
+      ]
+    }
+  }
+}

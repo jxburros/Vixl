@@ -1,11 +1,58 @@
 {
-  "issues": [
-    {
-      "check": "overlap",
-      "severity": "warning",
-      "action": "review",
-      "layer": null,
-      "message": "'s5-px-9' and 's5-a' overlap by 72 px (50.0% of the smaller layer)"
+  "passed": true,
+  "errors": 0,
+  "warnings": 0,
+  "info": 0,
+  "by_action": {
+    "fix": [],
+    "review": [],
+    "informational": []
+  },
+  "issues": [],
+  "checked": {
+    "checks": [
+      "bounds",
+      "flow",
+      "overlap",
+      "contrast",
+      "fonts"
+    ],
+    "layers_checked": 43,
+    "layers_total": 43,
+    "text_layers": 6
+  },
+  "suites": {
+    "canvas": {
+      "version": 1,
+      "suite_hash": "5104b11dce1e7c425ee6492031842ce0b837961935840c27b641b9f5b55822b8",
+      "passed": true,
+      "status": "passed",
+      "errors": 0,
+      "needs_review": 0,
+      "coverage": {
+        "mode": "still",
+        "times": [
+          null
+        ]
+      },
+      "results": [
+        {
+          "id": "width",
+          "status": "passed",
+          "severity": "error",
+          "time": null,
+          "expected": 1275,
+          "actual": 1275
+        },
+        {
+          "id": "height",
+          "status": "passed",
+          "severity": "error",
+          "time": null,
+          "expected": 1650,
+          "actual": 1650
+        }
+      ]
     }
-  ]
+  }
 }

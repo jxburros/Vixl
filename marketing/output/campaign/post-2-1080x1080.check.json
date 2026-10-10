@@ -1,0 +1,144 @@
+{
+  "passed": true,
+  "errors": 0,
+  "warnings": 0,
+  "info": 0,
+  "by_action": {
+    "fix": [],
+    "review": [],
+    "informational": []
+  },
+  "issues": [],
+  "checked": {
+    "checks": [
+      "bounds",
+      "flow",
+      "overlap",
+      "contrast",
+      "fonts"
+    ],
+    "layers_checked": 18,
+    "layers_total": 18,
+    "text_layers": 4
+  },
+  "suites": {
+    "canvas": {
+      "version": 1,
+      "suite_hash": "657d54a3fd0fa09ae55b62b2f95618d15e2a29ccad337f1ee41711b05b01a269",
+      "passed": true,
+      "status": "passed",
+      "errors": 0,
+      "needs_review": 0,
+      "coverage": {
+        "mode": "still",
+        "times": [
+          null
+        ]
+      },
+      "results": [
+        {
+          "id": "width",
+          "status": "passed",
+          "severity": "error",
+          "time": null,
+          "expected": 1080,
+          "actual": 1080
+        },
+        {
+          "id": "height",
+          "status": "passed",
+          "severity": "error",
+          "time": null,
+          "expected": 1080,
+          "actual": 1080
+        }
+      ]
+    },
+    "delivery": {
+      "version": 1,
+      "suite_hash": "046af7b77f87ebcea42c71e5be08a3ca62451e13693a1eb5c7b3aae5ca2ea812",
+      "passed": true,
+      "status": "passed",
+      "errors": 0,
+      "needs_review": 0,
+      "coverage": {
+        "mode": "still",
+        "times": [
+          null
+        ]
+      },
+      "results": [
+        {
+          "id": "headline-fits",
+          "status": "passed",
+          "severity": "error",
+          "time": null,
+          "actual_size": 106,
+          "fits": true
+        },
+        {
+          "id": "headline-margin",
+          "status": "passed",
+          "severity": "error",
+          "time": null,
+          "positions": [
+            "overlapping",
+            "inside"
+          ],
+          "alignments": [
+            "center-x"
+          ],
+          "margins": {
+            "left": 80.0,
+            "top": 340.0,
+            "right": 80.0,
+            "bottom": 480.0
+          },
+          "distance": 80.0
+        },
+        {
+          "id": "readable",
+          "status": "passed",
+          "severity": "error",
+          "time": null,
+          "expected": 4.5,
+          "actual": 14.158,
+          "weakest_region": [
+            82,
+            340,
+            774,
+            205
+          ]
+        },
+        {
+          "id": "layout",
+          "status": "passed",
+          "severity": "error",
+          "time": null,
+          "passed": true,
+          "errors": 0,
+          "warnings": 0,
+          "info": 0,
+          "by_action": {
+            "fix": [],
+            "review": [],
+            "informational": []
+          },
+          "issues": [],
+          "checked": {
+            "checks": [
+              "bounds",
+              "flow",
+              "overlap",
+              "contrast",
+              "fonts"
+            ],
+            "layers_checked": 18,
+            "layers_total": 18,
+            "text_layers": 4
+          }
+        }
+      ]
+    }
+  }
+}
