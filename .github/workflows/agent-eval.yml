@@ -42,7 +42,7 @@ jobs:
       - name: Explain unavailable live evaluation
         if: env.ANTHROPIC_API_KEY == ''
         run: echo 'Live agent eval skipped — configure ANTHROPIC_API_KEY. Offline baseline was checked.' >> "$GITHUB_STEP_SUMMARY"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: agent-eval-${{ matrix.schema }}
