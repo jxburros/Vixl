@@ -154,7 +154,7 @@ An application that offers Vixl's choices in its own interface (a size picker, p
 | `looks`, `styles` | Finish and style names with summaries; each style lists the IDs of its premade rules. |
 | `checks` | Every check `id` a finding can carry (`check` in a `vixl_check` finding), its family (`default`, `optional`, `deck`), description, the severities it raises and the `action` each severity maps to; the default thresholds; the suite rule kinds; the built-in suites with their rule IDs, severities and thresholds; and `style_rules` (each style's premade rules with ID, severity and thresholds). |
 
-`catalog_schema_version` (now 1) changes only when a field is removed or changes meaning; new fields and entries can appear in any release, so readers should ignore keys they do not know. `vixl_version` names the release that wrote the bundle and `counts` gives the number of entries per section.
+`catalog_schema_version` (now 1) changes only when a field is removed or changes meaning; new fields and entries can appear in any release, so readers should ignore keys they do not know. The bundle also names the Vixl release that wrote it (the same version field documents carry), and `counts` gives the number of entries per section.
 
 ## Workspace studio resources
 

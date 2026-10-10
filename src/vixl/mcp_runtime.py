@@ -446,7 +446,9 @@ class Runtime:
             from .call_limits import GATE, of
 
             try:
-                gate = GATE.acquire(self.session.workspace, of(self.session).max_concurrent)
+                maximum = of(self.session).max_concurrent
+                if maximum is not None:
+                    gate = GATE.acquire(getattr(self.session, "workspace", None), maximum)
             except VixlError as exc:
                 if entry is not None:
                     self.log.discard(request_id, entry)
