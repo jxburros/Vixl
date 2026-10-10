@@ -743,7 +743,14 @@ def shift(bounds, layers, dx, dy):
 
 def ink_origin(image, bounds):
     """Where a layer image lands: it is centred on the layer's box and may extend past it."""
-    return math.floor(bounds[0] + (bounds[2] - image.width) / 2 + 1e-9), math.floor(bounds[1] + (bounds[3] - image.height) / 2 + 1e-9)
+    return tuple(math.floor(bounds[i]) + math.floor(offset + 1e-9) for i, offset in enumerate(placement(image, bounds)))
+
+
+def placement(image, bounds):
+    """The (x, y) offset of a layer image's corner from its box's whole-pixel corner. Computed from the box's
+    fraction (exact for any whole-pixel shift), so a region or incremental tile, whose boxes are the canvas
+    boxes moved by whole pixels, places and resamples each layer exactly as the whole canvas does."""
+    return bounds[0] % 1 + (bounds[2] - image.width) / 2, bounds[1] % 1 + (bounds[3] - image.height) / 2
 
 
 class LayerCache(OrderedDict):
@@ -1039,7 +1046,7 @@ def transform_layer_image(project, layer, bounds, image):
     if layer["opacity"] != 1:
         image = with_opacity(image, layer["opacity"])
     # Carry fractional placement through rasterization instead of rounding the geometry.
-    ox, oy = bounds[0] + (bounds[2] - image.width) / 2, bounds[1] + (bounds[3] - image.height) / 2
+    ox, oy = placement(image, bounds)
     # Use the same epsilon as ink_origin: affine arithmetic may land one ulp below an integer.
     fx, fy = max(0, ox - math.floor(ox + 1e-9)), max(0, oy - math.floor(oy + 1e-9))
     if not crisp and (fx > 1e-8 or fy > 1e-8):
@@ -1862,7 +1869,7 @@ def render(project, variables=None, artboard=None, comp=None, page=None, region=
     if disk:
         from .render_cache import key_for
         key = key_for(candidate)
-        cached = disk.get(key, project.limits)
+        cached = disk.get(key, project.limits, kind="frame")
         if cached is not None:
             return cached
     background = resolve_color(candidate.state["canvas"]["background"], candidate.state)
@@ -1874,7 +1881,7 @@ def render(project, variables=None, artboard=None, comp=None, page=None, region=
 
     image = composite(image, candidate)
     if disk:
-        disk.put(key, image)
+        disk.put(key, image, kind="frame")
     return image
 
 

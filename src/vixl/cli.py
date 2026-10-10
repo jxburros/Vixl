@@ -138,6 +138,7 @@ AI:        ask PROMPT [--apply], generate --prompt TEXT --provider NAME,
            detect objects|faces, ocr, ai describe|info|regenerate|background-remove|upscale|extend,
            select object LABEL --provider NAME, ai remove|content-aware-fill|select-subject
 Updates:   update [--check | --rollback], updates [on | off | status]
+Cache:     cache info | cache clear (the disk render cache; VIXL_RENDER_CACHE=off, VIXL_CACHE_MAX_MB=256)
 Services:  serve | view [--host 127.0.0.1] [--port 8765], notes list|add|resolve
            mcp [--workspace DIR] [--http] [--tools core|ai|compact|all] [--schema slim|full] [--planner] [--require-document]
 Import:    import FILE.svg [--svg-mode editable|appearance|auto] | FILE.pdf [--page 1] [--dpi 144]
@@ -408,7 +409,7 @@ def dispatch(argv):
                     | {"filter"}
                     | {"workflow"}
                     | set(
-                        "pack unpack new session open upgrade save status inspect describe layers effects manifest dependencies reproduce schema check batch convert render export export-screens export-animation spacing pixels animation info sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert validate preset ai ask generate detect ocr serve view notes import mcp update updates commands shapes palette template guidance font fonts roll providers models color sizes layout layouts brushes organics easings timeline export-timeline timeline-sheet export-icons pages guides links merge styles looks guide diff compose house emoji capabilities".split()
+                        "pack unpack new session open upgrade save status inspect describe layers effects manifest dependencies reproduce schema check batch convert render export export-screens export-animation spacing pixels animation info sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert validate preset ai ask generate detect ocr serve view notes import mcp update updates cache commands shapes palette template guidance font fonts roll providers models color sizes layout layouts brushes organics easings timeline export-timeline timeline-sheet export-icons pages guides links merge styles looks guide diff compose house emoji capabilities".split()
                     )
                 )
             }
@@ -459,6 +460,13 @@ def dispatch(argv):
         from .models import discovery_command
 
         return discovery_command(cmd, args), options.json
+    if cmd == "cache":
+        from . import render_cache
+
+        p = Parser(prog="vixl cache")
+        p.add_argument("action", nargs="?", choices=["info", "clear"], default="info")
+        a = p.parse_args(args)
+        return (render_cache.clear() if a.action == "clear" else render_cache.info()), options.json
     if cmd in ("update", "updates"):
         from . import updater
 
@@ -821,6 +829,11 @@ def project_command(project, cmd, args, *, detail="compact"):
         return {"saved": str(project.path)}, False
     if cmd in ("render", "export"):
         a = output_options(args, cmd)
+        if project.path is not None and getattr(project, "_disk_cache", None) is None:
+            # A saved document's next export, in a new process, reads unchanged layers and frames back.
+            from .render_cache import enable, user_cache_dir
+
+            enable(project, user_cache_dir())
         destination = a.out or a.path
         require(destination, "Provide output filename or --out FILE")
         require(destination == "-" or a.data or a.overwrite or not Path(destination).exists(),

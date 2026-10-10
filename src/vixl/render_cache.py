@@ -11,6 +11,7 @@ from pathlib import Path
 import sys
 
 
+from .errors import require
 from .fileio import file_lock, temporary
 
 
@@ -86,12 +87,45 @@ def key_for(project, layer=None, bounds=None):
     ).hexdigest()
 
 
+DEFAULT_BUDGET_MB = 256
+OFF = ("off", "0", "false", "no", "none")
+# Whole frames a sequence has requested once, remembered (by key prefix) so the second request stores it.
+SEEN_ENTRIES = 16384
+SEEN_PREFIX = 20
+FRAME_POLICIES = ("always", "adaptive", "never")
+
+
+def budget_bytes():
+    """The disk cache's size cap: ``VIXL_CACHE_MAX_MB`` megabytes (default 256)."""
+    value = os.environ.get("VIXL_CACHE_MAX_MB", "").strip()
+    try:
+        megabytes = float(value) if value else DEFAULT_BUDGET_MB
+    except ValueError:
+        megabytes = DEFAULT_BUDGET_MB
+    return max(0, int(megabytes * 1024 * 1024))
+
+
 class RenderCache:
-    def __init__(self, directory, budget=256 * 1024 * 1024):
+    """PNGs of rendered layers (``kind="layer"``) and whole frames (``kind="frame"``) under content keys.
+
+    ``frames`` is the whole-frame write policy: ``always`` stores each frame (a still export: one frame,
+    and the next export of the unchanged document reads it back), ``never`` stores none, and ``adaptive``
+    (timeline and film sequences) stores a frame only the second time it is requested, in this run or an
+    earlier one: frames that keep moving are each drawn once and would fill the cache with one-use PNGs,
+    while held frames and re-exports of unchanged stretches are kept. Layers are always stored, so static
+    layers are reused either way. Counters say what happened (``stats``)."""
+
+    def __init__(self, directory, budget=None, frames="always"):
+        require(frames in FRAME_POLICIES, f"frames must be one of {', '.join(FRAME_POLICIES)}")
         self.directory = Path(directory).resolve()
-        self.budget = budget
+        self.budget = budget_bytes() if budget is None else budget
+        self.frames = frames
         self.hits = self.misses = 0
+        self.counts = {"frame_hits": 0, "frame_misses": 0, "layer_writes": 0, "frame_writes": 0,
+                       "frame_writes_skipped": 0, "evictions": 0, "bytes_written": 0}
         self._bytes = 0
+        self._seen = None
+        self._sightings = []
 
     def _signature(self):
         stat = self.directory.stat()
@@ -127,7 +161,7 @@ class RenderCache:
             if os.path.exists(staged):
                 os.unlink(staged)
 
-    def get(self, key, limits):
+    def get(self, key, limits, kind="layer"):
         if key is None:
             return None
         path = self.directory / (key + ".png")
@@ -137,13 +171,73 @@ class RenderCache:
             image = decode(read_bounded(path, limits.max_asset_bytes), limits)
             os.utime(path, None)
             self.hits += 1
+            if kind == "frame":
+                self.counts["frame_hits"] += 1
             return image
         except Exception:
             self.misses += 1
+            if kind == "frame":
+                self.counts["frame_misses"] += 1
             return None
 
-    def put(self, key, image):
+    def admit(self, key, kind):
+        """Whether to store this entry under the frame policy."""
+        if kind != "frame" or self.frames == "always":
+            return True
+        if self.frames == "never":
+            return False
+        if self._seen is None:
+            self._seen = self._read_seen()
+        prefix = key[:SEEN_PREFIX]
+        if prefix in self._seen:
+            return True
+        self._seen.add(prefix)
+        self._sightings.append(prefix)
+        if len(self._sightings) >= 256:
+            self.flush()
+        return False
+
+    def _seen_path(self):
+        return str(self.directory) + ".seen"
+
+    def _read_seen(self):
+        try:
+            with open(self._seen_path(), "rb") as stream:
+                text = stream.read(SEEN_ENTRIES * (SEEN_PREFIX + 1) + 1).decode("ascii", "replace")
+            return {line for line in text.split() if len(line) == SEEN_PREFIX}
+        except OSError:
+            return set()
+
+    def flush(self):
+        """Remember this run's one-time frames for the next run (adaptive policy). Never raises."""
+        if not self._sightings:
+            return
+        pending, self._sightings = self._sightings, []
+        try:
+            self.directory.parent.mkdir(parents=True, exist_ok=True)
+            with file_lock(self._seen_path()):
+                try:
+                    with open(self._seen_path(), "rb") as stream:
+                        known = stream.read().decode("ascii", "replace").split()
+                except OSError:
+                    known = []
+                merged = list(dict.fromkeys(known + pending))[-SEEN_ENTRIES:]
+                fd, staged = temporary(self.directory.parent)
+                try:
+                    with os.fdopen(fd, "wb") as stream:
+                        stream.write("\n".join(merged).encode("ascii", "replace"))
+                    os.replace(staged, self._seen_path())
+                finally:
+                    if os.path.exists(staged):
+                        os.unlink(staged)
+        except OSError:  # Includes a lock timeout: the ledger is only a hint.
+            pass
+
+    def put(self, key, image, kind="layer"):
         if key is None:
+            return
+        if not self.admit(key, kind):
+            self.counts["frame_writes_skipped"] += 1
             return
         temp = None
         try:
@@ -172,6 +266,8 @@ class RenderCache:
                     stream.write(data)
                 os.replace(temp, destination)
                 self._bytes += len(data) - previous
+                self.counts["frame_writes" if kind == "frame" else "layer_writes"] += 1
+                self.counts["bytes_written"] += len(data)
                 if self._bytes > self.budget:
                     entries = [(path, path.stat()) for path in self.directory.glob("*.png")]
                     for path, stat in sorted(entries, key=lambda entry: entry[1].st_mtime_ns):
@@ -179,6 +275,7 @@ class RenderCache:
                             break
                         path.unlink()
                         self._bytes -= stat.st_size
+                        self.counts["evictions"] += 1
                 self._write_usage(dirty=False)
         except OSError:
             pass
@@ -186,13 +283,64 @@ class RenderCache:
             if temp and os.path.exists(temp):
                 os.unlink(temp)
 
+    def stats(self):
+        return {"directory": str(self.directory), "frames": self.frames, "budget_bytes": self.budget,
+                "hits": self.hits, "misses": self.misses, **self.counts}
+
 
 def user_cache_dir():
-    """The per-user persistent render cache (``VIXL_RENDER_CACHE`` overrides it). Keys are
-    content-addressed and include the engine fingerprint, so documents can share it safely."""
-    return Path(os.environ.get("VIXL_RENDER_CACHE", "~/.cache/vixl/render")).expanduser()
+    """The per-user persistent render cache (``VIXL_RENDER_CACHE`` overrides it; ``off`` turns the disk cache
+    off). Keys are content-addressed and include the engine fingerprint, so documents can share it safely."""
+    value = os.environ.get("VIXL_RENDER_CACHE", "").strip()
+    if value.lower() in OFF:
+        return None
+    return Path(value or "~/.cache/vixl/render").expanduser()
 
 
-def enable(project, directory):
-    project._disk_cache = RenderCache(directory)
+def enable(project, directory, frames="always"):
+    """Give ``project`` a disk cache in ``directory`` (none when it is None, or the size cap is 0)."""
+    budget = budget_bytes()
+    project._disk_cache = RenderCache(directory, budget, frames) if directory is not None and budget > 0 else None
     return project
+
+
+def info(directory=None):
+    """Where the disk cache is, how much it holds and its cap (``vixl cache info``)."""
+    directory = user_cache_dir() if directory is None else Path(directory)
+    result = {"enabled": directory is not None and budget_bytes() > 0, "budget_bytes": budget_bytes(),
+              "max_mb": round(budget_bytes() / 1024 / 1024, 2)}
+    if directory is None:
+        return {**result, "directory": None, "entries": 0, "bytes": 0}
+    entries = total = 0
+    try:
+        for path in directory.glob("*.png"):
+            entries += 1
+            total += path.stat().st_size
+    except OSError:
+        pass
+    return {**result, "directory": str(directory), "entries": entries, "bytes": total,
+            "mb": round(total / 1024 / 1024, 2)}
+
+
+def clear(directory=None):
+    """Delete the disk cache's PNGs and ledgers (``vixl cache clear``); returns what was removed."""
+    directory = user_cache_dir() if directory is None else Path(directory)
+    if directory is None:
+        return {"directory": None, "removed": 0, "bytes": 0}
+    removed = total = 0
+    if directory.is_dir():
+        with file_lock(str(directory) + ".usage"):
+            for path in directory.glob("*.png"):
+                try:
+                    size = path.stat().st_size
+                    path.unlink()
+                except OSError:
+                    continue
+                removed += 1
+                total += size
+            for suffix in (".usage.json", ".seen"):
+                try:
+                    os.unlink(str(directory) + suffix)
+                except OSError:
+                    pass
+    return {"directory": str(directory), "removed": removed, "bytes": total}

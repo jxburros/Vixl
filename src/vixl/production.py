@@ -326,7 +326,8 @@ def render_variant(project, spec, variant, directory, prior=None, cancelled=lamb
         "sha256": checksum,
         "checks": checks,
         "repairs": repairs,
-        "cache": {"hits": candidate._disk_cache.hits, "misses": candidate._disk_cache.misses},
+        "cache": ({"hits": candidate._disk_cache.hits, "misses": candidate._disk_cache.misses}
+                  if candidate._disk_cache is not None else {"hits": 0, "misses": 0, "disabled": True}),
     }
 
 

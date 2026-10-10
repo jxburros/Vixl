@@ -1426,7 +1426,8 @@ def cached(project):
     from copy import copy
     from .render_cache import enable, user_cache_dir
 
-    return enable(copy(project), user_cache_dir())
+    # Frames that keep moving are drawn once each: store a frame only when it is requested again.
+    return enable(copy(project), user_cache_dir(), frames="adaptive")
 
 
 def contact_sheet(project, count=8, columns=None, max_width=1600, times=None, thumbnail=None):
@@ -1472,19 +1473,37 @@ def contact_sheet(project, count=8, columns=None, max_width=1600, times=None, th
 
 
 def _frames(project, times, scale, preview=False, cancelled=None, progress=None):
+    """Each frame at ``times``. ``progress`` receives ``done``/``total`` and ``timing``: seconds elapsed, an
+    estimate of the seconds left, and this frame's setup (sampling the timeline) and raster milliseconds."""
+    import time as clock
+
     c = project.state["canvas"]
     size = (max(1, round(c["width"] * scale)), max(1, round(c["height"] * scale)))
     project.limits.size(*size)
-    for index, time in enumerate(times):
-        require(not cancelled or not cancelled(), "Timeline cancelled", "cancelled")
-        if preview:
-            from .proxy import render_preview
-            image = render_preview(project, *size, time=time)
-        else:
-            image = render_scaled(project_at(project, time, prune=True), scale)
-        if progress:
-            progress({"done": index + 1, "total": len(times)})
-        yield image if image.size == size else image.resize(size, Image.Resampling.LANCZOS)
+    began = clock.perf_counter()
+    try:
+        for index, time in enumerate(times):
+            require(not cancelled or not cancelled(), "Timeline cancelled", "cancelled")
+            start = clock.perf_counter()
+            if preview:
+                from .proxy import render_preview
+                frame, image = None, render_preview(project, *size, time=time)
+            else:
+                frame = project_at(project, time, prune=True)
+                sampled = clock.perf_counter()
+                image = render_scaled(frame, scale)
+            if progress:
+                now = clock.perf_counter()
+                elapsed, done = now - began, index + 1
+                setup = (sampled - start) if frame is not None else 0.0
+                progress({"done": done, "total": len(times), "timing": {
+                    "elapsed_s": round(elapsed, 3), "eta_s": round(elapsed / done * (len(times) - done), 3),
+                    "setup_ms": round(setup * 1000, 2), "raster_ms": round((now - start - setup) * 1000, 2)}})
+            yield image if image.size == size else image.resize(size, Image.Resampling.LANCZOS)
+    finally:
+        disk = getattr(project, "_disk_cache", None)
+        if disk is not None:
+            disk.flush()
 
 
 def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=None, end=None, background=None, columns=None, quality=90, colors=256, overwrite=False, preview=False, cancelled=None, progress=None, dither="auto", max_bytes=None, poster=None, sample_rate=None, target_bytes=None, preset=None):

@@ -357,8 +357,9 @@ class Runtime:
         except (AttributeError, ValueError):
             token = None
 
-        def report(done, total=None, message=None):
-            box.progress = {"done": done, **({"total": total} if total else {}), **({"message": message} if message else {})}
+        def report(done, total=None, message=None, timing=None):
+            box.progress = {"done": done, **({"total": total} if total else {}), **({"message": message} if message else {}),
+                            **({"timing": timing} if timing else {})}
             now = time.monotonic()
             if token is None or not box.inline or (now - box.last_notified < 0.25 and not (total and done >= total)):
                 return

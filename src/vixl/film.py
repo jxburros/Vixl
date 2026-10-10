@@ -282,7 +282,11 @@ def frames(spec, root, *, limits=None, cancelled=lambda: False, streamed=False,
                 if i not in sources:
                     factor = supersample(shot, size, limits)
                     if path.suffix.lower() == ".vixl":
-                        sources[i] = enable(Project.load(path, limits=limits), Path(root) / ".vixl-cache")
+                        # Moving shots draw most frames once: store whole frames only when requested again.
+                        sources[i] = enable(Project.load(path, limits=limits), Path(root) / ".vixl-cache",
+                                            frames="adaptive")
+                        if sources[i]._disk_cache is not None:
+                            stack.callback(sources[i]._disk_cache.flush)
                     elif path.suffix.lower() in (".mp4", ".webm", ".mov"):
                         factor = min(factor, _native_factor(_video_size(path) if factor > 1 else None, size))
                         targets[i] = _scaled(size, factor)
@@ -380,9 +384,14 @@ def export(spec, root, output, *, limits=None, cancelled=lambda: False, progress
                         start_frame=first, end_frame=last, region=region)
 
         def tracked():
+            import time
+
+            began = time.perf_counter()
             try:
                 for i, image in enumerate(stream):
-                    progress({"done": i + 1, "total": count})
+                    elapsed = time.perf_counter() - began
+                    progress({"done": i + 1, "total": count, "timing": {
+                        "elapsed_s": round(elapsed, 3), "eta_s": round(elapsed / (i + 1) * (count - i - 1), 3)}})
                     yield image
             finally:
                 stream.close()
