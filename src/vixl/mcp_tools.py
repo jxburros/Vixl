@@ -1468,7 +1468,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         """Download one style of any Google Fonts family, embed and register it (default name
         family-weight); role makes it the document's heading or body font. The result's source says whether
         it came from the cache (cache_file, VIXL_FONT_CACHE) or a download (url), and file the embedded asset.
-        scope='workspace' (needs role) instead embeds it in brand.json as the workspace default for that role."""
+        scope='workspace' instead embeds it in brand.json as the workspace default for that role (default heading)."""
         from .typefaces import install_font, install_workspace
 
         if scope == "workspace":

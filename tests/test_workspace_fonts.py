@@ -95,8 +95,8 @@ def test_font_tools_write_workspace_defaults(tmp_path, offline_fonts):
     paired = call("vixl_font_pair", pairing="source-serif-sans", scope="workspace")
     assert paired["workspace"]["path"] == "brand.json"
     assert json.loads((tmp_path / "brand.json").read_text())["pairing"] == "source-serif-sans"
-    with pytest.raises(Exception, match="role"):
-        call("vixl_font_install", family="Inter", scope="workspace")
+    defaulted = call("vixl_font_install", family="Inter", scope="workspace")
+    assert defaulted["role"] == "heading" and defaulted["normalized"]
     installed = call("vixl_font_install", family="Inter", weight=700, role="heading", scope="workspace")
     assert installed["workspace"]["role"] == "heading"
     kit = json.loads((tmp_path / "brand.json").read_text())
@@ -132,3 +132,33 @@ def test_embedded_brand_font_overrides_one_pairing_role(tmp_path, offline_fonts)
     p.apply({"type": "layout-apply", "name": "hero-statement", "title": "Hi", "unfilled": "omit"})
     assert p.state["typography"]["body"] == "brand-body"
     assert p.state["typography"]["heading"] != "brand-body" and offline_fonts
+
+
+def test_cli_font_install_accepts_workspace_and_defaults_role(tmp_path, monkeypatch, offline_fonts):
+    from vixl.cli import dispatch
+
+    workspace = tmp_path / "ws"
+    workspace.mkdir()
+    monkeypatch.chdir(tmp_path)
+    installed, _ = dispatch(["font", "install", "Inter", "--weight", "700", "--scope", "workspace",
+                             "--workspace", str(workspace)])
+    assert installed["role"] == "heading" and "heading" in installed["normalized"][0]
+    kit = json.loads((workspace / "brand.json").read_text())
+    assert kit["fonts"]["heading"]["name"] == "inter-700"
+    assert not (tmp_path / "brand.json").exists()
+    # --workspace alone implies the workspace scope; pair accepts it too.
+    body, _ = dispatch(["font", "install", "Inter", "--role", "body", f"--workspace={workspace}"])
+    assert body["role"] == "body" and "normalized" not in body
+    paired, _ = dispatch(["font", "pair", "source-serif-sans", "--workspace", str(workspace)])
+    assert paired["workspace"]["pairing"] == "source-serif-sans"
+    dispatch(["new", "300x200", "-o", "d.vixl", "--no-workspace-fonts"])
+    with pytest.raises(VixlError, match="--project"):
+        dispatch(["font", "install", "Inter", "--scope", "document", "--workspace", str(workspace)])
+
+
+def test_schema_operation_form_is_in_the_usage():
+    from vixl.cli import HELP, dispatch
+
+    assert "schema [OPERATION" in HELP
+    usage, _ = dispatch(["schema", "--help"])
+    assert "OPERATION" in str(usage)

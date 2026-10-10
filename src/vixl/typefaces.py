@@ -519,16 +519,21 @@ def pair_workspace(workspace, pairing=None, *, seed=None, mood=None, best_for=No
 
 def install_workspace(workspace, family, weight=400, italic=False, name=None, role=None, *, client=None):
     """Make one style the workspace default font for ``role``: embedded in ``brand.json`` and in
-    every document created afterwards."""
+    every document created afterwards. Without ``role`` it becomes the heading font, and the result says so."""
     from .brand import save_font_default
     from .design import named
 
-    require(role in ("heading", "body"), "scope workspace needs role heading or body", field="role")
+    defaulted = role is None
+    role = "heading" if defaulted else role
+    require(role in ("heading", "body"), "scope workspace takes role heading or body", field="role")
     found = {}
     data, family = fetch_font(family, weight, italic, client=client, source=found)
     name = named(name or f"{slug(family)}-{weight}{'-italic' if italic else ''}")
-    return {"name": name, "family": family, "weight": weight, "italic": italic, "role": role, "source": found,
-            "file": {"bytes": len(data)}, "workspace": save_font_default(workspace, role=role, name=name, data=data)}
+    result = {"name": name, "family": family, "weight": weight, "italic": italic, "role": role, "source": found,
+              "file": {"bytes": len(data)}, "workspace": save_font_default(workspace, role=role, name=name, data=data)}
+    if defaulted:
+        result["normalized"] = ["role defaulted to heading; pass role body (--role body) for the body font"]
+    return result
 
 def roll_document(project=None, *, workspace=None, seed=None, purpose=None, mood=None, canvas=None,
                   locks=None, apply=False, slots=None, unfilled=None, variety=None, house_style_version=None,

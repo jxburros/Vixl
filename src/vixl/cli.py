@@ -28,7 +28,7 @@ Documents: pack SOURCE_FOLDER OUTPUT.vixl, unpack PROJECT.vixl SOURCE_FOLDER,
            open FILE, save [FILE]   (NAME: letter, a4, business-card, instagram-portrait, favicon …)
            upgrade FILE [--report] [--pin-fills]   (a document saved before 0.21: what renders differently)
 Inspect:   status, inspect [LAYER], describe, layers, effects [LAYER], manifest,
-           dependencies, reproduce --check, schema
+           dependencies, reproduce --check, schema [OPERATION…] (one operation's fields, e.g. schema particles)
 Layers:    add FILE --name NAME, solid --color COLOR, gradient --start A --end B,
            text add TEXT --name NAME --size N, text NAME --text TEXT,
            remove, rename, duplicate, hide, show, raise, lower, top, bottom, reorder
@@ -102,7 +102,8 @@ Resources: commands, shapes, sizes [--category print], palette list|show|add|app
            guidance list|show|add|apply|import|remove, providers, models
 Type:      fonts [--category serif] [--mood M], font show FAMILY, font pairings [--mood M] [--for poster],
            font pairing NAME, font principles, font install FAMILY [--weight 700] [--role heading|body], font pair NAME|random,
-           font use NAME --role heading|body, font list|import, --scope workspace (install/pair: brand.json default for new documents)
+           font use NAME --role heading|body, font list|import, --scope workspace [--workspace DIR] (install/pair: brand.json
+           default for new documents; install's role defaults to heading)
 Finish:    look LAYER NAME [--color C] [--amount 0-1] [--remove]  (clean-flat, subtle-grain, light-paper, glow, neon,
            soft-shadow, hard-shadow, outline, gradient, soft-halo, grain, paper, film, duotone, risograph, sketch,
            watercolor, halftone, hand-made, plush), looks (catalog),
@@ -680,7 +681,8 @@ def command_help(cmd, args):
     manual = {
         "open": "open FILE",
         "upgrade": "upgrade [FILE] [--report] [--pin-fills]",
-        "schema": "schema",
+        "schema": "schema [OPERATION…]  (no argument: the whole operation-batch schema; "
+                  "schema particles pivot: just those operations' fields, types and descriptions; aliases accepted)",
         "canvas": "canvas resize SIZE | preset NAME | background COLOR",
         "save": "save [FILE]",
         "inspect": "inspect [LAYER]",
