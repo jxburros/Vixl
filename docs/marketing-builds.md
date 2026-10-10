@@ -53,3 +53,10 @@ the strikethrough bars on its timing slide use `allow_overlap`, so the remaining
 informational or deliberate. Its copy quotes counts taken from the 0.21.0 registries:
 180 operation types, 150 named sizes, 53 layouts, 40 templates, 19 containers, 28 styles,
 17 looks and 17 brushes. [`marketing/README.md`](../marketing/README.md) says how to recount them.
+
+The kit places captions and code against other layers with `Project.bounds(name)`, the layer's
+`(x, y, width, height)` on the canvas even when it sits in a group (what `inspect()` reports as
+`canvas_bounds`). `Project.bounds(name, space="parent")` gives the box in its group's own
+coordinates instead. Do not measure with `vixl.render.resolve_layout`: it is internal, and its boxes
+for grouped layers are relative to the group, so a layer placed against them lands in the wrong
+place without an error.

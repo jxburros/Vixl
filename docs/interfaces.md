@@ -27,6 +27,8 @@ project.save()
 
 `Project.save(path=None, *, overwrite=False)` writes the document. Saving to the file it was loaded from or last saved to always works; another existing `.vixl` is refused with `output_exists` unless `overwrite=True`, as `vixl new`, `vixl save` and exports do.
 
+`Project.bounds(target, space="canvas")` returns a layer's `(x, y, width, height)` on the canvas, through the groups it is in (the box around a rotated outline), the same as `inspect()`'s `canvas_bounds`; `space="parent"` gives it in its parent group's content coordinates (`resolved_bounds`).
+
 `Project.render()` returns a Pillow RGBA image; `Project.render(region=[x, y, width, height])` returns that crop (whole pixels inside the canvas), drawing only that part unless something in the document reads the whole canvas. In a notebook a `Project` displays as its rendered PNG, and `Project.show(page=None, region=None)` returns the image (optionally one page, cropped to `[x, y, width, height]`). `Project.export()` returns encoded bytes, optionally writing to a path. `Project.inspect()` returns an independent JSON-serializable state description. History methods: `undo`, `redo`, `branch`, `checkpoint`, `checkout`, `begin`, `commit`, `rollback`.
 
 Loading does not implicitly trust linked image paths; use `allow_linked=True` only when those local file references are intended. Direct Python APIs are trusted local APIs and can import files. Exceptions expose `VixlError.code`, `.details`, and `.as_dict()`.

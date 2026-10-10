@@ -301,6 +301,23 @@ class Project:
         with resolving(self):
             return self._inspect(target)
 
+    def bounds(self, target=None, space="canvas"):
+        """A layer's (x, y, width, height): on the canvas (default), through every group it is in, as
+        ``inspect`` reports ``canvas_bounds``; or ``space="parent"``, in its parent group's content
+        coordinates (the canvas for a top-level layer), as ``resolved_bounds``. Rotated layers give
+        the box around their turned outline."""
+        from .errors import require
+        from .render import layer_box, resolving
+
+        require(space in ("canvas", "parent"), f"space is canvas or parent, not {space!r}", field="space")
+        layer = self.layer(target)
+        with resolving(self):
+            if space == "parent" or not layer.get("parent"):
+                return tuple(float(v) for v in layer_box(self, layer))
+            from .spatial import canvas_boxes
+
+            return tuple(float(v) for v in canvas_boxes(self)[layer["id"]])
+
     def _inspect(self, target=None):
         from .render import child_index, extent, resolve_layout, resolved_layers
 
