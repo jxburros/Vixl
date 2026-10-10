@@ -24,7 +24,7 @@ ACTIONS = {
     "library-save": ({"directory", "name", "description", "tags"}, {"directory", "name"}),
     "library-search": ({"directory", "query"}, {"directory"}),
     "library-open": ({"directory", "id", "output"}, {"directory", "id", "output"}),
-    "library-place": ({"directory", "id", "name"}, {"directory", "id", "name"}),
+    "library-place": ({"directory", "id", "name", "as"}, {"directory", "id", "name"}),
     "submit": ({"job", "start", "workers"}, {"job"}),
     "status": ({"id"}, {"id"}),
     "cancel": ({"id"}, {"id"}),
@@ -254,7 +254,7 @@ def dispatch(session, action, request, document=None):
                 return library.save(
                     project, request["name"], request.get("description", ""), request.get("tags")
                 )
-            return library.place(project, request["id"], request["name"])
+            return library.place(project, request["id"], request["name"], request.get("as", "group"))
     if action == "act":
         from .interfaces import service_check
 

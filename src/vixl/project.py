@@ -237,6 +237,12 @@ class Project:
         found = self.find_layer(target)
         if found is not None:
             return found
+        if isinstance(target, str) and "/" in target:
+            from .objects import resolve_path
+
+            found = resolve_path(self, target)  # an object path: dog/head, person/guitar/neck
+            if found is not None:
+                return found
         names = [x["name"] for x in self.state["layers"]]
         folded = [name for name in names if name.casefold() == str(target).casefold()]
         suggestions = folded or difflib.get_close_matches(str(target), names, 3, 0.5)

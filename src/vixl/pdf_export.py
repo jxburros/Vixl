@@ -186,45 +186,65 @@ class PageBuilder:
         if layer["type"] not in ("raster", "frame") or reason != "image":  # an image layer is an image anyway
             self.fallbacks.append({"layer": layer["name"], "reason": reason})
 
-    def draw(self, layers, bounds, parent=None, matrix=None):
-        from .render import ink_origin, layer_ink, layer_surface
+    @staticmethod
+    def marked_content(layer):
+        """The operator opening a layer's marked content: ``/Figure <</Alt …>> BDC`` for a layer with alt text,
+        ``/Artifact BMC`` for a decorative one, else None. (Untagged: no structure tree refers to them.)"""
+        from .accessibility import decorative
 
+        if layer.get("alt"):
+            return f"/Figure <</Alt <FEFF{layer['alt'].encode('utf-16-be').hex().upper()}>>> BDC"
+        if layer["type"] != "text" and decorative(layer):
+            return "/Artifact BMC"
+        return None
+
+    def draw(self, layers, bounds, parent=None, matrix=None):
         matrix = np.eye(3) if matrix is None else matrix
         index = {item["id"]: item for item in layers}
         for layer in layers:
             if layer.get("parent") != parent or not layer["visible"] or layer["opacity"] <= 0:
                 continue
-            b = bounds[layer["id"]]
-            reason = self.raster_reason(layer)
-            if reason is None and layer["type"] == "group":
-                inner = matrix @ layer_matrix(layer, b) @ affine(layer["width"] / layer["content_width"], 0, 0,
-                                                                 layer["height"] / layer["content_height"])
-                self.draw(layers, bounds, layer["id"], inner)
-                continue
-            if reason == "linked document":
-                reason = pdf_link(self, layer, b, matrix)
-                if reason is None:
-                    continue
+            opened = self.marked_content(layer)
+            if opened:
+                self.ops.append(opened)
+            self.draw_layer(layer, layers, bounds, parent, matrix, index)
+            if opened:
+                self.ops.append("EMC")
+
+    def draw_layer(self, layer, layers, bounds, parent, matrix, index):
+        from .render import ink_origin, layer_ink, layer_surface
+
+        b = bounds[layer["id"]]
+        reason = self.raster_reason(layer)
+        if reason is None and layer["type"] == "group":
+            inner = matrix @ layer_matrix(layer, b) @ affine(layer["width"] / layer["content_width"], 0, 0,
+                                                             layer["height"] / layer["content_height"])
+            self.draw(layers, bounds, layer["id"], inner)
+            return
+        if reason == "linked document":
+            reason = pdf_link(self, layer, b, matrix)
             if reason is None:
-                try:
-                    self.leaf(layer, b, matrix)
-                    continue
-                except Unsupported as exc:
-                    reason = str(exc)
-            self.fallback(layer, reason)
-            if layer.get("styles") or layer.get("clip"):
-                parent_layer = index.get(parent)
-                size = ((parent_layer["content_width"], parent_layer["content_height"]) if parent_layer else
-                        (self.view.state["canvas"]["width"], self.view.state["canvas"]["height"]))
-                tile = layer_surface(self.view, layer, bounds, size, index)
-                box = tile.getchannel("A").getbbox()
-                if box:
-                    crop = tile.crop(box)
-                    self.place_image(crop, matrix, (box[0], box[1], crop.width, crop.height))
-            else:
-                image = layer_ink(self.view, layer, b)
-                x, y = ink_origin(image, b)
-                self.place_image(image, matrix, (x, y, image.width, image.height))
+                return
+        if reason is None:
+            try:
+                self.leaf(layer, b, matrix)
+                return
+            except Unsupported as exc:
+                reason = str(exc)
+        self.fallback(layer, reason)
+        if layer.get("styles") or layer.get("clip"):
+            parent_layer = index.get(parent)
+            size = ((parent_layer["content_width"], parent_layer["content_height"]) if parent_layer else
+                    (self.view.state["canvas"]["width"], self.view.state["canvas"]["height"]))
+            tile = layer_surface(self.view, layer, bounds, size, index)
+            box = tile.getchannel("A").getbbox()
+            if box:
+                crop = tile.crop(box)
+                self.place_image(crop, matrix, (box[0], box[1], crop.width, crop.height))
+        else:
+            image = layer_ink(self.view, layer, b)
+            x, y = ink_origin(image, b)
+            self.place_image(image, matrix, (x, y, image.width, image.height))
 
     @staticmethod
     def raster_reason(layer):
@@ -693,6 +713,11 @@ def export_pdf(project, path=None, *, pages=None, content="vector", dpi=None, ba
             fallbacks[label] = builder.fallbacks
     fonts.write(writer)
     writer.add({"Type": Name("Pages"), "Kids": kids, "Count": len(kids)}, pages_ref)
+    from .accessibility import document_title as declared_title, language
+
+    lang = lang or language(project.state)
+    if title is None:
+        title = declared_title(project.state)
     if title is None:
         # The first page's title layer (a role or an exact name, else the largest top text), then the file name.
         from .deck import document_title

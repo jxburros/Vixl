@@ -82,7 +82,8 @@ def schemas(add):
                             "of at its topmost member's slot."},
                   "below": {**S, "description": "Place the new group directly below this layer (same parent)."}},
         ["name", "targets"])
-    add("ungroup")
+    add("ungroup", {"force": {"type": "boolean", "description": "Ungroup a declared object too, dropping its object "
+                              "record (its parts keep their names); without it an object refuses"}})
     from .reparent import schema as reparent_schema
 
     reparent_schema(add)

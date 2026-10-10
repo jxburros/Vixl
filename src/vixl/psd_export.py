@@ -144,6 +144,7 @@ def _pixels(project, layer, index, bounds, ancestors):
 def build(project, report):
     from .render import child_index, color, resolve_layout, resolved_layers
     from .design import resolve_color
+    from .objects import export_identity
 
     layers = resolved_layers(project)
     index = {layer["id"]: layer for layer in layers}
@@ -161,6 +162,9 @@ def build(project, report):
     def walk(parent, ancestors):
         for layer in children.get(parent, []):
             name = layer.get("name") or layer["id"]
+            identity = export_identity(layer, index)
+            if identity and "kind" in identity:
+                name = f"{identity['label']} ({identity['kind']})"  # an object: label and kind, as in exports
             if layer["type"] == "adjustment":
                 skipped.append(name)
                 continue

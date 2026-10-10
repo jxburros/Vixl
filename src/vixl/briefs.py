@@ -589,10 +589,60 @@ def guide(brief=None, *, seed=None, variety=None, workspace=None):
     found = guidance(key, workspace=workspace)
     if found:
         return found
+    from .objects import find as find_kind, kind_in_text, registry
+
+    kinds = registry(workspace)
     ranked = match(brief)
+    subject = find_kind(brief, kinds) or kind_in_text(brief, kinds)
+    if not ranked and subject:
+        return object_guide(subject, workspace)
     if not ranked:
         raise VixlError("no_match", f"No kind of work matches {brief!r}; kinds: {', '.join(KINDS)}. Call vixl_guide() for the start-here "
                                     "recipe and the guidance names.", field="brief", suggestions=list(KINDS)[:6], allowed=list(KINDS))
     best = ranked[0]
-    return _directed({"matched": best, **entry(best), "alternatives": ranked[1:4], "start_here": START_HERE},
-                     best, seed, variety, workspace)
+    result = _directed({"matched": best, **entry(best), "alternatives": ranked[1:4], "start_here": START_HERE},
+                       best, seed, variety, workspace)
+    if subject:
+        result["object"] = object_summary(subject, workspace)
+    return result
+
+
+def object_summary(kind, workspace=None):
+    """What a brief's subject is made of, from the object taxonomy, and how to declare it."""
+    from .objects import describe
+
+    item = describe(kind, workspace)
+    return {"kind": item["kind"], "path": item["path"], "parts": [p["name"] for p in item["parts"]],
+            "required_parts": item["required_parts"], "connections": item["connections"],
+            "layering": item["layering"],
+            "declare": {"type": "object", "target": "GROUP", "kind": item["kind"]},
+            "more": f"vixl_resource_get(kind='objects', name={item['kind']!r})"}
+
+
+def object_guide(kind, workspace=None):
+    """vixl_guide for a subject (dog, guitar, cactus …): the object's parts and the build and review loop."""
+    from .objects import describe
+
+    item = describe(kind, workspace)
+    presets = item["organic_presets"]
+    return {
+        "object": item,
+        "approach": [
+            "Draw each part as its own layer (shape, pen, organic"
+            + (f" with preset {presets[0]!r}" if presets else "") + ", pathfinder) in the group's coordinates, "
+            "back to front as layering says; parts that meet overlap by a few pixels.",
+            f"Group the parts and declare the object: {{type: object, target: GROUP, kind: {item['kind']!r}}}; name "
+            "each part with {type: object, action: part, target: LAYER, part: NAME, side: left|right}.",
+            "Read vixl_document_inspect(object=GROUP): it lists the parts and the required parts still missing; "
+            "paths such as GROUP/head work wherever a layer name does.",
+            "Test, then look: vixl_check(checks=[connected]) for parts that float free, then "
+            "vixl_render_preview(isolate=[GROUP], views=['parts'], exploded=true) to judge each part alone.",
+            "Reuse and hand off: object-save / object-place, vixl_export_file(isolate=[GROUP]) to SVG, PNG, PDF, PSD or "
+            "a portable .vixl object.",
+        ],
+        "operations": ["object", "group", "shape", "pen", "organic", "pathfinder", "reparent", "object-save",
+                       "object-place"],
+        "guidance": ["multi-part-objects", "anatomy-proportions", "imperfection"],
+        "read_guidance": "vixl_guide(brief=NAME) returns each guidance text",
+        "start_here": START_HERE,
+    }

@@ -209,14 +209,18 @@ def preview(
     values=None,
     show_fields=False,
     isolate=None,
+    views=None,
+    exploded=False,
 ):
     with session.project(document=document) as project:
         return preview_png(project, max_width, max_height, max_bytes, region=region, variables=variables,
                            artboard=artboard, comp=comp, time=time, proof=proof, simulate=simulate, guides=guides,
-                           page=page, values=values, show_fields=show_fields, isolate=isolate)
+                           page=page, values=values, show_fields=show_fields, isolate=isolate, views=views,
+                           exploded=exploded)
 
 
-EXPORT_SUFFIXES = (".png", ".jpg", ".jpeg", ".webp", ".tif", ".tiff", ".avif", ".svg", ".pdf", ".ico", ".html", ".htm", ".pptx", ".psd")
+EXPORT_SUFFIXES = (".png", ".jpg", ".jpeg", ".webp", ".tif", ".tiff", ".avif", ".svg", ".pdf", ".ico", ".html", ".htm", ".pptx", ".psd",
+                   ".vixl")
 PURPOSE_HELP = ("What the piece is for: social, story, poster, flyer, print, document, form, invitation, slides, "
                 "diagram, web, email, motion, video, logo, mark, emblem, badge, monogram, icon, app-icon or favicon. "
                 "Without a size it picks the size (social 1080×1350, slides 1920×1080, print letter or A4 by locale, "
@@ -232,9 +236,11 @@ def export_file(session, path, overwrite=False, document=None, **options):
         destination = session.resolve(path)
         require(
             destination.suffix.lower() in EXPORT_SUFFIXES,
-            "Choose a PNG, JPEG, WEBP, TIFF, AVIF, SVG, PDF, ICO, HTML, PPTX or PSD filename",
+            "Choose a PNG, JPEG, WEBP, TIFF, AVIF, SVG, PDF, ICO, HTML, PPTX or PSD filename (or .vixl with isolate)",
             field="path",
         )
+        require(destination.suffix.lower() != ".vixl" or options.get("isolate"),
+                "A .vixl export writes a portable object document: pass isolate=[OBJECT]", field="path")
         session.make_parent(destination)
         with file_lock(str(destination)):
             require(
@@ -247,7 +253,13 @@ def export_file(session, path, overwrite=False, document=None, **options):
             )
             report = {}
             with session.project(document=document) as project:
-                data = project.export(format=fmt, report=report, **options)
+                if destination.suffix.lower() == ".vixl":
+                    from .objects import portable_bytes
+
+                    data = portable_bytes(project, options, report)
+                    fmt = "VIXL"
+                else:
+                    data = project.export(format=fmt, report=report, **options)
             fd, temporary_path = temporary(
                 destination.parent, like=destination if destination.exists() else None
             )
@@ -438,11 +450,12 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         return wrapper
 
     @tool
-    def vixl_resources_list(kind: Literal["palettes", "templates", "guidance"]) -> dict:
-        """Discover built-in and user-added design resources without an open document."""
+    def vixl_resources_list(kind: Literal["palettes", "templates", "guidance", "objects"]) -> dict:
+        """Discover built-in and user-added design resources without an open document. objects lists the object
+        kinds (dog, guitar, person …) of the taxonomy."""
         from .resources import catalog
 
-        return {"kind": kind, "names": sorted(catalog(kind))}
+        return {"kind": kind, "names": sorted(catalog(kind, workspace=session.workspace if kind == "objects" else None))}
 
     @tool
     def vixl_workflow_schema() -> dict:
@@ -486,10 +499,15 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         return result
 
     @tool
-    def vixl_resource_get(kind: Literal["palettes", "templates", "guidance", "house-style"], name: str) -> dict:
+    def vixl_resource_get(kind: Literal["palettes", "templates", "guidance", "house-style", "objects"], name: str) -> dict:
         """Read a named palette, template or guidance text (also vixl_guide(brief=NAME)) before applying it.
         kind house-style reads the built-in default brand: name 'all' for craft rules, tiers and levels, or a
-        purpose (poster, social, slides, document, form, diagram, logo, motion) for its profile."""
+        purpose (poster, social, slides, document, form, diagram, logo, motion) for its profile. kind objects reads
+        an object kind (or alias) with its inherited parts, connections, proportions and taxonomy chain."""
+        if kind == "objects":
+            from .objects import describe
+
+            return {"name": name, "value": describe(name, session.workspace)}
         if kind == "house-style":
             from .house_style import show
 
@@ -500,9 +518,11 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
 
     @tool
     def vixl_resource_add(
-        kind: Literal["palettes", "templates", "guidance"], name: str, value: list | dict | str
+        kind: Literal["palettes", "templates", "guidance", "objects"], name: str, value: list | dict | str
     ) -> dict:
-        """Register custom JSON design data or plain-text guidance in the user's library."""
+        """Register custom JSON design data or plain-text guidance in the user's library. objects adds an object
+        kind such as a brand mascot: {parent, aliases?, summary?, parts?, parts+?, connections?, proportions?,
+        layering?, outline?} extending a built-in kind."""
         from .resources import register
 
         return register(kind, name, value)
@@ -660,13 +680,20 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
 
     @tool
     def vixl_document_inspect(
-        target: str | None = None, detail: Detail = "compact", document: Document = None
+        target: str | None = None, detail: Detail = "compact", document: Document = None,
+        object: Annotated[str | None, Field(description="An object name or path (dog, person/guitar): its kind chain, "
+                                                        "bounds, parts, missing required parts and sub-objects; '*' "
+                                                        "lists every object")] = None,
     ) -> dict:
         """Describe the document or one layer. compact: canvas plus key fields per layer with resolved
-        [x, y, w, h] bounds; full: every stored field."""
+        [x, y, w, h] bounds; full: every stored field. object= returns one object's tree (or '*' all objects)."""
         from .changes import summarize
 
         with session.project(document=document) as project:
+            if object is not None:
+                from .objects import tree
+
+                return tree(project, object)
             if detail == "full":
                 return project.inspect(target)
             return summarize(project, target)
@@ -780,7 +807,12 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         values: Annotated[dict | None, Field(description="Form field values to show, by field key")] = None,
         show_fields: Annotated[bool, Field(description="Outline form fields with their keys and tab order")] = False,
         isolate: Annotated[list[str] | None, Field(description="Show only these layers (a group with all its parts) on the "
-                           "canvas background, zoomed to their ink with a small margin unless region is given")] = None,
+                           "canvas background, zoomed to their ink with a small margin unless region is given; object "
+                           "paths (dog/head) and object:KIND work too")] = None,
+        views: Annotated[list[Literal["parts"]] | None, Field(description="['parts']: a labelled contact sheet of each "
+                         "isolated object, assembled and then every part and sub-object alone")] = None,
+        exploded: Annotated[bool, Field(description="With isolate: add an exploded view that moves the parts apart so "
+                            "overlaps and seams show")] = False,
         document: Document = None,
     ) -> Image:
         """Return an aspect-preserving PNG capped in dimensions and bytes, rendered at preview resolution.
@@ -807,6 +839,8 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
                 values=values,
                 show_fields=show_fields,
                 isolate=isolate,
+                views=views,
+                exploded=exploded,
             ),
             format="png",
         )
@@ -838,7 +872,8 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
     def vixl_check(
         checks: list[Literal["bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "fonts", "brand", "print", "color_vision", "guides", "alignment",
                              "deck", "title_position", "type_scale", "words", "min_font", "notes", "empty", "form", "drawing", "links", "style",
-                             "diagram", "flow", "codes", "motion", "character", "captions", "connected"]]
+                             "diagram", "flow", "codes", "motion", "character", "captions", "connected",
+                             "accessibility"]]
         | None = None,
         targets: list[str] | None = None,
         safe_area: Annotated[
@@ -873,7 +908,8 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         style tag rule by rule. Each issue has a severity (error, warning, info) and an action: fix (needs a design
         change), review (look and decide) or informational (expected, such as a crop marked with layer-intent
         allow_crop); by_action lists the issue indexes under each. connected (opt-in) finds parts of a group (a mascot,
-        a character) that float free of its main body. Reports only problems."""
+        a character) that float free of its main body. accessibility (opt-in) adds contrast and color_vision to missing
+        alt text, an unset language, small text, colour-only charts and reading order. Reports only problems."""
         return session.check(
             document=document,
             checks=checks,
@@ -983,6 +1019,10 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
                         "slide_images: svg|png, notes: bool, start: slide number or page name, title}")] = None,
         title: Annotated[str | None, Field(description="PDF document title; default the page's title layer, then the file name")] = None,
         max_bytes: Annotated[int | None, Field(ge=1, description="Size budget for a raster file: a warning (never a failure) when the file is larger")] = None,
+        isolate: Annotated[list[str] | None, Field(description="Export only these layers or objects (names, object paths "
+                           "such as person/guitar, or object:KIND), cropped to their ink on a transparent canvas; a "
+                           ".vixl path writes a portable object document that object-place source= reads")] = None,
+        padding: Annotated[float | None, Field(ge=0, le=4096, description="Pixels around the ink with isolate (default 0)")] = None,
         document: Document = None,
     ) -> dict:
         """Export to a workspace file, format from extension (PNG/JPEG/WEBP/TIFF/AVIF/SVG/PDF/ICO/PPTX/PSD), full
@@ -1034,6 +1074,8 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
             presenter=presenter,
             title=title,
             max_bytes=max_bytes,
+            isolate=isolate,
+            padding=padding,
         )
 
     @tool

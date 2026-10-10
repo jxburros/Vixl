@@ -26,7 +26,13 @@ def schemas(add):
                          "allow_overlap": {"type": "array", "items": S, "maxItems": MAX_LAYERS},
                          "tags": {"type": "array", "items": S, "maxItems": 32,
                                   "description": "Labels (replacing the layer's tags) that edit-layers can select with where.tag"},
-                         "allow_crop": B, "color_vision_safe": B, "detached_ok": B}, ["target"])
+                         "allow_crop": B, "color_vision_safe": B, "detached_ok": B,
+                         "alt": {"type": "string", "maxLength": 2000,
+                                 "description": "Alternative text: what a meaningful image, frame, chart, link or group "
+                                 "shows (HTML alt, SVG <title>, PowerPoint descr, PDF /Alt); an empty string clears it"},
+                         "decorative": {"type": "boolean",
+                                        "description": "true: purely decorative, so screen readers skip it and the "
+                                        "accessibility check needs no alt text"}}, ["target"])
     add("font-fallbacks", {"fonts": {"type": "array", "items": S, "maxItems": 16}}, ["fonts"])
 
 
@@ -133,6 +139,10 @@ def execute(project, op):
                 layer["detached_ok"] = True
             else:
                 layer.pop("detached_ok", None)
+        if "alt" in op or "decorative" in op:
+            from .accessibility import set_alt
+
+            set_alt(layer, op)
         if "color_vision_safe" in op:
             # Series that also differ by labels or patterns: the color-vision check skips this chart.
             if op["color_vision_safe"]:
@@ -199,6 +209,9 @@ def compile_command(cmd, args):
                        help="series also differ by labels or patterns: the color-vision check skips this chart")
         p.add_argument("--detached-ok", action=argparse.BooleanOptionalAction, default=None,
                        help="a part that floats on purpose: the connected check skips it")
+        p.add_argument("--alt", help="alternative text for an image, frame, chart, link or group ('' clears it)")
+        p.add_argument("--decorative", action=argparse.BooleanOptionalAction, default=None,
+                       help="purely decorative: screen readers skip it and it needs no alt text")
     else:
         p.add_argument("fonts", nargs="*")
     return {"type": cmd, **{k: v for k, v in vars(p.parse_args(args)).items() if v is not None}}

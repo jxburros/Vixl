@@ -258,10 +258,17 @@ def test_library_roundtrip_reuses_embedded_assets(tmp_path):
     assert library.search("red campaign")[0]["id"] == saved["id"]
     loaded = library.load(saved["id"], limits=p.limits)
     assert loaded.render().tobytes() == p.render().tobytes()
-    target = Project(160, 100)
-    library.place(target, saved["id"], "placed")
-    assert target.layer("placed")["type"] == "raster"
+    target = Project(160, 100, "#102030")
+    result = library.place(target, saved["id"], "placed")
+    # BLK-24: an editable group of the component's layers (new IDs), not a raster snapshot.
+    assert result["as"] == "group" and target.layer("placed")["type"] == "group"
+    assert target.layer("placed/title")["text"] == "Hello" and target.layer("placed/logo")["fill"] == "red"
+    assert target.layer("placed/logo")["id"] != p.layer("logo")["id"]
     assert target.render().tobytes() == p.render().tobytes()
+    target.apply({"type": "text-set", "target": "placed/title", "text": "Edited"})
+    snapshot = Project(160, 100)
+    assert library.place(snapshot, saved["id"], "flat", "image")["as"] == "image"
+    assert snapshot.layer("flat")["type"] == "raster"
     with pytest.raises(VixlError):
         library.load("../../outside")
 

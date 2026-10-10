@@ -204,9 +204,12 @@ def _brief(layer):
         if provenance.get(key):
             result[key] = provenance[key]
     # layer-intent settings, so an agent can see why a check exempts a layer.
-    for key in ("role", "tags", "detached_ok", "allow_crop", "color_vision_safe"):
+    for key in ("role", "tags", "detached_ok", "allow_crop", "color_vision_safe", "alt", "decorative"):
         if layer.get(key):
             result[key] = layer[key]
+    from .objects import brief as object_brief
+
+    result.update(object_brief(layer))
     return result
 
 
@@ -229,6 +232,14 @@ def summarize(project, target=None):
         "head": state["head"],
         "layers": [{"id": layer["id"], **_brief(layer)} for layer in state["layers"]],
     }
+    from .objects import path_of
+
+    index = {item["id"]: item for item in project.state["layers"]}
+    for entry in result["layers"]:
+        if "object" in entry or "object_part" in entry:
+            path = path_of(project, index[entry["id"]], index)
+            if path and path != entry["name"]:
+                entry["object_path"] = path
     for key in ("variables", "swatches", "presets"):
         if state.get(key):
             result[key] = state[key] if key != "presets" else sorted(state[key])
@@ -258,6 +269,16 @@ def summarize(project, target=None):
         counts = {name: sum(1 for item in state["links"] if item["state"] == name) for name in {i["state"] for i in state["links"]}}
         result["links"] = {"count": len(state["links"]), **{name: n for name, n in sorted(counts.items()) if name != "ok"},
                            **({"problems": problems[:20]} if problems else {})}
+    from .objects import all_objects, path_of, record
+
+    objects = all_objects(project)
+    if objects:
+        index = {item["id"]: item for item in project.state["layers"]}
+        result["objects"] = [{"path": path_of(project, layer, index), "kind": record(layer)["kind"]}
+                             for layer in objects][:100]
+    for key in ("accessibility", "page_accessibility"):
+        if state.get(key):
+            result[key] = state[key]
     if state["transaction"]:
         result["transaction"] = True
     return result

@@ -69,6 +69,14 @@ def compile_command(tokens):
     authoring = compile_authoring(cmd, args)
     if authoring is not None:
         return authoring
+    from .objects import compile_command as compile_objects
+    declared = compile_objects(cmd, args)
+    if declared is not None:
+        return declared
+    from .accessibility import compile_command as compile_accessibility
+    accessible = compile_accessibility(cmd, args)
+    if accessible is not None:
+        return accessible
     from .merging import compile_command as compile_merge
     merged = compile_merge(cmd, args)
     if merged is not None:

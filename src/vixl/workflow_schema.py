@@ -350,7 +350,9 @@ ACTION_FIELDS = {
                      "output": {**PATH, "description": "New .vixl file to write."}},
     "library-place": {"directory": {**PATH, "description": "Component library folder."},
                       "id": {"type": "string", "description": "Component ID from library-search."},
-                      "name": {"type": "string", "description": "Name for the placed group layer."}},
+                      "name": {"type": "string", "description": "Name for the placed group layer."},
+                      "as": {"enum": ["group", "image"], "description": "group (default): the component's layers as "
+                             "an editable group with its fonts and images; image: one raster snapshot."}},
     "submit": {"job": JOB, "start": COMMON["start"], "workers": COMMON["workers"]},
     "status": {"id": {"type": "string", "description": "Job ID from submit."}},
     "cancel": {"id": {"type": "string", "description": "Job ID from submit."}},

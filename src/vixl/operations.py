@@ -38,6 +38,8 @@ from .captions import TYPES as CAPTION_TYPES
 from .scene import TYPES as SCENE_TYPES
 from .vector_paths import TYPES as VECTOR_TYPES
 from .merging import TYPES as MERGE_TYPES
+from .objects import TYPES as OBJECT_TYPES
+from .accessibility import TYPES as ACCESSIBILITY_TYPES
 
 from copy import deepcopy
 import hashlib
@@ -67,7 +69,7 @@ from .render import (
 COLOR_TYPES = ("palette-generate",)
 
 
-OPERATION_TYPES = list(EMOJI_TYPES + DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_TYPES + BRUSH_TYPES + TIMELINE_TYPES + LAYOUT_TYPES + COLOR_TYPES + AUTOMATION_TYPES + CREATIVE_TYPES + CONTAINER_TYPES + AUTHORING_TYPES + ORGANIC_TYPES + IRREGULAR_TYPES + GUIDE_TYPES + RICH_TYPES + PAGE_TYPES + FORM_TYPES + DRAWING_TYPES + STACK_TYPES + SELECTOR_TYPES + LINK_TYPES + CODE_TYPES + CHART_TYPES + FINISHING_TYPES + DIAGRAM_TYPES + FLOW_TYPES + TRANSFORM_TYPES + MOTION_TYPES + CHARACTER_TYPES + COMIC_TYPES + TEXTURE_TYPES + AUDIO_TYPES + VECTOR_TYPES + CAPTION_TYPES + SCENE_TYPES + MERGE_TYPES) + [
+OPERATION_TYPES = list(EMOJI_TYPES + DESIGN_TYPES + PIXEL_TYPES + ANIMATION_TYPES + RESOURCE_TYPES + BRUSH_TYPES + TIMELINE_TYPES + LAYOUT_TYPES + COLOR_TYPES + AUTOMATION_TYPES + CREATIVE_TYPES + CONTAINER_TYPES + AUTHORING_TYPES + ORGANIC_TYPES + IRREGULAR_TYPES + GUIDE_TYPES + RICH_TYPES + PAGE_TYPES + FORM_TYPES + DRAWING_TYPES + STACK_TYPES + SELECTOR_TYPES + LINK_TYPES + CODE_TYPES + CHART_TYPES + FINISHING_TYPES + DIAGRAM_TYPES + FLOW_TYPES + TRANSFORM_TYPES + MOTION_TYPES + CHARACTER_TYPES + COMIC_TYPES + TEXTURE_TYPES + AUDIO_TYPES + VECTOR_TYPES + CAPTION_TYPES + SCENE_TYPES + MERGE_TYPES + OBJECT_TYPES + ACCESSIBILITY_TYPES) + [
     "add",
     "solid",
     "gradient",
@@ -438,6 +440,12 @@ def execute(project, op):
     if kind in CHARACTER_TYPES:
         from .characters import execute as execute_character
         return execute_character(project, op)
+    if kind in OBJECT_TYPES:
+        from .objects import execute as execute_object
+        return execute_object(project, op)
+    if kind in ACCESSIBILITY_TYPES:
+        from .accessibility import execute as execute_accessibility
+        return execute_accessibility(project, op)
     if target is not None and kind in IN_PLACE_TYPES:
         from .inplace import execute as execute_in_place
 

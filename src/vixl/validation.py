@@ -187,6 +187,11 @@ def check_state(project, state):
     from .pages import validate_pages
 
     validate_pages(project, state)
+    from .objects import validate_layers as validate_objects
+    from .accessibility import validate as validate_accessibility
+
+    validate_objects(project, state)
+    validate_accessibility(project, state)
     require(not (ids & names), "Layer names cannot collide with IDs", "invalid_project")
     require(
         state["active_layer"] is None or state["active_layer"] in ids,

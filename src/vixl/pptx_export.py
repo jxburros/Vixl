@@ -37,6 +37,21 @@ def _attr(value):
     return quoteattr(str(value))
 
 
+DECORATIVE = ('<a:extLst><a:ext uri="{C183D7F6-B498-43B3-948B-1728B52AA6E4}"><adec:decorative '
+              'xmlns:adec="http://schemas.microsoft.com/office/drawing/2017/decorative" val="1"/></a:ext></a:extLst>')
+
+
+def c_nv_pr(ident, layer, descr=None):
+    """A shape's ``p:cNvPr``: its name, its alternative text (``descr``: the layer's alt, else ``descr``) and the
+    decorative flag PowerPoint's accessibility checker reads."""
+    from .accessibility import decorative
+
+    text = layer.get("alt") or descr
+    marked = decorative(layer) and layer["type"] != "text" and not layer.get("alt")
+    attrs = f'id="{ident}" name={_attr(layer["name"])}' + (f" descr={_attr(text)}" if text and not marked else "")
+    return f"<p:cNvPr {attrs}>{DECORATIVE}</p:cNvPr>" if marked else f"<p:cNvPr {attrs}/>"
+
+
 def _text(value):
     # XML 1.0 forbids most control characters; drop them rather than writing an invalid part.
     return escape("".join(c for c in value if c in "\t\n\r" or ord(c) >= 32))
@@ -131,7 +146,12 @@ class Slide:
                         continue
                 children = self.layers(layers, bounds, layer["id"], emu, index)
                 ident = self.ident()
-                out.append(f'<p:grpSp><p:nvGrpSpPr><p:cNvPr id="{ident}" name={_attr(layer["name"])}/><p:cNvGrpSpPr/>'
+                from .objects import export_identity
+
+                identity = export_identity(layer, index) or {}
+                named = {**layer, "name": identity["label"]} if "label" in identity else layer
+                descr = f"{identity['label']} ({identity['kind']})" if "kind" in identity else None
+                out.append(f'<p:grpSp><p:nvGrpSpPr>{c_nv_pr(ident, named, descr)}<p:cNvGrpSpPr/>'
                            f'<p:nvPr/></p:nvGrpSpPr><p:grpSpPr>'
                            f'{self.xfrm(layer, bounds[layer["id"]], emu, child=(layer["content_width"], layer["content_height"]))}'
                            f'</p:grpSpPr>{"".join(children)}</p:grpSp>')
@@ -167,7 +187,7 @@ class Slide:
             x, y = ink_origin(image, bounds[layer["id"]])
         rid = self.exporter.media(self, image)
         ident = self.ident()
-        return (f'<p:pic><p:nvPicPr><p:cNvPr id="{ident}" name={_attr(layer["name"])} descr={_attr(layer["name"])}/>'
+        return (f'<p:pic><p:nvPicPr>{c_nv_pr(ident, layer, layer["name"])}'
                 f'<p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr><p:nvPr/></p:nvPicPr>'
                 f'<p:blipFill><a:blip r:embed="{rid}"/><a:stretch><a:fillRect/></a:stretch></p:blipFill>'
                 f'<p:spPr><a:xfrm><a:off x="{round(x * emu)}" y="{round(y * emu)}"/>'
@@ -179,7 +199,6 @@ class Slide:
         kind = layer["type"]
         ident = self.ident()
         opacity = layer["opacity"]
-        name = _attr(layer["name"])
         if kind == "text":
             return self.text(layer, bounds, emu, ident)
         if kind == "solid":
@@ -231,7 +250,7 @@ class Slide:
                     "<a:round/>" if cap == ' cap="rnd"' else "") + "</a:ln>"
             else:
                 line = "<a:ln><a:noFill/></a:ln>"
-        return (f'<p:sp><p:nvSpPr><p:cNvPr id="{ident}" name={name}/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>'
+        return (f'<p:sp><p:nvSpPr>{c_nv_pr(ident, layer)}<p:cNvSpPr/><p:nvPr/></p:nvSpPr>'
                 f'<p:spPr>{self.xfrm(layer, bounds, emu, frame=frame)}{geometry}{fill}{line}</p:spPr></p:sp>')
 
     def geometry(self, layer, pad=0.0):
@@ -642,9 +661,19 @@ def export_pptx(project, path=None, *, pages=None, dpi=None, report=None):
                f"<a:chOff x=\"0\" y=\"0\"/><a:chExt cx=\"0\" cy=\"0\"/></a:xfrm></p:grpSpPr>{''.join(shapes)}</p:spTree></p:cSld>"
                f"<p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>"
                + (f'<p:transition spd="med">{transition}</p:transition>' if transition else "") + "</p:sld>")
+        from .accessibility import language, page_language
+
+        slide_lang = page_language(view.state) or language(project.state) or "en-US"
+        if slide_lang != "en-US":
+            xml = xml.replace('lang="en-US"', f'lang="{slide_lang}"')
         slides.append((xml, slide))
         notes.append(record.get("notes", ""))
     files = package(project, exporter, slides, notes, cx, cy)
+    lang = language(project.state)
+    if lang and lang != "en-US":
+        # Text runs, notes, defaults and native charts all carry the document language.
+        files = [(name, data.replace('lang="en-US"', f'lang="{lang}"') if isinstance(data, str) else data)
+                 for name, data in files]
     stream = io.BytesIO()
     with zipfile.ZipFile(stream, "w", zipfile.ZIP_DEFLATED) as archive:
         for name, data in files:
@@ -703,15 +732,19 @@ def package(project, exporter, slides, notes, cx, cy):
         ("rId1", f"{REL}/officeDocument", "ppt/presentation.xml"),
         ("rId2", f"{DOC_REL}/metadata/core-properties", "docProps/core.xml"),
         ("rId3", f"{REL}/extended-properties", "docProps/app.xml")])))
-    title = ""
-    for layer in project.state["layers"]:
+    from .accessibility import document_title, language
+
+    title = document_title(project.state) or ""
+    for layer in project.state["layers"] if not title else []:
         if layer["type"] == "text" and layer.get("visible", True):
             title = layer.get("text", "")[:200]
             break
+    lang = language(project.state)
     files.append(("docProps/core.xml", f'{XML}<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" '
                   'xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" '
                   'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">'
-                  f"<dc:title>{_text(title)}</dc:title><dc:creator>Vixl</dc:creator></cp:coreProperties>"))
+                  f"<dc:title>{_text(title)}</dc:title><dc:creator>Vixl</dc:creator>"
+                  + (f"<dc:language>{_text(lang)}</dc:language>" if lang else "") + "</cp:coreProperties>"))
     files.append(("docProps/app.xml", f'{XML}<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties">'
                   f"<Application>Vixl</Application><Slides>{count}</Slides><Notes>{sum(1 for n in notes if n)}</Notes></Properties>"))
     presentation_rels = [("rId1", f"{REL}/slideMaster", "slideMasters/slideMaster1.xml"),

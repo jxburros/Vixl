@@ -67,6 +67,10 @@ TYPE_ALIASES = {
     "diagram-text": "diagram-from-text",
     "move-into": "reparent",
     "adopt": "reparent",
+    "subject": "object",
+    "declare-object": "object",
+    "object-part": "object",
+    "alt-text": "layer-intent",
 }
 SHAPE_TYPES = {
     "rect": ("rectangle", {}),
@@ -173,6 +177,13 @@ FIELD_ALIASES = {
                     "maintain_aspect", "keep_ratio")
     },
     "link": {"path": "source", "file": "source", "src": "source", "document": "source", "doc": "source"},
+    # ``type`` names the operation, so the object's kind is never spelled ``type`` here.
+    "object": {"object_kind": "kind", "object_type": "kind", "subject": "kind", "name": "label", "title": "label",
+               "part_name": "part"},
+    "object-place": {"as": "name_as", "rename": "name_as"},
+    "layer-intent": {"alt_text": "alt", "description": "alt", "aria_label": "alt"},
+    "accessibility": {"language": "lang", "locale": "lang", "page_description": "page_alt",
+                      "page_language": "page_lang"},
 }
 FIELD_ALIASES["text-set"] = FIELD_ALIASES["text"]
 GEOMETRY_TYPES = {
@@ -257,6 +268,8 @@ def normalize_operation(operation, properties, known_types, effects, notes, inde
     if kind != original:
         op["type"] = kind
         note(f"type {original!r} → {kind!r}")
+        if kind == "object" and str(original).lower().replace("_", "-") == "object-part" and "action" not in op:
+            op["action"] = "part"
     if not isinstance(kind, str) or kind not in known_types:
         return op
 

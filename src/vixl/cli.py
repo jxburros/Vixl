@@ -32,6 +32,12 @@ Inspect:   status, inspect [LAYER], describe, layers, effects [LAYER], manifest,
 Layers:    add FILE --name NAME, solid --color COLOR, gradient --start A --end B,
            text add TEXT --name NAME --size N, text NAME --text TEXT,
            remove, rename, duplicate, hide, show, raise, lower, top, bottom, reorder
+Objects:   objects [QUERY] | objects show KIND | objects tree (taxonomy), object GROUP --kind dog [--label L],
+           object part LAYER --part leg [--side left], object unset GROUP, inspect --object NAME|PATH|*,
+           object-save GROUP --name N, object-place N [--x X --y Y --scale S] [--source obj.vixl],
+           export dog.svg --isolate dog [--padding 8], export dog.vixl --isolate dog (portable object)
+Access:    accessibility --lang en-GB [--title T] [--page-alt TEXT] [--reading-order A B], layer-intent LAYER --alt TEXT
+           | --decorative, check --checks accessibility
 Organic:   organics (presets, generators, rules), organic PRESET [--set petals=8] [--color petals=#fff] [--seed N],
            organic --parts JSON, organic --target NAME --seed N (regrow)
 Imperfect: irregular TARGET --seed N [--strength subtle|natural|rough] (wobble, stroke weight, color drift, micro placement),
@@ -276,6 +282,10 @@ def output_options(args, command):
     p.add_argument("--show-fields", action="store_true", help="Outline form fields with their keys and tab order")
     p.add_argument("--alpha", choices=["auto", "keep", "flatten"], default="auto",
                    help="PNG/WEBP/TIFF/AVIF: RGB when opaque (auto), always RGBA (keep), or RGB on --background (flatten)")
+    p.add_argument("--isolate", nargs="+", metavar="LAYER",
+                   help="export only these layers or objects (dog, person/guitar, object:KIND), cropped to their ink; "
+                        "a .vixl output writes a portable object document")
+    p.add_argument("--padding", type=float, help="pixels around the ink with --isolate (default 0)")
     return p.parse_args(args)
 
 
@@ -408,7 +418,7 @@ def dispatch(argv):
                     | {"filter"}
                     | {"workflow"}
                     | set(
-                        "pack unpack new session open upgrade save status inspect describe layers effects manifest dependencies reproduce schema check batch convert render export export-screens export-animation spacing pixels animation info sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert validate preset ai ask generate detect ocr serve view notes import mcp update updates commands shapes palette template guidance font fonts roll providers models color sizes layout layouts brushes organics easings timeline export-timeline timeline-sheet export-icons pages guides links merge styles looks guide diff compose house emoji capabilities".split()
+                        "pack unpack new session open upgrade save status inspect describe layers effects manifest dependencies reproduce schema check batch convert render export export-screens export-animation spacing pixels animation info sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert validate preset ai ask generate detect ocr serve view notes import mcp update updates commands shapes palette template guidance font fonts roll providers models color sizes layout layouts brushes organics easings timeline export-timeline timeline-sheet export-icons pages guides links merge styles looks guide diff compose house emoji capabilities objects".split()
                     )
                 )
             }
@@ -427,6 +437,10 @@ def dispatch(argv):
         from .resource_cli import font_standalone
 
         return font_standalone(cmd, args), options.json
+    if cmd == "objects":
+        from .objects import catalog_command
+
+        return catalog_command(args, workspace=Path.cwd()), options.json
     if cmd in ("color", "colors", "sizes", "layouts", "brushes", "easings", "organics") or (
         cmd == "layout" and (not args or args[0] in ("list", "show"))
     ):
@@ -683,7 +697,7 @@ def command_help(cmd, args):
         "schema": "schema",
         "canvas": "canvas resize SIZE | preset NAME | background COLOR",
         "save": "save [FILE]",
-        "inspect": "inspect [LAYER]",
+        "inspect": "inspect [LAYER] | inspect --object NAME|PATH|*",
         "status": "status",
         "session": "session --project FILE (NDJSON operations or command argv requests on stdin)",
         "describe": "describe [image]",
@@ -784,7 +798,13 @@ def project_command(project, cmd, args, *, detail="compact"):
             return ai_command(project, "ai", ["describe"])
         if args[:1] == ["--target"] or (args and args[0].startswith("--target=")):
             args = args[1:] if args[0] == "--target" else [args[0].split("=", 1)[1]]  # MCP spelling
-        require(len(args) <= 1, f"Usage: vixl {cmd} [LAYER] (or --target LAYER)")
+        if cmd == "inspect" and (args[:1] == ["--object"] or (args and args[0].startswith("--object="))):
+            from .objects import tree
+
+            ref = args[1] if args[0] == "--object" and len(args) > 1 else args[0].split("=", 1)[-1]
+            require(ref and ref != "--object", "Usage: vixl inspect --object NAME|PATH|*")
+            return tree(project, ref), False
+        require(len(args) <= 1, f"Usage: vixl {cmd} [LAYER] (or --target LAYER, or --object NAME)")
         return project.inspect(args[0] if args else None), False
     if cmd == "layers":
         require(args in ([], ["--full"]), "Use layers [--full]")
@@ -793,12 +813,16 @@ def project_command(project, cmd, args, *, detail="compact"):
     if cmd == "effects":
         return deepcopy(project.layer(args[0] if args else None)["effects"]), False
     if cmd == "manifest":
+        from .objects import tree
+
+        objects = tree(project, "*")["objects"]
         return {
             "version": __version__,
             "canvas": project.state["canvas"],
             "layers": len(project.state["layers"]),
             "history_entries": len(project.nodes),
             "dependencies": dependencies(project),
+            **({"objects": objects} if objects else {}),
         }, False
     if cmd in ("dependencies", "reproduce"):
         result = dependencies(project)
@@ -829,6 +853,15 @@ def project_command(project, cmd, args, *, detail="compact"):
             destination == "-" or Path(destination).resolve() != project.path,
             "Cannot export over the project",
         )
+        if destination != "-" and Path(destination).suffix.lower() == ".vixl":
+            require(a.isolate, "A .vixl export writes a portable object document: pass --isolate OBJECT", field="path")
+            from .objects import portable_bytes
+
+            report = {}
+            page = int(a.page) if a.page and a.page.isdigit() else a.page
+            data = portable_bytes(project, {"isolate": a.isolate, "padding": a.padding, "page": page}, report)
+            Path(destination).write_bytes(data)
+            return {"output": destination, "bytes": len(data), **report}, False
         if destination != "-" and Path(destination).suffix.lower() == ".wav" and not a.data:
             from .audio import export_audio
 
@@ -937,6 +970,8 @@ def project_command(project, cmd, args, *, detail="compact"):
             title=a.title,
             max_bytes=a.max_bytes,
             report=report,
+            isolate=a.isolate,
+            padding=a.padding,
             **print_options(a, project.limits),
         )
         if destination == "-":
