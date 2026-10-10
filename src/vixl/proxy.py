@@ -288,7 +288,9 @@ def render_preview(
         from .timeline import default_timeline, parse_time, project_at
 
         timeline = project.state.get("timeline") or default_timeline()
-        project = project_at(project, parse_time(time, timeline["duration"], timeline.get("markers")), prune=True)
+        # An isolated preview may name a layer that is hidden at this time: keep every layer then.
+        project = project_at(project, parse_time(time, timeline["duration"], timeline.get("markers")),
+                             prune=isolate is None)
     candidate = artboard_project(project, artboard, comp, variables)
     c = candidate.state["canvas"]
     if isolate is not None:
