@@ -1,0 +1,640 @@
+{
+  "asset_hashes": {
+    "fonts/1b08e7fc267a5c7e1d614100f604b83e7e8a0be241f0f288faa2b3ac93a683ba.ttf": "1b08e7fc267a5c7e1d614100f604b83e7e8a0be241f0f288faa2b3ac93a683ba",
+    "fonts/3386a05f6ece969e4537de6be894170d20558e82f7d56c8c5d332972ef172160.ttf": "3386a05f6ece969e4537de6be894170d20558e82f7d56c8c5d332972ef172160",
+    "fonts/a6906a10c53fe29b0d05a73ce2404f3dfdd6b87cda063daf7e628c5ea207a805.ttf": "a6906a10c53fe29b0d05a73ce2404f3dfdd6b87cda063daf7e628c5ea207a805",
+    "fonts/e7a1aaf7eda9f2fad4131725fa556265ec75ca7b2d756260173a040363e8d4f7.ttf": "e7a1aaf7eda9f2fad4131725fa556265ec75ca7b2d756260173a040363e8d4f7"
+  },
+  "format": "vixl-source",
+  "state": {
+    "actions": {
+      "fit-title": {
+        "operations": [
+          {
+            "height": 260,
+            "maximum": 106,
+            "minimum": 68,
+            "target": "title",
+            "type": "fit-text",
+            "width": 920
+          }
+        ]
+      }
+    },
+    "active_layer": "lyr_c6bebd8cd5e4a86f",
+    "canvas": {
+      "background": "#252B39",
+      "color_mode": "rgba8",
+      "height": 1080,
+      "safe": 54,
+      "width": 1080
+    },
+    "fonts": {
+      "inter-400": "fonts/1b08e7fc267a5c7e1d614100f604b83e7e8a0be241f0f288faa2b3ac93a683ba.ttf",
+      "inter-600": "fonts/e7a1aaf7eda9f2fad4131725fa556265ec75ca7b2d756260173a040363e8d4f7.ttf",
+      "inter-tight-800": "fonts/a6906a10c53fe29b0d05a73ce2404f3dfdd6b87cda063daf7e628c5ea207a805.ttf",
+      "jetbrains-mono-500": "fonts/3386a05f6ece969e4537de6be894170d20558e82f7d56c8c5d332972ef172160.ttf"
+    },
+    "layers": [
+      {
+        "blend": "normal",
+        "constraints": {},
+        "effects": [],
+        "fill": "#ffffff",
+        "flip_x": false,
+        "flip_y": false,
+        "height": 5,
+        "id": "lyr_66281e4659564199",
+        "mask": null,
+        "name": "logo-1",
+        "opacity": 1.0,
+        "parent": "lyr_4ce93596dd0272f4",
+        "path": "M0.858333 0.375 L5.26667 0.375 L5.26667 4.78333 L0.858333 4.78333 L0.858333 0.375 Z",
+        "path_view": [
+          6,
+          5
+        ],
+        "rotation": 0,
+        "shape": "path",
+        "stroke": "#00000000",
+        "stroke_width": 0.19166666666666668,
+        "type": "shape",
+        "visible": true,
+        "width": 6,
+        "x": 59.0,
+        "y": 0.0
+      },
+      {
+        "blend": "normal",
+        "constraints": {},
+        "effects": [],
+        "fill": "#6a9aff",
+        "flip_x": false,
+        "flip_y": false,
+        "height": 5,
+        "id": "lyr_950edfafe71c0adc",
+        "mask": null,
+        "name": "logo-2",
+        "opacity": 1.0,
+        "parent": "lyr_4ce93596dd0272f4",
+        "path": "M0.658333 0.408333 L5.06667 0.408333 L5.06667 4.81667 L0.658333 4.81667 L0.658333 0.408333 Z",
+        "path_view": [
+          6,
+          5
+        ],
+        "rotation": 0,
+        "shape": "path",
+        "stroke": "#00000000",
+        "stroke_width": 0.19166666666666668,
+        "type": "shape",
+        "visible": true,
+        "width": 6,
+        "x": 4.0,
+        "y": 59.0
+      },
+      {
+        "blend": "normal",
+        "constraints": {},
+        "effects": [],
+        "fill": "#ffffff",
+        "flip_x": false,
+        "flip_y": false,
+        "height": 4,
+        "id": "lyr_c54b23496dd0b824",
+        "mask": null,
+        "name": "logo-3",
+        "opacity": 1.0,
+        "parent": "lyr_4ce93596dd0272f4",
+        "path": "M0.00833333 0.491667 L3.075 0.491667 L3.075 3.55833 L0.00833333 3.55833 L0.00833333 0.491667 Z",
+        "path_view": [
+          4,
+          4
+        ],
+        "rotation": 0,
+        "shape": "path",
+        "stroke": "#00000000",
+        "stroke_width": 0.19166666666666668,
+        "type": "shape",
+        "visible": true,
+        "width": 4,
+        "x": 61.0,
+        "y": 11.0
+      },
+      {
+        "blend": "normal",
+        "constraints": {},
+        "effects": [],
+        "fill": "#6a9aff",
+        "flip_x": false,
+        "flip_y": false,
+        "height": 4,
+        "id": "lyr_b11c425963d918bb",
+        "mask": null,
+        "name": "logo-4",
+        "opacity": 1.0,
+        "parent": "lyr_4ce93596dd0272f4",
+        "path": "M0.0416667 0.633333 L3.10833 0.633333 L3.10833 3.7 L0.0416667 3.7 L0.0416667 0.633333 Z",
+        "path_view": [
+          4,
+          4
+        ],
+        "rotation": 0,
+        "shape": "path",
+        "stroke": "#00000000",
+        "stroke_width": 0.19166666666666668,
+        "type": "shape",
+        "visible": true,
+        "width": 4,
+        "x": 5.0,
+        "y": 49.0
+      },
+      {
+        "blend": "normal",
+        "constraints": {},
+        "effects": [],
+        "fill": "#ffffff",
+        "flip_x": false,
+        "flip_y": false,
+        "height": 4,
+        "id": "lyr_ab578a859c50e45c",
+        "mask": null,
+        "name": "logo-5",
+        "opacity": 1.0,
+        "parent": "lyr_4ce93596dd0272f4",
+        "path": "M0.566667 0.933333 L3.05833 0.933333 L3.05833 3.425 L0.566667 3.425 L0.566667 0.933333 Z",
+        "path_view": [
+          4,
+          4
+        ],
+        "rotation": 0,
+        "shape": "path",
+        "stroke": "#00000000",
+        "stroke_width": 0.19166666666666668,
+        "type": "shape",
+        "visible": true,
+        "width": 4,
+        "x": 66.0,
+        "y": 5.0
+      },
+      {
+        "blend": "normal",
+        "constraints": {},
+        "effects": [],
+        "fill": "#6a9aff",
+        "flip_x": false,
+        "flip_y": false,
+        "height": 4,
+        "id": "lyr_88da252a5141431c",
+        "mask": null,
+        "name": "logo-6",
+        "opacity": 1.0,
+        "parent": "lyr_4ce93596dd0272f4",
+        "path": "M0.25 0.958333 L2.74167 0.958333 L2.74167 3.45 L0.25 3.45 L0.25 0.958333 Z",
+        "path_view": [
+          3,
+          4
+        ],
+        "rotation": 0,
+        "shape": "path",
+        "stroke": "#00000000",
+        "stroke_width": 0.19166666666666668,
+        "type": "shape",
+        "visible": true,
+        "width": 3,
+        "x": 0.0,
+        "y": 55.0
+      },
+      {
+        "blend": "normal",
+        "constraints": {},
+        "effects": [],
+        "fill": "#ffffff",
+        "flip_x": false,
+        "flip_y": false,
+        "height": 35,
+        "id": "lyr_9031dc3ea1bb6ebb",
+        "mask": null,
+        "name": "logo-7",
+        "opacity": 1.0,
+        "parent": "lyr_4ce93596dd0272f4",
+        "path": "M9.51335 0.887044 L16.9479 25.3919 L17.2624 25.3919 L24.7419 0.887044 L33.7712 0.887044 L22.4733 34.3538 L11.737 34.3538 L0.416667 0.887044 L9.51335 0.887044 Z",
+        "path_view": [
+          34,
+          35
+        ],
+        "rotation": 0,
+        "shape": "path",
+        "stroke": "#000000",
+        "stroke_width": 0.0,
+        "type": "shape",
+        "visible": true,
+        "width": 34,
+        "x": 88.0,
+        "y": 17.0
+      },
+      {
+        "blend": "normal",
+        "constraints": {},
+        "effects": [],
+        "fill": "#ffffff",
+        "flip_x": false,
+        "flip_y": false,
+        "height": 37,
+        "id": "lyr_3311d43204eca562",
+        "mask": null,
+        "name": "logo-8",
+        "opacity": 1.0,
+        "parent": "lyr_4ce93596dd0272f4",
+        "path": "M1.08464 36.3538 L1.08464 11.2425 L9.08073 11.2425 L9.08073 36.3538 L1.08464 36.3538 Z M5.06022 8.36751 Q3.37565 8.36751 2.16276 7.24447 Q0.94987 6.12142 0.94987 4.52669 Q0.94987 2.93197 2.16276 1.82015 Q3.37565 0.708333 5.06022 0.708333 Q6.76725 0.708333 7.96891 1.82015 Q9.17057 2.93197 9.17057 4.52669 Q9.17057 6.12142 7.96891 7.24447 Q6.76725 8.36751 5.06022 8.36751 Z",
+        "path_view": [
+          10,
+          37
+        ],
+        "rotation": 0,
+        "shape": "path",
+        "stroke": "#000000",
+        "stroke_width": 0.0,
+        "type": "shape",
+        "visible": true,
+        "width": 10,
+        "x": 123.0,
+        "y": 15.0
+      },
+      {
+        "blend": "normal",
+        "constraints": {},
+        "effects": [],
+        "fill": "#ffffff",
+        "flip_x": false,
+        "flip_y": false,
+        "height": 26,
+        "id": "lyr_0df4a160ed5d9f12",
+        "mask": null,
+        "name": "logo-9",
+        "opacity": 1.0,
+        "parent": "lyr_4ce93596dd0272f4",
+        "path": "M8.65983 0.242513 L12.7702 8.55306 L17.0602 0.242513 L25.1237 0.242513 L18.1159 12.8206 L25.3932 25.3538 L17.3747 25.3538 L12.7702 17.0433 L8.30046 25.3538 L0.192057 25.3538 L7.49186 12.8206 L0.551432 0.242513 L8.65983 0.242513 Z",
+        "path_view": [
+          26,
+          26
+        ],
+        "rotation": 0,
+        "shape": "path",
+        "stroke": "#000000",
+        "stroke_width": 0.0,
+        "type": "shape",
+        "visible": true,
+        "width": 26,
+        "x": 134.0,
+        "y": 26.0
+      },
+      {
+        "blend": "normal",
+        "constraints": {},
+        "effects": [],
+        "fill": "#ffffff",
+        "flip_x": false,
+        "flip_y": false,
+        "height": 35,
+        "id": "lyr_0e979f72c2e0461e",
+        "mask": null,
+        "name": "logo-10",
+        "opacity": 1.0,
+        "parent": "lyr_4ce93596dd0272f4",
+        "path": "M8.47819 0.887044 L8.47819 34.3538 L0.482096 34.3538 L0.482096 0.887044 L8.47819 0.887044 Z",
+        "path_view": [
+          9,
+          35
+        ],
+        "rotation": 0,
+        "shape": "path",
+        "stroke": "#000000",
+        "stroke_width": 0.0,
+        "type": "shape",
+        "visible": true,
+        "width": 9,
+        "x": 161.0,
+        "y": 17.0
+      },
+      {
+        "blend": "normal",
+        "constraints": {},
+        "effects": [],
+        "fill": "#ffffff",
+        "flip_x": false,
+        "flip_y": false,
+        "height": 34,
+        "id": "lyr_228dfa37871e88bf",
+        "mask": null,
+        "name": "logo-11",
+        "opacity": 1.0,
+        "parent": "lyr_4ce93596dd0272f4",
+        "path": "M0.7 0.375 L13.81 0.375 L28.3 20.385 L42.1 0.375 L50.38 0.375 L50.38 5.895 L55.9 5.895 L55.9 11.415 L50.38 11.415 L50.38 16.935 L44.86 16.935 L44.86 22.455 L39.34 22.455 L39.34 27.975 L33.82 27.975 L33.82 33.495 L22.78 33.495 L0.7 0.375 Z",
+        "path_view": [
+          56,
+          34
+        ],
+        "rotation": 0,
+        "shape": "path",
+        "stroke": "#00000000",
+        "stroke_width": 0.19166666666666668,
+        "type": "shape",
+        "visible": true,
+        "width": 56,
+        "x": 3.0,
+        "y": 0.0
+      },
+      {
+        "blend": "normal",
+        "constraints": {},
+        "effects": [],
+        "fill": "#6a9aff",
+        "flip_x": false,
+        "flip_y": false,
+        "height": 34,
+        "id": "lyr_fcd8819cbabcf154",
+        "mask": null,
+        "name": "logo-12",
+        "opacity": 1.0,
+        "parent": "lyr_4ce93596dd0272f4",
+        "path": "M55.4167 33.7783 L42.3067 33.7783 L27.8167 13.7683 L14.0167 33.7783 L5.73667 33.7783 L5.73667 28.2583 L0.216667 28.2583 L0.216667 22.7383 L5.73667 22.7383 L5.73667 17.2183 L11.2567 17.2183 L11.2567 11.6983 L16.7767 11.6983 L16.7767 6.17833 L22.2967 6.17833 L22.2967 0.658333 L33.3367 0.658333 L55.4167 33.7783 Z",
+        "path_view": [
+          56,
+          34
+        ],
+        "rotation": 0,
+        "shape": "path",
+        "stroke": "#00000000",
+        "stroke_width": 0.19166666666666668,
+        "type": "shape",
+        "visible": true,
+        "width": 56,
+        "x": 10.0,
+        "y": 30.0
+      },
+      {
+        "blend": "normal",
+        "constraints": {},
+        "content_height": 64,
+        "content_width": 170,
+        "effects": [],
+        "flip_x": false,
+        "flip_y": false,
+        "height": 64,
+        "id": "lyr_4ce93596dd0272f4",
+        "mask": null,
+        "name": "logo",
+        "opacity": 1.0,
+        "parent": null,
+        "rotation": 0,
+        "type": "group",
+        "visible": true,
+        "width": 170,
+        "x": 97,
+        "y": 59
+      },
+      {
+        "align": "left",
+        "auto_size": true,
+        "blend": "normal",
+        "color": "#6A9AFF",
+        "constraints": {},
+        "effects": [],
+        "flip_x": false,
+        "flip_y": false,
+        "font": "fonts/3386a05f6ece969e4537de6be894170d20558e82f7d56c8c5d332972ef172160.ttf",
+        "height": 21,
+        "id": "lyr_3765be18d9be8ee9",
+        "line_height": 1.45,
+        "mask": null,
+        "name": "kicker",
+        "opacity": 1.0,
+        "rotation": 0,
+        "size": 27,
+        "spacing": 4,
+        "text": "A DESIGN STUDIO FOR AI AGENTS",
+        "type": "text",
+        "visible": true,
+        "width": 470,
+        "x": 80,
+        "y": 210
+      },
+      {
+        "align": "left",
+        "auto_size": true,
+        "blend": "normal",
+        "color": "#FFFFFF",
+        "constraints": {},
+        "effects": [],
+        "flip_x": false,
+        "flip_y": false,
+        "font": "fonts/a6906a10c53fe29b0d05a73ce2404f3dfdd6b87cda063daf7e628c5ea207a805.ttf",
+        "height": 99,
+        "id": "lyr_239498f2f7f69adf",
+        "line_height": 1.0,
+        "mask": null,
+        "name": "title",
+        "opacity": 1.0,
+        "rotation": 0,
+        "size": 106,
+        "spacing": -22,
+        "text": "${title}",
+        "type": "text",
+        "visible": true,
+        "width": 797,
+        "x": 80,
+        "y": 340
+      },
+      {
+        "align": "left",
+        "auto_size": false,
+        "blend": "normal",
+        "color": "#AEB7CA",
+        "constraints": {},
+        "effects": [],
+        "flip_x": false,
+        "flip_y": false,
+        "font": "fonts/1b08e7fc267a5c7e1d614100f604b83e7e8a0be241f0f288faa2b3ac93a683ba.ttf",
+        "height": 140,
+        "id": "lyr_01bf011367e8db2e",
+        "line_height": 1.35,
+        "mask": null,
+        "name": "body",
+        "opacity": 1.0,
+        "rotation": 0,
+        "size": 40,
+        "spacing": 6,
+        "text": "${body}",
+        "text_layout": {
+          "height": 140,
+          "width": 875
+        },
+        "type": "text",
+        "visible": true,
+        "width": 875,
+        "x": 80,
+        "y": 670
+      },
+      {
+        "blend": "normal",
+        "constraints": {},
+        "effects": [],
+        "fill": "${accent}",
+        "flip_x": false,
+        "flip_y": false,
+        "height": 8,
+        "id": "lyr_3a85860aa42b8171",
+        "mask": null,
+        "name": "accent",
+        "opacity": 1.0,
+        "radius": 0,
+        "rotation": 0,
+        "shape": "rounded-rectangle",
+        "type": "shape",
+        "visible": true,
+        "width": 920,
+        "x": 80,
+        "y": 860
+      },
+      {
+        "align": "left",
+        "auto_size": true,
+        "blend": "normal",
+        "color": "#AEB7CA",
+        "constraints": {},
+        "effects": [],
+        "flip_x": false,
+        "flip_y": false,
+        "font": "fonts/3386a05f6ece969e4537de6be894170d20558e82f7d56c8c5d332972ef172160.ttf",
+        "height": 28,
+        "id": "lyr_c6bebd8cd5e4a86f",
+        "line_height": 1.45,
+        "mask": null,
+        "name": "footer",
+        "opacity": 1.0,
+        "rotation": 0,
+        "size": 27,
+        "spacing": 4,
+        "text": "github.com/jxburros/Vixl",
+        "type": "text",
+        "visible": true,
+        "width": 389,
+        "x": 80,
+        "y": 960
+      }
+    ],
+    "presets": {},
+    "recipe": {
+      "actions": [
+        "fit-title"
+      ],
+      "examples": [
+        {
+          "accent": "#6A9AFF",
+          "body": "Create, inspect and revise layered designs.",
+          "title": "Keep the layers."
+        },
+        {
+          "accent": "#9FE3B4",
+          "body": "Editable charts, diagrams and documents.",
+          "title": "Make the data a story."
+        },
+        {
+          "accent": "#FFC37A",
+          "body": "Keyframes, app states and reusable animation.",
+          "title": "Put ideas in motion."
+        }
+      ],
+      "inputs": {
+        "accent": {
+          "default": "#6A9AFF",
+          "type": "color"
+        },
+        "body": {
+          "default": "Create, inspect and revise layered designs.",
+          "maxLength": 100,
+          "type": "string"
+        },
+        "title": {
+          "default": "Keep the layers.",
+          "maxLength": 60,
+          "type": "string"
+        }
+      },
+      "version": 1
+    },
+    "selection": null,
+    "suites": {
+      "canvas": {
+        "rules": [
+          {
+            "expected": 1080,
+            "field": "width",
+            "id": "width",
+            "kind": "property",
+            "target": "canvas"
+          },
+          {
+            "expected": 1080,
+            "field": "height",
+            "id": "height",
+            "kind": "property",
+            "target": "canvas"
+          }
+        ]
+      },
+      "delivery": {
+        "rules": [
+          {
+            "id": "headline-fits",
+            "kind": "text-fit",
+            "minimum": 68,
+            "target": "title"
+          },
+          {
+            "id": "headline-margin",
+            "kind": "relation",
+            "minimum": 70,
+            "position": "inside",
+            "target": "title",
+            "to": "canvas"
+          },
+          {
+            "id": "readable",
+            "kind": "contrast",
+            "minimum": 4.5,
+            "target": "title"
+          },
+          {
+            "id": "layout",
+            "kind": "design",
+            "options": {
+              "checks": [
+                "bounds",
+                "flow",
+                "overlap",
+                "contrast",
+                "fonts"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "swatches": {
+      "brand": "#3575EE",
+      "charcoal": "#252B39",
+      "sky": "#6A9AFF"
+    },
+    "typography": {
+      "body": "inter-400",
+      "heading": "inter-tight-800"
+    },
+    "variables": {
+      "accent": "#6A9AFF",
+      "body": "Create, inspect and revise layered designs.",
+      "title": "Keep the layers."
+    }
+  },
+  "version": 1
+}

@@ -1,0 +1,49 @@
+{
+  "headline": "Ideas become editable.",
+  "one_sentence": "Vixl is a programmable design studio for AI agents that creates, checks and delivers layered graphics, documents and motion.",
+  "short_description": "Give your agent a design studio. Vixl turns creative work into editable documents and atomic operations through MCP, CLI, Python or REST. Build graphics, charts, diagrams, decks, fillable PDFs and animation; run checks, review the render and deliver the files with their editable masters.",
+  "product_description": "Vixl brings design into an agent's workflow. Text, shapes, images, masks, effects, variables and pages live in a layered .vixl document with branching history. The same canonical operations work across MCP, a command-line interface, Python and REST. Create original artwork or start with layouts, templates and reusable containers. Turn data into editable charts and routed diagrams, build presentations with speaker notes, or make fillable PDF forms. Use typed recipes and CSV-driven production for checked variations. Animate with keyframes, character pose keys, cameras and audio; package app states with themes, transitions and reduced-motion stills. Save design requirements as suites, inspect the findings and visually review the result before exporting. Unpack documents into readable JSON and assets for Git review. Core authoring runs locally; AI generation and vision use explicitly configured external providers.",
+  "licensing": "Vixl is source-available under the PolyForm Small Business License 1.0.0. It is free for individuals and qualifying small businesses; larger companies need a commercial licence from the licensor. Read LICENSE for the eligibility terms and required notices. Bundled assets have their own licences. Please credit work made with Vixl: Made with Vixl.",
+  "get_started": "Repository: https://github.com/jxburros/Vixl\nWindows installer: https://github.com/jxburros/Vixl/releases/latest\nDocumentation: https://github.com/jxburros/Vixl/tree/main/docs\nDevelopers: Python 3.11+, clone the repository, then python -m pip install -e '.[server,pdf]'.\nIn an existing workspace: vixl mcp --workspace . --tools core --schema slim",
+  "posts": [
+    {
+      "label": "Product introduction / carousel",
+      "asset": "carousel/carousel-1080x1350.pdf",
+      "caption": "Ideas become editable. Meet Vixl: a programmable design studio for AI agents. Create graphics, documents and motion through MCP, CLI, Python or REST. Keep the layers, check the work and deliver the files. This carousel was made with Vixl. Explore: https://github.com/jxburros/Vixl",
+      "alt": "Six-slide Vixl introduction: Ideas become editable; editable documents; the inspect, apply, check, preview and export loop; artwork examples; campaign, document and motion delivery; getting started. Blue and white type on charcoal backgrounds."
+    },
+    {
+      "label": "Editable graphics / social post 1",
+      "asset": "campaign/post-1-1080x1080.png",
+      "caption": "Keep the layers. Vixl gives agents editable text, vector paths, images, masks and effects in a .vixl master. Inspect and revise the document, then export the formats you need. Made with Vixl. https://github.com/jxburros/Vixl",
+      "alt": "Vixl social graphic on charcoal: Keep the layers. Create, inspect and revise layered designs. A blue accent line and repository address finish the composition."
+    },
+    {
+      "label": "Data storytelling / social post 2",
+      "asset": "campaign/post-2-1080x1080.png",
+      "caption": "Make the data a story. Vixl builds data-bound charts and routed diagrams as editable layers. Charts export to PowerPoint with a native data table. The pack includes a working example you can edit. Made with Vixl. https://github.com/jxburros/Vixl",
+      "alt": "Vixl social graphic: Make the data a story. Editable charts, diagrams and documents. White headline, charcoal background and mint accent line."
+    },
+    {
+      "label": "Motion / social post 3",
+      "asset": "campaign/post-3-1080x1080.png",
+      "caption": "Put ideas in motion. Author keyframes, character poses, cameras and audio in Vixl. Package app animation states with light and dark themes, transitions, editable masters and reduced-motion stills. Try the included status animation family. Made with Vixl. https://github.com/jxburros/Vixl",
+      "alt": "Vixl social graphic: Put ideas in motion. Keyframes, app states and reusable animation. White headline, charcoal background and amber accent line."
+    },
+    {
+      "label": "Teaser / video",
+      "asset": "motion/teaser.mp4",
+      "caption": "Ideas become editable. Inspect. Apply. Check. Preview. Export. Vixl gives AI agents a programmable design studio for graphics, documents and motion. This short video was built as an editable Vixl timeline. https://github.com/jxburros/Vixl",
+      "alt": "Silent square Vixl teaser. The paired-V mark appears above Ideas become editable. A blue progress line moves beneath Inspect, Apply, Check, Preview and Export. The repository address stays visible. Use teaser-frame.png as a still alternative."
+    }
+  ],
+  "demo_script": [
+    "0:00–0:20 — Open the pack's overview. Say: Vixl is a programmable design studio for AI agents. These marketing materials are actual Vixl outputs, and the masters are included.",
+    "0:20–0:50 — Open the pitch deck's data slide in PowerPoint. Use Edit Data to show the embedded workbook. Say: The chart is native and editable. These numbers are illustrative workflow data, not customer results.",
+    "0:50–1:20 — Inspect campaign/campaign-recipe.vixl and campaign/posts.csv. Show campaign/source/project.json. Say: The source is reviewable in Git, and typed inputs plus text fitting and saved checks produce the three campaign posts.",
+    "1:20–1:45 — Open print/creative-brief-letter.pdf in a PDF viewer. Tab through the named fields and enter a project brief. Say: This is a useful intake worksheet and a working fillable PDF made from Vixl field layers.",
+    "1:45–2:15 — Open app/package/index.html. Switch between themes, then use create, deliver and reset. Enable your OS reduced-motion preference to show the PNG alternative. Say: States, transitions, theme variables and reduced-motion assets ship with editable masters.",
+    "2:15–2:40 — Play motion/teaser.mp4, then open proof.html. Say: Checks and visual review belong in the delivery loop. A passing suite proves its requirements; the preview lets us judge the actual design.",
+    "2:40–3:00 — Show the repository and getting-started documentation. Say: Use the Windows installer or Python 3.11+ source install, then connect through MCP, CLI, Python or REST. Vixl is source-available under PolyForm Small Business 1.0.0."
+  ]
+}

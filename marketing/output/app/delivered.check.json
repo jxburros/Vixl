@@ -1,0 +1,438 @@
+{
+  "passed": true,
+  "errors": 0,
+  "warnings": 0,
+  "info": 0,
+  "by_action": {
+    "fix": [],
+    "review": [],
+    "informational": []
+  },
+  "issues": [],
+  "checked": {
+    "checks": [
+      "bounds",
+      "flow",
+      "contrast",
+      "fonts"
+    ],
+    "layers_checked": 6,
+    "layers_total": 7,
+    "text_layers": 3
+  },
+  "suites": {
+    "canvas": {
+      "version": 1,
+      "suite_hash": "2434e729d213afe0988178bfe47c513765f4da03ebfcf1a3a691724e77a3da8b",
+      "passed": true,
+      "status": "passed",
+      "errors": 0,
+      "needs_review": 0,
+      "coverage": {
+        "mode": "still",
+        "times": [
+          null
+        ]
+      },
+      "results": [
+        {
+          "id": "width",
+          "status": "passed",
+          "severity": "error",
+          "time": null,
+          "expected": 640,
+          "actual": 640
+        },
+        {
+          "id": "height",
+          "status": "passed",
+          "severity": "error",
+          "time": null,
+          "expected": 320,
+          "actual": 320
+        }
+      ]
+    },
+    "motion": {
+      "version": 1,
+      "suite_hash": "4ac53b051feb71e18a8a9443a7dd2e447ce2e557b004bed5a8161933ffef6fa5",
+      "passed": true,
+      "status": "passed",
+      "errors": 0,
+      "needs_review": 0,
+      "coverage": {
+        "mode": "sampled",
+        "times": [
+          0.0,
+          240.0,
+          480.0,
+          720.0,
+          960.0,
+          1200.0
+        ]
+      },
+      "results": [
+        {
+          "id": "pixel-0-inside",
+          "status": "passed",
+          "severity": "error",
+          "time": 0.0,
+          "positions": [
+            "overlapping",
+            "inside"
+          ],
+          "alignments": [
+            "center-y"
+          ],
+          "margins": {
+            "left": 490.0,
+            "top": 150.0,
+            "right": 130.0,
+            "bottom": 150.0
+          },
+          "distance": 130.0
+        },
+        {
+          "id": "pixel-1-inside",
+          "status": "passed",
+          "severity": "error",
+          "time": 0.0,
+          "positions": [
+            "overlapping",
+            "inside"
+          ],
+          "alignments": [
+            "center-y"
+          ],
+          "margins": {
+            "left": 528.0,
+            "top": 150.0,
+            "right": 92.0,
+            "bottom": 150.0
+          },
+          "distance": 92.0
+        },
+        {
+          "id": "pixel-2-inside",
+          "status": "passed",
+          "severity": "error",
+          "time": 0.0,
+          "positions": [
+            "overlapping",
+            "inside"
+          ],
+          "alignments": [
+            "center-y"
+          ],
+          "margins": {
+            "left": 566.0,
+            "top": 150.0,
+            "right": 54.0,
+            "bottom": 150.0
+          },
+          "distance": 54.0
+        },
+        {
+          "id": "pixel-0-inside",
+          "status": "passed",
+          "severity": "error",
+          "time": 240.0,
+          "positions": [
+            "overlapping",
+            "inside"
+          ],
+          "alignments": [
+            "center-y"
+          ],
+          "margins": {
+            "left": 490.0,
+            "top": 150.0,
+            "right": 130.0,
+            "bottom": 150.0
+          },
+          "distance": 130.0
+        },
+        {
+          "id": "pixel-1-inside",
+          "status": "passed",
+          "severity": "error",
+          "time": 240.0,
+          "positions": [
+            "overlapping",
+            "inside"
+          ],
+          "alignments": [
+            "center-y"
+          ],
+          "margins": {
+            "left": 528.0,
+            "top": 150.0,
+            "right": 92.0,
+            "bottom": 150.0
+          },
+          "distance": 92.0
+        },
+        {
+          "id": "pixel-2-inside",
+          "status": "passed",
+          "severity": "error",
+          "time": 240.0,
+          "positions": [
+            "overlapping",
+            "inside"
+          ],
+          "alignments": [
+            "center-y"
+          ],
+          "margins": {
+            "left": 566.0,
+            "top": 150.0,
+            "right": 54.0,
+            "bottom": 150.0
+          },
+          "distance": 54.0
+        },
+        {
+          "id": "pixel-0-inside",
+          "status": "passed",
+          "severity": "error",
+          "time": 480.0,
+          "positions": [
+            "overlapping",
+            "inside"
+          ],
+          "alignments": [
+            "center-y"
+          ],
+          "margins": {
+            "left": 490.0,
+            "top": 150.0,
+            "right": 130.0,
+            "bottom": 150.0
+          },
+          "distance": 130.0
+        },
+        {
+          "id": "pixel-1-inside",
+          "status": "passed",
+          "severity": "error",
+          "time": 480.0,
+          "positions": [
+            "overlapping",
+            "inside"
+          ],
+          "alignments": [
+            "center-y"
+          ],
+          "margins": {
+            "left": 528.0,
+            "top": 150.0,
+            "right": 92.0,
+            "bottom": 150.0
+          },
+          "distance": 92.0
+        },
+        {
+          "id": "pixel-2-inside",
+          "status": "passed",
+          "severity": "error",
+          "time": 480.0,
+          "positions": [
+            "overlapping",
+            "inside"
+          ],
+          "alignments": [
+            "center-y"
+          ],
+          "margins": {
+            "left": 566.0,
+            "top": 150.0,
+            "right": 54.0,
+            "bottom": 150.0
+          },
+          "distance": 54.0
+        },
+        {
+          "id": "pixel-0-inside",
+          "status": "passed",
+          "severity": "error",
+          "time": 720.0,
+          "positions": [
+            "overlapping",
+            "inside"
+          ],
+          "alignments": [
+            "center-y"
+          ],
+          "margins": {
+            "left": 490.0,
+            "top": 150.0,
+            "right": 130.0,
+            "bottom": 150.0
+          },
+          "distance": 130.0
+        },
+        {
+          "id": "pixel-1-inside",
+          "status": "passed",
+          "severity": "error",
+          "time": 720.0,
+          "positions": [
+            "overlapping",
+            "inside"
+          ],
+          "alignments": [
+            "center-y"
+          ],
+          "margins": {
+            "left": 528.0,
+            "top": 150.0,
+            "right": 92.0,
+            "bottom": 150.0
+          },
+          "distance": 92.0
+        },
+        {
+          "id": "pixel-2-inside",
+          "status": "passed",
+          "severity": "error",
+          "time": 720.0,
+          "positions": [
+            "overlapping",
+            "inside"
+          ],
+          "alignments": [
+            "center-y"
+          ],
+          "margins": {
+            "left": 566.0,
+            "top": 150.0,
+            "right": 54.0,
+            "bottom": 150.0
+          },
+          "distance": 54.0
+        },
+        {
+          "id": "pixel-0-inside",
+          "status": "passed",
+          "severity": "error",
+          "time": 960.0,
+          "positions": [
+            "overlapping",
+            "inside"
+          ],
+          "alignments": [
+            "center-y"
+          ],
+          "margins": {
+            "left": 490.0,
+            "top": 150.0,
+            "right": 130.0,
+            "bottom": 150.0
+          },
+          "distance": 130.0
+        },
+        {
+          "id": "pixel-1-inside",
+          "status": "passed",
+          "severity": "error",
+          "time": 960.0,
+          "positions": [
+            "overlapping",
+            "inside"
+          ],
+          "alignments": [
+            "center-y"
+          ],
+          "margins": {
+            "left": 528.0,
+            "top": 150.0,
+            "right": 92.0,
+            "bottom": 150.0
+          },
+          "distance": 92.0
+        },
+        {
+          "id": "pixel-2-inside",
+          "status": "passed",
+          "severity": "error",
+          "time": 960.0,
+          "positions": [
+            "overlapping",
+            "inside"
+          ],
+          "alignments": [
+            "center-y"
+          ],
+          "margins": {
+            "left": 566.0,
+            "top": 150.0,
+            "right": 54.0,
+            "bottom": 150.0
+          },
+          "distance": 54.0
+        },
+        {
+          "id": "pixel-0-inside",
+          "status": "passed",
+          "severity": "error",
+          "time": 1200.0,
+          "positions": [
+            "overlapping",
+            "inside"
+          ],
+          "alignments": [
+            "center-y"
+          ],
+          "margins": {
+            "left": 490.0,
+            "top": 150.0,
+            "right": 130.0,
+            "bottom": 150.0
+          },
+          "distance": 130.0
+        },
+        {
+          "id": "pixel-1-inside",
+          "status": "passed",
+          "severity": "error",
+          "time": 1200.0,
+          "positions": [
+            "overlapping",
+            "inside"
+          ],
+          "alignments": [
+            "center-y"
+          ],
+          "margins": {
+            "left": 528.0,
+            "top": 150.0,
+            "right": 92.0,
+            "bottom": 150.0
+          },
+          "distance": 92.0
+        },
+        {
+          "id": "pixel-2-inside",
+          "status": "passed",
+          "severity": "error",
+          "time": 1200.0,
+          "positions": [
+            "overlapping",
+            "inside"
+          ],
+          "alignments": [
+            "center-y"
+          ],
+          "margins": {
+            "left": 566.0,
+            "top": 150.0,
+            "right": 54.0,
+            "bottom": 150.0
+          },
+          "distance": 54.0
+        }
+      ]
+    }
+  }
+}

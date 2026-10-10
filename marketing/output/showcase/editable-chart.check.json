@@ -1,0 +1,57 @@
+{
+  "passed": true,
+  "errors": 0,
+  "warnings": 0,
+  "info": 0,
+  "by_action": {
+    "fix": [],
+    "review": [],
+    "informational": []
+  },
+  "issues": [],
+  "checked": {
+    "checks": [
+      "bounds",
+      "flow",
+      "contrast",
+      "fonts"
+    ],
+    "layers_checked": 43,
+    "layers_total": 43,
+    "text_layers": 16
+  },
+  "suites": {
+    "canvas": {
+      "version": 1,
+      "suite_hash": "a984de43120814ba98a82f862787436ba369a76abf1850ab9c2b17e8d0ee8388",
+      "passed": true,
+      "status": "passed",
+      "errors": 0,
+      "needs_review": 0,
+      "coverage": {
+        "mode": "still",
+        "times": [
+          null
+        ]
+      },
+      "results": [
+        {
+          "id": "width",
+          "status": "passed",
+          "severity": "error",
+          "time": null,
+          "expected": 1200,
+          "actual": 1200
+        },
+        {
+          "id": "height",
+          "status": "passed",
+          "severity": "error",
+          "time": null,
+          "expected": 900,
+          "actual": 900
+        }
+      ]
+    }
+  }
+}

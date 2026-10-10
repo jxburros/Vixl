@@ -6,13 +6,14 @@ Run from the repo root:
     python marketing/build.py og deck    # build only some pieces
 
 Every piece is written to marketing/output/<piece>/ as an editable .vixl master plus its exports.
-The Digital Shift logo is placed as a live link to the masters in assets/brand/digital-shift/Editable-Vixl,
-so a logo update flows into every piece on the next build.
+The Digital Shift logo is imported from the identity's Vixl-generated SVGs as editable vector shapes.
 """
 
+import csv
+import hashlib
 import json
 import os
-import random
+import shutil
 import sys
 from pathlib import Path
 
@@ -44,21 +45,33 @@ CODE_NUM = "#FFC37A"
 LOGOS = "assets/brand/digital-shift/Editable-Vixl"
 HEAD, BODY, SEMI, MONO = "inter-tight-800", "inter-400", "inter-600", "jetbrains-mono-500"
 
-# Facts used in the copy (counted from the 0.21.0 source; see README.md in this folder).
-VERSION = "0.21.0"
-FACTS = {"operations": 180, "sizes": 150, "layouts": 47, "styles": 28, "looks": 17, "brushes": 17,
-         "templates": 40, "containers": 19, "batch": "10,000"}
+
+def registry_facts():
+    """Count the installed engine, so rebuilding cannot silently retain old numbers."""
+    from vixl.operations import OPERATION_TYPES
+    from vixl.sizes import SIZES
+    from vixl.layouts import LAYOUTS
+    from vixl.resources import TEMPLATES, CONTAINERS
+    from vixl.style_catalog import STYLES
+    from vixl.looks import LOOKS
+    from vixl.brushes import BRUSHES
+    from vixl.model import Limits
+
+    return dict(zip(("operations", "sizes", "layouts", "templates", "containers", "styles", "looks", "brushes"),
+                    map(len, (OPERATION_TYPES, SIZES, LAYOUTS, TEMPLATES, CONTAINERS, STYLES, LOOKS, BRUSHES))),
+                batch=f"{Limits().max_operations:,}")
+
+
+FACTS = registry_facts()
 INTERFACES = ["MCP", "CLI", "Python", "REST"]
-FORMATS = ["PNG", "JPEG", "WEBP", "TIFF", "AVIF", "SVG", "PDF", "PPTX", "HTML", "ICO", "GIF", "MP4"]
-TAGLINE = "The image editor your AI agent can actually use."
-SUB = "Create, inspect, edit, measure and export layered designs through MCP, CLI, Python or REST."
+SUB = "A programmable design studio for AI agents. Create, check and deliver layered designs through MCP, CLI, Python or REST."
 REPO = "github.com/jxburros/Vixl"
 
 
 # Helpers ---------------------------------------------------------------------------------------
 def new(width, height, background=CHARCOAL, **kw):
     p = Project(width, height, background, **kw)
-    p._workspace = str(ROOT)  # logo links resolve against the repo root
+    p._workspace = str(ROOT)  # image and brand sources resolve against the repo root
     install_font(p, "Inter Tight", 800, role="heading")
     install_font(p, "Inter", 400, role="body")
     install_font(p, "Inter", 600)
@@ -67,6 +80,10 @@ def new(width, height, background=CHARCOAL, **kw):
         {"type": "swatch", "name": "brand", "color": BLUE},
         {"type": "swatch", "name": "sky", "color": SKY},
         {"type": "swatch", "name": "charcoal", "color": CHARCOAL},
+        {"type": "suite-set", "name": "canvas", "suite": {"rules": [
+            {"id": "width", "kind": "property", "target": "canvas", "field": "width", "expected": width},
+            {"id": "height", "kind": "property", "target": "canvas", "field": "height", "expected": height},
+        ]}},
     ], detail="brief")
     return p
 
@@ -77,26 +94,48 @@ def bounds(p, name):
 
 
 def logo(name, variant, x, y, width=None, height=None):
-    op = {"type": "link", "name": name, "source": f"{LOGOS}/{variant}.vixl", "x": x, "y": y, "fit": "fit"}
-    if width:
-        op["width"] = width
-    if height:
-        op["height"] = height
-    return op
+    """Import the Vixl identity's outlined SVG as portable editable vector geometry."""
+    import xml.etree.ElementTree as ET
+    from vixl.imports import svg_operations
+
+    # Symbol/stacked masters contain a path extending 0.4 px beyond its local viewport.
+    # Use the native geometry for these lockups, keeping Vixl's own clipping and path view.
+    if variant.startswith(("mark-", "stacked-")):
+        source = Project.load(ROOT / LOGOS / f"{variant}.vixl")
+        c = source.state["canvas"]
+        scale = min(width / c["width"] if width else float("inf"),
+                    height / c["height"] if height else float("inf"))
+        operations = []
+        for i, layer in enumerate(source.state["layers"]):
+            keys = ("shape", "path", "fill", "stroke", "stroke_width", "x", "y", "width", "height")
+            if layer["type"] == "text":
+                keys = ("text", "x", "y", "size", "color", "spacing", "align")
+            operation = {"type": layer["type"], "name": f"{name}-part-{i}",
+                         **{key: layer[key] for key in keys if key in layer}}
+            if layer["type"] == "text":
+                operation["font"] = HEAD
+            operations.append(operation)
+        left = min(layer["x"] for layer in source.state["layers"])
+        top = min(layer["y"] for layer in source.state["layers"])
+        operations.extend([
+            {"type": "group", "name": name, "targets": [op["name"] for op in operations]},
+            {"type": "scale", "target": name, "value": scale, "anchor": [0, 0]},
+            {"type": "move", "target": name, "x": x + left * scale, "y": y + top * scale},
+        ])
+        return operations
+    root = ET.fromstring((ROOT / "assets/brand/digital-shift/SVG" / f"{variant}.svg").read_bytes())
+    sw, sh = float(root.get("width")), float(root.get("height"))
+    scale = min(width / sw if width else float("inf"), height / sh if height else float("inf"))
+    root.set("width", str(sw * scale))
+    root.set("height", str(sh * scale))
+    operations = svg_operations(ET.tostring(root), Project(100, 100), name)
+    for operation in operations:
+        operation["x"] += x
+        operation["y"] += y
+    operations.append({"type": "group", "name": name, "targets": [op["name"] for op in operations]})
+    return operations
 
 
-def pixels(prefix, seed, area, count, size_range, colors, opacity=(0.25, 1.0)):
-    """Scattered square 'pixels', the motif taken from the logo's detached pixels."""
-    rng = random.Random(seed)
-    x0, y0, w, h = area
-    ops = []
-    for i in range(count):
-        s = rng.choice(range(size_range[0], size_range[1] + 1, 2))
-        alpha = round(rng.uniform(*opacity) * 255)
-        ops.append({"type": "shape", "shape": "rectangle", "name": f"{prefix}-{i}",
-                    "x": x0 + rng.randrange(max(1, w - s)), "y": y0 + rng.randrange(max(1, h - s)),
-                    "width": s, "height": s, "fill": f"{rng.choice(colors)}{alpha:02X}"})
-    return ops
 
 
 def pixel_stair(prefix, x, y, cell, gap, steps, color=BLUE, fade=True):
@@ -110,15 +149,6 @@ def pixel_stair(prefix, x, y, cell, gap, steps, color=BLUE, fade=True):
     return ops
 
 
-def dot_grid(name, x, y, width, height, step, color="#FFFFFF14", dot=3):
-    return [
-        {"type": "shape", "shape": "ellipse", "name": name, "x": x, "y": y, "width": dot, "height": dot,
-         "fill": color},
-        {"type": "repeat", "target": name, "count": max(1, width // step), "dx": step, "dy": 0},
-        {"type": "group", "name": f"{name}-row", "targets": [name]},
-        {"type": "repeat", "target": f"{name}-row", "count": max(1, height // step), "dx": 0, "dy": step},
-        {"type": "layer-intent", "target": f"{name}-row", "role": "decoration"},
-    ]
 
 
 def chip(p, name, text, x, y, size=22, fg=WHITE, bg=PANEL, stroke=None, pad=(18, 10), font=SEMI,
@@ -200,17 +230,22 @@ SNIPPET = [
 def save_and_export(p, folder, stem, exports, check=True, **check_options):
     folder = OUT / folder
     folder.mkdir(parents=True, exist_ok=True)
-    p.save(str(folder / f"{stem}.vixl"))
     report = {}
     if check:
         result = p.check(**check_options)
-        report = {"issues": [{k: i.get(k) for k in ("check", "severity", "action", "layer", "message")}
-                             for i in result.get("issues", [])]}
+        report = result
         fixes = [i for i in report["issues"] if i["action"] == "fix"]
         print(f"  check {stem}: {len(report['issues'])} issues, {len(fixes)} to fix")
         for issue in report["issues"]:
             print("   ", issue["action"].upper(), issue["check"], (issue["message"] or "")[:150])
+        report["suites"] = {name: p.check_suite(name) for name in p.state.get("suites", {})}
+        if not all(suite["passed"] for suite in report["suites"].values()):
+            raise RuntimeError(f"Saved suite failed: {stem}")
         (folder / f"{stem}.check.json").write_text(json.dumps(report, indent=2) + "\n")
+        if fixes:
+            raise RuntimeError(f"Fix design findings before exporting {stem}")
+    p.compact()
+    p.save(str(folder / f"{stem}.vixl"), overwrite=True)
     for ext, options in exports:
         path = folder / f"{stem}.{ext}"
         p.export(str(path), overwrite=True, **options)
@@ -240,9 +275,6 @@ def headline(name, text, x, y, size, accent=None, color=WHITE, width=None, align
     return op
 
 
-def bottom(p, name):
-    x, y, w, h = bounds(p, name)
-    return y + h
 
 
 # Showcase: real outputs from the repo's explorations and docs, every one of them made with Vixl.
@@ -266,7 +298,7 @@ def photo(name, key, x, y, w, h, radius=18, base=PANEL):
         {"type": "shape", "shape": "rounded-rectangle", "name": f"{name}-base", "x": x, "y": y,
          "width": w, "height": h, "radius": radius, "fill": base},
         {"type": "frame", "name": name, "path": SHOW[key][1], "x": x, "y": y, "width": w, "height": h,
-         "fit": "fill"},
+         "fit": "fill", "downsample": "placed@2x"},
         {"type": "clip", "target": name, "base": f"{name}-base"},
     ]
 
@@ -294,8 +326,8 @@ def glow(name, x, y, size, color=BLUE, strength="55"):
                       {"offset": 1, "color": f"{color}00"}]}
 
 
-LOOP = [("Inspect", "Read layers, bounds and fonts"), ("Apply", "Atomic batches, up to 10,000 ops"),
-        ("Check", "Contrast, overlap, bounds, print"), ("Preview", "Render and look"),
+LOOP = [("Inspect", "Read layers, bounds and fonts"), ("Apply", "Editable, atomic operations"),
+        ("Check", "Design checks and saved suites"), ("Preview", "Render and review the work"),
         ("Export", "PNG, SVG, PDF, PPTX, MP4 ...")]
 
 MAKES = ["Posters & social", "Charts & diagrams", "Slides & decks", "Fillable forms", "Motion & GIFs",
@@ -342,605 +374,685 @@ def loop_steps(p, prefix, x, y, width, size=30, vertical=False, dark=True, step_
 
 
 # Pieces ---------------------------------------------------------------------------------------
-def build_github():
-    """GitHub social preview, 1280 x 640, light treatment."""
-    W, H = 1280, 640
-    p = new(W, H, PAPER)
-    p.apply([
-        *dot_grid("grid", 20, 20, 660, H - 20, 30, "#252B3912"),
-        logo("logo", "horizontal-color", 64, 60, width=230),
-        headline("headline", "Editable image\ndocuments for\nAI agents.", 64, 190, 66, "AI agents.", INK,
-                 accent_color=BLUE),
-        *photo("show-poster", "poster", 712, 48, 252, 352),
-        *photo("show-pixel", "pixel", 712, 416, 252, 176),
-        *photo("show-painting", "painting", 980, 48, 252, 236),
-        *photo("show-film", "photo", 980, 300, 252, 292),
-    ], detail="brief")
-    p.apply([
-        {"type": "look", "targets": ["show-poster-base", "show-pixel-base", "show-painting-base", "show-film-base"],
-         "look": "soft-shadow", "color": "#252B39", "amount": 0.4},
-        para("sub", "Create, inspect, edit, check and export layered designs. No GUI required.", 64,
-             bottom(p, "headline") + 28, 25, 560, SUBTLE),
-    ], detail="brief")
-    chips_row(p, "iface", INTERFACES, 64, bottom(p, "sub") + 30, size=20, fg=INK, bg=WHITE, stroke="#D5DBE7")
-    save_and_export(p, "social", "github-preview-1280x640", [("png", {})], thumbnail_width=640)
+def rect(name, x, y, width, height, fill=PANEL, radius=16):
+    return {"type": "shape", "shape": "rounded-rectangle", "name": name,
+            "x": x, "y": y, "width": width, "height": height, "radius": radius, "fill": fill}
+
+
+def print_document(size, bleed=False, background=WHITE):
+    p = new(100, 100, background)
+    p.apply({"type": "canvas", "size": size, "dpi": 150, "bleed": bleed, "background": background})
+    p.apply({"type": "suite-set", "name": "canvas", "suite": {"rules": [
+        {"id": "width", "kind": "property", "target": "canvas", "field": "width", "expected": p.state["canvas"]["width"]},
+        {"id": "height", "kind": "property", "target": "canvas", "field": "height", "expected": p.state["canvas"]["height"]},
+    ]}})
+    return p
+
+
+def footer(p, y, margin, dark=True, size=24):
+    w = p.state["canvas"]["width"]
+    p.apply([*logo("footer-logo", "horizontal-reverse" if dark else "horizontal-color", margin, y - 10, width=170),
+             text("footer-url", REPO, w - margin, y, size, MUTED if dark else SUBTLE, MONO)])
+    _, _, tw, _ = bounds(p, "footer-url")
+    p.apply({"type": "move", "target": "footer-url", "x": w - margin - tw, "y": y})
+
+
+def chart_op(name, x, y, w, h, size=28):
+    return {"type": "chart", "name": name, "kind": "stacked-bar", "x": x, "y": y, "width": w, "height": h,
+            "categories": ["Brief", "Create", "Review", "Deliver"],
+            "series": [{"name": "Graphics", "values": [2, 5, 3, 4], "color": BLUE},
+                       {"name": "Documents", "values": [1, 3, 2, 3], "color": "#9CC6FA"}],
+            "font_size": size, "label_font": BODY, "title_font": HEAD,
+            "text_color": INK, "grid_color": "#DCE2EE", "legend": "bottom", "total_labels": True,
+            "value_labels": False, "min": 0, "ticks": 4, "number_format": "0"}
+
+
+def diagram_op(name, x, y, w, h, size=32):
+    return {"type": "diagram", "name": name, "x": x, "y": y, "width": w, "height": h,
+            "direction": "LR", "layout": "layered", "font": BODY, "size": size, "theme": "dark",
+            "node_color": PANEL, "edge_color": SKY, "text_color": WHITE,
+            "nodes": [{"id": "brief", "label": "Inspect"}, {"id": "edit", "label": "Apply"},
+                      {"id": "check", "label": "Check", "kind": "decision"},
+                      {"id": "preview", "label": "Preview"}, {"id": "export", "label": "Export"}],
+            "edges": [["brief", "edit"], ["edit", "check"], ["check", "preview"], ["preview", "export"]]}
+
+
+def build_showcase():
+    """Native chart, native workflow diagram and a vector capability poster."""
+    p = new(1200, 900, WHITE)
+    p.apply([*logo("logo", "horizontal-color", 70, 40, width=220),
+             text("kicker", "DATA THAT STAYS EDITABLE", 70, 175, 24, SUBTLE, MONO),
+             headline("headline", "Keep the story.\nChange the data.", 70, 230, 78, "Change the data.", INK,
+                      accent_color=BLUE),
+             chart_op("campaign", 70, 450, 1060, 350, 25),
+             text("source", "Illustrative workflow data · Native chart in PowerPoint · Made with Vixl", 70, 840, 20, SUBTLE)])
+    save_and_export(p, "showcase", "editable-chart", [("png", {}), ("svg", {}), ("pptx", {})],
+                    checks=["bounds", "flow", "contrast", "fonts"])
+    p = new(1600, 900)
+    p.apply([*logo("logo", "horizontal-reverse", 80, 45, width=220),
+             text("kicker", "THE AGENT DESIGN WORKFLOW", 80, 180, 26, SKY, MONO),
+             headline("headline", "Structure. Feedback.\nA file you can keep editing.", 80, 230, 78,
+                      "keep editing."),
+             diagram_op("workflow", 80, 500, 1440, 240),
+             para("note", "Inspect the document, apply operations, run checks, visually review, then deliver. "
+                  "The diagram itself is editable shapes, paths and labels.", 80, 770, 26, 1380)])
+    save_and_export(p, "showcase", "agent-workflow", [("png", {}), ("svg", {}), ("pdf", {})],
+                    checks=["bounds", "flow", "contrast", "fonts", "diagram"])
+    SHOW["workflow"] = ("Editable workflow", "marketing/output/showcase/agent-workflow.png")
+    SHOW["chart"] = ("Data-bound charts", "marketing/output/showcase/editable-chart.png")
+    p = new(1600, 1200)
+    p.apply([*logo("logo", "horizontal-reverse", 80, 50, width=240),
+             text("kicker", "THE VIXL FIELD GUIDE", 80, 180, 26, SKY, MONO),
+             headline("headline", "A studio you can program.", 80, 240, 86, "program.")])
+    features = [("Design", "Layouts, type, vectors, masks, shaped images and emoji artwork."),
+                ("Explain", "Data-bound charts, routed diagrams, decks and fillable PDFs."),
+                ("Animate", "Keyframes, character poses, cameras, audio and app states."),
+                ("Repeat", "Variables, typed recipes, CSV variants and reusable containers."),
+                ("Review", "Design checks, saved suites, proof pages and live review."),
+                ("Deliver", "Raster, vector, print, slides and motion; keep the .vixl master.")]
+    for i, (label, body) in enumerate(features):
+        x, y = 80 + i % 3 * 490, 435 + i // 3 * 320
+        p.apply([rect(f"card-{i}", x, y, 460, 285),
+                 text(f"number-{i}", f"0{i+1}", x + 30, y + 25, 28, SKY, MONO),
+                 text(f"label-{i}", label, x + 30, y + 85, 52, WHITE, HEAD),
+                 para(f"body-{i}", body, x + 30, y + 166, 29, 390)])
+    footer(p, 1120, 80, size=24)
+    save_and_export(p, "showcase", "capability-map", [("png", {}), ("svg", {}), ("pdf", {})],
+                    checks=["bounds", "flow", "overlap", "contrast", "fonts"])
 
 
 def build_og():
-    """Open Graph / link-preview card, 1200 x 630."""
-    W, H = 1200, 630
-    p = new(W, H, CHARCOAL)
-    p.apply([
-        glow("glow", 520, -300, 1100),
-        *dot_grid("grid", 24, 24, W - 24, H - 24, 32, "#FFFFFF10"),
-        logo("logo", "horizontal-reverse", 64, 56, width=240),
-        headline("headline", "The image editor\nyour AI agent can\nactually use.", 64, 178, 62, "actually use."),
-        *code_card("code", 670, 118, 480, SNIPPET, size=20),
-        *pixel_stair("stair", 1018, 540, 16, 8, 5, SKY),
-    ], detail="brief")
+    p = new(1200, 630)
+    p.apply([glow("glow", 550, -240, 900), *logo("logo", "horizontal-reverse", 64, 40, width=230),
+             headline("headline", "Ideas become\neditable.", 64, 190, 88, "editable."),
+             text("sub", "A programmable design studio\nfor AI agents.", 64, 414, 28),
+             *code_card("code", 680, 124, 456, SNIPPET, size=20, title="design.json")])
     fit_code(p, "code")
-    p.apply([
-        text("sub", "Layered, editable designs\nthrough MCP, CLI, Python and REST.", 64, bottom(p, "headline") + 30,
-             26, MUTED),
-        {"type": "look", "target": "code", "look": "soft-shadow", "color": "#000000"},
-    ], detail="brief")
-    chips_row(p, "tag", [f"v{VERSION}", "No GUI required", "Editable .vixl masters"], 64, bottom(p, "sub") + 34,
-              size=20)
+    chips_row(p, "interfaces", INTERFACES, 64, 530, size=20)
     save_and_export(p, "social", "og-card-1200x630", [("png", {})], thumbnail_width=600)
 
 
+def build_github():
+    p = new(1280, 640, PAPER)
+    p.apply([*logo("logo", "horizontal-color", 64, 42, width=230),
+             headline("headline", "Ideas become\neditable.", 64, 206, 78, "editable.", INK, accent_color=BLUE),
+             para("sub", "A programmable design studio for AI agents. Layered graphics, documents and motion.",
+                  64, 407, 27, 530, SUBTLE),
+             *photo("poster", "poster", 674, 48, 240, 350),
+             *photo("pixel", "pixel", 674, 418, 240, 174),
+             *photo("painting", "painting", 934, 48, 298, 244),
+             *photo("chart", "chart", 934, 312, 298, 280)])
+    chips_row(p, "iface", INTERFACES, 64, 540, size=20, fg=INK, bg=WHITE)
+    save_and_export(p, "social", "github-preview-1280x640", [("png", {})], thumbnail_width=640)
+
+
 def build_linkedin():
-    """LinkedIn page banner, 1584 x 396. The left fifth stays quiet for the profile picture."""
-    W, H = 1584, 396
-    p = new(W, H, CHARCOAL)
-    p.apply([
-        glow("glow", 900, -500, 1300),
-        *dot_grid("grid", 16, 16, W - 16, H - 16, 28, "#FFFFFF0E"),
-        *pixels("px", 4, (0, 0, 420, 396), 26, (8, 22), [BLUE, SKY], (0.15, 0.6)),
-        headline("headline", "Design work, as\noperations your agent runs.", 470, 92, 58, "operations"),
-        logo("logo", "horizontal-reverse", W - 262, 60, width=230),
-    ], detail="brief")
-    chips_row(p, "fmt", ["PNG", "SVG", "PDF", "PPTX", "HTML", "GIF", "MP4", "WAV", "CMYK"], 470, bottom(p, "headline") + 40,
-              size=20, fg=WHITE, bg=PANEL)
-    p.apply(text("url", REPO, W - 70, 316, 22, MUTED, MONO), detail="brief")
-    x, y, w, h = bounds(p, "url")
-    p.apply({"type": "move", "target": "url", "x": W - 70 - w, "y": 316}, detail="brief")
+    p = new(1584, 396)
+    p.apply([glow("glow", 960, -420, 1000),
+             *pixel_stair("pixels", 70, 100, 22, 12, 8, SKY),
+             headline("headline", "Ideas become editable.", 440, 120, 72, "editable."),
+             text("sub", "A programmable design studio for AI agents.", 442, 227, 30),
+             *logo("logo", "horizontal-reverse", 1280, 35, width=230),
+             text("footer", REPO, 950, 326, 22, MUTED, MONO)])
     save_and_export(p, "social", "linkedin-banner-1584x396", [("png", {})], thumbnail_width=792)
 
 
-def build_carousel():
-    """Six-slide Instagram/LinkedIn carousel, 1080 x 1350, exported as PDF and one PNG per slide."""
-    W, H = 1080, 1350
-    p = new(W, H, CHARCOAL)
-    M = 88
-
-    p.apply([{"type": "master", "action": "add", "name": "frame", "background": CHARCOAL},
-             *dot_grid("m-grid", 24, 24, W - 24, H - 24, 36, "#FFFFFF0D"),
-             logo("m-logo", "horizontal-reverse", M, H - 118, width=168),
-             text("m-num", "${page} / ${pages}", W - M - 70, H - 96, 24, MUTED, MONO)], detail="brief")
-
-    def page(name, notes=""):
-        p.apply({"type": "page", "action": "add", "name": name, "master": "frame", "notes": notes}, detail="brief")
-
-    # 1 - cover
-    page("cover")
-    p.apply([
-        glow("c-glow", -200, -200, 1400),
-        logo("c-mark", "mark-reverse", W - 470, 150, width=400),
-        text("c-kicker", "VIXL  /  " + VERSION, M, 180, 26, SKY, MONO),
-        headline("c-title", "Design is\nnow an\nAPI call.", M, 520, 150, "API call."),
-    ], detail="brief")
-    p.apply([para("c-sub", "An editable image-document engine for AI agents. Swipe to see how it works.", M,
-                  bottom(p, "c-title") + 44, 34, 760, MUTED)], detail="brief")
-
-    # 2 - the problem
-    page("problem")
-    p.apply([
-        text("p-kicker", "THE PROBLEM", M, 150, 26, SKY, MONO),
-        headline("p-title", "Design tools are\nbuilt for hands,\nnot agents.", M, 220, 92, "not agents."),
-    ], detail="brief")
-    y = bottom(p, "p-title") + 80
-    points = [("Click-only editors", "An agent cannot drag a slider it cannot see."),
-              ("Flattened exports", "One PNG back, and every layer is gone."),
-              ("Guess-and-hope", "No way to know the text overflowed until a human looks.")]
-    ops = []
-    for i, (t, d) in enumerate(points):
-        yy = y + i * 190
-        ops += [{"type": "shape", "shape": "rectangle", "name": f"p-px{i}", "x": M, "y": yy + 10, "width": 22,
-                 "height": 22, "fill": BLUE},
-                text(f"p-t{i}", t, M + 56, yy, 44, WHITE, HEAD),
-                para(f"p-d{i}", d, M + 56, yy + 66, 32, 820, MUTED)]
-    p.apply(ops, detail="brief")
-
-    # 3 - the loop
-    page("loop")
-    p.apply([text("l-kicker", "HOW IT WORKS", M, 150, 26, SKY, MONO),
-             headline("l-title", "One loop.\nEvery design.", M, 220, 92, "Every design.")], detail="brief")
-    loop_steps(p, "l", M, bottom(p, "l-title") + 60, W - 2 * M, size=40, vertical=True, step_h=122)
-
-    # 4 - what you can make (real outputs)
-    page("gallery")
-    p.apply([text("g-kicker", "MADE WITH VIXL", M, 150, 26, SKY, MONO),
-             headline("g-title", "Not a toy.\nA whole studio.", M, 220, 92, "A whole studio.")], detail="brief")
-    top = bottom(p, "g-title") + 60
-    gw, gh, gap = (W - 2 * M - 24) // 2, 214, 24
-    keys = ["poster", "painting", "pixel", "donut", "film", "photo"]
-    ops = []
-    for i, key in enumerate(keys):
-        cx, cy = M + (i % 2) * (gw + gap), top + (i // 2) * (gh + gap)
-        ops += photo(f"g-{key}", key, cx, cy, gw, gh)
-    p.apply(ops, detail="brief")
-    ops = []
-    for i, key in enumerate(keys):
-        cx, cy = M + (i % 2) * (gw + gap), top + (i // 2) * (gh + gap)
-        ops.append(chip_ops(f"g-lab{i}", SHOW[key][0], cx + 14, cy + gh - 60, size=24))
-    for o in ops:
-        chip(p, *o)
-
-    # 5 - numbers
-    page("numbers")
-    p.apply([text("n-kicker", "IN THE BOX", M, 150, 26, SKY, MONO),
-             headline("n-title", "Batteries,\nincluded.", M, 220, 92, "included.")], detail="brief")
-    top = bottom(p, "n-title") + 70
-    stats = [(FACTS["operations"], "operations"), (FACTS["sizes"], "named sizes"), (FACTS["layouts"], "layouts"),
-             (FACTS["templates"], "templates"), (FACTS["styles"], "design styles"), (FACTS["looks"], "finishing looks")]
-    ops = []
-    for i, (n, label) in enumerate(stats):
-        cx, cy = M + (i % 2) * 460, top + (i // 2) * 200
-        ops += [text(f"n-v{i}", str(n), cx, cy, 120, WHITE if i % 3 else SKY, HEAD),
-                text(f"n-l{i}", label, cx + 4, cy + 136, 36, MUTED)]
-    p.apply(ops, detail="brief")
-
-    # 6 - CTA
-    page("start")
-    p.apply([glow("s-glow", 100, 300, 1200, BLUE, "66"),
-             text("s-kicker", "GET STARTED", M, 150, 26, SKY, MONO),
-             headline("s-title", "Give your agent\na design studio.", M, 220, 92, "a design studio."),
-             ], detail="brief")
-    top = bottom(p, "s-title") + 70
-    cmd = [(0, [("$ ", SKY), ("pip install -e '.[server,pdf]'", WHITE)]),
-           (0, [("$ ", SKY), ("vixl mcp --workspace . \\", WHITE)]),
-           (2, [("--tools core --schema slim", WHITE)]),
-           (0, [("", WHITE)]),
-           (0, [("# or Windows: Vixl-Setup.exe", MUTED)])]
-    p.apply([*code_card("s-code", M, top, W - 2 * M, cmd, size=34, title="terminal")], detail="brief")
-    fit_code(p, "s-code")
-    p.apply([text("s-url", REPO, M, bottom(p, "s-code") + 60, 40, WHITE, SEMI)], detail="brief")
-
-    report = save_and_export(p, "carousel", "carousel-1080x1350", [("pdf", {})], thumbnail_width=540,
-                             checks=["bounds", "overlap", "contrast", "fonts", "deck"], deck={"profile": "phone"})
-    for i, name in enumerate(["cover", "problem", "loop", "gallery", "numbers", "start"], 1):
-        p.export(str(OUT / "carousel" / f"slide-{i}-{name}.png"), page=name, overwrite=True)
-    sheet(p, OUT / "carousel" / "contact-sheet.png", width=360, columns=6)
-    return report
-
-
-def chip_ops(name, label, x, y, size=20):
-    return (name, label, x, y, size, WHITE, "#1A1F2BD9")
-
-
 def build_story():
-    """Vertical story, 1080 x 1920 (keeps the top and bottom 250 px clear of platform UI)."""
-    W, H = 1080, 1920
-    p = new(W, H, CHARCOAL)
-    M = 80
-    p.apply([
-        glow("glow", -300, 900, 1600, BLUE, "60"),
-        *dot_grid("grid", 24, 24, W - 24, H - 24, 36, "#FFFFFF0D"),
-        logo("logo", "horizontal-reverse", M, 270, width=220),
-        headline("head", "Your agent’s\nnew design\nstudio.", M, 420, 128, "studio."),
-    ], detail="brief")
-    top = bottom(p, "head") + 56
-    p.apply([*photo("s-a", "poster", M, top, 400, 540), *photo("s-b", "painting", M + 430, top, 490, 255),
-             *photo("s-c", "pixel", M + 430, top + 285, 490, 255)], detail="brief")
-    p.apply({"type": "look", "targets": ["s-a-base", "s-b-base", "s-c-base"], "look": "soft-shadow",
-             "color": "#000000", "amount": 0.5}, detail="brief")
-    p.apply([para("cta", "Inspect. Apply. Check. Preview. Export.", M, top + 590, 40, W - 2 * M, WHITE, SEMI)],
-            detail="brief")
-    chips_row(p, "iface", INTERFACES, M, bottom(p, "cta") + 34, size=28)
+    p = new(1080, 1920)
+    m = 80
+    p.apply([glow("glow", -180, 820, 1400),
+             *logo("logo", "horizontal-reverse", m, 270, width=240),
+             headline("headline", "Ideas\nbecome\neditable.", m, 440, 134, "editable."),
+             *photo("poster", "poster", m, 900, 370, 500),
+             *photo("painting", "painting", 476, 900, 524, 238),
+             *photo("chart", "chart", 476, 1164, 524, 236),
+             para("sub", "Graphics. Documents. Motion.\nMade with Vixl.", m, 1460, 42, 920)])
+    chips_row(p, "iface", INTERFACES, m, 1600, size=28)
     save_and_export(p, "social", "story-1080x1920", [("png", {})], thumbnail_width=540,
                     safe_area={"left": 60, "right": 60, "top": 250, "bottom": 250})
 
 
+def build_carousel():
+    p = new(1080, 1350)
+    m = 88
+    p.apply([{"type": "master", "action": "add", "name": "frame", "background": CHARCOAL},
+             *logo("footer-logo", "horizontal-reverse", m, 1230, width=168),
+             text("page-num", "${page} / ${pages}", 900, 1250, 26, MUTED, MONO)])
+
+    def page(name, kicker, title, accent=None):
+        p.apply({"type": "page", "action": "add", "name": name, "master": "frame", "notes": kicker})
+        p.apply([text("kicker", kicker, m, 120, 28, SKY, MONO),
+                 headline("headline", title, m, 210, 100, accent)])
+
+    page("cover", "A DESIGN STUDIO FOR AI AGENTS", "Ideas\nbecome\neditable.", "editable.")
+    p.apply([*logo("mark", "mark-reverse", 665, 625, width=260),
+             para("sub", "Create graphics, documents and motion. Keep the layers. Keep working.", m, 870, 42, 800),
+             text("swipe", "MEET VIXL  →", m, 1110, 28, SKY, MONO)])
+    page("document", "KEEP THE DOCUMENT", "One master.\nRoom to change.", "change.")
+    for i, (title, body) in enumerate([
+        ("Live text + vectors", "Edit copy, paths, masks and effects."),
+        ("Reusable ingredients", "Variables, templates and containers."),
+        ("Reviewable source", "Unpack designs into JSON and assets for Git.")]):
+        y = 570 + i * 190
+        p.apply([rect(f"card-{i}", m, y, 904, 162), text(f"label-{i}", title, m + 32, y + 25, 40, WHITE, HEAD),
+                 para(f"body-{i}", body, m + 32, y + 87, 32, 835)])
+    page("loop", "FROM BRIEF TO FILE", "Build. Check.\nLook. Deliver.", "Deliver.")
+    loop_steps(p, "loop", m, 560, 904, size=42, vertical=True, step_h=110)
+    page("gallery", "ALL MADE WITH VIXL", "A whole\ncreative workflow.", "creative workflow.")
+    keys = ["poster", "painting", "pixel", "chart", "film", "photo"]
+    for i, key in enumerate(keys):
+        x, y = m + i % 2 * 466, 565 + i // 2 * 204
+        p.apply(photo(f"image-{i}", key, x, y, 438, 178))
+        chip(p, f"label-{i}", SHOW[key][0], x + 12, y + 117, size=25, pad=(12, 8))
+    page("delivery", "MAKE ONCE. PUT IT TO WORK.", "Beyond\na single image.", "single image.")
+    items = [("Campaigns", "Checked variants from typed recipes."),
+             ("Documents", "Native charts in PPTX. Fillable PDFs."),
+             ("Motion", "App states, themes and reduced-motion stills.")]
+    for i, (title, body) in enumerate(items):
+        y = 570 + i * 200
+        p.apply([text(f"num-{i}", f"0{i+1}", m, y + 5, 36, SKY, MONO),
+                 text(f"label-{i}", title, m + 90, y, 44, WHITE, HEAD),
+                 para(f"body-{i}", body, m + 90, y + 75, 34, 780)])
+    page("start", "START CREATING", "Give your agent\na design studio.", "design studio.")
+    p.apply([para("sub", "Install Vixl, connect through MCP, or build with the CLI, Python and REST.", m, 600, 40, 850),
+             para("repo", REPO, m, 845, 34, 900, WHITE, MONO),
+             para("license", "Source-available · PolyForm Small Business 1.0.0\nAI generation uses configured external providers.",
+                  m, 1030, 28, 875)])
+    save_and_export(p, "carousel", "carousel-1080x1350", [("pdf", {})],
+                    checks=["bounds", "flow", "overlap", "contrast", "fonts", "deck"], deck={"profile": "phone"})
+    for i, record in enumerate(p.state["pages"]):
+        p.export(OUT / "carousel" / f"slide-{i+1}-{record['name']}.png", page=record["name"], overwrite=True)
+    sheet(p, OUT / "carousel/contact-sheet.png", width=360, columns=3)
+    # Remove superseded named slides, so a directory upload contains exactly this carousel.
+    valid = {f"slide-{i+1}-{r['name']}.png" for i, r in enumerate(p.state["pages"])}
+    for path in (OUT / "carousel").glob("slide-*.png"):
+        if path.name not in valid:
+            path.unlink()
+
+
 def build_poster():
-    """Tabloid (11 x 17 in) launch poster with bleed, as an RGB PNG and a CMYK PDF for print."""
-    p = new(100, 100, CHARCOAL)
-    p.apply({"type": "canvas", "size": "tabloid", "dpi": 150, "bleed": True, "background": CHARCOAL}, detail="brief")
-    c = p.state["canvas"]
-    W, H = c["width"], c["height"]
-    M = 140
-    p.apply([
-        glow("glow", -500, 900, 2400, BLUE, "70"),
-        *dot_grid("grid", 30, 30, W - 30, H - 30, 44, "#FFFFFF10"),
-        logo("mark", "mark-reverse", W - 700, 120, width=580),
-        *pixels("px", 11, (60, 560, W - 120, 150), 30, (12, 34), [BLUE, SKY], (0.2, 0.8)),
-        text("kicker", "VIXL " + VERSION + "  /  IMAGE DOCUMENTS FOR AI AGENTS", M, 160, 30, SKY, MONO),
-        headline("head", "EDIT.\nCHECK.\nSHIP.", M, 780, 270, "CHECK.", line_height=0.86),
-    ], detail="brief")
-    top = bottom(p, "head") + 70
-    p.apply([para("sub", "Layered designs your AI agent can build, measure and fix, then export to PNG, SVG, "
-                  "vector PDF, PowerPoint, HTML, GIF or MP4. Text, vector paths, masks and pages stay editable.",
-                  M, top, 44, W - 2 * M - 60, MUTED, line_height=1.35)], detail="brief")
-    top = bottom(p, "sub") + 80
-    cols = [("For agents", f"MCP server with {FACTS['operations']} operations, atomic batches and structured errors."),
-            ("For checks", "Contrast, overlap, bounds, safe areas, fonts and print ink, before export."),
-            ("For print", "Bleed, trim, CMYK PDF and TIFF with TrimBox and BleedBox.")]
-    cw = (W - 2 * M - 80) / 3
-    ops = []
-    for i, (t, d) in enumerate(cols):
-        cx = round(M + i * (cw + 40))
-        ops += [{"type": "shape", "shape": "rectangle", "name": f"col-rule{i}", "x": cx, "y": top, "width": round(cw),
-                 "height": 6, "fill": BLUE if i != 1 else SKY},
-                text(f"col-t{i}", t, cx, top + 40, 46, WHITE, HEAD),
-                para(f"col-d{i}", d, cx, top + 112, 32, round(cw), MUTED)]
-    p.apply(ops, detail="brief")
-    p.apply([logo("logo", "horizontal-reverse", M - 16, H - 250, width=320),
-             text("url", REPO, M, H - 250, 40, WHITE, MONO)], detail="brief")
-    x, y, w, h = bounds(p, "url")
-    p.apply({"type": "move", "target": "url", "x": W - M - w, "y": H - 196}, detail="brief")
+    p = print_document("tabloid", bleed=True, background=CHARCOAL)
+    w, h = p.state["canvas"]["width"], p.state["canvas"]["height"]
+    m = 140
+    p.apply([glow("glow", -400, 1400, 1900),
+             *logo("logo", "horizontal-reverse", m, 130, width=320),
+             text("kicker", "A PROGRAMMABLE DESIGN STUDIO FOR AI AGENTS", m, 420, 31, SKY, MONO),
+             headline("headline", "IDEAS\nBECOME\nEDITABLE.", m, 670, 244, "EDITABLE.", line_height=0.96),
+             para("sub", "Graphics, documents and motion.\nBuilt as layers. Checked before delivery.\nMade with Vixl.",
+                  m, 1510, 52, w - 2 * m, WHITE),
+             {"type": "qr", "name": "repo-qr", "data": "https://github.com/jxburros/Vixl", "size": 220,
+              "x": m, "y": h - 500, "color": CHARCOAL, "background": WHITE},
+             text("cta", "Meet Vixl", m + 270, h - 460, 64, WHITE, HEAD),
+             para("interfaces", "MCP · CLI · Python · REST", m + 270, h - 345, 36, 900)])
+    footer(p, h - 175, m, size=32)
     save_and_export(p, "print", "poster-tabloid", [("png", {"scale": 0.5}), ("pdf", {"color_space": "cmyk"})],
-                    checks=["bounds", "overlap", "contrast", "safe_area", "fonts", "print"])
+                    checks=["bounds", "flow", "overlap", "contrast", "safe_area", "fonts", "print"])
 
 
 def build_onepager():
-    """Letter-size product sheet on a light background; vector PDF."""
-    p = new(100, 100, WHITE)
-    p.apply({"type": "canvas", "size": "letter", "dpi": 150, "background": WHITE}, detail="brief")
-    W, H = p.state["canvas"]["width"], p.state["canvas"]["height"]
-    M = 90
-    p.apply([
-        {"type": "shape", "shape": "rectangle", "name": "band", "x": 0, "y": 0, "width": W, "height": 520,
-         "fill": CHARCOAL},
-        glow("glow", 500, -500, 1200),
-        *dot_grid("grid", 16, 16, W - 16, 504, 26, "#FFFFFF10"),
-        logo("logo", "horizontal-reverse", M, 64, width=210),
-        text("kicker", "PRODUCT SHEET  /  " + VERSION, W - M - 330, 92, 20, "#A9C3FF", MONO),
-        headline("head", "The image editor your\nAI agent can actually use.", M, 210, 64, "actually use."),
-    ], detail="brief")
-    p.apply([para("sub", SUB + " No graphical display required.", M, bottom(p, "head") + 30, 25, W - 2 * M - 80,
-                  MUTED)], detail="brief")
-    x, y, w, h = bounds(p, "kicker")
-    p.apply({"type": "move", "target": "kicker", "x": W - M - w, "y": 92}, detail="brief")
-    p.apply({"type": "resize", "target": "band", "height": bottom(p, "sub") + 70}, detail="brief")
-    top = bottom(p, "band") + 48
-    p.apply([text("loop-h", "How an agent works with Vixl", M, top, 30, INK, HEAD)], detail="brief")
-    loop_steps(p, "loop", M, bottom(p, "loop-h") + 24, W - 2 * M, size=24, dark=False, step_h=134)
-    top = bottom(p, "loop-card0") + 48
-    feats = [("Stays editable", "Text, shapes, masks, effects, variables, pages and history live in one portable "
-              ".vixl master."),
-             ("Checks itself", "Overflowing text, low contrast, overlaps, missing glyphs and thin ink are caught "
-              "before export."),
-             ("Speaks every interface", "MCP for agents, a CLI for scripts, a Python API and REST, all sharing "
-              "one set of operations."),
-             ("Ships real files", "PNG, SVG, vector PDF, CMYK print, editable PPTX, HTML decks, GIF, WebP, "
-              "MP4 and WAV."),
-             ("Knows design", f"{FACTS['layouts']} layouts, {FACTS['templates']} templates, {FACTS['styles']} "
-              f"styles, {FACTS['looks']} finishing looks, safe palettes and font pairings."),
-             ("Goes beyond posters", "Editable vector paths, charts, diagrams, fillable forms, pixel art, "
-              "character animation and sound.")]
-    cw = (W - 2 * M - 50) / 2
-    ops = []
-    for i, (t, d) in enumerate(feats):
-        cx, cy = round(M + (i % 2) * (cw + 50)), top + (i // 2) * 134
-        ops += [{"type": "shape", "shape": "rectangle", "name": f"f-px{i}", "x": cx, "y": cy + 8, "width": 14,
-                 "height": 14, "fill": BLUE},
-                text(f"f-t{i}", t, cx + 30, cy, 25, INK, HEAD),
-                para(f"f-d{i}", d, cx + 30, cy + 40, 19, round(cw - 30), SUBTLE, line_height=1.35)]
-    p.apply(ops, detail="brief")
-    top = bottom(p, "f-d4") + 44
-    p.apply([text("code-h", "Hello, Vixl in Python", M, top, 22, INK, HEAD)], detail="brief")
-    py = [(0, [("from ", CODE_KEY), ("vixl ", WHITE), ("import ", CODE_KEY), ("Project", WHITE)]),
-          (0, [("p = Project(", WHITE), ("800", CODE_NUM), (", ", WHITE), ("600", CODE_NUM), (", background=", WHITE),
-               ('"#18283b"', CODE_STR), (")", WHITE)]),
-          (0, [("p.apply([{", WHITE), ('"type"', CODE_KEY), (": ", WHITE), ('"text"', CODE_STR), (", ", WHITE),
-               ('"text"', CODE_KEY), (": ", WHITE), ('"Hello, Vixl"', CODE_STR), ("}])", WHITE)]),
-          (0, [("p.export(", WHITE), ('"hello.png"', CODE_STR), (")", WHITE)])]
-    p.apply(code_card("py", M, bottom(p, "code-h") + 20, W - 2 * M, py, size=17, title="hello.py"), detail="brief")
-    fit_code(p, "py", 24)
-    p.apply([{"type": "shape", "shape": "rectangle", "name": "foot-rule", "x": M, "y": H - 112, "width": W - 2 * M,
-              "height": 2, "fill": "#DCE2EE"},
-             logo("foot-logo", "horizontal-color", M, H - 96, width=130),
-             text("foot-url", REPO, M, H - 88, 20, INK, MONO)], detail="brief")
-    x, y, w, h = bounds(p, "foot-url")
-    p.apply({"type": "move", "target": "foot-url", "x": W - M - w, "y": H - 82}, detail="brief")
-    save_and_export(p, "print", "one-pager-letter", [("pdf", {}), ("png", {})])
+    p = print_document("letter")
+    w, h = p.state["canvas"]["width"], p.state["canvas"]["height"]
+    m = 90
+    p.apply([rect("header", 0, 0, w, 480, CHARCOAL, 0),
+             *logo("logo", "horizontal-reverse", m, 55, width=230),
+             headline("headline", "Ideas become editable.", m, 207, 76, "editable."),
+             para("sub", SUB, m, 330, 28, w - 2 * m)])
+    features = [
+        ("Create", "Layouts, type, vector paths, shaped images, painting, pixel art and emoji artwork."),
+        ("Explain", "Data-bound charts, diagrams, decks, rich documents and fillable PDFs."),
+        ("Animate", "Keyframes, rigged character poses, cameras, audio and app-state packages."),
+        ("Repeat", "Typed recipes, variables, CSV-driven variants, reusable containers and templates."),
+        ("Review", "Design checks and saved suites, offline proof pages, live review and branching history."),
+        ("Deliver", "PNG, SVG, PDF, layered-pixel PSD, PPTX, HTML, GIF, WebP, MP4 and print exports."),
+    ]
+    for i, (title, body) in enumerate(features):
+        x, y = m + i % 2 * 580, 550 + i // 2 * 215
+        p.apply([text(f"label-{i}", title, x, y, 39, INK, HEAD),
+                 para(f"body-{i}", body, x, y + 65, 27, 505, SUBTLE)])
+    p.apply([text("start", "Choose your way in", m, 1240, 37, INK, HEAD),
+             para("install", "Windows: use the installer from GitHub Releases.\nDevelopers: clone the repository and install with Python 3.11+.\nConnect an agent: vixl mcp --workspace . --tools core --schema slim",
+                  m, 1308, 23, w - 2 * m, SUBTLE),
+             para("license", "Source-available under PolyForm Small Business 1.0.0. See LICENSE for eligibility.\n"
+                  "Core authoring works locally; AI generation and vision require configured external providers.",
+                  m, 1490, 19, w - 2 * m, SUBTLE)])
+    footer(p, h - 75, m, dark=False, size=20)
+    save_and_export(p, "print", "one-pager-letter", [("pdf", {}), ("png", {})],
+                    checks=["bounds", "flow", "overlap", "contrast", "fonts", "print"])
 
 
-def build_deck():
-    """Nine-slide pitch deck, 1920 x 1080: PDF, editable PPTX and a self-contained HTML presenter."""
-    W, H = 1920, 1080
-    p = new(W, H, CHARCOAL)
-    M = 140
-    p.apply([{"type": "master", "action": "add", "name": "std", "background": CHARCOAL},
-             *dot_grid("m-grid", 30, 30, W - 30, H - 30, 40, "#FFFFFF0B"),
-             logo("m-logo", "horizontal-reverse", M, H - 112, width=150),
-             text("m-num", "${page}", W - M - 30, H - 96, 24, MUTED, MONO)], detail="brief")
-
-    def slide(name, notes, master="std"):
-        p.apply({"type": "page", "action": "add", "name": name, "master": master, "notes": notes,
-                 "transition": "fade"}, detail="brief")
-
-    def title(prefix, kicker, head, accent=None, y=150, size=96):
-        p.apply([text(f"{prefix}-kicker", kicker, M, y - 50, 26, SKY, MONO),
-                 headline(f"{prefix}-title", head, M, y, size, accent)], detail="brief")
-        return bottom(p, f"{prefix}-title")
-
-    slide("title", "Vixl is an editable image-document engine built for AI agents. 30-second pitch.", master=None)
-    p.apply([glow("t-glow", 700, -400, 1800, BLUE, "60"),
-             *dot_grid("t-grid", 30, 30, W - 30, H - 30, 40, "#FFFFFF0B"),
-             logo("t-mark", "mark-reverse", W - 760, 170, width=620),
-             logo("t-logo", "horizontal-reverse", M, 150, width=300),
-             headline("t-title", "The image editor\nyour AI agent can\nactually use.", M, 400, 112, "actually use.")],
-            detail="brief")
-    p.apply([text("t-sub", f"Release {VERSION}  ·  MCP · CLI · Python · REST", M, bottom(p, "t-title") + 60, 32,
-                  MUTED)], detail="brief")
-
-    slide("problem", "Creative tools assume a person with a mouse. Agents need structure, feedback and editable output.")
-    y = title("pr", "THE PROBLEM", "Design tools are built\nfor hands, not agents.", "not agents.")
-    cards = [("Click-only", "Sliders, canvases and menus an agent cannot see or drive."),
-             ("Flattened", "Image generators return pixels; the layers and text are gone."),
-             ("Unchecked", "Nobody knows the headline overflowed until a human looks.")]
-    cw = (W - 2 * M - 80) / 3
-    ops = []
-    for i, (t, d) in enumerate(cards):
-        cx = round(M + i * (cw + 40))
-        ops += [{"type": "shape", "shape": "rounded-rectangle", "name": f"pr-card{i}", "x": cx, "y": y + 90,
-                 "width": round(cw), "height": 330, "radius": 24, "fill": PANEL},
-                text(f"pr-n{i}", f"0{i + 1}", cx + 44, y + 130, 32, SKY, HEAD),
-                text(f"pr-t{i}", t, cx + 44, y + 190, 52, WHITE, HEAD),
-                para(f"pr-d{i}", d, cx + 44, y + 270, 30, round(cw - 88), MUTED)]
-    p.apply(ops, detail="brief")
-
-    slide("solution", "Every design is a document of editable layers. Every change is an operation.")
-    y = title("so", "THE SOLUTION", "Design as atomic,\ncheckable operations.", "checkable")
-    p.apply(code_card("so-code", W - M - 700, y + 70, 700, SNIPPET, size=26), detail="brief")
-    fit_code(p, "so-code")
-    pts = ["Editable .vixl masters: text, vector paths, masks, pages",
-           f"{FACTS['operations']} operations, up to {FACTS['batch']} per atomic batch",
-           "Structured errors with suggestions",
-           "Undo, branches, checkpoints and diffs"]
-    ops = []
-    for i, t in enumerate(pts):
-        ops += [{"type": "shape", "shape": "rectangle", "name": f"so-px{i}", "x": M, "y": y + 110 + i * 100 + 12,
-                 "width": 18, "height": 18, "fill": BLUE},
-                text(f"so-p{i}", t, M + 44, y + 110 + i * 100, 34, WHITE)]
-    p.apply(ops, detail="brief")
-
-    slide("loop", "The agent loop: inspect the document, apply a batch, run checks, preview, export.")
-    y = title("lo", "HOW IT WORKS", "One loop for every design.", "every design.")
-    loop_steps(p, "lo", M, y + 120, W - 2 * M, size=44, step_h=300)
-    p.apply([para("lo-note", "Checks find overflowing text, low contrast, overlaps, unsafe margins, missing glyphs "
-                  "and print ink problems, so the agent fixes them before anyone looks.", M, y + 480, 32,
-                  W - 2 * M, MUTED)], detail="brief")
-
-    slide("gallery", "All of these were built with Vixl in this repository's explorations, without a GUI.")
-    y = title("ga", "MADE WITH VIXL", "Posters to pixel games.", "pixel games.")
-    keys = ["poster", "painting", "pixel", "donut", "film", "photo", "map", "chart"]
-    gw, gh, gap = (W - 2 * M - 3 * 28) // 4, 290, 28
-    ops = []
-    for i, key in enumerate(keys):
-        ops += photo(f"ga-{key}", key, M + (i % 4) * (gw + gap), y + 70 + (i // 4) * (gh + gap), gw, gh)
-    p.apply(ops, detail="brief")
-    for i, key in enumerate(keys):
-        chip(p, *chip_ops(f"ga-lab{i}", SHOW[key][0], M + (i % 4) * (gw + gap) + 14,
-                          y + 70 + (i // 4) * (gh + gap) + gh - 58, size=22))
-
-    slide("quality", "Real timings from the exploration projects, before and after the 0.18.0 performance fixes.")
-    y = title("qa", "FAST WHERE IT MATTERS", "Seconds, not minutes.", "Seconds,")
-    rows = [("Full design check, 11 x 17 poster", "10+ min", "17 s"),
-            ("Paint 400 brush strokes", "9.8 s", "1.6 s"),
-            ("Add 1 stroke to a 3,000-stroke layer", "10.7 s", "0.3 s")]
-    cw = (W - 2 * M - 80) / 3
-    ops = []
-    for i, (label, before, after) in enumerate(rows):
-        cx = round(M + i * (cw + 40))
-        ops += [{"type": "shape", "shape": "rounded-rectangle", "name": f"qa-card{i}", "x": cx, "y": y + 90,
-                 "width": round(cw), "height": 420, "radius": 24, "fill": PANEL},
-                text(f"qa-before{i}", before, cx + 44, y + 140, 44, MUTED, HEAD),
-                {"type": "shape", "shape": "rectangle", "name": f"qa-strike{i}", "x": cx + 44, "y": y + 172,
-                 "width": 10, "height": 4, "fill": MUTED},
-                text(f"qa-after{i}", after, cx + 44, y + 210, 130, SKY, HEAD),
-                para(f"qa-l{i}", label, cx + 44, y + 380, 28, round(cw - 88), WHITE)]
-    p.apply(ops, detail="brief")
-    for i in range(3):
-        bx, by, bw, bh = bounds(p, f"qa-before{i}")
-        p.apply([{"type": "shape", "target": f"qa-strike{i}", "width": bw + 8, "x": bx - 4,
-                  "y": round(by + bh / 2 - 2)},
-                 {"type": "layer-intent", "target": f"qa-strike{i}", "allow_overlap": [f"qa-before{i}"]}],
-                detail="brief")
-    p.apply([para("qa-note", "Timings from the repository's exploration projects (explorations/README.md), "
-                  "before and after the performance fixes in Vixl 0.18.0.", M, y + 550, 28, W - 2 * M, MUTED)],
-            detail="brief")
-
-    slide("interfaces", "Same operations everywhere: an agent over MCP, a shell script, a notebook or a web service.")
-    y = title("if", "INTERFACES", "Four doors, one engine.", "one engine.")
-    doors = [("MCP", "vixl mcp --tools core", "Agents in Claude Code and other MCP clients"),
-             ("CLI", "vixl -p a.vixl text add 'Hi'", "Scripts, CI pipelines and batch jobs"),
-             ("Python", "Project(800, 600).apply([...])", "Notebooks, generators, data merges"),
-             ("REST", "POST /operations", "Web apps and live human review")]
-    cw = (W - 2 * M - 3 * 30) / 4
-    ops = []
-    for i, (n, cmd, d) in enumerate(doors):
-        cx = round(M + i * (cw + 30))
-        ops += [{"type": "shape", "shape": "rounded-rectangle", "name": f"if-card{i}", "x": cx, "y": y + 90,
-                 "width": round(cw), "height": 420, "radius": 24, "fill": PANEL},
-                text(f"if-n{i}", n, cx + 40, y + 130, 64, SKY if i == 0 else WHITE, HEAD),
-                para(f"if-c{i}", cmd, cx + 40, y + 240, 24, round(cw - 80), CODE_STR, MONO),
-                para(f"if-d{i}", d, cx + 40, y + 340, 28, round(cw - 80), MUTED)]
-    p.apply(ops, detail="brief")
-
-    slide("outputs", "One master, every format. CMYK print, editable PowerPoint and mixed WAV audio included.")
-    y = title("ou", "OUTPUTS", "One master. Every format.", "Every format.")
-    fm = FORMATS + ["CMYK", "WebM", "APNG", "WAV audio"]
-    ops = []
-    cw, chh = (W - 2 * M - 3 * 28) / 4, 120
-    for i, f in enumerate(fm):
-        cx, cy = round(M + (i % 4) * (cw + 28)), y + 90 + (i // 4) * (chh + 24)
-        ops += [{"type": "shape", "shape": "rounded-rectangle", "name": f"ou-c{i}", "x": cx, "y": cy,
-                 "width": round(cw), "height": chh, "radius": 18, "fill": PANEL if i % 5 else BLUE},
-                text(f"ou-t{i}", f, cx + 36, cy + 36, 40, WHITE, HEAD)]
-    p.apply(ops, detail="brief")
-
-    slide("start", "Install from source or the Windows installer, then connect an agent.", master=None)
-    p.apply([glow("st-glow", -300, 200, 1800, BLUE, "66"),
-             *dot_grid("st-grid", 30, 30, W - 30, H - 30, 40, "#FFFFFF0B"),
-             headline("st-title", "Give your agent\na design studio.", M, 200, 112, "a design studio.")],
-            detail="brief")
-    cmd = [(0, [("$ ", SKY), ("pip install -e '.[server,pdf]'", WHITE)]),
-           (0, [("$ ", SKY), ("vixl mcp --workspace . --tools core --schema slim", WHITE)])]
-    p.apply(code_card("st-code", M, bottom(p, "st-title") + 80, 1300, cmd, size=30, title="terminal"),
-            detail="brief")
-    fit_code(p, "st-code")
-    p.apply([logo("st-logo", "horizontal-reverse", M, H - 200, width=280),
-             text("st-url", REPO, M + 360, H - 160, 40, WHITE, MONO)], detail="brief")
-
-    save_and_export(p, "deck", "vixl-pitch-deck", [("pdf", {}), ("pptx", {}), ("html", {})],
-                    checks=["bounds", "overlap", "contrast", "fonts", "deck"], deck={"profile": "screen"})
-    sheet(p, OUT / "deck" / "contact-sheet.png", width=480, columns=3)
-    p.export(str(OUT / "deck" / "vixl-pitch-deck.png"), page="title", scale=0.5, overwrite=True)
-
-
-def build_teaser():
-    """Six-second square motion teaser: MP4 and GIF."""
-    W = H = 1080
-    p = new(W, H, CHARCOAL)
-    p.apply([
-        glow("glow", -200, -200, 1500, BLUE, "50"),
-        *dot_grid("grid", 24, 24, W - 24, H - 24, 36, "#FFFFFF0D"),
-        logo("mark", "mark-reverse", 340, 250, width=400),
-        headline("w0", "Inspect.", 0, 740, 110, align="center", width=W),
-        headline("w1", "Apply.", 0, 740, 110, align="center", width=W),
-        headline("w2", "Check.", 0, 740, 110, "Check.", align="center", width=W),
-        headline("w3", "Preview.", 0, 740, 110, align="center", width=W),
-        headline("w4", "Export.", 0, 740, 110, align="center", width=W),
-        logo("end-logo", "horizontal-reverse", 290, 330, width=500),
-        text("end-line", "Image documents for AI agents", 0, 640, 44, MUTED, SEMI),
-        text("end-url", REPO, 0, 720, 34, SKY, MONO),
-        {"type": "timeline-set", "duration": 6600, "fps": 24},
-    ], detail="brief")
-    for n in ("end-line", "end-url"):
-        x, y, w, h = bounds(p, n)
-        p.apply({"type": "move", "target": n, "x": round((W - w) / 2), "y": y}, detail="brief")
-    ops = [{"type": "animate-preset", "target": "mark", "preset": "pop-in", "start": 0, "duration": 600},
-           {"type": "keyframe", "target": "mark", "property": "opacity", "time": 4200, "value": 1},
-           {"type": "keyframe", "target": "mark", "property": "opacity", "time": 4500, "value": 0}]
-    for i in range(5):
-        t0 = 500 + i * 720
-        ops += [{"type": "keyframe", "target": f"w{i}", "property": "opacity", "time": 0, "value": 0, "easing": "hold"},
-                {"type": "keyframe", "target": f"w{i}", "property": "opacity", "time": t0, "value": 0},
-                {"type": "keyframe", "target": f"w{i}", "property": "opacity", "time": t0 + 160, "value": 1},
-                {"type": "keyframe", "target": f"w{i}", "property": "translate-y", "time": t0, "value": 40,
-                 "easing": "ease-out-cubic"},
-                {"type": "keyframe", "target": f"w{i}", "property": "translate-y", "time": t0 + 260, "value": 0},
-                {"type": "keyframe", "target": f"w{i}", "property": "opacity", "time": t0 + 600, "value": 1},
-                {"type": "keyframe", "target": f"w{i}", "property": "opacity", "time": t0 + 720, "value": 0}]
-    for n, t in (("end-logo", 4500), ("end-line", 4800), ("end-url", 5050)):
-        ops += [{"type": "keyframe", "target": n, "property": "opacity", "time": 0, "value": 0, "easing": "hold"},
-                {"type": "animate-preset", "target": n, "preset": "slide-in-up", "start": t, "duration": 500,
-                 "distance": 40, "fade": True}]
-    p.apply(ops, detail="brief")
-    folder = OUT / "motion"
-    folder.mkdir(parents=True, exist_ok=True)
-    p.save(str(folder / "teaser.vixl"))
-    from vixl.timeline import contact_sheet, export_timeline
-    export_timeline(p, str(folder / "teaser.mp4"), fps=24, overwrite=True)
-    export_timeline(p, str(folder / "teaser.gif"), fps=12, scale=0.5, colors=96, overwrite=True)
-    from vixl.timeline import render_at
-
-    render_at(p, 5800).convert("RGB").save(folder / "teaser-frame.png")
-    contact_sheet(p, count=12, columns=6, max_width=1800).convert("RGB").save(folder / "teaser-contact-sheet.png")
-    print("  wrote motion/teaser.{vixl,mp4,gif} and contact sheet")
+def build_brief():
+    """Useful creative-intake form with real AcroForm fields and explicit tab order."""
+    p = print_document("letter")
+    w, h = p.state["canvas"]["width"], p.state["canvas"]["height"]
+    m = 90
+    p.apply([*logo("logo", "horizontal-color", m, 45, width=210),
+             text("kicker", "MADE WITH VIXL / FILLABLE PDF", m, 185, 21, SUBTLE, MONO),
+             headline("headline", "Start with a clear brief.", m, 250, 64, color=INK),
+             para("sub", "Use this worksheet to plan a graphic, document or motion piece. Type into the PDF fields "
+                  "or print it for a working session.", m, 350, 25, w - 2 * m, SUBTLE)])
+    fields = [
+        ("project_name", "Project / campaign", "text", 480, 72, 100),
+        ("audience", "Who is it for?", "text", 635, 72, 120),
+        ("message", "The one thing they should remember", "multiline", 790, 135, 260),
+        ("action", "What should they do next?", "text", 1005, 72, 120),
+        ("deliverables", "Deliverables, dimensions and channels", "multiline", 1160, 130, 260),
+    ]
+    for i, (key, label, kind, y, height, limit) in enumerate(fields):
+        p.apply([text(f"label-{i}", label, m, y, 26, INK, SEMI),
+                 {"type": "field", "name": key, "kind": kind, "label_layer": f"label-{i}",
+                  "x": m, "y": y + 48, "width": w - 2 * m, "height": height, "max_length": limit,
+                  "font": BODY, "size": 24, "min_size": 18, "tab": i + 1,
+                  "appearance": {"style": "box", "fill": PAPER, "stroke": SUBTLE, "stroke_width": 1}}])
+    p.apply([{"type": "field", "name": "review", "kind": "checkbox", "label": "Review copy, accessibility and export settings",
+              "x": m, "y": 1395, "width": 28, "height": 28, "tab": 6},
+             text("review-label", "Review copy, accessibility and export settings", m + 46, 1387, 23, INK),
+             para("note", "Bring brand assets and content you have permission to use. Keep the editable master with the exports.",
+                  m, 1480, 22, w - 2 * m, SUBTLE)])
+    footer(p, h - 70, m, dark=False, size=20)
+    save_and_export(p, "print", "creative-brief-letter", [("pdf", {"fillable": True}), ("png", {})],
+                    checks=["bounds", "flow", "overlap", "contrast", "fonts", "form", "print"])
 
 
 def build_stickers():
-    """A US Letter sheet of die-cut style stickers for events."""
-    p = new(100, 100, WHITE)
-    p.apply({"type": "canvas", "size": "letter", "dpi": 150, "background": WHITE}, detail="brief")
-    H = p.state["canvas"]["height"]
-    D = 480
-    cells = [(100, 70), (695, 70), (100, 575), (695, 575), (100, 1080), (695, 1080)]
-    fills = [CHARCOAL, BLUE, WHITE, CHARCOAL, BLUE, CHARCOAL]
-    p.apply([{"type": "shape", "shape": "ellipse" if i % 3 != 1 else "rounded-rectangle", "name": f"cut{i}",
-              "x": x, "y": y, "width": D, "height": D, "radius": 84, "fill": fills[i], "stroke": "#C9D1E0",
-              "stroke_width": 3} for i, (x, y) in enumerate(cells)], detail="brief")
-    (x0, y0), (x1, y1), (x2, y2), (x3, y3), (x4, y4), (x5, y5) = cells
-    p.apply([
-        logo("s0-mark", "mark-reverse", x0 + 90, y0 + 90, width=D - 180),
-        logo("s1-logo", "stacked-white", x1 + 85, y1 + 70, width=D - 170),
-        text("s2-t", "MADE WITH", 0, y2 + 150, 38, INK, MONO),
-        logo("s2-logo", "horizontal-color", x2 + 50, y2 + 200, width=D - 100),
-        headline("s3-t", "No GUI.\nNo\nproblem.", x3, y3 + 110, 80, "problem.", align="center", width=D),
-        headline("s4-t", "checked\nbefore\nexport", x4, y4 + 100, 86, align="center", width=D),
-        *pixel_stair("s5-px", x5 + 150, y5 + 70, 12, 7, 10, SKY, fade=False),
-        text("s5-a", "MCP", 0, y5 + 160, 140, WHITE, HEAD),
-        text("s5-b", "READY", 0, y5 + 320, 52, SKY, MONO),
-    ], detail="brief")
-    for n, cx in (("s2-t", x2), ("s5-a", x5), ("s5-b", x5)):
-        x, y, w, h = bounds(p, n)
-        p.apply({"type": "move", "target": n, "x": round(cx + (D - w) / 2), "y": y}, detail="brief")
-    p.apply([text("note", "Cut along the grey outlines. Kiss-cut on matte vinyl.", 100, H - 70, 22, SUBTLE)],
-            detail="brief")
+    p = print_document("letter")
+    cells = [(110, 90), (700, 90), (110, 600), (700, 600), (110, 1110), (700, 1110)]
+    for i, (x, y) in enumerate(cells):
+        p.apply(rect(f"cut-{i}", x, y, 465, 420, CHARCOAL if i != 2 else PAPER, 64))
+    for i in (0, 1):
+        x, y = cells[i]
+        p.apply(logo(f"logo-{i}", "mark-reverse" if i == 0 else "stacked-reverse", x + 105, y + 58, width=255))
+    x, y = cells[2]
+    p.apply([text("credit", "MADE WITH", x + 96, y + 110, 34, INK, MONO),
+             *logo("logo-2", "horizontal-color", x + 55, y + 185, width=355)])
+    for i, phrase in enumerate(["Ideas\nbecome\neditable.", "Keep\nthe\nlayers.", "MCP\nREADY"], 3):
+        x, y = cells[i]
+        p.apply(headline(f"sticker-{i}", phrase, x, y + 75, 80, width=465, align="center"))
+    p.apply(text("note", "Event handout · Cut around each tile · Made with Vixl", 110, 1580, 22, SUBTLE))
     save_and_export(p, "print", "sticker-sheet-letter", [("pdf", {}), ("png", {"scale": 0.5})],
-                    checks=["bounds", "overlap", "contrast", "fonts"])
+                    checks=["bounds", "flow", "overlap", "contrast", "fonts"])
+
+
+def build_deck():
+    """Twelve-slide product deck with notes and a genuinely native PowerPoint chart."""
+    p = new(1920, 1080)
+    m = 140
+    p.apply([{"type": "master", "action": "add", "name": "frame", "background": CHARCOAL},
+             *logo("footer-logo", "horizontal-reverse", m, 955, width=170),
+             text("page-num", "${page} / ${pages}", 1670, 985, 24, MUTED, MONO)])
+
+    def slide(name, kicker, title, notes, accent=None):
+        p.apply({"type": "page", "action": "add", "name": name, "master": "frame", "notes": notes,
+                 "transition": "fade"})
+        p.apply([text("kicker", kicker, m, 100, 28, SKY, MONO),
+                 headline("headline", title, m, 180, 94, accent)])
+
+    def cards(items, y=430, height=385):
+        cw = (1640 - 40 * (len(items) - 1)) // len(items)
+        for i, (title, body) in enumerate(items):
+            x = m + i * (cw + 40)
+            p.apply([rect(f"card-{i}", x, y, cw, height),
+                     text(f"number-{i}", f"0{i+1}", x + 36, y + 32, 28, SKY, MONO),
+                     text(f"label-{i}", title, x + 36, y + 110, 49, WHITE, HEAD),
+                     para(f"body-{i}", body, x + 36, y + 194, 34, cw - 72)])
+
+    slide("title", "VIXL / A DESIGN STUDIO FOR AI AGENTS", "Ideas become\neditable.",
+          "Vixl is a programmable design studio for AI agents. It turns graphics, documents and motion into "
+          "layered files you can inspect, revise and deliver. This deck was authored with Vixl.", "editable.")
+    p.apply([*logo("mark", "mark-reverse", 1270, 270, width=450),
+             para("sub", "Graphics. Documents. Motion.\nMCP · CLI · Python · REST", m, 590, 44, 1050),
+             text("credit", "THIS DECK IS MADE WITH VIXL", m, 830, 28, SKY, MONO)])
+    slide("document", "THE CORE IDEA", "A design is a document.",
+          "The .vixl master keeps editable content, settings and branching history. Raster images remain pixels; "
+          "text, supported shapes and paths remain editable. Deliver the master alongside the formats people need.", "document.")
+    cards([("Content", "Text, vector paths, images, masks and effects."),
+           ("Structure", "Groups, variables, pages, layouts and reusable components."),
+           ("History", "Undo, checkpoints, branches and document diffs.")])
+    slide("workflow", "THE AGENT LOOP", "Feedback at every step.",
+          "Inspect, apply, check, preview and export. The diagram is made from Vixl's diagram operation, with "
+          "editable nodes, routed paths and text. Automated checks complement visual review; they do not judge taste.", "every step.")
+    p.apply(diagram_op("workflow", m, 405, 1640, 275, size=34))
+    p.apply(para("note", "Read the structure. Apply atomic edits. Check requirements.\nRender and review the design. Export the files.",
+                 m, 750, 36, 1600, WHITE))
+    slide("gallery", "A BROAD CREATIVE TOOLSET", "From print to pixels.",
+          "These examples are real outputs in this repository: print layout, generative painting, a pixel game, "
+          "data graphics, character animation and photo editing. They show different workflows rather than usage statistics.", "pixels.")
+    keys = ["poster", "painting", "pixel", "chart", "film", "photo"]
+    for i, key in enumerate(keys):
+        x, y = m + i % 3 * 556, 375 + i // 3 * 276
+        p.apply(photo(f"gallery-{i}", key, x, y, 528, 248))
+        chip(p, f"gallery-label-{i}", SHOW[key][0], x + 14, y + 184, size=25, pad=(14, 8))
+    slide("data", "DATA TO STORY", "Edit the data. Keep the chart.",
+          "This is illustrative workflow data, not a customer result or performance claim. Vixl binds the chart "
+          "to categories and series. In the PowerPoint export it is a native chart with an embedded workbook. "
+          "Open PowerPoint's Edit Data command to inspect it.", "Keep the chart.")
+    p.apply([rect("chart-panel", m, 370, 1020, 520, WHITE),
+             chart_op("native-chart", m + 40, 410, 940, 415, size=29),
+             text("source", "ILLUSTRATIVE WORKFLOW DATA", m + 40, 840, 20, SUBTLE, MONO),
+             para("data-note", "Change values with chart-data.\n\nVixl updates the scale, bars, labels and totals.\n\nPPTX includes the data table.",
+                  1240, 410, 35, 520, WHITE)])
+    slide("repeat", "CREATIVE AUTOMATION", "One recipe. Useful variations.",
+          "The included social campaign is a typed recipe. Its inputs supply headline, description and accent. "
+          "Production instantiates three rows, runs the saved design suite and exports the checked variants. "
+          "Use the supplied CSV and production request as a starting point.", "Useful variations.")
+    p.apply([*photo("campaign", "campaign-kit", m, 390, 960, 460),
+             para("repeat-note", "Typed inputs + variables\n\nText fitting + saved checks\n\nCSV-driven batches\n\nReusable containers and templates",
+                  1190, 415, 35, 570, WHITE)])
+    slide("motion", "MOTION THAT SHIPS", "Animate the idea.\nPackage the behavior.",
+          "Vixl supports timeline tracks, cameras, audio and rigged joint pose keys. The app demo in this kit "
+          "ships ready, creating and delivered states with light/dark themes, explicit transitions, editable "
+          "masters and reduced-motion PNGs. The teaser is an editable timeline exported to MP4 and GIF.", "Package the behavior.")
+    cards([("Author", "Keyframes, motion recipes, character poses, cameras and audio."),
+           ("Export", "GIF, animated WebP, APNG, MP4 and other supported timeline formats."),
+           ("Integrate", "App states, theme variables, transitions and reduced-motion stills.")], y=455, height=390)
+    slide("review", "CHECKED DELIVERY", "Make requirements measurable.",
+          "Design checks cover bounds, flow, contrast, fonts and other selected concerns. Saved suites can "
+          "encode margins, hierarchy and spacing. Proof pages collect previews and findings offline. "
+          "A passing check proves its rules, so a person or agent still needs to review the rendered design.", "measurable.")
+    cards([("Define", "Save layout and delivery requirements as test suites."),
+           ("Inspect", "Run checks, review findings and look at actual previews."),
+           ("Share", "Use offline proof pages or a live REST review session.")])
+    slide("collaborate", "REVIEWABLE WORK", "Designs belong in the workflow.",
+          "Unpack a .vixl master into stable current-state JSON and hashed assets for Git review. Pack it "
+          "back into a document after edits. Branching history, project groups and reusable libraries support "
+          "collaboration. The included campaign has an unpacked source folder to inspect.", "workflow.")
+    cards([("Git review", "Readable JSON + assets through pack and unpack."),
+           ("Shared work", "Branches, explicit merges, project groups and reusable libraries."),
+           ("Portable files", "Embedded content and fonts, plus the editable master.")])
+    slide("interfaces", "FOUR WAYS IN", "Same operations. Your tools.",
+          "MCP serves agents, the CLI serves scripts and CI, Python serves generators and notebooks, and REST "
+          "serves integrations and live review. All share canonical operations. The server extra is needed for REST.", "Your tools.")
+    cards([("MCP", "Connect an agent to the workspace."), ("CLI", "Script and batch from a terminal."),
+           ("Python", "Compose files from code and data."), ("REST", "Integrate with web services.")], height=360)
+    slide("delivery", "A COMPLETE HANDOFF", "Send the formats people need.",
+          "Supported vectors stay vector in SVG/PDF where possible; some features use reported raster "
+          "fallbacks. PPTX preserves supported editable shapes, text, tables and charts. PSD export is layered "
+          "pixels, not native editable type. CMYK is an export setting; a printer should confirm the chosen profile.", "people need.")
+    cards([("Screen", "PNG, JPEG, WebP, SVG and icons."),
+           ("Documents", "PDF, fillable PDF, PPTX and HTML decks."),
+           ("Print + motion", "CMYK PDF/TIFF, GIF, WebP, MP4 and more.")])
+    slide("start", "START CREATING", "Give your agent a design studio.",
+          "Windows users can use the installer from GitHub Releases. Developers need Python 3.11 or newer; "
+          "clone the repo, then install its extras. Run the MCP command in an existing workspace. Vixl is "
+          "source-available under PolyForm Small Business 1.0.0; read LICENSE for eligibility. Core authoring "
+          "works locally. AI generation and vision need configured external providers.", "design studio.")
+    command = [
+        (0, [("git clone https://github.com/jxburros/Vixl.git", WHITE)]),
+        (0, [("cd Vixl", WHITE)]),
+        (0, [("python -m pip install -e '.[server,pdf]'", WHITE)]),
+        (0, [("vixl mcp --workspace . --tools core --schema slim", CODE_STR)]),
+    ]
+    p.apply(code_card("install", m, 375, 1640, command, size=30, title="terminal"))
+    p.apply([text("windows", "Windows installer: GitHub Releases", m, 725, 34, WHITE, SEMI),
+             text("repo", REPO, m, 790, 31, SKY, MONO),
+             para("license", "Source-available · PolyForm Small Business 1.0.0\nAI features use configured external providers.",
+                  m, 854, 27, 1540)])
+    save_and_export(p, "deck", "vixl-pitch-deck", [("pdf", {}), ("pptx", {}), ("html", {})],
+                    checks=["bounds", "flow", "overlap", "contrast", "fonts", "deck"], deck={"profile": "screen"})
+    sheet(p, OUT / "deck/contact-sheet.png", width=480, columns=3)
+    p.export(OUT / "deck/vixl-pitch-deck.png", page="title", scale=0.5, overwrite=True)
+
+
+def build_campaign():
+    """A practical three-post campaign built with checked typed recipe production."""
+    from vixl.production import capture_recipe, run, instantiate
+    from vixl.project_folder import unpack
+
+    folder = OUT / "campaign"
+    # Only this builder-owned output directory is replaced; no user input lives here.
+    if folder.exists():
+        shutil.rmtree(folder)
+    folder.mkdir(parents=True)
+    p = new(1080, 1080)
+    p.apply([*logo("logo", "horizontal-reverse", 80, 45, width=230),
+             text("kicker", "A DESIGN STUDIO FOR AI AGENTS", 80, 210, 27, SKY, MONO),
+             text("title", "Keep the layers.", 80, 340, 106, WHITE, HEAD),
+             text("body", "Create, inspect and revise layered designs.", 80, 670, 40),
+             {"type": "text-layout", "target": "body", "width": 875, "height": 140},
+             rect("accent", 80, 860, 920, 8, SKY, 0),
+             text("footer", REPO, 80, 960, 27, MUTED, MONO),
+             {"type": "action-define", "name": "fit-title", "action": {"operations": [
+                 {"type": "fit-text", "target": "title", "width": 920, "height": 260, "minimum": 68, "maximum": 106}]}},
+             {"type": "suite-set", "name": "delivery", "suite": {"rules": [
+                 {"id": "headline-fits", "kind": "text-fit", "target": "title", "minimum": 68},
+                 {"id": "headline-margin", "kind": "relation", "target": "title", "to": "canvas",
+                  "position": "inside", "minimum": 70},
+                 {"id": "readable", "kind": "contrast", "target": "title", "minimum": 4.5},
+                 {"id": "layout", "kind": "design", "options": {"checks": ["bounds", "flow", "overlap", "contrast", "fonts"]}},
+             ]}}])
+    with (HERE / "posts.csv").open(newline="", encoding="utf-8") as stream:
+        rows = list(csv.DictReader(stream))
+    recipe = capture_recipe(p, {"version": 1, "inputs": {
+        "title": {"type": "string", "default": rows[0]["title"], "maxLength": 60},
+        "body": {"type": "string", "default": rows[0]["body"], "maxLength": 100},
+        "accent": {"type": "color", "default": SKY}}, "actions": ["fit-title"], "examples": rows},
+        {"title": {"target": "title", "field": "text"}, "body": {"target": "body", "field": "text"},
+         "accent": {"target": "accent", "field": "fill"}})
+    recipe.compact()
+    recipe.save(folder / "campaign-recipe.vixl")
+    spec = {"version": 1, "rows": rows, "suites": ["delivery"], "workers": 1}
+    (folder / "production.json").write_text(json.dumps({"spec": spec, "output": "campaign-custom"}, indent=2) + "\n")
+    shutil.copyfile(HERE / "posts.csv", folder / "posts.csv")
+    report = run(recipe, spec, folder / "rendered")
+    if report["status"] != "completed":
+        raise RuntimeError(f"Campaign failed: {report}")
+    previews = new(1800, 700)
+    previews.apply(text("headline", "One recipe. Three useful posts.", 60, 30, 50, WHITE, HEAD))
+    for i, result in enumerate(report["results"]):
+        candidate = instantiate(recipe, result["values"])
+        save_and_export(candidate, "campaign", f"post-{i+1}-1080x1080", [("png", {})],
+                        checks=["bounds", "flow", "overlap", "contrast", "fonts"], thumbnail_width=540)
+        previews.apply({"type": "frame", "name": f"post-{i}", "path": str(folder / f"post-{i+1}-1080x1080.png"),
+                        "x": 60 + i * 580, "y": 140, "width": 520, "height": 520, "downsample": "placed@2x"})
+    save_and_export(previews, "campaign", "contact-sheet", [("png", {})], checks=["bounds", "flow", "fonts"])
+    unpack(folder / "campaign-recipe.vixl", folder / "source")
+    SHOW["campaign-kit"] = ("Checked campaign variants", "marketing/output/campaign/contact-sheet.png")
+
+
+def build_app():
+    """A reusable branded status graphic with three states, two themes and reduced-motion stills."""
+    from vixl.interfaces import Session
+    from vixl.workflows import dispatch
+
+    root = OUT / "app"
+    if root.exists():
+        shutil.rmtree(root)
+    root.mkdir(parents=True)
+    states = {}
+    for state, label in (("ready", "Ready to create"), ("creating", "Creating"), ("delivered", "Ready to share")):
+        p = new(640, 320)
+        p.apply([{"type": "variable", "name": "bg", "value": CHARCOAL},
+                 {"type": "variable", "name": "fg", "value": WHITE},
+                 {"type": "variable", "name": "accent", "value": SKY},
+                 rect("surface", 0, 0, 640, 320, "${bg}", 0),
+                 text("kicker", "VIXL / IDEAS BECOME EDITABLE", 40, 40, 20, "${fg}", MONO),
+                 text("title", label, 40, 135, 49, "${fg}", HEAD),
+                 text("footer", "A design studio for AI agents", 40, 252, 22, "${fg}")])
+        for i in range(3):
+            p.apply(rect(f"pixel-{i}", 490 + i * 38, 150, 20, 20, "${accent}", 0))
+        p.apply({"type": "timeline-set", "duration": 1200, "fps": 12, "loop_mode": "seamless"})
+        if state == "creating":
+            for i in range(3):
+                p.apply([{"type": "keyframe", "target": f"pixel-{i}", "property": "translate-y", "time": 0, "value": 0},
+                         {"type": "keyframe", "target": f"pixel-{i}", "property": "translate-y", "time": 300 + i * 120,
+                          "value": -18, "easing": "ease-in-out"},
+                         {"type": "keyframe", "target": f"pixel-{i}", "property": "translate-y", "time": 1200, "value": 0}])
+        # Validate still content plus sampled moving-pixel margins, before packaging.
+        p.apply({"type": "suite-set", "name": "motion", "suite": {
+            "sampling": {"mode": "sampled", "count": 6}, "rules": [
+                {"id": f"pixel-{i}-inside", "kind": "relation", "target": f"pixel-{i}", "to": "canvas",
+                 "position": "inside", "minimum": 20} for i in range(3)]}})
+        motion_report = p.check_suite("motion")
+        if not motion_report["passed"]:
+            raise RuntimeError(f"App motion suite failed: {motion_report}")
+        save_and_export(p, "app", state, [("png", {})], checks=["bounds", "flow", "contrast", "fonts"])
+        (root / f"{state}.motion-check.json").write_text(json.dumps(motion_report, indent=2) + "\n")
+        states[state] = {"source": f"marketing/output/app/{state}.vixl", "loop": True}
+    request = {"states": states, "default_state": "ready", "themes": {
+        "dark": {"bg": CHARCOAL, "fg": WHITE, "accent": SKY},
+        "light": {"bg": PAPER, "fg": INK, "accent": BLUE}}, "transitions": [
+            {"from": "ready", "event": "create", "to": "creating"},
+            {"from": "creating", "event": "deliver", "to": "delivered"},
+            {"from": "delivered", "event": "reset", "to": "ready"}],
+        "output": "marketing/output/app/package", "format": "webp"}
+    dispatch(Session(workspace=ROOT), "app-animation-package", request)
+    (root / "package-request.json").write_text(json.dumps(request, indent=2) + "\n")
+
+
+def build_teaser():
+    """A play-once 6.6 second timeline plus a useful reduced-motion poster."""
+    from vixl.timeline import contact_sheet, export_timeline, render_at
+
+    p = new(1080, 1080)
+    p.apply([*logo("logo", "horizontal-reverse", 340, 70, width=400),
+             *logo("mark", "mark-reverse", 390, 245, width=300),
+             headline("headline", "Ideas become\neditable.", 60, 605, 88, "editable.", width=960, align="center"),
+             text("footer", REPO, 90, 985, 27, MUTED, MONO),
+             {"type": "timeline-set", "duration": 6600, "fps": 24, "loop_mode": "off", "loop": 1}])
+    for i, label in enumerate(["Inspect", "Apply", "Check", "Preview", "Export"]):
+        x = 80 + i * 188
+        p.apply([text(f"step-{i}", label, x, 850, 29, WHITE, SEMI),
+                 rect(f"line-{i}", x, 925, 140, 6, LINE, 0)])
+    p.apply([rect("progress", 80, 925, 140, 6, SKY, 0),
+             {"type": "layer-intent", "target": "progress", "role": "decoration"},
+             {"type": "animate-preset", "target": "mark", "preset": "pop-in", "start": 0, "duration": 600},
+             {"type": "keyframe", "target": "progress", "property": "translate-x", "time": 0, "value": 0},
+             {"type": "keyframe", "target": "progress", "property": "translate-x", "time": 5500, "value": 752},
+             {"type": "keyframe", "target": "progress", "property": "translate-x", "time": 6600, "value": 752},
+             {"type": "suite-set", "name": "motion", "suite": {"sampling": {"mode": "sampled", "count": 12},
+                 "rules": [{"id": "title-margin", "kind": "relation", "target": "headline", "to": "canvas",
+                            "position": "inside", "minimum": 55},
+                           {"id": "progress-inside", "kind": "relation", "target": "progress", "to": "canvas",
+                            "position": "inside", "minimum": 50}]}}])
+    report = p.check_suite("motion")
+    if not report["passed"]:
+        raise RuntimeError(f"Teaser motion suite failed: {report}")
+    save_and_export(p, "motion", "teaser", [], checks=["bounds", "flow", "overlap", "contrast", "fonts"])
+    folder = OUT / "motion"
+    (folder / "teaser.motion-check.json").write_text(json.dumps(report, indent=2) + "\n")
+    export_timeline(p, folder / "teaser.mp4", fps=24, overwrite=True)
+    export_timeline(p, folder / "teaser.gif", fps=12, scale=0.5, colors=128, overwrite=True)
+    render_at(p, 5800).convert("RGB").save(folder / "teaser-frame.png")
+    contact_sheet(p, count=12, columns=6, max_width=1800).convert("RGB").save(folder / "teaser-contact-sheet.png")
+
+
+def build_copy():
+    """Copy is supplied as data and plain text so it can be pasted into publishing tools."""
+    copy = json.loads((HERE / "copy.json").read_text(encoding="utf-8"))
+    folder = OUT / "copy"
+    folder.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(HERE / "licenses", OUT / "licenses", dirs_exist_ok=True)
+    (folder / "marketing-copy.json").write_text(json.dumps(copy, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    sections = [copy["headline"], copy["one_sentence"], "SHORT DESCRIPTION\n" + copy["short_description"],
+                "PRODUCT DESCRIPTION\n" + copy["product_description"], "LICENSING\n" + copy["licensing"],
+                "GET STARTED\n" + copy["get_started"]]
+    for post in copy["posts"]:
+        sections.append(f"{post['label'].upper()}\nAsset: {post['asset']}\n\n{post['caption']}\n\nAlt text: {post['alt']}")
+    sections.append("DEMO SCRIPT\n" + "\n\n".join(copy["demo_script"]))
+    (folder / "marketing-copy.txt").write_text("\n\n".join(sections) + "\n", encoding="utf-8")
 
 
 def build_overview():
-    """A one-image board of the whole kit, framed from the exports above."""
-    W, H = 2400, 1580
-    p = new(W, H, CHARCOAL)
-    o = "marketing/output"
-    tiles = [  # path, x, y, w, h, label
-        (f"{o}/social/og-card-1200x630.png", 80, 220, 900, 473, "Open Graph card"),
-        (f"{o}/social/github-preview-1280x640.png", 80, 760, 900, 450, "GitHub social preview"),
-        (f"{o}/print/poster-tabloid.png", 1030, 220, 430, 659, "Tabloid poster, CMYK PDF"),
-        (f"{o}/print/one-pager-letter.png", 1030, 940, 430, 556, "Product sheet"),
-        (f"{o}/social/story-1080x1920.png", 1510, 220, 380, 676, "Story"),
-        (f"{o}/print/sticker-sheet-letter.png", 1510, 960, 380, 492, "Sticker sheet"),
-        (f"{o}/deck/vixl-pitch-deck.png", 1940, 220, 380, 214, "Pitch deck"),
-        (f"{o}/carousel/slide-1-cover.png", 1940, 500, 380, 475, "Carousel"),
-        (f"{o}/social/linkedin-banner-1584x396.png", 1940, 1030, 380, 95, "LinkedIn banner"),
-        (f"{o}/motion/teaser-frame.png", 1940, 1196, 300, 300, "Motion teaser"),
+    p = new(2400, 1740)
+    tiles = [
+        ("social/og-card-1200x630.png", "Link preview", 700, 368),
+        ("deck/vixl-pitch-deck.png", "Product deck · 12 slides", 700, 394),
+        ("campaign/contact-sheet.png", "Reusable social campaign", 700, 272),
+        ("carousel/slide-1-cover.png", "Carousel · 6 slides", 350, 438),
+        ("print/one-pager-letter.png", "Product sheet", 350, 453),
+        ("print/creative-brief-letter.png", "Fillable creative brief", 350, 453),
+        ("print/poster-tabloid.png", "CMYK print poster", 350, 537),
+        ("showcase/capability-map.png", "Capability map", 350, 263),
+        ("motion/teaser-frame.png", "Motion teaser", 350, 350),
     ]
-    p.apply([*dot_grid("grid", 24, 24, W - 24, H - 24, 40, "#FFFFFF0B"),
-             logo("logo", "horizontal-reverse", 80, 60, width=260),
-             headline("head", "Marketing kit, made with Vixl.", 420, 92, 64, "made with Vixl.")], detail="brief")
-    ops = []
-    for i, (path, x, y, w, h, label) in enumerate(tiles):
-        ops += [{"type": "shape", "shape": "rounded-rectangle", "name": f"t{i}-base", "x": x, "y": y, "width": w,
-                 "height": h, "radius": 12, "fill": PANEL},
-                {"type": "frame", "name": f"t{i}", "path": path, "x": x, "y": y, "width": w, "height": h,
-                 "fit": "fill"},
-                {"type": "clip", "target": f"t{i}", "base": f"t{i}-base"}]
-    p.apply(ops, detail="brief")
-    p.apply({"type": "look", "targets": [f"t{i}-base" for i in range(len(tiles))], "look": "soft-shadow",
-             "color": "#000000", "amount": 0.4}, detail="brief")
-    for i, (path, x, y, w, h, label) in enumerate(tiles):
-        below = h < 150 or label == "GitHub social preview"  # short banner; card whose chips sit at the bottom
-        ly = y + h + 8 if below else y + h - 46
-        chip(p, f"lab{i}", label, x + 10, ly, 18, WHITE, "#1A1F2BE0", pad=(12, 8))
-    save_and_export(p, ".", "kit-overview", [("png", {"scale": 0.75})], checks=["bounds", "fonts"])
+    p.apply([*logo("logo", "horizontal-reverse", 80, 45, width=280),
+             headline("headline", "The Vixl marketing pack.", 460, 83, 76, "Vixl"),
+             text("sub", "Useful materials. Editable originals. Made with Vixl.", 80, 220, 34)])
+    placements = [(80, 340), (80, 800), (80, 1290), (850, 340), (1260, 340), (1670, 340),
+                  (850, 900), (1260, 950), (1670, 980)]
+    for i, ((path, label, w, h), (x, y)) in enumerate(zip(tiles, placements)):
+        p.apply([{ "type": "frame", "name": f"tile-{i}", "path": str(OUT / path),
+                   "x": x, "y": y, "width": w, "height": h, "fit": "fit", "downsample": "placed@2x"},
+                 text(f"label-{i}", label, x, y + h + 20, 26, MUTED)])
+    p.apply([text("app-title", "Includes an app animation family", 1260, 1435, 34, WHITE, HEAD),
+             para("app-sub", "3 states · Light + dark themes\nReduced-motion PNGs · HTML consumer", 1260, 1495, 28, 890)])
+    save_and_export(p, ".", "kit-overview", [("png", {"scale": 0.75})], checks=["bounds", "flow", "fonts"])
 
 
-PIECES = {
-    "og": build_og,
-    "github": build_github,
-    "linkedin": build_linkedin,
-    "story": build_story,
-    "carousel": build_carousel,
-    "poster": build_poster,
-    "onepager": build_onepager,
-    "stickers": build_stickers,
-    "deck": build_deck,
-    "teaser": build_teaser,
-    "overview": build_overview,
-}
+def build_proof():
+    from vixl.proof import proof_page
+
+    items = [
+        ("social/og-card-1200x630.png", "Link preview"),
+        ("social/github-preview-1280x640.png", "GitHub social preview"),
+        ("social/linkedin-banner-1584x396.png", "LinkedIn banner"),
+        ("social/story-1080x1920.png", "Story"),
+        ("carousel/carousel-1080x1350.vixl", "Six-page carousel"),
+        ("deck/vixl-pitch-deck.vixl", "Product deck with notes"),
+        ("print/poster-tabloid.pdf", "CMYK tabloid poster"),
+        ("print/one-pager-letter.pdf", "Product sheet"),
+        ("print/creative-brief-letter.pdf", "Fillable creative brief"),
+        ("print/sticker-sheet-letter.png", "Event sticker handout"),
+        ("showcase/capability-map.png", "Capability map"),
+        ("showcase/editable-chart.png", "Data-bound chart"),
+        ("showcase/agent-workflow.png", "Editable workflow diagram"),
+        ("campaign/contact-sheet.png", "Checked campaign variants"),
+        ("motion/teaser-frame.png", "Motion teaser still"),
+        ("app/package/assets/creating/dark-reduced.png", "App status animation still"),
+    ]
+    result = proof_page([{"path": path, "label": label} for path, label in items], OUT / "proof.html",
+                        resolve=lambda value: OUT / value, title="Vixl marketing pack", check=False,
+                        decisions=True, overwrite=True)
+    if result["failed"]:
+        raise RuntimeError(f"Proof generation failed: {result['failed']}")
+
+
+def build_manifest():
+    from vixl import __version__
+
+    files = {}
+    for path in sorted(OUT.rglob("*")):
+        if path.is_file() and path != OUT / "manifest.json":
+            files[path.relative_to(OUT).as_posix()] = {
+                "bytes": path.stat().st_size, "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
+    manifest = {"format": "vixl-marketing-pack", "engine_version": __version__, "registry_facts": FACTS,
+                "files": files}
+    (OUT / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+
+
+PIECES = {"showcase": build_showcase, "campaign": build_campaign, "og": build_og, "github": build_github,
+          "linkedin": build_linkedin, "story": build_story, "carousel": build_carousel, "poster": build_poster,
+          "onepager": build_onepager, "brief": build_brief, "stickers": build_stickers, "deck": build_deck,
+          "app": build_app, "teaser": build_teaser, "copy": build_copy, "overview": build_overview,
+          "proof": build_proof}
 
 
 def main(argv):
     names = argv or list(PIECES)
-    for name in names:
-        print(f"[{name}]")
+    unknown = set(names) - PIECES.keys()
+    if unknown:
+        raise SystemExit(f"Unknown pieces: {', '.join(sorted(unknown))}. Choose: {', '.join(PIECES)}")
+    # Consumers share fresh native showcases, including when only a consumer is requested.
+    SHOW["workflow"] = ("Editable workflow", "marketing/output/showcase/agent-workflow.png")
+    SHOW["chart"] = ("Data-bound charts", "marketing/output/showcase/editable-chart.png")
+    SHOW["campaign-kit"] = ("Checked campaign variants", "marketing/output/campaign/contact-sheet.png")
+    dependencies = {"github": ["showcase"], "story": ["showcase"], "carousel": ["showcase"],
+                    "deck": ["showcase", "campaign"],
+                    "overview": ["og", "deck", "carousel", "poster", "onepager", "brief", "teaser", "app"],
+                    "proof": ["overview", "github", "linkedin", "story", "stickers", "copy"]}
+    built = set()
+
+    def build(name):
+        if name in built:
+            return
+        for dependency in dependencies.get(name, []):
+            build(dependency)
+        print(f"[{name}]", flush=True)
         PIECES[name]()
+        built.add(name)
+
+    for name in names:
+        build(name)
+    build_manifest()
 
 
 if __name__ == "__main__":

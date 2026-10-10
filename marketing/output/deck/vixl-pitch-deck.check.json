@@ -1,46 +1,141 @@
 {
-  "issues": [
+  "passed": true,
+  "errors": 0,
+  "warnings": 0,
+  "info": 0,
+  "by_action": {
+    "fix": [],
+    "review": [],
+    "informational": []
+  },
+  "issues": [],
+  "checked": {
+    "checks": [
+      "bounds",
+      "flow",
+      "overlap",
+      "contrast",
+      "fonts",
+      "title_position",
+      "words",
+      "min_font",
+      "notes",
+      "empty"
+    ],
+    "pages": 12,
+    "profile": "screen",
+    "min_font_px": 14,
+    "max_words": 250,
+    "thumbnail_width": null,
+    "display_width": 1280,
+    "points_per_pixel": 0.5
+  },
+  "pages": [
     {
-      "check": "coverage",
-      "severity": "warning",
-      "action": "informational",
-      "layer": null,
-      "message": "'t-grid' is inside a repeated group; geometry checks cover its base instance. Visually inspect the repeated instances."
+      "page": "title",
+      "passed": true,
+      "errors": 0,
+      "warnings": 0
     },
     {
-      "check": "bounds",
-      "severity": "info",
-      "action": "informational",
-      "layer": null,
-      "message": "'t-glow' bleeds off the canvas edge (marked as an intentional crop)"
+      "page": "document",
+      "passed": true,
+      "errors": 0,
+      "warnings": 0
     },
     {
-      "check": "coverage",
-      "severity": "warning",
-      "action": "informational",
-      "layer": null,
-      "message": "'m-grid' is inside a repeated group; geometry checks cover its base instance. Visually inspect the repeated instances."
+      "page": "workflow",
+      "passed": true,
+      "errors": 0,
+      "warnings": 0
     },
     {
-      "check": "coverage",
-      "severity": "warning",
-      "action": "informational",
-      "layer": null,
-      "message": "'st-grid' is inside a repeated group; geometry checks cover its base instance. Visually inspect the repeated instances."
+      "page": "gallery",
+      "passed": true,
+      "errors": 0,
+      "warnings": 0
     },
     {
-      "check": "bounds",
-      "severity": "info",
-      "action": "informational",
-      "layer": null,
-      "message": "'st-glow' bleeds off the canvas edge (marked as an intentional crop)"
+      "page": "data",
+      "passed": true,
+      "errors": 0,
+      "warnings": 0
     },
     {
-      "check": "title_position",
-      "severity": "warning",
-      "action": "review",
-      "layer": null,
-      "message": "The title on page 'title' sits at y 400 where the other titles sit at 200"
+      "page": "repeat",
+      "passed": true,
+      "errors": 0,
+      "warnings": 0
+    },
+    {
+      "page": "motion",
+      "passed": true,
+      "errors": 0,
+      "warnings": 0
+    },
+    {
+      "page": "review",
+      "passed": true,
+      "errors": 0,
+      "warnings": 0
+    },
+    {
+      "page": "collaborate",
+      "passed": true,
+      "errors": 0,
+      "warnings": 0
+    },
+    {
+      "page": "interfaces",
+      "passed": true,
+      "errors": 0,
+      "warnings": 0
+    },
+    {
+      "page": "delivery",
+      "passed": true,
+      "errors": 0,
+      "warnings": 0
+    },
+    {
+      "page": "start",
+      "passed": true,
+      "errors": 0,
+      "warnings": 0
     }
-  ]
+  ],
+  "suites": {
+    "canvas": {
+      "version": 1,
+      "suite_hash": "36421c7abd4f84bc5d2e7063b299aa10224021750e5443f815f7db4f8adbb54a",
+      "passed": true,
+      "status": "passed",
+      "errors": 0,
+      "needs_review": 0,
+      "coverage": {
+        "mode": "still",
+        "times": [
+          null
+        ]
+      },
+      "results": [
+        {
+          "id": "width",
+          "status": "passed",
+          "severity": "error",
+          "time": null,
+          "expected": 1920,
+          "actual": 1920
+        },
+        {
+          "id": "height",
+          "status": "passed",
+          "severity": "error",
+          "time": null,
+          "expected": 1080,
+          "actual": 1080
+        }
+      ]
+    }
+  }
 }

@@ -1,4 +1,12 @@
-# Marketing build options
+# Marketing builds
+
+The [Vixl marketing pack](../marketing/README.md) is a complete example of programmatic creative
+production: social graphics, a carousel, a presentation, print handouts, a fillable brief, data and
+workflow graphics, checked campaign variants, a motion teaser and an app animation family.
+Its masters include embedded content and fonts. Build with `python marketing/build.py`, then run
+`python marketing/verify.py` to inspect the delivered formats and source roundtrip.
+
+## Reading profiles
 
 Use `p.check(checks=["deck"], deck={"profile": "phone"})` for a carousel,
 `profile="screen"` for a PDF read on a laptop, and `profile="projected"` for
@@ -16,6 +24,14 @@ profiles omit the projected type-scale advice unless requested explicitly. When
 `legibility` is requested, phone covers use a 320 px grid preview and inner pages
 use 540 px. Explicit `thumbnail_width` and `min_thumbnail_text` reach every page.
 Single-page `og-image` and `x-post` checks default to 600 px previews.
+
+The pack's deck uses the screen profile; use the projected profile and adjust type/word counts
+before using it on a distant screen. Its carousel uses the phone profile. The builder refuses
+exports with `fix` findings or failing saved suites, and retains the full reports next to the masters.
+Public copy comes from [`marketing/copy.json`](../marketing/copy.json). Installed registry counts
+are recorded automatically in the pack manifest as metadata.
+
+## Decorative crops and embedded images
 
 Gradients that fade to transparency at an edge are inferred as decoration for
 bounds/overlap checks (radial gradients use their outside edge). Explicit
@@ -43,18 +59,9 @@ the REST import downsample a source above the limit to fit it on their own and r
 A plain `add` of such a file fails with `resource_limit`, naming the size and both remedies (`max_pixels`, or a higher
 `--max-pixels`).
 
-## Example: the marketing kit
+## Measuring layers
 
-[`marketing/build.py`](../marketing/build.py) builds Vixl's own marketing kit with Vixl 0.21.0
-in about a minute on a 4-core machine. It checks the 1080 × 1350 carousel with
-`deck={"profile": "phone"}` and the pitch deck, which is read on screen rather than projected,
-with `deck={"profile": "screen"}`. Its dot grids are marked `layer-intent role=decoration`, and
-the strikethrough bars on its timing slide use `allow_overlap`, so the remaining findings are
-informational or deliberate. Its copy quotes counts taken from the 0.21.0 registries:
-180 operation types, 150 named sizes, 53 layouts, 40 templates, 19 containers, 28 styles,
-17 looks and 17 brushes. [`marketing/README.md`](../marketing/README.md) says how to recount them.
-
-The kit places captions and code against other layers with `Project.bounds(name)`, the layer's
+The pack places captions and code against other layers with `Project.bounds(name)`, the layer's
 `(x, y, width, height)` on the canvas even when it sits in a group (what `inspect()` reports as
 `canvas_bounds`). `Project.bounds(name, space="parent")` gives the box in its group's own
 coordinates instead. Do not measure with `vixl.render.resolve_layout`: it is internal, and its boxes

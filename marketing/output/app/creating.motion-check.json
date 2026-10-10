@@ -1,0 +1,522 @@
+{
+  "version": 1,
+  "suite_hash": "4ac53b051feb71e18a8a9443a7dd2e447ce2e557b004bed5a8161933ffef6fa5",
+  "passed": true,
+  "status": "passed",
+  "errors": 0,
+  "needs_review": 0,
+  "coverage": {
+    "mode": "sampled",
+    "times": [
+      0.0,
+      240.0,
+      300,
+      420,
+      480.0,
+      540,
+      720.0,
+      960.0,
+      1200.0
+    ]
+  },
+  "results": [
+    {
+      "id": "pixel-0-inside",
+      "status": "passed",
+      "severity": "error",
+      "time": 0.0,
+      "positions": [
+        "overlapping",
+        "inside"
+      ],
+      "alignments": [
+        "center-y"
+      ],
+      "margins": {
+        "left": 490.0,
+        "top": 150.0,
+        "right": 130.0,
+        "bottom": 150.0
+      },
+      "distance": 130.0
+    },
+    {
+      "id": "pixel-1-inside",
+      "status": "passed",
+      "severity": "error",
+      "time": 0.0,
+      "positions": [
+        "overlapping",
+        "inside"
+      ],
+      "alignments": [
+        "center-y"
+      ],
+      "margins": {
+        "left": 528.0,
+        "top": 150.0,
+        "right": 92.0,
+        "bottom": 150.0
+      },
+      "distance": 92.0
+    },
+    {
+      "id": "pixel-2-inside",
+      "status": "passed",
+      "severity": "error",
+      "time": 0.0,
+      "positions": [
+        "overlapping",
+        "inside"
+      ],
+      "alignments": [
+        "center-y"
+      ],
+      "margins": {
+        "left": 566.0,
+        "top": 150.0,
+        "right": 54.0,
+        "bottom": 150.0
+      },
+      "distance": 54.0
+    },
+    {
+      "id": "pixel-0-inside",
+      "status": "passed",
+      "severity": "error",
+      "time": 240.0,
+      "positions": [
+        "overlapping",
+        "inside"
+      ],
+      "alignments": [],
+      "margins": {
+        "left": 490.0,
+        "top": 135.6,
+        "right": 130.0,
+        "bottom": 164.4
+      },
+      "distance": 130.0
+    },
+    {
+      "id": "pixel-1-inside",
+      "status": "passed",
+      "severity": "error",
+      "time": 240.0,
+      "positions": [
+        "overlapping",
+        "inside"
+      ],
+      "alignments": [],
+      "margins": {
+        "left": 528.0,
+        "top": 139.71,
+        "right": 92.0,
+        "bottom": 160.29
+      },
+      "distance": 92.0
+    },
+    {
+      "id": "pixel-2-inside",
+      "status": "passed",
+      "severity": "error",
+      "time": 240.0,
+      "positions": [
+        "overlapping",
+        "inside"
+      ],
+      "alignments": [],
+      "margins": {
+        "left": 566.0,
+        "top": 142.0,
+        "right": 54.0,
+        "bottom": 158.0
+      },
+      "distance": 54.0
+    },
+    {
+      "id": "pixel-0-inside",
+      "status": "passed",
+      "severity": "error",
+      "time": 300,
+      "positions": [
+        "overlapping",
+        "inside"
+      ],
+      "alignments": [],
+      "margins": {
+        "left": 490.0,
+        "top": 132.0,
+        "right": 130.0,
+        "bottom": 168.0
+      },
+      "distance": 130.0
+    },
+    {
+      "id": "pixel-1-inside",
+      "status": "passed",
+      "severity": "error",
+      "time": 300,
+      "positions": [
+        "overlapping",
+        "inside"
+      ],
+      "alignments": [],
+      "margins": {
+        "left": 528.0,
+        "top": 137.14,
+        "right": 92.0,
+        "bottom": 162.86
+      },
+      "distance": 92.0
+    },
+    {
+      "id": "pixel-2-inside",
+      "status": "passed",
+      "severity": "error",
+      "time": 300,
+      "positions": [
+        "overlapping",
+        "inside"
+      ],
+      "alignments": [],
+      "margins": {
+        "left": 566.0,
+        "top": 140.0,
+        "right": 54.0,
+        "bottom": 160.0
+      },
+      "distance": 54.0
+    },
+    {
+      "id": "pixel-0-inside",
+      "status": "passed",
+      "severity": "error",
+      "time": 420,
+      "positions": [
+        "overlapping",
+        "inside"
+      ],
+      "alignments": [],
+      "margins": {
+        "left": 490.0,
+        "top": 132.64,
+        "right": 130.0,
+        "bottom": 167.36
+      },
+      "distance": 130.0
+    },
+    {
+      "id": "pixel-1-inside",
+      "status": "passed",
+      "severity": "error",
+      "time": 420,
+      "positions": [
+        "overlapping",
+        "inside"
+      ],
+      "alignments": [],
+      "margins": {
+        "left": 528.0,
+        "top": 132.0,
+        "right": 92.0,
+        "bottom": 168.0
+      },
+      "distance": 92.0
+    },
+    {
+      "id": "pixel-2-inside",
+      "status": "passed",
+      "severity": "error",
+      "time": 420,
+      "positions": [
+        "overlapping",
+        "inside"
+      ],
+      "alignments": [],
+      "margins": {
+        "left": 566.0,
+        "top": 136.0,
+        "right": 54.0,
+        "bottom": 164.0
+      },
+      "distance": 54.0
+    },
+    {
+      "id": "pixel-0-inside",
+      "status": "passed",
+      "severity": "error",
+      "time": 480.0,
+      "positions": [
+        "overlapping",
+        "inside"
+      ],
+      "alignments": [],
+      "margins": {
+        "left": 490.0,
+        "top": 133.47,
+        "right": 130.0,
+        "bottom": 166.53
+      },
+      "distance": 130.0
+    },
+    {
+      "id": "pixel-1-inside",
+      "status": "passed",
+      "severity": "error",
+      "time": 480.0,
+      "positions": [
+        "overlapping",
+        "inside"
+      ],
+      "alignments": [],
+      "margins": {
+        "left": 528.0,
+        "top": 132.21,
+        "right": 92.0,
+        "bottom": 167.79
+      },
+      "distance": 92.0
+    },
+    {
+      "id": "pixel-2-inside",
+      "status": "passed",
+      "severity": "error",
+      "time": 480.0,
+      "positions": [
+        "overlapping",
+        "inside"
+      ],
+      "alignments": [],
+      "margins": {
+        "left": 566.0,
+        "top": 134.0,
+        "right": 54.0,
+        "bottom": 166.0
+      },
+      "distance": 54.0
+    },
+    {
+      "id": "pixel-0-inside",
+      "status": "passed",
+      "severity": "error",
+      "time": 540,
+      "positions": [
+        "overlapping",
+        "inside"
+      ],
+      "alignments": [],
+      "margins": {
+        "left": 490.0,
+        "top": 134.65,
+        "right": 130.0,
+        "bottom": 165.35
+      },
+      "distance": 130.0
+    },
+    {
+      "id": "pixel-1-inside",
+      "status": "passed",
+      "severity": "error",
+      "time": 540,
+      "positions": [
+        "overlapping",
+        "inside"
+      ],
+      "alignments": [],
+      "margins": {
+        "left": 528.0,
+        "top": 132.86,
+        "right": 92.0,
+        "bottom": 167.14
+      },
+      "distance": 92.0
+    },
+    {
+      "id": "pixel-2-inside",
+      "status": "passed",
+      "severity": "error",
+      "time": 540,
+      "positions": [
+        "overlapping",
+        "inside"
+      ],
+      "alignments": [],
+      "margins": {
+        "left": 566.0,
+        "top": 132.0,
+        "right": 54.0,
+        "bottom": 168.0
+      },
+      "distance": 54.0
+    },
+    {
+      "id": "pixel-0-inside",
+      "status": "passed",
+      "severity": "error",
+      "time": 720.0,
+      "positions": [
+        "overlapping",
+        "inside"
+      ],
+      "alignments": [],
+      "margins": {
+        "left": 490.0,
+        "top": 139.97,
+        "right": 130.0,
+        "bottom": 160.03
+      },
+      "distance": 130.0
+    },
+    {
+      "id": "pixel-1-inside",
+      "status": "passed",
+      "severity": "error",
+      "time": 720.0,
+      "positions": [
+        "overlapping",
+        "inside"
+      ],
+      "alignments": [],
+      "margins": {
+        "left": 528.0,
+        "top": 137.54,
+        "right": 92.0,
+        "bottom": 162.46
+      },
+      "distance": 92.0
+    },
+    {
+      "id": "pixel-2-inside",
+      "status": "passed",
+      "severity": "error",
+      "time": 720.0,
+      "positions": [
+        "overlapping",
+        "inside"
+      ],
+      "alignments": [],
+      "margins": {
+        "left": 566.0,
+        "top": 134.78,
+        "right": 54.0,
+        "bottom": 165.22
+      },
+      "distance": 54.0
+    },
+    {
+      "id": "pixel-0-inside",
+      "status": "passed",
+      "severity": "error",
+      "time": 960.0,
+      "positions": [
+        "overlapping",
+        "inside"
+      ],
+      "alignments": [],
+      "margins": {
+        "left": 490.0,
+        "top": 147.35,
+        "right": 130.0,
+        "bottom": 152.65
+      },
+      "distance": 130.0
+    },
+    {
+      "id": "pixel-1-inside",
+      "status": "passed",
+      "severity": "error",
+      "time": 960.0,
+      "positions": [
+        "overlapping",
+        "inside"
+      ],
+      "alignments": [],
+      "margins": {
+        "left": 528.0,
+        "top": 146.45,
+        "right": 92.0,
+        "bottom": 153.55
+      },
+      "distance": 92.0
+    },
+    {
+      "id": "pixel-2-inside",
+      "status": "passed",
+      "severity": "error",
+      "time": 960.0,
+      "positions": [
+        "overlapping",
+        "inside"
+      ],
+      "alignments": [],
+      "margins": {
+        "left": 566.0,
+        "top": 145.04,
+        "right": 54.0,
+        "bottom": 154.96
+      },
+      "distance": 54.0
+    },
+    {
+      "id": "pixel-0-inside",
+      "status": "passed",
+      "severity": "error",
+      "time": 1200.0,
+      "positions": [
+        "overlapping",
+        "inside"
+      ],
+      "alignments": [
+        "center-y"
+      ],
+      "margins": {
+        "left": 490.0,
+        "top": 150.0,
+        "right": 130.0,
+        "bottom": 150.0
+      },
+      "distance": 130.0
+    },
+    {
+      "id": "pixel-1-inside",
+      "status": "passed",
+      "severity": "error",
+      "time": 1200.0,
+      "positions": [
+        "overlapping",
+        "inside"
+      ],
+      "alignments": [
+        "center-y"
+      ],
+      "margins": {
+        "left": 528.0,
+        "top": 150.0,
+        "right": 92.0,
+        "bottom": 150.0
+      },
+      "distance": 92.0
+    },
+    {
+      "id": "pixel-2-inside",
+      "status": "passed",
+      "severity": "error",
+      "time": 1200.0,
+      "positions": [
+        "overlapping",
+        "inside"
+      ],
+      "alignments": [
+        "center-y"
+      ],
+      "margins": {
+        "left": 566.0,
+        "top": 150.0,
+        "right": 54.0,
+        "bottom": 150.0
+      },
+      "distance": 54.0
+    }
+  ]
+}
