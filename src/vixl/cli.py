@@ -142,6 +142,7 @@ AI:        ask PROMPT [--apply], generate --prompt TEXT --provider NAME,
 Updates:   update [--check | --rollback], updates [on | off | status]
 Services:  serve | view [--host 127.0.0.1] [--port 8765], notes list|add|resolve
            mcp [--workspace DIR] [--http] [--tools core|ai|compact|all] [--schema slim|full] [--planner] [--require-document]
+           per-call limits (serve, view, mcp): [--call-timeout S] [--max-megapixels N] [--max-pages N] [--max-concurrent N]
 Import:    import FILE.svg [--svg-mode editable|appearance|auto] | FILE.pdf [--page 1] [--dpi 144]
            import PHOTO.jpg | https://HOST/photo.jpg [--name N] [--credit TEXT] [--license TEXT]
 
@@ -641,11 +642,14 @@ def dispatch(argv):
         p.add_argument("--host", default="127.0.0.1")
         p.add_argument("--port", type=int, default=8766)
         p.add_argument("--token-env", default="VIXL_API_TOKEN")
+        from .call_limits import add_arguments, from_arguments
+
+        add_arguments(p)
         a = p.parse_args(args)
         # Explicit workspaces can start empty. Existing --project configurations still work.
         path = current_path(options.project) if options.project or not a.workspace else None
         server = mcp_server(path, limits, workspace=a.workspace, schema=a.schema, planner=a.planner, tools=a.tools,
-                            require_document=a.require_document)
+                            require_document=a.require_document, call_limits=from_arguments(a))
         if a.http:
             from .interfaces import serve_mcp
             serve_mcp(server, a.host, a.port, os.environ.get(a.token_env))
@@ -662,8 +666,12 @@ def dispatch(argv):
         p.add_argument("--host", default="127.0.0.1")
         p.add_argument("--port", type=int, default=8765)
         p.add_argument("--token-env", default="VIXL_API_TOKEN")
+        from .call_limits import add_arguments, from_arguments
+
+        add_arguments(p)
         a = p.parse_args(args)
-        serve(path, a.host, a.port, os.environ.get(a.token_env), limits, open_browser=cmd == "view")
+        serve(path, a.host, a.port, os.environ.get(a.token_env), limits, open_browser=cmd == "view",
+              call_limits=from_arguments(a))
         return None, options.json
     with file_lock(str(path)):
         project = Project.load(path, limits=limits, allow_linked=options.allow_linked)
@@ -711,7 +719,8 @@ def command_help(cmd, args):
         "transaction": "transaction begin|commit|rollback",
         "assert": "assert RULE",
         "each": "each layer [--name PATTERN] [--type TYPE] -- COMMAND",
-        "serve": "serve [--host HOST] [--port PORT] [--token-env ENV]",
+        "serve": "serve [--host HOST] [--port PORT] [--token-env ENV] [--call-timeout S] [--max-megapixels N] "
+                 "[--max-pages N] [--max-concurrent N]",
         "preset": "preset save|apply|show NAME [--set KEY=VALUE]",
         "fonts": "fonts [--category serif] [--role heading] [--mood elegant] [--query TEXT]",
         "view": "view [--host HOST] [--port PORT] [--token-env ENV] (serve and open live review)",

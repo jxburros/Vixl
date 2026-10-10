@@ -651,7 +651,7 @@ note the version.
 | BLK-22 | Drawing fill bounded by the canvas edge | Missing (T11); strokes in a moved group's own coordinates work since 0.22 (`space: "group"`) | Add a boundary path. |
 | BLK-23 | Live (active/scripted) SVG content | Not implemented; static SVG only | – |
 | BLK-24 | Placing a library component as an editable group | Placement is a raster snapshot | Open the component as its own document and link it. |
-| BLK-25 | Hard memory cap or execution timeout per call | Not implemented | Use OS/container limits. |
+| BLK-25 | Hard memory cap or execution timeout per call | Partial: servers bound each call's megapixels, export pages and per-workspace concurrency, and detach calls over a timeout into jobs (#542); no hard memory cap or kill | [Per-call limits](interfaces.md#per-call-limits); OS/container limits for memory. |
 
 ## Cost notes
 

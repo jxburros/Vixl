@@ -40,6 +40,9 @@ has not started yet.
 Follow it with `vixl_job(action="status"|"result"|"cancel"|"list", id, wait=…)`; never resend a call
 that timed out. Mutating tools take `request_id`: repeating a call with the same id returns the first
 result (`"replayed": true`) instead of applying twice.
+A shared server may set per-call limits (`vixl_job(action="list")` shows them under `limits`). A call over
+one fails with `limit_exceeded` and names the `limit`: `max_megapixels` (lower `scale` or export fewer
+pages), `max_pages` (export a page range, then the next) or `max_concurrent` (wait for a running job, then retry).
 
 ### Documents and files
 
