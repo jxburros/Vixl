@@ -798,17 +798,78 @@ def ink_identity(project, layer, bounds):
     canvas = project.state["canvas"]
     extent_key = [*bounds, canvas["width"], canvas["height"]] if placed else list(bounds[2:])
     extent_key = [*extent_key, bounds[0] % 1, bounds[1] % 1]
-    dependencies = [content, extent_key]
+    dependencies = [content, extent_key, *ink_inputs(project, layer)]
+    cacheable = self_contained(layer) and layer["type"] != "link"
+    if cacheable and layer["type"] in ("group", "pathfinder"):
+        # A group's pixels are its children's: key it on the whole subtree, or leave it uncached.
+        subtree = subtree_key(project, layer)
+        cacheable = subtree is not None
+        dependencies.append(subtree)
+    key = digest(dependencies)
+    return key, content, extent_key, cacheable
+
+
+def ink_inputs(project, layer):
+    """What a layer's pixels read from the document besides its own fields: its fonts or brushes."""
     if layer["type"] == "text":
         from .text import font_data, font_sha256
         data = font_data(project, layer)
-        dependencies.append([font_sha256(f) for f in (data if isinstance(data, tuple) else (data,))])
-    elif layer["type"] == "paint":
-        dependencies.append(project.state.get("brushes", {}))
-    key = digest(dependencies)
-    # A lookup effect reads its table from the document, which the key does not cover.
-    cacheable = not layer.get("linked") and not any(e["name"] == "lookup" for e in layer.get("effects") or []) and not layer.get("_distort_groups") and layer["type"] not in ("group", "pathfinder", "link")
-    return key, content, extent_key, cacheable
+        return [[font_sha256(f) for f in (data if isinstance(data, tuple) else (data,))]]
+    if layer["type"] == "paint":
+        return [project.state.get("brushes", {})]
+    return []
+
+
+def self_contained(layer):
+    """Whether a layer's pixels follow from its fields and ``ink_inputs``: not a linked file, a lookup
+    effect (its table lives in the document) or a shape warped by distorting groups above it."""
+    return (not layer.get("linked") and not any(e["name"] == "lookup" for e in layer.get("effects") or [])
+            and not layer.get("_distort_groups"))
+
+
+def subtree_key(project, layer):
+    """A digest of everything a group's (or pathfinder's) children draw: each descendant's resolved
+    fields, its box in its parent's space and its ``ink_inputs``, in stacking order, plus the colours
+    styles can name. None when the subtree cannot be cached (a descendant reads a linked file or a
+    lookup table, clips to a layer outside the group, or the render has no shared resolution)."""
+    state = project.state
+    shared_state = [state.get("variables"), state.get("maps"), state.get("swatches")]
+    memo = None
+    try:
+        if layer["type"] == "pathfinder":
+            operands = layer.get("operands") or []
+            if not all(self_contained(item) and item["type"] not in ("group", "link") for item in operands):
+                return None
+            return digest(["pathfinder", [ink_inputs(project, item) for item in operands], shared_state])
+        shared = getattr(project, "_resolution", None)
+        if shared is None or shared[0] is not state:
+            return None
+        layers, bounds = shared[1], shared[2]
+        memo = project.__dict__.get("_subtree_memo")
+        if memo is None or memo[0] is not layers:
+            memo = project._subtree_memo = (layers, {}, child_index(layers))
+        if layer["id"] in memo[1]:
+            return memo[1][layer["id"]]
+        children, members, pending = memo[2], set(), [layer["id"]]
+        while pending:
+            for child in children.get(pending.pop(), []):
+                if child["id"] not in members:
+                    members.add(child["id"])
+                    pending.append(child["id"])
+        parts = []
+        for item in layers:
+            if item["id"] not in members:
+                continue
+            if not self_contained(item) or item["type"] == "link" or (item.get("clip") and item["clip"] not in members):
+                parts = None
+                break
+            parts.append([item, bounds.get(item["id"]), ink_inputs(project, item)])
+        key = None if parts is None else digest(["group", parts, shared_state])
+    except (TypeError, ValueError):
+        key = None
+    if memo is not None:
+        memo[1][layer["id"]] = key
+    return key
 
 
 def ink_key(project, layer, bounds):
@@ -839,7 +900,8 @@ def layer_ink(project, layer, bounds):
     linked = layer.get("linked")
     disk = getattr(project, "_disk_cache", None)
     disk_key = None
-    if disk and cacheable and layer["type"] != "symbol":
+    # Composited groups stay in memory: their key covers children the disk key does not read.
+    if disk and cacheable and layer["type"] not in ("symbol", "group", "pathfinder"):
         from .render_cache import key_for
         disk_key = key_for(project, content, extent_key)
         cached = disk.get(disk_key, project.limits)
