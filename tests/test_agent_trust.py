@@ -241,6 +241,33 @@ def test_focus_returns_a_detail_crop_of_one_finding():
                        preview={"overlay": True})
 
 
+def test_mcp_surface_shares_the_contract(tmp_path):
+    import asyncio
+
+    from mcp.shared.memory import create_connected_server_and_client_session
+
+    from vixl.interfaces import mcp_server
+
+    overflowing().save(tmp_path / "doc.vixl")
+    server = mcp_server(workspace=tmp_path)
+
+    async def scenario():
+        async with create_connected_server_and_client_session(server._mcp_server) as client:
+            await client.call_tool("vixl_document_open", {"path": "doc.vixl"})
+            applied = await client.call_tool("vixl_operations_apply", {
+                "operations": [{"type": "move", "target": "headline", "x": 0, "y": 0, "relative": True}]})
+            preview = await client.call_tool("vixl_render_preview", {"overlay": True, "max_width": 200})
+            checked = await client.call_tool("vixl_check", {"checks": ["bounds"], "repair": True})
+            return json.loads(applied.content[0].text), preview, json.loads(checked.content[0].text)
+
+    applied, preview, checked = asyncio.run(scenario())
+    assert applied["outcome"]["state"] == "unvalidated"
+    feedback = json.loads(preview.content[0].text)
+    assert feedback["overlay"][0]["rule"] == "bounds.text-overflow" and preview.content[1].type == "image"
+    assert checked["passed"] and checked["repairs"]["applied"][0]["kind"] == "fit-text"
+    assert Project.load(tmp_path / "doc.vixl").layer("headline")["size"] < 40  # the repair was saved
+
+
 def test_proof_page_overlay_and_outcome(tmp_path):
     from vixl.proof import proof_page
 
