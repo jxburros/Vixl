@@ -37,7 +37,7 @@ jobs:
       security-events: write   # only for sarif: true
     steps:
       - uses: actions/checkout@v4
-      - uses: jxburros/Vixl@v0.24.1   # pin a release tag (or a commit SHA)
+      - uses: jxburros/Vixl@v0.25.0   # pin a release tag (or a commit SHA)
         with:
           paths: designs/**/*.vixl
           profile: final          # draft | review | final | a .vixl-checks.json profile (optional)
