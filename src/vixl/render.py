@@ -797,7 +797,7 @@ def ink_identity(project, layer, bounds):
     content = layer if placed else {k: v for k, v in layer.items() if k not in ("x", "y", "constraints")}
     canvas = project.state["canvas"]
     extent_key = [*bounds, canvas["width"], canvas["height"]] if placed else list(bounds[2:])
-    extent_key = [*extent_key, bounds[0] % 1, bounds[1] % 1]
+    extent_key = [*extent_key, bounds[0] % 1, bounds[1] % 1, *(["snapped"] if snap_placement(project) else [])]
     dependencies = [content, extent_key]
     if layer["type"] == "text":
         from .text import font_data, font_sha256
@@ -938,16 +938,24 @@ def transform_layer_image(project, layer, bounds, image):
         image = ImageOps.mirror(image)
     if not precise(layer) and layer.get("flip_y"):
         image = ImageOps.flip(image)
+    folded = False
     if not precise(layer) and layer.get("rotation", 0) % 360:
-        image = rotate(image, -layer["rotation"], turn)
-        # Match conservative layout bounds consistently, keeping anything drawn past them.
-        target = (max(math.ceil(bounds[2]), image.width), max(math.ceil(bounds[3]), image.height))
-        if image.size != target:
-            padded = Image.new("RGBA", target)
-            padded.alpha_composite(
-                image, ((padded.width - image.width) // 2, (padded.height - image.height) // 2)
-            )
-            image = padded
+        turned = _turn(*image.size, -layer["rotation"])[4:]
+        # Match conservative layout bounds consistently, keeping anything drawn past them. Pad evenly
+        # on both sides: an odd margin would put the turned image half a pixel off its centre.
+        target = (max(math.ceil(bounds[2]), turned[0]), max(math.ceil(bounds[3]), turned[1]))
+        target = tuple(t + (t - s) % 2 for t, s in zip(target, turned))
+        ox, oy = bounds[0] + (bounds[2] - target[0]) / 2, bounds[1] + (bounds[3] - target[1]) / 2
+        fx, fy = max(0, ox - math.floor(ox + 1e-9)), max(0, oy - math.floor(oy + 1e-9))
+        if snap_placement(project):
+            fx, fy = round(fx), round(fy)
+        mask = layer.get("mask")
+        if not crisp and (fx > 1e-8 or fy > 1e-8) and not (mask and mask.get("enabled", True)):
+            # Turn and place in one resampling, as the canvas grid sees the layer: the same layer drawn
+            # at another place in its group's tile (a reparented layer, a grown group) gives the same pixels.
+            image, folded = rotate(image, -layer["rotation"], turn, (target[0] + 2, target[1] + 2), (fx, fy)), True
+        else:
+            image = rotate(image, -layer["rotation"], turn, target)
     if any(effect_margin(layer)) and (precise(layer) or layer.get("rotation", 0) % 360):
         # Blur room added in the layer's frame turns into wider corners than the spread needs: the
         # blur reaches its margin past the turned box, which lies inside its bounds widened by it.
@@ -980,11 +988,21 @@ def transform_layer_image(project, layer, bounds, image):
     ox, oy = bounds[0] + (bounds[2] - image.width) / 2, bounds[1] + (bounds[3] - image.height) / 2
     # Use the same epsilon as ink_origin: affine arithmetic may land one ulp below an integer.
     fx, fy = max(0, ox - math.floor(ox + 1e-9)), max(0, oy - math.floor(oy + 1e-9))
-    if not crisp and (fx > 1e-8 or fy > 1e-8):
+    if not crisp and not folded and (fx > 1e-8 or fy > 1e-8):
         padded = Image.new("RGBA", (image.width + 2, image.height + 2))
+        if snap_placement(project):
+            # A reduced preview: round to the nearest whole pixel instead of resampling the layer.
+            padded.paste(image, (1 + round(fx), 1 + round(fy)))
+            return padded
         padded.paste(image, (1, 1))
         image = warp(padded, padded.size, (1, 0, -fx, 0, 1, -fy), Image.Resampling.BICUBIC)
     return image
+
+
+def snap_placement(project):
+    """Whether layers land on whole pixels instead of being resampled to their fractional place. Only
+    reduced previews (``proxy.scaled_project(..., snap=True)``) set it; exports keep exact placement."""
+    return getattr(project, "snap_placement", False)
 
 
 def layer_effects(project, layer, bounds, image):
@@ -1043,9 +1061,29 @@ def warp(image, size, data, sampling):
     return antiring(image, result, data, scale)
 
 
-def rotate(image, angle, sampling):
-    """``image.rotate(angle, sampling, expand=True)`` without overshoot: the same matrix and size."""
+def rotate(image, angle, sampling, size=None, shift=(0.0, 0.0)):
+    """``image.rotate(angle, sampling, expand=True)`` without overshoot: the same matrix and size.
+    ``size`` gives a larger output instead, with the image's centre ``shift`` pixels right of and below
+    the output's centre (a fractional placement folded into the same resampling)."""
     w, h = image.size
+    co, si, c, f, nw, nh = _turn(w, h, angle)
+    size = size or (nw, nh)
+
+    def apply(x, y, c=0.0, f=0.0):
+        return co * x + si * y + c, -si * x + co * y + f
+
+    c, f = apply(-(size[0] - w) / 2 - shift[0], -(size[1] - h) / 2 - shift[1], c, f)
+    if sampling != Image.Resampling.NEAREST:
+        # The filter clamps to the image's edge pixels: art touching the edge would turn with a harder
+        # edge than the same art drawn with room around it. Give it transparent room.
+        padded = Image.new(image.mode, (w + 4, h + 4))
+        padded.paste(image, (2, 2))
+        image, c, f = padded, c + 2, f + 2
+    return warp(image, size, (co, si, c, -si, co, f), sampling)
+
+
+def _turn(w, h, angle):
+    """The rotation terms of ``rotate`` and the expanded size it gives a ``w`` × ``h`` image."""
     a = -math.radians(angle)
     co, si = round(math.cos(a), 15), round(math.sin(a), 15)
 
@@ -1055,9 +1093,7 @@ def rotate(image, angle, sampling):
     c, f = apply(-w / 2, -h / 2)
     c, f = c + w / 2, f + h / 2
     xs, ys = zip(*(apply(x, y, c, f) for x, y in ((0, 0), (w, 0), (w, h), (0, h))))
-    nw, nh = math.ceil(max(xs)) - math.floor(min(xs)), math.ceil(max(ys)) - math.floor(min(ys))
-    c, f = apply(-(nw - w) / 2, -(nh - h) / 2, c, f)
-    return warp(image, (nw, nh), (co, si, c, -si, co, f), sampling)
+    return co, si, c, f, math.ceil(max(xs)) - math.floor(min(xs)), math.ceil(max(ys)) - math.floor(min(ys))
 
 
 def antiring(source, result, data, scale=1.0):
@@ -1151,6 +1187,13 @@ def group_overflow_resize(layer, image, sampling):
     ox, oy = math.ceil(mx * sx), math.ceil(my * sy)
     # The source box reaches ox / sx (≥ mx) beyond the content; pad so it lies inside the tile.
     px, py = math.ceil(ox / sx - mx), math.ceil(oy / sy - my)
+    if px > image.width or py > image.height:
+        # Near-zero scale: the padding grows as 1 / scale. The group covers a pixel or two here, so
+        # shrink the whole tile and centre it instead of padding it to an unbounded size.
+        small = resize(image, (max(1, math.ceil(image.width * sx)), max(1, math.ceil(image.height * sy))), sampling)
+        out = Image.new("RGBA", (math.ceil(w + 2 * ox), math.ceil(h + 2 * oy)))
+        out.alpha_composite(small, ((out.width - small.width) // 2, (out.height - small.height) // 2))
+        return out
     if px or py:
         padded = Image.new("RGBA", (image.width + 2 * px, image.height + 2 * py))
         padded.paste(image, (px, py))
@@ -1217,7 +1260,7 @@ def layer_patch(project, layer, bounds, size, index, visiting=None, limit=None):
     visiting = set() if visiting is None else visiting
     ident = layer["id"]
     require(ident not in visiting, "Clipping contains a cycle")
-    if not layer["visible"]:
+    if not layer["visible"] or layer["opacity"] <= 0:
         return None, None
     visiting.add(ident)
     try:
@@ -1508,6 +1551,10 @@ def _render_layers(project, layers, bounds, parent, size, background, observe, m
 
     def draw(layer):
         nonlocal image
+        if layer["opacity"] <= 0:
+            # Fully transparent (a layer or group scaled to nothing is drawn this way): nothing to
+            # composite, and resampling a zero-size group tile would ask for an unbounded raster.
+            return image
         if not layer.get("styles") and not layer.get("clip") and layer["type"] != "adjustment":
             return direct(layer)
         if layer["type"] == "adjustment":
@@ -1690,7 +1737,8 @@ def render_incremental(project, background):
         project._resolution = (project.state, layers, bounds)
         try:
             try:
-                document = digest([{k: v for k, v in project.state.items() if k not in UNDRAWN_STATE}, background])
+                document = digest([{k: v for k, v in project.state.items() if k not in UNDRAWN_STATE}, background,
+                                   snap_placement(project)])
                 current = layer_fingerprints(project, layers, bounds)
             except (TypeError, ValueError):
                 current = None

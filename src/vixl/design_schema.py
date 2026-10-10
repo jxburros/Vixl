@@ -71,6 +71,11 @@ def schemas(add):
                 **N,
                 "description": "arc: end angle in degrees, clockwise from start_angle; 360 or more past it is the full circle/ring. Default start_angle + 360.",
             },
+            "closed": {
+                **B,
+                "description": "arc: false draws only the curve, an open stroke with line_cap and no default fill "
+                "(progress arcs, sound waves); default true, a wedge or donut segment closed to the centre.",
+            },
             **trim_schema(),
             **catalog_schema(),
             **stroke_schema(),

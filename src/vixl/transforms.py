@@ -23,6 +23,44 @@ def anchor(value):
     return [finite(v, "anchor", -10, 10) for v in value]
 
 
+def about_point(layer, value, field="about"):
+    """``about``/``anchor`` as [x, y] fractions of the layer's unrotated box: an anchor name, a pair of
+    fractions, or ``"pivot"`` (the layer's pivot, its center without one)."""
+    if value == "pivot":
+        return list(layer.get("pivot") or (0.5, 0.5))
+    if isinstance(value, str) and not canonical_anchor(value):
+        require(False, f"Unknown {field} {value!r}; use pivot, {', '.join(ANCHORS)} or [x, y] fractions", field=field)
+    return anchor(value)
+
+
+def rotate(project, layer, angle, about=None):
+    """Set ``layer``'s rotation, turning it about its pivot (its center without one) or about ``about``.
+
+    Without a pivot, stored x/y are the top-left of the rotated bounds, which grow and shrink as the
+    layer turns; x/y move by half that change so the center stays where it was."""
+    from .render import layer_box, rest_size, stored_origin, transformed_size
+
+    fixed = None if about is None else about_point(layer, about)
+    if fixed is not None and (fixed == list(layer.get("pivot") or (0.5, 0.5))):
+        fixed = None  # The default point already stays put.
+    if fixed is not None:
+        rw, rh = rest_size(layer)
+        before = layer_matrix(layer, layer_box(project, layer)) @ [fixed[0] * rw, fixed[1] * rh, 1]
+    if layer.get("pivot") is None:
+        old = transformed_size(layer)
+        layer["rotation"] = angle
+        new = transformed_size(layer)
+        layer["x"] += (old[0] - new[0]) / 2
+        layer["y"] += (old[1] - new[1]) / 2
+    else:
+        layer["rotation"] = angle
+    if fixed is not None:
+        box = layer_box(project, layer)
+        after = layer_matrix(layer, box) @ [fixed[0] * rw, fixed[1] * rh, 1]
+        layer["x"], layer["y"] = stored_origin(layer, (box[0] + before[0] - after[0], box[1] + before[1] - after[1]))
+        layer["constraints"] = {}
+
+
 def snapped(project, layer):
     return (
         layer.get("snap_to_pixel", project.state.get("snap_to_pixel", False))
@@ -90,7 +128,8 @@ def enrich_transform_schemas(variants):
         "targets": "Layer names or IDs to resize.",
         "to": "Reference layer name or ID.",
         "axis": "Match width, height, or both (default).",
-        "anchor": "Point kept fixed in parent/canvas space, as a named anchor or [x,y] fractions.",
+        "anchor": "Point kept fixed in parent/canvas space: pivot, a named anchor or [x,y] fractions (alias about). "
+        "Default: the pivot for scale on a pivoted layer, otherwise the top-left of the bounds.",
         "box": "Canvas-space [x,y,width,height] or a reference layer name/ID.",
         "mode": "contain fits inside; cover fills with overflow; stretch changes the aspect ratio.",
         "align": "Placement within the box, as a named anchor or fractions; default center.",
@@ -107,7 +146,8 @@ def enrich_transform_schemas(variants):
                 if key in fields and "description" not in prop:
                     props[key] = {**prop, "description": fields[key]}
         if kind in ("resize", "scale"):
-            props["anchor"] = {**anchors, "description": fields["anchor"]}
+            props["anchor"] = {"anyOf": [{"enum": ["pivot", *ANCHORS]}, anchors["anyOf"][1]],
+                               "description": fields["anchor"]}
         if kind == "resize":
             for key in ("width", "height"):
                 props[key] = {
@@ -275,7 +315,7 @@ def execute(project, op):
         )
         return
     w, h = layer["width"], layer["height"]
-    fixed = anchor(op["anchor"]) if "anchor" in op else layer.get("pivot", (0, 0)) if kind == "scale" else (0, 0)
+    fixed = about_point(layer, op["anchor"], "anchor") if "anchor" in op else layer.get("pivot", (0, 0)) if kind == "scale" else (0, 0)
     before = layer_matrix(layer, box) @ [fixed[0] * w, fixed[1] * h, 1]
     if kind == "scale":
         fx, fy = op.get("x", op.get("value", 1)), op.get("y", op.get("value", 1))

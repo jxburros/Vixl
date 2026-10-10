@@ -81,7 +81,7 @@ vixl text add 'Hello' --name title --size 96 --color white [--font path.ttf] [--
 vixl shape rectangle|rounded-rectangle|ellipse|polygon|star|arc|line --name s --width W --height H [--x --y] \
      [--fill C] [--stroke C] [--stroke-width N] [--radius N] [--sides N] [--inner-radius 0.4] \
      [--line-cap butt|round|square] [--trim-start PCT] [--trim-end PCT]
-     [--start-angle -90 --end-angle 70]   # arc: pie wedge / donut segment (0 = 3 o'clock, clockwise)
+     [--start-angle -90 --end-angle 70]   # arc: pie wedge / donut segment (0 = 3 o'clock, clockwise); --open: the curve only
 vixl frame --path portrait.jpg --name photo --width 400 --height 500 --fit fill|fit [--asset ID] [--frame-shape heart | --outline SVG]
 vixl pixel-art --name sprite --width 16 --height 16 [--palette '{".":"transparent","g":"#ffc44d"}'] [--background .]
 vixl pixel-art --name spark --rows '[".w.","www",".w."]' --palette '{".":"transparent","w":"#fff"}'

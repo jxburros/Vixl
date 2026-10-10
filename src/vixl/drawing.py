@@ -30,7 +30,7 @@ from .model import finite, new_layer
 DEFAULT_INK = "#1d1d1f"  # near-black, a printed pen line; set `ink` on import (or `color` on vectorize/restyle) for pure black
 TYPES = ("drawing",)
 ACTIONS = ("import", "clean", "vectorize", "straighten", "smooth", "fill", "stroke", "restyle")
-CLEAN = {"threshold": "auto", "sensitivity": 0.0, "despeckle": "auto", "weight": 0, "deskew": True, "crop": True,
+CLEAN = {"threshold": "auto", "sensitivity": 0.0, "despeckle": "auto", "weight": 0, "deskew": True, "crop": False,
          "margin": 24, "soft": True, "ink": DEFAULT_INK, "flatten": True, "max_size": 2400, "sheet": True,
          "perspective": True}
 MAX_STROKES = 240
@@ -976,7 +976,7 @@ def schemas(add):
                 "straighten: angles ('drawn' keeps each line's angle, 'axes', '45', 'guides' or degrees), tolerance, "
                 "close_gaps (pixels or 'auto'), circles, polylines. smooth: amount, corners (keep, the default, leaves "
                 "straightened lines and polylines as they are; round smooths them too). restyle: width (pixels or 'uniform'), width_scale. "
-                "fill: gap, min_area, under. stroke: width, smooth, closed.")
+                "fill: gap, min_area, under, edge_closes. stroke: width, smooth, closed.")
     add("drawing", {"action": {"enum": list(ACTIONS)}, "name": S, "target": S, "asset": S, "path": S, "x": {}, "y": {},
                     "width": {}, "height": {}, "settings": {"type": "object", "description": settings},
                     "strokes": {"type": ["array", "string"], "items": S},
@@ -1402,7 +1402,7 @@ def _straighten(project, group, op, action):
         _rebuild(layer, updated[layer["id"]])
 
 
-FILL = {"gap": 6.0, "min_area": 64, "under": True}
+FILL = {"gap": 6.0, "min_area": 64, "under": True, "edge_closes": False}
 
 
 def _fill(project, group, op):
@@ -1430,8 +1430,10 @@ def _fill(project, group, op):
         region = labels[yi, xi]
         require(region and any(i["id"] == region for i in info), f"Point {point[:2]} is on a line, not inside a region; "
                 "pick a point inside the shape (drawing report lists region points)", field="points")
-        require(not next(i for i in info if i["id"] == region)["outside"], f"Point {point[:2]} is outside every closed "
-                "shape (the lines do not enclose it; raise settings.gap to bridge small breaks)", field="points")
+        require(settings["edge_closes"] is True or not next(i for i in info if i["id"] == region)["outside"],
+                f"Point {point[:2]} is outside every closed shape (the lines do not enclose it; raise settings.gap to "
+                "bridge small breaks, or set settings.edge_closes: true to let the drawing's edge close a region such "
+                "as sky or ground)", field="points")
         strokes = [r["width"] for layer in _children(project, group) for r in layer.get("drawing_strokes", [])]
         area = grow_region(labels, region, mask, gap, (float(np.median(strokes)) / 2 + 1) if strokes else 3)
         loops = mask_contours(area, smooth=0.8, tolerance=0.8)
@@ -1616,6 +1618,10 @@ def report(project, target):
         "regions": [{"id": i["id"], "area": i["area"], "point": canvas(i["point"]),
                      "group_point": [round(float(i["point"][0]), 1), round(float(i["point"][1]), 1)]}
                     for i in info if not i["outside"]][:64],
+        # Regions the drawing's edge closes (sky, ground): fill them with settings.edge_closes: true.
+        "edge_regions": [{"id": i["id"], "area": i["area"], "point": canvas(i["point"]),
+                          "group_point": [round(float(i["point"][0]), 1), round(float(i["point"][1]), 1)]}
+                         for i in info if i["outside"]][:16],
         "fills": [layer["name"] for layer in _children(project, group) if layer.get("drawing_role") == "fill"],
         "tilt_corrected": group["drawing"]["angle"],
         "perspective_corrected": bool(group["drawing"].get("perspective")),

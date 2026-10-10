@@ -446,6 +446,15 @@ def check_design(
             not is_text(item) and role(item) == "decoration"
         )
 
+    # Particles groups (every child a particle), as the particles operation makes them.
+    kinds = {}
+    for x in resolved.values():
+        if x.get("parent"):
+            kinds.setdefault(x["parent"], set()).add("particle" in x)
+    emitters_ids = {ident for ident, kind in kinds.items() if kind == {True}}
+
+    def emitter(item):
+        return item["id"] in emitters_ids
 
     geometry = projection["geometry_bounds"]
 
@@ -488,8 +497,16 @@ def check_design(
                   "Visually inspect the repeated instances.", [item])
 
     if "bounds" in checks:
+        emitters = {}
         for item in content:
             x, y, w, h = geometry[item["id"]]
+            if "particle" in item or emitter(item):
+                # Particles are born and die past the canvas edge on purpose: one note per emitter, not one per particle.
+                if x < -1e-8 or y < -1e-8 or x + w > width + 1e-8 or y + h > height + 1e-8:
+                    group = item if emitter(item) else resolved.get(item.get("parent"))
+                    if group is not None:
+                        emitters.setdefault(group["id"], (group, []))[1].append(item)
+                continue
             if x >= width or y >= height or x + w <= 0 or y + h <= 0:
                 intentional = any(parent.get("pattern_scatter") for parent in ancestors(item))
                 issue("bounds", "info" if intentional else "error",
@@ -511,6 +528,12 @@ def check_design(
                     issue("bounds", severity, f"{item['name']!r} is cut off by the canvas edge"
                           + ("" if is_text(item) else "; if the crop is deliberate, mark it with layer-intent allow_crop"),
                           [item], bounds=[x, y, w, h], code="cut-off")
+        for group, items in emitters.values():
+            particles = [item for item in items if "particle" in item]
+            issue("bounds", "info", f"Particle emitter {group['name']!r} reaches past the canvas edge"
+                  + (f" ({len(particles)} particles at this frame)" if particles else "")
+                  + "; particles that start or end off the canvas are expected", [group], intentional=True,
+                  code="particles-off-canvas")
         for item in content:
             needed = boxed_text_overflow(candidate, resolved[item["id"]])
             if needed:

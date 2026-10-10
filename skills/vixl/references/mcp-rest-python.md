@@ -230,6 +230,7 @@ p.apply([{"type": "text", "name": "title", "text": "Hi", "size": 64}], dry_run=F
 p.import_image("photo.jpg", name="hero", credit="Photo: Ana Ruiz", license="CC0")   # or data=bytes
 p.import_image(url="https://images.example.com/cat.jpg", name="cat", license="CC BY 4.0")  # https, public hosts only
 p.inspect()                 # dict; p.inspect("title") for one layer
+p.bounds("title")           # (x, y, w, h) on the canvas, grouped or not; space="parent" for group coordinates
 p.layer("title")            # live layer dict (read-only use)
 img = p.render(variables={"title": "Hello"}, artboard=None, comp=None)   # Pillow RGBA
 data = p.export("out.png", quality=90, scale=2, profile=None, sampling="smooth")  # bytes, writes path

@@ -808,7 +808,9 @@ def execute(project, op):
         raise VixlError("invalid_operation", f"{kind} does not apply to fields: PDF form fields are upright rectangles",
                         field="target")
     elif kind == "rotate":
-        layer["rotation"] = finite(op["value"], "angle") % 360
+        from .transforms import rotate
+
+        rotate(project, layer, finite(op["value"], "angle") % 360, op.get("about"))
     elif kind == "pivot":
         from .render import rest_size, stored_origin
 

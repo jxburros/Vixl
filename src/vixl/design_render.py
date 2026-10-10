@@ -324,7 +324,7 @@ def special_image(project, layer):
             item = deepcopy(operand)
             item.update(width=max(1, round(item["width"] * sx)), height=max(1, round(item["height"] * sy)))
             tile = layer_image(project, item, (0, 0, *transformed_size(item)))
-            mask = Image.new("L", (w, h))
+            mask = Image.new("L", (max(1, math.ceil(w)), max(1, math.ceil(h))))  # a fractional box covers its last pixel
             mask.paste(tile.getchannel("A"), (round(item["x"] * sx), round(item["y"] * sy)))
             masks.append(mask)
         if layer["mode"] == "minus-back":
@@ -340,7 +340,7 @@ def special_image(project, layer):
             }[layer["mode"]](alpha, mask)
         from .render import color
 
-        image = Image.new("RGBA", (w, h), color(resolve_color(layer.get("fill", "white"), project.state)))
+        image = Image.new("RGBA", alpha.size, color(resolve_color(layer.get("fill", "white"), project.state)))
         image.putalpha(alpha)
         return image
     if kind == "frame":
