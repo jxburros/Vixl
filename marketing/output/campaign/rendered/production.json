@@ -1,0 +1,330 @@
+{
+  "version": 1,
+  "quality": "final",
+  "count": 3,
+  "status": "completed",
+  "results": [
+    {
+      "id": "0001",
+      "values": {
+        "title": "Keep the layers.",
+        "body": "Create, inspect and revise layered designs.",
+        "accent": "#6A9AFF"
+      },
+      "artboard": null,
+      "status": "completed",
+      "output": "0001-bc988015bd20036c.png",
+      "fingerprint": "bc988015bd20036cad7604d4a210b46fd9326cf2a3e4f63a923cdf3b4d87cee0",
+      "request_fingerprint": "4af6556964a711c532eb627bf476320af058e3058b0f7c26b10cf493ae4feae6",
+      "sha256": "0a97d5ddf3b03fadda8e37d06af82a49af80abd3d740387a310c8377859840af",
+      "checks": {
+        "delivery": {
+          "version": 1,
+          "suite_hash": "046af7b77f87ebcea42c71e5be08a3ca62451e13693a1eb5c7b3aae5ca2ea812",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "headline-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 106,
+              "fits": true
+            },
+            {
+              "id": "headline-margin",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "positions": [
+                "overlapping",
+                "inside"
+              ],
+              "alignments": [
+                "center-x"
+              ],
+              "margins": {
+                "left": 80.0,
+                "top": 340.0,
+                "right": 80.0,
+                "bottom": 480.0
+              },
+              "distance": 80.0
+            },
+            {
+              "id": "readable",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 4.5,
+              "actual": 14.158,
+              "weakest_region": [
+                85,
+                340,
+                784,
+                98
+              ]
+            },
+            {
+              "id": "layout",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "bounds",
+                  "flow",
+                  "overlap",
+                  "contrast",
+                  "fonts"
+                ],
+                "layers_checked": 18,
+                "layers_total": 18,
+                "text_layers": 4
+              }
+            }
+          ]
+        }
+      },
+      "repairs": [],
+      "cache": {
+        "hits": 0,
+        "misses": 24
+      }
+    },
+    {
+      "id": "0002",
+      "values": {
+        "title": "Make the data a story.",
+        "body": "Editable charts, diagrams and documents.",
+        "accent": "#9FE3B4"
+      },
+      "artboard": null,
+      "status": "completed",
+      "output": "0002-fe312e2842278569.png",
+      "fingerprint": "fe312e284227856993ab5c075207fe197c6cf046b2981120b30175d5c1135501",
+      "request_fingerprint": "90d5280342a8776eed743049f71ad9b1ab84c0327f5aa0e5086bfb44023bb738",
+      "sha256": "4c4ab73f4ab536c3bbfdda892e16cc917fdba6c744e00cfe176c2758d751c03e",
+      "checks": {
+        "delivery": {
+          "version": 1,
+          "suite_hash": "046af7b77f87ebcea42c71e5be08a3ca62451e13693a1eb5c7b3aae5ca2ea812",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "headline-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 106,
+              "fits": true
+            },
+            {
+              "id": "headline-margin",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "positions": [
+                "overlapping",
+                "inside"
+              ],
+              "alignments": [
+                "center-x"
+              ],
+              "margins": {
+                "left": 80.0,
+                "top": 340.0,
+                "right": 80.0,
+                "bottom": 480.0
+              },
+              "distance": 80.0
+            },
+            {
+              "id": "readable",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 4.5,
+              "actual": 14.158,
+              "weakest_region": [
+                82,
+                340,
+                774,
+                205
+              ]
+            },
+            {
+              "id": "layout",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "bounds",
+                  "flow",
+                  "overlap",
+                  "contrast",
+                  "fonts"
+                ],
+                "layers_checked": 18,
+                "layers_total": 18,
+                "text_layers": 4
+              }
+            }
+          ]
+        }
+      },
+      "repairs": [],
+      "cache": {
+        "hits": 30,
+        "misses": 8
+      }
+    },
+    {
+      "id": "0003",
+      "values": {
+        "title": "Put ideas in motion.",
+        "body": "Keyframes, app states and reusable animation.",
+        "accent": "#FFC37A"
+      },
+      "artboard": null,
+      "status": "completed",
+      "output": "0003-8b5e496ef9200924.png",
+      "fingerprint": "8b5e496ef92009248945f0adcf0977f68d29bb731e7bd8901687c1807082d175",
+      "request_fingerprint": "0eb0328b3b50a596ab47fc18e6c61dfa994fe02a2bf65c6463b2a0db802de088",
+      "sha256": "7ee46cd7e348bd725f0b8118903a31ac0484d28a5d84b5f70e1caeaa9a7376ca",
+      "checks": {
+        "delivery": {
+          "version": 1,
+          "suite_hash": "046af7b77f87ebcea42c71e5be08a3ca62451e13693a1eb5c7b3aae5ca2ea812",
+          "passed": true,
+          "status": "passed",
+          "errors": 0,
+          "needs_review": 0,
+          "coverage": {
+            "mode": "still",
+            "times": [
+              null
+            ]
+          },
+          "results": [
+            {
+              "id": "headline-fits",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "actual_size": 106,
+              "fits": true
+            },
+            {
+              "id": "headline-margin",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "positions": [
+                "overlapping",
+                "inside"
+              ],
+              "alignments": [
+                "center-x"
+              ],
+              "margins": {
+                "left": 80.0,
+                "top": 340.0,
+                "right": 80.0,
+                "bottom": 480.0
+              },
+              "distance": 80.0
+            },
+            {
+              "id": "readable",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "expected": 4.5,
+              "actual": 14.158,
+              "weakest_region": [
+                85,
+                341,
+                561,
+                188
+              ]
+            },
+            {
+              "id": "layout",
+              "status": "passed",
+              "severity": "error",
+              "time": null,
+              "passed": true,
+              "errors": 0,
+              "warnings": 0,
+              "info": 0,
+              "by_action": {
+                "fix": [],
+                "review": [],
+                "informational": []
+              },
+              "issues": [],
+              "checked": {
+                "checks": [
+                  "bounds",
+                  "flow",
+                  "overlap",
+                  "contrast",
+                  "fonts"
+                ],
+                "layers_checked": 18,
+                "layers_total": 18,
+                "text_layers": 4
+              }
+            }
+          ]
+        }
+      },
+      "repairs": [],
+      "cache": {
+        "hits": 30,
+        "misses": 8
+      }
+    }
+  ],
+  "contact_sheet": "contact-sheet.png"
+}

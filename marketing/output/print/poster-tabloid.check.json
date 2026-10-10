@@ -1,39 +1,102 @@
 {
+  "passed": true,
+  "errors": 0,
+  "warnings": 0,
+  "info": 2,
+  "by_action": {
+    "fix": [],
+    "review": [],
+    "informational": [
+      0,
+      1
+    ]
+  },
   "issues": [
-    {
-      "check": "coverage",
-      "severity": "warning",
-      "action": "informational",
-      "layer": null,
-      "message": "'grid' is inside a repeated group; geometry checks cover its base instance. Visually inspect the repeated instances."
-    },
     {
       "check": "bounds",
       "severity": "info",
-      "action": "informational",
-      "layer": null,
-      "message": "'glow' bleeds off the canvas edge (marked as an intentional crop)"
+      "layers": [
+        "glow"
+      ],
+      "message": "'glow' bleeds off the canvas edge (marked as an intentional crop)",
+      "bounds": [
+        -400.0,
+        1400.0,
+        1900.0,
+        1900.0
+      ],
+      "intentional": true,
+      "action": "informational"
     },
     {
       "check": "safe_area",
       "severity": "info",
-      "action": "informational",
-      "layer": null,
-      "message": "'glow' extends outside the safe area (intentional crop or bleed)"
-    },
-    {
-      "check": "safe_area",
-      "severity": "info",
-      "action": "informational",
-      "layer": null,
-      "message": "'grid' extends outside the safe area (intentional crop or bleed)"
-    },
-    {
-      "check": "safe_area",
-      "severity": "info",
-      "action": "informational",
-      "layer": null,
-      "message": "'grid-row' extends outside the safe area (intentional crop or bleed)"
+      "layers": [
+        "glow"
+      ],
+      "message": "'glow' extends outside the safe area (intentional crop or bleed)",
+      "bounds": [
+        -400,
+        1400,
+        1900,
+        1900
+      ],
+      "safe_area": [
+        57,
+        57,
+        1574,
+        2474
+      ],
+      "intentional": true,
+      "action": "informational"
     }
-  ]
+  ],
+  "checked": {
+    "checks": [
+      "bounds",
+      "flow",
+      "overlap",
+      "contrast",
+      "safe_area",
+      "fonts",
+      "print"
+    ],
+    "layers_checked": 36,
+    "layers_total": 36,
+    "text_layers": 6
+  },
+  "suites": {
+    "canvas": {
+      "version": 1,
+      "suite_hash": "e9982585218f0882024eb7bc4384469bf6d1cd0f4ccbbadf50db66c76ad37219",
+      "passed": true,
+      "status": "passed",
+      "errors": 0,
+      "needs_review": 0,
+      "coverage": {
+        "mode": "still",
+        "times": [
+          null
+        ]
+      },
+      "results": [
+        {
+          "id": "width",
+          "status": "passed",
+          "severity": "error",
+          "time": null,
+          "expected": 1688,
+          "actual": 1688
+        },
+        {
+          "id": "height",
+          "status": "passed",
+          "severity": "error",
+          "time": null,
+          "expected": 2588,
+          "actual": 2588
+        }
+      ]
+    }
+  }
 }

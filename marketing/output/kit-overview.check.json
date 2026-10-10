@@ -1,11 +1,78 @@
 {
+  "passed": true,
+  "errors": 0,
+  "warnings": 0,
+  "info": 1,
+  "by_action": {
+    "fix": [],
+    "review": [],
+    "informational": [
+      0
+    ]
+  },
   "issues": [
     {
-      "check": "coverage",
-      "severity": "warning",
-      "action": "informational",
-      "layer": null,
-      "message": "'grid' is inside a repeated group; geometry checks cover its base instance. Visually inspect the repeated instances."
+      "check": "fonts",
+      "severity": "info",
+      "layers": [],
+      "message": "1 embedded file(s), 112,204 bytes, are not used by the current design (fonts registered but unused: jetbrains-mono-500); the rest are kept so undo can restore them. Compacting (vixl_history action='compact', CLI vixl compact) drops them together with the undo history.",
+      "unused_assets": [
+        {
+          "asset": "fonts/3386a05f6ece969e4537de6be894170d20558e82f7d56c8c5d332972ef172160.ttf",
+          "kind": "font",
+          "bytes": 112204,
+          "reason": "unused-font",
+          "fonts": [
+            "jetbrains-mono-500"
+          ]
+        }
+      ],
+      "bytes": 112204,
+      "action": "informational"
     }
-  ]
+  ],
+  "checked": {
+    "checks": [
+      "bounds",
+      "flow",
+      "fonts"
+    ],
+    "layers_checked": 35,
+    "layers_total": 35,
+    "text_layers": 13
+  },
+  "suites": {
+    "canvas": {
+      "version": 1,
+      "suite_hash": "9914064be6cdf7f460c8e1b98d39fba0c0a225fc6955079ab948baf8050641d7",
+      "passed": true,
+      "status": "passed",
+      "errors": 0,
+      "needs_review": 0,
+      "coverage": {
+        "mode": "still",
+        "times": [
+          null
+        ]
+      },
+      "results": [
+        {
+          "id": "width",
+          "status": "passed",
+          "severity": "error",
+          "time": null,
+          "expected": 2400,
+          "actual": 2400
+        },
+        {
+          "id": "height",
+          "status": "passed",
+          "severity": "error",
+          "time": null,
+          "expected": 1740,
+          "actual": 1740
+        }
+      ]
+    }
+  }
 }

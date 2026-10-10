@@ -1,18 +1,109 @@
 {
+  "passed": true,
+  "errors": 0,
+  "warnings": 0,
+  "info": 2,
+  "by_action": {
+    "fix": [],
+    "review": [],
+    "informational": [
+      0,
+      1
+    ]
+  },
   "issues": [
-    {
-      "check": "coverage",
-      "severity": "warning",
-      "action": "informational",
-      "layer": null,
-      "message": "'grid' is inside a repeated group; geometry checks cover its base instance. Visually inspect the repeated instances."
-    },
     {
       "check": "bounds",
       "severity": "info",
-      "action": "informational",
-      "layer": null,
-      "message": "'glow' bleeds off the canvas edge (marked as an intentional crop)"
+      "layers": [
+        "glow"
+      ],
+      "message": "'glow' bleeds off the canvas edge (marked as an intentional crop)",
+      "bounds": [
+        550.0,
+        -240.0,
+        900.0,
+        900.0
+      ],
+      "intentional": true,
+      "action": "informational"
+    },
+    {
+      "check": "safe_area",
+      "severity": "info",
+      "layers": [
+        "glow"
+      ],
+      "message": "'glow' extends outside the safe area (intentional crop or bleed)",
+      "bounds": [
+        550,
+        -240,
+        900,
+        900
+      ],
+      "safe_area": [
+        32,
+        32,
+        1136,
+        566
+      ],
+      "intentional": true,
+      "action": "informational"
     }
-  ]
+  ],
+  "checked": {
+    "checks": [
+      "bounds",
+      "overlap",
+      "contrast",
+      "safe_area",
+      "legibility",
+      "blanks",
+      "fonts",
+      "brand",
+      "content",
+      "form",
+      "links",
+      "diagram",
+      "flow",
+      "codes"
+    ],
+    "layers_checked": 35,
+    "layers_total": 35,
+    "text_layers": 8
+  },
+  "suites": {
+    "canvas": {
+      "version": 1,
+      "suite_hash": "b3f4c6e561941dc7581a340e0845eb25439cc95ed75ea90ad4280727b6768594",
+      "passed": true,
+      "status": "passed",
+      "errors": 0,
+      "needs_review": 0,
+      "coverage": {
+        "mode": "still",
+        "times": [
+          null
+        ]
+      },
+      "results": [
+        {
+          "id": "width",
+          "status": "passed",
+          "severity": "error",
+          "time": null,
+          "expected": 1200,
+          "actual": 1200
+        },
+        {
+          "id": "height",
+          "status": "passed",
+          "severity": "error",
+          "time": null,
+          "expected": 630,
+          "actual": 630
+        }
+      ]
+    }
+  }
 }

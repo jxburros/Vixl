@@ -1,0 +1,27 @@
+{
+  "spec": {
+    "version": 1,
+    "rows": [
+      {
+        "title": "Keep the layers.",
+        "body": "Create, inspect and revise layered designs.",
+        "accent": "#6A9AFF"
+      },
+      {
+        "title": "Make the data a story.",
+        "body": "Editable charts, diagrams and documents.",
+        "accent": "#9FE3B4"
+      },
+      {
+        "title": "Put ideas in motion.",
+        "body": "Keyframes, app states and reusable animation.",
+        "accent": "#FFC37A"
+      }
+    ],
+    "suites": [
+      "delivery"
+    ],
+    "workers": 1
+  },
+  "output": "campaign-custom"
+}

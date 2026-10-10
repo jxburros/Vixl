@@ -1,0 +1,48 @@
+{
+  "states": {
+    "ready": {
+      "source": "marketing/output/app/ready.vixl",
+      "loop": true
+    },
+    "creating": {
+      "source": "marketing/output/app/creating.vixl",
+      "loop": true
+    },
+    "delivered": {
+      "source": "marketing/output/app/delivered.vixl",
+      "loop": true
+    }
+  },
+  "default_state": "ready",
+  "themes": {
+    "dark": {
+      "bg": "#252B39",
+      "fg": "#FFFFFF",
+      "accent": "#6A9AFF"
+    },
+    "light": {
+      "bg": "#F5F7FB",
+      "fg": "#252B39",
+      "accent": "#3575EE"
+    }
+  },
+  "transitions": [
+    {
+      "from": "ready",
+      "event": "create",
+      "to": "creating"
+    },
+    {
+      "from": "creating",
+      "event": "deliver",
+      "to": "delivered"
+    },
+    {
+      "from": "delivered",
+      "event": "reset",
+      "to": "ready"
+    }
+  ],
+  "output": "marketing/output/app/package",
+  "format": "webp"
+}

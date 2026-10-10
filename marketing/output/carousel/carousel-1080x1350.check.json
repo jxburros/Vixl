@@ -1,32 +1,105 @@
 {
-  "issues": [
+  "passed": true,
+  "errors": 0,
+  "warnings": 0,
+  "info": 0,
+  "by_action": {
+    "fix": [],
+    "review": [],
+    "informational": []
+  },
+  "issues": [],
+  "checked": {
+    "checks": [
+      "bounds",
+      "flow",
+      "overlap",
+      "contrast",
+      "fonts",
+      "title_position",
+      "words",
+      "min_font",
+      "notes",
+      "empty"
+    ],
+    "pages": 6,
+    "profile": "phone",
+    "min_font_px": 12,
+    "max_words": 150,
+    "thumbnail_width": null,
+    "display_width": 540,
+    "points_per_pixel": 0.4
+  },
+  "pages": [
     {
-      "check": "coverage",
-      "severity": "warning",
-      "action": "informational",
-      "layer": null,
-      "message": "'m-grid' is inside a repeated group; geometry checks cover its base instance. Visually inspect the repeated instances."
+      "page": "cover",
+      "passed": true,
+      "errors": 0,
+      "warnings": 0
     },
     {
-      "check": "bounds",
-      "severity": "info",
-      "action": "informational",
-      "layer": null,
-      "message": "'c-glow' bleeds off the canvas edge (marked as an intentional crop)"
+      "page": "document",
+      "passed": true,
+      "errors": 0,
+      "warnings": 0
     },
     {
-      "check": "bounds",
-      "severity": "info",
-      "action": "informational",
-      "layer": null,
-      "message": "'s-glow' bleeds off the canvas edge (marked as an intentional crop)"
+      "page": "loop",
+      "passed": true,
+      "errors": 0,
+      "warnings": 0
     },
     {
-      "check": "title_position",
-      "severity": "warning",
-      "action": "review",
-      "layer": null,
-      "message": "The title on page 'numbers' sits at y 499 where the other titles sit at 220"
+      "page": "gallery",
+      "passed": true,
+      "errors": 0,
+      "warnings": 0
+    },
+    {
+      "page": "delivery",
+      "passed": true,
+      "errors": 0,
+      "warnings": 0
+    },
+    {
+      "page": "start",
+      "passed": true,
+      "errors": 0,
+      "warnings": 0
     }
-  ]
+  ],
+  "suites": {
+    "canvas": {
+      "version": 1,
+      "suite_hash": "d60bb62eecd5efb1635a9c492fb3d184f26066b0bca9fadb9781ed22cda3d618",
+      "passed": true,
+      "status": "passed",
+      "errors": 0,
+      "needs_review": 0,
+      "coverage": {
+        "mode": "still",
+        "times": [
+          null
+        ]
+      },
+      "results": [
+        {
+          "id": "width",
+          "status": "passed",
+          "severity": "error",
+          "time": null,
+          "expected": 1080,
+          "actual": 1080
+        },
+        {
+          "id": "height",
+          "status": "passed",
+          "severity": "error",
+          "time": null,
+          "expected": 1350,
+          "actual": 1350
+        }
+      ]
+    }
+  }
 }
