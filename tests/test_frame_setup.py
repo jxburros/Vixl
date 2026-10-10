@@ -124,12 +124,22 @@ def test_sixty_frames_of_setup_on_a_large_document():
 
     p = lyric_film(cues=37, extra=600)
     times = [i * 300 for i in range(60)]
-    start = time.perf_counter()
-    for t in times:
-        project_at(p, t, prune=True)
-    elapsed = time.perf_counter() - start
-    # A deep copy of every layer per frame took about 2.7 s here; sharing and pruning take about 0.3 s.
-    assert elapsed < 1.8
+    from copy import deepcopy
+
+    def best(work):
+        runs = []
+        for _ in range(3):
+            start = time.perf_counter()
+            for t in times:
+                work(t)
+            runs.append(time.perf_counter() - start)
+        return min(runs)
+
+    elapsed = best(lambda t: project_at(p, t, prune=True))
+    copying = best(lambda t: deepcopy(p.state))
+    # Each frame used to deep-copy the whole document and then sample and measure it (about 2.7 s here). Sharing
+    # and pruning now set up a frame in less time than copying the document alone takes on the same machine.
+    assert elapsed < copying and elapsed < 6
 
 
 @pytest.mark.perf
