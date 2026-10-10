@@ -31,6 +31,10 @@ document before changing anything.
 A passing report certifies its requested checks and samples. It does not certify all
 export formats, every animation frame or artistic quality. Every finding carries an
 `action`, and `by_action` lists the issue indexes under `fix`, `review` and `informational`.
+Each finding also has a stable `rule` (`bounds.text-overflow`, `contrast.text-contrast` …),
+`layer_ids`, its measured `actual` and `expected` values and, for fix findings, a suggested
+`repair` you can dry-run; `outcome` keeps validation (fix findings) apart from review. See
+[outcomes, diagnostics and repair](agent-trust.md).
 Since 0.24 `passed` is false whenever a `fix` finding remains, including warnings from the
 legibility, fonts, content, guides, alignment, blanks and brand checks unless the finding
 is marked `review` (such as a body-measure or underfilled-canvas note); `review` and

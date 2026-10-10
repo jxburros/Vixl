@@ -168,11 +168,17 @@ def text_fits(project, layer, size, width, height, wrap=True):
     from .variables import layer_text
 
     text = layer_text(layer, document_variables(project))
+    spacing = layer.get("spacing", 4)
+    if "line_height" in layer and not layer.get("rich"):
+        from .craft import spacing_for
+
+        # Leading set as a multiple of the size follows the size being tried, as text-set applies it.
+        spacing = spacing_for(project, layer.get("font"), size, layer["line_height"])
     _, box = measure(
         font_data(project, layer),
         text,
         size,
-        layer.get("spacing", 4),
+        spacing,
         layer.get("align", "left"),
         width if wrap else None,
     )

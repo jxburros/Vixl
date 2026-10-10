@@ -64,11 +64,20 @@ def classify(item):
     return "review"
 
 
+def rule_id(item):
+    """The stable rule ID of a finding: ``check.code`` (``bounds.text-overflow``), or the check name."""
+    return f"{item['check']}.{item['code']}" if item.get("code") else item["check"]
+
+
 def tally(issues):
     """Counts by severity and the indexes of the findings grouped by action. Every finding gets an
-    ``action``; ``passed`` requires no fix findings (review and informational findings do not fail)."""
+    ``action`` and a stable ``rule``; ``passed`` requires no fix findings (review and informational findings
+    do not fail). ``outcome`` separates validation (the fix findings) from review (outcomes.from_findings)."""
+    from .outcomes import from_findings
+
     for item in issues:
         item["action"] = classify(item)
+        item.setdefault("rule", rule_id(item))
     errors = sum(1 for x in issues if x["severity"] == "error")
     return {
         "passed": errors == 0 and not any(x["action"] == "fix" for x in issues),
@@ -76,6 +85,7 @@ def tally(issues):
         "warnings": sum(1 for x in issues if x["severity"] == "warning"),
         "info": sum(1 for x in issues if x["severity"] == "info"),
         "by_action": {action: [i for i, x in enumerate(issues) if x["action"] == action] for action in ACTIONS},
+        "outcome": from_findings(issues),
     }
 
 
@@ -319,8 +329,9 @@ def check_design(
     sample=None,
     style=None,
     connect_tolerance=2,
+    repairs=True,
 ):
-    """Return ``{"passed", "errors", "warnings", "info", "issues", "by_action", "checked"}`` for the rendered
+    """Return ``{"passed", "errors", "warnings", "info", "issues", "by_action", "checked", "outcome"}`` for the rendered
     design. Each issue has a ``severity`` (error, warning, info) and an ``action`` (fix, review or
     informational); ``by_action`` lists the issue indexes under each action. Layers marked as intentional
     crops (``layer-intent`` ``allow_crop``, or non-text decoration) report edge crops as info.
@@ -356,6 +367,13 @@ def check_design(
         return check_deck(project, checks=rest, safe_area=safe_area, min_contrast=min_contrast, **options)
     from .render import view_page
 
+    page_ref = None
+    if project.state.get("pages") and not getattr(project, "_page_view", False):
+        from .pages import active_page, find_page, page_number
+
+        record = find_page(project.state, page) if page is not None else (
+            active_page(project.state) or project.state["pages"][0])
+        page_ref = page_number(project.state, record)
     project = view_page(project, page)
     unknown = sorted(set(checks) - set(CHECKS + OPTIONAL_CHECKS))
     require(not unknown, f"Unknown check(s) {unknown}; available: {', '.join(CHECKS + OPTIONAL_CHECKS)}", field="checks")
@@ -444,8 +462,13 @@ def check_design(
     issues = []
 
     def issue(check, severity, message, layers=(), **extra):
+        # Layer IDs and the first layer's canvas box locate the finding (diagnostics.annotate adds the rest).
+        located = {"layer_ids": [x["id"] for x in layers]} if layers else {}
+        if layers and layers[0]["id"] in bounds:
+            located["box"] = list(bounds[layers[0]["id"]])
         issues.append(
-            {"check": check, "severity": severity, "layers": [x["name"] for x in layers], "message": message, **extra}
+            {"check": check, "severity": severity, "layers": [x["name"] for x in layers], "message": message,
+             **located, **extra}
         )
 
     for item in content:
@@ -461,23 +484,23 @@ def check_design(
                 intentional = any(parent.get("pattern_scatter") for parent in ancestors(item))
                 issue("bounds", "info" if intentional else "error",
                       f"{item['name']!r} is entirely outside the canvas" + (" (intentional crop or tile wrap)" if intentional else ""),
-                      [item], bounds=[x, y, w, h], **({"intentional": True} if intentional else {}))
+                      [item], bounds=[x, y, w, h], code="off-canvas", **({"intentional": True} if intentional else {}))
             elif x < -1e-8 or y < -1e-8 or x + w > width + 1e-8 or y + h > height + 1e-8:
                 crossed = sum((x < -1e-8, y < -1e-8, x + w > width + 1e-8, y + h > height + 1e-8))
                 if any(parent.get("pattern_scatter") for parent in ancestors(item)):
                     # A seamless tile's motifs cross its edge on purpose: the wrapped copy completes them.
                     issue("bounds", "info", f"{item['name']!r} wraps across the edge of a seamless pattern tile",
-                          [item], bounds=[x, y, w, h], intentional=True)
+                          [item], bounds=[x, y, w, h], intentional=True, code="tile-wrap")
                 elif intentional_crop(item) or (item["type"] in ("shape", "gradient") and crossed >= 2):
                     # Artwork that runs past two or more edges (a hill, a glow) is bleed by design.
                     issue("bounds", "info", f"{item['name']!r} bleeds off the canvas edge (" + (
                               "marked as an intentional crop)" if intentional_crop(item) else "artwork running past two edges)"),
-                          [item], bounds=[x, y, w, h], intentional=True)
+                          [item], bounds=[x, y, w, h], intentional=True, code="bleed")
                 else:
                     severity = "error" if is_text(item) else "warning"
                     issue("bounds", severity, f"{item['name']!r} is cut off by the canvas edge"
                           + ("" if is_text(item) else "; if the crop is deliberate, mark it with layer-intent allow_crop"),
-                          [item], bounds=[x, y, w, h])
+                          [item], bounds=[x, y, w, h], code="cut-off")
         for item in content:
             needed = boxed_text_overflow(candidate, resolved[item["id"]])
             if needed:
@@ -485,7 +508,8 @@ def check_design(
                 issue("bounds", "error",
                       f"{item['name']!r} does not fit its {layer['width']}×{layer['height']} text box at "
                       f"{layer['size']} px and is cut off (it needs {needed[0]}×{needed[1]}); enlarge the box "
-                      "with text-layout or shrink the text with fit-text", [item], needs=list(needed))
+                      "with text-layout or shrink the text with fit-text", [item], needs=list(needed),
+                      code="text-overflow")
         for item in layers:
             sides = gradient_edges(candidate, resolved[item["id"]], geometry[item["id"]], width, height,
                                    math.prod(x["opacity"] for x in (item, *ancestors(item))))
@@ -600,6 +624,8 @@ def check_design(
                         f"({pixels / smaller:.1%} of the smaller layer)",
                         [first, second],
                         region=[left, top, right - left, bottom - top],
+                        code="text-text" if len(texts) == 2 else "text-object",
+                        pixels=pixels,
                     )
 
     # Empty text (a lyric between lines, a cleared label) draws nothing to measure.
@@ -623,7 +649,8 @@ def check_design(
                     # The single-pass measurement failed for this layer: measure it on its own.
                     result = measure(candidate, target=item["id"])["contrast"]
             except Exception as exc:  # noqa: BLE001 - never a silent pass: an unmeasurable layer is an error.
-                issue("contrast", "error", f"Could not measure the contrast of {item['name']!r}: {exc}", [item])
+                issue("contrast", "error", f"Could not measure the contrast of {item['name']!r}: {exc}", [item],
+                      code="unmeasurable")
                 continue
             from .text import font_data, font_style
             from .house_style import rule
@@ -648,6 +675,7 @@ def check_design(
                     region=result["weakest_region"],
                     contrast=result["p10"],
                     required=threshold,
+                    code="text-contrast",
                     **({"outline_contrast": outline["p10"]} if outline else {}),
                 )
 
@@ -673,6 +701,7 @@ def check_design(
                         [item],
                         bounds=list(box),
                         safe_area=[round(v, 2) for v in safe],
+                        code="outside",
                         **({"intentional": True} if crop else {}),
                     )
         for zone in avoid or []:
@@ -685,6 +714,7 @@ def check_design(
                         f"{item['name']!r} intrudes on a reserved zone",
                         [item],
                         zone=[round(v, 2) for v in box],
+                        code="reserved-zone",
                     )
 
     if "legibility" in checks:
@@ -797,6 +827,7 @@ def check_design(
                     "or remove the layer",
                     [item],
                     slot=entry["slot"],
+                    code="unfilled",
                 )
 
     if "fonts" in checks:
@@ -895,13 +926,18 @@ def check_design(
         frame = project_at(project, 0)
         frame.state.pop("timeline", None)  # A render-only copy: the nested check must not time-check again.
         poster = check_design(frame, checks=["legibility"], thumbnail_width=thumbnail_width,
-                              min_thumbnail_text=min_thumbnail_text, targets=targets)
+                              min_thumbnail_text=min_thumbnail_text, targets=targets, repairs=False)
         for item in poster["issues"]:
             if item["message"] not in known:
                 issues.append({**item, "message": "At the poster frame (0 s): " + item["message"]})
 
+    summary = tally(issues)
+    from .diagnostics import annotate
+
+    # Stable rules, measurements, page and (for fix findings) a suggested repair; nothing is applied.
+    annotate(candidate, issues, page=page_ref, min_thumbnail_text=min_thumbnail_text, repairs=repairs)
     return {
-        **tally(issues),
+        **summary,
         "issues": issues,
         "checked": {"checks": checks, "layers_checked": len(content), "layers_total": len(layers), "text_layers": len(texts)},
         **({"style": style_report} if style_report is not None else {}),
@@ -1141,7 +1177,8 @@ def side_by_side(left, right, gap=8):
 
 
 APPLY_ISSUES = 20  # Findings an apply call returns; vixl_check lists them all.
-APPLY_PREVIEW = ("page", "region", "max_width", "max_height", "time", "isolate")
+APPLY_PREVIEW = ("page", "region", "max_width", "max_height", "time", "isolate", "overlay", "focus")
+APPLY_PREVIEW_BYTES = 524_288
 
 
 def _apply_options(check, preview):
@@ -1163,6 +1200,8 @@ def _apply_options(check, preview):
         options = {} if preview is True else preview
         require(isinstance(options, dict) and not set(options) - set(APPLY_PREVIEW),
                 f"preview is true or an object with {', '.join(APPLY_PREVIEW)}", field="preview")
+        require(not (options.get("overlay") or options.get("focus") is not None) or check,
+                "preview overlay and focus mark check findings: pass check as well", field="preview")
         options = {"max_width": 512, **options}
         options.setdefault("max_height", options["max_width"])
     return names, options
@@ -1189,7 +1228,7 @@ def _touched(before, project):
 
 def batch_findings(project, names, touched):
     """vixl_check's summary with its issues limited to the touched layers plus every 'fix' finding (at most
-    APPLY_ISSUES, fixes first). The counts and ``passed`` still describe the whole document."""
+    APPLY_ISSUES, fixes first). The counts, ``passed`` and ``outcome`` still describe the whole document."""
     report = check_design(project, checks=names)
     if "issues" not in report:
         return report
@@ -1200,7 +1239,7 @@ def batch_findings(project, names, touched):
 
     order = {action: index for index, action in enumerate(ACTIONS)}
     kept = sorted((item for item in report["issues"] if concerns(item)), key=lambda item: order[item["action"]])[:APPLY_ISSUES]
-    summary = {key: report[key] for key in ("passed", "errors", "warnings", "info") if key in report}
+    summary = {key: report[key] for key in ("passed", "errors", "warnings", "info", "outcome") if key in report}
     summary.update(issues=kept, by_action={action: [i for i, x in enumerate(kept) if x["action"] == action] for action in ACTIONS})
     if "checked" in report:
         summary["checked"] = report["checked"]
@@ -1210,19 +1249,25 @@ def batch_findings(project, names, touched):
     return summary
 
 
+def suite_names(project, suites):
+    """The attached suites ``suites`` names: true for all of them, a name or a list."""
+    attached = project.state.get("suites", {})
+    if suites is True:
+        return list(attached)
+    names = [suites] if isinstance(suites, str) else suites
+    require(isinstance(names, list) and all(isinstance(name, str) for name in names),
+            "suites is true, a suite name or a list of names", field="suites")
+    missing = [name for name in names if name not in attached]
+    require(not missing, f"No attached suite named {missing}; attached: {', '.join(attached) or 'none'}",
+            field="suites")
+    return names
+
+
 def suite_summary(project, suites):
     """Run attached check suites (``True`` for all of them, a name or a list) and report each one's status
     with only the rules that did not pass, so a batch's result stays small."""
     attached = project.state.get("suites", {})
-    if suites is True:
-        names = list(attached)
-    else:
-        names = [suites] if isinstance(suites, str) else suites
-        require(isinstance(names, list) and all(isinstance(name, str) for name in names),
-                "suites is true, a suite name or a list of names", field="suites")
-        missing = [name for name in names if name not in attached]
-        require(not missing, f"No attached suite named {missing}; attached: {', '.join(attached) or 'none'}",
-                field="suites")
+    names = suite_names(project, suites)
     if not names:
         return {"note": "No suites are attached. Write one for this document's requirements with suite-set "
                         "(vixl_guide('testing') explains how) or attach a starter with workflow suite-use."}
@@ -1232,26 +1277,46 @@ def suite_summary(project, suites):
         open_rules = [item for item in report["results"] if item["status"] != "passed"]
         summary[name] = {"status": report["status"], "errors": report["errors"],
                          "needs_review": report["needs_review"], "rules": len(attached[name]["rules"]),
-                         "not_passed": open_rules[:APPLY_ISSUES]}
+                         "not_passed": open_rules[:APPLY_ISSUES], "outcome": report["outcome"]}
         if len(open_rules) > APPLY_ISSUES:
             summary[name]["omitted"] = len(open_rules) - APPLY_ISSUES
     return summary
 
 
+def apply_outcome(result):
+    """The batch's outcome: it executed; validation is what its check and suites found (not run without them)."""
+    from .outcomes import make, merge
+
+    parts = [result.get("check", {}).get("outcome")]
+    parts += [value.get("outcome") for value in (result.get("suites") or {}).values() if isinstance(value, dict)]
+    parts = [part for part in parts if part]
+    if not parts:
+        reasons = ["no check or suites ran"] + (["review was skipped: the edit used the time budget"]
+                                                 if result.get("review_skipped") else [])
+        return make("completed", "not_run", reasons)
+    return merge(*parts)
+
+
 def apply_reviewed(project, operations, *, dry_run=False, detail="brief", check=None, preview=None, validate=None,
-                   budget=None, suites=None):
+                   budget=None, suites=None, repair=None):
     """Apply a batch and, on request, check and preview the result in the same call: one round trip instead of
     apply, vixl_check and vixl_render_preview. ``check`` is true (the default checks), a check name or a list;
-    ``preview`` is true or {page, region, max_width (default 512), max_height, time}. A dry run checks and previews
-    the candidate without saving it. ``budget`` (seconds) skips the review when the edit alone used it up, so a slow
-    batch never also waits for a check. ``validate`` is Project.apply's per-operation ``check``. ``suites`` (true,
-    a name or a list) also runs the document's attached check suites (``suite_summary``), including any the
-    batch itself attached. Returns ``(result, PNG bytes or None)``."""
+    ``preview`` is true or {page, region, max_width (default 512), max_height, time, isolate, overlay, focus}:
+    ``overlay`` draws the fix findings' boxes labelled with rule and layer ID, ``focus`` (an index into the
+    listed findings) zooms to one. A dry run checks and previews the candidate without saving it. ``budget``
+    (seconds) skips the review when the edit alone used it up, so a slow batch never also waits for a check.
+    ``validate`` is Project.apply's per-operation ``check``. ``suites`` (true, a name or a list) also runs the
+    document's attached check suites (``suite_summary``), including any the batch itself attached. ``repair``
+    (true or a list of repair kinds) applies the built-in repair map after the batch (repair.auto_repair) as a
+    second, separately undoable history entry. Every result has an ``outcome``. Returns
+    ``(result, PNG bytes or None)``."""
     import time
     from copy import deepcopy
 
-    if not check and not preview and not suites:
-        return project.apply(operations, dry_run=dry_run, detail=detail, check=validate), None
+    if not check and not preview and not suites and not repair:
+        result = project.apply(operations, dry_run=dry_run, detail=detail, check=validate)
+        result["outcome"] = apply_outcome(result)
+        return result, None
     names, options = _apply_options(check, preview)
     started = time.monotonic()
     before = {layer["id"]: layer for layer in deepcopy(project.state["layers"])}
@@ -1259,20 +1324,31 @@ def apply_reviewed(project, operations, *, dry_run=False, detail="brief", check=
     result = target.apply(operations, detail=detail, check=validate)
     result["dry_run"] = dry_run
     skipped, image = [], None
-    for part, wanted in (("check", check), ("suites", suites), ("preview", preview)):
+    for part, wanted in (("repair", repair), ("check", check), ("suites", suites), ("preview", preview)):
         if not wanted:
             continue
         if budget is not None and time.monotonic() - started > budget:
             skipped.append(part)
+        elif part == "repair":
+            from .repair import auto_repair
+
+            repair_suites = suite_names(target, suites) if suites else []
+            result["repairs"] = auto_repair(target, checks=names, suites=repair_suites, kinds=repair)
         elif part == "check":
             result["check"] = batch_findings(target, names, _touched(before, target))
         elif part == "suites":
             result["suites"] = suite_summary(target, suites)
+        elif options.get("overlay") or options.get("focus") is not None:
+            from .feedback import preview as feedback_preview
+
+            image, result["feedback"] = feedback_preview(target, result["check"]["issues"], **options,
+                                                         max_bytes=APPLY_PREVIEW_BYTES)
         else:
             from .proxy import preview_png
 
-            image = preview_png(target, max_bytes=524_288, **options)
+            image = preview_png(target, max_bytes=APPLY_PREVIEW_BYTES, **options)
     if skipped:
         result["review_skipped"] = (f"The edit took {time.monotonic() - started:.0f} s, so {' and '.join(skipped)} did not run; "
                                     "call vixl_check, vixl_workflow check or vixl_render_preview.")
+    result["outcome"] = apply_outcome(result)
     return result, image

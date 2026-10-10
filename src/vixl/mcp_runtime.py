@@ -550,7 +550,7 @@ class Runtime:
         if action == "cancel":
             return queue.cancel(ident)
         job = queue.status(ident)
-        keep = ("id", "status", "progress", "attempts", "error", "result")
+        keep = ("id", "status", "outcome", "progress", "attempts", "error", "result")
         summary = {k: job[k] for k in keep if k in job}
         summary["kind"] = job["payload"]["kind"]
         if action == "result" and job["status"] not in ("completed", "failed", "cancelled", "needs_review"):

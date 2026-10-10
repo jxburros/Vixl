@@ -239,7 +239,10 @@ Row fields cannot also occur in the matrix. Explicit row values override artboar
 All attached suites run unless an explicit `suites` list selects others.
 
 Optional `actions` run before checks; `motion` applies a saved sequence.
-At most three named `repair_actions` are tried in order, stopping when checks pass.
+At most three named `repair_actions` are tried in order, stopping when checks pass. The name `auto` runs the
+built-in repair map instead (fit-text, contrast ink, safe-area nudge; see
+[outcomes, diagnostics and repair](agent-trust.md#built-in-repairs)); its operations are reported under
+`repair_operations`.
 Failed/unmeasurable outputs are held for review; successful outputs remain available.
 
 Image formats: PNG, JPG, WebP, SVG. For animation use `kind:"timeline"` with
@@ -457,7 +460,7 @@ Changing variables updates text and width-only wrapping boxes. It does not rerun
 
 Recomposition replaces the layout-generated layers. Manual edits, layer IDs used by external bindings, custom animation tracks and adjustments to those generated layers may not survive. Store such content outside the generated prefix or rebuild it in the action. Check the longest row and every target size.
 
-Without named suites, production runs bounds and text-flow checks and returns `needs_review` for failures rather than publishing clipped text. Add suites for the rest of the design contract. Unchanged runs reuse an output only when inputs, fonts, linked sources, settings and checks match and the output's SHA-256 still agrees. Layer caches use the user cache directory, not the deliverables directory.
+Without named suites, production runs bounds and text-flow checks and returns `needs_review` for failures rather than publishing clipped text; a clean output is `completed` with `outcome.state` `unvalidated`, because no suite validated it. Each result and the report carry an `outcome` ([outcome states](agent-trust.md#outcome-states)). Add suites for the rest of the design contract. Unchanged runs reuse an output only when inputs, fonts, linked sources, settings and checks match and the output's SHA-256 still agrees. Layer caches use the user cache directory, not the deliverables directory.
 
 The `app-animation-package` workflow packages named source documents, theme variables, explicit transitions, one-shot/looping behavior, reduced-motion PNGs and editable masters. Its generated manifest and standalone consumer are documented in [animation authoring](animation-authoring.md#app-animation-packages). Package outputs are new directories and external links must be frozen first.
 

@@ -15,6 +15,11 @@ STRINGS = {"type": "array", "items": STR}
 REGION = {"type": "array", "items": {"type": "integer"}, "minItems": 4, "maxItems": 4,
           "description": "Integer [x, y, width, height] inside the canvas."}
 SCALAR = {"type": ["string", "number", "boolean"]}
+REPAIR = {"anyOf": [{"type": "boolean"}, {"type": "array", "items": {
+    "type": "string", "enum": ["fit-text", "contrast-ink", "safe-area-nudge"]}}],
+    "description": "Apply the built-in repair for each failure the map covers (fit-text within the minimum size, text "
+                   "colour toward the role ink, nudge inside the safe area; unfilled blanks are held for review) to "
+                   "the candidate; kept only if the suites then pass. true for every kind, or a list of kinds."}
 
 LOGO_PACKAGE_TYPES = _logo_package_types()
 
@@ -220,7 +225,8 @@ PRODUCTION_SPEC = {
         "suites": {"type": "array", "items": STR, "description": "Suites to check (default all attached)."},
         "actions": {"type": "array", "items": STR, "description": "Saved actions to run before checks."},
         "repair_actions": {"type": "array", "items": STR, "maxItems": 3,
-                           "description": "Saved actions tried in order when checks fail."},
+                           "description": "Saved actions tried in order when checks fail; 'auto' runs the built-in "
+                                          "repair map (fit-text, contrast ink, safe-area nudge) instead."},
         "workers": {"type": "integer", "minimum": 1, "maximum": 4, "default": 1, "description": "Parallel renders."},
         "motion": {"type": "string", "description": "Saved motion to apply."},
         "fps": {"type": "number", "minimum": 1, "maximum": 60, "description": "Timeline fps override."},
@@ -319,6 +325,7 @@ ACTION_FIELDS = {
                                                               "if every suite passes."},
         "suites": {**COMMON["suites"], "description": "Attached suites that must pass for the change to commit."},
         "dry_run": {"type": "boolean", "description": "Apply and check without committing."},
+        "repair": REPAIR,
     },
     "capture": {
         "recipe": RECIPE,
@@ -375,6 +382,8 @@ ACTION_FIELDS = {
         "title": {"type": "string", "default": "Proof", "description": "Page heading."},
         "check": {"type": "boolean", "default": True, "description": "Run vixl_check on .vixl items and show the "
                   "findings."},
+        "overlay": {"type": "boolean", "default": False, "description": "Outline each fix finding on a .vixl item's "
+                    "thumbnail, labelled with its rule and layer ID (needs check)."},
         "decisions": {"type": "boolean", "default": False, "description": "Add approve/reject and a note per item, "
                       "and a button that downloads them as <page>-decisions.json."},
         "max_size": {"type": "integer", "minimum": 128, "maximum": 2400, "default": 1200,
@@ -429,8 +438,49 @@ ACTION_FIELDS = {
                     "operations": {**COMMON["operations"], "description": "Bulk operations applied to each member."},
                     "suites": {**COMMON["suites"], "description": "Suites every member must pass."},
                     "dry_run": {"type": "boolean", "default": True,
-                                "description": "Check without saving (default true)."}},
+                                "description": "Check without saving (default true)."},
+                    "repair": {**REPAIR, "description": "Apply the built-in repair map to each member before its "
+                                                        "suites run (bounds, contrast and safe-area fix findings, "
+                                                        "text-fit and contrast rules); reported per document."}},
     "group-recover": {"name": {"type": "string", "description": "Group whose interrupted edit to roll back."}},
+    "repair-layout": {
+        "checks": {"type": "array", "items": STR, "description": "Design checks to satisfy (default: vixl_check's "
+                   "default set)."},
+        "suites": {**COMMON["suites"], "description": "Attached suites that must not get worse; their text-fit, "
+                   "contrast and spacing rules are repaired too."},
+        "protected": {"type": "array", "items": STR, "description": "Layers (IDs or names) no candidate may change; "
+                      "a protected group protects its contents."},
+        "minimum_size": {"type": "number", "minimum": 1, "maximum": 1000,
+                         "description": "No candidate may set text below this size (px)."},
+        "max_candidates": {"type": "integer", "minimum": 1, "maximum": 200, "default": 24,
+                           "description": "Candidates evaluated in all."},
+        "max_iterations": {"type": "integer", "minimum": 1, "maximum": 20, "default": 4,
+                           "description": "Failures tried, one after another."},
+        "time_budget": {"type": "number", "exclusiveMinimum": 0, "maximum": 300, "default": 20,
+                        "description": "Seconds before the search stops."},
+        "dry_run": {"type": "boolean", "default": True, "description": "Plan without saving (default true)."},
+    },
+    "protected-edit": {
+        "operations": {**COMMON["operations"], "description": "The edit, applied to a candidate first."},
+        "protect": {"type": "array", "items": STR, "description": "Layers (IDs or names) whose structure and "
+                    "covered pixels must not change; a group protects its contents."},
+        "regions": {"type": "array", "items": REGION, "description": "Canvas regions whose pixels must not change."},
+        "tolerance": {"type": "integer", "minimum": 0, "maximum": 255, "default": 0,
+                      "description": "Largest RGBA channel change a protected pixel may have."},
+        "structural": {"type": "boolean", "default": True, "description": "Check protected layers' fields."},
+        "pixels": {"type": "boolean", "default": True, "description": "Check protected pixels in the render."},
+        "dry_run": {"type": "boolean", "default": False, "description": "Verify without saving."},
+    },
+    "reproduce": {
+        "reference": {**PATH, "description": "Approved reference image the fresh render must match."},
+        "tolerance": {"type": "integer", "minimum": 0, "maximum": 254, "default": 0,
+                      "description": "Channel change a pixel may have and still match the reference."},
+        "max_fraction": {"type": "number", "minimum": 0, "maximum": 1, "default": 0,
+                         "description": "Fraction of pixels allowed to differ from the reference."},
+        "lock": {**PATH, "description": "Render lockfile (.json) to verify: reports located drift."},
+        "write_lock": {**PATH, "description": "Write a render lockfile (.json) for the document as it renders now."},
+        "overwrite": {"type": "boolean", "default": False, "description": "Replace an existing write_lock file."},
+    },
     "plugin-install": {"manifest": MANIFEST, "replace": {"type": "boolean", "default": False,
                                                           "description": "Upgrade an installed pack."}},
     "plugin-remove": {"name": {"type": "string", "description": "Plugin pack to remove."}},
@@ -506,6 +556,13 @@ SUMMARIES = {
     "group-show": "Show a project group's members and shared parameters.",
     "group-apply": "Apply shared parameters or operations to every group member with suite checks (dry run by default).",
     "group-recover": "Roll back an interrupted group edit from its journal.",
+    "repair-layout": "Bounded layout repair: try several candidates per overflow, overlap, spacing, contrast or "
+                     "safe-area failure, keep the least disruptive that passes; infeasible leaves the document "
+                     "unchanged and lists unsatisfied constraints (dry run by default).",
+    "protected-edit": "Apply operations only if protected layers keep their structure and pixels and protected "
+                      "regions keep their pixels; otherwise roll back and report located differences.",
+    "reproduce": "Render and report renderable, environment-matched (lockfile) or reference-verified (reference "
+                 "image or locked render hash), with located drift; can write a lockfile.",
     "plugin-list": "List installed plugin packs.",
     "plugin-install": "Install a pack of namespaced palettes, templates, suites and other resources.",
     "plugin-remove": "Remove an installed plugin pack and its resources.",

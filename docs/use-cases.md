@@ -80,7 +80,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | DOC-10 | Set a document variable and render with an override | `variable set`, `render --set NAME=VALUE` | 2 · <1 | E | |
 | DOC-11 | Close one of several open documents | `vixl_document_close` | 1 · <1 | E | Multi-document sessions pass `document=`. |
 | DOC-12 | List the files in the workspace | `vixl_workspace_list` | 1 · <1 | E | |
-| DOC-13 | Inspect what a document depends on and check it reproduces | `vixl dependencies`, `vixl reproduce --check` | 1 · <1 | E | |
+| DOC-13 | Inspect what a document depends on and check it reproduces | `vixl dependencies`, `vixl reproduce --check` | 1 · <1 | E | Since 0.25 `--reference PNG` verifies against an approved render and `--write-lock`/`--lock` record and check dependency, font, asset and render drift (#512); without them it only proves the document renders. |
 | BLK-16 | Relink the links in a copied `.vixl` | `links-relink {from, to}` | 1 · <1 | E | Since 0.22; sources beside the document are stored relative to it. |
 | DOC-31 | Import an image from a URL with its credit and licence | `vixl_import_image(url=…, credit, license)` | 1 · <1 | E | Since 0.22; https only, private hosts refused. |
 | DOC-32 | Merge layers into one, or flatten the page | `merge-layers`, `flatten` | 1 · <1 | E | Since 0.22; undo restores the originals. |
@@ -190,7 +190,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 
 | ID | Use case | Main route | Calls · min | Ev. | Notes |
 | --- | --- | --- | --- | --- | --- |
-| QA-01 | Run design checks (bounds, overlap, contrast, safe area, legibility) | `vixl_check` | 1 · <1 | E | Fix-level vs review-level findings. Since 0.24 `passed` is false while any finding needs a fix, warnings included; `by_action` separates them (#464). |
+| QA-01 | Run design checks (bounds, overlap, contrast, safe area, legibility) | `vixl_check` | 1 · <1 | E | Fix-level vs review-level findings. Since 0.24 `passed` is false while any finding needs a fix, warnings included; `by_action` separates them (#464). Since 0.25 each finding has a stable `rule`, `layer_ids`, measured actual versus expected and a suggested `repair`, and `outcome` separates validation from review (#524, #525). |
 | QA-02 | Check spacing is equal or matches an expected gap | `vixl_measure_spacing` | 1 · <1 | E | |
 | QA-03 | Sample a pixel or read a histogram | `vixl_pixels_inspect`, `sample`, `histogram` | 1 · <1 | E | |
 | QA-04 | Validate against a named profile or inline assertions | `vixl_validate` | 1 · <1 | E | |
@@ -198,6 +198,10 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | QA-06 | Check print readiness (ink limit, effective ppi, bleed) | `check --checks print` | 1 · <1 | E | |
 | QA-07 | Check color-vision safety of text and chart series | `check --checks color_vision` | 1 · <1 | E | Other adjacent fills not compared yet. |
 | QA-08 | Check a design against a named style (Swiss, Bauhaus …) | `check --checks style` | 1 · <1 | E | 28 styles. |
+| QA-25 | Fix overflowing text, low contrast and safe-area findings automatically | `vixl_check(repair=true)`, `vixl_operations_apply(repair=true)`, act / group-apply `repair` | 1 · <1 | E | Since 0.25 (#571); a repair is kept only when its finding is resolved and nothing new fails; one undoable step. Blanks are held. |
+| QA-26 | Repair a layout (longer headline, overlap, uneven gaps) without touching the logo or going below a type size | `vixl_workflow` repair-layout | 1–2 · <1 | E | Since 0.25 (#518); bounded candidates ranked by least disruption; infeasible leaves the document unchanged and lists what remains. |
+| QA-27 | Replace the background but keep the subject's pixels and the headline wording | `vixl_workflow` protected-edit | 1 · <1 | E | Since 0.25 (#520); structural and pixel guarantees, rolls back on any violation. |
+| QA-28 | See check findings marked on the preview, or zoom to one | `vixl_operations_apply(check, preview={overlay, focus})`, `vixl_render_preview(overlay=true)` | 1 · <1 | E | Since 0.25 (#526); overlays never change the document or exports. |
 | AGT-01 | Ask what to make and with which tools for a brief | `vixl_guide(brief)` | 1 · <1 | E | 20 kinds: poster, logo, character, comic, form … |
 | AGT-02 | Look up fields and gotchas for a topic | `vixl_capabilities(topic)` | 1 · <1 | E | |
 | AGT-03 | Read the JSON schema of one operation | `vixl_operation_schema` | 1 · <1 | E | |

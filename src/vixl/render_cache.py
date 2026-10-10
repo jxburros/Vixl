@@ -14,6 +14,17 @@ import sys
 from .fileio import file_lock, temporary
 
 
+# Imaging, shaping and encoding packages whose versions change rendered pixels (also the render lockfile's).
+PACKAGES = (
+    ("Pillow", "PIL"),
+    ("numpy", "numpy"),
+    ("fonttools", "fontTools"),
+    ("uharfbuzz", "uharfbuzz"),
+    ("resvg-py", "resvg_py"),
+    ("python-bidi", "bidi"),
+)
+
+
 @lru_cache(maxsize=1)
 def environment():
     from . import __version__
@@ -25,14 +36,7 @@ def environment():
 
         modules += file_digest(sys.executable).encode()
     versions = []
-    for package, module in (
-        ("Pillow", "PIL"),
-        ("numpy", "numpy"),
-        ("fonttools", "fontTools"),
-        ("uharfbuzz", "uharfbuzz"),
-        ("resvg-py", "resvg_py"),
-        ("python-bidi", "bidi"),
-    ):
+    for package, module in PACKAGES:
         try:
             versions.append(version(package))
         except PackageNotFoundError:

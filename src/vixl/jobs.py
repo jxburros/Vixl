@@ -45,10 +45,12 @@ class Queue:
             isinstance(job, dict) and job.get("version") == 1 and job.get("id") == ident,
             "Unsupported job record",
         )
+        job["outcome"] = job_outcome(job)
         return job
 
     def save(self, job):
         job["updated"] = time.time()
+        job["outcome"] = job_outcome(job)
         write_json(self.path(job["id"]), job)
 
     def submit(self, payload):
@@ -545,6 +547,25 @@ def worker(workspace, workers=1):
         if not any(j["status"] in ("queued", "running", "waiting") for j in jobs):
             break
         time.sleep(2)
+
+
+def job_outcome(job):
+    """A job's outcome (outcomes.py): execution from its status; a production job's validation and review come
+    from its outputs. A job left needs_review by an uncertain remote request did not complete."""
+    from .outcomes import make, of_status
+
+    status = job.get("status")
+    if status == "needs_review" and job.get("error"):
+        return make("failed", reasons=[job["error"].get("message") or job["error"].get("code", "error")])
+    outcome = of_status(status)
+    result = job.get("result")
+    outputs = result.get("outcome") if isinstance(result, dict) else None
+    if outputs and outcome["execution"] == "completed" and "counts" in outputs:
+        validation = {"validated": "passed", "validation_failed": "failed", "needs_review": "passed"}.get(
+            outputs["state"], "not_run")
+        reasons = [] if outputs["state"] == "validated" else [f"outputs by state: {outputs['counts']}"]
+        outcome = {**make("completed", validation, reasons), "outputs": outputs}
+    return outcome
 
 
 if __name__ == "__main__":

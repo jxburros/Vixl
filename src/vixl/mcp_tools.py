@@ -264,7 +264,16 @@ def export_file(session, path, overwrite=False, document=None, **options):
             finally:
                 if os.path.exists(temporary_path):
                     os.unlink(temporary_path)
-        return {"path": session.relative(destination), "format": fmt, "bytes": len(data), **report}
+        return {"path": session.relative(destination), "format": fmt, "bytes": len(data), **report,
+                "outcome": export_outcome(report)}
+
+
+def export_outcome(report):
+    """A written export executed; it is not validated (exports run no checks) and its warnings need review."""
+    from .outcomes import make
+
+    warnings = [str(item) for item in report.get("warnings", [])]
+    return make("completed", "not_run", ["export runs no checks: run vixl_check and the suites first", *warnings])
 
 
 def decode_upload(data_base64, limit):
@@ -689,12 +698,21 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         ] = None,
         preview: Annotated[
             bool | dict | None,
-            Field(description="Also return a small preview PNG: true, or {page, region, max_width (512), max_height, time, isolate}"),
+            Field(description="Also return a small preview PNG: true, or {page, region, max_width (512), max_height, time, "
+                              "isolate, overlay, focus}. overlay (with check) outlines each fix finding labelled with its "
+                              "rule and layer ID; focus (a listed finding's index) zooms to that finding"),
         ] = None,
         suites: Annotated[
             bool | str | list[str] | None,
             Field(description="Also run the document's check suites (your own tests, attached with suite-set): true "
                               "for all, or names. Lists each suite's status and the rules that did not pass"),
+        ] = None,
+        repair: Annotated[
+            bool | list[Literal["fit-text", "contrast-ink", "safe-area-nudge"]] | None,
+            Field(description="After the batch, apply the built-in repair for each fix finding (fit-text within the "
+                              "minimum size, text colour toward the role ink, nudge inside the safe area; unfilled "
+                              "blanks are held). Each repair is kept only if its finding is resolved and nothing new "
+                              "fails; kept repairs are one more undoable history entry, listed under repairs"),
         ] = None,
     ) -> dict:
         """Apply operations atomically (all or none) and autosave. Give operations inline, or operations_path
@@ -714,11 +732,12 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         skipped, with a note, when the edit itself took more than half the inline time limit."""
         require(operations is not None or operations_path is not None, "Pass operations or operations_path",
                 field="operations")
-        if not check and not preview and not suites:
+        if not check and not preview and not suites and not repair:
             return session.apply(operations, dry_run, detail, document, operations_path=operations_path)
         budget = runtime.inline_seconds / 2 if runtime.inline_seconds else None
         result, image = session.apply_reviewed(operations, dry_run, detail, document, operations_path=operations_path,
-                                               check=check, preview=preview, budget=budget, suites=suites)
+                                               check=check, preview=preview, budget=budget, suites=suites,
+                                               repair=repair)
         return result if image is None else [result, Image(data=image, format="png")]
 
     @tool
@@ -781,6 +800,9 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         show_fields: Annotated[bool, Field(description="Outline form fields with their keys and tab order")] = False,
         isolate: Annotated[list[str] | None, Field(description="Show only these layers (a group with all its parts) on the "
                            "canvas background, zoomed to their ink with a small margin unless region is given")] = None,
+        overlay: Annotated[bool, Field(description="Run vixl_check and outline each fix finding on the preview, labelled "
+                           "with its rule and layer ID; also returns the boxes (document and preview pixels). The "
+                           "document and exports are unchanged")] = False,
         document: Document = None,
     ) -> Image:
         """Return an aspect-preserving PNG capped in dimensions and bytes, rendered at preview resolution.
@@ -788,6 +810,15 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         an animation frame; proof shows print (CMYK) color; simulate checks color-blind legibility.
         isolate shows one object (a group or layers) alone, to judge its parts without the scene around it.
         Test first: vixl_check and the document's suites catch what a small preview hides; preview for taste."""
+        if overlay:
+            from .feedback import preview as feedback_preview
+
+            with session.project(document=document) as project:
+                report = project.check(page=page)
+                data, feedback = feedback_preview(project, report["issues"], overlay=True, max_width=max_width,
+                                                  max_height=max_height, max_bytes=max_bytes, region=region, page=page)
+            feedback.update(outcome=report["outcome"], findings=len(report["issues"]))
+            return [feedback, Image(data=data, format="png")]
         return Image(
             data=preview(
                 session,
@@ -861,6 +892,13 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         sample: Annotated[str | None, Field(description="form checks: 'worst' (worst-case values) or a workspace CSV of rows")] = None,
         style: Annotated[str | list[str] | None, Field(description="style check: evaluate this style (or list) instead of the document's style tag")] = None,
         connect_tolerance: Annotated[float, Field(ge=0, le=100, description="connected check: pixels of gap still counted as touching")] = 2,
+        repair: Annotated[
+            bool | list[Literal["fit-text", "contrast-ink", "safe-area-nudge"]] | None,
+            Field(description="Apply the suggested built-in repairs first (writes the document as one undoable "
+                              "batch; each kept only if its finding is resolved and nothing new fails), then check")] = None,
+        offset: Annotated[int, Field(ge=0, description="First finding to list (pagination)")] = 0,
+        limit: Annotated[int | None, Field(ge=1, le=200, description="Findings to list; passed, counts and outcome still "
+                                                                      "cover every finding")] = None,
         document: Document = None,
     ) -> dict:
         """Find design problems without looking: content cut off by the canvas, overlapping text, low WCAG
@@ -873,7 +911,11 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         style tag rule by rule. Each issue has a severity (error, warning, info) and an action: fix (needs a design
         change), review (look and decide) or informational (expected, such as a crop marked with layer-intent
         allow_crop); by_action lists the issue indexes under each. connected (opt-in) finds parts of a group (a mascot,
-        a character) that float free of its main body. Reports only problems."""
+        a character) that float free of its main body. Reports only problems. Each finding has a stable rule ID
+        (bounds.text-overflow, contrast.text-contrast, safe_area.outside, overlap.text-text …), layer_ids, its
+        box or region in document pixels, measured actual versus expected, and for fix findings a repair suggestion:
+        canonical operations you can dry-run with vixl_operations_apply (nothing is applied unless repair=true).
+        outcome separates validation (fix findings) from review (review findings and their reasons)."""
         return session.check(
             document=document,
             checks=checks,
@@ -892,6 +934,9 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
             sample=sample if sample in (None, "worst") else str(session.resolve(sample)),
             style=style,
             connect_tolerance=connect_tolerance,
+            repair=repair,
+            offset=offset,
+            limit=limit,
         )
 
     @tool

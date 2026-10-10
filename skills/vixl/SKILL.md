@@ -94,6 +94,19 @@ Each result carries the measurement (gaps, margins, ratio, centre, colour), so a
 change. A rule that cannot be measured (a missing layer) is `needs_review`, never a pass, and a
 passing suite proves only its own rules. Rule fields: `vixl_workflow_schema().definitions.suite`.
 
+**Read the outcome, then repair.** Results carry `outcome`: `execution`, `validation` (passed, failed,
+incomplete, not_run) and `review` with reasons; `state` is `validated` only when required checks ran and
+passed with nothing left to review. An apply without checks, an export or a production output without suites
+is `unvalidated`, not approved. Fix findings carry a stable `rule` (`bounds.text-overflow`,
+`contrast.text-contrast`, `safe_area.outside` …), `layer_ids`, `measured` actual versus expected and a suggested
+`repair` (operations to dry-run; nothing is applied). `repair=true` on `vixl_operations_apply`, `vixl_check` and
+workflow `act` / `group-apply` applies the built-in repair (fit-text within the minimum, ink toward `@ink`,
+nudge inside the safe area; blanks are held) and keeps only repairs that leave nothing new failing.
+`preview={overlay: true}` (with `check`) marks the findings on the preview; `focus: N` zooms to one. For
+overflow or overlap with no single fix use workflow `repair-layout` (`protected`, `minimum_size`; dry run by
+default, unchanged when infeasible); `protected-edit` commits an edit only if protected layers and regions are
+unchanged; `vixl reproduce --reference PNG` or `--lock FILE` verifies an approved render.
+
 **One call for a new piece.** When you already know the size, layout slots, look and operations,
 `vixl_compose(path, size=…, font_pairing=…, layout={name, …slots}, style=…, look={…}, operations=[…],
 check=true, preview=true, exports=[…])` (CLI `vixl compose --request req.json --preview p.png`) runs steps 1–5

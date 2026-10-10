@@ -98,6 +98,9 @@ def dispatch(session, action, request):
                 candidate._workspace = session.workspace
                 require(candidate.transaction is None, "Commit group member transactions first")
                 result = candidate.apply(operations, check=service_check, detail="compact")
+                # repair: the built-in repair map (repair.auto_repair) on this member before its suites run.
+                repairs = candidate.repair(kinds=request["repair"], checks=["bounds", "contrast", "safe_area"],
+                                           suites=request.get("suites", [])) if request.get("repair") else None
                 checks = [candidate.check_suite(suite) for suite in request.get("suites", [])]
                 require(
                     all(check["passed"] for check in checks),
@@ -108,7 +111,8 @@ def dispatch(session, action, request):
                 )
                 candidates[target] = candidate
                 report.append(
-                    {"document": session.relative(target), "changes": result["changes"], "checks": checks}
+                    {"document": session.relative(target), "changes": result["changes"], "checks": checks,
+                     **({"repairs": repairs} if repairs is not None else {})}
                 )
             if not request.get("dry_run", True):
                 # Durable file backups keep journals small even for image-heavy projects.
@@ -152,7 +156,10 @@ def dispatch(session, action, request):
                     # Keep backups if rollback itself failed or the process was interrupted.
                     if not journal.exists():
                         shutil.rmtree(stage)
-            return {"name": name, "dry_run": request.get("dry_run", True), "documents": report}
+            from .outcomes import from_suite, merge
+
+            return {"name": name, "dry_run": request.get("dry_run", True), "documents": report,
+                    "outcome": merge(*(from_suite(check) for entry in report for check in entry["checks"]))}
 
 
 def shared_ops(shared):

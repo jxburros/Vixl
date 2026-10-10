@@ -312,7 +312,7 @@ class Session:
         return self.apply_reviewed(operations, dry_run, detail, document, operations_path)[0]
 
     def apply_reviewed(self, operations, dry_run=False, detail="compact", document=None, operations_path=None,
-                       check=None, preview=None, budget=None, suites=None):
+                       check=None, preview=None, budget=None, suites=None, repair=None):
         """apply, plus the optional ``check`` findings, attached ``suites`` and ``preview`` PNG of the result
         (checks.apply_reviewed):
         returns ``(result, PNG bytes or None)``."""
@@ -329,7 +329,8 @@ class Session:
             from .service_fonts import checker
 
             return apply_reviewed(p, operations, dry_run=dry_run, detail=detail, check=check, preview=preview,
-                                  validate=checker(p, service_check), budget=budget, suites=suites)
+                                  validate=checker(p, service_check), budget=budget, suites=suites,
+                                  repair=repair)
 
     def render(self, variables=None, artboard=None, comp=None, document=None):
         with self.project(document=document) as p:
@@ -344,7 +345,8 @@ class Session:
             return p.measure(**options)
 
     def check(self, document=None, **options):
-        with self.project(document=document) as p:
+        # repair writes (one undoable batch); a plain check only reads.
+        with self.project(write=bool(options.get("repair")), document=document) as p:
             return p.check(**options)
 
     def validate(self, profile=None, rules=None, document=None, **options):
@@ -507,7 +509,8 @@ def create_app(path, *, token=None, limits=None):
         from .workflows import dispatch
         # REST remains scoped to its active project. Other document/library/job I/O is MCP/CLI only.
         from .studio import REST_ACTIONS
-        require(action in {"check", "act", "plan", "film-plan", "lyric-video-plan", "organic-catalog", "form-fill", "drawing-report", "links"} | REST_ACTIONS,
+        require(action in {"check", "act", "plan", "film-plan", "lyric-video-plan", "organic-catalog", "form-fill", "drawing-report", "links",
+                           "repair-layout", "protected-edit"} | REST_ACTIONS,
                 "This workflow needs a workspace CLI/MCP session", "forbidden")
         return dispatch(session, action, body)
 
@@ -735,7 +738,7 @@ def create_app(path, *, token=None, limits=None):
         result, image = session.apply_reviewed(
             body.get("operations"), bool(body.get("dry_run", False)), body.get("detail", "compact"),
             operations_path=body.get("operations_path"), check=body.get("check"), preview=body.get("preview"),
-            suites=body.get("suites"),
+            suites=body.get("suites"), repair=body.get("repair"),
         )
         if image is not None:
             result["preview_base64"] = base64.b64encode(image).decode()

@@ -104,7 +104,9 @@ looks, styles and a working example (`brief="operations"` and `brief="looks"` li
 `vixl_styles(action="list|get|apply|check", name?, query?, palette?)` serves the 28 design styles; `apply` tags the
 document (`style-set`), stores the brief as guidance and optionally applies the palette; `check` is
 `vixl_check(checks=["style"])`. `vixl_check` also takes `style=` and returns `by_action` (fix / review /
-informational) with every issue's `action`. `vixl_roll` uses the document's stored house-style version, else the
+informational) with every issue's `action`, a stable `rule`, `layer_ids`, `measured` and (fix findings) a suggested
+`repair`; `repair=true` applies them, `offset`/`limit` page the findings and `outcome` separates validation from
+review. `vixl_roll` uses the document's stored house-style version, else the
 workspace `.vixl/variety.json` `house_style`, else the current one (3); there is no per-call pin (CLI
 `vixl roll --house-style 2`).
 
