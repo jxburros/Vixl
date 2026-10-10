@@ -301,6 +301,10 @@ vixl roll --for slides --variety high --lock tier=bold [--house-style 1|2]   # a
 vixl look LAYER glow [--color C] [--amount 0-1] [--remove]
 vixl radial-repeat LAYER --count 12 [--cx 50%] [--cy 50%] [--sweep 360] [--start-angle D] [--mirror] [--no-group] [--name N]
 vixl layer-intent LAYER --allow-crop     # a deliberate edge crop: checks report it as informational
+vixl layer-intent LAYER --waive contrast # accept this layer's contrast findings (listed as waived)
+vixl waiver contrast --target LAYER --reason "watermark, approved" --expires 2030-12-31
+vixl waiver fonts --reason "proofing font for now"     # document-wide; --remove deletes; --rule ID for a suite rule
+vixl check --profile final               # draft | review | final | a .vixl-checks.json profile; --no-waivers
 vixl layer-intent LAYER [--role content|decoration|background|title] [--allow-overlap L…] [--tags T…]
                         [--[no-]detached-ok] [--[no-]color-vision-safe]   # compact inspect shows what is set
 vixl layout apply NAME --palette '["#0f172a","#1e293b","#38bdf8"]' --keep-order

@@ -54,7 +54,9 @@ def _box(value, width, height, name):
 
 
 def classify(item):
-    """``fix``, ``review`` or ``informational`` for one finding."""
+    """``fix``, ``review`` or ``informational`` for one finding. A waived finding is informational."""
+    if item.get("waived"):
+        return "informational"
     if item.get("action") in ACTIONS:
         return item["action"]
     if item.get("intentional") or item["severity"] == "info" or item["check"] == "coverage":
@@ -330,6 +332,7 @@ def check_design(
     style=None,
     connect_tolerance=2,
     repairs=True,
+    waivers=True,
 ):
     """Return ``{"passed", "errors", "warnings", "info", "issues", "by_action", "checked", "outcome"}`` for the rendered
     design. Each issue has a ``severity`` (error, warning, info) and an ``action`` (fix, review or
@@ -340,14 +343,12 @@ def check_design(
     ``min_font``, ``max_words``, ``pages``, ``include_hidden``). ``sample`` (``"worst"`` or a CSV
     path) fills the form's fields to find values that overflow their boxes. The ``style`` check
     evaluates the document's style tag (or ``style``, a name or list of names) rule by rule. The ``connected``
-    check reports parts of a group that float free of its main body (gaps above ``connect_tolerance`` px)."""
+    check reports parts of a group that float free of its main body (gaps above ``connect_tolerance`` px).
+    The document's waivers (see ``waivers.py``) turn the findings they cover into informational ones listed
+    as ``waived``; ``waivers=False`` reports every finding as if there were none."""
     from .design_render import artboard_project
     from .render import layer_canvas_alpha, layer_canvas_surface, resolve_layout, resolved_layers, resolving
 
-    from .brand import for_project
-    brand = for_project(project)
-    if brand and "minimum_contrast" in brand:
-        min_contrast = max(min_contrast or 0, brand["minimum_contrast"])
     # A document with animation is also checked over time (loop seam, poster frame) unless checks are named.
     animated = not checks and timeline_animated(project.state.get("timeline"))
     checks = list(checks or CHECKS) + (["motion"] if animated else [])
@@ -364,7 +365,12 @@ def check_design(
         options = {"thumbnail_width": None if thumbnail_width == "auto" else thumbnail_width, "min_thumbnail_text": min_thumbnail_text, **(deck or {})}
         if "deck" in checks and "type_scale" not in checks and rest and options.get("profile") in ("screen", "phone"):
             rest = [c for c in rest if c != "type_scale"]
-        return check_deck(project, checks=rest, safe_area=safe_area, min_contrast=min_contrast, **options)
+        report = check_deck(project, checks=rest, safe_area=safe_area, min_contrast=min_contrast, **options)
+        if waivers:
+            from .waivers import apply as apply_waivers
+
+            apply_waivers(project, report)
+        return report
     from .render import view_page
 
     page_ref = None
@@ -375,6 +381,10 @@ def check_design(
             active_page(project.state) or project.state["pages"][0])
         page_ref = page_number(project.state, record)
     project = view_page(project, page)
+    from .brand import contrast_floor, for_project, required_contrast
+
+    brand = for_project(project)
+    floor = contrast_floor(brand, min_contrast)
     unknown = sorted(set(checks) - set(CHECKS + OPTIONAL_CHECKS))
     require(not unknown, f"Unknown check(s) {unknown}; available: {', '.join(CHECKS + OPTIONAL_CHECKS)}", field="checks")
     candidate = artboard_project(project.clone(), artboard, comp, variables)
@@ -652,15 +662,8 @@ def check_design(
                 issue("contrast", "error", f"Could not measure the contrast of {item['name']!r}: {exc}", [item],
                       code="unmeasurable")
                 continue
-            from .text import font_data, font_style
-            from .house_style import rule
-
-            data = font_data(candidate, resolved[item["id"]])
-            primary = data[0] if isinstance(data, tuple) else data
-            weight = font_style(primary)[1]
-            minimums = rule("minimum_text")
-            large = resolved[item["id"]].get("size", 0) * text_scales[item["id"]] >= minimums["large_bold_text_px" if weight >= 700 else "large_text_px"]
-            threshold = min_contrast or (3.0 if large else 4.5)
+            threshold = required_contrast(floor, resolved[item["id"]].get("size", 0) * text_scales[item["id"]],
+                                          _bold(candidate, resolved[item["id"]]))
             # Outlined text reads through its outline when the fill blends into the backdrop.
             outline = result.get("outline")
             if result["p10"] < threshold and not (outline and outline["p10"] >= threshold):
@@ -670,7 +673,8 @@ def check_design(
                     f"{item['name']!r} contrast is {result['p10']:.2f}:1 or lower for a tenth of its glyph pixels "
                     f"(minimum {result['minimum']:.2f}:1, weakest at {where(result['weakest_region'])})"
                     + (f" and {outline['p10']:.2f}:1 for its outline" if outline else "")
-                    + f"; needs {threshold:g}:1",
+                    + f"; needs {threshold:g}:1. If the faint text is deliberate (a watermark, a ghost numeral), "
+                    "waive it with layer-intent waive",
                     [item],
                     region=result["weakest_region"],
                     contrast=result["p10"],
@@ -849,7 +853,7 @@ def check_design(
     if "print" in checks:
         _print_checks(candidate, c, resolved, local_bounds, bounds, layers, content, texts, text_scales, issue, ink_limit, min_ppi)
     if "color_vision" in checks and texts:
-        _color_vision(candidate, resolved, bounds, texts, min_contrast, text_scales, issue)
+        _color_vision(candidate, resolved, bounds, texts, floor, text_scales, issue)
     if "color_vision" in checks:
         _series_color_vision(candidate, resolved, issue)
 
@@ -926,22 +930,35 @@ def check_design(
         frame = project_at(project, 0)
         frame.state.pop("timeline", None)  # A render-only copy: the nested check must not time-check again.
         poster = check_design(frame, checks=["legibility"], thumbnail_width=thumbnail_width,
-                              min_thumbnail_text=min_thumbnail_text, targets=targets, repairs=False)
+                              min_thumbnail_text=min_thumbnail_text, targets=targets, repairs=False, waivers=False)
         for item in poster["issues"]:
             if item["message"] not in known:
                 issues.append({**item, "message": "At the poster frame (0 s): " + item["message"]})
 
-    summary = tally(issues)
-    from .diagnostics import annotate
-
-    # Stable rules, measurements, page and (for fix findings) a suggested repair; nothing is applied.
-    annotate(candidate, issues, page=page_ref, min_thumbnail_text=min_thumbnail_text, repairs=repairs)
-    return {
-        **summary,
+    report = {
+        **tally(issues),
         "issues": issues,
         "checked": {"checks": checks, "layers_checked": len(content), "layers_total": len(layers), "text_layers": len(texts)},
         **({"style": style_report} if style_report is not None else {}),
     }
+    if waivers:
+        from .waivers import apply as apply_waivers
+
+        apply_waivers(project, report, checks)
+    from .diagnostics import annotate
+
+    # Stable rules, measurements, page and (for fix findings left after waivers) a suggested repair; nothing
+    # is applied.
+    annotate(candidate, issues, page=page_ref, min_thumbnail_text=min_thumbnail_text, repairs=repairs)
+    return report
+
+
+def _bold(project, layer):
+    """Whether a text layer's primary font is bold (700+), for the large-text contrast tier."""
+    from .text import font_data, font_style
+
+    data = font_data(project, layer)
+    return font_style(data[0] if isinstance(data, tuple) else data)[1] >= 700
 
 
 def _print_checks(candidate, c, resolved, local_bounds, bounds, layers, content, texts, text_scales, issue, ink_limit, min_ppi):
@@ -1057,7 +1074,7 @@ def _series_color_vision(candidate, resolved, issue):
                               vision=kind, distance=round(simulated, 3))
 
 
-def _color_vision(candidate, resolved, bounds, texts, min_contrast, text_scales, issue):
+def _color_vision(candidate, resolved, bounds, texts, floor, text_scales, issue):
     """Text whose contrast holds for typical vision but collapses for a color-vision deficiency."""
     from PIL import Image
 
@@ -1079,8 +1096,9 @@ def _color_vision(candidate, resolved, bounds, texts, min_contrast, text_scales,
             continue
         background = tuple(np.median(crop.reshape(-1, 3), axis=0) / 255)
         foreground = tuple(v / 255 for v in rgba(resolve_color(layer.get("color", "black"), candidate.state))[:3])
-        large = layer.get("size", 0) * text_scales[item["id"]] >= 24
-        threshold = min_contrast or (3.0 if large else 4.5)
+        from .brand import required_contrast
+
+        threshold = required_contrast(floor, layer.get("size", 0) * text_scales[item["id"]], _bold(candidate, layer))
         normal = colors.contrast_ratio(foreground, background)
         pair = Image.new("RGB", (2, 1))
         pair.putdata([tuple(round(v * 255) for v in foreground), tuple(round(v * 255) for v in background)])

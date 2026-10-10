@@ -232,7 +232,11 @@ PRODUCTION_SPEC = {
                    "description": "image: png/jpg/webp/svg; timeline: gif/webp/mp4/webm/zip."},
         "quality": {"type": "string", "enum": ["draft", "final"], "default": "final",
                     "description": "draft renders a 640 px proxy."},
-        "suites": {"type": "array", "items": STR, "description": "Suites to check (default all attached)."},
+        "suites": {"type": "array", "items": STR, "description": "Suites to check (default all attached, or the "
+                                                                 "profile's suites when profile is set)."},
+        "profile": {"type": "string", "description": "Check profile (draft, review, final or a workspace profile) "
+                                                     "each variant must pass; it picks the design checks, suites and "
+                                                     "fail_on."},
         "actions": {"type": "array", "items": STR, "description": "Saved actions to run before checks."},
         "repair_actions": {"type": "array", "items": STR, "maxItems": 3,
                            "description": "Saved actions tried in order when checks fail; 'auto' runs the built-in "
@@ -458,13 +462,22 @@ ACTION_FIELDS = {
                                 "properties": {"variables": {"type": "object", "additionalProperties": SCALAR,
                                                             "description": "Variables {name: value} set in each document."},
                                                "swatches": {"type": "object", "additionalProperties": COLOR,
-                                                            "description": "Swatches {name: color} set in each document."}}},
-                     "facts": FACTS},
+                                                            "description": "Swatches {name: color} set in each document."},
+                                               "waivers": {"type": "array", "items": {"type": "object"}, "maxItems": 256,
+                                                           "description": "Document waivers {check or rule, reason, "
+                                                                          "expires} written into each document."}}},
+                     "facts": FACTS,
+                     "profiles": {"type": "object", "description": "Check profiles {name: {fail_on, checks, optional, "
+                                                                   "suites}} for this group's documents; they override "
+                                                                   "the workspace's and the built-in draft/review/final."}},
     "group-show": {"name": {"type": "string", "description": "Group name."}},
     "group-apply": {"name": {"type": "string", "description": "Group name."},
                     "operations": {**COMMON["operations"], "description": "Bulk operations applied to each member."},
                     "suites": {**COMMON["suites"], "description": "Suites every published member must pass; a dry "
                                "run reports each member's results (passed) instead of refusing."},
+                    "profile": {"type": "string", "description": "Check profile (draft, review, final or a group or "
+                                                                "workspace profile) every published member must pass, "
+                                                                "like suites."},
                     "dry_run": {"type": "boolean", "default": True,
                                 "description": "Check without saving (default true)."},
                     "repair": {**REPAIR, "description": "Apply the built-in repair map to each member before its "
@@ -501,10 +514,17 @@ ACTION_FIELDS = {
         "suite": {"type": ["object", "string"], "description": "A check suite (object, or a workspace .json file) run "
                   "on every document as well."},
         "suites": {"type": "boolean", "default": True, "description": "Run each document's attached suites."},
-        "fail_on": {"type": "string", "enum": ["error", "warning", "fix", "never"], "default": "error",
+        "fail_on": {"type": "string", "enum": ["error", "warning", "fix", "review", "never"],
                     "description": "passed is false when a finding reaches this level: error, warning (or error), fix "
-                                   "(any finding whose action is fix) or never. A suite that does not pass counts at "
-                                   "every level but never."},
+                                   "(any finding whose action is fix), review (fix or review findings) or never. "
+                                   "Default: the profile's fail_on with profile, else error. A suite that does not "
+                                   "pass counts at every level but never (under a profile, a suite needing review "
+                                   "only at warning and review). Waived findings are informational."},
+        "profile": {"type": "string", "description": "Check every document under this check profile (draft, review, "
+                    "final, or one from .vixl-checks.json or the group's profiles): its checks and suites run and "
+                    "its fail_on is the default level."},
+        "waivers": {"type": "boolean", "default": True, "description": "Apply each document's layer, document and "
+                    "workspace waivers (false reports every finding as if there were none)."},
         "workers": {"type": "integer", "minimum": 1, "maximum": 8, "description": "Documents checked in parallel "
                     "(default up to 4)."},
         "changed_since": {"type": "string", "description": "Only documents changed (or untracked) since this git "

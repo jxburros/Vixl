@@ -202,6 +202,9 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | QA-26 | Repair a layout (longer headline, overlap, uneven gaps) without touching the logo or going below a type size | `vixl_workflow` repair-layout | 1–2 · <1 | E | Since 0.25 (#518); bounded candidates ranked by least disruption; infeasible leaves the document unchanged and lists what remains. |
 | QA-27 | Replace the background but keep the subject's pixels and the headline wording | `vixl_workflow` protected-edit | 1 · <1 | E | Since 0.25 (#520); structural and pixel guarantees, rolls back on any violation. |
 | QA-28 | See check findings marked on the preview, or zoom to one | `vixl_operations_apply(check, preview={overlay, focus})`, `vixl_render_preview(overlay=true)` | 1 · <1 | E | Since 0.25 (#526); overlays never change the document or exports. |
+| QA-32 | Accept a deliberate finding (faint watermark text, a bar in the margin) with a reason and expiry | `layer-intent waive`, `waiver` | 1 · <1 | E | Waived findings stay listed as informational; an expired waiver fails `--strict` (#531, #562). |
+| QA-33 | Check a draft loosely and a final strictly | `check --profile` (draft, review, final), `.vixl-checks.json` | 1 · <1 | E | Also on production `run`, `group-apply`, `vixl check --all --profile` and the CI action (#563). |
+| BRD-05 | Brand contrast floor with a large-text tier, so a display-only brand colour passes at 3:1 | `brand.json` `minimum_contrast: {text, large_text}` | 1 · <1 | E | #527; translucent black/white shadows no longer count as off-palette (#528). |
 | AGT-01 | Ask what to make and with which tools for a brief | `vixl_guide(brief)` | 1 · <1 | E | 20 kinds: poster, logo, character, comic, form … |
 | AGT-02 | Look up fields and gotchas for a topic | `vixl_capabilities(topic)` | 1 · <1 | E | |
 | AGT-03 | Read the JSON schema of one operation | `vixl_operation_schema` | 1 · <1 | E | |
@@ -347,9 +350,9 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | BLK-10 | Lookups or case changes inside a data merge | `${name\|upper}`, `${role\|map:colors}`, `variable-map` | 2–4 · 1 | E | Since 0.22. |
 | QA-22 | Proof page for human sign-off with approve/reject | `vixl_workflow` proof | 1–2 · 1 | E | Since 0.22; offline HTML, decisions download as JSON. |
 | QA-23 | Check `.vixl` files in pull requests | GitHub Action (`action.yml`), `vixl diff` | 1 · CI | E | Since 0.22; see [CI](ci.md). Runs `vixl check --all`: annotations, JUnit and SARIF upload. |
-| QA-25 | Check every document in a folder or project group into one report | `vixl_workflow` check-all, `vixl check --all GLOB` / `--group NAME` | 1 · 1 | E | Parallel; JSON, Markdown, JUnit, SARIF, annotations, proof page. |
-| QA-26 | List documents that newly fail after an upgrade or an edit | `vixl check --all --since-last` | 1 · 1 | E | Compares with the previous recorded run; scheduling is up to CI. |
-| QA-27 | Check that a campaign's sizes agree: logo placement, type ratios, swatches, prices and names | `vixl_workflow` group-check, facts in brand.json or the group | 1–3 · 1 | E | Majority or a reference member. |
+| QA-29 | Check every document in a folder or project group into one report | `vixl_workflow` check-all, `vixl check --all GLOB` / `--group NAME` | 1 · 1 | E | Parallel; JSON, Markdown, JUnit, SARIF, annotations, proof page. |
+| QA-30 | List documents that newly fail after an upgrade or an edit | `vixl check --all --since-last` | 1 · 1 | E | Compares with the previous recorded run; scheduling is up to CI. |
+| QA-31 | Check that a campaign's sizes agree: logo placement, type ratios, swatches, prices and names | `vixl_workflow` group-check, facts in brand.json or the group | 1–3 · 1 | E | Majority or a reference member. |
 
 ### Provider-backed
 

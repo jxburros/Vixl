@@ -8,12 +8,22 @@ import random
 from .errors import require
 from .model import MAX_LAYERS
 
-TYPES = ("organic-shape", "path-fit", "layer-intent", "font-fallbacks")
+TYPES = ("organic-shape", "path-fit", "layer-intent", "font-fallbacks", "waiver")
 KINDS = ("leaf", "petal", "blob", "rose")
 
 
+WAIVER_FIELDS = {
+    "reason": {"type": "string", "maxLength": 500, "description": "Why the finding is accepted (shown in reports)."},
+    "expires": {"type": "string", "pattern": r"^\d{4}-\d{2}-\d{2}$",
+                "description": "Last day the waiver applies (YYYY-MM-DD); after it the finding is back and an "
+                               "expired-waiver finding asks for a decision."},
+    "with": {"type": "array", "items": {"type": "string"}, "maxItems": MAX_LAYERS,
+             "description": "overlap only: the partner layers the overlap is accepted with (default any)."},
+}
+
+
 def schemas(add):
-    from .schema import S, N, B, SIZE, COORD
+    from .schema import S, N, B, SIZE, COORD, field
     add("organic-shape", {
         "kind": {"enum": list(KINDS)}, "name": S, "seed": {"type": "integer", "minimum": 0},
         "lobes": {"type": "integer", "minimum": 3, "maximum": 32},
@@ -26,7 +36,25 @@ def schemas(add):
                          "allow_overlap": {"type": "array", "items": S, "maxItems": MAX_LAYERS},
                          "tags": {"type": "array", "items": S, "maxItems": 32,
                                   "description": "Labels (replacing the layer's tags) that edit-layers can select with where.tag"},
-                         "allow_crop": B, "color_vision_safe": B, "detached_ok": B}, ["target"])
+                         "allow_crop": B, "color_vision_safe": B, "detached_ok": B,
+                         "waive": {"type": "array", "maxItems": 256, "description":
+                                   "Waivers replacing the layer's own ([] clears them): check names, or "
+                                   "{check, reason, expires, with}. The checks report this layer's (and its "
+                                   "children's) findings of those checks as informational, listed as waived.",
+                                   "items": {"anyOf": [
+                                       field(S, "A check name such as contrast."),
+                                       {"type": "object", "required": ["check"], "additionalProperties": False,
+                                        "description": "A waiver with its reason and expiry.",
+                                        "properties": {"check": field(S, "The check to waive (contrast, bounds, "
+                                                                         "overlap, safe_area ...)."),
+                                                       **WAIVER_FIELDS}}]}}}, ["target"])
+    add("waiver", {"check": field(S, "The design check to waive (contrast, bounds, overlap, safe_area, brand ...)."),
+                   "rule": field(S, "A suite rule id to waive instead of a check (no target)."),
+                   "suite": field(S, "With rule: only in this suite (default any suite with that rule id)."),
+                   "target": field(S, "The layer (or group) whose findings are waived; omitted waives the check "
+                                      "for the whole document."),
+                   **WAIVER_FIELDS,
+                   "remove": field(B, "true deletes the waiver for this check or rule (and target).")})
     add("font-fallbacks", {"fonts": {"type": "array", "items": S, "maxItems": 16}}, ["fonts"])
 
 
@@ -111,6 +139,11 @@ def execute(project, op):
             fonts.append(resolved)
         project.state["font_fallbacks"] = fonts
         return
+    if kind == "waiver":
+        from .waivers import execute as waive
+
+        waive(project, op)
+        return
     layer = project.layer(op["target"]) if op.get("target") else None
     if kind == "layer-intent":
         require(layer is not None, "Layer intent needs a target")
@@ -145,6 +178,10 @@ def execute(project, op):
                 layer["allow_crop"] = True
             else:
                 layer.pop("allow_crop", None)
+        if "waive" in op:
+            from .waivers import set_layer
+
+            set_layer(project, layer, op["waive"])
         return
     if kind == "path-fit":
         require(layer["type"] == "shape" and layer["shape"] == "path", "Path fit needs a path layer")
@@ -199,6 +236,19 @@ def compile_command(cmd, args):
                        help="series also differ by labels or patterns: the color-vision check skips this chart")
         p.add_argument("--detached-ok", action=argparse.BooleanOptionalAction, default=None,
                        help="a part that floats on purpose: the connected check skips it")
+        p.add_argument("--waive", nargs="*", metavar="CHECK",
+                       help="checks whose findings on this layer are accepted (none clears them); "
+                            "use the waiver command for a reason and expiry")
+    elif cmd == "waiver":
+        p.add_argument("check", nargs="?", help="the design check to waive (contrast, bounds, overlap ...)")
+        p.add_argument("--rule", help="a suite rule id to waive instead of a check")
+        p.add_argument("--suite", help="with --rule: only in this suite")
+        p.add_argument("--target", help="the layer whose findings are waived (default: the whole document)")
+        p.add_argument("--reason", help="why the finding is accepted")
+        p.add_argument("--expires", help="last day the waiver applies, YYYY-MM-DD")
+        p.add_argument("--with", dest="with_", nargs="+", metavar="LAYER", help="overlap: the accepted partners")
+        p.add_argument("--remove", action="store_true", default=None, help="delete the waiver")
     else:
         p.add_argument("fonts", nargs="*")
-    return {"type": cmd, **{k: v for k, v in vars(p.parse_args(args)).items() if v is not None}}
+    values = {k.rstrip("_"): v for k, v in vars(p.parse_args(args)).items() if v is not None}
+    return {"type": cmd, **values}

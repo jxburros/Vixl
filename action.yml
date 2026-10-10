@@ -18,8 +18,11 @@ inputs:
     description: Path to a check-suite JSON file to run on every document as well. Suites attached to a document always run.
     default: ""
   fail-on:
-    description: "Fail the step at this level: error, warning, fix (any finding that needs a fix) or never."
-    default: error
+    description: "Fail the step at this level: error, warning, fix (any finding that needs a fix), review (fix or review findings) or never. Empty: the profile's fail_on with a profile, else error."
+    default: ""
+  profile:
+    description: Check profile (draft, review, final or one from the workspace's .vixl-checks.json); its checks, suites and fail_on apply.
+    default: ""
   vixl-version:
     description: vixl-engine version to install from PyPI (0.25.0 or later); empty installs the version at this action's ref.
     default: ""
@@ -88,6 +91,7 @@ runs:
         VIXL_CHECKS: ${{ inputs.checks }}
         VIXL_SUITE: ${{ inputs.suite }}
         VIXL_FAIL_ON: ${{ inputs.fail-on }}
+        VIXL_PROFILE: ${{ inputs.profile }}
         VIXL_BASE: ${{ inputs.compare-base == 'true' && github.event.pull_request.base.sha || '' }}
         VIXL_CHANGED: ${{ inputs.changed-only == 'true' && github.event.pull_request.base.sha || '' }}
         VIXL_PROOF: ${{ inputs.proof }}
@@ -100,7 +104,10 @@ runs:
         globs="$VIXL_PATHS"
         # A group alone checks its members; the default paths would add every other document.
         [ -n "$VIXL_GROUP" ] && [ "$VIXL_PATHS" = "**/*.vixl" ] && globs=""
-        args=(check --all $globs --fail-on "$VIXL_FAIL_ON" --format markdown --no-history --overwrite --work .vixl-ci)
+        args=(check --all $globs --format markdown --no-history --overwrite --work .vixl-ci)
+        # An empty fail-on leaves the level to the profile (its fail_on), else error.
+        [ -n "$VIXL_FAIL_ON" ] && args+=(--fail-on "$VIXL_FAIL_ON")
+        [ -n "$VIXL_PROFILE" ] && args+=(--profile "$VIXL_PROFILE")
         [ -n "$VIXL_GROUP" ] && args+=(--group "$VIXL_GROUP")
         [ -n "$VIXL_CHECKS" ] && args+=(--checks $VIXL_CHECKS)
         [ -n "$VIXL_SUITE" ] && args+=(--suite "$VIXL_SUITE")
@@ -145,5 +152,5 @@ runs:
       if: steps.check.outputs.status != '0'
       shell: bash
       run: |
-        echo "Vixl checks failed at level ${{ inputs.fail-on }}; see the job summary."
+        echo "Vixl checks failed (fail-on '${{ inputs.fail-on }}', profile '${{ inputs.profile }}'); see the job summary."
         exit 1

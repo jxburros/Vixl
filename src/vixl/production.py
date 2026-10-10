@@ -95,9 +95,11 @@ def plan(spec):
             "actions",
             "motion",
             "fps",
+            "profile",
         },
         "Unknown production field",
     )
+    require(isinstance(spec.get("profile", ""), str), "profile is a check profile name", field="profile")
     require(spec.get("version", 1) == 1, "Unsupported production version")
     rows, matrix = spec.get("rows", [{}]), spec.get("matrix", {})
     require(
@@ -240,12 +242,17 @@ def render_variant(project, spec, variant, directory, prior=None, cancelled=lamb
             output = directory / name
             if output.is_file() and file_digest(output) == prior.get("sha256"):
                 return {**prior, "status": "reused", "outcome": prior.get("outcome") or variant_outcome(
-                    prior.get("checks", {}), spec.get("suites", list(candidate.state.get("suites", {}))), "completed")}
-    suites = spec.get("suites", list(candidate.state.get("suites", {})))
+                    prior.get("checks", {}), spec.get("suites", [] if spec.get("profile") else list(
+                        candidate.state.get("suites", {}))), "completed", spec.get("profile"))}
+    profile = spec.get("profile")
+    # A profile chooses the design checks and its own suites unless the spec names suites.
+    suites = spec.get("suites", [] if profile else list(candidate.state.get("suites", {})))
 
     def evaluate():
         checks = {name: candidate.check_suite(name) for name in suites}
-        if not suites:
+        if profile:
+            checks["design"] = candidate.check(profile=profile)
+        elif not suites:
             checks["design"] = candidate.check(checks=["bounds", "flow"])
         return checks
 
@@ -256,7 +263,7 @@ def render_variant(project, spec, variant, directory, prior=None, cancelled=lamb
     extra = {"repair_operations": [op for report in repair_details for op in report["operations"]]} if repair_details else {}
     if not all(r["passed"] for r in checks.values()):
         return {**variant, "status": "needs_review", "checks": checks, "repairs": repairs, **extra,
-                "outcome": variant_outcome(checks, suites, "completed")}
+                "outcome": variant_outcome(checks, suites, "completed", profile)}
     settings = plan({k: v for k, v in spec.items() if k not in ("rows", "matrix", "artboards")})
     from .links import fingerprint as link_fingerprint
     from .text import font_data, font_digest
@@ -282,7 +289,7 @@ def render_variant(project, spec, variant, directory, prior=None, cancelled=lamb
     output = directory / filename
     if prior and prior.get("fingerprint") == fingerprint and output.is_file():
         if file_digest(output) == prior.get("sha256"):
-            return {**prior, "status": "reused", "checks": checks, "outcome": variant_outcome(checks, suites, "completed")}
+            return {**prior, "status": "reused", "checks": checks, "outcome": variant_outcome(checks, suites, "completed", profile)}
     # Crash recovery can encounter an already published output before its report was saved.
     # Render again to staging and only accept an existing result with identical bytes.
     import tempfile
@@ -327,18 +334,22 @@ def render_variant(project, spec, variant, directory, prior=None, cancelled=lamb
         "checks": checks,
         "repairs": repairs,
         **extra,
-        "outcome": variant_outcome(checks, suites, "completed"),
+        "outcome": variant_outcome(checks, suites, "completed", profile),
         "cache": {"hits": candidate._disk_cache.hits, "misses": candidate._disk_cache.misses},
     }
 
 
-def variant_outcome(checks, suites, execution):
-    """One output's outcome. Its suites are the required validation; with no suites only the default
+def variant_outcome(checks, suites, execution, profile=None):
+    """One output's outcome. Its suites are the required validation, and with a check ``profile`` so is the
+    profile's design check (its outcome follows the profile's fail_on); with neither only the default
     bounds and flow checks ran, so a clean output is completed but unvalidated (a failure still fails it)."""
     from .outcomes import from_findings, from_suite, make, merge
 
-    if suites:
-        return merge(*(from_suite(checks[name], name) for name in suites if name in checks), execution=execution)
+    parts = [from_suite(checks[name], name) for name in suites if name in checks]
+    if profile and checks.get("design", {}).get("outcome"):
+        parts.append(checks["design"]["outcome"])
+    if parts:
+        return merge(*parts, execution=execution)
     design = checks.get("design")
     if design and not design.get("passed", True):
         return from_findings(design.get("issues", []), execution)
@@ -386,6 +397,7 @@ def run(project, spec, directory, *, cancelled=lambda: False, progress=lambda va
         report = {
             "version": 1,
             "quality": planned["quality"],
+            **({"profile": spec["profile"]} if spec.get("profile") else {}),
             "count": planned["count"],
             "status": "running",
             "results": [],

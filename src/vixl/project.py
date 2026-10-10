@@ -869,17 +869,24 @@ class Project:
         return export_animation(self, path, **options)
 
     @memory_guard
-    def check(self, *, repair=None, offset=0, limit=None, **options):
-        """Design checks (checks.check_design). ``repair`` (true or a list of repair kinds) first applies the
-        built-in repair for each fix finding it can resolve (``Project.repair``), as one undoable batch, and
-        reports it under ``repairs``. ``offset``/``limit`` page the findings; the verdict covers them all."""
+    def check(self, *, profile=None, group=None, repair=None, offset=0, limit=None, **options):
+        """Design checks (checks.check_design). With ``profile`` (draft, review, final or a workspace profile, see
+        policy.py) the profile chooses the checks and suites and its ``fail_on`` decides ``passed``. ``repair``
+        (true or a list of repair kinds) first applies the built-in repair for each fix finding it can resolve
+        (``Project.repair``), as one undoable batch, and reports it under ``repairs``. ``offset``/``limit`` page
+        the findings; the verdict covers them all."""
         from .checks import check_design
         from .diagnostics import page_findings
 
         repairs = None
         if repair:
             repairs = self.repair(kinds=repair, checks=options.get("checks"))
-        report = check_design(self, **options)
+        if profile is not None:
+            from .policy import run
+
+            report = run(self, profile, group=group, **options)
+        else:
+            report = check_design(self, **options)
         if not options.get("checks") or "fonts" in options["checks"]:
             from .compaction import check_note
 

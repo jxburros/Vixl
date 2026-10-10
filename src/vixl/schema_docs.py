@@ -84,7 +84,8 @@ SUMMARIES = {
     "pattern-scatter": "Scatter motifs in a seamless wrap-around tile (copies crossing an edge wrap), report its seam score.",
     "look": "Apply a named finishing look (glow, drop shadow, grain, paper, gradient …) to layers in one step.",
     "layer-style": "Add or remove a layer style: drop shadow, stroke, outer glow, color or gradient overlay.",
-    "layer-intent": "Mark a layer as content, decoration, background or the page title, allow intended overlaps, or allow an intentional crop.",
+    "layer-intent": "Mark a layer as content, decoration, background or the page title, allow intended overlaps or crops, or waive checks.",
+    "waiver": "Accept a check finding or suite rule on purpose, with a reason and optional expiry; reports list it as waived.",
     "path-fit": "Fit a path layer's geometry into its box.",
     "font-fallbacks": "Register fonts used for characters the primary font lacks.",
     "artboard": "Define a named artboard (size, background, variables, viewport) for variants.",
@@ -627,7 +628,11 @@ OVERRIDES = {
                                     "group that its parts are separate by design, so the connected check skips it.",
                      "color_vision_safe": "true on a chart group says its series differ by more than color (labels, patterns), so the color_vision check skips it.",
                      "allow_crop": "true marks a deliberate edge crop or bleed: checks report it as informational "
-                                   "instead of a problem."},
+                                   "instead of a problem.",
+                     "waive": "Checks accepted on this layer, replacing its waivers ([] clears): names such as "
+                              "'contrast', or {check, reason, expires (YYYY-MM-DD), with (overlap partners)}. "
+                              "Its findings stay listed as informational with waived; an expired waiver turns them "
+                              "back on."},
     "font-fallbacks": {"fonts": "Registered font names tried for missing characters."},
     "container-place": {"name": "Group layer name.", "resource": "Saved container name.",
                         "variables": "Container variables."},
@@ -798,6 +803,13 @@ EXAMPLES = {
     ],
     "layer-intent": [
         {"type": "layer-intent", "target": "photo", "role": "decoration", "allow_crop": True},
+        {"type": "layer-intent", "target": "photo", "waive": [
+            {"check": "contrast", "reason": "ghost numeral behind the title", "expires": "2030-12-31"}]},
+    ],
+    "waiver": [
+        {"type": "waiver", "check": "contrast", "target": "photo", "reason": "decorative watermark, approved by brand",
+         "expires": "2030-12-31"},
+        {"type": "waiver", "check": "safe_area", "reason": "full-bleed title bar by design"},
     ],
     "style-set": [
         {"type": "style-set", "style": "swiss"},

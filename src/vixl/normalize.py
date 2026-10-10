@@ -315,6 +315,10 @@ def normalize_operation(operation, properties, known_types, effects, notes, inde
         from .forms import normalize as normalize_field
 
         op = normalize_field(op, note)
+    if kind == "layer-intent" and "allow_low_contrast" in op and "waive" not in op:
+        # The flag agents guess for faint decorative text: a contrast waiver on the layer.
+        op["waive"] = ["contrast"] if op.pop("allow_low_contrast") else []
+        note("allow_low_contrast → waive: ['contrast'] (replaces the layer's waivers)")
     if kind in ("chart", "chart-data"):
         from .charts import normalize as normalize_chart
 

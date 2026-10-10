@@ -76,10 +76,12 @@ Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/mai
    `vixl_check` findings; `before` (another file, or a revision such as `previous`) adds a diff; `decisions: true` adds
    approve/reject and a button that downloads `<page>-decisions.json`, which the reviewer sends back. `vixl diff A B
    --out d.png` gives the same pixel diff on the command line.
-   Many documents at once: `vixl_workflow("check-all", {documents?: [globs], group?, fail_on?, changed_since?,
-   since_last?, outputs?: {json|markdown|junit|sarif|github|proof: path}})` (CLI `vixl check --all GLOB` or
-   `--group NAME`) checks them in parallel (findings plus attached suites; group consistency on a group) into one report:
-   `status` per document, `totals`, `failing` at `fail_on` (error|warning|fix|never) and `passed`. Every run is
+   Many documents at once: `vixl_workflow("check-all", {documents?: [globs], group?, profile?, fail_on?, waivers?,
+   changed_since?, since_last?, outputs?: {json|markdown|junit|sarif|github|proof: path}})` (CLI `vixl check --all GLOB`
+   or `--group NAME`, `--profile final`) checks them in parallel (findings plus attached suites, or the profile's
+   checks and suites; group consistency on a group; each document's waivers apply) into one report: `status` per
+   document, `totals`, `failing` at `fail_on` (error|warning|fix|review|never; default the profile's level, else
+   error) and `passed`. Every run is
    recorded in `.vixl-checks/history/`; `since_last` lists newly failing (with the cause: document or Vixl version),
    newly passing and still failing documents.
 15. App animation packages: `vixl_workflow("app-animation-package", {states, default_state, output, themes?, transitions?,
@@ -103,4 +105,4 @@ material visual changes and unresolved/unsupported measurements.
 
 ### Field-report corrections
 
-Production without suites still checks bounds and flow; clipping returns needs_review and a clean output is completed but `unvalidated`. For variable reflow, define an action that reapplies the layout with replace=true and stable seed/prefix, then include it in recipe/actions. Generated layer IDs and manual edits can change. Unchanged, checksum-verified output can bypass repeated checks. See docs/production.md.
+Production without suites still checks bounds and flow; clipping returns needs_review and a clean output is completed but `unvalidated`. With spec `profile` ("final"), every variant must pass that check profile (its checks, suites and fail_on), which also counts as validation. For variable reflow, define an action that reapplies the layout with replace=true and stable seed/prefix, then include it in recipe/actions. Generated layer IDs and manual edits can change. Unchanged, checksum-verified output can bypass repeated checks. See docs/production.md.

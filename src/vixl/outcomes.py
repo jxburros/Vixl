@@ -10,7 +10,8 @@ A result answers three separate questions, so a finished render is never read as
 
 ``state`` is the one-word summary: ``execution_failed``, ``cancelled``, ``pending``, ``validation_failed``,
 ``unvalidated``, ``needs_review`` or ``validated``. ``accepted`` lists findings the document marked as
-deliberate (``layer-intent``), each with its rule, layers and reason; acceptance covers only those findings.
+deliberate (``layer-intent``) or waived (``waivers.py``), each with its rule, layers and reason;
+acceptance covers only those findings.
 """
 
 EXECUTION = ("completed", "failed", "cancelled", "pending")
@@ -76,6 +77,10 @@ def from_findings(issues, execution="completed"):
     reasons = [describe(item) for item in issues if item.get("action") == "review"]
     accepted = [{"rule": item.get("rule", item.get("check")), "layers": _layers(item),
                  "reason": item.get("message", "")} for item in issues if item.get("intentional")]
+    # A waived finding (waivers.py) is accepted with the waiver's reason; it neither fails nor asks for review.
+    accepted += [{"rule": item.get("rule", item.get("check")), "layers": _layers(item),
+                  "reason": item["waived"].get("reason") or "waived", "waived": True}
+                 for item in issues if item.get("waived")]
     return make(execution, "failed" if fixes else "passed", reasons, accepted, ["design checks"])
 
 
@@ -87,8 +92,13 @@ def from_suite(report, name=None):
     reasons = [describe(r) + (" (could not be measured)" if r.get("status") == "needs_review" else " (warning)")
                for r in results if r.get("status") == "needs_review"
                or (r.get("status") == "failed" and r.get("severity") == "warning")]
+    # An expired rule waiver needs a decision even when its rule now passes (waivers.apply_suite).
+    reasons += [f"{w.get('rule')}: waiver expired on {w.get('expires')}"
+                for w in (report.get("waivers") or {}).get("expired", []) if not w.get("matched")]
+    accepted = [{"rule": r["id"], "layers": _layers(r), "reason": r["waived"].get("reason") or "waived",
+                 "waived": True} for r in results if r.get("status") == "waived"]
     validation = "failed" if report.get("errors") else "incomplete" if unmeasured else "passed"
-    return make("completed", validation, reasons, (), [f"suite {name}" if name else "suite"])
+    return make("completed", validation, reasons, accepted, [f"suite {name}" if name else "suite"])
 
 
 def merge(*outcomes, execution=None):

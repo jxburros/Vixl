@@ -111,4 +111,4 @@ Full reference: `docs/forms.md`.
 
 ### Field-report corrections
 
-Explicit checks replace defaults: run check() plus deck checks, or combine the lists. passed=false whenever fix findings remain. Mark an intentional safe-area footer with layer-intent allow_crop=true. Proof records failed items and continues; approve only when failed is empty.
+Explicit checks replace defaults: run check() plus deck checks, or combine the lists. passed=false whenever fix findings remain. Mark an intentional safe-area footer with layer-intent allow_crop=true. Accept other deliberate findings with a waiver (layer-intent waive, or the waiver operation) that records a reason and expiry; check(profile="draft"|"review"|"final") sets which findings fail. Proof records failed items and continues; approve only when failed is empty.

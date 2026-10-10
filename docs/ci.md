@@ -40,7 +40,8 @@ jobs:
       - uses: jxburros/Vixl@v0.24.1   # pin a release tag (or a commit SHA)
         with:
           paths: designs/**/*.vixl
-          fail-on: error          # error | warning | fix | never
+          profile: final          # draft | review | final | a .vixl-checks.json profile (optional)
+          fail-on: ""             # empty: the profile's fail_on, else error; or error | warning | fix | review | never
           compare-base: true      # diff against the pull request's base branch
           changed-only: false     # true: check only the documents this pull request changed
           proof: true             # upload the proof page as an artifact
@@ -55,8 +56,9 @@ jobs:
 | `paths` | `**/*.vixl` | Globs, separated by spaces or newlines |
 | `group` | | A project group: its members and the [group consistency checks](studio.md#group-consistency-checks); with the default `paths`, only the members |
 | `checks` | (standard checks) | `vixl check` names, space-separated (`contrast print fonts` …) |
-| `suite` | | A check-suite JSON file (see [design check suites](production.md#design-check-suites)) run on every document; suites attached to a document always run |
-| `fail-on` | `error` | `error`: any error; `warning`: errors or warnings; `fix`: any finding whose action is `fix`; `never`: report only. A suite that does not pass fails at every level but `never` |
+| `suite` | | A check-suite JSON file (see [design check suites](production.md#design-check-suites)) run on every document; suites attached to a document always run (with a `profile`, the suites the profile names) |
+| `fail-on` | (empty) | `error`: any error; `warning`: errors or warnings; `fix`: any finding whose action is `fix`; `review`: any fix or review finding; `never`: report only. Empty: the `profile`'s own `fail_on`, else `error`. A suite that does not pass fails at every level but `never` (under a profile, a suite that only needs review fails at `warning` and `review`) |
+| `profile` | | A [check profile](production.md#waivers-and-check-profiles) (`draft`, `review`, `final`, one in the repository's `.vixl-checks.json` or the group's `profiles`): every document is checked with its checks and suites (`vixl check --all --profile`) |
 | `vixl-version` | | Install `vixl-engine==VERSION` from PyPI (0.25.0 or later); empty installs the Vixl at the action's ref |
 | `compare-base` | `false` | On pull requests, render the base version and report the changed share of pixels |
 | `changed-only` | `false` | On pull requests, check only the documents changed against the base branch |
@@ -77,17 +79,34 @@ example a JUnit report action) show each document as a suite. The SARIF file has
 name (or `suite/NAME/RULE`, or `group-layout` …) is the rule, the severity is the level, the `.vixl` path is the
 location and the layer names are logical locations.
 
+## Profiles and waivers
+
+A [check profile](production.md#waivers-and-check-profiles) says how strict a run is: `draft` fails only on errors,
+`review` on any `fix` finding and on attached suites, `final` on `fix` and `review` findings with `color_vision`
+added. The repository's `.vixl-checks.json` adds or overrides profiles (and a project group's `profiles` override
+both for its members), so a pull request can check sketches with `profile: draft` and a release branch with
+`profile: final` from the same documents. Without `fail-on`, the profile's level decides; an explicit `fail-on`
+overrides it.
+
+Findings a document waives (`layer-intent waive`, the `waiver` operation, `waivers` in `.vixl-checks.json` or a
+group's `shared.waivers`) stay in the report as informational, never fail the build and are listed under Waivers in
+the summary with their reason and expiry. A waiver past its `expires` date turns its finding back on and adds an
+`expired waiver` fix finding, so the build fails until someone fixes the design or renews the waiver.
+`vixl check --all --no-waivers` reports every finding as if there were none.
+
 ## The same checks locally
 
 ```bash
 vixl check --all "designs/**/*.vixl" --fail-on error
+vixl check --all "designs/**/*.vixl" --profile final
 vixl check --all "designs/**/*.vixl" --base origin/main --write proof=proof.html
 vixl check --all "designs/**/*.vixl" --changed-since origin/main --format github
 vixl -p designs/poster.vixl check --strict --json
 vixl diff /tmp/poster-base.vixl designs/poster.vixl --out poster-diff.png
 ```
 
-`scripts/check_documents.py` (`--paths`, `--checks`, `--suite`, `--fail-on`, `--base`, `--proof`, `--work`) is kept
+`scripts/check_documents.py` (`--paths`, `--checks`, `--suite`, `--fail-on`, `--profile`, `--base`, `--proof`,
+`--work`) is kept
 as a thin wrapper over the same report for workflows that call it directly.
 
 Each local run is recorded in `.vixl-checks/history/`; `--since-last` reports the documents that newly fail since

@@ -71,10 +71,10 @@ Merge:     merge [TEMPLATE.vixl] --data rows.csv --out sheets.pdf [--sheet-docum
 Measure:   info, sample X Y, histogram [--region X Y W H], info --target TEXT,
            spacing --targets A B C --axis vertical [--expected N] [--tolerance N] [--check],
            spacing --around BODY --before HEADER --after FOOTER,
-           check [--safe-area 5%] [--avoid X Y W H] [--thumbnail-width 320] [--strict]
+           check [--safe-area 5%] [--avoid X Y W H] [--thumbnail-width 320] [--strict] [--profile final]
            check --checks print color_vision [--ink-limit 300] [--min-ppi 200]
-           check --all [GLOB …] | --group NAME [--fail-on error|warning|fix|never] [--changed-since REF] [--base REF]
-           [--since-last] [--format markdown|json|junit|sarif|github] [--write sarif=vixl.sarif] (many documents, one report)
+           check --all [GLOB …] | --group NAME [--profile final] [--fail-on error|warning|fix|review|never] [--no-waivers]
+           [--changed-since REF] [--base REF] [--since-last] [--format markdown|json|junit|sarif|github] [--write sarif=vixl.sarif] (many documents, one report)
 Pixels:    pixel-art, pixel-draw, pixel-palette, pixels [LAYER],
            frame-save NAME [--duration MS], frame-apply NAME, frame-delete NAME,
            animation, animation-set --loop N --order FRAME FRAME,
@@ -1026,6 +1026,10 @@ def project_command(project, cmd, args, *, detail="compact"):
                             "ones), saved as one undoable step")
         p.add_argument("--offset", type=int, default=0, help="First finding to list")
         p.add_argument("--limit", type=int, help="Findings to list (passed and the counts still cover all)")
+        p.add_argument("--profile", help="check profile (draft, review, final or one from .vixl-checks.json): its "
+                       "checks, suites and fail_on decide passed")
+        p.add_argument("--no-waivers", dest="waivers", action="store_false",
+                       help="report every finding as if the document had no waivers")
         options = vars(p.parse_args(args))
         strict = options.pop("strict")
         if options["repair"] is not None:
@@ -1046,7 +1050,10 @@ def project_command(project, cmd, args, *, detail="compact"):
         options["avoid"] = [[number(v) for v in zone] for zone in options["avoid"] or []]
         result = project.check(**options)
         if strict and not result["passed"]:
-            raise VixlError("design_check_failed", f"{result['errors']} design error(s)", report=result)
+            profile = result.get("profile")
+            raise VixlError("design_check_failed", f"{len(profile['failing'])} finding(s) fail the {profile['name']} "
+                            f"profile (fail_on {profile['fail_on']})" if profile else f"{result['errors']} design error(s)",
+                            report=result)
         return result, bool(result.get("repairs", {}).get("operations"))
     if cmd == "pixels":
         require(len(args) <= 1, "Use pixels [LAYER]")

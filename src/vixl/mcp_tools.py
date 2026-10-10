@@ -900,6 +900,10 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         offset: Annotated[int, Field(ge=0, description="First finding to list (pagination)")] = 0,
         limit: Annotated[int | None, Field(ge=1, le=200, description="Findings to list; passed, counts and outcome still "
                                                                       "cover every finding")] = None,
+        profile: Annotated[str | None, Field(description="check profile: draft, review, final or one from the workspace's "
+                                                         ".vixl-checks.json; it picks the checks and suites and its fail_on "
+                                                         "decides passed")] = None,
+        waivers: Annotated[bool, Field(description="false reports every finding as if the document had no waivers")] = True,
         document: Document = None,
     ) -> dict:
         """Find design problems without looking: content cut off by the canvas, overlapping text, low WCAG
@@ -911,12 +915,15 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         order, sizes, contrast) and with sample finds values that overflow; style (opt-in) evaluates the document's
         style tag rule by rule. Each issue has a severity (error, warning, info) and an action: fix (needs a design
         change), review (look and decide) or informational (expected, such as a crop marked with layer-intent
-        allow_crop); by_action lists the issue indexes under each. connected (opt-in) finds parts of a group (a mascot,
-        a character) that float free of its main body. Reports only problems. Each finding has a stable rule ID
+        allow_crop); by_action lists the issue indexes under each. A finding the document waives (layer-intent waive,
+        the waiver operation) stays listed as informational with waived and its reason; waivers lists them and any
+        expired ones. connected (opt-in) finds parts of a group (a mascot, a character) that float free of its main
+        body. Reports only problems. Each finding has a stable rule ID
         (bounds.text-overflow, contrast.text-contrast, safe_area.outside, overlap.text-text …), layer_ids, its
         box or region in document pixels, measured actual versus expected, and for fix findings a repair suggestion:
         canonical operations you can dry-run with vixl_operations_apply (nothing is applied unless repair=true).
-        outcome separates validation (fix findings) from review (review findings and their reasons)."""
+        outcome separates validation (fix findings) from review (review findings and their reasons); with profile it
+        follows the profile's fail_on."""
         return session.check(
             document=document,
             checks=checks,
@@ -938,6 +945,8 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
             repair=repair,
             offset=offset,
             limit=limit,
+            profile=profile,
+            waivers=waivers,
         )
 
     @tool

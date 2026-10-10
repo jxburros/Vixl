@@ -142,6 +142,65 @@ runs the suites, returns checks and resulting bounds, and commits only on a clea
 Checked actions cannot change suite definitions. Contract changes remain explicit
 `apply` operations and participate in undo/history.
 
+## Waivers and check profiles
+
+Some findings are deliberate: a faint watermark numeral behind a title, a title bar that runs into the safe margin.
+A **waiver** accepts one on the record, with a reason and an optional expiry, instead of loosening the check or
+silencing it. Every scope uses the same record, `{check or rule, reason, expires}`:
+
+```json
+[{"type": "layer-intent", "target": "ghost", "waive": [{"check": "contrast", "reason": "ghost numeral", "expires": "2030-12-31"}]},
+ {"type": "waiver", "check": "contrast", "target": "tagline", "reason": "decorative watermark, approved by brand", "expires": "2030-12-31"},
+ {"type": "waiver", "check": "fonts", "reason": "proofing font until the brand fonts arrive"},
+ {"type": "waiver", "rule": "headline-size", "suite": "brief", "reason": "client asked for a smaller headline"}]
+```
+
+- **Layer**: `layer-intent waive` (check names or records; it replaces the layer's waivers, `[]` clears them) or
+  the `waiver` operation with a `target`. It covers the layer's findings of that check and, on a group, those of
+  the layers inside it. An `overlap` waiver can name its partners with `with`; `allow_overlap` and `allow_crop`
+  remain the shorthand for an accepted overlap pair and a deliberate crop. `allow_low_contrast: true` on
+  `layer-intent` is read as `waive: ["contrast"]`.
+- **Document**: the `waiver` operation without a target covers the check everywhere in the document, or (with
+  `rule`, and optionally `suite`) one suite rule. `remove: true` deletes a waiver. The operation needs a `reason`.
+- **Workspace**: `waivers` in `.vixl-checks.json` (below) apply to every document; `target` names a layer.
+  A project group's `shared.waivers` are written into each member (see [Studio](studio.md#shared-groups-and-concurrent-agents)).
+
+A waived finding is never dropped. It stays in `issues` with severity `info`, action `informational` and
+`waived` (scope, reason, expiry, and the severity and action it had), and the report's `waivers` lists every active
+and expired waiver with the number of findings it `matched`. A waived suite result has status `waived`. A waiver
+applies through the day named by `expires`. After that the finding is back with its own severity and carries
+`waiver_expired`, and an expired-waiver finding (code `waiver-expired`, action `fix`) asks you to fix the finding or
+renew the waiver, so `check --strict` fails until someone decides again. `check --no-waivers`
+(`vixl_check(waivers=false)`) shows every finding as if nothing were waived. Proof pages list each document's
+waivers and mark waived findings, and `group-show` lists the waivers of every member.
+
+A **check profile** says how strict a run is, so the same document can be sketched and shipped under one set of
+checks. Three are built in:
+
+| Profile | `fail_on` | Adds | Suites |
+| --- | --- | --- | --- |
+| `draft` | `error`: only errors fail | | none |
+| `review` | `fix`: any finding whose action is fix fails (the plain `check` verdict) | | all attached |
+| `final` | `review`: fix and review findings fail | `color_vision` | all attached |
+
+`check --profile final` (`vixl_check(profile="final")`, `profile` on production `run`, on `group-apply` and on the
+[CI action](ci.md)) runs the profile's checks and suites; its `fail_on` decides `passed`, and the report's `profile`
+names the profile, its `fail_on`, the indexes of the `failing` findings and each suite's status (a failed suite
+fails every level but `never`; a suite needing review fails `warning` and `review`). `fail_on` is `error`,
+`warning` (errors and warnings), `fix`, `review` or `never`. A workspace adds profiles, or overrides fields of the
+built-in ones, in `.vixl-checks.json` at its root; a project group's `profiles` override both for that group:
+
+```json
+{"profiles": {"final": {"fail_on": "review", "optional": ["color_vision", "print"], "suites": "all"},
+              "social": {"fail_on": "fix", "checks": ["bounds", "contrast", "safe_area", "legibility"]}},
+ "waivers": [{"check": "safe_area", "target": "title-bar", "reason": "full-bleed bar by design", "expires": "2030-12-31"}]}
+```
+
+A profile has `fail_on`, `checks` (default: the standard checks), `optional` (opt-in checks added to them),
+`suites` (`"all"`, `"none"` or a list of names) and `description`. The report's `outcome` follows the profile: what
+its `fail_on` fails is a validation failure, other fix and review findings stay review reasons, and waived findings
+are listed under `outcome.accepted`.
+
 ## Reusable actions and motion
 
 Higher-level operations:
@@ -236,7 +295,10 @@ before any rendering. `run` adds `"output":"campaign"`:
 Rows can be assembled from a CSV by a caller; existing `render --data` remains available.
 There are at most 10,000 outputs, ten variation axes and four concurrent workers.
 Row fields cannot also occur in the matrix. Explicit row values override artboard defaults.
-All attached suites run unless an explicit `suites` list selects others.
+All attached suites run unless an explicit `suites` list selects others. With `profile` (for example `"final"`),
+every variant must also pass that [check profile](#waivers-and-check-profiles): it picks the design checks, the
+suites (unless `suites` is given) and `fail_on`, and `production.json` names it. Without a profile, `quality` does
+not change which checks run.
 
 Optional `actions` run before checks; `motion` applies a saved sequence.
 At most three named `repair_actions` are tried in order, stopping when checks pass. The name `auto` runs the
@@ -283,7 +345,8 @@ vixl workflow proof --request proof.json --workspace .
 
 Each item gets a thumbnail (click it to enlarge), its format, byte size, pixel size, colour mode (PNG/JPEG/TIFF
 mode, ICC profile, the PDF colour spaces it uses, a document's canvas and dpi) and, for `.vixl` documents, the
-`vixl_check` findings (`check: false` skips them). `before` adds a before/after pair with the changed share: it is
+`vixl_check` findings (`check: false` skips them), with waived findings marked and the document's
+[waivers](#waivers-and-check-profiles) listed with their reasons and expiry dates. `before` adds a before/after pair with the changed share: it is
 another file, or a revision of a `.vixl` item (`previous`, `head~2`, a checkpoint or branch). Items are paths or
 `{path, label?, before?, note?}`; up to 200.
 
@@ -305,6 +368,7 @@ command line, and the [GitHub Action](ci.md) runs it.
 
 ```bash
 vixl check --all "designs/**/*.vixl" --fail-on warning
+vixl check --all "designs/**/*.vixl" --profile final
 vixl check --group launch --since-last
 vixl check --all --changed-since origin/main --format sarif --write junit=out/junit.xml
 ```
@@ -323,8 +387,13 @@ group the [group consistency checks](studio.md#group-consistency-checks) run as 
 The result has, per document, `status` (`passed`, `failed` for errors or a failed suite, `needs_review` for warnings,
 `fix` findings or a suite that needs review, `error` when it could not be checked), counts (`errors`, `warnings`,
 `fix`, `by_check`), the top ten `findings`, suite rule results and `failing`: the findings that reach `fail_on`.
-`fail_on` is the CI action's level: `error`, `warning` (or error), `fix` (any finding whose action is `fix`) or
-`never`; a suite that does not pass counts at every level but `never`. `totals` sums them and `passed` is false when
+`fail_on` is the CI action's level: `error`, `warning` (or error), `fix` (any finding whose action is `fix`),
+`review` (fix or review findings) or `never`; a suite that does not pass counts at every level but `never`. With
+`profile` (`--profile`) every document is checked under that [check profile](#waivers-and-check-profiles) (its
+checks and suites; a group's `profiles` apply to its members), `fail_on` defaults to the profile's own level, and the
+report names the `profile`. Each document's waivers apply (`waivers: false`, `--no-waivers`, ignores them): waived
+findings stay in `findings` as informational with `waived`, never reach a level, and each document lists its
+`waivers`, which the Markdown summary repeats. `totals` sums them and `passed` is false when
 any document (or group finding) reaches the level, which is also the command's exit code. `base` pixel-diffs each
 document against its version at a git revision (`diff.changed_fraction`, or `new`), keeping base copies and diff
 images in `work`.

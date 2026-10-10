@@ -204,6 +204,8 @@ vixl info --target title                             # contrast of a rendered la
 vixl spacing --targets heading body footer --axis vertical --tolerance 1 [--expected 24] [--check]
 vixl spacing --around body --before heading --after footer
 vixl check [--safe-area 5%] [--avoid X Y W H] [--thumbnail-width 320|off] [--checks overlap contrast] [--strict]
+vixl check --profile final --strict      # draft | review | final: which checks run and which findings fail
+vixl waiver contrast --target ghost --reason "watermark" --expires 2030-12-31   # accept a finding on the record
 vixl validate [instagram-post|instagram-square|story|youtube-thumbnail] [--rules rules.json]
 vixl assert canvas.width == 1920
 vixl assert layer.logo.exists

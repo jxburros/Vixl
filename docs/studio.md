@@ -227,8 +227,14 @@ member it would publish fails, and then writes nothing. Shared parameters are ap
 not live-linked. Locks and rollback handle ordinary failures. Durable backups and a journal
 support `group-recover` after interruption; recovery refuses to overwrite later edits. Publication
 is sequential, so this is not a cross-file filesystem transaction for readers ignoring locks.
-`group-list` discovers groups. `group-show` reports membership/shared values and whether recovery is required. Files live
+`group-list` discovers groups. `group-show` reports membership/shared values, whether recovery is required and
+the [waivers](production.md#waivers-and-check-profiles) of each member. Files live
 under `.vixl-groups/`; keep journals/backups until recovery finishes.
+
+`shared.waivers` (`[{check or rule, reason, expires}]`) are written into every member as document waivers by
+`group-apply`. `profiles` on `group-define` (`{name: {fail_on, checks, optional, suites}}`) override the workspace's
+and the built-in `draft`/`review`/`final` check profiles for the group, and `group-apply` with `profile` requires
+every member it would publish to pass that profile (a dry run reports each member's result).
 
 ### Reviewing a group change
 

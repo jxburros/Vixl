@@ -6,7 +6,10 @@ worker threads (as production ``run`` does): ``vixl_check`` findings plus the do
 suites (and an optional inline suite). On a group it adds the cross-document group checks
 (``group_consistency``). The result has a status per document (passed, failed, needs_review or
 error), counts per check, the top findings and totals, and ``passed`` says whether any finding
-reached ``fail_on`` (the CI action's levels: error, warning, fix, never).
+reached ``fail_on`` (the CI action's levels: error, warning, fix, review, never). With ``profile`` (a check
+profile, policy.py) each document is checked under that profile (its checks and suites), and ``fail_on``
+defaults to the profile's own level; the document's waivers (waivers.py) apply unless ``waivers`` is false,
+and waived findings stay listed as informational.
 
 Every run appends a history entry under ``.vixl-checks/history``; ``since_last`` compares the run
 with the previous one over the same scope (newly failing, newly passing, still failing) and notes
@@ -26,7 +29,7 @@ import subprocess
 
 from .errors import VixlError, require
 
-LEVELS = ("error", "warning", "fix", "never")
+LEVELS = ("error", "warning", "fix", "review", "never")
 FORMATS = ("json", "markdown", "junit", "sarif", "github")
 OUTPUTS = (*FORMATS, "proof")
 MAX_DOCUMENTS = 1000
@@ -161,41 +164,65 @@ def _finding_id(issue):
 
 
 def failing(record, level):
-    """Messages of the findings in ``record`` that reach ``level`` (error, warning, fix or never), or the
-    reason the document could not be checked. The levels are the CI action's ``fail-on``."""
+    """Messages of the findings in ``record`` that reach ``level`` (error, warning, fix, review or never), or
+    the reason the document could not be checked. The levels are the CI action's ``fail-on``. A waived finding
+    is informational, so it reaches no level. Checked under a profile, a suite that needs review fails only
+    at warning and review (as ``vixl check --profile`` decides)."""
+    from .policy import suite_fails
+
     if record.get("error"):
         return [record["error"]]
     issues = record.get("issues", [])
     if level == "never":
         found = []
-    elif level == "fix":
-        found = [i for i in issues if i.get("action") == "fix" or i.get("severity") == "error"]
+    elif level in ("fix", "review"):
+        actions = ("fix",) if level == "fix" else ("fix", "review")
+        found = [i for i in issues if i.get("action") in actions or i.get("severity") == "error"]
     else:
         wanted = ("error",) if level == "error" else ("error", "warning")
         found = [i for i in issues if i.get("severity") in wanted]
     messages = [f"{i.get('check')}: {i.get('message', '')}" for i in found]
     if level != "never":
         for name, suite in record.get("suites", {}).items():
-            if suite["status"] != "passed":
-                rules = [r["id"] for r in suite["rules"] if r["status"] != "passed"]
-                messages.append(f"suite {name}: {suite['status']}" + (f" ({', '.join(rules)})" if rules else ""))
+            if suite["status"] in ("passed", "waived"):
+                continue
+            if record.get("profile") and suite["status"] != "missing" and not suite_fails(suite["status"], level):
+                continue
+            rules = [r["id"] for r in suite["rules"] if r["status"] not in ("passed", "waived")]
+            messages.append(f"suite {name}: {suite['status']}" + (f" ({', '.join(rules)})" if rules else ""))
     return messages
 
 
-def check_document(session, relative, request, suite=None, keep=False):
-    """Check one document. Returns its record (and the loaded project when ``keep``)."""
+def check_document(session, relative, request, suite=None, keep=False, group=None):
+    """Check one document. Returns its record (and the loaded project when ``keep``). With ``profile`` in the
+    request the profile picks the checks and the suites (``suites: false`` still skips attached suites)."""
     from .project import Project
 
     path = session.resolve(relative)
     record = {"path": relative}
     project = None
+    profile = request.get("profile")
     try:
         record["sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
         project = Project.load(path, limits=session.limits)
         project._workspace = session.workspace
-        report = project.check(**({"checks": request["checks"]} if request.get("checks") else {}))
+        options = {"checks": request["checks"]} if request.get("checks") else {}
+        if not request.get("waivers", True):
+            options["waivers"] = False
+        if profile:
+            options.update(profile=profile, group=group)
+        report = project.check(**options)
         suites = {}
-        if request.get("suites", True):
+        if profile:
+            # The profile ran its own suites; keep their shape (not_passed are the rules that did not pass).
+            if request.get("suites", True):
+                for name, item in (report.get("profile") or {}).get("suites", {}).items():
+                    suites[name] = {"status": item["status"], "errors": item.get("errors", 0),
+                                    "needs_review": item.get("needs_review", 0),
+                                    "results": item.get("not_passed", [])}
+                    if item["status"] == "missing":
+                        suites[name]["results"] = [{"id": name, "status": "missing", "message": item["note"]}]
+        elif request.get("suites", True):
             for name in project.state.get("suites", {}):
                 suites[name] = project.check_suite(name)
         if suite is not None:
@@ -209,15 +236,19 @@ def check_document(session, relative, request, suite=None, keep=False):
         fix=sum(1 for i in issues if i.get("action") == "fix"),
         by_check=dict(Counter(i.get("check") for i in issues)),
         checks_run=list(report.get("checked", {}).get("checks", [])),
-        issues=[{key: issue[key] for key in ("check", "severity", "action", "message", "layers", "layer") if key in issue}
-                for issue in issues],
+        issues=[{key: issue[key] for key in ("check", "severity", "action", "message", "layers", "layer", "waived")
+                 if key in issue} for issue in issues],
         suites={name: {"status": result["status"], "errors": result["errors"],
                        "needs_review": result["needs_review"],
                        "rules": [{key: rule.get(key) for key in ("id", "status", "severity", "message") if
                                   rule.get(key) is not None} for rule in result["results"]]}
                 for name, result in suites.items()},
     )
-    suite_states = {s["status"] for s in record["suites"].values()}
+    if report.get("waivers") and (report["waivers"].get("active") or report["waivers"].get("expired")):
+        record["waivers"] = report["waivers"]
+    if report.get("profile"):
+        record["profile"] = {key: report["profile"][key] for key in ("name", "source", "fail_on")}
+    suite_states = {"failed" if s["status"] == "missing" else s["status"] for s in record["suites"].values()}
     record["status"] = ("failed" if record["errors"] or "failed" in suite_states else
                         "needs_review" if record["warnings"] or record["fix"] or "needs_review" in suite_states
                         else "passed")
@@ -255,7 +286,7 @@ def _diff(session, record, ref, work):
 def _summarize(record):
     """The compact per-document entry of the report."""
     entry = {key: record[key] for key in ("path", "status", "errors", "warnings", "fix", "by_check", "error", "diff",
-                                          "failing", "checks_run", "sha256") if key in record}
+                                          "failing", "checks_run", "sha256", "waivers") if key in record}
     entry["findings"] = record["issues"][:TOP_FINDINGS]
     if len(record["issues"]) > TOP_FINDINGS:
         entry["more_findings"] = len(record["issues"]) - TOP_FINDINGS
@@ -283,8 +314,9 @@ def _suite(session, value):
 def _group_failing(findings, level):
     if level == "never":
         return []
-    if level == "fix":
-        return [f for f in findings if f["action"] == "fix" or f["severity"] == "error"]
+    if level in ("fix", "review"):
+        actions = ("fix",) if level == "fix" else ("fix", "review")
+        return [f for f in findings if f["action"] in actions or f["severity"] == "error"]
     wanted = ("error",) if level == "error" else ("error", "warning")
     return [f for f in findings if f["severity"] in wanted and f["action"] != "review"]
 
@@ -294,12 +326,22 @@ def run(session, request):
     from . import __version__, calls
     from .group_consistency import compare, facts_for
 
-    level = request.get("fail_on", "error")
+    profile = request.get("profile")
+    require(profile is None or (isinstance(profile, str) and profile), "profile is a check profile name",
+            field="profile")
+    for field in ("since_last", "history", "overwrite", "suites", "waivers"):
+        require(type(request.get(field, True)) is bool, f"{field} must be boolean", field=field)
+    paths, group = members(session, request, default_all=True, allow_empty=True)
+    chosen = None
+    if profile:
+        from .policy import resolve
+
+        chosen = resolve(profile, session.workspace, group)
+    # No fail_on: the profile's own level, else error (an empty string from the CI action means the same).
+    level = request.get("fail_on") or (chosen.get("fail_on", "fix") if chosen else "error")
     require(level in LEVELS, f"fail_on is one of {', '.join(LEVELS)}", field="fail_on", allowed=list(LEVELS))
     workers = request.get("workers", min(4, os.cpu_count() or 1))
     require(type(workers) is int and 1 <= workers <= MAX_WORKERS, f"workers must be 1-{MAX_WORKERS}", field="workers")
-    for field in ("since_last", "history", "overwrite", "suites"):
-        require(type(request.get(field, True)) is bool, f"{field} must be boolean", field=field)
     if request.get("checks") is not None:
         require(isinstance(request["checks"], list) and all(isinstance(c, str) for c in request["checks"]),
                 "checks is a list of check names", field="checks")
@@ -316,7 +358,6 @@ def run(session, request):
             require(destination.suffix.lower() in (".html", ".htm"), "outputs.proof is an .html page",
                     field="outputs.proof")
         destinations[key] = destination
-    paths, group = members(session, request, default_all=True, allow_empty=True)
     documents = [session.relative(path) for path in paths]
     scope_documents = list(documents)
     if request.get("changed_since"):
@@ -333,7 +374,7 @@ def run(session, request):
 
     def one(relative):
         calls.check_cancelled()
-        result = check_document(session, relative, request, suite, keep=keep)
+        result = check_document(session, relative, request, suite, keep=keep, group=group)
         record, project = result if keep else (result, None)
         if base and record.get("status") != "error":
             record["diff"] = _diff(session, record, base, work)
@@ -360,6 +401,8 @@ def run(session, request):
         "version": 1, "vixl_version": __version__,
         "time": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
         "fail_on": level, "count": len(entries),
+        **({"profile": {"name": chosen["name"], "source": chosen["source"], "fail_on": chosen.get("fail_on", "fix")}}
+           if chosen else {}),
         "totals": {"passed": totals["passed"], "failed": totals["failed"], "needs_review": totals["needs_review"],
                    "error": totals["error"], "failing": sum(1 for e in entries if e["failing"]),
                    "errors": sum(e.get("errors", 0) for e in entries),
@@ -422,8 +465,13 @@ def run(session, request):
 
 def _scope(request, documents):
     key = {"documents": sorted(documents), "checks": sorted(request.get("checks") or []),
-           "fail_on": request.get("fail_on", "error"), "suites": request.get("suites", True),
+           "fail_on": request.get("fail_on") or "error", "suites": request.get("suites", True),
            "suite": request.get("suite") if isinstance(request.get("suite"), str) else bool(request.get("suite"))}
+    # Only when set, so runs without a profile keep comparing with history recorded before profiles existed.
+    if request.get("profile"):
+        key["profile"] = request["profile"]
+    if request.get("waivers", True) is False:
+        key["waivers"] = False
     return hashlib.sha256(json.dumps(key, sort_keys=True).encode()).hexdigest()[:16]
 
 
@@ -513,6 +561,8 @@ def markdown(result):
                   f"No documents changed since `{result['changed_since']}`.", ""]
         return "\n".join(lines)
     note = f"Fail on: `{result['fail_on']}`" + (f" · compared with `{base[:12]}`" if base else "")
+    if result.get("profile"):
+        note += f" · profile `{result['profile']['name']}`"
     if result.get("group"):
         note += f" · group `{result['group']}`"
     if result.get("changed_since"):
@@ -536,6 +586,18 @@ def markdown(result):
             lines.append(f"**{entry['path']}**")
             lines += [f"- {message}" for message in entry["failing"][:20]]
             lines.append("")
+    waived = [(entry["path"], item) for entry in result["documents"] for item in entry.get("waivers", {}).get("active", [])]
+    expired = [(entry["path"], item) for entry in result["documents"]
+               for item in entry.get("waivers", {}).get("expired", [])]
+    if waived or expired:
+        lines += ["", "### Waivers", ""]
+        for path, item in waived[:50]:
+            lines.append(f"- `{path}`: {item.get('check') or item.get('rule')} ({item['scope']}"
+                         + (f", until {item['expires']}" if item.get("expires") else "") + ")"
+                         + (f": {item['reason']}" if item.get("reason") else ""))
+        for path, item in expired[:50]:
+            lines.append(f"- `{path}`: **expired** {item.get('check') or item.get('rule')} ({item['scope']}, "
+                         f"{item.get('expires')})")
     group = result.get("group_checks")
     if group and group["findings"]:
         lines += ["", "### Group consistency", ""]
@@ -560,7 +622,7 @@ def _level(severity):
 def _suite_findings(entry):
     for name, suite in entry.get("suites", {}).items():
         for rule in suite["rules"]:
-            if rule["status"] != "passed":
+            if rule["status"] not in ("passed", "waived"):
                 severity = "error" if rule["status"] == "failed" and rule.get("severity", "error") == "error" else "warning"
                 yield name, rule, severity
 
@@ -597,7 +659,7 @@ def junit(result):
                 for rule in suite_result["rules"]:
                     case = ET.SubElement(suite, "testcase", classname=f"{entry['path']}.suite.{name}", name=rule["id"])
                     cases += 1
-                    if rule["status"] != "passed" and level != "never":
+                    if rule["status"] not in ("passed", "waived") and level != "never":
                         fails += 1
                         node = ET.SubElement(case, "failure", message=(rule.get("message") or rule["status"])[:500],
                                              type=rule["status"])
@@ -723,7 +785,11 @@ def cli(args, options, limits):
     p.add_argument("--checks", nargs="+", help="vixl check names (default: the standard checks)")
     p.add_argument("--suite", help="A check-suite JSON file run on every document")
     p.add_argument("--no-suites", action="store_true", help="Skip the suites attached to each document")
-    p.add_argument("--fail-on", choices=LEVELS, default="error")
+    p.add_argument("--fail-on", choices=LEVELS, help="Fail at this level (default: the profile's fail_on with "
+                   "--profile, else error)")
+    p.add_argument("--profile", help="Check every document under this check profile (draft, review, final or one "
+                   "from .vixl-checks.json)")
+    p.add_argument("--no-waivers", action="store_true", help="Report every finding as if no document had waivers")
     p.add_argument("--workers", type=int, help=f"Parallel workers (1-{MAX_WORKERS})")
     p.add_argument("--changed-since", metavar="REF", help="Only documents changed since this git revision")
     p.add_argument("--base", metavar="REF", help="Pixel-diff each document against this git revision")
@@ -738,11 +804,15 @@ def cli(args, options, limits):
     p.add_argument("--overwrite", action="store_true", help="Replace existing --write files")
     p.add_argument("--workspace", default=".", help="Workspace folder (default: the current folder)")
     a = p.parse_args(args)
-    request = {"fail_on": a.fail_on, "suites": not a.no_suites, "history": not a.no_history,
+    request = {"suites": not a.no_suites, "history": not a.no_history,
                "since_last": a.since_last, "overwrite": a.overwrite}
+    if a.fail_on:
+        request["fail_on"] = a.fail_on
+    if a.no_waivers:
+        request["waivers"] = False
     if a.documents:
         request["documents"] = a.documents
-    for key in ("group", "checks", "suite", "workers", "changed_since", "base", "work", "reference"):
+    for key in ("group", "checks", "suite", "workers", "changed_since", "base", "work", "reference", "profile"):
         if getattr(a, key) is not None:
             request[key] = getattr(a, key)
     outputs = {}
