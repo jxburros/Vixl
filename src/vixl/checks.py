@@ -123,7 +123,10 @@ def boxed_text_need(project, layer):
     settings = layer.get("text_layout") or {}
     if layer["type"] != "text" or "width" not in settings or settings.get("fit") or settings.get("path"):
         return None
+    from .lettering import view
     from .richtext import active
+
+    layer = view(project, layer)
 
     if active(layer):
         from .richtext import layout as rich_layout

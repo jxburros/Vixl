@@ -181,6 +181,9 @@ def _document_variables(project):
 
 
 def text_metrics(project, layer, variables=None):
+    from .lettering import view
+
+    layer = view(project, layer, variables)
     text = layer_text(layer, variables if variables is not None else document_variables(project))
     require(len(text) <= 100000, "Text exceeds length limit", "resource_limit")
     from .richtext import active
@@ -343,6 +346,9 @@ def _resolved_layers(project, variables=None, subset=None):
             fill_variables(layer["rich"], variables)  # keeps the record matching the substituted text
         if layer["type"] == "text":
             layer[RESOLVED] = True
+            from .lettering import apply as apply_lettering
+
+            apply_lettering(layer)
         if layer.get("asset_variable"):
             name = layer["asset_variable"]
             require(name in variables, f"Undefined image variable: {name}", "missing_variable")

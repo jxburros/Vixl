@@ -148,6 +148,15 @@ def _operation_schema():
             "description": "Do not draw the text (and take no space in a stack) while it is empty or blank "
             "after ${variable} substitution.",
         },
+        "tracking": {"type": "number", "minimum": -1000, "maximum": 1000,
+                     "description": "Letter spacing (tracking) in pixels added after every character, for the whole "
+                     "layer: it applies to whatever text the layer holds, including text changed by keyframes and "
+                     "${variable} values. Rich-text spans with their own tracking keep it. 0 removes it. Not line "
+                     "spacing (that is spacing or line_height)."},
+        "text_transform": {"enum": ["none", "uppercase", "lowercase", "capitalize"],
+                           "description": "Draw the layer's text in this case without changing the stored text "
+                           "(capitalize upper-cases the first letter of each word); applies to text changed by "
+                           "keyframes and ${variable} values too. none removes it."},
     }
     add(
         "text",

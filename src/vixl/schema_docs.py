@@ -405,11 +405,13 @@ OVERRIDES = {
                       "role": "heading or body: make it the document's heading or body font."},
     "text": {"size": "Font size in pixels. Without one, the body size of the document's type scale (about 2.6% of "
                      "the canvas short side when it has none).", "color": "Text color. Without one, the document @ink swatch, else black or white, whichever reads on the canvas background.", "align": "Alignment within the text box.",
-             "spacing": "Pixels added to the font's own line pitch; negative tightens display type. Without spacing "
+             "spacing": "Line spacing (leading), not letter spacing: pixels added to the font's own line pitch; "
+                        "negative tightens display type. For letter spacing use tracking. Without spacing "
                         "or line_height, the line-height table sets it (body 1.45, lead 1.35, headings 1.1, display "
                         "1.0, captions 1.3 times the size)."},
     "text-set": {"stroke_width": "Outline thickness in pixels (0 removes it).", "size": "Font size in pixels.",
-                 "spacing": "Pixels added to the font's own line pitch (may be negative); replaces line_height."},
+                 "spacing": "Line spacing (leading), not letter spacing: pixels added to the font's own line pitch "
+                            "(may be negative); replaces line_height. For letter spacing use tracking."},
     "rename": {"name": "New unique layer name."},
     "duplicate": {"name": "Name for the copy (default '<name> copy')."},
     "move": {"x": "New x in pixels, 'center' or a percentage; with relative, a shift.",

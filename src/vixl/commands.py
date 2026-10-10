@@ -206,8 +206,11 @@ def compile_command(tokens):
             p.add_argument("--font", help="registered font name, heading, body, or a font file")
             p.add_argument("--size", type=int)
             p.add_argument("--align", choices=["left", "center", "right"])
-            p.add_argument("--spacing", type=int, help="pixels added to the font's line pitch (may be negative)")
+            p.add_argument("--spacing", type=int, help="line spacing: pixels added to the font's line pitch (may be negative)")
             p.add_argument("--line-height", type=float, help="baseline distance as a multiple of the size")
+            p.add_argument("--tracking", type=float, help="letter spacing in pixels after every character")
+            p.add_argument("--text-transform", choices=["none", "uppercase", "lowercase", "capitalize"],
+                           help="draw the text in this case without changing it")
             p.add_argument("--within", help="centre the text in this shape's content box (instead of --x/--y)")
             p.add_argument("--hide-if-empty", action=argparse.BooleanOptionalAction, default=None,
                            help="do not draw the text while it is empty after ${variable} substitution")
@@ -232,6 +235,9 @@ def compile_command(tokens):
         for key in ("size", "spacing", "stroke-width"):
             p.add_argument(f"--{key}", type=int)
         p.add_argument("--line-height", type=float, help="baseline distance as a multiple of the size")
+        p.add_argument("--tracking", type=float, help="letter spacing in pixels after every character (0 removes it)")
+        p.add_argument("--text-transform", choices=["none", "uppercase", "lowercase", "capitalize"],
+                       help="draw the text in this case without changing it")
         p.add_argument("--hide-if-empty", action=argparse.BooleanOptionalAction, default=None,
                        help="do not draw the text while it is empty after ${variable} substitution")
     elif cmd in (

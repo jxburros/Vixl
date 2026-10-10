@@ -106,6 +106,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | BLK-08 | Place text by its baseline | `baseline_y` on text/move, `align` `baseline`, `snap` to a baseline grid | 1 · <1 | E | Since 0.22. |
 | TXT-11 | Use emoji in text with bundled, editable art (complete Unicode 17 sequences, joiners and flags) | `text`, `emoji-mode` | 1 · <1 | E | Since 0.24; bundled art by default, `emoji-mode font` prefers the font; PDF/PPTX use a reported raster fallback. |
 | TXT-12 | Find an emoji or extract it as an editable `.vixl` master | `vixl emoji list`/`get`, `vixl_workflow` emoji-list/emoji-get | 1 · <1 | E | Since 0.24; 3,953 Unicode sequences plus 100 originals. |
+| TXT-13 | Brand tracking and caps on text that changes (keyed lyric lines, `${variable}` values) | `text-set` with `tracking`, `text_transform` | 1 · <1 | E | Layer properties (#603); before, tracking needed a `text-style` match on fixed text and caps a pre-cased copy of the source. |
 
 ### Color
 

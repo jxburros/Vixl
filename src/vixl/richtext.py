@@ -340,7 +340,8 @@ def styled_spans(project, layer, variables=None):
             "underline": span.get("underline", False),
             "strike": span.get("strike", False),
             "baseline": span.get("baseline", "normal"),
-            "tracking": float(span.get("tracking", 0)),
+            # A span's own tracking replaces the layer's.
+            "tracking": float(span.get("tracking", layer.get("tracking", 0))),
             "fake_bold": fake_bold,
             "fake_italic": fake_italic,
         })
@@ -432,8 +433,10 @@ def _split_word(project, token, width):
 def layout(project, layer, *, width=None, scale=1.0, variables=None):
     """Lay out a rich text layer. ``width`` wraps lines (default: the text-layout box width);
     ``scale`` multiplies every size, indent and spacing (used to fit text to its box)."""
+    from .lettering import view
     from .text import shape
 
+    layer = view(project, layer, variables)
     rich = layer["rich"]
     spans = styled_spans(project, layer, variables)
     settings = rich.get("paragraphs") or []

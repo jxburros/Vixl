@@ -119,6 +119,13 @@ FIELD_ALIASES = {
         "alignment": "align",
         "font_family": "font",
         "line_spacing": "spacing",
+        "letter_spacing": "tracking",
+        "letterspacing": "tracking",
+        "char_spacing": "tracking",
+        "character_spacing": "tracking",
+        "case": "text_transform",
+        "text_case": "text_transform",
+        "transform_text": "text_transform",
         "outline_width": "stroke_width",
         "outline_color": "stroke_color",
         **{key: "hide_if_empty" for key in ("hide_when_empty", "collapse_if_empty", "collapse_when_empty", "hide_empty")},
@@ -175,6 +182,13 @@ FIELD_ALIASES = {
     "link": {"path": "source", "file": "source", "src": "source", "document": "source", "doc": "source"},
 }
 FIELD_ALIASES["text-set"] = FIELD_ALIASES["text"]
+# CSS text-transform values and the usual guesses for them.
+TEXT_TRANSFORMS = {
+    **{key: "uppercase" for key in ("uppercase", "upper", "caps", "all-caps", "allcaps", "upper-case")},
+    **{key: "lowercase" for key in ("lowercase", "lower", "lower-case")},
+    **{key: "capitalize" for key in ("capitalize", "capitalise", "title", "title-case", "titlecase")},
+    **{key: "none" for key in ("none", "normal", "as-is", "original")},
+}
 GEOMETRY_TYPES = {
     "qr",
     "barcode",
@@ -333,6 +347,12 @@ def normalize_operation(operation, properties, known_types, effects, notes, inde
             for key, value in extra.items():
                 op.setdefault(key, value)
     normalize_opacity(op, kind, note)
+    if isinstance(op.get("text_transform"), str) and "text_transform" in allowed:
+        given = op["text_transform"]
+        case = TEXT_TRANSFORMS.get(given.strip().lower().replace("_", "-").replace(" ", "-"), given)
+        if case != given:
+            note(f"text_transform {given!r} → {case!r}")
+            op["text_transform"] = case
     if kind == "blend" and isinstance(op.get("value"), str) and op["value"] != op["value"].lower():
         op["value"] = op["value"].lower()
     if kind == "effect" and isinstance(op.get("name"), str):

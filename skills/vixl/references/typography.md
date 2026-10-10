@@ -68,6 +68,6 @@ A roll draws from Vixl's house style: it first draws a tier (`safe`, `bold` or `
 
 ### Field-report corrections
 
-Letter spacing is text-style tracking in local pixels. Width-only text boxes grow after copy/variable edits; fixed height stays fixed. Rich text-flow preserves size-based leading.
+Letter spacing is `tracking` in local pixels: on the layer (`text`/`text-set`, also for keyed or `${variable}` text) or on a span with `text-style`. `spacing` and `line_height` are line spacing. `text_transform` (`uppercase`, `lowercase`, `capitalize`) cases the drawn text without changing the stored text, including keyed text. Width-only text boxes grow after copy/variable edits; fixed height stays fixed. Rich text-flow preserves size-based leading.
 
 House style 3 adds weighted alignment and scale-aware minor-text checking for social/poster work (2.2% of the short side). Large-text contrast is weight-aware: 18.66 px bold or 24 px regular. Explicit thumbnail settings and print/deck profiles retain their own contexts. Use `gap: "2u"` (1u = half the body size) for shared spacing in `stack` and `layout-apply`.
