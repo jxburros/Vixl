@@ -1,5 +1,5 @@
 name: Vixl document check
-description: Check .vixl documents with vixl check, optionally pixel-diff them against the base branch, and summarize the results.
+description: Check .vixl documents with vixl check --all, optionally pixel-diff them against the base branch, and report the results as a summary, annotations, JUnit or SARIF.
 branding:
   icon: image
   color: purple
@@ -8,23 +8,38 @@ inputs:
   paths:
     description: Globs of documents to check, separated by spaces or newlines.
     default: "**/*.vixl"
+  group:
+    description: A project group to check (its members plus the group consistency checks) instead of, or as well as, paths.
+    default: ""
   checks:
     description: vixl check names to run (space-separated); empty runs the standard checks.
     default: ""
   suite:
-    description: Path to a check-suite JSON file to run on every document as well (vixl workflow check).
+    description: Path to a check-suite JSON file to run on every document as well. Suites attached to a document always run.
     default: ""
   fail-on:
     description: "Fail the step at this level: error, warning, fix (any finding that needs a fix) or never."
     default: error
   vixl-version:
-    description: vixl-engine version to install from PyPI (for example 0.23.0); empty installs the version at this action's ref.
+    description: vixl-engine version to install from PyPI (0.25.0 or later); empty installs the version at this action's ref.
     default: ""
   compare-base:
     description: On pull requests, render each document's base-branch version and pixel-diff it (true or false).
     default: "false"
+  changed-only:
+    description: On pull requests, check only the documents that changed against the base branch (true or false).
+    default: "false"
   proof:
     description: Write a proof page (thumbnails, findings, before/after) and upload it as the vixl-proof artifact (true or false).
+    default: "false"
+  annotations:
+    description: Print findings as workflow annotations on the changed files (true or false).
+    default: "true"
+  formats:
+    description: "Report files to write into .vixl-ci/ (space-separated): json, markdown, junit, sarif, github."
+    default: "json"
+  sarif:
+    description: Upload the findings to GitHub code scanning as SARIF (true or false; the job needs security-events write permission).
     default: "false"
   python-version:
     description: Python version to run Vixl with.
@@ -34,6 +49,15 @@ outputs:
   summary:
     description: Path of the Markdown summary file.
     value: ${{ steps.check.outputs.summary }}
+  report:
+    description: Path of the JSON report (when formats includes json).
+    value: ${{ steps.check.outputs.report }}
+  sarif:
+    description: Path of the SARIF file (when formats includes sarif or sarif is true).
+    value: ${{ steps.check.outputs.sarif }}
+  junit:
+    description: Path of the JUnit XML file (when formats includes junit).
+    value: ${{ steps.check.outputs.junit }}
 
 runs:
   using: composite
@@ -52,7 +76,7 @@ runs:
           python -m pip install "${{ github.action_path }}[pdf]"
         fi
     - name: Fetch the base revision
-      if: inputs.compare-base == 'true' && github.event_name == 'pull_request'
+      if: (inputs.compare-base == 'true' || inputs.changed-only == 'true') && github.event_name == 'pull_request'
       shell: bash
       run: git fetch --no-tags --depth=1 origin "${{ github.event.pull_request.base.sha }}"
     - name: Check documents
@@ -60,18 +84,48 @@ runs:
       shell: bash
       env:
         VIXL_PATHS: ${{ inputs.paths }}
+        VIXL_GROUP: ${{ inputs.group }}
         VIXL_CHECKS: ${{ inputs.checks }}
         VIXL_SUITE: ${{ inputs.suite }}
         VIXL_FAIL_ON: ${{ inputs.fail-on }}
         VIXL_BASE: ${{ inputs.compare-base == 'true' && github.event.pull_request.base.sha || '' }}
-        VIXL_PROOF: ${{ inputs.proof == 'true' && '.vixl-ci/proof.html' || '' }}
+        VIXL_CHANGED: ${{ inputs.changed-only == 'true' && github.event.pull_request.base.sha || '' }}
+        VIXL_PROOF: ${{ inputs.proof }}
+        VIXL_ANNOTATIONS: ${{ inputs.annotations }}
+        VIXL_FORMATS: ${{ inputs.formats }}
+        VIXL_SARIF: ${{ inputs.sarif }}
       run: |
-        set +e
-        python "${{ github.action_path }}/scripts/check_documents.py" --paths "$VIXL_PATHS" --checks "$VIXL_CHECKS" \
-          --suite "$VIXL_SUITE" --fail-on "$VIXL_FAIL_ON" --base "$VIXL_BASE" --proof "$VIXL_PROOF" \
-          --work .vixl-ci > .vixl-ci-summary.md
+        set +e -f
+        mkdir -p .vixl-ci
+        globs="$VIXL_PATHS"
+        # A group alone checks its members; the default paths would add every other document.
+        [ -n "$VIXL_GROUP" ] && [ "$VIXL_PATHS" = "**/*.vixl" ] && globs=""
+        args=(check --all $globs --fail-on "$VIXL_FAIL_ON" --format markdown --no-history --overwrite --work .vixl-ci)
+        [ -n "$VIXL_GROUP" ] && args+=(--group "$VIXL_GROUP")
+        [ -n "$VIXL_CHECKS" ] && args+=(--checks $VIXL_CHECKS)
+        [ -n "$VIXL_SUITE" ] && args+=(--suite "$VIXL_SUITE")
+        [ -n "$VIXL_BASE" ] && args+=(--base "$VIXL_BASE")
+        [ -n "$VIXL_CHANGED" ] && args+=(--changed-since "$VIXL_CHANGED")
+        [ "$VIXL_PROOF" = "true" ] && args+=(--write proof=.vixl-ci/proof.html)
+        [ "$VIXL_ANNOTATIONS" = "true" ] && args+=(--write github=.vixl-ci/annotations.txt)
+        [ "$VIXL_SARIF" = "true" ] && VIXL_FORMATS="$VIXL_FORMATS sarif"
+        for format in $VIXL_FORMATS; do
+          case "$format" in
+            json) args+=(--write json=.vixl-ci/report.json); echo "report=.vixl-ci/report.json" >> "$GITHUB_OUTPUT" ;;
+            markdown) args+=(--write markdown=.vixl-ci/report.md) ;;
+            junit) args+=(--write junit=.vixl-ci/junit.xml); echo "junit=.vixl-ci/junit.xml" >> "$GITHUB_OUTPUT" ;;
+            sarif) args+=(--write sarif=.vixl-ci/vixl.sarif); echo "sarif=.vixl-ci/vixl.sarif" >> "$GITHUB_OUTPUT" ;;
+            github) args+=(--write github=.vixl-ci/annotations.txt) ;;
+            *) echo "Unknown format: $format" >&2; exit 2 ;;
+          esac
+        done
+        python -m vixl "${args[@]}" > .vixl-ci-summary.md
         status=$?
         cat .vixl-ci-summary.md
+        cat .vixl-ci-summary.md >> "$GITHUB_STEP_SUMMARY"
+        if [ "$VIXL_ANNOTATIONS" = "true" ] && [ -f .vixl-ci/annotations.txt ]; then
+          cat .vixl-ci/annotations.txt
+        fi
         echo "summary=.vixl-ci-summary.md" >> "$GITHUB_OUTPUT"
         echo "status=$status" >> "$GITHUB_OUTPUT"
     - name: Upload proof page
@@ -81,6 +135,12 @@ runs:
         name: vixl-proof
         path: .vixl-ci/
         if-no-files-found: ignore
+    - name: Upload SARIF
+      if: always() && inputs.sarif == 'true' && steps.check.outputs.sarif != ''
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: ${{ steps.check.outputs.sarif }}
+        category: vixl
     - name: Report result
       if: steps.check.outputs.status != '0'
       shell: bash

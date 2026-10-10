@@ -73,6 +73,8 @@ Measure:   info, sample X Y, histogram [--region X Y W H], info --target TEXT,
            spacing --around BODY --before HEADER --after FOOTER,
            check [--safe-area 5%] [--avoid X Y W H] [--thumbnail-width 320] [--strict]
            check --checks print color_vision [--ink-limit 300] [--min-ppi 200]
+           check --all [GLOB …] | --group NAME [--fail-on error|warning|fix|never] [--changed-since REF] [--base REF]
+           [--since-last] [--format markdown|json|junit|sarif|github] [--write sarif=vixl.sarif] (many documents, one report)
 Pixels:    pixel-art, pixel-draw, pixel-palette, pixels [LAYER],
            frame-save NAME [--duration MS], frame-apply NAME, frame-delete NAME,
            animation, animation-set --loop N --order FRAME FRAME,
@@ -368,6 +370,12 @@ def dispatch(argv):
     if cmd == "workflow":
         from .workflows import cli
         return cli(args, options, limits), options.json
+    if cmd == "check":
+        from .workspace_checks import cli as check_all_cli, wants_cli
+
+        if wants_cli(args):
+            report = check_all_cli(args, options, limits)
+            return report, options.json and isinstance(report, dict)
     if cmd == "merge":
         from .imposition import cli as merge_cli
         return merge_cli(args, options, limits), options.json
@@ -1295,7 +1303,9 @@ def main(argv=None):
     try:
         result, machine = dispatch(argv)
         emit(result, machine)
-        if ("workflow" in argv or "emoji" in argv) and isinstance(result, dict):
+        if getattr(result, "passed", None) is False:  # a formatted vixl check --all report
+            return 1
+        if ("workflow" in argv or ("check" in argv and ("--all" in argv or "--group" in argv)) or "emoji" in argv) and isinstance(result, dict):
             if result.get("passed") is False or result.get("success") is False or result.get("status") in ("failed", "needs_review", "cancelled"):
                 return 1
         return 0
