@@ -65,7 +65,7 @@ curl -X POST http://127.0.0.1:8765/operations \
 curl http://127.0.0.1:8765/render -o preview.png
 ```
 
-REST sessions fix the project path when launched. Operation `path` and `linked` fields are rejected, and `font` accepts only a registered font name or role (`heading`, `body`), never a file; import image bytes with `/assets` and fonts with `/fonts` or `font install`. Services do not enable third-party plugins or linked-file reads. Local AI configuration is trusted, and services can invoke it. Do not share API access with users who should not be able to use your configured AI service. Authentication is all-or-nothing; there are no per-user roles or quotas.
+REST sessions fix the project path when launched. Operation `path` and `linked` fields are rejected, and `font` accepts only a registered font name or role (`heading`, `body`), never a file; import image bytes with `/assets` and fonts with `/fonts` or `font install`. Services do not enable third-party plugins or linked-file reads. Local AI configuration is trusted, and services can invoke it. Do not share API access with users who should not be able to use your configured AI service. Authentication is all-or-nothing; there are no per-user roles or quotas, but a shared server can bound every call (see [per-call limits](#per-call-limits)).
 
 ## MCP
 
@@ -242,7 +242,7 @@ Preview defaults: **1024×1024 maximum and 1 MiB of encoded PNG data**, preservi
 
 An MCP client typically gives up on a call after about 60 s, while the server still finishes the work and saves it. Vixl runs every tool call in a worker thread (a slow render no longer blocks other calls or the heartbeat) and turns a slow call into a job:
 
-- **Automatic jobs.** A call that is still running after `VIXL_MCP_INLINE_SECONDS` (default 40, `0` disables) returns `{"status": "running", "job": "job_…", …}` while it carries on. Poll with `vixl_job`.
+- **Automatic jobs.** A call that is still running after `VIXL_MCP_INLINE_SECONDS` (default 40, `0` disables; `--call-timeout` or `VIXL_CALL_TIMEOUT` replaces it, see [per-call limits](#per-call-limits)) returns `{"status": "running", "job": "job_…", …}` while it carries on. Poll with `vixl_job`.
 - **Under load.** Calls run on `VIXL_MCP_WORKERS` threads (default 32). When more calls are in flight than there are workers, a new call waits proportionally less (inline seconds × workers ÷ calls in flight, at least 2 s) before it becomes a job, so a call stuck behind others is not lost to a client timeout. Job pointers and `vixl_job` report `queued` (still waiting for a worker), `wait_ms` (time spent waiting for a worker) and, in pointers, `queue_depth` (calls waiting).
 - **`as_job: true`** on the heavy tools (`vixl_operations_apply`, `vixl_import_image`, `vixl_import_document`, the export tools, `vixl_compose`, `vixl_adapt_layout`, `vixl_font_pair`, `vixl_font_install`, `vixl_workflow`, `vixl_roll`, `vixl_check`, the `vixl_ai_*` tools) starts the call as a job and returns its id at once.
 - **`vixl_job(action, id, wait)`:** `status` reports `queued`/`running`/`completed`/`failed`/`cancelled` with `progress` (`wait=20` blocks up to that many seconds, at most 50, so one call replaces a polling loop); `result` returns the call's normal result under `result` (or `error`); `cancel` stops a queued job, or a running one at its next checkpoint (a batch of operations is atomic, so a cancelled batch changes nothing; timeline exports stop between frames); `list` shows recent jobs, including calls that timed out on your side. The server remembers the last 100 jobs in memory; durable workspace jobs from `vixl_workflow submit` use the same tool with their 32-character ids.
@@ -251,6 +251,23 @@ An MCP client typically gives up on a call after about 60 s, while the server st
 - **Profiling.** With `VIXL_PROFILE=1` in the server's environment every JSON result carries a `render_profile` (per-layer draw times, cache hits, misses and writes, incremental renders; see [troubleshooting](troubleshooting.md#find-out-why-a-render-is-slow)); an image result gets it in the text note after the picture. The REST server adds it to JSON bodies and, summarised, to the `X-Vixl-Profile` header of every response. Both servers keep a document's render caches when they reload it after it changed on disk.
 
 Recommended pattern for agents: send heavy calls with a fresh `request_id`; if one times out or returns a job, call `vixl_job(action="result", id, wait=30)` (or `list` when you never saw the id) instead of resending, and resend with the same `request_id` only if the result says it failed.
+
+### Per-call limits
+
+A server shared by several people or agents can bound what one call may cost, so one oversized render cannot starve the rest. `vixl serve`, `vixl view` and `vixl mcp` take the same flags (or environment variables); nothing is limited unless one is set:
+
+| Flag | Environment | Limit |
+| --- | --- | --- |
+| `--call-timeout S` | `VIXL_CALL_TIMEOUT` | Seconds a call runs inline. A REST call still running then answers `202` with `{"status": "running", "job", "poll", "result_url"}` and a `Location` header; `GET /jobs/{id}?wait=20` reports `running`, `completed` or `failed` (with `error`), and `GET /jobs/{id}/result` returns what the call would have returned (the file, the JSON or the error; `409` while it runs). `GET /jobs` lists recent jobs. For MCP it replaces `VIXL_MCP_INLINE_SECONDS` (default 40). Calls are never killed. |
+| `--max-megapixels N` | `VIXL_MAX_MEGAPIXELS` | Lowers the pixel limit (`--max-pixels`) for canvases, imports and frames to N million, and caps the pixels one export renders: canvas × scale² × pages written as images (vector PDF, SVG, PPTX and HTML count one page). |
+| `--max-pages N` | `VIXL_MAX_PAGES` | Pages one export writes (a PDF, PPTX or HTML deck, or a contact sheet). |
+| `--max-concurrent N` | `VIXL_MAX_CONCURRENT` | Heavy calls running at once per workspace, background jobs included: exports, renders, previews, checks, operation batches, compose, workflows and provider calls (MCP: the tools that take `as_job`). Inspection and catalog calls are not counted. |
+
+A call over a limit is refused before it renders with `limit_exceeded` and its `limit` (`max_megapixels`, `max_pages` or `max_concurrent`), `value`, `maximum` and a `hint` (REST: status `413`, or `429` with `Retry-After` for concurrency). `GET /limits` (REST) and `vixl_job(action="list")` (MCP, under `limits`) report the values a server runs with.
+
+```bash
+vixl serve --call-timeout 30 --max-megapixels 50 --max-pages 40 --max-concurrent 2
+```
 
 ### Several agents on one server
 

@@ -218,6 +218,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | AGT-05 | Check the installed version and update it | `vixl --version`, `vixl update` | 1 · <1 | E | Verified Windows updater with rollback. |
 | AGT-06 | Read the house style: craft rules, tiers, variety levels or one purpose's profile | `vixl_resource_get(kind="house-style")`, `vixl house show PURPOSE` | 1 · <1 | E | Purposes: poster, social, slides, document, form, diagram, logo, motion. |
 | BRD-53 | Validate a brand kit: missing font roles, unreadable fonts or logos, palette roles left to derivation, guidance colours the palette does not approve | `vixl brand validate`, `vixl brand show` | 1 · <1 | E | |
+| AGT-34 | Export the design catalogs (sizes, palettes, pairings, layouts, briefs, guidance, check IDs) for a host app | `vixl catalog export --out catalog.json` | 1 · <1 | E | Versioned JSON with a schema; also a release asset (#536). |
 
 ### Provider-backed (one call each)
 
@@ -674,7 +675,7 @@ note the version.
 | BLK-21 | Dielines, folds and packaging nets | Not implemented as a feature | Draw with guides and paths. |
 | BLK-23 | Live (active/scripted) SVG content | Not implemented; static SVG only | – |
 | BLK-24 | Placing a library component as an editable group | Placement is a raster snapshot | Open the component as its own document and link it. |
-| BLK-25 | Hard memory cap or execution timeout per call | Not implemented | Use OS/container limits. |
+| BLK-25 | Hard memory cap or execution timeout per call | Partial: servers bound each call's megapixels, export pages and per-workspace concurrency, and detach calls over a timeout into jobs (#542); no hard memory cap or kill | [Per-call limits](interfaces.md#per-call-limits); OS/container limits for memory. |
 
 ## Cost notes
 

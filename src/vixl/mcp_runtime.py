@@ -447,10 +447,30 @@ class Runtime:
             if outcome == "running":
                 return await self.join(entry, request_id)
         box.submitted = time.time()
+        gate = None
+        if takes_job(name):
+            # Heavy calls count against the server's per-workspace cap (call_limits.py), jobs included.
+            from .call_limits import GATE, of
+
+            try:
+                maximum = of(self.session).max_concurrent
+                if maximum is not None:
+                    gate = GATE.acquire(getattr(self.session, "workspace", None), maximum)
+            except VixlError as exc:
+                if entry is not None:
+                    self.log.discard(request_id, entry)
+                raise self.tool_error(self.compact_json(for_surface(exc.as_dict(), "mcp"))) from exc
         if name in NO_EXTRAS:
             future, in_flight = self.light.submit(self.work, fn, returns, args, kwargs, state, box, request_id, entry), 0
         else:
-            future, in_flight = self.submit(fn, returns, args, kwargs, state, box, request_id, entry)
+            try:
+                future, in_flight = self.submit(fn, returns, args, kwargs, state, box, request_id, entry)
+            except BaseException:
+                if gate is not None:
+                    GATE.release(gate)
+                raise
+        if gate is not None:
+            future.add_done_callback(lambda _: GATE.release(gate))
         if as_job:
             job = self.detach(name, kwargs, future, box, request_id, entry)
             return self.pointer(job, "Started in the background.")
@@ -510,7 +530,10 @@ class Runtime:
         require(action in ("status", "result", "cancel", "list"), "action is status, result, cancel or list",
                 field="action")
         if action == "list":
-            return {"jobs": [job.summary() for job in self.jobs.recent()[:20]]}
+            from .call_limits import of
+
+            return {"jobs": [job.summary() for job in self.jobs.recent()[:20]],
+                    "limits": of(self.session).describe(self.inline_seconds)}
         require(isinstance(id, str) and id, "id is required", field="id")
         if re.fullmatch(r"[0-9a-f]{32}", id):
             return self.durable(action, id)

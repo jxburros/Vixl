@@ -247,6 +247,9 @@ def export_file(session, path, overwrite=False, document=None, **options):
             )
             report = {}
             with session.project(document=document) as project:
+                from .call_limits import check_export, of
+
+                check_export(of(session), project, fmt, options)
                 data = project.export(format=fmt, report=report, **options)
             fd, temporary_path = temporary(
                 destination.parent, like=destination if destination.exists() else None
@@ -417,7 +420,10 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
 
     # serverInfo.version names the engine, not the MCP SDK.
     server._mcp_server.version = __version__
-    runtime = Runtime(session, compact_json, ToolError, poll_with_workflow=tools == "compact")
+    from .call_limits import of as call_limits_of
+
+    runtime = Runtime(session, compact_json, ToolError, inline_seconds=call_limits_of(session).timeout,
+                      poll_with_workflow=tools == "compact")
     server.vixl_runtime = runtime
     defined = set()
     manager = server._tool_manager
@@ -1534,7 +1540,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         """Download one style of any Google Fonts family, embed and register it (default name
         family-weight); role makes it the font of that role or text stage. The result's source says whether
         it came from the cache (cache_file, VIXL_FONT_CACHE) or a download (url), and file the embedded asset.
-        scope='workspace' (needs role) instead embeds it in brand.json as the workspace default for that role."""
+        scope='workspace' instead embeds it in brand.json as the workspace default for that role (default heading)."""
         from .typefaces import install_font, install_workspace
 
         if scope == "workspace":

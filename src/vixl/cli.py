@@ -28,7 +28,7 @@ Documents: pack SOURCE_FOLDER OUTPUT.vixl, unpack PROJECT.vixl SOURCE_FOLDER,
            open FILE, save [FILE]   (NAME: letter, a4, business-card, instagram-portrait, favicon …)
            upgrade FILE [--report] [--pin-fills]   (a document saved before 0.21: what renders differently)
 Inspect:   status, inspect [LAYER], describe, layers, effects [LAYER], manifest,
-           dependencies, reproduce --check, schema
+           dependencies, reproduce --check, schema [OPERATION…] (one operation's fields, e.g. schema particles)
 Layers:    add FILE --name NAME, solid --color COLOR, gradient --start A --end B,
            text add TEXT --name NAME --size N, text NAME --text TEXT,
            remove, rename, duplicate, hide, show, raise, lower, top, bottom, reorder
@@ -101,10 +101,12 @@ Automate:  apply FILE|- [--dry-run] [--check [CHECK…]] [--preview PNG [--isola
 Emoji:     emoji list|get|template|settings|replace|install|reset|destinations|requirements|export (emoji --help)
 Resources: commands, shapes, sizes [--category print], palette list|show|add|apply,
            template list|show|add|new|apply, layout list|show|apply NAME [--seed N|random] [--set title=…],
-           guidance list|show|add|apply|import|remove, providers, models
+           guidance list|show|add|apply|import|remove, providers, models,
+           catalog export [--out FILE [--overwrite]] [--section NAME] (versioned JSON bundle of the catalogs), catalog schema
 Type:      fonts [--category serif] [--mood M], font show FAMILY, font pairings [--mood M] [--for poster],
            font pairing NAME, font principles, font install FAMILY [--weight 700] [--role heading|body], font pair NAME|random,
-           font use NAME --role heading|body, font list|import, --scope workspace (install/pair: brand.json default for new documents)
+           font use NAME --role heading|body, font list|import, --scope workspace [--workspace DIR] (install/pair: brand.json
+           default for new documents; install's role defaults to heading)
 Finish:    look LAYER NAME [--color C] [--amount 0-1] [--remove]  (clean-flat, subtle-grain, light-paper, glow, neon,
            soft-shadow, hard-shadow, outline, gradient, soft-halo, grain, paper, film, duotone, risograph, sketch,
            watercolor, halftone, hand-made, plush), looks (catalog),
@@ -144,6 +146,7 @@ Updates:   update [--check | --rollback], updates [on | off | status]
 Cache:     cache info | cache clear (the disk render cache; VIXL_RENDER_CACHE=off, VIXL_CACHE_MAX_MB=256)
 Services:  serve | view [--host 127.0.0.1] [--port 8765], notes list|add|resolve
            mcp [--workspace DIR] [--http] [--tools core|ai|compact|all] [--schema slim|full] [--planner] [--require-document]
+           per-call limits (serve, view, mcp): [--call-timeout S] [--max-megapixels N] [--max-pages N] [--max-concurrent N]
 Import:    import FILE.svg [--svg-mode editable|appearance|auto] | FILE.pdf [--page 1] [--dpi 144]
            import PHOTO.jpg | https://HOST/photo.jpg [--name N] [--credit TEXT] [--license TEXT]
 
@@ -387,6 +390,9 @@ def dispatch(argv):
     if cmd == "compose":
         from .compose import cli as compose_cli
         return compose_cli(args, options, limits), options.json
+    if cmd == "catalog":
+        from .catalog import cli as catalog_cli
+        return catalog_cli(args), options.json
     if cmd in ("open", "schema", "upgrade") and any(arg in ("--help", "-h") for arg in args):
         return command_help(cmd, args), options.json
     if cmd in ("commands", "shapes"):
@@ -418,7 +424,7 @@ def dispatch(argv):
                     | {"filter"}
                     | {"workflow"}
                     | set(
-                        "pack unpack new session open upgrade save status inspect describe layers effects manifest dependencies reproduce schema check batch convert render export export-screens export-animation spacing pixels animation info sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert validate preset ai ask generate detect ocr serve view notes import mcp update updates cache commands shapes palette template guidance font fonts roll providers models color sizes layout layouts brushes organics easings timeline export-timeline timeline-sheet export-icons pages guides links merge styles looks guide diff compose house brand emoji capabilities".split()
+                        "pack unpack new session open upgrade save status inspect describe layers effects manifest dependencies reproduce schema check batch convert render export export-screens export-animation spacing pixels animation info sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert validate preset ai ask generate detect ocr serve view notes import mcp update updates cache commands shapes palette template guidance font fonts roll providers models color sizes layout layouts brushes organics easings timeline export-timeline timeline-sheet export-icons pages guides links merge styles looks guide diff compose house brand emoji capabilities catalog".split()
                     )
                 )
             }
@@ -657,11 +663,14 @@ def dispatch(argv):
         p.add_argument("--host", default="127.0.0.1")
         p.add_argument("--port", type=int, default=8766)
         p.add_argument("--token-env", default="VIXL_API_TOKEN")
+        from .call_limits import add_arguments, from_arguments
+
+        add_arguments(p)
         a = p.parse_args(args)
         # Explicit workspaces can start empty. Existing --project configurations still work.
         path = current_path(options.project) if options.project or not a.workspace else None
         server = mcp_server(path, limits, workspace=a.workspace, schema=a.schema, planner=a.planner, tools=a.tools,
-                            require_document=a.require_document)
+                            require_document=a.require_document, call_limits=from_arguments(a))
         if a.http:
             from .interfaces import serve_mcp
             serve_mcp(server, a.host, a.port, os.environ.get(a.token_env))
@@ -678,8 +687,12 @@ def dispatch(argv):
         p.add_argument("--host", default="127.0.0.1")
         p.add_argument("--port", type=int, default=8765)
         p.add_argument("--token-env", default="VIXL_API_TOKEN")
+        from .call_limits import add_arguments, from_arguments
+
+        add_arguments(p)
         a = p.parse_args(args)
-        serve(path, a.host, a.port, os.environ.get(a.token_env), limits, open_browser=cmd == "view")
+        serve(path, a.host, a.port, os.environ.get(a.token_env), limits, open_browser=cmd == "view",
+              call_limits=from_arguments(a))
         return None, options.json
     with file_lock(str(path)):
         project = Project.load(path, limits=limits, allow_linked=options.allow_linked)
@@ -701,7 +714,8 @@ def command_help(cmd, args):
     manual = {
         "open": "open FILE",
         "upgrade": "upgrade [FILE] [--report] [--pin-fills]",
-        "schema": "schema",
+        "schema": "schema [OPERATION…]  (no argument: the whole operation-batch schema; "
+                  "schema particles pivot: just those operations' fields, types and descriptions; aliases accepted)",
         "canvas": "canvas resize SIZE | preset NAME | background COLOR",
         "save": "save [FILE]",
         "inspect": "inspect [LAYER]",
@@ -726,7 +740,8 @@ def command_help(cmd, args):
         "transaction": "transaction begin|commit|rollback",
         "assert": "assert RULE",
         "each": "each layer [--name PATTERN] [--type TYPE] -- COMMAND",
-        "serve": "serve [--host HOST] [--port PORT] [--token-env ENV]",
+        "serve": "serve [--host HOST] [--port PORT] [--token-env ENV] [--call-timeout S] [--max-megapixels N] "
+                 "[--max-pages N] [--max-concurrent N]",
         "preset": "preset save|apply|show NAME [--set KEY=VALUE]",
         "fonts": "fonts [--category serif] [--role heading] [--mood elegant] [--query TEXT]",
         "view": "view [--host HOST] [--port PORT] [--token-env ENV] (serve and open live review)",

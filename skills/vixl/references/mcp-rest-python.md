@@ -42,6 +42,9 @@ that timed out. A timeline export's `progress` has `timing` (`elapsed_s`, `eta_s
 With `VIXL_PROFILE=1` in the server's environment, results carry a `render_profile` (REST: also the
 `X-Vixl-Profile` header). Mutating tools take `request_id`: repeating a call with the same id returns the first
 result (`"replayed": true`) instead of applying twice.
+A shared server may set per-call limits (`vixl_job(action="list")` shows them under `limits`). A call over
+one fails with `limit_exceeded` and names the `limit`: `max_megapixels` (lower `scale` or export fewer
+pages), `max_pages` (export a page range, then the next) or `max_concurrent` (wait for a running job, then retry).
 
 ### Documents and files
 

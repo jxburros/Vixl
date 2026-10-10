@@ -123,6 +123,7 @@ Release assets:
 - `vixl-update.json` — protocol/platform/version, asset filename, SHA-256 and byte size.
 - `SHA256SUMS.txt` — checksums of Windows release artifacts.
 - Python wheel and source distribution — optional pip/developer installs.
+- `vixl-catalog.json` and `vixl-catalog.schema.json` — the design catalog bundle for host applications (`vixl catalog export`) and its JSON Schema.
 
 An update trusts HTTPS and access control of the official GitHub repository. The manifest and artifact have the same trust root; checksums detect corruption or mismatched downloads but do not defend against compromise of the repository's release permissions. A separate signed-manifest trust system and Authenticode signing are future hardening options.
 
