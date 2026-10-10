@@ -489,6 +489,8 @@ SUMMARIES = {
                     "horizontal/stacked lockups, strict SVG, RGB/CMYK PDF, PNG 1x-3x, icons and favicon, social "
                     "images, a usage sheet and an optional zip. No EPS.",
     "drawing-report": "Measure a hand-drawing layer: strokes, closures, straightness and cleanup suggestions.",
+    "deck-from-markdown": "Build a checked slide deck from a Markdown file: a page per heading with a fitting layout, "
+                          "rich text, tables, charts, images and speaker notes; re-running rebuilds only changed slides.",
     "mockup": "Place a design into device or print mockups (phone, laptop, browser, framed poster, business card, mug "
               "or a saved template) as a live, corner-pinned link; optionally export each.",
     "mockup-list": "List the mockup templates: built-in and the workspace's own, with their slots.",

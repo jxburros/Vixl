@@ -204,6 +204,8 @@ Read [emoji workflows](references/emojis.md) for the offline Unicode 17 catalog,
 - **Lyric videos** — `lyric-video-plan/build/export` workflow actions (song + LRC + template).
 - **Linked documents** — `link` layers render another `.vixl` live (derived crops, pattern previews, sheets); `links` reports
   stale/missing sources, `link-embed` freezes one; `corner_pin` warps a link into four corners. See [production](references/production.md).
+- **Decks from Markdown** — the `deck-from-markdown` workflow builds a checked deck (layouts, rich text, tables,
+  charts, images, speaker notes, one master) from a Markdown file in one call; re-running rebuilds only changed slides.
 - **Mockups** — the `mockup` workflow places a design in phone, laptop, browser, poster-wall, business-card or mug
   templates (or the workspace's own, `mockup-save`) as a live, corner-pinned link; one call per design, `export` renders them.
 - **Print merge** — `merge-impose` lays CSV rows out on print sheets with crop marks: vector-text PDF plus an editable sheet.

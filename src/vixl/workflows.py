@@ -9,6 +9,7 @@ from .errors import require, VixlError
 from .imposition import ACTIONS as IMPOSITION_ACTIONS, FIELD_TYPES as IMPOSITION_FIELD_TYPES
 from .links import ACTIONS as LINK_ACTIONS
 from .mockups import ACTIONS as MOCKUP_ACTIONS, FIELD_TYPES as MOCKUP_FIELD_TYPES
+from .deck_markdown import ACTIONS as DECK_ACTIONS, FIELD_TYPES as DECK_FIELD_TYPES
 from .lyrics import REQUEST_FIELDS as LYRIC_FIELDS
 from . import media_analysis, natural_guidance
 from .logo_package import FIELDS as LOGO_PACKAGE_FIELDS
@@ -56,6 +57,7 @@ ACTIONS.update(STUDIO_ACTIONS)
 ACTIONS.update(LINK_ACTIONS)
 ACTIONS.update(IMPOSITION_ACTIONS)
 ACTIONS.update(MOCKUP_ACTIONS)
+ACTIONS.update(DECK_ACTIONS)
 FILL_FORMATS = ("pdf", "png", "jpeg", "jpg", "webp", "tiff", "svg")
 
 PATH = {"type": "string", "description": "Workspace-relative path."}
@@ -89,6 +91,7 @@ ACTION_FIELD_TYPES = {
 }
 
 ACTION_FIELD_TYPES["merge-impose"] = IMPOSITION_FIELD_TYPES
+ACTION_FIELD_TYPES["deck-from-markdown"] = DECK_FIELD_TYPES
 for _action, (_fields, _) in MOCKUP_ACTIONS.items():
     ACTION_FIELD_TYPES[_action] = {key: MOCKUP_FIELD_TYPES[key] for key in _fields}
 ACTION_FIELD_TYPES["screen-capture"] = CAPTURE_FIELDS
@@ -167,6 +170,10 @@ def dispatch(session, action, request, document=None):
         from .imposition import dispatch as merge_dispatch
 
         return merge_dispatch(session, request, document)
+    if action in DECK_ACTIONS:
+        from .deck_markdown import dispatch as deck_dispatch
+
+        return deck_dispatch(session, action, request, document)
     if action in MOCKUP_ACTIONS:
         from .mockups import dispatch as mockup_dispatch
 

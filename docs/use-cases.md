@@ -168,12 +168,19 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | DAT-01 | Bar, stacked, 100 %, horizontal, line, area, pie or donut chart from inline data | `chart` | 1 · <1 | E | One editable vector group with axes and legend. |
 | DAT-02 | Chart straight from a CSV in the workspace | `chart --csv` | 1 · <1 | E | |
 | DAT-03 | Change one value, add a row or reload the CSV | `chart-data` | 1 · <1 | M:T08 R2 | Same layer IDs survive. |
+| DAT-51 | Table from rows or a workspace CSV: menu, price list, pricing table, schedule, spec sheet | `table` | 1 · <1 | E | Since #169: aligned columns (decimal for prices), header, zebra, rules; native PPTX table. |
+| DAT-52 | Change a price, add or remove a row or column, or reload the CSV of a table | `table-data` | 1 · <1 | E | Since #169; cells keep their positions and layer IDs. |
 | DAT-04 | Flowchart from a line of text (`A -> B -> C`) | `diagram-from-text` | 1 · <1 | E | Layered, tree, radial, mindmap and grid layouts. Since 0.23 it follows the document palette and dark mode. |
 
 ### Export
 
 | ID | Use case | Main route | Calls · min | Ev. | Notes |
 | --- | --- | --- | --- | --- | --- |
+| PRD-53 | Show a design on a phone, laptop, browser, framed poster, business card or mug | `vixl_workflow` mockup | 1 · <1 | E | Since #172: a live, corner-pinned link; editing the design updates the mockup. |
+| PRD-54 | One design across several mockups, exported | `vixl_workflow` mockup (list of templates, `export`) | 1 · <1 | E | Since #172. |
+| DEK-51 | Slide deck from a Markdown file (layouts, notes, tables, charts, images), checked and exported | `vixl_workflow` deck-from-markdown | 1 · 1 | E | Since #170; re-running rebuilds only changed slides. Fonts need a pairing (`fonts`) for a clean font check. |
+| PRN-51 | Sticker or label cut line around artwork | `die-cut` | 1 · <1 | E | Since #444 item 4: union outline offset by N px, stroked and unfilled. |
+| DRW-31 | Cut a traced or drawn shape into two parts along a line or polygon | `path-split` | 1 · <1 | E | Since #443; `overlap` keeps crossing shapes whole. |
 | DOC-20 | Export PNG, JPEG, WebP or TIFF | `vixl_export_file` | 1 · <1 | E | RGB PNG by default since 0.20. |
 | DOC-21 | Export at 2× or 3× for screens | `export --scale 2x`, `export-screens` | 1 · <1 | E | |
 | DOC-22 | Export editable SVG | `vixl_export_file` `.svg` | 1 · <1 | E | Strict mode rejects raster content. Since 0.24 supported blend modes stay vector as `mix-blend-mode` (#231). |
@@ -277,6 +284,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | --- | --- | --- | --- | --- | --- |
 | BRD-02 | Monogram or minimal mark | `monogram`, `minimal-mark` layout | 4–6 · 1–2 | E | |
 | BRD-03 | Turn an existing logo into favicons and app icons | `vixl_export_icons --set all` | 2–3 · <1 | E | |
+| BRD-52 | Recreate a flat logo from an image as editable curves, one layer per part, with a fidelity number | `drawing import`, `vectorize` outline `curves` + `split: components`, `path-split`, `drawing report` | 4–8 · 1–2 | E | Since #443; `fidelity.iou` proves the match. |
 | BRD-04 | Wordmark in a paired font | `wordmark` size, `text`, font pair | 4–6 · 1–2 | E | |
 | CLR-10 | Recolor a design to a different palette | `palette apply`, swatch edits | 3–5 · 1 | E | |
 | CLR-11 | Check how much of a design stays inside a palette | `vixl_workflow` palette-check | 2–3 · <1 | E | |
@@ -291,6 +299,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | DAT-11 | Mind map or org chart | `diagram --layout mindmap|tree` | 3–5 · 1 | E | |
 | DAT-12 | Edit diagram nodes, labels or remove a node | `diagram-set` | 2–3 · <1 | E | |
 | DAT-13 | Export a chart as a native PowerPoint chart with data | `export .pptx` | 2–3 · <1 | E | |
+| DAT-43 | Table-like comparison or spec sheet | `table` (columns, header, zebra), check | 3–8 · 1–2 | E | Moved from T3: one `table` operation since #169. |
 
 ### Illustration, effects and photo
 
@@ -390,7 +399,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | PIX-11 | Recolor or retime a sprite | 28 · 2.8 | M:T13 R2 | |
 | MOT-12 | Shift lyric timing in a lyric video | 30 · 5.4 | M:T14 R2 | One `offset` field; time is the re-render. |
 | ILL-22 | Revise a seamless pattern | 27 · 2.5 | M:T15 R2 | Keeps 87 % of the original ink. |
-| PRN-12 | Change prices on a café menu | 17 · 1.6 | M:T16 R2 | Per-price layers make it a direct edit. |
+| PRN-12 | Change prices on a café menu | 17 · 1.6 | M:T16 R2 | Per-price layers make it a direct edit; in a `table` a price is one `table-data` set (#169). |
 
 ### Social, web and ads
 
@@ -508,11 +517,11 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 
 | ID | Use case | Main route | Calls · min | Ev. | Notes |
 | --- | --- | --- | --- | --- | --- |
-| PRN-30 | Café menu with sections, items and prices | `print-menu` / `price-list`, per-price layers | 41 · 4.5 | M:T16 | No tab stops or dot leaders; baseline placement missing. |
+| PRN-30 | Café menu with sections, items and prices | `print-menu` / `price-list`, `table` with a decimal column | 41 · 4.5 | M:T16 | Measured before `table` (#169) aligned prices; no dot leaders. |
 | DEK-30 | Slide deck (title, content, chart, closing) to PPTX and PDF | pages, masters, notes, native PPTX chart | 47 · 4.5 | M:T05 | |
 | PRD-30 | Name badges from a spreadsheet, imposed on print sheets | `vixl_workflow` merge-impose | 48 · 3.3 | M:T07 | Empty fields don't re-centre unless `stack --hide-if-empty`. |
 | ILL-40 | Seamless repeating pattern | motifs, pattern-check, repeat | 61 · 7.5 | M:T15 | Scatter positions computed outside Vixl; no seamless scatter. |
-| SOC-60 | One campaign in six sizes | `vixl_adapt_layout`, per-size fixes | 63 · 4.4 | M:T09 | adapt-layout output often needs every layer redone. Revision: 44 calls, 1.8 min. |
+| SOC-60 | One campaign in six sizes | `vixl_adapt_layout`, per-size fixes | 63 · 4.4 | M:T09 | Measured before #210 (safe zones, uniform decoration, grouped content, `min_text`); re-measure. Revision: 44 calls, 1.8 min. |
 | PHO-40 | Photo correction (tilt, cast, exposure, noise) | effects, denoise, white balance, links | 63 · 5.0 | M:T10 | |
 | DRW-30 | Hand drawing → clean vector art with fills | `drawing import/clean/vectorize/straighten/fill` | 64 · 5.7 | M:T11 | Gap closing bridges curves with straight lines. |
 | MOT-30 | Lyric video from a song, an LRC file and a template | `lyric-video-build/export` | 40 · 6.4 | M:T14 | [ffmpeg] Audio resampled to 24 kHz. |
@@ -522,7 +531,8 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | ID | Use case | Main route | Calls · min | Ev. | Notes |
 | --- | --- | --- | --- | --- | --- |
 | SOC-61 | Instagram carousel (5–8 slides) with consistent master | pages, `social-carousel` template | 40–60 · 5–7 | E | |
-| SOC-62 | IAB display ad set (6–8 sizes) | `vixl_adapt_layout`, per-size checks | 50–70 · 5–8 | E | Same gaps as SOC-60. |
+| SOC-62 | IAB display ad set (6–8 sizes) | `vixl_adapt_layout`, per-size checks | 50–70 · 5–8 | E | Measured before #210 fixed the SOC-60 gaps; re-measure. |
+| BLK-15 | Reliable multi-size adaptation from one master | proportional `adapt-layout` / `vixl_adapt_layout` (safe zones, uniform decoration, `together`, `min_text`), checks | 40–60 · 4–6 | E | Moved from Blocked: #210 keeps content out of safe-area bands, scales decoration uniformly, keeps a rule with its headline and never sets text below `min_text`. Extreme ratios (leaderboard) still want a review. |
 | SOC-63 | Story + post + thumbnail set for one launch | linked master, `adapt-layout` | 40–60 · 5–7 | E | |
 | SOC-64 | Email campaign assets (header, banner, product tiles) | sizes, layouts, library components | 40–60 · 5–7 | E | |
 | SOC-65 | App store screenshot set with captions (5 screens) | `iphone-screenshot` size, pages, imports | 40–60 · 5–7 | E | |
@@ -547,7 +557,6 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | DAT-40 | Multi-chart infographic poster with callouts | several `chart` groups, grid, text | 40–60 · 5–7 | E | Callout numbers typed by hand (no chart→text binding). |
 | DAT-41 | One-page annual-report spread | charts, text flow, `editorial-grid` | 50–70 · 6–8 | E | |
 | DAT-42 | Architecture or system diagram with grouped zones | `diagram`, groups, connectors | 40–60 · 5–7 | E | |
-| DAT-43 | Table-like comparison or spec sheet | text + shapes on a grid | 40–70 · 5–8 | E | No table object; see Blocked. |
 | DEK-31 | Pitch or teaching deck of 8–12 slides with notes | pages, masters, slide templates | 50–70 · 6–8 | E | |
 | DEK-32 | HTML presenter deck with speaker notes and transitions | `export deck.html` | as DEK-30 + 2 | E | |
 | DEK-33 | Zine or small booklet (8–16 pages) | pages, masters, PDF | 50–70 · 6–8 | E | No imposition for saddle-stitch reading order. |
@@ -637,11 +646,10 @@ note the version.
 | BLK-04 | High-bit-depth (16/32-bit) editing | Not implemented (RGBA8) | – |
 | BLK-05 | Draw live with a pressure tablet | No live input; pressure is explicit or simulated | Send stroke points with pressure values. |
 | BLK-06 | Use a desktop GUI, TUI or web editor | Headless only | `vixl view` for live review. [server] |
-| BLK-07 | Tables with tab stops, decimal tabs or dot leaders | Missing (T16) | One text layer per cell or price. |
+| BLK-07 | Tab stops or dot leaders in text | Missing (T16); decimal-aligned columns in a `table` since #169 (DAT-51) | A `table` with a decimal column for price lists; dot leaders by hand. |
 | BLK-09 | Bind chart values into text, or one chart into another | Missing (T08) | Type totals and callouts by hand. |
 | BLK-13 | Motion-path editor, nested compositions with their own timelines | Not implemented (group and child tracks compose; `attach` follows a moving layer since 0.22) | Keyframes per property; markers. |
 | BLK-14 | Automatic discovery of fallback fonts for mixed scripts | Not implemented (fallbacks are listed by hand; weight- and slope-matched since 0.22) | Document-wide `font-fallbacks`. |
-| BLK-15 | Reliable multi-size adaptation from one master | Partial: proportional `adapt-layout` leaves story text in bands, stretches decoration, can set banner text tiny (T02, T09); since 0.24 `recompose: true` rebuilds layout-generated designs (SHP-18) | Recompose layout-generated masters; fix other sizes after adapting. |
 | BLK-17 | Video generation | Needs an explicitly configured gateway; no bundled model | [AI] |
 | BLK-18 | Segmentation or background removal with OpenAI alone | Needs a mask-producing HTTP/ComfyUI provider | [AI] |
 | BLK-19 | Branch merging by replay or real-time collaboration | Not implemented; shared-filesystem locks only | Branch fork/merge with explicit resolutions. |
