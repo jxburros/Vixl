@@ -461,6 +461,11 @@ def compile_command(cmd, args):
         parser.add_argument("--anchors", type=json.loads, help='JSON, e.g. \'{"logo": "bottom-right"}\'')
         parser.add_argument("--where", type=json.loads, help="edit-layers selector limiting the adapted layers")
         parser.add_argument("--text", choices=["scale", "keep"])
+        parser.add_argument("--min-text", type=float, help="smallest font size in pixels (0 turns it off)")
+        parser.add_argument("--no-safe", dest="safe", action="store_false", default=None,
+                            help="let content sit in the new size's safe-area margins")
+        parser.add_argument("--no-together", dest="together", action="store_false", default=None,
+                            help="anchor every layer on its own instead of moving close layers as one")
         parser.add_argument("--no-report", dest="report", action="store_false", default=None)
         parser.add_argument("--recompose", action="store_true", default=None,
                             help="Reapply the stored layout-apply recipe at the new size; replaces edits to generated layers")
