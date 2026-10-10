@@ -358,16 +358,63 @@ def frames(spec, root, *, limits=None, cancelled=lambda: False, streamed=False,
                         clips.pop(i).close()
 
 
+def _output_size(spec, settings, region=None):
+    """The encoded frame size: the film's, at most 640 px for drafts, then the preview region."""
+    size = (settings["width"], settings["height"])
+    if spec.get("quality") == "draft":
+        ratio = min(1, 640 / max(size))
+        size = tuple(max(1, round(n * ratio)) for n in size)
+    crop = preview_region(region, settings, size)
+    if crop:
+        size = (crop[2] - crop[0], crop[3] - crop[1])
+    return size
+
+
+def _mux_audio(spec, root, video, temp, settings, first, last, suffix):
+    """Mix the film's audio tracks and mux them, cut to frames ``first``–``last``, under ``video``.
+    Returns the muxed file's path and the mix format."""
+    mixed = Path(temp) / ("mixed" + suffix)
+    command = [shutil.which("ffmpeg"), "-v", "error", "-i", str(video)]
+    from .audio import prepare_tracks
+    tracks, sound = prepare_tracks(spec["audio"], temp, settings["duration"], root=root,
+                                   sample_rate=spec.get("sample_rate"),
+                                   encoder="opus" if suffix.lower() == ".webm" else None)
+    filters = []
+    for i, track in enumerate(tracks, 1):
+        path = Path(track["source"])
+        command.extend(["-ss", str(track.get("trim", 0) / 1000), "-i", str(path)])
+        delay = round(track.get("start", 0))
+        filters.append(f"[{i}:a]volume={track.get('volume', 1)},adelay={delay}:all=1[a{i}]")
+    labels = "".join(f"[a{i}]" for i in range(1, len(tracks) + 1))
+    filters.append(labels + f"amix=inputs={len(tracks)}:normalize=0,apad,atrim=start={first / settings['fps']}:end={last / settings['fps']},asetpts=PTS-STARTPTS[a]")
+    command.extend([
+        "-filter_complex", ";".join(filters), "-map", "0:v", "-map", "[a]", "-c:v", "copy",
+        "-c:a", "aac" if suffix == ".mp4" else "libopus", "-ar", str(sound["sample_rate"]),
+        "-t", str((last - first) / settings["fps"]), str(mixed),
+    ])
+    result = subprocess.run(command, capture_output=True, timeout=600)
+    require(result.returncode == 0, "Audio mix failed", "codec_error")
+    return mixed, sound
+
+
 def export(spec, root, output, *, limits=None, cancelled=lambda: False, progress=lambda value: None,
-           start=None, end=None, shot=None, region=None):
+           start=None, end=None, shot=None, region=None, frame_range=None):
+    """Render a film to ZIP, MP4 or WebM. ``start``/``end`` (ms) or ``shot`` render part of it;
+    ``frame_range`` (first, last) selects frames exactly, as segmented renders do."""
     import json
 
     output = Path(output)
     require(output.suffix.lower() in (".zip", ".mp4", ".webm"), "Film output must be ZIP, MP4 or WebM")
     streamed = output.suffix.lower() in (".mp4", ".webm")
-    selected = start is not None or end is not None or shot is not None
+    selected = start is not None or end is not None or shot is not None or frame_range is not None
     settings = plan(spec, limits, streamed or selected)
-    first, last = preview_interval(settings, start=start, end=end, shot=shot)
+    if frame_range is not None:
+        first, last = frame_range
+        require(start is None and end is None and shot is None, "Choose frame_range or an interval, not both")
+        require(isinstance(first, int) and isinstance(last, int) and 0 <= first < last <= settings["frames"],
+                "Invalid film frame interval")
+    else:
+        first, last = preview_interval(settings, start=start, end=end, shot=shot)
     count = last - first
     require(streamed or count <= MAX_FRAMES, "ZIP preview exceeds the frame budget", "resource_limit")
     require(not output.exists(), "Film output already exists")
@@ -400,55 +447,14 @@ def export(spec, root, output, *, limits=None, cancelled=lambda: False, progress
         else:
             from .timeline import _video
 
-            size = (settings["width"], settings["height"])
-            if spec.get("quality") == "draft":
-                ratio = min(1, 640 / max(size))
-                size = tuple(max(1, round(n * ratio)) for n in size)
-            crop = preview_region(region, settings, size)
-            if crop:
-                size = (crop[2] - crop[0], crop[3] - crop[1])
+            size = _output_size(spec, settings, region)
             _video(staged, tracked(), settings["fps"], output.suffix[1:],
                    60 if spec.get("quality") == "draft" else 90, False, count, size)
             if spec.get("audio"):
-                mixed = Path(temp) / ("mixed" + output.suffix)
-                command = [shutil.which("ffmpeg"), "-v", "error", "-i", str(staged)]
-                from .audio import prepare_tracks
-                tracks, sound = prepare_tracks(spec["audio"], temp, settings["duration"], root=root,
-                                               sample_rate=spec.get("sample_rate"),
-                                               encoder="opus" if output.suffix.lower() == ".webm" else None)
-                filters = []
-                for i, track in enumerate(tracks, 1):
-                    path = Path(track["source"])
-                    command.extend(["-ss", str(track.get("trim", 0) / 1000), "-i", str(path)])
-                    delay = round(track.get("start", 0))
-                    filters.append(f"[{i}:a]volume={track.get('volume', 1)},adelay={delay}:all=1[a{i}]")
-                labels = "".join(f"[a{i}]" for i in range(1, len(tracks) + 1))
-                filters.append(labels + f"amix=inputs={len(tracks)}:normalize=0,apad,atrim=start={first / settings['fps']}:end={last / settings['fps']},asetpts=PTS-STARTPTS[a]")
-                command.extend(
-                    [
-                        "-filter_complex",
-                        ";".join(filters),
-                        "-map",
-                        "0:v",
-                        "-map",
-                        "[a]",
-                        "-c:v",
-                        "copy",
-                        "-c:a",
-                        "aac" if output.suffix == ".mp4" else "libopus",
-                        "-ar",
-                        str(sound["sample_rate"]),
-                        "-t",
-                        str(count / settings["fps"]),
-                        str(mixed),
-                    ]
-                )
-                result = subprocess.run(command, capture_output=True, timeout=600)
-                require(result.returncode == 0, "Audio mix failed", "codec_error")
-                staged = mixed
+                staged, sound = _mux_audio(spec, root, staged, temp, settings, first, last, output.suffix)
         require(not cancelled(), "Film cancelled", "cancelled")
         publish_file(output, staged)
-    return {
+    result = {
         "version": 1,
         "output": str(output),
         "frames": count,
@@ -457,6 +463,216 @@ def export(spec, root, output, *, limits=None, cancelled=lambda: False, progress
         "quality": spec.get("quality", "final"),
         **(sound or {}),
     }
+    if streamed:
+        # The encoder pads odd sizes to even ones (yuv420p needs them), so this is the file's size.
+        width, height = _output_size(spec, settings, region)
+        result.update(width=width + width % 2, height=height + height % 2, fps=settings["fps"])
+    return result
+
+
+def _segment_key(spec, root, per, suffix, limits):
+    """What a segmented render's parts depend on: the spec without its audio, the part length, the
+    format, the Vixl version and the content of every shot source (a document's state and assets,
+    not its file bytes, which change with every save)."""
+    import hashlib
+    import json
+
+    from . import __version__
+    from .project import Project
+
+    digest = hashlib.sha256()
+    body = {"spec": {k: v for k, v in spec.items() if k != "audio"}, "per": per, "suffix": suffix.lower(),
+            "version": __version__}
+    digest.update(json.dumps(body, sort_keys=True, default=str).encode())
+    for shot in spec["shots"]:
+        path = local_path(root, shot["source"])
+        if path.suffix.lower() == ".vixl":
+            project = Project.load(path, limits=limits)
+            digest.update(json.dumps(project.state, sort_keys=True, default=str).encode())
+            for name in sorted(project.assets):
+                digest.update(name.encode() + hashlib.sha256(project.assets[name]).digest())
+        else:
+            with path.open("rb") as source:
+                for block in iter(lambda: source.read(1 << 20), b""):
+                    digest.update(block)
+    return digest.hexdigest()
+
+
+def export_segments(spec, root, output, segment, *, limits=None, cancelled=lambda: False, progress=lambda value: None,
+                    work=None):
+    """Render an MP4/WebM film in parts of ``segment`` ms, then join them and add the audio once.
+
+    Each finished part is kept in ``work`` (default ``.<output name>.parts`` beside the output), so
+    running the same render again after a crash or a cancel skips the parts already there. Parts
+    from a different spec, source or Vixl version are discarded. The folder is removed once the
+    output is published."""
+    import json
+
+    limits = limits or Limits()
+    output = Path(output)
+    suffix = output.suffix.lower()
+    require(suffix in (".mp4", ".webm"), "Segmented film output must be MP4 or WebM")
+    require(not output.exists(), "Film output already exists")
+    ffmpeg = shutil.which("ffmpeg")
+    require(ffmpeg, "MP4/WebM export needs ffmpeg on PATH", "missing_dependency")
+    settings = plan(spec, limits, True)
+    fps, total = settings["fps"], settings["frames"]
+    per = max(1, round(finite(segment, "segments", 1000, 600000) * fps / 1000))
+    parts = [(first, min(first + per, total)) for first in range(0, total, per)]
+    work = Path(work) if work is not None else output.parent / f".{output.name}.parts"
+    key = _segment_key(spec, root, per, suffix, limits)
+    manifest = work / "manifest.json"
+    if work.exists():
+        try:
+            same = json.loads(manifest.read_text(encoding="utf-8")).get("key") == key
+        except (OSError, ValueError, AttributeError):
+            same = False
+        if not same:
+            shutil.rmtree(work)
+    work.mkdir(parents=True, exist_ok=True)
+    manifest.write_text(json.dumps({"version": 1, "key": key, "frames_per_part": per, "parts": len(parts)}),
+                        encoding="utf-8")
+    video_spec = {k: v for k, v in spec.items() if k != "audio"}
+    paths, reused, done = [], 0, 0
+    for i, (first, last) in enumerate(parts):
+        require(not cancelled(), "Film cancelled", "cancelled")
+        part = work / f"part-{i:04d}{suffix}"
+        paths.append(part)
+        if part.exists():
+            # A part is published only once it is complete, so one that exists is whole.
+            reused += 1
+        else:
+            export(video_spec, root, part, limits=limits, cancelled=cancelled, frame_range=(first, last),
+                   progress=lambda value, base=done: progress({"done": base + value["done"], "total": total}))
+        done += last - first
+        progress({"done": done, "total": total})
+    sound = None
+    with tempfile.TemporaryDirectory(dir=output.parent, prefix=".film-") as temp:
+        listing = Path(temp) / "parts.txt"
+        listing.write_text("".join("file '" + str(p.resolve()).replace("'", "'\\''") + "'\n" for p in paths),
+                           encoding="utf-8")
+        staged = Path(temp) / ("joined" + suffix)
+        joined = subprocess.run([ffmpeg, "-v", "error", "-f", "concat", "-safe", "0", "-i", str(listing), "-c", "copy",
+                                 str(staged)], capture_output=True, timeout=600)
+        require(joined.returncode == 0, "Joining the rendered parts failed", "codec_error",
+                detail=joined.stderr.decode("utf-8", "replace").strip()[:300])
+        if spec.get("audio"):
+            staged, sound = _mux_audio(spec, root, staged, temp, settings, 0, total, suffix)
+        require(not cancelled(), "Film cancelled", "cancelled")
+        publish_file(output, staged)
+    shutil.rmtree(work, ignore_errors=True)
+    width, height = _output_size(spec, settings)
+    return {
+        "version": 1,
+        "output": str(output),
+        "frames": total,
+        "duration": total * 1000 / fps,
+        "start": 0.0,
+        "quality": spec.get("quality", "final"),
+        **(sound or {}),
+        "width": width + width % 2,
+        "height": height + height % 2,
+        "fps": fps,
+        "segments": {"parts": len(parts), "reused": reused, "rendered": len(parts) - reused, "frames_per_part": per},
+    }
+
+
+def _probe_media(ffprobe, path):
+    """ffprobe's JSON for a file's streams and container, or ``None`` when it cannot read it."""
+    import json
+
+    command = [ffprobe, "-v", "error", "-show_entries",
+               "stream=codec_type,codec_name,width,height,r_frame_rate,nb_frames,duration,channels,sample_rate"
+               ":format=duration", "-of", "json", str(path)]
+    try:
+        result = subprocess.run(command, capture_output=True, timeout=120)
+        return json.loads(result.stdout or b"{}") if result.returncode == 0 else None
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        return None
+
+
+def _rate(value):
+    try:
+        top, _, bottom = str(value).partition("/")
+        return float(top) / float(bottom or 1)
+    except (TypeError, ValueError, ZeroDivisionError):
+        return None
+
+
+def _seconds(*values):
+    for value in values:
+        try:
+            seconds = float(value)
+        except (TypeError, ValueError):
+            continue
+        if math.isfinite(seconds) and seconds >= 0:
+            return seconds
+    return None
+
+
+def verify_video(path, result, *, requested_ms=None):
+    """Read an encoded MP4/WebM back with ffprobe and compare it with what the export rendered
+    (``result``: its width, height, fps, frames and, with audio, sample_rate and channels).
+
+    Returns ``{"status", "passed", "checks", "video", "audio", "quantization"}``. ``status`` is
+    ``passed``, ``failed`` or ``skipped`` (no ffprobe, or nothing to compare); ``quantization``
+    reports how far the whole-frame length is from ``requested_ms``, which is expected and at most
+    one frame, not drift."""
+    ffprobe = shutil.which("ffprobe")
+    if not ffprobe:
+        return {"status": "skipped", "passed": None, "reason": "ffprobe is not on PATH"}
+    if not {"width", "height", "fps", "frames"} <= set(result):
+        return {"status": "skipped", "passed": None, "reason": "the export did not report the encoded size"}
+    info = _probe_media(ffprobe, path)
+    checks = []
+
+    def check(name, expected, actual, passed):
+        checks.append({"check": name, "expected": expected, "actual": actual, "passed": bool(passed)})
+
+    if info is None:
+        check("readable", True, False, False)
+        return {"status": "failed", "passed": False, "checks": checks}
+    streams = info.get("streams") or []
+    video = next((s for s in streams if s.get("codec_type") == "video"), None)
+    audio = next((s for s in streams if s.get("codec_type") == "audio"), None)
+    fps, frames = result["fps"], result["frames"]
+    frame_ms = 1000 / fps
+    check("video_stream", True, video is not None, video is not None)
+    report = {"status": "failed", "passed": False, "checks": checks}
+    if video is not None:
+        size = [video.get("width"), video.get("height")]
+        check("dimensions", [result["width"], result["height"]], size, size == [result["width"], result["height"]])
+        rate = _rate(video.get("r_frame_rate"))
+        check("fps", fps, rate, rate is not None and abs(rate - fps) < 0.01)
+        seconds = _seconds(video.get("duration"), (info.get("format") or {}).get("duration"))
+        counted = int(video["nb_frames"]) if str(video.get("nb_frames", "")).isdigit() else (
+            round(seconds * fps) if seconds is not None else None)
+        check("frames", frames, counted, counted == frames)
+        duration_ms = None if seconds is None else round(seconds * 1000, 3)
+        check("duration", round(frames * frame_ms, 3), duration_ms,
+              duration_ms is not None and abs(duration_ms - frames * frame_ms) <= frame_ms + 1)
+        report["video"] = {"codec": video.get("codec_name"), "width": size[0], "height": size[1], "fps": rate,
+                           "frames": counted, "duration_ms": duration_ms}
+    wanted = "sample_rate" in result
+    check("audio_stream", wanted, audio is not None, (audio is not None) == wanted)
+    if audio is not None:
+        rate = int(audio["sample_rate"]) if str(audio.get("sample_rate", "")).isdigit() else None
+        seconds = _seconds(audio.get("duration"))
+        report["audio"] = {"codec": audio.get("codec_name"), "sample_rate": rate, "channels": audio.get("channels"),
+                           "duration_ms": None if seconds is None else round(seconds * 1000, 3)}
+        if wanted:
+            check("sample_rate", result["sample_rate"], rate, rate == result["sample_rate"])
+            check("channels", result.get("channels"), audio.get("channels"), audio.get("channels") == result.get("channels"))
+    if requested_ms is not None:
+        encoded = frames * frame_ms
+        delta = round(encoded - requested_ms, 3)
+        # Whole frames round the length up by less than one frame: expected, and reported as such.
+        report["quantization"] = {"requested_ms": requested_ms, "encoded_ms": round(encoded, 3), "delta_ms": delta,
+                                  "frame_ms": round(frame_ms, 3), "within_one_frame": abs(delta) < frame_ms}
+        check("quantization", f"under {round(frame_ms, 3)} ms", delta, abs(delta) < frame_ms)
+    report["passed"] = all(item["passed"] for item in checks)
+    report["status"] = "passed" if report["passed"] else "failed"
+    return report
 
 
 def preview_interval(settings, *, start=None, end=None, shot=None):
