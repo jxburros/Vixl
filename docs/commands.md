@@ -85,6 +85,7 @@ Set `VIXL_NO_UPDATE=1` to suppress both automatic checks and pending activation 
 | `save [copy.vixl]` | Save, or save as a new selected project |
 | `status`, `inspect [LAYER]`, `describe`, `layers [--full]` | JSON state, including resolved bounds; `layers` abbreviates long path data and point lists (`--full` or `inspect LAYER` shows them) |
 | `manifest`, `dependencies`, `reproduce --check` | List assets/fonts/providers; check current renderability |
+| `reproduce --reference PNG [--tolerance N] [--max-fraction F]`, `reproduce --write-lock FILE`, `reproduce --lock FILE` | Verify a render against an approved reference or a lockfile; reports `renderable`, `environment-matched` or `reference-verified` and located drift ([reproduction](agent-trust.md#reproduction)) |
 | `render [project.vixl] --out preview.png --set title=Hello` | Render without persisting overrides |
 | `export image.jpg --quality 90 --scale 2x` | Export, preserving the editable document. `--quality` also compresses PDF images; `--title` sets the PDF title (default: the title layer, then the file name); `--max-bytes N` warns when a raster file is larger, and a PNG over 1 MB warns, naming texture looks (grain, paper, film) as the likely cause |
 | `export image.png --profile discord` | Contain in 512×512; Instagram contains in 1080×1080; print emits RGB/RGBA TIFF at 300 DPI |

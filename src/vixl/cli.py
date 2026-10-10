@@ -1013,8 +1013,15 @@ def project_command(project, cmd, args, *, detail="compact"):
         for key in ("artboard", "comp"):
             p.add_argument("--" + key)
         p.add_argument("--strict", action="store_true", help="Exit with an error when any check fails")
+        p.add_argument("--repair", nargs="*", choices=["fit-text", "contrast-ink", "safe-area-nudge"],
+                       help="First apply the built-in repair for each fix finding it resolves (all kinds, or the named "
+                            "ones), saved as one undoable step")
+        p.add_argument("--offset", type=int, default=0, help="First finding to list")
+        p.add_argument("--limit", type=int, help="Findings to list (passed and the counts still cover all)")
         options = vars(p.parse_args(args))
         strict = options.pop("strict")
+        if options["repair"] is not None:
+            options["repair"] = options["repair"] or True
         from .pages import parse_pages
 
         deck = {"pages": parse_pages(options.pop("pages")), "min_font": options.pop("min_font"),
@@ -1032,7 +1039,7 @@ def project_command(project, cmd, args, *, detail="compact"):
         result = project.check(**options)
         if strict and not result["passed"]:
             raise VixlError("design_check_failed", f"{result['errors']} design error(s)", report=result)
-        return result, False
+        return result, bool(result.get("repairs", {}).get("operations"))
     if cmd == "pixels":
         require(len(args) <= 1, "Use pixels [LAYER]")
         return project.inspect_pixels(args[0] if args else None), False

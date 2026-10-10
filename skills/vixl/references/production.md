@@ -14,13 +14,15 @@ Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/mai
    new size and may replace manual edits) for predictable layout tasks;
    save a bounded sequence with `action-define`. `role-set`, `motion-define`, and
    `motion-apply` produce editable staggered/relative animation tracks.
-3. Workflow `act` accepts operations, suites and dry_run. It returns measurements and
-   commits only if checks pass. `check` reports failed or needs_review; neither is a pass.
+3. Workflow `act` accepts operations, suites, dry_run and repair. It returns measurements and
+   commits only if checks pass (`repair: true` first tries the built-in repair map on the candidate).
+   `check` reports failed or needs_review; neither is a pass. Every result has an `outcome`.
 4. Workflow `capture` saves a `.vixl` recipe from explicit typed inputs and text/color
    bindings. Include defaults and difficult examples. Image slots use embedded asset IDs.
 5. Workflow `plan` accepts a spec with rows, matrix, artboards, format and quality.
    Inspect its count before `run`, which also needs an output directory. Every output
-   gets checks; up to three named repair_actions can run without changing the suites.
+   gets checks; up to three named repair_actions can run without changing the suites (`auto` runs the
+   built-in repair map).
 6. For long production, call `submit` with `start:true`, then `status` with its returned
    ID. The source is snapshotted. `cancel` is cooperative; `resume` preserves remote IDs.
    Never blindly repeat an uncertain provider request.
@@ -89,4 +91,4 @@ material visual changes and unresolved/unsupported measurements.
 
 ### Field-report corrections
 
-Production without suites still checks bounds and flow; clipping returns needs_review. For variable reflow, define an action that reapplies the layout with replace=true and stable seed/prefix, then include it in recipe/actions. Generated layer IDs and manual edits can change. Unchanged, checksum-verified output can bypass repeated checks. See docs/production.md.
+Production without suites still checks bounds and flow; clipping returns needs_review and a clean output is completed but `unvalidated`. For variable reflow, define an action that reapplies the layout with replace=true and stable seed/prefix, then include it in recipe/actions. Generated layer IDs and manual edits can change. Unchanged, checksum-verified output can bypass repeated checks. See docs/production.md.
