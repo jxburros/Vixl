@@ -489,7 +489,7 @@ SUMMARIES = {
                     "horizontal/stacked lockups, strict SVG, RGB/CMYK PDF, PNG 1x-3x, icons and favicon, social "
                     "images, a usage sheet and an optional zip. No EPS.",
     "drawing-report": "Measure a hand-drawing layer: strokes, closures, straightness and cleanup suggestions.",
-    "drawing-compare": "Write a before/after comparison PNG of a drawing layer.",
+    "drawing-compare": "Write a before/after comparison PNG of a drawing layer; the result reports fidelity (IoU, pixel mismatch).",
     "resource-list": "List built-in and user resources of one category.",
     "resource-get": "Read one named resource.",
     "resource-save": "Save a custom resource in the workspace library.",

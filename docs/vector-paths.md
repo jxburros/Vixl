@@ -173,6 +173,13 @@ handles equal in length. `path-simplify` reduces nodes by a pixel `tolerance`;
 ## Constructive paths
 
 - `offset-path`: positive/negative pixel `distance`, `join` and `miter_limit`.
+- `path-split`: cut a filled path into two named parts along a `polygon` (inside, then outside) or a
+  `line` (extended past the shape; the part left of the line's direction first, which is the upper part of
+  a line drawn left to right). Points are the layer's local pixels, or document pixels with
+  `space: "canvas"`. `overlap` (px) makes both parts reach across the cut, duplicating the strip they
+  share. The parts copy the target's box, transform and paint, sit above it as `names` (default
+  `NAME-a`, `NAME-b`) and are refitted as Bézier curves (`curves: false` keeps straight segments); the
+  target is kept, hidden. A cut that leaves either side empty is an error.
 - `die-cut`: a sticker or label cut line around what `targets` draw (any layer type: text, images,
   groups). Their ink is traced, holes are filled so the line follows the outer silhouette, and the
   union is grown by `distance` (default 12 px) with `offset-path`'s buffering (`join`, default `round`).

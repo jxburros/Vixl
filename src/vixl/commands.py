@@ -113,6 +113,10 @@ def compile_command(tokens):
     guided = compile_guides(cmd, args)
     if guided is not None:
         return guided
+    from .path_split import compile_command as compile_split
+    split = compile_split(cmd, args)
+    if split is not None:
+        return split
     from .diecut import compile_command as compile_diecut
     diecut = compile_diecut(cmd, args)
     if diecut is not None:

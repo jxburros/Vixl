@@ -412,6 +412,8 @@ def _operation_schema():
     table_schemas(add)
     from .diecut import schemas as diecut_schemas
     diecut_schemas(add)
+    from .path_split import schemas as split_schemas
+    split_schemas(add)
     from .finishing import schemas as finishing_schemas
     finishing_schemas(add)
     from .diagrams import schemas as diagram_schemas

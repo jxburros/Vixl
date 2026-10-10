@@ -972,7 +972,9 @@ def schemas(add):
     from .schema import S
 
     settings = ("Per-action settings (see docs/drawing.md). import/clean: ink (line colour, default #1d1d1f), sheet, "
-                "perspective, deskew, crop, weight, threshold. vectorize: mode, width (pixels or 'uniform'), color. "
+                "perspective, deskew, crop, weight, threshold. vectorize: mode, width (pixels or 'uniform'), color; outline "
+                "mode also curves (fit Bézier curves), tolerance, corner_threshold, split ('components': one layer per "
+                "connected part, in reading order), min_area. "
                 "straighten: angles ('drawn' keeps each line's angle, 'axes', '45', 'guides' or degrees), tolerance, "
                 "close_gaps (pixels or 'auto'), circles, polylines. smooth: amount, corners (keep, the default, leaves "
                 "straightened lines and polylines as they are; round smooths them too). restyle: width (pixels or 'uniform'), width_scale. "
@@ -1247,7 +1249,114 @@ def clean_in_frame(image, settings, record, state):
 
 
 VECTORIZE = {"mode": "centerline", "min_length": 6, "detail": 0.75, "max_strokes": MAX_STROKES, "keep_ink": False,
-             "color": None, "width": None}
+             "color": None, "width": None, "curves": False, "tolerance": 1.0, "corner_threshold": 60.0, "split": "none",
+             "min_area": 4}
+MAX_PARTS = 256  # split: components makes at most this many part layers; smaller parts beyond it share one
+
+
+def reading_order(boxes):
+    """Indices of ``(x0, y0, x1, y1)`` boxes in reading order: lines top to bottom (a box joins a line when its
+    vertical centre lies within the line's extent), left to right within a line."""
+    lines = []
+    for index in sorted(range(len(boxes)), key=lambda i: (boxes[i][1], boxes[i][0])):
+        x0, y0, x1, y1 = boxes[index]
+        centre = (y0 + y1) / 2
+        line = next((line for line in lines if line["top"] <= centre <= line["bottom"]), None)
+        if line is None:
+            lines.append({"top": y0, "bottom": y1, "items": [index]})
+        else:
+            line["items"].append(index)
+            line["top"], line["bottom"] = min(line["top"], y0), max(line["bottom"], y1)
+    lines.sort(key=lambda line: line["top"])
+    return [i for line in lines for i in sorted(line["items"], key=lambda i: boxes[i][0])]
+
+
+def components(mask, min_area=4):
+    """``[(x0, y0, x1, y1, sub-mask, area)]``: the 8-connected parts of ``mask`` in reading order."""
+    labels, count = label(mask)
+    if not count:
+        return []
+    ys, xs = np.nonzero(labels)
+    ids = labels[ys, xs]
+    area = np.bincount(ids, minlength=count + 1)
+    low_x, low_y = np.full(count + 1, mask.shape[1]), np.full(count + 1, mask.shape[0])
+    high_x, high_y = np.zeros(count + 1, int), np.zeros(count + 1, int)
+    np.minimum.at(low_x, ids, xs)
+    np.minimum.at(low_y, ids, ys)
+    np.maximum.at(high_x, ids, xs + 1)
+    np.maximum.at(high_y, ids, ys + 1)
+    keep = [k for k in range(1, count + 1) if area[k] >= min_area]
+    boxes = [(int(low_x[k]), int(low_y[k]), int(high_x[k]), int(high_y[k])) for k in keep]
+    order = reading_order(boxes)
+    result = []
+    for i in order:
+        k, (x0, y0, x1, y1) = keep[i], boxes[i]
+        result.append((x0, y0, x1, y1, labels[y0:y1, x0:x1] == k, int(area[k])))
+    return result
+
+
+def outline_path(mask, settings, offset=(0.0, 0.0)):
+    """Closed outline path data around ``mask`` (holes included): fitted Bézier curves with ``curves``, else
+    simplified straight segments. Coordinates are pixel edges shifted by ``offset``."""
+    from .trace import elements_path, mask_contours, mask_curves
+
+    if settings["curves"]:
+        path, _ = mask_curves(mask, tolerance=float(finite(settings["tolerance"], "tolerance", 0.1, 50)),
+                              corner_threshold=float(finite(settings["corner_threshold"], "corner_threshold", 1, 179)),
+                              smooth=0.6, min_area=float(settings["min_area"]), offset=offset)
+        return path
+    loops = mask_contours(mask, smooth=0.6, tolerance=float(settings["detail"]), min_area=float(settings["min_area"]))
+    shift = np.asarray(offset, float) + 0.5
+    return elements_path([{"points": loop + shift, "closed": True, "smooth": False} for loop in loops])
+
+
+def _outline_layers(project, group, mask, settings, color):
+    """The outline-mode line layers: one path for the whole drawing, or one per connected part."""
+    name = group["name"]
+    cw, ch = group["content_width"], group["content_height"]
+
+    def add(label, box, path):
+        x, y, w, h = box
+        layer = new_layer(label, "shape", w, h, shape="path", fill=color, stroke="transparent", path=path,
+                          path_view=[w, h], x=x, y=y)
+        layer.update(parent=group["id"], drawing_role="lines")
+        _insert(project, layer, before=group)
+        return layer
+
+    if settings["split"] != "components":
+        if not settings["curves"]:
+            from .trace import elements_path, mask_contours
+
+            loops = mask_contours(mask, smooth=0.6, tolerance=float(settings["detail"]))
+            require(loops, "No lines to trace", field="target")
+            path = elements_path([{"points": loop, "closed": True, "smooth": False} for loop in loops])
+        else:
+            path = outline_path(mask, settings)
+            require(path, "No lines to trace", field="target")
+        add(f"{name}/lines", (0, 0, cw, ch), path)
+        return 1
+    parts = components(mask, int(finite(settings["min_area"], "min_area", 1, 1e7)))
+    require(parts, "No lines to trace", field="target")
+    main, rest = parts[:MAX_PARTS - 1], parts[MAX_PARTS - 1:]
+    if len(parts) <= MAX_PARTS:
+        main, rest = parts, []
+    made = 0
+    for x0, y0, x1, y1, sub, _ in main:
+        # Trace with a 2-pixel margin so the blur and the contour close around the part.
+        path = outline_path(np.pad(sub, 2), settings, offset=(-1.0, -1.0))
+        if path:
+            made += 1
+            add(f"{name}/part-{made:03d}", (x0 - 1, y0 - 1, x1 - x0 + 2, y1 - y0 + 2), path)
+    if rest:
+        leftover = np.zeros_like(mask)
+        for x0, y0, x1, y1, sub, _ in rest:
+            leftover[y0:y1, x0:x1] |= sub
+        path = outline_path(leftover, settings)
+        if path:
+            made += 1
+            add(f"{name}/small-parts", (0, 0, cw, ch), path)
+    require(made, "No lines to trace", field="target")
+    return made
 
 
 def uniform_width(records):
@@ -1269,12 +1378,15 @@ def _width_setting(value, records):
 
 
 def _vectorize(project, group, op):
-    from .trace import mask_contours, elements_path, simplify
+    from .trace import simplify
 
     settings = _settings(op.get("settings"), VECTORIZE)
     require(settings["mode"] in ("centerline", "outline"), "mode is centerline or outline", field="settings")
     require(settings["width"] is None or settings["mode"] == "centerline",
             "width applies to centerline mode; outline mode keeps the pen's own pressure", field="settings")
+    require(settings["split"] in ("none", "components"), "split is none or components", field="settings")
+    require(settings["mode"] == "outline" or not (settings["curves"] or settings["split"] == "components"),
+            "curves and split apply to outline mode (centerline strokes are already smooth)", field="settings")
     record = group["drawing"]
     mask = np.asarray(project.image(record["reference"], "L")) > 127
     ink = _child(project, group, "ink")
@@ -1285,13 +1397,7 @@ def _vectorize(project, group, op):
         project.state["layers"].remove(layer)
     name = group["name"]
     if settings["mode"] == "outline":
-        loops = mask_contours(mask, smooth=0.6, tolerance=float(settings["detail"]))
-        require(loops, "No lines to trace", field="target")
-        cw, ch = group["content_width"], group["content_height"]
-        layer = new_layer(f"{name}/lines", "shape", cw, ch, shape="path", fill=color, stroke="transparent",
-                          path=elements_path([{"points": loop, "closed": True, "smooth": False} for loop in loops]), path_view=[cw, ch])
-        layer.update(parent=group["id"], drawing_role="lines")
-        _insert(project, layer, before=group)
+        _outline_layers(project, group, mask, settings, color)
     else:
         strokes = strokes_from_mask(mask, min_length=float(settings["min_length"]))
         require(strokes, "No lines to trace", field="target")
@@ -1504,6 +1610,14 @@ def line_mask(project, group):
         elif layer.get("drawing_role") in ("ink", "lines"):
             from .render import layer_image
 
+            if layer.get("drawing_role") == "lines" and (layer["x"], layer["y"], layer["width"], layer["height"]) != (0, 0, cw, ch):
+                # A part layer (split: components) covers its own box inside the drawing.
+                x, y = int(round(layer["x"])), int(round(layer["y"]))
+                alpha = layer_image(project, layer, (x, y, layer["width"], layer["height"])).getchannel("A")
+                part = Image.new("L", (cw, ch))
+                part.paste(alpha.point(lambda a: 255 if a > 96 else 0), (x, y))
+                canvas.paste(255, mask=part)
+                continue
             image = layer_image(project, layer, (0, 0, cw, ch)) if layer.get("drawing_role") == "lines" else project.image(layer["asset"])
             alpha = image.convert("RGBA").getchannel("A").resize((cw, ch))
             canvas.paste(255, mask=alpha.point(lambda a: 255 if a > 96 else 0))
@@ -1606,6 +1720,7 @@ def report(project, target):
         kinds[r.get("kind") or r.get("origin", "traced")] = kinds.get(r.get("kind") or r.get("origin", "traced"), 0) + 1
     return {
         "drawing": group["name"], "preserved": round(preserved, 4), "added": round(new, 4), "tolerance_px": tolerance,
+        "fidelity": fidelity(reference, current),
         "strokes": len(strokes), "stroke_kinds": kinds,
         "stroke_width": {"min": sizes[0], "median": uniform_width(strokes), "max": sizes[-1]} if strokes else None,
         # Region points work as fill points in either space: point with the default space canvas,
@@ -1621,6 +1736,23 @@ def report(project, target):
         "perspective_corrected": bool(group["drawing"].get("perspective")),
         "paper_found": bool(group["drawing"].get("paper")),
     }
+
+
+def fidelity(reference, current):
+    """How exactly the current lines reproduce the original ink, pixel for pixel: ``iou`` (shared ink over all
+    ink, 1 is exact), ``mismatch`` (the fraction of the drawing's pixels that differ) and ``mismatch_pixels``.
+    The pixel difference is ``image_diff.diff_images``, the comparison ``vixl diff`` uses."""
+    from .image_diff import diff_images
+
+    union = int(np.count_nonzero(reference | current))
+    shared = int(np.count_nonzero(reference & current))
+
+    def picture(mask):
+        return Image.fromarray(np.where(mask, 0, 255).astype(np.uint8), "L").convert("RGBA")
+
+    _, stats = diff_images(picture(reference), picture(current), threshold=8)
+    return {"iou": round(shared / union, 4) if union else 1.0, "mismatch": round(stats["changed_pixels"] / max(1, reference.size), 6),
+            "mismatch_pixels": stats["changed_pixels"], "mismatch_region": stats["changed_region"]}
 
 
 def compare(project, target, max_size=1600):

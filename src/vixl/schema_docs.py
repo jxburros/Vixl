@@ -160,6 +160,7 @@ SUMMARIES = {
     "chart-data": "Edit a chart's data in place (cells, categories, series, CSV reload) and redraw it, keeping layer IDs.",
     "table": "Draw a table from rows or a CSV as vector layers (aligned columns, header, rules), or restyle one with target.",
     "die-cut": "Add a sticker cut line: the union of the targets' ink outline, grown by a distance, as a stroked path.",
+    "path-split": "Cut a filled path into two named parts along a polygon or line, optionally overlapping the cut.",
     "table-data": "Edit a table's rows in place (cells, rows, columns, CSV reload) and redraw it, keeping layer IDs.",
     "stack": "Lay a group out as a row or column that reflows and re-centres when a member is empty or hidden.",
     "diagram": "Draw a flowchart, dependency graph, org chart or mind map from nodes and edges, laid out automatically.",

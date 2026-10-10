@@ -26,6 +26,8 @@ TYPE_ALIASES = {
     "delete-layer": "remove",
     "merge": "merge-layers",
     "die-cut-outline": "die-cut",
+    "split-path": "path-split",
+    "path-cut": "path-split",
     "cut-line": "die-cut",
     "cut-contour": "die-cut",
     "sticker-outline": "die-cut",
