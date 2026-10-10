@@ -288,7 +288,7 @@ def render_preview(
         from .timeline import default_timeline, parse_time, project_at
 
         timeline = project.state.get("timeline") or default_timeline()
-        project = project_at(project, parse_time(time, timeline["duration"], timeline.get("markers")))
+        project = project_at(project, parse_time(time, timeline["duration"], timeline.get("markers")), prune=True)
     candidate = artboard_project(project, artboard, comp, variables)
     c = candidate.state["canvas"]
     if isolate is not None:

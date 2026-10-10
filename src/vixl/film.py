@@ -304,7 +304,7 @@ def frames(spec, root, *, limits=None, cancelled=lambda: False, streamed=False,
                     animated = bool(timeline_animated(source.state.get("timeline")) or
                                     source.state.get("camera") or source.state.get("stop_motion") or
                                     any("particle" in layer for layer in source.state["layers"]))
-                    candidate = project_at(source, shot.get("trim", 0) + local * 1000 / settings["fps"]) if animated else source
+                    candidate = project_at(source, shot.get("trim", 0) + local * 1000 / settings["fps"], prune=True) if animated else source
                     key = _state_key(candidate) if animated else b"static"
                     if i in memo and memo[i][0] == key:
                         image = memo[i][1].copy()
