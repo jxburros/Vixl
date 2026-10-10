@@ -137,9 +137,10 @@ def test_sixty_frames_of_setup_on_a_large_document():
 
     elapsed = best(lambda t: project_at(p, t, prune=True))
     copying = best(lambda t: deepcopy(p.state))
-    # Each frame used to deep-copy the whole document and then sample and measure it (about 2.7 s here). Sharing
-    # and pruning now set up a frame in less time than copying the document alone takes on the same machine.
-    assert elapsed < copying and elapsed < 6
+    # Each frame used to deep-copy the whole document and then sample and measure it: about 7x the cost of the copy
+    # alone. Sharing and pruning keep setup near one copy (0.6x to 1.2x across CI runners); 2x leaves room for
+    # machines where deepcopy is fast while still failing a return to copy-sample-measure.
+    assert elapsed < 2 * copying and elapsed < 6
 
 
 @pytest.mark.perf

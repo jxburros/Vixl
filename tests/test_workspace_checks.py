@@ -467,7 +467,9 @@ def action_step_script(step_id):
     return "\n".join(body).rstrip() + "\n"
 
 
-@pytest.mark.skipif(shutil.which("bash") is None or shutil.which("git") is None, reason="needs bash and git")
+# On Windows runners `bash` is often the WSL stub, not a POSIX shell; the script runs on the Linux and macOS jobs.
+@pytest.mark.skipif(os.name == "nt" or shutil.which("bash") is None or shutil.which("git") is None,
+                    reason="needs a POSIX bash and git")
 def test_action_check_step_runs_the_engine(tmp_path):
     step = {"run": action_step_script("check")}
     document(tmp_path / "designs" / "good.vixl")
