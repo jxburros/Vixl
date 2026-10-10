@@ -706,6 +706,16 @@ def check_design(
                 issue("legibility", "warning", f"{item['name']!r} body measure is {max(lengths)} characters; "
                       "aim for 30–75 characters per line", [item], code="measure", action="review",
                       characters=max(lengths))
+        from .text_metrics import runt_line
+
+        for item in texts:
+            effective = resolved[item["id"]]
+            runt = runt_line(candidate, effective, effective.get("size", 0) * text_scales[item["id"]])
+            if runt:
+                issue("legibility", "warning",
+                      f"{item['name']!r} wraps with {runt['text']!r} alone on its last line ({runt['share']:.0%} of "
+                      "the longest line); widen the box, add an explicit line break or run fit-text", [item],
+                      code="runt", action="review", line=runt["text"], share=runt["share"])
 
     physical = c.get("physical") and c.get("dpi")
     from .house_style import purpose_for, rule

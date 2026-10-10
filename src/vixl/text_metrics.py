@@ -184,3 +184,62 @@ def place_baseline(project, operation):
         layer["y"] = int(layer["y"])
     layer["constraints"] = {key: v for key, v in layer.get("constraints", {}).items()
                             if key not in ("top", "bottom", "center-y")}
+
+
+def drawn_lines(project, layer):
+    """The lines a resolved text layer draws, as ``(paragraph, text, width)`` in drawing order, at the
+    size it is drawn (after ``fit``). None for warped or path text."""
+    from .richtext import active, fitted
+
+    settings = layer.get("text_layout") or {}
+    if settings.get("path") or settings.get("warp", "none") != "none":
+        return None
+    if active(layer):
+        result = fitted(project, layer)
+        rows = {}
+        for glyph in result.glyphs:
+            rows.setdefault(glyph.line, []).append(glyph)
+        found = []
+        for index, row in enumerate(result.lines):
+            glyphs = rows.get(index, [])
+            edges = []
+            for glyph in glyphs:
+                box = glyph_outline(glyph.data, glyph.name)[1]
+                if box:
+                    scale = glyph.size / face(glyph.data)[0]["head"].unitsPerEm
+                    edges += [glyph.x + box[0] * scale, glyph.x + box[2] * scale]
+            found.append((row[3], "".join(glyph.text for glyph in glyphs).strip(),
+                          max(edges) - min(edges) if edges else 0.0))
+        return found
+    data = font_data(project, layer)
+    size = plan(project, layer).size if settings.get("fit") else layer["size"]
+    width = layer["width"] if "width" in settings else None
+    return [(index, line.strip(), advance(data, line.strip(), size))
+            for index, paragraph in enumerate(layer["text"].expandtabs(4).split("\n"))
+            for line in lines(data, paragraph, size, width)]
+
+
+RUNT_MINIMUM_SIZE = 24  # px: display text; body copy has its own measure check
+RUNT_SHARE = 0.2
+
+
+def runt_line(project, layer, size):
+    """For wrapped display text (drawn at ``size`` px, at least RUNT_MINIMUM_SIZE) whose paragraph ends in
+    a line that is one word or under RUNT_SHARE of the paragraph's longest line: that line's ``{text,
+    share}``, else None. Explicit line breaks are the author's, so only wrapped paragraphs count."""
+    if size < RUNT_MINIMUM_SIZE or "width" not in (layer.get("text_layout") or {}):
+        return None
+    found = drawn_lines(project, layer)
+    paragraphs = {}
+    for paragraph, text, width in found or ():
+        if text:
+            paragraphs.setdefault(paragraph, []).append((text, width))
+    for rows in paragraphs.values():
+        if len(rows) < 2:
+            continue
+        text, width = rows[-1]
+        longest = max(w for _, w in rows)
+        share = width / longest if longest else 1.0
+        if len(text.split()) == 1 or share < RUNT_SHARE:
+            return {"text": text, "share": round(share, 3)}
+    return None

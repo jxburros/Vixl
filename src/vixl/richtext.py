@@ -295,6 +295,7 @@ class Placed:
     text: str = ""
     bold: bool = False
     italic: bool = False
+    line: int = 0  # index into Layout.lines
 
 
 @dataclass
@@ -545,7 +546,7 @@ def layout(project, layer, *, width=None, scale=1.0, variables=None):
             mx = stroke + row["left"] + max(0.0, list_indent * 0.75 - advance)
             for glyph in glyphs:
                 result.glyphs.append(Placed(glyph.data, glyph.name, mx + glyph.x, baseline + glyph.y, first["size"],
-                                            mstyle["color"], glyph.text))
+                                            mstyle["color"], glyph.text, line=len(result.lines)))
         for token in row["tokens"]:
             style = token["style"]
             shift = {"super": -0.35, "sub": 0.15}.get(style["baseline"], 0.0) * style["size"] * scale
@@ -557,7 +558,7 @@ def layout(project, layer, *, width=None, scale=1.0, variables=None):
             for glyph in token["glyphs"]:
                 result.glyphs.append(Placed(glyph.data, glyph.name, cursor + glyph.x, baseline + shift + glyph.y,
                                             token["size"], style["color"], glyph.text, style["fake_bold"],
-                                            style["fake_italic"]))
+                                            style["fake_italic"], len(result.lines)))
             thickness = max(1.0, token["size"] * 0.06)
             if style["underline"]:
                 result.rects.append((cursor, baseline + token["size"] * 0.12, advance, thickness, style["color"], "underline"))
