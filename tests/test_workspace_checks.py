@@ -453,12 +453,23 @@ def test_cli_check_all_prints_formats_and_sets_the_exit_code(tmp_path):
     assert done.returncode == 1 and json.loads(done.stdout)["count"] == 2
 
 
+def action_step_script(step_id):
+    """The ``run: |`` block of the action.yml step with ``id: step_id`` (no YAML dependency)."""
+    lines = (ROOT / "action.yml").read_text(encoding="utf-8").splitlines()
+    start = next(i for i, line in enumerate(lines) if line.strip() == f"id: {step_id}")
+    head = next(i for i in range(start, len(lines)) if lines[i].strip() == "run: |")
+    indent = len(lines[head]) - len(lines[head].lstrip()) + 2
+    body = []
+    for line in lines[head + 1:]:
+        if line.strip() and len(line) - len(line.lstrip()) < indent:
+            break
+        body.append(line[indent:])
+    return "\n".join(body).rstrip() + "\n"
+
+
 @pytest.mark.skipif(shutil.which("bash") is None or shutil.which("git") is None, reason="needs bash and git")
 def test_action_check_step_runs_the_engine(tmp_path):
-    import yaml
-
-    action = yaml.safe_load((ROOT / "action.yml").read_text(encoding="utf-8"))
-    step = next(step for step in action["runs"]["steps"] if step.get("id") == "check")
+    step = {"run": action_step_script("check")}
     document(tmp_path / "designs" / "good.vixl")
     document(tmp_path / "designs" / "bad.vixl", faint=True)
     output, summary = tmp_path / "github-output", tmp_path / "summary.md"
