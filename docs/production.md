@@ -330,14 +330,30 @@ over the PDF (print) or SVG (web, sign makers).
 
 ## Persistent rendering cache and library
 
-Production variants, timeline exports and contact sheets use a bounded persistent PNG cache in the
-per-user cache directory (`~/.cache/vixl/render`, or `VIXL_RENDER_CACHE`), so output folders stay clean.
-Workflow `preview` and film document shots cache in the workspace's `.vixl-cache`. Direct Python callers may use `vixl.render_cache.enable(project, directory)`. Within a
-session, rendered layers are also kept in a bounded in-memory cache keyed by content and size, so a
-layer that only moves between timeline frames is not redrawn.
+Production variants, timeline exports, contact sheets and `vixl export`/`vixl render` of a saved document use a
+bounded persistent PNG cache in the per-user cache directory (`~/.cache/vixl/render`, or `VIXL_RENDER_CACHE`),
+so output folders stay clean and a second export of an unchanged document reads its frame back instead of
+drawing it. `VIXL_RENDER_CACHE=off` turns the disk cache off; `VIXL_CACHE_MAX_MB` sets its size cap (default
+256; the least recently used PNGs go first). `vixl cache info` reports the directory, entries, bytes and cap,
+and `vixl cache clear` empties it.
+Workflow `preview` and film document shots cache in the workspace's `.vixl-cache`. Direct Python callers may use
+`vixl.render_cache.enable(project, directory)`. Within a session, rendered layers (and composited groups, keyed
+on their whole subtree) are also kept in a bounded in-memory cache keyed by content and size, so a layer that
+only moves between timeline frames is not redrawn; the MCP and REST servers keep a document's caches when they
+reload it after it changed on disk.
 Keys include render dependencies, font bytes, engine source/version and imaging library
 versions. Unchanged layers and sampled frames can survive across sessions. Cache corruption
-or an unavailable cache falls back to rendering. The disk cache defaults to 256 MiB.
+or an unavailable cache falls back to rendering.
+
+Sequences (timeline exports, contact sheets and film shots) store a whole frame only the second time it is
+requested, in that export or an earlier one (a small ledger beside the cache remembers recent frames): a film
+whose motion never stops draws each frame once and would otherwise fill the cache with one-use PNGs, while held
+frames and re-exports of unchanged stretches are still kept. Layers are always stored, so a static grain
+background or header is drawn once per export. A frame of a timeline shares every layer it does not animate
+with the document, and top-level groups that draw nothing at that time (hidden or at zero opacity, such as the
+inactive cues of a lyric film) are left out of it unless another layer or the document refers to them; the
+pixels are the same either way. `VIXL_PROFILE=1` reports the cache's hits, misses, writes, skipped frame
+writes and evictions (see [troubleshooting](troubleshooting.md#find-out-why-a-render-is-slow)).
 Linked files and plugin effects bypass persistent caching; dependent groups are cached
 at whole-frame level rather than incorrectly treating a group as an independent leaf.
 There is no dirty-region compositor or GPU renderer.

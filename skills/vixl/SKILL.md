@@ -279,6 +279,9 @@ AI-provider features (generate, inpaint, segmentation, OCR, plan) are in
 Check availability first: `vixl --version` (CLI) or call `vixl_workspace_list` (MCP). Install from
 source with `pip install -e ".[server,mcp]"` (Python ≥ 3.11); Windows users use the installer.
 Set `VIXL_NO_UPDATE=1` in automation so the Windows auto-updater never runs mid-task.
+A slow render? `check --checks cost` names the costly layer; `VIXL_PROFILE=1` adds a `render_profile`
+(per-layer times, cache hits) to every result. `vixl cache info|clear` manages the disk render cache
+(`VIXL_RENDER_CACHE=off`, `VIXL_CACHE_MAX_MB`).
 
 **`vixl` not found? Look before asking the user.** A session started before installation keeps
 its old PATH. Try, in order: `%LOCALAPPDATA%\Programs\Vixl\bin\vixl.exe` (Git Bash:
@@ -491,7 +494,7 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
 | Color & print | color language in every color field, `vixl_color`, CMYK/PDF/ICO export, `vixl_export_icons`, proof/simulate previews, `print`/`color_vision` checks |
 | History | undo/redo (a count larger than the history goes as far as it can and says so), checkpoint, branch, checkout, compare, transactions |
 | Styles | `vixl_styles` (28 design styles: principles, palettes, type, layout, imagery, do/don't), `style-set` tags the document, `check --checks style` evaluates the style's premade rules |
-| QA | check (bounds/overlap/contrast/safe area/legibility; opt-in print, color_vision, style, connected (floating parts of a grouped object); every finding has an `action`: fix / review / informational), inspect, measure (sample/histogram/contrast), spacing, validate/assert, render preview (zoomable, time, proof, simulate, isolate one object), compare revisions |
+| QA | check (bounds/overlap/contrast/safe area/legibility; opt-in print, color_vision, style, connected (floating parts of a grouped object), cost (layers that take over 10× the median to draw, naming the blur radius or stroke points); every finding has an `action`: fix / review / informational), inspect, measure (sample/histogram/contrast), spacing, validate/assert, render preview (zoomable, time, proof, simulate, isolate one object), compare revisions |
 | AI (provider) | generate/inpaint/img2img, extend (outpaint), upscale, regenerate, background-remove, select object/subject, remove, content-aware-fill, describe/detect/OCR, natural-language plan |
 
 When unsure of a field, get the authoritative schema: MCP embeds it in `vixl_operations_apply`'s

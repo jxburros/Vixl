@@ -38,7 +38,9 @@ so switching documents never loses work. External edits to the file are detected
 Under load (more calls than `VIXL_MCP_WORKERS`) calls become jobs sooner; `queued: true` means it
 has not started yet.
 Follow it with `vixl_job(action="status"|"result"|"cancel"|"list", id, wait=…)`; never resend a call
-that timed out. Mutating tools take `request_id`: repeating a call with the same id returns the first
+that timed out. A timeline export's `progress` has `timing` (`elapsed_s`, `eta_s`, `setup_ms`, `raster_ms`).
+With `VIXL_PROFILE=1` in the server's environment, results carry a `render_profile` (REST: also the
+`X-Vixl-Profile` header). Mutating tools take `request_id`: repeating a call with the same id returns the first
 result (`"replayed": true`) instead of applying twice.
 
 ### Documents and files
@@ -75,7 +77,7 @@ Transactions: `vixl_history(action="begin")` → several `vixl_operations_apply`
 
 | Tool | Parameters | Returns |
 | --- | --- | --- |
-| `vixl_check` | `checks` (default: bounds, overlap, contrast, safe_area, legibility, blanks, fonts, brand, content, form, links, diagram, flow, codes; opt-in: print, color_vision, guides, alignment, drawing, style, motion, character, captions, connected, deck …; an explicit list replaces the defaults), `targets`, `safe_area` (px, `"5%"` or `{left,top,right,bottom}`; default: the canvas's own safe area), `avoid` (reserved zones), `thumbnail_width="auto"` (320; null disables), `min_thumbnail_text=10`, `min_contrast`, `page`, `deck`, `sample`, `style`, `connect_tolerance`, `artboard`, `comp` | `{passed, errors, warnings, issues[{check,severity,action,layers,message,…}], by_action}` — only problems. `passed` is false while any issue has action `fix`, even a warning; `by_action` lists issue indexes under fix / review / informational |
+| `vixl_check` | `checks` (default: bounds, overlap, contrast, safe_area, legibility, blanks, fonts, brand, content, form, links, diagram, flow, codes; opt-in: print, color_vision, guides, alignment, drawing, style, motion, character, captions, connected, cost, deck …; an explicit list replaces the defaults), `targets`, `safe_area` (px, `"5%"` or `{left,top,right,bottom}`; default: the canvas's own safe area), `avoid` (reserved zones), `thumbnail_width="auto"` (320; null disables), `min_thumbnail_text=10`, `min_contrast`, `page`, `deck`, `sample`, `style`, `connect_tolerance`, `artboard`, `comp` | `{passed, errors, warnings, issues[{check,severity,action,layers,message,…}], by_action}` — only problems. `passed` is false while any issue has action `fix`, even a warning; `by_action` lists issue indexes under fix / review / informational |
 | `vixl_measure` | `point=[x,y]`, `region=[x,y,w,h]`, `foreground`, `target`, `histogram="summary"\|"full"\|"none"`, `artboard`, `comp` | RGBA/hex sample, alpha-weighted average, channel percentiles (or 256-bin histograms), WCAG contrast min/p10/mean/max |
 | `vixl_measure_spacing` | `targets`, `axis="vertical"`, `around`/`before`/`after`, `expected`, `tolerance=1`, `artboard`, `comp` | Per-gap pixels, overlap, min/max/mean/spread, `passed` |
 | `vixl_validate` | `profile`, `rules`, `detail="summary"\|"full"`, `targets`, `severity`, `suppress`, `offset`, `limit=50` (≤200) | Overall `valid`, counts and paginated findings; full includes passing checks. Layer intent can mark deliberate bleed. |

@@ -51,6 +51,36 @@ Respond to findings by changing the design or explicitly revising requirements w
 reason. Do not lower thresholds simply to make a report pass. [Studio](studio.md) and
 [production](production.md) describe reusable contracts and coverage.
 
+## Find out why a render is slow
+
+Set `VIXL_PROFILE=1` in the environment of the CLI, the MCP server or the REST server. Every call then returns a
+`render_profile` next to its result: in CLI `--json` output and other JSON results (a command that writes an image
+to stdout prints it on stderr instead), in MCP result envelopes (a text note after an image), and in REST JSON
+bodies and the `X-Vixl-Profile` header (a shorter summary, also on PNG responses). With the variable unset nothing
+is recorded and the renderer does no extra work.
+
+| Field | What it tells you |
+| --- | --- |
+| `layers` | The 25 slowest layers drawn from scratch: `ms` (its own time; a group's excludes its children), `draws`, and `stages_ms` (`draw`, `effects`, `transform`) |
+| `by_type` | Time and count per layer type |
+| `phases_ms` | `render` (whole renders), `resolve` and `layout` (resolving variables and constraints), `styles` (drop shadows, glows, strokes), `frame_setup` and `frame_raster` (timeline exports) |
+| `caches` | `layer_hits`, `layer_misses`, `layer_writes`, `layer_evictions` (rendered layers and composited groups), `styled_hits`/`styled_misses`, `svg_hits`/`svg_misses` (rasterised text and paths; process-wide), `disk_hits`, `disk_misses`, `disk_writes`, `disk_frame_hits`, `disk_frame_writes`, `disk_frame_writes_skipped`, `disk_evictions`, `disk_bytes_written` |
+| `renders` | Each render: `incremental` (only a box was redrawn), `dirty_box` and `dirty_pixels` against `canvas_pixels`, `from_disk`, or the `reason` it drew everything |
+
+To find the culprit without reading numbers, run the opt-in `cost` check: it draws the document once with empty
+caches and flags, as a `review` finding, every layer that takes over 10× the median layer and at least 50 ms,
+naming the blur radius, effects, stroke points or size behind it.
+
+```bash
+vixl -p poster.vixl check --checks cost
+vixl cache info
+```
+
+The disk cache (`vixl cache info`, `vixl cache clear`, `VIXL_RENDER_CACHE=off`, `VIXL_CACHE_MAX_MB`) is described
+under [production](production.md#persistent-rendering-cache-and-library). Long timeline exports report per-frame
+timing in their progress (`vixl_job` status): `timing.elapsed_s`, `timing.eta_s`, and the frame's `setup_ms`
+(sampling the timeline) and `raster_ms`.
+
 ## Recover a design
 
 Use `undo` for the last edit or `checkout` for a named checkpoint. Atomic batches fail
