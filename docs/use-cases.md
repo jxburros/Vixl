@@ -204,6 +204,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | AGT-04 | Browse layouts, styles, brushes, resources or workflows | `vixl_layouts_list`, `vixl_styles`, `vixl_brushes_list`, `vixl_resources_list`, `vixl_workflow_schema` | 1 · <1 | E | |
 | AGT-05 | Check the installed version and update it | `vixl --version`, `vixl update` | 1 · <1 | E | Verified Windows updater with rollback. |
 | AGT-06 | Read the house style: craft rules, tiers, variety levels or one purpose's profile | `vixl_resource_get(kind="house-style")`, `vixl house show PURPOSE` | 1 · <1 | E | Purposes: poster, social, slides, document, form, diagram, logo, motion. |
+| AGT-34 | Export the design catalogs (sizes, palettes, pairings, layouts, briefs, guidance, check IDs) for a host app | `vixl catalog export --out catalog.json` | 1 · <1 | E | Versioned JSON with a schema; also a release asset (#536). |
 
 ### Provider-backed (one call each)
 

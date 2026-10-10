@@ -381,6 +381,14 @@ vixl merge --rerun sheets.vixl [--data new.csv] [--out new.pdf]
 folder); [imposition](imposition.md) lays CSV rows out on print sheets with crop marks, as a vector-text PDF and an editable
 sheet of links.
 
+## Catalog export for host applications
+
+`vixl catalog export --out catalog.json` writes one JSON bundle of Vixl's design catalogs for an application that embeds or mirrors Vixl (Python: `vixl.catalog.export_catalog()` returns it as a dict, `write_catalog(path)` writes it). `--json` without `--out` prints it; `--section NAME` (repeatable) exports only some sections; an existing `--out` file is refused unless `--overwrite` is given. `vixl catalog schema [--out FILE]` gives the [JSON Schema](../src/vixl/data/catalog.schema.json) the bundle follows. Every GitHub release attaches both as `vixl-catalog.json` and `vixl-catalog.schema.json`. See [the catalog bundle](agent-resources.md#catalog-bundle-for-host-applications) for what it holds.
+
+```bash
+vixl catalog export --out catalog.json --section sizes --section checks
+```
+
 ## Large batches and focused schemas
 
 `vixl apply operations.json` accepts JSON input up to 64 MiB; the same bound applies to inline JSON and stdin. Operation-count and document resource limits still apply, and a failing batch is atomic. `vixl --json schema text shape` returns only the requested operation schemas. Bare `schema` returns the full catalog.
