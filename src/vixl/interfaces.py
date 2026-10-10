@@ -1,5 +1,6 @@
 """Cached project sessions, fixed-project REST and workspace-scoped MCP services."""
 
+from collections import OrderedDict
 from contextlib import contextmanager
 import hmac
 from pathlib import Path
@@ -85,6 +86,10 @@ class Session:
         self._path = None  # The server-wide default: the document it started with, or set outside MCP.
         self._client_paths = WeakKeyDictionary()
         self.documents = {}
+        # Each document's render caches, kept when the document is reloaded (it changed on disk, a call
+        # failed, or it was closed and opened again): keys are content-addressed, so a reload re-renders
+        # only what changed.
+        self._render_caches = OrderedDict()
         self._mutex = RLock()
         if path:
             self.open(path if workspace else Path(path).resolve())
@@ -127,6 +132,17 @@ class Session:
         stat = path.stat()
         return (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns)
 
+    def load(self, path):
+        """``Project.load`` that carries the document's previous render caches over."""
+        project = Project.load(path, limits=self.limits)
+        kept = self._render_caches.pop(path, None)
+        if kept is not None:
+            project._cache, project._paint_cache = kept
+        self._render_caches[path] = (project._cache, project._paint_cache)
+        while len(self._render_caches) > 2 * self.MAX_OPEN:
+            self._render_caches.popitem(last=False)
+        return project
+
     def _remember(self, path, project, stamp):
         project._workspace = self.workspace
         self.documents.pop(path, None)
@@ -151,7 +167,7 @@ class Session:
             resolved = self.resolve(path)
             require(resolved.is_file(), f"Document does not exist: {path}", "not_found", field="path")
             with file_lock(str(resolved)):
-                project = Project.load(resolved, limits=self.limits)
+                project = self.load(resolved)
                 done = None
                 if upgrade and project.upgraded_from:
                     done = run_upgrade(project, pin_fills=upgrade == "pin-fills")
@@ -251,7 +267,7 @@ class Session:
                 try:
                     stamp = self.stamp(path)
                     if entry is None or entry.project is None or stamp != entry.stamp:
-                        entry = _Document(path, Project.load(path, limits=self.limits), stamp)
+                        entry = _Document(path, self.load(path), stamp)
                     # Addressing a document explicitly keeps it open but does not change the active one.
                     self.documents.pop(path, None)
                     self.documents[path] = entry
@@ -409,6 +425,30 @@ class Session:
             return result
 
 
+async def profiled_response(response, run):
+    """A REST response with ``run``'s render profile: in the ``X-Vixl-Profile`` header (compact, the slowest
+    layers first) and, for a JSON object body, as ``render_profile`` in the body too."""
+    import json
+
+    from fastapi.responses import Response
+
+    report = run.report()
+    headers = {k: v for k, v in response.headers.items() if k.lower() not in ("content-length", "content-type")}
+    summary = {**report, "layers": report["layers"][:5], "renders": report["renders"][-3:]}
+    headers["x-vixl-profile"] = json.dumps(summary, separators=(",", ":"))[:6000]
+    body = b"".join([chunk async for chunk in response.body_iterator])
+    media = response.headers.get("content-type", "")
+    if media.startswith("application/json"):
+        try:
+            value = json.loads(body)
+        except ValueError:
+            value = None
+        if isinstance(value, dict):
+            value["render_profile"] = report
+            body = json.dumps(value).encode()
+    return Response(body, status_code=response.status_code, headers=headers, media_type=media or None)
+
+
 def create_app(path, *, token=None, limits=None):
     try:
         from fastapi import FastAPI, Request
@@ -446,7 +486,13 @@ def create_app(path, *, token=None, limits=None):
             if len(body) > maximum:
                 return JSONResponse(too_large, status_code=413, headers={"Connection": "close"})
         request._body = bytes(body)
-        return await call_next(request)
+        from . import profiling
+
+        if not profiling.enabled():
+            return await call_next(request)
+        with profiling.profile() as run:
+            response = await call_next(request)
+        return await profiled_response(response, run)
 
     @app.exception_handler(VixlError)
     async def vixl_error(request: Request, exc: VixlError):

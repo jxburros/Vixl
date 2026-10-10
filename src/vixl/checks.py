@@ -18,7 +18,7 @@ CHECKS = ("bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", 
           "links", "diagram", "flow", "codes")
 FALLBACK_FONT = "DejaVuSans.ttf"
 OPTIONAL_CHECKS = ("print", "color_vision", "guides", "alignment", "drawing", "style", "motion", "character", "captions",
-                   "connected")
+                   "connected", "cost")
 # What to do about a finding. Errors and the warnings below need a design change ("fix"); other warnings
 # are worth a look ("review"); notes and deliberate choices the document marked are "informational".
 ACTIONS = ("fix", "review", "informational")
@@ -917,6 +917,13 @@ def check_design(
         from .textflow import check_flows
 
         check_flows(candidate, resolved, issue)
+
+    if "cost" in checks:
+        from .profiling import cost_findings
+
+        for finding in cost_findings(candidate):
+            target = resolved.get(finding.pop("layer"))
+            issue("cost", "warning", finding.pop("message"), [target] if target else [], **finding)
 
     if "form" in checks:
         from .forms import check_form

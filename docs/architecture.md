@@ -63,7 +63,7 @@ Defaults (`vixl.model.Limits`):
 - 256 MiB per archive and its expanded contents.
 - 10,000 operations per submitted batch; 2,000 history revisions (older ones are squashed, not refused).
 - At most 10,000 archive entries.
-- Layer-render cache (layer images and styled patches): 8,192 entries / 384 MiB, with entries under 96 MiB; rasterised-SVG cache (text and path shapes, shared by all documents in a process): 96 MiB; last-render snapshot: one canvas per document view, for canvases up to 40 million pixels; decoded-asset cache: 256 MiB.
+- Layer-render cache (layer images, composited groups and styled patches): 8,192 entries / 384 MiB, with entries under 96 MiB; rasterised-SVG cache (text and path shapes, shared by all documents in a process): 96 MiB; last-render snapshot: one canvas per document view, for canvases up to 40 million pixels; decoded-asset cache: 256 MiB; persistent disk cache: 256 MiB (`VIXL_CACHE_MAX_MB`), entries under a quarter of it.
 
 Per-operation caps, each refused with `resource_limit` or `invalid_operation` naming the field:
 
@@ -79,7 +79,7 @@ Per-operation caps, each refused with `resource_limit` or `invalid_operation` na
 | Document dpi | 36–2,400, and the page must still fit the pixel budget (Letter at 1,200 dpi does not) |
 | Polygon and star `sides` | 3–128 |
 
-`--max-pixels` adjusts the pixel budget (image imports may read sources up to four times it when they downsample); Python APIs can pass a complete `Limits` instance. These are input/allocation bounds, **not a hard resident-memory or CPU quota**. Float blending and snapshot copies can use multiples of image size. Use operating-system/container limits for untrusted workloads and reduce pixel/layer/history limits on small machines. Running out of memory is reported as a `resource_limit` error (“Not enough memory for this operation …”) by the Python API, the CLI, MCP and REST, after the failed call's memory is released; the document is unchanged. CLI processes do not share render caches; caching benefits a reused Python `Project` instance. REST/MCP cache the active document, reloading when the on-disk file changes, and serialize read/write requests for persistence/concurrency correctness.
+`--max-pixels` adjusts the pixel budget (image imports may read sources up to four times it when they downsample); Python APIs can pass a complete `Limits` instance. These are input/allocation bounds, **not a hard resident-memory or CPU quota**. Float blending and snapshot copies can use multiples of image size. Use operating-system/container limits for untrusted workloads and reduce pixel/layer/history limits on small machines. Running out of memory is reported as a `resource_limit` error (“Not enough memory for this operation …”) by the Python API, the CLI, MCP and REST, after the failed call's memory is released; the document is unchanged. CLI processes share rendered layers and frames of saved documents only through the persistent disk cache (`VIXL_RENDER_CACHE`, capped by `VIXL_CACHE_MAX_MB`); the in-memory caches benefit a reused Python `Project` instance. REST/MCP cache the active document, reloading when the on-disk file changes (the reloaded document keeps its in-memory render caches, whose keys are content-addressed), and serialize read/write requests for persistence/concurrency correctness.
 
 ### Cost of an edit
 

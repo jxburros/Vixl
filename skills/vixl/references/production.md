@@ -28,7 +28,10 @@ Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/mai
    Never blindly repeat an uncertain provider request.
 7. Reuse components with library-save/search/open/place. Open preserves the editable
    document; place inserts its rendered snapshot. Preview draft/final without regenerating
-   image assets. Persistent caches are enabled by production and workflow previews.
+   image assets. Persistent caches are enabled by production, workflow previews, timeline and film exports,
+   and CLI `export`/`render` of saved documents (`vixl cache info|clear`; `VIXL_RENDER_CACHE=off`,
+   `VIXL_CACHE_MAX_MB`). Sequences store a whole frame only when it is requested a second time, so moving
+   films do not fill the cache; static layers are reused either way.
 8. Film plans accept shots from stills, `.vixl` timelines or video clips, camera poses,
    crossfades, captions and explicit audio tracks. MP4/WebM/audio need ffmpeg. Generated
    video requires an explicitly configured HTTP job gateway; other image providers do

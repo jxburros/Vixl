@@ -870,7 +870,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
     def vixl_check(
         checks: list[Literal["bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "fonts", "brand", "print", "color_vision", "guides", "alignment",
                              "deck", "title_position", "type_scale", "words", "min_font", "notes", "empty", "form", "drawing", "links", "style",
-                             "diagram", "flow", "codes", "motion", "character", "captions", "connected"]]
+                             "diagram", "flow", "codes", "motion", "character", "captions", "connected", "cost"]]
         | None = None,
         targets: list[str] | None = None,
         safe_area: Annotated[
@@ -918,7 +918,8 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         allow_crop); by_action lists the issue indexes under each. A finding the document waives (layer-intent waive,
         the waiver operation) stays listed as informational with waived and its reason; waivers lists them and any
         expired ones. connected (opt-in) finds parts of a group (a mascot, a character) that float free of its main
-        body. Reports only problems. Each finding has a stable rule ID
+        body; cost (opt-in) times every layer and flags the ones that take over 10× the median to draw, naming the blur
+        radius, stroke points or effects behind it. Reports only problems. Each finding has a stable rule ID
         (bounds.text-overflow, contrast.text-contrast, safe_area.outside, overlap.text-text …), layer_ids, its
         box or region in document pixels, measured actual versus expected, and for fix findings a repair suggestion:
         canonical operations you can dry-run with vixl_operations_apply (nothing is applied unless repair=true).

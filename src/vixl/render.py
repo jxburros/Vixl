@@ -16,6 +16,7 @@ from .assets import decode, read_bounded
 from .constants import EFFECTS as EFFECTS
 from .errors import VixlError, require
 from .model import MAX_LAYERS, finite
+from .profiling import ACTIVE as PROFILE
 from .variables import RESOLVED, layer_text, substitute as substitute, with_maps
 
 BLENDS = ("normal", "multiply", "screen", "overlay", "darken", "lighten", "difference", "add", "subtract")
@@ -743,7 +744,14 @@ def shift(bounds, layers, dx, dy):
 
 def ink_origin(image, bounds):
     """Where a layer image lands: it is centred on the layer's box and may extend past it."""
-    return math.floor(bounds[0] + (bounds[2] - image.width) / 2 + 1e-9), math.floor(bounds[1] + (bounds[3] - image.height) / 2 + 1e-9)
+    return tuple(math.floor(bounds[i]) + math.floor(offset + 1e-9) for i, offset in enumerate(placement(image, bounds)))
+
+
+def placement(image, bounds):
+    """The (x, y) offset of a layer image's corner from its box's whole-pixel corner. Computed from the box's
+    fraction (exact for any whole-pixel shift), so a region or incremental tile, whose boxes are the canvas
+    boxes moved by whole pixels, places and resamples each layer exactly as the whole canvas does."""
+    return bounds[0] % 1 + (bounds[2] - image.width) / 2, bounds[1] % 1 + (bounds[3] - image.height) / 2
 
 
 class LayerCache(OrderedDict):
@@ -768,11 +776,16 @@ class LayerCache(OrderedDict):
         previous = self.pop(key, None)
         if previous is not None:
             self.bytes -= previous.width * previous.height * 4
+        profile = PROFILE.get()
         while self and (len(self) >= self.entries or self.bytes + size > self.budget):
             _, old = self.popitem(last=False)
             self.bytes -= old.width * old.height * 4
+            if profile is not None:
+                profile.count("layer_evictions")
         self[key] = image.copy()
         self.bytes += size
+        if profile is not None:
+            profile.count("layer_writes")
 
 
 def digest(value):
@@ -798,17 +811,78 @@ def ink_identity(project, layer, bounds):
     canvas = project.state["canvas"]
     extent_key = [*bounds, canvas["width"], canvas["height"]] if placed else list(bounds[2:])
     extent_key = [*extent_key, bounds[0] % 1, bounds[1] % 1, *(["snapped"] if snap_placement(project) else [])]
-    dependencies = [content, extent_key]
+    dependencies = [content, extent_key, *ink_inputs(project, layer)]
+    cacheable = self_contained(layer) and layer["type"] != "link"
+    if cacheable and layer["type"] in ("group", "pathfinder"):
+        # A group's pixels are its children's: key it on the whole subtree, or leave it uncached.
+        subtree = subtree_key(project, layer)
+        cacheable = subtree is not None
+        dependencies.append(subtree)
+    key = digest(dependencies)
+    return key, content, extent_key, cacheable
+
+
+def ink_inputs(project, layer):
+    """What a layer's pixels read from the document besides its own fields: its fonts or brushes."""
     if layer["type"] == "text":
         from .text import font_data, font_sha256
         data = font_data(project, layer)
-        dependencies.append([font_sha256(f) for f in (data if isinstance(data, tuple) else (data,))])
-    elif layer["type"] == "paint":
-        dependencies.append(project.state.get("brushes", {}))
-    key = digest(dependencies)
-    # A lookup effect reads its table from the document, which the key does not cover.
-    cacheable = not layer.get("linked") and not any(e["name"] == "lookup" for e in layer.get("effects") or []) and not layer.get("_distort_groups") and layer["type"] not in ("group", "pathfinder", "link")
-    return key, content, extent_key, cacheable
+        return [[font_sha256(f) for f in (data if isinstance(data, tuple) else (data,))]]
+    if layer["type"] == "paint":
+        return [project.state.get("brushes", {})]
+    return []
+
+
+def self_contained(layer):
+    """Whether a layer's pixels follow from its fields and ``ink_inputs``: not a linked file, a lookup
+    effect (its table lives in the document) or a shape warped by distorting groups above it."""
+    return (not layer.get("linked") and not any(e["name"] == "lookup" for e in layer.get("effects") or [])
+            and not layer.get("_distort_groups"))
+
+
+def subtree_key(project, layer):
+    """A digest of everything a group's (or pathfinder's) children draw: each descendant's resolved
+    fields, its box in its parent's space and its ``ink_inputs``, in stacking order, plus the colours
+    styles can name. None when the subtree cannot be cached (a descendant reads a linked file or a
+    lookup table, clips to a layer outside the group, or the render has no shared resolution)."""
+    state = project.state
+    shared_state = [state.get("variables"), state.get("maps"), state.get("swatches")]
+    memo = None
+    try:
+        if layer["type"] == "pathfinder":
+            operands = layer.get("operands") or []
+            if not all(self_contained(item) and item["type"] not in ("group", "link") for item in operands):
+                return None
+            return digest(["pathfinder", [ink_inputs(project, item) for item in operands], shared_state])
+        shared = getattr(project, "_resolution", None)
+        if shared is None or shared[0] is not state:
+            return None
+        layers, bounds = shared[1], shared[2]
+        memo = project.__dict__.get("_subtree_memo")
+        if memo is None or memo[0] is not layers:
+            memo = project._subtree_memo = (layers, {}, child_index(layers))
+        if layer["id"] in memo[1]:
+            return memo[1][layer["id"]]
+        children, members, pending = memo[2], set(), [layer["id"]]
+        while pending:
+            for child in children.get(pending.pop(), []):
+                if child["id"] not in members:
+                    members.add(child["id"])
+                    pending.append(child["id"])
+        parts = []
+        for item in layers:
+            if item["id"] not in members:
+                continue
+            if not self_contained(item) or item["type"] == "link" or (item.get("clip") and item["clip"] not in members):
+                parts = None
+                break
+            parts.append([item, bounds.get(item["id"]), ink_inputs(project, item)])
+        key = None if parts is None else digest(["group", parts, shared_state])
+    except (TypeError, ValueError):
+        key = None
+    if memo is not None:
+        memo[1][layer["id"]] = key
+    return key
 
 
 def ink_key(project, layer, bounds):
@@ -832,19 +906,45 @@ def layer_ink(project, layer, bounds):
     group children reach past the box."""
     key, content, extent_key, cacheable = ink_identity(project, layer, bounds)
     cache = layer_cache(project)
+    profile = PROFILE.get()
     if cacheable:
         cached = cache.image(key)
+        if profile is not None:
+            profile.count("layer_hits" if cached is not None else "layer_misses")
         if cached is not None:
             return cached
-    linked = layer.get("linked")
+    elif profile is not None:
+        profile.count("layer_uncacheable")
     disk = getattr(project, "_disk_cache", None)
     disk_key = None
-    if disk and cacheable and layer["type"] != "symbol":
+    # Composited groups stay in memory: their key covers children the disk key does not read.
+    if disk and cacheable and layer["type"] not in ("symbol", "group", "pathfinder"):
         from .render_cache import key_for
         disk_key = key_for(project, content, extent_key)
         cached = disk.get(disk_key, project.limits)
         if cached is not None:
             return cached
+    if profile is None:
+        image = draw_ink(project, layer, bounds)
+    else:
+        profile.enter()
+        try:
+            image = draw_ink(project, layer, bounds, profile)
+        finally:
+            profile.leave(layer)
+    if cacheable:
+        cache.put(key, image)
+    if disk:
+        disk.put(disk_key, image)
+    return image
+
+
+def draw_ink(project, layer, bounds, profile=None):
+    """``layer_ink`` without its caches: draw the layer, then give it its geometry and appearance."""
+    import time
+
+    started = time.perf_counter() if profile is not None else 0
+    linked = layer.get("linked")
     kind = layer["type"]
     if layer.get("repeat"):
         from .design_render import repeat_image
@@ -901,11 +1001,14 @@ def layer_ink(project, layer, bounds):
     from .scene import paper_image
 
     image = paper_image(image, layer)
+    if profile is None:
+        return transform_layer_image(project, layer, bounds, image)
+    drawn = time.perf_counter()
+    stages = profile.stack[-1][2]
+    effects = stages["effects"]
     image = transform_layer_image(project, layer, bounds, image)
-    if cacheable:
-        cache.put(key, image)
-    if disk:
-        disk.put(disk_key, image)
+    profile.stage("draw", drawn - started)
+    profile.stage("transform", time.perf_counter() - drawn - (stages["effects"] - effects))
     return image
 
 
@@ -926,7 +1029,15 @@ def transform_layer_image(project, layer, bounds, image):
     # skewed: a blur, denoise or grain treats the content the same at any angle. Canvas-space
     # inputs (selections, the emboss light, canvas-edge blur room) are mapped into this frame.
     unturned = image.size
-    image = layer_effects(project, layer, bounds, image)
+    profile = PROFILE.get()
+    if profile is None:
+        image = layer_effects(project, layer, bounds, image)
+    else:
+        import time
+
+        started = time.perf_counter()
+        image = layer_effects(project, layer, bounds, image)
+        profile.stage("effects", time.perf_counter() - started)
     turn = Image.Resampling.NEAREST if crisp else Image.Resampling.BICUBIC
     if precise(layer):
         transform = linear(layer)
@@ -985,7 +1096,7 @@ def transform_layer_image(project, layer, bounds, image):
     if layer["opacity"] != 1:
         image = with_opacity(image, layer["opacity"])
     # Carry fractional placement through rasterization instead of rounding the geometry.
-    ox, oy = bounds[0] + (bounds[2] - image.width) / 2, bounds[1] + (bounds[3] - image.height) / 2
+    ox, oy = placement(image, bounds)
     # Use the same epsilon as ink_origin: affine arithmetic may land one ulp below an integer.
     fx, fy = max(0, ox - math.floor(ox + 1e-9)), max(0, oy - math.floor(oy + 1e-9))
     if not crisp and not folded and (fx > 1e-8 or fy > 1e-8):
@@ -1277,12 +1388,20 @@ def layer_patch(project, layer, bounds, size, index, visiting=None, limit=None):
             key = styled_key(project, layer, b, box, (x, y))
             cache = layer_cache(project)
             patch = cache.image(key) if key else None
+            profile = PROFILE.get()
+            if profile is not None:
+                profile.count("styled_hits" if patch is not None else "styled_misses")
             if patch is None:
+                import time
+
+                started = time.perf_counter()
                 patch = Image.new("RGBA", (box[2] - box[0], box[3] - box[1]))
                 patch.alpha_composite(source, (x - box[0], y - box[1]))
                 patch = styled_image(project, patch, layer["styles"])
                 if key:
                     cache.put(key, patch)
+                if profile is not None:
+                    profile.phase("styles", time.perf_counter() - started)
         else:
             patch = Image.new("RGBA", (box[2] - box[0], box[3] - box[1]))
             patch.alpha_composite(source, (x - box[0], y - box[1]))
@@ -1413,6 +1532,23 @@ def layer_canvas_surface(project, layer, bounds=None, index=None):
     return surface
 
 
+def resolved(project):
+    """``resolved_layers`` and ``resolve_layout`` of a render, timed when a profile is recording."""
+    profile = PROFILE.get()
+    if profile is None:
+        layers = resolved_layers(project)
+        return layers, resolve_layout(project, layers=layers)
+    import time
+
+    started = time.perf_counter()
+    layers = resolved_layers(project)
+    laid = time.perf_counter()
+    bounds = resolve_layout(project, layers=layers)
+    profile.phase("resolve", laid - started)
+    profile.phase("layout", time.perf_counter() - laid)
+    return layers, bounds
+
+
 def render_layers(project, parent=None, size=None, background="transparent", observe=None):
     """Composite the layers of ``parent`` (the canvas when None). ``observe`` maps layer IDs to
     callbacks that receive the layer's box region just before and just after it is drawn."""
@@ -1424,8 +1560,7 @@ def render_layers(project, parent=None, size=None, background="transparent", obs
         # Drawing is a read-only pass too: text layers look up the document's variables, which
         # otherwise rescans every layer for form fields once per text layer.
         with resolving(project):
-            layers = resolved_layers(project)
-            bounds = resolve_layout(project, layers=layers)
+            layers, bounds = resolved(project)
             project._resolution = (project.state, layers, bounds)
             try:
                 return _render_layers(project, layers, bounds, parent, size, background, observe)
@@ -1731,9 +1866,9 @@ def render_incremental(project, background):
         box = (max(0, box[0] + left), max(0, box[1] + top), min(c["width"], box[2] + left), min(c["height"], box[3] + top))
         return box if box[0] < box[2] and box[1] < box[3] else None
 
+    profile = PROFILE.get()
     with resolving(project):
-        layers = resolved_layers(project)
-        bounds = resolve_layout(project, layers=layers)
+        layers, bounds = resolved(project)
         project._resolution = (project.state, layers, bounds)
         try:
             try:
@@ -1743,6 +1878,8 @@ def render_incremental(project, background):
             except (TypeError, ValueError):
                 current = None
             if current is None:
+                if profile is not None:
+                    profile.render(incremental=False, reason="a layer reads a linked file")
                 return _render_layers(project, layers, bounds, None, None, background, None)
             assets = dict(project.assets)
             previous = getattr(cache, "snapshot", None)
@@ -1774,6 +1911,12 @@ def render_incremental(project, background):
                     drawn = {ident: on_canvas(drawn.get(ident), left, top) for ident in changed}
                     break
                 box = reach
+            if profile is not None:
+                dirty = None if image is None else list(box)
+                profile.render(incremental=image is not None, dirty_box=dirty,
+                               dirty_pixels=(max(0, dirty[2] - dirty[0]) * max(0, dirty[3] - dirty[1]) if dirty
+                                             else c["width"] * c["height"]),
+                               canvas_pixels=c["width"] * c["height"], changed_layers=len(changed))
             if image is None:
                 drawn = {}
                 image = _render_layers(project, layers, bounds, None, None, background, None, drawn=drawn)
@@ -1810,8 +1953,7 @@ def render_region(project, region, background="transparent"):
     left, top, width, height = region
     c = project.state["canvas"]
     with resolving(project):
-        layers = resolved_layers(project)
-        bounds = resolve_layout(project, layers=layers)
+        layers, bounds = resolved(project)
         project._resolution = (project.state, layers, bounds)
         try:
             placed = shift(bounds, [item for item in layers if not item.get("parent")], -left, -top)
@@ -1824,6 +1966,19 @@ def render_region(project, region, background="transparent"):
 def render(project, variables=None, artboard=None, comp=None, page=None, region=None):
     """The document as an image; ``region`` (left, top, width, height, whole pixels inside the canvas)
     returns that crop, drawing only that part when nothing in the document reads the whole canvas."""
+    profile = PROFILE.get()
+    if profile is None:
+        return _render(project, variables, artboard, comp, page, region)
+    import time
+
+    started = time.perf_counter()
+    try:
+        return _render(project, variables, artboard, comp, page, region)
+    finally:
+        profile.phase("render", time.perf_counter() - started)
+
+
+def _render(project, variables=None, artboard=None, comp=None, page=None, region=None):
     from .design_render import artboard_project
 
     project = view_page(project, page)
@@ -1840,27 +1995,33 @@ def render(project, variables=None, artboard=None, comp=None, page=None, region=
                 and top + height <= c["height"], "Region must lie inside the canvas", field="region")
         if (left, top, width, height) != (0, 0, c["width"], c["height"]):
             if region_renders_alone(candidate):
+                if PROFILE.get() is not None:
+                    PROFILE.get().render(incremental=False, region=[left, top, width, height])
                 return render_region(candidate, (left, top, width, height),
                                      resolve_color(candidate.state["canvas"]["background"], candidate.state))
-            return render(project, variables, artboard, comp, page).crop((left, top, left + width, top + height))
+            return _render(project, variables, artboard, comp, page).crop((left, top, left + width, top + height))
     disk = getattr(project, "_disk_cache", None)
     key = None
     if disk:
         from .render_cache import key_for
         key = key_for(candidate)
-        cached = disk.get(key, project.limits)
+        cached = disk.get(key, project.limits, kind="frame")
         if cached is not None:
+            if PROFILE.get() is not None:
+                PROFILE.get().render(incremental=False, from_disk=True)
             return cached
     background = resolve_color(candidate.state["canvas"]["background"], candidate.state)
     if region_renders_alone(candidate):
         image = render_incremental(candidate, background)
     else:
+        if PROFILE.get() is not None:
+            PROFILE.get().render(incremental=False, reason="the document reads the whole canvas")
         image = render_layers(candidate, background=background)
     from .scene import composite
 
     image = composite(image, candidate)
     if disk:
-        disk.put(key, image)
+        disk.put(key, image, kind="frame")
     return image
 
 
