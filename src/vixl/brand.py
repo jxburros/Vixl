@@ -30,14 +30,28 @@ def brand_path(workspace):
     return path
 
 
+# Copy and contract policy (words, placeholder patterns, inherited suites); validated by validate_policy.
+POLICY_FIELDS = {"words", "placeholders", "suites"}
+
+
+def validate_policy(kit):
+    from .copy_checks import validate_brand
+    from .assurance import validate_library_names
+
+    validate_brand(kit)
+    if "suites" in kit:
+        validate_library_names(kit["suites"], "brand.json suites")
+
+
 def validate(kit):
     try:
         require(isinstance(kit, dict), "brand.json must be an object")
         require(
             set(kit)
-            <= {"name", "palette", "pairing", "fonts", "logos", "minimum_contrast", "required_elements"},
+            <= {"name", "palette", "pairing", "fonts", "logos", "minimum_contrast", "required_elements"} | POLICY_FIELDS,
             "Unknown brand.json field",
         )
+        validate_policy(kit)
         from .layouts import ROLES
         from .colors import parse
 

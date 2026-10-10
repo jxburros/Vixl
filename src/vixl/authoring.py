@@ -26,7 +26,7 @@ def schemas(add):
                          "allow_overlap": {"type": "array", "items": S, "maxItems": MAX_LAYERS},
                          "tags": {"type": "array", "items": S, "maxItems": 32,
                                   "description": "Labels (replacing the layer's tags) that edit-layers can select with where.tag"},
-                         "allow_crop": B, "color_vision_safe": B, "detached_ok": B}, ["target"])
+                         "allow_crop": B, "color_vision_safe": B, "detached_ok": B, "literal_text": B}, ["target"])
     add("font-fallbacks", {"fonts": {"type": "array", "items": S, "maxItems": 16}}, ["fonts"])
 
 
@@ -145,6 +145,12 @@ def execute(project, op):
                 layer["allow_crop"] = True
             else:
                 layer.pop("allow_crop", None)
+        if "literal_text" in op:
+            # Copy that only looks like a placeholder ("TBD", "Your name here" on a form): the placeholders check skips it.
+            if op["literal_text"]:
+                layer["literal_text"] = True
+            else:
+                layer.pop("literal_text", None)
         return
     if kind == "path-fit":
         require(layer["type"] == "shape" and layer["shape"] == "path", "Path fit needs a path layer")
@@ -199,6 +205,8 @@ def compile_command(cmd, args):
                        help="series also differ by labels or patterns: the color-vision check skips this chart")
         p.add_argument("--detached-ok", action=argparse.BooleanOptionalAction, default=None,
                        help="a part that floats on purpose: the connected check skips it")
+        p.add_argument("--literal-text", action=argparse.BooleanOptionalAction, default=None,
+                       help="text that only looks like a placeholder: the placeholders check skips it")
     else:
         p.add_argument("fonts", nargs="*")
     return {"type": cmd, **{k: v for k, v in vars(p.parse_args(args)).items() if v is not None}}

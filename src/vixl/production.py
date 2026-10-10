@@ -134,13 +134,14 @@ def plan(spec):
             f"Invalid {field}",
         )
     variants = []
-    for row in rows:
+    for number, row in enumerate(rows, 1):
         require(not set(row) & set(matrix), "A field cannot occur in both a row and the matrix")
         for combination in itertools.product(*matrix.values()):
             for board in boards:
                 variants.append(
                     {
                         "id": f"{len(variants) + 1:04d}",
+                        "row": number,
                         "values": {**row, **dict(zip(matrix, combination))},
                         "artboard": board,
                     }
@@ -240,7 +241,13 @@ def render_variant(project, spec, variant, directory, prior=None, cancelled=lamb
             output = directory / name
             if output.is_file() and file_digest(output) == prior.get("sha256"):
                 return {**prior, "status": "reused"}
-    suites = spec.get("suites", list(candidate.state.get("suites", {})))
+    leftovers = placeholder_report(candidate, variant)
+    if not leftovers["passed"]:
+        # An undefined variable or leftover template copy in this row: report it naming the variant, before rendering.
+        return {**variant, "status": "needs_review", "checks": {"placeholders": leftovers}, "repairs": []}
+    from .assurance import effective
+
+    suites = spec.get("suites", list(effective(candidate)))
     checks = {name: candidate.check_suite(name) for name in suites}
     if not suites:
         checks["design"] = candidate.check(checks=["bounds", "flow"])
@@ -328,6 +335,17 @@ def render_variant(project, spec, variant, directory, prior=None, cancelled=lamb
         "repairs": repairs,
         "cache": {"hits": candidate._disk_cache.hits, "misses": candidate._disk_cache.misses},
     }
+
+
+def placeholder_report(candidate, variant):
+    """The placeholders check for one production variant, each finding naming the variant and its input row."""
+    label = f"variant {variant['id']} (row {variant.get('row', '?')}" + (
+        f", artboard {variant['artboard']})" if variant.get("artboard") else ")")
+    report = candidate.check(checks=["placeholders"])
+    for item in report["issues"]:
+        item.update(variant=variant["id"], row=variant.get("row"))
+        item["message"] = f"{label}: {item['message']}"
+    return report
 
 
 def stable_state(state):

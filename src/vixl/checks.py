@@ -14,15 +14,15 @@ from .errors import require
 from .model import finite
 from .timeline import animated as timeline_animated
 
-CHECKS = ("bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "fonts", "brand", "content", "form",
-          "links", "diagram", "flow", "codes")
+CHECKS = ("bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "placeholders", "fonts", "brand", "content",
+          "form", "links", "diagram", "flow", "codes")
 FALLBACK_FONT = "DejaVuSans.ttf"
 OPTIONAL_CHECKS = ("print", "color_vision", "guides", "alignment", "drawing", "style", "motion", "character", "captions",
                    "connected")
 # What to do about a finding. Errors and the warnings below need a design change ("fix"); other warnings
 # are worth a look ("review"); notes and deliberate choices the document marked are "informational".
 ACTIONS = ("fix", "review", "informational")
-FIX_WARNINGS = ("legibility", "fonts", "content", "guides", "alignment", "blanks", "brand")
+FIX_WARNINGS = ("legibility", "fonts", "content", "guides", "alignment", "blanks", "placeholders", "brand")
 PERCENT = re.compile(r"^(-?\d+(?:\.\d+)?)%$")
 
 
@@ -360,6 +360,12 @@ def check_design(
     unknown = sorted(set(checks) - set(CHECKS + OPTIONAL_CHECKS))
     require(not unknown, f"Unknown check(s) {unknown}; available: {', '.join(CHECKS + OPTIONAL_CHECKS)}", field="checks")
     candidate = artboard_project(project.clone(), artboard, comp, variables)
+    undefined = []
+    if "placeholders" in checks:
+        from .copy_checks import stand_in, undefined_variables
+
+        undefined = undefined_variables(candidate)
+        stand_in(candidate, undefined)
     c = candidate.state["canvas"]
     width, height = c["width"], c["height"]
     resolved = {item["id"]: item for item in resolved_layers(candidate)}
@@ -799,6 +805,11 @@ def check_design(
                     slot=entry["slot"],
                 )
 
+    if "placeholders" in checks:
+        from .copy_checks import check_placeholders
+
+        check_placeholders(candidate, resolved, layers, issue, undefined=undefined)
+
     if "fonts" in checks:
         from .richtext import fonts_used
 
@@ -839,6 +850,9 @@ def check_design(
     if brand and "brand" in checks:
         from .brand import check as check_brand
         check_brand(candidate, brand, issue)
+        from .copy_checks import check_brand_words
+
+        check_brand_words(candidate, brand, resolved, layers, issue)
 
     if "connected" in checks:
         from .parts import check_connected
@@ -934,17 +948,8 @@ def _print_checks(candidate, c, resolved, local_bounds, bounds, layers, content,
             region=[int(xs.min()), int(ys.min()), int(xs.max() - xs.min() + 1), int(ys.max() - ys.min() + 1)],
         )
     for item in layers:
-        layer = resolved[item["id"]]
-        if layer["type"] not in ("raster", "frame") or layer.get("linked"):
-            continue
-        try:
-            source = candidate.image(layer["asset"])
-        except Exception:
-            continue
-        sw, sh = (layer["crop"][2] - layer["crop"][0], layer["crop"][3] - layer["crop"][1]) if layer.get("crop") else source.size
-        _, _, w, h = bounds[item["id"]]
-        ppi = dpi * min(sw / max(w, 1), sh / max(h, 1))
-        if ppi < min_ppi:
+        ppi = effective_ppi(candidate, resolved[item["id"]], bounds[item["id"]], dpi)
+        if ppi is not None and ppi < min_ppi:
             issue(
                 "print",
                 "error" if ppi < min_ppi / 2 else "warning",
@@ -985,6 +990,20 @@ def _print_checks(candidate, c, resolved, local_bounds, bounds, layers, content,
                     f"{item['name']!r} stops at the trim on the {', '.join(edges)} edge; extend it into the {bleed}px bleed",
                     [item],
                 )
+
+
+def effective_ppi(project, layer, box, dpi):
+    """Pixels per inch a placed raster or frame image prints at in its canvas box ``[x, y, w, h]``, or None
+    for a layer that places no readable embedded image."""
+    if layer["type"] not in ("raster", "frame") or layer.get("linked"):
+        return None
+    try:
+        source = project.image(layer["asset"])
+    except Exception:
+        return None
+    sw, sh = (layer["crop"][2] - layer["crop"][0], layer["crop"][3] - layer["crop"][1]) if layer.get("crop") else source.size
+    _, _, w, h = box
+    return dpi * min(sw / max(w, 1), sh / max(h, 1))
 
 
 def _series_color_vision(candidate, resolved, issue):
@@ -1211,9 +1230,11 @@ def batch_findings(project, names, touched):
 
 
 def suite_summary(project, suites):
-    """Run attached check suites (``True`` for all of them, a name or a list) and report each one's status
-    with only the rules that did not pass, so a batch's result stays small."""
-    attached = project.state.get("suites", {})
+    """Run check suites (``True`` for every attached and inherited one, a name or a list) and report each one's
+    status with only the rules that did not pass, so a batch's result stays small."""
+    from .assurance import effective
+
+    attached = effective(project)
     if suites is True:
         names = list(attached)
     else:
@@ -1231,8 +1252,12 @@ def suite_summary(project, suites):
         report = project.check_suite(name)
         open_rules = [item for item in report["results"] if item["status"] != "passed"]
         summary[name] = {"status": report["status"], "errors": report["errors"],
-                         "needs_review": report["needs_review"], "rules": len(attached[name]["rules"]),
+                         "needs_review": report["needs_review"], "rules": len({item["id"] for item in report["results"]
+                                                                               if not item.get("automatic")}),
                          "not_passed": open_rules[:APPLY_ISSUES]}
+        for key in ("source", "library", "overrides", "contract_changed"):
+            if key in report and report[key] != "document":
+                summary[name][key] = report[key]
         if len(open_rules) > APPLY_ISSUES:
             summary[name]["omitted"] = len(open_rules) - APPLY_ISSUES
     return summary

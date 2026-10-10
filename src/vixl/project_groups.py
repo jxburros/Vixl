@@ -47,11 +47,20 @@ def dispatch(session, action, request):
                 require(isinstance(shared[key], dict), f"Shared {key} must be an object")
             for operation in shared_ops(shared):
                 service_check(validate_operation(operation))
+            suites = request.get("suites", [])
+            if suites:
+                from .assurance import validate_library_names
+                from .resources import get
+
+                validate_library_names(suites, "group-define")
+                for suite in suites:
+                    get("suites", suite, workspace=session.workspace)
             value = {
                 "version": 1,
                 "name": name,
                 "documents": [session.relative(p) for p in resolved],
                 "shared": shared,
+                **({"suites": suites} if suites else {}),
             }
             write_json(path, value)
             return value
@@ -92,13 +101,15 @@ def dispatch(session, action, request):
             require(not journal.exists(), "Recover the interrupted group edit first")
             operations = [*shared_ops(group["shared"]), *deepcopy(request.get("operations", []))]
             require(operations, "Provide shared parameters or bulk operations")
+            # Members are held to the group's library suites unless the request names the suites to run.
+            suites = request.get("suites", group.get("suites", []))
             candidates, report = {}, []
             for target in paths:
                 candidate = Project.load(target, limits=session.limits)
                 candidate._workspace = session.workspace
                 require(candidate.transaction is None, "Commit group member transactions first")
                 result = candidate.apply(operations, check=service_check, detail="compact")
-                checks = [candidate.check_suite(suite) for suite in request.get("suites", [])]
+                checks = [candidate.check_suite(suite) for suite in suites]
                 require(
                     all(check["passed"] for check in checks),
                     "Group checks failed; no documents saved",

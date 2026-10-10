@@ -7,9 +7,17 @@ Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/mai
    Use `suite-capture` for protected layer structures/pixel regions. Do not overwrite
    baselines during an ordinary repair. Rule kinds: `assert`, `property`, `gap`, `spacing`,
    `relation`, `text-fit`, `contrast`, `hierarchy`, `color`, `palette`, `ink`, `balance`, `focal`,
-   `count`, `alpha`, `design`, `container`, `unchanged`, `pixels` (fields:
+   `count`, `text` (the drawn copy: `contains`, `forbid`/`pattern` regexes, `min_/max_characters`,
+   `min_/max_words`, `case`, `brand`), `budget` (`max_layers`, `max_fonts`, `max_bytes`, `min_ppi`), `alpha`,
+   `design`, `container`, `unchanged`, `pixels` (fields:
    `vixl_workflow_schema().definitions.suite`; method: `vixl_guide("testing")`). Run suites with each
-   batch (`vixl_operations_apply(suites=true)`) and before every preview.
+   batch (`vixl_operations_apply(suites=true)`) and before every preview. `sampling` (or `check`'s request)
+   takes `artboards`/`pages`/`comps` (`"all"` or names) to cover every variant in one run; each result names
+   its `variant`. `suite-infer` proposes an explained starter suite from an approved document (`apply: true`
+   saves it to the library, `group` makes a group inherit it, `from_group` infers across members).
+   Library suites listed under `suites` in `group-define` or brand.json are inherited by reference; a
+   document overrides a rule by `id` with a suite that has `extends: NAME`. Workflow `check` with no
+   `suite` runs every attached and inherited suite.
 2. Use `fit-text`, `arrange-grid`, or `adapt-layout` (`recompose: true` rebuilds a stored layout recipe at the
    new size and may replace manual edits) for predictable layout tasks;
    save a bounded sequence with `action-define`. `role-set`, `motion-define`, and
@@ -20,7 +28,8 @@ Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/mai
    bindings. Include defaults and difficult examples. Image slots use embedded asset IDs.
 5. Workflow `plan` accepts a spec with rows, matrix, artboards, format and quality.
    Inspect its count before `run`, which also needs an output directory. Every output
-   gets checks; up to three named repair_actions can run without changing the suites.
+   gets checks; up to three named repair_actions can run without changing the suites. A row that leaves a
+   variable undefined or draws placeholder copy is `needs_review`, with findings naming the variant and `row`.
 6. For long production, call `submit` with `start:true`, then `status` with its returned
    ID. The source is snapshotted. `cancel` is cooperative; `resume` preserves remote IDs.
    Never blindly repeat an uncertain provider request.

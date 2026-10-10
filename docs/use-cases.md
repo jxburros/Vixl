@@ -198,6 +198,8 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | QA-06 | Check print readiness (ink limit, effective ppi, bleed) | `check --checks print` | 1 · <1 | E | |
 | QA-07 | Check color-vision safety of text and chart series | `check --checks color_vision` | 1 · <1 | E | Other adjacent fills not compared yet. |
 | QA-08 | Check a design against a named style (Swiss, Bauhaus …) | `check --checks style` | 1 · <1 | E | 28 styles. |
+| QA-25 | Find leftover template copy: lorem ipsum, TODO/TBD, "Headline here", unresolved `${name}` | `vixl_check` (placeholders, on by default) | 1 · <1 | E | `{{name}}` from other tools is review only; `layer-intent literal_text` exempts intended text. |
+| QA-26 | Check every artboard, page and comp in one call | `check --artboards all --pages all --comps …`, suite `sampling` | 1 · <1 | E | Findings name their variant; hidden pages need `include_hidden`. |
 | AGT-01 | Ask what to make and with which tools for a brief | `vixl_guide(brief)` | 1 · <1 | E | 20 kinds: poster, logo, character, comic, form … |
 | AGT-02 | Look up fields and gotchas for a topic | `vixl_capabilities(topic)` | 1 · <1 | E | |
 | AGT-03 | Read the JSON schema of one operation | `vixl_operation_schema` | 1 · <1 | E | |
@@ -495,6 +497,9 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | PRD-21 | Plan a production spec and list its variants without rendering | `vixl_workflow` plan | 3–6 · 1 | E | |
 | PRD-22 | Save a design to a component library and reuse it elsewhere | library-save, library-search, library-place | 5–8 · 1–2 | E | Placement is a raster snapshot. |
 | QA-20 | Write a custom check suite for a brand (fonts, palette, logo clear space) | suite rules, `vixl_workflow` check | 10–20 · 2–3 | E | |
+| QA-27 | Copy rules: headline length, a required disclaimer, banned words (brand.json `words`) | `text` suite rule | 3–6 · 1 | E | Measured after variables, per artboard and row; no dictionary spelling. |
+| QA-28 | Production budgets: layers, fonts, file size, image ppi | `budget` suite rule | 2–4 · 1 | E | Render time is not budgeted. |
+| QA-29 | Generate a starter suite from an approved design and review it | `vixl_workflow` suite-infer | 2–4 · 1 | E | Each rule explains what it measured; `from_group` keeps rules every member passes. |
 | QA-21 | Live human review in a browser while an agent edits | `vixl view` | setup · 1–2 | E | [server] |
 | COL-10 | Three-way merge of a branch with explicit conflict resolution | branch-merge (dry run, then apply) | 5–12 · 2 | E | |
 | AGT-20 | Run a 1,000-operation batch from a JSONL file | `operations_path`, `--check`, `--preview` | 1–3 · 1–2 | E | Batches go up to 10,000 operations. |
@@ -577,6 +582,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | --- | --- | --- | --- | --- | --- |
 | PRD-31 | Render a production matrix (sizes × languages × colorways) with suites | `vixl_workflow` plan/run | 10–20 · 5+ render | E | Resumable; time is the render. |
 | PRD-32 | Apply a brand change to every document in a project group, gated by suites | group-define, group-apply | 10–20 · 3–5 | E | Dry run by default; journal recovery. |
+| PRD-35 | Hold every document in a group or workspace to one library suite, inherited by reference | group-define / brand.json `suites`, `vixl_workflow` check | 3–6 · 1 | E | A library edit reaches every member's next check; members override rules by `id` (`extends`). |
 | PRD-33 | Install a plugin pack of palettes, templates and suites | `vixl_workflow` plugin-install | 2–4 · 1 | E | Packs are trusted code. |
 | PRD-34 | Rebuild a merge after the CSV changed | `merge --rerun sheets.vixl --data new.csv` | 2–4 · 1 | E | |
 

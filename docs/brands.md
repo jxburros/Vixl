@@ -66,6 +66,24 @@ MCP uses `vixl_roll(apply=true, slots={...})`. Font downloads and the layout com
 one undo step; failures leave the document unchanged. Layout application returns `unfilled_slots`
 and full layout notes immediately, including for compact responses and dry runs.
 
+## Copy rules and shared suites
+
+Three optional fields hold the brand's copy policy and its contract:
+
+```json
+{
+  "words": {"forbid": ["cheap", "world-class"], "prefer": {"utilize": "use", "e-mail": "email"}},
+  "placeholders": ["\\bCOPY TK\\b", "\\[\\[.*?\\]\\]"],
+  "suites": ["delivery"]
+}
+```
+
+`words.forbid` phrases (whole words, any case) are `brand` errors in `check`; a `words.prefer` word is a
+`review` finding that names the preferred one; a `text` suite rule with `brand: true` also forbids them.
+Spelling against a dictionary is not checked. `placeholders` adds regular expressions to the
+`placeholders` check (leftover template copy). `suites` names library suites that every document in the
+workspace inherits by reference (see [library suites](production.md#library-suites-shared-by-a-group-or-the-workspace)).
+
 ## One brand across several documents
 
 Create all documents from the same workspace containing `brand.json`. Pin the pairing (or embed heading/body fonts) and all seven palette roles there. Keep those brand settings unchanged while rolling different layouts: the brand wins over the rolled pairing and palette, while explicit operation fields win over the brand. Use the same `mode`, font and palette overrides on `layout-apply` when an exact campaign direction matters; a shared seed alone is insufficient across different purposes and aspect ratios. `roll` previews report the selected direction before applying it. Check each result with the default checks and `check --checks brand`.

@@ -87,12 +87,18 @@ likeness, mood). `vixl_guide("testing")` is the full method; every `vixl_guide(k
 | Balanced / subject on a thirds point | `{kind: balance, tolerance: 0.1}`, `{kind: focal, target: subject, grid: thirds}` |
 | Brand colour exact | `{kind: color, point: [x, y], expected: "@brand"}` or `palette` |
 | Exactly three bullets, no text on an icon | `{kind: count, target: "bullet-*", minimum: 3, maximum: 3}`, `{kind: count, layer_type: text, maximum: 0}` |
+| Headline ≤ 40 characters, must say "Terms apply", never "free" | `{kind: text, target: headline, max_characters: 40}`, `{kind: text, contains: "Terms apply"}`, `{kind: text, forbid: "(?i)\\bfree\\b"}` |
+| At most 3 fonts, images print at 240 ppi | `{kind: budget, max_fonts: 3, min_ppi: 240}` |
 | A finished part must not change | `suite-capture` (unchanged and pixels rules) |
 | Holds through an animation | add `sampling: {mode: sampled, count: 8}` |
+| Holds on every format | add `sampling: {artboards: "all", pages: "all"}` (results name their `variant`) |
 
 Each result carries the measurement (gaps, margins, ratio, centre, colour), so a failure says what to
 change. A rule that cannot be measured (a missing layer) is `needs_review`, never a pass, and a
 passing suite proves only its own rules. Rule fields: `vixl_workflow_schema().definitions.suite`.
+From an approved design, `vixl_workflow("suite-infer", {name})` proposes an explained, tolerant suite to
+review; library suites a group or brand.json lists under `suites` are inherited by every member, and
+`vixl_workflow("check", {})` runs every attached and inherited suite.
 
 **One call for a new piece.** When you already know the size, layout slots, look and operations,
 `vixl_compose(path, size=…, font_pairing=…, layout={name, …slots}, style=…, look={…}, operations=[…],

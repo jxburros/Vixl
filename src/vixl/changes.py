@@ -204,7 +204,7 @@ def _brief(layer):
         if provenance.get(key):
             result[key] = provenance[key]
     # layer-intent settings, so an agent can see why a check exempts a layer.
-    for key in ("role", "tags", "detached_ok", "allow_crop", "color_vision_safe"):
+    for key in ("role", "tags", "detached_ok", "allow_crop", "color_vision_safe", "literal_text"):
         if layer.get(key):
             result[key] = layer[key]
     return result

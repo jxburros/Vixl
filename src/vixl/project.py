@@ -869,10 +869,17 @@ class Project:
         return export_animation(self, path, **options)
 
     @memory_guard
-    def check(self, **options):
+    def check(self, *, artboards=None, pages=None, comps=None, include_hidden=False, **options):
+        """Design checks (``checks.check_design``). ``artboards``, ``pages`` and ``comps`` ('all' or lists) check
+        every combination in one report (``coverage.check_all``); hidden pages only with ``include_hidden``."""
         from .checks import check_design
+        from .coverage import check_all, requested
 
-        report = check_design(self, **options)
+        if requested(artboards, pages, comps):
+            report = check_all(self, artboards=artboards, pages=pages, comps=comps, include_hidden=include_hidden,
+                               **options)
+        else:
+            report = check_design(self, **options)
         if not options.get("checks") or "fonts" in options["checks"]:
             from .compaction import check_note
 

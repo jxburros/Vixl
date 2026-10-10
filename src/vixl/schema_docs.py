@@ -84,7 +84,7 @@ SUMMARIES = {
     "pattern-scatter": "Scatter motifs in a seamless wrap-around tile (copies crossing an edge wrap), report its seam score.",
     "look": "Apply a named finishing look (glow, drop shadow, grain, paper, gradient …) to layers in one step.",
     "layer-style": "Add or remove a layer style: drop shadow, stroke, outer glow, color or gradient overlay.",
-    "layer-intent": "Mark a layer as content, decoration, background or the page title, allow intended overlaps, or allow an intentional crop.",
+    "layer-intent": "Mark a layer as content, decoration, background or the page title, allow intended overlaps, allow an intentional crop, or mark placeholder-like text as intended.",
     "path-fit": "Fit a path layer's geometry into its box.",
     "font-fallbacks": "Register fonts used for characters the primary font lacks.",
     "artboard": "Define a named artboard (size, background, variables, viewport) for variants.",
@@ -627,7 +627,9 @@ OVERRIDES = {
                                     "group that its parts are separate by design, so the connected check skips it.",
                      "color_vision_safe": "true on a chart group says its series differ by more than color (labels, patterns), so the color_vision check skips it.",
                      "allow_crop": "true marks a deliberate edge crop or bleed: checks report it as informational "
-                                   "instead of a problem."},
+                                   "instead of a problem.",
+                     "literal_text": "true on a text layer says copy that looks like a placeholder (TBD, 'Your name "
+                                     "here', ${name}) is intended, so the placeholders check skips it."},
     "font-fallbacks": {"fonts": "Registered font names tried for missing characters."},
     "container-place": {"name": "Group layer name.", "resource": "Saved container name.",
                         "variables": "Container variables."},

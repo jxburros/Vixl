@@ -836,7 +836,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
 
     @tool
     def vixl_check(
-        checks: list[Literal["bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "fonts", "brand", "print", "color_vision", "guides", "alignment",
+        checks: list[Literal["bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "placeholders", "fonts", "brand", "print", "color_vision", "guides", "alignment",
                              "deck", "title_position", "type_scale", "words", "min_font", "notes", "empty", "form", "drawing", "links", "style",
                              "diagram", "flow", "codes", "motion", "character", "captions", "connected"]]
         | None = None,
@@ -861,6 +861,10 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         sample: Annotated[str | None, Field(description="form checks: 'worst' (worst-case values) or a workspace CSV of rows")] = None,
         style: Annotated[str | list[str] | None, Field(description="style check: evaluate this style (or list) instead of the document's style tag")] = None,
         connect_tolerance: Annotated[float, Field(ge=0, le=100, description="connected check: pixels of gap still counted as touching")] = 2,
+        artboards: Annotated[Literal["all"] | list[str] | None, Field(description="Check every artboard ('all') or these, in one report; each finding names its variant")] = None,
+        pages: Annotated[Literal["all"] | list[int | str] | None, Field(description="Check every page shown on export ('all') or these pages, each reported separately (deck checks use deck.pages)")] = None,
+        comps: Annotated[Literal["all"] | list[str] | None, Field(description="Check with every layer comp ('all') or these")] = None,
+        include_hidden: Annotated[bool, Field(description="pages='all' also checks pages hidden from export")] = False,
         document: Document = None,
     ) -> dict:
         """Find design problems without looking: content cut off by the canvas, overlapping text, low WCAG
@@ -870,10 +874,12 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         contrast collapses for color-blind readers; deck checks every page plus title placement, type
         scale, words per page, projected type size and speaker notes; form checks fields (names, overlap, tab
         order, sizes, contrast) and with sample finds values that overflow; style (opt-in) evaluates the document's
-        style tag rule by rule. Each issue has a severity (error, warning, info) and an action: fix (needs a design
+        style tag rule by rule. placeholders finds leftover template copy (lorem ipsum, TODO, 'Headline here', an
+        unresolved ${name}). Each issue has a severity (error, warning, info) and an action: fix (needs a design
         change), review (look and decide) or informational (expected, such as a crop marked with layer-intent
         allow_crop); by_action lists the issue indexes under each. connected (opt-in) finds parts of a group (a mascot,
-        a character) that float free of its main body. Reports only problems."""
+        a character) that float free of its main body. artboards/pages/comps check every variant in one call.
+        Reports only problems."""
         return session.check(
             document=document,
             checks=checks,
@@ -892,6 +898,9 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
             sample=sample if sample in (None, "worst") else str(session.resolve(sample)),
             style=style,
             connect_tolerance=connect_tolerance,
+            **{key: value for key, value in (("artboards", artboards), ("pages", pages), ("comps", comps))
+               if value is not None},
+            **({"include_hidden": True} if include_hidden else {}),
         )
 
     @tool

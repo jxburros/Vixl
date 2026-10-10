@@ -124,6 +124,10 @@ document type `social-card`, `composition` (balance, breathing room, overlap, co
 `vixl_guide(kind)` names the one that suits a kind of work under `tests`.
 Read one with `resource-get`, then attach it with `suite-use`, e.g. `{"name":"palette"}`.
 Run `check` with `{"suite":"palette"}`. Warnings and unmeasurable rules count as needs-review.
+`suite-use` copies the suite; `{"name":"delivery","reference":true}` attaches it by reference instead
+(`{"extends":"delivery","rules":[]}`), so every check runs the library's current rules. Workflow
+`suite-infer` proposes a starter suite from an approved document, each rule explained by what it
+measured (see [production](production.md#starter-suite-from-an-approved-design)).
 
 Start a custom contract in seconds:
 
@@ -222,7 +226,10 @@ Workflow `group-define`:
 
 `group-apply` with `{"name":"launch"}` previews all members. Add `dry_run:false` to publish;
 optional `operations` append a common edit batch and `suites` check every candidate before
-publication. Shared parameters are applied explicitly, not live-linked. Any invalid member
+publication. `group-define` also takes `suites: ["delivery"]`: library suites every member inherits
+by reference. `check`, production `run` and `group-apply` run them (unless a `suites` list narrows the
+run), a library edit reaches every member's next check, and a member overrides a rule by `id` with a
+suite that `extends` the library suite (see [library suites](production.md#library-suites-shared-by-a-group-or-the-workspace)). Shared parameters are applied explicitly, not live-linked. Any invalid member
 prevents all writes. Locks and rollback handle ordinary failures. Durable backups and a journal
 support `group-recover` after interruption; recovery refuses to overwrite later edits. Publication
 is sequential, so this is not a cross-file filesystem transaction for readers ignoring locks.
