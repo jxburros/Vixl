@@ -7,6 +7,7 @@ from .geometry import ANCHORS
 from .inplace import EDITS, target_schema
 from .model import Limits
 from .render import EFFECTS, BLENDS
+from .type_roles import STAGES
 
 S = {"type": "string"}
 N = {"type": "number"}
@@ -37,7 +38,8 @@ FINISH_FIELDS = {
 }
 FONT = {
     "type": "string",
-    "description": "Registered font name or role (heading, body); install with font install / font pair / font import. "
+    "description": "Registered font name, role (heading, body or a brand role) or text stage (display, h1, h2, h3, "
+    "subtitle, lead, body, caption, citation, label); install with font install / font pair / font import. "
     "File paths work only in the CLI and Python API, not over MCP or REST. A new text layer without one uses the "
     "body face once the document has typography.",
 }
@@ -131,6 +133,8 @@ def _operation_schema():
                            "mode": enum("light", "dark"), "columns": {"type": "integer", "minimum": 1, "maximum": 12}}, ["name"])
     add("guidance", {"name": S, "text": S, "style": S, "delete": B}, ["name"])
     add("font-register", {"name": S, "asset": S, "role": S}, ["name"])
+    add("brand-preset", {"name": field(S, "A preset in the workspace brand.json presets, or none for the base brand.")},
+        ["name"])
     baseline_y = {"type": "number", "description": "Place the text's first baseline at this y (instead of y, the top "
                   "of its box), in the same coordinates as y. Multi-line text: the first line; mixed fonts: the measured "
                   "first line."}
@@ -157,6 +161,10 @@ def _operation_schema():
                            "description": "Draw the layer's text in this case without changing the stored text "
                            "(capitalize upper-cases the first letter of each word); applies to text changed by "
                            "keyframes and ${variable} values too. none removes it."},
+        "stage": {"enum": list(STAGES),
+                  "description": "Text stage (alias role): its font role, type-scale size, line height and case fill "
+                  "what the operation leaves out. display and h1–h3 follow the heading font, the rest the body font, "
+                  "unless the brand or font-register role=STAGE maps them elsewhere."},
     }
     add(
         "text",

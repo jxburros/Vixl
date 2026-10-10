@@ -33,6 +33,7 @@ project with appropriate layers or input files. See each guide for complete crea
 | Pixel diff of two files | `diff before.vixl after.png [--out diff.png] [--mode diff\|side-by-side] [--threshold 8] [--max-fraction F] [--overwrite]` | [CI](ci.md#the-same-checks-locally) |
 | Proof page | `workflow proof --request proof.json --workspace .` | [Proof pages](production.md#proof-pages) |
 | Logo package | `workflow logo-package --request logo.json --workspace .` | [Logo packages](production.md#logo-packages) |
+| Brand guidelines | `workflow brand-board --request board.json --workspace .`; `brand validate`, `brand show [--preset NAME]` | [Brands](brands.md#brand-board) |
 | App animation package | `workflow app-animation-package --request package.json --workspace .` | [App animation packages](animation-authoring.md#app-animation-packages) |
 | Six-second loop | `template new video-tip -o tip.vixl --set title=… --set subtitle=… --set cta=…` (also `video-launch`, `video-event`) | [Short templates](animation-authoring.md#joint-pose-keys-and-short-templates) |
 | Readable source folder | `unpack design.vixl design-source`, `pack design-source design.vixl [--overwrite]` | [Reviewing in Git](#reviewing-editable-projects-in-git) |

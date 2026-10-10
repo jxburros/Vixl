@@ -356,3 +356,16 @@ def test_check_all_applies_waivers_and_outcome_accepts_them(tmp_path):
     assert result["passed"] and entry["findings"][0]["waived"]["reason"] == "ghost numeral"
     assert entry["waivers"]["active"][0]["matched"] == 1 and "ghost numeral" in markdown(result)
     assert not dispatch(session, "check-all", {"checks": ["contrast"], "history": False, "waivers": False})["passed"]
+
+
+def test_strict_brand_colors_still_skip_translucent_black_and_white_effects(tmp_path):
+    # #528 ported onto colors.strict: a white glow or black shadow adds no ink, an off-palette colour is an error.
+    brand(tmp_path, colors={"strict": True, "tolerance": 2})
+    p = Project(600, 600, "#efe6d2", workspace=tmp_path)
+    p.apply([{"type": "text", "name": "a", "text": "HELLO", "x": 50, "y": 200, "size": 120, "color": "#d4241c"},
+             {"type": "layer-style", "target": "a", "name": "outer-glow", "settings": {"color": "#ffffff66"}}])
+    assert not p.check(checks=["brand"])["issues"]
+    p.apply({"type": "shape", "name": "b", "shape": "rectangle", "x": 0, "y": 0, "width": 50, "height": 50,
+             "fill": "#00ff00"})
+    found = p.check(checks=["brand"])["issues"]
+    assert found[0]["severity"] == "error" and found[0]["color"] == "#00ff00" and found[0]["layers"] == ["b"]

@@ -11,6 +11,7 @@ from .links import ACTIONS as LINK_ACTIONS
 from .lyrics import REQUEST_FIELDS as LYRIC_FIELDS
 from . import media_analysis, natural_guidance
 from .logo_package import FIELDS as LOGO_PACKAGE_FIELDS
+from .brand_board import FIELDS as BRAND_BOARD_FIELDS
 from .screen_capture import FIELDS as CAPTURE_FIELDS
 from .app_animation import FIELDS as APP_ANIMATION_FIELDS
 
@@ -54,6 +55,7 @@ ACTIONS = {
                   set()),
     "replace-across": ({"name", "documents", "replace", "dry_run", "suites", "accept", "reject", "decisions", "review",
                         "overwrite", "journal"}, {"replace"}),
+    "brand-board": (BRAND_BOARD_FIELDS, {"output"}),
 }
 
 
@@ -258,6 +260,10 @@ def dispatch(session, action, request, document=None):
         from .logo_package import build
 
         return build(session, request, document)
+    if action == "brand-board":
+        from .brand_board import build as build_board
+
+        return build_board(session, request, document)
     if action in ("drawing-report", "drawing-compare"):
         from .drawing import compare, report
 

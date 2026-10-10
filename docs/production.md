@@ -453,6 +453,12 @@ has at least 3:1 contrast with the background and otherwise use the one-colour l
 There is no EPS output: EPS cannot carry transparency and most tools that once needed it accept PDF or SVG. Hand
 over the PDF (print) or SVG (web, sign makers).
 
+## Brand boards
+
+`brand-board` draws the workspace `brand.json` (or one of its presets) as a guidelines document: cover, colour
+roles with contrast pairs, the text-stage ladder, logos with their clear space, and do/don't rules. It writes a
+`.pdf`, `.pptx` or `.html` (and the editable `.vixl` with `document`). See [brands](brands.md#brand-board).
+
 ## Persistent rendering cache and library
 
 Production variants, timeline exports, contact sheets and `vixl export`/`vixl render` of a saved document use a

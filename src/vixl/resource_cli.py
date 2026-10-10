@@ -145,7 +145,7 @@ def project_command(project, cmd, args):
         p.add_argument("--name")
         p.add_argument("--weight", type=int, default=400)
         p.add_argument("--italic", action="store_true")
-        p.add_argument("--role", choices=["heading", "body"])
+        p.add_argument("--role", help="heading, body, a text stage (h1, label …) or another role name (accent, hand)")
         p.add_argument("--seed", type=_seed)
         p.add_argument("--mood")
         p.add_argument("--for", dest="purpose")
@@ -159,7 +159,10 @@ def project_command(project, cmd, args):
                 return typefaces.install_workspace(Path.cwd(), a.source, a.weight, a.italic, a.name, a.role), False
             return typefaces.pair_workspace(Path.cwd(), a.source, seed=a.seed, mood=a.mood, best_for=a.purpose), False
         if a.action == "list":
-            return {"fonts": project.state.get("fonts", {}), "typography": project.state.get("typography", {})}, False
+            from .type_roles import describe
+
+            return {"fonts": project.state.get("fonts", {}), "typography": project.state.get("typography", {}),
+                    "stages": describe(project)}, False
         from . import typefaces
 
         if a.action == "install":

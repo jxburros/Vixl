@@ -1517,12 +1517,13 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         weight: Annotated[int, Field(ge=100, le=900)] = 400,
         italic: bool = False,
         name: str | None = None,
-        role: Literal["heading", "body"] | None = None,
+        role: Annotated[str | None, Field(description="Make it the font of this role: heading, body, a text stage "
+                                          "(h1, label …) or any lowercase role name (accent, hand)")] = None,
         scope: FontScope = "document",
         document: Document = None,
     ) -> dict:
         """Download one style of any Google Fonts family, embed and register it (default name
-        family-weight); role makes it the document's heading or body font. The result's source says whether
+        family-weight); role makes it the font of that role or text stage. The result's source says whether
         it came from the cache (cache_file, VIXL_FONT_CACHE) or a download (url), and file the embedded asset.
         scope='workspace' (needs role) instead embeds it in brand.json as the workspace default for that role."""
         from .typefaces import install_font, install_workspace

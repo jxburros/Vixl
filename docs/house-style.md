@@ -126,6 +126,9 @@ Today plain `text` resolves to the bundled DejaVu Sans even when the document ha
 
 **Developer Addition:** We should have multiple stages of text like h1, h2, h3, subtitles, body, citation, etc.  But they shouldn't all have to be used, and most of the time, it will only be 2-4 fonts spread out across different stages, but we want to give users the options.
 
+Implemented (#406): craft `type_stages` holds the ten stages (font role, type-scale step, line height, case); see
+[Typography](typography.md#text-stages).
+
 **Recommendation:** `body`, with `heading` above the title size.
 
 Decision:
@@ -646,7 +649,8 @@ one module, `src/vixl/house_style.py`. A workspace `brand.json` and explicit fie
   half the body size), the line-height table, line length, minimum text sizes, the base-size rule, the
   headline measure, the default safe area (5%) and stroke width (1.5%), the neutral fill and the palette
   roles fills and strokes take, the house corner and corner scale, the irregularity strength, margins,
-  outline and shadow treatment, and label case. `src/vixl/craft.py` holds the helpers that apply them
+  outline and shadow treatment, label case, and the text-stage ladder (`type_stages`: each stage's font role,
+  type-scale step, line height and case). `src/vixl/craft.py` holds the helpers that apply them
   (text, shape and stroke defaults) and read-only names (`LINE_HEIGHT`, `CORNERS`, `SAFE_AREA` …) that
   always reflect the data; layouts, rich text, text flow, charts, diagrams, templates and containers
   read the same values.

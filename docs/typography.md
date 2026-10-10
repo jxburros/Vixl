@@ -54,13 +54,46 @@ Plain text stores it as `line_height` and the matching `spacing` (pixels added t
 negative for tight display type); a later size or font change keeps the multiple. `spacing` in pixels overrides it.
 Layers saved before 0.23 keep their stored spacing.
 
+## Text stages
+
+Text is set on a ladder of ten stages. Each stage has a font role, a type-scale step, a line-height entry and an
+optional case (craft `type_stages` in the house style):
+
+| Stage | Font role | Type-scale step | Line height | Case |
+| --- | --- | --- | --- | --- |
+| display | heading | display | display (1.0) | |
+| h1 | heading | headline | heading (1.1) | |
+| h2 | heading | title | heading (1.1) | |
+| h3 | heading | subhead | heading (1.1) | |
+| subtitle | body | lead | lead (1.35) | |
+| lead | body | lead | lead (1.35) | |
+| body | body | body | body (1.45) | |
+| caption | body | caption | caption (1.3) | |
+| citation | body | caption | caption (1.3) | |
+| label | body | caption | caption (1.3) | upper |
+
+`text` and `text-set` take `stage` (alias `role`): the stage's font, size (from the document's type scale, else the
+body size and a perfect-fourth scale), line height and case fill whatever the operation leaves out. Fonts follow
+roles, so two fonts cover the whole ladder; to spread three or four, register a face for a role or a stage:
+`{"type": "font-register", "name": "anton-400", "role": "h1"}` gives h1 its own face, and any lowercase role name
+(`accent`, `hand`, `mono`) can be registered and named in `font`. A workspace brand maps stages onto its roles with
+`stages` (see [brands](brands.md#font-roles-text-stages-and-extra-colours)). Text that follows a role or stage
+changes face when that role is registered again.
+
+Without `font` or `stage`, new text takes the stage its size reads as once the document has typography: from the
+title step (h2) up a heading stage in the heading face, below it lead, body or caption in the body face. Markdown
+headings (`#`, `##`, `###`) in rich text and text flows use the h1–h3 stage fonts (the heading face, set at its own
+weight rather than synthesized bold). Layout slots use the stages too: display, headline (h1), title (h2), subhead
+(subtitle), lead, body, caption and label slots take a stage's own face when the document maps one. Before any
+typography is set, stages keep the proofing font. Templates may name a role or stage in `font`, or set `stage`.
+
 ## Installing
 
 ```bash
 vixl font pair dm-serif-dm-sans        # heading + body; or: vixl font pair random --mood warm
 vixl font install "Fraunces" --weight 700 --role heading
 vixl font use dm-sans-400 --role body  # reassign an installed font
-vixl font list                         # registered fonts and the document typography
+vixl font list                         # registered fonts, the document typography and the text stages
 ```
 
 Installs fetch one static TTF per style from the Google Fonts CSS API (`fonts.gstatic.com`, HTTPS only, bounded size). Any Google Fonts family works, not only catalog entries. Files are validated and cached in `~/.cache/vixl/fonts` (set `VIXL_FONT_CACHE` to move it), then embedded in the document and registered as `family-weight` (for example `dm-serif-display-400`). A saved `.vixl` file therefore renders anywhere without the network. `font pair` and `--role` set `state.typography`, and layouts use it for headings and body unless you pass `font`/`display_font`. The structured operation is `{"type": "font-register", "name": "dm-sans-400", "role": "body"}`.
@@ -69,7 +102,7 @@ Each install reports where the font came from, so agents and CI can verify offli
 
 ### Workspace default fonts
 
-A workspace can give every new document the same typography. `vixl_font_pair(pairing=..., scope="workspace")` (CLI `vixl font pair NAME --scope workspace`, REST `POST /typefaces/pair` with `"scope": "workspace"`) writes `pairing` into the workspace `brand.json`; `vixl_font_install(family=..., role="heading"|"body", scope="workspace")` (CLI `vixl font install FAMILY --role heading --scope workspace`) embeds that one style in `brand.json` under `fonts.<role>`, overriding the pairing for that role. A workspace pairing replaces embedded `fonts` entries, and the result lists them under `workspace.replaced`. Both fetch the fonts immediately, so an unknown family fails at once, and neither changes existing documents.
+A workspace can give every new document the same typography. `vixl_font_pair(pairing=..., scope="workspace")` (CLI `vixl font pair NAME --scope workspace`, REST `POST /typefaces/pair` with `"scope": "workspace"`) writes `pairing` into the workspace `brand.json`; `vixl_font_install(family=..., role="heading"|"body"|any role, scope="workspace")` (CLI `vixl font install FAMILY --role heading --scope workspace`) embeds that one style in `brand.json` under `fonts.<role>`, overriding the pairing for that role. A workspace pairing replaces embedded `fonts.heading`/`fonts.body` entries (other roles stay), and the result lists them under `workspace.replaced`. Both fetch the fonts immediately, so an unknown family fails at once, and neither changes existing documents.
 
 `vixl_document_create`, `Session.create` and `vixl new` then download (or reuse from the cache) and embed the workspace fonts as part of the creation step, and report them under `workspace_fonts` (`pairing`, and `applied.heading`/`applied.body` with each font's `name` and whether it came `from` the pairing or `fonts`). Fonts are embedded in each document, so files stay portable. Passing `font_pairing` to `vixl_document_create`, `workspace_fonts: false` (CLI `--no-workspace-fonts`) skips them. When a pairing cannot be fetched (offline, empty cache), the document is still created and `workspace_fonts.error` says why; run `vixl_font_pair` later. The CLI uses the `brand.json` beside the new document (`--scope workspace` writes it in the current directory).
 

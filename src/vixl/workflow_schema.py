@@ -6,6 +6,7 @@ alone. They are descriptive: ``workflows.dispatch`` and the owning modules still
 
 from copy import deepcopy
 
+from .brand_board import field_types as _brand_board_types
 from .logo_package import field_types as _logo_package_types
 
 STR = {"type": "string"}
@@ -22,6 +23,7 @@ REPAIR = {"anyOf": [{"type": "boolean"}, {"type": "array", "items": {
                    "the candidate; kept only if the suites then pass. true for every kind, or a list of kinds."}
 
 LOGO_PACKAGE_TYPES = _logo_package_types()
+BRAND_BOARD_TYPES = _brand_board_types()
 
 # Check suite (assert-rule format). Rule fields per kind live in assurance.RULE_FIELDS; each
 # rule needs a unique id and a kind, and may set severity.
@@ -421,6 +423,7 @@ ACTION_FIELDS = {
         "overwrite": {"type": "boolean", "default": False, "description": "Replace an existing page."},
     },
     "logo-package": LOGO_PACKAGE_TYPES,
+    "brand-board": BRAND_BOARD_TYPES,
     "resource-list": {},
     "resource-get": {"name": {"type": "string", "description": "Resource name from resource-list."}},
     "resource-save": {"name": {"type": "string", "description": "Name for the saved resource."},
@@ -668,6 +671,9 @@ SUMMARIES = {
     "logo-package": "Build a logo delivery folder: full-colour, mono and on-light/dark variants, optional mark/"
                     "horizontal/stacked lockups, strict SVG, RGB/CMYK PDF, PNG 1x-3x, icons and favicon, social "
                     "images, a usage sheet and an optional zip. No EPS.",
+    "brand-board": "Draw the workspace brand.json (or a preset) as a brand guidelines document: cover, palette with "
+                   "contrast pairs, the text-stage ladder, logos with clear space and do/don't rules; .pdf, .pptx, "
+                   ".html or an editable .vixl.",
     "drawing-report": "Measure a hand-drawing layer: strokes, closures, straightness and cleanup suggestions.",
     "drawing-compare": "Write a before/after comparison PNG of a drawing layer.",
     "resource-list": "List built-in and user resources of one category.",
