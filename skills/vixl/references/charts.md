@@ -33,3 +33,24 @@ fixing a number is one operation and nothing is recomputed by hand. Full referen
   exceptions (see the export report's `charts` and `raster_fallbacks`).
 - Through MCP/REST a `csv` path must lie inside the workspace; fonts are registered names or the
   `heading`/`body` roles (`title_font`, `label_font`).
+
+## Tables
+
+`table` draws rows (inline `table`, header row first, or a workspace `csv`) as a group of text and rule
+layers; `table-data` edits cells on the same layer IDs. Use it for menus, price lists, pricing tables,
+schedules and spec sheets instead of one text layer per cell.
+
+```json
+{"type": "table", "name": "menu", "x": 60, "y": 80, "width": 520,
+ "table": [["Item", "Price"], ["Espresso", 3.25], ["Tea", 3]],
+ "columns": [{}, {"align": "decimal", "format": "$0.00"}], "zebra": true, "borders": "horizontal"}
+{"type": "table-data", "target": "menu", "set": [{"row": "Tea", "column": "Price", "value": 3.5}]}
+```
+
+- `columns[i]`: `width` (px, `auto`, `"1fr"`), `align` (`left`, `center`, `right`, `decimal`: prices share
+  their point), `format` (Excel-style). Rows grow to fit wrapped text; a table too narrow for its words warns.
+- Look: `font_size`, `header_fill`, `header_color`, `text_color`, `fill`, `zebra`, `borders`
+  (`horizontal`/`all`/`outer`/`header`/`none`), `border_color`, `border_width`, `padding`, `row_height`.
+- `table-data`: `set` (`row`: number from 1 or first-cell text; `column`: number or header), `append`,
+  `remove_rows`, `add_columns`, `remove_columns`, `reload` (CSV).
+- PPTX export writes a native, editable table (report `tables`); SVG/PDF keep vector text.

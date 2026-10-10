@@ -226,13 +226,19 @@ Read [emoji workflows](references/emojis.md) for the offline Unicode 17 catalog,
   badge's centre, a screen): put text there with `text` `within`, `place` `within` or `align` `box: "content"`.
 - **Charts** — `chart` (bar, stacked, 100 %, horizontal, line, area, pie, donut) from a table or workspace CSV, `chart-data` to fix
   a value on stable layer IDs, native PPTX charts; see [charts](references/charts.md) before drawing any chart by hand.
+- **Tables** — `table` (rows or a workspace CSV; aligned columns including `decimal` for prices, header, zebra,
+  rules) and `table-data` for cell and row edits; native PPTX tables; see [charts](references/charts.md#tables).
 - **Guides beyond right angles** — angled/curved guides, compositional and perspective grids,
   `place`, `snap`, `guides`/`alignment` checks.
 - **Lyric videos** — `lyric-video-plan/build/export` workflow actions (song + LRC + template). The template's own
   keyframes survive the build; `lead_in`/`tail` make room for an `intro` title card and an `outro` end card; the plan
   returns cue and section windows; `segments` makes long renders resumable.
 - **Linked documents** — `link` layers render another `.vixl` live (derived crops, pattern previews, sheets); `links` reports
-  stale/missing sources, `link-embed` freezes one. See [production](references/production.md).
+  stale/missing sources, `link-embed` freezes one; `corner_pin` warps a link into four corners. See [production](references/production.md).
+- **Decks from Markdown** — the `deck-from-markdown` workflow builds a checked deck (layouts, rich text, tables,
+  charts, images, speaker notes, one master) from a Markdown file in one call; re-running rebuilds only changed slides.
+- **Mockups** — the `mockup` workflow places a design in phone, laptop, browser, poster-wall, business-card or mug
+  templates (or the workspace's own, `mockup-save`) as a live, corner-pinned link; one call per design, `export` renders them.
 - **Print merge** — `merge-impose` lays CSV rows out on print sheets with crop marks: vector-text PDF plus an editable sheet.
   Placeholders take filters: `${name|upper}`, `${company|default:Independent}`, `${state|map:states}` (`variable-map`).
   `$${name}` writes a literal `${name}`.

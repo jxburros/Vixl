@@ -1,5 +1,10 @@
 # Checked production for agents
 
+Mockups: `vixl_workflow("mockup", {"design": "poster.vixl", "mockup": "poster-wall", "output": "wall.vixl"})` places
+a design in a phone, laptop, browser, poster-wall, business-card or mug template as a live, corner-pinned link
+(a list of templates and `"output": "folder"` makes one each; `export: ["png"]` renders them). `mockup-list` lists
+templates and their slots; `mockup-save` adds the workspace's own. See `docs/linked-documents.md#mockups`.
+
 Discover actions with `vixl_workflow_schema()` or `vixl workflow schema`.
 Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/main/docs/production.md).
 

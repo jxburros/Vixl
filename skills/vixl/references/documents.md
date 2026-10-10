@@ -68,6 +68,8 @@ A document becomes multi-page with the first `page add`; each page has its own l
   1920×1080 is 13.33 × 7.5 in); `dpi` sets both. The result's `page_size` shows it.
 - Name each slide's title layer `title` so it becomes the PowerPoint title placeholder.
 
+- Notes to a deck in one call: `vixl_workflow("deck-from-markdown", {"markdown": "notes.md", "output": "deck.vixl", "export": ["pptx"]})`. `#`/`##` headings start slides; title, section, quote and content layouts are chosen per slide; fenced `csv` → table, fenced `chart` → chart, `![](img.png)` → frame; `<!-- -->` or `Notes:` → speaker notes; deck checks are reported. Re-run after edits: only changed slides are rebuilt.
+
 Full reference: `docs/slides.md` (HTML presentations: `docs/presenter.md`).
 
 ## Forms

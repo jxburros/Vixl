@@ -104,7 +104,7 @@ def service_operation_schema(slim=False):
             for key in ("nodes", "edges", "frames"):
                 if key in props:  # item fields are checked on apply; vixl_operation_schema lists them
                     props[key] = {"type": "array"}
-        if kind in ("field-set", "form", "chart", "chart-data"):
+        if kind in ("field-set", "form", "chart", "chart-data", "table", "table-data"):
             # Nullable copies of the field settings: names only here, types via vixl_operation_schema.
             props.update({key: {} for key in props if key not in ("target", "kind")})
         key = json.dumps(variant, sort_keys=True)
