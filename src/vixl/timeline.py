@@ -1477,6 +1477,8 @@ def _frames(project, times, scale, preview=False, cancelled=None, progress=None)
     estimate of the seconds left, and this frame's setup (sampling the timeline) and raster milliseconds."""
     import time as clock
 
+    from .profiling import current as current_profile
+
     c = project.state["canvas"]
     size = (max(1, round(c["width"] * scale)), max(1, round(c["height"] * scale)))
     project.limits.size(*size)
@@ -1492,10 +1494,14 @@ def _frames(project, times, scale, preview=False, cancelled=None, progress=None)
                 frame = project_at(project, time, prune=True)
                 sampled = clock.perf_counter()
                 image = render_scaled(frame, scale)
+            now = clock.perf_counter()
+            setup = (sampled - start) if frame is not None else 0.0
+            profile = current_profile()
+            if profile is not None:
+                profile.phase("frame_setup", setup)
+                profile.phase("frame_raster", now - start - setup)
             if progress:
-                now = clock.perf_counter()
                 elapsed, done = now - began, index + 1
-                setup = (sampled - start) if frame is not None else 0.0
                 progress({"done": done, "total": len(times), "timing": {
                     "elapsed_s": round(elapsed, 3), "eta_s": round(elapsed / done * (len(times) - done), 3),
                     "setup_ms": round(setup * 1000, 2), "raster_ms": round((now - start - setup) * 1000, 2)}})

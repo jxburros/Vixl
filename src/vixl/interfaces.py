@@ -423,6 +423,30 @@ class Session:
             return result
 
 
+async def profiled_response(response, run):
+    """A REST response with ``run``'s render profile: in the ``X-Vixl-Profile`` header (compact, the slowest
+    layers first) and, for a JSON object body, as ``render_profile`` in the body too."""
+    import json
+
+    from fastapi.responses import Response
+
+    report = run.report()
+    headers = {k: v for k, v in response.headers.items() if k.lower() not in ("content-length", "content-type")}
+    summary = {**report, "layers": report["layers"][:5], "renders": report["renders"][-3:]}
+    headers["x-vixl-profile"] = json.dumps(summary, separators=(",", ":"))[:6000]
+    body = b"".join([chunk async for chunk in response.body_iterator])
+    media = response.headers.get("content-type", "")
+    if media.startswith("application/json"):
+        try:
+            value = json.loads(body)
+        except ValueError:
+            value = None
+        if isinstance(value, dict):
+            value["render_profile"] = report
+            body = json.dumps(value).encode()
+    return Response(body, status_code=response.status_code, headers=headers, media_type=media or None)
+
+
 def create_app(path, *, token=None, limits=None):
     try:
         from fastapi import FastAPI, Request
@@ -460,7 +484,13 @@ def create_app(path, *, token=None, limits=None):
             if len(body) > maximum:
                 return JSONResponse(too_large, status_code=413, headers={"Connection": "close"})
         request._body = bytes(body)
-        return await call_next(request)
+        from . import profiling
+
+        if not profiling.enabled():
+            return await call_next(request)
+        with profiling.profile() as run:
+            response = await call_next(request)
+        return await profiled_response(response, run)
 
     @app.exception_handler(VixlError)
     async def vixl_error(request: Request, exc: VixlError):

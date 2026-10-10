@@ -1306,7 +1306,13 @@ def main(argv=None):
             stream.reconfigure(encoding="utf-8", errors="backslashreplace")
     argv = list(sys.argv[1:] if argv is None else argv)
     try:
-        result, machine = dispatch(argv)
+        from . import profiling
+
+        with profiling.profile(force=False) as run:
+            result, machine = dispatch(argv)
+        if run is not None and not profiling.attach(result, run):
+            # A result that is not a JSON object (an image on stdout, plain text) keeps stdout as it was.
+            print(json.dumps({"render_profile": run.report()}), file=sys.stderr)
         emit(result, machine)
         if ("workflow" in argv or "emoji" in argv) and isinstance(result, dict):
             if result.get("passed") is False or result.get("success") is False or result.get("status") in ("failed", "needs_review", "cancelled"):

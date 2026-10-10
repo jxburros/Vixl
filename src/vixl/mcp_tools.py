@@ -838,7 +838,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
     def vixl_check(
         checks: list[Literal["bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "fonts", "brand", "print", "color_vision", "guides", "alignment",
                              "deck", "title_position", "type_scale", "words", "min_font", "notes", "empty", "form", "drawing", "links", "style",
-                             "diagram", "flow", "codes", "motion", "character", "captions", "connected"]]
+                             "diagram", "flow", "codes", "motion", "character", "captions", "connected", "cost"]]
         | None = None,
         targets: list[str] | None = None,
         safe_area: Annotated[
@@ -873,7 +873,8 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         style tag rule by rule. Each issue has a severity (error, warning, info) and an action: fix (needs a design
         change), review (look and decide) or informational (expected, such as a crop marked with layer-intent
         allow_crop); by_action lists the issue indexes under each. connected (opt-in) finds parts of a group (a mascot,
-        a character) that float free of its main body. Reports only problems."""
+        a character) that float free of its main body; cost (opt-in) times every layer and flags the ones that take
+        over 10× the median to draw, naming the blur radius, stroke points or effects behind it. Reports only problems."""
         return session.check(
             document=document,
             checks=checks,

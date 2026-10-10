@@ -306,13 +306,17 @@ class Runtime:
 
     def call(self, fn, returns, args, kwargs, state):
         """The synchronous body: run the tool with this call's context and shape its result."""
+        from . import profiling
+
         token = CALL.set(state)
         try:
             try:
-                result = memory_guard(fn)(*args, **kwargs)
+                with profiling.profile(force=False) as run:
+                    result = memory_guard(fn)(*args, **kwargs)
             except VixlError as exc:
                 raise self.tool_error(self.compact_json(for_surface(exc.as_dict(), "mcp"))) from exc
             warning = self.ignored(fn.__name__, state)
+            profiled = profiling.attach(result, run)
             if isinstance(result, list) and result and isinstance(result[0], dict):
                 # A JSON result with images after it (vixl_operations_apply preview=…): shape the JSON part.
                 self.label(result[0], state)
@@ -324,10 +328,12 @@ class Runtime:
                 if warning:
                     result["warnings"] = [*result.get("warnings", []), warning]
                 return self.compact_json(result)
-            if getattr(returns, "__name__", "") == "Image" and (state.document is not None or warning):
+            if getattr(returns, "__name__", "") == "Image" and (state.document is not None or warning
+                                                                or (run is not None and not profiled)):
                 # Image tools: the picture cannot carry the name or a warning, so a text line follows it.
                 note = {**({"document": self.session.relative(state.document)} if state.document is not None else {}),
-                        **({"warnings": [warning]} if warning else {})}
+                        **({"warnings": [warning]} if warning else {}),
+                        **({"render_profile": run.report()} if run is not None and not profiled else {})}
                 result = [result, self.compact_json(note)]
             return result
         finally:

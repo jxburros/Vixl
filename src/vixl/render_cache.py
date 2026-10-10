@@ -87,6 +87,14 @@ def key_for(project, layer=None, bounds=None):
     ).hexdigest()
 
 
+def _count(name, amount=1):
+    from .profiling import current
+
+    profile = current()
+    if profile is not None:
+        profile.count(name, amount)
+
+
 DEFAULT_BUDGET_MB = 256
 OFF = ("off", "0", "false", "no", "none")
 # Whole frames a sequence has requested once, remembered (by key prefix) so the second request stores it.
@@ -173,11 +181,13 @@ class RenderCache:
             self.hits += 1
             if kind == "frame":
                 self.counts["frame_hits"] += 1
+            _count("disk_frame_hits" if kind == "frame" else "disk_hits")
             return image
         except Exception:
             self.misses += 1
             if kind == "frame":
                 self.counts["frame_misses"] += 1
+            _count("disk_frame_misses" if kind == "frame" else "disk_misses")
             return None
 
     def admit(self, key, kind):
@@ -238,6 +248,7 @@ class RenderCache:
             return
         if not self.admit(key, kind):
             self.counts["frame_writes_skipped"] += 1
+            _count("disk_frame_writes_skipped")
             return
         temp = None
         try:
@@ -268,6 +279,8 @@ class RenderCache:
                 self._bytes += len(data) - previous
                 self.counts["frame_writes" if kind == "frame" else "layer_writes"] += 1
                 self.counts["bytes_written"] += len(data)
+                _count("disk_frame_writes" if kind == "frame" else "disk_writes")
+                _count("disk_bytes_written", len(data))
                 if self._bytes > self.budget:
                     entries = [(path, path.stat()) for path in self.directory.glob("*.png")]
                     for path, stat in sorted(entries, key=lambda entry: entry[1].st_mtime_ns):
@@ -276,6 +289,7 @@ class RenderCache:
                         path.unlink()
                         self._bytes -= stat.st_size
                         self.counts["evictions"] += 1
+                        _count("disk_evictions")
                 self._write_usage(dirty=False)
         except OSError:
             pass
