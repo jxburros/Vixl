@@ -1151,6 +1151,13 @@ def group_overflow_resize(layer, image, sampling):
     ox, oy = math.ceil(mx * sx), math.ceil(my * sy)
     # The source box reaches ox / sx (≥ mx) beyond the content; pad so it lies inside the tile.
     px, py = math.ceil(ox / sx - mx), math.ceil(oy / sy - my)
+    if px > image.width or py > image.height:
+        # Near-zero scale: the padding grows as 1 / scale. The group covers a pixel or two here, so
+        # shrink the whole tile and centre it instead of padding it to an unbounded size.
+        small = resize(image, (max(1, math.ceil(image.width * sx)), max(1, math.ceil(image.height * sy))), sampling)
+        out = Image.new("RGBA", (math.ceil(w + 2 * ox), math.ceil(h + 2 * oy)))
+        out.alpha_composite(small, ((out.width - small.width) // 2, (out.height - small.height) // 2))
+        return out
     if px or py:
         padded = Image.new("RGBA", (image.width + 2 * px, image.height + 2 * py))
         padded.paste(image, (px, py))
@@ -1217,7 +1224,7 @@ def layer_patch(project, layer, bounds, size, index, visiting=None, limit=None):
     visiting = set() if visiting is None else visiting
     ident = layer["id"]
     require(ident not in visiting, "Clipping contains a cycle")
-    if not layer["visible"]:
+    if not layer["visible"] or layer["opacity"] <= 0:
         return None, None
     visiting.add(ident)
     try:
@@ -1508,6 +1515,10 @@ def _render_layers(project, layers, bounds, parent, size, background, observe, m
 
     def draw(layer):
         nonlocal image
+        if layer["opacity"] <= 0:
+            # Fully transparent (a layer or group scaled to nothing is drawn this way): nothing to
+            # composite, and resampling a zero-size group tile would ask for an unbounded raster.
+            return image
         if not layer.get("styles") and not layer.get("clip") and layer["type"] != "adjustment":
             return direct(layer)
         if layer["type"] == "adjustment":
