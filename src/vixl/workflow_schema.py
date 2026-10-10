@@ -24,11 +24,13 @@ REPAIR = {"anyOf": [{"type": "boolean"}, {"type": "array", "items": {
 
 LOGO_PACKAGE_TYPES = _logo_package_types()
 BRAND_BOARD_TYPES = _brand_board_types()
+COVERAGE_AXIS = {"anyOf": [{"type": "string", "enum": ["all"]},
+                           {"type": "array", "items": {"type": ["string", "integer"]}, "minItems": 1}]}
 
 # Check suite (assert-rule format). Rule fields per kind live in assurance.RULE_FIELDS; each
 # rule needs a unique id and a kind, and may set severity.
 RULE_KINDS = ("container", "palette", "assert", "design", "property", "gap", "unchanged", "pixels", "text-fit", "alpha",
-              "spacing", "relation", "contrast", "color", "ink", "balance", "hierarchy", "count", "focal")
+              "spacing", "relation", "contrast", "color", "ink", "balance", "hierarchy", "count", "focal", "text", "budget")
 RULE_PROPERTIES = {
     "id": {"type": "string", "description": "Unique rule ID within the suite; shown in results."},
     "kind": {"type": "string", "enum": list(RULE_KINDS),
@@ -37,15 +39,16 @@ RULE_PROPERTIES = {
                             "gaps), relation (position, alignment, distance or margin), contrast (one layer's "
                             "text contrast), color (pixel or region colour), ink (how much of a region is drawn), "
                             "balance (visual centre of mass), hierarchy (type sizes step down), count (layers "
-                            "matching a name) or focal (on a thirds/golden/centre point)."},
+                            "matching a name), focal (on a thirds/golden/centre point), text (the copy: phrases, "
+                            "patterns, character and word limits) or budget (layers, fonts, bytes, image ppi)."},
     "severity": {"type": "string", "enum": ["error", "warning"], "default": "error",
                  "description": "A failed warning needs review instead of failing the suite."},
     "expression": {"type": "string",
                    "description": "assert: bounded assertion, e.g. 'layer.logo.bounds within canvas', "
                                   "'canvas.width >= 1080', 'text.title.font-size >= 24', 'layer.logo.opacity == 1'."},
     "target": {"type": "string", "description": "Layer ID or name (property, text-fit, relation, contrast, focal; "
-                                                 "container may omit it); count: a name, glob ('bullet-*') or "
-                                                 "'group:NAME' (default '*')."},
+                                                 "container may omit it); count and text: a name, glob ('bullet-*') "
+                                                 "or 'group:NAME' (default '*')."},
     "targets": {"type": "array", "items": STR, "minItems": 2,
                 "description": "spacing: sibling layers whose gaps should be equal (or expected); hierarchy: text "
                                "layers from most to least important."},
@@ -100,6 +103,32 @@ RULE_PROPERTIES = {
     "region": {**REGION, "description": "palette/pixels/color/ink/balance: [x, y, width, height] to measure "
                                         "(default whole canvas)."},
     "snapshot": {"type": "object", "description": "unchanged: captured layer (written by suite-capture)."},
+    "pattern": {"type": ["string", "array"], "items": STR,
+                "description": "text: regular expression (or list) each selected layer's drawn text must match."},
+    "contains": {"type": ["string", "array"], "items": STR,
+                 "description": "text: phrase (or list) that must appear somewhere in the selected layers' copy, "
+                                "e.g. 'Terms apply'."},
+    "forbid": {"type": ["string", "array"], "items": STR,
+               "description": "text: regular expression (or list) no selected layer may match, e.g. "
+                              "'(?i)\\bfree\\b'."},
+    "min_characters": {"type": "integer", "minimum": 0,
+                       "description": "text: fewest characters in each selected layer (line breaks not counted)."},
+    "max_characters": {"type": "integer", "minimum": 0,
+                       "description": "text: most characters in each selected layer (line breaks not counted)."},
+    "min_words": {"type": "integer", "minimum": 0, "description": "text: fewest words in each selected layer."},
+    "max_words": {"type": "integer", "minimum": 0, "description": "text: most words in each selected layer."},
+    "case": {"type": "string", "enum": ["sensitive", "insensitive"], "default": "sensitive",
+             "description": "text: whether pattern, contains and forbid match letter case."},
+    "brand": {"type": "boolean", "default": False,
+              "description": "text: also forbid the words brand.json lists under words.forbid (whole words, any case)."},
+    "max_layers": {"type": "integer", "minimum": 0, "description": "budget: most drawn layers (as count counts them)."},
+    "max_fonts": {"type": "integer", "minimum": 0, "description": "budget: most distinct fonts drawn by text."},
+    "max_bytes": {"type": "integer", "minimum": 0,
+                  "description": "budget: largest document size in bytes (JSON with undo history plus embedded files, "
+                                 "before compression)."},
+    "min_ppi": {"type": "number", "minimum": 1,
+                "description": "budget: lowest effective resolution of a placed image at the canvas dpi (300 when "
+                               "unset), as the print check measures it."},
     "asset": {"type": "string", "description": "pixels: embedded baseline image asset (written by suite-capture)."},
 }
 SUITE = {
@@ -108,8 +137,13 @@ SUITE = {
     "properties": {
         "version": {"type": "integer", "enum": [1], "default": 1, "description": "Suite format version."},
         "description": {"type": "string", "description": "What the suite protects."},
+        "extends": {"type": "string", "description": "A library suite (built-in, plugin or resource-save'd) this "
+                                                     "one runs by reference: the library's current rules, with "
+                                                     "this suite's rules overriding those with the same id (same "
+                                                     "kind; e.g. severity or tolerance) and adding the rest. rules "
+                                                     "may then be empty."},
         "rules": {
-            "type": "array", "minItems": 1, "maxItems": 256,
+            "type": "array", "minItems": 0, "maxItems": 256,
             "description": "One entry per requirement, e.g. {id: 'logo-inside', kind: 'assert', expression: "
                            "'layer.logo.bounds within canvas'}.",
             "items": {"type": "object", "properties": RULE_PROPERTIES, "required": ["id", "kind"]},
@@ -123,10 +157,19 @@ SUITE = {
                           "description": "sampled: evenly spaced samples (plus every keyframe time)."},
                 "times": {"type": "array", "items": {"type": ["number", "string"]}, "minItems": 1,
                           "maxItems": 3600, "description": "times: ms, '500ms', '1.5s' or marker names."},
+                "artboards": {**COVERAGE_AXIS, "description": "Also run over these artboards ('all' or names); "
+                                                              "each result names its variant."},
+                "pages": {**COVERAGE_AXIS, "description": "Also run over these pages ('all': every page shown on "
+                                                          "export, or names/numbers)."},
+                "comps": {**COVERAGE_AXIS, "description": "Also run with each of these layer comps ('all' or names)."},
+                "include_hidden": {"type": "boolean", "default": False,
+                                   "description": "pages 'all' also covers pages hidden from export."},
             },
         },
     },
     "required": ["rules"],
+    # Only a suite that extends a library suite may hold no rules of its own.
+    "if": {"not": {"required": ["extends"]}}, "then": {"properties": {"rules": {"minItems": 1}}},
     "examples": [{"version": 1, "rules": [
         {"id": "logo-inside", "kind": "assert", "expression": "layer.logo.bounds within canvas"},
         {"id": "title-fits", "kind": "text-fit", "target": "title", "minimum": 24},
@@ -134,6 +177,8 @@ SUITE = {
         {"id": "cta-margin", "kind": "relation", "target": "cta", "to": "canvas", "position": "inside",
          "minimum": 48},
         {"id": "quiet-corner", "kind": "ink", "region": [0, 0, 300, 200], "maximum": 0.02},
+        {"id": "headline-short", "kind": "text", "target": "title", "max_characters": 40},
+        {"id": "no-free", "kind": "text", "forbid": "(?i)\\bfree\\b"},
     ]}],
 }
 
@@ -346,11 +391,21 @@ SELECTION = {
 
 ACTION_FIELDS = {
     "check": {
-        "suite": {"anyOf": [STR, SUITE], "description": "Name of an attached suite, or an inline suite object."},
+        "suite": {"anyOf": [STR, SUITE], "description": "Name of an attached or inherited suite, or an inline "
+                                                         "suite object. Omitted: every attached and inherited suite."},
+        "suites": {**COMMON["suites"], "description": "Without suite: run only these attached or inherited suites."},
         "mode": {"type": "string", "enum": ["still", "sampled", "all", "times"],
                  "description": "Override the suite's coverage: still frame, sampled times, every frame or times."},
         "variables": {**COMMON["variables"], "description": "Variable overrides applied before checking."},
         "artboard": {"type": "string", "description": "Check this artboard's variant of the document."},
+        "page": {"type": ["string", "integer"], "description": "Check this page (name, id or number)."},
+        "comp": {"type": "string", "description": "Check with this layer comp applied."},
+        "artboards": {**COVERAGE_AXIS, "description": "'all' or artboard names: run over each (with pages and "
+                                                      "comps, every combination); results name their variant."},
+        "pages": {**COVERAGE_AXIS, "description": "'all' (pages hidden from export skipped) or page names/numbers."},
+        "comps": {**COVERAGE_AXIS, "description": "'all' or layer comp names."},
+        "include_hidden": {"type": "boolean", "default": False,
+                           "description": "pages 'all' also covers pages hidden from export."},
     },
     "act": {
         "operations": {**COMMON["operations"], "description": "Operations applied to a candidate; committed only "
@@ -433,7 +488,20 @@ ACTION_FIELDS = {
     "shape-save": {"target": {"type": "string", "description": "Shape or path layer to save."},
                    "name": {"type": "string", "description": "Name for the saved shape."}},
     "suite-use": {"name": {"type": "string", "description": "Saved suite to copy into the document."},
-                  "as": {"type": "string", "description": "Name to attach it under (default the same name)."}},
+                  "as": {"type": "string", "description": "Name to attach it under (default the same name)."},
+                  "reference": {"type": "boolean", "default": False,
+                                "description": "Attach by reference ({extends: name}) instead of a copy, so every "
+                                               "check runs the library's current rules."}},
+    "suite-infer": {"name": {"type": "string", "default": "inferred",
+                             "description": "Name for the proposed suite (and the library suite apply saves)."},
+                    "apply": {"type": "boolean", "default": False,
+                              "description": "Save the proposal as a library suite (never attached to the document)."},
+                    "replace": {"type": "boolean", "default": False,
+                                "description": "apply: overwrite a library suite of the same name."},
+                    "group": {"type": "string", "description": "apply: make this project group inherit the suite."},
+                    "from_group": {"type": "string",
+                                   "description": "Infer from every member of this project group instead of the open "
+                                                  "document, keeping only rules that hold for all of them."}},
     "effect-run": {"name": {"type": "string", "description": "Saved effect workflow."},
                    "variables": {**COMMON["variables"], "description": "Values for the workflow's variables."},
                    "dry_run": {"type": "boolean", "description": "Report the operations without applying."}},
@@ -472,12 +540,17 @@ ACTION_FIELDS = {
                      "facts": FACTS,
                      "profiles": {"type": "object", "description": "Check profiles {name: {fail_on, checks, optional, "
                                                                    "suites}} for this group's documents; they override "
-                                                                   "the workspace's and the built-in draft/review/final."}},
+                                                                   "the workspace's and the built-in draft/review/final."},
+                     "suites": {"type": "array", "items": STR, "maxItems": 32,
+                                "description": "Library suites every member inherits by reference: check, run and "
+                                               "group-apply run them; a member overrides a rule with a suite that "
+                                               "extends the library suite."}},
     "group-show": {"name": {"type": "string", "description": "Group name."}},
     "group-apply": {"name": {"type": "string", "description": "Group name."},
                     "operations": {**COMMON["operations"], "description": "Bulk operations applied to each member."},
-                    "suites": {**COMMON["suites"], "description": "Suites every published member must pass; a dry "
-                               "run reports each member's results (passed) instead of refusing."},
+                    "suites": {**COMMON["suites"], "description": "Suites every published member must pass (default the "
+                               "group's inherited library suites); a dry run reports each member's results (passed) "
+                               "instead of refusing."},
                     "profile": {"type": "string", "description": "Check profile (draft, review, final or a group or "
                                                                 "workspace profile) every published member must pass, "
                                                                 "like suites."},
@@ -638,7 +711,8 @@ SUMMARIES = {
     "figure-plan": "Plan an editable figure from head units with a named part map.",
     "pattern-list": "List built-in and document-defined repeatable textures and patterns.",
     "pattern-check": "Measure edge discontinuity in a pattern tile before repeating it.",
-    "check": "Run an attached or inline check suite against the document; returns passed/failed/needs_review per rule.",
+    "check": "Run an attached, inherited or inline check suite (or every one) against the document, optionally over "
+             "every artboard, page and comp; returns passed/failed/needs_review per rule.",
     "act": "Apply operations to a candidate, run suites, and commit only when every suite passes.",
     "capture": "Turn the open document into a portable recipe document with typed inputs; writes a new .vixl.",
     "plan": "Expand a production spec into its full variant list without rendering.",
@@ -680,7 +754,9 @@ SUMMARIES = {
     "resource-get": "Read one named resource.",
     "resource-save": "Save a custom resource in the workspace library.",
     "shape-save": "Save a shape or path layer as a reusable shape resource.",
-    "suite-use": "Copy a saved suite into the open document (one undo step).",
+    "suite-use": "Copy a saved suite into the open document, or attach it by reference (one undo step).",
+    "suite-infer": "Propose a tolerant starter suite from the approved open document (or a group's members), each rule "
+                   "explained by what was measured; apply saves it as a library suite.",
     "effect-run": "Run a saved effect workflow on the open document.",
     "palette-check": "Measure how much of the rendered document stays inside a palette.",
     "branch-list": "List branches forked from documents in this workspace.",
@@ -688,7 +764,7 @@ SUMMARIES = {
     "branch-status": "Compare a branch with the open document: what changed and any conflicts.",
     "branch-merge": "Merge a branch into the open document (dry run by default).",
     "group-list": "List project groups.",
-    "group-define": "Define a group of documents with shared variables and swatches.",
+    "group-define": "Define a group of documents with shared variables, swatches and inherited library suites.",
     "group-show": "Show a project group's members and shared parameters.",
     "group-apply": "Apply shared parameters or operations to every group member with suite checks (dry run by default; "
                    "review writes a before/after page, accept/reject/decisions pick the members to publish).",

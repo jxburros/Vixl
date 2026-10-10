@@ -369,3 +369,20 @@ def test_strict_brand_colors_still_skip_translucent_black_and_white_effects(tmp_
              "fill": "#00ff00"})
     found = p.check(checks=["brand"])["issues"]
     assert found[0]["severity"] == "error" and found[0]["color"] == "#00ff00" and found[0]["layers"] == ["b"]
+
+
+def test_placeholder_findings_can_be_waived_and_profiles_cover_every_page(tmp_path):
+    p = Project(800, 400, "white", workspace=tmp_path)
+    p.apply({"type": "text", "name": "head", "text": "Lorem ipsum dolor", "x": 20, "y": 20, "size": 40,
+             "color": "#111111"})
+    found = [x for x in p.check(checks=["placeholders"])["issues"] if x["check"] == "placeholders"]
+    assert found and found[0]["action"] != "informational"
+    p.apply({"type": "waiver", "check": "placeholders", "target": "head", "reason": "type specimen"})
+    waived = [x for x in p.check(checks=["placeholders"])["issues"] if x["check"] == "placeholders"]
+    assert waived[0]["waived"]["reason"] == "type specimen" and waived[0]["action"] == "informational"
+    # A profile over several artboards: one report, every variant checked, the profile's fail_on decides.
+    p.apply([{"type": "artboard", "name": "wide", "x": 0, "y": 0, "width": 800, "height": 400},
+             {"type": "artboard", "name": "left", "x": 0, "y": 0, "width": 400, "height": 400}])
+    report = p.check(profile="draft", artboards="all", checks=["bounds", "placeholders"])
+    assert report["profile"]["name"] == "draft" and len(report["variants"]) == 2 and report["passed"]
+    assert report["waivers"]["active"][0]["matched"] >= 2

@@ -18,11 +18,11 @@ from .assets import read_bounded
 from .errors import VixlError, require
 
 FIELDS = ("name", "palette", "pairing", "fonts", "logos", "minimum_contrast", "required_elements", "stages",
-          "colors", "logo", "facts", "presets")
+          "colors", "logo", "facts", "words", "placeholders", "suites", "presets")
 # Fields a preset may override; ``extends`` names the preset it builds on.
 PRESET_FIELDS = tuple(field for field in FIELDS if field != "presets") + ("extends",)
 # Dict fields merge key by key when a preset overrides them; every other field is replaced.
-MERGED = ("palette", "fonts", "stages", "colors", "logo")
+MERGED = ("palette", "fonts", "stages", "colors", "logo", "words")
 LENGTH = re.compile(r"^(\d+(?:\.\d+)?)\s*(px|mm|cm|in|pt)?$")
 UNIT_INCHES = {"mm": 1 / 25.4, "cm": 1 / 2.54, "in": 1, "pt": 1 / 72}
 LOGO_NAME = re.compile(r"(^|[-_ /])logo([-_ /]|$)", re.IGNORECASE)
@@ -123,6 +123,19 @@ def length_px(value, dpi=None):
     require(match, "Logo sizes are pixels or a length such as 12mm, 0.5in or 24pt", field="logo.min_size")
     number, unit = float(match.group(1)), match.group(2) or "px"
     return number if unit == "px" else number * UNIT_INCHES[unit] * (dpi or 96)
+
+
+# Copy and contract policy (words, placeholder patterns, inherited suites); validated by validate_policy.
+POLICY_FIELDS = {"words", "placeholders", "suites"}
+
+
+def validate_policy(kit):
+    from .copy_checks import validate_brand
+    from .assurance import validate_library_names
+
+    validate_brand(kit)
+    if "suites" in kit:
+        validate_library_names(kit["suites"], "brand.json suites")
 
 
 def validate(kit):
@@ -285,6 +298,7 @@ def _validate(kit, preset=False):
         from .typefaces import get_pairing
 
         get_pairing(kit["pairing"])
+    validate_policy(kit)
     if "facts" in kit:
         from .group_consistency import validate_facts
 

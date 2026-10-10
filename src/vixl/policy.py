@@ -153,7 +153,13 @@ def run(project, profile, *, group=None, **options):
         if animated(project.state.get("timeline")) and "motion" not in names:
             names.append("motion")
         options["checks"] = names
-    report = check_design(project, **options)
+    coverage = {key: options.pop(key) for key in ("artboards", "pages", "comps", "include_hidden") if key in options}
+    if coverage:
+        from .coverage import check_all
+
+        report = check_all(project, **coverage, **options)
+    else:
+        report = check_design(project, **options)
     fail_on = chosen.get("fail_on", "fix")
     blocking = failing(report, fail_on)
     attached = project.state.get("suites", {})

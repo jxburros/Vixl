@@ -37,6 +37,7 @@ def schemas(add):
                          "tags": {"type": "array", "items": S, "maxItems": 32,
                                   "description": "Labels (replacing the layer's tags) that edit-layers can select with where.tag"},
                          "allow_crop": B, "color_vision_safe": B, "detached_ok": B,
+                         "literal_text": field(B, "Text that only looks like a placeholder (TBD, Your name here on a form): the placeholders check skips it."),
                          "waive": {"type": "array", "maxItems": 256, "description":
                                    "Waivers replacing the layer's own ([] clears them): check names, or "
                                    "{check, reason, expires, with}. The checks report this layer's (and its "
@@ -182,6 +183,12 @@ def execute(project, op):
             from .waivers import set_layer
 
             set_layer(project, layer, op["waive"])
+        if "literal_text" in op:
+            # Copy that only looks like a placeholder ("TBD", "Your name here" on a form): the placeholders check skips it.
+            if op["literal_text"]:
+                layer["literal_text"] = True
+            else:
+                layer.pop("literal_text", None)
         return
     if kind == "path-fit":
         require(layer["type"] == "shape" and layer["shape"] == "path", "Path fit needs a path layer")
@@ -236,6 +243,8 @@ def compile_command(cmd, args):
                        help="series also differ by labels or patterns: the color-vision check skips this chart")
         p.add_argument("--detached-ok", action=argparse.BooleanOptionalAction, default=None,
                        help="a part that floats on purpose: the connected check skips it")
+        p.add_argument("--literal-text", action=argparse.BooleanOptionalAction, default=None,
+                       help="text that only looks like a placeholder: the placeholders check skips it")
         p.add_argument("--waive", nargs="*", metavar="CHECK",
                        help="checks whose findings on this layer are accepted (none clears them); "
                             "use the waiver command for a reason and expiry")

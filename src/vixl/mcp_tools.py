@@ -868,7 +868,7 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
 
     @tool
     def vixl_check(
-        checks: list[Literal["bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "fonts", "brand", "print", "color_vision", "guides", "alignment",
+        checks: list[Literal["bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", "placeholders", "fonts", "brand", "print", "color_vision", "guides", "alignment",
                              "deck", "title_position", "type_scale", "words", "min_font", "notes", "empty", "form", "drawing", "links", "style",
                              "diagram", "flow", "codes", "motion", "character", "captions", "connected", "cost"]]
         | None = None,
@@ -904,6 +904,10 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
                                                          ".vixl-checks.json; it picks the checks and suites and its fail_on "
                                                          "decides passed")] = None,
         waivers: Annotated[bool, Field(description="false reports every finding as if the document had no waivers")] = True,
+        artboards: Annotated[Literal["all"] | list[str] | None, Field(description="Check every artboard ('all') or these, in one report; each finding names its variant")] = None,
+        pages: Annotated[Literal["all"] | list[int | str] | None, Field(description="Check every page shown on export ('all') or these pages, each reported separately (deck checks use deck.pages)")] = None,
+        comps: Annotated[Literal["all"] | list[str] | None, Field(description="Check with every layer comp ('all') or these")] = None,
+        include_hidden: Annotated[bool, Field(description="pages='all' also checks pages hidden from export")] = False,
         document: Document = None,
     ) -> dict:
         """Find design problems without looking: content cut off by the canvas, overlapping text, low WCAG
@@ -913,13 +917,15 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         contrast collapses for color-blind readers; deck checks every page plus title placement, type
         scale, words per page, projected type size and speaker notes; form checks fields (names, overlap, tab
         order, sizes, contrast) and with sample finds values that overflow; style (opt-in) evaluates the document's
-        style tag rule by rule. Each issue has a severity (error, warning, info) and an action: fix (needs a design
+        style tag rule by rule. placeholders finds leftover template copy (lorem ipsum, TODO, 'Headline here', an
+        unresolved ${name}). Each issue has a severity (error, warning, info) and an action: fix (needs a design
         change), review (look and decide) or informational (expected, such as a crop marked with layer-intent
         allow_crop); by_action lists the issue indexes under each. A finding the document waives (layer-intent waive,
         the waiver operation) stays listed as informational with waived and its reason; waivers lists them and any
         expired ones. connected (opt-in) finds parts of a group (a mascot, a character) that float free of its main
         body; cost (opt-in) times every layer and flags the ones that take over 10× the median to draw, naming the blur
-        radius, stroke points or effects behind it. Reports only problems. Each finding has a stable rule ID
+        radius, stroke points or effects behind it. artboards/pages/comps check every variant in one call. Reports
+        only problems. Each finding has a stable rule ID
         (bounds.text-overflow, contrast.text-contrast, safe_area.outside, overlap.text-text …), layer_ids, its
         box or region in document pixels, measured actual versus expected, and for fix findings a repair suggestion:
         canonical operations you can dry-run with vixl_operations_apply (nothing is applied unless repair=true).
@@ -948,6 +954,9 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
             limit=limit,
             profile=profile,
             waivers=waivers,
+            **{key: value for key, value in (("artboards", artboards), ("pages", pages), ("comps", comps))
+               if value is not None},
+            **({"include_hidden": True} if include_hidden else {}),
         )
 
     @tool

@@ -83,6 +83,8 @@ Run `project.check_suite("delivery")` or workflow `check` with
 rule IDs, times, and `passed`, `failed`, or `needs_review`. Missing/unmeasurable
 targets and warnings never count as a clean pass. Checks do not modify the document.
 CLI checks and failed synchronous production return a nonzero exit code.
+Workflow `check` without `suite` runs every attached and inherited suite (`suites: [...]` narrows
+them) and returns each report under `suites`, with overall `passed`/`status`.
 
 Rules:
 
@@ -107,9 +109,84 @@ Rules:
 | `hierarchy` | `targets` (text, most to least important), `ratio` (default 1.2); each rendered font size (after fitting) is at least `ratio` times the next |
 | `count` | `target` name, glob or `group:NAME` (default `*`), optional `layer_type`, `minimum`/`maximum`; counts visible layers |
 | `focal` | `target`, `grid` thirds/golden/center, `tolerance` px (default 5% of the shorter side); the layer's centre is near a power point |
+| `text` | `target` name, glob or `group:NAME` (default `*`), and any of `pattern` (regular expression each selected layer must match), `contains` (phrase or list that must appear somewhere in their copy), `forbid` (regular expression or list none may match), `min_characters`/`max_characters`, `min_words`/`max_words` (per layer; line breaks do not count as characters), `case` sensitive/insensitive (for pattern, contains and forbid), `brand: true` (also forbid brand.json `words.forbid`); measures the drawn text after variables, so `variables`, artboards and campaign rows are checked with their own copy; results list each layer's text, characters and words |
+| `budget` | any of `max_layers` (drawn layers, as `count` counts them), `max_fonts` (distinct fonts drawn by text), `max_bytes` (the document's JSON with undo history plus embedded files, before compression), `min_ppi` (lowest effective resolution of a placed image at the canvas dpi, 300 when unset, as the `print` check measures it) |
 
 Every rule has a unique `id` and optional `severity` (`error` or `warning`). Each result carries what
 it measured (gaps, margins, ratios, the visual centre, the sampled colour), so a failure says what to change.
+
+```json
+{"type":"suite-set","name":"copy","suite":{"rules":[
+  {"id":"headline-short","kind":"text","target":"headline","max_characters":40},
+  {"id":"has-disclaimer","kind":"text","contains":"Terms apply"},
+  {"id":"no-free","kind":"text","forbid":"(?i)\\bfree\\b"},
+  {"id":"light","kind":"budget","max_layers":120,"max_fonts":3,"max_bytes":20000000,"min_ppi":240}
+]}}
+```
+
+### Coverage over artboards, pages and comps
+
+One run can cover every variant of a design. In a suite, add `artboards`, `pages` and `comps` to
+`sampling` (each `"all"` or a list of names; pages also by number); workflow `check` takes the same
+fields at run time, and `vixl_check`/`vixl check`/REST `POST /check` take them for the design checks:
+
+```json
+{"type":"suite-set","name":"every-format","suite":{
+  "rules":[{"id":"title-inside","kind":"relation","target":"title","to":"canvas","position":"inside"}],
+  "sampling":{"mode":"still","artboards":"all","pages":"all","comps":["light","dark"]}
+}}
+```
+
+```bash
+vixl check --artboards all --pages all --comps light dark
+```
+
+Every combination is checked. Each suite result and each design finding names its `variant`
+(`{"artboard":"story"}`; design messages start with `[artboard story]`), `groups` (suites) or `variants`
+(design checks) give each variant's status, and `coverage` lists exactly what was covered. Pages hidden
+from export are skipped unless `include_hidden` is set. The 50,000-evaluation cap counts every
+variant × time × rule.
+
+### Library suites shared by a group or the workspace
+
+`suite-use` copies a library suite into one document. To hold many documents to one contract, refer
+to it instead:
+
+- `group-define` takes `suites: ["delivery", "brand-basics"]`; every member inherits them by reference.
+- brand.json `suites: [...]` does the same for every document in the workspace.
+- `suite-use` with `reference: true` attaches `{"extends": NAME, "rules": []}` to one document.
+
+Inherited suites run in workflow `check` (no `suite`), `run` (unless the spec lists `suites`),
+`group-apply` (unless the request lists `suites`) and `vixl_operations_apply(suites=true)`, and always
+use the library's current version: edit the library suite (`resource-save`) and every member's next
+check uses it, without touching member files. A member overrides a rule by `id`, or adds rules, with a
+suite that extends the library suite:
+
+```json
+{"type":"suite-set","name":"delivery-local","suite":{"extends":"delivery","rules":[
+  {"id":"title-fits","kind":"text-fit","severity":"warning"},
+  {"id":"has-cta","kind":"count","target":"cta","minimum":1}
+]}}
+```
+
+An override keeps the library rule's `kind` and replaces only the fields it sets. Reports name the
+`library`, its `library_hash` (so a run is reproducible), where the suite came from (`source`:
+`document`, `group:NAME` or `workspace`), the `overrides` (`[{id, fields}]`) and `added` rule ids. The
+workspace file `.vixl-suite-passes.json` remembers the library version each document last passed; a
+report on a newer version carries `contract_changed`.
+
+### Starter suite from an approved design
+
+Workflow `suite-infer` (`{"name":"festival"}`) reads the approved open document and proposes a tolerant
+suite: `hierarchy` from the rendered type sizes (10% headroom), `relation` rules for the order of the
+text roles and for the headline and logo inside the canvas (with centre alignment where it holds),
+`count` for those required layers and the number of text layers, `contrast` for each text role (the
+WCAG level, or a review-only warning when the approved design is lower), `text` limits from the current
+copy plus headroom, and a `palette` from the colours in use. Each rule comes with an explanation of what
+was measured under `explanations`; delete or tighten rules before relying on them. The suite is returned,
+never attached; `apply: true` saves it as a library suite (`replace: true` overwrites one) and `group:
+NAME` makes that group inherit it. `from_group: NAME` infers from every member of a group and keeps only
+the rules every member proposes and passes, with each limit set to the strictest value all of them meet.
 
 ### When to test
 
@@ -604,7 +681,7 @@ Changing variables updates text and width-only wrapping boxes. It does not rerun
 
 Recomposition replaces the layout-generated layers. Manual edits, layer IDs used by external bindings, custom animation tracks and adjustments to those generated layers may not survive. Store such content outside the generated prefix or rebuild it in the action. Check the longest row and every target size.
 
-Without named suites, production runs bounds and text-flow checks and returns `needs_review` for failures rather than publishing clipped text; a clean output is `completed` with `outcome.state` `unvalidated`, because no suite validated it. Each result and the report carry an `outcome` ([outcome states](agent-trust.md#outcome-states)). Add suites for the rest of the design contract. Unchanged runs reuse an output only when inputs, fonts, linked sources, settings and checks match and the output's SHA-256 still agrees. Layer caches use the user cache directory, not the deliverables directory.
+Without named suites, production runs the attached and inherited suites, or bounds and text-flow checks when there are none, and returns `needs_review` for failures rather than publishing clipped text; a clean output with no suite is `completed` with `outcome.state` `unvalidated`, because no suite validated it. Each result and the report carry an `outcome` ([outcome states](agent-trust.md#outcome-states)). Every variant is also checked for leftover template copy (`placeholders`); a row that leaves a variable undefined, or draws placeholder copy, is `needs_review` with findings that name the variant and its input `row`. Add suites for the rest of the design contract. Unchanged runs reuse an output only when inputs, fonts, linked sources, settings and checks match and the output's SHA-256 still agrees. Layer caches use the user cache directory, not the deliverables directory.
 
 The `app-animation-package` workflow packages named source documents, theme variables, explicit transitions, one-shot/looping behavior, reduced-motion PNGs and editable masters. Its generated manifest and standalone consumer are documented in [animation authoring](animation-authoring.md#app-animation-packages). Package outputs are new directories and external links must be frozen first.
 

@@ -209,6 +209,8 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | QA-32 | Accept a deliberate finding (faint watermark text, a bar in the margin) with a reason and expiry | `layer-intent waive`, `waiver` | 1 · <1 | E | Waived findings stay listed as informational; an expired waiver fails `--strict` (#531, #562). |
 | QA-33 | Check a draft loosely and a final strictly | `check --profile` (draft, review, final), `.vixl-checks.json` | 1 · <1 | E | Also on production `run`, `group-apply`, `vixl check --all --profile` and the CI action (#563). |
 | BRD-05 | Brand contrast floor with a large-text tier, so a display-only brand colour passes at 3:1 | `brand.json` `minimum_contrast: {text, large_text}` | 1 · <1 | E | #527; translucent black/white shadows no longer count as off-palette (#528). |
+| QA-34 | Find leftover template copy: lorem ipsum, TODO/TBD, "Headline here", unresolved `${name}` | `vixl_check` (placeholders, on by default) | 1 · <1 | E | `{{name}}` from other tools is review only; `layer-intent literal_text` exempts intended text. |
+| QA-35 | Check every artboard, page and comp in one call | `check --artboards all --pages all --comps …`, suite `sampling` | 1 · <1 | E | Findings name their variant; hidden pages need `include_hidden`. |
 | AGT-01 | Ask what to make and with which tools for a brief | `vixl_guide(brief)` | 1 · <1 | E | 20 kinds: poster, logo, character, comic, form … |
 | AGT-02 | Look up fields and gotchas for a topic | `vixl_capabilities(topic)` | 1 · <1 | E | |
 | AGT-03 | Read the JSON schema of one operation | `vixl_operation_schema` | 1 · <1 | E | |
@@ -513,6 +515,9 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | PRD-22 | Save a design to a component library and reuse it elsewhere | library-save, library-search, library-place | 5–8 · 1–2 | E | Placement is a raster snapshot. |
 | PRD-23 | Find and replace a product name, a hex color, a font or the logo image across a campaign | `vixl_workflow` replace-across (dry run, then apply) | 2–4 · 1–2 | E | Journalled; `group-recover` undoes an interrupted run. |
 | PRD-24 | Review a group change on a before/after page and publish only the approved members | group-apply or replace-across with `review`, then `decisions` | 2–3 · human review | E | Offline proof page; decisions JSON comes back. |
+| QA-36 | Copy rules: headline length, a required disclaimer, banned words (brand.json `words`) | `text` suite rule | 3–6 · 1 | E | Measured after variables, per artboard and row; no dictionary spelling. |
+| QA-37 | Production budgets: layers, fonts, file size, image ppi | `budget` suite rule | 2–4 · 1 | E | Render time is not budgeted. |
+| QA-38 | Generate a starter suite from an approved design and review it | `vixl_workflow` suite-infer | 2–4 · 1 | E | Each rule explains what it measured; `from_group` keeps rules every member passes. |
 | QA-21 | Live human review in a browser while an agent edits | `vixl view` | setup · 1–2 | E | [server] |
 | COL-10 | Three-way merge of a branch with explicit conflict resolution | branch-merge (dry run, then apply) | 5–12 · 2 | E | |
 | AGT-20 | Run a 1,000-operation batch from a JSONL file | `operations_path`, `--check`, `--preview` | 1–3 · 1–2 | E | Batches go up to 10,000 operations. |
@@ -596,6 +601,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | --- | --- | --- | --- | --- | --- |
 | PRD-31 | Render a production matrix (sizes × languages × colorways) with suites | `vixl_workflow` plan/run | 10–20 · 5+ render | E | Resumable; time is the render. |
 | PRD-32 | Apply a brand change to every document in a project group, gated by suites | group-define, group-apply | 10–20 · 3–5 | E | Dry run by default; journal recovery. |
+| PRD-35 | Hold every document in a group or workspace to one library suite, inherited by reference | group-define / brand.json `suites`, `vixl_workflow` check | 3–6 · 1 | E | A library edit reaches every member's next check; members override rules by `id` (`extends`). |
 | PRD-33 | Install a plugin pack of palettes, templates and suites | `vixl_workflow` plugin-install | 2–4 · 1 | E | Packs are trusted code. |
 | PRD-34 | Rebuild a merge after the CSV changed | `merge --rerun sheets.vixl --data new.csv` | 2–4 · 1 | E | |
 

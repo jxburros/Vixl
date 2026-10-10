@@ -16,7 +16,8 @@ from .screen_capture import FIELDS as CAPTURE_FIELDS
 from .app_animation import FIELDS as APP_ANIMATION_FIELDS
 
 ACTIONS = {
-    "check": ({"suite", "mode", "variables", "artboard"}, {"suite"}),
+    "check": ({"suite", "suites", "mode", "variables", "artboard", "page", "comp", "artboards", "pages", "comps",
+               "include_hidden"}, set()),
     "act": ({"operations", "suites", "dry_run", "repair"}, {"operations"}),
     "capture": ({"recipe", "bindings", "output"}, {"recipe", "output"}),
     "plan": ({"spec"}, {"spec"}),
@@ -332,7 +333,7 @@ def dispatch(session, action, request, document=None):
     with session.project(document=document) as project:
         project = project.clone()
     if action == "check":
-        return project.check_suite(**request)
+        return check_suites(project, request)
     if action == "run":
         return run(project, request["spec"], session.resolve(request["output"]))
     if action == "capture":
@@ -369,6 +370,33 @@ def dispatch(session, action, request, document=None):
         "size": list(image.size),
         "generation_calls": 0,
     }
+
+
+def check_suites(project, request):
+    """Workflow check: one suite (``suite``, a name or an inline object) returns its report; without one, every
+    attached and inherited suite runs (``suites`` narrows them) and the reports come back under ``suites``."""
+    from .assurance import effective
+
+    request = dict(request)
+    if "suite" in request:
+        require("suites" not in request, "Give suite or suites, not both", field="suites")
+        return project.check_suite(request.pop("suite"), **request)
+    available = effective(project)
+    names = request.pop("suites", None)
+    if names is None:
+        names = list(available)
+    require(isinstance(names, list) and all(isinstance(name, str) for name in names),
+            "suites is a list of suite names", field="suites")
+    unknown = [name for name in names if name not in available]
+    require(not unknown, f"Unknown suite(s) {unknown}; attached or inherited: {', '.join(available) or 'none'}",
+            field="suites", suggestions=sorted(available))
+    require(names, "No suites are attached or inherited; attach one with suite-set or pass suite", field="suite")
+    reports = {name: project.check_suite(name, **request) for name in names}
+    errors = sum(report["errors"] for report in reports.values())
+    review = sum(report["needs_review"] for report in reports.values())
+    return {"passed": all(report["passed"] for report in reports.values()),
+            "status": "failed" if errors else "needs_review" if review else "passed",
+            "errors": errors, "needs_review": review, "suites": reports}
 
 
 def cli(args, options, limits):

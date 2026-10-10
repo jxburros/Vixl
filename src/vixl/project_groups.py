@@ -52,12 +52,21 @@ def dispatch(session, action, request):
                 validate_profiles(request["profiles"])
             for operation in shared_ops(shared):
                 service_check(validate_operation(operation))
+            suites = request.get("suites", [])
+            if suites:
+                from .assurance import validate_library_names
+                from .resources import get
+
+                validate_library_names(suites, "group-define")
+                for suite in suites:
+                    get("suites", suite, workspace=session.workspace)
             value = {
                 "version": 1,
                 "name": name,
                 "documents": [session.relative(p) for p in resolved],
                 "shared": shared,
                 **({"profiles": request["profiles"]} if request.get("profiles") else {}),
+                **({"suites": suites} if suites else {}),
             }
             if "facts" in request:
                 from .group_consistency import validate_facts
@@ -104,6 +113,8 @@ def apply_group(session, name, group, paths, request):
     require(operations, "Provide shared parameters or bulk operations")
     members = [session.relative(p) for p in paths]
     publish = selection(session, request, members)
+    # Members are held to the group's library suites unless the request names the suites to run.
+    suites = request.get("suites", group.get("suites", []))
     candidates, originals, report = {}, {}, []
     with ExitStack() as stack:
         for target in paths:
@@ -117,8 +128,8 @@ def apply_group(session, name, group, paths, request):
             result = candidate.apply(operations, check=checker(candidate, service_check), detail="compact")
             # repair: the built-in repair map (repair.auto_repair) on this member before its suites run.
             repairs = candidate.repair(kinds=request["repair"], checks=["bounds", "contrast", "safe_area"],
-                                       suites=request.get("suites", [])) if request.get("repair") else None
-            checks = [candidate.check_suite(suite) for suite in request.get("suites", [])]
+                                       suites=suites) if request.get("repair") else None
+            checks = [candidate.check_suite(suite) for suite in suites]
             if request.get("profile"):
                 # A check profile (policy.py; the group's own profiles override the workspace's) gates the member too.
                 checks.append({"profile": request["profile"],
@@ -140,7 +151,7 @@ def apply_group(session, name, group, paths, request):
         if request.get("review"):
             require(dry_run, "review is written by a dry run; apply with accept/reject or decisions", field="review")
             output.update(write_review(session, request["review"], originals, candidates, report,
-                                       title=f"Group change review: {name}", suites=request.get("suites", []),
+                                       title=f"Group change review: {name}", suites=suites,
                                        overwrite=request.get("overwrite", False)))
         if not dry_run:
             chosen = {target: candidate for target, candidate in candidates.items()

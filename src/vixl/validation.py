@@ -67,6 +67,7 @@ def check_state(project, state):
         require(isinstance(layer.get("allow_crop", False), bool), "Invalid crop intent", "invalid_project")
         require(isinstance(layer.get("color_vision_safe", False), bool), "Invalid color vision intent", "invalid_project")
         require(isinstance(layer.get("detached_ok", False), bool), "Invalid detached intent", "invalid_project")
+        require(isinstance(layer.get("literal_text", False), bool), "Invalid literal text intent", "invalid_project")
         ids.add(layer["id"])
         names.add(layer["name"])
         require(

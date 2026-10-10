@@ -1021,10 +1021,14 @@ def project_command(project, cmd, args, *, detail="compact"):
                        help="connected check: pixels of gap still counted as touching (default 2)")
         p.add_argument("--style", nargs="+", help="style checks: evaluate this style (or styles) instead of the document's tag")
         p.add_argument("--page", help="Check one page of a multi-page document (default: the active page)")
-        p.add_argument("--pages", help="deck checks: the pages to check, e.g. 1-3,5 (default: every shown page)")
+        p.add_argument("--pages", help="the pages to check, e.g. 1-3,5 or all (every page shown on export), each "
+                                       "reported separately; with deck checks, the pages the deck review covers")
+        p.add_argument("--artboards", nargs="+", metavar="ARTBOARD",
+                       help="check each artboard (all, or names) in one report; findings name their artboard")
+        p.add_argument("--comps", nargs="+", metavar="COMP", help="check with each layer comp (all, or names)")
         p.add_argument("--min-font", type=float, help="deck checks: smallest projected text in points (default 18)")
         p.add_argument("--max-words", type=int, help="deck checks: most words on one page (default 60)")
-        p.add_argument("--include-hidden", action="store_true", help="deck checks: include hidden pages")
+        p.add_argument("--include-hidden", action="store_true", help="also check pages hidden from export")
         p.add_argument("--sample", help="form checks: fill the fields with worst-case values (worst) or each row of a CSV")
         p.add_argument("--ink-limit", type=float, default=300)
         p.add_argument("--min-ppi", type=float, default=200)
@@ -1053,11 +1057,21 @@ def project_command(project, cmd, args, *, detail="compact"):
         strict = options.pop("strict")
         if options["repair"] is not None:
             options["repair"] = options["repair"] or True
+        from .deck import DECK_CHECKS
         from .pages import parse_pages
 
-        deck = {"pages": parse_pages(options.pop("pages")), "min_font": options.pop("min_font"),
-                "max_words": options.pop("max_words"), "include_hidden": options.pop("include_hidden") or None}
+        pages, hidden = options.pop("pages"), options.pop("include_hidden")
+        deck_run = bool(set(options["checks"] or ()) & {"deck", *DECK_CHECKS})
+        deck = {"pages": parse_pages(pages) if deck_run else None, "min_font": options.pop("min_font"),
+                "max_words": options.pop("max_words"), "include_hidden": (hidden or None) if deck_run else None}
         options["deck"] = {k: v for k, v in deck.items() if v is not None} or None
+        # Coverage: every listed artboard, page and comp in one report.
+        for key in ("artboards", "comps"):
+            if options[key] == ["all"]:
+                options[key] = "all"
+        if pages and not deck_run:
+            options["pages"] = "all" if pages == "all" else parse_pages(pages)
+            options["include_hidden"] = hidden
         if options["page"] and options["page"].isdigit():
             options["page"] = int(options["page"])
 

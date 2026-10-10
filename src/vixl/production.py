@@ -136,13 +136,14 @@ def plan(spec):
             f"Invalid {field}",
         )
     variants = []
-    for row in rows:
+    for number, row in enumerate(rows, 1):
         require(not set(row) & set(matrix), "A field cannot occur in both a row and the matrix")
         for combination in itertools.product(*matrix.values()):
             for board in boards:
                 variants.append(
                     {
                         "id": f"{len(variants) + 1:04d}",
+                        "row": number,
                         "values": {**row, **dict(zip(matrix, combination))},
                         "artboard": board,
                     }
@@ -213,6 +214,7 @@ def capture_recipe(project, recipe, bindings):
 
 
 def render_variant(project, spec, variant, directory, prior=None, cancelled=lambda: False):
+    from .assurance import effective
     from .render_cache import enable, environment, user_cache_dir
     from .design_render import artboard_project
     from .timeline import export_timeline
@@ -243,10 +245,16 @@ def render_variant(project, spec, variant, directory, prior=None, cancelled=lamb
             if output.is_file() and file_digest(output) == prior.get("sha256"):
                 return {**prior, "status": "reused", "outcome": prior.get("outcome") or variant_outcome(
                     prior.get("checks", {}), spec.get("suites", [] if spec.get("profile") else list(
-                        candidate.state.get("suites", {}))), "completed", spec.get("profile"))}
+                        effective(candidate))), "completed", spec.get("profile"))}
+    leftovers = placeholder_report(candidate, variant)
+    if not leftovers["passed"]:
+        # An undefined variable or leftover template copy in this row: report it naming the variant, before rendering.
+        return {**variant, "status": "needs_review", "checks": {"placeholders": leftovers}, "repairs": [],
+                "outcome": leftovers["outcome"]}
     profile = spec.get("profile")
-    # A profile chooses the design checks and its own suites unless the spec names suites.
-    suites = spec.get("suites", [] if profile else list(candidate.state.get("suites", {})))
+    # A profile chooses the design checks and its own suites unless the spec names suites; without one every
+    # attached and inherited suite runs.
+    suites = spec.get("suites", [] if profile else list(effective(candidate)))
 
     def evaluate():
         checks = {name: candidate.check_suite(name) for name in suites}
@@ -355,6 +363,17 @@ def variant_outcome(checks, suites, execution, profile=None):
     if design and not design.get("passed", True):
         return from_findings(design.get("issues", []), execution)
     return make(execution, "not_run", ["no suites: only the default bounds and flow checks ran"])
+
+
+def placeholder_report(candidate, variant):
+    """The placeholders check for one production variant, each finding naming the variant and its input row."""
+    label = f"variant {variant['id']} (row {variant.get('row', '?')}" + (
+        f", artboard {variant['artboard']})" if variant.get("artboard") else ")")
+    report = candidate.check(checks=["placeholders"])
+    for item in report["issues"]:
+        item.update(variant=variant["id"], row=variant.get("row"))
+        item["message"] = f"{label}: {item['message']}"
+    return report
 
 
 def stable_state(state):

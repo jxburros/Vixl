@@ -35,20 +35,32 @@ RULE_FIELDS = {
     "hierarchy": {"targets", "ratio"},
     "count": {"target", "layer_type", "minimum", "maximum"},
     "focal": {"target", "grid", "tolerance"},
+    "text": {"target", "pattern", "contains", "forbid", "min_characters", "max_characters", "min_words", "max_words",
+             "case", "brand"},
+    "budget": {"max_layers", "max_fonts", "max_bytes", "min_ppi"},
 }
 POSITIONS = ("left-of", "right-of", "above", "below", "inside", "contains", "overlapping", "apart")
 EDGES = ("left", "center-x", "right", "top", "center-y", "bottom")
 GRIDS = ("thirds", "golden", "center")
 
 
+SAMPLING_FIELDS = {"mode", "count", "times", "artboards", "pages", "comps", "include_hidden"}
+
+
 def validate_suite(suite):
     require(
-        isinstance(suite, dict) and set(suite) <= {"version", "rules", "sampling", "description"},
+        isinstance(suite, dict) and set(suite) <= {"version", "rules", "sampling", "description", "extends"},
         "Invalid check suite",
     )
     require(suite.get("version", 1) == 1, "Unsupported check suite version")
+    # A suite that extends a library suite holds only local overrides and additions (it may hold none).
+    extends = suite.get("extends")
+    if extends is not None:
+        from .design import named
+
+        named(extends)
     rules = suite.get("rules")
-    require(isinstance(rules, list) and 0 < len(rules) <= 256, "Suite needs 1–256 rules")
+    require(isinstance(rules, list) and (0 if extends else 1) <= len(rules) <= 256, "Suite needs 1–256 rules")
     ids = set()
     for rule in rules:
         require(isinstance(rule, dict) and rule.get("kind") in RULE_FIELDS, "Unknown check kind")
@@ -59,9 +71,18 @@ def validate_suite(suite):
         require(rule.get("severity", "error") in ("error", "warning"), "Invalid check severity")
         if "tolerance" in rule:
             finite(rule["tolerance"], "tolerance", 0, 1e9)
-        _validate_fields(rule)
+        if not extends:
+            # An override may change one field of a library rule; it is checked once merged (``resolve``).
+            _validate_fields(rule)
     sampling = suite.get("sampling", {"mode": "still"})
-    require(isinstance(sampling, dict) and set(sampling) <= {"mode", "count", "times"}, "Invalid sampling")
+    require(isinstance(sampling, dict) and set(sampling) <= SAMPLING_FIELDS, "Invalid sampling")
+    for axis in ("artboards", "pages", "comps"):
+        value = sampling.get(axis)
+        require(value is None or value == "all" or (
+            isinstance(value, list) and 0 < len(value) <= 500
+            and all(isinstance(v, (str, int)) and not isinstance(v, bool) for v in value)),
+            f"sampling {axis} is 'all' or a list of names", field=axis)
+    require(type(sampling.get("include_hidden", False)) is bool, "sampling include_hidden is true or false")
     require(sampling.get("mode", "still") in ("still", "sampled", "all", "times"), "Invalid sampling mode")
     count = sampling.get("count", 8)
     require(type(count) is int and 2 <= count <= 3600, "Sample count must be 2–3600")
@@ -113,6 +134,18 @@ def _validate_fields(rule):
         require("minimum" in rule or "maximum" in rule, f"{where}: set minimum or maximum", field="minimum")
     if kind == "count":
         require(isinstance(rule.get("target", "*"), str), f"{where}: target is a layer name or glob", field="target")
+    if kind == "text":
+        from .copy_checks import validate_text_rule
+
+        validate_text_rule(rule, where)
+    if kind == "budget":
+        require(any(name in rule for name in RULE_FIELDS["budget"]),
+                f"{where}: set max_layers, max_fonts, max_bytes or min_ppi", field="max_layers")
+        for name in ("max_layers", "max_fonts", "max_bytes"):
+            if name in rule:
+                require(type(rule[name]) is int and rule[name] >= 0, f"{where}: {name} is a whole number", field=name)
+        if "min_ppi" in rule:
+            finite(rule["min_ppi"], f"{where}: min_ppi", 1, 10000)
 
 
 def capture(project, targets=(), regions=()):
@@ -411,25 +444,72 @@ def _hierarchy(project, rule):
 
 
 def _count(project, rule):
-    from .spatial import _select
+    from .copy_checks import shown_layers
 
-    index = {layer["id"]: layer for layer in project.state["layers"]}
-
-    def shown(layer):
-        while layer:
-            if not layer["visible"] or layer["opacity"] <= 0:
-                return False
-            layer = index.get(layer.get("parent"))
-        return True
-
-    try:
-        chosen = _select(project, rule.get("target", "*"))
-    except VixlError:
-        chosen = []
-    names = [layer["name"] for layer in chosen
-             if shown(layer) and rule.get("layer_type", layer["type"]) == layer["type"]]
+    names = [layer["name"] for layer in shown_layers(project, rule.get("target", "*"), rule.get("layer_type"))]
     return _within(len(names), rule), {"count": len(names), "layers": names[:20],
                                        "minimum": rule.get("minimum"), "maximum": rule.get("maximum")}
+
+
+def _text(project, rule):
+    from .copy_checks import text_rule
+
+    return text_rule(project, rule)
+
+
+def document_bytes(project):
+    """What saving the document writes before compression: its JSON (with undo history) plus embedded files."""
+    manifest = project.manifest()
+    manifest.pop("asset_hashes")
+    return len(json.dumps(manifest, allow_nan=False, separators=(",", ":")).encode()) + sum(map(len, project.assets.values()))
+
+
+def _budget(project, rule):
+    """Production budgets: drawn layers (as the count rule counts them), distinct fonts drawn, the saved size,
+    and the lowest effective resolution of placed images (as the print check measures it)."""
+    from .checks import effective_ppi
+    from .copy_checks import shown_layers
+    from .render import resolved_layers
+    from .richtext import fonts_used
+    from .spatial import canvas_boxes
+
+    detail, problems = {}, []
+    shown = shown_layers(project)
+    if "max_layers" in rule:
+        detail["layers"] = len(shown)
+        if len(shown) > rule["max_layers"]:
+            problems.append(f"{len(shown)} layers drawn; at most {rule['max_layers']}")
+    ids = {layer["id"] for layer in shown}
+    resolved = [item for item in resolved_layers(project) if item["id"] in ids]
+    if "max_fonts" in rule:
+        from .checks import FALLBACK_FONT
+
+        reverse = {asset: name for name, asset in project.state.get("fonts", {}).items()}
+        fonts = sorted({reverse.get(font, font) for item in resolved if item["type"] == "text"
+                        for font in fonts_used(item, FALLBACK_FONT)})
+        detail["fonts"] = fonts
+        if len(fonts) > rule["max_fonts"]:
+            problems.append(f"{len(fonts)} fonts drawn; at most {rule['max_fonts']}")
+    if "max_bytes" in rule:
+        size = document_bytes(project)
+        detail["document_bytes"] = size
+        if size > rule["max_bytes"]:
+            problems.append(f"The document is {size} bytes; at most {rule['max_bytes']} (history compact drops undo "
+                            "history and unused files)")
+    if "min_ppi" in rule:
+        dpi = project.state["canvas"].get("dpi") or 300
+        boxes = canvas_boxes(project)
+        low = []
+        for item in resolved:
+            ppi = effective_ppi(project, item, boxes[item["id"]], dpi)
+            if ppi is not None and ppi < rule["min_ppi"]:
+                low.append({"layer": item["name"], "effective_ppi": round(ppi)})
+        detail.update(dpi=dpi, low_resolution=low[:20])
+        problems += [f"{entry['layer']!r} prints at about {entry['effective_ppi']} ppi; at least {rule['min_ppi']:g}"
+                     for entry in low]
+    if problems:
+        detail["problems"] = problems[:20]
+    return not problems, detail
 
 
 def _focal(project, rule):
@@ -445,80 +525,239 @@ def _focal(project, rule):
 
 
 MEASURED = {"spacing": _spacing, "relation": _relation, "contrast": _contrast, "color": _color, "ink": _ink,
-            "balance": _balance, "hierarchy": _hierarchy, "count": _count, "focal": _focal}
+            "balance": _balance, "hierarchy": _hierarchy, "count": _count, "focal": _focal, "text": _text,
+            "budget": _budget}
 
 
-def run_suite(project, suite, *, variables=None, artboard=None, mode=None):
+def validate_library_names(names, where):
+    """A list of library suite names (``suites`` on a group or in brand.json)."""
+    from .design import named
+
+    require(isinstance(names, list) and len(names) <= 32, f"{where} lists at most 32 library suite names",
+            field="suites")
+    for name in names:
+        named(name)
+    require(len(set(names)) == len(names), f"{where} names each suite once", field="suites")
+    return names
+
+
+def library(project, name):
+    """A named suite from the suite library (built-in, plugin and workspace suites)."""
+    from .resources import get
+
+    return get("suites", name, workspace=getattr(project, "_workspace", None))
+
+
+def document_key(project):
+    """The document's workspace-relative path, or None when it is unsaved or outside the workspace."""
+    from pathlib import Path
+
+    workspace = getattr(project, "_workspace", None)
+    document = getattr(project, "_document", None) or project
+    if not workspace or not document.path:
+        return None
+    try:
+        return Path(document.path).resolve().relative_to(Path(workspace).resolve()).as_posix()
+    except ValueError:
+        return None
+
+
+def inherited(project):
+    """{library suite name: where it comes from}: suites the document's project groups (``group:NAME``) and the
+    workspace brand.json (``workspace``) attach to every member by reference."""
+    from pathlib import Path
+
+    workspace = getattr(project, "_workspace", None)
+    if not workspace:
+        return {}
+    found = {}
+    key = document_key(project)
+    directory = Path(workspace) / ".vixl-groups"
+    if key and directory.is_dir():
+        from .production import read_json
+
+        for path in sorted(directory.glob("*.json")):
+            if path.name.endswith(".transaction.json"):
+                continue
+            try:
+                group = read_json(path)
+            except VixlError:
+                continue
+            if key in group.get("documents", []):
+                for name in group.get("suites", []):
+                    found.setdefault(name, f"group:{group['name']}")
+    from .brand import load
+
+    for name in load(workspace).get("suites", []):
+        found.setdefault(name, "workspace")
+    return found
+
+
+def effective(project):
+    """{name: source} of every suite the document is held to: its attached suites ('document') and the inherited
+    library suites that no attached suite already extends."""
+    attached = project.state.get("suites", {})
+    extended = {suite.get("extends") for suite in attached.values()} - {None}
+    found = {name: "document" for name in attached}
+    for name, source in inherited(project).items():
+        if name not in attached and name not in extended:
+            found[name] = source
+    return found
+
+
+def resolve(project, suite):
+    """(suite to run, provenance) for a suite name or object. A name is an attached suite, else an inherited
+    library suite. A suite that ``extends`` a library suite runs the library's current rules with its own rules
+    applied on top: one with a library rule's ``id`` overrides that rule's fields, any other is added."""
+    info = {}
+    if isinstance(suite, str):
+        name = suite
+        attached = project.state.get("suites", {})
+        if name in attached:
+            suite = attached[name]
+            info["source"] = "document"
+        else:
+            sources = inherited(project)
+            require(name in sources, f"Unknown suite: {name}", field="suite",
+                    suggestions=sorted({*attached, *sources}))
+            suite, info["source"] = {"extends": name, "rules": []}, sources[name]
+    validate_suite(suite)
+    base = suite.get("extends")
+    if not base:
+        return suite, info
+    original = library(project, base)
+    require(not original.get("extends"), f"Library suite {base!r} cannot itself extend another suite")
+    rules = {rule["id"]: deepcopy(rule) for rule in original["rules"]}
+    overrides, added = [], []
+    for rule in suite["rules"]:
+        if rule["id"] in rules:
+            require(rules[rule["id"]]["kind"] == rule["kind"],
+                    f"Override {rule['id']!r} must keep the library rule's kind ({rules[rule['id']]['kind']})",
+                    field="kind")
+            changed = sorted(k for k, v in rule.items() if k not in ("id", "kind") and rules[rule["id"]].get(k) != v)
+            rules[rule["id"]].update(deepcopy(rule))
+            if changed:
+                overrides.append({"id": rule["id"], "fields": changed})
+        else:
+            rules[rule["id"]] = deepcopy(rule)
+            added.append(rule["id"])
+    merged = {"version": 1, "rules": list(rules.values())}
+    for key in ("description", "sampling"):
+        value = suite.get(key, original.get(key))
+        if value is not None:
+            merged[key] = deepcopy(value)
+    validate_suite(merged)
+    info.update(library=base, library_hash=digest(original))
+    if overrides:
+        info["overrides"] = overrides
+    if added:
+        info["added"] = added
+    return merged, info
+
+
+PASSES = ".vixl-suite-passes.json"
+
+
+def contract_memory(project, name, info, passed):
+    """Remember the library version each document last passed and report a library change since then
+    ("contract changed since last pass"). Stored in the workspace, never in the document."""
+    from pathlib import Path
+
+    from .fileio import file_lock
+    from .production import read_json, write_json
+
+    key, workspace = document_key(project), getattr(project, "_workspace", None)
+    if not key or not name or "library_hash" not in info:
+        return None
+    path = Path(workspace) / PASSES
+    try:
+        with file_lock(str(path)):
+            memory = read_json(path) if path.exists() else {}
+            last = memory.get(key, {}).get(name)
+            if passed and last != info["library_hash"]:
+                memory.setdefault(key, {})[name] = info["library_hash"]
+                write_json(path, memory)
+    except (OSError, VixlError):
+        return None
+    if last and last != info["library_hash"]:
+        return {"message": f"Contract changed since last pass: library suite {info['library']!r} is a new version",
+                "last_passed_hash": last, "library_hash": info["library_hash"]}
+    return None
+
+
+def _times(project, sampling, mode):
+    from .timeline import frame_times, parse_time
+
+    timeline = project.state.get("timeline", {"duration": 1000, "fps": 30})
+    if mode == "still":
+        return [None]
+    if mode == "all":
+        return frame_times(project)[0]
+    if mode == "times":
+        return [parse_time(t, timeline["duration"], timeline.get("markers")) for t in sampling["times"]]
+    count = sampling.get("count", 8)
+    return sorted(set([i * timeline["duration"] / (count - 1) for i in range(count)]
+                      + [k["time"] for t in timeline.get("tracks", []) for k in t["keys"]]))
+
+
+def run_suite(project, suite, *, variables=None, artboard=None, mode=None, page=None, comp=None, artboards=None,
+              pages=None, comps=None, include_hidden=None):
+    """Run a suite (an attached or inherited name, or an object). ``artboards``/``pages``/``comps`` ('all' or
+    lists, also settable in the suite's ``sampling``) run it over every combination; each result then names its
+    ``variant`` and ``groups`` gives each variant's status."""
+    from .coverage import coverage_record, label, public, requested, variants
     from .design_render import artboard_project
-    from .timeline import frame_times, project_at, parse_time
+    from .render import view_page
+    from .timeline import project_at
 
     name = suite if isinstance(suite, str) else None
-    if isinstance(suite, str):
-        require(suite in project.state.get("suites", {}), f"Unknown suite: {suite}")
-        suite = project.state["suites"][suite]
-    validate_suite(suite)
-    project = artboard_project(project.clone(), artboard, None, variables)
+    suite, info = resolve(project, suite)
     sampling = suite.get("sampling", {})
     mode = mode or sampling.get("mode", "still")
     require(mode in ("still", "sampled", "all", "times"), "Unknown coverage mode")
-    timeline = project.state.get("timeline", {"duration": 1000, "fps": 30})
-    if mode == "still":
-        times = [None]
-    elif mode == "all":
-        times, _ = frame_times(project)
-    elif mode == "times":
-        times = [parse_time(t, timeline["duration"], timeline.get("markers")) for t in sampling["times"]]
-    else:
-        times = sorted(
-            set(
-                [
-                    i * timeline["duration"] / (sampling.get("count", 8) - 1)
-                    for i in range(sampling.get("count", 8))
-                ]
-                + [k["time"] for t in timeline.get("tracks", []) for k in t["keys"]]
-            )
-        )
-    require(len(times) * len(suite["rules"]) <= 50000, "Check workload exceeds limit", "resource_limit")
-    results = []
-    for time in times:
-        frame = project if time is None else project_at(project, time)
-        for rule in suite["rules"]:
-            try:
-                passed, detail = rule_result(frame, rule)
-                status = "passed" if passed else "needs_review" if passed is None else "failed"
-            except (VixlError, KeyError, TypeError, ValueError, StopIteration) as exc:
-                status, detail = "needs_review", {"message": str(exc)}
-            results.append(
-                {
-                    "id": rule["id"],
-                    "status": status,
-                    "severity": rule.get("severity", "error"),
-                    "time": time,
-                    **detail,
-                }
-            )
-        from .checks import missing_glyphs
+    axes = {"artboards": artboards if artboards is not None else sampling.get("artboards"),
+            "pages": pages if pages is not None else sampling.get("pages"),
+            "comps": comps if comps is not None else sampling.get("comps")}
+    multi = requested(**axes)
+    hidden = include_hidden if include_hidden is not None else sampling.get("include_hidden", False)
+    combos = variants(project, **axes, include_hidden=hidden, artboard=artboard, page=page, comp=comp)
+    views = []
+    for combo in combos:
+        view = view_page(project, combo["page"]) if combo["page"] is not None else project
+        candidate = artboard_project(view.clone(), combo["artboard"], combo["comp"], variables)
+        views.append((combo, candidate, _times(candidate, sampling, mode)))
+    total = sum(len(times) for _, _, times in views) * len(suite["rules"])
+    require(total <= 50000, "Check workload exceeds limit", "resource_limit")
+    from .checks import missing_glyphs
 
-        # Every suite also fails on characters no font can draw (they render as empty boxes).
-        missing = missing_glyphs(frame)
-        if missing:
-            results.append(
-                {
-                    "id": "missing-glyphs",
-                    "status": "failed",
-                    "severity": "error",
-                    "time": time,
-                    "automatic": True,
-                    "message": "Text has characters no font can draw; import a covering font and add it "
-                    "with font-fallbacks",
-                    "layers": missing,
-                }
-            )
-    errors = sum(r["status"] == "failed" and r["severity"] == "error" for r in results)
-    review = sum(
-        r["status"] == "needs_review" or (r["status"] == "failed" and r["severity"] == "warning")
-        for r in results
-    )
+    results, groups = [], []
+    for combo, candidate, times in views:
+        where = {"variant": public(project, combo)} if multi else {}
+        start = len(results)
+        for time in times:
+            frame = candidate if time is None else project_at(candidate, time)
+            for rule in suite["rules"]:
+                try:
+                    passed, detail = rule_result(frame, rule)
+                    status = "passed" if passed else "needs_review" if passed is None else "failed"
+                except (VixlError, KeyError, TypeError, ValueError, StopIteration) as exc:
+                    status, detail = "needs_review", {"message": str(exc)}
+                results.append({"id": rule["id"], "status": status, "severity": rule.get("severity", "error"),
+                                "time": time, **where, **detail})
+            # Every suite also fails on characters no font can draw (they render as empty boxes).
+            missing = missing_glyphs(frame)
+            if missing:
+                results.append({"id": "missing-glyphs", "status": "failed", "severity": "error", "time": time,
+                                **where, "automatic": True,
+                                "message": "Text has characters no font can draw; import a covering font and add it "
+                                           "with font-fallbacks", "layers": missing})
+        if multi:
+            errors, review = _tally(results[start:])
+            groups.append({**where["variant"], "label": label(project, combo),
+                           "status": "failed" if errors else "needs_review" if review else "passed",
+                           "errors": errors, "needs_review": review})
+    errors, review = _tally(results)
+    times = views[0][2] if len(views) == 1 else list(dict.fromkeys(t for _, _, ts in views for t in ts))
     from .outcomes import from_suite
     from .waivers import apply_suite
 
@@ -529,11 +768,33 @@ def run_suite(project, suite, *, variables=None, artboard=None, mode=None):
         "status": "failed" if errors else "needs_review" if review else "passed",
         "errors": errors,
         "needs_review": review,
-        "coverage": {"mode": mode, "times": times},
+        "coverage": {"mode": mode, "times": times, **(coverage_record(project, combos) if multi else {})},
         "results": results,
     }
+    if info:
+        report.update(info)
     # A rule waiver (the waiver operation with rule) turns that rule's failures into "waived" results; the
     # outcome is computed after, so a waived rule neither fails validation nor asks for review.
     report = apply_suite(project, report, name)
+    if multi:
+        for group in groups:
+            # Waivers can change a result's status, so each variant's tally is taken again.
+            mine = [r for r in report["results"]
+                    if r.get("variant") and all(group.get(k) == v for k, v in r["variant"].items())]
+            errors, review = _tally(mine)
+            group.update(status="failed" if errors else "needs_review" if review else "passed", errors=errors,
+                         needs_review=review)
+        report["groups"] = groups
     report["outcome"] = from_suite(report)
+    if info:
+        changed = contract_memory(project, name, info, report["passed"])
+        if changed:
+            report["contract_changed"] = changed
     return report
+
+
+def _tally(results):
+    errors = sum(r["status"] == "failed" and r["severity"] == "error" for r in results)
+    review = sum(r["status"] == "needs_review" or (r["status"] == "failed" and r["severity"] == "warning")
+                 for r in results)
+    return errors, review

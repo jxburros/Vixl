@@ -84,7 +84,7 @@ SUMMARIES = {
     "pattern-scatter": "Scatter motifs in a seamless wrap-around tile (copies crossing an edge wrap), report its seam score.",
     "look": "Apply a named finishing look (glow, drop shadow, grain, paper, gradient …) to layers in one step.",
     "layer-style": "Add or remove a layer style: drop shadow, stroke, outer glow, color or gradient overlay.",
-    "layer-intent": "Mark a layer as content, decoration, background or the page title, allow intended overlaps or crops, or waive checks.",
+    "layer-intent": "Mark a layer as content, decoration, background or the page title, allow intended overlaps or crops, waive checks, or mark placeholder-like text as intended.",
     "waiver": "Accept a check finding or suite rule on purpose, with a reason and optional expiry; reports list it as waived.",
     "path-fit": "Fit a path layer's geometry into its box.",
     "font-fallbacks": "Register fonts used for characters the primary font lacks.",
@@ -636,7 +636,9 @@ OVERRIDES = {
                      "waive": "Checks accepted on this layer, replacing its waivers ([] clears): names such as "
                               "'contrast', or {check, reason, expires (YYYY-MM-DD), with (overlap partners)}. "
                               "Its findings stay listed as informational with waived; an expired waiver turns them "
-                              "back on."},
+                              "back on.",
+                     "literal_text": "true on a text layer says copy that looks like a placeholder (TBD, 'Your name "
+                                     "here', ${name}) is intended, so the placeholders check skips it."},
     "font-fallbacks": {"fonts": "Registered font names tried for missing characters."},
     "container-place": {"name": "Group layer name.", "resource": "Saved container name.",
                         "variables": "Container variables."},

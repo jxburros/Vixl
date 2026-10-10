@@ -36,7 +36,7 @@ Each finding also has a stable `rule` (`bounds.text-overflow`, `contrast.text-co
 `repair` you can dry-run; `outcome` keeps validation (fix findings) apart from review. See
 [outcomes, diagnostics and repair](agent-trust.md).
 Since 0.24 `passed` is false whenever a `fix` finding remains, including warnings from the
-legibility, fonts, content, guides, alignment, blanks and brand checks unless the finding
+legibility, fonts, content, guides, alignment, blanks, placeholders and brand checks unless the finding
 is marked `review` (such as a body-measure or underfilled-canvas note); `review` and
 `informational` findings do not fail it. A fallback-font finding is expected in an early
 proof, but replace the fonts before final delivery. A contrast check does not

@@ -223,7 +223,10 @@ def check_document(session, relative, request, suite=None, keep=False, group=Non
                     if item["status"] == "missing":
                         suites[name]["results"] = [{"id": name, "status": "missing", "message": item["note"]}]
         elif request.get("suites", True):
-            for name in project.state.get("suites", {}):
+            from .assurance import effective
+
+            # Attached suites and the library suites a project group or brand.json attaches by reference.
+            for name in effective(project):
                 suites[name] = project.check_suite(name)
         if suite is not None:
             suites[suite[0]] = project.check_suite(suite[1])
