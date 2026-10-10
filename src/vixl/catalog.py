@@ -60,6 +60,8 @@ CHECK_INFO = {
     "character": ("Character rigs: detached parts and joints that tear apart in poses.", ("error", "warning")),
     "captions": ("Timed captions: overlap, reading speed and placement.", ("error", "warning")),
     "connected": ("Parts of a group that float free of its main body.", ("warning",)),
+    "accessibility": ("Document language, alt text on meaningful images and charts, small text, colour-only charts "
+                      "and reading order (plus contrast and color_vision).", ("warning",)),
     "cost": ("Layers that take over 10× the median layer to draw, with the blur, effects or strokes behind it.",
              ("warning",)),
     "suite": ("A failed check-suite rule restated as a finding so the built-in repairs (repair-layout, "

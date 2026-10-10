@@ -16,8 +16,8 @@ import re
 from .errors import VixlError, require
 
 TYPES = ("edit-layers",)
-WHERE_KEYS = ("role", "name", "name_regex", "kind", "shape", "tag", "group", "text_contains", "text_regex",
-              "id", "visible", "page", "not")
+WHERE_KEYS = ("role", "name", "name_regex", "kind", "shape", "tag", "group", "object", "object_kind", "part",
+              "text_contains", "text_regex", "id", "visible", "page", "not")
 LAYER_KINDS = ("raster", "text", "solid", "gradient", "shape", "group", "frame", "adjustment", "pathfinder",
                "symbol", "pixel", "paint", "field")
 KIND_ALIASES = {"image": "raster", "photo": "raster", "picture": "raster", "rect": "shape", "rectangle": "shape"}
@@ -37,6 +37,8 @@ DESCRIPTION = (
     "Layers to change; every given key must match (AND). role: content|decoration|background|title or a role-set name; "
     "name: glob like 'badge-*' (or a list); name_regex; kind: text|shape|raster|group|… (or a list); shape: "
     "rectangle|ellipse|…; tag: a tag set with layer-intent; group: layer or group whose descendants match; "
+    "object: an object or object path (dog, person/guitar) whose whole subtree matches; object_kind: objects of a "
+    "kind or any kind below it (animal matches dogs and cats) and their subtrees; part: a part name (leg); "
     "text_contains / text_regex: text layers; id: exact IDs or names; visible: true|false; page: a page number or "
     "name, a list, or 'all' (default: the active page); not: a where object to exclude. Values may be lists "
     "(any of)."
@@ -137,6 +139,24 @@ def matcher(project, where):
         layer = project.layer(ref)
         require(layer["type"] == "group", f"{ref!r} is not a group", field="where.group")
         groups |= descendants(project, layer["id"])
+    members = set()
+    for ref in where.get("object", []):
+        from .objects import record
+
+        layer = project.layer(ref)
+        require(record(layer) is not None or layer.get("object_part"), f"{ref!r} is not an object or a part",
+                field="where.object")
+        members |= {layer["id"]} | descendants(project, layer["id"])
+    kind_members = None
+    if "object_kind" in where:
+        from .objects import all_objects, descends, record, registry, resolve_kind
+
+        kinds = registry(getattr(project, "_workspace", None))
+        wanted = [resolve_kind(value, kinds, field="where.object_kind") for value in where["object_kind"]]
+        kind_members = set()
+        for layer in all_objects(project):
+            if any(descends(record(layer)["kind"], kind, kinds) for kind in wanted):
+                kind_members |= {layer["id"]} | descendants(project, layer["id"])
     ids = {project.layer(ref)["id"] for ref in where.get("id", [])}
     names = [pattern.casefold() for pattern in where.get("name", [])]
     name_regexes = [re.compile(pattern, re.IGNORECASE) for pattern in where.get("name_regex", [])]
@@ -161,6 +181,16 @@ def matcher(project, where):
             return False
         if "group" in where and layer["id"] not in groups:
             return False
+        if "object" in where and layer["id"] not in members:
+            return False
+        if kind_members is not None and layer["id"] not in kind_members:
+            return False
+        if "part" in where:
+            from .objects import part_of
+
+            part = part_of(layer)
+            if not part or part["name"] not in where["part"]:
+                return False
         if "id" in where and layer["id"] not in ids:
             return False
         if "visible" in where and layer["visible"] != where["visible"]:

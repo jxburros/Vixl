@@ -471,6 +471,11 @@ def _operation_schema():
 
     motion_schemas(add)
     character_schemas(add)
+    from .objects import schemas as object_schemas
+    from .accessibility import schemas as accessibility_schemas
+
+    object_schemas(add)
+    accessibility_schemas(add)
     from .transforms import schemas as transform_schemas, enrich_transform_schemas
 
     transform_schemas(add)

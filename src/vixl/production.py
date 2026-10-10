@@ -543,13 +543,29 @@ class Library:
         require(hashlib.sha256(data).hexdigest() == metadata["sha256"], "Library component checksum mismatch")
         return Project.load(path, limits=limits)
 
-    def place(self, project, ident, name):
+    def place(self, project, ident, name, as_="group"):
+        """Place a component as an editable group of its layers (new IDs, with its fonts and assets), or with
+        ``as_='image'`` as one raster snapshot."""
         from .assets import add_image
 
+        require(as_ in ("group", "image"), "as is group (editable layers, the default) or image", field="as")
         component = self.load(ident, limits=project.limits)
         candidate = project.clone()
-        asset = add_image(candidate, component.render())
-        result = candidate.apply({"type": "add", "name": name, "asset": asset}, detail="compact")
+        if as_ == "image":
+            asset = add_image(candidate, component.render())
+            result = candidate.apply({"type": "add", "name": name, "asset": asset}, detail="compact")
+            project.__dict__.update(candidate.__dict__)
+            return {**result, "source_component": ident, "asset": asset, "as": "image"}
+        from .objects import from_document, place, subtree
+        from .validation import check_state
+
+        root = place(candidate, {"name": name, "name_as": name}, from_document(component, ident))
+        check_state(candidate, candidate.state)
+        if candidate.transaction is None:
+            candidate._record([], f"Place component {ident}")
+        result = {"success": True, "layer": {"id": root["id"], "name": root["name"], "type": "group"},
+                  "layers": len(subtree(candidate, root["id"]))}
         project.__dict__.update(candidate.__dict__)
-        return {**result, "source_component": ident, "asset": asset}
+        return {**result, "source_component": ident, "as": "group"}
+
 

@@ -42,8 +42,8 @@ The [production workflow extension](production.md) adds saved check suites, type
 recipes, variant production, reusable motion/actions, draft/final rendering, component
 libraries, persistent caches, durable jobs and a scene/shot assembler with captions and
 audio. These are headless APIs. Generated video needs an explicitly configured gateway;
-there is no bundled video model. Components open as editable documents, while placement
-into another document uses a raster snapshot. Film projects are v1 JSON manifests.
+there is no bundled video model. Components open as editable documents and place into another
+document as editable groups (or a raster snapshot with `as: "image"`). Film projects are v1 JSON manifests.
 
 - **AI needs a real configured service.** Vision segmentation and background removal require a mask-producing HTTP/ComfyUI provider. OpenAI provides multimodal description/detection/OCR and planning, not a native segmentation implementation here. The provider adapters have been used against real services with good results. The automated suite stays offline: mocked adapter tests pin request/response contracts, while output quality, quotas and model availability remain properties of each configured service.
 - **The core is Python**, not Rust. A Windows executable bundles the Python runtime. No C ABI, Rust core, or optimized tile/GPU renderer is supplied.

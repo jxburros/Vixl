@@ -573,10 +573,12 @@ Library actions take a workspace-relative `directory`:
 - `library-save`: name, description, tags. Saves a versioned, self-contained `.vixl` component.
 - `library-search`: query. Matches all terms across name, description and tags.
 - `library-open`: id, output. Opens an editable copy with its embedded assets and recipes.
-- `library-place`: id, name. Inserts the rendered component as an embedded raster layer.
+- `library-place`: id, name, `as`. Inserts the component as an editable group of its layers (new IDs,
+  with the fonts and images it uses); `as: "image"` inserts one raster snapshot instead.
 
-The original library document remains editable. In-place placement is a raster snapshot,
-not a live cross-document symbol. Components may hold isolated characters, masks, palettes,
+The original library document remains editable. A placed component is an independent copy, not a live
+cross-document symbol (link the component with `link` for that); a single object is reused the same way
+with `object-save` / `object-place` (see [objects](objects.md#save-and-place-editable-objects)). Components may hold isolated characters, masks, palettes,
 timelines and backgrounds. Search uses explicit metadata, not an embedding service.
 
 ## Durable jobs

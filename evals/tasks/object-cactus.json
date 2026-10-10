@@ -1,0 +1,169 @@
+{
+  "prompt": "Create cactus.vixl at 500x600 on a sand (#f4e4c1) background and draw a potted cactus: a ribbed cactus body with two arms standing in a terracotta pot. Make the cactus one object of kind cactus with the pot as a sub-object, every part touching, then export cactus.png.",
+  "document": "cactus.vixl",
+  "checks": [
+    {
+      "type": "object",
+      "name": "a cactus with a pot",
+      "layer": "cactus",
+      "kind": "cactus",
+      "complete": true,
+      "parts": [
+        "body",
+        "arm"
+      ],
+      "sub_objects": [
+        "pot"
+      ],
+      "connected": true
+    },
+    {
+      "type": "file",
+      "path": "cactus.png",
+      "image_size": [
+        500,
+        600
+      ]
+    }
+  ],
+  "reference": [
+    {
+      "tool": "vixl_document_create",
+      "arguments": {
+        "path": "cactus.vixl",
+        "width": 500,
+        "height": 600,
+        "background": "#f4e4c1"
+      }
+    },
+    {
+      "tool": "vixl_operations_apply",
+      "arguments": {
+        "operations": [
+          {
+            "type": "shape",
+            "shape": "rounded-rectangle",
+            "name": "body",
+            "x": 200,
+            "y": 120,
+            "width": 100,
+            "height": 330,
+            "radius": 50,
+            "fill": "#4f8a3c"
+          },
+          {
+            "type": "shape",
+            "shape": "rounded-rectangle",
+            "name": "arm-left",
+            "x": 130,
+            "y": 210,
+            "width": 90,
+            "height": 40,
+            "radius": 20,
+            "fill": "#4f8a3c"
+          },
+          {
+            "type": "shape",
+            "shape": "rounded-rectangle",
+            "name": "arm-right",
+            "x": 280,
+            "y": 260,
+            "width": 90,
+            "height": 40,
+            "radius": 20,
+            "fill": "#4f8a3c"
+          },
+          {
+            "type": "shape",
+            "shape": "rectangle",
+            "name": "pot-body",
+            "x": 160,
+            "y": 420,
+            "width": 180,
+            "height": 130,
+            "fill": "#c1663b"
+          },
+          {
+            "type": "shape",
+            "shape": "rectangle",
+            "name": "pot-rim",
+            "x": 145,
+            "y": 400,
+            "width": 210,
+            "height": 30,
+            "fill": "#a9542e"
+          },
+          {
+            "type": "group",
+            "name": "pot",
+            "targets": [
+              "pot-body",
+              "pot-rim"
+            ]
+          },
+          {
+            "type": "object",
+            "target": "pot",
+            "kind": "pot"
+          },
+          {
+            "type": "object",
+            "action": "part",
+            "target": "pot-body",
+            "part": "body"
+          },
+          {
+            "type": "object",
+            "action": "part",
+            "target": "pot-rim",
+            "part": "rim"
+          },
+          {
+            "type": "group",
+            "name": "cactus",
+            "targets": [
+              "body",
+              "arm-left",
+              "arm-right",
+              "pot"
+            ]
+          },
+          {
+            "type": "object",
+            "target": "cactus",
+            "kind": "cactus"
+          },
+          {
+            "type": "object",
+            "action": "part",
+            "target": "body",
+            "part": "body"
+          },
+          {
+            "type": "object",
+            "action": "part",
+            "target": "arm-left",
+            "part": "arm",
+            "side": "left"
+          },
+          {
+            "type": "object",
+            "action": "part",
+            "target": "arm-right",
+            "part": "arm",
+            "side": "right"
+          }
+        ],
+        "check": [
+          "connected"
+        ]
+      }
+    },
+    {
+      "tool": "vixl_export_file",
+      "arguments": {
+        "path": "cactus.png"
+      }
+    }
+  ]
+}

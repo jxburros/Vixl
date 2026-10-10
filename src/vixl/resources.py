@@ -15,6 +15,7 @@ from .assets import read_bounded
 from .design import named
 from .errors import require
 from .guidance import GUIDANCE
+from .objects import builtin_kinds
 from . import house_style
 
 PALETTES = {
@@ -154,7 +155,8 @@ CONTAINERS, MODULAR_TEMPLATES = container_builtins()
 TEMPLATES.update(MODULAR_TEMPLATES)
 BUILTINS = {"palettes": PALETTES, "templates": TEMPLATES, "guidance": GUIDANCE,
             "containers": CONTAINERS, "shapes": {}, "suites": SUITES, "workflows": WORKFLOWS,
-            "mockups": {}}  # built-in mockups are drawn by mockups.BUILTINS; the library holds the user's own
+            "mockups": {},  # built-in mockups are drawn by mockups.BUILTINS; the library holds the user's own
+            "objects": builtin_kinds()}
 
 
 def proportional(project, item, operations):
@@ -232,6 +234,10 @@ def validate(kind, value):
     elif kind == "mockups":
         from .mockups import validate as validate_mockup
         validate_mockup(value)
+    elif kind == "objects":
+        from .objects import validate_entry
+
+        validate_entry("kind", value)
     elif kind == "templates":
         require(isinstance(value, dict), "Template must be a JSON object")
         from .model import Limits
@@ -275,6 +281,10 @@ def register(kind, name, value, *, workspace=None):
     require(kind in BUILTINS, "Unknown resource category")
     named(name)
     validate(kind, value)
+    if kind == "objects":
+        from .objects import validate_user_kind
+
+        validate_user_kind(name, value, workspace)
     path = resource_path(workspace)
     path.parent.mkdir(parents=True, exist_ok=True)
     with file_lock(str(path)):

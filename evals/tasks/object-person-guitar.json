@@ -1,0 +1,157 @@
+{
+  "prompt": "Create player.vixl at 600x700 with a white background showing a person playing a guitar. The person is one object named player and the guitar (body, neck, headstock, strings) is a sub-object inside it. Preview just the guitar, then export player.png.",
+  "document": "player.vixl",
+  "checks": [
+    {
+      "type": "object",
+      "name": "a person with a guitar sub-object",
+      "layer": "player",
+      "kind": "person",
+      "complete": true,
+      "sub_objects": [
+        "guitar"
+      ]
+    },
+    {
+      "type": "object",
+      "name": "a complete guitar",
+      "layer": "player/guitar",
+      "kind": "guitar",
+      "complete": true
+    },
+    {
+      "type": "file",
+      "path": "player.png",
+      "image_size": [
+        600,
+        700
+      ]
+    }
+  ],
+  "reference": [
+    {
+      "tool": "vixl_document_create",
+      "arguments": {
+        "path": "player.vixl",
+        "width": 600,
+        "height": 700,
+        "background": "white"
+      }
+    },
+    {
+      "tool": "vixl_operations_apply",
+      "arguments": {
+        "operations": [
+          {
+            "type": "character",
+            "name": "player",
+            "x": 140,
+            "y": 60,
+            "height": 600
+          },
+          {
+            "type": "shape",
+            "shape": "ellipse",
+            "name": "body",
+            "x": 120,
+            "y": 330,
+            "width": 150,
+            "height": 110,
+            "fill": "#d9a066"
+          },
+          {
+            "type": "shape",
+            "shape": "rectangle",
+            "name": "neck",
+            "x": 250,
+            "y": 370,
+            "width": 170,
+            "height": 18,
+            "fill": "#8b5a2b"
+          },
+          {
+            "type": "shape",
+            "shape": "rectangle",
+            "name": "headstock",
+            "x": 410,
+            "y": 360,
+            "width": 50,
+            "height": 38,
+            "fill": "#5c3a1a"
+          },
+          {
+            "type": "shape",
+            "shape": "rectangle",
+            "name": "strings",
+            "x": 160,
+            "y": 376,
+            "width": 280,
+            "height": 5,
+            "fill": "#eeeeee"
+          },
+          {
+            "type": "group",
+            "name": "guitar",
+            "targets": [
+              "body",
+              "neck",
+              "headstock",
+              "strings"
+            ]
+          },
+          {
+            "type": "object",
+            "target": "guitar",
+            "kind": "guitar"
+          },
+          {
+            "type": "object",
+            "action": "part",
+            "target": "body",
+            "part": "body"
+          },
+          {
+            "type": "object",
+            "action": "part",
+            "target": "neck",
+            "part": "neck"
+          },
+          {
+            "type": "object",
+            "action": "part",
+            "target": "headstock",
+            "part": "headstock"
+          },
+          {
+            "type": "object",
+            "action": "part",
+            "target": "strings",
+            "part": "strings"
+          },
+          {
+            "type": "reparent",
+            "targets": [
+              "guitar"
+            ],
+            "into": "player"
+          }
+        ]
+      }
+    },
+    {
+      "tool": "vixl_render_preview",
+      "arguments": {
+        "isolate": [
+          "player/guitar"
+        ],
+        "max_width": 512
+      }
+    },
+    {
+      "tool": "vixl_export_file",
+      "arguments": {
+        "path": "player.png"
+      }
+    }
+  ]
+}

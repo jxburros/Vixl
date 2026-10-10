@@ -2071,6 +2071,8 @@ def export(
     labels=True,
     title=None,
     max_bytes=None,
+    isolate=None,
+    padding=None,
 ):
     """Render and encode. ``color_space='cmyk'`` separates JPEG/TIFF/PDF output (ICC profile
     bytes in ``icc_profile`` for press-accurate separation, else device-naive GCR with
@@ -2085,7 +2087,9 @@ def export(
     is ``False`` for the plain single-image HTML, ``True`` for a presentation of any document, or
     a dict of options (theme, notes, slide_images, start, title). ``title`` is the PDF document title
     (default: the page's title layer, then the file name). ``max_bytes`` is a size budget: when the
-    encoded file is larger, ``report['warnings']`` says so (the export still succeeds)."""
+    encoded file is larger, ``report['warnings']`` says so (the export still succeeds). ``isolate`` (layer
+    names, object paths such as ``dog/head`` or ``object:KIND``) exports only those layers, cropped to their ink
+    plus ``padding`` pixels on a transparent canvas, in any format."""
     require(isinstance(overwrite, bool), "overwrite must be true or false", field="overwrite")
     require(path is None or overwrite or not Path(path).exists(),
             "Export output already exists; pass overwrite=True to replace it", "output_exists", field="path")
@@ -2102,6 +2106,18 @@ def export(
         timeline = project.state.get("timeline") or default_timeline()
         project = project_at(project, parse_time(time, timeline["duration"], timeline.get("markers")))
     require(svg_policy in ("appearance", "strict"), "SVG policy must be appearance or strict")
+    if isolate is not None:
+        require(not pages and page != "all", "isolate exports one page; pass page, not pages", field="isolate")
+        require(padding is None or 0 <= finite(padding, "padding", 0, 4096), "padding is 0-4096 px", field="padding")
+        from .objects import isolated_export
+
+        project = isolated_export(view_page(project, page) if page is not None else project, isolate, padding=padding)
+        page = None
+        if report is not None:
+            report["isolated"] = {"layers": [project.layer(ident)["name"] for ident in project._isolated],
+                                  "size": [project.state["canvas"]["width"], project.state["canvas"]["height"]]}
+    else:
+        require(padding is None, "padding goes with isolate", field="padding")
     from .pages import parse_pages
 
     all_pages = pages == "all"

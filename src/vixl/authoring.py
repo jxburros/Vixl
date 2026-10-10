@@ -48,7 +48,14 @@ def schemas(add):
                                         "description": "A waiver with its reason and expiry.",
                                         "properties": {"check": field(S, "The check to waive (contrast, bounds, "
                                                                          "overlap, safe_area ...)."),
-                                                       **WAIVER_FIELDS}}]}}}, ["target"])
+                                                       **WAIVER_FIELDS}}]}},
+                         "alt": {"type": "string", "maxLength": 2000,
+                                 "description": "Alternative text: what a meaningful image, frame, chart, link or group "
+                                 "shows (HTML alt, SVG <title>, PowerPoint descr, PDF /Alt); an empty string clears it"},
+                         "decorative": {"type": "boolean",
+                                        "description": "true: purely decorative, so screen readers skip it and the "
+                                        "accessibility check needs no alt text"}}, ["target"])
+
     add("waiver", {"check": field(S, "The design check to waive (contrast, bounds, overlap, safe_area, brand ...)."),
                    "rule": field(S, "A suite rule id to waive instead of a check (no target)."),
                    "suite": field(S, "With rule: only in this suite (default any suite with that rule id)."),
@@ -167,6 +174,10 @@ def execute(project, op):
                 layer["detached_ok"] = True
             else:
                 layer.pop("detached_ok", None)
+        if "alt" in op or "decorative" in op:
+            from .accessibility import set_alt
+
+            set_alt(layer, op)
         if "color_vision_safe" in op:
             # Series that also differ by labels or patterns: the color-vision check skips this chart.
             if op["color_vision_safe"]:
@@ -248,6 +259,9 @@ def compile_command(cmd, args):
         p.add_argument("--waive", nargs="*", metavar="CHECK",
                        help="checks whose findings on this layer are accepted (none clears them); "
                             "use the waiver command for a reason and expiry")
+        p.add_argument("--alt", help="alternative text for an image, frame, chart, link or group ('' clears it)")
+        p.add_argument("--decorative", action=argparse.BooleanOptionalAction, default=None,
+                       help="purely decorative: screen readers skip it and it needs no alt text")
     elif cmd == "waiver":
         p.add_argument("check", nargs="?", help="the design check to waive (contrast, bounds, overlap ...)")
         p.add_argument("--rule", help="a suite rule id to waive instead of a check")

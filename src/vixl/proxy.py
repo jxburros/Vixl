@@ -184,12 +184,14 @@ def isolated(project, refs, missing_ok=False):
     from .design import descendants
     from .errors import require
 
+    from .objects import expand_refs
+
     require(isinstance(refs, list) and 0 < len(refs) <= 256 and all(isinstance(r, str) for r in refs),
-            "isolate is a list of 1-256 layer IDs or names", field="isolate")
+            "isolate is a list of 1-256 layer IDs or names, object paths (dog/head) or object:KIND", field="isolate")
     roots = []
     for ref in refs:
         try:
-            roots.append(project.layer(ref)["id"])
+            roots += [ident for ident in expand_refs(project, [ref]) if ident not in roots]
         except Exception:
             if not missing_ok:
                 raise
@@ -213,6 +215,7 @@ def isolated(project, refs, missing_ok=False):
         if ident not in keep:
             layer["visible"] = False
     candidate._isolated = roots
+    candidate._isolated_keep = keep
     return candidate
 
 
@@ -222,7 +225,8 @@ def ink_region(project, refs, padding=None):
     from .spatial import canvas_boxes
 
     boxes = canvas_boxes(project, "ink")
-    found = [boxes[project.layer(ref)["id"]] for ref in refs if project.layer(ref)["id"] in boxes]
+    idents = [project.layer(ref)["id"] for ref in refs]
+    found = [boxes[ident] for ident in idents if ident in boxes]
     found = [b for b in found if b[2] > 0 and b[3] > 0]
     if not found:
         return None
@@ -258,7 +262,7 @@ def clamp_region(region, canvas):
 
 def render_preview(
     project, max_width, max_height, *, variables=None, artboard=None, comp=None, region=None, time=None, proof=False, simulate=None,
-    guides=None, page=None, values=None, show_fields=False, isolate=None,
+    guides=None, page=None, values=None, show_fields=False, isolate=None, views=None, exploded=False,
 ):
     """Render at roughly the preview size. ``region`` [x, y, w, h] (document pixels) zooms in;
     zoomed regions may be enlarged up to 8x so small details stay legible. ``time`` previews a
@@ -295,6 +299,13 @@ def render_preview(
                              prune=isolate is None)
     candidate = artboard_project(project, artboard, comp, variables)
     c = candidate.state["canvas"]
+    if views is not None or exploded:
+        from .objects import parts_sheet
+
+        require(isolate, "views and exploded show the objects named in isolate", field="views")
+        require(set(views or ["parts"]) <= {"parts"}, "views takes ['parts']", field="views")
+        return parts_sheet(candidate, isolate, max_width, max_height, explode=exploded,
+                           render_options={"proof": proof, "simulate": simulate})
     if isolate is not None:
         candidate = isolated(candidate, isolate)
         if region is None:

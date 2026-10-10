@@ -18,7 +18,10 @@ CHECKS = ("bounds", "overlap", "contrast", "safe_area", "legibility", "blanks", 
           "form", "links", "diagram", "flow", "codes")
 FALLBACK_FONT = "DejaVuSans.ttf"
 OPTIONAL_CHECKS = ("print", "color_vision", "guides", "alignment", "drawing", "style", "motion", "character", "captions",
-                   "connected", "cost")
+                   "connected", "cost", "accessibility")
+# The accessibility check bundles these with its own findings (alt text, language, text size, colour-only
+# charts, reading order).
+ACCESSIBILITY_BUNDLE = ("contrast", "color_vision")
 # What to do about a finding. Errors and the warnings below need a design change ("fix"); other warnings
 # are worth a look ("review"); notes and deliberate choices the document marked are "informational".
 ACTIONS = ("fix", "review", "informational")
@@ -390,6 +393,8 @@ def check_design(
     floor = contrast_floor(brand, min_contrast)
     unknown = sorted(set(checks) - set(CHECKS + OPTIONAL_CHECKS))
     require(not unknown, f"Unknown check(s) {unknown}; available: {', '.join(CHECKS + OPTIONAL_CHECKS)}", field="checks")
+    if "accessibility" in checks:
+        checks = checks + [name for name in ACCESSIBILITY_BUNDLE if name not in checks]
     candidate = artboard_project(project.clone(), artboard, comp, variables)
     undefined = []
     if "placeholders" in checks:
@@ -924,6 +929,11 @@ def check_design(
         from .copy_checks import check_brand_words
 
         check_brand_words(candidate, brand, resolved, layers, issue)
+
+    if "accessibility" in checks:
+        from .accessibility import check as check_accessibility
+
+        check_accessibility(candidate, resolved, layers, texts, bounds, text_scales, issue)
 
     if "connected" in checks:
         from .parts import check_connected

@@ -262,6 +262,8 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | MOT-01 | Ball moving across the canvas over one second, exported as GIF | `timeline-set`, `animate`, `vixl_export_timeline` | 7 · 2 | M:eval:timeline-motion | |
 | PRD-01 | Banner with a variable-driven headline, rendered for several cities | `variable set`, `render --set` | 6 · 2 | M:eval:variable-variants | |
 | QA-11 | Save a check suite and make an edit that only commits if it passes | `vixl_workflow` act | 8 · 2 | M:eval:workflow-checked-edit | |
+| QA-39 | Find and review the objects in an existing design | `vixl_document_inspect(object="*")`, `inspect object=NAME`, `isolate` `views: [parts]` | 2–4 · <1 | E | Lists kinds, parts and missing required parts. |
+| QA-40 | Accessibility pass before handing off a deck, PDF or web graphic | `layer-intent alt`/`decorative`, `accessibility lang`, `check accessibility` | 4–10 · 1–2 | E | Alt and language reach HTML, SVG, PPTX and PDF; no tagged PDF structure tree. |
 | QA-24 | Turn a brief into tests (hierarchy, spacing, margins, contrast, balance) and run them with every batch before previewing | `suite-set`, `vixl_operations_apply(suites=true)`, `vixl_guide("testing")` | 3–5 · 1 | E | Starter suites per kind of work; `vixl_guide(kind)` lists one under `tests`. |
 
 ### Social, web and simple graphics
@@ -358,6 +360,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | --- | --- | --- | --- | --- | --- |
 | PRD-02 | Render one image per CSV row from a template | `render --data rows.csv` | 2–4 · 1 | E | |
 | PRD-03 | Place a saved library component into a document | `vixl_workflow` library-place | 2–3 · <1 | E | |
+| BLK-24 | Placing a library component as an editable group | `library-place` (editable group; `as: image` for a snapshot) | 2–3 · <1 | E | Unblocked by #381: was a raster snapshot. |
 | PRD-04 | Link another `.vixl` as a live layer and refresh it after edits | `link`, `link-refresh` | 2–3 · <1 | E | |
 | FRM-03 | Fill one form with values into a flattened or editable PDF | `form fill --set` | 1–2 · <1 | E | |
 | FRM-04 | Check a form with worst-case sample values | `check --checks form --sample worst` | 1–2 · <1 | E | |
@@ -480,9 +483,11 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 
 | ID | Use case | Main route | Calls · min | Ev. | Notes |
 | --- | --- | --- | --- | --- | --- |
-| ILL-30 | Static character or mascot built from named parts | `character` kind, groups with pivots | 25–40 · 4–5 | E | |
+| ILL-30 | Static character or mascot built from named parts | `character` kind, groups with pivots, `object` kind person + named parts, `inspect object=` | 20–35 · 3–5 | E | Missing required parts are listed; review with `isolate` `views: [parts]`. |
 | ILL-31 | Landscape scene with depth (sky, sun, hills, plants) | `scene` kind, organic, gradients | 20–30 · 3–4 | E | |
-| ILL-32 | Botanical illustration with several organic forms | `organic` ×n, repeat, irregular | 12–20 · 2–3 | E | |
+| ILL-32 | Botanical illustration with several organic forms | `organic` ×n, repeat, irregular, `object` kind (flower, tree, cactus …) | 10–18 · 2–3 | E | Every organic preset maps to a kind ([objects](objects.md)). |
+| ILL-52 | Object from a kind scaffold (dog, guitar, person with a guitar) | `vixl_guide(brief)` → shapes → `group` → `object` + parts → `inspect object=` → isolated preview | 15–30 · 3–4 | E | Parts, connections and layering from the taxonomy. |
+| ILL-53 | Reusable editable object (mascot placed recoloured in several documents) | `object-save`/`object-place` with `recolor`, or `vixl_export_file(isolate, path=….vixl)` + `object-place source` | 4–8 · 1–2 | E | Copies are independent, with new IDs. |
 | ILL-33 | Painted texture or brush illustration (dozens of strokes) | `paint` with brushes | 15–30 · 3–4 | E | Strokes stay editable. |
 | ILL-34 | Cut-paper style illustration | cut-paper guidance, `tear`, shadows | 20–35 · 3–5 | E | |
 | ILL-35 | Pencil, charcoal, ink-wash, stipple or hatch finish | material finishes | 5–10 · 1–2 | E | |
@@ -522,7 +527,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | FRM-21 | Consent/waiver form with a required signature field | `field --kind signature --required` | 12–20 · 2–3 | E | |
 | PRD-20 | Capture a design as a recipe with typed inputs | `vixl_workflow` capture | 5–10 · 1–2 | E | |
 | PRD-21 | Plan a production spec and list its variants without rendering | `vixl_workflow` plan | 3–6 · 1 | E | |
-| PRD-22 | Save a design to a component library and reuse it elsewhere | library-save, library-search, library-place | 5–8 · 1–2 | E | Placement is a raster snapshot. |
+| PRD-22 | Save a design to a component library and reuse it elsewhere | library-save, library-search, library-place | 5–8 · 1–2 | E | Places an editable group (#381); `as: image` for a snapshot. |
 | PRD-23 | Find and replace a product name, a hex color, a font or the logo image across a campaign | `vixl_workflow` replace-across (dry run, then apply) | 2–4 · 1–2 | E | Journalled; `group-recover` undoes an interrupted run. |
 | PRD-24 | Review a group change on a before/after page and publish only the approved members | group-apply or replace-across with `review`, then `decisions` | 2–3 · human review | E | Offline proof page; decisions JSON comes back. |
 | QA-36 | Copy rules: headline length, a required disclaimer, banned words (brand.json `words`) | `text` suite rule | 3–6 · 1 | E | Measured after variables, per artboard and row; no dictionary spelling. |
@@ -682,7 +687,6 @@ note the version.
 | BLK-20 | Imposition for saddle-stitched booklets (reader → printer spreads) | Not implemented | Order pages by hand. |
 | BLK-21 | Dielines, folds and packaging nets | Not implemented as a feature | Draw with guides and paths. |
 | BLK-23 | Live (active/scripted) SVG content | Not implemented; static SVG only | – |
-| BLK-24 | Placing a library component as an editable group | Placement is a raster snapshot | Open the component as its own document and link it. |
 | BLK-25 | Hard memory cap or execution timeout per call | Partial: servers bound each call's megapixels, export pages and per-workspace concurrency, and detach calls over a timeout into jobs (#542); no hard memory cap or kill | [Per-call limits](interfaces.md#per-call-limits); OS/container limits for memory. |
 
 ## Cost notes

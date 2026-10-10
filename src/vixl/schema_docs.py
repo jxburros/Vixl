@@ -73,7 +73,11 @@ SUMMARIES = {
     "constrain": "Pin a layer's edges or center to the canvas, a layer or a guide.",
     "distribute": "Space three or more layers evenly along an axis.",
     "group": "Group layers into one transformable layer.",
-    "ungroup": "Dissolve a group, keeping its children in place.",
+    "ungroup": "Dissolve a group, keeping its children in place (a declared object needs force).",
+    "object": "Declare a group one object of a kind (dog, guitar, person), name its parts, or remove the declaration.",
+    "object-save": "Keep an editable copy of an object (with its parts, recipes and fonts) in the document's library.",
+    "object-place": "Place a saved or exported object as an editable group with new IDs, optionally recoloured by part.",
+    "accessibility": "Set the document language and title, and the active page's description, language and reading order.",
     "reparent": "Move layers into a group, to another group or out to the page without ungrouping; they keep "
                 "where they appear on the canvas.",
     "clip": "Clip a layer to the shape of a base layer beneath it (or release it).",

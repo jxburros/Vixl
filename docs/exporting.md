@@ -162,4 +162,10 @@ A proof continues past a document that cannot render, recording its error alongs
 
 Python `Project.export(..., pages="all")` selects all visible pages; for a raster export it writes the contact sheet. CMYK PDF export without an ICC profile reports that conversion is unprofiled. Supply the intended printer profile for managed colour output.
 
+**One object or layer alone.** `isolate=["guitar"]` (CLI `--isolate guitar`) exports only those layers, object
+paths (`person/guitar`) or `object:KIND`, cropped to their ink plus `padding` pixels on a transparent canvas, in
+every format; a `.vixl` path writes a portable object document for `object-place source=`. SVG, PowerPoint and
+PSD keep declared [objects](objects.md) as named groups, and every format carries alt text and the document
+language ([accessibility](accessibility.md)).
+
 SVG export writes `multiply`, `screen`, `overlay`, `darken`, `lighten` and `difference` layers as native `mix-blend-mode` groups inside an isolated root, keeping every shape and text vector. `add`, `subtract` and other backdrop-dependent operations still rasterize the document and report the fallback; strict mode rejects them. Editable SVG import also accepts native gradient rectangles (unrounded, unstroked, translated only, user-space padded linear or radial gradients with 2–32 plain stops) and stroked paths that overflow their box. Arbitrary transforms, clipping, gradient-filled nonrectangular geometry and unsupported SVG features still require appearance/auto mode.

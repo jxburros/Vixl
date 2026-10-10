@@ -304,6 +304,13 @@ Use `palette list|show|add|apply`, `template list|show|add|new|apply`, `guidance
 
 `cost` (opt-in: `check --checks cost`) draws the document once with empty caches and times every layer (a group's time excludes its children). A layer that takes over 10× the median layer and at least 50 ms is a `cost` warning with action `review`, its `ms`, the `median_ms`, the slowest `stage` (`draw`, `effects`, `transform`) and `causes` read from its fields (the largest blur radius, other effects, paint stroke and point counts, soft style blurs, very long text, repeated copies, a very large box). It does not fail a check; it says which layer to simplify or rasterize when renders, previews and timeline frames are slow.
 
+`accessibility` (opt-in: `check --checks accessibility`) adds `contrast` and `color_vision` to its own findings: the
+document language (fix), meaningful images, frames, links and charts without alt text (fix), small text (review),
+charts told apart by colour alone (review) and text whose export order jumps against its visual order (review). See
+[accessibility](accessibility.md). Declared [objects](objects.md) are inspected with `vixl inspect --object NAME`
+(`*` lists them all), exported alone with `vixl export dog.svg --isolate dog [--padding 8]` (a `.vixl` output
+writes a portable object) and listed by `vixl manifest`.
+
 Saved SVG exports report `svg.vector_only` and `svg.raster_fallbacks` in the CLI result so embedded bitmaps are visible without opening the SVG metadata. Use `export logo.svg --svg-policy strict` to reject all embedded raster content. Exporting to `-` still writes only SVG bytes. Supported grouped shapes and outlined text remain vectors; unsupported appearances may rasterize in the default appearance policy.
 
 ## Finish, styles and the guide
