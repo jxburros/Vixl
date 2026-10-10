@@ -861,6 +861,10 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         sample: Annotated[str | None, Field(description="form checks: 'worst' (worst-case values) or a workspace CSV of rows")] = None,
         style: Annotated[str | list[str] | None, Field(description="style check: evaluate this style (or list) instead of the document's style tag")] = None,
         connect_tolerance: Annotated[float, Field(ge=0, le=100, description="connected check: pixels of gap still counted as touching")] = 2,
+        profile: Annotated[str | None, Field(description="check profile: draft, review, final or one from the workspace's "
+                                                         ".vixl-checks.json; it picks the checks and suites and its fail_on "
+                                                         "decides passed")] = None,
+        waivers: Annotated[bool, Field(description="false reports every finding as if the document had no waivers")] = True,
         document: Document = None,
     ) -> dict:
         """Find design problems without looking: content cut off by the canvas, overlapping text, low WCAG
@@ -872,8 +876,10 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
         order, sizes, contrast) and with sample finds values that overflow; style (opt-in) evaluates the document's
         style tag rule by rule. Each issue has a severity (error, warning, info) and an action: fix (needs a design
         change), review (look and decide) or informational (expected, such as a crop marked with layer-intent
-        allow_crop); by_action lists the issue indexes under each. connected (opt-in) finds parts of a group (a mascot,
-        a character) that float free of its main body. Reports only problems."""
+        allow_crop); by_action lists the issue indexes under each. A finding the document waives (layer-intent waive,
+        the waiver operation) stays listed as informational with waived and its reason; waivers lists them and any
+        expired ones. connected (opt-in) finds parts of a group (a mascot, a character) that float free of its main
+        body. Reports only problems."""
         return session.check(
             document=document,
             checks=checks,
@@ -892,6 +898,8 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
             sample=sample if sample in (None, "worst") else str(session.resolve(sample)),
             style=style,
             connect_tolerance=connect_tolerance,
+            profile=profile,
+            waivers=waivers,
         )
 
     @tool

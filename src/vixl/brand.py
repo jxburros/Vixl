@@ -48,10 +48,7 @@ def validate(kit):
         )
         for value in palette.values():
             parse(value)
-        contrast = kit.get("minimum_contrast", 4.5)
-        require(
-            isinstance(contrast, (int, float)) and 1 <= contrast <= 21, "Brand minimum_contrast must be 1–21"
-        )
+        validate_contrast(kit.get("minimum_contrast", 4.5))
         require(
             isinstance(kit.get("required_elements", []), list)
             and all(isinstance(x, str) and x for x in kit.get("required_elements", [])),
@@ -88,6 +85,64 @@ def validate(kit):
         return kit
     except (ValueError, TypeError) as exc:
         raise VixlError("invalid_brand", f"Invalid brand.json: {exc}") from exc
+
+
+CONTRAST_FIELDS = ("text", "large_text", "large_text_px", "large_bold_text_px")
+
+
+def _ratio(value, name):
+    require(isinstance(value, (int, float)) and not isinstance(value, bool) and 1 <= value <= 21,
+            f"Brand {name} must be a contrast ratio 1–21")
+
+
+def validate_contrast(value):
+    """``minimum_contrast`` is one ratio for all text, or ``{text, large_text, large_text_px,
+    large_bold_text_px}``: a floor for body text and one for large text (WCAG asks 3:1 for 24 px+, or
+    18.66 px+ bold)."""
+    if not isinstance(value, dict):
+        _ratio(value, "minimum_contrast")
+        return
+    unknown = sorted(set(value) - set(CONTRAST_FIELDS))
+    require(not unknown, f"Unknown minimum_contrast field(s) {unknown}; use {', '.join(CONTRAST_FIELDS)}")
+    require("text" in value, "minimum_contrast needs text (the floor for body text)")
+    for name in ("text", "large_text"):
+        if name in value:
+            _ratio(value[name], f"minimum_contrast.{name}")
+    for name in ("large_text_px", "large_bold_text_px"):
+        if name in value:
+            require(isinstance(value[name], (int, float)) and not isinstance(value[name], bool)
+                    and 1 <= value[name] <= 10000, f"Brand minimum_contrast.{name} must be 1–10000 px")
+
+
+def contrast_floor(kit, requested=None):
+    """The contrast text needs: ``{text, large_text, large_text_px, large_bold_text_px}``. A caller's
+    ``requested`` ratio applies to both tiers (default WCAG 4.5:1 and 3:1); a brand floor raises each tier and
+    is kept even when a caller asks for less. A bare brand number is the floor for both tiers."""
+    from .house_style import rule
+
+    sizes = rule("minimum_text")
+    floor = {"text": requested or 4.5, "large_text": requested or 3.0,
+             "large_text_px": sizes["large_text_px"], "large_bold_text_px": sizes["large_bold_text_px"]}
+    value = (kit or {}).get("minimum_contrast")
+    if value is None:
+        return floor
+    if not isinstance(value, dict):
+        value = {"text": value, "large_text": value}
+    floor["text"] = max(requested or 0, value["text"])
+    floor["large_text"] = max(requested or 0, value.get("large_text", value["text"]))
+    if "large_text_px" in value:
+        floor["large_text_px"] = value["large_text_px"]
+        floor["large_bold_text_px"] = value.get(
+            "large_bold_text_px", value["large_text_px"] * sizes["large_bold_text_px"] / sizes["large_text_px"])
+    elif "large_bold_text_px" in value:
+        floor["large_bold_text_px"] = value["large_bold_text_px"]
+    return floor
+
+
+def required_contrast(floor, size_px, bold=False):
+    """The ratio a text of ``size_px`` canvas pixels needs under ``floor`` (from ``contrast_floor``)."""
+    large = size_px >= floor["large_bold_text_px" if bold else "large_text_px"]
+    return floor["large_text" if large else "text"]
 
 
 def for_project(project):
@@ -230,7 +285,8 @@ def check(project, kit, issue):
     from .colors import parse
     from .design_render import resolve_color
 
-    allowed = {parse(c) for c in kit.get("palette", {}).values()}
+    # A colour matches the palette by its RGB: a translucent brand colour is still that ink.
+    allowed = {parse(c)[:3] for c in kit.get("palette", {}).values()}
     font_names = {s["name"] for s in kit.get("fonts", {}).values()}
     if kit.get("pairing"):
         from .typefaces import get_pairing, slug
@@ -266,13 +322,19 @@ def check(project, kit, issue):
             for item in value:
                 yield from paints(item)
 
-    def check_colors(value, layer=None):
+    def check_colors(value, layer=None, effect=False):
         if not allowed:
             return
         for field, value in paints(value):
             color = parse(resolve_color(value, project.state))
-            if color[3] and color not in allowed:
-                issue("brand", "warning", f"{field} is outside the brand palette", [layer] if layer else [])
+            if not color[3] or color[:3] in allowed:
+                continue
+            if effect and color[3] < 255 and len(set(color[:3])) == 1 and color[0] in (0, 255):
+                # A translucent black or white shadow or glow darkens or lightens what is under it;
+                # it adds no ink of its own.
+                continue
+            issue("brand", "warning", f"{field} is outside the brand palette", [layer] if layer else [],
+                  color=value)
 
     check_colors({"background": project.state["canvas"]["background"]})
     layers = [layer for layer in project.state["layers"] if visible(layer)]
@@ -280,12 +342,13 @@ def check(project, kit, issue):
         # Inspect only visual paint fields; provenance/animation metadata is not a color policy input.
         paint_fields = {
             key: layer[key]
-            for key in ("fill", "stroke", "color", "stroke_color", "styles", "effects", "stops", "strokes")
+            for key in ("fill", "stroke", "color", "stroke_color", "stops", "strokes")
             if key in layer
         }
         if layer["type"] == "gradient":
             paint_fields.update({key: layer[key] for key in ("start", "end") if key in layer})
         check_colors(paint_fields, layer)
+        check_colors({key: layer[key] for key in ("styles", "effects") if key in layer}, layer, effect=True)
         if font_names and layer["type"] == "text" and layer.get("font") not in font_assets:
             issue("brand", "warning", "Font is outside the brand font pairing", [layer])
     names = {layer["name"] for layer in layers}

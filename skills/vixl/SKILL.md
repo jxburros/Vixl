@@ -52,7 +52,9 @@ instead of improvising freehand shapes:
 5. **Test, then look** — write the brief's requirements as a check suite before you build (below), run
    it with `vixl_check` while you build, and only preview a design that passes: `vixl_check` (fix the
    `fix` findings, glance at `review`, accept `informational` ones; mark a deliberate edge crop with
-   `layer-intent` `allow_crop`) plus your suite, then `vixl_render_preview` → `vixl_export_file`.
+   `layer-intent` `allow_crop`, and deliberately faint text with `layer-intent` `waive: [{check: "contrast",
+   reason}]`: waived findings stay listed as informational) plus your suite, then `vixl_render_preview` →
+   `vixl_export_file`. Before shipping, `vixl_check(profile="final")` also fails on review findings.
    `vixl_operations_apply(..., check=true, suites=true, preview=true)` returns the findings (the
    batch's layers plus every `fix`), the suite rules that did not pass and a small preview with the edit
    itself, so the loop is one call.

@@ -39,7 +39,9 @@ Use `layer-intent grid --role decoration` for decorative geometry behind text. T
 its incidental text-overlap warnings; contrast and bounds checks remain active.
 `layer-intent title --allow-overlap badge` allows a specific pair, stored by stable layer ID.
 An empty `--allow-overlap` list clears allowances. Text-text collisions still require explicit
-pair allowances.
+pair allowances. Text meant to be faint (a watermark, a ghost numeral) takes a contrast waiver,
+`layer-intent ghost --waive contrast` (or `waive: [{check, reason, expires}]`): its contrast finding stays
+listed, as informational and `waived`; see [waivers](production.md#waivers-and-check-profiles).
 
 ## Fonts and layout previews
 
@@ -103,5 +105,7 @@ without obtaining a write lock or activating pending updates.
 ## Reading check results
 
 An explicit `checks` list **replaces** the default list. `check(checks=["deck"])` checks the deck family only. Run `check()` and then the specialised check, or combine them explicitly: `check(checks=[*vixl.checks.CHECKS, "deck"])`. A report is passed only when it has no errors and no findings whose action is `fix`; review findings remain visible without automatically failing it.
+
+A finding you accept on purpose (faint decorative text, a bar in the margin) takes a waiver with a reason and an optional expiry: `layer-intent waive`, or the `waiver` operation. It stays in the report as informational with `waived`, the report's `waivers` lists them, and an expired waiver turns the finding back on and fails `--strict` until it is renewed. `check --profile draft|review|final` chooses the checks, suites and the level that fails (`fail_on`); see [waivers and check profiles](production.md#waivers-and-check-profiles).
 
 A footer that intentionally lives outside the safe area can use `layer-intent target=footer allow_crop=true`. This records the exception and reports the safe-area crossing as informational. It does not exempt tiny text, low contrast or a wholly off-canvas ordinary layer. Wrapped copies in a generated pattern tile are intentional, including copies wholly beyond the canvas. Unmarked content still receives bounds findings.

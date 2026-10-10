@@ -71,7 +71,7 @@ Merge:     merge [TEMPLATE.vixl] --data rows.csv --out sheets.pdf [--sheet-docum
 Measure:   info, sample X Y, histogram [--region X Y W H], info --target TEXT,
            spacing --targets A B C --axis vertical [--expected N] [--tolerance N] [--check],
            spacing --around BODY --before HEADER --after FOOTER,
-           check [--safe-area 5%] [--avoid X Y W H] [--thumbnail-width 320] [--strict]
+           check [--safe-area 5%] [--avoid X Y W H] [--thumbnail-width 320] [--strict] [--profile final]
            check --checks print color_vision [--ink-limit 300] [--min-ppi 200]
 Pixels:    pixel-art, pixel-draw, pixel-palette, pixels [LAYER],
            frame-save NAME [--duration MS], frame-apply NAME, frame-delete NAME,
@@ -996,6 +996,10 @@ def project_command(project, cmd, args, *, detail="compact"):
         for key in ("artboard", "comp"):
             p.add_argument("--" + key)
         p.add_argument("--strict", action="store_true", help="Exit with an error when any check fails")
+        p.add_argument("--profile", help="check profile (draft, review, final or one from .vixl-checks.json): its "
+                       "checks, suites and fail_on decide passed")
+        p.add_argument("--no-waivers", dest="waivers", action="store_false",
+                       help="report every finding as if the document had no waivers")
         options = vars(p.parse_args(args))
         strict = options.pop("strict")
         from .pages import parse_pages
@@ -1014,7 +1018,10 @@ def project_command(project, cmd, args, *, detail="compact"):
         options["avoid"] = [[number(v) for v in zone] for zone in options["avoid"] or []]
         result = project.check(**options)
         if strict and not result["passed"]:
-            raise VixlError("design_check_failed", f"{result['errors']} design error(s)", report=result)
+            profile = result.get("profile")
+            raise VixlError("design_check_failed", f"{len(profile['failing'])} finding(s) fail the {profile['name']} "
+                            f"profile (fail_on {profile['fail_on']})" if profile else f"{result['errors']} design error(s)",
+                            report=result)
         return result, False
     if cmd == "pixels":
         require(len(args) <= 1, "Use pixels [LAYER]")

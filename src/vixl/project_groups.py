@@ -40,11 +40,16 @@ def dispatch(session, action, request):
             )
             shared = request.get("shared", {})
             require(
-                isinstance(shared, dict) and set(shared) <= {"variables", "swatches"},
-                "Shared fields are variables and swatches",
+                isinstance(shared, dict) and set(shared) <= {"variables", "swatches", "waivers"},
+                "Shared fields are variables, swatches and waivers",
             )
             for key in shared:
-                require(isinstance(shared[key], dict), f"Shared {key} must be an object")
+                require(isinstance(shared[key], list if key == "waivers" else dict),
+                        f"Shared {key} must be {'a list' if key == 'waivers' else 'an object'}")
+            if "profiles" in request:
+                from .policy import validate_profiles
+
+                validate_profiles(request["profiles"])
             for operation in shared_ops(shared):
                 service_check(validate_operation(operation))
             value = {
@@ -52,13 +57,27 @@ def dispatch(session, action, request):
                 "name": name,
                 "documents": [session.relative(p) for p in resolved],
                 "shared": shared,
+                **({"profiles": request["profiles"]} if request.get("profiles") else {}),
             }
             write_json(path, value)
             return value
         require(path.exists(), "Unknown project group")
         group = read_json(path)
         if action == "group-show":
-            return {**group, "recovery_required": journal.exists()}
+            from .project import Project
+            from .waivers import listing
+
+            waivers = {}
+            for member in group["documents"]:
+                try:
+                    document = Project.load(session.resolve(member), limits=session.limits)
+                    document._workspace = session.workspace
+                    found = listing(document)
+                except Exception as exc:  # noqa: BLE001 - one unreadable member must not hide the others.
+                    found = {"error": str(exc)}
+                if found.get("active") or found.get("expired") or found.get("error"):
+                    waivers[member] = found
+            return {**group, "recovery_required": journal.exists(), **({"waivers": waivers} if waivers else {})}
         paths = sorted(session.resolve(p) for p in group["documents"])
         with ExitStack() as stack:
             for target in paths:
@@ -99,6 +118,9 @@ def dispatch(session, action, request):
                 require(candidate.transaction is None, "Commit group member transactions first")
                 result = candidate.apply(operations, check=service_check, detail="compact")
                 checks = [candidate.check_suite(suite) for suite in request.get("suites", [])]
+                if request.get("profile"):
+                    checks.append({"profile": request["profile"],
+                                   **candidate.check(profile=request["profile"], group=group)})
                 require(
                     all(check["passed"] for check in checks),
                     "Group checks failed; no documents saved",
@@ -158,7 +180,7 @@ def dispatch(session, action, request):
 def shared_ops(shared):
     return [{"type": "variable", "name": k, "value": v} for k, v in shared.get("variables", {}).items()] + [
         {"type": "swatch", "name": k, "color": v} for k, v in shared.get("swatches", {}).items()
-    ]
+    ] + [{"type": "waiver", **waiver} for waiver in shared.get("waivers", [])]
 
 
 def cleanup(session, transaction):

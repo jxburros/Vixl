@@ -3,7 +3,9 @@
 For every document matching the globs it runs ``vixl check --strict --json`` (plus an attached-suite
 check when ``--suite`` is given), optionally renders the base version (``git show BASE:path``) and
 pixel-diffs it with ``vixl diff``, writes a Markdown summary (to $GITHUB_STEP_SUMMARY when set) and
-optionally a proof page. It exits non-zero when a finding reaches ``--fail-on``.
+optionally a proof page. It exits non-zero when a finding reaches ``--fail-on``. With ``--profile`` the
+check runs under that check profile (``vixl check --profile``), and without ``--fail-on`` the profile's own
+``fail_on`` and suites decide.
 
 Only the ``vixl`` command line (``python -m vixl``) is used, so the script works with any installed vixl-engine that has
 ``check``, ``diff`` and ``workflow proof``.
@@ -18,7 +20,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-LEVELS = ("never", "error", "warning", "fix")
+LEVELS = ("never", "error", "warning", "fix", "review", "profile")
 VIXL = [sys.executable, "-m", "vixl"]  # the interpreter running this script has vixl-engine installed
 
 
@@ -33,8 +35,9 @@ def run(command):
     return process.returncode, data
 
 
-def check(path, checks, suite):
-    command = [*VIXL, "--json", "-p", path, "check", "--strict"] + (["--checks", *checks] if checks else [])
+def check(path, checks, suite, profile=""):
+    command = [*VIXL, "--json", "-p", path, "check", "--strict"] + (["--checks", *checks] if checks else []) + (
+        ["--profile", profile] if profile else [])
     code, data = run(command)
     report = data.get("report", data) if code else data
     result = {"report": report, "error": None if code == 0 or "report" in data else data.get("message")}
@@ -56,8 +59,14 @@ def failing(result, level):
     issues = result["report"].get("issues", [])
     if level == "never":
         found = []
-    elif level == "fix":
-        found = [i for i in issues if i.get("action") == "fix" or i.get("severity") == "error"]
+    elif level == "profile":
+        profile = result["report"].get("profile") or {}
+        found = [issues[i] for i in profile.get("failing", []) if i < len(issues)]
+        found += [{"message": f"suite {name}: {profile['suites'][name]['status']}"}
+                  for name in profile.get("failed_suites", [])]
+    elif level in ("fix", "review"):
+        actions = ("fix",) if level == "fix" else ("fix", "review")
+        found = [i for i in issues if i.get("action") in actions or i.get("severity") == "error"]
     else:
         wanted = ("error",) if level == "error" else ("error", "warning")
         found = [i for i in issues if i.get("severity") in wanted]
@@ -112,11 +121,14 @@ def main(argv=None):
     parser.add_argument("--paths", default="**/*.vixl", help="Globs, separated by spaces or newlines")
     parser.add_argument("--checks", default="", help="vixl check names (default: the standard checks)")
     parser.add_argument("--suite", default="", help="A check-suite JSON file to run on every document")
-    parser.add_argument("--fail-on", choices=LEVELS, default="error")
+    parser.add_argument("--fail-on", choices=(*LEVELS, ""), default="",
+                        help="default: the profile's fail_on with --profile, else error")
+    parser.add_argument("--profile", default="", help="Check profile (draft, review, final or from .vixl-checks.json)")
     parser.add_argument("--base", default="", help="Git revision to compare with (empty: no comparison)")
     parser.add_argument("--proof", default="", help="Write a proof page here (.html)")
     parser.add_argument("--work", default=".vixl-ci", help="Folder for base renders and diff images")
     a = parser.parse_args(argv)
+    a.fail_on = a.fail_on or ("profile" if a.profile else "error")
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(errors="replace")  # a Windows console cannot print every finding
     # Forward slashes on every platform: the summary shows them and `git show BASE:path` needs them.
@@ -125,7 +137,7 @@ def main(argv=None):
                     and not Path(path).resolve().is_relative_to(Path(a.work).resolve())})
     rows = []
     for path in paths:
-        result = check(path, a.checks.split(), a.suite)
+        result = check(path, a.checks.split(), a.suite, a.profile)
         row = {"path": path, "result": result, "failing": failing(result, a.fail_on)}
         if a.base:
             row["diff"] = base_diff(path, a.base, a.work)

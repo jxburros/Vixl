@@ -36,6 +36,23 @@ colors. `check` warns about colors outside the supplied palette and fonts outsid
 pairing, errors on missing required layer names, and enforces `minimum_contrast` even if a caller
 asks for a lower threshold. `check --checks brand` isolates policy findings.
 
+A colour matches the palette by its RGB, so a translucent brand colour (`#d4241c80`) is still on brand, and a
+translucent black or white layer style or effect colour (a `#00000066` drop shadow, a white glow) darkens or
+lightens what is under it without counting as a colour of its own. An opaque or tinted shadow outside the palette
+is still reported, with the `color` it used.
+
+`minimum_contrast` is one ratio for all text, or a floor per text size, so a display colour can pass at
+WCAG's large-text 3:1 while small text keeps 4.5:1:
+
+```json
+{"minimum_contrast": {"text": 4.5, "large_text": 3.0, "large_text_px": 24}}
+```
+
+`text` is required; `large_text` defaults to `text`, `large_text_px` to 24 and `large_bold_text_px` to 18.66
+(scaled with `large_text_px` when only that is given). Sizes are rendered canvas pixels, after group scaling. The
+`contrast` and `color_vision` checks apply the tier, and a caller's `min_contrast` raises both tiers but cannot go
+below the brand's. A bare number such as `4.5` is the floor for both tiers, as before.
+
 Pairings download/cache fonts as usual. For an offline or proprietary pairing, replace `pairing`
 with embedded fonts:
 

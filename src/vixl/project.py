@@ -869,10 +869,17 @@ class Project:
         return export_animation(self, path, **options)
 
     @memory_guard
-    def check(self, **options):
+    def check(self, *, profile=None, group=None, **options):
+        """``check_design``; with ``profile`` (draft, review, final or a workspace profile, see policy.py) the
+        profile chooses the checks and suites and its ``fail_on`` decides ``passed``."""
         from .checks import check_design
 
-        report = check_design(self, **options)
+        if profile is not None:
+            from .policy import run
+
+            report = run(self, profile, group=group, **options)
+        else:
+            report = check_design(self, **options)
         if not options.get("checks") or "fonts" in options["checks"]:
             from .compaction import check_note
 

@@ -40,6 +40,8 @@ def check_state(project, state):
     require(all(isinstance(f, str) and (f in project.assets or f == "DejaVuSans.ttf") for f in fallbacks), "Fallback fonts must be embedded or bundled", "invalid_project")
     from .emojis import validate as validate_emojis
     validate_emojis(project)
+    from .waivers import validate_state as validate_waivers
+    validate_waivers(state)
     layers = state["layers"]
     require(
         isinstance(layers, list) and len(layers) <= project.limits.max_layers,

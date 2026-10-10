@@ -31,7 +31,7 @@ jobs:
       - uses: jxburros/Vixl@v0.24.1   # pin a release tag (or a commit SHA)
         with:
           paths: designs/**/*.vixl
-          fail-on: error          # error | warning | fix | never
+          fail-on: error          # error | warning | fix | review | never
           compare-base: true      # diff against the pull request's base branch
           proof: true             # upload the proof page as an artifact
 ```
@@ -43,7 +43,8 @@ jobs:
 | `paths` | `**/*.vixl` | Globs, separated by spaces or newlines |
 | `checks` | (standard checks) | `vixl check` names, space-separated (`contrast print fonts` …) |
 | `suite` | | A check-suite JSON file (see [design check suites](production.md#design-check-suites)) run on every document |
-| `fail-on` | `error` | `error`: any error; `warning`: errors or warnings; `fix`: any finding whose action is `fix`; `never`: report only |
+| `fail-on` | `error` | `error`: any error; `warning`: errors or warnings; `fix`: any finding whose action is `fix`; `review`: any fix or review finding; `never`: report only. Left empty with a `profile`, the profile's own `fail_on` and suites decide |
+| `profile` | | A [check profile](production.md#waivers-and-check-profiles) (`draft`, `review`, `final` or one in the repository's `.vixl-checks.json`): `vixl check --profile` runs its checks and suites |
 | `vixl-version` | | Install `vixl-engine==VERSION` from PyPI; empty installs the Vixl at the action's ref |
 | `compare-base` | `false` | On pull requests, render the base version and report the changed share of pixels |
 | `proof` | `false` | Write `.vixl-ci/proof.html` and upload `.vixl-ci/` (proof page and diff images) |

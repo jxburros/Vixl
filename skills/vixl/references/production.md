@@ -89,4 +89,4 @@ material visual changes and unresolved/unsupported measurements.
 
 ### Field-report corrections
 
-Production without suites still checks bounds and flow; clipping returns needs_review. For variable reflow, define an action that reapplies the layout with replace=true and stable seed/prefix, then include it in recipe/actions. Generated layer IDs and manual edits can change. Unchanged, checksum-verified output can bypass repeated checks. See docs/production.md.
+Production without suites still checks bounds and flow; clipping returns needs_review. With spec `profile` ("final"), every variant must pass that check profile (its checks, suites and fail_on). For variable reflow, define an action that reapplies the layout with replace=true and stable seed/prefix, then include it in recipe/actions. Generated layer IDs and manual edits can change. Unchanged, checksum-verified output can bypass repeated checks. See docs/production.md.

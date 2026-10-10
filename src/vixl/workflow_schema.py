@@ -217,7 +217,11 @@ PRODUCTION_SPEC = {
                    "description": "image: png/jpg/webp/svg; timeline: gif/webp/mp4/webm/zip."},
         "quality": {"type": "string", "enum": ["draft", "final"], "default": "final",
                     "description": "draft renders a 640 px proxy."},
-        "suites": {"type": "array", "items": STR, "description": "Suites to check (default all attached)."},
+        "suites": {"type": "array", "items": STR, "description": "Suites to check (default all attached, or the "
+                                                                 "profile's suites when profile is set)."},
+        "profile": {"type": "string", "description": "Check profile (draft, review, final or a workspace profile) "
+                                                     "each variant must pass; it picks the design checks, suites and "
+                                                     "fail_on."},
         "actions": {"type": "array", "items": STR, "description": "Saved actions to run before checks."},
         "repair_actions": {"type": "array", "items": STR, "maxItems": 3,
                            "description": "Saved actions tried in order when checks fail."},
@@ -423,11 +427,19 @@ ACTION_FIELDS = {
                                 "properties": {"variables": {"type": "object", "additionalProperties": SCALAR,
                                                             "description": "Variables {name: value} set in each document."},
                                                "swatches": {"type": "object", "additionalProperties": COLOR,
-                                                            "description": "Swatches {name: color} set in each document."}}}},
+                                                            "description": "Swatches {name: color} set in each document."},
+                                               "waivers": {"type": "array", "items": {"type": "object"}, "maxItems": 256,
+                                                           "description": "Document waivers {check or rule, reason, "
+                                                                          "expires} written into each document."}}},
+                     "profiles": {"type": "object", "description": "Check profiles {name: {fail_on, checks, optional, "
+                                                                   "suites}} for this group's documents; they override "
+                                                                   "the workspace's and the built-in draft/review/final."}},
     "group-show": {"name": {"type": "string", "description": "Group name."}},
     "group-apply": {"name": {"type": "string", "description": "Group name."},
                     "operations": {**COMMON["operations"], "description": "Bulk operations applied to each member."},
                     "suites": {**COMMON["suites"], "description": "Suites every member must pass."},
+                    "profile": {"type": "string", "description": "Check profile (draft, review, final or a group or "
+                                                                "workspace profile) every member must pass."},
                     "dry_run": {"type": "boolean", "default": True,
                                 "description": "Check without saving (default true)."}},
     "group-recover": {"name": {"type": "string", "description": "Group whose interrupted edit to roll back."}},

@@ -95,9 +95,11 @@ def plan(spec):
             "actions",
             "motion",
             "fps",
+            "profile",
         },
         "Unknown production field",
     )
+    require(isinstance(spec.get("profile", ""), str), "profile is a check profile name", field="profile")
     require(spec.get("version", 1) == 1, "Unsupported production version")
     rows, matrix = spec.get("rows", [{}]), spec.get("matrix", {})
     require(
@@ -240,10 +242,19 @@ def render_variant(project, spec, variant, directory, prior=None, cancelled=lamb
             output = directory / name
             if output.is_file() and file_digest(output) == prior.get("sha256"):
                 return {**prior, "status": "reused"}
-    suites = spec.get("suites", list(candidate.state.get("suites", {})))
-    checks = {name: candidate.check_suite(name) for name in suites}
-    if not suites:
-        checks["design"] = candidate.check(checks=["bounds", "flow"])
+    profile = spec.get("profile")
+    # A profile chooses the design checks and its own suites unless the spec names suites.
+    suites = spec.get("suites", [] if profile else list(candidate.state.get("suites", {})))
+
+    def run_checks():
+        found = {name: candidate.check_suite(name) for name in suites}
+        if profile:
+            found["design"] = candidate.check(profile=profile)
+        elif not suites:
+            found["design"] = candidate.check(checks=["bounds", "flow"])
+        return found
+
+    checks = run_checks()
     repairs = []
     for action in spec.get("repair_actions", []):
         if all(r["passed"] for r in checks.values()):
@@ -252,9 +263,7 @@ def render_variant(project, spec, variant, directory, prior=None, cancelled=lamb
         candidate.apply({"type": "action-apply", "name": action}, detail="compact")
         require(digest(candidate.state.get("suites", {})) == original_contract, "Repair changed contracts")
         repairs.append(action)
-        checks = {name: candidate.check_suite(name) for name in suites}
-        if not suites:
-            checks["design"] = candidate.check(checks=["bounds", "flow"])
+        checks = run_checks()
     if not all(r["passed"] for r in checks.values()):
         return {**variant, "status": "needs_review", "checks": checks, "repairs": repairs}
     settings = plan({k: v for k, v in spec.items() if k not in ("rows", "matrix", "artboards")})
@@ -371,6 +380,7 @@ def run(project, spec, directory, *, cancelled=lambda: False, progress=lambda va
         report = {
             "version": 1,
             "quality": planned["quality"],
+            **({"profile": spec["profile"]} if spec.get("profile") else {}),
             "count": planned["count"],
             "status": "running",
             "results": [],

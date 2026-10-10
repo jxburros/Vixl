@@ -452,6 +452,7 @@ def run_suite(project, suite, *, variables=None, artboard=None, mode=None):
     from .design_render import artboard_project
     from .timeline import frame_times, project_at, parse_time
 
+    name = suite if isinstance(suite, str) else None
     if isinstance(suite, str):
         require(suite in project.state.get("suites", {}), f"Unknown suite: {suite}")
         suite = project.state["suites"][suite]
@@ -518,7 +519,7 @@ def run_suite(project, suite, *, variables=None, artboard=None, mode=None):
         r["status"] == "needs_review" or (r["status"] == "failed" and r["severity"] == "warning")
         for r in results
     )
-    return {
+    report = {
         "version": 1,
         "suite_hash": digest(suite),
         "passed": errors == 0 and review == 0,
@@ -528,3 +529,7 @@ def run_suite(project, suite, *, variables=None, artboard=None, mode=None):
         "coverage": {"mode": mode, "times": times},
         "results": results,
     }
+    from .waivers import apply_suite
+
+    # A rule waiver (the waiver operation with rule) turns that rule's failures into "waived" results.
+    return apply_suite(project, report, name)

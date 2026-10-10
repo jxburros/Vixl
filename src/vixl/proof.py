@@ -114,8 +114,9 @@ def describe(path, limits, *, check=True, max_size=1200):
             record["check"] = {
                 "passed": report.get("passed", True),
                 "errors": report.get("errors", 0), "warnings": report.get("warnings", 0),
-                "issues": [{key: issue.get(key) for key in ("severity", "action", "check", "message", "layer")
+                "issues": [{key: issue.get(key) for key in ("severity", "action", "check", "message", "layer", "waived")
                             if issue.get(key) is not None} for issue in report.get("issues", [])[:MAX_ISSUES]],
+                **({"waivers": report["waivers"]} if report.get("waivers") else {}),
                 **({"omitted": len(report["issues"]) - MAX_ISSUES} if len(report.get("issues", [])) > MAX_ISSUES else {}),
             }
         return record
@@ -202,6 +203,17 @@ border-radius:6px}button{font:inherit;padding:8px 16px;border-radius:8px;border:
 """.strip()
 
 
+def _waiver_line(waiver, expired):
+    """One waiver in a proof card: what it covers, why, until when, and how many findings it waived."""
+    subject = waiver.get("check") or f"rule {waiver.get('rule')}"
+    where = waiver.get("layer") or waiver.get("target")
+    text = (f"{subject}{' on ' + where if where else ''} ({waiver['scope']})"
+            + (f": {waiver['reason']}" if waiver.get("reason") else "")
+            + (f" · {'expired' if expired else 'until'} {waiver['expires']}" if waiver.get("expires") else "")
+            + f" · {waiver.get('matched', 0)} finding(s)")
+    return f'<li class="{"fail" if expired else "note"}">{escape(text)}</li>'
+
+
 def _card(index, item, record, decisions):
     ident = f"item-{index + 1}"
     label = item.get("label") or Path(item["path"]).name
@@ -226,11 +238,16 @@ def _card(index, item, record, decisions):
         parts.append(f'<div><span class="badge {state}">{escape(text)}</span></div>')
         if report["issues"]:
             lines = "".join(
-                f"<li><b>{escape(issue.get('severity', ''))}</b> {escape(issue.get('check', ''))}: "
+                f"<li><b>{'waived' if issue.get('waived') else escape(issue.get('severity', ''))}</b> "
+                f"{escape(issue.get('check', ''))}: "
                 f"{escape(issue.get('message', ''))}{' (' + escape(issue['layer']) + ')' if issue.get('layer') else ''}</li>"
                 for issue in report["issues"])
             more = f"<li>… {report['omitted']} more</li>" if report.get("omitted") else ""
             parts.append(f"<ul>{lines}{more}</ul>")
+        waivers = report.get("waivers") or {}
+        if waivers.get("active") or waivers.get("expired"):
+            parts.append(f"<div><b>Waivers</b><ul>{''.join(_waiver_line(w, False) for w in waivers.get('active', []))}"
+                         f"{''.join(_waiver_line(w, True) for w in waivers.get('expired', []))}</ul></div>")
     compare = record.get("compare")
     if compare:
         region = compare["changed_region"]
