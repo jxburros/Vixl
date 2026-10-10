@@ -153,7 +153,8 @@ for name, title, subtitle, cta, preset in (
 CONTAINERS, MODULAR_TEMPLATES = container_builtins()
 TEMPLATES.update(MODULAR_TEMPLATES)
 BUILTINS = {"palettes": PALETTES, "templates": TEMPLATES, "guidance": GUIDANCE,
-            "containers": CONTAINERS, "shapes": {}, "suites": SUITES, "workflows": WORKFLOWS}
+            "containers": CONTAINERS, "shapes": {}, "suites": SUITES, "workflows": WORKFLOWS,
+            "mockups": {}}  # built-in mockups are drawn by mockups.BUILTINS; the library holds the user's own
 
 
 def proportional(project, item, operations):
@@ -228,6 +229,9 @@ def validate(kind, value):
         validate_workflow(value)
     elif kind == "guidance":
         require(isinstance(value, str) and 0 < len(value) <= 100000, "Guidance needs 1–100000 characters")
+    elif kind == "mockups":
+        from .mockups import validate as validate_mockup
+        validate_mockup(value)
     elif kind == "templates":
         require(isinstance(value, dict), "Template must be a JSON object")
         from .model import Limits

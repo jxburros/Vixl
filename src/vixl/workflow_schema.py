@@ -489,6 +489,10 @@ SUMMARIES = {
                     "horizontal/stacked lockups, strict SVG, RGB/CMYK PDF, PNG 1x-3x, icons and favicon, social "
                     "images, a usage sheet and an optional zip. No EPS.",
     "drawing-report": "Measure a hand-drawing layer: strokes, closures, straightness and cleanup suggestions.",
+    "mockup": "Place a design into device or print mockups (phone, laptop, browser, framed poster, business card, mug "
+              "or a saved template) as a live, corner-pinned link; optionally export each.",
+    "mockup-list": "List the mockup templates: built-in and the workspace's own, with their slots.",
+    "mockup-save": "Save a mockup template (a scene and its four-corner slots) to the workspace resource library.",
     "drawing-compare": "Write a before/after comparison PNG of a drawing layer; the result reports fidelity (IoU, pixel mismatch).",
     "resource-list": "List built-in and user resources of one category.",
     "resource-get": "Read one named resource.",

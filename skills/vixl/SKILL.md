@@ -203,7 +203,9 @@ Read [emoji workflows](references/emojis.md) for the offline Unicode 17 catalog,
   `place`, `snap`, `guides`/`alignment` checks.
 - **Lyric videos** — `lyric-video-plan/build/export` workflow actions (song + LRC + template).
 - **Linked documents** — `link` layers render another `.vixl` live (derived crops, pattern previews, sheets); `links` reports
-  stale/missing sources, `link-embed` freezes one. See [production](references/production.md).
+  stale/missing sources, `link-embed` freezes one; `corner_pin` warps a link into four corners. See [production](references/production.md).
+- **Mockups** — the `mockup` workflow places a design in phone, laptop, browser, poster-wall, business-card or mug
+  templates (or the workspace's own, `mockup-save`) as a live, corner-pinned link; one call per design, `export` renders them.
 - **Print merge** — `merge-impose` lays CSV rows out on print sheets with crop marks: vector-text PDF plus an editable sheet.
   Placeholders take filters: `${name|upper}`, `${company|default:Independent}`, `${state|map:states}` (`variable-map`).
   `$${name}` writes a literal `${name}`.
