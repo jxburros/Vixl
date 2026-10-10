@@ -1,6 +1,6 @@
 # Typography: catalog, pairings and installs
 
-Vixl bundles DejaVu Sans only as a proofing fallback, so text renders before anyone has chosen type. Design type comes from a researched catalog and is downloaded only when you ask. The default `fonts` check warns while any text still uses the fallback.
+Vixl bundles DejaVu Sans only as a proofing fallback, so text renders before anyone has chosen type; missing glyphs fall back to `font-fallbacks`, then DejaVu Sans and bundled Noto Sans, Symbols, Symbols 2 and Math (Latin, Greek, Cyrillic, symbols; not CJK). Design type comes from a researched catalog and is downloaded only when you ask. The default `fonts` check warns while any text still uses the fallback.
 
 ## The catalog
 
@@ -68,6 +68,6 @@ A roll draws from Vixl's house style: it first draws a tier (`safe`, `bold` or `
 
 ### Field-report corrections
 
-Letter spacing is `tracking` in local pixels: on the layer (`text`/`text-set`, also for keyed or `${variable}` text) or on a span with `text-style`. `spacing` and `line_height` are line spacing. `text_transform` (`uppercase`, `lowercase`, `capitalize`) cases the drawn text without changing the stored text, including keyed text. Width-only text boxes grow after copy/variable edits; fixed height stays fixed. Rich text-flow preserves size-based leading.
+`check` reports `code: runt` (review) when wrapped display text (24 px+) leaves one word, or under 20% of the longest line, alone on its last line; widen the box or break the line. Letter spacing is `tracking` in local pixels: on the layer (`text`/`text-set`, also for keyed or `${variable}` text) or on a span with `text-style`. `spacing` and `line_height` are line spacing. `text_transform` (`uppercase`, `lowercase`, `capitalize`) cases the drawn text without changing the stored text, including keyed text. Width-only text boxes grow after copy/variable edits; fixed height stays fixed. Rich text-flow preserves size-based leading.
 
 House style 3 adds weighted alignment and scale-aware minor-text checking for social/poster work (2.2% of the short side). Large-text contrast is weight-aware: 18.66 px bold or 24 px regular. Explicit thumbnail settings and print/deck profiles retain their own contexts. Use `gap: "2u"` (1u = half the body size) for shared spacing in `stack` and `layout-apply`.

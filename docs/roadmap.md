@@ -110,7 +110,9 @@ guides, C2 P2), #404 (accent count, C3 P2), #427 (illustration defaults, after #
 
 ### Fonts (#191 phase 1 + #419)
 
-Replace the DejaVu fallback with a broad-coverage open font and fetch CJK faces on demand (C2 + C4, P3–P4).
+Noto Sans, Noto Sans Symbols, Symbols 2 and Math are bundled behind DejaVu Sans, so Latin, Greek, Cyrillic and symbol
+text renders without tofu offline. Still open: making a Noto face the default proofing font instead of DejaVu Sans
+(it changes every default render) and fetching CJK faces on demand (C2 + C4, P3–P4).
 Emoji artwork, editable masters, custom packs and destination exports are now implemented; see [Emojis](emojis.md).
 Color emoji font support remains subject to the text engine's font format limits.
 

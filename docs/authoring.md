@@ -45,7 +45,7 @@ pair allowances.
 
 Text and layout `--font`/`--display-font` accept registered names, typography roles, system
 font names, and local files. Explicit files are embedded before measurement and export.
-For missing glyphs, PNG and SVG use the bundled DejaVu outline font automatically.
+For missing glyphs, every renderer and export uses the bundled outline fonts automatically: DejaVu Sans, then Noto Sans, Noto Sans Symbols, Noto Sans Symbols 2 and Noto Sans Math (more Latin, Greek and Cyrillic, symbols, dingbats, arrows and math). CJK is not bundled.
 `font-fallbacks 'Registered CJK' 'Registered Symbols'` sets an ordered document fallback list;
 each font is embedded. `font-fallbacks` with an empty list clears it. The list is document-wide: a `target` is rejected, because fallbacks apply to every text layer.
 List several faces of a fallback family (for example `noto-sans-jp-400` and `noto-sans-jp-700`) and each text

@@ -107,6 +107,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | TXT-11 | Use emoji in text with bundled, editable art (complete Unicode 17 sequences, joiners and flags) | `text`, `emoji-mode` | 1 · <1 | E | Since 0.24; bundled art by default, `emoji-mode font` prefers the font; PDF/PPTX use a reported raster fallback. |
 | TXT-12 | Find an emoji or extract it as an editable `.vixl` master | `vixl emoji list`/`get`, `vixl_workflow` emoji-list/emoji-get | 1 · <1 | E | Since 0.24; 3,953 Unicode sequences plus 100 originals. |
 | TXT-13 | Brand tracking and caps on text that changes (keyed lyric lines, `${variable}` values) | `text-set` with `tracking`, `text_transform` | 1 · <1 | E | Layer properties (#603); before, tracking needed a `text-style` match on fixed text and caps a pre-cased copy of the source. |
+| TXT-14 | Set mixed Latin, Greek, Cyrillic and symbol text (⏻ ⎈ ⧉ ∮ 𝔸) offline without tofu | `text` | 1 · <1 | E | Bundled Noto Sans, Symbols, Symbols 2 and Math fall back behind DejaVu Sans (#419); CJK still needs an installed face in `font-fallbacks`. |
 
 ### Color
 
@@ -199,6 +200,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | QA-06 | Check print readiness (ink limit, effective ppi, bleed) | `check --checks print` | 1 · <1 | E | |
 | QA-07 | Check color-vision safety of text and chart series | `check --checks color_vision` | 1 · <1 | E | Other adjacent fills not compared yet. |
 | QA-08 | Check a design against a named style (Swiss, Bauhaus …) | `check --checks style` | 1 · <1 | E | 28 styles. |
+| QA-09 | Catch a wrapped headline that leaves one short word alone on its last line | `vixl_check` (legibility, `code: runt`) | 1 · <1 | E | Review finding for text 24 px and up (#532); before, only a look at the render caught it. |
 | AGT-01 | Ask what to make and with which tools for a brief | `vixl_guide(brief)` | 1 · <1 | E | 20 kinds: poster, logo, character, comic, form … |
 | AGT-02 | Look up fields and gotchas for a topic | `vixl_capabilities(topic)` | 1 · <1 | E | |
 | AGT-03 | Read the JSON schema of one operation | `vixl_operation_schema` | 1 · <1 | E | |
