@@ -112,7 +112,9 @@ LYRIC_TYPES = {
     "animation": {"type": "object", "description": "Lyric entry and exit: in, out, duration (ms), distance (px)."},
     "cue_animation": {"type": "object", "description": "How cue-* layers enter, leave and move while their words are sung: "
                       "in, out (as animation; default none, a cut), duration, distance, motion (none or sweep: a swing about "
-                      "the layer's pivot), amount (degrees, default 12), period (ms for a back-and-forth, default 2800)."},
+                      "the layer's pivot), amount (degrees, default 12), period (ms for a back-and-forth, default 2800), "
+                      "replay (true: the cue layer's own template keys restart at each window), and cues: per-layer "
+                      "overrides of any of these keyed by cue layer name, e.g. {\"cue-cell\": {\"in\": \"slide-in-down\"}}."},
 }
 for _action in ("lyric-video-plan", "lyric-video-build", "lyric-video-export"):
     ACTION_FIELD_TYPES[_action] = LYRIC_TYPES

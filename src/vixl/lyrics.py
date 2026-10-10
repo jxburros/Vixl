@@ -11,16 +11,25 @@ Template contract (layer names; only ``lyric`` is required):
 ``lyric-next``     text layer showing the upcoming line
 ``section-label``  text layer showing the current section label
 ``intro``          layer or group visible before the first lyric
+``outro``          layer or group visible from the last line's hide time to the end (an end card)
 ``bg-<section>``   visible only during that section (``bg-chorus``); ``bg-default`` otherwise
 ``cue-<words>``    visible while the current line contains those words (``cue-fire``,
                    ``cue-city-lights``), so lyrics can drive graphics; it can fade, slide or
-                   sweep instead of cutting on and off (``cue_animation``)
+                   sweep instead of cutting on and off (``cue_animation``, with per-cue overrides)
 ``lyric-<section>`` an alternate ``lyric`` text layer (its own font, size, colour, place) shown
                    instead of ``lyric`` for lines in that section (``lyric-chorus``)
 ``next-<section>`` the same for ``lyric-next``
 
 ``section_styles`` in the request restyles the lyric layers per section without alternate
 layers: ``{"chorus": {"size": 72, "color": "#ffd166"}}``.
+
+The template's own timeline survives the build: its tracks keep playing, except a track on a
+layer and property the build writes (a role layer's ``visible``, ``opacity``, ``text`` …), which
+the build replaces. ``cue_animation.replay`` replays a cue layer's own tracks from the start of
+each of its windows instead.
+
+``lead_in`` and ``tail`` add silence before and after the song (a title card, an end card); every
+lyric time moves by ``lead_in``, and the input files are not touched.
 
 A built document records the options and sources it was built from (``state["lyric_build"]``), so
 ``export`` can render a hand-edited build as it is instead of rebuilding it from the template.
@@ -61,11 +70,13 @@ SHORT_NAMES = {
 }
 CUE_ENTRY = tuple(kind for kind in ENTRY if kind != "typewriter")
 CUE_MOTIONS = ("none", "sweep")
+CUE_FIELDS = ("in", "out", "duration", "distance", "motion", "amount", "period", "replay")
+MAX_PADDING_MS = 60_000
 RECORD = "lyric_build"  # The document state key that records how a build was made.
 REQUEST_FIELDS = {
     "audio", "lyrics", "template", "build", "output", "fps", "quality", "offset", "lead", "gap",
     "max_hold", "animation", "cue_animation", "next_line", "camera", "start", "end", "check", "replace",
-    "rebuild", "width", "height", "sample_rate", "section_styles",
+    "rebuild", "width", "height", "sample_rate", "section_styles", "lead_in", "tail", "end_at_audio", "segments",
 }
 SECTION_STYLE_FIELDS = ("size", "color", "x", "y")
 
@@ -197,8 +208,9 @@ def validate_template(project, sections=()):
                            "message": f"{name!r} must be a text layer, not {layer['type']}"})
         else:
             roles[name] = layer["id"]
-    if "intro" in by_name:
-        roles["intro"] = by_name["intro"]["id"]
+    for name in ("intro", "outro"):
+        if name in by_name:
+            roles[name] = by_name[name]["id"]
     for name, layer in by_name.items():
         for prefix, key in (("bg-", "backgrounds"), ("cue-", "cues"), ("lyric-", "lyrics"), ("next-", "nexts")):
             if name.startswith(prefix) and name != "lyric-next":
@@ -214,11 +226,19 @@ def validate_template(project, sections=()):
     if roles["nexts"] and "lyric-next" not in roles:
         warnings.append({"code": "next_without_lyric_next",
                          "message": "next-<section> layers replace lyric-next for a section, but the template has no lyric-next"})
-    for section in dict.fromkeys(s["name"] for s in sections):
-        if background_for(roles["backgrounds"], section) is None:
-            warnings.append({"code": "unmatched_section", "section": section,
-                             "message": f"Section {section!r} has no bg-{section} layer and no bg-default exists"})
-    return {"errors": errors, "warnings": warnings, "roles": roles}
+    notes = []
+    names = list(dict.fromkeys(s["name"] for s in sections))
+    if roles["backgrounds"]:
+        # Any bg-* layer means the template wants per-section backgrounds, so a gap is worth a warning.
+        for section in names:
+            if background_for(roles["backgrounds"], section) is None:
+                warnings.append({"code": "unmatched_section", "section": section,
+                                 "message": f"Section {section!r} has no bg-{section} layer and no bg-default exists"})
+    elif names:
+        notes.append({"code": "no_section_backgrounds", "severity": "info",
+                      "message": "The template has no bg-<section> layers, so its background stays the same in every "
+                                 "section"})
+    return {"errors": errors, "warnings": warnings, "notes": notes, "roles": roles}
 
 
 def section_match(keys, section):
@@ -290,33 +310,105 @@ def _animation(request):
     return {"in": entry, "out": exit_, "duration": round(duration), "distance": distance}
 
 
-def _cue_animation(request):
-    """How a ``cue-*`` layer enters, leaves and moves while its words are sung. The default is the
-    original cut on and off."""
-    settings = request.get("cue_animation", {})
-    allowed = {"in", "out", "duration", "distance", "motion", "amount", "period"}
-    require(isinstance(settings, dict) and not set(settings) - allowed,
-            f"cue_animation takes {', '.join(sorted(allowed))}", field="cue_animation")
+def _cue_settings(settings, field):
+    """One cue's entry, exit and motion, checked; ``field`` names it in errors."""
     entry, exit_ = settings.get("in", "none"), settings.get("out", "none")
     entry = SHORT_NAMES.get(entry, (entry,))[0]
     exit_ = SHORT_NAMES.get(exit_, (None, exit_))[1]
-    require(entry in CUE_ENTRY, f"cue_animation.in must be one of {', '.join(CUE_ENTRY)}", field="cue_animation.in", allowed=list(CUE_ENTRY))
-    require(exit_ in EXIT, f"cue_animation.out must be one of {', '.join(EXIT)}", field="cue_animation.out", allowed=list(EXIT))
+    require(entry in CUE_ENTRY, f"{field}.in must be one of {', '.join(CUE_ENTRY)}", field=f"{field}.in", allowed=list(CUE_ENTRY))
+    require(exit_ in EXIT, f"{field}.out must be one of {', '.join(EXIT)}", field=f"{field}.out", allowed=list(EXIT))
     motion = settings.get("motion", "none")
-    require(motion in CUE_MOTIONS, f"cue_animation.motion must be one of {', '.join(CUE_MOTIONS)}", field="cue_animation.motion",
+    require(motion in CUE_MOTIONS, f"{field}.motion must be one of {', '.join(CUE_MOTIONS)}", field=f"{field}.motion",
             allowed=list(CUE_MOTIONS))
     distance = settings.get("distance")
     if distance is not None:
-        finite(distance, "cue_animation.distance", 0, 100000)
-    return {
+        finite(distance, f"{field}.distance", 0, 100000)
+    replay = settings.get("replay", False)
+    require(isinstance(replay, bool), f"{field}.replay must be true or false", field=f"{field}.replay")
+    result = {
         "in": entry,
         "out": exit_,
-        "duration": round(finite(settings.get("duration", 300), "cue_animation.duration", 0, 5000)),
+        "duration": round(finite(settings.get("duration", 300), f"{field}.duration", 0, 5000)),
         "distance": distance,
         "motion": motion,
-        "amount": finite(settings.get("amount", 12), "cue_animation.amount", 0, 180),
-        "period": round(finite(settings.get("period", 2800), "cue_animation.period", 200, 60000)),
+        "amount": finite(settings.get("amount", 12), f"{field}.amount", 0, 180),
+        "period": round(finite(settings.get("period", 2800), f"{field}.period", 200, 60000)),
     }
+    # Only when set, so a build recorded before the field existed still matches an unchanged request.
+    if replay:
+        result["replay"] = True
+    return result
+
+
+def _cue_animation(request):
+    """How a ``cue-*`` layer enters, leaves and moves while its words are sung. The default is the
+    original cut on and off. ``cues`` overrides any of the settings for one cue layer, keyed by its
+    name (``{"cue-cell": {"in": "slide-in-down"}}``); ``_prepare`` checks the names against the
+    template."""
+    settings = request.get("cue_animation", {})
+    allowed = set(CUE_FIELDS) | {"cues"}
+    require(isinstance(settings, dict) and not set(settings) - allowed,
+            f"cue_animation takes {', '.join(sorted(allowed))}", field="cue_animation")
+    shared = {k: v for k, v in settings.items() if k != "cues"}
+    result = _cue_settings(shared, "cue_animation")
+    overrides = settings.get("cues", {})
+    require(isinstance(overrides, dict) and len(overrides) <= MAX_SECTIONS,
+            f"cue_animation.cues maps up to {MAX_SECTIONS} cue layer names to settings", field="cue_animation.cues")
+    cues = {}
+    for name, override in overrides.items():
+        field = f"cue_animation.cues.{name}"
+        require(isinstance(name, str) and name.startswith("cue-") and SLUG.fullmatch(name[4:]),
+                f"{name!r} is not a cue layer name: use the template layer's name, such as 'cue-fire'",
+                field="cue_animation.cues")
+        require(isinstance(override, dict) and not set(override) - set(CUE_FIELDS),
+                f"{field} takes {', '.join(CUE_FIELDS)}", field=field, allowed=list(CUE_FIELDS))
+        cues[name] = _cue_settings({**shared, **override}, field)
+    if cues:
+        result["cues"] = cues
+    return result
+
+
+def cue_settings(cue, phrase):
+    """The settings for the ``cue-<phrase>`` layer: its own override, else the shared ones."""
+    return (cue.get("cues") or {}).get(f"cue-{phrase}", cue)
+
+
+def cue_windows(lines, phrase):
+    """``[[show, hide], …]`` while lines containing ``phrase`` are on screen. Consecutive matching
+    lines are one window, so the cue does not blink between them."""
+    windows = []
+    for line in lines:
+        if contains_phrase(line["text"], phrase):
+            if windows and line["show"] <= windows[-1][1]:
+                windows[-1][1] = max(windows[-1][1], line["hide"])
+            else:
+                windows.append([line["show"], line["hide"]])
+    return windows
+
+
+def line_plans(lines, animation):
+    """Per line: ``(entering, leaving, entry_length, exit_length, exit_end)``, the entry and exit the
+    build writes once short lines have shared out their time."""
+    plans = []
+    for i, line in enumerate(lines):
+        show, hide = line["show"], line["hide"]
+        span = hide - show
+        # A line repeated straight after itself holds on screen: no exit before it, no entry for it.
+        entering = not line.get("repeat")
+        leaving = not (i + 1 < len(lines) and lines[i + 1].get("repeat"))
+        entry_length = animation["duration"] if entering and animation["in"] != "none" else 0
+        exit_length = animation["duration"] if leaving and animation["out"] != "none" else 0
+        if entry_length + exit_length > span:
+            ratio = span / (entry_length + exit_length)
+            entry_length, exit_length = int(entry_length * ratio), int(exit_length * ratio)
+        following = lines[i + 1]["show"] if i + 1 < len(lines) else None
+        # An exit that ends where the next entry starts finishes 1 ms early, so the exit's end
+        # value and the entry's start value are separate keys.
+        exit_end = min(hide, following - 1) if following is not None and following <= hide else hide
+        exit_end = max(exit_end, show + entry_length)
+        exit_length = min(exit_length, exit_end - show - entry_length) if leaving else 0
+        plans.append((entering, leaving, entry_length, exit_length, exit_end))
+    return plans
 
 
 def _number(request, key, default, low, high):
@@ -327,18 +419,29 @@ def _number(request, key, default, low, high):
 
 
 def timing(parsed, request, duration):
-    """Show/hide times (song milliseconds) for each lyric line, plus sections and warnings.
+    """Show/hide times (video milliseconds) for each lyric line, plus sections and warnings.
 
-    A line shows ``lead`` ms before its timestamp and hides ``gap`` ms before the next line shows
-    (or at an empty-text break, after ``max_hold``, or at the end of the video)."""
+    ``duration`` is the song's length. The video is ``lead_in`` + the song + ``tail``; every song
+    time moves ``lead_in`` later. A line shows ``lead`` ms before its timestamp and hides ``gap`` ms
+    before the next line shows (or at an empty-text break, after ``max_hold``, at the end of the
+    song with ``end_at_audio``, or at the end of the video)."""
     lead = _number(request, "lead", 150, 0, 10000)
     gap = _number(request, "gap", 0, 0, 10000)
     max_hold = _number(request, "max_hold", 8000, 100, MAX_VIDEO_MS)
     offset = parsed["offset"] + _number(request, "offset", 0, -MAX_VIDEO_MS, MAX_VIDEO_MS)
+    lead_in = round(_number(request, "lead_in", 0, 0, MAX_PADDING_MS))
+    tail = round(_number(request, "tail", 0, 0, MAX_PADDING_MS))
+    end_at_audio = request.get("end_at_audio", False)
+    require(isinstance(end_at_audio, bool), "end_at_audio must be true or false", field="end_at_audio")
+    audio_end = lead_in + duration
+    video = audio_end + tail
+    require(video <= MAX_VIDEO_MS, f"lead_in + the audio + tail is {video} ms, over the 10 minute video limit",
+            "resource_limit", field="tail" if tail else "lead_in")
     start = round(_number(request, "start", 0, 0, MAX_VIDEO_MS))
     end = request.get("end")
-    end = duration if end is None else round(finite(end, "end", 1, MAX_VIDEO_MS))
-    require(end <= duration, f"end ({end} ms) is after the end of the audio ({duration} ms)", field="end")
+    end = video if end is None else round(finite(end, "end", 1, MAX_VIDEO_MS))
+    padded = f"the video ({video} ms with lead_in and tail)" if lead_in or tail else f"the audio ({duration} ms)"
+    require(end <= video, f"end ({end} ms) is after the end of {padded}", field="end")
     require(start < end, "start must be before end", field="start")
     animation = _animation(request)
     cue = _cue_animation(request)
@@ -349,13 +452,14 @@ def timing(parsed, request, duration):
             raise VixlError("lyrics_beyond_audio",
                             f"Line {line['source_line']} starts at {line['time']} ms, after the end of the audio "
                             f"({duration} ms)", field="lyrics", source_line=line["source_line"])
+        line["time"] += lead_in
     sections = []
     for item in parsed["sections"]:
         time = max(0, item["time"] - offset)
         if time >= duration:
             raise VixlError("lyrics_beyond_audio", f"Section on line {item['source_line']} starts after the end of the audio",
                             field="lyrics", source_line=item["source_line"])
-        sections.append({**item, "time": time})
+        sections.append({**item, "time": time + lead_in})
     for item in sections:
         item["start"] = item.pop("time")
     for i, item in enumerate(sections):
@@ -381,7 +485,7 @@ def timing(parsed, request, duration):
                                             f"{previous_hide - show} ms later than lead asks"})
             show = previous_hide
         show = max(0, show)
-        candidates = [line["time"] + max_hold, end]
+        candidates = [line["time"] + max_hold, end] + ([audio_end] if end_at_audio else [])
         follow = None
         if nxt is not None:
             # The next line shows ``lead`` early; an empty-text break hides at its own timestamp.
@@ -419,6 +523,11 @@ def timing(parsed, request, duration):
             warnings.append({"code": "short_line", "index": item["index"],
                              "message": f"Line {item['index']} is shown for {span} ms; shorter than its in+out "
                                         f"animation ({needed} ms), so both were shortened"})
+    # When each line's entry has finished and its exit begins, as the build writes them, so scripts
+    # can time extra motion or checks without re-deriving the animation rules.
+    for item, (_, leaving, entry_length, exit_length, exit_end) in zip(lines, line_plans(lines, animation)):
+        item["settled"] = item["show"] + entry_length
+        item["exit"] = exit_end - exit_length if leaving else item["hide"]
     return {
         "start": start,
         "end": end,
@@ -426,6 +535,11 @@ def timing(parsed, request, duration):
         "gap": gap,
         "max_hold": max_hold,
         "offset": offset,
+        "lead_in": lead_in,
+        "tail": tail,
+        "end_at_audio": end_at_audio,
+        "audio_end": audio_end,
+        "video_ms": video,
         "animation": animation,
         "cue_animation": cue,
         "lines": lines,
@@ -465,8 +579,12 @@ def _settings(request, template):
     width, height = request.get("width", canvas["width"]), request.get("height", canvas["height"])
     for key, value in (("width", width), ("height", height)):
         require(isinstance(value, int) and 16 <= value <= 4096, f"{key} must be 16–4096 pixels", field=key)
-    for key in ("next_line", "check", "rebuild"):
+    for key in ("next_line", "check", "rebuild", "end_at_audio"):
         require(isinstance(request.get(key, True), bool), f"{key} must be true or false", field=key)
+    segments = request.get("segments")
+    if segments is not None:
+        require(isinstance(segments, int) and not isinstance(segments, bool) and 1000 <= segments <= MAX_VIDEO_MS,
+                "segments is the length of each rendered part in whole milliseconds, 1000–600000", field="segments")
     from .audio import check_rate
     check_rate(request.get("sample_rate"))
     camera = request.get("camera")
@@ -496,7 +614,22 @@ def _prepare(request, root, limits=None):
     if contract["errors"]:
         first = contract["errors"][0]
         raise VixlError("template_invalid", first["message"], field=first["field"], errors=contract["errors"])
+    roles = contract["roles"]
+    names = sorted(f"cue-{phrase}" for phrase in roles["cues"])
+    unknown = sorted(set(timed["cue_animation"].get("cues", {})) - set(names))
+    require(not unknown, f"cue_animation.cues names {', '.join(unknown)}, but the template's cue layers are "
+            f"{', '.join(names) or 'none'}", field="cue_animation.cues", allowed=names)
     warnings = timed["warnings"] + contract["warnings"]
+    lines = timed["lines"]
+    if roles.get("intro") and lines and lines[0]["show"] < 1000:
+        warnings.append({"code": "intro_hidden",
+                         "message": f"The first line shows at {lines[0]['show']} ms, so the intro is on screen for only "
+                                    f"{lines[0]['show']} ms; add lead_in (ms of title card before the song)"})
+    if roles.get("outro") and lines and timed["video_ms"] - lines[-1]["hide"] < 1000:
+        warnings.append({"code": "outro_hidden",
+                         "message": f"The last line hides at {lines[-1]['hide']} ms, {timed['video_ms'] - lines[-1]['hide']} ms "
+                                    "before the video ends, so the outro barely shows; add tail (ms of end card after the "
+                                    "song), or end_at_audio when the song ends in silence"})
     canvas = template.state["canvas"]
     if canvas["width"] * settings["height"] != canvas["height"] * settings["width"]:
         warnings.append({"code": "size_mismatch",
@@ -506,9 +639,15 @@ def _prepare(request, root, limits=None):
     length = timed["end"] - timed["start"]
     frames = max(1, math.ceil(length * settings["fps"] / 1000))
     shown = [line for line in timed["lines"] if line["hide"] > timed["start"] and line["show"] < timed["end"]]
+    section_windows = {}
+    for item in timed["sections"]:
+        section_windows.setdefault(item["name"], []).append([item["start"], item["end"]])
     report = {
         "duration_ms": length,
         "audio_ms": duration,
+        "video_ms": timed["video_ms"],
+        "lead_in": timed["lead_in"],
+        "tail": timed["tail"],
         "start": timed["start"],
         "end": timed["end"],
         "fps": settings["fps"],
@@ -517,10 +656,13 @@ def _prepare(request, root, limits=None):
         "height": settings["height"],
         "metadata": parsed["metadata"],
         "sections": [{"name": s["name"], "label": s["label"], "start": s["start"], "end": s["end"]} for s in timed["sections"]],
-        "lines": timed["lines"],
+        "section_windows": section_windows,
+        "cues": {f"cue-{phrase}": cue_windows(lines, phrase) for phrase in roles["cues"]},
+        "lines": lines,
         "lines_in_window": len(shown),
-        "template": {k: v for k, v in contract["roles"].items() if v},
+        "template": {k: v for k, v in roles.items() if v},
         "warnings": warnings,
+        "notes": contract["notes"],
     }
     sources = {"lyrics": hashlib.sha256(paths["lyrics"].read_bytes()).hexdigest(), "template": template._revision,
                "audio_ms": duration}
@@ -625,8 +767,10 @@ def cue_keys(key, layer, ident, start, end, cue, canvas):
 
 
 def write_timeline(project, timed, roles, request):
-    """Replace ``project``'s timeline (a template copy) with the lyric timeline. Returns the
-    number of keyframes written."""
+    """Write the lyric timeline over ``project``'s own (a template copy). Template tracks on a layer
+    and property the build does not write are kept. Returns ``{"keyframes", "built", "kept",
+    "replaced"}``: all keys in the timeline, the keys the build wrote, the template tracks kept and
+    the ones the build replaced."""
     from .timeline import MAX_DURATION, MAX_KEYS, MAX_TRACKS, default_timeline
 
     state = project.state
@@ -653,24 +797,7 @@ def write_timeline(project, timed, roles, request):
     # What the entry and exit move. Every entry puts back whatever it does not set itself, so a cut
     # after a slide-out does not start where the last line left off.
     moved = set(_entry_keys(animation["in"], 0, 1000, 1, 1)) | set(_exit_keys(animation["out"], 1000, 1000, 1, 1))
-    plans = []
-    for i, line in enumerate(lines):
-        show, hide = line["show"], line["hide"]
-        span = hide - show
-        # A line repeated straight after itself holds on screen: no exit before it, no entry for it.
-        entering = not line.get("repeat")
-        leaving = not (i + 1 < len(lines) and lines[i + 1].get("repeat"))
-        entry_length = animation["duration"] if entering and animation["in"] != "none" else 0
-        exit_length = animation["duration"] if leaving and animation["out"] != "none" else 0
-        if entry_length + exit_length > span:
-            ratio = span / (entry_length + exit_length)
-            entry_length, exit_length = int(entry_length * ratio), int(exit_length * ratio)
-        following = lines[i + 1]["show"] if i + 1 < len(lines) else None
-        # An exit that ends where the next entry starts finishes 1 ms early, so the exit's end
-        # value and the entry's start value are separate keys.
-        exit_end = min(hide, following - 1) if following is not None and following <= hide else hide
-        exit_end = max(exit_end, show + entry_length)
-        plans.append((entering, leaving, entry_length, exit_length, exit_end))
+    plans = line_plans(lines, animation)
     for lyric in variants.values():
         base = layers[lyric]["opacity"]
         rest = {"opacity": base, "translate-x": 0.0, "translate-y": 0.0, "scale": 1.0}
@@ -696,7 +823,7 @@ def write_timeline(project, timed, roles, request):
                 keys_here.append(entry)
             if leaving:
                 distance = distance_x if animation["out"].endswith(("left", "right")) else distance_y
-                keys_here.append(_exit_keys(animation["out"], exit_end, min(exit_length, exit_end - show - entry_length), base, distance))
+                keys_here.append(_exit_keys(animation["out"], exit_end, exit_length, base, distance))
             for keys in keys_here:
                 for prop, values in keys.items():
                     for time, value, easing in values:
@@ -752,28 +879,42 @@ def write_timeline(project, timed, roles, request):
     if intro and lines:
         key(intro, "visible", 0, True)
         key(intro, "visible", lines[0]["show"], False)
+    outro = roles.get("outro")
+    if outro and lines:
+        _outro_keys(key, layers[outro], outro, lines[-1]["hide"], timed["end"], animation, canvas)
+    windows = {}
     for phrase, ident in roles["cues"].items():
         key(ident, "visible", 0, False)
-        windows = []
-        for line in lines:
-            if contains_phrase(line["text"], phrase):
-                # Consecutive matching lines are one window, so the cue does not blink between them.
-                if windows and line["show"] <= windows[-1][1]:
-                    windows[-1][1] = max(windows[-1][1], line["hide"])
-                else:
-                    windows.append([line["show"], line["hide"]])
-        for window_start, window_end in windows:
+        windows[ident] = cue_windows(lines, phrase)
+        for window_start, window_end in windows[ident]:
             key(ident, "visible", window_start, True)
             key(ident, "visible", window_end, False)
-            cue_keys(key, layers[ident], ident, window_start, window_end, timed["cue_animation"], canvas)
-    require(len(tracks) <= MAX_TRACKS, "Too many animated template layers", "resource_limit")
+            cue_keys(key, layers[ident], ident, window_start, window_end, cue_settings(timed["cue_animation"], phrase), canvas)
+    built = sum(len(keys) for keys in tracks.values())
+    last = max(time for keys in tracks.values() for time in keys)
+    # The template's own motion survives: its tracks keep playing unless the build writes the same
+    # layer and property, and a replayed cue's tracks restart at each of its windows.
+    template = state.get("timeline") or {}
+    replay = {ident for phrase, ident in roles["cues"].items() if cue_settings(timed["cue_animation"], phrase).get("replay")}
+    kept, replaced = [], []
+    for track in template.get("tracks", []):
+        if (track["target"], track["property"]) in tracks:
+            replaced.append(track)
+        elif track["target"] in replay:
+            kept.append(_replayed(track, windows[track["target"]], MAX_KEYS))
+        else:
+            kept.append(deepcopy(track))
+    require(len(tracks) + len(kept) <= MAX_TRACKS, "Too many animated template layers", "resource_limit")
     timeline = default_timeline()
     timeline.update(fps=request.get("fps", 24), loop=0)
+    if template.get("text_animations"):
+        timeline["text_animations"] = deepcopy(template["text_animations"])
+    timeline["markers"].update(template.get("markers") or {})
     for (target, prop), keys in tracks.items():
         require(len(keys) <= MAX_KEYS, f"The lyric timeline needs more than {MAX_KEYS} keys on one track; "
                 "use fewer lines or a simpler animation", "resource_limit")
         timeline["tracks"].append({"target": target, "property": prop, "keys": [keys[t] for t in sorted(keys)]})
-    last = max(k["time"] for t in timeline["tracks"] for k in t["keys"])
+    timeline["tracks"].extend(track for track in kept if track["keys"])
     timeline["duration"] = max(10, min(MAX_DURATION, max(timed["end"], last)))
     counts = {}
     for item in timed["sections"]:
@@ -782,7 +923,44 @@ def write_timeline(project, timed, roles, request):
     for line in lines:
         timeline["markers"][f"line-{line['index'] + 1:03d}"] = line["show"]
     state["timeline"] = timeline
-    return sum(len(track["keys"]) for track in timeline["tracks"])
+    names = {layer["id"]: layer["name"] for layer in state["layers"]}
+    return {
+        "keyframes": sum(len(track["keys"]) for track in timeline["tracks"]),
+        "built": built,
+        "kept": len([track for track in kept if track["keys"]]),
+        "replaced": [{"layer": names.get(t["target"], t["target"]), "property": t["property"]} for t in replaced],
+    }
+
+
+def _replayed(track, windows, limit):
+    """A cue layer's own track played again from the start of each window it shows in, cut off where
+    the window ends."""
+    keys = []
+    for start, end in windows:
+        for item in track["keys"]:
+            if item["time"] < end - start:
+                keys.append({**deepcopy(item), "time": start + item["time"]})
+    require(len(keys) <= limit, f"Replaying a cue layer's own track in every window needs more than {limit} keys; "
+            "shorten the track or turn off replay", "resource_limit")
+    # The keys are no longer the ones an attach recipe baked, so its record is dropped.
+    return {**{k: v for k, v in track.items() if k not in ("keys", "attach")}, "keys": keys}
+
+
+def _outro_keys(key, layer, ident, at, end, animation, canvas):
+    """The end card: hidden until the last line hides, then shown with the lyric's entry animation
+    (a fade for typewriter, which only types text)."""
+    key(ident, "visible", 0, False)
+    key(ident, "visible", at, True)
+    kind = "fade-in" if animation["in"] == "typewriter" else animation["in"]
+    length = min(animation["duration"], max(0, end - at))
+    if kind == "none" or length <= 0:
+        return
+    horizontal = kind.endswith(("left", "right"))
+    distance = animation["distance"] if animation["distance"] is not None else round(
+        canvas["width" if horizontal else "height"] * 0.06)
+    for prop, values in _entry_keys(kind, at, length, layer["opacity"], distance).items():
+        for time, value, easing in values:
+            key(ident, prop, time, value, easing)
 
 
 def _switch(key, variants, chosen, lines):
@@ -820,7 +998,7 @@ def _style_keys(key, layers, targets, lines, styles):
 def _build_options(request, timed):
     """What shapes the built timeline. Rendering choices (quality, size, camera, the window start)
     are not part of it."""
-    return {
+    options = {
         "fps": request.get("fps", 24),
         "offset": timed["offset"],
         "lead": timed["lead"],
@@ -832,6 +1010,11 @@ def _build_options(request, timed):
         "end": None if request.get("end") is None else timed["end"],
         "section_styles": request.get("section_styles"),
     }
+    # Recorded only when set, so builds made before these fields existed still match.
+    for name, default in (("lead_in", 0), ("tail", 0), ("end_at_audio", False)):
+        if timed[name] != default:
+            options[name] = timed[name]
+    return options
 
 
 def _fingerprint(state):
@@ -874,7 +1057,13 @@ def _write_build(request, root, limits, prepared, destination):
             variables[name] = parsed["metadata"][name]
         else:
             variables.setdefault(name, "")
-    keys = write_timeline(project, timed, contract["roles"], request)
+    written = write_timeline(project, timed, contract["roles"], request)
+    if written["replaced"]:
+        report = {**report, "warnings": report["warnings"] + [{
+            "code": "template_track_replaced", "tracks": written["replaced"],
+            "message": "The build writes " + ", ".join(f"{t['layer']}.{t['property']}" for t in written["replaced"][:5]) +
+                       (" and more" if len(written["replaced"]) > 5 else "") + ", so the template's own keys for "
+                       "them were replaced; animate another property, or a group around the layer, to keep that motion"}]}
     project.state[RECORD] = {"version": 1, "options": _build_options(request, timed), "sources": sources,
                              "state": _fingerprint(project.state)}
     check_state(project, project.state)
@@ -882,13 +1071,16 @@ def _write_build(request, root, limits, prepared, destination):
     if destination.exists():
         destination.unlink()
     project.save(destination)
-    return {**report, "build": request["build"], "keyframes": keys}
+    return {**report, "build": request["build"], "keyframes": written["keyframes"],
+            "template_tracks": {"kept": written["kept"], "replaced": len(written["replaced"])}}
 
 
 def _differences(record, options, sources):
     """How a build's recorded settings and sources differ from what a request now asks for."""
     recorded = record.get("options") or {}
-    changed = [name for name, value in options.items() if name != "end" and recorded.get(name) != value]
+    # Optional settings are recorded only when set, so one missing on either side is compared too.
+    names = list(options) + [name for name in recorded if name not in options]
+    changed = [name for name in names if name != "end" and recorded.get(name) != options.get(name)]
     # A build made for a window (end) does not cover a longer render; a full build covers any window.
     built_end = recorded.get("end")
     if built_end is not None and (options["end"] is None or options["end"] > built_end):
@@ -936,20 +1128,44 @@ def _kept_build(request, limits, prepared, destination):
 
 
 def film_spec(request, report):
-    """The single-shot film spec that renders a built lyric document with the song."""
-    shot = {"source": request["build"], "duration": max(10, report["end"] - report["start"]), "trim": report["start"]}
+    """The single-shot film spec that renders a built lyric document with the song.
+
+    The song starts ``lead_in`` ms into the video; a window that starts later trims it instead. The
+    camera moves over the whole video, so a window gets the poses the full render has at its first
+    and last frames, and windows rendered one after another join without a jump."""
+    start, fps = report["start"], report["fps"]
+    shot = {"source": request["build"], "duration": max(10, report["end"] - start), "trim": start}
     if request.get("camera"):
-        shot["camera"] = deepcopy(request["camera"])
+        shot["camera"] = camera_window(request["camera"], start, shot["duration"], report.get("video_ms", report["end"]), fps)
+    lead_in = report.get("lead_in", 0)
     return {
         "version": 1,
         "width": report["width"],
         "height": report["height"],
-        "fps": report["fps"],
+        "fps": fps,
         "quality": request.get("quality", "final"),
         "shots": [shot],
-        "audio": [{"source": request["audio"], "start": 0, "trim": report["start"], "volume": 1}],
+        "audio": [{"source": request["audio"], "start": max(0, lead_in - start), "trim": max(0, start - lead_in), "volume": 1}],
         **({"sample_rate": request["sample_rate"]} if request.get("sample_rate") is not None else {}),
     }
+
+
+def camera_window(camera, start, duration, total, fps):
+    """The ``from``/``to`` poses for a shot of ``duration`` ms starting ``start`` ms into a video of
+    ``total`` ms whose camera moves from ``camera["from"]`` to ``camera["to"]``. The film exporter
+    moves a shot's camera linearly from its first frame to its last, so these are the full video's
+    poses at the window's first and last frames."""
+    rest = [0.5, 0.5, 1]
+    begin, finish = camera.get("from", rest), camera.get("to", rest)
+    frames = max(1, math.ceil(max(10, total) * fps / 1000))
+    first = start * fps / 1000
+    last = first + max(1, math.ceil(duration * fps / 1000)) - 1
+
+    def pose(frame):
+        t = min(1.0, max(0.0, frame / max(1, frames - 1)))
+        return [min(max(a, b), max(min(a, b), round(a + (b - a) * t, 9))) for a, b in zip(begin, finish)]
+
+    return {"from": pose(first), "to": pose(last)}
 
 
 def check_lines(project, report, settle=300, limit=200):
@@ -972,7 +1188,7 @@ def check_lines(project, report, settle=300, limit=200):
 def export(request, root, limits=None, *, cancelled=lambda: False, progress=lambda value: None):
     """Build, then render the MP4/WebM with the song as its audio track. A build that already exists
     and still matches the request is rendered as it is, hand edits included (``build_reused``)."""
-    from .film import export as film_export, local_path
+    from .film import export as film_export, export_segments, local_path, verify_video
     from .project import Project
 
     limits = limits or Limits()
@@ -996,8 +1212,19 @@ def export(request, root, limits=None, *, cancelled=lambda: False, progress=lamb
         report = _write_build(request, root, limits, prepared, destination)
     if output.exists():
         output.unlink()
-    result = film_export(film_spec(request, report), root, output, limits=limits, cancelled=cancelled, progress=progress)
+    spec = film_spec(request, report)
+    if request.get("segments"):
+        result = export_segments(spec, root, output, request["segments"], limits=limits, cancelled=cancelled,
+                                 progress=progress)
+    else:
+        result = film_export(spec, root, output, limits=limits, cancelled=cancelled, progress=progress)
     response = {**report, "output": request["output"], "video": result}
+    response["verification"] = verify_video(output, result, requested_ms=report["duration_ms"])
+    if response["verification"].get("passed") is False:
+        failed = [check["check"] for check in response["verification"]["checks"] if not check["passed"]]
+        response["warnings"] = response["warnings"] + [{
+            "code": "verification_failed", "checks": failed,
+            "message": f"The encoded file does not match what was rendered: {', '.join(failed)}; see verification"}]
     if request.get("check"):
         project = Project.load(local_path(root, request["build"]), limits=limits)
         response["checks"] = check_lines(project, report, _animation(request)["duration"])

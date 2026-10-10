@@ -447,7 +447,7 @@ class Queue:
                                        "output": str(checkpoint.relative_to(self.workspace))}
                             report = lyric_export(request, self.workspace, limits,
                                                   cancelled=lambda: self.cancelled(ident), progress=progress)
-                            job["result"] = {key: report[key] for key in ("frames", "duration_ms", "fps", "warnings")}
+                            job["result"] = {key: report[key] for key in ("frames", "duration_ms", "fps", "warnings", "verification")}
                         self.publish_checkpoint(job)
                         target = self.resolve(payload["request"]["build"])
                         if job["status"] == "completed" and built.exists() and not target.exists():

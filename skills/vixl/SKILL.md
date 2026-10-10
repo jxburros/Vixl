@@ -220,7 +220,9 @@ Read [emoji workflows](references/emojis.md) for the offline Unicode 17 catalog,
   a value on stable layer IDs, native PPTX charts; see [charts](references/charts.md) before drawing any chart by hand.
 - **Guides beyond right angles** — angled/curved guides, compositional and perspective grids,
   `place`, `snap`, `guides`/`alignment` checks.
-- **Lyric videos** — `lyric-video-plan/build/export` workflow actions (song + LRC + template).
+- **Lyric videos** — `lyric-video-plan/build/export` workflow actions (song + LRC + template). The template's own
+  keyframes survive the build; `lead_in`/`tail` make room for an `intro` title card and an `outro` end card; the plan
+  returns cue and section windows; `segments` makes long renders resumable.
 - **Linked documents** — `link` layers render another `.vixl` live (derived crops, pattern previews, sheets); `links` reports
   stale/missing sources, `link-embed` freezes one. See [production](references/production.md).
 - **Print merge** — `merge-impose` lays CSV rows out on print sheets with crop marks: vector-text PDF plus an editable sheet.

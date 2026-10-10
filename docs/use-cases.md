@@ -579,6 +579,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | MOT-32 | Parallax scene with a camera move | depth parallax, camera choreography | 40–60 · 5–8 | E | |
 | MOT-33 | Explainer GIF with three short scenes | timeline markers, presets, captions | 40–60 · 5–8 | E | No nested compositions. |
 | MOT-34 | Talking character with viseme cues and audio | visemes, audio tracks, MP4 | 40–70 · 6–8 | E | [ffmpeg] |
+| MOT-35 | Lyric video with a title card, an end card and animated template graphics | `lyric-video-*` with `lead_in`, `tail`, an `outro` layer, template keyframes, per-cue `cue_animation` | 45–65 · 6–8 + render | E | [ffmpeg] No audio padding or post-build keyframe script; `segments` makes the full render resumable. |
 
 ### Production
 
