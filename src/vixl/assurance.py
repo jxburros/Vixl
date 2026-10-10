@@ -518,7 +518,9 @@ def run_suite(project, suite, *, variables=None, artboard=None, mode=None):
         r["status"] == "needs_review" or (r["status"] == "failed" and r["severity"] == "warning")
         for r in results
     )
-    return {
+    from .outcomes import from_suite
+
+    report = {
         "version": 1,
         "suite_hash": digest(suite),
         "passed": errors == 0 and review == 0,
@@ -528,3 +530,5 @@ def run_suite(project, suite, *, variables=None, artboard=None, mode=None):
         "coverage": {"mode": mode, "times": times},
         "results": results,
     }
+    report["outcome"] = from_suite(report)
+    return report

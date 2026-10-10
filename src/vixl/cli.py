@@ -691,7 +691,7 @@ def command_help(cmd, args):
         "effects": "effects [LAYER]",
         "manifest": "manifest",
         "dependencies": "dependencies",
-        "reproduce": "reproduce --check",
+        "reproduce": "reproduce [--reference PNG --tolerance N --max-fraction F] [--lock FILE] [--write-lock FILE]",
         "pixels": "pixels [LAYER]",
         "animation": "animation",
         "undo": "undo [COUNT]",
@@ -803,9 +803,26 @@ def project_command(project, cmd, args, *, detail="compact"):
     if cmd in ("dependencies", "reproduce"):
         result = dependencies(project)
         if cmd == "reproduce":
-            project.render()
-            result["reproducible"] = True
-            result["note"] = "Current rendering verified; remote model replay is not guaranteed."
+            from .reproduce import read_lock, reproduce, write_lock
+
+            p = Parser(prog="vixl reproduce", description="Render and report the reproduction level reached: "
+                       "renderable, environment-matched (--lock) or reference-verified (--reference or --lock)")
+            p.add_argument("--check", action="store_true", help="Render and report (the default)")
+            p.add_argument("--reference", help="Approved reference image (PNG, ...) the render must match")
+            p.add_argument("--tolerance", type=int, default=0, help="Channel change (0-254) a pixel may have and still match")
+            p.add_argument("--max-fraction", type=float, default=0.0, help="Fraction of pixels allowed to differ (0-1)")
+            p.add_argument("--lock", help="Verify against this render lockfile (.json): reports located drift")
+            p.add_argument("--write-lock", help="Write a render lockfile (.json) for the document as it renders now")
+            p.add_argument("--overwrite", action="store_true")
+            a = p.parse_args(args)
+            if a.write_lock:
+                write_lock(project, a.write_lock, overwrite=a.overwrite)
+                result["lock_written"] = a.write_lock
+            result.update(reproduce(project, reference=a.reference, tolerance=a.tolerance, max_fraction=a.max_fraction,
+                                    locked=read_lock(a.lock) if a.lock else None, limits=project.limits))
+            result["note"] = (result.get("note", "") + " Remote model replay is not guaranteed.").strip()
+            if not result["reproducible"]:
+                raise VixlError("reproduction_failed", "; ".join(result["outcome"]["review_reasons"]), report=result)
         return result, False
     if cmd == "save":
         require(len(args) <= 1, "Use save [FILE]")

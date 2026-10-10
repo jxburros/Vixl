@@ -12,6 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from . import calls
 from .assets import read_bounded
 from .errors import VixlError, require
+from .outcomes import make, summarize
 
 MAX_TARGETS = 64
 
@@ -121,7 +122,7 @@ def export_batch(session, export_file, targets, defaults=None, overwrite=False, 
             if item["document"] not in documents:
                 documents.append(item["document"])
         except VixlError as exc:
-            item = {"path": target.path, "error": exc.as_dict()}
+            item = {"path": target.path, "error": exc.as_dict(), "outcome": make("failed")}
             if stop_on_error:
                 results.append(item)
                 calls.progress(index + 1, len(plan), target.path)
@@ -130,4 +131,5 @@ def export_batch(session, export_file, targets, defaults=None, overwrite=False, 
         calls.progress(index + 1, len(plan), target.path)
     return {"count": len(plan), "written": written, "failed": len(results) - written,
             "documents": documents, "results": results,
+            "outcome": summarize([item["outcome"] for item in results] + [make("pending")] * (len(plan) - len(results))),
             **({"stopped_early": True} if len(results) < len(plan) else {})}

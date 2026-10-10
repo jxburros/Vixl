@@ -19,7 +19,7 @@ ACTIONS = {
     "branch-merge": ({"branch", "resolutions", "dry_run", "expected_head"}, {"branch"}),
     "group-define": ({"name", "documents", "shared"}, {"name", "documents"}),
     "group-show": ({"name"}, {"name"}),
-    "group-apply": ({"name", "operations", "suites", "dry_run"}, {"name"}),
+    "group-apply": ({"name", "operations", "suites", "dry_run", "repair"}, {"name"}),
     "group-recover": ({"name"}, {"name"}),
     "plugin-list": (set(), set()),
     "plugin-install": ({"manifest", "replace"}, {"manifest"}),

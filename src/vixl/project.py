@@ -869,15 +869,33 @@ class Project:
         return export_animation(self, path, **options)
 
     @memory_guard
-    def check(self, **options):
+    def check(self, *, repair=None, offset=0, limit=None, **options):
+        """Design checks (checks.check_design). ``repair`` (true or a list of repair kinds) first applies the
+        built-in repair for each fix finding it can resolve (``Project.repair``), as one undoable batch, and
+        reports it under ``repairs``. ``offset``/``limit`` page the findings; the verdict covers them all."""
         from .checks import check_design
+        from .diagnostics import page_findings
 
+        repairs = None
+        if repair:
+            repairs = self.repair(kinds=repair, checks=options.get("checks"))
         report = check_design(self, **options)
         if not options.get("checks") or "fonts" in options["checks"]:
             from .compaction import check_note
 
             check_note(self, report)
-        return report
+        if repairs is not None:
+            report["repairs"] = repairs
+        return page_findings(report, offset, limit)
+
+    @memory_guard
+    def repair(self, *, kinds=True, checks=None, suites=(), max_repairs=10, protected=(), dry_run=False):
+        """Apply the built-in repair map to this document's fix findings (repair.auto_repair): each repair is
+        kept only when its finding is resolved and nothing new fails; the kept operations are one undoable batch."""
+        from .repair import auto_repair
+
+        return auto_repair(self, checks=checks, suites=suites, kinds=kinds, max_repairs=max_repairs,
+                           protected=protected, dry_run=dry_run)
 
     def compact(self, *, fonts=True, dry_run=False):
         """Drop undo history and the embedded files the current design does not use (see
@@ -892,18 +910,34 @@ class Project:
         return run_suite(self, suite, **options)
 
     @memory_guard
-    def act(self, operations, *, suites=None, dry_run=False, check=None):
-        """Apply and measure one candidate. Failed contracts leave the document unchanged."""
+    def act(self, operations, *, suites=None, dry_run=False, check=None, repair=None):
+        """Apply and measure one candidate. Failed contracts leave the document unchanged. ``repair`` (true or
+        a list of repair kinds) applies the built-in repair map to the candidate when a suite fails (its
+        text-fit and contrast rules, and fix findings of the bounds, contrast and safe-area checks) and keeps
+        the repairs only when every suite then passes."""
+        from .outcomes import from_suite, merge
+
         candidate = self.clone()
         result = candidate.apply(operations, detail="compact", check=check)
         require(candidate.state.get("suites", {}) == self.state.get("suites", {}),
                 "Checked actions cannot rewrite suites; edit contracts explicitly with apply")
         reports = {name: candidate.check_suite(name) for name in (suites or [])}
         accepted = all(report["passed"] for report in reports.values())
+        repairs = None
+        if repair and not accepted:
+            trial = candidate.clone()
+            repairs = trial.repair(kinds=repair, checks=["bounds", "contrast", "safe_area"], suites=list(reports))
+            retried = {name: trial.check_suite(name) for name in reports}
+            if repairs["operations"] and all(report["passed"] for report in retried.values()):
+                candidate, reports, accepted = trial, retried, True
+            else:
+                repairs["kept"] = False
+        outcome = merge(*(from_suite(report, name) for name, report in reports.items()))
         if accepted and not dry_run:
             self.__dict__.update(candidate.__dict__)
         return {**result, "success": accepted, "dry_run": dry_run, "committed": accepted and not dry_run,
-                "checks": reports, "bounds": {x["name"]: x["resolved_bounds"] for x in candidate.inspect()["layers"]}}
+                "checks": reports, "outcome": outcome, **({"repairs": repairs} if repairs is not None else {}),
+                "bounds": {x["name"]: x["resolved_bounds"] for x in candidate.inspect()["layers"]}}
 
     @memory_guard
     def measure(self, **options):
