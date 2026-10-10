@@ -74,8 +74,8 @@ The authoritative schema is always `vixl schema` / `GET /schema` / `vixl://opera
 | --- | --- | --- |
 | `move` | `target`, `x`, `y`, `relative`, `baseline_y` | Absolute move clears constraints; `relative: true` adds offsets. `baseline_y` (text only) places the first baseline. |
 | `resize` | `target`, `width`, `height`, `keep_aspect` | One dimension changes only that side of shapes, text, groups and solids (reported under `normalized`) but scales imported images (raster) proportionally; `keep_aspect: true` scales the other side proportionally on any layer, `false` changes only the given side; two dimensions stretch. Turns off text auto-size. |
-| `scale` | `target`, **`value`** or `x`/`y` | Factor (0.8 = 80 %), 0.001–100. Negative mirrors: `value` flips both axes, `x: -1` flips horizontally (like `flip`) and keeps the size. |
-| `rotate` | `target`, **`value`** | Degrees clockwise about the layer's pivot (default: center); bounds expand. |
+| `scale` | `target`, **`value`** or `x`/`y`, `anchor` (alias `about`) | Factor (0.8 = 80 %), 0.001–100. Negative mirrors: `value` flips both axes, `x: -1` flips horizontally (like `flip`) and keeps the size. `anchor`: the point kept fixed, `pivot`, an anchor name or `[x, y]` fractions (default: the pivot on a pivoted layer, else the bounds' top-left). |
+| `rotate` | `target`, **`value`**, `about` | Degrees clockwise about the layer's pivot (default: its center, which stays put); bounds expand. `about`: another fixed point, an anchor name (`top-left` …) or `[x, y]` fractions of the unrotated box (clears constraints). |
 | `pivot` | `target`, **`value`** (`[x, y]` fractions of the unrotated box, or `top-left`…`bottom-right`/`center`), `units` (`fraction`/`px`/`canvas` — a document point, through parent groups), or `clear` | Point that rotation and scale turn about; stays fixed on the canvas (stills, timeline, SVG). Keeps the drawn pose. A pivoted layer's stored `x`/`y` is its unrotated box. |
 | `flip` | `target`, **`direction`** | `horizontal` / `vertical`. |
 | `crop` | `target`, **`x`, `y`, `width`, `height`** | In the original embedded raster's coordinates. |

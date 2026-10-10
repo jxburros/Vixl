@@ -218,7 +218,11 @@ def _operation_schema():
                   "x": {**scale, "description": "Horizontal factor, overriding value. Negative mirrors horizontally, like flip."},
                   "y": {**scale, "description": "Vertical factor, overriding value. Negative mirrors vertically."}},
         anyOf=[{"required": ["value"]}, {"required": ["x"]}, {"required": ["y"]}])
-    add("rotate", {"value": N}, ["value"])
+    add("rotate", {"value": N, "about": {
+        "anyOf": [{"type": "array", "items": N, "minItems": 2, "maxItems": 2}, enum("pivot", *ANCHORS)],
+        "description": "The point that stays fixed: pivot (default; the layer's center when it has none), an anchor "
+        "name such as top-left, or [x, y] fractions of the unrotated box. Another point than the pivot clears the "
+        "layer's constraints."}}, ["value"])
     add("pivot", {"value": {"anyOf": [{"type": "array", "items": N, "minItems": 2, "maxItems": 2}, enum(*ANCHORS)],
                             "description": "[x, y] as fractions of the layer box (0.5, 0.5 is the center; pixels from the "
                             "top-left with units: px; a canvas point with units: canvas) or an anchor name: "
