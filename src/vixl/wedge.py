@@ -59,7 +59,7 @@ def _curves(cx, cy, rx, ry, start, sweep):
     return result
 
 
-def wedge_path(cx, cy, radius, start, end, inner=0.0, *, aspect=1.0, digits=3):
+def wedge_path(cx, cy, radius, start, end, inner=0.0, *, aspect=1.0, digits=3, closed=True):
     """SVG path data for a pie wedge (``inner`` 0) or a donut segment (``inner`` > 0).
 
     ``radius`` and ``inner`` are the outer and inner radii in the same units as the centre
@@ -67,7 +67,8 @@ def wedge_path(cx, cy, radius, start, end, inner=0.0, *, aspect=1.0, digits=3):
     outer radius). ``aspect`` stretches the vertical radius for an elliptical wedge. A full sweep
     with ``inner`` > 0 is a ring, drawn as two opposite-direction loops so the hole stays open
     under nonzero fill. Returns "" for an empty wedge (``end`` equal to ``start``) or a zero
-    radius, so a chart can skip zero-value slices.
+    radius, so a chart can skip zero-value slices. ``closed=False`` gives only the outer curve, an
+    open arc to stroke (``inner`` must be 0).
     """
     finite(radius, "radius", 0)
     finite(inner, "inner radius", 0)
@@ -84,6 +85,9 @@ def wedge_path(cx, cy, radius, start, end, inner=0.0, *, aspect=1.0, digits=3):
         return "".join(f" C{xy(a)} {xy(b)} {xy(c)}" for a, b, c in _curves(cx, cy, r, r * aspect, first, span))
 
     out = f"M{xy(wedge_point(cx, cy, radius, start, aspect))}" + curves(radius, start, sweep)
+    if not closed:
+        require(inner == 0, "An open arc is only the curve; it has no inner radius", field="inner_radius")
+        return out
     if sweep >= 360:
         out += " Z"
         if inner > 0:
@@ -102,6 +106,9 @@ def check_arc(layer):
     end = finite(layer.get("end_angle", start + 360), "end_angle", -MAX_ANGLE, MAX_ANGLE)
     inner = finite(layer.get("inner_radius", 0), "inner_radius", 0, 0.99)
     require(end != start, "An arc needs an end_angle different from start_angle", field="end_angle")
+    require(isinstance(layer.get("closed", True), bool), "closed must be true or false", field="closed")
+    require(layer.get("closed", True) or inner == 0, "An open arc (closed: false) is only the curve; drop inner_radius",
+            field="inner_radius")
     return start, end, inner
 
 
@@ -118,4 +125,4 @@ def arc_layer_path(layer):
     visible = str(layer.get("stroke", "transparent")).strip().lower() not in ("", "none", "transparent")
     pad = width / 2 if visible and width > 0 else 0
     rx, ry = max(w / 2 - pad, 0.01), max(h / 2 - pad, 0.01)
-    return wedge_path(w / 2, h / 2, rx, start, end, inner * rx, aspect=ry / rx), (w, h)
+    return wedge_path(w / 2, h / 2, rx, start, end, inner * rx, aspect=ry / rx, closed=layer.get("closed", True)), (w, h)

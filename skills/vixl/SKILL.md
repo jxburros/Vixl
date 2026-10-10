@@ -190,7 +190,7 @@ Read [emoji workflows](references/emojis.md) for the offline Unicode 17 catalog,
   and jittered `repeat`/`radial-repeat` (`vixl_guide("scatter")`).
 - **Imperfection** — opt-in `irregular` (seeded wobble, stroke weight, color drift, micro placement)
   and `tear` (torn edges) for characters, stickers, scenes, scattered patterns, hand-made looks and
-  ripped paper; never for logos, charts, text or anything that must align (`vixl_guide("imperfection")`). `arc` shapes draw pie wedges and donut segments.
+  ripped paper; never for logos, charts, text or anything that must align (`vixl_guide("imperfection")`). `arc` shapes draw pie wedges and donut segments; `closed: false` draws just the stroked curve.
 - **Shape parameters and content boxes** — shortcut shapes take their own parameters (heart `apex`/`cleft`/`tip`,
   speech-bubble `pointer_side`/`pointer_position`/`pointer_size`/`body`, shield `depth`, `slant`, chevron
   `thickness`; `vixl_capabilities("shapes")` lists all). Shapes report `content_bounds` (a bubble's body, a

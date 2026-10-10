@@ -28,12 +28,15 @@ are degrees, 0 at 3 o'clock and growing clockwise (as SVG and gradient angles do
 o'clock; the wedge runs clockwise from start to end, an `end_angle` below the start wraps around,
 and 360° or more past the start is the full disc or ring (the default when you give no angles).
 `inner_radius` (0–0.99, a fraction of the outer radius, default 0) cuts the hole: 0 is a pie wedge,
-0.6 a donut segment. Wedges that share one box and differ only in their angles make a pie or donut
-chart:
+0.6 a donut segment. `closed: false` (CLI `--open`) draws only the curve: an open stroke for a
+progress arc, sound waves or a flourish, which gets no default fill (like `line` and open paths, in
+every renderer and export) and takes `line_cap`; it has no `inner_radius`. Wedges that share one box
+and differ only in their angles make a pie or donut chart:
 
 ```bash
 vixl shape arc --name flat-white --width 300 --height 300 --x 50 --y 50 --start-angle -90 --end-angle 70.6 --fill '#14263b'
 vixl shape arc --name drip --width 300 --height 300 --x 50 --y 50 --start-angle 70.6 --end-angle 192 --inner-radius 0.55 --fill '#f2a541'
+vixl shape arc --name progress --width 300 --height 300 --x 400 --y 50 --start-angle -90 --end-angle 160 --open --stroke '#d4241c' --stroke-width 14 --line-cap round
 ```
 
 Each wedge is one editable layer; a visible stroke is drawn inside the box, so strokes of

@@ -19,6 +19,8 @@ def compile_design(cmd, args):
         for key in ("stroke-width", "radius", "inner-radius", "start-angle", "end-angle", "trim-start", "trim-end"):
             p.add_argument("--" + key, type=float)
         p.add_argument("--line-cap", choices=["butt", "round", "square"])
+        p.add_argument("--open", dest="closed", action="store_false", default=None,
+                       help="arc: draw only the curve (JSON closed: false), an open stroke with no fill")
         p.add_argument("--sides", type=int)
         p.add_argument("--rotation", type=float, help="degrees clockwise")
         p.add_argument("--opacity", type=lambda v: v if v.endswith("%") else float(v), help="0-1 or a percentage")
