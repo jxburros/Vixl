@@ -141,11 +141,13 @@ def supported(state):
     return True
 
 
-def scaled_project(project, s):
-    """Return a render-only copy of ``project`` scaled by ``s``, or None if unsupported."""
+def scaled_project(project, s, snap=False):
+    """Return a render-only copy of ``project`` scaled by ``s``, or None if unsupported. ``snap`` (for
+    reduced previews) places layers on whole pixels instead of resampling them to fractional places."""
     if not supported(project.state):
         return None
     candidate = copy(project)
+    candidate.snap_placement = bool(snap)
     state = deepcopy(project.state)
     canvas = state["canvas"]
     canvas["width"], canvas["height"] = _size(canvas["width"], s), _size(canvas["height"], s)
@@ -311,7 +313,7 @@ def render_preview(
     scale = min(1.0, fit)
     image = None
     if scale < 0.75:
-        proxy = scaled_project(candidate, scale)
+        proxy = scaled_project(candidate, scale, snap=True)
         if proxy is not None:
             pc = proxy.state["canvas"]
             box = (round(x * scale), round(y * scale), round((x + w) * scale), round((y + h) * scale))

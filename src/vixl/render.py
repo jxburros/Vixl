@@ -797,7 +797,7 @@ def ink_identity(project, layer, bounds):
     content = layer if placed else {k: v for k, v in layer.items() if k not in ("x", "y", "constraints")}
     canvas = project.state["canvas"]
     extent_key = [*bounds, canvas["width"], canvas["height"]] if placed else list(bounds[2:])
-    extent_key = [*extent_key, bounds[0] % 1, bounds[1] % 1]
+    extent_key = [*extent_key, bounds[0] % 1, bounds[1] % 1, *(["snapped"] if snap_placement(project) else [])]
     dependencies = [content, extent_key]
     if layer["type"] == "text":
         from .text import font_data, font_sha256
@@ -947,6 +947,8 @@ def transform_layer_image(project, layer, bounds, image):
         target = tuple(t + (t - s) % 2 for t, s in zip(target, turned))
         ox, oy = bounds[0] + (bounds[2] - target[0]) / 2, bounds[1] + (bounds[3] - target[1]) / 2
         fx, fy = max(0, ox - math.floor(ox + 1e-9)), max(0, oy - math.floor(oy + 1e-9))
+        if snap_placement(project):
+            fx, fy = round(fx), round(fy)
         mask = layer.get("mask")
         if not crisp and (fx > 1e-8 or fy > 1e-8) and not (mask and mask.get("enabled", True)):
             # Turn and place in one resampling, as the canvas grid sees the layer: the same layer drawn
@@ -988,9 +990,19 @@ def transform_layer_image(project, layer, bounds, image):
     fx, fy = max(0, ox - math.floor(ox + 1e-9)), max(0, oy - math.floor(oy + 1e-9))
     if not crisp and not folded and (fx > 1e-8 or fy > 1e-8):
         padded = Image.new("RGBA", (image.width + 2, image.height + 2))
+        if snap_placement(project):
+            # A reduced preview: round to the nearest whole pixel instead of resampling the layer.
+            padded.paste(image, (1 + round(fx), 1 + round(fy)))
+            return padded
         padded.paste(image, (1, 1))
         image = warp(padded, padded.size, (1, 0, -fx, 0, 1, -fy), Image.Resampling.BICUBIC)
     return image
+
+
+def snap_placement(project):
+    """Whether layers land on whole pixels instead of being resampled to their fractional place. Only
+    reduced previews (``proxy.scaled_project(..., snap=True)``) set it; exports keep exact placement."""
+    return getattr(project, "snap_placement", False)
 
 
 def layer_effects(project, layer, bounds, image):
@@ -1725,7 +1737,8 @@ def render_incremental(project, background):
         project._resolution = (project.state, layers, bounds)
         try:
             try:
-                document = digest([{k: v for k, v in project.state.items() if k not in UNDRAWN_STATE}, background])
+                document = digest([{k: v for k, v in project.state.items() if k not in UNDRAWN_STATE}, background,
+                                   snap_placement(project)])
                 current = layer_fingerprints(project, layers, bounds)
             except (TypeError, ValueError):
                 current = None
