@@ -1,5 +1,10 @@
 # Checked production for agents
 
+Mockups: `vixl_workflow("mockup", {"design": "poster.vixl", "mockup": "poster-wall", "output": "wall.vixl"})` places
+a design in a phone, laptop, browser, poster-wall, business-card or mug template as a live, corner-pinned link
+(a list of templates and `"output": "folder"` makes one each; `export: ["png"]` renders them). `mockup-list` lists
+templates and their slots; `mockup-save` adds the workspace's own. See `docs/linked-documents.md#mockups`.
+
 Discover actions with `vixl_workflow_schema()` or `vixl workflow schema`.
 Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/main/docs/production.md).
 
@@ -7,26 +12,40 @@ Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/mai
    Use `suite-capture` for protected layer structures/pixel regions. Do not overwrite
    baselines during an ordinary repair. Rule kinds: `assert`, `property`, `gap`, `spacing`,
    `relation`, `text-fit`, `contrast`, `hierarchy`, `color`, `palette`, `ink`, `balance`, `focal`,
-   `count`, `alpha`, `design`, `container`, `unchanged`, `pixels` (fields:
+   `count`, `text` (the drawn copy: `contains`, `forbid`/`pattern` regexes, `min_/max_characters`,
+   `min_/max_words`, `case`, `brand`), `budget` (`max_layers`, `max_fonts`, `max_bytes`, `min_ppi`), `alpha`,
+   `design`, `container`, `unchanged`, `pixels` (fields:
    `vixl_workflow_schema().definitions.suite`; method: `vixl_guide("testing")`). Run suites with each
-   batch (`vixl_operations_apply(suites=true)`) and before every preview.
+   batch (`vixl_operations_apply(suites=true)`) and before every preview. `sampling` (or `check`'s request)
+   takes `artboards`/`pages`/`comps` (`"all"` or names) to cover every variant in one run; each result names
+   its `variant`. `suite-infer` proposes an explained starter suite from an approved document (`apply: true`
+   saves it to the library, `group` makes a group inherit it, `from_group` infers across members).
+   Library suites listed under `suites` in `group-define` or brand.json are inherited by reference; a
+   document overrides a rule by `id` with a suite that has `extends: NAME`. Workflow `check` with no
+   `suite` runs every attached and inherited suite.
 2. Use `fit-text`, `arrange-grid`, or `adapt-layout` (`recompose: true` rebuilds a stored layout recipe at the
    new size and may replace manual edits) for predictable layout tasks;
    save a bounded sequence with `action-define`. `role-set`, `motion-define`, and
    `motion-apply` produce editable staggered/relative animation tracks.
-3. Workflow `act` accepts operations, suites and dry_run. It returns measurements and
-   commits only if checks pass. `check` reports failed or needs_review; neither is a pass.
+3. Workflow `act` accepts operations, suites, dry_run and repair. It returns measurements and
+   commits only if checks pass (`repair: true` first tries the built-in repair map on the candidate).
+   `check` reports failed or needs_review; neither is a pass. Every result has an `outcome`.
 4. Workflow `capture` saves a `.vixl` recipe from explicit typed inputs and text/color
    bindings. Include defaults and difficult examples. Image slots use embedded asset IDs.
 5. Workflow `plan` accepts a spec with rows, matrix, artboards, format and quality.
    Inspect its count before `run`, which also needs an output directory. Every output
-   gets checks; up to three named repair_actions can run without changing the suites.
+   gets checks; up to three named repair_actions can run without changing the suites (`auto` runs the
+   built-in repair map). A row that leaves a variable undefined or draws placeholder copy is `needs_review`,
+   with findings naming the variant and `row`.
 6. For long production, call `submit` with `start:true`, then `status` with its returned
    ID. The source is snapshotted. `cancel` is cooperative; `resume` preserves remote IDs.
    Never blindly repeat an uncertain provider request.
 7. Reuse components with library-save/search/open/place. Open preserves the editable
    document; place inserts its rendered snapshot. Preview draft/final without regenerating
-   image assets. Persistent caches are enabled by production and workflow previews.
+   image assets. Persistent caches are enabled by production, workflow previews, timeline and film exports,
+   and CLI `export`/`render` of saved documents (`vixl cache info|clear`; `VIXL_RENDER_CACHE=off`,
+   `VIXL_CACHE_MAX_MB`). Sequences store a whole frame only when it is requested a second time, so moving
+   films do not fill the cache; static layers are reused either way.
 8. Film plans accept shots from stills, `.vixl` timelines or video clips, camera poses,
    crossfades, captions and explicit audio tracks. MP4/WebM/audio need ffmpeg. Generated
    video requires an explicitly configured HTTP job gateway; other image providers do
@@ -34,14 +53,20 @@ Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/mai
 
 9. Lyric videos: `lyric-video-plan` validates a song, an LRC file (timestamps, `[Section]`
    markers) and a template document with a `lyric` text layer (optional `lyric-next`,
-   `section-label`, `intro`, `bg-<section>`, `cue-<words>`, and `lyric-<section>`/`next-<section>` text
-   layers that take over for one section) and reports the timed lines;
-   `lyric-video-build` writes an editable keyframed document; `lyric-video-export` renders the
+   `section-label`, `intro`, `outro`, `bg-<section>`, `cue-<words>`, and `lyric-<section>`/`next-<section>` text
+   layers that take over for one section) and reports the timed lines (with `settled` and `exit` times),
+   `cues` and `section_windows` (`[[start, end], …]`); `lyric-video-build` writes an editable keyframed
+   document and keeps the template's own keyframes except on the layer properties it writes
+   (`template_track_replaced` warns); `lyric-video-export` renders the
    MP4/WebM with the song as audio, rendering an existing hand-edited build as it is (`rebuild: true`
-   rebuilds; `build_stale` if the settings changed under edits). An empty timestamp clears the lyric and the
+   rebuilds; `build_stale` if the settings changed under edits), and reads the file back with ffprobe
+   (`verification`: size, fps, frames, duration, audio rate/channels, frame quantisation). An empty timestamp clears the lyric and the
    preview, a line sung twice in a row holds instead of re-fading, and `cue_animation` (`in`/`out`,
-   `motion: "sweep"`) animates `cue-*` layers. `section_styles` (`{chorus: {size, color, x, y}}`) restyles
-   the lyric per section; `sample_rate` sets the audio rate (default the song's). Long songs run as the `lyric-video` job kind. See
+   `motion: "sweep"`, `replay`, per-layer overrides in `cues: {"cue-fire": {…}}`) animates `cue-*` layers.
+   `lead_in`/`tail` (ms) add silence for a title card (`intro`) and an end card (`outro`, shown from the last
+   line's hide time); `end_at_audio` ends the last line with the song. `section_styles` (`{chorus: {size, color, x, y}}`) restyles
+   the lyric per section; `sample_rate` sets the audio rate (default the song's). `segments: 10000` renders in
+   parts that a re-run resumes; long songs also run as the `lyric-video` job kind. See
    `docs/lyric-video.md`.
 10. Form filling: `form-fill` fills the open form from `values` (one copy) or a `data` CSV (one
    file per row, or `combine` into one PDF); the `form-fill` job kind freezes the form and the data
@@ -63,22 +88,34 @@ Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/mai
    `wordmark` layers. Mono variants turn every visible colour into one ink, drop shadows/effects and silhouette
    images; `on-light`/`on-dark` fall back to the one-colour logo when the colour logo lacks 3:1 contrast. Read
    `report` and preview before handing it over. No EPS. Existing files are never replaced without `overwrite`.
-14. Proof pages: `vixl_workflow("proof", {items: [path | {path, label?, before?, note?}], output: "proof.html",
+14. Brand boards: `vixl_workflow("brand-board", {output, preset?, title?, document?, overwrite?})` draws the
+   workspace `brand.json` (or a preset) as a guidelines document (.pdf, .pptx, .html or .vixl): cover, colour roles with
+   contrast pairs, the text-stage ladder, logos with clear space and do/don't rules. `vixl brand validate` checks the
+   brand first.
+15. Proof pages: `vixl_workflow("proof", {items: [path | {path, label?, before?, note?}], output: "proof.html",
    decisions?, check?, title?})` writes one self-contained HTML page (no network; strict CSP). `.vixl` items show their
    `vixl_check` findings; `before` (another file, or a revision such as `previous`) adds a diff; `decisions: true` adds
    approve/reject and a button that downloads `<page>-decisions.json`, which the reviewer sends back. `vixl diff A B
    --out d.png` gives the same pixel diff on the command line.
-15. App animation packages: `vixl_workflow("app-animation-package", {states, default_state, output, themes?, transitions?,
+   Many documents at once: `vixl_workflow("check-all", {documents?: [globs], group?, profile?, fail_on?, waivers?,
+   changed_since?, since_last?, outputs?: {json|markdown|junit|sarif|github|proof: path}})` (CLI `vixl check --all GLOB`
+   or `--group NAME`, `--profile final`) checks them in parallel (findings plus attached suites, or the profile's
+   checks and suites; group consistency on a group; each document's waivers apply) into one report: `status` per
+   document, `totals`, `failing` at `fail_on` (error|warning|fix|review|never; default the profile's level, else
+   error) and `passed`. Every run is
+   recorded in `.vixl-checks/history/`; `since_last` lists newly failing (with the cause: document or Vixl version),
+   newly passing and still failing documents.
+16. App animation packages: `vixl_workflow("app-animation-package", {states, default_state, output, themes?, transitions?,
    format?})`. `states` maps names to `{source: "x.vixl", loop?, interruptible?, on_complete?, poster?, variables?, themes?}`;
    `themes` map names to variable overrides (default light and dark; bind colours in the sources to `${variables}`);
    `transitions` are `{from, event, to}`; `format` is `webp` (default), `gif` or `apng`; `output` must be a new directory.
    The package holds each editable master, an animation per state and theme, reduced-motion PNGs, a versioned
    `manifest.json` and a standalone `index.html` consumer. Sources must be self-contained: freeze external links
    (`link-embed`) and embed fonts first. Missing states and ambiguous transitions fail before anything is written.
-16. Screen capture: `vixl_workflow("screen-capture", {output: "shot.png", bbox?: [left, top, right, bottom], window?: HWND,
+17. Screen capture: `vixl_workflow("screen-capture", {output: "shot.png", bbox?: [left, top, right, bottom], window?: HWND,
    all_screens?, overwrite?})` grabs the local desktop (a rectangle, or a Windows window handle; not both) to a PNG. It
    needs an interactive desktop and any OS permission; it is not part of rendering.
-17. Source folders for Git review: CLI `vixl unpack design.vixl design-source` and `vixl pack design-source reviewed.vixl`
+18. Source folders for Git review: CLI `vixl unpack design.vixl design-source` and `vixl pack design-source reviewed.vixl`
    (see [cli](cli.md)).
 
 MCP paths must remain inside the workspace. REST exposes check/act/plan/film-plan for
@@ -89,4 +126,4 @@ material visual changes and unresolved/unsupported measurements.
 
 ### Field-report corrections
 
-Production without suites still checks bounds and flow; clipping returns needs_review. For variable reflow, define an action that reapplies the layout with replace=true and stable seed/prefix, then include it in recipe/actions. Generated layer IDs and manual edits can change. Unchanged, checksum-verified output can bypass repeated checks. See docs/production.md.
+Production without suites still checks bounds and flow; clipping returns needs_review and a clean output is completed but `unvalidated`. With spec `profile` ("final"), every variant must pass that check profile (its checks, suites and fail_on), which also counts as validation. For variable reflow, define an action that reapplies the layout with replace=true and stable seed/prefix, then include it in recipe/actions. Generated layer IDs and manual edits can change. Unchanged, checksum-verified output can bypass repeated checks. See docs/production.md.

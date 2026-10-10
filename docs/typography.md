@@ -2,7 +2,7 @@
 
 [Documentation home](README.md) · [Getting started](getting-started.md) · [Visual gallery](gallery.md)
 
-Vixl bundles DejaVu Sans only as a proofing fallback, so text renders before anyone has chosen type. Design type comes from a researched catalog and is downloaded only when you ask. The default `fonts` check warns while any text still uses the fallback (a fix-level finding, so `check.passed` stays false until real type is installed), and an apply that asks for the `heading` or `body` role before the document has typography says so in its `warnings`. Pass `font_pairing` to `vixl_document_create` (or call `vixl_font_pair`) to give the roles real typefaces.
+Vixl bundles DejaVu Sans only as a proofing fallback, so text renders before anyone has chosen type. Characters a font lacks fall back to the document's `font-fallbacks`, then to DejaVu Sans and the bundled Noto Sans, Noto Sans Symbols, Noto Sans Symbols 2 and Noto Sans Math, so mixed Latin, Greek, Cyrillic and symbol text draws without empty boxes offline (CJK needs an installed face in `font-fallbacks`). Design type comes from a researched catalog and is downloaded only when you ask. The default `fonts` check warns while any text still uses the fallback (a fix-level finding, so `check.passed` stays false until real type is installed), and an apply that asks for the `heading` or `body` role before the document has typography says so in its `warnings`. Pass `font_pairing` to `vixl_document_create` (or call `vixl_font_pair`) to give the roles real typefaces.
 
 ## The catalog
 
@@ -54,13 +54,46 @@ Plain text stores it as `line_height` and the matching `spacing` (pixels added t
 negative for tight display type); a later size or font change keeps the multiple. `spacing` in pixels overrides it.
 Layers saved before 0.23 keep their stored spacing.
 
+## Text stages
+
+Text is set on a ladder of ten stages. Each stage has a font role, a type-scale step, a line-height entry and an
+optional case (craft `type_stages` in the house style):
+
+| Stage | Font role | Type-scale step | Line height | Case |
+| --- | --- | --- | --- | --- |
+| display | heading | display | display (1.0) | |
+| h1 | heading | headline | heading (1.1) | |
+| h2 | heading | title | heading (1.1) | |
+| h3 | heading | subhead | heading (1.1) | |
+| subtitle | body | lead | lead (1.35) | |
+| lead | body | lead | lead (1.35) | |
+| body | body | body | body (1.45) | |
+| caption | body | caption | caption (1.3) | |
+| citation | body | caption | caption (1.3) | |
+| label | body | caption | caption (1.3) | upper |
+
+`text` and `text-set` take `stage` (alias `role`): the stage's font, size (from the document's type scale, else the
+body size and a perfect-fourth scale), line height and case fill whatever the operation leaves out. Fonts follow
+roles, so two fonts cover the whole ladder; to spread three or four, register a face for a role or a stage:
+`{"type": "font-register", "name": "anton-400", "role": "h1"}` gives h1 its own face, and any lowercase role name
+(`accent`, `hand`, `mono`) can be registered and named in `font`. A workspace brand maps stages onto its roles with
+`stages` (see [brands](brands.md#font-roles-text-stages-and-extra-colours)). Text that follows a role or stage
+changes face when that role is registered again.
+
+Without `font` or `stage`, new text takes the stage its size reads as once the document has typography: from the
+title step (h2) up a heading stage in the heading face, below it lead, body or caption in the body face. Markdown
+headings (`#`, `##`, `###`) in rich text and text flows use the h1–h3 stage fonts (the heading face, set at its own
+weight rather than synthesized bold). Layout slots use the stages too: display, headline (h1), title (h2), subhead
+(subtitle), lead, body, caption and label slots take a stage's own face when the document maps one. Before any
+typography is set, stages keep the proofing font. Templates may name a role or stage in `font`, or set `stage`.
+
 ## Installing
 
 ```bash
 vixl font pair dm-serif-dm-sans        # heading + body; or: vixl font pair random --mood warm
 vixl font install "Fraunces" --weight 700 --role heading
 vixl font use dm-sans-400 --role body  # reassign an installed font
-vixl font list                         # registered fonts and the document typography
+vixl font list                         # registered fonts, the document typography and the text stages
 ```
 
 Installs fetch one static TTF per style from the Google Fonts CSS API (`fonts.gstatic.com`, HTTPS only, bounded size). Any Google Fonts family works, not only catalog entries. Files are validated and cached in `~/.cache/vixl/fonts` (set `VIXL_FONT_CACHE` to move it), then embedded in the document and registered as `family-weight` (for example `dm-serif-display-400`). A saved `.vixl` file therefore renders anywhere without the network. `font pair` and `--role` set `state.typography`, and layouts use it for headings and body unless you pass `font`/`display_font`. The structured operation is `{"type": "font-register", "name": "dm-sans-400", "role": "body"}`.
@@ -69,7 +102,7 @@ Each install reports where the font came from, so agents and CI can verify offli
 
 ### Workspace default fonts
 
-A workspace can give every new document the same typography. `vixl_font_pair(pairing=..., scope="workspace")` (CLI `vixl font pair NAME --scope workspace`, REST `POST /typefaces/pair` with `"scope": "workspace"`) writes `pairing` into the workspace `brand.json`; `vixl_font_install(family=..., role="heading"|"body", scope="workspace")` (CLI `vixl font install FAMILY --role heading --scope workspace`) embeds that one style in `brand.json` under `fonts.<role>`, overriding the pairing for that role. A workspace pairing replaces embedded `fonts` entries, and the result lists them under `workspace.replaced`. Both fetch the fonts immediately, so an unknown family fails at once, and neither changes existing documents.
+A workspace can give every new document the same typography. `vixl_font_pair(pairing=..., scope="workspace")` (CLI `vixl font pair NAME --scope workspace`, REST `POST /typefaces/pair` with `"scope": "workspace"`) writes `pairing` into the workspace `brand.json`; `vixl_font_install(family=..., role="heading"|"body"|any role, scope="workspace")` (CLI `vixl font install FAMILY --role heading --scope workspace`) embeds that one style in `brand.json` under `fonts.<role>`, overriding the pairing for that role; without a role it becomes the heading font and the result says so under `normalized`. On the CLI, `--workspace DIR` writes the `brand.json` in DIR instead of the current directory (and implies `--scope workspace`). A workspace pairing replaces embedded `fonts.heading`/`fonts.body` entries (other roles stay), and the result lists them under `workspace.replaced`. Both fetch the fonts immediately, so an unknown family fails at once, and neither changes existing documents.
 
 `vixl_document_create`, `Session.create` and `vixl new` then download (or reuse from the cache) and embed the workspace fonts as part of the creation step, and report them under `workspace_fonts` (`pairing`, and `applied.heading`/`applied.body` with each font's `name` and whether it came `from` the pairing or `fonts`). Fonts are embedded in each document, so files stay portable. Passing `font_pairing` to `vixl_document_create`, `workspace_fonts: false` (CLI `--no-workspace-fonts`) skips them. When a pairing cannot be fetched (offline, empty cache), the document is still created and `workspace_fonts.error` says why; run `vixl_font_pair` later. The CLI uses the `brand.json` beside the new document (`--scope workspace` writes it in the current directory).
 
@@ -115,8 +148,12 @@ A roll picks a pairing first, then a palette whose mood fits it, a layout suited
 
 ## Letter spacing and edits
 
-Use `text-style` tracking for extra local pixels between glyphs, for example `{"type":"text-style","target":"headline","tracking":2}`. Negative values tighten text. It works on an entire layer or on the operation's selected span; `tracking` is also available in rich-text spans. This is the letter-spacing control, distinct from `spacing` (vertical line spacing). Inspect and preview after tracking changes because the text may wrap differently.
+Tracking is letter spacing in local pixels after every character; negative values tighten text. Set it on the layer with `text` or `text-set`, for example `{"type":"text-set","target":"headline","tracking":4}`: layer tracking applies to whatever text the layer holds, including text changed later by `text` keyframes, typewriter or captions, and `${variable}` values. `text-style` tracking styles a matched phrase, range or paragraph, and rich-text spans take `tracking` too; a span's own (nonzero) tracking replaces the layer's. `letter_spacing` is accepted as an alias. This is the letter-spacing control, distinct from `spacing` and `line_height` (line spacing). Inspect and preview after tracking changes because the text may wrap differently. Tracked text is laid out by the rich-text engine; a layer whose text had no rich formatting keeps its line pitch.
+
+`text_transform` draws the text in a case without changing the stored text: `uppercase`, `lowercase`, `capitalize` (the first letter of each word) or `none`. Like tracking it is a layer property, so `{"type":"text-set","target":"lyric","text_transform":"uppercase","tracking":4}` gives keyed lyric lines and merge-field values the brand's caps and tracking. `text-transform`, `case`, and values such as `caps`, `upper` and `title` are accepted and reported under `normalized`. Rendering, `inspect`, `check`, `fit-text` and the SVG, PDF and PPTX exports all use the cased, tracked text.
 
 Width-only `text-layout` boxes grow vertically after `text-set` or variable substitution. Give both width and height to keep a fixed box and let overflow checks report copy that does not fit. Markdown text-flow retains its size-based line-height calculation when splitting across frames.
+
+`check` flags a wrapped display line that strands a word: text of 24 px or more whose paragraph wraps and whose last line is one word or under 20% of the longest line gets a `legibility` finding with `code: runt` and `action: review`. Widen the box, break the line yourself, or run `fit-text`.
 
 For social and poster purposes, automatic legibility checking and generated layout minor text use the house minimum (2.2% of the short canvas side). Explicit thumbnail widths remain a caller-selected viewing-context check. Print keeps the 6-point minimum and decks keep their profile checks. The contrast check treats bold text (font weight 700+) from 18.66 px (14 pt) as large, needing 3:1; regular text needs 24 px. Shared spacing expressions such as `2u` use half the body size per unit.

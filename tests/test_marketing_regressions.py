@@ -221,3 +221,23 @@ def test_downsampled_assets_keep_placement_and_original_provenance(tmp_path, kin
     with zipfile.ZipFile(saved) as archive:
         assert [n for n in archive.namelist() if n.startswith("assets/")] == [layer["asset"]]
     assert saved.stat().st_size < source.stat().st_size / 5
+
+
+def test_bounds_measures_grouped_layers_on_the_canvas():
+    """#533: a grouped layer's box on the canvas, not relative to its group."""
+    p = Project(800, 600, "#000")
+    p.apply([{"type": "shape", "shape": "rectangle", "name": "bg", "x": 100, "y": 200, "width": 300, "height": 100,
+              "fill": "#fff"},
+             {"type": "group", "name": "g", "targets": ["bg"]}])
+    canvas = [layer["canvas_bounds"] for layer in p.inspect()["layers"] if layer["name"] == "bg"][0]
+    assert p.bounds("bg") == canvas == (100, 200, 300, 100)
+    assert p.bounds("bg", space="parent") == (0, 0, 300, 100)
+    p.apply([{"type": "move", "target": "g", "x": 150}, {"type": "rotate", "target": "g", "value": 90}])
+    assert p.bounds("bg") == pytest.approx((250, 100, 100, 300))
+    with pytest.raises(VixlError):
+        p.bounds("bg", space="page")
+
+
+def test_the_marketing_kit_measures_with_canvas_bounds():
+    source = (Path(__file__).resolve().parents[1] / "marketing" / "build.py").read_text()
+    assert "resolve_layout" not in source and "p.bounds(name)" in source

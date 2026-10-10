@@ -65,7 +65,7 @@ vixl template apply my-card --set title='Next variant'
 
 Templates fix structure, not content or look. Built-in templates have no sample copy: an unsupplied `title` or `subtitle` renders as a `[Headline]`/`[Subheading]` blank that `check` reports as an error. Unsupplied colors are rolled from a safe palette with checked contrast (`template-apply` accepts `seed`, an integer or `"random"`; omitted seeds are fresh unless workspace variety is fixed). The result reports `rolled`, `seed`, any `blanks`, and the selected font pairing's explicit installation step when needed. Custom templates can do the same with `"blanks": {"title": "[Headline]"}` and `"roll": {"accent": "accent"}`, which map variables to placeholder text or to a color role (`background`, `surface`, `ink`, `muted`, `accent`, `accent-text`, `on-accent`).
 
-Parameters can replace strings or whole typed values. Templates contain bounded canonical operations, not scripts or executable code. They cannot load files, import fonts, or recursively invoke templates. Import image/font assets explicitly first. The user library is stored in `~/.config/vixl/resources.json`; set `VIXL_RESOURCES` to isolate it in automation.
+Parameters can replace strings or whole typed values. Templates contain bounded canonical operations, not scripts or executable code. They cannot load files, import fonts, or recursively invoke templates. Import image/font assets explicitly first. Template text may set `font` to a typography role or text stage (`heading`, `body`, `h2`, `label`, a brand role such as `hand`) or a registered font name, never a file, or set `stage`; text that names neither takes the heading role when it is the largest and body otherwise. `"proportional": true` on a template scales its positions, sizes and font sizes from its own `width`/`height` to the canvas by one factor (and stretches a full-template `solid` to the canvas), so it keeps its relative layout on any size. The user library is stored in `~/.config/vixl/resources.json`; set `VIXL_RESOURCES` to isolate it in automation.
 
 ## Overall and style-specific guidance
 
@@ -138,6 +138,23 @@ MCP exposes `vixl_resources_list`, `vixl_resource_get`, `vixl_resource_add`, `vi
 ## Sizes, layouts and principle guidance (0.13)
 
 Named sizes (`vixl sizes`, `vixl_sizes_list`) and principled layouts (`vixl layout list`, `vixl_layouts_list`, operation `layout-apply`) extend these resources. Templates reproduce a fixed design. Layouts build a structured, seed-varied design for the actual canvas, with contrast-checked color roles and a modular type scale. Built-in guidance adds `typography`, `color`, `layout`, `accessibility`, `print`, `icon`, `motion`, `brush` and `image-rights`. See [sizes and layouts](sizes-and-layouts.md) and [color and print](color-and-print.md).
+
+## Catalog bundle for host applications
+
+An application that offers Vixl's choices in its own interface (a size picker, palette swatches, brief templates) can read them from one versioned file instead of copying them: `vixl catalog export --out catalog.json` (Python `vixl.catalog.export_catalog()`; also attached to every release as `vixl-catalog.json`, with `vixl-catalog.schema.json`). It is built from the same registries the engine uses, holds only built-in entries (no user-library additions), and contains font metadata but never a font file.
+
+| Section | What it holds |
+| --- | --- |
+| `sizes` | Every named size: category, description, width and height in its unit (`px`, `in`, `mm`), pixels, and for print sizes `dpi` and `bleed`; `safe` (in the unit) and `safe_pixels` as `{left, top, right, bottom}`; `aliases`. |
+| `palettes` | Every palette's colors, tier and mood, and per mode (`light`, `dark`) the role colors `layout-apply` assigns (`background`, `surface`, `ink`, `muted`, `accent`, `accent-text`, `on-accent`) with their contrast ratios; `contrast_targets`. |
+| `typefaces` | Family metadata (category, weights, italic, roles, mood), the curated `pairings`, and the type-scale presets (`type_scales`, `type_scale_steps`). |
+| `layouts` | Every layout's description, tier, `best_for`, principles, `slots` (label and hint) and `proportions`: each slot's `[x, y, width, height]` as fractions of a 1000 × 1000 reference canvas. |
+| `briefs` | Every brief kind with its size category and sizes, layouts, looks, styles, guidance names and `checks` (the starter suite and rules to adapt). |
+| `guidance` | Each guidance text with a one-paragraph `summary`. |
+| `looks`, `styles` | Finish and style names with summaries; each style lists the IDs of its premade rules. |
+| `checks` | Every check `id` a finding can carry (`check` in a `vixl_check` finding), its family (`default`, `optional`, `deck`), description, the severities it raises and the `action` each severity maps to; the default thresholds; the suite rule kinds; the built-in suites with their rule IDs, severities and thresholds; and `style_rules` (each style's premade rules with ID, severity and thresholds). |
+
+`catalog_schema_version` (now 1) changes only when a field is removed or changes meaning; new fields and entries can appear in any release, so readers should ignore keys they do not know. The bundle also names the Vixl release that wrote it (the same version field documents carry), and `counts` gives the number of entries per section.
 
 ## Workspace studio resources
 

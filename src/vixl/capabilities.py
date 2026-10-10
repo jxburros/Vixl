@@ -26,6 +26,9 @@ TOPICS = {
     "color": ("palette color swatch look style lighting", ["color", "natural-color-light", "accessibility"]),
     "export": ("export film merge form", ["print"]),
     "testing": ("test tests testing suite suites check assert verify qa baseline capture", ["testing", "accessibility"]),
+    "objects": ("object objects part parts kind subject isolate taxonomy mascot", ["multi-part-objects",
+                                                                                  "anatomy-proportions"]),
+    "accessibility": ("accessibility alt language reading", ["accessibility"]),
 }
 GOTCHAS = [
     "x/y are parent-local pixels unless move (or shape/text/solid/gradient with target) uses space=canvas; "
@@ -96,6 +99,25 @@ def lookup(topic=None, *, fields=False):
             "Centre text there with text within=SHAPE, place within=SHAPE (anchor, margin) or align "
             "relative_to=SHAPE box=content."
         )
+    if "objects" in chosen:
+        from .objects import taxonomy
+
+        extra["objects"] = (
+            "Declare a group as one object: {type: object, target: GROUP, kind: dog}; name parts with {type: object, "
+            "action: part, target: LAYER, part: leg, side: left}. Paths (dog/head, person/guitar/neck) work wherever a "
+            "layer name does; edit-layers selects with where.object, where.object_kind and where.part. "
+            "vixl_document_inspect(object=NAME|'*') returns the object tree with missing required parts; "
+            "vixl_render_preview(isolate=[NAME] or ['object:KIND'], views=['parts'], exploded=true) shows each part; "
+            "vixl_export_file(isolate=[NAME]) exports it alone (.vixl: a portable object for object-place source=). "
+            "object-save/object-place reuse an editable object. vixl_resource_get(kind='objects', name=KIND) reads a "
+            "kind; vixl_resource_add(kind='objects') adds one.")
+        extra["taxonomy"] = taxonomy()
+    if "accessibility" in chosen:
+        extra["accessibility"] = (
+            "layer-intent alt (or decorative: true) on images, frames, charts, links and object groups; "
+            "{type: accessibility, lang, title, page_alt, page_lang, reading_order}; vixl_check(checks=[accessibility]) "
+            "bundles contrast and color_vision with missing alt, language, small text, colour-only charts and reading "
+            "order. Exports carry alt and language; a tagged PDF structure tree is not written.")
     if "testing" in chosen:
         from .effect_workflows import SUITES
         from .workflow_schema import RULE_KINDS

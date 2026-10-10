@@ -112,26 +112,31 @@ def inline_svg(data, prefix):
 
 
 def reading_text(view, variables=None):
-    """(title, other lines) of a page as a reader meets it: its title, then the rest of its own text from
-    top to bottom. Master layers and footer-like layers are chrome and are left out."""
+    """(title, other lines) of a page as a reader meets it: its title, then the page description (accessibility
+    page_alt), then the rest of its own text and the alt text of its images in reading order (the page's explicit
+    reading_order, else top to bottom). Master layers and footer-like layers are chrome and are left out."""
+    from .accessibility import page_alt, reading_order
     from .deck import CHROME_NAME, _master_ids, _visible, title_layer
     from .render import resolve_layout, resolved_layers
+    from .spatial import canvas_boxes
 
     layers = resolved_layers(view, variables)
     resolved = {item["id"]: item for item in layers}
     bounds = resolve_layout(view, layers=layers)
+    canvas = canvas_boxes(view, layers=layers, local=bounds)
     title = title_layer(view, layers)
     masters = _master_ids(view)
-    lines = []
+    readable = []
     for item in layers:
         words = " ".join((item.get("text") or "").split()) if item["type"] == "text" else ""
-        if (not words or item is title or item["id"] in masters or CHROME_NAME.search(item["name"])
+        if (not (words or item.get("alt")) or item is title or item["id"] in masters or CHROME_NAME.search(item["name"])
                 or not _visible(item, resolved)):
             continue
-        box = bounds[item["id"]]
-        lines.append((box[1], box[0], (item.get("text") or "").strip()))
-    lines.sort(key=lambda entry: entry[:2])
-    return (" ".join(title["text"].split()) if title else ""), [line for _, _, line in lines]
+        readable.append(item)
+    lines = [(item.get("text") or "").strip() if item["type"] == "text" else item["alt"]
+             for item in reading_order(view.state, readable, canvas)]
+    summary = page_alt(view.state)
+    return (" ".join(title["text"].split()) if title else ""), ([summary] if summary else []) + lines
 
 
 def slide_markup(number, total, record, view, media, notes, current, variables=None):
@@ -144,8 +149,12 @@ def slide_markup(number, total, record, view, media, notes, current, variables=N
     label = f"Slide {number} of {total}" + (f": {caption}" if caption else "")
     readable = ([f"<h2>{text(title)}</h2>"] if title else [])
     readable += [f"<p>{text(line)}</p>" for chunk in lines for line in chunk.splitlines() if line.strip()]
+    from .accessibility import language, page_language
+
+    lang = page_language(view.state)
     attrs = (f'id="slide-{number}" data-n="{number}" data-name="{text(name)}" data-transition="{text(transition)}" '
-             f'role="group" aria-roledescription="slide" aria-label="{text(label)}"')
+             f'role="group" aria-roledescription="slide" aria-label="{text(label)}"'
+             + (f' lang="{text(lang)}"' if lang and lang != language(view.state) else ""))
     note = f'<aside class="notes" hidden>{text(notes)}</aside>' if notes else ""
     return (f'<section class="slide{" is-cur" if current else ""}" {attrs}>{media}'
             f'<div class="sr" dir="auto">{"".join(readable)}</div>{note}</section>\n'), title
@@ -202,15 +211,16 @@ def export_presenter(project, *, pages=None, options=None, variables=None, svg_p
         require(size <= project.limits.max_project_bytes, "The presentation exceeds the size limit; use fewer pages, "
                 "slide_images=svg or a smaller scale", "resource_limit")
 
-    form = state.get("form") or {}
-    title = opts["title"] or form.get("title") or next((t for t in titles if t), "") or "Presentation"
+    from .accessibility import document_title, language
+
+    title = opts["title"] or document_title(state) or next((t for t in titles if t), "") or "Presentation"
     css = style(state["canvas"])
     deck = hashlib.sha256("".join(slides).encode("utf-8", "replace")).hexdigest()[:12]
     policy = ("default-src 'none'; img-src data:; style-src 'sha256-%s'; script-src 'sha256-%s'; base-uri 'none'; "
               "form-action 'none'" % (_hash(css), _hash(SCRIPT)))
     html = "".join([
         "<!doctype html>\n",
-        f'<html lang="{text(form.get("lang") or "en")}" data-theme="{opts["theme"]}" data-deck="{deck}" '
+        f'<html lang="{text(language(state) or "en")}" data-theme="{opts["theme"]}" data-deck="{deck}" '
         f'data-start="{start}">\n',
         '<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">\n',
         f'<meta http-equiv="Content-Security-Policy" content="{policy}">\n',

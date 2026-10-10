@@ -7,6 +7,7 @@ from .geometry import ANCHORS
 from .inplace import EDITS, target_schema
 from .model import Limits
 from .render import EFFECTS, BLENDS
+from .type_roles import STAGES
 
 S = {"type": "string"}
 N = {"type": "number"}
@@ -37,7 +38,8 @@ FINISH_FIELDS = {
 }
 FONT = {
     "type": "string",
-    "description": "Registered font name or role (heading, body); install with font install / font pair / font import. "
+    "description": "Registered font name, role (heading, body or a brand role) or text stage (display, h1, h2, h3, "
+    "subtitle, lead, body, caption, citation, label); install with font install / font pair / font import. "
     "File paths work only in the CLI and Python API, not over MCP or REST. A new text layer without one uses the "
     "body face once the document has typography.",
 }
@@ -131,6 +133,8 @@ def _operation_schema():
                            "mode": enum("light", "dark"), "columns": {"type": "integer", "minimum": 1, "maximum": 12}}, ["name"])
     add("guidance", {"name": S, "text": S, "style": S, "delete": B}, ["name"])
     add("font-register", {"name": S, "asset": S, "role": S}, ["name"])
+    add("brand-preset", {"name": field(S, "A preset in the workspace brand.json presets, or none for the base brand.")},
+        ["name"])
     baseline_y = {"type": "number", "description": "Place the text's first baseline at this y (instead of y, the top "
                   "of its box), in the same coordinates as y. Multi-line text: the first line; mixed fonts: the measured "
                   "first line."}
@@ -148,6 +152,19 @@ def _operation_schema():
             "description": "Do not draw the text (and take no space in a stack) while it is empty or blank "
             "after ${variable} substitution.",
         },
+        "tracking": {"type": "number", "minimum": -1000, "maximum": 1000,
+                     "description": "Letter spacing (tracking) in pixels added after every character, for the whole "
+                     "layer: it applies to whatever text the layer holds, including text changed by keyframes and "
+                     "${variable} values. Rich-text spans with their own tracking keep it. 0 removes it. Not line "
+                     "spacing (that is spacing or line_height)."},
+        "text_transform": {"enum": ["none", "uppercase", "lowercase", "capitalize"],
+                           "description": "Draw the layer's text in this case without changing the stored text "
+                           "(capitalize upper-cases the first letter of each word); applies to text changed by "
+                           "keyframes and ${variable} values too. none removes it."},
+        "stage": {"enum": list(STAGES),
+                  "description": "Text stage (alias role): its font role, type-scale size, line height and case fill "
+                  "what the operation leaves out. display and h1–h3 follow the heading font, the rest the body font, "
+                  "unless the brand or font-register role=STAGE maps them elsewhere."},
     }
     add(
         "text",
@@ -218,7 +235,11 @@ def _operation_schema():
                   "x": {**scale, "description": "Horizontal factor, overriding value. Negative mirrors horizontally, like flip."},
                   "y": {**scale, "description": "Vertical factor, overriding value. Negative mirrors vertically."}},
         anyOf=[{"required": ["value"]}, {"required": ["x"]}, {"required": ["y"]}])
-    add("rotate", {"value": N}, ["value"])
+    add("rotate", {"value": N, "about": {
+        "anyOf": [{"type": "array", "items": N, "minItems": 2, "maxItems": 2}, enum("pivot", *ANCHORS)],
+        "description": "The point that stays fixed: pivot (default; the layer's center when it has none), an anchor "
+        "name such as top-left, or [x, y] fractions of the unrotated box. Another point than the pivot clears the "
+        "layer's constraints."}}, ["value"])
     add("pivot", {"value": {"anyOf": [{"type": "array", "items": N, "minItems": 2, "maxItems": 2}, enum(*ANCHORS)],
                             "description": "[x, y] as fractions of the layer box (0.5, 0.5 is the center; pixels from the "
                             "top-left with units: px; a canvas point with units: canvas) or an anchor name: "
@@ -408,6 +429,12 @@ def _operation_schema():
     code_schemas(add)
     from .charts import schemas as chart_schemas
     chart_schemas(add)
+    from .tables import schemas as table_schemas
+    table_schemas(add)
+    from .diecut import schemas as diecut_schemas
+    diecut_schemas(add)
+    from .path_split import schemas as split_schemas
+    split_schemas(add)
     from .finishing import schemas as finishing_schemas
     finishing_schemas(add)
     from .diagrams import schemas as diagram_schemas
@@ -444,6 +471,11 @@ def _operation_schema():
 
     motion_schemas(add)
     character_schemas(add)
+    from .objects import schemas as object_schemas
+    from .accessibility import schemas as accessibility_schemas
+
+    object_schemas(add)
+    accessibility_schemas(add)
     from .transforms import schemas as transform_schemas, enrich_transform_schemas
 
     transform_schemas(add)

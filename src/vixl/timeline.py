@@ -666,9 +666,118 @@ def _value_at(project, timeline, target, prop, time):
     return static_value(project, target, prop)
 
 
-def project_at(project, time):
-    """A render-only copy of the document with every track applied at ``time`` (ms)."""
-    from .render import resolve_layout, text_metrics
+class FrameState:
+    """Copy-on-write layers of a render-only frame: the frame shares every layer with the document and
+    copies one (deeply) the first time the frame changes it, so a frame of a document with thousands
+    of layers and one moving dot does not copy thousands of layers."""
+
+    def __init__(self, state):
+        self.layers = state["layers"]
+        self.position = {layer["id"]: i for i, layer in enumerate(self.layers)}
+        self.copied = set()
+
+    def reindex(self):
+        self.position = {layer["id"]: i for i, layer in enumerate(self.layers)}
+
+    def writable(self, ref):
+        """The frame's own copy of the layer with ID (or name) ``ref``, or None."""
+        i = self.position.get(ref)
+        if i is None:
+            i = next((n for n, layer in enumerate(self.layers) if layer["name"] == ref), None)
+            if i is None:
+                return None
+        layer = self.layers[i]
+        if layer["id"] not in self.copied:
+            layer = self.layers[i] = deepcopy(layer)
+            self.copied.add(layer["id"])
+        return layer
+
+    def detach_scene(self, state):
+        """Copy the layers ``scene.apply_at`` changes: particles, typewriter captions and their text, and
+        every layer under a camera or stop-motion jitter."""
+        if state.get("camera") or (state.get("stop_motion") or {}).get("jitter"):
+            for layer in list(self.layers):
+                self.writable(layer["id"])
+            return
+        for layer in list(self.layers):
+            caption = layer.get("caption")
+            if "particle" in layer or caption:
+                self.writable(layer["id"])
+            if caption and caption.get("text_layer") is not None:
+                self.writable(caption["text_layer"])
+
+
+# Layer fields that hold bulk geometry, never a reference to another layer (see ``prune_hidden``).
+BULK = ("strokes", "pixels", "path", "points", "mesh", "nodes", "path_nodes", "operands")
+# Layer types whose hidden subtrees can be left out of a frame: none defines anything other layers read
+# (form fields name ${variables}, links and symbols read other documents and definitions).
+PRUNABLE = {"shape", "text", "raster", "solid", "gradient", "group", "paint", "pixel", "pathfinder", "frame", "adjustment"}
+# Documents whose renders re-select layers after the frame is sampled (comps, artboards, pages).
+RESELECTING = ("comps", "artboards", "pages", "masters")
+
+
+def prune_hidden(state, keep=()):
+    """Leave out of a render-only frame the top-level subtrees that draw nothing at this time (hidden, or
+    at zero opacity), such as the inactive cues of a lyric film, so resolving and laying out the frame
+    does not pay for them. A subtree stays when anything else could read it: a remaining layer or the
+    document names it (a clip, a constraint, a caption, a camera target), it holds a form field, link
+    or symbol, or the document re-selects its layers (comps, artboards, pages). Returns the removed IDs."""
+    if any(state.get(key) for key in RESELECTING):
+        return set()
+    layers = state["layers"]
+    children = {}
+    for layer in layers:
+        children.setdefault(layer.get("parent"), []).append(layer)
+    removed, names = set(), {}
+    for layer in children.get(None, []):
+        if layer["visible"] and layer.get("opacity", 1) > 0 or layer["id"] in keep or layer["name"] in keep:
+            continue
+        subtree, pending = [], [layer]
+        while pending:
+            item = pending.pop()
+            subtree.append(item)
+            pending.extend(children.get(item["id"], []))
+        if all(item["type"] in PRUNABLE and item["id"] not in keep for item in subtree):
+            for item in subtree:
+                removed.add(item["id"])
+                names[item["id"]] = item["name"]
+    if not removed:
+        return removed
+    from .render import CONSTRAINT_REF, UNDRAWN_STATE
+
+    strings = set()
+
+    def collect(value):
+        if isinstance(value, str):
+            strings.add(value)
+            match = CONSTRAINT_REF.fullmatch(value)
+            if match:
+                strings.add(match[1])
+        elif isinstance(value, dict):
+            for item in value.values():
+                collect(item)
+        elif isinstance(value, (list, tuple)):
+            for item in value:
+                collect(item)
+
+    for layer in layers:
+        if layer["id"] not in removed:
+            # Its own name and ID are not references to another layer.
+            collect([v for k, v in layer.items() if k not in BULK and k not in ("id", "name")])
+    collect([v for k, v in state.items() if k not in UNDRAWN_STATE])
+    if any(ident in strings or names[ident] in strings for ident in removed):
+        return set()  # Something may read a hidden layer: keep the frame whole.
+    layers[:] = [layer for layer in layers if layer["id"] not in removed]
+    return removed
+
+
+def project_at(project, time, prune=False):
+    """A render-only copy of the document with every track applied at ``time`` (ms).
+
+    Layers the frame does not change are shared with the document (copy-on-write); treat the frame as
+    read-only, or ``clone()`` it before editing. ``prune`` also leaves out top-level subtrees that draw
+    nothing at this time (``prune_hidden``): same pixels, less work, but those layers are not in the frame."""
+    from .render import layer_box, text_metrics
 
     timeline = project.state.get("timeline")
     if not isinstance(time, (int, float)) or isinstance(time, bool):
@@ -677,28 +786,41 @@ def project_at(project, time):
     from .scene import quantize_time, apply_at
     time = quantize_time(project, time)
     candidate = copy(project)
-    candidate.state = deepcopy(project.state)
+    from .render import layer_cache
+
+    # Frames share the document's bounded layer cache, created on the document itself when it has none,
+    # so every later frame finds what earlier ones drew.
+    candidate._cache = layer_cache(project)
+    state = candidate.state = dict(project.state)
+    state["layers"] = list(project.state["layers"])
+    state["canvas"] = dict(project.state["canvas"])
+    cow = FrameState(state)
     if not timeline or not timeline.get("tracks"):
         if timeline and timeline.get("text_animations"):
-            from .kinetic import apply_frame
+            from .kinetic import apply_frame, specs_by_layer
 
+            for target in specs_by_layer(timeline):
+                cow.writable(target)
             apply_frame(candidate, timeline, time)
-        return apply_at(candidate, time)
-    state = candidate.state
+        cow.detach_scene(state)
+        result = apply_at(candidate, time)
+        if prune:
+            prune_hidden(state)
+        return result
     layers = {layer["id"]: layer for layer in state["layers"]}
     geometry = {}
     poses = {}
-    for track in timeline["tracks"]:
-        if not track["keys"]:
-            continue
+
+    def apply_track(track):
         value = sample_track(project, track, time)
         prop, target = track["property"], track["target"]
         if target == "canvas":
             state["canvas"]["background"] = value
-            continue
-        layer = layers.get(target)
+            return
+        layer = cow.writable(target) if target in layers else None
         if layer is None:
-            continue
+            return
+        layers[target] = layer
         if prop == "stroke_color" and layer["type"] == "shape":
             prop = "stroke"
         if prop.startswith("joint:"):
@@ -730,14 +852,34 @@ def project_at(project, time):
             geometry.setdefault(target, {})["rotation"] = value
         else:
             layer[prop] = value
+
+    tracks = [track for track in timeline["tracks"] if track["keys"]]
+    if prune:
+        # Visibility first, so a subtree that draws nothing at this time is left out before its other
+        # tracks are sampled and its layers copied.
+        shown = [track for track in tracks if track["property"] in ("visible", "opacity")
+                 and track["target"] in layers and not layers[track["target"]].get("parent")]
+        for track in shown:
+            apply_track(track)
+        posed = {track["target"] for track in tracks if track["property"].startswith("joint:")}
+        if prune_hidden(state, keep=posed):
+            cow.reindex()
+            layers = {layer["id"]: layer for layer in state["layers"]}
+        tracks = [track for track in tracks if not any(track is early for early in shown)]
+    for track in tracks:
+        apply_track(track)
     for layer in state["layers"]:
         if layer["type"] == "text" and layer.get("auto_size", True):
-            layer["width"], layer["height"], _ = text_metrics(candidate, layer)
+            width, height, _ = text_metrics(candidate, layer)
+            if (layer["width"], layer["height"]) != (width, height):
+                layer = cow.writable(layer["id"])
+                layer["width"], layer["height"] = width, height
     if geometry:
         from .transforms import dimension
         from .render import pivot_delta, rest_size, transformed_size
 
-        bounds = resolve_layout(candidate)
+        # Only the moving layers' boxes are needed (and what their constraints refer to), not the whole layout.
+        bounds = {ident: layer_box(candidate, layers[ident]) for ident in geometry}
         rest = {}
         spinning = [ident for ident, v in geometry.items() if "rotation" in v and layers[ident].get("pivot") is None]
         if spinning:
@@ -747,7 +889,7 @@ def project_at(project, time):
             frame = {ident: layers[ident]["rotation"] for ident in spinning}
             for ident in spinning:
                 layers[ident]["rotation"] = original[ident]
-            rest = resolve_layout(candidate)
+            rest = {ident: layer_box(candidate, layers[ident]) for ident in spinning}
             for ident in spinning:
                 layers[ident]["rotation"] = frame[ident]
         for ident, values in geometry.items():
@@ -809,21 +951,26 @@ def project_at(project, time):
                 x=x + values.get("translate-x", 0), y=y + values.get("translate-y", 0), constraints={}
             )
     if timeline.get("text_animations"):
-        from .kinetic import apply_frame
+        from .kinetic import apply_frame, specs_by_layer
 
+        for target in specs_by_layer(timeline):
+            cow.writable(target)
         apply_frame(candidate, timeline, time)
     if poses:
         from .characters import pose
         for target, angles in poses.items():
+            group = cow.writable(target)
+            for bone in group["character"]["bones"].values():
+                cow.writable(bone["layer"])
             pose(candidate, candidate.layer(target), angles)
-    candidate._cache = project._cache
+    cow.detach_scene(state)
     return apply_at(candidate, time)
 
 
 def render_at(project, time, **options):
     from .render import render
 
-    return render(project_at(project, time), **options)
+    return render(project_at(project, time, prune=True), **options)
 
 
 def render_scaled(project, scale, sampling="smooth"):
@@ -1279,7 +1426,8 @@ def cached(project):
     from copy import copy
     from .render_cache import enable, user_cache_dir
 
-    return enable(copy(project), user_cache_dir())
+    # Frames that keep moving are drawn once each: store a frame only when it is requested again.
+    return enable(copy(project), user_cache_dir(), frames="adaptive")
 
 
 def contact_sheet(project, count=8, columns=None, max_width=1600, times=None, thumbnail=None):
@@ -1325,19 +1473,43 @@ def contact_sheet(project, count=8, columns=None, max_width=1600, times=None, th
 
 
 def _frames(project, times, scale, preview=False, cancelled=None, progress=None):
+    """Each frame at ``times``. ``progress`` receives ``done``/``total`` and ``timing``: seconds elapsed, an
+    estimate of the seconds left, and this frame's setup (sampling the timeline) and raster milliseconds."""
+    import time as clock
+
+    from .profiling import current as current_profile
+
     c = project.state["canvas"]
     size = (max(1, round(c["width"] * scale)), max(1, round(c["height"] * scale)))
     project.limits.size(*size)
-    for index, time in enumerate(times):
-        require(not cancelled or not cancelled(), "Timeline cancelled", "cancelled")
-        if preview:
-            from .proxy import render_preview
-            image = render_preview(project, *size, time=time)
-        else:
-            image = render_scaled(project_at(project, time), scale)
-        if progress:
-            progress({"done": index + 1, "total": len(times)})
-        yield image if image.size == size else image.resize(size, Image.Resampling.LANCZOS)
+    began = clock.perf_counter()
+    try:
+        for index, time in enumerate(times):
+            require(not cancelled or not cancelled(), "Timeline cancelled", "cancelled")
+            start = clock.perf_counter()
+            if preview:
+                from .proxy import render_preview
+                frame, image = None, render_preview(project, *size, time=time)
+            else:
+                frame = project_at(project, time, prune=True)
+                sampled = clock.perf_counter()
+                image = render_scaled(frame, scale)
+            now = clock.perf_counter()
+            setup = (sampled - start) if frame is not None else 0.0
+            profile = current_profile()
+            if profile is not None:
+                profile.phase("frame_setup", setup)
+                profile.phase("frame_raster", now - start - setup)
+            if progress:
+                elapsed, done = now - began, index + 1
+                progress({"done": done, "total": len(times), "timing": {
+                    "elapsed_s": round(elapsed, 3), "eta_s": round(elapsed / done * (len(times) - done), 3),
+                    "setup_ms": round(setup * 1000, 2), "raster_ms": round((now - start - setup) * 1000, 2)}})
+            yield image if image.size == size else image.resize(size, Image.Resampling.LANCZOS)
+    finally:
+        disk = getattr(project, "_disk_cache", None)
+        if disk is not None:
+            disk.flush()
 
 
 def export_timeline(project, path, *, format=None, fps=None, scale=1.0, start=None, end=None, background=None, columns=None, quality=90, colors=256, overwrite=False, preview=False, cancelled=None, progress=None, dither="auto", max_bytes=None, poster=None, sample_rate=None, target_bytes=None, preset=None):

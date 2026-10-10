@@ -187,13 +187,20 @@ def test_adapt_layout_reflows_a_square_into_a_story():
     assert p.state["canvas"]["size"] == "story"
     moved = rows(result)
     assert moved["bg"]["to"] == [0, 0, 1080, 1920] and moved["bg"]["anchor"] == "stretch-x, stretch-y"
-    assert "eyebrow" not in moved  # Top-left stays where it is.
+    # Top-left content keeps its left margin but moves out of the story's top 250 px band (#210).
+    assert moved["eyebrow"]["to"][0] == 60 and moved["eyebrow"]["to"][1] == 250
     assert moved["logo"]["anchor"] == "right, bottom"
     logo = moved["logo"]["to"]
-    assert logo[0] == 920 and logo[1] + logo[3] == 1920 - 60  # The 60 px bottom margin is kept.
+    assert logo[0] == 920 and logo[1] + logo[3] == 1920 - 250  # Above the bottom band.
+    assert set(report["kept_safe"]) == {"eyebrow", "logo", "cta"}
     assert moved["cta"]["to"][0] == 390 and moved["cta"]["anchor"].startswith("center-x")  # Still centred.
+    assert moved["cta"]["to"][1] + moved["cta"]["to"][3] == 1920 - 250
     # The relative vertical place of centred content is kept, so it spreads into the taller canvas.
     assert moved["headline"]["to"][1] > moved["headline"]["from"][1] * 1.5
+    unsafe = poster()
+    moved = rows(unsafe.apply([{"type": "adapt-layout", "size": "story", "safe": False}], detail="brief"))
+    assert "eyebrow" not in moved  # Without safe, top-left stays where it is,
+    assert moved["logo"]["to"][1] + moved["logo"]["to"][3] == 1920 - 60  # and the 60 px bottom margin is kept.
 
 
 def test_adapt_layout_scales_sizes_and_text_with_the_canvas():

@@ -83,6 +83,8 @@ Run `project.check_suite("delivery")` or workflow `check` with
 rule IDs, times, and `passed`, `failed`, or `needs_review`. Missing/unmeasurable
 targets and warnings never count as a clean pass. Checks do not modify the document.
 CLI checks and failed synchronous production return a nonzero exit code.
+Workflow `check` without `suite` runs every attached and inherited suite (`suites: [...]` narrows
+them) and returns each report under `suites`, with overall `passed`/`status`.
 
 Rules:
 
@@ -107,9 +109,84 @@ Rules:
 | `hierarchy` | `targets` (text, most to least important), `ratio` (default 1.2); each rendered font size (after fitting) is at least `ratio` times the next |
 | `count` | `target` name, glob or `group:NAME` (default `*`), optional `layer_type`, `minimum`/`maximum`; counts visible layers |
 | `focal` | `target`, `grid` thirds/golden/center, `tolerance` px (default 5% of the shorter side); the layer's centre is near a power point |
+| `text` | `target` name, glob or `group:NAME` (default `*`), and any of `pattern` (regular expression each selected layer must match), `contains` (phrase or list that must appear somewhere in their copy), `forbid` (regular expression or list none may match), `min_characters`/`max_characters`, `min_words`/`max_words` (per layer; line breaks do not count as characters), `case` sensitive/insensitive (for pattern, contains and forbid), `brand: true` (also forbid brand.json `words.forbid`); measures the drawn text after variables, so `variables`, artboards and campaign rows are checked with their own copy; results list each layer's text, characters and words |
+| `budget` | any of `max_layers` (drawn layers, as `count` counts them), `max_fonts` (distinct fonts drawn by text), `max_bytes` (the document's JSON with undo history plus embedded files, before compression), `min_ppi` (lowest effective resolution of a placed image at the canvas dpi, 300 when unset, as the `print` check measures it) |
 
 Every rule has a unique `id` and optional `severity` (`error` or `warning`). Each result carries what
 it measured (gaps, margins, ratios, the visual centre, the sampled colour), so a failure says what to change.
+
+```json
+{"type":"suite-set","name":"copy","suite":{"rules":[
+  {"id":"headline-short","kind":"text","target":"headline","max_characters":40},
+  {"id":"has-disclaimer","kind":"text","contains":"Terms apply"},
+  {"id":"no-free","kind":"text","forbid":"(?i)\\bfree\\b"},
+  {"id":"light","kind":"budget","max_layers":120,"max_fonts":3,"max_bytes":20000000,"min_ppi":240}
+]}}
+```
+
+### Coverage over artboards, pages and comps
+
+One run can cover every variant of a design. In a suite, add `artboards`, `pages` and `comps` to
+`sampling` (each `"all"` or a list of names; pages also by number); workflow `check` takes the same
+fields at run time, and `vixl_check`/`vixl check`/REST `POST /check` take them for the design checks:
+
+```json
+{"type":"suite-set","name":"every-format","suite":{
+  "rules":[{"id":"title-inside","kind":"relation","target":"title","to":"canvas","position":"inside"}],
+  "sampling":{"mode":"still","artboards":"all","pages":"all","comps":["light","dark"]}
+}}
+```
+
+```bash
+vixl check --artboards all --pages all --comps light dark
+```
+
+Every combination is checked. Each suite result and each design finding names its `variant`
+(`{"artboard":"story"}`; design messages start with `[artboard story]`), `groups` (suites) or `variants`
+(design checks) give each variant's status, and `coverage` lists exactly what was covered. Pages hidden
+from export are skipped unless `include_hidden` is set. The 50,000-evaluation cap counts every
+variant × time × rule.
+
+### Library suites shared by a group or the workspace
+
+`suite-use` copies a library suite into one document. To hold many documents to one contract, refer
+to it instead:
+
+- `group-define` takes `suites: ["delivery", "brand-basics"]`; every member inherits them by reference.
+- brand.json `suites: [...]` does the same for every document in the workspace.
+- `suite-use` with `reference: true` attaches `{"extends": NAME, "rules": []}` to one document.
+
+Inherited suites run in workflow `check` (no `suite`), `run` (unless the spec lists `suites`),
+`group-apply` (unless the request lists `suites`) and `vixl_operations_apply(suites=true)`, and always
+use the library's current version: edit the library suite (`resource-save`) and every member's next
+check uses it, without touching member files. A member overrides a rule by `id`, or adds rules, with a
+suite that extends the library suite:
+
+```json
+{"type":"suite-set","name":"delivery-local","suite":{"extends":"delivery","rules":[
+  {"id":"title-fits","kind":"text-fit","severity":"warning"},
+  {"id":"has-cta","kind":"count","target":"cta","minimum":1}
+]}}
+```
+
+An override keeps the library rule's `kind` and replaces only the fields it sets. Reports name the
+`library`, its `library_hash` (so a run is reproducible), where the suite came from (`source`:
+`document`, `group:NAME` or `workspace`), the `overrides` (`[{id, fields}]`) and `added` rule ids. The
+workspace file `.vixl-suite-passes.json` remembers the library version each document last passed; a
+report on a newer version carries `contract_changed`.
+
+### Starter suite from an approved design
+
+Workflow `suite-infer` (`{"name":"festival"}`) reads the approved open document and proposes a tolerant
+suite: `hierarchy` from the rendered type sizes (10% headroom), `relation` rules for the order of the
+text roles and for the headline and logo inside the canvas (with centre alignment where it holds),
+`count` for those required layers and the number of text layers, `contrast` for each text role (the
+WCAG level, or a review-only warning when the approved design is lower), `text` limits from the current
+copy plus headroom, and a `palette` from the colours in use. Each rule comes with an explanation of what
+was measured under `explanations`; delete or tighten rules before relying on them. The suite is returned,
+never attached; `apply: true` saves it as a library suite (`replace: true` overwrites one) and `group:
+NAME` makes that group inherit it. `from_group: NAME` infers from every member of a group and keeps only
+the rules every member proposes and passes, with each limit set to the strictest value all of them meet.
 
 ### When to test
 
@@ -142,12 +219,73 @@ runs the suites, returns checks and resulting bounds, and commits only on a clea
 Checked actions cannot change suite definitions. Contract changes remain explicit
 `apply` operations and participate in undo/history.
 
+## Waivers and check profiles
+
+Some findings are deliberate: a faint watermark numeral behind a title, a title bar that runs into the safe margin.
+A **waiver** accepts one on the record, with a reason and an optional expiry, instead of loosening the check or
+silencing it. Every scope uses the same record, `{check or rule, reason, expires}`:
+
+```json
+[{"type": "layer-intent", "target": "ghost", "waive": [{"check": "contrast", "reason": "ghost numeral", "expires": "2030-12-31"}]},
+ {"type": "waiver", "check": "contrast", "target": "tagline", "reason": "decorative watermark, approved by brand", "expires": "2030-12-31"},
+ {"type": "waiver", "check": "fonts", "reason": "proofing font until the brand fonts arrive"},
+ {"type": "waiver", "rule": "headline-size", "suite": "brief", "reason": "client asked for a smaller headline"}]
+```
+
+- **Layer**: `layer-intent waive` (check names or records; it replaces the layer's waivers, `[]` clears them) or
+  the `waiver` operation with a `target`. It covers the layer's findings of that check and, on a group, those of
+  the layers inside it. An `overlap` waiver can name its partners with `with`; `allow_overlap` and `allow_crop`
+  remain the shorthand for an accepted overlap pair and a deliberate crop. `allow_low_contrast: true` on
+  `layer-intent` is read as `waive: ["contrast"]`.
+- **Document**: the `waiver` operation without a target covers the check everywhere in the document, or (with
+  `rule`, and optionally `suite`) one suite rule. `remove: true` deletes a waiver. The operation needs a `reason`.
+- **Workspace**: `waivers` in `.vixl-checks.json` (below) apply to every document; `target` names a layer.
+  A project group's `shared.waivers` are written into each member (see [Studio](studio.md#shared-groups-and-concurrent-agents)).
+
+A waived finding is never dropped. It stays in `issues` with severity `info`, action `informational` and
+`waived` (scope, reason, expiry, and the severity and action it had), and the report's `waivers` lists every active
+and expired waiver with the number of findings it `matched`. A waived suite result has status `waived`. A waiver
+applies through the day named by `expires`. After that the finding is back with its own severity and carries
+`waiver_expired`, and an expired-waiver finding (code `waiver-expired`, action `fix`) asks you to fix the finding or
+renew the waiver, so `check --strict` fails until someone decides again. `check --no-waivers`
+(`vixl_check(waivers=false)`) shows every finding as if nothing were waived. Proof pages list each document's
+waivers and mark waived findings, and `group-show` lists the waivers of every member.
+
+A **check profile** says how strict a run is, so the same document can be sketched and shipped under one set of
+checks. Three are built in:
+
+| Profile | `fail_on` | Adds | Suites |
+| --- | --- | --- | --- |
+| `draft` | `error`: only errors fail | | none |
+| `review` | `fix`: any finding whose action is fix fails (the plain `check` verdict) | | all attached |
+| `final` | `review`: fix and review findings fail | `color_vision` | all attached |
+
+`check --profile final` (`vixl_check(profile="final")`, `profile` on production `run`, on `group-apply` and on the
+[CI action](ci.md)) runs the profile's checks and suites; its `fail_on` decides `passed`, and the report's `profile`
+names the profile, its `fail_on`, the indexes of the `failing` findings and each suite's status (a failed suite
+fails every level but `never`; a suite needing review fails `warning` and `review`). `fail_on` is `error`,
+`warning` (errors and warnings), `fix`, `review` or `never`. A workspace adds profiles, or overrides fields of the
+built-in ones, in `.vixl-checks.json` at its root; a project group's `profiles` override both for that group:
+
+```json
+{"profiles": {"final": {"fail_on": "review", "optional": ["color_vision", "print"], "suites": "all"},
+              "social": {"fail_on": "fix", "checks": ["bounds", "contrast", "safe_area", "legibility"]}},
+ "waivers": [{"check": "safe_area", "target": "title-bar", "reason": "full-bleed bar by design", "expires": "2030-12-31"}]}
+```
+
+A profile has `fail_on`, `checks` (default: the standard checks), `optional` (opt-in checks added to them),
+`suites` (`"all"`, `"none"` or a list of names) and `description`. The report's `outcome` follows the profile: what
+its `fail_on` fails is a validation failure, other fix and review findings stay review reasons, and waived findings
+are listed under `outcome.accepted`.
+
 ## Reusable actions and motion
 
 Higher-level operations:
 
 - `fit-text`: target, width, height, minimum/maximum font size. Wraps and fits within
-  the range or fails atomically. Shared character/paragraph styles are baked locally
+  the range or fails atomically. It measures the text as it is drawn and as the bounds check
+  measures it (rich spans and their own sizes, tracking, text case, leading), so a fitted layer
+  passes `check`. Shared character/paragraph styles are baked locally
   so fitting one item does not resize every use of a shared style.
 - `arrange-grid`: targets, columns, gap, x/y. Places unique sibling layers in cells
   sized for the largest item; it does not resize content.
@@ -236,10 +374,16 @@ before any rendering. `run` adds `"output":"campaign"`:
 Rows can be assembled from a CSV by a caller; existing `render --data` remains available.
 There are at most 10,000 outputs, ten variation axes and four concurrent workers.
 Row fields cannot also occur in the matrix. Explicit row values override artboard defaults.
-All attached suites run unless an explicit `suites` list selects others.
+All attached suites run unless an explicit `suites` list selects others. With `profile` (for example `"final"`),
+every variant must also pass that [check profile](#waivers-and-check-profiles): it picks the design checks, the
+suites (unless `suites` is given) and `fail_on`, and `production.json` names it. Without a profile, `quality` does
+not change which checks run.
 
 Optional `actions` run before checks; `motion` applies a saved sequence.
-At most three named `repair_actions` are tried in order, stopping when checks pass.
+At most three named `repair_actions` are tried in order, stopping when checks pass. The name `auto` runs the
+built-in repair map instead (fit-text, contrast ink, safe-area nudge; see
+[outcomes, diagnostics and repair](agent-trust.md#built-in-repairs)); its operations are reported under
+`repair_operations`.
 Failed/unmeasurable outputs are held for review; successful outputs remain available.
 
 Image formats: PNG, JPG, WebP, SVG. For animation use `kind:"timeline"` with
@@ -280,7 +424,8 @@ vixl workflow proof --request proof.json --workspace .
 
 Each item gets a thumbnail (click it to enlarge), its format, byte size, pixel size, colour mode (PNG/JPEG/TIFF
 mode, ICC profile, the PDF colour spaces it uses, a document's canvas and dpi) and, for `.vixl` documents, the
-`vixl_check` findings (`check: false` skips them). `before` adds a before/after pair with the changed share: it is
+`vixl_check` findings (`check: false` skips them), with waived findings marked and the document's
+[waivers](#waivers-and-check-profiles) listed with their reasons and expiry dates. `before` adds a before/after pair with the changed share: it is
 another file, or a revision of a `.vixl` item (`previous`, `head~2`, a checkpoint or branch). Items are paths or
 `{path, label?, before?, note?}`; up to 200.
 
@@ -294,6 +439,63 @@ with `overwrite: true`.
 A missing file fails the call, but an item that cannot be previewed or checked becomes a card with its error and
 is listed in the result's `failed` (`[{path, error}]`); `checked` gives each document's `passed`, errors and
 warnings. Each thumbnail is embedded once and reused by the enlarged view (`max_size`, 128–2400 px, default 1200).
+
+## Checking many documents
+
+`check-all` checks a set of documents in one call and returns one report; `vixl check --all` is the same on the
+command line, and the [GitHub Action](ci.md) runs it.
+
+```bash
+vixl check --all "designs/**/*.vixl" --fail-on warning
+vixl check --all "designs/**/*.vixl" --profile final
+vixl check --group launch --since-last
+vixl check --all --changed-since origin/main --format sarif --write junit=out/junit.xml
+```
+
+```json
+{"documents": ["designs/**/*.vixl"], "fail_on": "error", "workers": 4, "since_last": true,
+ "outputs": {"markdown": "out/checks.md", "sarif": "out/vixl.sarif", "proof": "out/checks.html"}}
+```
+
+Documents come from `documents` (globs or paths, default `**/*.vixl`; `.vixl-*` folders are skipped), a project
+`group`, or both; `changed_since` keeps only those changed (committed, staged, unstaged or untracked) since a git
+revision. Each document gets the `vixl_check` findings (`checks` to choose) plus its attached suites (`suites: false`
+skips them) and an optional inline `suite` (an object, or a `.json` file), in `workers` parallel threads (1–8). On a
+group the [group consistency checks](studio.md#group-consistency-checks) run as well (`group_checks`).
+
+The result has, per document, `status` (`passed`, `failed` for errors or a failed suite, `needs_review` for warnings,
+`fix` findings or a suite that needs review, `error` when it could not be checked), counts (`errors`, `warnings`,
+`fix`, `by_check`), the top ten `findings`, suite rule results and `failing`: the findings that reach `fail_on`.
+`fail_on` is the CI action's level: `error`, `warning` (or error), `fix` (any finding whose action is `fix`),
+`review` (fix or review findings) or `never`; a suite that does not pass counts at every level but `never`. With
+`profile` (`--profile`) every document is checked under that [check profile](#waivers-and-check-profiles) (its
+checks and suites; a group's `profiles` apply to its members), `fail_on` defaults to the profile's own level, and the
+report names the `profile`. Each document's waivers apply (`waivers: false`, `--no-waivers`, ignores them): waived
+findings stay in `findings` as informational with `waived`, never reach a level, and each document lists its
+`waivers`, which the Markdown summary repeats. `totals` sums them and `passed` is false when
+any document (or group finding) reaches the level, which is also the command's exit code. `base` pixel-diffs each
+document against its version at a git revision (`diff.changed_fraction`, or `new`), keeping base copies and diff
+images in `work`.
+
+`outputs` writes the report as `json`, `markdown` (the CI summary table), `junit` (one testsuite per document, one
+testcase per check and suite rule, failures carry the messages), `sarif` (SARIF 2.1.0: one result per finding with
+the check or `suite/NAME/RULE` as `ruleId`, the severity as level, the `.vixl` path as location and the layers as
+logical locations), `github` (workflow annotation lines: `::error file=…,title=Vixl contrast::…`) and `proof` (a
+[proof page](#proof-pages)). Existing files are kept unless `overwrite: true`. On the command line `--format` prints
+one of them (markdown by default, json with `--json`) and `--write FORMAT=PATH` writes others.
+
+### History and newly failing documents
+
+Every run records a history entry in `.vixl-checks/history/` (the Vixl version, each document's status, checksum
+and finding IDs; the last 200 entries are kept; `history: false` skips it). `since_last` compares the run with the
+previous one over the same documents and settings:
+
+- `newly_failing`: documents that reached `fail_on` now but not before, each with `new_findings` and a `cause`:
+  `document` when the file changed, `vixl version` when only Vixl changed (`version_changed`), else `unknown`;
+- `newly_passing`, `still_failing`, and documents `added` or `removed` since then.
+
+After an upgrade, `vixl check --all --since-last` therefore names the documents that the new version judges
+differently. Vixl does not schedule runs itself: run it from CI on a schedule (a cron workflow), or after an update.
 
 ## Logo packages
 
@@ -328,16 +530,38 @@ has at least 3:1 contrast with the background and otherwise use the one-colour l
 There is no EPS output: EPS cannot carry transparency and most tools that once needed it accept PDF or SVG. Hand
 over the PDF (print) or SVG (web, sign makers).
 
+## Brand boards
+
+`brand-board` draws the workspace `brand.json` (or one of its presets) as a guidelines document: cover, colour
+roles with contrast pairs, the text-stage ladder, logos with their clear space, and do/don't rules. It writes a
+`.pdf`, `.pptx` or `.html` (and the editable `.vixl` with `document`). See [brands](brands.md#brand-board).
+
 ## Persistent rendering cache and library
 
-Production variants, timeline exports and contact sheets use a bounded persistent PNG cache in the
-per-user cache directory (`~/.cache/vixl/render`, or `VIXL_RENDER_CACHE`), so output folders stay clean.
-Workflow `preview` and film document shots cache in the workspace's `.vixl-cache`. Direct Python callers may use `vixl.render_cache.enable(project, directory)`. Within a
-session, rendered layers are also kept in a bounded in-memory cache keyed by content and size, so a
-layer that only moves between timeline frames is not redrawn.
+Production variants, timeline exports, contact sheets and `vixl export`/`vixl render` of a saved document use a
+bounded persistent PNG cache in the per-user cache directory (`~/.cache/vixl/render`, or `VIXL_RENDER_CACHE`),
+so output folders stay clean and a second export of an unchanged document reads its frame back instead of
+drawing it. `VIXL_RENDER_CACHE=off` turns the disk cache off; `VIXL_CACHE_MAX_MB` sets its size cap (default
+256; the least recently used PNGs go first). `vixl cache info` reports the directory, entries, bytes and cap,
+and `vixl cache clear` empties it.
+Workflow `preview` and film document shots cache in the workspace's `.vixl-cache`. Direct Python callers may use
+`vixl.render_cache.enable(project, directory)`. Within a session, rendered layers (and composited groups, keyed
+on their whole subtree) are also kept in a bounded in-memory cache keyed by content and size, so a layer that
+only moves between timeline frames is not redrawn; the MCP and REST servers keep a document's caches when they
+reload it after it changed on disk.
 Keys include render dependencies, font bytes, engine source/version and imaging library
 versions. Unchanged layers and sampled frames can survive across sessions. Cache corruption
-or an unavailable cache falls back to rendering. The disk cache defaults to 256 MiB.
+or an unavailable cache falls back to rendering.
+
+Sequences (timeline exports, contact sheets and film shots) store a whole frame only the second time it is
+requested, in that export or an earlier one (a small ledger beside the cache remembers recent frames): a film
+whose motion never stops draws each frame once and would otherwise fill the cache with one-use PNGs, while held
+frames and re-exports of unchanged stretches are still kept. Layers are always stored, so a static grain
+background or header is drawn once per export. A frame of a timeline shares every layer it does not animate
+with the document, and top-level groups that draw nothing at that time (hidden or at zero opacity, such as the
+inactive cues of a lyric film) are left out of it unless another layer or the document refers to them; the
+pixels are the same either way. `VIXL_PROFILE=1` reports the cache's hits, misses, writes, skipped frame
+writes and evictions (see [troubleshooting](troubleshooting.md#find-out-why-a-render-is-slow)).
 Linked files and plugin effects bypass persistent caching; dependent groups are cached
 at whole-frame level rather than incorrectly treating a group as an independent leaf.
 There is no dirty-region compositor or GPU renderer.
@@ -349,10 +573,12 @@ Library actions take a workspace-relative `directory`:
 - `library-save`: name, description, tags. Saves a versioned, self-contained `.vixl` component.
 - `library-search`: query. Matches all terms across name, description and tags.
 - `library-open`: id, output. Opens an editable copy with its embedded assets and recipes.
-- `library-place`: id, name. Inserts the rendered component as an embedded raster layer.
+- `library-place`: id, name, `as`. Inserts the component as an editable group of its layers (new IDs,
+  with the fonts and images it uses); `as: "image"` inserts one raster snapshot instead.
 
-The original library document remains editable. In-place placement is a raster snapshot,
-not a live cross-document symbol. Components may hold isolated characters, masks, palettes,
+The original library document remains editable. A placed component is an independent copy, not a live
+cross-document symbol (link the component with `link` for that); a single object is reused the same way
+with `object-save` / `object-place` (see [objects](objects.md#save-and-place-editable-objects)). Components may hold isolated characters, masks, palettes,
 timelines and backgrounds. Search uses explicit metadata, not an embedding service.
 
 ## Durable jobs
@@ -457,7 +683,7 @@ Changing variables updates text and width-only wrapping boxes. It does not rerun
 
 Recomposition replaces the layout-generated layers. Manual edits, layer IDs used by external bindings, custom animation tracks and adjustments to those generated layers may not survive. Store such content outside the generated prefix or rebuild it in the action. Check the longest row and every target size.
 
-Without named suites, production runs bounds and text-flow checks and returns `needs_review` for failures rather than publishing clipped text. Add suites for the rest of the design contract. Unchanged runs reuse an output only when inputs, fonts, linked sources, settings and checks match and the output's SHA-256 still agrees. Layer caches use the user cache directory, not the deliverables directory.
+Without named suites, production runs the attached and inherited suites, or bounds and text-flow checks when there are none, and returns `needs_review` for failures rather than publishing clipped text; a clean output with no suite is `completed` with `outcome.state` `unvalidated`, because no suite validated it. Each result and the report carry an `outcome` ([outcome states](agent-trust.md#outcome-states)). Every variant is also checked for leftover template copy (`placeholders`); a row that leaves a variable undefined, or draws placeholder copy, is `needs_review` with findings that name the variant and its input `row`. Add suites for the rest of the design contract. Unchanged runs reuse an output only when inputs, fonts, linked sources, settings and checks match and the output's SHA-256 still agrees. Layer caches use the user cache directory, not the deliverables directory.
 
 The `app-animation-package` workflow packages named source documents, theme variables, explicit transitions, one-shot/looping behavior, reduced-motion PNGs and editable masters. Its generated manifest and standalone consumer are documented in [animation authoring](animation-authoring.md#app-animation-packages). Package outputs are new directories and external links must be frozen first.
 

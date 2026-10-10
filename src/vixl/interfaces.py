@@ -1,5 +1,6 @@
 """Cached project sessions, fixed-project REST and workspace-scoped MCP services."""
 
+from collections import OrderedDict
 from contextlib import contextmanager
 import hmac
 from pathlib import Path
@@ -85,6 +86,10 @@ class Session:
         self._path = None  # The server-wide default: the document it started with, or set outside MCP.
         self._client_paths = WeakKeyDictionary()
         self.documents = {}
+        # Each document's render caches, kept when the document is reloaded (it changed on disk, a call
+        # failed, or it was closed and opened again): keys are content-addressed, so a reload re-renders
+        # only what changed.
+        self._render_caches = OrderedDict()
         self._mutex = RLock()
         if path:
             self.open(path if workspace else Path(path).resolve())
@@ -127,6 +132,17 @@ class Session:
         stat = path.stat()
         return (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns)
 
+    def load(self, path):
+        """``Project.load`` that carries the document's previous render caches over."""
+        project = Project.load(path, limits=self.limits)
+        kept = self._render_caches.pop(path, None)
+        if kept is not None:
+            project._cache, project._paint_cache = kept
+        self._render_caches[path] = (project._cache, project._paint_cache)
+        while len(self._render_caches) > 2 * self.MAX_OPEN:
+            self._render_caches.popitem(last=False)
+        return project
+
     def _remember(self, path, project, stamp):
         project._workspace = self.workspace
         self.documents.pop(path, None)
@@ -151,7 +167,7 @@ class Session:
             resolved = self.resolve(path)
             require(resolved.is_file(), f"Document does not exist: {path}", "not_found", field="path")
             with file_lock(str(resolved)):
-                project = Project.load(resolved, limits=self.limits)
+                project = self.load(resolved)
                 done = None
                 if upgrade and project.upgraded_from:
                     done = run_upgrade(project, pin_fills=upgrade == "pin-fills")
@@ -251,7 +267,7 @@ class Session:
                 try:
                     stamp = self.stamp(path)
                     if entry is None or entry.project is None or stamp != entry.stamp:
-                        entry = _Document(path, Project.load(path, limits=self.limits), stamp)
+                        entry = _Document(path, self.load(path), stamp)
                     # Addressing a document explicitly keeps it open but does not change the active one.
                     self.documents.pop(path, None)
                     self.documents[path] = entry
@@ -312,7 +328,7 @@ class Session:
         return self.apply_reviewed(operations, dry_run, detail, document, operations_path)[0]
 
     def apply_reviewed(self, operations, dry_run=False, detail="compact", document=None, operations_path=None,
-                       check=None, preview=None, budget=None, suites=None):
+                       check=None, preview=None, budget=None, suites=None, repair=None):
         """apply, plus the optional ``check`` findings, attached ``suites`` and ``preview`` PNG of the result
         (checks.apply_reviewed):
         returns ``(result, PNG bytes or None)``."""
@@ -329,7 +345,8 @@ class Session:
             from .service_fonts import checker
 
             return apply_reviewed(p, operations, dry_run=dry_run, detail=detail, check=check, preview=preview,
-                                  validate=checker(p, service_check), budget=budget, suites=suites)
+                                  validate=checker(p, service_check), budget=budget, suites=suites,
+                                  repair=repair)
 
     def render(self, variables=None, artboard=None, comp=None, document=None):
         with self.project(document=document) as p:
@@ -344,7 +361,8 @@ class Session:
             return p.measure(**options)
 
     def check(self, document=None, **options):
-        with self.project(document=document) as p:
+        # repair writes (one undoable batch); a plain check only reads.
+        with self.project(write=bool(options.get("repair")), document=document) as p:
             return p.check(**options)
 
     def validate(self, profile=None, rules=None, document=None, **options):
@@ -407,14 +425,77 @@ class Session:
             return result
 
 
-def create_app(path, *, token=None, limits=None):
+async def profiled_response(response, run):
+    """A REST response with ``run``'s render profile: in the ``X-Vixl-Profile`` header (compact, the slowest
+    layers first) and, for a JSON object body, as ``render_profile`` in the body too."""
+    import json
+
+    from fastapi.responses import Response
+
+    report = run.report()
+    headers = {k: v for k, v in response.headers.items() if k.lower() not in ("content-length", "content-type")}
+    summary = {**report, "layers": report["layers"][:5], "renders": report["renders"][-3:]}
+    headers["x-vixl-profile"] = json.dumps(summary, separators=(",", ":"))[:6000]
+    body = b"".join([chunk async for chunk in response.body_iterator])
+    media = response.headers.get("content-type", "")
+    if media.startswith("application/json"):
+        try:
+            value = json.loads(body)
+        except ValueError:
+            value = None
+        if isinstance(value, dict):
+            value["render_profile"] = report
+            body = json.dumps(value).encode()
+    return Response(body, status_code=response.status_code, headers=headers, media_type=media or None)
+
+
+def create_app(path, *, token=None, limits=None, call_limits=None):
+    """The REST app for one document. ``call_limits`` (default: from the environment, see ``call_limits.py``)
+    bounds each call: a timeout after which a call answers 202 with a job, an export page and megapixel cap
+    and the heavy calls running at once in the workspace."""
     try:
         from fastapi import FastAPI, Request
         from fastapi.responses import JSONResponse, Response
         from starlette.middleware.trustedhost import TrustedHostMiddleware
     except ImportError as exc:
         raise VixlError("missing_dependency", "Install vixl-engine[server]") from exc
-    session = Session(path, limits)
+    import asyncio
+    from concurrent.futures import ThreadPoolExecutor
+    import contextvars
+    import functools
+
+    from .call_limits import GATE, CallLimits, RestJobs, check_export, detached
+
+    call_limits = call_limits if call_limits is not None else CallLimits.configure()
+    session = Session(path, call_limits.apply_to(limits or Limits()))
+    session.call_limits = call_limits
+    jobs = RestJobs()
+    workers = ThreadPoolExecutor(max_workers=16, thread_name_prefix="vixl-rest")
+
+    def limited(fn):
+        """A heavy route: counted against max_concurrent, and detached into a job after the timeout."""
+        @functools.wraps(fn)
+        async def wrapper(*args, **kwargs):
+            key = GATE.acquire(session.workspace, call_limits.max_concurrent)
+            try:
+                # Run in a copy of the request's context, so a VIXL_PROFILE render profile sees the work.
+                future = workers.submit(contextvars.copy_context().run, fn, *args, **kwargs)
+            except BaseException:
+                GATE.release(key)
+                raise
+            future.add_done_callback(lambda _: GATE.release(key))
+            waiter = asyncio.wrap_future(future)
+            waiter.add_done_callback(lambda f: f.cancelled() or f.exception())  # Retrieved even if nobody waits.
+            if call_limits.timeout is None:
+                return await waiter
+            try:
+                return await asyncio.wait_for(asyncio.shield(waiter), call_limits.timeout)
+            except asyncio.TimeoutError:
+                ident = jobs.add(fn.__name__, future)
+                return JSONResponse(detached(ident, fn.__name__, call_limits.timeout), status_code=202,
+                                    headers={"Location": f"/jobs/{ident}", "Retry-After": "3"})
+
+        return wrapper
     app = FastAPI(title="Vixl Engine", version=__version__)
     if not token:
         app.add_middleware(
@@ -444,11 +525,51 @@ def create_app(path, *, token=None, limits=None):
             if len(body) > maximum:
                 return JSONResponse(too_large, status_code=413, headers={"Connection": "close"})
         request._body = bytes(body)
-        return await call_next(request)
+        from . import profiling
+
+        if not profiling.enabled():
+            return await call_next(request)
+        with profiling.profile() as run:
+            response = await call_next(request)
+        return await profiled_response(response, run)
 
     @app.exception_handler(VixlError)
     async def vixl_error(request: Request, exc: VixlError):
-        return JSONResponse(exc.as_dict(), status_code=403 if exc.code == "forbidden" else 400)
+        status = 403 if exc.code == "forbidden" else 400
+        if exc.code == "limit_exceeded":
+            status = 429 if exc.details.get("limit") == "max_concurrent" else 413
+        return JSONResponse(exc.as_dict(), status_code=status,
+                            headers={"Retry-After": "3"} if status == 429 else None)
+
+    @app.get("/limits")
+    def server_limits():
+        return {**call_limits.describe(), "max_pixels": session.limits.max_pixels,
+                "max_dimension": session.limits.max_dimension}
+
+    @app.get("/jobs")
+    def job_list():
+        return {"jobs": [jobs.summary(job) for job in jobs.recent()[:20]], "limits": call_limits.describe()}
+
+    async def finished(ident, wait):
+        job = jobs.get(ident)
+        if wait and not job["future"].done():
+            try:
+                await asyncio.wait_for(asyncio.shield(asyncio.wrap_future(job["future"])), min(float(wait), 50))
+            except Exception:  # Timed out, or failed: the summary says which.
+                pass
+        return job
+
+    @app.get("/jobs/{ident}")
+    async def job_status(ident: str, wait: float = 0):
+        return jobs.summary(await finished(ident, wait))
+
+    @app.get("/jobs/{ident}/result")
+    async def job_result(ident: str, wait: float = 0):
+        """What the original call would have answered: its file, JSON or error."""
+        job = await finished(ident, wait)
+        if not job["future"].done():
+            return JSONResponse(jobs.summary(job), status_code=409, headers={"Retry-After": "3"})
+        return job["future"].result()  # A failure re-raises and the handlers answer as the call would have.
 
     @app.exception_handler(MemoryError)
     async def out_of_memory(request: Request, exc: MemoryError):
@@ -503,11 +624,13 @@ def create_app(path, *, token=None, limits=None):
         return describe()
 
     @app.post("/workflow/{action}")
+    @limited
     def workflow(action: str, body: dict):
         from .workflows import dispatch
         # REST remains scoped to its active project. Other document/library/job I/O is MCP/CLI only.
         from .studio import REST_ACTIONS
-        require(action in {"check", "act", "plan", "film-plan", "lyric-video-plan", "organic-catalog", "form-fill", "drawing-report", "links"} | REST_ACTIONS,
+        require(action in {"check", "act", "plan", "film-plan", "lyric-video-plan", "organic-catalog", "form-fill", "drawing-report", "links",
+                           "repair-layout", "protected-edit"} | REST_ACTIONS,
                 "This workflow needs a workspace CLI/MCP session", "forbidden")
         return dispatch(session, action, body)
 
@@ -530,6 +653,7 @@ def create_app(path, *, token=None, limits=None):
         return register(kind, name, body.get("value"))
 
     @app.post("/export")
+    @limited
     def export_document(body: dict):
         allowed = {
             "format",
@@ -584,6 +708,7 @@ def create_app(path, *, token=None, limits=None):
 
             body["icc_profile"] = decode_upload(body.pop("icc_profile_base64"), 16 * 1024 * 1024)
         with session.project() as project:
+            check_export(call_limits, project, fmt, body)
             return Response(project.export(**body), media_type=media[fmt])
 
     @app.get("/sizes")
@@ -684,6 +809,7 @@ def create_app(path, *, token=None, limits=None):
             return inspect_timeline(p)
 
     @app.get("/timeline/frame")
+    @limited
     def timeline_frame(time: str = "0", max_width: int = 1024, max_height: int = 1024):
         from .mcp_tools import preview
 
@@ -691,6 +817,7 @@ def create_app(path, *, token=None, limits=None):
         return Response(preview(session, None, max_width, max_height, 4_194_304, time=value), media_type="image/png")
 
     @app.post("/timeline/export")
+    @limited
     def timeline_export(body: dict):
         import tempfile
 
@@ -729,23 +856,26 @@ def create_app(path, *, token=None, limits=None):
         return session.inspect()["layers"]
 
     @app.post("/operations")
+    @limited
     def operations(body: dict):
         import base64
 
         result, image = session.apply_reviewed(
             body.get("operations"), bool(body.get("dry_run", False)), body.get("detail", "compact"),
             operations_path=body.get("operations_path"), check=body.get("check"), preview=body.get("preview"),
-            suites=body.get("suites"),
+            suites=body.get("suites"), repair=body.get("repair"),
         )
         if image is not None:
             result["preview_base64"] = base64.b64encode(image).decode()
         return result
 
     @app.get("/render")
+    @limited
     def render():
         return Response(session.render(), media_type="image/png")
 
     @app.post("/render")
+    @limited
     def render_variables(body: dict):
         return Response(
             session.render(body.get("variables"), body.get("artboard"), body.get("comp")),
@@ -762,20 +892,23 @@ def create_app(path, *, token=None, limits=None):
         return session.measure_spacing(**fixed(body))
 
     @app.post("/check")
+    @limited
     def check(body: dict):
         return session.check(**fixed(body))
 
     @app.post("/preview")
+    @limited
     def preview_image(body: dict):
         from .mcp_tools import preview
 
         options = fixed(body)
         allowed = {"variables", "max_width", "max_height", "max_bytes", "artboard", "comp", "region", "time", "proof", "simulate",
-                   "guides", "page", "values", "show_fields", "isolate"}
+                   "guides", "page", "values", "show_fields", "isolate", "views", "exploded"}
         known_fields(options, allowed, "preview")
         return Response(preview(session, **options), media_type="image/png")
 
     @app.post("/compose")
+    @limited
     def compose_piece(body: dict):
         """vixl_compose as a dry run: this server serves one fixed document, so it builds, checks and previews the
         piece without saving it (use MCP or the CLI to write it)."""
@@ -792,6 +925,7 @@ def create_app(path, *, token=None, limits=None):
         return result
 
     @app.post("/compare")
+    @limited
     def compare_revisions(body: dict):
         import base64
         import io
@@ -832,6 +966,7 @@ def create_app(path, *, token=None, limits=None):
             return Response(stream.getvalue(), media_type="image/png")
 
     @app.post("/animation/export")
+    @limited
     def animation_export(body: dict):
         import tempfile
 
@@ -858,6 +993,7 @@ def create_app(path, *, token=None, limits=None):
         return session.measure(**fixed(body))
 
     @app.post("/validate")
+    @limited
     def validation(body: dict):
         return session.validate(body.get("profile"), body.get("rules"))
 
@@ -893,13 +1029,14 @@ def create_app(path, *, token=None, limits=None):
                                                credit=credit, license=license))
 
     @app.post("/ai/{command}")
+    @limited
     def ai(command: str, body: dict):
         return session.ai(command, body.get("args", []))
 
     return app
 
 
-def serve(path, host="127.0.0.1", port=8765, token=None, limits=None, *, open_browser=False):
+def serve(path, host="127.0.0.1", port=8765, token=None, limits=None, *, open_browser=False, call_limits=None):
     require(
         host in ("127.0.0.1", "localhost", "::1") or token,
         "Non-loopback serving requires VIXL_API_TOKEN",
@@ -909,7 +1046,7 @@ def serve(path, host="127.0.0.1", port=8765, token=None, limits=None, *, open_br
         import uvicorn
     except ImportError as exc:
         raise VixlError("missing_dependency", "Install vixl-engine[server]") from exc
-    app = create_app(path, token=token, limits=limits)
+    app = create_app(path, token=token, limits=limits, call_limits=call_limits)
     if open_browser:
         import asyncio
         import webbrowser
@@ -935,7 +1072,7 @@ def require_document_default():
 
 
 def mcp_server(path=None, limits=None, *, workspace=None, schema="full", planner=False, tools="all",
-               require_document=None):
+               require_document=None, call_limits=None):
     try:
         from .mcp_tools import build_server
         import mcp.server.fastmcp  # noqa: F401
@@ -944,7 +1081,12 @@ def mcp_server(path=None, limits=None, *, workspace=None, schema="full", planner
 
     if require_document is None:
         require_document = require_document_default()
-    session = Session(path, limits, workspace=workspace, require_document=require_document)
+    from .call_limits import CallLimits
+
+    call_limits = call_limits if call_limits is not None else CallLimits.configure()
+    session = Session(path, call_limits.apply_to(limits or Limits()), workspace=workspace,
+                      require_document=require_document)
+    session.call_limits = call_limits
     return build_server(session, schema=schema, planner=planner, tools=tools)
 
 

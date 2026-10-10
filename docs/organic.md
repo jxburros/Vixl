@@ -87,6 +87,49 @@ export writes native paths.
 | `lily-pad` | notched pad with radiating veins | `color` |
 | `fur-blob` | an ellipse body with lanceolate tufts `along` its outline pointing out, and darker inner flicks | `tufts`, `aspect`, `length`, `color`, `flick_color` |
 
+### Presets and their kinds
+
+Every preset maps to a kind of the [object taxonomy](objects.md): group what a preset draws (with anything you
+add) and declare it with `{type: object, target: GROUP, kind: …}` so its parts can be named, checked and
+exported as one object. Surface patterns (`spots`, `scales`, `cells`, `giraffe`, `fur-blob`) map to `texture`
+kinds: apply them to an object's parts rather than declaring them as objects.
+
+| Preset | Kind | Taxonomy |
+| --- | --- | --- |
+| `flower` | `flower` | organic › botanical › flower |
+| `daisy` | `daisy` | organic › botanical › flower › daisy |
+| `sunflower` | `sunflower` | organic › botanical › flower › sunflower |
+| `rose` | `rose` | organic › botanical › flower › rose |
+| `tree` | `tree` | organic › botanical › tree |
+| `pine` | `pine` | organic › botanical › tree › pine |
+| `fern` | `fern` | organic › botanical › fern |
+| `frond` | `frond` | organic › botanical › leaf › frond |
+| `leaf` | `leaf` | organic › botanical › leaf |
+| `branch` | `branch` | organic › botanical › branch |
+| `vine` | `vine` | organic › botanical › vine |
+| `grass` | `grass` | organic › botanical › grass |
+| `fur-blob` | `fur` | texture › fur |
+| `starfish` | `starfish` | organic › animal › starfish |
+| `jellyfish` | `jellyfish` | organic › animal › jellyfish |
+| `octopus` | `octopus` | organic › animal › cephalopod › octopus |
+| `shell` | `shell` | organic › animal › mollusc › shell |
+| `snail` | `snail` | organic › animal › mollusc › snail |
+| `caterpillar` | `caterpillar` | organic › animal › insect › caterpillar |
+| `worm` | `worm` | organic › animal › worm |
+| `mushroom` | `mushroom` | organic › fungus › mushroom |
+| `feather` | `feather` | organic › feather |
+| `coral` | `coral` | organic › animal › coral |
+| `brain-coral` | `brain-coral` | organic › animal › coral › brain-coral |
+| `cactus` | `cactus` | organic › botanical › cactus |
+| `cell` | `cell` | organic › cell |
+| `cells` | `cells` | texture › cells |
+| `giraffe` | `patches` | texture › patches |
+| `spots` | `spots` | texture › spots |
+| `scales` | `scales` | texture › scales |
+| `dandelion` | `dandelion` | organic › botanical › flower › dandelion |
+| `pinecone` | `pinecone` | organic › botanical › pinecone |
+| `lily-pad` | `lily-pad` | organic › botanical › lily-pad |
+
 ## Custom forms
 
 ```json

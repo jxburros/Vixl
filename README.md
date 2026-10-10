@@ -11,7 +11,7 @@ Create, inspect, edit, measure and export layered designs through MCP, CLI, Pyth
 No graphical display is required. Text, shapes, masks, effects, variables, constraints,
 pages and history stay editable in a portable `.vixl` master.
 
-Current tagged release: **0.24.1**. See the [changelog](CHANGELOG.md#0241) for release notes.
+Current tagged release: **0.25.0**. See the [changelog](CHANGELOG.md#0250) for release notes.
 Run `vixl --version` to check your runtime;
 record the Git commit when using a source checkout.
 
@@ -95,7 +95,7 @@ vixl mcp --workspace . --tools core --schema slim
 For a pinned tagged runtime with uv:
 
 ```bash
-uvx --from https://github.com/jxburros/Vixl/archive/refs/tags/v0.24.1.tar.gz vixl mcp --workspace . --tools core --schema slim
+uvx --from https://github.com/jxburros/Vixl/archive/refs/tags/v0.25.0.tar.gz vixl mcp --workspace . --tools core --schema slim
 ```
 
 The workspace must exist. Use `--tools compact --schema slim` for consolidated workflow
@@ -166,6 +166,7 @@ individuals and for companies with fewer than 100 people and under US$1M (2019) 
 companies need a commercial licence from the licensor. Copies of Vixl must carry the licence and
 its `Required Notice:` lines. If Vixl helped make your work, please credit it ("Made with Vixl").
 
-Bundled assets keep their own terms: DejaVu Sans ([font licence](src/vixl/data/FONT-LICENSE.txt)),
+Bundled assets keep their own terms: DejaVu Sans ([font licence](src/vixl/data/FONT-LICENSE.txt)), the Noto Sans,
+Noto Sans Symbols, Noto Sans Symbols 2 and Noto Sans Math fallback fonts ([SIL OFL 1.1](src/vixl/data/NOTO-LICENSE.txt)),
 the xkcd colour names (CC0), and VIXL Line emoji artwork adapted from OpenMoji
 ([CC BY-SA 4.0](src/vixl/data/emojis/LICENSE.txt); [Unicode data license](src/vixl/data/emojis/UNICODE-LICENSE.txt)).

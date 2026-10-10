@@ -81,7 +81,7 @@ vixl text add 'Hello' --name title --size 96 --color white [--font path.ttf] [--
 vixl shape rectangle|rounded-rectangle|ellipse|polygon|star|arc|line --name s --width W --height H [--x --y] \
      [--fill C] [--stroke C] [--stroke-width N] [--radius N] [--sides N] [--inner-radius 0.4] \
      [--line-cap butt|round|square] [--trim-start PCT] [--trim-end PCT]
-     [--start-angle -90 --end-angle 70]   # arc: pie wedge / donut segment (0 = 3 o'clock, clockwise)
+     [--start-angle -90 --end-angle 70]   # arc: pie wedge / donut segment (0 = 3 o'clock, clockwise); --open: the curve only
 vixl frame --path portrait.jpg --name photo --width 400 --height 500 --fit fill|fit [--asset ID] [--frame-shape heart | --outline SVG]
 vixl pixel-art --name sprite --width 16 --height 16 [--palette '{".":"transparent","g":"#ffc44d"}'] [--background .]
 vixl pixel-art --name spark --rows '[".w.","www",".w."]' --palette '{".":"transparent","w":"#fff"}'
@@ -204,6 +204,8 @@ vixl info --target title                             # contrast of a rendered la
 vixl spacing --targets heading body footer --axis vertical --tolerance 1 [--expected 24] [--check]
 vixl spacing --around body --before heading --after footer
 vixl check [--safe-area 5%] [--avoid X Y W H] [--thumbnail-width 320|off] [--checks overlap contrast] [--strict]
+vixl check --profile final --strict      # draft | review | final: which checks run and which findings fail
+vixl waiver contrast --target ghost --reason "watermark" --expires 2030-12-31   # accept a finding on the record
 vixl validate [instagram-post|instagram-square|story|youtube-thumbnail] [--rules rules.json]
 vixl assert canvas.width == 1920
 vixl assert layer.logo.exists
@@ -306,6 +308,7 @@ vixl ai remove --as removed ; vixl ai content-aware-fill --prompt '…' ; vixl a
 vixl -p F.vixl serve [--host 127.0.0.1] [--port 8765] [--token-env VIXL_API_TOKEN]
 vixl mcp --workspace DIR [--tools core|ai|compact|all] [--schema slim|full] [--require-document]   # MCP over stdio; default core + slim; core + ai run as two servers; --require-document (or VIXL_REQUIRE_DOCUMENT=1) makes document= mandatory
 vixl update --check | vixl update | vixl update --rollback ; vixl updates status|on|off   # Windows installer only
+vixl cache info | vixl cache clear   # disk render cache (VIXL_RENDER_CACHE=off, VIXL_CACHE_MAX_MB=256); VIXL_PROFILE=1 adds render_profile to results
 vixl upgrade old.vixl [--report] [--pin-fills]   # document saved before 0.21: list layers that render differently; --pin-fills restores white open-shape fills
 ```
 

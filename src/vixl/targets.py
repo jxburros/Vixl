@@ -26,17 +26,17 @@ EACH = frozenset({
     "text-set", "text-style", "remove", "hide", "show", "raise", "lower", "top", "bottom", "rasterize", "unconstrain",
     "duplicate", "move", "resize", "scale", "rotate", "pivot", "opacity", "blend", "flip", "crop", "constrain",
     "effect", *EFFECTS, "effect-disable", "effect-enable", "effect-move", "effect-remove", "effect-set", "layer-style",
-    "style-apply", "lut", "lookup", "layer-intent", "fit-text", "path-fit", "shape-to-path", "path-simplify",
+    "style-apply", "lut", "lookup", "layer-intent", "waiver", "fit-text", "path-fit", "shape-to-path", "path-simplify",
     "path-smooth", "offset-path", "outline-stroke", "round-corners", "distort", "skew", "transform", "fit",
     "snap-to-pixel", "keyframe-remove", "shape", "text", "solid", "gradient", "ungroup", "link-refresh",
-    "link-embed", "replace-contents", "pattern-fill", "text-animate", "qr", "barcode",
+    "link-embed", "replace-contents", "pattern-fill", "text-animate", "qr", "barcode", "object",
 })
 # Operations that already take targets themselves and apply to each listed layer.
 OWN_EACH = frozenset({"keyframe", "animate", "animate-preset", "look", "irregular", "cut-paper", "motion", "snap",
                       "match-size"})
 # Operations that act on the listed layers together.
 JOINT = frozenset({"align", "group", "reparent", "distribute", "artboard", "pathfinder", "suite-capture", "role-set",
-                   "arrange-grid", "adapt-layout", "stack", "place", "merge-layers"})
+                   "arrange-grid", "adapt-layout", "stack", "place", "merge-layers", "die-cut"})
 
 DESCRIPTION = ("Several layer IDs or names: the operation is applied to each in turn, in this order, within the "
                "same atomic batch. Pass target or targets, not both.")

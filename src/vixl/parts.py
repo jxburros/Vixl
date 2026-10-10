@@ -12,7 +12,7 @@ middle and last frames, since a swinging limb can come loose mid-animation.
 import numpy as np
 
 # Groups that hold a set of separate things by design, not one object.
-COLLECTIONS = ("chart", "drawing", "repeat", "container", "diagram", "bubble")
+COLLECTIONS = ("chart", "table", "drawing", "repeat", "container", "diagram", "bubble")
 ALPHA = 32
 MAX_POINTS = 1500
 

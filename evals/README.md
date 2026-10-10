@@ -16,7 +16,9 @@ Each task in `tasks/` is a JSON file with:
   `variable`, `state_field`, `animated` (a layer has a changing timeline track), `pixel` (alpha at a
   point of the render), `file` (optionally `image_size`, `image_mode` or text it `contains`),
   `files_differ`, `assert`, `pdf_fields` for a PDF's form fields and page count, and `pptx` for slide
-  count, slide text and speaker notes; layer matches can test a field's `field_key` and `field_kind`);
+  count, slide text and speaker notes; layer matches can test a field's `field_key` and `field_kind`;
+  `object` checks a declared object: its `kind` (or a kind below it), `complete` (no missing required
+  parts), `parts` and `sub_objects` it must have, and `connected` (no part floating free));
 - `reference` — a scripted tool-call solution, used to prove the task is solvable and the checks
   are correct. A step with `save_as: NAME` keeps its JSON result, and a later argument
   `"${NAME.key}"` uses a value from it (an imported image's `asset`, for example).

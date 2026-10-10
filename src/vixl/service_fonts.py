@@ -1,7 +1,7 @@
 """Which fonts a service client (REST, MCP) may name in operations.
 
 Service clients cannot make the server read a font file, so ``font`` accepts a font role
-(``heading``, ``body``), the bundled proofing font, or the name of a font already registered in the
+(``heading``, ``body`` or another typography role), a text stage (``h1``, ``caption`` …), the bundled proofing font, or the name of a font already registered in the
 document (``vixl_font_install``, ``vixl_font_pair`` or ``vixl_import_font`` register one). The same
 rule covers ``display_font``, the fonts set on rich-text spans and ``font=`` in rich-text Markdown.
 """
@@ -18,7 +18,10 @@ INSTALL = ("Install one with vixl_font_install or vixl_font_pair (or import a wo
 
 def allowed_fonts(project):
     """Names a client may use in this document: roles, registered fonts and embedded font files."""
-    return {*ROLES, *project.state.get("fonts", {}), *(name for name in project.assets if name.startswith("fonts/"))}
+    from .type_roles import STAGES
+
+    return {*ROLES, *STAGES, *(project.state.get("typography") or {}), *project.state.get("fonts", {}),
+            *(name for name in project.assets if name.startswith("fonts/"))}
 
 
 def named_fonts(operation):

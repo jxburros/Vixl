@@ -28,10 +28,16 @@ Documents: pack SOURCE_FOLDER OUTPUT.vixl, unpack PROJECT.vixl SOURCE_FOLDER,
            open FILE, save [FILE]   (NAME: letter, a4, business-card, instagram-portrait, favicon …)
            upgrade FILE [--report] [--pin-fills]   (a document saved before 0.21: what renders differently)
 Inspect:   status, inspect [LAYER], describe, layers, effects [LAYER], manifest,
-           dependencies, reproduce --check, schema
+           dependencies, reproduce --check, schema [OPERATION…] (one operation's fields, e.g. schema particles)
 Layers:    add FILE --name NAME, solid --color COLOR, gradient --start A --end B,
            text add TEXT --name NAME --size N, text NAME --text TEXT,
            remove, rename, duplicate, hide, show, raise, lower, top, bottom, reorder
+Objects:   objects [QUERY] | objects show KIND | objects tree (taxonomy), object GROUP --kind dog [--label L],
+           object part LAYER --part leg [--side left], object unset GROUP, inspect --object NAME|PATH|*,
+           object-save GROUP --name N, object-place N [--x X --y Y --scale S] [--source obj.vixl],
+           export dog.svg --isolate dog [--padding 8], export dog.vixl --isolate dog (portable object)
+Access:    accessibility --lang en-GB [--title T] [--page-alt TEXT] [--reading-order A B], layer-intent LAYER --alt TEXT
+           | --decorative, check --checks accessibility
 Organic:   organics (presets, generators, rules), organic PRESET [--set petals=8] [--color petals=#fff] [--seed N],
            organic --parts JSON, organic --target NAME --seed N (regrow)
 Imperfect: irregular TARGET --seed N [--strength subtle|natural|rough] (wobble, stroke weight, color drift, micro placement),
@@ -39,6 +45,8 @@ Imperfect: irregular TARGET --seed N [--strength subtle|natural|rough] (wobble, 
 Charts:    chart bar|stacked-bar|percent-bar|horizontal-bar|line|area|pie|donut --name N (--csv FILE | --categories JSON --series JSON)
            [--title T] [--legend bottom] [--value-labels true] [--number-format '#,##0'], chart line --target N (restyle, resize, change kind),
            chart-data --target N --set DEC=3330 | --append 'JAN=1,2' | --remove-category C | --reload; exports to .pptx as a native chart
+Tables:    table --name N (--table JSON | --csv FILE) [--align left,decimal] [--width W] [--zebra] [--borders all],
+           table-data --target N --set ROW:COLUMN=VALUE | --append JSON | --remove-row R | --reload; exports to .pptx as a native table
 Design:    pen, shape, shape-place, container-place, container-swap, container-reflow, group, ungroup, reparent LAYER… --into GROUP|page, clip, layer-style, distribute, style-define,
            style-apply, swatch, artboard, frame, replace-contents, repeat, repeat-blend,
            adjustment, lut, lookup, comp-save, comp-apply, text-layout, pathfinder, symbol, symbol-instance,
@@ -71,8 +79,10 @@ Merge:     merge [TEMPLATE.vixl] --data rows.csv --out sheets.pdf [--sheet-docum
 Measure:   info, sample X Y, histogram [--region X Y W H], info --target TEXT,
            spacing --targets A B C --axis vertical [--expected N] [--tolerance N] [--check],
            spacing --around BODY --before HEADER --after FOOTER,
-           check [--safe-area 5%] [--avoid X Y W H] [--thumbnail-width 320] [--strict]
+           check [--safe-area 5%] [--avoid X Y W H] [--thumbnail-width 320] [--strict] [--profile final]
            check --checks print color_vision [--ink-limit 300] [--min-ppi 200]
+           check --all [GLOB …] | --group NAME [--profile final] [--fail-on error|warning|fix|review|never] [--no-waivers]
+           [--changed-since REF] [--base REF] [--since-last] [--format markdown|json|junit|sarif|github] [--write sarif=vixl.sarif] (many documents, one report)
 Pixels:    pixel-art, pixel-draw, pixel-palette, pixels [LAYER],
            frame-save NAME [--duration MS], frame-apply NAME, frame-delete NAME,
            animation, animation-set --loop N --order FRAME FRAME,
@@ -92,17 +102,19 @@ Layout:    canvas resize SIZE, canvas size NAME [--landscape] [--bleed], canvas 
 History:   undo [N], redo [N], history, checkpoint NAME, branch NAME,
            checkout REF, branches, compare REF REF --out FILE [--isolate LAYER…], diff A B [--out D.png] (two documents or images)
 Automate:  apply FILE|- [--dry-run] [--check [CHECK…]] [--preview PNG [--isolate LAYER…]], run SCRIPT, batch GLOB --run SCRIPT --output DIR,
-           workflow ACTION --request FILE [--workspace DIR] (workflow schema lists actions; proof, logo-package …),
+           workflow ACTION --request FILE [--workspace DIR] (workflow schema lists actions; proof, logo-package, brand-board …),
            compose --request FILE [--preview P.png] (create → layout → look → operations → check → exports, atomic),
            each layer --name PATTERN -- COMMAND, preset save|apply|show NAME,
            transaction begin|commit|rollback, assert RULE, validate [PROFILE]
 Emoji:     emoji list|get|template|settings|replace|install|reset|destinations|requirements|export (emoji --help)
 Resources: commands, shapes, sizes [--category print], palette list|show|add|apply,
            template list|show|add|new|apply, layout list|show|apply NAME [--seed N|random] [--set title=…],
-           guidance list|show|add|apply|import|remove, providers, models
+           guidance list|show|add|apply|import|remove, providers, models,
+           catalog export [--out FILE [--overwrite]] [--section NAME] (versioned JSON bundle of the catalogs), catalog schema
 Type:      fonts [--category serif] [--mood M], font show FAMILY, font pairings [--mood M] [--for poster],
            font pairing NAME, font principles, font install FAMILY [--weight 700] [--role heading|body], font pair NAME|random,
-           font use NAME --role heading|body, font list|import, --scope workspace (install/pair: brand.json default for new documents)
+           font use NAME --role heading|body, font list|import, --scope workspace [--workspace DIR] (install/pair: brand.json
+           default for new documents; install's role defaults to heading)
 Finish:    look LAYER NAME [--color C] [--amount 0-1] [--remove]  (clean-flat, subtle-grain, light-paper, glow, neon,
            soft-shadow, hard-shadow, outline, gradient, soft-halo, grain, paper, film, duotone, risograph, sketch,
            watercolor, halftone, hand-made, plush), looks (catalog),
@@ -116,6 +128,7 @@ Styles:    styles [list [QUERY] | show NAME | apply NAME [--palette] | check [NA
            check --checks style [--style NAME…] (premade rules for swiss, brutalist, minimalist, art-deco …)
 Dice:      roll [--apply] [--set title=…] [--for poster] [--mood M] [--size NAME] [--seed N|random] [--lock palette=sage]
            [--variety low|medium|high] [--unfilled omit|blank] [--house-style 1|2], house [show PURPOSE] (the house style)
+Brand:     brand validate [--preset NAME] (missing roles, fonts, logos), brand show [--preset NAME]; workflow brand-board
 Color:     color [info] COLOR…, color convert COLOR --to oklch|cmyk|…, color harmony COLOR --scheme triadic,
            color scale COLOR | A B [--count N], color mix A B, color contrast FG BG, color names QUERY,
            palette-generate NAME COLOR [--scheme scale|triadic|…], type-scale --base 16 --ratio golden
@@ -138,8 +151,10 @@ AI:        ask PROMPT [--apply], generate --prompt TEXT --provider NAME,
            detect objects|faces, ocr, ai describe|info|regenerate|background-remove|upscale|extend,
            select object LABEL --provider NAME, ai remove|content-aware-fill|select-subject
 Updates:   update [--check | --rollback], updates [on | off | status]
+Cache:     cache info | cache clear (the disk render cache; VIXL_RENDER_CACHE=off, VIXL_CACHE_MAX_MB=256)
 Services:  serve | view [--host 127.0.0.1] [--port 8765], notes list|add|resolve
            mcp [--workspace DIR] [--http] [--tools core|ai|compact|all] [--schema slim|full] [--planner] [--require-document]
+           per-call limits (serve, view, mcp): [--call-timeout S] [--max-megapixels N] [--max-pages N] [--max-concurrent N]
 Import:    import FILE.svg [--svg-mode editable|appearance|auto] | FILE.pdf [--page 1] [--dpi 144]
            import PHOTO.jpg | https://HOST/photo.jpg [--name N] [--credit TEXT] [--license TEXT]
 
@@ -276,6 +291,10 @@ def output_options(args, command):
     p.add_argument("--show-fields", action="store_true", help="Outline form fields with their keys and tab order")
     p.add_argument("--alpha", choices=["auto", "keep", "flatten"], default="auto",
                    help="PNG/WEBP/TIFF/AVIF: RGB when opaque (auto), always RGBA (keep), or RGB on --background (flatten)")
+    p.add_argument("--isolate", nargs="+", metavar="LAYER",
+                   help="export only these layers or objects (dog, person/guitar, object:KIND), cropped to their ink; "
+                        "a .vixl output writes a portable object document")
+    p.add_argument("--padding", type=float, help="pixels around the ink with --isolate (default 0)")
     return p.parse_args(args)
 
 
@@ -368,6 +387,12 @@ def dispatch(argv):
     if cmd == "workflow":
         from .workflows import cli
         return cli(args, options, limits), options.json
+    if cmd == "check":
+        from .workspace_checks import cli as check_all_cli, wants_cli
+
+        if wants_cli(args):
+            report = check_all_cli(args, options, limits)
+            return report, options.json and isinstance(report, dict)
     if cmd == "merge":
         from .imposition import cli as merge_cli
         return merge_cli(args, options, limits), options.json
@@ -377,6 +402,9 @@ def dispatch(argv):
     if cmd == "compose":
         from .compose import cli as compose_cli
         return compose_cli(args, options, limits), options.json
+    if cmd == "catalog":
+        from .catalog import cli as catalog_cli
+        return catalog_cli(args), options.json
     if cmd in ("open", "schema", "upgrade") and any(arg in ("--help", "-h") for arg in args):
         return command_help(cmd, args), options.json
     if cmd in ("commands", "shapes"):
@@ -408,7 +436,7 @@ def dispatch(argv):
                     | {"filter"}
                     | {"workflow"}
                     | set(
-                        "pack unpack new session open upgrade save status inspect describe layers effects manifest dependencies reproduce schema check batch convert render export export-screens export-animation spacing pixels animation info sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert validate preset ai ask generate detect ocr serve view notes import mcp update updates commands shapes palette template guidance font fonts roll providers models color sizes layout layouts brushes organics easings timeline export-timeline timeline-sheet export-icons pages guides links merge styles looks guide diff compose house emoji capabilities".split()
+                        "pack unpack new session open upgrade save status inspect describe layers effects manifest dependencies reproduce schema check batch convert render export export-screens export-animation spacing pixels animation info sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert validate preset ai ask generate detect ocr serve view notes import mcp update updates cache commands shapes palette template guidance font fonts roll providers models color sizes layout layouts brushes organics easings timeline export-timeline timeline-sheet export-icons pages guides links merge styles looks guide diff compose house brand emoji capabilities catalog objects".split()
                     )
                 )
             }
@@ -420,6 +448,10 @@ def dispatch(argv):
         from .finishing_cli import standalone as finishing_standalone
 
         return finishing_standalone(cmd, args), options.json
+    if cmd == "brand" and "--help" not in args and "-h" not in args:
+        from .brand import cli as brand_cli
+
+        return brand_cli(args), options.json
     # A roll preview reads the document --apply would use (its canvas and brand), so both pick
     # the same direction; without a document it rolls standalone.
     standalone_roll = cmd == "roll" and "--apply" not in args and not has_document(options.project)
@@ -427,6 +459,10 @@ def dispatch(argv):
         from .resource_cli import font_standalone
 
         return font_standalone(cmd, args), options.json
+    if cmd == "objects":
+        from .objects import catalog_command
+
+        return catalog_command(args, workspace=Path.cwd()), options.json
     if cmd in ("color", "colors", "sizes", "layouts", "brushes", "easings", "organics") or (
         cmd == "layout" and (not args or args[0] in ("list", "show"))
     ):
@@ -459,6 +495,13 @@ def dispatch(argv):
         from .models import discovery_command
 
         return discovery_command(cmd, args), options.json
+    if cmd == "cache":
+        from . import render_cache
+
+        p = Parser(prog="vixl cache")
+        p.add_argument("action", nargs="?", choices=["info", "clear"], default="info")
+        a = p.parse_args(args)
+        return (render_cache.clear() if a.action == "clear" else render_cache.info()), options.json
     if cmd in ("update", "updates"):
         from . import updater
 
@@ -636,11 +679,14 @@ def dispatch(argv):
         p.add_argument("--host", default="127.0.0.1")
         p.add_argument("--port", type=int, default=8766)
         p.add_argument("--token-env", default="VIXL_API_TOKEN")
+        from .call_limits import add_arguments, from_arguments
+
+        add_arguments(p)
         a = p.parse_args(args)
         # Explicit workspaces can start empty. Existing --project configurations still work.
         path = current_path(options.project) if options.project or not a.workspace else None
         server = mcp_server(path, limits, workspace=a.workspace, schema=a.schema, planner=a.planner, tools=a.tools,
-                            require_document=a.require_document)
+                            require_document=a.require_document, call_limits=from_arguments(a))
         if a.http:
             from .interfaces import serve_mcp
             serve_mcp(server, a.host, a.port, os.environ.get(a.token_env))
@@ -657,8 +703,12 @@ def dispatch(argv):
         p.add_argument("--host", default="127.0.0.1")
         p.add_argument("--port", type=int, default=8765)
         p.add_argument("--token-env", default="VIXL_API_TOKEN")
+        from .call_limits import add_arguments, from_arguments
+
+        add_arguments(p)
         a = p.parse_args(args)
-        serve(path, a.host, a.port, os.environ.get(a.token_env), limits, open_browser=cmd == "view")
+        serve(path, a.host, a.port, os.environ.get(a.token_env), limits, open_browser=cmd == "view",
+              call_limits=from_arguments(a))
         return None, options.json
     with file_lock(str(path)):
         project = Project.load(path, limits=limits, allow_linked=options.allow_linked)
@@ -680,10 +730,11 @@ def command_help(cmd, args):
     manual = {
         "open": "open FILE",
         "upgrade": "upgrade [FILE] [--report] [--pin-fills]",
-        "schema": "schema",
+        "schema": "schema [OPERATION…]  (no argument: the whole operation-batch schema; "
+                  "schema particles pivot: just those operations' fields, types and descriptions; aliases accepted)",
         "canvas": "canvas resize SIZE | preset NAME | background COLOR",
         "save": "save [FILE]",
-        "inspect": "inspect [LAYER]",
+        "inspect": "inspect [LAYER] | inspect --object NAME|PATH|*",
         "status": "status",
         "session": "session --project FILE (NDJSON operations or command argv requests on stdin)",
         "describe": "describe [image]",
@@ -691,7 +742,7 @@ def command_help(cmd, args):
         "effects": "effects [LAYER]",
         "manifest": "manifest",
         "dependencies": "dependencies",
-        "reproduce": "reproduce --check",
+        "reproduce": "reproduce [--reference PNG --tolerance N --max-fraction F] [--lock FILE] [--write-lock FILE]",
         "pixels": "pixels [LAYER]",
         "animation": "animation",
         "undo": "undo [COUNT]",
@@ -705,7 +756,8 @@ def command_help(cmd, args):
         "transaction": "transaction begin|commit|rollback",
         "assert": "assert RULE",
         "each": "each layer [--name PATTERN] [--type TYPE] -- COMMAND",
-        "serve": "serve [--host HOST] [--port PORT] [--token-env ENV]",
+        "serve": "serve [--host HOST] [--port PORT] [--token-env ENV] [--call-timeout S] [--max-megapixels N] "
+                 "[--max-pages N] [--max-concurrent N]",
         "preset": "preset save|apply|show NAME [--set KEY=VALUE]",
         "fonts": "fonts [--category serif] [--role heading] [--mood elegant] [--query TEXT]",
         "view": "view [--host HOST] [--port PORT] [--token-env ENV] (serve and open live review)",
@@ -721,6 +773,7 @@ def command_help(cmd, args):
         "capabilities": "capabilities [TOPIC]  (e.g. capabilities animation: operations with fields, workflows, gotchas, guidance)",
         "looks": "looks  (the finishing looks; apply with look LAYER NAME)",
         "house": "house [show [PURPOSE]]  (the house style: craft rules, tiered pools, variety levels; or one purpose's profile)",
+        "brand": "brand validate|show [--preset NAME]  (check the workspace brand.json: missing roles, fonts and logos; or summarize it)",
         "guides": "guides (list guides and grids)",
         "links": "links (list the linked documents and their state: ok, stale, missing, cycle)",
     }
@@ -784,7 +837,13 @@ def project_command(project, cmd, args, *, detail="compact"):
             return ai_command(project, "ai", ["describe"])
         if args[:1] == ["--target"] or (args and args[0].startswith("--target=")):
             args = args[1:] if args[0] == "--target" else [args[0].split("=", 1)[1]]  # MCP spelling
-        require(len(args) <= 1, f"Usage: vixl {cmd} [LAYER] (or --target LAYER)")
+        if cmd == "inspect" and (args[:1] == ["--object"] or (args and args[0].startswith("--object="))):
+            from .objects import tree
+
+            ref = args[1] if args[0] == "--object" and len(args) > 1 else args[0].split("=", 1)[-1]
+            require(ref and ref != "--object", "Usage: vixl inspect --object NAME|PATH|*")
+            return tree(project, ref), False
+        require(len(args) <= 1, f"Usage: vixl {cmd} [LAYER] (or --target LAYER, or --object NAME)")
         return project.inspect(args[0] if args else None), False
     if cmd == "layers":
         require(args in ([], ["--full"]), "Use layers [--full]")
@@ -793,19 +852,40 @@ def project_command(project, cmd, args, *, detail="compact"):
     if cmd == "effects":
         return deepcopy(project.layer(args[0] if args else None)["effects"]), False
     if cmd == "manifest":
+        from .objects import tree
+
+        objects = tree(project, "*")["objects"]
         return {
             "version": __version__,
             "canvas": project.state["canvas"],
             "layers": len(project.state["layers"]),
             "history_entries": len(project.nodes),
             "dependencies": dependencies(project),
+            **({"objects": objects} if objects else {}),
         }, False
     if cmd in ("dependencies", "reproduce"):
         result = dependencies(project)
         if cmd == "reproduce":
-            project.render()
-            result["reproducible"] = True
-            result["note"] = "Current rendering verified; remote model replay is not guaranteed."
+            from .reproduce import read_lock, reproduce, write_lock
+
+            p = Parser(prog="vixl reproduce", description="Render and report the reproduction level reached: "
+                       "renderable, environment-matched (--lock) or reference-verified (--reference or --lock)")
+            p.add_argument("--check", action="store_true", help="Render and report (the default)")
+            p.add_argument("--reference", help="Approved reference image (PNG, ...) the render must match")
+            p.add_argument("--tolerance", type=int, default=0, help="Channel change (0-254) a pixel may have and still match")
+            p.add_argument("--max-fraction", type=float, default=0.0, help="Fraction of pixels allowed to differ (0-1)")
+            p.add_argument("--lock", help="Verify against this render lockfile (.json): reports located drift")
+            p.add_argument("--write-lock", help="Write a render lockfile (.json) for the document as it renders now")
+            p.add_argument("--overwrite", action="store_true")
+            a = p.parse_args(args)
+            if a.write_lock:
+                write_lock(project, a.write_lock, overwrite=a.overwrite)
+                result["lock_written"] = a.write_lock
+            result.update(reproduce(project, reference=a.reference, tolerance=a.tolerance, max_fraction=a.max_fraction,
+                                    locked=read_lock(a.lock) if a.lock else None, limits=project.limits))
+            result["note"] = (result.get("note", "") + " Remote model replay is not guaranteed.").strip()
+            if not result["reproducible"]:
+                raise VixlError("reproduction_failed", "; ".join(result["outcome"]["review_reasons"]), report=result)
         return result, False
     if cmd == "save":
         require(len(args) <= 1, "Use save [FILE]")
@@ -821,6 +901,11 @@ def project_command(project, cmd, args, *, detail="compact"):
         return {"saved": str(project.path)}, False
     if cmd in ("render", "export"):
         a = output_options(args, cmd)
+        if project.path is not None and getattr(project, "_disk_cache", None) is None:
+            # A saved document's next export, in a new process, reads unchanged layers and frames back.
+            from .render_cache import enable, user_cache_dir
+
+            enable(project, user_cache_dir())
         destination = a.out or a.path
         require(destination, "Provide output filename or --out FILE")
         require(destination == "-" or a.data or a.overwrite or not Path(destination).exists(),
@@ -829,6 +914,15 @@ def project_command(project, cmd, args, *, detail="compact"):
             destination == "-" or Path(destination).resolve() != project.path,
             "Cannot export over the project",
         )
+        if destination != "-" and Path(destination).suffix.lower() == ".vixl":
+            require(a.isolate, "A .vixl export writes a portable object document: pass --isolate OBJECT", field="path")
+            from .objects import portable_bytes
+
+            report = {}
+            page = int(a.page) if a.page and a.page.isdigit() else a.page
+            data = portable_bytes(project, {"isolate": a.isolate, "padding": a.padding, "page": page}, report)
+            Path(destination).write_bytes(data)
+            return {"output": destination, "bytes": len(data), **report}, False
         if destination != "-" and Path(destination).suffix.lower() == ".wav" and not a.data:
             from .audio import export_audio
 
@@ -937,6 +1031,8 @@ def project_command(project, cmd, args, *, detail="compact"):
             title=a.title,
             max_bytes=a.max_bytes,
             report=report,
+            isolate=a.isolate,
+            padding=a.padding,
             **print_options(a, project.limits),
         )
         if destination == "-":
@@ -977,10 +1073,14 @@ def project_command(project, cmd, args, *, detail="compact"):
                        help="connected check: pixels of gap still counted as touching (default 2)")
         p.add_argument("--style", nargs="+", help="style checks: evaluate this style (or styles) instead of the document's tag")
         p.add_argument("--page", help="Check one page of a multi-page document (default: the active page)")
-        p.add_argument("--pages", help="deck checks: the pages to check, e.g. 1-3,5 (default: every shown page)")
+        p.add_argument("--pages", help="the pages to check, e.g. 1-3,5 or all (every page shown on export), each "
+                                       "reported separately; with deck checks, the pages the deck review covers")
+        p.add_argument("--artboards", nargs="+", metavar="ARTBOARD",
+                       help="check each artboard (all, or names) in one report; findings name their artboard")
+        p.add_argument("--comps", nargs="+", metavar="COMP", help="check with each layer comp (all, or names)")
         p.add_argument("--min-font", type=float, help="deck checks: smallest projected text in points (default 18)")
         p.add_argument("--max-words", type=int, help="deck checks: most words on one page (default 60)")
-        p.add_argument("--include-hidden", action="store_true", help="deck checks: include hidden pages")
+        p.add_argument("--include-hidden", action="store_true", help="also check pages hidden from export")
         p.add_argument("--sample", help="form checks: fill the fields with worst-case values (worst) or each row of a CSV")
         p.add_argument("--ink-limit", type=float, default=300)
         p.add_argument("--min-ppi", type=float, default=200)
@@ -996,13 +1096,34 @@ def project_command(project, cmd, args, *, detail="compact"):
         for key in ("artboard", "comp"):
             p.add_argument("--" + key)
         p.add_argument("--strict", action="store_true", help="Exit with an error when any check fails")
+        p.add_argument("--repair", nargs="*", choices=["fit-text", "contrast-ink", "safe-area-nudge"],
+                       help="First apply the built-in repair for each fix finding it resolves (all kinds, or the named "
+                            "ones), saved as one undoable step")
+        p.add_argument("--offset", type=int, default=0, help="First finding to list")
+        p.add_argument("--limit", type=int, help="Findings to list (passed and the counts still cover all)")
+        p.add_argument("--profile", help="check profile (draft, review, final or one from .vixl-checks.json): its "
+                       "checks, suites and fail_on decide passed")
+        p.add_argument("--no-waivers", dest="waivers", action="store_false",
+                       help="report every finding as if the document had no waivers")
         options = vars(p.parse_args(args))
         strict = options.pop("strict")
+        if options["repair"] is not None:
+            options["repair"] = options["repair"] or True
+        from .deck import DECK_CHECKS
         from .pages import parse_pages
 
-        deck = {"pages": parse_pages(options.pop("pages")), "min_font": options.pop("min_font"),
-                "max_words": options.pop("max_words"), "include_hidden": options.pop("include_hidden") or None}
+        pages, hidden = options.pop("pages"), options.pop("include_hidden")
+        deck_run = bool(set(options["checks"] or ()) & {"deck", *DECK_CHECKS})
+        deck = {"pages": parse_pages(pages) if deck_run else None, "min_font": options.pop("min_font"),
+                "max_words": options.pop("max_words"), "include_hidden": (hidden or None) if deck_run else None}
         options["deck"] = {k: v for k, v in deck.items() if v is not None} or None
+        # Coverage: every listed artboard, page and comp in one report.
+        for key in ("artboards", "comps"):
+            if options[key] == ["all"]:
+                options[key] = "all"
+        if pages and not deck_run:
+            options["pages"] = "all" if pages == "all" else parse_pages(pages)
+            options["include_hidden"] = hidden
         if options["page"] and options["page"].isdigit():
             options["page"] = int(options["page"])
 
@@ -1014,8 +1135,11 @@ def project_command(project, cmd, args, *, detail="compact"):
         options["avoid"] = [[number(v) for v in zone] for zone in options["avoid"] or []]
         result = project.check(**options)
         if strict and not result["passed"]:
-            raise VixlError("design_check_failed", f"{result['errors']} design error(s)", report=result)
-        return result, False
+            profile = result.get("profile")
+            raise VixlError("design_check_failed", f"{len(profile['failing'])} finding(s) fail the {profile['name']} "
+                            f"profile (fail_on {profile['fail_on']})" if profile else f"{result['errors']} design error(s)",
+                            report=result)
+        return result, bool(result.get("repairs", {}).get("operations"))
     if cmd == "pixels":
         require(len(args) <= 1, "Use pixels [LAYER]")
         return project.inspect_pixels(args[0] if args else None), False
@@ -1293,9 +1417,17 @@ def main(argv=None):
             stream.reconfigure(encoding="utf-8", errors="backslashreplace")
     argv = list(sys.argv[1:] if argv is None else argv)
     try:
-        result, machine = dispatch(argv)
+        from . import profiling
+
+        with profiling.profile(force=False) as run:
+            result, machine = dispatch(argv)
+        if run is not None and not profiling.attach(result, run):
+            # A result that is not a JSON object (an image on stdout, plain text) keeps stdout as it was.
+            print(json.dumps({"render_profile": run.report()}), file=sys.stderr)
         emit(result, machine)
-        if ("workflow" in argv or "emoji" in argv) and isinstance(result, dict):
+        if getattr(result, "passed", None) is False:  # a formatted vixl check --all report
+            return 1
+        if ("workflow" in argv or ("check" in argv and ("--all" in argv or "--group" in argv)) or "emoji" in argv) and isinstance(result, dict):
             if result.get("passed") is False or result.get("success") is False or result.get("status") in ("failed", "needs_review", "cancelled"):
                 return 1
         return 0

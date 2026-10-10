@@ -145,7 +145,8 @@ def parse_markdown(markdown):
         base = {}
         if heading:
             body = body[heading.end():]
-            base = {"bold": True, "scale": (1.6, 1.3, 1.15)[len(heading.group(1)) - 1]}
+            level = len(heading.group(1))
+            base = {"bold": True, "scale": (1.6, 1.3, 1.15)[level - 1], "_stage": f"h{level}"}
         elif bullet:
             body = body[bullet.end():]
             settings = {"list": "bullet", "level": min(8, indent // 2)}
@@ -295,6 +296,7 @@ class Placed:
     text: str = ""
     bold: bool = False
     italic: bool = False
+    line: int = 0  # index into Layout.lines
 
 
 @dataclass
@@ -340,7 +342,8 @@ def styled_spans(project, layer, variables=None):
             "underline": span.get("underline", False),
             "strike": span.get("strike", False),
             "baseline": span.get("baseline", "normal"),
-            "tracking": float(span.get("tracking", 0)),
+            # A span's own tracking replaces the layer's.
+            "tracking": float(span.get("tracking", layer.get("tracking", 0))),
             "fake_bold": fake_bold,
             "fake_italic": fake_italic,
         })
@@ -432,8 +435,10 @@ def _split_word(project, token, width):
 def layout(project, layer, *, width=None, scale=1.0, variables=None):
     """Lay out a rich text layer. ``width`` wraps lines (default: the text-layout box width);
     ``scale`` multiplies every size, indent and spacing (used to fit text to its box)."""
+    from .lettering import view
     from .text import shape
 
+    layer = view(project, layer, variables)
     rich = layer["rich"]
     spans = styled_spans(project, layer, variables)
     settings = rich.get("paragraphs") or []
@@ -542,7 +547,7 @@ def layout(project, layer, *, width=None, scale=1.0, variables=None):
             mx = stroke + row["left"] + max(0.0, list_indent * 0.75 - advance)
             for glyph in glyphs:
                 result.glyphs.append(Placed(glyph.data, glyph.name, mx + glyph.x, baseline + glyph.y, first["size"],
-                                            mstyle["color"], glyph.text))
+                                            mstyle["color"], glyph.text, line=len(result.lines)))
         for token in row["tokens"]:
             style = token["style"]
             shift = {"super": -0.35, "sub": 0.15}.get(style["baseline"], 0.0) * style["size"] * scale
@@ -554,7 +559,7 @@ def layout(project, layer, *, width=None, scale=1.0, variables=None):
             for glyph in token["glyphs"]:
                 result.glyphs.append(Placed(glyph.data, glyph.name, cursor + glyph.x, baseline + shift + glyph.y,
                                             token["size"], style["color"], glyph.text, style["fake_bold"],
-                                            style["fake_italic"]))
+                                            style["fake_italic"], len(result.lines)))
             thickness = max(1.0, token["size"] * 0.06)
             if style["underline"]:
                 result.rects.append((cursor, baseline + token["size"] * 0.12, advance, thickness, style["color"], "underline"))
@@ -789,9 +794,22 @@ def _resolve_variants(project, variants):
     return dict(variants or {})
 
 
+def _stage_fonts(project, spans):
+    """Markdown headings take the h1–h3 stage fonts once the document typography sets one; the stage face
+    carries the weight, so the heading is not also synthesized bold."""
+    from .type_roles import role_font
+
+    for span in spans:
+        stage = span.pop("_stage", None)
+        if stage and "font" not in span and role_font(project, stage):
+            span["font"] = stage
+            span.pop("bold", None)
+
+
 def _make_rich(project, op, size):
     if "markdown" in op:
         spans, paragraphs = parse_markdown(op["markdown"])
+        _stage_fonts(project, spans)
     else:
         spans = deepcopy(op["spans"])
         require(all(isinstance(s, dict) and isinstance(s.get("text"), str) for s in spans), "Each span needs text",
@@ -838,6 +856,9 @@ def execute(project, op):
         layer = project.layer(op["target"]) if op.get("target") else None
         if layer is None:
             base = {k: op[k] for k in ("name", "font", "size", "color", "x", "y") if k in op}
+            if "font" not in base and (project.state.get("typography") or {}).get("body"):
+                # Rich text is running copy: its base face is body at any size; its headings take the h stages.
+                base["font"] = "body"
             align = op.get("align", "left")
             apply(project, {"type": "text", "text": "x", **base, "align": "center" if align == "center" else "right"
                             if align == "right" else "left"})

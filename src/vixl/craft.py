@@ -187,8 +187,8 @@ def shape_defaults(project, op, fields, width, height):
     """Fill a new shape's fill, stroke and corner from the document direction and report what was filled in.
 
     Closed shapes take ``@accent`` (else the neutral fill); a stroke without a width gets one proportional to
-    the shape, and a width without a colour gets ``@ink``. An open shape (geometry.OPEN_SHAPES or a path with
-    no Z) with neither fill nor stroke is drawn as an ``@ink`` stroke and stays unfilled (geometry.default_fill).
+    the shape, and a width without a colour gets ``@ink``. An open shape (geometry.is_open_shape: OPEN_SHAPES, a path
+    with no Z or an arc with closed: false) with neither fill nor stroke is drawn as an ``@ink`` stroke and stays unfilled (geometry.default_fill).
     A rounded rectangle without a radius takes the document's corner style, or soft when that is sharp."""
     from .geometry import is_open_shape
     from .selectors import record

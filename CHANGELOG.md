@@ -1,16 +1,128 @@
 # Changelog
 
-## Unreleased
+## 0.25.0
 
-Faster rendering. Every shortcut draws the same pixels as a full render; `tests/test_render_speed.py` compares them.
+Checks that cover a whole workspace, outcome states agents can trust, repairs, waivers and profiles; objects and accessibility; tables, Markdown decks and mockups; brand stages and presets; lyric-video production fixes; and faster rendering. Every speed shortcut draws the same pixels as a full render; `tests/test_render_speed.py` compares them.
+
+### Behaviour changes (migration)
+
+- **`rotate` turns a layer without a pivot about its centre**, as documented; it used to drift because the rotated box's top-left stayed fixed. Stored x/y are still the rotated box's top-left, so they now change on rotate; `rotation` on `shape`/`text` creation behaves the same. To keep a corner fixed, pass `about: "top-left"` or set a `pivot`. Saved documents keep their stored pose (#449).
+- **`particles` creates a group named after the emitter** holding `NAME/0…N`; particle x/y are relative to that group. Use `Project.bounds()` or `canvas_bounds` for canvas positions (#604).
+- **Drawing `import`/`clean` keep the paper's extent** (`crop: false` by default). Pass `settings.crop: true` to crop to the ink (#218).
+- **`library-place` inserts an editable group** instead of a raster snapshot; pass `as: "image"` for the snapshot (#381). **`ungroup` refuses a declared object**: run `{type: object, action: unset}` first or pass `force: true` (#374).
+- **New plain text with no `font` at or above the title step of the type scale uses the heading face** (it used the body face). Restore with `"font": "body"` or `"stage": "body"`. Layout text records its stage in `font_role`, so a later role `font-register` re-fonts it; `font pair --scope workspace` replaces only `fonts.heading`/`fonts.body` in `brand.json` (#406).
+- **`fit-text` measures text the way rendering and the bounds check do** (rich spans, tracking, text case, leading), so fitted sizes for tracked or rich text may come out smaller; re-run `fit-text` on layers fitted earlier. Text that cannot be measured as outlines fails with `unsupported_text` (#608).
+- **New default check `placeholders`**: documents that intentionally show "Lorem ipsum", TODO or `${name}` text now fail `check`; mark those layers with `layer-intent literal_text` (#553).
+- **`adapt-layout` (proportional) keeps content inside the target's safe area**, so content near the edges may move inward. Pass `safe: false`, `together: false` or `min_text: 0` (CLI `--no-safe`, `--no-together`, `--min-text 0`) for the old placement (#210).
+- **Lyric video**: the build keeps the template's own keyframes and markers (it used to drop them); clear the template's timeline to get the old result (#599). `start` and `end` are times on the video's clock; they equal song times when `lead_in` is 0 (#598).
+- **`vixl check --pages`** selects pages to cover unless deck checks are selected, where it keeps its old meaning (#556).
+- **A `group-apply` dry run reports suite failures** (`passed: false`, per member) instead of raising `check_failed`; publishing still refuses (#575).
+- **The GitHub Action runs `vixl check --all`**: suites attached to documents now run and fail the step (use `fail-on: never` to only report). `vixl-version` must be 0.25.0 or later. `fail-on` defaults to empty, meaning `error` unless a `profile` is set (#566, #563).
+- **A workspace font install without a role becomes the heading font** and says so under `normalized`; pass `--role body` for the body font (#606).
+- `vixl.timeline.project_at` frames share unchanged layers with the document: treat a frame as read-only, or `clone()` it before editing (#586).
+- HTML export and PowerPoint use the document language instead of hardcoded `en` / `en-US` (falling back to those) (#175).
+- The colour-vision check uses the contrast check's large-text rule (bold text from 18.66 px).
+- Existing result fields (`passed`, `by_action`, `status`, `needs_review`) are unchanged; read the new `outcome.state` to know whether a deliverable meets its brief (#525).
+
+### Checks across documents
+
+- `vixl check --all [GLOB…]` / `--group NAME` and the `check-all` workflow action check many documents in parallel into one report: status per document, counts, top findings and totals, written as JSON, Markdown, JUnit XML, SARIF 2.1.0, GitHub annotations or a proof page; `--changed-since REF` checks only changed documents and `--base REF` pixel-diffs against a git revision (#566, #567).
+- Run history in `.vixl-checks/history/` and `--since-last`: newly failing documents (and whether the document or the Vixl version changed), newly passing and still failing (#577).
+- `group-check` compares group members' logo placement, type ratios, swatches, palette and layers against the majority or a `reference` member (#550). Copy facts (prices, names, dates, URLs, legal lines) in brand.json `facts`, group `facts` or the request, with near-miss suggestions (#551).
+- `replace-across` finds and replaces text, colours, fonts and images across a group or glob; dry run by default, journaled and recoverable with `group-recover` (#570).
+- `group-apply` gains `review` (a before/after proof page or PNG contact sheet), `accept`/`reject`, and `decisions` (a proof page's downloaded decisions JSON); only accepted members are published (#575).
+
+### Suites, waivers and profiles
+
+- New suite rules: `text` (regex `pattern`/`forbid`, required `contains`, character and word limits, `case`, brand forbidden words; measured after variables, per artboard and campaign row) and `budget` (`max_layers`, `max_fonts`, `max_bytes`, `min_ppi`) (#552).
+- brand.json gains `words` (`forbid` → brand error, `prefer` → review) and `placeholders` (extra leftover-copy patterns) (#552, #553).
+- `placeholders` design check: lorem ipsum, TODO/TBD/XXX, "Headline here" slot text and unresolved or undefined `${name}` are fix findings; `{{…}}` is review only; `$${name}` escapes are exempt. Production variants with leftovers become `needs_review`, naming the variant and input `row` (#553).
+- Coverage: suites and design checks run over every artboard, page and comp in one report (`vixl check --artboards all --pages all --comps …`, `vixl_check`, REST); hidden pages need `include_hidden` (#556).
+- Library suites inherited by reference through `group-define suites` and brand.json `suites`, with member overrides by rule `id` (`suite-set {extends: NAME}`) and `suite-use reference: true`; reports carry `library_hash`, `overrides` and `contract_changed` (#574).
+- `suite-infer` proposes a tolerant, explained starter suite from an approved document; `from_group` keeps only rules every member passes (#580).
+- Waivers: accept a finding or suite rule with a `reason` and optional `expires`, through `layer-intent waive`, the new `waiver` operation (layer or document) or `.vixl-checks.json` `waivers` (workspace). Waived findings stay listed as informational; reports, proof pages and `group-show` list active and expired waivers; an expired waiver fails `check --strict` (#562). Decorative text waives its contrast finding with `waive: ["contrast"]` or `allow_low_contrast: true` (#531).
+- Check profiles `draft`, `review` and `final` (customisable in `.vixl-checks.json` or per group) choose the checks, suites and failing level: `check --profile`, `vixl_check(profile=)`, production `profile`, `group-apply` `profile`, `check --all --profile` and the CI action's `profile` input; `fail-on` gains `review` (#563).
+
+### Outcomes, diagnostics and repair
+
+- Check, apply, act, suites, group-apply, production, jobs, exports and proof pages return `outcome` with `execution`, `validation` and `review` (with reasons) and a summary `state`; batches report the worst state and a count per state. A render, export or apply without checks is `unvalidated`; waived findings are listed as `accepted` (#525).
+- Findings carry a stable `rule`, `layer_ids`, `box`/`region`, `page` and `measured` actual versus expected; fix findings carry a suggested `repair` of schema-valid operations that the check never applies. `vixl_check` / `vixl check` take `offset`/`limit` (#524).
+- Apply's `preview` takes `overlay` (fix findings outlined and labelled with rule and layer ID) and `focus` (a detail crop of one finding); `vixl_render_preview(overlay=true)` and the proof workflow's `overlay` do the same (#526).
+- `repair: true` on `vixl_operations_apply`, `vixl_check` (`vixl check --repair`), `Project.check` / `Project.repair`, workflow `act` and `group-apply` applies fit-text, contrast ink or a safe-area nudge, kept only when the finding is resolved and nothing new fails, as one undoable step; campaign `repair_actions` accept `"auto"` (#571).
+- `repair-layout` workflow: bounded multi-candidate repair of overflow, overlap, spacing, contrast and safe-area failures that respects `protected` layers and `minimum_size`; dry run by default, unchanged when infeasible (#518).
+- `protected-edit` workflow commits an edit only if protected layers keep their structure and pixels and protected regions keep their pixels; otherwise it rolls back and reports where (#520).
+- `vixl reproduce --reference PNG --tolerance N --max-fraction F` and `--write-lock` / `--lock FILE` (also workflow `reproduce`) report renderable, environment-matched or reference-verified with located drift, and exit non-zero on a mismatch (#512, partial: export settings are not in the lock yet).
+
+### Brand and type
+
+- Text stages: `text`/`text-set` accept `stage` (alias `role`) for display, h1–h3, subtitle, lead, body, caption, citation and label, filling in font role, size, line height and case; Markdown `#`–`###` headings and layout slots use the matching stage (#406).
+- Font roles take any name (`accent`, `hand` …) in `font-register`, `vixl font install --role` and brand.json `fonts` (#436).
+- brand.json: `palette.extra` approved colours, fetched font roles (`family`/`weight`), `stages`, and named `presets` with `extends`, selected per document with the new `brand-preset` operation; templates may name a role, stage or registered font in `font`, or set `stage`. New `vixl brand validate` / `vixl brand show [--preset NAME]` (#436, phase 1).
+- Brand compliance: `fonts.allowed`, `colors.strict` with `tolerance`, `logo.clear_space` and `logo.min_size`/`min_width` give must-fix brand findings, also as a suite `design` rule (#555).
+- `brand-board` workflow draws `brand.json` as a guidelines document: palette with contrast pairs, type stages, logos with clear space, do/don't (PDF, PPTX, HTML or `.vixl`) (#581).
+- Brand `minimum_contrast` accepts `{text, large_text, large_text_px}`; a bare number still applies to every size (#527). The brand check ignores translucent black or white shadows and glows, matches palette colours by RGB and names the `color` (#528).
+- `tracking` and `text_transform` (`uppercase`, `lowercase`, `capitalize`) are text layer properties (CLI `--tracking`, `--text-transform`) applied to whatever text the layer holds, in render, inspect, check, fit-text and SVG/PDF/PPTX; `letter_spacing`, `text-transform` and `case` are accepted aliases; `spacing` is described as line spacing (#603).
+- `check` reports a `legibility` review finding (`code: runt`) when wrapped display text leaves one word, or under 20% of the longest line, alone on its last line (#532).
+- Noto Sans, Noto Sans Symbols, Noto Sans Symbols 2 and Noto Sans Math (SIL OFL 1.1) are bundled as fallbacks behind DejaVu Sans, so mixed Latin, Greek, Cyrillic and symbol text renders offline in every renderer and export (#419, partial: DejaVu Sans remains the proofing face; CJK still needs an installed font).
+
+### Objects and accessibility
+
+- `object` operation declares a group one object with a `kind`, named parts (`action: part`, `side`) and sub-objects; paths such as `dog/head`, `dog/leg[left]` and `person/guitar/neck` work wherever a layer name does; `edit-layers` selects by `where.object`, `where.object_kind` and `where.part`; a character reads as a `person` (#374).
+- Kind taxonomy of about 100 kinds (domain › class › kind) with inherited parts, connections, proportions, layering and outline policy; every organic preset maps to a kind; workspace kinds through `vixl_resource_add(kind="objects")`; `vixl objects`, `vixl_capabilities(topic="objects")`, `vixl_guide("dog")` (#375).
+- `vixl_document_inspect(object=…)` lists an object's parts and missing required parts; previews take object paths or `object:KIND` in `isolate`, `views=["parts"]` and `exploded`; `vixl_export_file(isolate=[…], padding=…)` exports one object in any format, and a `.vixl` path writes a portable object (#377).
+- `object-save` and `object-place` place independent editable copies (`recolor` by part, size, tracks kept) (#381).
+- Object identity in exports: SVG `data-vixl-object`/`-kind`/`-part` and `<title>`, PowerPoint named groups with `descr`, PSD group names; `vixl manifest` lists objects (#384).
+- Accessibility: `layer-intent` gains `alt` and `decorative`; the `accessibility` operation sets `lang`, `title`, `page_alt`, `page_lang` and `reading_order`; HTML, the presenter, SVG, PowerPoint (including native charts) and PDF (`/Lang`, `/Alt`, `/Artifact`) carry them; `check --checks accessibility` covers contrast, colour vision, missing alt text, language, small text, colour-only charts and reading order. A tagged PDF structure tree is not written yet (#175, #561).
+- New guides `docs/objects.md` and `docs/accessibility.md`, five object eval briefs and an `object` harness check (#386).
+
+### Content workflows
+
+- `table` draws rows or a workspace CSV as editable text and rule layers: auto, fixed and `fr` widths, left/center/right/decimal alignment, wrapping rows, header band, zebra rows and borders; `table-data` edits cells, rows and columns or reloads the CSV; PPTX export writes a native table (#169).
+- `deck-from-markdown` turns one Markdown file into a checked deck: a layout per slide, rich-text bodies, `csv` and `chart` fences as tables and charts, images, speaker notes and one master, with optional PPTX/PDF/HTML export; re-running rebuilds only changed slides (#170).
+- `mockup` places a design as a live link into phone, laptop, browser, poster-wall, business-card or mug templates, or workspace templates (`mockup-save`, `mockup-list`); link layers gain `corner_pin` (#172).
+- `die-cut` adds a sticker cut line: the targets' ink outline offset by N px, as a stroked, unfilled `cut-line` path (#444, item 4).
+- Logo tracing: `vectorize` outline mode takes `curves` (Bézier fitting) and `split: "components"`; the new `path-split` cuts a path along a polygon or line; `drawing report` / `drawing-compare` return `fidelity` (IoU, pixel mismatch) (#443).
+- `adapt-layout` (proportional) scales non-band decoration uniformly, moves layers that sit together as one unit and never sets text below `min_text`; `optional` text that would be too small is hidden (#210).
+- `arc` takes `closed: false` (CLI `--open`) to stroke only the curve (#605).
+- `drawing fill` takes `settings.edge_closes: true` to fill regions bounded by the drawing's edge; `drawing report` lists `edge_regions` (#218, partial).
+- `rotate` takes `about` (`pivot`, an anchor or `[x, y]`); `scale`'s `anchor` accepts `pivot` (#449). `Project.bounds(target, space="canvas"|"parent")` returns a layer's box (#533).
+
+### Lyric video
+
+- `lead_in` and `tail` add room for a title card and an end card; the new `outro` role shows an end card after the last line; `end_at_audio` ends the last line with the song; the plan warns `intro_hidden` and `outro_hidden` (#598).
+- The plan returns `cues`, `section_windows`, and each line's `settled` and `exit` times; `cue_animation.replay` replays a cue layer's own tracks in each window (#599).
+- `cue_animation.cues` gives each `cue-*` layer its own entry, exit and motion (#600).
+- Camera moves stay continuous across `start`/`end` windows; `segments: <ms>` renders resumable parts and joins them with the audio once; every export returns an ffprobe `verification` of the encoded file (#601).
+- A template with no `bg-*` layers gets one `no_section_backgrounds` note instead of an `unmatched_section` warning per section (#602).
+
+### Host integration and CLI
+
+- `vixl catalog export [--out FILE] [--section NAME]` writes a versioned JSON bundle of sizes, palettes, typefaces and pairings, type scales, layouts, brief kinds, guidance, looks, styles and check IDs (with severities and actions) for host applications; `vixl catalog schema` gives its JSON Schema, and releases attach both (#536).
+- Per-call limits for `vixl serve`, `vixl view` and `vixl mcp`: `--call-timeout` (a REST call still running answers `202` with a job: `GET /jobs/{id}`, `GET /jobs/{id}/result`), `--max-megapixels`, `--max-pages` and `--max-concurrent`, also as `VIXL_*` environment variables. Over a limit fails before rendering with `limit_exceeded`; `GET /limits` reports them. Nothing changes unless a limit is set (#542).
+- `vixl font install` and `vixl font pair` accept `--workspace DIR`; `vixl --help` mentions `vixl schema OPERATION…` (#606).
 
 ### Speed
 
-- A render reuses the previous canvas of the same document view and composites again only the area of the layers that changed. Edits, previews and timeline frames that move or restyle a few layers no longer cost the whole canvas. Documents with scene lighting, adjustment layers, canvas-edge blur or selection-masked effects still render in full.
+- A render reuses the previous canvas of the same document view and composites again only the area of the layers that changed. Documents with scene lighting, adjustment layers, canvas-edge blur or selection-masked effects still render in full.
 - Styled and clipped layers are drawn on a patch around their ink instead of a canvas-sized tile, and the styled patch is cached: on a 4000 × 4000 canvas, 80 soft-shadowed shapes render about 8 times faster the first time and redraw almost instantly after a move.
 - `Project.render(region=[x, y, w, h])` and region previews (`vixl_render_preview region=`) draw only the region.
 - Text and single-colour path shapes are rasterised once per outline: copies and recoloured versions reuse the glyphs.
-- Document variables and font lookups are computed once per render, not once per text layer. Outline-free rectangles are filled directly, without supersampling. Cache keys, opacity scaling, layers without effects, and preview and cache PNG encoding are cheaper. A 1,500-layer document renders about 3 times faster from cold.
+- Document variables and font lookups are computed once per render. Outline-free rectangles are filled directly. A 1,500-layer document renders about 3 times faster from cold.
+- Groups and pathfinders are cached under a key covering their whole subtree, so redrawing around an unchanged group no longer recomposites its children (#589).
+- Timeline frames share every layer they do not animate with the document, and rendered frames leave out top-level groups that draw nothing at that time: frame setup is about 10× faster on large documents (#586).
+- Film and timeline exports share one bounded layer cache and store a whole frame on disk only when it is requested a second time, so moving films no longer fill the cache with one-use PNGs (#607).
+- MCP and REST servers keep a document's render caches when they reload it; `vixl export` and `vixl render` of a saved document use the disk cache. New `vixl cache info|clear`, `VIXL_CACHE_MAX_MB` (default 256) and `VIXL_RENDER_CACHE=off` (#592).
+- `VIXL_PROFILE=1` returns a `render_profile` with every CLI, MCP and REST result (per-layer draw times, cache hits, misses, writes and evictions); the opt-in `cost` check flags layers over 10× the median draw time and names the cause; timeline export progress reports elapsed time, ETA and per-frame setup and raster times (#594).
+- Reduced previews (`vixl_render_preview` below 0.75 scale) place layers on whole pixels instead of resampling each one; exports are unchanged (#587).
+
+### Fixed
+
+- A layer or group at `scale` 0 (or `scale-x`/`scale-y` 0), as in a 0 → 1 pop-in, draws nothing; a group containing a path used to run out of memory (#597).
+- `reparent` keeps rendered pixels in place; rotated layers render half a pixel truer, with antialiased edges where the art touches its box, in one resampling instead of two (#468).
+- Region and incremental renders match full renders exactly for layers placed half a pixel off.
+- `fit-text` and the `text-fit` suite rule agree with the bounds check on rich and tracked text, and follow `line_height` leading (#608).
+- `marketing/build.py` measures layers on the canvas with `Project.bounds` instead of the parent-relative internal layout (#533).
+
 ## 0.24.1
 
 Command-line parity and documentation for the 0.24 features.

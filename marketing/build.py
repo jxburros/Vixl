@@ -24,7 +24,6 @@ os.environ.setdefault("VIXL_NO_UPDATE", "1")
 os.chdir(ROOT)  # link sources resolve against the workspace (repo root)
 
 from vixl import Project  # noqa: E402
-from vixl.render import resolve_layout  # noqa: E402
 from vixl.typefaces import install_font  # noqa: E402
 
 # Brand (assets/brand/digital-shift/START-HERE.md) ----------------------------------------------
@@ -90,20 +89,8 @@ def new(width, height, background=CHARCOAL, **kw):
 
 
 def bounds(p, name):
-    ids = {layer["id"]: layer["name"] for layer in all_layers(p)}
-    for ident, box in resolve_layout(p).items():
-        if ids.get(ident) == name:
-            return box
-    raise KeyError(name)
-
-
-def all_layers(p):
-    stack, found = list(p.state["layers"]), []
-    while stack:
-        layer = stack.pop()
-        found.append(layer)
-        stack.extend(layer.get("children", []))
-    return found
+    """The layer's box on the canvas, grouped or not (``space="parent"`` gives it in its group's coordinates)."""
+    return p.bounds(name)
 
 
 def logo(name, variant, x, y, width=None, height=None):

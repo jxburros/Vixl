@@ -93,11 +93,11 @@ def test_rotation_flip_opacity_and_effects_apply_like_any_layer(tmp_path):
     host.apply([{"type": "link", "source": "tile.vixl", "name": "t", "x": 100, "y": 100},
                 {"type": "rotate", "target": "t", "value": 90}, {"type": "opacity", "target": "t", "value": 0.5}])
     bounds = host.inspect("t")["resolved_bounds"]
-    assert list(bounds[2:]) == [100, 200]
-    inside = host.render().getpixel((112, 112))
+    assert list(bounds) == [150, 50, 100, 200]  # turned about its centre (200, 150)
+    inside = host.render().getpixel((162, 62))
     assert 130 < inside[0] < 160 and inside[2] > inside[0]  # half transparent blue over light grey
     host.apply({"type": "grayscale", "target": "t"})
-    r, g, b, _ = host.render().getpixel((112, 112))
+    r, g, b, _ = host.render().getpixel((162, 62))
     assert abs(r - g) < 3 and abs(g - b) < 3
 
 

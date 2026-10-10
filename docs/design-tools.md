@@ -17,6 +17,9 @@ vixl group stripes stripe
 vixl clip stripes sun
 ```
 
+A group that is one thing (a dog, a guitar, a person) can be declared an [object](objects.md) with a kind
+and named parts, so `dog/head` addresses a part, `ungroup` keeps its identity safe and exports carry it.
+
 The stripe stays one editable layer. Repeat counts include the original; `dx/dy` are nonnegative offsets between copies and `dw/dh` change each copy's size (per-step turns, scale, opacity, jitter and `merge` make real copies instead: see [below](#per-step-transforms-jitter-and-merged-repeats)). `repeat-blend stripe --count 16 --dy 37 --end '{"height":21,"fill":"#4853a4"}'` interpolates size and RGBA color to the last copy. Reapplying repeat replaces its settings; `--count 1` leaves only the original. Counts are bounded to 512 and all resulting dimensions are checked before allocation.
 
 Shapes support `rectangle`, `rounded-rectangle`, `ellipse`, `polygon`, `star`, `arc`, and `line`; `vixl shape --target NAME --fill COLOR` (JSON `{"type":"shape","target":"NAME",…}`) changes the fill, stroke or geometry of an existing shape in place, keeping its layer ID; options include `--fill`, `--stroke`, `--stroke-width`, `--line-cap`, `--trim-start`/`--trim-end` (draw only part of the stroke, 0–100 %, animatable: see [Drawing a line on](brushes-and-animation.md#drawing-a-line-on)), `--radius`, `--sides`, and star `--inner-radius` (0.01–1). Geometry is retained and redrawn at the layer's current size with bounded antialiasing. Version 0.11.0 adds named shape shortcuts and editable single-contour Bézier paths, plus SVG export of simple geometry. See [design resources and vector export](agent-resources.md) for syntax and raster fallback limits.
@@ -28,12 +31,15 @@ are degrees, 0 at 3 o'clock and growing clockwise (as SVG and gradient angles do
 o'clock; the wedge runs clockwise from start to end, an `end_angle` below the start wraps around,
 and 360° or more past the start is the full disc or ring (the default when you give no angles).
 `inner_radius` (0–0.99, a fraction of the outer radius, default 0) cuts the hole: 0 is a pie wedge,
-0.6 a donut segment. Wedges that share one box and differ only in their angles make a pie or donut
-chart:
+0.6 a donut segment. `closed: false` (CLI `--open`) draws only the curve: an open stroke for a
+progress arc, sound waves or a flourish, which gets no default fill (like `line` and open paths, in
+every renderer and export) and takes `line_cap`; it has no `inner_radius`. Wedges that share one box
+and differ only in their angles make a pie or donut chart:
 
 ```bash
 vixl shape arc --name flat-white --width 300 --height 300 --x 50 --y 50 --start-angle -90 --end-angle 70.6 --fill '#14263b'
 vixl shape arc --name drip --width 300 --height 300 --x 50 --y 50 --start-angle 70.6 --end-angle 192 --inner-radius 0.55 --fill '#f2a541'
+vixl shape arc --name progress --width 300 --height 300 --x 400 --y 50 --start-angle -90 --end-angle 160 --open --stroke '#d4241c' --stroke-width 14 --line-cap round
 ```
 
 Each wedge is one editable layer; a visible stroke is drawn inside the box, so strokes of

@@ -129,37 +129,50 @@ def font_standalone(cmd, args, project=None):
 
 
 def workspace_scope(cmd, args):
-    """True for ``font install|pair ... --scope workspace``, which needs no document."""
+    """True for ``font install|pair ... --scope workspace`` (or ``--workspace DIR``), which needs no document."""
     if cmd != "font" or not args or args[0] not in ("install", "pair"):
         return False
-    return "--scope=workspace" in args or any(a == "--scope" and b == "workspace" for a, b in zip(args, args[1:]))
+    if "--scope=document" in args or any(a == "--scope" and b == "document" for a, b in zip(args, args[1:])):
+        return False
+    return ("--scope=workspace" in args or any(a == "--scope" and b == "workspace" for a, b in zip(args, args[1:]))
+            or any(a == "--workspace" or a.startswith("--workspace=") for a in args))
 
 
 def project_command(project, cmd, args):
     if cmd == "font":
         p = Parser(prog="vixl font")
         p.add_argument("action", choices=["list", "import", "install", "pair", "use"])
-        p.add_argument("--scope", choices=["document", "workspace"], default="document",
-                       help="workspace: write the default into ./brand.json for new documents (install needs --role)")
+        p.add_argument("--scope", choices=["document", "workspace"],
+                       help="workspace: write the default into brand.json for new documents (install: --role heading|body, "
+                            "default heading); --workspace DIR implies it")
+        p.add_argument("--workspace", help="--scope workspace: the directory whose brand.json is written (default: current)")
         p.add_argument("source", nargs="?", help="File/HTTPS URL (import), family (install), pairing or 'random' (pair), font name (use)")
         p.add_argument("--name")
         p.add_argument("--weight", type=int, default=400)
         p.add_argument("--italic", action="store_true")
-        p.add_argument("--role", choices=["heading", "body"])
+        p.add_argument("--role", help="heading, body, a text stage (h1, label …) or another role name (accent, hand)")
         p.add_argument("--seed", type=_seed)
         p.add_argument("--mood")
         p.add_argument("--for", dest="purpose")
         a = p.parse_args(args)
-        if a.scope == "workspace":
+        require(not (a.workspace and a.scope == "document"),
+                "--workspace selects the brand.json for --scope workspace; a document is chosen with --project",
+                field="workspace")
+        if a.scope == "workspace" or a.workspace:
             from . import typefaces
 
             require(a.action in ("install", "pair"), "--scope workspace applies to font install and font pair")
+            workspace = Path(a.workspace) if a.workspace else Path.cwd()
+            require(workspace.is_dir(), f"Workspace {a.workspace!r} is not a directory", field="workspace")
             if a.action == "install":
-                require(a.source, "Use font install FAMILY --role heading|body --scope workspace")
-                return typefaces.install_workspace(Path.cwd(), a.source, a.weight, a.italic, a.name, a.role), False
-            return typefaces.pair_workspace(Path.cwd(), a.source, seed=a.seed, mood=a.mood, best_for=a.purpose), False
+                require(a.source, "Use font install FAMILY [--role heading|body] --scope workspace [--workspace DIR]")
+                return typefaces.install_workspace(workspace, a.source, a.weight, a.italic, a.name, a.role), False
+            return typefaces.pair_workspace(workspace, a.source, seed=a.seed, mood=a.mood, best_for=a.purpose), False
         if a.action == "list":
-            return {"fonts": project.state.get("fonts", {}), "typography": project.state.get("typography", {})}, False
+            from .type_roles import describe
+
+            return {"fonts": project.state.get("fonts", {}), "typography": project.state.get("typography", {}),
+                    "stages": describe(project)}, False
         from . import typefaces
 
         if a.action == "install":

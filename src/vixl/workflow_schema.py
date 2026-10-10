@@ -6,6 +6,7 @@ alone. They are descriptive: ``workflows.dispatch`` and the owning modules still
 
 from copy import deepcopy
 
+from .brand_board import field_types as _brand_board_types
 from .logo_package import field_types as _logo_package_types
 
 STR = {"type": "string"}
@@ -15,13 +16,21 @@ STRINGS = {"type": "array", "items": STR}
 REGION = {"type": "array", "items": {"type": "integer"}, "minItems": 4, "maxItems": 4,
           "description": "Integer [x, y, width, height] inside the canvas."}
 SCALAR = {"type": ["string", "number", "boolean"]}
+REPAIR = {"anyOf": [{"type": "boolean"}, {"type": "array", "items": {
+    "type": "string", "enum": ["fit-text", "contrast-ink", "safe-area-nudge"]}}],
+    "description": "Apply the built-in repair for each failure the map covers (fit-text within the minimum size, text "
+                   "colour toward the role ink, nudge inside the safe area; unfilled blanks are held for review) to "
+                   "the candidate; kept only if the suites then pass. true for every kind, or a list of kinds."}
 
 LOGO_PACKAGE_TYPES = _logo_package_types()
+BRAND_BOARD_TYPES = _brand_board_types()
+COVERAGE_AXIS = {"anyOf": [{"type": "string", "enum": ["all"]},
+                           {"type": "array", "items": {"type": ["string", "integer"]}, "minItems": 1}]}
 
 # Check suite (assert-rule format). Rule fields per kind live in assurance.RULE_FIELDS; each
 # rule needs a unique id and a kind, and may set severity.
 RULE_KINDS = ("container", "palette", "assert", "design", "property", "gap", "unchanged", "pixels", "text-fit", "alpha",
-              "spacing", "relation", "contrast", "color", "ink", "balance", "hierarchy", "count", "focal")
+              "spacing", "relation", "contrast", "color", "ink", "balance", "hierarchy", "count", "focal", "text", "budget")
 RULE_PROPERTIES = {
     "id": {"type": "string", "description": "Unique rule ID within the suite; shown in results."},
     "kind": {"type": "string", "enum": list(RULE_KINDS),
@@ -30,15 +39,16 @@ RULE_PROPERTIES = {
                             "gaps), relation (position, alignment, distance or margin), contrast (one layer's "
                             "text contrast), color (pixel or region colour), ink (how much of a region is drawn), "
                             "balance (visual centre of mass), hierarchy (type sizes step down), count (layers "
-                            "matching a name) or focal (on a thirds/golden/centre point)."},
+                            "matching a name), focal (on a thirds/golden/centre point), text (the copy: phrases, "
+                            "patterns, character and word limits) or budget (layers, fonts, bytes, image ppi)."},
     "severity": {"type": "string", "enum": ["error", "warning"], "default": "error",
                  "description": "A failed warning needs review instead of failing the suite."},
     "expression": {"type": "string",
                    "description": "assert: bounded assertion, e.g. 'layer.logo.bounds within canvas', "
                                   "'canvas.width >= 1080', 'text.title.font-size >= 24', 'layer.logo.opacity == 1'."},
     "target": {"type": "string", "description": "Layer ID or name (property, text-fit, relation, contrast, focal; "
-                                                 "container may omit it); count: a name, glob ('bullet-*') or "
-                                                 "'group:NAME' (default '*')."},
+                                                 "container may omit it); count and text: a name, glob ('bullet-*') "
+                                                 "or 'group:NAME' (default '*')."},
     "targets": {"type": "array", "items": STR, "minItems": 2,
                 "description": "spacing: sibling layers whose gaps should be equal (or expected); hierarchy: text "
                                "layers from most to least important."},
@@ -93,6 +103,32 @@ RULE_PROPERTIES = {
     "region": {**REGION, "description": "palette/pixels/color/ink/balance: [x, y, width, height] to measure "
                                         "(default whole canvas)."},
     "snapshot": {"type": "object", "description": "unchanged: captured layer (written by suite-capture)."},
+    "pattern": {"type": ["string", "array"], "items": STR,
+                "description": "text: regular expression (or list) each selected layer's drawn text must match."},
+    "contains": {"type": ["string", "array"], "items": STR,
+                 "description": "text: phrase (or list) that must appear somewhere in the selected layers' copy, "
+                                "e.g. 'Terms apply'."},
+    "forbid": {"type": ["string", "array"], "items": STR,
+               "description": "text: regular expression (or list) no selected layer may match, e.g. "
+                              "'(?i)\\bfree\\b'."},
+    "min_characters": {"type": "integer", "minimum": 0,
+                       "description": "text: fewest characters in each selected layer (line breaks not counted)."},
+    "max_characters": {"type": "integer", "minimum": 0,
+                       "description": "text: most characters in each selected layer (line breaks not counted)."},
+    "min_words": {"type": "integer", "minimum": 0, "description": "text: fewest words in each selected layer."},
+    "max_words": {"type": "integer", "minimum": 0, "description": "text: most words in each selected layer."},
+    "case": {"type": "string", "enum": ["sensitive", "insensitive"], "default": "sensitive",
+             "description": "text: whether pattern, contains and forbid match letter case."},
+    "brand": {"type": "boolean", "default": False,
+              "description": "text: also forbid the words brand.json lists under words.forbid (whole words, any case)."},
+    "max_layers": {"type": "integer", "minimum": 0, "description": "budget: most drawn layers (as count counts them)."},
+    "max_fonts": {"type": "integer", "minimum": 0, "description": "budget: most distinct fonts drawn by text."},
+    "max_bytes": {"type": "integer", "minimum": 0,
+                  "description": "budget: largest document size in bytes (JSON with undo history plus embedded files, "
+                                 "before compression)."},
+    "min_ppi": {"type": "number", "minimum": 1,
+                "description": "budget: lowest effective resolution of a placed image at the canvas dpi (300 when "
+                               "unset), as the print check measures it."},
     "asset": {"type": "string", "description": "pixels: embedded baseline image asset (written by suite-capture)."},
 }
 SUITE = {
@@ -101,8 +137,13 @@ SUITE = {
     "properties": {
         "version": {"type": "integer", "enum": [1], "default": 1, "description": "Suite format version."},
         "description": {"type": "string", "description": "What the suite protects."},
+        "extends": {"type": "string", "description": "A library suite (built-in, plugin or resource-save'd) this "
+                                                     "one runs by reference: the library's current rules, with "
+                                                     "this suite's rules overriding those with the same id (same "
+                                                     "kind; e.g. severity or tolerance) and adding the rest. rules "
+                                                     "may then be empty."},
         "rules": {
-            "type": "array", "minItems": 1, "maxItems": 256,
+            "type": "array", "minItems": 0, "maxItems": 256,
             "description": "One entry per requirement, e.g. {id: 'logo-inside', kind: 'assert', expression: "
                            "'layer.logo.bounds within canvas'}.",
             "items": {"type": "object", "properties": RULE_PROPERTIES, "required": ["id", "kind"]},
@@ -116,10 +157,19 @@ SUITE = {
                           "description": "sampled: evenly spaced samples (plus every keyframe time)."},
                 "times": {"type": "array", "items": {"type": ["number", "string"]}, "minItems": 1,
                           "maxItems": 3600, "description": "times: ms, '500ms', '1.5s' or marker names."},
+                "artboards": {**COVERAGE_AXIS, "description": "Also run over these artboards ('all' or names); "
+                                                              "each result names its variant."},
+                "pages": {**COVERAGE_AXIS, "description": "Also run over these pages ('all': every page shown on "
+                                                          "export, or names/numbers)."},
+                "comps": {**COVERAGE_AXIS, "description": "Also run with each of these layer comps ('all' or names)."},
+                "include_hidden": {"type": "boolean", "default": False,
+                                   "description": "pages 'all' also covers pages hidden from export."},
             },
         },
     },
     "required": ["rules"],
+    # Only a suite that extends a library suite may hold no rules of its own.
+    "if": {"not": {"required": ["extends"]}}, "then": {"properties": {"rules": {"minItems": 1}}},
     "examples": [{"version": 1, "rules": [
         {"id": "logo-inside", "kind": "assert", "expression": "layer.logo.bounds within canvas"},
         {"id": "title-fits", "kind": "text-fit", "target": "title", "minimum": 24},
@@ -127,6 +177,8 @@ SUITE = {
         {"id": "cta-margin", "kind": "relation", "target": "cta", "to": "canvas", "position": "inside",
          "minimum": 48},
         {"id": "quiet-corner", "kind": "ink", "region": [0, 0, 300, 200], "maximum": 0.02},
+        {"id": "headline-short", "kind": "text", "target": "title", "max_characters": 40},
+        {"id": "no-free", "kind": "text", "forbid": "(?i)\\bfree\\b"},
     ]}],
 }
 
@@ -184,8 +236,18 @@ LYRIC = {
                                        "description": "Start pose [center-x, center-y, zoom]."},
                               "to": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3,
                                      "description": "End pose [center-x, center-y, zoom]."}}},
-    "start": {"type": "number", "minimum": 0, "default": 0, "description": "Song position to start at, ms."},
-    "end": {"type": "number", "minimum": 1, "description": "Song position to stop at, ms (default the end)."},
+    "start": {"type": "number", "minimum": 0, "default": 0, "description": "Video position to start at, ms (the song "
+                                                                           "position when lead_in is 0)."},
+    "end": {"type": "number", "minimum": 1, "description": "Video position to stop at, ms (default the end)."},
+    "lead_in": {"type": "number", "minimum": 0, "maximum": 60000, "default": 0,
+                "description": "ms of silence before the song, for a title card (intro); every lyric time moves later."},
+    "tail": {"type": "number", "minimum": 0, "maximum": 60000, "default": 0,
+             "description": "ms of silence after the song, for an end card (outro)."},
+    "end_at_audio": {"type": "boolean", "default": False,
+                     "description": "Hide the last line when the song ends instead of holding it into the tail."},
+    "segments": {"type": "integer", "minimum": 1000, "maximum": 600000,
+                 "description": "Export only: render in parts of this many ms, kept beside the output, so re-running "
+                                "the same request resumes; the parts are joined and the audio added at the end."},
     "check": {"type": "boolean", "default": True, "description": "Run the design checks on the build."},
     "replace": {"type": "boolean", "default": False, "description": "Overwrite an existing build or output."},
     "width": {"type": "integer", "minimum": 16, "maximum": 4096, "description": "Video width (default template)."},
@@ -217,10 +279,15 @@ PRODUCTION_SPEC = {
                    "description": "image: png/jpg/webp/svg; timeline: gif/webp/mp4/webm/zip."},
         "quality": {"type": "string", "enum": ["draft", "final"], "default": "final",
                     "description": "draft renders a 640 px proxy."},
-        "suites": {"type": "array", "items": STR, "description": "Suites to check (default all attached)."},
+        "suites": {"type": "array", "items": STR, "description": "Suites to check (default all attached, or the "
+                                                                 "profile's suites when profile is set)."},
+        "profile": {"type": "string", "description": "Check profile (draft, review, final or a workspace profile) "
+                                                     "each variant must pass; it picks the design checks, suites and "
+                                                     "fail_on."},
         "actions": {"type": "array", "items": STR, "description": "Saved actions to run before checks."},
         "repair_actions": {"type": "array", "items": STR, "maxItems": 3,
-                           "description": "Saved actions tried in order when checks fail."},
+                           "description": "Saved actions tried in order when checks fail; 'auto' runs the built-in "
+                                          "repair map (fit-text, contrast ink, safe-area nudge) instead."},
         "workers": {"type": "integer", "minimum": 1, "maximum": 4, "default": 1, "description": "Parallel renders."},
         "motion": {"type": "string", "description": "Saved motion to apply."},
         "fps": {"type": "number", "minimum": 1, "maximum": 60, "description": "Timeline fps override."},
@@ -306,19 +373,46 @@ MANIFEST = {
 }
 
 # Per-action overrides and fields only one action (or family) uses.
+DOCUMENTS = {"type": "array", "items": STR, "description": "Globs or paths of .vixl documents (workspace-relative)."}
+FACTS = {"type": "object", "description": "Copy facts to compare across documents: {name: {pattern (regex) | values "
+         "(accepted spellings) | format (date such as 'MMM D') | value (the declared value), layers?, ignore_case?}}. "
+         "Read from the variable of that name, else text layers named after it (or in layers), else the pattern over "
+         "all text. Also read from brand.json facts and the group's facts.",
+         "additionalProperties": {"type": "object", "description": "One fact."}}
+SELECTION = {
+    "accept": {"type": "array", "items": PATH, "description": "Publish only these members."},
+    "reject": {"type": "array", "items": PATH, "description": "Leave these members untouched."},
+    "decisions": {"type": ["string", "object"], "description": "A review page's downloaded decisions JSON (or its "
+                  "path): only approved members are published."},
+    "review": {**PATH, "description": "Dry run: write a before/after review, an .html proof page with approve/reject "
+               "(its decisions file feeds decisions) or a .png contact sheet."},
+    "overwrite": {"type": "boolean", "default": False, "description": "Replace an existing review file."},
+}
+
 ACTION_FIELDS = {
     "check": {
-        "suite": {"anyOf": [STR, SUITE], "description": "Name of an attached suite, or an inline suite object."},
+        "suite": {"anyOf": [STR, SUITE], "description": "Name of an attached or inherited suite, or an inline "
+                                                         "suite object. Omitted: every attached and inherited suite."},
+        "suites": {**COMMON["suites"], "description": "Without suite: run only these attached or inherited suites."},
         "mode": {"type": "string", "enum": ["still", "sampled", "all", "times"],
                  "description": "Override the suite's coverage: still frame, sampled times, every frame or times."},
         "variables": {**COMMON["variables"], "description": "Variable overrides applied before checking."},
         "artboard": {"type": "string", "description": "Check this artboard's variant of the document."},
+        "page": {"type": ["string", "integer"], "description": "Check this page (name, id or number)."},
+        "comp": {"type": "string", "description": "Check with this layer comp applied."},
+        "artboards": {**COVERAGE_AXIS, "description": "'all' or artboard names: run over each (with pages and "
+                                                      "comps, every combination); results name their variant."},
+        "pages": {**COVERAGE_AXIS, "description": "'all' (pages hidden from export skipped) or page names/numbers."},
+        "comps": {**COVERAGE_AXIS, "description": "'all' or layer comp names."},
+        "include_hidden": {"type": "boolean", "default": False,
+                           "description": "pages 'all' also covers pages hidden from export."},
     },
     "act": {
         "operations": {**COMMON["operations"], "description": "Operations applied to a candidate; committed only "
                                                               "if every suite passes."},
         "suites": {**COMMON["suites"], "description": "Attached suites that must pass for the change to commit."},
         "dry_run": {"type": "boolean", "description": "Apply and check without committing."},
+        "repair": REPAIR,
     },
     "capture": {
         "recipe": RECIPE,
@@ -350,7 +444,9 @@ ACTION_FIELDS = {
                      "output": {**PATH, "description": "New .vixl file to write."}},
     "library-place": {"directory": {**PATH, "description": "Component library folder."},
                       "id": {"type": "string", "description": "Component ID from library-search."},
-                      "name": {"type": "string", "description": "Name for the placed group layer."}},
+                      "name": {"type": "string", "description": "Name for the placed group layer."},
+                      "as": {"enum": ["group", "image"], "description": "group (default): the component's layers as "
+                             "an editable group with its fonts and images; image: one raster snapshot."}},
     "submit": {"job": JOB, "start": COMMON["start"], "workers": COMMON["workers"]},
     "status": {"id": {"type": "string", "description": "Job ID from submit."}},
     "cancel": {"id": {"type": "string", "description": "Job ID from submit."}},
@@ -375,6 +471,8 @@ ACTION_FIELDS = {
         "title": {"type": "string", "default": "Proof", "description": "Page heading."},
         "check": {"type": "boolean", "default": True, "description": "Run vixl_check on .vixl items and show the "
                   "findings."},
+        "overlay": {"type": "boolean", "default": False, "description": "Outline each fix finding on a .vixl item's "
+                    "thumbnail, labelled with its rule and layer ID (needs check)."},
         "decisions": {"type": "boolean", "default": False, "description": "Add approve/reject and a note per item, "
                       "and a button that downloads them as <page>-decisions.json."},
         "max_size": {"type": "integer", "minimum": 128, "maximum": 2400, "default": 1200,
@@ -382,6 +480,7 @@ ACTION_FIELDS = {
         "overwrite": {"type": "boolean", "default": False, "description": "Replace an existing page."},
     },
     "logo-package": LOGO_PACKAGE_TYPES,
+    "brand-board": BRAND_BOARD_TYPES,
     "resource-list": {},
     "resource-get": {"name": {"type": "string", "description": "Resource name from resource-list."}},
     "resource-save": {"name": {"type": "string", "description": "Name for the saved resource."},
@@ -391,7 +490,20 @@ ACTION_FIELDS = {
     "shape-save": {"target": {"type": "string", "description": "Shape or path layer to save."},
                    "name": {"type": "string", "description": "Name for the saved shape."}},
     "suite-use": {"name": {"type": "string", "description": "Saved suite to copy into the document."},
-                  "as": {"type": "string", "description": "Name to attach it under (default the same name)."}},
+                  "as": {"type": "string", "description": "Name to attach it under (default the same name)."},
+                  "reference": {"type": "boolean", "default": False,
+                                "description": "Attach by reference ({extends: name}) instead of a copy, so every "
+                                               "check runs the library's current rules."}},
+    "suite-infer": {"name": {"type": "string", "default": "inferred",
+                             "description": "Name for the proposed suite (and the library suite apply saves)."},
+                    "apply": {"type": "boolean", "default": False,
+                              "description": "Save the proposal as a library suite (never attached to the document)."},
+                    "replace": {"type": "boolean", "default": False,
+                                "description": "apply: overwrite a library suite of the same name."},
+                    "group": {"type": "string", "description": "apply: make this project group inherit the suite."},
+                    "from_group": {"type": "string",
+                                   "description": "Infer from every member of this project group instead of the open "
+                                                  "document, keeping only rules that hold for all of them."}},
     "effect-run": {"name": {"type": "string", "description": "Saved effect workflow."},
                    "variables": {**COMMON["variables"], "description": "Values for the workflow's variables."},
                    "dry_run": {"type": "boolean", "description": "Report the operations without applying."}},
@@ -423,14 +535,160 @@ ACTION_FIELDS = {
                                 "properties": {"variables": {"type": "object", "additionalProperties": SCALAR,
                                                             "description": "Variables {name: value} set in each document."},
                                                "swatches": {"type": "object", "additionalProperties": COLOR,
-                                                            "description": "Swatches {name: color} set in each document."}}}},
+                                                            "description": "Swatches {name: color} set in each document."},
+                                               "waivers": {"type": "array", "items": {"type": "object"}, "maxItems": 256,
+                                                           "description": "Document waivers {check or rule, reason, "
+                                                                          "expires} written into each document."}}},
+                     "facts": FACTS,
+                     "profiles": {"type": "object", "description": "Check profiles {name: {fail_on, checks, optional, "
+                                                                   "suites}} for this group's documents; they override "
+                                                                   "the workspace's and the built-in draft/review/final."},
+                     "suites": {"type": "array", "items": STR, "maxItems": 32,
+                                "description": "Library suites every member inherits by reference: check, run and "
+                                               "group-apply run them; a member overrides a rule with a suite that "
+                                               "extends the library suite."}},
     "group-show": {"name": {"type": "string", "description": "Group name."}},
     "group-apply": {"name": {"type": "string", "description": "Group name."},
                     "operations": {**COMMON["operations"], "description": "Bulk operations applied to each member."},
-                    "suites": {**COMMON["suites"], "description": "Suites every member must pass."},
+                    "suites": {**COMMON["suites"], "description": "Suites every published member must pass (default the "
+                               "group's inherited library suites); a dry run reports each member's results (passed) "
+                               "instead of refusing."},
+                    "profile": {"type": "string", "description": "Check profile (draft, review, final or a group or "
+                                                                "workspace profile) every published member must pass, "
+                                                                "like suites."},
                     "dry_run": {"type": "boolean", "default": True,
-                                "description": "Check without saving (default true)."}},
-    "group-recover": {"name": {"type": "string", "description": "Group whose interrupted edit to roll back."}},
+                                "description": "Check without saving (default true)."},
+                    "repair": {**REPAIR, "description": "Apply the built-in repair map to each member before its "
+                                                        "suites run (bounds, contrast and safe-area fix findings, "
+                                                        "text-fit and contrast rules); reported per document."},
+                    **SELECTION},
+    "group-check": {
+        "name": {"type": "string", "description": "Project group to compare (or give documents)."},
+        "documents": DOCUMENTS,
+        "reference": {**PATH, "description": "Compare every member with this member instead of the majority."},
+        "checks": {"type": "array", "items": {"enum": ["layout", "type", "color", "structure", "copy"]},
+                   "description": "Which comparisons to run (default all): layout (placement of logo layers), type "
+                                  "(fonts, headline-to-body and type-scale ratios), color (swatches, palette), "
+                                  "structure (shared and required layers), copy (declared facts)."},
+        "layers": {"type": "array", "items": STR, "default": ["*logo*"],
+                   "description": "layout: names or globs of the layers whose placement must agree (layers with role "
+                                  "logo always count)."},
+        "facts": FACTS,
+        "required": {"type": "array", "items": STR, "description": "structure: layer names every member must have "
+                     "(added to brand.json required_elements)."},
+        "tolerance": {"type": "object", "description": "{offset (fraction of the short side, default 0.03), size "
+                      "(relative, default 0.2), ratio (relative, default 0.15)}.",
+                      "properties": {"offset": {"type": "number", "minimum": 0, "description": "Placement offset."},
+                                     "size": {"type": "number", "minimum": 0, "description": "Relative size."},
+                                     "ratio": {"type": "number", "minimum": 0, "description": "Type ratios."}}},
+    },
+    "group-recover": {"name": {"type": "string", "description": "Group (or replace-across journal) whose "
+                               "interrupted edit to roll back."}},
+    "check-all": {
+        "documents": {**DOCUMENTS, "description": "Globs or paths of documents to check (default **/*.vixl when no "
+                      "group is given)."},
+        "group": {"type": "string", "description": "Check this project group's members, with the group checks."},
+        "checks": {"type": "array", "items": STR, "description": "vixl_check names (default the standard checks)."},
+        "suite": {"type": ["object", "string"], "description": "A check suite (object, or a workspace .json file) run "
+                  "on every document as well."},
+        "suites": {"type": "boolean", "default": True, "description": "Run each document's attached suites."},
+        "fail_on": {"type": "string", "enum": ["error", "warning", "fix", "review", "never"],
+                    "description": "passed is false when a finding reaches this level: error, warning (or error), fix "
+                                   "(any finding whose action is fix), review (fix or review findings) or never. "
+                                   "Default: the profile's fail_on with profile, else error. A suite that does not "
+                                   "pass counts at every level but never (under a profile, a suite needing review "
+                                   "only at warning and review). Waived findings are informational."},
+        "profile": {"type": "string", "description": "Check every document under this check profile (draft, review, "
+                    "final, or one from .vixl-checks.json or the group's profiles): its checks and suites run and "
+                    "its fail_on is the default level."},
+        "waivers": {"type": "boolean", "default": True, "description": "Apply each document's layer, document and "
+                    "workspace waivers (false reports every finding as if there were none)."},
+        "workers": {"type": "integer", "minimum": 1, "maximum": 8, "description": "Documents checked in parallel "
+                    "(default up to 4)."},
+        "changed_since": {"type": "string", "description": "Only documents changed (or untracked) since this git "
+                          "revision."},
+        "base": {"type": "string", "description": "Pixel-diff each document against its version at this git revision."},
+        "work": {**PATH, "default": ".vixl-checks/work", "description": "With base: folder for base copies and "
+                 "diff images."},
+        "since_last": {"type": "boolean", "default": False, "description": "Compare with the previous run over the "
+                       "same documents and settings: newly failing, newly passing, still failing, version change."},
+        "history": {"type": "boolean", "default": True, "description": "Record this run under .vixl-checks/history."},
+        "group_checks": {"type": "boolean", "description": "Run the group consistency checks (default: on for a "
+                         "group)."},
+        "reference": {**PATH, "description": "Group checks: the member to compare against."},
+        "facts": FACTS,
+        "outputs": {"type": "object", "description": "Write the report: {json, markdown, junit, sarif, github, proof: "
+                    "workspace path}; github is workflow annotation lines, proof an .html page.",
+                    "properties": {key: {**PATH, "description": f"Where to write the {key} report."}
+                                   for key in ("json", "markdown", "junit", "sarif", "github", "proof")}},
+        "overwrite": {"type": "boolean", "default": False, "description": "Replace existing output files."},
+    },
+    "replace-across": {
+        "name": {"type": "string", "description": "Project group whose members to edit (or give documents)."},
+        "documents": DOCUMENTS,
+        "replace": {"type": "array", "minItems": 1, "maxItems": 50, "items": {"type": "object", "properties": {
+            "text": {"type": "string", "description": "Text to find in text layers and string variables."},
+            "color": {"type": "string", "description": "Color to find in literal layer colors and swatches."},
+            "font": {"type": "string", "description": "Font (name or family) to replace on text layers."},
+            "asset": {"type": "string", "description": "Image to replace: a workspace file (matched by checksum) or "
+                      "the imported file name."},
+            "with": {"type": "string", "description": "Replacement: text, a color or @swatch, a registered font, or "
+                     "an image file."},
+            "match": {"type": "string", "enum": ["substring", "word", "regex"], "default": "substring",
+                      "description": "text: how to match."},
+            "ignore_case": {"type": "boolean", "default": False, "description": "text: ignore case."},
+            "variables": {"type": "boolean", "default": True, "description": "text: also edit string variables."},
+            "tolerance": {"type": "number", "minimum": 0, "maximum": 255, "default": 0,
+                          "description": "color: per-channel distance that still matches."},
+            "swatches": {"type": "boolean", "default": True, "description": "color: also edit swatch values."},
+            "fit": {"type": "string", "enum": ["keep-box", "stretch"], "default": "keep-box",
+                    "description": "asset: keep-box fits the new image inside the old box; stretch fills it."}}},
+            "description": "Rules applied in order; each has one of text, color, font or asset, and with."},
+        "dry_run": {"type": "boolean", "default": True, "description": "List the matches without saving (default true)."},
+        "suites": {"type": ["boolean", "array"], "items": STR, "description": "true runs each document's attached "
+                   "suites, or name them; a document whose suites fail is left untouched (needs_review)."},
+        **SELECTION,
+        "journal": {"type": "string", "default": "replace-across", "description": "Name to recover a glob run "
+                    "under with group-recover (a group run uses the group's name)."},
+    },
+    "repair-layout": {
+        "checks": {"type": "array", "items": STR, "description": "Design checks to satisfy (default: vixl_check's "
+                   "default set)."},
+        "suites": {**COMMON["suites"], "description": "Attached suites that must not get worse; their text-fit, "
+                   "contrast and spacing rules are repaired too."},
+        "protected": {"type": "array", "items": STR, "description": "Layers (IDs or names) no candidate may change; "
+                      "a protected group protects its contents."},
+        "minimum_size": {"type": "number", "minimum": 1, "maximum": 1000,
+                         "description": "No candidate may set text below this size (px)."},
+        "max_candidates": {"type": "integer", "minimum": 1, "maximum": 200, "default": 24,
+                           "description": "Candidates evaluated in all."},
+        "max_iterations": {"type": "integer", "minimum": 1, "maximum": 20, "default": 4,
+                           "description": "Failures tried, one after another."},
+        "time_budget": {"type": "number", "exclusiveMinimum": 0, "maximum": 300, "default": 20,
+                        "description": "Seconds before the search stops."},
+        "dry_run": {"type": "boolean", "default": True, "description": "Plan without saving (default true)."},
+    },
+    "protected-edit": {
+        "operations": {**COMMON["operations"], "description": "The edit, applied to a candidate first."},
+        "protect": {"type": "array", "items": STR, "description": "Layers (IDs or names) whose structure and "
+                    "covered pixels must not change; a group protects its contents."},
+        "regions": {"type": "array", "items": REGION, "description": "Canvas regions whose pixels must not change."},
+        "tolerance": {"type": "integer", "minimum": 0, "maximum": 255, "default": 0,
+                      "description": "Largest RGBA channel change a protected pixel may have."},
+        "structural": {"type": "boolean", "default": True, "description": "Check protected layers' fields."},
+        "pixels": {"type": "boolean", "default": True, "description": "Check protected pixels in the render."},
+        "dry_run": {"type": "boolean", "default": False, "description": "Verify without saving."},
+    },
+    "reproduce": {
+        "reference": {**PATH, "description": "Approved reference image the fresh render must match."},
+        "tolerance": {"type": "integer", "minimum": 0, "maximum": 254, "default": 0,
+                      "description": "Channel change a pixel may have and still match the reference."},
+        "max_fraction": {"type": "number", "minimum": 0, "maximum": 1, "default": 0,
+                         "description": "Fraction of pixels allowed to differ from the reference."},
+        "lock": {**PATH, "description": "Render lockfile (.json) to verify: reports located drift."},
+        "write_lock": {**PATH, "description": "Write a render lockfile (.json) for the document as it renders now."},
+        "overwrite": {"type": "boolean", "default": False, "description": "Replace an existing write_lock file."},
+    },
     "plugin-install": {"manifest": MANIFEST, "replace": {"type": "boolean", "default": False,
                                                           "description": "Upgrade an installed pack."}},
     "plugin-remove": {"name": {"type": "string", "description": "Plugin pack to remove."}},
@@ -455,7 +713,8 @@ SUMMARIES = {
     "figure-plan": "Plan an editable figure from head units with a named part map.",
     "pattern-list": "List built-in and document-defined repeatable textures and patterns.",
     "pattern-check": "Measure edge discontinuity in a pattern tile before repeating it.",
-    "check": "Run an attached or inline check suite against the document; returns passed/failed/needs_review per rule.",
+    "check": "Run an attached, inherited or inline check suite (or every one) against the document, optionally over "
+             "every artboard, page and comp; returns passed/failed/needs_review per rule.",
     "act": "Apply operations to a candidate, run suites, and commit only when every suite passes.",
     "capture": "Turn the open document into a portable recipe document with typed inputs; writes a new .vixl.",
     "plan": "Expand a production spec into its full variant list without rendering.",
@@ -488,13 +747,24 @@ SUMMARIES = {
     "logo-package": "Build a logo delivery folder: full-colour, mono and on-light/dark variants, optional mark/"
                     "horizontal/stacked lockups, strict SVG, RGB/CMYK PDF, PNG 1x-3x, icons and favicon, social "
                     "images, a usage sheet and an optional zip. No EPS.",
+    "brand-board": "Draw the workspace brand.json (or a preset) as a brand guidelines document: cover, palette with "
+                   "contrast pairs, the text-stage ladder, logos with clear space and do/don't rules; .pdf, .pptx, "
+                   ".html or an editable .vixl.",
     "drawing-report": "Measure a hand-drawing layer: strokes, closures, straightness and cleanup suggestions.",
-    "drawing-compare": "Write a before/after comparison PNG of a drawing layer.",
+    "deck-from-markdown": "Build a checked slide deck from a Markdown file: a page per heading with a fitting layout, "
+                          "rich text, tables, charts, images and speaker notes; re-running rebuilds only changed slides.",
+    "mockup": "Place a design into device or print mockups (phone, laptop, browser, framed poster, business card, mug "
+              "or a saved template) as a live, corner-pinned link; optionally export each.",
+    "mockup-list": "List the mockup templates: built-in and the workspace's own, with their slots.",
+    "mockup-save": "Save a mockup template (a scene and its four-corner slots) to the workspace resource library.",
+    "drawing-compare": "Write a before/after comparison PNG of a drawing layer; the result reports fidelity (IoU, pixel mismatch).",
     "resource-list": "List built-in and user resources of one category.",
     "resource-get": "Read one named resource.",
     "resource-save": "Save a custom resource in the workspace library.",
     "shape-save": "Save a shape or path layer as a reusable shape resource.",
-    "suite-use": "Copy a saved suite into the open document (one undo step).",
+    "suite-use": "Copy a saved suite into the open document, or attach it by reference (one undo step).",
+    "suite-infer": "Propose a tolerant starter suite from the approved open document (or a group's members), each rule "
+                   "explained by what was measured; apply saves it as a library suite.",
     "effect-run": "Run a saved effect workflow on the open document.",
     "palette-check": "Measure how much of the rendered document stays inside a palette.",
     "branch-list": "List branches forked from documents in this workspace.",
@@ -502,10 +772,25 @@ SUMMARIES = {
     "branch-status": "Compare a branch with the open document: what changed and any conflicts.",
     "branch-merge": "Merge a branch into the open document (dry run by default).",
     "group-list": "List project groups.",
-    "group-define": "Define a group of documents with shared variables and swatches.",
+    "group-define": "Define a group of documents with shared variables, swatches and inherited library suites.",
     "group-show": "Show a project group's members and shared parameters.",
-    "group-apply": "Apply shared parameters or operations to every group member with suite checks (dry run by default).",
+    "group-apply": "Apply shared parameters or operations to every group member with suite checks (dry run by default; "
+                   "review writes a before/after page, accept/reject/decisions pick the members to publish).",
+    "group-check": "Compare a group's members (or a glob) with each other: logo placement, type, swatches, shared "
+                   "layers and declared copy facts; reports the members that differ from the majority or a reference.",
+    "check-all": "Check many documents (globs, a group, or those changed since a git revision) in parallel into one "
+                 "report: status per document, counts, top findings, group checks, history and since-last changes; "
+                 "writes JSON, Markdown, JUnit, SARIF, GitHub annotations or a proof page.",
+    "replace-across": "Find and replace text, colors, fonts and images across a group or glob: a dry run lists every "
+                      "match, apply publishes through the group journal (group-recover undoes an interrupted run).",
     "group-recover": "Roll back an interrupted group edit from its journal.",
+    "repair-layout": "Bounded layout repair: try several candidates per overflow, overlap, spacing, contrast or "
+                     "safe-area failure, keep the least disruptive that passes; infeasible leaves the document "
+                     "unchanged and lists unsatisfied constraints (dry run by default).",
+    "protected-edit": "Apply operations only if protected layers keep their structure and pixels and protected "
+                      "regions keep their pixels; otherwise roll back and report located differences.",
+    "reproduce": "Render and report renderable, environment-matched (lockfile) or reference-verified (reference "
+                 "image or locked render hash), with located drift; can write a lockfile.",
     "plugin-list": "List installed plugin packs.",
     "plugin-install": "Install a pack of namespaced palettes, templates, suites and other resources.",
     "plugin-remove": "Remove an installed plugin pack and its resources.",

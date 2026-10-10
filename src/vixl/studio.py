@@ -9,7 +9,8 @@ ACTIONS = {
     "resource-get": ({"kind", "name"}, {"kind", "name"}),
     "resource-save": ({"kind", "name", "value"}, {"kind", "name", "value"}),
     "shape-save": ({"target", "name"}, {"target", "name"}),
-    "suite-use": ({"name", "as"}, {"name"}),
+    "suite-use": ({"name", "as", "reference"}, {"name"}),
+    "suite-infer": ({"name", "apply", "replace", "group", "from_group"}, set()),
     "effect-run": ({"name", "variables", "dry_run"}, {"name"}),
     "palette-check": ({"palette", "colors", "tolerance", "max_fraction", "alpha_min", "region"}, set()),
     "branch-list": (set(), set()),
@@ -17,9 +18,11 @@ ACTIONS = {
     "branch-fork": ({"branch", "output", "author"}, {"branch", "output"}),
     "branch-status": ({"branch"}, {"branch"}),
     "branch-merge": ({"branch", "resolutions", "dry_run", "expected_head"}, {"branch"}),
-    "group-define": ({"name", "documents", "shared"}, {"name", "documents"}),
+    "group-define": ({"name", "documents", "shared", "facts", "profiles", "suites"}, {"name", "documents"}),
     "group-show": ({"name"}, {"name"}),
-    "group-apply": ({"name", "operations", "suites", "dry_run"}, {"name"}),
+    "group-apply": ({"name", "operations", "suites", "profile", "dry_run", "repair", "accept", "reject", "decisions",
+                     "review", "overwrite"}, {"name"}),
+    "group-check": ({"name", "documents", "reference", "checks", "layers", "facts", "required", "tolerance"}, set()),
     "group-recover": ({"name"}, {"name"}),
     "plugin-list": (set(), set()),
     "plugin-install": ({"manifest", "replace"}, {"manifest"}),
@@ -45,10 +48,18 @@ def dispatch(session, action, request, document=None):
         from .collaboration import dispatch as collaborate
 
         return collaborate(session, action, request, document)
+    if action == "group-check":
+        from .group_consistency import run as group_check
+
+        return group_check(session, request)
     if action.startswith("group-"):
         from .project_groups import dispatch as groups
 
         return groups(session, action, request)
+    if action == "suite-infer":
+        from .suite_infer import dispatch as infer
+
+        return infer(session, request, document)
     if action.startswith("plugin-"):
         from .plugins import package
 
@@ -106,6 +117,10 @@ def dispatch(session, action, request, document=None):
     ) as project:
         if action == "suite-use":
             suite = get("suites", request["name"], workspace=session.workspace)
+            require(type(request.get("reference", False)) is bool, "reference must be true or false", field="reference")
+            if request.get("reference"):
+                # Attach by reference: every check runs the library's current rules (local rules can be added later).
+                suite = {"version": 1, "extends": request["name"], "rules": []}
             return project.apply(
                 {"type": "suite-set", "name": request.get("as", request["name"]), "suite": suite},
                 detail="compact",

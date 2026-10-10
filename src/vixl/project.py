@@ -237,6 +237,12 @@ class Project:
         found = self.find_layer(target)
         if found is not None:
             return found
+        if isinstance(target, str) and "/" in target:
+            from .objects import resolve_path
+
+            found = resolve_path(self, target)  # an object path: dog/head, person/guitar/neck
+            if found is not None:
+                return found
         names = [x["name"] for x in self.state["layers"]]
         folded = [name for name in names if name.casefold() == str(target).casefold()]
         suggestions = folded or difflib.get_close_matches(str(target), names, 3, 0.5)
@@ -300,6 +306,23 @@ class Project:
 
         with resolving(self):
             return self._inspect(target)
+
+    def bounds(self, target=None, space="canvas"):
+        """A layer's (x, y, width, height): on the canvas (default), through every group it is in, as
+        ``inspect`` reports ``canvas_bounds``; or ``space="parent"``, in its parent group's content
+        coordinates (the canvas for a top-level layer), as ``resolved_bounds``. Rotated layers give
+        the box around their turned outline."""
+        from .errors import require
+        from .render import layer_box, resolving
+
+        require(space in ("canvas", "parent"), f"space is canvas or parent, not {space!r}", field="space")
+        layer = self.layer(target)
+        with resolving(self):
+            if space == "parent" or not layer.get("parent"):
+                return tuple(float(v) for v in layer_box(self, layer))
+            from .spatial import canvas_boxes
+
+            return tuple(float(v) for v in canvas_boxes(self)[layer["id"]])
 
     def _inspect(self, target=None):
         from .render import child_index, extent, resolve_layout, resolved_layers
@@ -869,15 +892,47 @@ class Project:
         return export_animation(self, path, **options)
 
     @memory_guard
-    def check(self, **options):
+    def check(self, *, profile=None, group=None, repair=None, offset=0, limit=None, artboards=None, pages=None,
+              comps=None, include_hidden=False, **options):
+        """Design checks (checks.check_design). With ``profile`` (draft, review, final or a workspace profile, see
+        policy.py) the profile chooses the checks and suites and its ``fail_on`` decides ``passed``. ``repair``
+        (true or a list of repair kinds) first applies the built-in repair for each fix finding it can resolve
+        (``Project.repair``), as one undoable batch, and reports it under ``repairs``. ``artboards``, ``pages`` and
+        ``comps`` ('all' or lists) check every combination in one report (``coverage.check_all``); hidden pages
+        only with ``include_hidden``. ``offset``/``limit`` page the findings; the verdict covers them all."""
         from .checks import check_design
+        from .coverage import check_all, requested
+        from .diagnostics import page_findings
 
-        report = check_design(self, **options)
+        repairs = None
+        if repair:
+            repairs = self.repair(kinds=repair, checks=options.get("checks"))
+        coverage = {"artboards": artboards, "pages": pages, "comps": comps, "include_hidden": include_hidden}
+        if profile is not None:
+            from .policy import run
+
+            report = run(self, profile, group=group, **(coverage if requested(artboards, pages, comps) else {}),
+                         **options)
+        elif requested(artboards, pages, comps):
+            report = check_all(self, **coverage, **options)
+        else:
+            report = check_design(self, **options)
         if not options.get("checks") or "fonts" in options["checks"]:
             from .compaction import check_note
 
             check_note(self, report)
-        return report
+        if repairs is not None:
+            report["repairs"] = repairs
+        return page_findings(report, offset, limit)
+
+    @memory_guard
+    def repair(self, *, kinds=True, checks=None, suites=(), max_repairs=10, protected=(), dry_run=False):
+        """Apply the built-in repair map to this document's fix findings (repair.auto_repair): each repair is
+        kept only when its finding is resolved and nothing new fails; the kept operations are one undoable batch."""
+        from .repair import auto_repair
+
+        return auto_repair(self, checks=checks, suites=suites, kinds=kinds, max_repairs=max_repairs,
+                           protected=protected, dry_run=dry_run)
 
     def compact(self, *, fonts=True, dry_run=False):
         """Drop undo history and the embedded files the current design does not use (see
@@ -892,18 +947,34 @@ class Project:
         return run_suite(self, suite, **options)
 
     @memory_guard
-    def act(self, operations, *, suites=None, dry_run=False, check=None):
-        """Apply and measure one candidate. Failed contracts leave the document unchanged."""
+    def act(self, operations, *, suites=None, dry_run=False, check=None, repair=None):
+        """Apply and measure one candidate. Failed contracts leave the document unchanged. ``repair`` (true or
+        a list of repair kinds) applies the built-in repair map to the candidate when a suite fails (its
+        text-fit and contrast rules, and fix findings of the bounds, contrast and safe-area checks) and keeps
+        the repairs only when every suite then passes."""
+        from .outcomes import from_suite, merge
+
         candidate = self.clone()
         result = candidate.apply(operations, detail="compact", check=check)
         require(candidate.state.get("suites", {}) == self.state.get("suites", {}),
                 "Checked actions cannot rewrite suites; edit contracts explicitly with apply")
         reports = {name: candidate.check_suite(name) for name in (suites or [])}
         accepted = all(report["passed"] for report in reports.values())
+        repairs = None
+        if repair and not accepted:
+            trial = candidate.clone()
+            repairs = trial.repair(kinds=repair, checks=["bounds", "contrast", "safe_area"], suites=list(reports))
+            retried = {name: trial.check_suite(name) for name in reports}
+            if repairs["operations"] and all(report["passed"] for report in retried.values()):
+                candidate, reports, accepted = trial, retried, True
+            else:
+                repairs["kept"] = False
+        outcome = merge(*(from_suite(report, name) for name, report in reports.items()))
         if accepted and not dry_run:
             self.__dict__.update(candidate.__dict__)
         return {**result, "success": accepted, "dry_run": dry_run, "committed": accepted and not dry_run,
-                "checks": reports, "bounds": {x["name"]: x["resolved_bounds"] for x in candidate.inspect()["layers"]}}
+                "checks": reports, "outcome": outcome, **({"repairs": repairs} if repairs is not None else {}),
+                "bounds": {x["name"]: x["resolved_bounds"] for x in candidate.inspect()["layers"]}}
 
     @memory_guard
     def measure(self, **options):

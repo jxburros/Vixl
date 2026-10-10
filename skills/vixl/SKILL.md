@@ -52,7 +52,9 @@ instead of improvising freehand shapes:
 5. **Test, then look** — write the brief's requirements as a check suite before you build (below), run
    it with `vixl_check` while you build, and only preview a design that passes: `vixl_check` (fix the
    `fix` findings, glance at `review`, accept `informational` ones; mark a deliberate edge crop with
-   `layer-intent` `allow_crop`) plus your suite, then `vixl_render_preview` → `vixl_export_file`.
+   `layer-intent` `allow_crop`, and deliberately faint text with `layer-intent` `waive: [{check: "contrast",
+   reason}]`: waived findings stay listed as informational) plus your suite, then `vixl_render_preview` →
+   `vixl_export_file`. Before shipping, `vixl_check(profile="final")` also fails on review findings.
    `vixl_operations_apply(..., check=true, suites=true, preview=true)` returns the findings (the
    batch's layers plus every `fix`), the suite rules that did not pass and a small preview with the edit
    itself, so the loop is one call.
@@ -87,12 +89,31 @@ likeness, mood). `vixl_guide("testing")` is the full method; every `vixl_guide(k
 | Balanced / subject on a thirds point | `{kind: balance, tolerance: 0.1}`, `{kind: focal, target: subject, grid: thirds}` |
 | Brand colour exact | `{kind: color, point: [x, y], expected: "@brand"}` or `palette` |
 | Exactly three bullets, no text on an icon | `{kind: count, target: "bullet-*", minimum: 3, maximum: 3}`, `{kind: count, layer_type: text, maximum: 0}` |
+| Headline ≤ 40 characters, must say "Terms apply", never "free" | `{kind: text, target: headline, max_characters: 40}`, `{kind: text, contains: "Terms apply"}`, `{kind: text, forbid: "(?i)\\bfree\\b"}` |
+| At most 3 fonts, images print at 240 ppi | `{kind: budget, max_fonts: 3, min_ppi: 240}` |
 | A finished part must not change | `suite-capture` (unchanged and pixels rules) |
 | Holds through an animation | add `sampling: {mode: sampled, count: 8}` |
+| Holds on every format | add `sampling: {artboards: "all", pages: "all"}` (results name their `variant`) |
 
 Each result carries the measurement (gaps, margins, ratio, centre, colour), so a failure says what to
 change. A rule that cannot be measured (a missing layer) is `needs_review`, never a pass, and a
 passing suite proves only its own rules. Rule fields: `vixl_workflow_schema().definitions.suite`.
+From an approved design, `vixl_workflow("suite-infer", {name})` proposes an explained, tolerant suite to
+review; library suites a group or brand.json lists under `suites` are inherited by every member, and
+`vixl_workflow("check", {})` runs every attached and inherited suite.
+
+**Read the outcome, then repair.** Results carry `outcome`: `execution`, `validation` (passed, failed,
+incomplete, not_run) and `review` with reasons; `state` is `validated` only when required checks ran and
+passed with nothing left to review. An apply without checks, an export or a production output without suites
+is `unvalidated`, not approved. Fix findings carry a stable `rule` (`bounds.text-overflow`,
+`contrast.text-contrast`, `safe_area.outside` …), `layer_ids`, `measured` actual versus expected and a suggested
+`repair` (operations to dry-run; nothing is applied). `repair=true` on `vixl_operations_apply`, `vixl_check` and
+workflow `act` / `group-apply` applies the built-in repair (fit-text within the minimum, ink toward `@ink`,
+nudge inside the safe area; blanks are held) and keeps only repairs that leave nothing new failing.
+`preview={overlay: true}` (with `check`) marks the findings on the preview; `focus: N` zooms to one. For
+overflow or overlap with no single fix use workflow `repair-layout` (`protected`, `minimum_size`; dry run by
+default, unchanged when infeasible); `protected-edit` commits an edit only if protected layers and regions are
+unchanged; `vixl reproduce --reference PNG` or `--lock FILE` verifies an approved render.
 
 **One call for a new piece.** When you already know the size, layout slots, look and operations,
 `vixl_compose(path, size=…, font_pairing=…, layout={name, …slots}, style=…, look={…}, operations=[…],
@@ -119,9 +140,39 @@ palette regression rules; choose antialias tolerances before checking, not to hi
 Use container-reflow after changing copy, then check container-layout. Fork one document per
 agent, edit independently, preview branch-merge, resolve conflicts explicitly, then merge.
 
+Across many documents (`vixl_workflow` actions; see the references): `check-all` checks globs or a group in
+parallel into one report (status per document, `failing` at `fail_on`, history with `since_last`; JSON, Markdown,
+JUnit, SARIF or GitHub annotations via `outputs`); `group-check` reports members whose logo placement, type ratios,
+swatches, layers or declared copy facts (prices, names, dates) differ from the majority or a `reference`;
+`replace-across` finds and replaces text, colors, fonts and images (dry run first); `group-apply` and
+`replace-across` take `review` (a before/after page) and publish only `accept`ed members or the approved items of
+the page's `decisions` file.
+
 ## Emoji artwork
 
 Read [emoji workflows](references/emojis.md) for the offline Unicode 17 catalog, editable source masters, custom replacements and shortcodes, templates and destination-ready image packs. Use `vixl_workflow` actions `emoji-list`, `emoji-get`, `emoji-template`, `emoji-replace`, `emoji-pack-install`, `emoji-settings`, `emoji-reset`, `emoji-requirements`, `emoji-destinations` and `emoji-export`; their typed fields come from `vixl_workflow_schema`. Bundled VIXL artwork is the default; `mode: "font"` (operation `emoji-mode` or workflow `emoji-settings`) prefers the font, with bundled art for sequences it cannot shape.
+
+## Objects and accessibility
+
+- **Declare objects** — build a dog, a guitar or a person as one group, then `{type: object, target: GROUP,
+  kind: dog}` and `{type: object, action: part, target: LAYER, part: leg, side: left}`. `vixl_guide(brief="dog")`
+  and `vixl_resource_get(kind="objects", name="dog")` give the kind's parts, the parts that must touch,
+  proportions and layering (`vixl objects show dog`). A person holding a guitar is an object with a sub-object.
+- **Address by path** — `dog/head`, `dog/leg[left]`, `person/guitar/neck` work wherever a layer name does;
+  `isolate` also takes `object:KIND`; `edit-layers` selects `where.object`, `where.object_kind`, `where.part`.
+- **Review loop** — `vixl_document_inspect(object="dog")` lists parts and the required parts still missing
+  (`object="*"` lists every object); `vixl_render_preview(isolate=["dog"], views=["parts"], exploded=true)` shows
+  each part alone; `vixl_check(checks=["connected"])` finds parts that float free.
+- **Export and reuse** — `vixl_export_file(isolate=["guitar"], padding=8)` exports one object cropped to its
+  ink (a `.vixl` path writes a portable object); `object-save` / `object-place` (`recolor` by part, `source` for a
+  portable file) place editable copies; `library-place` places components as editable groups (`as: "image"` for a
+  snapshot). SVG keeps `data-vixl-object`/`data-vixl-kind`/`data-vixl-part`, PowerPoint named groups, PSD group
+  names. `ungroup` refuses an object unless `force: true`.
+- **Accessibility** — `layer-intent` `alt` on meaningful images, frames, charts and object groups (or
+  `decorative: true`); `{type: accessibility, lang, title, page_alt, page_lang, reading_order}`;
+  `vixl_check(checks=["accessibility"])` bundles contrast and colour vision with missing alt, language, small
+  text, colour-only charts and reading order. HTML, SVG, PPTX and PDF carry alt and language (no tagged PDF
+  structure tree). See [objects](../../docs/objects.md) and [accessibility](../../docs/accessibility.md).
 
 ## New in 0.24: reliability and reusable delivery
 
@@ -190,18 +241,26 @@ Read [emoji workflows](references/emojis.md) for the offline Unicode 17 catalog,
   and jittered `repeat`/`radial-repeat` (`vixl_guide("scatter")`).
 - **Imperfection** — opt-in `irregular` (seeded wobble, stroke weight, color drift, micro placement)
   and `tear` (torn edges) for characters, stickers, scenes, scattered patterns, hand-made looks and
-  ripped paper; never for logos, charts, text or anything that must align (`vixl_guide("imperfection")`). `arc` shapes draw pie wedges and donut segments.
+  ripped paper; never for logos, charts, text or anything that must align (`vixl_guide("imperfection")`). `arc` shapes draw pie wedges and donut segments; `closed: false` draws just the stroked curve.
 - **Shape parameters and content boxes** — shortcut shapes take their own parameters (heart `apex`/`cleft`/`tip`,
   speech-bubble `pointer_side`/`pointer_position`/`pointer_size`/`body`, shield `depth`, `slant`, chevron
   `thickness`; `vixl_capabilities("shapes")` lists all). Shapes report `content_bounds` (a bubble's body, a
   badge's centre, a screen): put text there with `text` `within`, `place` `within` or `align` `box: "content"`.
 - **Charts** — `chart` (bar, stacked, 100 %, horizontal, line, area, pie, donut) from a table or workspace CSV, `chart-data` to fix
   a value on stable layer IDs, native PPTX charts; see [charts](references/charts.md) before drawing any chart by hand.
+- **Tables** — `table` (rows or a workspace CSV; aligned columns including `decimal` for prices, header, zebra,
+  rules) and `table-data` for cell and row edits; native PPTX tables; see [charts](references/charts.md#tables).
 - **Guides beyond right angles** — angled/curved guides, compositional and perspective grids,
   `place`, `snap`, `guides`/`alignment` checks.
-- **Lyric videos** — `lyric-video-plan/build/export` workflow actions (song + LRC + template).
+- **Lyric videos** — `lyric-video-plan/build/export` workflow actions (song + LRC + template). The template's own
+  keyframes survive the build; `lead_in`/`tail` make room for an `intro` title card and an `outro` end card; the plan
+  returns cue and section windows; `segments` makes long renders resumable.
 - **Linked documents** — `link` layers render another `.vixl` live (derived crops, pattern previews, sheets); `links` reports
-  stale/missing sources, `link-embed` freezes one. See [production](references/production.md).
+  stale/missing sources, `link-embed` freezes one; `corner_pin` warps a link into four corners. See [production](references/production.md).
+- **Decks from Markdown** — the `deck-from-markdown` workflow builds a checked deck (layouts, rich text, tables,
+  charts, images, speaker notes, one master) from a Markdown file in one call; re-running rebuilds only changed slides.
+- **Mockups** — the `mockup` workflow places a design in phone, laptop, browser, poster-wall, business-card or mug
+  templates (or the workspace's own, `mockup-save`) as a live, corner-pinned link; one call per design, `export` renders them.
 - **Print merge** — `merge-impose` lays CSV rows out on print sheets with crop marks: vector-text PDF plus an editable sheet.
   Placeholders take filters: `${name|upper}`, `${company|default:Independent}`, `${state|map:states}` (`variable-map`).
   `$${name}` writes a literal `${name}`.
@@ -227,7 +286,7 @@ not be blindly repeated; preserve its remote job identity.
 - **Named sizes** — `vixl_document_create(size="letter", bleed=true)` / `vixl new business-card --bleed`; 150 print, social, web, ad, video, slide, icon and logo sizes with dpi, bleed, safe area and guides.
 - **New documents** — every surface (`vixl new`, `Project()`, `vixl_document_create`, compose) rolls and stores `design_defaults` (`seed`/`--seed`, `variety`/`--variety` reproduce them), gives the canvas the palette background (transparent for logos, icons and favicons; pass `background` to choose) and installs the rolled pairing. A `layout-apply` without `seed` then follows the whole stored direction.
 - **Layouts** — 53 principled, seed-varied layouts (`layout-apply`) that adapt to the canvas and set up contrast-checked color roles, a type scale and grids. Use them when a brief gives you free rein. They are fill-in-the-blank forms: `vixl layout show NAME` / `vixl_layouts_list` lists each layout's slots and what each needs. Fill them all; an unfilled slot renders as a `[Label]` blank that `check` reports as an error, and a slot the layout doesn't use is rejected rather than silently dropped. Templates work the same way.
-- **Typefaces** — the bundled font is a proofing fallback (`check` warns about it). Pick real type from a researched catalog of open-licensed families and curated heading/body pairings: `vixl font pairings --mood editorial` / `vixl_fonts`, then `vixl font pair NAME|random` / `vixl_font_pair` downloads, embeds and sets them as the document typography that layouts use; the result's `source` says whether each font came from the cache or a download (URL). `vixl font principles` explains how to combine fonts. Text without `font` uses the body face once the document has typography, text without `color` uses `@ink` (or black or white, whichever reads on the canvas), text without `size` uses the body size of the type scale (proportional to the canvas), and leading follows one line-height table (body 1.45, headings 1.1, display 1.0; `spacing` may be negative).
+- **Typefaces** — the bundled font is a proofing fallback (`check` warns about it). Pick real type from a researched catalog of open-licensed families and curated heading/body pairings: `vixl font pairings --mood editorial` / `vixl_fonts`, then `vixl font pair NAME|random` / `vixl_font_pair` downloads, embeds and sets them as the document typography that layouts use; the result's `source` says whether each font came from the cache or a download (URL). `vixl font principles` explains how to combine fonts. Text without `font` uses the body face once the document has typography, text without `color` uses `@ink` (or black or white, whichever reads on the canvas), text without `size` uses the body size of the type scale (proportional to the canvas), and leading follows one line-height table (body 1.45, headings 1.1, display 1.0; `spacing` is line spacing and may be negative). Letter spacing is the layer's `tracking` (pixels), and `text_transform` (`uppercase`, `lowercase`, `capitalize`) cases the drawn text; both apply to keyed and `${variable}` text.
 - **Dice** — when the brief is thin, roll instead of defaulting: `vixl roll --for poster` / `vixl_roll` picks a pairing, a mood-consistent palette, a layout and its parameters from one seed, weighted by purpose (poster, social, slides, document, form, diagram, logo, motion; else the document's size) and gated by `variety` (low: safe pools only; medium: mostly safe, sometimes bold; high: every tier); layouts and templates accept `seed: "random"`. Roll a few, preview, keep the seed you like, and `--lock` choices you want fixed (`--lock tier=bold` explores a tier). `vixl house show PURPOSE` prints the purpose profile.
 - **Color language** — `oklch()`, `lab()`, `cmyk()`, `color(display-p3 …)`, `kelvin()`, `color-mix()`, `lighten(@brand, 10%)` … everywhere; `vixl_color` for harmonies, scales and contrast; `palette-generate`.
 - **Print** — CMYK PDF/TIFF/JPEG (ICC profile or GCR + ink limit), PDF, ICO, icon sets, dpi, soft proofs, color-blindness simulation, `print` and `color_vision` checks.
@@ -251,9 +310,13 @@ When `vixl_document_open` returns `upgrade`, the document predates 0.21: review 
 open it again with `upgrade="pin-fills"` (old white fills) or `"accept"`.
 Humans can follow progress with `vixl -p DOCUMENT view`.
 
-Workspace `brand.json` provides default palette roles, pairing/embedded fonts, embedded logos,
-minimum contrast, and required layer names. Layouts, templates, rolls and checks honor it, and new
-documents embed its fonts at creation (`workspace_fonts` in the result; `workspace_fonts: false` skips).
+Workspace `brand.json` provides default palette roles (plus `palette.extra` approved colours), pairing/embedded
+fonts under any role name (`heading`, `body`, `hand` …) with `stages` mapping text stages onto them, embedded
+logos, minimum contrast, required layer names, compliance rules (`fonts.allowed`, `colors.strict`, `logo.clear_space`
+and `min_size`) and named `presets` (select one per document with `{"type": "brand-preset", "name": …}`).
+Layouts, templates, rolls and checks honor it, and new documents embed its fonts at creation (`workspace_fonts` in
+the result; `workspace_fonts: false` skips). `vixl brand validate` flags missing roles, fonts and logos; the
+`brand-board` workflow draws the brand as a guidelines PDF.
 Set the workspace typography with `vixl_font_pair`/`vixl_font_install(role=...)` and `scope: "workspace"`.
 Use `vixl_roll(apply=true, slots={...})` or `roll --apply --set title=...` to apply a whole direction;
 `layout apply` returns unfilled slots immediately. Check and fill them before export. A roll with `slots` omits the slots you did not fill (`unfilled: "omit"`), so it passes `check`; pass `unfilled: "blank"` to keep `[Label]` placeholders instead.
@@ -279,6 +342,9 @@ AI-provider features (generate, inpaint, segmentation, OCR, plan) are in
 Check availability first: `vixl --version` (CLI) or call `vixl_workspace_list` (MCP). Install from
 source with `pip install -e ".[server,mcp]"` (Python ≥ 3.11); Windows users use the installer.
 Set `VIXL_NO_UPDATE=1` in automation so the Windows auto-updater never runs mid-task.
+A slow render? `check --checks cost` names the costly layer; `VIXL_PROFILE=1` adds a `render_profile`
+(per-layer times, cache hits) to every result. `vixl cache info|clear` manages the disk render cache
+(`VIXL_RENDER_CACHE=off`, `VIXL_CACHE_MAX_MB`).
 
 **`vixl` not found? Look before asking the user.** A session started before installation keeps
 its old PATH. Try, in order: `%LOCALAPPDATA%\Programs\Vixl\bin\vixl.exe` (Git Bash:
@@ -479,6 +545,7 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
 | New layers | `add` (image), `solid`, `gradient` (linear/angled/radial, multi-stop, `falloff` curves for soft halos), `text`, `shape` (`solid`/`gradient`/`shape`/`text` with `target` edit that layer in place instead of adding one), `frame` (image box with fill/fit), `pixel-art`, `paint-layer`, `adjustment`, `symbol-instance` |
 | Transform | `move`, `resize`, `scale`, `rotate`, `skew`, `transform` (affine), `distort` (envelope, corner-pin), `flip`, `crop`, `opacity`, `blend`, `hide`/`show` |
 | Stacking | `raise`, `lower`, `top`, `bottom`, `reorder` (`above`/`below`), `group`/`ungroup`, `reparent` (into/out of a group, keeps position), `clip` |
+| Objects | `object` (kind, named parts, sub-objects, paths like `dog/head`), `object-save`/`object-place`, `inspect object=`, `isolate` with `views: [parts]`, isolated `export` |
 | Layout | `align` (to canvas/selection/layer), `distribute`, `constrain`/`unconstrain`, `stack` (auto-layout column/row that re-flows around hidden or empty members; text `hide_if_empty`), `guide`, `grid`, `canvas` (resize/preset), `artboard` |
 | Color & filters | 27 built-in effects (brightness … white-balance … auto-contrast), `effect-set/enable/disable/remove/move`, `lut` + `lookup` (a stack effect), `preset-save/apply` |
 | Selections & masks | `select` (rect/ellipse/color/alpha/all/none/invert, add/subtract/intersect, feather), `mask` (create/from-selection/import/invert/enable/disable/delete) |
@@ -491,9 +558,9 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
 | Color & print | color language in every color field, `vixl_color`, CMYK/PDF/ICO export, `vixl_export_icons`, proof/simulate previews, `print`/`color_vision` checks |
 | History | undo/redo (a count larger than the history goes as far as it can and says so), checkpoint, branch, checkout, compare, transactions |
 | Styles | `vixl_styles` (28 design styles: principles, palettes, type, layout, imagery, do/don't), `style-set` tags the document, `check --checks style` evaluates the style's premade rules |
-| QA | check (bounds/overlap/contrast/safe area/legibility; opt-in print, color_vision, style, connected (floating parts of a grouped object); every finding has an `action`: fix / review / informational), inspect, measure (sample/histogram/contrast), spacing, validate/assert, render preview (zoomable, time, proof, simulate, isolate one object), compare revisions |
+| QA | check (bounds/overlap/contrast/safe area/legibility; opt-in print, color_vision, style, connected (floating parts of a grouped object), cost (layers that take over 10× the median to draw, naming the blur radius or stroke points), accessibility (alt text, language, small text, colour-only charts, reading order, plus contrast and colour vision); every finding has an `action`: fix / review / informational), inspect, measure (sample/histogram/contrast), spacing, validate/assert, render preview (zoomable, time, proof, simulate, isolate one object), compare revisions |
 | AI (provider) | generate/inpaint/img2img, extend (outpaint), upscale, regenerate, background-remove, select object/subject, remove, content-aware-fill, describe/detect/OCR, natural-language plan |
 
 When unsure of a field, get the authoritative schema: MCP embeds it in `vixl_operations_apply`'s
-input schema (also resource `vixl://operations`); CLI `vixl schema`; REST `GET /schema`; per-command
+input schema (also resource `vixl://operations`); CLI `vixl schema` (`vixl schema OPERATION` for one); REST `GET /schema`; per-command
 syntax via `vixl COMMAND --help`.

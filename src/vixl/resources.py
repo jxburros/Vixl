@@ -15,6 +15,7 @@ from .assets import read_bounded
 from .design import named
 from .errors import require
 from .guidance import GUIDANCE
+from .objects import builtin_kinds
 from . import house_style
 
 PALETTES = {
@@ -153,7 +154,9 @@ for name, title, subtitle, cta, preset in (
 CONTAINERS, MODULAR_TEMPLATES = container_builtins()
 TEMPLATES.update(MODULAR_TEMPLATES)
 BUILTINS = {"palettes": PALETTES, "templates": TEMPLATES, "guidance": GUIDANCE,
-            "containers": CONTAINERS, "shapes": {}, "suites": SUITES, "workflows": WORKFLOWS}
+            "containers": CONTAINERS, "shapes": {}, "suites": SUITES, "workflows": WORKFLOWS,
+            "mockups": {},  # built-in mockups are drawn by mockups.BUILTINS; the library holds the user's own
+            "objects": builtin_kinds()}
 
 
 def proportional(project, item, operations):
@@ -228,6 +231,13 @@ def validate(kind, value):
         validate_workflow(value)
     elif kind == "guidance":
         require(isinstance(value, str) and 0 < len(value) <= 100000, "Guidance needs 1–100000 characters")
+    elif kind == "mockups":
+        from .mockups import validate as validate_mockup
+        validate_mockup(value)
+    elif kind == "objects":
+        from .objects import validate_entry
+
+        validate_entry("kind", value)
     elif kind == "templates":
         require(isinstance(value, dict), "Template must be a JSON object")
         from .model import Limits
@@ -254,16 +264,27 @@ def validate(kind, value):
             validate_operation(substitute(op, sample))
             require(
                 op["type"] not in ("template-apply", "font-register")
-                and not any(k in op for k in ("font", "linked"))
+                and "linked" not in op
                 and ("path" not in op or op["type"] in ("shape", "text-layout")),
                 "Templates cannot read files or recursively apply templates",
             )
+            if "font" in op:
+                from .type_roles import ROLE_NAME
+
+                # A template names a typography role, text stage or registered font name, never a font file.
+                require(isinstance(op["font"], str) and ROLE_NAME.fullmatch(op["font"]),
+                        "Template text may set font only to a role or text stage (heading, body, h2, label, a "
+                        "brand role such as accent) or a registered font name, not a font file", field="font")
 
 
 def register(kind, name, value, *, workspace=None):
     require(kind in BUILTINS, "Unknown resource category")
     named(name)
     validate(kind, value)
+    if kind == "objects":
+        from .objects import validate_user_kind
+
+        validate_user_kind(name, value, workspace)
     path = resource_path(workspace)
     path.parent.mkdir(parents=True, exist_ok=True)
     with file_lock(str(path)):
@@ -298,7 +319,7 @@ def substitute(value, variables):
     return value
 
 
-RESOURCE_TYPES = ("palette-define", "palette-apply", "template-apply", "guidance", "font-register")
+RESOURCE_TYPES = ("palette-define", "palette-apply", "template-apply", "guidance", "font-register", "brand-preset")
 
 
 def execute_resource(project, op):
@@ -348,6 +369,10 @@ def execute_resource(project, op):
             text = op.get("text") or get("guidance", name, workspace=workspace)
             validate("guidance", text)
             project.state.setdefault("design_guidance", {})[key] = text
+    elif kind == "brand-preset":
+        from .brand import use_preset
+
+        use_preset(project, name)
     elif kind == "font-register":
         from .fonts import validate_font
 
@@ -359,16 +384,13 @@ def execute_resource(project, op):
             validate_font(project.assets[asset])
             project.state.setdefault("fonts", {})[name] = asset
         if role:
-            require(role in ("heading", "body"), "role must be heading or body", field="role")
+            from .type_roles import refont, role_name
+
+            role_name(role)
             require(name in project.state.get("fonts", {}), f"Font {name!r} is not registered; install or import it first")
             project.state.setdefault("typography", {})[role] = name
-            from .render import text_metrics
-
-            for layer in project.state["layers"]:
-                if layer["type"] == "text" and layer.get("font_role") == role:
-                    layer["font"] = project.state["fonts"][name]
-                    if layer.get("auto_size", True):
-                        layer["width"], layer["height"], _ = text_metrics(project, layer)
+            # Text that follows this role, or a stage that inherits it, takes the new face.
+            refont(project)
     else:
         from .operations import execute
         from .schema import validate_operation
@@ -433,8 +455,10 @@ def execute_resource(project, op):
             project.state["variables"].update(values)
         from .container_library import template_operations
         expanded = substitute(proportional(project, item, template_operations(project, item, op, values)), values)
-        # Template text follows the document typography: the largest text is the heading.
-        texts = [o for o in expanded if o.get("type") == "text" and "font" not in o]
+        # Template text follows the document typography: text that names no role or stage takes the heading
+        # role when it is the largest, else body.
+        texts = [o for o in expanded if o.get("type") == "text"
+                 and not {"font", "stage", "role", "text_role", "type_stage"} & set(o)]
         largest = max((o.get("size", 48) for o in texts), default=None)
         for operation in texts:
             operation["font"] = "heading" if operation.get("size", 48) == largest else "body"

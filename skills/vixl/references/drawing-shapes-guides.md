@@ -24,11 +24,17 @@ When a person gives you a photo or scan of their drawing, keep their lines and b
   walls and floors or `"45"` for diagonals only when asked, and `close_gaps: 30` (or `"auto"`) to close corner and
   T gaps (corners get sharp, lines keep their angles). `smooth` leaves straightened lines and polylines alone
   (`corners: "round"` smooths them too, and the drawing check then warns).
+- Logos and flat art: `vectorize` with `settings: {"mode": "outline", "curves": true, "split": "components"}` gives one
+  Bézier path per connected part (`NAME/part-001` … in reading order) instead of one polyline layer; `path-split`
+  (`polygon` or `line`, `overlap`, `names`) separates shapes that touch or cross. `drawing report` returns
+  `fidelity` (`iou`, `mismatch`): aim for `iou` ≥ 0.99 when asked for an exact recreation.
 - Before `fill`, call `vixl_workflow("drawing-report", {"target": "house"})`: it lists closed
   regions with a point inside each (`point` on the canvas, `group_point` in the drawing's own
   coordinates), the drawing group's `offset`, `scale` and `rotation`, and how much of the original line
   work is kept. `fill` and `stroke` points are canvas positions by default, wherever the drawing has been
-  moved; pass `space: "group"` to give them in the drawing's own coordinates instead.
+  moved; pass `space: "group"` to give them in the drawing's own coordinates instead. Sky and ground that
+  only the drawing's edge closes are listed under `edge_regions`; fill them with `settings: {"edge_closes": true}`.
+  `import`/`clean` keep the paper's extent; `settings.crop: true` crops to the ink.
 - After edits, check `preserved` (aim for ≥ 0.9 unless told to redraw) and look at
   `vixl_workflow("drawing-compare", {"target": "house", "output": "compare.png"})` (original red,
   result blue). `vixl_check(checks=["drawing"])` warns when original lines were lost.

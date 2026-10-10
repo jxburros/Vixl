@@ -8,15 +8,19 @@ from .automation import bounded_object
 from .errors import require, VixlError
 from .imposition import ACTIONS as IMPOSITION_ACTIONS, FIELD_TYPES as IMPOSITION_FIELD_TYPES
 from .links import ACTIONS as LINK_ACTIONS
+from .mockups import ACTIONS as MOCKUP_ACTIONS, FIELD_TYPES as MOCKUP_FIELD_TYPES
+from .deck_markdown import ACTIONS as DECK_ACTIONS, FIELD_TYPES as DECK_FIELD_TYPES
 from .lyrics import REQUEST_FIELDS as LYRIC_FIELDS
 from . import media_analysis, natural_guidance
 from .logo_package import FIELDS as LOGO_PACKAGE_FIELDS
+from .brand_board import FIELDS as BRAND_BOARD_FIELDS
 from .screen_capture import FIELDS as CAPTURE_FIELDS
 from .app_animation import FIELDS as APP_ANIMATION_FIELDS
 
 ACTIONS = {
-    "check": ({"suite", "mode", "variables", "artboard"}, {"suite"}),
-    "act": ({"operations", "suites", "dry_run"}, {"operations"}),
+    "check": ({"suite", "suites", "mode", "variables", "artboard", "page", "comp", "artboards", "pages", "comps",
+               "include_hidden"}, set()),
+    "act": ({"operations", "suites", "dry_run", "repair"}, {"operations"}),
     "capture": ({"recipe", "bindings", "output"}, {"recipe", "output"}),
     "plan": ({"spec"}, {"spec"}),
     "run": ({"spec", "output"}, {"spec", "output"}),
@@ -24,7 +28,7 @@ ACTIONS = {
     "library-save": ({"directory", "name", "description", "tags"}, {"directory", "name"}),
     "library-search": ({"directory", "query"}, {"directory"}),
     "library-open": ({"directory", "id", "output"}, {"directory", "id", "output"}),
-    "library-place": ({"directory", "id", "name"}, {"directory", "id", "name"}),
+    "library-place": ({"directory", "id", "name", "as"}, {"directory", "id", "name"}),
     "submit": ({"job", "start", "workers"}, {"job"}),
     "status": ({"id"}, {"id"}),
     "cancel": ({"id"}, {"id"}),
@@ -41,8 +45,20 @@ ACTIONS = {
                    "unknown", "dpi"}, set()),
     "drawing-report": ({"target"}, {"target"}),
     "drawing-compare": ({"target", "output"}, {"target", "output"}),
-    "proof": ({"items", "output", "title", "check", "decisions", "max_size", "overwrite"}, {"items", "output"}),
+    "proof": ({"items", "output", "title", "check", "decisions", "max_size", "overwrite", "overlay"}, {"items", "output"}),
     "logo-package": (LOGO_PACKAGE_FIELDS, {"output"}),
+    "repair-layout": ({"checks", "suites", "protected", "minimum_size", "max_candidates", "max_iterations",
+                       "time_budget", "dry_run"}, set()),
+    "protected-edit": ({"operations", "protect", "regions", "tolerance", "structural", "pixels", "dry_run"},
+                       {"operations"}),
+    "reproduce": ({"reference", "tolerance", "max_fraction", "lock", "write_lock", "overwrite"}, set()),
+    "check-all": ({"documents", "group", "checks", "suite", "suites", "fail_on", "profile", "waivers", "workers",
+                   "changed_since", "base",
+                   "work", "since_last", "history", "group_checks", "reference", "facts", "outputs", "overwrite"},
+                  set()),
+    "replace-across": ({"name", "documents", "replace", "dry_run", "suites", "accept", "reject", "decisions", "review",
+                        "overwrite", "journal"}, {"replace"}),
+    "brand-board": (BRAND_BOARD_FIELDS, {"output"}),
 }
 
 
@@ -54,6 +70,8 @@ ACTIONS.update(media_analysis.ACTIONS)
 ACTIONS.update(STUDIO_ACTIONS)
 ACTIONS.update(LINK_ACTIONS)
 ACTIONS.update(IMPOSITION_ACTIONS)
+ACTIONS.update(MOCKUP_ACTIONS)
+ACTIONS.update(DECK_ACTIONS)
 FILL_FORMATS = ("pdf", "png", "jpeg", "jpg", "webp", "tiff", "svg")
 
 PATH = {"type": "string", "description": "Workspace-relative path."}
@@ -87,6 +105,9 @@ ACTION_FIELD_TYPES = {
 }
 
 ACTION_FIELD_TYPES["merge-impose"] = IMPOSITION_FIELD_TYPES
+ACTION_FIELD_TYPES["deck-from-markdown"] = DECK_FIELD_TYPES
+for _action, (_fields, _) in MOCKUP_ACTIONS.items():
+    ACTION_FIELD_TYPES[_action] = {key: MOCKUP_FIELD_TYPES[key] for key in _fields}
 ACTION_FIELD_TYPES["screen-capture"] = CAPTURE_FIELDS
 ACTION_FIELD_TYPES["app-animation-package"] = APP_ANIMATION_FIELDS
 for _module in (media_analysis, natural_guidance):
@@ -102,7 +123,9 @@ LYRIC_TYPES = {
     "animation": {"type": "object", "description": "Lyric entry and exit: in, out, duration (ms), distance (px)."},
     "cue_animation": {"type": "object", "description": "How cue-* layers enter, leave and move while their words are sung: "
                       "in, out (as animation; default none, a cut), duration, distance, motion (none or sweep: a swing about "
-                      "the layer's pivot), amount (degrees, default 12), period (ms for a back-and-forth, default 2800)."},
+                      "the layer's pivot), amount (degrees, default 12), period (ms for a back-and-forth, default 2800), "
+                      "replay (true: the cue layer's own template keys restart at each window), and cues: per-layer "
+                      "overrides of any of these keyed by cue layer name, e.g. {\"cue-cell\": {\"in\": \"slide-in-down\"}}."},
 }
 for _action in ("lyric-video-plan", "lyric-video-build", "lyric-video-export"):
     ACTION_FIELD_TYPES[_action] = LYRIC_TYPES
@@ -145,7 +168,8 @@ def dispatch(session, action, request, document=None):
     if action == "app-animation-package":
         from .app_animation import package
         return package(session, request)
-    for field in ("dry_run", "replace"):
+    # replace-across's replace is its list of rules; elsewhere replace is a flag.
+    for field in ("dry_run",) if action == "replace-across" else ("dry_run", "replace"):
         if field in request:
             require(type(request[field]) is bool, f"{field} must be boolean")
     if action in EMOJI_ACTIONS:
@@ -163,6 +187,14 @@ def dispatch(session, action, request, document=None):
         from .imposition import dispatch as merge_dispatch
 
         return merge_dispatch(session, request, document)
+    if action in DECK_ACTIONS:
+        from .deck_markdown import dispatch as deck_dispatch
+
+        return deck_dispatch(session, action, request, document)
+    if action in MOCKUP_ACTIONS:
+        from .mockups import dispatch as mockup_dispatch
+
+        return mockup_dispatch(session, action, request, document)
     if action in STUDIO_ACTIONS:
         from .studio import dispatch as studio_dispatch
         try:
@@ -184,18 +216,70 @@ def dispatch(session, action, request, document=None):
     if action == "proof":
         from .proof import proof_page
 
-        for field in ("check", "decisions", "overwrite"):
+        for field in ("check", "decisions", "overwrite", "overlay"):
             require(type(request.get(field, False)) is bool, f"{field} must be boolean", field=field)
         result = proof_page(request["items"], request["output"], resolve=session.resolve,
                             title=request.get("title"), check=request.get("check", True),
                             decisions=request.get("decisions", False), max_size=request.get("max_size", 1200),
-                            overwrite=request.get("overwrite", False), limits=session.limits)
+                            overwrite=request.get("overwrite", False), limits=session.limits,
+                            overlay=request.get("overlay", False))
         result["output"] = session.relative(Path(result["output"]))
         return result
+    if action == "repair-layout":
+        from .layout_repair import repair_layout
+
+        dry_run = request.get("dry_run", True)
+        with session.project(write=not dry_run, document=document) as project:
+            return repair_layout(project, checks=request.get("checks"), suites=request.get("suites", []),
+                                 protected=request.get("protected", []), minimum_size=request.get("minimum_size"),
+                                 max_candidates=request.get("max_candidates", 24),
+                                 max_iterations=request.get("max_iterations", 4),
+                                 time_budget=request.get("time_budget", 20), dry_run=dry_run)
+    if action == "protected-edit":
+        from .interfaces import service_check
+        from .protected_edit import protected_edit
+
+        for field in ("structural", "pixels"):
+            require(type(request.get(field, True)) is bool, f"{field} must be boolean", field=field)
+        dry_run = request.get("dry_run", False)
+        with session.project(write=not dry_run, document=document) as project:
+            return protected_edit(project, request["operations"], protect=request.get("protect", []),
+                                  regions=request.get("regions", []), tolerance=request.get("tolerance", 0),
+                                  structural=request.get("structural", True), pixels=request.get("pixels", True),
+                                  dry_run=dry_run, check=service_check)
+    if action == "reproduce":
+        from .reproduce import read_lock, reproduce, write_lock
+
+        require(type(request.get("overwrite", False)) is bool, "overwrite must be boolean", field="overwrite")
+        with session.project(document=document) as project:
+            result = {}
+            if request.get("write_lock"):
+                write_lock(project, session.resolve(request["write_lock"]), overwrite=request.get("overwrite", False))
+                result["lock_written"] = request["write_lock"]
+            result.update(reproduce(
+                project, reference=session.resolve(request["reference"]) if request.get("reference") else None,
+                tolerance=request.get("tolerance", 0), max_fraction=request.get("max_fraction", 0.0),
+                locked=read_lock(session.resolve(request["lock"])) if request.get("lock") else None,
+                limits=session.limits))
+            if result.get("reference"):
+                result["reference"]["path"] = request["reference"]
+            return result
+    if action == "check-all":
+        from .workspace_checks import run as check_all
+
+        return check_all(session, request)
+    if action == "replace-across":
+        from .replace_across import run as replace_across
+
+        return replace_across(session, request)
     if action == "logo-package":
         from .logo_package import build
 
         return build(session, request, document)
+    if action == "brand-board":
+        from .brand_board import build as build_board
+
+        return build_board(session, request, document)
     if action in ("drawing-report", "drawing-compare"):
         from .drawing import compare, report
 
@@ -254,7 +338,7 @@ def dispatch(session, action, request, document=None):
                 return library.save(
                     project, request["name"], request.get("description", ""), request.get("tags")
                 )
-            return library.place(project, request["id"], request["name"])
+            return library.place(project, request["id"], request["name"], request.get("as", "group"))
     if action == "act":
         from .interfaces import service_check
 
@@ -264,7 +348,7 @@ def dispatch(session, action, request, document=None):
     with session.project(document=document) as project:
         project = project.clone()
     if action == "check":
-        return project.check_suite(**request)
+        return check_suites(project, request)
     if action == "run":
         return run(project, request["spec"], session.resolve(request["output"]))
     if action == "capture":
@@ -301,6 +385,33 @@ def dispatch(session, action, request, document=None):
         "size": list(image.size),
         "generation_calls": 0,
     }
+
+
+def check_suites(project, request):
+    """Workflow check: one suite (``suite``, a name or an inline object) returns its report; without one, every
+    attached and inherited suite runs (``suites`` narrows them) and the reports come back under ``suites``."""
+    from .assurance import effective
+
+    request = dict(request)
+    if "suite" in request:
+        require("suites" not in request, "Give suite or suites, not both", field="suites")
+        return project.check_suite(request.pop("suite"), **request)
+    available = effective(project)
+    names = request.pop("suites", None)
+    if names is None:
+        names = list(available)
+    require(isinstance(names, list) and all(isinstance(name, str) for name in names),
+            "suites is a list of suite names", field="suites")
+    unknown = [name for name in names if name not in available]
+    require(not unknown, f"Unknown suite(s) {unknown}; attached or inherited: {', '.join(available) or 'none'}",
+            field="suites", suggestions=sorted(available))
+    require(names, "No suites are attached or inherited; attach one with suite-set or pass suite", field="suite")
+    reports = {name: project.check_suite(name, **request) for name in names}
+    errors = sum(report["errors"] for report in reports.values())
+    review = sum(report["needs_review"] for report in reports.values())
+    return {"passed": all(report["passed"] for report in reports.values()),
+            "status": "failed" if errors else "needs_review" if review else "passed",
+            "errors": errors, "needs_review": review, "suites": reports}
 
 
 def cli(args, options, limits):

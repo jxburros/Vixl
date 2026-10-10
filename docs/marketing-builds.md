@@ -58,3 +58,12 @@ decoded. Without a `width` and `height` such a layer takes the embedded size. `v
 the REST import downsample a source above the limit to fit it on their own and report `downsampled` and a warning.
 A plain `add` of such a file fails with `resource_limit`, naming the size and both remedies (`max_pixels`, or a higher
 `--max-pixels`).
+
+## Measuring layers
+
+The pack places captions and code against other layers with `Project.bounds(name)`, the layer's
+`(x, y, width, height)` on the canvas even when it sits in a group (what `inspect()` reports as
+`canvas_bounds`). `Project.bounds(name, space="parent")` gives the box in its group's own
+coordinates instead. Do not measure with `vixl.render.resolve_layout`: it is internal, and its boxes
+for grouped layers are relative to the group, so a layer placed against them lands in the wrong
+place without an error.

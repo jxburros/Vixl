@@ -108,8 +108,8 @@ To publish a stable release:
 3. Tag the reviewed commit with its exact version and push the tag:
 
    ```bash
-   git tag v0.24.1 <reviewed-commit>
-   git push origin v0.24.1
+   git tag v0.25.0 <reviewed-commit>
+   git push origin v0.25.0
    ```
 
 4. The tag workflow re-runs tests, checks tag/package-version consistency, builds the distributions, and creates a **draft** GitHub release. It uploads every artifact before publishing it as the latest stable release. No release becomes visible to the updater while files are still being uploaded.
@@ -123,6 +123,7 @@ Release assets:
 - `vixl-update.json` — protocol/platform/version, asset filename, SHA-256 and byte size.
 - `SHA256SUMS.txt` — checksums of Windows release artifacts.
 - Python wheel and source distribution — optional pip/developer installs.
+- `vixl-catalog.json` and `vixl-catalog.schema.json` — the design catalog bundle for host applications (`vixl catalog export`) and its JSON Schema.
 
 An update trusts HTTPS and access control of the official GitHub repository. The manifest and artifact have the same trust root; checksums detect corruption or mismatched downloads but do not defend against compromise of the repository's release permissions. A separate signed-manifest trust system and Authenticode signing are future hardening options.
 
