@@ -158,6 +158,8 @@ SUMMARIES = {
     "link-embed": "Freeze a linked document into an ordinary raster layer that no longer follows its source.",
     "chart": "Draw a data-bound chart (bars, lines, areas, pie, donut) as vector layers, or restyle one with target.",
     "chart-data": "Edit a chart's data in place (cells, categories, series, CSV reload) and redraw it, keeping layer IDs.",
+    "table": "Draw a table from rows or a CSV as vector layers (aligned columns, header, rules), or restyle one with target.",
+    "table-data": "Edit a table's rows in place (cells, rows, columns, CSV reload) and redraw it, keeping layer IDs.",
     "stack": "Lay a group out as a row or column that reflows and re-centres when a member is empty or hidden.",
     "diagram": "Draw a flowchart, dependency graph, org chart or mind map from nodes and edges, laid out automatically.",
     "diagram-from-text": "Draw a diagram from a short text format (A -> B: label, indentation for hierarchies, group lanes).",

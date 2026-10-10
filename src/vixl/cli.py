@@ -39,6 +39,8 @@ Imperfect: irregular TARGET --seed N [--strength subtle|natural|rough] (wobble, 
 Charts:    chart bar|stacked-bar|percent-bar|horizontal-bar|line|area|pie|donut --name N (--csv FILE | --categories JSON --series JSON)
            [--title T] [--legend bottom] [--value-labels true] [--number-format '#,##0'], chart line --target N (restyle, resize, change kind),
            chart-data --target N --set DEC=3330 | --append 'JAN=1,2' | --remove-category C | --reload; exports to .pptx as a native chart
+Tables:    table --name N (--table JSON | --csv FILE) [--align left,decimal] [--width W] [--zebra] [--borders all],
+           table-data --target N --set ROW:COLUMN=VALUE | --append JSON | --remove-row R | --reload; exports to .pptx as a native table
 Design:    pen, shape, shape-place, container-place, container-swap, container-reflow, group, ungroup, reparent LAYER… --into GROUP|page, clip, layer-style, distribute, style-define,
            style-apply, swatch, artboard, frame, replace-contents, repeat, repeat-blend,
            adjustment, lut, lookup, comp-save, comp-apply, text-layout, pathfinder, symbol, symbol-instance,

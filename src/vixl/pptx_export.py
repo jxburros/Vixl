@@ -62,6 +62,7 @@ class Slide:
         self.charts = []  # (rId, chart part path)
         self.fallbacks = []
         self.chart_info = []
+        self.table_info = []
 
     def ident(self):
         self.next_id += 1
@@ -126,6 +127,13 @@ class Slide:
                     from .chart_pptx import shapes as chart_shapes
 
                     native = chart_shapes(self, layer, bounds, emu, layers, index)
+                    if native is not None:
+                        out.extend(native)
+                        continue
+                if "table" in layer:
+                    from .table_pptx import shapes as table_shapes
+
+                    native = table_shapes(self, layer, bounds, emu, layers, index)
                     if native is not None:
                         out.extend(native)
                         continue
@@ -664,6 +672,9 @@ def export_pptx(project, path=None, *, pages=None, dpi=None, report=None):
         charts = {str(i): s.chart_info for i, (_, s) in enumerate(slides, 1) if s.chart_info}
         if charts:
             report["charts"] = charts
+        tables = {str(i): s.table_info for i, (_, s) in enumerate(slides, 1) if s.table_info}
+        if tables:
+            report["tables"] = tables
     if path:
         Path(path).write_bytes(data)
     return data

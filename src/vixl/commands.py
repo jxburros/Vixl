@@ -113,6 +113,10 @@ def compile_command(tokens):
     guided = compile_guides(cmd, args)
     if guided is not None:
         return guided
+    from .tables import compile_command as compile_tables
+    tabled = compile_tables(cmd, args)
+    if tabled is not None:
+        return tabled
     from .charts import compile_command as compile_charts
     charted = compile_charts(cmd, args)
     if charted is not None:

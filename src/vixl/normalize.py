@@ -194,6 +194,7 @@ GEOMETRY_TYPES = {
     "stack",
     "link",
     "chart",
+    "table",
     "organic",
 }
 CENTER_TYPES = {
@@ -319,6 +320,10 @@ def normalize_operation(operation, properties, known_types, effects, notes, inde
         from .charts import normalize as normalize_chart
 
         op = normalize_chart(op, note)
+    if kind in ("table", "table-data"):
+        from .tables import normalize as normalize_table
+
+        op = normalize_table(op, note)
     if kind == "shape" and isinstance(op.get("shape"), str) and op["shape"] not in SHAPES:
         guess = op["shape"].lower().replace("_", "-").replace(" ", "-")
         if guess not in SHAPE_TYPES:

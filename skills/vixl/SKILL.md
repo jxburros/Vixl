@@ -197,6 +197,8 @@ Read [emoji workflows](references/emojis.md) for the offline Unicode 17 catalog,
   badge's centre, a screen): put text there with `text` `within`, `place` `within` or `align` `box: "content"`.
 - **Charts** — `chart` (bar, stacked, 100 %, horizontal, line, area, pie, donut) from a table or workspace CSV, `chart-data` to fix
   a value on stable layer IDs, native PPTX charts; see [charts](references/charts.md) before drawing any chart by hand.
+- **Tables** — `table` (rows or a workspace CSV; aligned columns including `decimal` for prices, header, zebra,
+  rules) and `table-data` for cell and row edits; native PPTX tables; see [charts](references/charts.md#tables).
 - **Guides beyond right angles** — angled/curved guides, compositional and perspective grids,
   `place`, `snap`, `guides`/`alignment` checks.
 - **Lyric videos** — `lyric-video-plan/build/export` workflow actions (song + LRC + template).

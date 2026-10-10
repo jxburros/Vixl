@@ -1246,13 +1246,14 @@ def child_name(project, group, label, layer=None):
     return name
 
 
-def sync(project, group, parts):
+def sync(project, group, parts, field="chart_part"):
     """Make the group's generated children match ``parts``: update layers in place (same IDs), add the
-    missing ones, drop the ones the chart no longer draws, and order them as the layout stacks them."""
+    missing ones, drop the ones the chart no longer draws, and order them as the layout stacks them. ``field`` is
+    the layer key holding each part's key (tables use ``table_part``)."""
     layers = project.state["layers"]
     wanted = parts.ordered()
     by_key = {p["key"]: p for p in wanted}
-    mine = {x["chart_part"]: x for x in layers if x.get("parent") == group["id"] and "chart_part" in x}
+    mine = {x[field]: x for x in layers if x.get("parent") == group["id"] and field in x}
     stale = [x for key, x in mine.items() if key not in by_key or part_kind(x) != by_key[key]["kind"]]
     reuse = {key: x for key, x in mine.items() if x not in stale}
     fresh = sum(1 for p in wanted if p["key"] not in reuse)
@@ -1275,7 +1276,7 @@ def sync(project, group, parts):
         if layer is None:
             project.limits.size(fields["width"], fields["height"])
             layer = new_layer(child_name(project, group, part["label"]), "text" if part["kind"] == "text" else "shape",
-                              fields["width"], fields["height"], parent=group["id"], chart_part=part["key"])
+                              fields["width"], fields["height"], parent=group["id"], **{field: part["key"]})
             if part["kind"] == "text":
                 layer["auto_size"] = True
             else:
@@ -1292,9 +1293,9 @@ def sync(project, group, parts):
         kept.append(layer)
     # A value label is set against the marks by design (a line runs through it, an area lies under it, it sits on
     # its bar): those pairs are not overlap findings. Labels against each other still are.
-    marks = [(x["chart_part"], x["id"]) for x in kept if x["type"] != "text"]
+    marks = [(x[field], x["id"]) for x in kept if x["type"] != "text"]
     for layer in kept:
-        key = layer["chart_part"]
+        key = layer[field]
         if key.startswith(("value-", "total-")):
             category = key.rsplit("-", 1)[1]
             own = [ident for part, ident in marks if part.startswith(("line-", "area-"))
@@ -1344,7 +1345,7 @@ def chart_contrast(project, resolved, local_bounds, bounds, items):
     plans = {}
     for item in items:
         group = resolved.get(item.get("parent"))
-        if group is None or "chart" not in group or item.get("styles") or item["effects"]:
+        if group is None or not ("chart" in group or "table" in group) or item.get("styles") or item["effects"]:
             continue
         chain, ok = group, True
         while chain is not None and ok:

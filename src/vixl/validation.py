@@ -130,6 +130,10 @@ def check_state(project, state):
             from .links import validate as validate_link
 
             validate_link(layer, state)
+        if "table" in layer and layer["type"] == "group":
+            from .tables import validate_table
+
+            validate_table(layer, state)
         if "chart" in layer:
             from .charts import validate_chart
 
