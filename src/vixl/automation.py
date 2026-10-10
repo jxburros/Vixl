@@ -160,30 +160,42 @@ def validate_state(state):
         validate_recipe(state["recipe"])
 
 
+def sized_text(project, layer, size):
+    """A copy of a text layer as ``text-set`` with ``size`` leaves it: leading given as a multiple of
+    the size (``line_height``) follows the new size."""
+    candidate = {**layer, "size": size}
+    if "line_height" in layer and size != layer["size"]:
+        from .craft import spacing_for
+
+        candidate["spacing"] = spacing_for(project, layer.get("font"), size, finite(layer["line_height"], "line_height", 0.5, 5))
+    return candidate
+
+
+def text_need(project, layer, size, width=None):
+    """The (width, height) a text layer needs at ``size``: wrapped in a text-layout box ``width`` wide,
+    or as unwrapped lines when ``width`` is None. Measured the way the layer is drawn and checked (rich
+    spans, tracking, text case and leading included), so ``fit-text`` and the bounds check agree."""
+    candidate = sized_text(project, layer, size)
+    if width is None:
+        from .render import text_metrics
+
+        candidate.pop("text_layout", None)
+        need_w, need_h, _ = text_metrics(project, candidate)
+        return need_w, need_h
+    from .checks import boxed_text_need
+
+    candidate.update(width=width, height=candidate.get("height", 1), text_layout={"width": width, "fit": False})
+    need = boxed_text_need(project, candidate)
+    require(need is not None, f"Text {layer.get('name', '')!r} uses a font or characters that cannot be measured "
+            "as outlines, so it cannot be fitted", "unsupported_text", target=layer.get("id"))
+    return need
+
+
 def text_fits(project, layer, size, width, height, wrap=True):
     """Whether the text set at ``size`` fits ``width`` × ``height``; ``wrap=False`` measures it as
     unwrapped lines, the way text without a text-layout box is drawn."""
-    from .text import measure, font_data
-    from .render import document_variables
-    from .variables import layer_text
-
-    text = layer_text(layer, document_variables(project))
-    spacing = layer.get("spacing", 4)
-    if "line_height" in layer and not layer.get("rich"):
-        from .craft import spacing_for
-
-        # Leading set as a multiple of the size follows the size being tried, as text-set applies it.
-        spacing = spacing_for(project, layer.get("font"), size, layer["line_height"])
-    _, box = measure(
-        font_data(project, layer),
-        text,
-        size,
-        spacing,
-        layer.get("align", "left"),
-        width if wrap else None,
-    )
-    stroke = layer.get("stroke_width", 0) * 2
-    return box[2] - box[0] + stroke <= width and box[3] - box[1] + stroke <= height
+    need = text_need(project, layer, size, width if wrap else None)
+    return need[0] <= width and need[1] <= height
 
 
 def expand(project, op):

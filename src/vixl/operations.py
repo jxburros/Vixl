@@ -641,6 +641,9 @@ def execute(project, op):
             text_defaults(project, layer, op)
             if op.get("hide_if_empty"):
                 layer["hide_if_empty"] = True
+            from .lettering import store
+
+            store(layer, op)
             embed_font_file(project, layer)
             layer["width"], layer["height"], _ = text_metrics(project, layer)
             color(resolve_color(layer["color"], project.state))
@@ -767,6 +770,9 @@ def execute(project, op):
                 layer[key] = op[key]
         if "spacing" in op:
             layer.pop("line_height", None)
+        from .lettering import store
+
+        store(layer, op)
         if "font" in op:
             layer["font"], role = resolve_font(project, op["font"])
             layer.pop("font_role", None)

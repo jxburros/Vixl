@@ -93,11 +93,19 @@ def primary_font_data(project, layer):
     return path.getvalue() if hasattr(path, "getvalue") else file_bytes(path)
 
 
+# Bundled outline faces that draw the characters the default face (DejaVu Sans) lacks, after the
+# document's own font-fallbacks: more Latin, Greek and Cyrillic, symbols, dingbats, arrows and math.
+# CJK is not bundled (install a CJK face and list it in font-fallbacks).
+BUNDLED_FALLBACKS = ("NotoSans-Regular.ttf", "NotoSansSymbols-Regular.ttf", "NotoSansSymbols2-Regular.ttf",
+                     "NotoSansMath-Regular.ttf")
+BUNDLED_FONTS = ("DejaVuSans.ttf", *BUNDLED_FALLBACKS)
+
+
 @lru_cache(maxsize=64)
 def _font_path(font):
     """The file behind a bundled or system font name, found once instead of opening the font on every
     measurement; None when ``font_for`` must decide (and report) instead."""
-    if font == "DejaVuSans.ttf":
+    if font in BUNDLED_FONTS:
         return str(Path(__file__).parent / "data" / font)
     if "/" in font or "\\" in font:
         return None
@@ -204,7 +212,7 @@ def _font_data(project, layer, text):
         from .emojis import with_emojis
 
         return with_emojis(project, primary, text)
-    names = [*project.state.get("font_fallbacks", []), "DejaVuSans.ttf"]
+    names = [*project.state.get("font_fallbacks", []), *BUNDLED_FONTS]
     from .emojis import with_emojis
 
     return with_emojis(

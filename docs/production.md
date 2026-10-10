@@ -206,7 +206,9 @@ are listed under `outcome.accepted`.
 Higher-level operations:
 
 - `fit-text`: target, width, height, minimum/maximum font size. Wraps and fits within
-  the range or fails atomically. Shared character/paragraph styles are baked locally
+  the range or fails atomically. It measures the text as it is drawn and as the bounds check
+  measures it (rich spans and their own sizes, tracking, text case, leading), so a fitted layer
+  passes `check`. Shared character/paragraph styles are baked locally
   so fitting one item does not resize every use of a shared style.
 - `arrange-grid`: targets, columns, gap, x/y. Places unique sibling layers in cells
   sized for the largest item; it does not resize content.
