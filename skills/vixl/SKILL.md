@@ -123,6 +123,28 @@ agent, edit independently, preview branch-merge, resolve conflicts explicitly, t
 
 Read [emoji workflows](references/emojis.md) for the offline Unicode 17 catalog, editable source masters, custom replacements and shortcodes, templates and destination-ready image packs. Use `vixl_workflow` actions `emoji-list`, `emoji-get`, `emoji-template`, `emoji-replace`, `emoji-pack-install`, `emoji-settings`, `emoji-reset`, `emoji-requirements`, `emoji-destinations` and `emoji-export`; their typed fields come from `vixl_workflow_schema`. Bundled VIXL artwork is the default; `mode: "font"` (operation `emoji-mode` or workflow `emoji-settings`) prefers the font, with bundled art for sequences it cannot shape.
 
+## Objects and accessibility
+
+- **Declare objects** — build a dog, a guitar or a person as one group, then `{type: object, target: GROUP,
+  kind: dog}` and `{type: object, action: part, target: LAYER, part: leg, side: left}`. `vixl_guide(brief="dog")`
+  and `vixl_resource_get(kind="objects", name="dog")` give the kind's parts, the parts that must touch,
+  proportions and layering (`vixl objects show dog`). A person holding a guitar is an object with a sub-object.
+- **Address by path** — `dog/head`, `dog/leg[left]`, `person/guitar/neck` work wherever a layer name does;
+  `isolate` also takes `object:KIND`; `edit-layers` selects `where.object`, `where.object_kind`, `where.part`.
+- **Review loop** — `vixl_document_inspect(object="dog")` lists parts and the required parts still missing
+  (`object="*"` lists every object); `vixl_render_preview(isolate=["dog"], views=["parts"], exploded=true)` shows
+  each part alone; `vixl_check(checks=["connected"])` finds parts that float free.
+- **Export and reuse** — `vixl_export_file(isolate=["guitar"], padding=8)` exports one object cropped to its
+  ink (a `.vixl` path writes a portable object); `object-save` / `object-place` (`recolor` by part, `source` for a
+  portable file) place editable copies; `library-place` places components as editable groups (`as: "image"` for a
+  snapshot). SVG keeps `data-vixl-object`/`data-vixl-kind`/`data-vixl-part`, PowerPoint named groups, PSD group
+  names. `ungroup` refuses an object unless `force: true`.
+- **Accessibility** — `layer-intent` `alt` on meaningful images, frames, charts and object groups (or
+  `decorative: true`); `{type: accessibility, lang, title, page_alt, page_lang, reading_order}`;
+  `vixl_check(checks=["accessibility"])` bundles contrast and colour vision with missing alt, language, small
+  text, colour-only charts and reading order. HTML, SVG, PPTX and PDF carry alt and language (no tagged PDF
+  structure tree). See [objects](../../docs/objects.md) and [accessibility](../../docs/accessibility.md).
+
 ## New in 0.24: reliability and reusable delivery
 
 - **Checks** — `passed` is false while any finding has action `fix`, warnings included; `by_action` lists the issue
@@ -479,6 +501,7 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
 | New layers | `add` (image), `solid`, `gradient` (linear/angled/radial, multi-stop, `falloff` curves for soft halos), `text`, `shape` (`solid`/`gradient`/`shape`/`text` with `target` edit that layer in place instead of adding one), `frame` (image box with fill/fit), `pixel-art`, `paint-layer`, `adjustment`, `symbol-instance` |
 | Transform | `move`, `resize`, `scale`, `rotate`, `skew`, `transform` (affine), `distort` (envelope, corner-pin), `flip`, `crop`, `opacity`, `blend`, `hide`/`show` |
 | Stacking | `raise`, `lower`, `top`, `bottom`, `reorder` (`above`/`below`), `group`/`ungroup`, `reparent` (into/out of a group, keeps position), `clip` |
+| Objects | `object` (kind, named parts, sub-objects, paths like `dog/head`), `object-save`/`object-place`, `inspect object=`, `isolate` with `views: [parts]`, isolated `export` |
 | Layout | `align` (to canvas/selection/layer), `distribute`, `constrain`/`unconstrain`, `stack` (auto-layout column/row that re-flows around hidden or empty members; text `hide_if_empty`), `guide`, `grid`, `canvas` (resize/preset), `artboard` |
 | Color & filters | 27 built-in effects (brightness … white-balance … auto-contrast), `effect-set/enable/disable/remove/move`, `lut` + `lookup` (a stack effect), `preset-save/apply` |
 | Selections & masks | `select` (rect/ellipse/color/alpha/all/none/invert, add/subtract/intersect, feather), `mask` (create/from-selection/import/invert/enable/disable/delete) |
@@ -491,7 +514,7 @@ Or put the operations in a file and run `vixl -p poster.vixl apply ops.json` (at
 | Color & print | color language in every color field, `vixl_color`, CMYK/PDF/ICO export, `vixl_export_icons`, proof/simulate previews, `print`/`color_vision` checks |
 | History | undo/redo (a count larger than the history goes as far as it can and says so), checkpoint, branch, checkout, compare, transactions |
 | Styles | `vixl_styles` (28 design styles: principles, palettes, type, layout, imagery, do/don't), `style-set` tags the document, `check --checks style` evaluates the style's premade rules |
-| QA | check (bounds/overlap/contrast/safe area/legibility; opt-in print, color_vision, style, connected (floating parts of a grouped object); every finding has an `action`: fix / review / informational), inspect, measure (sample/histogram/contrast), spacing, validate/assert, render preview (zoomable, time, proof, simulate, isolate one object), compare revisions |
+| QA | check (bounds/overlap/contrast/safe area/legibility; opt-in print, color_vision, style, connected (floating parts of a grouped object), accessibility (alt text, language, small text, colour-only charts, reading order, plus contrast and colour vision); every finding has an `action`: fix / review / informational), inspect, measure (sample/histogram/contrast), spacing, validate/assert, render preview (zoomable, time, proof, simulate, isolate one object), compare revisions |
 | AI (provider) | generate/inpaint/img2img, extend (outpaint), upscale, regenerate, background-remove, select object/subject, remove, content-aware-fill, describe/detect/OCR, natural-language plan |
 
 When unsure of a field, get the authoritative schema: MCP embeds it in `vixl_operations_apply`'s

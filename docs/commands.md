@@ -285,6 +285,13 @@ Use `palette list|show|add|apply`, `template list|show|add|new|apply`, `guidance
 
 `connected` (opt-in: `check --checks connected`, `--connect-tolerance 2`) looks inside every visible group that is one object (a mascot, a character, a prop built from shapes; charts, drawings, repeats and speech bubbles are skipped). The drawn ink of each direct part is compared on the canvas: parts whose ink touches or overlaps within the tolerance form one piece, the piece with the most ink is the main body, and every other part is a `connected` warning with its `gap` in pixels and its `group`. Text parts are ignored. A document with a timeline is checked at its poster, middle and last frames (`frame` names the one where a part first comes loose). Mark a part that floats on purpose (a spark, a thrown ball), or a group whose parts are separate by design, with `layer-intent detached_ok`. To look at one object alone, preview it with `isolate` (`vixl_render_preview(isolate=["cat"])`).
 
+`accessibility` (opt-in: `check --checks accessibility`) adds `contrast` and `color_vision` to its own findings: the
+document language (fix), meaningful images, frames, links and charts without alt text (fix), small text (review),
+charts told apart by colour alone (review) and text whose export order jumps against its visual order (review). See
+[accessibility](accessibility.md). Declared [objects](objects.md) are inspected with `vixl inspect --object NAME`
+(`*` lists them all), exported alone with `vixl export dog.svg --isolate dog [--padding 8]` (a `.vixl` output
+writes a portable object) and listed by `vixl manifest`.
+
 Saved SVG exports report `svg.vector_only` and `svg.raster_fallbacks` in the CLI result so embedded bitmaps are visible without opening the SVG metadata. Use `export logo.svg --svg-policy strict` to reject all embedded raster content. Exporting to `-` still writes only SVG bytes. Supported grouped shapes and outlined text remain vectors; unsupported appearances may rasterize in the default appearance policy.
 
 ## Finish, styles and the guide
