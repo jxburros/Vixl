@@ -145,7 +145,8 @@ def parse_markdown(markdown):
         base = {}
         if heading:
             body = body[heading.end():]
-            base = {"bold": True, "scale": (1.6, 1.3, 1.15)[len(heading.group(1)) - 1]}
+            level = len(heading.group(1))
+            base = {"bold": True, "scale": (1.6, 1.3, 1.15)[level - 1], "_stage": f"h{level}"}
         elif bullet:
             body = body[bullet.end():]
             settings = {"list": "bullet", "level": min(8, indent // 2)}
@@ -789,9 +790,22 @@ def _resolve_variants(project, variants):
     return dict(variants or {})
 
 
+def _stage_fonts(project, spans):
+    """Markdown headings take the h1–h3 stage fonts once the document typography sets one; the stage face
+    carries the weight, so the heading is not also synthesized bold."""
+    from .type_roles import role_font
+
+    for span in spans:
+        stage = span.pop("_stage", None)
+        if stage and "font" not in span and role_font(project, stage):
+            span["font"] = stage
+            span.pop("bold", None)
+
+
 def _make_rich(project, op, size):
     if "markdown" in op:
         spans, paragraphs = parse_markdown(op["markdown"])
+        _stage_fonts(project, spans)
     else:
         spans = deepcopy(op["spans"])
         require(all(isinstance(s, dict) and isinstance(s.get("text"), str) for s in spans), "Each span needs text",
@@ -838,6 +852,9 @@ def execute(project, op):
         layer = project.layer(op["target"]) if op.get("target") else None
         if layer is None:
             base = {k: op[k] for k in ("name", "font", "size", "color", "x", "y") if k in op}
+            if "font" not in base and (project.state.get("typography") or {}).get("body"):
+                # Rich text is running copy: its base face is body at any size; its headings take the h stages.
+                base["font"] = "body"
             align = op.get("align", "left")
             apply(project, {"type": "text", "text": "x", **base, "align": "center" if align == "center" else "right"
                             if align == "right" else "left"})

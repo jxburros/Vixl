@@ -37,6 +37,9 @@ ROLE_STEPS = {"caption": -1, "body": 0, "lead": 1, "subhead": 2, "title": 3, "he
 # The line-height stage (craft.LINE_HEIGHT) each type-scale role sets in.
 ROLE_STAGES = {"caption": "caption", "body": "body", "lead": "lead", "subhead": "lead", "title": "heading",
                "headline": "heading", "display": "display"}
+# The text stage (type_roles) each type-scale role sets in; slots named label use the label stage.
+ROLE_TO_STAGE = {"display": "display", "headline": "h1", "title": "h2", "subhead": "subtitle", "lead": "lead",
+                 "body": "body", "caption": "caption"}
 CONTENT_KEYS = ("title", "subtitle", "body", "label", "cta", "caption", "image", "images", "items")
 IMAGE_KEYS = ("image", "images")
 DENSITY_MARGIN = {"airy": 0.095, "balanced": 0.072, "dense": 0.05}
@@ -194,6 +197,16 @@ class Builder:
         width = max(1, int(width))
         heavy = (role in ("display", "headline", "title")) if isinstance(role, str) else display
         font = self.display_font if heavy else self.font
+        # The text stage the slot sets in: its font comes from the stage when the document maps one (a brand
+        # can give h1 or label its own face); otherwise the heading/body choice above stands.
+        stage = "label" if (name or role) == "label" else ROLE_TO_STAGE.get(role) if isinstance(role, str) else None
+        stage_font = None
+        if stage and not (self.op.get("display_font") or self.op.get("font") if heavy else self.op.get("font")):
+            from .type_roles import role_font
+
+            stage_font = role_font(self.project, stage)
+            if stage_font:
+                font = stage_font
         # ``line`` is a line-height multiple; by default the craft table's value for the role's stage.
         multiple = line if line is not None else LINE_HEIGHT[ROLE_STAGES.get(role, "heading" if heavy else "body")
                                                              if isinstance(role, str) else "heading" if heavy else "body"]
@@ -225,7 +238,9 @@ class Builder:
             w, h = self.measure(content, size, width, spacing_for(size), align, font)
         layer = self.name(name or role)
         op = {"type": "text", "name": layer, "text": content, "size": size, "color": color, "align": align, "line_height": multiple, "x": round(x), "y": round(y)}
-        if font:
+        if stage_font:
+            op["font"] = stage
+        elif font:
             op["font"] = font
         self.add(op)
         if stroke:

@@ -92,7 +92,7 @@ Layout:    canvas resize SIZE, canvas size NAME [--landscape] [--bleed], canvas 
 History:   undo [N], redo [N], history, checkpoint NAME, branch NAME,
            checkout REF, branches, compare REF REF --out FILE [--isolate LAYER…], diff A B [--out D.png] (two documents or images)
 Automate:  apply FILE|- [--dry-run] [--check [CHECK…]] [--preview PNG [--isolate LAYER…]], run SCRIPT, batch GLOB --run SCRIPT --output DIR,
-           workflow ACTION --request FILE [--workspace DIR] (workflow schema lists actions; proof, logo-package …),
+           workflow ACTION --request FILE [--workspace DIR] (workflow schema lists actions; proof, logo-package, brand-board …),
            compose --request FILE [--preview P.png] (create → layout → look → operations → check → exports, atomic),
            each layer --name PATTERN -- COMMAND, preset save|apply|show NAME,
            transaction begin|commit|rollback, assert RULE, validate [PROFILE]
@@ -116,6 +116,7 @@ Styles:    styles [list [QUERY] | show NAME | apply NAME [--palette] | check [NA
            check --checks style [--style NAME…] (premade rules for swiss, brutalist, minimalist, art-deco …)
 Dice:      roll [--apply] [--set title=…] [--for poster] [--mood M] [--size NAME] [--seed N|random] [--lock palette=sage]
            [--variety low|medium|high] [--unfilled omit|blank] [--house-style 1|2], house [show PURPOSE] (the house style)
+Brand:     brand validate [--preset NAME] (missing roles, fonts, logos), brand show [--preset NAME]; workflow brand-board
 Color:     color [info] COLOR…, color convert COLOR --to oklch|cmyk|…, color harmony COLOR --scheme triadic,
            color scale COLOR | A B [--count N], color mix A B, color contrast FG BG, color names QUERY,
            palette-generate NAME COLOR [--scheme scale|triadic|…], type-scale --base 16 --ratio golden
@@ -408,7 +409,7 @@ def dispatch(argv):
                     | {"filter"}
                     | {"workflow"}
                     | set(
-                        "pack unpack new session open upgrade save status inspect describe layers effects manifest dependencies reproduce schema check batch convert render export export-screens export-animation spacing pixels animation info sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert validate preset ai ask generate detect ocr serve view notes import mcp update updates commands shapes palette template guidance font fonts roll providers models color sizes layout layouts brushes organics easings timeline export-timeline timeline-sheet export-icons pages guides links merge styles looks guide diff compose house emoji capabilities".split()
+                        "pack unpack new session open upgrade save status inspect describe layers effects manifest dependencies reproduce schema check batch convert render export export-screens export-animation spacing pixels animation info sample histogram apply run each undo redo checkpoint branch checkout branches history transaction compare assert validate preset ai ask generate detect ocr serve view notes import mcp update updates commands shapes palette template guidance font fonts roll providers models color sizes layout layouts brushes organics easings timeline export-timeline timeline-sheet export-icons pages guides links merge styles looks guide diff compose house brand emoji capabilities".split()
                     )
                 )
             }
@@ -420,6 +421,10 @@ def dispatch(argv):
         from .finishing_cli import standalone as finishing_standalone
 
         return finishing_standalone(cmd, args), options.json
+    if cmd == "brand" and "--help" not in args and "-h" not in args:
+        from .brand import cli as brand_cli
+
+        return brand_cli(args), options.json
     # A roll preview reads the document --apply would use (its canvas and brand), so both pick
     # the same direction; without a document it rolls standalone.
     standalone_roll = cmd == "roll" and "--apply" not in args and not has_document(options.project)
@@ -721,6 +726,7 @@ def command_help(cmd, args):
         "capabilities": "capabilities [TOPIC]  (e.g. capabilities animation: operations with fields, workflows, gotchas, guidance)",
         "looks": "looks  (the finishing looks; apply with look LAYER NAME)",
         "house": "house [show [PURPOSE]]  (the house style: craft rules, tiered pools, variety levels; or one purpose's profile)",
+        "brand": "brand validate|show [--preset NAME]  (check the workspace brand.json: missing roles, fonts and logos; or summarize it)",
         "guides": "guides (list guides and grids)",
         "links": "links (list the linked documents and their state: ok, stale, missing, cycle)",
     }

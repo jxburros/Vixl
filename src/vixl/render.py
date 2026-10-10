@@ -97,7 +97,7 @@ def font_for(project, layer):
 def missing_font(project, name):
     fonts = sorted(project.state.get("fonts", {}))
     typography = project.state.get("typography") or {}
-    roles = [role for role in ("heading", "body") if role in typography]
+    roles = [role for role in typography if typography[role]]
     known = ", ".join([*roles, *fonts]) if roles or fonts else "none yet"
     return VixlError(
         "missing_font",
@@ -113,12 +113,13 @@ def resolve_font(project, name):
     """A text layer's stored font and role for a requested font name, role or file."""
     if name is None:
         return "DejaVuSans.ttf", None
-    typography = project.state.get("typography") or {}
+    from .type_roles import is_role, role_font
+
     fonts = project.state.get("fonts", {})
     role = None
-    if name in ("heading", "body"):
-        # A role uses the proofing fallback until the document typography sets it.
-        role, name = name, typography.get(name, "DejaVuSans.ttf")
+    if is_role(project, name):
+        # A role or text stage uses the proofing fallback until the document typography sets it.
+        role, name = name, role_font(project, name) or "DejaVuSans.ttf"
         if name == "DejaVuSans.ttf":
             from .notices import warn
 

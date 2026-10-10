@@ -121,6 +121,9 @@ FIELD_ALIASES = {
         "line_spacing": "spacing",
         "outline_width": "stroke_width",
         "outline_color": "stroke_color",
+        "role": "stage",
+        "text_role": "stage",
+        "type_stage": "stage",
         **{key: "hide_if_empty" for key in ("hide_when_empty", "collapse_if_empty", "collapse_when_empty", "hide_empty")},
     },
     "shape": {

@@ -523,7 +523,7 @@ def install_workspace(workspace, family, weight=400, italic=False, name=None, ro
     from .brand import save_font_default
     from .design import named
 
-    require(role in ("heading", "body"), "scope workspace needs role heading or body", field="role")
+    require(role, "scope workspace needs a role (heading, body or another role name)", field="role")
     found = {}
     data, family = fetch_font(family, weight, italic, client=client, source=found)
     name = named(name or f"{slug(family)}-{weight}{'-italic' if italic else ''}")

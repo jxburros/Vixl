@@ -26,7 +26,7 @@ ROLES = ("content", "decoration", "background", "title")
 NOT_PER_LAYER = {
     "edit-layers", "adapt-layout", "canvas", "page", "master", "layout-apply", "template-apply", "select",
     "text", "solid", "gradient", "shape", "add", "frame", "pen", "symbol-instance", "organic-shape", "variable",
-    "palette-define", "palette-apply", "palette-generate", "swatch", "font-register", "guidance", "preset-save",
+    "palette-define", "palette-apply", "palette-generate", "swatch", "font-register", "brand-preset", "guidance", "preset-save",
 }
 MAX_STEPS = 20
 MAX_REGEX = 200

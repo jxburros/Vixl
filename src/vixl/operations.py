@@ -624,9 +624,10 @@ def execute(project, op):
             layer.update({k: deepcopy(op[k]) for k in ("stops", "angle", "falloff", "center") if k in op})
         else:
             from .craft import text_defaults
+            from .type_roles import expand
 
-            font, role = resolve_font(project, op.get("font", "body" if (project.state.get("typography") or {})
-                                                     .get("body") else None))
+            op = expand(project, op, new=True)
+            font, role = resolve_font(project, op.get("font"))
             layer.update(
                 {
                     "text": op["text"],
@@ -756,6 +757,10 @@ def execute(project, op):
             project.state["active_layer"] = duplicate["id"]
     elif kind == "text-set":
         require(layer["type"] == "text", "Layer is not editable text")
+        if "stage" in op:
+            from .type_roles import expand
+
+            op = expand(project, op, new=False)
         dropped = []
         if "text" in op and layer.get("rich") and op["text"] != layer["text"]:
             from .richedit import replace_text

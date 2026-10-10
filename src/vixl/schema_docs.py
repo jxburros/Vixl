@@ -109,7 +109,9 @@ SUMMARIES = {
     "palette-generate": "Generate swatches from one color: a 50-950 scale or a harmony (complementary, triadic …).",
     "template-apply": "Create layers from a named template with variables.",
     "guidance": "Store or remove a written design guide (brand voice, rules) in the document.",
-    "font-register": "Register an imported font by name, and optionally make it the heading or body font.",
+    "brand-preset": "Use a named preset of the workspace brand (brand.json presets) for this document: its palette, "
+                    "fonts, stages and rules apply to layouts, templates and the brand check; none returns to the base brand.",
+    "font-register": "Register an imported font by name, and optionally make it the font of a role (heading, body, any named role such as accent) or a text stage (display, h1–h3, subtitle, lead, body, caption, citation, label).",
     "style-define": "Define a named character or paragraph style.",
     "style-apply": "Apply a named character or paragraph style to a text layer.",
     "style-set": "Tag the document with a design style (swiss, brutalist, art-deco …) for style guidance and checks.",
@@ -240,7 +242,7 @@ FIELDS = {
     "value": "The new value.",
     "points": "List of [x, y] points (pixels).",
     "seed": "Integer seed; the same seed always gives the same result.",
-    "font": "Registered font name, or 'heading' / 'body' for the document typography.",
+    "font": "Registered font name, or a role (heading, body, a brand role) or text stage (h1, caption …) of the document typography.",
     "kind": "Which variant of the operation to use.",
     "start": "Start value or time.",
     "end": "End value or time.",
@@ -402,7 +404,7 @@ OVERRIDES = {
     "guidance": {"name": "Guidance name (a built-in guide, or any name when text is given).",
                  "text": "Guidance text to store.", "style": "Slot to store it in (default 'overall')."},
     "font-register": {"name": "Name to register the font under.", "asset": "Imported font asset ID.",
-                      "role": "heading or body: make it the document's heading or body font."},
+                      "role": "Make it the font of this role: heading, body, a text stage (h1, label …) or any lowercase role name (accent, hand, mono); text that follows the role, or a stage inheriting it, changes with it."},
     "text": {"size": "Font size in pixels. Without one, the body size of the document's type scale (about 2.6% of "
                      "the canvas short side when it has none).", "color": "Text color. Without one, the document @ink swatch, else black or white, whichever reads on the canvas background.", "align": "Alignment within the text box.",
              "spacing": "Pixels added to the font's own line pitch; negative tightens display type. Without spacing "
