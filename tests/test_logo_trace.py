@@ -149,7 +149,8 @@ def test_path_split_by_polygon_in_canvas_space():
     p = bar()
     p.apply({"type": "path-split", "target": "bar", "space": "canvas",
              "polygon": [[100, 90], [180, 90], [180, 170], [100, 170]]})
-    inside, outside = p.layer("bar-a"), p.layer("bar-b")
+    outside = p.layer("bar-b")
+    assert p.layer("bar-a")["visible"]
     p.apply({"type": "hide", "target": "bar-b"})
     xs = np.nonzero(ink(p).any(axis=0))[0]
     assert xs.min() == pytest.approx(100, abs=1) and xs.max() == pytest.approx(179, abs=1)

@@ -104,7 +104,7 @@ def test_restyle_with_target_and_options():
     assert {"header-band", "rule-col-1", "rule-left", "band-2"} <= parts
     assert cell(p, 0, 0)["color"] in ("#ffffff", "#FFFFFF")  # header text reads on the dark band
     p.apply({"type": "table", "target": "Menu", "borders": "none", "zebra": None, "header_fill": None})
-    assert not any(key.startswith(("rule-", "band-", "header-")) for key in (l["table_part"] for l in children(p)))
+    assert not any(key.startswith(("rule-", "band-", "header-")) for key in (layer["table_part"] for layer in children(p)))
 
 
 def test_fractional_and_fixed_column_widths():
