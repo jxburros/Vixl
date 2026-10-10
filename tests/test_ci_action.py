@@ -48,9 +48,11 @@ def test_ci_script_checks_diffs_against_base_summarizes_and_fails_on_level(tmp_p
     assert passing.returncode == 0, passing.stdout + passing.stderr
 
 
-def test_action_declares_its_inputs_and_runs_the_script():
+def test_action_declares_its_inputs_and_runs_the_engine():
     text = (ROOT / "action.yml").read_text(encoding="utf-8")
-    for name in ("paths", "checks", "suite", "fail-on", "vixl-version", "compare-base", "proof"):
+    for name in ("paths", "group", "checks", "suite", "fail-on", "vixl-version", "compare-base", "changed-only", "proof",
+                 "annotations", "formats", "sarif"):
         assert f"\n  {name}:\n" in text
-    assert "using: composite" in text and "scripts/check_documents.py" in text and "GITHUB_STEP_SUMMARY" not in text.split("runs:")[0]
+    assert "using: composite" in text and "python -m vixl" in text and "check --all" in text
+    assert "GITHUB_STEP_SUMMARY" not in text.split("runs:")[0] and "upload-sarif" in text
     assert 'vixl-engine[pdf]==$VIXL_VERSION' in text

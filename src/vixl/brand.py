@@ -35,7 +35,7 @@ def validate(kit):
         require(isinstance(kit, dict), "brand.json must be an object")
         require(
             set(kit)
-            <= {"name", "palette", "pairing", "fonts", "logos", "minimum_contrast", "required_elements"},
+            <= {"name", "palette", "pairing", "fonts", "logos", "minimum_contrast", "required_elements", "facts"},
             "Unknown brand.json field",
         )
         from .layouts import ROLES
@@ -85,6 +85,10 @@ def validate(kit):
             from .typefaces import get_pairing
 
             get_pairing(kit["pairing"])
+        if "facts" in kit:
+            from .group_consistency import validate_facts
+
+            validate_facts(kit["facts"], "brand.json facts")
         return kit
     except (ValueError, TypeError) as exc:
         raise VixlError("invalid_brand", f"Invalid brand.json: {exc}") from exc

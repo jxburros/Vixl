@@ -48,6 +48,11 @@ ACTIONS = {
     "protected-edit": ({"operations", "protect", "regions", "tolerance", "structural", "pixels", "dry_run"},
                        {"operations"}),
     "reproduce": ({"reference", "tolerance", "max_fraction", "lock", "write_lock", "overwrite"}, set()),
+    "check-all": ({"documents", "group", "checks", "suite", "suites", "fail_on", "workers", "changed_since", "base",
+                   "work", "since_last", "history", "group_checks", "reference", "facts", "outputs", "overwrite"},
+                  set()),
+    "replace-across": ({"name", "documents", "replace", "dry_run", "suites", "accept", "reject", "decisions", "review",
+                        "overwrite", "journal"}, {"replace"}),
 }
 
 
@@ -150,7 +155,8 @@ def dispatch(session, action, request, document=None):
     if action == "app-animation-package":
         from .app_animation import package
         return package(session, request)
-    for field in ("dry_run", "replace"):
+    # replace-across's replace is its list of rules; elsewhere replace is a flag.
+    for field in ("dry_run",) if action == "replace-across" else ("dry_run", "replace"):
         if field in request:
             require(type(request[field]) is bool, f"{field} must be boolean")
     if action in EMOJI_ACTIONS:
@@ -237,6 +243,14 @@ def dispatch(session, action, request, document=None):
             if result.get("reference"):
                 result["reference"]["path"] = request["reference"]
             return result
+    if action == "check-all":
+        from .workspace_checks import run as check_all
+
+        return check_all(session, request)
+    if action == "replace-across":
+        from .replace_across import run as replace_across
+
+        return replace_across(session, request)
     if action == "logo-package":
         from .logo_package import build
 

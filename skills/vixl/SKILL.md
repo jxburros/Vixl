@@ -132,6 +132,14 @@ palette regression rules; choose antialias tolerances before checking, not to hi
 Use container-reflow after changing copy, then check container-layout. Fork one document per
 agent, edit independently, preview branch-merge, resolve conflicts explicitly, then merge.
 
+Across many documents (`vixl_workflow` actions; see the references): `check-all` checks globs or a group in
+parallel into one report (status per document, `failing` at `fail_on`, history with `since_last`; JSON, Markdown,
+JUnit, SARIF or GitHub annotations via `outputs`); `group-check` reports members whose logo placement, type ratios,
+swatches, layers or declared copy facts (prices, names, dates) differ from the majority or a `reference`;
+`replace-across` finds and replaces text, colors, fonts and images (dry run first); `group-apply` and
+`replace-across` take `review` (a before/after page) and publish only `accept`ed members or the approved items of
+the page's `decisions` file.
+
 ## Emoji artwork
 
 Read [emoji workflows](references/emojis.md) for the offline Unicode 17 catalog, editable source masters, custom replacements and shortcodes, templates and destination-ready image packs. Use `vixl_workflow` actions `emoji-list`, `emoji-get`, `emoji-template`, `emoji-replace`, `emoji-pack-install`, `emoji-settings`, `emoji-reset`, `emoji-requirements`, `emoji-destinations` and `emoji-export`; their typed fields come from `vixl_workflow_schema`. Bundled VIXL artwork is the default; `mode: "font"` (operation `emoji-mode` or workflow `emoji-settings`) prefers the font, with bundled art for sequences it cannot shape.

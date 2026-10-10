@@ -70,6 +70,12 @@ Full reference: [production workflows](https://github.com/jxburros/Vixl/blob/mai
    `vixl_check` findings; `before` (another file, or a revision such as `previous`) adds a diff; `decisions: true` adds
    approve/reject and a button that downloads `<page>-decisions.json`, which the reviewer sends back. `vixl diff A B
    --out d.png` gives the same pixel diff on the command line.
+   Many documents at once: `vixl_workflow("check-all", {documents?: [globs], group?, fail_on?, changed_since?,
+   since_last?, outputs?: {json|markdown|junit|sarif|github|proof: path}})` (CLI `vixl check --all GLOB` or
+   `--group NAME`) checks them in parallel (findings plus attached suites; group consistency on a group) into one report:
+   `status` per document, `totals`, `failing` at `fail_on` (error|warning|fix|never) and `passed`. Every run is
+   recorded in `.vixl-checks/history/`; `since_last` lists newly failing (with the cause: document or Vixl version),
+   newly passing and still failing documents.
 15. App animation packages: `vixl_workflow("app-animation-package", {states, default_state, output, themes?, transitions?,
    format?})`. `states` maps names to `{source: "x.vixl", loop?, interruptible?, on_complete?, poster?, variables?, themes?}`;
    `themes` map names to variable overrides (default light and dark; bind colours in the sources to `${variables}`);

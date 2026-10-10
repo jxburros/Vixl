@@ -17,9 +17,11 @@ ACTIONS = {
     "branch-fork": ({"branch", "output", "author"}, {"branch", "output"}),
     "branch-status": ({"branch"}, {"branch"}),
     "branch-merge": ({"branch", "resolutions", "dry_run", "expected_head"}, {"branch"}),
-    "group-define": ({"name", "documents", "shared"}, {"name", "documents"}),
+    "group-define": ({"name", "documents", "shared", "facts"}, {"name", "documents"}),
     "group-show": ({"name"}, {"name"}),
-    "group-apply": ({"name", "operations", "suites", "dry_run", "repair"}, {"name"}),
+    "group-apply": ({"name", "operations", "suites", "dry_run", "repair", "accept", "reject", "decisions", "review", "overwrite"},
+                    {"name"}),
+    "group-check": ({"name", "documents", "reference", "checks", "layers", "facts", "required", "tolerance"}, set()),
     "group-recover": ({"name"}, {"name"}),
     "plugin-list": (set(), set()),
     "plugin-install": ({"manifest", "replace"}, {"manifest"}),
@@ -45,6 +47,10 @@ def dispatch(session, action, request, document=None):
         from .collaboration import dispatch as collaborate
 
         return collaborate(session, action, request, document)
+    if action == "group-check":
+        from .group_consistency import run as group_check
+
+        return group_check(session, request)
     if action.startswith("group-"):
         from .project_groups import dispatch as groups
 

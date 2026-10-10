@@ -312,6 +312,22 @@ MANIFEST = {
 }
 
 # Per-action overrides and fields only one action (or family) uses.
+DOCUMENTS = {"type": "array", "items": STR, "description": "Globs or paths of .vixl documents (workspace-relative)."}
+FACTS = {"type": "object", "description": "Copy facts to compare across documents: {name: {pattern (regex) | values "
+         "(accepted spellings) | format (date such as 'MMM D') | value (the declared value), layers?, ignore_case?}}. "
+         "Read from the variable of that name, else text layers named after it (or in layers), else the pattern over "
+         "all text. Also read from brand.json facts and the group's facts.",
+         "additionalProperties": {"type": "object", "description": "One fact."}}
+SELECTION = {
+    "accept": {"type": "array", "items": PATH, "description": "Publish only these members."},
+    "reject": {"type": "array", "items": PATH, "description": "Leave these members untouched."},
+    "decisions": {"type": ["string", "object"], "description": "A review page's downloaded decisions JSON (or its "
+                  "path): only approved members are published."},
+    "review": {**PATH, "description": "Dry run: write a before/after review, an .html proof page with approve/reject "
+               "(its decisions file feeds decisions) or a .png contact sheet."},
+    "overwrite": {"type": "boolean", "default": False, "description": "Replace an existing review file."},
+}
+
 ACTION_FIELDS = {
     "check": {
         "suite": {"anyOf": [STR, SUITE], "description": "Name of an attached suite, or an inline suite object."},
@@ -432,17 +448,101 @@ ACTION_FIELDS = {
                                 "properties": {"variables": {"type": "object", "additionalProperties": SCALAR,
                                                             "description": "Variables {name: value} set in each document."},
                                                "swatches": {"type": "object", "additionalProperties": COLOR,
-                                                            "description": "Swatches {name: color} set in each document."}}}},
+                                                            "description": "Swatches {name: color} set in each document."}}},
+                     "facts": FACTS},
     "group-show": {"name": {"type": "string", "description": "Group name."}},
     "group-apply": {"name": {"type": "string", "description": "Group name."},
                     "operations": {**COMMON["operations"], "description": "Bulk operations applied to each member."},
-                    "suites": {**COMMON["suites"], "description": "Suites every member must pass."},
+                    "suites": {**COMMON["suites"], "description": "Suites every published member must pass; a dry "
+                               "run reports each member's results (passed) instead of refusing."},
                     "dry_run": {"type": "boolean", "default": True,
                                 "description": "Check without saving (default true)."},
                     "repair": {**REPAIR, "description": "Apply the built-in repair map to each member before its "
                                                         "suites run (bounds, contrast and safe-area fix findings, "
-                                                        "text-fit and contrast rules); reported per document."}},
-    "group-recover": {"name": {"type": "string", "description": "Group whose interrupted edit to roll back."}},
+                                                        "text-fit and contrast rules); reported per document."},
+                    **SELECTION},
+    "group-check": {
+        "name": {"type": "string", "description": "Project group to compare (or give documents)."},
+        "documents": DOCUMENTS,
+        "reference": {**PATH, "description": "Compare every member with this member instead of the majority."},
+        "checks": {"type": "array", "items": {"enum": ["layout", "type", "color", "structure", "copy"]},
+                   "description": "Which comparisons to run (default all): layout (placement of logo layers), type "
+                                  "(fonts, headline-to-body and type-scale ratios), color (swatches, palette), "
+                                  "structure (shared and required layers), copy (declared facts)."},
+        "layers": {"type": "array", "items": STR, "default": ["*logo*"],
+                   "description": "layout: names or globs of the layers whose placement must agree (layers with role "
+                                  "logo always count)."},
+        "facts": FACTS,
+        "required": {"type": "array", "items": STR, "description": "structure: layer names every member must have "
+                     "(added to brand.json required_elements)."},
+        "tolerance": {"type": "object", "description": "{offset (fraction of the short side, default 0.03), size "
+                      "(relative, default 0.2), ratio (relative, default 0.15)}.",
+                      "properties": {"offset": {"type": "number", "minimum": 0, "description": "Placement offset."},
+                                     "size": {"type": "number", "minimum": 0, "description": "Relative size."},
+                                     "ratio": {"type": "number", "minimum": 0, "description": "Type ratios."}}},
+    },
+    "group-recover": {"name": {"type": "string", "description": "Group (or replace-across journal) whose "
+                               "interrupted edit to roll back."}},
+    "check-all": {
+        "documents": {**DOCUMENTS, "description": "Globs or paths of documents to check (default **/*.vixl when no "
+                      "group is given)."},
+        "group": {"type": "string", "description": "Check this project group's members, with the group checks."},
+        "checks": {"type": "array", "items": STR, "description": "vixl_check names (default the standard checks)."},
+        "suite": {"type": ["object", "string"], "description": "A check suite (object, or a workspace .json file) run "
+                  "on every document as well."},
+        "suites": {"type": "boolean", "default": True, "description": "Run each document's attached suites."},
+        "fail_on": {"type": "string", "enum": ["error", "warning", "fix", "never"], "default": "error",
+                    "description": "passed is false when a finding reaches this level: error, warning (or error), fix "
+                                   "(any finding whose action is fix) or never. A suite that does not pass counts at "
+                                   "every level but never."},
+        "workers": {"type": "integer", "minimum": 1, "maximum": 8, "description": "Documents checked in parallel "
+                    "(default up to 4)."},
+        "changed_since": {"type": "string", "description": "Only documents changed (or untracked) since this git "
+                          "revision."},
+        "base": {"type": "string", "description": "Pixel-diff each document against its version at this git revision."},
+        "work": {**PATH, "default": ".vixl-checks/work", "description": "With base: folder for base copies and "
+                 "diff images."},
+        "since_last": {"type": "boolean", "default": False, "description": "Compare with the previous run over the "
+                       "same documents and settings: newly failing, newly passing, still failing, version change."},
+        "history": {"type": "boolean", "default": True, "description": "Record this run under .vixl-checks/history."},
+        "group_checks": {"type": "boolean", "description": "Run the group consistency checks (default: on for a "
+                         "group)."},
+        "reference": {**PATH, "description": "Group checks: the member to compare against."},
+        "facts": FACTS,
+        "outputs": {"type": "object", "description": "Write the report: {json, markdown, junit, sarif, github, proof: "
+                    "workspace path}; github is workflow annotation lines, proof an .html page.",
+                    "properties": {key: {**PATH, "description": f"Where to write the {key} report."}
+                                   for key in ("json", "markdown", "junit", "sarif", "github", "proof")}},
+        "overwrite": {"type": "boolean", "default": False, "description": "Replace existing output files."},
+    },
+    "replace-across": {
+        "name": {"type": "string", "description": "Project group whose members to edit (or give documents)."},
+        "documents": DOCUMENTS,
+        "replace": {"type": "array", "minItems": 1, "maxItems": 50, "items": {"type": "object", "properties": {
+            "text": {"type": "string", "description": "Text to find in text layers and string variables."},
+            "color": {"type": "string", "description": "Color to find in literal layer colors and swatches."},
+            "font": {"type": "string", "description": "Font (name or family) to replace on text layers."},
+            "asset": {"type": "string", "description": "Image to replace: a workspace file (matched by checksum) or "
+                      "the imported file name."},
+            "with": {"type": "string", "description": "Replacement: text, a color or @swatch, a registered font, or "
+                     "an image file."},
+            "match": {"type": "string", "enum": ["substring", "word", "regex"], "default": "substring",
+                      "description": "text: how to match."},
+            "ignore_case": {"type": "boolean", "default": False, "description": "text: ignore case."},
+            "variables": {"type": "boolean", "default": True, "description": "text: also edit string variables."},
+            "tolerance": {"type": "number", "minimum": 0, "maximum": 255, "default": 0,
+                          "description": "color: per-channel distance that still matches."},
+            "swatches": {"type": "boolean", "default": True, "description": "color: also edit swatch values."},
+            "fit": {"type": "string", "enum": ["keep-box", "stretch"], "default": "keep-box",
+                    "description": "asset: keep-box fits the new image inside the old box; stretch fills it."}}},
+            "description": "Rules applied in order; each has one of text, color, font or asset, and with."},
+        "dry_run": {"type": "boolean", "default": True, "description": "List the matches without saving (default true)."},
+        "suites": {"type": ["boolean", "array"], "items": STR, "description": "true runs each document's attached "
+                   "suites, or name them; a document whose suites fail is left untouched (needs_review)."},
+        **SELECTION,
+        "journal": {"type": "string", "default": "replace-across", "description": "Name to recover a glob run "
+                    "under with group-recover (a group run uses the group's name)."},
+    },
     "repair-layout": {
         "checks": {"type": "array", "items": STR, "description": "Design checks to satisfy (default: vixl_check's "
                    "default set)."},
@@ -554,7 +654,15 @@ SUMMARIES = {
     "group-list": "List project groups.",
     "group-define": "Define a group of documents with shared variables and swatches.",
     "group-show": "Show a project group's members and shared parameters.",
-    "group-apply": "Apply shared parameters or operations to every group member with suite checks (dry run by default).",
+    "group-apply": "Apply shared parameters or operations to every group member with suite checks (dry run by default; "
+                   "review writes a before/after page, accept/reject/decisions pick the members to publish).",
+    "group-check": "Compare a group's members (or a glob) with each other: logo placement, type, swatches, shared "
+                   "layers and declared copy facts; reports the members that differ from the majority or a reference.",
+    "check-all": "Check many documents (globs, a group, or those changed since a git revision) in parallel into one "
+                 "report: status per document, counts, top findings, group checks, history and since-last changes; "
+                 "writes JSON, Markdown, JUnit, SARIF, GitHub annotations or a proof page.",
+    "replace-across": "Find and replace text, colors, fonts and images across a group or glob: a dry run lists every "
+                      "match, apply publishes through the group journal (group-recover undoes an interrupted run).",
     "group-recover": "Roll back an interrupted group edit from its journal.",
     "repair-layout": "Bounded layout repair: try several candidates per overflow, overlap, spacing, contrast or "
                      "safe-area failure, keep the least disruptive that passes; infeasible leaves the document "

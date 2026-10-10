@@ -466,8 +466,9 @@ def build_server(session, *, schema="full", planner=False, tools="all"):
     ) -> dict | list:
         """Unified workflows: resources, palettes, saved shapes, suites, effects, plugin packs, project groups,
         branch/merge collaboration, production, libraries, jobs, linked-document status (links) and print merge
-        (merge-impose). Discover action fields with vixl_workflow_schema.
-        Paths stay in workspace. Branch merge and group apply default to dry_run=true.
+        (merge-impose), checks across many documents (check-all: one report over globs or a group; group-check;
+        replace-across). Discover action fields with vixl_workflow_schema.
+        Paths stay in workspace. Branch merge, group apply and replace-across default to dry_run=true.
 
         Long jobs: submit with start=true, then status. A call that returned {job: job_…} is followed with
         action status/cancel and request {id, wait?}. AI jobs require an explicit configured provider.
