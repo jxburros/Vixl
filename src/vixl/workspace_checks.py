@@ -376,7 +376,8 @@ def run(session, request):
         result["group"] = group["name"]
     group_failing = []
     if keep and len(projects) >= 2:
-        report = compare(projects, reference=request.get("reference"),
+        reference = request.get("reference")
+        report = compare(projects, reference=session.relative(session.resolve(reference)) if reference else None,
                          facts=facts_for(session, group, request.get("facts")),
                          shared_swatches=((group or {}).get("shared") or {}).get("swatches"))
         group_failing = [f["message"] for f in _group_failing(report["findings"], level)]

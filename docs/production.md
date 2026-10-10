@@ -295,6 +295,57 @@ A missing file fails the call, but an item that cannot be previewed or checked b
 is listed in the result's `failed` (`[{path, error}]`); `checked` gives each document's `passed`, errors and
 warnings. Each thumbnail is embedded once and reused by the enlarged view (`max_size`, 128–2400 px, default 1200).
 
+## Checking many documents
+
+`check-all` checks a set of documents in one call and returns one report; `vixl check --all` is the same on the
+command line, and the [GitHub Action](ci.md) runs it.
+
+```bash
+vixl check --all "designs/**/*.vixl" --fail-on warning
+vixl check --group launch --since-last
+vixl check --all --changed-since origin/main --format sarif --write junit=out/junit.xml
+```
+
+```json
+{"documents": ["designs/**/*.vixl"], "fail_on": "error", "workers": 4, "since_last": true,
+ "outputs": {"markdown": "out/checks.md", "sarif": "out/vixl.sarif", "proof": "out/checks.html"}}
+```
+
+Documents come from `documents` (globs or paths, default `**/*.vixl`; `.vixl-*` folders are skipped), a project
+`group`, or both; `changed_since` keeps only those changed (committed, staged, unstaged or untracked) since a git
+revision. Each document gets the `vixl_check` findings (`checks` to choose) plus its attached suites (`suites: false`
+skips them) and an optional inline `suite` (an object, or a `.json` file), in `workers` parallel threads (1–8). On a
+group the [group consistency checks](studio.md#group-consistency-checks) run as well (`group_checks`).
+
+The result has, per document, `status` (`passed`, `failed` for errors or a failed suite, `needs_review` for warnings,
+`fix` findings or a suite that needs review, `error` when it could not be checked), counts (`errors`, `warnings`,
+`fix`, `by_check`), the top ten `findings`, suite rule results and `failing`: the findings that reach `fail_on`.
+`fail_on` is the CI action's level: `error`, `warning` (or error), `fix` (any finding whose action is `fix`) or
+`never`; a suite that does not pass counts at every level but `never`. `totals` sums them and `passed` is false when
+any document (or group finding) reaches the level, which is also the command's exit code. `base` pixel-diffs each
+document against its version at a git revision (`diff.changed_fraction`, or `new`), keeping base copies and diff
+images in `work`.
+
+`outputs` writes the report as `json`, `markdown` (the CI summary table), `junit` (one testsuite per document, one
+testcase per check and suite rule, failures carry the messages), `sarif` (SARIF 2.1.0: one result per finding with
+the check or `suite/NAME/RULE` as `ruleId`, the severity as level, the `.vixl` path as location and the layers as
+logical locations), `github` (workflow annotation lines: `::error file=…,title=Vixl contrast::…`) and `proof` (a
+[proof page](#proof-pages)). Existing files are kept unless `overwrite: true`. On the command line `--format` prints
+one of them (markdown by default, json with `--json`) and `--write FORMAT=PATH` writes others.
+
+### History and newly failing documents
+
+Every run records a history entry in `.vixl-checks/history/` (the Vixl version, each document's status, checksum
+and finding IDs; the last 200 entries are kept; `history: false` skips it). `since_last` compares the run with the
+previous one over the same documents and settings:
+
+- `newly_failing`: documents that reached `fail_on` now but not before, each with `new_findings` and a `cause`:
+  `document` when the file changed, `vixl version` when only Vixl changed (`version_changed`), else `unknown`;
+- `newly_passing`, `still_failing`, and documents `added` or `removed` since then.
+
+After an upgrade, `vixl check --all --since-last` therefore names the documents that the new version judges
+differently. Vixl does not schedule runs itself: run it from CI on a schedule (a cron workflow), or after an update.
+
 ## Logo packages
 
 `logo-package` turns one logo into the folder a brand hand-off needs:

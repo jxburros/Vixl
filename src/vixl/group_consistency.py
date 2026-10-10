@@ -525,7 +525,7 @@ def compare(projects, *, reference=None, checks=None, layers=None, facts=None, s
     if "structure" in checks:
         findings += _structure(projects, reference, required or [])
     if "copy" in checks and facts:
-        compiled = validate_facts(facts) if not all(isinstance(v, dict) and "name" in v for v in facts.values()) else facts
+        compiled = validate_facts(facts)
         findings += _copy(projects, reference, compiled)
         compared["facts"] = sorted(compiled)
     errors = sum(item["severity"] == "error" for item in findings)

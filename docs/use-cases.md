@@ -342,7 +342,10 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | AGT-11 | Display a design inline in a notebook | `Project.show()` | 1–2 · <1 | E | |
 | BLK-10 | Lookups or case changes inside a data merge | `${name\|upper}`, `${role\|map:colors}`, `variable-map` | 2–4 · 1 | E | Since 0.22. |
 | QA-22 | Proof page for human sign-off with approve/reject | `vixl_workflow` proof | 1–2 · 1 | E | Since 0.22; offline HTML, decisions download as JSON. |
-| QA-23 | Check `.vixl` files in pull requests | GitHub Action (`action.yml`), `vixl diff` | 1 · CI | E | Since 0.22; see [CI](ci.md). |
+| QA-23 | Check `.vixl` files in pull requests | GitHub Action (`action.yml`), `vixl diff` | 1 · CI | E | Since 0.22; see [CI](ci.md). Runs `vixl check --all`: annotations, JUnit and SARIF upload. |
+| QA-25 | Check every document in a folder or project group into one report | `vixl_workflow` check-all, `vixl check --all GLOB` / `--group NAME` | 1 · 1 | E | Parallel; JSON, Markdown, JUnit, SARIF, annotations, proof page. |
+| QA-26 | List documents that newly fail after an upgrade or an edit | `vixl check --all --since-last` | 1 · 1 | E | Compares with the previous recorded run; scheduling is up to CI. |
+| QA-27 | Check that a campaign's sizes agree: logo placement, type ratios, swatches, prices and names | `vixl_workflow` group-check, facts in brand.json or the group | 1–3 · 1 | E | Majority or a reference member. |
 
 ### Provider-backed
 
@@ -494,6 +497,8 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | PRD-20 | Capture a design as a recipe with typed inputs | `vixl_workflow` capture | 5–10 · 1–2 | E | |
 | PRD-21 | Plan a production spec and list its variants without rendering | `vixl_workflow` plan | 3–6 · 1 | E | |
 | PRD-22 | Save a design to a component library and reuse it elsewhere | library-save, library-search, library-place | 5–8 · 1–2 | E | Placement is a raster snapshot. |
+| PRD-23 | Find and replace a product name, a hex color, a font or the logo image across a campaign | `vixl_workflow` replace-across (dry run, then apply) | 2–4 · 1–2 | E | Journalled; `group-recover` undoes an interrupted run. |
+| PRD-24 | Review a group change on a before/after page and publish only the approved members | group-apply or replace-across with `review`, then `decisions` | 2–3 · human review | E | Offline proof page; decisions JSON comes back. |
 | QA-20 | Write a custom check suite for a brand (fonts, palette, logo clear space) | suite rules, `vixl_workflow` check | 10–20 · 2–3 | E | |
 | QA-21 | Live human review in a browser while an agent edits | `vixl view` | setup · 1–2 | E | [server] |
 | COL-10 | Three-way merge of a branch with explicit conflict resolution | branch-merge (dry run, then apply) | 5–12 · 2 | E | |
@@ -615,7 +620,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | PRD-51 | Localised campaign in 10 languages with font fallbacks and checks | variables, `font-fallbacks`, suites | several hours | E | Automatic multi-font fallback is not implemented. |
 | PRD-52 | Data-driven report generator (Python) re-run on each new dataset | `Project` API, `chart --csv`, templates | 1–2 days dev | E | |
 | AGT-30 | Embed Vixl in another app through REST with auth | `vixl serve` | 1–3 days dev | E | [server] |
-| AGT-31 | Gate pull requests on design checks in CI | `vixl validate`, suites, golden renders | 0.5–1 day | E | |
+| AGT-31 | Gate pull requests on design checks in CI | `vixl validate`, suites, golden renders | 0.5–1 day | E | The bundled action covers checks and suites in one step (QA-23); this row is custom gates such as golden renders. |
 | AGT-32 | Run the agent eval suite against a new model or schema mode | `python -m evals.run --agent claude` | 1–2 h | E | Needs an API key. |
 | AGT-33 | Compare Vixl with other tools on the 16 briefs | `evals/tool-comparison` kit | 1 day | E | |
 | PIX-50 | Complete small game art set (characters, tiles, UI, title screen) | pixel tools, timelines, sheets | days | E | |
