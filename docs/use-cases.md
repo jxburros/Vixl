@@ -514,7 +514,7 @@ IDs are stable: a row keeps its ID when it moves to another tier.
 | ILL-40 | Seamless repeating pattern | motifs, pattern-check, repeat | 61 · 7.5 | M:T15 | Scatter positions computed outside Vixl; no seamless scatter. |
 | SOC-60 | One campaign in six sizes | `vixl_adapt_layout`, per-size fixes | 63 · 4.4 | M:T09 | adapt-layout output often needs every layer redone. Revision: 44 calls, 1.8 min. |
 | PHO-40 | Photo correction (tilt, cast, exposure, noise) | effects, denoise, white balance, links | 63 · 5.0 | M:T10 | |
-| DRW-30 | Hand drawing → clean vector art with fills | `drawing import/clean/vectorize/straighten/fill` | 64 · 5.7 | M:T11 | Gap closing bridges curves with straight lines. |
+| DRW-30 | Hand drawing → clean vector art with fills | `drawing import/clean/vectorize/straighten/fill` | 64 · 5.7 | M:T11 | Gap closing bridges curves with straight lines. Sky and ground bounded by the drawing's edge fill with `settings.edge_closes` (was BLK-22); `clean` keeps the paper's extent. |
 | MOT-30 | Lyric video from a song, an LRC file and a template | `lyric-video-build/export` | 40 · 6.4 | M:T14 | [ffmpeg] Audio resampled to 24 kHz. |
 
 ### Social and marketing
@@ -647,7 +647,6 @@ note the version.
 | BLK-19 | Branch merging by replay or real-time collaboration | Not implemented; shared-filesystem locks only | Branch fork/merge with explicit resolutions. |
 | BLK-20 | Imposition for saddle-stitched booklets (reader → printer spreads) | Not implemented | Order pages by hand. |
 | BLK-21 | Dielines, folds and packaging nets | Not implemented as a feature | Draw with guides and paths. |
-| BLK-22 | Drawing fill bounded by the canvas edge | Missing (T11); strokes in a moved group's own coordinates work since 0.22 (`space: "group"`) | Add a boundary path. |
 | BLK-23 | Live (active/scripted) SVG content | Not implemented; static SVG only | – |
 | BLK-24 | Placing a library component as an editable group | Placement is a raster snapshot | Open the component as its own document and link it. |
 | BLK-25 | Hard memory cap or execution timeout per call | Not implemented | Use OS/container limits. |
