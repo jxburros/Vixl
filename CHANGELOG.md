@@ -105,6 +105,7 @@ Checks that cover a whole workspace, outcome states agents can trust, repairs, w
 
 - Vixl now describes itself one way: **"Ideas become editable."** and *a design engine for AI agents. Programmable, editable, checked.* The README, `pyproject.toml`, CLI help, plugin and desktop-extension listings, docs introductions and the skill use it in place of "programmable design studio", "image-document engine" and "headless application designed for autonomous AI agents".
 - The marketing pack's artwork, deck notes, captions, alt text, campaign rows and demo script are rewritten in a more casual voice and rebuilt. The rules are in [Brand voice](docs/brand-voice.md).
+- A second promo film, [*It does that?*](promo/it-does-that/README.md), shows nine less obvious features: sketch to vectors, a CSV-to-print badge run with unique QR codes, emoji masters, mirrored radial repeats, pixel sprites, fillable forms, text to diagram, seeded plants and a soundtrack written as `audio-track` layers. Every shot runs the feature in the build; scenes and the score are editable `.vixl` masters.
 
 ### Speed
 
