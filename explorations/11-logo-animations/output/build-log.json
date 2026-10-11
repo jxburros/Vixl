@@ -1,0 +1,51 @@
+[
+  {
+    "name": "01-slide-lock",
+    "duration_ms": 2820,
+    "layers": 10,
+    "gif_bytes": 111636,
+    "mp4_bytes": 52705
+  },
+  {
+    "name": "02-pixel-swarm",
+    "duration_ms": 3760,
+    "layers": 229,
+    "gif_bytes": 427753,
+    "mp4_bytes": 281718
+  },
+  {
+    "name": "03-ripple-pop",
+    "duration_ms": 3380,
+    "layers": 229,
+    "gif_bytes": 74922,
+    "mp4_bytes": 57098
+  },
+  {
+    "name": "04-break-apart",
+    "duration_ms": 3840,
+    "layers": 330,
+    "gif_bytes": 298017,
+    "mp4_bytes": 149457
+  },
+  {
+    "name": "05-draw-on",
+    "duration_ms": 3600,
+    "layers": 11,
+    "gif_bytes": 61617,
+    "mp4_bytes": 41087
+  },
+  {
+    "name": "06-seed-grow",
+    "duration_ms": 3630,
+    "layers": 11,
+    "gif_bytes": 115305,
+    "mp4_bytes": 55816
+  },
+  {
+    "name": "07-glitch-shift",
+    "duration_ms": 3371,
+    "layers": 15,
+    "gif_bytes": 157051,
+    "mp4_bytes": 151794
+  }
+]

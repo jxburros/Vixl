@@ -1,6 +1,6 @@
 # Vixl explorations
 
-Ten complex projects, each designed to stretch a different part of the engine. They were first built with Vixl 0.16.0 to find its limits; the committed outputs are now rebuilt with Vixl 0.21.0. Every project has a reproducible `build.py`, which you run from the repo root with `python explorations/NN-name/build.py`. Each also has its outputs and a README with the features it used and its findings. `python explorations/build_gallery.py` recomposes `gallery.jpg` from the outputs.
+Ten complex projects, each designed to stretch a different part of the engine. They were first built with Vixl 0.16.0 to find its limits; the committed outputs are now rebuilt with Vixl 0.21.0. Every project has a reproducible `build.py`, which you run from the repo root with `python explorations/NN-name/build.py`. Each also has its outputs and a README with the features it used and its findings. `python explorations/build_gallery.py` recomposes `gallery.jpg` from the outputs. Project 11 is a later, smaller set of logo animations built with Vixl 0.25.0; it is not in the gallery.
 
 ![Gallery](gallery.jpg)
 
@@ -16,6 +16,7 @@ Ten complex projects, each designed to stretch a different part of the engine. T
 | 08 | [The Great Green Switch infographic](08-infographic/) | Charts from data with shapes/paths/repeat, grids and constraints, spacing/validate QA, color-vision checks, SVG/HTML/PDF |
 | 09 | [Loop collaborative campaign](09-collab-campaign/) | brand.json, rolls, layouts across 7 sizes, adapt-layout, branch fork/merge with conflict resolution, group-apply gated by suites |
 | 10 | [Pip the robot film](10-character-film/) | Nested rig with pivots, walk/wave/jump, parallax, painted texture, film-plan with camera, crossfades, captions and audio to MP4 |
+| 11 | [Vixl logo builds](11-logo-animations/) | Seven ways to animate the logo kit's master assembling itself: slides, pixel swarms, pop ripples, break-apart, draw-on, seed growth and an RGB-split glitch |
 
 ## Caveats on the outputs
 
