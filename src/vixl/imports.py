@@ -431,16 +431,15 @@ def import_document(project, data, format, name="import", page=1, dpi=144, svg_m
     }
 
 
-def svg_appearance(project, data, name):
-    """Render self-contained static SVG through resvg; preserve source for future editing."""
+def sanitize_svg(data, limits, *, byte_limit=None):
+    """Parse untrusted SVG bytes and enforce the static-SVG rules: no DOCTYPE/ENTITY, no active content,
+    no external ``href`` or ``url()``, bounded depth and node count, and declared pixel size within
+    ``limits``. Returns ``(root, width, height)`` with the root's width/height set to those pixel sizes."""
     import base64
-    import hashlib
-    import io
-    import resvg_py
-    from PIL import Image
-    from .assets import add_image, decode
+    from .assets import decode
 
-    require(len(data) <= min(project.limits.max_asset_bytes, 4 * 1024 * 1024), "SVG exceeds byte limit", "resource_limit")
+    cap = limits.max_asset_bytes if byte_limit is None else min(limits.max_asset_bytes, byte_limit)
+    require(len(data) <= cap, "SVG exceeds byte limit", "resource_limit")
     try:
         text = data.decode("utf-8-sig")
         require("\x00" not in text and "<!DOCTYPE" not in text.upper() and "<!ENTITY" not in text.upper(),
@@ -468,7 +467,7 @@ def svg_appearance(project, data, name):
                         raw = base64.b64decode(value.split(",", 1)[1], validate=True)
                     except ValueError as exc:
                         raise VixlError("invalid_svg", "Invalid embedded image") from exc
-                    decode(raw, project.limits)
+                    decode(raw, limits)
                 else:
                     require(value.startswith("#"), "SVG references must be internal or embedded raster images", "unsupported_svg")
         css = " ".join(node.attrib.values()) + " " + (node.text or "")
@@ -484,19 +483,37 @@ def svg_appearance(project, data, name):
         require(match, "Unsupported SVG dimensions")
         return math.ceil(float(match[1]) * {None: 1, "px": 1, "pt": 96 / 72, "pc": 16, "in": 96, "cm": 96 / 2.54, "mm": 96 / 25.4}[match[2]])
     width, height = dimension(root.get("width"), box[2]), dimension(root.get("height"), box[3])
-    project.limits.size(width, height)
+    limits.size(width, height)
     root.set("width", str(width))
     root.set("height", str(height))
     if root.tag == "svg":
         root.set("xmlns", "http://www.w3.org/2000/svg")
+    return root, width, height
+
+
+def render_svg(root, width, height):
+    """Rasterize a tree returned by ``sanitize_svg`` with the bundled font only; returns RGBA PIL image."""
+    import io
     from pathlib import Path
+    import resvg_py
+    from PIL import Image
+
     try:
         encoded = resvg_py.svg_to_bytes(svg_string=ET.tostring(root, encoding="unicode"),
                     width=width, height=height, skip_system_fonts=True,
                     font_files=[str(Path(__file__).parent / "data" / "DejaVuSans.ttf")])
-        image = Image.open(io.BytesIO(encoded)).convert("RGBA")
+        return Image.open(io.BytesIO(encoded)).convert("RGBA")
     except Exception as exc:
         raise VixlError("invalid_svg", f"Cannot render SVG: {exc}") from exc
+
+
+def svg_appearance(project, data, name):
+    """Render self-contained static SVG through resvg; preserve source for future editing."""
+    import hashlib
+    from .assets import add_image
+
+    root, width, height = sanitize_svg(data, project.limits, byte_limit=4 * 1024 * 1024)
+    image = render_svg(root, width, height)
     candidate = project.clone()
     source = "sources/" + hashlib.sha256(data).hexdigest() + ".svg"
     candidate.assets[source] = data

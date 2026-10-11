@@ -217,7 +217,8 @@ vixl diff before.vixl after.png [--out diff.png] [--mode diff|side-by-side] [--t
 All accept `--artboard NAME` / `--comp NAME` where relevant. `--check` (spacing), `check --strict`
 and failing `validate`/`assert` exit nonzero with details (`--json` shows every check). `diff` needs no open
 document: it compares two `.vixl` documents or images (PNG, JPEG, WEBP, TIFF, SVG, PDF) and reports `changed_pixels`,
-`changed_fraction` and `changed_region`; `--max-fraction` makes it exit nonzero above that share.
+`changed_fraction` and `changed_region`; `--max-fraction` makes it exit nonzero above that share. SVG inputs must be
+self-contained (no external `href`/`url()`, no DOCTYPE) and within the pixel limit, as for SVG appearance import.
 
 ## Output
 

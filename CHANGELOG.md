@@ -127,6 +127,7 @@ Checks that cover a whole workspace, outcome states agents can trust, repairs, w
 - Region and incremental renders match full renders exactly for layers placed half a pixel off.
 - `fit-text` and the `text-fit` suite rule agree with the bounds check on rich and tracked text, and follow `line_height` leading (#608).
 - `marketing/build.py` measures layers on the canvas with `Project.bounds` instead of the parent-relative internal layout (#533).
+- **SVG files that are diffed or previewed are sanitized** (`vixl diff`, proof pages, workspace diffs, `reproduce`, `replace-across`, logo packages) with the same rules as SVG appearance import. resvg used to read an absolute `<image href="/path.png">` from outside the workspace, and rasterized any declared size (e.g. `width="200000"`) before the pixel limit applied. External `href`/`url()`, DOCTYPE/ENTITY, active content and deep or very large trees now fail with `unsupported_svg` or `resource_limit`, and an unrenderable SVG reports `invalid_svg` instead of `invalid_image`. Migration: embed referenced images as PNG/JPEG/WebP `data:` URIs.
 
 ## 0.24.1
 
