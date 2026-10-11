@@ -414,7 +414,9 @@ BUILDS = {
 def render(name, p):
     for suffix in (".gif", ".mp4", "-sheet.png"):
         (OUT / f"{name}{suffix}").unlink(missing_ok=True)
-    gif = export_timeline(p, OUT / f"{name}.gif", scale=0.6, colors=128, dither="none")
+    scale = min(0.6, 800 / p.state["canvas"]["width"])
+    fps = FPS if p.state["timeline"]["duration"] <= 12000 else 20  # long GIFs stay inside the frame budget
+    gif = export_timeline(p, OUT / f"{name}.gif", scale=round(scale, 3), fps=fps, colors=128, dither="none")
     mp4 = export_timeline(p, OUT / f"{name}.mp4", scale=1.0)
     build_end = p.state["timeline"]["duration"] - HOLD
     times = [round(build_end * i / 9) for i in range(10)] + [p.state["timeline"]["duration"]]
@@ -425,9 +427,12 @@ def render(name, p):
 
 
 def main(selected):
+    from build_more import MORE
+    BUILDS.update(MORE)
+
     OUT.mkdir(parents=True, exist_ok=True)
     report = []
-    for name, build in BUILDS.items():
+    for name, build in sorted(BUILDS.items()):
         if selected and not any(s in name for s in selected):
             continue
         info = render(name, build())

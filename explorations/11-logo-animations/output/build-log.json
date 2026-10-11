@@ -47,5 +47,47 @@
     "layers": 15,
     "gif_bytes": 157051,
     "mp4_bytes": 151794
+  },
+  {
+    "name": "08-design-app",
+    "duration_ms": 14292,
+    "layers": 71,
+    "gif_bytes": 222630,
+    "mp4_bytes": 217418
+  },
+  {
+    "name": "09-terminal",
+    "duration_ms": 16100,
+    "layers": 55,
+    "gif_bytes": 200707,
+    "mp4_bytes": 246809
+  },
+  {
+    "name": "10-layer-stack",
+    "duration_ms": 5100,
+    "layers": 25,
+    "gif_bytes": 923870,
+    "mp4_bytes": 297945
+  },
+  {
+    "name": "11-depixelate",
+    "duration_ms": 5830,
+    "layers": 11,
+    "gif_bytes": 289281,
+    "mp4_bytes": 121049
+  },
+  {
+    "name": "12-deep-zoom",
+    "duration_ms": 5450,
+    "layers": 80,
+    "gif_bytes": 699610,
+    "mp4_bytes": 161466
+  },
+  {
+    "name": "13-block-stack",
+    "duration_ms": 4605,
+    "layers": 88,
+    "gif_bytes": 129698,
+    "mp4_bytes": 83475
   }
 ]
