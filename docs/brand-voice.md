@@ -61,4 +61,5 @@ delightful. Technical terms are fine where they are exact, such as a seamless lo
 - The marketing pack: `marketing/copy.json` (captions, descriptions, demo script), `marketing/posts.csv`
   (campaign rows) and the artwork text in `marketing/build.py`. Rebuild with `python marketing/build.py` and
   check with `python marketing/verify.py`.
+- The promo video's on-screen text in `promo/build/scenes.py`. Rebuild with `python promo/build/make_video.py`.
 - The one-line introduction at the top of docs pages, `skills/vixl/SKILL.md` and its references.

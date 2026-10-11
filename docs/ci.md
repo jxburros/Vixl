@@ -119,3 +119,7 @@ extra), at the first one's size, and reports `changed_pixels`, `changed_fraction
 writes the after image dimmed with changed pixels in red (`--mode side-by-side` shows before | after | diff),
 `--threshold` sets the per-channel change that counts (default 8 of 255) and `--max-fraction` exits nonzero above
 that share. It never replaces an existing image unless `--overwrite` is given.
+SVG files must be self-contained, as for SVG appearance import: an external `href` or `url()`, a DOCTYPE or
+ENTITY, scripts, more than 64 levels or 10,000 elements fail with `unsupported_svg` or `resource_limit`, and the
+declared width × height is checked against the pixel limit before anything is rasterized. The same rules apply to
+SVG previews in proof pages, workspace diffs, `reproduce`, `replace-across` and logo packages.
