@@ -83,3 +83,17 @@ small sizes the word reads "vix!".
 | S6 · One colour | The ripple in charcoal, for one-colour use |
 | S7 · Fade | Bands step from blue to pale as the gaps widen |
 | S8 · Moving water | The bands sway on a seamless two-second loop (`s8-moving.gif`) |
+
+## Round six: R2, exaggerated
+
+`build_t.py` builds these, `output/contact-sheet-t.png` and the animated `output/t7-moving-storm.gif`.
+
+| Concept | Idea |
+| --- | --- |
+| T1 · Storm | Seven thin bands thrown far sideways |
+| T2 · Long reflection | The reflection hangs twice as deep as the letter above it |
+| T3 · Whole word | The whole name reflected in rippling water under the baseline |
+| T4 · Liquid | Fourteen hairline slices bent by a sine wave |
+| T5 · Glitch | Digital tearing: slices jump sideways and two double up |
+| T6 · Drop | A drop lands at the x's waist; rings spread along the waterline |
+| T7 · Moving storm | T1 animated, each band swinging on its own phase |
