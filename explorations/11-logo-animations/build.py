@@ -427,8 +427,10 @@ def render(name, p):
 
 
 def main(selected):
+    from build_extra import EXTRA
     from build_more import MORE
     BUILDS.update(MORE)
+    BUILDS.update(EXTRA)
 
     OUT.mkdir(parents=True, exist_ok=True)
     report = []

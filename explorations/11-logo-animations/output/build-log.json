@@ -89,5 +89,47 @@
     "layers": 88,
     "gif_bytes": 129698,
     "mp4_bytes": 83475
+  },
+  {
+    "name": "14-split-flap",
+    "duration_ms": 4048,
+    "layers": 160,
+    "gif_bytes": 187116,
+    "mp4_bytes": 110530
+  },
+  {
+    "name": "15-liquid-fill",
+    "duration_ms": 5130,
+    "layers": 33,
+    "gif_bytes": 103388,
+    "mp4_bytes": 54630
+  },
+  {
+    "name": "16-napkin-sketch",
+    "duration_ms": 6000,
+    "layers": 27,
+    "gif_bytes": 150753,
+    "mp4_bytes": 90333
+  },
+  {
+    "name": "17-beat-build",
+    "duration_ms": 5800,
+    "layers": 12,
+    "gif_bytes": 357639,
+    "mp4_bytes": 170788
+  },
+  {
+    "name": "18-kaleidoscope",
+    "duration_ms": 5200,
+    "layers": 73,
+    "gif_bytes": 801173,
+    "mp4_bytes": 328914
+  },
+  {
+    "name": "19-fireworks",
+    "duration_ms": 4600,
+    "layers": 147,
+    "gif_bytes": 189080,
+    "mp4_bytes": 125062
   }
 ]
