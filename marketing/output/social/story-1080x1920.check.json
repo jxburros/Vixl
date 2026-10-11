@@ -12,6 +12,32 @@
       2
     ]
   },
+  "outcome": {
+    "state": "validated",
+    "execution": "completed",
+    "validation": "passed",
+    "review": "not_required",
+    "review_reasons": [],
+    "accepted": [
+      {
+        "rule": "bounds.bleed",
+        "layers": [
+          "glow"
+        ],
+        "reason": "'glow' bleeds off the canvas edge (marked as an intentional crop)"
+      },
+      {
+        "rule": "safe_area.outside",
+        "layers": [
+          "glow"
+        ],
+        "reason": "'glow' extends outside the safe area (intentional crop or bleed)"
+      }
+    ],
+    "validated_by": [
+      "design checks"
+    ]
+  },
   "issues": [
     {
       "check": "bounds",
@@ -20,6 +46,15 @@
         "glow"
       ],
       "message": "'glow' bleeds off the canvas edge (marked as an intentional crop)",
+      "layer_ids": [
+        "lyr_b9c32f8493032f3e"
+      ],
+      "box": [
+        -180,
+        820,
+        1400,
+        1400
+      ],
       "bounds": [
         -180.0,
         820.0,
@@ -27,7 +62,9 @@
         1400.0
       ],
       "intentional": true,
-      "action": "informational"
+      "code": "bleed",
+      "action": "informational",
+      "rule": "bounds.bleed"
     },
     {
       "check": "safe_area",
@@ -36,6 +73,15 @@
         "glow"
       ],
       "message": "'glow' extends outside the safe area (intentional crop or bleed)",
+      "layer_ids": [
+        "lyr_b9c32f8493032f3e"
+      ],
+      "box": [
+        -180,
+        820,
+        1400,
+        1400
+      ],
       "bounds": [
         -180,
         820,
@@ -48,8 +94,25 @@
         960,
         1420
       ],
+      "code": "outside",
       "intentional": true,
-      "action": "informational"
+      "action": "informational",
+      "rule": "safe_area.outside",
+      "measured": {
+        "actual": [
+          -180,
+          820,
+          1400,
+          1400
+        ],
+        "expected": [
+          60,
+          250,
+          960,
+          1420
+        ],
+        "unit": "box"
+      }
     },
     {
       "check": "fonts",
@@ -68,7 +131,8 @@
         }
       ],
       "bytes": 112204,
-      "action": "informational"
+      "action": "informational",
+      "rule": "fonts"
     }
   ],
   "checked": {
@@ -79,6 +143,7 @@
       "safe_area",
       "legibility",
       "blanks",
+      "placeholders",
       "fonts",
       "brand",
       "content",
@@ -123,7 +188,18 @@
           "expected": 1920,
           "actual": 1920
         }
-      ]
+      ],
+      "source": "document",
+      "outcome": {
+        "state": "validated",
+        "execution": "completed",
+        "validation": "passed",
+        "review": "not_required",
+        "review_reasons": [],
+        "validated_by": [
+          "suite"
+        ]
+      }
     }
   }
 }

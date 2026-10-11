@@ -8,6 +8,16 @@
     "review": [],
     "informational": []
   },
+  "outcome": {
+    "state": "validated",
+    "execution": "completed",
+    "validation": "passed",
+    "review": "not_required",
+    "review_reasons": [],
+    "validated_by": [
+      "design checks"
+    ]
+  },
   "issues": [],
   "checked": {
     "checks": [
@@ -51,7 +61,18 @@
           "expected": 320,
           "actual": 320
         }
-      ]
+      ],
+      "source": "document",
+      "outcome": {
+        "state": "validated",
+        "execution": "completed",
+        "validation": "passed",
+        "review": "not_required",
+        "review_reasons": [],
+        "validated_by": [
+          "suite"
+        ]
+      }
     },
     "motion": {
       "version": 1,
@@ -573,7 +594,18 @@
           },
           "distance": 54.0
         }
-      ]
+      ],
+      "source": "document",
+      "outcome": {
+        "state": "validated",
+        "execution": "completed",
+        "validation": "passed",
+        "review": "not_required",
+        "review_reasons": [],
+        "validated_by": [
+          "suite"
+        ]
+      }
     }
   }
 }

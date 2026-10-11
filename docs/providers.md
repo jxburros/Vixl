@@ -8,7 +8,7 @@ the [video job contract](production.md#generated-video-gateway), including durab
 and client-key recovery. It is separate from the image adapters listed below. Existing
 provider keys remain environment-variable references; no credentials are saved in jobs.
 
-Vixl is a headless application designed for autonomous AI agents; humans can use the same interfaces.
+Vixl is a headless design engine for AI agents; people can drive the same interfaces.
 
 Vixl contains adapters, not model weights. Configure only providers you trust; generation can incur your provider's charges. AI inference is called only for an explicit AI command. Provider onboarding and explicit model discovery query catalogs without requesting inference. Provider URL/key configuration is local; it is not loaded from `.vixl` documents.
 

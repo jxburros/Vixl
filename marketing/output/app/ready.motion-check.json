@@ -377,5 +377,16 @@
       },
       "distance": 54.0
     }
-  ]
+  ],
+  "source": "document",
+  "outcome": {
+    "state": "validated",
+    "execution": "completed",
+    "validation": "passed",
+    "review": "not_required",
+    "review_reasons": [],
+    "validated_by": [
+      "suite"
+    ]
+  }
 }

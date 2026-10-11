@@ -1,6 +1,6 @@
 # Agent evaluation suite
 
-Vixl is a headless application designed for autonomous AI agents; humans can use the same interfaces.
+Vixl is a headless design engine for AI agents; people can drive the same interfaces.
 
 Vixl is used mostly by AI agents, so the test that matters most is whether an agent can finish
 real design briefs through the MCP tools, and at what cost. This suite measures that.

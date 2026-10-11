@@ -11,6 +11,32 @@
       1
     ]
   },
+  "outcome": {
+    "state": "validated",
+    "execution": "completed",
+    "validation": "passed",
+    "review": "not_required",
+    "review_reasons": [],
+    "accepted": [
+      {
+        "rule": "bounds.bleed",
+        "layers": [
+          "glow"
+        ],
+        "reason": "'glow' bleeds off the canvas edge (marked as an intentional crop)"
+      },
+      {
+        "rule": "safe_area.outside",
+        "layers": [
+          "glow"
+        ],
+        "reason": "'glow' extends outside the safe area (intentional crop or bleed)"
+      }
+    ],
+    "validated_by": [
+      "design checks"
+    ]
+  },
   "issues": [
     {
       "check": "bounds",
@@ -19,6 +45,15 @@
         "glow"
       ],
       "message": "'glow' bleeds off the canvas edge (marked as an intentional crop)",
+      "layer_ids": [
+        "lyr_50f47459a30a8719"
+      ],
+      "box": [
+        -400,
+        1400,
+        1900,
+        1900
+      ],
       "bounds": [
         -400.0,
         1400.0,
@@ -26,7 +61,9 @@
         1900.0
       ],
       "intentional": true,
-      "action": "informational"
+      "code": "bleed",
+      "action": "informational",
+      "rule": "bounds.bleed"
     },
     {
       "check": "safe_area",
@@ -35,6 +72,15 @@
         "glow"
       ],
       "message": "'glow' extends outside the safe area (intentional crop or bleed)",
+      "layer_ids": [
+        "lyr_50f47459a30a8719"
+      ],
+      "box": [
+        -400,
+        1400,
+        1900,
+        1900
+      ],
       "bounds": [
         -400,
         1400,
@@ -47,8 +93,25 @@
         1574,
         2474
       ],
+      "code": "outside",
       "intentional": true,
-      "action": "informational"
+      "action": "informational",
+      "rule": "safe_area.outside",
+      "measured": {
+        "actual": [
+          -400,
+          1400,
+          1900,
+          1900
+        ],
+        "expected": [
+          57,
+          57,
+          1574,
+          2474
+        ],
+        "unit": "box"
+      }
     }
   ],
   "checked": {
@@ -96,7 +159,18 @@
           "expected": 2588,
           "actual": 2588
         }
-      ]
+      ],
+      "source": "document",
+      "outcome": {
+        "state": "validated",
+        "execution": "completed",
+        "validation": "passed",
+        "review": "not_required",
+        "review_reasons": [],
+        "validated_by": [
+          "suite"
+        ]
+      }
     }
   }
 }

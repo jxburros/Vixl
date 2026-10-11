@@ -1,5 +1,5 @@
 {
   "name": "vixl",
   "owner": {"name": "Vixl contributors"},
-  "plugins": [{"name": "vixl", "source": "./", "description": "Editable graphics with Vixl MCP and its design skill"}]
+  "plugins": [{"name": "vixl", "source": "./", "description": "Give your agent a design engine: Vixl MCP plus its design skill. You keep the layers."}]
 }

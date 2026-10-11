@@ -8,6 +8,16 @@
     "review": [],
     "informational": []
   },
+  "outcome": {
+    "state": "validated",
+    "execution": "completed",
+    "validation": "passed",
+    "review": "not_required",
+    "review_reasons": [],
+    "validated_by": [
+      "design checks"
+    ]
+  },
   "issues": [],
   "checked": {
     "checks": [
@@ -52,7 +62,18 @@
           "expected": 1080,
           "actual": 1080
         }
-      ]
+      ],
+      "source": "document",
+      "outcome": {
+        "state": "validated",
+        "execution": "completed",
+        "validation": "passed",
+        "review": "not_required",
+        "review_reasons": [],
+        "validated_by": [
+          "suite"
+        ]
+      }
     },
     "delivery": {
       "version": 1,
@@ -104,10 +125,10 @@
           "expected": 4.5,
           "actual": 14.158,
           "weakest_region": [
-            82,
+            83,
             340,
-            774,
-            205
+            743,
+            185
           ]
         },
         {
@@ -124,6 +145,16 @@
             "review": [],
             "informational": []
           },
+          "outcome": {
+            "state": "validated",
+            "execution": "completed",
+            "validation": "passed",
+            "review": "not_required",
+            "review_reasons": [],
+            "validated_by": [
+              "design checks"
+            ]
+          },
           "issues": [],
           "checked": {
             "checks": [
@@ -138,7 +169,18 @@
             "text_layers": 4
           }
         }
-      ]
+      ],
+      "source": "document",
+      "outcome": {
+        "state": "validated",
+        "execution": "completed",
+        "validation": "passed",
+        "review": "not_required",
+        "review_reasons": [],
+        "validated_by": [
+          "suite"
+        ]
+      }
     }
   }
 }
