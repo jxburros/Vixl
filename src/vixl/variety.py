@@ -291,20 +291,26 @@ def apply_direction(project, builder, direction):
         background.pop("color", None)
     elif background and treatment in ("split", "pattern"):
         name = builder.name("background-detail")
+        operation = column = None
         if treatment == "split":
             operation = {"type": "shape", "name": name, "shape": "rectangle", "x": builder.W * 0.72,
                          "y": 0, "width": round(builder.W * 0.28), "height": builder.H, "fill": "@surface"}
         else:
-            operation = {"type": "shape", "name": name, "shape": "ellipse", "x": builder.W * 0.90,
-                         "y": builder.T, "width": max(2, builder.unit // 3), "height": max(2, builder.unit // 3), "fill": "@muted"}
-        execute(project, operation)
-        detail = project.layer()
-        if treatment == "pattern":
-            execute(project, {"type": "repeat", "target": detail["id"], "count": 8, "dy": builder.ch / 9})
-        detail.update(role="decoration", opacity=0.25)
-        project.state["layers"].remove(detail)
-        project.state["layers"].insert(project.state["layers"].index(background) + 1, detail)
-        builder.created.append(name)
+            # A column of dots in the side margin, kept clear of the text; with no clear column it is left out.
+            size = max(2, builder.unit // 3)
+            column = _dot_column(builder, _text_boxes(project, own, builder.unit), size)
+            if column:
+                operation = {"type": "shape", "name": name, "shape": "ellipse", "x": column[0], "y": column[1],
+                             "width": size, "height": size, "fill": "@muted"}
+        if operation:
+            execute(project, operation)
+            detail = project.layer()
+            if treatment == "pattern":
+                execute(project, {"type": "repeat", "target": detail["id"], "count": column[2], "dy": builder.ch / 9})
+            detail.update(role="decoration", opacity=0.25)
+            project.state["layers"].remove(detail)
+            project.state["layers"].insert(project.state["layers"].index(background) + 1, detail)
+            builder.created.append(name)
     # A direction without a corner (an older or hand-written one) takes the house corner, sharp (E8).
     corner = direction.get("corner") or house_style.rule("corner")
     scale = house_style.rule("corner_scale")
@@ -318,12 +324,19 @@ def apply_direction(project, builder, direction):
     require(motif in ("none", "rule", "ellipse", "rectangle"), "Unknown motif", field="direction")
     if motif != "none":
         size = max(3, round(builder.unit))
-        name = builder.name("direction-motif")
-        execute(project, {"type": "shape", "shape": "ellipse" if motif == "ellipse" else "rectangle", "name": name,
-                          "x": builder.R - size, "y": builder.T / 2, "width": size,
-                          "height": max(2, size // 4) if motif == "rule" else size, "fill": "@accent"})
-        project.layer().update(role="decoration")
-        builder.created.append(name)
+        height = max(2, size // 4) if motif == "rule" else size
+        # The top-right corner of the margin, else the other margin corners; a motif with no corner clear of
+        # the text is left out rather than drawn through it.
+        boxes = _text_boxes(project, own, builder.unit)
+        spots = [(builder.R - size, builder.T / 2), (builder.L, builder.T / 2),
+                 (builder.R - size, (builder.B + builder.H) / 2 - height), (builder.L, (builder.B + builder.H) / 2 - height)]
+        spot = next((s for s in spots if not _hits(boxes, (s[0], s[1], size, height))), None)
+        if spot:
+            name = builder.name("direction-motif")
+            execute(project, {"type": "shape", "shape": "ellipse" if motif == "ellipse" else "rectangle", "name": name,
+                              "x": spot[0], "y": spot[1], "width": size, "height": height, "fill": "@accent"})
+            project.layer().update(role="decoration")
+            builder.created.append(name)
     look = direction.get("look", "none")
     if look != "none":
         # Directions rolled before house-style version 2 carry no amount and keep their faint 0.1.
@@ -334,6 +347,42 @@ def apply_direction(project, builder, direction):
     if direction.get("style"):
         for operation in apply_operations(direction["style"], palette=False):
             execute(project, operation)
+
+
+def _text_boxes(project, own, clearance):
+    """Canvas boxes of the scaffold's text (and of placed components, which hold text), widened by
+    ``clearance``: where decoration must not go."""
+    from .render import resolve_layout
+
+    bounds = resolve_layout(project)
+    return [(x - clearance, y - clearance, w + 2 * clearance, h + 2 * clearance)
+            for layer in own if not layer.get("parent") and layer["type"] in ("text", "group")
+            for x, y, w, h in [bounds[layer["id"]]]]
+
+
+def _hits(boxes, box):
+    x, y, w, h = box
+    return any(x < bx + bw and bx < x + w and y < by + bh and by < y + h for bx, by, bw, bh in boxes)
+
+
+def _dot_column(builder, boxes, size, count=8):
+    """``(x, y, count)`` for the pattern treatment's column of dots: at 90% of the width, else 10%, the
+    longest run of consecutive dots that stays clear of ``boxes`` (at least three), else None."""
+    step = builder.ch / 9
+    best = None
+    for x in (builder.W * 0.90, builder.W * 0.10 - size):
+        run = []
+        for index in range(count + 1):
+            y = builder.T + index * step
+            if index < count and not _hits(boxes, (x, y, size, size)):
+                run.append(y)
+                continue
+            if len(run) == count:
+                return x, run[0], count
+            if len(run) >= 3 and (best is None or len(run) > best[2]):
+                best = (x, run[0], len(run))
+            run = []
+    return best
 
 
 def _look_targets(project, builder, own, background, look):

@@ -127,6 +127,8 @@ Checks that cover a whole workspace, outcome states agents can trust, repairs, w
 - Region and incremental renders match full renders exactly for layers placed half a pixel off.
 - `fit-text` and the `text-fit` suite rule agree with the bounds check on rich and tracked text, and follow `line_height` leading (#608).
 - `marketing/build.py` measures layers on the canvas with `Project.bounds` instead of the parent-relative internal layout (#533).
+- **The overlap check reports decoration that runs through text** (`overlap.decoration-text`, a `review` warning): a layer marked `role: decoration` whose painted pixels fall inside a text layer's glyph area (each line's ink box, ascenders to descenders, plus a 10% halo) was skipped, so a rolled poster with dots through its headline passed `check --strict`. Decoration that encloses the text (a panel, a frame) is not reported; mark a deliberate pair with `layer-intent allow_overlap`.
+- **Rolled backgrounds and frames keep clear of the text**: the `pattern` treatment puts its column of dots at 90% or 10% of the width, whichever stays clear of the text (else the longest clear run of at least three dots, else no dots), the direction motif moves to another margin corner or is left out, and the `outline` accent insets the content two spacing units inside the frame instead of leaving it flush against the frame's inner edge. Rolls with these choices place text and decoration differently than before for the same seed.
 
 ## 0.24.1
 

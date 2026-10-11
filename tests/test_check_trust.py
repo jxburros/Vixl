@@ -150,6 +150,33 @@ def test_stroked_text_covering_a_neighbours_descender_is_an_overlap():  # #249
     assert found and set(found[0]["layers"]) == {"greeting", "name"}
 
 
+
+def decorated(dot_y):
+    p = Project(900, 400, "white")
+    p.apply([{"type": "text", "name": "title", "text": "Market", "size": 100, "x": 50, "y": 40, "color": "#000000"},
+             {"type": "shape", "shape": "rectangle", "name": "panel", "x": 20, "y": 20, "width": 860, "height": 360,
+              "fill": "#f4f4f4"},
+             {"type": "shape", "shape": "ellipse", "name": "dot", "x": 300, "y": dot_y, "width": 8, "height": 8,
+              "fill": "#888888"},
+             {"type": "layer-intent", "target": "panel", "role": "decoration"},
+             {"type": "layer-intent", "target": "dot", "role": "decoration"}])
+    return p
+
+
+def decoration_findings(p):
+    return [i for i in p.check(checks=["overlap"])["issues"] if i.get("code") == "decoration-text"]
+
+
+def test_decoration_running_through_glyphs_is_marked_for_review():
+    p = decorated(dot_y=110)
+    found = decoration_findings(p)
+    assert len(found) == 1 and found[0]["layers"] == ["dot", "title"] and found[0]["action"] == "review"
+    # The panel behind the whole text is framing, not a collision; a dot well below the line is clear.
+    assert not decoration_findings(decorated(dot_y=330))
+    p.apply({"type": "layer-intent", "target": "dot", "allow_overlap": ["title"]})
+    assert not decoration_findings(p)
+
+
 def chart(colors, **options):
     p = Project(900, 560, "#ffffff")
     series = [{"name": n, "values": v, "color": c} for (n, v), c in zip((("Wins", [3, 4, 5]), ("Losses", [4, 3, 2])), colors)]
