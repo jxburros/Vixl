@@ -63,13 +63,16 @@ def canonical_anchor(value, baseline=False):
 EXTRA_SHAPES = (*CATALOG_SHAPES, *SHORTCUTS, "pentagon", "hexagon", "octagon", "capsule", "path", "arc")
 # Shapes drawn from path data that already includes their own stroke inset (see wedge.arc_layer_path).
 PATH_SHAPES = ("path", "arc")
-# Shape kinds that are open strokes by nature; a ``path`` is open when it has no closing Z.
+# Shape kinds that are open strokes by nature; a ``path`` is open when it has no closing Z, and an
+# ``arc`` when it has ``closed: false``. Test a layer with is_open_shape.
 OPEN_SHAPES = ("line", "wave", "zigzag", "sawtooth", "square-wave", "dashed-line", "scribble", "squiggle", "swash-underline")
 
 
 def is_open_shape(layer):
     if layer.get("shape") in OPEN_SHAPES:
         return True
+    if layer.get("shape") == "arc":
+        return layer.get("closed", True) is False
     return layer.get("shape") == "path" and re.search(r"[Zz]", str(layer.get("path", ""))) is None
 
 

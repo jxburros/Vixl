@@ -306,13 +306,17 @@ class Runtime:
 
     def call(self, fn, returns, args, kwargs, state):
         """The synchronous body: run the tool with this call's context and shape its result."""
+        from . import profiling
+
         token = CALL.set(state)
         try:
             try:
-                result = memory_guard(fn)(*args, **kwargs)
+                with profiling.profile(force=False) as run:
+                    result = memory_guard(fn)(*args, **kwargs)
             except VixlError as exc:
                 raise self.tool_error(self.compact_json(for_surface(exc.as_dict(), "mcp"))) from exc
             warning = self.ignored(fn.__name__, state)
+            profiled = profiling.attach(result, run)
             if isinstance(result, list) and result and isinstance(result[0], dict):
                 # A JSON result with images after it (vixl_operations_apply preview=…): shape the JSON part.
                 self.label(result[0], state)
@@ -324,10 +328,12 @@ class Runtime:
                 if warning:
                     result["warnings"] = [*result.get("warnings", []), warning]
                 return self.compact_json(result)
-            if getattr(returns, "__name__", "") == "Image" and (state.document is not None or warning):
+            if getattr(returns, "__name__", "") == "Image" and (state.document is not None or warning
+                                                                or (run is not None and not profiled)):
                 # Image tools: the picture cannot carry the name or a warning, so a text line follows it.
                 note = {**({"document": self.session.relative(state.document)} if state.document is not None else {}),
-                        **({"warnings": [warning]} if warning else {})}
+                        **({"warnings": [warning]} if warning else {}),
+                        **({"render_profile": run.report()} if run is not None and not profiled else {})}
                 result = [result, self.compact_json(note)]
             return result
         finally:
@@ -357,8 +363,9 @@ class Runtime:
         except (AttributeError, ValueError):
             token = None
 
-        def report(done, total=None, message=None):
-            box.progress = {"done": done, **({"total": total} if total else {}), **({"message": message} if message else {})}
+        def report(done, total=None, message=None, timing=None):
+            box.progress = {"done": done, **({"total": total} if total else {}), **({"message": message} if message else {}),
+                            **({"timing": timing} if timing else {})}
             now = time.monotonic()
             if token is None or not box.inline or (now - box.last_notified < 0.25 and not (total and done >= total)):
                 return
@@ -440,10 +447,30 @@ class Runtime:
             if outcome == "running":
                 return await self.join(entry, request_id)
         box.submitted = time.time()
+        gate = None
+        if takes_job(name):
+            # Heavy calls count against the server's per-workspace cap (call_limits.py), jobs included.
+            from .call_limits import GATE, of
+
+            try:
+                maximum = of(self.session).max_concurrent
+                if maximum is not None:
+                    gate = GATE.acquire(getattr(self.session, "workspace", None), maximum)
+            except VixlError as exc:
+                if entry is not None:
+                    self.log.discard(request_id, entry)
+                raise self.tool_error(self.compact_json(for_surface(exc.as_dict(), "mcp"))) from exc
         if name in NO_EXTRAS:
             future, in_flight = self.light.submit(self.work, fn, returns, args, kwargs, state, box, request_id, entry), 0
         else:
-            future, in_flight = self.submit(fn, returns, args, kwargs, state, box, request_id, entry)
+            try:
+                future, in_flight = self.submit(fn, returns, args, kwargs, state, box, request_id, entry)
+            except BaseException:
+                if gate is not None:
+                    GATE.release(gate)
+                raise
+        if gate is not None:
+            future.add_done_callback(lambda _: GATE.release(gate))
         if as_job:
             job = self.detach(name, kwargs, future, box, request_id, entry)
             return self.pointer(job, "Started in the background.")
@@ -503,7 +530,10 @@ class Runtime:
         require(action in ("status", "result", "cancel", "list"), "action is status, result, cancel or list",
                 field="action")
         if action == "list":
-            return {"jobs": [job.summary() for job in self.jobs.recent()[:20]]}
+            from .call_limits import of
+
+            return {"jobs": [job.summary() for job in self.jobs.recent()[:20]],
+                    "limits": of(self.session).describe(self.inline_seconds)}
         require(isinstance(id, str) and id, "id is required", field="id")
         if re.fullmatch(r"[0-9a-f]{32}", id):
             return self.durable(action, id)
@@ -550,7 +580,7 @@ class Runtime:
         if action == "cancel":
             return queue.cancel(ident)
         job = queue.status(ident)
-        keep = ("id", "status", "progress", "attempts", "error", "result")
+        keep = ("id", "status", "outcome", "progress", "attempts", "error", "result")
         summary = {k: job[k] for k in keep if k in job}
         summary["kind"] = job["payload"]["kind"]
         if action == "result" and job["status"] not in ("completed", "failed", "cancelled", "needs_review"):

@@ -95,9 +95,11 @@ def plan(spec):
             "actions",
             "motion",
             "fps",
+            "profile",
         },
         "Unknown production field",
     )
+    require(isinstance(spec.get("profile", ""), str), "profile is a check profile name", field="profile")
     require(spec.get("version", 1) == 1, "Unsupported production version")
     rows, matrix = spec.get("rows", [{}]), spec.get("matrix", {})
     require(
@@ -134,13 +136,14 @@ def plan(spec):
             f"Invalid {field}",
         )
     variants = []
-    for row in rows:
+    for number, row in enumerate(rows, 1):
         require(not set(row) & set(matrix), "A field cannot occur in both a row and the matrix")
         for combination in itertools.product(*matrix.values()):
             for board in boards:
                 variants.append(
                     {
                         "id": f"{len(variants) + 1:04d}",
+                        "row": number,
                         "values": {**row, **dict(zip(matrix, combination))},
                         "artboard": board,
                     }
@@ -211,6 +214,7 @@ def capture_recipe(project, recipe, bindings):
 
 
 def render_variant(project, spec, variant, directory, prior=None, cancelled=lambda: False):
+    from .assurance import effective
     from .render_cache import enable, environment, user_cache_dir
     from .design_render import artboard_project
     from .timeline import export_timeline
@@ -239,24 +243,35 @@ def render_variant(project, spec, variant, directory, prior=None, cancelled=lamb
         if name and Path(name).name == name:
             output = directory / name
             if output.is_file() and file_digest(output) == prior.get("sha256"):
-                return {**prior, "status": "reused"}
-    suites = spec.get("suites", list(candidate.state.get("suites", {})))
-    checks = {name: candidate.check_suite(name) for name in suites}
-    if not suites:
-        checks["design"] = candidate.check(checks=["bounds", "flow"])
-    repairs = []
-    for action in spec.get("repair_actions", []):
-        if all(r["passed"] for r in checks.values()):
-            break
-        original_contract = digest(candidate.state.get("suites", {}))
-        candidate.apply({"type": "action-apply", "name": action}, detail="compact")
-        require(digest(candidate.state.get("suites", {})) == original_contract, "Repair changed contracts")
-        repairs.append(action)
+                return {**prior, "status": "reused", "outcome": prior.get("outcome") or variant_outcome(
+                    prior.get("checks", {}), spec.get("suites", [] if spec.get("profile") else list(
+                        effective(candidate))), "completed", spec.get("profile"))}
+    leftovers = placeholder_report(candidate, variant)
+    if not leftovers["passed"]:
+        # An undefined variable or leftover template copy in this row: report it naming the variant, before rendering.
+        return {**variant, "status": "needs_review", "checks": {"placeholders": leftovers}, "repairs": [],
+                "outcome": leftovers["outcome"]}
+    profile = spec.get("profile")
+    # A profile chooses the design checks and its own suites unless the spec names suites; without one every
+    # attached and inherited suite runs.
+    suites = spec.get("suites", [] if profile else list(effective(candidate)))
+
+    def evaluate():
         checks = {name: candidate.check_suite(name) for name in suites}
-        if not suites:
+        if profile:
+            checks["design"] = candidate.check(profile=profile)
+        elif not suites:
             checks["design"] = candidate.check(checks=["bounds", "flow"])
+        return checks
+
+    from .repair import campaign
+
+    # Named document actions and ``auto`` (the built-in repair map) share one repair loop.
+    repairs, checks, repair_details = campaign(candidate, spec.get("repair_actions", []), evaluate)
+    extra = {"repair_operations": [op for report in repair_details for op in report["operations"]]} if repair_details else {}
     if not all(r["passed"] for r in checks.values()):
-        return {**variant, "status": "needs_review", "checks": checks, "repairs": repairs}
+        return {**variant, "status": "needs_review", "checks": checks, "repairs": repairs, **extra,
+                "outcome": variant_outcome(checks, suites, "completed", profile)}
     settings = plan({k: v for k, v in spec.items() if k not in ("rows", "matrix", "artboards")})
     from .links import fingerprint as link_fingerprint
     from .text import font_data, font_digest
@@ -282,7 +297,7 @@ def render_variant(project, spec, variant, directory, prior=None, cancelled=lamb
     output = directory / filename
     if prior and prior.get("fingerprint") == fingerprint and output.is_file():
         if file_digest(output) == prior.get("sha256"):
-            return {**prior, "status": "reused", "checks": checks}
+            return {**prior, "status": "reused", "checks": checks, "outcome": variant_outcome(checks, suites, "completed", profile)}
     # Crash recovery can encounter an already published output before its report was saved.
     # Render again to staging and only accept an existing result with identical bytes.
     import tempfile
@@ -326,8 +341,39 @@ def render_variant(project, spec, variant, directory, prior=None, cancelled=lamb
         "sha256": checksum,
         "checks": checks,
         "repairs": repairs,
-        "cache": {"hits": candidate._disk_cache.hits, "misses": candidate._disk_cache.misses},
+        **extra,
+        "outcome": variant_outcome(checks, suites, "completed", profile),
+        "cache": ({"hits": candidate._disk_cache.hits, "misses": candidate._disk_cache.misses}
+                  if candidate._disk_cache is not None else {"hits": 0, "misses": 0, "disabled": True}),
     }
+
+
+def variant_outcome(checks, suites, execution, profile=None):
+    """One output's outcome. Its suites are the required validation, and with a check ``profile`` so is the
+    profile's design check (its outcome follows the profile's fail_on); with neither only the default
+    bounds and flow checks ran, so a clean output is completed but unvalidated (a failure still fails it)."""
+    from .outcomes import from_findings, from_suite, make, merge
+
+    parts = [from_suite(checks[name], name) for name in suites if name in checks]
+    if profile and checks.get("design", {}).get("outcome"):
+        parts.append(checks["design"]["outcome"])
+    if parts:
+        return merge(*parts, execution=execution)
+    design = checks.get("design")
+    if design and not design.get("passed", True):
+        return from_findings(design.get("issues", []), execution)
+    return make(execution, "not_run", ["no suites: only the default bounds and flow checks ran"])
+
+
+def placeholder_report(candidate, variant):
+    """The placeholders check for one production variant, each finding naming the variant and its input row."""
+    label = f"variant {variant['id']} (row {variant.get('row', '?')}" + (
+        f", artboard {variant['artboard']})" if variant.get("artboard") else ")")
+    report = candidate.check(checks=["placeholders"])
+    for item in report["issues"]:
+        item.update(variant=variant["id"], row=variant.get("row"))
+        item["message"] = f"{label}: {item['message']}"
+    return report
 
 
 def stable_state(state):
@@ -371,6 +417,7 @@ def run(project, spec, directory, *, cancelled=lambda: False, progress=lambda va
         report = {
             "version": 1,
             "quality": planned["quality"],
+            **({"profile": spec["profile"]} if spec.get("profile") else {}),
             "count": planned["count"],
             "status": "running",
             "results": [],
@@ -378,8 +425,10 @@ def run(project, spec, directory, *, cancelled=lambda: False, progress=lambda va
         write_json(manifest, report)
 
         def one(variant):
+            from .outcomes import make
+
             if cancelled():
-                return {**variant, "status": "cancelled"}
+                return {**variant, "status": "cancelled", "outcome": make("cancelled")}
             try:
                 return render_variant(project, spec, variant, directory, prior.get(variant["id"]), cancelled)
             except Exception as exc:
@@ -388,7 +437,7 @@ def run(project, spec, directory, *, cancelled=lambda: False, progress=lambda va
                     if isinstance(exc, VixlError)
                     else {"error": type(exc).__name__, "message": str(exc)[:500]}
                 )
-                return {**variant, "status": "failed", "error": error}
+                return {**variant, "status": "failed", "error": error, "outcome": make("failed")}
 
         with ThreadPoolExecutor(max_workers=spec.get("workers", 1)) as executor:
             pending = {executor.submit(one, v) for v in planned["variants"]}
@@ -404,6 +453,9 @@ def run(project, spec, directory, *, cancelled=lambda: False, progress=lambda va
             if all(r["status"] in ("completed", "reused") for r in report["results"])
             else "needs_review"
         )
+        from .outcomes import summarize
+
+        report["outcome"] = summarize(r.get("outcome") or {"state": "pending"} for r in report["results"])
         contact_sheet(directory, report)
         write_json(manifest, report)
         return report
@@ -491,13 +543,29 @@ class Library:
         require(hashlib.sha256(data).hexdigest() == metadata["sha256"], "Library component checksum mismatch")
         return Project.load(path, limits=limits)
 
-    def place(self, project, ident, name):
+    def place(self, project, ident, name, as_="group"):
+        """Place a component as an editable group of its layers (new IDs, with its fonts and assets), or with
+        ``as_='image'`` as one raster snapshot."""
         from .assets import add_image
 
+        require(as_ in ("group", "image"), "as is group (editable layers, the default) or image", field="as")
         component = self.load(ident, limits=project.limits)
         candidate = project.clone()
-        asset = add_image(candidate, component.render())
-        result = candidate.apply({"type": "add", "name": name, "asset": asset}, detail="compact")
+        if as_ == "image":
+            asset = add_image(candidate, component.render())
+            result = candidate.apply({"type": "add", "name": name, "asset": asset}, detail="compact")
+            project.__dict__.update(candidate.__dict__)
+            return {**result, "source_component": ident, "asset": asset, "as": "image"}
+        from .objects import from_document, place, subtree
+        from .validation import check_state
+
+        root = place(candidate, {"name": name, "name_as": name}, from_document(component, ident))
+        check_state(candidate, candidate.state)
+        if candidate.transaction is None:
+            candidate._record([], f"Place component {ident}")
+        result = {"success": True, "layer": {"id": root["id"], "name": root["name"], "type": "group"},
+                  "layers": len(subtree(candidate, root["id"]))}
         project.__dict__.update(candidate.__dict__)
-        return {**result, "source_component": ident, "asset": asset}
+        return {**result, "source_component": ident, "as": "group"}
+
 

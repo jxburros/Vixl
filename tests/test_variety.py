@@ -161,3 +161,56 @@ def test_roll_apply_installs_chosen_pairing_and_returns_check(monkeypatch, tmp_p
     result = roll_document(p, seed=21, apply=True, slots={"title": "A chosen direction"})
     assert installed == [result["direction"]["pairing"]]
     assert p.state["fonts"] and p.state["typography"] and "check" in result
+
+
+def _night_market(monkeypatch, tmp_path):
+    """The reported poster: vixl new instagram-portrait, then roll --apply --for poster --seed 7."""
+    from vixl import typefaces
+
+    font_data = (Path(typefaces.DATA) / "DejaVuSans.ttf").read_bytes()
+    monkeypatch.setattr(typefaces, "fetch_font", lambda *args, **kwargs: (font_data, "test-font"))
+    p = Project.sized("instagram-portrait", workspace=tmp_path)
+    result = roll_document(p, seed=7, apply=True, purpose="poster",
+                           slots={"title": "Night Market", "subtitle": "Friday 7pm, Pier 9"})
+    return p, result["direction"]
+
+
+def test_rolled_pattern_dots_stay_clear_of_the_text(monkeypatch, tmp_path):
+    from vixl.render import resolve_layout
+
+    p, direction = _night_market(monkeypatch, tmp_path)
+    assert direction["background_treatment"] == "pattern" and direction["align"] == "right"
+    bounds = resolve_layout(p)
+    dots = p.layer("background-detail")
+    x, y, w, h = dots["x"], dots["y"], dots["width"], dots["height"]
+    centres = [(x, y + i * dots["repeat"]["dy"]) for i in range(dots["repeat"]["count"])]
+    for name in ("headline", "subtitle"):
+        tx, ty, tw, th = bounds[p.layer(name)["id"]]
+        assert not any(tx < cx + w and cx < tx + tw and ty < cy + h and cy < ty + th for cx, cy in centres), name
+    result = p.check(profile="final")
+    assert not [i for i in result["issues"] if i["check"] == "overlap"], result["issues"]
+
+
+def test_rolled_outline_frame_keeps_a_gap_around_the_text(monkeypatch, tmp_path):
+    from vixl.render import resolve_layout
+
+    p, direction = _night_market(monkeypatch, tmp_path)
+    assert direction["accent"] == "outline"
+    frame = p.layer("accent")
+    inner_right = frame["x"] + frame["width"] - frame["stroke_width"]
+    tx, _, tw, _ = resolve_layout(p)[p.layer("headline")["id"]]
+    # At least two spacing units (here more than 30 px) between the headline box and the frame's inner edge.
+    assert inner_right - (tx + tw) >= frame["stroke_width"] * 2
+
+
+def test_pattern_dot_column_moves_off_the_text_or_is_left_out():
+    from vixl.layouts import Builder, LAYOUTS
+    from vixl.variety import _dot_column
+
+    p = Project(1080, 1350)
+    b = Builder(p, LAYOUTS["quiet-editorial"], {"seed": 1}, 1)
+    full = [(b.L, b.T, b.cw, b.ch)]
+    assert _dot_column(b, full, 7) is None
+    right = [(b.W * 0.5, b.T + b.ch * 0.3, b.W * 0.5, b.ch * 0.2)]
+    x, _, count = _dot_column(b, right, 7)
+    assert x < b.W * 0.5 and count == 8

@@ -114,3 +114,60 @@ def timeline_report(
         "marker_count": len(markers),
         **({"attachments": attachments} if (attachments := attachment_report(project)) else {}),
     }
+
+
+# What each rule measured, read from the fields its finding already carries: (actual field, expected, unit).
+MEASURES = {
+    "bounds.text-overflow": ("needs", "box_size", "px"),
+    "contrast.text-contrast": ("contrast", "required", ":1"),
+    "safe_area.outside": ("bounds", "safe_area", "box"),
+    "bounds.cut-off": ("bounds", "canvas", "box"),
+    "bounds.off-canvas": ("bounds", "canvas", "box"),
+    "overlap.text-text": ("pixels", None, "px"),
+    "overlap.text-object": ("pixels", None, "px"),
+    "legibility": ("thumbnail_size", "min_thumbnail_text", "px"),
+}
+
+
+def annotate(project, issues, *, page=None, min_thumbnail_text=None, repairs=True):
+    """Make findings actionable in place (#524): ``measured`` (actual versus expected), the ``page`` in a
+    multi-page document, and for fix findings a ``repair`` suggestion of canonical operations from the
+    built-in map (repair.suggest). Suggestions are recommendations: nothing is applied."""
+    from .render import resolved_layers
+
+    canvas = project.state["canvas"]
+    sizes = None
+    for item in issues:
+        if page is not None and "page" not in item:
+            item["page"] = page
+        spec = MEASURES.get(item.get("rule")) or MEASURES.get(item.get("check"))
+        if spec and spec[0] in item:
+            actual, expected, unit = spec
+            if expected == "box_size":
+                if sizes is None:
+                    sizes = {x["id"]: [x.get("width"), x.get("height")] for x in resolved_layers(project)}
+                value = sizes.get((item.get("layer_ids") or [None])[0])
+            elif expected == "canvas":
+                value = [0, 0, canvas["width"], canvas["height"]]
+            elif expected == "min_thumbnail_text":
+                value = min_thumbnail_text
+            else:
+                value = item.get(expected) if expected else None
+            item["measured"] = {"actual": item[actual], "expected": value, "unit": unit}
+    if repairs:
+        from .repair import annotate as suggest_repairs
+
+        suggest_repairs(project, issues)
+    return issues
+
+
+def page_findings(report, offset=0, limit=None):
+    """One page of a check report's findings. ``passed``, the counts and ``outcome`` still describe every
+    finding; ``by_action`` indexes the returned page."""
+    if limit is None and not offset:
+        return report
+    from .checks import ACTIONS
+
+    visible, pagination = page(report["issues"], offset, 50 if limit is None else limit)
+    return {**report, "issues": visible, "pagination": pagination,
+            "by_action": {action: [i for i, x in enumerate(visible) if x.get("action") == action] for action in ACTIONS}}

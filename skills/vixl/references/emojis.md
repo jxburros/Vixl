@@ -17,7 +17,8 @@ masters at output. `emoji-replace` embeds source in the open document for emoji
 `emoji-requirements` checks destination names, dimensions and actual encoded bytes.
 `emoji-destinations` includes upload instructions and linked policy sources.
 
-Canonical operations: emoji-mode {mode: vixl|font}; emoji-set {emoji, format, data}
+Canonical operations: emoji-mode {mode: vixl|font} (default vixl: bundled art; CLI
+`vixl -p F.vixl emoji settings --mode font`, workflow `emoji-settings`); emoji-set {emoji, format, data}
 with base64 source and optional name/license; emoji-reset {emoji?}. Custom overrides
 win in either mode; font mode still falls back to artwork when an entire sequence
 cannot be shaped. Text-default symbols need VS16; VS15 keeps text presentation.

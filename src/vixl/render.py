@@ -16,6 +16,7 @@ from .assets import decode, read_bounded
 from .constants import EFFECTS as EFFECTS
 from .errors import VixlError, require
 from .model import MAX_LAYERS, finite
+from .profiling import ACTIVE as PROFILE
 from .variables import RESOLVED, layer_text, substitute as substitute, with_maps
 
 BLENDS = ("normal", "multiply", "screen", "overlay", "darken", "lighten", "difference", "add", "subtract")
@@ -97,7 +98,7 @@ def font_for(project, layer):
 def missing_font(project, name):
     fonts = sorted(project.state.get("fonts", {}))
     typography = project.state.get("typography") or {}
-    roles = [role for role in ("heading", "body") if role in typography]
+    roles = [role for role in typography if typography[role]]
     known = ", ".join([*roles, *fonts]) if roles or fonts else "none yet"
     return VixlError(
         "missing_font",
@@ -113,12 +114,13 @@ def resolve_font(project, name):
     """A text layer's stored font and role for a requested font name, role or file."""
     if name is None:
         return "DejaVuSans.ttf", None
-    typography = project.state.get("typography") or {}
+    from .type_roles import is_role, role_font
+
     fonts = project.state.get("fonts", {})
     role = None
-    if name in ("heading", "body"):
-        # A role uses the proofing fallback until the document typography sets it.
-        role, name = name, typography.get(name, "DejaVuSans.ttf")
+    if is_role(project, name):
+        # A role or text stage uses the proofing fallback until the document typography sets it.
+        role, name = name, role_font(project, name) or "DejaVuSans.ttf"
         if name == "DejaVuSans.ttf":
             from .notices import warn
 
@@ -181,6 +183,9 @@ def _document_variables(project):
 
 
 def text_metrics(project, layer, variables=None):
+    from .lettering import view
+
+    layer = view(project, layer, variables)
     text = layer_text(layer, variables if variables is not None else document_variables(project))
     require(len(text) <= 100000, "Text exceeds length limit", "resource_limit")
     from .richtext import active
@@ -343,6 +348,9 @@ def _resolved_layers(project, variables=None, subset=None):
             fill_variables(layer["rich"], variables)  # keeps the record matching the substituted text
         if layer["type"] == "text":
             layer[RESOLVED] = True
+            from .lettering import apply as apply_lettering
+
+            apply_lettering(layer)
         if layer.get("asset_variable"):
             name = layer["asset_variable"]
             require(name in variables, f"Undefined image variable: {name}", "missing_variable")
@@ -743,7 +751,14 @@ def shift(bounds, layers, dx, dy):
 
 def ink_origin(image, bounds):
     """Where a layer image lands: it is centred on the layer's box and may extend past it."""
-    return math.floor(bounds[0] + (bounds[2] - image.width) / 2 + 1e-9), math.floor(bounds[1] + (bounds[3] - image.height) / 2 + 1e-9)
+    return tuple(math.floor(bounds[i]) + math.floor(offset + 1e-9) for i, offset in enumerate(placement(image, bounds)))
+
+
+def placement(image, bounds):
+    """The (x, y) offset of a layer image's corner from its box's whole-pixel corner. Computed from the box's
+    fraction (exact for any whole-pixel shift), so a region or incremental tile, whose boxes are the canvas
+    boxes moved by whole pixels, places and resamples each layer exactly as the whole canvas does."""
+    return bounds[0] % 1 + (bounds[2] - image.width) / 2, bounds[1] % 1 + (bounds[3] - image.height) / 2
 
 
 class LayerCache(OrderedDict):
@@ -768,11 +783,119 @@ class LayerCache(OrderedDict):
         previous = self.pop(key, None)
         if previous is not None:
             self.bytes -= previous.width * previous.height * 4
+        profile = PROFILE.get()
         while self and (len(self) >= self.entries or self.bytes + size > self.budget):
             _, old = self.popitem(last=False)
             self.bytes -= old.width * old.height * 4
+            if profile is not None:
+                profile.count("layer_evictions")
         self[key] = image.copy()
         self.bytes += size
+        if profile is not None:
+            profile.count("layer_writes")
+
+
+def digest(value):
+    """A short content key for ``value`` (JSON-serialisable)."""
+    return hashlib.blake2b(json.dumps(value, sort_keys=True, separators=(",", ":")).encode(), digest_size=20).hexdigest()
+
+
+def layer_cache(project):
+    if not isinstance(project._cache, LayerCache):
+        project._cache = LayerCache()
+    return project._cache
+
+
+def ink_identity(project, layer, bounds):
+    """(key, content, extent, cacheable) of ``layer_ink``: what its pixels depend on."""
+    # The image depends on the layer's size, not on where it sits, so layers that only move
+    # between frames reuse their cached image. Exceptions: an effect that reads a canvas
+    # selection, and blur on a top-level layer, whose edge pixels continue at the canvas edge.
+    placed = any(effect.get("selection") for effect in layer.get("effects") or []) or (
+        not layer.get("parent") and any(effect_margin(layer))
+    )
+    content = layer if placed else {k: v for k, v in layer.items() if k not in ("x", "y", "constraints")}
+    canvas = project.state["canvas"]
+    extent_key = [*bounds, canvas["width"], canvas["height"]] if placed else list(bounds[2:])
+    extent_key = [*extent_key, bounds[0] % 1, bounds[1] % 1, *(["snapped"] if snap_placement(project) else [])]
+    dependencies = [content, extent_key, *ink_inputs(project, layer)]
+    cacheable = self_contained(layer) and layer["type"] != "link"
+    if cacheable and layer["type"] in ("group", "pathfinder"):
+        # A group's pixels are its children's: key it on the whole subtree, or leave it uncached.
+        subtree = subtree_key(project, layer)
+        cacheable = subtree is not None
+        dependencies.append(subtree)
+    key = digest(dependencies)
+    return key, content, extent_key, cacheable
+
+
+def ink_inputs(project, layer):
+    """What a layer's pixels read from the document besides its own fields: its fonts or brushes."""
+    if layer["type"] == "text":
+        from .text import font_data, font_sha256
+        data = font_data(project, layer)
+        return [[font_sha256(f) for f in (data if isinstance(data, tuple) else (data,))]]
+    if layer["type"] == "paint":
+        return [project.state.get("brushes", {})]
+    return []
+
+
+def self_contained(layer):
+    """Whether a layer's pixels follow from its fields and ``ink_inputs``: not a linked file, a lookup
+    effect (its table lives in the document) or a shape warped by distorting groups above it."""
+    return (not layer.get("linked") and not any(e["name"] == "lookup" for e in layer.get("effects") or [])
+            and not layer.get("_distort_groups"))
+
+
+def subtree_key(project, layer):
+    """A digest of everything a group's (or pathfinder's) children draw: each descendant's resolved
+    fields, its box in its parent's space and its ``ink_inputs``, in stacking order, plus the colours
+    styles can name. None when the subtree cannot be cached (a descendant reads a linked file or a
+    lookup table, clips to a layer outside the group, or the render has no shared resolution)."""
+    state = project.state
+    shared_state = [state.get("variables"), state.get("maps"), state.get("swatches")]
+    memo = None
+    try:
+        if layer["type"] == "pathfinder":
+            operands = layer.get("operands") or []
+            if not all(self_contained(item) and item["type"] not in ("group", "link") for item in operands):
+                return None
+            return digest(["pathfinder", [ink_inputs(project, item) for item in operands], shared_state])
+        shared = getattr(project, "_resolution", None)
+        if shared is None or shared[0] is not state:
+            return None
+        layers, bounds = shared[1], shared[2]
+        memo = project.__dict__.get("_subtree_memo")
+        if memo is None or memo[0] is not layers:
+            memo = project._subtree_memo = (layers, {}, child_index(layers))
+        if layer["id"] in memo[1]:
+            return memo[1][layer["id"]]
+        children, members, pending = memo[2], set(), [layer["id"]]
+        while pending:
+            for child in children.get(pending.pop(), []):
+                if child["id"] not in members:
+                    members.add(child["id"])
+                    pending.append(child["id"])
+        parts = []
+        for item in layers:
+            if item["id"] not in members:
+                continue
+            if not self_contained(item) or item["type"] == "link" or (item.get("clip") and item["clip"] not in members):
+                parts = None
+                break
+            parts.append([item, bounds.get(item["id"]), ink_inputs(project, item)])
+        key = None if parts is None else digest(["group", parts, shared_state])
+    except (TypeError, ValueError):
+        key = None
+    if memo is not None:
+        memo[1][layer["id"]] = key
+    return key
+
+
+def ink_key(project, layer, bounds):
+    """The key ``layer_ink`` caches ``layer`` under, or None when it is not cached."""
+    key, _, _, cacheable = ink_identity(project, layer, bounds)
+    return key if cacheable else None
 
 
 def layer_image(project, layer, bounds):
@@ -788,40 +911,47 @@ def layer_image(project, layer, bounds):
 def layer_ink(project, layer, bounds):
     """The layer with everything it draws: centred on its box, larger where effects spread or
     group children reach past the box."""
-    # The image depends on the layer's size, not on where it sits, so layers that only move
-    # between frames reuse their cached image. Exceptions: an effect that reads a canvas
-    # selection, and blur on a top-level layer, whose edge pixels continue at the canvas edge.
-    placed = any(effect.get("selection") for effect in layer.get("effects") or []) or (
-        not layer.get("parent") and any(effect_margin(layer))
-    )
-    content = layer if placed else {k: v for k, v in layer.items() if k not in ("x", "y", "constraints")}
-    canvas = project.state["canvas"]
-    extent_key = [*bounds, canvas["width"], canvas["height"]] if placed else list(bounds[2:])
-    extent_key = [*extent_key, bounds[0] % 1, bounds[1] % 1]
-    dependencies = [content, extent_key]
-    if layer["type"] == "text":
-        from .text import font_data, font_sha256
-        data = font_data(project, layer)
-        dependencies.append([font_sha256(f) for f in (data if isinstance(data, tuple) else (data,))])
-    elif layer["type"] == "paint":
-        dependencies.append(project.state.get("brushes", {}))
-    key = hashlib.sha256(json.dumps(dependencies, sort_keys=True).encode()).hexdigest()
-    linked = layer.get("linked")
-    # A lookup effect reads its table from the document, which the key does not cover.
-    cacheable = not linked and not any(e["name"] == "lookup" for e in layer.get("effects") or []) and not layer.get("_distort_groups") and layer["type"] not in ("group", "pathfinder", "link")
-    cache = project._cache = project._cache if isinstance(project._cache, LayerCache) else LayerCache()
+    key, content, extent_key, cacheable = ink_identity(project, layer, bounds)
+    cache = layer_cache(project)
+    profile = PROFILE.get()
     if cacheable:
         cached = cache.image(key)
+        if profile is not None:
+            profile.count("layer_hits" if cached is not None else "layer_misses")
         if cached is not None:
             return cached
+    elif profile is not None:
+        profile.count("layer_uncacheable")
     disk = getattr(project, "_disk_cache", None)
     disk_key = None
-    if disk and cacheable and layer["type"] != "symbol":
+    # Composited groups stay in memory: their key covers children the disk key does not read.
+    if disk and cacheable and layer["type"] not in ("symbol", "group", "pathfinder"):
         from .render_cache import key_for
         disk_key = key_for(project, content, extent_key)
         cached = disk.get(disk_key, project.limits)
         if cached is not None:
             return cached
+    if profile is None:
+        image = draw_ink(project, layer, bounds)
+    else:
+        profile.enter()
+        try:
+            image = draw_ink(project, layer, bounds, profile)
+        finally:
+            profile.leave(layer)
+    if cacheable:
+        cache.put(key, image)
+    if disk:
+        disk.put(disk_key, image)
+    return image
+
+
+def draw_ink(project, layer, bounds, profile=None):
+    """``layer_ink`` without its caches: draw the layer, then give it its geometry and appearance."""
+    import time
+
+    started = time.perf_counter() if profile is not None else 0
+    linked = layer.get("linked")
     kind = layer["type"]
     if layer.get("repeat"):
         from .design_render import repeat_image
@@ -878,11 +1008,14 @@ def layer_ink(project, layer, bounds):
     from .scene import paper_image
 
     image = paper_image(image, layer)
+    if profile is None:
+        return transform_layer_image(project, layer, bounds, image)
+    drawn = time.perf_counter()
+    stages = profile.stack[-1][2]
+    effects = stages["effects"]
     image = transform_layer_image(project, layer, bounds, image)
-    if cacheable:
-        cache.put(key, image)
-    if disk:
-        disk.put(disk_key, image)
+    profile.stage("draw", drawn - started)
+    profile.stage("transform", time.perf_counter() - drawn - (stages["effects"] - effects))
     return image
 
 
@@ -903,7 +1036,15 @@ def transform_layer_image(project, layer, bounds, image):
     # skewed: a blur, denoise or grain treats the content the same at any angle. Canvas-space
     # inputs (selections, the emboss light, canvas-edge blur room) are mapped into this frame.
     unturned = image.size
-    image = layer_effects(project, layer, bounds, image)
+    profile = PROFILE.get()
+    if profile is None:
+        image = layer_effects(project, layer, bounds, image)
+    else:
+        import time
+
+        started = time.perf_counter()
+        image = layer_effects(project, layer, bounds, image)
+        profile.stage("effects", time.perf_counter() - started)
     turn = Image.Resampling.NEAREST if crisp else Image.Resampling.BICUBIC
     if precise(layer):
         transform = linear(layer)
@@ -915,16 +1056,24 @@ def transform_layer_image(project, layer, bounds, image):
         image = ImageOps.mirror(image)
     if not precise(layer) and layer.get("flip_y"):
         image = ImageOps.flip(image)
+    folded = False
     if not precise(layer) and layer.get("rotation", 0) % 360:
-        image = rotate(image, -layer["rotation"], turn)
-        # Match conservative layout bounds consistently, keeping anything drawn past them.
-        target = (max(math.ceil(bounds[2]), image.width), max(math.ceil(bounds[3]), image.height))
-        if image.size != target:
-            padded = Image.new("RGBA", target)
-            padded.alpha_composite(
-                image, ((padded.width - image.width) // 2, (padded.height - image.height) // 2)
-            )
-            image = padded
+        turned = _turn(*image.size, -layer["rotation"])[4:]
+        # Match conservative layout bounds consistently, keeping anything drawn past them. Pad evenly
+        # on both sides: an odd margin would put the turned image half a pixel off its centre.
+        target = (max(math.ceil(bounds[2]), turned[0]), max(math.ceil(bounds[3]), turned[1]))
+        target = tuple(t + (t - s) % 2 for t, s in zip(target, turned))
+        ox, oy = bounds[0] + (bounds[2] - target[0]) / 2, bounds[1] + (bounds[3] - target[1]) / 2
+        fx, fy = max(0, ox - math.floor(ox + 1e-9)), max(0, oy - math.floor(oy + 1e-9))
+        if snap_placement(project):
+            fx, fy = round(fx), round(fy)
+        mask = layer.get("mask")
+        if not crisp and (fx > 1e-8 or fy > 1e-8) and not (mask and mask.get("enabled", True)):
+            # Turn and place in one resampling, as the canvas grid sees the layer: the same layer drawn
+            # at another place in its group's tile (a reparented layer, a grown group) gives the same pixels.
+            image, folded = rotate(image, -layer["rotation"], turn, (target[0] + 2, target[1] + 2), (fx, fy)), True
+        else:
+            image = rotate(image, -layer["rotation"], turn, target)
     if any(effect_margin(layer)) and (precise(layer) or layer.get("rotation", 0) % 360):
         # Blur room added in the layer's frame turns into wider corners than the spread needs: the
         # blur reaches its margin past the turned box, which lies inside its bounds widened by it.
@@ -952,21 +1101,33 @@ def transform_layer_image(project, layer, bounds, image):
         alpha = np.asarray(image.getchannel("A"), dtype=np.float32) * np.asarray(m, dtype=np.float32) / 255
         image.putalpha(Image.fromarray(np.uint8(alpha)))
     if layer["opacity"] != 1:
-        image.putalpha(image.getchannel("A").point(lambda a: round(a * layer["opacity"])))
+        image = with_opacity(image, layer["opacity"])
     # Carry fractional placement through rasterization instead of rounding the geometry.
-    ox, oy = bounds[0] + (bounds[2] - image.width) / 2, bounds[1] + (bounds[3] - image.height) / 2
+    ox, oy = placement(image, bounds)
     # Use the same epsilon as ink_origin: affine arithmetic may land one ulp below an integer.
     fx, fy = max(0, ox - math.floor(ox + 1e-9)), max(0, oy - math.floor(oy + 1e-9))
-    if not crisp and (fx > 1e-8 or fy > 1e-8):
+    if not crisp and not folded and (fx > 1e-8 or fy > 1e-8):
         padded = Image.new("RGBA", (image.width + 2, image.height + 2))
+        if snap_placement(project):
+            # A reduced preview: round to the nearest whole pixel instead of resampling the layer.
+            padded.paste(image, (1 + round(fx), 1 + round(fy)))
+            return padded
         padded.paste(image, (1, 1))
         image = warp(padded, padded.size, (1, 0, -fx, 0, 1, -fy), Image.Resampling.BICUBIC)
     return image
 
 
+def snap_placement(project):
+    """Whether layers land on whole pixels instead of being resampled to their fractional place. Only
+    reduced previews (``proxy.scaled_project(..., snap=True)``) set it; exports keep exact placement."""
+    return getattr(project, "snap_placement", False)
+
+
 def layer_effects(project, layer, bounds, image):
     """Run a layer's enabled effects, in stack order, on its image before the layer is flipped,
     turned or skewed. The image is centred on the layer's box."""
+    if not any(effect.get("enabled", True) for effect in layer["effects"]):
+        return image
     from .affine import linear
 
     frame = linear(layer)[:2, :2]
@@ -1018,9 +1179,29 @@ def warp(image, size, data, sampling):
     return antiring(image, result, data, scale)
 
 
-def rotate(image, angle, sampling):
-    """``image.rotate(angle, sampling, expand=True)`` without overshoot: the same matrix and size."""
+def rotate(image, angle, sampling, size=None, shift=(0.0, 0.0)):
+    """``image.rotate(angle, sampling, expand=True)`` without overshoot: the same matrix and size.
+    ``size`` gives a larger output instead, with the image's centre ``shift`` pixels right of and below
+    the output's centre (a fractional placement folded into the same resampling)."""
     w, h = image.size
+    co, si, c, f, nw, nh = _turn(w, h, angle)
+    size = size or (nw, nh)
+
+    def apply(x, y, c=0.0, f=0.0):
+        return co * x + si * y + c, -si * x + co * y + f
+
+    c, f = apply(-(size[0] - w) / 2 - shift[0], -(size[1] - h) / 2 - shift[1], c, f)
+    if sampling != Image.Resampling.NEAREST:
+        # The filter clamps to the image's edge pixels: art touching the edge would turn with a harder
+        # edge than the same art drawn with room around it. Give it transparent room.
+        padded = Image.new(image.mode, (w + 4, h + 4))
+        padded.paste(image, (2, 2))
+        image, c, f = padded, c + 2, f + 2
+    return warp(image, size, (co, si, c, -si, co, f), sampling)
+
+
+def _turn(w, h, angle):
+    """The rotation terms of ``rotate`` and the expanded size it gives a ``w`` × ``h`` image."""
     a = -math.radians(angle)
     co, si = round(math.cos(a), 15), round(math.sin(a), 15)
 
@@ -1030,9 +1211,7 @@ def rotate(image, angle, sampling):
     c, f = apply(-w / 2, -h / 2)
     c, f = c + w / 2, f + h / 2
     xs, ys = zip(*(apply(x, y, c, f) for x, y in ((0, 0), (w, 0), (w, h), (0, h))))
-    nw, nh = math.ceil(max(xs)) - math.floor(min(xs)), math.ceil(max(ys)) - math.floor(min(ys))
-    c, f = apply(-(nw - w) / 2, -(nh - h) / 2, c, f)
-    return warp(image, (nw, nh), (co, si, c, -si, co, f), sampling)
+    return co, si, c, f, math.ceil(max(xs)) - math.floor(min(xs)), math.ceil(max(ys)) - math.floor(min(ys))
 
 
 def antiring(source, result, data, scale=1.0):
@@ -1126,6 +1305,13 @@ def group_overflow_resize(layer, image, sampling):
     ox, oy = math.ceil(mx * sx), math.ceil(my * sy)
     # The source box reaches ox / sx (≥ mx) beyond the content; pad so it lies inside the tile.
     px, py = math.ceil(ox / sx - mx), math.ceil(oy / sy - my)
+    if px > image.width or py > image.height:
+        # Near-zero scale: the padding grows as 1 / scale. The group covers a pixel or two here, so
+        # shrink the whole tile and centre it instead of padding it to an unbounded size.
+        small = resize(image, (max(1, math.ceil(image.width * sx)), max(1, math.ceil(image.height * sy))), sampling)
+        out = Image.new("RGBA", (math.ceil(w + 2 * ox), math.ceil(h + 2 * oy)))
+        out.alpha_composite(small, ((out.width - small.width) // 2, (out.height - small.height) // 2))
+        return out
     if px or py:
         padded = Image.new("RGBA", (image.width + 2 * px, image.height + 2 * py))
         padded.paste(image, (px, py))
@@ -1173,32 +1359,100 @@ def composite(bottom, top, blend):
 
 def layer_surface(project, layer, bounds, size, index, visiting=None):
     """Composite one layer and its clipping dependencies over transparent pixels."""
+    tile = Image.new("RGBA", size)
+    patch, origin = layer_patch(project, layer, bounds, size, index, visiting)
+    if patch is not None:
+        tile.paste(patch, origin)
+    return tile
+
+
+def layer_patch(project, layer, bounds, size, index, visiting=None, limit=None):
+    """``layer_surface`` without the transparent rest of the tile: the part of a ``size`` tile the layer,
+    its styles and its clipping can change, and its (left, top), or (None, None) when it draws nothing.
+    A full-size tile for each styled or clipped layer made them cost the whole canvas every time.
+    ``limit`` (left, top, right, bottom) is where the tile's edge cuts the layer off when that is not the
+    tile itself: a region of the canvas is styled as the whole canvas would be, then cropped."""
     from .design_render import styled_image
     from PIL import ImageChops
 
     visiting = set() if visiting is None else visiting
     ident = layer["id"]
     require(ident not in visiting, "Clipping contains a cycle")
+    if not layer["visible"] or layer["opacity"] <= 0:
+        return None, None
     visiting.add(ident)
-    tile = Image.new("RGBA", size)
-    if layer["visible"]:
+    try:
         b = bounds[ident]
         source = layer_ink(project, {**layer, "opacity": 1}, b)
         x, y = ink_origin(source, b)
-        tile.alpha_composite(source, (x, y))
+        mx, my = (2 * margin + 4 for margin in style_margin(layer)) if layer.get("styles") else (0, 0)
+        limit = limit or (0, 0, *size)
+        box = (max(limit[0], x - mx), max(limit[1], y - my),
+               min(limit[2], x + source.width + mx), min(limit[3], y + source.height + my))
+        if box[0] >= box[2] or box[1] >= box[3]:
+            return None, None
         if layer.get("styles"):
-            # Styles reach a bounded distance from the layer; filter only that part of the tile.
-            mx, my = (2 * margin + 4 for margin in style_margin(layer))
-            box = (max(0, x - mx), max(0, y - my), min(size[0], x + source.width + mx), min(size[1], y + source.height + my))
-            if box[0] < box[2] and box[1] < box[3]:
-                tile.paste(styled_image(project, tile.crop(box), layer["styles"]), box[:2])
+            key = styled_key(project, layer, b, box, (x, y))
+            cache = layer_cache(project)
+            patch = cache.image(key) if key else None
+            profile = PROFILE.get()
+            if profile is not None:
+                profile.count("styled_hits" if patch is not None else "styled_misses")
+            if patch is None:
+                import time
+
+                started = time.perf_counter()
+                patch = Image.new("RGBA", (box[2] - box[0], box[3] - box[1]))
+                patch.alpha_composite(source, (x - box[0], y - box[1]))
+                patch = styled_image(project, patch, layer["styles"])
+                if key:
+                    cache.put(key, patch)
+                if profile is not None:
+                    profile.phase("styles", time.perf_counter() - started)
+        else:
+            patch = Image.new("RGBA", (box[2] - box[0], box[3] - box[1]))
+            patch.alpha_composite(source, (x - box[0], y - box[1]))
         if layer.get("clip"):
-            mask = layer_surface(project, index[layer["clip"]], bounds, size, index, visiting)
-            tile.putalpha(ImageChops.multiply(tile.getchannel("A"), mask.getchannel("A")))
-        if layer["opacity"] != 1:
-            tile.putalpha(tile.getchannel("A").point(lambda a: round(a * layer["opacity"])))
-    visiting.remove(ident)
-    return tile
+            clip, at = layer_patch(project, index[layer["clip"]], bounds, size, index, visiting, limit)
+            mask = Image.new("L", patch.size)
+            if clip is not None:
+                mask.paste(clip.getchannel("A"), (at[0] - box[0], at[1] - box[1]))
+            patch.putalpha(ImageChops.multiply(patch.getchannel("A"), mask))
+        patch = with_opacity(patch, layer["opacity"])
+    finally:
+        visiting.remove(ident)
+    return patch, box[:2]
+
+
+def styled_key(project, layer, bounds, box, origin):
+    """The cache key of a styled patch: the layer's pixels, its styles and the colours they can name,
+    and where the patch sits around the pixels (the canvas edge clips it)."""
+    ink = ink_key(project, {**layer, "opacity": 1}, bounds)
+    if ink is None:
+        return None
+    state = project.state
+    return digest(["styled", ink, layer["styles"], [box[0] - origin[0], box[1] - origin[1], box[2] - box[0], box[3] - box[1]],
+                   state.get("variables"), state.get("maps"), state.get("swatches")])
+
+
+def opacity_table(opacity):
+    """The 256-entry table that scales an alpha channel by ``opacity`` (as ``round(a * opacity)``)."""
+    table = OPACITY_TABLES.get(opacity)
+    if table is None:
+        if len(OPACITY_TABLES) >= 4096:
+            OPACITY_TABLES.clear()
+        table = OPACITY_TABLES[opacity] = [round(a * opacity) for a in range(256)]
+    return table
+
+
+OPACITY_TABLES = {}
+
+
+def with_opacity(image, opacity):
+    """``image`` (RGBA, changed in place) with its alpha scaled by ``opacity``."""
+    if opacity != 1:
+        image.putalpha(image.getchannel("A").point(opacity_table(opacity)))
+    return image
 
 
 def layer_canvas_alpha(project, layer, box, bounds, index):
@@ -1222,7 +1476,7 @@ def layer_canvas_alpha(project, layer, box, bounds, index):
         alpha.paste(part.getchannel("A") if part.mode == "RGBA" else part.convert("RGBA").getchannel("A"),
                     (crop[0] - left, crop[1] - top))
     if layer["opacity"] != 1:
-        alpha = alpha.point(lambda a: round(a * layer["opacity"]))
+        alpha = alpha.point(opacity_table(layer["opacity"]))
     return alpha
 
 
@@ -1279,10 +1533,27 @@ def layer_canvas_surface(project, layer, bounds=None, index=None):
                 mask = layer_surface(project, index[parent["clip"]], placed, size, index)
                 tile.putalpha(ImageChops.multiply(tile.getchannel("A"), mask.getchannel("A")))
             if parent["opacity"] != 1:
-                tile.putalpha(tile.getchannel("A").point(lambda a: round(a * parent["opacity"])))
+                tile = with_opacity(tile, parent["opacity"])
         surface = tile
         parent = index.get(parent.get("parent"))
     return surface
+
+
+def resolved(project):
+    """``resolved_layers`` and ``resolve_layout`` of a render, timed when a profile is recording."""
+    profile = PROFILE.get()
+    if profile is None:
+        layers = resolved_layers(project)
+        return layers, resolve_layout(project, layers=layers)
+    import time
+
+    started = time.perf_counter()
+    layers = resolved_layers(project)
+    laid = time.perf_counter()
+    bounds = resolve_layout(project, layers=layers)
+    profile.phase("resolve", laid - started)
+    profile.phase("layout", time.perf_counter() - laid)
+    return layers, bounds
 
 
 def render_layers(project, parent=None, size=None, background="transparent", observe=None):
@@ -1292,16 +1563,17 @@ def render_layers(project, parent=None, size=None, background="transparent", obs
     shared = getattr(project, "_resolution", None)
     if shared is not None and shared[0] is project.state:
         layers, bounds = shared[1], shared[2]
-        outermost = False
     else:
-        layers = resolved_layers(project)
-        bounds = resolve_layout(project, layers=layers)
-        project._resolution, outermost = (project.state, layers, bounds), True
-    try:
-        return _render_layers(project, layers, bounds, parent, size, background, observe)
-    finally:
-        if outermost:
-            project._resolution = None
+        # Drawing is a read-only pass too: text layers look up the document's variables, which
+        # otherwise rescans every layer for form fields once per text layer.
+        with resolving(project):
+            layers, bounds = resolved(project)
+            project._resolution = (project.state, layers, bounds)
+            try:
+                return _render_layers(project, layers, bounds, parent, size, background, observe)
+            finally:
+                project._resolution = None
+    return _render_layers(project, layers, bounds, parent, size, background, observe)
 
 
 def render_members(project, members, region=None, background="transparent", include_hidden=False):
@@ -1347,13 +1619,16 @@ def render_members(project, members, region=None, background="transparent", incl
     shared = getattr(project, "_resolution", None)
     project._resolution = (project.state, layers, bounds)
     try:
-        image = _render_layers(project, layers, placed, parent, (width, height), background, None, members)
+        with resolving(project):
+            image = _render_layers(project, layers, placed, parent, (width, height), background, None, members)
     finally:
         project._resolution = shared
     return image, (left, top)
 
 
-def _render_layers(project, layers, bounds, parent, size, background, observe, members=None):
+def _render_layers(project, layers, bounds, parent, size, background, observe, members=None, limit=None, drawn=None):
+    """``drawn``, a dict, receives each layer's (left, top, right, bottom) tile box that it drew into, before
+    the tile's edge cut it."""
     c = project.state["canvas"]
     size = size or (c["width"], c["height"])
     index = {item["id"]: item for item in layers}
@@ -1371,8 +1646,25 @@ def _render_layers(project, layers, bounds, parent, size, background, observe, m
     project.limits.size(*size)
     image = Image.new("RGBA", size, color(background))
 
-    def surface(layer):
-        return layer_surface(project, layer, bounds, size, index)
+    def patch_of(layer):
+        b = bounds[layer["id"]]
+        mx, my = ink_margin(layer, bounds, children, memo)
+        if layer.get("styles"):
+            mx, my = (m + 2 * s + 4 for m, s in zip((mx, my), style_margin(layer)))
+        if b[0] - mx >= size[0] or b[1] - my >= size[1] or b[0] + b[2] + mx <= 0 or b[1] + b[3] + my <= 0:
+            return None, (0, 0)  # Nothing it draws (its styles included) reaches the tile.
+        patch, origin = layer_patch(project, layer, bounds, size, index, limit=limit)
+        if patch is not None and drawn is not None:
+            drawn[layer["id"]] = (*origin, origin[0] + patch.width, origin[1] + patch.height)
+        if patch is not None and limit:
+            # Styled past the tile, as on the whole canvas; keep the part on the tile.
+            left, top = max(0, origin[0]), max(0, origin[1])
+            right, bottom = min(size[0], origin[0] + patch.width), min(size[1], origin[1] + patch.height)
+            if left >= right or top >= bottom:
+                return None, (0, 0)
+            patch = patch.crop((left - origin[0], top - origin[1], right - origin[0], bottom - origin[1]))
+            origin = (left, top)
+        return (patch, origin) if patch is not None else (None, (0, 0))
 
     def direct(layer):
         """Composite a plain layer only over its own bounds instead of a full-canvas tile."""
@@ -1382,6 +1674,8 @@ def _render_layers(project, layers, bounds, parent, size, background, observe, m
             return image
         source = layer_ink(project, {**layer, "opacity": 1}, b)
         x, y = ink_origin(source, b)
+        if drawn is not None:
+            drawn[layer["id"]] = (x, y, x + source.width, y + source.height)
         left, top = max(0, x), max(0, y)
         right, bottom = min(size[0], x + source.width), min(size[1], y + source.height)
         if left >= right or top >= bottom:
@@ -1389,7 +1683,7 @@ def _render_layers(project, layers, bounds, parent, size, background, observe, m
         if (left, top, right, bottom) != (x, y, x + source.width, y + source.height):
             source = source.crop((left - x, top - y, right - x, bottom - y))
         if layer["opacity"] != 1:
-            source.putalpha(source.getchannel("A").point(lambda a: round(a * layer["opacity"])))
+            source = with_opacity(source, layer["opacity"])
         if layer["blend"] == "normal":
             image.alpha_composite(source, (left, top))
         else:
@@ -1399,6 +1693,10 @@ def _render_layers(project, layers, bounds, parent, size, background, observe, m
 
     def draw(layer):
         nonlocal image
+        if layer["opacity"] <= 0:
+            # Fully transparent (a layer or group scaled to nothing is drawn this way): nothing to
+            # composite, and resampling a zero-size group tile would ask for an unbounded raster.
+            return image
         if not layer.get("styles") and not layer.get("clip") and layer["type"] != "adjustment":
             return direct(layer)
         if layer["type"] == "adjustment":
@@ -1420,11 +1718,16 @@ def _render_layers(project, layers, bounds, parent, size, background, observe, m
                 mask = ImageChops.multiply(mask, project.image(layer["mask"]["asset"], "L").resize(size))
             image = Image.composite(composite(image, changed, layer["blend"]), image, mask)
         else:
-            tile = surface(layer)
-            box = tile.getchannel("A").getbbox()
-            if box:
+            patch, (left, top) = patch_of(layer)
+            if patch is not None:
                 # Pixels the layer leaves transparent are unchanged by every blend mode.
-                image.paste(composite(image.crop(box), tile.crop(box), layer["blend"]), box[:2])
+                box = (left, top, left + patch.width, top + patch.height)
+                if layer["blend"] == "normal":
+                    image.alpha_composite(patch, box[:2])
+                elif (drawn := patch.getchannel("A").getbbox()):
+                    patch = patch.crop(drawn)
+                    box = (left + drawn[0], top + drawn[1], left + drawn[2], top + drawn[3])
+                    image.paste(composite(image.crop(box), patch, layer["blend"]), box[:2])
         return image
 
     for layer in layers:
@@ -1472,7 +1775,217 @@ def view_page(project, page=None):
     return project
 
 
-def render(project, variables=None, artboard=None, comp=None, page=None):
+# Document state that does not change pixels: edits to it keep the previous canvas usable.
+UNDRAWN_STATE = {"layers", "timeline", "animation", "suites", "roles", "motions", "actions", "recipe", "active_layer",
+                 "design_guidance", "presets"}
+# Canvases up to this many pixels keep their last render for the next one.
+INCREMENTAL_PIXELS = 40_000_000
+
+
+class Snapshot:
+    """The last canvas a document view rendered, with what each top-level layer depended on and where it drew."""
+
+    def __init__(self, document, assets, order, layers, image):
+        self.document, self.assets, self.order, self.layers, self.image = document, assets, order, layers, image
+
+
+def layer_fingerprints(project, layers, bounds):
+    """Top-level layer ID → (digest of everything its pixels depend on, the canvas box it can draw in),
+    or None when some layer reads outside the document (linked files)."""
+    children, memo, index = child_index(layers), {}, {item["id"]: item for item in layers}
+    c = project.state["canvas"]
+    subtree = {}
+
+    def contents(item):
+        if item["id"] not in subtree:
+            nested = [contents(child) for child in children.get(item["id"], [])]
+            subtree[item["id"]] = [item, bounds.get(item["id"]), nested]
+        return subtree[item["id"]]
+
+    digests, visiting = {}, set()
+
+    def fingerprint(item):
+        if item["id"] not in digests:
+            require(item["id"] not in visiting, "Clipping contains a cycle")
+            visiting.add(item["id"])
+            clip = index.get(item.get("clip"))
+            digests[item["id"]] = digest([contents(item), fingerprint(clip) if clip else None])
+            visiting.discard(item["id"])
+        return digests[item["id"]]
+
+    result = {}
+    for item in layers:
+        if item.get("linked") or item["type"] == "link":
+            return None
+        if item.get("parent"):
+            continue
+        box = None
+        if item["visible"]:
+            x, y, w, h = bounds[item["id"]]
+            mx, my = ink_margin(item, bounds, children, memo)
+            # Styles are drawn on a patch reaching past their margin (layer_patch); two pixels hold
+            # antialiasing and fractional placement.
+            sx, sy = (2 * margin + 4 for margin in style_margin(item)) if item.get("styles") else (0, 0)
+            mx, my = mx + sx + 2, my + sy + 2
+            box = (max(0, math.floor(x - mx)), max(0, math.floor(y - my)),
+                   min(c["width"], math.ceil(x + w + mx)), min(c["height"], math.ceil(y + h + my)))
+            if box[0] >= box[2] or box[1] >= box[3]:
+                box = None
+        result[item["id"]] = (fingerprint(item), box)
+    return result
+
+
+def dirty_box(previous, current):
+    """The canvas box (left, top, right, bottom) to composite again so that a render whose top-level layers are
+    ``current`` matches a full one, starting from the ``previous`` snapshot: where changed layers drew, and where
+    they are estimated to draw now. (0, 0, 0, 0) when nothing changed, None when the stacking order did."""
+    shared = [ident for ident in previous.order if ident in current]
+    if shared != [ident for ident in current if ident in previous.layers]:
+        return None
+    boxes = []
+    for ident, (fingerprint, estimate) in current.items():
+        before = previous.layers.get(ident)
+        if before is None or before[0] != fingerprint:
+            boxes += [estimate, before[1] if before else None]
+    boxes += [previous.layers[ident][1] for ident in previous.order if ident not in current]
+    return union(boxes)
+
+
+def union(boxes):
+    boxes = [box for box in boxes if box]
+    if not boxes:
+        return (0, 0, 0, 0)
+    return (min(b[0] for b in boxes), min(b[1] for b in boxes), max(b[2] for b in boxes), max(b[3] for b in boxes))
+
+
+def render_incremental(project, background):
+    """``render_layers`` for a document whose regions render alone, reusing the canvas the same view drew last:
+    only the box covering the layers that changed (where they drew and where they draw now) is composited again.
+    Edits, previews and timeline frames that move or restyle a few layers stop costing the whole canvas."""
+    c = project.state["canvas"]
+    cache = layer_cache(project)
+    if c["width"] * c["height"] > INCREMENTAL_PIXELS:
+        return render_layers(project, background=background)
+
+    def on_canvas(box, left=0, top=0):
+        if box is None:
+            return None
+        box = (max(0, box[0] + left), max(0, box[1] + top), min(c["width"], box[2] + left), min(c["height"], box[3] + top))
+        return box if box[0] < box[2] and box[1] < box[3] else None
+
+    profile = PROFILE.get()
+    with resolving(project):
+        layers, bounds = resolved(project)
+        project._resolution = (project.state, layers, bounds)
+        try:
+            try:
+                document = digest([{k: v for k, v in project.state.items() if k not in UNDRAWN_STATE}, background,
+                                   snap_placement(project)])
+                current = layer_fingerprints(project, layers, bounds)
+            except (TypeError, ValueError):
+                current = None
+            if current is None:
+                if profile is not None:
+                    profile.render(incremental=False, reason="a layer reads a linked file")
+                return _render_layers(project, layers, bounds, None, None, background, None)
+            assets = dict(project.assets)
+            previous = getattr(cache, "snapshot", None)
+            box = None
+            if (previous is not None and previous.document == document and previous.assets.keys() == assets.keys()
+                    and all(previous.assets[name] is data for name, data in assets.items())):
+                box = dirty_box(previous, current)
+            top_level = [item for item in layers if not item.get("parent")]
+            changed = {ident for ident, (fingerprint, _) in current.items()
+                       if previous is None or previous.layers.get(ident, (None,))[0] != fingerprint}
+            image = None
+            for _ in range(3):
+                if box is None:
+                    break
+                left, top, right, bottom = box
+                if left >= right or top >= bottom:
+                    # Only layers that draw nothing changed (hidden, or off the canvas).
+                    image, drawn = previous.image.copy(), {ident: None for ident in changed}
+                    break
+                drawn = {}
+                placed = shift(bounds, top_level, -left, -top)
+                tile = _render_layers(project, layers, placed, None, (right - left, bottom - top), background, None,
+                                      limit=(-left, -top, c["width"] - left, c["height"] - top), drawn=drawn)
+                # Estimates can fall short (kinetic glyphs draw past their layer's box): grow and draw again.
+                reach = union([box] + [on_canvas(drawn.get(ident), left, top) for ident in changed])
+                if reach == box:
+                    image = previous.image.copy()
+                    image.paste(tile, (left, top))
+                    drawn = {ident: on_canvas(drawn.get(ident), left, top) for ident in changed}
+                    break
+                box = reach
+            if profile is not None:
+                dirty = None if image is None else list(box)
+                profile.render(incremental=image is not None, dirty_box=dirty,
+                               dirty_pixels=(max(0, dirty[2] - dirty[0]) * max(0, dirty[3] - dirty[1]) if dirty
+                                             else c["width"] * c["height"]),
+                               canvas_pixels=c["width"] * c["height"], changed_layers=len(changed))
+            if image is None:
+                drawn = {}
+                image = _render_layers(project, layers, bounds, None, None, background, None, drawn=drawn)
+                drawn = {ident: on_canvas(drawn.get(ident)) for ident in current}
+            layers_now = {ident: (fingerprint, drawn[ident] if ident in drawn else previous.layers[ident][1])
+                          for ident, (fingerprint, _) in current.items()}
+            # The snapshot holds the asset bytes it compared, so an identical id cannot be a reused one.
+            cache.snapshot = Snapshot(document, assets, list(current), layers_now, image.copy())
+            return image
+        finally:
+            project._resolution = None
+
+
+def region_renders_alone(project):
+    """Whether a region of the canvas can be drawn by itself, matching the same crop of a full render.
+    Not when something reads the whole canvas: scene lighting, adjustment layers (their selections and
+    masks cover the canvas, and their filters see past the region), canvas-edge blur on a top-level
+    layer, or an effect masked by a canvas selection."""
+    if project.state.get("lighting"):
+        return False
+    for layer in project.state["layers"]:
+        if layer.get("parent") or not layer.get("visible", True):
+            continue
+        if layer["type"] == "adjustment" or any(effect_margin(layer)) or any(
+            effect.get("selection") for effect in layer.get("effects") or []
+        ):
+            return False
+    return True
+
+
+def render_region(project, region, background="transparent"):
+    """Composite only ``region`` (left, top, width, height, whole pixels inside the canvas): layers that
+    miss it are skipped and every tile is region-sized. Same pixels as ``render_layers(...).crop``."""
+    left, top, width, height = region
+    c = project.state["canvas"]
+    with resolving(project):
+        layers, bounds = resolved(project)
+        project._resolution = (project.state, layers, bounds)
+        try:
+            placed = shift(bounds, [item for item in layers if not item.get("parent")], -left, -top)
+            return _render_layers(project, layers, placed, None, (width, height), background, None,
+                                  limit=(-left, -top, c["width"] - left, c["height"] - top))
+        finally:
+            project._resolution = None
+
+
+def render(project, variables=None, artboard=None, comp=None, page=None, region=None):
+    """The document as an image; ``region`` (left, top, width, height, whole pixels inside the canvas)
+    returns that crop, drawing only that part when nothing in the document reads the whole canvas."""
+    profile = PROFILE.get()
+    if profile is None:
+        return _render(project, variables, artboard, comp, page, region)
+    import time
+
+    started = time.perf_counter()
+    try:
+        return _render(project, variables, artboard, comp, page, region)
+    finally:
+        profile.phase("render", time.perf_counter() - started)
+
+
+def _render(project, variables=None, artboard=None, comp=None, page=None, region=None):
     from .design_render import artboard_project
 
     project = view_page(project, page)
@@ -1482,22 +1995,40 @@ def render(project, variables=None, artboard=None, comp=None, page=None):
     candidate = prepare_bubbles(candidate)
     from .design import resolve_color
 
+    if region is not None:
+        left, top, width, height = (int(v) for v in region)
+        c = candidate.state["canvas"]
+        require(width > 0 and height > 0 and left >= 0 and top >= 0 and left + width <= c["width"]
+                and top + height <= c["height"], "Region must lie inside the canvas", field="region")
+        if (left, top, width, height) != (0, 0, c["width"], c["height"]):
+            if region_renders_alone(candidate):
+                if PROFILE.get() is not None:
+                    PROFILE.get().render(incremental=False, region=[left, top, width, height])
+                return render_region(candidate, (left, top, width, height),
+                                     resolve_color(candidate.state["canvas"]["background"], candidate.state))
+            return _render(project, variables, artboard, comp, page).crop((left, top, left + width, top + height))
     disk = getattr(project, "_disk_cache", None)
     key = None
     if disk:
         from .render_cache import key_for
         key = key_for(candidate)
-        cached = disk.get(key, project.limits)
+        cached = disk.get(key, project.limits, kind="frame")
         if cached is not None:
+            if PROFILE.get() is not None:
+                PROFILE.get().render(incremental=False, from_disk=True)
             return cached
-    image = render_layers(
-        candidate, background=resolve_color(candidate.state["canvas"]["background"], candidate.state)
-    )
+    background = resolve_color(candidate.state["canvas"]["background"], candidate.state)
+    if region_renders_alone(candidate):
+        image = render_incremental(candidate, background)
+    else:
+        if PROFILE.get() is not None:
+            PROFILE.get().render(incremental=False, reason="the document reads the whole canvas")
+        image = render_layers(candidate, background=background)
     from .scene import composite
 
     image = composite(image, candidate)
     if disk:
-        disk.put(key, image)
+        disk.put(key, image, kind="frame")
     return image
 
 
@@ -1540,6 +2071,8 @@ def export(
     labels=True,
     title=None,
     max_bytes=None,
+    isolate=None,
+    padding=None,
 ):
     """Render and encode. ``color_space='cmyk'`` separates JPEG/TIFF/PDF output (ICC profile
     bytes in ``icc_profile`` for press-accurate separation, else device-naive GCR with
@@ -1554,7 +2087,9 @@ def export(
     is ``False`` for the plain single-image HTML, ``True`` for a presentation of any document, or
     a dict of options (theme, notes, slide_images, start, title). ``title`` is the PDF document title
     (default: the page's title layer, then the file name). ``max_bytes`` is a size budget: when the
-    encoded file is larger, ``report['warnings']`` says so (the export still succeeds)."""
+    encoded file is larger, ``report['warnings']`` says so (the export still succeeds). ``isolate`` (layer
+    names, object paths such as ``dog/head`` or ``object:KIND``) exports only those layers, cropped to their ink
+    plus ``padding`` pixels on a transparent canvas, in any format."""
     require(isinstance(overwrite, bool), "overwrite must be true or false", field="overwrite")
     require(path is None or overwrite or not Path(path).exists(),
             "Export output already exists; pass overwrite=True to replace it", "output_exists", field="path")
@@ -1571,6 +2106,18 @@ def export(
         timeline = project.state.get("timeline") or default_timeline()
         project = project_at(project, parse_time(time, timeline["duration"], timeline.get("markers")))
     require(svg_policy in ("appearance", "strict"), "SVG policy must be appearance or strict")
+    if isolate is not None:
+        require(not pages and page != "all", "isolate exports one page; pass page, not pages", field="isolate")
+        require(padding is None or 0 <= finite(padding, "padding", 0, 4096), "padding is 0-4096 px", field="padding")
+        from .objects import isolated_export
+
+        project = isolated_export(view_page(project, page) if page is not None else project, isolate, padding=padding)
+        page = None
+        if report is not None:
+            report["isolated"] = {"layers": [project.layer(ident)["name"] for ident in project._isolated],
+                                  "size": [project.state["canvas"]["width"], project.state["canvas"]["height"]]}
+    else:
+        require(padding is None, "padding goes with isolate", field="padding")
     from .pages import parse_pages
 
     all_pages = pages == "all"

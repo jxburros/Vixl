@@ -8,7 +8,7 @@ that inspect or export instead of editing.
 import json
 from pathlib import Path
 
-from .commands import Parser, pairs
+from .commands import Parser, pairs, spacing
 from .errors import require
 
 STANDALONE = ("color", "colors", "sizes", "layouts", "brushes", "easings", "organics")
@@ -171,6 +171,7 @@ def compile_feature(cmd, args):
         p.add_argument("--font")
         p.add_argument("--display-font")
         p.add_argument("--transparent", action="store_true", default=None)
+        p.add_argument("--gap", type=spacing, help="Gap between stacked slots: pixels, or units such as 2u")
         p.add_argument("--prefix")
         p.add_argument("--replace", action="store_true", default=None)
         data = vars(p.parse_args(args))
@@ -187,6 +188,10 @@ def compile_feature(cmd, args):
         p.add_argument("--duration", type=_time)
         p.add_argument("--fps", type=float)
         p.add_argument("--loop", type=int)
+        p.add_argument("--loop-mode", dest="loop_mode", choices=["seamless", "off"],
+                       help="seamless: loop without a jump (new house-style-3 short timelines); off: play once")
+        p.add_argument("--close", action="store_true", default=None,
+                       help="With seamless: end every track where it began")
         p.add_argument("--clear", action="store_true", default=None)
         data = vars(p.parse_args(args))
         data.pop("action")
@@ -242,6 +247,8 @@ def compile_feature(cmd, args):
         for key in ("start", "end", "duration"):
             p.add_argument("--" + key, type=_time)
         p.add_argument("--easing")
+        p.add_argument("--intent", choices=["entrance", "exit", "loop", "emphasis"],
+                       help="Pick the house easing when --easing is omitted")
         p.add_argument("--no-extend", dest="extend", action="store_false", default=None, help="Keep the timeline duration when the key lies past its end")
         data = vars(p.parse_args(args))
         if data.get("from_") is not None:

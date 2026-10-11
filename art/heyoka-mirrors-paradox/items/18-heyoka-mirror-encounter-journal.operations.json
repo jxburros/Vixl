@@ -1,0 +1,118 @@
+[
+  {
+    "type": "text",
+    "name": "series",
+    "text": "HEYOKA / THE MIRROR ENCOUNTER",
+    "x": 60,
+    "y": 55,
+    "size": 19,
+    "font": "mono",
+    "color": "#9d3e2c",
+    "line_height": 1.35
+  },
+  {
+    "type": "text",
+    "name": "title",
+    "text": "WHEN THE MIRROR\nFEELS PERSONAL",
+    "x": 55,
+    "y": 130,
+    "size": 62,
+    "font": "serif",
+    "color": "#243a35",
+    "line_height": 1.12
+  },
+  {
+    "type": "text",
+    "name": "intro",
+    "text": "A modern heyoka reflection: return to a moment that surprised, irritated, or\nrevealed something. Explore the experience before deciding what it means.",
+    "x": 60,
+    "y": 338,
+    "size": 25,
+    "font": "sans",
+    "color": "#243a35",
+    "line_height": 1.35
+  },
+  {
+    "type": "text",
+    "name": "moment-label",
+    "text": "THE ENCOUNTER / What happened, in concrete terms?",
+    "x": 60,
+    "y": 510,
+    "size": 21,
+    "font": "bold",
+    "color": "#9d3e2c",
+    "line_height": 1.35
+  },
+  {
+    "type": "field",
+    "name": "moment",
+    "key": "moment",
+    "kind": "multiline",
+    "label_layer": "moment-label",
+    "x": 60,
+    "y": 555,
+    "width": 900,
+    "height": 124,
+    "size": 23,
+    "max_length": 750
+  },
+  {
+    "type": "text",
+    "name": "reaction-label",
+    "text": "THE REACTION / What feeling or assumption became visible?",
+    "x": 60,
+    "y": 720,
+    "size": 21,
+    "font": "bold",
+    "color": "#9d3e2c",
+    "line_height": 1.35
+  },
+  {
+    "type": "field",
+    "name": "reaction",
+    "key": "reaction",
+    "kind": "multiline",
+    "label_layer": "reaction-label",
+    "x": 60,
+    "y": 765,
+    "width": 900,
+    "height": 124,
+    "size": 23,
+    "max_length": 750
+  },
+  {
+    "type": "text",
+    "name": "insight-label",
+    "text": "THE REFLECTION / What belongs to me, and what remains uncertain?",
+    "x": 60,
+    "y": 930,
+    "size": 21,
+    "font": "bold",
+    "color": "#9d3e2c",
+    "line_height": 1.35
+  },
+  {
+    "type": "field",
+    "name": "insight",
+    "key": "insight",
+    "kind": "multiline",
+    "label_layer": "insight-label",
+    "x": 60,
+    "y": 975,
+    "width": 900,
+    "height": 124,
+    "size": 23,
+    "max_length": 750
+  },
+  {
+    "type": "text",
+    "name": "footer",
+    "text": "HEYOKA / Modern reflective exercise • The archetype is a lens, not a verdict about another person.",
+    "x": 60,
+    "y": 1260,
+    "size": 17,
+    "font": "sans",
+    "color": "#243a35",
+    "line_height": 1.35
+  }
+]

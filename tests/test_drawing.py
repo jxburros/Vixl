@@ -99,7 +99,7 @@ def test_thin_and_trace_give_one_stroke_per_line():
 
 
 def test_clean_flattens_paper_removes_dust_and_corrects_tilt():
-    result = drawing.clean(photo(tilt=3.0))
+    result = drawing.clean(photo(tilt=3.0), {"crop": True})
     assert 2.0 <= abs(result["angle"]) <= 4.0
     alpha = np.asarray(result["ink"].getchannel("A"))
     labels, count = drawing.label(result["mask"])

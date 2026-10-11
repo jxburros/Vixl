@@ -81,7 +81,11 @@ craft (sharp) unless the rolled style has its own (material and glassmorphism ro
 pill), and layout buttons, panels and placed containers take the document's corner style. A bold or
 avant-garde roll, or one with an expressive mood (playful, bold, loud …), sets `headline: large`: the
 headline holds about 8 characters a line instead of 14, so it fills the canvas; quiet rolls keep
-`headline: measured`. Lock it like any other choice (`--lock headline=measured`). The rolled
+`headline: measured`. Lock it like any other choice (`--lock headline=measured`). From house style 3,
+alignment is weighted by purpose: design purposes roll left three times in four and right otherwise, diagram
+and form purposes left or centre 75/25, and marks stay centred; an
+explicit `align` wins. Saturated palette backgrounds are washed only as far as the ink contrast
+target needs. The rolled
 look lands where it shows: texture looks on the background, the house offset shadow and other
 shadow, outline and glow looks on the solid shapes (buttons, panels, blocks), never on hairline
 rules. Weight contrast describes the actual heading/body weights in the chosen pairing. A roll
@@ -122,7 +126,9 @@ margin, corner, look, style, motif and background treatment. Fields you pass win
 The rolled density changes the result: airy widens and dense tightens the rolled margin (×1.25 and ×0.75)
 and the spacing unit behind gaps (half the body size, craft `spacing.unit`). The roll weights density by
 purpose (above); the builder, given no density, chooses balanced twice as often as airy or dense. The rolled accent (rule, bar, dot, block or outline) is drawn in the safe compositions next to
-their own device.
+their own device. An outline frame insets the content two spacing units inside it. The pattern background's column of dots
+and the direction motif are placed clear of the text (another margin, a shorter column, or left out), and
+the overlap check reports decoration that runs through text as `overlap.decoration-text`.
 
 `vixl_roll(apply=True, slots={"title": "Launch"})` installs its selected fonts,
 builds the editable design in one undo step, and returns contrast/legibility checks.
@@ -162,10 +168,13 @@ in `.vixl/variety.json` for repeatable tests or production:
 ```
 
 New documents store `house_style_version` in `design_defaults`, and later rolls in that document
-use the same version, so a change to the house style never reaches an existing document. To roll
-the 0.20–0.22 directions again (safe pools only, two light rolls in three, looks at amount 0.1), pin
-version 1: `vixl roll --house-style 1`, `roll(..., house_style_version=1)`, or
-`{"house_style": 1}` in `.vixl/variety.json` for every surface.
+use the same version, so a change to the house style never reaches an existing document. The
+current version is 3 (0.24). To replay 0.23 rolls (no house-style-3 pairings, alignment weighting or
+reduced background washing), pin version 2; to roll the 0.20–0.22 directions (safe pools only, two
+light rolls in three, looks at amount 0.1), pin version 1: `vixl roll --house-style 2`,
+`roll(..., house_style_version=2)`, or `{"house_style": 2}` in `.vixl/variety.json` for every surface.
+Version-3 geometry defaults (stack gaps of `2u`, chart padding, text-flow gutters, seamless short
+timelines) apply only to documents that record version 3.
 
 ## Measuring it
 

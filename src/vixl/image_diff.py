@@ -33,13 +33,11 @@ def load_visual(path, limits=None, *, data=None, page=1, dpi=144):
         with _staged(path, data) as staged:
             return Project.load(staged, limits=limits).render().convert("RGBA")
     if suffix == ".svg":
-        import resvg_py
+        from .imports import render_svg, sanitize_svg
 
-        try:
-            rendered = resvg_py.svg_to_bytes(svg_string=data.decode("utf-8"))
-        except Exception as exc:  # resvg reports malformed SVG with assorted exception types
-            raise VixlError("invalid_image", f"Cannot render {Path(path).name}: {exc}", field="path") from exc
-        return decode(bytes(rendered), limits)
+        # Files compared here may be untrusted workspace content: resvg would otherwise read absolute
+        # <image href> paths from disk and rasterize any declared size before Limits apply.
+        return render_svg(*sanitize_svg(data, limits))
     if suffix == ".pdf":
         try:
             import pypdfium2

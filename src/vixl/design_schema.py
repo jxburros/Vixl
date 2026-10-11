@@ -71,6 +71,11 @@ def schemas(add):
                 **N,
                 "description": "arc: end angle in degrees, clockwise from start_angle; 360 or more past it is the full circle/ring. Default start_angle + 360.",
             },
+            "closed": {
+                **B,
+                "description": "arc: false draws only the curve, an open stroke with line_cap and no default fill "
+                "(progress arcs, sound waves); default true, a wedge or donut segment closed to the centre.",
+            },
             **trim_schema(),
             **catalog_schema(),
             **stroke_schema(),
@@ -82,7 +87,8 @@ def schemas(add):
                             "of at its topmost member's slot."},
                   "below": {**S, "description": "Place the new group directly below this layer (same parent)."}},
         ["name", "targets"])
-    add("ungroup")
+    add("ungroup", {"force": {"type": "boolean", "description": "Ungroup a declared object too, dropping its object "
+                              "record (its parts keep their names); without it an object refuses"}})
     from .reparent import schema as reparent_schema
 
     reparent_schema(add)

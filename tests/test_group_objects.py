@@ -238,7 +238,8 @@ def test_layer_intent_cli_covers_every_field_and_compact_inspect_shows_them():
     from vixl.schema import _properties
 
     op = compile_command("layer-intent tail --role title --allow-overlap body --tags paw fur --allow-crop "
-                         "--color-vision-safe --detached-ok")
+                         "--color-vision-safe --detached-ok --waive contrast --literal-text --alt 'A curled tail' "
+                         "--no-decorative")
     fields = set(_properties()["layer-intent"]) - {"type", "targets"}
     assert fields <= set(op), sorted(fields - set(op))
     assert op["role"] == "title"
@@ -250,4 +251,5 @@ def test_layer_intent_cli_covers_every_field_and_compact_inspect_shows_them():
     brief = summarize(p, "tail")
     assert brief["role"] == "decoration" and brief["tags"] == ["fur", "paw"]
     assert brief["detached_ok"] and brief["allow_crop"] and brief["color_vision_safe"]
+    assert brief["waive"] == [{"check": "contrast"}]
     assert "detached_ok" not in summarize(p, "body")

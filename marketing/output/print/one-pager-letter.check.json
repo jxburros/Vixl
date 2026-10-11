@@ -1,67 +1,80 @@
 {
-  "issues": [
-    {
-      "check": "coverage",
-      "severity": "warning",
-      "action": "informational",
-      "layer": null,
-      "message": "'grid' is inside a repeated group; geometry checks cover its base instance. Visually inspect the repeated instances."
-    },
-    {
-      "check": "bounds",
-      "severity": "info",
-      "action": "informational",
-      "layer": null,
-      "message": "'glow' bleeds off the canvas edge (marked as an intentional crop)"
-    },
-    {
-      "check": "safe_area",
-      "severity": "warning",
-      "action": "review",
-      "layer": null,
-      "message": "'band' extends outside the safe area"
-    },
-    {
-      "check": "safe_area",
-      "severity": "info",
-      "action": "informational",
-      "layer": null,
-      "message": "'glow' extends outside the safe area (intentional crop or bleed)"
-    },
-    {
-      "check": "safe_area",
-      "severity": "info",
-      "action": "informational",
-      "layer": null,
-      "message": "'grid' extends outside the safe area (intentional crop or bleed)"
-    },
-    {
-      "check": "safe_area",
-      "severity": "info",
-      "action": "informational",
-      "layer": null,
-      "message": "'grid-row' extends outside the safe area (intentional crop or bleed)"
-    },
-    {
-      "check": "legibility",
-      "severity": "warning",
-      "action": "review",
-      "layer": null,
-      "message": "'sub' body measure is 82 characters; aim for 30\u201375 characters per line"
-    },
-    {
-      "check": "links",
-      "severity": "info",
-      "action": "informational",
-      "layer": null,
-      "message": "'logo' links to 'assets/brand/ripple/Editable-Vixl/horizontal-reverse.vixl', outside this document's folder; copying the folder elsewhere would break the link (keep sources beside the document, or relink with links-relink)"
-    },
-    {
-      "check": "links",
-      "severity": "info",
-      "action": "informational",
-      "layer": null,
-      "message": "'foot-logo' links to 'assets/brand/ripple/Editable-Vixl/horizontal-color.vixl', outside this document's folder; copying the folder elsewhere would break the link (keep sources beside the document, or relink with links-relink)"
+  "passed": true,
+  "errors": 0,
+  "warnings": 0,
+  "info": 0,
+  "by_action": {
+    "fix": [],
+    "review": [],
+    "informational": []
+  },
+  "outcome": {
+    "state": "validated",
+    "execution": "completed",
+    "validation": "passed",
+    "review": "not_required",
+    "review_reasons": [],
+    "validated_by": [
+      "design checks"
+    ]
+  },
+  "issues": [],
+  "checked": {
+    "checks": [
+      "bounds",
+      "flow",
+      "overlap",
+      "contrast",
+      "fonts",
+      "print"
+    ],
+    "layers_checked": 59,
+    "layers_total": 59,
+    "text_layers": 18
+  },
+  "suites": {
+    "canvas": {
+      "version": 1,
+      "suite_hash": "5104b11dce1e7c425ee6492031842ce0b837961935840c27b641b9f5b55822b8",
+      "passed": true,
+      "status": "passed",
+      "errors": 0,
+      "needs_review": 0,
+      "coverage": {
+        "mode": "still",
+        "times": [
+          null
+        ]
+      },
+      "results": [
+        {
+          "id": "width",
+          "status": "passed",
+          "severity": "error",
+          "time": null,
+          "expected": 1275,
+          "actual": 1275
+        },
+        {
+          "id": "height",
+          "status": "passed",
+          "severity": "error",
+          "time": null,
+          "expected": 1650,
+          "actual": 1650
+        }
+      ],
+      "source": "document",
+      "outcome": {
+        "state": "validated",
+        "execution": "completed",
+        "validation": "passed",
+        "review": "not_required",
+        "review_reasons": [],
+        "validated_by": [
+          "suite"
+        ]
+      }
     }
-  ]
+  }
 }

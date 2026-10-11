@@ -625,3 +625,263 @@ def test_plan_reports_lines_too_wide_for_an_unwrapped_lyric(tmp_path):
              {"type": "text", "name": "lyric", "text": "Lyric", "size": 12, "color": "white", "x": 8, "y": 30}])
     p.save(tmp_path / "style.vixl")
     assert [w for w in plan(request(), tmp_path)["warnings"] if w["code"] == "lyric_too_wide"]
+
+
+# Section backgrounds, template motion, per-cue animation, lead-in and end card, long renders ---------
+
+
+def test_a_template_without_backgrounds_gets_one_note_instead_of_a_warning_per_section():
+    p = Project(50, 50)
+    p.apply([{"type": "text", "name": "lyric", "text": "x"}, {"type": "solid", "name": "backdrop"}])
+    sections = [{"name": "verse"}, {"name": "chorus"}, {"name": "chorus"}, {"name": "bridge"}]
+    report = validate_template(p, sections)
+    assert report["warnings"] == []
+    assert [note["code"] for note in report["notes"]] == ["no_section_backgrounds"]
+    assert report["notes"][0]["severity"] == "info"
+    assert validate_template(p, [])["notes"] == []
+    # One bg-* layer shows the template wants per-section backgrounds, so gaps warn again.
+    p.apply({"type": "solid", "name": "bg-chorus"})
+    report = validate_template(p, sections)
+    assert [w["section"] for w in report["warnings"]] == ["verse", "bridge"] and report["notes"] == []
+
+
+@needs_ffmpeg
+def test_plan_reports_the_background_note_once(tmp_path):
+    from vixl.lyrics import plan
+
+    (tmp_path / "song.lrc").write_text(LRC + "[00:10.00][Bridge]\n", encoding="utf-8")
+    write_audio(tmp_path / "song.wav")
+    p = Project(160, 90, "#101018")
+    p.apply([{"type": "text", "name": "lyric", "text": "Lyric", "size": 12, "color": "white", "x": 8, "y": 30},
+             {"type": "text-layout", "target": "lyric", "width": 144, "height": 36, "fit": True}])
+    p.save(tmp_path / "style.vixl")
+    report = plan(request(), tmp_path)
+    assert not [w for w in report["warnings"] if w["code"] == "unmatched_section"]
+    assert [n["code"] for n in report["notes"]] == ["no_section_backgrounds"]
+
+
+def motion_template(workspace, *operations):
+    template(workspace / "style.vixl", operations=[
+        {"type": "shape", "shape": "rectangle", "name": "flame", "width": 10, "height": 10, "x": 2, "y": 60, "fill": "red"},
+        {"type": "keyframe", "target": "flame", "property": "rotation", "time": 0, "value": 0},
+        {"type": "keyframe", "target": "flame", "property": "rotation", "time": 11000, "value": 90},
+        {"type": "keyframe", "target": "cue-fire", "property": "rotation", "time": 0, "value": 0},
+        {"type": "keyframe", "target": "cue-fire", "property": "rotation", "time": 500, "value": 20},
+        {"type": "keyframe", "target": "lyric", "property": "opacity", "time": 0, "value": 0.5},
+        *operations,
+    ])
+
+
+@needs_ffmpeg
+def test_template_motion_survives_the_build(workspace):
+    motion_template(workspace)
+    report = build(request(build="b.vixl", lead=0), workspace)
+    built = Project.load(workspace / "b.vixl")
+    # A layer the build does not drive keeps its keys; so does a cue layer's own property.
+    assert keys(built, "flame", "rotation") == [(0, 0), (11000, 90)]
+    assert keys(built, "cue-fire", "rotation") == [(0, 0), (500, 20)]
+    assert frame(built, 5500)["flame"]["rotation"] == pytest.approx(45, abs=1)
+    # What the build writes wins, and says so.
+    assert keys(built, "lyric", "opacity")[0] == (0, 0.0)
+    replaced = next(w for w in report["warnings"] if w["code"] == "template_track_replaced")
+    assert replaced["tracks"] == [{"layer": "lyric", "property": "opacity"}]
+    assert report["template_tracks"] == {"kept": 2, "replaced": 1}
+
+
+@needs_ffmpeg
+def test_replay_restarts_a_cue_layers_own_keys_in_each_window(workspace):
+    (workspace / "two.lrc").write_text("[00:01.00]fire one\n[00:03.00]calm\n[00:06.00]fire two\n[00:09.00]calm\n")
+    motion_template(workspace)
+    report = build(request(lyrics="two.lrc", build="b.vixl", lead=0, cue_animation={"replay": True}), workspace)
+    assert report["cues"]["cue-fire"] == [[1000, 3000], [6000, 9000]]
+    built = Project.load(workspace / "b.vixl")
+    assert keys(built, "cue-fire", "rotation") == [(1000, 0), (1500, 20), (6000, 0), (6500, 20)]
+    assert 0 < frame(built, 1250)["cue-fire"]["rotation"] < 20
+    assert frame(built, 6250)["cue-fire"]["rotation"] == frame(built, 1250)["cue-fire"]["rotation"]
+    assert keys(built, "flame", "rotation") == [(0, 0), (11000, 90)]  # replay is for cue layers only
+
+
+@needs_ffmpeg
+def test_plan_exposes_cue_and_section_windows_and_line_phases(workspace):
+    from vixl.lyrics import plan
+
+    report = plan(request(lead=0, animation={"in": "fade-in", "out": "fade-out", "duration": 200}), workspace)
+    assert report["cues"] == {"cue-fire": [[8100, 12000]]}
+    assert report["section_windows"] == {"chorus": [[5300, 12000]]}
+    first = report["lines"][0]
+    assert (first["show"], first["settled"], first["exit"], first["hide"]) == (1000, 1200, 3299, 3500)
+    # A line held into its repeat has no exit of its own; the repeat has no entry.
+    held, repeat = report["lines"][3], report["lines"][4]
+    assert held["exit"] == held["hide"] and repeat["settled"] == repeat["show"]
+
+
+def cue_template(workspace):
+    template(workspace / "style.vixl", operations=[
+        {"type": "shape", "shape": "ellipse", "name": "cue-driving", "width": 10, "height": 10, "x": 2, "y": 2, "fill": "blue"},
+    ])
+
+
+@needs_ffmpeg
+def test_each_cue_layer_can_have_its_own_animation(workspace):
+    cue_template(workspace)
+    settings = {"in": "fade-in", "out": "fade-out", "duration": 200,
+                "cues": {"cue-driving": {"in": "slide-in-down", "duration": 400, "motion": "sweep", "amount": 8}}}
+    build(request(build="b.vixl", lead=0, cue_animation=settings), workspace)
+    built = Project.load(workspace / "b.vixl")
+    # cue-fire uses the shared settings: a 200 ms fade and no sweep.
+    assert (8300, 1.0) in keys(built, "cue-fire", "opacity") and keys(built, "cue-fire", "rotation") == []
+    # cue-driving slides down over 400 ms and sweeps, and still fades out with the shared exit.
+    driving = keys(built, "cue-driving", "translate-y")
+    assert driving[0][0] == 5300 and driving[0][1] < 0 and (5700, 0.0) in driving
+    assert keys(built, "cue-driving", "rotation")[0] == (5300, -8.0)
+    assert keys(built, "cue-driving", "opacity")[-1] == (7800, 0.0)
+    assert built.state["lyric_build"]["options"]["cue_animation"]["cues"]["cue-driving"]["duration"] == 400
+
+
+@needs_ffmpeg
+def test_per_cue_overrides_are_checked_and_part_of_the_build(workspace):
+    from vixl.lyrics import export, plan
+
+    cue_template(workspace)
+    with pytest.raises(VixlError) as error:
+        plan(request(cue_animation={"cues": {"cue-cell": {"in": "fade"}}}), workspace)
+    assert error.value.details["allowed"] == ["cue-driving", "cue-fire"] and "cue-cell" in str(error.value)
+    for bad, words in (({"fire": {}}, "not a cue layer name"), ({"cue-fire": {"cues": {}}}, "takes"),
+                       ({"cue-fire": {"motion": "spin"}}, "cue_animation.cues.cue-fire.motion"),
+                       ({"cue-fire": {"replay": "yes"}}, "replay")):
+        with pytest.raises(VixlError, match=words):
+            plan(request(cue_animation={"cues": bad}), workspace)
+    fields = dict(build="b.vixl", quality="draft", fps=4, start=1000, end=2000, output="a.mp4")
+    build(request(build="b.vixl", fps=4, cue_animation={"cues": {"cue-fire": {"in": "fade"}}}), workspace)
+    edited = Project.load(workspace / "b.vixl")
+    edited.apply({"type": "opacity", "target": "intro", "value": 0.5})
+    edited.save(workspace / "b.vixl")
+    with pytest.raises(VixlError) as stale:
+        export(request(**fields, cue_animation={"cues": {"cue-fire": {"in": "pop"}}}), workspace)
+    assert stale.value.code == "build_stale" and stale.value.details["changed"] == ["cue_animation"]
+
+
+def test_lead_in_and_tail_pad_the_video_and_move_every_line():
+    parsed = parse_lrc("[00:00.10]first\n[00:02.00][Verse]\n[00:02.00]second\n")
+    plain = timing(parsed, {"lead": 0, "max_hold": 60000}, 5_000)
+    padded = timing(parsed, {"lead": 0, "max_hold": 60000, "lead_in": 3000, "tail": 4000}, 5_000)
+    assert [line["show"] for line in padded["lines"]] == [line["show"] + 3000 for line in plain["lines"]]
+    assert padded["sections"][0]["start"] == 5000 and padded["sections"][0]["end"] == 12_000
+    assert (padded["end"], padded["video_ms"], padded["audio_end"]) == (12_000, 12_000, 8000)
+    # The last line holds into the tail unless it should end with the song.
+    assert padded["lines"][-1]["hide"] == 12_000
+    ended = timing(parsed, {"lead": 0, "max_hold": 60000, "lead_in": 3000, "tail": 4000, "end_at_audio": True}, 5_000)
+    assert ended["lines"][-1]["hide"] == 8000
+    with pytest.raises(VixlError, match="after the end of the video"):
+        timing(parsed, {"lead_in": 1000, "end": 7000}, 5_000)
+    with pytest.raises(VixlError) as error:
+        timing(parsed, {"lead_in": 60_000, "tail": 60_000}, 590_000)
+    assert error.value.code == "resource_limit"
+
+
+def test_film_spec_starts_the_song_after_the_lead_in():
+    from vixl.lyrics import film_spec
+
+    report = {"start": 0, "end": 9000, "video_ms": 9000, "lead_in": 2000, "width": 16, "height": 16, "fps": 10}
+    spec = film_spec({"build": "b.vixl", "audio": "song.wav"}, report)
+    assert spec["audio"][0]["start"] == 2000 and spec["audio"][0]["trim"] == 0
+    later = film_spec({"build": "b.vixl", "audio": "song.wav"}, {**report, "start": 5000})
+    assert later["audio"][0]["start"] == 0 and later["audio"][0]["trim"] == 3000
+
+
+@needs_ffmpeg
+def test_end_card_and_hidden_intro_warnings(workspace):
+    from vixl.lyrics import plan
+
+    template(workspace / "style.vixl", operations=[
+        {"type": "text", "name": "outro", "text": "Thanks", "size": 12, "color": "white", "x": 10, "y": 50}])
+    # The first line shows at 850 ms and the last one holds to the end: neither card has room.
+    codes = [w["code"] for w in plan(request(), workspace)["warnings"]]
+    assert "intro_hidden" in codes and "outro_hidden" in codes
+    padded = dict(lead_in=3000, tail=4000, end_at_audio=True)
+    codes = [w["code"] for w in plan(request(**padded), workspace)["warnings"]]
+    assert "intro_hidden" not in codes and "outro_hidden" not in codes
+    report = build(request(build="b.vixl", lead=0, animation={"duration": 200}, **padded), workspace)
+    assert report["video_ms"] == 19_000 and report["lead_in"] == 3000 and report["template"]["outro"]
+    assert report["lines"][-1]["hide"] == 15_000  # the song (12 s) ends 15 s into the video
+    built = Project.load(workspace / "b.vixl")
+    assert keys(built, "outro", "visible") == [(0, False), (15_000, True)]
+    assert frame(built, 14_000)["outro"]["visible"] is False
+    assert 0 < frame(built, 15_100)["outro"]["opacity"] < 1  # it fades in like the lyric
+    assert frame(built, 16_000)["outro"]["opacity"] == 1
+    assert frame(built, 2000)["intro"]["visible"] and frame(built, 2000)["lyric"]["opacity"] == 0
+    assert built.state["timeline"]["duration"] == 19_000
+    assert built.state["lyric_build"]["options"]["lead_in"] == 3000
+
+
+def test_camera_poses_follow_the_whole_video_in_every_window():
+    from vixl.lyrics import camera_window
+
+    camera = {"from": [0.5, 0.5, 1], "to": [0.3, 0.5, 2]}
+    assert camera_window(camera, 0, 10_000, 10_000, 10) == camera  # a full render keeps the requested poses
+    first = camera_window(camera, 0, 5000, 10_000, 10)
+    second = camera_window(camera, 5000, 5000, 10_000, 10)
+    step = (2 - 1) / 99  # zoom per frame over the full video's 100 frames
+    assert first["from"] == [0.5, 0.5, 1] and second["to"] == [0.3, 0.5, 2]
+    assert first["to"][2] == pytest.approx(1 + 49 * step) and second["from"][2] == pytest.approx(1 + 50 * step)
+    assert second["from"][0] - first["to"][0] == pytest.approx(-0.2 / 99)
+
+
+@needs_ffmpeg
+def test_segmented_export_resumes_and_joins_with_the_audio(workspace):
+    from vixl.film import export_segments
+    from vixl.lyrics import export
+
+    result = export(request(build="b.vixl", output="song.mp4", quality="draft", fps=4, segments=2000, end=7000), workspace)
+    assert result["video"]["segments"] == {"parts": 4, "reused": 0, "rendered": 4, "frames_per_part": 8}
+    assert result["video"]["frames"] == 28 and result["verification"]["status"] == "passed"
+    assert not (workspace / ".song.mp4.parts").exists()  # the parts go once the video is published
+    spec = {"version": 1, "width": 160, "height": 90, "fps": 4, "quality": "draft",
+            "shots": [{"source": "b.vixl", "duration": 7000}],
+            "audio": [{"source": "song.wav", "start": 0, "trim": 0, "volume": 1}]}
+
+    def stop_after_two_parts():
+        return (workspace / ".again.mp4.parts" / "part-0001.mp4").exists()
+
+    with pytest.raises(VixlError) as error:
+        export_segments(spec, workspace, workspace / "again.mp4", 2000, cancelled=stop_after_two_parts)
+    assert error.value.code == "cancelled" and not (workspace / "again.mp4").exists()
+    assert sorted(p.name for p in (workspace / ".again.mp4.parts").glob("part-*")) == ["part-0000.mp4", "part-0001.mp4"]
+    resumed = export_segments(spec, workspace, workspace / "again.mp4", 2000)
+    assert resumed["segments"]["reused"] == 2 and resumed["segments"]["rendered"] == 2 and resumed["frames"] == 28
+    probe = subprocess.run(["ffprobe", "-v", "error", "-count_frames", "-show_entries", "stream=codec_type,nb_read_frames",
+                            "-of", "json", str(workspace / "again.mp4")], capture_output=True, check=True)
+    streams = {s["codec_type"]: s for s in json.loads(probe.stdout)["streams"]}
+    assert set(streams) == {"video", "audio"} and int(streams["video"]["nb_read_frames"]) == 28
+    # Parts left by a different spec are discarded, not joined.
+    (workspace / ".third.mp4.parts").mkdir()
+    (workspace / ".third.mp4.parts" / "manifest.json").write_text('{"key": "something else"}')
+    (workspace / ".third.mp4.parts" / "part-0000.mp4").write_bytes(b"stale")
+    assert export_segments(spec, workspace, workspace / "third.mp4", 2000)["segments"]["reused"] == 0
+
+
+def test_video_verification_reports_mismatches_and_skips_without_ffprobe(tmp_path, monkeypatch):
+    import vixl.film as film
+
+    rendered = {"width": 160, "height": 90, "fps": 24, "frames": 5170, "sample_rate": 48000, "channels": 2}
+    probe = {"streams": [{"codec_type": "video", "codec_name": "h264", "width": 160, "height": 90,
+                          "r_frame_rate": "24/1", "nb_frames": "5170", "duration": "215.416667"}],
+             "format": {"duration": "215.416667"}}
+    monkeypatch.setattr(film.shutil, "which", lambda name: "/usr/bin/" + name)
+    monkeypatch.setattr(film, "_probe_media", lambda ffprobe, path: probe)
+    report = film.verify_video(tmp_path / "x.mp4", rendered, requested_ms=215_400)
+    assert report["status"] == "failed"
+    assert [c["check"] for c in report["checks"] if not c["passed"]] == ["audio_stream"]
+    # 5,170 frames at 24 fps run 16.67 ms past the song: frame quantisation, reported, not a failure.
+    assert report["quantization"]["delta_ms"] == pytest.approx(16.667, abs=0.001)
+    assert report["quantization"]["within_one_frame"] is True
+    probe["streams"].append({"codec_type": "audio", "codec_name": "aac", "sample_rate": "44100", "channels": 2,
+                             "duration": "215.4"})
+    report = film.verify_video(tmp_path / "x.mp4", rendered, requested_ms=215_400)
+    assert [c["check"] for c in report["checks"] if not c["passed"]] == ["sample_rate"]
+    assert film.verify_video(tmp_path / "x.mp4", {**rendered, "sample_rate": 44100}, requested_ms=215_400)["passed"]
+    monkeypatch.setattr(film, "_probe_media", lambda ffprobe, path: None)
+    assert film.verify_video(tmp_path / "x.mp4", rendered)["status"] == "failed"
+    monkeypatch.setattr(film.shutil, "which", lambda name: None)
+    skipped = film.verify_video(tmp_path / "x.mp4", rendered)
+    assert skipped["status"] == "skipped" and skipped["passed"] is None

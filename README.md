@@ -5,21 +5,33 @@
 
 # Vixl
 
-**An editable image-document engine for AI agents and programmable creative work.**
+**Ideas become editable.** A design engine for AI agents.
 
-Create, inspect, edit, measure and export layered designs through MCP, CLI, Python or REST.
-No graphical display is required. Text, shapes, masks, effects, variables, constraints,
-pages and history stay editable in a portable `.vixl` master.
+Ask an AI for a poster and you usually get a picture of a poster. Vixl gives your agent the
+real thing: layers, live text, fonts, a history you can rewind, and a `.vixl` master you can
+still change next week. It checks contrast, spacing and bleed before export, so nobody finds
+out at the print shop.
 
-Current tagged release: **0.24.0**. See the [changelog](CHANGELOG.md#0240) for release notes.
+Works through MCP, CLI, Python or REST. No windows required.
+
+Current tagged release: **0.25.0**. See the [changelog](CHANGELOG.md#0250) for release notes.
 Run `vixl --version` to check your runtime;
 record the Git commit when using a source checkout.
 
 **[Documentation home](docs/README.md)** · [Getting started](docs/getting-started.md) ·
 [Visual gallery](docs/gallery.md) · [Command reference](docs/commands.md) ·
-[Downloads](https://github.com/jxburros/Vixl/releases/latest)
+[Downloads](https://github.com/jxburros/Vixl/releases/latest) · [Marketing pack](marketing/README.md)
 
 ![A diagram created entirely with editable Vixl layers](docs/assets/generated/workflow.png)
+
+## Programmable. Editable. Checked.
+
+- **Programmable.** One JSON operation format behind MCP, the CLI, Python and REST. Batches of up to
+  10,000 operations apply atomically, so a half-finished edit never lands.
+- **Editable.** Text stays text, effects stay a stack, and history branches. Charts open in PowerPoint
+  as real charts, forms export as PDFs people can fill in, and every piece ships with its master.
+- **Checked.** Contrast, spacing, bounds, fonts, trim and bleed are measured, your brief can be saved as
+  a test suite, and you preview the render before anything is exported.
 
 ## What you can make
 
@@ -27,11 +39,11 @@ record the Git commit when using a source checkout.
 | --- | --- |
 | Posters, social graphics and branded variants | [Campaign tutorial](docs/tutorials/campaign.md), [sizes/layouts](docs/sizes-and-layouts.md), [brands](docs/brands.md), [design styles](docs/styles.md), [finishing looks](docs/looks.md), [CSV merge to print sheets](docs/imposition.md), [linked documents](docs/linked-documents.md) |
 | Charts, diagrams and infographics | [Editable chart tutorial](docs/tutorials/charts.md), [data-bound charts](docs/charts.md), [flowcharts and diagrams](docs/diagrams.md), [design tools](docs/design-tools.md) |
-| Photo edits, drawings and painted artwork | [Filters](docs/artistic-filters.md), [drawing cleanup](docs/drawing.md), [brushes](docs/brushes-and-animation.md), [organic shapes](docs/organic.md), [irregularity and torn edges](docs/irregular.md) |
+| Photo edits, drawings and painted artwork | [Filters](docs/artistic-filters.md), [drawing cleanup](docs/drawing.md), [brushes](docs/brushes-and-animation.md), [organic shapes](docs/organic.md), [irregularity and torn edges](docs/irregular.md), [irregular image frames and paint drips](docs/design-tools.md#irregular-image-frames-and-paint-simulation) |
 | Presentations, carousels and booklets | [Forms and decks tutorial](docs/tutorials/forms-and-decks.md), [slides/pages](docs/slides.md), [HTML presenter](docs/presenter.md), [rich text](docs/rich-text.md), [text flow](docs/text-flow.md) |
 | Registration forms and filled copies | [Forms](docs/forms.md), including fillable PDFs and CSV-driven output |
-| Motion, sprites and lyric videos | [Character rigs, audio and cameras](docs/animation-authoring.md), [Motion tutorial](docs/tutorials/motion.md), [pixel animation](docs/pixel-animation-spacing.md), [lyric videos](docs/lyric-video.md) |
-| Checked production and collaboration | [Production workflows](docs/production.md), [studio](docs/studio.md), [agent resources](docs/agent-resources.md) |
+| Motion, sprites and lyric videos | [Character rigs, audio and cameras](docs/animation-authoring.md), [six-second video templates](docs/animation-authoring.md#joint-pose-keys-and-short-templates), [app animation packages](docs/animation-authoring.md#app-animation-packages), [Motion tutorial](docs/tutorials/motion.md), [pixel animation](docs/pixel-animation-spacing.md), [lyric videos](docs/lyric-video.md) |
+| Checked production and collaboration | [Production workflows](docs/production.md), [studio](docs/studio.md), [agent resources](docs/agent-resources.md), [Git-reviewable source folders](docs/commands.md#reviewing-editable-projects-in-git), [local screen capture](docs/commands.md#local-desktop-capture) |
 | Reusable containers, templates and comics | [Container and template library](docs/containers-and-templates.md) |
 | Editable emoji libraries and custom packs | [Emoji catalog, templates, replacements and Discord/Slack exports](docs/emojis.md) |
 | Vector drawing and precise placement | [Vector paths and shape catalog](docs/vector-paths.md), [spatial queries and transforms](docs/spatial-transforms.md) |
@@ -72,6 +84,8 @@ rollback, agent bundles and packaging.
 
 ## Make your first design
 
+Six commands, one checked design, still fully editable:
+
 ```bash
 vixl new 800x600 --background '#18283b' -o hello.vixl
 vixl -p hello.vixl text add 'Hello, Vixl' --name title --size 64 --color '#ffffff'
@@ -88,6 +102,8 @@ checkpoints, JSON batches and Python. Use the bundled font for proofing; choose 
 
 ## Connect an agent
 
+Point your agent at a workspace folder and let it work:
+
 ```bash
 vixl mcp --workspace . --tools core --schema slim
 ```
@@ -95,7 +111,7 @@ vixl mcp --workspace . --tools core --schema slim
 For a pinned tagged runtime with uv:
 
 ```bash
-uvx --from https://github.com/jxburros/Vixl/archive/refs/tags/v0.24.0.tar.gz vixl mcp --workspace . --tools core --schema slim
+uvx --from https://github.com/jxburros/Vixl/archive/refs/tags/v0.25.0.tar.gz vixl mcp --workspace . --tools core --schema slim
 ```
 
 The workspace must exist. Use `--tools compact --schema slim` for consolidated workflow
@@ -166,6 +182,7 @@ individuals and for companies with fewer than 100 people and under US$1M (2019) 
 companies need a commercial licence from the licensor. Copies of Vixl must carry the licence and
 its `Required Notice:` lines. If Vixl helped make your work, please credit it ("Made with Vixl").
 
-Bundled assets keep their own terms: DejaVu Sans ([font licence](src/vixl/data/FONT-LICENSE.txt))
+Bundled assets keep their own terms: DejaVu Sans ([font licence](src/vixl/data/FONT-LICENSE.txt)), the Noto Sans,
+Noto Sans Symbols, Noto Sans Symbols 2 and Noto Sans Math fallback fonts ([SIL OFL 1.1](src/vixl/data/NOTO-LICENSE.txt)),
 the xkcd colour names (CC0), and VIXL Line emoji artwork adapted from OpenMoji
 ([CC BY-SA 4.0](src/vixl/data/emojis/LICENSE.txt); [Unicode data license](src/vixl/data/emojis/UNICODE-LICENSE.txt)).

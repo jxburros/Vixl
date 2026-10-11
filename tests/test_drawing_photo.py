@@ -395,7 +395,10 @@ def sketch_rays(project):
 @pytest.mark.skipif(not SKETCH.exists(), reason="the tool-comparison fixtures are not in this checkout")
 def test_the_t11_sketch_closes_its_house_corner_and_keeps_its_rays():
     p = Project(2000, 1450, "#ffffff")
-    p.apply([{"type": "drawing", "action": "import", "path": str(SKETCH), "name": "art", "x": 0, "y": 0},
+    # Cropped to the ink, as clean did by default before it kept the paper's extent: the corner below is in
+    # those coordinates.
+    p.apply([{"type": "drawing", "action": "import", "path": str(SKETCH), "name": "art", "x": 0, "y": 0,
+              "settings": {"crop": True}},
              {"type": "drawing", "action": "vectorize", "target": "art", "settings": {"width": "uniform"}}])
     report = drawing.report(p, "art")
     assert report["paper_found"] and abs(report["tilt_corrected"] + 2.2) < 0.4, "the desk is left out and the tilt found"

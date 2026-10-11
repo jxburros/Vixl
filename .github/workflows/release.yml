@@ -37,6 +37,12 @@ jobs:
           python -c "import os; from vixl import __version__; assert os.environ['RELEASE_TAG'] == 'v' + __version__"
       - run: python -m build
       - run: python distribution/package_extensions.py
+      - name: Export the design catalog bundle for host applications
+        # Stable asset names, so a host can fetch releases/latest/download/vixl-catalog.json.
+        run: |
+          python -m vixl catalog export --out dist/vixl-catalog.json
+          python -m vixl catalog schema --out dist/vixl-catalog.schema.json
+          python -c "import json, jsonschema; jsonschema.validate(json.load(open('dist/vixl-catalog.json')), json.load(open('dist/vixl-catalog.schema.json')))"
       - uses: actions/upload-artifact@v4
         with:
           name: python-distributions
@@ -45,6 +51,7 @@ jobs:
             dist/*.tar.gz
             dist/*.mcpb
             dist/*-claude-code.zip
+            dist/vixl-catalog*.json
   windows:
     runs-on: windows-latest
     steps:

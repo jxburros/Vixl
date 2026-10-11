@@ -40,6 +40,8 @@ def check_state(project, state):
     require(all(isinstance(f, str) and (f in project.assets or f == "DejaVuSans.ttf") for f in fallbacks), "Fallback fonts must be embedded or bundled", "invalid_project")
     from .emojis import validate as validate_emojis
     validate_emojis(project)
+    from .waivers import validate_state as validate_waivers
+    validate_waivers(state)
     layers = state["layers"]
     require(
         isinstance(layers, list) and len(layers) <= project.limits.max_layers,
@@ -65,6 +67,7 @@ def check_state(project, state):
         require(isinstance(layer.get("allow_crop", False), bool), "Invalid crop intent", "invalid_project")
         require(isinstance(layer.get("color_vision_safe", False), bool), "Invalid color vision intent", "invalid_project")
         require(isinstance(layer.get("detached_ok", False), bool), "Invalid detached intent", "invalid_project")
+        require(isinstance(layer.get("literal_text", False), bool), "Invalid literal text intent", "invalid_project")
         ids.add(layer["id"])
         names.add(layer["name"])
         require(
@@ -130,6 +133,10 @@ def check_state(project, state):
             from .links import validate as validate_link
 
             validate_link(layer, state)
+        if "table" in layer and layer["type"] == "group":
+            from .tables import validate_table
+
+            validate_table(layer, state)
         if "chart" in layer:
             from .charts import validate_chart
 
@@ -187,6 +194,11 @@ def check_state(project, state):
     from .pages import validate_pages
 
     validate_pages(project, state)
+    from .objects import validate_layers as validate_objects
+    from .accessibility import validate as validate_accessibility
+
+    validate_objects(project, state)
+    validate_accessibility(project, state)
     require(not (ids & names), "Layer names cannot collide with IDs", "invalid_project")
     require(
         state["active_layer"] is None or state["active_layer"] in ids,

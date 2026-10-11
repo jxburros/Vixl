@@ -1,6 +1,6 @@
 # CLI reference
 
-Vixl is headless and designed for autonomous AI agents; humans can use the same interfaces. See [new resources and SVG](resources.md) for 0.11 additions.
+Vixl is a headless design engine for AI agents; people can drive the same interfaces. See [new resources and SVG](resources.md) for 0.11 additions.
 
 ```text
 vixl [GLOBAL OPTIONS] COMMAND [ARGS]
@@ -10,14 +10,15 @@ vixl COMMAND --help       # exact argument syntax for any editing command
 
 **Global options** (before or after the command): `--project/-p FILE`, `--json` (structured
 errors on stderr), `--allow-linked` (trust linked file references), `--plugins` (enable installed
-filter/provider entry points — trusted code), `--max-pixels N`, `--version`.
+filter/provider entry points — trusted code), `--max-pixels N`, `--detail brief|compact|full`, `--version`.
 
 Agent conventions:
 
 - Always pass `-p FILE.vixl`. Without it Vixl uses the project recorded by `vixl open` in
   `./.vixl-session.json`.
 - Add `--json` so errors are machine-readable: `{"error":"layer_not_found","message":…,"suggestions":[…]}`, exit 1.
-- Editing commands autosave and print a full before/after diff — redirect it if you don't need it.
+- Editing commands autosave and print a compact result (changed values keyed by layer ID); `--detail full` adds
+  before/after snapshots.
 - Quote `#` colors (`'#ff8800'`), JSON arguments, and text.
 - A target is a unique layer name or `lyr_…` ID; most commands default to the active layer when it is omitted.
 - Every editing command below compiles to a canonical operation (see `operations.md`), so
@@ -80,8 +81,8 @@ vixl text add 'Hello' --name title --size 96 --color white [--font path.ttf] [--
 vixl shape rectangle|rounded-rectangle|ellipse|polygon|star|arc|line --name s --width W --height H [--x --y] \
      [--fill C] [--stroke C] [--stroke-width N] [--radius N] [--sides N] [--inner-radius 0.4] \
      [--line-cap butt|round|square] [--trim-start PCT] [--trim-end PCT]
-     [--start-angle -90 --end-angle 70]   # arc: pie wedge / donut segment (0 = 3 o'clock, clockwise)
-vixl frame --path portrait.jpg --name photo --width 400 --height 500 --fit fill|fit [--asset ID]
+     [--start-angle -90 --end-angle 70]   # arc: pie wedge / donut segment (0 = 3 o'clock, clockwise); --open: the curve only
+vixl frame --path portrait.jpg --name photo --width 400 --height 500 --fit fill|fit [--asset ID] [--frame-shape heart | --outline SVG]
 vixl pixel-art --name sprite --width 16 --height 16 [--palette '{".":"transparent","g":"#ffc44d"}'] [--background .]
 vixl pixel-art --name spark --rows '[".w.","www",".w."]' --palette '{".":"transparent","w":"#fff"}'
 vixl adjustment warmth --effects '[{"name":"temperature","amount":40},{"name":"contrast","amount":10}]'
@@ -203,6 +204,8 @@ vixl info --target title                             # contrast of a rendered la
 vixl spacing --targets heading body footer --axis vertical --tolerance 1 [--expected 24] [--check]
 vixl spacing --around body --before heading --after footer
 vixl check [--safe-area 5%] [--avoid X Y W H] [--thumbnail-width 320|off] [--checks overlap contrast] [--strict]
+vixl check --profile final --strict      # draft | review | final: which checks run and which findings fail
+vixl waiver contrast --target ghost --reason "watermark" --expires 2030-12-31   # accept a finding on the record
 vixl validate [instagram-post|instagram-square|story|youtube-thumbnail] [--rules rules.json]
 vixl assert canvas.width == 1920
 vixl assert layer.logo.exists
@@ -214,7 +217,8 @@ vixl diff before.vixl after.png [--out diff.png] [--mode diff|side-by-side] [--t
 All accept `--artboard NAME` / `--comp NAME` where relevant. `--check` (spacing), `check --strict`
 and failing `validate`/`assert` exit nonzero with details (`--json` shows every check). `diff` needs no open
 document: it compares two `.vixl` documents or images (PNG, JPEG, WEBP, TIFF, SVG, PDF) and reports `changed_pixels`,
-`changed_fraction` and `changed_region`; `--max-fraction` makes it exit nonzero above that share.
+`changed_fraction` and `changed_region`; `--max-fraction` makes it exit nonzero above that share. SVG inputs must be
+self-contained (no external `href`/`url()`, no DOCTYPE) and within the pixel limit, as for SVG appearance import.
 
 ## Output
 
@@ -305,6 +309,7 @@ vixl ai remove --as removed ; vixl ai content-aware-fill --prompt '…' ; vixl a
 vixl -p F.vixl serve [--host 127.0.0.1] [--port 8765] [--token-env VIXL_API_TOKEN]
 vixl mcp --workspace DIR [--tools core|ai|compact|all] [--schema slim|full] [--require-document]   # MCP over stdio; default core + slim; core + ai run as two servers; --require-document (or VIXL_REQUIRE_DOCUMENT=1) makes document= mandatory
 vixl update --check | vixl update | vixl update --rollback ; vixl updates status|on|off   # Windows installer only
+vixl cache info | vixl cache clear   # disk render cache (VIXL_RENDER_CACHE=off, VIXL_CACHE_MAX_MB=256); VIXL_PROFILE=1 adds render_profile to results
 vixl upgrade old.vixl [--report] [--pin-fills]   # document saved before 0.21: list layers that render differently; --pin-fills restores white open-shape fills
 ```
 
@@ -341,11 +346,19 @@ vixl -p promo.vixl export-timeline --out banner.gif --colors 64 --fps 12   # sma
 
 Times: ms, `1.5s`, `250ms`, `50%`, or a marker (`vixl marker reveal 1.2s`).
 
+`vixl new` documents roll house style 3, so a new timeline of 10 s or less loops seamlessly (and warns about loop
+seams); for a play-once sequence use `timeline set --duration 3s --loop 1`, or `timeline set --loop-mode off` once the
+timeline exists. Since 0.24.1 the other 0.24 fields have flags too: `animate --intent entrance|exit|loop|emphasis`,
+`timeline set --loop-mode seamless|off [--close]`, `frame --frame-shape heart` or `--outline 'M… Z'`,
+`stack --gap 2u` and `layout apply NAME --gap 1.5u`, and `adapt-layout --size story --recompose`.
+
 
 ### Field-report corrections
 
-Use `schema text shape` for focused schemas, inline JSON or stdin for workflow requests, and batches up to 64 MiB. Workspace resources use the CLI current directory. Ignore `.vixl-session.json` in Git. Multi-size copies: `adapt-layout --sizes instagram-post story --directory out --formats png`; review each output.
+Use `schema text shape` for focused schemas, inline JSON or stdin for workflow requests, and batches up to 64 MiB. Workspace resources use the CLI current directory. Ignore `.vixl-session.json` in Git. Multi-size copies: `adapt-layout --sizes instagram-post story --directory out --formats png`; review each output. Layout recomposition: `adapt-layout --size story --recompose` (or `--options '{"recompose": true}'` with `--sizes`).
 
-For Git review, `unpack design.vixl design-source` writes current state as stable JSON plus assets; `pack design-source reviewed.vixl` validates it and writes a portable archive. History is intentionally omitted. Keep the original for undo and commit external linked sources too.
+For Git review, `unpack design.vixl design-source` writes current state as stable JSON (`project.json`, with asset hashes) plus asset files into a new folder; `pack design-source reviewed.vixl [--overwrite]` validates paths, sizes and hashes and writes a portable archive. History and history-only assets are intentionally omitted; registered fonts are kept. Keep the original for undo and commit external linked sources too.
+
+Emoji: `vixl emoji list|get|template|replace|install|settings|reset|requirements|destinations|export` (`vixl -p F.vixl emoji settings --mode font` prefers the font; bundled art is the default). House style: `vixl roll --house-style 2` replays a 0.23 roll (`1`: 0.20–0.22); documents keep the version they were created with.
 
 `screen-capture` is a shared workflow action with output PNG, optional desktop bbox, Windows window HWND/all_screens and overwrite. It needs an interactive desktop and any OS-required permission. `app-animation-package` takes named source states, a default state, themes, transitions and a new output directory; see production guidance.

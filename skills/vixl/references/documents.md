@@ -68,6 +68,8 @@ A document becomes multi-page with the first `page add`; each page has its own l
   1920×1080 is 13.33 × 7.5 in); `dpi` sets both. The result's `page_size` shows it.
 - Name each slide's title layer `title` so it becomes the PowerPoint title placeholder.
 
+- Notes to a deck in one call: `vixl_workflow("deck-from-markdown", {"markdown": "notes.md", "output": "deck.vixl", "export": ["pptx"]})`. `#`/`##` headings start slides; title, section, quote and content layouts are chosen per slide; fenced `csv` → table, fenced `chart` → chart, `![](img.png)` → frame; `<!-- -->` or `Notes:` → speaker notes; deck checks are reported. Re-run after edits: only changed slides are rebuilt.
+
 Full reference: `docs/slides.md` (HTML presentations: `docs/presenter.md`).
 
 ## Forms
@@ -111,4 +113,4 @@ Full reference: `docs/forms.md`.
 
 ### Field-report corrections
 
-Explicit checks replace defaults: run check() plus deck checks, or combine the lists. passed=false whenever fix findings remain. Mark an intentional safe-area footer with layer-intent allow_crop=true. Proof records failed items and continues; approve only when failed is empty.
+Explicit checks replace defaults: run check() plus deck checks, or combine the lists. passed=false whenever fix findings remain. Mark an intentional safe-area footer with layer-intent allow_crop=true. Accept other deliberate findings with a waiver (layer-intent waive, or the waiver operation) that records a reason and expiry; check(profile="draft"|"review"|"final") sets which findings fail. Proof records failed items and continues; approve only when failed is empty.

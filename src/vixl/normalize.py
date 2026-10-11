@@ -25,6 +25,12 @@ TYPE_ALIASES = {
     "delete": "remove",
     "delete-layer": "remove",
     "merge": "merge-layers",
+    "die-cut-outline": "die-cut",
+    "split-path": "path-split",
+    "path-cut": "path-split",
+    "cut-line": "die-cut",
+    "cut-contour": "die-cut",
+    "sticker-outline": "die-cut",
     "flatten-image": "flatten",
     "translate": "move",
     "set-position": "move",
@@ -67,6 +73,10 @@ TYPE_ALIASES = {
     "diagram-text": "diagram-from-text",
     "move-into": "reparent",
     "adopt": "reparent",
+    "subject": "object",
+    "declare-object": "object",
+    "object-part": "object",
+    "alt-text": "layer-intent",
 }
 SHAPE_TYPES = {
     "rect": ("rectangle", {}),
@@ -119,8 +129,18 @@ FIELD_ALIASES = {
         "alignment": "align",
         "font_family": "font",
         "line_spacing": "spacing",
+        "letter_spacing": "tracking",
+        "letterspacing": "tracking",
+        "char_spacing": "tracking",
+        "character_spacing": "tracking",
+        "case": "text_transform",
+        "text_case": "text_transform",
+        "transform_text": "text_transform",
         "outline_width": "stroke_width",
         "outline_color": "stroke_color",
+        "role": "stage",
+        "text_role": "stage",
+        "type_stage": "stage",
         **{key: "hide_if_empty" for key in ("hide_when_empty", "collapse_if_empty", "collapse_when_empty", "hide_empty")},
     },
     "shape": {
@@ -157,8 +177,8 @@ FIELD_ALIASES = {
     "solid": {"fill": "color", "colour": "color", "fill_color": "color"},
     "gradient": {"from": "start", "to": "end", "start_color": "start", "end_color": "end"},
     "opacity": {"opacity": "value", "amount": "value", "alpha": "value"},
-    "rotate": {"angle": "value", "degrees": "value", "rotation": "value"},
-    "scale": {"factor": "value", "amount": "value"},
+    "rotate": {"angle": "value", "degrees": "value", "rotation": "value", "anchor": "about", "around": "about"},
+    "scale": {"factor": "value", "amount": "value", "about": "anchor", "around": "anchor"},
     "blend": {"mode": "value", "blend": "value", "blend_mode": "value"},
     "rename": {"new_name": "name", "to": "name"},
     "effect": {"effect": "name", "filter": "name", "value": "amount"},
@@ -173,8 +193,22 @@ FIELD_ALIASES = {
                     "maintain_aspect", "keep_ratio")
     },
     "link": {"path": "source", "file": "source", "src": "source", "document": "source", "doc": "source"},
+    # ``type`` names the operation, so the object's kind is never spelled ``type`` here.
+    "object": {"object_kind": "kind", "object_type": "kind", "subject": "kind", "name": "label", "title": "label",
+               "part_name": "part"},
+    "object-place": {"as": "name_as", "rename": "name_as"},
+    "layer-intent": {"alt_text": "alt", "description": "alt", "aria_label": "alt"},
+    "accessibility": {"language": "lang", "locale": "lang", "page_description": "page_alt",
+                      "page_language": "page_lang"},
 }
 FIELD_ALIASES["text-set"] = FIELD_ALIASES["text"]
+# CSS text-transform values and the usual guesses for them.
+TEXT_TRANSFORMS = {
+    **{key: "uppercase" for key in ("uppercase", "upper", "caps", "all-caps", "allcaps", "upper-case")},
+    **{key: "lowercase" for key in ("lowercase", "lower", "lower-case")},
+    **{key: "capitalize" for key in ("capitalize", "capitalise", "title", "title-case", "titlecase")},
+    **{key: "none" for key in ("none", "normal", "as-is", "original")},
+}
 GEOMETRY_TYPES = {
     "qr",
     "barcode",
@@ -194,6 +228,7 @@ GEOMETRY_TYPES = {
     "stack",
     "link",
     "chart",
+    "table",
     "organic",
 }
 CENTER_TYPES = {
@@ -257,6 +292,8 @@ def normalize_operation(operation, properties, known_types, effects, notes, inde
     if kind != original:
         op["type"] = kind
         note(f"type {original!r} → {kind!r}")
+        if kind == "object" and str(original).lower().replace("_", "-") == "object-part" and "action" not in op:
+            op["action"] = "part"
     if not isinstance(kind, str) or kind not in known_types:
         return op
 
@@ -315,10 +352,18 @@ def normalize_operation(operation, properties, known_types, effects, notes, inde
         from .forms import normalize as normalize_field
 
         op = normalize_field(op, note)
+    if kind == "layer-intent" and "allow_low_contrast" in op and "waive" not in op:
+        # The flag agents guess for faint decorative text: a contrast waiver on the layer.
+        op["waive"] = ["contrast"] if op.pop("allow_low_contrast") else []
+        note("allow_low_contrast → waive: ['contrast'] (replaces the layer's waivers)")
     if kind in ("chart", "chart-data"):
         from .charts import normalize as normalize_chart
 
         op = normalize_chart(op, note)
+    if kind in ("table", "table-data"):
+        from .tables import normalize as normalize_table
+
+        op = normalize_table(op, note)
     if kind == "shape" and isinstance(op.get("shape"), str) and op["shape"] not in SHAPES:
         guess = op["shape"].lower().replace("_", "-").replace(" ", "-")
         if guess not in SHAPE_TYPES:
@@ -333,6 +378,12 @@ def normalize_operation(operation, properties, known_types, effects, notes, inde
             for key, value in extra.items():
                 op.setdefault(key, value)
     normalize_opacity(op, kind, note)
+    if isinstance(op.get("text_transform"), str) and "text_transform" in allowed:
+        given = op["text_transform"]
+        case = TEXT_TRANSFORMS.get(given.strip().lower().replace("_", "-").replace(" ", "-"), given)
+        if case != given:
+            note(f"text_transform {given!r} → {case!r}")
+            op["text_transform"] = case
     if kind == "blend" and isinstance(op.get("value"), str) and op["value"] != op["value"].lower():
         op["value"] = op["value"].lower()
     if kind == "effect" and isinstance(op.get("name"), str):

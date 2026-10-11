@@ -142,3 +142,50 @@ A chart is at most 200 categories by 24 series and must fit the document's layer
 12 × 4 stacked chart with every label is about 140 layers. Over the limit the operation fails and
 names the way out (fewer categories, or `value_labels: false`, `markers: false`). A chart that is too small
 for its labels says so; enlarge it or lower `font_size`.
+
+## Tables
+
+`table` lays rows out as a **group of ordinary vector layers** in the same way: cell text, a header
+band, zebra bands and thin rules, sized together so columns line up and rows grow to fit wrapped
+text. The rows stay attached to the group under `table`, and `table-data` changes them on the same
+layers with the same IDs. Menus, price lists, pricing tables, schedules and spec sheets are one
+operation each, and a price change is one more.
+
+```bash
+vixl table --name menu --table '[["Item","Price"],["Espresso",3.25],["Flat white",4.5],["Tea",3]]' --align left,decimal --width 520
+vixl table-data --target menu --set Tea:Price=3.5
+```
+
+```json
+{"type": "table", "name": "menu", "x": 60, "y": 80, "width": 520,
+ "table": [["Item", "Price"], ["Espresso", 3.25], ["Flat white", 4.5], ["Tea", 3]],
+ "columns": [{"width": "1fr"}, {"align": "decimal", "format": "$0.00"}], "zebra": true}
+{"type": "table-data", "target": "menu", "set": [{"row": "Tea", "column": "Price", "value": 3.5}],
+ "append": [{"Item": "Mocha", "Price": 4.75}]}
+```
+
+- **Rows**, once: `table` (a list of rows; the first is the header unless `header: false`) or `csv` (a
+  workspace CSV; `csv_columns` picks and orders columns). `table-data` with `reload: true` rereads the CSV.
+- **Columns**: `columns` holds one `{width, align, format}` per column. `width` is pixels, `auto` (fits
+  its widest cell, the default) or a share of what is left (`"1fr"`, `"2fr"`). With a table `width`,
+  spare room widens the auto columns and a shortfall narrows them toward their longest word (text
+  wraps); a table that still does not fit warns and reports `summary.overflow`. `align` is `left`,
+  `center`, `right` or **`decimal`**: figures share their decimal point, and a whole number ends where
+  the point would be, which is what a price list needs. Numeric columns right-align by default.
+  `format` (or `number_format` for every numeric column) is the Excel-style format charts use.
+- **Look**: `font_size`, `header_font_size`, `header_font` (default the heading role), `body_font`,
+  `text_color`, `header_color`, `header_fill`, `fill`, `zebra` (`true` or a color), `borders`
+  (`horizontal`, the default; `all`, `outer`, `header` or `none`), `border_color`, `border_width`,
+  `padding` and `row_height` (a minimum). `table` with `target` restyles; a `null` option returns to
+  the default.
+- **`table-data`**: `set` (`row` is a body row number from 1 or the text of its first cell, `0` the
+  header; `column` is a number or the header text), `append` (a list of cells or `{column: value}`),
+  `remove_rows`, `add_columns` (`{name, values}`), `remove_columns`, `reload`, or new `table`/`csv` rows.
+  Cells keep their positions, so editing one value moves nothing else.
+- `inspect` the group for `table.summary`: `column_widths`, `row_heights`, `aligns`, `font_size` and `overflow`.
+- **Exports**: PNG, SVG and PDF draw the layers (vector text and rules). **PPTX writes a native table**
+  with the same column widths, row heights, fonts, colors, fills and rules, editable in PowerPoint,
+  Keynote and Google Slides; the export report lists it under `tables` (decimal columns are
+  right-aligned there). A rotated or flipped table, or one whose layers carry effects, exports as its shapes.
+- `check` sees every cell like any other text (contrast is measured in two renders per table).
+  Up to 200 body rows by 24 columns.

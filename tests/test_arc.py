@@ -182,6 +182,7 @@ def test_cli_compiles_arc_options():
                           "--width", "120", "--height", "120", "--fill", "#e2725b"])
     assert op == {"type": "shape", "shape": "arc", "start_angle": -90.0, "end_angle": 30.0, "inner_radius": 0.6,
                   "width": 120, "height": 120, "fill": "#e2725b"}
+    assert compile_command(["shape", "arc", "--open", "--stroke", "red"])["closed"] is False
 
 
 def test_saved_shape_library_keeps_arc_angles(tmp_path, monkeypatch):
@@ -199,3 +200,58 @@ def test_saved_shape_library_keeps_arc_angles(tmp_path, monkeypatch):
         layer = p.layer("again")
         assert layer["shape"] == "arc" and layer["width"] == 40
         assert (layer["start_angle"], layer["end_angle"], layer["inner_radius"]) == (20, 200, 0.4)
+
+
+def open_arc(**extra):
+    p = Project(240, 240, "white")
+    p.apply([{"type": "shape", "shape": "arc", "name": "a", "x": 20, "y": 20, "width": 200, "height": 200,
+              "start_angle": -50, "end_angle": 100, "stroke": "#000000", "stroke_width": 9, "closed": False, **extra}])
+    return p
+
+
+def test_open_arc_strokes_only_the_curve_and_has_no_default_fill():
+    """#605: closed: false draws the curve alone, unfilled, with nothing to the centre."""
+    from vixl.geometry import default_fill, is_open_shape
+
+    p = open_arc()
+    layer = p.layer("a")
+    assert is_open_shape(layer) and default_fill(layer) == "transparent"
+    ink = alpha(p)
+    assert not ink[120, 120] and not ink[89, 146]           # the centre and the radius at -50°
+    assert ink[120, 213]                                    # on the curve at 3 o'clock
+    assert not ink[120, 27]                                 # 180° is outside the sweep
+    closed = alpha(open_arc(closed=True, fill="none"))
+    assert closed[89, 146]                                  # the wedge outline runs along that radius
+    # Round caps have something to cap: the ends reach a little past the butt ends.
+    assert alpha(open_arc(line_cap="round")).sum() > ink.sum()
+
+
+def test_open_arc_is_open_in_svg_pdf_and_pptx():
+    p = open_arc(line_cap="round")
+    svg = p.export(format="SVG").decode()
+    path = svg[svg.index("<path"):]
+    path = path[:path.index(">")]
+    assert ('fill="none"' in path or 'fill-opacity="0.0"' in path) and "Z" not in path.split(' d="')[1].split('"')[0]
+    assert 'stroke-linecap="round"' in path
+    pdf = p.export(format="PDF", pdf_content="vector")
+    pypdf = pytest.importorskip("pypdf")
+    content = pypdf.PdfReader(io.BytesIO(pdf)).pages[0].get_contents().get_data()
+    arc = content.split(b" RG\n", 1)[1]
+    assert b"c\nS\n" in arc and b"\nh\n" not in arc and b"\nf\n" not in arc and b"B\n" not in arc
+    pptx = pytest.importorskip("pptx")
+    from lxml import etree
+
+    shape = list(pptx.Presentation(io.BytesIO(p.export(format="PPTX"))).slides[0].shapes)[0]
+    xml = etree.tostring(shape._element).decode()
+    assert "<a:close/>" not in xml and "<a:noFill/>" in xml
+
+
+def test_open_arc_validation_and_edit():
+    p = Project(100, 100)
+    with pytest.raises(VixlError) as error:
+        p.apply([{"type": "shape", "shape": "arc", "width": 50, "height": 50, "closed": False, "inner_radius": 0.5,
+                  "stroke": "black"}])
+    assert "inner_radius" in str(error.value) or error.value.details.get("field") == "inner_radius"
+    q = open_arc(closed=True, fill="none")
+    q.apply({"type": "shape", "target": "a", "closed": False})
+    assert q.layer("a")["closed"] is False and not alpha(q)[89, 146]

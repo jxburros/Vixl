@@ -1,0 +1,155 @@
+[
+  {
+    "type": "text",
+    "name": "series",
+    "text": "MODERN HEYOKA / ARCHETYPE STUDY 05",
+    "x": 65,
+    "y": 55,
+    "size": 19,
+    "font": "mono",
+    "color": "#8fe0d2",
+    "line_height": 1.35
+  },
+  {
+    "type": "text",
+    "name": "title",
+    "text": "HEYOKA",
+    "x": 55,
+    "y": 105,
+    "size": 124,
+    "font": "mono",
+    "color": "#e8f3ff",
+    "line_height": 1
+  },
+  {
+    "type": "text",
+    "name": "theme",
+    "text": "THE PATTERN BREAKER",
+    "x": 65,
+    "y": 267,
+    "size": 49,
+    "font": "serif",
+    "color": "#e8f3ff",
+    "line_height": 1.35
+  },
+  {
+    "type": "add",
+    "path": "/workspace/heyoka-modern-studio/assets/heyoka-surreal-sheet.png",
+    "name": "art-4-surreal"
+  },
+  {
+    "type": "crop",
+    "target": "art-4-surreal",
+    "x": 512,
+    "y": 579,
+    "width": 512,
+    "height": 377
+  },
+  {
+    "type": "resize",
+    "target": "art-4-surreal",
+    "width": 950,
+    "height": 700
+  },
+  {
+    "type": "move",
+    "target": "art-4-surreal",
+    "x": 65,
+    "y": 370
+  },
+  {
+    "type": "layer-intent",
+    "target": "art-4-surreal",
+    "role": "decoration",
+    "allow_crop": true
+  },
+  {
+    "type": "shape",
+    "shape": "rectangle",
+    "name": "art-4-border",
+    "x": 65,
+    "y": 370,
+    "width": 950,
+    "height": 700,
+    "fill": "transparent",
+    "stroke": "#8fe0d2",
+    "stroke_width": 1
+  },
+  {
+    "type": "layer-intent",
+    "target": "art-4-border",
+    "role": "decoration",
+    "allow_crop": true
+  },
+  {
+    "type": "text",
+    "name": "left-head",
+    "text": "THE MODERN IMAGE",
+    "x": 65,
+    "y": 1130,
+    "size": 21,
+    "font": "bold",
+    "color": "#8fe0d2",
+    "line_height": 1.35
+  },
+  {
+    "type": "text",
+    "name": "lead",
+    "text": "The modern heyoka archetype is\nimagined as a pattern breaker: an\nunexpected presence that\ninterrupts the usual script of a\nconversation.",
+    "x": 65,
+    "y": 1174,
+    "size": 27,
+    "font": "sans",
+    "color": "#e8f3ff",
+    "line_height": 1.42
+  },
+  {
+    "type": "text",
+    "name": "right-head",
+    "text": "WHAT IT INVITES",
+    "x": 570,
+    "y": 1130,
+    "size": 21,
+    "font": "bold",
+    "color": "#8fe0d2",
+    "line_height": 1.35
+  },
+  {
+    "type": "text",
+    "name": "detail",
+    "text": "A pause, absurd response, or\nchanged perspective can reveal how\nautomatic a reaction has become.\nThe insight is in the interruption: for\na moment, the old script is no\nlonger the only possible one.",
+    "x": 570,
+    "y": 1174,
+    "size": 26,
+    "font": "sans",
+    "color": "#e8f3ff",
+    "line_height": 1.4
+  },
+  {
+    "type": "shape",
+    "shape": "rectangle",
+    "name": "bottom-line",
+    "x": 65,
+    "y": 1510,
+    "width": 950,
+    "height": 2,
+    "fill": "#8fe0d2"
+  },
+  {
+    "type": "layer-intent",
+    "target": "bottom-line",
+    "role": "decoration",
+    "allow_crop": true
+  },
+  {
+    "type": "text",
+    "name": "footer",
+    "text": "HEYOKA / Contemporary spiritual interpretation • Original editorial artwork",
+    "x": 65,
+    "y": 1533,
+    "size": 16,
+    "font": "sans",
+    "color": "#e8f3ff",
+    "line_height": 1.35
+  }
+]

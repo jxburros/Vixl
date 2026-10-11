@@ -19,6 +19,7 @@ from pathlib import Path
 from .errors import VixlError, require
 from .image_diff import RASTER, VISUAL, load_visual
 from .model import Limits
+from .outcomes import make, summarize
 
 MAX_ITEMS = 200
 MAX_ISSUES = 30
@@ -87,8 +88,9 @@ def _pdf_metadata(data):
     return meta
 
 
-def describe(path, limits, *, check=True, max_size=1200):
-    """Thumbnail, metadata and (for documents) check findings of one file."""
+def describe(path, limits, *, check=True, max_size=1200, overlay=False):
+    """Thumbnail, metadata and (for documents) check findings of one file. ``overlay`` outlines the fix
+    findings on the thumbnail with their rule and layer ID (feedback.draw_overlay)."""
     from PIL import Image
 
     suffix = path.suffix.lower()
@@ -108,16 +110,25 @@ def describe(path, limits, *, check=True, max_size=1200):
         meta["color"] = "RGB document" + (f", {canvas['background']} background" if canvas.get("background") else "")
         from .proxy import render_preview
 
-        record["image"] = _data_uri(render_preview(project, max_size, max_size), max_size)
+        image = render_preview(project, max_size, max_size)
         if check:
             report = project.check()
+            if overlay:
+                from .feedback import draw_overlay, overlay_entries
+
+                image = draw_overlay(image, overlay_entries(report.get("issues", []),
+                                                            image.width / canvas["width"], size=image.size))
             record["check"] = {
+                "outcome": report.get("outcome"),
                 "passed": report.get("passed", True),
                 "errors": report.get("errors", 0), "warnings": report.get("warnings", 0),
-                "issues": [{key: issue.get(key) for key in ("severity", "action", "check", "message", "layer")
+                "issues": [{key: issue.get(key) for key in ("severity", "action", "rule", "check", "message", "layer",
+                                                            "waived")
                             if issue.get(key) is not None} for issue in report.get("issues", [])[:MAX_ISSUES]],
+                **({"waivers": report["waivers"]} if report.get("waivers") else {}),
                 **({"omitted": len(report["issues"]) - MAX_ISSUES} if len(report.get("issues", [])) > MAX_ISSUES else {}),
             }
+        record["image"] = _data_uri(image, max_size)
         return record
     if suffix == ".svg":
         text = data.decode("utf-8", "replace")
@@ -202,6 +213,17 @@ border-radius:6px}button{font:inherit;padding:8px 16px;border-radius:8px;border:
 """.strip()
 
 
+def _waiver_line(waiver, expired):
+    """One waiver in a proof card: what it covers, why, until when, and how many findings it waived."""
+    subject = waiver.get("check") or f"rule {waiver.get('rule')}"
+    where = waiver.get("layer") or waiver.get("target")
+    text = (f"{subject}{' on ' + where if where else ''} ({waiver['scope']})"
+            + (f": {waiver['reason']}" if waiver.get("reason") else "")
+            + (f" · {'expired' if expired else 'until'} {waiver['expires']}" if waiver.get("expires") else "")
+            + f" · {waiver.get('matched', 0)} finding(s)")
+    return f'<li class="{"fail" if expired else "note"}">{escape(text)}</li>'
+
+
 def _card(index, item, record, decisions):
     ident = f"item-{index + 1}"
     label = item.get("label") or Path(item["path"]).name
@@ -223,14 +245,22 @@ def _card(index, item, record, decisions):
     if report is not None:
         state = "pass" if report["passed"] and not report["warnings"] else "warnc" if report["passed"] else "fail"
         text = "check passed" if state == "pass" else f"{report['errors']} error(s), {report['warnings']} warning(s)"
+        if report.get("outcome"):
+            # Passing checks are not approval: show the outcome state (validated, needs review, ...) as well.
+            text += " · " + report["outcome"]["state"].replace("_", " ")
         parts.append(f'<div><span class="badge {state}">{escape(text)}</span></div>')
         if report["issues"]:
             lines = "".join(
-                f"<li><b>{escape(issue.get('severity', ''))}</b> {escape(issue.get('check', ''))}: "
+                f"<li><b>{'waived' if issue.get('waived') else escape(issue.get('severity', ''))}</b> "
+                f"{escape(issue.get('check', ''))}: "
                 f"{escape(issue.get('message', ''))}{' (' + escape(issue['layer']) + ')' if issue.get('layer') else ''}</li>"
                 for issue in report["issues"])
             more = f"<li>… {report['omitted']} more</li>" if report.get("omitted") else ""
             parts.append(f"<ul>{lines}{more}</ul>")
+        waivers = report.get("waivers") or {}
+        if waivers.get("active") or waivers.get("expired"):
+            parts.append(f"<div><b>Waivers</b><ul>{''.join(_waiver_line(w, False) for w in waivers.get('active', []))}"
+                         f"{''.join(_waiver_line(w, True) for w in waivers.get('expired', []))}</ul></div>")
     compare = record.get("compare")
     if compare:
         region = compare["changed_region"]
@@ -274,7 +304,7 @@ def render_page(items, records, *, title, file_name, decisions):
 
 
 def proof_page(items, output, *, resolve=None, title=None, check=True, decisions=False, max_size=1200,
-               overwrite=False, limits=None):
+               overwrite=False, limits=None, overlay=False):
     """Write the proof page for ``items`` (paths, or {path, label, before, note}) to ``output`` (.html).
     ``resolve`` maps an item path to a file (the workspace resolver for services; default: the path as
     given). ``before`` is another file, or a revision of a .vixl item (previous, head~1, a checkpoint)."""
@@ -293,7 +323,7 @@ def proof_page(items, output, *, resolve=None, title=None, check=True, decisions
         path = resolve(item["path"])
         require(path.is_file(), f"items[{index}]: no file at {item['path']}", "not_found", field=f"items[{index}].path")
         try:
-            record = describe(path, limits, check=check, max_size=max_size)
+            record = describe(path, limits, check=check, max_size=max_size, overlay=overlay)
             if item.get("before") is not None:
                 record["compare"] = _before_after(path, item["before"], limits, resolve, max_size)
         except (VixlError, OSError) as exc:
@@ -309,8 +339,11 @@ def proof_page(items, output, *, resolve=None, title=None, check=True, decisions
         "output": str(destination), "items": len(items), "bytes": len(page), "decisions": decisions,
         "failed": [{"path": item["path"], "error": record["error"]}
                    for item, record in zip(items, records) if "error" in record],
-        "checked": [{"path": item["path"], **{k: record["check"][k] for k in ("passed", "errors", "warnings")}}
+        "checked": [{"path": item["path"], **{k: record["check"][k] for k in ("passed", "errors", "warnings", "outcome")}}
                     for item, record in zip(items, records) if record.get("check") is not None],
+        "outcome": summarize([record["check"]["outcome"] if record.get("check") else
+                              make("failed") if "error" in record else make("completed")
+                              for record in records]),
         **({"decision_file": f"{destination.stem}-decisions.json"} if decisions else {}),
     }
 

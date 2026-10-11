@@ -1,0 +1,175 @@
+{
+  "prompt": "Create guitar.vixl at 800x400 with a white background and draw an acoustic guitar lying horizontally: body with a sound hole, neck, headstock, strings and bridge. Declare it as one guitar object with its parts named, then export just the guitar to guitar.svg.",
+  "document": "guitar.vixl",
+  "checks": [
+    {
+      "type": "object",
+      "name": "a complete guitar object",
+      "layer": "guitar",
+      "kind": "guitar",
+      "complete": true,
+      "parts": [
+        "body",
+        "neck",
+        "headstock",
+        "strings",
+        "sound-hole"
+      ],
+      "connected": true
+    },
+    {
+      "type": "file",
+      "name": "isolated svg",
+      "path": "guitar.svg",
+      "contains": "data-vixl-kind=\"guitar\""
+    }
+  ],
+  "reference": [
+    {
+      "tool": "vixl_document_create",
+      "arguments": {
+        "path": "guitar.vixl",
+        "width": 800,
+        "height": 400,
+        "background": "white"
+      }
+    },
+    {
+      "tool": "vixl_operations_apply",
+      "arguments": {
+        "operations": [
+          {
+            "type": "shape",
+            "shape": "ellipse",
+            "name": "body",
+            "x": 60,
+            "y": 100,
+            "width": 280,
+            "height": 200,
+            "fill": "#d9a066"
+          },
+          {
+            "type": "shape",
+            "shape": "ellipse",
+            "name": "sound-hole",
+            "x": 220,
+            "y": 160,
+            "width": 70,
+            "height": 70,
+            "fill": "#3b2412"
+          },
+          {
+            "type": "shape",
+            "shape": "rectangle",
+            "name": "bridge",
+            "x": 120,
+            "y": 175,
+            "width": 20,
+            "height": 50,
+            "fill": "#3b2412"
+          },
+          {
+            "type": "shape",
+            "shape": "rectangle",
+            "name": "neck",
+            "x": 320,
+            "y": 185,
+            "width": 330,
+            "height": 30,
+            "fill": "#8b5a2b"
+          },
+          {
+            "type": "shape",
+            "shape": "rounded-rectangle",
+            "name": "headstock",
+            "x": 640,
+            "y": 170,
+            "width": 90,
+            "height": 60,
+            "radius": 10,
+            "fill": "#5c3a1a"
+          },
+          {
+            "type": "shape",
+            "shape": "rectangle",
+            "name": "strings",
+            "x": 130,
+            "y": 196,
+            "width": 560,
+            "height": 8,
+            "fill": "#e6e6e6"
+          },
+          {
+            "type": "group",
+            "name": "guitar",
+            "targets": [
+              "body",
+              "sound-hole",
+              "bridge",
+              "neck",
+              "headstock",
+              "strings"
+            ]
+          },
+          {
+            "type": "object",
+            "target": "guitar",
+            "kind": "acoustic guitar"
+          },
+          {
+            "type": "object",
+            "action": "part",
+            "target": "body",
+            "part": "body"
+          },
+          {
+            "type": "object",
+            "action": "part",
+            "target": "sound-hole",
+            "part": "sound-hole"
+          },
+          {
+            "type": "object",
+            "action": "part",
+            "target": "bridge",
+            "part": "bridge"
+          },
+          {
+            "type": "object",
+            "action": "part",
+            "target": "neck",
+            "part": "neck"
+          },
+          {
+            "type": "object",
+            "action": "part",
+            "target": "headstock",
+            "part": "headstock"
+          },
+          {
+            "type": "object",
+            "action": "part",
+            "target": "strings",
+            "part": "strings"
+          }
+        ]
+      }
+    },
+    {
+      "tool": "vixl_document_inspect",
+      "arguments": {
+        "object": "guitar"
+      }
+    },
+    {
+      "tool": "vixl_export_file",
+      "arguments": {
+        "path": "guitar.svg",
+        "isolate": [
+          "guitar"
+        ],
+        "padding": 8
+      }
+    }
+  ]
+}

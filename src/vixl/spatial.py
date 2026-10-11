@@ -99,6 +99,11 @@ def _select(project, target=None, targets=None):
 
                 ids = descendants(project, project.layer(ref[6:])["id"])
                 chosen = [v for v in project.state["layers"] if v["id"] in ids]
+        if not chosen and isinstance(ref, str) and ("/" in ref or ref.startswith("object:")):
+            from .objects import expand_refs
+
+            ids = set(expand_refs(project, [ref]))  # an object path or object:KIND
+            chosen = [v for v in project.state["layers"] if v["id"] in ids]
         require(chosen, f"No layers match {ref!r}", field="target")
         for layer in chosen:
             if layer not in result:

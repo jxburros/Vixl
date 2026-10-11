@@ -260,3 +260,178 @@ def rasterize(elements, size, scale=1.0, offset=(0, 0)):
         p = (np.asarray(element["points"], dtype=float) - offset) * scale
         draw.polygon([tuple(q) for q in p], fill=255)
     return np.asarray(image) > 127
+
+
+# Cubic Bézier fitting (Schneider, "An algorithm for automatically fitting digitized curves", Graphics Gems
+# 1990), split at detected corners, so traced outlines become few editable curves instead of polylines.
+
+def _unit(v):
+    norm = float(np.hypot(*v))
+    return v / norm if norm > 1e-12 else np.zeros(2)
+
+
+def _bezier(control, t):
+    t = np.asarray(t, float)[:, None]
+    m = 1 - t
+    return m ** 3 * control[0] + 3 * m * m * t * control[1] + 3 * m * t * t * control[2] + t ** 3 * control[3]
+
+
+def _chord_params(points):
+    steps = np.r_[0.0, np.cumsum(np.hypot(*np.diff(points, axis=0).T))]
+    return steps / steps[-1] if steps[-1] > 0 else np.linspace(0, 1, len(points))
+
+
+def _generate(points, params, start_tangent, end_tangent):
+    """Least-squares control points for fixed end tangents."""
+    first, last = points[0], points[-1]
+    t = params
+    b1, b2 = 3 * t * (1 - t) ** 2, 3 * t * t * (1 - t)
+    a1, a2 = b1[:, None] * start_tangent, b2[:, None] * end_tangent
+    c00, c01, c11 = (a1 * a1).sum(), (a1 * a2).sum(), (a2 * a2).sum()
+    rest = points - _bezier(np.array([first, first, last, last]), t)
+    x0, x1 = (a1 * rest).sum(), (a2 * rest).sum()
+    det = c00 * c11 - c01 * c01
+    chord = float(np.hypot(*(last - first)))
+    alpha1 = alpha2 = 0.0
+    if abs(det) > 1e-12:
+        alpha1, alpha2 = (x0 * c11 - x1 * c01) / det, (c00 * x1 - c01 * x0) / det
+    if alpha1 < 1e-6 * chord or alpha2 < 1e-6 * chord:
+        alpha1 = alpha2 = chord / 3
+    return np.array([first, first + start_tangent * alpha1, last + end_tangent * alpha2, last])
+
+
+def _reparameterize(control, points, params):
+    """One Newton–Raphson step towards each point's nearest parameter."""
+    t = params[:, None]
+    m = 1 - t
+    q = _bezier(control, params)
+    d1 = 3 * (m * m * (control[1] - control[0]) + 2 * m * t * (control[2] - control[1]) + t * t * (control[3] - control[2]))
+    d2 = 6 * (m * (control[2] - 2 * control[1] + control[0]) + t * (control[3] - 2 * control[2] + control[1]))
+    numerator = ((q - points) * d1).sum(axis=1)
+    denominator = (d1 * d1).sum(axis=1) + ((q - points) * d2).sum(axis=1)
+    safe = np.where(np.abs(denominator) > 1e-12, denominator, 1)
+    return np.clip(np.where(np.abs(denominator) > 1e-12, params - numerator / safe, params), 0, 1)
+
+
+def _fit(points, start_tangent, end_tangent, error, out, depth=0):
+    if len(points) == 2 or depth > 24:
+        gap = float(np.hypot(*(points[-1] - points[0]))) / 3
+        out.append(np.array([points[0], points[0] + start_tangent * gap, points[-1] + end_tangent * gap, points[-1]]))
+        return
+    params = _chord_params(points)
+    control = _generate(points, params, start_tangent, end_tangent)
+    for attempt in range(5):
+        distances = ((_bezier(control, params) - points) ** 2).sum(axis=1)
+        worst = int(np.argmax(distances))
+        if distances[worst] < error:
+            out.append(control)
+            return
+        if distances[worst] > error * 16 or attempt == 4:
+            break
+        params = _reparameterize(control, points, params)
+        control = _generate(points, params, start_tangent, end_tangent)
+    split = min(max(worst, 1), len(points) - 2)
+    reach = min(3, split, len(points) - 1 - split)
+    centre = _unit(points[split - reach] - points[split + reach])
+    if not centre.any():
+        centre = _unit(points[split - 1] - points[split])
+    _fit(points[:split + 1], start_tangent, centre, error, out, depth + 1)
+    _fit(points[split:], -centre, end_tangent, error, out, depth + 1)
+
+
+def corners(points, closed=True, threshold=60.0, reach=4.0):
+    """Indices where the outline turns by more than ``threshold`` degrees within ``reach`` pixels each way."""
+    p = np.asarray(points, float)
+    n = len(p)
+    if n < 5:
+        return list(range(n)) if not closed else []
+    step = max(float(np.median(np.hypot(*np.diff(p, axis=0).T))), 1e-6)
+    k = max(1, min(n // 4, int(round(reach / step))))
+    index = np.arange(n)
+    before = p[(index - k) % n] if closed else p[np.clip(index - k, 0, n - 1)]
+    after = p[(index + k) % n] if closed else p[np.clip(index + k, 0, n - 1)]
+    a, b = p - before, after - p
+    turn = np.degrees(np.abs(np.arctan2(a[:, 0] * b[:, 1] - a[:, 1] * b[:, 0], (a * b).sum(axis=1))))
+    found = []
+    for i in np.argsort(-turn):
+        if turn[i] < threshold:
+            break
+        if not closed and (i < k or i > n - 1 - k):
+            continue
+        if all(min(abs(i - j), n - abs(i - j)) > k for j in found):
+            found.append(int(i))
+    return sorted(found)
+
+
+def fit_curves(points, closed=True, tolerance=1.0, corner_threshold=60.0):
+    """Cubic Bézier segments ``[[p0, c1, c2, p3], …]`` within ``tolerance`` pixels of ``points``, with sharp
+    corners (a turn over ``corner_threshold`` degrees) kept as corners and smooth joins elsewhere."""
+    p = np.asarray(points, float)
+    if closed and len(p) > 1 and np.allclose(p[0], p[-1]):
+        p = p[:-1]
+    keep = np.r_[True, np.hypot(*np.diff(p, axis=0).T) > 1e-9]
+    p = p[keep]
+    n = len(p)
+    if n < 3:
+        return []
+    error = max(tolerance, 0.05) ** 2
+    marks = corners(p, closed, corner_threshold)
+    segments = []
+    if closed:
+        if not marks:
+            # A smooth loop: start where it is straightest and fit it with matching end tangents.
+            start = 0
+            p = np.r_[p[start:], p[:start]]
+            loop = np.r_[p, p[:1]]
+            tangent = _unit(p[min(3, n - 1)] - p[-min(3, n - 1)])
+            _fit(loop, tangent, -tangent, error, segments)
+            return segments
+        p = np.r_[p[marks[0]:], p[:marks[0]]]
+        marks = [(m - marks[0]) % n for m in marks] + [n]
+        p = np.r_[p, p[:1]]
+    else:
+        marks = [0, *[m for m in marks if 0 < m < n - 1], n - 1]
+    for a, b in zip(marks, marks[1:]):
+        run = p[a:b + 1]
+        if len(run) < 2:
+            continue
+        # End tangents come from the run's own first and last few pixels, skipping the corner point itself
+        # (a traced corner is slightly rounded, and its neighbours would tilt a straight side).
+        inner = 1 if len(run) > 4 else 0
+        reach = max(inner + 1, min(10, len(run) // 3))
+        _fit(run, _unit(run[reach] - run[inner]), _unit(run[-1 - reach] - run[-1 - inner]), error, segments)
+    return segments
+
+
+def curves_path(segments, closed=True, precision=2):
+    """SVG path data for Bézier segments from ``fit_curves`` (one contour)."""
+    if not segments:
+        return ""
+
+    def fmt(q):
+        return f"{compact_number(q[0], precision)} {compact_number(q[1], precision)}"
+
+    parts = ["M" + fmt(segments[0][0])]
+    parts += [f"C{fmt(c[1])} {fmt(c[2])} {fmt(c[3])}" for c in segments]
+    return " ".join(parts) + (" Z" if closed else "")
+
+
+def mask_curves(mask, *, tolerance=1.0, corner_threshold=60.0, smooth=0.6, min_area=4.0, offset=(0.0, 0.0)):
+    """Closed Bézier contours (outer edges and holes, opposite directions) around the True pixels of ``mask``,
+    as ``(path data, loops)``. Coordinates are pixel edges: a pixel at column x spans x to x + 1."""
+    from PIL import Image, ImageFilter
+
+    image = Image.fromarray(np.asarray(mask, dtype=np.uint8) * 255)
+    if smooth > 0:
+        image = image.filter(ImageFilter.GaussianBlur(smooth))
+    field = np.asarray(image, dtype=float) / 255
+    paths, loops = [], []
+    for loop in contours(field, 0.5):
+        if abs(area(loop)) < min_area:
+            continue
+        loop = loop + 0.5 + np.asarray(offset, float)
+        segments = fit_curves(loop, True, tolerance, corner_threshold)
+        if segments:
+            paths.append(curves_path(segments, True))
+            loops.append(loop)
+    return " ".join(paths), loops

@@ -1,6 +1,6 @@
 # Design resources and vector export
 
-Vixl is a headless design engine built for autonomous AI agents. Humans can use the same CLI, Python, REST and MCP interfaces. No GUI or interactive approval is required for editing.
+Vixl is a headless design engine for AI agents. People can drive the same CLI, Python, REST and MCP interfaces. No GUI or interactive approval is required for editing.
 
 ## Discover before designing
 
@@ -18,7 +18,7 @@ These commands work without an open document. CLI edits return compact new value
 
 ## Palettes
 
-The library includes 32 named palettes, from `midnight`, `ocean`, `forest`, `sunset`, and `pastel` to `mono`, `nordic`, and `accessible-blue`. Palette names describe starting points; measure actual foreground/background contrast for the combinations you choose.
+The library includes 74 named palettes, from `midnight`, `ocean`, `forest`, `sunset`, and `pastel` to `mono`, `nordic`, and `accessible-blue`. Palette names describe starting points; measure actual foreground/background contrast for the combinations you choose.
 
 ```bash
 vixl palette show ocean
@@ -32,7 +32,10 @@ Custom palette files are JSON arrays of 2–256 color strings, for example `["#1
 
 ## Templates
 
-Built-in templates: `social-square`, `story`, `thumbnail`, `poster`, `business-card`, and transparent `logo`.
+Simple built-in templates: `social-square`, `story`, `thumbnail`, `poster`, `business-card`, and transparent `logo`.
+`vixl template list` also shows eight modular templates ([studio](studio.md)), 26 use-case templates for social,
+marketing, print, business and slides, and the editable six-second animated loops `video-tip`, `video-launch` and
+`video-event` (title, subtitle and cta variables).
 
 ```bash
 vixl template show social-square
@@ -58,7 +61,7 @@ vixl template apply my-card --set title='Next variant'
 
 Templates fix structure, not content or look. Built-in templates have no sample copy: an unsupplied `title` or `subtitle` renders as a `[Headline]`/`[Subheading]` blank that `check` reports as an error. Unsupplied colors are rolled from a seeded palette with checked contrast (`template-apply` accepts `seed`, an integer or `"random"`; the default derives from the template and variables). The result reports `rolled`, `seed` and `blanks`. Custom templates can do the same with `"blanks": {"title": "[Headline]"}` and `"roll": {"accent": "accent"}`, which map variables to placeholder text or to a color role (`background`, `surface`, `ink`, `muted`, `accent`, `accent-text`, `on-accent`).
 
-Parameters can replace strings or whole typed values. Templates contain bounded canonical operations, not scripts or executable code. They cannot load files, import fonts, or recursively invoke templates. Import image/font assets explicitly first. The user library is stored in `~/.config/vixl/resources.json`; set `VIXL_RESOURCES` to isolate it in automation.
+Parameters can replace strings or whole typed values. Templates contain bounded canonical operations, not scripts or executable code. They cannot load files, import fonts, or recursively invoke templates. Import image/font assets explicitly first. Template text may set `font` to a typography role or text stage (`heading`, `body`, `h2`, `label`, a brand role such as `hand`) or a registered font name, never a file, or set `stage`; text that names neither takes the heading role when it is the largest and body otherwise. `"proportional": true` on a template scales its positions, sizes and font sizes from its own `width`/`height` to the canvas by one factor (and stretches a full-template `solid` to the canvas), so it keeps its relative layout on any size. The user library is stored in `~/.config/vixl/resources.json`; set `VIXL_RESOURCES` to isolate it in automation.
 
 ## Overall and style-specific guidance
 
@@ -93,7 +96,7 @@ vixl shape heart --name mark --width 180 --height 180 --fill '#e76f51'
 vixl shape path --name curve --width 200 --height 100 --fill '#2563eb' --path 'M0 0 C0 100 200 100 200 0 L200 100 L0 100 Z'
 ```
 
-Paths retain a single editable contour with SVG `M L H V Q C Z` commands, including lowercase relative commands. Repeat the command before each coordinate set. Coordinates are in the layer's initial width/height; resizing scales that coordinate system. Arcs, shorthand commands, multiple contours and arbitrary SVG import are not supported. Raster previews sample curves with bounded antialiasing; SVG retains exact Bézier commands.
+Paths retain editable SVG geometry, including relative/repeated coordinates, arcs, smooth Bézier commands and multiple contours. Coordinates are in the layer's initial width/height; resizing scales that coordinate system. SVG files import editably only when every feature is supported; `svg_mode` `appearance`/`auto` keeps the rest as a raster layer (see [studio](studio.md)). Raster previews sample curves with bounded antialiasing; SVG retains exact Bézier commands.
 
 Positions refer to the top-left of the transformed bounding box. Rotation expands that box, so align/constrain after rotating, or inspect `resolved_bounds` before positioning. For clean logo joins, use a single path or a deliberate pathfinder union/subtraction rather than overlapping rotated bars by guesswork.
 
@@ -124,7 +127,7 @@ Python can use `vixl.resources.catalog/get/register/create_template` and `vixl.f
 ]}
 ```
 
-Guidance texts are not separate tools. They live in one registry (`vixl/guidance.py`, plus user additions): list them with `vixl_resources_list(kind="guidance")` or `vixl_guide()`, and read one with `vixl_guide(brief="natural-motion")` or `vixl_resource_get(kind="guidance", name="overall")` (CLI `vixl guidance list`, `vixl guide natural-motion`). Besides the design principles (overall, typography, color, layout, print …) it holds craft references: `natural-motion`, `looping-motion`, `character-rigging`, `cut-paper`, `audio-composition`, `anatomy-proportions`, `natural-color-light`, `illustration-perspective`, `drawn-textures`, `film-review`, `imperfection` (when to use `irregular` and `tear`) and `multi-part-objects` (grouping, overlapping parts, consistent outlines, `isolate` previews and the `connected` check). The guide's kinds and `vixl_capabilities` topics name the entries that apply.
+Guidance texts are not separate tools. They live in one registry (`vixl/guidance.py`, plus user additions): list them with `vixl_resources_list(kind="guidance")` or `vixl_guide()`, and read one with `vixl_guide(brief="natural-motion")` or `vixl_resource_get(kind="guidance", name="overall")` (CLI `vixl guidance list`, `vixl guide natural-motion`). Besides the design principles (overall, typography, color, layout, print …) it holds craft references: `natural-motion`, `looping-motion`, `character-rigging`, `cut-paper`, `audio-composition`, `anatomy-proportions`, `natural-color-light`, `illustration-perspective`, `drawn-textures`, `film-review`, `imperfection` (when to use `irregular` and `tear`) and `multi-part-objects` (declared objects with kinds and named parts, overlapping parts, consistent outlines, the object tree, `isolate` part sheets, the `connected` check and reuse with `object-save`/`object-place`). Object kinds are a resource kind of their own: `vixl_resources_list(kind="objects")`, `vixl_resource_get(kind="objects", name="dog")` (inherited parts, connections, proportions, chain) and `vixl_resource_add(kind="objects", name, {parent, …})` for a workspace or user kind; CLI `vixl objects [QUERY]`, `vixl objects show dog`. The guide's kinds and `vixl_capabilities` topics name the entries that apply.
 
 MCP exposes `vixl_resources_list`, `vixl_resource_get`, `vixl_resource_add`, `vixl_template_create`, `vixl_import_font` (`path` or an `https://` `url`, under the same fetch policy as image URLs: no credentials, no private hosts, at most 5 redirects), and `vixl_models_list`. Font file paths and template destinations stay inside the server workspace. Use a registered font by name in an operation (`{"type": "text", "font": "brand", ...}`); generic service operations continue to reject arbitrary filesystem font paths. REST adds GET/POST `/resources/{kind}/{name}`, GET `/resources/{kind}`, POST `/fonts?name=brand` with raw font bytes, and POST `/export` with JSON options such as `{"format":"SVG"}`. REST font uploads are limited to 16 MiB.
 

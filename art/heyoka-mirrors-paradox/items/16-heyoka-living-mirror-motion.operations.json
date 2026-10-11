@@ -1,0 +1,114 @@
+[
+  {
+    "type": "text",
+    "name": "series",
+    "text": "HEYOKA / THE EMOTIONAL MIRROR",
+    "x": 50,
+    "y": 44,
+    "size": 18,
+    "font": "mono",
+    "color": "#9fecdf",
+    "line_height": 1.35
+  },
+  {
+    "type": "text",
+    "name": "title",
+    "text": "HEYOKA",
+    "x": 43,
+    "y": 113,
+    "size": 112,
+    "font": "condensed",
+    "color": "#f1eaff",
+    "line_height": 1.35
+  },
+  {
+    "type": "add",
+    "path": "/workspace/heyoka-modern-studio/assets/heyoka-surreal-sheet.png",
+    "name": "art-0-surreal"
+  },
+  {
+    "type": "crop",
+    "target": "art-0-surreal",
+    "x": 0,
+    "y": 67,
+    "width": 512,
+    "height": 378
+  },
+  {
+    "type": "resize",
+    "target": "art-0-surreal",
+    "width": 800,
+    "height": 590
+  },
+  {
+    "type": "move",
+    "target": "art-0-surreal",
+    "x": 50,
+    "y": 300
+  },
+  {
+    "type": "layer-intent",
+    "target": "art-0-surreal",
+    "role": "decoration",
+    "allow_crop": true
+  },
+  {
+    "type": "shape",
+    "shape": "rectangle",
+    "name": "art-0-border",
+    "x": 50,
+    "y": 300,
+    "width": 800,
+    "height": 590,
+    "fill": "transparent",
+    "stroke": "#9fecdf",
+    "stroke_width": 1
+  },
+  {
+    "type": "layer-intent",
+    "target": "art-0-border",
+    "role": "decoration",
+    "allow_crop": true
+  },
+  {
+    "type": "text",
+    "name": "caption",
+    "text": "A mirror that changes the angle.",
+    "x": 50,
+    "y": 960,
+    "size": 35,
+    "font": "serif",
+    "color": "#f1eaff",
+    "line_height": 1.35
+  },
+  {
+    "type": "timeline-set",
+    "duration": "3s",
+    "fps": 12,
+    "loop": 0
+  },
+  {
+    "type": "keyframe",
+    "target": "art-0-surreal",
+    "property": "scale",
+    "time": "0s",
+    "value": 1,
+    "easing": "ease-in-out-sine"
+  },
+  {
+    "type": "keyframe",
+    "target": "art-0-surreal",
+    "property": "scale",
+    "time": "1.5s",
+    "value": 1.035,
+    "easing": "ease-in-out-sine"
+  },
+  {
+    "type": "keyframe",
+    "target": "art-0-surreal",
+    "property": "scale",
+    "time": "3s",
+    "value": 1,
+    "easing": "ease-in-out-sine"
+  }
+]

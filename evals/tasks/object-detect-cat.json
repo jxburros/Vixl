@@ -1,0 +1,217 @@
+{
+  "prompt": "pile.vixl holds a pile of loose shapes that together draw a cat. Turn them into one cat object named cat with its head, body, ears, legs and tail named as parts, and fix any part that floats free of the body. Do not delete shapes.",
+  "document": "pile.vixl",
+  "setup": {
+    "documents": [
+      {
+        "path": "pile.vixl",
+        "width": 500,
+        "height": 500,
+        "background": "white",
+        "batches": [
+          [
+            {
+              "type": "shape",
+              "shape": "rectangle",
+              "name": "s1",
+              "x": 120,
+              "y": 300,
+              "width": 90,
+              "height": 20,
+              "fill": "#555555"
+            },
+            {
+              "type": "shape",
+              "shape": "ellipse",
+              "name": "s2",
+              "x": 180,
+              "y": 240,
+              "width": 180,
+              "height": 120,
+              "fill": "#777777"
+            },
+            {
+              "type": "shape",
+              "shape": "rectangle",
+              "name": "s3",
+              "x": 200,
+              "y": 340,
+              "width": 24,
+              "height": 70,
+              "fill": "#666666"
+            },
+            {
+              "type": "shape",
+              "shape": "rectangle",
+              "name": "s4",
+              "x": 310,
+              "y": 340,
+              "width": 24,
+              "height": 70,
+              "fill": "#666666"
+            },
+            {
+              "type": "shape",
+              "shape": "ellipse",
+              "name": "s5",
+              "x": 300,
+              "y": 150,
+              "width": 100,
+              "height": 100,
+              "fill": "#777777"
+            },
+            {
+              "type": "shape",
+              "shape": "polygon",
+              "sides": 3,
+              "name": "s6",
+              "x": 300,
+              "y": 120,
+              "width": 40,
+              "height": 50,
+              "fill": "#555555"
+            },
+            {
+              "type": "shape",
+              "shape": "polygon",
+              "sides": 3,
+              "name": "s7",
+              "x": 360,
+              "y": 60,
+              "width": 40,
+              "height": 50,
+              "fill": "#555555"
+            }
+          ]
+        ]
+      }
+    ]
+  },
+  "checks": [
+    {
+      "type": "object",
+      "name": "a cat object with no floating part",
+      "layer": "cat",
+      "kind": "cat",
+      "complete": true,
+      "parts": [
+        "head",
+        "body",
+        "ear",
+        "leg",
+        "tail"
+      ],
+      "connected": true
+    },
+    {
+      "type": "layer",
+      "name": "no shapes deleted",
+      "match": {
+        "type": "shape"
+      },
+      "min": 7,
+      "max": 7
+    }
+  ],
+  "reference": [
+    {
+      "tool": "vixl_document_open",
+      "arguments": {
+        "path": "pile.vixl"
+      }
+    },
+    {
+      "tool": "vixl_operations_apply",
+      "arguments": {
+        "operations": [
+          {
+            "type": "move",
+            "target": "s5",
+            "x": 300,
+            "y": 175
+          },
+          {
+            "type": "move",
+            "target": "s6",
+            "x": 305,
+            "y": 140
+          },
+          {
+            "type": "move",
+            "target": "s7",
+            "x": 360,
+            "y": 140
+          },
+          {
+            "type": "group",
+            "name": "cat",
+            "targets": [
+              "s1",
+              "s2",
+              "s3",
+              "s4",
+              "s5",
+              "s6",
+              "s7"
+            ]
+          },
+          {
+            "type": "object",
+            "target": "cat",
+            "kind": "cat"
+          },
+          {
+            "type": "object",
+            "action": "part",
+            "target": "s1",
+            "part": "tail"
+          },
+          {
+            "type": "object",
+            "action": "part",
+            "target": "s2",
+            "part": "body"
+          },
+          {
+            "type": "object",
+            "action": "part",
+            "targets": [
+              "s3",
+              "s4"
+            ],
+            "part": "leg"
+          },
+          {
+            "type": "object",
+            "action": "part",
+            "target": "s5",
+            "part": "head"
+          },
+          {
+            "type": "object",
+            "action": "part",
+            "target": "s6",
+            "part": "ear",
+            "side": "left"
+          },
+          {
+            "type": "object",
+            "action": "part",
+            "target": "s7",
+            "part": "ear",
+            "side": "right"
+          }
+        ],
+        "check": [
+          "connected"
+        ]
+      }
+    },
+    {
+      "tool": "vixl_document_inspect",
+      "arguments": {
+        "object": "cat"
+      }
+    }
+  ]
+}

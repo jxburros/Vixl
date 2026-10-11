@@ -1,6 +1,6 @@
 # Vixl
 
-Vixl is a headless application designed for autonomous AI agents; humans can use the same interfaces. This supplied specification is historical design context; [coverage](coverage.md) describes implemented behavior.
+Vixl is a headless design engine for AI agents; people can drive the same interfaces. This supplied specification is historical design context; [coverage](coverage.md) describes implemented behavior.
 ## Programmable, Scriptable, AI-Native Image Editing Engine
 
 **Status:** Concept / Product Specification

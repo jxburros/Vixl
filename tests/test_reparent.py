@@ -111,8 +111,9 @@ def test_stacking_position_and_keep_local():
     children = [item["name"] for item in p.state["layers"] if item.get("parent") == p.layer("dog")["id"]]
     assert children == ["body", "tail", "head"]
     q = dog({"type": "move", "target": "dog", "x": 100})
+    stored = (q.layer("tail")["x"], q.layer("tail")["y"])
     q.apply({"type": "reparent", "targets": ["tail"], "into": "dog", "keep": "local", "fit": False})
-    assert (q.layer("tail")["x"], q.layer("tail")["y"]) == (60, 120)
+    assert (q.layer("tail")["x"], q.layer("tail")["y"]) == stored
     assert q.layer("dog")["content_width"] == 170
 
 

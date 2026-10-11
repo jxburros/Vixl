@@ -53,12 +53,12 @@ place and size it (default: centred, at most 90% of the canvas).
 
 | Action | Does | Settings |
 | --- | --- | --- |
-| `import` | Cleans a photo or scan into lines: finds the sheet of paper in a photo and leaves out the desk or table around it (the paper's edge is not traced as ink), flattens a page photographed at an angle (perspective correction), divides out the paper's lighting and shadows, separates ink from paper, removes dust, corrects a tilted page, crops to the drawing, and keeps the pencil's own grain and anti-aliasing. | `threshold` (`auto` or 0–1), `sensitivity` (−1–1: higher finds fainter lines), `despeckle` (`auto` or the smallest mark in pixels), `weight` (−10–10 pixels thinner or bolder), `deskew` (true), `crop` (true), `margin` (24), `soft` (true), `ink` (the line colour, default `#1d1d1f`; or `original` to keep the pencil's own colour; the operation's `color` is shorthand for it), `flatten` (true), `max_size` (2400), `sheet` (true; false keeps everything in the frame, for a drawn border that runs right along the photo's edge), `perspective` (true; false leaves a keystoned page as photographed) |
+| `import` | Cleans a photo or scan into lines: finds the sheet of paper in a photo and leaves out the desk or table around it (the paper's edge is not traced as ink), flattens a page photographed at an angle (perspective correction), divides out the paper's lighting and shadows, separates ink from paper, removes dust, corrects a tilted page, keeps the paper's extent (so the composition stays as drawn), and keeps the pencil's own grain and anti-aliasing. | `threshold` (`auto` or 0–1), `sensitivity` (−1–1: higher finds fainter lines), `despeckle` (`auto` or the smallest mark in pixels), `weight` (−10–10 pixels thinner or bolder), `deskew` (true), `crop` (false: keep the paper's extent; true crops to the drawing plus `margin`), `margin` (24), `soft` (true), `ink` (the line colour, default `#1d1d1f`; or `original` to keep the pencil's own colour; the operation's `color` is shorthand for it), `flatten` (true), `max_size` (2400), `sheet` (true; false keeps everything in the frame, for a drawn border that runs right along the photo's edge), `perspective` (true; false leaves a keystoned page as photographed) |
 | `clean` | Cleans again with other settings. Once there are strokes or fills, the tilt and crop stay as they are so everything stays aligned. | as `import` |
-| `vectorize` | Traces each line along its centre into a stroke with the line's width (`centerline`), or the lines' outlines into one filled shape that keeps every change of pressure (`outline`). | `mode`, `min_length` (6), `detail` (0.75 px of simplification), `max_strokes` (240; the rest share `NAME/detail`), `keep_ink`, `color` (default: the import's `ink`, `#1d1d1f`), `width` (default: each stroke keeps the width it was drawn with; a number in pixels, or `uniform` for the median width, so every stroke has one weight; centerline only) |
+| `vectorize` | Traces each line along its centre into a stroke with the line's width (`centerline`), or the lines' outlines into one filled shape that keeps every change of pressure (`outline`). | `mode`, `min_length` (6), `detail` (0.75 px of simplification), `max_strokes` (240; the rest share `NAME/detail`), `keep_ink`, `color` (default: the import's `ink`, `#1d1d1f`), `width` (default: each stroke keeps the width it was drawn with; a number in pixels, or `uniform` for the median width, so every stroke has one weight; centerline only). Outline mode also takes `curves` (false; true fits cubic Bézier curves, keeping sharp corners, instead of hundreds of straight segments), `tolerance` (1 px: how far a curve may stray from the traced edge), `corner_threshold` (60°: a sharper turn stays a corner), `split` (`none`, or `components`: one layer per connected part, `NAME/part-001` … in reading order, each in its own box; past 256 parts the smallest share `NAME/small-parts`) and `min_area` (4 px: smaller specks are dropped) |
 | `straighten` | Lines that are nearly straight become straight, **at the angle they were drawn at**; shapes made of straight sides keep their corners where they were drawn but get sharp corners and straight sides; curves (lobes, arcs, waves, wide rounded corners) keep their drawn shape, so a cloud or a tree's canopy is left as drawn and in an arched window or a U only the straight sides change; nearly round closed shapes become circles; sides snap to fixed `angles` only when asked; gaps are closed when `close_gaps` says so. | `tolerance` (4 px: how far a line may wander and still count as straight), `angles` (`drawn`, the default: every side keeps its own angle; `axes`: snap to horizontal and vertical; `45`: snap to 45° steps; `guides` for the document's guide angles; or a list of degrees such as `[0, 90]`), `angle_tolerance` (6°: how close a side must be to a listed angle to snap), `circles` (true), `polylines` (true; false keeps everything but single lines and circles as drawn), `corner` (24 px: shorter sides are rounded corners, made sharp; a curve more than twice as long between two sides is kept), `close_gaps` (0: close gaps this wide; `auto` is 2% of the drawing's longer side, at least 8 px) |
 | `smooth` | Evens out shaky strokes, keeping their ends. Strokes `straighten` made into lines and polylines keep their straight sides and corners. | `amount` (0–1), `corners` (`keep`, the default, or `round` to smooth straightened strokes too; the `drawing` check then warns that their corners became curves) |
-| `fill` | Colours the region around each point, under the lines. Small breaks in an outline are bridged; the fill reaches into every corner without crossing a line. | `points` [[x, y, colour], …] (canvas positions; `space: "group"` for the drawing's own coordinates), `gap` (6 px of break to bridge), `min_area`, `under` (true) |
+| `fill` | Colours the region around each point, under the lines. Small breaks in an outline are bridged; the fill reaches into every corner without crossing a line. | `points` [[x, y, colour], …] (canvas positions; `space: "group"` for the drawing's own coordinates), `gap` (6 px of break to bridge), `min_area`, `under` (true), `edge_closes` (false; true lets the drawing's edge close a region, such as sky above a ground line or the ground below it) |
 | `stroke` | Adds a stroke in the drawing's hand: its width and colour, smoothed through the points. | `points` [[x, y], …] (canvas positions, or the drawing's own with `space: "group"`), `width`, `smooth` (true), `closed`, `color`, `name` |
 | `restyle` | Recolours strokes or changes their width. | `color`, `width` (pixels, or `uniform`: the median of the chosen strokes) or `width_scale` |
 
@@ -120,8 +120,13 @@ workflow action) returns:
 - `paper_found`, `perspective_corrected`, `tilt_corrected` — what `import` did to the photo;
 - `regions` — the closed regions with a point inside each, ready for `fill`: `point` on the
   canvas and `group_point` in the drawing's own coordinates;
+- `edge_regions` — regions that only the drawing's edge closes (sky, ground), in the same form; fill
+  them with `settings: {"edge_closes": true}`;
 - `space` (`canvas`, what `point` uses) and `group` — the `offset`, `scale` and `rotation` that take
-  the drawing's own coordinates to the canvas.
+  the drawing's own coordinates to the canvas;
+- `fidelity` — how exactly the current drawing reproduces the original ink, pixel for pixel: `iou`
+  (shared ink over all ink; 1 is an exact recreation), `mismatch` (the fraction of the drawing's pixels
+  that differ), `mismatch_pixels` and `mismatch_region`. Use it to prove a traced logo matches its source.
 
 `fill` and `stroke` read their points as canvas positions, through any move, scale or rotation of the
 drawing group, so they land where the drawing is shown now. Pass `space: "group"` to give them in the
@@ -131,7 +136,23 @@ drawing is moved.
 The `drawing` check (opt-in: `check --checks drawing`) warns when a drawing keeps less than 90% of
 its original lines (an error below 70%) or when more than a third of it is new. `drawing compare`
 draws the original lines in red under the current ones in blue — purple where they agree — so the
-change is visible at a glance.
+change is visible at a glance, and returns the report with `fidelity`.
+
+## Recreating a logo from an image
+
+A flat logo (type, a mark) traces best in outline mode with curves, one layer per part:
+
+```json
+{"type": "drawing", "action": "import", "asset": "assets/logo.png", "name": "logo", "settings": {"deskew": false}}
+{"type": "drawing", "action": "vectorize", "target": "logo", "settings": {"mode": "outline", "curves": true, "split": "components"}}
+{"type": "path-split", "target": "logo/part-003", "polygon": [[40, 10], [90, 10], [90, 80], [40, 80]], "overlap": 2, "names": ["X", "vine"]}
+```
+
+Each letter and mark becomes its own editable path of Bézier curves, named in reading order. Where two
+shapes touch or cross (a vine through a letter) they trace as one part; `path-split` cuts it along a
+`polygon` or a `line` into two named parts, and `overlap` lets both reach a few pixels across the cut so
+each stays whole when moved apart (see [vector paths](vector-paths.md#constructive-paths)). Finish with
+`drawing report` and read `fidelity.iou` (above 0.99 for a clean recreation).
 
 ## AI colouring
 

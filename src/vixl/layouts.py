@@ -37,6 +37,9 @@ ROLE_STEPS = {"caption": -1, "body": 0, "lead": 1, "subhead": 2, "title": 3, "he
 # The line-height stage (craft.LINE_HEIGHT) each type-scale role sets in.
 ROLE_STAGES = {"caption": "caption", "body": "body", "lead": "lead", "subhead": "lead", "title": "heading",
                "headline": "heading", "display": "display"}
+# The text stage (type_roles) each type-scale role sets in; slots named label use the label stage.
+ROLE_TO_STAGE = {"display": "display", "headline": "h1", "title": "h2", "subhead": "subtitle", "lead": "lead",
+                 "body": "body", "caption": "caption"}
 CONTENT_KEYS = ("title", "subtitle", "body", "label", "cta", "caption", "image", "images", "items")
 IMAGE_KEYS = ("image", "images")
 DENSITY_MARGIN = {"airy": 0.095, "balanced": 0.072, "dense": 0.05}
@@ -129,6 +132,13 @@ class Builder:
         require(self.align in ("left", "center", "right"), "align must be left, center or right")
         self.accent = op.get("accent") or self.rng.choice(layout.get("accents", ACCENTS))
         require(self.accent in ACCENTS, f"accent must be one of {', '.join(ACCENTS)}")
+        if self.accent == "outline":
+            # The outline frame sits inside the margin; keep the content a clear gap inside the frame, not
+            # flush against its inner edge.
+            inner = round(self.m * 0.45 + self.outline_width() + self.unit * 2)
+            if inner > self.m:
+                self.L, self.T, self.R, self.B = inner, inner, self.W - inner, self.H - inner
+                self.cw, self.ch = self.R - self.L, self.B - self.T
         # Content is fill-in-the-blank: only what the caller supplied is real copy. A slot the
         # design needs but nobody filled renders as a visible "[Label]" placeholder and is
         # recorded as a blank, so it can never ship silently as invented sample text.
@@ -194,6 +204,16 @@ class Builder:
         width = max(1, int(width))
         heavy = (role in ("display", "headline", "title")) if isinstance(role, str) else display
         font = self.display_font if heavy else self.font
+        # The text stage the slot sets in: its font comes from the stage when the document maps one (a brand
+        # can give h1 or label its own face); otherwise the heading/body choice above stands.
+        stage = "label" if (name or role) == "label" else ROLE_TO_STAGE.get(role) if isinstance(role, str) else None
+        stage_font = None
+        if stage and not (self.op.get("display_font") or self.op.get("font") if heavy else self.op.get("font")):
+            from .type_roles import role_font
+
+            stage_font = role_font(self.project, stage)
+            if stage_font:
+                font = stage_font
         # ``line`` is a line-height multiple; by default the craft table's value for the role's stage.
         multiple = line if line is not None else LINE_HEIGHT[ROLE_STAGES.get(role, "heading" if heavy else "body")
                                                              if isinstance(role, str) else "heading" if heavy else "body"]
@@ -225,7 +245,9 @@ class Builder:
             w, h = self.measure(content, size, width, spacing_for(size), align, font)
         layer = self.name(name or role)
         op = {"type": "text", "name": layer, "text": content, "size": size, "color": color, "align": align, "line_height": multiple, "x": round(x), "y": round(y)}
-        if font:
+        if stage_font:
+            op["font"] = stage
+        elif font:
             op["font"] = font
         self.add(op)
         if stroke:
@@ -370,6 +392,9 @@ class Builder:
         self.created.append(self.name(name))
         return (round(x), round(y), round(w), round(h))
 
+    def outline_width(self):
+        return max(2, round(self.unit * 0.75))
+
     def accent_device(self, x, y, width, height, near="top"):
         """The seeded secondary device that ties a block together (or nothing)."""
         size = max(2, round(self.unit * 0.75))
@@ -393,7 +418,8 @@ class Builder:
             return self.rect("accent", bx, by, bw, bh, "@accent", opacity=0.9, decoration=True)
         if self.accent == "outline":
             inset = self.m * 0.45
-            return self.rect("accent", inset, inset, self.W - 2 * inset, self.H - 2 * inset, "transparent", stroke="@accent", stroke_width=size, decoration=True)
+            return self.rect("accent", inset, inset, self.W - 2 * inset, self.H - 2 * inset, "transparent", stroke="@accent",
+                             stroke_width=self.outline_width(), decoration=True)
         return None
 
     def stack(self, entries, x, y, width, gap=None, align=None):

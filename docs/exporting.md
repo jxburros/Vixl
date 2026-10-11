@@ -139,7 +139,8 @@ For repeated output families, use [production workflows](production.md) to retai
 checks, render decisions and resume information. To send a set of exports for sign-off, write a
 [proof page](production.md#proof-pages): one offline HTML file with thumbnails, metadata, findings and
 approve/reject decisions; `vixl diff A B` shows what changed between two exports.
-# Python export consistency
+
+## Python export consistency
 
 `Project.export`, `Project.export_animation`, `export_timeline` and the MCP export
 tools protect existing files by default (`overwrite=False`). Pass `overwrite=True`
@@ -161,4 +162,10 @@ A proof continues past a document that cannot render, recording its error alongs
 
 Python `Project.export(..., pages="all")` selects all visible pages; for a raster export it writes the contact sheet. CMYK PDF export without an ICC profile reports that conversion is unprofiled. Supply the intended printer profile for managed colour output.
 
-SVG export uses native browser `mix-blend-mode` for supported blend modes, keeping other shapes/text vector. Unsupported backdrop operations still report raster fallbacks; strict mode rejects them. Editable SVG import now accepts simple native gradient rectangles (translation-only linear/radial gradients with supported stops) and unclipped stroke paths. Arbitrary transforms, clipping, gradient-filled nonrectangular geometry and unsupported SVG features still require appearance/auto mode.
+**One object or layer alone.** `isolate=["guitar"]` (CLI `--isolate guitar`) exports only those layers, object
+paths (`person/guitar`) or `object:KIND`, cropped to their ink plus `padding` pixels on a transparent canvas, in
+every format; a `.vixl` path writes a portable object document for `object-place source=`. SVG, PowerPoint and
+PSD keep declared [objects](objects.md) as named groups, and every format carries alt text and the document
+language ([accessibility](accessibility.md)).
+
+SVG export writes `multiply`, `screen`, `overlay`, `darken`, `lighten` and `difference` layers as native `mix-blend-mode` groups inside an isolated root, keeping every shape and text vector. `add`, `subtract` and other backdrop-dependent operations still rasterize the document and report the fallback; strict mode rejects them. Editable SVG import also accepts native gradient rectangles (unrounded, unstroked, translated only, user-space padded linear or radial gradients with 2–32 plain stops) and stroked paths that overflow their box. Arbitrary transforms, clipping, gradient-filled nonrectangular geometry and unsupported SVG features still require appearance/auto mode.

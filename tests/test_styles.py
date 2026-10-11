@@ -178,7 +178,7 @@ def swiss_bad(fonts):
          "font": "inter-400", "align": "left"},
         {"type": "shape", "shape": "rounded-rectangle", "name": "bar", "x": 133, "y": 500, "width": 300, "height": 24,
          "fill": "#e30613", "radius": 8},
-        {"type": "shape", "shape": "star", "name": "star", "x": 600, "y": 700, "width": 200, "height": 200, "fill": "#00aa55"},
+        {"type": "shape", "shape": "star", "name": "star", "x": 640, "y": 700, "width": 200, "height": 200, "fill": "#00aa55"},
         {"type": "rotate", "target": "star", "value": 20},
         {"type": "layer-style", "target": "star", "name": "drop-shadow", "settings": {"blur": 12, "dx": 4, "dy": 4}},
     ])

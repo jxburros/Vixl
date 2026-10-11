@@ -73,7 +73,11 @@ SUMMARIES = {
     "constrain": "Pin a layer's edges or center to the canvas, a layer or a guide.",
     "distribute": "Space three or more layers evenly along an axis.",
     "group": "Group layers into one transformable layer.",
-    "ungroup": "Dissolve a group, keeping its children in place.",
+    "ungroup": "Dissolve a group, keeping its children in place (a declared object needs force).",
+    "object": "Declare a group one object of a kind (dog, guitar, person), name its parts, or remove the declaration.",
+    "object-save": "Keep an editable copy of an object (with its parts, recipes and fonts) in the document's library.",
+    "object-place": "Place a saved or exported object as an editable group with new IDs, optionally recoloured by part.",
+    "accessibility": "Set the document language and title, and the active page's description, language and reading order.",
     "reparent": "Move layers into a group, to another group or out to the page without ungrouping; they keep "
                 "where they appear on the canvas.",
     "clip": "Clip a layer to the shape of a base layer beneath it (or release it).",
@@ -84,7 +88,8 @@ SUMMARIES = {
     "pattern-scatter": "Scatter motifs in a seamless wrap-around tile (copies crossing an edge wrap), report its seam score.",
     "look": "Apply a named finishing look (glow, drop shadow, grain, paper, gradient …) to layers in one step.",
     "layer-style": "Add or remove a layer style: drop shadow, stroke, outer glow, color or gradient overlay.",
-    "layer-intent": "Mark a layer as content, decoration, background or the page title, allow intended overlaps, or allow an intentional crop.",
+    "layer-intent": "Mark a layer as content, decoration, background or the page title, allow intended overlaps or crops, waive checks, or mark placeholder-like text as intended.",
+    "waiver": "Accept a check finding or suite rule on purpose, with a reason and optional expiry; reports list it as waived.",
     "path-fit": "Fit a path layer's geometry into its box.",
     "font-fallbacks": "Register fonts used for characters the primary font lacks.",
     "artboard": "Define a named artboard (size, background, variables, viewport) for variants.",
@@ -109,7 +114,9 @@ SUMMARIES = {
     "palette-generate": "Generate swatches from one color: a 50-950 scale or a harmony (complementary, triadic …).",
     "template-apply": "Create layers from a named template with variables.",
     "guidance": "Store or remove a written design guide (brand voice, rules) in the document.",
-    "font-register": "Register an imported font by name, and optionally make it the heading or body font.",
+    "brand-preset": "Use a named preset of the workspace brand (brand.json presets) for this document: its palette, "
+                    "fonts, stages and rules apply to layouts, templates and the brand check; none returns to the base brand.",
+    "font-register": "Register an imported font by name, and optionally make it the font of a role (heading, body, any named role such as accent) or a text stage (display, h1–h3, subtitle, lead, body, caption, citation, label).",
     "style-define": "Define a named character or paragraph style.",
     "style-apply": "Apply a named character or paragraph style to a text layer.",
     "style-set": "Tag the document with a design style (swiss, brutalist, art-deco …) for style guidance and checks.",
@@ -158,6 +165,10 @@ SUMMARIES = {
     "link-embed": "Freeze a linked document into an ordinary raster layer that no longer follows its source.",
     "chart": "Draw a data-bound chart (bars, lines, areas, pie, donut) as vector layers, or restyle one with target.",
     "chart-data": "Edit a chart's data in place (cells, categories, series, CSV reload) and redraw it, keeping layer IDs.",
+    "table": "Draw a table from rows or a CSV as vector layers (aligned columns, header, rules), or restyle one with target.",
+    "die-cut": "Add a sticker cut line: the union of the targets' ink outline, grown by a distance, as a stroked path.",
+    "path-split": "Cut a filled path into two named parts along a polygon or line, optionally overlapping the cut.",
+    "table-data": "Edit a table's rows in place (cells, rows, columns, CSV reload) and redraw it, keeping layer IDs.",
     "stack": "Lay a group out as a row or column that reflows and re-centres when a member is empty or hidden.",
     "diagram": "Draw a flowchart, dependency graph, org chart or mind map from nodes and edges, laid out automatically.",
     "diagram-from-text": "Draw a diagram from a short text format (A -> B: label, indentation for hierarchies, group lanes).",
@@ -240,7 +251,7 @@ FIELDS = {
     "value": "The new value.",
     "points": "List of [x, y] points (pixels).",
     "seed": "Integer seed; the same seed always gives the same result.",
-    "font": "Registered font name, or 'heading' / 'body' for the document typography.",
+    "font": "Registered font name, or a role (heading, body, a brand role) or text stage (h1, caption …) of the document typography.",
     "kind": "Which variant of the operation to use.",
     "start": "Start value or time.",
     "end": "End value or time.",
@@ -402,14 +413,16 @@ OVERRIDES = {
     "guidance": {"name": "Guidance name (a built-in guide, or any name when text is given).",
                  "text": "Guidance text to store.", "style": "Slot to store it in (default 'overall')."},
     "font-register": {"name": "Name to register the font under.", "asset": "Imported font asset ID.",
-                      "role": "heading or body: make it the document's heading or body font."},
+                      "role": "Make it the font of this role: heading, body, a text stage (h1, label …) or any lowercase role name (accent, hand, mono); text that follows the role, or a stage inheriting it, changes with it."},
     "text": {"size": "Font size in pixels. Without one, the body size of the document's type scale (about 2.6% of "
                      "the canvas short side when it has none).", "color": "Text color. Without one, the document @ink swatch, else black or white, whichever reads on the canvas background.", "align": "Alignment within the text box.",
-             "spacing": "Pixels added to the font's own line pitch; negative tightens display type. Without spacing "
+             "spacing": "Line spacing (leading), not letter spacing: pixels added to the font's own line pitch; "
+                        "negative tightens display type. For letter spacing use tracking. Without spacing "
                         "or line_height, the line-height table sets it (body 1.45, lead 1.35, headings 1.1, display "
                         "1.0, captions 1.3 times the size)."},
     "text-set": {"stroke_width": "Outline thickness in pixels (0 removes it).", "size": "Font size in pixels.",
-                 "spacing": "Pixels added to the font's own line pitch (may be negative); replaces line_height."},
+                 "spacing": "Line spacing (leading), not letter spacing: pixels added to the font's own line pitch "
+                            "(may be negative); replaces line_height. For letter spacing use tracking."},
     "rename": {"name": "New unique layer name."},
     "duplicate": {"name": "Name for the copy (default '<name> copy')."},
     "move": {"x": "New x in pixels, 'center' or a percentage; with relative, a shift.",
@@ -627,7 +640,13 @@ OVERRIDES = {
                                     "group that its parts are separate by design, so the connected check skips it.",
                      "color_vision_safe": "true on a chart group says its series differ by more than color (labels, patterns), so the color_vision check skips it.",
                      "allow_crop": "true marks a deliberate edge crop or bleed: checks report it as informational "
-                                   "instead of a problem."},
+                                   "instead of a problem.",
+                     "waive": "Checks accepted on this layer, replacing its waivers ([] clears): names such as "
+                              "'contrast', or {check, reason, expires (YYYY-MM-DD), with (overlap partners)}. "
+                              "Its findings stay listed as informational with waived; an expired waiver turns them "
+                              "back on.",
+                     "literal_text": "true on a text layer says copy that looks like a placeholder (TBD, 'Your name "
+                                     "here', ${name}) is intended, so the placeholders check skips it."},
     "font-fallbacks": {"fonts": "Registered font names tried for missing characters."},
     "container-place": {"name": "Group layer name.", "resource": "Saved container name.",
                         "variables": "Container variables."},
@@ -798,6 +817,13 @@ EXAMPLES = {
     ],
     "layer-intent": [
         {"type": "layer-intent", "target": "photo", "role": "decoration", "allow_crop": True},
+        {"type": "layer-intent", "target": "photo", "waive": [
+            {"check": "contrast", "reason": "ghost numeral behind the title", "expires": "2030-12-31"}]},
+    ],
+    "waiver": [
+        {"type": "waiver", "check": "contrast", "target": "photo", "reason": "decorative watermark, approved by brand",
+         "expires": "2030-12-31"},
+        {"type": "waiver", "check": "safe_area", "reason": "full-bleed title bar by design"},
     ],
     "style-set": [
         {"type": "style-set", "style": "swiss"},

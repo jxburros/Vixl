@@ -164,6 +164,36 @@ in a second window. Hidden pages are left out; `--pages` picks pages, `--present
 old single-image page back. Speaker notes are inside the file, so export with `--no-notes` for the
 copy you share. See [presenter](presenter.md).
 
+## A deck from Markdown
+
+The `deck-from-markdown` workflow action turns notes into a checked deck in one call (MCP `vixl_workflow`,
+CLI `vixl workflow deck-from-markdown --request req.json`, Python `vixl.workflows.dispatch`):
+
+```json
+{"markdown": "notes.md", "output": "deck.vixl", "size": "slide", "export": ["pptx", "pdf", "html"]}
+```
+
+- `#` and `##` headings (and `---` lines) start slides; each becomes a page named after its heading.
+- The layout follows what a slide holds: the first `#` heading with a line or two under it is a title slide
+  (`slide-title`: subtitle, caption); a heading alone is a section slide; one `>` quotation (an `— Name` line
+  attributes it) is a `quote-card`; anything else is a content slide (`slide-content` for the heading).
+- On content slides the body is one [rich text](rich-text.md) box (bullets, numbers, `###` sub-headings,
+  `**bold**`, `*italic*` …); a fenced `csv` block becomes a [table](charts.md#tables), a fenced `chart` block
+  (CSV, first column the categories; `chart line`, `chart pie` … picks the kind) a [chart](charts.md), and
+  `![alt](image.png)` a framed image. Text and a visual share the slide side by side.
+- Text in `<!-- comments -->`, or after a `Notes:` line, becomes the page's speaker notes.
+- Every page uses one master, `deck`, with the deck background and a `${page} / ${pages}` page number; every
+  slide uses the same layout `seed` (default 1) and palette (`palette`, else the first slide's roll), and text
+  sizes stay above the deck check's 18 pt minimum. `fonts` installs a font pairing (as `vixl_font_pair`);
+  otherwise the workspace's `brand.json` fonts are used, and without either the `fonts` check asks for a
+  pairing.
+- The deck checks run at the end (`check: false` skips them); the result reports their `fix` and `review`
+  counts and the findings. `export` writes `deck.pptx`, `deck.pdf`, `deck.html` or `deck.png` next to the deck.
+- Run it again after editing the Markdown: only slides whose Markdown changed are rebuilt (the others keep their
+  layers, IDs and hand edits), slides deleted from the Markdown are removed, pages added by hand stay, and the
+  result lists `rebuilt`, `kept` and `removed`. A document this workflow did not make is never replaced unless
+  `overwrite: true`.
+
 ## Deck checks
 
 `check --checks deck` runs the design checks on every page (findings that repeat on several pages,

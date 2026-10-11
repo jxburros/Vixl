@@ -126,6 +126,9 @@ Today plain `text` resolves to the bundled DejaVu Sans even when the document ha
 
 **Developer Addition:** We should have multiple stages of text like h1, h2, h3, subtitles, body, citation, etc.  But they shouldn't all have to be used, and most of the time, it will only be 2-4 fonts spread out across different stages, but we want to give users the options.
 
+Implemented (#406): craft `type_stages` holds the ten stages (font role, type-scale step, line height, case); see
+[Typography](typography.md#text-stages).
+
 **Recommendation:** `body`, with `heading` above the title size.
 
 Decision:
@@ -646,7 +649,8 @@ one module, `src/vixl/house_style.py`. A workspace `brand.json` and explicit fie
   half the body size), the line-height table, line length, minimum text sizes, the base-size rule, the
   headline measure, the default safe area (5%) and stroke width (1.5%), the neutral fill and the palette
   roles fills and strokes take, the house corner and corner scale, the irregularity strength, margins,
-  outline and shadow treatment, and label case. `src/vixl/craft.py` holds the helpers that apply them
+  outline and shadow treatment, label case, and the text-stage ladder (`type_stages`: each stage's font role,
+  type-scale step, line height and case). `src/vixl/craft.py` holds the helpers that apply them
   (text, shape and stroke defaults) and read-only names (`LINE_HEIGHT`, `CORNERS`, `SAFE_AREA` …) that
   always reflect the data; layouts, rich text, text flow, charts, diagrams, templates and containers
   read the same values.
@@ -697,7 +701,7 @@ A changed default affects **new documents only**:
 - Every changed default gets a changelog line under **Changed defaults** that names the override
   restoring the old result: an explicit field (`strength: "natural"`), a lock (`--lock mode=light`), or the
   version pin (`house_style_version: 1`, `vixl roll --house-style 1`, or `{"house_style": 1}` in
-  `.vixl/variety.json`).
+  `.vixl/variety.json`; version 2 replays 0.23).
 - Run the house-style eval (`python -m evals.house_style --compare evals/house-style-baseline.json`)
   before and after: quality must not fall, and diversity may fall only on purpose, with the baseline
   updated in the same change.
@@ -725,8 +729,8 @@ and #370 (layouts fail their own safe-area check).
 
 ## House style 3 (0.24)
 
-Version 3 adds sixteen pairings (4 safe, 8 bold, 4 avant-garde). The new fonts are existing open-font catalog families; display pairs carry small-size/long-copy cautions. New design rolls weight left/right alignment 75/25; data purposes use left/centre 75/25, and marks stay centred. Layout selection excludes arrangements that do not support the rolled alignment. Explicit alignment wins.
+Version 3 adds sixteen pairings (4 safe, 8 bold, 4 avant-garde). The new fonts are existing open-font catalog families; display pairs carry small-size/long-copy cautions. New design rolls weight left/right alignment 75/25; diagram and form purposes use left/centre 75/25, and marks (the logo purpose) stay centred. Layout selection excludes arrangements that do not support the rolled alignment. Explicit alignment wins.
 
-Background mixing uses only the amount needed to make the ink contrast target possible, bounded by `craft.background_mix_max`; secondary roles are verified against background/surface. Saturated palettes can remain visibly saturated. New stacks default to two spacing units, chart padding to two label-size units and text-flow gutters to three text-size units. Explicit geometry wins. Stack/layout gaps accept a unit expression such as `2u`; a unit is half the body size, rounded with the existing minimum.
+Background mixing uses only the amount needed to make the ink contrast target (7.1:1) possible, bounded by `craft.background_mix_max` (0.82 light, 0.75 dark); secondary roles are verified against background/surface. Saturated palettes can remain visibly saturated. New stacks default to two spacing units, chart padding to two label-size units and text-flow gutters to three text-size units. Explicit geometry wins. Stack/layout gaps accept a unit expression such as `2u`; a unit is half the body size, rounded, at least 2 px. These geometry defaults apply only to documents that record version 3, as does the seamless default for new short timelines. In every document, social and poster minor text is at least 2.2% of the short side, and bold text (700+) counts as large for contrast from 18.66 px; regular text from 24 px.
 
 Pin `house_style_version: 2` / `vixl roll --house-style 2` to replay 0.23 rolls. Version 1 remains available. Existing stored geometry is not recomposed implicitly. The version-2 regression fixture covers multiple seeds, purposes and variety levels.

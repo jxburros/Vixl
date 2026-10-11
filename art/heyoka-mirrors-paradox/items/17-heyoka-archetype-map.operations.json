@@ -1,0 +1,461 @@
+[
+  {
+    "type": "text",
+    "name": "series",
+    "text": "HEYOKA / A MAP OF THE MODERN ARCHETYPE",
+    "x": 60,
+    "y": 50,
+    "size": 20,
+    "font": "mono",
+    "color": "#9b402c",
+    "line_height": 1.35
+  },
+  {
+    "type": "text",
+    "name": "title",
+    "text": "ONE ARCHETYPE. SIX TENSIONS.",
+    "x": 55,
+    "y": 123,
+    "size": 68,
+    "font": "condensed",
+    "color": "#213334",
+    "line_height": 1.35
+  },
+  {
+    "type": "add",
+    "path": "/workspace/heyoka-modern-studio/assets/heyoka-surreal-sheet.png",
+    "name": "art-0-surreal"
+  },
+  {
+    "type": "crop",
+    "target": "art-0-surreal",
+    "x": 0,
+    "y": 133,
+    "width": 512,
+    "height": 246
+  },
+  {
+    "type": "resize",
+    "target": "art-0-surreal",
+    "width": 490,
+    "height": 235
+  },
+  {
+    "type": "move",
+    "target": "art-0-surreal",
+    "x": 60,
+    "y": 280
+  },
+  {
+    "type": "layer-intent",
+    "target": "art-0-surreal",
+    "role": "decoration",
+    "allow_crop": true
+  },
+  {
+    "type": "shape",
+    "shape": "rectangle",
+    "name": "art-0-border",
+    "x": 60,
+    "y": 280,
+    "width": 490,
+    "height": 235,
+    "fill": "transparent",
+    "stroke": "#9fecdf",
+    "stroke_width": 1
+  },
+  {
+    "type": "layer-intent",
+    "target": "art-0-border",
+    "role": "decoration",
+    "allow_crop": true
+  },
+  {
+    "type": "text",
+    "name": "label-0",
+    "text": "MIRRORING",
+    "x": 60,
+    "y": 545,
+    "size": 28,
+    "font": "bold",
+    "color": "#9b402c",
+    "line_height": 1.35
+  },
+  {
+    "type": "text",
+    "name": "concept-0",
+    "text": "What did I actually see—and what did I\nadd?",
+    "x": 60,
+    "y": 595,
+    "size": 25,
+    "font": "serif",
+    "color": "#213334",
+    "line_height": 1.35
+  },
+  {
+    "type": "add",
+    "path": "/workspace/heyoka-modern-studio/assets/heyoka-surreal-sheet.png",
+    "name": "art-1-surreal"
+  },
+  {
+    "type": "crop",
+    "target": "art-1-surreal",
+    "x": 512,
+    "y": 133,
+    "width": 512,
+    "height": 246
+  },
+  {
+    "type": "resize",
+    "target": "art-1-surreal",
+    "width": 490,
+    "height": 235
+  },
+  {
+    "type": "move",
+    "target": "art-1-surreal",
+    "x": 600,
+    "y": 280
+  },
+  {
+    "type": "layer-intent",
+    "target": "art-1-surreal",
+    "role": "decoration",
+    "allow_crop": true
+  },
+  {
+    "type": "shape",
+    "shape": "rectangle",
+    "name": "art-1-border",
+    "x": 600,
+    "y": 280,
+    "width": 490,
+    "height": 235,
+    "fill": "transparent",
+    "stroke": "#f0c878",
+    "stroke_width": 1
+  },
+  {
+    "type": "layer-intent",
+    "target": "art-1-border",
+    "role": "decoration",
+    "allow_crop": true
+  },
+  {
+    "type": "text",
+    "name": "label-1",
+    "text": "PARADOX",
+    "x": 600,
+    "y": 545,
+    "size": 28,
+    "font": "bold",
+    "color": "#9b402c",
+    "line_height": 1.35
+  },
+  {
+    "type": "text",
+    "name": "concept-1",
+    "text": "Can two truths share the same frame?",
+    "x": 600,
+    "y": 595,
+    "size": 25,
+    "font": "serif",
+    "color": "#213334",
+    "line_height": 1.35
+  },
+  {
+    "type": "add",
+    "path": "/workspace/heyoka-modern-studio/assets/heyoka-surreal-sheet.png",
+    "name": "art-2-surreal"
+  },
+  {
+    "type": "crop",
+    "target": "art-2-surreal",
+    "x": 1024,
+    "y": 133,
+    "width": 512,
+    "height": 246
+  },
+  {
+    "type": "resize",
+    "target": "art-2-surreal",
+    "width": 490,
+    "height": 235
+  },
+  {
+    "type": "move",
+    "target": "art-2-surreal",
+    "x": 1140,
+    "y": 280
+  },
+  {
+    "type": "layer-intent",
+    "target": "art-2-surreal",
+    "role": "decoration",
+    "allow_crop": true
+  },
+  {
+    "type": "shape",
+    "shape": "rectangle",
+    "name": "art-2-border",
+    "x": 1140,
+    "y": 280,
+    "width": 490,
+    "height": 235,
+    "fill": "transparent",
+    "stroke": "#ffb9d6",
+    "stroke_width": 1
+  },
+  {
+    "type": "layer-intent",
+    "target": "art-2-border",
+    "role": "decoration",
+    "allow_crop": true
+  },
+  {
+    "type": "text",
+    "name": "label-2",
+    "text": "DISRUPTIVE HUMOR",
+    "x": 1140,
+    "y": 545,
+    "size": 28,
+    "font": "bold",
+    "color": "#9b402c",
+    "line_height": 1.35
+  },
+  {
+    "type": "text",
+    "name": "concept-2",
+    "text": "Did the laugh reveal a pattern—or hide\na criticism?",
+    "x": 1140,
+    "y": 595,
+    "size": 25,
+    "font": "serif",
+    "color": "#213334",
+    "line_height": 1.35
+  },
+  {
+    "type": "add",
+    "path": "/workspace/heyoka-modern-studio/assets/heyoka-surreal-sheet.png",
+    "name": "art-3-surreal"
+  },
+  {
+    "type": "crop",
+    "target": "art-3-surreal",
+    "x": 0,
+    "y": 645,
+    "width": 512,
+    "height": 246
+  },
+  {
+    "type": "resize",
+    "target": "art-3-surreal",
+    "width": 490,
+    "height": 235
+  },
+  {
+    "type": "move",
+    "target": "art-3-surreal",
+    "x": 60,
+    "y": 720
+  },
+  {
+    "type": "layer-intent",
+    "target": "art-3-surreal",
+    "role": "decoration",
+    "allow_crop": true
+  },
+  {
+    "type": "shape",
+    "shape": "rectangle",
+    "name": "art-3-border",
+    "x": 60,
+    "y": 720,
+    "width": 490,
+    "height": 235,
+    "fill": "transparent",
+    "stroke": "#e2aa91",
+    "stroke_width": 1
+  },
+  {
+    "type": "layer-intent",
+    "target": "art-3-border",
+    "role": "decoration",
+    "allow_crop": true
+  },
+  {
+    "type": "text",
+    "name": "label-3",
+    "text": "SHADOW WORK",
+    "x": 60,
+    "y": 985,
+    "size": 28,
+    "font": "bold",
+    "color": "#9b402c",
+    "line_height": 1.35
+  },
+  {
+    "type": "text",
+    "name": "concept-3",
+    "text": "Why did this particular moment stay\nwith me?",
+    "x": 60,
+    "y": 1035,
+    "size": 25,
+    "font": "serif",
+    "color": "#213334",
+    "line_height": 1.35
+  },
+  {
+    "type": "add",
+    "path": "/workspace/heyoka-modern-studio/assets/heyoka-surreal-sheet.png",
+    "name": "art-4-surreal"
+  },
+  {
+    "type": "crop",
+    "target": "art-4-surreal",
+    "x": 512,
+    "y": 645,
+    "width": 512,
+    "height": 246
+  },
+  {
+    "type": "resize",
+    "target": "art-4-surreal",
+    "width": 490,
+    "height": 235
+  },
+  {
+    "type": "move",
+    "target": "art-4-surreal",
+    "x": 600,
+    "y": 720
+  },
+  {
+    "type": "layer-intent",
+    "target": "art-4-surreal",
+    "role": "decoration",
+    "allow_crop": true
+  },
+  {
+    "type": "shape",
+    "shape": "rectangle",
+    "name": "art-4-border",
+    "x": 600,
+    "y": 720,
+    "width": 490,
+    "height": 235,
+    "fill": "transparent",
+    "stroke": "#8fe0d2",
+    "stroke_width": 1
+  },
+  {
+    "type": "layer-intent",
+    "target": "art-4-border",
+    "role": "decoration",
+    "allow_crop": true
+  },
+  {
+    "type": "text",
+    "name": "label-4",
+    "text": "PATTERN INTERRUPTION",
+    "x": 600,
+    "y": 985,
+    "size": 28,
+    "font": "bold",
+    "color": "#9b402c",
+    "line_height": 1.35
+  },
+  {
+    "type": "text",
+    "name": "concept-4",
+    "text": "What became possible when the usual\nresponse stopped?",
+    "x": 600,
+    "y": 1035,
+    "size": 25,
+    "font": "serif",
+    "color": "#213334",
+    "line_height": 1.35
+  },
+  {
+    "type": "add",
+    "path": "/workspace/heyoka-modern-studio/assets/heyoka-surreal-sheet.png",
+    "name": "art-5-surreal"
+  },
+  {
+    "type": "crop",
+    "target": "art-5-surreal",
+    "x": 1024,
+    "y": 645,
+    "width": 512,
+    "height": 246
+  },
+  {
+    "type": "resize",
+    "target": "art-5-surreal",
+    "width": 490,
+    "height": 235
+  },
+  {
+    "type": "move",
+    "target": "art-5-surreal",
+    "x": 1140,
+    "y": 720
+  },
+  {
+    "type": "layer-intent",
+    "target": "art-5-surreal",
+    "role": "decoration",
+    "allow_crop": true
+  },
+  {
+    "type": "shape",
+    "shape": "rectangle",
+    "name": "art-5-border",
+    "x": 1140,
+    "y": 720,
+    "width": 490,
+    "height": 235,
+    "fill": "transparent",
+    "stroke": "#efd09a",
+    "stroke_width": 1
+  },
+  {
+    "type": "layer-intent",
+    "target": "art-5-border",
+    "role": "decoration",
+    "allow_crop": true
+  },
+  {
+    "type": "text",
+    "name": "label-5",
+    "text": "RELATIONSHIPS & BOUNDARIES",
+    "x": 1140,
+    "y": 985,
+    "size": 28,
+    "font": "bold",
+    "color": "#9b402c",
+    "line_height": 1.35
+  },
+  {
+    "type": "text",
+    "name": "concept-5",
+    "text": "Can I stay curious without deciding who\nsomeone is?",
+    "x": 1140,
+    "y": 1035,
+    "size": 25,
+    "font": "serif",
+    "color": "#213334",
+    "line_height": 1.35
+  },
+  {
+    "type": "text",
+    "name": "footer",
+    "text": "HEYOKA / Contemporary spiritual interpretations • Detailed essays in Mirrors & Paradox",
+    "x": 60,
+    "y": 1185,
+    "size": 18,
+    "font": "sans",
+    "color": "#213334",
+    "line_height": 1.35
+  }
+]

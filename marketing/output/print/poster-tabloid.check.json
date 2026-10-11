@@ -1,39 +1,176 @@
 {
+  "passed": true,
+  "errors": 0,
+  "warnings": 0,
+  "info": 2,
+  "by_action": {
+    "fix": [],
+    "review": [],
+    "informational": [
+      0,
+      1
+    ]
+  },
+  "outcome": {
+    "state": "validated",
+    "execution": "completed",
+    "validation": "passed",
+    "review": "not_required",
+    "review_reasons": [],
+    "accepted": [
+      {
+        "rule": "bounds.bleed",
+        "layers": [
+          "glow"
+        ],
+        "reason": "'glow' bleeds off the canvas edge (marked as an intentional crop)"
+      },
+      {
+        "rule": "safe_area.outside",
+        "layers": [
+          "glow"
+        ],
+        "reason": "'glow' extends outside the safe area (intentional crop or bleed)"
+      }
+    ],
+    "validated_by": [
+      "design checks"
+    ]
+  },
   "issues": [
-    {
-      "check": "coverage",
-      "severity": "warning",
-      "action": "informational",
-      "layer": null,
-      "message": "'grid' is inside a repeated group; geometry checks cover its base instance. Visually inspect the repeated instances."
-    },
     {
       "check": "bounds",
       "severity": "info",
+      "layers": [
+        "glow"
+      ],
+      "message": "'glow' bleeds off the canvas edge (marked as an intentional crop)",
+      "layer_ids": [
+        "lyr_7ba1d12be838299b"
+      ],
+      "box": [
+        -400,
+        1400,
+        1900,
+        1900
+      ],
+      "bounds": [
+        -400.0,
+        1400.0,
+        1900.0,
+        1900.0
+      ],
+      "intentional": true,
+      "code": "bleed",
       "action": "informational",
-      "layer": null,
-      "message": "'glow' bleeds off the canvas edge (marked as an intentional crop)"
+      "rule": "bounds.bleed"
     },
     {
       "check": "safe_area",
       "severity": "info",
+      "layers": [
+        "glow"
+      ],
+      "message": "'glow' extends outside the safe area (intentional crop or bleed)",
+      "layer_ids": [
+        "lyr_7ba1d12be838299b"
+      ],
+      "box": [
+        -400,
+        1400,
+        1900,
+        1900
+      ],
+      "bounds": [
+        -400,
+        1400,
+        1900,
+        1900
+      ],
+      "safe_area": [
+        57,
+        57,
+        1574,
+        2474
+      ],
+      "code": "outside",
+      "intentional": true,
       "action": "informational",
-      "layer": null,
-      "message": "'glow' extends outside the safe area (intentional crop or bleed)"
-    },
-    {
-      "check": "safe_area",
-      "severity": "info",
-      "action": "informational",
-      "layer": null,
-      "message": "'grid' extends outside the safe area (intentional crop or bleed)"
-    },
-    {
-      "check": "safe_area",
-      "severity": "info",
-      "action": "informational",
-      "layer": null,
-      "message": "'grid-row' extends outside the safe area (intentional crop or bleed)"
+      "rule": "safe_area.outside",
+      "measured": {
+        "actual": [
+          -400,
+          1400,
+          1900,
+          1900
+        ],
+        "expected": [
+          57,
+          57,
+          1574,
+          2474
+        ],
+        "unit": "box"
+      }
     }
-  ]
+  ],
+  "checked": {
+    "checks": [
+      "bounds",
+      "flow",
+      "overlap",
+      "contrast",
+      "safe_area",
+      "fonts",
+      "print"
+    ],
+    "layers_checked": 50,
+    "layers_total": 50,
+    "text_layers": 6
+  },
+  "suites": {
+    "canvas": {
+      "version": 1,
+      "suite_hash": "e9982585218f0882024eb7bc4384469bf6d1cd0f4ccbbadf50db66c76ad37219",
+      "passed": true,
+      "status": "passed",
+      "errors": 0,
+      "needs_review": 0,
+      "coverage": {
+        "mode": "still",
+        "times": [
+          null
+        ]
+      },
+      "results": [
+        {
+          "id": "width",
+          "status": "passed",
+          "severity": "error",
+          "time": null,
+          "expected": 1688,
+          "actual": 1688
+        },
+        {
+          "id": "height",
+          "status": "passed",
+          "severity": "error",
+          "time": null,
+          "expected": 2588,
+          "actual": 2588
+        }
+      ],
+      "source": "document",
+      "outcome": {
+        "state": "validated",
+        "execution": "completed",
+        "validation": "passed",
+        "review": "not_required",
+        "review_reasons": [],
+        "validated_by": [
+          "suite"
+        ]
+      }
+    }
+  }
 }

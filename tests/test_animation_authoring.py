@@ -140,8 +140,9 @@ def test_particles_repeat_deterministically_and_obey_gravity():
     p = Project(120, 120)
     p.apply({'type': 'particles', 'name': 'sparks', 'preset': 'sparks', 'count': 3, 'x': 30, 'y': 20, 'spread': [0, 0], 'velocity': [10, 0], 'gravity': 100, 'life': 2000, 'duration': 1000, 'turbulence': 0, 'seed': 12})
     frame = project_at(p, 500)
-    assert frame.layer('sparks/0')['x'] == 35
-    assert frame.layer('sparks/0')['y'] == 32.5
+    from vixl.spatial import canvas_boxes
+    # Particles live in their emitter group's coordinates; on the canvas they follow the physics.
+    assert canvas_boxes(frame)[frame.layer('sparks/0')['id']][:2] == (35, 32.5)
     assert np.array_equal(np.asarray(render_at(p, 500)), np.asarray(render_at(p, 500)))
     assert not project_at(p, 1000).layer('sparks/0')['visible']
 

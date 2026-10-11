@@ -1,6 +1,6 @@
 # AI features (external providers)
 
-Vixl is headless and designed for autonomous AI agents; humans can use the same interfaces. See [new resources and SVG](resources.md) for 0.11 additions.
+Vixl is a headless design engine for AI agents; people can drive the same interfaces. See [new resources and SVG](resources.md) for 0.11 additions.
 
 Vixl ships adapters, not models. Every AI command calls a provider **you** configured; there is no
 offline or placeholder fallback, and unsupported capabilities fail explicitly. If a call fails with

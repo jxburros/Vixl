@@ -1,0 +1,155 @@
+[
+  {
+    "type": "text",
+    "name": "series",
+    "text": "MODERN HEYOKA / ARCHETYPE STUDY 04",
+    "x": 65,
+    "y": 55,
+    "size": 19,
+    "font": "mono",
+    "color": "#e2aa91",
+    "line_height": 1.35
+  },
+  {
+    "type": "text",
+    "name": "title",
+    "text": "HEYOKA",
+    "x": 55,
+    "y": 105,
+    "size": 132,
+    "font": "italic",
+    "color": "#eee3ed",
+    "line_height": 1
+  },
+  {
+    "type": "text",
+    "name": "theme",
+    "text": "THE SHADOW MIRROR",
+    "x": 65,
+    "y": 267,
+    "size": 49,
+    "font": "serif",
+    "color": "#eee3ed",
+    "line_height": 1.35
+  },
+  {
+    "type": "add",
+    "path": "/workspace/heyoka-modern-studio/assets/heyoka-surreal-sheet.png",
+    "name": "art-3-surreal"
+  },
+  {
+    "type": "crop",
+    "target": "art-3-surreal",
+    "x": 0,
+    "y": 579,
+    "width": 512,
+    "height": 377
+  },
+  {
+    "type": "resize",
+    "target": "art-3-surreal",
+    "width": 950,
+    "height": 700
+  },
+  {
+    "type": "move",
+    "target": "art-3-surreal",
+    "x": 65,
+    "y": 370
+  },
+  {
+    "type": "layer-intent",
+    "target": "art-3-surreal",
+    "role": "decoration",
+    "allow_crop": true
+  },
+  {
+    "type": "shape",
+    "shape": "rectangle",
+    "name": "art-3-border",
+    "x": 65,
+    "y": 370,
+    "width": 950,
+    "height": 700,
+    "fill": "transparent",
+    "stroke": "#e2aa91",
+    "stroke_width": 1
+  },
+  {
+    "type": "layer-intent",
+    "target": "art-3-border",
+    "role": "decoration",
+    "allow_crop": true
+  },
+  {
+    "type": "text",
+    "name": "left-head",
+    "text": "THE MODERN IMAGE",
+    "x": 65,
+    "y": 1130,
+    "size": 21,
+    "font": "bold",
+    "color": "#e2aa91",
+    "line_height": 1.35
+  },
+  {
+    "type": "text",
+    "name": "lead",
+    "text": "Modern spiritual language\nconnects heyoka with shadow\nwork: noticing qualities we\ndisown, project, or struggle to\nrecognize in ourselves.",
+    "x": 65,
+    "y": 1174,
+    "size": 27,
+    "font": "sans",
+    "color": "#eee3ed",
+    "line_height": 1.42
+  },
+  {
+    "type": "text",
+    "name": "right-head",
+    "text": "WHAT IT INVITES",
+    "x": 570,
+    "y": 1130,
+    "size": 21,
+    "font": "bold",
+    "color": "#e2aa91",
+    "line_height": 1.35
+  },
+  {
+    "type": "text",
+    "name": "detail",
+    "text": "A strong reaction can become\nmaterial for reflection. It is a clue to\ninvestigate, not proof that another\nperson has exposed your hidden\ntruth. The mirror works best when\ncuriosity stays larger than certainty.",
+    "x": 570,
+    "y": 1174,
+    "size": 26,
+    "font": "sans",
+    "color": "#eee3ed",
+    "line_height": 1.4
+  },
+  {
+    "type": "shape",
+    "shape": "rectangle",
+    "name": "bottom-line",
+    "x": 65,
+    "y": 1510,
+    "width": 950,
+    "height": 2,
+    "fill": "#e2aa91"
+  },
+  {
+    "type": "layer-intent",
+    "target": "bottom-line",
+    "role": "decoration",
+    "allow_crop": true
+  },
+  {
+    "type": "text",
+    "name": "footer",
+    "text": "HEYOKA / Contemporary spiritual interpretation • Original editorial artwork",
+    "x": 65,
+    "y": 1533,
+    "size": 16,
+    "font": "sans",
+    "color": "#eee3ed",
+    "line_height": 1.35
+  }
+]

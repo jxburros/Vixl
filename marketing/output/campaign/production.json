@@ -1,0 +1,27 @@
+{
+  "spec": {
+    "version": 1,
+    "rows": [
+      {
+        "title": "Keep the layers.",
+        "body": "Your agent makes it. You can still change it.",
+        "accent": "#6A9AFF"
+      },
+      {
+        "title": "New numbers? Same chart.",
+        "body": "Data-bound charts and diagrams that stay editable.",
+        "accent": "#9FE3B4"
+      },
+      {
+        "title": "Make it move.",
+        "body": "Keyframes, app states and reduced-motion stills.",
+        "accent": "#FFC37A"
+      }
+    ],
+    "suites": [
+      "delivery"
+    ],
+    "workers": 1
+  },
+  "output": "campaign-custom"
+}

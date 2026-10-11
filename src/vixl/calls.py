@@ -39,16 +39,18 @@ def note_document(path):
         state.document = path
 
 
-def progress(done, total=None, message=None):
-    """Report ``done`` of ``total`` units of work; ignored unless a service is listening."""
+def progress(done, total=None, message=None, timing=None):
+    """Report ``done`` of ``total`` units of work, and optionally ``timing`` (a dict such as elapsed and
+    estimated seconds left); ignored unless a service is listening."""
     state = CALL.get()
     if state is not None and state.report is not None:
-        state.report(done, total, message)
+        state.report(done, total, message, timing)
 
 
 def progress_dict(value):
-    """Adapter for the ``progress({"done": n, "total": m})`` callbacks in timeline and film exports."""
-    progress(value.get("done", 0), value.get("total"))
+    """Adapter for the ``progress({"done": n, "total": m, "timing": {...}})`` callbacks in timeline and film
+    exports."""
+    progress(value.get("done", 0), value.get("total"), timing=value.get("timing"))
 
 
 def cancelled():

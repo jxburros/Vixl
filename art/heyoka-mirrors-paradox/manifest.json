@@ -1,0 +1,312 @@
+[
+  {
+    "slug": "01-heyoka-mirroring",
+    "title": "Heyoka: Mirroring",
+    "features": [
+      "Iridescent surrealism",
+      "Surreal artwork + Vixl composition",
+      "Editable type and geometry",
+      "PDF / PNG / SVG"
+    ],
+    "exports": [
+      "vixl",
+      "png",
+      "pdf"
+    ],
+    "pages": 1,
+    "motion": false
+  },
+  {
+    "slug": "02-heyoka-paradox",
+    "title": "Heyoka: Paradox",
+    "features": [
+      "Celestial paradox",
+      "Surreal artwork + Vixl composition",
+      "Editable type and geometry",
+      "PDF / PNG / SVG"
+    ],
+    "exports": [
+      "vixl",
+      "png",
+      "pdf"
+    ],
+    "pages": 1,
+    "motion": false
+  },
+  {
+    "slug": "03-heyoka-disruptive-humor",
+    "title": "Heyoka: Disruptive humor",
+    "features": [
+      "Cosmic carnival",
+      "Surreal artwork + Vixl composition",
+      "Editable type and geometry",
+      "PDF / PNG / SVG"
+    ],
+    "exports": [
+      "vixl",
+      "png",
+      "pdf"
+    ],
+    "pages": 1,
+    "motion": false
+  },
+  {
+    "slug": "04-heyoka-shadow-work",
+    "title": "Heyoka: Shadow work",
+    "features": [
+      "Mystical shadow garden",
+      "Surreal artwork + Vixl composition",
+      "Editable type and geometry",
+      "PDF / PNG / SVG"
+    ],
+    "exports": [
+      "vixl",
+      "png",
+      "pdf"
+    ],
+    "pages": 1,
+    "motion": false
+  },
+  {
+    "slug": "05-heyoka-pattern-interruption",
+    "title": "Heyoka: Pattern interruption",
+    "features": [
+      "Prismatic psychedelia",
+      "Surreal artwork + Vixl composition",
+      "Editable type and geometry",
+      "PDF / PNG / SVG"
+    ],
+    "exports": [
+      "vixl",
+      "png",
+      "pdf"
+    ],
+    "pages": 1,
+    "motion": false
+  },
+  {
+    "slug": "06-heyoka-relationships-boundaries",
+    "title": "Heyoka: Relationships & boundaries",
+    "features": [
+      "Botanical dreamscape",
+      "Surreal artwork + Vixl composition",
+      "Editable type and geometry",
+      "PDF / PNG / SVG"
+    ],
+    "exports": [
+      "vixl",
+      "png",
+      "pdf"
+    ],
+    "pages": 1,
+    "motion": false
+  },
+  {
+    "slug": "07-heyoka-study-01",
+    "title": "Heyoka lens: Mirroring",
+    "features": [
+      "Psychedelic concept card",
+      "Iridescent surrealism",
+      "Heyoka-specific content",
+      "Editable layout"
+    ],
+    "exports": [
+      "vixl",
+      "png",
+      "pdf"
+    ],
+    "pages": 1,
+    "motion": false
+  },
+  {
+    "slug": "08-heyoka-study-02",
+    "title": "Heyoka lens: Paradox",
+    "features": [
+      "Psychedelic concept card",
+      "Celestial paradox",
+      "Heyoka-specific content",
+      "Editable layout"
+    ],
+    "exports": [
+      "vixl",
+      "png",
+      "pdf"
+    ],
+    "pages": 1,
+    "motion": false
+  },
+  {
+    "slug": "09-heyoka-study-03",
+    "title": "Heyoka lens: Disruptive humor",
+    "features": [
+      "Psychedelic concept card",
+      "Cosmic carnival",
+      "Heyoka-specific content",
+      "Editable layout"
+    ],
+    "exports": [
+      "vixl",
+      "png",
+      "pdf"
+    ],
+    "pages": 1,
+    "motion": false
+  },
+  {
+    "slug": "10-heyoka-study-04",
+    "title": "Heyoka lens: Shadow work",
+    "features": [
+      "Psychedelic concept card",
+      "Mystical shadow garden",
+      "Heyoka-specific content",
+      "Editable layout"
+    ],
+    "exports": [
+      "vixl",
+      "png",
+      "pdf"
+    ],
+    "pages": 1,
+    "motion": false
+  },
+  {
+    "slug": "11-heyoka-study-05",
+    "title": "Heyoka lens: Pattern interruption",
+    "features": [
+      "Psychedelic concept card",
+      "Prismatic psychedelia",
+      "Heyoka-specific content",
+      "Editable layout"
+    ],
+    "exports": [
+      "vixl",
+      "png",
+      "pdf"
+    ],
+    "pages": 1,
+    "motion": false
+  },
+  {
+    "slug": "12-heyoka-study-06",
+    "title": "Heyoka lens: Relationships & boundaries",
+    "features": [
+      "Psychedelic concept card",
+      "Botanical dreamscape",
+      "Heyoka-specific content",
+      "Editable layout"
+    ],
+    "exports": [
+      "vixl",
+      "png",
+      "pdf"
+    ],
+    "pages": 1,
+    "motion": false
+  },
+  {
+    "slug": "13-heyoka-mirrors-paradox-booklet",
+    "title": "Heyoka: mirrors & paradox",
+    "features": [
+      "Eight illustrated editorial pages",
+      "Six substantive modern interpretations",
+      "Rich text and embedded fonts",
+      "PDF + offline presenter"
+    ],
+    "exports": [
+      "vixl",
+      "pdf",
+      "png"
+    ],
+    "pages": 8,
+    "motion": false
+  },
+  {
+    "slug": "14-heyoka-art-deck",
+    "title": "Heyoka: six modern lenses",
+    "features": [
+      "Six art-led slides",
+      "Editable PowerPoint",
+      "Surreal art and editable typography",
+      "Offline HTML presenter"
+    ],
+    "exports": [
+      "vixl",
+      "pdf",
+      "png",
+      "pptx"
+    ],
+    "pages": 6,
+    "motion": false
+  },
+  {
+    "slug": "15-heyoka-illustrated-carousel",
+    "title": "Heyoka: the illustrated carousel",
+    "features": [
+      "Six illustrated cards",
+      "Subject-specific modern concepts",
+      "Individual PNG exports",
+      "Multi-page PDF"
+    ],
+    "exports": [
+      "vixl",
+      "pdf",
+      "png"
+    ],
+    "pages": 6,
+    "motion": false
+  },
+  {
+    "slug": "16-heyoka-living-mirror-motion",
+    "title": "Heyoka: the living mirror",
+    "features": [
+      "Psychedelic image motion",
+      "Three-second loop",
+      "Native keyframe tracks",
+      "Animated GIF and WebP"
+    ],
+    "exports": [
+      "vixl",
+      "png",
+      "pdf",
+      "webp",
+      "gif"
+    ],
+    "pages": 1,
+    "motion": true
+  },
+  {
+    "slug": "17-heyoka-archetype-map",
+    "title": "Heyoka: one archetype, six tensions",
+    "features": [
+      "Six surreal illustrations",
+      "Wide-format archetype map",
+      "Native crops and editable lettering",
+      "PDF and SVG"
+    ],
+    "exports": [
+      "vixl",
+      "png",
+      "pdf"
+    ],
+    "pages": 1,
+    "motion": false
+  },
+  {
+    "slug": "18-heyoka-mirror-encounter-journal",
+    "title": "Heyoka: the mirror encounter",
+    "features": [
+      "Heyoka-specific reflective prompts",
+      "Multiline PDF form fields",
+      "Print and interactive versions",
+      "Editable master"
+    ],
+    "exports": [
+      "vixl",
+      "png",
+      "pdf"
+    ],
+    "pages": 1,
+    "motion": false,
+    "special": "18-heyoka-mirror-encounter-journal-fillable.pdf"
+  }
+]

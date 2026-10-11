@@ -1,0 +1,122 @@
+[
+  {
+    "type": "text",
+    "name": "id",
+    "text": "HEYOKA / MODERN LENS 05",
+    "x": 45,
+    "y": 42,
+    "size": 18,
+    "font": "mono",
+    "color": "#8fe0d2",
+    "line_height": 1.35
+  },
+  {
+    "type": "text",
+    "name": "title",
+    "text": "PATTERN INTERRUPTION",
+    "x": 40,
+    "y": 105,
+    "size": 53,
+    "font": "condensed",
+    "color": "#e8f3ff",
+    "line_height": 1.1
+  },
+  {
+    "type": "add",
+    "path": "/workspace/heyoka-modern-studio/assets/heyoka-surreal-sheet.png",
+    "name": "art-4-surreal"
+  },
+  {
+    "type": "crop",
+    "target": "art-4-surreal",
+    "x": 512,
+    "y": 605,
+    "width": 512,
+    "height": 325
+  },
+  {
+    "type": "resize",
+    "target": "art-4-surreal",
+    "width": 710,
+    "height": 450
+  },
+  {
+    "type": "move",
+    "target": "art-4-surreal",
+    "x": 45,
+    "y": 250
+  },
+  {
+    "type": "layer-intent",
+    "target": "art-4-surreal",
+    "role": "decoration",
+    "allow_crop": true
+  },
+  {
+    "type": "shape",
+    "shape": "rectangle",
+    "name": "art-4-border",
+    "x": 45,
+    "y": 250,
+    "width": 710,
+    "height": 450,
+    "fill": "transparent",
+    "stroke": "#8fe0d2",
+    "stroke_width": 1
+  },
+  {
+    "type": "layer-intent",
+    "target": "art-4-border",
+    "role": "decoration",
+    "allow_crop": true
+  },
+  {
+    "type": "text",
+    "name": "body",
+    "text": "The modern heyoka archetype is imagined as a pattern\nbreaker: an unexpected presence that interrupts the\nusual script of a conversation.",
+    "x": 45,
+    "y": 749,
+    "size": 26,
+    "font": "sans",
+    "color": "#e8f3ff",
+    "line_height": 1.43
+  },
+  {
+    "type": "shape",
+    "shape": "rectangle",
+    "name": "question-panel",
+    "x": 45,
+    "y": 965,
+    "width": 710,
+    "height": 135,
+    "fill": "#e8f3ff"
+  },
+  {
+    "type": "layer-intent",
+    "target": "question-panel",
+    "role": "decoration",
+    "allow_crop": true
+  },
+  {
+    "type": "text",
+    "name": "question",
+    "text": "What became possible when the usual response\nstopped?",
+    "x": 65,
+    "y": 995,
+    "size": 27,
+    "font": "serif",
+    "color": "#0f2334",
+    "line_height": 1.35
+  },
+  {
+    "type": "text",
+    "name": "footer",
+    "text": "HEYOKA / CONTEMPORARY INTERPRETATION",
+    "x": 45,
+    "y": 1147,
+    "size": 17,
+    "font": "mono",
+    "color": "#8fe0d2",
+    "line_height": 1.35
+  }
+]

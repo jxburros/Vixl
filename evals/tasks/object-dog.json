@@ -1,0 +1,222 @@
+{
+  "prompt": "Create dog.vixl at 600x600 on a cream (#fdf6e3) background and draw a friendly dog sitting: head, body, four legs, ears and a tail. Make it one object of kind dog with every part named, no part floating free, and review it on its own before exporting dog.png.",
+  "document": "dog.vixl",
+  "checks": [
+    {
+      "type": "object",
+      "name": "a complete dog object",
+      "layer": "dog",
+      "kind": "dog",
+      "complete": true,
+      "parts": [
+        "head",
+        "body",
+        "leg",
+        "tail",
+        "ear"
+      ],
+      "connected": true
+    },
+    {
+      "type": "file",
+      "path": "dog.png",
+      "image_size": [
+        600,
+        600
+      ]
+    }
+  ],
+  "reference": [
+    {
+      "tool": "vixl_document_create",
+      "arguments": {
+        "path": "dog.vixl",
+        "width": 600,
+        "height": 600,
+        "background": "#fdf6e3"
+      }
+    },
+    {
+      "tool": "vixl_operations_apply",
+      "arguments": {
+        "operations": [
+          {
+            "type": "shape",
+            "shape": "rectangle",
+            "name": "tail",
+            "x": 140,
+            "y": 330,
+            "width": 90,
+            "height": 26,
+            "fill": "#a0522d",
+            "rotation": -30
+          },
+          {
+            "type": "shape",
+            "shape": "ellipse",
+            "name": "body",
+            "x": 190,
+            "y": 280,
+            "width": 220,
+            "height": 180,
+            "fill": "#c68642"
+          },
+          {
+            "type": "shape",
+            "shape": "rectangle",
+            "name": "leg-back-left",
+            "x": 210,
+            "y": 420,
+            "width": 40,
+            "height": 90,
+            "fill": "#a0522d"
+          },
+          {
+            "type": "shape",
+            "shape": "rectangle",
+            "name": "leg-back-right",
+            "x": 260,
+            "y": 420,
+            "width": 40,
+            "height": 90,
+            "fill": "#a0522d"
+          },
+          {
+            "type": "shape",
+            "shape": "rectangle",
+            "name": "leg-front-left",
+            "x": 320,
+            "y": 400,
+            "width": 36,
+            "height": 110,
+            "fill": "#c68642"
+          },
+          {
+            "type": "shape",
+            "shape": "rectangle",
+            "name": "leg-front-right",
+            "x": 360,
+            "y": 400,
+            "width": 36,
+            "height": 110,
+            "fill": "#c68642"
+          },
+          {
+            "type": "shape",
+            "shape": "ellipse",
+            "name": "ear-left",
+            "x": 305,
+            "y": 175,
+            "width": 50,
+            "height": 90,
+            "fill": "#8b4513"
+          },
+          {
+            "type": "shape",
+            "shape": "ellipse",
+            "name": "ear-right",
+            "x": 400,
+            "y": 175,
+            "width": 50,
+            "height": 90,
+            "fill": "#8b4513"
+          },
+          {
+            "type": "shape",
+            "shape": "ellipse",
+            "name": "head",
+            "x": 310,
+            "y": 200,
+            "width": 130,
+            "height": 130,
+            "fill": "#c68642"
+          },
+          {
+            "type": "group",
+            "name": "dog",
+            "targets": [
+              "tail",
+              "body",
+              "leg-back-left",
+              "leg-back-right",
+              "leg-front-left",
+              "leg-front-right",
+              "ear-left",
+              "ear-right",
+              "head"
+            ]
+          },
+          {
+            "type": "object",
+            "target": "dog",
+            "kind": "dog"
+          },
+          {
+            "type": "object",
+            "action": "part",
+            "target": "head",
+            "part": "head"
+          },
+          {
+            "type": "object",
+            "action": "part",
+            "target": "body",
+            "part": "body"
+          },
+          {
+            "type": "object",
+            "action": "part",
+            "target": "tail",
+            "part": "tail"
+          },
+          {
+            "type": "object",
+            "action": "part",
+            "targets": [
+              "leg-back-left",
+              "leg-back-right",
+              "leg-front-left",
+              "leg-front-right"
+            ],
+            "part": "leg"
+          },
+          {
+            "type": "object",
+            "action": "part",
+            "target": "ear-left",
+            "part": "ear",
+            "side": "left"
+          },
+          {
+            "type": "object",
+            "action": "part",
+            "target": "ear-right",
+            "part": "ear",
+            "side": "right"
+          }
+        ],
+        "check": [
+          "connected"
+        ]
+      }
+    },
+    {
+      "tool": "vixl_render_preview",
+      "arguments": {
+        "isolate": [
+          "dog"
+        ],
+        "views": [
+          "parts"
+        ],
+        "max_width": 512
+      }
+    },
+    {
+      "tool": "vixl_export_file",
+      "arguments": {
+        "path": "dog.png"
+      }
+    }
+  ]
+}

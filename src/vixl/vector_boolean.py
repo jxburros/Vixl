@@ -83,11 +83,12 @@ def winding(points, x, y):
     return result
 
 
-def offset(path, distance, join="miter", miter_limit=4):
+def offset_geometry(path, distance, join="miter", miter_limit=4, holes=True):
+    """The filled region of ``path`` (nonzero winding) grown or inset by ``distance``, as a shapely geometry.
+    ``holes=False`` fills the holes first (an outer silhouette, as a cut line needs)."""
     from shapely import BufferJoinStyle
-    from shapely.geometry import LineString
+    from shapely.geometry import LineString, Polygon
     from shapely.ops import polygonize, unary_union
-    from .shape_catalog import poly
 
     contours = flatten(path)
     require(
@@ -102,6 +103,9 @@ def offset(path, distance, join="miter", miter_limit=4):
             filled.append(face)
     geometry = unary_union(filled)
     require(not geometry.is_empty, "Path has no filled area to offset")
+    if not holes:
+        parts = list(geometry.geoms) if geometry.geom_type == "MultiPolygon" else [geometry]
+        geometry = unary_union([Polygon(part.exterior) for part in parts])
     result = geometry.buffer(
         distance,
         quad_segs=24,
@@ -113,6 +117,13 @@ def offset(path, distance, join="miter", miter_limit=4):
         mitre_limit=miter_limit,
     )
     require(not result.is_empty, "Offset collapses the path")
+    return result
+
+
+def offset(path, distance, join="miter", miter_limit=4):
+    from .shape_catalog import poly
+
+    result = offset_geometry(path, distance, join, miter_limit)
     polygons = list(result.geoms) if result.geom_type == "MultiPolygon" else [result]
     paths = []
     for polygon in polygons:

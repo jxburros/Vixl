@@ -2,7 +2,7 @@
 
 [Documentation home](README.md) · [Getting started](getting-started.md) · [Visual gallery](gallery.md)
 
-Vixl is a headless application designed for autonomous AI agents; humans can use the same interfaces.
+Vixl is a headless design engine for AI agents; people can drive the same interfaces.
 
 ## Install once
 
@@ -108,8 +108,8 @@ To publish a stable release:
 3. Tag the reviewed commit with its exact version and push the tag:
 
    ```bash
-   git tag v0.16.0 <reviewed-commit>
-   git push origin v0.16.0
+   git tag v0.25.0 <reviewed-commit>
+   git push origin v0.25.0
    ```
 
 4. The tag workflow re-runs tests, checks tag/package-version consistency, builds the distributions, and creates a **draft** GitHub release. It uploads every artifact before publishing it as the latest stable release. No release becomes visible to the updater while files are still being uploaded.
@@ -123,6 +123,7 @@ Release assets:
 - `vixl-update.json` — protocol/platform/version, asset filename, SHA-256 and byte size.
 - `SHA256SUMS.txt` — checksums of Windows release artifacts.
 - Python wheel and source distribution — optional pip/developer installs.
+- `vixl-catalog.json` and `vixl-catalog.schema.json` — the design catalog bundle for host applications (`vixl catalog export`) and its JSON Schema.
 
 An update trusts HTTPS and access control of the official GitHub repository. The manifest and artifact have the same trust root; checksums detect corruption or mismatched downloads but do not defend against compromise of the repository's release permissions. A separate signed-manifest trust system and Authenticode signing are future hardening options.
 
@@ -136,6 +137,11 @@ No PyPI password belongs in the repository. A manual workflow run on a branch on
 artifacts; a manual run on a version tag also publishes. A version tag must match
 `src/vixl/__init__.py`; use a new version for a new release.
 Publication is an external release step, not something a source checkout can guarantee.
+The source distribution explicitly includes `src/vixl` (including bundled runtime data),
+`pyproject.toml`, `README.md` and `LICENSE`, plus Hatch's automatic metadata.
+Keep repository artwork, explorations and
+other development assets out of it so each Python distribution stays below PyPI's
+100 MB per-file limit.
 
 After the first successful PyPI release:
 

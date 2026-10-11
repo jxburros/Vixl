@@ -24,6 +24,7 @@ a sheet of badges built from one template) stop going out of date.
 | `crop` | `{x, y, width, height}` in the source's pixels: only that region is placed. |
 | `artboard` | Draw one of the source's [artboards](design-tools.md) instead of its whole canvas. |
 | `source_page` | Draw one page (name or number) of a multi-page source. (`page` on an operation names the page of *this* document that it edits, so the linked page has its own field.) |
+| `corner_pin` | Four `[x, y]` corners in the layer's own pixels (top-left, top-right, bottom-right, bottom-left; a convex quadrilateral): the placed design is warped into them, as a screen seen at an angle or a card on a desk. `null` (or `--clear corner_pin`) removes it. Used by [mockups](#mockups). |
 | `variables` | Overrides for the source's `${variables}`. A value may itself contain `${name}`, which reads this document's variable. A value for an image variable names a workspace image file. |
 
 Rotation, flips, opacity, blend, masks, effects, layer styles, clipping, constraints and groups work on a
@@ -105,7 +106,7 @@ Linked files are an opt-in dependency, not an import (see the security notes in
 | Output | What a link becomes |
 | --- | --- |
 | PNG, JPEG, WebP, TIFF | The rendered pixels. |
-| PDF (`pdf_content` vector, and print-size documents) | The source's own PDF graphics: shapes, gradients and **real, selectable text** with embedded font subsets, clipped to the box and carried through the link's rotation and flips. A link with opacity, effects, a mask, a blend mode, or a source that contains adjustment or blend layers is embedded as an image and listed under `raster_fallbacks`. |
+| PDF (`pdf_content` vector, and print-size documents) | The source's own PDF graphics: shapes, gradients and **real, selectable text** with embedded font subsets, clipped to the box and carried through the link's rotation and flips. A link with opacity, effects, a mask, a blend mode, a `corner_pin`, or a source that contains adjustment or blend layers is embedded as an image and listed under `raster_fallbacks`. |
 | SVG, HTML | An embedded bitmap listed in the SVG's `raster_fallbacks` metadata (`svg_policy: "strict"` refuses it). |
 | PPTX | A picture. |
 
@@ -124,6 +125,41 @@ vixl links                       # every link with its state
 
 Through MCP and REST the same operations go through `vixl_operations_apply` / `POST /operations`
 (`link`, `link-refresh`, `link-embed`, `links-relink`).
+
+## Mockups
+
+The `mockup` workflow action shows a design in context in one call: on a phone, a laptop or in a browser
+window, framed on a wall, as a business card on a desk or on a mug.
+
+```json
+{"design": "poster.vixl", "mockup": "poster-wall", "output": "poster-mockup.vixl"}
+{"design": "post.vixl", "mockup": ["phone", "laptop", "browser"], "output": "mockups", "export": ["png"]}
+```
+
+Each template is a scene plus one or more **slots**, each four corner points. The design goes into every
+slot as a live `link` layer named after the slot, warped by its `corner_pin` and clipped to the slot's
+surface shape (the screen, the paper), with a shading layer (`NAME-shade`, multiply) and a gloss layer
+(`NAME-gloss`, screen) over it where the template asks for them (`shade: false` and `gloss: false` leave
+them out). Because the design is linked, editing it updates every mockup on its next render, and
+`link-refresh` records the new version. `fit` (`fill`, the default, `fit` or `stretch`), `source_page` and
+`artboard` choose how and what of the design is shown. With several templates, `output` is a folder that
+receives `TEMPLATE.vixl` each; `export` writes images next to them through the same path as
+`vixl_export_batch`. Existing files are never replaced unless `overwrite: true`.
+
+| Template | Scene | Slots |
+| --- | --- | --- |
+| `phone` | A phone held upright, 9:19.5 screen with rounded corners | `screen` |
+| `laptop` | An open laptop from the front, 16:10 screen | `screen` |
+| `browser` | A desktop browser window with title and address bars | `page` |
+| `poster-wall` | A framed portrait poster with a white mat on a wall | `poster` |
+| `business-card` | A 3.5 × 2 in card on a desk, seen at an angle (a perspective slot) | `card` |
+| `mug` | A white mug; the print area is shaded like the curve of the cup | `print` |
+
+The templates are drawn with ordinary operations, so they are licence-clean and editable like any document.
+`mockup-list` lists them with their slots, together with the workspace's own: `mockup-save` stores a template
+(`{description, document: "scene.vixl"` or `width, height, background, operations`, `slots: [{name, corners,
+surface, radius, shade, gloss}]`, `overlay`: operations drawn above the slots`}`) in the workspace resource
+library. A curved surface such as the mug is a flat slot under cylindrical shading: the design is not bent.
 
 ## Related
 

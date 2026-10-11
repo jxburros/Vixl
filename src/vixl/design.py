@@ -120,6 +120,13 @@ def execute_design(project, op):
     elif kind == "ungroup":
         group = project.layer(op.get("target"))
         require(group["type"] == "group", "Target must be a group")
+        if group.get("object") and not op.get("force"):
+            from .errors import VixlError as Refusal
+
+            raise Refusal("invalid_operation", f"{group['name']!r} is a declared {group['object']['kind']} object; "
+                            "ungrouping would lose it. Run {type: object, action: unset} first, or pass force: true",
+                            field="target")
+        group.pop("object", None)
         require(
             not group["rotation"]
             and group["opacity"] == 1

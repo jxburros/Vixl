@@ -33,6 +33,11 @@ project with appropriate layers or input files. See each guide for complete crea
 | Pixel diff of two files | `diff before.vixl after.png [--out diff.png] [--mode diff\|side-by-side] [--threshold 8] [--max-fraction F] [--overwrite]` | [CI](ci.md#the-same-checks-locally) |
 | Proof page | `workflow proof --request proof.json --workspace .` | [Proof pages](production.md#proof-pages) |
 | Logo package | `workflow logo-package --request logo.json --workspace .` | [Logo packages](production.md#logo-packages) |
+| Brand guidelines | `workflow brand-board --request board.json --workspace .`; `brand validate`, `brand show [--preset NAME]` | [Brands](brands.md#brand-board) |
+| App animation package | `workflow app-animation-package --request package.json --workspace .` | [App animation packages](animation-authoring.md#app-animation-packages) |
+| Six-second loop | `template new video-tip -o tip.vixl --set title=… --set subtitle=… --set cta=…` (also `video-launch`, `video-event`) | [Short templates](animation-authoring.md#joint-pose-keys-and-short-templates) |
+| Readable source folder | `unpack design.vixl design-source`, `pack design-source design.vixl [--overwrite]` | [Reviewing in Git](#reviewing-editable-projects-in-git) |
+| Emoji catalog and packs | `emoji list --query wave`, `emoji template face --out smile.vixl`, `emoji export --destination discord --emojis 👋 --out pack.zip` | [Emoji](#emoji-024) |
 
 Since 0.19.0, `export --alpha auto|keep|flatten` controls supported image formats.
 See [exporting](exporting.md#image-output-and-alpha) and the
@@ -46,10 +51,10 @@ check suites, recipes, matrices, libraries, jobs and films. New editing commands
 `suite-set`, `suite-capture`, `role-set`, `motion-define`, `motion-apply`, `action-define`,
 `action-apply`, `fit-text`, `arrange-grid`, `adapt-layout` and `recipe-set`; each has `--help`.
 `edit-layers --where JSON --do JSON [--expect N] [--dry-run]` runs an operation on every layer matching a selector, and
-`adapt-layout --size story [--scale fit|fill|width|height|N] [--anchors JSON] [--where JSON] [--text keep]` (without
+`adapt-layout --size story [--scale fit|fill|width|height|N] [--anchors JSON] [--where JSON] [--text keep] [--min-text N] [--no-safe] [--no-together]` (without
 `--targets`) resizes the canvas and re-lays out every layer; see [operations](operations.md#bulk-edits-and-resizing-a-whole-layout-unreleased).
 
-Vixl is a headless application designed for autonomous AI agents; humans can use the same interfaces.
+Vixl is a headless design engine for AI agents; people can drive the same interfaces.
 
 See [spacing checks and pixel animation](pixel-animation-spacing.md) for the 0.9.0 tools and API examples.
 
@@ -71,16 +76,30 @@ For the Windows installer edition, these commands work without an open project:
 
 Set `VIXL_NO_UPDATE=1` to suppress both automatic checks and pending activation for a process (useful in CI). Python/pip installations are never modified by this updater. See [releases](releases.md).
 
+## Render cache and profiling
+
+`render` and `export` of a saved document keep its rendered layers and frame in the per-user disk cache, so the
+next export of the unchanged document, in a new process, reads the frame back instead of drawing it.
+
+| Command or variable | Behavior |
+| --- | --- |
+| `cache info` | The cache directory, `entries`, `bytes`, the size cap (`budget_bytes`, `max_mb`) and whether it is `enabled` |
+| `cache clear` | Delete the cached PNGs and their ledgers; reports `removed` and `bytes` |
+| `VIXL_RENDER_CACHE=DIR` / `=off` | Use another cache directory (default `~/.cache/vixl/render`), or no disk cache |
+| `VIXL_CACHE_MAX_MB=256` | The cache's size cap in megabytes; the least recently used PNGs are removed past it |
+| `VIXL_PROFILE=1` | Return a `render_profile` (per-layer times, cache hits and misses, incremental renders) with every result; see [troubleshooting](troubleshooting.md#find-out-why-a-render-is-slow) |
+
 ## Documents and output
 
 | Command | Behavior |
 | --- | --- |
-| `new 1920x1080 -o poster.vixl --background '#111111'` | Create a project; refuses existing files |
+| `new 1920x1080 -o poster.vixl --background '#111111'` | Create a project; refuses existing files unless `--overwrite` |
 | `open poster.vixl` | Select an existing project for this directory. A document saved before 0.21 reports, under `upgrade`, the layers that render differently now (effects on rotated/flipped/skewed layers, `temperature`/`tint`, open stroked shapes that were filled white) |
 | `upgrade [poster.vixl] [--report] [--pin-fills]` | Accept the 0.21 rendering for an older document and stop the notice; `--pin-fills` first gives open stroked shapes the explicit white fill they used to render with (one undoable revision); `--report` only lists the affected layers |
 | `save [copy.vixl]` | Save, or save as a new selected project |
 | `status`, `inspect [LAYER]`, `describe`, `layers [--full]` | JSON state, including resolved bounds; `layers` abbreviates long path data and point lists (`--full` or `inspect LAYER` shows them) |
 | `manifest`, `dependencies`, `reproduce --check` | List assets/fonts/providers; check current renderability |
+| `reproduce --reference PNG [--tolerance N] [--max-fraction F]`, `reproduce --write-lock FILE`, `reproduce --lock FILE` | Verify a render against an approved reference or a lockfile; reports `renderable`, `environment-matched` or `reference-verified` and located drift ([reproduction](agent-trust.md#reproduction)) |
 | `render [project.vixl] --out preview.png --set title=Hello` | Render without persisting overrides |
 | `export image.jpg --quality 90 --scale 2x` | Export, preserving the editable document. `--quality` also compresses PDF images; `--title` sets the PDF title (default: the title layer, then the file name); `--max-bytes N` warns when a raster file is larger, and a PNG over 1 MB warns, naming texture looks (grain, paper, film) as the likely cause |
 | `export image.png --profile discord` | Contain in 512×512; Instagram contains in 1080×1080; print emits RGB/RGBA TIFF at 300 DPI |
@@ -126,7 +145,7 @@ vixl align logo top-right --margin 40
 vixl align caption center --relative-to bubble --box content   # centre in a shape's content box
 ```
 
-`add` and `import` take `--credit` and `--license`, kept in the layer's provenance for attribution; `import` also takes an `https://` image URL (fetch policy in [architecture](architecture.md#trust-and-security), more in [interfaces](interfaces.md#import-existing-artwork)). `layer` is an optional namespace. `rm` aliases remove and `mv` aliases move. Rotation is clockwise, expands the layer bounds, and anchors the expanded bounding box at its x/y position. Crop coordinates refer to the original embedded raster. Resize with one dimension changes only that dimension of a shape, text box, group or solid (the other side keeps its size, and the result reports it under `normalized`), but scales an imported image (raster layer) proportionally so a photo is not stretched. `--keep-aspect` (JSON `keep_aspect: true`) scales the other side proportionally on any layer; `--no-keep-aspect` (`keep_aspect: false`) changes just the given side of an image; give both dimensions to stretch. Numeric scale values are factors; `80%` is `0.8`; a negative factor (`-1`, or `--x -1` for one axis) mirrors the layer as `flip` does and scales by its size. Opacity is 0–1 (`opacity portrait 0.75`); `75%` is read as 0.75, and a bare `75` is an error. `pivot LAYER X Y --canvas` takes a document point; `group NAME A B --above LAYER` (or `--below`) chooses where the new group lands; `shape` takes `--opacity`, `--rotation` and, with `--target`, `--space canvas`.
+`add` and `import` take `--credit` and `--license`, kept in the layer's provenance for attribution; `import` also takes an `https://` image URL (fetch policy in [architecture](architecture.md#trust-and-security), more in [interfaces](interfaces.md#import-existing-artwork)). `layer` is an optional namespace. `rm` aliases remove and `mv` aliases move. Rotation is clockwise and expands the layer bounds; it turns about the layer's pivot, by default its centre, which stays where it was (stored x/y are the expanded bounds' top-left, so they move by half the growth). JSON `about` keeps another point fixed: an anchor name such as `top-left`, `[x, y]` fractions of the unrotated box, or `pivot`. Crop coordinates refer to the original embedded raster. Resize with one dimension changes only that dimension of a shape, text box, group or solid (the other side keeps its size, and the result reports it under `normalized`), but scales an imported image (raster layer) proportionally so a photo is not stretched. `--keep-aspect` (JSON `keep_aspect: true`) scales the other side proportionally on any layer; `--no-keep-aspect` (`keep_aspect: false`) changes just the given side of an image; give both dimensions to stretch. Numeric scale values are factors; `80%` is `0.8`; a negative factor (`-1`, or `--x -1` for one axis) mirrors the layer as `flip` does and scales by its size. Opacity is 0–1 (`opacity portrait 0.75`); `75%` is read as 0.75, and a bare `75` is an error. `pivot LAYER X Y --canvas` takes a document point; `group NAME A B --above LAYER` (or `--below`) chooses where the new group lands; `shape` takes `--opacity`, `--rotation` and, with `--target`, `--space canvas`.
 
 Alignment supports center, center-x/y, left/right/top/bottom and corner pairs. Absolute moves and alignment clear constraints. `move x +20` and `--relative` add offsets.
 
@@ -277,9 +296,20 @@ Use `palette list|show|add|apply`, `template list|show|add|new|apply`, `guidance
 
 ### Group checks and SVG assurance
 
-`check` inspects visible group descendants, including nested text. Selecting a group includes its descendants; selecting a child checks that child. Bounds and safe areas use canvas coordinates (`bounds` also reports boxed text, with a `text-layout` width and height, that no longer fits its box and is cut off), overlap uses rendered coverage, and thumbnail legibility accounts for ancestor scaling. Contrast compares grouped text with its backdrop through ancestor transforms and opacity. Hidden or fully transparent ancestors exclude their children. Characters that no font can draw (they render as empty boxes) are a `fonts` error in every `check`, whichever checks are selected, and an automatic `missing-glyphs` result in every suite, so checked production and gated group edits catch them. Top-level text is contrast-checked from one shared render; grouped text renders its own backdrop. Outlined text (a `stroke` style at least 3 px wide and 2% of its font size) passes when either its fill or its outline contrasts with the backdrop. Text fails when a tenth of its glyph pixels fall below the required ratio; the issue's `region` (and `weakest_region` in `measure --target`) is where those weakest pixels are, often where the text crosses an outline or edge. Repeated groups emit a coverage warning because geometry checks assess the base instance; visually inspect the repeated copies. Text whose contrast cannot be measured (for example, it is wholly off the canvas) is an error, never a silent pass; `passed` means no errors, so also inspect `warnings` and `issues` and visually review the result. Checks judge what a layer draws, not its box: shapes use their path geometry including stroke (`geometry_bounds`), so a path on a full-canvas box is checked by its drawn shape, and overlap uses the ink of strokes, shadows and glows. Layers marked `role: background`, and non-text layers whose drawn geometry covers the canvas, are background and skipped; `checked` reports `layers_checked` and `layers_total`. Shapes and gradients that run past two or more canvas edges (a hill, a glow) are intentional bleed and report as informational. Safe area defaults to the canvas's own `safe` (a pixel inset, or a `{left, top, right, bottom}` object, measured from the trim edge); pass `safe_area` to override. The thumbnail legibility test (320 px wide; `thumbnail_width: null` or `--thumbnail-width off` disables it) is a warning only for social, icon and app-store sizes and informational elsewhere; a chart's small labels are one finding per chart (with `chart`), and on other pieces more than three small text layers are one note listing them all. `color_vision` also compares chart series colors and flags pairs that merge under a color-vision deficiency; mark a chart whose series also differ by labels or patterns with `layer-intent color_vision_safe`.
+`check` inspects visible group descendants, including nested text. Selecting a group includes its descendants; selecting a child checks that child. Bounds and safe areas use canvas coordinates (`bounds` also reports boxed text, with a `text-layout` width and height, that no longer fits its box and is cut off), overlap uses rendered coverage, and thumbnail legibility accounts for ancestor scaling. Contrast compares grouped text with its backdrop through ancestor transforms and opacity. Hidden or fully transparent ancestors exclude their children. Characters that no font can draw (they render as empty boxes) are a `fonts` error in every `check`, whichever checks are selected, and an automatic `missing-glyphs` result in every suite, so checked production and gated group edits catch them. Top-level text is contrast-checked from one shared render; grouped text renders its own backdrop. Outlined text (a `stroke` style at least 3 px wide and 2% of its font size) passes when either its fill or its outline contrasts with the backdrop. Text fails when a tenth of its glyph pixels fall below the required ratio; the issue's `region` (and `weakest_region` in `measure --target`) is where those weakest pixels are, often where the text crosses an outline or edge. Repeated groups emit a coverage warning because geometry checks assess the base instance; visually inspect the repeated copies. Text whose contrast cannot be measured (for example, it is wholly off the canvas) is an error, never a silent pass; `passed` means no errors, so also inspect `warnings` and `issues` and visually review the result. Checks judge what a layer draws, not its box: shapes use their path geometry including stroke (`geometry_bounds`), so a path on a full-canvas box is checked by its drawn shape, and overlap uses the ink of strokes, shadows and glows. Decoration (`role: decoration`) may overlap shapes and sit around text, but where its pixels fall inside a text layer's glyph area (each line's ink box plus a 10% halo) the overlap check adds a `review` warning, `overlap.decoration-text`; decoration that encloses the text (a panel, a frame) is not reported, and `layer-intent allow_overlap` accepts a deliberate pair. Layers marked `role: background`, and non-text layers whose drawn geometry covers the canvas, are background and skipped; `checked` reports `layers_checked` and `layers_total`. Shapes and gradients that run past two or more canvas edges (a hill, a glow) are intentional bleed and report as informational. Safe area defaults to the canvas's own `safe` (a pixel inset, or a `{left, top, right, bottom}` object, measured from the trim edge); pass `safe_area` to override. The thumbnail legibility test (320 px wide; `thumbnail_width: null` or `--thumbnail-width off` disables it) is a warning only for social, icon and app-store sizes and informational elsewhere; a chart's small labels are one finding per chart (with `chart`), and on other pieces more than three small text layers are one note listing them all. Display text (24 px or larger) in a `text-layout` box whose wrapped paragraph ends in a line that is one word, or under 20% of its longest line, is a `legibility` review finding with `code: runt` (`line` is the last line, `share` its width as a fraction of the longest): widen the box, add an explicit line break or run `fit-text`. Lines you break yourself are not judged. `color_vision` also compares chart series colors and flags pairs that merge under a color-vision deficiency; mark a chart whose series also differ by labels or patterns with `layer-intent color_vision_safe`.
+
+`placeholders` (on by default) finds leftover template copy in what text draws, after variables: lorem ipsum, `TODO`/`TBD`/`XXX` markers, slot text such as "Your headline here" or "Headline goes here", and a `${name}` merge field that drew literally are `fix` warnings; a variable nothing defines is an error naming it (and, in production, the variant and input `row`); `{{name}}`, `[[name]]` or `<<name>>` from another tool's template is only `review`. `$${name}`, the escape for a literal `${name}`, is never flagged. brand.json `placeholders` adds regular expressions; mark intended text that only looks like a placeholder with `layer-intent LAYER --literal-text`. Unfilled layout and template slots stay the `blanks` check's. `check --artboards all --pages all --comps light dark` (or lists of names) checks every combination in one report: each finding names its `variant` and its message starts with it (`[artboard story] …`), `variants` gives each one's status and `coverage` what was checked; pages hidden from export need `--include-hidden`. With deck checks `--pages` keeps its meaning (the pages the deck review covers).
 
 `connected` (opt-in: `check --checks connected`, `--connect-tolerance 2`) looks inside every visible group that is one object (a mascot, a character, a prop built from shapes; charts, drawings, repeats and speech bubbles are skipped). The drawn ink of each direct part is compared on the canvas: parts whose ink touches or overlaps within the tolerance form one piece, the piece with the most ink is the main body, and every other part is a `connected` warning with its `gap` in pixels and its `group`. Text parts are ignored. A document with a timeline is checked at its poster, middle and last frames (`frame` names the one where a part first comes loose). Mark a part that floats on purpose (a spark, a thrown ball), or a group whose parts are separate by design, with `layer-intent detached_ok`. To look at one object alone, preview it with `isolate` (`vixl_render_preview(isolate=["cat"])`).
+
+`cost` (opt-in: `check --checks cost`) draws the document once with empty caches and times every layer (a group's time excludes its children). A layer that takes over 10× the median layer and at least 50 ms is a `cost` warning with action `review`, its `ms`, the `median_ms`, the slowest `stage` (`draw`, `effects`, `transform`) and `causes` read from its fields (the largest blur radius, other effects, paint stroke and point counts, soft style blurs, very long text, repeated copies, a very large box). It does not fail a check; it says which layer to simplify or rasterize when renders, previews and timeline frames are slow.
+
+`accessibility` (opt-in: `check --checks accessibility`) adds `contrast` and `color_vision` to its own findings: the
+document language (fix), meaningful images, frames, links and charts without alt text (fix), small text (review),
+charts told apart by colour alone (review) and text whose export order jumps against its visual order (review). See
+[accessibility](accessibility.md). Declared [objects](objects.md) are inspected with `vixl inspect --object NAME`
+(`*` lists them all), exported alone with `vixl export dog.svg --isolate dog [--padding 8]` (a `.vixl` output
+writes a portable object) and listed by `vixl manifest`.
 
 Saved SVG exports report `svg.vector_only` and `svg.raster_fallbacks` in the CLI result so embedded bitmaps are visible without opening the SVG metadata. Use `export logo.svg --svg-policy strict` to reject all embedded raster content. Exporting to `-` still writes only SVG bytes. Supported grouped shapes and outlined text remain vectors; unsupported appearances may rasterize in the default appearance policy.
 
@@ -291,12 +321,17 @@ vixl guide a mascot for a coffee brand   # approach, operations, layouts, looks,
 vixl guide operations                    # every operation by purpose, with summaries
 vixl looks                               # the finishing looks
 vixl house [show PURPOSE]                # the house style: craft, tiers, levels; or one purpose's profile
-vixl roll --for slides --variety high --lock tier=bold [--house-style 1]   # a tiered, purpose-weighted direction
+vixl roll --for slides --variety high --lock tier=bold [--house-style 1|2]   # a tiered, purpose-weighted direction;
+                                         # house style 3 by default, 2 replays 0.23 rolls, 1 the 0.20–0.22 rolls
 vixl look LAYER glow [--color C] [--amount 0-1] [--remove]
 vixl radial-repeat LAYER --count 12 [--cx 50%] [--cy 50%] [--sweep 360] [--start-angle D] [--mirror] [--no-group] [--name N]
 vixl layer-intent LAYER --allow-crop     # a deliberate edge crop: checks report it as informational
+vixl layer-intent LAYER --waive contrast # accept this layer's contrast findings (listed as waived)
+vixl waiver contrast --target LAYER --reason "watermark, approved" --expires 2030-12-31
+vixl waiver fonts --reason "proofing font for now"     # document-wide; --remove deletes; --rule ID for a suite rule
+vixl check --profile final               # draft | review | final | a .vixl-checks.json profile; --no-waivers
 vixl layer-intent LAYER [--role content|decoration|background|title] [--allow-overlap L…] [--tags T…]
-                        [--[no-]detached-ok] [--[no-]color-vision-safe]   # compact inspect shows what is set
+                        [--[no-]detached-ok] [--[no-]color-vision-safe] [--[no-]literal-text]   # compact inspect shows what is set
 vixl layout apply NAME --palette '["#0f172a","#1e293b","#38bdf8"]' --keep-order
 vixl palette apply NAME --keep-order | --roles '{"background": 0, "accent": "#e11d48"}'
 vixl styles [list [QUERY] | show NAME] | styles apply NAME [--palette] | styles check [NAME…]
@@ -311,7 +346,7 @@ vixl sizes [--category print|stationery|social|icons|logos|…] [--search TEXT]
 vixl sizes show NAME [--dpi N] [--landscape|--portrait] [--bleed]
 vixl new [NAME|WxH] [--purpose social|poster|slides|print|logo|icon|favicon|…] [--seed N]
     [--variety low|medium|high|fixed] [--background COLOR] [--no-fonts] [--dpi N] [--landscape|--portrait]
-    [--bleed [AMOUNT]] [-o FILE]   # e.g. new letter --bleed; no size: the purpose's size, else 1080x1080
+    [--bleed [AMOUNT]] [-o FILE] [--overwrite]   # e.g. new letter --bleed; no size: the purpose's size, else 1080x1080
 vixl canvas size NAME [--dpi N] [--landscape] [--bleed] | canvas dpi N
 
 vixl layout list | layout show NAME
@@ -339,9 +374,9 @@ vixl paint [LAYER] --brush NAME (--points JSON | --path SVG) [--pressure JSON] [
     [--opacity 0–1] [--erase] [--seed N] [--space canvas|layer] [--settings JSON]
 vixl paint-clear [LAYER] [--last N]
 
-vixl easings | timeline | timeline set [--duration T] [--fps N] [--loop N] [--clear]
+vixl easings | timeline | timeline set [--duration T] [--fps N] [--loop N] [--loop-mode seamless|off] [--close] [--clear]
 vixl keyframe LAYER|canvas PROPERTY TIME VALUE [--easing E] | keyframe-remove LAYER [--property P] [--time T]
-vixl animate LAYER PROPERTY --to V [--from V] [--start T] [--end T | --duration T] [--easing E]
+vixl animate LAYER PROPERTY --to V [--from V] [--start T] [--end T | --duration T] [--easing E] [--intent entrance|exit|loop|emphasis]
 vixl animate-preset LAYER|canvas PRESET [--start T] [--duration T] [--easing E] [--amount N] [--distance N] [--to C] [--no-fade]
 vixl text-animate TEXT PRESET [--unit char|word|line] [--start T] [--duration T] [--stagger T|N%] [--easing E]
     [--direction forward|reverse|center|edges|random] [--seed N] [--mode in|out|in-out] [--distance N] [--amount N]
@@ -349,7 +384,8 @@ vixl text-animate TEXT PRESET [--unit char|word|line] [--start T] [--duration T]
 vixl marker NAME TIME | marker NAME --delete
 vixl render --time T --out FILE | timeline-sheet --out FILE [--count 8] [--columns N] [--times T…]
 vixl export-timeline --out FILE.gif|.png|.webp|.zip|.mp4|.webm [--format sheet] [--fps N] [--scale F]
-    [--start T] [--end T] [--background C] [--columns N] [--quality N] [--overwrite]
+    [--start T] [--end T] [--background C] [--columns N] [--quality N] [--colors N] [--dither auto|none|ordered|floyd]
+    [--max-bytes N] [--target-bytes N] [--preset chat|web|email] [--poster T] [--overwrite]
 ```
 
 Times are milliseconds or `1.5s`, `250ms`, `50%` or a marker name. Details: [sizes and layouts](sizes-and-layouts.md), [color and print](color-and-print.md), [brushes and animation](brushes-and-animation.md).
@@ -375,13 +411,21 @@ vixl merge --rerun sheets.vixl [--data new.csv] [--out new.pdf]
 folder); [imposition](imposition.md) lays CSV rows out on print sheets with crop marks, as a vector-text PDF and an editable
 sheet of links.
 
+## Catalog export for host applications
+
+`vixl catalog export --out catalog.json` writes one JSON bundle of Vixl's design catalogs for an application that embeds or mirrors Vixl (Python: `vixl.catalog.export_catalog()` returns it as a dict, `write_catalog(path)` writes it). `--json` without `--out` prints it; `--section NAME` (repeatable) exports only some sections; an existing `--out` file is refused unless `--overwrite` is given. `vixl catalog schema [--out FILE]` gives the [JSON Schema](../src/vixl/data/catalog.schema.json) the bundle follows. Every GitHub release attaches both as `vixl-catalog.json` and `vixl-catalog.schema.json`. See [the catalog bundle](agent-resources.md#catalog-bundle-for-host-applications) for what it holds.
+
+```bash
+vixl catalog export --out catalog.json --section sizes --section checks
+```
+
 ## Large batches and focused schemas
 
 `vixl apply operations.json` accepts JSON input up to 64 MiB; the same bound applies to inline JSON and stdin. Operation-count and document resource limits still apply, and a failing batch is atomic. `vixl --json schema text shape` returns only the requested operation schemas. Bare `schema` returns the full catalog.
 
 Workflow request arguments accept a JSON file, `-` for stdin, or an inline JSON object. CLI workspace resources resolve from the current directory. Add `.vixl-session.json` to your repository's `.gitignore`; it records the local current-document session and is not a project source file. Shared MCP servers require an explicit document when closing a session with several documents open.
 
-`vixl -p master.vixl adapt-layout --sizes instagram-post story --directory out --formats png` exports copies at several sizes. It does not overwrite the master. Inspect the adaptation reports and run checks on the copies; proportional adaptation is not a replacement for recomposing long copy into a radically different aspect ratio.
+`vixl -p master.vixl adapt-layout --sizes instagram-post story --directory out --formats png` exports copies at several sizes. It does not overwrite the master. Inspect the adaptation reports and run checks on the copies; proportional adaptation is not a replacement for recomposing long copy into a radically different aspect ratio. For a document built with `layout-apply`, `--options '{"recompose": true}'` (single size: `vixl adapt-layout --size story --recompose`; operation field `recompose: true`) instead reapplies the stored layout at each size; it rebuilds the generated layers, so manual edits to them and their IDs are replaced. Recomposition is never implicit.
 
 
 ## Reviewing editable projects in Git
@@ -389,6 +433,23 @@ Workflow request arguments accept a JSON file, `-` for stdin, or an inline JSON 
 Run `vixl unpack design.vixl design-source` to create a readable `project.json` with separate content-addressed assets. Commit that folder alongside application code. Edit a text string or layer property in `project.json`, review the ordinary Git diff, then run `vixl pack design-source reviewed.vixl`. Python exposes the same functions in `vixl.project_folder`.
 
 The source format stores only the current state, so undo history, branches and session timestamps do not bury copy edits in noise. Keep the original `.vixl` when history matters. Stable key order, indentation, asset hashes and ZIP timestamps make unchanged serialization deterministic. Packing checks file bounds, checksums, references and the full document schema and refuses missing assets, unsafe paths and symlinks. Linked external files remain external; links are rebased on conversion, so commit the linked source documents alongside the design as well. Packing never replays remote inference.
+
+## Emoji (0.24)
+
+```bash
+vixl emoji list [--query TEXT] [--group G] [--offset N] [--limit N]
+vixl emoji get EMOJI [--out FILE] [--format vixl|svg|png] [--overwrite]   # inspect, or extract the editable source
+vixl emoji template [blank|face|symbol|sheet] --out FILE [--destination images|discord|slack] [--overwrite]
+vixl emoji destinations | emoji requirements [--destination D] [--emojis E…]
+vixl emoji export [--destination images|discord|slack] [--emojis E…] --out FILE [--size N] [--no-sources] [--overwrite]
+vixl -p doc.vixl emoji settings [--mode vixl|font]          # bundled art (default) or the font first
+vixl -p doc.vixl emoji replace EMOJI|:custom_name: SOURCE [--name N] [--license L]
+vixl -p doc.vixl emoji install PACK | emoji reset [--emoji EMOJI]
+```
+
+`vixl emoji` takes `--workspace DIR` (default: the current directory). The document edits are the operations
+`emoji-mode`, `emoji-set` and `emoji-reset`, and every subcommand is also an `emoji-*` workflow action. See
+[emojis](emojis.md).
 
 ## Local desktop capture
 

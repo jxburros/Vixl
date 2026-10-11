@@ -75,3 +75,17 @@ def test_poster_design_check_budget():  # #504
     elapsed, report = timed(p.check)
     assert 'contrast' in report['checked']['checks']
     assert elapsed < 4
+
+
+def test_rendering_styled_layers_on_a_large_canvas_after_a_move():
+    p = Project(4000, 4000, "white")
+    p.apply([{"type": "shape", "shape": "ellipse", "name": f"c{i}", "x": (i % 10) * 380 + 100,
+              "y": (i // 10) * 380 + 100, "width": 120, "height": 120, "fill": "#e63"} for i in range(80)],
+            detail="brief")
+    p.apply({"type": "look", "look": "soft-shadow", "targets": [f"c{i}" for i in range(80)]}, detail="brief")
+    p.render()
+    p.apply({"type": "move", "target": "c0", "x": 140, "y": 150}, detail="brief")
+    # Before this change: about 3 s, a canvas-sized tile styled again for every styled layer (now under 0.1 s: the
+    # styled pixels are cached and only the moved layer's neighbourhood is composited again).
+    elapsed, _ = timed(p.render)
+    assert elapsed < 1

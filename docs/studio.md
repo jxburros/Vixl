@@ -124,6 +124,10 @@ document type `social-card`, `composition` (balance, breathing room, overlap, co
 `vixl_guide(kind)` names the one that suits a kind of work under `tests`.
 Read one with `resource-get`, then attach it with `suite-use`, e.g. `{"name":"palette"}`.
 Run `check` with `{"suite":"palette"}`. Warnings and unmeasurable rules count as needs-review.
+`suite-use` copies the suite; `{"name":"delivery","reference":true}` attaches it by reference instead
+(`{"extends":"delivery","rules":[]}`), so every check runs the library's current rules. Workflow
+`suite-infer` proposes a starter suite from an approved document, each rule explained by what it
+measured (see [production](production.md#starter-suite-from-an-approved-design)).
 
 Start a custom contract in seconds:
 
@@ -221,13 +225,110 @@ Workflow `group-define`:
 ```
 
 `group-apply` with `{"name":"launch"}` previews all members. Add `dry_run:false` to publish;
-optional `operations` append a common edit batch and `suites` check every candidate before
-publication. Shared parameters are applied explicitly, not live-linked. Any invalid member
-prevents all writes. Locks and rollback handle ordinary failures. Durable backups and a journal
+optional `operations` append a common edit batch and `suites` check every candidate. A dry run
+reports each member's suite results (`passed` per member and overall); publishing refuses when a
+member it would publish fails, and then writes nothing. `group-define` also takes `suites: ["delivery"]`:
+library suites every member inherits by reference. `check`, production `run` and `group-apply` run them
+(unless a `suites` list narrows the run), a library edit reaches every member's next check, and a member
+overrides a rule by `id` with a suite that `extends` the library suite (see [library suites](production.md#library-suites-shared-by-a-group-or-the-workspace)).
+Shared parameters are applied explicitly, not live-linked. Locks and rollback handle ordinary failures.
+Durable backups and a journal
 support `group-recover` after interruption; recovery refuses to overwrite later edits. Publication
 is sequential, so this is not a cross-file filesystem transaction for readers ignoring locks.
-`group-list` discovers groups. `group-show` reports membership/shared values and whether recovery is required. Files live
+`group-list` discovers groups. `group-show` reports membership/shared values, whether recovery is required and
+the [waivers](production.md#waivers-and-check-profiles) of each member. Files live
 under `.vixl-groups/`; keep journals/backups until recovery finishes.
+
+`shared.waivers` (`[{check or rule, reason, expires}]`) are written into every member as document waivers by
+`group-apply`. `profiles` on `group-define` (`{name: {fail_on, checks, optional, suites}}`) override the workspace's
+and the built-in `draft`/`review`/`final` check profiles for the group, and `group-apply` with `profile` requires
+every member it would publish to pass that profile (a dry run reports each member's result).
+
+### Reviewing a group change
+
+A dry run with `review` writes a before/after review of every member: an `.html` proof page (before, after with the
+changed pixels in red, the changed share, the member's check findings and suite results, approve/reject and a note per
+member) or a `.png` contact sheet of before | after | difference. Each member in the result also gets
+`changed_fraction` and `changed_region`.
+
+```json
+{"name": "launch", "operations": [{"type": "move", "target": "logo", "x": 40, "y": 40}], "review": "review/launch.html"}
+```
+
+Publish only some members with `accept` (only these) and `reject` (never these), or hand back the page's downloaded
+decisions file: `decisions` takes `review/launch-decisions.json` (or its contents) and publishes only the approved
+members; rejected and pending members stay untouched. The result lists `published` and `untouched`.
+
+```json
+{"name": "launch", "operations": [{"type": "move", "target": "logo", "x": 40, "y": 40}], "dry_run": false,
+ "decisions": "review/launch-decisions.json"}
+```
+
+### Group consistency checks
+
+Every `vixl_check` finding is about one document. `group-check` compares the members of a group (`name`) or a glob
+(`documents`) with each other and reports the members that differ from the majority, or from a `reference` member:
+
+- `layout`: where the logo sits. Layers named like `layers` (default `*logo*`) or with role `logo` are compared by
+  anchor (top-left … bottom-right), offset from that anchor and size, in fractions of the canvas's short side, so a
+  story and a square compare. One finding per member and layer names the expected placement.
+- `type`: font families, the headline-to-body size ratio and the type-scale ratio.
+- `color`: swatch values (against the group's `shared.swatches` first; the finding carries a `swatch` operation as
+  `fix`) and the applied palette.
+- `structure`: layers most members have, and `required` layers (plus brand.json `required_elements`).
+- `copy`: declared facts, below.
+
+```json
+{"name": "launch", "reference": "poster.vixl", "checks": ["layout", "copy"]}
+```
+
+Copy facts (prices, product names, dates, URLs, legal lines) are declared once, in brand.json `facts`, the group's
+`facts` (`group-define`) or the request:
+
+```json
+{"name": "launch", "documents": ["poster.vixl", "story.vixl"], "facts": {
+  "price": {"pattern": "\\$\\d+(\\.\\d\\d)?"},
+  "product": {"values": ["Vixl Pro"]},
+  "date": {"format": "MMM D"},
+  "legal": {"value": "© 2026 Vixl Ltd."}}}
+```
+
+A fact is read from the variable of that name, else from text layers named after it (or listed in `layers`), else
+by its pattern over all text. `pattern` is a regex, `format` a date format (`YYYY YY MMMM MMM MM M DD D`), `value`
+the declared value and `values` the accepted spellings of a name: other members' values are compared with the
+declared value, the reference or the majority, and one finding lists every value with its documents; spellings a
+small edit distance from a declared name (`Vixel Pro`) are flagged with the suggestion. Findings carry `check`
+(`group-layout`, `group-copy` …), `property`, `expected`, `value`, `documents`, `severity` and `action` (`fix`,
+or `review` when there is no majority). `vixl check --group NAME` includes them in the workspace report.
+
+### Find and replace across documents
+
+`replace-across` edits literal content in every member of a group (`name`) or glob (`documents`):
+
+```json
+{"documents": ["campaign/*.vixl"], "replace": [
+  {"text": "Vixl Pro", "with": "Vixl Studio", "match": "word"},
+  {"color": "#ff6a00", "with": "@accent", "tolerance": 4},
+  {"font": "inter", "with": "inter-tight"},
+  {"asset": "logo-2025.png", "with": "logo-2026.svg", "fit": "keep-box"}]}
+```
+
+- `text` replaces in text layers and string variables (`variables: false` skips them); `match` is `substring`
+  (default), `word` or `regex` (`with` may use `\1`), `ignore_case` too.
+- `color` replaces literal colours (fill, stroke, text colour, gradient ends and stops) within `tolerance` per
+  channel, and swatch values (`swatches: false` skips them); `@swatch` references are left alone.
+- `font` replaces a registered font name (or a file's family) on text layers; `with` must be a font the document
+  has registered, or a document fails with the reason.
+- `asset` finds image and frame layers whose current image came from that file (matched by checksum, or by the
+  imported file name) and swaps in `with` (PNG, JPEG, WEBP, SVG …; SVG is rasterized at its own size). `keep-box`
+  fits the new image inside the old box, centred; `stretch` fills the box.
+
+It is a dry run by default: each document lists its matches (`layer` or `variable`, `field`, `before`, `after`)
+and its status (`changed`, `unchanged`, `needs_review`, `failed`); `review` writes the before/after page described
+above, and `accept`, `reject` and `decisions` pick members as for `group-apply`. `dry_run:false` publishes every
+changed document through the group journal; with `suites` (`true` for each document's attached suites, or a list)
+a document whose suites fail is reported `needs_review` and left untouched. An interrupted run is undone with
+`group-recover` under the group's name, or `journal` (default `replace-across`) for a glob.
 
 `branch-list` discovers agent branches; `branch-status` reads one manifest.
 Agents working on one project can use independent branches:

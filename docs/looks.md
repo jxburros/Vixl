@@ -25,6 +25,9 @@ CLI: `vixl look LAYER NAME [--color C] [--amount A] [--remove]`, `vixl looks` fo
 | `outline` | clean stroke around the shape or text | native |
 | `gradient` | vertical light-to-dark gradient from the layer's color (or `color`) | native |
 | `soft-halo` | on a gradient layer: a radial fade from its first color (or `color`) to transparent with a `gaussian` falloff, ending at the inscribed ellipse so the box never shows; on other layers a wide soft glow | native |
+| `clean-flat` | restrained flat colour, no effects | native |
+| `subtle-grain` | quiet grain for broad-use backgrounds | raster fallback |
+| `light-paper` | quiet paper finish with minimal tint and texture | raster fallback |
 | `grain` | fine film grain | raster fallback |
 | `paper` | warm tint, fibre grain and soft edge darkening (use on a full-canvas background) | raster fallback |
 | `film` | sepia, grain and vignette | raster fallback |

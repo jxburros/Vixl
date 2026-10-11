@@ -211,6 +211,27 @@ def grade(task, workspace):
                     for key in path:
                         detail = detail[key] if isinstance(detail, (dict, list)) else None
                     passed = detail == check["equals"]
+                elif kind == "object":
+                    # A declared object: its kind (or a kind below it), no missing required parts, the parts and
+                    # sub-object kinds it must have, and (connected) no part floating free of its body.
+                    from vixl.objects import descends, record, tree
+
+                    target = project.layer(check["layer"])
+                    found = record(target)
+                    info = tree(project, target["id"]) if found else {}
+                    named = {part["part"] for part in info.get("parts", [])}
+                    subs = [sub["kind"] for sub in info.get("sub_objects", [])]
+                    floating = []
+                    if check.get("connected"):
+                        report = project.check(checks=["connected"], targets=[target["id"]])
+                        floating = [i["message"] for i in report["issues"] if i["check"] == "connected"]
+                    detail = {"kind": found and found["kind"], "missing_parts": info.get("missing_parts"),
+                              "parts": sorted(named), "sub_objects": subs, "floating": floating}
+                    passed = bool(found) and descends(found["kind"], check.get("kind", found["kind"]))
+                    passed = passed and (not check.get("complete") or not info["missing_parts"])
+                    passed = passed and set(check.get("parts", [])) <= named | set(subs)
+                    passed = passed and all(any(descends(s, k) for s in subs) for k in check.get("sub_objects", []))
+                    passed = passed and not floating
                 elif kind == "assert":
                     detail = [rule for rule in check["rules"] if not assert_rule(project, rule)]
                     passed = not detail

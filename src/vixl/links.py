@@ -61,7 +61,13 @@ def schemas(add):
 
     settings = {"fit": enum(*FITS), "position": {"type": ["string", "array", "null"]}, "crop": {"type": ["object", "null"]},
                 "artboard": {"type": ["string", "null"]}, "source_page": {"type": ["string", "integer", "null"]},
-                "variables": {"type": ["object", "null"]}}
+                "variables": {"type": ["object", "null"]},
+                "corner_pin": {"type": ["array", "null"], "items": {"type": "array", "items": {"type": "number"},
+                                                                     "minItems": 2, "maxItems": 2},
+                               "minItems": 4, "maxItems": 4,
+                               "description": "Warp the linked design into this quadrilateral: its top-left, top-right, "
+                                              "bottom-right and bottom-left corners in the layer's own pixels (0,0 is the "
+                                              "box's top-left). A screen in perspective, a poster on a wall. null removes it."}}
     add("link", {"name": S, "source": S, "x": COORD, "y": COORD, "width": SIZE, "height": SIZE, **settings})
     add("link-refresh")
     add("link-embed")
@@ -83,7 +89,7 @@ def execute(project, op):
         return _embed(project, layer)
     require(not {"name", "x", "y", "width", "height"} & op.keys(),
             "Changing a link layer's name, position or size takes rename, move or resize; link with a target changes "
-            "its source, fit, position, crop, artboard, source_page or variables")
+            "its source, fit, position, crop, artboard, source_page, variables or corner_pin")
     return _set(project, layer, op)
 
 
@@ -116,7 +122,7 @@ def _add(project, op):
 def _set(project, layer, op):
     settings = _settings(op, nullable=True, project=project)
     require(settings or "source" in op or "fit" in op, "A link with a target needs something to change: source, artboard, "
-            "source_page, variables, fit, position or crop", field="source")
+            "source_page, variables, fit, position, crop or corner_pin", field="source")
     if "source" in op:
         layer["source"] = stored_source(project, locate(project, op["source"]))
     for key, value in settings.items():
@@ -225,7 +231,7 @@ def _settings(op, nullable=False, project=None):
     """The validated page, artboard, variables, position and crop of a link operation. ``None`` (when
     ``nullable``) clears a setting. Given the ``project``, ``${name}`` references must name its variables."""
     settings = {}
-    for key in ("artboard", "source_page", "variables", "position", "crop"):
+    for key in ("artboard", "source_page", "variables", "position", "crop", "corner_pin"):
         if key not in op:
             continue
         value = op[key]
@@ -244,6 +250,8 @@ def _settings(op, nullable=False, project=None):
                 _references(project, value)
         elif key == "position":
             value = _position(value)
+        elif key == "corner_pin":
+            value = corner_pin(value)
         else:
             value = _crop(value)
         settings[key] = value
@@ -279,6 +287,44 @@ def _position(value):
         return list(ANCHORS[name])
     require(isinstance(value, list) and len(value) == 2, "position is [x, y] fractions or an anchor", field="position")
     return [finite(v, "position", 0, 1) for v in value]
+
+
+def corner_pin(value):
+    """Four [x, y] corners (top-left, top-right, bottom-right, bottom-left) of a convex quadrilateral."""
+    require(isinstance(value, list) and len(value) == 4 and all(isinstance(p, list) and len(p) == 2 for p in value),
+            "corner_pin is four [x, y] corners: top-left, top-right, bottom-right, bottom-left", field="corner_pin")
+    points = [[finite(v, "corner_pin", -1e6, 1e6) for v in p] for p in value]
+    turns = []
+    for i in range(4):
+        (ax, ay), (bx, by), (cx, cy) = points[i], points[(i + 1) % 4], points[(i + 2) % 4]
+        turns.append((bx - ax) * (cy - by) - (by - ay) * (cx - bx))
+    require(all(t > 0 for t in turns) or all(t < 0 for t in turns),
+            "corner_pin must be a convex quadrilateral, corners in order: top-left, top-right, bottom-right, bottom-left",
+            field="corner_pin")
+    return [[int(v) if float(v).is_integer() else round(v, 4) for v in p] for p in points]
+
+
+def perspective_coefficients(size, corners):
+    """PIL ``Image.PERSPECTIVE`` data mapping the quadrilateral ``corners`` (output) back onto the
+    rectangle ``size`` (input)."""
+    import numpy as np
+
+    w, h = size
+    source = [(0, 0), (w, 0), (w, h), (0, h)]
+    rows, values = [], []
+    for (x, y), (u, v) in zip(corners, source):
+        rows.append([x, y, 1, 0, 0, 0, -u * x, -u * y])
+        rows.append([0, 0, 0, x, y, 1, -v * x, -v * y])
+        values += [u, v]
+    return tuple(float(c) for c in np.linalg.solve(np.array(rows, float), np.array(values, float)))
+
+
+def pinned(image, corners):
+    """``image`` warped so its corners land on ``corners`` (in the same pixel box)."""
+    from PIL import Image
+
+    return image.transform(image.size, Image.Transform.PERSPECTIVE, perspective_coefficients(image.size, corners),
+                           Image.Resampling.BICUBIC)
 
 
 def _crop(value):
@@ -319,6 +365,8 @@ def validate(layer, state):
     if "source_page" in layer:
         require(isinstance(layer["source_page"], (str, int)) and not isinstance(layer["source_page"], bool),
                 "Invalid link source page", "invalid_project")
+    if "corner_pin" in layer:
+        corner_pin(layer["corner_pin"])
     if "source_hash" in layer:
         require(isinstance(layer["source_hash"], str) and re.fullmatch(r"[0-9a-f]{64}", layer["source_hash"]),
                 "Invalid link source hash", "invalid_project")
@@ -619,6 +667,8 @@ def link_image(project, layer):
     part = image.resize((width, height), Image.Resampling.LANCZOS, box=region)
     out = Image.new("RGBA", (layer["width"], layer["height"]))
     out.alpha_composite(part, (x, y))
+    if layer.get("corner_pin"):
+        out = pinned(out, layer["corner_pin"])
     return out
 
 
@@ -660,6 +710,8 @@ def pdf_link(builder, layer, bounds, matrix):
 
     if layer["opacity"] != 1:
         return "linked document with opacity"
+    if layer.get("corner_pin"):
+        return "corner-pinned linked document"
     prepared = prepare(builder.view, layer)
     view = prepared.view
     layers = resolved_layers(view)
@@ -812,7 +864,7 @@ def compile_command(cmd, args):
     elif cmd == "link-set":
         p.add_argument("target")
         p.add_argument("--source")
-        p.add_argument("--clear", action="append", choices=["artboard", "source_page", "variables", "crop"],
+        p.add_argument("--clear", action="append", choices=["artboard", "source_page", "variables", "crop", "corner_pin"],
                        help="Remove a setting (repeat)")
     else:
         p.add_argument("target", nargs="?", help="The link layer" + (" (default: every link)" if cmd == "link-refresh" else ""))
@@ -823,6 +875,8 @@ def compile_command(cmd, args):
         p.add_argument("--artboard")
         p.add_argument("--source-page", dest="source_page", help="The source's page (name or number)")
         p.add_argument("--set", action="append", metavar="NAME=VALUE", help="Override a source variable (repeat)")
+        p.add_argument("--corner-pin", dest="corner_pin", type=json.loads,
+                       help="JSON [[x, y] ×4]: top-left, top-right, bottom-right, bottom-left in the layer's pixels")
     a = vars(p.parse_args(args))
     op = {"type": "link" if cmd == "link-set" else cmd}
     clear = a.pop("clear", None) or []

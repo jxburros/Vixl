@@ -78,6 +78,34 @@ class Exporter:
         self.counter = 0
         self.fallbacks = []
         self.text_reasons = {}
+        self.used_ids = set()
+
+    def describe(self, element, layer):
+        """Object identity (id, data-vixl-object/kind/part) and accessibility (title, role, aria-hidden) of a
+        layer's outer group."""
+        from .accessibility import decorative
+        from .objects import export_identity, svg_ident
+
+        identity = export_identity(layer, self.index)
+        title = layer.get("alt")
+        if identity:
+            element.set("id", svg_ident(identity["path"].replace("/", "--"), self.used_ids))
+            if "kind" in identity:
+                element.set("data-vixl-object", identity["path"])
+                element.set("data-vixl-kind", identity["kind"])
+                title = title or identity["label"]
+            if "part" in identity:
+                element.set("data-vixl-part", identity["part"])
+                if identity.get("side"):
+                    element.set("data-vixl-side", identity["side"])
+        if layer.get("alt"):
+            element.set("role", "img")
+        elif decorative(layer) and layer["type"] != "text":
+            element.set("aria-hidden", "true")
+        if title:
+            heading = ET.Element(f"{{{NS}}}title")
+            heading.text = title
+            element.insert(0, heading)
 
     def ident(self, prefix):
         self.counter += 1
@@ -368,6 +396,7 @@ class Exporter:
         )
         group = ET.Element(f"{{{NS}}}g", {"opacity": str(layer["opacity"]), "data-layer": layer["name"]})
         geometry = node(group, "g", transform=self.transform(layer, b))
+        self.describe(group, layer)
         if simple and self.geometry(geometry, layer):
             effects = [dict(e) for e in layer.get("effects", []) if e.get("enabled", True)]
             if effects:
@@ -446,6 +475,14 @@ class Exporter:
             else:
                 parent.append(group)
         else:
+            from .accessibility import decorative
+            from .objects import export_identity
+
+            if layer.get("alt") or decorative(layer) or export_identity(layer, self.index):
+                # An image (or a layer drawn as one) that is described, decorative or part of an object keeps a
+                # group of its own to carry that.
+                parent = node(parent, "g", data_layer=layer["name"])
+                self.describe(parent, layer)
             if layer.get("styles") or layer.get("clip"):
                 from .render import layer_surface
 
@@ -488,6 +525,19 @@ def export_svg(project, *, scale=1, variables=None, artboard=None, comp=None, sv
         },
     )
     exporter = Exporter(candidate, root)
+    from .accessibility import document_title, page_alt, page_language
+
+    lang = page_language(candidate.state)
+    if lang:
+        root.set("{http://www.w3.org/XML/1998/namespace}lang", lang)
+    title, summary = document_title(candidate.state), page_alt(candidate.state)
+    for position, (tag, text) in enumerate((("title", title), ("desc", summary))):
+        if text:
+            element = ET.Element(f"{{{NS}}}{tag}")
+            element.text = text
+            root.insert(len([c for c in list(root)[:position] if c.tag.endswith(("title", "desc"))]), element)
+    if summary:
+        root.set("role", "img")
     backdrop = [
         item
         for item in exporter.layers

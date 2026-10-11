@@ -323,7 +323,9 @@ def shapes(slide, layer, bounds, emu, layers, index):
     rid = slide.exporter.chart(slide, chart.xml(), workbook(recipe["categories"], recipe["series"]))
     x, y, w, h = bounds[layer["id"]]
     ident = slide.ident()
-    frame = (f'<p:graphicFrame><p:nvGraphicFramePr><p:cNvPr id="{ident}" name={quoteattr(layer["name"])}/>'
+    from .pptx_export import c_nv_pr
+
+    frame = (f'<p:graphicFrame><p:nvGraphicFramePr>{c_nv_pr(ident, layer)}'
              '<p:cNvGraphicFramePr><a:graphicFrameLocks noGrp="1"/></p:cNvGraphicFramePr><p:nvPr/></p:nvGraphicFramePr>'
              f'<p:xfrm><a:off x="{round(x * emu)}" y="{round(y * emu)}"/><a:ext cx="{max(1, round(w * emu))}" cy="{max(1, round(h * emu))}"/></p:xfrm>'
              '<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/chart">'

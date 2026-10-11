@@ -67,7 +67,7 @@ def test_suite_schema_matches_the_rule_kinds_the_engine_accepts():
     assert set(rule["kind"]["enum"]) == set(RULE_FIELDS)
     for kind, fields in RULE_FIELDS.items():
         assert fields <= set(rule), f"{kind}: fields missing from the suite schema: {fields - set(rule)}"
-    assert {"version", "rules", "sampling", "description"} == set(SUITE["properties"])
+    assert {"version", "rules", "sampling", "description", "extends"} == set(SUITE["properties"])
 
 
 def test_suite_object_is_in_the_workflow_and_operation_schemas():

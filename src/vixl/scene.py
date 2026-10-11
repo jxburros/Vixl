@@ -73,7 +73,7 @@ def execute(project, op):
     elif kind == "particles":
         count = op.get("count", 32)
         require(isinstance(count, int) and 1 <= count <= 256, "Particle count must be 1–256")
-        require(count + len(project.state["layers"]) <= project.limits.max_layers, "Particles exceed layer budget", "resource_limit")
+        require(count + 1 + len(project.state["layers"]) <= project.limits.max_layers, "Particles exceed layer budget", "resource_limit")
         preset = op.get("preset", "dust")
         defaults = {"dust": ([4, -3], "#eadcb8", 2, 5000), "bubbles": ([0, -25], "#bde9f4", 5, 4000), "sparks": ([30, -90], "#ffd069", 2, 900), "spores": ([2, -10], "#b9cfa0", 3, 6000)}
         require(preset in defaults, "Unknown particle preset")
@@ -90,12 +90,19 @@ def execute(project, op):
         finite(settings["turbulence"], "particle turbulence", 0, 10000)
         size = finite(op.get("size", size), "particle size", 1, 256)
         rng = np.random.default_rng(op.get("seed", 0))
+        created = []
         for index in range(count):
             apply(project, {"type": "shape", "shape": "ellipse", "name": f"{op['name']}/{index}", "width": max(1, round(size * 2)), "height": max(1, round(size * 2)), "fill": op.get("color", color), "stroke_width": 0})
             layer = project.layer()
             ox = op.get("x", 0) + rng.uniform(-0.5, 0.5) * settings["spread"][0]
             oy = op.get("y", 0) + rng.uniform(-0.5, 0.5) * settings["spread"][1]
             layer.update(x=ox, y=oy, particle={**settings, "origin": [ox, oy], "phase": index / count, "seed": float(rng.uniform(0, math.tau))})
+            created.append(layer)
+        # One group named after the emitter holds its particles, so it can be targeted, moved, hidden or
+        # grouped as one thing. Particle paths are in the group's coordinates and move with it.
+        apply(project, {"type": "group", "name": op["name"], "targets": [layer["id"] for layer in created]})
+        for layer in created:
+            layer["particle"]["origin"] = [layer["x"], layer["y"]]
         from .timeline import _timeline
         timeline = _timeline(project)
         timeline["duration"] = max(timeline["duration"], settings["start"] + settings["duration"])

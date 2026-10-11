@@ -2,7 +2,7 @@
 
 [Documentation home](README.md) · [Getting started](getting-started.md) · [Visual gallery](gallery.md)
 
-Vixl is a headless application designed for autonomous AI agents; humans can use the same interfaces.
+Vixl is a headless design engine for AI agents; people can drive the same interfaces.
 
 All edits below are canonical operations, available through Python `Project.apply`, CLI commands/scripts, REST `/operations`, and MCP `vixl_operations_apply`. `vixl schema` describes their fields. Successful edits participate in atomic batches, dry runs, undo/redo, transactions, and `.vixl` persistence. Existing documents remain readable. New design documents require this version of the engine.
 
@@ -17,6 +17,9 @@ vixl group stripes stripe
 vixl clip stripes sun
 ```
 
+A group that is one thing (a dog, a guitar, a person) can be declared an [object](objects.md) with a kind
+and named parts, so `dog/head` addresses a part, `ungroup` keeps its identity safe and exports carry it.
+
 The stripe stays one editable layer. Repeat counts include the original; `dx/dy` are nonnegative offsets between copies and `dw/dh` change each copy's size (per-step turns, scale, opacity, jitter and `merge` make real copies instead: see [below](#per-step-transforms-jitter-and-merged-repeats)). `repeat-blend stripe --count 16 --dy 37 --end '{"height":21,"fill":"#4853a4"}'` interpolates size and RGBA color to the last copy. Reapplying repeat replaces its settings; `--count 1` leaves only the original. Counts are bounded to 512 and all resulting dimensions are checked before allocation.
 
 Shapes support `rectangle`, `rounded-rectangle`, `ellipse`, `polygon`, `star`, `arc`, and `line`; `vixl shape --target NAME --fill COLOR` (JSON `{"type":"shape","target":"NAME",…}`) changes the fill, stroke or geometry of an existing shape in place, keeping its layer ID; options include `--fill`, `--stroke`, `--stroke-width`, `--line-cap`, `--trim-start`/`--trim-end` (draw only part of the stroke, 0–100 %, animatable: see [Drawing a line on](brushes-and-animation.md#drawing-a-line-on)), `--radius`, `--sides`, and star `--inner-radius` (0.01–1). Geometry is retained and redrawn at the layer's current size with bounded antialiasing. Version 0.11.0 adds named shape shortcuts and editable single-contour Bézier paths, plus SVG export of simple geometry. See [design resources and vector export](agent-resources.md) for syntax and raster fallback limits.
@@ -28,12 +31,15 @@ are degrees, 0 at 3 o'clock and growing clockwise (as SVG and gradient angles do
 o'clock; the wedge runs clockwise from start to end, an `end_angle` below the start wraps around,
 and 360° or more past the start is the full disc or ring (the default when you give no angles).
 `inner_radius` (0–0.99, a fraction of the outer radius, default 0) cuts the hole: 0 is a pie wedge,
-0.6 a donut segment. Wedges that share one box and differ only in their angles make a pie or donut
-chart:
+0.6 a donut segment. `closed: false` (CLI `--open`) draws only the curve: an open stroke for a
+progress arc, sound waves or a flourish, which gets no default fill (like `line` and open paths, in
+every renderer and export) and takes `line_cap`; it has no `inner_radius`. Wedges that share one box
+and differ only in their angles make a pie or donut chart:
 
 ```bash
 vixl shape arc --name flat-white --width 300 --height 300 --x 50 --y 50 --start-angle -90 --end-angle 70.6 --fill '#14263b'
 vixl shape arc --name drip --width 300 --height 300 --x 50 --y 50 --start-angle 70.6 --end-angle 192 --inner-radius 0.55 --fill '#f2a541'
+vixl shape arc --name progress --width 300 --height 300 --x 400 --y 50 --start-angle -90 --end-angle 160 --open --stroke '#d4241c' --stroke-width 14 --line-cap round
 ```
 
 Each wedge is one editable layer; a visible stroke is drawn inside the box, so strokes of
@@ -227,7 +233,7 @@ vixl replace-contents photo --path replacement.jpg
 vixl replace-contents photo --fit fit --asset assets/EMBEDDED_HASH.png
 ```
 
-Frames center and fill/crop or fit/letterbox their boxes. Replacement keeps the layer ID, box, position, transforms, styles, effects and mask. Explicit replacement clears an old source crop, linked-file path, and image-variable binding. Frame imports embed the image in the project. Remote clients use already-imported `asset` IDs instead of paths.
+Frames center and fill/crop or fit/letterbox their boxes; `--frame-shape ellipse|star|hexagon|heart` or `--outline` (a closed SVG path in frame-local pixels) gives an irregular frame. Replacement keeps the layer ID, box, position, transforms, styles, effects and mask. Explicit replacement clears an old source crop, linked-file path, and image-variable binding. Frame imports embed the image in the project. Remote clients use already-imported `asset` IDs instead of paths.
 
 Image variables reference embedded assets during ordinary rendering:
 
@@ -247,7 +253,7 @@ Python exposes `project.render(artboard=..., comp=..., variables=...)`, `project
 A template filled from data meets empty fields: a badge row with no company, a card with no subtitle. Fixed text frames leave a hole where the empty line was. Two features let the layout react instead:
 
 - **`hide_if_empty`** on a text layer (`text`, `text-set`, `vixl text add --hide-if-empty`, or the `text` operation over MCP): while the text is empty or blank after `${variable}` substitution, the layer is not drawn, not checked, not exported and takes no space in a stack. `inspect` marks it `collapsed: true`; the layer and its settings stay, so a later non-empty value brings it back.
-- **`stack`** turns a group into an auto-layout column or row. `{"type":"stack","name":"names","targets":["first","last","company"],"direction":"vertical","gap":20,"align":"center","justify":"center","width":1000,"height":400}` groups the layers and lays them out in the group's box; `{"type":"stack","target":"names","gap":12}` changes an existing stack. `direction` is `vertical` (default) or `horizontal`; `gap` and `padding` are pixels; `align` places members across the stack and `justify` along it (`start`, `center` or `end`); `width`/`height` set the box (pixels or `N%`). Members are laid out in document order. Members that are hidden (`hide`) or collapsed by `hide_if_empty` take no space, so the others reflow and, with `justify: "center"`, stay centred. A stack with `hide_if_empty: true` collapses when all its members do, so stacks nest. `stack` with `remove: true` releases the members at their current positions.
+- **`stack`** turns a group into an auto-layout column or row. `{"type":"stack","name":"names","targets":["first","last","company"],"direction":"vertical","gap":20,"align":"center","justify":"center","width":1000,"height":400}` groups the layers and lays them out in the group's box; `{"type":"stack","target":"names","gap":12}` changes an existing stack. `direction` is `vertical` (default) or `horizontal`; `gap` is pixels or shared spacing units such as `"2u"` (half the body size each, resolved to pixels when applied; default 0, or `2u` in house-style-3 documents; CLI `vixl stack names --gap 2u`), `padding` is pixels; `align` places members across the stack and `justify` along it (`start`, `center` or `end`); `width`/`height` set the box (pixels or `N%`). Members are laid out in document order. Members that are hidden (`hide`) or collapsed by `hide_if_empty` take no space, so the others reflow and, with `justify: "center"`, stay centred. A stack with `hide_if_empty: true` collapses when all its members do, so stacks nest. `stack` with `remove: true` releases the members at their current positions.
 
 Stacks are resolved whenever the document is laid out (render, export, check, `inspect`), so `render --data rows.csv`, `--set company=` and export-time `variables` re-centre each row; only the settings are stored. A stack positions its members, so `move`, `align`, `distribute`, `constrain` and `unconstrain` on a member fail with `stack_managed` and say what to use; resize and reorder members, or move the stack. A group's box is fixed (members may overflow it), and members are positioned individually, so put overlapping artwork (a pill behind its label) in a sub-group and stack the sub-group.
 
