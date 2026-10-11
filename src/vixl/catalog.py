@@ -29,7 +29,7 @@ REFERENCE_OPTIONS = {"seed": 0, "palette": "midnight", "mode": "light", "density
 CHECK_INFO = {
     "bounds": ("Layers cut off by, or lying outside, the canvas edge (deliberate crops and bleed are info).",
                ("error", "warning", "info")),
-    "overlap": ("Visible pixels of two layers overlapping (two text layers: error).", ("error", "warning")),
+    "overlap": ("Visible pixels of two layers overlapping (two text layers: error); decoration running through text's glyph area is a review warning.", ("error", "warning")),
     "contrast": ("Text contrast against what is actually behind it: 4.5:1, or 3:1 for large text.", ("error",)),
     "safe_area": ("Content outside the safe area (canvas size preset or safe_area) or inside an avoid zone.",
                   ("error", "warning", "info")),

@@ -132,6 +132,13 @@ class Builder:
         require(self.align in ("left", "center", "right"), "align must be left, center or right")
         self.accent = op.get("accent") or self.rng.choice(layout.get("accents", ACCENTS))
         require(self.accent in ACCENTS, f"accent must be one of {', '.join(ACCENTS)}")
+        if self.accent == "outline":
+            # The outline frame sits inside the margin; keep the content a clear gap inside the frame, not
+            # flush against its inner edge.
+            inner = round(self.m * 0.45 + self.outline_width() + self.unit * 2)
+            if inner > self.m:
+                self.L, self.T, self.R, self.B = inner, inner, self.W - inner, self.H - inner
+                self.cw, self.ch = self.R - self.L, self.B - self.T
         # Content is fill-in-the-blank: only what the caller supplied is real copy. A slot the
         # design needs but nobody filled renders as a visible "[Label]" placeholder and is
         # recorded as a blank, so it can never ship silently as invented sample text.
@@ -385,6 +392,9 @@ class Builder:
         self.created.append(self.name(name))
         return (round(x), round(y), round(w), round(h))
 
+    def outline_width(self):
+        return max(2, round(self.unit * 0.75))
+
     def accent_device(self, x, y, width, height, near="top"):
         """The seeded secondary device that ties a block together (or nothing)."""
         size = max(2, round(self.unit * 0.75))
@@ -408,7 +418,8 @@ class Builder:
             return self.rect("accent", bx, by, bw, bh, "@accent", opacity=0.9, decoration=True)
         if self.accent == "outline":
             inset = self.m * 0.45
-            return self.rect("accent", inset, inset, self.W - 2 * inset, self.H - 2 * inset, "transparent", stroke="@accent", stroke_width=size, decoration=True)
+            return self.rect("accent", inset, inset, self.W - 2 * inset, self.H - 2 * inset, "transparent", stroke="@accent",
+                             stroke_width=self.outline_width(), decoration=True)
         return None
 
     def stack(self, entries, x, y, width, gap=None, align=None):

@@ -58,6 +58,7 @@ Each design-check finding carries:
 | `safe_area.outside` | layer box vs safe area | `move` back inside the safe area |
 | `safe_area.reserved-zone` | | none |
 | `overlap.text-text`, `overlap.text-object` | overlapping pixels | none mechanical; `repair-layout` tries moves |
+| `overlap.decoration-text` (review) | decoration pixels inside the text's glyph area | none: move the decoration, or `layer-intent allow_overlap` |
 | `blanks.unfilled` | | held for review: copy is never guessed |
 
 The minimum size of a `fit-text` repair is the document's `text-fit` suite rule for that layer, else 12 px,

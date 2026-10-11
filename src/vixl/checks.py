@@ -112,6 +112,24 @@ def _contains(outer, inner):
     )
 
 
+def glyph_area(mask, origin, halo=0.1):
+    """Canvas boxes ``(left, top, right, bottom)`` of the glyph area of a text alpha ``mask`` placed at
+    ``origin``: one box per line of ink (a run of inked rows, ascenders to descenders, first to last inked
+    column), widened by ``halo`` of the line height. A mark in a line's descender band or between its words
+    reads as touching the text even where it misses every glyph pixel."""
+    rows = np.flatnonzero(mask.any(axis=1))
+    if not rows.size:
+        return []
+    boxes = []
+    for run in np.split(rows, np.flatnonzero(np.diff(rows) > 1) + 1):
+        top, bottom = int(run[0]), int(run[-1]) + 1
+        columns = np.flatnonzero(mask[top:bottom].any(axis=0))
+        pad = max(1, round((bottom - top) * halo))
+        boxes.append((origin[0] + int(columns[0]) - pad, origin[1] + top - pad,
+                      origin[0] + int(columns[-1]) + 1 + pad, origin[1] + bottom + pad))
+    return boxes
+
+
 def glyph_reports(project, layers):
     """``(layer, {"missing", "fallback"})`` for resolved text layers whose characters need a
     fallback font or that no available font covers. Text is read with the project's variables."""
@@ -636,11 +654,46 @@ def check_design(
 
         if "overlap" in checks:
             drawable = [item for item in content if item["type"] != "group"]
+
+            def decoration_over_text(decor, text):
+                """Decoration may sit under or around text (a panel, a frame, a rule), but its painted pixels
+                should not run through the text's glyph area: a review warning, not a fix. Only layers marked
+                decoration count (a glow inferred from its fade sits behind text by design), and chart internals
+                (gridlines under value labels) are skipped."""
+                if not any(x.get("role") == "decoration" for x in (decor, *ancestors(decor))):
+                    return
+                if any(x.get("chart") for x in (*ancestors(decor), *ancestors(text))):
+                    return
+                if _contains(outward(geometry[decor["id"]]), outward(geometry[text["id"]])):
+                    return  # A panel or frame around the text.
+                dx, dy, _, _ = ink(decor)
+                mask = alpha(decor)
+                origin = (max(0, dx), max(0, dy))
+                tx, ty, _, _ = ink(text)
+                inside = np.zeros_like(mask)
+                for left, top, right, bottom in glyph_area(alpha(text), (max(0, tx), max(0, ty))):
+                    inside[max(0, top - origin[1]):max(0, bottom - origin[1]),
+                           max(0, left - origin[0]):max(0, right - origin[0])] = True
+                pixels = int(np.logical_and(mask, inside).sum())
+                smaller = max(1, min(int(mask.sum()), int(alpha(text).sum())))
+                if pixels > 4 and pixels / smaller > 0.005:
+                    ys, xs = np.nonzero(np.logical_and(mask, inside))
+                    region = [origin[0] + int(xs.min()), origin[1] + int(ys.min()),
+                              int(xs.max() - xs.min()) + 1, int(ys.max() - ys.min()) + 1]
+                    issue("overlap", "warning",
+                          f"Decoration {decor['name']!r} runs through the glyphs of {text['name']!r} "
+                          f"({pixels} px at {where(region)}); move it clear of the text, or mark the pair "
+                          "with layer-intent allow_overlap if it is deliberate", [decor, text], region=region,
+                          code="decoration-text", action="review", pixels=pixels)
+
             for i, j in overlap_candidates([ink(item) for item in drawable], [is_text(item) for item in drawable], width, height):
                 first, second = drawable[i], drawable[j]
                 if second["id"] in first.get("allow_overlap", []) or first["id"] in second.get("allow_overlap", []):
                     continue
-                if (role(first) == "decoration" and not is_text(first)) or (role(second) == "decoration" and not is_text(second)):
+                decor = [x for x in (first, second) if role(x) == "decoration" and not is_text(x)]
+                if decor:
+                    if len(decor) == 1 and any(is_text(x) for x in (first, second)):
+                        decoration_over_text(decor[0], second if decor[0] is first else first)
                     continue
                 a, b = ink(first), ink(second)
                 if not _intersects(a, b):

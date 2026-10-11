@@ -126,7 +126,9 @@ margin, corner, look, style, motif and background treatment. Fields you pass win
 The rolled density changes the result: airy widens and dense tightens the rolled margin (×1.25 and ×0.75)
 and the spacing unit behind gaps (half the body size, craft `spacing.unit`). The roll weights density by
 purpose (above); the builder, given no density, chooses balanced twice as often as airy or dense. The rolled accent (rule, bar, dot, block or outline) is drawn in the safe compositions next to
-their own device.
+their own device. An outline frame insets the content two spacing units inside it. The pattern background's column of dots
+and the direction motif are placed clear of the text (another margin, a shorter column, or left out), and
+the overlap check reports decoration that runs through text as `overlap.decoration-text`.
 
 `vixl_roll(apply=True, slots={"title": "Launch"})` installs its selected fonts,
 builds the editable design in one undo step, and returns contrast/legibility checks.

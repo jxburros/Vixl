@@ -374,7 +374,7 @@ If found, prepend its folder to PATH for this session — see
    `bounds`; changed layers list only their new values. If it contains `normalized`, note the
    canonical spelling it reports and use that next time.
 5. **Check without looking:** `vixl_check` / `vixl check` reports content cut off by the canvas,
-   overlapping text, low WCAG contrast, safe-area or reserved-zone violations (`safe_area="5%"`,
+   overlapping text (and decoration running through text, for review), low WCAG contrast, safe-area or reserved-zone violations (`safe_area="5%"`,
    `avoid=[[x,y,w,h]]`) and text too small at thumbnail width (on print sizes: below 6 pt). It lists only problems.
    Then run your own suite (`vixl_workflow("check", {suite: NAME})`, or `suites=true` on the apply) for
    this brief's requirements; see "Tests: why, when and how" above. Fix failures before step 6.
