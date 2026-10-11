@@ -22,7 +22,7 @@ WORK.mkdir(exist_ok=True)
 BPM = 120
 BEAT = 60_000 // BPM  # ms
 
-# Accents for the art in the shots; the frame itself stays in the Digital Shift palette.
+# Accents for the art in the shots; the frame itself stays in the Ripple palette.
 CORAL = "#FF8A65"
 MINT = "#5FD3B4"
 GOLD = "#FFC94D"

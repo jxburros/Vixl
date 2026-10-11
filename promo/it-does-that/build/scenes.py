@@ -12,7 +12,8 @@ import assets
 import score
 from film import (BAD, BLUE, BODY, CODE_KEY, CODE_NUM, CODE_STR, CORAL, DEEP, GOLD, GOOD, HEAD, INK, LILAC, LINE,
                   MINT, MONO, MUTED, PANEL, PAPER, SEMI, SKY, WHITE, Scene, backdrop, caption, centered, chip,
-                  ellipse, exit_all, glow, group, headline, image, kicker, mark, rect, rel, rich, shadow, text)
+                  ellipse, exit_all, glow, group, headline, image, kicker, rect, rel, rich, ripple_in, shadow, text,
+                  wordmark)
 
 DURATIONS = {"01-hook": 5000, "02-sketch": 6000, "03-badges": 6000, "04-emoji": 5000, "05-mandala": 5000,
              "06-pixel": 5000, "07-forms": 5000, "08-diagram": 5000, "09-garden": 5000, "10-score": 6000,
@@ -592,15 +593,18 @@ RECAP = ["sketch → vectors", "print runs", "emoji masters", "mandalas", "pixel
 def s11_end():
     sc = Scene("11-end", DURATIONS["11-end"])
     sc.add(backdrop(glow_at=(960, 420), glow2_at=(960, 1000)))
-    sc.add(glow("pulse", 960, 260, 900, BLUE, "55"))
-    ops, names = mark("m", 860, 110, 200)
-    sc.add(ops, group("logo", names))
-    sc.pop("logo", 0, 600, 0.5)
-    sc.add(centered("line", [("It does ", None), ("that", SKY), (", too.", None)], 370, 130))
+    sc.add(glow("pulse", 960, 230, 900, BLUE, "55"))
+    # The Ripple wordmark: letters pop in, then the reflection bands ripple in and keep swaying.
+    ops, names = wordmark("w", 760, 90, 400)
+    sc.add(ops)
+    for i, name in enumerate(["w-v", "w-i-stem", "w-i-dot", "w-x", "w-l"]):
+        sc.pop(name, i * 90, 360, 0.4)
+    ripple_in(sc, [n for n in names if "-band-" in n], 450, stagger=45)
+    sc.add(centered("line", [("It does ", None), ("that", SKY), (", too.", None)], 420, 130))
     sc.words("line", 300, "fade-up", "word", 500, 140)
     widths = [round(len(label) * 21 * 0.6 + 40) for label in RECAP]
     rows = [RECAP[:5], RECAP[5:]]
-    y = 580
+    y = 620
     k = 0
     for row in rows:
         row_w = sum(widths[k:k + len(row)]) + 14 * (len(row) - 1)
@@ -612,7 +616,7 @@ def s11_end():
             x += widths[k] + 14
             k += 1
         y += 62
-    sc.add(centered("url", "github.com/jxburros/Vixl", 760, 44, WHITE, MONO))
+    sc.add(centered("url", "github.com/jxburros/Vixl", 800, 44, WHITE, MONO))
     sc.fade("url", 1700, dur=400, rise=16)
     sc.add(centered("made", "Every frame of this video is an editable Vixl document. So is the music.", 960, 26,
                     MUTED, BODY))

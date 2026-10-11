@@ -22,7 +22,7 @@ not a mock-up of it. The soundtrack is a Vixl document too.
 | 0:37 | `08-diagram` | Text → diagram | `diagram-from-text` lays out and routes `idea -> sketch -> layers -> check -> ship` / `check -> fix -> layers`; nodes and edges animate as ordinary layers |
 | 0:42 | `09-garden` | Seeded plants | Five `organic` presets (tree, sunflower, fern, rose, pine) grow from their seeds, then regrow from the next seed |
 | 0:47 | `10-score` | The soundtrack | A piano roll of every note in `score.vixl`, eight `audio-track` layers; the playhead marks where the shot actually sits in the film |
-| 0:53 | `11-end` | | "It does that, too." · github.com/jxburros/Vixl |
+| 0:53 | `11-end` | | The Ripple wordmark builds letter by letter and its reflection ripples in: "It does that, too." · github.com/jxburros/Vixl |
 
 ## The soundtrack
 
