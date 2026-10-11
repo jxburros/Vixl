@@ -6,8 +6,8 @@ from __future__ import annotations
 
 import math
 
-from kit import (BAD, BLUE, BODY, CHARCOAL, CODE_KEY, CODE_NUM, CODE_STR, DEEP, GOOD, H, HEAD, LINE, MONO,
-                 MUTED, PANEL, SEMI, SKY, W, WHITE, Scene, backdrop, centered, chip, ellipse, glow, group,
+from kit import (BAD, BLUE, BODY, CODE_KEY, CODE_NUM, CODE_STR, DEEP, GOOD, HEAD, LINE, MONO,
+                 MUTED, PANEL, SEMI, SKY, WHITE, Scene, backdrop, centered, chip, ellipse, glow, group,
                  image, mark, rect, rich, shadow, text)
 
 # The poster the agent builds in shots 3-5: a desert festival card, drawn from plain layers.
