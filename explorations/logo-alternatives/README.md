@@ -68,3 +68,18 @@ dropped: it fills the thin notch between the x's legs, and the x stops reading.
 `compare.py` builds `output/compare-r2.png`: the Digital Shift logo, R2 and R2b side by side, on light and
 dark, and at 260, 140 and 80 px. R2b ripples only the x; rippling the l detaches its lower bands, and at
 small sizes the word reads "vix!".
+
+## Round five: variations on R2
+
+`build_s.py` builds these, `output/contact-sheet-s.png` and the animated `output/s8-moving.gif`.
+
+| Concept | Idea |
+| --- | --- |
+| S1 · R2 as it was | Four bands, alternating drift |
+| S2 · Calm water | Five thin bands, small drift |
+| S3 · Bold water | Three wide bands, for small sizes |
+| S4 · Current | Every band drifts the same way, further each time |
+| S5 · Deep water | The reflection is whole down to the baseline; ripples continue below it |
+| S6 · One colour | The ripple in charcoal, for one-colour use |
+| S7 · Fade | Bands step from blue to pale as the gaps widen |
+| S8 · Moving water | The bands sway on a seamless two-second loop (`s8-moving.gif`) |
