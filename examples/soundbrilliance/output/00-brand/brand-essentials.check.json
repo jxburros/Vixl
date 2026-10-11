@@ -1,0 +1,197 @@
+{
+  "passed": true,
+  "errors": 0,
+  "warnings": 0,
+  "info": 1,
+  "by_action": {
+    "fix": [],
+    "review": [],
+    "informational": [
+      0
+    ]
+  },
+  "outcome": {
+    "state": "validated",
+    "execution": "completed",
+    "validation": "passed",
+    "review": "not_required",
+    "review_reasons": [],
+    "validated_by": [
+      "design checks"
+    ]
+  },
+  "issues": [
+    {
+      "check": "legibility",
+      "severity": "info",
+      "layers": [
+        "type-h",
+        "type-b",
+        "type-body",
+        "core-0-n",
+        "core-0-h",
+        "core-1-n",
+        "core-1-h",
+        "core-2-n",
+        "core-2-h",
+        "core-3-n",
+        "core-3-h",
+        "core-4-n",
+        "core-4-h",
+        "cat-0-n",
+        "cat-0-h",
+        "cat-1-n",
+        "cat-1-h",
+        "cat-2-n",
+        "cat-2-h",
+        "cat-3-n",
+        "cat-3-h",
+        "cat-4-n",
+        "cat-4-h",
+        "cat-5-n",
+        "cat-5-h",
+        "cat-6-n",
+        "cat-6-h",
+        "note"
+      ],
+      "message": "28 text layers are under 10 px tall at 320 px wide (the smallest, 'core-0-h', is 3.3 px); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
+      "layer_ids": [
+        "lyr_6710844b8c5f6357",
+        "lyr_5b90d89de336d031",
+        "lyr_75668f76799f33cb",
+        "lyr_b49ba2131734ecc4",
+        "lyr_a08a2e1f49bc3bdb",
+        "lyr_17d8d9e6496ea4af",
+        "lyr_ede999e418c72792",
+        "lyr_507ffd370700b515",
+        "lyr_a150d4b3c6b4e679",
+        "lyr_f3aabcbf0080b635",
+        "lyr_5c03aafb13627415",
+        "lyr_31fdb7eddcff3e16",
+        "lyr_ea46f835a56f8804",
+        "lyr_6a6fdd53d414773a",
+        "lyr_3e9cd77f75e613e7",
+        "lyr_a73294175ec1a737",
+        "lyr_b2e4bc00c54b468a",
+        "lyr_e9276d0c527c54fa",
+        "lyr_663b7128ec9176d6",
+        "lyr_557eea8e047ec8cd",
+        "lyr_b0c8282dbc6e0c7e",
+        "lyr_deb9d86aaaf4a8d8",
+        "lyr_06e16e0e14bee095",
+        "lyr_214e06e1874d349a",
+        "lyr_63ae126f05919102",
+        "lyr_05f210aa3b39d4fb",
+        "lyr_232d74f4b51d8859",
+        "lyr_b1a02d0d16347d4f"
+      ],
+      "box": [
+        100,
+        410,
+        824,
+        28
+      ],
+      "thumbnail_size": 3.33,
+      "action": "informational",
+      "rule": "legibility",
+      "measured": {
+        "actual": 3.33,
+        "expected": 10,
+        "unit": "px"
+      }
+    }
+  ],
+  "checked": {
+    "checks": [
+      "bounds",
+      "overlap",
+      "contrast",
+      "safe_area",
+      "legibility",
+      "blanks",
+      "placeholders",
+      "fonts",
+      "brand",
+      "content",
+      "form",
+      "links",
+      "diagram",
+      "flow",
+      "codes"
+    ],
+    "layers_checked": 64,
+    "layers_total": 64,
+    "text_layers": 30
+  },
+  "suites": {
+    "brief": {
+      "version": 1,
+      "suite_hash": "a01d3f79d1a0947a44d186720497ce678b9655a0ff57459382ec4dd28106faeb",
+      "passed": true,
+      "status": "passed",
+      "errors": 0,
+      "needs_review": 0,
+      "coverage": {
+        "mode": "still",
+        "times": [
+          null
+        ]
+      },
+      "results": [
+        {
+          "id": "width",
+          "status": "passed",
+          "severity": "error",
+          "time": null,
+          "expected": 1920,
+          "actual": 1920
+        },
+        {
+          "id": "height",
+          "status": "passed",
+          "severity": "error",
+          "time": null,
+          "expected": 1080,
+          "actual": 1080
+        },
+        {
+          "id": "fonts",
+          "status": "passed",
+          "severity": "error",
+          "time": null,
+          "fonts": [
+            "hanken-grotesk-400",
+            "hanken-grotesk-600",
+            "libre-caslon-text-400",
+            "libre-caslon-text-400-italic"
+          ]
+        },
+        {
+          "id": "rule-0",
+          "status": "passed",
+          "severity": "error",
+          "time": null,
+          "expected": 4.5,
+          "actual": 20.112,
+          "weakest_region": [
+            100,
+            275,
+            746,
+            79
+          ]
+        }
+      ],
+      "source": "document",
+      "outcome": {
+        "state": "validated",
+        "execution": "completed",
+        "validation": "passed",
+        "review": "not_required",
+        "review_reasons": [],
+        "validated_by": [
+          "suite"
+        ]
+      }
+    }
+  }
+}

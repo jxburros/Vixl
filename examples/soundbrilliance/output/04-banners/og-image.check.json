@@ -1,0 +1,416 @@
+{
+  "passed": true,
+  "errors": 0,
+  "warnings": 0,
+  "info": 7,
+  "by_action": {
+    "fix": [],
+    "review": [],
+    "informational": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ]
+  },
+  "outcome": {
+    "state": "validated",
+    "execution": "completed",
+    "validation": "passed",
+    "review": "not_required",
+    "review_reasons": [],
+    "accepted": [
+      {
+        "rule": "bounds.bleed",
+        "layers": [
+          "c0"
+        ],
+        "reason": "'c0' bleeds off the canvas edge (marked as an intentional crop)"
+      },
+      {
+        "rule": "bounds.bleed",
+        "layers": [
+          "c1"
+        ],
+        "reason": "'c1' bleeds off the canvas edge (marked as an intentional crop)"
+      },
+      {
+        "rule": "bounds.bleed",
+        "layers": [
+          "c2"
+        ],
+        "reason": "'c2' bleeds off the canvas edge (marked as an intentional crop)"
+      },
+      {
+        "rule": "safe_area.outside",
+        "layers": [
+          "c0"
+        ],
+        "reason": "'c0' extends outside the safe area (intentional crop or bleed)"
+      },
+      {
+        "rule": "safe_area.outside",
+        "layers": [
+          "c1"
+        ],
+        "reason": "'c1' extends outside the safe area (intentional crop or bleed)"
+      },
+      {
+        "rule": "safe_area.outside",
+        "layers": [
+          "c2"
+        ],
+        "reason": "'c2' extends outside the safe area (intentional crop or bleed)"
+      }
+    ],
+    "validated_by": [
+      "design checks"
+    ]
+  },
+  "issues": [
+    {
+      "check": "bounds",
+      "severity": "info",
+      "layers": [
+        "c0"
+      ],
+      "message": "'c0' bleeds off the canvas edge (marked as an intentional crop)",
+      "layer_ids": [
+        "lyr_386a045561455589"
+      ],
+      "box": [
+        660,
+        329,
+        418,
+        419
+      ],
+      "bounds": [
+        660.0,
+        329.03999999999996,
+        418.0,
+        418.0
+      ],
+      "intentional": true,
+      "code": "bleed",
+      "action": "informational",
+      "rule": "bounds.bleed"
+    },
+    {
+      "check": "bounds",
+      "severity": "info",
+      "layers": [
+        "c1"
+      ],
+      "message": "'c1' bleeds off the canvas edge (marked as an intentional crop)",
+      "layer_ids": [
+        "lyr_1e241bd9b838e066"
+      ],
+      "box": [
+        840,
+        392,
+        330,
+        331
+      ],
+      "bounds": [
+        840.0,
+        392.4,
+        330.0,
+        330.0000000000001
+      ],
+      "intentional": true,
+      "code": "bleed",
+      "action": "informational",
+      "rule": "bounds.bleed"
+    },
+    {
+      "check": "bounds",
+      "severity": "info",
+      "layers": [
+        "c2"
+      ],
+      "message": "'c2' bleeds off the canvas edge (marked as an intentional crop)",
+      "layer_ids": [
+        "lyr_48b949982e5c417a"
+      ],
+      "box": [
+        1020,
+        455,
+        242,
+        243
+      ],
+      "bounds": [
+        1020.0,
+        455.76,
+        242.0,
+        242.0
+      ],
+      "intentional": true,
+      "code": "bleed",
+      "action": "informational",
+      "rule": "bounds.bleed"
+    },
+    {
+      "check": "safe_area",
+      "severity": "info",
+      "layers": [
+        "c0"
+      ],
+      "message": "'c0' extends outside the safe area (intentional crop or bleed)",
+      "layer_ids": [
+        "lyr_386a045561455589"
+      ],
+      "box": [
+        660,
+        329,
+        418,
+        419
+      ],
+      "bounds": [
+        660,
+        329,
+        418,
+        419
+      ],
+      "safe_area": [
+        32,
+        32,
+        1136,
+        566
+      ],
+      "code": "outside",
+      "intentional": true,
+      "action": "informational",
+      "rule": "safe_area.outside",
+      "measured": {
+        "actual": [
+          660,
+          329,
+          418,
+          419
+        ],
+        "expected": [
+          32,
+          32,
+          1136,
+          566
+        ],
+        "unit": "box"
+      }
+    },
+    {
+      "check": "safe_area",
+      "severity": "info",
+      "layers": [
+        "c1"
+      ],
+      "message": "'c1' extends outside the safe area (intentional crop or bleed)",
+      "layer_ids": [
+        "lyr_1e241bd9b838e066"
+      ],
+      "box": [
+        840,
+        392,
+        330,
+        331
+      ],
+      "bounds": [
+        840,
+        392,
+        330,
+        331
+      ],
+      "safe_area": [
+        32,
+        32,
+        1136,
+        566
+      ],
+      "code": "outside",
+      "intentional": true,
+      "action": "informational",
+      "rule": "safe_area.outside",
+      "measured": {
+        "actual": [
+          840,
+          392,
+          330,
+          331
+        ],
+        "expected": [
+          32,
+          32,
+          1136,
+          566
+        ],
+        "unit": "box"
+      }
+    },
+    {
+      "check": "safe_area",
+      "severity": "info",
+      "layers": [
+        "c2"
+      ],
+      "message": "'c2' extends outside the safe area (intentional crop or bleed)",
+      "layer_ids": [
+        "lyr_48b949982e5c417a"
+      ],
+      "box": [
+        1020,
+        455,
+        242,
+        243
+      ],
+      "bounds": [
+        1020,
+        455,
+        242,
+        243
+      ],
+      "safe_area": [
+        32,
+        32,
+        1136,
+        566
+      ],
+      "code": "outside",
+      "intentional": true,
+      "action": "informational",
+      "rule": "safe_area.outside",
+      "measured": {
+        "actual": [
+          1020,
+          455,
+          242,
+          243
+        ],
+        "expected": [
+          32,
+          32,
+          1136,
+          566
+        ],
+        "unit": "box"
+      }
+    },
+    {
+      "check": "legibility",
+      "severity": "info",
+      "layers": [
+        "url"
+      ],
+      "message": "'url' is 7.5 px tall at 320 px wide; aim for at least 10 px (font size 38+); only matters if this is shown as a thumbnail (thumbnail_width: null turns the test off)",
+      "layer_ids": [
+        "lyr_4443134ddbf4d8ab"
+      ],
+      "box": [
+        80,
+        520,
+        255,
+        20
+      ],
+      "thumbnail_size": 7.47,
+      "action": "informational",
+      "rule": "legibility",
+      "measured": {
+        "actual": 7.47,
+        "expected": 10,
+        "unit": "px"
+      }
+    }
+  ],
+  "checked": {
+    "checks": [
+      "bounds",
+      "overlap",
+      "contrast",
+      "safe_area",
+      "legibility",
+      "blanks",
+      "placeholders",
+      "fonts",
+      "brand",
+      "content",
+      "form",
+      "links",
+      "diagram",
+      "flow",
+      "codes"
+    ],
+    "layers_checked": 27,
+    "layers_total": 27,
+    "text_layers": 2
+  },
+  "suites": {
+    "brief": {
+      "version": 1,
+      "suite_hash": "fd6d7a9a52d666e9970920a35c2e01552264af638732f22c0091338f7398ecd8",
+      "passed": true,
+      "status": "passed",
+      "errors": 0,
+      "needs_review": 0,
+      "coverage": {
+        "mode": "still",
+        "times": [
+          null
+        ]
+      },
+      "results": [
+        {
+          "id": "width",
+          "status": "passed",
+          "severity": "error",
+          "time": null,
+          "expected": 1200,
+          "actual": 1200
+        },
+        {
+          "id": "height",
+          "status": "passed",
+          "severity": "error",
+          "time": null,
+          "expected": 630,
+          "actual": 630
+        },
+        {
+          "id": "fonts",
+          "status": "passed",
+          "severity": "error",
+          "time": null,
+          "fonts": [
+            "hanken-grotesk-600",
+            "libre-caslon-text-400"
+          ]
+        },
+        {
+          "id": "rule-0",
+          "status": "passed",
+          "severity": "error",
+          "time": null,
+          "expected": 4.5,
+          "actual": 20.112,
+          "weakest_region": [
+            80,
+            211,
+            552,
+            159
+          ]
+        }
+      ],
+      "source": "document",
+      "outcome": {
+        "state": "validated",
+        "execution": "completed",
+        "validation": "passed",
+        "review": "not_required",
+        "review_reasons": [],
+        "validated_by": [
+          "suite"
+        ]
+      }
+    }
+  }
+}

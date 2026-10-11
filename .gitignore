@@ -35,3 +35,5 @@ tests/visual/_failures/
 # Preserve editable artwork references.
 !art/heyoka-mirrors-paradox/items/*.vixl
 .vixl-cache.seen
+!examples/soundbrilliance/output/**/*.vixl
+examples/soundbrilliance/output/_prepared/
