@@ -10,6 +10,16 @@
       0
     ]
   },
+  "outcome": {
+    "state": "validated",
+    "execution": "completed",
+    "validation": "passed",
+    "review": "not_required",
+    "review_reasons": [],
+    "validated_by": [
+      "design checks"
+    ]
+  },
   "issues": [
     {
       "check": "fonts",
@@ -28,7 +38,8 @@
         }
       ],
       "bytes": 112204,
-      "action": "informational"
+      "action": "informational",
+      "rule": "fonts"
     }
   ],
   "checked": {
@@ -39,6 +50,7 @@
       "safe_area",
       "legibility",
       "blanks",
+      "placeholders",
       "fonts",
       "brand",
       "content",
@@ -83,7 +95,18 @@
           "expected": 640,
           "actual": 640
         }
-      ]
+      ],
+      "source": "document",
+      "outcome": {
+        "state": "validated",
+        "execution": "completed",
+        "validation": "passed",
+        "review": "not_required",
+        "review_reasons": [],
+        "validated_by": [
+          "suite"
+        ]
+      }
     }
   }
 }

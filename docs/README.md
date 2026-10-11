@@ -69,6 +69,7 @@ See the [provider matrix](providers.md#capability-matrix) before choosing a serv
 - [Examples](../examples/) and [explorations](../explorations/README.md): longer creative projects.
 - [Agent evaluations](../evals/README.md): briefs and grading contracts.
 - [Documentation maintenance](documentation-maintenance.md): rebuilding visuals and verifying examples.
+- [Brand voice](brand-voice.md): how Vixl's own copy and marketing sound.
 - [Changelog](../CHANGELOG.md): shipped changes and source-only additions.
 - [Original product specification](product-spec.md): design context; use coverage for implemented behavior.
 

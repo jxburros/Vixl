@@ -5,11 +5,14 @@
 
 # Vixl
 
-**An editable image-document engine for AI agents and programmable creative work.**
+**Ideas become editable.** A design engine for AI agents.
 
-Create, inspect, edit, measure and export layered designs through MCP, CLI, Python or REST.
-No graphical display is required. Text, shapes, masks, effects, variables, constraints,
-pages and history stay editable in a portable `.vixl` master.
+Ask an AI for a poster and you usually get a picture of a poster. Vixl gives your agent the
+real thing: layers, live text, fonts, a history you can rewind, and a `.vixl` master you can
+still change next week. It checks contrast, spacing and bleed before export, so nobody finds
+out at the print shop.
+
+Works through MCP, CLI, Python or REST. No windows required.
 
 Current tagged release: **0.25.0**. See the [changelog](CHANGELOG.md#0250) for release notes.
 Run `vixl --version` to check your runtime;
@@ -20,6 +23,15 @@ record the Git commit when using a source checkout.
 [Downloads](https://github.com/jxburros/Vixl/releases/latest) · [Marketing pack](marketing/README.md)
 
 ![A diagram created entirely with editable Vixl layers](docs/assets/generated/workflow.png)
+
+## Programmable. Editable. Checked.
+
+- **Programmable.** One JSON operation format behind MCP, the CLI, Python and REST. Batches of up to
+  10,000 operations apply atomically, so a half-finished edit never lands.
+- **Editable.** Text stays text, effects stay a stack, and history branches. Charts open in PowerPoint
+  as real charts, forms export as PDFs people can fill in, and every piece ships with its master.
+- **Checked.** Contrast, spacing, bounds, fonts, trim and bleed are measured, your brief can be saved as
+  a test suite, and you preview the render before anything is exported.
 
 ## What you can make
 
@@ -72,6 +84,8 @@ rollback, agent bundles and packaging.
 
 ## Make your first design
 
+Six commands, one checked design, still fully editable:
+
 ```bash
 vixl new 800x600 --background '#18283b' -o hello.vixl
 vixl -p hello.vixl text add 'Hello, Vixl' --name title --size 64 --color '#ffffff'
@@ -87,6 +101,8 @@ checkpoints, JSON batches and Python. Use the bundled font for proofing; choose 
 [typography](docs/typography.md) for finished work.
 
 ## Connect an agent
+
+Point your agent at a workspace folder and let it work:
 
 ```bash
 vixl mcp --workspace . --tools core --schema slim

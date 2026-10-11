@@ -5,7 +5,7 @@ description: Create and edit layered, editable images with Vixl (the `vixl` CLI,
 
 # Vixl for agents
 
-Vixl is a headless, programmable image-document engine designed for autonomous AI agents; humans can use the same interfaces. A `.vixl` file is a ZIP holding a layer
+Vixl is a headless design engine for AI agents: every edit is a JSON operation, every layer stays editable, and you can check the result before you export it. People can drive the same interfaces. A `.vixl` file is a ZIP holding a layer
 stack (raster images, text, shapes, groups, pixel grids, adjustment layers…), effects, masks,
 constraints, variables, styles, artboards, animation frames and a full branching history. Every
 interface — CLI, `.vixlscript`, Python, REST, MCP, AI planner — compiles to the **same canonical
@@ -15,7 +15,7 @@ Key properties to rely on:
 
 - **Everything stays editable.** Text is text until `rasterize` (or `merge-layers` / `flatten`, which
   bake several layers into one); effects are a stack you can disable/edit/remove; masks and styles are
-  attachments. Prefer editing over re-creating.
+  attachments. Prefer editing over re-creating: the text is still text.
 - **Batches are atomic.** A list of operations either fully applies or changes nothing.
 - **Every successful edit autosaves** and is undoable (CLI and MCP).
 - **Layers are addressed by unique name or immutable ID** (`lyr_…`). IDs survive renames;

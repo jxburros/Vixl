@@ -54,7 +54,7 @@ check suites, recipes, matrices, libraries, jobs and films. New editing commands
 `adapt-layout --size story [--scale fit|fill|width|height|N] [--anchors JSON] [--where JSON] [--text keep] [--min-text N] [--no-safe] [--no-together]` (without
 `--targets`) resizes the canvas and re-lays out every layer; see [operations](operations.md#bulk-edits-and-resizing-a-whole-layout-unreleased).
 
-Vixl is a headless application designed for autonomous AI agents; humans can use the same interfaces.
+Vixl is a headless design engine for AI agents; people can drive the same interfaces.
 
 See [spacing checks and pixel animation](pixel-animation-spacing.md) for the 0.9.0 tools and API examples.
 

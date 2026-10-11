@@ -2,7 +2,7 @@
 
 [Documentation home](README.md) · [Getting started](getting-started.md) · [Visual gallery](gallery.md)
 
-Vixl is a headless application designed for autonomous AI agents; humans can use the same interfaces.
+Vixl is a headless design engine for AI agents; people can drive the same interfaces.
 
 ```text
 CLI / shell / scripts / Python / REST / MCP / AI planner

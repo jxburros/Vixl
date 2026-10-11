@@ -6,17 +6,18 @@
   "results": [
     {
       "id": "0001",
+      "row": 1,
       "values": {
         "title": "Keep the layers.",
-        "body": "Create, inspect and revise layered designs.",
+        "body": "Your agent makes it. You can still change it.",
         "accent": "#6A9AFF"
       },
       "artboard": null,
       "status": "completed",
-      "output": "0001-bc988015bd20036c.png",
-      "fingerprint": "bc988015bd20036cad7604d4a210b46fd9326cf2a3e4f63a923cdf3b4d87cee0",
-      "request_fingerprint": "4af6556964a711c532eb627bf476320af058e3058b0f7c26b10cf493ae4feae6",
-      "sha256": "0a97d5ddf3b03fadda8e37d06af82a49af80abd3d740387a310c8377859840af",
+      "output": "0001-1bdfac2be16fe61c.png",
+      "fingerprint": "1bdfac2be16fe61c56c692fc7fd8f5b4bdbd240f0eac1db2392cc0bcc471b1c2",
+      "request_fingerprint": "5bad0cb32237bcf8eaf27b68c7639767cfc6cbd8be44ba3df250cfe929565589",
+      "sha256": "d9ec87e9b80471adb72612d26a6dee6e9711429bc65e56b1a385345933b505e3",
       "checks": {
         "delivery": {
           "version": 1,
@@ -88,6 +89,16 @@
                 "review": [],
                 "informational": []
               },
+              "outcome": {
+                "state": "validated",
+                "execution": "completed",
+                "validation": "passed",
+                "review": "not_required",
+                "review_reasons": [],
+                "validated_by": [
+                  "design checks"
+                ]
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -102,10 +113,31 @@
                 "text_layers": 4
               }
             }
-          ]
+          ],
+          "source": "document",
+          "outcome": {
+            "state": "validated",
+            "execution": "completed",
+            "validation": "passed",
+            "review": "not_required",
+            "review_reasons": [],
+            "validated_by": [
+              "suite"
+            ]
+          }
         }
       },
       "repairs": [],
+      "outcome": {
+        "state": "validated",
+        "execution": "completed",
+        "validation": "passed",
+        "review": "not_required",
+        "review_reasons": [],
+        "validated_by": [
+          "suite delivery"
+        ]
+      },
       "cache": {
         "hits": 0,
         "misses": 24
@@ -113,17 +145,18 @@
     },
     {
       "id": "0002",
+      "row": 2,
       "values": {
-        "title": "Make the data a story.",
-        "body": "Editable charts, diagrams and documents.",
+        "title": "New numbers? Same chart.",
+        "body": "Data-bound charts and diagrams that stay editable.",
         "accent": "#9FE3B4"
       },
       "artboard": null,
       "status": "completed",
-      "output": "0002-fe312e2842278569.png",
-      "fingerprint": "fe312e284227856993ab5c075207fe197c6cf046b2981120b30175d5c1135501",
-      "request_fingerprint": "90d5280342a8776eed743049f71ad9b1ab84c0327f5aa0e5086bfb44023bb738",
-      "sha256": "4c4ab73f4ab536c3bbfdda892e16cc917fdba6c744e00cfe176c2758d751c03e",
+      "output": "0002-1da9c9856b2ec155.png",
+      "fingerprint": "1da9c9856b2ec1556afb5323966e339827997a408393771be548177ffd16812e",
+      "request_fingerprint": "190e25c42e9147c1ae4481234d5711098d71e6a89bc1cab21a15ab6f6aee3757",
+      "sha256": "45f3c636f27da998ee5e39b4c3a82059c5bb9a1e8380b72c38d9e243531efec0",
       "checks": {
         "delivery": {
           "version": 1,
@@ -175,10 +208,10 @@
               "expected": 4.5,
               "actual": 14.158,
               "weakest_region": [
-                82,
+                83,
                 340,
-                774,
-                205
+                743,
+                185
               ]
             },
             {
@@ -195,6 +228,16 @@
                 "review": [],
                 "informational": []
               },
+              "outcome": {
+                "state": "validated",
+                "execution": "completed",
+                "validation": "passed",
+                "review": "not_required",
+                "review_reasons": [],
+                "validated_by": [
+                  "design checks"
+                ]
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -209,28 +252,50 @@
                 "text_layers": 4
               }
             }
-          ]
+          ],
+          "source": "document",
+          "outcome": {
+            "state": "validated",
+            "execution": "completed",
+            "validation": "passed",
+            "review": "not_required",
+            "review_reasons": [],
+            "validated_by": [
+              "suite"
+            ]
+          }
         }
       },
       "repairs": [],
+      "outcome": {
+        "state": "validated",
+        "execution": "completed",
+        "validation": "passed",
+        "review": "not_required",
+        "review_reasons": [],
+        "validated_by": [
+          "suite delivery"
+        ]
+      },
       "cache": {
-        "hits": 30,
+        "hits": 18,
         "misses": 8
       }
     },
     {
       "id": "0003",
+      "row": 3,
       "values": {
-        "title": "Put ideas in motion.",
-        "body": "Keyframes, app states and reusable animation.",
+        "title": "Make it move.",
+        "body": "Keyframes, app states and reduced-motion stills.",
         "accent": "#FFC37A"
       },
       "artboard": null,
       "status": "completed",
-      "output": "0003-8b5e496ef9200924.png",
-      "fingerprint": "8b5e496ef92009248945f0adcf0977f68d29bb731e7bd8901687c1807082d175",
-      "request_fingerprint": "0eb0328b3b50a596ab47fc18e6c61dfa994fe02a2bf65c6463b2a0db802de088",
-      "sha256": "7ee46cd7e348bd725f0b8118903a31ac0484d28a5d84b5f70e1caeaa9a7376ca",
+      "output": "0003-e6b6e52c83870e41.png",
+      "fingerprint": "e6b6e52c83870e41b746c3e4e8defb8d455f43808cf6fe3580a8fe7c089a263b",
+      "request_fingerprint": "d4e4f2ef5f9662fd47364e0a8a0463561d9861bbcb84e4e591ef0d5f8ab02cbe",
+      "sha256": "eb0ee4638c31d43d24aa19e20c08edce2ba4a0f28f7db0a4b300e88e3778c073",
       "checks": {
         "delivery": {
           "version": 1,
@@ -283,9 +348,9 @@
               "actual": 14.158,
               "weakest_region": [
                 85,
-                341,
-                561,
-                188
+                340,
+                676,
+                83
               ]
             },
             {
@@ -302,6 +367,16 @@
                 "review": [],
                 "informational": []
               },
+              "outcome": {
+                "state": "validated",
+                "execution": "completed",
+                "validation": "passed",
+                "review": "not_required",
+                "review_reasons": [],
+                "validated_by": [
+                  "design checks"
+                ]
+              },
               "issues": [],
               "checked": {
                 "checks": [
@@ -316,15 +391,44 @@
                 "text_layers": 4
               }
             }
-          ]
+          ],
+          "source": "document",
+          "outcome": {
+            "state": "validated",
+            "execution": "completed",
+            "validation": "passed",
+            "review": "not_required",
+            "review_reasons": [],
+            "validated_by": [
+              "suite"
+            ]
+          }
         }
       },
       "repairs": [],
+      "outcome": {
+        "state": "validated",
+        "execution": "completed",
+        "validation": "passed",
+        "review": "not_required",
+        "review_reasons": [],
+        "validated_by": [
+          "suite delivery"
+        ]
+      },
       "cache": {
-        "hits": 30,
+        "hits": 18,
         "misses": 8
       }
     }
   ],
+  "outcome": {
+    "state": "validated",
+    "total": 3,
+    "counts": {
+      "validated": 3
+    },
+    "validated": true
+  },
   "contact_sheet": "contact-sheet.png"
 }

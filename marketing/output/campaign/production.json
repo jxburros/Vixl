@@ -4,17 +4,17 @@
     "rows": [
       {
         "title": "Keep the layers.",
-        "body": "Create, inspect and revise layered designs.",
+        "body": "Your agent makes it. You can still change it.",
         "accent": "#6A9AFF"
       },
       {
-        "title": "Make the data a story.",
-        "body": "Editable charts, diagrams and documents.",
+        "title": "New numbers? Same chart.",
+        "body": "Data-bound charts and diagrams that stay editable.",
         "accent": "#9FE3B4"
       },
       {
-        "title": "Put ideas in motion.",
-        "body": "Keyframes, app states and reusable animation.",
+        "title": "Make it move.",
+        "body": "Keyframes, app states and reduced-motion stills.",
         "accent": "#FFC37A"
       }
     ],

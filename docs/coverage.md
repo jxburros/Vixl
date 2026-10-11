@@ -2,7 +2,7 @@
 
 [Documentation home](README.md) · [Getting started](getting-started.md) · [Visual gallery](gallery.md)
 
-Vixl is a headless application designed for autonomous AI agents; humans can use the same interfaces.
+Vixl is a headless design engine for AI agents; people can drive the same interfaces.
 
 This is a working implementation spanning the six roadmap stages in the supplied [specification](product-spec.md), plus the agent, design, color, layout and animation tools listed below. It is not a claim of production maturity or complete GIMP parity. The table records the release in which each area arrived; the [changelog](../CHANGELOG.md) has release-by-release detail. Counts in a row are as of that release. At 0.25 the catalogs hold 249 operation types, 150 named sizes, 53 layouts, 43 templates, 74 palettes, 28 design styles, 20 looks, 17 brushes, 19 artistic filters and 33 organic presets; `vixl schema`, `vixl sizes`, `vixl layouts`, `vixl template list`, `vixl palette list`, `vixl styles list`, `vixl looks`, `vixl brushes` and `vixl organics` list the current sets.
 
