@@ -1,26 +1,29 @@
 # Vixl in 60 seconds
 
-A one-minute marketing video for Vixl. Every frame comes from an editable Vixl document,
-and the soundtrack is synthesised in code.
+**Ideas become editable.** A one-minute video about Vixl, the design engine for AI agents. Every frame
+comes from an editable Vixl document, and the soundtrack is synthesised in code. Yes, the whole thing.
 
-**[`vixl-in-60-seconds.mp4`](vixl-in-60-seconds.mp4)** · 60.0 s · 1920×1080 · 30 fps · AAC stereo 48 kHz · 7.3 MB
+**[`vixl-in-60-seconds.mp4`](vixl-in-60-seconds.mp4)** · 60.0 s · 1920×1080 · 30 fps · AAC stereo 48 kHz · 7.4 MB
 
 ![Contact sheet, one frame every two seconds](contact-sheet.jpg)
 
 ## The cut
 
-| Time | Shot | Message |
+The middle of the video walks through the three pillars from [the brand voice guide](../docs/brand-voice.md):
+your agent makes it, you keep the layers, Vixl checks the work.
+
+| Time | Shot | What it says |
 | --- | --- | --- |
-| 0:00 | `01-hook` | "Agents write code. Agents crunch data. Now they design." |
-| 0:06 | `02-logo` | The paired-V mark assembles from its parts: *The design engine for AI agents.* |
-| 0:10 | `03-build` | **Build.** JSON operations type out on the left while a poster builds itself layer by layer on the right |
-| 0:20 | `04-edit` | **Edit.** The poster splits into its layer stack and closes again. One `text-set` turns SOLSTICE into EQUINOX and the palette shifts |
-| 0:26 | `05-check` | **Check.** Vixl's contrast check flags the dim dates line, the fix lands and four of four checks pass |
-| 0:32 | `06-graphics` | Real work from `explorations/`: print poster, brand identity, card sets, campaigns |
-| 0:36 | `07-data` | Infographics, editable charts, slide decks, fillable PDFs, routed diagrams |
+| 0:00 | `01-hook` | "Ask an AI for a poster. Get a picture of a poster. Now get the real thing." |
+| 0:06 | `02-logo` | The paired-V mark snaps together: *A design engine for AI agents. Programmable. Editable. Checked.* |
+| 0:10 | `03-build` | **Programmable.** "Your agent makes it." Operations type out on the left, and a poster builds itself layer by layer on the right |
+| 0:20 | `04-edit` | **Editable.** "You keep the layers." The poster fans out into its layers and closes again, and one `text-set` turns SOLSTICE into EQUINOX |
+| 0:26 | `05-check` | **Checked.** "Vixl checks the work." The contrast check flags the dim dates line, the fix lands, and four of four checks pass |
+| 0:32 | `06-graphics` | All made with Vixl, from `explorations/`: print poster, brand identity, card sets, campaigns |
+| 0:36 | `07-data` | Infographics, editable charts, slide decks, PDFs people fill in, routed diagrams |
 | 0:40 | `08-art` | Brush painting (which crossfades to its watercolor filter), pixel-art games, emoji sets, *The Germ King* |
-| 0:44 | `09-deliver` | **Deliver.** One master reflows from a 1:1 post to a 9:16 story and a 16:9 video, among twelve export formats |
-| 0:50 | `10-why` | **Why Vixl.** Built for agents · Editable to the end · Checked, not guessed · Local and headless |
+| 0:44 | `09-deliver` | "Every size. Every format. Plus the master." One design reflows from a 1:1 post to a 9:16 story and a 16:9 video |
+| 0:50 | `10-why` | "Not a picture. A document." Four questions, each with an answer: Programmable · Editable · Checked · On your machine |
 | 0:56 | `11-end` | *Ideas become editable.* · github.com/jxburros/Vixl |
 
 The contrast figures in shot 5 are not made up. `make_video.py` runs `check` on the poster with its dim

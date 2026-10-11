@@ -75,17 +75,17 @@ def s01_hook():
     sc.add(backdrop(glow_at=(1500, 250)))
     # Pixel stair on the right, echoing the mark, one block per beat.
     for i in range(8):
-        size = 120 - i * 11
-        x, y = 1380 + i * 52, 250 + i * 70
+        size = 104 - i * 9
+        x, y = 1590 + i * 38, 250 + i * 70
         name = f"px{i}"
         sc.add(rect(name, x, y, size, size, SKY if i % 2 else BLUE))
         sc.pop(name, 250 + i * 500, 380, 0.2)
         sc.keys(name, "opacity", [(250 + i * 500 + 380, 1), (4200, 1), (5000, 0.35)], "ease-in-out")
-    lines = [("l1", [("Agents write code.", None)], 230, 300, 110),
-             ("l2", [("Agents crunch data.", None)], 380, 1300, 110),
-             ("l3", [("Now they ", None), ("design.", SKY)], 560, 2300, 150)]
+    lines = [("l1", [("Ask an AI for a poster.", None)], 230, 300, 110),
+             ("l2", [("Get a picture of a poster.", None)], 380, 1300, 110),
+             ("l3", [("Now get the ", None), ("real thing.", SKY)], 570, 2300, 130)]
     for name, spans, y, t, size in lines:
-        sc.add(rich(name, spans, 160, y, size, 1300, WHITE, HEAD))
+        sc.add(rich(name, spans, 160, y, size, 1420, WHITE, HEAD))
         sc.words(name, t, "fade-up" if name != "l3" else "pop", "word", 520, 110)
     for name in ("l1", "l2"):
         sc.keys(name, "opacity", [(3600, 1), (4200, 0.28)], "ease-in-out")
@@ -117,8 +117,11 @@ def s02_logo():
         sc.pop(name, 650 + i * 70, 300, 0.1)
     sc.add(centered("word", "Vixl", 590, 170))
     sc.words("word", 1000, "pop", "char", 420, 70)
-    sc.add(centered("tag", "The design engine for AI agents.", 820, 50, MUTED, BODY))
-    sc.words("tag", 1600, "fade-up", "word", 480, 80)
+    sc.add(centered("tag", "A design engine for AI agents.", 800, 50, MUTED, BODY))
+    sc.words("tag", 1500, "fade-up", "word", 480, 80)
+    sc.add(centered("pillars", [("Programmable.  ", None), ("Editable.  ", None), ("Checked.", SKY)], 890, 40,
+                    WHITE, SEMI))
+    sc.words("pillars", 2300, "pop", "word", 400, 260)
     return sc
 
 
@@ -144,8 +147,8 @@ OPS = [
 def s03_build():
     sc = Scene("03-build", 10000)
     sc.add(backdrop(glow_at=(1450, 500)))
-    kicker(sc, "01", "BUILD")
-    headline(sc, [("Your agent speaks ", None), ("operations.", SKY)])
+    kicker(sc, "01", "PROGRAMMABLE")
+    headline(sc, [("Your agent ", None), ("makes it.", SKY)])
     cx, cy, cw, ch = 120, 290, 860, 690
     sc.add(rect("code-bg", cx, cy, cw, ch, DEEP, 22, LINE))
     for i, c in enumerate(["#FF6B6B", "#FFC37A", "#5FD38D"]):
@@ -167,7 +170,7 @@ def s03_build():
     end = cy + 136 + len(OPS) * 62
     sc.add(text("code-close", "]", cx + 40, end, 26, WHITE, MONO))
     t_done = times[-1] + 900
-    sc.add(rich("result", [("✓ ", GOOD), ("7 operations · one atomic, undoable batch", MUTED)],
+    sc.add(rich("result", [("✓ ", GOOD), ("7 operations · all or nothing, one undo", MUTED)],
                 cx + 40, cy + ch - 80, 26, cw - 80, WHITE, MONO))
     sc.fade("result", t_done, dur=300, rise=12)
     sc.keys("cursor", "opacity", [(t_done - 200, 1), (t_done + 100, 0)])
@@ -202,8 +205,8 @@ LAYER_ROWS = [("badge", "★", "star"), ("dates", "T", "text"), ("title", "T", "
 def s04_edit():
     sc = Scene("04-edit", 6000)
     sc.add(backdrop(glow_at=(700, 500)))
-    kicker(sc, "02", "EDIT")
-    headline(sc, [("Every layer stays ", None), ("live.", SKY)], t=100)
+    kicker(sc, "02", "EDITABLE")
+    headline(sc, [("You keep the ", None), ("layers.", SKY)], t=100)
     px, py, pw, ph = 330, 290, 520, 650
     sc.add(rect("canvas", px, py, pw, ph, DEEP), shadow("canvas", 50, 24, 0.5))
     sheets = poster("p", px, py, pw, ph)
@@ -259,7 +262,7 @@ def s04_edit():
                             ('"text"', CODE_KEY), (': ', WHITE), ('"EQUINOX"', CODE_STR), ('}', WHITE)],
                 lx, 860, 22, 780, WHITE, MONO))
     sc.words("edit-op", 3200, "typewriter", "char", 500)
-    sc.add(rich("sub", "Text, effects, masks and history: nothing is flattened.", lx, 920, 30, 760, MUTED, BODY,
+    sc.add(rich("sub", "One edit, not a whole new image. Text stays text.", lx, 920, 30, 760, MUTED, BODY,
                 line_height=1.25))
     sc.fade("sub", 4300, dur=400, rise=12)
     return sc
@@ -270,8 +273,8 @@ def s05_check(before, needs):
     """``before`` and ``needs`` are the contrast figures the real ``check`` reported for the dates line."""
     sc = Scene("05-check", 6000)
     sc.add(backdrop(glow_at=(1300, 600)))
-    kicker(sc, "03", "CHECK")
-    headline(sc, [("It ", None), ("checks", SKY), (" its own work.", None)], t=100)
+    kicker(sc, "03", "CHECKED")
+    headline(sc, [("Vixl ", None), ("checks", SKY), (" the work.", None)], t=100)
     px, py, pw, ph = 200, 290, 520, 650
     sc.add(rect("canvas", px, py, pw, ph, DEEP), shadow("canvas", 50, 24, 0.5))
     sc.add(flat(poster("p", px, py, pw, ph, dates_color=DIM_DATES)))
@@ -317,6 +320,8 @@ def s05_check(before, needs):
     sc.words("fix-op", 2200, "typewriter", "char", 450)
     sc.add(chip("pass", "✓  4 of 4 checks pass", 1240, 960, size=30, fg=DEEP, bg=GOOD, font=SEMI, width=420))
     sc.pop("pass", 3600, 450, 0.5)
+    sc.add(rich("before", "Before the print shop finds it.", px, 968, 30, 640, MUTED, BODY))
+    sc.fade("before", 3900, dur=400, rise=12)
     return sc
 
 
@@ -327,7 +332,7 @@ SHOW = "explorations/{}/output/{}"
 def montage(name, words, tiles, number="04"):
     sc = Scene(name, 4000)
     sc.add(backdrop(glow_at=(1300, 540), glow2_at=(200, 900)))
-    kicker(sc, number, "MADE WITH VIXL")
+    kicker(sc, number, "ALL MADE WITH VIXL")
     sc.add(rich("big", words, 120, 330, 92, 600, WHITE, HEAD, line_height=1.02))
     sc.words("big", 100, "fade-up", "word", 450, 90)
     names = []
@@ -368,7 +373,7 @@ def s07_data():
         ("donut", SHOW.format("08-infographic", "social-donut-1080.png"), 760, 120, 440, 440, "Infographics"),
         ("chart", "docs/assets/generated/chart.png", 1220, 120, 620, 348, "Editable charts"),
         ("slides", "docs/assets/generated/slides.png", 1220, 488, 620, 200, "Slide decks"),
-        ("form", "docs/assets/generated/registration-filled.png", 760, 580, 440, 380, "Fillable PDFs"),
+        ("form", "docs/assets/generated/registration-filled.png", 760, 580, 440, 380, "PDFs people fill in"),
         ("flow", "docs/assets/generated/workflow.png", 1220, 708, 620, 252, "Routed diagrams"),
     ])
 
@@ -384,15 +389,15 @@ def s08_art():
 
 
 # ----------------------------------------------------------------------------------------------- 9
-FORMATS = ["PNG", "SVG", "PDF", "PPTX", "MP4", "GIF", "WebM", "CMYK TIFF", "HTML deck", "Fillable PDF",
-           "Sprite sheet", "ICO"]
+FORMATS = ["PNG", "SVG", "PDF", "PPTX", "Layered PSD", "HTML deck", "GIF", "WebP", "MP4", "CMYK PDF",
+           "Fillable PDF", ".vixl master"]
 
 
 def s09_deliver():
     sc = Scene("09-deliver", 6000)
     sc.add(backdrop(glow_at=(960, 600), glow2_at=(1700, 200)))
     kicker(sc, "05", "DELIVER")
-    headline(sc, [("One master. ", None), ("Every size, every format.", SKY)], t=100)
+    headline(sc, [("Every size. Every format. ", None), ("Plus the master.", SKY)], t=100)
     cx, cy = 960, 610
     shapes = [(0, 520, 520, "1080 × 1080  ·  feed post"), (1900, 360, 640, "1080 × 1920  ·  story"),
               (3700, 800, 450, "1920 × 1080  ·  video")]
@@ -418,29 +423,35 @@ def s09_deliver():
     right = [(1460, 330 + i * 110) for i in range(6)]
     for i, (label, (x, y)) in enumerate(zip(FORMATS, [p for pair in zip(left, right) for p in pair])):
         name = f"fmt{i}"
-        sc.add(chip(name, label, x, y, size=28, fg=WHITE, bg=PANEL, font=MONO, width=260, stroke=LINE))
+        master = label == ".vixl master"
+        sc.add(chip(name, label, x, y, size=28, fg=DEEP if master else WHITE, bg=SKY if master else PANEL,
+                    font=MONO, width=260, stroke=None if master else LINE))
         sc.pop(name, 900 + i * 300, 380, 0.5)
     return sc
 
 
 # ----------------------------------------------------------------------------------------------- 10
-PILLARS = [("Built for agents", "MCP, CLI, Python and REST share one set of atomic operations."),
-           ("Editable to the end", "Layered .vixl masters keep text, effects and branching history live."),
-           ("Checked, not guessed", "Contrast, bounds and your own rule suites run before anyone looks."),
-           ("Local and headless", "No display or GPU needed. Core authoring runs on your own machine.")]
+PILLARS = [("Can my agent drive it?", "Programmable",
+            "One operation format for MCP, CLI, Python and REST. 10,000 operations, one undo."),
+           ("Can I still change it?", "Editable",
+            "Text stays text. Real PowerPoint charts, PDFs people fill in, a master you can rewind."),
+           ("Can I trust it?", "Checked",
+            "Contrast, spacing, bleed and your own rules, checked before anything ships."),
+           ("Where does it run?", "On your machine",
+            "Core authoring runs locally. AI providers only when you configure them.")]
 
 
 def s10_why():
     sc = Scene("10-why", 6000)
     sc.add(backdrop(glow_at=(960, 700), glow2_at=(300, 200)))
     kicker(sc, "06", "WHY VIXL")
-    headline(sc, [("Not a canvas app. ", None), ("A design engine.", SKY)], t=100)
-    for i, (title, body) in enumerate(PILLARS):
+    headline(sc, [("Not a picture. ", None), ("A document.", SKY)], t=100)
+    for i, (question, title, body) in enumerate(PILLARS):
         x, y = (120 if i % 2 == 0 else 980), (300 if i < 2 else 640)
         name = f"pillar{i}"
         sc.add(rect(f"{name}-bg", x, y, 820, 300, PANEL, 26, LINE),
-               rect(f"{name}-bar", x + 40, y + 48, 56, 8, SKY, 4),
-               text(f"{name}-num", f"0{i + 1}", x + 720, y + 36, 30, SKY, MONO),
+               text(f"{name}-bar", question, x + 40, y + 36, 26, SKY, MONO),
+               text(f"{name}-num", f"0{i + 1}", x + 720, y + 36, 30, MUTED, MONO),
                rich(f"{name}-title", title, x + 40, y + 84, 54, 740, WHITE, HEAD),
                rich(f"{name}-body", body, x + 40, y + 168, 31, 700, MUTED, BODY, line_height=1.3),
                group(name, [f"{name}-bg", f"{name}-bar", f"{name}-num", f"{name}-title", f"{name}-body"]))
@@ -461,9 +472,9 @@ def s11_end():
     sc.words("line", 300, "fade-up", "word", 500, 120)
     sc.add(centered("url", "github.com/jxburros/Vixl", 640, 44, WHITE, MONO))
     sc.fade("url", 1000, dur=400, rise=16)
-    sc.add(centered("cta", "MCP  ·  CLI  ·  Python  ·  REST", 730, 32, MUTED, SEMI))
+    sc.add(centered("cta", "A design engine for AI agents. Programmable, editable, checked.", 730, 32, MUTED, SEMI))
     sc.fade("cta", 1300, dur=400, rise=16)
-    sc.add(centered("made", "Every frame of this video is an editable Vixl document.", 960, 26, MUTED, BODY))
+    sc.add(centered("made", "Every frame of this video is an editable Vixl document. Yes, really.", 960, 26, MUTED, BODY))
     sc.fade("made", 1700, dur=500)
     return sc
 
