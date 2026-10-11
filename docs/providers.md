@@ -25,7 +25,7 @@ Create `~/.config/vixl/providers.json` (or set `VIXL_PROVIDERS` to another file)
     },
     "gemini": {
       "type": "gemini", "key_env": "GEMINI_API_KEY",
-      "model": "gemini-3.1-flash-image", "vision_model": "gemini-3.8-flash",
+      "model": "gemini-nano-banana-2.1", "vision_model": "gemini-3.8-flash",
       "image_size": "2K"
     },
     "flux": {
@@ -135,7 +135,7 @@ Set API keys in your process environment, then register the environment-variable
 vixl providers add openai --type openai --key-env OPENAI_API_KEY
 vixl providers add anthropic --type anthropic --key-env ANTHROPIC_API_KEY
 vixl providers add mistral --type mistral --key-env MISTRAL_API_KEY
-vixl providers add meta --type meta --key-env LLAMA_API_KEY
+vixl providers add meta --type meta --key-env MODEL_API_KEY
 vixl providers add gemini --type gemini --key-env GEMINI_API_KEY
 vixl providers list
 vixl models --refresh
@@ -152,13 +152,15 @@ An environment key for a built-in provider is also sufficient for discovery with
 | OpenAI | `/models`, chat completions, image generation/editing | Planning, description, detection, OCR; supported image models generate/edit |
 | Anthropic | Paginated `/models`, official SDK messages API, `x-api-key` | Planning, description, detection, OCR; no image generation |
 | Mistral | `/models`, OpenAI-compatible chat completions | Planning; vision/detection/OCR on models advertising vision |
-| Meta Llama | `/models`, OpenAI-compatible chat completions | Planning; vision/detection/OCR on supported vision models. Account API access is required; use a compatible hosted endpoint if needed |
+| Meta Model API | `api.meta.ai/v1`: `/models`, OpenAI-compatible chat completions and Images API | Muse Spark models: planning, description, detection, OCR. Muse Image (`muse-image-1.0`): generation and edits, sized by the nearest of three aspect presets and fitted to the canvas |
 | Gemini | Paginated `/models`, native `generateContent`, `x-goog-api-key` | Planning/vision on multimodal content models; generation on native image models |
 | Midjourney gateway | User-provided HTTP `/models` and capability routes | Only capabilities actually advertised by the configured gateway |
 
 With no explicit `--provider`, routing tries the preferred/default provider and then other configured providers for a matching available model. `--provider` pins the vendor; `--model` pins an exact model ID. It does not spend money retrying inference on another vendor after a failed invocation. Providers without discovery, including existing HTTP/ComfyUI configurations, retain their explicit configuration workflow. For a text-only planning model, Vixl supplies document structure without attaching an unsupported vision image.
 
 Capabilities use vendor metadata where available and conservative model-family mappings otherwise. Unknown model families are not assumed to support every task. Update the cached model entry's `capabilities` list in `providers.json` for a verified compatible model that the mapping does not recognize. Supported labels are `plan`, `describe`, `detect`, `ocr`, `generate`, `segment`, `upscale`, and `background-remove`. Discovery reflects account catalog access; it does not verify quota, model quality, or each operation/mode. Provider-native size, mask, seed, and edit constraints still apply. Anthropic cannot generate images; Gemini's adapter does not implement segmentation; inpainting supplies the mask as image context rather than a guaranteed pixel constraint. Preset-size native providers fit output to the requested canvas and record `resized_from` in provenance. Anthropic inference requires the `anthropic` extra and retains its official SDK refusal/error handling; discovery alone uses bounded HTTP calls.
+
+Meta retired the Llama API (`api.llama.com`) on 2026-07-06. The `meta` type now targets the Meta Model API at `https://api.meta.ai/v1` with `MODEL_API_KEY` (create the key at dev.meta.ai); defaults are `muse-spark-1.3` for planning and vision and `muse-image-1.0` for images. A saved provider that still points at `api.llama.com` fails with a migration hint. For Llama models, use `--url` to point at a host that serves them through an OpenAI-compatible API (Llama 4 Scout and Maverick are mapped as vision models).
 
 Midjourney has no supported public model-discovery/inference API. Vixl does not scrape Discord or invent endpoints. To use a gateway you operate or have authorized:
 

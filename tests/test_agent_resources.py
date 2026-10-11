@@ -29,7 +29,7 @@ def isolated_libraries(tmp_path, monkeypatch):
         "OPENAI_API_KEY",
         "ANTHROPIC_API_KEY",
         "MISTRAL_API_KEY",
-        "LLAMA_API_KEY",
+        "MODEL_API_KEY",
         "GEMINI_API_KEY",
         "VIXL_AI_PROVIDER",
     ):
@@ -283,7 +283,15 @@ def test_rest_svg_and_resources(tmp_path):
             {"id": "pixtral-large-latest", "capabilities": {"completion_chat": True, "vision": True}},
             ["plan", "describe", "detect", "ocr"],
         ),
-        ("meta", "LLAMA_API_KEY", {"id": "Llama-4-Scout"}, ["plan", "describe", "detect", "ocr"]),
+        ("meta", "MODEL_API_KEY", {"id": "muse-spark-1.3"}, ["plan", "describe", "detect", "ocr"]),
+        ("meta", "MODEL_API_KEY", {"id": "muse-image-1.0"}, ["generate"]),
+        ("meta", "MODEL_API_KEY", {"id": "Llama-4-Scout"}, ["plan", "describe", "detect", "ocr"]),
+        (
+            "gemini",
+            "GEMINI_API_KEY",
+            {"name": "models/gemini-nano-banana-2.1", "supportedGenerationMethods": ["generateContent"]},
+            ["plan", "describe", "detect", "ocr", "generate"],
+        ),
         (
             "gemini",
             "GEMINI_API_KEY",

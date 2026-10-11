@@ -173,19 +173,24 @@ def openai_size(width, height, model):
 class OpenAIProvider(HTTPProvider):
     default_key_env = None
     fit_output = True
+    image_model = "gpt-image-2.5-flare"
+    reasoning_model = "gpt-5-mini"
+
+    def image_args(self, model, width, height):
+        width, height = openai_size(width, height, model)
+        return {"size": f"{width}x{height}"}
 
     def invoke(self, capability, request):
-        model = request.get("model") or self.config.get("model", "gpt-image-2.5-flare")
+        model = request.get("model") or self.config.get("model", self.image_model)
         if capability == "generate":
             require(
                 request.get("seed") is None,
-                "OpenAI image API does not expose deterministic seeds; omit --seed",
+                f"{self.name} image API does not expose deterministic seeds; omit --seed",
             )
-            width, height = openai_size(request["width"], request["height"], model)
             args = {
                 "model": model,
                 "prompt": request.get("prompt", ""),
-                "size": f"{width}x{height}",
+                **self.image_args(model, request["width"], request["height"]),
             }
             if request.get("source_image"):
                 files = {"image": ("source.png", base64.b64decode(request["source_image"]), "image/png")}
@@ -223,7 +228,7 @@ class OpenAIProvider(HTTPProvider):
         else:
             prompt = VISION_PROMPTS[capability].format(**vision_request(request))
         content = [{"type": "text", "text": prompt}]
-        selected_model = request.get("model") or self.config.get("reasoning_model", "gpt-5-mini")
+        selected_model = request.get("model") or self.config.get("reasoning_model", self.reasoning_model)
         catalog = self.config.get("models")
         supports_vision = catalog is None or any(
             m["id"] == selected_model and "describe" in m.get("capabilities", []) for m in catalog
@@ -239,7 +244,7 @@ class OpenAIProvider(HTTPProvider):
             "POST",
             "/chat/completions",
             json={
-                "model": request.get("model") or self.config.get("reasoning_model", "gpt-5-mini"),
+                "model": request.get("model") or self.config.get("reasoning_model", self.reasoning_model),
                 "messages": [{"role": "user", "content": content}],
                 "response_format": {"type": "json_object"},
             },
@@ -249,6 +254,32 @@ class OpenAIProvider(HTTPProvider):
         except (KeyError, IndexError, ValueError) as exc:
             raise VixlError("provider_error", "Invalid model JSON response") from exc
         return normalize_vision(capability, data)
+
+
+MUSE_SIZES = ((1024, 1024), (1536, 1024), (1024, 1536))
+
+
+class MetaProvider(OpenAIProvider):
+    """Meta Model API (api.meta.ai): OpenAI-compatible chat and Images endpoints for Muse models."""
+
+    image_model = "muse-image-1.0"
+    reasoning_model = "muse-spark-1.3"
+
+    def __init__(self, name, config):
+        super().__init__(name, config)
+        require(
+            urlparse(self.url).hostname != "api.llama.com",
+            "Meta retired the Llama API (api.llama.com) on 2026-07-06. Use the Meta Model API: "
+            f"vixl providers add {name} --type meta --key-env MODEL_API_KEY, or point --url at a "
+            "host that serves Llama models",
+            "provider_not_configured",
+        )
+
+    def image_args(self, model, width, height):
+        # Muse Image takes size as an aspect ratio among three presets and renders at its own
+        # resolution; fit_output maps the result back onto the canvas.
+        size = min(MUSE_SIZES, key=lambda s: abs(s[0] / s[1] - width / height))
+        return {"size": f"{size[0]}x{size[1]}", "output_format": "png", "response_format": "b64_json"}
 
 
 class Automatic1111Provider(HTTPProvider):
@@ -418,7 +449,7 @@ class GeminiProvider(HTTPProvider):
 
     def invoke(self, capability, request):
         if capability == "generate":
-            model = (request.get("model") or self.config.get("model", "gemini-3.1-flash-image")).removeprefix(
+            model = (request.get("model") or self.config.get("model", "gemini-nano-banana-2.1")).removeprefix(
                 "models/"
             )
             prompt = request.get("prompt", "")
@@ -759,7 +790,7 @@ def make_provider(name, settings):
         "http": HTTPProvider,
         "openai": OpenAIProvider,
         "mistral": OpenAIProvider,
-        "meta": OpenAIProvider,
+        "meta": MetaProvider,
         "anthropic": AnthropicProvider,
         "gemini": GeminiProvider,
         "bfl": BFLProvider,
