@@ -15,7 +15,7 @@ your agent makes it, you keep the layers, Vixl checks the work.
 | Time | Shot | What it says |
 | --- | --- | --- |
 | 0:00 | `01-hook` | "Ask an AI for a poster. Get a picture of a poster. Now get the real thing." |
-| 0:06 | `02-logo` | The paired-V mark snaps together: *A design engine for AI agents. Programmable. Editable. Checked.* |
+| 0:06 | `02-logo` | The Ripple wordmark builds letter by letter and its reflection ripples in: *A design engine for AI agents. Programmable. Editable. Checked.* |
 | 0:10 | `03-build` | **Programmable.** "Your agent makes it." Operations type out on the left, and a poster builds itself layer by layer on the right |
 | 0:20 | `04-edit` | **Editable.** "You keep the layers." The poster fans out into its layers and closes again, and one `text-set` turns SOLSTICE into EQUINOX |
 | 0:26 | `05-check` | **Checked.** "Vixl checks the work." The contrast check flags the dim dates line, the fix lands, and four of four checks pass |

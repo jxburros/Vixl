@@ -27,8 +27,8 @@
       "contrast",
       "fonts"
     ],
-    "layers_checked": 18,
-    "layers_total": 18,
+    "layers_checked": 25,
+    "layers_total": 25,
     "text_layers": 4
   },
   "suites": {
@@ -164,8 +164,8 @@
               "contrast",
               "fonts"
             ],
-            "layers_checked": 18,
-            "layers_total": 18,
+            "layers_checked": 25,
+            "layers_total": 25,
             "text_layers": 4
           }
         }

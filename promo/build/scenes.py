@@ -8,7 +8,7 @@ import math
 
 from kit import (BAD, BLUE, BODY, CODE_KEY, CODE_NUM, CODE_STR, DEEP, GOOD, HEAD, LINE, MONO,
                  MUTED, PANEL, SEMI, SKY, WHITE, Scene, backdrop, centered, chip, ellipse, glow, group,
-                 image, mark, rect, rich, shadow, text)
+                 image, mark, rect, rich, ripple_in, shadow, text, wordmark)
 
 # The poster the agent builds in shots 3-5: a desert festival card, drawn from plain layers.
 DUSK = [(0, "#1B1446"), (0.45, "#6B2C91"), (0.75, "#F2709C"), (1, "#FFB36B")]
@@ -73,7 +73,7 @@ def headline(sc, spans, t=150, y=140, size=72):
 def s01_hook():
     sc = Scene("01-hook", 6000)
     sc.add(backdrop(glow_at=(1500, 250)))
-    # Pixel stair on the right, echoing the mark, one block per beat.
+    # Pixel stair on the right, a raster motif, one block per beat.
     for i in range(8):
         size = 104 - i * 9
         x, y = 1590 + i * 38, 250 + i * 70
@@ -107,16 +107,13 @@ def s02_logo():
     sc.add(glow("pulse", 960, 430, 1100, BLUE, "66"))
     sc.keys("pulse", "scale", [(0, 0.4), (500, 0.4), (1300, 1.05)], "ease-out-cubic")
     sc.keys("pulse", "opacity", [(0, 0), (500, 0), (900, 1)])
-    ops, names = mark("m", 790, 170, 340)
+    # The Ripple wordmark builds letter by letter, then its reflection ripples in and keeps moving.
+    ops, names = wordmark("w", 550, 300, 820)
     sc.add(ops)
-    sc.slide("m-down", 0, dy=-520, dur=700)
-    sc.slide("m-up", 120, dy=560, dur=700)
-    sc.fade("m-down", 0, dur=250)
-    sc.fade("m-up", 120, dur=250)
-    for i, name in enumerate(n for n in names if "-p" in n):
-        sc.pop(name, 650 + i * 70, 300, 0.1)
-    sc.add(centered("word", "Vixl", 590, 170))
-    sc.words("word", 1000, "pop", "char", 420, 70)
+    letters = ["w-v", "w-i-stem", "w-i-dot", "w-x", "w-l"]
+    for i, name in enumerate(letters):
+        sc.pop(name, 250 + i * 110, 380, 0.4)
+    ripple_in(sc, [n for n in names if "-band-" in n], 850, stagger=45)
     sc.add(centered("tag", "A design engine for AI agents.", 800, 50, MUTED, BODY))
     sc.words("tag", 1500, "fade-up", "word", 480, 80)
     sc.add(centered("pillars", [("Programmable.  ", None), ("Editable.  ", None), ("Checked.", SKY)], 890, 40,
@@ -465,7 +462,7 @@ def s11_end():
     sc = Scene("11-end", 4000)
     sc.add(backdrop(glow_at=(960, 420), glow2_at=(960, 1000)))
     sc.add(glow("pulse", 960, 300, 900, BLUE, "55"))
-    ops, names = mark("m", 850, 130, 220)
+    ops, names = wordmark("m", 760, 110, 400)
     sc.add(ops, group("logo", names))
     sc.pop("logo", 0, 600, 0.5)
     sc.add(centered("line", [("Ideas become ", None), ("editable.", SKY)], 420, 120))

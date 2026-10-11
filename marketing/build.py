@@ -6,7 +6,7 @@ Run from the repo root:
     python marketing/build.py og deck    # build only some pieces
 
 Every piece is written to marketing/output/<piece>/ as an editable .vixl master plus its exports.
-The Digital Shift logo is imported from the identity's Vixl-generated SVGs as editable vector shapes.
+The Ripple logo is imported from the identity's Vixl-generated SVGs as editable vector shapes.
 """
 
 import csv
@@ -26,7 +26,7 @@ os.chdir(ROOT)  # link sources resolve against the workspace (repo root)
 from vixl import Project  # noqa: E402
 from vixl.typefaces import install_font  # noqa: E402
 
-# Brand (assets/brand/digital-shift/START-HERE.md) ----------------------------------------------
+# Brand (assets/brand/ripple/START-HERE.md) -----------------------------------------------------
 CHARCOAL = "#252B39"
 DEEP = "#1A1F2B"
 PANEL = "#2F3647"
@@ -42,7 +42,7 @@ CODE_KEY = "#8FB4FF"
 CODE_STR = "#9FE3B4"
 CODE_NUM = "#FFC37A"
 
-LOGOS = "assets/brand/digital-shift/Editable-Vixl"
+LOGOS = "assets/brand/ripple/Editable-Vixl"
 HEAD, BODY, SEMI, MONO = "inter-tight-800", "inter-400", "inter-600", "jetbrains-mono-500"
 
 
@@ -123,7 +123,7 @@ def logo(name, variant, x, y, width=None, height=None):
             {"type": "move", "target": name, "x": x + left * scale, "y": y + top * scale},
         ])
         return operations
-    root = ET.fromstring((ROOT / "assets/brand/digital-shift/SVG" / f"{variant}.svg").read_bytes())
+    root = ET.fromstring((ROOT / "assets/brand/ripple/SVG" / f"{variant}.svg").read_bytes())
     sw, sh = float(root.get("width")), float(root.get("height"))
     scale = min(width / sw if width else float("inf"), height / sh if height else float("inf"))
     root.set("width", str(sw * scale))
@@ -139,7 +139,7 @@ def logo(name, variant, x, y, width=None, height=None):
 
 
 def pixel_stair(prefix, x, y, cell, gap, steps, color=BLUE, fade=True):
-    """A diagonal run of pixels that echoes the offset V shapes of the mark."""
+    """A diagonal run of pixels: the raster motif set against the vector logo."""
     ops = []
     for i in range(steps):
         alpha = 255 - int(i * (200 / max(1, steps - 1))) if fade else 255
@@ -658,9 +658,11 @@ def build_stickers():
     cells = [(110, 90), (700, 90), (110, 600), (700, 600), (110, 1110), (700, 1110)]
     for i, (x, y) in enumerate(cells):
         p.apply(rect(f"cut-{i}", x, y, 465, 420, CHARCOAL if i != 2 else PAPER, 64))
-    for i in (0, 1):
-        x, y = cells[i]
-        p.apply(logo(f"logo-{i}", "mark-reverse" if i == 0 else "stacked-reverse", x + 105, y + 58, width=255))
+    # The Ripple kit has no stacked lockup: the second sticker carries the wordmark, centred in its cell.
+    x, y = cells[0]
+    p.apply(logo("logo-0", "mark-reverse", x + 105, y + 58, width=255))
+    x, y = cells[1]
+    p.apply(logo("logo-1", "horizontal-reverse", x + 55, y + 210 - 355 * 500 / 1200 / 2, width=355))
     x, y = cells[2]
     p.apply([text("credit", "MADE WITH", x + 96, y + 110, 34, INK, MONO),
              *logo("logo-2", "horizontal-color", x + 55, y + 185, width=355)])
