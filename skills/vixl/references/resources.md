@@ -1,6 +1,6 @@
 # Design resources and vector export
 
-Vixl is a headless design engine built for autonomous AI agents. Humans can use the same CLI, Python, REST and MCP interfaces. No GUI or interactive approval is required for editing.
+Vixl is a headless design engine for AI agents. People can drive the same CLI, Python, REST and MCP interfaces. No GUI or interactive approval is required for editing.
 
 ## Discover before designing
 

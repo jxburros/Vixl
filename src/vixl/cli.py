@@ -18,7 +18,7 @@ from .commands import Parser, compile_command, compile_script, dimensions, norma
 from .errors import VixlError, for_surface, friendly, require
 from .model import Limits
 
-HELP = """Vixl — headless design engine for autonomous AI agents
+HELP = """Vixl — a headless design engine for AI agents. Ideas become editable.
 
 Usage: vixl [--project FILE] [--json] COMMAND ...
        vixl                         Interactive editing shell

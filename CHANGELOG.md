@@ -101,6 +101,11 @@ Checks that cover a whole workspace, outcome states agents can trust, repairs, w
 - Per-call limits for `vixl serve`, `vixl view` and `vixl mcp`: `--call-timeout` (a REST call still running answers `202` with a job: `GET /jobs/{id}`, `GET /jobs/{id}/result`), `--max-megapixels`, `--max-pages` and `--max-concurrent`, also as `VIXL_*` environment variables. Over a limit fails before rendering with `limit_exceeded`; `GET /limits` reports them. Nothing changes unless a limit is set (#542).
 - `vixl font install` and `vixl font pair` accept `--workspace DIR`; `vixl --help` mentions `vixl schema OPERATION…` (#606).
 
+### Voice and marketing
+
+- Vixl now describes itself one way: **"Ideas become editable."** and *a design engine for AI agents. Programmable, editable, checked.* The README, `pyproject.toml`, CLI help, plugin and desktop-extension listings, docs introductions and the skill use it in place of "programmable design studio", "image-document engine" and "headless application designed for autonomous AI agents".
+- The marketing pack's artwork, deck notes, captions, alt text, campaign rows and demo script are rewritten in a more casual voice and rebuilt. The rules are in [Brand voice](docs/brand-voice.md).
+
 ### Speed
 
 - A render reuses the previous canvas of the same document view and composites again only the area of the layers that changed. Documents with scene lighting, adjustment layers, canvas-edge blur or selection-masked effects still render in full.

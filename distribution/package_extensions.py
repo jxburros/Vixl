@@ -18,7 +18,7 @@ def build(output=None):
         "display_name": "Vixl",
         "icon": "icon.png",
         "version": __version__,
-        "description": "Editable design documents with live review and workspace brands.",
+        "description": "A design engine for AI agents. Real layers, live review, your brands, checked before export.",
         "author": {"name": "Vixl contributors"},
         "homepage": "https://github.com/jxburros/Vixl",
         "user_config": {

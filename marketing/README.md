@@ -1,11 +1,13 @@
 # Vixl marketing pack
 
-**Ideas become editable.** A programmable design studio for AI agents.
+**Ideas become editable.** A design engine for AI agents. Programmable, editable, checked.
 
-Ready-to-use graphics, documents and motion, authored with Vixl. The materials are also working
-examples: edit the chart's data in PowerPoint, type into the creative brief, generate campaign
-variants from a recipe, or try the animation family's states and themes. Every design includes
-an editable `.vixl` master with embedded fonts and content.
+Ready-to-use graphics, documents and motion, all made with Vixl. They're working examples too:
+edit the chart's data in PowerPoint, type into the creative brief, spin campaign variants out of
+a recipe, or click through the animation family's states and themes. Every design comes with its
+editable `.vixl` master, fonts and content included.
+
+The voice guide for this pack and the rest of Vixl's copy is in [Brand voice](../docs/brand-voice.md).
 
 ![Vixl marketing pack](output/kit-overview.png)
 

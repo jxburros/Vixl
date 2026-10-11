@@ -1,6 +1,6 @@
 # Recipes
 
-Vixl is headless and designed for autonomous AI agents; humans can use the same interfaces. See [new resources and SVG](resources.md) for 0.11 additions.
+Vixl is a headless design engine for AI agents; people can drive the same interfaces. See [new resources and SVG](resources.md) for 0.11 additions.
 
 Each recipe is a single atomic batch where possible. Use them with MCP `vixl_operations_apply`,
 `vixl apply ops.json`, REST `POST /operations`, or `Project.apply`. Always preview afterwards.

@@ -1,6 +1,6 @@
 {
   "name": "vixl",
-  "description": "Editable graphics, brand kits and human review with the Vixl engine.",
+  "description": "A design engine for AI agents: layered graphics, decks, forms and motion that stay editable and get checked before export.",
   "author": {
     "name": "Vixl contributors"
   },

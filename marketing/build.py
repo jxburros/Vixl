@@ -64,7 +64,7 @@ def registry_facts():
 
 FACTS = registry_facts()
 INTERFACES = ["MCP", "CLI", "Python", "REST"]
-SUB = "A programmable design studio for AI agents. Create, check and deliver layered designs through MCP, CLI, Python or REST."
+SUB = "A design engine for AI agents. Your agent makes it, you keep the layers, Vixl checks the work. Through MCP, CLI, Python or REST."
 REPO = "github.com/jxburros/Vixl"
 
 
@@ -326,8 +326,8 @@ def glow(name, x, y, size, color=BLUE, strength="55"):
                       {"offset": 1, "color": f"{color}00"}]}
 
 
-LOOP = [("Inspect", "Read layers, bounds and fonts"), ("Apply", "Editable, atomic operations"),
-        ("Check", "Design checks and saved suites"), ("Preview", "Render and review the work"),
+LOOP = [("Inspect", "See what is really on the canvas"), ("Apply", "Atomic edits: all or nothing"),
+        ("Check", "Contrast, spacing, bleed, your rules"), ("Preview", "Look at it like a person would"),
         ("Export", "PNG, SVG, PDF, PPTX, MP4 ...")]
 
 MAKES = ["Posters & social", "Charts & diagrams", "Slides & decks", "Fillable forms", "Motion & GIFs",
@@ -422,20 +422,20 @@ def build_showcase():
     p = new(1200, 900, WHITE)
     p.apply([*logo("logo", "horizontal-color", 70, 40, width=220),
              text("kicker", "DATA THAT STAYS EDITABLE", 70, 175, 24, SUBTLE, MONO),
-             headline("headline", "Keep the story.\nChange the data.", 70, 230, 78, "Change the data.", INK,
+             headline("headline", "New numbers?\nSame chart.", 70, 230, 78, "Same chart.", INK,
                       accent_color=BLUE),
              chart_op("campaign", 70, 450, 1060, 350, 25),
-             text("source", "Illustrative workflow data · Native chart in PowerPoint · Made with Vixl", 70, 840, 20, SUBTLE)])
+             text("source", "Illustrative workflow data · Opens as a real PowerPoint chart · Made with Vixl", 70, 840, 20, SUBTLE)])
     save_and_export(p, "showcase", "editable-chart", [("png", {}), ("svg", {}), ("pptx", {})],
                     checks=["bounds", "flow", "contrast", "fonts"])
     p = new(1600, 900)
     p.apply([*logo("logo", "horizontal-reverse", 80, 45, width=220),
-             text("kicker", "THE AGENT DESIGN WORKFLOW", 80, 180, 26, SKY, MONO),
-             headline("headline", "Structure. Feedback.\nA file you can keep editing.", 80, 230, 78,
+             text("kicker", "HOW YOUR AGENT WORKS IN VIXL", 80, 180, 26, SKY, MONO),
+             headline("headline", "Look before you export.\nThen keep editing.", 80, 230, 78,
                       "keep editing."),
              diagram_op("workflow", 80, 500, 1440, 240),
-             para("note", "Inspect the document, apply operations, run checks, visually review, then deliver. "
-                  "The diagram itself is editable shapes, paths and labels.", 80, 770, 26, 1380)])
+             para("note", "Inspect, apply, check, preview, export. Every step tells your agent what went wrong while it is "
+                  "still cheap to fix. And yes, this diagram is editable shapes, paths and labels too.", 80, 770, 26, 1380)])
     save_and_export(p, "showcase", "agent-workflow", [("png", {}), ("svg", {}), ("pdf", {})],
                     checks=["bounds", "flow", "contrast", "fonts", "diagram"])
     SHOW["workflow"] = ("Editable workflow", "marketing/output/showcase/agent-workflow.png")
@@ -443,13 +443,13 @@ def build_showcase():
     p = new(1600, 1200)
     p.apply([*logo("logo", "horizontal-reverse", 80, 50, width=240),
              text("kicker", "THE VIXL FIELD GUIDE", 80, 180, 26, SKY, MONO),
-             headline("headline", "A studio you can program.", 80, 240, 86, "program.")])
-    features = [("Design", "Layouts, type, vectors, masks, shaped images and emoji artwork."),
-                ("Explain", "Data-bound charts, routed diagrams, decks and fillable PDFs."),
-                ("Animate", "Keyframes, character poses, cameras, audio and app states."),
-                ("Repeat", "Variables, typed recipes, CSV variants and reusable containers."),
-                ("Review", "Design checks, saved suites, proof pages and live review."),
-                ("Deliver", "Raster, vector, print, slides and motion; keep the .vixl master.")]
+             headline("headline", "Programmable. Editable. Checked.", 80, 240, 72, "Checked.")])
+    features = [("Design", "Layouts, type, vectors, masks and emoji. Text stays text."),
+                ("Explain", "Charts from real data, routed diagrams, decks, fillable PDFs."),
+                ("Animate", "Keyframes, posable characters, cameras, audio, app states."),
+                ("Repeat", "One recipe plus a CSV makes a whole campaign."),
+                ("Review", "Checks and suites catch it before the print shop does."),
+                ("Deliver", "PNG to PPTX to CMYK PDF. The .vixl master comes too.")]
     for i, (label, body) in enumerate(features):
         x, y = 80 + i % 3 * 490, 435 + i // 3 * 320
         p.apply([rect(f"card-{i}", x, y, 460, 285),
@@ -465,7 +465,7 @@ def build_og():
     p = new(1200, 630)
     p.apply([glow("glow", 550, -240, 900), *logo("logo", "horizontal-reverse", 64, 40, width=230),
              headline("headline", "Ideas become\neditable.", 64, 190, 88, "editable."),
-             text("sub", "A programmable design studio\nfor AI agents.", 64, 414, 28),
+             text("sub", "A design engine for AI agents.\nYou keep the layers.", 64, 414, 28),
              *code_card("code", 680, 124, 456, SNIPPET, size=20, title="design.json")])
     fit_code(p, "code")
     chips_row(p, "interfaces", INTERFACES, 64, 530, size=20)
@@ -476,7 +476,7 @@ def build_github():
     p = new(1280, 640, PAPER)
     p.apply([*logo("logo", "horizontal-color", 64, 42, width=230),
              headline("headline", "Ideas become\neditable.", 64, 206, 78, "editable.", INK, accent_color=BLUE),
-             para("sub", "A programmable design studio for AI agents. Layered graphics, documents and motion.",
+             para("sub", "A design engine for AI agents.\nReal layers, live text and\nchecks before export.",
                   64, 407, 27, 530, SUBTLE),
              *photo("poster", "poster", 674, 48, 240, 350),
              *photo("pixel", "pixel", 674, 418, 240, 174),
@@ -491,7 +491,7 @@ def build_linkedin():
     p.apply([glow("glow", 960, -420, 1000),
              *pixel_stair("pixels", 70, 100, 22, 12, 8, SKY),
              headline("headline", "Ideas become editable.", 440, 120, 72, "editable."),
-             text("sub", "A programmable design studio for AI agents.", 442, 227, 30),
+             text("sub", "A design engine for AI agents. Programmable, editable, checked.", 442, 227, 30),
              *logo("logo", "horizontal-reverse", 1280, 35, width=230),
              text("footer", REPO, 950, 326, 22, MUTED, MONO)])
     save_and_export(p, "social", "linkedin-banner-1584x396", [("png", {})], thumbnail_width=792)
@@ -506,7 +506,7 @@ def build_story():
              *photo("poster", "poster", m, 900, 370, 500),
              *photo("painting", "painting", 476, 900, 524, 238),
              *photo("chart", "chart", 476, 1164, 524, 236),
-             para("sub", "Graphics. Documents. Motion.\nMade with Vixl.", m, 1460, 42, 920)])
+             para("sub", "Posters, decks, motion.\nStill editable next week.", m, 1460, 42, 920)])
     chips_row(p, "iface", INTERFACES, m, 1600, size=28)
     save_and_export(p, "social", "story-1080x1920", [("png", {})], thumbnail_width=540,
                     safe_area={"left": 60, "right": 60, "top": 250, "bottom": 250})
@@ -524,37 +524,37 @@ def build_carousel():
         p.apply([text("kicker", kicker, m, 120, 28, SKY, MONO),
                  headline("headline", title, m, 210, 100, accent)])
 
-    page("cover", "A DESIGN STUDIO FOR AI AGENTS", "Ideas\nbecome\neditable.", "editable.")
+    page("cover", "A DESIGN ENGINE FOR AI AGENTS", "Ideas\nbecome\neditable.", "editable.")
     p.apply([*logo("mark", "mark-reverse", 665, 625, width=260),
-             para("sub", "Create graphics, documents and motion. Keep the layers. Keep working.", m, 870, 42, 800),
-             text("swipe", "MEET VIXL  →", m, 1110, 28, SKY, MONO)])
-    page("document", "KEEP THE DOCUMENT", "One master.\nRoom to change.", "change.")
+             para("sub", "Your agent makes the poster. You keep the layers. Nobody redraws it from scratch.", m, 870, 42, 800),
+             text("swipe", "HERE IS HOW  →", m, 1110, 28, SKY, MONO)])
+    page("document", "NOT A FLAT PNG", "Change it.\nKeep the file.", "Keep the file.")
     for i, (title, body) in enumerate([
-        ("Live text + vectors", "Edit copy, paths, masks and effects."),
-        ("Reusable ingredients", "Variables, templates and containers."),
-        ("Reviewable source", "Unpack designs into JSON and assets for Git.")]):
+        ("Live text + vectors", "Fix a typo without redrawing the poster."),
+        ("Reusable ingredients", "Variables, templates, containers. Make once."),
+        ("Reviewable source", "Unpack to JSON and diff it in Git. Really.")]):
         y = 570 + i * 190
         p.apply([rect(f"card-{i}", m, y, 904, 162), text(f"label-{i}", title, m + 32, y + 25, 40, WHITE, HEAD),
                  para(f"body-{i}", body, m + 32, y + 87, 32, 835)])
     page("loop", "FROM BRIEF TO FILE", "Build. Check.\nLook. Deliver.", "Deliver.")
     loop_steps(p, "loop", m, 560, 904, size=42, vertical=True, step_h=110)
-    page("gallery", "ALL MADE WITH VIXL", "A whole\ncreative workflow.", "creative workflow.")
+    page("gallery", "ALL MADE WITH VIXL", "Yes, all of\nthis is Vixl.", "Vixl.")
     keys = ["poster", "painting", "pixel", "chart", "film", "photo"]
     for i, key in enumerate(keys):
         x, y = m + i % 2 * 466, 565 + i // 2 * 204
         p.apply(photo(f"image-{i}", key, x, y, 438, 178))
         chip(p, f"label-{i}", SHOW[key][0], x + 12, y + 117, size=25, pad=(12, 8))
-    page("delivery", "MAKE ONCE. PUT IT TO WORK.", "Beyond\na single image.", "single image.")
-    items = [("Campaigns", "Checked variants from typed recipes."),
-             ("Documents", "Native charts in PPTX. Fillable PDFs."),
-             ("Motion", "App states, themes and reduced-motion stills.")]
+    page("delivery", "MAKE ONCE. PUT IT TO WORK.", "More than\none picture.", "one picture.")
+    items = [("Campaigns", "One recipe, many checked variants."),
+             ("Documents", "Real PPTX charts. PDFs you can fill in."),
+             ("Motion", "App states, themes, reduced-motion stills.")]
     for i, (title, body) in enumerate(items):
         y = 570 + i * 200
         p.apply([text(f"num-{i}", f"0{i+1}", m, y + 5, 36, SKY, MONO),
                  text(f"label-{i}", title, m + 90, y, 44, WHITE, HEAD),
                  para(f"body-{i}", body, m + 90, y + 75, 34, 780)])
-    page("start", "START CREATING", "Give your agent\na design studio.", "design studio.")
-    p.apply([para("sub", "Install Vixl, connect through MCP, or build with the CLI, Python and REST.", m, 600, 40, 850),
+    page("start", "YOUR TURN", "Give your agent\nreal layers.", "real layers.")
+    p.apply([para("sub", "Install it, point your agent at MCP, or drive it yourself from the CLI, Python or REST.", m, 600, 40, 850),
              para("repo", REPO, m, 845, 34, 900, WHITE, MONO),
              para("license", "Source-available · PolyForm Small Business 1.0.0\nAI generation uses configured external providers.",
                   m, 1030, 28, 875)])
@@ -576,13 +576,13 @@ def build_poster():
     m = 140
     p.apply([glow("glow", -400, 1400, 1900),
              *logo("logo", "horizontal-reverse", m, 130, width=320),
-             text("kicker", "A PROGRAMMABLE DESIGN STUDIO FOR AI AGENTS", m, 420, 31, SKY, MONO),
+             text("kicker", "A DESIGN ENGINE FOR AI AGENTS", m, 420, 31, SKY, MONO),
              headline("headline", "IDEAS\nBECOME\nEDITABLE.", m, 670, 244, "EDITABLE.", line_height=0.96),
-             para("sub", "Graphics, documents and motion.\nBuilt as layers. Checked before delivery.\nMade with Vixl.",
+             para("sub", "Your agent makes it. You keep the layers.\nChecked before it reaches the printer.\nLike this poster. Made with Vixl.",
                   m, 1510, 52, w - 2 * m, WHITE),
              {"type": "qr", "name": "repo-qr", "data": "https://github.com/jxburros/Vixl", "size": 220,
               "x": m, "y": h - 500, "color": CHARCOAL, "background": WHITE},
-             text("cta", "Meet Vixl", m + 270, h - 460, 64, WHITE, HEAD),
+             text("cta", "Scan it. Make one.", m + 270, h - 460, 64, WHITE, HEAD),
              para("interfaces", "MCP · CLI · Python · REST", m + 270, h - 345, 36, 900)])
     footer(p, h - 175, m, size=32)
     save_and_export(p, "print", "poster-tabloid", [("png", {"scale": 0.5}), ("pdf", {"color_space": "cmyk"})],
@@ -598,18 +598,18 @@ def build_onepager():
              headline("headline", "Ideas become editable.", m, 207, 76, "editable."),
              para("sub", SUB, m, 330, 28, w - 2 * m)])
     features = [
-        ("Create", "Layouts, type, vector paths, shaped images, painting, pixel art and emoji artwork."),
-        ("Explain", "Data-bound charts, diagrams, decks, rich documents and fillable PDFs."),
-        ("Animate", "Keyframes, rigged character poses, cameras, audio and app-state packages."),
-        ("Repeat", "Typed recipes, variables, CSV-driven variants, reusable containers and templates."),
-        ("Review", "Design checks and saved suites, offline proof pages, live review and branching history."),
-        ("Deliver", "PNG, SVG, PDF, layered-pixel PSD, PPTX, HTML, GIF, WebP, MP4 and print exports."),
+        ("Create", "Layouts, type, vector paths, shaped images, painting, pixel art and emoji. Text stays text."),
+        ("Explain", "Charts from real data, routed diagrams, decks with notes and PDFs people can fill in."),
+        ("Animate", "Keyframes, posable characters, cameras, audio and app states that ship with stills."),
+        ("Repeat", "Typed recipes, variables and a CSV: one design becomes a whole campaign."),
+        ("Review", "Checks, saved suites, proof pages and branching history. Catch it before the printer does."),
+        ("Deliver", "PNG, SVG, PDF, layered-pixel PSD, PPTX, HTML, GIF, WebP, MP4 and print. Plus the master."),
     ]
     for i, (title, body) in enumerate(features):
         x, y = m + i % 2 * 580, 550 + i // 2 * 215
         p.apply([text(f"label-{i}", title, x, y, 39, INK, HEAD),
                  para(f"body-{i}", body, x, y + 65, 27, 505, SUBTLE)])
-    p.apply([text("start", "Choose your way in", m, 1240, 37, INK, HEAD),
+    p.apply([text("start", "Pick your way in", m, 1240, 37, INK, HEAD),
              para("install", "Windows: use the installer from GitHub Releases.\nDevelopers: clone the repository and install with Python 3.11+.\nConnect an agent: vixl mcp --workspace . --tools core --schema slim",
                   m, 1308, 23, w - 2 * m, SUBTLE),
              para("license", "Source-available under PolyForm Small Business 1.0.0. See LICENSE for eligibility.\n"
@@ -628,8 +628,8 @@ def build_brief():
     p.apply([*logo("logo", "horizontal-color", m, 45, width=210),
              text("kicker", "MADE WITH VIXL / FILLABLE PDF", m, 185, 21, SUBTLE, MONO),
              headline("headline", "Start with a clear brief.", m, 250, 64, color=INK),
-             para("sub", "Use this worksheet to plan a graphic, document or motion piece. Type into the PDF fields "
-                  "or print it for a working session.", m, 350, 25, w - 2 * m, SUBTLE)])
+             para("sub", "Good design starts with knowing what it is for. Plan a graphic, document or motion piece here: "
+                  "type into the fields, or print it and grab a pen.", m, 350, 25, w - 2 * m, SUBTLE)])
     fields = [
         ("project_name", "Project / campaign", "text", 480, 72, 100),
         ("audience", "Who is it for?", "text", 635, 72, 120),
@@ -664,10 +664,10 @@ def build_stickers():
     x, y = cells[2]
     p.apply([text("credit", "MADE WITH", x + 96, y + 110, 34, INK, MONO),
              *logo("logo-2", "horizontal-color", x + 55, y + 185, width=355)])
-    for i, phrase in enumerate(["Ideas\nbecome\neditable.", "Keep\nthe\nlayers.", "MCP\nREADY"], 3):
+    for i, phrase in enumerate(["Ideas\nbecome\neditable.", "Text\nstays\ntext.", "Checked\nbefore\nprint."], 3):
         x, y = cells[i]
         p.apply(headline(f"sticker-{i}", phrase, x, y + 75, 80, width=465, align="center"))
-    p.apply(text("note", "Event handout · Cut around each tile · Made with Vixl", 110, 1580, 22, SUBTLE))
+    p.apply(text("note", "Cut out, stick on, keep the layers · Made with Vixl", 110, 1580, 22, SUBTLE))
     save_and_export(p, "print", "sticker-sheet-letter", [("pdf", {}), ("png", {"scale": 0.5})],
                     checks=["bounds", "flow", "overlap", "contrast", "fonts"])
 
@@ -695,86 +695,89 @@ def build_deck():
                      text(f"label-{i}", title, x + 36, y + 110, 49, WHITE, HEAD),
                      para(f"body-{i}", body, x + 36, y + 194, 34, cw - 72)])
 
-    slide("title", "VIXL / A DESIGN STUDIO FOR AI AGENTS", "Ideas become\neditable.",
-          "Vixl is a programmable design studio for AI agents. It turns graphics, documents and motion into "
-          "layered files you can inspect, revise and deliver. This deck was authored with Vixl.", "editable.")
+    slide("title", "VIXL / A DESIGN ENGINE FOR AI AGENTS", "Ideas become\neditable.",
+          "Vixl is a design engine for AI agents. Your agent builds graphics, documents and motion out of real "
+          "layers, Vixl checks the work, and you get a file you can still change next week. Fun fact: this deck "
+          "was made with Vixl.", "editable.")
     p.apply([*logo("mark", "mark-reverse", 1270, 270, width=450),
-             para("sub", "Graphics. Documents. Motion.\nMCP · CLI · Python · REST", m, 590, 44, 1050),
+             para("sub", "Programmable. Editable. Checked.\nMCP · CLI · Python · REST", m, 590, 44, 1050),
              text("credit", "THIS DECK IS MADE WITH VIXL", m, 830, 28, SKY, MONO)])
-    slide("document", "THE CORE IDEA", "A design is a document.",
-          "The .vixl master keeps editable content, settings and branching history. Raster images remain pixels; "
-          "text, supported shapes and paths remain editable. Deliver the master alongside the formats people need.", "document.")
-    cards([("Content", "Text, vector paths, images, masks and effects."),
-           ("Structure", "Groups, variables, pages, layouts and reusable components."),
-           ("History", "Undo, checkpoints, branches and document diffs.")])
-    slide("workflow", "THE AGENT LOOP", "Feedback at every step.",
-          "Inspect, apply, check, preview and export. The diagram is made from Vixl's diagram operation, with "
-          "editable nodes, routed paths and text. Automated checks complement visual review; they do not judge taste.", "every step.")
+    slide("document", "THE CORE IDEA", "Not a picture. A document.",
+          "Ask for a poster and most tools hand you a picture of a poster. The .vixl master keeps the content, "
+          "settings and branching history instead. Raster images stay pixels; text, supported shapes and paths "
+          "stay editable. Send the master along with whatever formats people asked for.", "A document.")
+    cards([("Content", "Text, paths, images, masks and effects. All still editable."),
+           ("Structure", "Groups, variables, pages, layouts and reusable parts."),
+           ("History", "Undo, checkpoints, branches and diffs. Go back in time.")])
+    slide("workflow", "THE AGENT LOOP", "Look before you export.",
+          "Inspect, apply, check, preview and export. Each step tells the agent what went wrong while it is still "
+          "cheap to fix. The diagram is Vixl's own diagram operation: editable nodes, routed paths and text. "
+          "Checks back up visual review; they do not judge taste.", "you export.")
     p.apply(diagram_op("workflow", m, 405, 1640, 275, size=34))
-    p.apply(para("note", "Read the structure. Apply atomic edits. Check requirements.\nRender and review the design. Export the files.",
+    p.apply(para("note", "Read the canvas. Make atomic edits. Run the checks.\nLook at the render. Then ship the files.",
                  m, 750, 36, 1600, WHITE))
-    slide("gallery", "A BROAD CREATIVE TOOLSET", "From print to pixels.",
-          "These examples are real outputs in this repository: print layout, generative painting, a pixel game, "
-          "data graphics, character animation and photo editing. They show different workflows rather than usage statistics.", "pixels.")
+    slide("gallery", "SAME ENGINE, VERY DIFFERENT JOBS", "From print to pixels.",
+          "Every one of these is a real output in this repository: a print layout, a generative painting, a pixel "
+          "game, data graphics, character animation and a photo edit. They show range, not usage statistics.", "pixels.")
     keys = ["poster", "painting", "pixel", "chart", "film", "photo"]
     for i, key in enumerate(keys):
         x, y = m + i % 3 * 556, 375 + i // 3 * 276
         p.apply(photo(f"gallery-{i}", key, x, y, 528, 248))
         chip(p, f"gallery-label-{i}", SHOW[key][0], x + 14, y + 184, size=25, pad=(14, 8))
-    slide("data", "DATA TO STORY", "Edit the data. Keep the chart.",
-          "This is illustrative workflow data, not a customer result or performance claim. Vixl binds the chart "
-          "to categories and series. In the PowerPoint export it is a native chart with an embedded workbook. "
-          "Open PowerPoint's Edit Data command to inspect it.", "Keep the chart.")
+    slide("data", "DATA TO STORY", "New numbers? Same chart.",
+          "Illustrative workflow data, not a customer result or performance claim. Vixl binds the chart to "
+          "categories and series, so new numbers do not mean a new chart. In the PowerPoint export it is a native "
+          "chart with an embedded workbook: open Edit Data and poke around.", "Same chart.")
     p.apply([rect("chart-panel", m, 370, 1020, 520, WHITE),
              chart_op("native-chart", m + 40, 410, 940, 415, size=29),
              text("source", "ILLUSTRATIVE WORKFLOW DATA", m + 40, 840, 20, SUBTLE, MONO),
-             para("data-note", "Change values with chart-data.\n\nVixl updates the scale, bars, labels and totals.\n\nPPTX includes the data table.",
+             para("data-note", "Change the values with chart-data.\n\nScale, bars, labels and totals follow along.\n\nIn PowerPoint, hit Edit Data. It is all there.",
                   1240, 410, 35, 520, WHITE)])
-    slide("repeat", "CREATIVE AUTOMATION", "One recipe. Useful variations.",
-          "The included social campaign is a typed recipe. Its inputs supply headline, description and accent. "
-          "Production instantiates three rows, runs the saved design suite and exports the checked variants. "
-          "Use the supplied CSV and production request as a starting point.", "Useful variations.")
+    slide("repeat", "CREATIVE AUTOMATION", "One recipe. Plenty of posts.",
+          "The included social campaign is a typed recipe: headline, description and accent go in, posts come out. "
+          "Production fills in three CSV rows, runs the saved design suite and exports only the variants that pass. "
+          "Nobody copies and pastes anything. Start from the supplied CSV and production request.", "Plenty of posts.")
     p.apply([*photo("campaign", "campaign-kit", m, 390, 960, 460),
              para("repeat-note", "Typed inputs + variables\n\nText fitting + saved checks\n\nCSV-driven batches\n\nReusable containers and templates",
                   1190, 415, 35, 570, WHITE)])
-    slide("motion", "MOTION THAT SHIPS", "Animate the idea.\nPackage the behavior.",
-          "Vixl supports timeline tracks, cameras, audio and rigged joint pose keys. The app demo in this kit "
-          "ships ready, creating and delivered states with light/dark themes, explicit transitions, editable "
-          "masters and reduced-motion PNGs. The teaser is an editable timeline exported to MP4 and GIF.", "Package the behavior.")
-    cards([("Author", "Keyframes, motion recipes, character poses, cameras and audio."),
-           ("Export", "GIF, animated WebP, APNG, MP4 and other supported timeline formats."),
+    slide("motion", "MOTION THAT SHIPS", "Make it move.\nShip the states.",
+          "Vixl has timeline tracks, cameras, audio and rigged joint pose keys. The app demo in this kit ships "
+          "ready, creating and delivered states with light and dark themes, explicit transitions, editable "
+          "masters and reduced-motion PNGs. The teaser is an editable timeline exported to MP4 and GIF.", "Ship the states.")
+    cards([("Author", "Keyframes, motion recipes, posable characters, cameras and audio."),
+           ("Export", "GIF, animated WebP, APNG, MP4 and other timeline formats."),
            ("Integrate", "App states, theme variables, transitions and reduced-motion stills.")], y=455, height=390)
-    slide("review", "CHECKED DELIVERY", "Make requirements measurable.",
-          "Design checks cover bounds, flow, contrast, fonts and other selected concerns. Saved suites can "
-          "encode margins, hierarchy and spacing. Proof pages collect previews and findings offline. "
-          "A passing check proves its rules, so a person or agent still needs to review the rendered design.", "measurable.")
-    cards([("Define", "Save layout and delivery requirements as test suites."),
-           ("Inspect", "Run checks, review findings and look at actual previews."),
-           ("Share", "Use offline proof pages or a live REST review session.")])
-    slide("collaborate", "REVIEWABLE WORK", "Designs belong in the workflow.",
-          "Unpack a .vixl master into stable current-state JSON and hashed assets for Git review. Pack it "
-          "back into a document after edits. Branching history, project groups and reusable libraries support "
-          "collaboration. The included campaign has an unpacked source folder to inspect.", "workflow.")
+    slide("review", "CHECKED BEFORE IT SHIPS", "Write the brief as tests.",
+          "Design checks cover bounds, flow, contrast, fonts and more. Saved suites turn margins, hierarchy and "
+          "spacing into rules that pass or fail. Proof pages collect previews and findings offline. A passing "
+          "check proves its rules, not your taste, so someone still looks at the render.", "as tests.")
+    cards([("Define", "Turn margins, contrast and hierarchy into saved suites."),
+           ("Inspect", "Run the checks, read the findings, then actually look."),
+           ("Share", "Offline proof pages or a live REST review session.")])
+    slide("collaborate", "REVIEWABLE WORK", "Designs get code review too.",
+          "Unpack a .vixl master into stable JSON and hashed assets, review the diff in Git, then pack it back "
+          "into a document. Branching history, project groups and reusable libraries cover the rest of "
+          "teamwork. The included campaign has an unpacked source folder you can browse.", "code review too.")
     cards([("Git review", "Readable JSON + assets through pack and unpack."),
-           ("Shared work", "Branches, explicit merges, project groups and reusable libraries."),
-           ("Portable files", "Embedded content and fonts, plus the editable master.")])
+           ("Shared work", "Branches, explicit merges, project groups and shared libraries."),
+           ("Portable files", "Fonts and content travel inside the editable master.")])
     slide("interfaces", "FOUR WAYS IN", "Same operations. Your tools.",
           "MCP serves agents, the CLI serves scripts and CI, Python serves generators and notebooks, and REST "
           "serves integrations and live review. All share canonical operations. The server extra is needed for REST.", "Your tools.")
-    cards([("MCP", "Connect an agent to the workspace."), ("CLI", "Script and batch from a terminal."),
-           ("Python", "Compose files from code and data."), ("REST", "Integrate with web services.")], height=360)
-    slide("delivery", "A COMPLETE HANDOFF", "Send the formats people need.",
+    cards([("MCP", "Hand the workspace to your agent."), ("CLI", "Script it, batch it, run it in CI."),
+           ("Python", "Generate designs from code and data."), ("REST", "Plug it into web services.")], height=360)
+    slide("delivery", "A COMPLETE HANDOFF", "Whatever format they asked for.",
           "Supported vectors stay vector in SVG/PDF where possible; some features use reported raster "
           "fallbacks. PPTX preserves supported editable shapes, text, tables and charts. PSD export is layered "
-          "pixels, not native editable type. CMYK is an export setting; a printer should confirm the chosen profile.", "people need.")
+          "pixels, not native editable type. CMYK is an export setting; ask your printer to confirm the profile.", "they asked for.")
     cards([("Screen", "PNG, JPEG, WebP, SVG and icons."),
            ("Documents", "PDF, fillable PDF, PPTX and HTML decks."),
            ("Print + motion", "CMYK PDF/TIFF, GIF, WebP, MP4 and more.")])
-    slide("start", "START CREATING", "Give your agent a design studio.",
+    slide("start", "YOUR TURN", "Give your agent real layers.",
           "Windows users can use the installer from GitHub Releases. Developers need Python 3.11 or newer; "
           "clone the repo, then install its extras. Run the MCP command in an existing workspace. Vixl is "
           "source-available under PolyForm Small Business 1.0.0; read LICENSE for eligibility. Core authoring "
-          "works locally. AI generation and vision need configured external providers.", "design studio.")
+          "works locally. AI generation and vision need configured external providers.", "real layers.")
     command = [
         (0, [("git clone https://github.com/jxburros/Vixl.git", WHITE)]),
         (0, [("cd Vixl", WHITE)]),
@@ -804,7 +807,7 @@ def build_campaign():
     folder.mkdir(parents=True)
     p = new(1080, 1080)
     p.apply([*logo("logo", "horizontal-reverse", 80, 45, width=230),
-             text("kicker", "A DESIGN STUDIO FOR AI AGENTS", 80, 210, 27, SKY, MONO),
+             text("kicker", "A DESIGN ENGINE FOR AI AGENTS", 80, 210, 27, SKY, MONO),
              text("title", "Keep the layers.", 80, 340, 106, WHITE, HEAD),
              text("body", "Create, inspect and revise layered designs.", 80, 670, 40),
              {"type": "text-layout", "target": "body", "width": 875, "height": 140},
@@ -836,7 +839,7 @@ def build_campaign():
     if report["status"] != "completed":
         raise RuntimeError(f"Campaign failed: {report}")
     previews = new(1800, 700)
-    previews.apply(text("headline", "One recipe. Three useful posts.", 60, 30, 50, WHITE, HEAD))
+    previews.apply(text("headline", "One recipe. Three posts. Zero copy-paste.", 60, 30, 50, WHITE, HEAD))
     for i, result in enumerate(report["results"]):
         candidate = instantiate(recipe, result["values"])
         save_and_export(candidate, "campaign", f"post-{i+1}-1080x1080", [("png", {})],
@@ -858,7 +861,7 @@ def build_app():
         shutil.rmtree(root)
     root.mkdir(parents=True)
     states = {}
-    for state, label in (("ready", "Ready to create"), ("creating", "Creating"), ("delivered", "Ready to share")):
+    for state, label in (("ready", "Ready when you are"), ("creating", "Making it..."), ("delivered", "Done. Layers kept.")):
         p = new(640, 320)
         p.apply([{"type": "variable", "name": "bg", "value": CHARCOAL},
                  {"type": "variable", "name": "fg", "value": WHITE},
@@ -866,7 +869,7 @@ def build_app():
                  rect("surface", 0, 0, 640, 320, "${bg}", 0),
                  text("kicker", "VIXL / IDEAS BECOME EDITABLE", 40, 40, 20, "${fg}", MONO),
                  text("title", label, 40, 135, 49, "${fg}", HEAD),
-                 text("footer", "A design studio for AI agents", 40, 252, 22, "${fg}")])
+                 text("footer", "A design engine for AI agents", 40, 252, 22, "${fg}")])
         for i in range(3):
             p.apply(rect(f"pixel-{i}", 490 + i * 38, 150, 20, 20, "${accent}", 0))
         p.apply({"type": "timeline-set", "duration": 1200, "fps": 12, "loop_mode": "seamless"})
@@ -966,7 +969,7 @@ def build_overview():
     ]
     p.apply([*logo("logo", "horizontal-reverse", 80, 45, width=280),
              headline("headline", "The Vixl marketing pack.", 460, 83, 76, "Vixl"),
-             text("sub", "Useful materials. Editable originals. Made with Vixl.", 80, 220, 34)])
+             text("sub", "Everything here was made with Vixl, and every master is included.", 80, 220, 34)])
     placements = [(80, 340), (80, 800), (80, 1290), (850, 340), (1260, 340), (1670, 340),
                   (850, 900), (1260, 950), (1670, 980)]
     for i, ((path, label, w, h), (x, y)) in enumerate(zip(tiles, placements)):
