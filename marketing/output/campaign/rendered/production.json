@@ -14,10 +14,10 @@
       },
       "artboard": null,
       "status": "completed",
-      "output": "0001-1bdfac2be16fe61c.png",
-      "fingerprint": "1bdfac2be16fe61c56c692fc7fd8f5b4bdbd240f0eac1db2392cc0bcc471b1c2",
-      "request_fingerprint": "5bad0cb32237bcf8eaf27b68c7639767cfc6cbd8be44ba3df250cfe929565589",
-      "sha256": "d9ec87e9b80471adb72612d26a6dee6e9711429bc65e56b1a385345933b505e3",
+      "output": "0001-518fe9d4ae227e53.png",
+      "fingerprint": "518fe9d4ae227e53fb29f6b04d8dad39aa26c48c78376730de61fa14f482d8e2",
+      "request_fingerprint": "4aed6fed4c7a00bf5f4b884dd59d26c8d42a43c04c17b217106af444c868482b",
+      "sha256": "d8d4695baeb77989c9b252e49801e175b249b237164ea6158376770299a58ec2",
       "checks": {
         "delivery": {
           "version": 1,
@@ -108,8 +108,8 @@
                   "contrast",
                   "fonts"
                 ],
-                "layers_checked": 18,
-                "layers_total": 18,
+                "layers_checked": 25,
+                "layers_total": 25,
                 "text_layers": 4
               }
             }
@@ -140,7 +140,7 @@
       },
       "cache": {
         "hits": 0,
-        "misses": 24
+        "misses": 31
       }
     },
     {
@@ -153,10 +153,10 @@
       },
       "artboard": null,
       "status": "completed",
-      "output": "0002-1da9c9856b2ec155.png",
-      "fingerprint": "1da9c9856b2ec1556afb5323966e339827997a408393771be548177ffd16812e",
-      "request_fingerprint": "190e25c42e9147c1ae4481234d5711098d71e6a89bc1cab21a15ab6f6aee3757",
-      "sha256": "45f3c636f27da998ee5e39b4c3a82059c5bb9a1e8380b72c38d9e243531efec0",
+      "output": "0002-44c6c65446d42ad9.png",
+      "fingerprint": "44c6c65446d42ad93f791d86a6b68b12a129ea3ac5957e2cabceebe3d7ada27a",
+      "request_fingerprint": "5dec00cbbb1fd5fced33d3f2bb36d499059af514df635a9d31d1e5ac23df6236",
+      "sha256": "09062e94b39b2d3f6facfaf33aa2b14635407f0655e5e43cb9390c51861a52c5",
       "checks": {
         "delivery": {
           "version": 1,
@@ -247,8 +247,8 @@
                   "contrast",
                   "fonts"
                 ],
-                "layers_checked": 18,
-                "layers_total": 18,
+                "layers_checked": 25,
+                "layers_total": 25,
                 "text_layers": 4
               }
             }
@@ -278,7 +278,7 @@
         ]
       },
       "cache": {
-        "hits": 18,
+        "hits": 25,
         "misses": 8
       }
     },
@@ -292,10 +292,10 @@
       },
       "artboard": null,
       "status": "completed",
-      "output": "0003-e6b6e52c83870e41.png",
-      "fingerprint": "e6b6e52c83870e41b746c3e4e8defb8d455f43808cf6fe3580a8fe7c089a263b",
-      "request_fingerprint": "d4e4f2ef5f9662fd47364e0a8a0463561d9861bbcb84e4e591ef0d5f8ab02cbe",
-      "sha256": "eb0ee4638c31d43d24aa19e20c08edce2ba4a0f28f7db0a4b300e88e3778c073",
+      "output": "0003-5e51e93df1c4682d.png",
+      "fingerprint": "5e51e93df1c4682d9b90590eb4e5b0353f53f09f3ad8f58a43b77d29707be70e",
+      "request_fingerprint": "a183e5c0eb25a40eda68d0c004ff2de1c909a724f9f7952e3ba66e34bdb48da5",
+      "sha256": "9ec9f14cba3fbe971debf4ad18fd22f885382283d9ceb2bce64edf4c58623408",
       "checks": {
         "delivery": {
           "version": 1,
@@ -386,8 +386,8 @@
                   "contrast",
                   "fonts"
                 ],
-                "layers_checked": 18,
-                "layers_total": 18,
+                "layers_checked": 25,
+                "layers_total": 25,
                 "text_layers": 4
               }
             }
@@ -417,7 +417,7 @@
         ]
       },
       "cache": {
-        "hits": 18,
+        "hits": 25,
         "misses": 8
       }
     }

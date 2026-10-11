@@ -46,7 +46,7 @@
       ],
       "message": "'glow' bleeds off the canvas edge (marked as an intentional crop)",
       "layer_ids": [
-        "lyr_b673ddc15bea0183"
+        "lyr_a1f1c991cd146296"
       ],
       "box": [
         550,
@@ -73,7 +73,7 @@
       ],
       "message": "'glow' extends outside the safe area (intentional crop or bleed)",
       "layer_ids": [
-        "lyr_b673ddc15bea0183"
+        "lyr_a1f1c991cd146296"
       ],
       "box": [
         550,
@@ -132,8 +132,8 @@
       "flow",
       "codes"
     ],
-    "layers_checked": 35,
-    "layers_total": 35,
+    "layers_checked": 42,
+    "layers_total": 42,
     "text_layers": 8
   },
   "suites": {

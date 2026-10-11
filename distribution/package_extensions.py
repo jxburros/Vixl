@@ -51,7 +51,7 @@ def build(output=None):
         "compatibility": {"platforms": ["darwin", "win32", "linux"]},
     }
     with zipfile.ZipFile(output / "vixl.mcpb", "w", zipfile.ZIP_DEFLATED) as archive:
-        archive.write(ROOT / "assets/brand/digital-shift/Icons/app-icon-dark.png", "icon.png")
+        archive.write(ROOT / "assets/brand/ripple/Icons/app-icon-dark.png", "icon.png")
         archive.writestr("manifest.json", json.dumps(manifest, indent=2) + "\n")
         archive.writestr("server.py", "from vixl.cli import main\nmain()\n")
         for path in sorted((ROOT / "skills/vixl").rglob("*")):

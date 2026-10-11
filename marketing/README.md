@@ -102,7 +102,7 @@ Registry counts are measured from the installed engine and recorded as build met
 
 ## Craft, checks and provenance
 
-The [Digital Shift identity](../assets/brand/digital-shift/START-HERE.md) supplies the palette and
+The [Ripple identity](../assets/brand/ripple/START-HERE.md) supplies the palette and
 outlined logo geometry. The builder imports the brand SVGs as editable vector shapes, preserving
 proportions and internal spacing. It frames real Vixl outputs from `explorations/` and creates the
 chart, diagram and campaign directly through Vixl's Python API. No AI provider is used in the build.

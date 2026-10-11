@@ -5,6 +5,7 @@ editable 1920 x 1080 ``.vixl`` master with a keyframe timeline. Times are millis
 """
 from __future__ import annotations
 
+import math
 import os
 from pathlib import Path
 
@@ -18,7 +19,7 @@ PROMO = ROOT / "promo"
 W, H, FPS = 1920, 1080, 30
 os.chdir(ROOT)  # image paths in the scenes are repository-relative
 
-# Digital Shift identity (assets/brand/digital-shift/START-HERE.md) plus the marketing pack's neutrals.
+# Ripple identity (assets/brand/ripple/START-HERE.md) plus the marketing pack's neutrals.
 CHARCOAL = "#252B39"
 DEEP = "#1A1F2B"
 PANEL = "#2F3647"
@@ -34,7 +35,7 @@ GOOD = "#5FD38D"
 BAD = "#FF6B6B"
 
 HEAD, BODY, SEMI, MONO = "inter-tight-800", "inter-400", "inter-600", "jetbrains-mono-500"
-LOGOS = ROOT / "assets/brand/digital-shift/Editable-Vixl"
+LOGOS = ROOT / "assets/brand/ripple/Editable-Vixl"
 
 
 class Scene:
@@ -195,10 +196,11 @@ def backdrop(prefix="bg", glow_at=(1400, 300), glow2_at=(300, 900)):
             glow(f"{prefix}-glow2", *glow2_at, 1200, SKY, "22")]
 
 
-def mark(prefix, x, y, width, variant="mark-reverse"):
-    """The paired-V symbol as editable layers: ``{prefix}-down``, ``-up`` and six pixels.
+def logo_parts(prefix, x, y, width, variant):
+    """A logo from the identity's Vixl master as editable layers, scaled so its ink is ``width`` wide.
 
-    Geometry is copied from the identity's Vixl master and scaled into place, so every part can move.
+    Each part keeps the master's name in lowercase with dashes (``{prefix}-v``, ``{prefix}-i-dot``,
+    ``{prefix}-x-reflection-band-3`` ...), so every letter and ripple band can move on its own.
     """
     source = Project.load(LOGOS / f"{variant}.vixl")
     parts = [layer for layer in source.state["layers"] if layer["type"] == "shape"]
@@ -208,10 +210,7 @@ def mark(prefix, x, y, width, variant="mark-reverse"):
     s = width / (right - left)
     ops, names = [], []
     for layer in parts:
-        label = layer["name"].lower()
-        key = ("down" if "downward" in label else "up" if "upward" in label
-               else label.replace("upper pixel ", "pu").replace("lower pixel ", "pl"))
-        name = f"{prefix}-{key}"
+        name = f"{prefix}-{layer['name'].lower().replace(' ', '-')}"
         op = {"type": "shape", "shape": layer["shape"], "name": name, "fill": layer["fill"],
               "x": round(x + (layer["x"] - left) * s, 2), "y": round(y + (layer["y"] - top) * s, 2),
               "width": max(1, round(layer["width"] * s)), "height": max(1, round(layer["height"] * s))}
@@ -222,3 +221,32 @@ def mark(prefix, x, y, width, variant="mark-reverse"):
         if layer.get("path"):
             ops.append({"type": "path-fit", "target": name})
     return ops, names
+
+
+def mark(prefix, x, y, width, variant="mark-reverse"):
+    """The Ripple symbol (a v over its rippling reflection): ``{prefix}-v`` and ``-reflection-band-N``."""
+    return logo_parts(prefix, x, y, width, variant)
+
+
+def wordmark(prefix, x, y, width, variant="horizontal-reverse"):
+    """The Ripple wordmark: ``{prefix}-v``, ``-i-stem``, ``-i-dot``, ``-x``, ``-l`` and the reflection bands
+    ``-x-reflection-band-N`` and ``-l-reflection-band-N``."""
+    return logo_parts(prefix, x, y, width, variant)
+
+
+def ripple_in(scene, names, start, stagger=70, sway=True):
+    """Bring reflection bands in from alternating sides, then (optionally) keep them swaying like the
+    animated logo: each band on its own phase, deeper bands further."""
+    for name in names:
+        band = int(name.rsplit("-", 1)[1])
+        side = 1 if band % 2 else -1
+        t = start + (band - 1) * stagger
+        frames = [(0, 90 * side), (t, 90 * side), (t + 450, 0)]
+        if sway and band > 1:
+            amplitude = 2 + 2.2 * (band - 1)
+            step = 200
+            for k in range(1, (scene.duration - t - 450) // step + 1):
+                tk = t + 450 + k * step
+                frames.append((tk, round(amplitude * math.sin(k * step / 1600 * 2 * math.pi + 0.37 * band), 2)))
+        scene.keys(name, "translate-x", frames, "ease-out-cubic")
+        scene.fade(name, t, dur=250)

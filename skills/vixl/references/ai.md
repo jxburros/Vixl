@@ -16,7 +16,7 @@ a provider/configuration error, report it to the user instead of looping.
   "providers": {
     "openai": {"type": "openai", "url": "https://api.openai.com/v1", "key_env": "OPENAI_API_KEY",
                "model": "gpt-image-2.5-flare", "reasoning_model": "gpt-5-mini"},
-    "gemini": {"type": "gemini", "key_env": "GEMINI_API_KEY", "model": "gemini-3.1-flash-image",
+    "gemini": {"type": "gemini", "key_env": "GEMINI_API_KEY", "model": "gemini-nano-banana-2.1",
                "vision_model": "gemini-3.8-flash"},
     "flux":   {"type": "bfl", "key_env": "BFL_API_KEY", "model": "flux-2-pro", "fill_model": "flux-pro-1.0-fill"},
     "claude": {"type": "anthropic", "key_env": "ANTHROPIC_API_KEY", "model": "claude-opus-5-5"},

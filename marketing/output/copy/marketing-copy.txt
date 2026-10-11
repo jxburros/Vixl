@@ -51,7 +51,7 @@ Asset: motion/teaser.mp4
 
 Ideas become editable. Inspect. Apply. Check. Preview. Export. That is the whole loop your agent runs in Vixl, the design engine for AI agents. This six-second video is an editable Vixl timeline. https://github.com/jxburros/Vixl
 
-Alt text: Silent square Vixl teaser. The paired-V mark appears above Ideas become editable. A blue progress line moves beneath Inspect, Apply, Check, Preview and Export. The repository address stays visible. Use teaser-frame.png as a still alternative.
+Alt text: Silent square Vixl teaser. The Ripple wordmark and symbol appear above Ideas become editable. A blue progress line moves beneath Inspect, Apply, Check, Preview and Export. The repository address stays visible. Use teaser-frame.png as a still alternative.
 
 DEMO SCRIPT
 0:00–0:20 — Open the pack's overview. Say: Vixl is a design engine for AI agents. Everything in this pack was made with it, and the editable masters are included.
